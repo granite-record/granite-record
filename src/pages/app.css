@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.325 */
+/* GRANITE_VERSION: 2026-09-07.332 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -2121,7 +2121,12 @@ border-radius:var(--r-in);background:var(--surface);color:var(--ink-2);cursor:po
 border-radius:var(--r-out);background:var(--surface);cursor:pointer}
 #q,#rsq{flex:1;height:42px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
 border-radius:var(--r-out);background:var(--paper)}
-#q:focus,#rsq:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px var(--pine-soft);background:var(--surface)}
+/* THE FOCUS IS THE SITE'S 2px PINE OUTLINE, as the How-to tab's box draws it
+   (.g-find input:focus), not a soft ring in a box-shadow (the accessibility
+   sweep of 29 October 2026, WCAG 2.4.7): forced colours paint no shadow and
+   take the border's colour, so a reader in them saw nothing say which box
+   had the keyboard. _text_box_focus_shows holds every text box. */
+#q:focus,#rsq:focus{outline:2px solid var(--pine);outline-offset:1px;border-color:var(--pine);background:var(--surface)}
 /* The search list narrows as you type and needs no button. On one bill's own
    view it must not: re-running the search there takes the bill off the screen
    the reader is reading. So the query is held until they say so, and this and
@@ -4544,8 +4549,12 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
 
 /* the head */
 .l-head{padding-top:1.125rem}
+/* A WORD TOO LONG FOR A PHONE'S LINE BREAKS (the accessibility sweep of 29
+   October 2026, WCAG 1.4.10): RSA 200-J's "Veterinary/medical/optometric"
+   is one word at the title's size, and /laws/200-j was 425px wide at 390.
+   _statute_blanks_wrap holds a chapter's title to it. */
 .l-head h1{font:600 var(--t-title)/1.12 var(--serif);color:var(--ink);letter-spacing:-.01em;
-  text-wrap:balance;margin:1.25rem 0 0}
+  text-wrap:balance;margin:1.25rem 0 0;overflow-wrap:anywhere}
 .l-lead{font:400 var(--t-lead)/1.45 var(--serif);color:var(--ink);margin:.625rem 0 0;max-width:44rem;text-wrap:pretty}
 .l-head::after{content:"";display:block;border-bottom:2px solid var(--ink);margin-top:1.5rem}
 .r-head h1{margin-top:.75rem}
@@ -4924,15 +4933,8 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .g-ic{flex:none;display:inline-grid;place-items:center;width:2.25rem;height:2.25rem;
   border-radius:50%;background:var(--wash);color:var(--pine)}
 .g-ic .icon{width:1.25rem;height:1.25rem}
-/* MOST COMMON: a box each, its topic's badge beside its headline. */
-.g-common{list-style:none;margin:0;padding:0;display:grid;gap:.625rem .75rem;
-  grid-template-columns:repeat(auto-fill,minmax(min(100%,15.5rem),1fr))}
-.g-common a{display:flex;align-items:center;gap:.75rem;height:100%;box-sizing:border-box;
-  min-height:3.5rem;border:1px solid var(--rule-2);border-radius:var(--r-out);
-  padding:.625rem .875rem .625rem .625rem;background:var(--surface);
-  font:600 var(--t-ui)/1.35 var(--sans);color:var(--pine);text-decoration:none}
-.g-common a:hover{border-color:var(--pine);color:var(--ink)}
-/* CARDS (Learn's Start Here and Reference): a badge, a title and its line. */
+/* CARDS (Learn's Start Here and Reference, and the How-To tab's Most
+   Common): a badge, a title and its line. */
 .g-cards{list-style:none;margin:0;padding:0;display:grid;gap:.625rem .75rem;
   grid-template-columns:repeat(auto-fill,minmax(min(100%,17rem),1fr))}
 .g-cards a{display:flex;align-items:flex-start;gap:.75rem;height:100%;box-sizing:border-box;
@@ -4963,12 +4965,6 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .g-body{padding:.25rem .5rem 1rem 3.5rem}
 .g-body > .r-intro{margin-bottom:.75rem}
 @media (max-width:40rem){.g-body{padding-left:.5rem}}
-.g-list{list-style:none;margin:0;padding:0}
-.g-list li{padding:.375rem 0}
-.g-list a{font:600 var(--t-ui)/1.4 var(--sans);color:var(--pine);text-decoration:underline;
-  text-decoration-thickness:1px;text-underline-offset:3px}
-.g-list a:hover{color:var(--ink)}
-.g-list span{display:block;margin-top:.125rem;font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2)}
 @media (prefers-reduced-motion:reduce){.g-topic > summary::after{transition:none}}
 /* OTHER WAYS TO FOLLOW LEGISLATION (build_civics.follow_elsewhere): each
    site's name as the link, the line on what it offers, then its host. */
@@ -5016,6 +5012,11 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
   border-radius:var(--r-in);padding:.625rem .875rem;font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink)}
 .g-fans b{display:block;font:600 var(--t-ui)/1.35 var(--sans);color:var(--pine);margin-bottom:.25rem}
 .g-steps{list-style:none;margin:0;padding:0;counter-reset:gstep}
+:is(.l-secb,.l-wide) > h3.g-part,.g-part{font:700 var(--t-sm)/1.3 var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--pine);margin:2rem 0 1rem;padding-bottom:.375rem;border-bottom:1px solid var(--rule-2)}
+:is(.l-secb,.l-wide) > h3.g-part:first-child,.g-part:first-child{margin-top:0}
+/* A part of one step carries no number: a lone "1" counts nothing. */
+.g-steps:has(> .g-step:only-child) > .g-step{padding-left:0}
+.g-steps:has(> .g-step:only-child) > .g-step::before{display:none}
 .g-step{counter-increment:gstep;position:relative;padding:0 0 1.5rem 3.25rem;margin:0}
 .g-step::before{content:counter(gstep);position:absolute;left:0;top:0;width:2.25rem;height:2.25rem;
   border-radius:50%;background:var(--pine);color:var(--on-pine);font:700 var(--t-ui)/2.25rem var(--sans);text-align:center}
@@ -5032,7 +5033,9 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .g-btn:hover{background:var(--ink);color:var(--paper)}
 .g-btn:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
 .g-step .g-law{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:.25rem 0 0}
-.g-step .g-law a{color:var(--pine)}
+.g-step .g-law a{color:var(--pine);white-space:nowrap}
+.g-yrp{margin:.25rem 0 .5rem;font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2)}
+.g-yrp select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-in);padding:.25rem .5rem;margin-left:.375rem;min-height:2.25rem}
 .g-step .g-note{border:2px solid var(--ink);border-radius:var(--r-in);padding:.75rem 1rem;background:var(--wash);
   margin:.75rem 0}
 .g-sample{border:1px dashed var(--edge);border-radius:var(--r-in);padding:.75rem 1rem;margin:.75rem 0;
@@ -6807,6 +6810,28 @@ table.cov{display:table;border-collapse:collapse;width:100%;min-width:30rem;font
    ink inside it. */
 a.cnum{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.18em}
 a.cnum:hover{text-decoration-thickness:2px}
+/* A LINK IS 24px TALL TO A FINGER AT THE LEAST (the accessibility sweep of
+   29 October 2026, WCAG 2.5.8). At 390 a card's number was 20px tall, the
+   committee in its byline 22px, a Laws chapter's "RSA 3-A ›" 22px and a
+   member named in a sentence 19px. Each keeps the size of its words and is
+   drawn where it was: what grows is the box a tap lands in, by padding above
+   and below, and a box that takes a line of its own gives the same back in
+   margin, so nothing beside or under it moves. --tap-line is what a box one
+   line high needs: 1lh + 2 x max(0, (24px - 1lh) / 2) is 24px or more at
+   any size. --tap-text is an inline link's, whose box is its letters, 1em
+   tall and a little more: 1em + 24px - 1em. _tap_targets_24 holds each one
+   to them. */
+:root{--tap-line:max(0px,(24px - 1lh) / 2);--tap-text:max(0px,(24px - 1em) / 2)}
+.lw-go,a.cnum,.cmeta > a,.pbar > a{padding-block:var(--tap-line);margin-block:calc(-1 * var(--tap-line))}
+a.psent{padding-block:var(--tap-text)}
+/* A SPEAKER IN A PRINTED DEBATE is a block of its own line (.sdsp a), 24.8px
+   tall already, and --tap-text grew each linked one by 8px, so every speech
+   after it moved down and the gaps of a transcript went uneven against the
+   speakers with no link (the review of 29 October 2026). As a line's box it
+   takes --tap-line, 0 at that height, and gives it back from the margins it
+   had. */
+.sdsp a.psent{padding-block:var(--tap-line);margin-top:calc(-1 * var(--tap-line));
+margin-bottom:calc(var(--sp-2) - var(--tap-line))}
 /* THE TITLE IS THE BUTTON that opens the card in place, and reads as the
    title it is: the serif at the title's size, no button chrome. The head
    lights under the pointer as the whole head used to, and the button carries
@@ -7137,7 +7162,12 @@ padding-top:var(--sp-6);border-top:1px solid var(--rule)}
 .mfig{margin:var(--sp-5) 0 0}
 .mfh{font:600 var(--t-h3)/1.35 var(--serif);margin:0 0 var(--sp-3);letter-spacing:0;text-transform:none}
 .mfgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr));gap:var(--sp-5) 2.5rem}
-.mfgrp h3{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);
+/* A HEADING IS NO SMALLER THAN WHAT IT HEADS (the accessibility sweep of 29
+   October 2026): ATTENDANCE and BILLS were 13px over figures labelled at
+   16px. They are the interface's size now, on the line they had, so nothing
+   under them moves; _headings_outrank holds them, and the Laws pages'
+   .rs-sub, to it. */
+.mfgrp h3{font:600 var(--t-ui)/calc(var(--t-label) * 1.3) var(--sans);letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2);
 margin:0 0 var(--sp-4);padding-bottom:var(--sp-2);border-bottom:1px solid var(--rule-2)}
 .mfrow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-4) var(--sp-6)}
 .mf b{display:block;font:600 var(--t-h2)/1.1 var(--serif);color:var(--ink)}
@@ -7382,8 +7412,18 @@ letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
 .rs-crumb{font:500 var(--t-sm)/1.4 var(--sans);color:var(--ink-2);margin:0 0 .5rem}
 .rs-crumb a{color:var(--pine)}
 .rs-art{max-width:var(--rs-meas);padding-bottom:var(--sp-7,3rem)}
-.rs-sub{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.06em;text-transform:uppercase;
-  color:var(--ink-2);margin:2.25rem 0 .75rem;padding-top:.75rem;border-top:1px solid var(--rule-2)}
+/* A part of a chapter ("HOURS OF POLLING") is headed at the size of the
+   law under it, 16px, not at 13 (the accessibility sweep of 29 October
+   2026). Its lines are 1.25 apart: on the 13px label's line (16.9px), a
+   long part's heading that wraps at 390 -- RSA 126-A's "Commission to Study
+   Oversight, Regulation, and Reporting of Patient Safety..." -- ran six lines
+   at 1.06 (the review of the same day). The 3.1px the line grew comes out of
+   the padding above and the margin below, half each, so a heading of one
+   line keeps its text, its rule and what is under it where they were. */
+.rs-sub{--rs-lead:calc((1.25em - var(--t-label) * 1.3) / 2);
+  font:600 var(--t-ui)/1.25 var(--sans);letter-spacing:.05em;text-transform:uppercase;
+  color:var(--ink-2);margin:2.25rem 0 calc(.75rem - var(--rs-lead));padding-top:calc(.75rem - var(--rs-lead));
+  border-top:1px solid var(--rule-2)}
 .rs-sec{padding:1.25rem 0 1rem;border-bottom:1px solid var(--rule);scroll-margin-top:5rem}
 .rs-sec:target{background:linear-gradient(var(--pine-soft),var(--pine-soft)) left top/3px 100% no-repeat;
   padding-left:.875rem}
@@ -7392,6 +7432,13 @@ letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
   margin-right:.375rem}
 .rs-h a:hover{text-decoration-thickness:2px}
 .rs-text p{font:400 var(--t-ui)/1.65 var(--sans);color:var(--ink);margin:0 0 .625rem;max-width:var(--rs-meas)}
+/* A FORM'S BLANKS WRAP (the accessibility sweep of 29 October 2026, WCAG
+   1.4.10). The statutes print a form's lines to fill in as underscores, and
+   RSA 659:27-a's are seventy in a row: one word, 636px wide, so /laws/659
+   scrolled sideways on a 390px phone. The text may break inside a word that
+   does not fit its line, and only there; _statute_blanks_wrap holds every
+   long run the renderer writes to a rule that lets it. */
+.rs-text{overflow-wrap:anywhere}
 .rs-text a{color:var(--pine)}
 /* A DEFINED TERM WHERE IT IS USED (the person, 24 October 2026): the word in
    the text's own ink, underlined in dots as the site's term popovers are
@@ -7752,7 +7799,7 @@ padding:var(--sp-5) var(--sp-5);margin:0 0 var(--sp-5);line-height:1.6}
    and preflight holds it there. */
 :where(body.pg) input[type=search], :where(body.pg) input[type=text]{width:100%;height:42px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-ui);
 border:1px solid var(--edge);border-radius:var(--r-out);background:var(--surface)}
-:where(body.pg) input:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px var(--pine-soft)}
+:where(body.pg) input:focus{outline:2px solid var(--pine);outline-offset:1px;border-color:var(--pine)}
 :where(body.pg) table{width:100%;border-collapse:collapse;font-size:var(--t-ui)}
 :where(body.pg) th{text-align:left;font-size:var(--t-sm);font-weight:600;color:var(--ink-2);padding:0 0 var(--sp-3);border-bottom:1px solid var(--rule)}
 :where(body.pg) td{padding:var(--sp-4) 0;border-bottom:1px solid var(--rule);vertical-align:top}
@@ -8477,10 +8524,10 @@ touch-action:pan-x pan-y;cursor:grab;
 border:1px solid var(--rule);border-bottom:0;border-radius:var(--r-in) var(--r-in) 0 0;
 background:var(--surface)}
 /* NO MINIMUM WIDTH. It was 680px inside a sideways-scrolling box, which on a
-   390px screen drew a seat about five pixels across -- under half the
-   smallest thing a thumb reliably hits, and the whole floor visible is no use
-   if nothing on it can be tapped. The width is the zoom's to set now, and the
-   script opens a narrow screen already zoomed in. */
+   390px screen drew a seat about five pixels across. The width is the
+   zoom's to set now: the chart opens at the box's width, zoomed to fit (the
+   owner, 29 October 2026), and + or a pinch brings a seat up to a thumb's
+   size. */
 :where(body.pg) .seatmap{width:100%;height:auto;display:block}
 :where(body.pg) .seatmap .seat{fill:var(--rule-2);stroke:var(--edge);stroke-width:1;
 cursor:pointer;transition:fill .12s}
@@ -8547,19 +8594,71 @@ justify-content:space-between;gap:var(--sp-3) var(--sp-5);margin-top:var(--sp-5)
 min-height:calc(1lh + 2 * var(--sp-3) + 2px);text-align:center;color:var(--ink-2);font-size:var(--t-ui);
 background:var(--surface);border:1px solid var(--rule);
 border-radius:0 0 var(--r-in) var(--r-in)}
-:where(body.pg) .seatnote:empty{border-top-color:var(--surface)}
+/* Empty, or saying a seat to a screen reader alone (.sronly: the callout
+   above the seat shows it to the eye), the strip shows nothing, and is the
+   box's foot with no rule (the review of 29 October 2026: a chosen seat left
+   a ruled strip with nothing in it). The rule's pixel is the padding's, so
+   the strip keeps its height; drawn by its width and not its colour, it is
+   gone in forced colours too, where a border's colour is the system's. */
+:where(body.pg) .seatnote:empty,:where(body.pg) .seatnote.sronly{border-top-width:0;
+padding-top:calc(var(--sp-3) + 1px)}
 :where(body.pg) .seatnote a{font-weight:600;color:var(--ink)}
+/* THE NAME ABOVE THE SEAT (the owner, 29 October 2026). The term popovers'
+   box (.termpop: the surface, its edge, its shadow, the small sans), placed
+   by the script over the chart: above the seat it names, or under it where
+   there is no room above, with a triangle in the box's own edge and ground
+   pointing at the seat from --arrow along it. The name is the link, in the
+   ink; the party, the district and the seat under it in the second ink. */
+:where(body.pg) .seatstage .seatpop{top:0;left:0;z-index:6;max-width:min(17rem,calc(100% - 1rem));
+  padding:var(--sp-3) var(--sp-4);font:400 var(--t-sm)/1.4 var(--sans)}
+:where(body.pg) .seatpop.gone{visibility:hidden}
+:where(body.pg) .seatpop .spname{display:block;font:600 var(--t-ui)/1.3 var(--sans);color:var(--ink)}
+:where(body.pg) .seatpop .spwhat,:where(body.pg) .seatpop .spseat{display:block;color:var(--ink-2)}
+:where(body.pg) .seatpop .spwhat{margin-top:var(--sp-1)}
+:where(body.pg) .seatpop .spwhat:empty{display:none}
+:where(body.pg) .seatpop::before,:where(body.pg) .seatpop::after{content:"";position:absolute;
+  left:var(--arrow,50%);width:0;height:0;border:8px solid transparent;transform:translateX(-50%)}
+:where(body.pg) .seatpop::before{top:100%;border-top-color:var(--rule-2)}
+:where(body.pg) .seatpop::after{top:calc(100% - 1px);border-top-color:var(--surface)}
+:where(body.pg) .seatpop.below::before{top:auto;bottom:100%;border-top-color:transparent;
+  border-bottom-color:var(--rule-2)}
+:where(body.pg) .seatpop.below::after{top:auto;bottom:calc(100% - 1px);border-top-color:transparent;
+  border-bottom-color:var(--surface)}
+/* In forced colours the triangle keeps its own two colours, the system's:
+   left to the browser, its clear sides were painted in the text's. */
+@media (forced-colors:active){
+  :where(body.pg) .seatpop::before,:where(body.pg) .seatpop::after{forced-color-adjust:none}
+  :where(body.pg) .seatpop::before{border-top-color:CanvasText}
+  :where(body.pg) .seatpop.below::before{border-top-color:transparent;border-bottom-color:CanvasText}
+  :where(body.pg) .seatpop::after{border-top-color:Canvas}
+  :where(body.pg) .seatpop.below::after{border-top-color:transparent;border-bottom-color:Canvas}
+}
+/* NAMES UNDER THE CHART, WITHOUT THE DISTRICT (the owner, 29 October 2026:
+   "names only, without the full district, so the five columns are more
+   compact"). The chip's " - Belk 6" (.mdist, build_pages.seat_row_tag) is
+   for a screen reader alone here, and the callout above a seat says the
+   party and the district in full, which is what tells two members of one
+   name apart. The party's letter stays, "(R)": hidden too, the party was the
+   chip's bar's colour alone, and in forced colours nothing (the review of 29
+   October 2026, WCAG 1.4.1). Each name's "Rep." is a screen reader's alone
+   here too (the owner, 29 October 2026): "Debra DeSimone (R)". */
+:where(body.pg) #seatlist .mtag .mdist,:where(body.pg) #seatlist .mhon{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 :where(body.pg) .seatzoom{display:flex;gap:var(--sp-2);flex:0 0 auto}
 :where(body.pg) .seatzoom button{font:inherit;font-size:var(--t-ui);
 min-width:40px;min-height:40px;padding:0 var(--sp-4);cursor:pointer;
 color:var(--ink-2);background:var(--surface);border:1px solid var(--edge);
 border-radius:var(--r-in)}
 :where(body.pg) .seatzoom button:hover{color:var(--ink);background:var(--wash)}
+/* Zoom to fit's four corners, in the middle of the same 40px box as - and +
+   (build_pages.ZOOM_FIT_ICON). */
+:where(body.pg) .seatzoom svg{display:block;margin:0 auto}
 /* ON PAPER, THE WHOLE FLOOR. The chart's width is the zoom's, written on the
-   element by the script, and a screen under 1100px opens zoomed in -- 113%
-   at 1024 -- so a page printed after loading there kept that width inside a
-   box that clips, and the sheet lost the right of the floor: Division 5 and
-   its caption (the review of 7 October 2026). Printed, the chart is the
+   element by the script when a reader zooms (and on opening, under 1100px,
+   until 29 October 2026: 113% at 1024), so a page printed after zooming kept
+   that width inside a box that clips, and the sheet lost the right of the
+   floor: Division 5 and its caption (the review of 7 October 2026). Printed,
+   the chart is the
    width of the page, and its box neither scrolls nor clips. */
 @media print{
   :where(body.pg) .seatmap{width:100% !important}
@@ -8610,7 +8709,6 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-3);font-family:v
    room, and five columns was asked for). */
 :where(body.pg) .seatcols .sdiv{margin:0 0 var(--sp-8)}
 :where(body.pg) .seatcols .sdiv .seatlist{columns:270px;column-gap:var(--sp-7)}
-:where(body.pg) .seatcols .srost .seatlist{columns:auto}
 :where(body.pg) .seatcols .mchip{white-space:normal}
 @media (min-width:73.75em){
   :where(body.pg) .seatdivs{display:grid;gap:var(--sp-6);
@@ -8618,9 +8716,10 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-3);font-family:v
   margin:0 0 var(--sp-8)}
   :where(body.pg) .seatdivs > .sdiv{margin:0}
   :where(body.pg) .seatdivs .sdiv .seatlist{columns:auto}
-  :where(body.pg) .seatdivs .seatrow{gap:var(--sp-2) var(--sp-3);padding:var(--sp-2) var(--sp-1)}
-  :where(body.pg) .seatdivs .seatrow .sseat{flex:0 0 3.2em}
-  :where(body.pg) .seatdivs .mchip{margin:0}
+  :where(body.pg) .seatdivs .seatrow,:where(body.pg) .seatcols .srost .seatrow{padding:var(--sp-2) var(--sp-1)}
+  /* The Speaker's card as wide as a division's, not the page's (the owner,
+     29 October 2026): the rostrum's list is one of the five columns wide. */
+  :where(body.pg) .seatcols .srost .seatlist{max-width:calc((100% - 4 * var(--sp-6)) / 5)}
 }
 :where(body.pg) .seatrow[hidden]{display:none}
 :where(body.pg) .seatrow{display:flex;align-items:baseline;gap:var(--sp-4);
@@ -8646,6 +8745,47 @@ font-size:var(--t-sm);color:var(--ink-2)}
 @media (max-width:35em){
   :where(body.pg) .seatrow{flex-wrap:wrap;gap:var(--sp-1) var(--sp-4)}
 }
+/* THE SEAT NUMBER INSIDE THE CARD (the owner, 29 October 2026, a blend of
+   the two mock-ups put to them). No gutter: under the chart each card fills
+   its column, and its seat, "001" without the division its column is headed
+   with, sits at the card's right, small and muted (mock-up B's size and
+   spacing), on the name's first line when the name wraps -- the chip a flex
+   row on its baseline, the name the part that gives way, so the two never
+   meet. That number is the eye's alone (aria-hidden, build_pages
+   .seat_row_tag); the row's own "1-001" (.sseat) is a screen reader's,
+   clipped, so it still hears the seat in full before the name. The
+   Speaker's card carries no number and is as wide as a division's cards:
+   the rostrum's list is in columns as a division's is, and five abreast it
+   is one of the five wide (the rule above). */
+:where(body.pg) #seatlist .seatrow{position:relative}
+:where(body.pg) #seatlist .seatrow > .sseat{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+:where(body.pg) #seatlist .seatrow .mchip{display:flex;align-items:baseline;flex:1 1 auto;margin:0;
+  position:relative}
+:where(body.pg) #seatlist .seatrow .mchip > a{min-width:0}
+:where(body.pg) #seatlist .mseat{flex:0 0 auto;margin-left:auto;padding-left:.6em;font-size:.78em;
+  color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+/* THE WHOLE CARD IS STILL THE LINK (the review of 29 October 2026), as every
+   chip's is ("THE WHOLE CHIP IS THE LINK", above): the card fills its column
+   now and the name does not, so the link's ::before is laid over the whole
+   card, its number included (::after is the outside-link mark's, and is left
+   alone). A ring on it marks the card: lit, for a seat chosen on the chart,
+   from Go to a seat or by a search down to one name -- the card covers its
+   row, whose colour and bar barely showed, and forced colours keep a ring
+   where they keep no background -- and focused, round the card rather than
+   round the name. The ring is the overlay's, not the chip's: the chip's own
+   frame stays the one chip's. */
+:where(body.pg) #seatlist .seatrow .mchip > a::before{content:"";position:absolute;inset:0;
+  border-radius:var(--r-in)}
+:where(body.pg) #seatlist .seatrow.on .mchip{background:var(--pine-soft)}
+:where(body.pg) #seatlist .seatrow.on .mchip > a::before{outline:2px solid var(--pine);outline-offset:1px}
+:where(body.pg) #seatlist .seatrow .mchip > a:focus-visible{outline:none}
+:where(body.pg) #seatlist .seatrow .mchip > a:focus-visible::before{outline:2px solid var(--pine);
+  outline-offset:2px}
+/* Copied, a card reads as its member's name: the ")" and the number that are
+   the eye's alone are not selected with it. */
+:where(body.pg) #seatlist .mtag > [aria-hidden],:where(body.pg) #seatlist .mseat{-webkit-user-select:none;
+  user-select:none}
 
 /* THE ALL-RESULTS PAGE (/search). The header panel is a dropdown and stops
    at eight rows; this is the same index with the cap off, grouped by what

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.242
+# GRANITE_VERSION: 2026-09-04.249
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -209,11 +209,13 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
 /find.json
   Cache-Control: public, max-age=0, must-revalidate
 
-# THE PUBLISHED RECORD IS READABLE FROM ANYWHERE, which is what /data already
-# tells programmers it is. Without this header a browser will not let a page on
-# another origin read these files, so the promise held for curl and for a
-# script on a server and quietly failed for anyone building in a browser --
-# which is most of the people that page is addressed to.
+# THE PUBLISHED RECORD IS READABLE FROM ANYWHERE, which is what /data tells
+# programmers it is: a page on another origin may read these files in a
+# browser, as curl and a script on a server can. Cloudflare Pages already
+# sends this header on every response, the HTML included (measured on /,
+# /about and a bill page, 26 October 2026), so these rules change nothing it
+# serves today. They say here which files the promise is made for, so that
+# it does not rest on a default of the host's.
 #
 # Nothing here is private: these are the same public files the site's own pages
 # fetch, and they are already served to anyone who asks for them directly. The
@@ -654,6 +656,81 @@ def party_word(name, lang="en", plural=False):
             "Independent": say(lang, "party.is", "Independents"),
             "Libertarian": say(lang, "party.ls", "Libertarians")}
     return (many if plural else one).get(name, one.get(name, name) if plural else name)
+
+
+# THE PARTY'S LETTER STAYS UNDER THE CHART (the review of 29 October 2026).
+# The owner asked for the rows under the seating chart to be "names only,
+# without the full district, so the five columns are more compact", and the
+# whole "(R - Belk 6)" was hidden from the eye: the party was then only the
+# chip's coloured bar (WCAG 1.4.1), and in forced colours, where every bar is
+# the one system colour, nothing at all. So a row's tag is written
+# "(R<span class="mdist"> - Belk 6</span>)": app.css hides the district from
+# the eye under the chart, the eye reads "(R)", and a screen reader hears the
+# tag whole, as everywhere else. A tag of another shape is left as it is.
+#
+# THE CLOSING BRACKET GOES WITH THE DISTRICT, and the eye's own is aria-hidden
+# (the blend's check, 29 October 2026). Clipped, the district is laid out as
+# a block, and Chrome puts a space either side of a block when it names the
+# link: "Rep. Debra DeSimone (R - Rock 18 )". With the ")" inside the clipped
+# part the name is "(R - Rock 18)" again, word for word as everywhere else,
+# and the ")" the eye sees is a second one a screen reader is not given.
+_SEAT_TAG = re.compile(r'(<span class="mtag">)\(([^()\s<]+)( - [^()<]+)\)(</span>)')
+
+# NAMES WITHOUT "REP." UNDER THE CHART (the owner, 29 October 2026: "the
+# roster under the seating chart drops 'Rep.' from each name and keeps the
+# party letter"). Every row under the chart is a representative, so the
+# title says nothing the heading does not; "Debra DeSimone (R)" is what the
+# eye reads. A screen reader still hears "Rep. Debra DeSimone (R - Rock 18)",
+# as everywhere else, and the callout above a seat keeps its "Rep.".
+_SEAT_HON = re.compile(r'(<span class="mchip[^"]*"[^>]*>(?:<a [^>]*>)?)(Rep\.) ')
+
+
+# THE LETTER STAYS WITH THE SURNAME (the manager's polish, 29 October 2026):
+# "Debra DeSimone / (R)" wrapped the party's letter onto a line of its own.
+# The space before the tag is a no-break space, so a row too long for its
+# column breaks before the surname: "Debra / DeSimone (R)".
+_SEAT_GAP = re.compile(r' (<span class="mtag">)')
+
+
+# ZOOM TO FIT, AN ICON (the owner, 29 October 2026): the seating chart's
+# "Fit" was a word between two signs; it is four corners, the usual sign for
+# zooming to fit, in the box of the - and + beside it. Its title is its name
+# and its tooltip, "Zoom to fit" (with an aria-label as well, a screen reader
+# heard the words twice: the review of 29 October 2026). Drawn in the
+# button's own colour, so forced colours draw it as they draw the button's
+# text.
+ZOOM_FIT_ICON = ('<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">'
+                 '<path d="M1 5.5V1h4.5M10.5 1H15v4.5M15 10.5V15h-4.5M5.5 15H1v-4.5" fill="none" '
+                 'stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>'
+                 '</svg>')
+
+
+# THE SEAT NUMBER INSIDE THE CARD (the owner, 29 October 2026, a blend of the
+# two mock-ups put to them): no gutter; each card carries its seat, "001",
+# right-aligned, small and muted, without the division its column is headed
+# with. That number is the eye's alone (aria-hidden), and the row's own
+# "1-001" stays where it was, clipped by app.css, so a screen reader hears
+# the seat in full before the name, as it always has. The Speaker's card on
+# the rostrum carries none: the rostrum is no division, and its "6-002" is
+# a plate a reader has no use for.
+_SEAT_NUM = re.compile(r'<span class="sseat"[^>]*>(\d+)-(\d+)</span>')
+_ROW_END = "</span></li>"
+
+
+def seat_row_tag(row):
+    """A row of the House by seat with its chip's district apart from its
+    party's letter (_SEAT_TAG), its "Rep." apart from its name (_SEAT_HON):
+    app.css shows the eye neither; the letter held to the surname by a
+    no-break space (_SEAT_GAP); and, but on the rostrum, the seat's number
+    within its division written inside the chip for the eye (_SEAT_NUM)."""
+    row = _SEAT_HON.sub(r'\1<span class="mhon">\2 </span>', row)
+    row = _SEAT_GAP.sub(r'&#160;\1', row)
+    row = _SEAT_TAG.sub(r'\1(\2<span class="mdist">\3)</span><span aria-hidden="true">)</span>\4', row)
+    num = _SEAT_NUM.search(row)
+    if num and int(num.group(1)) != seating.SPEAKER_SEAT // 1000 and row.endswith(_ROW_END):
+        row = (row[:-len(_ROW_END)] + f'<span class="mseat" aria-hidden="true">{num.group(2)}</span>'
+               + _ROW_END)
+    return row
 
 
 def seat_columns(house, row, lang="en"):
@@ -1480,7 +1557,14 @@ def not_found_body(example):
 # the artist's words are as they were. The repository's address is REPO's,
 # put in below, so the footer, the Data page and this page cannot point at two
 # places. Each line of What You Can Do Here links the page that does it (the
-# audit of 25 October 2026, S6), its words unchanged.
+# audit of 25 October 2026, S6), its words unchanged. "Neutrality and
+# Methods" replaced "Independence" by the person's approval of 29 October 2026
+# (docs/design/about-neutrality/draft.md on branch design/email-pass gives the
+# source of each sentence); its [[median]] is the Data page's figure, from
+# about_figures, and never typed. Its first sentence is Independence's own,
+# kept because nothing else on the page says the site is not affiliated with
+# the General Court or takes no position on any bill (the review of 29 October
+# 2026); "or endorsed by" was cut at the owner's word the same day.
 ABOUT = """
 <h1>About Granite Record</h1>
 <p class="lead">Granite Record is a free, independent and searchable record of the New Hampshire
@@ -1580,9 +1664,31 @@ __PRIVACY__
 under the MIT License, and the whole record can be downloaded as spreadsheets
 from the <a href="data.html">Data page</a>.</p>
 
-<h2>Independence</h2>
-<p>Granite Record is not affiliated with or endorsed by the New Hampshire General
-Court, and it takes no position on any bill.</p>
+<h2>Neutrality and Methods</h2>
+<p>Granite Record is not affiliated with the New Hampshire General Court, and it
+takes no position on any bill. I'm a sitting member of the House,
+so the site keeps to these rules.</p>
+<ul>
+<li>Nothing on it is editorialized. Dates, sponsors, vote tallies, committee
+assignments and hearing times are taken directly from the official record.
+Committee reports appear as filed, in the committee's own words, and summaries
+of a bill's progress are generated from the record by software.</li>
+<li>A report made with <i>Report a problem</i> holds nothing that identifies who
+sent it, so every one is checked against the official record in the same way,
+and corrected where the record bears it out. An email to
+<a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a> is
+handled the same way, whoever sends it.</li>
+<li>On the Learn pages, where a concept needs an example bill, town or
+legislator, the site uses a less polarizing one when there is a choice. A list
+taken from the record, such as the hearings with the most sign-ins, is shown as
+the record has it.</li>
+</ul>
+<p>Each step-by-step guide links the official page that has the final word, and
+says when it was last checked against it.</p>
+<p>Hearing timestamps are measured against proceedings a person timed by
+watching the recording. On the ones the method places, the median is out by
+[[median]]. <a href="data.html#how-built">How the record is built</a>, on the
+Data page, gives every figure.</p>
 
 <h2>The Logo</h2>
 __LOGO__<p>The Granite Record logo was drawn by Debra Caplan, an artist in Peterborough,
@@ -1691,24 +1797,110 @@ SEATING_JS = """
         (p&&p.getAttribute?p.getAttribute("data-seat"):null);
       c.classList.toggle("on",!!seat&&n===seat);});
   }
+  /* THE NAME ABOVE THE SEAT (the owner, 29 October 2026): "a name callout
+     ABOVE the selected seat, not at the bottom of the screen", a small box
+     with the member's name, their party and district, and a triangle that
+     points at the seat. It is the term popovers' box (.termpop), above the
+     seat, under it where there is no room above inside the chart or the
+     screen, never past the chart's sides, and it follows a seat chosen by a
+     tap, by the keyboard or from the list, and one the pointer is over. The
+     name in it is the link to the member's page, the next Tab stop after a
+     seat, as the note's link under the chart was. The note stays for a
+     screen reader, saying the same in words the eye does not see, and
+     still says what a search has left showing.
+
+     NEVER UNDER THE KEYBOARD (the accessibility sweep of 29 October 2026,
+     WCAG 2.4.3). Tab from a seat to the name under the chart, and focus fell
+     to the page: the scroll that brought the name into view moved the
+     chart from under a resting pointer, and its mouseout wrote the note
+     again, taking out the link focus was on. Nothing here writes the
+     callout or the note while focus is in the callout, and what is said
+     again unchanged is not written again. */
+  var stage=document.querySelector(".seatstage")||(wrap&&wrap.parentNode)||null;
+  var pop=null, popA=null, popWhat=null, popSeat=null, popFor=null, quiet=null;
+  if(stage&&document.createElement){
+    pop=document.createElement("div");
+    pop.className="termpop seatpop";pop.id="seatpop";pop.hidden=true;
+    popA=document.createElement("a");popA.className="spname";
+    popA.setAttribute("aria-describedby","seatpopwhat seatpopseat");
+    popWhat=document.createElement("span");popWhat.className="spwhat";popWhat.id="seatpopwhat";
+    popSeat=document.createElement("span");popSeat.className="spseat";popSeat.id="seatpopseat";
+    pop.appendChild(popA);pop.appendChild(popWhat);pop.appendChild(popSeat);
+    if(note&&note.parentNode===stage&&stage.insertBefore)stage.insertBefore(pop,note);
+    else stage.appendChild(pop);
+  }
+  function holds(){
+    var a=document.activeElement;
+    return !!(a&&pop&&a!==pop&&pop.contains(a));
+  }
+  // Republican, Belknap 6, seat 2-080: what the note says after the name.
+  function about(c){
+    return [c.getAttribute("data-party"),c.getAttribute("data-dist"),
+      tr("sc.seat","seat {plate}",{plate:plate(c.getAttribute("data-seat"))})].filter(Boolean);
+  }
+  // Above its seat, the arrow at the seat's middle (--arrow); below it where
+  // the box would rise past the top of the chart or of the screen; inside the
+  // chart's sides. Out of sight while its seat is scrolled out of the chart,
+  // unless focus is in it.
+  function place(){
+    if(!pop||pop.hidden||!popFor||!stage.getBoundingClientRect||!popFor.getBoundingClientRect)return;
+    var st=stage.getBoundingClientRect(), b=popFor.getBoundingClientRect(),
+        w=wrap&&wrap.getBoundingClientRect?wrap.getBoundingClientRect():st;
+    var cx=b.left+b.width/2, cy=b.top+b.height/2;
+    var off=cx<w.left||cx>w.left+w.width||cy<w.top||cy>w.top+w.height;
+    pop.classList.toggle("gone",off&&!holds());
+    var pw=pop.offsetWidth||0, ph=pop.offsetHeight||0, gap=10, edge=8;
+    var left=Math.max(edge,Math.min(cx-st.left-pw/2,st.width-pw-edge));
+    var below=b.top-gap-ph<Math.max(w.top,0);
+    var top=below?b.top+b.height+gap-st.top:b.top-gap-ph-st.top;
+    pop.style.left=Math.round(left)+"px";
+    pop.style.top=Math.round(top)+"px";
+    var arrow=Math.max(14,Math.min(pw-14,cx-st.left-left));
+    if(pop.style.setProperty)pop.style.setProperty("--arrow",Math.round(arrow)+"px");
+    pop.classList.toggle("below",below);
+  }
+  var placing=0;
+  function soon(){
+    if(placing||typeof requestAnimationFrame!=="function"){if(!placing)place();return;}
+    placing=requestAnimationFrame(function(){placing=0;place();});
+  }
+  function show(c){
+    if(!pop)return;
+    if(!c){pop.hidden=true;popFor=null;return;}
+    if(popFor!==c){
+      popFor=c;
+      popA.href=DATA("legislator/"+c.getAttribute("data-slug")+".html");
+      popA.textContent=c.getAttribute("data-name");
+      // The name, then "Republican \u00b7 Belknap 6", then the seat on a
+      // line of its own, its number the licence plate's.
+      popWhat.textContent=[c.getAttribute("data-party"),c.getAttribute("data-dist")]
+        .filter(Boolean).join(" \u00b7 ");
+      popSeat.textContent=tr("sc.seat_line","Seat {plate}",{plate:plate(c.getAttribute("data-seat"))});
+    }
+    pop.hidden=false;
+    place();
+  }
   // Built as nodes rather than markup: a member's name is theirs, and it is
   // not going through innerHTML on my say-so.
   function say(preview){
-    if(!note)return;
-    note.textContent="";
+    if(holds())return;
     var c=preview||picked;
-    if(c){
-      var a=document.createElement("a");
-      a.href=DATA("legislator/"+c.getAttribute("data-slug")+".html");
-      a.textContent=c.getAttribute("data-name");
-      note.appendChild(a);
-      note.appendChild(document.createTextNode(
-        " — "+tr("sc.seat","seat {plate}",{plate:plate(c.getAttribute("data-seat"))})));
-      return;
-    }
+    show(c);
+    if(!note)return;
     var shown=rows.filter(function(r){return !r.hidden;}).length;
-    note.textContent=shown===rows.length?""
-      :tr("sc.shown","{n} of {m} representatives",{n:shown,m:rows.length});
+    var words=c?[c.getAttribute("data-name")].concat(about(c)).join(", ")
+      :shown===rows.length?"":tr("sc.shown","{n} of {m} representatives",{n:shown,m:rows.length});
+    if(note.getAttribute("data-said")===words)return;
+    note.setAttribute("data-said",words);
+    note.textContent="";
+    // A seat's words are a screen reader's alone, the callout's to the eye:
+    // the strip shows nothing, so it is drawn as an empty one, the box's foot
+    // with no rule (.seatnote.sronly; the review of 29 October 2026).
+    if(note.classList)note.classList.toggle("sronly",!!c);
+    if(!c){note.textContent=words;return;}
+    var sr=document.createElement("span");
+    sr.className="sr";sr.textContent=words;
+    note.appendChild(sr);
   }
   function centre(c){
     if(!wrap||!c.getBoundingClientRect)return;
@@ -1754,12 +1946,20 @@ SEATING_JS = """
   /* ZOOM, BECAUSE 400 SEATS DO NOT FIT A PHONE. The chart used to be pinned
      to a 680px minimum inside a sideways-scrolling box: on a 390px screen
      that is a seat about five pixels across, which is under half the
-     smallest thing a thumb can reliably hit. It is sized by zoom now, and a
-     narrow screen opens already zoomed in far enough for a seat to be a real
-     target -- the whole floor at once is no use if nothing on it can be
-     tapped. Fit puts it back. */
+     smallest thing a thumb can reliably hit. It is sized by zoom now, and
+     zooming in makes a seat a real target.
+
+     IT OPENS ZOOMED TO FIT, ON A PHONE AS EVERYWHERE (the owner, 29 October
+     2026, board item 7). A narrow screen used to open zoomed in, 315% at
+     390px, so a phone showed a corner of the floor and the reader had to
+     find the rest; now every screen opens with the floor at the box's width
+     (app.css, .seatmap) -- where the box is shorter than the floor, as on a
+     phone held sideways, its foot is a scroll away -- and + or a pinch
+     brings a seat up to a thumb's size. Zoom to fit puts it back. The script writes no zoom until
+     the reader asks for one, so a chart drawn in a tab not yet open (the
+     page opens on Towns) needs nothing waited for. */
   var zoom=1;
-  function apply(){ if(svg)svg.style.width=(zoom*100)+"%"; }
+  function apply(){ if(svg)svg.style.width=(zoom*100)+"%"; soon(); }
   // ZOOM ABOUT A POINT, not about the top-left corner. Zooming toward the
   // middle of the box moves whatever the reader was looking at out from under
   // them, which on a chart of 400 near-identical circles means losing your
@@ -1776,12 +1976,6 @@ SEATING_JS = """
     zoom=next; apply();
     wrap.scrollLeft=sx; wrap.scrollTop=sy;
   }
-  function fit(){
-    var w=wrap?wrap.clientWidth:0;
-    zoom=w?Math.max(1,Math.min(3.5,1100/w)):1;
-    apply();
-    return !!w;
-  }
   function step(by){ zoomAt(zoom*by); if(picked)centre(picked); }
 
   if(wrap){
@@ -1789,6 +1983,10 @@ SEATING_JS = """
     // what a reader expects of something they can drag around, and is what
     // was asked for. preventDefault stops the page moving underneath.
     wrap.addEventListener("wheel",function(e){
+      // Turned down over a chart that cannot zoom out further -- the fitted
+      // chart it opens as -- the wheel scrolls the page, as it would anywhere
+      // else (the review of 29 October 2026).
+      if(e.deltaY>0&&zoom<=1)return;
       e.preventDefault();
       zoomAt(zoom*(e.deltaY<0?1.12:1/1.12), e.clientX, e.clientY);
     },{passive:false});
@@ -1844,19 +2042,6 @@ SEATING_JS = """
   if(zi)zi.addEventListener("click",function(){step(1.35);});
   if(zo)zo.addEventListener("click",function(){step(1/1.35);});
   if(zf)zf.addEventListener("click",function(){zoomAt(1);});
-  /* A CHART IN A TAB NOT YET OPEN HAS NO WIDTH. The page opens on its Towns
-     tab, so the chart is hidden when this runs and fit() met a box 0px wide:
-     it left the zoom at 1, and a phone that went Legislators, then By seat,
-     was shown the whole floor with seats five pixels across, where the page
-     opened at #legislators was zoomed in to 315% (the review of 7 October
-     2026). So fit waits for the box to have a width, once, and then lets
-     go: after that the zoom is the reader's. */
-  if(!fit()&&wrap&&typeof ResizeObserver==="function"){
-    var sized=new ResizeObserver(function(){
-      if(wrap.clientWidth){sized.disconnect();fit();}
-    });
-    sized.observe(wrap);
-  }
 
   // A seat is a circle with a slug on it, not a link -- an <a> inside the SVG
   // would need its own focus and hit area. One handler on the map covers all
@@ -1915,25 +2100,61 @@ SEATING_JS = """
        note under the chart -- which holds the link to the member's page, the
        next thing Tab reaches -- while focus was on its way to it, so that
        press landed on nothing and the link could not be reached from a seat
-       at all (the review of 2 October 2026). The note is left as it is while
-       focus goes into it, and put back when focus leaves it: for the list
-       under the chart it says again whatever is chosen, and for a seat the
-       seat's own focus names its member a moment later. */
+       at all (the review of 2 October 2026). The link is the callout's now
+       (29 October 2026), and the callout is left as it is while focus goes
+       into it, and put back when focus leaves it: for the list under the
+       chart it says again whatever is chosen, and for a seat the seat's own
+       focus names its member a moment later. */
     var host=wrap||svg.parentNode;
+    var inPop=function(n){return !!(n&&pop&&(n===pop||pop.contains(n)));};
+    // A seat of the chart's: the rows of the list under it carry a slug too.
+    var onSeat=function(n){var c=seatHit(n);return c&&svg.contains(c)?c:null;};
     host.addEventListener("focusin",function(e){
-      var c=seatHit(e.target); if(c){stopAt(c);say(c);}
+      var c=seatHit(e.target); if(c){stopAt(c);if(c!==quiet)say(c);}
     });
     host.addEventListener("focusout",function(e){
-      if(note&&e.relatedTarget&&note.contains(e.relatedTarget))return;
+      if(e.relatedTarget&&(inPop(e.relatedTarget)||(note&&note.contains(e.relatedTarget))))return;
       say();
     });
-    if(note)note.addEventListener("focusout",function(){say();});
+    if(pop)pop.addEventListener("focusout",function(e){
+      if(e.relatedTarget&&(inPop(e.relatedTarget)||onSeat(e.relatedTarget)))return;
+      say();
+    });
     // Hovering names who is in a seat without choosing it, so a mouse can
-    // read the floor quickly; leaving restores whatever was chosen.
+    // read the floor quickly; leaving restores whatever was chosen. The
+    // pointer can go from a seat onto its callout, and the callout stays
+    // (WCAG 1.4.13, hoverable).
     svg.addEventListener("mouseover",function(e){
       var c=seatHit(e.target); if(c)say(c);
     });
-    svg.addEventListener("mouseout",function(){say();});
+    svg.addEventListener("mouseout",function(e){
+      if(inPop(e.relatedTarget))return;
+      say();
+    });
+    if(pop)pop.addEventListener("mouseleave",function(e){
+      if(onSeat(e.relatedTarget))return;
+      say();
+    });
+    // Escape lets the callout go, and the keyboard stays where it was: on
+    // the seat, or back on it from the name (WCAG 1.4.13, dismissible).
+    var dismiss=function(e){
+      if(e.key!=="Escape"||!pop||pop.hidden)return;
+      var c=popFor, back=holds();
+      picked=null;mark("");
+      if(back&&c&&c.focus){quiet=c;stopAt(c);c.focus();quiet=null;}
+      show(null);
+      if(note){note.setAttribute("data-said","");note.textContent="";
+        if(note.classList)note.classList.remove("sronly");}
+    };
+    host.addEventListener("keydown",dismiss);
+    if(pop)pop.addEventListener("keydown",dismiss);
+  }
+  // The callout keeps to its seat while the floor is dragged, zoomed or
+  // scrolled, and the page is.
+  if(wrap)wrap.addEventListener("scroll",soon,{passive:true});
+  if(typeof window!=="undefined"&&window.addEventListener){
+    window.addEventListener("resize",soon);
+    window.addEventListener("scroll",soon,{passive:true});
   }
   // A CLICK ON THE FLOOR ITSELF LETS GO (the person, 24 September): anywhere
   // in the chart that is not a seat deselects whoever was chosen. A drag to
@@ -2120,6 +2341,7 @@ document.addEventListener("DOMContentLoaded",function(){
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const box=document.getElementById("resq");
 const out=document.getElementById("resout");
+const said=document.getElementById("ressay");
 const head=document.getElementById("reshead");
 const lead=document.getElementById("reslead");
 if(!box||!out)return;
@@ -2138,28 +2360,28 @@ const GROUPS=[
   // the bills.
   // A STATUTE ASKED FOR BY ITS NUMBER, FIRST (the audit of 25 October 2026,
   // M3): find.js's one Law row, "RSA 91-A" (findLawRow).
-  {t:"Laws",                k:r=>r[0]==="law"},
-  {t:"How-To Guides",       k:r=>r[0]==="guide"},
-  {t:"Senators",            k:r=>r[0]==="legislator"&&/^Senate/.test(r[2])},
-  {t:"Representatives",     k:r=>r[0]==="legislator"},
+  {t:"Laws",                w:["law","laws"],k:r=>r[0]==="law"},
+  {t:"How-To Guides",       w:["how-to guide","how-to guides"],k:r=>r[0]==="guide"},
+  {t:"Senators",            w:["senator","senators"],k:r=>r[0]==="legislator"&&/^Senate/.test(r[2])},
+  {t:"Representatives",     w:["representative","representatives"],k:r=>r[0]==="legislator"},
   // A committee that no longer sits goes with the people who have left, below
   // the ones that do (find.js, _fgone).
-  {t:"Committees",          k:r=>r[0]==="committee"&&!r[5]},
+  {t:"Committees",          w:["committee","committees"],k:r=>r[0]==="committee"&&!r[5]},
   // A city above its wards, each ward a Ward (find.json, 25 October 2026).
-  {t:"Towns and wards",     k:r=>r[0]==="town"||r[0]==="ward"},
-  {t:"Subjects",            k:r=>r[0]==="topic"},
+  {t:"Towns and wards",     w:["town or ward","towns and wards"],k:r=>r[0]==="town"||r[0]==="ward"},
+  {t:"Subjects",            w:["subject","subjects"],k:r=>r[0]==="topic"},
   // THE OFFICIALS PAGE AND ITS TABS, before the bills where a name of theirs
   // was typed (the audit of 25 October 2026, M3): "my senator" is the page,
   // "ayotte" its Executive Branch, "shaheen" its Federal Delegation.
-  {t:"Officials",           k:r=>r[0]==="page"&&/^[/]?officials([#?]|$)/.test(r[3])},
+  {t:"Officials",           w:["officials page","officials pages"],k:r=>r[0]==="page"&&/^[/]?officials([#?]|$)/.test(r[3])},
   // Their own group, after the bills (AFTER): find.js, _fstudy (18 October 2026).
-  {t:"Statutory and study committees",k:r=>r[0]==="statutory"||r[0]==="study"},
-  {t:"Former senators",     k:r=>r[0]==="former"&&/^Senate/.test(r[2])},
-  {t:"Former representatives",k:r=>r[0]==="former"&&/^House/.test(r[2])},
-  {t:"Former members",      k:r=>r[0]==="former"},
-  {t:"Former committees",   k:r=>r[0]==="committee"},
-  {t:"Learn",               k:r=>r[0]==="learn"},
-  {t:"Pages on this site",  k:r=>r[0]==="page"}
+  {t:"Statutory and study committees",w:["statutory or study committee","statutory and study committees"],k:r=>r[0]==="statutory"||r[0]==="study"},
+  {t:"Former senators",     w:["former senator","former senators"],k:r=>r[0]==="former"&&/^Senate/.test(r[2])},
+  {t:"Former representatives",w:["former representative","former representatives"],k:r=>r[0]==="former"&&/^House/.test(r[2])},
+  {t:"Former members",      w:["former member","former members"],k:r=>r[0]==="former"},
+  {t:"Former committees",   w:["former committee","former committees"],k:r=>r[0]==="committee"},
+  {t:"Learn",               w:["Learn page","Learn pages"],k:r=>r[0]==="learn"},
+  {t:"Pages on this site",  w:["page on this site","pages on this site"],k:r=>r[0]==="page"}
 ];
 
 // A committee by its chamber, as the header's rows show it (find.js, findName).
@@ -2267,6 +2489,7 @@ let waiting=false,waitingAll=false,waitingWords=false,waitingLaw=false,waitingRe
 function draw(q){
   const s=(q||"").trim();
   if(!s){
+    tell("");
     head.textContent="Search the record";
     lead.textContent="Every sitting legislator and every member who has left, "
       +"every committee, every town and ward, every subject bills are filed "
@@ -2339,19 +2562,28 @@ function draw(q){
   // October 2026): a guide found by its own words is never put above a bill
   // whose number was typed.
   const named=!findBill(s)&&rows.some(r=>r[0]==="law"||(r[0]!=="former"&&_fwhole(r,s)));
-  const left=rows.slice();
+  const left=rows.slice(),counts=[];
+  // The bills' part of the line a screen reader hears, where the page puts
+  // their group.
+  const billsSaid=()=>{
+    if(nB)counts.push(nB===1?"1 bill":`${nB.toLocaleString()} bills`);
+    if(nR)counts.push(nR===1?"1 bill request":`${nR.toLocaleString()} bill requests`);
+  };
   let html=named?"":bills(s,B,C,counting,R,mem),placed=!named;
+  if(placed)billsSaid();
   for(const g of GROUPS){
     const mine=[];
     for(let i=left.length-1;i>=0;i--)
       if(g.k(left[i]))mine.unshift(left.splice(i,1)[0]);
     if(!mine.length)continue;
-    if(!placed&&AFTER.has(g.t)){html+=bills(s,B,C,counting,R,mem);placed=true;}
+    if(!placed&&AFTER.has(g.t)){html+=bills(s,B,C,counting,R,mem);placed=true;billsSaid();}
+    counts.push(`${mine.length} ${g.w[mine.length===1?0:1]}`);
     html+=`<section class="resgrp"><h2>${esc(g.t)}
       <span class="resn">${mine.length}</span></h2>
       <div class="findout resout">${mine.map(r=>row(r,s)).join("")}</div></section>`;
   }
-  if(!placed)html+=bills(s,B,C,counting,R,mem);
+  if(!placed){html+=bills(s,B,C,counting,R,mem);billsSaid();}
+  let offered=[],offering=false;
   // Only when something close exists, and only when no bill matched either
   // ("voting" was offered "zoning" over 141 bills). find.js's findOffers
   // gives a name close to what was typed and the word of the bills that a
@@ -2364,11 +2596,32 @@ function draw(q){
       waitingWords=true;
       offer.wait.then(()=>draw(box.value));
     }
+    offered=offer.words;offering=!!offer.wait;
     const did=offer.words.map(d=>
       `<a href="/search?q=${_fenc(d)}">${esc(d)}</a>`);
     if(did.length)html=`<p class="note">Did you mean ${did.join(" or ")}?</p>`+html;
   }
   out.innerHTML=html;
+  // WHAT THE PAGE FOUND, SAID (the accessibility sweep of 29 October 2026,
+  // WCAG 4.1.3): the results are drawn as the reader types, and nothing told
+  // a screen reader they had come, or how many, or that there were none --
+  // the header's panel has said so since 2 October (find.js, findSay). One
+  // line the eye does not see, role="status", the groups in the page's own
+  // order: "1 town or ward, 19 bills." Nothing while the bills, the earlier
+  // terms, the requests, the Laws pages' list or a word to offer are still
+  // on their way, so the answer is said once, when it is whole, and not once
+  // a step. The Laws list is fetched only once a statute's number is typed,
+  // and "RSA 659" said "No matching results." and then "1 law." (the review
+  // of 29 October 2026).
+  const unsure=!!(law&&law.loading)||(B&&B.state==="loading")||counting
+    ||(R&&R.state==="loading")||offering;
+  tell(unsure?"":counts.length?counts.join(", ")+"."
+    :"No matching results."+(offered.length?` Did you mean ${offered.join(" or ")}?`:""));
+}
+// Written only when it changes, so a redraw that finds what the last one
+// found is not said again.
+function tell(text){
+  if(said&&said.textContent!==text)said.textContent=text;
 }
 
 const q0=new URLSearchParams(location.search).get("q")||"";
@@ -3646,12 +3899,6 @@ def card_words(lang="en"):
                                    "legislature works, and official sources"))}
 
 
-def _laws_has_constitution():
-    """Whether the Laws page carries its Constitution tab."""
-    import constitution_tab
-    return any(pid == "constitution" for pid, _name in constitution_tab.TABS)
-
-
 def home_cards(lang="en"):
     """The .entry block of the home page: HOME_CARDS, each with its section's
     drawing (the nav's own, Polish 1), in `lang`. The Laws card, while the
@@ -4120,8 +4367,15 @@ def main():
         # default grey.
         def pcode(m):
             return str(m.get("party_code") or m.get("party") or "").upper()[:1]
+        # THE PARTY AND THE DISTRICT, ON THE SEAT, for the name's callout
+        # above it (the owner, 29 October 2026): the party in the page's
+        # words, the district as the county's name and its number.
         by_seat = {int(m["seat"]): {"name": m.get("display_plain") or m.get("name"),
                                     "party_code": pcode(m),
+                                    "party": party_word(m.get("party") or "", lang)
+                                    if m.get("party") else "",
+                                    "dist": " ".join(str(x) for x in (m.get("county"), m.get("district"))
+                                                     if x),
                                     "slug": m.get("slug") or ""}
                    for m in H if m.get("seat")}
 
@@ -4206,7 +4460,7 @@ def main():
         by_last = (alpha_block(S, say(lang, "comp.senate", "Senate"))
                    + alpha_block(H, say(lang, "comp.house", "House")))
         by_seat_rows = seat_columns(
-            H, lambda m: li(m, seating.plate(m["seat"]) if m.get("seat") else ""), lang)
+            H, lambda m: seat_row_tag(li(m, seating.plate(m["seat"]) if m.get("seat") else "")), lang)
         senate_rows = "".join(li(m, say(lang, "off.district", "District {d}", d=m.get("district")))
                               for m in S)
 
@@ -4250,7 +4504,7 @@ def main():
   <div class="seatzoom">
     <button type="button" id="szout" aria-label="{say(lang, "roster.zoom_out", "Show more of the floor")}">&minus;</button>
     <button type="button" id="szin" aria-label="{say(lang, "roster.zoom_in", "Show the seats larger")}">+</button>
-    <button type="button" id="szfit">{say(lang, "roster.fit", "Fit")}</button>
+    <button type="button" id="szfit" title="{say(lang, "roster.zoom_fit", "Zoom to fit")}">{ZOOM_FIT_ICON}</button>
   </div>
 </div>
 <div class="seatstage">
@@ -4540,6 +4794,7 @@ under, and every bill since 1989.</p>
   <input id="resq" name="q" type="search" autocomplete="off"
     placeholder="Name, town, committee or bill" disabled>
 </form>
+<p class="sr" id="ressay" role="status"></p>
 <div id="resout"></div>
 <noscript><p class="note">This page needs JavaScript to search. Without it,
 the <a href="/bills">bill search</a>, the <a href="/officials">roster</a> and
