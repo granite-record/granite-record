@@ -524,7 +524,8 @@ them in view.
 
 ### 2.11 Coverage: every General Court source, and where it lands
 
-This table goes on the `/api` page and, as `coverage.sources`, into
+This table goes on the `/api` page and, as `sources` (the manifest already has a
+`coverage` key, the bills' columns by term), into
 `manifest.json`, so a site using the API knows what it gets and what it does
 not. Rows are the General Court's database tables and views as the site's
 dump holds them (`db/_manifest.json`; the day files from gc.nh.gov/downloads
@@ -744,8 +745,40 @@ Timetable against the plan: branches 1 to 4 by 13 November, 5 to 7 by
 | Q18 | Publish recording links (a `recordings` table and a `watch_url` column) given YouTube's terms as quoted in 2.10? | **Not until the owner decides**, perhaps with a lawyer. Meanwhile the API's new files carry no YouTube metadata (`video_title`, `scheduled_seconds`), and `proceedings.csv` stays as the site publishes it today. |
 | Q19 | Add tables for what the pages show and no /data file holds: committees and members, study committees with members and meetings, districts and towns, bill-to-statute citations, Senate hearing reports? | Yes, in the database and as CSVs, built in branch 4; the statute text itself stays on the /laws pages. |
 | Q20 | (Changes approved Q2.) Compress the database with xz rather than gzip? With the reports, gzip is 26.9 MB, past the limit; xz is 13.2 MB. | xz: `granite-record.sqlite.xz`. The bill files stay gzip. |
+| Q21 | The Senate's hearing reports (each bill's `stations[].reports`, about 1,300 hearings in 2025-2026) name the members of the public who testified and summarise what each said. The bill pages show them one bill at a time. Publish them in the bulk files too? | **Not until the owner decides.** A file of every bill is a list of private people's positions, and DATA.md's line is that what the public sends is never published as an individual's. The bill files and the database leave them out (`build_exports.api_record`). |
+| Q22 | Mark Pearson: careers.json joined two House numbers (Rockingham 4, 2007-2008; Rockingham 34, from 2017). Same-chamber numbers are two people by member_links.py's first rule, and the site already shows two pages. One man or two? | Two, as the rule and the pages say, until she says otherwise; a hand edit to the register joins them. |
 
 ---
+
+## 9a. Built (Phase 2), 30 October 2026
+
+On the branches `feat/api-people` (1), `feat/api-csv` (2), `feat/api-bills`
+(3), `feat/api-db` (4), `feat/api-schema` (5) and `feat/api-page` (6),
+each on the one before. Branch 7, the change log's key, waits on the follow
+work's owners (section 7). What building them settled, beyond the sections
+above:
+
+- **The join (2.5)** is careers.json's and the member links', under the rule
+  that two numbers of one chamber are two people. Measured on a full build:
+  2,187 people; every one of the 2,303,047 ballots' member ids falls to
+  exactly one person. Pat Long's House record is the senator's; the
+  freshman stands alone; eleven earlier House numbers careers.json missed
+  are joined to sitting senators.
+- **The bill files** read a term at a time (all of them at once would be
+  gigabytes on the nightly's machine), are written under a temporary name,
+  and take their names only when every term holds every bill. Each hearing
+  in them leaves out the Senate's hearing reports (Q21), and YouTube's
+  title, offset and watch link (Q18); the video id stays, as
+  `proceedings.csv` already has it.
+- **The database** is read in the same pass, so its report tables are the
+  pages' records.
+- **CC0** covers ids, joins and corrections. The times within a recording
+  are left out of the CC0 line until Q18 is answered, in `DATA.md`,
+  `schema.json` and the database's `meta` alike.
+- **/api** is built, unlinked, `noindex`, and not in the sitemap. Its code
+  examples sit in the coverage table's scrolling box (`covwrap`); the
+  mock's `.apicode` padding is a request to the release session for
+  `app.css`.
 
 ## 10. Things noticed on the way, for their owners
 
