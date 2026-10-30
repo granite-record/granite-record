@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.4
+# GRANITE_VERSION: 2026-10-30.5
 """
 The register of person numbers: what it would issue, and issuing it.
 
@@ -41,6 +41,9 @@ WHAT --issue DOES, AND WHAT IT LEAVES FOR A PERSON
            roster dump not naming a sitting member is a stale dump, and their
            PersonID will come with the next one.
 
+    --except PERSON     do not issue this person (repeatable): the owner holds
+                        someone back while a question about them is open,
+                        and the night goes on numbering them by the rule
     --only-person-ids   issue only the people numbered by a PersonID, and
                         leave those numbered by an employee number to the
                         nightly's rule, unfrozen (an employee number is a
@@ -83,6 +86,8 @@ def main():
     ap.add_argument("--data", default="data")
     ap.add_argument("--db", default="db")
     ap.add_argument("--careers", default="generated/careers.json")
+    ap.add_argument("--except", dest="exempt", action="append", default=[],
+                    metavar="PERSON", help="do not issue this person (repeatable)")
     ap.add_argument("--only-person-ids", action="store_true",
                     help="issue only people numbered by a PersonID")
     a = ap.parse_args()
@@ -109,6 +114,9 @@ def main():
         print(f"  {len(rep['unknown_ids'])} site id(s) stand for no Employeeno or PersonID "
               f"the roster knows: {rep['unknown_ids'][:10]}")
     new = rep["by_rule"]
+    unknown = [x for x in a.exempt if x not in {g["person"] for g in new}]
+    if unknown:
+        raise SystemExit(f"--except names no one tonight's join would issue: {', '.join(unknown)}")
     newest = max((t for p in people for t in [p.get("last_term") or ""]), default="")
     held_back = {}
     split = {tuple(sorted(g["numbers"])) for g in rep.get("one_chamber") or []}
@@ -122,6 +130,8 @@ def main():
             held_back[g["person"]] = "two numbers of one chamber"
         elif not p.get("person_ids") and p.get("last_term") == newest:
             held_back[g["person"]] = "sits in the newest term with no PersonID: a stale roster dump"
+        elif g["person"] in a.exempt:
+            held_back[g["person"]] = "held back by --except"
         elif a.only_person_ids and not p.get("person_ids"):
             held_back[g["person"]] = "numbered by an employee number (--only-person-ids)"
     for person, why in sorted(held_back.items()):
