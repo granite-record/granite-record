@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.753
+# GRANITE_VERSION: 2026-09-04.754
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -79679,6 +79679,26 @@ process.stdout.write("\n@@" + JSON.stringify(out));
         "app.css: a hidden comma in the list of recordings is placed outside the list, so on a wide screen the "
         f"page runs on past its footer by the list's hidden height ({len(srs)} drawn): "
         + "; ".join(sorted(set(outside))[:4]))
+    # The list the rows' offsetParent, a row is measured from its top: taking
+    # the list's own offset (its heading, above it in the box) off a row's
+    # offsetTop that no longer counts it, vwListShow showed a row landed on at
+    # the foot of the list cut short by the heading's height. A row at 660 to
+    # 720px down a list 440px tall: 280px either way it is measured.
+    kept = _node_app(r"""
+require("./stub.js");
+const fs = require("fs");
+const s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({vwListShow})");
+const out = {};
+for (const [k, held] of [["list", true], ["box", false]]) {
+  const list = {scrollHeight: 2400, clientHeight: 440, scrollTop: 0, offsetTop: 40};
+  const li = {offsetTop: 660 + (held ? 0 : 40), offsetHeight: 60, offsetParent: held ? list : {}};
+  try { s.vwListShow({closest: (q) => q === ".vwlist" ? list : q === "li" ? li : null}); out[k] = list.scrollTop; }
+  catch (e) { out[k] = e.constructor.name + ": " + e.message; }
+}
+process.stdout.write("\n@@" + JSON.stringify(out));
+""")
+    assert kept is None or kept == {"list": 280, "box": 280}, (
+        f"a row chosen at the foot of the list is not shown whole inside it, measured from the list's top: {kept}")
     # What is cut is the bills' numbers: the count is on the first line, beside
     # the date, so the cut never takes it.
     assert '<span class="vwd">Feb 10, 2026<span class="sr">,</span> <span class="vwi"><span aria-hidden="true">' \

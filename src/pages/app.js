@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.261
+// GRANITE_VERSION: 2026-09-07.262
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9149,11 +9149,13 @@ function videoView(o){
 }
 // The chosen row in view INSIDE its list, the least that shows it, and never
 // by scrollIntoView, which would move the page as well. A list that does not
-// scroll (a phone's) is left alone.
+// scroll (a phone's) is left alone. A row is measured from the list's top:
+// the list is the rows' offsetParent (app.css, .vwlist{position:relative}),
+// and where it is not, the list's own offset is taken off.
 function vwListShow(a){
   const list=a&&a.closest(".vwlist"), li=a&&a.closest("li");
   if(!list||!li||list.scrollHeight<=list.clientHeight)return;
-  const top=li.offsetTop-list.offsetTop, end=top+li.offsetHeight;
+  const top=li.offsetParent===list?li.offsetTop:li.offsetTop-list.offsetTop, end=top+li.offsetHeight;
   if(top<list.scrollTop)list.scrollTop=top;
   else if(end>list.scrollTop+list.clientHeight)list.scrollTop=end-list.clientHeight;
 }
