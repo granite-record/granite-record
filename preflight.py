@@ -74924,6 +74924,47 @@ def _tap_targets_24(C, BSP):
                   + f"; {blocks} on a line of its own (a debate's speaker) --tap-line, given back")
 
 
+@check("frontend", "a glossary term's button is a 24px target at the least, without moving a letter: "
+       "a bill's suffix, the \"A\" of HB 1-A, is no 12px sliver")
+def _term_button_24():
+    """The cohesion audit of 30 October 2026, B-6 (WCAG 2.5.8): a bill's
+    suffix is a glossary term of its own, a letter beside the bill's number,
+    and its button measured 12 by 30px on Learn and 18 by 31px on a 1995
+    bill at 390: a tap beside the letter missed. The words are not a
+    sentence, so the sentence exception does not cover them.
+
+    The box a tap lands in grows, not the word: a transparent ::after, laid
+    over the button's middle, at least 24px each way, on a button positioned
+    to hold it. Measured on the preview at 390: a tap 11px left, right,
+    above and below the "A" lands on it in all four, against two before, and
+    every button's own box is the size it was."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    rules = _css_rules(css)
+    won = {}
+    for at, sel, body, _l in rules:
+        if at:
+            continue
+        for part in (x.strip() for x in sel.split(",")):
+            if part in (".term .termbtn", ".term .termbtn::after"):
+                won.setdefault(part, {}).update(dict(_css_decls(body)))
+    btn, hit = won.get(".term .termbtn", {}), won.get(".term .termbtn::after", {})
+    bad = []
+    if btn.get("position") != "relative":
+        bad.append("the button is not positioned, so its ::after measures from somewhere else")
+    if hit.get("content") not in ('""', "''") or hit.get("position") != "absolute":
+        bad.append(f"no transparent ::after box over the button: {hit}")
+    for k in ("width", "height"):
+        if "".join(hit.get(k, "").split()) != "max(100%,24px)":
+            bad.append(f"the ::after box's {k} is {hit.get(k)!r}, where max(100%,24px) keeps it 24px at the least")
+    if any(k in hit for k in ("background", "background-color", "border", "outline")):
+        bad.append("the ::after box is drawn, where it must be a target only")
+    if any(k in btn for k in ("padding", "padding-inline", "min-width", "width")) and \
+            btn.get("min-width") not in (None, "0"):
+        bad.append("the button grows itself, which moves the letters beside it")
+    assert not bad, "; ".join(bad)
+    return "ok", "a term's button holds a 24px transparent target over its word; the word is the size it was"
+
+
 @check("frontend", "a vote tally's tick is hidden from a screen reader and a word it does not see says "
        "which side prevailed, in the page's language", needs=("i18n",))
 def _vote_tick_said(I):

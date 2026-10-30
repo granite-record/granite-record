@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.334 */
+/* GRANITE_VERSION: 2026-09-07.335 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -1653,6 +1653,15 @@ letter-spacing:inherit}
    for a button stood each line holding one 44px tall (the look of 10 October
    2026). WCAG 2.5.8 excepts a target in a sentence. */
 .term .termbtn{min-height:0;min-width:0;line-height:inherit;vertical-align:baseline}
+/* BUT NO SMALLER THAN A FINGER (the cohesion audit of 30 October 2026, B-6):
+   a bill's suffix -- the "A" of HB 1-A, the "FN" -- is a term of its own, a
+   letter or two beside the bill's number and not a word in a sentence, and
+   its button was 12px wide. The box a tap lands in is 24px each way at the
+   least, drawn by a transparent ::after over the word, so nothing beside it
+   moves and the letter looks as it did. */
+.term .termbtn{position:relative}
+.term .termbtn::after{content:"";position:absolute;left:50%;top:50%;
+width:max(100%,24px);height:max(100%,24px);transform:translate(-50%,-50%)}
 .termbtn:hover,.termbtn[aria-expanded="true"]{text-decoration-style:solid}
 .termpop{position:absolute;left:0;top:calc(100% + 6px);z-index:30;display:block;
 width:max-content;max-width:min(22rem,calc(100vw - 2rem));padding:var(--sp-4) var(--sp-5);
