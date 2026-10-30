@@ -731,8 +731,10 @@ def downloaded_from(path):
     name followed by ':Zone.Identifier'. Elsewhere, and for a file saved
     another way, there is none."""
     try:
-        text = Path(str(path) + ":Zone.Identifier").read_text(encoding="utf-8",
-                                                               errors="replace")
+        # The built-in open, as Chrome's own write goes: on NTFS the name with
+        # its colon opens the stream; pathlib is kept out of it.
+        with open(str(path) + ":Zone.Identifier", encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
     except OSError:
         return None
     for line in text.splitlines():
