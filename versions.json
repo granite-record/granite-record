@@ -235,7 +235,7 @@
     "build_nobill_votes.py": "2026-10-23.6",
     "vote_passage.py": "2026-10-23.6",
     "map.css": "2026-10-09.4",
-    "map.js": "2026-10-09.11",
+    "map.js": "2026-10-09.12",
     "officials_tabs.py": "2026-10-10.8",
     "tests/test_map_labels.js": "2026-10-09.1",
     "tests/test_follow_panel.js": "2026-10-18.1",
