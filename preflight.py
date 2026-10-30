@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.749
+# GRANITE_VERSION: 2026-09-04.750
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -104783,6 +104783,27 @@ def _wf_knock_order_problems(text):
         out.append("the knock's status does not reach the person's line after the last state-up "
                    "(rc= in the knock step's outputs, KNOCK_RC and --knock-rc in \"What the "
                    "refusal is now\")")
+    # THE CHILD'S OWN STOP IS AN ANSWER (the verification of 30 October
+    # 2026): the knock step is green on exactly 0, 1, 2, 4 and
+    # snapshot_gencourt's KNOCK_KILLED (124), the child stopping itself at
+    # KNOCK_KILL_SECONDS and writing "dropped", the next rung -- without it
+    # an on-time stop turned the hourly run red, nothing wrong -- and ends
+    # `exit $rc` on any other status; its line names each, 124 among them.
+    killed = re.search(r"^KNOCK_KILLED = (\d+)\s*$", _paths.locate(
+        "snapshot_gencourt.py").read_text(encoding="utf-8"), re.M)
+    lines = [ln.strip() for ln in steps[knock[0]][1] if ln.strip()]
+    green = [m for m in (re.fullmatch(r"if \(\$rc -in ([0-9, ]+)\) \{ exit 0 \}", ln)
+                         for ln in lines) if m]
+    statuses = sorted(int(x) for x in green[0].group(1).replace(" ", "").split(",") if x) \
+        if len(green) == 1 else []
+    want = sorted({0, 1, 2, 4} | ({int(killed.group(1))} if killed else set()))
+    said = next((ln for ln in lines if ln.startswith('Write-Output "The knock ended $rc:')), "")
+    if not killed or len(green) != 1 or statuses != want or \
+            lines[-2:] != [green[0].group(0), "exit $rc"] or \
+            any(not re.search(rf"(?<![0-9]){s} [a-z]", said.split(":", 1)[-1]) for s in want):
+        out.append(f"the knock step is not green on exactly {want} and red on any other status, "
+                   f"its line naming each: green on {statuses}, ending {lines[-2:]}, saying "
+                   f"{said!r}")
     return out
 
 
@@ -104803,7 +104824,10 @@ def _workflows_knock_order():
     always(), after the knock and before the last state-up; and the knock's
     exit status, in its outputs, handed to "What the refusal is now" after
     the last state-up (--knock-rc: a 2 whose answer was not written down is
-    a person's all the same, the reviewers of 30 October 2026); and the
+    a person's all the same, the reviewers of 30 October 2026); the knock
+    step green on exactly 0, 1, 2, 4 and the child's own stop, KNOCK_KILLED
+    (124, the verification of 30 October 2026), red on any other, its line
+    naming each; and the
     claim and the knock steps each set GRANITE_KNOCK_BY to hourly. Its mutants:
     quiet dropped from the knock's needs; the quiet test, or the first
     attempt's, dropped from its if; gc-night moved to quiet; a step after
@@ -104811,7 +104835,9 @@ def _workflows_knock_order():
     state-up; the child run twice, or with a sleep; the knock asked on the
     claim alone; the claim sent whatever it said; the status not written,
     not handed on, or not passed to --person-line; GRANITE_KNOCK_BY dropped
-    from the claim step, or from the knock step."""
+    from the claim step, or from the knock step; 124 dropped from the
+    statuses the knock step takes as answers, or from its line; the step
+    green on every status."""
     text = _knock_text()
     if text is None:
         return "skip", "no .github/workflows/knock.yml here"
@@ -104858,6 +104884,14 @@ def _workflows_knock_order():
         "the knock step without GRANITE_KNOCK_BY": text.replace(
             "        timeout-minutes: 3\n        env:\n          GRANITE_KNOCK_BY: hourly\n",
             "        timeout-minutes: 3\n"),
+        "124 not taken as an answer": text.replace(
+            "          if ($rc -in 0, 1, 2, 4, 124) { exit 0 }\n",
+            "          if ($rc -in 0, 1, 2, 4) { exit 0 }\n"),
+        "the knock's line not naming 124": text.replace(
+            ", 4 not asked, 124 stopped at its own limit, not answered.\"\n",
+            ", 4 not asked.\"\n"),
+        "the knock step green on every status": text.replace(
+            "{ exit 0 }\n          exit $rc\n", "{ exit 0 }\n          exit 0\n"),
     }
     missed = [what for what, t in mutants.items() if t == text or not _wf_knock_order_problems(t)]
     assert not missed, f"_workflows_knock_order did not catch: {missed}"

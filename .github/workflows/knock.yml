@@ -303,6 +303,11 @@ jobs:
       # minutes by this step. Its statuses are answers, so the step is green;
       # its status goes to "What the refusal is now", where a 2 whose answer
       # could not be written down is a person's all the same, and fails the job.
+      # 124 is an answer too (the verification of 30 October 2026): the
+      # child's own stop at KNOCK_KILL_SECONDS (snapshot_gencourt's
+      # KNOCK_KILLED), which writes "dropped" -- an ordinary failed knock, the
+      # next rung -- and turned the hourly run red with nothing wrong. Any
+      # other status, an exception or this step's own kill, still fails it.
       - name: The knock, one request
         id: knock
         if: steps.claimsent.outcome == 'success'
@@ -312,9 +317,9 @@ jobs:
         run: |
           python src/fetch/gc_web/snapshot_gencourt.py --knock
           $rc = $LASTEXITCODE
-          Write-Output "The knock ended $rc: 0 lifted, 1 not answered, 2 a person's, 4 not asked."
+          Write-Output "The knock ended $rc: 0 lifted, 1 not answered, 2 a person's, 4 not asked, 124 stopped at its own limit, not answered."
           Write-Output "rc=$rc" >> $env:GITHUB_OUTPUT
-          if ($rc -in 0, 1, 2, 4) { exit 0 }
+          if ($rc -in 0, 1, 2, 4, 124) { exit 0 }
           exit $rc
       # A CLAIM THE CHILD DID NOT USE IS NOT A KNOCK. knocking() turns this
       # run's "claimed" into "no answer" before its request, so one still
