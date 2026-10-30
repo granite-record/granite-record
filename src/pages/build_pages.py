@@ -3403,7 +3403,9 @@ def recent_sessions(H, lang="en", sits=None):
             f'<div class="sess"><p class="sesstitle"><b>{name}</b> ({dated})</p>'
             f'<div class="player"><button type="button" class="pstub" '
             f'data-embed="{esc(v["video_id"])}" data-title="{esc(rec)}" aria-label="{esc(play)}">'
-            f'<span>{icon("play")}</span><span>{say(lang, "sess.play", "Play")}</span>'
+            # "Play the recording", as every other player's button says (the
+            # cohesion audit of 30 October 2026, I-11); its name says which.
+            f'<span>{icon("play")}</span><span>{say(lang, "sess.play", "Play the recording")}</span>'
             "</button></div></div>")
     return (f'<h2>{say(lang, "sess.recent", "Recent Session Days")}</h2>'
             f'<div class="twoup">{"".join(cells)}</div>')

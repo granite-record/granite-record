@@ -23459,8 +23459,8 @@
    "state": "draft"
   },
   "sess.play": {
-   "en": "Play",
-   "es": "Reproducir",
+   "en": "Play the recording",
+   "es": "Reproducir la grabación",
    "state": "draft"
   },
   "sess.play_house": {

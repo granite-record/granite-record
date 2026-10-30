@@ -8783,7 +8783,10 @@ function actSaid(a,who,tail){
       STUDY_SAID.rec}${t?`, ${t}`:""}${end}</p>`;
     const said=a.said&&Object.prototype.hasOwnProperty.call(STUDY_SAID,a.said)?STUDY_SAID[a.said]
       :"reported on its study";
-    return `<p class="mact mkill"><span class="mmark" aria-hidden="true">${ACTMARK.kill}</span><b>Killed:</b> ${
+    // "Died", the word the Bills chip and the bill's own page give a bill
+    // that ended so, where this said "Killed" (the cohesion audit of 30
+    // October 2026, I-11).
+    return `<p class="mact mkill"><span class="mmark" aria-hidden="true">${ACTMARK.kill}</span><b>Died:</b> ${
       who==="The committee"?"the committee's":esc(who)+"'s"} interim study report ${said}${
       t?`, ${t}`:""}${end}</p>`;
   }
@@ -8891,7 +8894,7 @@ function meetingPlayers(s,items){
         <a href="https://www.youtube.com/watch?v=${esc(vid)}&t=${from}s" target="_blank"
           rel="noopener">On YouTube</a>
         <span class="tolnote">${timed.length?"Choose a time on a card to jump the recording there."
-          :"no moment in this recording has been identified yet"}</span></div></div>`;}).join("");
+          :"Exact moments not found."}</span></div></div>`;}).join("");
 }
 // What changed at the meeting, in one sentence (item 12): what the committee
 // voted, then what the other bills had.
@@ -9396,7 +9399,10 @@ function cmteVideoDetail(c,r,items,day,chips){
       .sort((x,y)=>(x[2]===y[2]?0:x[2]<y[2]?-1:1)||x[1]-y[1]).map(x=>x[0]);
     const timed=items.some(i=>i.start!=null);
     out.push(`<p class="vwlead">The docket ties ${nBills(order.length)} to this recording.${
-      timed?" Choose a time to jump the recording there.":" No moment in this recording has been identified yet."}</p>`);
+      // A recording with no moment marked in it says what a bill's own player
+      // says, "(exact moment not found)" (the owner's words of 25 October
+      // 2026; the cohesion audit of 30 October, I-11).
+      timed?" Choose a time to jump the recording there.":" Exact moments not found."}</p>`);
     // ON A PHONE, THE FIRST FEW AND A BUTTON FOR THE REST, as YouTube folds
     // a description: House Commerce's 26 bills were 2,500px between the
     // player and the playlist at 390px. Every one is in the page, on a wide

@@ -74959,6 +74959,39 @@ def _tap_targets_24(C, BSP):
                   + f"; {blocks} on a line of its own (a debate's speaker) --tap-line, given back")
 
 
+@check("frontend", "one word for one thing: a bill that ended so is \"Died\", a player's button says "
+       "\"Play the recording\", and a recording with no marked moment says the exact moment was not found",
+       needs=("build_pages",))
+def _one_word_per_meaning(BP):
+    """The cohesion audit of 30 October 2026 (I-11): a bill that ended was
+    "Died" on the Bills chip and "Killed:" on a committee meeting's card; the
+    play button said "Play" on the home page and "Play the recording" on
+    every committee, study committee and session page; and a recording with
+    no marked moment was "(exact moment not found)" on a bill (the owner's
+    words of 25 October 2026) and "no moment in this recording has been
+    identified yet", lower case and unstopped, on a committee's meeting. One
+    word each now. The bill's own segment buttons ("Play hearing on this
+    bill -- 1:14:38-1:20:02") say which part they play and keep their words."""
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    bad = []
+    if "<b>Killed:</b>" in app or "<b>Died:</b>" not in app:
+        bad.append("a committee meeting's card names a bill that ended \"Killed\"")
+    if re.search(r"(?i)no moment in this recording has been identified", app) \
+            or app.count("Exact moments not found.") != 2:
+        bad.append("a recording with no marked moment is not said as a bill's player says it")
+    home = BP.recent_sessions({"latest_sessions": [{"date": "2026-08-19", "video_id": "vH", "chamber": "House"}]},
+                              "en", {("H", "2026-08-19")})
+    if "<span>Play the recording</span>" not in home:
+        bad.append(f"the home page's player says {re.findall(r'<span>(Play[^<]*)</span>', home)}")
+    bare = [m.group(0) for f in ("src/pages/app.js", "src/pages/build_pages.py", "src/pages/build_full_sessions.py",
+                                 "src/pages/build_session_pages.py", "src/pages/build_study_committees.py")
+            for m in re.finditer(r"<span>Play</span>", Path(f).read_text(encoding="utf-8"))]
+    if bare:
+        bad.append(f"a player's button says only \"Play\": {bare[:2]}")
+    assert not bad, "; ".join(bad)
+    return "ok", "\"Died\", \"Play the recording\" and \"Exact moments not found.\", one word each"
+
+
 @check("frontend", "a Learn or guide table's box that scrolls is a named region a keyboard can reach: "
        "role=region, named by its caption, and a Tab stop while its table is wider than it is",
        needs=("build_civics",))
@@ -77883,11 +77916,11 @@ def _home_says_each_once(BP, chrome):
     want = [("House Session (Aug 19, 2026)", "session/H/2026-08-19.html",
              {"data-embed": "vH",
               "data-title": "Recording of the House floor session, Aug 19, 2026",
-              "aria-label": "Play the House floor session of Aug 19, 2026"}, "Play"),
+              "aria-label": "Play the House floor session of Aug 19, 2026"}, "Play the recording"),
             ("Senate Session (Aug 19, 2026)", "session/S/2026-08-19.html",
              {"data-embed": "vS",
               "data-title": "Recording of the Senate floor session, Aug 19, 2026",
-              "aria-label": "Play the Senate floor session of Aug 19, 2026"}, "Play")]
+              "aria-label": "Play the Senate floor session of Aug 19, 2026"}, "Play the recording")]
     assert [d[:4] for d in drawn] == want, (
         f"both chambers' sittings of 19 August are drawn as {[d[:4] for d in drawn]}, not two "
         f"players titled \"House Session (Aug 19, 2026)\" and \"Senate Session (Aug 19, 2026)\", "
@@ -80353,8 +80386,8 @@ def _videos_description():
     title. Now (app.js, cmteVideoDetail): the kinds as the Meetings tab's
     chips and the room; "The docket ties 3 bills to this recording. Choose a
     time to jump the recording there." -- or, with no moment anywhere in it,
-    the Meetings tab's own "No moment in this recording has been identified
-    yet."; then each bill once, in the order the recording reaches it (its
+    the Meetings tab's own "Exact moments not found." (a bill's player's
+    words since the cohesion audit of 30 October 2026); then each bill once, in the order the recording reaches it (its
     first moment; none, after), its number, its moments -- jumpButtons, the
     Meetings tab's bytes, "approximate" held to its button -- and its title
     under them. A bill with no moment is its number and title. Drawn by
@@ -80436,8 +80469,8 @@ process.stdout.write("\n@@" + JSON.stringify(out));
         'Executive Session 00:50:00</button><i class="approx">approximate</i></span>' in mj, (
             f"HB 1442's moments under the player are not the Meetings tab's: {jumps['HB 1442']!r} against {mj!r}")
     quiet_det = det(flat["vid9"])
-    assert '<p class="vwlead">The docket ties 2 bills to this recording. No moment in this recording has been ' \
-        'identified yet.</p>' in quiet_det and 'class="mjumps"' not in quiet_det, (
+    assert '<p class="vwlead">The docket ties 2 bills to this recording. Exact moments not found.</p>' \
+        in quiet_det and 'class="mjumps"' not in quiet_det, (
             "a recording none of whose bills has a moment does not say so: " + re.sub(r"<[^>]+>", " ", quiet_det)[:300])
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     at = css.find(".vwbills li{display:flex")
