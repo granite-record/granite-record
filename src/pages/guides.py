@@ -10310,7 +10310,9 @@ TASKS = [
              "Emergency alerts, supplies, power outage and winter storm safety, and where to "
              "find a warm place."),
     ]),
-    ("Federal Benefits", [
+    # Named for what it holds since the passport joined it (the person, 30
+    # October 2026); it was Federal Benefits.
+    ("Federal Programs and Services", [
         task("medicare-and-social-security", "Sign up for Medicare and Social Security",
              "When to sign up, choosing coverage, and help paying Medicare&rsquo;s costs."),
         task("disability-help", "Get disability benefits and services",

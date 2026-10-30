@@ -7757,7 +7757,8 @@ def study_ending(narr, steps, rail, term, sittings, lsrs=None):
             f", {rep['vote']}" if rep["vote"] else "")
         line = {"date": rep["date"], "body": rep["body"] if rep["body"] in ("H", "S") else body,
                 "act": "study_report", "mark": "f" if rep["rec"] == "rec" else "s",
-                "text": text, "short": "interim study report"}
+                # Which of the three it said, for its colour (app.js journeyList).
+                "rec": rep["rec"], "text": text, "short": "interim study report"}
         nb = next_term_bill(narr, term, lsrs)
         if nb:
             name = re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", nb["id"]) + f" of {nb['year']}"

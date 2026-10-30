@@ -3758,6 +3758,13 @@ column-gap:var(--sp-3);align-items:baseline;padding:var(--sp-1) 0}
 .jl .j-istudy .jg,.jl .j-ifuture .jg{color:var(--st-study);display:flex;align-items:center;
 justify-content:center;align-self:start;height:1.5em}
 .jl .j-istudy .jg .wave,.jl .j-ifuture .jg .arrow{width:1em;height:1em}
+/* AN INTERIM STUDY REPORT'S MARK, BY WHAT IT SAID (the person, 30 October
+   2026: one rule wherever the report is shown, as RECCOLOUR's): green where
+   it recommends future legislation, red where it does not, plain where it
+   makes no recommendation. The "sent to interim study" wave stays orange. */
+.jl .jrec-rec .jg{color:var(--st-law)}
+.jl .jrec-not .jg{color:var(--st-done)}
+.jl .jrec-without .jg{color:var(--ink-2)}
 .jl .j-ontable .jg{display:flex;align-items:center;justify-content:center;
 align-self:start;height:1.5em}
 .jl .j-ontable .jg::after{content:"";display:block;width:.5rem;height:.7em;box-sizing:border-box;
@@ -7239,7 +7246,8 @@ color:var(--ink-2);margin:var(--sp-6) 0 var(--sp-3)}
 .mmark{display:inline-flex;vertical-align:-.1em;margin-right:var(--sp-2);font-weight:700}
 .mmark svg{width:.9em;height:.9em}
 .mkill .mmark,.mkill b{color:var(--st-done)}
-.mrec .mmark{color:var(--st-study)}
+.mrec .mmark{color:var(--st-law)}
+.mwithout .mmark,.mwithout b{color:inherit}
 .msign b{font-variant-numeric:tabular-nums}
 .mwhen{color:var(--ink-2)}
 /* POLISH 2 -- MEETINGS: END --------------------------------------------- */

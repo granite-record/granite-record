@@ -3116,11 +3116,13 @@ def state_box(S, lang="en", today=None, events=None):
 # own kinds (chips.json), so the colours are the chips'. Without
 # Recommendation takes none.
 REC_KIND = {"OTP": "law", "OTPA": "law", "ITL": "done", "IS": "study", "RR": "study"}
-# An interim study report: recommending the subject for future legislation in
-# the orange of its mark on a committee's page (app.css .mrec), and not
-# recommending it, or making no recommendation, in the grey of the killing
-# the person called it (committee_acts, v8; .mkill).
-STUDY_KIND = {"rec": "study", "not": "done", "without": "done"}
+# An interim study report, by one rule wherever it is shown (the person, 30
+# October 2026): recommending the subject for future legislation in the green
+# of a law, not recommending it in the colour of a bill that died, and making
+# no recommendation in none -- as the Reports tab's chip (app.js RECCOLOUR),
+# the docket line's mark (app.css .jrec-*) and a committee's meeting card
+# (.mrec, .mkill, .mwithout) colour it.
+STUDY_KIND = {"rec": "law", "not": "done", "without": ""}
 
 
 def _vote_chip_said(key, passed, bill, fill, lang="en"):

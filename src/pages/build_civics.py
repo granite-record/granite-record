@@ -1580,7 +1580,7 @@ TOPIC_ICON = {
     # the How-To Guides tab (guides.TASKS)
     "Take Part in the Legislature": "testify", "Voting and Elections": "ballot",
     "Driving and Vehicles": "car", "Help and Benefits": "heart", "Property and Records": "house",
-    "Federal Benefits": "idcard", "Know Your Rights": "law", "Insurance": "shield",
+    "Federal Programs and Services": "idcard", "Know Your Rights": "law", "Insurance": "shield",
     "Outdoors and Recreation": "tree",
     "Around Your Town": "pin", "Visiting the State House": "capitol", G.MORE: "grid",
     # the Learn tab (civics.GROUPS, and what follows them)

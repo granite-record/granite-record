@@ -75143,6 +75143,70 @@ def _interim_report_chip_colours():
     return "ok", f"{len(cases)} recommendations coloured: an interim report's three, and the motions as before"
 
 
+@check("frontend", "an interim study report is coloured by one rule in all four places it is shown: the "
+       "Reports tab's chip, the docket line's mark, a committee meeting's card and the sitting pages' chip",
+       needs=("build_pages",))
+def _interim_report_one_colour(BP):
+    """The person, 30 October 2026: recommending future legislation green,
+    not recommending it red, no recommendation plain, wherever the report
+    is shown. Each place is read as it draws: recColour (app.js) for the
+    Reports tab; journeyList in node, whose line carries jrec-<what it said>
+    from build_site_v2's line, and app.css's colour for each; actSaid in
+    node for a committee's meeting card, and app.css's .mrec, .mkill and
+    .mwithout; and build_pages.STUDY_KIND for a sitting's page. Each must
+    come to the same token: --st-law, --st-done, or none."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    colour = {}
+    for at, sel, body, _l in _css_rules(css):
+        if at:
+            continue
+        d = dict(_css_decls(body))
+        for part in (x.strip() for x in re.split(r",(?![^()]*\))", sel)):
+            if "color" in d:
+                colour[part] = d["color"]
+    tok = lambda c: {"var(--st-law)": "law", "var(--st-done)": "done"}.get(c or "", "")
+    want = {"rec": "law", "not": "done", "without": ""}
+    words = {"rec": "RECOMMENDED FOR FUTURE LEGISLATION", "not": "NOT RECOMMENDED FOR FUTURE LEGISLATION",
+             "without": "WITHOUT RECOMMENDATION"}
+    bad = []
+    got = _app_js(
+        "[" + ",".join(f"scope.recColour({json.dumps(w)})" for w in words.values()) + ","
+        + ",".join("scope.actSaid({act: 'study report', said: '%s'}, 'The committee', '')" % k for k in words)
+        + ",scope.journeyList({id: 'HB1'}, {journey: {steps: ["
+        + ",".join("{mark: '%s', rec: '%s', body: 'H', text: 'Interim study report', date: '2026-10-01'}"
+                   % ("f" if k == "rec" else "s", k) for k in words) + "]}})]",
+        names=("recColour", "actSaid", "journeyList"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    chips, cards, journey = got[:3], got[3:6], got[6]
+    lines = re.findall(r'<li class="([^"]*)"', journey)
+    for i, k in enumerate(words):
+        places = {"the Reports tab's chip": {"s-law": "law", "s-done": "done"}.get(chips[i], ""),
+                  "a sitting's chip (STUDY_KIND)": BP.STUDY_KIND.get(k, "?")}
+        cls = re.search(r'class="mact ([^"]*)"', cards[i])
+        cls = cls.group(1).split() if cls else []
+        if "mwithout" in cls:
+            card = "" if colour.get(".mwithout .mmark") == "inherit" else "coloured"
+        elif "mrec" in cls:
+            card = tok(colour.get(".mrec .mmark"))
+        elif "mkill" in cls:
+            card = tok(colour.get(".mkill .mmark"))
+        else:
+            card = "?"
+        places["a committee meeting's card"] = card
+        jl = lines[i].split() if i < len(lines) else []
+        places["the docket line's mark"] = (tok(colour.get(f".jl .jrec-{k} .jg")) if f"jrec-{k}" in jl
+                                            else "no jrec class")
+        for where, saw in places.items():
+            if saw != want[k]:
+                bad.append(f"{k}: {where} is {saw or 'plain'!r}, not {want[k] or 'plain'!r}")
+    src = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
+    if '"rec": rep["rec"]' not in src:
+        bad.append("build_site_v2's interim report line no longer says which of the three it was")
+    assert not bad, "; ".join(bad[:8])
+    return "ok", "recommends green, does not red, without plain, alike in all four places"
+
+
 @check("frontend", "a guide whose steps are in parts lists each part under Step by Step in its index, "
        "each row leading to that part's heading, in English and Spanish", needs=("build_civics", "guides"))
 def _guide_parts_in_index(BC, G):

@@ -4459,7 +4459,7 @@ function journeyList(b,d){
   const k=dkey(b.id);
   const cut=st.length>JOURNEY_SHOWN&&!jOpen.has(k);
   const hide=i=>cut&&i>=2&&i<st.length-(JOURNEY_SHOWN-2);
-  const line=(s,i)=>`<li class="j-${esc(JCLASS[s.mark]||s.mark)}"${hide(i)?" hidden":""}><span class="jg"
+  const line=(s,i)=>`<li class="j-${esc(JCLASS[s.mark]||s.mark)}${s.rec?` jrec-${esc(s.rec)}`:""}"${hide(i)?" hidden":""}><span class="jg"
     aria-hidden="true">${JMARK[s.mark]||""}</span><span class="jb">${
     esc(JBODY[s.body]||s.body)}</span><span class="jt">${tallyWhole(jText(s))}</span><span
     class="jd">${s.date?esc(dateWords(s.date)):""}</span></li>`;
@@ -8807,8 +8807,9 @@ function actSaid(a,who,tail){
       :"reported on its study";
     // "Died", the word the Bills chip and the bill's own page give a bill
     // that ended so, where this said "Killed" (the cohesion audit of 30
-    // October 2026, I-11).
-    return `<p class="mact mkill"><span class="mmark" aria-hidden="true">${ACTMARK.kill}</span><b>Died:</b> ${
+    // October 2026, I-11). Without a recommendation, its mark is plain (the
+    // person, 30 October 2026: one colour rule, as RECCOLOUR's).
+    return `<p class="mact mkill${a.said==="without"?" mwithout":""}"><span class="mmark" aria-hidden="true">${ACTMARK.kill}</span><b>Died:</b> ${
       who==="The committee"?"the committee's":esc(who)+"'s"} interim study report ${said}${
       t?`, ${t}`:""}${end}</p>`;
   }
