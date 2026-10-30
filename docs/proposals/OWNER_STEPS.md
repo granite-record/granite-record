@@ -189,8 +189,9 @@ The order of design_final §8, with the addendum's step 5.
 - **H10** (`_knocks_on_file`, the reader of `knocks.json`) skips on the
   laptop, which holds no copy: `pull` reads the bucket's lifts and keeps
   none. A `pull` that kept a copy for it is a later step (DEVIATIONS 105).
-- **DEVIATIONS 25 is closed** (DEVIATIONS 115): `fetch_lsrs.py` and
-  `fetch_calendar_archive.py --listing` follow no redirect now, so every
+- **DEVIATIONS 25 is closed** (DEVIATIONS 115):
+  `src/fetch/gc_web/fetch_lsrs.py` and
+  `src/fetch/gc_web/fetch_calendar_archive.py --listing` follow no redirect now, so every
   General Court request the night makes stops at a redirect, with a
   record. Nobody has seen either page redirect in the ordinary way. If one
   does, the first night after the merge records a refusal that is yours,
