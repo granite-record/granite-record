@@ -236,7 +236,10 @@ test("the poller: If-None-Match, a 304 keeps the file, a 404 forgets it, a new a
   const doc = { hidden: false, addEventListener() {} };
   let url = "/x/1";
   const p = L.poller({ doc, url: () => url, every: () => 0,
-    fetch: async (u, init) => { asked.push([u, init.headers["If-None-Match"] || null]);
+    // As the browser's fetch: called with any `this` but the global, it throws.
+    fetch: async function (u, init) {
+      if (this !== undefined && this !== globalThis) throw new TypeError("Illegal invocation");
+      asked.push([u, init.headers["If-None-Match"] || null]);
       return { status: answer.status, ok: answer.status === 200, headers: { get: () => answer.etag }, json: async () => answer.body }; },
     onFile: (f, code) => heard.push([f && f.n, code]) });
   await p.first;

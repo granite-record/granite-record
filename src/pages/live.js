@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.4
+// GRANITE_VERSION: 2026-10-30.5
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -309,7 +309,10 @@ L.poller = function (o) {
     var u = o.url();
     if (u !== url) { url = u; etag = null; file = null; }
     var headers = etag ? { "If-None-Match": etag } : {};
-    return Promise.resolve(o.fetch(u, { headers: headers })).then(function (r) {
+    // Called bare, never as o.fetch(): the browser's fetch throws "Illegal
+    // invocation" when its `this` is not the window.
+    var get = o.fetch;
+    return Promise.resolve(get(u, { headers: headers })).then(function (r) {
       if (r.status === 304) return r.status;
       if (r.status === 404) { file = null; etag = null; return 404; }
       if (!r.ok) return r.status;
