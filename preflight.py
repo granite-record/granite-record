@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.755
+# GRANITE_VERSION: 2026-09-04.756
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -101306,6 +101306,14 @@ HOUSE_COUNT_NOT_THE_JOURNALS = {
                    "prints them with the sitting of 25 September 2019"),
     "2022-02-16": (12, 11, "HB 1417's reconsideration, 165-181: a roll call in the "
                    "docket and the roll-call file, a division in the journal"),
+    # Three sittings journal_days reads since its heading took a form feed
+    # (30 October 2026: their "HOUSE JOURNAL No. N" opens a page), so their
+    # journal is held to the page for the first time.
+    "1998-05-14": (6, 7, _BEFORE_FILE),
+    "2000-01-05": (4, 2, _RECESS + " (3 November 1999): roll calls 189 and 190 of the "
+                   "1999 numbering, printed in No. 27 (cont.) at the head of 2000/HJ027"),
+    "2005-02-09": (9, 8, _RECESS + " (26 January 2005): roll call 7, 150-219, printed in "
+                   "No. 4 (cont.) after its RECESS, at the head of 2005/HJ004"),
 }
 
 
