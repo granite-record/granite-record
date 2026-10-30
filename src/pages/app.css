@@ -3752,7 +3752,7 @@ column-gap:var(--sp-3);align-items:baseline;padding:var(--sp-1) 0}
    bars on the line that laid it on the table -- it still lies there, or it
    died there and the line after says so with the cross. And the interim
    study committee's report that recommended the subject for future
-   legislation, once the session is over: a bare orange arrow (app.js
+   legislation, once the session is over: a bare arrow, green below (app.js
    ARROW, the person's option (d) of 9 October 2026), the wave's ink and
    size, which the rail never draws. */
 .jl .j-istudy .jg,.jl .j-ifuture .jg{color:var(--st-study);display:flex;align-items:center;
@@ -7228,7 +7228,7 @@ color:var(--ink-2);margin:var(--sp-6) 0 var(--sp-3)}
 /* THE LINE FOR THIS MEETING, inside the card's well (.cline): its kinds and
    time, the moment in the recording where each was taken up, and what
    happened, each act on a line of its own. A killing is said in the red of
-   the cross that marks it, a study recommended in the orange of its arrow,
+   the cross that marks it, a study recommended in the green of its arrow,
    both as a mark and a word, never by colour alone. */
 .mline{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-4);margin-bottom:var(--sp-3)}
 .mkinds{display:inline-flex;flex-wrap:wrap;gap:var(--sp-2)}

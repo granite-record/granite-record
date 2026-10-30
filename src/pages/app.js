@@ -4410,7 +4410,7 @@ function rsaChapters(d){
 //
 // AND THE INTERIM STUDY COMMITTEE'S REPORT, ONCE THE SESSION IS OVER (option
 // (d), the person, 9 October 2026): its own line, after the cross of the
-// bill's death, with a bare orange arrow, "f", where the committee
+// bill's death, with a bare arrow (green since 30 October 2026), "f", where the committee
 // recommended the subject for future legislation -- advice for a new bill in
 // the next term, which the line names and links where the clerk wrote down
 // its LSR (s.link) -- and the "~" where it did not. The arrow is drawn, as the
@@ -4423,8 +4423,8 @@ const ARROW='<svg class="arrow" viewBox="0 0 12 12" aria-hidden="true" focusable
   +'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const JMARK={p:"✓",x:"✕",h:"↺",s:WAVE,t:"",f:ARROW};
 // A committee's acts on its meeting's card (actSaid): the interim study
-// report it recommended, in the orange arrow, and one it did not, killed, in
-// the red cross. The arrow is a drawing, so its orange is a mark's.
+// report it recommended, in the green arrow, and one it did not, killed, in
+// the red cross. The arrow is a drawing, so its green is a mark's.
 const ACTMARK={rec:ARROW,kill:"\u2715"};
 const JCLASS={s:"istudy",t:"ontable",f:"ifuture"};
 // A line's words, with the bill it names linked where it names one: the next
@@ -8803,7 +8803,7 @@ function recSaid(words,code){
 const tallyOf=a=>a&&a.yeas!=null&&a.nays!=null?`${a.yeas}\u2013${a.nays}`:"";
 // One act of the committee on a bill, as a sentence: a recommendation with
 // its tally and the minority's; an interim study report, which recommended
-// the subject for future legislation (the orange arrow of How it got here)
+// the subject for future legislation (the green arrow of How it got here)
 // or killed the bill (v8: "listed as killed, explaining what the committee
 // voted"); a retention. What the report said is in STUDY_SAID's words (the
 // bill page's, endNote above), and one whose row states none of the three

@@ -32432,13 +32432,15 @@ def _rail_endings(N, B):
         names=("datedRail", "journeyList", "endNote"))
     drew = "node is not here to draw them"
     if got is not None:
+        # The line also says what the report said (jrec-*, its colour, 30
+        # October 2026; _interim_report_one_colour holds that).
         line = lambda k, cls, glyph, words: re.search(
-            rf'<li class="j-{cls}"><span class="jg"\s*aria-hidden="true">{glyph}</span>'
+            rf'<li class="j-{cls}(?: jrec-\w+)?"><span class="jg"\s*aria-hidden="true">{glyph}</span>'
             rf'<span class="jb">House</span><span class="jt">{words}</span>', got[k]["how"])
         # The tally held whole (tallyWhole, the foundation's, 9 October 2026).
         if not line("SB570", "ifuture", r'<svg class="arrow"[^>]*><path [^>]*/></svg>',
                     re.escape(reported["rec"]) + ', <span class="tally">9–0</span>'):
-            bad.append(f"SB 570's report is not the orange arrow's line: {got['SB570']['how'][-500:]!a}")
+            bad.append(f"SB 570's report is not the arrow's line: {got['SB570']['how'][-500:]!a}")
         if not line("HB561", "istudy", r'<svg class="wave"[^>]*><path [^>]*/></svg>',
                     re.escape(reported["not"]) + ', <span class="tally">8–2</span>'):
             bad.append(f"HB 561's report is not the \"~\"'s line: {got['HB561']['how'][-500:]!a}")
@@ -75169,15 +75171,19 @@ def _interim_report_one_colour(BP):
     .mwithout; and build_pages.STUDY_KIND for a sitting's page. Each must
     come to the same token: --st-law, --st-done, or none."""
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
-    colour = {}
-    for at, sel, body, _l in _css_rules(css):
+    colour, order = {}, {}
+    for n, (at, sel, body, _l) in enumerate(_css_rules(css)):
         if at:
             continue
         d = dict(_css_decls(body))
         for part in (x.strip() for x in re.split(r",(?![^()]*\))", sel)):
             if "color" in d:
                 colour[part] = d["color"]
-    tok = lambda c: {"var(--st-law)": "law", "var(--st-done)": "done"}.get(c or "", "")
+                order[part] = n
+    # A rule that is not there, or orange, is neither colour nor plain (the
+    # review of 30 October 2026): only the ink a rule names as plain is plain.
+    tok = lambda c: ("missing" if c is None else {"var(--st-law)": "law", "var(--st-done)": "done",
+                                                  "var(--st-study)": "study"}.get(c, ""))
     want = {"rec": "law", "not": "done", "without": ""}
     words = {"rec": "RECOMMENDED FOR FUTURE LEGISLATION", "not": "NOT RECOMMENDED FOR FUTURE LEGISLATION",
              "without": "WITHOUT RECOMMENDATION"}
@@ -75194,7 +75200,7 @@ def _interim_report_one_colour(BP):
     chips, cards, journey = got[:3], got[3:6], got[6]
     lines = re.findall(r'<li class="([^"]*)"', journey)
     for i, k in enumerate(words):
-        places = {"the Reports tab's chip": {"s-law": "law", "s-done": "done"}.get(chips[i], ""),
+        places = {"the Reports tab's chip": {"s-law": "law", "s-done": "done", "": ""}.get(chips[i], chips[i]),
                   "a sitting's chip (STUDY_KIND)": BP.STUDY_KIND.get(k, "?")}
         cls = re.search(r'class="mact ([^"]*)"', cards[i])
         cls = cls.group(1).split() if cls else []
@@ -75213,6 +75219,12 @@ def _interim_report_one_colour(BP):
         for where, saw in places.items():
             if saw != want[k]:
                 bad.append(f"{k}: {where} is {saw or 'plain'!r}, not {want[k] or 'plain'!r}")
+    # The docket line's three colours must come after the orange both kinds
+    # of line already draw (.j-istudy, .j-ifuture), or that orange wins.
+    first = order.get(".jl .j-istudy .jg", -1)
+    for k in words:
+        if order.get(f".jl .jrec-{k} .jg", -1) <= first:
+            bad.append(f".jl .jrec-{k} .jg is not after .jl .j-istudy .jg, so the orange wins")
     src = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
     if '"rec": rep["rec"]' not in src:
         bad.append("build_site_v2's interim report line no longer says which of the three it was")
