@@ -23794,9 +23794,19 @@
    "es": "Votaciones nominales de la Cámara hoy",
    "state": "draft"
   },
+  "votes.head_house_day": {
+   "en": "House roll calls of {day}",
+   "es": "Votaciones nominales de la Cámara del {day}",
+   "state": "draft"
+  },
   "votes.head_senate": {
    "en": "Senate roll calls today",
    "es": "Votaciones nominales del Senado hoy",
+   "state": "draft"
+  },
+  "votes.head_senate_day": {
+   "en": "Senate roll calls of {day}",
+   "es": "Votaciones nominales del Senado del {day}",
    "state": "draft"
   },
   "votes.in_record": {
