@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.740
+# GRANITE_VERSION: 2026-09-04.741
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19805,19 +19805,22 @@ require("./stub.js");
 const fs = require("fs");
 const on = {};
 document.addEventListener = (t, f) => { (on[t] = on[t] || []).push(f); };
-const SLOTS = [{textContent: "1 January 2000"}, {textContent: "1 January 2000"}];
+const SLOTS = [{textContent: "1 January 2000"}, {textContent: "1 January 2000"},
+  {textContent: "1 January 2000", classList: {contains: c => c === "citefull"}}];
 const BTNS = [{hidden: true}, {hidden: true}];
 document.querySelectorAll = s => s === ".citeday" ? SLOTS : s === "[data-citecopy]" ? BTNS : [];
 // A browser set to French. A citation that asks the locale says so.
 Date.prototype.toLocaleDateString = () => "24 septembre 2026";
 Date.prototype.toLocaleString = () => "24/09/2026";
 let s;
-try { s = (0, eval)(fs.readFileSync("./app.js", "utf8") + ";({citeDay})"); }
+try { s = (0, eval)(fs.readFileSync("./app.js", "utf8") + ";({citeDay, citeDayFull})"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
 const out = {slots: SLOTS.map(x => x.textContent), shown: BTNS.map(b => !b.hidden),
-  today: s.citeDay(new Date()),
+  today: s.citeDay(new Date()), todayFull: s.citeDayFull(new Date()),
   days: JSON.parse(fs.readFileSync("./dates.json", "utf8"))
-    .map(([y, m, d]) => s.citeDay(new Date(y, m - 1, d)))};
+    .map(([y, m, d]) => s.citeDay(new Date(y, m - 1, d))),
+  full: JSON.parse(fs.readFileSync("./dates.json", "utf8"))
+    .map(([y, m, d]) => s.citeDayFull(new Date(y, m - 1, d)))};
 const form = {textContent: "@misc{bill-2026-hb1,\n  title = {A bill},\n}\n"};
 const st = {textContent: ""};
 document.getElementById = id => id === "cite-bibtex" ? form : id === "citestate" ? st : null;
@@ -19905,11 +19908,24 @@ def _cite_up_and_copied():
     today = S.cite_day(_dt.date.today())
     assert f'<span class="citeday">{today}</span>' in block, (
         f"the fallback date is not the build day in the one form ({today})")
+    # APA and Chicago in their own form, "October 30, 2026" (the cohesion audit, B-5).
+    full = S.cite_day_full(today)
+    for k, lead in (("apa", "Retrieved "), ("chicago", "Accessed ")):
+        dd = re.search(rf'<dd id="cite-{k}">(.*?)</dd>', block, re.S)
+        assert dd and f'{lead}<span class="citeday citefull">{full}</span>' in dd.group(1) \
+            and re.fullmatch(r"[A-Z][a-z]+ \d{1,2}, \d{4}", full), (
+            f"the {k.upper()} citation does not date the page {full!r}: {dd.group(1)[:200] if dd else ''}")
+    for k in ("mla", "bibtex"):
+        dd = re.search(rf'<dd id="cite-{k}">(.*?)</dd>', block, re.S)
+        assert dd and "citefull" not in dd.group(1), f"the {k.upper()} citation lost MLA's date"
 
     dates = [(2026, m, 24) for m in range(1, 13)] + [(2027, 1, 1), (2026, 9, 30)]
     want = [S.cite_day(_dt.date(*d)) for d in dates]
     assert want[8] == "24 Sept. 2026" and want[4] == "24 May 2026" \
         and want[-2] == "1 Jan. 2027", f"shell.cite_day writes {want[8]!r}, {want[4]!r}, {want[-2]!r}"
+    want_full = [S.cite_day_full(w) for w in want]
+    assert want_full[8] == "September 24, 2026" and want_full[-2] == "January 1, 2027" \
+        and S.cite_day_full("") == "", f"shell.cite_day_full writes {want_full[8]!r}, {want_full[-2]!r}"
     node = shutil.which("node")
     if not node:
         return "skip", "node is not installed"
@@ -19930,8 +19946,11 @@ def _cite_up_and_copied():
     assert got["days"] == want, (
         "app.js and shell.py write a citation's date differently: "
         + "; ".join(f"{a} / {b}" for a, b in zip(got["days"], want) if a != b))
+    assert got["full"] == want_full, (
+        "app.js and shell.py write APA's and Chicago's date differently: "
+        + "; ".join(f"{a} / {b}" for a, b in zip(got["full"], want_full) if a != b))
     today_js = got["today"]
-    assert got["slots"] == [today_js] * 2 and "septembre" not in today_js \
+    assert got["slots"] == [today_js] * 2 + [got["todayFull"]] and "septembre" not in today_js \
         and re.fullmatch(r"\d{1,2} (%s) \d{4}" % "|".join(
             re.escape(m) for m in S.CITE_MONTHS), today_js), (
         f"in a French browser the citation's date reads {got['slots']}")
@@ -69206,7 +69225,7 @@ def _one_date_formatter():
         t = f.read_text(encoding="utf-8", errors="replace")
         # A citation keeps its own style (MLA's "24 Sept. 2026"); a bill's
         # own text and the docket's lines are the General Court's words.
-        t = re.sub(r'<div class="pageacts".*?</dl>|<span class="citeday">.*?</span>|'
+        t = re.sub(r'<div class="pageacts".*?</dl>|<span class="citeday[^"]*">.*?</span>|'
                    r"<!--.*?-->|<script\b.*?</script>|<style\b.*?</style>|<pre\b.*?</pre>|"
                    # sx-docket: the docket's own words in a page's plain record
                    # (static_record, 12 October 2026), as the page app.js draws

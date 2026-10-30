@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.35
+# GRANITE_VERSION: 2026-09-07.36
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -161,6 +161,20 @@ def cite_day(d):
     return f"{d.day} {CITE_MONTHS[d.month - 1]} {d.year}"
 
 
+# APA AND CHICAGO WRITE THE MONTH IN FULL, FIRST (the cohesion audit of 30
+# October 2026, B-5): "Retrieved October 30, 2026, from" and "Accessed
+# October 30, 2026." Both had borrowed MLA's "30 Oct. 2026". The site's own
+# full date, components.date_words(d, "full"), as app.js writes it with
+# dateWords; MLA and BibTeX keep cite_day.
+def cite_day_full(short):
+    """October 30, 2026, from cite_day's "30 Oct. 2026"; "" from "" and
+    anything that is not one."""
+    m = re.fullmatch(r"(\d{1,2}) (\S+) (\d{4})", short or "")
+    if not m or m.group(2) not in CITE_MONTHS:
+        return short or ""
+    return date_words(f"{m.group(3)}-{CITE_MONTHS.index(m.group(2)) + 1:02d}-{int(m.group(1)):02d}", "full")
+
+
 # A DATE, ONE WAY, MONTH FIRST: components.py's date_words() and
 # date_span(), imported above, which the builders have always asked for here
 # (S.date_words); components.js's dateWords() and dateSpan() are the same in
@@ -262,15 +276,16 @@ def cite_block(path, title, base, built=""):
     name = title.split(" | ")[0].strip()
     stem, closed, bib = title_stops(name)
     day = f'<span class="citeday">{E(built)}</span>'
+    full = f'<span class="citeday citefull">{E(cite_day_full(built))}</span>'
     # A BibTeX key a person can read: the address, minus the punctuation
     # BibTeX treats as syntax.
     key = canon(path).strip("/").replace("/", "-").replace(".", "") or "granite-record"
     forms = [
         ("MLA", f'&ldquo;{E(closed)}&rdquo; <i>{BRAND}</i>, {E(url)}. '
                 f'Accessed {day}.'),
-        ("APA", f'{BRAND}. (n.d.). <i>{E(stem)}</i>. Retrieved {day}, '
+        ("APA", f'{BRAND}. (n.d.). <i>{E(stem)}</i>. Retrieved {full}, '
                 f'from {E(url)}'),
-        ("Chicago", f'{BRAND}. &ldquo;{E(closed)}&rdquo; Accessed {day}. '
+        ("Chicago", f'{BRAND}. &ldquo;{E(closed)}&rdquo; Accessed {full}. '
                     f'{E(url)}.'),
         ("BibTeX", f'<code>@misc{{{E(key)},\n  title = {{{E(bib)}}},\n'
                    f'  howpublished = {{{BRAND}}},\n  url = {{{E(url)}}},\n'

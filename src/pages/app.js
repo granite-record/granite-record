@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.254
+// GRANITE_VERSION: 2026-09-07.255
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -11616,10 +11616,17 @@ function drawSessionVotes(only){
 const CITE_MONTHS=["Jan.","Feb.","Mar.","Apr.","May","June","July","Aug.",
   "Sept.","Oct.","Nov.","Dec."];
 function citeDay(d){ return d.getDate()+" "+CITE_MONTHS[d.getMonth()]+" "+d.getFullYear(); }
+// APA and Chicago: "October 30, 2026", the site's full date (dateWords), as
+// shell.cite_day_full writes the build's (the cohesion audit, B-5).
+function citeDayFull(d){
+  return dateWords(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"
+    +String(d.getDate()).padStart(2,"0"),"full");
+}
 (function(){
   var els=document.querySelectorAll(".citeday");
-  var s=citeDay(new Date());
-  for(var i=0;i<els.length;i++)els[i].textContent=s;
+  var now=new Date(), s=citeDay(now), full=citeDayFull(now);
+  for(var i=0;i<els.length;i++)
+    els[i].textContent=els[i].classList&&els[i].classList.contains("citefull")?full:s;
   // The Copy buttons are written hidden, so a page read without JavaScript
   // offers none that does nothing; here they work, so here they show.
   var bs=document.querySelectorAll("[data-citecopy]");
