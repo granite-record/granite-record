@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.732
+# GRANITE_VERSION: 2026-09-04.733
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -114221,6 +114221,9 @@ NOT_INPUT_NAMERS = {
     "build_all.py": "archive/cloud/kit-down.json: whether the build is the kit's, which "
                     "decides whether a missing input stops it, never what it writes",
     "cloud.py": "the bucket's logs and reports, which it sends; nothing a page is made of",
+    "state_sources.py": "archive/cloud/sources-down.json, its record of what this machine "
+                        "last took of the state documents; no build step runs it, and "
+                        "nothing a page is made of",
     "livestreams.py": "logs/youtube-<day>.log, yt-dlp's warnings, which its asks write "
                       "(--since-state, before the build) and nothing reads; nothing a page "
                       "is made of",
