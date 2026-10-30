@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.334 */
+/* GRANITE_VERSION: 2026-09-07.335 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -6392,20 +6392,19 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
    click away, which is where the rest of the bill already is. */
 .votes .vt{color:var(--ink);font-size:var(--t-ui);line-height:1.35;
   margin-top:var(--sp-1);
-  /* max-height RATHER THAN -webkit-line-clamp, and not for want of trying it.
-     The clamp needs display:-webkit-box, and inside this table cell the
-     computed display came back flow-root with the clamp inert -- the rule
-     applied, the box did not. Two lines at 1.35 is 2.7em, which is a number
-     this can be asked for directly and which every engine honours.
-     A CUT TITLE SHOWS AS CUT (the audit of 25 October 2026, S9): it stopped
-     at the end of its second line, mid-phrase and with no "...", as if that
-     were all of it. The box keeps the top of a third line where there is one
-     and fades it out, so the words can be seen going on; a title of one or
-     two lines ends above the fade and is drawn whole, as it was (54 of the
-     191 shown on one member's tab are two lines exactly). */
-  display:block;max-height:3.5em;overflow:hidden;
-  -webkit-mask-image:linear-gradient(#000 2.7em,transparent 3.5em);
-  mask-image:linear-gradient(#000 2.7em,transparent 3.5em)}
+  /* TWO LINES AND AN ELLIPSIS (the cohesion audit of 30 October 2026, B-7).
+     A CUT TITLE SHOWS AS CUT (the audit of 25 October 2026, S9), and the
+     fade that said so kept the top of a third line, which sat 4px over the
+     motion's line below it on a phone and read as text printed over text.
+     The clamp ends the second line with "..." instead, as truncation is
+     drawn elsewhere. It was set aside here once because the computed
+     display reads flow-root inside this cell; that is how Chromium now
+     carries the clamp, and it clamps -- measured on Rep. Presa's tab at 390
+     and 1280, every cut title 43px, two lines at 1.35. max-height is the
+     same two lines for an engine without the clamp, which then cuts without
+     the "...". A title of one or two lines is drawn whole, as it was. */
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;
+  max-height:2.7em;overflow:hidden}
 .votes .vq{display:block;color:var(--ink-2);font-size:var(--t-sm);margin-top:var(--sp-2)}
 /* The record's own word for the motion, in brackets after the plain one,
    takes the line's --ink-2 and no opacity: `opacity:.8` on it was 4.14:1 on
