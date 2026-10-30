@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.16
+# GRANITE_VERSION: 2026-09-19.17
 """
 What the House journal adds that the record does not: who spoke, and what.
 
@@ -146,8 +146,11 @@ def joined(block):
 # files. It needs the body of the day, which IS in one file. The continuation
 # header at the top is the previous day's tail and is cut off.
 
+# A form feed may open the heading's line: pdftotext writes a page break as
+# one, and ten headings in the kit sit at the top of a page (2000/HJ027's
+# "\fHOUSE JOURNAL No. 1", 5 January 2000, among them).
 DAY_HEADER = re.compile(
-    r"^[ \t]*HOUSE\s+JOURNAL\s+N[Oo]\.?\s*(?P<num>\d*)\s*(?P<cont>\([Cc]on'?t\.?'?d?\.?\))?",
+    r"^[ \t\f]*HOUSE\s+JOURNAL\s+N[Oo]\.?\s*(?P<num>\d*)\s*(?P<cont>\([Cc]on'?t\.?'?d?\.?\))?",
     re.M)
 
 DATELINE = re.compile(
@@ -1227,11 +1230,34 @@ def read_year(year, root=HOUSE):
 
 
 def read_day(date, root=HOUSE):
-    """Everything this module can find for one House sitting date."""
-    return read_year(date[:4], root).get(
-        date, {"date": date, "attributions": [], "debates": [],
-               "unanimous_consent": [], "opening": {}, "absences": [],
-               "consent": {}, "files": []})
+    """Everything this module can find for one House sitting date.
+
+    A December Organization Day opens the next year's numbered series, so it
+    is filed in the next year's folder (journals/2023/HJ 01 December 7,
+    2022.txt), as read_senate_day and session_days._journal_day already
+    read it. Both folders are read for a December date; an odd-year December
+    sitting is in its own year's folder (2001/HJ022), and the next year's
+    holds at most its "(cont.)" tail, which day_blocks drops.
+    """
+    years = (date[:4],) + ((str(int(date[:4]) + 1),) if date[5:7] == "12" else ())
+    found = [read_year(y, root)[date] for y in years if date in read_year(y, root)]
+    if len(found) == 1:
+        return found[0]
+    out = {"date": date, "attributions": [], "debates": [],
+           "unanimous_consent": [], "opening": {}, "absences": [],
+           "consent": {}, "files": []}
+    for got in found:
+        for k in ("attributions", "debates", "unanimous_consent", "absences", "files"):
+            out[k] += got[k]
+        for k, v in got["opening"].items():
+            out["opening"].setdefault(k, v)
+        for k, v in got["consent"].items():
+            if k in ("removed", "removed_elsewhere"):
+                out["consent"].setdefault(k, [])
+                out["consent"][k] += v
+            else:
+                out["consent"].setdefault(k, v)
+    return out
 
 
 # ------------------------------------------------- the Senate's leave list --
