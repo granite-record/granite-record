@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.742
+# GRANITE_VERSION: 2026-09-04.743
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -54337,7 +54337,7 @@ process.stdout.write("\n@@" + JSON.stringify(out));
 
 
 @check("frontend", "a member's Votes tab finds a bill by its page's own number (\"HB 282-FN\") or the "
-                   "number alone; a ring's legend keys each side in the side's colour; the full "
+                   "number alone; a roll call's legend keys each row by its party's colour; the full "
                    "record says Yes and No; a voice or division vote says it has no names in one line")
 def _votes_words_and_keys():
     """The audit of 25 October 2026 (S1), approved by the owner:
@@ -54351,9 +54351,13 @@ def _votes_words_and_keys():
     - The full voting record said "Republican Yea" under a legend that says
       "Republican -- Yes": Yes and No throughout.
     - The ring is green (Yes) and salmon (No), and the legend's swatches were
-      the parties' red, blue and purple, keying nothing in the ring. Each row's
-      swatch is its side's colour, as a division's legend is, and the party
-      stays in words.
+      the parties' red, blue and purple, keying nothing in the ring. The audit
+      made each row's swatch its side's colour. THE OWNER REVERSED THAT on the
+      walk of the release candidate (30 October 2026): "the roll call vote
+      legend doesn't show as blue and red or purple by party; instead it
+      colors them red and green by the yes or no vote, like division votes".
+      Each row's swatch is its party's colour (PARTY_COLOR: R red, D blue, I
+      and L purple), never the side's, and the side stays in words.
     - "Decided on a voice vote. There is no count and no record of how
       individual members voted", or a division's two sentences, on every such
       card under a head that names the kind of vote: one line, "No record of
@@ -54388,9 +54392,10 @@ def _votes_words_and_keys():
                       got["ring"])
     if len(rows) != 4:
         bad.append(f"the ring's legend has {len(rows)} party rows, not 4: {rows}")
+    party_bg = {"Republican": "var(--rep)", "Democrat": "var(--dem)", "Independent": "var(--ind)"}
     for bg, party, side in rows:
-        if bg != f"var(--{side.lower()})":
-            bad.append(f"{party} — {side} is keyed {bg}, not the ring's colour for {side}")
+        if bg != party_bg.get(party):
+            bad.append(f"{party} — {side} is keyed {bg}, not its party's colour {party_bg.get(party)}")
     if {r[1] for r in rows} != {"Republican", "Democrat", "Independent"}:
         bad.append(f"the legend no longer names the parties in words: {rows}")
     heads = re.findall(r"<h3>([^<]*)</h3>", got["full"])
@@ -54404,7 +54409,7 @@ def _votes_words_and_keys():
                    f"line: {notes}")
     assert not bad, "; ".join(bad[:6])
     return "ok", (f"{len(finds)} searches find what they name, suffix or none; four legend rows "
-                  "keyed by side; Yes and No in the full record; one line on three unnamed votes")
+                  "keyed by party; Yes and No in the full record; one line on three unnamed votes")
 
 
 # A member's Votes tab with a vote on no bill the Journal describes (rc.w),
