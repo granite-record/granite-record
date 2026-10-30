@@ -69,11 +69,13 @@ THE DATA API
 The files /api describes -- the database (granite-record.sqlite.xz), the bill
 files (bills-<term>.jsonl.gz), people.json and people.csv, and schema.json --
 carry the same record, and the same line between what is the State's and what
-is this project's. The record is the State of New Hampshire's. What this
-project adds to it -- the ids it gives (person numbers, and a bill's key,
-term and number together), the joins it makes (which numbers are one person,
-which report belongs to which bill) and the corrections made here by hand --
-is dedicated to the public domain under CC0 1.0
+is this project's. The record is the State of New Hampshire's, and so are
+the numbers it gives people and bills. What this project adds to it -- the
+keys it makes (a bill's term and number together), the joins it makes (which
+of the General Court's numbers are one person, which of them is that
+person's number in these files, which report belongs to which bill) and the
+corrections made here by hand -- is dedicated to the public domain under
+CC0 1.0
 (https://creativecommons.org/publicdomain/zero/1.0/): anyone may use it for
 anything, without asking. The plain-English histories (narrative and stages
 in a bill's record) stay under the terms above. The times within a recording
