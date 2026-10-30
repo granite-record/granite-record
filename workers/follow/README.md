@@ -50,7 +50,8 @@ the two agree, and names the command. The emails' own choices -- the white
 ground, the mark's empty alt, every sentence -- stay in `mail.js`. The
 confirm, manage and unsubscribe pages take their colours from the same file
 (`PAGE_PALETTE`: app.css's light and dark themes); their font stacks stay in
-`page.js`, since those pages load no font.
+`page.js`, which loads the site's two fonts from Google Fonts, the only other
+host their policy names (`common.js`).
 
 A digest can be rendered without sending it: `node tests/follow/preview_digest.js [--weekly] [--follow kind:ref ...] [--site URL | --dir site]` reads a site's real `/changes/` files and writes the email's HTML and text, through the sender's own `collect()` and `digestEmail()`, to `preview-mail/`. No database, no Resend, no address. It sits beside the tests because it prints, and nothing in the Worker may.
 
