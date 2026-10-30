@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.249
+# GRANITE_VERSION: 2026-09-04.250
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -254,7 +254,16 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
 BILL_TAB_SLUGS = ("text", "votes", "hearings", "videos", "reports",
                   "sponsors", "documents", "related")
 MEMBER_TAB_SLUGS = ("cosponsored", "votes")
-COMMITTEE_TAB_SLUGS = ("sessions",)
+# A committee's Videos tab (26 October 2026); its rule serves a study or
+# statutory committee's /committee/ss<id>/videos too, which opens that page
+# on its Videos tab, and /committee/ss<id>/sessions on its Meetings tab.
+# And /bills (29 October 2026): a study committee's page opens on its
+# Meetings, so its Bills tab has an address of its own; a standing
+# committee's Bills is its page's own address, and /bills opens it too.
+COMMITTEE_TAB_SLUGS = ("bills", "sessions", "videos")
+# The chambers' pages (build_full_sessions.SLUG), whose Videos tab is
+# /session/<chamber>/videos.
+CHAMBER_TAB_PAGES = ("house", "senate")
 # THE LEARN HUB MOVED. /learn was the hub of the Learn pages and is now the
 # first tab of the Resources hub, /resources (the person, 8 October 2026,
 # decision 128: "/learn redirects to /resources ... the articles keep their
@@ -296,6 +305,8 @@ REDIRECTS = ("# Written by build_pages.py. Not an asset; Pages reads it.\n"
              + "".join(f"/bill/:year/:bill/{s} /bill/:year/:bill 200\n" for s in BILL_TAB_SLUGS)
              + "".join(f"/legislator/:who/{s} /legislator/:who 200\n" for s in MEMBER_TAB_SLUGS)
              + "".join(f"/committee/:code/{s} /committee/:code 200\n" for s in COMMITTEE_TAB_SLUGS)
+             # A chamber's Videos tab (build_full_sessions), its page's.
+             + "".join(f"/session/{c}/videos /session/{c} 200\n" for c in CHAMBER_TAB_PAGES)
              + "".join(f"{old} {new} 301\n" for old, new in MOVED))
 
 
