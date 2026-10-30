@@ -353,3 +353,8 @@ records/sources/sos-clerks-and-polling-places-2026-09-20.html
 
 # tests/follow/preview_digest.js writes its rendered digests here.
 /preview-mail/
+
+# The state documents read in a browser on the laptop, filed by
+# src/ops/state_sources.py under records/sources/REGISTRY.csv's ids. They
+# travel through the bucket's sources/ prefix, never through git.
+/sources/

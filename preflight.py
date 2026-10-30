@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.731
+# GRANITE_VERSION: 2026-09-04.732
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -56693,6 +56693,94 @@ def _cloud_call(CL, *argv):
 def _bucket_keys(bucket):
     return {p.relative_to(bucket).as_posix() for p in bucket.rglob("*")
             if p.is_file() and ".meta" not in p.relative_to(bucket).parts}
+
+
+@check("cloud", "the state documents travel apart from the kit: nothing the night takes "
+       "can match sources/, the registry reads, and up and down lose nothing",
+       needs=("cloud", "state_sources"))
+def _state_sources_apart(CL, SS):
+    """The state documents the guides rest on are read in a browser on the
+    laptop and carried to the sessions under the bucket's sources/ prefix
+    (state_sources.py, 30 October 2026). They are evidence for people, not
+    inputs to the build: a night that took them would build from whatever a
+    browser saved last, unchecked. So no entry of cloud_kit.json's kit, state
+    or dry_run lists can match a path under sources/, neither the nightly nor
+    its workflows names the module, the registry reads (a General Court
+    address in it is the owner's alone), and a round trip through a folder
+    bucket sends each version once, records a reading that did not change as
+    a check, never replaces a reading, and brings every version down whole.
+    """
+    import contextlib
+    import io
+    kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))
+    samples = ["sources/sos-register-vote/2026-10-30.pdf", "sources/manifest.json",
+               "sources/reports/20261030T000000000000.json", "sources/x/2026-10-30-2.txt"]
+    pats = [p for e in kit.get("kit", []) for p in e.get("paths", []) + e.get("globs", [])]
+    pats += [s["path"] for s in kit.get("state", [])]
+    d = kit.get("dry_run") or {}
+    pats += list(d.get("globs", [])) + ([d["store"]] if d.get("store") else [])
+    hits = sorted({p for p in pats for s in samples
+                   if CL.glob_re(p).match(s) or s == p or p.startswith("sources/")})
+    assert not hits, (f"cloud_kit.json names what can match the state documents' folder, "
+                      f"which the night must never take: {hits}")
+    for f in [_paths.locate("nightly.py"), *sorted(Path(".github/workflows").glob("*.yml"))]:
+        if f.exists():
+            src = f.read_text(encoding="utf-8", errors="replace")
+            assert "state_sources" not in src and "sources-down" not in src, (
+                f"{f.name} names the state documents' hand-over, which the night never runs")
+    reg = SS.load_registry(_paths.ROOT)
+    gc = [i for i, r in reg.items() if SS.is_gc(r["url"])]
+    assert all(reg[i]["read_by"] == "owner-only" for i in gc), gc
+    t = Path(tempfile.mkdtemp(prefix="granite-sources-"))
+    try:
+        root, bucket = t / "root", t / "bucket"
+        (root / "records" / "sources").mkdir(parents=True)
+        shutil.copy(_paths.ROOT / SS.REGISTRY, root / SS.REGISTRY)
+        one = next(i for i, r in reg.items() if r["read_by"] == "browser")
+        folder = root / SS.FOLDER / one
+        folder.mkdir(parents=True)
+
+        def run(*argv):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+                code = SS.main([*argv, "--root", str(root), "--local-bucket", str(bucket)])
+            return code, out.getvalue()
+
+        (folder / "2026-10-01.pdf").write_bytes(b"first")
+        assert run("up")[0] == 0
+        (folder / "2026-10-02.pdf").write_bytes(b"first")
+        (folder / "2026-10-03.pdf").write_bytes(b"second")
+        code, out = run("up")
+        assert code == 0 and "CHANGED" in out and "UNCHANGED" in out, out
+        keys = _bucket_keys(bucket)
+        assert f"sources/{one}/2026-10-02.pdf" not in keys, "an unchanged reading was sent again"
+        assert {f"sources/{one}/2026-10-01.pdf", f"sources/{one}/2026-10-03.pdf",
+                "sources/manifest.json"} <= keys, keys
+        assert any(k.startswith("replaced/") and k.endswith("sources/manifest.json")
+                   for k in keys), "the manifest was replaced without its old copy kept"
+        n = len(keys)
+        code, out = run("up")
+        assert code == 0 and len(_bucket_keys(bucket)) == n, ("a run with nothing new "
+                                                             "wrote to the bucket")
+        (folder / "2026-10-01.pdf").write_bytes(b"edited")
+        code, out = run("up")
+        assert code == 1 and "never replaced" in out, out
+        assert (bucket / f"sources/{one}/2026-10-01.pdf").read_bytes() == b"first"
+        (folder / "2026-10-01.pdf").write_bytes(b"first")
+        down = t / "down"
+        code, out = run("down", "--into", str(down))
+        assert code == 0, out
+        got = sorted(p.relative_to(down).as_posix() for p in down.rglob("*") if p.is_file())
+        assert got == [f"{one}/2026-10-01.pdf", f"{one}/2026-10-03.pdf"], got
+        (root / SS.FOLDER / "not-an-id").mkdir()
+        (root / SS.FOLDER / "not-an-id" / "2026-10-01.pdf").write_bytes(b"x")
+        code, out = run("up")
+        assert code == 1 and "not an id" in out, out
+    finally:
+        shutil.rmtree(t, ignore_errors=True)
+    return "ok", (f"{len(reg)} registered documents ({len(gc)} the General Court's, the "
+                  "owner's alone); nothing in the kit can match sources/; a round trip "
+                  "sends each version once and replaces none")
 
 
 @check("cloud", "cloud.py sends, fetches and backs up without losing anything",
