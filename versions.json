@@ -237,7 +237,7 @@
     "tests/test_map_labels.js": "2026-10-09.1",
     "tests/test_follow_panel.js": "2026-10-18.1",
     "strip_js.py": "2026-10-23.1",
-    "people.py": "2026-10-30.2",
+    "people.py": "2026-10-30.3",
     "person_numbers.py": "2026-10-30.2"
   },
   "generated": "2026-09-04"

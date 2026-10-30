@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.2
+# GRANITE_VERSION: 2026-10-30.3
 """
 One entry a person, joining every number the General Court uses for them.
 
@@ -328,7 +328,9 @@ def write(people, out_dir):
     doc = {"format": FORMAT,
            "what": "One entry for each person with a recorded vote since 1999, and "
                    "every number the General Court and this site use for them. "
-                   "person is this site's own number, issued once; see "
+                   "person is one of the General Court's own numbers for them, "
+                   "chosen once by a fixed rule: their earliest PersonID, else their "
+                   "earliest employee number. See "
                    "/data/schema.json.",
            "people": people}
     pj = out_dir / "people.json"
