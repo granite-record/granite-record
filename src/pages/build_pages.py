@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.250
+# GRANITE_VERSION: 2026-09-04.251
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -306,7 +306,12 @@ def moved_members(site):
     for r in rows if isinstance(rows, list) else []:
         new = f"/legislator/{r.get('slug')}" if r.get("slug") else ""
         for old in (r.get("moved_from") or []) if new else []:
-            out += [f"{old} {new} 301\n", f"{old}.html {new} 301\n"]
+            # And a tab of the old page to the same tab of the new one: the
+            # first rule that matches is the one served, and the tab rules'
+            # /legislator/:who/votes would otherwise rewrite the old address to
+            # a page that is gone (the review of 30 October 2026).
+            out += [f"{old} {new} 301\n", f"{old}.html {new} 301\n",
+                    f"{old}/* {new}/:splat 301\n"]
     return "".join(sorted(out))
 
 
@@ -4217,7 +4222,11 @@ def main():
     # once. The slugs here and BILL_TABS/MEMBER_TABS/COMMITTEE_TABS in app.js
     # are the same lists; preflight holds them together.
     red = out / "_redirects"
-    want = REDIRECTS + moved_members(out)
+    # The moved members' rules FIRST, under the header line: a rule is
+    # served by the first that matches, and the tab rules below catch
+    # /legislator/<anyone>/votes before a later 301 could.
+    head, _, rest = REDIRECTS.partition("\n")
+    want = head + "\n" + moved_members(out) + rest
     if (not red.exists()
             or red.read_text(encoding="utf-8", newline="") != want):
         red.write_text(want, encoding="utf-8", newline="\n")

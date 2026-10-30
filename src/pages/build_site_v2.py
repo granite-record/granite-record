@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.242
+# GRANITE_VERSION: 2026-09-05.243
 """
 Generate the faceted site from real General Court data.
 
@@ -3178,8 +3178,10 @@ def former_movers(register, e2p, legs, links, votes_by_member):
     votes."""
     sitting = {str(k) for k in legs} | {str(k) for k in (links or {})} | \
         {str(x) for v in (links or {}).values() for x in v}
-    last = lambda i: max(((str(v.get("year") or ""), str(v.get("date") or ""))
-                          for v in votes_by_member.get(i, [])), default=("", ""))
+    # By the day, not the text of it: dates are M/D/YYYY, and as text
+    # "9/13/2018" sorts after "10/10/2018" (the review of 30 October 2026).
+    last = lambda i: max((vote_date(v.get("date")) for v in votes_by_member.get(i, [])),
+                         default=vote_date(""))
     out = {}
     for person in (register or {}).get("people") or []:
         ids = list(dict.fromkeys(str((e2p or {}).get(n) or n) for n in person.get("numbers") or []))
@@ -3248,6 +3250,9 @@ def former_roster(legs, votes_by_member, links, former_file, current_term):
             continue
         dated = sorted(mv, key=lambda v: vote_date(v.get("date")))
         last = dated[-1]
+        every = sorted([v for x in (mid, *(links or {}).get(mid, []))
+                        for v in votes_by_member.get(x, [])],
+                       key=lambda v: vote_date(v.get("date")))
         rec = dict(former_file.get(mid) or {})
         # THE BALLOT'S OWN LABEL FIRST, because it is the only thing here that
         # has been through member_corrections.json. That file is the person's,
@@ -3278,10 +3283,15 @@ def former_roster(legs, votes_by_member, links, former_file, current_term):
             # What the record can say about their service, and nothing beyond
             # it. Not why they left: the site does not distinguish a member
             # who resigned from one who died, and must not start here.
-            "served": {"first": dated[0].get("date") or "",
-                       "last": last.get("date") or "",
+            # OVER EVERY NUMBER JOINED TO THEM (former_movers, the review of 30
+            # October 2026): Shannon Chandley's page read "on record 2019 to
+            # 2024" above 1,838 votes back to 2009, and her House years went
+            # from the directory. The name, chamber and seat stay the ones of
+            # her own latest vote.
+            "served": {"first": every[0].get("date") or "",
+                       "last": every[-1].get("date") or "",
                        "terms": sorted({P.vote_term(v.get("year", ""), v.get("date"))
-                                        for v in mv if v.get("year")})},
+                                        for v in every if v.get("year")})},
         }
     return out
 
@@ -12314,8 +12324,15 @@ def main():
     # index row's moved_from). Worked out from the former members as they
     # would stand apart, so each earlier page's address is the one it had.
     import people as PE
-    movers = former_movers(PE.load_register(Path("generated/person_numbers.json")),
-                           PE.emp_to_pid("db") or {}, legs, links, votes_by_member)
+    register = PE.load_register(Path("generated/person_numbers.json"))
+    e2p = PE.emp_to_pid("db")
+    if register and e2p is None:
+        # NOT SILENT (the review of 30 October 2026): without the roster view
+        # no register number maps to a site id, nothing joins, and the pages
+        # of the members who moved and left come back in two halves.
+        print("  WARNING: db/Legislators.psv is not here, so no member who sat in both "
+              "chambers and has left is joined; their pages stand split, one per chamber")
+    movers = former_movers(register, e2p or {}, legs, links, votes_by_member)
     movers = {k: v for k, v in movers.items() if k in former and all(e in former for e in v)}
     if movers:
         def _addr(m):
