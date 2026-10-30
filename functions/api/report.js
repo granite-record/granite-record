@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-12.13
+// GRANITE_VERSION: 2026-09-12.14
 /*
  * POST /api/report -- a reader says something on a page is wrong.
  *
@@ -81,8 +81,14 @@ export const RENAMED_TABS = new Map([["Videos", "Hearings"], ["Sessions", "Meeti
 // built in that language (translatedPage). A new language is a new prefix
 // here and in compile_reports.py, and preflight sends a report from every
 // page the build writes in one.
-const RECORD = /^(bill:\d{4}\/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3}(?:-\d{4})?|translation:\/es\/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*){0,2})?)$/;
-const PATH = /^\/(bill\/\d{4}\/[a-z]{2,6}\d{1,4}|legislator\/[a-z0-9-]{1,80}|committee\/[A-Za-z]\d{2,3}(?:-\d{4})?|es\/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*){0,2})?)$/;
+//
+// AND A SESSION DAY AND A STUDY COMMITTEE (the cohesion audit of 30 October
+// 2026, I-8: a mistake on either had no button). A session day's record is
+// its chamber and date, "session:H/2010-03-11", from /session/H/2010-03-11; a
+// study committee's is its page's own name, "study:ss1451", from
+// /committee/ss1451. Each is accepted only from its own address.
+const RECORD = /^(bill:\d{4}\/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3}(?:-\d{4})?|session:[HS]\/\d{4}-\d{2}-\d{2}|study:ss\d{1,6}|translation:\/es\/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*){0,2})?)$/;
+const PATH = /^\/(bill\/\d{4}\/[a-z]{2,6}\d{1,4}|legislator\/[a-z0-9-]{1,80}|committee\/[A-Za-z]\d{2,3}(?:-\d{4})?|session\/[HS]\/\d{4}-\d{2}-\d{2}|committee\/ss\d{1,6}|es\/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*){0,2})?)$/;
 export const TRANSLATION = "translation";
 const BUILD = /^[0-9T:.+\-Z]{0,40}$/;
 // A legislator's address is the slug build_site_v2.member_slug writes: the
@@ -154,8 +160,10 @@ export function validate(body) {
   } else if (kind === "bill") {
     const [yr, id] = ref.split("/");
     if (url !== `/bill/${yr}/${id.toLowerCase()}`) return null;
-  } else if (kind === "committee") {
+  } else if (kind === "committee" || kind === "study") {
     if (url !== `/committee/${ref}`) return null;
+  } else if (kind === "session") {
+    if (url !== `/session/${ref}`) return null;
   } else if (!MEMBER_PAGE.test(url)) {
     return null;                     // and onRequest checks the page is that member's
   }

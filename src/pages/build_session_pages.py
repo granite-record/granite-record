@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.54
+# GRANITE_VERSION: 2026-09-19.55
 """
 A page for every day the House sat.
 
@@ -3676,7 +3676,8 @@ def chamber(a, site, base, body, days):
                       description=(f"What the New Hampshire {CHAMBER[body]} did on "
                                    f"{words(date)}: every bill, motion and vote, "
                                    "in the order the journal records them."),
-                      og_title=label, globals={"GR_STATIC": True}, noscript="",
+                      og_title=label, globals={"GR_STATIC": True, "GR_REPORT": f"session:{body}/{date}"},
+                      noscript="",
                       skip_label="Skip to the session day", sr_title="",
                       # COMMITTEES, WHERE ITS TRAIL BEGINS (the person, 10
                       # October 2026; the audit of 25 October 2026, S6): the

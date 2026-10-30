@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.254
+// GRANITE_VERSION: 2026-09-07.255
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3025,6 +3025,18 @@ if(window.GR_STATIC||window.GR_STANDALONE){
 if(window.GR_STATIC){
   if(window.GR_LAW)fetch("/api/follow/count",{cache:"no-store"})
     .then(r=>{if(r.ok)mountFollow("law","",String(window.GR_LAW));}).catch(()=>{});
+  // REPORT A PROBLEM ON A SESSION DAY AND A STUDY COMMITTEE (the cohesion
+  // audit of 30 October 2026, I-8): the page names its record (GR_REPORT,
+  // "session:H/2010-03-11", "study:ss1451") and the box goes after the Share
+  // the page wrote, as on a bill's. report.js accepts each only from its own
+  // address. AFTER THIS SCRIPT HAS RUN: this block runs as the file loads,
+  // and reportBox reads REPORT_TO and REPORT_FIELDS, declared further down
+  // (a ReferenceError here, found by the screenshots of 30 October 2026).
+  if(window.GR_REPORT){
+    const rec=String(window.GR_REPORT),at=rec.indexOf(":");
+    if(at>0)setTimeout(()=>mountReport(rec.slice(0,at),rec.slice(at+1),
+      !document.querySelector("#pageacts [data-share]")),0);
+  }
 }else need("meta.json")
  .then(m=>{
    META=m;
@@ -6837,14 +6849,17 @@ function shareBox(){
 function printBox(){
   return `<button type="button" class="pshare pprint" data-print>${icon("print")}Print</button>`;
 }
-function mountReport(kind,ref){
+// A static page that writes its own Share (a session day's, a study
+// committee's) asks for Report a problem alone (`share` false), into the
+// same row, after Share, as a bill's has it.
+function mountReport(kind,ref,share=true){
   if(document.getElementById("reportbox"))return;
   const res=$("#results");
-  if(!res)return;
   const acts=document.getElementById("pageacts");
+  if(!res&&!acts)return;
   const div=document.createElement("div");
   div.id="reportbox";
-  div.innerHTML=(kind==="bill"&&acts?printBox():"")+shareBox()+reportBox(kind,ref);
+  div.innerHTML=(kind==="bill"&&acts?printBox():"")+(share?shareBox():"")+reportBox(kind,ref);
   if(acts){div.className="inacts";acts.appendChild(div);}
   else res.after(div);
 }

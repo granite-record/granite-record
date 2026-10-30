@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.14
+# GRANITE_VERSION: 2026-09-12.15
 """
 What readers reported, compiled for a person and for the session that triages.
 
@@ -141,8 +141,8 @@ FIELDS = ("date", "status", "sponsor", "vote", "hearing", "committee", "text",
 # And a page in another language whose translation a reader reports (the
 # owner, 24 October 2026): "translation:" and the page's own address, with
 # TRANSLATION as its field and no other kind's (report.js says the same).
-RECORD = re.compile(r"^(bill:\d{4}/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3}(?:-\d{4})?|translation:/es/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*){0,2})?)$")
-PATH = re.compile(r"^/(bill/\d{4}/[a-z]{2,6}\d{1,4}|legislator/[a-z0-9-]{1,80}|committee/[A-Za-z]\d{2,3}(?:-\d{4})?|es/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*){0,2})?)$")
+RECORD = re.compile(r"^(bill:\d{4}/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3}(?:-\d{4})?|session:[HS]/\d{4}-\d{2}-\d{2}|study:ss\d{1,6}|translation:/es/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*){0,2})?)$")
+PATH = re.compile(r"^/(bill/\d{4}/[a-z]{2,6}\d{1,4}|legislator/[a-z0-9-]{1,80}|committee/[A-Za-z]\d{2,3}(?:-\d{4})?|session/[HS]/\d{4}-\d{2}-\d{2}|committee/ss\d{1,6}|es/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*){0,2})?)$")
 TRANSLATION = "translation"
 # The tabs the pages render, and nothing else: a tab is a label, and a
 # free-text tab was 24 letters of a reader's own words outside the quotation.
@@ -506,8 +506,10 @@ def page_of(record, members, pages=frozenset()):
     if kind == "bill":
         yr, bid = ref.split("/")
         return f"/bill/{yr}/{bid.lower()}"
-    if kind == "committee":
+    if kind in ("committee", "study"):
         return f"/committee/{ref}"
+    if kind == "session":
+        return f"/session/{ref}"
     return members.get(ref)
 
 
