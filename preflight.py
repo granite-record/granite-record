@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.740
+# GRANITE_VERSION: 2026-09-04.741
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -27861,8 +27861,9 @@ def _small_visual_s9():
       the item after it, and the dot before the topic, bare text with no box
       to draw on, gives its own box up so its dot joins the topic's text.
     - A vote title on a member's Votes tab, cut at two lines, stopped
-      mid-phrase as though that were all of it. Two lines are drawn whole,
-      and the top of a third fades out below them.
+      mid-phrase as though that were all of it. Two lines are drawn whole
+      and end in an ellipsis (the cohesion audit of 30 October 2026, B-7: a
+      fade over a third line had sat on the motion's line below it).
     - "Report a problem" broke over two lines in half a phone's row of
       actions: there it says "Report".
     """
