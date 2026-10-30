@@ -2918,6 +2918,154 @@
      "record": "The night's record replaces this file each morning; a roll call the record holds wins."
     }
    }
+  },
+  {
+   "name": "yeas written 190.0, one number to JSON",
+   "valid": true,
+   "doc": {
+    "api": 1,
+    "kind": "session.votes",
+    "date": "2027-01-07",
+    "provisional": true,
+    "read_at": "2027-01-07T15:43:02Z",
+    "next_read_by": "2027-01-07T15:45:02Z",
+    "status": {
+     "state": "reading",
+     "problem": null,
+     "since": null
+    },
+    "source": "The General Court's public SQL database (RollCallSummary, RollCallHistory, Docket)",
+    "record": {
+     "H": "/session/H/2027-01-07.json",
+     "S": "/session/S/2027-01-07.json"
+    },
+    "members": {
+     "H": [
+      "11463",
+      "960"
+     ],
+     "S": []
+    },
+    "rollcalls": [
+     {
+      "id": "2027-H-14",
+      "body": "H",
+      "seq": 14,
+      "bill": "2027-2028/HB2",
+      "bill_as_recorded": "HB2",
+      "question": "Ought to Pass",
+      "taken": "2027-01-07T15:41:07Z",
+      "saved": null,
+      "keyed_by": "voting system",
+      "yeas": 190.0,
+      "nays": 171,
+      "present": 0,
+      "absent": 39,
+      "ballots": "YN",
+      "ballots_complete": false,
+      "docket": {
+       "line": "MA RC 190-171",
+       "abbrev": "MA",
+       "outcome": "Motion Adopted"
+      },
+      "first_seen": "2027-01-07T15:42:58Z",
+      "note": null
+     }
+    ],
+    "tallies": [
+     {
+      "body": "S",
+      "bill": "2027-2028/SB12",
+      "bill_as_recorded": "SB12",
+      "order": 3,
+      "entered": "2027-01-07T14:20:00Z",
+      "line": "Ought to Pass, RC 15Y-8N, MA; 01/07/2027",
+      "yeas": 15,
+      "nays": 8,
+      "abbrev": "MA",
+      "outcome": "Motion Adopted",
+      "first_seen": "2027-01-07T14:21:03Z",
+      "rollcall": null
+     }
+    ],
+    "notes": {
+     "record": "The night's record replaces this file each morning; a roll call the record holds wins."
+    }
+   }
+  },
+  {
+   "name": "yeas 190.5",
+   "valid": false,
+   "doc": {
+    "api": 1,
+    "kind": "session.votes",
+    "date": "2027-01-07",
+    "provisional": true,
+    "read_at": "2027-01-07T15:43:02Z",
+    "next_read_by": "2027-01-07T15:45:02Z",
+    "status": {
+     "state": "reading",
+     "problem": null,
+     "since": null
+    },
+    "source": "The General Court's public SQL database (RollCallSummary, RollCallHistory, Docket)",
+    "record": {
+     "H": "/session/H/2027-01-07.json",
+     "S": "/session/S/2027-01-07.json"
+    },
+    "members": {
+     "H": [
+      "11463",
+      "960"
+     ],
+     "S": []
+    },
+    "rollcalls": [
+     {
+      "id": "2027-H-14",
+      "body": "H",
+      "seq": 14,
+      "bill": "2027-2028/HB2",
+      "bill_as_recorded": "HB2",
+      "question": "Ought to Pass",
+      "taken": "2027-01-07T15:41:07Z",
+      "saved": null,
+      "keyed_by": "voting system",
+      "yeas": 190.5,
+      "nays": 171,
+      "present": 0,
+      "absent": 39,
+      "ballots": "YN",
+      "ballots_complete": false,
+      "docket": {
+       "line": "MA RC 190-171",
+       "abbrev": "MA",
+       "outcome": "Motion Adopted"
+      },
+      "first_seen": "2027-01-07T15:42:58Z",
+      "note": null
+     }
+    ],
+    "tallies": [
+     {
+      "body": "S",
+      "bill": "2027-2028/SB12",
+      "bill_as_recorded": "SB12",
+      "order": 3,
+      "entered": "2027-01-07T14:20:00Z",
+      "line": "Ought to Pass, RC 15Y-8N, MA; 01/07/2027",
+      "yeas": 15,
+      "nays": 8,
+      "abbrev": "MA",
+      "outcome": "Motion Adopted",
+      "first_seen": "2027-01-07T14:21:03Z",
+      "rollcall": null
+     }
+    ],
+    "notes": {
+     "record": "The night's record replaces this file each morning; a roll call the record holds wins."
+    }
+   }
   }
  ]
 }

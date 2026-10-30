@@ -629,6 +629,24 @@ test("the record is asked again every 10 minutes while it is not there, and once
   } finally { p.stop(); }
 });
 
+test("/session/H/today: the day before's dated link goes when the day turns at 06:00", async () => {
+  let at = T("2027-01-08T10:30:00Z");                                  // 05:30 on the 8th: the 7th
+  const { doc, els } = dayPage({ built: "2027-01-08" });
+  const { fetch } = server({ "/session/H/2027-01-07.json": { date: "2027-01-07", rollcalls: [] },
+                             "/api/live/votes/2027-01-07": liveFile("2027-01-07", []), "/api/live/votes/2027-01-08": liveFile("2027-01-08", []) });
+  const p = L.startToday(doc, { fetch, now: () => at });
+  try {
+    await p.first;
+    assert.equal(els["live-today-dated"].hidden, false);
+    assert.match(els["live-today-dated"].innerHTML, /2027-01-07/);
+    at = T("2027-01-08T11:30:00Z");                                    // 06:30: the 8th
+    await p.votes.poll();
+    assert.match(els["live-today-day"].textContent, /Friday, January 8/);
+    assert.equal(els["live-today-dated"].hidden, true, "no record of the 8th yet: no link");
+    assert.doesNotMatch(els["live-today-dated"].innerHTML, /2027-01-07/);
+  } finally { p.stop(); }
+});
+
 test("the dated page's overlay: within 14 days, the live roll calls the record lacks; none without a record; older pages ask nothing", async () => {
   const record = { date: "2027-01-07", rollcalls: [rcOf({ id: "2027-H-14", seq: 14 })] };
   const live = liveFile("2027-01-07", [rcOf({ id: "2027-H-14", seq: 14 }), rcOf({ id: "2027-H-16", seq: 16 }),

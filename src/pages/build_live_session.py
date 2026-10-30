@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.2
+# GRANITE_VERSION: 2026-10-30.3
 """
 The session days' side of the live layer (design sections 4.2 to 4.4),
 written by the night after the session-day pages:
@@ -128,7 +128,8 @@ def _same(a, b):
 def _is(v, t):
     return {"object": isinstance(v, dict), "array": isinstance(v, list), "string": isinstance(v, str),
             "boolean": isinstance(v, bool), "null": v is None,
-            "integer": isinstance(v, int) and not isinstance(v, bool),
+            # JSON has one number: 2.0 is an integer to JavaScript, and so here.
+            "integer": (isinstance(v, int) and not isinstance(v, bool)) or (isinstance(v, float) and v.is_integer()),
             "number": isinstance(v, (int, float)) and not isinstance(v, bool)}[t]
 
 

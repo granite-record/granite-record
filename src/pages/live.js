@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.10
+// GRANITE_VERSION: 2026-10-30.11
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -588,6 +588,9 @@ L.startToday = function (doc, opts) {
       words.hidden = false;
     }
     asked = 0;
+    // The day before's link goes with its day.
+    var link = doc.getElementById("live-today-dated");
+    if (link) { link.innerHTML = ""; link.hidden = true; }
     return askRecord(d);
   }
   // Whether the record already holds the day: the night writes a dated page's
