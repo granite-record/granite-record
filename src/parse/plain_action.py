@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-14.13
+# GRANITE_VERSION: 2026-10-14.14
 """
 A docket line in plain words, for a reader who does not know the clerk's
 shorthand -- the email digest and the Documents tab (the person's choices of
@@ -552,7 +552,19 @@ def plain(raw, bill="", body="", next_line=""):
 # room they meet in as "SH Rm 100", "SH Rm 122-123" and "SL Rm Map Room",
 # and their pages said Meets In "SH Rm 100" where a hearing of theirs says
 # "State House 100". A named room, the State Library's Map Room, is _named's.
-_PLACE_BLDG = re.compile(r"\b(LOBO|LOB|SH|GP|SL) ?(?:Room |Rm\.? ?)?([0-9][0-9A-Za-z\-]*)\b(?!:)")
+#
+# AND THE CLERK'S OLD CODES (the R2 polish batch, 30 October 2026): before
+# 2007 the docket wrote the room first, "RM207,LOB", "RMs210-211,LOB",
+# "RM105A,ST HOUSE", and a study committee's record "Room 102 LOB" and "LOB
+# Rooms 306-308"; the Senate's calendar writes "SH RM 207". 9,197 of a
+# committee's 21,267 one-room meetings printed the code. Each is turned
+# round to the building and its number, "LOB 207", which the rule below then
+# words; anything after the room (":EDUC", "(NOTE TIME CHANGE)") stays as
+# written. app.js's roomWords does the same, in the same order.
+_ROOM_FIRST = re.compile(r"\bRMs?\.?\s*,?\s*(\d+(?:-?[A-Z])?(?:\s*[-/]\s*\d+(?:-?[A-Z])?)?)\s*[,/]?\s*"
+                         r"(LOB|ST\.?\s*HOUSE|STATE\s+HOUSE|SH)\b", re.I)
+_ROOM_THEN_CODE = re.compile(r"\b[Rr]ooms?\s+(\d+(?:-?[A-Z])?(?:\s*[-/]\s*\d+(?:-?[A-Z])?)?)\s+(LOB|SH|GP|SL)\b")
+_PLACE_BLDG = re.compile(r"\b(LOBO|LOB|SH|GP|SL) ?(?:Rooms? |R[Mm][Ss]?\.? ?)?([0-9][0-9A-Za-z\-]*)\b(?!:)")
 _PLACE_ALONE = re.compile(r"^(LOBO|LOB|SH|GP|SL)$")
 _REPS_HALL = re.compile(r"^(?:SH,?\s+)?(?:Reps|Representatives)'?\s+Hall(?:,?\s*SH)?$", re.I)
 _PLACE_BUILDINGS = dict(BUILDINGS, LOBO=BUILDINGS["LOB"])
@@ -562,14 +574,18 @@ def place(raw):
     """A meeting's room in the words the calendar uses: "GP 231", "GP231" and
     "GP Room 231" are "Granite Place 231", "Room 100, SH" is "Room 100, State
     House", "SH Reps Hall" is "Representatives' Hall, State House", "SL Map
-    Room" and "Map Room, SL" are "State Library Map Room". Anything else comes
-    back as it was, spaces made single."""
+    Room" and "Map Room, SL" are "State Library Map Room", and the old
+    "RM207,LOB" and "Room 102 LOB" are "Legislative Office Building 207" and
+    "102". Anything else comes back as it was, spaces made single."""
     t = " ".join(str(raw or "").split())
     if _REPS_HALL.match(t):
         return "Representatives' Hall, State House"
     if _PLACE_ALONE.match(t):
         return _PLACE_BUILDINGS[t]
     t = _named(t)
+    t = _ROOM_FIRST.sub(lambda m: ("LOB " if m.group(2).upper() == "LOB" else "SH ")
+                        + m.group(1).replace(" ", ""), t)
+    t = _ROOM_THEN_CODE.sub(lambda m: f"{m.group(2)} {m.group(1).replace(' ', '')}", t)
     t = _ROOM.sub(lambda m: f"Room {m.group(1).strip()}, "
                             f"{BUILDINGS.get(m.group(2).upper(), m.group(2))}", t)
     return _PLACE_BLDG.sub(lambda m: f"{_PLACE_BUILDINGS[m.group(1)]} {m.group(2)}", t)

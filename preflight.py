@@ -42837,7 +42837,23 @@ def _rooms_in_words(PA):
              "LOB 205-207": "Legislative Office Building 205-207",
              "NH Hospital Association, 125 Airport Rd, Concord, NH":
                  "NH Hospital Association, 125 Airport Rd, Concord, NH",
-             "DNCR, 172 Pembroke Road, Concord": "DNCR, 172 Pembroke Road, Concord", "": ""}
+             "DNCR, 172 Pembroke Road, Concord": "DNCR, 172 Pembroke Road, Concord", "": "",
+             # The clerk's old codes (the R2 polish batch, 30 October 2026): the docket's
+             # room-first "RM207,LOB" before 2007, a study committee's "Room 102 LOB" and
+             # "LOB Rooms 306-308", the Senate calendar's "SH RM 207"; what follows the
+             # room stays as written.
+             "RM207,LOB": "Legislative Office Building 207",
+             "RMs210-211,LOB": "Legislative Office Building 210-211",
+             "RM105A,ST HOUSE": "State House 105A", "RM100, St House": "State House 100",
+             "Rm,208, LOB": "Legislative Office Building 208",
+             "RM 202LOB": "Legislative Office Building 202",
+             "RM210-211/LOB": "Legislative Office Building 210-211",
+             "Room 102 LOB": "Legislative Office Building 102", "Room 100 SH": "State House 100",
+             "LOB Rooms 306-308": "Legislative Office Building 306-308",
+             "Executive Council Chambers SH RM 207": "Executive Council Chambers State House 207",
+             "RM207,LOB :EDUC": "Legislative Office Building 207 :EDUC",
+             "RMS205-207,LOB (NOTE TIME CHANGE)": "Legislative Office Building 205-207 (NOTE TIME CHANGE)",
+             "SH 105-A": "State House 105-A"}
     bad = [f"plain_action.place({raw!r}) is {PA.place(raw)!r}" for raw, want in cases.items()
            if PA.place(raw) != want]
     got = _app_js(f"{json.dumps(list(cases))}.map(scope.roomWords)", names=("roomWords",))
@@ -42857,7 +42873,7 @@ def _rooms_in_words(PA):
     cal = shared / "site" / "calendar.html"
     if cal.exists():
         raw = re.findall(r'<span class="calwhere">([^<]*)</span>', cal.read_text(encoding="utf-8"))
-        left = [r for r in raw if re.match(r"(?:LOBO?|SH|GP) ?(?:Room )?\d", r)]
+        left = [r for r in raw if re.search(r"(?:RMs?\s*\d|(?:LOBO?|SH|GP) ?(?:Rooms? |RMS? ?)?\d)", r, re.I)]
         if left:
             bad.append(f"the fixture's Calendar says {left[:3]}")
     assert not bad, "; ".join(bad[:6])
@@ -66265,8 +66281,8 @@ def _study_committee_tabs(SC, BP):
 @check("build", "the study committees' record is read as it was written: a lost break parted only "
        "where the record says so, an old room read as its room, a kind from its name, and the "
        "statute and the session law put back where the record swapped them",
-       needs=("build_study_committees",))
-def _study_committee_reading(SC):
+       needs=("build_study_committees", "plain_action"))
+def _study_committee_reading(SC, PA):
     """The database copy lost the line breaks inside its text, as it did in a
     venue: "chairpersons of thehouse and senate committees". A word is parted
     only where the vocabulary says so, never a word the statutes' headings
@@ -66292,13 +66308,19 @@ def _study_committee_reading(SC):
     assert said == Counter({"thehouse": 1}), said
     assert SC.seat_words("(j)  Fifteen members of the public. (Reappointed 12/12/24)", w) == (
         "Fifteen members of the public."), "a seat keeps its paragraph's letter or an appointment's note"
-    rooms = {"RM205,LOB -": ("LOB Room 205", ""),
-             "RMs306-308,LOB - Continued Meeting": ("LOB Rooms 306-308", "Continued Meeting"),
-             "RM105-A, St House -": ("State House Room 105-A", ""),
-             "RM101,LOB   (Org meeting)": ("LOB Room 101", "Org meeting"),
+    # The clerk's codes, which plain_action.place then words as every room on the site
+    # (the R2 polish batch, 30 October 2026: "State House 105-A", not "State House Room 105-A").
+    rooms = {"RM205,LOB -": ("LOB 205", ""),
+             "RMs306-308,LOB - Continued Meeting": ("LOB 306-308", "Continued Meeting"),
+             "RM105-A, St House -": ("SH 105-A", ""),
+             "RM101,LOB   (Org meeting)": ("LOB 101", "Org meeting"),
              "GP Room 230": ("GP Room 230", "")}
     for r, want in rooms.items():
         assert SC.old_room(r) == want, f"{r!r} reads as {SC.old_room(r)}"
+    for r, want in (("RM205,LOB -", "Legislative Office Building 205"),
+                    ("RMs306-308,LOB - Continued Meeting", "Legislative Office Building 306-308"),
+                    ("RM105-A, St House -", "State House 105-A")):
+        assert PA.place(SC.old_room(r)[0]) == want, f"{r!r} is said {PA.place(SC.old_room(r)[0])!r}"
     kinds = {"Business Finance Authority Board of Directors": "Board",
              "Advisory Committee on the Human Rights Commission": "Committee",
              "Commission to Study Stable Tokens": "Commission",

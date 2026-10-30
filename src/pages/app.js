@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.254
+// GRANITE_VERSION: 2026-09-07.255
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -5414,6 +5414,11 @@ const NOT_NAMED="bill not named in the captions";
 // Room". And "Rm" is "Room": a Senate committee Meets In "SH Rm 100", its
 // hearings "State House 100". plain_action.BUILDINGS, _named and
 // _PLACE_BLDG, in the same order.
+//
+// AND THE CLERK'S OLD CODES (the R2 polish batch, 30 October 2026): the
+// docket's "RM207,LOB" before 2007, a study committee's "Room 102 LOB" and
+// "LOB Rooms 306-308", the Senate's "SH RM 207", turned round to "LOB 207"
+// and so worded. plain_action's _ROOM_FIRST and _ROOM_THEN_CODE.
 const ROOM_BUILDINGS={LOB:"Legislative Office Building",LOBO:"Legislative Office Building",
   SH:"State House",GP:"Granite Place",SL:"State Library"};
 const roomWords=v=>{
@@ -5425,10 +5430,14 @@ const roomWords=v=>{
       (m,n,k)=>`${ROOM_BUILDINGS[k]} ${n}`)
     .replace(/\b(LOBO|LOB|SH|GP|SL)\s+(?:Rm\.?\s+|Room\s+)?((?:[A-Z][\w']*\s+)+Room)\b/g,
       (m,k,n)=>`${ROOM_BUILDINGS[k]} ${n}`)
+    .replace(/\bRMs?\.?\s*,?\s*(\d+(?:-?[A-Z])?(?:\s*[-/]\s*\d+(?:-?[A-Z])?)?)\s*[,/]?\s*(LOB|ST\.?\s*HOUSE|STATE\s+HOUSE|SH)\b/gi,
+      (m,n,k)=>`${k.toUpperCase()==="LOB"?"LOB":"SH"} ${n.replace(/ /g,"")}`)
+    .replace(/\b[Rr]ooms?\s+(\d+(?:-?[A-Z])?(?:\s*[-/]\s*\d+(?:-?[A-Z])?)?)\s+(LOB|SH|GP|SL)\b/g,
+      (m,n,k)=>`${k} ${n.replace(/ /g,"")}`)
     .replace(/\bRoom\s+(\w[\w .\-]*?)\s*,\s*([A-Z]{2,3})\b/gi,
       (m,r,k)=>`Room ${r.trim()}, ${ROOM_BUILDINGS[k.toUpperCase()]&&k.toUpperCase()!=="LOBO"
         ?ROOM_BUILDINGS[k.toUpperCase()]:k}`)
-    .replace(/\b(LOBO|LOB|SH|GP|SL) ?(?:Room |Rm\.? ?)?([0-9][0-9A-Za-z\-]*)\b(?!:)/g,
+    .replace(/\b(LOBO|LOB|SH|GP|SL) ?(?:Rooms? |R[Mm][Ss]?\.? ?)?([0-9][0-9A-Za-z\-]*)\b(?!:)/g,
       (m,k,n)=>`${ROOM_BUILDINGS[k]} ${n}`);
 };
 // WHERE THIS SITE'S RECORDINGS BEGIN, in one sentence for every page that
