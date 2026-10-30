@@ -136,17 +136,43 @@ test("every status code of the votes file has its own sentence, and an unknown o
 
 test("a chamber's roll calls, newest first, with the docket's outcome named as the docket's", () => {
   const f = { rollcalls: [
-    { id: "2027-H-14", body: "H", seq: 14, bill_as_recorded: "HB2", question: "Ought to Pass", taken: "2027-01-07T15:41:07Z",
+    { id: "2027-H-14", body: "H", seq: 14, bill: "2027-2028/HB2", bill_as_recorded: "HB2", question: "Ought to Pass", taken: "2027-01-07T15:41:07Z",
       yeas: 190, nays: 171, ballots_complete: true, docket: { outcome: "Motion Adopted" }, note: null },
     { id: "2027-H-15", body: "H", seq: 15, bill_as_recorded: "HB3", question: "Table", taken: "2027-01-07T15:50:00Z",
       yeas: 100, nays: 250, ballots_complete: false, docket: null, note: null },
     { id: "2027-S-3", body: "S", seq: 3, bill_as_recorded: "SB12", question: "OTP", taken: null, saved: "2027-01-08T14:12:00Z",
       yeas: 15, nays: 8, ballots_complete: true, docket: null, note: null }] };
-  const h = L.votesItems(f, "H");
+  const h = L.votesItems(f, "H", { "2027-2028": { 2027: ["HB2", "HB3"] } });
   assert.equal(h.length, 2);
   assert.match(h[0], /data-id="2027-H-15".*outcome not yet in the docket.*names follow/);
   assert.match(h[1], /href="\/bill\/2027\/hb2\.html".*Motion Adopted, clerk's docket.*names: in/);
   assert.match(L.votesItems(f, "S")[0], new RegExp(`saved at 9:12${NBSP}AM`));
+});
+
+test("a roll call's bill links to the page of the year it was introduced, through the term's index", () => {
+  // The term's own index, as build_live.bill_years writes it: HB 1 of 2025
+  // carried over into 2026; CACR 13 and HB 1442 introduced in 2026.
+  const bills = { "2025-2026": { 2025: ["CACR5", "HB1", "SB12"], 2026: ["CACR13", "HB1442"] } };
+  const rc = (b, term) => ({ id: "2026-H-3", body: "H", seq: 3, bill: `${term || "2025-2026"}/${b}`, bill_as_recorded: b,
+    question: "OTP", taken: "2026-01-08T15:00:00Z", yeas: 1, nays: 0, ballots_complete: true, docket: null, note: null });
+  // Voted in 2026, introduced in 2025: the 2025 page, never /bill/2026/hb1.
+  assert.equal(L.billHref(rc("HB1"), bills), "/bill/2025/hb1.html");
+  assert.equal(L.billHref(rc("HB 1"), bills), "/bill/2025/hb1.html");
+  assert.equal(L.billHref(rc("CACR13"), bills), "/bill/2026/cacr13.html");
+  const li = L.votesItems({ rollcalls: [rc("HB1")] }, "H", bills)[0];
+  assert.match(li, /href="\/bill\/2025\/hb1\.html"/);
+  assert.doesNotMatch(li, /\/bill\/2026\//);
+  // Not in the index, another term's, or no index at all: the number, unlinked.
+  for (const [r, b] of [[rc("HB9999"), bills], [rc("HB1", "2027-2028"), bills], [rc("HB1"), undefined], [rc("HB1"), {}]]) {
+    assert.equal(L.billHref(r, b), null);
+    const item = L.votesItems({ rollcalls: [r] }, "H", b)[0];
+    assert.doesNotMatch(item, /href=/);
+    assert.match(item, /<span class="bmention" translate="no">HB/);
+  }
+  // A key the index would only hold by inheritance is not a bill.
+  assert.equal(L.billHref(rc("HB1", "constructor"), bills), null);
+  assert.equal(L.billHref({ ...rc("HB1"), bill_as_recorded: "<b>x" }, bills), null);
+  assert.match(L.votesItems({ rollcalls: [{ ...rc("HB1"), bill_as_recorded: "<b>x" }] }, "H", bills)[0], /&lt;b&gt;x/);
 });
 
 // A page just deep enough for L.start: the stream cards' box, keyed children.

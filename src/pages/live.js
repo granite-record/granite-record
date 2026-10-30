@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.2
+// GRANITE_VERSION: 2026-10-30.3
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -201,17 +201,37 @@ L.votesSentence = function (file, now, body, http) {
   return say + tail;
 };
 
+// A roll call's bill's own page, or null. A bill's page is under the year
+// it was introduced, not the year it is voted on: a 2025 bill carried over
+// and voted in 2026 is /bill/2025/hb1.html. `bills` is the night's
+// {term: {year: [id]}} (build_live.bill_years), read from the term's own
+// index; a bill it does not hold gets no link, since a wrong link is worse
+// than none.
+L.billHref = function (r, bills) {
+  var term = String((r && r.bill) || "").split("/")[0];
+  var id = String((r && r.bill_as_recorded) || "").replace(/\s+/g, "").toUpperCase();
+  var years = bills && Object.prototype.hasOwnProperty.call(bills, term) ? bills[term] : null;
+  if (!id || !years) return null;
+  for (var y in years) {
+    if (Object.prototype.hasOwnProperty.call(years, y) && (years[y] || []).indexOf(id) >= 0) {
+      return "/bill/" + y + "/" + id.toLowerCase() + ".html";
+    }
+  }
+  return null;
+};
+
 // One chamber's roll calls, newest first, as list items.
-L.votesItems = function (file, body) {
+L.votesItems = function (file, body, bills) {
   var rcs = ((file && file.rollcalls) || []).filter(function (r) { return r.body === body; })
     .sort(function (a, b) { return b.seq - a.seq; });
   return rcs.map(function (r) {
     var when = r.taken ? L.timeOf(r.taken) : r.saved ? C.tr("votes.saved_at", "saved at {time}", { time: L.timeOf(r.saved) }) : "";
-    // The site's own mention of a bill (components.billMention), at the vote's
-    // session year: bill/2027/hb2.html.
-    var year = String(r.id || "").slice(0, 4);
-    var bill = r.bill_as_recorded ? billMention(r.bill_as_recorded, "/bill/" + year + "/"
-      + String(r.bill_as_recorded).toLowerCase().replace(/[^a-z0-9]/g, "") + ".html") : "";
+    // The site's own mention of a bill (components.billMention), linked
+    // only where the term's index places it (L.billHref).
+    var href = L.billHref(r, bills);
+    var bill = !r.bill_as_recorded ? ""
+      : href ? billMention(r.bill_as_recorded, href)
+      : '<span class="bmention" translate="no">' + C.esc(r.bill_as_recorded) + "</span>";
     var outcome = r.docket && r.docket.outcome
       ? C.tr("votes.outcome", "{outcome}, clerk's docket", { outcome: r.docket.outcome })
       : C.tr("votes.no_outcome", "outcome not yet in the docket");

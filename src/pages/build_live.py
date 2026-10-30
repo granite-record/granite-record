@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.1
+# GRANITE_VERSION: 2026-10-30.2
 """
 Live Now's page and its schedule (the live layer's design, sections 1.2 and
 1.4), written by the night beside the Calendar and from the Calendar's own
@@ -132,7 +132,43 @@ def schedule(site, today, weeks=None, history=None):
         days[iso] = rows
         if nxt is None and d > today and rows:
             nxt = {"date": iso, "name": rows[0]["name"]}
-    return {"built": today.isoformat(), "tz": "America/New_York", "days": days, "next": nxt}
+    return {"built": today.isoformat(), "tz": "America/New_York", "days": days, "next": nxt,
+            "bills": bill_years(site, today)}
+
+
+def term_of(year):
+    return f"{year}-{year + 1}" if year % 2 else f"{year - 1}-{year}"
+
+
+def bill_years(site, today):
+    """{term: {year: [bill id]}} for the sitting term and the newest the site has.
+
+    A BILL'S PAGE IS UNDER ITS OWN YEAR, the year it was introduced, not the
+    year of the day it is voted on: a 2025 bill carried over and voted in 2026
+    is /bill/2025/hb1, and CACR 13 of 2026 is /bill/2026/cacr13. So the page
+    maps a roll call's bill to its page through the term's own index (the
+    rows build_site_v2 writes to idx/<term>.json), never through the sitting's
+    year; a bill the index does not hold is printed without a link, because a
+    wrong link is worse than none (build_session_pages.bill_href).
+    """
+    site = Path(site)
+    try:
+        terms = json.loads((site / "meta.json").read_text(encoding="utf-8")).get("terms") or []
+    except (OSError, ValueError, AttributeError):
+        return {}
+    terms = [t for t in terms if isinstance(t, str) and re.fullmatch(r"\d{4}-\d{4}", t)]
+    out = {}
+    for t in sorted({term_of(today.year), max(terms, default="")} & set(terms)):
+        try:
+            rows = json.loads((site / "idx" / f"{t}.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        by = {}
+        for r in rows:
+            if isinstance(r, dict) and r.get("id") and r.get("year"):
+                by.setdefault(str(r["year"]), []).append(str(r["id"]).upper())
+        out[t] = {y: sorted(set(v)) for y, v in sorted(by.items())}
+    return out
 
 
 def page_body(sched, today):
