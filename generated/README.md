@@ -7,14 +7,6 @@ the run named beside it, never edited by hand.
 - `careers.json` -- one record per person across every term they served,
   joining the General Court's employee numbers into people
   (`src/parse/build_careers.py`).
-- `person_numbers.json` -- the register of person numbers the data API
-  publishes (/data/people.json): each person's number, one of the General
-  Court's own by a fixed rule, and the General Court numbers it was issued
-  for. Unlike the rest of this folder it is never rewritten: entries are
-  only added, by `python3 src/ops/person_numbers.py --issue`, which a person
-  runs, and a number once issued is never given to anyone else. The nightly
-  reads it and never writes it (preflight holds that). Issued first on 30
-  October 2026, 2,187 people.
 - `places.json` -- one list of New Hampshire's places, reconciling the five
   that count them differently (`src/towns/build_places.py`).
 - `district_geometry.json` -- NH GRANIT's 2022 district boundaries and town
