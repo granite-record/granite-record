@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.56
+# GRANITE_VERSION: 2026-09-10.57
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -1213,6 +1213,73 @@ def bill_indexes(site, origin):
     }
 
 
+def bill_files(out, site):
+    """Every bill's full record, one gzipped JSON Lines file a term:
+    bills-<term>.jsonl.gz (the data API's branch 3; docs/design/api/DESIGN.md,
+    2.4). Each line is the record the bill's own page carries, read back by
+    site_read.records, with "key" put first, "2025-2026/HB1442": a bill
+    number is a key only with its term. Lines run in the order bills.csv
+    lists them (bill_order). Returns their rows for the manifest's "files".
+
+    THE BYTES ARE THE SAME FOR THE SAME RECORDS. The gzip header names no
+    file and no time (mtime 0), so a night that changed nothing writes the
+    file it wrote before, and the manifest's sha256 says so.
+
+    EVERY BILL OR NONE. A term's file is checked against its bill index: a
+    record missing from the pages, or a page no index row names, stops the
+    build with the counts, rather than publishing a term with bills left out
+    (CLAUDE.md, a writer run on a subset)."""
+    import gzip
+    import hashlib
+    import re as _re
+    idx = SR.bill_index_or_stop(site, "build_exports.py")
+    term_of = {}
+    for b in idx:
+        if _re.fullmatch(r"\d{4}-\d{4}", str(b.get("term") or "")) and b.get("year"):
+            term_of[(str(b["year"]), str(b["id"]).upper())] = b["term"]
+    by_term, stray = {}, []
+    for year, bid, rec in SR.records(site):
+        term = term_of.get((year, bid))
+        if term is None:
+            stray.append(f"{year}/{bid}")
+            continue
+        by_term.setdefault(term, []).append(rec)
+    want = {}
+    for t in term_of.values():
+        want[t] = want.get(t, 0) + 1
+    # NO PAGES AT ALL is a site built without them (a fixture, or a build
+    # stopped short), said and not written; SOME PAGES is a subset, refused.
+    if not by_term and not stray:
+        print(f"  {'bills-<term>.jsonl.gz':<28} not written: no bill pages in {site}/bill/")
+        return []
+    short = {t: (len(by_term.get(t, ())), n) for t, n in want.items() if len(by_term.get(t, ())) != n}
+    if stray or short:
+        raise SystemExit(
+            "The bill files would not hold every bill, so none is written: "
+            + (f"{len(stray)} page(s) no bill index names ({', '.join(stray[:5])}); " if stray else "")
+            + "; ".join(f"{t} has {got:,} records of {n:,}" for t, (got, n) in sorted(short.items())))
+    rows = []
+    for term in sorted(by_term, reverse=True):
+        recs = sorted(by_term[term], key=lambda r: BO.bill_key(r.get("id")))
+        body = "".join(
+            json.dumps({"key": f'{term}/{r["id"]}', **{k: v for k, v in r.items() if k != "key"}},
+                       ensure_ascii=False, separators=(",", ":")) + "\n"
+            for r in recs).encode("utf-8")
+        name = f"bills-{term}.jsonl.gz"
+        with (out / name).open("wb") as fh, \
+                gzip.GzipFile(filename="", mode="wb", fileobj=fh, compresslevel=9, mtime=0) as gz:
+            gz.write(body)
+        size = (out / name).stat().st_size
+        rows.append({"path": f"/data/{name}", "kind": "bills", "term": term,
+                     "rows": len(recs), "bytes": size,
+                     "sha256": hashlib.sha256((out / name).read_bytes()).hexdigest(),
+                     "encoding": "gzip", "media_type": "application/x-ndjson"})
+        flag = "  OVER THE 25 MiB CAP" if size > SAFE else ""
+        print(f"  {name:<28} {len(recs):>9,} bills {size / 1e6:>7.1f} MB "
+              f"({len(body) / 1e6:,.1f} MB opened){flag}")
+    return rows
+
+
 def people_join(site, data, db="db", careers="generated/careers.json",
                 register="generated/person_numbers.json"):
     """Every number the General Court uses for a person, joined to one person
@@ -1341,11 +1408,9 @@ def main():
     # of 30 October 2026). Built unlinked until the announcement: listed here,
     # under a key of their own, and not on the data page, so that nothing a
     # reader sees today moves while they are built.
-    # Only where there is something to list: a clone without the inputs
-    # writes the manifest it wrote before.
-    files = people_files(out, joined)
-    if files:
-        manifest["files"] = files
+    manifest["files"] = people_files(out, joined) + bill_files(out, site)
+    over += [{"file": f["path"].rsplit("/", 1)[-1], "bytes": f["bytes"]}
+             for f in manifest["files"] if f["bytes"] > SAFE]
     (out / "manifest.json").write_text(
         json.dumps(manifest, indent=1), encoding="utf-8")
     total = sum(t["bytes"] for t in tables)
