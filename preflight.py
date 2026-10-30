@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.746
+# GRANITE_VERSION: 2026-09-04.747
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -6374,6 +6374,161 @@ _DOCKET_INTRODUCED_ADOPTED = [
         "2020|3140|6/11/2020 12:00:00 AM|HR16|H|Lay on Table (Rep. Almy): MA VV 06/11/2020 HJ 9 P. 38|6/11/2020 12:00:00 AM"],
      None),
 ]
+
+
+def _canon_days(o):
+    """A sitting-days answer as plain data, to compare two: dict and list
+    order kept, a set as a set, a Day or Item field by field."""
+    if isinstance(o, dict):
+        return ("dict", [(_canon_days(k), _canon_days(v)) for k, v in o.items()])
+    if isinstance(o, (list, tuple)):
+        return (type(o).__name__, [_canon_days(v) for v in o])
+    if isinstance(o, (set, frozenset)):
+        return ("set", sorted(repr(_canon_days(v)) for v in o))
+    if hasattr(type(o), "__slots__") or hasattr(o, "__dict__"):
+        slots = [s for c in type(o).__mro__ for s in getattr(c, "__slots__", ())]
+        d = {s: _canon_days(getattr(o, s, "<unset>")) for s in slots}
+        if hasattr(o, "__dict__"):
+            d.update({k: _canon_days(v) for k, v in vars(o).items()})
+        return (type(o).__name__, sorted(d.items()))
+    return o
+
+
+@check("session", "the sitting days are worked out once a build: kept, read back as the parse "
+       "gives them, worked out again when an input moves or the file will not read",
+       needs=("narrative", "session_days"))
+def _session_days_cache(N, SD):
+    """session_days.load() was the same half-minute parse in four steps of
+    the build and the night's checks (29 October 2026); the build's own call
+    now keeps its answer in .build_cache/session_days.pkl.gz under a sha256
+    of every file it read, every folder it listed, every path it looked for
+    and its code, and the steps after it read it back. This holds the four
+    things that make that safe: what is read back is what the parse gives,
+    the days the voting system began included; a byte moved in an input, or
+    a file added where the parse looks, is a miss; a cache that will not
+    read is worked out again with the same answer; and a check's call, which
+    names its own record, is never kept."""
+    narr = {}
+    for term, bill, lines, _want in _DOCKET_INTRODUCED_ADOPTED:
+        if term == "2025-2026":
+            narr.setdefault(term, {})[bill] = {
+                "events": _told_from_rows(N, term, bill, lines)["events"]}
+    here, d = Path.cwd(), Path(tempfile.mkdtemp(prefix="sd_cache_"))
+    began = dict(SD.ROLLCALLS_FROM)
+    try:
+        (d / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
+        (d / "rollcalls.json").write_text(json.dumps({"2025-2026": {"HR1": [_rc(
+            "1998", "H", 1, "1998-06-02", "HR1", "Adoption", 300, 10, True)]}}),
+            encoding="utf-8")
+        os.chdir(d)
+        # The build's call, on this record and with no Journals: load() gives
+        # _cached a call of _load, and a check that read the Journals on disk
+        # would fail _session_checks_read_no_journals.
+        work = lambda: SD._load(SD.NARRATIVES, sat=lambda body, date: False, journals={})
+        cold = SD._cached(work)
+        kept = d / ".build_cache" / SD.CACHE_FILE
+        assert kept.exists(), "the build's call kept nothing"
+        SD.ROLLCALLS_FROM.clear()
+        warm, why = SD.load_cache()
+        assert warm is not None, f"the kept days were not read back: {why}"
+        assert SD.ROLLCALLS_FROM == {"H": "1998-06-02", "S": SD.ROLLCALLS_BEGIN["S"]}, (
+            f"the days the voting system began were not read back: {SD.ROLLCALLS_FROM}")
+        fresh = work()
+        assert _canon_days(warm) == _canon_days(fresh) == _canon_days(cold), (
+            "the days read back are not the days the parse gives")
+        n = (d / "narratives.json").read_text(encoding="utf-8")
+        (d / "narratives.json").write_text(n + " ", encoding="utf-8")
+        assert SD.load_cache()[0] is None, "a moved input was read from the cache"
+        (d / "narratives.json").write_text(n, encoding="utf-8")
+        assert SD.load_cache()[0] is not None, "the input put back missed"
+        # A folder the parse listed that was not there, and a path it looked
+        # for and did not find, are keys too: the first Journal of a new
+        # year is a folder that appears (the build's own call lists the
+        # year folders; this record reads none, so the key is asked here).
+        inputs = {"files": [], "dirs": [str(d / "j" / "2024")], "looked": [str(d / "k.txt")]}
+        before = SD._inputs_key(inputs)
+        (d / "j" / "2024").mkdir(parents=True)
+        assert SD._inputs_key(inputs) != before, "a folder that appeared did not move the key"
+        (d / "j" / "2024").rmdir()
+        assert SD._inputs_key(inputs) == before, "the key moved with nothing changed"
+        (d / "k.txt").write_text("", encoding="utf-8")
+        assert SD._inputs_key(inputs) != before, "a path that appeared did not move the key"
+        (d / "k.txt").unlink()
+        kept.write_bytes(kept.read_bytes()[:200])
+        assert SD.load_cache()[0] is None, "a cache cut short was read"
+        again = SD._cached(work)
+        assert _canon_days(again) == _canon_days(fresh), "worked out again, the days differ"
+        kept.unlink()
+        SD.load(d / "narratives.json", sat=lambda body, date: False, journals={})
+        assert not kept.exists(), "a call naming its own record kept its answer"
+        # THE RECORDING ITSELF (the review of 29 October 2026). Memos a step
+        # filled before load() are emptied, or the files they came from
+        # would be missing from the key; a path asked through Path.exists,
+        # is_dir or os.path.isfile -- what Windows asks without os.stat --
+        # is looked for; a file opened to write is no input.
+        memos = [getattr(sys.modules.get(m), n, None) for m, n in SD._Inputs.MEMOS]
+        for memo in memos:
+            if isinstance(memo, dict):
+                memo["filled before"] = True
+
+        def asks():
+            Path("gone-a").exists()
+            Path("gone-b").is_dir()
+            os.path.isfile("gone-c")
+            (d / "written.txt").write_text("x", encoding="utf-8")
+            # Read by its keys, not asked with `in`: _session_checks_read_no_
+            # journals counts every `in` asked of _SAT as a Journal read.
+            return [isinstance(m, dict) and any(k == "filled before" for k in list(m))
+                    for m in memos]
+        left, inputs = SD._Inputs.record(asks)
+        assert not any(left), f"a memo filled before the parse was not emptied: {left}"
+        assert {"gone-a", "gone-b", "gone-c"} <= set(inputs["looked"]), (
+            f"a path asked of without os.stat was not looked for: {inputs['looked']}")
+        assert not any("written.txt" in f for f in inputs["files"] + inputs["looked"]), (
+            "a file written was taken for an input")
+    finally:
+        os.chdir(here)
+        SD.ROLLCALLS_FROM.clear()
+        SD.ROLLCALLS_FROM.update(began)
+        shutil.rmtree(d, ignore_errors=True)
+    return "ok", "kept, read back alike, missed on a moved byte and a new file, worked out again"
+
+
+@check("files", "the kit carries no pickle: the build's cache of the sitting days stays on the "
+       "machine that wrote it")
+def _kit_carries_no_pickle():
+    """session_days keeps a pickle in .build_cache (_session_days_cache).
+    Unpickling runs code, so a pickle must never come back from the bucket:
+    no path or glob of cloud_kit.json may take one (the manager, 29 October
+    2026)."""
+    import fnmatch
+    kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))
+    probe = [".build_cache/session_days.pkl.gz", ".build_cache/x.pkl", "x.pickle"]
+    pats = []
+
+    def walk(o):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if k in ("globs", "paths") and isinstance(v, list):
+                    pats.extend(x for x in v if isinstance(x, str))
+                else:
+                    walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    # What the bucket is sent: the kit, the state, the logs and a dry run's.
+    # The laptop's backup sends everything git does not track except what it
+    # leaves out, so there a pickle must be left out.
+    for part in ("kit", "state", "logs", "dry_run"):
+        walk(kit.get(part))
+    takes = lambda g, p: fnmatch.fnmatch(p, g.replace("**/", "*").replace("**", "*"))
+    bad = [f"{g} takes {p}" for g in pats for p in probe if takes(g, p)]
+    left = [g for e in (kit.get("backup") or {}).get("leave_out", [])
+            for g in e.get("globs", [])]
+    bad += [f"the backup takes {p}" for p in probe[:2] if not any(takes(g, p) for g in left)]
+    assert pats and not bad, "the kit would carry a pickle: " + "; ".join(bad or ["no globs read"])
+    return "ok", (f"none of the {len(pats)} paths and globs sent takes a pickle, and the "
+                  "backup leaves .build_cache out")
 
 
 @check("narrative", "a resolution introduced and adopted in one motion is told as adopted that day, "
@@ -19585,6 +19740,13 @@ def _class_collisions():
         # bills, so a phone never paints them there (the phone audit of 25
         # October 2026)
         "searchrow", "shell",
+        # A RECORD PAGE'S TABS: the strip, a tab, its count's badge and its
+        # pane, which app.js draws for a bill, a member and a committee
+        # (tabStrip, pagePane, tabN) and build_study_committees for a study
+        # or statutory committee, in the same words and classes at the
+        # owner's asking ("the same tab format as standing committees", 29
+        # October 2026; _study_committee_tabs)
+        "tabs", "tab", "tn", "tnp", "pane",
     }
     here = Path(".")
     # The components draw on both sides by design: components.js with the
@@ -33509,6 +33671,55 @@ def _site_fixture(root):
     r = _run([sys.executable, "build_proceedings.py"], cwd=root,
                        capture_output=True, text=True)
     assert r.returncode == 0, "fixture proceedings: " + (r.stderr or r.stdout)[-200:]
+    _fixture_videos(root)
+
+
+# THE FIXTURE'S VIDEO INDEX (the Videos tab, 26 October 2026), as
+# fetch_channel_index writes collected/videos/videos_<chamber>_*.csv: the
+# three recordings proceedings.csv names (VID1 and VID4, House Commerce's;
+# VID2, the House's session of 6 March), and four it does not -- a House
+# Commerce meeting no bill row places (the Videos tab lists it by its title),
+# a stream of Commerce's still to come (not listed: it has not run), a title
+# in the older form (not listed: the index could not parse it) and a
+# division of House Finance, a committee the fixture has no page for.
+FIXTURE_VIDEO_COLS = ["video_id", "title", "title_parsed", "parsed_committee", "parsed_date",
+                      "date_from", "has_start_time", "start_eastern", "actual_start_utc",
+                      "actual_end_utc", "duration_iso", "published_at"]
+FIXTURE_VIDEOS = {"house": [
+    ("VID1", "House Commerce (02/03/2026)", "yes", "Commerce", "2026-02-03",
+     "2026-02-03 09:58:00", "PT1H52M3S"),
+    ("VID4", "House Commerce (02/10/2026)", "yes", "Commerce", "2026-02-10",
+     "2026-02-10 12:58:00", "PT45M"),
+    ("VID2", "House Session (03/06/2026)", "yes", "Session", "2026-03-06",
+     "2026-03-06 09:58:51", "PT5H2M45S"),
+    ("cmteTitleV1", "House Commerce (02/24/2026)", "yes", "Commerce", "2026-02-24",
+     "", "PT36M10S"),
+    ("cmteSoonV02", "House Commerce (11/30/2026)", "yes", "Commerce", "2026-11-30", "", "P0D"),
+    ("cmteOldV003", "Commerce 1/26/21", "NO", "", "", "2021-01-26 10:00:00", "PT1H"),
+    ("financeDiv2", "House Finance - Division II (02/24/2026)", "yes", "Finance - Division II",
+     "2026-02-24", "2026-02-24 13:00:00", "PT2H"),
+    # The fixture commission's meeting of 10 March 2026, which the Calendar's
+    # matcher gives it by name and day (build_calendar.study_recordings).
+    ("agingVid001", "State Commission on Aging (03/10/2026)", "yes", "State Commission on Aging",
+     "2026-03-10", "2026-03-10 10:02:11", "PT1H2M")],
+    # The Senate's session of 19 February 2026, which no bill's moment names:
+    # the chamber's page takes it by the channel's own title for the day.
+    "senate": [
+    ("senSessV001", "Senate Session (02/19/2026)", "yes", "Session", "2026-02-19",
+     "2026-02-19 09:58:00", "PT3H4M")]}
+
+
+def _fixture_videos(root):
+    """collected/videos/videos_<chamber>_fixture.csv, FIXTURE_VIDEOS."""
+    d = Path(root) / "collected" / "videos"
+    d.mkdir(parents=True, exist_ok=True)
+    for ch, rows in FIXTURE_VIDEOS.items():
+        with open(d / f"videos_{ch}_fixture.csv", "w", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh)
+            w.writerow(FIXTURE_VIDEO_COLS)
+            for vid, title, parsed, cmte, day, start, length in rows:
+                w.writerow([vid, title, parsed, cmte, day, "title", "yes" if start else "no",
+                            start, "", "", length, ""])
 
 
 # What build_proceedings.py needs beside it to run in a folder of its own: the
@@ -33909,7 +34120,14 @@ def _study_fixture(root):
              dict(MeetingID=12, CommitteeID=1451, MeetingDate="01/11/1993 10:00:00",
                   MeetingLocation="RM103, ST"),
              dict(MeetingID=7003, CommitteeID=44, MeetingDate="03/11/2026 10:00:00",
-                  MeetingLocation="LOB Room 103  Regular Meeting")]
+                  MeetingLocation="LOB Room 103  Regular Meeting"),
+             # ANOTHER COMMITTEE'S MEETING UNDER THE SAME MeetingID, eighteen
+             # years earlier, as the Nuclear Decommissioning Financing
+             # Committee's of 2002 is beside a task force's of 2026: it takes
+             # nothing of the commission's meeting -- not its room, not its
+             # recording (build_study_committees.meetings_of).
+             dict(MeetingID=7001, CommitteeID=1740, MeetingDate="06/14/2002 10:00:00",
+                  MeetingLocation="LOB Room 104  Regular Meeting")]
     (db / "StatStudMeetings.psv").write_text(
         "\n".join(row(SC.MEETINGS, **m) for m in meets) + "\n", encoding="utf-8")
     (db / "vStatStudTemp.psv").write_text(
@@ -35530,6 +35748,8 @@ CLOCK_OF_THEIR_OWN = {
     "build_date.py": "the one place the build's day is read",
     "build_all.py": "site/build.json's record of when the run itself finished",
     "cloud.py": "the bucket's records of a send",
+    "state_sources.py": "the day a state document was read, and the bucket's records of a "
+                        "send; reached from cloud.py's sources-up, never from a build",
     "refusal.py": "the record of a refusal, and the night's window",
     "livestreams.py": "the night's own record of its livestream runs",
     "fetch_legislation.py": "the day a page was asked for, on the gone-list",
@@ -55709,6 +55929,39 @@ def _seat_number_in_card(BP, SEAT):
                   "line; the whole card is the link, a lit card lit, and the eye's own marks not copied")
 
 
+@check("frontend", "the district map's Zoom to fit is the seating chart's four corners' icon, in the "
+       "box of - and +, named by its title alone, \"Zoom to fit\", in English and in Spanish")
+def _map_zoom_fit_icon():
+    """The owner, 29 October 2026: the map's "Fit" is the same zoom-to-fit
+    icon as the seating chart's, in the button size and box of - and +. Its
+    title is its name and its tooltip, with no aria-label beside it, which made
+    a screen reader hear "Zoom to fit" twice (the review of the seating chart,
+    29 October 2026, and of the map, 30 October). Read in map.js, map.css and
+    lang/es.json: the button is drawn by the script."""
+    import build_pages as BP
+    js = Path("src/pages/map.js").read_text(encoding="utf-8")
+    css = Path("src/pages/map.css").read_text(encoding="utf-8")
+    bad = []
+    m = re.search(r'<button type="button" class="zf"([^>]*)>(.*?)</button>', js, re.S)
+    assert m, "map.js draws no Zoom to fit button (class zf)"
+    attrs, body = m.groups()
+    if body != BP.ZOOM_FIT_ICON:
+        bad.append(f"the icon is not the seating chart's: {body[:120]}")
+    if "aria-label=" in attrs or 'title="${tr("map.zoom_fit","Zoom to fit")}"' not in attrs:
+        bad.append(f"it is not named by its title alone, map.zoom_fit: {attrs}")
+    if re.search(r'\.gm \.gmzoom \.zf\s*\{|\.gmzoom button:(?:last-child|nth-child)[^{]*\{', css):
+        bad.append("Zoom to fit has a box of its own, not - and +'s")
+    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    e = es.get("map.zoom_fit") or {}
+    if e.get("en") != "Zoom to fit" or not e.get("es") or e.get("es") == "Zoom to fit":
+        bad.append(f"map.zoom_fit has no Spanish of its own: {e}")
+    for k in ("map.fit", "map.fit_all"):
+        if k in es or f'"{k}"' in js:
+            bad.append(f"the retired {k} is still asked for or kept")
+    assert not bad, "; ".join(bad)
+    return "ok", "the four corners, titled Zoom to fit alone, in the box of - and +, in English and in Spanish"
+
+
 @check("frontend", "the seating chart's Zoom to fit is the four corners' icon in the box of - and +, "
        "named by its title \"Zoom to fit\", in English and in Spanish")
 def _seat_zoom_fit_icon():
@@ -56729,6 +56982,197 @@ def _cloud_call(CL, *argv):
 def _bucket_keys(bucket):
     return {p.relative_to(bucket).as_posix() for p in bucket.rglob("*")
             if p.is_file() and ".meta" not in p.relative_to(bucket).parts}
+
+
+@check("cloud", "the state documents travel apart from the kit: nothing the night takes "
+       "can match sources/, the registry reads, and up and down lose nothing",
+       needs=("cloud", "state_sources"))
+def _state_sources_apart(CL, SS):
+    """The state documents the guides rest on are read in a browser on the
+    laptop and carried to the sessions under the bucket's sources/ prefix
+    (state_sources.py, 30 October 2026). They are evidence for people, not
+    inputs to the build: a night that took them would build from whatever a
+    browser saved last, unchecked. So no entry of cloud_kit.json's kit, state
+    or dry_run lists can match a path under sources/, neither the nightly nor
+    its workflows names the module, the registry reads (a General Court
+    address in it is the owner's alone), and a round trip through a folder
+    bucket sends each version once, records a reading that did not change as
+    a check, never replaces a reading, and brings every version down whole.
+    """
+    import contextlib
+    import io
+    kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))
+    samples = ["sources/manifest.json", "sources/reports/20261030T000000000000.json"]
+    samples += [f"sources/sos-register-vote/2026-10-30{n}.{x}"
+                for x in sorted(SS.EXTS) for n in ("", "-2")]
+    pats = [p for e in kit.get("kit", []) for p in e.get("paths", []) + e.get("globs", [])]
+    pats += [s["path"] for s in kit.get("state", [])]
+    d = kit.get("dry_run") or {}
+    pats += list(d.get("globs", [])) + ([d["store"]] if d.get("store") else [])
+    hits = sorted({p for p in pats for s in samples
+                   if CL.glob_re(p).match(s) or s == p or p.startswith("sources/")})
+    assert not hits, (f"cloud_kit.json names what can match the state documents' folder, "
+                      f"which the night must never take: {hits}")
+    for f in [_paths.locate("nightly.py"), *sorted(Path(".github/workflows").glob("*.yml"))]:
+        if f.exists():
+            src = f.read_text(encoding="utf-8", errors="replace")
+            assert "state_sources" not in src and "sources-down" not in src, (
+                f"{f.name} names the state documents' hand-over, which the night never runs")
+    reg = SS.load_registry(_paths.ROOT)
+    gc = [i for i, r in reg.items() if SS.is_gc(r["url"])]
+    assert all(reg[i]["read_by"] == "owner-only" for i in gc), gc
+    t = Path(tempfile.mkdtemp(prefix="granite-sources-"))
+    try:
+        root, bucket = t / "root", t / "bucket"
+        (root / "records" / "sources").mkdir(parents=True)
+        shutil.copy(_paths.ROOT / SS.REGISTRY, root / SS.REGISTRY)
+        one = next(i for i, r in reg.items() if r["read_by"] == "browser")
+        folder = root / SS.FOLDER / one
+        folder.mkdir(parents=True)
+
+        def run(*argv):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+                code = SS.main([*argv, "--root", str(root), "--local-bucket", str(bucket)])
+            return code, out.getvalue()
+
+        (folder / "2026-10-01.pdf").write_bytes(b"first")
+        assert run("up")[0] == 0
+        (folder / "2026-10-02.pdf").write_bytes(b"first")
+        (folder / "2026-10-03.pdf").write_bytes(b"second")
+        code, out = run("up")
+        heads = [ln for ln in out.splitlines() if ln.isupper() or ln.endswith(":")]
+        assert code == 0 and "CHANGED since the last reading:" in heads \
+            and "READ AGAIN, UNCHANGED:" in heads, out
+        keys = _bucket_keys(bucket)
+        assert f"sources/{one}/2026-10-02.pdf" not in keys, "an unchanged reading was sent again"
+        assert {f"sources/{one}/2026-10-01.pdf", f"sources/{one}/2026-10-03.pdf",
+                "sources/manifest.json"} <= keys, keys
+        assert any(k.startswith("replaced/") and k.endswith("sources/manifest.json")
+                   for k in keys), "the manifest was replaced without its old copy kept"
+        n = len(keys)
+        code, out = run("up")
+        assert code == 0 and len(_bucket_keys(bucket)) == n, ("a run with nothing new "
+                                                             "wrote to the bucket")
+        (folder / "2026-10-01.pdf").write_bytes(b"edited")
+        code, out = run("up")
+        assert code == 1 and "never replaced" in out, out
+        assert (bucket / f"sources/{one}/2026-10-01.pdf").read_bytes() == b"first"
+        (folder / "2026-10-01.pdf").write_bytes(b"first")
+        # Two readings in one day: the second, -2, is the newer, whatever a
+        # sort of the names says.
+        (folder / "2026-10-04.pdf").write_bytes(b"third")
+        (folder / "2026-10-04-2.pdf").write_bytes(b"fourth")
+        assert run("up")[0] == 0
+        man = json.loads((bucket / "sources" / "manifest.json").read_text(encoding="utf-8"))
+        assert man["ids"][one]["versions"][-1]["file"] == f"{one}/2026-10-04-2.pdf", (
+            "the second reading of a day is not the latest version", man["ids"][one])
+        down = t / "down"
+        code, out = run("down", "--into", str(down))
+        assert code == 0, out
+        got = sorted(p.relative_to(down).as_posix() for p in down.rglob("*") if p.is_file())
+        assert got == [f"{one}/2026-10-01.pdf", f"{one}/2026-10-03.pdf",
+                       f"{one}/2026-10-04-2.pdf", f"{one}/2026-10-04.pdf"], got
+        (down / one / "2026-10-01.pdf").write_bytes(b"mine")
+        code, out = run("down", "--into", str(down))
+        assert code == 1 and (down / one / "2026-10-01.pdf").read_bytes() == b"mine", (
+            "down wrote over a reading that differs from the bucket's", out)
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            code = SS.main(["down", "--root", str(root), "--local-bucket", str(t / "empty"),
+                            "--into", str(t / "down2")])
+        assert code == 1, "down from a bucket with no record said it succeeded"
+        (root / SS.FOLDER / "not-an-id").mkdir()
+        (root / SS.FOLDER / "not-an-id" / "2026-10-01.pdf").write_bytes(b"x")
+        code, out = run("up")
+        assert code == 1 and "not an id" in out, out
+    finally:
+        shutil.rmtree(t, ignore_errors=True)
+    return "ok", (f"{len(reg)} registered documents ({len(gc)} the General Court's, the "
+                  "owner's alone); nothing in the kit can match sources/; a round trip "
+                  "sends each version once and replaces none")
+
+
+@check("cloud", "a browser's downloads are filed by the address each came from, copied "
+       "and never moved, and a state document that cannot be placed is named",
+       needs=("state_sources",))
+def _state_sources_file(SS):
+    """state_sources.py file reads the folder Chrome saved into on the laptop
+    (30 October 2026). Windows records each download's address in a stream
+    beside it, which reads as "<name>:Zone.Identifier"; on this machine that
+    is an ordinary file of that name, which is how it is made here. A file is
+    placed by that address, else by a name only one registered address ends
+    in ("name (1).pdf" being Chrome's second copy); --as names one by hand and
+    is refused where the recorded address says otherwise. Nothing is moved or
+    deleted, a document filed once is not filed again, and a state document
+    the registry lacks is named with the row it would need, not filed.
+    """
+    import contextlib
+    import io
+    reg = SS.load_registry(_paths.ROOT)
+    pdfs = [(i, r) for i, r in reg.items() if r["kind"] == "pdf" and r["read_by"] == "browser"]
+    leaves = {}
+    for i, r in pdfs:
+        leaves.setdefault(SS.leaf(r["url"]), []).append(i)
+    (a_id, a_row), = pdfs[:1]
+    b_id, b_row = next((i, r) for i, r in pdfs[1:] if len(leaves[SS.leaf(r["url"])]) == 1)
+    t = Path(tempfile.mkdtemp(prefix="granite-file-"))
+    try:
+        root, dl = t / "root", t / "Downloads"
+        (root / "records" / "sources").mkdir(parents=True)
+        dl.mkdir()
+        shutil.copy(_paths.ROOT / SS.REGISTRY, root / SS.REGISTRY)
+
+        def run(*argv):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+                code = SS.main(["file", *argv, "--root", str(root)])
+            return code, out.getvalue()
+
+        def zone(name, url):
+            (dl / f"{name}:Zone.Identifier").write_text(
+                f"[ZoneTransfer]\r\nZoneId=3\r\nHostUrl={url}\r\n", encoding="utf-8")
+
+        (dl / "download.pdf").write_bytes(b"by address")
+        zone("download.pdf", a_row["url"])
+        stem, ext = SS.leaf(b_row["url"]).rsplit(".", 1)
+        (dl / f"{stem} (1).{ext}").write_bytes(b"by name")
+        (dl / "unknown.pdf").write_bytes(b"not registered")
+        zone("unknown.pdf", "https://www.das.nh.gov/budget/not-in-the-registry.pdf")
+        (dl / "holiday.jpg").write_bytes(b"not a document")
+        code, out = run(str(dl), "--day", "2026-10-29", "--dry-run")
+        assert code == 1 and not (root / "sources").exists(), ("a dry run wrote, or did not "
+                                                              "say a document was not placed", out)
+        code, out = run(str(dl), "--day", "2026-10-29")
+        assert code == 1 and "could not be placed" in out, (
+            "a state document that could not be placed went unremarked", out)
+        assert (root / "sources" / a_id / "2026-10-29.pdf").read_bytes() == b"by address", out
+        assert (root / "sources" / b_id / "2026-10-29.pdf").read_bytes() == b"by name", out
+        assert "NOT PLACED unknown.pdf" in out and "not-in-the-registry.pdf,pdf," in out, out
+        assert (dl / "download.pdf").exists(), "the filer moved a download rather than copy it"
+        (dl / "unknown.pdf").rename(t / "unknown.pdf")
+        (dl / "unknown.pdf:Zone.Identifier").rename(t / "unknown.pdf:Zone.Identifier")
+        n = sorted(p.relative_to(root).as_posix() for p in (root / "sources").rglob("*")
+                   if p.is_file())
+        code, out = run(str(dl), "--day", "2026-10-29")
+        assert code == 0 and "ALREADY" in out, out
+        assert sorted(p.relative_to(root).as_posix() for p in (root / "sources").rglob("*")
+                      if p.is_file()) == n, "a document already filed that day was filed again"
+        # The same bytes read on a later day are a reading that found no
+        # change: filed, so that up records the check and due moves on.
+        code, out = run(str(dl), "--day", "2026-10-30")
+        assert code == 0 and (root / "sources" / a_id / "2026-10-30.pdf").is_file(), (
+            "a later reading with no change was not filed, so due would list it forever", out)
+        code, out = run(str(dl / "download.pdf"), "--as", b_id)
+        assert code == 1 and "not from" in out, ("--as filed a download under an id its "
+                                                 "recorded address contradicts", out)
+        empty = t / "empty"
+        empty.mkdir()
+        code, out = run(str(empty))
+        assert code == 0 and "Nothing new to file" in out, out
+    finally:
+        shutil.rmtree(t, ignore_errors=True)
+    return "ok", ("placed by recorded address and by name, copied not moved, filed once, "
+                  "--as checked against the address, an unregistered state document named")
 
 
 @check("cloud", "cloud.py sends, fetches and backs up without losing anything",
@@ -66092,6 +66536,384 @@ def _clean_links(html):
     return shell.clean_links(html)
 
 
+# THE DOT GOES WITH THE PART AFTER IT (the owner's fix S9, and the manager's
+# review of the Videos view, 26 October 2026, 4): every middle dot in a Videos
+# view is drawn at the head of the part after it, held to it by a no-break
+# space (app.js, vwJoin), so no line ends on one. The caption had ended
+# "Senate Finance · May 5, 2026 · 1:28 PM ·" at 390px, and House Commerce's
+# "· 5 h 49 min ·" over "On YouTube" at 1280.
+_VW_DOT_HEAD = '<span class="vwi"><span aria-hidden="true">&middot;&nbsp;</span>'
+
+
+def _vw_loose_dots(html):
+    """How many of a Videos view's middle dots a line could end on."""
+    return html.count("&middot;") + html.count("\u00b7") - html.count(_VW_DOT_HEAD)
+
+
+@check("build", "a study or statutory committee's recorded meetings are its Videos tab, drawn by the "
+       "one Videos view, and a recording plays on its own committee's meeting of its own day and "
+       "no other", needs=("build_study_committees",))
+def _study_committee_videos(SC):
+    """The owner, 26 October 2026: "Same goes for session days, or study
+    committees, commissions, etc that are livestreamed from those channels."
+    build_study_committees.videos_html writes the committee's recorded
+    meetings as rows in the page, the body of its Videos tab (tabs_html, the
+    owner's tabs of 29 October 2026, which _study_committee_tabs holds), and
+    app.js's videoView draws them; without script the tab's pane says each
+    recorded meeting under Meetings has its player. And ONE RECORDING, ONE
+    MEETING: the Calendar's rows were keyed by MeetingID alone, which
+    repeats, so the Nuclear Decommissioning Financing Committee's meeting of
+    14 June 2002 played a task force's recording of 23 October 2026 and
+    stood in its room. The fixture's study committee has a meeting of 2002
+    under the commission's MeetingID: it takes nothing, and no study page
+    puts a recording on a meeting before the channels began."""
+    import about_figures as AF
+    c = {"cid": "85", "meetings": [
+        {"MeetingID": "7001", "MeetingDate": "06/14/2002 10:00:00", "MeetingLocation": "RM100,LOB",
+         "webtext": ""},
+        {"MeetingID": "7002", "MeetingDate": "03/10/2026 10:00:00",
+         "MeetingLocation": "LOB Room 101  Regular Meeting", "webtext": ""}]}
+    recent = {("1741", "7001"): {"date": "2002-06-14", "venue": "State House 100", "video_id": "wL_4WYC1M6g"},
+              ("85", "7002"): {"date": "2026-03-11", "venue": "Elsewhere", "video_id": "otherDay001"}}
+    got = {m["date"]: (m["video"], m["venue"]) for m in SC.meetings_of(c, recent, None)}
+    assert got["2002-06-14"][0] == "" and "State House 100" not in got["2002-06-14"][1] \
+        and got["2026-03-10"][0] == "" and got["2026-03-10"][1] != "Elsewhere", (
+            f"a meeting takes another committee's, or another day's, room or recording: {got}")
+    recent[("85", "7002")]["date"] = "2026-03-10"
+    got = {m["date"]: m["video"] for m in SC.meetings_of(c, recent, None)}
+    assert got == {"2002-06-14": "", "2026-03-10": "otherDay001"}, (
+        f"a meeting does not take its own committee's recording of its own day: {got}")
+    # A STREAM NOT YET RUN -- no start, no length in the index -- is not listed
+    # until it has run; taken out, nothing failed (the review of 29 October
+    # 2026). And a recording the index does not have yet is listed.
+    ms = [{"date": "2026-11-30", "time": "10:00", "venue": "LOB 101", "type": "Regular meeting",
+           "id": "day-2026-11-30", "video": "soonStream1"},
+          {"date": "2026-10-20", "time": "10:00", "venue": "LOB 101", "type": "Regular meeting",
+           "id": "day-2026-10-20", "video": "ranStream01"},
+          {"date": "2026-10-13", "time": "10:00", "venue": "LOB 101", "type": "Regular meeting",
+           "id": "day-2026-10-13", "video": "notIndexed1"}]
+    facts = {"soonStream1": {"streamed": False}, "ranStream01": {"streamed": True, "began": "10:01", "seconds": 600}}
+    sec, n = SC.videos_html({"cid": "85", "name": "Fiscal Committee"}, ms, {"facts": facts})
+    listed = [r["id"] for r in json.loads(re.search(r'id="gr-videos">(.*?)</script>', sec, re.S).group(1))["rows"]]
+    assert listed == ["ranStream01", "notIndexed1"] and n == 2, (
+        f"the Videos tab lists {listed} ({n}): a stream that has not run is listed, or one it has is not")
+    # THE COMMITTEE IN A SENTENCE: "Play the recording of the Fiscal Committee",
+    # its own article kept small, and a name that names no body bare --
+    # "the Administrative Rules" was what the player said (the review of 29
+    # October 2026).
+    for name, want in (("Fiscal Committee", "the Fiscal Committee"),
+                       ("The Governor's Commission on Addiction, Treatment and Prevention",
+                        "the Governor's Commission on Addiction, Treatment and Prevention"),
+                       ("Administrative Rules", "Administrative Rules")):
+        assert SC.named(name) == want, f"{name!r} is named {SC.named(name)!r} in a sentence, not {want!r}"
+    assert '"what":"Administrative Rules"' in SC.videos_html({"cid": "61", "name": "Administrative Rules"},
+                                                             ms[1:2], {"facts": facts})[0] and \
+        'data-title="Recording of Administrative Rules, Oct 20, 2026"' in SC.player(
+            {"cid": "61", "name": "Administrative Rules"}, ms[1]), (
+        "the Videos tab or a meeting's player names Administrative Rules as \"the Administrative Rules\"")
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", "a recording plays on its own meeting; not here to build the fixture: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    t = (site / "committee" / "ss1451.html").read_text(encoding="utf-8")
+    sec = t[t.index('<div class="pane sspane" role="tabpanel" id="videos"'):]
+    assert sec.startswith('<div class="pane sspane" role="tabpanel" id="videos" aria-labelledby="sstab-videos" '
+                          'tabindex="0"><h2 class="ssph">Videos</h2><div class="vwhere" data-vwview="gr-videos">'
+                          '<p class="src">Each recorded meeting under Meetings has its own player.</p></div>'), (
+        "the commission's Videos tab is not its pane, with its line for no script: " + sec[:200])
+    data = json.loads(re.search(r'<script type="application/json" id="gr-videos">(.*?)</script>', sec,
+                                re.S).group(1))
+    want_row = {"id": "agingVid001", "date": "2026-03-10", "time": "10:00",
+                "venue": "Legislative Office Building 101", "type": "Regular meeting",
+                "anchor": "day-2026-03-10",
+                "calendar": "calendar?week=2026-W11&day=2026-03-10&committee=State+Commission+on+Aging",
+                "began": "10:02", "seconds": 3720}
+    assert data == {"kind": "study", "who": "State Commission on Aging", "what": "the State Commission on Aging",
+                    "key": "1451", "path": "/committee/ss1451", "rows": [want_row]}, f"the section's rows read {data}"
+    early, stray = [], []
+    for f in sorted((site / "committee").glob("ss*.html")):
+        page = f.read_text(encoding="utf-8")
+        for day, body in re.findall(r'<details class="cmeet" id="day-([0-9-]{10})[^"]*"[^>]*>(.*?)</details>',
+                                    page, re.S):
+            if "data-embed=" in body and day < AF.STREAM_START:
+                early.append(f"{f.stem} {day}")
+        if f.stem != "ss1451" and 'id="videos"' in page:
+            stray.append(f.stem)
+    assert not early, f"a study meeting before the channels began plays a recording: {early}"
+    assert not stray, f"a committee with no recorded meeting has a Videos tab: {stray}"
+    drawn = _app_js('(location.pathname="/committee/ss1451/videos", scope.videoView(scope.VW_STATIC.study('
+                    + json.dumps(data) + ")))", names=("videoView", "VW_STATIC"))
+    if drawn is None:
+        return "ok", "the commission's Videos tab is written; node is not here to draw it"
+    import html as _html
+    flat = _html.unescape(re.sub(r"<[^>]+>", "", drawn))
+    assert "<iframe" not in drawn and 'data-embed="agingVid001|0|v20260310_agingVid001"' in drawn, (
+        "the tab's player is not a still of its recording")
+    assert "State Commission on Aging, ·\u00a0Mar 10, 2026, ·\u00a010:02 AM, ·\u00a01 h 2 min, ·\u00a0On YouTube" in flat \
+        and "1 recording, newest first" in flat, f"the tab draws {flat[:300]!r}"
+    assert _vw_loose_dots(drawn) == 0 and drawn.count(_VW_DOT_HEAD) >= 5, (
+        "a dot in the study committee's Videos tab can end a line: it goes at the head of "
+        "the part after it")
+    # "This meeting" is the meeting on the Meetings tab, at its own address --
+    # the page's, which lands on its Meetings -- turned to in place (app.js,
+    # ssTabs).
+    assert '<a href="/committee/ss1451#day-2026-03-10" data-ssgo>This meeting</a>' in drawn and \
+        '<a href="calendar?week=2026-W11&amp;day=2026-03-10&amp;committee=State+Commission+on+Aging">' \
+        'This meeting on the Calendar</a>' in drawn and \
+        'href="/committee/ss1451/videos#v-agingVid001"' in drawn, (
+            "the tab does not lead to its meeting on the Meetings tab and on the Calendar, or its row to itself")
+    return "ok", ("a meeting takes only its own committee's recording of its own day; the "
+                  "commission's Videos tab drawn as a still and its playlist; no study meeting before "
+                  "May 2020 plays one")
+
+
+# A study committee's page as app.js meets it: its strip of three tabs, each
+# pane by its id, a meeting's fold inside the earlier meetings' fold, and a
+# frame playing in the Videos pane; every listener app.js registers kept to
+# be fired. As the build writes it, the page lands on its Meetings, which has
+# no slug, Bills and Videos at theirs; the strip stays at the top of the
+# window, 44.5px high. app.js is loaded over it at /committee/ss1451/sessions,
+# as a page that carries its own record (GR_STATIC).
+_SS_TABS_HARNESS = _HEARD_PRELUDE + r"""
+const attrs = (o, a) => Object.assign(o, {a: Object.assign({}, a),
+  getAttribute(k) { return k in this.a ? this.a[k] : null; }, setAttribute(k, v) { this.a[k] = String(v); },
+  hasAttribute(k) { return k in this.a; }, removeAttribute(k) { delete this.a[k]; }});
+const sent = [];
+const frame = {contentWindow: {postMessage: (m) => sent.push(JSON.parse(m).func)}, addEventListener() {}};
+const panes = {};
+for (const id of ["bills", "meetings", "videos"])
+  panes[id] = attrs({id, querySelectorAll: (q) => q === "iframe" && id === "videos" ? [frame] : []},
+                    id === "meetings" ? {"data-on": ""} : {});
+const strip = {dataset: {base: "/committee/ss1451"}, pos: "sticky", getBoundingClientRect: () => ({height: 44.5})};
+globalThis.getComputedStyle = (el) => ({position: (el && el.pos) || "static", getPropertyValue: () => ""});
+const rootVars = {};
+document.documentElement.style.setProperty = (k, v) => { rootVars[k] = v; };
+const tabs = [["bills", "bills"], ["meetings", ""], ["videos", "videos"]].map(([id, slug], i) =>
+  attrs({id: "sstab-" + id, dataset: {sstab: slug}, closest: (q) => q === ".sstabs" ? strip : null},
+        {"aria-controls": id, "aria-selected": String(i === 1)}));
+strip.querySelectorAll = (q) => q === "[data-sstab]" ? tabs : [];
+const earlier = {tagName: "DETAILS", open: false, parentElement: null};
+const day = {tagName: "DETAILS", open: false, parentElement: earlier, seen: 0, scrollIntoView() { this.seen += 1; }};
+const stubQ = document.querySelector, stubId = document.getElementById;
+document.querySelector = (q) => q === ".sstabs" ? strip : stubQ(q);
+document.getElementById = (id) => panes[id] || (id === "day-1993-01-11" ? day : /^day-/.test(id) ? null : stubId(id));
+const state = () => ({tabs: tabs.map((t) => t.a["aria-selected"]).join(""),
+  on: Object.keys(panes).filter((k) => panes[k].hasAttribute("data-on")), at: location.pathname + location.hash,
+  wrote: wrote.splice(0)});
+go("/committee/ss1451/sessions"); window.GR_STATIC = true;
+load("ssLand, addressed");
+const out = {onLoad: state()};
+try {
+  place("/committee/ss1451/videos"); s.ssLand(); out.byPath = state();
+  sent.length = 0;
+  click((q) => q === "[data-sstab]" ? tabs[0] : null); out.clicked = state(); out.paused = sent.splice(0);
+  place("/committee/ss1451#day-1993-01-11"); s.ssLand();
+  out.byDay = Object.assign(state(), {open: [earlier.open, day.open], seen: day.seen, held: rootVars["--ssheld"]});
+  place("/committee/ss1451#videos"); (heard.window.hashchange || []).forEach((f) => f({})); out.byHash = state();
+  earlier.open = day.open = false; day.seen = 0;
+  const go = click((q) => q === "a[data-ssgo]" ? {getAttribute: (k) => k === "href" ? "/committee/ss1451#day-1993-01-11" : null} : null);
+  out.go = Object.assign(state(), {prevented: go.prevented, open: day.open, seen: day.seen});
+  place("/committee/ss1451/sessions"); s.ssLand(); out.bySlug = state();
+  place("/committee/ss1451/bills"); s.ssLand(); out.byBills = state();
+  place("/committee/ss1451"); s.ssLand(); out.bare = state();
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").slice(0, 300); }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("build", "a study or statutory committee has a standing committee's tabs -- Bills, Meetings, "
+       "Videos, each counted and at its own address -- under what it does, its report and its members; "
+       "no tab where it would be empty", needs=("build_study_committees", "build_pages"))
+def _study_committee_tabs(SC, BP):
+    """The owner, 29 October 2026, reversing the full-width Videos section
+    (Q5): "study committees, commissions and boards get the same tab format as
+    standing committees: Bills | Meetings | Videos", with room for tabs to
+    come, such as Reports. build_study_committees.tabs_html writes a
+    standing committee's strip in its own classes (.rhead ~ .tabs: on the
+    head's foot rule, pinned as a pane scrolls) and a pane each, after the
+    W4 sections that stay above it -- What It Does, Report, Members -- as a
+    standing committee keeps its members and its rule above its tabs. Bills
+    are the bills that made it and changed it, which is what the record
+    names for a body nothing is referred to (bills_of); a body whose record
+    names none has no Bills tab, and one with no recorded meeting no Videos
+    tab. Without JavaScript every pane is on the page under its heading;
+    with it the first shows from the first paint, and app.js (ssLand) turns
+    to the tab the address names -- /sessions, /videos, a meeting's #day-,
+    a recording's #v-, a pane's old #id -- and to the one pressed, pausing a
+    recording in the pane it leaves.
+
+    THE PAGE LANDS ON ITS MEETINGS (the review of 29 October 2026, 4):
+    opened on Bills, the State Commission on Aging showed HB 621 of 2019 and
+    no more, and the Fiscal Committee four housekeeping bills, its 165
+    meetings a click away. The strip keeps the owner's order; the page's own
+    address is its Meetings (a body that has never met, the first tab with
+    something in it), Bills at /bills, which the committee rewrite serves.
+    A MEETING THE ADDRESS NAMES LANDS BELOW THE STRIP (2), which stays at the
+    top: its height written as --ssheld, which app.css keeps above a meeting.
+    AND THE BILLS ARE BY YEAR, NONE SAID TO COME "SINCE" (5): the record lists
+    bills amending a body that are older than the bill that set it up --
+    HB 746 of 1975 for a council set up by HB 317 of 1995 -- and the tab had
+    them as having changed it since; such a bill says it is older."""
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "bill" / "2026").mkdir(parents=True)
+        (root / "bill" / "2026" / "sb434.html").write_text("", encoding="utf-8")
+        ctx = {"bills": {("SB434", "2026"): 2026, ("HB1442", "2026"): 2026}, "site": root,
+               "titles": {("SB434", "2026"): "establishing a commission on aging.",
+                          ("HB1442", "2026"): "relative to insurance coverage."}, "first_year": "1989"}
+        aging = {"cid": "1451", "name": "State Commission on Aging", "bill": "SB434", "year": "2026",
+                 "amended": "HB1442(2026), SB434(2026)"}
+        rows = SC.bills_of(aging, ctx)
+        fiscal = SC.bills_of({"cid": "57", "name": "Fiscal Committee", "bill": "", "year": "1965",
+                              "amended": "HB10(1995) HB2(2009)"}, ctx)
+        none = SC.bills_of({"cid": "69", "name": "A Board", "bill": "", "year": "1967", "amended": ""}, ctx)
+        # Administrative Rules, set up by HB 366 of 1983: before the site's bills.
+        early = SC.bills_of({"cid": "61", "name": "Administrative Rules", "bill": "HB366", "year": "1983",
+                             "amended": ""}, ctx)
+        # The record's amending bills older than the body: the Advisory Council
+        # on Unemployment Compensation, set up by HB 317 of 1995, lists HB 746 of
+        # 1975, HB 110 of 1981 and HB 317 itself; the New England Board of Higher
+        # Education Compact, set up in 1989 by no bill named, HB 576 of 1981.
+        council = SC.bills_of({"cid": "90", "name": "Advisory Council", "bill": "HB317", "year": "1995",
+                               "amended": "HB1142(2002), HB746(1975), HB110(1981), HB317(1995)"}, ctx)
+        board = SC.bills_of({"cid": "75", "name": "A Compact", "bill": "", "year": "1989",
+                             "amended": "SB51(2003) HB576(1981)"}, ctx)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert [(r["n"], r["year"], r["href"], r["line"]) for r in rows] == [
+        ("SB 434", "2026", "bill/2026/sb434.html", "Set it up"), ("HB 1442", "2026", "", "Amended it")] and \
+        none == [], f"a study committee's bills are not the one that set it up and those that changed it, once: {rows}"
+    assert early == [{"n": "HB 366", "year": "1983", "href": "", "line": "Set it up",
+                      "title": "Before 1989, when this site’s record of bills begins."}], (
+        f"a bill from before the site's record stands blank, or says something else: {early}")
+    assert [(r["n"], r["line"]) for r in council] == [
+        ("HB 746", "Older than the bill that set it up"), ("HB 110", "Older than the bill that set it up"),
+        ("HB 317", "Set it up"), ("HB 1142", "Amended it")] and \
+        [(r["n"], r["line"]) for r in board] == [("HB 576", "Older than 1989, when it was set up"),
+                                                 ("SB 51", "Amended it")], (
+            "a body's bills are not by year, or one the record lists as amending it that is older than the "
+            f"body is said to have changed it: {[(r['n'], r['line']) for r in council + board]}")
+    said = SC.bills_html(aging, rows)
+    assert said.startswith('<p class="src">The bill that set it up, and the bill the General Court&rsquo;s record '
+                           "lists as amending it, by year.</p>") and \
+        '<a class="brnum" href="bill/2026/sb434.html" translate="no">SB 434<span class="byr">(2026)</span></a>' \
+        in said and '<span class="brnum">HB 1442<span class="byr">(2026)</span></span>' in said and \
+        "relative to insurance coverage." in said, "the Bills tab does not say what its bills are, each as a row: " + said[:300]
+    leads = [SC.bills_html({"year": "1965"}, fiscal), SC.bills_html(aging, rows[:1]), SC.bills_html({"year": "1995"}, council)]
+    assert leads[0].startswith('<p class="src">The 2 bills the General Court&rsquo;s record lists as amending it, by '
+                               "year. It was set up in 1965.</p>") and \
+        leads[1].startswith('<p class="src">The bill that set it up, as the General Court&rsquo;s record names it.</p>') \
+        and not any("since" in x[:x.index("</p>")] for x in leads), (
+            "a committee set up by no bill named does not say so, or the Bills tab says its bills came \"since\" "
+            "the body: " + " | ".join(x[:x.index("</p>")] for x in leads))
+    page = SC.tabs_html(aging, {"meetings": (3, "MEETINGS"), "bills": (2, "BILLS"), "videos": (1, "VIDEOS")})
+    strip = re.search(r'<div class="tabs sstabs" role="tablist" data-base="/committee/ss1451">(.*?)</div>', page).group(1)
+    tabs = re.findall(r'<button type="button" class="tab" role="tab" id="sstab-(\w+)" aria-controls="\1" '
+                      r'data-sstab="(\w*)" aria-selected="(true|false)">(\w+)(.*?)</button>', strip)
+    assert [t[:4] for t in tabs] == [("bills", "bills", "false", "Bills"), ("meetings", "", "true", "Meetings"),
+                                     ("videos", "videos", "false", "Videos")], (
+        f"the strip is not Bills | Meetings | Videos, each at its address, the page landing on its Meetings: {tabs}")
+    panes = re.findall(r'<div class="pane sspane" role="tabpanel" id="(\w+)" aria-labelledby="sstab-\1" '
+                       r'tabindex="0"( data-on)?><h2 class="ssph">(\w+)</h2>(\w+)</div>', page)
+    assert panes == [("bills", "", "Bills", "BILLS"), ("meetings", " data-on", "Meetings", "MEETINGS"),
+                     ("videos", "", "Videos", "VIDEOS")], f"the panes are not each its tab's, Meetings shown: {panes}"
+    # A body that has never met lands on the first tab with something in it.
+    unmet = SC.tabs_html(aging, {"meetings": (0, "M"), "bills": (2, "B")})
+    assert re.findall(r'id="sstab-(\w+)" aria-controls="\w+" data-sstab="(\w*)" aria-selected="(\w+)"', unmet) == [
+        ("bills", "", "true"), ("meetings", "sessions", "false")] and \
+        re.findall(r'id="(\w+)" aria-labelledby="[^"]*" tabindex="0" data-on', unmet) == ["bills"], (
+            "a body that has never met lands on an empty Meetings, or its Bills is not at the page's own address")
+    assert re.findall(r'id="sstab-(\w+)"', SC.tabs_html(aging, {"meetings": (0, "M")})) == ["meetings"] and \
+        "class=\"tn\"" not in SC.tabs_html(aging, {"meetings": (0, "M")}), "a tab with nothing in it is drawn"
+    slugs = {slug for _p, _w, slug in SC.TABS if slug}
+    assert slugs <= set(BP.COMMITTEE_TAB_SLUGS), (
+        f"a study committee's tab is at an address the committee rewrite does not serve: {slugs - set(BP.COMMITTEE_TAB_SLUGS)}")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    for rule, why in (("\nhtml:not(.js) .sstabs{display:none}", "without JavaScript the strip is shown"),
+                      ("\nhtml.js .sspane:not([data-on]){display:none}", "with JavaScript every pane is shown"),
+                      (".rhead ~ #ppane,.rhead ~ .sspane{background:var(--surface)", "a pane is not the record's sheet"),
+                      (".rhead ~ .tabs{position:sticky;top:0;", "the strip is not pinned as a standing committee's is"),
+                      ("\n.sspane .cmeet{scroll-margin-top:calc(var(--ssheld,3.25rem) + var(--sp-6))}",
+                       "a meeting the address names lands under the strip that stays at the top")):
+        assert rule in css, f"app.css: {why}"
+    tn = _app_js("scope.tabN((1234).toLocaleString())", names=("tabN",))
+    assert tn is None or tn == SC.tab_n(1234), f"a study committee's count reads {SC.tab_n(1234)!r}, a standing one's {tn!r}"
+    # /bills, which a study committee's Bills tab is at, is a committee's tab
+    # address app.js reads as one -- Bills is tab 0, which a test of truth had
+    # passed over, and /committee/H34/bills/sessions would have been written
+    # from it -- while a standing committee's Bills is still written as its
+    # page's own address.
+    slugs = _app_js('(location.pathname="/committee/H34/bills", [scope.tabFromPath(), scope.isTabSlug("constructor"), '
+                    'scope.slugOf(scope.COMMITTEE_TABS,0), scope.slugOf(scope.COMMITTEE_TABS,1), '
+                    'scope.slugOf(scope.BILL_TABS,"6")])', names=("tabFromPath", "isTabSlug", "slugOf", "COMMITTEE_TABS",
+                                                                "BILL_TABS"))
+    assert slugs is None or slugs == ["bills", False, "", "sessions", "text"], (
+        f"/committee/H34/bills is not read as the Bills tab's address, or a standing committee's Bills is "
+        f"written with a slug: {slugs}")
+    got = _node_app(_SS_TABS_HARNESS)
+    if got is not None:
+        assert "threw" not in got, "the study committee's tabs could not be driven: " + got["threw"]
+        assert (got["onLoad"]["tabs"], got["onLoad"]["on"]) == ("falsetruefalse", ["meetings"]), (
+            f"app.js, loaded at /committee/ss1451/sessions, does not open the page on its Meetings tab: {got['onLoad']}")
+        assert got["byPath"] == {"tabs": "falsefalsetrue", "on": ["videos"], "at": "/committee/ss1451/videos", "wrote": []}, (
+            f"/committee/ss1451/videos does not open on its Videos tab: {got['byPath']}")
+        assert got["clicked"] == {"tabs": "truefalsefalse", "on": ["bills"], "at": "/committee/ss1451/bills", "wrote": [
+            "replace /committee/ss1451/bills"]} and got["paused"] == ["pauseVideo"], (
+            f"Bills pressed is not shown at its address, or the recording left playing: {got['clicked']}, {got['paused']}")
+        assert got["byDay"] == {"tabs": "falsetruefalse", "on": ["meetings"], "at": "/committee/ss1451#day-1993-01-11",
+                                "wrote": ["replace /committee/ss1451#day-1993-01-11"], "open": [True, True], "seen": 1,
+                                "held": "45px"}, (
+            f"a meeting the address names is not opened on the Meetings tab, named there, below the strip that "
+            f"stays at the top: {got['byDay']}")
+        assert got["byHash"]["on"] == ["videos"] and got["bySlug"]["on"] == ["meetings"] and \
+            got["byBills"]["on"] == ["bills"] and (got["bare"]["on"], got["bare"]["tabs"]) == (["meetings"], "falsetruefalse"), (
+            f"the old #videos or /sessions, /bills or the page's own address does not open its tab: {got['byHash']}, "
+            f"{got['bySlug']}, {got['byBills']}, {got['bare']}")
+        assert got["go"]["prevented"] == 1 and got["go"]["on"] == ["meetings"] and got["go"]["open"] and \
+            got["go"]["seen"] == 1 and got["go"]["at"] == "/committee/ss1451#day-1993-01-11", (
+                f"the Videos tab's \"This meeting\" does not turn to the meeting in place: {got['go']}")
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", "the tabs are written and turned to; not here to build the fixture: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    want = {"ss1451": [("bills", 2), ("meetings", 3), ("videos", 1)], "ss1740": [("bills", 1), ("meetings", 1)],
+            "ss69": [("meetings", 0)]}
+    for stem, tabs_want in want.items():
+        t = (site / "committee" / f"{stem}.html").read_text(encoding="utf-8")
+        m = re.search(r'</header><div class="w4s ssbody">(.*?)</div><div class="tabs sstabs" role="tablist" '
+                      r'data-base="/committee/' + stem + '">', t, re.S)
+        assert m, f"{stem}: the strip does not follow the head and its sections, where a standing committee's is"
+        above = re.findall(r'<section class="w4" id="([a-z]+)">', m.group(1))
+        assert above[0] == "does" and above[-1] == "members", f"{stem}: above the tabs are {above}"
+        drawn = [(pid, int(n or 0)) for pid, n in re.findall(
+            r'id="sstab-(\w+)"[^>]*>\w+(?:<span class="tn"><span class="tnp"> \(</span>([\d,]+)<span)?', t)]
+        assert drawn == tabs_want, f"{stem}'s tabs are {drawn}, not {tabs_want}"
+        # Each lands on its Meetings, at the page's own address, the pane shown from the first paint.
+        assert re.findall(r'id="sstab-(\w+)" aria-controls="\w+" data-sstab="" aria-selected="true"', t) == ["meetings"] \
+            and re.findall(r'<div class="pane sspane" role="tabpanel" id="(\w+)"[^>]* data-on>', t) == ["meetings"], (
+                f"{stem} does not land on its Meetings")
+    bills = (site / "committee" / "ss1451.html").read_text(encoding="utf-8")
+    # What It Does says what the record says of them, by year, and not
+    # "Changed since by", which it had said of a council's bills of 1975 and
+    # 1981 set up in 1995 (5).
+    does = bills[bills.index('<section class="w4" id="does">'):]
+    does = does[:does.index("</section>")]
+    assert "The General Court&rsquo;s record lists it as amended by " in does and "since" not in does, (
+        "What It Does does not say what the record lists as amending the body, or says they came since: "
+        + re.sub(r"<[^>]+>", "", does)[:300])
+    bills = bills[bills.index('id="bills"'):bills.index('id="meetings"')]
+    assert 'href="bill/2026/sb434"' in bills and 'href="bill/2026/hb1442"' in bills and \
+        bills.count('<span class="brline">Set it up</span>') == 1 and \
+        bills.count('<span class="brline">Amended it</span>') == 1, (
+            "the commission's Bills tab is not the bill that set it up and the one that changed it")
+    return "ok", ("Bills | Meetings | Videos under the sections, each counted and at its address, a "
+                  "standing committee's strip and sheet, landing on Meetings; the bills that made and changed "
+                  "it, by year, none said to come since; no tab where it would be empty; the address's tab, a "
+                  "meeting below the strip or a recording turned to, a recording paused in the pane left")
+
+
 @check("build", "the study committees' record is read as it was written: a lost break parted only "
        "where the record says so, an old room read as its room, a kind from its name, and the "
        "statute and the session law put back where the record swapped them",
@@ -71033,6 +71855,368 @@ def _committees_full_sessions():
     return "ok", (f"{' and '.join(FS.CHAMBER[b] for b in bodies)} first in their columns, each "
                   f"leading to its page of every term; {n_days} days of the latest terms, newest "
                   "first, each on a built page; the script draws a day as the page does")
+
+
+@check("build", "a chamber's session days carry their recordings -- a bill's moments', or the "
+       "channel's own session recording of the day -- and its page lists them on a Videos tab "
+       "beside Session Days", needs=("build_session_pages", "build_full_sessions", "build_pages"))
+def _chamber_videos(BSP, FS, BP):
+    """The owner, 26 October 2026: "Same goes for session days". A day's
+    `videos` were only the recordings a bill's moment of it is in, so every
+    day before 2025 and a few since said "No recording of this day is on
+    file" on the chamber's page, 108 of them over a recording the channel has
+    and titles as the day's session. build_session_pages.day_record takes that
+    recording where no moment names one, and writes `recordings` beside
+    `videos`, the same in the same order, with when each began and ran; the
+    chamber's page plays them in each day's fold, as before, and writes the
+    latest term's days into the page for app.js to draw as its Videos tab,
+    Session Days | Videos, at /session/<chamber>/videos, which _redirects
+    serves. On the fixture: the Senate's 19 February 2026 by its title, the
+    House's 6 March by its moment."""
+    import about_figures as AF
+    root = Path(tempfile.mkdtemp())
+    try:
+        _fixture_videos(root)
+        facts = __import__("proceedings").video_facts(root)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    sv = BSP.session_videos(facts)
+    assert dict(sv) == {("H", "2026-03-06"): ["VID2"], ("S", "2026-02-19"): ["senSessV001"]}, (
+        f"the channel's session recordings read {dict(sv)}")
+    red = BP.REDIRECTS
+    for slug in FS.SLUG.values():
+        assert f"\n/session/{slug}/videos /session/{slug} 200\n" in red, (
+            f"_redirects does not serve /session/{slug}/videos as the chamber's page")
+    # SILENCE IS NOT SUCCESS: moments naming recordings beside an index that
+    # reads as nothing is a broken checkout, and the build stops, as
+    # build_committees does (_committee_recordings). Taken out, nothing failed
+    # (the review of 29 October 2026).
+    import inspect
+    src = inspect.getsource(BSP.chamber)
+    stop = src.find('if ctx["moments"] and not ctx["facts"]:')
+    assert stop >= 0 and "raise SystemExit(" in src[stop:stop + 200], (
+        "build_session_pages no longer stops on an empty video index beside moments naming recordings")
+    # ONE DAY, WORDED ONCE: the Videos tab's detail for a day and the day's
+    # fold on Session Days (day_section; the page's script draws the same,
+    # held to it by "a chamber's page ...") say what the day did, lead to its
+    # full page and name its journal alike. app.js writes them a third time
+    # (chamberRows), and nothing held the three together.
+    d = {"date": "2026-02-19", "journal": "HJ 05", "journal_url": "https://example.test/hj5.pdf",
+         "counts": {"bills": 164, "roll_calls": 17}, "videos": ["abcDEF12345"],
+         "summary": "The House took up 164 bills, with 17 roll calls."}
+    det = _app_js("scope.chamberRows(" + json.dumps({"body": "H", "days": [d]}) + ")[0].detail()",
+                  names=("chamberRows",))
+    if det is not None:
+        said = lambda h: (re.findall(r'<p class="cmsaid">.*?</p>', h),
+                          [a for a in re.findall(r"<a [^>]*>[^<]*</a>", h) if "youtube" not in a])
+        fold = FS.day_section("H", d)
+        assert said(det) == said(fold) and len(said(fold)[1]) == 2, (
+            f"the Videos tab words a day as {said(det)}, its fold on Session Days as {said(fold)}")
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", "the channel's session recordings read; not here to build: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    by = {}
+    early = []
+    for b in ("H", "S"):
+        for f in (site / "session" / b).glob("*.json"):
+            for d in json.loads(f.read_text(encoding="utf-8"))["days"]:
+                by[(b, d["date"])] = d
+                assert [r["id"] for r in d.get("recordings") or []] == (d.get("videos") or []), (
+                    f"{b} {d['date']}: recordings {d.get('recordings')} are not its videos {d.get('videos')}")
+                if d.get("videos") and d["date"] < AF.STREAM_START:
+                    early.append(f"{b} {d['date']}")
+    assert not early, f"a session day before the channels began has a recording: {early}"
+    s = by[("S", "2026-02-19")]
+    assert s.get("videos") == ["senSessV001"] and s.get("recordings") == [
+        {"id": "senSessV001", "began": "09:58", "seconds": 11040}], (
+            f"the Senate's 19 February has no recording, though its channel titles one its session: {s}")
+    assert by[("H", "2026-03-06")].get("videos") == ["VID2"], "the House's day lost its moments' recording"
+    page = (site / "session" / "senate.html").read_text(encoding="utf-8")
+    fold = page[page.index('id="day-2026-02-19"'):]
+    fold = fold[:fold.index("</details>")]
+    assert 'data-embed="senSessV001|0|' in fold and "No recording of this day" not in fold, (
+        "the Senate's 19 February still says no recording is on file in its fold")
+    assert re.search(r'<div class="chpane" id="chdays"><div class="bfilt chorder"><label>Order ', page) and \
+        '<div class="chpane" id="chvids" hidden><div class="vwhere" data-vwview="gr-videos">' in page, (
+            "the chamber's page does not carry its two panes, the Videos one hidden until app.js draws it")
+    data = json.loads(re.search(r'<script type="application/json" id="gr-videos">(.*?)</script>', page,
+                                re.S).group(1))
+    assert (data["kind"], data["body"], data["slug"], data["term"] == data["latest"]) == (
+        "chamber", "S", "senate", True) and [d["date"] for d in data["days"]] == ["2026-02-19"] \
+        and data["days"][0]["recordings"] == s["recordings"], f"the page's Videos rows read {data}"
+    drawn = _app_js("[scope.videoView(scope.VW_STATIC.chamber(" + json.dumps(data) + ")),"
+                    " scope.VW_STATIC.chamber(" + json.dumps(dict(data, term="2019-2020", days=[]))
+                    + ").empty]", names=("videoView", "VW_STATIC"))
+    if drawn is None:
+        return "ok", "the days carry their recordings and the page its panes; node is not here to draw them"
+    import html as _html
+    view, empty = drawn
+    flat = _html.unescape(re.sub(r"<[^>]+>", "", view))
+    assert "<iframe" not in view and 'data-embed="senSessV001|0|v20260219_senSessV001"' in view, (
+        "the chamber's Videos tab is not a still of its newest recording")
+    assert "The Senate, ·\u00a0Feb 19, 2026, ·\u00a09:58 AM, ·\u00a03 h 4 min, ·\u00a0On YouTube" in flat \
+        and "1 recording in 2025–2026" in flat and "1 bill, ·\u00a01 roll call" in flat \
+        and not re.search(r"\b[HS]B\s?\d", flat), f"the chamber's Videos tab reads {flat[:400]!r}"
+    assert '<a class="daylink" href="session/S/2026-02-19">The full session day</a>' in view, (
+        "the chamber's Videos tab does not lead to the day's own page")
+    assert _vw_loose_dots(view) == 0 and view.count(_VW_DOT_HEAD) >= 5, (
+        "a dot in the chamber's Videos tab can end a line: it goes at the head of the part after it")
+    assert empty == ("No recording of the Senate&rsquo;s session days in 2019–2020 is on file. "
+                     "Recordings here begin in May 2020, with the General Court&rsquo;s YouTube channels."), (
+        f"a term with none says {empty!r}")
+    # ANOTHER TERM'S RECORDING, NAMED BY THE ADDRESS, is landed on as the
+    # page's own term's is: /session/senate/videos?term=2023-2024#v-<id>
+    # chose its row and left it at the top of a list of 39. Here the term's
+    # file arrives (chamberVideos) and the row must be scrolled to inside a
+    # list that scrolls, and the view brought into sight.
+    landed = _node_app(r"""
+require("./stub.js");
+const fs = require("fs");
+location.pathname = "/session/senate/videos"; location.search = "?term=2023-2024"; location.hash = "#v-mid2";
+const s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({chamberVideos, setChamber: (d) => { VW_CHAMBER = d; }})");
+const slot = document.querySelector("#chvids [data-vwview]");
+const list = {scrollHeight: 2400, clientHeight: 440, scrollTop: 0, offsetTop: 0};
+let seen = 0;
+slot.closest = (sel) => sel === ".chpane" ? {} : null;
+slot.scrollIntoView = () => { seen += 1; };
+slot.querySelectorAll = () => [...slot.innerHTML.matchAll(/data-vwpick="([^"]*)"/g)].map((m, i) => {
+  const li = {offsetTop: 60 * i, offsetHeight: 60};
+  return {dataset: {vwpick: m[1]}, closest: (sel) => sel === ".vwlist" ? list : sel === "li" ? li : null};
+});
+const out = {};
+try {
+  s.setChamber({kind: "chamber", body: "S", slug: "senate", term: "2025-2026", latest: "2025-2026", days: []});
+  const days = Array.from({length: 30}, (_, i) => ({date: `2023-${String(1 + Math.floor(i / 3)).padStart(2, "0")}-${
+    String(10 + i % 3).padStart(2, "0")}`, videos: [i === 18 ? "mid2" : `v${i}`], counts: {}}));
+  s.chamberVideos({term: "2023-2024", days});
+  out.chosen = /data-vwpick="mid2" aria-current="true"/.test(slot.innerHTML);
+  out.scrollTop = list.scrollTop; out.seen = seen; out.hash = location.hash;
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+""")
+    if landed is not None:
+        assert "threw" not in landed and landed["chosen"] and landed["hash"] == "#v-mid2", (
+            f"another term's recording named by the address is not chosen: {landed}")
+        # Newest first, mid2 (day 18 of 30) is the twelfth row: 11 x 60px down
+        # its top, 720px its end, so the list moves 280px to show it whole.
+        assert landed["scrollTop"] == 280 and landed["seen"] >= 1, (
+            f"another term's recording named by the address is chosen but not shown: its list at "
+            f"{landed['scrollTop']}px (280 shows it), the view brought into sight {landed['seen']} times")
+    # A RECORDING PLAYING IN THE PANE A TAB HIDES IS PAUSED: the two panes are
+    # shown and hidden, not drawn again, so a day's fold left playing under
+    # the Videos tab, or the Videos tab's player under Session Days, played on
+    # unseen (the review of 29 October 2026).
+    paused = _node_app(r"""
+require("./stub.js");
+const fs = require("fs");
+const s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({chamberShow})");
+const sent = [];
+const frame = (name) => ({onload: [], addEventListener(t, f) { if (t === "load") this.onload.push(f); },
+  loaded() { this.onload.splice(0).forEach((f) => f()); },
+  contentWindow: {postMessage: (m) => sent.push(name + " " + JSON.parse(m).func)}});
+const pane = (name, hidden) => { const f = frame(name);
+  return {hidden, f, querySelectorAll: (sel) => sel === "iframe" ? [f] : []}; };
+const days = pane("days", false), vids = pane("vids", true);
+document.getElementById = (id) => id === "chdays" ? days : id === "chvids" ? vids : null;
+const out = {};
+try {
+  s.chamberShow(1, false); out.toVideos = sent.splice(0); out.shown = [days.hidden, vids.hidden];
+  days.f.loaded(); out.loadedHidden = sent.splice(0);
+  s.chamberShow(0, false); out.toDays = sent.splice(0);
+  s.chamberShow(0, false); out.again = sent.splice(0);
+  s.chamberShow(1, false); s.chamberShow(0, false); sent.splice(0);
+  days.f.loaded(); out.loadedShown = sent.splice(0);
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+""")
+    if paused is not None:
+        assert "threw" not in paused and paused["shown"] == [True, False] and paused["toVideos"] == [
+            "days pauseVideo"] and paused["toDays"] == ["vids pauseVideo"] and paused["again"] == [], (
+            f"a recording playing in the pane a chamber's tab hides is not paused, or one shown is: {paused}")
+        # A frame still loading when its pane is hidden cannot hear yet: it
+        # is told again once loaded, and not if its pane is shown by then.
+        assert paused["loadedHidden"] == ["days pauseVideo"] and paused["loadedShown"] == [], (
+            f"a frame that loads after its pane is hidden plays on, or one shown again is paused: {paused}")
+    return "ok", ("a day takes its channel's session recording where no moment names one; the "
+                  "folds play it and the Videos tab, at its own address, lists the term's, counts "
+                  "and no bills; a term before the channels says so; another term's recording the "
+                  "address names is chosen and shown in its list; one playing in a pane its tab "
+                  "hides is paused")
+
+
+# A chamber's page as app.js meets it when it loads (GR_STATIC): the two
+# panes, the term control the strip goes under, the slot and its rows, and the
+# page's days; every click listener app.js registers is kept to be fired.
+_VW_STATIC_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+const heard = {window: {}, document: {}};
+globalThis.addEventListener = (t, f) => (heard.window[t] = heard.window[t] || []).push(f);
+document.addEventListener = (t, f) => (heard.document[t] = heard.document[t] || []).push(f);
+const wrote = [];
+history.replaceState = (st, t, u) => wrote.push(u);
+const fx = JSON.parse(fs.readFileSync("./fx.json", "utf8"));
+location.pathname = fx.path; location.search = ""; location.hash = "";
+const stubQ = document.querySelector;
+const el = (o) => Object.assign({dataset: {}, innerHTML: "", hidden: false, attrs: {}, seen: 0,
+  setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k] || null; },
+  querySelectorAll: () => [], closest: () => null, scrollIntoView() { this.seen += 1; }}, o);
+const section = el({});
+const slot = el({dataset: {vwview: "gr-videos"},
+  closest: (q) => q === ".chpane" ? (fx.data.kind === "chamber" ? {} : null) : q === "section" ? section : null});
+const days = el({}), vids = el({hidden: true}), tabs = [el({}), el({})];
+let strip = null;
+const ctl = el({insertAdjacentHTML(w, h) { strip = w + " " + h; }});
+document.querySelector = (q) => q === ".chamberctl" ? (fx.data.kind === "chamber" ? ctl : null)
+  : q === ".chtabs" ? (strip ? {} : null) : q === "#chvids [data-vwview]" ? slot : stubQ(q);
+document.querySelectorAll = (q) => q === "[data-vwview]" ? [slot] : q === ".chtabs .tab" && strip ? tabs
+  : q === ".chdays > details" ? [el({}), el({}), el({})] : [];
+document.getElementById = (id) => ({"gr-videos": el({textContent: JSON.stringify(fx.data)}),
+  chdays: days, chvids: vids})[id] || null;
+window.GR_STATIC = true;
+const out = {};
+let s = null;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({chamberVideos})"); }
+catch (e) { out.threw = "app.js would not load: " + e.constructor.name + ": " + e.message; }
+if (s) try {
+  out.view = slot.innerHTML; out.strip = strip; out.tabs = tabs.map((t) => t.innerHTML);
+  out.panes = [days.attrs.role, vids.attrs.role]; out.section = section.seen;
+  if (fx.data.kind === "chamber") {
+    // The Videos tab of the strip, clicked: every click listener hears it, and none may throw.
+    const tab = {dataset: {chtab: "1"}};
+    tab.closest = (q) => ["[data-chtab]", ".tab", ".tabs .tab"].includes(q) ? tab : null;
+    out.errors = [];
+    (heard.document.click || []).forEach((f) => { try { f({button: 0, detail: 1, target: tab,
+      preventDefault() {}, stopPropagation() {}}); } catch (e) { out.errors.push(e.constructor.name + ": " + e.message); } });
+    out.shown = [days.hidden, vids.hidden]; out.at = wrote.slice(-1)[0];
+    // Another term, whose days lack the recording the address names: the address stops naming it.
+    location.pathname = "/session/senate/videos"; location.search = "?term=2023-2024"; location.hash = "#v-gone";
+    wrote.length = 0;
+    s.chamberVideos({term: "2023-2024", days: [{date: "2023-03-02", videos: ["x2023"], counts: {bills: 3}}]});
+    out.dropped = wrote.slice(); out.other = slot.innerHTML.includes('data-vwpick="x2023" aria-current="true"');
+    out.tabsThen = tabs.map((t) => t.innerHTML);
+  }
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").slice(0, 300); }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "a chamber's and a study committee's Videos views are drawn when the page loads: "
+       "the chamber's strip of two tabs, counted, each pane its tab's, a click on it heard without "
+       "error; its script's order, term and Videos tab; a study committee's Videos tab in place",
+       needs=("build_full_sessions",))
+def _static_videos_wiring(FS):
+    """The second review of the Videos views (29 October 2026) took each piece
+    of the chamber's and the study committee's wiring out in turn and found
+    preflight passed without it: app.js's call to staticVideos on a page that
+    carries its own record, the chamber's strip (chamberStrip), the page
+    script's Order select (which moved out of the term's box, so the script
+    looking for it there threw on load and the order stopped working), the
+    script handing another term to the Videos tab (GR_CHAMBER_TERM,
+    chamberVideos), chamberVideos dropping a recording of the old term from
+    the address, and the bill list's tab handler, which took the chamber's
+    tabs for a card's and threw. Each is driven here as the page drives it:
+    app.js loaded in node over a chamber's page and a study committee's, as
+    their JSON stands in them, and the chamber page's own script run."""
+    chamber = {"kind": "chamber", "body": "S", "slug": "senate", "term": "2025-2026", "latest": "2025-2026",
+               "days": [{"date": "2026-02-19", "counts": {"bills": 1, "roll_calls": 1},
+                         "summary": "The Senate took up 1 bill, with 1 roll call.",
+                         "videos": ["senSessV001"],
+                         "recordings": [{"id": "senSessV001", "began": "09:58", "seconds": 11040}]}]}
+    # Its name in a sentence as the build gives it (build_study_committees,
+    # named): a name that names no body is said bare.
+    study = {"kind": "study", "who": "Administrative Rules", "what": "Administrative Rules",
+             "key": "61", "path": "/committee/ss61",
+             "rows": [{"id": "agingVid001", "date": "2026-03-10", "time": "10:00", "venue": "LOB 101",
+                       "type": "Regular meeting", "anchor": "day-2026-03-10", "began": "10:02",
+                       "seconds": 3720}]}
+    got = _node_app(_VW_STATIC_HARNESS, {"fx.json": json.dumps({"path": "/session/senate", "data": chamber})})
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert "threw" not in got, "the chamber's page would not draw its Videos tab: " + got["threw"]
+    assert 'data-embed="senSessV001|0|' in got["view"] and '<div class="vw"' in got["view"], (
+        "app.js does not draw a chamber's Videos tab when the page loads (staticVideos)")
+    # The chamber's page has its h1 and nothing under it is an h2 (page_head):
+    # the list's heading is an h2, where an h3 skipped a level.
+    assert '<h2 class="vwh" id="vwh">1 recording in 2025–2026</h2>' in got["view"], (
+        "a chamber's list of recordings does not head the tab as an h2: "
+        + (re.search(r"<h\d class=\"vwh\"[^>]*>", got["view"]) or [""])[0])
+    # Drawn as the committee's h3 is: as an h2 it took the page's serif.
+    assert re.search(r"\n\.vwh\{[^}]*font-family:var\(--sans\)", Path("src/pages/app.css").read_text(encoding="utf-8")), (
+        "app.css: a chamber's list heading, an h2, is not drawn in the committee's h3's face")
+    strip = got["strip"] or ""
+    assert strip.startswith("afterend ") and re.findall(r'<button class="tab" role="tab" id="chtab_(\d)" '
+                                                         r'aria-controls="(\w+)" data-chtab="\1"', strip) == [
+        ("0", "chdays"), ("1", "chvids")], f"the chamber's strip is not its two tabs under the term: {strip[:300]}"
+    tn = lambda n: f'<span class="tn"><span class="tnp"> (</span>{n}<span class="tnp">)</span></span>'
+    assert got["tabs"] == ["Session Days" + tn(3), "Videos" + tn(1)] and got["panes"] == ["tabpanel"] * 2, (
+        f"the chamber's tabs read {got['tabs']}, its panes {got['panes']}")
+    assert got["errors"] == [] and got["shown"] == [True, False] and got["at"] == "/session/senate/videos", (
+        f"the chamber's Videos tab, clicked, throws in a listener ({got['errors']}) or is not shown, its "
+        f"address its own: panes hidden {got['shown']}, address {got['at']}")
+    assert got["dropped"] == ["/session/senate/videos?term=2023-2024"] and got["other"] and \
+        got["tabsThen"] == ["Session Days" + tn(1), "Videos" + tn(1)], (
+            f"another term's Videos tab is not drawn, or the address goes on naming the old term's "
+            f"recording: {got['dropped']}, {got['tabsThen']}")
+    st = _node_app(_VW_STATIC_HARNESS, {"fx.json": json.dumps({"path": "/committee/ss61/videos", "data": study})})
+    assert "threw" not in st, "the study committee's page would not draw its Videos tab: " + st["threw"]
+    assert 'data-embed="agingVid001|0|' in st["view"] and st["strip"] is None and st["section"] == 0 and \
+        'aria-label="Play the recording of Administrative Rules, Mar 10, 2026"' in st["view"] and \
+        'data-title="Recording of Administrative Rules, Mar 10, 2026"' in st["view"] and \
+        '<h3 class="vwh" id="vwh">' in st["view"], (
+            "app.js does not draw a study committee's Videos tab when the page loads, in its words, "
+            "or scrolls the page to it at /videos, where its tab is shown as a standing committee's is")
+    # THE PAGE'S OWN SCRIPT: its Order select is under Session Days now, out of
+    # the term's box; another term fetched goes to the Videos tab.
+    js = re.search(r"<script>(.*?)</script>", FS.SCRIPT, re.S).group(1)
+    term = {"term": "2023-2024", "days": [{"date": "2023-03-02", "counts": {"bills": 3}},
+                                          {"date": "2023-01-05", "counts": {"bills": 2}}]}
+    ran = _node_app(r"""
+const fs = require("fs");
+globalThis.window = globalThis;
+const T = JSON.parse(fs.readFileSync("./term.json", "utf8"));
+const calls = [];
+globalThis.chamberVideos = (t) => calls.push(t);
+const on = {};
+const term = {value: "2025-2026", options: [{value: "2025-2026"}, {value: "2023-2024"}],
+  addEventListener(t, f) { on.term = f; }};
+const sort = {value: "new", addEventListener(t, f) { on.sort = f; }};
+const ctl = {dataset: {body: "S"}, querySelector: (q) => q === ".chterm" ? term : null};
+const kids = [];
+const list = {get children() { return kids.slice(); }, appendChild() {}, setAttribute() {}, removeAttribute() {},
+  set innerHTML(h) { kids.length = 0; (h.match(/data-date="[^"]*"/g) || []).forEach((m) =>
+    kids.push({dataset: {date: m.slice(11, -1)}})); }, get innerHTML() { return ""; }};
+const count = {innerHTML: "", textContent: ""};
+globalThis.document = {querySelector: (q) => ({".chamberctl": ctl, ".chsort": sort, ".chdays": list,
+  ".chcount": count})[q] || null, getElementById: () => null};
+globalThis.location = {search: "?term=2023-2024", pathname: "/session/senate", hash: ""};
+globalThis.history = {replaceState() {}};
+globalThis.fetch = async () => ({ok: true, json: async () => T});
+const out = {};
+(async () => {
+  try {
+    (0, eval)(fs.readFileSync("./script.js", "utf8"));
+    for (let i = 0; i < 8; i++) await new Promise((r) => setImmediate(r));
+    out.handed = calls.length === 1 && calls[0] === T && window.GR_CHAMBER_TERM === T;
+    out.newest = count.innerHTML;
+    sort.value = "old"; on.sort();
+    out.oldest = count.innerHTML;
+  } catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+  process.stdout.write("\n@@" + JSON.stringify(out));
+})();
+""", {"script.js": js, "term.json": json.dumps(term)})
+    assert "threw" not in ran, "the chamber page's script throws: " + ran["threw"]
+    assert ran["handed"], "the chamber page's script does not hand another term to the Videos tab"
+    assert ran["newest"].startswith("2 days the Senate sat in 2023-2024, newest first") and \
+        ran["oldest"].startswith("2 days the Senate sat in 2023-2024, oldest first"), (
+            f"the chamber page's Order does not order its days: {ran['newest'][:80]!r}, then {ran['oldest'][:80]!r}")
+    return "ok", ("a chamber's Videos tab and strip drawn on load, counted, each pane its tab's, a click on "
+                  "it heard without error, another term's drawn and the old recording dropped from the "
+                  "address; the page's script orders its days and hands another term over; a study "
+                  "committee's Videos tab drawn in its words, the page left where it is")
 
 
 @check("frontend", "the header's five tabs are one row from 1008px, in the flow between the "
@@ -78651,6 +79835,1091 @@ def _committee_days_met(BCM):
         "a day still to come is said to have no recording on file")
     return "ok", ("a day after the build is marked and counted apart, on the tab, the index "
                   "and the description")
+
+
+@check("build", "a committee's Videos tab lists the recordings its bills name and the ones its own "
+       "title names on its chamber's channel, newest first, and none still to come, in the older "
+       "form, of a session day or on another page", needs=("build_committees", "proceedings"))
+def _committee_recordings(BCM, P):
+    """The owner, 26 October 2026: "Committee pages should have a videos tab
+    that essentially compiles the youtube playlist of that committee's
+    meetings". build_committees.committee_recordings gives each page its
+    `recordings` (THE VIDEOS TAB'S LIST) out of proceedings.video_facts:
+    every recording one of its items names, and every streamed one no row of
+    proceedings.csv carries whose parsed title is this committee in the
+    channel's chamber -- House Finance's divisions marked -- and nothing
+    fuzzy. Read here from rows written as the index writes them, then from
+    the fixture's build, where H43 lists VID1 and VID4 by their bills and a
+    recording by its title, and not the stream still to come, the title in
+    the older form, the House's session or House Finance's division (no
+    page). SILENCE IS NOT SUCCESS: an index that reads as nothing beside a
+    table naming recordings stops the build."""
+    root = Path(tempfile.mkdtemp())
+    try:
+        _fixture_videos(root)
+        facts = P.video_facts(root)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert set(facts) == {r[0] for rows in FIXTURE_VIDEOS.values() for r in rows}, f"the index reads {sorted(facts)}"
+    assert facts["VID1"] == {"date": "2026-02-03", "chamber": "H", "title": "House Commerce (02/03/2026)",
+                             "parsed_committee": "Commerce", "began": "09:58", "seconds": 6723,
+                             "streamed": True}, f"a recording reads {facts['VID1']}"
+    assert (facts["cmteSoonV02"]["streamed"], facts["cmteOldV003"]["parsed_committee"],
+            facts["cmteTitleV1"]["began"], P.iso_seconds("PT1H52M3S"), P.iso_seconds("P0D")) == (
+        False, "", "", 6723, 0), "a stream to come, a title in the older form or a length read wrong"
+    pages = {"H43", "H34"}
+    code_of = lambda nm, ch, term: {("H", "Commerce"): "H43", ("H", "Finance"): "H34"}.get((ch, nm))
+    days = {"H43": {("2025-2026", "2026-02-03"): [{"video_id": "VID1"}],
+                    ("2025-2026", "2026-02-10"): [{"video_id": "VID4"}, {"video_id": "VID4"}]},
+            "H99": {("2025-2026", "2026-02-11"): [{"video_id": "VIDX"}]}}
+    got, found = BCM.committee_recordings(days, {"VID1", "VID4", "VID2"}, facts, code_of, pages)
+    assert [r["id"] for r in got.get("H43", [])] == ["cmteTitleV1", "VID4", "VID1"], (
+        f"House Commerce lists {got.get('H43')}")
+    assert got["H43"][0] == {"id": "cmteTitleV1", "date": "2026-02-24", "term": "2025-2026",
+                             "seconds": 2170}, f"a recording by its title is listed as {got['H43'][0]}"
+    assert got["H43"][-1] == {"id": "VID1", "date": "2026-02-03", "term": "2025-2026", "began": "09:58",
+                              "seconds": 6723}, f"a recording by its bills is listed as {got['H43'][-1]}"
+    assert got.get("H34") == [{"id": "financeDiv2", "date": "2026-02-24", "term": "2025-2026",
+                               "began": "13:00", "seconds": 7200, "label": "Division II"}], (
+        f"House Finance's division is listed as {got.get('H34')}")
+    assert "H99" not in got and dict(found) == {"by_bills": 2, "by_titles": 2, "no_page": 1}, (
+        f"a page with no page, or the counts: {dict(found)}")
+    # A recording a row carries is not added to a page by its title.
+    got2, _ = BCM.committee_recordings({}, {"cmteTitleV1"}, facts, code_of, pages)
+    assert "cmteTitleV1" not in [r["id"] for r in got2.get("H43", [])], (
+        "a recording proceedings.csv carries is listed again by its title")
+    # A division's recording that a bill row places keeps the division its own
+    # title names, as House Finance's of 4 May 2026 does (seven bills).
+    got3, _ = BCM.committee_recordings({"H34": {("2025-2026", "2026-02-24"): [{"video_id": "financeDiv2"}]}},
+                                       {"financeDiv2"}, facts, code_of, pages)
+    assert got3.get("H34") == [{"id": "financeDiv2", "date": "2026-02-24", "term": "2025-2026",
+                                "began": "13:00", "seconds": 7200, "label": "Division II"}], (
+        f"a division's recording placed by its bills is listed as {got3.get('H34')}, without its division")
+    # THE OTHER SPELLINGS OF A DIVISION the channel's titles use, "1" and a
+    # lower-case "l": each is House Finance's, marked Division I, and not
+    # counted as a recording named for no page; and "ll", were it written,
+    # Division II.
+    odd = dict(facts, **{vid: {"date": "2026-02-25", "chamber": "H", "title": title,
+                               "parsed_committee": title, "began": "", "seconds": 600, "streamed": True}
+                         for vid, title in (("div1V", "Finance - Division 1"), ("divlV", "Finance Division l"),
+                                            ("divllV", "Finance Division ll"))})
+    got4, found4 = BCM.committee_recordings({}, set(facts), odd, code_of, pages)
+    labels = {r["id"]: r.get("label") for r in got4.get("H34", [])}
+    assert labels == {"div1V": "Division I", "divlV": "Division I", "divllV": "Division II"} \
+        and not found4["no_page"], (
+        f"House Finance's divisions in their other spellings are listed as {labels}, "
+        f"{found4['no_page']} named for no page")
+    # WHAT ONE ROW OF THE INDEX LACKS, THE OTHER GIVES: a channel file's row
+    # with a length and no start, before the night's row with both, kept the
+    # first and lost the start (dupV); and of two rows that know as much, the
+    # first is kept and takes the day only the second has (tieV), where the
+    # recording had been left with no day and off every page.
+    root = Path(tempfile.mkdtemp())
+    try:
+        d = root / "collected" / "videos"
+        d.mkdir(parents=True)
+        for name, rows in (("videos_house_a.csv", (("dupV", "", ""), ("tieV", "", ""))),
+                           ("videos_house_livestreams.csv", (("dupV", "2026-02-25 10:00:00", "2026-02-25"),
+                                                             ("tieV", "", "2026-02-26")))):
+            with open(d / name, "w", newline="", encoding="utf-8") as fh:
+                w = csv.writer(fh)
+                w.writerow(FIXTURE_VIDEO_COLS)
+                for vid, start, day in rows:
+                    w.writerow([vid, "House Commerce", "yes", "Commerce", day, "title",
+                                "yes" if start else "no", start, "", "", "PT1H", ""])
+        two = P.video_facts(root)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    dup, tie = two["dupV"], two["tieV"]
+    assert (dup["date"], dup["began"], dup["seconds"], dup["streamed"]) == ("2026-02-25", "10:00", 3600, True) \
+        and (tie["date"], tie["seconds"]) == ("2026-02-26", 3600), (
+            f"recordings two rows of the index name read {dup} and {tie}: the start or the day one of "
+            "them has is lost")
+    import inspect
+    src = inspect.getsource(BCM.main)
+    assert "if carried and not facts:" in src and "raise SystemExit(" in src[src.index("if carried and not facts:"):][:200], (
+        "build_committees no longer stops on an empty index beside a table naming recordings")
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", "the list is read and made; not here to build the fixture: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    rec = json.loads((shared / "site" / "committee" / "H43.json").read_text(encoding="utf-8"))
+    assert [r["id"] for r in rec.get("recordings") or []] == ["cmteTitleV1", "VID4", "VID1"], (
+        f"the fixture's House Commerce lists {rec.get('recordings')}")
+    # Every page the build wrote: each recording its items name listed, and
+    # once; and none from before the channels began.
+    import about_figures as AF
+    twice, unlisted, early = [], [], []
+    for f in sorted((shared / "site" / "committee").glob("*.json")):
+        d = json.loads(f.read_text(encoding="utf-8"))
+        if not isinstance(d, dict):
+            continue
+        ids = [r["id"] for r in d.get("recordings") or []]
+        twice += [f"{f.stem} {i}" for i in sorted(set(ids)) if ids.count(i) > 1]
+        named = {i.get("video_id") for s in d.get("sessions") or [] for i in s.get("items") or []} - {"", None}
+        unlisted += [f"{f.stem} {i}" for i in sorted(named - set(ids))]
+        early += [f"{f.stem} {r['id']} {r['date']}" for r in d.get("recordings") or []
+                  if r["date"] < AF.STREAM_START]
+    assert not twice and not unlisted and not early, (
+        f"a page lists a recording twice {twice}, leaves out one its items name {unlisted}, or lists "
+        f"one before the channels began {early}")
+    return "ok", ("the index read once, a stream to come and a title in the older form left off; "
+                  "House Commerce lists 2 recordings by its bills and 1 by its title, newest first; "
+                  "a division marked, by its bills or its title; every page's recordings once and none "
+                  "before May 2020; an empty index stops the build")
+
+
+@check("frontend", "no page the build writes asks YouTube for anything before a person presses Play: "
+                   "no frame, image, script or style of YouTube's, and every recording a still on a "
+                   "button")
+def _nothing_from_youtube():
+    """The privacy page's promise ("a player only loads if you press play"),
+    held over every page of the fixture's build since the Videos views (26
+    October 2026) put a still at the top of a committee's, a chamber's and a
+    study committee's pages: no <iframe> at all, no tag of any kind whose
+    address is YouTube's, its images' (ytimg) or its video servers', and every
+    data-embed -- the still app.js turns into the player when pressed -- on a
+    <button>. A script's text is left out: app.js and a page's inline script
+    write the player when asked, and the checks of the players hold them."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    bad, stills, pages = [], 0, 0
+    for f in sorted((shared / "site").rglob("*.html")):
+        text = re.sub(r"(<script\b[^>]*>).*?</script>", r"\1</script>",
+                      f.read_text(encoding="utf-8", errors="replace"), flags=re.S | re.I)
+        pages += 1
+        rel = f.relative_to(shared / "site").as_posix()
+        if re.search(r"<iframe\b", text, re.I):
+            bad.append(f"{rel} carries a frame")
+        for tag in re.findall(r"<(?:img|script|link|source|video|audio|embed|object)\b[^>]*>", text, re.I):
+            if re.search(r"youtube|ytimg|googlevideo", tag, re.I):
+                bad.append(f"{rel}: {tag[:80]}")
+        for name in re.findall(r"<(\w+)\b[^>]*\sdata-embed=", text):
+            stills += 1
+            if name.lower() != "button":
+                bad.append(f"{rel}: a still on a <{name}>")
+    assert pages, "the fixture's build wrote no page, so this read nothing"
+    assert not bad, "a page asks YouTube for something before Play: " + "; ".join(bad[:6])
+    return "ok", f"{pages} pages; {stills} stills, each a button; nothing of YouTube's before Play"
+
+
+@check("frontend", "a committee's Videos tab is a still and its playlist: the newest chosen, nothing "
+                   "from YouTube before Play, a moment the Meetings tab's own button, no bill line "
+                   "where none is known, and a tab only where there is a recording")
+def _committee_videos_tab():
+    """The owner, 26 October 2026, and the manager's review of the design the
+    same day (app.js, THE VIDEOS VIEW): the tab is "Videos" with the count
+    chip Bills and Meetings carry; the kinds are the Meetings tab's chips;
+    a recording the docket ties no bill to has no bill line, and the detail
+    says so once, in muted text; a start or a length the index lacks is left
+    out with its separator; one caption under the player; every row drawn
+    (on a phone the list scrolls under the player, _videos_phone_playlist);
+    the chosen row aria-current. Drawn by renderPage in node over a
+    committee like the fixture's."""
+    items = lambda vid, kind, start, state: [{
+        "bill": "HB1442", "n": "HB 1442-FN", "title": "relative to insurance coverage", "year": 2026,
+        "term": "2025-2026", "kind": kind, "video_id": vid, "start": start, "state": state,
+        "time": "10:00", "venue": "LOB 302"}]
+    sess = lambda date, its, kinds: {"date": date, "term": "2025-2026",
+                                     "video_id": its[0]["video_id"], "items": its,
+                                     "outcomes": [{"bill": "HB1442", "kinds": kinds, "outcome": "heard"}]}
+    rec = lambda i, d, **k: dict({"id": i, "date": d, "term": "2025-2026"}, **k)
+    cmte = {"code": "H43", "name": "Commerce", "chamber": "H", "bills": {"2025-2026": []},
+            "sessions": [sess("2026-02-17", items("", "work session", None, "candidates"), ["work session"]),
+                         sess("2026-02-10", items("VID4", "executive session", 300, "stated"),
+                              ["executive session"]),
+                         sess("2026-02-03", items("VID1", "public hearing", 150.0, "located"),
+                              ["public hearing"])],
+            "recordings": [rec("-titleOnly1", "2026-02-24", seconds=2170),
+                           rec("divOne", "2026-02-17", began="13:00", seconds=7200, label="Division I"),
+                           rec("VID4", "2026-02-10", began="12:58", seconds=2700),
+                           rec("VID1", "2026-02-03", began="09:58", seconds=6723)]}
+    many = dict(cmte, code="H34", recordings=[rec(f"m{i:02d}", f"2026-03-{i:02d}") for i in range(1, 26)])
+    later = dict(cmte, code="H05", bills={"2017-2018": [], "2021-2022": []}, sessions=[],
+                 recordings=[rec("late1", "2021-03-01", term="2021-2022")])
+    none = dict(cmte, code="H01", recordings=[])
+    harness = _HEARD_PRELUDE + r"""
+load("renderPage, recordTerms, jumpButtons, setPage: (p) => { PAGE = p; }, getPage: () => PAGE,"
+  + " setTab: (t) => { PAGE_TAB = t; }, getTab: () => PAGE_TAB, setUp: (u) => { UPCOMING = u; }");
+const fx = JSON.parse(fs.readFileSync("./fx.json", "utf8"));
+const results = document.querySelector("#results");
+const draw = (c, tab, extra) => {
+  const terms = s.recordTerms("committee", c);
+  s.setPage(Object.assign({kind: "committee", data: c, terms, term: terms[0], status: "",
+    vfilter: "", vshow: 0, bshow: 0, mshow: 0, vid: ""}, extra || {}));
+  s.setTab(tab); s.renderPage(); return results.innerHTML; };
+const out = {};
+try {
+  s.setUp([]);
+  out.videos = draw(fx.cmte, 2);
+  out.vid1 = draw(fx.cmte, 2, {vid: "VID1"});
+  out.div = draw(fx.cmte, 2, {vid: "divOne"});
+  out.meetings = draw(fx.cmte, 1);
+  out.many = draw(fx.many, 2);
+  out.later = draw(fx.later, 2, {term: "2017-2018"});
+  out.none = draw(fx.none, 2); out.noneTab = s.getTab();
+  // HB 1157-FN's two moments of 3 February 2026, the first inferred.
+  out.jumps = s.jumpButtons([{start: 9835, state: "located", kind: "full committee work session"},
+                             {start: 9960, state: "stated", kind: "executive session"}], () => "p1");
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + e.stack; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+    got = _node_app(harness, {"fx.json": json.dumps({"cmte": cmte, "many": many, "later": later,
+                                                     "none": none})})
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert "threw" not in got, "the Videos tab would not draw: " + got.get("threw", "")[:400]
+    flat = {k: re.sub(r"[ \t\r\n]+", " ", v) if isinstance(v, str) else v for k, v in got.items()}
+    v = flat["videos"]
+    tabs = re.findall(r'<button class="tab" role="tab"[^>]*>(.*?)</button>', v)
+    assert len(tabs) == 3 and tabs[2] == ('Videos<span class="tn"><span class="tnp"> (</span>4'
+                                         '<span class="tnp">)</span></span>'), (
+        f"the tabs read {tabs}: Videos is not the third, with the count chip the others carry")
+    pane = v[v.index('id="ppane"'):]
+    # NOTHING FROM YOUTUBE BEFORE PLAY: a still, its embed on a button, and no frame.
+    assert "<iframe" not in pane and "ytimg" not in pane and "<img" not in pane, (
+        "the Videos tab draws a frame or an image before Play")
+    embeds = re.findall(r"<(\w+)[^>]*\sdata-embed=\"([^\"]*)\"", pane)
+    assert embeds == [("button", "-titleOnly1|0|m20260224_-titleOnly1")], (
+        f"the still is not the newest recording's, from 0, on a button: {embeds}")
+    rows = re.findall(r'<li(?: class="vwrest")?><a class="vwrow" href="([^"]*)" data-vwpick="([^"]*)"'
+                      r'( aria-current="true")?>(.*?)</a></li>', pane)
+    assert [(h, i, bool(c)) for h, i, c, _ in rows] == [
+        ("/committee/H43/videos#v--titleOnly1", "-titleOnly1", True),
+        ("/committee/H43/videos#v-divOne", "divOne", False),
+        ("/committee/H43/videos#v-VID4", "VID4", False), ("/committee/H43/videos#v-VID1", "VID1", False)], (
+        f"the rows are not the term's recordings newest first, each its own address, the newest "
+        f"chosen: {[(h, i, c) for h, i, c, _ in rows]}")
+    import html as _html
+    say = {i: _html.unescape(re.sub(r"<[^>]+>", "", body)) for _h, i, _c, body in rows}
+    want = {"-titleOnly1": "Feb 24, 2026, 36 min",
+            "divOne": "Feb 17, 2026, 1:00 PM, ·\u00a02 h, Work Session Division I",
+            "VID4": "Feb 10, 2026, ·\u00a01 bill, 12:58\u00a0PM, ·\u00a045 min, Executive Session HB\u00a01442",
+            "VID1": "Feb 3, 2026, ·\u00a01 bill, 9:58\u00a0AM, ·\u00a01 h 52 min, Public Hearing HB\u00a01442"}
+    assert say == want, f"the rows read {say!r}, not {want!r}"
+    # Its kinds are the Meetings tab's chips, in their words and colours.
+    assert '<span class="chip calkind k-exec">Executive Session</span>' in pane \
+        and '<span class="chip calkind k-meet">Work Session</span>' in pane, (
+        "a row's kind is not the Meetings tab's chip")
+    cap = _html.unescape(re.sub(r"<[^>]+>", "", re.search(r'<div class="pbar vwcap">(.*?)</div>', pane).group(1)))
+    assert cap == "House Commerce, ·\u00a0Feb 24, 2026, ·\u00a036 min, ·\u00a0On YouTube", (
+        f"the caption under the player reads {cap!r}: one line, a missing start left out with its dot")
+    # Every dot at the head of the part after it, and each of the caption's
+    # parts kept whole with its dot where the line wraps: at 390px "On
+    # YouTube" broke between its two words, and the caption ended a line on
+    # a dot.
+    assert _vw_loose_dots(pane) == 0 and pane.count(_VW_DOT_HEAD) >= 6, (
+        "a dot in the Videos tab can end a line: it goes at the head of the part after it")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    keep = re.search(r"\n([^{}\n]*\.vwcap \.vwi\b[^{}\n]*)\{([^}]*)\}", css)
+    assert keep and "white-space:nowrap" in keep.group(2), (
+        "the caption's date, time, length or YouTube link can break across two lines, or from its dot")
+    assert pane.count("The docket ties no bill to this recording.") == 1 and "No bill" not in pane \
+        and 'class="note"' not in pane, (
+            "a recording with no bill is not said so once, plainly, under the player")
+    assert flat["videos"].count("its newest recording, on the <a") == 1 and \
+        "Its last meeting on the record was on" in flat["videos"], (
+            "the head names a last meeting older than the newest recording and does not say both")
+    # BOTH DATES IN THE ONE STYLE, THE SITE'S: "on Tuesday, April 7, 2026 ...
+    # from May 12, 2026" mixed two (the review of 29 October 2026), and the
+    # style is the site's "May 12, 2026" (the manager, 29 October 2026).
+    assert re.search(r"was on <a [^>]*>Feb 17, 2026</a>; its newest recording, on the "
+                     r"<a [^>]*>Videos tab</a>, is from Feb 24, 2026\.", flat["videos"]), (
+        "the head's last meeting and newest recording are not dated in the one style: "
+        + re.search(r"Its last meeting.{0,300}", flat["videos"]).group(0))
+    # THE SKIP LINK STRAIGHT AFTER THE PLAYER AND ITS CAPTION, before what the
+    # recording covers: after it, a keyboard passed House Commerce's 37 bills
+    # and their moments, 63 stops, to reach it (the review of 29 October 2026).
+    # The list's heading under the page's h2 sections: an h3 (a chamber's,
+    # under its h1 alone, is an h2: _chamber_videos).
+    assert '<h3 class="vwh" id="vwh">4 recordings in 2025–2026</h3>' in pane, (
+        "a committee's list of recordings is not headed by an h3")
+    main = pane[pane.index('<div class="vwmain">'):pane.index('<div class="vwdet">')]
+    assert main.index("On YouTube</a>") < main.find("data-vwskip>Skip to the list of recordings</a>") \
+        and "data-vwskip" not in pane[pane.index('<div class="vwdet">'):], (
+            "the skip link is not straight after the player and its caption, before the detail")
+    # A DAY WHOSE BILLS' RECORDING IS NOT ESTABLISHED says so, as the Meetings
+    # tab says it of that day, and not that the docket ties no bill: House
+    # Public Works and Highways' only recording of a four-bill hearing of 5
+    # May 2021 read as if no bill was heard in it (the review of 29 October
+    # 2026). divOne is the fixture's recording of such a day.
+    dv = flat["div"][flat["div"].index('class="vwdetin"'):]
+    dv = dv[:dv.index('<div class="vwside">')]
+    assert "1 bill was before the committee that day; which of its recordings it is in has not been " \
+        "established." in dv and "The docket ties no bill" not in dv and \
+        'href="/committee/H43/sessions#day-2026-02-17" data-vwday="2026-02-17">This committee&rsquo;s ' \
+        "meeting that day</a>" in dv, (
+            "a recording of a day whose bills' recordings are not established does not say so, with the "
+            "way to that meeting: " + re.sub(r"<[^>]+>", " ", dv)[:300])
+    # THE MOMENTS ARE THE MEETINGS TAB'S OWN BUTTONS, byte for byte.
+    det = flat["vid1"][flat["vid1"].index('class="vwdetin"'):]
+    vj = re.search(r'<span class="mjumps">(.*?)</span><span class="vwbt">', det).group(1)
+    day = flat["meetings"][flat["meetings"].index('id="day-2026-02-03"'):]
+    mj = re.search(r'<span class="mjumps">(.*?)</span></div>', day).group(1)
+    assert vj == mj and "approximate" in vj and "|150" in vj, (
+        f"the Videos tab's moment for VID1 is {vj!r}, the Meetings tab's {mj!r}")
+    assert '<a href="/committee/H43/sessions#day-2026-02-03" data-vwday="2026-02-03">What the committee ' \
+        'did at this meeting</a>' in det, "the detail does not lead to the meeting on the Meetings tab"
+    # EACH MOMENT AND ITS "APPROXIMATE" ARE ONE, which does not wrap: as two
+    # items of a row that wraps, the word started the next line beside the
+    # next button, and at 390px HB 1157-FN's inferred moment read plain and
+    # its stated one approximate (the review of 29 October 2026).
+    pair = re.findall(r'<span class="mjump"><button type="button" class="jump" data-seek="p1\|(\d+)"[^>]*>.*?'
+                      r'</button>(<i class="approx">approximate</i>)?</span>', flat["jumps"])
+    assert pair == [("9835", '<i class="approx">approximate</i>'), ("9960", "")] and \
+        flat["jumps"].count('<span class="mjump">') == 2, (
+            f"a moment's button and its \"approximate\" are not held together: {flat['jumps']}")
+    assert re.search(r"\n\.mjump\{display:inline-flex;flex-wrap:nowrap;", css), (
+        "app.css: a moment's button and its \"approximate\" can wrap apart")
+    # THE MANAGER'S LAYOUT (review, 6 and 7), each rule the tab stands on (a
+    # phone's, the player staying over the whole list, is
+    # _videos_phone_playlist's): on a wide screen two columns, the list as
+    # tall as the player block and scrolling inside it; the chosen row a bar
+    # as well as a colour, Highlight under forced colours; and a row two
+    # lines, its kinds and bills cut short on one (the review of 29 October
+    # 2026). A study committee's view is in a tab's pane, the page's width
+    # (_study_committee_tabs).
+    wide = _braced(css, "@media screen and (min-width:60em){")
+    lit = css.find('.vwrow[aria-current="true"]{border-left-color:Highlight}')
+    forced = css.rfind("@media (forced-colors:active){", 0, lit) if lit >= 0 else -1
+    for ok, why in (
+            ("grid-template-columns:minmax(0,1fr) 22rem" in wide and '"main side"' in wide,
+             "on a wide screen the list does not stand beside the player"),
+            (".vwin{position:absolute;inset:0;" in wide and "overflow:auto" in wide,
+             "on a wide screen the list is not as tall as the player block, scrolling inside it"),
+            (re.search(r'\n\.vwrow\[aria-current="true"\]\{border-left-color:var\(--pine\)', css),
+             "the chosen row is told by its colour alone"),
+            (forced >= 0 and "}" not in css[forced + len("@media (forced-colors:active){"):lit],
+             "under forced colours the chosen row has no bar"),
+            (re.search(r"\n\.vwb\{[^}]*display:flex;[^}]*white-space:nowrap;overflow:hidden\}", css)
+             and re.search(r"\n\.vwl\{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis\}", css)
+             and re.search(r"\n\.vwb \.chip\{flex:none;order:0;", css),
+             "a row's kinds and bills can run onto a third line, or its kinds follow its bills on a "
+             "phone (the Calendar's .calkind{order:3})")):
+        assert ok, f"app.css: {why}"
+    # What is cut is the bills' numbers: the count is on the first line, beside
+    # the date, so the cut never takes it.
+    assert '<span class="vwd">Feb 10, 2026<span class="sr">,</span> <span class="vwi"><span aria-hidden="true">' \
+        '&middot;&nbsp;</span><span class="vwn">1 bill</span></span></span>' in pane, (
+        "a row's count of bills is not beside its date, where the cut of its second line cannot take it")
+    # Every row in the page and shown, at every width: on a phone the list is
+    # what scrolls under the player (_videos_phone_playlist).
+    m = flat["many"]
+    assert m.count('class="vwrow"') == 25 and "vwrest" not in m and "data-vwall" not in m, (
+        "a list of 25 is not drawn whole: some rows are held back behind a button")
+    # A term with none: the tab, with no count, and the pane says so.
+    lt = flat["later"]
+    assert re.search(r'role="tab" id="ptab_2"[^>]*>Videos</button>', lt) and \
+        "No recording of this committee from 2017–2018 is on file. Recordings here begin in May " \
+        "2020, with the General Court&rsquo;s YouTube channels." in lt, (
+            "a term with no recording does not keep the tab without a count and say so")
+    assert "Videos" not in re.sub(r"<[^>]+>", " ", flat["none"].split('id="ppane"')[0].split('role="tablist"')[-1]) \
+        and flat["noneTab"] == 0, "a committee with no recording has a Videos tab, or opens on it"
+    # THE ROW THAT IS PLAYING, pressed again, goes on playing: choosing it
+    # built a new frame from 0 over the one that was playing. Another row
+    # pressed while one plays is played, through the one handler (its still
+    # drawn, then pressed). vwChoose over a view whose player holds a frame.
+    chose = _node_app(r"""
+require("./stub.js");
+const fs = require("fs");
+const s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({vwChoose, setView: (o) => { VVIEW = o; }})");
+const n = {made: 0, played: 0};
+const player = {insertAdjacentHTML: () => { n.made += 1; }, remove() {}, scrollIntoView() {},
+  querySelector: () => ({click: () => { n.played += 1; }, focus() {}})};
+const box = {querySelector: (sel) => sel === ".vwplay iframe" ? {} : sel === ".vwplay" ? player
+  : sel === ".vwdetin" ? {innerHTML: ""} : sel === ".vwsay" ? {textContent: ""} : null,
+  querySelectorAll: () => []};
+const row = (id) => ({dataset: {vwpick: id}, closest: (sel) => sel === ".vw" ? box : null,
+  setAttribute() {}, removeAttribute() {}});
+const wrote = [];
+history.replaceState = (st, title, url) => wrote.push(url);
+const out = {};
+try {
+  s.setView({who: "Senate Finance", rows: [{id: "A", date: "2026-05-12"}, {id: "B", date: "2026-05-05"}],
+    chosen: "A", pid: (r) => "m_" + r.id, href: (id) => "/committee/S07/videos#v-" + id});
+  s.vwChoose(row("A")); out.again = Object.assign({}, n); out.againWrote = wrote.splice(0);
+  s.vwChoose(row("B")); out.other = Object.assign({}, n);
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+""")
+    if chose is not None:
+        assert "threw" not in chose and chose["again"] == {"made": 0, "played": 0}, (
+            f"the row that is playing, pressed again, starts it over in a new frame: {chose}")
+        # And the address names it, as a row pressed does: one that arrived
+        # naming a recording not on file had gone on naming that.
+        assert chose["againWrote"] == ["/committee/S07/videos#v-A"], (
+            f"the row that is playing, pressed again, leaves the address as it was: {chose}")
+        assert chose["other"] == {"made": 1, "played": 1}, (
+            f"another row pressed while one plays is not played through its still: {chose}")
+    # AN ADDRESS NAMING ANOTHER RECORDING while one plays is a choice of it:
+    # the pane was kept through renderPage, playing the old one under an
+    # address that named the new (the head's "Videos tab" link, pressed while
+    # Senate Finance's 28 April played, on real data). Kept while what plays is
+    # what the page asks for; and a term's tab drawn asks for what it drew, so
+    # a recording of the term left behind does not end the next one's playing.
+    kept = _node_app(r"""
+require("./stub.js");
+const fs = require("fs");
+const s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({vwPaneKept, renderCommitteeVideos,"
+  + " setState: (p, t, v) => { PAGE = p; PAGE_TAB = t; VVIEW = v; }, getVid: () => PAGE.vid})");
+const el = {};
+const box = {dataset: {vwkey: "S07|2025-2026"}, querySelector: (sel) => sel === "iframe" ? {} : null};
+const pane = {parentNode: el, querySelector: (sel) => sel === ".vw" ? box : null};
+el.querySelector = (sel) => sel === "#ppane" ? pane : null;
+const page = (vid) => ({kind: "committee", data: {code: "S07"}, term: "2025-2026", terms: ["2025-2026"], vid});
+const out = {};
+try {
+  s.setState(page("B"), 2, {chosen: "B"}); out.same = s.vwPaneKept(el) === pane;
+  s.setState(page("A"), 2, {chosen: "B"}); out.other = s.vwPaneKept(el) === pane;
+  s.setState(page("left2024"), 2, null);
+  s.renderCommitteeVideos({code: "S07", name: "Finance", chamber: "S", sessions: [],
+    recordings: [{id: "N1", date: "2026-05-12", term: "2025-2026"}]});
+  out.drawn = s.getVid();
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+""")
+    if kept is not None:
+        assert "threw" not in kept and kept["same"] and not kept["other"], (
+            f"a recording that plays is kept while the address names another: {kept}")
+        assert kept["drawn"] == "N1", (
+            f"a term's Videos tab drawn asks for {kept['drawn']!r}, not the recording it drew")
+    # A TERM CHOSEN WHILE THE ADDRESS NAMES A RECORDING drops it from a
+    # committee's address, on its Videos tab; on a member's page, whose tabs
+    # are not a committee's, it had rewritten the Votes tab's address as
+    # /videos (the review of 29 October 2026). The record page's change
+    # listener, fired as the Term control fires it.
+    termed = _node_app(r"""
+require("./stub.js");
+const fs = require("fs");
+const heard = [];
+document.addEventListener = (t, f) => { if (t === "change") heard.push(f); };
+process.on("unhandledRejection", () => {});
+const s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({setState: (p, t) => { PAGE = p; PAGE_TAB = t; }, getPage: () => PAGE})");
+const wrote = [];
+history.replaceState = (st, title, url) => wrote.push(url);
+const page = (kind, data) => ({kind, data, terms: ["2025-2026", "2023-2024"], term: "2025-2026", status: "",
+  vfilter: "", vside: "", vq: "", vopen: {}, vshow: 5, bshow: 5, mshow: 0, vid: ""});
+const fire = () => heard.forEach((f) => { try { f({target: {dataset: {pf: "term"}, value: "2023-2024",
+  closest: () => null, matches: () => false}}); } catch (_) {} });
+const out = {};
+location.pathname = "/legislator/jane-doe/votes"; location.hash = "#v-abc";
+s.setState(page("member", {}), 2); fire(); out.member = wrote.splice(0);
+// The listener ran on past the line, to the lists it starts again.
+out.memberRan = [s.getPage().term, s.getPage().bshow];
+location.pathname = "/committee/S07/videos"; location.hash = "#v-abc";
+s.setState(page("committee", {code: "S07"}), 2); fire(); out.committee = wrote.splice(0);
+process.stdout.write("\n@@" + JSON.stringify(out));
+""")
+    if termed is not None:
+        # The committee's first address is the listener's own; a second is
+        # the page drawn again for the new term, which this record (no
+        # recording in it) opens on Bills.
+        assert termed["memberRan"] == ["2023-2024", 0], (
+            f"the term's change listener did not run through on a member's page: {termed}")
+        assert termed["member"] == [] and termed["committee"][:1] == ["/committee/S07/videos"], (
+            f"a term chosen while the address names a recording rewrites {termed}: a member's address "
+            "is left alone, and a committee's drops the recording")
+    return "ok", ("the third tab, counted; a still of the newest, nothing from YouTube before Play; "
+                  "rows of the term with the Meetings tab's chips, no bill line where none is known; "
+                  "one caption with nothing missing said, no dot ending a line; the moment the "
+                  "Meetings tab's own button; all 25 rows drawn; a term with none says so; no "
+                  "tab with no recording; the row playing, pressed again, plays on; an address naming another "
+                  "recording ends it")
+
+
+@check("frontend", "a committee's Videos tab behaves as a reader uses it: a recording that plays is "
+                   "kept through a redraw, an address naming a recording or a meeting of another term "
+                   "turns to it, Back and Forward bring the tab back, and a row, Show all, the skip link "
+                   "and Share do what they say")
+def _committee_videos_behaviour():
+    """The second review of the Videos tab (29 October 2026) reverted each
+    piece of the tab's behaviour in turn and found preflight passed without
+    it: renderPage's kept pane, the landing on #v-<id>, a row's click, the
+    keyboard sent to Play, Show all, the skip link, the meeting's link, Share
+    keeping #v-, tabAddress keeping the fragment, showDay naming its tab,
+    recordTerms taking the recordings' terms, the list's place through a
+    redraw. Each is driven here as the page drives it, in node over app.js
+    with the page's own listeners, and so are the fixes that review asked
+    for: a meeting of another term reached by its address (showDay turns to
+    its term), Back and Forward reading the tab from the path again
+    (popstate), the Videos tab turned to again naming what it shows
+    (vwBackTo), and a term holding only recordings opening on them
+    (landingTab)."""
+    items = lambda vid, kind, start, state, bill="HB1442", term="2025-2026": [{
+        "bill": bill, "n": bill[:2] + " " + bill[2:], "title": "a title", "year": int(term[5:]),
+        "term": term, "kind": kind, "video_id": vid, "start": start, "state": state, "time": "10:00",
+        "venue": "LOB 302"}]
+    sess = lambda date, its, term="2025-2026": {"date": date, "term": term, "video_id": its[0]["video_id"],
+                                                "items": its}
+    rec = lambda i, d, term="2025-2026": {"id": i, "date": d, "term": term}
+    cmte = {"code": "H43", "name": "Commerce", "chamber": "H", "bills": {"2025-2026": []},
+            "sessions": [sess("2026-02-10", items("VID4", "executive session", 300, "stated")),
+                         sess("2026-02-03", items("VID1", "public hearing", 150.0, "stated"))],
+            "recordings": [rec("NEW1", "2026-02-24"), rec("VID4", "2026-02-10"), rec("VID1", "2026-02-03")]}
+    # And a term before: House Public Works and Highways' 5 May 2021.
+    two = dict(cmte, bills={"2025-2026": [], "2021-2022": []},
+               sessions=cmte["sessions"] + [sess("2021-05-05", items("OLD21", "public hearing", 60, "stated",
+                                                                       "HB100", "2021-2022"), "2021-2022")],
+               recordings=cmte["recordings"] + [rec("OLD21", "2021-05-05", "2021-2022")])
+    # House Rules: one bill of 1997-1998, and recordings of 2025-2026 alone.
+    rules = {"code": "H23", "name": "Rules", "chamber": "H", "sessions": [],
+             "bills": {"1997-1998": [{"id": "HR1", "n": "HR 1", "title": "rules", "year": 1997}]},
+             "recordings": [rec("RUL1", "2026-03-01")]}
+    harness = _HEARD_PRELUDE + r"""
+load("renderPage, recordTerms, tabAddress, openPage, addressed, getFocused: () => null,"
+  + " setPage: (p) => { PAGE = p; }, getPage: () => PAGE, setTab: (t) => { PAGE_TAB = t; },"
+  + " getTab: () => PAGE_TAB, setUp: (u) => { UPCOMING = u; }, getView: () => VVIEW");
+const fx = JSON.parse(fs.readFileSync("./fx.json", "utf8"));
+const results = document.querySelector("#results");
+const stubQuery = results.querySelector;
+// THE PAGE'S ELEMENTS BY ID, as a browser finds them in what was drawn: a
+// day's fold where the drawing carries its id, or one a test stands up.
+const byId = {};
+document.getElementById = (id) => byId[id] || (results.innerHTML.includes(`id="${id}"`)
+  ? {id, tagName: "DETAILS", open: false, classList: {contains: () => false, add() {}, remove() {}},
+     scrollIntoView() {}} : null);
+const tick = async () => { for (let i = 0; i < 8; i++) await new Promise((r) => setImmediate(r)); };
+const record = (c) => JSON.parse(JSON.stringify(c));
+globalThis.fetch = async (u) => { const f = String(u).match(/committee\/(\w+)\.json$/);
+  const body = f ? record(fx[f[1]]) : /home\.json$/.test(String(u)) ? {upcoming: []} : [];
+  return {ok: true, status: 200, json: async () => body, text: async () => JSON.stringify(body)}; };
+const page = (c, extra) => { const terms = s.recordTerms("committee", c);
+  return Object.assign({kind: "committee", data: record(c), terms, term: terms[0], status: "", vfilter: "",
+    vside: "", vq: "", vopen: {}, vshow: 0, bshow: 0, mshow: 0, vid: ""}, extra || {}); };
+const show = (path, c, tab, extra) => { go(path); s.setPage(page(c, extra)); s.setTab(tab); s.renderPage(); };
+const chosen = () => (s.getView() || {}).chosen;
+const marked = (id) => results.innerHTML.includes(`data-vwpick="${id}" aria-current="true"`);
+const at = () => location.pathname + location.search + location.hash;
+const fire = (t, ev) => (heard.window[t] || []).forEach((f) => f(ev || {state: null}));
+const out = {};
+(async () => {
+  try {
+    s.setUp([]);
+    // (a) A RECORDING THAT PLAYS IS KEPT: renderPage draws what is above the
+    // pane and leaves the pane, its frame in it, where it is.
+    show("/committee/H43/videos", fx.H43, 2);
+    const box = {dataset: {vwkey: "H43|2025-2026"}, querySelector: (q) => q === "iframe" ? {} : null};
+    const pane = {parentNode: results, before: "", insertAdjacentHTML(w, h) { this.before = w + " " + h; },
+      querySelector: (q) => q === ".vw" ? box : null};
+    results.querySelector = (q) => q === "#ppane" ? pane : null;
+    results.firstChild = pane;
+    results.innerHTML = "THE PANE, PLAYING";
+    s.renderPage();
+    out.kept = {html: results.innerHTML, before: pane.before.startsWith("beforebegin "),
+                tabs: /role="tab"[^>]*>Videos/.test(pane.before)};
+    results.querySelector = stubQuery; delete results.firstChild;
+    // (l) THE LIST KEEPS ITS PLACE through a drawing of the same list.
+    const oldList = {scrollTop: 300, closest: (q) => q === ".vw" ? {dataset: {vwkey: "H43|2025-2026"}} : null};
+    const newList = {scrollTop: 0};
+    results.innerHTML = "OLD";
+    results.querySelector = (q) => results.innerHTML === "OLD" ? (q === ".vwlist" ? oldList : null)
+      : q === ".vw" ? {dataset: {vwkey: "H43|2025-2026"}, querySelector: () => newList} : null;
+    s.renderPage();
+    out.scroll = newList.scrollTop;
+    results.querySelector = stubQuery;
+    // (b) AN ADDRESS NAMING ANOTHER TERM'S RECORDING, the page loaded at it:
+    // that term, the Videos tab, the row chosen; and then this term's, named
+    // by the address changing (hashchange).
+    go("/committee/two/videos#v-OLD21");
+    s.openPage("committee", "two"); await tick();
+    out.deep = {term: s.getPage().term, tab: s.getTab(), chosen: chosen(), marked: marked("OLD21")};
+    go("/committee/two/videos#v-VID4"); fire("hashchange"); await tick();
+    out.hash = {term: s.getPage().term, tab: s.getTab(), chosen: chosen(), marked: marked("VID4")};
+    // (#4) A MEETING OF ANOTHER TERM, its address opened afresh: its term.
+    go("/committee/two/sessions#day-2021-05-05");
+    s.openPage("committee", "two"); await tick();
+    out.day = {term: s.getPage().term, tab: s.getTab(), drawn: results.innerHTML.includes('id="day-2021-05-05"')};
+    // (j) A DAY ASKED FOR ON ANOTHER TAB: the Meetings tab, and the address names it.
+    show("/committee/H43#day-2026-02-03", fx.H43, 0);
+    out.dayTab = {tab: s.getTab(), at: at()};
+    // (c, d) A ROW: a click with a key held is the link's; a plain one chooses
+    // in place, the row marked, the detail its own, the address its, and the
+    // keyboard on Play, where nothing has played.
+    show("/committee/H43/videos", fx.H43, 2);
+    const n = {focus: 0, made: 0, removed: 0, set: []};
+    const stub = {focus() { n.focus += 1; }, click() { n.played = 1; }};
+    const player = {insertAdjacentHTML() { n.made += 1; }, remove() {}, scrollIntoView() {},
+      querySelector: (q) => q === ".pstub" ? stub : null};
+    const det = {innerHTML: ""};
+    const view = {querySelector: (q) => q === ".vwplay iframe" ? null : q === ".vwplay" ? player
+      : q === ".vwdetin" ? det : q === ".vwsay" ? {textContent: ""} : null,
+      querySelectorAll: (q) => q === ".vwlist a[aria-current]" ? [{removeAttribute() { n.removed += 1; }}] : []};
+    const row = {dataset: {vwpick: "VID4"}, closest: (q) => q === ".vw" ? view : null,
+      setAttribute(k, v) { n.set.push(k + "=" + v); }};
+    const pick = (q) => q === "a[data-vwpick]" ? row : null;
+    const held = click(pick, {ctrlKey: true});
+    out.held = {prevented: held.prevented, made: n.made, set: n.set.length};
+    const plain = click(pick);
+    out.row = {prevented: plain.prevented, made: n.made, removed: n.removed, set: n.set, focus: n.focus,
+               vid: s.getPage().vid, detail: det.innerHTML.includes("HB 1442"), at: at()};
+    // (e) SHOW ALL, a phone's rest of a recording's bills: shown, the keyboard on the first it brought.
+    const list = {cls: [], classList: {add(c) { list.cls.push(c); }},
+      querySelector: (q) => q === ".vwrest a" ? {focus() { list.focused = 1; }} : null};
+    byId.vwbills = list;
+    click((q) => q === "[data-vwall]" ? {getAttribute: (k) => k === "aria-controls" ? "vwbills" : null,
+      dataset: {vwall: "bills"}, remove() { list.gone = 1; }} : null);
+    out.all = {cls: list.cls, focused: !!list.focused, gone: !!list.gone};
+    delete byId.vwbills;
+    // (f) THE SKIP LINK: the keyboard to the chosen row.
+    const cur = document.querySelector('.vwlist a[aria-current="true"]');
+    cur.focus = () => { out.skipped = 1; }; cur.closest = () => null;
+    out.skip = click((q) => q === "a[data-vwskip]" ? {} : null).prevented;
+    // (h) SHARE keeps #v-, and drops a fragment that only scrolls.
+    const st = {textContent: ""};
+    navigator.share = undefined; navigator.clipboard = undefined;
+    const share = (href) => { location.href = href; location.hash = href.slice(href.indexOf("#"));
+      click((q) => q === "[data-share]" ? {parentNode: {querySelector: () => st}} : null); return st.textContent; };
+    out.share = [share("https://x/committee/H43/videos#v-VID4"), share("https://x/committee/H43/sessions#day-2026-02-03")];
+    // (i) tabAddress keeps the fragment where asked, and only there.
+    go("/committee/H43/sessions#v-abc"); wrote.length = 0;
+    s.tabAddress("videos", true); s.tabAddress("videos");
+    out.tabAddress = wrote.splice(0);
+    // (g) THE MEETING'S LINK under the player: the Meetings tab at that day.
+    show("/committee/H43/videos#v-VID1", fx.H43, 2);
+    const meet = click((q) => q === "a[data-vwday],a[data-vwgo]" ? {dataset: {vwday: "2026-02-03"},
+      getAttribute: (k) => k === "href" ? "/committee/H43/sessions#day-2026-02-03" : null} : null);
+    out.meet = {prevented: meet.prevented, tab: s.getTab(), at: at(),
+                open: results.innerHTML.includes('id="day-2026-02-03" open')};
+    // (#5) BACK, to the Videos tab's address the Meetings tab had replaced: the tab
+    // and its recording; and Forward again.
+    go("/committee/H43/videos#v-VID4"); fire("popstate");
+    out.back = {tab: s.getTab(), chosen: chosen(), marked: marked("VID4")};
+    go("/committee/H43/sessions#day-2026-02-03"); fire("popstate");
+    out.forward = s.getTab();
+    // (#6) THE VIDEOS TAB TURNED TO AGAIN names what it shows; the newest it
+    // shows when nothing was chosen is left unnamed.
+    show("/committee/H43/videos#v-VID4", fx.H43, 2);
+    const tab = (i) => click((q) => q === "[data-pt]" ? {dataset: {pt: String(i)}} : null);
+    tab(0); tab(2);
+    out.again = {at: at(), chosen: chosen()};
+    show("/committee/H43/videos", fx.H43, 2); tab(0); tab(2);
+    out.newest = at();
+    // (#10) A TERM HOLDING ONLY RECORDINGS opens on them; one with bills or
+    // meetings on Bills.
+    go("/committee/rules"); s.openPage("committee", "rules"); await tick();
+    out.rules = {tab: s.getTab(), term: s.getPage().term, at: at()};
+    go("/committee/H43"); s.openPage("committee", "H43"); await tick();
+    out.commerce = {tab: s.getTab(), at: at()};
+    // (k) The recordings' terms are the page's.
+    out.terms = s.recordTerms("committee", fx.rules);
+  } catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").slice(0, 400); }
+  process.stdout.write("\n@@" + JSON.stringify(out));
+})();
+"""
+    got = _node_app(harness, {"fx.json": json.dumps({"H43": cmte, "two": two, "rules": rules})})
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert "threw" not in got, "the Videos tab's behaviour could not be driven: " + got["threw"]
+    assert got["kept"] == {"html": "THE PANE, PLAYING", "before": True, "tabs": True}, (
+        f"renderPage draws the pane again while a recording plays in it, or not what is above it: {got['kept']}")
+    assert got["scroll"] == 300, f"the list's place is lost when the page is drawn again: {got['scroll']}"
+    assert got["deep"] == {"term": "2021-2022", "tab": 2, "chosen": "OLD21", "marked": True}, (
+        f"an address naming another term's recording does not open on it: {got['deep']}")
+    assert got["hash"] == {"term": "2025-2026", "tab": 2, "chosen": "VID4", "marked": True}, (
+        f"the address changed to a recording of another term does not turn to it: {got['hash']}")
+    assert got["day"] == {"term": "2021-2022", "tab": 1, "drawn": True}, (
+        f"a meeting of another term, its address opened afresh, is not found: {got['day']}")
+    assert got["dayTab"] == {"tab": 1, "at": "/committee/H43/sessions#day-2026-02-03"}, (
+        f"a day asked for on the Bills tab does not open the Meetings tab, named in the address: {got['dayTab']}")
+    assert got["held"] == {"prevented": 0, "made": 0, "set": 0}, (
+        f"a row clicked with a key held is not left to open its own address: {got['held']}")
+    assert got["row"] == {"prevented": 1, "made": 1, "removed": 1, "set": ["aria-current=true"], "focus": 1,
+                          "vid": "VID4", "detail": True, "at": "/committee/H43/videos#v-VID4"}, (
+        f"a row clicked is not chosen in place, the keyboard on Play: {got['row']}")
+    assert got["all"] == {"cls": ["vwopen"], "focused": True, "gone": True}, (
+        f"Show all does not show the rest of the bills and take the keyboard to it: {got['all']}")
+    assert got["skip"] == 1 and got.get("skipped") == 1, "the skip link does not take the keyboard to the chosen row"
+    assert got["share"] == ["Copy this address: https://x/committee/H43/videos#v-VID4",
+                            "Copy this address: https://x/committee/H43/sessions"], (
+        f"Share does not keep the recording, or keeps a fragment that only scrolls: {got['share']}")
+    assert got["tabAddress"] == ["replace /committee/H43/videos#v-abc", "replace /committee/H43/videos"], (
+        f"tabAddress does not keep the fragment where asked, and only there: {got['tabAddress']}")
+    assert got["meet"] == {"prevented": 1, "tab": 1, "at": "/committee/H43/sessions#day-2026-02-03",
+                           "open": True}, f"the meeting's link under the player does not open it: {got['meet']}"
+    assert got["back"] == {"tab": 2, "chosen": "VID4", "marked": True} and got["forward"] == 1, (
+        f"Back and Forward do not bring back the tab the address names: {got['back']}, then {got['forward']}")
+    assert got["again"] == {"at": "/committee/H43/videos#v-VID4", "chosen": "VID4"} and \
+        got["newest"] == "/committee/H43/videos", (
+            f"the Videos tab turned to again does not name what it shows: {got['again']}, {got['newest']}")
+    assert got["rules"] == {"tab": 2, "term": "2025-2026", "at": "/committee/rules/videos"} and \
+        got["commerce"] == {"tab": 0, "at": "/committee/H43"}, (
+            f"a term holding only recordings does not open on them, or one with bills does: "
+            f"{got['rules']}, {got['commerce']}")
+    assert got["terms"] == ["2025-2026", "1997-1998"], f"the recordings' terms are not the page's: {got['terms']}"
+    return "ok", ("a playing recording kept through a redraw, the list in its place; #v- and #day- of "
+                  "another term turn to it; Back and Forward bring the tab back; a row chosen in place, "
+                  "the keyboard on Play, a held key left to the link; Show all, the skip link, Share, "
+                  "tabAddress and the meeting's link as they say; the tab turned to again names its "
+                  "recording; a term of recordings alone opens on them")
+
+
+# A Videos view as app.js meets it on a phone, its parts stood up by hand: the
+# tab strip above its pane, which stays at the top of the window (sticky), and
+# the player that stays under it where the view is marked [data-vwpin], as
+# app.css has it below 60em -- or, `wide`, that does not, as on a desktop.
+# The window is 844px high, or `short`, 390: a phone held sideways.
+_VW_PHONE_HARNESS = _HEARD_PRELUDE + r"""
+load("videoView, vwStick, vwChoose, setView: (o) => { VVIEW = o; }");
+const css = (el) => ({position: (el && el.pos) || "static", getPropertyValue: () => ""});
+globalThis.getComputedStyle = css;
+const observed = [];
+globalThis.ResizeObserver = class { constructor(f) { this.f = f; } observe(el) { observed.push(el); } disconnect() {} };
+const scrolled = [];
+globalThis.scrollBy = (x, y) => scrolled.push(y);
+const out = {};
+const view = (wide, short) => {
+  document.documentElement.clientHeight = short ? 390 : 844;
+  const strip = {pos: "sticky", getBoundingClientRect: () => ({height: 45, bottom: 45})};
+  const tab = {closest: (q) => q === "[role=tablist]" ? strip : null};
+  document.getElementById = (id) => id === "ptab_2" ? tab : null;
+  const pane = {getAttribute: (k) => k === "aria-labelledby" ? "ptab_2" : null};
+  const n = {det: [], player: [], focus: 0};
+  const det = {getBoundingClientRect: () => ({top: -900}), scrollIntoView(o) { n.det.push(o.block); }};
+  const player = {insertAdjacentHTML() {}, remove() {}, scrollIntoView(o) { n.player.push(o.block); },
+    querySelector: (q) => q === ".pstub" ? {focus() { n.focus += 1; }, click() {}} : null};
+  const box = {props: {}, attrs: {}, top: 300, style: {setProperty(k, v) { box.props[k] = v; },
+      getPropertyValue: (k) => box.props[k] || ""},
+    setAttribute(k, v) { box.attrs[k] = v; }, removeAttribute(k) { delete box.attrs[k]; },
+    hasAttribute(k) { return k in box.attrs; }, getBoundingClientRect: () => ({top: box.top}),
+    closest: (q) => q === "[role=tabpanel]" ? pane : null,
+    querySelector: (q) => q === ".vwmain" ? main : q === ".vwdet" ? det : q === ".vwplay" ? player
+      : q === ".vwdetin" ? {innerHTML: ""} : q === ".vwsay" ? {textContent: ""} : null,
+    querySelectorAll: () => []};
+  // Sticky as app.css draws it: below 60em, where the view is marked.
+  const main = {get pos() { return !wide && "data-vwpin" in box.attrs ? "sticky" : "static"; },
+    getBoundingClientRect: () => ({height: 268, bottom: 313})};
+  document.querySelectorAll = (q) => q === ".vw" ? [box] : [];
+  return {box, n, strip, main};
+};
+try {
+  // Every row drawn, nothing held back behind a button.
+  const rows = Array.from({length: 40}, (_, i) => ({id: "r" + i, date: "2026-03-01"}));
+  const html = s.videoView({who: "House Finance", key: "H34|2025-2026", heading: "40 recordings", rows,
+    href: (id) => "/committee/H34/videos#v-" + id, pid: (r) => "p_" + r.id});
+  out.rows = (html.match(/class="vwrow"/g) || []).length;
+  out.held = /vwrest|data-vwall/.test(html);
+  // How far down the strip and the player reach, written on the view; watched, and not afresh.
+  const v = view(false);
+  s.vwStick(); const first = observed.length; s.vwStick();
+  out.props = Object.assign({}, v.box.props); out.watched = [first, observed.length, observed.includes(v.strip), observed.includes(v.main)];
+  out.pinned = "data-vwpin" in v.box.attrs;
+  // The keyboard on a row under the player: scrolled clear of it. One below it, or a wide
+  // screen's (its player does not stay, the strip ends at 45px), left where it is.
+  let at = v;
+  const focus = (top) => (heard.document.focusin || []).forEach((f) => f({target: {
+    closest: (q) => q === ".vw" ? at.box : null, getBoundingClientRect: () => ({top})}}));
+  focus(200); focus(400);
+  out.under = scrolled.splice(0);
+  // The foot of the player that stays: drawn once the view has gone up under the strip, and
+  // not while it rests where it stands.
+  const scroll = (top) => { at.box.top = top; (heard.window.scroll || []).forEach((f) => f({})); return "data-vwstuck" in at.box.attrs; };
+  out.edge = [scroll(300), scroll(-600), scroll(300)];
+  at = view(true); s.vwStick(); focus(200);
+  out.wideFocus = scrolled.splice(0);
+  // A WINDOW TOO SHORT FOR IT: a phone held sideways, 390px high, where the strip and the
+  // player are 313px of it. The player is not made to stay; what is under it is kept clear
+  // of the strip alone, and the keyboard on a row under the strip is put clear of it.
+  at = view(false, true); s.vwStick();
+  out.short = {pinned: "data-vwpin" in at.box.attrs, props: Object.assign({}, at.box.props), edge: scroll(-600)};
+  focus(200); focus(30);
+  out.short.focus = scrolled.splice(0);
+  // A row chosen on a phone before anything plays: what it covers brought up under the player;
+  // on a wide screen the player brought into view, as before.
+  for (const wide of [false, true]) {
+    const w = view(wide); s.vwStick();
+    s.setView({who: "House Finance", rows: [{id: "A", date: "2026-05-12"}, {id: "B", date: "2026-05-05"}],
+      chosen: "A", pid: (r) => "m_" + r.id, href: (id) => "/committee/H34/videos#v-" + id});
+    s.vwChoose({dataset: {vwpick: "B"}, closest: (q) => q === ".vw" ? w.box : null, setAttribute() {}});
+    out[wide ? "chooseWide" : "choosePhone"] = w.n;
+  }
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").slice(0, 300); }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "a Videos view keeps the live strip's place first in the band that stays at the top: "
+                   "empty, hidden, no height, and nothing here styles it")
+def _videos_live_strip_place():
+    """From the live layer's design, approved (the manager, 29 October 2026):
+    the band that stays at the top of a phone's window (.vwmain, vwPlayer's
+    container) holds one empty first child, <div class="lv-strip" hidden>,
+    which the live layer's live.js fills ("House Finance is live now ·
+    Watch") and draws with its own .lv-strip rules. Hidden, it must not
+    change the band's height: so app.css has no rule for it, and none that
+    reaches it sets a display that would beat the browser's own [hidden]."""
+    got = _app_js('scope.videoView({rows:[{id:"abc",date:"2026-02-03",seconds:3600,count:"2 bills"},'
+                  '{id:"def",date:"2026-02-10"}],pid:r=>"vw-"+r.id,who:"House Finance",heading:"2 recordings",'
+                  'href:id=>"/committee/H34/videos/"+id,key:"H34"})', names=("videoView",))
+    if got is None:
+        return "skip", "node, app.js or tests/dom_stub.js is not here"
+    assert got.startswith('<div class="vw" data-vwkey="H34"><div class="vwmain"><div class="lv-strip" hidden></div>'
+                          '<div class="player vwplay"'), (
+        "the Videos band does not begin with the live strip's empty, hidden place: " + got[:200])
+    assert got.count("lv-strip") == 1, "the live strip's place is written more than once in a view"
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    assert "lv-strip" not in css, "app.css styles .lv-strip, which is the live layer's to draw"
+    for pin in ({}, {"data-vwpin": "", "data-vwstuck": ""}):
+        chain = [{"tag": "div", "ids": set(), "classes": {"lv-strip"}, "attrs": {"class": "lv-strip", "hidden": ""},
+                  "states": set()},
+                 {"tag": "div", "ids": set(), "classes": {"vwmain"}, "attrs": {"class": "vwmain"}, "states": set()},
+                 {"tag": "div", "ids": set(), "classes": {"vw"}, "attrs": {"class": "vw", **pin}, "states": set()},
+                 {"tag": "body", "ids": set(), "classes": {"pg"}, "attrs": {"class": "pg"}, "states": set()}]
+        shows = [(sel, line) for ctx, sel, body, line in _css_rules(css)
+                 if not any(re.search(r"\bprint\b", c) for c in ctx) and _css_can_reach(sel, chain)
+                 and any(k == "display" for k, _v in _css_decls(body))]
+        assert not shows, (
+            f"a rule sets the hidden live strip's display, so it takes height in the band: {shows[:3]}")
+    return "ok", "the band's first child is <div class=\"lv-strip\" hidden></div>, once, and no rule here draws it"
+
+
+@check("frontend", "on a phone a Videos view is a playlist as YouTube's: the player stays at the top under "
+                   "the tab strip while every recording scrolls on the page beneath it, and nothing the "
+                   "keyboard moves to is left under the player; a desktop's view as it was")
+def _videos_phone_playlist():
+    """The owner, 29 October 2026: "on a phone the player stays at the top
+    (sticky) while the list of recordings scrolls beneath it". The player and
+    its caption (.vwmain) stick under the tab strip that stays at the top
+    already (.rhead ~ .tabs), at --vwtop, the strip's height, which app.js's
+    vwStick measures and writes on the view with --vwstick, the player's
+    foot; whatever is under the player -- what the recording covers, the
+    rows, a bill's moment -- keeps that far from the top when it is scrolled
+    to (scroll-margin-top), and where the Tab key leaves it under the player
+    app.js puts the focus clear (focusin): Chromium keeps the margin for
+    scrollIntoView and not for Tab, and with the margin alone 31 of 40 rows
+    gone back up through with Shift+Tab rested under the player at 390px
+    (Playwright on real data, 29 October 2026; none with app.js's). The whole list is drawn: it is what
+    the page scrolls through, where it had been twenty rows and a button
+    (House Finance has 106; videoView drew them in under a millisecond on
+    real data). Still no box that scrolls inside a page that scrolls: the
+    page scrolls. A row chosen before a first press brings the recording's
+    description up under the player. On a wide screen nothing of this
+    applies: the player does not stick, and the view is as it was (the same
+    pixels before and after at 1280, measured 29 October 2026).
+
+    ONLY WHERE IT LEAVES THE LIST ROOM (the review of 29 October 2026, 1):
+    stuck at every width below 60em, the strip, the player and its caption
+    were 517px of a phone held sideways (844 by 390) and 548 of a 900 by 600
+    window, and not one of 80 Tab and Shift+Tab steps through House
+    Finance's list left its row in sight. app.css's sticky rule asks for
+    [data-vwpin], which vwStick sets only where the three take at most
+    three fifths of the window's height; elsewhere the player scrolls with
+    the page and what is under it is kept clear of the strip alone, the
+    focus too (80 of 80 steps in sight at 844 by 390, 900 by 600 and 667 by
+    375, and still at 390 by 844 and 768 by 1024; one step was under the
+    strip without the strip's guard). And while the player stays over the
+    list, a foot to it, once the view has gone up under the strip (7)."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    phone = _braced(css, "@media screen and (max-width:59.99em){")
+    wide = _braced(css, "@media screen and (min-width:60em){")
+    stick = re.search(r"\n\s*\.vw\[data-vwpin\] \.vwmain\{position:sticky;top:var\(--vwtop,0px\);z-index:\d+\}", phone)
+    band = re.search(r"\n\s*\.vwmain\{background:var\(--vwbg\);padding-bottom:var\(--sp-3\);"
+                     r"margin-bottom:calc\(-1 \* var\(--sp-3\)\)\}", phone)
+    foot = re.search(r"\n\s*\.vw\[data-vwstuck\] \.vwmain\{box-shadow:0 1px 0 var\(--rule-2\)", phone)
+    clear = re.search(r"\.vwdet,\.vwdet :is\(a,button\),\.vwside :is\(a,button\)[^{]*\{scroll-margin-top:calc\("
+                      r"var\(--vwstick,0px\)", phone)
+    for ok, why in (
+            (stick, "on a phone the player does not stay at the top, under the tab strip, where the view is "
+                    "marked as leaving the list room"),
+            (not re.search(r"(^|[\n}])\s*\.vwmain\{[^}]*position:sticky", phone),
+             "on a phone the player stays at the top whatever the window's height: a phone held sideways has "
+             "its list under the player"),
+            (band, "the player's band is not drawn the same pinned or not, so marking it changes the height it "
+                   "is measured by"),
+            (foot, "the player that stays over the list has no foot"),
+            (clear, "on a phone what is under the player is not kept clear of it when scrolled to"),
+            (".vwlist" not in phone and ".vwrest" not in phone.replace(".vwbills:not(.vwopen) .vwrest", ""),
+             "on a phone rows of the list are held back"),
+            ("sticky" not in wide and "--vwtop" not in wide,
+             "on a wide screen the player is made to stay: the desktop's view is to be as it was"),
+            (re.search(r"\n\.vw\{--vwbg:var\(--paper\)\}\n\.pane \.vw\{--vwbg:var\(--surface\)\}", css),
+             "the player's band is not the ground it stands on")):
+        assert ok, f"app.css: {why}"
+    got = _node_app(_VW_PHONE_HARNESS)
+    if got is None:
+        return "ok", "app.css keeps the player at the top on a phone; node is not here to drive app.js"
+    assert "threw" not in got, "the Videos view on a phone could not be driven: " + got["threw"]
+    assert got["rows"] == 40 and not got["held"], (
+        f"a list of 40 draws {got['rows']} rows, or holds some back behind a button: the whole list is "
+        "what a phone scrolls through")
+    assert got["props"] == {"--vwtop": "45px", "--vwstick": "313px"} and got["pinned"], (
+        f"the strip's and the player's reach are not written on the view, or a 390 by 844 phone's player "
+        f"is not made to stay: {got['props']}, {got['pinned']}")
+    assert got["watched"] == [2, 2, True, True], (
+        f"the strip and the player are not watched for a change of size, or are watched afresh each "
+        f"time, which reports again without end: {got['watched']}")
+    assert got["under"] == [-121] and got["wideFocus"] == [], (
+        f"the keyboard on a row under the player is not scrolled clear of it ({got['under']}), or a "
+        f"wide screen's below the strip is moved ({got['wideFocus']})")
+    assert got["short"] == {"pinned": False, "props": {"--vwtop": "45px", "--vwstick": "45px"}, "edge": False,
+                            "focus": [-23]}, (
+        "in a window too short for it (390px high, the strip and the player 313px of it) the player is made "
+        "to stay, what is under it is not kept clear of the strip alone, or a row the keyboard leaves under "
+        f"the strip is not put clear of it: {got['short']}")
+    assert got["edge"] == [False, True, False], (
+        f"the player that stays has no foot once the list has gone up under it, or has one at rest: {got['edge']}")
+    assert got["choosePhone"] == {"det": ["start"], "player": [], "focus": 1} and \
+        got["chooseWide"] == {"det": [], "player": ["nearest"], "focus": 1}, (
+            f"a row chosen does not bring up what it covers under a phone's player, or a wide screen's "
+            f"player into view: {got['choosePhone']}, {got['chooseWide']}")
+    return "ok", ("on a phone the player stays under the strip over the whole list, what is under it kept "
+                  "clear of it by app.css and by app.js, with a foot once the list goes under it; not in a "
+                  "window too short for it, where the focus is kept clear of the strip; a row chosen brings "
+                  "up its description; a desktop's view untouched")
+
+
+@check("frontend", "a recording chosen on a Videos tab is described under the player: its kinds, how many "
+                   "bills the docket ties to it, and a line a bill -- the number, then its moments, the "
+                   "Meetings tab's own buttons, then its title -- in the order the recording reaches them")
+def _videos_description():
+    """The owner, 29 October 2026: "under the player, list the bills it
+    covers, each with its moment button ("HB 1042 at 00:03:45", with
+    "approximate" where inferred) that jumps the player there, reusing the
+    Meetings tab's moment buttons and labels ... Show the kind chips too",
+    "clear, scannable, the bill number then its moment". The detail had been
+    the number, the title, and the moments on a line of their own under the
+    title. Now (app.js, cmteVideoDetail): the kinds as the Meetings tab's
+    chips and the room; "The docket ties 3 bills to this recording. Choose a
+    time to jump the recording there." -- or, with no moment anywhere in it,
+    the Meetings tab's own "No moment in this recording has been identified
+    yet."; then each bill once, in the order the recording reaches it (its
+    first moment; none, after), its number, its moments -- jumpButtons, the
+    Meetings tab's bytes, "approximate" held to its button -- and its title
+    under them. A bill with no moment is its number and title. Drawn by
+    renderPage in node over a committee whose bills come in another order
+    than the recording reaches them."""
+    item = lambda bill, kind, start, state, vid="VID1", **k: dict({
+        "bill": bill, "n": bill[:2] + " " + bill[2:], "title": f"the title of {bill}", "year": 2026,
+        "term": "2025-2026", "kind": kind, "video_id": vid, "start": start, "state": state, "time": "10:00",
+        "venue": "LOB 302"}, **k)
+    # HB 675-FN-A-LOCAL: a number of 17 characters, 164px at 1280, which ran
+    # 36px under its first moment in a column of 7.5rem (the review of 29
+    # October 2026, 3).
+    items = [item("HB1442", "work session", 600, "stated"),
+             item("HB1442", "executive session", 3000, "located"),
+             item("HB1001", "work session", 120.0, "stated"),
+             item("HB1203", "work session", None, "prestream"),
+             item("HB675", "work session", 1800, "located", n="HB 675-FN-A-LOCAL")]
+    quiet = [item("HB2001", "public hearing", None, "prestream", "VID9"),
+             item("HB2002", "public hearing", None, "prestream", "VID9")]
+    out = lambda its: [{"bill": b, "kinds": sorted({i["kind"] for i in its if i["bill"] == b}), "outcome": "worked"}
+                       for b in dict.fromkeys(i["bill"] for i in its)]
+    cmte = {"code": "H43", "name": "Commerce", "chamber": "H", "bills": {"2025-2026": []},
+            "sessions": [{"date": "2026-02-10", "term": "2025-2026", "video_id": "VID9", "items": quiet,
+                          "outcomes": out(quiet)},
+                         {"date": "2026-02-03", "term": "2025-2026", "video_id": "VID1", "items": items,
+                          "outcomes": out(items)}],
+            "recordings": [{"id": "VID9", "date": "2026-02-10", "term": "2025-2026"},
+                           {"id": "VID1", "date": "2026-02-03", "term": "2025-2026", "began": "09:58"}]}
+    harness = _HEARD_PRELUDE + r"""
+load("renderPage, recordTerms, setPage: (p) => { PAGE = p; }, setTab: (t) => { PAGE_TAB = t; },"
+  + " setUp: (u) => { UPCOMING = u; }");
+const fx = JSON.parse(fs.readFileSync("./fx.json", "utf8"));
+const results = document.querySelector("#results");
+const draw = (tab, vid) => {
+  const terms = s.recordTerms("committee", fx);
+  s.setPage({kind: "committee", data: fx, terms, term: terms[0], status: "", vfilter: "", vshow: 0, bshow: 0,
+    mshow: 0, vid, mopen: {"day-2026-02-03": true}});
+  s.setTab(tab); s.renderPage(); return results.innerHTML; };
+const out = {};
+try { s.setUp([]); out.vid1 = draw(2, "VID1"); out.vid9 = draw(2, "VID9"); out.meetings = draw(1, ""); }
+catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").slice(0, 300); }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+    got = _node_app(harness, {"fx.json": json.dumps(cmte)})
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert "threw" not in got, "the Videos tab would not draw: " + got["threw"]
+    flat = {k: re.sub(r"[ \t\r\n]+", " ", v) for k, v in got.items()}
+    det = lambda h: h[h.index('class="vwdetin"'):h.index('<div class="vwside">')]
+    one = det(flat["vid1"])
+    assert '<p class="vwlead">The docket ties 4 bills to this recording. Choose a time to jump the recording ' \
+        'there.</p>' in one, "the description does not say how many bills the docket ties to the recording, " \
+        "and how its times are used: " + re.sub(r"<[^>]+>", " ", one)[:300]
+    # The kinds, as the Meetings tab's chips, before the bills.
+    kinds = re.search(r'<p class="vwkinds">(.*?)</p>', one)
+    assert kinds and '<span class="chip calkind k-meet">Work Session</span>' in kinds.group(1) and \
+        '<span class="chip calkind k-exec">Executive Session</span>' in kinds.group(1) and \
+        one.index('class="vwkinds"') < one.index('class="vwbills"'), "the description does not lead with its kinds' chips"
+    # A line a bill: the number, then its moments, then its title; in the order
+    # the recording reaches them, a bill with no moment after; each once.
+    lines = re.findall(r'<li(?: class="vwrest")?><a class="vwbn" href="[^"]*">([^<]*)</a>'
+                       r'(?:<span class="mjumps">(.*?)</span>)?<span class="vwbt">([^<]*)</span></li>', one)
+    assert [(n, t) for n, _j, t in lines] == [("HB 1001", "the title of HB1001"), ("HB 1442", "the title of HB1442"),
+                                             ("HB 675-FN-A-LOCAL", "the title of HB675"),
+                                             ("HB 1203", "the title of HB1203")] and one.count('class="vwbn"') == 4, (
+        "the bills are not a line each -- the number, its moments, its title -- in the order the recording "
+        f"reaches them: {[(n, t) for n, _j, t in lines]}")
+    jumps = {n: j for n, j, _t in lines}
+    assert jumps["HB 1203"] == "" and 'data-seek="m20260203_VID1|120"' in jumps["HB 1001"], (
+        f"a bill's moments are not beside its number, or a bill with none has some: {jumps}")
+    # THE MEETINGS TAB'S OWN BUTTONS, byte for byte, both of HB 1442's
+    # moments with their kinds, the inferred one "approximate".
+    meet = flat["meetings"]
+    card = meet[meet.index('id="day-2026-02-03"'):]
+    card = card[card.index('data-id="HB1442"'):]
+    mj = re.search(r'<span class="mjumps">(.*?)</span></div>', card).group(1)
+    assert jumps["HB 1442"] == mj and mj.count('class="mjump"') == 2 and \
+        "Work Session 00:10:00</button></span>" in mj and \
+        'Executive Session 00:50:00</button><i class="approx">approximate</i></span>' in mj, (
+            f"HB 1442's moments under the player are not the Meetings tab's: {jumps['HB 1442']!r} against {mj!r}")
+    quiet_det = det(flat["vid9"])
+    assert '<p class="vwlead">The docket ties 2 bills to this recording. No moment in this recording has been ' \
+        'identified yet.</p>' in quiet_det and 'class="mjumps"' not in quiet_det, (
+            "a recording none of whose bills has a moment does not say so: " + re.sub(r"<[^>]+>", " ", quiet_det)[:300])
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    at = css.find(".vwbills li{display:flex")
+    phone = _braced(css[css.rfind("@media (max-width:45em){", 0, at):], "@media (max-width:45em){") if at >= 0 else ""
+    assert re.search(r"\n\.vwbn\{grid-column:1;", css) and re.search(r"\n\.vwbt\{grid-column:2;", css) and \
+        "display:flex;flex-wrap:wrap" in phone and ".vwbills .mjumps{display:contents}" in phone and \
+        ".vwbt{flex:1 1 100%}" in phone, (
+            "app.css: a bill's moments are not beside its number with its title under them, on a wide screen "
+            "or a phone")
+    # THE NUMBERS' COLUMN IS THE LONGEST NUMBER'S, THE SAME DOWN THE LIST
+    # (the review of 29 October 2026, 3): the list a grid whose first column
+    # is at least 7.5rem and as wide as its widest number, each line a
+    # subgrid of it, so HB 675-FN-A-LOCAL is never under its first moment and
+    # the moments start on one line; and each number on its line's first
+    # baseline, level with its moments or its title's first line, where it
+    # had been centred against a title of two or three lines (6). Node draws
+    # no boxes: these are the rules that place them, measured in Chromium on
+    # real data (no number under a moment in the 736 lines of House Finance,
+    # Education Funding and Children and Family Law, at 1280 and at 768,
+    # where there had been 32).
+    wide_list = re.search(r"\n\.vwbills\{[^}]*display:grid;[^}]*grid-template-columns:minmax\(7\.5rem,max-content\) "
+                          r"minmax\(0,1fr\)", css)
+    line = re.search(r"\n\.vwbills li\{([^}]*)\}", css)
+    assert wide_list and line and "grid-column:1 / -1" in line.group(1) and \
+        "grid-template-columns:subgrid" in line.group(1) and "align-items:baseline" in line.group(1) and \
+        "grid-template-columns:7.5rem" not in line.group(1) and "align-items:center" not in line.group(1), (
+            "app.css: a bill's number is in a fixed column, or one as wide as its own line's, where a long "
+            "number runs under its moments or the moments do not start on one line; or a number is not on "
+            "its line's first baseline")
+    assert '<a class="vwbn" href="bill/2026/hb675.html">HB 675-FN-A-LOCAL</a>' in one, (
+        "a long number is not drawn whole in the description")
+    # A LINK IN THE PLAYER'S CAPTION OR UNDER IT IS 24px TALL (the review of
+    # 30 October 2026; WCAG 2.5.8): "On YouTube" in the caption and the links
+    # under the player sit in a line of text, where the player bar's
+    # ".pbar > a" never reaches, and were 19px. Each, as renderPage draws it,
+    # takes --tap-text top and bottom from the cascade.
+    rules, links = _css_screen_rules(css), {}
+    for k in ("vid1", "meetings"):
+        _html_walk(got[k], element=lambda c: links.setdefault(
+            next((n for n in ("vwcap", "vwlinks") for e in c[1:] if e and n in e["classes"]), ""), []).append(c)
+            if c[0]["tag"] == "a" else None)
+    short = [f".{n} a: {pad}" for n in ("vwcap", "vwlinks") for c in links.get(n, [])
+             for pad in [tuple(_css_won(rules, c).get(f"padding-{s_}", ("0",))[0] for s_ in ("top", "bottom"))]
+             if any("".join(v.split()) != "var(--tap-text)" for v in pad)]
+    assert links.get("vwcap") and links.get("vwlinks") and not short, (
+        "a link in the player's caption or under the player is under 24px tall, or renderPage drew none to "
+        f"measure ({len(links.get('vwcap', []))} in the caption, {len(links.get('vwlinks', []))} under it): "
+        + "; ".join(short[:4]))
+    return "ok", ("the kinds, the count and how the times are used, then a line a bill -- number, the "
+                  "Meetings tab's own buttons, title -- in the order the recording reaches them, the numbers "
+                  "in a column as wide as the longest and on their lines' first baseline; a recording "
+                  "with no moment says so; the caption's and the links' under the player 24px tall")
 
 
 @check("frontend", "the committees index says its counts of bills and sessions are every "
@@ -112548,6 +114817,145 @@ def _elect_part(out, title):
     return "" if at < 0 else out[at:].split("\n\n")[0]
 
 
+@check("build", "election week's helper drafts from what the steps print, proposes only what the "
+       "step could not be sure of, places the recount schedule's races, reads a statewide count "
+       "only, waits and finishes as it should, asks nobody and writes only logs/",
+       needs=("election_week", "build_members_elect"))
+def _election_week_helper(EW, BME):
+    """src/ops/election_week.py (29 October 2026): the routine work around
+    saving the Secretary of State's files, which stays a person's. Its
+    drafts are read off build_members_elect.say_report's own printing, so a
+    change to that printing that the drafter no longer reads fails here, not
+    on election night. And the review's cases: a NOT LINKED line proposes
+    its one member only where the step could not be sure of a first name,
+    never a rival or another county's; the recount schedule's phrasings --
+    "Rockingham 13", "29F", "SD 9", "Districts 12 and 13", a withdrawn one,
+    a time -- are placed, or listed, never dropped; a sheet of county blocks
+    gives no statewide count without a statewide row; check waits, finishes,
+    runs once more for a new upload, and does not finish on a step that
+    showed nobody; and it asks nobody and writes only logs/."""
+    import contextlib
+    import io
+    report = {"unlinked": [("H|Coos|5", "Peter Morency",
+                            "the first name fits only as the start of the sitting member's, by "
+                            "three letters or one letter more: Rep. Pete Morency (R - Coos 5) "
+                            "[8401] sits for Coos 5"),
+                           ("H|Hillsborough|12", "Pat Long",
+                            "another candidate on the ballot answers to the name of the sitting "
+                            "member: Rep. Patrick Long [123]: rivals"),
+                           ("H|Merrimack|9", "Pat Smith", "two members: Rep. A [1]; Rep. B [2]")],
+              "new": [("H|Hillsborough|10", "Marty Jack", BME.NEW)],
+              "short": [("H|Coos|5", 1, 0, 0, 0, True)], "notes": ["a note"], "pending": ""}
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        BME.say_report(report, Path("corrections/members_elect.json"), "2026-11-03")
+    rows = EW.step_rows(buf.getvalue())
+    assert [len(rows[k]) for k in ("NOT LINKED", "NEW", "DO NOT ADD UP", "NOTES")] == [3, 1, 1, 1], (
+        f"the drafter no longer reads build_members_elect's report: {rows}")
+    roster = [("733", "Jack, Martin", "H", "Hillsborough", "10", "sitting"),
+              ("9", "Jack, Other", "H", "Coos", "1", "sitting")]
+    d = EW.draft_matches(rows, "2026-11-03", roster)
+    m, ev = d["2026-11-03"]["matches"], d["_evidence"]
+    assert m == {"H|Coos|5": {"Peter Morency": "8401"}, "H|Hillsborough|12": {"Pat Long": None},
+                 "H|Merrimack|9": {"Pat Smith": None}, "H|Hillsborough|10": {"Marty Jack": None}}, (
+        f"the drafted matches (a rival's id is never proposed): {m}")
+    assert "Martin Jack [733]" in ev["H|Hillsborough|10"]["Marty Jack"] and \
+        "Other" not in ev["H|Hillsborough|10"]["Marty Jack"], (
+        f"a NEW name's same-surname member of its county is not named to check: {ev}")
+    races = {k: {} for k in ("H|Hillsborough|12", "H|Hillsborough|13", "H|Hillsborough|40",
+                             "H|Rockingham|13", "H|Merrimack|29", "H|Strafford|18", "S|24", "S|9")}
+    sched = ("9:00 AM State Representative, Hillsborough County District 12 (Hudson)\n"
+             "1:00 PM Hillsborough County, District No. 40 - State Representatives\n"
+             "9:00 AM State Senate District 24\nRockingham 13 (Raymond, Stratham)\n"
+             "Merrimack 29F\nSD 9\nHillsborough County Districts 12 and 13\n"
+             "Hillsborough County District 12, 2 seats\nStrafford 18 recount WITHDRAWN\n"
+             "2:00 PM Grafton Dist. 99\nTuesday, November 10\n")
+    draft, unplaced = EW.draft_recounts(sched, races, "2026-11-09", "2026-11-06", "2026-11-03")
+    assert sorted(draft["2026-11-03"]["not_final"]) == sorted(k for k in races if k != "H|Strafford|18") \
+        and draft["2026-11-03"]["recount_deadline"] == "2026-11-06" and \
+        unplaced == ["Strafford 18 recount WITHDRAWN", "2:00 PM Grafton Dist. 99"], (
+            f"the recount draft: {sorted(draft['2026-11-03']['not_final'])} {unplaced}")
+    root = Path(tempfile.mkdtemp(prefix="ew_"))
+    here = Path.cwd()
+    try:
+        import openpyxl
+    except ImportError:
+        openpyxl = None
+    try:
+        if openpyxl is not None:
+            def book(name, rows):
+                wb = openpyxl.Workbook()
+                ws = wb.active
+                for r in rows:
+                    ws.append(r)
+                wb.save(root / name)
+                return root / name
+            head = [["Question No. 1"], [], ["Town", "Yes", "No", "Blank", "Overvotes"],
+                    ["Concord", 9000, 3000, 800, 2]]
+            c = EW.question_count(book("one.xlsx", head + [["TOTALS", 14000, 5500, 1200, 3]]))
+            assert (c["yes"], c["no"], c["blank"], c["over"]) == (14000, 5500, 1200, 3), c
+            row = EW.draft_cacr(c, "https://www.sos.nh.gov/x", "CACR13", "2026-11-05")
+            assert row["two_thirds"]["ratified"] and row["row"]["yes"] == 14000, row
+            blocks = [["Question No. 1"]]
+            for county, (y, n) in (("Belknap", (10, 5)), ("Sullivan", (7, 3))):
+                blocks += [[county + " County"], ["Town", "Yes", "No"], ["A", y, n], ["Totals", y, n]]
+            for name, rows_, want in (("blocks.xlsx", blocks, None),
+                                      ("state.xlsx", blocks + [["State Totals", 17, 8]], (17, 8))):
+                try:
+                    got = EW.question_count(book(name, rows_))
+                    got = (got["yes"], got["no"])
+                except SystemExit:
+                    got = None
+                assert got == want, f"{name}: a county's total read as the state's, or none: {got}"
+        # check(), its steps stubbed: waits, finishes, runs again for a new
+        # upload, and does not finish on a step that showed nobody.
+        src = root / "records" / "sources"
+        src.mkdir(parents=True)
+        os.chdir(root)
+        names = [f"2026-ge-house-{c}.xlsx" for c in EW.PSR.COUNTIES]
+        for n in names[:-1]:
+            (src / n).write_bytes(n.encode())
+        (src / "2026-ge-constitutional-question.xlsx").write_bytes(b"q")
+        asked, said = [], {"step": "members-elect: x\n  wrote site/members_elect.json"}
+        was = EW.run
+        EW.run = lambda args: (asked.append(Path(str(args[0])).name),
+                               (0, said["step"] if "members" in str(args[0]) else "wrote x"))[1]
+        try:
+            assert EW.check("2026", "https://x") == 0 and not asked, "it ran a step on 10 of 11"
+            (src / names[-1]).write_bytes(b"z")
+            (src / "2026-ge-state-senate-district-1-24.xlsx").write_bytes(b"s")
+            part = src / "2026-ge-house-coos (1).xlsx.crdownload"
+            part.write_bytes(b"")
+            assert not EW.status("2026")[1], "it went on with a download still in progress"
+            part.unlink()
+            EW.check("2026", "https://x")
+            assert asked == ["parse_sos_results.py", "build_members_elect.py"], (
+                f"all eleven and a question's file saved, it ran {asked}")
+            EW.check("2026", "https://x")
+            assert len(asked) == 2, "done, it ran the steps again"
+            (src / f"2026-ge-house-{EW.PSR.COUNTIES[0]}_1.xlsx").write_bytes(b"recount")
+            said["step"] = "members-elect: none shown -- the day is not the window's"
+            assert EW.check("2026", "https://x") == 1 and len(asked) == 4, (
+                "a later upload did not run the steps, or a step that showed nobody was done")
+            EW.check("2026", "https://x")
+            assert len(asked) == 6, "a step that showed nobody was taken for done"
+            assert "showed nobody" in (root / "logs" / "election_week.md").read_text(encoding="utf-8")
+        finally:
+            EW.run = was
+    finally:
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+    code = Path(_paths.script("election_week.py")).read_text(encoding="utf-8")
+    assert not re.search(r"urlopen|urllib\.request|requests\.|http\.client|socket", code), (
+        "election_week.py asks the network")
+    logs = set(re.findall(r'^([A-Z_]+) = LOGS / "[^"]+"', code, re.M))
+    written = set(re.findall(r"(\w+)\.write_(?:text|bytes)\(", code))
+    assert len(logs) >= 6 and written <= logs and "open(" not in code.replace("pdfplumber.open(", ""), (
+        f"election_week.py writes something not in logs/: {sorted(written - logs)}")
+    return "ok", ("drafts read off say_report, a rival never proposed, the schedule's phrasings "
+                  "placed or listed, a statewide count only, check's states, logs/ only")
+
+
 @check("build", "members-elect: a winner is linked to a page only on a certain match -- the "
                 "seat's sitting member, or the one former member of that name and county -- and "
                 "a name the rule cannot settle only once the person's file says who it is")
@@ -120744,6 +123152,9 @@ NOT_INPUT_NAMERS = {
     "build_all.py": "archive/cloud/kit-down.json: whether the build is the kit's, which "
                     "decides whether a missing input stops it, never what it writes",
     "cloud.py": "the bucket's logs and reports, which it sends; nothing a page is made of",
+    "state_sources.py": "archive/cloud/sources-down.json, its record of what this machine "
+                        "last took of the state documents; no build step runs it, and "
+                        "nothing a page is made of",
     "livestreams.py": "logs/youtube-<day>.log, yt-dlp's warnings, which its asks write "
                       "(--since-state, before the build) and nothing reads; nothing a page "
                       "is made of",

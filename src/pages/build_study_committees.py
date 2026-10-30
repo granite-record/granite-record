@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-18.3
+# GRANITE_VERSION: 2026-10-18.5
 """
 A page for every statutory and study committee the General Court lists as
 active, at /committee/ss<CommitteeID>.
@@ -185,6 +185,21 @@ def kind_of(name):
         return max(found)[1]
     found = [(m.start(), k) for k in KINDS for m in re.finditer(rf"\b{k}\b", name or "", re.I)]
     return min(found)[1] if found else "Committee"
+
+
+def named(name):
+    """The committee as a sentence names it, in "Recording of ..." and "Play
+    the recording of ...": "the Fiscal Committee"; a name that carries its own
+    article keeps the one, small ("the Governor's Commission on Addiction,
+    Treatment and Prevention"); and a name that names no body is said bare, as
+    the player's bar says it -- "Administrative Rules", which "the" made "the
+    Administrative Rules" (the review of 29 October 2026)."""
+    name = (name or "").strip()
+    if re.match(r"the\s", name, re.I):
+        return "the " + name[4:].lstrip()
+    if any(re.search(rf"\b{k}\b", name, re.I) for k in KINDS):
+        return "the " + name
+    return name
 
 
 # ---- the record's prose, read as it was written ------------------------------
@@ -468,8 +483,16 @@ def old_room(room):
 def meetings_of(c, recent, today):
     """The committee's meetings, newest first, each {"date", "time", "venue",
     "type", "chips", "notes", "video", "id"}; a meeting the database holds
-    twice is one. `recent` is {MeetingID: the Calendar's row}, whose venue
-    and recording are the Calendar's own reading of the meeting."""
+    twice is one. `recent` is {(CommitteeID, MeetingID): the Calendar's row},
+    whose venue and recording are the Calendar's own reading of the meeting.
+
+    ONE RECORDING, ONE MEETING (the Videos section's scout, 26 October 2026).
+    `recent` was keyed by MeetingID alone, and a MeetingID repeats across
+    committees and eras: the Cyanobacteria Mitigation Loan and Grant Fund
+    Task Force's meeting of 23 October 2026 lent its room and its recording
+    to the Nuclear Decommissioning Financing Committee's meeting of 14 June
+    2002, a recording eighteen years before the channels began. A row is this
+    meeting's only where it is this committee's and of this meeting's day."""
     out, seen = [], set()
     for r in c["meetings"]:
         try:
@@ -478,7 +501,9 @@ def meetings_of(c, recent, today):
             continue
         room, mtype = BC._where(r["MeetingLocation"])
         chips, notes = marks_of(r["webtext"], r["MeetingLocation"])
-        cal = recent.get(r["MeetingID"].strip()) or {}
+        cal = recent.get((c["cid"], r["MeetingID"].strip())) or {}
+        if cal.get("date") != when.date().isoformat():
+            cal = {}
         if cal:
             venue = cal["venue"]
         else:
@@ -510,13 +535,94 @@ def plural(n, word, many=None):
     return f"{n:,} {word if n == 1 else (many or word + 's')}"
 
 
+def bill_page(bid, year, bills, site):
+    """HB621 of 2025's page on the site, "bill/2025/hb621.html", or "" where
+    the site has none."""
+    yr = bills.get((bid, str(year)))
+    if yr and (Path(site) / "bill" / str(yr) / f"{bid.lower()}.html").exists():
+        return f"bill/{yr}/{bid.lower()}.html"
+    return ""
+
+
 def bill_link(bid, year, bills, site):
     """HB 621 as a link to its page where the site has it, else as text."""
     num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bid)
-    yr = bills.get((bid, str(year)))
-    if yr and (Path(site) / "bill" / str(yr) / f"{bid.lower()}.html").exists():
-        return f'<a href="bill/{E(str(yr))}/{E(bid.lower())}.html">{E(num)}</a>'
-    return E(num)
+    href = bill_page(bid, year, bills, site)
+    return f'<a href="{E(href)}">{E(num)}</a>' if href else E(num)
+
+
+def bills_of(c, ctx):
+    """THE BILLS TAB'S BILLS (the owner, 29 October 2026: a study committee's
+    page has the tabs a standing committee's has, Bills | Meetings | Videos).
+    A standing committee's Bills are the bills referred to it; nothing is
+    referred to a study or statutory committee, and what the record does
+    name are the bills that made it and changed it: the one that set it up
+    (CondensedBillNo) and those it lists as amending it (AmendingBills,
+    "HB1442(2026)"), each once -- 143 of the 151 active name
+    the first (measured on the preview, 29 October 2026), and the Fiscal
+    Committee, set up in 1965 by no bill the record names, four of the
+    second. Each is {n, year, href, title, line}: its page and title where the
+    site has the bill. A committee whose record names none has no Bills tab
+    rather than an empty one.
+
+    BY YEAR, AND NONE SAID TO COME "SINCE" (the review of 29 October 2026,
+    5): the bills the record lists as amending a body can be older than the
+    one that set it up -- the Advisory Council on Unemployment Compensation,
+    set up by HB 317 of 1995, lists HB 746 of 1975 and HB 110 of 1981, and the
+    tab had them as "Changed it", after it. The rows are in the order of
+    their years, the bill that set it up first among its own year's, and a
+    bill older than it -- or than the year a body set up by no bill named
+    was set up -- says that, where the others say "Amended it"."""
+    founded = c["year"] if str(c["year"] or "").isdigit() else ""
+    older = ("Older than the bill that set it up" if c["bill"] else
+             f"Older than {founded}, when it was set up")
+    named = ([(c["bill"], c["year"], "Set it up")] if c["bill"] else []) + [
+        (m.group(1).upper() + m.group(2), m.group(3),
+         older if founded and m.group(3) < founded else "Amended it")
+        for m in BILL_YEAR.finditer(c["amended"] or "")]
+    out, seen = [], set()
+    # The year this site's bills begin (1989, context): a bill before it has
+    # no page and no title here, and says why rather than standing blank --
+    # the Administrative Rules committee's HB 366 of 1983.
+    first = ctx.get("first_year", "")
+    for bid, year, role in named:
+        if (bid, str(year)) in seen:
+            continue
+        seen.add((bid, str(year)))
+        title = ctx["titles"].get((bid, str(year)), "")
+        if not title and first and str(year) < first:
+            title = f"Before {first}, when this site’s record of bills begins."
+        out.append({"n": re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bid), "year": str(year),
+                    "href": bill_page(bid, year, ctx["bills"], ctx["site"]), "title": title, "line": role})
+    return sorted(out, key=lambda r: (r["year"], r["line"] != "Set it up"))
+
+
+def bills_html(c, rows):
+    """The Bills tab: what the list is, then a row a bill (components.bill_row),
+    its number as text where the site has no page for it."""
+    made = sum(r["line"] == "Set it up" for r in rows)
+    others = len(rows) - made
+    # What the record says of them and no more: it lists them as amending
+    # the body, in years that can come before the bill that set it up
+    # (bills_of), so nothing here says "since".
+    listed = (("the bill" if others == 1 else f"the {others:,} bills")
+              + " the General Court&rsquo;s record lists as amending it"
+              + (", by year" if len(rows) > 1 else ""))
+    lead = (f"The bill that set it up, and {listed}." if made and others else
+            "The bill that set it up, as the General Court&rsquo;s record names it." if made else
+            listed[:1].upper() + listed[1:] + "."
+            + (f" It was set up in {E(c['year'])}." if c["year"] else ""))
+    out = [f'<p class="src">{lead}</p><div class="ssbills">']
+    for r in rows:
+        if r["href"]:
+            out.append(C.bill_row(r))
+        else:
+            # A bill the site has no page for (A WRONG LINK IS WORSE THAN NO
+            # LINK): its number and year as words.
+            out.append(f'<div class="brow"><span class="brnum">{E(r["n"])}<span class="byr">'
+                       f'({E(r["year"])})</span></span><span class="brtitle">{E(r["title"])}</span>'
+                       f'<span class="brline">{E(r["line"])}</span></div>')
+    return "".join(out) + "</div>"
 
 
 def what_it_does(c, ctx):
@@ -543,11 +649,15 @@ def what_it_does(c, ctx):
                    + (f'<a href="{E(st["href"])}">{name}</a>' if st["href"] else name)
                    + (f", {E(st['heading'].rstrip('.'))}" if st["heading"] else "")
                    + ".</p>")
+    # By year, and not "since": the record's amending bills can be older
+    # than the one that set the body up (bills_of; the review of 29 October
+    # 2026, 5), where this said "Changed since by HB 746 (1975)" of a council
+    # set up in 1995.
     amended = [bill_link(b.upper(), y, ctx["bills"], ctx["site"]) + f" ({E(y)})"
-               for b, n, y in ((m.group(1) + m.group(2), m.group(2), m.group(3))
-                               for m in BILL_YEAR.finditer(c["amended"] or ""))]
+               for b, y in sorted(((m.group(1) + m.group(2), m.group(3))
+                                   for m in BILL_YEAR.finditer(c["amended"] or "")), key=lambda x: x[1])]
     if amended:
-        out.append(f"<p>Changed since by {', '.join(amended)}.</p>")
+        out.append(f"<p>The General Court&rsquo;s record lists it as amended by {', '.join(amended)}.</p>")
     rules = [(w, prose(c[k], ctx["vocab"], ctx["parted"]))
              for w, k in (("First Meeting", "first"), ("Quorum", "quorum"), ("Ends", "ends"))]
     rules = [(w, t) for w, t in rules if t]
@@ -607,7 +717,7 @@ def player(c, m):
     """The meeting's recording, still until pressed, as a session day's is
     (build_full_sessions.day_players): app.js's one handler plays it."""
     pid = f"ss{c['cid']}_{m['date'].replace('-', '')}_{re.sub(r'[^\w-]', '', m['video'])}"
-    title = f"Recording of the {c['name']}, {C.date_words(m['date'])}"
+    title = f"Recording of {named(c['name'])}, {C.date_words(m['date'])}"
     return (f'<div class="player" data-player="{E(pid)}">'
             f'<button type="button" class="pstub" data-title="{E(title)}" '
             f'data-embed="{E(m["video"])}|0|{E(pid)}"><span>{C.icon("play")}</span>'
@@ -676,6 +786,118 @@ def meetings_html(c, ms, today):
     return "".join(out)
 
 
+def videos_html(c, ms, ctx):
+    """THE VIDEOS TAB (the owner, 26 October 2026: "Same goes for ... study
+    committees, commissions, etc that are livestreamed"): the committee's
+    recorded meetings as one player and its playlist, newest first, drawn by
+    app.js's videoView -- the renderer a committee's Videos tab and a
+    chamber's use -- from the rows this writes into the page, so no file is
+    added. Each row is a meeting this page lists with the recording the
+    Calendar matched to it (meetings_of): its day, the time it was set for,
+    its room and kind of meeting, the fold it opens (anchor) and its day on
+    the Calendar; and when the recording began and how long it ran, where the
+    index says. ("", 0) where no meeting has a recording: no tab; else (the
+    tab's body, how many recordings). Without script the tab's pane says
+    each recorded meeting under Meetings has its player, which it does."""
+    rows, seen = [], set()
+    for m in ms:
+        f = ctx["facts"].get(m["video"]) or {}
+        # A stream the index has as still to come (no start, no length) is
+        # not listed until it has run.
+        if not m["video"] or m["video"] in seen or (f and not f.get("streamed")):
+            continue
+        seen.add(m["video"])
+        rows.append({"id": m["video"], "date": m["date"], "time": m["time"],
+                     "venue": PA.place(m["venue"]), "type": m["type"], "anchor": m["id"],
+                     **({"calendar": f"calendar?week={BC.week_key(datetime.date.fromisoformat(m['date']))}"
+                                     f"&day={m['date']}&committee={quote_plus(c['name'])}"}
+                        if m["date"] >= BC.FROM else {}),
+                     **({"began": f["began"]} if f.get("began") else {}),
+                     **({"seconds": f["seconds"]} if f.get("seconds") else {})})
+    if not rows:
+        return "", 0
+    data = json.dumps({"kind": "study", "who": c["name"], "what": named(c["name"]), "key": c["cid"],
+                       "path": page_path(c), "rows": rows},
+                      separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+    return ('<div class="vwhere" data-vwview="gr-videos"><p class="src">Each recorded meeting under '
+            "Meetings has its own player.</p></div>"
+            f'<script type="application/json" id="gr-videos">{data}</script>'), len(rows)
+
+
+def page_path(c):
+    """"/committee/ss1451", the page's address, which its tabs' extend."""
+    return "/" + BC.study_page(c["cid"]).removesuffix(".html")
+
+
+def tab_n(n):
+    """A tab's count as app.js's tabN draws it: the badge, its brackets
+    there for a screen reader."""
+    return f'<span class="tn"><span class="tnp"> (</span>{n:,}<span class="tnp">)</span></span>' if n else ""
+
+
+# THE TABS (the owner, 29 October 2026, reversing the full-width Videos
+# section: "study committees, commissions and boards get the same tab format
+# as standing committees: Bills | Meetings | Videos"). A standing committee's
+# strip in its own words and classes (app.js's tabStrip, .rhead ~ .tabs: on
+# the head's foot rule and staying at the top of the window as a pane
+# scrolls), each tab with its count, a pane each in the record's white sheet;
+# what it does, its report and who sits on it stay above the strip, as a
+# standing committee keeps its members and its rule. Each tab is (pane id,
+# its name, the slug of its address, its count, its body); its address is
+# the page's own for the one it lands on (landing), else
+# /committee/ss<id>/<slug>, which the committee rewrite serves
+# (build_pages.COMMITTEE_TAB_SLUGS) -- so a tab to
+# come, Reports, is a pane, a name and a slug. A tab with nothing in it is
+# not drawn: no Bills where the record names none, no Videos where no
+# meeting was recorded.
+#
+# WRITTEN WHOLE, SHOWN BY SCRIPT: the strip is hidden without JavaScript and
+# every pane is on the page in turn under its own heading; with it (html.js,
+# set before the first paint) the pane the page lands on alone is shown from
+# the first paint, and app.js (ssTabs) turns to the one the address names and
+# to the one pressed.
+#
+# IT LANDS ON MEETINGS (the review of 29 October 2026, 4): opened on Bills,
+# the first tab, the State Commission on Aging showed one row, HB 621 of 2019,
+# which What It Does names just above it, and the Fiscal Committee four
+# housekeeping bills with its 165 meetings a click away -- and 143 of the 151
+# bodies name a founding bill, so nearly every page opened so. Nothing is
+# referred to a study or statutory committee: what a reader comes for is
+# when it meets and what it did. The strip keeps the owner's order; the tab
+# landed on is at the page's own address and every other at its slug
+# (/committee/ss57/bills, which the committee rewrite serves). A body that has
+# never met lands on the first tab with something in it.
+TABS = (("bills", "Bills", "bills"), ("meetings", "Meetings", "sessions"), ("videos", "Videos", "videos"))
+LANDS_ON = "meetings"
+
+
+def landing(bodies):
+    """The pane a study committee's page opens on, from {pane id: (count,
+    body)}: its meetings where it has met, else the first tab with something
+    in it, else the first."""
+    if bodies.get(LANDS_ON, (0, ""))[0]:
+        return LANDS_ON
+    have = [pid for pid, _w, _s in TABS if pid in bodies]
+    return next((pid for pid in have if bodies[pid][0]), have[0])
+
+
+def tabs_html(c, bodies):
+    """The strip and its panes, from {pane id: (count, body)}, the ones there
+    are, in TABS' order; the one it lands on (landing) chosen and shown, at
+    the page's own address."""
+    land = landing(bodies)
+    panes = [(pid, word, "" if pid == land else slug, *bodies[pid]) for pid, word, slug in TABS if pid in bodies]
+    strip = (f'<div class="tabs sstabs" role="tablist" data-base="{E(page_path(c))}">'
+             + "".join(f'<button type="button" class="tab" role="tab" id="sstab-{pid}" aria-controls="{pid}" '
+                       f'data-sstab="{slug}" aria-selected="{"true" if pid == land else "false"}">{E(word)}{tab_n(n)}'
+                       "</button>" for pid, word, slug, n, _b in panes)
+             + "</div>")
+    return strip + "".join(
+        f'<div class="pane sspane" role="tabpanel" id="{pid}" aria-labelledby="sstab-{pid}" tabindex="0"'
+        f'{" data-on" if pid == land else ""}><h2 class="ssph">{E(word)}</h2>{body}</div>'
+        for pid, word, _s, _n, body in panes)
+
+
 def facts_of(c, by, described, ms, ctx, today):
     nleg = len(by["S"]) + len(by["H"])
     nother = sum(g["n"] for g in described)
@@ -700,26 +922,12 @@ def facts_of(c, by, described, ms, ctx, today):
     return facts
 
 
-OPEN_JS = """<script>
-(function(){
-  // A meeting the address names (a Calendar card leads here at #day-<date>)
-  // is opened, and the fold of earlier meetings with it.
-  function opened(){
-    var m=/^#(day-\\d{4}-\\d\\d-\\d\\d(?:-\\d+)?)$/.exec(location.hash||"");
-    var d=m&&document.getElementById(m[1]);
-    if(!d||d.tagName!=="DETAILS")return;
-    for(var p=d.parentNode;p;p=p.parentNode)if(p.tagName==="DETAILS")p.open=true;
-    d.open=true;
-  }
-  opened();
-  window.addEventListener("hashchange",opened);
-})();
-</script>"""
-
-
 def page_body(c, ctx, today, path):
-    """The committee's page: its head, then What It Does, Report, Members and
-    Meetings, each a W4 section as a record's are."""
+    """The committee's page: its head; What It Does, Report and Members, each
+    a W4 section as a record's are; then its tabs, Bills, Meetings and
+    Videos, as a standing committee's (TABS). A meeting the address names
+    (#day-<date>, as a Calendar card leads here) is opened on the Meetings
+    tab by app.js (ssTabs), which shows the tab first."""
     by, described, left = who_sits(c, ctx["legs"], ctx["former"], ctx["vocab"], ctx["parted"])
     ctx["chips"] += len(by["S"]) + len(by["H"])
     ctx["left"] += left
@@ -759,8 +967,16 @@ def page_body(c, ctx, today, path):
     if rep:
         parts.append(C.section("Report", rep, "report"))
     parts.append(C.section("Members", members_html(c, by, described), "members"))
-    parts.append(C.section("Meetings", meetings_html(c, ms, today), "meetings"))
-    return head + '<div class="w4s ssbody">' + "".join(parts) + "</div>"
+    tabs = {"meetings": (len(ms), meetings_html(c, ms, today))}
+    bills = bills_of(c, ctx)
+    if bills:
+        tabs["bills"] = (len(bills), bills_html(c, bills))
+        ctx["billtabs"] += 1
+    vids, n = videos_html(c, ms, ctx)
+    if vids:
+        tabs["videos"] = (n, vids)
+        ctx["videos"] += 1
+    return head + '<div class="w4s ssbody">' + "".join(parts) + "</div>" + tabs_html(c, tabs)
 
 
 def write_page(c, ctx, today):
@@ -782,7 +998,7 @@ def write_page(c, ctx, today):
                   nav_current="committees.html", sr_title="", cite=False)
     assert '<div id="results"></div>' in html, f"{path}: the template has no results slot"
     html = html.replace('<div id="results"></div>',
-                        f'<div id="results">{page_body(c, ctx, today, path)}</div>{OPEN_JS}', 1)
+                        f'<div id="results">{page_body(c, ctx, today, path)}</div>', 1)
     out = Path(site) / BC.study_page(c["cid"])
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(S.clean_links(html), encoding="utf-8")
@@ -911,12 +1127,15 @@ def context(site, base, today):
     site = Path(site)
     legs = {str(m.get("id")): m for m in load_json(site / "legislators.json", []) or []}
     former = {str(m.get("id")) for m in load_json(site / "former.json", []) or []}
-    bills = {}
+    bills, titles = {}, {}
     for b in SR.bill_index(site) or []:
-        bills.setdefault((str(b.get("id") or "").upper(), str(b.get("year") or "")), b.get("year"))
+        bid = str(b.get("id") or "").upper()
+        bills.setdefault((bid, str(b.get("year") or "")), b.get("year"))
+        titles.setdefault((bid, str(b.get("year") or "")), str(b.get("title") or ""))
         # A bill is filed in one year of its term and named by either.
         for y in re.findall(r"\d{4}", str(b.get("term") or "")):
-            bills.setdefault((str(b.get("id") or "").upper(), y), b.get("year"))
+            bills.setdefault((bid, y), b.get("year"))
+            titles.setdefault((bid, y), str(b.get("title") or ""))
     headings = {str(s): h for s, h in (load_json(site / "laws" / "headings.json", []) or [])}
     chapters = load_json(site / "laws" / "chapters.json", {}) or {}
     known = {w.lower() for h in headings.values() for w in re.findall(r"[A-Za-z]+", str(h))}
@@ -930,11 +1149,18 @@ def context(site, base, today):
     if rows:
         on_bills = {(r.get("video_id") or "").strip() for r in proceedings.load()} - {""}
         BC.study_recordings(rows, BC.recordings_by_day(), on_bills, today.isoformat())
-    recent = {r["mid"]: r for r in rows if r.get("mid")}
+    # By committee and meeting: a MeetingID alone repeats (meetings_of).
+    recent = {(r.get("cid") or "", r["mid"]): r for r in rows if r.get("mid")}
     return {"site": site, "base": base, "legs": legs, "former": former, "bills": bills,
+            # Each bill's title, and the year the site's bills begin, for the
+            # Bills tab (bills_of).
+            "titles": titles, "first_year": min((y for _b, y in bills if y), default=""),
             "headings": headings, "chapters": chapters, "recent": recent,
+            # When each recording began and how long it ran, for the Videos
+            # tab (videos_html).
+            "facts": proceedings.video_facts() if rows else {},
             "vocab": Words(known), "parted": Counter(), "statutes": 0, "chips": 0,
-            "left": 0, "meetings": 0, "recorded": 0}
+            "left": 0, "meetings": 0, "recorded": 0, "videos": 0, "billtabs": 0}
 
 
 def main():
@@ -978,7 +1204,9 @@ def main():
           + (f"; sitemap: {added} added, {dropped} taken out" if added or dropped else ""))
     print(f"  {ctx['chips']:,} legislators' seats drawn as their chips; {ctx['left']:,} seats of "
           "members who have left the General Court left off")
-    print(f"  {ctx['meetings']:,} meetings, {ctx['recorded']:,} with their recording; "
+    print(f"  {ctx['meetings']:,} meetings, {ctx['recorded']:,} with their recording, on "
+          f"{ctx['videos']} pages with a Videos tab; {ctx['billtabs']} pages with a Bills tab, the "
+          f"bills that set them up or changed them; "
           f"{ctx['statutes']} committees' statutes linked to their Laws page")
     if ctx["parted"]:
         print(f"  {sum(ctx['parted'].values())} words the copy ran together parted, the "

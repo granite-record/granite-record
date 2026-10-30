@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.11
+# GRANITE_VERSION: 2026-10-10.12
 """
 The House and the Senate as committees of the whole: a card at the top of
 each column of /committees, and a page for each chamber's session days.
@@ -254,20 +254,46 @@ def page_head(c, path, base):
             + "</p>")
 
 
+# What a day carries onto the Videos tab (videos_json): the term file's own
+# fields, so a term the page fetches is drawn from the same ones.
+VIDEO_DAY = ("date", "counts", "summary", "journal", "journal_url", "videos", "recordings")
+
+
+def videos_json(c):
+    """THE CHAMBER'S VIDEOS TAB (the owner, 26 October 2026: "Same goes for
+    session days"): the latest term's recorded days, as the term file holds
+    them, written into the page for app.js's videoView -- the one renderer a
+    committee's Videos tab and a study committee's section use -- to draw as
+    a player and its playlist under a second tab, Session Days | Videos,
+    which app.js puts above the two panes. Another term's days are its term
+    file's, which the page's script fetches already. The counts and not the
+    bills, as the folds have them (the person, 10 October 2026)."""
+    days = [{k: d[k] for k in VIDEO_DAY if d.get(k)} for d in c["days"] if d.get("videos")]
+    return json.dumps({"kind": "chamber", "body": c["body"], "slug": SLUG[c["body"]],
+                       "term": c["latest"], "latest": c["latest"], "days": days},
+                      separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+
+
 def page_body(c, path="", base=""):
-    """The chamber's page: the record head, then the term and the order, then
-    the latest term's days."""
+    """The chamber's page: the record head, then the term, then its two
+    panes: the latest term's days, in the order chosen, and the Videos tab's,
+    which app.js draws and shows (videos_json). Without script the days are
+    the page, as they always were."""
     body = c["body"]
     opts = "".join(f'<option value="{E(t)}"{" selected" if t == c["latest"] else ""}>'
                    f"{E(t)}</option>" for t in c["terms"])
     days = "".join(day_section(body, d) for d in reversed(c["days"]))
     return (page_head(c, path or f"/session/{SLUG[body]}.html", base)
             + f'<div class="bfilt pterm chamberctl" data-body="{body}">'
-            f'<label>Term <select class="chterm">{opts}</select></label>'
+            f'<label>Term <select class="chterm">{opts}</select></label></div>'
+            '<div class="chpane" id="chdays"><div class="bfilt chorder">'
             '<label>Order <select class="chsort"><option value="new" selected>Newest first'
             '</option><option value="old">Oldest first</option></select></label></div>'
             f'<p class="src chcount" aria-live="polite">{count_line(body, len(c["days"]), c["latest"])}</p>'
-            f'<div class="chdays cmeets">{days}</div>')
+            f'<div class="chdays cmeets">{days}</div></div>'
+            '<div class="chpane" id="chvids" hidden><div class="vwhere" data-vwview="gr-videos">'
+            "<p class=\"src\">Each day&rsquo;s recording is in its entry under Session Days.</p></div></div>"
+            f'<script type="application/json" id="gr-videos">{videos_json(c)}</script>')
 
 
 # THE PAGE'S SCRIPT: another term from its own file, the order either way, and
@@ -278,7 +304,7 @@ SCRIPT = """<script>
 (function(){
   var ctl=document.querySelector(".chamberctl");
   if(!ctl)return;
-  var b=ctl.dataset.body,term=ctl.querySelector(".chterm"),sort=ctl.querySelector(".chsort"),
+  var b=ctl.dataset.body,term=ctl.querySelector(".chterm"),sort=document.querySelector(".chsort"),
       list=document.querySelector(".chdays"),count=document.querySelector(".chcount"),
       word=b==="S"?"Senate":"House",cache={};
   function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){
@@ -330,6 +356,10 @@ SCRIPT = """<script>
       list.innerHTML=(T.days||[]).map(day).join("");
       order();
       opened();
+      // The Videos tab's, from the same days (app.js, chamberVideos), now
+      // or, where app.js has not run yet, when it does (staticVideos).
+      window.GR_CHAMBER_TERM=T;
+      if(typeof chamberVideos==="function")chamberVideos(T);
       if(write&&history.replaceState)history.replaceState(null,"",
         location.pathname+"?term="+t+location.hash);
     }).catch(function(){

@@ -240,7 +240,9 @@
       {"globs": ["logs/**"],
        "why": "a night's log carries what the report pull printed, which can be a reader's own words; the About page promises those are gone within a week"},
       {"globs": ["site/**"],
-       "why": "the built site, remade from the kit and the code every night; --with-site sends it"}
+       "why": "the built site, remade from the kit and the code every night; --with-site sends it"},
+      {"globs": ["sources/**"],
+       "why": "the state documents read in a browser, which state_sources.py (cloud.py sources-up) keeps under the bucket's sources/ already"}
     ]
   },
   "never": {
