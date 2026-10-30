@@ -75112,6 +75112,64 @@ def _subsections_under_sections():
     return "ok", f"{len(under)} kinds of heading at --t-read under sections at --t-h3"
 
 
+@check("frontend", "a bill's tabs head their sections one way: an h2 in the serif at --t-h3, Title Case, "
+       "as Summary's and a vote's are, with the capital label only inside a section")
+def _bill_panes_one_heading():
+    """The cohesion audit of 30 October 2026 (I-1): a bill's tabs drew five
+    looks for one level. Summary's sections were 19px serif in Title Case,
+    Reports' and the bill text's 20px capitals, Sponsors' capitals with a
+    bare count, Documents' a 14px sans label with no h2 above it, and
+    Related's 16px sans in sentence case. Each pane's sections are now an
+    h2.sech, drawn as Summary's .w4h and a vote's .rcq are.
+
+    Read three ways: the three rules agree in app.css; every h2 the panes'
+    renderers write, from renderReports to renderRelated, is a .sech; and
+    Sponsors and Documents, drawn in node, open with one."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    won = {}
+    for at, sel, body, _l in _css_rules(css):
+        if at:
+            continue
+        for part in (x.strip() for x in re.split(r",(?![^()]*\))", sel)):
+            won.setdefault(part, {}).update(dict(_css_decls(body)))
+    bad = []
+    for sel in (".sech", ".w4h", ".rcq"):
+        d = won.get(sel, {})
+        font = d.get("font", "")
+        size = d.get("font-size") or (re.search(r"var\(--t-[\w-]+\)", font) or [None])[0]
+        fam = d.get("font-family") or (re.search(r"var\(--(?:serif|sans)\)", font) or [None])[0]
+        weight = d.get("font-weight") or (font.split()[0] if font else None)
+        if (size, fam, weight) != ("var(--t-h3)", "var(--serif)", "600") or d.get("text-transform") != "none":
+            bad.append(f"{sel} is {size} {fam} {weight}, text-transform {d.get('text-transform')}, "
+                       "not --t-h3 serif 600 as typed")
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    a, z = app.find("function renderReports("), app.find("function renderRelated(")
+    z = app.find("\n}\n", z)
+    assert -1 < a < z, "app.js has no renderReports or renderRelated"
+    heads = re.findall(r"<h2(?:\s[^>]*)?>", app[a:z])
+    plain = [h for h in heads if not re.search(r'class="[^"]*\bsech\b', h)]
+    if not heads:
+        bad.append("the bill panes' renderers write no h2 at all")
+    if plain:
+        bad.append(f"{len(plain)} of the panes' {len(heads)} h2s are not .sech: {plain[:3]}")
+    if re.search(r'<h3 class="docgrp"', app):
+        bad.append("Documents heads its groups with a 14px label again, and no h2 above it")
+    drawn = _app_js(
+        '[scope.renderSponsors({id: "HB1"}, {sponsors: [{name: "A", chamber: "H", label: "Rep. A", prime: true}, '
+        '{name: "B", chamber: "S", label: "Sen. B"}]}), '
+        'scope.renderDocuments({id: "HB1"}, {documents: [{kind: "text", label: "Bill text", '
+        'url: "https://example.org/x.pdf"}]})]',
+        names=("renderSponsors", "renderDocuments"))
+    if drawn is not None:
+        for what, html in zip(("Sponsors", "Documents"), drawn):
+            first = re.search(r"<h[1-6][^>]*>", html)
+            if not first or not re.match(r'<h2 class="[^"]*\bsech\b', first.group(0)):
+                bad.append(f"{what} opens with {first.group(0) if first else 'no heading'}, not an h2.sech")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"{len(heads)} h2s in the bill panes, every one .sech, as Summary's and a vote's"
+                  + ("" if drawn is None else "; Sponsors and Documents drawn, each opening with one"))
+
+
 @check("frontend", "every search box is the one box: white, 16px words, 44px tall, on the Bills page, a "
        "bill's page, a member's Votes, the Calendar, Officials, /search and the Laws page")
 def _one_search_box():

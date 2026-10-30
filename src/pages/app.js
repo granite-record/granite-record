@@ -5838,7 +5838,7 @@ function renderReports(b,d,rsa){
   // speaking before they read what it said.
   const head=(r,cmte,body)=>`<div class="rephead">
       ${[body,cmte].filter(Boolean).length
-        ? `<h2>${esc([body,cmte].filter(Boolean).join(" "))} committee</h2>`:""}
+        ? `<h2 class="sech">${esc([body,cmte].filter(Boolean).join(" "))} Committee</h2>`:""}
       <div class="repmeta">${when(r)}${cited(r)}</div></div>`;
 
   // ONE REPORT IS ONE ELEMENT, so that it can be laid out as one. The head
@@ -5947,7 +5947,7 @@ function veto(d){
         esc(v.source.name||"the House calendar")}</a>`
     : esc((v.source||{}).name||"the House calendar");
   return `<section class="vmsg">
-    <h2 class="amdsec">The governor&rsquo;s veto message</h2>
+    <h2 class="sech">The Governor&rsquo;s Veto Message</h2>
     ${v.text.map(p=>`<p>${esc(p)}</p>`).join("")}
     <p class="vsig">${esc(v.governor||"")}${
       v.date?` <span class="secsub">${esc(dateWords(v.date))}</span>`:""}</p>
@@ -5970,7 +5970,7 @@ function renderSponsors(b,d){
   // person was named on this site and could not be followed.
   const pill=pchip;
   const spBlock=ch=>{const l=spAll.filter(s=>chOf(s)===ch);return l.length
-    ?`<h2 class="spgrp">${CHNAME[ch]} <span>${l.length}</span></h2>
+    ?`<h2 class="sech spgrp">${CHNAME[ch]} <span class="sechn">${l.length}</span></h2>
       <div class="chosen">${l.map(pill).join(" ")}</div>`:"";};
   const spRest=spAll.filter(s=>!["H","S"].includes(chOf(s)));
   // A count per party, and nothing said about it. Sorted by party code, so the
@@ -5984,7 +5984,7 @@ function renderSponsors(b,d){
     <p class="spcount">${spAll.length} Sponsor${spAll.length===1?"":"s"}${
       spParty?` \u00b7 ${spParty}`:""}</p>
     ${spBlock(origin)}${spBlock(origin==="S"?"H":"S")}
-    ${spRest.length?`<h2 class="spgrp">Chamber not on file <span>${spRest.length}</span></h2>
+    ${spRest.length?`<h2 class="sech spgrp">Chamber Not on File <span class="sechn">${spRest.length}</span></h2>
       <div class="chosen">${spRest.map(pill).join(" ")}</div>`:""}`:"";
   // WHERE THE NAMES WERE READ. Before 2023 the only list on this site is the
   // sponsor line printed on the bill's own text (text_sponsors.py): the first
@@ -6056,7 +6056,7 @@ function fiscalTable(f){
       }</tr>`).join("")}</tbody></table></div>
       ${t.footnote?`<p class="src">${esc(t.footnote)}</p>`:""}`;
   };
-  return `<section class="fnsec"><h2 class="amdsec">Fiscal impact</h2>
+  return `<section class="fnsec"><h2 class="sech">Fiscal Impact</h2>
     ${f.lead?`<p class="fnlead">${esc(f.lead)}</p>`:""}
     ${(f.tables||[]).map(table).join("")}
     <p class="src">Source: NH General Court</p></section>`;
@@ -6085,7 +6085,7 @@ function billTextSection(b,d,rsa){
         const shut=bodyLen+amdLen>LONG;
         const what=nAmd?`the text and ${nAmd} amendment${nAmd===1?"":"s"}`
                        :"the text";
-        return `<section class="btsec"><h2 class="amdsec">Bill text</h2>
+        return `<section class="btsec"><h2 class="sech">Bill Text</h2>
         <p class="btwhat">The bill and its amendments, as the General Court publishes them. The other tabs are this site’s account of the record; this is the document.</p>
         <details class="btdoc"${shut?"":" open"}><summary><span class="shut">Show ${
           what}</span><span class="open">Hide ${what}</span></summary>${
@@ -6240,7 +6240,7 @@ function renderDocuments(b,d){
       url:x.url,of,what}));
   });
   return DOCGROUPS.filter(([k])=>rows[k].length).map(([k,h])=>
-    `<h3 class="docgrp">${h}</h3><ul class="docs docs-${k}">${rows[k].join("")}</ul>`).join("");
+    `<h2 class="sech docgrp">${h}</h2><ul class="docs docs-${k}">${rows[k].join("")}</ul>`).join("");
 }
 
 // The tabs, and one call per pane. Everything this reads is either a
@@ -6467,7 +6467,7 @@ function renderVersions(b,d){
       :`<p class="note">That text could not be loaded.</p>`;
   }
 
-  const amdblock=amds.length?`<h2 class="amdsec">The amendments themselves</h2>
+  const amdblock=amds.length?`<h2 class="sech">The Amendments Themselves</h2>
     <p class="note">Each amendment as the General Court published it; these are
     not versions of the bill.</p>
     <ul class="vamds">${amds.map((a,j)=>`<li${AMENDMENT_FOUND[a.text_url]
@@ -6731,7 +6731,7 @@ function renderDetail(b,d){
 // other bill linked where the sentence names it, and that bill's title and
 // status under it. The sentence is related_bills.sentence's, the one the
 // bench judged, so the page says nothing the sample did not.
-const RELATED_HEADS=["Where its language went","Filed before and after","This term\u2019s bills with the same text"];
+const RELATED_HEADS=["Where Its Language Went","Filed Before and After","This Term\u2019s Bills with the Same Text"];
 // One relation's sentence, the other bill linked where it names it, and its
 // term beside it where that is not this bill's.
 function relatedSaid(b,e){
@@ -6750,7 +6750,7 @@ function renderRelated(b,rel){
       +`<p class="rl-t">${esc(e.t)}${e.c?` <span class="rl-st">${esc(e.c)}</span>`:""}</p></li>`;
   };
   return groups.map((g,i)=>g.length
-    ?`<section class="rl-g"><h2>${RELATED_HEADS[i]}</h2><ul class="rl-list">${g.map(row).join("")}</ul></section>`:"").join("")
+    ?`<section class="rl-g"><h2 class="sech">${RELATED_HEADS[i]}</h2><ul class="rl-list">${g.map(row).join("")}</ul></section>`:"").join("")
     +`<p class="src">Found by comparing the text of bills and their amendments. A bill is listed
       only where most of its language is shared, and an amendment only where the docket
       records what became of it; a match can be missed.</p>`;

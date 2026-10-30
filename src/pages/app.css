@@ -149,6 +149,14 @@
                (Learn's, About's and Data's sections, a list's groups).
      sub       h3: --t-h3, serif 600, sentence case (Learn's subsections,
                a vote's question, a speaker, a day on a committee's page).
+     pane      h2 that heads a section of a record's tab, in Title Case:
+               the sub's look, .sech (Summary's .w4h and a vote's .rcq
+               draw the same). Reports, Sponsors, Documents, Related and
+               the bill text all open this way; a part label stands only
+               inside one of these, for a group of it, and never opens a
+               pane (the cohesion audit of 30 October 2026, I-1: the
+               bill's tabs drew five looks, among them a 14px sans label
+               with no h2 above it).
      label     not a heading: --t-label, sans 600 capitals over its value.
    A new heading takes one of these by its selector; nothing else sets a
    heading's size. */
@@ -2845,7 +2853,7 @@ letter-spacing:.04em;text-transform:uppercase}
 .card .pane > .vpick,
 .card .pane > .vmode,
 .card .pane > .vdoc,
-.card .pane > .amdsec,
+.card .pane > .sech,
 .card .pane > .vamds{max-width:none}
 
 /* ---- TWO COLUMNS ON A BILL'S OWN PAGE ---------------------------------
@@ -3054,13 +3062,18 @@ font-variant-numeric:tabular-nums;color:var(--pine);background:var(--paper)}
    because that is what this rule styled, so a record page went from its
    hidden h1 to an h3 with no level 2 anywhere on it. Now a heading can move
    up a level without moving a pixel. */
-.stg :is(h2,h3),.btan :is(h2,h3),.bttext :is(h2,h3),.spgrp,
+.stg :is(h2,h3),.btan :is(h2,h3),.bttext :is(h2,h3),
 .mlist :is(h2,h3),.amdsec{
 font-size:var(--t-part);font-weight:600;color:var(--ink-2);letter-spacing:.05em;
 text-transform:uppercase;margin:0 0 var(--sp-3);padding-bottom:var(--sp-3);
 border-bottom:1px solid var(--rule);font-family:var(--serif)}
-.spgrp span,.mlist :is(h2,h3) span{font-weight:400;letter-spacing:0;text-transform:none;
+.mlist :is(h2,h3) span{font-weight:400;letter-spacing:0;text-transform:none;
 font-size:var(--t-ui);color:var(--ink-2)}
+/* A SECTION OF A RECORD'S TAB (the heading map's "pane", above). */
+.sech{font:600 var(--t-h3)/1.35 var(--serif);color:var(--ink);letter-spacing:0;
+text-transform:none;margin:0 0 var(--sp-3);text-wrap:balance}
+.sech .sechn{font:400 var(--t-sm)/1 var(--sans);color:var(--ink-2);margin-left:var(--sp-2);
+font-variant-numeric:tabular-nums}
 .story .stg{margin-top:var(--sp-7)}
 .story .stg:first-child{margin-top:var(--sp-1)}
 .btver{display:flex;gap:var(--sp-4);align-items:baseline;flex-wrap:wrap;margin-bottom:var(--sp-5)}
@@ -3102,8 +3115,7 @@ cursor:pointer;list-style:none;padding:var(--sp-2) 0;min-height:32px}
 .btdoc:not([open]) .open,.btdoc[open] .shut{display:none}
 .btsec{margin:var(--sp-10) var(--sp-1) var(--sp-4);padding:var(--sp-7) var(--sp-7) var(--sp-4);background:var(--paper);
 border:1px solid var(--rule-2);border-radius:var(--r-out)}
-.btsec > .amdsec{font-size:var(--t-part);letter-spacing:.05em;color:var(--ink);
-border-bottom:0;margin:0 0 var(--sp-1);font-family:var(--serif);font-weight:600;text-transform:uppercase}
+.btsec > .sech{margin:0 0 var(--sp-1)}
 /* A line under the heading saying what this is. The tabs above are views OF
    the record; this is the document itself, and bleeding it to the card's edge
    under a small heading made it read as one more tab that had run on. */
@@ -3184,8 +3196,7 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-3);font-family:v
 color:var(--ink-2);margin:0 0 var(--sp-4);font-family:var(--serif)}
 /* Whose report this is, as a heading rather than as small print. */
 .rephead{border-top:1px solid var(--rule);padding-top:var(--sp-5);margin-bottom:var(--sp-4)}
-.rephead :is(h2,h3){font-size:var(--t-part);font-weight:600;letter-spacing:.05em;
-text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-2);font-family:var(--serif)}
+.rephead .sech{margin:0 0 var(--sp-2)}
 .repmeta{display:flex;gap:var(--sp-4);align-items:baseline;flex-wrap:wrap}
 /* ONE REPORT IS ONE OBJECT, which is what makes the two-column arrangement
    below possible at all: the head and its blocks used to be siblings of the
@@ -3263,7 +3274,7 @@ margin:var(--sp-4) 0 0;max-width:var(--measure)}
 .plink:hover{background:var(--pine-soft);text-decoration:underline}
 .spcount{font-size:var(--t-ui);color:var(--ink-2);margin:0 0 var(--sp-5);
 font-variant-numeric:tabular-nums}
-.spgrp{display:flex;align-items:baseline;gap:var(--sp-3);margin-top:var(--sp-6)}
+.spgrp{margin-top:var(--sp-6)}
 .loaderr{background:var(--st-done-bg);color:var(--st-done);border-radius:var(--r-out);
 padding:var(--sp-5) var(--sp-5);margin:0 0 var(--sp-5);font-size:var(--t-ui)}
 .loaderr span{display:block;margin-top:var(--sp-2);font-family:ui-monospace,monospace;
@@ -3303,8 +3314,7 @@ border-bottom:1px solid var(--rule);font-size:var(--t-ui)}
    the citation, what happened in plain words, and the clerk's line under
    them in the small monospace of a quotation. On a phone the day goes back
    above the citation. */
-.docgrp{font:600 var(--t-sm)/1 var(--sans);letter-spacing:.07em;text-transform:uppercase;
-  color:var(--ink-2);margin:var(--sp-7) 0 var(--sp-3)}
+.docgrp{margin:var(--sp-7) 0 var(--sp-3)}
 .docgrp:first-child{margin-top:0}
 .docs-bill{display:flex;flex-wrap:wrap;gap:var(--sp-3)}
 .docs-bill .doc{flex-direction:column;gap:2px;align-items:flex-start;border:1px solid var(--rule-2);
@@ -7615,7 +7625,7 @@ letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
 /* THE RELATED TAB (app.js renderRelated). Each row the sentence, at reading
    size, and the other bill's title and status under it at the size of meta. */
 .rl-g{margin:0 0 1.25rem}
-.rl-g h2{font:600 var(--t-ui)/1.35 var(--sans);color:var(--ink);margin:1rem 0 .5rem}
+.rl-g .sech{margin:1rem 0 .5rem}
 .rl-list{list-style:none;margin:0;padding:0}
 .rl-row{padding:.625rem 0;border-top:1px solid var(--rule)}
 .rl-s{font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink);margin:0}
