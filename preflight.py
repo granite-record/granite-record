@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.734
+# GRANITE_VERSION: 2026-09-04.735
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28318,7 +28318,8 @@ def _person_register():
     files' check reads, and what is there is well formed (no number held by
     two people, no person issued twice)."""
     REG = "person_numbers.json"
-    stem = r"(?<![\w-])" + re.escape(REG)
+    # And the hand links beside it, which no code writes at all.
+    stem = r"(?<![\w-])(?:person_numbers|person_links)\.json"
     HELD = re.compile(r'^[ \t]*([A-Za-z_]\w*)[ \t]*(?::[^=\n]*)?=[^=\n][^\n]*' + stem, re.M)
 
     def writes(src):
@@ -28349,8 +28350,17 @@ def _person_register():
             continue
         if writes(f.read_text(encoding="utf-8", errors="replace")):
             bad.append(f.name)
-    assert not bad, "these write the register of person numbers, which only " \
-                    "person_numbers.py --issue may: " + ", ".join(bad)
+    assert not bad, "these write the register of person numbers or its hand links, which " \
+                    "only person_numbers.py --issue (the register) and a person (the links) " \
+                    "may: " + ", ".join(bad)
+    links = _paths.ROOT / "generated" / "person_links.json"
+    if links.exists():
+        sys.path.insert(0, str(_paths.locate("people.py").parent))
+        import people as PE
+        try:
+            PE.load_links(links)
+        except SystemExit as e:
+            raise AssertionError(f"person_links.json is not well formed: {e}")
     reg = _paths.ROOT / "generated" / REG
     if not reg.exists():
         return "ok", ("no other code file writes it; no register issued yet, so every person is "

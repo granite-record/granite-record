@@ -15,6 +15,10 @@ the run named beside it, never edited by hand.
   --issue`, which a person runs, and a number once issued is never given to
   anyone else. The nightly reads it and never writes it (preflight holds
   that, and that it only grows). First issued 30 October 2026.
+- `person_links.json` -- links between an employee number and its PersonID
+  that no General Court view this site reads makes, each settled by a
+  person with its evidence. Written by hand only; preflight holds that no
+  code writes it. One link, Joyce Fulweiler, 30 October 2026.
 - `places.json` -- one list of New Hampshire's places, reconciling the five
   that count them differently (`src/towns/build_places.py`).
 - `district_geometry.json` -- NH GRANIT's 2022 district boundaries and town

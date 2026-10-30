@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.5
+# GRANITE_VERSION: 2026-10-30.6
 """
 One entry a person, joining every number the General Court uses for them.
 
@@ -165,12 +165,52 @@ def person_key(p):
     return (0, int(p), p) if p.isdigit() else (1, 0, p)
 
 
-def build(site, data, db, careers, register):
+def load_links(path):
+    """generated/person_links.json's links, {employee number: PersonID}: the
+    pairs no General Court view this site reads makes, each settled by a
+    person with its evidence and written by hand (preflight holds that no code
+    writes it). None where there is no file; a stop where one does not read or
+    a link is not whole, because a link dropped in silence would renumber its
+    person."""
+    path = Path(path)
+    if not path.exists():
+        return {}
+    try:
+        d = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError as e:
+        raise SystemExit(f"{path} does not read as JSON ({e}).")
+    out = {}
+    for x in d.get("links") or []:
+        e, p = str(x.get("employee_number") or ""), str(x.get("person_id") or "")
+        if not (len(e) == 6 and e.isdigit() and p.isdigit() and len(p) < 6 and x.get("evidence")):
+            raise SystemExit(f"{path}: a link without an employee number, a PersonID and its "
+                             f"evidence: {x}")
+        if e in out:
+            raise SystemExit(f"{path}: {e} is linked twice.")
+        out[e] = p
+    return out
+
+
+def build(site, data, db, careers, register, links=None):
     """(people, report). people is the list people.json publishes; report is
     what a person should know: the joins left undone and why, the register's
     disagreements with tonight, and the provisional numbers."""
     site, data = Path(site), Path(data)
     e2p = emp_to_pid(db) or {}
+    # A HAND LINK (load_links) is read as the roster would be. It stops where
+    # it contradicts the roster's own pairing of that employee number, or
+    # where the roster gives the PersonID to another employee number that
+    # has votes of its own: that would join two voting numbers, which is a
+    # person's merge, not a link. A roster number with no votes (Joyce
+    # Fulweiler's 800404, under the 1444 she voted as 800061) joins nobody.
+    voters = {e for c in (careers or {}).values() for e in c.get("employee_nos") or []}
+    for e, p in (links or {}).items():
+        others = [x for x, q in e2p.items() if q == p and x != e]
+        if e2p.get(e, p) != p or any(x in voters for x in others):
+            raise SystemExit(f"person_links.json links {e} to {p}, and the General Court's "
+                             f"roster pairs them otherwise ({e2p.get(e)}, {others}); a "
+                             "person must look.")
+        e2p[e] = p
     p2e = {}
     for e, p in e2p.items():
         p2e.setdefault(p, e)
