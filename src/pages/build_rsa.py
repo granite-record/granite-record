@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.22
+# GRANITE_VERSION: 2026-10-11.23
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -1649,7 +1649,7 @@ def landing_page(tmpl, table, data, base, topics, pending, con=None):
     the top of their panel; a disk without the file builds the page as it
     was, with no tabs."""
     path = "/laws"
-    title = "New Hampshire laws"
+    title = "New Hampshire Laws"
     con = PC.load() if con is None else con
     p = S.page(tmpl, path=path, base=base,
                title=S.title_of("New Hampshire Laws", "every chapter of the RSA"),
