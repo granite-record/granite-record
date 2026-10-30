@@ -234,8 +234,70 @@ test("the votes file is asked every 30 seconds while a reader is at work, else e
   assert.equal(L.votesEvery({ next_read_by: "2027-01-07T15:51:00Z" }, now), 30000, "overdue by 9 minutes: still close");
   assert.equal(L.votesEvery({ next_read_by: "2027-01-07T16:15:00Z" }, now), 120000, "the quarter-hour heartbeat");
   assert.equal(L.votesEvery({ next_read_by: "2027-01-07T13:00:00Z" }, now), 120000, "a reader stopped hours ago");
-  assert.equal(L.votesEvery({ next_read_by: null }, now), 120000);
+  assert.equal(L.votesEvery({ next_read_by: null }, now), 0, "no next read: the day is finished");
   assert.equal(L.votesEvery(null, now), 120000);
+});
+
+test("a finished day is asked no more: day_over, off, or no next read", () => {
+  const now = T("2027-01-07T22:00:00Z");
+  const done = [{ status: { state: "day_over" }, next_read_by: "2027-01-07T22:02:00Z" },
+                { status: { state: "off" }, next_read_by: "2027-01-07T22:02:00Z" },
+                { status: { state: "reading" }, next_read_by: null }];
+  for (const f of done) {
+    assert.equal(L.votesDone(f), true, JSON.stringify(f));
+    assert.equal(L.votesEvery(f, now), 0);
+  }
+  assert.equal(L.votesDone(null), false, "no file yet: the sitting may not have started");
+  assert.equal(L.votesEvery(null, now), 120000);
+  assert.equal(L.votesEvery({ status: { state: "reading" }, next_read_by: "2027-01-07T22:02:00Z" }, now), 30000);
+});
+
+test("the poller: a finished file is not asked again on returning to the tab; resume() asks again", async () => {
+  const asked = [];
+  const doc = { hidden: false, _on: {}, addEventListener(t, f) { (this._on[t] = this._on[t] || []).push(f); } };
+  let body = { n: 1, done: true };
+  const p = L.poller({ doc, url: () => "/x", every: f => (f && f.done ? 0 : 60000),
+    fetch: async u => { asked.push(u); return { status: 200, ok: true, headers: { get: () => '"e"' }, json: async () => body }; },
+    onFile: () => {} });
+  try {
+    await p.first;
+    assert.equal(asked.length, 1);
+    doc.hidden = true; doc._on.visibilitychange.forEach(f => f());
+    doc.hidden = false; doc._on.visibilitychange.forEach(f => f());
+    await new Promise(r => setImmediate(r));
+    assert.equal(asked.length, 1, "done: back to the tab asks nothing");
+    body = { n: 2, done: true };
+    await p.resume();
+    assert.equal(asked.length, 2, "resume() asks");
+  } finally { p.stop(); }
+});
+
+test("/live's card: a finished day stops asking; the next reader's day starts a fresh poller", async () => {
+  const sched = { days: { "2027-01-07": [{ id: "f", chamber: "H", kind: "floor", name: "House Session", match: [] }],
+                          "2027-01-08": [{ id: "g", chamber: "H", kind: "floor", name: "House Session", match: [] }] } };
+  let at = T("2027-01-07T23:00:00Z");
+  const { doc, els } = page();
+  els["live-schedule"] = { textContent: JSON.stringify(sched) };
+  els["live-now-votes"] = { hidden: true, innerHTML: "" };
+  const asked = [];
+  const fetch = async url => {
+    asked.push(url);
+    if (url === "/api/live/streams") return { status: 200, ok: true, headers: { get: () => '"s"' }, json: async () => file() };
+    return { status: 200, ok: true, headers: { get: () => '"v"' },
+             json: async () => ({ status: { state: "day_over", problem: "day_over", since: "2027-01-07T22:30:00Z" }, next_read_by: null, rollcalls: [] }) };
+  };
+  const p = L.start(doc, { fetch, now: () => at });
+  try {
+    await p.first;
+    await p.votes.first;
+    const first = p.votes;
+    assert.deepEqual(asked.filter(u => u.startsWith("/api/live/votes/")), ["/api/live/votes/2027-01-07"]);
+    at = T("2027-01-08T12:00:00Z");                                // 07:00 on the 8th
+    await p.poll();
+    assert.notEqual(p.votes, first, "a fresh poller for the new day");
+    await p.votes.first;
+    assert.equal(asked.at(-1), "/api/live/votes/2027-01-08");
+  } finally { p.stop(); }
 });
 
 test("the poller: If-None-Match, a 304 keeps the file, a 404 forgets it, a new address starts afresh", async () => {
@@ -599,6 +661,41 @@ test("/session/S/today before 06:00: yesterday's sitting, no record yet, every l
   } finally { p.stop(); }
 });
 
+test("/session/H/today: a finished day is asked no more, and the next reader's day is asked at 06:00", async () => {
+  const held = [];
+  const ctx = load({ setTimeout: (f, ms) => { held.push([f, ms]); return held.length; }, clearTimeout: () => {} });
+  let at = T("2027-01-07T23:00:00Z");                                // 18:00 on the 7th
+  const { doc } = dayPage({ built: "2027-01-07" });
+  const asked = [];
+  const fetch = async url => {
+    asked.push(url);
+    if (url.startsWith("/api/live/votes/")) {
+      return { status: 200, ok: true, headers: { get: () => '"v"' },
+               json: async () => liveFile(url.slice(-10), [], { status: { state: "day_over", problem: "day_over", since: "2027-01-07T22:30:00Z" },
+                                                               next_read_by: null }) };
+    }
+    return { status: 404, ok: false, headers: { get: () => null }, json: async () => null };
+  };
+  const p = ctx.GRLive.startToday(doc, { fetch, now: () => at });
+  const votesAsked = () => asked.filter(u => u.startsWith("/api/live/votes/"));
+  const run = async ms => {                                          // run every held timer of that period
+    const due = held.filter(h => h[1] === ms); held.splice(0, held.length, ...held.filter(h => h[1] !== ms));
+    for (const [f] of due) f();
+    for (let i = 0; i < 4; i++) await new Promise(r => setImmediate(r));
+  };
+  try {
+    await p.first;
+    assert.deepEqual(votesAsked(), ["/api/live/votes/2027-01-07"]);
+    assert.ok(!held.some(h => h[1] === 30000 || h[1] === 120000), "day_over: no votes timer");
+    at = T("2027-01-08T03:00:00Z");                                  // 22:00, still the 7th
+    await run(60000);
+    assert.deepEqual(votesAsked(), ["/api/live/votes/2027-01-07"], "the clock asks nobody");
+    at = T("2027-01-08T11:05:00Z");                                  // 06:05 on the 8th
+    await run(60000);
+    assert.equal(votesAsked().at(-1), "/api/live/votes/2027-01-08", "the new day is asked");
+  } finally { p.stop(); }
+});
+
 test("/session/H/today with no binding: says so, and asks the streams no more", async () => {
   const timers = [];
   const c2 = load({ setTimeout: (f, ms) => { timers.push(ms); return timers.length; }, clearTimeout: () => {} });
@@ -608,7 +705,8 @@ test("/session/H/today with no binding: says so, and asks the streams no more", 
   try {
     await p.first;
     await new Promise(r => setImmediate(r));
-    assert.deepEqual([...timers], [120000], "the votes file asked again in 2 minutes; the streams never");
+    assert.deepEqual([...timers], [120000, 60000],
+                     "the votes file asked again in 2 minutes; the streams never; the clock (asking nobody) each minute");
     assert.equal(els["live-today-votes"].hidden, true);
     assert.match(els["live-today-votes-status"].textContent, /^No roll calls read today\./);
     assert.equal(els["live-today-status"].textContent, "Live status is not available");
