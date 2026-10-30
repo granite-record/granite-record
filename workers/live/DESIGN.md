@@ -1,5 +1,7 @@
 # The live layer: final design
 
+> **§1.6 added 30 October 2026**, as the owner approved it on 29 October (a committee page's live stream; with it, the streams answer's cache moves from 15 to 30 seconds, §5).
+>
 > **As committed (29 October 2026).** This is the approved design, unchanged except that the General Court's SQL host is written as `probe_db.HOST` rather than its address, so that the live checks' rule (the host appears only on production's line of `workers/live/wrangler.toml`) holds for this file too. Paths under `/tmp/claude-0/` name the original session's scratch files and experiments; they were not kept. The working notes it cites (`plan.md`, `streams.md`, `votes.md`, `api.md`) were the session's, not the repository's.
 
 Live Now, session-day votes as they come in, the store between them and the pages, and the public API's live file.
@@ -228,6 +230,96 @@ Preflight holds it equal to the Python stem on every title in `collected/videos/
   - `home.json`'s dead `status["live"]` goes;
   - `livestreams.py`'s stale quota comment is corrected.
 - **Left out:** `plan.md`'s second line near the top on phones (D4), which can be added later at no request.
+
+### 1.6 The committee page: its live stream at the top
+
+**Asked by the owner, 29 October 2026.** When a committee is streaming, its own page (`/committee/<code>`, the study committees' `/committee/ss<id>` too) shows the stream at the top, not only on `/live`.
+
+**What it reuses, and what it adds.** No new endpoint, no Worker change, no new data. It reads `/api/live/streams` (§5) and matches with the same stems `schedule.json` carries (§1.2). It adds one hook the night writes into each committee page, and a mode of `live.js` (branch 5) that fills it.
+
+**One source of truth (the owner, 29 October 2026).** A committee page says a stream is live from the same data Live Now uses: `/api/live/streams`, matched with the same stem function and the same per-committee stems as `schedule.json`'s `match`. It does not depend on the calendar. A stream that matches the committee lights its page whether or not the meeting was on the calendar.
+
+**The hook (written by the night into EVERY committee and study-committee page, static):**
+
+```html
+<section id="live-now" class="lv" hidden
+         data-committee="H09" data-chamber="H"
+         data-match='["house finance","finance"]'>
+  <template class="lv-agenda" data-day="2027-01-07"><!-- today's calendar card, only when schedule.json has one --></template>
+</section>
+```
+
+- **`data-match`** is the committee's stems: its canonical name and the stems its past recordings carried (`build_manifest`'s `canon` and the committee's rows in `collected/videos/`). The night computes them once. `schedule.json`'s `match` for that committee is held equal to them by preflight, so `/live` and the committee page cannot disagree about which stream is whose.
+- **The agenda `<template>`** is written only when today's or the next weekday's calendar has the committee. It carries its `data-day`, and `live.js` uses it only when that day is today in New Hampshire.
+- **Nothing in the hook depends on the schedule.** A page whose committee is not on the calendar still lights when its stream is live.
+- **It sits outside `app.js`'s render root**, directly above the tabs, so no re-render touches it. In `build_committees.py` and `build_study_committees.py` it is one small function and one call site each, so that a later conflict with the release session's files is trivial.
+
+**What `live.js` does there:**
+- **It fetches only inside the Worker's own window:** weekdays 07:00–20:00 New Hampshire time. The window's constants move from `clock.js` into `live.gen.js` (`live_gen.py` is their one source), and the night writes them into `live.js`, so the Worker and the page cannot drift. Outside the window it makes **zero requests**.
+- **Inside the window**, it fetches on load and once a minute while the tab is visible, using `If-None-Match` and §1.4's Page Visibility rule.
+- **A stream already live at 20:00 keeps the page polling** until that stream ends, or until the Worker stops reporting it (approved 29 October 2026): late sittings and long hearings run past 8 PM. Polling stops at the first answer that does not have that stream live, or one past its `next_check` by more than 5 minutes.
+- **The cost of it:** a stream that *starts* after 20:00, or at a weekend, does not light the committee page; it still shows on `/live`.
+- A stream is this committee's when its title stem matches one of `data-match` and its chamber is the committee's. Session streams (§1.2) never match a committee.
+- While one is `live`, the hook is shown as one card:
+  - the heading "Live now", and "Live since 10:02 AM", in the site's own time format (`components.clock` and its JavaScript twin, as the calendar cards print times);
+  - the site's own press-to-play stub: `button.pstub` with `data-embed="<video>|0|lv-<video>"` and `data-title` from `recTitle`. The page's one delegated handler builds the player when it is pressed. **Nothing loads from YouTube before a press, and nothing plays without one.**
+  - "On YouTube";
+  - today's agenda: the `<template>`'s calendar card, with its bills linked, as the Calendar draws it, when the night wrote one for today. **When it did not, the card shows the stream with no agenda, and says nothing about why.**
+- A stream `upcoming` within 15 minutes shows the same card headed "Scheduled to stream at 10:00 AM", with no stub.
+- **Several of the committee's streams live at once** (a morning and an afternoon session that overlap) are each a card, newest first, keyed by video id.
+
+**Ending cleanly:**
+- **The stream ends and the reader never pressed play:** the card is removed and the hook hidden.
+- **The reader is watching:** the player stays where it is, and the heading becomes "Ended at 12:14 PM" with one line: "The recording reaches this page's Videos tab after the next nightly update." (Not "tonight's": a frozen or failed night would make that untrue.) It goes when the reader leaves the page.
+- **The data goes stale or the request fails** (§1.4's rule, more than 5 minutes past `next_check`): the card is removed unless it is playing. This page makes no claim of its own about live status. It never says "not checked since", "not streaming" or "nothing is live"; those sentences belong to `/live`.
+- **A 404 (no binding: forks, local builds):** the hook stays hidden and polling stops.
+
+**The Videos tab (feat/committee-videos), one family, no shared code changed:**
+- **Same parts:** `.pstub`, `.pbar`, `recTitle`, the kind chips (`k-hearing` and the rest, same names and colours), and the `.player` box. The live card's own classes are `.lv*`. Nothing `.vw*` and no `vw*` function is used or changed.
+- **Survives re-renders:** `live.js` updates the card in place by video id. A playing iframe is never rebuilt. `app.js`'s re-renders cannot reach it, because the hook is outside its root.
+- **One plays at a time:** when either player starts, the other is paused with YouTube's `pauseVideo` over `postMessage`. Both iframes carry `enablejsapi=1`, as the stub already builds them.
+- **Pausing:** a tab hidden by the page (Page Visibility) pauses nothing; the stream is live and the reader may be listening. The live card is never inside a tab pane, so the Videos tab's rule that "a pane hidden by its tab pauses its frame" does not apply to it.
+- **The phone's sticky spot:**
+  - The live card is **never sticky**. It scrolls away with the page, as the head does, and the Videos player keeps the one sticky spot.
+  - When the reader is on the Videos tab and the live card has scrolled out of view, a one-line bar *inside the Videos tab's sticky strip* says "House Finance is live now", with a "Watch" button that scrolls back to the card. It is part of that strip, not a second sticky element. While the live player is playing, the bar says "Playing live" and the button returns to it.
+  - That bar needs a hook (`<div class="lv-strip" hidden>`) in the Videos tab's sticky strip. That is the release session's code, so it comes to them as a described patch of two lines. Until it lands, the card simply scrolls and nothing is sticky.
+- **Captions are never quoted**, here as anywhere.
+
+**Study committees and commissions** get the hook from `build_study_committees.py`, the same way, from the Calendar's study rows (Live Now shows study committees; the Calendar hides them by default, §1.2).
+
+**Not covered, and said here:**
+- A stream outside the Worker's window (after 20:00, or at a weekend) does not light the committee page.
+- Committees of conference have no committee page.
+
+**Words** (catalogue keys, translated when Spanish is on): "Live now", "Live since {time}", "Scheduled to stream at {time}", "Ended at {time}", "The recording reaches this page's Videos tab after the next nightly update.", "On YouTube", "{name} is live now", "Watch", "Playing live".
+
+**Caching and requests:**
+- **`/api/live/streams`** answers with `Cache-Control: public, max-age=30`, its `ETag`, and a 30-second copy per data centre through the Cache API. §5 said 15 s until this section; at 30, `/live` and every committee page poll the same cached answer.
+- **Every poll is still one Function invocation.** A Pages Function runs before any cache, so the cache saves R2 reads, not invocations. With `If-None-Match` an unchanged answer is a 304 with no body.
+- **The volume (guess, labelled so):**
+  - In session weeks, suppose 2,000 committee-page views a weekday inside the window, each visible about 3 minutes. That is about 6,000 polls a day.
+  - About 22 weekdays a month makes roughly 130,000 Function requests a month.
+  - Ten times that is 1.3 M, against the Workers Paid plan's 10 M a month included (Pages Functions are billed as Workers requests).
+  - R2 reads stay under 3,000 a day per data centre with readers (one each 30 s, 07:00–20:00).
+  - The real counts come from the Cloudflare dashboard after January's first weeks.
+
+**Checks:**
+- **`page.test.js` (under `dom_stub.js`):**
+  - no request outside the window (weekdays 07:00–20:00), at a weekend, or with no hook;
+  - the match takes the committee's own stream and not a session stream or another committee's;
+  - a live stream shows one card with a stub and no iframe;
+  - pressing builds the player;
+  - a refresh keeps the playing iframe;
+  - an end removes the card, or keeps the player with "Ended at";
+  - stale and 404 remove an unplayed card and say nothing;
+  - starting one player pauses the other;
+  - the strings "not streaming" and "nothing is live" never appear.
+- **Preflight:**
+  - the hook sits outside `app.js`'s root;
+  - it is on every committee and study-committee page, with `data-match` equal to the committee's `schedule.json` `match` wherever the schedule has the committee;
+  - the window `live.js` carries equals `live.gen.js`'s.
+
+**Branch:** `live/committee-player`, after `live/votes`. It builds off dev once feat/committee-videos is merged, needs branch 5's `live.js`, and ships with Live Now's public release (about 9 December). Screenshots at 390 and 1280, light and dark, with a fake live stream from `fake_youtube.js`'s fixtures; adversarial review.
 
 ---
 
@@ -723,14 +815,15 @@ The night writes a hook into every dated session-day page:
 
 **Headers (set by the Function):**
 - `Content-Type: application/json; charset=utf-8`;
-- `Access-Control-Allow-Origin: *`;
+- `Access-Control-Allow-Origin: *`, with `Access-Control-Expose-Headers: ETag`, and an `OPTIONS` preflight answered 204 (`GET, HEAD`; `If-None-Match`), so a page elsewhere can poll with `If-None-Match` as the docs ask (added 30 October 2026, the Functions' review);
+- `X-Content-Type-Options: nosniff` on every answer;
 - `Cache-Control: public, max-age=15`, with a 15-second copy per data centre through the Cache API;
 - `ETag` from R2's `httpEtag`, and `304` on `If-None-Match`;
 - `404` with `max-age=60` for a date with no file;
 - `404` everywhere without the binding;
 - `GET`/`HEAD` only; anything else gets `405`.
 
-**Not public: `GET /api/live/streams`.** It is Live Now's own data and is not documented. YouTube developer policy III.I.15 forbids offering an API service that gives access to YouTube API data (`streams.md`'s reading, not legal advice). It is sent with **no CORS header**, `X-Robots-Tag: noindex` and `Cache-Control: public, max-age=15`. It serves today's `streams/` file, or yesterday's in the minutes after midnight before today's exists. A test holds that it never sends `Access-Control-Allow-Origin` (safe review, low).
+**Not public: `GET /api/live/streams`.** It is Live Now's own data and is not documented. YouTube developer policy III.I.15 forbids offering an API service that gives access to YouTube API data (`streams.md`'s reading, not legal advice). It is sent with **no CORS header**, `X-Robots-Tag: noindex` and `Cache-Control: public, max-age=30` (30 rather than 15 since §1.6, so that /live and every committee page poll one cached answer). It serves today's `streams/` file, or yesterday's in the minutes after midnight before today's exists. A test holds that it never sends `Access-Control-Allow-Origin` (safe review, low).
 
 **The docs ask clients** to poll at most every 30 seconds with `If-None-Match`, and to treat the record as the truth. Nothing a client does reaches the General Court or YouTube.
 
