@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.1
+# GRANITE_VERSION: 2026-10-30.2
 """
 /api: the data API's documentation page, drawn in the data page's own
 components and counted from tonight's manifest.
@@ -174,7 +174,9 @@ def body(manifest):
             "ways, an employee number and a person id, and this site&rsquo;s files use both; one "
             "person can carry several of each. <code>people.json</code> joins them to one "
             "<code>person</code>, which does not change when a member moves between the House and "
-            "the Senate.</p>"
+            "the Senate. It is one of the General Court&rsquo;s own numbers for them: their "
+            "earliest person id, or their earliest employee number where the record gives no "
+            "person id.</p>"
             '<details class="dpfold"><summary><span>When two entries prove to be one person, or one '
             "is two</span></summary><p>A <code>person</code> is never given to anyone else. If two "
             "entries prove to be one person, the one that goes stays in the file with a "

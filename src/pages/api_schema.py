@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.2
+# GRANITE_VERSION: 2026-10-30.3
 """
 What every file of the data API holds, field by field: /data/schema.json.
 
@@ -121,7 +121,7 @@ CSV = {
         "vote": ("string", "Yea, Nay, Not Voting/Excused, Not Voting/Not Excused, Presiding, or No vote recorded.", S),
     },
     "people.csv": {
-        "person": ("string", "This site's person number, issued once and never given to anyone else.", S),
+        "person": ("string", "One of the General Court's own numbers for the person: their earliest PersonID, else their earliest employee number (the ones they first voted under). Chosen once, and never given to anyone else.", S),
         "number_kind": ("string", "employee_number, person_id or member_id; replaced_by on a retired person number.", S),
         "number": ("string", "The number; on a replaced_by row, the person number that replaces it.", S),
         "name": ("string", "The person's name.", S),
@@ -308,7 +308,7 @@ def package(tables, files, base, built, record_keys=()):
                                  "this site use for them.",
                      schema={"fields": [
                          {"name": "person", "type": "string", "x-stability": S,
-                          "description": "This site's person number, issued once."},
+                          "description": "One of the General Court's own numbers for the person: their earliest PersonID, else their earliest employee number (the ones they first voted under). Chosen once, and never given to anyone else."},
                          {"name": "name", "type": "string", "x-stability": S, "description": "Their name."},
                          {"name": "employee_numbers", "type": "array", "x-stability": S,
                           "description": "The General Court's employee numbers, earliest first."},
