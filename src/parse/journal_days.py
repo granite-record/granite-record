@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.18
+# GRANITE_VERSION: 2026-09-19.19
 """
 What the House journal adds that the record does not: who spoke, and what.
 
@@ -1244,7 +1244,9 @@ def read_day(date, root=HOUSE):
     2022.txt), as read_senate_day and session_days._journal_day already
     read it. Both folders are read for a December date; an odd-year December
     sitting is in its own year's folder (2001/HJ022), and the next year's
-    holds at most its "(cont.)" tail, which day_blocks drops.
+    holds at most its "(cont.)" tail, which day_blocks drops. The same day
+    read alike from both, as a copy left behind by a move would give, is
+    taken once (preflight's journal-folder check names such a copy).
     """
     years = (date[:4],) + ((str(int(date[:4]) + 1),) if date[5:7] == "12" else ())
     found = [read_year(y, root)[date] for y in years if date in read_year(y, root)]
@@ -1253,7 +1255,7 @@ def read_day(date, root=HOUSE):
     out = {"date": date, "attributions": [], "debates": [],
            "unanimous_consent": [], "opening": {}, "absences": [],
            "consent": {}, "files": []}
-    for got in found:
+    for got in [g for i, g in enumerate(found) if g not in found[:i]]:
         for k in ("attributions", "debates", "unanimous_consent", "absences", "files"):
             out[k] += got[k]
         for k, v in got["opening"].items():

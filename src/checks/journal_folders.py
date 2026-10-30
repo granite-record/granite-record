@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.1
+# GRANITE_VERSION: 2026-10-30.2
 """
 Is every journal file in its session's folder, and is no file two files?
 
@@ -79,8 +79,8 @@ NOT_JOURNALS = {
         "a floor amendment to HB 1 of 2003, no Journal",
 }
 
-# The least share of files dated by their own sittings. 1,028 of the kit's
-# 1,064 were on 29 October 2026 (96.6%); a reader that stopped reading the
+# The least share of files dated by their own sittings. 1,035 of the kit's
+# 1,062 journals were on 30 October 2026 (97.5%); a reader that stopped reading the
 # headings would fall far under it.
 STRONG_FLOOR = 0.90
 

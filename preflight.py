@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.740
+# GRANITE_VERSION: 2026-09-04.741
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -47525,14 +47525,30 @@ JOURNALS_MISFILED = {
 }
 
 
+def _journal_folders_known(line, names):
+    """Whether a problem is one the fifteen known files were measured to
+    give, exactly: a numbered 2010 copy said to be the same bytes as its
+    2011 file, the pair of them as duplicates, or one of the three moves with
+    nothing of its name in the way. A third copy, a half-done move or a
+    different file in the way is a new problem, though it names a known file."""
+    if len(names) == 1 and names[0] in JOURNALS_MISFILED:
+        p = names[0]
+        tail = ("nothing of that name there." if "/2000/" in p or "Organization Day" in p
+                else "this copy goes.")
+        return line.startswith(p + ": in ") and line.endswith(tail)
+    if len(names) == 2 and names[0] in JOURNALS_MISFILED and "/2010/HJ0" in names[0]:
+        return names[1] == names[0].replace("/2010/", "/2011/")
+    return False
+
+
 def _journal_folders_found(JF):
-    """(the audit, its problems that name none of the fifteen known files),
-    or None where no journals are on this disk."""
+    """(the audit, its problems other than the fifteen known files' own), or
+    None where no journals are on this disk."""
     r = JF.audit(".")
     if "skip" in r:
         return None
     other = [ln for ln, names in zip(r["problems"], r["named_in"])
-             if not set(names) & JOURNALS_MISFILED]
+             if not _journal_folders_known(ln, names)]
     return r, other
 
 
@@ -47625,6 +47641,10 @@ _JF_SJ001_2018 = (  # journals_senate/2018/SJ001.txt l.1-9
     "SENATEJOURNAL3JANUARY2018  1\n\nSTATE OF NEW HAMPSHIRE\n\n              CONVENING DAY\n\n"
     "                                 January 3, 2018\n\n"
     "The Senate reconvened at 10:00 a.m., a quorum being present.\n")
+_JF_SJ02_2023 = (  # journals_senate/2023/SJ 02 January 4, 2023 - Convening Day.txt l.15-21
+    "\f26  SENATEJOURNAL4JANUARY2023\r\n\r\nSENATE                         January 4, 2023\r\n"
+    "JOU RNA L2\r\n\r\n                                                              CONVENING DAY\r\n"
+    "The Senate convened at 10:00 a.m., a quorum being present.\r\n")
 _JF_HB1 = (  # journals/2003/HB1_FinanceAmended.txt l.1-6
     "       House Finance\n       April 10, 2003\n       2003-1268h\n       03/10\n\n"
     "                                                             Amendment to HB 1-A\n")
@@ -47655,6 +47675,7 @@ _JF_GOOD = {
     "journals_senate/2025/SJ 01 December 4, 2024 Organization Day.txt": _JF_SJ01_2024,
     "journals_senate/2005/SJ 9.txt": _JF_SJ9_2005,
     "journals_senate/2018/SJ001.txt": _JF_SJ001_2018,
+    "journals_senate/2023/SJ 02 January 4, 2023 - Convening Day.txt": _JF_SJ02_2023,
     "journals/2003/HB1_FinanceAmended.txt": _JF_HB1,
     "journals/2003/HB1_Floor_Amendment.txt": _JF_HB1.replace("House Finance", "Floor"),
 }
@@ -47741,6 +47762,19 @@ def _journal_folders_cases(JF, base):
         hit = [ln for ln in got["problems"] if ln.startswith(start) and ln.endswith(end)]
         assert hit, f"{what}: no line '{start} ... {end}' in:\n" + "\n".join(got["problems"])
         assert all(p for p in got["named_in"][got["problems"].index(hit[0])]), what
+    # The data check excuses the fifteen known files' own lines and nothing
+    # more: not a third copy of one, nor a move half done.
+    def unexcused(files):
+        got = JF.audit(tree(files))
+        return [ln for ln, names in zip(got["problems"], got["named_in"])
+                if not _journal_folders_known(ln, names)]
+    known = dict(_JF_GOOD, **{"journals/2010/HJ010.txt": _JF_HJ010_2011})
+    assert unexcused(known) == [], unexcused(known)
+    third = unexcused(dict(known, **{"journals/2011/HJ 10 March 15, 2011.txt": _JF_HJ010_2011}))
+    assert third and all("same bytes" in ln for ln in third), third
+    half = unexcused(dict(_JF_GOOD, **{f"journals/2010/{org}": _JF_ORG_2010}))
+    assert len(half) == 2 and half[0].endswith("is the same bytes: this copy goes.") \
+        and half[1].startswith("the same bytes, twice:"), half
     # Nothing dated by its own sittings: the floor, rather than a pass.
     weak_only = {f"journals/{y}/HJ00{i}.txt": "         Calendar and Journal of the %s Session\n" % y
                  for i, y in enumerate(("2003", "2004", "2005"), 1)}
