@@ -80142,7 +80142,7 @@ def _live_sql(live_gen, dayfiles_from_db, fetch_past_db, refusal):
 # The live Worker's suite, and how many tests it had when this was written: a
 # count that falls means a file stopped loading or a test was lost.
 LIVE_TESTS = "tests/live/index.js"
-LIVE_TESTS_AT_LEAST = 169
+LIVE_TESTS_AT_LEAST = 185
 # The person's ready-made switches (workers/live/control/), each as the Worker
 # must read it; and the values control.json may hold (store.js CONTROL_VALUES).
 LIVE_CONTROL = {"all-off.json": {"youtube": "off", "sql": "off"},
@@ -80155,6 +80155,109 @@ LIVE_CONTROL_VALUES = {"youtube": ("on", "off"), "sql": ("off", "test", "on")}
 # follower's database, which is another Worker's.
 LIVE_NEVER = re.compile(r"gc\.nh\.gov|gencourt|graniterecord-follow|FOLLOW_DB", re.I)
 LOOPBACK = ("127.0.0.1", "::1", "localhost")
+
+
+@check("build", "the night's session.votes files: each dated session-day page's roll calls in the shape "
+       "the live votes file keeps (schema/session.votes.json), the record's ballots aligned to its "
+       "members, a file going with its page, and the two today pages noindex and in no list",
+       needs=("build_live_session",))
+def _live_session(BLS):
+    """The session days' side of the live layer (design sections 4.2 to 4.4),
+    on a site of three dated pages written here: build_live_session's checker
+    judges every shared case as tests/live/schema_cases.json says (the node
+    checker runs the same cases); every day file holds to the schema; a
+    roll call's ballots are the record's, member by member; a date whose page
+    is gone loses its file and a term file is untouched; a vote the shape has
+    no character for stops the step; and the today pages carry noindex, the
+    bills' years and no sitting of their own."""
+    import tempfile
+    shape = BLS.schema()
+    cases = json.loads(Path("tests/live/schema_cases.json").read_text(encoding="utf-8"))["cases"]
+    wrong = []
+    for c in cases:
+        try:
+            BLS.check(c["doc"], shape)
+            ok = True
+        except BLS.Invalid:
+            ok = False
+        if ok != c["valid"]:
+            wrong.append(c["name"])
+    assert len(cases) >= 30 and not wrong, f"the schema checker judges these against the cases file: {wrong}"
+    with tempfile.TemporaryDirectory() as tmp:
+        site = Path(tmp)
+        for d in ("session/H", "session/S", "data", "idx"):
+            (site / d).mkdir(parents=True)
+        for f in ("session/H/2026-03-11.html", "session/H/2026-03-12.html", "session/S/2026-03-12.html"):
+            (site / f).write_text("<p>x</p>", encoding="utf-8")
+        (site / "session/H/2025-2026.json").write_text('{"term": "kept"}', encoding="utf-8")
+        (site / "session/H/2026-01-01.json").write_text("{}", encoding="utf-8")   # its page is gone
+        (site / "data/rollcalls.csv").write_text(
+            "roll_call,term,year,body,number,date,bill,question,question_plain,yeas,nays,not_voting,passed,"
+            "procedural,threshold_needed,threshold_rule,outcome_source\n"
+            "2026-H-41,2025-2026,2026,H,41,2026-03-11,HB1376,Ought to Pass,,2,0,1,1,0,,,\n"
+            "2026-H-40,2025-2026,2026,H,40,2026-03-11,,Shall Member Continue,,1,1,1,0,0,2,,\n"
+            "2026-H-50,2025-2026,2026,H,50,2026-03-13,HB2,Table,,1,1,1,0,0,,,\n"
+            "2026-S-9,2025-2026,2026,S,9,2026-03-12,SB12,Ought to Pass,,1,0,0,1,0,,,\n", encoding="utf-8")
+        (site / "data/votes-2025-2026.csv").write_text(
+            "roll_call,term,date,bill,question,member_id,member,party,chamber,vote\n"
+            "2026-H-41,2025-2026,2026-03-11,HB1376,x,960,\"A, B\",R,House,Yea\n"
+            "2026-H-41,2025-2026,2026-03-11,HB1376,x,11463,\"C, D\",D,House,Yea\n"
+            "2026-H-41,2025-2026,2026-03-11,HB1376,x,200,\"E, F\",D,House,Not Voting/Excused\n"
+            "2026-H-40,2025-2026,2026-03-11,,x,960,\"A, B\",R,House,Nay\n"
+            "2026-H-40,2025-2026,2026-03-11,,x,11463,\"C, D\",D,House,Yea\n"
+            "2026-S-9,2025-2026,2026-03-12,SB12,x,7,\"G, H\",R,Senate,Yea\n", encoding="utf-8")
+        (site / "meta.json").write_text('{"terms": ["2025-2026"]}', encoding="utf-8")
+        (site / "idx/2025-2026.json").write_text(
+            '[{"id": "HB1376", "year": 2026}, {"id": "HB2", "year": 2025}]', encoding="utf-8")
+        docs = BLS.day_files(site)
+        wrote, gone = BLS.write_day_files(site, docs)
+        assert (wrote, gone) == (3, ["H/2026-01-01.json"]), (wrote, gone)
+        assert (site / "session/H/2025-2026.json").read_text(encoding="utf-8") == '{"term": "kept"}', \
+            "the session-day step's term file was written over"
+        h = json.loads((site / "session/H/2026-03-11.json").read_text(encoding="utf-8"))
+        BLS.check(h, shape)
+        assert h["provisional"] is False and h["status"]["state"] == "record"
+        assert h["members"] == {"H": ["200", "960", "11463"], "S": []}, h["members"]
+        assert [r["id"] for r in h["rollcalls"]] == ["2026-H-40", "2026-H-41"], "in the record's order"
+        r40, r41 = h["rollcalls"]
+        assert (r41["ballots"], r41["ballots_complete"], r41["bill"], r41["passed"]) == \
+            ("EYY", True, "2025-2026/HB1376", True), r41
+        assert (r40["ballots"], r40["ballots_complete"], r40["bill"], r40["passed"], r40["threshold_needed"]) == \
+            (".NY", True, None, False, 2), r40
+        assert r41["taken"] is None and r41["docket"] is None, "the record vouches for no clock or docket line here"
+        assert json.loads((site / "session/H/2026-03-12.json").read_text(encoding="utf-8"))["rollcalls"] == [], \
+            "a sitting with no roll call has its file, empty"
+        s = json.loads((site / "session/S/2026-03-12.json").read_text(encoding="utf-8"))
+        assert [r["id"] for r in s["rollcalls"]] == ["2026-S-9"] and s["members"]["S"] == ["7"]
+        assert not (site / "session/H/2026-03-13.json").exists(), "a roll call's day with no page has no file"
+        # A broken document is refused before anything is written.
+        bad = {k: dict(v, api=2) for k, v in docs.items()}
+        try:
+            BLS.write_day_files(site, bad, shape)
+            raise AssertionError("a document breaking the schema was written")
+        except SystemExit as e:
+            assert "does not hold to schema/session.votes.json" in str(e), e
+        # A vote the shape has no character for stops the step, by name.
+        votes = site / "data/votes-2025-2026.csv"
+        votes.write_text(votes.read_text(encoding="utf-8").replace("House,Nay", "House,Paired"), encoding="utf-8")
+        try:
+            BLS.day_files(site)
+            raise AssertionError("an unknown vote word was written as a ballot")
+        except SystemExit as e:
+            assert "'Paired'" in str(e), e
+        # The today pages.
+        body = BLS.today_body(site, "H", __import__("datetime").date(2026, 3, 12))
+        assert 'id="live-today" data-body="H" data-built="2026-03-12"' in body
+        assert 'class="lv-dated" data-day="2026-03-12"' in body, "the record has today: its page is linked"
+        assert '"2025-2026":{"2025":["HB2"],"2026":["HB1376"]}' in body, "the bills' own years"
+        assert "<noscript>" in body and "by tomorrow morning" in body
+        assert "lv-senate" not in body and "lv-senate" in BLS.today_body(site, "S", __import__("datetime").date(2026, 3, 12))
+        assert "lv-dated" not in BLS.today_body(site, "H", __import__("datetime").date(2026, 3, 13))
+    src = Path(_paths.locate("build_live_session.py")).read_text(encoding="utf-8")
+    assert '<meta name="robots" content="noindex">' in src and "sitemap" not in src.split('"""', 2)[2], \
+        "the today pages must be noindex and in no sitemap"
+    return "ok", (f"{len(cases)} shared cases judged alike; three day files on a fixture site, "
+                  "ballots the record's, a file gone with its page, the today pages noindex")
 
 
 @check("build", "the live Worker's own tests pass, every one: node --test runs tests/live/index.js, "
@@ -80194,6 +80297,7 @@ def _live_tests():
             "tests/live/store.test.js", "tests/live/tds.test.js", "tests/live/youtube.test.js",
             "tests/live/fake_r2.js", "tests/live/fake_youtube.js", "tests/live/fake_tds.js",
             "tests/live/world.js", "tests/live/compare_test.mjs", "tests/live/wire.test.js",
+            "tests/live/schema.js", "tests/live/schema.test.js",
             "tests/live/from_records.js", "workers/live/votes.js", "workers/live/merge.js",
             "tests/live/votes.test.js", "tests/live/replay.test.js", "tests/live/functions.test.js",
             "functions/api/live/_store.js", "functions/api/live/streams.js", "functions/api/live/votes/[day].js",

@@ -363,3 +363,209 @@ test("a refresh keeps an opened player's card, and a card whose stream ended goe
   assert.equal(asked.length, n, "after a 404 it asks no more");
   p.stop();
 });
+
+// ---- the session-day pages (sections 4.2 and 4.3) --------------------------------
+// A today page or a dated page, deep enough for startToday and startOverlay:
+// elements by id, and the children querySelectorAll looks through.
+function dayPage({ body = "H", built = "2027-01-07", dated = null, hook = null, bills = {} } = {}) {
+  const mk = (attrs = {}, cls = "") => {
+    const e = { attrs: { ...attrs }, className: cls, hidden: false, textContent: "", children: [], _html: "",
+      getAttribute(k) { return this.attrs[k] ?? null; }, setAttribute(k, v) { this.attrs[k] = String(v); },
+      appendChild(c) { c.parent = this; this.children.push(c); return c; },
+      remove() { if (this.parent) this.parent.children = this.parent.children.filter(x => x !== this); },
+      querySelector(sel) {
+        const m = /^\[data-video="(.*)"\]$/.exec(sel);
+        if (m) return this.children.find(c => c.attrs["data-video"] === m[1]) || null;
+        this.parts = this.parts || {};
+        return (this.parts[sel] = this.parts[sel] || mk());
+      },
+      querySelectorAll(sel) {
+        if (sel === "[data-video]") return this.children.filter(c => c.attrs["data-video"]);
+        if (sel === "[data-day]") return this.children.filter(c => "data-day" in c.attrs);
+        if (sel.startsWith(".")) return this.children.filter(c => c.className.split(" ").includes(sel.slice(1)));
+        return [];
+      } };
+    Object.defineProperty(e, "innerHTML", { get() { return this._html; }, set(v) { this._html = String(v); } });
+    return e;
+  };
+  const els = {};
+  const root = mk({ "data-body": body, "data-built": built });
+  for (const [cls, attrs] of [["lv-floor", { "data-day": built }], ["lv-provisional", {}], ["lv-senate", {}]]) {
+    const c = root.appendChild(mk(attrs, cls));
+    c.hidden = cls !== "lv-floor";
+  }
+  if (dated) root.appendChild(mk({ "data-day": dated }, "lv-dated"));
+  els["live-today"] = root;
+  for (const id of ["live-today-day", "live-today-status", "live-today-stream", "live-today-votes", "live-today-votes-status"]) els[id] = mk();
+  els["live-bills"] = { textContent: JSON.stringify(bills) };
+  if (hook) els["live-votes"] = mk({ "data-day": hook.day, "data-body": hook.body || body });
+  if (hook) delete els["live-today"];
+  const doc = { hidden: false, _on: {}, getElementById: id => els[id] || null, createElement: () => mk(),
+                addEventListener(t, f) { (this._on[t] = this._on[t] || []).push(f); } };
+  return { doc, els, root };
+}
+// A fetch answering by address: {url: body} for 200, a missing address 404.
+function server(files) {
+  const asked = [];
+  const fetch = async (url, init) => {
+    asked.push(url);
+    const body = files[url];
+    const status = body === undefined ? 404 : 200;
+    return { status, ok: status === 200, headers: { get: () => (status === 200 ? `"${url}"` : null) }, json: async () => body };
+  };
+  return { fetch, asked };
+}
+const liveFile = (date, rcs, over = {}) => ({ api: 1, kind: "session.votes", date, provisional: true,
+  read_at: `${date}T16:43:00Z`, next_read_by: `${date}T16:45:00Z`, status: { state: "reading", problem: null, since: null },
+  rollcalls: rcs, tallies: [], ...over });
+
+test("the reader's session day is New Hampshire's, the day before until 06:00", () => {
+  assert.equal(L.readerDay(T("2027-01-08T10:59:00Z")), "2027-01-07", "05:59 EST: still the 7th");
+  assert.equal(L.readerDay(T("2027-01-08T11:00:00Z")), "2027-01-08", "06:00 EST");
+  assert.equal(L.readerDay(T("2027-01-08T04:30:00Z")), "2027-01-07", "23:30 EST on the 7th");
+  assert.equal(L.readerDay(T("2027-03-01T10:00:00Z")), "2027-02-28", "05:00 EST on 1 March: across a month");
+  assert.equal(L.readerDay(T("2027-06-01T09:59:00Z")), "2027-05-31", "05:59 EDT");
+  assert.equal(L.readerDay(T("2027-06-01T10:00:00Z")), "2027-06-01", "06:00 EDT");
+  assert.equal(L.daysBetween("2027-01-07", "2027-01-21"), 14);
+  assert.equal(L.daysBetween("2027-03-13", "2027-03-15"), 2, "across the change to daylight time");
+  assert.equal(L.dayWords("2027-01-07"), "Thursday, January 7");
+});
+
+test("/session/H/today: the reader's day, the night's dated parts hidden on another, the record and the live union", async () => {
+  // The night built it on the 7th; the reader comes on the 8th at 10:00.
+  const now = () => T("2027-01-08T15:00:00Z");
+  const { doc, els, root } = dayPage({ built: "2027-01-07", dated: "2027-01-08", bills: { "2027-2028": { 2027: ["HB2"] } } });
+  const record = { date: "2027-01-08", rollcalls: [rcOf({ id: "2027-H-14", seq: 14, passed: true })] };
+  const live = liveFile("2027-01-08", [rcOf({ id: "2027-H-14", seq: 14, yeas: 1 }), rcOf({ id: "2027-H-15", seq: 15, ballots_complete: false })]);
+  const { fetch, asked } = server({ "/session/H/2027-01-08.json": record, "/api/live/votes/2027-01-08": live,
+                                    "/api/live/streams": file({ day: "2027-01-08", checked: "2027-01-08T14:59:00Z", next_check: "2027-01-08T15:01:00Z",
+                                      streams: [stream({ title: "House Session (01/08/2027)" })] }) });
+  const p = L.startToday(doc, { fetch, now });
+  try {
+    await p.first;
+    assert.equal(root.children.find(c => c.className === "lv-floor").hidden, true, "the 7th's floor card, hidden on the 8th");
+    assert.equal(root.children.find(c => c.className === "lv-dated").hidden, false, "the 8th's dated page: linked");
+    assert.match(els["live-today-day"].textContent, /Friday, January 8/);
+    assert.ok(asked.includes("/session/H/2027-01-08.json"), "the record of the day, since the night has its page");
+    const list = els["live-today-votes"].innerHTML;
+    assert.equal((list.match(/<li /g) || []).length, 2);
+    assert.match(list, /data-id="2027-H-15".*provisional · read at/);
+    assert.match(list, /data-id="2027-H-14".*186&ndash;169/, "the record's copy of 14, not the live 1-169");
+    const own = list.slice(list.indexOf('data-id="2027-H-14"'));
+    assert.doesNotMatch(own, /not yet in the docket|names follow|provisional/, "the record's row waits on nothing");
+    assert.doesNotMatch(list, /data-id="2027-H-14"[^]*provisional[^]*data-id="2027-H-14"/);
+    assert.ok(list.indexOf("2027-H-15") < list.indexOf("2027-H-14"), "newest first");
+    assert.match(list, /href="\/bill\/2027\/hb2\.html"/);
+    assert.equal(root.children.find(c => c.className === "lv-provisional").hidden, false);
+    assert.equal(els["live-today-stream"].children.length, 1, "the House session stream");
+    assert.match(els["live-today-status"].textContent, /^Checked/);
+  } finally { p.stop(); }
+});
+
+test("/session/S/today before 06:00: yesterday's sitting, no record yet, every live roll call provisional; no stream said as such", async () => {
+  const now = () => T("2027-01-08T09:30:00Z");                         // 04:30 EST on the 8th
+  const { doc, els, root } = dayPage({ body: "S", built: "2027-01-07" });
+  const live = liveFile("2027-01-07", [rcOf({ id: "2027-S-3", body: "S", seq: 3, ballots_complete: false }),
+                                       rcOf({ id: "2027-H-9", seq: 9 })]);
+  const files = { "/api/live/votes/2027-01-07": live,
+    "/api/live/streams": file({ day: "2027-01-08", checked: "2027-01-08T09:29:00Z", next_check: "2027-01-08T09:59:00Z",
+                                streams: [stream({ title: "House Session (01/08/2027)" })] }) };
+  const { fetch, asked } = server(files);
+  const p = L.startToday(doc, { fetch, now });
+  try {
+    await p.first;
+    assert.ok(asked.includes("/api/live/votes/2027-01-07"));
+    assert.ok(!asked.some(u => u.startsWith("/session/")), "no dated page: the record is not asked");
+    assert.equal(root.children.find(c => c.className === "lv-floor").hidden, false, "the 7th's floor card stays on the 7th");
+    const list = els["live-today-votes"].innerHTML;
+    assert.equal((list.match(/<li /g) || []).length, 1, "the Senate's only");
+    assert.match(list, /2027-S-3.*provisional/);
+    assert.equal(root.children.find(c => c.className === "lv-senate").hidden, false, "names follow");
+    assert.match(els["live-today-status"].textContent, /^No Senate session stream found right now \(checked 4:29/);
+    assert.doesNotMatch(els["live-today-status"].textContent.toLowerCase(), /not streaming|nothing is live/);
+    assert.equal(els["live-today-stream"].children.length, 0, "the House's stream is not the Senate's");
+    files["/api/live/votes/2027-01-07"] = { ...live, rollcalls: [rcOf({ id: "2027-S-3", body: "S", seq: 3, ballots_complete: true })] };
+    await p.votes.poll();
+    assert.equal(root.children.find(c => c.className === "lv-senate").hidden, true, "names in: the line goes");
+  } finally { p.stop(); }
+});
+
+test("/session/H/today with no binding: says so, and asks the streams no more", async () => {
+  const timers = [];
+  const c2 = load({ setTimeout: (f, ms) => { timers.push(ms); return timers.length; }, clearTimeout: () => {} });
+  const { doc, els } = dayPage();
+  const { fetch, asked } = server({});
+  const p = c2.GRLive.startToday(doc, { fetch, now: () => T("2027-01-07T15:00:00Z") });
+  try {
+    await p.first;
+    await new Promise(r => setImmediate(r));
+    assert.deepEqual([...timers], [120000], "the votes file asked again in 2 minutes; the streams never");
+    assert.equal(els["live-today-votes"].hidden, true);
+    assert.match(els["live-today-votes-status"].textContent, /^No roll calls read today\./);
+    assert.equal(els["live-today-status"].textContent, "Live status is not available");
+    const n = asked.filter(u => u === "/api/live/streams").length;
+    await p.streams.poll();
+    assert.equal(asked.filter(u => u === "/api/live/streams").length, n + 1);
+  } finally { p.stop(); }
+});
+
+test("the dated page's overlay: within 14 days, the live roll calls the record lacks; none without a record; older pages ask nothing", async () => {
+  const record = { date: "2027-01-07", rollcalls: [rcOf({ id: "2027-H-14", seq: 14 })] };
+  const live = liveFile("2027-01-07", [rcOf({ id: "2027-H-14", seq: 14 }), rcOf({ id: "2027-H-16", seq: 16 }),
+                                       rcOf({ id: "2027-S-2", body: "S", seq: 2 })]);
+  const files = { "/session/H/2027-01-07.json": record, "/api/live/votes/2027-01-07": live };
+  // On the day: drawn, and polling.
+  let pg = dayPage({ hook: { day: "2027-01-07" } });
+  let s = server(files);
+  let p = L.startOverlay(pg.doc, { fetch: s.fetch, now: () => T("2027-01-07T20:00:00Z") });
+  try {
+    await p.first;
+    const html = pg.els["live-votes"].innerHTML;
+    assert.match(html, /Read during the day/);
+    assert.equal((html.match(/<li /g) || []).length, 1);
+    assert.match(html, /data-id="2027-H-16".*provisional · read at/);
+    assert.equal(pg.els["live-votes"].hidden, false);
+    assert.equal(L.votesEvery(live, T("2027-01-07T20:00:00Z")) > 0, true);
+  } finally { p.stop(); }
+  // The record has caught up: nothing drawn.
+  pg = dayPage({ hook: { day: "2027-01-07" } });
+  s = server({ ...files, "/session/H/2027-01-07.json": { date: "2027-01-07", rollcalls: live.rollcalls } });
+  p = L.startOverlay(pg.doc, { fetch: s.fetch, now: () => T("2027-01-09T20:00:00Z") });
+  try {
+    await p.first;
+    assert.equal(pg.els["live-votes"].innerHTML, "");
+    assert.equal(pg.els["live-votes"].hidden, true);
+  } finally { p.stop(); }
+  // No record file: nothing drawn, the live file not even asked.
+  pg = dayPage({ hook: { day: "2027-01-07" } });
+  s = server({ "/api/live/votes/2027-01-07": live });
+  p = L.startOverlay(pg.doc, { fetch: s.fetch, now: () => T("2027-01-08T20:00:00Z") });
+  await p.first;
+  assert.deepEqual(s.asked, ["/session/H/2027-01-07.json"]);
+  assert.equal(pg.els["live-votes"].innerHTML, "");
+  p.stop();
+  // Fifteen days on, or a page dated ahead: no request at all.
+  for (const at of ["2027-01-22T20:00:00Z", "2027-01-06T20:00:00Z"]) {
+    pg = dayPage({ hook: { day: "2027-01-07" } });
+    s = server(files);
+    assert.equal(L.startOverlay(pg.doc, { fetch: s.fetch, now: () => T(at) }), null, at);
+    assert.deepEqual(s.asked, []);
+  }
+  const last = L.startOverlay(dayPage({ hook: { day: "2027-01-07" } }).doc, { fetch: server(files).fetch, now: () => T("2027-01-21T20:00:00Z") });
+  try { assert.ok(last, "fourteen days on: still asked"); await last.first; } finally { last.stop(); }
+});
+
+test("the overlay polls only while its date is today in New Hampshire", async () => {
+  const files = { "/session/H/2027-01-07.json": { date: "2027-01-07", rollcalls: [] },
+                  "/api/live/votes/2027-01-07": liveFile("2027-01-07", [rcOf({})]) };
+  const timers = [];
+  const c2 = load({ setTimeout: (f, ms) => { timers.push(ms); return timers.length; }, clearTimeout: () => {} });
+  for (const [at, want] of [["2027-01-07T16:44:00Z", [30000]], ["2027-01-07T20:00:00Z", [120000]], ["2027-01-08T20:00:00Z", []]]) {
+    timers.length = 0;
+    const pg = dayPage({ hook: { day: "2027-01-07" } });
+    const p = c2.GRLive.startOverlay(pg.doc, { fetch: server(files).fetch, now: () => T(at) });
+    await p.first;
+    await new Promise(r => setImmediate(r));
+    assert.deepEqual([...timers], want, at);
+  }
+});

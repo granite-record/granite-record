@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://graniterecord.org/schema/session.votes.json",
+  "title": "session.votes",
+  "description": "One day's roll calls in one shape, for both writers (the live layer's design, sections 4.4 and 5). The Worker writes /api/live/votes/<date> with provisional true, read from the General Court's public SQL database during the day. The night writes /session/<H|S>/<date>.json with provisional false, from the record. A page draws both with one function, and where both hold a roll call's id the record's wins. This file uses a small part of JSON Schema (type, const, enum, pattern, minimum, required, properties, additionalProperties, items, $defs and $ref), which src/pages/build_live_session.py and tests/live/schema.js check by hand.",
+  "type": "object",
+  "required": ["api", "kind", "date", "provisional", "read_at", "next_read_by", "status", "source",
+               "record", "members", "rollcalls", "tallies", "notes"],
+  "additionalProperties": false,
+  "properties": {
+    "api": {"const": 1},
+    "kind": {"const": "session.votes"},
+    "date": {"$ref": "#/$defs/date"},
+    "provisional": {"type": "boolean"},
+    "read_at": {"$ref": "#/$defs/instant_or_null"},
+    "next_read_by": {"$ref": "#/$defs/instant_or_null"},
+    "status": {
+      "type": "object",
+      "required": ["state", "problem", "since"],
+      "additionalProperties": false,
+      "properties": {
+        "state": {"enum": ["reading", "off", "day_over", "record"]},
+        "problem": {"type": ["string", "null"], "pattern": "^[a-z_]+$"},
+        "since": {"$ref": "#/$defs/instant_or_null"}
+      }
+    },
+    "source": {"type": "string"},
+    "record": {
+      "type": "object",
+      "required": ["H", "S"],
+      "additionalProperties": false,
+      "properties": {
+        "H": {"type": "string", "pattern": "^/session/H/[0-9]{4}-[0-9]{2}-[0-9]{2}\\.json$"},
+        "S": {"type": "string", "pattern": "^/session/S/[0-9]{4}-[0-9]{2}-[0-9]{2}\\.json$"}
+      }
+    },
+    "members": {
+      "type": "object",
+      "required": ["H", "S"],
+      "additionalProperties": false,
+      "properties": {
+        "H": {"$ref": "#/$defs/member_ids"},
+        "S": {"$ref": "#/$defs/member_ids"}
+      }
+    },
+    "rollcalls": {"type": "array", "items": {"$ref": "#/$defs/rollcall"}},
+    "tallies": {"type": "array", "items": {"$ref": "#/$defs/tally"}},
+    "notes": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    }
+  },
+  "$defs": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "instant": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"},
+    "instant_or_null": {"type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"},
+    "count": {"type": "integer", "minimum": 0},
+    "count_or_null": {"type": ["integer", "null"], "minimum": 0},
+    "member_ids": {"type": "array", "items": {"type": "string", "pattern": "^[0-9]+$"}},
+    "bill": {"type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{4}/[A-Z]+ ?[0-9]+[A-Z-]*$"},
+    "rollcall": {
+      "type": "object",
+      "required": ["id", "body", "seq", "bill", "bill_as_recorded", "question", "taken", "saved",
+                   "keyed_by", "yeas", "nays", "present", "absent", "ballots", "ballots_complete",
+                   "docket", "first_seen", "note"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^[0-9]{4}-[HS]-[0-9]+$"},
+        "body": {"enum": ["H", "S"]},
+        "seq": {"type": "integer", "minimum": 1},
+        "bill": {"$ref": "#/$defs/bill"},
+        "bill_as_recorded": {"type": ["string", "null"]},
+        "question": {"type": ["string", "null"]},
+        "taken": {"$ref": "#/$defs/instant_or_null"},
+        "saved": {"$ref": "#/$defs/instant_or_null"},
+        "keyed_by": {"enum": ["voting system", "clerk", null]},
+        "yeas": {"$ref": "#/$defs/count"},
+        "nays": {"$ref": "#/$defs/count"},
+        "present": {"$ref": "#/$defs/count_or_null"},
+        "absent": {"$ref": "#/$defs/count_or_null"},
+        "ballots": {"type": "string", "pattern": "^[YNEXP.]*$"},
+        "ballots_complete": {"type": "boolean"},
+        "docket": {
+          "type": ["object", "null"],
+          "required": ["line", "abbrev", "outcome"],
+          "additionalProperties": false,
+          "properties": {
+            "line": {"type": "string"},
+            "abbrev": {"type": ["string", "null"]},
+            "outcome": {"type": ["string", "null"]}
+          }
+        },
+        "first_seen": {"$ref": "#/$defs/instant_or_null"},
+        "note": {"type": ["string", "null"]},
+        "passed": {"type": ["boolean", "null"]},
+        "threshold_needed": {"$ref": "#/$defs/count_or_null"}
+      }
+    },
+    "tally": {
+      "type": "object",
+      "required": ["body", "bill", "bill_as_recorded", "order", "entered", "line", "yeas", "nays",
+                   "abbrev", "outcome", "first_seen", "rollcall"],
+      "additionalProperties": false,
+      "properties": {
+        "body": {"enum": ["H", "S"]},
+        "bill": {"$ref": "#/$defs/bill"},
+        "bill_as_recorded": {"type": ["string", "null"]},
+        "order": {"type": ["integer", "null"]},
+        "entered": {"$ref": "#/$defs/instant_or_null"},
+        "line": {"type": "string"},
+        "yeas": {"$ref": "#/$defs/count"},
+        "nays": {"$ref": "#/$defs/count"},
+        "abbrev": {"type": ["string", "null"]},
+        "outcome": {"type": ["string", "null"]},
+        "first_seen": {"$ref": "#/$defs/instant_or_null"},
+        "rollcall": {"type": ["string", "null"], "pattern": "^[0-9]{4}-[HS]-[0-9]+$"}
+      }
+    }
+  }
+}

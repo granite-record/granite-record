@@ -21665,6 +21665,16 @@
    "es": "Comprobado a las {time}",
    "state": "draft"
   },
+  "live.no_stream_house": {
+   "en": "No House session stream found right now (checked {time})",
+   "es": "No se encontró ninguna transmisión de la sesión de la Cámara en este momento (consultado a las {time})",
+   "state": "draft"
+  },
+  "live.no_stream_senate": {
+   "en": "No Senate session stream found right now (checked {time})",
+   "es": "No se encontró ninguna transmisión de la sesión del Senado en este momento (consultado a las {time})",
+   "state": "draft"
+  },
   "live.none_found": {
    "en": "No stream found right now (checked {time})",
    "es": "No se encontró ninguna transmisión en este momento (comprobado a las {time})",
@@ -23824,6 +23834,16 @@
    "es": "{outcome}, según el registro de trámites",
    "state": "draft"
   },
+  "votes.overlay_head": {
+   "en": "Read during the day",
+   "es": "Leído durante el día",
+   "state": "draft"
+  },
+  "votes.overlay_why": {
+   "en": "These roll calls were read from the General Court's database and are not in the night's record yet. The record replaces them.",
+   "es": "Estas votaciones nominales se leyeron de la base de datos de la Legislatura y aún no están en el registro de la noche. El registro las reemplaza.",
+   "state": "draft"
+  },
   "votes.provisional": {
    "en": "provisional",
    "es": "provisional",
@@ -23862,6 +23882,11 @@
   "votes.senate_line": {
    "en": "Senate names follow once the Senate enters them, usually that afternoon or the next day.",
    "es": "Los nombres del Senado se añaden cuando el Senado los registra, normalmente esa tarde o al día siguiente.",
+   "state": "draft"
+  },
+  "votes.today_day": {
+   "en": "Roll calls of {day}, as read during the day",
+   "es": "Votaciones nominales del {day}, según se leyeron durante el día",
    "state": "draft"
   },
   "votes.today_house": {

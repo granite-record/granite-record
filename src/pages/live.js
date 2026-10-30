@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.5
+// GRANITE_VERSION: 2026-10-30.6
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -278,13 +278,15 @@ L.votesItems = function (file, body, bills, opts) {
       + (when ? '<span class="lv-when">' + C.esc(when) + "</span> " : "") + bill + " "
       + '<span class="lv-q">' + C.esc(r.question || "") + "</span> "
       + '<span class="lv-tally">' + (Number(r.yeas) || 0) + "&ndash;" + (Number(r.nays) || 0) + "</span> "
-      + '<span class="lv-outcome">' + C.esc(outcome) + "</span> "
-      + '<span class="lv-names">' + C.esc(names) + "</span>"
+      // The record's own rows say neither: the docket line and the names are
+      // the live file's to wait for, and the record's ring says who prevailed.
+      + (opts.record ? "" : '<span class="lv-outcome">' + C.esc(outcome) + "</span> "
+         + '<span class="lv-names">' + C.esc(names) + "</span>")
       + (opts.provisional ? '<span class="lv-prov">' + C.esc(read
           ? C.tr("votes.provisional_at", "provisional · read at {time}", { time: read })
           : C.tr("votes.provisional", "provisional")) + "</span>" : "")
       + (r.note ? '<span class="lv-note">' + C.esc(r.note) + "</span>" : "")
-      + (opts.rings ? L.ring(r, i) : "") + "</li>";
+      + (opts.rings ? L.ring(r, (opts.at || 0) + i) : "") + "</li>";
   });
 };
 
@@ -299,11 +301,11 @@ L.votesEvery = function (file, now) {
 };
 
 // A poller for one JSON address with If-None-Match. o: {fetch, doc, url(),
-// every(file) -> ms (0 stops), onFile(file, http)}. A 404 is a file not there
+// every(file, http) -> ms (0 stops), onFile(file, http)}. A 404 is a file not there
 // (yet, or no binding): onFile hears it, and every() decides whether to ask
 // again. Returns {poll, stop, first}.
 L.poller = function (o) {
-  var etag = null, file = null, timer = null, stopped = false, url = null;
+  var etag = null, file = null, timer = null, stopped = false, url = null, last = null;
   function poll() {
     if (stopped) return Promise.resolve();
     var u = o.url();
@@ -319,12 +321,13 @@ L.poller = function (o) {
       etag = r.headers.get("ETag");
       return r.json().then(function (j) { file = j; return 200; });
     }).catch(function () { return 0; }).then(function (http) {
-      if (u === url && !stopped) o.onFile(file, http);
+      last = http;
+      if (u === url && !stopped) return o.onFile(file, http);
     });
   }
   function next() {
     clearTimeout(timer);
-    var ms = stopped || o.doc.hidden ? 0 : o.every(file);
+    var ms = stopped || o.doc.hidden ? 0 : o.every(file, last);
     if (ms) timer = setTimeout(function () { poll().then(next); }, ms);
   }
   o.doc.addEventListener("visibilitychange", function () {
@@ -371,6 +374,30 @@ L.sessionBodies = function (schedule, file, today) {
 // Poll once a minute while visible; at once on returning; never while hidden.
 L.POLL_MS = 60000;
 
+// Stream cards in `box`, keyed by video: an existing card keeps its player
+// (an opened iframe keeps playing); only its words change. A card whose
+// stream is no longer live goes. `live`: [{video, name, parts}].
+L.drawCards = function (doc, box, live) {
+  var keep = {};
+  live.forEach(function (c) {
+    keep[c.video] = true;
+    var card = box.querySelector('[data-video="' + c.video + '"]');
+    if (!card) {
+      card = doc.createElement("article");
+      card.className = "lv-card";
+      card.setAttribute("data-video", c.video);
+      card.innerHTML = '<div class="lv-head"></div>' + stub({ video: c.video }, c.name) + '<div class="lv-foot"></div>';
+      box.appendChild(card);
+    }
+    var head = card.querySelector(".lv-head"), foot = card.querySelector(".lv-foot");
+    if (head) head.innerHTML = c.parts.head;
+    if (foot) foot.innerHTML = c.parts.foot;
+  });
+  Array.prototype.slice.call(box.querySelectorAll("[data-video]")).forEach(function (card) {
+    if (!keep[card.getAttribute("data-video")]) card.remove();
+  });
+};
+
 L.start = function (doc, opts) {
   opts = opts || {};
   var fetchImpl = opts.fetch || root.fetch;
@@ -386,26 +413,7 @@ L.start = function (doc, opts) {
     var v = L.view(file, schedule, now(), http);
     var statusEl = doc.getElementById("live-now-status");
     if (statusEl) statusEl.textContent = v.status.sentence;
-    // Cards keyed by video: an existing card keeps its player; only its
-    // words change. A card whose stream is no longer live goes.
-    var keep = {};
-    v.live.forEach(function (c) {
-      keep[c.video] = true;
-      var card = box.querySelector('[data-video="' + c.video + '"]');
-      if (!card) {
-        card = doc.createElement("article");
-        card.className = "lv-card";
-        card.setAttribute("data-video", c.video);
-        card.innerHTML = '<div class="lv-head"></div>' + stub({ video: c.video }, c.name) + '<div class="lv-foot"></div>';
-        box.appendChild(card);
-      }
-      var head = card.querySelector(".lv-head"), foot = card.querySelector(".lv-foot");
-      if (head) head.innerHTML = c.parts.head;
-      if (foot) foot.innerHTML = c.parts.foot;
-    });
-    Array.prototype.slice.call(box.querySelectorAll("[data-video]")).forEach(function (card) {
-      if (!keep[card.getAttribute("data-video")]) card.remove();
-    });
+    L.drawCards(doc, box, v.live);
     // With a fresh look, the night's list of today's meetings gives way to the
     // ones no stream was found for; otherwise it stands as the night wrote it.
     var fresh = v.status.kind === "fresh";
@@ -462,9 +470,174 @@ L.start = function (doc, opts) {
            stop: function () { stopped = true; clearTimeout(timer); if (votes) votes.stop(); } };
 };
 
+// ---- the session-day pages (sections 4.2 and 4.3) --------------------------------
+// The reader's session day: New Hampshire's date, except that before 06:00 it
+// is the day before, so a sitting that ran late stays on the today page until
+// the night's record has it.
+L.EARLY_HOURS = 6;
+L.readerDay = function (t) {
+  var p = nhParts(t);
+  if (Number(p.hh) >= L.EARLY_HOURS) return p.date;
+  var d = new Date(Date.parse(p.date + "T12:00:00Z") - 86400000);
+  return d.toISOString().slice(0, 10);
+};
+L.daysBetween = function (a, b) {
+  return Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 86400000);
+};
+// "Thursday, January 7": a date as words, in the page's language.
+L.dayWords = function (iso) {
+  try {
+    return new Date(iso + "T12:00:00Z").toLocaleDateString(LANG === "es" ? "es" : "en-US",
+      { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });
+  } catch (e) { return iso; }
+};
+
+// The record's roll calls and the live ones the record lacks, as list items,
+// newest first: the record's plainly, the live ones marked provisional.
+L.dayItems = function (record, live, body, bills) {
+  var rows = ((record && record.rollcalls) || []).filter(function (r) { return r.body === body; })
+    .map(function (r) { return { r: r, prov: false }; })
+    .concat(L.overlay(record, live, body).map(function (r) { return { r: r, prov: true }; }))
+    .sort(function (a, b) { return b.r.seq - a.r.seq; });
+  return rows.map(function (x, i) {
+    return L.votesItems(x.prov ? live : record, body, bills,
+                        { rollcalls: [x.r], rings: true, provisional: x.prov, record: !x.prov, at: i })[0];
+  });
+};
+
+// A session stream of `body` in a streams file, as a card, or none: only
+// from a fresh look, as on /live.
+L.sessionStream = function (file, body, now, http) {
+  var status = L.streamsStatus(file, now, http);
+  var out = { status: status, live: [] };
+  if (status.kind !== "fresh") return out;
+  (file.streams || []).forEach(function (s) {
+    if (s.status === "live" && L.sessionOf(s.title) === body) {
+      out.live.push({ video: s.video, name: L.bareTitle(s.title), parts: L.cardParts(s, null) });
+    }
+  });
+  if (!out.live.length) {
+    out.status = { kind: "fresh", sentence: body === "S"
+      ? C.tr("live.no_stream_senate", "No Senate session stream found right now (checked {time})", { time: L.timeOf(file.checked) })
+      : C.tr("live.no_stream_house", "No House session stream found right now (checked {time})", { time: L.timeOf(file.checked) }) };
+  }
+  return out;
+};
+
+function getJSON(fetchImpl, url) {
+  return Promise.resolve(fetchImpl(url, { headers: {} })).then(function (r) {
+    return r && r.ok ? r.json() : null;
+  }).catch(function () { return null; });
+}
+function each(el, sel, f) { Array.prototype.slice.call((el && el.querySelectorAll && el.querySelectorAll(sel)) || []).forEach(f); }
+
+// /session/<B>/today (section 4.2). The night wrote it for its own day; this
+// works out the reader's, hides what the night dated otherwise (the floor
+// card, the dated page's link), and draws the day's roll calls and the
+// chamber's session stream.
+L.startToday = function (doc, opts) {
+  opts = opts || {};
+  var fetchImpl = opts.fetch || root.fetch;
+  var now = opts.now || function () { return Date.now(); };
+  var el = doc.getElementById("live-today");
+  if (!el) return null;
+  var body = el.getAttribute("data-body") === "S" ? "S" : "H";
+  var bills = {};
+  try { bills = JSON.parse((doc.getElementById("live-bills") || {}).textContent || "{}"); } catch (e) { bills = {}; }
+  var shown = null, record = null, recordFor = null;
+  function day() { return L.readerDay(now()); }
+  function setDay(d) {
+    if (d === shown) return Promise.resolve();
+    shown = d;
+    record = null;
+    each(el, "[data-day]", function (x) { x.hidden = x.getAttribute("data-day") !== d; });
+    var words = doc.getElementById("live-today-day");
+    if (words) {
+      words.textContent = C.tr("votes.today_day", "Roll calls of {day}, as read during the day", { day: L.dayWords(d) });
+      words.hidden = false;
+    }
+    // The record already holds this day (the night wrote its dated page):
+    // its roll calls are the record's, and the live ones it lacks are added.
+    var dated = false;
+    each(el, ".lv-dated", function (x) { if (x.getAttribute("data-day") === d) dated = true; });
+    if (!dated) return Promise.resolve();
+    recordFor = d;
+    return getJSON(fetchImpl, "/session/" + body + "/" + d + ".json").then(function (j) {
+      if (recordFor === d && j && j.date === d) record = j;
+    });
+  }
+  function drawVotes(f, code) {
+    var items = L.dayItems(record, f, body, bills);
+    var list = doc.getElementById("live-today-votes");
+    if (list) { list.innerHTML = items.join(""); list.hidden = !items.length; }
+    var say = doc.getElementById("live-today-votes-status");
+    if (say) say.textContent = L.votesSentence(f, now(), body, code);
+    var live = L.overlay(record, f, body);
+    each(el, ".lv-provisional", function (x) { x.hidden = !live.length; });
+    each(el, ".lv-senate", function (x) { x.hidden = !live.some(function (r) { return !r.ballots_complete; }); });
+  }
+  var votes = L.poller({ fetch: fetchImpl, doc: doc,
+    url: function () { return "/api/live/votes/" + day(); },
+    every: function (f) { return L.votesEvery(f, now()); },
+    onFile: function (f, code) { return setDay(day()).then(function () { drawVotes(f, code); }); } });
+  var box = doc.getElementById("live-today-stream");
+  var streams = L.poller({ fetch: fetchImpl, doc: doc,
+    url: function () { return "/api/live/streams"; },
+    every: function (f, code) { return code === 404 ? 0 : L.POLL_MS; },   // no binding: ask no more
+    onFile: function (f, code) {
+      var v = L.sessionStream(f, body, now(), code);
+      if (box) L.drawCards(doc, box, v.live);
+      var st = doc.getElementById("live-today-status");
+      if (st) st.textContent = v.status.sentence;
+    } });
+  return { votes: votes, streams: streams, first: Promise.all([votes.first, streams.first]),
+           stop: function () { votes.stop(); streams.stop(); } };
+};
+
+// The dated session-day page's overlay (section 4.3): the night's hook,
+// <div id="live-votes" data-day="2027-01-07" data-body="H" hidden>. For a
+// page within the last 14 days, the live roll calls the record lacks are
+// drawn, marked provisional; the page polls only while its date is today in
+// New Hampshire, and older pages ask nothing. With no record file to compare
+// against, nothing is drawn: a roll call the page already shows must never
+// appear twice.
+L.OVERLAY_DAYS = 14;
+L.startOverlay = function (doc, opts) {
+  opts = opts || {};
+  var fetchImpl = opts.fetch || root.fetch;
+  var now = opts.now || function () { return Date.now(); };
+  var el = doc.getElementById("live-votes");
+  if (!el) return null;
+  var d = el.getAttribute("data-day") || "", body = el.getAttribute("data-body") === "S" ? "S" : "H";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+  var age = L.daysBetween(d, L.nhDate(now()));
+  if (!(age >= 0 && age <= L.OVERLAY_DAYS)) return null;
+  var out = { votes: null, stop: function () { if (out.votes) out.votes.stop(); } };
+  out.first = getJSON(fetchImpl, "/session/" + body + "/" + d + ".json").then(function (record) {
+    if (!record || record.date !== d) return;
+    out.votes = L.poller({ fetch: fetchImpl, doc: doc,
+      url: function () { return "/api/live/votes/" + d; },
+      every: function (f) { return L.nhDate(now()) === d ? L.votesEvery(f, now()) : 0; },
+      onFile: function (f) {
+        var rows = L.overlay(record, f, body);
+        el.innerHTML = rows.length
+          ? "<h2>" + C.esc(C.tr("votes.overlay_head", "Read during the day")) + "</h2>"
+            + '<p class="lv-status">' + C.esc(C.tr("votes.overlay_why",
+              "These roll calls were read from the General Court's database and are not in the night's record yet. The record replaces them.")) + "</p>"
+            + '<ol class="lv-votes">' + L.votesItems(f, body, undefined, { rollcalls: rows, rings: true, provisional: true }).join("") + "</ol>"
+          : "";
+        el.hidden = !rows.length;
+      } });
+    return out.votes.first;
+  });
+  return out;
+};
+
 if (typeof module === "object" && module.exports) module.exports = L;
 else root.GRLive = L;
-if (root && root.document && root.document.getElementById && root.document.getElementById("live-now-streams")) {
-  L.start(root.document);
+if (root && root.document && root.document.getElementById) {
+  if (root.document.getElementById("live-now-streams")) L.start(root.document);
+  if (root.document.getElementById("live-today")) L.startToday(root.document);
+  if (root.document.getElementById("live-votes")) L.startOverlay(root.document);
 }
 })(typeof window !== "undefined" ? window : globalThis);
