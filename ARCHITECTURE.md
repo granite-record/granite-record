@@ -268,15 +268,16 @@ checks are how a problem is heard of, and none is pinged by a dry run. The
 night's check is pinged at the end of every real night, as `/fail` when the
 night failed -- and also when `nightly.py --close` wrote anything to
 `logs/alert.txt` (`ALERT_FILE`, from `alerts_of()`): a refusal from the General
-Court on file, a hold on the SQL host, a night the gate holds for approval
-(with the gate's reasons, which GitHub otherwise tells only the reviewer), or
-a night that was not clean, one sentence each, sent as the ping's body so that
+Court on file, a hold on the SQL host, a check of tonight's build that holds
+the night, or a night that was not clean, one sentence each, sent as the ping's body so that
 Healthchecks puts it in its email. Healthchecks writes when a check goes down
 and again when it comes back, not every night between, so a refusal held for
 three nights is one email and its recovery is the sign it was cleared. That
 is also why a warning that stands is kept off this check (18 October 2026): a
-failed check of the built site against the record, and a reminder that fails
-on a date until a person acts, go to `logs/alert-warn.txt` (`WARN_FILE`, from
+failed check of the built site against the record, a reminder that fails
+on a date until a person acts, and since 22 October a night the gate holds
+for approval (with the gate's reasons, which GitHub otherwise tells only the
+reviewer; `held_for_approval()`), go to `logs/alert-warn.txt` (`WARN_FILE`, from
 `warns_of()`) and to a check of their own, `HEALTHCHECKS_WARN_URL` -- `/fail`
 with the file as the body while one stands, a plain ping when none does --
 and with no such secret they stay on the run's page and in the verdict.
