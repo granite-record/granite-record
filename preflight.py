@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.752
+# GRANITE_VERSION: 2026-09-04.753
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -55568,6 +55568,28 @@ svg.fire("mouseout", {relatedTarget: pop});
 out.hover = {over, ontoIt: at()};
 if (pop) pop.fire("mouseleave", {relatedTarget: null});
 out.hover.off = at();
+// A TAP ON THE TRIANGLE (the walk of 30 October 2026): on a phone the
+// callout opens under the finger before the tap lands, and the tap landed on
+// the triangle over the top of the seat. What is under it, the callout out of
+// the way, is chosen; a click in the box itself, or on its name, is no seat's.
+// The callout of the seat at 180..197 x 1300..1317: 200 by 64, its foot 10px
+// above the seat, its triangle 16px down from there, over the seat's top.
+const looked = [];
+doc.elementFromPoint = (x, y) => { looked.push([x, y, pop.style.pointerEvents]);
+  return pop.style.pointerEvents === "none" ? seats[0] : pop; };
+svg.fire("mouseover", {target: seats[0]});
+if (pop) {
+  pop.box = {left: 88.5, top: 1226, width: 200, height: 64};
+  pop.fire("click", {target: pop, clientX: 188.5, clientY: 1260});
+  pop.fire("click", {target: pop.kids[0], clientX: 188.5, clientY: 1240});
+}
+svg.fire("mouseout", {relatedTarget: null});
+out.tri = {box: Object.assign(at(), {looked: looked.length})};
+svg.fire("mouseover", {target: seats[0]});
+if (pop) pop.fire("click", {target: pop, clientX: 188.5, clientY: 1303});
+const tapped = looked.slice();
+svg.fire("mouseout", {relatedTarget: null});
+out.tri.tap = Object.assign(at(), {looked: tapped, restored: pop ? pop.style.pointerEvents : null});
 process.stdout.write("\n@@" + JSON.stringify(out));
 """
 
@@ -55667,6 +55689,15 @@ def _seat_callout(BP, SEAT):
         h = got["hover"]
         if h["over"]["hidden"] or h["ontoIt"]["hidden"] or h["ontoIt"]["name"] != "Rep. top" or not h["off"]["hidden"]:
             bad.append(f"the pointer cannot move from a seat onto its callout, or it stays after: {h}")
+        # A tap on the triangle is the seat's under it (the walk of 30
+        # October 2026: on a phone none of 21 seats tried could be chosen).
+        tri = got["tri"]
+        if not tri["box"]["hidden"] or tri["box"]["looked"]:
+            bad.append(f"a click in the callout's box, or on its name, chose a seat: {tri['box']}")
+        tt = tri["tap"]
+        if tt["hidden"] or tt["name"] != "Rep. mid" or tt["looked"] != [[188.5, 1303, "none"]] or tt["restored"] != "":
+            bad.append("a tap on the callout's triangle does not choose the seat under it, found with the callout "
+                       f"out of the way -- on a phone a tap on a seat lands there and chose nothing: {tt}")
     # Read: the seats carry the callout's words, and the rows under the chart
     # their names only, for the eye.
     drawn = SEAT.svg({1001: {"name": "Rep. A", "slug": "a", "party_code": "R", "party": "Republican",
@@ -55761,26 +55792,11 @@ def _seat_callout(BP, SEAT):
     won = note({"seatnote"})
     if "".join(won.get("border-top-width", ("",))[0].split()) in ("0", "0px"):
         bad.append("the note under the chart has no rule while it shows what a search has left")
-    # THE TRIANGLE TAKES NO TAP (the walk of 30 October 2026): it lies over
-    # the seat it points at and those beside it, and on a phone a tap there
-    # landed on it and chose nothing. Its two halves, ::before and ::after,
-    # above the seat and below it, take none; nothing gives one back.
-    arrows = {}
-    for _o, _ctx, one, decls, _line in rules:
-        simple = _css_simple((_css_parts(one) or [("", "")])[-1][1])
-        half = next((s[1] for s in simple if s[0] == "element"), None)
-        if half in ("before", "after") and ("class", "seatpop") in simple:
-            arrows.setdefault(half, []).append((one, decls.get("pointer-events", ("",))[0]))
-    took = [f"{s} {{pointer-events:{pe}}}" for v in arrows.values() for s, pe in v if pe not in ("", "none")]
-    if sorted(arrows) != ["after", "before"] or took or not all(
-            any(pe == "none" and "below" not in s for s, pe in v) for v in arrows.values()):
-        bad.append("the callout's triangle takes a tap, so one on the seat it points at, or beside it, chooses "
-                   f"nothing: {took or {k: [pe for _s, pe in v] for k, v in arrows.items()}}")
     assert not bad, "the seating chart's callout: " + "; ".join(bad[:5])
     return "ok", ("a seat tapped, focused or under the pointer has the popovers' box above it, its arrow at "
                   "the seat, below it at the top, inside 366px at either side; Tab from a seat reaches its "
                   "link and a mouseout, another seat and a scroll leave it there; Escape puts focus on the "
-                  f"seat; the note says it in words, an unruled strip to the eye; the fixture's {len(tags)} row(s) under the chart are names and "
+                  f"seat; a tap on its triangle chooses the seat under it; the note says it in words, an unruled strip to the eye; the fixture's {len(tags)} row(s) under the chart are names and "
                   f"{', '.join(shown)} to the eye, the district a screen reader's")
 
 
@@ -71438,7 +71454,7 @@ const at = () => location.pathname + location.search + location.hash;
 history.replaceState = (st, t, u) => { const m = /^([^?#]*)(\?[^#]*)?(#.*)?$/.exec(u);
   location.pathname = m[1]; location.search = m[2] || ""; location.hash = m[3] || ""; };
 const s = (0, eval)(fs.readFileSync("./page.js", "utf8")
-  + "; ({chamberShow, set: (d, v) => { VW_CHAMBER = d; VVIEW = v; }, landed: () => vwLanded})");
+  + "; ({chamberShow, set: (d, v) => { VW_CHAMBER = d; VVIEW = v; }})");
 const pane = (hidden) => ({hidden, querySelectorAll: () => [], querySelector: (q) => q === ".vw" ? {} : null});
 const days = pane(true), vids = pane(false);
 document.getElementById = (id) => id === "chdays" ? days : id === "chvids" ? vids : null;
@@ -71447,7 +71463,7 @@ try {
   const v = {rows: [{id: "new"}, {id: "mid"}, {id: "old"}], chosen: "mid"};
   s.set({kind: "chamber", body: "S", slug: "senate", term: "2023-2024", latest: "2025-2026", days: []}, v);
   s.chamberShow(0, true); out.days = at();
-  s.chamberShow(1, true); out.back = at(); out.landed = s.landed();
+  s.chamberShow(1, true); out.back = at();
   v.chosen = "new"; s.chamberShow(0, true); s.chamberShow(1, true); out.newest = at();
   v.chosen = "old"; location.hash = "#v-mid"; s.chamberShow(1, true); out.kept = at();
 } catch (e) { out.threw = e.constructor.name + ": " + e.message; }
@@ -71455,7 +71471,7 @@ process.stdout.write("\n@@" + JSON.stringify(out));
 """)
     if turned is not None:
         assert "threw" not in turned and turned["days"] == "/session/senate?term=2023-2024" \
-            and turned["back"] == "/session/senate/videos?term=2023-2024#v-mid" and turned["landed"] == "mid", (
+            and turned["back"] == "/session/senate/videos?term=2023-2024#v-mid", (
                 f"the chamber's Videos tab turned to again does not name the recording chosen there: {turned}")
         assert turned["newest"] == "/session/senate/videos?term=2023-2024" \
             and turned["kept"] == "/session/senate/videos?term=2023-2024#v-mid", (
@@ -79632,21 +79648,37 @@ process.stdout.write("\n@@" + JSON.stringify(out));
         "kind": "study", "who": "Commission to Study Stable Tokens", "key": "1729", "path": "/committee/ss1729",
         "rows": [{"id": "agPR9tSyTok", "date": "2026-10-29", "seconds": 7200, "venue": "State House 122-123",
                   "type": "Regular meeting", "anchor": "day-2026-10-29"}]}) + "))", names=("videoView", "VW_STATIC"))
+    # AND EVERY ONE IN THE LIST (the review of 30 October 2026): on a wide
+    # screen the list scrolls inside its box (.vwin .vwlist{overflow:auto}),
+    # and a comma in a row's first line was placed against the box round it,
+    # outside the scrolling, where its row would be with the list unscrolled:
+    # the page ran on past its footer by the list's hidden height, 4,865px on
+    # House Finance's (H34) at 1280. Each .sr in the list: its nearest
+    # positioned ancestor is the list or inside it.
     rules, srs = _css_screen_rules(css), []
     for drawn in (got["videos"], study or ""):
         _html_walk(drawn, element=lambda c: srs.append(c) if "sr" in c[0]["classes"]
-                   and any("vwb" in e["classes"] for e in c[1:]) else None)
+                   and any("vwlist" in e["classes"] for e in c[1:]) else None)
     has = lambda c, k, v: _css_won(rules, c).get(k, (v,))[0]
-    loose = []
+    name = lambda c, j: ".".join(sorted(c[j]["classes"])) or c[j]["tag"] if j < len(c) else "the page"
+    loose, outside = [], []
     for c in srs:
-        row = next(j for j, e in enumerate(c) if "vwrow" in e["classes"])
+        at = lambda cls: next((j for j, e in enumerate(c) if cls in e["classes"]), len(c))
+        row, lst = at("vwrow"), at("vwlist")
         held = next((j for j in range(1, len(c)) if has(c[j:], "position", "static") != "static"), len(c))
-        if held >= row or not any(has(c[k:], "overflow", "visible") in ("hidden", "clip") for k in range(held, row)):
-            loose.append(".".join(sorted(c[1]["classes"])) + (f" held by {'.'.join(sorted(c[held]['classes']))}"
-                                                              if held < len(c) else " held by the page"))
-    assert any("vwl" in c[1]["classes"] for c in srs) and not loose, (
+        if held > lst:
+            outside.append(f"{name(c, 1)} held by {name(c, held)}")
+        if any("vwb" in e["classes"] for e in c[1:row]) and (held >= row or not any(
+                has(c[k:], "overflow", "visible") in ("hidden", "clip") for k in range(held, row))):
+            loose.append(f"{name(c, 1)} held by {name(c, held)}")
+    in_line = [c for c in srs if any("vwb" in e["classes"] for e in c[1:])]
+    assert any("vwl" in c[1]["classes"] for c in in_line) and not loose, (
         "app.css: a hidden comma in a recording's second line is not clipped with it, so a long line "
-        f"can push the page sideways ({len(srs)} drawn): " + "; ".join(sorted(set(loose))[:4]))
+        f"can push the page sideways ({len(in_line)} drawn): " + "; ".join(sorted(set(loose))[:4]))
+    assert len(srs) > len(in_line) and not outside, (
+        "app.css: a hidden comma in the list of recordings is placed outside the list, so on a wide screen the "
+        f"page runs on past its footer by the list's hidden height ({len(srs)} drawn): "
+        + "; ".join(sorted(set(outside))[:4]))
     # What is cut is the bills' numbers: the count is on the first line, beside
     # the date, so the cut never takes it.
     assert '<span class="vwd">Feb 10, 2026<span class="sr">,</span> <span class="vwi"><span aria-hidden="true">' \

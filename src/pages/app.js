@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.260
+// GRANITE_VERSION: 2026-09-07.261
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9647,8 +9647,6 @@ function chamberShow(i,write){
   const back=vw&&VVIEW&&VVIEW.rows&&VVIEW.rows.length&&VVIEW.chosen
     &&VVIEW.chosen!==VVIEW.rows[0].id?VVIEW.chosen:"";
   try{history.replaceState(history.state,"",path+location.search+(named?location.hash:back?`#v-${back}`:""));}catch(_){}
-  // Already chosen: not an arrival (showVideo) to be scrolled to.
-  if(back)vwTried=vwLanded=back;
   addressed();
 }
 document.addEventListener("click",e=>{
