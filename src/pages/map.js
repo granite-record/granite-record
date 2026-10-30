@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.11
+// GRANITE_VERSION: 2026-10-09.12
 /* THE DISTRICT MAP (map v1), as a module a page mounts:
 
      <link rel="stylesheet" href="/map.css">
@@ -728,7 +728,11 @@ function mount(root,opts){
     const W=M.T.places[t].w;
     let mine="";try{mine=localStorage.getItem("gr-town")||"";}catch(e){}
     const own=Object.keys(W).find(k=>k!=="0"&&slugOf(t,k)===mine);
-    const w0=W[own!=null?own:Object.keys(W)[0]],c=M.T.places[t].c;
+    // A WARD'S OWN PAGE picks its own ward's districts, whatever is saved: on
+    // Manchester Ward 5 a switch to State Senate picked Ward 1's (the review
+    // of 30 October 2026)
+    const page=t===opts.frame&&opts.ward!=null&&W[String(opts.ward)]?String(opts.ward):null;
+    const w0=W[page!=null?page:own!=null?own:Object.keys(W)[0]],c=M.T.places[t].c;
     const fid=layer==="base"?w0[0]:layer==="senate"?w0[2]:layer==="exec"?w0[3]:layer==="cong"?w0[4]:layer==="county"?c:t;
     select(layer,fid,false);
     if(say&&panel)panel.innerHTML=`<h4>${esc(t)}</h4>`+townSummary(t);
