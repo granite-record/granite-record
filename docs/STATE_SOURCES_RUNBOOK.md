@@ -119,6 +119,8 @@ From the repository folder on the laptop.
    `check` fails on any file in `sources/` that is not filed under the
    registry; fix that first. `sources-up` sends each new version, records a
    reading that has not changed as a check, and prints the change report.
+   It also sends any printout in `records/sources/printouts/` the bucket does
+   not hold yet.
    The bucket keeps the report under `sources/reports/`.
 
 7. **Report**, in the session's last message, in plain words:
@@ -202,6 +204,42 @@ next pull of `dev`. Every General Court address must say `owner-only`, and
 `check` refuses one that does not.
 
 ---
+
+## The first run (Monday 2 November)
+
+Once `main` carries this runbook and the owner has pulled it. In this order,
+and report each result to the manager.
+
+1. **The one-time setup** above, steps 1 to 4.
+2. **Can a page be saved as a real PDF?** The guides would rather rest on a
+   PDF of the page, byte for byte the browser's, than on text the session
+   copied. On one page only (`https://www.sos.nh.gov/elections/register-vote`),
+   try Chrome's own Print, then "Save as PDF", into Downloads, using Claude
+   in Chrome alone. Then:
+   - if a PDF is saved, file it:
+     `python3 src/ops/state_sources.py file "<the PDF>" --as sos-register-vote`;
+   - either way, report whether it worked and how. Do not use any other tool
+     or script to make the PDF. If it did not work, the owner chooses what
+     next.
+3. **The printouts to the bucket.** The owner's printouts live only on this
+   laptop. They go to the bucket so that any session can read them without
+   asking:
+   ```
+   python3 src/ops/file_printouts.py --check
+   python3 src/ops/cloud.py sources-up
+   ```
+   `--check` says which of the index's printouts are filed in
+   `records/sources/printouts/`. If any are missing, the owner runs
+   `python3 src/ops/file_printouts.py ~/Downloads` (or wherever they are)
+   first. `sources-up` sends each filed printout whose bytes match its sha256
+   in the index, to the bucket's `sources/printouts/`. A printout that does
+   not match stops the send; report it.
+4. **The printouts' addresses.** For each row of
+   `records/sources/printouts/INDEX.csv` with no `url`, open the PDF on disk
+   (the file itself, not the web) and read the address printed in its
+   footer. Report the list to the manager: the file name, and the address as
+   printed, or "no address printed". Change nothing.
+5. **The first job**, below.
 
 ## The first job: the budget page's documents
 

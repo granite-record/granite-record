@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.738
+# GRANITE_VERSION: 2026-09-04.739
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -56931,11 +56931,14 @@ def _state_sources_apart(CL, SS):
     a check, never replaces a reading, and brings every version down whole.
     """
     import contextlib
+    import hashlib
     import io
     kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))
     samples = ["sources/manifest.json", "sources/reports/20261030T000000000000.json"]
     samples += [f"sources/sos-register-vote/2026-10-30{n}.{x}"
                 for x in sorted(SS.EXTS) for n in ("", "-2")]
+    samples += ["sources/printouts/council-contact-us.pdf",
+                "records/sources/printouts/council-contact-us.pdf"]
     pats = [p for e in kit.get("kit", []) for p in e.get("paths", []) + e.get("globs", [])]
     pats += [s["path"] for s in kit.get("state", [])]
     d = kit.get("dry_run") or {}
@@ -57016,6 +57019,28 @@ def _state_sources_apart(CL, SS):
         (root / SS.FOLDER / "not-an-id" / "2026-10-01.pdf").write_bytes(b"x")
         code, out = run("up")
         assert code == 1 and "not an id" in out, out
+        (root / SS.FOLDER / "not-an-id" / "2026-10-01.pdf").unlink()
+        (root / SS.FOLDER / "not-an-id").rmdir()
+        # The owner's printouts travel beside the readings, under the names and
+        # sha256 their index gives, and come back where file_printouts.py files them.
+        home = root / SS.PRINTOUTS
+        home.mkdir(parents=True)
+        body = b"a printout"
+        (home / "council-contact-us.pdf").write_bytes(body)
+        (home / "INDEX.csv").write_text(
+            "new_name,title,publisher,url,url_from,printed,pages,cited_by,owner_name,sha256\n"
+            f"council-contact-us.pdf,Contact Us,NH Executive Council,,,,2,,c.pdf,"
+            f"{hashlib.sha256(body).hexdigest()}\n", encoding="utf-8")
+        code, out = run("up")
+        assert code == 0 and "Printouts: sent 1" in out, out
+        assert (bucket / "sources" / "printouts" / "council-contact-us.pdf").read_bytes() == body
+        (home / "council-contact-us.pdf").write_bytes(b"edited")
+        code, out = run("up")
+        assert code == 1 and "differ from the sha256" in out, ("an edited printout was "
+                                                               "sent, or went unremarked", out)
+        (home / "council-contact-us.pdf").unlink()
+        code, out = run("down", "--into", str(t / "down3"))
+        assert code == 0 and (home / "council-contact-us.pdf").read_bytes() == body, out
     finally:
         shutil.rmtree(t, ignore_errors=True)
     return "ok", (f"{len(reg)} registered documents ({len(gc)} the General Court's, the "
