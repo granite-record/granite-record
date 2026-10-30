@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.241
+# GRANITE_VERSION: 2026-09-05.242
 """
 Generate the faceted site from real General Court data.
 
@@ -5053,8 +5053,8 @@ J_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
 # has died there, when its line of the death and the Law stop take the
 # cross (died_on_table). The interim study committee's report is a line of
 # its own once the session is over (study_ending): the "~", or "f", an
-# orange arrow, where the committee recommended the subject for future
-# legislation.
+# arrow, where the committee recommended the subject for future
+# legislation, coloured by what the report said (its "rec"; app.css .jrec-*).
 J_MARK = {"passed": "p", "adopted": "p", "concurred": "p", "conf_adopted": "p",
           "override": "p", "signed": "p", "unsigned": "p", "law": "p",
           "ratified": "p",
@@ -7715,7 +7715,7 @@ def study_ending(narr, steps, rail, term, sittings, lsrs=None):
     amended in 1997, Rule 45(a) of 2025: the committee "shall submit ... its
     findings and any recommendations"), dated by the report and usually after
     the death: SB 570 of 2026 died on 19 August and was recommended for future
-    legislation, 9-0, on 28 September. Its line is an orange arrow where the
+    legislation, 9-0, on 28 September. Its line is a green arrow where the
     committee recommended the subject come back as a new bill, and names
     that bill where the clerk wrote down its LSR; the "~" where it did not,
     or made no recommendation at all. The Senate files none."""
@@ -7757,7 +7757,8 @@ def study_ending(narr, steps, rail, term, sittings, lsrs=None):
             f", {rep['vote']}" if rep["vote"] else "")
         line = {"date": rep["date"], "body": rep["body"] if rep["body"] in ("H", "S") else body,
                 "act": "study_report", "mark": "f" if rep["rec"] == "rec" else "s",
-                "text": text, "short": "interim study report"}
+                # Which of the three it said, for its colour (app.js journeyList).
+                "rec": rep["rec"], "text": text, "short": "interim study report"}
         nb = next_term_bill(narr, term, lsrs)
         if nb:
             name = re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", nb["id"]) + f" of {nb['year']}"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.12
+# GRANITE_VERSION: 2026-10-10.13
 """
 The House and the Senate as committees of the whole: a card at the top of
 each column of /committees, and a page for each chamber's session days.
@@ -154,7 +154,7 @@ def card(c):
         bits.append(f"Presided over by {E(role)} {E(bare_name(m))}")
     if c["members"]:
         bits.append(plural(c["members"], "member"))
-    bits.append(f"{plural(len(c['days']), 'session day')} in {E(c['latest'])} and "
+    bits.append(f"{plural(len(c['days']), 'session day')} in {E(C.term_words(c['latest']))} and "
                 f"{len(c['dates']):,} since {c['dates'][0][:4]}")
     return (f'<a class="ccard chcard" href="session/{SLUG[c["body"]]}.html">'
             f'<span class="cc-n">{CHAMBER[c["body"]]} Session Days</span>'
@@ -211,7 +211,7 @@ def day_section(body, d):
 
 
 def count_line(body, n, term):
-    return (f"{plural(n, 'day')} the {CHAMBER[body]} sat in {E(term)}, newest first. "
+    return (f"{plural(n, 'day')} the {CHAMBER[body]} sat in {E(C.term_words(term))}, newest first. "
             "Open a day for what the chamber did and its recording; its full page has "
             "every bill it took up, in the order the journal prints it, and how it voted.")
 
@@ -235,7 +235,7 @@ def page_head(c, path, base):
     facts = [["Members", f'<a href="officials.html#legislators">'
                          f'{plural(c["members"], "sitting member")}</a>'],
              ["This Term", f"{plural(len(c['days']), 'session day')}",
-              f"in {E(c['latest'])}"],
+              f"in {E(C.term_words(c['latest']))}"],
              ["On Record", f"{plural(len(c['dates']), 'session day')}",
               f"since {c['dates'][0][:4]}"]]
     cite = S.cite_block(path, f"{CHAMBER[body]} Session Days | Granite Record", base, S.BUILT)
@@ -250,7 +250,7 @@ def page_head(c, path, base):
             + (f' The votes on no bill &mdash; rules suspensions, appeals of the chair, '
                f'a member allowed to go on speaking &mdash; are listed with what the journal says '
                f'each was about: <a href="session/nobill/{E(c["latest"])}.html">Votes Not on a '
-               f'Bill, {E(c["latest"])}</a>.' if c.get("nobill") else "")
+               f'Bill, {E(C.term_words(c["latest"]))}</a>.' if c.get("nobill") else "")
             + "</p>")
 
 
@@ -281,7 +281,7 @@ def page_body(c, path="", base=""):
     the page, as they always were."""
     body = c["body"]
     opts = "".join(f'<option value="{E(t)}"{" selected" if t == c["latest"] else ""}>'
-                   f"{E(t)}</option>" for t in c["terms"])
+                   f"{E(C.term_words(t))}</option>" for t in c["terms"])
     days = "".join(day_section(body, d) for d in reversed(c["days"]))
     return (page_head(c, path or f"/session/{SLUG[body]}.html", base)
             + f'<div class="bfilt pterm chamberctl" data-body="{body}">'

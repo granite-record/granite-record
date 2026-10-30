@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.258
+// GRANITE_VERSION: 2026-09-07.259
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2651,7 +2651,7 @@ const inTermOf=b=>(term===ALL_TERMS&&!b.lsr)||!term||!b.term||b.term===term;
 const reqYear=()=>META.requests?String(META.requests.year||String(META.requests.term||"").slice(0,4)):"";
 const termPhrase=()=>term===ALL_TERMS?"across all terms"
   :(META.requests&&term===META.requests.term)?`for ${reqYear()}`
-  :`in the ${term} term`;
+  :`in the ${termDash(term)} term`;
 const termNoun=()=>(META.requests&&term===META.requests.term)
   ?"bill requests":"bills";
 // A bill number is unique within a two-year term and not beyond it, so
@@ -3068,7 +3068,7 @@ if(window.GR_STATIC){
    ys.innerHTML=`<option value="${ALL_TERMS}">All Terms</option>`
      +(META.requests?`<option value="${esc(META.requests.term)}">${
        esc(META.requests.label)}</option>`:"")
-     +terms.map(t=>`<option value="${t}">${t} Term</option>`).join("");
+     +terms.map(t=>`<option value="${t}">${termDash(t)} Term</option>`).join("");
    ys.value=term;
    ys.addEventListener("change",e=>{
      // On a record page there is no list to re-filter, and render() would
@@ -4128,7 +4128,23 @@ const AVK={VV:"Voice Vote",DV:"Division Vote",RC:"Roll Call"};
 // Which side prevailed is already on the row: the Majority/Minority label
 // sits to the left of the chip and the committee's vote beside it, so
 // nothing is lost by colouring the motion instead.
-const RECCOLOUR=[[/INEXPEDIENT/i,"s-done"],
+//
+// AN INTERIM STUDY COMMITTEE'S REPORT (the person's walk of the preview, 30
+// October 2026): green where it recommends the subject for future
+// legislation, red where it does not, and no colour where it makes no
+// recommendation -- the clerks' "Without Recomendation" and "No
+// Recommendation" among them. First, so that "NOT RECOMMENDED" is read before
+// "RECOMMENDED", and before the motions below. As the clerks varied it too
+// (src/parse/interim_statements.py): "Recommended for Further Legislation"
+// (SB 366 of 2010), "Not Recommended for Legislation" (HB 1415 of 2006).
+// A report that states none of the three ("Interim Study Report filed") is
+// plain, as one without a recommendation is, and not the orange of the
+// motion to study below.
+const RECCOLOUR=[[/\b(?:WITHOUT|NO)\s+RECOMM?ENDATION\b/i,""],
+                 [/\bNOT\s+RECOMMENDED\b/i,"s-done"],
+                 [/\bRECOMMENDED\s+FOR\b/i,"s-law"],
+                 [/\bINTERIM\s+STUDY\s+REPORT\b/i,""],
+                 [/INEXPEDIENT/i,"s-done"],
                  [/INTERIM\s+STUDY|RE-?REFER/i,"s-study"],
                  [/OUGHT\s+TO\s+PASS/i,"s-law"]];
 const recColour=r=>{const m=RECCOLOUR.find(([re])=>re.test(r||""));
@@ -4410,7 +4426,7 @@ function rsaChapters(d){
 //
 // AND THE INTERIM STUDY COMMITTEE'S REPORT, ONCE THE SESSION IS OVER (option
 // (d), the person, 9 October 2026): its own line, after the cross of the
-// bill's death, with a bare orange arrow, "f", where the committee
+// bill's death, with a bare arrow (green since 30 October 2026), "f", where the committee
 // recommended the subject for future legislation -- advice for a new bill in
 // the next term, which the line names and links where the clerk wrote down
 // its LSR (s.link) -- and the "~" where it did not. The arrow is drawn, as the
@@ -4423,8 +4439,8 @@ const ARROW='<svg class="arrow" viewBox="0 0 12 12" aria-hidden="true" focusable
   +'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const JMARK={p:"✓",x:"✕",h:"↺",s:WAVE,t:"",f:ARROW};
 // A committee's acts on its meeting's card (actSaid): the interim study
-// report it recommended, in the orange arrow, and one it did not, killed, in
-// the red cross. The arrow is a drawing, so its orange is a mark's.
+// report it recommended, in the green arrow, and one it did not, killed, in
+// the red cross. The arrow is a drawing, so its green is a mark's.
 const ACTMARK={rec:ARROW,kill:"\u2715"};
 const JCLASS={s:"istudy",t:"ontable",f:"ifuture"};
 // A line's words, with the bill it names linked where it names one: the next
@@ -4468,7 +4484,7 @@ function journeyList(b,d){
   const k=dkey(b.id);
   const cut=st.length>JOURNEY_SHOWN&&!jOpen.has(k);
   const hide=i=>cut&&i>=2&&i<st.length-(JOURNEY_SHOWN-2);
-  const line=(s,i)=>`<li class="j-${esc(JCLASS[s.mark]||s.mark)}"${hide(i)?" hidden":""}><span class="jg"
+  const line=(s,i)=>`<li class="j-${esc(JCLASS[s.mark]||s.mark)}${s.rec!==undefined?` jrec-${esc(s.rec||"without")}`:""}"${hide(i)?" hidden":""}><span class="jg"
     aria-hidden="true">${JMARK[s.mark]||""}</span><span class="jb">${
     esc(JBODY[s.body]||s.body)}</span><span class="jt">${tallyWhole(jText(s))}</span><span
     class="jd">${s.date?esc(dateWords(s.date)):""}</span></li>`;
@@ -5866,9 +5882,16 @@ function renderReports(b,d,rsa){
   // rather than as small print beside the date. A bill can be reported by
   // four different committees and the reader needs to know which one is
   // speaking before they read what it said.
+  // In Title Case as typed, now that capitals no longer hide the record's own
+  // case (the cohesion audit's I-1): each part through titleWords, so a
+  // name stored as "JUDICIARY" reads "Judiciary", and "Committee" added only
+  // where the name does not carry it ("Joint Committee on Address").
+  const repName=(cmte,body)=>{
+    const n=[body,cmte].filter(Boolean).map(titleWords).join(" ");
+    return /\bcommittee\b/i.test(n)?n:n+" Committee";};
   const head=(r,cmte,body)=>`<div class="rephead">
       ${[body,cmte].filter(Boolean).length
-        ? `<h2>${esc([body,cmte].filter(Boolean).join(" "))} committee</h2>`:""}
+        ? `<h2 class="sech">${esc(repName(cmte,body))}</h2>`:""}
       <div class="repmeta">${when(r)}${cited(r)}</div></div>`;
 
   // ONE REPORT IS ONE ELEMENT, so that it can be laid out as one. The head
@@ -5977,7 +6000,7 @@ function veto(d){
         esc(v.source.name||"the House calendar")}</a>`
     : esc((v.source||{}).name||"the House calendar");
   return `<section class="vmsg">
-    <h2 class="amdsec">The governor&rsquo;s veto message</h2>
+    <h2 class="sech">The Governor&rsquo;s Veto Message</h2>
     ${v.text.map(p=>`<p>${esc(p)}</p>`).join("")}
     <p class="vsig">${esc(v.governor||"")}${
       v.date?` <span class="secsub">${esc(dateWords(v.date))}</span>`:""}</p>
@@ -6000,7 +6023,7 @@ function renderSponsors(b,d){
   // person was named on this site and could not be followed.
   const pill=pchip;
   const spBlock=ch=>{const l=spAll.filter(s=>chOf(s)===ch);return l.length
-    ?`<h2 class="spgrp">${CHNAME[ch]} <span>${l.length}</span></h2>
+    ?`<h2 class="sech spgrp">${CHNAME[ch]} <span class="sechn">${l.length}</span></h2>
       <div class="chosen">${l.map(pill).join(" ")}</div>`:"";};
   const spRest=spAll.filter(s=>!["H","S"].includes(chOf(s)));
   // A count per party, and nothing said about it. Sorted by party code, so the
@@ -6014,7 +6037,7 @@ function renderSponsors(b,d){
     <p class="spcount">${spAll.length} Sponsor${spAll.length===1?"":"s"}${
       spParty?` \u00b7 ${spParty}`:""}</p>
     ${spBlock(origin)}${spBlock(origin==="S"?"H":"S")}
-    ${spRest.length?`<h2 class="spgrp">Chamber not on file <span>${spRest.length}</span></h2>
+    ${spRest.length?`<h2 class="sech spgrp">Chamber Not on File <span class="sechn">${spRest.length}</span></h2>
       <div class="chosen">${spRest.map(pill).join(" ")}</div>`:""}`:"";
   // WHERE THE NAMES WERE READ. Before 2023 the only list on this site is the
   // sponsor line printed on the bill's own text (text_sponsors.py): the first
@@ -6086,7 +6109,7 @@ function fiscalTable(f){
       }</tr>`).join("")}</tbody></table></div>
       ${t.footnote?`<p class="src">${esc(t.footnote)}</p>`:""}`;
   };
-  return `<section class="fnsec"><h2 class="amdsec">Fiscal impact</h2>
+  return `<section class="fnsec"><h3 class="amdsec">Fiscal impact</h3>
     ${f.lead?`<p class="fnlead">${esc(f.lead)}</p>`:""}
     ${(f.tables||[]).map(table).join("")}
     <p class="src">Source: NH General Court</p></section>`;
@@ -6115,7 +6138,7 @@ function billTextSection(b,d,rsa){
         const shut=bodyLen+amdLen>LONG;
         const what=nAmd?`the text and ${nAmd} amendment${nAmd===1?"":"s"}`
                        :"the text";
-        return `<section class="btsec"><h2 class="amdsec">Bill text</h2>
+        return `<section class="btsec"><h2 class="sech">Bill Text</h2>
         <p class="btwhat">The bill and its amendments, as the General Court publishes them. The other tabs are this site’s account of the record; this is the document.</p>
         <details class="btdoc"${shut?"":" open"}><summary><span class="shut">Show ${
           what}</span><span class="open">Hide ${what}</span></summary>${
@@ -6270,7 +6293,7 @@ function renderDocuments(b,d){
       url:x.url,of,what}));
   });
   return DOCGROUPS.filter(([k])=>rows[k].length).map(([k,h])=>
-    `<h3 class="docgrp">${h}</h3><ul class="docs docs-${k}">${rows[k].join("")}</ul>`).join("");
+    `<h2 class="sech docgrp">${h}</h2><ul class="docs docs-${k}">${rows[k].join("")}</ul>`).join("");
 }
 
 // The tabs, and one call per pane. Everything this reads is either a
@@ -6497,7 +6520,7 @@ function renderVersions(b,d){
       :`<p class="note">That text could not be loaded.</p>`;
   }
 
-  const amdblock=amds.length?`<h2 class="amdsec">The amendments themselves</h2>
+  const amdblock=amds.length?`<h2 class="sech">The Amendments Themselves</h2>
     <p class="note">Each amendment as the General Court published it; these are
     not versions of the bill.</p>
     <ul class="vamds">${amds.map((a,j)=>`<li${AMENDMENT_FOUND[a.text_url]
@@ -6761,7 +6784,7 @@ function renderDetail(b,d){
 // other bill linked where the sentence names it, and that bill's title and
 // status under it. The sentence is related_bills.sentence's, the one the
 // bench judged, so the page says nothing the sample did not.
-const RELATED_HEADS=["Where its language went","Filed before and after","This term\u2019s bills with the same text"];
+const RELATED_HEADS=["Where Its Language Went","Filed Before and After","This Term\u2019s Bills with the Same Text"];
 // One relation's sentence, the other bill linked where it names it, and its
 // term beside it where that is not this bill's.
 function relatedSaid(b,e){
@@ -6780,7 +6803,7 @@ function renderRelated(b,rel){
       +`<p class="rl-t">${esc(e.t)}${e.c?` <span class="rl-st">${esc(e.c)}</span>`:""}</p></li>`;
   };
   return groups.map((g,i)=>g.length
-    ?`<section class="rl-g"><h2>${RELATED_HEADS[i]}</h2><ul class="rl-list">${g.map(row).join("")}</ul></section>`:"").join("")
+    ?`<section class="rl-g"><h2 class="sech">${RELATED_HEADS[i]}</h2><ul class="rl-list">${g.map(row).join("")}</ul></section>`:"").join("")
     +`<p class="src">Found by comparing the text of bills and their amendments. A bill is listed
       only where most of its language is shared, and an amendment only where the docket
       records what became of it; a match can be missed.</p>`;
@@ -6912,7 +6935,8 @@ function focusActions(id){
     const row=document.importNode(acts,true);
     row.dataset.focus="1";
     // as the page's own script does on load: the day read, and Copy shown
-    row.querySelectorAll(".citeday").forEach(x=>{x.textContent=citeDay(new Date());});
+    row.querySelectorAll(".citeday").forEach(x=>{
+      x.textContent=x.classList.contains("citefull")?citeDayFull(new Date()):citeDay(new Date());});
     row.querySelectorAll("[data-citecopy]").forEach(x=>{x.hidden=false;});
     const res=$("#results");
     if(!res)return;
@@ -7807,7 +7831,9 @@ const SUFFIX_TERM={FN:"FN",A:"A",L:"LOCAL",LOCAL:"LOCAL"};
 const billNumberTerms=n=>esc(n).replace(/-(FN|A|LOCAL|L)(?=-|$)/g,
   (_m,k)=>"-"+termMark(SUFFIX_TERM[k],k));
 // "2025-2026" as a term is written in words: "2025–2026".
-const termDash=t=>String(t||"").replace("-","\u2013");
+// components.js's termWords, under the name this file has always used;
+// a declaration, so the term menu can ask for it before this line is reached.
+function termDash(t){ return termWords(t||""); }
 // A STAGE IS NOT WHERE A DEAD BILL STANDS (the audit of 25 October 2026, S4).
 // HB 520 of 2017 showed "Died" over "Status: In committee": once its session
 // has ended the chip says Died (build_site_v2.chip_word), and the record keeps
@@ -8062,7 +8088,7 @@ function termControl(){
   if(ts.length<2)return "";
   return `<div class="bfilt pterm"><label>Term
     <select data-pf="term">${ts.map(x=>
-      `<option value="${esc(x)}"${x===t?" selected":""}>${esc(x)}</option>`
+      `<option value="${esc(x)}"${x===t?" selected":""}>${esc(termDash(x))}</option>`
     ).join("")}</select></label></div>`;
 }
 
@@ -8262,9 +8288,9 @@ function renderMemberBills(m, prime){
   const rows=memberBills(m,prime).map(b=>prime?Object.assign({},b,{_self:true}):b);
   const t=pageTerm();
   if(!rows.length)return `<p class="src">No bills ${prime?"prime sponsored"
-    :"co-sponsored"} in the ${esc(t)} term.</p>`;
+    :"co-sponsored"} in the ${esc(termDash(t))} term.</p>`;
   return billPane(rows,(n,of)=>`${billsOf(n,of)}${
-    prime?" prime sponsored":" co-sponsored"} in ${esc(t)}. Sponsoring a bill is
+    prime?" prime sponsored":" co-sponsored"} in ${esc(termDash(t))}. Sponsoring a bill is
     putting a name to it, which is not the same as voting for it and is not
     counted as one here.`);
 }
@@ -8411,7 +8437,7 @@ function renderMemberVotes(m){
   const v=memberVotes(m);
   const t=pageTerm();
   if(!v.length)return `<p class="src">No recorded roll call votes in the
-    ${esc(t)} term. Voice and division votes leave no record of individual
+    ${esc(termDash(t))} term. Voice and division votes leave no record of individual
     members, so a member can have taken part in many votes and appear in none
     of them.</p>`;
   needRollcalls();
@@ -8461,10 +8487,10 @@ function renderMemberVotes(m){
         <option value="lost"${sd==="lost"?" selected":""}>Losing side (${
           (sided.length-won).toLocaleString()})</option>
       </select></label>`:""}<label>Find
-      <input type="search" data-pf="vq" value="${esc(find)}" placeholder="HB 1442, or words"
+      <input type="search" data-pf="vq" value="${esc(find)}" placeholder="Bill number or title words"
         aria-label="Find a bill by its number or words"></label></div>
     <p class="src">${rows.length.toLocaleString()} of ${v.length.toLocaleString()}
-      recorded votes in ${esc(t)}${castIn}, newest first: every roll call this member is
+      recorded votes in ${esc(termDash(t))}${castIn}, newest first: every roll call this member is
       recorded in, what it was on, and what it decided. The prevailing side is a yes on a
       motion that carried or a no on one that failed; it describes the vote, not the
       member, and nothing here is rated or scored.</p>
@@ -8775,9 +8801,9 @@ function renderCommitteeBills(c){
   const rows=cmteBills(c),t=pageTerm();
   // .fill on the notes that stand in for an empty pane: the width it has (F9).
   if(!rows.length)return `<p class="src fill">No bills were referred to this
-    committee in the ${esc(t)} term.</p>`;
+    committee in the ${esc(termDash(t))} term.</p>`;
   return billPane(rows,(n,of)=>`${billsOf(n,of)} referred to
-    this committee in ${esc(t)}.`,true);
+    this committee in ${esc(termDash(t))}.`,true);
 }
 
 // ============================================ POLISH 2: A COMMITTEE'S MEETINGS
@@ -8805,7 +8831,7 @@ function recSaid(words,code){
 const tallyOf=a=>a&&a.yeas!=null&&a.nays!=null?`${a.yeas}\u2013${a.nays}`:"";
 // One act of the committee on a bill, as a sentence: a recommendation with
 // its tally and the minority's; an interim study report, which recommended
-// the subject for future legislation (the orange arrow of How it got here)
+// the subject for future legislation (the green arrow of How it got here)
 // or killed the bill (v8: "listed as killed, explaining what the committee
 // voted"); a retention. What the report said is in STUDY_SAID's words (the
 // bill page's, endNote above), and one whose row states none of the three
@@ -8825,7 +8851,12 @@ function actSaid(a,who,tail){
       STUDY_SAID.rec}${t?`, ${t}`:""}${end}</p>`;
     const said=a.said&&Object.prototype.hasOwnProperty.call(STUDY_SAID,a.said)?STUDY_SAID[a.said]
       :"reported on its study";
-    return `<p class="mact mkill"><span class="mmark" aria-hidden="true">${ACTMARK.kill}</span><b>Killed:</b> ${
+    // "Died", the word the Bills chip and the bill's own page give a bill
+    // that ended so, where this said "Killed" (the cohesion audit of 30
+    // October 2026, I-11). Without a recommendation, or a report whose row
+    // states none, its mark is plain (the person, 30 October 2026: one
+    // colour rule, as RECCOLOUR's).
+    return `<p class="mact mkill${a.said==="without"||!a.said?" mwithout":""}"><span class="mmark" aria-hidden="true">${ACTMARK.kill}</span><b>Died:</b> ${
       who==="The committee"?"the committee's":esc(who)+"'s"} interim study report ${said}${
       t?`, ${t}`:""}${end}</p>`;
   }
@@ -8933,7 +8964,7 @@ function meetingPlayers(s,items){
         <a href="https://www.youtube.com/watch?v=${esc(vid)}&t=${from}s" target="_blank"
           rel="noopener">On YouTube</a>
         <span class="tolnote">${timed.length?"Choose a time on a card to jump the recording there."
-          :"no moment in this recording has been identified yet"}</span></div></div>`;}).join("");
+          :"Exact moments not found."}</span></div></div>`;}).join("");
 }
 // What changed at the meeting, in one sentence (item 12): what the committee
 // voted, then what the other bills had.
@@ -8996,7 +9027,7 @@ function renderCommitteeSessions(c){
     on record. Committees that no longer meet keep their page so the bills they
     handled still have somewhere to point.</p>`;
   if(!ss.length)return `<p class="src fill">No day of this committee is on record in
-    the ${esc(t)} term.</p>`;
+    the ${esc(termDash(t))} term.</p>`;
   // A DAY STILL TO COME IS NOT ONE IT MET (the survey of 7 October 2026):
   // "56 days this committee met" counted 14 October 2026, booked ahead. The
   // build marks such a day `ahead`; it is listed, told as scheduled, and
@@ -9438,7 +9469,10 @@ function cmteVideoDetail(c,r,items,day,chips){
       .sort((x,y)=>(x[2]===y[2]?0:x[2]<y[2]?-1:1)||x[1]-y[1]).map(x=>x[0]);
     const timed=items.some(i=>i.start!=null);
     out.push(`<p class="vwlead">The docket ties ${nBills(order.length)} to this recording.${
-      timed?" Choose a time to jump the recording there.":" No moment in this recording has been identified yet."}</p>`);
+      // A recording with no moment marked in it says what a bill's own player
+      // says, "(exact moment not found)" (the owner's words of 25 October
+      // 2026; the cohesion audit of 30 October, I-11).
+      timed?" Choose a time to jump the recording there.":" Exact moments not found."}</p>`);
     // ON A PHONE, THE FIRST FEW AND A BUTTON FOR THE REST, as YouTube folds
     // a description: House Commerce's 26 bills were 2,500px between the
     // player and the playlist at 390px. Every one is in the page, on a wide
@@ -10343,14 +10377,24 @@ function plainRecord(){
 // stop where its content is wider than it is, again when the window changes.
 // Without this script Chrome and Firefox make a scrolling box a stop
 // themselves.
+// A Learn table's box carries its name (data-scrolllabel) and is a region
+// only while it scrolls, so a table that fits is no landmark: the glossary's
+// sixteen letters were sixteen (the review of 30 October 2026). And a box in a
+// fold is 0px wide until the fold opens, so each fold's opening measures again.
 function scrollStops(){
   const boxes=[...document.querySelectorAll("[data-scrollstop]")];
   const set=()=>boxes.forEach(b=>{
-    if(b.scrollWidth>b.clientWidth+1)b.setAttribute("tabindex","0");
-    else b.removeAttribute("tabindex");});
+    const wide=b.scrollWidth>b.clientWidth+1, name=b.getAttribute?b.getAttribute("data-scrolllabel"):null;
+    if(wide)b.setAttribute("tabindex","0");
+    else b.removeAttribute("tabindex");
+    if(name!==null){
+      if(wide){b.setAttribute("role","region");b.setAttribute("aria-label",name);}
+      else{b.removeAttribute("role");b.removeAttribute("aria-label");}
+    }});
   if(!boxes.length)return;
   set();
   window.addEventListener("resize",set);
+  if(document.addEventListener)document.addEventListener("toggle",set,true);
 }
 
 // Every term this record has anything in, newest first. Worked out once,
@@ -10727,7 +10771,7 @@ function render(more){
       shown.length.toLocaleString()} of ${rows.length.toLocaleString()} — <button
       class="link" data-more="1">show ${Math.min(PAGE_SIZE,rows.length-SHOWN)} more</button></p>`:"")
     :(elsewhere.length
-      ?`<div class="empty"><b>Not in the ${esc(term)} term.</b><br><br>
+      ?`<div class="empty"><b>Not in the ${esc(termDash(term))} term.</b><br><br>
         ${elsewhere.map(b=>`${esc(b.n)} exists in the
           <button class="link" data-term="${esc(b.term)}">${esc(b.term)}</button>
           term — ${esc(b.title||"")}`).join("<br>")}</div>`
@@ -11658,10 +11702,17 @@ function drawSessionVotes(only){
 const CITE_MONTHS=["Jan.","Feb.","Mar.","Apr.","May","June","July","Aug.",
   "Sept.","Oct.","Nov.","Dec."];
 function citeDay(d){ return d.getDate()+" "+CITE_MONTHS[d.getMonth()]+" "+d.getFullYear(); }
+// APA and Chicago: "October 30, 2026", the site's full date (dateWords), as
+// shell.cite_day_full writes the build's (the cohesion audit, B-5).
+function citeDayFull(d){
+  return dateWords(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"
+    +String(d.getDate()).padStart(2,"0"),"full");
+}
 (function(){
   var els=document.querySelectorAll(".citeday");
-  var s=citeDay(new Date());
-  for(var i=0;i<els.length;i++)els[i].textContent=s;
+  var now=new Date(), s=citeDay(now), full=citeDayFull(now);
+  for(var i=0;i<els.length;i++)
+    els[i].textContent=els[i].classList&&els[i].classList.contains("citefull")?full:s;
   // The Copy buttons are written hidden, so a page read without JavaScript
   // offers none that does nothing; here they work, so here they show.
   var bs=document.querySelectorAll("[data-citecopy]");

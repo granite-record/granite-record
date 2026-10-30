@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.336 */
+/* GRANITE_VERSION: 2026-09-07.337 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -145,10 +145,20 @@
                (On the record, Members, What it does, each stage of a
                bill's story, the home page's columns, a footer column's
                head excepted, which is the size of its links).
-     prose h2  h2 read as a phrase: --t-h2, serif 600, sentence case
-               (Learn's, About's and Data's sections, a list's groups).
+     prose h2  h2 read as a phrase: --t-h2, serif 600, Title Case, over
+               the prose pages' text (About's, a list's groups). Learn's and
+               Data's sections are the sub's size in a margin beside their
+               text (.l-sech, .dpsech).
      sub       h3: --t-h3, serif 600, sentence case (Learn's subsections,
                a vote's question, a speaker, a day on a committee's page).
+     pane      h2 that heads a section of a record's tab, in Title Case:
+               the sub's look, .sech (Summary's .w4h and a vote's .rcq
+               draw the same). Reports, Sponsors, Documents, Related and
+               the bill text all open this way; a part label stands only
+               inside one of these, for a group of it, and never opens a
+               pane (the cohesion audit of 30 October 2026, I-1: the
+               bill's tabs drew five looks, among them a 14px sans label
+               with no h2 above it).
      label     not a heading: --t-label, sans 600 capitals over its value.
    A new heading takes one of these by its selector; nothing else sets a
    heading's size. */
@@ -1570,7 +1580,7 @@ line-height:1.1}
   .stop.s-p b,.stop.s-x b,.stop.s-istudy b,.stop.s-ontable b,
   .fhead .badge,.wkchips button[aria-pressed="true"],
   .cmgrid td.cmpick,.calviews button[aria-pressed="true"],.cdopen,
-  .calcat input:checked + .cbx,.searchbig button,.wbtn.sel,h1.lockup,
+  .calcat input:checked + .cbx,.searchbig button,.wbtn.sel,h1.lockup,.vbtn.sel,.vtog.sel,
   .rtabs [role=tab][aria-selected=true],.l-g,.l-reach > span.is-me,
   .g-btn,.g-btn:hover,.g-step::before,.tab[aria-selected=true] .tn,
   /* the legislature's year: You Are Here's words on their pine, and its
@@ -1661,6 +1671,15 @@ letter-spacing:inherit}
    for a button stood each line holding one 44px tall (the look of 10 October
    2026). WCAG 2.5.8 excepts a target in a sentence. */
 .term .termbtn{min-height:0;min-width:0;line-height:inherit;vertical-align:baseline}
+/* BUT NO SMALLER THAN A FINGER (the cohesion audit of 30 October 2026, B-6):
+   a bill's suffix -- the "A" of HB 1-A, the "FN" -- is a term of its own, a
+   letter or two beside the bill's number and not a word in a sentence, and
+   its button was 12px wide. The box a tap lands in is 24px each way at the
+   least, drawn by a transparent ::after over the word, so nothing beside it
+   moves and the letter looks as it did. */
+.term .termbtn{position:relative}
+.term .termbtn::after{content:"";position:absolute;left:50%;top:50%;
+width:max(100%,24px);height:max(100%,24px);transform:translate(-50%,-50%)}
 .termbtn:hover,.termbtn[aria-expanded="true"]{text-decoration-style:solid}
 .termpop{position:absolute;left:0;top:calc(100% + 6px);z-index:30;display:block;
 width:max-content;max-width:min(22rem,calc(100vw - 2rem));padding:var(--sp-4) var(--sp-5);
@@ -2125,10 +2144,14 @@ b,strong,h1,h2,h3,h4{font-weight:600}button{font:inherit;color:inherit;backgroun
 #year,#sort{width:var(--pickw);max-width:100%;flex:0 0 auto}
 #sort{height:26px;padding:0 var(--sp-2);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
 border-radius:var(--r-in);background:var(--surface);color:var(--ink-2);cursor:pointer}
-#year{height:42px;padding:0 var(--sp-4);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
+#year{height:44px;padding:0 var(--sp-4);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
 border-radius:var(--r-out);background:var(--surface);cursor:pointer}
-#q,#rsq{flex:1;height:42px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
-border-radius:var(--r-out);background:var(--paper)}
+/* ONE SEARCH BOX (the cohesion audit of 30 October 2026, I-7): white, 16px,
+   44px, whichever page it is on. The Bills box was 42px on the page's grey,
+   a member's Votes box grey-filled, and the Officials and /search boxes
+   20px type in a 52px box. */
+#q,#rsq{flex:1;height:44px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
+border-radius:var(--r-out);background:var(--surface)}
 /* THE FOCUS IS THE SITE'S 2px PINE OUTLINE, as the How-to tab's box draws it
    (.g-find input:focus), not a soft ring in a box-shadow (the accessibility
    sweep of 29 October 2026, WCAG 2.4.7): forced colours paint no shadow and
@@ -2148,7 +2171,9 @@ border-radius:var(--r-out);background:var(--paper)}
    screen: at 24px on a 375px phone the box stood 7px past the edge (the
    rendered sweep, 8 October 2026). */
 .qbox #q,.qbox #rsq{flex:1;padding-right:46px;min-width:0}
-#qgo,#rsgo{position:absolute;right:4px;top:4px;width:34px;height:34px;font-size:var(--t-ui);
+/* min-height:0, or a phone's 44px least for a button (body.pg, below) makes
+   it overhang the 44px box by 5px (the review of 30 October 2026). */
+#qgo,#rsgo{position:absolute;right:4px;top:5px;width:34px;height:34px;min-height:0;font-size:var(--t-ui);
 line-height:1;border:1px solid transparent;border-radius:var(--r-out);background:none;
 color:var(--ink-2);cursor:pointer}
 #qgo:hover,#rsgo:hover{border-color:var(--edge);background:var(--wash);color:var(--pine)}
@@ -2840,7 +2865,7 @@ letter-spacing:.04em;text-transform:uppercase}
 .card .pane > .vpick,
 .card .pane > .vmode,
 .card .pane > .vdoc,
-.card .pane > .amdsec,
+.card .pane > .sech,
 .card .pane > .vamds{max-width:none}
 
 /* ---- TWO COLUMNS ON A BILL'S OWN PAGE ---------------------------------
@@ -3049,13 +3074,22 @@ font-variant-numeric:tabular-nums;color:var(--pine);background:var(--paper)}
    because that is what this rule styled, so a record page went from its
    hidden h1 to an h3 with no level 2 anywhere on it. Now a heading can move
    up a level without moving a pixel. */
-.stg :is(h2,h3),.btan :is(h2,h3),.bttext :is(h2,h3),.spgrp,
+.stg :is(h2,h3),.btan :is(h2,h3),.bttext :is(h2,h3),
 .mlist :is(h2,h3),.amdsec{
 font-size:var(--t-part);font-weight:600;color:var(--ink-2);letter-spacing:.05em;
 text-transform:uppercase;margin:0 0 var(--sp-3);padding-bottom:var(--sp-3);
 border-bottom:1px solid var(--rule);font-family:var(--serif)}
-.spgrp span,.mlist :is(h2,h3) span{font-weight:400;letter-spacing:0;text-transform:none;
+.mlist :is(h2,h3) span{font-weight:400;letter-spacing:0;text-transform:none;
 font-size:var(--t-ui);color:var(--ink-2)}
+/* A LABEL UNDER A SECTION IS SMALLER THAN THE SECTION (the review of 30
+   October 2026): under "Bill Text" at --t-h3, THE BILL, FISCAL IMPACT and
+   HOW IT GOT HERE drew at --t-part, larger than what heads them. */
+.btsec :is(.bttext h3,h3.amdsec,.fnsec h3,.fnraw h4){font-size:var(--t-ui)}
+/* A SECTION OF A RECORD'S TAB (the heading map's "pane", above). */
+.sech{font:600 var(--t-h3)/1.35 var(--serif);color:var(--ink);letter-spacing:0;
+text-transform:none;margin:0 0 var(--sp-3);text-wrap:balance}
+.sech .sechn{font:400 var(--t-sm)/1 var(--sans);color:var(--ink-2);margin-left:var(--sp-2);
+font-variant-numeric:tabular-nums}
 .story .stg{margin-top:var(--sp-7)}
 .story .stg:first-child{margin-top:var(--sp-1)}
 .btver{display:flex;gap:var(--sp-4);align-items:baseline;flex-wrap:wrap;margin-bottom:var(--sp-5)}
@@ -3097,8 +3131,7 @@ cursor:pointer;list-style:none;padding:var(--sp-2) 0;min-height:32px}
 .btdoc:not([open]) .open,.btdoc[open] .shut{display:none}
 .btsec{margin:var(--sp-10) var(--sp-1) var(--sp-4);padding:var(--sp-7) var(--sp-7) var(--sp-4);background:var(--paper);
 border:1px solid var(--rule-2);border-radius:var(--r-out)}
-.btsec > .amdsec{font-size:var(--t-part);letter-spacing:.05em;color:var(--ink);
-border-bottom:0;margin:0 0 var(--sp-1);font-family:var(--serif);font-weight:600;text-transform:uppercase}
+.btsec > .sech{margin:0 0 var(--sp-1)}
 /* A line under the heading saying what this is. The tabs above are views OF
    the record; this is the document itself, and bleeding it to the card's edge
    under a small heading made it read as one more tab that had run on. */
@@ -3179,8 +3212,7 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-3);font-family:v
 color:var(--ink-2);margin:0 0 var(--sp-4);font-family:var(--serif)}
 /* Whose report this is, as a heading rather than as small print. */
 .rephead{border-top:1px solid var(--rule);padding-top:var(--sp-5);margin-bottom:var(--sp-4)}
-.rephead :is(h2,h3){font-size:var(--t-part);font-weight:600;letter-spacing:.05em;
-text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-2);font-family:var(--serif)}
+.rephead .sech{margin:0 0 var(--sp-2)}
 .repmeta{display:flex;gap:var(--sp-4);align-items:baseline;flex-wrap:wrap}
 /* ONE REPORT IS ONE OBJECT, which is what makes the two-column arrangement
    below possible at all: the head and its blocks used to be siblings of the
@@ -3258,7 +3290,7 @@ margin:var(--sp-4) 0 0;max-width:var(--measure)}
 .plink:hover{background:var(--pine-soft);text-decoration:underline}
 .spcount{font-size:var(--t-ui);color:var(--ink-2);margin:0 0 var(--sp-5);
 font-variant-numeric:tabular-nums}
-.spgrp{display:flex;align-items:baseline;gap:var(--sp-3);margin-top:var(--sp-6)}
+.spgrp{margin-top:var(--sp-6)}
 .loaderr{background:var(--st-done-bg);color:var(--st-done);border-radius:var(--r-out);
 padding:var(--sp-5) var(--sp-5);margin:0 0 var(--sp-5);font-size:var(--t-ui)}
 .loaderr span{display:block;margin-top:var(--sp-2);font-family:ui-monospace,monospace;
@@ -3301,8 +3333,7 @@ border-bottom:1px solid var(--rule);font-size:var(--t-ui)}
    the citation, what happened in plain words, and the clerk's line under
    them in the small monospace of a quotation. On a phone the day goes back
    above the citation. */
-.docgrp{font:600 var(--t-sm)/1 var(--sans);letter-spacing:.07em;text-transform:uppercase;
-  color:var(--ink-2);margin:var(--sp-7) 0 var(--sp-3)}
+.docgrp{margin:var(--sp-7) 0 var(--sp-3)}
 .docgrp:first-child{margin-top:0}
 .docs-bill{display:flex;flex-wrap:wrap;gap:var(--sp-3)}
 .docs-bill .doc{flex-direction:column;gap:2px;align-items:flex-start;border:1px solid var(--rule-2);
@@ -3733,12 +3764,19 @@ column-gap:var(--sp-3);align-items:baseline;padding:var(--sp-1) 0}
    bars on the line that laid it on the table -- it still lies there, or it
    died there and the line after says so with the cross. And the interim
    study committee's report that recommended the subject for future
-   legislation, once the session is over: a bare orange arrow (app.js
+   legislation, once the session is over: a bare arrow, green below (app.js
    ARROW, the person's option (d) of 9 October 2026), the wave's ink and
    size, which the rail never draws. */
 .jl .j-istudy .jg,.jl .j-ifuture .jg{color:var(--st-study);display:flex;align-items:center;
 justify-content:center;align-self:start;height:1.5em}
 .jl .j-istudy .jg .wave,.jl .j-ifuture .jg .arrow{width:1em;height:1em}
+/* AN INTERIM STUDY REPORT'S MARK, BY WHAT IT SAID (the person, 30 October
+   2026: one rule wherever the report is shown, as RECCOLOUR's): green where
+   it recommends future legislation, red where it does not, plain where it
+   makes no recommendation. The "sent to interim study" wave stays orange. */
+.jl .jrec-rec .jg{color:var(--st-law)}
+.jl .jrec-not .jg{color:var(--st-done)}
+.jl .jrec-without .jg{color:var(--ink-2)}
 .jl .j-ontable .jg{display:flex;align-items:center;justify-content:center;
 align-self:start;height:1.5em}
 .jl .j-ontable .jg::after{content:"";display:block;width:.5rem;height:.7em;box-sizing:border-box;
@@ -4192,7 +4230,7 @@ background:var(--paper);
    committee pages. The control is what must fit; the option text is the
    browser's to shorten. */
 max-width:100%}
-.bfilt input[type=search]{font-weight:400}
+.bfilt input[type=search]{font-weight:400;background:var(--surface);min-height:44px}
 /* THE BILL STATUS SELECT IS PAINTED AS THE SEARCH'S STATUS FILTER IS (the
    person, 8 October 2026: the same categories as the search, on a member's
    and a committee's page). Each option carries its category's chip class
@@ -4598,6 +4636,14 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
 .l-otpb a{display:flex;align-items:center;min-height:2.75rem;font:500 var(--t-ui)/1.3 var(--sans);color:var(--pine);
   text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .l-otpb a:hover{color:var(--ink)}
+/* A GUIDE'S PARTS, ONE LEVEL DOWN (the person's walk of the preview, 30
+   October 2026): under Step by Step, each part of a guide's steps, indented
+   and a size smaller than the sections, as the part's heading is under
+   its section's (build_civics.step_parts). */
+.l-otpb .l-otpsub{columns:auto;margin:0 0 .375rem;padding:0 0 0 1rem}
+.l-otpb .l-otpsub li{border-bottom:0}
+.l-otpb .l-otpsub a{min-height:2.75rem;font:400 var(--t-sm)/1.3 var(--sans)}
+.g-part[id]{scroll-margin-top:1rem}
 @media (prefers-reduced-motion:reduce){.l-otp > summary::after{transition:none}}
 /* ON THIS PAGE, BESIDE THE PAGE (the person, 26 October 2026: "an index
    along the left side that scrolls with you like on the laws pages"). On a
@@ -4623,6 +4669,8 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
   .l-side a:hover{color:var(--ink);background:var(--wash)}
   .l-side a:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
   .l-side a[aria-current]{color:var(--ink);font-weight:600;border-left-color:var(--pine);background:var(--pine-soft)}
+  .l-side .l-otpsub{border-left:0}
+  .l-side .l-otpsub a{padding:.25rem .75rem .25rem 1.75rem;font-size:var(--t-sm);line-height:1.3}
   .l-page:has(> .l-sidewrap) .l-head .l-otp{display:none}
   :where(body.pg) .wrap:has(> .l-page > .l-sidewrap){max-width:1180px}
 }
@@ -4659,6 +4707,16 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
 .l-art .glsl{display:block;font-weight:400;color:var(--ink-2);margin-top:2px}
 .l-sec{border-top:1px solid var(--rule);padding:1.125rem 0 0;margin:0 0 1.75rem;scroll-margin-top:1rem}
 .l-sec:first-child{border-top:0;padding-top:0}
+/* ONE LOOK PER LEVEL, AND A SUBSECTION UNDER ITS SECTION (the cohesion
+   audit of 30 October 2026, B-1 and I-1): a guide's step titles were 20px
+   under its 19px "Step by Step", and Learn's and /data's subsections the
+   same 19px as their sections, so the outline read flat or upside down.
+   A section here is --t-h3 in the serif; every heading under it -- a guide's
+   step, Learn's phases, tables and examples, /data's subsections -- is
+   --t-read, the size of the text it heads, in the same weight; on Learn and
+   /data in the sans, since their text is the serif at that size and a
+   subsection read as a bold first sentence (the review of 30 October 2026).
+   A guide's steps stay serif over its sans. */
 .l-sech{font:600 var(--t-h3)/1.35 var(--serif);color:var(--ink);margin:0 0 .5rem;text-wrap:balance}
 .l-sech a{color:var(--pine);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .l-sech a:hover{color:var(--ink)}
@@ -4671,7 +4729,7 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
   margin:0 0 .875rem;padding-left:1.25rem;max-width:var(--l-meas)}
 .l-secb > :is(ul,ol):not([class]) > li{margin:0 0 .4375rem;padding-left:.25rem}
 .l-secb > :is(ul,ol):not([class]) > li::marker{color:var(--ink-2)}
-:is(.l-secb,.l-wide) > h3{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:1.75rem 0 .5rem}
+:is(.l-secb,.l-wide) > h3{font:600 var(--t-read)/1.3 var(--sans);color:var(--ink);margin:1.75rem 0 .5rem}
 .l-art .l-secb a:not([class]){color:var(--pine);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .l-art .l-secb a:not([class]):hover{color:var(--ink)}
 @media (min-width:60em){
@@ -4763,7 +4821,10 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 
 /* the thirteen pages, at the foot, in the hub's two groups */
 .l-all{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr));gap:1rem 2.5rem}
-.l-all h3{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);
+/* Its group's name at the size of its links, as a footer column's head is
+   (the heading map; the accessibility sweep of 29 October 2026): it was
+   13px capitals over 16px links. */
+.l-all h3{font:600 var(--t-ui)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);
   margin:0;padding-bottom:.375rem;border-bottom:1px solid var(--ink)}
 .l-all ol{list-style:none;margin:0;padding:0}
 .l-all li{border-bottom:1px solid var(--rule)}
@@ -4822,7 +4883,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .l-phase{position:relative;min-width:0}
 .l-phase:not(:last-child)::after{content:"";position:absolute;top:.25rem;right:-2.125rem;width:1.5rem;height:1.5rem;
   background:var(--ink-2);-webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat}
-.l-phname{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0 0 .75rem;padding:0 0 .5rem;border-bottom:1px solid var(--ink)}
+.l-phname{font:600 var(--t-read)/1.3 var(--sans);color:var(--ink);margin:0 0 .75rem;padding:0 0 .5rem;border-bottom:1px solid var(--ink)}
 /* the phase names held level however many lines one takes */
 .l-level .l-phases{gap:0 2.75rem}
 .l-level .l-phase{display:grid;grid-row:span 2;grid-template-rows:subgrid;margin-bottom:1.5rem}
@@ -5004,7 +5065,12 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
    it do. A question and its answers share one panel, so the arrow out of it
    leaves the whole decision -- the next box follows either answer -- and
    never seems to hang from the answer nearest it (the polish, 25 October
-   2026). */
+   2026).
+   AT THE LEAD'S SIZE UNDER A 19px HEADING, ON PURPOSE: the glance is 20px
+   regular under At a Glance's 19px bold (.l-sech), 1px over what heads it.
+   The accessibility sweep of 29 October 2026 noted it; the manager kept it
+   on 30 October as the person's choice of 11 October, the weight carrying
+   the heading. Not a defect for the next audit to reopen. */
 .g-glance{font:400 var(--t-lead)/1.5 var(--serif);color:var(--ink);margin:0 0 1rem;max-width:46rem}
 .g-flow{margin:.5rem 0 0}
 .g-flow > ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;align-items:center;gap:1.75rem;
@@ -5034,7 +5100,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
   border-radius:50%;background:var(--pine);color:var(--on-pine);font:700 var(--t-ui)/2.25rem var(--sans);text-align:center}
 .g-step:not(:last-child)::after{content:"";position:absolute;left:1.0625rem;top:2.5rem;bottom:.25rem;
   border-left:2px solid var(--rule-2)}
-.g-sh{font:600 var(--t-lead)/1.3 var(--serif);color:var(--ink);margin:.25rem 0 .5rem}
+.g-sh{font:600 var(--t-read)/1.3 var(--serif);color:var(--ink);margin:.25rem 0 .5rem}
 .g-step p,.g-step li{font:400 var(--t-ui)/1.6 var(--sans);color:var(--ink)}
 .g-step p{margin:0 0 .625rem}
 .g-step ul{margin:0 0 .625rem;padding-left:1.25rem}
@@ -5113,7 +5179,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 
 .l-chart{max-width:var(--l-meas);margin:.75rem 0 1.25rem;padding:1rem 1.125rem;background:var(--surface);
   border:1px solid var(--rule-2);border-radius:var(--r-in)}
-.l-chart > h3{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0 0 .25rem}
+.l-chart > h3{font:600 var(--t-read)/1.3 var(--sans);color:var(--ink);margin:0 0 .25rem}
 .l-chart > p{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:0 0 .875rem}
 .l-bars{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:.875rem;position:relative}
 .l-bars li{display:grid;grid-template-columns:subgrid;grid-column:1 / -1}
@@ -5246,7 +5312,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .l-rcol{min-width:0;display:flex;flex-direction:column}
 .l-rcol::before{content:"";display:block;width:1.5rem;height:1.5rem;margin:0 0 .375rem .5rem;background:var(--ink-2);
   -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;transform:rotate(90deg)}
-.l-rh{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0;padding:0 0 .5rem;border-bottom:1px solid var(--ink)}
+.l-rh{font:600 var(--t-read)/1.3 var(--sans);color:var(--ink);margin:0;padding:0 0 .5rem;border-bottom:1px solid var(--ink)}
 .l-rstep{margin:.75rem 0 0}
 .l-rends{list-style:none;margin:0;padding:0;display:grid;gap:.5rem}
 .l-rstep + .l-rends,.l-rh + .l-rends{margin-top:.75rem}
@@ -5378,7 +5444,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
   -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;transition:transform .15s}
 .l-tlseason > details[open] > summary::before{transform:rotate(90deg)}
 .l-tlseason > details > summary:hover .l-tlh{color:var(--pine)}
-.l-tlh{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0}
+.l-tlh{font:600 var(--t-read)/1.3 var(--sans);color:var(--ink);margin:0}
 .l-tlwhen{font:400 var(--t-sm)/1.4 var(--sans);color:var(--ink-2)}
 .l-tlseason.is-here .l-tlwhen{color:var(--pine);font-weight:600}
 .l-tlsteps{list-style:none;margin:0 0 .75rem;padding:0;position:relative}
@@ -5461,7 +5527,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .l-who{display:grid;grid-template-columns:repeat(var(--n,3),minmax(0,1fr));gap:.875rem;margin:1.25rem 0 1.5rem}
 .l-body{background:var(--surface);border:1px solid var(--rule-2);border-top:3px solid var(--ink);border-radius:var(--r-in);
   padding:.875rem 1rem 1rem;min-width:0}
-.l-body h3{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0 0 .125rem}
+.l-body h3{font:600 var(--t-read)/1.3 var(--sans);color:var(--ink);margin:0 0 .125rem}
 .l-body .l-lbl{margin:0 0 .625rem}
 .l-body dl{margin:0;display:grid;gap:.625rem}
 .l-body dt{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
@@ -5586,23 +5652,32 @@ text-decoration-thickness:1px;text-underline-offset:3px}
 .wkfilter{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--sp-4);
 margin:0 0 var(--sp-6);padding:var(--sp-4) 0}
 .wkfilter[hidden]{display:none}
-.wkchips{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+/* ONE SWITCH, NOT PILLS (the cohesion audit of 30 October 2026, I-6): the
+   chamber was the site's only round buttons, beside the square List / Week /
+   Day. It is that switch's edged group now, the chosen one filled, across
+   the side column with the room shared out, on one row: "Both chambers",
+   "House" and "Senate" need 243px and the column is 254px at 1024 (the
+   review of 30 October 2026, where 12px a side wrapped "Senate"). */
+.wkchips{display:flex;width:100%;max-width:24rem;flex-wrap:nowrap;border:1px solid var(--edge);
+border-radius:var(--r-in);overflow:hidden;background:var(--surface)}
 .wkchips button{font:inherit;font-size:var(--t-ui);font-weight:600;
-padding:var(--sp-2) var(--sp-4);min-height:40px;cursor:pointer;
+padding:var(--sp-2) var(--sp-2);min-height:40px;cursor:pointer;white-space:nowrap;flex:1 1 auto;text-align:center;
 color:var(--ink-2);background:var(--surface);
-border:1px solid var(--rule-2);border-radius:999px}
-.wkchips button:hover{border-color:var(--edge);color:var(--ink)}
+border:0;border-left:1px solid var(--rule-2);border-radius:0}
+.wkchips button:first-child{border-left:0}
+.wkchips button:hover{color:var(--ink);background:var(--wash)}
+.wkchips button:focus-visible{outline:2px solid var(--ink);outline-offset:-4px}
 /* PRESSED IS A STATE, NOT A HOVER. aria-pressed is what a screen reader
    announces, so the styling hangs off the same attribute rather than off a
    class kept in step with it by hand. */
-.wkchips button[aria-pressed="true"]{color:var(--surface);background:var(--pine);
-border-color:var(--pine)}
+.wkchips button[aria-pressed="true"]{color:var(--on-pine);background:var(--pine)}
+.wkchips button[aria-pressed="true"]:focus-visible{outline-color:var(--on-pine)}
 .wkfind{display:flex;flex-direction:column;gap:var(--sp-2);
 font-size:var(--t-sm);font-weight:600;letter-spacing:.04em;
 text-transform:uppercase;color:var(--ink-2);flex:1 1 16rem;min-width:0}
 .wkfind input{font:inherit;font-size:var(--t-ui);font-weight:400;
 letter-spacing:0;text-transform:none;color:var(--ink);
-padding:var(--sp-3) var(--sp-4);min-height:40px;width:100%;
+padding:var(--sp-3) var(--sp-4);min-height:44px;width:100%;
 background:var(--surface);border:1px solid var(--edge);border-radius:4px}
 /* --edge, as every text box's is (see the pages' own input rule): it was
    --rule-2, 1.68:1 against the page. */
@@ -6262,7 +6337,10 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
 .vbtn{border:1px solid var(--rule);background:var(--surface);border-radius:var(--r-out);
   padding:var(--sp-3) var(--sp-5);font-size:var(--t-sm);text-align:left;cursor:pointer;line-height:1.3}
 .vbtn i{display:block;font-style:normal;font-size:var(--t-sm);color:var(--ink-2);margin-top:var(--sp-1)}
-.vbtn.sel{border-color:var(--pine);background:var(--pine-soft);color:var(--pine);font-weight:600}
+/* Chosen, solid pine, as every switch of a view is (the cohesion audit of
+   30 October 2026, I-6), with its date in the same white. */
+.vbtn.sel{border-color:var(--pine);background:var(--pine);color:var(--on-pine);font-weight:600}
+.vbtn.sel i{color:var(--on-pine)}
 
 /* THE VERSION SEQUENCE. The picker above is a row of buttons and says nothing
    about the distance between any two of them; this is the same buttons down a
@@ -6279,9 +6357,10 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
    stated exactly, in .vcount below. */
 
 .vmode{display:flex;gap:var(--sp-4);align-items:center;flex-wrap:wrap;margin:0 0 var(--sp-5)}
-.vtog{border:1px solid var(--rule);background:var(--surface);border-radius:var(--r-pill);
-  padding:var(--sp-2) var(--sp-5);font-size:var(--t-sm);cursor:pointer}
-.vtog.sel{border-color:var(--pine);background:var(--pine-soft);color:var(--pine);font-weight:600}
+.vtog{border:1px solid var(--edge);background:var(--surface);border-radius:var(--r-in);
+  padding:var(--sp-2) var(--sp-5);font-size:var(--t-sm);cursor:pointer;color:var(--ink-2)}
+.vtog:hover{color:var(--ink);background:var(--wash)}
+.vtog.sel{border-color:var(--pine);background:var(--pine);color:var(--on-pine);font-weight:600}
 .vcount{font-size:var(--t-sm);color:var(--ink-2)}
 .vdiff{font-family:var(--serif);font-size:var(--t-ui);line-height:1.7;white-space:pre-wrap;
   word-break:break-word;background:var(--wash);border-radius:var(--r-out);padding:var(--sp-5) var(--sp-6)}
@@ -6590,7 +6669,7 @@ table.votes tr:has(+ tr.vring) td{border-bottom:0}
 .dpsecb > :last-child{margin-bottom:0}
 .dpsecb p{font-family:var(--serif);font-size:var(--t-read);line-height:1.65;color:var(--ink);
   margin:0 0 var(--sp-5);max-width:51.1875rem}
-.dph3{font-family:var(--serif);font-size:var(--t-h3);font-weight:600;line-height:1.35;color:var(--ink);
+.dph3{font-family:var(--sans);font-size:var(--t-read);font-weight:600;line-height:1.35;color:var(--ink);
   margin:var(--sp-9) 0 var(--sp-4)}
 .dpsecb > .dph3:first-child{margin-top:0}
 .dpsecb p.dpnote{font-family:var(--sans);font-size:var(--t-ui);line-height:1.55;
@@ -7142,9 +7221,14 @@ padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
    reader opens it, the find box the script shows, the two classes each a
    grid of the standing committees' cards. */
 .clist .ssfold{margin:var(--sp-8) 0 0}
-.clist .ssfold > summary .ssfh{margin:0;padding:0;border:0;font:600 var(--t-ui)/1.3 var(--sans);
-letter-spacing:0;text-transform:none;color:var(--ink)}
-.ssfold > summary .w4n{font-weight:400;color:var(--ink-2);margin-left:var(--sp-2)}
+/* Its heading is the page's other sections' -- HOUSE, SENATE, FORMER
+   COMMITTEES -- in a fold (the cohesion audit of 30 October 2026, I-1): it was
+   16px sans in pine beside their 20px serif capitals. The caret and the box
+   say it opens. */
+.clist .ssfold > summary .ssfh{margin:0;padding:0;border:0}
+.clist .ssfold > summary .sflab{color:inherit;text-decoration:none}
+.ssfold > summary .w4n{font:400 var(--t-sm)/1 var(--sans);letter-spacing:0;text-transform:none;
+color:var(--ink-2);margin-left:var(--sp-2)}
 .ssfind{margin:var(--sp-4) 0 0}
 .ssfind label{display:block;font-size:var(--t-sm);font-weight:600;color:var(--ink-2);margin:0 0 var(--sp-2)}
 .ssfind input{width:100%;max-width:28rem;min-height:44px;padding:var(--sp-3) var(--sp-4);font-size:var(--t-ui);
@@ -7162,7 +7246,7 @@ color:var(--ink-2);margin:var(--sp-6) 0 var(--sp-3)}
 /* THE LINE FOR THIS MEETING, inside the card's well (.cline): its kinds and
    time, the moment in the recording where each was taken up, and what
    happened, each act on a line of its own. A killing is said in the red of
-   the cross that marks it, a study recommended in the orange of its arrow,
+   the cross that marks it, a study recommended in the green of its arrow,
    both as a mark and a word, never by colour alone. */
 .mline{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-4);margin-bottom:var(--sp-3)}
 .mkinds{display:inline-flex;flex-wrap:wrap;gap:var(--sp-2)}
@@ -7180,7 +7264,8 @@ color:var(--ink-2);margin:var(--sp-6) 0 var(--sp-3)}
 .mmark{display:inline-flex;vertical-align:-.1em;margin-right:var(--sp-2);font-weight:700}
 .mmark svg{width:.9em;height:.9em}
 .mkill .mmark,.mkill b{color:var(--st-done)}
-.mrec .mmark{color:var(--st-study)}
+.mrec .mmark{color:var(--st-law)}
+.mwithout .mmark,.mwithout b{color:inherit}
 .msign b{font-variant-numeric:tabular-nums}
 .mwhen{color:var(--ink-2)}
 /* POLISH 2 -- MEETINGS: END --------------------------------------------- */
@@ -7597,7 +7682,7 @@ letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
 /* THE RELATED TAB (app.js renderRelated). Each row the sentence, at reading
    size, and the other bill's title and status under it at the size of meta. */
 .rl-g{margin:0 0 1.25rem}
-.rl-g h2{font:600 var(--t-ui)/1.35 var(--sans);color:var(--ink);margin:1rem 0 .5rem}
+.rl-g .sech{margin:1rem 0 .5rem}
 .rl-list{list-style:none;margin:0;padding:0}
 .rl-row{padding:.625rem 0;border-top:1px solid var(--rule)}
 .rl-s{font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink);margin:0}
@@ -8001,7 +8086,7 @@ padding:var(--sp-5) var(--sp-5);margin:0 0 var(--sp-5);line-height:1.6}
    by 1.16:1, so the edge is the whole of what says "type here" (the audit of
    2 October 2026, S10; WCAG 1.4.11 asks 3:1). --edge is 3.98:1 and 4.64:1,
    and preflight holds it there. */
-:where(body.pg) input[type=search], :where(body.pg) input[type=text]{width:100%;height:42px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-ui);
+:where(body.pg) input[type=search], :where(body.pg) input[type=text]{width:100%;height:44px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-ui);
 border:1px solid var(--edge);border-radius:var(--r-out);background:var(--surface)}
 :where(body.pg) input:focus{outline:2px solid var(--pine);outline-offset:1px;border-color:var(--pine)}
 :where(body.pg) table{width:100%;border-collapse:collapse;font-size:var(--t-ui)}
@@ -8157,7 +8242,7 @@ var(--rule-2) 3px,var(--surface) 3px,var(--surface) 6px);border:1px solid var(--
    the prime sponsor filter on the bill search behaves and is what was asked
    for here. Below two letters it says what it will match rather than
    listing 726 things. */:where(body.pg) .lfind{margin:var(--sp-6) 0 var(--sp-8)}
-:where(body.pg) .lfind input[type=search]{font-size:var(--t-lead);height:52px}
+:where(body.pg) .lfind input[type=search]{font-size:var(--t-ui);height:44px}
 :where(body.pg) .lfind .count{margin:var(--sp-4) var(--sp-1) 0}
 /* A WINDOW ON THE LIST, NOT THE WHOLE LIST. Every town is in here so that
    somebody who is not sure how their town is spelled -- or lives in one of
@@ -9006,7 +9091,7 @@ border:1px solid var(--rule);border-radius:var(--r-out);background:var(--surface
 :where(body.pg) .resout .fkind{display:none}
 :where(body.pg) .resout a{border-radius:0;padding:var(--sp-4) var(--sp-5)}
 :where(body.pg) .resfind{margin:var(--sp-6) 0 var(--sp-8)}
-:where(body.pg) .resfind input[type=search]{font-size:var(--t-lead);height:52px}
+:where(body.pg) .resfind input[type=search]{font-size:var(--t-ui);height:44px}
 :where(body.pg) .resgrp{margin:0 0 var(--sp-8)}
 :where(body.pg) .resgrp h2{display:flex;align-items:baseline;gap:var(--sp-4);
 margin:0 0 var(--sp-4)}
@@ -9168,3 +9253,15 @@ text-wrap:balance}
 /* ==== /HUBS, PAGES ======================================================== */
 
 /* ---- /THE PAGES build_pages.py WRITES ---------------------------------- */
+
+/* THE CHOSEN ONE OF A SWITCH, IN FORCED COLOURS (the cohesion audit of 30
+   October 2026, I-6): its pine ground is the system's there, so nothing
+   said which was chosen. Filled with the system's Highlight, as a chosen
+   list item is, so a focused one, which is outlined, is not taken for it
+   (the review of 30 October 2026). */
+@media (forced-colors:active){
+  .calviews button[aria-pressed="true"],.wkchips button[aria-pressed="true"],
+  .rtabs [role=tab][aria-selected=true],.vbtn.sel,.vtog.sel{forced-color-adjust:none;
+    background:Highlight;color:HighlightText;border-color:Highlight}
+  .vbtn.sel i{color:HighlightText}
+}

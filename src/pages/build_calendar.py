@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.46
+# GRANITE_VERSION: 2026-09-18.47
 """
 The General Court's week, one page per week.
 
@@ -2556,7 +2556,7 @@ def side_html():
     """
     find = ('<label class="wkfind" for="wkfind">Bill or committee'
             '<input type="search" id="wkfind" autocomplete="off" '
-            'placeholder="HB 1234, or Judiciary"></label>')
+            'placeholder="Bill number or committee"></label>')
     chamber = ('<fieldset class="calfs"><legend>Chamber</legend><div class="wkchips">'
                '<button type="button" data-body="" aria-pressed="true">Both chambers</button>'
                '<button type="button" data-body="H" aria-pressed="false">House</button>'

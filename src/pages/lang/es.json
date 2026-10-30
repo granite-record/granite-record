@@ -7,7 +7,7 @@
  "offered": false,
  "strings": {
   "cal.coming": {
-   "en": "Coming up",
+   "en": "Coming Up",
    "es": "Próximamente",
    "state": "draft"
   },
@@ -2643,8 +2643,8 @@
    "state": "draft"
   },
   "guide.child-care-scholarship.the-scholarship-is-paid-to-the": {
-   "en": "The scholarship is paid to the provider, so the provider must be enrolled with the Department to accept it. Ask a provider you are considering whether it is. The Department&rsquo;s free Child Care Search, linked from the same page as the scholarship, shows providers&rsquo; quality ratings, licensing history and services, and Child Care Aware of New Hampshire helps families find care for free: call 1-855-393-1731, extension 2531, weekdays 8 a.m. to 5 p.m.",
-   "es": "La beca se paga al proveedor, así que el proveedor debe estar inscrito con el Departamento para aceptarla. Pregúntele a un proveedor que esté considerando si lo está. La búsqueda gratuita de cuidado infantil del Departamento (Child Care Search), enlazada desde la misma página que la beca, muestra la calificación de calidad, el historial de licencias y los servicios de cada proveedor, y Child Care Aware of New Hampshire ayuda gratis a las familias a encontrar cuidado: llame al 1-855-393-1731, extensión 2531, de lunes a viernes de 8 a. m. a 5 p. m.",
+   "en": "The scholarship is paid to the provider, so the provider must be enrolled with the Department to accept it. Ask a provider you are considering whether it is. The Department&rsquo;s free Child Care Search, linked from the same page as the scholarship, shows providers&rsquo; quality ratings, licensing history and services, and Child Care Aware of New Hampshire helps families find care for free: call 1-855-393-1731, extension 2531, weekdays 8:00&nbsp;AM to 5:00&nbsp;PM.",
+   "es": "La beca se paga al proveedor, así que el proveedor debe estar inscrito con el Departamento para aceptarla. Pregúntele a un proveedor que esté considerando si lo está. La búsqueda gratuita de cuidado infantil del Departamento (Child Care Search), enlazada desde la misma página que la beca, muestra la calificación de calidad, el historial de licencias y los servicios de cada proveedor, y Child Care Aware of New Hampshire ayuda gratis a las familias a encontrar cuidado: llame al 1-855-393-1731, extensión 2531, de lunes a viernes de 8:00&nbsp;a.&nbsp;m. a 5:00&nbsp;p.&nbsp;m.",
    "state": "draft"
   },
   "guide.child-care-scholarship.the-scholarship-pays-part-of-the": {
@@ -3599,8 +3599,8 @@
    "state": "draft"
   },
   "guide.discrimination.the-commission-also-takes-complaints-of": {
-   "en": "The Commission also takes complaints of discrimination in K-12 public schools, and offers mediation. Submit a complaint from its website, or call (603) 271-2767, Monday through Friday, 8 a.m. to 4 p.m.; its office is at 57 Regional Drive, Suite 8, in Concord.",
-   "es": "La Comisión también recibe quejas por discriminación en las escuelas públicas de K-12, y ofrece mediación. Presente una queja desde su sitio web, o llame al (603) 271-2767, de lunes a viernes, de 8 a.m. a 4 p.m.; su oficina está en 57 Regional Drive, Suite 8, en Concord.",
+   "en": "The Commission also takes complaints of discrimination in K-12 public schools, and offers mediation. Submit a complaint from its website, or call (603) 271-2767, Monday through Friday, 8:00&nbsp;AM to 4:00&nbsp;PM; its office is at 57 Regional Drive, Suite 8, in Concord.",
+   "es": "La Comisión también recibe quejas por discriminación en las escuelas públicas de K-12, y ofrece mediación. Presente una queja desde su sitio web, o llame al (603) 271-2767, de lunes a viernes, de 8:00&nbsp;a.&nbsp;m. a 4:00&nbsp;p.&nbsp;m.; su oficina está en 57 Regional Drive, Suite 8, en Concord.",
    "state": "draft"
   },
   "guide.discrimination.the-commission-for-human-rights-can": {
@@ -4010,8 +4010,8 @@
    "state": "draft"
   },
   "guide.election-worker.after-the-polls-close-the-votes-2": {
-   "en": "<b>After the polls close.</b> The votes are counted in public and the count is not stopped until it is finished. Where officers disagree on how to count a mark, the majority of those counting decides; if no count has a majority, the ballot is not counted for that office. The counting documents are open for public review when the results are announced, and a machine&rsquo;s printed results are posted within 60 minutes of the last ballot. The moderator announces the final count, and the clerk prepares the election return in front of the other officials, signs it, and sends a copy to the Secretary of State by 8:00 a.m. the next day. The other copy is kept by the clerk, open to the public.",
-   "es": "<b>Después del cierre de la votación.</b> Los votos se cuentan en público y el conteo no se detiene hasta terminar. Cuando los funcionarios no están de acuerdo sobre cómo contar una marca, decide la mayoría de quienes cuentan; si ninguna forma de contarla obtiene mayoría, la boleta no se cuenta para ese cargo. Los documentos del conteo están disponibles para revisión pública cuando se anuncian los resultados, y los resultados impresos de una máquina se publican dentro de los 60 minutos de la última boleta. El moderador anuncia el conteo final, y el secretario prepara el acta de resultados frente a los demás funcionarios, la firma y envía una copia a la Secretaría de Estado antes de las 8:00 a.m. del día siguiente. El secretario guarda la otra copia, abierta al público.",
+   "en": "<b>After the polls close.</b> The votes are counted in public and the count is not stopped until it is finished. Where officers disagree on how to count a mark, the majority of those counting decides; if no count has a majority, the ballot is not counted for that office. The counting documents are open for public review when the results are announced, and a machine&rsquo;s printed results are posted within 60 minutes of the last ballot. The moderator announces the final count, and the clerk prepares the election return in front of the other officials, signs it, and sends a copy to the Secretary of State by 8:00&nbsp;AM the next day. The other copy is kept by the clerk, open to the public.",
+   "es": "<b>Después del cierre de la votación.</b> Los votos se cuentan en público y el conteo no se detiene hasta terminar. Cuando los funcionarios no están de acuerdo sobre cómo contar una marca, decide la mayoría de quienes cuentan; si ninguna forma de contarla obtiene mayoría, la boleta no se cuenta para ese cargo. Los documentos del conteo están disponibles para revisión pública cuando se anuncian los resultados, y los resultados impresos de una máquina se publican dentro de los 60 minutos de la última boleta. El moderador anuncia el conteo final, y el secretario prepara el acta de resultados frente a los demás funcionarios, la firma y envía una copia a la Secretaría de Estado antes de las 8:00&nbsp;a.&nbsp;m. del día siguiente. El secretario guarda la otra copia, abierta al público.",
    "state": "draft"
   },
   "guide.election-worker.appointed-by-the-moderator-for-that": {
@@ -4545,8 +4545,8 @@
    "state": "draft"
   },
   "guide.file-for-unemployment.new-hampshire-employment-securitys": {
-   "en": "New Hampshire Employment Security&rsquo;s unemployment hotline, (603) 271-7700, answers questions on weekdays from 8:00 a.m. to 4:30 p.m. Its NH Works offices help in person, with claims and with finding work.",
-   "es": "La línea de desempleo de New Hampshire Employment Security, (603) 271-7700, responde preguntas de lunes a viernes de 8:00 a. m. a 4:30 p. m. Sus oficinas NH Works ayudan en persona, con las solicitudes y con la búsqueda de trabajo.",
+   "en": "New Hampshire Employment Security&rsquo;s unemployment hotline, (603) 271-7700, answers questions on weekdays from 8:00&nbsp;AM to 4:30&nbsp;PM. Its NH Works offices help in person, with claims and with finding work.",
+   "es": "La línea de desempleo de New Hampshire Employment Security, (603) 271-7700, responde preguntas de lunes a viernes de 8:00&nbsp;a.&nbsp;m. a 4:30&nbsp;p.&nbsp;m. Sus oficinas NH Works ayudan en persona, con las solicitudes y con la búsqueda de trabajo.",
    "state": "draft"
   },
   "guide.file-for-unemployment.nh-works-offices": {
@@ -5204,9 +5204,9 @@
    "es": "Conducir y vehículos",
    "state": "draft"
   },
-  "guide.group.federal-benefits": {
-   "en": "Federal Benefits",
-   "es": "Beneficios federales",
+  "guide.group.federal-programs-and-services": {
+   "en": "Federal Programs and Services",
+   "es": "Programas y servicios federales",
    "state": "draft"
   },
   "guide.group.help-and-benefits": {
@@ -5955,8 +5955,8 @@
    "state": "draft"
   },
   "guide.help.adrc.aging-and-disability-resource-centers": {
-   "en": "<b>Aging and Disability Resource Centers</b> (formerly ServiceLink), a Department of Health and Human Services program with local resource centers: free counseling for older adults, adults with disabilities and caregivers, on benefits, applications, housing, Medicare and Medicaid, with no eligibility requirement. Call 1-866-634-9412, weekdays 8:30 a.m. to 4:30 p.m.",
-   "es": "<b>Aging and Disability Resource Centers</b> (centros de recursos para el envejecimiento y la discapacidad, antes ServiceLink), un programa del Departamento de Salud y Servicios Humanos con centros de recursos locales: orientación gratuita para adultos mayores, adultos con discapacidades y cuidadores, sobre beneficios, solicitudes, vivienda, Medicare y Medicaid, sin requisitos para recibirla. Llame al 1-866-634-9412, de lunes a viernes de 8:30 a. m. a 4:30 p. m.",
+   "en": "<b>Aging and Disability Resource Centers</b> (formerly ServiceLink), a Department of Health and Human Services program with local resource centers: free counseling for older adults, adults with disabilities and caregivers, on benefits, applications, housing, Medicare and Medicaid, with no eligibility requirement. Call 1-866-634-9412, weekdays 8:30&nbsp;AM to 4:30&nbsp;PM.",
+   "es": "<b>Aging and Disability Resource Centers</b> (centros de recursos para el envejecimiento y la discapacidad, antes ServiceLink), un programa del Departamento de Salud y Servicios Humanos con centros de recursos locales: orientación gratuita para adultos mayores, adultos con discapacidades y cuidadores, sobre beneficios, solicitudes, vivienda, Medicare y Medicaid, sin requisitos para recibirla. Llame al 1-866-634-9412, de lunes a viernes de 8:30&nbsp;a.&nbsp;m. a 4:30&nbsp;p.&nbsp;m.",
    "state": "draft"
   },
   "guide.help.dmv.dmv-offices-and-hours": {
@@ -5975,8 +5975,8 @@
    "state": "draft"
   },
   "guide.help.lawyer.the-new-hampshire-bar-associations": {
-   "en": "<b>The New Hampshire Bar Association&rsquo;s Lawyer Referral Service</b> refers you to a lawyer who handles your kind of problem, for an administrative fee. Call 603-229-0002, weekdays 9 a.m. to 3:30 p.m., or ask online.",
-   "es": "<b>El servicio de referencia de abogados (Lawyer Referral Service) del Colegio de Abogados de New Hampshire</b> lo remite a un abogado que se ocupa de su tipo de problema, por una cuota administrativa. Llame al 603-229-0002, de lunes a viernes de 9 a. m. a 3:30 p. m., o consulte en línea.",
+   "en": "<b>The New Hampshire Bar Association&rsquo;s Lawyer Referral Service</b> refers you to a lawyer who handles your kind of problem, for an administrative fee. Call 603-229-0002, weekdays 9:00&nbsp;AM to 3:30&nbsp;PM, or ask online.",
+   "es": "<b>El servicio de referencia de abogados (Lawyer Referral Service) del Colegio de Abogados de New Hampshire</b> lo remite a un abogado que se ocupa de su tipo de problema, por una cuota administrativa. Llame al 603-229-0002, de lunes a viernes de 9:00&nbsp;a.&nbsp;m. a 3:30&nbsp;p.&nbsp;m., o consulte en línea.",
    "state": "draft"
   },
   "guide.help.legal_aid.free-civil-legal-aid-new-hampshire": {
@@ -6756,8 +6756,8 @@
    "state": "draft"
   },
   "guide.how-to-vote.send-the-absentee-ballot-application-to": {
-   "en": "Send the absentee ballot application to your town or city clerk, not the state, with the proof of identity the form asks for. The deadline to ask by mail is noon the day before the election, and to ask and vote in person at the clerk&rsquo;s office, 5 p.m. the day before. A mailed ballot must reach your clerk by 5 p.m. on election day, so ask for it more than two weeks ahead.",
-   "es": "Envíe la solicitud de boleta de voto en ausencia al secretario de su municipio o ciudad, no al estado, con la prueba de identidad que pide el formulario. El plazo para pedirla por correo es el mediodía del día anterior a la elección, y para pedirla y votar en persona en la oficina del secretario, las 5 p. m. del día anterior. Una boleta enviada por correo debe llegar a su secretario a más tardar a las 5 p. m. del día de la elección, así que pídala con más de dos semanas de anticipación.",
+   "en": "Send the absentee ballot application to your town or city clerk, not the state, with the proof of identity the form asks for. The deadline to ask by mail is noon the day before the election, and to ask and vote in person at the clerk&rsquo;s office, 5:00&nbsp;PM the day before. A mailed ballot must reach your clerk by 5:00&nbsp;PM on election day, so ask for it more than two weeks ahead.",
+   "es": "Envíe la solicitud de boleta de voto en ausencia al secretario de su municipio o ciudad, no al estado, con la prueba de identidad que pide el formulario. El plazo para pedirla por correo es el mediodía del día anterior a la elección, y para pedirla y votar en persona en la oficina del secretario, las 5:00&nbsp;p.&nbsp;m. del día anterior. Una boleta enviada por correo debe llegar a su secretario a más tardar a las 5:00&nbsp;p.&nbsp;m. del día de la elección, así que pídala con más de dos semanas de anticipación.",
    "state": "draft"
   },
   "guide.how-to-vote.statement-on-the-court-s-hb": {
@@ -7541,8 +7541,8 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.apply-to-the-department-of-health": {
-   "en": "Apply to the Department of Health and Human Services through NH Easy, under Medicare beneficiary assistance; its Customer Service Center answers at 1-844-ASK-DHHS (1-844-275-3447), Monday through Friday, 8 a.m. to 4 p.m. Medicare advises applying even if you do not think you qualify.",
-   "es": "Presente su solicitud al Departamento de Salud y Servicios Humanos a través de NH Easy, en la asistencia para beneficiarios de Medicare; su Centro de Servicio al Cliente atiende en el 1-844-ASK-DHHS (1-844-275-3447), de lunes a viernes, de 8 a.m. a 4 p.m. Medicare aconseja presentar la solicitud aunque crea que no reúne los requisitos.",
+   "en": "Apply to the Department of Health and Human Services through NH Easy, under Medicare beneficiary assistance; its Customer Service Center answers at 1-844-ASK-DHHS (1-844-275-3447), Monday through Friday, 8:00&nbsp;AM to 4:00&nbsp;PM. Medicare advises applying even if you do not think you qualify.",
+   "es": "Presente su solicitud al Departamento de Salud y Servicios Humanos a través de NH Easy, en la asistencia para beneficiarios de Medicare; su Centro de Servicio al Cliente atiende en el 1-844-ASK-DHHS (1-844-275-3447), de lunes a viernes, de 8:00&nbsp;a.&nbsp;m. a 4:00&nbsp;p.&nbsp;m. Medicare aconseja presentar la solicitud aunque crea que no reúne los requisitos.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.can-i-get-medicare-before-i": {
@@ -7761,8 +7761,8 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.medicare-part-a-and-part-b": {
-   "en": "Medicare Part A and Part B are signed up for through the Social Security Administration, not through Medicare. The easiest way is online, with a my Social Security account, if you are 65 or older. You can also call Social Security at 1-800-772-1213, Monday through Friday, 8 a.m. to 7 p.m. (TTY 1-800-325-0778), and make an appointment.",
-   "es": "La inscripción en la Parte A y la Parte B de Medicare se hace a través de la Administración del Seguro Social, no a través de Medicare. La forma más fácil es en línea, con una cuenta my Social Security, si tiene 65 años o más. También puede llamar al Seguro Social al 1-800-772-1213, de lunes a viernes, de 8 a.m. a 7 p.m. (TTY 1-800-325-0778), y pedir una cita.",
+   "en": "Medicare Part A and Part B are signed up for through the Social Security Administration, not through Medicare. The easiest way is online, with a my Social Security account, if you are 65 or older. You can also call Social Security at 1-800-772-1213, Monday through Friday, 8:00&nbsp;AM to 7:00&nbsp;PM (TTY 1-800-325-0778), and make an appointment.",
+   "es": "La inscripción en la Parte A y la Parte B de Medicare se hace a través de la Administración del Seguro Social, no a través de Medicare. La forma más fácil es en línea, con una cuenta my Social Security, si tiene 65 años o más. También puede llamar al Seguro Social al 1-800-772-1213, de lunes a viernes, de 8:00&nbsp;a.&nbsp;m. a 7:00&nbsp;p.&nbsp;m. (TTY 1-800-325-0778), y pedir una cita.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.medicare-savings-programs-medicare": {
@@ -11796,8 +11796,8 @@
    "state": "draft"
   },
   "guide.run-for-office.to-run-in-a-partys-primary": {
-   "en": "To run in a party&rsquo;s primary you must be a registered member of that party. File a declaration of candidacy, with a statement of financial interests, between the first Wednesday in June and the Friday of the following week. In 2026 that was June 3 to June 12. A filing on the last day must be made in person by the candidate, by 5 p.m.",
-   "es": "Para postularse en las primarias de un partido debe ser miembro inscrito de ese partido. Presente una declaración de candidatura, con una declaración de intereses financieros, entre el primer miércoles de junio y el viernes de la semana siguiente. En 2026 fue del 3 al 12 de junio. Si se inscribe el último día, debe hacerlo el propio candidato en persona, a más tardar a las 5 p. m.",
+   "en": "To run in a party&rsquo;s primary you must be a registered member of that party. File a declaration of candidacy, with a statement of financial interests, between the first Wednesday in June and the Friday of the following week. In 2026 that was June 3 to June 12. A filing on the last day must be made in person by the candidate, by 5:00&nbsp;PM.",
+   "es": "Para postularse en las primarias de un partido debe ser miembro inscrito de ese partido. Presente una declaración de candidatura, con una declaración de intereses financieros, entre el primer miércoles de junio y el viernes de la semana siguiente. En 2026 fue del 3 al 12 de junio. Si se inscribe el último día, debe hacerlo el propio candidato en persona, a más tardar a las 5:00&nbsp;p.&nbsp;m.",
    "state": "draft"
   },
   "guide.run-for-office.to-the-supervisors-of-the-checklist": {
@@ -15660,8 +15660,8 @@
    "state": "draft"
   },
   "guide.wage-rights.file-your-claim-online-with-the": {
-   "en": "File your claim online with the Department&rsquo;s wage claim form. Its office answers at 603-271-3176, Monday through Friday, 8 a.m. to 4:30 p.m.; mail and hearings stay at 95 Pleasant Street, Spaulding Building, in Concord.",
-   "es": "Presente su reclamo en línea con el formulario de reclamo de salario del Departamento. Su oficina atiende en el 603-271-3176, de lunes a viernes, de 8 a.m. a 4:30 p.m.; el correo y las audiencias siguen en 95 Pleasant Street, Spaulding Building, en Concord.",
+   "en": "File your claim online with the Department&rsquo;s wage claim form. Its office answers at 603-271-3176, Monday through Friday, 8:00&nbsp;AM to 4:30&nbsp;PM; mail and hearings stay at 95 Pleasant Street, Spaulding Building, in Concord.",
+   "es": "Presente su reclamo en línea con el formulario de reclamo de salario del Departamento. Su oficina atiende en el 603-271-3176, de lunes a viernes, de 8:00&nbsp;a.&nbsp;m. a 4:30&nbsp;p.&nbsp;m.; el correo y las audiencias siguen en 95 Pleasant Street, Spaulding Building, en Concord.",
    "state": "draft"
   },
   "guide.wage-rights.how-can-i-be-paid": {
@@ -23459,18 +23459,18 @@
    "state": "draft"
   },
   "sess.play": {
-   "en": "Play",
-   "es": "Reproducir",
+   "en": "Play the recording",
+   "es": "Reproducir la grabación",
    "state": "draft"
   },
   "sess.play_house": {
-   "en": "Play the House floor session of {date}",
-   "es": "Reproducir la sesión plenaria de la Cámara del {date}",
+   "en": "Play the recording of the House floor session, {date}",
+   "es": "Reproducir la grabación de la sesión plenaria de la Cámara, {date}",
    "state": "draft"
   },
   "sess.play_senate": {
-   "en": "Play the Senate floor session of {date}",
-   "es": "Reproducir la sesión plenaria del Senado del {date}",
+   "en": "Play the recording of the Senate floor session, {date}",
+   "es": "Reproducir la grabación de la sesión plenaria del Senado, {date}",
    "state": "draft"
   },
   "sess.rec_house": {
@@ -23965,8 +23965,8 @@
    "state": "draft"
   },
   "web.when": {
-   "en": "Free webinar &middot; Tuesday, November 10, 6:30 p.m.",
-   "es": "Seminario web gratuito &middot; martes 10 de noviembre, 6:30 p. m.",
+   "en": "Free webinar &middot; Tuesday, November 10, 6:30&nbsp;PM",
+   "es": "Seminario web gratuito &middot; martes 10 de noviembre, 6:30&nbsp;p.&nbsp;m.",
    "state": "draft"
   },
   "year.a-bill-is-introduced-when-it": {

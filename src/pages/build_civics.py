@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.84
+# GRANITE_VERSION: 2026-09-08.85
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -834,7 +834,7 @@ def record_figures(site, root=Path(".")):
             - status["Died when the session ended"])
     figures["fig_ends"] = civics.bar(
         f"The {len(cur):,} bills and resolutions of the {shown} term",
-        f"How the {len(cur):,} bills and resolutions of the {term} term ended",
+        f"How the {len(cur):,} bills and resolutions of the {C.term_words(term)} term ended",
         [(status["Killed"], "c-died", "killed (ITL)"),
          (status["Signed into law"], "c-law", "signed into law"),
          (status["Referred for interim study"], "c-study", "sent for interim study"),
@@ -885,7 +885,7 @@ def record_figures(site, root=Path(".")):
                 I.say(lang, "learn.ends.caption", "The {n} bills and resolutions of the {term} term",
                     n=n_(len(cur)), term=shown),
                 I.say(lang, "learn.ends.label", "How the {n} bills and resolutions of the {term} term ended",
-                    n=n_(len(cur)), term=term),
+                    n=n_(len(cur)), term=C.term_words(term)),
                 [(status["Killed"], "c-died", I.say(lang, "learn.ends.killed", "killed (ITL)")),
                  (status["Signed into law"], "c-law", I.say(lang, "learn.ends.signed", "signed into law")),
                  (status["Referred for interim study"], "c-study",
@@ -1237,11 +1237,47 @@ def tables(content):
             if "<table>" in content else content)
 
 
+# A TABLE'S BOX IS A NAMED PLACE A KEYBOARD CAN REACH (the cohesion audit of
+# 30 October 2026, B-2). By the Numbers' fourteen tables are 428-811px wide
+# in a 364px box on a phone; they scrolled, but the box had no name and no
+# Tab stop, so a keyboard could not pan it. /data's coverage table already
+# did it right, and this is the same: role="region" named by the table's
+# caption (or its section's heading, where it has none), and data-scrollstop,
+# by which app.js's scrollStops makes the box a Tab stop while its table is
+# wider than it is, and only then.
+_TABLEWRAP = re.compile(r'<div class="l-tablewrap([^"]*)">(\s*<table[^>]*>\s*(?:<caption[^>]*>(.*?)</caption>)?)',
+                        re.S)
+_SUBHEAD = re.compile(r"<(h3|h4|summary)\b[^>]*>(.*?)</\1>", re.S)
+
+
+def _words(x):
+    """The words of a piece of HTML, as a name reads them."""
+    return " ".join(html.unescape(re.sub(r"<[^>]+>", " ", x or "")).split())
+
+
+def scroll_regions(content, heading):
+    """content with each Learn table's box named and marked as a Tab stop
+    while it scrolls. Its name is its caption, or else its section's heading
+    with the nearest heading or fold above it in the section ("The Bills Each
+    Committee Received, 2025–2026"), so ten boxes in one section are not ten
+    of one name (the review of 30 October 2026); app.js's scrollStops makes it
+    a region under that name while it scrolls."""
+    def one(m):
+        label = _words(m.group(3))
+        if not label:
+            subs = [_words(s.group(2)).split(":")[0].strip() for s in _SUBHEAD.finditer(content, 0, m.start())]
+            sub = subs[-1] if subs else ""
+            label = f"{_words(heading)}, {sub}" if sub and sub != _words(heading) else _words(heading)
+        return (f'<div class="l-tablewrap{m.group(1)}" data-scrollstop="1" '
+                f'data-scrolllabel="{html.escape(label, quote=True)}">{m.group(2)}')
+    return _TABLEWRAP.sub(one, content)
+
+
 def section(sid, heading, content, level=2):
     """One W4 section: the heading in the margin, the prose beside it at
     about 100 characters, and a figure marked wide (civics.wide) across both
     columns where it falls, the prose resuming beside the margin under it."""
-    content = tables(content)
+    content = scroll_regions(tables(content), heading)
     blocks, pos = [], 0
     for m in _WIDE.finditer(content):
         blocks.append(("col", content[pos:m.start()]))
@@ -1544,7 +1580,7 @@ TOPIC_ICON = {
     # the How-To Guides tab (guides.TASKS)
     "Take Part in the Legislature": "testify", "Voting and Elections": "ballot",
     "Driving and Vehicles": "car", "Help and Benefits": "heart", "Property and Records": "house",
-    "Federal Benefits": "idcard", "Know Your Rights": "law", "Insurance": "shield",
+    "Federal Programs and Services": "idcard", "Know Your Rights": "law", "Insurance": "shield",
     "Outdoors and Recreation": "tree",
     "Around Your Town": "pin", "Visiting the State House": "capitol", G.MORE: "grid",
     # the Learn tab (civics.GROUPS, and what follows them)
@@ -2233,6 +2269,28 @@ def guide_flow(g, w=Words()):
             f'<ol>{"".join(items)}</ol></figure>')
 
 
+def step_parts(g, w=Words()):
+    """[(id, label)]: a guide's parts in Step by Step (guides.step's `part`),
+    each with the address of its heading, for On This Page and the index
+    beside the page (the person's walk of the preview, 30 October 2026: a
+    reader jumps to "Renewing an adult passport"). The address is the
+    English part's, so it is the same in every language; [] for a guide
+    whose steps are one list."""
+    out = [("steps-" + _slug(s_["part"]), w.t(s_["part"])) for s_ in g["steps"] if s_.get("part")]
+    ids = [i for i, _ in out]
+    assert len(ids) == len(set(ids)), f"{g['slug']}: two parts share an address: {ids}"
+    return out
+
+
+def otp_items(secs, href, parts=()):
+    """On This Page's rows: a row for each section, and under Step by Step a
+    list one level down of its parts (step_parts), where it has any."""
+    sub = ('<ol class="l-otpsub">' + "".join(f'<li><a href="{E(href)}#{E(pid)}">{_plain(label)}</a></li>'
+                                             for pid, label in parts) + "</ol>") if parts else ""
+    return "".join(f'<li><a href="{E(href)}#{E(sid)}">{_plain(h)}</a>{sub if sid == "steps" else ""}</li>'
+                   for sid, h, _ in secs)
+
+
 def guide_steps(g, w=Words()):
     """THE STEPS, numbered: each one's words, a note set apart where
     something has changed, a button to the official page it needs, and the
@@ -2251,7 +2309,7 @@ def guide_steps(g, w=Words()):
             if out:
                 lists.append(f'<ol class="g-steps">{"".join(out)}</ol>')
                 out = []
-            lists.append(f'<h3 class="g-part">{w.t(s_["part"])}</h3>')
+            lists.append(f'<h3 class="g-part" id="steps-{_slug(s_["part"])}">{w.t(s_["part"])}</h3>')
         acts = "".join(f'<a class="g-btn" href="{E(u)}"'
                        + ('' if u.startswith("/") else ' target="_blank" rel="noopener"'
                           + ('' if w.lang == I.DEFAULT else ' hreflang="en"'))
@@ -2302,7 +2360,7 @@ def guide_page(tmpl, g, base, record, draft_why=""):
                jsonld=None if draft_why else LD.howto(g, base, S.canon(path), when or ""),
                globals={"GR_STATIC": True}, noscript="", skip_label="Skip to the guide", sr_title="",
                nav_current="resources.html", cite=False)
-    items = "".join(f'<li><a href="{E(S.canon(path))}#{E(sid)}">{_plain(h)}</a></li>' for sid, h, _ in secs)
+    items = otp_items(secs, S.canon(path), step_parts(g))
     otp = ('<details class="l-otp"><summary>On this page</summary>'
            f'<nav class="l-otpb" aria-label="On this page"><ol>{items}</ol></nav></details>')
     acts = S.cite_block(path, g["title"], base, S.BUILT)
@@ -2382,10 +2440,11 @@ def lang_sources(sources, w):
                                       'target="_blank" rel="noopener" hreflang="en">')
 
 
-def lang_otp(secs, path, lang):
-    """On This Page, in `lang`, for a page drawn in the home page's frame."""
+def lang_otp(secs, path, lang, parts=()):
+    """On This Page, in `lang`, for a page drawn in the home page's frame;
+    a guide's parts (step_parts, in `lang`) under its Step by Step."""
     here = I.href(lang, path)
-    items = "".join(f'<li><a href="{E(here)}#{E(sid)}">{_plain(h)}</a></li>' for sid, h, _ in secs)
+    items = otp_items(secs, here, parts)
     on = I.say(lang, "guides.on_page", "On this page")
     return (f'<div class="pageacts" id="pageacts"><details class="l-otp"><summary>{on}</summary>'
             f'<nav class="l-otpb" aria-label="{E(on)}"><ol>{items}</ol></nav></details></div>')
@@ -2423,7 +2482,7 @@ def guide_page_lang(g, lang, base, record=""):
                + "</p>" if when else "")
     head_ = (f'<header class="l-head"><h1>{title}</h1>'
              f'<p class="l-lead">{dashes(w.t(g["blurb"]))}</p>' + lang_note(lang) + note + checked
-             + lang_otp(secs, page, lang) + "</header>")
+             + lang_otp(secs, page, lang, step_parts(g, w)) + "</header>")
     article = lang_links("".join(section(*s_) for s_ in secs), lang)
     body = ('<div class="l-page g-page">' + lang_hub_bar(lang) + head_
             + f'<div class="l-art">{article}</div></div>{OTP_JS}')

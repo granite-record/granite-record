@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.56
+# GRANITE_VERSION: 2026-09-19.57
 """
 A page for every day the House sat.
 
@@ -452,7 +452,7 @@ def others_html(others, body, members, esc, payloads, day="", term="", years=Non
          "how the General Court&rsquo;s roll-call file words it, and the quotation "
          "is the Journal&rsquo;s own account, with its page."
          + (f' <a href="session/nobill/{esc(term)}.html">Every vote on no bill in '
-            f"{esc(term)}</a>." if term else "") + "</p>"]
+            f"{esc(C.term_words(term))}</a>." if term else "") + "</p>"]
     for it in others:
         e = VP.entry(rollcall_id(it.rc), motions) if it.rc is not None else None
         # A ROLL CALL ON NO BILL IS DRAWN AS ONE ON A BILL IS (23 October
