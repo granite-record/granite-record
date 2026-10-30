@@ -27789,6 +27789,25 @@ def _openers_turn_right_to_down():
                    "they show only once it is open")
     if not re.search(r"\.sdebate\[open\] \+ \.sdopen\{display:none\}", css):
         bad.append("app.css does not hide a debate's opening sentences once it is open")
+    # And they are its argument: a title does not end a sentence, and thanks to the chair are
+    # passed over (every debate of 14 May 2026 opened "Thank you, Mr. Speaker.…").
+    for said, want in (
+            ("Thank you, Mr. Speaker. I rise today in opposition of Senate Bill 430 as amended. "
+             "Education is not simply about academics. Schools are places of trust.",
+             "I rise today in opposition of Senate Bill 430 as amended. Education is not simply about academics."),
+            ("Thank you very much, Mr. Speaker. Mr. Speaker, you and I have a lot in common. More than that.",
+             "Mr. Speaker, you and I have a lot in common. More than that."),
+            ("Thank you, Madam Speaker.", "Thank you, Madam Speaker."),
+            ("I rise in support. Thank you, Mr. Speaker.", "I rise in support. Thank you, Mr. Speaker."),
+            ("Rep. Smith and Dr. Jones agree. So do I. And so does the committee.",
+             "Rep. Smith and Dr. Jones agree. So do I.")):
+        if BSP.debate_opening(said) != want:
+            bad.append(f"a debate opening {said[:40]!r} reads {BSP.debate_opening(said)!r}")
+    page = BSP._debate_html({"bill": "HB1", "speeches": [
+        ("Rep. Wade", "Thank you, Mr. Speaker. I rise in support of the committee report. It is sound.")]},
+        "H", BSP.Members(Path("no-such-site")), __import__("html").escape)
+    if not page.endswith('</details><p class="sdopen">I rise in support of the committee report. It is sound.…</p>'):
+        bad.append(f"a debate's opening is not after its fold, in its own words: {page[-160:]!r}")
     assert not bad, "; ".join(bad[:6])
     return "ok", (f"{seen} turns of a summary's mark, each right to down; {len(written)} openers the "
                   "pages write, each turned; the debate's opening stands while it is shut")

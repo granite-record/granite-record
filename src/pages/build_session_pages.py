@@ -2662,6 +2662,28 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
     return page, payloads
 
 
+# A DEBATE'S OPENING, AS IT STANDS UNDER THE SHUT FOLD (the R2 polish batch,
+# 30 October 2026). Once the sentences stood where a reader sees them, every
+# debate of 14 May 2026 opened "Thank you, Mr. Speaker.…": the split took
+# "Mr." for the end of a sentence, and the courtesy for the opening. A title
+# does not end a sentence, and thanks to the chair are not what the member
+# said, so the two sentences after them are the opening; a speech of thanks
+# alone keeps them.
+_TITLE_END = "".join(rf"(?<!\b{t}\.)" for t in ("Mr", "Mrs", "Ms", "Dr", "Rep", "Sen", "St", "No"))
+_SENTENCE_END = re.compile(rf"(?<=[.!?]){_TITLE_END}\s+")
+_COURTESY = re.compile(r"(?i)^(?:thank you|thanks)(?: very much| so much)?,? (?:mr\.|madam|mister) "
+                       r"(?:deputy )?speaker[.!]$")
+
+
+def debate_opening(text):
+    """The first two sentences of a speech, after any thanks to the chair,
+    cut at 420 characters."""
+    said = _SENTENCE_END.split(text.strip())
+    while len(said) > 1 and _COURTESY.match(said[0]):
+        said = said[1:]
+    return " ".join(said[:2])[:420]
+
+
 def _debate_html(d, body, members, esc, head=False, chair=None):
     """A printed debate: the opening, and the rest behind a disclosure.
 
@@ -2691,7 +2713,7 @@ def _debate_html(d, body, members, esc, head=False, chair=None):
     # is handed, and shadowing it made every speaker link raise.
     spoke = [x for x in sp if not x[0].lower().startswith(CHAIR)]
     first = (spoke or sp)[0][1]
-    opener = " ".join(re.split(r"(?<=[.!?])\s+", first)[:2])[:420]
+    opener = debate_opening(first)
     n = len(spoke)
     title = ""
     if head and d.get("bill"):
