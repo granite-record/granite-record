@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.255
+// GRANITE_VERSION: 2026-09-07.256
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -7316,6 +7316,15 @@ document.addEventListener("click",e=>{
   else pick();
 });
 
+// THE RECORD'S OWN ADDRESS, WHATEVER TAB IS OPEN (the review of 30 October
+// 2026). A tab writes its name into the address (tabAddress: /bill/2026/hb1/
+// votes, /committee/ss1546/bills), and report.js takes a report only from the
+// record's own address, so a report sent from any tab but the first was
+// dropped while the reader was thanked. The tab goes as the payload's tab.
+function reportPath(){
+  const p=location.pathname.replace(/\.html$/,""),m=TAB_PATH.exec(p);
+  return m&&isTabSlug(m[2].toLowerCase())?m[1]:p.replace(/\/$/,"");
+}
 function reportFallback(form,payload,why){
   const st=form.querySelector(".reportstate");
   const subject=`Problem on ${location.hostname}${payload.url}`;
@@ -7353,7 +7362,7 @@ document.addEventListener("submit",async e=>{
   const tabLabel=tab?tab.textContent.trim().replace(/\s*\([\d.,\s']+\)\s*$/,""):"";
   const payload={
     record:`${box.dataset.rkind}:${box.dataset.rref}`,
-    url:location.pathname.replace(/\.html$/,""),
+    url:reportPath(),
     tab:REPORT_TABS.has(tabLabel)?tabLabel:"",
     field:form.elements.field.value,
     note,

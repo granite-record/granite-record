@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.15
+# GRANITE_VERSION: 2026-09-12.16
 """
 What readers reported, compiled for a person and for the session that triages.
 
@@ -749,6 +749,10 @@ def producer(record, field):
         return "build_site_v2.py (member_labels), build_legislator_pages.py"
     if kind == "committee":
         return "build_committees.py"
+    if kind == "study":
+        return "build_study_committees.py"
+    if kind == "session":
+        return "build_session_pages.py (session_days.py, journal_days.py)"
     current = ref.split("/")[0] in current_years()
     return PRODUCERS[field][0 if current else 1]
 

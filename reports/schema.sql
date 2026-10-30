@@ -1,4 +1,4 @@
--- GRANITE_VERSION: 2026-09-12.2
+-- GRANITE_VERSION: 2026-09-12.3
 -- What a reader's report is, as stored by functions/api/report.js.
 --
 -- Applied once to each database, by hand:
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS reports (
   id      INTEGER PRIMARY KEY AUTOINCREMENT,  -- monotonic: the nightly's cursor
   at      TEXT NOT NULL,      -- ISO 8601, the server's clock
   record  TEXT NOT NULL,      -- bill:2026/HB100 | member:736 | committee:H05
-  kind    TEXT NOT NULL,      -- bill | member | committee
+  kind    TEXT NOT NULL,      -- bill | member | committee | session | study | translation
   url     TEXT NOT NULL,      -- the page's own path, /bill/2026/hb100
   tab     TEXT NOT NULL,      -- the tab that was open, counts stripped, or ''
   field   TEXT NOT NULL,      -- what is wrong, from the fixed list
