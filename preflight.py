@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.743
+# GRANITE_VERSION: 2026-09-04.744
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -84852,7 +84852,16 @@ def _knock_ladder(R):
     as an answer the bucket never heard; this run's own claim holds nothing.
     And a knock left "no answer" (the reviewers of 30 October 2026) holds
     the next 14 minutes on, and 16 minutes on, whoever made it, is an answer
-    never written down: a person's, nothing due."""
+    never written down: a person's, nothing due.
+
+    ONE NIGHT KNOCK A MORNING (the reviewers of 30 October 2026): the same
+    ladder with the night's caller asking at 08:23:40 and again at 09:23:40,
+    10:23:40 and 11:10 every morning -- re-runs, runs by hand, a double night
+    -- is still 94 knocks, at most 19 in a UTC day, the night's once a
+    morning at most; and at 09:23:40, its rung due, the gate says why a
+    second night asks nothing, the morning after the drop (the night
+    knocked at 08:23:40) and the morning of it (a night met the refusal at
+    08:27:15)."""
     from collections import Counter
     from datetime import datetime, timezone
     tmp = Path(tempfile.mkdtemp(prefix="gr-ladder-"))
@@ -84877,14 +84886,56 @@ def _knock_ladder(R):
                 R.knocking(_KNOCK_URL)
                 R.knocked("dropped", "closed without a byte")
                 knocks.append((t, by))
-            h = (since // H + 1) * H
-            while h < since + 17 * 24 * H:
-                day = utc(h).replace(hour=0, minute=0, second=0).timestamp()
-                nt = day + 8 * H + 23 * 60 + 40
-                if h <= nt < h + H:
-                    knock(nt, "night")
-                knock(h + 47 * 60, "hourly")
-                h += H
+
+            def sweep(nights):
+                """The ladder, the night's caller asking at each of `nights`,
+                seconds past midnight UTC, every morning."""
+                R.MARK.write_bytes(_knock_record())
+                R.knocks_file().unlink(missing_ok=True)
+                del knocks[:]
+                h = (since // H + 1) * H
+                while h < since + 17 * 24 * H:
+                    day = utc(h).replace(hour=0, minute=0, second=0).timestamp()
+                    for nt in (day + n for n in nights):
+                        if h <= nt < h + H:
+                            knock(nt, "night")
+                    knock(h + 47 * 60, "hourly")
+                    h += H
+
+            # ONE NIGHT KNOCK A MORNING: the night re-run through the morning.
+            sweep((8 * H + 23 * 60 + 40, 9 * H + 23 * 60 + 40, 10 * H + 23 * 60 + 40,
+                   11 * H + 10 * 60))
+            again = list(knocks)
+            nights = Counter(utc(t).date() for t, by in again if by == "night")
+            daily = Counter(utc(t).date() for t, _ in again)
+            assert len(again) == 94 and max(nights.values()) == 1 and \
+                max(daily.values()) <= 19, (
+                    f"the night asking four times a morning: {len(again)} knocks, the night's "
+                    f"{max(nights.values())} in a morning at most, {max(daily.values())} in a "
+                    "UTC day: one night knock a morning, 94 and 19 at most")
+            # The morning after the drop: the night at 08:23:40 knocks, and
+            # at 09:23:40, its own rung due, a second night asks nothing.
+            day1 = utc(since).replace(hour=0, minute=0, second=0).timestamp() + 24 * H
+            R.MARK.write_bytes(_knock_record())
+            R.knocks_file().unlink(missing_ok=True)
+            del knocks[:]
+            knock(day1 + 8 * H + 23 * 60 + 40, "night")
+            second = day1 + 9 * H + 23 * 60 + 40
+            clock(second)
+            ok, why = R.knock_gate("night", now=second)
+            assert len(knocks) == 1 and not ok and "one night knock a morning" in why and \
+                R.knock_due(now=second)[0], \
+                (f"the night at 08:23:40 knocked {len(knocks)} times; a second night at "
+                 f"09:23:40, its own rung due: the gate said {ok}, {why!r}")
+            # And the morning of the drop, met at 08:27:15 by that morning's
+            # night: a night at 09:23:40, its own rung due, asks nothing.
+            R.knocks_file().unlink(missing_ok=True)
+            clock(second - 24 * H)
+            ok, why = R.knock_gate("night", now=second - 24 * H)
+            assert not ok and "a night met this refusal" in why and \
+                R.knock_due(now=second - 24 * H)[0], \
+                f"a second night on the morning of the drop, at 09:23:40: {ok}, {why!r}"
+            sweep((8 * H + 23 * 60 + 40,))
             fast = [t for t, _ in knocks if t - since < 48 * H]
             slow = [t for t, _ in knocks if t - since >= 48 * H]
             assert (len(knocks), len(fast), len(slow)) == (94, 38, 56), (

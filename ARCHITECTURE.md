@@ -459,7 +459,8 @@ each morning a knock is due, under its own lock,
 `src/fetch/gc_web/snapshot_gencourt.py --knock` asks one small file once, never
 retried and following no redirect, behind `refusal.check(knock=True)`,
 whose gate (`refusal.knock_gate()`) holds the night's caller to 08:00-11:18
-UTC and the hourly one, `knock.yml`'s, to outside every night window and its
+UTC, once a morning however many nights run, and not at all the morning a
+night met the refusal, and the hourly one, `knock.yml`'s, to outside every night window and its
 margin, for a record that reached the bucket an hour before the last window
 closed, and asks nothing, exit 4, otherwise. Answered with the file, the
 refusal is lifted, and the night's knock asks the export once; the hourly

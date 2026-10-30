@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.32
+# GRANITE_VERSION: 2026-09-09.33
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -1302,7 +1302,24 @@ def knock_gate(by, now=None):
          run, the chain in knocks.json, the switch and the settings);
       5. knock_due() says a knock is due now;
       6. the clock lets `by` ask (knock_hours);
-      7. for "hourly", the record settled (_settled), by its own epoch.
+      7. for "hourly", the record settled (_settled), by its own epoch;
+      8. for "night", nothing asked by the night since today's window
+         opened: no knock by the night in the chain, and not the request
+         that met this refusal (ONE NIGHT KNOCK A MORNING, below).
+
+    ONE NIGHT KNOCK A MORNING (the reviewers of 30 October 2026). The
+    ceiling the owner was given -- 96 requests a chain, at most 19 in a UTC
+    day -- counts the night's knock once a morning. Nothing held it there:
+    in the hourly phase every main night run between the window's start and
+    KNOCK_LATEST knocked in a rung of its own -- a re-run, a run by hand, the
+    double night the 'started' job allows -- 100 knocks a chain (102
+    requests) and 22 in a day at the worst the reviewers found. So the
+    night's caller knocks once in a daily window, the knock answered or not;
+    a second night that morning asks nothing. And the morning of the drop
+    the night has asked already: a refusal noted since the window opened
+    was met by a night that morning (only GitHub's nights on main ask
+    then), and a second night knocking after it would be a knock the
+    ceiling never counted -- 95 in the ladder, not 94.
 
     check(knock=True), --knock-claim and --knock-look are its callers."""
     if by not in KNOCK_BY:
@@ -1331,6 +1348,17 @@ def knock_gate(by, now=None):
         ok, why = _settled(doc.get("epoch") or 0, now)
         if not ok:
             return False, why
+    if by == "night":
+        daily = next(w for w in NIGHT_WINDOWS if w[0] is None)
+        opened = _utc(now).replace(hour=daily[1][0], minute=daily[1][1], second=0, microsecond=0)
+        done = [x for x in (chain(raw) or {}).get("knocks", []) if x.get("by") == "night"
+                and float(x.get("epoch") or 0) >= opened.timestamp()]
+        met = float(doc.get("epoch") or 0) >= opened.timestamp()
+        if done or met:
+            return False, ((f"the night knocked at {done[-1].get('utc')}" if done else
+                            f"a night met this refusal at {_stamp(float(doc.get('epoch')))}")
+                           + f", since its window opened at {opened:%H:%M} UTC today: one night "
+                           "knock a morning, however many nights run")
     return True, ""
 
 

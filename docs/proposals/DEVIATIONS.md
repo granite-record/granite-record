@@ -769,3 +769,18 @@ that made it.
      redirect: if the postback or an index page did so in the ordinary way,
      the first night after this lands would record a refusal the night
      cannot test (kind "refused" is a person's), and the email says so.
+116. **One night knock a morning** (`knock_gate()` condition 8). The
+     ceiling for_owner states, 96 requests a chain and about 19 a day,
+     counted the night's knock once a morning, but nothing held the night's
+     caller to it: in the hourly phase a re-run, a run by hand or the
+     double night knocked in a rung of its own, 100 knocks and 22 in a day
+     in the ladder (the reviewers' simulation, and `_knock_ladder`'s with
+     the rule taken out). The gate now refuses the night's caller when the
+     chain holds a knock `by` "night" since today's window opened -- the
+     reviewers' rule -- and also when the record itself was noted since
+     then: only a night asks in that window, so the drop that morning was
+     the night's request. Without that second half a re-run on the morning
+     of the drop knocks once more than the ceiling counts (95 knocks in the
+     ladder, 97 requests). The ladder with the night asking at 08:23:40,
+     09:23:40, 10:23:40 and 11:10 every morning is 94 knocks, at most 19 in
+     a day.
