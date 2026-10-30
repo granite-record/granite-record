@@ -339,10 +339,22 @@ a folder standing in for the bucket.
 6. Owner-page link discovery: on each owner page, the PDF links the registry
    lacks, reported for the owner to register.
 
-## Open questions for the owner
+## The owner's answers (30 October 2026, relayed by the manager)
 
-1. Approve the recommendation, (a) with (e1) and (c)?
-2. Go for the one test in step 1 (one request per host, from the laptop)?
-3. Is (b) acceptable under the rule, if (a) fails? My reading: honest, but
-   likely refused.
-4. Willing to write to the LBA, DAS and the web team (c)?
+1. The recommendation is approved, with its defaults.
+2. The test was run. With Claude in Chrome on the laptop, the Secretary of
+   State's page and the DAS budget page both opened.
+3. Playwright: not now. Revisit only if Claude in Chrome fails.
+4. The emails: drafted in `EMAILS.md`, for the owner to send.
+5. The guard: `sources-up` stays without a prompt. It can write only
+   `sources/`, and preflight keeps the nightly from reading it.
+
+## Phase 2, as built
+
+- `state_sources.py file`: the filer (item 2 above). Its preflight check makes
+  the Windows download stream as an ordinary file of the same name.
+- `due --used-by`, for a run of one page's documents.
+- `docs/STATE_SOURCES_RUNBOOK.md`: the setup, the weekly run, the scheduled
+  task's prompt, the manual mode, and the first job (the budget page's DAS
+  documents).
+- Still open: items 4 to 6 above.

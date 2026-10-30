@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.734
+# GRANITE_VERSION: 2026-09-04.735
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -56803,6 +56803,76 @@ def _state_sources_apart(CL, SS):
     return "ok", (f"{len(reg)} registered documents ({len(gc)} the General Court's, the "
                   "owner's alone); nothing in the kit can match sources/; a round trip "
                   "sends each version once and replaces none")
+
+
+@check("cloud", "a browser's downloads are filed by the address each came from, copied "
+       "and never moved, and a state document that cannot be placed is named",
+       needs=("state_sources",))
+def _state_sources_file(SS):
+    """state_sources.py file reads the folder Chrome saved into on the laptop
+    (30 October 2026). Windows records each download's address in a stream
+    beside it, which reads as "<name>:Zone.Identifier"; on this machine that
+    is an ordinary file of that name, which is how it is made here. A file is
+    placed by that address, else by a name only one registered address ends
+    in ("name (1).pdf" being Chrome's second copy); --as names one by hand and
+    is refused where the recorded address says otherwise. Nothing is moved or
+    deleted, a document filed once is not filed again, and a state document
+    the registry lacks is named with the row it would need, not filed.
+    """
+    import contextlib
+    import io
+    reg = SS.load_registry(_paths.ROOT)
+    pdfs = [(i, r) for i, r in reg.items() if r["kind"] == "pdf" and r["read_by"] == "browser"]
+    leaves = {}
+    for i, r in pdfs:
+        leaves.setdefault(SS.leaf(r["url"]), []).append(i)
+    (a_id, a_row), = pdfs[:1]
+    b_id, b_row = next((i, r) for i, r in pdfs[1:] if len(leaves[SS.leaf(r["url"])]) == 1)
+    t = Path(tempfile.mkdtemp(prefix="granite-file-"))
+    try:
+        root, dl = t / "root", t / "Downloads"
+        (root / "records" / "sources").mkdir(parents=True)
+        dl.mkdir()
+        shutil.copy(_paths.ROOT / SS.REGISTRY, root / SS.REGISTRY)
+
+        def run(*argv):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+                code = SS.main(["file", *argv, "--root", str(root)])
+            return code, out.getvalue()
+
+        def zone(name, url):
+            (dl / f"{name}:Zone.Identifier").write_text(
+                f"[ZoneTransfer]\r\nZoneId=3\r\nHostUrl={url}\r\n", encoding="utf-8")
+
+        (dl / "download.pdf").write_bytes(b"by address")
+        zone("download.pdf", a_row["url"])
+        stem, ext = SS.leaf(b_row["url"]).rsplit(".", 1)
+        (dl / f"{stem} (1).{ext}").write_bytes(b"by name")
+        (dl / "unknown.pdf").write_bytes(b"not registered")
+        zone("unknown.pdf", "https://www.das.nh.gov/budget/not-in-the-registry.pdf")
+        (dl / "holiday.jpg").write_bytes(b"not a document")
+        code, out = run(str(dl), "--day", "2026-10-30")
+        assert code == 0, out
+        assert (root / "sources" / a_id / "2026-10-30.pdf").read_bytes() == b"by address", out
+        assert (root / "sources" / b_id / "2026-10-30.pdf").read_bytes() == b"by name", out
+        assert "NOT PLACED unknown.pdf" in out and "not-in-the-registry.pdf,pdf," in out, out
+        assert (dl / "download.pdf").exists(), "the filer moved a download rather than copy it"
+        n = sorted(p.name for p in (root / "sources").rglob("*") if p.is_file())
+        code, out = run(str(dl), "--day", "2026-10-30")
+        assert code == 0 and "ALREADY" in out, out
+        assert sorted(p.name for p in (root / "sources").rglob("*") if p.is_file()) == n, (
+            "a document already filed was filed again")
+        code, out = run(str(dl / "download.pdf"), "--as", b_id)
+        assert code == 1 and "not from" in out, ("--as filed a download under an id its "
+                                                 "recorded address contradicts", out)
+        empty = t / "empty"
+        empty.mkdir()
+        assert run(str(empty))[0] == 1, "a run that filed nothing said it succeeded"
+    finally:
+        shutil.rmtree(t, ignore_errors=True)
+    return "ok", ("placed by recorded address and by name, copied not moved, filed once, "
+                  "--as checked against the address, an unregistered state document named")
 
 
 @check("cloud", "cloud.py sends, fetches and backs up without losing anything",

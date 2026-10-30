@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.2
+# GRANITE_VERSION: 2026-10-30.3
 """
 The state documents the guides and Learn pages rest on: from the laptop, where
 a real browser can read them, to the sessions, which cannot.
@@ -9,8 +9,11 @@ a real browser can read them, to the sessions, which cannot.
     python3 src/ops/state_sources.py up [--dry-run]        the laptop sends what it read
     python3 src/ops/state_sources.py down [--into FOLDER]  a session takes them
     python3 src/ops/state_sources.py report [--since DAY]  what changed, from the bucket's record
-    python3 src/ops/state_sources.py due                   registered documents never read,
+    python3 src/ops/state_sources.py due [--used-by X]     registered documents never read,
                                                             or not read in their interval
+    python3 src/ops/state_sources.py file FOLDER [...]     file a browser's downloads under
+                     [--as ID] [--day DAY] [--dry-run]      sources/, by the address each
+                                                            came from
 
     --local-bucket FOLDER   a folder stands in for the bucket, for testing
     --root FOLDER           the working folder (default: the current one)
@@ -49,6 +52,18 @@ The nightly never reads sources/: its kit is cloud_kit.json's list, kit-down
 takes kit/ alone, and preflight fails if anything in the kit could match
 sources/. These are evidence for the people and sessions who write the guides,
 not inputs to the build.
+
+FILING DOWNLOADS (Phase 2, 30 October 2026). `file` reads a folder Chrome
+saved into (Downloads) and copies each document it can place into
+sources/<id>/<day>.<ext>. It places a file by the address Windows recorded
+for the download (the HostUrl line of its Zone.Identifier stream, which
+Chrome writes on every file it saves), and failing that by a file name that
+only one registered address ends in. It copies, never moves or deletes; it
+leaves a file it has already filed alone; and it names every state document
+it could not place, with the row the registry would need. Only files
+modified in the last 14 days are read unless --all says otherwise, so a
+Downloads folder of years is not read whole. The day is the file's own
+modification day, which is when it was saved, unless --day says otherwise.
 
 WHAT IT ASKS. The bucket, and nothing else. No state site, and never the
 General Court. boto3 only for the real bucket.
@@ -143,8 +158,9 @@ def load_registry(root):
             bad.append(f"{where}: read_by {r['read_by']!r} is not one of {sorted(READ_BY)}")
         if r["changes"] not in CHANGES:
             bad.append(f"{where}: changes {r['changes']!r} is not one of {sorted(CHANGES)}")
-        if not r["used_by"].strip():
-            bad.append(f"{where}: used_by is empty; a document nothing uses is not registered")
+        if not r["used_by"].strip() or "<" in r["used_by"]:
+            bad.append(f"{where}: used_by is empty or a placeholder; say which guide or "
+                       "page uses it (a document nothing uses is not registered)")
         if r["kind"] == "wanted":
             if r["url"]:
                 bad.append(f"{where}: a wanted row has an address; give it its kind")
@@ -494,8 +510,14 @@ def cmd_due(a, root):
     bucket = open_bucket(a)
     man, _ = read_manifest(bucket)
     got = due(reg, man)
-    say(f"{len(got)} of {sum(1 for r in reg.values() if r['read_by'] == 'browser')} "
-        "documents a browser reads are due:")
+    pool = [r for r in reg.values() if r["read_by"] == "browser"]
+    if a.used_by:
+        got = [g for g in got if a.used_by in reg[g[0]]["used_by"].split()]
+        pool = [r for r in pool if a.used_by in r["used_by"].split()]
+        if not pool:
+            raise Failed(f"no registered document is used by {a.used_by!r}")
+    say(f"{len(got)} of {len(pool)} documents a browser reads"
+        + (f" for {a.used_by}" if a.used_by else "") + " are due:")
     for i, why in got:
         say(f"  {i:<56} {why}   {reg[i]['url']}")
     owner = [i for i, r in reg.items() if r["read_by"] == "owner-only"]
@@ -512,15 +534,178 @@ def cmd_check(a, root):
     say(f"{REGISTRY}: {len(reg)} rows read; {len(files)} file(s) in {FOLDER}/ filed under them.")
 
 
+# ------------------------------------------------------------------- file --
+
+RECENT_DAYS = 14
+COPY_SUFFIX = re.compile(r" \(\d+\)(?=\.[^.]+$)")     # Chrome's "name (1).pdf"
+
+
+def norm_url(url):
+    """An address as compared: no scheme, no www., the host in lower case,
+    no trailing slash, no fragment."""
+    p = urlsplit(url.strip())
+    host = (p.hostname or "").lower().removeprefix("www.")
+    path = p.path.rstrip("/") or "/"
+    return f"{host}{path}" + (f"?{p.query}" if p.query else "")
+
+
+def downloaded_from(path):
+    """The address Windows recorded for a download, or None. Chrome writes
+    it to the file's Zone.Identifier stream, read on Windows as the file
+    name followed by ':Zone.Identifier'. Elsewhere, and for a file saved
+    another way, there is none."""
+    try:
+        text = Path(str(path) + ":Zone.Identifier").read_text(encoding="utf-8",
+                                                               errors="replace")
+    except OSError:
+        return None
+    for line in text.splitlines():
+        k, _, v = line.partition("=")
+        if k.strip().lower() == "hosturl" and v.strip().startswith("https://"):
+            return v.strip()
+    return None
+
+
+def leaf(url):
+    from urllib.parse import unquote
+    return unquote(urlsplit(url).path.rstrip("/").rsplit("/", 1)[-1]).lower()
+
+
+def place(path, reg, by_url, by_leaf):
+    """(id, how) for a downloaded file, or (None, why)."""
+    url = downloaded_from(path)
+    if url:
+        i = by_url.get(norm_url(url))
+        if i:
+            return i, f"from {url}"
+        return None, f"downloaded from {url}, which the registry does not name"
+    name = COPY_SUFFIX.sub("", path.name).lower()
+    ids = by_leaf.get(name, [])
+    if len(ids) == 1:
+        return ids[0], "by its name"
+    if len(ids) > 1:
+        return None, f"its name fits {len(ids)} registered addresses: {', '.join(ids)}"
+    return None, None
+
+
+def is_state_url(url):
+    host = (urlsplit(url).hostname or "").lower()
+    return host == "nh.gov" or host.endswith(".nh.gov")
+
+
+def cmd_file(a, root):
+    reg = load_registry(root)
+    if not a.paths:
+        raise Failed("file needs a folder (or files) to file from, e.g. ~/Downloads")
+    by_url = {norm_url(r["url"]): i for i, r in reg.items() if r["url"]}
+    by_leaf = {}
+    for i, r in reg.items():
+        if r["url"] and r["kind"] in ("pdf", "data"):
+            by_leaf.setdefault(leaf(r["url"]), []).append(i)
+    if a.as_id and a.as_id not in reg:
+        raise Failed(f"--as {a.as_id}: not an id in {REGISTRY}")
+    if a.as_id and reg[a.as_id]["kind"] == "wanted":
+        raise Failed(f"--as {a.as_id}: a wanted row; give it its address and kind first")
+    cands = []
+    cutoff = datetime.now().timestamp() - RECENT_DAYS * 86400
+    for raw in a.paths:
+        p = Path(raw).expanduser()
+        if p.is_file():
+            cands.append(p)
+        elif p.is_dir():
+            cands += [q for q in sorted(p.iterdir()) if q.is_file()
+                      and (a.all or q.stat().st_mtime >= cutoff)]
+        else:
+            raise Failed(f"{raw}: no such file or folder")
+    cands = [q for q in cands if ":" not in q.name and not q.name.endswith((".part", ".crdownload", ".tmp"))
+             and q.suffix.lower().lstrip(".") in EXTS]
+    if a.as_id and len(cands) != 1:
+        raise Failed(f"--as names one document, and {len(cands)} files were given")
+    filed, already, unplaced = [], [], []
+    base = Path(root) / FOLDER
+    for q in cands:
+        if a.as_id:
+            i, how = a.as_id, "as named"
+            url = downloaded_from(q)
+            if url and norm_url(url) != norm_url(reg[i]["url"]):
+                raise Failed(f"{q.name} was downloaded from {url}, not from {i}'s address "
+                             f"{reg[i]['url']}; file it under the right id, or fix the registry")
+        else:
+            i, how = place(q, reg, by_url, by_leaf)
+        if not i:
+            url = downloaded_from(q)
+            if how or (url and is_state_url(url)):
+                unplaced.append((q, how, url))
+            continue
+        sha = sha256_of(q)
+        d = base / i
+        same = [f for f in sorted(d.glob("*")) if f.is_file() and sha256_of(f) == sha] if d.is_dir() else []
+        if same:
+            already.append((q, i, same[0].name))
+            continue
+        day = a.day or date.fromtimestamp(q.stat().st_mtime).isoformat()
+        ext = q.suffix.lower().lstrip(".")
+        dst, n = d / f"{day}.{ext}", 1
+        while dst.exists():
+            n += 1
+            dst = d / f"{day}-{n}.{ext}"
+        filed.append((q, i, dst, how))
+        if not a.dry_run:
+            import shutil
+            d.mkdir(parents=True, exist_ok=True)
+            tmp = dst.with_name(dst.name + ".part")
+            shutil.copyfile(q, tmp)
+            os.replace(tmp, dst)
+    verb = "Would file" if a.dry_run else "Filed"
+    say(f"{verb} {len(filed)}; {len(already)} already filed; {len(unplaced)} state "
+        f"document(s) not placed; of {len(cands)} file(s) read.")
+    for q, i, dst, how in filed:
+        say(f"  {verb.upper():<10} {q.name}  ->  {FOLDER}/{i}/{dst.name}  ({how})")
+    for q, i, name in already:
+        say(f"  ALREADY    {q.name}  =  {FOLDER}/{i}/{name}")
+    for q, why, url in unplaced:
+        say(f"  NOT PLACED {q.name}: {why or 'no address recorded for it and no registered name fits'}")
+        if url:
+            say(f"             a row for it: {suggest_row(url)}")
+    if not filed and not already:
+        raise Failed("nothing was filed: no file read could be placed under the registry")
+
+
+def suggest_row(url):
+    """A registry row for an address it lacks, for a person to check and add."""
+    p = urlsplit(url)
+    host = (p.hostname or "").removeprefix("www.").replace(".nh.gov", "").replace(".", "-")
+    stem = re.sub(r"\.(pdf|html?|aspx|xlsx?|csv)$", "", leaf(url))
+    i = f"{host}-{re.sub(r'[^a-z0-9]+', '-', stem).strip('-')[:48].strip('-')}"
+    kind = "pdf" if leaf(url).endswith(".pdf") else "page"
+    row = [i, url, kind, "", "", "", "unknown", "owner-only" if is_gc(url) else "browser",
+           "<who uses it>", "discovered", f"downloaded {date.today().isoformat()}"]
+    import io
+    out = io.StringIO()
+    csv.writer(out, lineterminator="").writerow(row)
+    return out.getvalue()
+
+
 COMMANDS = {"check": cmd_check, "up": cmd_up, "down": cmd_down, "report": cmd_report,
-            "due": cmd_due}
+            "due": cmd_due, "file": cmd_file}
 
 
 def main(argv=None, locked=False):
     """`locked`: the caller (cloud.py sources-up) holds cloud.py's machine lock."""
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0].strip())
     ap.add_argument("command", choices=sorted(COMMANDS))
-    ap.add_argument("--dry-run", action="store_true", help="up, down: say, and send nothing")
+    ap.add_argument("paths", nargs="*", metavar="PATH",
+                    help="file: the folders (or files) a browser saved into")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="up, down, file: say, and send or copy nothing")
+    ap.add_argument("--as", dest="as_id", metavar="ID",
+                    help="file: the one file given is this registered document")
+    ap.add_argument("--day", metavar="YYYY-MM-DD",
+                    help="file: the day it was read (default: the file's own day)")
+    ap.add_argument("--all", action="store_true",
+                    help=f"file: read every file, not only the last {RECENT_DAYS} days'")
+    ap.add_argument("--used-by", metavar="X",
+                    help="due: only what this guide or page uses, e.g. learn:state-budget")
     ap.add_argument("--into", metavar="FOLDER", help="down: where to put them (default sources/)")
     ap.add_argument("--since", metavar="YYYY-MM-DD", help="report: versions read since then")
     ap.add_argument("--local-bucket", metavar="FOLDER",
@@ -528,11 +713,16 @@ def main(argv=None, locked=False):
     ap.add_argument("--root", default=".", help="the working folder")
     a = ap.parse_args(argv)
     a.locked = locked
-    if a.since:
-        try:
-            date.fromisoformat(a.since)
-        except ValueError:
-            ap.error(f"--since {a.since}: not YYYY-MM-DD")
+    if a.paths and a.command != "file":
+        ap.error(f"{a.command} takes no PATH; only file does")
+    for flag in ("since", "day"):
+        v = getattr(a, flag)
+        if v:
+            try:
+                if date.fromisoformat(v) > date.today():
+                    ap.error(f"--{flag} {v}: a day that has not come")
+            except ValueError:
+                ap.error(f"--{flag} {v}: not YYYY-MM-DD")
     root = Path(a.root).resolve()
     try:
         COMMANDS[a.command](a, root)
