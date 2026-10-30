@@ -74959,6 +74959,44 @@ def _tap_targets_24(C, BSP):
                   + f"; {blocks} on a line of its own (a debate's speaker) --tap-line, given back")
 
 
+@check("frontend", "a Learn or guide table's box that scrolls is a named region a keyboard can reach: "
+       "role=region, named by its caption, and a Tab stop while its table is wider than it is",
+       needs=("build_civics",))
+def _learn_tables_reachable(BCV):
+    """The cohesion audit of 30 October 2026 (B-2): By the Numbers' fourteen
+    tables are 428-811px wide in a 364px box at 390, and the box scrolled
+    with no name, role or Tab stop, so a keyboard could not pan it. /data's
+    coverage table did it right (build_exports: role="region", a name, and
+    data-scrollstop, by which app.js's scrollStops gives the box tabindex=0
+    while it scrolls and only then). Every .l-tablewrap the pages write goes
+    through build_civics.section, which now does the same, naming the box by
+    its table's caption or, without one, its section's heading. Held here on
+    section itself and on every Learn and guide page the fixture builds."""
+    got = BCV.section("s-x", "The Numbers", '<div class="l-tablewrap l-stack"><table class="l-table">'
+                      "<caption>Seats in each chamber</caption><tbody></tbody></table></div>"
+                      '<div class="l-tablewrap"><table class="l-table"><tbody></tbody></table></div>')
+    bad = []
+    if got.count('data-scrollstop="1" role="region"') != 2 or 'aria-label="Seats in each chamber"' not in got \
+            or 'aria-label="The Numbers"' not in got:
+        bad.append(f"build_civics.section does not name and mark a table's box: {got[:300]}")
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    if not re.search(r'querySelectorAll\("\[data-scrollstop\]"\)', app) or "scrollStops();" not in app:
+        bad.append("app.js no longer makes a [data-scrollstop] box a Tab stop while it scrolls")
+    shared = _fixture_site_shared()[0] / "site"
+    boxes = 0
+    for f in sorted(list((shared / "learn").rglob("*.html")) + list((shared / "guides").rglob("*.html"))):
+        for m in re.finditer(r'<div class="l-tablewrap[^"]*"([^>]*)>', f.read_text(encoding="utf-8")):
+            boxes += 1
+            if 'data-scrollstop="1"' not in m.group(1) or 'role="region"' not in m.group(1) \
+                    or not re.search(r'aria-label="[^"]+"', m.group(1)):
+                bad.append(f"{f.relative_to(shared)}: a table's box {m.group(0)[:120]!r}")
+    # A floor, so that this cannot pass by reading no page: 41 when written.
+    if boxes < 20:
+        bad.append(f"only {boxes} table boxes in the fixture's Learn and guide pages; they are not being read")
+    assert not bad, "; ".join(bad[:5])
+    return "ok", f"section names and marks a table's box; {boxes} in the fixture's Learn and guide pages, each so"
+
+
 @check("frontend", "a heading under a section on a guide, a Learn page and /data is smaller than the "
        "section's own: a step, a phase, a subsection at --t-read under the section's --t-h3")
 def _subsections_under_sections():

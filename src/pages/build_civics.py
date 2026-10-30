@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.84
+# GRANITE_VERSION: 2026-09-08.85
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1237,11 +1237,38 @@ def tables(content):
             if "<table>" in content else content)
 
 
+# A TABLE'S BOX IS A NAMED PLACE A KEYBOARD CAN REACH (the cohesion audit of
+# 30 October 2026, B-2). By the Numbers' fourteen tables are 428-811px wide
+# in a 364px box on a phone; they scrolled, but the box had no name and no
+# Tab stop, so a keyboard could not pan it. /data's coverage table already
+# did it right, and this is the same: role="region" named by the table's
+# caption (or its section's heading, where it has none), and data-scrollstop,
+# by which app.js's scrollStops makes the box a Tab stop while its table is
+# wider than it is, and only then.
+_TABLEWRAP = re.compile(r'<div class="l-tablewrap([^"]*)">(\s*<table[^>]*>\s*(?:<caption[^>]*>(.*?)</caption>)?)',
+                        re.S)
+
+
+def _words(x):
+    """The words of a piece of HTML, as a name reads them."""
+    return " ".join(html.unescape(re.sub(r"<[^>]+>", " ", x or "")).split())
+
+
+def scroll_regions(content, heading):
+    """content with each Learn table's box named and marked as a Tab stop
+    while it scrolls."""
+    def one(m):
+        label = _words(m.group(3)) or _words(heading)
+        return (f'<div class="l-tablewrap{m.group(1)}" data-scrollstop="1" role="region" '
+                f'aria-label="{html.escape(label, quote=True)}">{m.group(2)}')
+    return _TABLEWRAP.sub(one, content)
+
+
 def section(sid, heading, content, level=2):
     """One W4 section: the heading in the margin, the prose beside it at
     about 100 characters, and a figure marked wide (civics.wide) across both
     columns where it falls, the prose resuming beside the margin under it."""
-    content = tables(content)
+    content = scroll_regions(tables(content), heading)
     blocks, pos = [], 0
     for m in _WIDE.finditer(content):
         blocks.append(("col", content[pos:m.start()]))
