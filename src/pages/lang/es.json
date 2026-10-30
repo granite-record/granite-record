@@ -23899,6 +23899,11 @@
    "es": "El Senado hoy",
    "state": "draft"
   },
+  "votes.unfetched": {
+   "en": "The live votes could not be fetched at {time}; this page asks again.",
+   "es": "No se pudieron obtener las votaciones en vivo a las {time}; esta página volverá a intentarlo.",
+   "state": "draft"
+  },
   "web.go": {
    "en": "Register on Zoom",
    "es": "Inscribirse en Zoom",

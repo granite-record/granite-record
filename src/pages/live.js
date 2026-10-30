@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.6
+// GRANITE_VERSION: 2026-10-30.9
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -64,6 +64,15 @@ function nhParts(t) {
   return { date: p.year + "-" + p.month + "-" + p.day, hh: String(Number(p.hour) % 24).padStart(2, "0"), mm: p.minute };
 }
 L.nhDate = function (t) { return nhParts(t).date; };
+// The reader's session day: New Hampshire's date, except that before 06:00 it
+// is the day before, so a sitting that ran late stays on until the night's
+// record has it (section 4.2). Live Now's session card keys on it too.
+L.EARLY_HOURS = 6;
+L.readerDay = function (t) {
+  var p = nhParts(t);
+  if (Number(p.hh) >= L.EARLY_HOURS) return p.date;
+  return new Date(Date.parse(p.date + "T12:00:00Z") - 86400000).toISOString().slice(0, 10);
+};
 // An ISO moment as the site prints a time: "10:02 AM", New Hampshire's.
 L.timeOf = function (iso) {
   var t = Date.parse(iso || "");
@@ -131,8 +140,8 @@ L.name = function (s, row) { return row ? row.name : L.bareTitle(s.title); };
 L.cardParts = function (s, row) {
   var since = s.started ? C.tr("live.since", "Live since {time}", { time: L.timeOf(s.started) }) : "";
   return {
-    head: '<h3 class="lv-name">' + (row && row.href ? '<a href="' + C.esc(row.href) + '">' + C.esc(L.name(s, row)) + "</a>"
-      : C.esc(L.name(s, row))) + "</h3>" + (since ? '<p class="lv-since">' + C.esc(since) + "</p>" : ""),
+    head: '<h2 class="lv-name">' + (row && row.href ? '<a href="' + C.esc(row.href) + '">' + C.esc(L.name(s, row)) + "</a>"
+      : C.esc(L.name(s, row))) + "</h2>" + (since ? '<p class="lv-since">' + C.esc(since) + "</p>" : ""),
     foot: youtube(s) + (row && row.card ? '<div class="lv-agenda">' + row.card + "</div>" : ""),
   };
 };
@@ -176,7 +185,11 @@ var ENDS = function () {
 // The sentence under a chamber's votes. `body` is H or S.
 L.votesSentence = function (file, now, body, http) {
   var tail = " " + ENDS();
-  if (!file || http === 404) return C.tr("votes.none_today", "No roll calls read today.") + tail;
+  // A 404 is a day with no file; a fetch that failed says nothing about the
+  // day, and is said as such.
+  if (http === 404 || (!file && http === undefined)) return C.tr("votes.none_today", "No roll calls read today.") + tail;
+  if (!file) return C.tr("votes.unfetched", "The live votes could not be fetched at {time}; this page asks again.",
+                         { time: L.timeOf(new Date(+now).toISOString()) }) + tail;
   var st = file.status || {};
   var last = file.read_at ? L.timeOf(file.read_at) : "";
   var since = st.since ? L.timeOf(st.since) : "";
@@ -208,8 +221,11 @@ L.votesSentence = function (file, now, body, http) {
 // index; a bill it does not hold gets no link, since a wrong link is worse
 // than none.
 L.billHref = function (r, bills) {
-  var term = String((r && r.bill) || "").split("/")[0];
-  var id = String((r && r.bill_as_recorded) || "").replace(/\s+/g, "").toUpperCase();
+  // `bill` is the term and the bill as the record reads the field (merge.js
+  // billNumber), null for a vote on no bill; bill_as_recorded is the words.
+  var parts = String((r && r.bill) || "").split("/");
+  var term = parts[0];
+  var id = String(parts[1] || "").replace(/\s+/g, "").toUpperCase();
   var years = bills && Object.prototype.hasOwnProperty.call(bills, term) ? bills[term] : null;
   if (!id || !years) return null;
   for (var y in years) {
@@ -239,8 +255,13 @@ L.ring = function (r, i) {
   var passed = L.passedOf(r);
   if (passed === null || typeof root.simpleDonut !== "function") return "";
   try {
+    // The record's rows carry their threshold (null: a majority). A live
+    // row's is not on record -- an override needs two thirds -- so its ring
+    // draws no mark and claims no number needed.
+    var record = typeof r.passed === "boolean";
     return root.simpleDonut({ yeas: Number(r.yeas) || 0, nays: Number(r.nays) || 0, passed: passed,
-                              threshold_needed: r.threshold_needed || null }, "live", i, "Roll call");
+                              threshold_needed: r.threshold_needed || null,
+                              threshold_unknown: !record && !r.threshold_needed }, "live", i, "Roll call");
   } catch (e) { return ""; }
 };
 
@@ -343,11 +364,12 @@ var CHAMBER = { H: "House", S: "Senate" };
 // Live Now's session card for one chamber (section 4.1): the list, the
 // section 2.6 sentence, the provisional line, and the chamber's today page.
 L.sessionCard = function (file, body, now, http, bills) {
-  var items = L.votesItems(file, body, bills, { rings: true });
+  // Tallies as text: section 4.1. The rings are the today page's.
+  var items = L.votesItems(file, body, bills);
   var head = body === "S" ? C.tr("votes.head_senate", "Senate roll calls today") : C.tr("votes.head_house", "House roll calls today");
   var today = body === "S" ? C.tr("votes.today_senate", "The Senate today") : C.tr("votes.today_house", "The House today");
   return '<section class="lv-session" data-body="' + body + '">'
-    + "<h3>" + C.esc(head) + "</h3>"
+    + '<h2 class="lv-name">' + C.esc(head) + "</h2>"
     + (items.length ? '<ol class="lv-votes">' + items.join("") + "</ol>" : "")
     + '<p class="lv-status">' + C.esc(L.votesSentence(file, now, body, http)) + "</p>"
     + (items.length ? '<p class="lv-provisional">' + C.esc(C.tr("votes.provisional_line",
@@ -407,9 +429,10 @@ L.start = function (doc, opts) {
   var scheduleEl = doc.getElementById("live-schedule");
   var schedule = {};
   try { schedule = JSON.parse((scheduleEl && scheduleEl.textContent) || "{}"); } catch (e) { schedule = {}; }
-  var etag = null, file = null, http = null, timer = null, stopped = false;
+  var etag = null, file = null, http = null, timer = null, stopped = false, onDraw = null;
 
   function draw() {
+    if (onDraw) onDraw();
     var v = L.view(file, schedule, now(), http);
     var statusEl = doc.getElementById("live-now-status");
     if (statusEl) statusEl.textContent = v.status.sentence;
@@ -428,6 +451,9 @@ L.start = function (doc, opts) {
       .forEach(function (x) {
         var el = doc.getElementById(x[0]);
         if (el) { el.innerHTML = x[1].join(""); el.hidden = !x[1].length; }
+        // An empty list shows no heading (the site's rule).
+        var h = doc.getElementById(x[0] + "-h");
+        if (h) h.hidden = !x[1].length;
       });
   }
 
@@ -455,32 +481,30 @@ L.start = function (doc, opts) {
   var first = poll().then(schedule_);
   // The session card: asked for only on a day the night's schedule has a
   // sitting on (no request on any other day).
-  var votesBox = doc.getElementById("live-now-votes"), votes = null;
-  if (votesBox && L.sessionBodies(schedule, null, L.nhDate(now())).length) {
-    votes = L.poller({ fetch: fetchImpl, doc: doc,
-      url: function () { return "/api/live/votes/" + L.nhDate(now()); },
+  // Keyed on the reader's session day (L.readerDay), as the today page it
+  // links to is: a sitting past midnight keeps its card until 06:00. Checked
+  // again on every streams poll, so a page left open overnight finds the next
+  // morning's sitting.
+  var votesBox = doc.getElementById("live-now-votes");
+  function sessionVotes() {
+    if (out.votes || stopped || !votesBox || !L.sessionBodies(schedule, null, L.readerDay(now())).length) return;
+    out.votes = L.poller({ fetch: fetchImpl, doc: doc,
+      url: function () { return "/api/live/votes/" + L.readerDay(now()); },
       every: function (f) { return L.votesEvery(f, now()); },
       onFile: function (f, code) {
-        var bodies = L.sessionBodies(schedule, f, L.nhDate(now()));
+        var bodies = L.sessionBodies(schedule, f, L.readerDay(now()));
         votesBox.innerHTML = bodies.map(function (b) { return L.sessionCard(f, b, now(), code, schedule.bills); }).join("");
         votesBox.hidden = !bodies.length;
       } });
   }
-  return { poll: poll, draw: draw, first: first, votes: votes,
-           stop: function () { stopped = true; clearTimeout(timer); if (votes) votes.stop(); } };
+  var out = { poll: poll, draw: draw, first: first, votes: null,
+              stop: function () { stopped = true; clearTimeout(timer); if (out.votes) out.votes.stop(); } };
+  sessionVotes();
+  onDraw = sessionVotes;
+  return out;
 };
 
 // ---- the session-day pages (sections 4.2 and 4.3) --------------------------------
-// The reader's session day: New Hampshire's date, except that before 06:00 it
-// is the day before, so a sitting that ran late stays on the today page until
-// the night's record has it.
-L.EARLY_HOURS = 6;
-L.readerDay = function (t) {
-  var p = nhParts(t);
-  if (Number(p.hh) >= L.EARLY_HOURS) return p.date;
-  var d = new Date(Date.parse(p.date + "T12:00:00Z") - 86400000);
-  return d.toISOString().slice(0, 10);
-};
 L.daysBetween = function (a, b) {
   return Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 86400000);
 };
