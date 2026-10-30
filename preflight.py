@@ -34774,7 +34774,9 @@ def _chain():
         # chamber's list, and to its week only where the calendar wrote that
         # week; and the home page hands its script only days that have a page.
         sess = root / "site" / "session"
-        on_disk = {b: sorted(p.stem for p in (sess / b).glob("*.html")) for b in ("H", "S")}
+        # Dated pages only: /session/<B>/today (build_live_session) is no sitting.
+        on_disk = {b: sorted(p.stem for p in (sess / b).glob("*.html")
+                             if re.fullmatch(r"\d{4}-\d\d-\d\d", p.stem)) for b in ("H", "S")}
         assert all(on_disk.values()), f"the chain built no sitting pages for a chamber: {on_disk}"
         listed = json.loads((sess / "days.json").read_text(encoding="utf-8"))
         assert {b: listed.get(b) for b in ("H", "S")} == on_disk, (
@@ -80142,7 +80144,7 @@ def _live_sql(live_gen, dayfiles_from_db, fetch_past_db, refusal):
 # The live Worker's suite, and how many tests it had when this was written: a
 # count that falls means a file stopped loading or a test was lost.
 LIVE_TESTS = "tests/live/index.js"
-LIVE_TESTS_AT_LEAST = 185
+LIVE_TESTS_AT_LEAST = 192
 # The person's ready-made switches (workers/live/control/), each as the Worker
 # must read it; and the values control.json may hold (store.js CONTROL_VALUES).
 LIVE_CONTROL = {"all-off.json": {"youtube": "off", "sql": "off"},
@@ -80194,7 +80196,8 @@ def _live_session(BLS):
         (site / "data/rollcalls.csv").write_text(
             "roll_call,term,year,body,number,date,bill,question,question_plain,yeas,nays,not_voting,passed,"
             "procedural,threshold_needed,threshold_rule,outcome_source\n"
-            "2026-H-41,2025-2026,2026,H,41,2026-03-11,HB1376,Ought to Pass,,2,0,1,1,0,,,\n"
+            "2026-H-41,2025-2026,2026,H,41,2026-03-11,HB 1376-FN,Ought to Pass,,2,0,1,1,0,,,\n"
+            "2026-H-42,2025-2026,2026,H,42,2026-03-11,SUSPRULE,Suspend the Rules,,2,0,1,1,1,,,\n"
             "2026-H-40,2025-2026,2026,H,40,2026-03-11,,Shall Member Continue,,1,1,1,0,0,2,,\n"
             "2026-H-50,2025-2026,2026,H,50,2026-03-13,HB2,Table,,1,1,1,0,0,,,\n"
             "2026-S-9,2025-2026,2026,S,9,2026-03-12,SB12,Ought to Pass,,1,0,0,1,0,,,\n", encoding="utf-8")
@@ -80204,6 +80207,8 @@ def _live_session(BLS):
             "2026-H-41,2025-2026,2026-03-11,HB1376,x,11463,\"C, D\",D,House,Yea\n"
             "2026-H-41,2025-2026,2026-03-11,HB1376,x,200,\"E, F\",D,House,Not Voting/Excused\n"
             "2026-H-40,2025-2026,2026-03-11,,x,960,\"A, B\",R,House,Nay\n"
+            "2026-H-42,2025-2026,2026-03-11,SUSPRULE,x,960,\"A, B\",R,House,Yea\n"
+            "2026-H-42,2025-2026,2026-03-11,SUSPRULE,x,11463,\"C, D\",D,House,Yea\n"
             "2026-H-40,2025-2026,2026-03-11,,x,11463,\"C, D\",D,House,Yea\n"
             "2026-S-9,2025-2026,2026-03-12,SB12,x,7,\"G, H\",R,Senate,Yea\n", encoding="utf-8")
         (site / "meta.json").write_text('{"terms": ["2025-2026"]}', encoding="utf-8")
@@ -80218,10 +80223,12 @@ def _live_session(BLS):
         BLS.check(h, shape)
         assert h["provisional"] is False and h["status"]["state"] == "record"
         assert h["members"] == {"H": ["200", "960", "11463"], "S": []}, h["members"]
-        assert [r["id"] for r in h["rollcalls"]] == ["2026-H-40", "2026-H-41"], "in the record's order"
-        r40, r41 = h["rollcalls"]
-        assert (r41["ballots"], r41["ballots_complete"], r41["bill"], r41["passed"]) == \
-            ("EYY", True, "2025-2026/HB1376", True), r41
+        assert [r["id"] for r in h["rollcalls"]] == ["2026-H-40", "2026-H-41", "2026-H-42"], "in the record's order"
+        r40, r41, r42 = h["rollcalls"]
+        assert (r42["bill"], r42["bill_as_recorded"]) == (None, "SUSPRULE"), \
+            f"a procedural vote names no bill, and keeps its words: {r42['bill']!r}"
+        assert (r41["ballots"], r41["ballots_complete"], r41["bill"], r41["bill_as_recorded"], r41["passed"]) == \
+            ("EYY", True, "2025-2026/HB1376", "HB 1376-FN", True), r41
         assert (r40["ballots"], r40["ballots_complete"], r40["bill"], r40["passed"], r40["threshold_needed"]) == \
             (".NY", True, None, False, 2), r40
         assert r41["taken"] is None and r41["docket"] is None, "the record vouches for no clock or docket line here"
@@ -80245,6 +80252,15 @@ def _live_session(BLS):
             raise AssertionError("an unknown vote word was written as a ballot")
         except SystemExit as e:
             assert "'Paired'" in str(e), e
+        # Silence is not success: dated pages and no roll-call file to read.
+        for gone_file in ("data/rollcalls.csv", "data/votes-2025-2026.csv"):
+            kept = (site / gone_file).read_bytes()
+            (site / gone_file).unlink()
+            r = _run([sys.executable, str(Path(_paths.locate("build_live_session.py"))), "--site", str(site),
+                      "--today", "2026-03-12"], capture_output=True, text=True, timeout=120)
+            (site / gone_file).write_bytes(kept)
+            assert r.returncode != 0 and "no data/" in (r.stderr + r.stdout), \
+                f"without {gone_file} the step exited {r.returncode}: {(r.stderr or r.stdout).strip()[-300:]}"
         # The today pages.
         body = BLS.today_body(site, "H", __import__("datetime").date(2026, 3, 12))
         assert 'id="live-today" data-body="H" data-built="2026-03-12"' in body
@@ -80252,7 +80268,7 @@ def _live_session(BLS):
         assert '"2025-2026":{"2025":["HB2"],"2026":["HB1376"]}' in body, "the bills' own years"
         assert "<noscript>" in body and "by tomorrow morning" in body
         assert "lv-senate" not in body and "lv-senate" in BLS.today_body(site, "S", __import__("datetime").date(2026, 3, 12))
-        assert "lv-dated" not in BLS.today_body(site, "H", __import__("datetime").date(2026, 3, 13))
+        assert 'class="lv-dated"' not in BLS.today_body(site, "H", __import__("datetime").date(2026, 3, 13))
     src = Path(_paths.locate("build_live_session.py")).read_text(encoding="utf-8")
     assert '<meta name="robots" content="noindex">' in src and "sitemap" not in src.split('"""', 2)[2], \
         "the today pages must be noindex and in no sitemap"

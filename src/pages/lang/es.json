@@ -23764,6 +23764,11 @@
    "es": "Votaciones leídas por última vez a las {time}; desde entonces no se ha podido acceder a la base de datos de la Legislatura.",
    "state": "draft"
   },
+  "votes.dated": {
+   "en": "The day's page:",
+   "es": "La página del día:",
+   "state": "draft"
+  },
   "votes.day_over": {
    "en": "Reading stopped for the day at {time}.",
    "es": "La lectura se detuvo por hoy a las {time}.",
@@ -23779,6 +23784,11 @@
    "es": "Cada votación llega a esta página con el registro de mañana por la mañana.",
    "state": "draft"
   },
+  "votes.ends_morning": {
+   "en": "Every vote reaches this page with this morning's record.",
+   "es": "Cada votación llega a esta página con el registro de esta mañana.",
+   "state": "draft"
+  },
   "votes.head_house": {
    "en": "House roll calls today",
    "es": "Votaciones nominales de la Cámara hoy",
@@ -23787,6 +23797,11 @@
   "votes.head_senate": {
    "en": "Senate roll calls today",
    "es": "Votaciones nominales del Senado hoy",
+   "state": "draft"
+  },
+  "votes.in_record": {
+   "en": "The night's record holds {day}'s roll calls.",
+   "es": "El registro de la noche contiene las votaciones nominales del {day}.",
    "state": "draft"
   },
   "votes.login": {
@@ -23807,6 +23822,11 @@
   "votes.no_outcome": {
    "en": "outcome not yet in the docket",
    "es": "resultado aún no anotado en el registro de trámites",
+   "state": "draft"
+  },
+  "votes.none_day": {
+   "en": "No roll calls read on {day}.",
+   "es": "No se leyeron votaciones nominales el {day}.",
    "state": "draft"
   },
   "votes.none_today": {

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.9
+// GRANITE_VERSION: 2026-10-30.10
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -183,11 +183,18 @@ var ENDS = function () {
   return C.tr("votes.ends", "Every vote reaches this page with tomorrow morning's record.");
 };
 // The sentence under a chamber's votes. `body` is H or S.
-L.votesSentence = function (file, now, body, http) {
-  var tail = " " + ENDS();
+L.votesSentence = function (file, now, body, http, day) {
+  // `day`, where the page shows a day before New Hampshire's today (the today
+  // page before 06:00): its sentences name the day, and its record is this
+  // morning's, not tomorrow's.
+  var past = day && day !== L.nhDate(now);
+  var tail = " " + (past ? C.tr("votes.ends_morning", "Every vote reaches this page with this morning's record.") : ENDS());
   // A 404 is a day with no file; a fetch that failed says nothing about the
   // day, and is said as such.
-  if (http === 404 || (!file && http === undefined)) return C.tr("votes.none_today", "No roll calls read today.") + tail;
+  if (http === 404 || (!file && http === undefined)) {
+    return (past ? C.tr("votes.none_day", "No roll calls read on {day}.", { day: L.dayWords(day) })
+                 : C.tr("votes.none_today", "No roll calls read today.")) + tail;
+  }
   if (!file) return C.tr("votes.unfetched", "The live votes could not be fetched at {time}; this page asks again.",
                          { time: L.timeOf(new Date(+now).toISOString()) }) + tail;
   var st = file.status || {};
@@ -568,7 +575,7 @@ L.startToday = function (doc, opts) {
   var body = el.getAttribute("data-body") === "S" ? "S" : "H";
   var bills = {};
   try { bills = JSON.parse((doc.getElementById("live-bills") || {}).textContent || "{}"); } catch (e) { bills = {}; }
-  var shown = null, record = null, recordFor = null;
+  var shown = null, record = null, recordFor = null, asked = 0;
   function day() { return L.readerDay(now()); }
   function setDay(d) {
     if (d === shown) return Promise.resolve();
@@ -580,30 +587,51 @@ L.startToday = function (doc, opts) {
       words.textContent = C.tr("votes.today_day", "Roll calls of {day}, as read during the day", { day: L.dayWords(d) });
       words.hidden = false;
     }
-    // The record already holds this day (the night wrote its dated page):
-    // its roll calls are the record's, and the live ones it lacks are added.
-    var dated = false;
-    each(el, ".lv-dated", function (x) { if (x.getAttribute("data-day") === d) dated = true; });
-    if (!dated) return Promise.resolve();
+    asked = 0;
+    return askRecord(d);
+  }
+  // Whether the record already holds the day: the night writes a dated page's
+  // file with the page, and a night that has run since the page was built
+  // (before 06:00, the day before's) is found here, not by what the page was
+  // built with. Asked again every 10 minutes while it is not there.
+  function askRecord(d) {
+    if (record || +now() - asked < 10 * MINUTE) return Promise.resolve();
+    asked = +now();
     recordFor = d;
     return getJSON(fetchImpl, "/session/" + body + "/" + d + ".json").then(function (j) {
-      if (recordFor === d && j && j.date === d) record = j;
+      if (recordFor !== d || !j || j.date !== d) return;
+      record = j;
+      var link = doc.getElementById("live-today-dated");
+      var built = false;
+      each(el, ".lv-dated", function (x) { if (x.getAttribute("data-day") === d) built = true; });
+      if (link && !built) {
+        link.innerHTML = C.esc(C.tr("votes.dated", "The day's page:")) + ' <a href="/session/' + body + "/" + d + '">'
+          + "/session/" + body + "/" + d + "</a>";
+        link.hidden = false;
+      }
     });
   }
   function drawVotes(f, code) {
     var items = L.dayItems(record, f, body, bills);
     var list = doc.getElementById("live-today-votes");
     if (list) { list.innerHTML = items.join(""); list.hidden = !items.length; }
-    var say = doc.getElementById("live-today-votes-status");
-    if (say) say.textContent = L.votesSentence(f, now(), body, code);
     var live = L.overlay(record, f, body);
+    var say = doc.getElementById("live-today-votes-status");
+    // With the record holding the day, its rows are the record's; the live
+    // file's sentence is said only for what it adds.
+    if (say) say.textContent = record && !live.length
+      ? C.tr("votes.in_record", "The night's record holds {day}'s roll calls.", { day: L.dayWords(shown) })
+      : L.votesSentence(f, now(), body, code, shown);
     each(el, ".lv-provisional", function (x) { x.hidden = !live.length; });
     each(el, ".lv-senate", function (x) { x.hidden = !live.some(function (r) { return !r.ballots_complete; }); });
   }
   var votes = L.poller({ fetch: fetchImpl, doc: doc,
     url: function () { return "/api/live/votes/" + day(); },
     every: function (f) { return L.votesEvery(f, now()); },
-    onFile: function (f, code) { return setDay(day()).then(function () { drawVotes(f, code); }); } });
+    onFile: function (f, code) {
+      var d = day();
+      return (d === shown ? askRecord(d) : setDay(d)).then(function () { drawVotes(f, code); });
+    } });
   var box = doc.getElementById("live-today-stream");
   var streams = L.poller({ fetch: fetchImpl, doc: doc,
     url: function () { return "/api/live/streams"; },

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.1
+# GRANITE_VERSION: 2026-10-30.2
 """
 The session days' side of the live layer (design sections 4.2 to 4.4),
 written by the night after the session-day pages:
@@ -59,6 +59,7 @@ import shutil
 import build_date
 import build_live as BL
 import live_gen as LG
+import rollcall_parser as RP
 import shell as S
 
 SCHEMA = Path("schema") / "session.votes.json"
@@ -87,15 +88,18 @@ def check(doc, schema, root=None, where="$"):
         if not ref.startswith("#/$defs/"):
             raise Invalid(f"{where}: unknown $ref {ref}")
         return check(doc, root["$defs"][ref.split("/")[-1]], root, where)
-    if "const" in schema and doc != schema["const"]:
+    # Compared as JSON compares: true is not 1 (Python's True == 1 is).
+    if "const" in schema and not _same(doc, schema["const"]):
         raise Invalid(f"{where}: {doc!r} is not {schema['const']!r}")
-    if "enum" in schema and doc not in schema["enum"]:
+    if "enum" in schema and not any(_same(doc, e) for e in schema["enum"]):
         raise Invalid(f"{where}: {doc!r} is not one of {schema['enum']}")
     if "type" in schema:
         types = schema["type"] if isinstance(schema["type"], list) else [schema["type"]]
         if not any(_is(doc, t) for t in types):
             raise Invalid(f"{where}: {type(doc).__name__} is not {'/'.join(types)}")
-    if isinstance(doc, str) and "pattern" in schema and not re.search(schema["pattern"], doc):
+    # JavaScript's $ (no m flag) is the end of the string; Python's also
+    # matches before a final newline, so "2027-01-07\n" would pass here alone.
+    if isinstance(doc, str) and "pattern" in schema and not re.search(schema["pattern"].replace("$", r"\Z"), doc):
         raise Invalid(f"{where}: {doc!r} does not match {schema['pattern']}")
     if _is(doc, "integer") and "minimum" in schema and doc < schema["minimum"]:
         raise Invalid(f"{where}: {doc} is below {schema['minimum']}")
@@ -115,6 +119,10 @@ def check(doc, schema, root=None, where="$"):
     if isinstance(doc, list) and "items" in schema:
         for i, v in enumerate(doc):
             check(v, schema["items"], root, f"{where}[{i}]")
+
+
+def _same(a, b):
+    return type(a) is type(b) and a == b if isinstance(a, bool) or isinstance(b, bool) else a == b
 
 
 def _is(v, t):
@@ -139,12 +147,16 @@ def page_dates(site, body):
     return {f.stem for f in folder.glob("*.html") if DATE_PAGE.fullmatch(f.stem)} if folder.is_dir() else set()
 
 
-def day_files(site):
-    """{(body, date): session.votes document} for every dated page."""
+def day_files(site, seen=None):
+    """{(body, date): session.votes document} for every dated page. `seen`, a
+    dict, gets what was read: {"rollcalls_csv": bool, "votes_csvs": n}."""
+    seen = {} if seen is None else seen
     site = Path(site)
     want = {b: page_dates(site, b) for b in "HS"}
     rcs, order = {}, []
     path = site / "data" / "rollcalls.csv"
+    seen["rollcalls_csv"] = path.is_file()
+    seen["votes_csvs"] = 0
     if path.is_file():
         with path.open(encoding="utf-8", newline="") as f:
             for r in csv.DictReader(f):
@@ -154,6 +166,7 @@ def day_files(site):
                     order.append(r["roll_call"])
     ballots = {k: {} for k in rcs}
     for vf in sorted((site / "data").glob("votes-*.csv")):
+        seen["votes_csvs"] += 1
         with vf.open(encoding="utf-8", newline="") as f:
             for r in csv.DictReader(f):
                 got = ballots.get(r.get("roll_call"))
@@ -175,14 +188,21 @@ def day_files(site):
                 line = "".join(got.get(m, ".") for m in members)
                 yeas, nays = _int(r.get("yeas")) or 0, _int(r.get("nays")) or 0
                 passed = {"1": True, "0": False}.get((r.get("passed") or "").strip())
+                # The bill as the record reads the field, as the Worker's
+                # billNumber does: a procedural vote ("SUSPRULE", "RULE 1-2")
+                # names no bill, and keeps its words in bill_as_recorded.
+                bill = RP.bill_number(r.get("bill"))
                 rows.append({
                     "id": r["roll_call"], "body": body, "seq": _int(r.get("number")),
-                    "bill": f"{r['term']}/{r['bill']}" if r.get("bill") else None,
+                    "bill": f"{r['term']}/{bill}" if bill else None,
                     "bill_as_recorded": r.get("bill") or None, "question": r.get("question") or None,
                     "taken": None, "saved": None, "keyed_by": None,
                     "yeas": yeas, "nays": nays, "present": None, "absent": None,
                     "ballots": line,
-                    "ballots_complete": bool(got) and line.count("Y") == yeas and line.count("N") == nays,
+                    # merge.js's rule: Y and N agree with the count, and
+                    # something was recorded (a 0-0 set of "." is not).
+                    "ballots_complete": bool(line) and line.count("Y") == yeas and line.count("N") == nays
+                                        and (yeas + nays > 0 or bool(line.strip("."))),
                     "docket": None, "first_seen": None, "note": None,
                     "passed": passed, "threshold_needed": _int(r.get("threshold_needed"))})
             out[(body, date)] = {
@@ -245,9 +265,10 @@ def today_body(site, body, today):
     return (f'<div class="clist lvpage lvtoday"><h1>The {name} today</h1>'
             f'<div id="live-today" data-body="{body}" data-built="{iso}">'
             f'<p id="live-today-day" class="lv-status" hidden></p>'
-            f'<p id="live-today-status" class="lv-status" role="status"></p>'
+            f'<p id="live-today-status" class="lv-status"></p>'
             f'<noscript><p class="lv-status">Today\'s roll calls reach the {name}\'s session pages '
             f'by tomorrow morning.</p></noscript>'
+            + '<p id="live-today-dated" class="lv-dated-js" hidden></p>'
             + (f'<p class="lv-dated" data-day="{iso}">Today\'s page: '
                f'<a href="{S.E(S.canon(f"session/{body}/{iso}.html"))}">/session/{body}/{iso}</a></p>'
                if dated else "")
@@ -287,17 +308,16 @@ def write_today(site, base, body, today):
     return out
 
 
-def write(site, base, today):
+def write(site, base, today, seen=None):
     site = Path(site)
-    docs = day_files(site)
+    docs = day_files(site, seen)
     wrote, gone = write_day_files(site, docs)
     for b in "HS":
         write_today(site, base, b, today)
     (site / "schema").mkdir(exist_ok=True)
     shutil.copyfile(_paths.locate(SCHEMA.as_posix()), site / SCHEMA)
-    for f in ("live.js", "live.css"):
-        if not (site / f).is_file():
-            shutil.copyfile(_paths.locate(f"src/pages/{f}"), site / f)
+    for f in ("live.js", "live.css"):                      # the same files build_live copies
+        shutil.copyfile(_paths.locate(f"src/pages/{f}"), site / f)
     return wrote, gone, docs
 
 
@@ -308,10 +328,22 @@ def main():
     ap.add_argument("--today", help="the day to write for, YYYY-MM-DD (default: the build's)")
     a = ap.parse_args()
     today = datetime.date.fromisoformat(a.today) if a.today else build_date.today()
-    wrote, gone, docs = write(a.site, a.base, today)
+    seen = {}
+    wrote, gone, docs = write(a.site, a.base, today, seen)
     n = sum(len(d["rollcalls"]) for d in docs.values())
-    if not wrote and any(page_dates(a.site, b) for b in "HS"):
-        raise SystemExit("live session: dated pages but no day file written")
+    # SILENCE IS NOT SUCCESS: with the roll-call files missing, every day file
+    # would be written empty and the step exit 0.
+    if wrote:
+        missing = ([] if seen.get("rollcalls_csv") else ["data/rollcalls.csv"]) + \
+                  ([] if seen.get("votes_csvs") else ["data/votes-<term>.csv"])
+        if missing:
+            raise SystemExit(f"live session: {wrote} dated pages, and no {' or '.join(missing)} to read "
+                             f"their roll calls from (bulk downloads runs before this step)")
+        if not n:
+            raise SystemExit(f"live session: {wrote} dated pages and not one roll call filed under their dates")
+        balloted = sum(1 for d in docs.values() for r in d["rollcalls"] if r["ballots"].strip("."))
+        if not balloted:
+            raise SystemExit(f"live session: {n:,} roll calls and not one ballot read for them")
     print(f"live session: {wrote} day files ({n:,} roll calls), session/H/today.html and "
           f"session/S/today.html, {SCHEMA.as_posix()}"
           + (f"; removed {len(gone)} for pages gone: {', '.join(gone[:5])}" if gone else ""))

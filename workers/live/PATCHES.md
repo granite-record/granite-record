@@ -46,22 +46,33 @@ is sticky.
 
 ## 5. build_all.py: the session days' live step (branch 6)
 
-After the session-day pages and after patch 1's Live Now step (it reads
-live/schedule.json for the floor card):
+The LAST step, after "bulk downloads": build_exports writes the
+data/rollcalls.csv and data/votes-<term>.csv this reads, and the session
+pages' step writes session/H and session/S.
 
     Step("Session days' live side: each sitting's session.votes file, /session/<B>/today",
          ["build_live_session.py", "--site", "site", "--base", a.base],
-         needs=["site/session/days.json", "site/data/rollcalls.csv", "site/live/schedule.json"],
+         needs=["site/data/manifest.json", "site/session/H", "site/session/S"],
          produces=["site/session/H/today.html", "site/session/S/today.html",
                    "site/schema/session.votes.json"],
          note="the record's roll calls of each dated session-day page in the live file's shape, "
               "checked against schema/session.votes.json; the two today pages")
 
-It asks no network. It reads the published data/rollcalls.csv and
-data/votes-<term>.csv once each. It writes one JSON file per dated
-session-day page, so the deploy grows by that many files; run
-`python3 src/checks/check_site.py` for the count rather than trusting a
-guess here.
+- **needs.** Only artefacts other steps declare (the bulk downloads'
+  manifest and the session pages' folders), so preflight's "inputs no step
+  produces" check holds. live/schedule.json is not one: build_live_session
+  reads it for the floor card where it is there, and does without it.
+- **Network.** It asks none. It reads the two CSVs once each.
+- **Files.** It writes one JSON file per dated session-day page, so the
+  deploy grows by that many. Run `python3 src/checks/check_site.py` for the
+  count rather than trusting a guess here.
+- **Failure.** It stops the night, by name, when there are dated pages and
+  no rollcalls.csv or votes CSV to read, no roll call under their dates, or
+  no ballot for them.
+- **Fixture chain.** If the step goes into preflight's fixture chain
+  (_fixture_site_whole), the sitting-day check there already reads dated
+  pages only (live/session's preflight), so today.html is not taken for a
+  sitting.
 
 ## 6. build_session_pages.py: the overlay hook on each dated page (section 4.3)
 
@@ -83,4 +94,6 @@ overlay draws nothing: a roll call the page already shows never appears
 twice.
 
 prune() needs no change. build_live_session removes a date's JSON when
-its page is gone, and leaves the term files (2025-2026.json) alone.
+its page is gone, and leaves the term files (2025-2026.json) alone. With
+the edit, bump build_session_pages.py's GRANITE_VERSION and versions.json
+together (`python3 src/ops/inventory.py --bump-changed`).
