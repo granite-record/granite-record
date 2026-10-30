@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.4
+# GRANITE_VERSION: 2026-10-30.5
 """
 One entry a person, joining every number the General Court uses for them.
 
@@ -27,8 +27,9 @@ General Court's where possible", since the General Court issues numbers). One
 of the General Court's own, by a fixed rule:
 
   1. their earliest PersonID -- the one under which they first cast a
-     recorded vote: the earliest term, and the lower number of two that
-     first voted in the same term; else
+     recorded vote: the PersonID of their employee number with the
+     earliest term, and of two that first voted in the same term, the
+     lower employee number's; else
   2. their earliest employee number, by the same order; else
   3. "s" and the site id, made here, for a person the General Court numbers
      nowhere this site can read (nobody, on 30 October 2026).
@@ -38,8 +39,14 @@ time they move between the chambers and their earliest never does. The two
 kinds cannot be taken for each other: PersonIDs run 27 to 11,524 and employee
 numbers are six digits (201723 to 999999), and the register refuses a number
 held by two people. Measured on 30 October 2026: 1,056 people by a PersonID,
-1,131 by an employee number (all whose service ended before 2015, which the
-General Court's roster view does not cover), none made here.
+1,131 by an employee number, none made here. The 1,131 are everyone the
+General Court's roster view (Legislators.psv) does not name -- nearly all
+whose service ended before 2015, and 44 who served later -- and some of them
+have a PersonID the General Court holds that nothing here links to their
+employee number (Joyce Fulweiler, 800061, is PersonID 1444 in
+former_members.json, which has no employee numbers). So an employee number
+is a person's number only for want of a link, and person_numbers.py --issue
+says so before it freezes one.
 
 WHICH NUMBERS ARE ONE PERSON: TWO JOINS, AND ONE RULE OVER BOTH
 
@@ -241,6 +248,20 @@ def build(site, data, db, careers, register):
     groups = {}
     for node in list(U.up):
         groups.setdefault(U.find(node), []).append(node)
+    # THE ONE-CHAMBER RULE OVER BOTH JOINS, not only careers.json's: a group
+    # the two joins built between them with two numbers of one chamber is two
+    # people put together. It is reported, published as tonight's join made
+    # it, and never issued until a person has looked (person_numbers.py).
+    report["one_chamber"] = []
+    for root, nodes in sorted(groups.items()):
+        emps = [n[1:] for n in nodes if n[0] == "e"]
+        seen = {}
+        for e in emps:
+            for ch in by_emp.get(e, {}).get("chambers") or ():
+                seen.setdefault(ch, []).append(e)
+        twice = {ch: sorted(es) for ch, es in seen.items() if len(es) > 1}
+        if twice:
+            report["one_chamber"].append({"numbers": sorted(emps), "same_chamber": twice})
 
     # The register: every issued number, and which person holds it.
     reg = register or {"format": FORMAT, "people": []}
@@ -306,6 +327,15 @@ def build(site, data, db, careers, register):
                 "why": "tonight's join splits this issued person; they stay one "
                        "until a person splits them"})
 
+    # AN ISSUED PERSON IS NEVER DROPPED. Every person the register holds (and
+    # has not retired) must be published tonight; one that is not -- every
+    # number of theirs gone from tonight's record, or an entry with none --
+    # is reported, and build_exports stops on it rather than let a published
+    # number vanish or come back as someone else's.
+    report["missing_issued"] = sorted(
+        (e["person"] for e in reg.get("people") or []
+         if not e.get("replaced_by") and e["person"] not in people), key=person_key)
+
     # Each person's published entry.
     out = []
     for person, p in sorted(people.items(), key=lambda kv: person_key(kv[0])):
@@ -350,6 +380,65 @@ def build(site, data, db, careers, register):
             entry["split_from"] = r["split_from"]
     out.sort(key=lambda x: person_key(x["person"]))
     return out, report
+
+
+def check_register(reg):
+    """Problems with a register's own shape, as sentences; empty is well
+    formed. A person issued twice; a number held by two people; a person
+    number that is someone else's number; an entry with no numbers that is
+    not retired; a number made here (an "s" person), which is never issued;
+    an employee-number person whose number is not among its own."""
+    if not isinstance(reg, dict) or not isinstance(reg.get("people"), list):
+        return ["the register is not an object with a list of people"]
+    bad, seen_p, seen_n = [], set(), {}
+    for e in reg["people"]:
+        if not isinstance(e, dict):
+            bad.append(f"an entry that is not an object: {e!r}")
+            continue
+        p = str(e.get("person") or "")
+        nums = [str(n) for n in e.get("numbers") or []]
+        if not p.isdigit():
+            bad.append(f"{p or 'an entry'}: a person number that is not one of the General Court's"
+                       + (" (one made here is never issued)" if p.startswith("s") else ""))
+            continue
+        if p in seen_p:
+            bad.append(f"{p} is issued twice")
+        seen_p.add(p)
+        if e.get("replaced_by"):
+            if nums:
+                bad.append(f"{p} is replaced and still holds numbers")
+            continue
+        if not nums:
+            bad.append(f"{p} holds no numbers")
+        if len(p) == 6 and p not in nums:
+            bad.append(f"{p} is an employee number it does not hold")
+        for n in nums:
+            if n in seen_n:
+                bad.append(f"{n} is held by {seen_n[n]} and {p}")
+            seen_n[n] = p
+    for p in seen_p:
+        if p in seen_n and seen_n[p] != p:
+            bad.append(f"{p} is a person number and also {seen_n[p]}'s number")
+    return bad
+
+
+def load_register(path):
+    """The register at path: None where there is none; the register where it
+    reads and is well formed; and otherwise a stop, because a register that
+    cannot be read would quietly stop the register winning."""
+    path = Path(path)
+    if not path.exists():
+        return None
+    try:
+        reg = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError as e:
+        raise SystemExit(f"{path} does not read as JSON ({e}); the build stops rather "
+                         "than number people without it.")
+    bad = check_register(reg)
+    if bad:
+        raise SystemExit(f"{path} is not well formed, and the build stops rather than "
+                         "number people without it:\n  " + "\n  ".join(bad[:10]))
+    return reg
 
 
 def check_unique(people):

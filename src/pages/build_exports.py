@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.53
+# GRANITE_VERSION: 2026-09-10.54
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -1184,11 +1184,19 @@ def people_files(out, site, data, db="db", careers="generated/careers.json",
     if PE.emp_to_pid(db) is None or not Path(careers).exists():
         print(f"  {'people.json':<28} not written: no {db}/Legislators.psv or {careers} here")
         return []
-    reg = load(register, None)
+    # The register strictly: one that is there and does not read, or is not
+    # well formed, stops the build (PE.load_register), because without it the
+    # register would quietly stop winning.
+    reg = PE.load_register(register)
     people, rep = PE.build(site, data, db, load(careers, {}), reg)
     if not people:
         raise SystemExit("people.json would hold nobody: the join found no one. "
                          "Not writing an empty file.")
+    if rep["missing_issued"]:
+        raise SystemExit(f"{len(rep['missing_issued'])} issued person(s) would vanish from "
+                         "people.json, their numbers gone from tonight's record: "
+                         + ", ".join(rep["missing_issued"][:10])
+                         + ". A published number does not disappear; the build stops.")
     bad = PE.check_unique(people)
     if bad:
         raise SystemExit("people.json would hold a number twice, so it is not written: "
@@ -1205,6 +1213,9 @@ def people_files(out, site, data, db="db", careers="generated/careers.json",
     print(f"  {'people.csv':<28} {rows[1]['rows']:>9,} rows  {rows[1]['bytes'] / 1e6:>7.1f} MB")
     for c in rep["careers_not_joined"]:
         print(f"    not joined, for a person: {c['name']} {', '.join(c['numbers'])}")
+    for g in rep.get("one_chamber") or []:
+        print(f"    WARNING: the joins put two numbers of one chamber in one person, "
+              f"{g['same_chamber']}; not issued until a person looks")
     for d in rep["register_disagrees"]:
         print(f"    WARNING: the register disagrees with tonight's join: {d}")
     unplaced = [u["number"] for u in rep["unissued_numbers"] if not u.get("person")]
@@ -1212,8 +1223,8 @@ def people_files(out, site, data, db="db", careers="generated/careers.json",
         print(f"    WARNING: {len(unplaced)} number(s) between two issued people, not "
               f"published until a person places them: {', '.join(unplaced[:10])}")
     if rep["unknown_ids"]:
-        print(f"    {len(rep['unknown_ids'])} site id(s) the roster does not know, each "
-              f"its own person: {', '.join(rep['unknown_ids'][:10])}")
+        print(f"    {len(rep['unknown_ids'])} site id(s) stand for no employee number or "
+              f"PersonID the roster knows: {', '.join(rep['unknown_ids'][:10])}")
     return rows
 
 
@@ -1270,7 +1281,11 @@ def main():
     # of 30 October 2026). Built unlinked until the announcement: listed here,
     # under a key of their own, and not on the data page, so that nothing a
     # reader sees today moves while they are built.
-    manifest["files"] = people_files(out, site, a.data)
+    # Only where there is something to list: a clone without the inputs
+    # writes the manifest it wrote before.
+    files = people_files(out, site, a.data)
+    if files:
+        manifest["files"] = files
     (out / "manifest.json").write_text(
         json.dumps(manifest, indent=1), encoding="utf-8")
     total = sum(t["bytes"] for t in tables)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.3
+# GRANITE_VERSION: 2026-10-30.4
 """
 The register of person numbers: what it would issue, and issuing it.
 
@@ -17,7 +17,8 @@ would move whenever a join is corrected -- and joins are corrected: the first
 prototype gave Sen. Pat Long's House number to a freshman. So a number is
 issued once, here, by a person's run, into generated/person_numbers.json,
 which git keeps. The nightly reads it and never writes it (preflight holds
-that), and publishes anybody it does not hold yet as provisional.
+that), and numbers anybody it does not hold yet by the rule, the same night
+(people.py says how).
 
 WHAT --issue DOES, AND WHAT IT LEAVES FOR A PERSON
 
@@ -33,6 +34,18 @@ WHAT --issue DOES, AND WHAT IT LEAVES FOR A PERSON
            number and gives the other "replaced_by"; a split keeps the number
            with the Employeeno it was first issued for and gives the other a
            new number with "split_from". The design says why.
+
+  refuses  a group the joins put together with two numbers of one chamber
+           (two people, by member_links.py's first rule), and a person
+           numbered by an employee number who sits in the newest term: the
+           roster dump not naming a sitting member is a stale dump, and their
+           PersonID will come with the next one.
+
+    --only-person-ids   issue only the people numbered by a PersonID, and
+                        leave those numbered by an employee number to the
+                        nightly's rule, unfrozen (an employee number is a
+                        person's number only for want of a link to their
+                        PersonID; people.py says why)
 
 It prints everything it found before it writes, and writes nothing on a run
 without --issue.
@@ -54,30 +67,13 @@ REGISTER = Path("generated/person_numbers.json")
 
 
 def load_register(path=REGISTER):
-    if not path.exists():
-        return {"format": PE.FORMAT, "people": []}
-    return json.loads(path.read_text(encoding="utf-8"))
+    return PE.load_register(path) or {"format": PE.FORMAT, "people": []}
 
 
 def check_register(reg):
-    """Problems with the register's own shape: a person twice, a number held
-    by two people. Returns a list of sentences; empty is well formed."""
-    bad, seen_p, seen_n = [], set(), {}
-    for e in reg.get("people") or []:
-        p = e.get("person")
-        if not p or not (str(p).isdigit() or str(p).startswith("s")):
-            bad.append(f"an entry with no person number: {e}")
-            continue
-        if p in seen_p:
-            bad.append(f"{p} is issued twice")
-        seen_p.add(p)
-        for n in e.get("numbers") or []:
-            if n in seen_n:
-                bad.append(f"{n} is held by {seen_n[n]} and {p}")
-            seen_n[n] = p
-        if e.get("replaced_by") and e.get("numbers"):
-            bad.append(f"{p} is replaced and still holds numbers")
-    return bad
+    """The register's shape (people.check_register, one rule for the build
+    and for this)."""
+    return PE.check_register(reg)
 
 
 def main():
@@ -87,6 +83,8 @@ def main():
     ap.add_argument("--data", default="data")
     ap.add_argument("--db", default="db")
     ap.add_argument("--careers", default="generated/careers.json")
+    ap.add_argument("--only-person-ids", action="store_true",
+                    help="issue only people numbered by a PersonID")
     a = ap.parse_args()
 
     reg = load_register()
@@ -111,6 +109,27 @@ def main():
         print(f"  {len(rep['unknown_ids'])} site id(s) stand for no Employeeno or PersonID "
               f"the roster knows: {rep['unknown_ids'][:10]}")
     new = rep["by_rule"]
+    newest = max((t for p in people for t in [p.get("last_term") or ""]), default="")
+    held_back = {}
+    split = {tuple(sorted(g["numbers"])) for g in rep.get("one_chamber") or []}
+    for g in rep.get("one_chamber") or []:
+        print(f"  REFUSED, two numbers of one chamber in one group: {g['numbers']} {g['same_chamber']}")
+    by_person = {p["person"]: p for p in people}
+    for g in new:
+        p = by_person.get(g["person"]) or {}
+        emps = tuple(sorted(n for n in g["numbers"] if not n.startswith("m")))
+        if emps in split:
+            held_back[g["person"]] = "two numbers of one chamber"
+        elif not p.get("person_ids") and p.get("last_term") == newest:
+            held_back[g["person"]] = "sits in the newest term with no PersonID: a stale roster dump"
+        elif a.only_person_ids and not p.get("person_ids"):
+            held_back[g["person"]] = "numbered by an employee number (--only-person-ids)"
+    for person, why in sorted(held_back.items()):
+        if not why.startswith("numbered by an employee"):
+            print(f"  not issued: {person}: {why}")
+    if rep.get("missing_issued"):
+        print(f"  WARNING: {len(rep['missing_issued'])} issued person(s) not in tonight's record: "
+              f"{rep['missing_issued'][:10]}")
     for c in rep["clashes"]:
         print(f"  REFUSED, a number someone already holds: {c['person']} for {c['numbers']}")
     if rep["provisional"]:
@@ -120,6 +139,9 @@ def main():
     if bad:
         raise SystemExit("Tonight's people hold a number twice; nothing issued:\n  " + "\n  ".join(bad[:10]))
     more = [u for u in rep["unissued_numbers"] if u.get("person")]
+    for u in more:
+        print(f"    a new number for issued person {u['person']}: {u['number']} "
+              "(a person should be sure it is theirs: the join may be by name alone)")
     print(f"  to issue: {len(new):,} new people, {len(more):,} new numbers of issued people")
     kinds = {"PersonID": 0, "employee number": 0}
     for g in new:
@@ -129,12 +151,16 @@ def main():
     for g in new:
         print(f"    {g['person']:>8}  {', '.join(g['numbers'])}")
 
+    print(f"  an issue would freeze {len(new) - len(held_back):,} of {len(new):,}; "
+          f"{len(held_back):,} held back")
     if not a.issue:
         print("\nNothing written. --issue writes these to the register.")
         return
     day = build_date.today().isoformat()
+    issuing = [g for g in new if g["person"] not in held_back]
+    print(f"  issuing {len(issuing):,} of {len(new):,}; {len(held_back):,} held back")
     by_person = {e["person"]: e for e in reg.setdefault("people", [])}
-    for g in new:
+    for g in issuing:
         if g["person"] in by_person:
             raise SystemExit(f"{g['person']} is already issued to someone else; "
                              "a person must choose this one's number by hand.")
