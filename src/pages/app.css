@@ -2163,7 +2163,9 @@ border-radius:var(--r-out);background:var(--surface)}
    screen: at 24px on a 375px phone the box stood 7px past the edge (the
    rendered sweep, 8 October 2026). */
 .qbox #q,.qbox #rsq{flex:1;padding-right:46px;min-width:0}
-#qgo,#rsgo{position:absolute;right:4px;top:5px;width:34px;height:34px;font-size:var(--t-ui);
+/* min-height:0, or a phone's 44px least for a button (body.pg, below) makes
+   it overhang the 44px box by 5px (the review of 30 October 2026). */
+#qgo,#rsgo{position:absolute;right:4px;top:5px;width:34px;height:34px;min-height:0;font-size:var(--t-ui);
 line-height:1;border:1px solid transparent;border-radius:var(--r-out);background:none;
 color:var(--ink-2);cursor:pointer}
 #qgo:hover,#rsgo:hover{border-color:var(--edge);background:var(--wash);color:var(--pine)}
@@ -3071,6 +3073,10 @@ text-transform:uppercase;margin:0 0 var(--sp-3);padding-bottom:var(--sp-3);
 border-bottom:1px solid var(--rule);font-family:var(--serif)}
 .mlist :is(h2,h3) span{font-weight:400;letter-spacing:0;text-transform:none;
 font-size:var(--t-ui);color:var(--ink-2)}
+/* A LABEL UNDER A SECTION IS SMALLER THAN THE SECTION (the review of 30
+   October 2026): under "Bill Text" at --t-h3, THE BILL, FISCAL IMPACT and
+   HOW IT GOT HERE drew at --t-part, larger than what heads them. */
+.btsec :is(.bttext h3,h3.amdsec,.fnsec h3,.fnraw h4){font-size:var(--t-ui)}
 /* A SECTION OF A RECORD'S TAB (the heading map's "pane", above). */
 .sech{font:600 var(--t-h3)/1.35 var(--serif);color:var(--ink);letter-spacing:0;
 text-transform:none;margin:0 0 var(--sp-3);text-wrap:balance}

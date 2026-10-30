@@ -75159,6 +75159,12 @@ def _laws_chapter_outline(B, RSA, S):
                 bad.append(f"a chapter {what} goes from h{prev} to h{lv}")
                 break
             prev = lv
+        # And each kind is what it says it is, so that a part no longer
+        # parsed cannot pass as a chapter without one.
+        if part and ('class="rs-sub"' not in main or secs[0] != "3"):
+            bad.append(f"a chapter with a part draws its sections at h{secs[0]}, not h3 under the part's h2")
+        if not part and secs[0] != "2":
+            bad.append(f"a chapter without parts draws its sections at h{secs[0]}, not h2")
         said.append(f"{what}, its sections h{secs[0]}")
     assert not bad, "; ".join(bad)
     return "ok", "a Laws chapter " + " and ".join(said)
@@ -75204,8 +75210,23 @@ def _bill_panes_one_heading():
         bad.append("the bill panes' renderers write no h2 at all")
     if plain:
         bad.append(f"{len(plain)} of the panes' {len(heads)} h2s are not .sech: {plain[:3]}")
-    if re.search(r'<h3 class="docgrp"', app):
+    if re.search(r'<h3 class="[^"]*\bdocgrp\b', app):
         bad.append("Documents heads its groups with a 14px label again, and no h2 above it")
+    # Nothing more particular restyles them: a rule on the pane headings'
+    # own classes or old selectors sets their margins and nothing more.
+    for at, sel, body, _l in _css_rules(css):
+        if at:
+            continue
+        d = dict(_css_decls(body))
+        for part in (x.strip() for x in re.split(r",(?![^()]*\))", sel)):
+            if re.search(r"(?:\.spgrp|\.docgrp|\.rephead (?:h2|h3|\.sech)|\.rl-g (?:h2|\.sech)|\.btsec > (?:h2|\.sech)"
+                         r"|\.pane (?:> )?h2)$", part) and {"font", "font-size", "text-transform"} & set(d):
+                bad.append(f"{part} sets {sorted({'font', 'font-size', 'text-transform'} & set(d))}, over .sech")
+    # A label under "Bill Text" is smaller than "Bill Text".
+    under = [d for sel, d in won.items() if sel.startswith(".btsec :is(") and "h3.amdsec" in sel]
+    if not under or under[0].get("font-size") != "var(--t-ui)":
+        bad.append("the labels under Bill Text (THE BILL, FISCAL IMPACT, HOW IT GOT HERE) are not --t-ui, "
+                   "under a heading at --t-h3")
     drawn = _app_js(
         '[scope.renderSponsors({id: "HB1"}, {sponsors: [{name: "A", chamber: "H", label: "Rep. A", prime: true}, '
         '{name: "B", chamber: "S", label: "Sen. B"}]}), '

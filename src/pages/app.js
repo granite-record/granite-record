@@ -5836,9 +5836,16 @@ function renderReports(b,d,rsa){
   // rather than as small print beside the date. A bill can be reported by
   // four different committees and the reader needs to know which one is
   // speaking before they read what it said.
+  // In Title Case as typed, now that capitals no longer hide the record's own
+  // case (the cohesion audit's I-1): each part through titleWords, so a
+  // name stored as "JUDICIARY" reads "Judiciary", and "Committee" added only
+  // where the name does not carry it ("Joint Committee on Address").
+  const repName=(cmte,body)=>{
+    const n=[body,cmte].filter(Boolean).map(titleWords).join(" ");
+    return /\bcommittee\b/i.test(n)?n:n+" Committee";};
   const head=(r,cmte,body)=>`<div class="rephead">
       ${[body,cmte].filter(Boolean).length
-        ? `<h2 class="sech">${esc([body,cmte].filter(Boolean).join(" "))} Committee</h2>`:""}
+        ? `<h2 class="sech">${esc(repName(cmte,body))}</h2>`:""}
       <div class="repmeta">${when(r)}${cited(r)}</div></div>`;
 
   // ONE REPORT IS ONE ELEMENT, so that it can be laid out as one. The head
@@ -6056,7 +6063,7 @@ function fiscalTable(f){
       }</tr>`).join("")}</tbody></table></div>
       ${t.footnote?`<p class="src">${esc(t.footnote)}</p>`:""}`;
   };
-  return `<section class="fnsec"><h2 class="sech">Fiscal Impact</h2>
+  return `<section class="fnsec"><h3 class="amdsec">Fiscal impact</h3>
     ${f.lead?`<p class="fnlead">${esc(f.lead)}</p>`:""}
     ${(f.tables||[]).map(table).join("")}
     <p class="src">Source: NH General Court</p></section>`;
