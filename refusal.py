@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.31
+# GRANITE_VERSION: 2026-09-09.32
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -498,7 +498,8 @@ def no_redirect_opener():
     HTTPError (redirected(), below), and nothing follows it -- one request,
     to the address asked and no other. The night's fetchers keep one as
     _OPENER (snapshot_gencourt, fetch_committees, fetch_lsrs and
-    fetch_calendar_archive), the name a check stands a fake in for."""
+    fetch_calendar_archive), the name a check stands a fake in for; netcheck
+    keeps its open as URLOPEN."""
     import urllib.request
     o = urllib.request.OpenerDirector()
     for h in (urllib.request.ProxyHandler(), urllib.request.UnknownHandler(),

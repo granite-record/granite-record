@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 Why is the General Court refusing us?
 
@@ -81,9 +81,16 @@ import urllib.request
 import refusal
 
 # What asks, by name, so that a check can stand fakes in for both and no test
-# ever reaches the General Court: urlopen for the urllib requests, and the
-# connection class for each scheme of the raw ones.
-URLOPEN = urllib.request.urlopen
+# ever reaches the General Court: an opener's open for the urllib requests,
+# and the connection class for each scheme of the raw ones.
+#
+# NO REDIRECT IS FOLLOWED (the reviewers of 30 October 2026). URLOPEN was
+# urllib.request.urlopen, which follows a 3xx to its Location: three of the
+# seven requests made a second one, to a target nobody chose, and the answer
+# there counted as getting through. The opener has no redirect handler
+# (refusal.no_redirect_opener), so a 3xx comes back as an HTTPError, and
+# answered() reads it as "a redirect, not the page".
+URLOPEN = refusal.no_redirect_opener().open
 CONNECTIONS = {"https": http.client.HTTPSConnection, "http": http.client.HTTPConnection}
 
 OURS =("granite-record/1.0 (civic transparency project; "

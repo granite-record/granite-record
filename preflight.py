@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.742
+# GRANITE_VERSION: 2026-09-04.743
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -86381,18 +86381,24 @@ def _refusal_check_laptop(R, CL):
 def _netcheck_verdict(NC, R):
     """C15 of design_final, as the hourly addendum amends it (its build plan
     10; netcheck.py, WHAT COUNTS AS GETTING THROUGH and NOT BESIDE GITHUB).
-    Every request goes to fakes standing in for netcheck's URLOPEN and
-    CONNECTIONS, and the process's own sockets refuse to connect while the
-    check runs, so nothing here reaches anybody.
+    Every request goes to fakes, and the process's own sockets refuse to
+    connect while the check runs, so nothing here reaches anybody. The raw
+    requests go to fakes standing in for netcheck's CONNECTIONS. The urllib
+    ones go through netcheck's own URLOPEN, whatever it is, with the fake one
+    level down: urllib's HTTPSHandler answers in place of a connection, so
+    the opener's own handlers read the answer (the reviewers of 30 October
+    2026: a fake URLOPEN raised HTTPError for every 3xx, which urlopen never
+    does, so a URLOPEN that followed redirects passed).
 
     The verdict: seven requests, none of them the repeated "root" one; every
     answer a 403 -- urllib's HTTPError and a raw connection's status alike
     -- is "the server ANSWERED, and said no" and "Nothing got through"; every
     answer the firewall's block page over a 200 is the block page and
     "Nothing got through"; a 302 to the raw socket is a redirect, not the
-    page; every answer the page is "Everything got through"; 403s and pages
-    mixed are "Some got through". Never "Everything got through" over a
-    refusal.
+    page; a 302 to every request, whose Location answers with the page, is
+    seven redirects, seven requests and "Nothing got through"; every answer
+    the page is "Everything got through"; 403s and pages mixed are "Some got
+    through". Never "Everything got through" over a refusal.
 
     On a stood-down laptop: no read of the bucket since the last window,
     exit 4 and nothing asked; inside the window, the same with
@@ -86403,15 +86409,22 @@ def _netcheck_verdict(NC, R):
     laptop nothing of this applies, inside the window and beside GitHub's
     record alike."""
     import contextlib
+    import http.client
     import io
     import socket
     import types
-    import urllib.error
+    import urllib.request
+    import urllib.response
     tmp = Path(tempfile.mkdtemp(prefix="gr-netcheck-"))
     saved = (R.MARK, NC.URLOPEN, NC.CONNECTIONS, NC.time, socket.socket.connect,
              socket.create_connection)
+    saved_open = (urllib.request.HTTPSHandler.__dict__["https_open"],
+                  urllib.request.HTTPHandler.__dict__["http_open"])
     hits = []
     answer = {"urllib": (200, b""), "raw": (200, b"")}
+    # Where a redirect points: a page, so a request that followed it would
+    # get through.
+    elsewhere = "https://elsewhere.invalid/b"
 
     class Resp:
         def __init__(self, status, body):
@@ -86426,12 +86439,20 @@ def _netcheck_verdict(NC, R):
         def __exit__(self, *exc):
             return False
 
-    def urlopen(req, timeout=None):
+    def answers(handler, req):
+        """urllib's HTTPSHandler.https_open (and HTTPHandler.http_open), in
+        place of a connection: netcheck's own opener reads this answer with
+        its own handlers -- a redirect handler among them, if it holds one,
+        which would ask `elsewhere` next."""
         hits.append(req.full_url)
-        status, body = answer["urllib"]
-        if status >= 300:
-            raise urllib.error.HTTPError(req.full_url, status, "x", {}, io.BytesIO(body))
-        return Resp(status, body)
+        status, body = (200, page) if req.full_url == elsewhere else answer["urllib"]
+        head = http.client.HTTPMessage()
+        head["Content-Type"] = "text/html"
+        if 300 <= status < 400:
+            head["Location"] = elsewhere
+        r = urllib.response.addinfourl(io.BytesIO(body), head, req.full_url, status)
+        r.msg = "x"
+        return r
 
     class Conn:
         def __init__(self, host, timeout=None, context=None):
@@ -86460,7 +86481,8 @@ def _netcheck_verdict(NC, R):
     page = b"<html><title>About the Senate</title><p>The Senate</p></html>"
     wrong = []
     try:
-        NC.URLOPEN = urlopen
+        urllib.request.HTTPSHandler.https_open = answers
+        urllib.request.HTTPHandler.http_open = answers
         NC.CONNECTIONS = {"https": Conn, "http": Conn}
         NC.time = types.SimpleNamespace(sleep=lambda s: None)
         socket.socket.connect = no_network
@@ -86484,6 +86506,14 @@ def _netcheck_verdict(NC, R):
             if "Everything got through" in out or "a redirect, not the page" not in out or \
                     "Some got through" not in out:
                 wrong.append(f"a 302 to the raw socket: {out[-500:]!r}")
+            # A 302 to every request, urllib's included, through netcheck's
+            # own opener: followed by none (the reviewers of 30 October 2026).
+            rc, out, asked = run(urllib_answer=(302, b""))
+            if len(asked) != 7 or elsewhere in asked or "Nothing got through" not in out or \
+                    out.count("a redirect, not the page") != 7:
+                wrong.append(f"a 302 to every request: {len(asked)} asked "
+                             f"({sum(a == elsewhere for a in asked)} of them where it pointed): "
+                             f"{out[-500:]!r}")
             rc, out, asked = run(urllib_answer=(200, page))
             if "Everything got through" not in out or "said no" in out:
                 wrong.append(f"seven pages: {out[-500:]!r}")
@@ -86546,12 +86576,14 @@ def _netcheck_verdict(NC, R):
                 wrong.append(f"off a stood-down laptop, inside the window beside GitHub's record: "
                              f"{len(asked)} asked, exit {rc}")
         assert not wrong, "netcheck: " + "; ".join(wrong)
-        return "ok", ("seven requests; a 403, the block page and a redirect never get through; "
+        return "ok", ("seven requests; a 403, the block page and a redirect never get through, "
+                      "and no redirect is followed; "
                       "on the stood-down laptop nothing is asked out of its turn, after a clear, "
                       "or beside GitHub's drop without --knock-stopped; off it, nothing of this")
     finally:
         R.MARK, NC.URLOPEN, NC.CONNECTIONS, NC.time = saved[0], saved[1], saved[2], saved[3]
         socket.socket.connect, socket.create_connection = saved[4], saved[5]
+        urllib.request.HTTPSHandler.https_open, urllib.request.HTTPHandler.http_open = saved_open
         NC.BODIES[:] = []
         shutil.rmtree(tmp, ignore_errors=True)
 
