@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.4
+# GRANITE_VERSION: 2026-10-30.5
 """
 The state documents the guides and Learn pages rest on: from the laptop, where
 a real browser can read them, to the sessions, which cannot.
@@ -555,8 +555,10 @@ def downloaded_from(path):
     name followed by ':Zone.Identifier'. Elsewhere, and for a file saved
     another way, there is none."""
     try:
-        text = Path(str(path) + ":Zone.Identifier").read_text(encoding="utf-8",
-                                                               errors="replace")
+        # The built-in open, as Chrome's own write goes: on NTFS the name with
+        # its colon opens the stream; pathlib is kept out of it.
+        with open(str(path) + ":Zone.Identifier", encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
     except OSError:
         return None
     for line in text.splitlines():

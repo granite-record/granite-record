@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.739
+# GRANITE_VERSION: 2026-09-04.740
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -57062,8 +57062,13 @@ def _state_sources_apart(CL, SS):
 def _state_sources_file(SS):
     """state_sources.py file reads the folder Chrome saved into on the laptop
     (30 October 2026). Windows records each download's address in a stream
-    beside it, which reads as "<name>:Zone.Identifier"; on this machine that
-    is an ordinary file of that name, which is how it is made here. A file is
+    beside it, which reads as "<name>:Zone.Identifier". It is written here the
+    way Chrome writes it, with the built-in open of that name: on Windows (the
+    nightly's machine, and the laptop) that is the stream itself, and on Linux
+    an ordinary file of that name. Where the stream cannot be written and read
+    back -- a Windows folder whose file system has no streams -- the parts that
+    rest on a recorded address are skipped, and the check says so; everywhere
+    else that is a failure. A file is
     placed by that address, else by a name only one registered address ends
     in ("name (1).pdf" being Chrome's second copy); --as names one by hand and
     is refused where the recorded address says otherwise. Nothing is moved or
@@ -57093,28 +57098,47 @@ def _state_sources_file(SS):
             return code, out.getvalue()
 
         def zone(name, url):
-            (dl / f"{name}:Zone.Identifier").write_text(
-                f"[ZoneTransfer]\r\nZoneId=3\r\nHostUrl={url}\r\n", encoding="utf-8")
+            with open(str(dl / name) + ":Zone.Identifier", "w", encoding="utf-8") as fh:
+                fh.write(f"[ZoneTransfer]\r\nZoneId=3\r\nHostUrl={url}\r\n")
 
         (dl / "download.pdf").write_bytes(b"by address")
-        zone("download.pdf", a_row["url"])
+        try:
+            zone("download.pdf", a_row["url"])
+            streams = SS.downloaded_from(dl / "download.pdf") == a_row["url"]
+        except OSError:
+            streams = False
+        assert streams or os.name == "nt", (
+            "the recorded address of a download, written as Chrome writes it, did not read "
+            "back here, and only a Windows folder without streams excuses that")
         stem, ext = SS.leaf(b_row["url"]).rsplit(".", 1)
         (dl / f"{stem} (1).{ext}").write_bytes(b"by name")
-        (dl / "unknown.pdf").write_bytes(b"not registered")
-        zone("unknown.pdf", "https://www.das.nh.gov/budget/not-in-the-registry.pdf")
         (dl / "holiday.jpg").write_bytes(b"not a document")
-        code, out = run(str(dl), "--day", "2026-10-29", "--dry-run")
-        assert code == 1 and not (root / "sources").exists(), ("a dry run wrote, or did not "
-                                                              "say a document was not placed", out)
-        code, out = run(str(dl), "--day", "2026-10-29")
-        assert code == 1 and "could not be placed" in out, (
-            "a state document that could not be placed went unremarked", out)
-        assert (root / "sources" / a_id / "2026-10-29.pdf").read_bytes() == b"by address", out
+        if streams:
+            (dl / "unknown.pdf").write_bytes(b"not registered")
+            zone("unknown.pdf", "https://www.das.nh.gov/budget/not-in-the-registry.pdf")
+            code, out = run(str(dl), "--day", "2026-10-29", "--dry-run")
+            assert code == 1 and not (root / "sources").exists(), (
+                "a dry run wrote, or did not say a document was not placed", out)
+            code, out = run(str(dl), "--day", "2026-10-29")
+            assert code == 1 and "could not be placed" in out, (
+                "a state document that could not be placed went unremarked", out)
+            assert (root / "sources" / a_id / "2026-10-29.pdf").read_bytes() == b"by address", out
+            assert "NOT PLACED unknown.pdf" in out and "not-in-the-registry.pdf,pdf," in out, out
+            # Out of the way. On Windows its stream goes with it; on Linux the
+            # stand-in for the stream is a file of its own, moved after it.
+            (dl / "unknown.pdf").rename(t / "unknown.pdf")
+            if os.path.isfile(str(dl / "unknown.pdf") + ":Zone.Identifier"):
+                os.replace(str(dl / "unknown.pdf") + ":Zone.Identifier",
+                           str(t / "unknown.pdf") + ":Zone.Identifier")
+        else:
+            (dl / "download.pdf").unlink()
+            code, out = run(str(dl), "--day", "2026-10-29", "--dry-run")
+            assert code == 0 and not (root / "sources").exists(), ("a dry run wrote", out)
+            code, out = run(str(dl), "--day", "2026-10-29")
+            assert code == 0, out
         assert (root / "sources" / b_id / "2026-10-29.pdf").read_bytes() == b"by name", out
-        assert "NOT PLACED unknown.pdf" in out and "not-in-the-registry.pdf,pdf," in out, out
-        assert (dl / "download.pdf").exists(), "the filer moved a download rather than copy it"
-        (dl / "unknown.pdf").rename(t / "unknown.pdf")
-        (dl / "unknown.pdf:Zone.Identifier").rename(t / "unknown.pdf:Zone.Identifier")
+        assert (dl / f"{stem} (1).{ext}").exists(), ("the filer moved a download rather "
+                                                     "than copy it")
         n = sorted(p.relative_to(root).as_posix() for p in (root / "sources").rglob("*")
                    if p.is_file())
         code, out = run(str(dl), "--day", "2026-10-29")
@@ -57124,17 +57148,22 @@ def _state_sources_file(SS):
         # The same bytes read on a later day are a reading that found no
         # change: filed, so that up records the check and due moves on.
         code, out = run(str(dl), "--day", "2026-10-30")
-        assert code == 0 and (root / "sources" / a_id / "2026-10-30.pdf").is_file(), (
+        assert code == 0 and (root / "sources" / b_id / "2026-10-30.pdf").is_file(), (
             "a later reading with no change was not filed, so due would list it forever", out)
-        code, out = run(str(dl / "download.pdf"), "--as", b_id)
-        assert code == 1 and "not from" in out, ("--as filed a download under an id its "
-                                                 "recorded address contradicts", out)
+        if streams:
+            code, out = run(str(dl / "download.pdf"), "--as", b_id)
+            assert code == 1 and "not from" in out, ("--as filed a download under an id its "
+                                                     "recorded address contradicts", out)
         empty = t / "empty"
         empty.mkdir()
         code, out = run(str(empty))
         assert code == 0 and "Nothing new to file" in out, out
     finally:
         shutil.rmtree(t, ignore_errors=True)
+    if not streams:
+        return "ok", ("placed by name, copied not moved, filed once; the parts resting on "
+                      "a download's recorded address skipped: this Windows folder has no "
+                      "streams to record one in")
     return "ok", ("placed by recorded address and by name, copied not moved, filed once, "
                   "--as checked against the address, an unregistered state document named")
 
