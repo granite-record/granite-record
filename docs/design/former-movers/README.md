@@ -1,6 +1,6 @@
 # Former members who sat in both chambers (30 October 2026)
 
-Branch fix/former-movers (6d7e6d4, off feat/api-people 898354e). The screenshots
+Branch fix/former-movers (f3534fa, off feat/api-people 898354e). The screenshots
 compare that branch's build with the build of feat/api-people.
 
 ## What changed
@@ -22,7 +22,14 @@ people. The site now takes the same join:
 
 The kept page is the later chamber's, as a sitting mover's is. It carries every
 chamber's votes and terms. Chandley's page goes from 579 votes and 2 terms to
-1,838 votes and 5 terms.
+1,838 votes and 5 terms, and reads "On record 2009 to 2024". In the directory
+she becomes one line, "Sen. Shannon Chandley, D, SD11, 2009–2024", where she
+used to be two.
+
+The redirects come first in `_redirects`, ahead of the tab rules, because
+Cloudflare serves the first rule that matches. Each earlier page gets three:
+its address, its `.html` spelling, and its tabs, so `/…/votes` goes to the
+same tab of the kept page.
 
 ## Screenshots
 
@@ -35,7 +42,7 @@ chamber's votes and terms. Chandley's page goes from 579 votes and 2 terms to
 | What | Count |
 |---|---|
 | Files removed (the 4 earlier pages and their member files) | 8 |
-| `_redirects`: one 301 per earlier address, with and without `.html` | 8 rules |
+| `_redirects`: per earlier address, the page, its `.html` and its tabs | 12 rules |
 | Kept member pages and files that gain the other chamber | 4 + 4 |
 | Bill and session pages | ~160 |
 | Directory, find.json, sitemap, former.json, idx | yes |
