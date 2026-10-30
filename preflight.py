@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.742
+# GRANITE_VERSION: 2026-09-04.743
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -84448,6 +84448,821 @@ def _night_timer():
         f"the night's timer fails {len(fails)}: " + "; ".join(repr(n) for n, _s in fails[:5])
         + f" ({count or out.strip()[-300:]}). `node --test {t.as_posix()}` shows each")
     return "ok", f"{count['pass']} tests of the timer, its cron the workflow's"
+
+
+# ---- the live layer's reader of the General Court's public SQL database ----------
+# The live layer's design (26 October 2026, approved by the person as
+# "defaults"), sections 2.1, 2.2, 2.7 and 6.2: workers/live/tds.js, sql.js and
+# test_mode.js, tests/live/, and workers/live/live.gen.js.
+LIVE_DIRS = ("workers/live", "tests/live", "functions/api/live")
+LIVE_VIEWS = ("RollCallSummary", "RollCallHistory", "legislators", "Docket")
+LIVE_TDS_CASES = ("logs in with the published login", "LOGIN7, decoded field by field",
+                  "many 4,096-byte packets", "two statements on one connection",
+                  "encryption REQ stops the client before LOGIN7", "a refused login is `login`; 4060",
+                  "the server's ERROR is `query`", "dropped halfway through a reply", "a fixed-length INT4 column",
+                  "LOGINACK older than TDS 7.2", "never answers fails inside the deadline",
+                  "never opens, each fail inside the deadline", "loopback is refused without ENV production",
+                  "day 1 reads 11 March 2026", "day 2 reads veto day", "compare_test finds a changed ballot",
+                  "compare_test finds each difference the go rests on", "compare_test's time rule",
+                  "requires encryption: the file says so", "the sitting is not asked again",
+                  "the run's 45 s SQL budget bounds the test",
+                  "a packet size past TDS's 32,767 is not taken", "a statement on a closed connection is `query`")
+
+
+def _live_host_problems(root, host):
+    """Where the General Court's SQL host is named under `root` and should not
+    be: nowhere in the live layer's code or tests, and in
+    workers/live/wrangler.toml only as production's SQL_HOST, equal to
+    probe_db.HOST; the top level and every other environment on the loopback
+    address, and ENV = "production" under production alone (design 6.2)."""
+    import tomllib
+    root, bad = Path(root), []
+    # Exempt by its path, not its name: a wrangler.toml anywhere else under
+    # these folders is a configuration `wrangler dev --config` could run.
+    toml = root / "workers" / "live" / "wrangler.toml"
+    for top in LIVE_DIRS:
+        d = root / top
+        for p in sorted(d.rglob("*")) if d.is_dir() else []:
+            if p.is_file() and p != toml and host in p.read_text(encoding="utf-8", errors="replace"):
+                bad.append(f"{p.relative_to(root).as_posix()} names the SQL host")
+    if toml.is_file():
+        text = toml.read_text(encoding="utf-8")
+        conf = tomllib.loads(text)
+        envs = conf.get("env", {})
+        prod = envs.get("production", {}).get("vars", {})
+        if sum(host in ln for ln in text.splitlines()) > 1:
+            bad.append("workers/live/wrangler.toml names the SQL host on more than one line")
+        if host in text and prod.get("SQL_HOST") != host:
+            bad.append("workers/live/wrangler.toml names the SQL host somewhere but production's SQL_HOST")
+        if prod.get("SQL_HOST") not in (None, host, "127.0.0.1", "::1"):
+            bad.append(f"production's SQL_HOST is {prod.get('SQL_HOST')}, not probe_db.HOST")
+        for name, v in [("the top level", conf.get("vars", {}))] + \
+                [(f"[env.{n}]", e.get("vars", {})) for n, e in envs.items() if n != "production"]:
+            if v.get("SQL_HOST") not in (None, "127.0.0.1", "::1"):
+                bad.append(f"{name} of workers/live/wrangler.toml sets SQL_HOST to {v['SQL_HOST']}, "
+                           f"not the loopback address")
+            if "ENV" in v:
+                bad.append(f"{name} of workers/live/wrangler.toml sets ENV, which production's vars alone may")
+    return bad
+
+
+def _sql_split(s):
+    """`s` cut at its commas outside brackets and quotes."""
+    parts, depth, quote, cur = [], 0, False, ""
+    for ch in s:
+        if ch == "'":
+            quote = not quote
+        elif not quote and ch == "(":
+            depth += 1
+        elif not quote and ch == ")":
+            depth -= 1
+        if ch == "," and not depth and not quote:
+            parts.append(cur.strip())
+            cur = ""
+        else:
+            cur += ch
+    return parts + [cur.strip()]
+
+
+def _sql_textual(e):
+    """Whether an output column comes back as nvarchar(n), n at most 4000: a
+    CAST to it, a date as CONVERT(nvarchar(19), x, 126), or an ISNULL of such
+    a column and either '' or another."""
+    e = e.strip()
+    m = re.fullmatch(r"CAST\((.*) AS nvarchar\((\d+)\)\)", e, re.S)
+    if m and _sql_split(m.group(1)) == [m.group(1).strip()] and m.group(1).count("(") == m.group(1).count(")"):
+        return 1 <= int(m.group(2)) <= 4000
+    if re.fullmatch(r"CONVERT\(nvarchar\(19\), [a-z]\.\w+, 126\)", e):
+        return True
+    m = re.fullmatch(r"ISNULL\((.*)\)", e, re.S)
+    if m:
+        args = _sql_split(m.group(1))
+        return len(args) == 2 and _sql_textual(args[0]) and (args[1] == "''" or _sql_textual(args[1]))
+    return False
+
+
+def _live_statement_problems(name, sql, views, width, refused):
+    """What is wrong with one of sql.js's statements as written, {NAME} where a
+    value goes: one SELECT over the four views, every column it names one the
+    view has (`views`: {view: [columns]}), every output column nvarchar(n),
+    `width` of them, no statement end, comment, star or variable, no word of
+    fetch_past_db's refused list (JOIN alone, as Q2's one LEFT JOIN of the
+    roster), and no literal but '' and Q3's '%RC [0-9]%'."""
+    bad = []
+    places = set(re.findall(r"\{([A-Z0-9]+)\}", sql))
+    if places - {"Y", "FIRST", "UNTIL", "CHAMBERS", "BODY", "SEQS", "DAY", "NEXT", "SINCE", "MDY"}:
+        bad.append(f"{name} has a place no builder fills: {sorted(places)}")
+    literals = re.findall(r"'(?:[^']|'')*'", sql)
+    odd = [x for x in literals if x not in ("''", "'%RC [0-9]%'")]
+    if odd:
+        bad.append(f"{name} carries the literal {odd[0]}: a value goes in through fill() and lit()")
+    # A literal or a place is set aside before the words are read: '%RC [0-9]%'
+    # is no identifier, and {UNTIL} no keyword.
+    bare = re.sub(r"\{[A-Z0-9]+\}", "0", re.sub(r"'(?:[^']|'')*'", "''", sql))
+    if not re.match(r"SELECT\s", bare):
+        bad.append(f"{name} is not a SELECT")
+    if re.search(r";|--|/\*|\*/|\*|@|#|\\", bare):
+        bad.append(f"{name} holds a statement end, a comment, a star or a variable")
+    said = [w for w in refused if re.search(rf"\b{w}\b", bare, re.I)]
+    if said:
+        bad.append(f"{name} says {said[0]}")
+    joins = re.findall(r"\b\w+\s+JOIN\b[^\n]*", bare)
+    if joins and (name != "Q2" or joins != ["LEFT JOIN legislators l ON l.Employeeno = h.EmployeeNumber"]):
+        bad.append(f"{name} joins: {joins}")
+    called = {c.upper() for c in re.findall(r"([A-Za-z_]\w*)\s*\(", bare)}
+    if called - {"CAST", "CONVERT", "ISNULL", "NVARCHAR", "IN", "AND", "OR"}:
+        bad.append(f"{name} calls {sorted(called - {'CAST', 'CONVERT', 'ISNULL', 'NVARCHAR', 'IN', 'AND', 'OR'})}")
+    if len(re.findall(r"\bFROM\b", bare)) != 1 or len(re.findall(r"\bSELECT\b", bare)) != 1:
+        bad.append(f"{name} is not one SELECT with one FROM")
+    aliases = dict((a, v) for v, a in re.findall(r"\b(?:FROM|JOIN)\s+(\w+)\s+([a-z])\b", bare))
+    known = {v.lower(): v for v in views}
+    for a, v in aliases.items():
+        if v not in LIVE_VIEWS or v.lower() not in known:
+            bad.append(f"{name} reads {v}, which is not one of {', '.join(LIVE_VIEWS)}")
+    for a, col in re.findall(r"\b([a-z])\.(\w+)", bare):
+        v = aliases.get(a)
+        if v is None:
+            bad.append(f"{name} names {a}.{col}, and {a} is no view it reads")
+        elif v.lower() in known and col not in views[known[v.lower()]]:
+            bad.append(f"{name} names {v}.{col}, which the view's columns do not include")
+    head = re.match(r"SELECT\s(.*?)\nFROM\s", bare, re.S)
+    items = _sql_split(head.group(1)) if head else []
+    if len(items) != width:
+        bad.append(f"{name} returns {len(items)} columns, and its reader takes {width}")
+    plain = [x for x in items if not _sql_textual(x)]
+    if plain:
+        bad.append(f"{name}'s column {plain[0]!r} is not cast to nvarchar(n), n at most 4000")
+    return bad
+
+
+def _live_web_named(root):
+    """The live layer's code under `root` (workers/live/ and functions/api/live/)
+    that names the General Court's web server, which it never asks."""
+    root, said = Path(root), []
+    for top in ("workers/live", "functions/api/live"):
+        d = root / top
+        for p in sorted(d.rglob("*")) if d.is_dir() else []:
+            if p.is_file() and p.suffix in (".js", ".mjs") and re.search(
+                    r"gc\.nh\.gov|gencourt", p.read_text(encoding="utf-8", errors="replace"), re.I):
+                said.append(p.relative_to(root).as_posix())
+    return said
+
+
+def _live_hours_meet(start, end, windows, margin):
+    """Where weekdays from hour `start` to hour `end` in New Hampshire, in
+    daylight time and in standard time, meet one of `windows`
+    (refusal.NIGHT_WINDOWS, in UTC) or the `margin` minutes before one."""
+    met = []
+    for offset in (4, 5):                                   # daylight time, standard time
+        for weekday in range(5):
+            for minute in range(start * 60, end * 60):
+                utc = minute + offset * 60
+                day, at = (weekday + utc // 1440) % 7, utc % 1440
+                for wd, (h1, m1), (h2, m2), what in windows:
+                    if (wd is None or wd == day) and h1 * 60 + m1 - margin <= at < h2 * 60 + m2:
+                        met.append(f"UTC{-offset:+d} {minute // 60:02d}:{minute % 60:02d} meets {what}")
+    return sorted(set(met))
+
+
+def _live_sql(live_gen, dayfiles_from_db, fetch_past_db, refusal):
+    """Part of _live_layer, which calls it: The design's section 6.2 and 7.1, for the half of the live Worker that
+    reads the General Court's public SQL database:
+
+    LIVE.GEN.JS is what src/pages/live_gen.py writes from the repository, and
+    its SQL_LOGIN is probe_db.py's DATABASE, USER and PASSWORD -- the login the
+    General Court publishes -- read here again from the committed file.
+
+    THE HOST is named in no file of the live layer's code or tests, and in
+    workers/live/wrangler.toml, once there is one, only as production's
+    SQL_HOST, equal to probe_db.HOST, with every other level on the loopback
+    address; tds.js refuses any other host without ENV = "production" too.
+    The rule is tried on fixtures first, so that a rule that stopped biting
+    is caught along with a file that breaks it.
+
+    THE STATEMENTS in workers/live/sql.js: each one SELECT over the four views,
+    every column it names one db/_columns.json lists (dayfiles_from_db.VIEWS,
+    which keeps that file's names, where the dump is not on this disk), every
+    output column nvarchar(n) so that tds.js reads one type, as many as its
+    reader takes, and no literal but '' and '%RC [0-9]%': a value goes in
+    through fill() and lit() alone. fetch_past_db.select_only's refused words
+    are refused here, all but JOIN, which Q2's one LEFT JOIN of the roster
+    needs (HISTORY_SQL's own). And no word of gc.nh.gov or gencourt in
+    workers/live/ or functions/api/live/: the live layer never asks the web
+    server.
+
+    THE TEST HOURS of workers/live/test_mode.js, weekdays from TEST_HOURS[0]
+    to TEST_HOURS[1] in New Hampshire, meet no window of refusal.NIGHT_WINDOWS
+    nor START_MARGIN_MINUTES before one, in standard time or daylight time.
+
+    Every rule is first tried on a fixture that breaks it alone, and must say
+    so in its own words, so that a rule which stopped catching anything fails
+    here along with a file that breaks it."""
+    gen, sql_js, test_js = (Path("workers/live") / n for n in ("live.gen.js", "sql.js", "test_mode.js"))
+    if not gen.is_file():
+        return "skip", "workers/live/ is not here"
+    ok, why = live_gen.current()
+    assert ok, f"{why}: run {live_gen.COMMAND}"
+    m = re.search(r"^export const SQL_LOGIN = (\{.*\});$", gen.read_text(encoding="utf-8"), re.M)
+    assert m and json.loads(m.group(1)) == live_gen.published_login(), \
+        "live.gen.js's SQL_LOGIN is not probe_db.py's DATABASE, USER and PASSWORD"
+    host = live_gen.assigned(live_gen.PROBE_DB, ("HOST",))["HOST"]
+
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        fx = Path(tmp)
+        main_toml = fx / "workers" / "live" / "wrangler.toml"
+        good = ('name = "x-local"\n[vars]\nSQL_HOST = "127.0.0.1"\n[env.production.vars]\nENV = "production"\n'
+                f'SQL_HOST = "{host}"\n')
+        main_toml.parent.mkdir(parents=True)
+        main_toml.write_text(good, encoding="utf-8")
+        assert not _live_host_problems(fx, host), _live_host_problems(fx, host)
+        prod = f'[env.production.vars]\nENV = "production"\nSQL_HOST = "{host}"\n'
+        for path, text in (("workers/live/x.js", f'const h = "{host}";'),
+                           ("tests/live/x.js", f'const h = "{host}";'),
+                           ("functions/api/live/x.js", f'const h = "{host}";'),
+                           ("tests/live/wrangler.toml", prod),
+                           ("workers/live/sub/wrangler.toml", prod),
+                           ("workers/live/wrangler.toml", f'[vars]\nSQL_HOST = "{host}"\n'),
+                           ("workers/live/wrangler.toml", '[vars]\nENV = "production"\nSQL_HOST = "127.0.0.1"\n')):
+            (fx / path).parent.mkdir(parents=True, exist_ok=True)
+            (fx / path).write_text(text, encoding="utf-8")
+            assert _live_host_problems(fx, host), f"the host rule no longer bites on {path}: {text}"
+            if fx / path == main_toml:
+                main_toml.write_text(good, encoding="utf-8")
+            else:
+                (fx / path).unlink()
+        (fx / "functions" / "api" / "live" / "x.js").write_text('fetch("https://gc.nh.gov/x")', encoding="utf-8")
+        assert _live_web_named(fx) == ["functions/api/live/x.js"], "the web server rule no longer bites"
+    bad = _live_host_problems(".", host)
+    assert not bad, "; ".join(bad)
+
+    said = _live_web_named(".")
+    assert not said, "these name the General Court's web server, which the live layer never asks: " + ", ".join(said)
+
+    src = sql_js.read_text(encoding="utf-8")
+    t = dict(re.findall(r"^export const (Q1|Q2|Q2_CHAMBER|Q3|VERSION) = `([^`]*)`;", src, re.M))
+    assert set(t) == {"Q1", "Q2", "Q2_CHAMBER", "Q3", "VERSION"}, \
+        f"sql.js no longer writes its statements where this reads them (found {sorted(t)})"
+    width = {k: int(v) for k, v in re.findall(r"(\w+): (\d+)", re.search(r"export const WIDTH = \{([^}]*)\}", src).group(1))}
+    assert t["VERSION"] == "SELECT @@VERSION", "the test's version statement is not SELECT @@VERSION"
+    cols_file = Path("db/_columns.json")
+    if cols_file.is_file():
+        views, whose = json.loads(cols_file.read_text(encoding="utf-8")), "db/_columns.json"
+        views = {v: [c if isinstance(c, str) else c.get("name") for c in cs] for v, cs in views.items()}
+    else:
+        views, whose = dayfiles_from_db.VIEWS, "dayfiles_from_db.VIEWS (db/ is not on this disk)"
+    refused = [w for w in re.findall(r"[A-Z]+", fetch_past_db._NOT_READ.pattern) if w != "JOIN"]
+    chambers = f"{t['Q2_CHAMBER']} OR {t['Q2_CHAMBER']}"
+    statements = {"Q1": (t["Q1"], width["q1"]), "Q2": (t["Q2"].replace("{CHAMBERS}", chambers), width["q2"]),
+                  "Q3": (t["Q3"], width["q3"])}
+    bad = [p for name, (sql, w) in statements.items()
+           for p in _live_statement_problems(name, sql, views, w, refused)]
+    assert not bad, "; ".join(bad[:6])
+    # Each rule bites, by its own words: a fixture that breaks it alone.
+    one = "SELECT CAST(d.Description AS nvarchar(9))\nFROM Docket d"
+    q2 = statements["Q2"][0]
+    for name, wrong, width, says in (
+            ("X", one.replace("nvarchar(9))", "nvarchar(9)), *"), 2, "a star"),
+            ("X", one.replace("nvarchar", "varchar"), 1, "is not cast to nvarchar"),
+            ("X", one.replace("Description", "Nothing"), 1, "which the view's columns do not include"),
+            ("X", one + "; SELECT 1", 1, "a statement end"),
+            ("X", one + " WHERE d.SessionYear = 'x'", 1, "carries the literal 'x'"),
+            ("X", one + " WHERE d.SessionYear = {EVIL}", 1, "a place no builder fills"),
+            ("X", one + " WHERE d.SessionYear IN (SELECT 1)", 1, "not one SELECT with one FROM"),
+            ("X", "SELECT CAST(x.Name AS nvarchar(9))\nFROM Sessions x", 1, "reads Sessions, which is not one of"),
+            ("X", one + " JOIN Docket e ON e.SessionYear = d.SessionYear", 1, "X joins"),
+            ("Q2", q2.replace("h.EmployeeNumber\n", "h.EmployeeNumber\n  LEFT JOIN legislators m "
+                                                   "ON m.Employeeno = h.EmployeeNumber\n"), 4, "Q2 joins"),
+            ("X", one.replace("CAST(d.Description", "CAST(LEN(d.Description)"), 1, "calls ['LEN']"),
+            ("X", one + "\nEXEC xp_cmdshell", 1, "says EXEC"),
+            ("X", one, 2, "returns 1 columns, and its reader takes 2")):
+        got = _live_statement_problems(name, wrong, views, width, refused)
+        assert any(says in p for p in got), f"the statement rule no longer says {says!r} of {wrong!r}: {got}"
+
+    hours = re.search(r"export const TEST_HOURS = \[(\d+), (\d+)\];", test_js.read_text(encoding="utf-8"))
+    assert hours, "test_mode.js no longer says TEST_HOURS where this reads it"
+    start, end = int(hours.group(1)), int(hours.group(2))
+    margin = refusal.START_MARGIN_MINUTES
+    # The rule bites: hours over the nightly, past midnight into Monday's
+    # weekly job, and a window's margin before it opens.
+    assert _live_hours_meet(4, 10, refusal.NIGHT_WINDOWS, margin), "the hours rule misses the nightly"
+    assert any("Monday" in m for m in _live_hours_meet(0, 2, refusal.NIGHT_WINDOWS, margin)), \
+        "the hours rule misses Monday's weekly job"
+    edge = ((None, (9, 10), (9, 20), "a window at 09:10 UTC"),)
+    assert _live_hours_meet(3, 4, edge, 30) and not _live_hours_meet(3, 4, edge, 0), \
+        "the hours rule no longer keeps the margin before a window"
+    met = _live_hours_meet(start, end, refusal.NIGHT_WINDOWS, margin)
+    assert not met, "the November test's hours meet the night's window: " + "; ".join(met[:3])
+    return "ok", (f"live.gen.js current, its login probe_db.py's; the host production's alone; Q1, Q2 and "
+                  f"Q3 cast every column and name only columns {whose} lists; the test's "
+                  f"{start:02d}:00-{end:02d}:00 misses the night's windows")
+# ======================================================= code: the live layer ==
+# workers/live/, the Worker graniterecord-live (the person, 26 October 2026:
+# the live layer approved with its defaults). Its YouTube half is built; its
+# database half, the two read-only Functions and the pages come in later
+# branches, each adding to these two checks rather than a check of its own.
+
+# The live Worker's suite, and how many tests it had when this was written: a
+# count that falls means a file stopped loading or a test was lost.
+LIVE_TESTS = "tests/live/index.js"
+LIVE_TESTS_AT_LEAST = 169
+# The person's ready-made switches (workers/live/control/), each as the Worker
+# must read it; and the values control.json may hold (store.js CONTROL_VALUES).
+LIVE_CONTROL = {"all-off.json": {"youtube": "off", "sql": "off"},
+                "on.json": {"youtube": "on", "sql": "on"},
+                "sql-off.json": {"youtube": "on", "sql": "off"},
+                "sql-test.json": {"youtube": "on", "sql": "test"}}
+LIVE_CONTROL_VALUES = {"youtube": ("on", "off"), "sql": ("off", "test", "on")}
+# What the live code may not name: the General Court's web server (it asks
+# only YouTube, and in a later branch the published SQL host) and the email
+# follower's database, which is another Worker's.
+LIVE_NEVER = re.compile(r"gc\.nh\.gov|gencourt|graniterecord-follow|FOLLOW_DB", re.I)
+LOOPBACK = ("127.0.0.1", "::1", "localhost")
+
+
+@check("build", "the live Worker reads a roll call's bill field as the record does: every field in "
+       "records/rollcalls/ and the procedural ones (SUSPRULE, RULE 1-2, HRULE64) give merge.js's "
+       "billNumber what rollcall_parser.bill_number gives", needs=("rollcall_parser",))
+def _live_bill_number(RP):
+    """The live file's `bill` is the term and the bill the record would file
+    the roll call under, or null where the field names no bill: a procedural
+    vote written "2025-2026/SUSPRULE" is a link to nothing, and breaks
+    schema/session.votes.json. The patterns reach the Worker through
+    live.gen.js (BILL_NUMBER); this holds the whole function equal."""
+    root = Path(".")
+    fields = {"SUSPRULE", "RULE 1-2", "HRULE64", "SEN/RULE", "SR1 (2009)", "SSRULES", "REPORT", "",
+              "HB 1", "hb1", "HB1-FN", "HB 1-FN-A", "HB1-FN-LOCAL", "HCACR13", "CACR 13", "SSSB 1", "HA1",
+              "HCO2", "HR 10", "SCR3", "HJR1", "SJR 2", "HB1-L", "SB12-A", "HB", "1", "HBX1"}
+    for f in sorted((root / "records/rollcalls").glob("RollCallSummary*.txt")):
+        for line in f.read_text(encoding="utf-8-sig", errors="replace").splitlines():
+            q = line.split("|")
+            if len(q) >= 13:
+                fields.add(q[4])
+    fields = sorted(fields)
+    want = [RP.bill_number(x) for x in fields]
+    node = shutil.which("node")
+    assert node, "node is not on PATH, and the Worker's billNumber is the thing held here"
+    src = ("import { billNumber } from " + json.dumps((root.resolve() / "workers/live/merge.js").as_uri())
+           + ";\nlet s = ''; process.stdin.on('data', d => s += d); process.stdin.on('end', () => "
+           "process.stdout.write(JSON.stringify(JSON.parse(s).map(billNumber))));\n")
+    r = _run([node, "--input-type=module", "-e", src], input=json.dumps(fields),
+             capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0, f"node could not read the fields: {(r.stderr or r.stdout).strip()[-400:]}"
+    got = json.loads(r.stdout)
+    differ = [f"{x!r}: the Worker {g!r}, the record {w!r}" for x, g, w in zip(fields, got, want) if g != w]
+    assert not differ, f"{len(differ)} bill fields read apart: " + "; ".join(differ[:5])
+    none = sum(1 for w in want if not w)
+    assert none >= 8, f"only {none} fields name no bill: the procedural cases are not being read"
+    return "ok", f"{len(fields):,} bill fields read alike, {none} of them naming no bill"
+
+
+@check("build", "the live Worker's own tests pass, every one: node --test runs tests/live/index.js, "
+       "which imports every test file in tests/live/")
+def _live_tests():
+    """workers/live/ is held by its own node suite, as the night's timer is by
+    tests/night-timer.test.js: the YouTube half against a YouTube that is a
+    function answering synthetic answers in the documented shape (recorded
+    ones would be YouTube's data kept in git past its 30 days), and the store
+    against an R2 bucket in memory with etags. It proves the cadence across
+    both changes of the clock in 2027; live, upcoming, ended, unscheduled and
+    cancelled streams each written as they are; a heavy week's quota under
+    1,300 units and at 52 searches a weekday; every failure said in the file
+    and to Healthchecks, never written as a look that found nothing; the
+    lease; the sweep; and the person's switch.
+
+    In one process through index.js, as _follow_tests learned to (a folder
+    run passed on Node 22 and failed on GitHub's Node 24 under Windows), and
+    every *.test.js in the folder imported there, so none passes in silence."""
+    index = Path(LIVE_TESTS)
+    if not index.is_file():
+        return "skip", f"{LIVE_TESTS} is not here"
+    imported = re.findall(r'^import\s+"\./([^"]+)";', index.read_text(encoding="utf-8"), re.M)
+    files = sorted(p.name for p in index.parent.glob("*.test.js"))
+    missing = [f for f in files if f not in imported]
+    assert not missing, (f"{LIVE_TESTS} does not import {', '.join(missing)}, so node --test never "
+                         "runs it: add an import line for each")
+    assert imported and imported[0] == "no_network.js", (
+        f"{LIVE_TESTS} must import no_network.js first, so that no test can reach the network")
+    # What the suite imports, named here by path and held equal to its imports
+    # as they stand, so that preflight --changed (check_select.py reads this
+    # function's strings) runs this check when any of it changes.
+    held = {"workers/live/index.js", "workers/live/clock.js", "workers/live/youtube.js",
+            "workers/live/store.js", "workers/live/tds.js", "workers/live/sql.js",
+            "workers/live/test_mode.js", "workers/live/live.gen.js", "workers/follow/common.js",
+            "tests/live/no_network.js", "tests/live/clock.test.js", "tests/live/sql.test.js",
+            "tests/live/store.test.js", "tests/live/tds.test.js", "tests/live/youtube.test.js",
+            "tests/live/fake_r2.js", "tests/live/fake_youtube.js", "tests/live/fake_tds.js",
+            "tests/live/world.js", "tests/live/compare_test.mjs", "tests/live/wire.test.js",
+            "tests/live/from_records.js", "workers/live/votes.js", "workers/live/merge.js",
+            "tests/live/votes.test.js", "tests/live/replay.test.js", "tests/live/functions.test.js",
+            "functions/api/live/_store.js", "functions/api/live/streams.js", "functions/api/live/votes/[day].js",
+            "tests/live/page.test.js"}
+    reached, todo = set(), [index]
+    while todo:
+        f = todo.pop()
+        for rel in re.findall(r"""^\s*import\s+(?:[^;]*?\sfrom\s+)?["'](\.{1,2}/[^"']+)["']""",
+                              f.read_text(encoding="utf-8"), re.M | re.S):
+            p = Path(os.path.relpath(f.parent / rel)).as_posix()
+            if p not in reached:
+                reached.add(p)
+                todo.append(Path(p))
+    assert reached == held, (
+        f"tests/live/ reaches {sorted(reached - held)} unnamed here, or no longer reaches "
+        f"{sorted(held - reached)}: name each in _live_tests's `held`, so preflight --changed runs it")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", f"node is not on PATH, so the {len(files)} test files in tests/live/ did not run"
+    r = _run([node, "--test", "--test-reporter=tap", index.as_posix()],
+             capture_output=True, text=True, timeout=600)
+    out = (r.stdout or "") + (r.stderr or "")
+    count = {k: int(v) for k, v in re.findall(r"^# (tests|pass|fail|cancelled|skipped|todo) (\d+)$",
+                                               out, re.M)}
+    fails = _tap_failures(out)
+    assert not fails, (
+        f"tests/live/ fails {len(fails)} of {count.get('tests', '?')}: "
+        + "; ".join(f"{n!r} ({s})" if s else repr(n) for n, s in fails[:6])
+        + (f" (+{len(fails) - 6} more)" if len(fails) > 6 else "")
+        + f". `node --test {index.as_posix()}` shows each in full")
+    assert r.returncode == 0 and not count.get("fail") and not count.get("cancelled") \
+        and count.get("pass", 0) >= LIVE_TESTS_AT_LEAST, (
+        f"node --test {index.as_posix()} exited {r.returncode} with {count or 'no count'}, and "
+        f"{LIVE_TESTS_AT_LEAST} or more must pass: " + out.strip()[-500:])
+    passed = [m.replace("\\#", "#") for m in re.findall(r"^ok \d+ - (.*)$", out, re.M)]
+    gone = [c for c in LIVE_TDS_CASES if not any(c in n for n in passed)]
+    assert not gone, "these cases the design names no longer pass, or no longer exist: " + "; ".join(gone)
+    week = re.search(r"quota by Pacific day: (.*)$", out, re.M)
+    spent = [(int(u), int(s)) for u, s in re.findall(r"(\d+)u/(\d+)s", week.group(1))] if week else []
+    busiest = max(spent, default=None)
+    return "ok", (f"tests/live: {count['pass']} passed of {count.get('tests')}, from {len(files)} test "
+                  f"files" + (f"; the busiest simulated weekday spent {busiest[0]:,} units and "
+                              f"{busiest[1]} searches" if busiest else ""))
+
+
+def _live_host(root):
+    """probe_db.HOST, read by parsing probe_db.py (importing no fetcher)."""
+    tree = ast.parse((root / "src/fetch/gc_db/probe_db.py").read_text(encoding="utf-8"))
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "HOST"
+                                                for t in node.targets):
+            return ast.literal_eval(node.value)
+    raise AssertionError("src/fetch/gc_db/probe_db.py no longer assigns HOST")
+
+
+def _live_problems(root):
+    """[sentence] for each way workers/live/ breaks a rule node cannot see:
+    its configuration, where the General Court's host may be named, what its
+    code imports and names, its README's commands and its switch's files."""
+    import tomllib
+    bad = []
+    live = root / "workers/live"
+    toml_text = (live / "wrangler.toml").read_text(encoding="utf-8")
+    conf = tomllib.loads(toml_text)
+    envs = conf.get("env", {})
+    prod = envs.get("production") or {}
+    # Production alone runs: its cron, its name, its bucket; nothing answers.
+    # A route is refused wherever it is written: under a [[...]] table it
+    # parses as that table's key, and would be read nowhere else.
+    if re.search(r"^\s*(?:\[+[^\]]*\broutes?\]+|routes?\s*=)", toml_text, re.M):
+        bad.append("wrangler.toml declares a route: the live Worker answers no request")
+    if set(envs) != {"production"}:
+        bad.append(f"wrangler.toml has the environments {sorted(envs)}, and the live Worker has "
+                   "production alone")
+    if "triggers" in conf:
+        bad.append("wrangler.toml has a cron at the top level, which `wrangler dev` runs and which every "
+                   "environment inherits: it belongs under [env.production.triggers] alone")
+    if prod.get("triggers", {}).get("crons") != ["*/2 * * * *"]:
+        bad.append(f"production's cron is {prod.get('triggers', {}).get('crons')}, not every 2 minutes, "
+                   "which clock.js's STEP and every cadence assume")
+    for where, d in (("the top level", conf), ("production", prod)):
+        if d.get("workers_dev") is not False:
+            bad.append(f"wrangler.toml: {where} does not set workers_dev = false")
+        if {"route", "routes"} & set(d):
+            bad.append(f"wrangler.toml gives {where} a route: the live Worker answers no request")
+        if not (d.get("observability") or {}).get("enabled"):
+            bad.append(f"wrangler.toml: {where} does not keep Workers Logs, where each run's codes go")
+    if prod.get("name") != "graniterecord-live" or conf.get("name") == "graniterecord-live":
+        bad.append(f"the production Worker is named {prod.get('name')!r} and the local one "
+                   f"{conf.get('name')!r}: production is graniterecord-live, and only production")
+    top_b = [(b.get("binding"), b.get("bucket_name")) for b in conf.get("r2_buckets", [])]
+    prod_b = [(b.get("binding"), b.get("bucket_name")) for b in prod.get("r2_buckets", [])]
+    if prod_b != [("LIVE", "graniterecord-live")]:
+        bad.append(f"production binds {prod_b}, and the live Worker binds LIVE to graniterecord-live alone")
+    if len(top_b) != 1 or top_b[0][0] != "LIVE" or top_b[0][1] == "graniterecord-live":
+        bad.append(f"the top level binds {top_b}: LIVE to a local bucket, never the real one")
+    for d in (conf, prod):
+        for k in ("d1_databases", "kv_namespaces", "services", "durable_objects", "queues"):
+            if d.get(k):
+                bad.append(f"wrangler.toml binds {k}: the live Worker has its bucket and nothing else")
+    clock = (live / "clock.js").read_text(encoding="utf-8")
+    if not re.search(r"^export const STEP = 2 \* MINUTE;", clock, re.M):
+        bad.append("clock.js's STEP is not the cron's 2 minutes")
+    # The General Court's SQL host: in production's vars, as probe_db has it, or nowhere.
+    host = _live_host(root)
+    for k, v in (conf.get("vars") or {}).items():
+        if k.endswith("_HOST") and v not in LOOPBACK:
+            bad.append(f"wrangler.toml's top-level {k} is {v!r}: what `wrangler dev` runs reaches "
+                       "loopback alone")
+    pvars = prod.get("vars") or {}
+    if "SQL_HOST" in pvars and pvars["SQL_HOST"] != host:
+        bad.append(f"production's SQL_HOST is {pvars['SQL_HOST']!r}, not probe_db.HOST")
+    roots = [live, root / "tests/live", root / "functions/api/live"]
+    files = sorted(p for r_ in roots if r_.is_dir() for p in r_.rglob("*") if p.is_file())
+    for p in files:
+        rel = p.relative_to(root).as_posix()
+        text = p.read_text(encoding="utf-8", errors="replace")
+        if host in text:
+            lines = [ln for ln in text.splitlines() if host in ln]
+            ok = (rel == "workers/live/wrangler.toml" and len(lines) == 1
+                  and re.fullmatch(rf'\s*SQL_HOST\s*=\s*"{re.escape(host)}"\s*(#.*)?', lines[0])
+                  and pvars.get("SQL_HOST") == host)
+            if not ok:
+                bad.append(f"{rel} names the General Court's SQL host, which only production's "
+                           "SQL_HOST in workers/live/wrangler.toml may")
+        if p.suffix in (".js", ".toml", ".json") and LIVE_NEVER.search(text):
+            bad.append(f"{rel} names {LIVE_NEVER.search(text).group(0)!r}: the live code asks neither the "
+                       "General Court's web server nor the follow database")
+    # The Worker's code imports its own folder, common.js's clock and
+    # cloudflare:sockets (the database's socket, imported when a run needs it),
+    # and nothing else; an import() is read as an import.
+    for p in sorted(live.glob("*.js")):
+        text = p.read_text(encoding="utf-8")
+        specs = re.findall(r'^\s*import\s[^;]*?from\s+"([^"]+)"', text, re.M | re.S) + \
+            re.findall(r'\bimport\(\s*["\']([^"\']+)["\']\s*\)', text)
+        for spec in specs:
+            if not (re.fullmatch(r"\./[\w.-]+\.js", spec) or spec in ("../follow/common.js", "cloudflare:sockets")):
+                bad.append(f"workers/live/{p.name} imports {spec}: the Worker imports its own folder, "
+                           "../follow/common.js and cloudflare:sockets, nothing else")
+    # The live Functions read the bucket and do nothing else (design 6.4):
+    # _store.js alone names env.LIVE, and hands back get and head; no file
+    # there writes, deletes, lists or uploads. Previews read the production
+    # bucket on the strength of this rule.
+    fdir = root / "functions/api/live"
+    for p in sorted(fdir.rglob("*.js")) if fdir.is_dir() else []:
+        rel = p.relative_to(root).as_posix()
+        text = p.read_text(encoding="utf-8", errors="replace")
+        m = re.search(r"(?<!cache)\.(put|delete|list|createMultipartUpload|resumeMultipartUpload)\s*\(", text)
+        if m:
+            bad.append(f"{rel} calls {m.group(1)}(): the live Functions read the bucket, through _store.js's "
+                       "get and head alone")
+        if p.name != "_store.js" and re.search(r"\benv\s*(?:\.\s*LIVE\b|\[\s*[\"']LIVE[\"']\s*\])", text):
+            bad.append(f"{rel} names env.LIVE: only functions/api/live/_store.js may")
+        if p.name == "_store.js":
+            other = sorted(set(re.findall(r"\bbucket\.(\w+)", text)) - {"get", "head"})
+            if other:
+                bad.append(f"{rel} hands the bucket's {', '.join(other)} on: the facade is get and head alone")
+    # The site's binding of LIVE (root wrangler.toml), once it is there:
+    # production and previews the real bucket, the local top level never.
+    site_toml = root / "wrangler.toml"
+    site = tomllib.loads(site_toml.read_text(encoding="utf-8")) if site_toml.is_file() else {}
+    lv = lambda d: [b.get("bucket_name") for b in (d.get("r2_buckets") or []) if b.get("binding") == "LIVE"]
+    senv = site.get("env") or {}
+    bound = {"top": lv(site), "production": lv(senv.get("production") or {}), "preview": lv(senv.get("preview") or {})}
+    if any(bound.values()):
+        for where in ("production", "preview"):
+            if bound[where] != ["graniterecord-live"]:
+                bad.append(f"the site's wrangler.toml binds LIVE for {where} to {bound[where]}, not graniterecord-live")
+        if bound["top"] != ["graniterecord-live-local"]:
+            bad.append(f"the site's wrangler.toml binds LIVE at the top level to {bound['top']}: `wrangler pages dev` "
+                       "reads a local bucket, graniterecord-live-local, never the real one")
+    # The README's commands: every one reaches the real bucket and production.
+    readme = (live / "README.md").read_text(encoding="utf-8")
+    # The commands are the lines of its fenced blocks: prose may name them.
+    fenced = re.findall(r"^[ \t]*```[^\n]*\n(.*?)^[ \t]*```", readme, re.M | re.S)
+    cmds = [ln.strip() for block in fenced for ln in block.splitlines() if "wrangler " in ln]
+    for ln in cmds:
+        if re.search(r"wrangler\s+r2\s+object\b", ln) and "--remote" not in ln.split():
+            bad.append(f"README.md: `{ln}` lacks --remote, and wrangler's r2 object commands write "
+                       "local storage without it")
+        if re.search(r"wrangler\s+(deploy|secret)\b", ln) and not (
+                "--config workers/live/wrangler.toml" in ln and "--env production" in ln):
+            bad.append(f"README.md: `{ln}` does not name --config workers/live/wrangler.toml --env "
+                       "production, so it would reach the local Worker's name")
+    for want in ("wrangler r2 bucket create graniterecord-live",
+                 "wrangler deploy --config workers/live/wrangler.toml --env production",
+                 "wrangler secret put YOUTUBE_API_KEY", "wrangler secret put HEALTHCHECK_URL"):
+        if not any(want in ln for ln in cmds):
+            bad.append(f"README.md gives no `{want}`")
+    # The switch: the four files, each one the Worker reads as it says.
+    ctl = live / "control"
+    names = sorted(p.name for p in ctl.glob("*")) if ctl.is_dir() else []
+    if names != sorted(LIVE_CONTROL):
+        bad.append(f"workers/live/control/ holds {names}, not {sorted(LIVE_CONTROL)}")
+    for name, want in LIVE_CONTROL.items():
+        p = ctl / name
+        try:
+            got = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            bad.append(f"workers/live/control/{name} is not JSON: {e}")
+            continue
+        if got != want or any(got.get(k) not in v for k, v in LIVE_CONTROL_VALUES.items()):
+            bad.append(f"workers/live/control/{name} says {got}, not {want}")
+        if not re.search(rf"--file workers/live/control/{re.escape(name)}\b.*--remote", readme):
+            bad.append(f"README.md gives no command that puts control/{name}, with --remote")
+    store = (live / "store.js").read_text(encoding="utf-8")
+    m = re.search(r"CONTROL_VALUES = Object\.freeze\((\{.*?\})\);", store)
+    try:
+        js_values = json.loads(re.sub(r"(\w+):", r'"\1":', m.group(1))) if m else None
+    except ValueError:
+        js_values = None
+    if js_values != {k: list(v) for k, v in LIVE_CONTROL_VALUES.items()}:
+        bad.append(f"store.js's CONTROL_VALUES is {js_values}, not {LIVE_CONTROL_VALUES}")
+    return bad
+
+
+def _live_titles(root):
+    """{video id: title} of every committed recording, collected/videos/."""
+    out = {}
+    for f in sorted((root / "collected/videos").glob("videos_*.csv")):
+        with open(f, encoding="utf-8", newline="") as fh:
+            for row in csv.DictReader(fh):
+                if row.get("video_id") and row.get("title") is not None:
+                    out[row["video_id"]] = row["title"]
+    return out
+
+
+def _live_problems_bite(root):
+    """Each rule of _live_problems, broken alone on a copy of workers/live/,
+    must be said in its own words: a rule that stopped catching anything fails
+    here, not in silence. [what failed to be said]."""
+    import tempfile
+    host = _live_host(root)
+    cases = (
+        ("wrangler.toml", lambda t: t + '\nroutes = [{ pattern = "x.org/*" }]\n', "declares a route"),
+        ("wrangler.toml", lambda t: t + '\n[env.staging]\nname = "x"\n', "has the environments"),
+        ("wrangler.toml", lambda t: t.replace("[[r2_buckets]]", '[triggers]\ncrons = ["*/2 * * * *"]\n\n'
+                                              "[[r2_buckets]]", 1), "a cron at the top level"),
+        ("wrangler.toml", lambda t: t.replace('"*/2 * * * *"', '"*/5 * * * *"'), "not every 2 minutes"),
+        ("wrangler.toml", lambda t: t.replace("workers_dev = false\n", "", 1),
+         "the top level does not set workers_dev = false"),
+        ("wrangler.toml", lambda t: t.replace("[env.production.observability]\nenabled = true", ""),
+         "production does not keep Workers Logs"),
+        ("wrangler.toml", lambda t: t.replace('name = "graniterecord-live"', 'name = "graniterecord-x"'),
+         "the production Worker is named"),
+        ("wrangler.toml", lambda t: t.replace('bucket_name = "graniterecord-live"\n', 'bucket_name = "x"\n'),
+         "production binds"),
+        ("wrangler.toml", lambda t: t.replace('bucket_name = "graniterecord-live-local"',
+                                              'bucket_name = "graniterecord-live"'), "the top level binds"),
+        ("wrangler.toml", lambda t: t + '\n[[kv_namespaces]]\nbinding = "K"\nid = "x"\n', "binds kv_namespaces"),
+        ("wrangler.toml", lambda t: t.replace('SQL_HOST = "127.0.0.1"', 'SQL_HOST = "192.0.2.1"', 1),
+         "top-level SQL_HOST"),
+        ("clock.js", lambda t: t.replace("export const STEP = 2 * MINUTE;", "export const STEP = 3 * MINUTE;"),
+         "STEP is not the cron's 2 minutes"),
+        ("x.js", lambda t: f'const h = "{host}";\n', "names the General Court's SQL host"),
+        ("x.js", lambda t: 'fetch("https://gc.nh.gov/x");\n', "names 'gc.nh.gov'"),
+        ("x.js", lambda t: 'import { y } from "../../src/y.js";\n', "imports ../../src/y.js"),
+        ("x.js", lambda t: 'const m = await import("node:net");\n', "imports node:net"),
+        ("README.md", lambda t: t.replace("--file workers/live/control/on.json --remote",
+                                          "--file workers/live/control/on.json"), "lacks --remote"),
+        ("README.md", lambda t: t.replace("wrangler deploy --config workers/live/wrangler.toml --env production",
+                                          "wrangler deploy --config workers/live/wrangler.toml"),
+         "does not name --config workers/live/wrangler.toml --env"),
+        ("control/on.json", lambda t: '{"youtube": "on", "sql": "test"}\n', "control/on.json says"),
+        ("control/extra.json", lambda t: "{}\n", "workers/live/control/ holds"),
+        ("store.js", lambda t: t.replace('sql: ["off", "test", "on"]', 'sql: ["off", "on"]'),
+         "store.js's CONTROL_VALUES is"),
+        ("fn:functions/api/live/x.js", lambda t: "export const f = s => s.put('state.json', '{}');\n", "calls put()"),
+        ("fn:functions/api/live/x.js", lambda t: "export const f = s => s.delete(['control.json']);\n", "calls delete()"),
+        ("fn:functions/api/live/x.js", lambda t: "export const f = s => s.list({ prefix: '' });\n", "calls list()"),
+        ("fn:functions/api/live/x.js", lambda t: "export const f = e => e.env.LIVE.get('state.json');\n", "names env.LIVE"),
+        ("fn:functions/api/live/_store.js", lambda t: t.replace("head: key => bucket.head(key),",
+                                                                "head: key => bucket.head(key),\n    w: k => bucket.put(k, ''),"),
+         "hands the bucket's put on"),
+    )
+    missed = []
+    with tempfile.TemporaryDirectory() as tmp:
+        fx = Path(tmp)
+        shutil.copytree(root / "workers/live", fx / "workers/live")
+        if (root / "functions/api/live").is_dir():
+            shutil.copytree(root / "functions/api/live", fx / "functions/api/live")
+        (fx / "src/fetch/gc_db").mkdir(parents=True)
+        shutil.copy(root / "src/fetch/gc_db/probe_db.py", fx / "src/fetch/gc_db/probe_db.py")
+        assert not _live_problems(fx), f"the copy itself breaks a rule: {_live_problems(fx)}"
+        for name, change, says in cases:
+            p = fx / (name[3:] if name.startswith("fn:") else f"workers/live/{name}")
+            p.parent.mkdir(parents=True, exist_ok=True)
+            before = p.read_text(encoding="utf-8") if p.is_file() else None
+            after = change(before or "")
+            assert after != before, f"the fixture for {says!r} no longer changes {name}"
+            p.write_text(after, encoding="utf-8")
+            got = _live_problems(fx)
+            if not any(says in g for g in got):
+                missed.append(f"{says!r} ({name}: {got[:2]})")
+            if before is None:
+                p.unlink()
+            else:
+                p.write_text(before, encoding="utf-8")
+    return missed
+
+
+@check("build", "the live Worker: live.gen.js is what live_gen.py writes, the cron and the bucket are "
+       "production's alone, the General Court's host is named nowhere it may not be, the README's "
+       "commands reach the real bucket, its switch's files are ones it reads, and it reads a title "
+       "and a stream as the Python does; the votes reader's statements are SELECTs over four views "
+       "that cast every column to nvarchar and take values through one builder, and its test hours "
+       "miss the night's windows",
+       needs=("live_gen", "livestreams", "dayfiles_from_db", "fetch_past_db", "refusal"))
+def _live_layer(LG, LS, DF, FP, RF):
+    """workers/live/ (the person, 26 October 2026: "defaults"; the design's
+    §6.2 and §7.1). What its node suite cannot see, held here:
+
+      - live.gen.js is what src/pages/live_gen.py writes from
+        fetch_channel_index.CHANNELS and refusal.NIGHT_WINDOWS, with the
+        session-title pattern: a copy nothing holds is how a constant drifts;
+      - wrangler.toml: production alone has the cron, every 2 minutes as
+        clock.js's STEP assumes, the name graniterecord-live and the bucket
+        graniterecord-live; the top level, which `wrangler dev` runs, has
+        neither; workers_dev = false and no route at either; nothing bound
+        but the bucket;
+      - the General Court's SQL host (probe_db.HOST) appears in workers/live/,
+        tests/live/ and functions/api/live/ only as production's SQL_HOST, and
+        a top-level host var is loopback: so no local run or test can reach
+        it (the database half, a later branch, adds the client's own guard);
+      - no live code names gc.nh.gov, gencourt or the follow database, and the
+        Worker imports its own folder and workers/follow/common.js alone;
+      - every `wrangler r2 object` line in its README carries --remote
+        (wrangler's r2 object commands write local storage without it), and
+        every deploy and secret line names its config and --env production;
+      - workers/live/control/ is the four switches, each one the Worker
+        reads as its name says, and store.js's allowed values are these;
+      - the Worker's title stem is live_gen.stem on every committed title,
+        and its session pattern matches every title that begins "House
+        Session" or "Senate Session" and no other;
+      - livestreams.status_of says of each synthetic answer in
+        tests/live/youtube_items.json what the file says, and the Worker's
+        statusOf (held there by youtube.test.js) differs from it only where
+        it is meant to: an end time is "ended" while YouTube still reports
+        P0D, and an ordinary upload is no stream.
+
+    SECURITY.md naming workers/live/ is _follow_documents_live's."""
+    root = _paths.ROOT
+    if not (root / "workers/live/wrangler.toml").is_file():
+        return "skip", "workers/live/ is not here"
+    # What live.gen.js is written from, by path here as in live_gen.py, so that
+    # a change to either reaches this check under preflight --changed.
+    sources = ("src/fetch/youtube/fetch_channel_index.py", "refusal.py", "src/fetch/gc_db/probe_db.py",
+               "src/fetch/gc_db/fetch_rollcalls_db.py", "records/docket_abbrev.json")
+    assert sorted(sources) == sorted(p.as_posix() for p in LG.SOURCES), (
+        f"live_gen.py reads {sorted(p.as_posix() for p in LG.SOURCES)}, and this check names "
+        f"{sorted(sources)}: name each here, so preflight --changed runs this when one moves")
+    try:
+        ok, why = LG.current()
+    except LG.SourceError as e:
+        raise AssertionError(f"live_gen.py cannot read its sources: {e}") from None
+    assert ok, f"{why}: run `{LG.COMMAND}` and commit workers/live/live.gen.js"
+    bad = _live_problems(root)
+    assert not bad, "; ".join(bad[:6]) + (f" (+{len(bad) - 6} more)" if len(bad) > 6 else "")
+    missed = _live_problems_bite(root)
+    assert not missed, "these rules no longer catch a file that breaks them: " + "; ".join(missed)
+    # The votes reader's statements, login, host and test hours.
+    _live_sql(LG, DF, FP, RF)
+
+    # The synthetic answers, read by the night's Python as the file says.
+    items = json.loads((root / "tests/live/youtube_items.json").read_text(encoding="utf-8"))["items"]
+    wrong = []
+    for c in items:
+        py, js, it = LS.status_of(c["item"]), c["js"], c["item"]
+        ls = it.get("liveStreamingDetails")
+        if py != c["python"]:
+            wrong.append(f"{c['name']}: status_of says {py}, the file {c['python']}")
+        if not (py == js or (js == "ended" and (ls or {}).get("actualEndTime") and py in ("live", "finished"))
+                or (js == "upload" and not ls and py == "finished")):
+            wrong.append(f"{c['name']}: the Worker reads {js} where the night reads {py}")
+    assert not wrong, "; ".join(wrong)
+    told = {c["js"] for c in items}
+    assert {"live", "upcoming", "ended", "never", "upload"} <= told, (
+        f"tests/live/youtube_items.json covers {sorted(told)}: each of live, upcoming, ended, never "
+        "and upload needs an answer")
+
+    # Every committed title, stemmed by the Worker and by live_gen.py.
+    titles = _live_titles(root)
+    if not titles:
+        return "ok", (f"live.gen.js current; the configuration, host, README and switch hold; "
+                      f"{len(items)} synthetic answers read alike; no collected/videos/ here, so the "
+                      "stem was not compared")
+    node = shutil.which("node") or shutil.which("node.exe")
+    names = list(titles.values())
+    want = [(LG.stem(t), LG.session_of(t)) for t in names]
+    sessions = sum(1 for _, s in want if s)
+    honest = [t for t in names if re.match(r"\s*(house|senate)\s+session\b", t, re.I)]
+    assert sessions == len(honest) and all(LG.session_of(t) for t in honest), (
+        f"SESSION_TITLE matches {sessions} committed titles, and {len(honest)} begin House Session "
+        "or Senate Session")
+    assert sessions >= 172, f"only {sessions} session titles matched; 172 were committed on 26 October 2026"
+    if not node:
+        return "ok", (f"live.gen.js current; the rest holds; {sessions} session titles of "
+                      f"{len(names):,}; node is not on PATH, so the Worker's stem was not compared")
+    src = ("import { stem, sessionOf } from " + json.dumps((root / "workers/live/youtube.js").as_uri())
+           + ";\nlet s = ''; process.stdin.on('data', d => s += d); process.stdin.on('end', () => "
+           "process.stdout.write(JSON.stringify(JSON.parse(s).map(t => [stem(t), sessionOf(t)]))));\n")
+    r = _run([node, "--input-type=module", "-e", src], input=json.dumps(names),
+             capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0, f"node could not stem the titles: {(r.stderr or r.stdout).strip()[-400:]}"
+    got = [tuple(x) for x in json.loads(r.stdout)]
+    differ = [f"{t!r}: the Worker {g}, live_gen {w}" for t, g, w in zip(names, got, want) if g != w]
+    assert not differ, f"{len(differ)} titles stem apart: " + "; ".join(differ[:4])
+    return "ok", (f"live.gen.js current; the configuration, host, README and switch hold; "
+                  f"{len(items)} synthetic answers read alike; {len(names):,} committed titles stem "
+                  f"alike, {sessions} of them session streams")
 
 
 # The sign-up box's daily or weekly drawn and sent by app.js under node, with

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.7
+# GRANITE_VERSION: 2026-10-23.8
 """
 The site's translations: what is translated, what has gone stale, and the
 proofreader's sheet out and back. src/pages/i18n.py says how a translation
@@ -57,6 +57,7 @@ AREAS = {"nav": "the header", "page": "the header", "theme": "Settings", "set": 
          "fresh": "the home page, under Coming up: a warning that the data is stale",
          "sess": "the home page's Recent Session Days: the floor sessions' players",
          "gloss": "the Glossary page, and the pop-up on a term", "cal": "Coming up (the week's meetings)",
+         "live": "Live Now: which meetings are streaming", "votes": "Live Now and the session pages: the day's votes",
          "kind": "Coming up: a kind of meeting", "find": "the search box's results",
          "search": "the search box", "yt": "Settings: Your town", "foot": "the footer",
          # The how-to guides (24 October 2026): a guide's own words keyed by
