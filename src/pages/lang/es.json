@@ -23769,14 +23769,29 @@
    "es": "Cada votación llega a esta página con el registro de mañana por la mañana.",
    "state": "draft"
   },
+  "votes.ends_morning": {
+   "en": "Every vote reaches this page with this morning's record.",
+   "es": "Cada votación llega a esta página con el registro de esta mañana.",
+   "state": "draft"
+  },
   "votes.head_house": {
    "en": "House roll calls today",
    "es": "Votaciones nominales de la Cámara hoy",
    "state": "draft"
   },
+  "votes.head_house_day": {
+   "en": "House roll calls of {day}",
+   "es": "Votaciones nominales de la Cámara del {day}",
+   "state": "draft"
+  },
   "votes.head_senate": {
    "en": "Senate roll calls today",
    "es": "Votaciones nominales del Senado hoy",
+   "state": "draft"
+  },
+  "votes.head_senate_day": {
+   "en": "Senate roll calls of {day}",
+   "es": "Votaciones nominales del Senado del {day}",
    "state": "draft"
   },
   "votes.login": {
@@ -23797,6 +23812,11 @@
   "votes.no_outcome": {
    "en": "outcome not yet in the docket",
    "es": "resultado aún no anotado en el registro de trámites",
+   "state": "draft"
+  },
+  "votes.none_day": {
+   "en": "No roll calls read on {day}.",
+   "es": "No se leyeron votaciones nominales el {day}.",
    "state": "draft"
   },
   "votes.none_today": {

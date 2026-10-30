@@ -195,26 +195,22 @@ test("which side prevailed is a source's: the record's passed, else the clerk's 
   assert.equal(L.passedOf(rcOf({ passed: true, docket: { outcome: "Motion Failed" } })), true, "the record wins");
 });
 
-test("a ring is app.js's simpleDonut, and only where a source says who prevailed", () => {
+test("a ring is app.js's simpleDonut, drawn for the record's rows only", () => {
   const drawn = [];
   const c2 = load({ simpleDonut: (rc, bid, i, what) => { drawn.push({ rc, bid, i, what }); return `<svg data-i="${i}"></svg>`; } });
   const L2 = c2.GRLive;
   assert.equal(L.ring(rcOf({ passed: true }), 0), "", "no app.js on the page: no ring, the tally stands as text");
-  assert.equal(L2.ring(rcOf({}), 0), "", "no outcome: no ring");
   assert.match(L2.ring(rcOf({ passed: false, threshold_needed: 237 }), 3), /data-i="3"/);
-  assert.deepEqual(JSON.parse(JSON.stringify(drawn[0].rc)), { yeas: 186, nays: 169, passed: false, threshold_needed: 237,
-                                                              threshold_unknown: false }, "the record's threshold");
-  // A live row: the docket says it failed, and nobody says what it needed (an
-  // override needs two thirds): no mark, no number needed.
-  L2.ring(rcOf({ yeas: 220, nays: 150, docket: { outcome: "Motion Failed" } }), 4);
-  assert.deepEqual(JSON.parse(JSON.stringify(drawn.at(-1).rc)), { yeas: 220, nays: 150, passed: false, threshold_needed: null,
-                                                                   threshold_unknown: true });
-  L2.ring(rcOf({ passed: true, threshold_needed: null }), 5);
-  assert.equal(drawn.at(-1).rc.threshold_unknown, false, "the record's null is a majority, on record");
+  assert.deepEqual(JSON.parse(JSON.stringify(drawn[0].rc)), { yeas: 186, nays: 169, passed: false, threshold_needed: 237 },
+                   "the record's own outcome and threshold");
   assert.equal(drawn[0].what, "Roll call");
-  const items = L2.votesItems({ rollcalls: [rcOf({ docket: { outcome: "Motion Adopted" } })] }, "H", undefined, { rings: true });
-  assert.match(items[0], /<svg data-i="0">/);
-  assert.doesNotMatch(L2.votesItems({ rollcalls: [rcOf({})] }, "H", undefined, { rings: true })[0], /<svg/);
+  // A live row: even with the docket's outcome, its threshold is not on record
+  // (an override needs two thirds), and a ring would say one. Text only.
+  for (const r of [rcOf({ yeas: 220, nays: 150, docket: { outcome: "Motion Failed" } }), rcOf({})]) {
+    assert.equal(L2.ring(r, 4), "");
+    assert.doesNotMatch(L2.votesItems({ rollcalls: [r] }, "H", undefined, { rings: true })[0], /<svg/);
+  }
+  assert.equal(drawn.length, 1, "simpleDonut asked for the record's row alone");
   const broken = load({ simpleDonut: () => { throw new Error("x"); } }).GRLive;
   assert.equal(broken.ring(rcOf({ passed: true }), 0), "", "a ring that throws costs the ring, not the list");
 });
@@ -300,6 +296,7 @@ test("/live asks for the votes file only on a day the schedule has a sitting", a
     els["live-now-votes"] = { hidden: true, innerHTML: "" };
     const asked = [];
     const fetch = async url => { asked.push(url);
+      if (url === "/api/live/streams") return { status: 200, ok: true, headers: { get: () => '"s"' }, json: async () => file() };
       return { status: 404, ok: false, headers: { get: () => null }, json: async () => null }; };
     const p = L.start(doc, { fetch, now: () => T(day) });
     try {                                    // stopped whatever fails: no timer left to hang the run
@@ -360,6 +357,50 @@ test("/live's session card keeps a sitting past midnight until 06:00, and an ope
     await p.votes.first;
     assert.equal(asked.at(-1), "/api/live/votes/2027-01-11");
   } finally { p.stop(); }
+});
+
+test("/live's votes poller: none before the streams answer or after a 404 there, stopped on a day with no sitting", async () => {
+  const sched = { days: { "2027-01-07": [{ id: "f", chamber: "H", kind: "floor", name: "House Session", match: [] }], "2027-01-08": [] } };
+  let at = T("2027-01-07T16:00:00Z"), streams = 404;
+  const { doc, els } = page();
+  els["live-schedule"] = { textContent: JSON.stringify(sched) };
+  els["live-now-votes"] = { hidden: true, innerHTML: "" };
+  const asked = [];
+  const fetch = async url => {
+    asked.push(url);
+    if (url === "/api/live/streams" && streams === 200) return { status: 200, ok: true, headers: { get: () => '"s"' }, json: async () => file() };
+    return { status: 404, ok: false, headers: { get: () => null }, json: async () => null };
+  };
+  let p = L.start(doc, { fetch, now: () => at });
+  try {
+    await p.first;
+    assert.deepEqual(asked, ["/api/live/streams"], "no binding: the votes file is never asked");
+    assert.equal(p.votes, null);
+  } finally { p.stop(); }
+  asked.length = 0; streams = 200;
+  p = L.start(doc, { fetch, now: () => at });
+  try {
+    await p.first;
+    await p.votes.first;
+    assert.deepEqual(asked, ["/api/live/streams", "/api/live/votes/2027-01-07"]);
+    const v = p.votes;
+    at = T("2027-01-08T16:00:00Z");                                      // the next day: no sitting
+    await p.poll();
+    assert.equal(p.votes, null, "stopped");
+    assert.equal(els["live-now-votes"].hidden, true);
+    const n = asked.length;
+    await v.poll();
+    assert.equal(asked.length, n, "the stopped poller asks nothing");
+  } finally { p.stop(); }
+});
+
+test("/live's session card before 06:00 is the day before's, and says so by its date", () => {
+  const now = T("2027-01-08T09:30:00Z");                                // 04:30 on the 8th
+  const h = L.sessionCard(null, "H", now, 404);
+  assert.match(h, /<h2 class="lv-name">House roll calls of Thursday, January 7<\/h2>/);
+  assert.match(h, /No roll calls read on Thursday, January 7\. Every vote reaches this page with this morning's record\./);
+  assert.doesNotMatch(h, /today<\/h2>|tomorrow/);
+  assert.match(L.sessionCard(null, "S", T("2027-01-07T16:00:00Z"), 404), /Senate roll calls today/);
 });
 
 // A page just deep enough for L.start: the stream cards' box, keyed children.

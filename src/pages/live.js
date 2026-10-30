@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.8
+// GRANITE_VERSION: 2026-10-30.9
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -72,6 +72,13 @@ L.readerDay = function (t) {
   var p = nhParts(t);
   if (Number(p.hh) >= L.EARLY_HOURS) return p.date;
   return new Date(Date.parse(p.date + "T12:00:00Z") - 86400000).toISOString().slice(0, 10);
+};
+// "Thursday, January 7": a date as words, in the page's language.
+L.dayWords = function (iso) {
+  try {
+    return new Date(iso + "T12:00:00Z").toLocaleDateString(LANG === "es" ? "es" : "en-US",
+      { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });
+  } catch (e) { return iso; }
 };
 // An ISO moment as the site prints a time: "10:02 AM", New Hampshire's.
 L.timeOf = function (iso) {
@@ -183,11 +190,18 @@ var ENDS = function () {
   return C.tr("votes.ends", "Every vote reaches this page with tomorrow morning's record.");
 };
 // The sentence under a chamber's votes. `body` is H or S.
-L.votesSentence = function (file, now, body, http) {
-  var tail = " " + ENDS();
+L.votesSentence = function (file, now, body, http, day) {
+  // `day`, where the page shows a day before New Hampshire's today (the today
+  // page before 06:00): its sentences name the day, and its record is this
+  // morning's, not tomorrow's.
+  var past = day && day !== L.nhDate(now);
+  var tail = " " + (past ? C.tr("votes.ends_morning", "Every vote reaches this page with this morning's record.") : ENDS());
   // A 404 is a day with no file; a fetch that failed says nothing about the
   // day, and is said as such.
-  if (http === 404 || (!file && http === undefined)) return C.tr("votes.none_today", "No roll calls read today.") + tail;
+  if (http === 404 || (!file && http === undefined)) {
+    return (past ? C.tr("votes.none_day", "No roll calls read on {day}.", { day: L.dayWords(day) })
+                 : C.tr("votes.none_today", "No roll calls read today.")) + tail;
+  }
   if (!file) return C.tr("votes.unfetched", "The live votes could not be fetched at {time}; this page asks again.",
                          { time: L.timeOf(new Date(+now).toISOString()) }) + tail;
   var st = file.status || {};
@@ -252,16 +266,14 @@ L.passedOf = function (r) {
 // vote renderer), or "" where app.js is not loaded or no source says which
 // side prevailed: the ring marks a winner, and the page never guesses one.
 L.ring = function (r, i) {
-  var passed = L.passedOf(r);
-  if (passed === null || typeof root.simpleDonut !== "function") return "";
+  // The record's rows only. A ring says what was needed as well as who
+  // prevailed (its mark, and its label read aloud), and a live row's
+  // threshold is not on record: an override needs two thirds, and the
+  // docket says only adopted or failed. A live row is its tally as text.
+  if (!r || typeof r.passed !== "boolean" || typeof root.simpleDonut !== "function") return "";
   try {
-    // The record's rows carry their threshold (null: a majority). A live
-    // row's is not on record -- an override needs two thirds -- so its ring
-    // draws no mark and claims no number needed.
-    var record = typeof r.passed === "boolean";
-    return root.simpleDonut({ yeas: Number(r.yeas) || 0, nays: Number(r.nays) || 0, passed: passed,
-                              threshold_needed: r.threshold_needed || null,
-                              threshold_unknown: !record && !r.threshold_needed }, "live", i, "Roll call");
+    return root.simpleDonut({ yeas: Number(r.yeas) || 0, nays: Number(r.nays) || 0, passed: r.passed,
+                              threshold_needed: r.threshold_needed || null }, "live", i, "Roll call");
   } catch (e) { return ""; }
 };
 
@@ -363,12 +375,18 @@ var CHAMBER = { H: "House", S: "Senate" };
 L.sessionCard = function (file, body, now, http, bills) {
   // Tallies as text: section 4.1. The rings are the today page's.
   var items = L.votesItems(file, body, bills);
-  var head = body === "S" ? C.tr("votes.head_senate", "Senate roll calls today") : C.tr("votes.head_house", "House roll calls today");
+  // Before 06:00 the card is the day before's sitting (L.readerDay), and
+  // says so by its date.
+  var day = L.readerDay(now), past = day !== L.nhDate(now), words = { day: L.dayWords(day) };
+  var head = past
+    ? (body === "S" ? C.tr("votes.head_senate_day", "Senate roll calls of {day}", words)
+                    : C.tr("votes.head_house_day", "House roll calls of {day}", words))
+    : (body === "S" ? C.tr("votes.head_senate", "Senate roll calls today") : C.tr("votes.head_house", "House roll calls today"));
   var today = body === "S" ? C.tr("votes.today_senate", "The Senate today") : C.tr("votes.today_house", "The House today");
   return '<section class="lv-session" data-body="' + body + '">'
     + '<h2 class="lv-name">' + C.esc(head) + "</h2>"
     + (items.length ? '<ol class="lv-votes">' + items.join("") + "</ol>" : "")
-    + '<p class="lv-status">' + C.esc(L.votesSentence(file, now, body, http)) + "</p>"
+    + '<p class="lv-status">' + C.esc(L.votesSentence(file, now, body, http, day)) + "</p>"
     + (items.length ? '<p class="lv-provisional">' + C.esc(C.tr("votes.provisional_line",
         "Provisional: the night's record replaces this tomorrow morning; excusals settle days later.")) + "</p>" : "")
     + (body === "S" && items.length ? '<p class="lv-provisional">' + C.esc(C.tr("votes.senate_line",
@@ -478,8 +496,17 @@ L.start = function (doc, opts) {
   // again on every streams poll, so a page left open overnight finds the next
   // morning's sitting.
   var votesBox = doc.getElementById("live-now-votes");
+  // Started, and stopped, from each streams answer: never before the first
+  // (a 404 there is no binding, and nothing more is asked), and not on a day
+  // with no sitting, so a page left open asks nothing until the next one.
   function sessionVotes() {
-    if (out.votes || stopped || !votesBox || !L.sessionBodies(schedule, null, L.readerDay(now())).length) return;
+    var sitting = votesBox && L.sessionBodies(schedule, null, L.readerDay(now())).length;
+    if (stopped || !sitting) {
+      if (out.votes) { out.votes.stop(); out.votes = null; }
+      if (votesBox && !stopped) { votesBox.innerHTML = ""; votesBox.hidden = true; }
+      return;
+    }
+    if (out.votes) return;
     out.votes = L.poller({ fetch: fetchImpl, doc: doc,
       url: function () { return "/api/live/votes/" + L.readerDay(now()); },
       every: function (f) { return L.votesEvery(f, now()); },
@@ -491,7 +518,6 @@ L.start = function (doc, opts) {
   }
   var out = { poll: poll, draw: draw, first: first, votes: null,
               stop: function () { stopped = true; clearTimeout(timer); if (out.votes) out.votes.stop(); } };
-  sessionVotes();
   onDraw = sessionVotes;
   return out;
 };
