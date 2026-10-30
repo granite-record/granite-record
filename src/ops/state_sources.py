@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.3
+# GRANITE_VERSION: 2026-10-30.4
 """
 The state documents the guides and Learn pages rest on: from the laptop, where
 a real browser can read them, to the sessions, which cannot.
@@ -578,14 +578,24 @@ def place(path, reg, by_url, by_leaf):
         i = by_url.get(norm_url(url))
         if i:
             return i, f"from {url}"
-        return None, f"downloaded from {url}, which the registry does not name"
+        loose = [j for k, j in by_url.items() if loose_url(k) == loose_url(norm_url(url))]
+        if len(loose) == 1:
+            return loose[0], f"from {url}, which differs from the registered address only in case or query"
+        if not is_state_url(url):
+            return None, f"downloaded from {url}, which the registry does not name"
     name = COPY_SUFFIX.sub("", path.name).lower()
     ids = by_leaf.get(name, [])
     if len(ids) == 1:
-        return ids[0], "by its name"
+        return ids[0], "by its name" + (f" (downloaded from {url})" if url else "")
     if len(ids) > 1:
         return None, f"its name fits {len(ids)} registered addresses: {', '.join(ids)}"
+    if url:
+        return None, f"downloaded from {url}, which the registry does not name"
     return None, None
+
+
+def loose_url(n):
+    return n.split("?", 1)[0].lower()
 
 
 def is_state_url(url):
@@ -623,6 +633,10 @@ def cmd_file(a, root):
         raise Failed(f"--as names one document, and {len(cands)} files were given")
     filed, already, unplaced = [], [], []
     base = Path(root) / FOLDER
+    claimed = {}                 # (id, file name) -> sha256, for what this run files
+    # The oldest download first, so that of two readings in one day the later
+    # is -2, as up reads them.
+    cands.sort(key=lambda q: (q.stat().st_mtime, q.name))
     for q in cands:
         if a.as_id:
             i, how = a.as_id, "as named"
@@ -639,16 +653,26 @@ def cmd_file(a, root):
             continue
         sha = sha256_of(q)
         d = base / i
-        same = [f for f in sorted(d.glob("*")) if f.is_file() and sha256_of(f) == sha] if d.is_dir() else []
+        day = a.day or date.fromtimestamp(q.stat().st_mtime).isoformat()
+        ext = q.suffix.lower().lstrip(".")
+        # Already filed only if the same bytes are filed under this same day. The
+        # same bytes on a later day are a new reading that found no change, and
+        # are filed, so that up records the check and due moves on.
+        def taken(f):
+            return (i, f.name) in claimed or f.exists()
+
+        def bytes_of(f):
+            return claimed.get((i, f.name)) or sha256_of(f)
+        today = [f for f in [d / f"{day}.{ext}", *[d / f"{day}-{n}.{ext}" for n in range(2, 100)]]
+                 if taken(f)]
+        same = [f for f in today if bytes_of(f) == sha]
         if same:
             already.append((q, i, same[0].name))
             continue
-        day = a.day or date.fromtimestamp(q.stat().st_mtime).isoformat()
-        ext = q.suffix.lower().lstrip(".")
-        dst, n = d / f"{day}.{ext}", 1
-        while dst.exists():
-            n += 1
-            dst = d / f"{day}-{n}.{ext}"
+        dst = d / (f"{day}.{ext}" if not today else f"{day}-{len(today) + 1}.{ext}")
+        if taken(dst):
+            raise Failed(f"{FOLDER}/{i}/ has a gap in {day}'s readings; a person looks first")
+        claimed[(i, dst.name)] = sha
         filed.append((q, i, dst, how))
         if not a.dry_run:
             import shutil
@@ -666,17 +690,25 @@ def cmd_file(a, root):
     for q, why, url in unplaced:
         say(f"  NOT PLACED {q.name}: {why or 'no address recorded for it and no registered name fits'}")
         if url:
-            say(f"             a row for it: {suggest_row(url)}")
-    if not filed and not already:
-        raise Failed("nothing was filed: no file read could be placed under the registry")
+            say(f"             a row for it: {suggest_row(url, reg)}")
+    if unplaced:
+        raise Failed(f"{len(unplaced)} state document(s) could not be placed (above); what "
+                     "could be placed was filed")
+    if not filed:
+        say("Nothing new to file." + ("" if cands else f" No document saved in the last "
+                                       f"{RECENT_DAYS} days was found there."))
 
 
-def suggest_row(url):
+def suggest_row(url, reg=None):
     """A registry row for an address it lacks, for a person to check and add."""
     p = urlsplit(url)
     host = (p.hostname or "").removeprefix("www.").replace(".nh.gov", "").replace(".", "-")
     stem = re.sub(r"\.(pdf|html?|aspx|xlsx?|csv)$", "", leaf(url))
     i = f"{host}-{re.sub(r'[^a-z0-9]+', '-', stem).strip('-')[:48].strip('-')}"
+    base, n = i, 1
+    while reg and i in reg:
+        n += 1
+        i = f"{base}-{n}"
     kind = "pdf" if leaf(url).endswith(".pdf") else "page"
     row = [i, url, kind, "", "", "", "unknown", "owner-only" if is_gc(url) else "browser",
            "<who uses it>", "discovered", f"downloaded {date.today().isoformat()}"]

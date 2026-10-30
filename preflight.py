@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.735
+# GRANITE_VERSION: 2026-09-04.736
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -56852,23 +56852,36 @@ def _state_sources_file(SS):
         (dl / "unknown.pdf").write_bytes(b"not registered")
         zone("unknown.pdf", "https://www.das.nh.gov/budget/not-in-the-registry.pdf")
         (dl / "holiday.jpg").write_bytes(b"not a document")
-        code, out = run(str(dl), "--day", "2026-10-30")
-        assert code == 0, out
-        assert (root / "sources" / a_id / "2026-10-30.pdf").read_bytes() == b"by address", out
-        assert (root / "sources" / b_id / "2026-10-30.pdf").read_bytes() == b"by name", out
+        code, out = run(str(dl), "--day", "2026-10-29", "--dry-run")
+        assert code == 1 and not (root / "sources").exists(), ("a dry run wrote, or did not "
+                                                              "say a document was not placed", out)
+        code, out = run(str(dl), "--day", "2026-10-29")
+        assert code == 1 and "could not be placed" in out, (
+            "a state document that could not be placed went unremarked", out)
+        assert (root / "sources" / a_id / "2026-10-29.pdf").read_bytes() == b"by address", out
+        assert (root / "sources" / b_id / "2026-10-29.pdf").read_bytes() == b"by name", out
         assert "NOT PLACED unknown.pdf" in out and "not-in-the-registry.pdf,pdf," in out, out
         assert (dl / "download.pdf").exists(), "the filer moved a download rather than copy it"
-        n = sorted(p.name for p in (root / "sources").rglob("*") if p.is_file())
-        code, out = run(str(dl), "--day", "2026-10-30")
+        (dl / "unknown.pdf").rename(t / "unknown.pdf")
+        (dl / "unknown.pdf:Zone.Identifier").rename(t / "unknown.pdf:Zone.Identifier")
+        n = sorted(p.relative_to(root).as_posix() for p in (root / "sources").rglob("*")
+                   if p.is_file())
+        code, out = run(str(dl), "--day", "2026-10-29")
         assert code == 0 and "ALREADY" in out, out
-        assert sorted(p.name for p in (root / "sources").rglob("*") if p.is_file()) == n, (
-            "a document already filed was filed again")
+        assert sorted(p.relative_to(root).as_posix() for p in (root / "sources").rglob("*")
+                      if p.is_file()) == n, "a document already filed that day was filed again"
+        # The same bytes read on a later day are a reading that found no
+        # change: filed, so that up records the check and due moves on.
+        code, out = run(str(dl), "--day", "2026-10-30")
+        assert code == 0 and (root / "sources" / a_id / "2026-10-30.pdf").is_file(), (
+            "a later reading with no change was not filed, so due would list it forever", out)
         code, out = run(str(dl / "download.pdf"), "--as", b_id)
         assert code == 1 and "not from" in out, ("--as filed a download under an id its "
                                                  "recorded address contradicts", out)
         empty = t / "empty"
         empty.mkdir()
-        assert run(str(empty))[0] == 1, "a run that filed nothing said it succeeded"
+        code, out = run(str(empty))
+        assert code == 0 and "Nothing new to file" in out, out
     finally:
         shutil.rmtree(t, ignore_errors=True)
     return "ok", ("placed by recorded address and by name, copied not moved, filed once, "

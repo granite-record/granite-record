@@ -69,7 +69,10 @@ nh.gov agency websites)
 > page)". It asks for one page at a time, a few seconds apart, and never
 > retries. The sites refuse it with "Access Denied", which I understand is
 > the protection doing its job. We won't disguise the script as a browser to
-> get past it. So today I save each page by hand.
+> get past it. Instead, once a week, an AI assistant on my own computer opens
+> the pages that are due in my own web browser, one at a time, and saves
+> them. That works, but a script you can see for what it is would be simpler
+> for everyone, and easier for you to tell apart.
 >
 > Would you be willing to let that reader through, from one address we would
 > give you? Or is there a way you would prefer we did this, such as a feed or
@@ -87,6 +90,9 @@ nh.gov agency websites)
   (`src/fetch/other/guide_sources.py`, `AGENT`). So are the spacing, one at a
   time and no retries (the same file's docstring). "About 125" is the
   registry's count of documents a browser reads.
+- Email 2 says plainly that an assistant opens the pages in the owner's
+  browser each week (the runbook's weekly run), since those visits look like
+  an ordinary browser's and the web team should not learn of them later.
 - "From one address" in email 2: the laptop's home address can change.
   Whether to offer it, or a fixed address, is for the web team's answer to
   settle.

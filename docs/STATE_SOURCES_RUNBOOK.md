@@ -22,10 +22,12 @@ and the DAS budget page both opened.
    registry marks them `owner-only`, and `due` never lists them.
 2. **Open only what `due` lists**, plus the list of documents on a page the
    registry already names (step 4 below). No searching, no following links
-   for interest.
+   for interest. A link that leads to gc.nh.gov is never opened, wherever it
+   appears; the DAS budget page may well carry some.
 3. **One page at a time**, a few seconds apart, each once. Nothing is retried.
 4. **A refusal ends the run.** A page that says "Access Denied", shows a 403,
-   a challenge or a CAPTCHA, or asks to prove you are human: stop at once,
+   a challenge or a CAPTCHA, or asks to prove you are human, or a PDF whose
+   download Chrome lists as failed ("Failed - Forbidden" or the like): stop at once,
    open nothing more, and say which address and when. Never try another way
    in. That is the owner's decision, and the rule is the project's: it will
    not pretend to be anything it is not.
@@ -35,6 +37,11 @@ and the DAS budget page both opened.
 6. **Save what the page says, not what you make of it.** A page's text is
    saved as the browser gives it, unedited: no summary, no header, no
    cleaning-up. The guides cite the words, so the words are the evidence.
+   The text passes through the session on its way to the file, and nothing
+   proves it arrived word for word. So a saved `.txt` tells the guides session
+   that a page changed and what it now says. Where a guide rests a claim on a
+   page, a printout or the page itself settles it. Whether a text reading can
+   stand in for a printout is the guides session's and the owner's decision.
 
 ---
 
@@ -79,13 +86,15 @@ From the repository folder on the laptop.
    first shows it; do not open the sections.
 
 3. **PDFs** (`kind` pdf). Open the address in a new tab. Chrome saves the
-   file to Downloads (setup step 2). Do not rename or move it.
+   file to Downloads (setup step 2). Do not rename or move it. Then look at
+   Chrome's downloads list (chrome://downloads): a download marked failed is
+   a refusal (rule 4).
 
 4. **Pages that list documents.** On a page the registry names as some row's
    `owner_page` (`das.nh.gov/budget/` is one), list every PDF link on it
    whose address is not in the registry. **Report them; do not open them**,
    unless the owner has said to for that page (the first job below says so
-   for DAS).
+   for DAS, and for das.nh.gov addresses only).
 
 5. **File the downloads.**
    ```
@@ -95,7 +104,11 @@ From the repository folder on the laptop.
    address Windows recorded for the download, or else by its file name. It
    never moves or deletes anything in Downloads, and it leaves alone a
    document filed before. A state document it cannot place is listed with the
-   registry row it would need. To file one file by hand:
+   registry row it would need, and `file` then ends in a failure. That is
+   expected: it means "tell the manager". Go on to step 6 all the same, since
+   what could be filed was. A document read again and found unchanged is filed
+   under today's date like any other, and `up` records it as a check, so `due`
+   moves on. To file one file by hand:
    `python3 src/ops/state_sources.py file "~/Downloads/<name>.pdf" --as <id>`.
 
 6. **Check and send.**
@@ -131,9 +144,12 @@ Paste this as the scheduled task's prompt in the Claude desktop app:
 > download. Then run `python3 src/ops/state_sources.py file ~/Downloads`,
 > `python3 src/ops/state_sources.py check` and
 > `python3 src/ops/cloud.py sources-up`. Never open gc.nh.gov or any address
-> `due` did not list. Never fill in a form, sign in or submit anything. If any
-> page refuses (Access Denied, 403, a challenge, a CAPTCHA), stop at once,
-> open nothing more, and report it. Do not edit the registry, commit, or
+> `due` did not list, and never a link to gc.nh.gov. Never fill in a form,
+> sign in or submit anything. If any page refuses (Access Denied, 403, a
+> challenge, a CAPTCHA), or a PDF's download fails in Chrome's downloads
+> list, stop at once, open nothing more, and report it. If `file` says some
+> document could not be placed, still run `check` and `sources-up`, and list
+> those documents in the report. Do not pull, edit the registry, commit, or
 > push. End with a short plain report: what changed, what was new, any
 > refusal, anything not placed, any new documents found, and anything due
 > that was not read.
@@ -197,7 +213,9 @@ The budget session needs, from das.nh.gov:
 2. Read them as in the weekly run.
 3. On the DAS budget page (`https://www.das.nh.gov/budget/`), list every PDF
    link on it. **For this page the owner has said to download them**: "anything
-   else of theirs on das.nh.gov". Open each one, one at a time, so it downloads.
+   else of theirs on das.nh.gov". Open each one on das.nh.gov, one at a time, so
+   it downloads, and none on any other host: a link to gc.nh.gov is the LBA's
+   and stays the owner's.
    Two of these the owner saved before without their addresses (the FY28-29
    agency budget submissions, total funds, and the department name and number
    crosswalk); their addresses are the point.
@@ -214,7 +232,8 @@ The budget session needs, from das.nh.gov:
 | What | What to do |
 |---|---|
 | A page refuses | Stop the run. Report the address and time. Do not retry; the owner decides. |
-| `file` says "nothing was filed" | No download could be placed. Check that Chrome saved to Downloads, or file by hand with `--as`. |
+| `file` says "Nothing new to file" when PDFs were due | Chrome saved elsewhere, or more than 14 days ago (`--all` reads every file). File by hand with `--as` if need be. |
+| `file` says documents could not be placed | Expected for a new document: send the suggested rows to the manager. Go on with `check` and `sources-up`. |
 | `check` names a file not filed | It is in `sources/` under a name or id the registry lacks. Move it out, or ask for the row. |
 | `up` says a reading is "never replaced" | A file was changed after it was sent. Name the new one `<day>-2.<ext>`. |
 | `up` says an older reading cannot be a newer version | An old download was filed late. Move it out of `sources/`. |
