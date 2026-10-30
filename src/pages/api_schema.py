@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.1
+# GRANITE_VERSION: 2026-10-30.2
 """
 What every file of the data API holds, field by field: /data/schema.json.
 
@@ -209,11 +209,13 @@ DB_TABLES = {
 
 LICENSES = [
     {"name": "CC0-1.0", "path": "https://creativecommons.org/publicdomain/zero/1.0/",
-     "title": "What this site adds -- its ids, joins, corrections and timings -- dedicated to the public domain"},
+     "title": "What this site adds -- the keys and joins it makes and its corrections -- "
+              "dedicated to the public domain"},
 ]
-RIGHTS = ("The record is the State of New Hampshire's, published by the General Court; "
-          "this project claims nothing over it. What this site adds -- its ids, joins, "
-          "corrections and timings -- is dedicated to the public domain under CC0 1.0. "
+RIGHTS = ("The record is the State of New Hampshire's, published by the General Court, and "
+          "so are the numbers it gives people and bills; this project claims nothing over "
+          "them. What this site adds -- the keys and joins it makes and the corrections made "
+          "here by hand -- is dedicated to the public domain under CC0 1.0. "
           "The plain-English histories (narrative, stages) are authored here and offered "
           "under the MIT License, as DATA.md says. The software is MIT licensed.")
 
