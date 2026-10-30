@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.2
+# GRANITE_VERSION: 2026-10-30.3
 """
 The data API's database: every table on the data page, and the record's
 committee reports, in one SQLite file, compressed with xz.
@@ -180,10 +180,11 @@ def _write(out, collector, people, meetings_path, tmp):
         "format": str(FORMAT),
         "what": "Granite Record: the public record of the New Hampshire General Court, "
                 "as one database. See https://graniterecord.org/api",
-        "rights": "The record is the State of New Hampshire's. What this site adds -- its ids, "
-                  "joins and corrections -- is dedicated to the public domain under CC0 1.0; "
-                  "the plain-English histories and the software are MIT licensed. DATA.md "
-                  "says which is which.",
+        "rights": "The record is the State of New Hampshire's, and so are the numbers it gives "
+                  "people and bills. What this site adds -- the keys and joins it makes and the "
+                  "corrections made here by hand -- is dedicated to the public domain under "
+                  "CC0 1.0; the plain-English histories and the software are MIT licensed. "
+                  "DATA.md says which is which.",
         "upstream": "https://gc.nh.gov",
     }.items()))
 
