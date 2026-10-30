@@ -21650,6 +21650,56 @@
    "es": "{n} barrios electorales",
    "state": "draft"
   },
+  "live.at": {
+   "en": "scheduled for {time}",
+   "es": "programada para las {time}",
+   "state": "draft"
+  },
+  "live.checked": {
+   "en": "Checked {time}",
+   "es": "Comprobado a las {time}",
+   "state": "draft"
+  },
+  "live.none_found": {
+   "en": "No stream found right now (checked {time})",
+   "es": "No se encontró ninguna transmisión en este momento (comprobado a las {time})",
+   "state": "draft"
+  },
+  "live.off": {
+   "en": "Live status is turned off",
+   "es": "La comprobación en vivo está desactivada",
+   "state": "draft"
+  },
+  "live.on_youtube": {
+   "en": "On YouTube",
+   "es": "En YouTube",
+   "state": "draft"
+  },
+  "live.play": {
+   "en": "Play the live stream",
+   "es": "Reproducir la transmisión en vivo",
+   "state": "draft"
+  },
+  "live.since": {
+   "en": "Live since {time}",
+   "es": "En vivo desde las {time}",
+   "state": "draft"
+  },
+  "live.stale": {
+   "en": "Live status has not been checked since {time}",
+   "es": "El estado en vivo no se ha comprobado desde las {time}",
+   "state": "draft"
+  },
+  "live.stale_never": {
+   "en": "Live status has not been checked yet today",
+   "es": "El estado en vivo aún no se ha comprobado hoy",
+   "state": "draft"
+  },
+  "live.unavailable": {
+   "en": "Live status is not available",
+   "es": "El estado en vivo no está disponible",
+   "state": "draft"
+  },
   "map.all_vacant": {
    "en": "Every seat is vacant.",
    "es": "Todos los escaños están vacantes.",
@@ -23682,6 +23732,96 @@
   "vote.vote_reopened": {
    "en": "Vote Reopened",
    "es": "se reabrió la votación",
+   "state": "draft"
+  },
+  "votes.budget": {
+   "en": "Live votes reached today's limit on queries and stop until tomorrow.",
+   "es": "Las votaciones en vivo alcanzaron el límite de consultas de hoy y se detienen hasta mañana.",
+   "state": "draft"
+  },
+  "votes.connect": {
+   "en": "Votes last read at {time}; the General Court's database could not be reached since.",
+   "es": "Votaciones leídas por última vez a las {time}; desde entonces no se ha podido acceder a la base de datos de la Legislatura.",
+   "state": "draft"
+  },
+  "votes.day_over": {
+   "en": "Reading stopped for the day at {time}.",
+   "es": "La lectura se detuvo por hoy a las {time}.",
+   "state": "draft"
+  },
+  "votes.encrypt": {
+   "en": "Live votes are off: the database asks for an encrypted connection this site's reader cannot make.",
+   "es": "Las votaciones en vivo están desactivadas: la base de datos exige una conexión cifrada que el lector de este sitio no puede establecer.",
+   "state": "draft"
+  },
+  "votes.ends": {
+   "en": "Every vote reaches this page with tomorrow morning's record.",
+   "es": "Cada votación llega a esta página con el registro de mañana por la mañana.",
+   "state": "draft"
+  },
+  "votes.login": {
+   "en": "Votes last read at {time}; the database has refused the published login since.",
+   "es": "Votaciones leídas por última vez a las {time}; desde entonces la base de datos ha rechazado el acceso publicado.",
+   "state": "draft"
+  },
+  "votes.names_follow": {
+   "en": "names follow",
+   "es": "los nombres llegarán después",
+   "state": "draft"
+  },
+  "votes.names_in": {
+   "en": "names: in",
+   "es": "nombres: completos",
+   "state": "draft"
+  },
+  "votes.no_outcome": {
+   "en": "outcome not yet in the docket",
+   "es": "resultado aún no anotado en el registro de trámites",
+   "state": "draft"
+  },
+  "votes.none_today": {
+   "en": "No roll calls read today.",
+   "es": "Hoy no se ha leído ninguna votación nominal.",
+   "state": "draft"
+  },
+  "votes.none_yet": {
+   "en": "No roll calls read yet today (read at {time}).",
+   "es": "Aún no se ha leído ninguna votación nominal hoy (leído a las {time}).",
+   "state": "draft"
+  },
+  "votes.not_read": {
+   "en": "Not read since {time}.",
+   "es": "Sin leer desde las {time}.",
+   "state": "draft"
+  },
+  "votes.off": {
+   "en": "Live votes were turned off by this site at {time}.",
+   "es": "Este sitio desactivó las votaciones en vivo a las {time}.",
+   "state": "draft"
+  },
+  "votes.outcome": {
+   "en": "{outcome}, clerk's docket",
+   "es": "{outcome}, según el registro de trámites",
+   "state": "draft"
+  },
+  "votes.query": {
+   "en": "Votes last read at {time}; a query has failed since.",
+   "es": "Votaciones leídas por última vez a las {time}; desde entonces ha fallado una consulta.",
+   "state": "draft"
+  },
+  "votes.read": {
+   "en": "Read from the General Court's database at {time}.",
+   "es": "Leído de la base de datos de la Legislatura a las {time}.",
+   "state": "draft"
+  },
+  "votes.saved_at": {
+   "en": "saved at {time}",
+   "es": "guardada a las {time}",
+   "state": "draft"
+  },
+  "votes.senate_after": {
+   "en": "The Senate enters its roll calls after it rises.",
+   "es": "El Senado anota sus votaciones nominales después de levantar la sesión.",
    "state": "draft"
   },
   "web.go": {

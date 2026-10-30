@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.727
+# GRANITE_VERSION: 2026-09-04.728
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -80142,7 +80142,7 @@ def _live_sql(live_gen, dayfiles_from_db, fetch_past_db, refusal):
 # The live Worker's suite, and how many tests it had when this was written: a
 # count that falls means a file stopped loading or a test was lost.
 LIVE_TESTS = "tests/live/index.js"
-LIVE_TESTS_AT_LEAST = 159
+LIVE_TESTS_AT_LEAST = 167
 # The person's ready-made switches (workers/live/control/), each as the Worker
 # must read it; and the values control.json may hold (store.js CONTROL_VALUES).
 LIVE_CONTROL = {"all-off.json": {"youtube": "off", "sql": "off"},
@@ -80196,7 +80196,8 @@ def _live_tests():
             "tests/live/world.js", "tests/live/compare_test.mjs", "tests/live/wire.test.js",
             "tests/live/from_records.js", "workers/live/votes.js", "workers/live/merge.js",
             "tests/live/votes.test.js", "tests/live/replay.test.js", "tests/live/functions.test.js",
-            "functions/api/live/_store.js", "functions/api/live/streams.js", "functions/api/live/votes/[day].js"}
+            "functions/api/live/_store.js", "functions/api/live/streams.js", "functions/api/live/votes/[day].js",
+            "tests/live/page.test.js"}
     reached, todo = set(), [index]
     while todo:
         f = todo.pop()
