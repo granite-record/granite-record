@@ -1,0 +1,27 @@
+{
+ "raw": 69070848,
+ "gz": 16639101,
+ "votes": 2303047,
+ "codes": {
+  "Not Voting/Excused": 0,
+  "Not Voting/Not Excused": 1,
+  "Yea": 2,
+  "Nay": 3,
+  "Presiding": 4,
+  "No vote recorded": 5,
+  "": 6
+ },
+ "seconds": 15.1,
+ "by_table": {
+  "bills": 7999488,
+  "legislators": 61440,
+  "members": 61440,
+  "proceedings": 12201984,
+  "rollcalls": 1089536,
+  "sponsors": 9936896,
+  "sqlite_autoindex_rollcalls_1": 172032,
+  "sqlite_schema": 4096,
+  "vote_values": 4096,
+  "votes": 37539840
+ }
+}

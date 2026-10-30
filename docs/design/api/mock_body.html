@@ -1,0 +1,209 @@
+<!-- A MOCK, NOT A PAGE (design/api, 30 October 2026). The body of the proposed
+     /api page, in the data page's own components (src/pages/app.css: dphead,
+     dpsec, dpdl, dpfold, dptermgrid, repo). Every figure here was measured on
+     a full local build of 30 October 2026 (DESIGN.md, "Measured"); the page
+     itself will count them on every build, as data.html does. mock_page.py
+     drops this into a built data.html for the screenshots. -->
+<div class="datapage">
+  <header class="dphead">
+    <h1>The Data API</h1>
+    <p class="dplead">The whole record behind this site, as files a program can
+      read: every bill of every term with its full history, every roll call and
+      every member&rsquo;s vote, and one list joining every number the General
+      Court uses for a person. No key, no account and no limit to ask about:
+      they are plain files, rebuilt every night.</p>
+    <p class="dpnote apibeta"><b>A beta until February 1, 2027.</b> Until then a
+      file or a field may still change, and every change is listed below. From
+      then on, changes only add things.</p>
+    <details class="dponp"><summary>On this page</summary>
+      <nav class="dponpb" aria-label="On this page"><ol>
+        <li><a href="/api.html#files">The Files</a></li>
+        <li><a href="/api.html#start">Getting Started</a></li>
+        <li><a href="/api.html#keys">Keys and Joins</a></li>
+        <li><a href="/api.html#changes">What Changed Tonight</a></li>
+        <li><a href="/api.html#live">Today&rsquo;s Votes</a></li>
+        <li><a href="/api.html#stability">Versions and Stability</a></li>
+        <li><a href="/api.html#using">Using It</a></li>
+      </ol></nav></details>
+  </header>
+
+  <section class="dpsec" id="files" aria-labelledby="files-h">
+    <h2 class="dpsech" id="files-h">The Files</h2>
+    <div class="dpsecb"><p>Everything is under <code>/data/</code>, beside the
+      spreadsheets on <a href="/data.html">the data page</a>, and
+      <a href="/data/manifest.json">data/manifest.json</a> lists every file with
+      its address, size and the night it was built. Start there: one request
+      says what is here and how much. The large files are compressed with gzip,
+      which every language and every operating system can open.</p></div>
+    <div class="dptablewrap dpwide"><table class="dpdl" role="table">
+      <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">File</th>
+        <th scope="col" role="columnheader">What it holds</th>
+        <th scope="col" role="columnheader" class="n">Rows</th>
+        <th scope="col" role="columnheader" class="n">Size</th>
+        <th scope="col" role="columnheader"><span class="sr">Download</span></th></tr></thead>
+      <tbody role="rowgroup">
+        <tr role="row"><th scope="row" role="rowheader"><code>manifest.json</code></th>
+          <td role="cell" class="dpw"><p class="dpwhat">Every file here, with its address, rows, size, checksum and the night it was built.</p></td>
+          <td role="cell" class="n dpr">43<span class="dpu"> files</span></td>
+          <td role="cell" class="n dps">0.03&nbsp;MB</td>
+          <td role="cell" class="dpg"><a class="dpget" href="data/manifest.json">Open<span class="sr"> manifest.json</span></a></td></tr>
+        <tr role="row"><th scope="row" role="rowheader"><code>schema.json</code></th>
+          <td role="cell" class="dpw"><p class="dpwhat">What every column and field of every file means, its type, and what it joins to.</p>
+            <details class="dpmore"><summary><span>More about <code>schema.json</code></span></summary>
+              <p>A Frictionless Data Package, a published standard that
+                spreadsheet tools, pandas and R can read directly. The CSV
+                tables are described as tables; the JSON files by the fields
+                of one record.</p></details></td>
+          <td role="cell" class="n dpr">&mdash;</td>
+          <td role="cell" class="n dps">0.1&nbsp;MB</td>
+          <td role="cell" class="dpg"><a class="dpget" href="data/schema.json">Open<span class="sr"> schema.json</span></a></td></tr>
+        <tr role="row"><th scope="row" role="rowheader"><code>granite-record.sqlite.gz</code></th>
+          <td role="cell" class="dpw"><p class="dpwhat">Every table on the data page in one SQLite database, with each roll call and each member stored once.</p>
+            <details class="dpmore"><summary><span>More about <code>granite-record.sqlite.gz</code></span></summary>
+              <p>69&nbsp;MB once opened. Tables: bills, rollcalls, votes,
+                vote_values, sponsors, proceedings, legislators and people.
+                A vote is its roll call, its person and its value, so
+                2,303,047 ballots take 38&nbsp;MB rather than the 209&nbsp;MB
+                of the vote spreadsheets.</p>
+              <p class="dpjoin">votes.rollcall joins rollcalls.id;
+                votes.person joins people.person; bill + term joins bills.</p></details></td>
+          <td role="cell" class="n dpr">2,583,884<span class="dpu"> rows</span></td>
+          <td role="cell" class="n dps">16.7&nbsp;MB</td>
+          <td role="cell" class="dpg"><a class="dpget" href="data/granite-record.sqlite.gz" download>Download<span class="sr"> granite-record.sqlite.gz</span></a></td></tr>
+        <tr role="row"><th scope="row" role="rowheader"><code>people.json</code></th>
+          <td role="cell" class="dpw"><p class="dpwhat">One entry for each of the 2,192 people with a recorded vote since 1999, with every number the General Court has used for them.</p>
+            <details class="dpmore"><summary><span>More about <code>people.json</code></span></summary>
+              <p>The General Court gives a member a new number when they move
+                from the House to the Senate, and two kinds of number besides.
+                This file is the join: a person, their employee numbers, their
+                person ids, the ids this site&rsquo;s other files use, and
+                their page. <code>people.csv</code> is the same, one row a
+                number.</p></details></td>
+          <td role="cell" class="n dpr">2,192<span class="dpu"> rows</span></td>
+          <td role="cell" class="n dps">0.5&nbsp;MB</td>
+          <td role="cell" class="dpg"><a class="dpget" href="data/people.json" download>Download<span class="sr"> people.json</span></a></td></tr>
+        <tr role="row" class="dpgroup"><th scope="row" role="rowheader">Bills by Term<code>bills-&lt;term&gt;.jsonl.gz</code></th>
+          <td role="cell" class="dpw"><p class="dpwhat">Every bill&rsquo;s full record, one line a bill: its docket, hearings, votes, sponsors, reports, and the text of its latest printing. One file a term, 19 in all, from 1989-1990 to 2025-2026.</p>
+            <details class="dpmore"><summary><span>More about <code>bills-&lt;term&gt;.jsonl.gz</code></span></summary>
+              <p>Each line is one JSON object, keyed <code>"key":
+                "2025-2026/HB1442"</code>. It is the record the bill&rsquo;s own
+                page is drawn from. Earlier printings are to come.</p></details></td>
+          <td role="cell" class="n dpr">33,717<span class="dpu"> bills</span></td>
+          <td role="cell" class="n dps">143.5&nbsp;MB</td>
+          <td role="cell" class="dpg"><span class="dpeach">Each term below</span></td></tr>
+        <tr role="row" class="dpterms"><td role="cell" colspan="5">
+          <ul class="dptermgrid" aria-label="Bills by term">
+            <li><a href="#"><span class="dpt">2025-2026</span> <span class="dpm">2,243 bills &middot; 17.0&nbsp;MB</span></a></li>
+            <li><a href="#"><span class="dpt">2023-2024</span> <span class="dpm">1,996 bills &middot; 11.0&nbsp;MB</span></a></li>
+            <li><a href="#"><span class="dpt">2021-2022</span> <span class="dpm">1,753 bills &middot; 9.4&nbsp;MB</span></a></li>
+            <li><a href="#"><span class="dpt">2019-2020</span> <span class="dpm">1,983 bills &middot; 10.2&nbsp;MB</span></a></li>
+            <li><a href="#"><span class="dpt">2017-2018</span> <span class="dpm">1,810 bills &middot; 8.7&nbsp;MB</span></a></li>
+            <li><a href="#"><span class="dpt">2015-2016</span> <span class="dpm">1,789 bills &middot; 8.6&nbsp;MB</span></a></li>
+            <li><a href="#"><span class="dpt">2013-2014</span> <span class="dpm">1,553 bills &middot; 7.7&nbsp;MB</span></a></li>
+            <li><a href="#"><span class="dpt">2011-2012</span> <span class="dpm">1,772 bills &middot; 8.5&nbsp;MB</span></a></li>
+            <li><a href="#"><span class="dpt">2009-2010</span> <span class="dpm">1,735 bills &middot; 7.8&nbsp;MB</span></a></li>
+            <li><a href="#"><span class="dpt">2007-2008</span> <span class="dpm">1,955 bills &middot; 7.7&nbsp;MB</span></a></li>
+            <li><a href="#"><span class="dpt">2005-2006</span> <span class="dpm">1,837 bills &middot; 7.4&nbsp;MB</span></a></li>
+            <li><a href="#"><span class="dpt">2003-2004</span> <span class="dpm">1,605 bills &middot; 5.9&nbsp;MB</span></a></li>
+            <li><a href="#"><span class="dpt">2001-2002</span> <span class="dpm">1,487 bills &middot; 5.8&nbsp;MB</span></a></li>
+            <li><a href="#"><span class="dpt">1999-2000</span> <span class="dpm">1,673 bills &middot; 6.3&nbsp;MB</span></a></li>
+            <li><a href="#"><span class="dpt">1997-1998</span> <span class="dpm">1,849 bills &middot; 5.0&nbsp;MB</span></a></li>
+            <li><a href="#"><span class="dpt">1995-1996</span> <span class="dpm">1,586 bills &middot; 4.4&nbsp;MB</span></a></li>
+            <li><a href="#"><span class="dpt">1993-1994</span> <span class="dpm">1,784 bills &middot; 4.2&nbsp;MB</span></a></li>
+            <li><a href="#"><span class="dpt">1991-1992</span> <span class="dpm">1,675 bills &middot; 4.1&nbsp;MB</span></a></li>
+            <li><a href="#"><span class="dpt">1989-1990</span> <span class="dpm">1,632 bills &middot; 3.8&nbsp;MB</span></a></li>
+          </ul></td></tr>
+        <tr role="row"><th scope="row" role="rowheader"><code>bills.csv</code> and the rest</th>
+          <td role="cell" class="dpw"><p class="dpwhat">The spreadsheets, as on the data page, with every date written 2026-01-07 and a person column beside every member.</p></td>
+          <td role="cell" class="n dpr">2,581,692<span class="dpu"> rows</span></td>
+          <td role="cell" class="n dps">238.5&nbsp;MB</td>
+          <td role="cell" class="dpg"><a class="dpget" href="/data.html#downloads">See them<span class="sr"> on the data page</span></a></td></tr>
+      </tbody></table></div>
+  </section>
+
+  <section class="dpsec" id="start" aria-labelledby="start-h">
+    <h2 class="dpsech" id="start-h">Getting Started</h2>
+    <div class="dpsecb"><p>Every bill of the current term, in Python, with
+      nothing to install:</p>
+<pre class="apicode"><code>import gzip, json, urllib.request
+url = "https://graniterecord.org/data/bills-2025-2026.jsonl.gz"
+with urllib.request.urlopen(url) as r:
+    for line in gzip.decompress(r.read()).splitlines():
+        bill = json.loads(line)
+        print(bill["key"], bill["title"])</code></pre>
+    <p>Or the whole database, opened in the <code>sqlite3</code> program:</p>
+<pre class="apicode"><code>curl -O https://graniterecord.org/data/granite-record.sqlite.gz
+gunzip granite-record.sqlite.gz
+sqlite3 granite-record.sqlite "SELECT term, COUNT(*) FROM bills GROUP BY term"</code></pre>
+    <p>A page on another site may read every file here from the reader&rsquo;s
+      browser too: each one is served to any origin.</p></div>
+  </section>
+
+  <section class="dpsec" id="keys" aria-labelledby="keys-h">
+    <h2 class="dpsech" id="keys-h">Keys and Joins</h2>
+    <div class="dpsecb"><p><b>A bill is its term and its number.</b> HB 100
+      names a different bill in every term, so every file writes a bill as
+      <code>2025-2026/HB1442</code>, or as a <code>term</code> and a
+      <code>bill</code> column side by side.</p>
+    <p><b>A person is a <code>person</code>.</b> Employee numbers, person ids
+      and this site&rsquo;s member ids all appear in the General Court&rsquo;s
+      record, and one person can carry several of each.
+      <code>people.json</code> joins them to one <code>person</code>, which
+      does not change when a member moves from the House to the Senate.</p>
+    <details class="dpfold"><summary><span>When two people turn out to be one</span></summary>
+      <p>If the record later shows that two entries are one person, the
+      entry that goes keeps its <code>person</code> in a
+      <code>replaced_by</code> line, so a program that stored the old one
+      can still find them.</p></details>
+    <details class="dpfold"><summary><span>A blank field is usually an answer</span></summary>
+      <p>The record leaves it empty, the document that would fill it has not
+      been collected, or this site does not read it yet. The data page&rsquo;s
+      coverage table counts how far each column reaches in each term.</p></details></div>
+  </section>
+
+  <section class="dpsec" id="changes" aria-labelledby="changes-h">
+    <h2 class="dpsech" id="changes-h">What Changed Tonight</h2>
+    <div class="dpsecb"><p><code>/changes/&lt;date&gt;.json</code> is what
+      each night&rsquo;s build found new, kept for the last eight nights. It
+      already lists the hearings, votes and actions each bill, member,
+      committee and topic gained. It now also lists every bill and person
+      whose record changed in any way, and every file here that changed, with
+      its checksum, so another site can fetch only what moved.</p></div>
+  </section>
+
+  <section class="dpsec" id="live" aria-labelledby="live-h">
+    <h2 class="dpsech" id="live-h">Today&rsquo;s Votes</h2>
+    <div class="dpsecb"><p>On a day the House or the Senate sits,
+      <code>/api/live/votes/&lt;date&gt;</code> holds the roll calls recorded so
+      far that day, refreshed during the day. It is small and changes
+      often; the nightly files above take the day in the next morning.</p>
+    <p class="dpnote">What is live on the General Court&rsquo;s streams is not
+      part of the API: it comes from YouTube, whose terms do not allow passing
+      its data on as a service. Each bill&rsquo;s page still links its
+      recording.</p></div>
+  </section>
+
+  <section class="dpsec" id="stability" aria-labelledby="stability-h">
+    <h2 class="dpsech" id="stability-h">Versions and Stability</h2>
+    <div class="dpsecb"><p>Every JSON file carries <code>"format": 1</code>.
+      Until February 1, 2027 the API is a beta, and a field may be renamed or
+      removed; each such change is listed here and in
+      <code>manifest.json</code> a week before it happens. From February 1,
+      changes only add: a new file, a new field, a new column at the end. A
+      change that cannot be made by adding becomes a new file beside the old
+      one, and both are published for at least a year.</p></div>
+  </section>
+
+  <section class="dpsec" id="using" aria-labelledby="using-h">
+    <h2 class="dpsech" id="using-h">Using It</h2>
+    <div class="dpsecb"><p>The record is the State of New Hampshire&rsquo;s and
+      is public. What this site adds &mdash; its ids, its joins, its
+      corrections and its timings &mdash; is dedicated to the public domain:
+      use it for anything, with no need to ask. The code that builds it is
+      MIT licensed. A link back to graniterecord.org helps somebody check your
+      working.</p>
+    <p class="dpnote">Found something that looks wrong, or a shape that is awkward
+      to use? Each bill&rsquo;s page has a <i>Report a problem</i> button, and
+      so does a note to contact@graniterecord.org.</p></div>
+  </section>
+</div>

@@ -1,0 +1,62 @@
+{
+ "people": 2192,
+ "json_bytes": 539337,
+ "json_gz": 68738,
+ "csv_bytes": 442830,
+ "with_page": 2186,
+ "with_name": 2186,
+ "two_plus_employee_numbers": 19,
+ "two_plus_member_ids": 5,
+ "no_member_id": 6,
+ "site_ids_in_no_person": 0,
+ "site_ids_in_no_person_sample": [],
+ "sample": [
+  {
+   "person": "p376802",
+   "name": "Rep. Shannon Chandley",
+   "employee_numbers": [
+    "376802",
+    "209104"
+   ],
+   "person_ids": [
+    "568",
+    "9404"
+   ],
+   "member_ids": [
+    "568",
+    "9404"
+   ],
+   "page": "/legislator/shannon-chandley-hills-22",
+   "sitting": false,
+   "first_term": "2009-2010",
+   "last_term": "2023-2024",
+   "chambers": [
+    "H",
+    "S"
+   ]
+  },
+  {
+   "person": "p376622",
+   "name": "Sen. Cindy Rosenwald",
+   "employee_numbers": [
+    "376622",
+    "209106"
+   ],
+   "person_ids": [
+    "515",
+    "9406"
+   ],
+   "member_ids": [
+    "9406"
+   ],
+   "page": "/legislator/cindy-rosenwald-sd-13",
+   "sitting": true,
+   "first_term": "2005-2006",
+   "last_term": "2025-2026",
+   "chambers": [
+    "H",
+    "S"
+   ]
+  }
+ ]
+}
