@@ -64,36 +64,57 @@ The night changes tense by itself. Check, once:
 It does the routine work around the one step that stays yours, saving the
 files in a browser (sos.nh.gov refuses scripted clients, and saving them
 stays a person's act: the decision of 16 October 2026). It asks nobody
-anything and writes only to `logs/`; every draft is yours to read and copy.
+anything. Its own files are all in `logs/`, and every draft is yours to read
+and copy; the two steps `check` runs write what they write when you run them
+by hand (`collected/election_2026.json`, `site/members_elect.json`), and
+nothing writes `corrections/`.
 
 - `status`: which of the eleven 2026 files are saved, which are missing, and
   any later numbered upload the collected file has not read yet.
 - `check --url <the results page>`: until all eleven are saved, it says how
-  many are. With all eleven it runs steps 2 and 3 below, writes
+  many are. Other files of 2026 saved beside them, such as the question's
+  spreadsheet, never hold it up; a name that looks like a results file the
+  reader does not take is listed, and a download still in progress
+  (`.crdownload`, `.part`) makes it wait. With all eleven it runs steps 2 and 3 below, writes
   `logs/election_week.md` (FILES, REFUSED, FLAGGED, NOT LINKED, NEW, DO NOT
   ADD UP, NOTES, THE STEP SAID) and drafts the matches in
   `logs/members_elect.matches.draft.json`: each NOT LINKED name with the
   member the step names, or `null`, and each NEW name `null` with any member
   of that surname in its county to CHECK ("Marty Jack": "Martin Jack [733]").
-  Then it is done, and later runs only say so, until a file it has not read
-  is saved (a recount's `_N`): then it runs once more.
+  NOT LINKED names get a member only where the step's reason is a first
+  name it could not be sure of ("Peter" for "Pete"); every other reason
+  names someone it ruled out, and the draft says so and leaves `null`. Then
+  it is done, and later runs only say so, until a file it has not read is
+  saved (a recount's `_N`): then it runs once more. A refusal, a failure, or
+  a step that showed nobody is not done, and it tries again the next hour.
 - `draft-recounts --schedule <the saved schedule> --day <its date>`: the
   `"not_final"` block and `"recount_deadline": "2026-11-06"` in
   `logs/members_elect.recounts.draft.json`, from the schedule's text (.txt,
-  .csv, or a PDF), and every line naming a district it could not place.
+  .csv, or a PDF). A line is drafted only where every race it names is a
+  race on file; a line it could not place, or one saying a recount was
+  withdrawn, is printed NOT PLACED for you to read.
 - `draft-cacr --file <the question's spreadsheet> --url <the page>`: CACR
   13's row in `logs/ballot_results.cacr.draft.json`, with whether two thirds
-  said yes. It reads the count only where the sheet has one header with a
-  Yes and a No and one totals row under it, and otherwise says to copy it by
-  hand. The 2026 layout has not been seen; read the draft against the page.
+  said yes. It reads only a statewide count: a "State Totals" row, or the
+  one totals row of a sheet with a single Yes/No header, never a county's;
+  otherwise it says to copy it by hand. The 2026 layout has not been seen;
+  read the draft against the page.
 
-To run `check` every hour from 4 November, 07:00 to 22:00, on the laptop
-(one line, in the repository's folder, `cmd` as yourself; delete the task
-with `schtasks /Delete /TN GraniteElectionWeek /F` once the results are in):
+To run `check` every hour from 4 November, 07:00 to 22:00, on the laptop --
+on battery too, and as soon as it wakes when an hour was missed -- paste this
+into PowerShell in the repository's folder, as yourself. Delete the task once
+the results are in: `Unregister-ScheduledTask GraniteElectionWeek -Confirm:$false`.
 
 ```
-schtasks /Create /TN GraniteElectionWeek /SC HOURLY /MO 1 /ST 07:00 /ET 22:00 /SD 11/04/2026 /ED 11/20/2026 /TR "cmd /c cd /d %CD% && python3 src\ops\election_week.py check --url https://www.sos.nh.gov/2026-general-election-results >> logs\election_week.log 2>&1"
+$dir = (Get-Location).Path
+$act = New-ScheduledTaskAction -Execute "cmd.exe" -WorkingDirectory $dir -Argument '/c python3 src\ops\election_week.py check --url https://www.sos.nh.gov/2026-general-election-results >> logs\election_week.log 2>&1'
+$when = New-ScheduledTaskTrigger -Once -At ([datetime]"2026-11-04T07:00") -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration (New-TimeSpan -Days 16)
+$how = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
+Register-ScheduledTask -TaskName GraniteElectionWeek -Action $act -Trigger $when -Settings $how
 ```
+
+It runs every hour, night too; at night it only says the files are saved or
+not, which costs nothing.
 
 Check the results page's address on the day: if it is not
 `https://www.sos.nh.gov/2026-general-election-results`, give the one you

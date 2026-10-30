@@ -79,6 +79,8 @@ MATCHES_DRAFT = LOGS / "members_elect.matches.draft.json"
 RECOUNTS_DRAFT = LOGS / "members_elect.recounts.draft.json"
 CACR_DRAFT = LOGS / "ballot_results.cacr.draft.json"
 EXPECTED = len(PSR.COUNTIES) + 1
+PARTIAL = (".crdownload", ".part", ".partial", ".download", ".tmp")
+NEAR_MISS = re.compile(r"house|senate", re.I)
 
 
 # ---- the saved files -----------------------------------------------------------
@@ -138,10 +140,21 @@ def status(year, root="."):
         if new:
             lines.append("  saved since collected/election_" + str(year) + ".json was written, "
                          "and not read yet: " + ", ".join(new))
-    if s["other"]:
-        lines.append("  saved under a name the reader does not take (stop: the 2026 names "
-                     "differ, and the pattern is code): " + ", ".join(s["other"]))
-    return lines, have == EXPECTED and not s["other"], latest
+    # Another file never blocks: the eleven are counted by the reader's own
+    # patterns, so an extra one cannot stand in for a missing one. A download
+    # still in progress does wait, because it may be a newer upload.
+    partial = [n for n in s["other"] if n.lower().endswith(PARTIAL)]
+    near = [n for n in s["other"] if n not in partial and NEAR_MISS.search(n)]
+    rest = [n for n in s["other"] if n not in partial and n not in near]
+    if partial:
+        lines.append("  still downloading, so this waits: " + ", ".join(partial))
+    if near:
+        lines.append("  named like a results file but not one the reader takes (if the 2026 "
+                     "names differ, the pattern is code, and that is a person's fix): "
+                     + ", ".join(near))
+    if rest:
+        lines.append("  also saved, and not a results file: " + ", ".join(rest))
+    return lines, have == EXPECTED and not partial, latest
 
 
 def fingerprint(paths):
@@ -157,6 +170,13 @@ def fingerprint(paths):
 SECTION = re.compile(r"^(NOT LINKED|NEW|DO NOT ADD UP|NOTES)\b")
 ROW = re.compile(r"^  (?P<key>[HS]\|\S+)\s+(?P<name>.+?): (?P<why>.*)$")
 IDS = re.compile(r"\[(\d+)\]")
+# The only reasons whose one named member is likely the winner: the first name
+# fits that member only as its start or by a short form. Every other reason
+# that names one member (a rival on the ballot, another county, a Jr. or Sr.)
+# names somebody the winner probably is not, so the draft proposes nobody.
+SAME_PERSON_LIKELY = re.compile(
+    r"^the first name fits only as the start of the sitting member's"
+    r"|^the one former member who might be this winner has the first name only by")
 
 
 def step_rows(text):
@@ -233,15 +253,18 @@ def likely(name, key, roster):
 
 def draft_matches(rows, election, roster=()):
     """The draft "matches" and the evidence: a NOT LINKED name takes the one
-    member the step names, or null with every member it names listed; a NEW
+    member the step names when the reason says it is likely the same person,
+    or null with every member it names listed; a NEW
     name takes null, with any member of its surname in its county named for
     a person to check."""
     matches, evidence = {}, {}
     for key, name, why in rows["NOT LINKED"]:
         ids = list(dict.fromkeys(IDS.findall(why)))
-        matches.setdefault(key, {})[name] = ids[0] if len(ids) == 1 else None
+        sure = len(ids) == 1 and bool(SAME_PERSON_LIKELY.search(why))
+        matches.setdefault(key, {})[name] = ids[0] if sure else None
         evidence.setdefault(key, {})[name] = (
-            ("the step names one member: " if len(ids) == 1 else
+            ("the step names one member, likely the same person: " if sure else
+             "the step names one member, probably not this winner: " if len(ids) == 1 else
              "the step names " + (f"{len(ids)} members, choose one: " if ids else "no member: "))
             + why)
     for key, name, why in rows["NEW"]:
@@ -271,16 +294,19 @@ def check(year, url, site="site", root="."):
     LOGS.mkdir(exist_ok=True)
     lines, complete, latest = status(year, root)
     now = datetime.datetime.now().isoformat(timespec="minutes")
-    if not complete:
-        REPORT.write_text(f"# Election week, {now}\n\nWAITING: " + "\n".join(lines) + "\n",
-                          encoding="utf-8")
-        print("\n".join(lines))
-        return 0
-    seen = fingerprint(latest)
     try:
         state = json.loads(STATE.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         state = {}
+    if not complete:
+        # A finished report is kept: a download still under way the hour
+        # after is no reason to lose what was read.
+        if state.get("year") != year:
+            REPORT.write_text(f"# Election week, {now}\n\nWAITING: " + "\n".join(lines) + "\n",
+                              encoding="utf-8")
+        print("\n".join(lines))
+        return 0
+    seen = fingerprint(latest)
     if state.get("year") == year and state.get("read") == seen:
         print(f"done: the {year} files were read at {state.get('at')}, and none has been saved "
               "since. Nothing to do.")
@@ -300,6 +326,18 @@ def check(year, url, site="site", root="."):
           "Nothing here is committed or published. Read each section; corrections/ is yours.", "",
           "## FILES", ""] + [f"- {x.strip()}" for x in lines] + [""]
     refused = [x for x in (out_p + "\n" + out_s).splitlines() if x.startswith("REFUSED")]
+    # A step that failed without saying REFUSED -- a traceback -- is said
+    # too, by its last line, and is no success.
+    for what, code, out in (("parse_sos_results.py", code_p, out_p),
+                            ("build_members_elect.py", code_s, out_s)):
+        if code not in (0, None) and not any(x.startswith("REFUSED") for x in out.splitlines()):
+            last = [x for x in out.splitlines() if x.strip()][-1:] or ["(no output)"]
+            refused.append(f"{what} failed (exit {code}): {last[0].strip()}")
+    # AND A STEP THAT SHOWED NONE IS NO SUCCESS EITHER: build_members_elect
+    # exits 0 having shown nobody where the day or the term is not the
+    # window's (remove_stale), and the run tries again next hour.
+    none_shown = [x for x in out_s.splitlines() if x.startswith("members-elect: none shown")]
+    refused += [f"build_members_elect.py showed nobody: {x}" for x in none_shown]
     md += ["## REFUSED", ""] + ([f"- {x}" for x in refused] or ["- none"]) + [""]
     flagged = [x for x in out_p.splitlines() if x.startswith(("FLAGGED", "NO --url"))]
     md += ["## FLAGGED (the reader's notes: read every one)", ""] + \
@@ -323,7 +361,7 @@ def check(year, url, site="site", root="."):
            f"- {STEP_OUT.as_posix()} (exit {code_s})" if code_s is not None
            else "- build_members_elect.py did not run: the reader refused", ""]
     REPORT.write_text("\n".join(md), encoding="utf-8")
-    ok = code_p == 0 and code_s == 0
+    ok = code_p == 0 and code_s == 0 and not none_shown
     if ok:
         STATE.write_text(json.dumps({"year": year, "read": seen, "at": now,
                                      "files": sorted(p.name for p in latest)}, indent=1),
@@ -349,16 +387,21 @@ def election_day(year, root="."):
 # ---- the recount schedule ------------------------------------------------------
 
 COUNTY_NAMES = {c: c.capitalize() for c in PSR.COUNTIES}
-COUNTY_NAMES["coos"] = "Coos"
-HOUSE_RACE = re.compile(
-    r"\b(?P<county>" + "|".join(c.capitalize() for c in PSR.COUNTIES)
-    + r")(?:\s+County)?\s*(?:,\s*)?(?:State\s+Rep(?:resentative)?s?\s*,?\s*)?"
-      r"(?:District|Dist\.?)\s*(?:No\.?\s*)?(?P<n>\d{1,2})\b", re.I)
-SENATE_RACE = re.compile(r"\b(?:State\s+)?Senat(?:e|or)\s*,?\s*(?:District|Dist\.?)\s*"
-                         r"(?:No\.?\s*)?(?P<n>\d{1,2})\b", re.I)
-NAMES_DISTRICT = re.compile(r"\b(?:District|Dist\.?)\b", re.I)
-
-
+COUNTY = re.compile(r"\b(?P<county>" + "|".join(c.capitalize() for c in PSR.COUNTIES)
+                    + r")\b(?:\s+(?:County|Co\.))?", re.I)
+SENATE_HEAD = re.compile(r"\b(?:(?:State\s+)?Senat(?:e|or)\b(?:\s*-\s*|\s*,\s*|\s+)?"
+                         r"(?:District|Dist\.?)?|SD)\s*(?=(?:No\.?\s*)?\d)", re.I)
+# What may stand between a county's name and its district's number:
+# "Hillsborough County District 12", "Hillsborough County, District No. 40 -
+# State Representatives", "State Representative, Hillsborough County
+# District 12", "Rockingham 13", "Merrimack 29F", "Districts 12 and 13".
+DIST_WORDS = re.compile(r"\s*(?:,\s*)?(?:-\s*)?(?:State\s+Rep(?:resentative)?s?\s*,?\s*)?"
+                        r"(?:Districts?|Dist\.?)?\s*(?:No\.?\s*)?", re.I)
+# A district's number, and the list that may follow it; not a time
+# ("9:00"), nor a count of seats.
+NUMS = re.compile(r"(?P<n>\d{1,2})(?:F\b)?(?![\d:])(?!\s*(?:seats?|AM|PM|a\.m|p\.m)\b)"
+                  r"(?:\s*(?:,|and|&)\s*(?:(?:Districts?|Dist\.?)\s*)?(?:No\.?\s*)?)?", re.I)
+WITHDRAWN = re.compile(r"\bwithdr[ae]wn?\b|\bcancel+ed\b", re.I)
 def schedule_text(path):
     """The saved schedule's text: a .txt or .csv as it is, a PDF through
     pdfplumber where it is installed."""
@@ -374,23 +417,52 @@ def schedule_text(path):
     return p.read_text(encoding="utf-8", errors="replace")
 
 
+def numbers_after(line, at):
+    """The district numbers that follow position `at`: one, or a list of
+    them ("12 and 13", "12, District 13")."""
+    out, pos = [], at
+    while True:
+        m = NUMS.match(line, pos)
+        if not m:
+            return out
+        out.append(int(m.group("n")))
+        if m.end() == pos:
+            return out
+        pos = m.end()
+
+
 def draft_recounts(text, districts, day, deadline, election):
-    """(the draft, the lines naming a district that could not be placed).
-    `districts` is the races on file, build_members_elect.races_on_file's
-    keys: "H|Hillsborough|12", "S|24"."""
+    """(the draft, the lines it could not place). `districts` is the races on
+    file, build_members_elect.races_on_file's keys: "H|Hillsborough|12",
+    "S|24". A line is placed only where every race it names is a race on
+    file; a line naming a county or the Senate with a number it could not
+    place, and a line that says a recount was withdrawn or cancelled, is
+    listed for the person to read, and nothing of it is drafted."""
     not_final, unplaced = {}, []
     for line in text.splitlines():
-        keys = [f"H|{COUNTY_NAMES[m.group('county').lower()]}|{int(m.group('n'))}"
-                for m in HOUSE_RACE.finditer(line)]
-        keys += [f"S|{int(m.group('n'))}" for m in SENATE_RACE.finditer(line)]
-        placed = [k for k in keys if k in districts]
-        for k in placed:
-            not_final[k] = {"recount": True, "why": f"on the SoS recount schedule of {day}"}
-        if NAMES_DISTRICT.search(line) and len(placed) < max(1, len(keys)):
+        keys = []
+        for m in COUNTY.finditer(line):
+            w = DIST_WORDS.match(line, m.end())
+            keys += [f"H|{COUNTY_NAMES[m.group('county').lower()]}|{n}"
+                     for n in numbers_after(line, w.end())]
+        for m in SENATE_HEAD.finditer(line):
+            w = DIST_WORDS.match(line, m.end())
+            keys += [f"S|{n}" for n in numbers_after(line, w.end())]
+        names_race = bool(COUNTY.search(line) or re.search(r"\bSenat|\bSD\b", line, re.I)) \
+            and bool(re.search(r"\d", line))
+        if not keys:
+            if names_race:
+                unplaced.append(line.strip())
+            continue
+        if WITHDRAWN.search(line) or any(k not in districts for k in keys):
             unplaced.append(line.strip())
+            continue
+        for k in keys:
+            not_final[k] = {"recount": True, "why": f"on the SoS recount schedule of {day}"}
     draft = {"_draft": f"A DRAFT for corrections/members_elect.json, under \"{election}\". "
                        "Enter the deadline only together with the recounts (docs/ELECTION_WEEK.md). "
-                       "A multi-seat race whose recount is for one seat takes \"seats\": 1.",
+                       "A multi-seat race whose recount is for one seat takes \"seats\": 1. Read "
+                       "every NOT PLACED line: nothing of it is drafted.",
              election: {"recount_deadline": deadline, "not_final": not_final}}
     return draft, unplaced
 
@@ -399,32 +471,49 @@ def draft_recounts(text, districts, day, deadline, election):
 
 def question_count(path):
     """{"yes", "no", "blank", "over", "label"} from the question's results
-    spreadsheet: the one sheet with one header row holding a Yes and a No,
-    and one totals row below it. Anything else is refused (SystemExit)."""
+    spreadsheet. The statewide count only: a row labelled "State Total(s)" or
+    "Statewide", or, where a sheet has a single header of one Yes and one No,
+    its one "Total(s)" row. A sheet of county blocks, each with its own
+    totals, gives nothing unless it has a statewide row (the review of 29
+    October 2026: the last block's county total was read as the state's).
+    Anything else is refused (SystemExit)."""
+    STATE = re.compile(r"(state\s*(wide)?\s*totals?|statewide)", re.I)
+    TOTAL = re.compile(r"totals?", re.I)
     found = []
     for name, rows in PSR.sheets(Path(path)):
         label = next((str(c) for r in rows for c in r
                       if isinstance(c, str) and re.search(r"question\s+no\.?\s*\d+", c, re.I)), None)
+        heads = []
         for i, r in enumerate(rows):
             cells = [str(c).strip().lower() if isinstance(c, str) else None for c in r]
             if "yes" in cells and "no" in cells:
-                y, n = cells.index("yes"), cells.index("no")
-                b = next((j for j, c in enumerate(cells) if c in ("blank", "undervotes")), None)
-                o = next((j for j, c in enumerate(cells) if c in ("overvotes", "over votes")), None)
-                totals = [t for t in rows[i + 1:]
-                          if t and isinstance(t[0], str) and re.fullmatch(r"(state\s+)?totals?",
-                                                                          t[0].strip(), re.I)]
-                if len(totals) == 1:
-                    t = totals[0]
-                    num = lambda j: t[j] if j is not None and j < len(t) and isinstance(t[j], int) \
-                        else None
-                    found.append({"sheet": name, "yes": num(y), "no": num(n), "blank": num(b),
-                                  "over": num(o), "label": label})
+                heads.append((i, cells))
+        if not heads:
+            continue
+        i0, cells = heads[0]
+        y, n = cells.index("yes"), cells.index("no")
+        b = next((j for j, c in enumerate(cells) if c in ("blank", "undervotes")), None)
+        o = next((j for j, c in enumerate(cells) if c in ("overvotes", "over votes")), None)
+        lab = lambda t: next((str(c).strip() for c in t[:2] if isinstance(c, str) and c.strip()), "")
+        state = [t for t in rows[i0 + 1:] if t and STATE.fullmatch(lab(t))]
+        if state:
+            totals = state
+        elif len(heads) == 1:
+            totals = [t for t in rows[i0 + 1:] if t and TOTAL.fullmatch(lab(t))]
+        else:
+            totals = []
+        if len(totals) == 1:
+            t = totals[0]
+            num = lambda j: (int(t[j]) if j is not None and j < len(t)
+                             and isinstance(t[j], (int, float)) and float(t[j]).is_integer()
+                             else None)
+            found.append({"sheet": name, "yes": num(y), "no": num(n), "blank": num(b),
+                          "over": num(o), "label": label})
     good = [f for f in found if f["yes"] is not None and f["no"] is not None]
     if len(good) != 1:
-        raise SystemExit(f"{Path(path).name}: {len(good)} tables of one Yes, one No and one "
-                         "totals row; the count is read only where there is exactly one. Copy it "
-                         "by hand from the page.")
+        raise SystemExit(f"{Path(path).name}: {len(good)} statewide counts of one Yes and one No; "
+                         "the count is read only where there is exactly one. Copy it by hand "
+                         "from the page.")
     return good[0]
 
 
