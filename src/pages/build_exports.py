@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.55
+# GRANITE_VERSION: 2026-09-10.56
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -17,7 +17,7 @@ anything.
 WHAT IT REFUSES TO DO
 
 It writes no file over the host's limit. Cloudflare Pages rejects anything
-past 25 MiB, and the member votes are 437,702 rows and 27.9 MB in one piece --
+past 25 MiB, and the member votes were 437,702 rows and 27.9 MB in one piece --
 which would have failed at deploy time, after a five-minute build, with an
 error about a file rather than about a decision. So the votes are split by
 term, and every table's size is checked against the cap before it is written
@@ -154,22 +154,29 @@ def bills(out, site):
                  "their bill column the same way.")
 
 
-def legislators(out, site):
+def legislators(out, site, person_of=None):
     legs = load(site / "legislators.json", [])
     # No phone column (22 October 2026): a legislator's number is often their
     # own (build_site_v2, NO TELEPHONE FOR A LEGISLATOR).
+    # person last (30 October 2026, the data API's branch 2): the person
+    # number people.json joins every one of a member's numbers to, so that a
+    # reader who counts columns finds each of the others where it was.
+    person_of = person_of or {}
     cols = ["id", "name", "chamber", "party", "district", "county", "email",
-            "committees", "bills_sponsored", "recorded_votes"]
+            "committees", "bills_sponsored", "recorded_votes", "person"]
     rows = ([m.get("id", ""), m.get("display_full") or m.get("name", ""),
              "Senate" if m.get("chamber") == "S" else "House",
              m.get("party", ""), m.get("district", ""), m.get("county", ""),
              m.get("email", ""),
              "; ".join(m.get("committees") or []),
-             m.get("n_sponsored", 0), m.get("n_votes", 0)]
+             m.get("n_sponsored", 0), m.get("n_votes", 0),
+             person_of.get(str(m.get("id")), "")]
             for m in sorted(legs, key=lambda m: str(m.get("name"))))
     return write(out, "legislators.csv", cols, rows,
                  "The sitting roster, with district, contact details and "
-                 "committee seats.")
+                 "committee seats. person is the member's person number in "
+                 "people.json, which joins every number the General Court "
+                 "has used for them.")
 
 
 def rollcalls(out):
@@ -213,6 +220,17 @@ def rollcalls(out):
                  "names no outcome and the count decides it.")
 
 
+def iso_day(d):
+    """A day as YYYY-MM-DD. The roll-call files write the General Court's
+    own month/day/year ("1/7/2026"), and every other table here writes ISO
+    (the data API's branch 2, 30 October 2026: one shape for every date, the
+    column's name and meaning unchanged). Anything not in that shape is
+    returned as it is rather than guessed at."""
+    import re
+    m = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", str(d or "").strip())
+    return f"{m[3]}-{int(m[1]):02d}-{int(m[2]):02d}" if m else (d or "")
+
+
 def votes(out, data):
     """Member votes, split by term because one file would exceed the cap."""
     import proceedings as P
@@ -229,7 +247,7 @@ def votes(out, data):
         if not term:
             continue
         rows = ([f'{v.get("year")}-{v.get("body")}-{v.get("vote_number")}',
-                 term, v.get("date", ""), v.get("bill", ""),
+                 term, iso_day(v.get("date", "")), v.get("bill", ""),
                  v.get("question", ""), v.get("member_id", ""),
                  v.get("name", ""), v.get("party", ""),
                  "Senate" if v.get("body") == "S" else "House",
@@ -238,7 +256,10 @@ def votes(out, data):
         made.append(write(
             out, f"votes-{term}.csv", cols, rows,
             f"How every member voted on every roll call of {term}. "
-            "Join to rollcalls.csv on roll_call."))
+            "Join to rollcalls.csv on roll_call. date is YYYY-MM-DD, as in "
+            "every other table here; before October 30, 2026 it was the "
+            "General Court's month, day and year. A member's person number "
+            "is in people.csv, by member_id."))
     return made
 
 
@@ -351,7 +372,7 @@ def proceedings_table(out, site, table=None, histories=None):
                  "stream's start, which is the schedule and not a finding.")
 
 
-def sponsors(out, data):
+def sponsors(out, data, person_of=None):
     sp = load(Path(data) / "sponsors.json", {})
     # The same merge build_site_v2 makes, or the download would name nobody for
     # the bills whose pages name their sponsors from the bill's own text.
@@ -386,8 +407,9 @@ def sponsors(out, data):
         PSP.merge_into(sp)
         bills_ = load(Path(data) / "bills.json", {})
         TS.seat_into(sp, current=max(bills_) if bills_ else None)
+    person_of = person_of or {}
     cols = ["term", "bill", "member_id", "member", "party", "chamber",
-            "prime", "role", "source"]
+            "prime", "role", "source", "person"]
     rows = []
     for term, bills_ in (sp.items() if isinstance(sp, dict) else []):
         for bill, people in (bills_.items() if isinstance(bills_, dict) else []):
@@ -396,7 +418,8 @@ def sponsors(out, data):
                              m.get("label") or m.get("name", ""),
                              m.get("party", ""), m.get("chamber", ""),
                              1 if m.get("prime") else 0, m.get("role", ""),
-                             m.get("source") or "sponsor file"])
+                             m.get("source") or "sponsor file",
+                             person_of.get(str(m.get("member_id") or ""), "")])
     rows.sort(key=lambda r: (r[0], BO.bill_key(r[1]), -r[6]))
     return write(out, "sponsors.csv", cols, rows,
                  "Who put their name to which bill, and who was prime. "
@@ -422,7 +445,8 @@ def sponsors(out, data):
                  "1999, when the roll-call files it matches against begin, "
                  "and a few after; a sponsor from the sponsor record carries "
                  "the id its number votes under where any roll call was cast "
-                 "under it, in any term.")
+                 "under it, in any term. person is the member's person number "
+                 "in people.json, empty where member_id is.")
 
 
 # How the tables join, said once here rather than guessed at by everyone
@@ -1173,17 +1197,16 @@ def bill_indexes(site, origin):
     }
 
 
-def people_files(out, site, data, db="db", careers="generated/careers.json",
-                 register="generated/person_numbers.json"):
-    """people.json and people.csv: every number the General Court uses for a
-    person, joined to one person number (src/lib/people.py says how, and
-    src/ops/person_numbers.py issues the numbers). Returns their rows for
-    the manifest's "files"; none where the inputs are not on this disk, and
-    says so -- a clone without the database dump builds everything else."""
+def people_join(site, data, db="db", careers="generated/careers.json",
+                register="generated/person_numbers.json"):
+    """Every number the General Court uses for a person, joined to one person
+    number (src/lib/people.py says how, and src/ops/person_numbers.py issues
+    the numbers): (people, report), or None where the inputs are not on this
+    disk -- a clone without the database dump builds everything else, and
+    people_files says so."""
     import people as PE
     if PE.emp_to_pid(db) is None or not Path(careers).exists():
-        print(f"  {'people.json':<28} not written: no {db}/Legislators.psv or {careers} here")
-        return []
+        return None
     # The register strictly: one that is there and does not read, or is not
     # well formed, stops the build (PE.load_register), because without it the
     # register would quietly stop winning.
@@ -1202,6 +1225,25 @@ def people_files(out, site, data, db="db", careers="generated/careers.json",
     if bad:
         raise SystemExit("people.json would hold a number twice, so it is not written: "
                          + "; ".join(bad[:5]))
+    return people, rep
+
+
+def person_map(joined):
+    """member_id -> person, for the person column of the tables keyed by
+    member_id. Empty where there is no join, and the column is empty."""
+    return {mid: p["person"] for p in (joined or ((), None))[0]
+            for mid in p.get("member_ids") or ()}
+
+
+def people_files(out, joined, db="db", careers="generated/careers.json",
+                 register="generated/person_numbers.json"):
+    """people.json and people.csv, from people_join's answer. Returns their
+    rows for the manifest's "files"."""
+    import people as PE
+    if joined is None:
+        print(f"  {'people.json':<28} not written: no {db}/Legislators.psv or {careers} here")
+        return []
+    people, rep = joined
     rows = PE.write(people, out)
     prov, ruled = len(rep["provisional"]), len(rep["by_rule"])
     print(f"  {'people.json':<28} {len(people):>9,} people  "
@@ -1240,8 +1282,10 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
 
     print("Bulk downloads:")
-    tables = [bills(out, site), legislators(out, site), rollcalls(out),
-              proceedings_table(out, site), sponsors(out, a.data)]
+    joined = people_join(site, a.data)
+    person_of = person_map(joined)
+    tables = [bills(out, site), legislators(out, site, person_of), rollcalls(out),
+              proceedings_table(out, site), sponsors(out, a.data, person_of)]
     tables += votes(out, a.data)
 
     over = [t for t in tables if t["over_cap"]]
@@ -1284,7 +1328,7 @@ def main():
     # reader sees today moves while they are built.
     # Only where there is something to list: a clone without the inputs
     # writes the manifest it wrote before.
-    files = people_files(out, site, a.data)
+    files = people_files(out, joined)
     if files:
         manifest["files"] = files
     (out / "manifest.json").write_text(
