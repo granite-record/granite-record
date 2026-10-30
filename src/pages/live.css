@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-10-30.3 */
+/* GRANITE_VERSION: 2026-10-30.4 */
 /* LIVE NOW'S OWN RULES (/live, src/pages/live.js). Only .lv* classes, drawn in
    the site's tokens (app.css), so both themes work and nothing here reaches
    another page. The player and its stub are the site's own (.player, .pstub);
@@ -10,7 +10,10 @@
 .lv-streams{display:grid;gap:var(--sp-5)}
 .lv-card{background:var(--surface);border:1px solid var(--rule-2);border-left:4px solid var(--brick);
 border-radius:var(--r-out);padding:var(--sp-5) var(--sp-6);box-shadow:0 3px 10px var(--shadow)}
-.lv-card h2{font-size:var(--t-card);margin:0}
+/* A card's name is an h2 (no skipped level under the h1), drawn as a card's
+   name rather than as .clist's section heading. */
+.lv-card h2,.lv-session h2{font-size:var(--t-card);font-weight:600;letter-spacing:normal;text-transform:none;
+color:var(--ink);margin:0;padding:0;border:0}
 .lv-card .lv-since{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-1) 0 0}
 .lv-card .lv-since::before{content:"";display:inline-block;width:.6em;height:.6em;border-radius:50%;
 background:var(--brick);margin-right:.45em;vertical-align:.05em}
@@ -22,7 +25,7 @@ background:var(--brick);margin-right:.45em;vertical-align:.05em}
 .lv-channels{font-size:var(--t-sm);color:var(--ink-2);margin-top:var(--sp-6)}
 .lv-sessions{display:grid;gap:var(--sp-5);margin-top:var(--sp-6)}
 .lv-session{background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-out);padding:var(--sp-5) var(--sp-6)}
-.lv-session h2{font-size:var(--t-card);margin:0 0 var(--sp-3,8px)}
+.lv-session h2{margin-bottom:var(--sp-3,8px)}
 .lv-votes{list-style:none;margin:0;padding:0}
 .lv-rc{padding:var(--sp-3,8px) 0;border-bottom:1px solid var(--rule);font-size:var(--t-ui);overflow-wrap:anywhere}
 .lv-rc>span{margin-right:.35em}
