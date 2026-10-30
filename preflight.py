@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.743
+# GRANITE_VERSION: 2026-09-04.744
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -103651,16 +103651,17 @@ def _calendar_meetings_kept(CM):
             "        raise SystemExit('a calendar was parsed again')",
             "    CM.parse = boom",
             "use = sys.argv[2] not in ('nocache', 'nocache-boom')",
-            "rows = CM.load('H', cache=use)",
+            "years = [int(sys.argv[3])] if len(sys.argv) > 3 else None",
+            "rows = CM.load('H', cache=use, years=years)",
             "if sys.argv[2] == 'twice':",
             "    for r in rows: r['date'] = 'changed'",
             "    rows = CM.load('H', cache=use)",
             "print(json.dumps([rows, [list(u) for u in CM.UNPAIRED]], ensure_ascii=False))"])
 
-        def run(how):
-            return _run([sys.executable, "-c", code, str(_paths.ROOT), how], cwd=root,
+        def run(how, *more):
+            return _run([sys.executable, "-c", code, str(_paths.ROOT), how, *more], cwd=root,
                         capture_output=True, text=True, timeout=120)
-        cache = root / ".build_cache" / f"{CM.CACHE_NAME}.json.gz"
+        cache = root / ".build_cache" / f"{CM.KEPT}.json.gz"
         plain = run("nocache")
         assert plain.returncode == 0, (plain.stderr or plain.stdout)[-400:]
         assert json.loads(plain.stdout)[0], "the fixture's calendars gave no meeting"
@@ -103685,8 +103686,18 @@ def _calendar_meetings_kept(CM):
             "a calendar changed and its kept answer was used"
         assert run("read").returncode == 0
         import build_cache as BC
-        held = BC.load(CM.CACHE_NAME, CM._signature(), folder=root / ".build_cache")
+        held = BC.load(CM.KEPT, CM._signature(), folder=root / ".build_cache")
         assert len(held) == 2, f"the cache holds {len(held)} answers for 2 calendars on disk"
+        # TWO RUNS AT ONCE, each on its own year, as narrate_archive's four
+        # processes are: both answers are kept, whichever finished last.
+        cache.unlink()
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(2) as pool:
+            both = list(pool.map(lambda y: run("read", y), ("2025", "2026")))
+        assert all(r.returncode == 0 for r in both), [r.stderr[-200:] for r in both]
+        held = BC.load(CM.KEPT, CM._signature(), folder=root / ".build_cache")
+        assert len(held) == 2, (f"two runs at once left {len(held)} answers of 2: the last to "
+                                "finish saved over the other's")
     finally:
         shutil.rmtree(root, ignore_errors=True)
     src = _paths.locate("narrative.py").read_text(encoding="utf-8")

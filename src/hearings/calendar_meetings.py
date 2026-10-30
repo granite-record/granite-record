@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.16
+# GRANITE_VERSION: 2026-09-08.17
 """
 Who is hearing what, when, and in which room -- out of the calendars on disk.
 
@@ -635,9 +635,11 @@ UNPAIRED = []
 # of an earlier answer, and writes nothing.
 #
 # KEPT WHOLE, NEVER PAST THE RECORD. No one run reads every calendar, so a run
-# that parsed anything keeps, as it ends, what it had and what it parsed, less
-# any answer for a text no calendar on disk now holds.
-CACHE_NAME = "calendar_meetings"
+# that parsed anything keeps, as it ends, what is kept and what it parsed, less
+# any answer for a text no calendar on disk now holds -- the one cache that
+# saves after a run on part of the record (build_cache's rule), because its
+# answers are each one file's and the pruning holds it to the record.
+KEPT = "calendar_meetings"
 _KEPT = None        # {key: [rows, pub, unpaired]}, as JSON holds them
 _SIG = None
 _PARSED = 0         # answers this run worked out and has not saved
@@ -662,7 +664,7 @@ def parsed(text, chamber):
     global _KEPT, _PARSED
     import build_cache as BC
     if _KEPT is None:
-        _KEPT = dict(BC.load(CACHE_NAME, _signature()))
+        _KEPT = dict(BC.load(KEPT, _signature()))
     key = _key(text, chamber)
     got = _KEPT.get(key)
     if isinstance(got, list) and len(got) == 3:
@@ -681,9 +683,41 @@ def parsed(text, chamber):
     return rows, pub, unpaired
 
 
+def _lock(path, wait=60.0, stale=600.0):
+    """Take `path` as a lock file, made only if it is not there (O_EXCL), and
+    True; False if it cannot be had within `wait` seconds. A lock older than
+    `stale` is a run that died holding it, and is taken over."""
+    import os
+    import time
+    end = time.monotonic() + wait
+    while True:
+        try:
+            os.close(os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+            return True
+        except FileExistsError:
+            try:
+                if time.time() - os.path.getmtime(path) > stale:
+                    os.unlink(path)
+                    continue
+            except OSError:
+                pass
+            if time.monotonic() > end:
+                return False
+            time.sleep(0.2)
+        except OSError:
+            return False
+
+
 def keep():
-    """Save what this run parsed, with what was kept, less any answer for a
-    text no calendar on disk now holds. True if it wrote."""
+    """Save what this run parsed, with what is kept, less any answer for a
+    text no calendar on disk now holds. True if it wrote.
+
+    MERGED UNDER A LOCK (the review of 30 October 2026): narrate_archive runs
+    four narrative.py processes at once, and each saving the whole of what it
+    held left only the last one's answers -- 303 of 631 in the reviewer's run.
+    Each now reads what is there under the lock, adds its own and saves, in
+    the keys' order, so the file is the same whichever finished last. A lock
+    it cannot have within a minute saves nothing: the next run parses again."""
     global _PARSED
     if not _PARSED or _KEPT is None:
         return False
@@ -693,10 +727,25 @@ def keep():
         root = Path(conf["dir"])
         for f in (sorted(root.rglob(conf["glob"])) if root.exists() else []):
             now.add(_key(f.read_text(encoding="utf-8", errors="replace"), ch))
-    if BC.save(CACHE_NAME, _signature(), {k: v for k, v in _KEPT.items() if k in now}):
+    path = BC.path_of(KEPT)
+    lock = path.with_name(path.name + ".lock")
+    try:
+        lock.parent.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return False
+    if not _lock(lock):
+        return False
+    try:
+        merged = {**BC.load(KEPT, _signature()), **_KEPT}
+        wrote = BC.save(KEPT, _signature(), {k: merged[k] for k in sorted(merged) if k in now})
+    finally:
+        try:
+            lock.unlink()
+        except OSError:
+            pass
+    if wrote:
         _PARSED = 0
-        return True
-    return False
+    return wrote
 
 
 def load(chamber, limit=None, years=None, cache=False):
