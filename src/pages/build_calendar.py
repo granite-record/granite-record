@@ -919,7 +919,7 @@ WEEK_JS = r"""
   // and "Show them" (emptyHtml) shows them, as the line's own button does.
   function studyOnly(cards,f){
     return !!cards.length && cards.every(function(e){ return e.who==="study"; })
-      && f.cats.indexOf("study")<0 && !f.picks.length && !String(f.q||"").trim();
+      && f.cats.indexOf("study")<0 && !f.picks.length && !String(f.q||"").trim() && !f.body;
   }
   function emptyWords(cards,f){
     if(!cards.length) return "No meetings";
@@ -1974,17 +1974,23 @@ WEEK_JS = r"""
   });
   // "Show them": the Study Committee box ticked, as a reader's own tick is,
   // remembered the same way, and the focus left on the box, which unticks it.
-  // The week line's button and a day's (emptyHtml) alike.
-  function showStudy(){
+  // The week line's button and a day's (emptyHtml) alike; a day's leaves the
+  // focus on the first meeting it now shows, where the reader is, not on the
+  // box at the top of the page (the review of 30 October 2026).
+  function showStudy(day){
     var box=cats.querySelector('input[name="cat"][value="study"]');
     if(!box) return;
     box.checked=true;
     if(S.cats.indexOf("study")<0) S.cats.push("study");
     try{ localStorage.setItem(SKEY,"1"); }catch(e2){}
     apply();
-    box.focus();
+    var col=day&&all(view,".wkcol").filter(function(c){
+      var k=c.querySelector(".wkday"); return k&&k.getAttribute("data-d")===day; })[0];
+    var at=day&&(col ? col.querySelector(".wkgo")
+      : view.querySelector('.calday[data-d="'+day+'"] .calmeet summary'));
+    (at||box).focus();
   }
-  if(showst) showst.addEventListener("click",showStudy);
+  if(showst) showst.addEventListener("click",function(){ showStudy(); });
   form.addEventListener("submit",function(e){ e.preventDefault(); });
   form.addEventListener("change",function(e){
     var t=e.target;
@@ -2043,7 +2049,10 @@ WEEK_JS = r"""
       });
     }else if(b.hasAttribute("data-step"))
       select(b.getAttribute("data-to")||addDays(SEL,+b.getAttribute("data-step")),"step");
-    else if(b.classList.contains("calshowday")) showStudy();
+    else if(b.classList.contains("calshowday")){
+      var host=b.closest(".calday,.wkcol"), k=host&&host.querySelector(".wkday");
+      showStudy(host&&(host.getAttribute("data-d")||(k&&k.getAttribute("data-d"))));
+    }
   });
   // The week's arrows move to the week before or after in place, keeping
   // the view and the filters, on the calendar's own address; opened in a new

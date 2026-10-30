@@ -5430,10 +5430,10 @@ const roomWords=v=>{
       (m,n,k)=>`${ROOM_BUILDINGS[k]} ${n}`)
     .replace(/\b(LOBO|LOB|SH|GP|SL)\s+(?:Rm\.?\s+|Room\s+)?((?:[A-Z][\w']*\s+)+Room)\b/g,
       (m,k,n)=>`${ROOM_BUILDINGS[k]} ${n}`)
-    .replace(/\bRMs?\.?\s*,?\s*(\d+(?:-?[A-Z])?(?:\s*[-/]\s*\d+(?:-?[A-Z])?)?)\s*[,/]?\s*(LOB|ST\.?\s*HOUSE|STATE\s+HOUSE|SH)\b/gi,
-      (m,n,k)=>`${k.toUpperCase()==="LOB"?"LOB":"SH"} ${n.replace(/ /g,"")}`)
-    .replace(/\b[Rr]ooms?\s+(\d+(?:-?[A-Z])?(?:\s*[-/]\s*\d+(?:-?[A-Z])?)?)\s+(LOB|SH|GP|SL)\b/g,
-      (m,n,k)=>`${k} ${n.replace(/ /g,"")}`)
+    .replace(/(^|[,;(]\s*)RMs?\.?\s*,?\s*(\d+(?:-?[A-Z])?(?:\s*[-/]\s*\d+(?:-?[A-Z])?)?)\s*[,/]?\s*(LOB|ST\.?\s*HOUSE|STATE\s+HOUSE|SH)\b/gi,
+      (m,p,n,k)=>`${p}${k.toUpperCase()==="LOB"?"LOB":"SH"} ${n.replace(/ /g,"")}`)
+    .replace(/(^|[,;(]\s*)[Rr]ooms?\s+(\d+(?:-?[A-Z])?(?:\s*[-/]\s*\d+(?:-?[A-Z])?)?)\s+(LOB|SH|GP|SL)\b/g,
+      (m,p,n,k)=>`${p}${k} ${n.replace(/ /g,"")}`)
     .replace(/\bRoom\s+(\w[\w .\-]*?)\s*,\s*([A-Z]{2,3})\b/gi,
       (m,r,k)=>`Room ${r.trim()}, ${ROOM_BUILDINGS[k.toUpperCase()]&&k.toUpperCase()!=="LOBO"
         ?ROOM_BUILDINGS[k.toUpperCase()]:k}`)

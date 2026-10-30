@@ -560,10 +560,13 @@ def plain(raw, bill="", body="", next_line=""):
 # committee's 21,267 one-room meetings printed the code. Each is turned
 # round to the building and its number, "LOB 207", which the rule below then
 # words; anything after the room (":EDUC", "(NOTE TIME CHANGE)") stays as
-# written. app.js's roomWords does the same, in the same order.
-_ROOM_FIRST = re.compile(r"\bRMs?\.?\s*,?\s*(\d+(?:-?[A-Z])?(?:\s*[-/]\s*\d+(?:-?[A-Z])?)?)\s*[,/]?\s*"
+# written. app.js's roomWords does the same, in the same order. Only where a
+# room begins -- the start, or after a comma, semicolon or bracket -- so a
+# room with a name, "Conference Room 2 LOB", stays as typed (the review of 30
+# October 2026).
+_ROOM_FIRST = re.compile(r"(^|[,;(]\s*)RMs?\.?\s*,?\s*(\d+(?:-?[A-Z])?(?:\s*[-/]\s*\d+(?:-?[A-Z])?)?)\s*[,/]?\s*"
                          r"(LOB|ST\.?\s*HOUSE|STATE\s+HOUSE|SH)\b", re.I)
-_ROOM_THEN_CODE = re.compile(r"\b[Rr]ooms?\s+(\d+(?:-?[A-Z])?(?:\s*[-/]\s*\d+(?:-?[A-Z])?)?)\s+(LOB|SH|GP|SL)\b")
+_ROOM_THEN_CODE = re.compile(r"(^|[,;(]\s*)[Rr]ooms?\s+(\d+(?:-?[A-Z])?(?:\s*[-/]\s*\d+(?:-?[A-Z])?)?)\s+(LOB|SH|GP|SL)\b")
 _PLACE_BLDG = re.compile(r"\b(LOBO|LOB|SH|GP|SL) ?(?:Rooms? |R[Mm][Ss]?\.? ?)?([0-9][0-9A-Za-z\-]*)\b(?!:)")
 _PLACE_ALONE = re.compile(r"^(LOBO|LOB|SH|GP|SL)$")
 _REPS_HALL = re.compile(r"^(?:SH,?\s+)?(?:Reps|Representatives)'?\s+Hall(?:,?\s*SH)?$", re.I)
@@ -583,9 +586,9 @@ def place(raw):
     if _PLACE_ALONE.match(t):
         return _PLACE_BUILDINGS[t]
     t = _named(t)
-    t = _ROOM_FIRST.sub(lambda m: ("LOB " if m.group(2).upper() == "LOB" else "SH ")
-                        + m.group(1).replace(" ", ""), t)
-    t = _ROOM_THEN_CODE.sub(lambda m: f"{m.group(2)} {m.group(1).replace(' ', '')}", t)
+    t = _ROOM_FIRST.sub(lambda m: m.group(1) + ("LOB " if m.group(3).upper() == "LOB" else "SH ")
+                        + m.group(2).replace(" ", ""), t)
+    t = _ROOM_THEN_CODE.sub(lambda m: f"{m.group(1)}{m.group(3)} {m.group(2).replace(' ', '')}", t)
     t = _ROOM.sub(lambda m: f"Room {m.group(1).strip()}, "
                             f"{BUILDINGS.get(m.group(2).upper(), m.group(2))}", t)
     return _PLACE_BLDG.sub(lambda m: f"{_PLACE_BUILDINGS[m.group(1)]} {m.group(2)}", t)

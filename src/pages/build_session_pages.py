@@ -2669,9 +2669,10 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
 # does not end a sentence, and thanks to the chair are not what the member
 # said, so the two sentences after them are the opening; a speech of thanks
 # alone keeps them.
-_TITLE_END = "".join(rf"(?<!\b{t}\.)" for t in ("Mr", "Mrs", "Ms", "Dr", "Rep", "Sen", "St", "No"))
+_TITLE_END = "".join(rf"(?<!\b{t}\.)" for w in ("Mr", "Mrs", "Ms", "Dr", "Rep", "Sen", "St", "No", "Gov", "Jr")
+                     for t in (w, w.upper()))
 _SENTENCE_END = re.compile(rf"(?<=[.!?]){_TITLE_END}\s+")
-_COURTESY = re.compile(r"(?i)^(?:thank you|thanks)(?: very much| so much)?,? (?:mr\.|madam|mister) "
+_COURTESY = re.compile(r"(?i)^(?:thank you|thanks)(?: very much| so much)?,? (?:mr\.?|madam|mister) "
                        r"(?:deputy )?speaker[.!]$")
 
 
@@ -2736,7 +2737,7 @@ def _debate_html(d, body, members, esc, head=False, chair=None):
     # THE OPENING SENTENCES AFTER THE FOLD, so they stand while it is shut,
     # as app.css meant them to; inside it they showed only once it was open,
     # which app.css then hid (the R2 polish batch, 30 October 2026).
-    out.append(f'</div></details><p class="sdopen">{esc(opener)}…</p>')
+    out.append("</div></details>" + (f'<p class="sdopen">{esc(opener)}…</p>' if opener.strip() else ""))
     return "".join(out)
 
 

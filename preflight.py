@@ -27844,10 +27844,6 @@ def _openers_turn_right_to_down():
         f"only {seen} turns and {len(written)} written openers were found; the reading has broken")
     # The journal's debate: its sentences after the fold, shown shut and hidden open.
     import build_session_pages as BSP
-    src = Path(BSP.__file__).read_text(encoding="utf-8")
-    if "</div></details><p class=\"sdopen\">" not in src or '<p class="sdopen">{esc(opener)}…</p>\',\n' in src:
-        bad.append("build_session_pages writes a debate's opening sentences inside its fold, where "
-                   "they show only once it is open")
     if not re.search(r"\.sdebate\[open\] \+ \.sdopen\{display:none\}", css):
         bad.append("app.css does not hide a debate's opening sentences once it is open")
     # And they are its argument: a title does not end a sentence, and thanks to the chair are
@@ -27861,7 +27857,9 @@ def _openers_turn_right_to_down():
             ("Thank you, Madam Speaker.", "Thank you, Madam Speaker."),
             ("I rise in support. Thank you, Mr. Speaker.", "I rise in support. Thank you, Mr. Speaker."),
             ("Rep. Smith and Dr. Jones agree. So do I. And so does the committee.",
-             "Rep. Smith and Dr. Jones agree. So do I.")):
+             "Rep. Smith and Dr. Jones agree. So do I."),
+            ("THANK YOU, MR. SPEAKER. I RISE IN SUPPORT. IT IS SOUND. MORE.", "I RISE IN SUPPORT. IT IS SOUND."),
+            ("Thank you, Mr Speaker. Gov. Ayotte signed it. We should too.", "Gov. Ayotte signed it. We should too.")):
         if BSP.debate_opening(said) != want:
             bad.append(f"a debate opening {said[:40]!r} reads {BSP.debate_opening(said)!r}")
     page = BSP._debate_html({"bill": "HB1", "speeches": [
@@ -27869,6 +27867,10 @@ def _openers_turn_right_to_down():
         "H", BSP.Members(Path("no-such-site")), __import__("html").escape)
     if not page.endswith('</details><p class="sdopen">I rise in support of the committee report. It is sound.…</p>'):
         bad.append(f"a debate's opening is not after its fold, in its own words: {page[-160:]!r}")
+    empty = BSP._debate_html({"bill": "HB1", "speeches": [("Rep. Wade", "")]}, "H",
+                             BSP.Members(Path("no-such-site")), __import__("html").escape)
+    if "sdopen" in empty:
+        bad.append("a debate whose first speech is empty shows a bare ellipsis under its fold")
     assert not bad, "; ".join(bad[:6])
     return "ok", (f"{seen} turns of a summary's mark, each right to down; {len(written)} openers the "
                   "pages write, each turned; the debate's opening stands while it is shut")
@@ -43040,7 +43042,13 @@ def _rooms_in_words(PA):
              "Executive Council Chambers SH RM 207": "Executive Council Chambers State House 207",
              "RM207,LOB :EDUC": "Legislative Office Building 207 :EDUC",
              "RMS205-207,LOB (NOTE TIME CHANGE)": "Legislative Office Building 205-207 (NOTE TIME CHANGE)",
-             "SH 105-A": "State House 105-A"}
+             "SH 105-A": "State House 105-A",
+             # A room with a name stays as typed: the old codes are read only where a room begins.
+             "Conference Room 2 LOB": "Conference Room 2 LOB", "Hearing Room 100 SH": "Hearing Room 100 SH",
+             "Map Room 102 LOB": "Map Room 102 LOB",
+             "Senate Conference Rm 100, SH": "Senate Conference Rm 100, SH",
+             "Legislative Office Building Room 302 LOB": "Legislative Office Building Room 302 LOB",
+             "NHDES, RM 111, LOB": "NHDES, Legislative Office Building 111"}
     bad = [f"plain_action.place({raw!r}) is {PA.place(raw)!r}" for raw, want in cases.items()
            if PA.place(raw) != want]
     got = _app_js(f"{json.dumps(list(cases))}.map(scope.roomWords)", names=("roomWords",))
@@ -72340,7 +72348,8 @@ ok(C.emptyWords([],F({}))==="No meetings" && C.emptyWords([aging[0]],F({}))==="S
    "an empty column's words: "+[C.emptyWords([],F({})),C.emptyWords([aging[0]],F({})),C.emptyWords([jud,aging[0]],F({cats:[]}))]);
 ok(/^Study committee meetings only\. <button type="button" class="calshowday">Show them<span class="sr">/.test(C.emptyHtml([aging[0]],F({})))
    && C.emptyHtml([aging[0]],F({cats:[],q:"x"}))==="1 meeting is hidden by the filters."
-   && C.emptyHtml([aging[0]],ON).indexOf("button")<0,
+   && C.emptyHtml([aging[0]],ON).indexOf("button")<0
+   && C.emptyHtml([aging[0]],F({body:"H"})).indexOf("button")<0,
    "Show them is on a day of study committees alone and only there: "+C.emptyHtml([aging[0]],F({})));
 ok(C.countLine({total:3,shown:0,seen:0,study:3},"this week")==="3 study committee meetings are hidden."
    && C.countLine({total:1,shown:0,seen:0,study:1},"this week")==="1 study committee meeting is hidden."
@@ -72927,9 +72936,11 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(n13 && /Friday, March 13, 2026, study committee meetings only/.test(n13.textContent),
      "the month's cell of a study committees' day: "+(n13&&n13.textContent));
   if(e13&&Q(".calshowday",e13)){ Q(".calshowday",e13).click(); await W.settle(); }
-  ok(W.box("study").checked && W.store.get("gr.calendar.showstudy")==="1" && D.activeElement===W.box("study")
+  ok(W.box("study").checked && W.store.get("gr.calendar.showstudy")==="1"
      && W.keys().some(k=>/2026-03-13\|Commission on Aging/.test(k)) && QA(".calmeet",$("calview")).length===1,
      "a day's Show them does not tick the box and draw the day's study committee: "+W.keys());
+  ok(D.activeElement && D.activeElement.tagName==="SUMMARY" && /Commission on Aging/.test(D.activeElement.textContent),
+     "a day's Show them leaves the focus off the meeting it shows: "+(D.activeElement&&D.activeElement.tagName));
   await W.tick("study",false);
   Q('td[data-d="2026-03-11"]',$("cmgrid")).click(); await W.step();
   W.view("list").click(); await W.settle();
