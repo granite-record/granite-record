@@ -4792,7 +4792,10 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 
 /* the thirteen pages, at the foot, in the hub's two groups */
 .l-all{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr));gap:1rem 2.5rem}
-.l-all h3{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);
+/* Its group's name at the size of its links, as a footer column's head is
+   (the heading map; the accessibility sweep of 29 October 2026): it was
+   13px capitals over 16px links. */
+.l-all h3{font:600 var(--t-ui)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);
   margin:0;padding-bottom:.375rem;border-bottom:1px solid var(--ink)}
 .l-all ol{list-style:none;margin:0;padding:0}
 .l-all li{border-bottom:1px solid var(--rule)}

@@ -75112,6 +75112,31 @@ def _subsections_under_sections():
     return "ok", f"{len(under)} kinds of heading at --t-read under sections at --t-h3"
 
 
+@check("frontend", "the Learn and guide pages' index at the foot names its groups no smaller than its links")
+def _learn_index_heads_outrank():
+    """The accessibility sweep of 29 October 2026: the index of pages at the
+    foot of every Learn page and guide (nav.l-all) headed its two groups at
+    13px capitals over 16px links, against app.css's own rule that a
+    heading reads no smaller than what it heads. The group's name is the
+    size of its links now, as a footer column's head is."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    tokens = {m.group(1): float(m.group(2)) for m in re.finditer(r"--(t-[\w-]+):([\d.]+)rem", css)}
+    size = {}
+    for at, sel, body, _l in _css_rules(css):
+        if at:
+            continue
+        d = dict(_css_decls(body))
+        tok = re.search(r"var\(--(t-[\w-]+)\)", d.get("font-size") or d.get("font", ""))
+        for part in (x.strip() for x in re.split(r",(?![^()]*\))", sel)):
+            if tok and part in (".l-all h3", ".l-all a"):
+                size[part] = (tok.group(1), tokens.get(tok.group(1)))
+    head, link = size.get(".l-all h3"), size.get(".l-all a")
+    assert head and link and head[1] and link[1], f"nav.l-all's sizes not read: {size}"
+    assert head[1] >= link[1], (f"nav.l-all heads its groups at --{head[0]} ({head[1] * 16:g}px) over links at "
+                                f"--{link[0]} ({link[1] * 16:g}px)")
+    return "ok", f"nav.l-all's group names at {head[1] * 16:g}px over links at {link[1] * 16:g}px"
+
+
 @check("frontend", "a Laws chapter's outline skips no level: its sections an h2 under the title, or an h3 "
        "under a part's h2", needs=("build_rsa", "rsa", "shell"))
 def _laws_chapter_outline(B, RSA, S):
