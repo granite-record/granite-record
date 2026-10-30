@@ -75112,6 +75112,47 @@ def _subsections_under_sections():
     return "ok", f"{len(under)} kinds of heading at --t-read under sections at --t-h3"
 
 
+@check("frontend", "every search box is the one box: white, 16px words, 44px tall, on the Bills page, a "
+       "bill's page, a member's Votes, the Calendar, Officials, /search and the Laws page")
+def _one_search_box():
+    """The cohesion audit of 30 October 2026 (I-7): the Bills box was 42px on
+    the page's grey, a member's Votes box was grey-filled where the rest were
+    white, and the Officials and /search boxes were 20px words in a 52px box.
+    One box now: --surface, --t-ui, 44px (a height, or a least height where
+    the box is a row's), and the Bills page's term menu beside it the same
+    height. Each rule is read as the cascade has it."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    won = {}
+    for at, sel, body, _l in _css_rules(css):
+        if at:
+            continue
+        for part in (x.strip() for x in re.split(r",(?![^()]*\))", sel)):
+            won.setdefault(part, {}).update(dict(_css_decls(body)))
+    boxes = ("#q", "#rsq", ".bfilt input[type=search]", ":where(body.pg) input[type=search]",
+             ":where(body.pg) .lfind input[type=search]", ":where(body.pg) .resfind input[type=search]",
+             ".wkfind input")
+    bad = []
+    for b in boxes:
+        d = won.get(b, {})
+        h = d.get("height") or d.get("min-height")
+        if h != "44px":
+            bad.append(f"{b} is {h} tall, not 44px")
+        if d.get("font-size") != "var(--t-ui)":
+            bad.append(f"{b}'s words are {d.get('font-size')}, not --t-ui")
+        # A box that names no ground takes the general box's white.
+        ground = d.get("background") or d.get("background-color")
+        if ground not in (None, "var(--surface)"):
+            bad.append(f"{b} stands on {ground}, not white (--surface)")
+    if won.get(":where(body.pg) input[type=search]", {}).get("background") != "var(--surface)":
+        bad.append("the general box is not white, so the boxes that name no ground are not either")
+    if won.get(".bfilt input[type=search]", {}).get("background") != "var(--surface)":
+        bad.append("a member's Votes box is not white")
+    if won.get("#year", {}).get("height") != "44px":
+        bad.append(f"the Bills page's term menu is {won.get('#year', {}).get('height')} beside a 44px box")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", f"{len(boxes)} search boxes white, 16px and 44px, and the term menu beside the Bills box"
+
+
 @check("frontend", "every control that switches a view marks the chosen one the same way: solid pine, "
        "its words in --on-pine, filled with Highlight in forced colours")
 def _switches_one_look():

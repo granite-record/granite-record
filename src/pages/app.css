@@ -2126,10 +2126,14 @@ b,strong,h1,h2,h3,h4{font-weight:600}button{font:inherit;color:inherit;backgroun
 #year,#sort{width:var(--pickw);max-width:100%;flex:0 0 auto}
 #sort{height:26px;padding:0 var(--sp-2);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
 border-radius:var(--r-in);background:var(--surface);color:var(--ink-2);cursor:pointer}
-#year{height:42px;padding:0 var(--sp-4);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
+#year{height:44px;padding:0 var(--sp-4);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
 border-radius:var(--r-out);background:var(--surface);cursor:pointer}
-#q,#rsq{flex:1;height:42px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
-border-radius:var(--r-out);background:var(--paper)}
+/* ONE SEARCH BOX (the cohesion audit of 30 October 2026, I-7): white, 16px,
+   44px, whichever page it is on. The Bills box was 42px on the page's grey,
+   a member's Votes box grey-filled, and the Officials and /search boxes
+   20px type in a 52px box. */
+#q,#rsq{flex:1;height:44px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
+border-radius:var(--r-out);background:var(--surface)}
 /* THE FOCUS IS THE SITE'S 2px PINE OUTLINE, as the How-to tab's box draws it
    (.g-find input:focus), not a soft ring in a box-shadow (the accessibility
    sweep of 29 October 2026, WCAG 2.4.7): forced colours paint no shadow and
@@ -2149,7 +2153,7 @@ border-radius:var(--r-out);background:var(--paper)}
    screen: at 24px on a 375px phone the box stood 7px past the edge (the
    rendered sweep, 8 October 2026). */
 .qbox #q,.qbox #rsq{flex:1;padding-right:46px;min-width:0}
-#qgo,#rsgo{position:absolute;right:4px;top:4px;width:34px;height:34px;font-size:var(--t-ui);
+#qgo,#rsgo{position:absolute;right:4px;top:5px;width:34px;height:34px;font-size:var(--t-ui);
 line-height:1;border:1px solid transparent;border-radius:var(--r-out);background:none;
 color:var(--ink-2);cursor:pointer}
 #qgo:hover,#rsgo:hover{border-color:var(--edge);background:var(--wash);color:var(--pine)}
@@ -4189,7 +4193,7 @@ background:var(--paper);
    committee pages. The control is what must fit; the option text is the
    browser's to shorten. */
 max-width:100%}
-.bfilt input[type=search]{font-weight:400}
+.bfilt input[type=search]{font-weight:400;background:var(--surface);min-height:44px}
 /* THE BILL STATUS SELECT IS PAINTED AS THE SEARCH'S STATUS FILTER IS (the
    person, 8 October 2026: the same categories as the search, on a member's
    and a committee's page). Each option carries its category's chip class
@@ -5618,7 +5622,7 @@ font-size:var(--t-sm);font-weight:600;letter-spacing:.04em;
 text-transform:uppercase;color:var(--ink-2);flex:1 1 16rem;min-width:0}
 .wkfind input{font:inherit;font-size:var(--t-ui);font-weight:400;
 letter-spacing:0;text-transform:none;color:var(--ink);
-padding:var(--sp-3) var(--sp-4);min-height:40px;width:100%;
+padding:var(--sp-3) var(--sp-4);min-height:44px;width:100%;
 background:var(--surface);border:1px solid var(--edge);border-radius:4px}
 /* --edge, as every text box's is (see the pages' own input rule): it was
    --rule-2, 1.68:1 against the page. */
@@ -8015,7 +8019,7 @@ padding:var(--sp-5) var(--sp-5);margin:0 0 var(--sp-5);line-height:1.6}
    by 1.16:1, so the edge is the whole of what says "type here" (the audit of
    2 October 2026, S10; WCAG 1.4.11 asks 3:1). --edge is 3.98:1 and 4.64:1,
    and preflight holds it there. */
-:where(body.pg) input[type=search], :where(body.pg) input[type=text]{width:100%;height:42px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-ui);
+:where(body.pg) input[type=search], :where(body.pg) input[type=text]{width:100%;height:44px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-ui);
 border:1px solid var(--edge);border-radius:var(--r-out);background:var(--surface)}
 :where(body.pg) input:focus{outline:2px solid var(--pine);outline-offset:1px;border-color:var(--pine)}
 :where(body.pg) table{width:100%;border-collapse:collapse;font-size:var(--t-ui)}
@@ -8171,7 +8175,7 @@ var(--rule-2) 3px,var(--surface) 3px,var(--surface) 6px);border:1px solid var(--
    the prime sponsor filter on the bill search behaves and is what was asked
    for here. Below two letters it says what it will match rather than
    listing 726 things. */:where(body.pg) .lfind{margin:var(--sp-6) 0 var(--sp-8)}
-:where(body.pg) .lfind input[type=search]{font-size:var(--t-lead);height:52px}
+:where(body.pg) .lfind input[type=search]{font-size:var(--t-ui);height:44px}
 :where(body.pg) .lfind .count{margin:var(--sp-4) var(--sp-1) 0}
 /* A WINDOW ON THE LIST, NOT THE WHOLE LIST. Every town is in here so that
    somebody who is not sure how their town is spelled -- or lives in one of
@@ -9020,7 +9024,7 @@ border:1px solid var(--rule);border-radius:var(--r-out);background:var(--surface
 :where(body.pg) .resout .fkind{display:none}
 :where(body.pg) .resout a{border-radius:0;padding:var(--sp-4) var(--sp-5)}
 :where(body.pg) .resfind{margin:var(--sp-6) 0 var(--sp-8)}
-:where(body.pg) .resfind input[type=search]{font-size:var(--t-lead);height:52px}
+:where(body.pg) .resfind input[type=search]{font-size:var(--t-ui);height:44px}
 :where(body.pg) .resgrp{margin:0 0 var(--sp-8)}
 :where(body.pg) .resgrp h2{display:flex;align-items:baseline;gap:var(--sp-4);
 margin:0 0 var(--sp-4)}
