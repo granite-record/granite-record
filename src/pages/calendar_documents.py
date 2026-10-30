@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.8
+# GRANITE_VERSION: 2026-10-01.9
 """
 The General Court's calendars and journals, as the PDFs the General Court
 serves: the list the Calendar page's picker reads.
@@ -188,9 +188,15 @@ def rows(path=QUEUE):
 def clean(name):
     """The name of the General Court's file for a document, without the
     extension. An entity in it is the page's own escaping ("Governor&#39;s"),
-    and runs of spaces are one space, as a browser would show them."""
+    and runs of spaces are one space, as a browser would show them.
+
+    A FILE'S OTHER SUFFIXES GO WITH ".pdf" (the R2 polish, 30 October 2026):
+    "SC 36.tagged.pdf" and "... Veto Day Final.doc.pdf" were labelled "SC
+    36.tagged" and "... Final.doc". Only .tagged, .doc and .docx, and only
+    right before ".pdf"; every other name is shown as the General Court wrote
+    it (the rule of 1 October), and the address is never touched."""
     s = html.unescape(name or "")
-    s = re.sub(r"(?i)\.pdf$", "", s.strip())
+    s = re.sub(r"(?i)(?:\.(?:tagged|docx?))*\.pdf$", "", s.strip())
     return " ".join(s.split())
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.739
+# GRANITE_VERSION: 2026-09-04.740
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -51012,6 +51012,23 @@ def _calendar_documents():
             assert CD.name_date(name, 2027) == iso, (
                 f"{name!r} states {CD.name_date(name, 2027) or 'no date'}, not {iso or 'none'}")
 
+        # ---- a file's other suffixes leave its label, never its address ----
+        for name, label in (("SC 36.tagged.pdf", "SC 36"),
+                            ("Daily Journal No 22 9-5-07 Veto Day Final.doc.pdf",
+                             "Daily Journal No 22 9-5-07 Veto Day Final"),
+                            ("HC 33.DOCX.pdf", "HC 33"), ("No30 August 14 2026.pdf", "No30 August 14 2026"),
+                            ("hb0001_final.pdf", "hb0001_final"), ("63", "63"),
+                            ("Tagged.pdf", "Tagged"), ("SC 36.tagged", "SC 36.tagged")):
+            assert CD.clean(name) == label, f"{name!r} is labelled {CD.clean(name)!r}, not {label!r}"
+        assert CD.number_of("SC 36.tagged.pdf") == CD.number_of("SC 36.pdf"), (
+            "SC 36.tagged is numbered apart from SC 36")
+        tagged = docs[0]._replace(label=CD.clean("SC 36.tagged.pdf"),
+                                  url=docs[0].url.rsplit("%5C", 1)[0] + "%5CSC%2036.tagged.pdf")
+        t_ix = CD.index([tagged])
+        t_doc = t_ix["sets"][0]["years"][next(iter(t_ix["sets"][0]["years"]))][0]
+        assert t_doc[0] == "SC 36" and CD.address(t_ix, CD.CHAMBER[tagged.set], t_doc) == tagged.url, (
+            f"SC 36.tagged is listed as {t_doc[:2]}, not 'SC 36' at its recorded address")
+
         # ---- the index: every address whole, and none made ----
         ix = CD.index(docs)
         assert ix["base"] == {"H": H, "S": SN}, f"the viewer prefixes read as {ix['base']}"
@@ -51019,6 +51036,9 @@ def _calendar_documents():
             f"the index holds {sorted(ix)}: a date of its making makes it a new file every "
             "day, for the deploy to send again unchanged")
         flat = [(s["chamber"], d) for s in ix["sets"] for ds in s["years"].values() for d in ds]
+        assert not [d[0] for _ch, d in flat if re.search(r"(?i)\.(?:pdf|tagged|docx?)$", d[0])], (
+            "a label still ends in a file's suffix: "
+            + ", ".join(d[0] for _ch, d in flat if re.search(r"(?i)\.(?:pdf|tagged|docx?)$", d[0])))
         assert len(flat) == len(docs) and {CD.address(ix, ch, d) for ch, d in flat} == \
             {d.url for d in docs}, "the index's addresses are not the documents' own"
         assert all(not d[1].startswith("https://") and "%5C" in d[1] for _ch, d in flat), (
