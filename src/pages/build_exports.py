@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.64
+# GRANITE_VERSION: 2026-09-10.65
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -1335,6 +1335,49 @@ def bill_files(out, site, collect=None):
     return rows
 
 
+def api_index(manifest, out, tables, collector):
+    """The data API's index, in the manifest a program already reads first
+    (DESIGN.md, 2.1 and 2.2): every file in "files", the CSVs included, each
+    with its sha256 so a mirror fetches only what moved; schema.json, the
+    description of every column and field, written beside them; and what
+    the API is ("api"), today's live votes ("live") and every General Court
+    source the record is read from ("sources"). A CSV column that schema.json
+    does not describe stops the build: nothing is published unexplained."""
+    import hashlib
+    import api_schema as AS
+    bad = AS.undescribed_columns(tables)
+    if bad:
+        raise SystemExit("These columns are not described in api_schema.py, and a column "
+                         "is not published unexplained: "
+                         + ", ".join(f"{f}:{c}" for f, c in bad))
+    sha = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()
+    csvs = [{**t, "sha256": sha(out / t["file"])} for t in tables]
+    api = [f for f in manifest["files"] if not f.get("skipped")]
+    built = manifest["generated"]
+    pkg = AS.package(csvs, api, manifest["base"], built, sorted(collector.keys))
+    (out / "schema.json").write_text(json.dumps(pkg, indent=1, ensure_ascii=False) + "\n",
+                                     encoding="utf-8")
+    undoc = [f["name"] for r in pkg["resources"] for f in (r.get("schema") or {}).get("fields", [])
+             if f.get("x-stability") == "undocumented"]
+    print(f"  {'schema.json':<28} {len(pkg['resources']):>9,} files described"
+          + (f"; the bill records carry {len(undoc)} field(s) not yet described: "
+             + ", ".join(undoc) if undoc else ""))
+    manifest["files"] = (
+        [{"path": f"/data/{t['file']}", "kind": "table", "rows": t["rows"], "bytes": t["bytes"],
+          "sha256": t["sha256"], "media_type": "text/csv"} for t in csvs]
+        + manifest["files"]
+        + [{"path": "/data/schema.json", "kind": "schema", "bytes": (out / "schema.json").stat().st_size,
+            "sha256": sha(out / "schema.json"), "media_type": "application/json"}])
+    manifest["api"] = {
+        "format": AS.FORMAT, "status": "beta", "stable_from": "2027-02-01",
+        "docs": "https://graniterecord.org/api", "schema": "https://graniterecord.org/data/schema.json",
+        # A beta change is announced here a week before it is made (Q11).
+        "notices": [],
+    }
+    manifest["live"] = {"votes": "https://graniterecord.org/api/live/votes/{date}"}
+    manifest["sources"] = [{"source": s_, "lands": w} for s_, w in AS.SOURCES]
+
+
 def database_file(out, collector, joined):
     """The data API's database (api_db.py): every table above and the
     record's committee reports, in one SQLite file in xz. Returns its row
@@ -1503,6 +1546,7 @@ def main():
     collector = api_db.Collector()
     manifest["files"] = people_files(out, joined) + bill_files(out, site, collect=collector.add)
     manifest["files"] += database_file(out, collector, joined)
+    api_index(manifest, out, tables, collector)
     over += [{"file": f["path"].rsplit("/", 1)[-1], "bytes": f["bytes"]}
              for f in manifest["files"] if f["bytes"] > SAFE]
     (out / "manifest.json").write_text(

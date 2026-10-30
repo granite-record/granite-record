@@ -26,7 +26,7 @@
     "build_committees.py": "2026-09-07.67",
     "build_data.py": "2026-09-04.59",
     "build_date.py": "2026-10-02.1",
-    "build_exports.py": "2026-09-10.64",
+    "build_exports.py": "2026-09-10.65",
     "build_feeds.py": "2026-09-04.46",
     "build_floor_index.py": "2026-09-04.12",
     "build_indexes.py": "2026-09-13.23",
@@ -239,7 +239,8 @@
     "strip_js.py": "2026-10-23.1",
     "people.py": "2026-10-30.6",
     "person_numbers.py": "2026-10-30.6",
-    "api_db.py": "2026-10-30.3"
+    "api_db.py": "2026-10-30.4",
+    "api_schema.py": "2026-10-30.1"
   },
   "generated": "2026-09-04"
 }

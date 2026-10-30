@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.3
+# GRANITE_VERSION: 2026-10-30.4
 """
 The data API's database: every table on the data page, and the record's
 committee reports, in one SQLite file, compressed with xz.
@@ -69,9 +69,11 @@ class Collector:
     def __init__(self):
         self.reports, self.docket, self.study, self.testimony = [], [], [], []
         self.bills = 0
+        self.keys = set()
 
     def add(self, term, r):
         self.bills += 1
+        self.keys.update(r)
         bill = r.get("id")
         for rep in r.get("reports") or []:
             src = rep.get("source") or ""
