@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.17
+# GRANITE_VERSION: 2026-09-19.18
 """
 What the House journal adds that the record does not: who spoke, and what.
 
@@ -153,10 +153,17 @@ DAY_HEADER = re.compile(
     r"^[ \t\f]*HOUSE\s+JOURNAL\s+N[Oo]\.?\s*(?P<num>\d*)\s*(?P<cont>\([Cc]on'?t\.?'?d?\.?\))?",
     re.M)
 
+# A sitting's date under its heading. Most print the weekday; fifteen in the
+# kit print none, or the date in parentheses -- "December 4, 1996" (1997/HJ001),
+# "(December 6, 2000)" (2001/HJ001), "January 24, 2002" (2002/HJ003),
+# "(Thursday, January 6, 2005)" (2005/HJ002) -- and were lost until 30
+# October 2026. With no weekday the date must stand alone on its line
+# (officers.H_DATE's rule), so a sentence that opens with a date is not read.
 DATELINE = re.compile(
-    r"^[ \t]*(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+"
+    r"^[ \t\f]*\(?[ \t]*(?P<wd>(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+)?"
     r"(?P<mon>January|February|March|April|May|June|July|August|September|"
-    r"October|November|December)\s+(?P<day>\d{1,2}),?\s*(?P<yr>\d{4})",
+    r"October|November|December)\s+(?P<day>\d{1,2}),?\s*(?P<yr>\d{4})"
+    r"(?(wd)|[ \t]*\)?[ \t]*$)",
     re.M | re.I)
 
 MONTHS = {m: i for i, m in enumerate(
