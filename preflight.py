@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.747
+# GRANITE_VERSION: 2026-09-04.748
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -87130,8 +87130,9 @@ def _knock_ladder(R):
     -- is still 94 knocks, at most 19 in a UTC day, the night's once a
     morning at most; and at 09:23:40, its rung due, the gate says why a
     second night asks nothing, the morning after the drop (the night
-    knocked at 08:23:40) and the morning of it (a night met the refusal at
-    08:27:15)."""
+    knocked at 08:23:40) and the morning of it (a run on main met the
+    refusal at 08:27:15: the night, or a weekly run on main, the
+    verification of 30 October 2026)."""
     from collections import Counter
     from datetime import datetime, timezone
     tmp = Path(tempfile.mkdtemp(prefix="gr-ladder-"))
@@ -87202,7 +87203,7 @@ def _knock_ladder(R):
             R.knocks_file().unlink(missing_ok=True)
             clock(second - 24 * H)
             ok, why = R.knock_gate("night", now=second - 24 * H)
-            assert not ok and "a night met this refusal" in why and \
+            assert not ok and "a run on main met this refusal" in why and \
                 R.knock_due(now=second - 24 * H)[0], \
                 f"a second night on the morning of the drop, at 09:23:40: {ok}, {why!r}"
             sweep((8 * H + 23 * 60 + 40,))

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.33
+# GRANITE_VERSION: 2026-09-09.34
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -1303,9 +1303,9 @@ def knock_gate(by, now=None):
       5. knock_due() says a knock is due now;
       6. the clock lets `by` ask (knock_hours);
       7. for "hourly", the record settled (_settled), by its own epoch;
-      8. for "night", nothing asked by the night since today's window
-         opened: no knock by the night in the chain, and not the request
-         that met this refusal (ONE NIGHT KNOCK A MORNING, below).
+      8. for "night", nothing asked since today's window opened: no knock
+         by the night in the chain, and the refusal not met since then by a
+         run on main (ONE NIGHT KNOCK A MORNING, below).
 
     ONE NIGHT KNOCK A MORNING (the reviewers of 30 October 2026). The
     ceiling the owner was given -- 96 requests a chain, at most 19 in a UTC
@@ -1316,10 +1316,15 @@ def knock_gate(by, now=None):
     requests) and 22 in a day at the worst the reviewers found. So the
     night's caller knocks once in a daily window, the knock answered or not;
     a second night that morning asks nothing. And the morning of the drop
-    the night has asked already: a refusal noted since the window opened
-    was met by a night that morning (only GitHub's nights on main ask
-    then), and a second night knocking after it would be a knock the
-    ceiling never counted -- 95 in the ladder, not 94.
+    a run on main has asked already: a refusal noted since the window opened
+    was met that morning by a run on main -- the night, or a weekly run on
+    main (by hand with its fetch box, or Monday's schedule started late and
+    holding gc-night ahead of the night) -- and a night knocking after it
+    would be a knock the ceiling never counted -- 95 in the ladder, not 94.
+    The ladder counts no night knock the morning of the drop, whichever run
+    met it, so the rule holds for both, and its reason names a run on main,
+    not a night (the verification of 30 October 2026: a weekly that met the
+    refusal at 09:00 was reported as a night).
 
     check(knock=True), --knock-claim and --knock-look are its callers."""
     if by not in KNOCK_BY:
@@ -1356,7 +1361,8 @@ def knock_gate(by, now=None):
         met = float(doc.get("epoch") or 0) >= opened.timestamp()
         if done or met:
             return False, ((f"the night knocked at {done[-1].get('utc')}" if done else
-                            f"a night met this refusal at {_stamp(float(doc.get('epoch')))}")
+                            f"a run on main met this refusal at "
+                            f"{_stamp(float(doc.get('epoch')))}")
                            + f", since its window opened at {opened:%H:%M} UTC today: one night "
                            "knock a morning, however many nights run")
     return True, ""

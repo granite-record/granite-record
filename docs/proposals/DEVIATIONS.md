@@ -778,12 +778,19 @@ that made it.
      the rule taken out). The gate now refuses the night's caller when the
      chain holds a knock `by` "night" since today's window opened -- the
      reviewers' rule -- and also when the record itself was noted since
-     then: only a night asks in that window, so the drop that morning was
-     the night's request. Without that second half a re-run on the morning
-     of the drop knocks once more than the ceiling counts (95 knocks in the
-     ladder, 97 requests). The ladder with the night asking at 08:23:40,
-     09:23:40, 10:23:40 and 11:10 every morning is 94 knocks, at most 19 in
-     a day.
+     then: the drop that morning was a run on main's request, and the
+     ladder counts no night knock the morning of the drop. Without that
+     second half a re-run on the morning of the drop knocks once more than
+     the ceiling counts (95 knocks in the ladder, 97 requests). The ladder
+     with the night asking at 08:23:40, 09:23:40, 10:23:40 and 11:10 every
+     morning is 94 knocks, at most 19 in a day. This said "only a night
+     asks in that window", and the gate's reason "a night met this
+     refusal"; the verification of 30 October 2026 found a weekly run on
+     main asks then too, by hand with its fetch box, or Monday's schedule
+     started late and holding gc-night ahead of the night. The rule stands
+     unchanged, since the night's knock after a weekly's drop is as
+     uncounted as after its own; the reason now says "a run on main met
+     this refusal".
 117. **What the night says of a refusal, after the review of d7d64bb.**
      - The "not clean" line (`plain_why()`, the run's page and the night's
        email) for a night refused says, of a record the night tests itself,
