@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.249
+# GRANITE_VERSION: 2026-09-04.250
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -292,6 +292,24 @@ MOVED =(("/learn", "/resources"), ("/learn.html", "/resources"),
          # "Jr. Barnes John" until build_site_v2.person_name put the suffix
          # last (12 October 2026).
          ("/legislator/jr-barnes-john-sd-17", "/legislator/john-barnes-jr-sd-17"))
+def moved_members(site):
+    """The 301s from the page of a member's earlier chamber to the one page
+    they have now (build_site_v2.former_movers, 30 October 2026): Shannon
+    Chandley's House page answers with her Senate page, which carries both
+    chambers' votes. Read off former.json's rows, where build_site_v2 says
+    which addresses each took in; in both spellings, as MOVED's are."""
+    try:
+        rows = json.loads((Path(site) / "former.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    out = []
+    for r in rows if isinstance(rows, list) else []:
+        new = f"/legislator/{r.get('slug')}" if r.get("slug") else ""
+        for old in (r.get("moved_from") or []) if new else []:
+            out += [f"{old} {new} 301\n", f"{old}.html {new} 301\n"]
+    return "".join(sorted(out))
+
+
 REDIRECTS = ("# Written by build_pages.py. Not an asset; Pages reads it.\n"
              + "".join(f"/bill/:year/:bill/{s} /bill/:year/:bill 200\n" for s in BILL_TAB_SLUGS)
              + "".join(f"/legislator/:who/{s} /legislator/:who 200\n" for s in MEMBER_TAB_SLUGS)
@@ -4199,9 +4217,10 @@ def main():
     # once. The slugs here and BILL_TABS/MEMBER_TABS/COMMITTEE_TABS in app.js
     # are the same lists; preflight holds them together.
     red = out / "_redirects"
+    want = REDIRECTS + moved_members(out)
     if (not red.exists()
-            or red.read_text(encoding="utf-8", newline="") != REDIRECTS):
-        red.write_text(REDIRECTS, encoding="utf-8", newline="\n")
+            or red.read_text(encoding="utf-8", newline="") != want):
+        red.write_text(want, encoding="utf-8", newline="\n")
         print("  _redirects: a tab's address serves its record's page")
 
     legs = json.loads((out / "legislators.json").read_text(encoding="utf-8")) \

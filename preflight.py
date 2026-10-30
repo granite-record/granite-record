@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.734
+# GRANITE_VERSION: 2026-09-04.735
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -27750,6 +27750,54 @@ def _small_visual_s9():
     assert not bad, "; ".join(bad[:5])
     return "ok", ("two scrolling boxes with their edge, tables laid out as tables; a byline's dot "
                   "with what it leads to; a cut title faded below two whole lines; Report on a phone")
+
+
+@check("build", "a member who sat in both chambers and has left has one page, the later "
+       "chamber's, as the person register joins them, and the earlier page's address "
+       "answers with a 301", needs=("build_site_v2", "build_pages"))
+def _former_movers_one_page(build_site_v2, build_pages):
+    """build_site_v2.former_movers (30 October 2026): Shannon Chandley voted
+    as 568 in the House and 9404 in the Senate and had a page for each,
+    because member_links joins a mover's numbers only while they sit. The
+    register's join -- the one the public data API publishes -- is taken for
+    those who have left: the page that voted last keeps every chamber's
+    votes, and build_pages answers the other's address with a 301. A number
+    a sitting member holds or is joined to, and a person with one number
+    that voted, are left as they were."""
+    V, BP = build_site_v2, build_pages
+    reg = {"people": [
+        {"person": "568", "numbers": ["209104", "376802"]},    # moved and left
+        {"person": "515", "numbers": ["209077", "376503"]},    # sits now (member_links has her)
+        {"person": "900", "numbers": ["200001", "300001"]},    # only one number voted
+        {"person": "27", "numbers": ["209015"]}]}
+    e2p = {"209104": "9404", "376802": "568", "209077": "9406", "376503": "515",
+           "200001": "901", "300001": "900"}
+    v = lambda y, b: {"year": y, "date": f"{y}-03-01", "body": b}
+    votes = {"568": [v("2009", "H"), v("2018", "H")], "9404": [v("2019", "S"), v("2024", "S")],
+             "515": [v("2009", "H")], "9406": [v("2023", "S")], "900": [v("2005", "H")],
+             "209015": [v("2001", "S")]}
+    got = V.former_movers(reg, e2p, {"9406": {}}, {"9406": ["515"]}, votes)
+    assert got == {"9404": ["568"]}, f"former_movers joined {got}"
+    assert V.former_movers(None, {}, {}, {}, votes) == {}, "no register still joined someone"
+    root = Path(tempfile.mkdtemp(prefix="gr-moved-"))
+    try:
+        (root / "former.json").write_text(json.dumps([
+            {"id": "9404", "slug": "shannon-chandley-sd-11",
+             "moved_from": ["/legislator/shannon-chandley-hills-22"]},
+            {"id": "27", "slug": "someone-sd-1"}]), encoding="utf-8")
+        lines = BP.moved_members(root)
+        assert lines == ("/legislator/shannon-chandley-hills-22 /legislator/shannon-chandley-sd-11 301\n"
+                         "/legislator/shannon-chandley-hills-22.html "
+                         "/legislator/shannon-chandley-sd-11 301\n"), lines
+        assert BP.moved_members(root / "nowhere") == "", "no former.json still wrote a rule"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
+    assert "former_movers(PE.load_register(" in src, "build_site_v2 no longer joins the movers who left"
+    src = _paths.locate("build_pages.py").read_text(encoding="utf-8")
+    assert "REDIRECTS + moved_members(out)" in src, "build_pages no longer writes their 301s"
+    return "ok", ("a mover who left is joined to the later page; a sitting one and a one-number "
+                  "one are not; their 301s in both spellings")
 
 
 # ============================================================= code: pipeline ==

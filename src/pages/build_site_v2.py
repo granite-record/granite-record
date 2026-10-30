@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.241
+# GRANITE_VERSION: 2026-09-05.242
 """
 Generate the faceted site from real General Court data.
 
@@ -3158,6 +3158,39 @@ FORMER_LABEL = re.compile(r"\(\s*[A-Za-z]?\s*\)\s*(?P<county>[A-Za-z .']+?)\s+"
                           r"(?P<district>\d+)\s*$")
 
 
+def former_movers(register, e2p, legs, links, votes_by_member):
+    """{later id: [earlier ids]} for a member who sat in both chambers and sits
+    in neither now, as the person register joins them (30 October 2026).
+
+    A member who changes chamber is given a new number in each, and the site
+    numbers a member by the PersonID their votes carry: Shannon Chandley voted
+    as 568 in the House and as 9404 in the Senate, and had a page for each.
+    member_links joins those numbers only for a member who sits today, so once
+    such a member left, their record stayed in two halves. The register
+    (generated/person_numbers.json, people.py) is the one join the public data
+    API publishes, under the one-chamber rule; the site takes the same one, so
+    the two say the same about who is one person. Each register number is an
+    Employeeno, and the site's id for it is the PersonID the roster gives it
+    (people.emp_to_pid), else the number itself. A person joined here has two
+    or more site ids that voted, none of them a sitting member's or already
+    joined to one; the page kept is the one that voted last -- the later
+    chamber's, as a sitting mover's is -- and it carries every chamber's
+    votes."""
+    sitting = {str(k) for k in legs} | {str(k) for k in (links or {})} | \
+        {str(x) for v in (links or {}).values() for x in v}
+    last = lambda i: max(((str(v.get("year") or ""), str(v.get("date") or ""))
+                          for v in votes_by_member.get(i, [])), default=("", ""))
+    out = {}
+    for person in (register or {}).get("people") or []:
+        ids = list(dict.fromkeys(str((e2p or {}).get(n) or n) for n in person.get("numbers") or []))
+        ids = [i for i in ids if votes_by_member.get(i)]
+        if len(ids) < 2 or any(i in sitting for i in ids):
+            continue
+        ids.sort(key=last)
+        out[ids[-1]] = ids[:-1]
+    return out
+
+
 def former_roster(legs, votes_by_member, links, former_file, current_term):
     """People who voted in the current term and hold no seat in it now.
 
@@ -3647,6 +3680,10 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
             row.update({"former": True, "served": m.get("served") or {},
                         "email": "", "towns": [],
                         "committees": [], "seat": ""})
+            if m.get("moved_from"):
+                # The addresses of the pages this one took in (former_movers),
+                # which build_pages answers with a 301 to this one.
+                row["moved_from"] = list(m["moved_from"])
             fm.append(row)
         else:
             lg.append(row)
@@ -10932,7 +10969,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     _people = {**legs, **(former or {})}
     for _sit, _earlier in (links or {}).items():
         for _old in _earlier:
-            _people.setdefault(str(_old), legs.get(_sit) or {})
+            _people.setdefault(str(_old), legs.get(_sit) or (former or {}).get(_sit) or {})
     # And, for a term whose own roster is frozen and not the sitting one
     # (main says which), the members who left by name: bill_sponsor_list
     # says why. Every one of a name, in order, since only the one who sat
@@ -12271,6 +12308,34 @@ def main():
     former = former_roster(legs, votes_by_member, links,
                            load("former_members.json", {}),
                            max(bills) if bills else "")
+    # AND A MEMBER WHO MOVED AND HAS LEFT (former_movers): one page, the later
+    # chamber's, with every chamber's votes, as for a sitting mover; the
+    # earlier page's address answers with a 301 to it (build_pages, from the
+    # index row's moved_from). Worked out from the former members as they
+    # would stand apart, so each earlier page's address is the one it had.
+    import people as PE
+    movers = former_movers(PE.load_register(Path("generated/person_numbers.json")),
+                           PE.emp_to_pid("db") or {}, legs, links, votes_by_member)
+    movers = {k: v for k, v in movers.items() if k in former and all(e in former for e in v)}
+    if movers:
+        def _addr(m):
+            lab = member_labels(m.get("name"), chamber=m.get("chamber"),
+                                party=m.get("party_code") or m.get("party"),
+                                district=m.get("district"), county=m.get("county"),
+                                county_abbr=m.get("county_abbr"))
+            return "/legislator/" + (m.get("slug") or member_slug(m, lab))
+        moved_from = {k: [_addr(former[e]) for e in v] for k, v in movers.items()}
+        for k, v in movers.items():
+            links[k] = [*links.get(k, []), *v]
+        former = former_roster(legs, votes_by_member, links,
+                               load("former_members.json", {}),
+                               max(bills) if bills else "")
+        for k, addrs in moved_from.items():
+            former[k]["moved_from"] = addrs
+        print(f"{len(movers)} member(s) who sat in both chambers and have left now have one "
+              "page, the later chamber's, with every chamber's votes: "
+              + ", ".join(f"{former[k].get('name')} ({'+'.join([k, *v])})"
+                          for k, v in sorted(movers.items())))
     if former:
         print(f"{len(former):,} member(s) in the record hold no seat now; "
               "they get a page of their own and the sitting roster is "
