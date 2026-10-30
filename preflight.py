@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.726
+# GRANITE_VERSION: 2026-09-04.727
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -80350,6 +80350,20 @@ def _live_problems(root):
             other = sorted(set(re.findall(r"\bbucket\.(\w+)", text)) - {"get", "head"})
             if other:
                 bad.append(f"{rel} hands the bucket's {', '.join(other)} on: the facade is get and head alone")
+    # The site's binding of LIVE (root wrangler.toml), once it is there:
+    # production and previews the real bucket, the local top level never.
+    site_toml = root / "wrangler.toml"
+    site = tomllib.loads(site_toml.read_text(encoding="utf-8")) if site_toml.is_file() else {}
+    lv = lambda d: [b.get("bucket_name") for b in (d.get("r2_buckets") or []) if b.get("binding") == "LIVE"]
+    senv = site.get("env") or {}
+    bound = {"top": lv(site), "production": lv(senv.get("production") or {}), "preview": lv(senv.get("preview") or {})}
+    if any(bound.values()):
+        for where in ("production", "preview"):
+            if bound[where] != ["graniterecord-live"]:
+                bad.append(f"the site's wrangler.toml binds LIVE for {where} to {bound[where]}, not graniterecord-live")
+        if bound["top"] != ["graniterecord-live-local"]:
+            bad.append(f"the site's wrangler.toml binds LIVE at the top level to {bound['top']}: `wrangler pages dev` "
+                       "reads a local bucket, graniterecord-live-local, never the real one")
     # The README's commands: every one reaches the real bucket and production.
     readme = (live / "README.md").read_text(encoding="utf-8")
     # The commands are the lines of its fenced blocks: prose may name them.
