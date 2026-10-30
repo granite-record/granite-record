@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.731
+# GRANITE_VERSION: 2026-09-04.732
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -106073,6 +106073,145 @@ def _elect_part(out, title):
     """One part of the step's report, from its title to the next blank line."""
     at = out.find(title)
     return "" if at < 0 else out[at:].split("\n\n")[0]
+
+
+@check("build", "election week's helper drafts from what the steps print, proposes only what the "
+       "step could not be sure of, places the recount schedule's races, reads a statewide count "
+       "only, waits and finishes as it should, asks nobody and writes only logs/",
+       needs=("election_week", "build_members_elect"))
+def _election_week_helper(EW, BME):
+    """src/ops/election_week.py (29 October 2026): the routine work around
+    saving the Secretary of State's files, which stays a person's. Its
+    drafts are read off build_members_elect.say_report's own printing, so a
+    change to that printing that the drafter no longer reads fails here, not
+    on election night. And the review's cases: a NOT LINKED line proposes
+    its one member only where the step could not be sure of a first name,
+    never a rival or another county's; the recount schedule's phrasings --
+    "Rockingham 13", "29F", "SD 9", "Districts 12 and 13", a withdrawn one,
+    a time -- are placed, or listed, never dropped; a sheet of county blocks
+    gives no statewide count without a statewide row; check waits, finishes,
+    runs once more for a new upload, and does not finish on a step that
+    showed nobody; and it asks nobody and writes only logs/."""
+    import contextlib
+    import io
+    report = {"unlinked": [("H|Coos|5", "Peter Morency",
+                            "the first name fits only as the start of the sitting member's, by "
+                            "three letters or one letter more: Rep. Pete Morency (R - Coos 5) "
+                            "[8401] sits for Coos 5"),
+                           ("H|Hillsborough|12", "Pat Long",
+                            "another candidate on the ballot answers to the name of the sitting "
+                            "member: Rep. Patrick Long [123]: rivals"),
+                           ("H|Merrimack|9", "Pat Smith", "two members: Rep. A [1]; Rep. B [2]")],
+              "new": [("H|Hillsborough|10", "Marty Jack", BME.NEW)],
+              "short": [("H|Coos|5", 1, 0, 0, 0, True)], "notes": ["a note"], "pending": ""}
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        BME.say_report(report, Path("corrections/members_elect.json"), "2026-11-03")
+    rows = EW.step_rows(buf.getvalue())
+    assert [len(rows[k]) for k in ("NOT LINKED", "NEW", "DO NOT ADD UP", "NOTES")] == [3, 1, 1, 1], (
+        f"the drafter no longer reads build_members_elect's report: {rows}")
+    roster = [("733", "Jack, Martin", "H", "Hillsborough", "10", "sitting"),
+              ("9", "Jack, Other", "H", "Coos", "1", "sitting")]
+    d = EW.draft_matches(rows, "2026-11-03", roster)
+    m, ev = d["2026-11-03"]["matches"], d["_evidence"]
+    assert m == {"H|Coos|5": {"Peter Morency": "8401"}, "H|Hillsborough|12": {"Pat Long": None},
+                 "H|Merrimack|9": {"Pat Smith": None}, "H|Hillsborough|10": {"Marty Jack": None}}, (
+        f"the drafted matches (a rival's id is never proposed): {m}")
+    assert "Martin Jack [733]" in ev["H|Hillsborough|10"]["Marty Jack"] and \
+        "Other" not in ev["H|Hillsborough|10"]["Marty Jack"], (
+        f"a NEW name's same-surname member of its county is not named to check: {ev}")
+    races = {k: {} for k in ("H|Hillsborough|12", "H|Hillsborough|13", "H|Hillsborough|40",
+                             "H|Rockingham|13", "H|Merrimack|29", "H|Strafford|18", "S|24", "S|9")}
+    sched = ("9:00 AM State Representative, Hillsborough County District 12 (Hudson)\n"
+             "1:00 PM Hillsborough County, District No. 40 - State Representatives\n"
+             "9:00 AM State Senate District 24\nRockingham 13 (Raymond, Stratham)\n"
+             "Merrimack 29F\nSD 9\nHillsborough County Districts 12 and 13\n"
+             "Hillsborough County District 12, 2 seats\nStrafford 18 recount WITHDRAWN\n"
+             "2:00 PM Grafton Dist. 99\nTuesday, November 10\n")
+    draft, unplaced = EW.draft_recounts(sched, races, "2026-11-09", "2026-11-06", "2026-11-03")
+    assert sorted(draft["2026-11-03"]["not_final"]) == sorted(k for k in races if k != "H|Strafford|18") \
+        and draft["2026-11-03"]["recount_deadline"] == "2026-11-06" and \
+        unplaced == ["Strafford 18 recount WITHDRAWN", "2:00 PM Grafton Dist. 99"], (
+            f"the recount draft: {sorted(draft['2026-11-03']['not_final'])} {unplaced}")
+    root = Path(tempfile.mkdtemp(prefix="ew_"))
+    here = Path.cwd()
+    try:
+        import openpyxl
+    except ImportError:
+        openpyxl = None
+    try:
+        if openpyxl is not None:
+            def book(name, rows):
+                wb = openpyxl.Workbook()
+                ws = wb.active
+                for r in rows:
+                    ws.append(r)
+                wb.save(root / name)
+                return root / name
+            head = [["Question No. 1"], [], ["Town", "Yes", "No", "Blank", "Overvotes"],
+                    ["Concord", 9000, 3000, 800, 2]]
+            c = EW.question_count(book("one.xlsx", head + [["TOTALS", 14000, 5500, 1200, 3]]))
+            assert (c["yes"], c["no"], c["blank"], c["over"]) == (14000, 5500, 1200, 3), c
+            row = EW.draft_cacr(c, "https://www.sos.nh.gov/x", "CACR13", "2026-11-05")
+            assert row["two_thirds"]["ratified"] and row["row"]["yes"] == 14000, row
+            blocks = [["Question No. 1"]]
+            for county, (y, n) in (("Belknap", (10, 5)), ("Sullivan", (7, 3))):
+                blocks += [[county + " County"], ["Town", "Yes", "No"], ["A", y, n], ["Totals", y, n]]
+            for name, rows_, want in (("blocks.xlsx", blocks, None),
+                                      ("state.xlsx", blocks + [["State Totals", 17, 8]], (17, 8))):
+                try:
+                    got = EW.question_count(book(name, rows_))
+                    got = (got["yes"], got["no"])
+                except SystemExit:
+                    got = None
+                assert got == want, f"{name}: a county's total read as the state's, or none: {got}"
+        # check(), its steps stubbed: waits, finishes, runs again for a new
+        # upload, and does not finish on a step that showed nobody.
+        src = root / "records" / "sources"
+        src.mkdir(parents=True)
+        os.chdir(root)
+        names = [f"2026-ge-house-{c}.xlsx" for c in EW.PSR.COUNTIES]
+        for n in names[:-1]:
+            (src / n).write_bytes(n.encode())
+        (src / "2026-ge-constitutional-question.xlsx").write_bytes(b"q")
+        asked, said = [], {"step": "members-elect: x\n  wrote site/members_elect.json"}
+        was = EW.run
+        EW.run = lambda args: (asked.append(Path(str(args[0])).name),
+                               (0, said["step"] if "members" in str(args[0]) else "wrote x"))[1]
+        try:
+            assert EW.check("2026", "https://x") == 0 and not asked, "it ran a step on 10 of 11"
+            (src / names[-1]).write_bytes(b"z")
+            (src / "2026-ge-state-senate-district-1-24.xlsx").write_bytes(b"s")
+            part = src / "2026-ge-house-coos (1).xlsx.crdownload"
+            part.write_bytes(b"")
+            assert not EW.status("2026")[1], "it went on with a download still in progress"
+            part.unlink()
+            EW.check("2026", "https://x")
+            assert asked == ["parse_sos_results.py", "build_members_elect.py"], (
+                f"all eleven and a question's file saved, it ran {asked}")
+            EW.check("2026", "https://x")
+            assert len(asked) == 2, "done, it ran the steps again"
+            (src / f"2026-ge-house-{EW.PSR.COUNTIES[0]}_1.xlsx").write_bytes(b"recount")
+            said["step"] = "members-elect: none shown -- the day is not the window's"
+            assert EW.check("2026", "https://x") == 1 and len(asked) == 4, (
+                "a later upload did not run the steps, or a step that showed nobody was done")
+            EW.check("2026", "https://x")
+            assert len(asked) == 6, "a step that showed nobody was taken for done"
+            assert "showed nobody" in (root / "logs" / "election_week.md").read_text(encoding="utf-8")
+        finally:
+            EW.run = was
+    finally:
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+    code = Path(_paths.script("election_week.py")).read_text(encoding="utf-8")
+    assert not re.search(r"urlopen|urllib\.request|requests\.|http\.client|socket", code), (
+        "election_week.py asks the network")
+    logs = set(re.findall(r'^([A-Z_]+) = LOGS / "[^"]+"', code, re.M))
+    written = set(re.findall(r"(\w+)\.write_(?:text|bytes)\(", code))
+    assert len(logs) >= 6 and written <= logs and "open(" not in code.replace("pdfplumber.open(", ""), (
+        f"election_week.py writes something not in logs/: {sorted(written - logs)}")
+    return "ok", ("drafts read off say_report, a rival never proposed, the schedule's phrasings "
+                  "placed or listed, a statewide count only, check's states, logs/ only")
 
 
 @check("build", "members-elect: a winner is linked to a page only on a certain match -- the "
