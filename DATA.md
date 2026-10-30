@@ -64,6 +64,24 @@ term, so the counts are read from the file rather than from a document.
 /index.json, which held every bill of every term in one file, was retired on
 5 October 2026; the files under /idx/ are the same rows, a term at a time.
 
+THE DATA API
+
+The files /api describes -- the database (granite-record.sqlite.xz), the bill
+files (bills-<term>.jsonl.gz), people.json and people.csv, and schema.json --
+carry the same record, and the same line between what is the State's and what
+is this project's. The record is the State of New Hampshire's. What this
+project adds to it -- the ids it gives (person numbers, and a bill's key,
+term and number together), the joins it makes (which numbers are one person,
+which report belongs to which bill) and the corrections made here by hand --
+is dedicated to the public domain under CC0 1.0
+(https://creativecommons.org/publicdomain/zero/1.0/): anyone may use it for
+anything, without asking. The plain-English histories (narrative and stages
+in a bill's record) stay under the terms above. The times within a recording
+are not yet covered by this paragraph: they place a moment in a YouTube
+video, and whether they are this project's to dedicate waits on a decision
+about YouTube's terms (docs/design/api/DESIGN.md, Q18). schema.json names
+the terms of each file.
+
 One file is published for a few weeks every two years and is gone the rest
 of the time. /members_elect.json is who a general election sent to the New
 Hampshire House and Senate, for the weeks between the election and

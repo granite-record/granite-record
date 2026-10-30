@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.65
+# GRANITE_VERSION: 2026-09-10.66
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -1573,6 +1573,8 @@ def main():
     (out / "manifest.json").write_text(
         json.dumps(manifest, indent=1), encoding="utf-8")
     data_page(site, out, tables, a.base, cov)
+    import api_page
+    api_page.write(site, manifest, a.base)
     print("\nEvery table names its rows and columns in manifest.json, so a "
           "program can\nfind what is here in one request.")
 
