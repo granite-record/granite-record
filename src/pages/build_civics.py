@@ -2269,6 +2269,28 @@ def guide_flow(g, w=Words()):
             f'<ol>{"".join(items)}</ol></figure>')
 
 
+def step_parts(g, w=Words()):
+    """[(id, label)]: a guide's parts in Step by Step (guides.step's `part`),
+    each with the address of its heading, for On This Page and the index
+    beside the page (the person's walk of the preview, 30 October 2026: a
+    reader jumps to "Renewing an adult passport"). The address is the
+    English part's, so it is the same in every language; [] for a guide
+    whose steps are one list."""
+    out = [("steps-" + _slug(s_["part"]), w.t(s_["part"])) for s_ in g["steps"] if s_.get("part")]
+    ids = [i for i, _ in out]
+    assert len(ids) == len(set(ids)), f"{g['slug']}: two parts share an address: {ids}"
+    return out
+
+
+def otp_items(secs, href, parts=()):
+    """On This Page's rows: a row for each section, and under Step by Step a
+    list one level down of its parts (step_parts), where it has any."""
+    sub = ('<ol class="l-otpsub">' + "".join(f'<li><a href="{E(href)}#{E(pid)}">{_plain(label)}</a></li>'
+                                             for pid, label in parts) + "</ol>") if parts else ""
+    return "".join(f'<li><a href="{E(href)}#{E(sid)}">{_plain(h)}</a>{sub if sid == "steps" else ""}</li>'
+                   for sid, h, _ in secs)
+
+
 def guide_steps(g, w=Words()):
     """THE STEPS, numbered: each one's words, a note set apart where
     something has changed, a button to the official page it needs, and the
@@ -2287,7 +2309,7 @@ def guide_steps(g, w=Words()):
             if out:
                 lists.append(f'<ol class="g-steps">{"".join(out)}</ol>')
                 out = []
-            lists.append(f'<h3 class="g-part">{w.t(s_["part"])}</h3>')
+            lists.append(f'<h3 class="g-part" id="steps-{_slug(s_["part"])}">{w.t(s_["part"])}</h3>')
         acts = "".join(f'<a class="g-btn" href="{E(u)}"'
                        + ('' if u.startswith("/") else ' target="_blank" rel="noopener"'
                           + ('' if w.lang == I.DEFAULT else ' hreflang="en"'))
@@ -2338,7 +2360,7 @@ def guide_page(tmpl, g, base, record, draft_why=""):
                jsonld=None if draft_why else LD.howto(g, base, S.canon(path), when or ""),
                globals={"GR_STATIC": True}, noscript="", skip_label="Skip to the guide", sr_title="",
                nav_current="resources.html", cite=False)
-    items = "".join(f'<li><a href="{E(S.canon(path))}#{E(sid)}">{_plain(h)}</a></li>' for sid, h, _ in secs)
+    items = otp_items(secs, S.canon(path), step_parts(g))
     otp = ('<details class="l-otp"><summary>On this page</summary>'
            f'<nav class="l-otpb" aria-label="On this page"><ol>{items}</ol></nav></details>')
     acts = S.cite_block(path, g["title"], base, S.BUILT)
@@ -2418,10 +2440,11 @@ def lang_sources(sources, w):
                                       'target="_blank" rel="noopener" hreflang="en">')
 
 
-def lang_otp(secs, path, lang):
-    """On This Page, in `lang`, for a page drawn in the home page's frame."""
+def lang_otp(secs, path, lang, parts=()):
+    """On This Page, in `lang`, for a page drawn in the home page's frame;
+    a guide's parts (step_parts, in `lang`) under its Step by Step."""
     here = I.href(lang, path)
-    items = "".join(f'<li><a href="{E(here)}#{E(sid)}">{_plain(h)}</a></li>' for sid, h, _ in secs)
+    items = otp_items(secs, here, parts)
     on = I.say(lang, "guides.on_page", "On this page")
     return (f'<div class="pageacts" id="pageacts"><details class="l-otp"><summary>{on}</summary>'
             f'<nav class="l-otpb" aria-label="{E(on)}"><ol>{items}</ol></nav></details></div>')
@@ -2459,7 +2482,7 @@ def guide_page_lang(g, lang, base, record=""):
                + "</p>" if when else "")
     head_ = (f'<header class="l-head"><h1>{title}</h1>'
              f'<p class="l-lead">{dashes(w.t(g["blurb"]))}</p>' + lang_note(lang) + note + checked
-             + lang_otp(secs, page, lang) + "</header>")
+             + lang_otp(secs, page, lang, step_parts(g, w)) + "</header>")
     article = lang_links("".join(section(*s_) for s_ in secs), lang)
     body = ('<div class="l-page g-page">' + lang_hub_bar(lang) + head_
             + f'<div class="l-art">{article}</div></div>{OTP_JS}')

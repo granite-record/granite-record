@@ -10316,6 +10316,11 @@ TASKS = [
         task("disability-help", "Get disability benefits and services",
              "SSDI and SSI, the state&rsquo;s cash and medical assistance, area agencies and "
              "vocational rehabilitation."),
+        # Under the federal section, where the person looks for it (the
+        # preview walk, 30 October 2026). It was under Property and Records.
+        task("passport", "Get a U.S. passport",
+             "A first passport or a renewal, what to bring to a post office, and a child&rsquo;s "
+             "passport."),
     ]),
     ("Know Your Rights", [
         task("tenant-rights", "Know your rights as a tenant",
@@ -10367,9 +10372,6 @@ TASKS = [
              "evicting through the court."),
         task("vital-records", "Get a birth, death, marriage or divorce certificate",
              "From your town or city clerk or the state: who may ask and what to bring."),
-        task("passport", "Get a U.S. passport",
-             "A first passport or a renewal, what to bring to a post office, and a child&rsquo;s "
-             "passport."),
     ]),
     ("Outdoors and Recreation", [
         task("fishing-license", "Get a fishing license",

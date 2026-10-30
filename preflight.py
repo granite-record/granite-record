@@ -69670,7 +69670,9 @@ def _guide_parts(BC, G):
         got = BC.guide_steps(g)
         heads = [s_["part"] for s_ in g["steps"] if s_.get("part")]
         lists = got.count('<ol class="g-steps">')
-        shown = [_h.unescape(h) for h in re.findall(r'<h3 class="g-part">(.*?)</h3>', got)]
+        # Each part's heading carries its address since 30 October 2026
+        # (build_civics.step_parts), so the id is read past.
+        shown = [_h.unescape(h) for h in re.findall(r'<h3 class="g-part"(?: id="[^"]*")?>(.*?)</h3>', got)]
         if heads:
             parted += 1
             if not g["steps"][0].get("part"):
@@ -75110,6 +75112,66 @@ def _subsections_under_sections():
             bad.append(f"{sel} is {won.get(sel)}, not --t-read under its section")
     assert not bad, "; ".join(bad[:6])
     return "ok", f"{len(under)} kinds of heading at --t-read under sections at --t-h3"
+
+
+@check("frontend", "an interim study report's chip on the Reports tab is green where it recommends future "
+       "legislation, red where it does not, and plain where it makes no recommendation")
+def _interim_report_chip_colours():
+    """The person's walk of the preview (30 October 2026). The chips were
+    coloured by the motion's words (app.js RECCOLOUR), and none of an
+    interim study report's matched, so every one was plain. Each wording
+    the calendars and the docket use (build_site_v2.INTERIM_WORDS, the
+    clerks' misspelt "Without Recomendation", 2014's "No Recommendation") is
+    put to recColour in node, beside the motions whose colours must not
+    move."""
+    cases = [("RECOMMENDED FOR FUTURE LEGISLATION", "s-law"),
+             ("Recommended for Future Legislation", "s-law"),
+             ("NOT RECOMMENDED FOR FUTURE LEGISLATION", "s-done"),
+             ("Not Recommended for Future Legislation", "s-done"),
+             ("WITHOUT RECOMMENDATION", ""), ("Without Recomendation", ""), ("No Recommendation", ""),
+             ("OUGHT TO PASS", "s-law"), ("INEXPEDIENT TO LEGISLATE", "s-done"), ("INTERIM STUDY", "s-study"),
+             ("RE-REFER TO COMMITTEE", "s-study")]
+    got = _app_js("[" + ",".join(f"scope.recColour({json.dumps(w)})" for w, _ in cases) + "]",
+                  names=("recColour",))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    bad = [f"{w!r} is {g!r}, not {want!r}" for (w, want), g in zip(cases, got) if g != want]
+    assert not bad, "; ".join(bad)
+    return "ok", f"{len(cases)} recommendations coloured: an interim report's three, and the motions as before"
+
+
+@check("frontend", "a guide whose steps are in parts lists each part under Step by Step in its index, "
+       "each row leading to that part's heading, in English and Spanish", needs=("build_civics", "guides"))
+def _guide_parts_in_index(BC, G):
+    """The person's walk of the preview (30 October 2026): a reader of a
+    guide in parts (guides.PARTS) jumps from the index to "Renewing an
+    adult passport". build_civics.step_parts names each part's heading's
+    address; On This Page (otp_items), which OTP_JS copies beside the page,
+    lists them one level down under Step by Step. Each guide in parts is
+    drawn here: every part's row must lead to an id its steps carry, and
+    both of a guide's pages must ask for the parts."""
+    bad, n = [], 0
+    for g in G.GUIDES:
+        parts = BC.step_parts(g)
+        if not parts:
+            continue
+        n += 1
+        steps = BC.guide_steps(g)
+        items = BC.otp_items([("at-a-glance", "At a Glance", ""), ("steps", "Step by Step", "")], "/g", parts)
+        sub = items[items.find('href="/g#steps"'):]
+        for pid, label in parts:
+            if f'id="{pid}"' not in steps:
+                bad.append(f"{g['slug']}: no heading carries id {pid}")
+            if f'href="/g#{pid}"' not in sub or 'class="l-otpsub"' not in sub:
+                bad.append(f"{g['slug']}: {label!r} is not listed under Step by Step")
+    src = Path("src/pages/build_civics.py").read_text(encoding="utf-8")
+    if "otp_items(secs, S.canon(path), step_parts(g))" not in src:
+        bad.append("guide_page's On This Page does not list the parts")
+    if "lang_otp(secs, page, lang, step_parts(g, w))" not in src:
+        bad.append("a guide's Spanish page does not list its parts")
+    assert n, "no guide has its steps in parts, so nothing here was drawn"
+    assert not bad, "; ".join(bad[:6])
+    return "ok", f"{n} guides in parts, each part listed under Step by Step and leading to its heading"
 
 
 @check("frontend", "the Learn and guide pages' index at the foot names its groups no smaller than its links")

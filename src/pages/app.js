@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.255
+// GRANITE_VERSION: 2026-09-07.256
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4107,7 +4107,17 @@ const AVK={VV:"Voice Vote",DV:"Division Vote",RC:"Roll Call"};
 // Which side prevailed is already on the row: the Majority/Minority label
 // sits to the left of the chip and the committee's vote beside it, so
 // nothing is lost by colouring the motion instead.
-const RECCOLOUR=[[/INEXPEDIENT/i,"s-done"],
+//
+// AN INTERIM STUDY COMMITTEE'S REPORT (the person's walk of the preview, 30
+// October 2026): green where it recommends the subject for future
+// legislation, red where it does not, and no colour where it makes no
+// recommendation -- the clerks' "Without Recomendation" and "No
+// Recommendation" among them. First, so that "NOT RECOMMENDED" is read before
+// "RECOMMENDED", and before the motions below.
+const RECCOLOUR=[[/WITHOUT\s+RECOMM?ENDATION|NO\s+RECOMM?ENDATION/i,""],
+                 [/NOT\s+RECOMMENDED\s+FOR\s+FUTURE/i,"s-done"],
+                 [/RECOMMENDED\s+FOR\s+FUTURE/i,"s-law"],
+                 [/INEXPEDIENT/i,"s-done"],
                  [/INTERIM\s+STUDY|RE-?REFER/i,"s-study"],
                  [/OUGHT\s+TO\s+PASS/i,"s-law"]];
 const recColour=r=>{const m=RECCOLOUR.find(([re])=>re.test(r||""));
