@@ -74959,6 +74959,46 @@ def _tap_targets_24(C, BSP):
                   + f"; {blocks} on a line of its own (a debate's speaker) --tap-line, given back")
 
 
+@check("frontend", "a heading under a section on a guide, a Learn page and /data is smaller than the "
+       "section's own: a step, a phase, a subsection at --t-read under the section's --t-h3")
+def _subsections_under_sections():
+    """The cohesion audit of 30 October 2026 (B-1, and I-1 for Learn and
+    /data): a guide's "Step by Step" was 19px and each step's title under it
+    20px, so the outline read upside down; Learn's and /data's subsections
+    were the same 19px as their sections, so neither could be told from the
+    other. A section heading there is --t-h3 in the serif; every h3 and h4
+    the pages write under one is --t-read, which must stay the smaller."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    size = {}
+    for k in ("t-read", "t-h3"):
+        m = re.search(rf"--{k}:([\d.]+)rem", css)
+        size[k] = float(m.group(1)) if m else None
+    bad = []
+    if not (size["t-read"] and size["t-h3"] and size["t-read"] < size["t-h3"]):
+        bad.append(f"--t-read ({size['t-read']}rem) is not smaller than --t-h3 ({size['t-h3']}rem)")
+    sections = {".l-sech": "--t-h3", ".dpsech": "--t-h3"}
+    under = (":is(.l-secb,.l-wide) > h3", ".l-phname", ".l-chart > h3", ".l-rh", ".l-tlh",
+             ".l-body h3", ".g-sh", ".dph3")
+    won = {}
+    for at, sel, body, _l in _css_rules(css):
+        if at:
+            continue
+        d = dict(_css_decls(body))
+        # On the commas between selectors, not those inside :is( ).
+        for part in (x.strip() for x in re.split(r",(?![^()]*\))", sel)):
+            fs = d.get("font-size") or (re.search(r"var\(--t-[\w-]+\)", d.get("font", "")) or [None])[0]
+            if fs:
+                won[part] = fs
+    for sel, tok in sections.items():
+        if tok not in str(won.get(sel)):
+            bad.append(f"{sel} is {won.get(sel)}, where a section here is {tok}")
+    for sel in under:
+        if "--t-read" not in str(won.get(sel)):
+            bad.append(f"{sel} is {won.get(sel)}, not --t-read under its section")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", f"{len(under)} kinds of heading at --t-read under sections at --t-h3"
+
+
 @check("frontend", "every control that switches a view marks the chosen one the same way: solid pine, "
        "its words in --on-pine, outlined in forced colours")
 def _switches_one_look():

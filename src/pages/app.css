@@ -4656,6 +4656,13 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
 .l-art .glsl{display:block;font-weight:400;color:var(--ink-2);margin-top:2px}
 .l-sec{border-top:1px solid var(--rule);padding:1.125rem 0 0;margin:0 0 1.75rem;scroll-margin-top:1rem}
 .l-sec:first-child{border-top:0;padding-top:0}
+/* ONE LOOK PER LEVEL, AND A SUBSECTION UNDER ITS SECTION (the cohesion
+   audit of 30 October 2026, B-1 and I-1): a guide's step titles were 20px
+   under its 19px "Step by Step", and Learn's and /data's subsections the
+   same 19px as their sections, so the outline read flat or upside down.
+   A section here is --t-h3 in the serif; every heading under it -- a guide's
+   step, Learn's phases, tables and examples, /data's subsections -- is
+   --t-read, the size of the text it heads, in the same weight. */
 .l-sech{font:600 var(--t-h3)/1.35 var(--serif);color:var(--ink);margin:0 0 .5rem;text-wrap:balance}
 .l-sech a{color:var(--pine);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .l-sech a:hover{color:var(--ink)}
@@ -4668,7 +4675,7 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
   margin:0 0 .875rem;padding-left:1.25rem;max-width:var(--l-meas)}
 .l-secb > :is(ul,ol):not([class]) > li{margin:0 0 .4375rem;padding-left:.25rem}
 .l-secb > :is(ul,ol):not([class]) > li::marker{color:var(--ink-2)}
-:is(.l-secb,.l-wide) > h3{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:1.75rem 0 .5rem}
+:is(.l-secb,.l-wide) > h3{font:600 var(--t-read)/1.3 var(--serif);color:var(--ink);margin:1.75rem 0 .5rem}
 .l-art .l-secb a:not([class]){color:var(--pine);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .l-art .l-secb a:not([class]):hover{color:var(--ink)}
 @media (min-width:60em){
@@ -4819,7 +4826,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .l-phase{position:relative;min-width:0}
 .l-phase:not(:last-child)::after{content:"";position:absolute;top:.25rem;right:-2.125rem;width:1.5rem;height:1.5rem;
   background:var(--ink-2);-webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat}
-.l-phname{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0 0 .75rem;padding:0 0 .5rem;border-bottom:1px solid var(--ink)}
+.l-phname{font:600 var(--t-read)/1.3 var(--serif);color:var(--ink);margin:0 0 .75rem;padding:0 0 .5rem;border-bottom:1px solid var(--ink)}
 /* the phase names held level however many lines one takes */
 .l-level .l-phases{gap:0 2.75rem}
 .l-level .l-phase{display:grid;grid-row:span 2;grid-template-rows:subgrid;margin-bottom:1.5rem}
@@ -5031,7 +5038,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
   border-radius:50%;background:var(--pine);color:var(--on-pine);font:700 var(--t-ui)/2.25rem var(--sans);text-align:center}
 .g-step:not(:last-child)::after{content:"";position:absolute;left:1.0625rem;top:2.5rem;bottom:.25rem;
   border-left:2px solid var(--rule-2)}
-.g-sh{font:600 var(--t-lead)/1.3 var(--serif);color:var(--ink);margin:.25rem 0 .5rem}
+.g-sh{font:600 var(--t-read)/1.3 var(--serif);color:var(--ink);margin:.25rem 0 .5rem}
 .g-step p,.g-step li{font:400 var(--t-ui)/1.6 var(--sans);color:var(--ink)}
 .g-step p{margin:0 0 .625rem}
 .g-step ul{margin:0 0 .625rem;padding-left:1.25rem}
@@ -5110,7 +5117,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 
 .l-chart{max-width:var(--l-meas);margin:.75rem 0 1.25rem;padding:1rem 1.125rem;background:var(--surface);
   border:1px solid var(--rule-2);border-radius:var(--r-in)}
-.l-chart > h3{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0 0 .25rem}
+.l-chart > h3{font:600 var(--t-read)/1.3 var(--serif);color:var(--ink);margin:0 0 .25rem}
 .l-chart > p{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:0 0 .875rem}
 .l-bars{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:.875rem;position:relative}
 .l-bars li{display:grid;grid-template-columns:subgrid;grid-column:1 / -1}
@@ -5243,7 +5250,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .l-rcol{min-width:0;display:flex;flex-direction:column}
 .l-rcol::before{content:"";display:block;width:1.5rem;height:1.5rem;margin:0 0 .375rem .5rem;background:var(--ink-2);
   -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;transform:rotate(90deg)}
-.l-rh{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0;padding:0 0 .5rem;border-bottom:1px solid var(--ink)}
+.l-rh{font:600 var(--t-read)/1.3 var(--serif);color:var(--ink);margin:0;padding:0 0 .5rem;border-bottom:1px solid var(--ink)}
 .l-rstep{margin:.75rem 0 0}
 .l-rends{list-style:none;margin:0;padding:0;display:grid;gap:.5rem}
 .l-rstep + .l-rends,.l-rh + .l-rends{margin-top:.75rem}
@@ -5375,7 +5382,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
   -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;transition:transform .15s}
 .l-tlseason > details[open] > summary::before{transform:rotate(90deg)}
 .l-tlseason > details > summary:hover .l-tlh{color:var(--pine)}
-.l-tlh{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0}
+.l-tlh{font:600 var(--t-read)/1.3 var(--serif);color:var(--ink);margin:0}
 .l-tlwhen{font:400 var(--t-sm)/1.4 var(--sans);color:var(--ink-2)}
 .l-tlseason.is-here .l-tlwhen{color:var(--pine);font-weight:600}
 .l-tlsteps{list-style:none;margin:0 0 .75rem;padding:0;position:relative}
@@ -5458,7 +5465,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .l-who{display:grid;grid-template-columns:repeat(var(--n,3),minmax(0,1fr));gap:.875rem;margin:1.25rem 0 1.5rem}
 .l-body{background:var(--surface);border:1px solid var(--rule-2);border-top:3px solid var(--ink);border-radius:var(--r-in);
   padding:.875rem 1rem 1rem;min-width:0}
-.l-body h3{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0 0 .125rem}
+.l-body h3{font:600 var(--t-read)/1.3 var(--serif);color:var(--ink);margin:0 0 .125rem}
 .l-body .l-lbl{margin:0 0 .625rem}
 .l-body dl{margin:0;display:grid;gap:.625rem}
 .l-body dt{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
@@ -6591,7 +6598,7 @@ table.votes tr:has(+ tr.vring) td{border-bottom:0}
 .dpsecb > :last-child{margin-bottom:0}
 .dpsecb p{font-family:var(--serif);font-size:var(--t-read);line-height:1.65;color:var(--ink);
   margin:0 0 var(--sp-5);max-width:51.1875rem}
-.dph3{font-family:var(--serif);font-size:var(--t-h3);font-weight:600;line-height:1.35;color:var(--ink);
+.dph3{font-family:var(--serif);font-size:var(--t-read);font-weight:600;line-height:1.35;color:var(--ink);
   margin:var(--sp-9) 0 var(--sp-4)}
 .dpsecb > .dph3:first-child{margin-top:0}
 .dpsecb p.dpnote{font-family:var(--sans);font-size:var(--t-ui);line-height:1.55;
