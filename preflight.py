@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.728
+# GRANITE_VERSION: 2026-09-04.730
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -80155,6 +80155,42 @@ LIVE_CONTROL_VALUES = {"youtube": ("on", "off"), "sql": ("off", "test", "on")}
 # follower's database, which is another Worker's.
 LIVE_NEVER = re.compile(r"gc\.nh\.gov|gencourt|graniterecord-follow|FOLLOW_DB", re.I)
 LOOPBACK = ("127.0.0.1", "::1", "localhost")
+
+
+@check("build", "the live Worker reads a roll call's bill field as the record does: every field in "
+       "records/rollcalls/ and the procedural ones (SUSPRULE, RULE 1-2, HRULE64) give merge.js's "
+       "billNumber what rollcall_parser.bill_number gives", needs=("rollcall_parser",))
+def _live_bill_number(RP):
+    """The live file's `bill` is the term and the bill the record would file
+    the roll call under, or null where the field names no bill: a procedural
+    vote written "2025-2026/SUSPRULE" is a link to nothing, and breaks
+    schema/session.votes.json. The patterns reach the Worker through
+    live.gen.js (BILL_NUMBER); this holds the whole function equal."""
+    root = Path(".")
+    fields = {"SUSPRULE", "RULE 1-2", "HRULE64", "SEN/RULE", "SR1 (2009)", "SSRULES", "REPORT", "",
+              "HB 1", "hb1", "HB1-FN", "HB 1-FN-A", "HB1-FN-LOCAL", "HCACR13", "CACR 13", "SSSB 1", "HA1",
+              "HCO2", "HR 10", "SCR3", "HJR1", "SJR 2", "HB1-L", "SB12-A", "HB", "1", "HBX1"}
+    for f in sorted((root / "records/rollcalls").glob("RollCallSummary*.txt")):
+        for line in f.read_text(encoding="utf-8-sig", errors="replace").splitlines():
+            q = line.split("|")
+            if len(q) >= 13:
+                fields.add(q[4])
+    fields = sorted(fields)
+    want = [RP.bill_number(x) for x in fields]
+    node = shutil.which("node")
+    assert node, "node is not on PATH, and the Worker's billNumber is the thing held here"
+    src = ("import { billNumber } from " + json.dumps((root.resolve() / "workers/live/merge.js").as_uri())
+           + ";\nlet s = ''; process.stdin.on('data', d => s += d); process.stdin.on('end', () => "
+           "process.stdout.write(JSON.stringify(JSON.parse(s).map(billNumber))));\n")
+    r = _run([node, "--input-type=module", "-e", src], input=json.dumps(fields),
+             capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0, f"node could not read the fields: {(r.stderr or r.stdout).strip()[-400:]}"
+    got = json.loads(r.stdout)
+    differ = [f"{x!r}: the Worker {g!r}, the record {w!r}" for x, g, w in zip(fields, got, want) if g != w]
+    assert not differ, f"{len(differ)} bill fields read apart: " + "; ".join(differ[:5])
+    none = sum(1 for w in want if not w)
+    assert none >= 8, f"only {none} fields name no bill: the procedural cases are not being read"
+    return "ok", f"{len(fields):,} bill fields read alike, {none} of them naming no bill"
 
 
 @check("build", "the live Worker's own tests pass, every one: node --test runs tests/live/index.js, "

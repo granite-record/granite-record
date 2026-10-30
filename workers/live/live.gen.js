@@ -18,3 +18,5 @@ export const VOTE_WORD = {"0": "", "1": "Yea", "2": "Nay", "3": "Not Voting/Excu
 export const BALLOT_CHAR = {"0": ".", "1": "Y", "2": "N", "3": "E", "4": "X", "5": ".", "6": "P", "7": "."};
 // records/docket_abbrev.json: the docket's abbreviations whose words are an outcome, as the General Court's key writes them.
 export const DOCKET_OUTCOME = {"AA": "Amendment Adopted", "AF": "Amendment Failed", "AL": "Amendment Lost", "MA": "Motion Adopted", "MF": "Motion Failed", "ML": "Motion Lost"};
+// src/parse/rollcall_parser.py BILL_NO (case-blind) and FLAGS: a roll call's bill field read as a bill, as bill_number reads it.
+export const BILL_NUMBER = {"pattern": "^(?:(?:SS)?(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR|SJR)|HA|HCO)\\d+$", "flags_off": "(?:-(?:FN|LOCAL|L|A))+$"};
