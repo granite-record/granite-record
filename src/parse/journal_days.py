@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.17
+# GRANITE_VERSION: 2026-09-19.18
 """
 What the House journal adds that the record does not: who spoke, and what.
 
@@ -84,7 +84,8 @@ FURNITURE = re.compile(
 # space, digits and one month's name -- nine letters at most, and never the
 # word HOUSE -- so a match can begin no earlier than the walk back from a
 # HOUSE RECORD over white space, digits and up to nine letters. furniture()
-# tries the pattern from there, as finditer would, and only there.
+# tries the pattern from there, as finditer would, and only there. It rests on
+# _MON being plain month names, which preflight holds.
 _HEAD_WORDS = re.compile(r"HOUSE\s*+RECORD", re.I)
 _MONTH_LETTERS = max(len(m) for m in _MON.split("|"))
 

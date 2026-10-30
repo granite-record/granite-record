@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.740
+# GRANITE_VERSION: 2026-09-04.741
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -102985,6 +102985,9 @@ def _journal_furniture(JD):
         texts += [h, f"word{h}", f"SEPTEMBERX{h}", f"OCTOBERNOVEMBER{h}", f"{h}{h}", f"{h} {h}",
                   " " * 300 + h, f"12345 {h}", f"the motion was {h} adopted.", f"{h}\n{h}12"]
     texts.append("\n".join(texts))
+    # The walk back rests on every month being plain letters: "SEPT." or any
+    # regex syntax would stop it short and lose heads.
+    assert all(re.fullmatch(r"[A-Z]+", m) for m in JD._MON.split("|")), JD._MON
     bad = [t for t in texts
            if [m.span() for m in JD.furniture(t)] != [m.span() for m in JD.FURNITURE.finditer(t)]]
     assert not bad, f"furniture() and FURNITURE.finditer differ on {len(bad)}, the first {bad[0][:80]!r}"
