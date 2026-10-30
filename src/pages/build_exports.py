@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.57
+# GRANITE_VERSION: 2026-09-10.58
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -1213,70 +1213,88 @@ def bill_indexes(site, origin):
     }
 
 
-def bill_files(out, site):
+def bill_files(out, site, collect=None):
     """Every bill's full record, one gzipped JSON Lines file a term:
     bills-<term>.jsonl.gz (the data API's branch 3; docs/design/api/DESIGN.md,
     2.4). Each line is the record the bill's own page carries, read back by
     site_read.records, with "key" put first, "2025-2026/HB1442": a bill
     number is a key only with its term. Lines run in the order bills.csv
     lists them (bill_order). Returns their rows for the manifest's "files".
+    collect(term, record), where given, is handed every record on the way,
+    so that the database's tables read the same records in the same pass.
+
+    A TERM AT A TIME. All nineteen terms' records are about 900 MB of JSON
+    opened; holding them at once is gigabytes on the nightly's machine. Each
+    term is read from its own two year folders, written, and let go.
 
     THE BYTES ARE THE SAME FOR THE SAME RECORDS. The gzip header names no
     file and no time (mtime 0), so a night that changed nothing writes the
     file it wrote before, and the manifest's sha256 says so.
 
-    EVERY BILL OR NONE. A term's file is checked against its bill index: a
-    record missing from the pages, or a page no index row names, stops the
-    build with the counts, rather than publishing a term with bills left out
+    EVERY BILL OR NONE. Each term is written under a temporary name and
+    checked against its bill index; only when every term holds every bill,
+    and no page is left that no index names, do the files take their names.
+    Otherwise the build stops with the counts and none is published
     (CLAUDE.md, a writer run on a subset)."""
     import gzip
     import hashlib
     import re as _re
+    site = Path(site)
     idx = SR.bill_index_or_stop(site, "build_exports.py")
-    term_of = {}
+    term_of, years_of, want = {}, {}, {}
     for b in idx:
-        if _re.fullmatch(r"\d{4}-\d{4}", str(b.get("term") or "")) and b.get("year"):
-            term_of[(str(b["year"]), str(b["id"]).upper())] = b["term"]
-    by_term, stray = {}, []
-    for year, bid, rec in SR.records(site):
-        term = term_of.get((year, bid))
-        if term is None:
-            stray.append(f"{year}/{bid}")
-            continue
-        by_term.setdefault(term, []).append(rec)
-    want = {}
-    for t in term_of.values():
-        want[t] = want.get(t, 0) + 1
+        t = str(b.get("term") or "")
+        if _re.fullmatch(r"\d{4}-\d{4}", t) and b.get("year"):
+            term_of[(str(b["year"]), str(b["id"]).upper())] = t
+            years_of.setdefault(t, set()).add(str(b["year"]))
+            want[t] = want.get(t, 0) + 1
+    pages = [(d.name, f.stem.upper()) for d in sorted((site / "bill").glob("*")) if d.is_dir()
+             for f in d.glob("*.html")]
     # NO PAGES AT ALL is a site built without them (a fixture, or a build
     # stopped short), said and not written; SOME PAGES is a subset, refused.
-    if not by_term and not stray:
+    if not pages:
         print(f"  {'bills-<term>.jsonl.gz':<28} not written: no bill pages in {site}/bill/")
         return []
-    short = {t: (len(by_term.get(t, ())), n) for t, n in want.items() if len(by_term.get(t, ())) != n}
-    if stray or short:
-        raise SystemExit(
-            "The bill files would not hold every bill, so none is written: "
-            + (f"{len(stray)} page(s) no bill index names ({', '.join(stray[:5])}); " if stray else "")
-            + "; ".join(f"{t} has {got:,} records of {n:,}" for t, (got, n) in sorted(short.items())))
-    rows = []
-    for term in sorted(by_term, reverse=True):
-        recs = sorted(by_term[term], key=lambda r: BO.bill_key(r.get("id")))
+    stray = sorted(f"{y}/{b}" for y, b in pages if (y, b) not in term_of)
+    rows, short, parts = [], {}, []
+    for term in sorted(want, reverse=True):
+        recs = [r for y, b, r in SR.records(site, years=sorted(years_of[term]))
+                if term_of.get((y, b)) == term]
+        if len(recs) != want[term]:
+            short[term] = (len(recs), want[term])
+            continue
+        recs.sort(key=lambda r: BO.bill_key(r.get("id")))
+        if collect:
+            for r in recs:
+                collect(term, r)
         body = "".join(
             json.dumps({"key": f'{term}/{r["id"]}', **{k: v for k, v in r.items() if k != "key"}},
                        ensure_ascii=False, separators=(",", ":")) + "\n"
             for r in recs).encode("utf-8")
         name = f"bills-{term}.jsonl.gz"
-        with (out / name).open("wb") as fh, \
+        part = out / (name + ".part")
+        with part.open("wb") as fh, \
                 gzip.GzipFile(filename="", mode="wb", fileobj=fh, compresslevel=9, mtime=0) as gz:
             gz.write(body)
-        size = (out / name).stat().st_size
+        parts.append((part, out / name))
+        size = part.stat().st_size
         rows.append({"path": f"/data/{name}", "kind": "bills", "term": term,
                      "rows": len(recs), "bytes": size,
-                     "sha256": hashlib.sha256((out / name).read_bytes()).hexdigest(),
+                     "sha256": hashlib.sha256(part.read_bytes()).hexdigest(),
                      "encoding": "gzip", "media_type": "application/x-ndjson"})
         flag = "  OVER THE 25 MiB CAP" if size > SAFE else ""
         print(f"  {name:<28} {len(recs):>9,} bills {size / 1e6:>7.1f} MB "
               f"({len(body) / 1e6:,.1f} MB opened){flag}")
+        del recs, body
+    if stray or short:
+        for part, _ in parts:
+            part.unlink(missing_ok=True)
+        raise SystemExit(
+            "The bill files would not hold every bill, so none is written: "
+            + (f"{len(stray)} page(s) no bill index names ({', '.join(stray[:5])}); " if stray else "")
+            + "; ".join(f"{t} has {got:,} records of {n:,}" for t, (got, n) in sorted(short.items())))
+    for part, final in parts:
+        part.replace(final)
     return rows
 
 
