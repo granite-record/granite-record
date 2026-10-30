@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.26
+# GRANITE_VERSION: 2026-09-25.27
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -40,6 +40,9 @@ The nightly's kit and the laptop's backup, in the project's private R2 bucket.
                                                        down, before its livestream step
     python3 src/ops/cloud.py inbox-clear [--dry-run]   ... and clears what its sent state no
                                                        longer waits for; never on a dry run
+    python3 src/ops/cloud.py sources-up [--dry-run]    the state documents read on the laptop,
+                                                       to the bucket's sources/ (state_sources.py)
+    python3 src/ops/cloud.py sources-down              ... and into a session's sources/
 
     --local-bucket FOLDER   a folder stands in for the bucket, for testing
     --root FOLDER           the working folder (default: the current one)
@@ -4098,7 +4101,19 @@ COMMANDS = {"kit-list": cmd_kit_list, "seed-kit": cmd_seed_kit,
             "kit-release": cmd_kit_release,
             "backup": cmd_backup, "pull": cmd_pull, "send-refusal": cmd_send_refusal,
             "send-night": cmd_send_night,
-            "inbox-down": cmd_inbox_down, "inbox-clear": cmd_inbox_clear}
+            "inbox-down": cmd_inbox_down, "inbox-clear": cmd_inbox_clear,
+            "sources-up": lambda a, root: _sources("up", a, root),
+            "sources-down": lambda a, root: _sources("down", a, root)}
+
+
+def _sources(cmd, a, root):
+    """The state documents, which state_sources.py carries: its own run, so
+    its rules (one file per reading, nothing replaced) are kept in one place."""
+    import state_sources
+    argv = [cmd, "--root", str(root)] + (["--dry-run"] if a.dry_run else []) \
+        + (["--local-bucket", a.local_bucket] if a.local_bucket else [])
+    if state_sources.main(argv) != 0:
+        raise Failed(f"state_sources.py {cmd} did not finish; it says why above")
 
 
 def main(argv=None):
