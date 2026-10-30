@@ -2728,11 +2728,13 @@ def study_hidden(days, meets, draw):
     them = (f"1 {what}study committee meeting" if n == 1
             else f"{n} {what}study committee meetings")
     verb = "is" if n == 1 else "are"
-    line = ('<input type="checkbox" class="calst" id="calst">'
+    # Named by the week line's label alone: each study day's <label for="calst">
+    # joined its name, "Show them" six times over (the review of 30 October 2026).
+    line = ('<input type="checkbox" class="calst" id="calst" aria-labelledby="calstl">'
             '<p class="calstline">'
             f'<span class="cs-off">{them} {verb} hidden.</span>'
             f'<span class="cs-on">{them} {verb} shown.</span> '
-            '<label for="calst"><span class="cs-off">Show them</span>'
+            '<label for="calst" id="calstl"><span class="cs-off">Show them</span>'
             '<span class="cs-on">Hide them</span></label></p>')
     return line + "".join(parts)
 

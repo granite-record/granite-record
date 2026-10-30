@@ -27700,7 +27700,7 @@ def _scroll_edges():
 
     So one token, --scrolledge: --lift's .22 in light and on paper, and in
     dark at least the .5 --shadow was. Every scrolling strip -- the Officials
-    and town strip below 1024px, a list card's on a tablet and a phone, and
+    and town strip at every width, a list card's on a tablet and a phone, and
     the record strip -- has two covers of its own ground that travel with
     its tabs (local), at least as wide as the two shadows of --scrolledge
     fixed under them, and no --shadow."""
@@ -27720,13 +27720,14 @@ def _scroll_edges():
     if not (tok["dark"] and tok["dark"] >= .5 and tok["dark"] == tok["chosen"]):
         bad.append(f"--scrolledge in dark is {tok['dark']} (system) and {tok['chosen']} (chosen): "
                    "at least the .5 the faint --shadow was, and the same in both")
-    strips = ((".twntabs", "max-width:63.9375em", "--paper"),
+    strips = ((".twntabs", "", "--paper"),
               (".tabs", "max-width:45em", "--surface"),
               (".card .tabs", "min-width:45.0625em) and (max-width:68.75em", "--surface"),
               (".card.focus.rec > .cbody > .tabs", "max-width:68.75em", "--paper"))
     for sel, media, ground in strips:
         got = [b for at, sl, b, _l in rules
-               if any(media in a.replace(": ", ":") for a in at) and sel in [x.strip() for x in sl.split(",")]
+               if (any(media in a.replace(": ", ":") for a in at) if media else not at)
+               and sel in [x.strip() for x in sl.split(",")]
                and "background" in dict(_css_decls(b))]
         if not got:
             bad.append(f"{sel} at ({media}) has no scroll edge")
@@ -27865,7 +27866,7 @@ def _openers_turn_right_to_down():
     page = BSP._debate_html({"bill": "HB1", "speeches": [
         ("Rep. Wade", "Thank you, Mr. Speaker. I rise in support of the committee report. It is sound.")]},
         "H", BSP.Members(Path("no-such-site")), __import__("html").escape)
-    if not page.endswith('</details><p class="sdopen">I rise in support of the committee report. It is sound.…</p>'):
+    if not page.endswith('</details><p class="sdopen">I rise in support of the committee report. It is sound.</p>'):
         bad.append(f"a debate's opening is not after its fold, in its own words: {page[-160:]!r}")
     empty = BSP._debate_html({"bill": "HB1", "speeches": [("Rep. Wade", "")]}, "H",
                              BSP.Members(Path("no-such-site")), __import__("html").escape)
@@ -65850,12 +65851,12 @@ def _calendar_study_hidden_once():
             "an archived committee's card links a page nobody writes")
         # ONCE A WEEK: the box, then the one line, then the days.
         assert view.startswith('<div class="calview" id="calview">'
-                               '<input type="checkbox" class="calst" id="calst">'
+                               '<input type="checkbox" class="calst" id="calst" aria-labelledby="calstl">'
                                '<p class="calstline"><span class="cs-off">2 study committee '
                                'meetings are hidden.</span>'), (
             "the built week does not open with the box and the one line counting its study "
             "committee meetings: " + view[:240])
-        assert '<label for="calst"><span class="cs-off">Show them</span>' in view, (
+        assert '<label for="calst" id="calstl"><span class="cs-off">Show them</span>' in view, (
             "the built week's line has no way to show them")
         days = re.findall(r'<div class="calday[^"]*" data-d="([^"]+)">(.*?)(?=<div class="calday|$)',
                           view, re.S)
@@ -108097,8 +108098,8 @@ def _town_tabs(B, BP):
         bad.append("a tab's label can wrap: .twntabs [role=tab] has no white-space:nowrap")
     if re.search(r"\.twntabs \[role=tab\]\{flex:1", css):
         bad.append("a phone rule shares the strip's width out among the tabs, which wraps them")
-    if not re.search(r"@media \(max-width:63\.9375em\)\{\s*\.twntabs \[role=tab\]\{flex:0 0 auto[^}]*\}"
-                     r"\s*\.twntabs\{background:[^}]*var\(--scrolledge\)", css):
+    if not re.search(r"@media \(max-width:63\.9375em\)\{\s*\.twntabs \[role=tab\]\{flex:0 0 auto", css) or \
+            not re.search(r"\n\.twntabs\{display:flex[^}]*background:[^}]*var\(--scrolledge\)", css):
         bad.append("below 1024px the strip's tabs are not kept whole with its edge's shadow")
     if re.search(r"\.oftabs(?: \[role=tab\])?\{(?:white-space|flex|background)", css):
         bad.append("the Officials page's strip has rules of its own again beside .twntabs's")

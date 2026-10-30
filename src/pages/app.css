@@ -1609,7 +1609,11 @@ line-height:1.1}
    panel is on the page under its own heading and a strip of buttons that did
    nothing would only be in the way. */
 .twntabs{display:flex;border-bottom:1px solid var(--rule);
-  margin:var(--sp-7) 0 var(--sp-6);overflow-x:auto}
+  margin:var(--sp-7) 0 var(--sp-6);overflow-x:auto;background:
+    linear-gradient(var(--paper),var(--paper)) 0 0/40px 100% no-repeat local,
+    linear-gradient(var(--paper),var(--paper)) 100% 0/40px 100% no-repeat local,
+    linear-gradient(to right,var(--scrolledge),transparent) 0 0/32px 100% no-repeat scroll,
+    linear-gradient(to left,var(--scrolledge),transparent) 100% 0/32px 100% no-repeat scroll}
 .twntabs[hidden]{display:none}
 .twntabs [role=tab]{flex:0 1 auto;background:none;border:0;cursor:pointer;
   font:inherit;font-size:var(--t-ui);font-weight:600;line-height:1.25;
@@ -1628,14 +1632,11 @@ line-height:1.1}
    more to reach. At 16px of --shadow the town strip hid "Services" and an
    opened bill card hid Reports, Sponsors and Documents, and nobody saw the
    edge; --scrolledge is --lift in light and deeper in dark, where --lift
-   all but vanished. */
+   all but vanished. The town strip's is on its own rule above, at every
+   width: it scrolls at every width, and at 1024-1120px "County Officials"
+   was cut with no edge at all (the review of 30 October 2026). */
 @media (max-width:63.9375em){
   .twntabs [role=tab]{flex:0 0 auto;padding:var(--sp-3) var(--sp-5)}
-  .twntabs{background:
-    linear-gradient(var(--paper),var(--paper)) 0 0/40px 100% no-repeat local,
-    linear-gradient(var(--paper),var(--paper)) 100% 0/40px 100% no-repeat local,
-    linear-gradient(to right,var(--scrolledge),transparent) 0 0/32px 100% no-repeat scroll,
-    linear-gradient(to left,var(--scrolledge),transparent) 100% 0/32px 100% no-repeat scroll}
 }
 .twnpane[hidden]{display:none}
 /* A panel's own heading, which is the page's outline with or without the
@@ -3276,6 +3277,9 @@ min-height:34px;display:flex;align-items:center;gap:var(--sp-3);list-style:none}
 :where(body:not(.pg)) .caret{width:0;height:0;border-left:6px solid currentColor;
 border-top:4.5px solid transparent;border-bottom:4.5px solid transparent;
 transition:transform .12s;flex:none}
+/* In forced colours its two transparent borders took the text colour and it
+   drew a square, which no turn can point (the review of 30 October 2026). */
+@media (forced-colors:active){:where(body:not(.pg)) .caret{forced-color-adjust:none;color:CanvasText}}
 .docket[open] .caret{transform:rotate(90deg)}
 .docket .tl{margin-top:var(--sp-4)}
 .docket .cite{color:var(--ink-2);font-size:var(--t-ui)}

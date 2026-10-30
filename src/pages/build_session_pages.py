@@ -2737,7 +2737,8 @@ def _debate_html(d, body, members, esc, head=False, chair=None):
     # THE OPENING SENTENCES AFTER THE FOLD, so they stand while it is shut,
     # as app.css meant them to; inside it they showed only once it was open,
     # which app.css then hid (the R2 polish batch, 30 October 2026).
-    out.append("</div></details>" + (f'<p class="sdopen">{esc(opener)}…</p>' if opener.strip() else ""))
+    tail = "" if re.search(r"[.!?][\"'”’)]*$", opener) else "…"
+    out.append("</div></details>" + (f'<p class="sdopen">{esc(opener)}{tail}</p>' if opener.strip() else ""))
     return "".join(out)
 
 
