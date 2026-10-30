@@ -17,10 +17,13 @@ Each shot is `<item>-<view>-<before|after>-<390|1280>-<light|dark>.png`.
 
 ## 1. The passport guide under the federal section (`w1-hub-passport-*`)
 
-How to Get a U.S. Passport is now listed under **Federal Benefits**, beside Medicare and disability
+How to Get a U.S. Passport is now listed under the federal group, beside Medicare and disability
 benefits. It was under Property and Records.
 
-- **Open question:** whether to rename the group "Federal Programs and Services" is with the owner.
+- **The group's name:** at the owner's word (30 October), the group is now **Federal Programs and
+  Services**. It was Federal Benefits. Its icon is unchanged, and its Spanish entry is renamed with it
+  ("Programas y servicios federales", a draft).
+- **The shots** above were taken before the rename, and show "Federal Benefits".
 
 ## 2. A guide's parts in its index (`w2-guide-otp-*`, `w2-guide-side-*`)
 
@@ -52,7 +55,45 @@ At 1280, a click on the first lands its heading 16px from the top.
 - **Wordings read:** the docket's own, and the clerks' variants: "Recommended for Further Legislation",
   "Not Recommended for Legislation" and "Not Recommended for Future Recommendation" (fixed in review).
 - **The check:** `_interim_report_chip_colours`.
-- **Open question:** the site's other marks for the same report are orange where it recommends: the
-  docket line's arrow, a committee meeting card, and `build_pages.STUDY_KIND`. Whether they follow the
-  green and red is with the owner, and the manager's default is one rule everywhere. Until then, a bill's
-  Summary and its Reports tab can colour one report differently.
+## 4. One colour rule for an interim study report, everywhere (`w4-*`)
+
+At the owner's word (30 October), each place that shows an interim study committee's report colours it
+the same way:
+
+| What the report said | Colour |
+|---|---|
+| Recommends future legislation | green, `--st-law` |
+| Does not recommend it | red, `--st-done` |
+| Makes no recommendation | plain |
+
+Where each place was before:
+
+- **The docket line in How it got here** was orange for all three. The page now knows which of the three
+  it is: build_site_v2 adds `"rec"` to the line, and the line takes `jrec-<rec>`. The mark itself is
+  unchanged, so the rail and its counts are untouched. The "sent to interim study" wave stays orange.
+- **A committee meeting's card** had an orange arrow for "recommends". It is now green. "Without" keeps
+  its cross and "Died:", but plain.
+- **A sitting's page and Latest Activity** (`build_pages.STUDY_KIND`): "recommends" was orange and
+  "without" grey. They are now green and none.
+- **The Reports tab's chip** already followed this rule (item 3).
+
+The shots set each bill's Summary line beside its Reports chip:
+
+- HB 1530 of 2024 recommends;
+- HB 1415 of 2006 does not;
+- HB 1592 of 2014 makes no recommendation.
+
+They are taken on the preview's own pages, whose data predates the new field. So "after" adds `"rec"`
+to the page's record as the branch's build_site_v2 writes it, read from the same page's own
+`study_report`.
+
+After the change, the line and the chip come out the same colour for all three bills in both themes:
+
+| Report | Light | Dark |
+|---|---|---|
+| Recommends | rgb(30, 91, 60) | rgb(127, 203, 156) |
+| Does not | rgb(158, 43, 37) | rgb(240, 147, 140) |
+| Without | rgb(74, 82, 89) | rgb(167, 176, 176) |
+
+`_interim_report_one_colour` draws all four places for each of the three outcomes and wants the same
+colour from each.
