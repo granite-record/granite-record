@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.63
+# GRANITE_VERSION: 2026-09-10.64
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -1337,26 +1337,37 @@ def bill_files(out, site, collect=None):
 
 def database_file(out, collector, joined):
     """The data API's database (api_db.py): every table above and the
-    record's committee reports, in one SQLite file in xz. Says each table's
-    rows, and stops on a table that should hold rows and holds none."""
+    record's committee reports, in one SQLite file in xz. Returns its row
+    for the manifest's "files", or none where it is not written -- and then
+    it is not listed, and a file an earlier build left is taken away, so the
+    manifest never names a file that is not tonight's. Says each table's
+    rows; stops on a table that must hold rows and holds none, and warns of
+    one that may be empty."""
     import api_db
-    if not collector.bills:
-        print(f"  {api_db.NAME:<28} not written: no bill records were read")
-        return {"path": f"/data/{api_db.NAME}", "kind": "database", "rows": 0, "bytes": 0,
-                "skipped": "no bill records"}
-    row = api_db.write(out, collector, (joined or ([], None))[0],
-                       build_date.now().replace(microsecond=0).isoformat())
-    empty = [t for t in ("bills", "rollcalls", "votes", "committee_reports", "proceedings")
-             if not row["counts"].get(t)]
+    path = out / api_db.NAME
+    why = ("no bill records were read" if not collector.bills else
+           "no people join (no db/Legislators.psv or generated/careers.json here)"
+           if joined is None else None)
+    if why:
+        path.unlink(missing_ok=True)
+        print(f"  {api_db.NAME:<28} not written: {why}")
+        return []
+    row = api_db.write(out, collector, joined[0])
+    must = ("bills", "rollcalls", "votes", "vote_values", "sponsors", "legislators",
+            "proceedings", "people", "person_numbers", "committee_reports")
+    empty = [t for t in must if not row["counts"].get(t)]
     if empty:
+        path.unlink(missing_ok=True)
         raise SystemExit(f"The database's {', '.join(empty)} came out empty; not publishing it.")
     flag = "  OVER THE 25 MiB CAP" if row["bytes"] > SAFE else ""
     print(f"  {api_db.NAME:<28} {row['rows']:>9,} rows  {row['bytes'] / 1e6:>7.1f} MB "
           f"({row['opened_bytes'] / 1e6:,.1f} MB opened){flag}")
     print("    " + ", ".join(f"{t} {n:,}" for t, n in row["counts"].items()))
-    if not row["counts"].get("meetings"):
-        print("    meetings: none, because meetings.json is not here")
-    return row
+    for t in ("docket_reports", "interim_study", "testimony", "meetings"):
+        if not row["counts"].get(t):
+            print(f"    WARNING: the database's {t} is empty"
+                  + (": meetings.json is not here" if t == "meetings" else ""))
+    return [row]
 
 
 def people_join(site, data, db="db", careers="generated/careers.json",
@@ -1491,7 +1502,7 @@ def main():
     import api_db
     collector = api_db.Collector()
     manifest["files"] = people_files(out, joined) + bill_files(out, site, collect=collector.add)
-    manifest["files"].append(database_file(out, collector, joined))
+    manifest["files"] += database_file(out, collector, joined)
     over += [{"file": f["path"].rsplit("/", 1)[-1], "bytes": f["bytes"]}
              for f in manifest["files"] if f["bytes"] > SAFE]
     (out / "manifest.json").write_text(

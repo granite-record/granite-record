@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.1
+# GRANITE_VERSION: 2026-10-30.2
 """
 The data API's database: every table on the data page, and the record's
 committee reports, in one SQLite file, compressed with xz.
@@ -7,7 +7,7 @@ committee reports, in one SQLite file, compressed with xz.
     import api_db
     c = api_db.Collector()                 # handed every bill record, by
     build_exports.bill_files(..., collect=c.add)
-    api_db.write(out, c, people, person_of)    -> the manifest's row
+    api_db.write(out, c, people)               -> the manifest's row
 
 docs/design/api/DESIGN.md, 2.3 and 2.9; the owner's OK of 30 October 2026.
 Nothing here asks the network.
@@ -31,7 +31,9 @@ WHAT IT HOLDS
   interim_study           the docket's line on each interim study
   testimony               sign-in counts at each public hearing; never a name
   meetings                every meeting the calendars noticed
-  meta                    what this file is, when, and whose
+  meta                    what this file is and whose. Not when: the
+                          manifest says that, and a time inside the file
+                          would change its bytes every night
 
 The tables read from the bill records read the records the pages draw, in
 the same pass that writes the bill files, so a table and a page cannot
@@ -95,7 +97,8 @@ class Collector:
             t = isinstance(st, dict) and st.get("testimony")
             if t:
                 self.testimony.append((term, bill, t.get("date") or st.get("when") or "",
-                                       1 if t.get("date") else 0, st.get("committee") or "",
+                                       1 if t.get("date") else 0, st.get("body") or "",
+                                       st.get("committee") or "",
                                        t.get("total"), t.get("support"), t.get("oppose"), t.get("neutral")))
 
 
@@ -125,10 +128,10 @@ CREATE TABLE docket_reports(term TEXT, bill TEXT, date TEXT, dated TEXT, chamber
   amendment TEXT, cite TEXT);
 CREATE TABLE interim_study(term TEXT, bill TEXT, date TEXT, chamber TEXT, rec TEXT,
   recommended INT, vote TEXT);
-CREATE TABLE testimony(term TEXT, bill TEXT, date TEXT, date_known INT, committee TEXT,
+CREATE TABLE testimony(term TEXT, bill TEXT, date TEXT, date_known INT, chamber TEXT, committee TEXT,
   total INT, support INT, oppose INT, neutral INT);
 CREATE TABLE meetings(date TEXT, time TEXT, chamber TEXT, committee TEXT, kind TEXT,
-  venue TEXT, bill TEXT, noticed TEXT, calendar TEXT);
+  venue TEXT, room TEXT, bill TEXT, noticed TEXT, calendar TEXT);
 """
 
 
@@ -147,12 +150,25 @@ def _int(v):
         return None
 
 
-def write(out, collector, people, built, meetings_path="meetings.json"):
+def write(out, collector, people, meetings_path="meetings.json"):
+    """Build the database (_write), and whatever happens, leave no
+    temporary file behind: a stop part-way would otherwise leave about
+    100 MB of half-built database in site/data/."""
+    tmp = Path(out) / "granite-record.sqlite.part"
+    try:
+        return _write(Path(out), collector, people, meetings_path, tmp)
+    except sqlite3.IntegrityError as e:
+        raise SystemExit(f"The database is not written: a row repeats a key ({e}). The "
+                         "table it names has two rows for one bill, or one ballot twice, "
+                         "which the CSVs beside it hold too.")
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def _write(out, collector, people, meetings_path, tmp):
     """Build the database from the CSVs in out and the collector's rows;
     write out/NAME and return its manifest row (with "counts", the rows of
     each table). The CSVs must have been written first."""
-    out = Path(out)
-    tmp = out / "granite-record.sqlite.part"
     tmp.unlink(missing_ok=True)
     con = sqlite3.connect(tmp)
     con.executescript("PRAGMA page_size=4096; PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF;")
@@ -161,12 +177,13 @@ def write(out, collector, people, built, meetings_path="meetings.json"):
     counts = {}
 
     ins("meta", 2, sorted({
-        "format": str(FORMAT), "built": built,
+        "format": str(FORMAT),
         "what": "Granite Record: the public record of the New Hampshire General Court, "
                 "as one database. See https://graniterecord.org/api",
         "rights": "The record is the State of New Hampshire's. What this site adds -- its ids, "
-                  "joins, corrections and timings -- is dedicated to the public domain under "
-                  "CC0 1.0. The software that built it is MIT licensed.",
+                  "joins and corrections -- is dedicated to the public domain under CC0 1.0; "
+                  "the plain-English histories and the software are MIT licensed. DATA.md "
+                  "says which is which.",
         "upstream": "https://gc.nh.gov",
     }.items()))
 
@@ -243,15 +260,15 @@ def write(out, collector, people, built, meetings_path="meetings.json"):
     ins("committee_reports", 16, collector.reports)
     ins("docket_reports", 12, collector.docket)
     ins("interim_study", 7, collector.study)
-    ins("testimony", 9, collector.testimony)
+    ins("testimony", 10, collector.testimony)
     counts.update(committee_reports=len(collector.reports), docket_reports=len(collector.docket),
                   interim_study=len(collector.study), testimony=len(collector.testimony))
 
     meet = json.loads(Path(meetings_path).read_text(encoding="utf-8")) if Path(meetings_path).exists() else []
     meet = sorted(meet, key=lambda m: (m.get("date") or "", m.get("time") or "", m.get("body") or "",
                                        m.get("committee") or "", m.get("bill") or ""))
-    ins("meetings", 9, [(m.get("date"), m.get("time"), m.get("body"), m.get("committee"),
-                         m.get("kind"), m.get("venue") or m.get("room"), m.get("bill"),
+    ins("meetings", 10, [(m.get("date"), m.get("time"), m.get("body"), m.get("committee"),
+                         m.get("kind"), m.get("venue"), m.get("room"), m.get("bill"),
                          m.get("noticed"), m.get("calendar")) for m in meet])
     counts["meetings"] = len(meet)
 
