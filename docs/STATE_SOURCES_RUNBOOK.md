@@ -218,9 +218,11 @@ and report each result to the manager.
    in Chrome alone. Then:
    - if a PDF is saved, file it:
      `python3 src/ops/state_sources.py file "<the PDF>" --as sos-register-vote`;
-   - either way, report whether it worked and how. Do not use any other tool
-     or script to make the PDF. If it did not work, the owner chooses what
-     next.
+   - either way, report whether it worked and how. Use Claude in Chrome
+     alone: no computer use, no keystrokes sent to Windows, no other app, tool
+     or script. Chrome's "Save as PDF" may end in Windows' own Save dialog,
+     which Claude in Chrome cannot complete; if so, that is the answer: stop
+     and report it. The owner then chooses what next.
 3. **The printouts to the bucket.** The owner's printouts live only on this
    laptop. They go to the bucket so that any session can read them without
    asking:
@@ -232,12 +234,12 @@ and report each result to the manager.
    `records/sources/printouts/`. If any are missing, the owner runs
    `python3 src/ops/file_printouts.py ~/Downloads` (or wherever they are)
    first. `sources-up` sends each filed printout whose bytes match its sha256
-   in the index, to the bucket's `sources/printouts/`. A printout that does
-   not match stops the send; report it.
+   in the index, to the bucket's `sources/printouts/`, and names any it could
+   not send. A printout that does not match stops the send; report it.
 4. **The printouts' addresses.** For each row of
-   `records/sources/printouts/INDEX.csv` with no `url`, open the PDF on disk
-   (the file itself, not the web) and read the address printed in its
-   footer. Report the list to the manager: the file name, and the address as
+   `records/sources/printouts/INDEX.csv` with no `url`, read the PDF on disk
+   with the session's own file-reading tool (never by opening it in Chrome,
+   and never the web) and read the address printed in its footer. Report the list to the manager: the file name, and the address as
    printed, or "no address printed". Change nothing.
 5. **The first job**, below.
 

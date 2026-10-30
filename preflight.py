@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.739
+# GRANITE_VERSION: 2026-09-04.740
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -57040,7 +57040,31 @@ def _state_sources_apart(CL, SS):
                                                                "sent, or went unremarked", out)
         (home / "council-contact-us.pdf").unlink()
         code, out = run("down", "--into", str(t / "down3"))
+        assert code == 0 and (t / "down3" / "printouts" / "council-contact-us.pdf"
+                              ).read_bytes() == body, out
+        assert not (home / "council-contact-us.pdf").exists(), (
+            "down --into wrote printouts into the checkout")
+        code, out = run("down")
         assert code == 0 and (home / "council-contact-us.pdf").read_bytes() == body, out
+        # A printout here that differs is left alone, and the readings still come.
+        (home / "council-contact-us.pdf").write_bytes(b"touched")
+        (folder / "2026-10-03.pdf").rename(t / "aside.pdf")
+        code, out = run("down")
+        assert code == 1 and "differs from the index" in out, out
+        assert (folder / "2026-10-03.pdf").read_bytes() == b"second", (
+            "a printout's problem kept the readings from coming down", out)
+        assert (home / "council-contact-us.pdf").read_bytes() == b"touched", (
+            "down wrote over a printout here that differs")
+        # A printout the bucket holds with other bytes stops up before any
+        # reading is sent.
+        (home / "council-contact-us.pdf").write_bytes(body)
+        (bucket / "sources" / "printouts" / "council-contact-us.pdf").write_bytes(b"other")
+        (bucket / ".meta" / "sources" / "printouts" / "council-contact-us.pdf.json").unlink()
+        (folder / "2026-10-05.pdf").write_bytes(b"fifth")
+        code, out = run("up")
+        assert code == 1 and "other bytes" in out, out
+        assert not (bucket / "sources" / one / "2026-10-05.pdf").exists(), (
+            "up sent a reading before finding a printout it could not send")
     finally:
         shutil.rmtree(t, ignore_errors=True)
     return "ok", (f"{len(reg)} registered documents ({len(gc)} the General Court's, the "
