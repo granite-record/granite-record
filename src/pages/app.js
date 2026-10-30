@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.256
+// GRANITE_VERSION: 2026-09-07.257
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -34,6 +34,12 @@ const citeSource=lab=>CITE_OF[(String(lab).match(/^([A-Z]{2})\b/)||[])[1]]||"";
 
 const PARTY_NAME={R:"Republican",D:"Democrat",I:"Independent",L:"Libertarian",
   X:"Party not on file"};
+// A roll call's legend keys each row by its party (the owner's walk of the
+// release candidate, 30 October 2026: "the roll call vote legend doesn't
+// show as blue and red or purple by party; instead it colors them red and
+// green by the yes or no vote, like division votes").
+const PARTY_COLOR={R:"var(--rep)",D:"var(--dem)",I:"var(--ind)",L:"var(--ind)",
+  X:"var(--ink-2)"};
 // Where a party sits in a vote's legend and full record: Republicans, then
 // Democrats, then anyone else by letter, and within a party yes before no.
 // The split inside a caucus is what those two rows are compared for, so they
@@ -3952,13 +3958,16 @@ function donut(bid,i,rc){
   // A check beside every group on the side that prevailed. Which side won is
   // the first thing anyone wants from a vote, and it should not have to be
   // worked out by comparing two numbers against a threshold.
-  // THE SWATCH IS THE SIDE'S COLOUR, the ring's and a division's legend's, and
-  // the party is in words beside it: red, blue and purple keys under a ring of
-  // green and salmon keyed nothing in it (the audit of 25 October 2026, S1).
+  // THE SWATCH IS THE PARTY'S COLOUR: red, blue and purple, with the side in
+  // words beside it (the owner's walk of the release candidate, 30 October
+  // 2026). The audit of 25 October (S1) had made it the side's green or
+  // salmon, the ring's, so that every row's key read the same as a division
+  // vote's; the owner wants the parties told apart at a glance. A division's
+  // legend, which has no parties, stays Yes and No.
   const legend=rows.map(s=>{
     const winner=(s.side==="Yea")===won;
     return `<button type="button" class="lrow ${chosen===s.key?'sel':''}" aria-pressed="${chosen===s.key}" data-seg="${key}|${s.key}">
-    <span class="sw" style="background:var(--${s.side==="Yea"?"yes":"no"})"></span>
+    <span class="sw" style="background:${PARTY_COLOR[s.p]||"var(--ink-2)"}"></span>
     <span>${PARTY_NAME[s.p]||s.p} — ${s.side==="Yea"?"Yes":"No"}${
       winner?wonMark():""}</span>
     <span class="c">${s.n}</span></button>`;}).join("");
@@ -7321,6 +7330,15 @@ document.addEventListener("click",e=>{
   else pick();
 });
 
+// THE RECORD'S OWN ADDRESS, WHATEVER TAB IS OPEN (30 October 2026). A tab
+// writes its name into the address (tabAddress: /bill/2026/hb1/votes,
+// /committee/H05/sessions), and report.js takes a report only from the
+// record's own address, so a report sent from any tab but the first was
+// dropped while the reader was thanked. The tab goes as the payload's tab.
+function reportPath(){
+  const p=location.pathname.replace(/\.html$/,""),m=TAB_PATH.exec(p);
+  return m&&isTabSlug(m[2].toLowerCase())?m[1]:p.replace(/\/$/,"");
+}
 function reportFallback(form,payload,why){
   const st=form.querySelector(".reportstate");
   const subject=`Problem on ${location.hostname}${payload.url}`;
@@ -7358,7 +7376,7 @@ document.addEventListener("submit",async e=>{
   const tabLabel=tab?tab.textContent.trim().replace(/\s*\([\d.,\s']+\)\s*$/,""):"";
   const payload={
     record:`${box.dataset.rkind}:${box.dataset.rref}`,
-    url:location.pathname.replace(/\.html$/,""),
+    url:reportPath(),
     tab:REPORT_TABS.has(tabLabel)?tabLabel:"",
     field:form.elements.field.value,
     note,

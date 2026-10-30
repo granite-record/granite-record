@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.741
+# GRANITE_VERSION: 2026-09-04.744
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -583,13 +583,21 @@ def _history_addresses():
     which costs nothing while no remote exists and costs a force-push and every
     clone anyone has taken once one does.
 
-    So: every author and every committer, across every ref, is the project's
-    own address.
+    So: every author and every committer in the history being built is the
+    project's own address.
+
+    THE HISTORY BEING BUILT, NOT EVERY REF (30 October 2026). This read
+    `git log --all`, and GitHub's night checks out with fetch-depth 0, so it
+    held every branch on GitHub: one merge pushed to an unmerged side branch
+    under another address stopped dry run 157 at preflight, and would have
+    stopped the live night from main with it. A branch nobody is building
+    must not decide whether the site is built. What the night builds, and
+    what reaches main, is HEAD's history, and that is what is read.
     """
     import subprocess
     CORRECT = "contact@graniterecord.org"
     try:
-        out = _run(["git", "log", "--all", "--format=%ae%n%ce"],
+        out = _run(["git", "log", "HEAD", "--format=%ae%n%ce"],
                    capture_output=True, text=True, timeout=120)
     except (OSError, subprocess.SubprocessError) as e:
         return "skip", f"git would not read the history ({e})"
@@ -607,8 +615,8 @@ def _history_addresses():
           "it -- the raw commit object keeps the address.\n  Rewrite with "
           "`git filter-branch --env-filter` over --all, then delete "
           "refs/original, expire the reflog and gc --prune=now.")
-    return "ok", (f"{len(seen):,} author and committer fields across the whole "
-                  f"history, every one {CORRECT}")
+    return "ok", (f"{len(seen):,} author and committer fields in the history being "
+                  f"built (HEAD), every one {CORRECT}")
 
 
 @check("files", "no tracked file carries a credential")
@@ -54348,7 +54356,7 @@ process.stdout.write("\n@@" + JSON.stringify(out));
 
 
 @check("frontend", "a member's Votes tab finds a bill by its page's own number (\"HB 282-FN\") or the "
-                   "number alone; a ring's legend keys each side in the side's colour; the full "
+                   "number alone; a roll call's legend keys each row by its party's colour; the full "
                    "record says Yes and No; a voice or division vote says it has no names in one line")
 def _votes_words_and_keys():
     """The audit of 25 October 2026 (S1), approved by the owner:
@@ -54362,9 +54370,13 @@ def _votes_words_and_keys():
     - The full voting record said "Republican Yea" under a legend that says
       "Republican -- Yes": Yes and No throughout.
     - The ring is green (Yes) and salmon (No), and the legend's swatches were
-      the parties' red, blue and purple, keying nothing in the ring. Each row's
-      swatch is its side's colour, as a division's legend is, and the party
-      stays in words.
+      the parties' red, blue and purple, keying nothing in the ring. The audit
+      made each row's swatch its side's colour. THE OWNER REVERSED THAT on the
+      walk of the release candidate (30 October 2026): "the roll call vote
+      legend doesn't show as blue and red or purple by party; instead it
+      colors them red and green by the yes or no vote, like division votes".
+      Each row's swatch is its party's colour (PARTY_COLOR: R red, D blue, I
+      and L purple), never the side's, and the side stays in words.
     - "Decided on a voice vote. There is no count and no record of how
       individual members voted", or a division's two sentences, on every such
       card under a head that names the kind of vote: one line, "No record of
@@ -54399,9 +54411,10 @@ def _votes_words_and_keys():
                       got["ring"])
     if len(rows) != 4:
         bad.append(f"the ring's legend has {len(rows)} party rows, not 4: {rows}")
+    party_bg = {"Republican": "var(--rep)", "Democrat": "var(--dem)", "Independent": "var(--ind)"}
     for bg, party, side in rows:
-        if bg != f"var(--{side.lower()})":
-            bad.append(f"{party} — {side} is keyed {bg}, not the ring's colour for {side}")
+        if bg != party_bg.get(party):
+            bad.append(f"{party} — {side} is keyed {bg}, not its party's colour {party_bg.get(party)}")
     if {r[1] for r in rows} != {"Republican", "Democrat", "Independent"}:
         bad.append(f"the legend no longer names the parties in words: {rows}")
     heads = re.findall(r"<h3>([^<]*)</h3>", got["full"])
@@ -54415,7 +54428,7 @@ def _votes_words_and_keys():
                    f"line: {notes}")
     assert not bad, "; ".join(bad[:6])
     return "ok", (f"{len(finds)} searches find what they name, suffix or none; four legend rows "
-                  "keyed by side; Yes and No in the full record; one line on three unnamed votes")
+                  "keyed by party; Yes and No in the full record; one line on three unnamed votes")
 
 
 # A member's Votes tab with a vote on no bill the Journal describes (rc.w),
@@ -85463,6 +85476,64 @@ def _follow_panel_states():
     return "ok", (f"{len(out['cases'])} cases: email first with RSS folded (open where email is not "
                   "offered), Sending... and one request, Check your email with no reset, a refusal "
                   "kept and reset once, Enter it again")
+
+
+_REPORT_TAB_JS = r"""
+const { validate } = await import(%s);
+const src = %s;
+const grab = re => { const m = src.match(re); if (!m) throw new Error("not in app.js: " + re); return m[0]; };
+const code = [/const BILL_TABS=\{[^}]*\};/, /const MEMBER_TABS=\{[^}]*\};/, /const COMMITTEE_TABS=\{[^}]*\};/,
+  /const TAB_PATH=.*;/, /const ownSlug=.*;/, /const isTabSlug=.*;/,
+  /function reportPath\(\)\{[\s\S]*?\n\}/].map(grab).join("\n");
+const location = { pathname: "" };
+const reportPath = new Function("location", code + "\nreturn reportPath;")(location);
+const base = { tab: "", field: "status", note: "the date is wrong", build: "", elapsed: 9000 };
+const out = [];
+for (const [record, paths] of [
+    ["bill:2026/HB1", ["/bill/2026/hb1", "/bill/2026/hb1.html", "/bill/2026/hb1/votes", "/bill/2026/hb1/text/",
+                       "/bill/2026/hb1/hearings", "/bill/2026/hb1/related"]],
+    ["committee:H05", ["/committee/H05", "/committee/H05/sessions", "/committee/H05/videos", "/committee/H05/bills"]],
+    ["committee:S03-1989", ["/committee/S03-1989", "/committee/S03-1989/videos"]]]) {
+  for (const p of paths) {
+    location.pathname = p;
+    const url = reportPath();
+    out.push([record, p, url, validate({ ...base, record, url }) !== null]);
+  }
+}
+location.pathname = "/legislator/jane-doe-hills-12/votes";
+out.push(["member", location.pathname, reportPath(), null]);
+console.log("@@" + JSON.stringify(out));
+"""
+
+
+@check("build", "a report is sent from the record's own address whatever tab is open, and "
+       "report.js takes it", needs=())
+def _report_from_any_tab():
+    """A tab writes its name into the address (app.js tabAddress), and a
+    report sent from any tab but the first named /bill/2026/hb1/votes, which
+    report.js does not take: the reader was thanked and the report dropped
+    (30 October 2026). app.js's own reportPath, with its tab
+    maps, is run here on every tab of a bill, a committee and a member,
+    and report.js's validate must take each."""
+    js, fn = Path("src/pages/app.js"), Path("functions/api/report.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and fn.exists() and node):
+        return "skip", "app.js, report.js or node is not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        t = root / "go.mjs"
+        t.write_text(_REPORT_TAB_JS % (json.dumps(fn.resolve().as_uri()),
+                                       json.dumps(js.read_text(encoding="utf-8"))), encoding="utf-8")
+        r = _run([node, str(t)], capture_output=True, text=True, timeout=60)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert r.returncode == 0 and "@@" in (r.stdout or ""), (r.stderr or r.stdout or "")[-400:]
+    rows = json.loads(r.stdout.rsplit("@@", 1)[1])
+    bad = [f"{p} sent as {u} for {rec}" for rec, p, u, ok in rows if ok is False]
+    assert not bad, "report.js refuses a report from a tab: " + "; ".join(bad[:4])
+    member = [u for rec, p, u, ok in rows if rec == "member"]
+    assert member == ["/legislator/jane-doe-hills-12"], f"a member's Votes tab sent {member}"
+    return "ok", f"{len(rows)} addresses, every tab's report sent from its record's own address"
 
 
 @check("build", "the report endpoint accepts only what a page can name, and stores nothing about the reader")
