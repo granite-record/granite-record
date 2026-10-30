@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.13
+// GRANITE_VERSION: 2026-10-30.14
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -388,9 +388,9 @@ L.poller = function (o) {
 var CHAMBER = { H: "House", S: "Senate" };
 
 // Live Now's session card for one chamber (section 4.1): the list, the
-// section 2.6 sentence, the provisional line, and the chamber's today page.
+// section 2.6 sentence, the provisional line, and the chamber's dated page.
 L.sessionCard = function (file, body, now, http, bills) {
-  // Tallies as text: section 4.1. The rings are the today page's.
+  // Tallies as text: section 4.1.
   var items = L.votesItems(file, body, bills);
   // Before 06:00 the card is the day before's sitting (L.readerDay), and
   // says so by its date.
@@ -399,7 +399,12 @@ L.sessionCard = function (file, body, now, http, bills) {
     ? (body === "S" ? C.tr("votes.head_senate_day", "Senate roll calls of {day}", words)
                     : C.tr("votes.head_house_day", "House roll calls of {day}", words))
     : (body === "S" ? C.tr("votes.head_senate", "Senate roll calls today") : C.tr("votes.head_house", "House roll calls today"));
-  var today = body === "S" ? C.tr("votes.today_senate", "The Senate today") : C.tr("votes.today_house", "The House today");
+  // The day's one page, at its dated address (the morning page, or the
+  // record's once it has the day).
+  var link = past
+    ? (body === "S" ? C.tr("votes.day_senate", "The Senate on {day}", words)
+                    : C.tr("votes.day_house", "The House on {day}", words))
+    : (body === "S" ? C.tr("votes.today_senate", "The Senate today") : C.tr("votes.today_house", "The House today"));
   return '<section class="lv-session" data-body="' + body + '">'
     + '<h2 class="lv-name">' + C.esc(head) + "</h2>"
     + (items.length ? '<ol class="lv-votes">' + items.join("") + "</ol>" : "")
@@ -408,7 +413,7 @@ L.sessionCard = function (file, body, now, http, bills) {
         "Provisional: the night's record replaces this tomorrow morning; excusals settle days later.")) + "</p>" : "")
     + (body === "S" && items.length ? '<p class="lv-provisional">' + C.esc(C.tr("votes.senate_line",
         "Senate names follow once the Senate enters them, usually that afternoon or the next day.")) + "</p>" : "")
-    + '<p class="lv-more"><a href="/session/' + body + '/today">' + C.esc(today) + "</a></p></section>";
+    + '<p class="lv-more"><a href="/session/' + body + "/" + day + '">' + C.esc(link) + "</a></p></section>";
 };
 
 // The chambers with a session card today: those the night's schedule has a
@@ -513,7 +518,7 @@ L.start = function (doc, opts) {
   var first = poll().then(schedule_);
   // The session card: asked for only on a day the night's schedule has a
   // sitting on (no request on any other day).
-  // Keyed on the reader's session day (L.readerDay), as the today page it
+  // Keyed on the reader's session day (L.readerDay), as the dated page it
   // links to is: a sitting past midnight keeps its card until 06:00. Checked
   // again on every streams poll, so a page left open overnight finds the next
   // morning's sitting.
@@ -553,38 +558,6 @@ L.daysBetween = function (a, b) {
   return Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 86400000);
 };
 
-// The record's roll calls and the live ones the record lacks, as list items,
-// newest first: the record's plainly, the live ones marked provisional.
-L.dayItems = function (record, live, body, bills) {
-  var rows = ((record && record.rollcalls) || []).filter(function (r) { return r.body === body; })
-    .map(function (r) { return { r: r, prov: false }; })
-    .concat(L.overlay(record, live, body).map(function (r) { return { r: r, prov: true }; }))
-    .sort(function (a, b) { return b.r.seq - a.r.seq; });
-  return rows.map(function (x, i) {
-    return L.votesItems(x.prov ? live : record, body, bills,
-                        { rollcalls: [x.r], rings: true, provisional: x.prov, record: !x.prov, at: i })[0];
-  });
-};
-
-// A session stream of `body` in a streams file, as a card, or none: only
-// from a fresh look, as on /live.
-L.sessionStream = function (file, body, now, http) {
-  var status = L.streamsStatus(file, now, http);
-  var out = { status: status, live: [] };
-  if (status.kind !== "fresh") return out;
-  (file.streams || []).forEach(function (s) {
-    if (s.status === "live" && L.sessionOf(s.title) === body) {
-      out.live.push({ video: s.video, name: L.bareTitle(s.title), parts: L.cardParts(s, null) });
-    }
-  });
-  if (!out.live.length) {
-    out.status = { kind: "fresh", sentence: body === "S"
-      ? C.tr("live.no_stream_senate", "No Senate session stream found right now (checked {time})", { time: L.timeOf(file.checked) })
-      : C.tr("live.no_stream_house", "No House session stream found right now (checked {time})", { time: L.timeOf(file.checked) }) };
-  }
-  return out;
-};
-
 function getJSON(fetchImpl, url) {
   return Promise.resolve(fetchImpl(url, { headers: {} })).then(function (r) {
     return r && r.ok ? r.json() : null;
@@ -592,103 +565,86 @@ function getJSON(fetchImpl, url) {
 }
 function each(el, sel, f) { Array.prototype.slice.call((el && el.querySelectorAll && el.querySelectorAll(sel)) || []).forEach(f); }
 
-// /session/<B>/today (section 4.2). The night wrote it for its own day; this
-// works out the reader's, hides what the night dated otherwise (the floor
-// card, the dated page's link), and draws the day's roll calls and the
-// chamber's session stream.
-L.startToday = function (doc, opts) {
+// ---- the morning page: the day's dated address, filled as votes are read --------
+/* global voteHead, voteChip, billCard */
+// One roll call as the session page's vote block (build_session_pages
+// .vote_html's .dvote): its question with components' voteHead, the
+// outcome chip with voteChip where the clerk's docket gives one, and the
+// count. No time and no names on the day (the owner, 30 October 2026).
+L.voteBlock = function (r) {
+  var passed = L.passedOf(r);
+  var bill = String(r.bill || "").split("/")[1] || "";
+  var head = typeof voteHead === "function" ? voteHead("", r.question || "") : C.esc(r.question || "");
+  var res = passed === null
+    ? '<span class="lv-outcome">' + C.esc(C.tr("votes.no_outcome", "outcome not yet in the docket")) + "</span>"
+    : (typeof voteChip === "function" ? voteChip("", passed, bill) : "");
+  return '<div class="dvote" data-rc="' + C.esc(r.id) + '"><p class="dvh">' + head + "</p>"
+    + '<p class="dvr">' + res + " <b>" + (Number(r.yeas) || 0) + "&ndash;" + (Number(r.nays) || 0) + "</b> "
+    + C.esc(C.tr("votes.on_roll_call", "on a roll call")) + "</p></div>";
+};
+// The day's roll calls of `body`, by bill, each bill's in the day's order:
+// {bills: [[id, [rc]]] in the order each bill was first voted on, nobill: [rc]}.
+L.byBill = function (rollcalls, body) {
+  var rcs = (rollcalls || []).filter(function (r) { return r.body === body; })
+    .slice().sort(function (a, b) { return a.seq - b.seq; });
+  var order = [], by = {}, nobill = [];
+  rcs.forEach(function (r) {
+    var id = String(r.bill || "").split("/")[1] || "";
+    if (!id) { nobill.push(r); return; }
+    if (!by[id]) { by[id] = []; order.push(id); }
+    by[id].push(r);
+  });
+  return { bills: order.map(function (id) { return [id, by[id]]; }), nobill: nobill };
+};
+
+// The morning page (build_live_session.write_morning): #live-day, and the
+// day's cards in #lv-cards, each with its .lv-rcs place. Polls only while
+// the page's day is the reader's (L.readerDay), and stops when the day is
+// finished (L.votesDone).
+L.startDay = function (doc, opts) {
   opts = opts || {};
   var fetchImpl = opts.fetch || root.fetch;
   var now = opts.now || function () { return Date.now(); };
-  var el = doc.getElementById("live-today");
+  var el = doc.getElementById("live-day");
   if (!el) return null;
-  var body = el.getAttribute("data-body") === "S" ? "S" : "H";
+  var day = el.getAttribute("data-day") || "", body = el.getAttribute("data-body") === "S" ? "S" : "H";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
   var bills = {};
   try { bills = JSON.parse((doc.getElementById("live-bills") || {}).textContent || "{}"); } catch (e) { bills = {}; }
-  var shown = null, record = null, recordFor = null, asked = 0;
-  function day() { return L.readerDay(now()); }
-  function setDay(d) {
-    if (d === shown) return Promise.resolve();
-    shown = d;
-    record = null;
-    each(el, "[data-day]", function (x) { x.hidden = x.getAttribute("data-day") !== d; });
-    var words = doc.getElementById("live-today-day");
-    if (words) {
-      words.textContent = C.tr("votes.today_day", "Roll calls of {day}, as read during the day", { day: L.dayWords(d) });
-      words.hidden = false;
-    }
-    asked = 0;
-    // The day before's link goes with its day.
-    var link = doc.getElementById("live-today-dated");
-    if (link) { link.innerHTML = ""; link.hidden = true; }
-    return askRecord(d);
+  var box = doc.getElementById("lv-cards"), nob = doc.getElementById("lv-nobill"), nobSec = doc.getElementById("nobill");
+  var places = {};                                 // bill id -> its .lv-rcs
+  Array.prototype.slice.call((box && box.querySelectorAll && box.querySelectorAll(".lv-rcs")) || []).forEach(function (x) {
+    places[x.getAttribute("data-bill")] = x;
+  });
+  // A bill voted on that is not on the calendar: its card, appended in the
+  // order its first vote arrives.
+  function placeFor(id, r) {
+    if (places[id]) return places[id];
+    if (!box || typeof billCard !== "function") return null;
+    var wrap = doc.createElement("div");
+    wrap.className = "lv-added";
+    wrap.innerHTML = billCard({ id: id, href: L.billHref(r, bills) || "", n: id.replace(/^([A-Z]+)(\d)/, "$1 $2"),
+                                title: "", open: null, line: '<div class="lv-rcs" data-bill="' + C.esc(id) + '"></div>' });
+    box.appendChild(wrap);
+    places[id] = wrap.querySelector(".lv-rcs");
+    return places[id];
   }
-  // Whether the record already holds the day: the night writes a dated page's
-  // file with the page, and a night that has run since the page was built
-  // (before 06:00, the day before's) is found here, not by what the page was
-  // built with. Asked again every 10 minutes while it is not there.
-  function askRecord(d) {
-    if (record || +now() - asked < 10 * MINUTE) return Promise.resolve();
-    asked = +now();
-    recordFor = d;
-    return getJSON(fetchImpl, "/session/" + body + "/" + d + ".json").then(function (j) {
-      if (recordFor !== d || !j || j.date !== d) return;
-      record = j;
-      var link = doc.getElementById("live-today-dated");
-      var built = false;
-      each(el, ".lv-dated", function (x) { if (x.getAttribute("data-day") === d) built = true; });
-      if (link && !built) {
-        link.innerHTML = C.esc(C.tr("votes.dated", "The day's page:")) + ' <a href="/session/' + body + "/" + d + '">'
-          + "/session/" + body + "/" + d + "</a>";
-        link.hidden = false;
-      }
+  function draw(f, code) {
+    var g = L.byBill(f && f.rollcalls, body);
+    g.bills.forEach(function (x) {
+      var place = placeFor(x[0], x[1][0]);
+      if (place) place.innerHTML = x[1].map(L.voteBlock).join("");
     });
-  }
-  function drawVotes(f, code) {
-    var items = L.dayItems(record, f, body, bills);
-    var list = doc.getElementById("live-today-votes");
-    if (list) { list.innerHTML = items.join(""); list.hidden = !items.length; }
-    var live = L.overlay(record, f, body);
-    var say = doc.getElementById("live-today-votes-status");
-    // With the record holding the day, its rows are the record's; the live
-    // file's sentence is said only for what it adds.
-    if (say) say.textContent = record && !live.length
-      ? C.tr("votes.in_record", "The night's record holds {day}'s roll calls.", { day: L.dayWords(shown) })
-      : L.votesSentence(f, now(), body, code, shown);
-    each(el, ".lv-provisional", function (x) { x.hidden = !live.length; });
-    each(el, ".lv-senate", function (x) { x.hidden = !live.some(function (r) { return !r.ballots_complete; }); });
+    if (nob) nob.innerHTML = g.nobill.map(L.voteBlock).join("");
+    if (nobSec) nobSec.hidden = !g.nobill.length;
+    var say = doc.getElementById("live-day-status");
+    if (say) say.textContent = L.votesSentence(f, now(), body, code, day);
   }
   var votes = L.poller({ fetch: fetchImpl, doc: doc,
-    url: function () { return "/api/live/votes/" + day(); },
-    every: function (f) { return L.votesEvery(f, now()); },
-    onFile: function (f, code) {
-      var d = day();
-      return (d === shown ? askRecord(d) : setDay(d)).then(function () { drawVotes(f, code); });
-    } });
-  var box = doc.getElementById("live-today-stream");
-  var streams = L.poller({ fetch: fetchImpl, doc: doc,
-    url: function () { return "/api/live/streams"; },
-    every: function (f, code) { return code === 404 ? 0 : L.POLL_MS; },   // no binding: ask no more
-    onFile: function (f, code) {
-      var v = L.sessionStream(f, body, now(), code);
-      if (box) L.drawCards(doc, box, v.live);
-      var st = doc.getElementById("live-today-status");
-      if (st) st.textContent = v.status.sentence;
-    } });
-  // A finished day is asked no more (L.votesDone). The clock is looked at
-  // once a minute, which asks nobody anything; when the reader's day turns
-  // (06:00), the votes are asked again for the new day.
-  var clockTimer = null, ended = false;
-  function clockTick() {
-    clearTimeout(clockTimer);
-    if (ended) return;
-    clockTimer = setTimeout(function () {
-      (day() !== shown && !doc.hidden ? votes.resume() : Promise.resolve()).then(clockTick);
-    }, MINUTE);
-  }
-  var first = Promise.all([votes.first, streams.first]).then(function () { clockTick(); });
-  return { votes: votes, streams: streams, first: first,
-           stop: function () { ended = true; clearTimeout(clockTimer); votes.stop(); streams.stop(); } };
+    url: function () { return "/api/live/votes/" + day; },
+    every: function (f) { return L.readerDay(now()) === day ? L.votesEvery(f, now()) : 0; },
+    onFile: function (f, code) { draw(f, code); } });
+  return { votes: votes, first: votes.first, stop: function () { votes.stop(); } };
 };
 
 // The dated session-day page's overlay (section 4.3): the night's hook,
@@ -734,7 +690,7 @@ if (typeof module === "object" && module.exports) module.exports = L;
 else root.GRLive = L;
 if (root && root.document && root.document.getElementById) {
   if (root.document.getElementById("live-now-streams")) L.start(root.document);
-  if (root.document.getElementById("live-today")) L.startToday(root.document);
+  if (root.document.getElementById("live-day")) L.startDay(root.document);
   if (root.document.getElementById("live-votes")) L.startOverlay(root.document);
 }
 })(typeof window !== "undefined" ? window : globalThis);

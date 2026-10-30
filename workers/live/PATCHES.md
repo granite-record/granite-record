@@ -50,18 +50,27 @@ The LAST step, after "bulk downloads": build_exports writes the
 data/rollcalls.csv and data/votes-<term>.csv this reads, and the session
 pages' step writes session/H and session/S.
 
-    Step("Session days' live side: each sitting's session.votes file, /session/<B>/today",
+    Step("Session days' live side: each sitting's session.votes file, the morning page",
          ["build_live_session.py", "--site", "site", "--base", a.base],
          needs=["site/data/manifest.json", "site/session/H", "site/session/S"],
-         produces=["site/session/H/today.html", "site/session/S/today.html",
-                   "site/schema/session.votes.json"],
+         produces=["site/schema/session.votes.json"],
          note="the record's roll calls of each dated session-day page in the live file's shape, "
-              "checked against schema/session.votes.json; the two today pages")
+              "checked against schema/session.votes.json; on a sitting's morning, its dated page")
 
+(Revised 30 October 2026: the owner retired /session/<B>/today. The day's
+page is its dated address from the morning of the sitting, so the step
+produces no fixed page.)
+
+- **Order.** After the session pages' step, whose prune() would take the
+  morning page as a sitting the record does not hold, and after /live's
+  step, whose live/schedule.json says the floor sits on a day with no bills
+  listed yet (Organization Day).
 - **needs.** Only artefacts other steps declare (the bulk downloads'
   manifest and the session pages' folders), so preflight's "inputs no step
   produces" check holds. live/schedule.json is not one: build_live_session
-  reads it for the floor card where it is there, and does without it.
+  reads it where it is there, and does without it.
+- **Reads.** proceedings.csv's floor rows for the day's bills, as the
+  Calendar does.
 - **Network.** It asks none. It reads the two CSVs once each.
 - **Files.** It writes one JSON file per dated session-day page, so the
   deploy grows by that many. Run `python3 src/checks/check_site.py` for the

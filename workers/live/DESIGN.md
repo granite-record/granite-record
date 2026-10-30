@@ -725,7 +725,20 @@ Under the list:
 
 `/live` does not load `app.js`, so it shows tallies as text and links to `/session/<B>/today`. No caption text appears, ever.
 
-### 4.2 `/session/<B>/today`: the session-day page on the day
+### 4.2 The morning page: the dated address on the day
+
+**Revised 30 October 2026 (the owner).** `/session/<B>/today` is dropped; it was never linked. The day's one page is its dated address, `/session/<B>/<date>`, from the morning of the sitting:
+- The night writes it for the build's own day only, where the chamber's floor is on the calendar and the record has no page for the day. It says the chamber is scheduled to sit, never that it sat. `noindex`, in no list, and with no record day file.
+- It draws the day's bills in the calendar's order as the session page's own cards, each with the committee report the chamber acts on, and fills each card's votes as they are read: no speakers and no timestamps. A bill voted on that is not on the calendar gets a card as its vote arrives; a vote on no bill goes under "Votes on No Bill".
+- Its top line: "Votes as they are read. Who spoke and the debate come with the House Journal, which can take months."
+- It polls only while its date is the reader's session day (§4.1's 06:00 rule), and stops when the day is finished.
+- The next night the record's page takes the address; without one the page is gone.
+- Live Now's session card and `/live`'s floor row link to it.
+- Still to come: each card's "In short" from the session pages' own code and words, and the pending committee-report motion for a bill not yet voted on.
+
+The section as first written follows, for the record of why.
+
+#### As first written: `/session/<B>/today`
 
 **This answers the simple review's high finding.** Under B, a House sitting had no session-day page on its own day: the clerk types the House's floor lines during the sitting, so the morning's record does not hold the day. A answered with forecast shell pages, which the safe and simple reviews rejected:
 - `build_session_pages.sittings` refuses a sitting after the build ("a mistyped month put a House sitting a month ahead of veto day; neither is a day to publish");

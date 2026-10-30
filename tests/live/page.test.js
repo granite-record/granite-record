@@ -8,16 +8,22 @@
 // (_live_tests).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import vm from "node:vm";
 import { stem as workerStem } from "../../workers/live/youtube.js";
 
 const read = rel => readFileSync(new URL(`../../${rel}`, import.meta.url), "utf8");
 const CASES = JSON.parse(read("tests/components_cases.json"));
 
+// The words site/components.js carries (build_pages.words_js): each file of
+// src/pages/words/, its notes ("_" keys) left out, as components.py reads them.
+const WORDBOOK = Object.fromEntries(readdirSync(new URL("../../src/pages/words/", import.meta.url))
+  .filter(f => f.endsWith(".json")).sort().map(f =>
+    [f.slice(0, -5), Object.fromEntries(Object.entries(JSON.parse(read(`src/pages/words/${f}`))).filter(([k]) => !k.startsWith("_")))]));
+
 // components.js then live.js, in one context, as a page's head and body run them.
 function load(extra = {}) {
-  const ctx = vm.createContext({ console, Intl, Date, Math, JSON, Promise, setTimeout, clearTimeout, ...extra });
+  const ctx = vm.createContext({ console, Intl, Date, Math, JSON, Promise, setTimeout, clearTimeout, WORDBOOK, ...extra });
   ctx.window = ctx;
   vm.runInContext(read("src/pages/components.js"), ctx, { filename: "components.js" });
   vm.runInContext(read("src/pages/live.js"), ctx, { filename: "live.js" });
@@ -35,7 +41,7 @@ const stream = over => ({ video: "AbCdEfGhIjK", chamber: "H", title: "House Fina
 const SCHEDULE = { days: { "2027-01-07": [
   { id: "H|Finance|2027-01-07", chamber: "H", kind: "standing", name: "House Finance", href: "/committee/H09",
     card: '<div class="calcard">House Finance, 10:00 AM</div>', match: ["house finance", "finance"] },
-  { id: "H|Floor|2027-01-07", chamber: "H", kind: "floor", name: "House Session", href: "/session/H/today",
+  { id: "H|Floor|2027-01-07", chamber: "H", kind: "floor", name: "House Session", href: "/session/H/2027-01-07",
     card: "", match: ["house session"] },
   { id: "S|Judiciary|2027-01-07", chamber: "S", kind: "standing", name: "Senate Judiciary", href: "/committee/S11",
     card: "", match: ["senate judiciary", "judiciary"] }] } };
@@ -330,7 +336,7 @@ test("the poller: If-None-Match, a 304 keeps the file, a 404 forgets it, a new a
   assert.equal(asked.length, 6, "stopped: asks no more");
 });
 
-test("Live Now's session card: the chamber's list, its sentence, provisional, and its today page", () => {
+test("Live Now's session card: the chamber's list, its sentence, provisional, and its day's dated page", () => {
   const f = { read_at: "2027-01-07T16:43:00Z", next_read_by: "2027-01-07T16:45:00Z", status: { state: "reading", problem: null, since: null },
     rollcalls: [rcOf({ docket: { outcome: "Motion Adopted" } })] };
   const now = T("2027-01-07T16:44:00Z");
@@ -339,7 +345,8 @@ test("Live Now's session card: the chamber's list, its sentence, provisional, an
   assert.match(h, /href="\/bill\/2027\/hb2\.html"/);
   assert.match(h, /Read from the General Court's database at 11:43/);
   assert.match(h, /Provisional: the night's record replaces this tomorrow morning; excusals settle days later\./);
-  assert.match(h, /href="\/session\/H\/today">The House today</);
+  assert.match(h, /href="\/session\/H\/2027-01-07">The House today</);
+  assert.doesNotMatch(h, /\/today"/, "the retired today page is linked nowhere");
   assert.doesNotMatch(h, /Senate names follow/);
   const s = L.sessionCard(f, "S", now, 200);
   assert.doesNotMatch(s, /<ol/, "no Senate roll calls: no list");
@@ -462,6 +469,7 @@ test("/live's session card before 06:00 is the day before's, and says so by its 
   assert.match(h, /<h2 class="lv-name">House roll calls of Thursday, January 7<\/h2>/);
   assert.match(h, /No roll calls read on Thursday, January 7\. Every vote reaches this page with this morning's record\./);
   assert.doesNotMatch(h, /today<\/h2>|tomorrow/);
+  assert.match(h, /href="\/session\/H\/2027-01-07">The House on Thursday, January 7</, "the day before's dated page");
   assert.match(L.sessionCard(null, "S", T("2027-01-07T16:00:00Z"), 404), /Senate roll calls today/);
 });
 
@@ -531,23 +539,22 @@ test("a refresh keeps an opened player's card, and a card whose stream ended goe
 });
 
 // ---- the session-day pages (sections 4.2 and 4.3) --------------------------------
-// A today page or a dated page, deep enough for startToday and startOverlay:
-// elements by id, and the children querySelectorAll looks through.
-function dayPage({ body = "H", built = "2027-01-07", dated = null, hook = null, bills = {} } = {}) {
+// A morning page or a dated page's hook, deep enough for startDay and
+// startOverlay: elements by id. The morning page's #lv-cards holds a .lv-rcs
+// place for each bill on the agenda; a card startDay adds is a child whose
+// .lv-rcs is its querySelector's part.
+function dayPage({ body = "H", day = "2027-01-07", agenda = [], bills = {}, hook = null } = {}) {
   const mk = (attrs = {}, cls = "") => {
     const e = { attrs: { ...attrs }, className: cls, hidden: false, textContent: "", children: [], _html: "",
       getAttribute(k) { return this.attrs[k] ?? null; }, setAttribute(k, v) { this.attrs[k] = String(v); },
       appendChild(c) { c.parent = this; this.children.push(c); return c; },
       remove() { if (this.parent) this.parent.children = this.parent.children.filter(x => x !== this); },
       querySelector(sel) {
-        const m = /^\[data-video="(.*)"\]$/.exec(sel);
-        if (m) return this.children.find(c => c.attrs["data-video"] === m[1]) || null;
         this.parts = this.parts || {};
         return (this.parts[sel] = this.parts[sel] || mk());
       },
       querySelectorAll(sel) {
-        if (sel === "[data-video]") return this.children.filter(c => c.attrs["data-video"]);
-        if (sel === "[data-day]") return this.children.filter(c => "data-day" in c.attrs);
+        if (sel === ".lv-rcs") return this.places || [];
         if (sel.startsWith(".")) return this.children.filter(c => c.className.split(" ").includes(sel.slice(1)));
         return [];
       } };
@@ -555,22 +562,21 @@ function dayPage({ body = "H", built = "2027-01-07", dated = null, hook = null, 
     return e;
   };
   const els = {};
-  const root = mk({ "data-body": body, "data-built": built });
-  for (const [cls, attrs] of [["lv-floor", { "data-day": built }], ["lv-provisional", {}], ["lv-senate", {}]]) {
-    const c = root.appendChild(mk(attrs, cls));
-    c.hidden = cls !== "lv-floor";
+  if (hook) {
+    els["live-votes"] = mk({ "data-day": hook.day, "data-body": hook.body || body });
+  } else {
+    els["live-day"] = mk({ "data-morning": "1", "data-day": day, "data-body": body });
+    els["live-day-status"] = mk();
+    els["lv-cards"] = mk();
+    els["lv-cards"].places = agenda.map(b => mk({ "data-bill": b }, "lv-rcs"));
+    els["lv-nobill"] = mk();
+    els["nobill"] = mk();
+    els["nobill"].hidden = true;
   }
-  if (dated) root.appendChild(mk({ "data-day": dated }, "lv-dated"));
-  els["live-today"] = root;
-  for (const id of ["live-today-day", "live-today-status", "live-today-stream", "live-today-votes", "live-today-votes-status",
-                    "live-today-dated"]) els[id] = mk();
-  els["live-today-dated"].hidden = true;
   els["live-bills"] = { textContent: JSON.stringify(bills) };
-  if (hook) els["live-votes"] = mk({ "data-day": hook.day, "data-body": hook.body || body });
-  if (hook) delete els["live-today"];
   const doc = { hidden: false, _on: {}, getElementById: id => els[id] || null, createElement: () => mk(),
                 addEventListener(t, f) { (this._on[t] = this._on[t] || []).push(f); } };
-  return { doc, els, root };
+  return { doc, els };
 }
 // A fetch answering by address: {url: body} for 200, a missing address 404.
 function server(files) {
@@ -599,191 +605,118 @@ test("the reader's session day is New Hampshire's, the day before until 06:00", 
   assert.equal(L.dayWords("2027-01-07"), "Thursday, January 7");
 });
 
-test("/session/H/today: the reader's day, the night's dated parts hidden on another, the record and the live union", async () => {
-  // The night built it on the 7th; the reader comes on the 8th at 10:00.
-  const now = () => T("2027-01-08T15:00:00Z");
-  const { doc, els, root } = dayPage({ built: "2027-01-07", dated: "2027-01-08", bills: { "2027-2028": { 2027: ["HB2"] } } });
-  const record = { date: "2027-01-08", rollcalls: [rcOf({ id: "2027-H-14", seq: 14, passed: true })] };
-  const live = liveFile("2027-01-08", [rcOf({ id: "2027-H-14", seq: 14, yeas: 1 }), rcOf({ id: "2027-H-15", seq: 15, ballots_complete: false })]);
-  const { fetch, asked } = server({ "/session/H/2027-01-08.json": record, "/api/live/votes/2027-01-08": live,
-                                    "/api/live/streams": file({ day: "2027-01-08", checked: "2027-01-08T14:59:00Z", next_check: "2027-01-08T15:01:00Z",
-                                      streams: [stream({ title: "House Session (01/08/2027)" })] }) });
-  const p = L.startToday(doc, { fetch, now });
-  try {
-    await p.first;
-    assert.equal(root.children.find(c => c.className === "lv-floor").hidden, true, "the 7th's floor card, hidden on the 8th");
-    assert.equal(root.children.find(c => c.className === "lv-dated").hidden, false, "the 8th's dated page: linked");
-    assert.match(els["live-today-day"].textContent, /Friday, January 8/);
-    assert.ok(asked.includes("/session/H/2027-01-08.json"), "the record of the day, since the night has its page");
-    const list = els["live-today-votes"].innerHTML;
-    assert.equal((list.match(/<li /g) || []).length, 2);
-    assert.match(list, /data-id="2027-H-15".*provisional · read at/);
-    assert.match(list, /data-id="2027-H-14".*186&ndash;169/, "the record's copy of 14, not the live 1-169");
-    const own = list.slice(list.indexOf('data-id="2027-H-14"'));
-    assert.doesNotMatch(own, /not yet in the docket|names follow|provisional/, "the record's row waits on nothing");
-    assert.doesNotMatch(list, /data-id="2027-H-14"[^]*provisional[^]*data-id="2027-H-14"/);
-    assert.ok(list.indexOf("2027-H-15") < list.indexOf("2027-H-14"), "newest first");
-    assert.match(list, /href="\/bill\/2027\/hb2\.html"/);
-    assert.equal(root.children.find(c => c.className === "lv-provisional").hidden, false);
-    assert.equal(els["live-today-stream"].children.length, 1, "the House session stream");
-    assert.match(els["live-today-status"].textContent, /^Checked/);
-  } finally { p.stop(); }
+test("a roll call on the day is the session page's vote block: its question, the outcome a source gives, the count; no time, no names", () => {
+  const b = L.voteBlock(rcOf({ id: "2027-H-14", passed: true, taken: "2027-01-07T15:31:00Z", ballots_complete: true }));
+  assert.match(b, /^<div class="dvote" data-rc="2027-H-14"><p class="dvh">Ought to Pass<\/p>/);
+  assert.match(b, /class="chip[^"]*rcres pass/);
+  assert.match(b, /<b>186&ndash;169<\/b> on a roll call/);
+  assert.doesNotMatch(b, /10:31|names|provisional/, "no clock and no names on the day");
+  const open = L.voteBlock(rcOf({ docket: null, passed: null }));
+  assert.match(open, /outcome not yet in the docket/);
+  assert.doesNotMatch(open, /rcres/, "no source, no chip: the tally never says who prevailed");
+  assert.match(L.voteBlock(rcOf({ docket: { outcome: "Motion Failed" } })), /rcres fail/);
 });
 
-test("/session/S/today before 06:00: yesterday's sitting, no record yet, every live roll call provisional; no stream said as such", async () => {
-  const now = () => T("2027-01-08T09:30:00Z");                         // 04:30 EST on the 8th
-  const { doc, els, root } = dayPage({ body: "S", built: "2027-01-07" });
-  const live = liveFile("2027-01-07", [rcOf({ id: "2027-S-3", body: "S", seq: 3, ballots_complete: false }),
-                                       rcOf({ id: "2027-H-9", seq: 9 })]);
-  const files = { "/api/live/votes/2027-01-07": live,
-    "/api/live/streams": file({ day: "2027-01-08", checked: "2027-01-08T09:29:00Z", next_check: "2027-01-08T09:59:00Z",
-                                streams: [stream({ title: "House Session (01/08/2027)" })] }) };
-  const { fetch, asked } = server(files);
-  const p = L.startToday(doc, { fetch, now });
+test("the day's roll calls by bill, in the order each was first voted on; a vote on no bill apart; the other chamber's not", () => {
+  const g = L.byBill([rcOf({ id: "c", seq: 16, bill: "2027-2028/HB2" }), rcOf({ id: "a", seq: 14, bill: "2027-2028/HB9" }),
+                      rcOf({ id: "b", seq: 15, bill: "2027-2028/HB2" }), rcOf({ id: "n", seq: 13, bill: null }),
+                      rcOf({ id: "s", body: "S", seq: 1, bill: "2027-2028/SB1" })], "H");
+  assert.deepEqual([...g.bills].map(x => [x[0], [...x[1]].map(r => r.id)]), [["HB9", ["a"]], ["HB2", ["b", "c"]]]);
+  assert.deepEqual([...g.nobill].map(r => r.id), ["n"]);
+  const none = L.byBill(null, "H");
+  assert.deepEqual([[...none.bills], [...none.nobill]], [[], []]);
+});
+
+test("the morning page fills each card's place, adds a card for a bill off the calendar, and keeps a vote on no bill apart", async () => {
+  const now = () => T("2027-01-07T16:44:00Z");
+  const { doc, els } = dayPage({ agenda: ["HB9", "HB2"], bills: { "2027-2028": { 2027: ["HB2", "HB9", "HB40"] } } });
+  const live = liveFile("2027-01-07", [rcOf({ id: "2027-H-14", seq: 14, bill: "2027-2028/HB2", passed: true }),
+                                       rcOf({ id: "2027-H-15", seq: 15, bill: "2027-2028/HB40", docket: null }),
+                                       rcOf({ id: "2027-H-16", seq: 16, bill: null, bill_as_recorded: "SUSPRULE" }),
+                                       rcOf({ id: "2027-S-1", body: "S", seq: 1, bill: "2027-2028/SB1" })]);
+  const { fetch, asked } = server({ "/api/live/votes/2027-01-07": live });
+  const p = L.startDay(doc, { fetch, now });
   try {
     await p.first;
-    assert.ok(asked.includes("/api/live/votes/2027-01-07"));
-    assert.ok(asked.includes("/session/S/2027-01-07.json"), "the record is looked for, and not there");
-    assert.equal(els["live-today-dated"].hidden, true, "no record: no dated page linked");
-    assert.match(els["live-today-votes-status"].textContent, /this morning's record\./, "the 7th's record comes this morning");
-    assert.doesNotMatch(els["live-today-votes-status"].textContent, /tomorrow/);
-    assert.equal(root.children.find(c => c.className === "lv-floor").hidden, false, "the 7th's floor card stays on the 7th");
-    const list = els["live-today-votes"].innerHTML;
-    assert.equal((list.match(/<li /g) || []).length, 1, "the Senate's only");
-    assert.match(list, /2027-S-3.*provisional/);
-    assert.equal(root.children.find(c => c.className === "lv-senate").hidden, false, "names follow");
-    assert.match(els["live-today-status"].textContent, /^No Senate session stream found right now \(checked 4:29/);
-    assert.doesNotMatch(els["live-today-status"].textContent.toLowerCase(), /not streaming|nothing is live/);
-    assert.equal(els["live-today-stream"].children.length, 0, "the House's stream is not the Senate's");
-    files["/api/live/votes/2027-01-07"] = { ...live, rollcalls: [rcOf({ id: "2027-S-3", body: "S", seq: 3, ballots_complete: true })] };
+    assert.deepEqual(asked, ["/api/live/votes/2027-01-07"], "the day's file and nothing else");
+    const [hb9, hb2] = els["lv-cards"].places;
+    assert.equal(hb9.innerHTML, "", "a bill not voted on yet keeps its empty place");
+    assert.match(hb2.innerHTML, /data-rc="2027-H-14".*186&ndash;169/);
+    const added = els["lv-cards"].children;
+    assert.equal(added.length, 1, "one card added: HB 40, voted on and not on the calendar");
+    assert.match(added[0].innerHTML, /data-id="HB40".*href="\/bill\/2027\/hb40\.html".*HB 40/);
+    assert.match(added[0].querySelector(".lv-rcs").innerHTML, /data-rc="2027-H-15".*outcome not yet in the docket/);
+    assert.match(els["lv-nobill"].innerHTML, /data-rc="2027-H-16"/);
+    assert.equal(els["nobill"].hidden, false);
+    assert.doesNotMatch(els["lv-cards"].children.map(c => c.innerHTML).join("") + hb2.innerHTML + hb9.innerHTML, /2027-S-1/,
+                        "the Senate's roll call is not on the House's page");
+    assert.match(els["live-day-status"].textContent, /^Read from the General Court's database at 11:43/);
+    // The next read: the same card is filled again, not added twice.
     await p.votes.poll();
-    assert.equal(root.children.find(c => c.className === "lv-senate").hidden, true, "names in: the line goes");
+    assert.equal(els["lv-cards"].children.length, 1);
   } finally { p.stop(); }
 });
 
-test("/session/H/today: a finished day is asked no more, and the next reader's day is asked at 06:00", async () => {
-  const held = [];
-  const ctx = load({ setTimeout: (f, ms) => { held.push([f, ms]); return held.length; }, clearTimeout: () => {} });
-  let at = T("2027-01-07T23:00:00Z");                                // 18:00 on the 7th
-  const { doc } = dayPage({ built: "2027-01-07" });
-  const asked = [];
-  const fetch = async url => {
-    asked.push(url);
-    if (url.startsWith("/api/live/votes/")) {
-      return { status: 200, ok: true, headers: { get: () => '"v"' },
-               json: async () => liveFile(url.slice(-10), [], { status: { state: "day_over", problem: "day_over", since: "2027-01-07T22:30:00Z" },
-                                                               next_read_by: null }) };
-    }
-    return { status: 404, ok: false, headers: { get: () => null }, json: async () => null };
-  };
-  const p = ctx.GRLive.startToday(doc, { fetch, now: () => at });
-  const votesAsked = () => asked.filter(u => u.startsWith("/api/live/votes/"));
-  const run = async ms => {                                          // run every held timer of that period
-    const due = held.filter(h => h[1] === ms); held.splice(0, held.length, ...held.filter(h => h[1] !== ms));
-    for (const [f] of due) f();
-    for (let i = 0; i < 4; i++) await new Promise(r => setImmediate(r));
-  };
-  try {
-    await p.first;
-    assert.deepEqual(votesAsked(), ["/api/live/votes/2027-01-07"]);
-    assert.ok(!held.some(h => h[1] === 30000 || h[1] === 120000), "day_over: no votes timer");
-    at = T("2027-01-08T03:00:00Z");                                  // 22:00, still the 7th
-    await run(60000);
-    assert.deepEqual(votesAsked(), ["/api/live/votes/2027-01-07"], "the clock asks nobody");
-    at = T("2027-01-08T11:05:00Z");                                  // 06:05 on the 8th
-    await run(60000);
-    assert.equal(votesAsked().at(-1), "/api/live/votes/2027-01-08", "the new day is asked");
-  } finally { p.stop(); }
-});
-
-test("/session/H/today with no binding: says so, and asks the streams no more", async () => {
+test("the morning page polls only on its own day, and a finished day is asked no more", async () => {
   const timers = [];
   const c2 = load({ setTimeout: (f, ms) => { timers.push(ms); return timers.length; }, clearTimeout: () => {} });
-  const { doc, els } = dayPage();
-  const { fetch, asked } = server({});
-  const p = c2.GRLive.startToday(doc, { fetch, now: () => T("2027-01-07T15:00:00Z") });
+  const files = { "/api/live/votes/2027-01-07": liveFile("2027-01-07", [rcOf({})]) };
+  for (const [at, want, file] of [["2027-01-07T16:44:00Z", [30000]], ["2027-01-07T20:00:00Z", [120000]],
+                                  ["2027-01-08T10:30:00Z", [120000], "05:30 on the 8th: still the 7th's day"],
+                                  ["2027-01-08T11:30:00Z", [], "06:30 on the 8th: asked once, no more"],
+                                  ["2027-01-06T20:00:00Z", [], "the night before: asked once, no more"]]) {
+    timers.length = 0;
+    const pg = dayPage();
+    const p = c2.GRLive.startDay(pg.doc, { fetch: server(files).fetch, now: () => T(at) });
+    try {
+      await p.first;
+      await new Promise(r => setImmediate(r));
+      assert.deepEqual([...timers], want, file || at);
+    } finally { p.stop(); }
+  }
+  timers.length = 0;
+  const done = { "/api/live/votes/2027-01-07": liveFile("2027-01-07", [], {
+    status: { state: "day_over", problem: "day_over", since: "2027-01-07T22:30:00Z" }, next_read_by: null }) };
+  const p = c2.GRLive.startDay(dayPage().doc, { fetch: server(done).fetch, now: () => T("2027-01-07T23:00:00Z") });
   try {
     await p.first;
     await new Promise(r => setImmediate(r));
-    assert.deepEqual([...timers], [120000, 60000],
-                     "the votes file asked again in 2 minutes; the streams never; the clock (asking nobody) each minute");
-    assert.equal(els["live-today-votes"].hidden, true);
-    assert.match(els["live-today-votes-status"].textContent, /^No roll calls read today\./);
-    assert.equal(els["live-today-status"].textContent, "Live status is not available");
-    const n = asked.filter(u => u === "/api/live/streams").length;
-    await p.streams.poll();
-    assert.equal(asked.filter(u => u === "/api/live/streams").length, n + 1);
+    assert.deepEqual([...timers], [], "day_over: no timer");
   } finally { p.stop(); }
 });
 
-test("/session/H/today between the night and 06:00: the record of the day before is found, linked and wins", async () => {
-  // Built on the 8th by a night at 03:17; the reader's day is still the 7th.
-  const now = () => T("2027-01-08T09:30:00Z");                         // 04:30 EST
-  const { doc, els, root } = dayPage({ built: "2027-01-08", dated: "2027-01-08" });
-  const record = { date: "2027-01-07", rollcalls: [rcOf({ id: "2027-H-14", seq: 14, passed: true }), rcOf({ id: "2027-H-15", seq: 15, passed: false })] };
-  const live = liveFile("2027-01-07", [rcOf({ id: "2027-H-14", seq: 14 }), rcOf({ id: "2027-H-15", seq: 15 })]);
-  const { fetch } = server({ "/session/H/2027-01-07.json": record, "/api/live/votes/2027-01-07": live });
-  const p = L.startToday(doc, { fetch, now });
-  try {
-    await p.first;
-    assert.equal(root.children.find(c => c.className === "lv-dated").hidden, true, "the 8th's link: not the reader's day");
-    assert.equal(els["live-today-dated"].hidden, false);
-    assert.match(els["live-today-dated"].innerHTML, /href="\/session\/H\/2027-01-07"/);
-    const list = els["live-today-votes"].innerHTML;
-    assert.equal((list.match(/<li /g) || []).length, 2);
-    assert.doesNotMatch(list, /provisional|not yet in the docket|names follow/, "every row the record's");
-    assert.equal(els["live-today-votes-status"].textContent, "The night's record holds Thursday, January 7's roll calls.");
-    assert.equal(root.children.find(c => c.className === "lv-provisional").hidden, true);
-  } finally { p.stop(); }
+test("live.js starts the morning page by itself where the page has #live-day, and asks nothing on a page without one", async () => {
+  for (const [ids, want] of [[true, ["/api/live/votes/2027-01-07"]], [false, []]]) {
+    const pg = dayPage();
+    if (!ids) delete pg.els["live-day"];
+    pg.doc.querySelectorAll = () => [];                // components.js's own wiring finds nothing to wire
+    const asked = [];
+    const held = [];
+    const ctx = load({ document: pg.doc, setTimeout: (f, ms) => { held.push(ms); return held.length; }, clearTimeout: () => {},
+                       Date: class extends Date { static now() { return T("2027-01-07T16:44:00Z"); } },
+                       fetch: async url => { asked.push(url); return { status: 404, ok: false, headers: { get: () => null }, json: async () => null }; } });
+    await new Promise(r => setImmediate(r));
+    assert.deepEqual(asked, want, ids ? "the page's own day, asked by itself" : "no #live-day: nothing asked");
+    assert.ok(ctx.GRLive);
+  }
 });
 
-test("/session/H/today: a live file that could not be fetched is not a day with none", async () => {
-  const { doc, els } = dayPage();
-  const fetch = async url => ({ status: 503, ok: false, headers: { get: () => null }, json: async () => null });
-  const p = L.startToday(doc, { fetch, now: () => T("2027-01-07T15:45:00Z") });
+test("the morning page with no live file: says so, never as a sitting with no votes yet when it could not be fetched", async () => {
+  let pg = dayPage({ body: "S" });
+  let p = L.startDay(pg.doc, { fetch: server({}).fetch, now: () => T("2027-01-07T15:45:00Z") });
   try {
     await p.first;
-    assert.match(els["live-today-votes-status"].textContent, /^The live votes could not be fetched at 10:45/);
+    assert.match(pg.els["live-day-status"].textContent, /^No roll calls read today\./);
+    assert.equal(pg.els["nobill"].hidden, true);
   } finally { p.stop(); }
-});
-
-test("the record is asked again every 10 minutes while it is not there, and once found, no more", async () => {
-  let at = T("2027-01-07T15:00:00Z");
-  const files = { "/api/live/votes/2027-01-07": liveFile("2027-01-07", [rcOf({})]) };
-  const { doc } = dayPage();
-  const { fetch, asked } = server(files);
-  const p = L.startToday(doc, { fetch, now: () => at });
-  const n = () => asked.filter(u => u === "/session/H/2027-01-07.json").length;
+  pg = dayPage();
+  const fetch = async () => ({ status: 503, ok: false, headers: { get: () => null }, json: async () => null });
+  p = L.startDay(pg.doc, { fetch, now: () => T("2027-01-07T15:45:00Z") });
   try {
     await p.first;
-    assert.equal(n(), 1);
-    at += 5 * 60000; await p.votes.poll();
-    assert.equal(n(), 1, "five minutes on: not again");
-    at += 6 * 60000; await p.votes.poll();
-    assert.equal(n(), 2, "eleven minutes on: again");
-    files["/session/H/2027-01-07.json"] = { date: "2027-01-07", rollcalls: [] };
-    at += 11 * 60000; await p.votes.poll();
-    at += 11 * 60000; await p.votes.poll();
-    assert.equal(n(), 3, "found: asked no more");
+    assert.match(pg.els["live-day-status"].textContent, /^The live votes could not be fetched at 10:45/);
   } finally { p.stop(); }
-});
-
-test("/session/H/today: the day before's dated link goes when the day turns at 06:00", async () => {
-  let at = T("2027-01-08T10:30:00Z");                                  // 05:30 on the 8th: the 7th
-  const { doc, els } = dayPage({ built: "2027-01-08" });
-  const { fetch } = server({ "/session/H/2027-01-07.json": { date: "2027-01-07", rollcalls: [] },
-                             "/api/live/votes/2027-01-07": liveFile("2027-01-07", []), "/api/live/votes/2027-01-08": liveFile("2027-01-08", []) });
-  const p = L.startToday(doc, { fetch, now: () => at });
-  try {
-    await p.first;
-    assert.equal(els["live-today-dated"].hidden, false);
-    assert.match(els["live-today-dated"].innerHTML, /2027-01-07/);
-    at = T("2027-01-08T11:30:00Z");                                    // 06:30: the 8th
-    await p.votes.poll();
-    assert.match(els["live-today-day"].textContent, /Friday, January 8/);
-    assert.equal(els["live-today-dated"].hidden, true, "no record of the 8th yet: no link");
-    assert.doesNotMatch(els["live-today-dated"].innerHTML, /2027-01-07/);
-  } finally { p.stop(); }
+  assert.equal(L.startDay(dayPage({ day: "today" }).doc, { fetch: server({}).fetch }), null, "a day that is no date asks nothing");
 });
 
 test("the dated page's overlay: within 14 days, the live roll calls the record lacks; none without a record; older pages ask nothing", async () => {

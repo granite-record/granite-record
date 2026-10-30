@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.4
+# GRANITE_VERSION: 2026-10-30.5
 """
 Live Now's page and its schedule (the live layer's design, sections 1.2 and
 1.4), written by the night beside the Calendar and from the Calendar's own
@@ -122,7 +122,9 @@ def schedule(site, today, weeks=None, history=None):
             kind = kind_of(key, meet)
             chamber = "".join(BP.card_bodies(key, meet))
             if kind == "floor":
-                href = f"/session/{chamber[:1]}/today"
+                # The day's dated address: the morning page, or the record's
+                # page once it exists. A later day's is not written yet.
+                href = f"/session/{chamber[:1]}/{iso}" if d == today else None
             else:
                 h = HREF.search(card.group(0) if card else "")
                 href = f"/{h.group(1)}" if h else None

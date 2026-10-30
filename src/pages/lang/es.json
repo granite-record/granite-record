@@ -21665,16 +21665,6 @@
    "es": "Comprobado a las {time}",
    "state": "draft"
   },
-  "live.no_stream_house": {
-   "en": "No House session stream found right now (checked {time})",
-   "es": "No se encontró ninguna transmisión de la sesión de la Cámara en este momento (consultado a las {time})",
-   "state": "draft"
-  },
-  "live.no_stream_senate": {
-   "en": "No Senate session stream found right now (checked {time})",
-   "es": "No se encontró ninguna transmisión de la sesión del Senado en este momento (consultado a las {time})",
-   "state": "draft"
-  },
   "live.none_found": {
    "en": "No stream found right now (checked {time})",
    "es": "No se encontró ninguna transmisión en este momento (comprobado a las {time})",
@@ -23764,14 +23754,19 @@
    "es": "Votaciones leídas por última vez a las {time}; desde entonces no se ha podido acceder a la base de datos de la Legislatura.",
    "state": "draft"
   },
-  "votes.dated": {
-   "en": "The day's page:",
-   "es": "La página del día:",
+  "votes.day_house": {
+   "en": "The House on {day}",
+   "es": "La Cámara el {day}",
    "state": "draft"
   },
   "votes.day_over": {
    "en": "Reading stopped for the day at {time}.",
    "es": "La lectura se detuvo por hoy a las {time}.",
+   "state": "draft"
+  },
+  "votes.day_senate": {
+   "en": "The Senate on {day}",
+   "es": "El Senado el {day}",
    "state": "draft"
   },
   "votes.encrypt": {
@@ -23807,11 +23802,6 @@
   "votes.head_senate_day": {
    "en": "Senate roll calls of {day}",
    "es": "Votaciones nominales del Senado del {day}",
-   "state": "draft"
-  },
-  "votes.in_record": {
-   "en": "The night's record holds {day}'s roll calls.",
-   "es": "El registro de la noche contiene las votaciones nominales del {day}.",
    "state": "draft"
   },
   "votes.login": {
@@ -23857,6 +23847,11 @@
   "votes.off": {
    "en": "Live votes were turned off by this site at {time}.",
    "es": "Este sitio desactivó las votaciones en vivo a las {time}.",
+   "state": "draft"
+  },
+  "votes.on_roll_call": {
+   "en": "on a roll call",
+   "es": "en votación nominal",
    "state": "draft"
   },
   "votes.outcome": {
@@ -23912,11 +23907,6 @@
   "votes.senate_line": {
    "en": "Senate names follow once the Senate enters them, usually that afternoon or the next day.",
    "es": "Los nombres del Senado se añaden cuando el Senado los registra, normalmente esa tarde o al día siguiente.",
-   "state": "draft"
-  },
-  "votes.today_day": {
-   "en": "Roll calls of {day}, as read during the day",
-   "es": "Votaciones nominales del {day}, según se leyeron durante el día",
    "state": "draft"
   },
   "votes.today_house": {
