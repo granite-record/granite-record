@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.733
+# GRANITE_VERSION: 2026-09-04.734
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -35494,6 +35494,8 @@ CLOCK_OF_THEIR_OWN = {
     "build_date.py": "the one place the build's day is read",
     "build_all.py": "site/build.json's record of when the run itself finished",
     "cloud.py": "the bucket's records of a send",
+    "state_sources.py": "the day a state document was read, and the bucket's records of a "
+                        "send; reached from cloud.py's sources-up, never from a build",
     "refusal.py": "the record of a refusal, and the night's window",
     "livestreams.py": "the night's own record of its livestream runs",
     "fetch_legislation.py": "the day a page was asked for, on the gone-list",
@@ -56713,8 +56715,9 @@ def _state_sources_apart(CL, SS):
     import contextlib
     import io
     kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))
-    samples = ["sources/sos-register-vote/2026-10-30.pdf", "sources/manifest.json",
-               "sources/reports/20261030T000000000000.json", "sources/x/2026-10-30-2.txt"]
+    samples = ["sources/manifest.json", "sources/reports/20261030T000000000000.json"]
+    samples += [f"sources/sos-register-vote/2026-10-30{n}.{x}"
+                for x in sorted(SS.EXTS) for n in ("", "-2")]
     pats = [p for e in kit.get("kit", []) for p in e.get("paths", []) + e.get("globs", [])]
     pats += [s["path"] for s in kit.get("state", [])]
     d = kit.get("dry_run") or {}
@@ -56751,7 +56754,9 @@ def _state_sources_apart(CL, SS):
         (folder / "2026-10-02.pdf").write_bytes(b"first")
         (folder / "2026-10-03.pdf").write_bytes(b"second")
         code, out = run("up")
-        assert code == 0 and "CHANGED" in out and "UNCHANGED" in out, out
+        heads = [ln for ln in out.splitlines() if ln.isupper() or ln.endswith(":")]
+        assert code == 0 and "CHANGED since the last reading:" in heads \
+            and "READ AGAIN, UNCHANGED:" in heads, out
         keys = _bucket_keys(bucket)
         assert f"sources/{one}/2026-10-02.pdf" not in keys, "an unchanged reading was sent again"
         assert {f"sources/{one}/2026-10-01.pdf", f"sources/{one}/2026-10-03.pdf",
@@ -56767,11 +56772,28 @@ def _state_sources_apart(CL, SS):
         assert code == 1 and "never replaced" in out, out
         assert (bucket / f"sources/{one}/2026-10-01.pdf").read_bytes() == b"first"
         (folder / "2026-10-01.pdf").write_bytes(b"first")
+        # Two readings in one day: the second, -2, is the newer, whatever a
+        # sort of the names says.
+        (folder / "2026-10-04.pdf").write_bytes(b"third")
+        (folder / "2026-10-04-2.pdf").write_bytes(b"fourth")
+        assert run("up")[0] == 0
+        man = json.loads((bucket / "sources" / "manifest.json").read_text(encoding="utf-8"))
+        assert man["ids"][one]["versions"][-1]["file"] == f"{one}/2026-10-04-2.pdf", (
+            "the second reading of a day is not the latest version", man["ids"][one])
         down = t / "down"
         code, out = run("down", "--into", str(down))
         assert code == 0, out
         got = sorted(p.relative_to(down).as_posix() for p in down.rglob("*") if p.is_file())
-        assert got == [f"{one}/2026-10-01.pdf", f"{one}/2026-10-03.pdf"], got
+        assert got == [f"{one}/2026-10-01.pdf", f"{one}/2026-10-03.pdf",
+                       f"{one}/2026-10-04-2.pdf", f"{one}/2026-10-04.pdf"], got
+        (down / one / "2026-10-01.pdf").write_bytes(b"mine")
+        code, out = run("down", "--into", str(down))
+        assert code == 1 and (down / one / "2026-10-01.pdf").read_bytes() == b"mine", (
+            "down wrote over a reading that differs from the bucket's", out)
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            code = SS.main(["down", "--root", str(root), "--local-bucket", str(t / "empty"),
+                            "--into", str(t / "down2")])
+        assert code == 1, "down from a bucket with no record said it succeeded"
         (root / SS.FOLDER / "not-an-id").mkdir()
         (root / SS.FOLDER / "not-an-id" / "2026-10-01.pdf").write_bytes(b"x")
         code, out = run("up")

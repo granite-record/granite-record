@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.1
+# GRANITE_VERSION: 2026-10-30.2
 """
 The state documents the guides and Learn pages rest on: from the laptop, where
 a real browser can read them, to the sessions, which cannot.
@@ -86,6 +86,10 @@ CHANGES = {"live": 7, "election": 7, "budget": 14, "yearly": 30, "unknown": 30, 
 EXTS = {"pdf", "html", "txt", "md", "csv", "xls", "xlsx", "json", "png", "mhtml"}
 NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:-([2-9]|[1-9]\d))?\.([a-z0-9]+)$")
 ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,80}$")
+# Names Windows will not give a folder, and files a desktop leaves behind.
+RESERVED = {"con", "prn", "aux", "nul", *(f"com{n}" for n in range(1, 10)),
+            *(f"lpt{n}" for n in range(1, 10))}
+JUNK = {"thumbs.db", "desktop.ini"}
 # The General Court's hosts. Written without a scheme on purpose: this file
 # names them to keep every automated reader away, and asks nothing of them.
 GC_HOSTS = ("gc.nh.gov", "gencourt.state.nh.us")
@@ -108,7 +112,7 @@ def sha256_of(path):
 
 
 def is_gc(url):
-    host = urlsplit(url).netloc.lower()
+    host = (urlsplit(url).hostname or "").lower()
     return any(host == h or host.endswith("." + h) for h in GC_HOSTS)
 
 
@@ -128,8 +132,9 @@ def load_registry(root):
     for n, r in enumerate(rows, start=2):
         i = r["id"]
         where = f"{REGISTRY} line {n} ({i or 'no id'})"
-        if not ID.match(i or ""):
-            bad.append(f"{where}: the id is not lower-case letters, digits and hyphens")
+        if not ID.match(i or "") or i in RESERVED:
+            bad.append(f"{where}: the id is not lower-case letters, digits and hyphens, "
+                       "or is a name Windows reserves")
         if i in out:
             bad.append(f"{where}: the id is used twice")
         if r["kind"] not in KINDS:
@@ -173,7 +178,7 @@ def folder_files(root, reg, folder=FOLDER):
         dirs[:] = [d for d in dirs if not d.startswith(".")]
         rel_dir = Path(dirpath).relative_to(base).as_posix()
         for n in sorted(names):
-            if n.startswith("."):
+            if n.startswith(".") or n.lower() in JUNK or n.endswith(".part"):
                 continue
             rel = n if rel_dir == "." else f"{rel_dir}/{n}"
             parts = rel.split("/")
@@ -201,7 +206,16 @@ def folder_files(root, reg, folder=FOLDER):
                     bad.append(f"{folder}/{rel}: read on {day}, which has not come yet")
                     continue
                 files.append((rel, i, m.group(1)))
-    return sorted(files), bad
+    return sorted(files, key=reading_order), bad
+
+
+def reading_order(f):
+    """(day, n, rel): the order readings were made in. 2026-10-30.pdf is the
+    first of that day and 2026-10-30-2.pdf the second, which a sort of the
+    names alone would put first ("-" sorts before ".")."""
+    rel, _, day = f
+    m = NAME.match(rel.rsplit("/", 1)[-1])
+    return (day, int(m.group(2) or 1) if m else 0, rel)
 
 
 # ------------------------------------------------------------------ bucket --
@@ -241,7 +255,7 @@ def plan_up(root, reg, man, files):
     unchanged or known (a file already sent, or a check already recorded)."""
     ids = json.loads(json.dumps(man["ids"]))      # a copy to play the run forward on
     plan = []
-    for rel, i, day in sorted(files, key=lambda f: (f[2], f[0])):
+    for rel, i, day in sorted(files, key=reading_order):
         p = Path(root) / FOLDER / rel
         sha, size = sha256_of(p), p.stat().st_size
         e = ids.setdefault(i, {"versions": [], "checks": [], "checked": None})
@@ -261,9 +275,9 @@ def plan_up(root, reg, man, files):
             e["checks"].append({"file": rel, "sha256": sha, "read": day})
             e["checked"] = max(e.get("checked") or "", day)
             continue
-        if last and day < last["read"]:
-            raise Failed(f"{FOLDER}/{rel} was read on {day}, before the bucket's latest "
-                         f"version of {i} ({last['read']}); an older reading cannot be a "
+        if last and reading_order((rel, i, day)) < reading_order((last["file"], i, last["read"])):
+            raise Failed(f"{FOLDER}/{rel} was read before the bucket's latest "
+                         f"version of {i} ({last['file']}); an older reading cannot be a "
                          "newer version. Move it out of sources/ if it is an old download")
         kind = "changed" if last else "new"
         plan.append((kind, rel, i, day, sha, size, last))
@@ -273,6 +287,17 @@ def plan_up(root, reg, man, files):
 
 
 def cmd_up(a, root):
+    if a.dry_run or getattr(a, "locked", False):
+        return _up(a, root)
+    import cloud
+    try:
+        with cloud.machine_lock(root):
+            return _up(a, root)
+    except cloud.Failed as e:
+        raise Failed(str(e))
+
+
+def _up(a, root):
     reg = load_registry(root)
     files, bad = folder_files(root, reg)
     if bad:
@@ -292,6 +317,7 @@ def cmd_up(a, root):
         return
     if not report["rows"]:
         return
+    sent = 0
     for kind, rel, i, day, sha, size, _ in sends:
         key = PREFIX + rel
         have = bucket.head(key)
@@ -302,20 +328,24 @@ def cmd_up(a, root):
                              "manifest; nothing over it is sent. A person looks first")
             continue
         bucket.put_file(Path(root) / FOLDER / rel, key, {"sha256": sha, "read": day})
+        sent += size
     for i, e in ids.items():
         if i in reg:
             e["url"] = reg[i]["url"]
     doc = {"about": "State documents read on the laptop: src/ops/state_sources.py.",
            "written": datetime.now().isoformat(timespec="seconds"),
            "ids": dict(sorted(ids.items()))}
+    if bucket.get_bytes(MANIFEST_KEY) != raw:
+        raise Failed(f"{MANIFEST_KEY} changed in the bucket while this ran (another up, "
+                     "elsewhere); the files are sent, the record is not. Run up again")
     if raw is not None:
         import cloud
         cloud.Replacer(bucket, date.today().isoformat()).keep(MANIFEST_KEY)
     bucket.put_bytes(MANIFEST_KEY, json.dumps(doc, indent=1).encode("utf-8"))
     stamp = datetime.now().strftime("%Y%m%dT%H%M%S%f")
     bucket.put_bytes(f"{REPORTS}{stamp}.json", json.dumps(report, indent=1).encode("utf-8"))
-    n = sum(p[5] for p in sends)
-    say(f"\nSent {len(sends)} file(s), {n:,} bytes; the change report is at "
+    say(f"\nSent {len(sends)} version(s), {sent:,} bytes new to the bucket; recorded "
+        f"{len(report['rows'])} reading(s); the change report is at "
         f"{REPORTS}{stamp}.json")
 
 
@@ -354,19 +384,25 @@ def show_report(report, dry=False):
 def cmd_down(a, root):
     into = Path(a.into).resolve() if a.into else Path(root) / FOLDER
     bucket = open_bucket(a)
-    man, _ = read_manifest(bucket)
+    man, raw = read_manifest(bucket)
+    if raw is None:
+        raise Failed(f"the bucket holds no {MANIFEST_KEY}: nothing has been sent, or this "
+                     "is the wrong bucket")
     rec_path = Path(root) / DOWN_RECORD
     try:
-        before = json.loads(rec_path.read_text(encoding="utf-8")).get("latest", {})
+        rec = json.loads(rec_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        before = {}
+        rec = {}
+    before = (rec.get("folders") or {}).get(str(into), {})
     took = n = 0
-    short = []
+    short, clash = [], []
     now = {}
     for i, e in sorted(man["ids"].items()):
         for v in e.get("versions", []):
             dst = into / v["file"]
-            if dst.is_file() and sha256_of(dst) == v["sha256"]:
+            if dst.is_file():
+                if sha256_of(dst) != v["sha256"]:
+                    clash.append(v["file"])
                 continue
             if a.dry_run:
                 took += 1
@@ -397,12 +433,18 @@ def cmd_down(a, root):
     if a.dry_run:
         say(f"Dry run: {took} file(s) would be taken into {into}; none was.")
         return
+    if clash:
+        raise Failed(f"{len(clash)} file(s) here differ from the bucket's under the same "
+                     "name and were left as they are; nothing is written over a reading: "
+                     + ", ".join(clash))
     if short:
         raise Failed(f"{len(short)} file(s) came down with other bytes than the manifest "
                      "records, and were not kept: " + ", ".join(short))
     rec_path.parent.mkdir(parents=True, exist_ok=True)
+    folders = dict(rec.get("folders") or {})
+    folders[str(into)] = now
     rec_path.write_text(json.dumps({"at": datetime.now().isoformat(timespec="seconds"),
-                                    "latest": now}, indent=1), encoding="utf-8")
+                                    "folders": folders}, indent=1), encoding="utf-8")
     say(f"Took {took} file(s), {n:,} bytes, into {into}; {len(now)} documents in all.")
 
 
@@ -438,6 +480,9 @@ def due(reg, man, today=None):
         if not last:
             out.append((i, "never read"))
             continue
+        if e.get("url") and e["url"] != r["url"]:
+            out.append((i, f"its address changed since it was last read ({e['url']})"))
+            continue
         gap = (today - date.fromisoformat(last)).days
         if gap >= CHANGES[r["changes"]]:
             out.append((i, f"last read {last}, {gap} days ago"))
@@ -471,7 +516,8 @@ COMMANDS = {"check": cmd_check, "up": cmd_up, "down": cmd_down, "report": cmd_re
             "due": cmd_due}
 
 
-def main(argv=None):
+def main(argv=None, locked=False):
+    """`locked`: the caller (cloud.py sources-up) holds cloud.py's machine lock."""
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0].strip())
     ap.add_argument("command", choices=sorted(COMMANDS))
     ap.add_argument("--dry-run", action="store_true", help="up, down: say, and send nothing")
@@ -481,6 +527,7 @@ def main(argv=None):
                     help="use a folder as the bucket (testing; no credentials)")
     ap.add_argument("--root", default=".", help="the working folder")
     a = ap.parse_args(argv)
+    a.locked = locked
     if a.since:
         try:
             date.fromisoformat(a.since)

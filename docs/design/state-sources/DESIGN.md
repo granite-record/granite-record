@@ -10,7 +10,8 @@ and the other nh.gov agency sites. None of them can be read by this project's
 machines:
 
 - From the cloud containers, sos.nh.gov, app.sos.nh.gov, das.nh.gov,
-  www.nh.gov and revenue.nh.gov all answered 403 (measured 29 and 30 October).
+  www.nh.gov and revenue.nh.gov all answered 403 (measured 29 and 30 October, the manager's brief; the guides' own
+  record of the same refusal, from 11 October, is in `guide_sources.py`).
 - From the owner's laptop, a script got 403 with 0 bytes from every page it
   asked, on 12 October (`src/fetch/other/guide_sources.py`, lines 17-22).
 - On 17 October, the same pages **did** open in the Claude desktop app's
@@ -24,15 +25,18 @@ now, and it will make keeping 125 documents current impossible.
 
 The project's rule, the owner's: it **will not pretend to be a browser**. No
 faked User-Agent, no hidden automation flags, nothing built to get past a
-refusal. And gc.nh.gov is never asked by anything but the nightly's existing
-paths; the Legislative Budget Assistant's (LBA) documents live there, so
-they are the owner's to save.
+refusal. And gc.nh.gov is asked only by the project's existing, deliberate
+paths (the nightly, and the laptop's fetch lane at the owner's word), never by
+anything new; the Legislative Budget Assistant's (LBA) documents live there,
+so they are the owner's to save.
 
 ## What is already here
 
 - **What the site depends on**: `records/sources/REGISTRY.csv`, new on this
   branch. 137 rows, gathered from `guide_sources.SOURCES`, the printouts'
-  `INDEX.csv`, the budget design's request list and `docs/ELECTION_WEEK.md`
+  `INDEX.csv`, the budget design's request list (branches `design/budget` and
+  `sources/budget-pdfs`, not yet in dev) and `docs/ELECTION_WEEK.md`, with the
+  2024 results page from preflight's `_SOS_2024`
   (the section *The registry* below).
 - **How a reading reaches a session**: `src/ops/state_sources.py`, new on this
   branch, through a `sources/` prefix in the private bucket (the section
@@ -153,8 +157,8 @@ costs nothing.
 
 **How it works.** When a registered document cannot be read, look for its
 latest snapshot on web.archive.org and file it with the snapshot's own date,
-saying it is a snapshot. The budget design found das.nh.gov/budget/ there from
-November 2025.
+saying it is a snapshot. The manager's brief reports das.nh.gov/budget/ there
+from November 2025 (not checked from here).
 
 **What the owner does.** Nothing.
 
@@ -232,7 +236,7 @@ and (c) in parallel.**
 | `url` | Its address; blank for a *wanted* row |
 | `kind` | `page`, `pdf`, `app` (a lookup or a form: its front page only), `data`, or `wanted` (needed, address not known) |
 | `title`, `publisher` | From the printouts index where it has them |
-| `owner_page` | The page it is found on: itself for a page; for a PDF the page(s) its list says link it, where known |
+| `owner_page` | The page it is found on: itself for a page; for a linked document, the pages on its host listed before it in its list, which is a guess and its `note` says so (17 rows); blank where none is on its host |
 | `changes` | A guess at how often it changes: `live`, `election`, `budget`, `yearly`, `rarely`, `unknown`. Every value is a guess until the change reports measure it |
 | `read_by` | `browser` (an automated reader may open it), `owner-only` (the General Court's: no automated reader, ever), `find` (a wanted row) |
 | `used_by` | The guides and Learn pages that cite it (`guide:...`, `learn:...`), or the `guide_sources` list it is in (`guide-list:...`) |
@@ -256,9 +260,10 @@ Two lists of the same thing drift; that is the guides session's call.
 
 ## The hand-over
 
-`src/ops/state_sources.py`, to become `cloud.py sources-up` and `sources-down`
-once the release session agrees (it owns `cloud.py`; the hook is about ten
-lines that delegate).
+`src/ops/state_sources.py`, also run as `cloud.py sources-up` and
+`sources-down` (a hook of a few lines that hands over to it, agreed with the
+manager on 30 October; `cloud.py` is the release session's file). The backup
+leaves `sources/` out, since the bucket's `sources/` already holds it.
 
 **On disk.** `sources/<id>/<YYYY-MM-DD>.<ext>`, one file per reading, named by
 the day it was read; a second reading the same day is `<YYYY-MM-DD>-2.<ext>`.
@@ -314,9 +319,10 @@ a folder standing in for the bucket.
 
 ## Phase 2, after the owner's OK
 
-1. The `cloud.py` hook (`sources-up`, `sources-down`), through the release
-   session, and `sources/**` in the backup's leave-out list so the laptop's
-   backup does not carry a second copy.
+1. The guard (`.claude/hooks/guard.py`) asks the owner before `cloud.py push`,
+   `seed-kit` and `state-up`, but not yet before `sources-up` or
+   `state_sources.py up`, which also write the real bucket. Adding them is the
+   owner's decision.
 2. The filer: `state_sources.py file ~/Downloads`, which files each download by
    the address Windows recorded for it, and asks about any it cannot place.
 3. The laptop runbook (`docs/STATE_SOURCES_RUNBOOK.md`): the one-time setup,
@@ -325,7 +331,12 @@ a folder standing in for the bucket.
 4. A page's text, saved as `.txt`, beside or instead of a printout: the guides
    rest on "the person's printout" today, so whether a text capture counts is
    the guides session's and the owner's decision.
-5. Owner-page link discovery: on each owner page, the PDF links the registry
+5. Pages read one section at a time: five addresses have two or three
+   printouts each, one per section opened (vehicle registrations, the two
+   motorcycle pages, boat registrations, landlord and tenant). Under one id per
+   address, each reading would look "changed" against another section's. Either
+   one reading of the whole page, or an id per section.
+6. Owner-page link discovery: on each owner page, the PDF links the registry
    lacks, reported for the owner to register.
 
 ## Open questions for the owner

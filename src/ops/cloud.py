@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.27
+# GRANITE_VERSION: 2026-09-25.28
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -4112,7 +4112,7 @@ def _sources(cmd, a, root):
     import state_sources
     argv = [cmd, "--root", str(root)] + (["--dry-run"] if a.dry_run else []) \
         + (["--local-bucket", a.local_bucket] if a.local_bucket else [])
-    if state_sources.main(argv) != 0:
+    if state_sources.main(argv, locked=True) != 0:
         raise Failed(f"state_sources.py {cmd} did not finish; it says why above")
 
 
