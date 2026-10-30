@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.2
+# GRANITE_VERSION: 2026-10-30.3
 """
 The live votes file, documented (the live layer's design, section 5, and
 build order 7): the "Same Day, Provisional" part of the data page's For
 Developers section, and its entry in /data/manifest.json. build_exports.py
-places both; the words are kept here, beside the code they describe.
+places both once workers/live/PATCHES.md 10 is applied (it is the API
+session's file); the words are kept here, beside the code they describe.
 
     import live_docs
     live_docs.developers_html()        # "" until PUBLIC

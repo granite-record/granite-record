@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.734
+# GRANITE_VERSION: 2026-09-04.735
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -80299,9 +80299,19 @@ def _live_docs(LD):
     assert 'f"/session/H/{date}.json"' in bls and LD.RECORD == "/session/{body}/{date}.json", \
         "the record's copy is no longer where the docs say: /session/<H|S>/<date>.json"
     assert '"Cache-Control": "no-store"' in fn, "the docs say a 503 is never cached; the Function's 503 no longer says no-store"
+    # Placed by build_exports.py once workers/live/PATCHES.md 10 is applied
+    # (the API session's file). Before: the patch must still say how. After:
+    # both calls, never one alone.
     ex = Path(_paths.locate("build_exports.py")).read_text(encoding="utf-8")
-    assert "live_docs.developers_html()" in ex and "live_docs.manifest_entry(" in ex, \
-        "build_exports.py no longer places the live votes file's section and manifest entry"
+    calls = ("live_docs.developers_html()" in ex, "live_docs.manifest_entry(" in ex)
+    if any(calls):
+        assert all(calls), "build_exports.py places one of the live votes file's two pieces and not the other"
+    else:
+        patches = (root / "workers/live/PATCHES.md").read_text(encoding="utf-8")
+        assert "## 10. build_exports.py" in patches and "live_docs.developers_html()" in patches \
+            and "live_docs.manifest_entry(" in patches, \
+            "build_exports.py does not place the live votes file's docs, and PATCHES.md 10 no longer says how"
+    placed = "placed" if all(calls) else "awaiting PATCHES.md 10"
     was = LD.PUBLIC
     try:
         LD.PUBLIC = False
@@ -80322,7 +80332,7 @@ def _live_docs(LD):
             f"the docs say {word!r}: the live votes file carries no video data, and the night "
             "never rewrites it (its record is a separate file that supersedes it)")
     return "ok", (f"{LD.MAX_AGE} s, {LD.NOT_FOUND_AGE} s and {LD.KEEP_DAYS} days held to the code; "
-                  f"{'public' if was else 'not yet public'}")
+                  f"{'public' if was else 'not yet public'}; {placed}")
 
 
 @check("build", "the live Worker reads a roll call's bill field as the record does: every field in "

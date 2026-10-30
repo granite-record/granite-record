@@ -167,3 +167,28 @@ with the date of approval:
     30 days (YouTube's developer policy III.I.15 and III.E.4.d); the live
     votes file is public and provisional, and documented only once
     `live_docs.PUBLIC` is set.
+
+## 10. build_exports.py: placing the live votes file's documentation (branch 7)
+
+build_exports.py is the API session's. Apply after its branches merge.
+Four lines; the words are in src/pages/live_docs.py, and nothing shows
+until `live_docs.PUBLIC` is True, so applying this changes no byte of
+data.html or manifest.json.
+
+- with the imports: `import live_docs`
+- in data_page's "developers" section, straight after the paragraph that
+  ends "the same bills are bills.csv above, in one table.</p>", on the same
+  line, so data.html gains no stray line while PUBLIC is False:
+
+      ...in one table.</p>{live_docs.developers_html()}
+
+- in main(), after `manifest["bill_indexes"] = bill_indexes(site, manifest["site"])`:
+
+      # The live votes file, once the person makes it public (live_docs.PUBLIC).
+      if (live := live_docs.manifest_entry(manifest["site"])):
+          manifest["live"] = live
+
+- bump build_exports.py's GRANITE_VERSION and versions.json together.
+
+preflight's _live_docs says whether this is applied, and holds its two
+calls once they are there.

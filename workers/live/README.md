@@ -288,8 +288,9 @@ checker and the Python one.
 
 **The documentation waits for the person.** `src/pages/live_docs.py` holds
 the data page's "Same Day, Provisional" section and the manifest's `live`
-entry. Neither is published until `live_docs.PUBLIC` is True, which the
-person sets in the change that links Live Now. preflight's `_live_docs` holds
+entry, which build_exports.py places once PATCHES.md 10 is applied. Neither
+is published until `live_docs.PUBLIC` is True, which the person sets in the
+change that links Live Now. preflight's `_live_docs` holds
 the numbers in that text (15 s, 60 s, 30 days) to the Function and the Worker.
 
 ## When Healthchecks says it failed

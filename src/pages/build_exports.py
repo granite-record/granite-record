@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.53
+# GRANITE_VERSION: 2026-09-10.51
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -41,7 +41,6 @@ import json
 import ballot_source as BS
 import bill_order as BO
 import build_date
-import live_docs
 import past_sponsors as PSP
 import shell
 import site_read as SR
@@ -1057,7 +1056,7 @@ def data_page(site, out, tables, base, cov=()):
       term&#39;s file together is every bill. One file of all of them,
       index.json, was retired on October 5, 2026, when it had grown to nine
       tenths of the largest file this site&#39;s host will serve; the same
-      bills are bills.csv above, in one table.</p>{live_docs.developers_html()}
+      bills are bills.csv above, in one table.</p>
     {feeds(site)}
     <h3 class="dph3">Read the Code</h3>
     <p>Every script that fetches, parses and builds this site is public, so a
@@ -1223,9 +1222,6 @@ def main():
                    for t in tables],
     }
     manifest["bill_indexes"] = bill_indexes(site, manifest["site"])
-    # The live votes file, once the person makes it public (live_docs.PUBLIC).
-    if (live := live_docs.manifest_entry(manifest["site"])):
-        manifest["live"] = live
     (out / "manifest.json").write_text(
         json.dumps(manifest, indent=1), encoding="utf-8")
     total = sum(t["bytes"] for t in tables)
