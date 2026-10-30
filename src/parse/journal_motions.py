@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.9
+# GRANITE_VERSION: 2026-10-23.10
 """
 What the Journals say a vote on no bill was about.
 
@@ -1657,8 +1657,17 @@ def load_careers(path=CAREERS):
 
 def resolve_member(name, body, term, careers):
     """The one member of `body` serving in `term` the printed name can mean,
-    by their employee number (careers.json's key, the site's member id), or
-    "" where it can mean none or more than one."""
+    by the site's member id, or "" where it can mean none or more than one.
+
+    THE SITE'S ID, NOT careers.json's KEY (30 October 2026). careers.json is
+    keyed by the Employeeno, and this returned that key as "the site's member
+    id"; the site numbers a member by their PersonID where the record has one
+    and the Employeeno where it has not (build_data.py, data/member_votes.json),
+    so every one of the 25 it named was an Employeeno no page answers to. It
+    returns the career's person_id where there is one, as member_votes.json
+    does; a member's file (site/legislators/<id>.json) lists every such id it
+    stands for in member_ids, so a House term filed under another PersonID
+    still finds its page."""
     if not name or not careers:
         return ""
     parts = name.replace(".", " ").split()
@@ -1673,7 +1682,7 @@ def resolve_member(name, body, term, careers):
             continue
         if first and not (c.get("first") or "").lower().startswith(first):
             continue
-        hits.append(eid)
+        hits.append(str(c.get("person_id") or eid))
     return hits[0] if len(hits) == 1 else ""
 
 
