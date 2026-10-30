@@ -21,24 +21,31 @@ export function liveStore(env) {
 
 // The headers every live answer carries.
 export const JSON_TYPE = "application/json; charset=utf-8";
+export const NOSNIFF = { "X-Content-Type-Options": "nosniff" };
+
+// Whether If-None-Match holds this ETag: weak or strong, one of a list, or *.
+export function held(request, etag) {
+  const h = request.headers.get("If-None-Match");
+  if (!h || !etag) return false;
+  return h.split(",").map(x => x.trim().replace(/^W\//, "")).some(x => x === "*" || x === etag);
+}
 
 export function notFound(maxAge = 60, extra = {}) {
   return new Response("Not found\n", { status: 404, headers: {
-    "Content-Type": "text/plain; charset=utf-8", "Cache-Control": `public, max-age=${maxAge}`, ...extra } });
+    "Content-Type": "text/plain; charset=utf-8", "Cache-Control": `public, max-age=${maxAge}`, ...NOSNIFF, ...extra } });
 }
 
 export function methodNotAllowed(extra = {}) {
   return new Response("GET or HEAD only\n", { status: 405, headers: {
-    "Content-Type": "text/plain; charset=utf-8", Allow: "GET, HEAD", ...extra } });
+    "Content-Type": "text/plain; charset=utf-8", Allow: "GET, HEAD", ...NOSNIFF, ...extra } });
 }
 
 // An object from the store as an answer: its JSON, its ETag, a 304 when the
 // reader already holds it, and the caller's headers. HEAD gets no body.
 export async function answer(request, object, headers) {
   const etag = object.httpEtag;
-  const base = { "Content-Type": JSON_TYPE, ETag: etag, ...headers };
-  const held = request.headers.get("If-None-Match");
-  if (held && held.split(",").map(x => x.trim().replace(/^W\//, "")).includes(etag)) {
+  const base = { "Content-Type": JSON_TYPE, ETag: etag, ...NOSNIFF, ...headers };
+  if (held(request, etag)) {
     return new Response(null, { status: 304, headers: base });
   }
   const body = request.method === "HEAD" ? null : await object.text();
@@ -50,7 +57,10 @@ export async function answer(request, object, headers) {
 // 304 is worked out per request from the copy's ETag.
 export async function cached(request, ctx, seconds, make) {
   const cache = globalThis.caches && globalThis.caches.default;
-  const key = new Request(new URL(request.url).toString(), { method: "GET" });
+  // Keyed on the address without its query: ?r=1, ?r=2 ... are one copy, and
+  // never a way round it to the bucket.
+  const u = new URL(request.url);
+  const key = new Request(u.origin + u.pathname, { method: "GET" });
   let full = cache ? await cache.match(key) : null;
   if (!full) {
     full = await make();
@@ -61,9 +71,7 @@ export async function cached(request, ctx, seconds, make) {
     }
   }
   if (full.status !== 200) return full;
-  const etag = full.headers.get("ETag");
-  const held = request.headers.get("If-None-Match");
-  if (held && etag && held.split(",").map(x => x.trim().replace(/^W\//, "")).includes(etag)) {
+  if (held(request, full.headers.get("ETag"))) {
     return new Response(null, { status: 304, headers: full.headers });
   }
   if (request.method === "HEAD") return new Response(null, { status: 200, headers: full.headers });

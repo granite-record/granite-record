@@ -8,14 +8,17 @@
  *   200  the file: JSON, CORS open, cached 15 s, with its ETag
  *   304  If-None-Match holds the ETag
  *   404  no file for that date (cached 60 s), not a date, or no binding
- *   405  anything but GET or HEAD
+ *   204  OPTIONS: the CORS preflight a page elsewhere sends to poll with
+ *        If-None-Match (design section 5 asks clients to)
+ *   405  anything else but GET or HEAD
  *   503  the bucket could not be read
  */
-import { answer, cached, liveStore, methodNotAllowed, notFound } from "../_store.js";
+import { NOSNIFF, answer, cached, liveStore, methodNotAllowed, notFound } from "../_store.js";
 
 export const MAX_AGE = 15;
 const DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
-const CORS = { "Access-Control-Allow-Origin": "*" };
+// Open to any page: it may read the ETag and send If-None-Match.
+const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Expose-Headers": "ETag" };
 
 // A real calendar date written YYYY-MM-DD, or null.
 export function realDay(s) {
@@ -28,6 +31,10 @@ export function realDay(s) {
 export async function onRequest({ request, env, params, waitUntil }) {
   const store = liveStore(env);
   if (!store) return notFound(60, CORS);
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: { ...CORS, ...NOSNIFF, "Access-Control-Allow-Methods": "GET, HEAD",
+      "Access-Control-Allow-Headers": "If-None-Match", "Access-Control-Max-Age": "86400" } });
+  }
   if (request.method !== "GET" && request.method !== "HEAD") return methodNotAllowed(CORS);
   const day = realDay(Array.isArray(params && params.day) ? params.day.join("/") : params && params.day);
   if (!day) return notFound(60, CORS);
@@ -39,6 +46,6 @@ export async function onRequest({ request, env, params, waitUntil }) {
     });
   } catch {
     return new Response("The live votes could not be read\n", { status: 503, headers: {
-      "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", ...CORS } });
+      "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", ...NOSNIFF, ...CORS } });
   }
 }
