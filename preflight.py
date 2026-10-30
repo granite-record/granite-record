@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.741
+# GRANITE_VERSION: 2026-09-04.742
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -84857,6 +84857,64 @@ def _follow_panel_states():
     return "ok", (f"{len(out['cases'])} cases: email first with RSS folded (open where email is not "
                   "offered), Sending... and one request, Check your email with no reset, a refusal "
                   "kept and reset once, Enter it again")
+
+
+_REPORT_TAB_JS = r"""
+const { validate } = await import(%s);
+const src = %s;
+const grab = re => { const m = src.match(re); if (!m) throw new Error("not in app.js: " + re); return m[0]; };
+const code = [/const BILL_TABS=\{[^}]*\};/, /const MEMBER_TABS=\{[^}]*\};/, /const COMMITTEE_TABS=\{[^}]*\};/,
+  /const TAB_PATH=.*;/, /const ownSlug=.*;/, /const isTabSlug=.*;/,
+  /function reportPath\(\)\{[\s\S]*?\n\}/].map(grab).join("\n");
+const location = { pathname: "" };
+const reportPath = new Function("location", code + "\nreturn reportPath;")(location);
+const base = { tab: "", field: "status", note: "the date is wrong", build: "", elapsed: 9000 };
+const out = [];
+for (const [record, paths] of [
+    ["bill:2026/HB1", ["/bill/2026/hb1", "/bill/2026/hb1.html", "/bill/2026/hb1/votes", "/bill/2026/hb1/text/",
+                       "/bill/2026/hb1/hearings", "/bill/2026/hb1/related"]],
+    ["committee:H05", ["/committee/H05", "/committee/H05/sessions", "/committee/H05/videos", "/committee/H05/bills"]],
+    ["committee:S03-1989", ["/committee/S03-1989", "/committee/S03-1989/videos"]]]) {
+  for (const p of paths) {
+    location.pathname = p;
+    const url = reportPath();
+    out.push([record, p, url, validate({ ...base, record, url }) !== null]);
+  }
+}
+location.pathname = "/legislator/jane-doe-hills-12/votes";
+out.push(["member", location.pathname, reportPath(), null]);
+console.log("@@" + JSON.stringify(out));
+"""
+
+
+@check("build", "a report is sent from the record's own address whatever tab is open, and "
+       "report.js takes it", needs=())
+def _report_from_any_tab():
+    """A tab writes its name into the address (app.js tabAddress), and a
+    report sent from any tab but the first named /bill/2026/hb1/votes, which
+    report.js does not take: the reader was thanked and the report dropped
+    (30 October 2026). app.js's own reportPath, with its tab
+    maps, is run here on every tab of a bill, a committee and a member,
+    and report.js's validate must take each."""
+    js, fn = Path("src/pages/app.js"), Path("functions/api/report.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and fn.exists() and node):
+        return "skip", "app.js, report.js or node is not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        t = root / "go.mjs"
+        t.write_text(_REPORT_TAB_JS % (json.dumps(fn.resolve().as_uri()),
+                                       json.dumps(js.read_text(encoding="utf-8"))), encoding="utf-8")
+        r = _run([node, str(t)], capture_output=True, text=True, timeout=60)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert r.returncode == 0 and "@@" in (r.stdout or ""), (r.stderr or r.stdout or "")[-400:]
+    rows = json.loads(r.stdout.rsplit("@@", 1)[1])
+    bad = [f"{p} sent as {u} for {rec}" for rec, p, u, ok in rows if ok is False]
+    assert not bad, "report.js refuses a report from a tab: " + "; ".join(bad[:4])
+    member = [u for rec, p, u, ok in rows if rec == "member"]
+    assert member == ["/legislator/jane-doe-hills-12"], f"a member's Votes tab sent {member}"
+    return "ok", f"{len(rows)} addresses, every tab's report sent from its record's own address"
 
 
 @check("build", "the report endpoint accepts only what a page can name, and stores nothing about the reader")
