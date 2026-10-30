@@ -8422,7 +8422,7 @@ function renderMemberVotes(m){
         <option value="lost"${sd==="lost"?" selected":""}>Losing side (${
           (sided.length-won).toLocaleString()})</option>
       </select></label>`:""}<label>Find
-      <input type="search" data-pf="vq" value="${esc(find)}" placeholder="HB 1442, or words"
+      <input type="search" data-pf="vq" value="${esc(find)}" placeholder="Bill number or title words"
         aria-label="Find a bill by its number or words"></label></div>
     <p class="src">${rows.length.toLocaleString()} of ${v.length.toLocaleString()}
       recorded votes in ${esc(termDash(t))}${castIn}, newest first: every roll call this member is
