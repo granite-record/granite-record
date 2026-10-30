@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.54
+# GRANITE_VERSION: 2026-09-19.55
 """
 A page for every day the House sat.
 
@@ -2701,7 +2701,6 @@ def _debate_html(d, body, members, esc, head=False, chair=None):
            f'journal</span>',
            f'<span class="sdn">{n} speech{"" if n == 1 else "es"}</span>',
            '<span class="caret"></span></summary>',
-           f'<p class="sdopen">{esc(opener)}…</p>',
            '<div class="sdbody">']
     for who, said in sp:
         nm = re.sub(r"^(Rep(?:resentative)?\.?|Speaker|Deputy Speaker)\s+",
@@ -2712,7 +2711,10 @@ def _debate_html(d, body, members, esc, head=False, chair=None):
                 if not who.lower().startswith("speaker")
                 else f"<span>{esc(who)}</span>")
         out.append(f'<p class="sdsp">{link}<span class="sdtx">{esc(said)}</span></p>')
-    out.append("</div></details>")
+    # THE OPENING SENTENCES AFTER THE FOLD, so they stand while it is shut,
+    # as app.css meant them to; inside it they showed only once it was open,
+    # which app.css then hid (the R2 polish batch, 30 October 2026).
+    out.append(f'</div></details><p class="sdopen">{esc(opener)}…</p>')
     return "".join(out)
 
 

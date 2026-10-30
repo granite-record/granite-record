@@ -27687,6 +27687,113 @@ CHIP_NOWRAP_OK = {
 }
 
 
+@check("frontend", "every opener's mark points right while shut and down while open, the journal's "
+       "debate among them, and the debate's opening sentences stand while it is shut")
+def _openers_turn_right_to_down():
+    """The R2 polish batch, 30 October 2026: "every opener turns right to
+    down". The House journal's debates ("Debate printed in the permanent
+    journal ▸") drew the shared triangle and no rule turned it, so it pointed
+    right open and shut; and three openers pointed down while shut and up
+    when open -- the Learn pages' and The Data's "On this page" and the
+    Resources topics -- where the other eighteen go right to down.
+
+    Here, from app.css: every rule that turns a summary's mark under [open]
+    (or a .open class) is read with the rule for the same mark shut, and with
+    how the mark is drawn -- the shared triangle (a left border), the
+    chevron mask --l-chev and the ▸ glyph point right; a box with only its
+    right and bottom borders is a corner pointing down and right -- and the
+    mark must point right shut and down open. And every <details> the pages
+    write with a mark in its summary has a rule that turns it. The debate's
+    opening sentences sit after its fold, so they show while it is shut, and
+    hide once it is open."""
+    import glob
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    rules = _css_rules(css)
+    mark = re.compile(r"(summary\s*::?(?:before|after)|\.caret|\.chev|\.cmcaret)$")
+    opened = re.compile(r"\[open\]|\.open\b")
+
+    def norm(sel):
+        return re.sub(r"\s*([>+~])\s*", r" \1 ", " ".join(sel.split())).strip()
+
+    def turn(v):
+        return sum(float(x) for x in re.findall(r"rotate\((-?[\d.]+)deg\)", v or ""))
+
+    def drawn(parts, cls):
+        if cls == ".chev":       # the ▸ glyph in the markup, held below
+            return 0
+        ds = {}
+        for at, sel, body, _line in rules:
+            if not at and any(norm(p) in parts for p in sel.split(",")):
+                ds.update(dict(_css_decls(body)))
+        width = ds.get("border-width", "").split()
+        if ("border-right" in ds and "border-bottom" in ds) or (
+                len(width) == 4 and width[0] == width[3] == "0" and width[1] != "0" and width[2] != "0"):
+            return 45
+        if "border-left" in ds or "--l-chev" in ds.get("mask", "") + ds.get("-webkit-mask", ""):
+            return 0
+        return None
+
+    bad, seen, turned = [], 0, set()
+    for at, sel, body, line in rules:
+        d = dict(_css_decls(body))
+        if "transform" not in d or (at and not all(a.startswith(("@media", "@container")) for a in at)):
+            continue
+        for part in sel.split(","):
+            p = norm(part)
+            m = mark.search(p)
+            if not opened.search(p) or not m:
+                continue
+            cls, shut = m.group(1), norm(opened.sub("", p))
+            parts = {shut} | ({norm(x) for _a, s0, _b, _l in rules for x in s0.split(",")
+                               if not opened.search(x) and norm(x).endswith(cls)
+                               and (norm(x).split(" ")[-1] == cls or ":where(" in x)}
+                              if cls in (".caret", ".cmcaret") else set())
+            base = drawn(parts, cls)
+            if base is None:
+                bad.append(f"app.css:{line} {p}: no rule says how its mark is drawn")
+                continue
+            shut_t = 0.0
+            for a2, s2, b2, _l2 in rules:
+                if not a2 and any(norm(x) == shut for x in s2.split(",")):
+                    t2 = dict(_css_decls(b2)).get("transform")
+                    if t2:
+                        shut_t = turn(t2)
+            was, now = (base + shut_t) % 360, (base + turn(d["transform"])) % 360
+            seen += 1
+            turned.update(re.findall(r"\.([\w-]+)(?:\[open\]|\.open\b)", p))
+            if (was, now) != (0, 90):
+                bad.append(f"app.css:{line} {p} points {was:g}° shut and {now:g}° open, "
+                           "where right (0°) and down (90°) are every opener's")
+    # Every <details> written with a mark in its summary has its turn.
+    pat = re.compile(r'<details class=\\?"([\w-]+)[^"\\]*\\?"[^>]*>(?:(?!</summary>|<details).){0,900}?'
+                     r'class=\\?"(caret|chev|cmcaret)\b', re.S)
+    written = set()
+    for f in sorted(glob.glob("src/pages/*.py") + glob.glob("src/pages/*.js") + glob.glob("src/pages/*.html")):
+        for mm in pat.finditer(Path(f).read_text(encoding="utf-8")):
+            written.add((mm.group(1), Path(f).name))
+    for x, f in sorted(written):
+        if x not in turned:
+            bad.append(f"{f} writes <details class=\"{x}\"> with a mark in its summary, and no rule "
+                       f"turns it when it is open")
+    for f in sorted(glob.glob("src/pages/*.py") + glob.glob("src/pages/*.js") + glob.glob("src/pages/*.html")):
+        for mm in re.finditer(r'class=\\?"chev\\?"[^>]*>([^<]{0,12})<', Path(f).read_text(encoding="utf-8")):
+            if mm.group(1) not in ("▸", "&#9656;", "${", ""):
+                bad.append(f"{Path(f).name}: a .chev draws {mm.group(1)!r}, which this check reads as ▸")
+    assert len(written) >= 8 and seen >= 20, (
+        f"only {seen} turns and {len(written)} written openers were found; the reading has broken")
+    # The journal's debate: its sentences after the fold, shown shut and hidden open.
+    import build_session_pages as BSP
+    src = Path(BSP.__file__).read_text(encoding="utf-8")
+    if "</div></details><p class=\"sdopen\">" not in src or '<p class="sdopen">{esc(opener)}…</p>\',\n' in src:
+        bad.append("build_session_pages writes a debate's opening sentences inside its fold, where "
+                   "they show only once it is open")
+    if not re.search(r"\.sdebate\[open\] \+ \.sdopen\{display:none\}", css):
+        bad.append("app.css does not hide a debate's opening sentences once it is open")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"{seen} turns of a summary's mark, each right to down; {len(written)} openers the "
+                  "pages write, each turned; the debate's opening stands while it is shut")
+
+
 @check("frontend", "a chip is held on one line only where its words are short or its box scrolls: a vote's result wraps")
 def _chip_nowrap():
     """A chip that says a vote's result in the bill page's words is a phrase,

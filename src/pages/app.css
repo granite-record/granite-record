@@ -4576,8 +4576,8 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
   -webkit-mask:var(--l-list) center/contain no-repeat;mask:var(--l-list) center/contain no-repeat}
 .l-otp > summary::after{content:"";width:.875rem;height:.875rem;background:var(--ink-2);
   -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;
-  transform:rotate(90deg);transition:transform .15s}
-.l-otp[open] > summary::after{transform:rotate(-90deg)}
+  transition:transform .15s}
+.l-otp[open] > summary::after{transform:rotate(90deg)}
 .l-otpb{position:absolute;left:0;top:calc(100% + 6px);z-index:30;width:min(40rem,100%);box-sizing:border-box;
   background:var(--surface);border:1px solid var(--rule-2);border-top:2px solid var(--ink);border-radius:var(--r-in);
   box-shadow:0 8px 22px var(--shadow);padding:.5rem 1rem .75rem}
@@ -4955,8 +4955,8 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .g-topic > summary::-webkit-details-marker{display:none}
 .g-topic > summary::after{content:"";flex:none;margin-left:auto;width:.5rem;height:.5rem;
   border-right:2px solid var(--ink-2);border-bottom:2px solid var(--ink-2);
-  transform:translateY(-.15rem) rotate(45deg);transition:transform .15s}
-.g-topic[open] > summary::after{transform:translateY(.1rem) rotate(-135deg)}
+  transform:rotate(-45deg);transition:transform .15s}
+.g-topic[open] > summary::after{transform:translateY(-.15rem) rotate(45deg)}
 .g-topic > summary:hover{background:var(--wash)}
 .g-topic > summary:hover .g-tname{color:var(--pine)}
 .g-topic > summary:hover .g-ic{background:var(--surface)}
@@ -6192,17 +6192,21 @@ font-style:italic}
 .svote .votewrap{margin-top:var(--sp-3)}
 
 /* A debate the House voted to keep. They run long -- 5,507 speeches across 298
-   of them -- so the opening sentences stand and the rest opens on request. */
+   of them -- so the opening sentences stand and the rest opens on request.
+   The sentences sit after the fold, so they show while it is shut, and its
+   triangle turns down as every other opener's does (the R2 polish batch, 30
+   October 2026: they were inside it, and the triangle never turned). */
 .sdebate{margin:var(--sp-4) 0 0;border-top:1px solid var(--rule);
 padding-top:var(--sp-4)}
 .sdebate > summary{display:flex;flex-wrap:wrap;align-items:center;
 gap:var(--sp-3);cursor:pointer;list-style:none;min-height:44px}
 .sdebate > summary::-webkit-details-marker{display:none}
+.sdebate[open] > summary .caret{transform:rotate(90deg)}
 .sdlab{font-size:var(--t-label);font-weight:600;letter-spacing:.04em;
 text-transform:uppercase;color:var(--pine)}
 .sdn{font-size:var(--t-sm);color:var(--ink-2)}
 .sdopen{margin:var(--sp-3) 0 0;font-family:var(--serif);color:var(--ink-2)}
-.sdebate[open] .sdopen{display:none}
+.sdebate[open] + .sdopen{display:none}
 .sdbody{margin-top:var(--sp-4)}
 .sdsp{margin:0 0 var(--sp-4);font-family:var(--serif)}
 .sdsp a,.sdsp > span:first-child{font-family:var(--sans);font-weight:600;
@@ -6548,10 +6552,10 @@ table.votes tr:has(+ tr.vring) td{border-bottom:0}
   background:var(--surface);color:var(--ink);font-family:var(--sans);font-size:var(--t-ui);
   font-weight:500;cursor:pointer;list-style:none}
 .dponp > summary::-webkit-details-marker{display:none}
-.dponp > summary::after{content:"";width:.45em;height:.45em;margin:0 0 .2em var(--sp-1);
-  border-right:1.5px solid var(--ink-2);border-bottom:1.5px solid var(--ink-2);transform:rotate(45deg)}
+.dponp > summary::after{content:"";width:.45em;height:.45em;margin:0 0 0 var(--sp-1);
+  border-right:1.5px solid var(--ink-2);border-bottom:1.5px solid var(--ink-2);transform:rotate(-45deg)}
 .dponp[open] > summary{border-color:var(--ink)}
-.dponp[open] > summary::after{transform:rotate(225deg);margin:.25em 0 0 var(--sp-1)}
+.dponp[open] > summary::after{transform:rotate(45deg);margin:0 0 .2em var(--sp-1)}
 .dponp > summary:hover{border-color:var(--pine)}
 .dponpb{position:absolute;left:0;top:calc(100% + var(--sp-3));z-index:30;width:min(40rem,calc(100vw - 2rem));
   box-sizing:border-box;background:var(--surface);border:1px solid var(--rule-2);border-top:2px solid var(--ink);
