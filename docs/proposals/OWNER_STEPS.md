@@ -78,7 +78,7 @@ Variables**. Leave any of them unset for its default.
 
 | Variable | Unset means | Allowed values | What it does |
 |---|---|---|---|
-| `NIGHT_KNOCK` | `on` | `on` or `off` | The off switch. Anything but exactly `on` turns all testing off; anything but `on` or `off` is also reported as typed wrong (below). A refusal being tested becomes yours, with one email |
+| `NIGHT_KNOCK` | `on` | `on` or `off` | The off switch. Anything but exactly `on` turns all testing off; anything but `on` or `off` is also reported as typed wrong (below). A refusal being tested becomes yours, with two emails: the night's own check and the "a refusal is yours" check |
 | `KNOCK_HOURLY_HOURS` | 48 | a whole number of hours, 0 to 384 | How long after the refusal the knocks are hourly |
 | `KNOCK_EVERY_HOURS` | 6 | 1, 2, 3, 4, 6, 8, 12 or 24 | The knocks' spacing after that |
 | `KNOCK_DAYS` | 16 | a whole number of days, 1 to 16 | When the refusal becomes yours at the latest |

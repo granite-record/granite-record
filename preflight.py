@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.745
+# GRANITE_VERSION: 2026-09-04.746
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -84849,7 +84849,8 @@ def _knock_ladder(R):
     whose(), each asserted), the last near 383.9. And a 503's Retry-After of
     50 hours holds the next knock past it; another run's claim 14 minutes old
     holds it while in flight, and 16 minutes old makes the record a person's,
-    as an answer the bucket never heard; this run's own claim holds nothing.
+    as an answer the bucket never heard; this run's own claim holds nothing,
+    nor does a claim marked "not asked" ten minutes old, in the same rung.
     And a knock left "no answer" (the reviewers of 30 October 2026) holds
     the next 14 minutes on, and 16 minutes on, whoever made it, is an answer
     never written down: a person's, nothing due.
@@ -85001,6 +85002,13 @@ def _knock_ladder(R):
             _KnockEnv.set(**dict(_KNOCK_MAIN, GITHUB_RUN_ID="mine", GITHUB_RUN_ATTEMPT="2"))
             assert claim(1, run="mine")[0] is False, \
                 "a claim of an earlier attempt of this run was taken as this attempt's own"
+            # A CLAIM MARKED "NOT ASKED" COUNTS NOWHERE (the addendum's 1.3; the
+            # reviewers of 30 October 2026 found a revert of it survived): one
+            # ten minutes old, in this rung, does not hold the next knock.
+            k["current"]["knocks"] = [{"utc": "-", "epoch": t - 10 * 60, "run_id": "other",
+                                       "attempt": "1", "by": "hourly", "answer": "not asked"}]
+            assert R.knock_due(None, k, now=t)[0], \
+                f"a claim marked \"not asked\" in this rung held the next knock: {R.knock_due(None, k, now=t)}"
 
             # THE ANSWER NOT WRITTEN DOWN (the reviewers of 30 October 2026): a
             # knock still "no answer" 14 minutes on is in flight, not due
@@ -85421,8 +85429,8 @@ def _the_knock(SG, R):
         hours or one whose Retry-After does not read: exit 2 and the chain's
         `person` set -- a person's, no knock due;
       - a bare 503 (its Retry-After held), a dropped connection, a timeout,
-        a 404, a 410, a 500, a web page over 200: exit 1, one knock counted,
-        still the night's;
+        a 404, a 410, a 500, a 204 or a 206 -- only a 200 lifts -- a web
+        page over 200: exit 1, one knock counted, still the night's;
       - an opener that raises SystemExit once the knock is written down
         leaves it "no answer"; a child whose opener never answers ends
         itself at KNOCK_KILL_SECONDS with 124, run here as a process of its
@@ -85532,6 +85540,11 @@ def _the_knock(SG, R):
                 "a 404": {"status": 404, "body": b"no such file"},
                 "a 410": {"status": 410, "body": b"gone"},
                 "a 500": {"status": 500, "body": b"Server Error"},
+                # Only a 200 lifts (DEVIATIONS 30; the reviewers of 30 October
+                # 2026 found any 2xx lifted with that rule taken out).
+                "a 204": {"status": 204, "body": b""},
+                "a 206": {"status": 206, "body": body195,
+                          "headers": {"Content-Range": "bytes 0-194/195"}},
                 "a web page over 200": {"status": 200,
                                         "body": b"<html><body>Down for maintenance</body></html>"},
                 "a web page after a byte-order mark": {"status": 200,
@@ -102447,6 +102460,13 @@ def _wf_knock_order_problems(text):
     if len(unclaim) != 1 or not (knock[0] < unclaim[0] < ups[1]) or \
             "always()" not in _wf_step_if(steps[unclaim[0]][1]):
         out.append("no unclaim step, always(), after the knock and before the last state-up")
+    # THE HOURLY CALLER'S HOURS ON BOTH (the reviewers of 30 October 2026):
+    # the claim's gate and the child's are the hourly caller's only with
+    # GRANITE_KNOCK_BY hourly on each step; without it on the claim no claim
+    # is ever made, which the silence alarm alone would notice.
+    for what, i in (("claim", claim[0]), ("knock", knock[0])):
+        if not any(re.fullmatch(r" {10}GRANITE_KNOCK_BY: hourly\s*", ln) for ln in steps[i][1]):
+            out.append(f"the {what} step does not set GRANITE_KNOCK_BY to hourly")
     # THE ANSWER NOT WRITTEN DOWN (the reviewers of 30 October 2026): the
     # knock's status reaches "What the refusal is now", which tells the third
     # check of a 2 the child could not write down, and fails the job.
@@ -102481,13 +102501,15 @@ def _workflows_knock_order():
     always(), after the knock and before the last state-up; and the knock's
     exit status, in its outputs, handed to "What the refusal is now" after
     the last state-up (--knock-rc: a 2 whose answer was not written down is
-    a person's all the same, the reviewers of 30 October 2026). Its mutants:
+    a person's all the same, the reviewers of 30 October 2026); and the
+    claim and the knock steps each set GRANITE_KNOCK_BY to hourly. Its mutants:
     quiet dropped from the knock's needs; the quiet test, or the first
     attempt's, dropped from its if; gc-night moved to quiet; a step after
     the listing; the knock run in look; the unclaim dropped, or after the
     state-up; the child run twice, or with a sleep; the knock asked on the
     claim alone; the claim sent whatever it said; the status not written,
-    not handed on, or not passed to --person-line."""
+    not handed on, or not passed to --person-line; GRANITE_KNOCK_BY dropped
+    from the claim step, or from the knock step."""
     text = _knock_text()
     if text is None:
         return "skip", "no .github/workflows/knock.yml here"
@@ -102528,6 +102550,12 @@ def _workflows_knock_order():
             "          KNOCK_RC: ${{ steps.knock.outputs.rc }}\n", ""),
         "the person's line not told the knock's status": text.replace(
             ' "--knock-rc=$env:KNOCK_RC"', ""),
+        "the claim step without GRANITE_KNOCK_BY": text.replace(
+            "        id: claim\n        env:\n          GRANITE_KNOCK_BY: hourly\n",
+            "        id: claim\n"),
+        "the knock step without GRANITE_KNOCK_BY": text.replace(
+            "        timeout-minutes: 3\n        env:\n          GRANITE_KNOCK_BY: hourly\n",
+            "        timeout-minutes: 3\n"),
     }
     missed = [what for what, t in mutants.items() if t == text or not _wf_knock_order_problems(t)]
     assert not missed, f"_workflows_knock_order did not catch: {missed}"
