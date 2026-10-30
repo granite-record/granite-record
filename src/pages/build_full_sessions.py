@@ -211,7 +211,7 @@ def day_section(body, d):
 
 
 def count_line(body, n, term):
-    return (f"{plural(n, 'day')} the {CHAMBER[body]} sat in {E(term)}, newest first. "
+    return (f"{plural(n, 'day')} the {CHAMBER[body]} sat in {E(C.term_words(term))}, newest first. "
             "Open a day for what the chamber did and its recording; its full page has "
             "every bill it took up, in the order the journal prints it, and how it voted.")
 
@@ -250,7 +250,7 @@ def page_head(c, path, base):
             + (f' The votes on no bill &mdash; rules suspensions, appeals of the chair, '
                f'a member allowed to go on speaking &mdash; are listed with what the journal says '
                f'each was about: <a href="session/nobill/{E(c["latest"])}.html">Votes Not on a '
-               f'Bill, {E(c["latest"])}</a>.' if c.get("nobill") else "")
+               f'Bill, {E(C.term_words(c["latest"]))}</a>.' if c.get("nobill") else "")
             + "</p>")
 
 
@@ -281,7 +281,7 @@ def page_body(c, path="", base=""):
     the page, as they always were."""
     body = c["body"]
     opts = "".join(f'<option value="{E(t)}"{" selected" if t == c["latest"] else ""}>'
-                   f"{E(t)}</option>" for t in c["terms"])
+                   f"{E(C.term_words(t))}</option>" for t in c["terms"])
     days = "".join(day_section(body, d) for d in reversed(c["days"]))
     return (page_head(c, path or f"/session/{SLUG[body]}.html", base)
             + f'<div class="bfilt pterm chamberctl" data-body="{body}">'

@@ -407,12 +407,12 @@ def sponsors(out, data):
                  "sponsor line agrees with it; or the sponsor line printed on "
                  "the bill's text, "
                  "where the first name is taken as prime -- every term before "
-                 "2023, and the 2023-2024 bills whose printed line and record "
+                 "2023, and the 2023\u20132024 bills whose printed line and record "
                  "disagree; or, on a bill of a term before 2023 that no other "
                  "source names a sponsor for, the General Court's sponsor "
                  "record again, which gives a chamber and no district, marks "
                  "the prime itself on all but four resolutions (where the "
-                 "first name is taken as prime) and in 1999-2000 leaves "
+                 "first name is taken as prime) and in 1999\u20132000 leaves "
                  "co-sponsors off some bills that print them, so a list "
                  "filled from it in that term may be short; or the House Journal, for the bills "
                  "none of the General Court's lists carry, where the first "
@@ -1011,7 +1011,7 @@ def data_page(site, out, tables, base, cov=()):
       document that would fill it may not be here, or may be here in a
       version that does not name it &mdash; mostly the text of older
       resolutions and petitions, which is where sponsors before 2023 are
-      read from, and a few budget bills and bills of 1993-1994 whose saved
+      read from, and a few budget bills and bills of 1993–1994 whose saved
       page is not the bill as introduced. Or the record gives it and this
       site does not read it from there yet, as with some committee referrals
       the docket records.</p>

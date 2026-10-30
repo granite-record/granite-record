@@ -74959,6 +74959,43 @@ def _tap_targets_24(C, BSP):
                   + f"; {blocks} on a line of its own (a debate's speaker) --tap-line, given back")
 
 
+@check("frontend", "a term's years are written \"2025–2026\" wherever a reader sees them: the built pages' "
+       "words and names, and the term menus and sentences app.js draws; an address or a file name keeps its hyphen",
+       needs=("components",))
+def _terms_with_a_dash(C):
+    """The cohesion audit of 30 October 2026 (I-2): about half the site wrote
+    "2025-2026" with a hyphen, sometimes on the same screen as "2025–2026".
+    components.term_words and components.js's termWords write a term of two
+    years with an en dash, and nothing else; every builder and app.js ask
+    them for what a reader sees. Held here: the helper's answers; app.js's
+    term menu and the sentences that name a term asking for it; and every
+    page the fixture builds, its text and its spoken names, where a term
+    with a hyphen may stand only inside an address or a file's name."""
+    import html as _h
+    bad = []
+    if (C.term_words("2025-2026"), C.term_words("2027-requests"), C.term_words(None)) != ("2025–2026", "2027-requests", ""):
+        bad.append("components.term_words does not write a term with a dash, and leave the rest")
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    for need in ('${termDash(t)} Term</option>', ':`in the ${termDash(term)} term`',
+                 '${esc(termDash(x))}</option>', 'function termDash(t){ return termWords(t||""); }'):
+        if need not in app:
+            bad.append(f"app.js no longer writes {need!r}")
+    site = _fixture_site_shared()[0] / "site"
+    term = re.compile(r"(?<![\w/.\-])(?:19|20)\d\d-(?:19|20)\d\d(?![\w/.\-])")
+    pages = 0
+    for f in sorted(site.rglob("*.html")):
+        t = f.read_text(encoding="utf-8", errors="replace")
+        t = re.sub(r"<(script|style|code|pre)\b.*?</\1>|<!--.*?-->", " ", t, flags=re.S)
+        said = _h.unescape(re.sub(r"<[^>]+>", " ", re.sub(r'\s(?:aria-label|title)="([^"]*)"', r"> \1 <", t)))
+        pages += 1
+        for m in term.finditer(said):
+            bad.append(f"{f.relative_to(site)}: {' '.join(said[max(0, m.start() - 40):m.end() + 10].split())!r}")
+    if pages < 50:
+        bad.append(f"only {pages} pages in the fixture's site; the pages are not being read")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", f"{pages} built pages write every term with a dash; app.js's menus and sentences ask termWords"
+
+
 @check("frontend", "one word for one thing: a bill that ended so is \"Died\", a player's button says "
        "\"Play the recording\", and a recording with no marked moment says the exact moment was not found",
        needs=("build_pages",))

@@ -231,7 +231,7 @@
     "build_district_geometry.py": "2026-10-09.1",
     "build_district_map.py": "2026-10-09.4",
     "build_full_sessions.py": "2026-10-10.13",
-    "build_nobill_votes.py": "2026-10-23.6",
+    "build_nobill_votes.py": "2026-10-23.7",
     "vote_passage.py": "2026-10-23.6",
     "map.css": "2026-10-09.5",
     "map.js": "2026-10-09.11",

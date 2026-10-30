@@ -834,7 +834,7 @@ def record_figures(site, root=Path(".")):
             - status["Died when the session ended"])
     figures["fig_ends"] = civics.bar(
         f"The {len(cur):,} bills and resolutions of the {shown} term",
-        f"How the {len(cur):,} bills and resolutions of the {term} term ended",
+        f"How the {len(cur):,} bills and resolutions of the {C.term_words(term)} term ended",
         [(status["Killed"], "c-died", "killed (ITL)"),
          (status["Signed into law"], "c-law", "signed into law"),
          (status["Referred for interim study"], "c-study", "sent for interim study"),
@@ -885,7 +885,7 @@ def record_figures(site, root=Path(".")):
                 I.say(lang, "learn.ends.caption", "The {n} bills and resolutions of the {term} term",
                     n=n_(len(cur)), term=shown),
                 I.say(lang, "learn.ends.label", "How the {n} bills and resolutions of the {term} term ended",
-                    n=n_(len(cur)), term=term),
+                    n=n_(len(cur)), term=C.term_words(term)),
                 [(status["Killed"], "c-died", I.say(lang, "learn.ends.killed", "killed (ITL)")),
                  (status["Signed into law"], "c-law", I.say(lang, "learn.ends.signed", "signed into law")),
                  (status["Referred for interim study"], "c-study",
