@@ -23769,6 +23769,16 @@
    "es": "Cada votación llega a esta página con el registro de mañana por la mañana.",
    "state": "draft"
   },
+  "votes.head_house": {
+   "en": "House roll calls today",
+   "es": "Votaciones nominales de la Cámara hoy",
+   "state": "draft"
+  },
+  "votes.head_senate": {
+   "en": "Senate roll calls today",
+   "es": "Votaciones nominales del Senado hoy",
+   "state": "draft"
+  },
   "votes.login": {
    "en": "Votes last read at {time}; the database has refused the published login since.",
    "es": "Votaciones leídas por última vez a las {time}; desde entonces la base de datos ha rechazado el acceso publicado.",
@@ -23814,6 +23824,21 @@
    "es": "{outcome}, según el registro de trámites",
    "state": "draft"
   },
+  "votes.provisional": {
+   "en": "provisional",
+   "es": "provisional",
+   "state": "draft"
+  },
+  "votes.provisional_at": {
+   "en": "provisional · read at {time}",
+   "es": "provisional · leído a las {time}",
+   "state": "draft"
+  },
+  "votes.provisional_line": {
+   "en": "Provisional: the night's record replaces this tomorrow morning; excusals settle days later.",
+   "es": "Provisional: el registro de la noche lo reemplaza mañana por la mañana; las excusas se resuelven días después.",
+   "state": "draft"
+  },
   "votes.query": {
    "en": "Votes last read at {time}; a query has failed since.",
    "es": "Votaciones leídas por última vez a las {time}; desde entonces ha fallado una consulta.",
@@ -23832,6 +23857,21 @@
   "votes.senate_after": {
    "en": "The Senate enters its roll calls after it rises.",
    "es": "El Senado anota sus votaciones nominales después de levantar la sesión.",
+   "state": "draft"
+  },
+  "votes.senate_line": {
+   "en": "Senate names follow once the Senate enters them, usually that afternoon or the next day.",
+   "es": "Los nombres del Senado se añaden cuando el Senado los registra, normalmente esa tarde o al día siguiente.",
+   "state": "draft"
+  },
+  "votes.today_house": {
+   "en": "The House today",
+   "es": "La Cámara hoy",
+   "state": "draft"
+  },
+  "votes.today_senate": {
+   "en": "The Senate today",
+   "es": "El Senado hoy",
    "state": "draft"
   },
   "web.go": {

@@ -175,6 +175,131 @@ test("a roll call's bill links to the page of the year it was introduced, throug
   assert.match(L.votesItems({ rollcalls: [{ ...rc("HB1"), bill_as_recorded: "<b>x" }] }, "H", bills)[0], /&lt;b&gt;x/);
 });
 
+// ---- the votes file's rings, union and session card ----------------------------
+const rcOf = over => ({ id: "2027-H-14", body: "H", seq: 14, bill: "2027-2028/HB2", bill_as_recorded: "HB2",
+  question: "Ought to Pass", taken: "2027-01-07T15:41:07Z", saved: null, yeas: 186, nays: 169,
+  ballots_complete: true, docket: null, note: null, ...over });
+
+test("which side prevailed is a source's: the record's passed, else the clerk's docket; never the tally", () => {
+  assert.equal(L.passedOf(rcOf({ passed: false })), false, "186-169 and sustained: the record says so");
+  assert.equal(L.passedOf(rcOf({ docket: { outcome: "Motion Adopted" } })), true);
+  assert.equal(L.passedOf(rcOf({ docket: { outcome: "Amendment Adopted" } })), true);
+  assert.equal(L.passedOf(rcOf({ docket: { outcome: "Motion Failed" } })), false);
+  assert.equal(L.passedOf(rcOf({ docket: { outcome: "Amendment Lost" } })), false);
+  assert.equal(L.passedOf(rcOf({})), null, "no docket line yet: nobody says");
+  assert.equal(L.passedOf(rcOf({ docket: { outcome: null } })), null);
+  assert.equal(L.passedOf(rcOf({ passed: true, docket: { outcome: "Motion Failed" } })), true, "the record wins");
+});
+
+test("a ring is app.js's simpleDonut, and only where a source says who prevailed", () => {
+  const drawn = [];
+  const c2 = load({ simpleDonut: (rc, bid, i, what) => { drawn.push({ rc, bid, i, what }); return `<svg data-i="${i}"></svg>`; } });
+  const L2 = c2.GRLive;
+  assert.equal(L.ring(rcOf({ passed: true }), 0), "", "no app.js on the page: no ring, the tally stands as text");
+  assert.equal(L2.ring(rcOf({}), 0), "", "no outcome: no ring");
+  assert.match(L2.ring(rcOf({ passed: false, threshold_needed: 237 }), 3), /data-i="3"/);
+  assert.deepEqual(JSON.parse(JSON.stringify(drawn[0].rc)), { yeas: 186, nays: 169, passed: false, threshold_needed: 237 });
+  assert.equal(drawn[0].what, "Roll call");
+  const items = L2.votesItems({ rollcalls: [rcOf({ docket: { outcome: "Motion Adopted" } })] }, "H", undefined, { rings: true });
+  assert.match(items[0], /<svg data-i="0">/);
+  assert.doesNotMatch(L2.votesItems({ rollcalls: [rcOf({})] }, "H", undefined, { rings: true })[0], /<svg/);
+  const broken = load({ simpleDonut: () => { throw new Error("x"); } }).GRLive;
+  assert.equal(broken.ring(rcOf({ passed: true }), 0), "", "a ring that throws costs the ring, not the list");
+});
+
+test("the overlay is the union by roll-call id, the record winning", () => {
+  const record = { rollcalls: [rcOf({ id: "2027-H-14", seq: 14 }), rcOf({ id: "2027-H-15", seq: 15 })] };
+  const live = { read_at: "2027-01-07T16:43:00Z", rollcalls: [rcOf({ id: "2027-H-14", seq: 14, yeas: 1 }), rcOf({ id: "2027-H-16", seq: 16 }),
+    rcOf({ id: "2027-H-17", seq: 17 }), rcOf({ id: "2027-S-3", body: "S", seq: 3 })] };
+  assert.deepEqual(L.overlay(record, live, "H").map(r => r.id), ["2027-H-17", "2027-H-16"]);
+  assert.deepEqual(L.overlay(null, live, "H").map(r => r.id), ["2027-H-17", "2027-H-16", "2027-H-14"], "no record yet: every live one");
+  assert.deepEqual([...L.overlay(record, null, "H")], []);
+  assert.deepEqual([...L.overlay({ rollcalls: live.rollcalls }, live, "H")], [], "the record has every id: nothing overlaid");
+  const items = L.votesItems(live, "H", undefined, { rollcalls: L.overlay(record, live, "H"), provisional: true });
+  assert.equal(items.length, 2);
+  assert.match(items[0], new RegExp(`data-id="2027-H-17".*provisional · read at 11:43${NBSP}AM`));
+});
+
+test("the votes file is asked every 30 seconds while a reader is at work, else every 2 minutes", () => {
+  const now = T("2027-01-07T16:00:00Z");
+  assert.equal(L.votesEvery({ next_read_by: "2027-01-07T16:02:00Z" }, now), 30000);
+  assert.equal(L.votesEvery({ next_read_by: "2027-01-07T15:51:00Z" }, now), 30000, "overdue by 9 minutes: still close");
+  assert.equal(L.votesEvery({ next_read_by: "2027-01-07T16:15:00Z" }, now), 120000, "the quarter-hour heartbeat");
+  assert.equal(L.votesEvery({ next_read_by: "2027-01-07T13:00:00Z" }, now), 120000, "a reader stopped hours ago");
+  assert.equal(L.votesEvery({ next_read_by: null }, now), 120000);
+  assert.equal(L.votesEvery(null, now), 120000);
+});
+
+test("the poller: If-None-Match, a 304 keeps the file, a 404 forgets it, a new address starts afresh", async () => {
+  const asked = [], heard = [];
+  let answer = { status: 200, etag: '"a"', body: { n: 1 } };
+  const doc = { hidden: false, addEventListener() {} };
+  let url = "/x/1";
+  const p = L.poller({ doc, url: () => url, every: () => 0,
+    fetch: async (u, init) => { asked.push([u, init.headers["If-None-Match"] || null]);
+      return { status: answer.status, ok: answer.status === 200, headers: { get: () => answer.etag }, json: async () => answer.body }; },
+    onFile: (f, code) => heard.push([f && f.n, code]) });
+  await p.first;
+  answer = { status: 304 };
+  await p.poll();
+  answer = { status: 503 };
+  await p.poll();
+  answer = { status: 404 };
+  await p.poll();
+  answer = { status: 200, etag: '"b"', body: { n: 2 } };
+  await p.poll();
+  url = "/x/2";
+  await p.poll();
+  assert.deepEqual(asked, [["/x/1", null], ["/x/1", '"a"'], ["/x/1", '"a"'], ["/x/1", '"a"'], ["/x/1", null], ["/x/2", null]]);
+  assert.deepEqual(heard, [[1, 200], [1, 304], [1, 503], [null, 404], [2, 200], [2, 200]]);
+  p.stop();
+  await p.poll();
+  assert.equal(asked.length, 6, "stopped: asks no more");
+});
+
+test("Live Now's session card: the chamber's list, its sentence, provisional, and its today page", () => {
+  const f = { read_at: "2027-01-07T16:43:00Z", next_read_by: "2027-01-07T16:45:00Z", status: { state: "reading", problem: null, since: null },
+    rollcalls: [rcOf({ docket: { outcome: "Motion Adopted" } })] };
+  const now = T("2027-01-07T16:44:00Z");
+  const h = L.sessionCard(f, "H", now, 200, { "2027-2028": { 2027: ["HB2"] } });
+  assert.match(h, /<h3>House roll calls today<\/h3>/);
+  assert.match(h, /href="\/bill\/2027\/hb2\.html"/);
+  assert.match(h, /Read from the General Court's database at 11:43/);
+  assert.match(h, /Provisional: the night's record replaces this tomorrow morning; excusals settle days later\./);
+  assert.match(h, /href="\/session\/H\/today">The House today</);
+  assert.doesNotMatch(h, /Senate names follow/);
+  const s = L.sessionCard(f, "S", now, 200);
+  assert.doesNotMatch(s, /<ol/, "no Senate roll calls: no list");
+  assert.match(s, /No roll calls read yet today/);
+  assert.doesNotMatch(s, /Provisional/);
+  assert.match(L.sessionCard({ ...f, rollcalls: [rcOf({ body: "S", id: "2027-S-1" })] }, "S", now, 200),
+               /Senate names follow once the Senate enters them/);
+  assert.deepEqual([...L.sessionBodies(SCHEDULE, null, "2027-01-07")], ["H"], "the House's floor row");
+  assert.deepEqual([...L.sessionBodies(SCHEDULE, { rollcalls: [rcOf({ body: "S" })] }, "2027-01-07")], ["H", "S"]);
+  assert.deepEqual([...L.sessionBodies(SCHEDULE, null, "2027-01-08")], [], "no sitting: no card");
+});
+
+test("/live asks for the votes file only on a day the schedule has a sitting", async () => {
+  for (const [day, want] of [["2027-01-07T16:44:00Z", 2], ["2027-01-08T16:44:00Z", 1]]) {
+    const { doc, els } = page();
+    els["live-now-votes"] = { hidden: true, innerHTML: "" };
+    const asked = [];
+    const fetch = async url => { asked.push(url);
+      return { status: 404, ok: false, headers: { get: () => null }, json: async () => null }; };
+    const p = L.start(doc, { fetch, now: () => T(day) });
+    try {                                    // stopped whatever fails: no timer left to hang the run
+      await p.first;
+      if (p.votes) await p.votes.first;
+      assert.equal(asked.length, want, day);
+      if (want === 2) {
+        assert.deepEqual(asked, ["/api/live/streams", "/api/live/votes/2027-01-07"]);
+        assert.match(els["live-now-votes"].innerHTML, /No roll calls read today\./);
+        assert.equal(els["live-now-votes"].hidden, false);
+      }
+    } finally { p.stop(); }
+  }
+});
+
 // A page just deep enough for L.start: the stream cards' box, keyed children.
 function page() {
   const els = {};

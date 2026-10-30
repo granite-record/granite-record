@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.3
+// GRANITE_VERSION: 2026-10-30.4
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -220,11 +220,49 @@ L.billHref = function (r, bills) {
   return null;
 };
 
-// One chamber's roll calls, newest first, as list items.
-L.votesItems = function (file, body, bills) {
-  var rcs = ((file && file.rollcalls) || []).filter(function (r) { return r.body === body; })
+// Whether a roll call's motion carried, as a source says it, or null: the
+// record's own `passed` (the night's file), else the clerk's docket outcome
+// (DOCKET_OUTCOME's words). Never worked out from the tally: an override
+// needs two thirds, and the larger number can be the losing one.
+L.passedOf = function (r) {
+  if (r && typeof r.passed === "boolean") return r.passed;
+  var o = r && r.docket && r.docket.outcome;
+  if (/ Adopted$/.test(o || "")) return true;
+  if (/ (Failed|Lost)$/.test(o || "")) return false;
+  return null;
+};
+
+// The roll call's ring, drawn by app.js's simpleDonut (the session pages' one
+// vote renderer), or "" where app.js is not loaded or no source says which
+// side prevailed: the ring marks a winner, and the page never guesses one.
+L.ring = function (r, i) {
+  var passed = L.passedOf(r);
+  if (passed === null || typeof root.simpleDonut !== "function") return "";
+  try {
+    return root.simpleDonut({ yeas: Number(r.yeas) || 0, nays: Number(r.nays) || 0, passed: passed,
+                              threshold_needed: r.threshold_needed || null }, "live", i, "Roll call");
+  } catch (e) { return ""; }
+};
+
+// THE OVERLAY'S RULE (design section 4.3): union by roll-call id, the
+// record winning. The live roll calls of `body` whose id the record lacks,
+// newest first. Once the record has an id, its live copy is not drawn.
+L.overlay = function (record, live, body) {
+  var have = {};
+  ((record && record.rollcalls) || []).forEach(function (r) { have[r.id] = true; });
+  return ((live && live.rollcalls) || []).filter(function (r) { return r.body === body && !have[r.id]; })
     .sort(function (a, b) { return b.seq - a.seq; });
-  return rcs.map(function (r) {
+};
+
+// One chamber's roll calls, newest first, as list items. opts.rings draws
+// each one's ring; opts.provisional marks each "provisional · read at" the
+// file's read_at; opts.rollcalls replaces the file's list.
+L.votesItems = function (file, body, bills, opts) {
+  opts = opts || {};
+  var rcs = (opts.rollcalls || ((file && file.rollcalls) || []).filter(function (r) { return r.body === body; }))
+    .slice().sort(function (a, b) { return b.seq - a.seq; });
+  var read = file && file.read_at ? L.timeOf(file.read_at) : "";
+  return rcs.map(function (r, i) {
     var when = r.taken ? L.timeOf(r.taken) : r.saved ? C.tr("votes.saved_at", "saved at {time}", { time: L.timeOf(r.saved) }) : "";
     // The site's own mention of a bill (components.billMention), linked
     // only where the term's index places it (L.billHref).
@@ -239,11 +277,91 @@ L.votesItems = function (file, body, bills) {
     return '<li class="lv-rc" data-id="' + C.esc(r.id) + '">'
       + (when ? '<span class="lv-when">' + C.esc(when) + "</span> " : "") + bill + " "
       + '<span class="lv-q">' + C.esc(r.question || "") + "</span> "
-      + '<span class="lv-tally">' + r.yeas + "&ndash;" + r.nays + "</span> "
+      + '<span class="lv-tally">' + (Number(r.yeas) || 0) + "&ndash;" + (Number(r.nays) || 0) + "</span> "
       + '<span class="lv-outcome">' + C.esc(outcome) + "</span> "
       + '<span class="lv-names">' + C.esc(names) + "</span>"
-      + (r.note ? '<span class="lv-note">' + C.esc(r.note) + "</span>" : "") + "</li>";
+      + (opts.provisional ? '<span class="lv-prov">' + C.esc(read
+          ? C.tr("votes.provisional_at", "provisional · read at {time}", { time: read })
+          : C.tr("votes.provisional", "provisional")) + "</span>" : "")
+      + (r.note ? '<span class="lv-note">' + C.esc(r.note) + "</span>" : "")
+      + (opts.rings ? L.ring(r, i) : "") + "</li>";
   });
+};
+
+// ---- the votes file, polled (section 4.1) --------------------------------------
+// Every 30 seconds while the file's next_read_by is within 10 minutes of now
+// (a reader is at work), otherwise every 2 minutes; never while hidden.
+L.VOTES_FAST_MS = 30000;
+L.VOTES_SLOW_MS = 120000;
+L.votesEvery = function (file, now) {
+  var by = Date.parse((file && file.next_read_by) || "");
+  return isFinite(by) && Math.abs(by - now) <= 10 * MINUTE ? L.VOTES_FAST_MS : L.VOTES_SLOW_MS;
+};
+
+// A poller for one JSON address with If-None-Match. o: {fetch, doc, url(),
+// every(file) -> ms (0 stops), onFile(file, http)}. A 404 is a file not there
+// (yet, or no binding): onFile hears it, and every() decides whether to ask
+// again. Returns {poll, stop, first}.
+L.poller = function (o) {
+  var etag = null, file = null, timer = null, stopped = false, url = null;
+  function poll() {
+    if (stopped) return Promise.resolve();
+    var u = o.url();
+    if (u !== url) { url = u; etag = null; file = null; }
+    var headers = etag ? { "If-None-Match": etag } : {};
+    return Promise.resolve(o.fetch(u, { headers: headers })).then(function (r) {
+      if (r.status === 304) return r.status;
+      if (r.status === 404) { file = null; etag = null; return 404; }
+      if (!r.ok) return r.status;
+      etag = r.headers.get("ETag");
+      return r.json().then(function (j) { file = j; return 200; });
+    }).catch(function () { return 0; }).then(function (http) {
+      if (u === url && !stopped) o.onFile(file, http);
+    });
+  }
+  function next() {
+    clearTimeout(timer);
+    var ms = stopped || o.doc.hidden ? 0 : o.every(file);
+    if (ms) timer = setTimeout(function () { poll().then(next); }, ms);
+  }
+  o.doc.addEventListener("visibilitychange", function () {
+    if (o.doc.hidden) clearTimeout(timer);
+    else if (!stopped) poll().then(next);
+  });
+  var first = poll().then(next);
+  return { poll: poll, first: first, stop: function () { stopped = true; clearTimeout(timer); } };
+};
+
+var CHAMBER = { H: "House", S: "Senate" };
+
+// Live Now's session card for one chamber (section 4.1): the list, the
+// section 2.6 sentence, the provisional line, and the chamber's today page.
+L.sessionCard = function (file, body, now, http, bills) {
+  var items = L.votesItems(file, body, bills, { rings: true });
+  var head = body === "S" ? C.tr("votes.head_senate", "Senate roll calls today") : C.tr("votes.head_house", "House roll calls today");
+  var today = body === "S" ? C.tr("votes.today_senate", "The Senate today") : C.tr("votes.today_house", "The House today");
+  return '<section class="lv-session" data-body="' + body + '">'
+    + "<h3>" + C.esc(head) + "</h3>"
+    + (items.length ? '<ol class="lv-votes">' + items.join("") + "</ol>" : "")
+    + '<p class="lv-status">' + C.esc(L.votesSentence(file, now, body, http)) + "</p>"
+    + (items.length ? '<p class="lv-provisional">' + C.esc(C.tr("votes.provisional_line",
+        "Provisional: the night's record replaces this tomorrow morning; excusals settle days later.")) + "</p>" : "")
+    + (body === "S" && items.length ? '<p class="lv-provisional">' + C.esc(C.tr("votes.senate_line",
+        "Senate names follow once the Senate enters them, usually that afternoon or the next day.")) + "</p>" : "")
+    + '<p class="lv-more"><a href="/session/' + body + '/today">' + C.esc(today) + "</a></p></section>";
+};
+
+// The chambers with a session card today: those the night's schedule has a
+// floor row for, and any the file already holds roll calls of.
+L.sessionBodies = function (schedule, file, today) {
+  var out = [];
+  ((schedule && schedule.days && schedule.days[today]) || []).forEach(function (r) {
+    if (r.kind === "floor") String(r.chamber || "").split("").forEach(function (c) {
+      if (CHAMBER[c] && out.indexOf(c) < 0) out.push(c);
+    });
+  });
+  ((file && file.rollcalls) || []).forEach(function (r) { if (CHAMBER[r.body] && out.indexOf(r.body) < 0) out.push(r.body); });
+  return out.sort();
 };
 
 // ---- the page --------------------------------------------------------------------
@@ -324,7 +442,21 @@ L.start = function (doc, opts) {
     else poll().then(schedule_);
   });
   var first = poll().then(schedule_);
-  return { poll: poll, draw: draw, first: first, stop: function () { stopped = true; clearTimeout(timer); } };
+  // The session card: asked for only on a day the night's schedule has a
+  // sitting on (no request on any other day).
+  var votesBox = doc.getElementById("live-now-votes"), votes = null;
+  if (votesBox && L.sessionBodies(schedule, null, L.nhDate(now())).length) {
+    votes = L.poller({ fetch: fetchImpl, doc: doc,
+      url: function () { return "/api/live/votes/" + L.nhDate(now()); },
+      every: function (f) { return L.votesEvery(f, now()); },
+      onFile: function (f, code) {
+        var bodies = L.sessionBodies(schedule, f, L.nhDate(now()));
+        votesBox.innerHTML = bodies.map(function (b) { return L.sessionCard(f, b, now(), code, schedule.bills); }).join("");
+        votesBox.hidden = !bodies.length;
+      } });
+  }
+  return { poll: poll, draw: draw, first: first, votes: votes,
+           stop: function () { stopped = true; clearTimeout(timer); if (votes) votes.stop(); } };
 };
 
 if (typeof module === "object" && module.exports) module.exports = L;

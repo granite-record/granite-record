@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.2
+# GRANITE_VERSION: 2026-10-30.3
 """
 Live Now's page and its schedule (the live layer's design, sections 1.2 and
 1.4), written by the night beside the Calendar and from the Calendar's own
@@ -182,6 +182,7 @@ def page_body(sched, today):
             '<p id="live-now-status" class="lv-status" role="status"></p>'
             '<noscript><p class="lv-status">Live status needs this page\'s script; today\'s meetings are below.</p></noscript>'
             '<div id="live-now-streams" class="lv-streams"></div>'
+            '<div id="live-now-votes" class="lv-sessions" hidden></div>'
             '<h2>Scheduled to stream today</h2><ul id="live-now-scheduled" class="lv-list" hidden></ul>'
             '<h2 id="live-now-cal-h">On today\'s calendar</h2>'
             + (f'<ul id="live-now-today" class="lv-today">{cards}</ul>' if cards
