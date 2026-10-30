@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.17
+# GRANITE_VERSION: 2026-09-05.18
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -424,16 +424,6 @@ def by_video(rows=None):
         if r["video_id"]:
             out[r["video_id"]].append(r)
     return dict(out)
-
-
-def bills_on(video_id, rows=None):
-    """Bills scheduled on one recording, in the file's order, no repeats."""
-    seen, out = set(), []
-    for r in (by_video(rows).get(video_id) or []):
-        if r["bill"] not in seen:
-            seen.add(r["bill"])
-            out.append(r["bill"])
-    return out
 
 
 def floor_only(rows=None):
