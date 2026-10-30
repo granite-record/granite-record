@@ -1,0 +1,768 @@
+{
+ "funds": {
+  "2023": {
+   "General Fund": {
+    "years": [
+     "2024",
+     "2025"
+    ],
+    "lines": [
+     {
+      "name": "BUSINESS PROFITS TAX",
+      "y1": 700600000,
+      "y2": 705600000,
+      "printed": "BUSINESS PROFITS TAX $700,600,000 $705,600,000"
+     },
+     {
+      "name": "BUSINESS ENTERPRISE TAX",
+      "y1": 34000000,
+      "y2": 34300000,
+      "printed": "BUSINESS ENTERPRISE TAX 34,000,000 34,300,000"
+     },
+     {
+      "name": "MEALS AND ROOMS TAX",
+      "y1": 311000000,
+      "y2": 315300000,
+      "printed": "MEALS AND ROOMS TAX 311,000,000 315,300,000"
+     },
+     {
+      "name": "TOBACCO TAX",
+      "y1": 133300000,
+      "y2": 132000000,
+      "printed": "TOBACCO TAX 133,300,000 132,000,000"
+     },
+     {
+      "name": "TRANSFER FROM LIQUOR",
+      "y1": 135900000,
+      "y2": 135600000,
+      "printed": "TRANSFER FROM LIQUOR 135,900,000 135,600,000"
+     },
+     {
+      "name": "INTEREST AND DIVIDENDS TAX",
+      "y1": 122800000,
+      "y2": 99400000,
+      "printed": "INTEREST AND DIVIDENDS TAX 122,800,000 99,400,000"
+     },
+     {
+      "name": "INSURANCE",
+      "y1": 140000000,
+      "y2": 143000000,
+      "printed": "INSURANCE 140,000,000 143,000,000"
+     },
+     {
+      "name": "COMMUNICATIONS TAX",
+      "y1": 30000000,
+      "y2": 30000000,
+      "printed": "COMMUNICATIONS TAX 30,000,000 30,000,000"
+     },
+     {
+      "name": "REAL ESTATE TRANSFER TAX",
+      "y1": 140700000,
+      "y2": 140700000,
+      "printed": "REAL ESTATE TRANSFER TAX 140,700,000 140,700,000"
+     },
+     {
+      "name": "COURT FINES & FEES",
+      "y1": 13400000,
+      "y2": 13300000,
+      "printed": "COURT FINES & FEES 13,400,000 13,300,000"
+     },
+     {
+      "name": "SECURITIES REVENUE",
+      "y1": 45800000,
+      "y2": 46600000,
+      "printed": "SECURITIES REVENUE 45,800,000 46,600,000"
+     },
+     {
+      "name": "BEER TAX",
+      "y1": 13200000,
+      "y2": 13200000,
+      "printed": "BEER TAX 13,200,000 13,200,000"
+     },
+     {
+      "name": "OTHER REVENUES",
+      "y1": 98900000,
+      "y2": 94500000,
+      "printed": "OTHER REVENUES 98,900,000 94,500,000"
+     },
+     {
+      "name": "MEDICAID RECOVERIES",
+      "y1": 3000000,
+      "y2": 3000000,
+      "printed": "MEDICAID RECOVERIES 3,000,000 3,000,000"
+     }
+    ],
+    "total": [
+     1922600000,
+     1906500000
+    ],
+    "sums_match": true
+   },
+   "Education Fund": {
+    "years": [
+     "2024",
+     "2025"
+    ],
+    "lines": [
+     {
+      "name": "BUSINESS PROFITS TAX",
+      "y1": 172300000,
+      "y2": 173600000,
+      "printed": "BUSINESS PROFITS TAX $172,300,000 $173,600,000"
+     },
+     {
+      "name": "BUSINESS ENTERPRISE TAX",
+      "y1": 340100000,
+      "y2": 342500000,
+      "printed": "BUSINESS ENTERPRISE TAX 340,100,000 342,500,000"
+     },
+     {
+      "name": "MEALS AND ROOMS TAX",
+      "y1": 9600000,
+      "y2": 9700000,
+      "printed": "MEALS AND ROOMS TAX 9,600,000 9,700,000"
+     },
+     {
+      "name": "TOBACCO TAX",
+      "y1": 81100000,
+      "y2": 80300000,
+      "printed": "TOBACCO TAX 81,100,000 80,300,000"
+     },
+     {
+      "name": "REAL ESTATE TRANSFER TAX",
+      "y1": 69300000,
+      "y2": 69300000,
+      "printed": "REAL ESTATE TRANSFER TAX 69,300,000 69,300,000"
+     },
+     {
+      "name": "TRANSFER FROM LOTTERY",
+      "y1": 160000000,
+      "y2": 164000000,
+      "printed": "TRANSFER FROM LOTTERY 160,000,000 164,000,000"
+     },
+     {
+      "name": "TOBACCO SETTLEMENT",
+      "y1": 40000000,
+      "y2": 38500000,
+      "printed": "TOBACCO SETTLEMENT 40,000,000 38,500,000"
+     },
+     {
+      "name": "UTILITY PROPERTY TAX",
+      "y1": 42000000,
+      "y2": 43000000,
+      "printed": "UTILITY PROPERTY TAX 42,000,000 43,000,000"
+     },
+     {
+      "name": "STATEWIDE PROPERTY TAX",
+      "y1": 363100000,
+      "y2": 363100000,
+      "printed": "STATEWIDE PROPERTY TAX 363,100,000 363,100,000"
+     }
+    ],
+    "total": [
+     1277500000,
+     1284000000
+    ],
+    "sums_match": true
+   },
+   "Highway Fund": {
+    "years": [
+     "2024",
+     "2025"
+    ],
+    "lines": [
+     {
+      "name": "GASOLINE ROAD TOLL",
+      "y1": 125000000,
+      "y2": 125600000,
+      "printed": "GASOLINE ROAD TOLL $125,000,000 $125,600,000"
+     },
+     {
+      "name": "MOTOR VEHICLE FEES",
+      "y1": 134800000,
+      "y2": 134700000,
+      "printed": "MOTOR VEHICLE FEES 134,800,000 134,700,000"
+     },
+     {
+      "name": "MISCELLANEOUS",
+      "y1": 200000,
+      "y2": 200000,
+      "printed": "MISCELLANEOUS 200,000 200,000"
+     }
+    ],
+    "total": [
+     260000000,
+     260500000
+    ],
+    "sums_match": true
+   },
+   "Fish and Game Fund": {
+    "years": [
+     "2024",
+     "2025"
+    ],
+    "lines": [
+     {
+      "name": "FISH AND GAME LICENSES",
+      "y1": 9800000,
+      "y2": 9800000,
+      "printed": "FISH AND GAME LICENSES $9,800,000 $9,800,000"
+     },
+     {
+      "name": "FINES AND MISCELLANEOUS",
+      "y1": 4000000,
+      "y2": 3900000,
+      "printed": "FINES AND MISCELLANEOUS 4,000,000 3,900,000"
+     }
+    ],
+    "total": [
+     13800000,
+     13700000
+    ],
+    "sums_match": true
+   }
+  },
+  "2025": {
+   "General Fund": {
+    "years": [
+     "2026",
+     "202"
+    ],
+    "lines": [
+     {
+      "name": "BUSINESS TAXES",
+      "y1": 662700000,
+      "y2": 697500000,
+      "printed": "BUSINESS TAXES $662,700,000 $697,500,000"
+     },
+     {
+      "name": "MEALS AND ROOMS TAX",
+      "y1": 339900000,
+      "y2": 353500000,
+      "printed": "MEALS AND ROOMS TAX 339,900,000 353,500,000"
+     },
+     {
+      "name": "TOBACCO TAX",
+      "y1": 112400000,
+      "y2": 111100000,
+      "printed": "TOBACCO TAX 112,400,000 111,100,000"
+     },
+     {
+      "name": "TRANSFER FROM LIQUOR",
+      "y1": 102900000,
+      "y2": 103000000,
+      "printed": "TRANSFER FROM LIQUOR 102,900,000 103,000,000"
+     },
+     {
+      "name": "INTEREST AND DIVIDENDS TAX",
+      "y1": 8700000,
+      "y2": 0,
+      "printed": "INTEREST AND DIVIDENDS TAX 8,700,000 0"
+     },
+     {
+      "name": "INSURANCE",
+      "y1": 165000000,
+      "y2": 168000000,
+      "printed": "INSURANCE 165,000,000 168,000,000"
+     },
+     {
+      "name": "COMMUNICATIONS TAX",
+      "y1": 29100000,
+      "y2": 29100000,
+      "printed": "COMMUNICATIONS TAX 29,100,000 29,100,000"
+     },
+     {
+      "name": "REAL ESTATE TRANSFER TAX",
+      "y1": 143600000,
+      "y2": 152600000,
+      "printed": "REAL ESTATE TRANSFER TAX 143,600,000 152,600,000"
+     },
+     {
+      "name": "COURT FINES & FEES",
+      "y1": 13700000,
+      "y2": 13700000,
+      "printed": "COURT FINES & FEES 13,700,000 13,700,000"
+     },
+     {
+      "name": "SECURITIES REVENUE",
+      "y1": 44400000,
+      "y2": 44500000,
+      "printed": "SECURITIES REVENUE 44,400,000 44,500,000"
+     },
+     {
+      "name": "BEER TAX",
+      "y1": 13000000,
+      "y2": 13000000,
+      "printed": "BEER TAX 13,000,000 13,000,000"
+     },
+     {
+      "name": "OTHER REVENUES",
+      "y1": 126000000,
+      "y2": 120000000,
+      "printed": "OTHER REVENUES 126,000,000 120,000,000"
+     },
+     {
+      "name": "MEDICAID RECOVERIES",
+      "y1": 3100000,
+      "y2": 3100000,
+      "printed": "MEDICAID RECOVERIES 3,100,000 3,100,000"
+     }
+    ],
+    "total": [
+     1764500000,
+     1809100000
+    ],
+    "sums_match": true
+   },
+   "Education Fund": {
+    "years": [
+     "2026",
+     "2027"
+    ],
+    "lines": [
+     {
+      "name": "BUSINESS TAXES",
+      "y1": 460500000,
+      "y2": 484700000,
+      "printed": "BUSINESS TAXES $460,500,000 $484,700,000"
+     },
+     {
+      "name": "MEALS AND ROOMS TAX",
+      "y1": 11100000,
+      "y2": 11500000,
+      "printed": "MEALS AND ROOMS TAX 11,100,000 11,500,000"
+     },
+     {
+      "name": "TOBACCO TAX",
+      "y1": 64600000,
+      "y2": 63900000,
+      "printed": "TOBACCO TAX 64,600,000 63,900,000"
+     },
+     {
+      "name": "REAL ESTATE TRANSFER TAX",
+      "y1": 70700000,
+      "y2": 75100000,
+      "printed": "REAL ESTATE TRANSFER TAX 70,700,000 75,100,000"
+     },
+     {
+      "name": "TRANSFER FROM LOTTERY",
+      "y1": 221500000,
+      "y2": 236700000,
+      "printed": "TRANSFER FROM LOTTERY 221,500,000 236,700,000"
+     },
+     {
+      "name": "TOBACCO SETTLEMENT",
+      "y1": 32500000,
+      "y2": 30000000,
+      "printed": "TOBACCO SETTLEMENT 32,500,000 30,000,000"
+     },
+     {
+      "name": "UTILITY PROPERTY TAX",
+      "y1": 50000000,
+      "y2": 51000000,
+      "printed": "UTILITY PROPERTY TAX 50,000,000 51,000,000"
+     },
+     {
+      "name": "STATEWIDE PROPERTY TAX",
+      "y1": 363100000,
+      "y2": 363100000,
+      "printed": "STATEWIDE PROPERTY TAX 363,100,000 363,100,000"
+     }
+    ],
+    "total": [
+     1274000000,
+     1316000000
+    ],
+    "sums_match": true
+   },
+   "Highway Fund": {
+    "years": [
+     "2026",
+     "2027"
+    ],
+    "lines": [
+     {
+      "name": "GASOLINE ROAD TOLL",
+      "y1": 127700000,
+      "y2": 127900000,
+      "printed": "GASOLINE ROAD TOLL $127,7000,000 $127,900,000"
+     },
+     {
+      "name": "MOTOR VEHICLE FEES",
+      "y1": 131700000,
+      "y2": 134700000,
+      "printed": "MOTOR VEHICLE FEES 131,700,000 134,700,000"
+     },
+     {
+      "name": "MISCELLANEOUS",
+      "y1": 200000,
+      "y2": 200000,
+      "printed": "MISCELLANEOUS 200,000 200,000"
+     }
+    ],
+    "total": [
+     259600000,
+     262800000
+    ],
+    "sums_match": true
+   },
+   "Fish and Game Fund": {
+    "years": [
+     "2026",
+     "2027"
+    ],
+    "lines": [
+     {
+      "name": "FISH AND GAME LICENSES",
+      "y1": 10000000,
+      "y2": 10000000,
+      "printed": "FISH AND GAME LICENSES $10,000,000 $10,000,000"
+     },
+     {
+      "name": "FINES AND MISCELLANEOUS",
+      "y1": 4000000,
+      "y2": 4000000,
+      "printed": "FINES AND MISCELLANEOUS 4,000,000 4 ,000,000"
+     }
+    ],
+    "total": [
+     14000000,
+     14000000
+    ],
+    "sums_match": true
+   }
+  }
+ },
+ "summary": {
+  "2023": {
+   "fund_totals": {
+    "General Fund": [
+     1922600000,
+     1906500000
+    ],
+    "Education Fund": [
+     1277500000,
+     1284000000
+    ],
+    "Highway Fund": [
+     260000000,
+     260500000
+    ],
+    "Fish and Game Fund": [
+     13800000,
+     13700000
+    ]
+   },
+   "biennium_by_fund": {
+    "General Fund": 3829100000,
+    "Education Fund": 2561500000,
+    "Highway Fund": 520500000,
+    "Fish and Game Fund": 27500000
+   },
+   "biennium_all": 6938600000,
+   "by_source": {
+    "BUSINESS TAXES": {
+     "total": 2503000000,
+     "by_fund": {
+      "General Fund": 1474500000,
+      "Education Fund": 1028500000
+     }
+    },
+    "MEALS AND ROOMS TAX": {
+     "total": 645600000,
+     "by_fund": {
+      "General Fund": 626300000,
+      "Education Fund": 19300000
+     }
+    },
+    "TOBACCO TAX": {
+     "total": 426700000,
+     "by_fund": {
+      "General Fund": 265300000,
+      "Education Fund": 161400000
+     }
+    },
+    "TRANSFER FROM LIQUOR": {
+     "total": 271500000,
+     "by_fund": {
+      "General Fund": 271500000
+     }
+    },
+    "INTEREST AND DIVIDENDS TAX": {
+     "total": 222200000,
+     "by_fund": {
+      "General Fund": 222200000
+     }
+    },
+    "INSURANCE": {
+     "total": 283000000,
+     "by_fund": {
+      "General Fund": 283000000
+     }
+    },
+    "COMMUNICATIONS TAX": {
+     "total": 60000000,
+     "by_fund": {
+      "General Fund": 60000000
+     }
+    },
+    "REAL ESTATE TRANSFER TAX": {
+     "total": 420000000,
+     "by_fund": {
+      "General Fund": 281400000,
+      "Education Fund": 138600000
+     }
+    },
+    "COURT FINES & FEES": {
+     "total": 26700000,
+     "by_fund": {
+      "General Fund": 26700000
+     }
+    },
+    "SECURITIES REVENUE": {
+     "total": 92400000,
+     "by_fund": {
+      "General Fund": 92400000
+     }
+    },
+    "BEER TAX": {
+     "total": 26400000,
+     "by_fund": {
+      "General Fund": 26400000
+     }
+    },
+    "OTHER REVENUES": {
+     "total": 193400000,
+     "by_fund": {
+      "General Fund": 193400000
+     }
+    },
+    "MEDICAID RECOVERIES": {
+     "total": 6000000,
+     "by_fund": {
+      "General Fund": 6000000
+     }
+    },
+    "TRANSFER FROM LOTTERY": {
+     "total": 324000000,
+     "by_fund": {
+      "Education Fund": 324000000
+     }
+    },
+    "TOBACCO SETTLEMENT": {
+     "total": 78500000,
+     "by_fund": {
+      "Education Fund": 78500000
+     }
+    },
+    "UTILITY PROPERTY TAX": {
+     "total": 85000000,
+     "by_fund": {
+      "Education Fund": 85000000
+     }
+    },
+    "STATEWIDE PROPERTY TAX": {
+     "total": 726200000,
+     "by_fund": {
+      "Education Fund": 726200000
+     }
+    },
+    "GASOLINE ROAD TOLL": {
+     "total": 250600000,
+     "by_fund": {
+      "Highway Fund": 250600000
+     }
+    },
+    "MOTOR VEHICLE FEES": {
+     "total": 269500000,
+     "by_fund": {
+      "Highway Fund": 269500000
+     }
+    },
+    "MISCELLANEOUS": {
+     "total": 400000,
+     "by_fund": {
+      "Highway Fund": 400000
+     }
+    },
+    "FISH AND GAME LICENSES": {
+     "total": 19600000,
+     "by_fund": {
+      "Fish and Game Fund": 19600000
+     }
+    },
+    "FINES AND MISCELLANEOUS": {
+     "total": 7900000,
+     "by_fund": {
+      "Fish and Game Fund": 7900000
+     }
+    }
+   }
+  },
+  "2025": {
+   "fund_totals": {
+    "General Fund": [
+     1764500000,
+     1809100000
+    ],
+    "Education Fund": [
+     1274000000,
+     1316000000
+    ],
+    "Highway Fund": [
+     259600000,
+     262800000
+    ],
+    "Fish and Game Fund": [
+     14000000,
+     14000000
+    ]
+   },
+   "biennium_by_fund": {
+    "General Fund": 3573600000,
+    "Education Fund": 2590000000,
+    "Highway Fund": 522400000,
+    "Fish and Game Fund": 28000000
+   },
+   "biennium_all": 6714000000,
+   "by_source": {
+    "BUSINESS TAXES": {
+     "total": 2305400000,
+     "by_fund": {
+      "General Fund": 1360200000,
+      "Education Fund": 945200000
+     }
+    },
+    "MEALS AND ROOMS TAX": {
+     "total": 716000000,
+     "by_fund": {
+      "General Fund": 693400000,
+      "Education Fund": 22600000
+     }
+    },
+    "TOBACCO TAX": {
+     "total": 352000000,
+     "by_fund": {
+      "General Fund": 223500000,
+      "Education Fund": 128500000
+     }
+    },
+    "TRANSFER FROM LIQUOR": {
+     "total": 205900000,
+     "by_fund": {
+      "General Fund": 205900000
+     }
+    },
+    "INTEREST AND DIVIDENDS TAX": {
+     "total": 8700000,
+     "by_fund": {
+      "General Fund": 8700000
+     }
+    },
+    "INSURANCE": {
+     "total": 333000000,
+     "by_fund": {
+      "General Fund": 333000000
+     }
+    },
+    "COMMUNICATIONS TAX": {
+     "total": 58200000,
+     "by_fund": {
+      "General Fund": 58200000
+     }
+    },
+    "REAL ESTATE TRANSFER TAX": {
+     "total": 442000000,
+     "by_fund": {
+      "General Fund": 296200000,
+      "Education Fund": 145800000
+     }
+    },
+    "COURT FINES & FEES": {
+     "total": 27400000,
+     "by_fund": {
+      "General Fund": 27400000
+     }
+    },
+    "SECURITIES REVENUE": {
+     "total": 88900000,
+     "by_fund": {
+      "General Fund": 88900000
+     }
+    },
+    "BEER TAX": {
+     "total": 26000000,
+     "by_fund": {
+      "General Fund": 26000000
+     }
+    },
+    "OTHER REVENUES": {
+     "total": 246000000,
+     "by_fund": {
+      "General Fund": 246000000
+     }
+    },
+    "MEDICAID RECOVERIES": {
+     "total": 6200000,
+     "by_fund": {
+      "General Fund": 6200000
+     }
+    },
+    "TRANSFER FROM LOTTERY": {
+     "total": 458200000,
+     "by_fund": {
+      "Education Fund": 458200000
+     }
+    },
+    "TOBACCO SETTLEMENT": {
+     "total": 62500000,
+     "by_fund": {
+      "Education Fund": 62500000
+     }
+    },
+    "UTILITY PROPERTY TAX": {
+     "total": 101000000,
+     "by_fund": {
+      "Education Fund": 101000000
+     }
+    },
+    "STATEWIDE PROPERTY TAX": {
+     "total": 726200000,
+     "by_fund": {
+      "Education Fund": 726200000
+     }
+    },
+    "GASOLINE ROAD TOLL": {
+     "total": 255600000,
+     "by_fund": {
+      "Highway Fund": 255600000
+     }
+    },
+    "MOTOR VEHICLE FEES": {
+     "total": 266400000,
+     "by_fund": {
+      "Highway Fund": 266400000
+     }
+    },
+    "MISCELLANEOUS": {
+     "total": 400000,
+     "by_fund": {
+      "Highway Fund": 400000
+     }
+    },
+    "FISH AND GAME LICENSES": {
+     "total": 20000000,
+     "by_fund": {
+      "Fish and Game Fund": 20000000
+     }
+    },
+    "FINES AND MISCELLANEOUS": {
+     "total": 8000000,
+     "by_fund": {
+      "Fish and Game Fund": 8000000
+     }
+    }
+   }
+  }
+ }
+}

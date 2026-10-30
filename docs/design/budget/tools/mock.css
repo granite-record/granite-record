@@ -1,0 +1,57 @@
+/* THE STATE BUDGET MOCK: the only new rules. Everything else on the page is
+   app.css's own Learn components (l-bar, l-chart/l-bars, l-numtab, l-time,
+   l-who, l-fold, l-note, l-docs). Fund colours validated with the dataviz
+   validator: light passes all six checks; dark passes with a CVD warning
+   (6-8 band) that the direct key and 2px gaps answer. */
+:root{--bud-gf:#2A64A8;--bud-ef:#B9420B;--bud-hf:#1A8456;--bud-fg:#7A4BB0}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bud-gf:#4F88D0;--bud-ef:#CC7A35;--bud-hf:#35A06E;--bud-fg:#9A72D6}}
+:root[data-theme="dark"]{--bud-gf:#4F88D0;--bud-ef:#CC7A35;--bud-hf:#35A06E;--bud-fg:#9A72D6}
+.c-gf{background:var(--bud-gf)} .c-ef{background:var(--bud-ef)}
+.c-hf{background:var(--bud-hf)} .c-fg{background:var(--bud-fg)}
+
+/* single-series bars take the site's accent, not the status green the
+   by-the-numbers chart uses for Became Law */
+.bud-bars .l-bf{background:var(--pine)}
+
+/* two budgets in one track: the earlier one recessive grey above, this one
+   in pine below; the label is the change */
+.bud-pair{height:2rem}
+.bud-pair .l-bf.is-was{top:.375rem;height:.5rem;background:var(--rule-2)}
+.bud-pair .l-bf.is-now{top:1rem;height:.625rem;background:var(--pine)}
+.bud-was{background:var(--rule-2)} .bud-now{background:var(--pine)}
+.bud-key{margin:0 0 .75rem}
+
+.bud-tot td{border-top:2px solid var(--rule-2);font-weight:600}
+.bud-list{margin:.5rem 1rem .75rem 2.25rem;padding:0;font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink)}
+.bud-list li{margin:.25rem 0}
+.bud-more{list-style:none;color:var(--ink-2);font-style:italic}
+
+/* A PLACEHOLDER: where a source is still needed. Dashed in the "needs"
+   colour the site already uses for an unfilled row (.l-table tr.needs). */
+.bud-need{max-width:var(--l-meas);margin:.875rem 0 1.125rem;padding:.875rem 1rem;border:1.5px dashed var(--st-table);
+  border-radius:var(--r-in);background:var(--st-table-bg);font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink)}
+.bud-need p{margin:.25rem 0}
+.bud-need .l-lbl{color:var(--st-table)}
+.bud-mock{max-width:var(--l-meas);margin:0 0 1.5rem;padding:.625rem .875rem;border-left:3px solid var(--st-table);
+  background:var(--surface);font:400 var(--t-sm)/1.5 var(--sans);color:var(--ink-2)}
+.bud-mockneed{border-bottom:1.5px dashed var(--st-table)}
+
+/* ON A PHONE a source's name is longer than the track can spare, so the
+   name goes above its bar and the bar takes the full width. */
+@media (max-width:37.5em){
+  .bud-fig .l-bars{grid-template-columns:minmax(0,1fr)}
+  .bud-fig .l-bars li{grid-template-columns:minmax(0,1fr);padding-top:.25rem}
+  .bud-fig .l-bl{padding:0}
+  .bud-fig .l-axis{grid-template-columns:minmax(0,1fr)}
+  .bud-fig .l-axis span:first-child{display:none}
+}
+.bud-sub{display:block;font-size:var(--t-sm);color:var(--ink-2);margin-top:.125rem}
+.bud-span{text-align:center}
+.bud-amt .bud-sub{white-space:normal}
+/* four numeric columns on a phone: the site's 1rem cell padding leaves the
+   last column off the edge, so these tables take half of it */
+@media (max-width:37.5em){
+  .bud-tight th,.bud-tight td{padding-left:.5rem;padding-right:.5rem}
+  .bud-tight th{letter-spacing:.03em}
+}

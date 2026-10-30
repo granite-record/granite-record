@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<!-- GRANITE_VERSION: 2026-09-05.74 -->
+<html lang="en" >
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The State Budget — Learn | Granite Record</title>
+<meta name="description" content="Two bills every two years: HB 1 says how much the state may spend, and HB 2 changes the laws that go with it. Where the money comes from, how the budget is made, and what changed from the last one.">
+<link rel="canonical" href="https://graniterecord.org/learn/state-budget">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The State Budget">
+<meta property="og:description" content="Two bills every two years: HB 1 says how much the state may spend, and HB 2 changes the laws that go with it. Where the money comes from, how the budget is made, and what changed from the last one.">
+<meta property="og:url" content="https://graniterecord.org/learn/state-budget">
+<meta property="og:site_name" content="Granite Record">
+<meta name="twitter:card" content="summary_large_image">
+
+<!-- Opening a bill pushes /bill/2026/hb1123, which re-bases every
+     relative link on this page unless this is here. The record pages
+     have carried it since they were folders down; this one is at the
+     root and did not need it until the address changed. -->
+<base href="/">
+
+<!-- The head's shared lines, the header, the footer and the closing scripts
+     are chrome.py's, written into these CHROME slots (chrome.fill). -->
+<script>
+(function(){
+  var r=document.documentElement,K="gr-lang",here=r.lang||"en",OFFER=["en"],LANGS=["en", "es"];
+  function get(k){try{return localStorage.getItem(k)||"";}catch(e){return "";}}
+  if(here!=="en")try{localStorage.setItem("gr-lang-seen","1");}catch(e){}
+  document.addEventListener("click",function(e){
+    var a=e.target&&e.target.closest&&e.target.closest("[data-setlang]");
+    if(a)try{localStorage.setItem(K,a.getAttribute("data-setlang"));}catch(x){}
+  },true);
+  document.addEventListener("change",function(e){
+    var s=e.target;if(!s||!s.hasAttribute||!s.hasAttribute("data-footlang"))return;
+    var o=s.options[s.selectedIndex];if(!o||o.value===here)return;
+    try{localStorage.setItem(K,o.value);}catch(x){}
+    location.href=o.getAttribute("data-href");
+  });
+  if(OFFER.length<2&&here==="en"&&get("gr-lang-seen")!=="1")return;
+  window.GR_NOTICE={"es":{"label":"Idioma","text":"Esta página todavía no está en español.","home":"Ir a la página principal en español","close":"Cerrar"}};
+  var ls=navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||""];
+  var browser="",chosen=get(K);
+  for(var i=0;i<ls.length&&!browser;i++){var c=String(ls[i]||"").slice(0,2).toLowerCase();
+    if(LANGS.indexOf(c)>=0)browser=c;}
+  if(LANGS.indexOf(chosen)<0)chosen="";
+  var want=chosen||browser||"en";
+  window.GR_PREF={here:here,want:want,chosen:chosen,browser:browser};
+  r.classList.add("langs");
+  var to=r.getAttribute("data-alt-"+want);
+  if(want!==here&&to&&(chosen||here==="en")&&to!==location.pathname)
+    location.replace(to+location.search+location.hash);
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Playfair+Display:wght@600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/icon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#E9EAEC" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171B1C" media="(prefers-color-scheme: dark)">
+<meta property="og:image" content="https://graniterecord.org/og-learn.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Granite Record: how New Hampshire works">
+<meta name="twitter:image" content="https://graniterecord.org/og-learn.png">
+<script>
+/* BEFORE THE FIRST PAINT, and that is the whole reason this is inline in the
+   head rather than in app.js. app.js loads at the end of the body: by the
+   time it ran, a reader who had chosen dark would have already been shown a
+   white page. Three lines, no dependencies, and wrapped in try/catch because
+   localStorage throws outright in a locked-down browser rather than
+   returning null. Absent or unrecognised means follow the system, which is
+   what the stylesheet does on its own.
+   And html.js, set first: a record page carries its record as plain HTML
+   for a reader that runs no scripts (shell.page's static), which app.css
+   hides once scripts are known to run, so it is never painted over. */
+document.documentElement.classList.add("js");
+try{var t=localStorage.getItem("gr-theme");
+if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}
+</script>
+<link rel="stylesheet" href="/app.css">
+<script src="/components.js"></script>
+<style>
+/* THE STATE BUDGET MOCK: the only new rules. Everything else on the page is
+   app.css's own Learn components (l-bar, l-chart/l-bars, l-numtab, l-time,
+   l-who, l-fold, l-note, l-docs). Fund colours validated with the dataviz
+   validator: light passes all six checks; dark passes with a CVD warning
+   (6-8 band) that the direct key and 2px gaps answer. */
+:root{--bud-gf:#2A64A8;--bud-ef:#B9420B;--bud-hf:#1A8456;--bud-fg:#7A4BB0}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bud-gf:#4F88D0;--bud-ef:#CC7A35;--bud-hf:#35A06E;--bud-fg:#9A72D6}}
+:root[data-theme="dark"]{--bud-gf:#4F88D0;--bud-ef:#CC7A35;--bud-hf:#35A06E;--bud-fg:#9A72D6}
+.c-gf{background:var(--bud-gf)} .c-ef{background:var(--bud-ef)}
+.c-hf{background:var(--bud-hf)} .c-fg{background:var(--bud-fg)}
+
+/* single-series bars take the site's accent, not the status green the
+   by-the-numbers chart uses for Became Law */
+.bud-bars .l-bf{background:var(--pine)}
+
+/* two budgets in one track: the earlier one recessive grey above, this one
+   in pine below; the label is the change */
+.bud-pair{height:2rem}
+.bud-pair .l-bf.is-was{top:.375rem;height:.5rem;background:var(--rule-2)}
+.bud-pair .l-bf.is-now{top:1rem;height:.625rem;background:var(--pine)}
+.bud-was{background:var(--rule-2)} .bud-now{background:var(--pine)}
+.bud-key{margin:0 0 .75rem}
+
+.bud-tot td{border-top:2px solid var(--rule-2);font-weight:600}
+.bud-list{margin:.5rem 1rem .75rem 2.25rem;padding:0;font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink)}
+.bud-list li{margin:.25rem 0}
+.bud-more{list-style:none;color:var(--ink-2);font-style:italic}
+
+/* A PLACEHOLDER: where a source is still needed. Dashed in the "needs"
+   colour the site already uses for an unfilled row (.l-table tr.needs). */
+.bud-need{max-width:var(--l-meas);margin:.875rem 0 1.125rem;padding:.875rem 1rem;border:1.5px dashed var(--st-table);
+  border-radius:var(--r-in);background:var(--st-table-bg);font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink)}
+.bud-need p{margin:.25rem 0}
+.bud-need .l-lbl{color:var(--st-table)}
+.bud-mock{max-width:var(--l-meas);margin:0 0 1.5rem;padding:.625rem .875rem;border-left:3px solid var(--st-table);
+  background:var(--surface);font:400 var(--t-sm)/1.5 var(--sans);color:var(--ink-2)}
+.bud-mockneed{border-bottom:1.5px dashed var(--st-table)}
+
+/* ON A PHONE a source's name is longer than the track can spare, so the
+   name goes above its bar and the bar takes the full width. */
+@media (max-width:37.5em){
+  .bud-fig .l-bars{grid-template-columns:minmax(0,1fr)}
+  .bud-fig .l-bars li{grid-template-columns:minmax(0,1fr);padding-top:.25rem}
+  .bud-fig .l-bl{padding:0}
+  .bud-fig .l-axis{grid-template-columns:minmax(0,1fr)}
+  .bud-fig .l-axis span:first-child{display:none}
+}
+.bud-sub{display:block;font-size:var(--t-sm);color:var(--ink-2);margin-top:.125rem}
+.bud-span{text-align:center}
+.bud-amt .bud-sub{white-space:normal}
+/* four numeric columns on a phone: the site's 1rem cell padding leaves the
+   last column off the edge, so these tables take half of it */
+@media (max-width:37.5em){
+  .bud-tight th,.bud-tight td{padding-left:.5rem;padding-right:.5rem}
+  .bud-tight th{letter-spacing:.03em}
+}
+
+</style>
+</head>
+<body>
+<a class="skip" href="/learn/state-budget#results">Skip to the page</a>
+<!-- Every landmark has a name: this nav, the search row and the filters. -->
+<nav class="top" aria-label="Sections"><div class="in">
+<a class="brand" href="/" translate="no">Granite Record</a>
+<div class="navdrop" id="navdrop"><div class="navtabs"><a href="bills"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6.25 2.75h7.75l4.25 4.25v14.25H6.25z"/><path d="M13.75 2.75v4.5h4.5"/><path d="M9 11.75h6.5M9 15h6.5M9 18.25h4"/></svg>Bills</a>
+<a href="laws"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.25v17.5M7.75 20.75h8.5M4.75 6.75h14.5M12 3.25v3.5"/><path d="M4.75 6.75 2.25 13a2.5 2.5 0 0 0 5 0zM19.25 6.75 16.75 13a2.5 2.5 0 0 0 5 0z"/></svg>Laws</a>
+<a href="officials"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7.75" r="3.75"/><path d="M4.5 20.75c.9-4.25 3.8-6.5 7.5-6.5s6.6 2.25 7.5 6.5"/></svg>Officials</a>
+<a href="calendar"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.75" width="17" height="16" rx="1.5"/><path d="M3.5 9.75h17M8 2.75v4M16 2.75v4"/><path d="M7.25 13.25h3v3h-3z" fill="currentColor"/></svg>Calendar</a>
+<a href="committees"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.25" cy="8.25" r="2.25"/><circle cx="12" cy="6.5" r="2.25"/><circle cx="17.75" cy="8.25" r="2.25"/><path d="M2.75 13.25h18.5"/><path d="M5.25 13.25v7.5M18.75 13.25v7.5"/><path d="M8.5 17h7"/></svg>Committees</a>
+<a href="resources" aria-current="page"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.75C9.6 5 6.6 4.6 3.25 5.25v13.5c3.35-.65 6.35-.25 8.75 1.5 2.4-1.75 5.4-2.15 8.75-1.5V5.25C17.4 4.6 14.4 5 12 6.75z"/><path d="M12 6.75v13.5"/></svg>Resources</a></div>
+<button class="themer" id="themer" type="button" hidden><svg class="thsun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 1.8v2.2M10 16v2.2M1.8 10h2.2M16 10h2.2M4.2 4.2l1.6 1.6M14.2 14.2l1.6 1.6M4.2 15.8l1.6-1.6M14.2 5.8l1.6-1.6"/></svg><svg class="thmoon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16.4 12.4A7 7 0 0 1 7.6 3.6a7 7 0 1 0 8.8 8.8z"/></svg><span class="thword">Light</span></button></div>
+<button class="navmenu" id="navmenu" type="button" aria-expanded="false" aria-controls="navdrop" aria-label="Sections"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3.2 6h13.6M3.2 10h13.6M3.2 14h13.6"/></svg></button>
+</div></nav>
+<div class="searchrow" role="search" aria-label="Search bills" hidden><div class="in">
+<div class="qline">
+  <label for="year" style="position:absolute;left:-9999px">Legislative term</label>
+  <select id="year" title="Two-year term"></select>
+  <label for="q" style="position:absolute;left:-9999px">Search bills</label>
+  <div class="qbox">
+    <input id="q" type="search" spellcheck="false" autocomplete="off" disabled
+     placeholder="Bill number or key words">
+    <button id="qgo" type="button" disabled title="Search"
+     aria-label="Search">&#8629;</button>
+  </div>
+</div>
+<div class="qhint"><!-- THE SORT COMES FIRST, under the term picker and as wide as it
+     (the person, 8 October 2026: "The best match/sort by should be to the
+     left of the number of matching bills ... and the width of the dropdown
+     boxes for the term selector and sort by should be the same size"). It
+     sat after the count, so the count arriving with the first letter typed
+     pushed it along the row; at the start of the row nothing before it can
+     move it.
+     role=status AND aria-live: a screen reader was never told the result
+     set had changed. Typing a search, ticking a facet or switching term
+     redraws the list silently, so a reader who cannot see it had no way
+     to know whether anything happened. The count carries the one sentence
+     worth hearing -- "2,243 bills in the 2025-2026 term", "31 of 2,243
+     bills in the 2025-2026 term", or "loading 2023-2024" while a term
+     arrives -- and since the same evening it is never empty under a list:
+     with nothing narrowing it, it says the term's whole count. aria-atomic
+     because the whole sentence is replaced at once and half of it read
+     aloud would be worse than none. -->
+<label for="sort" style="position:absolute;left:-9999px">Sort order</label>
+<select id="sort">
+  <option value="best">Best match</option>
+  <option value="num" selected>Bill number</option>
+  <option value="recent">Most recent action</option>
+  <option value="status">Status</option>
+</select>
+<span id="count" role="status" aria-live="polite" aria-atomic="true">Loading…</span>
+<span id="synhint"></span></div>
+</div></div>
+<div class="shell nofacets"><button class="ftoggle" id="ftoggle" type="button"
+ aria-expanded="false" aria-controls="facets" hidden><span>Filter by topic,
+ sponsor or committee</span><span class="badge" hidden></span><span
+ class="chev">&#9656;</span></button>
+<aside class="facets" id="facets" aria-label="Filters"></aside>
+<main id="main">
+<p class="count" id="summary"></p><div id="results"><div class="l-page"><nav class="l-hub" aria-label="Resources"><p class="l-hubname"><a href="/resources">Resources</a></p><div class="l-hubtabs"><a class="l-hubtab" href="/resources#guides">How-To Guides</a><a class="l-hubtab" href="/resources#learn" aria-current="true">Learn</a><a class="l-hubtab" href="/resources#sources">Official Sources</a></div></nav><header class="l-head"><h1>The State Budget</h1><p class="l-lead">Two bills every two years: HB 1 says how much the state may spend, and HB 2 changes the laws that go with it. Where the money comes from, how the budget is made, and what changed from the last one.</p><div class="pageacts" id="pageacts"><details class="l-otp"><summary>On this page</summary><nav class="l-otpb" aria-label="On this page"><ol><li><a href="learn/state-budget#s-two-bills-two-years">Two Bills, Two Years</a></li><li><a href="learn/state-budget#s-where-the-money-comes-from">Where the Money Comes From</a></li><li><a href="learn/state-budget#s-where-it-goes">Where It Goes</a></li><li><a href="learn/state-budget#s-other-directions-in-hb-1">Other Directions in HB 1</a></li><li><a href="learn/state-budget#s-how-the-budget-is-made">How the Budget Is Made</a></li><li><a href="learn/state-budget#s-what-hb-2-changed">What HB 2 Changed</a></li><li><a href="learn/state-budget#s-compared-with-the-last-budget">Compared With the Last Budget</a></li><li><a href="learn/state-budget#s-in-the-record">In the Record</a></li><li><a href="learn/state-budget#sources">Where This Comes From</a></li><li><a href="learn/state-budget#all-topics">The Fourteen Pages</a></li></ol></nav></details><details class="pcite"><summary><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" d="M4.5 18v-4.6c0-3.4 1.7-6 4.6-7.4l.9 1.6c-1.7 1-2.6 2.4-2.8 4.2H10V18zM13.5 18v-4.6c0-3.4 1.7-6 4.6-7.4l.9 1.6c-1.7 1-2.6 2.4-2.8 4.2H19V18z"/></svg>Cite this page</summary><div class="citebody"><p class="citenote">Granite Record indexes the General Court&rsquo;s record; it is not that record. Where a citation allows only one source, cite the General Court &mdash; every page here links to what it is drawn from. The date below is the day the page was read.</p><dl class="citeforms"><dt>MLA<button type="button" class="citecopy" data-citecopy="cite-mla" data-citename="MLA" aria-label="Copy the MLA citation" hidden>Copy</button></dt><dd id="cite-mla">&ldquo;The State Budget.&rdquo; <i>Granite Record</i>, https://graniterecord.org/learn/state-budget. Accessed <span class="citeday">30 Oct. 2026</span>.</dd><dt>APA<button type="button" class="citecopy" data-citecopy="cite-apa" data-citename="APA" aria-label="Copy the APA citation" hidden>Copy</button></dt><dd id="cite-apa">Granite Record. (n.d.). <i>The State Budget</i>. Retrieved <span class="citeday">30 Oct. 2026</span>, from https://graniterecord.org/learn/state-budget</dd><dt>Chicago<button type="button" class="citecopy" data-citecopy="cite-chicago" data-citename="Chicago" aria-label="Copy the Chicago citation" hidden>Copy</button></dt><dd id="cite-chicago">Granite Record. &ldquo;The State Budget.&rdquo; Accessed <span class="citeday">30 Oct. 2026</span>. https://graniterecord.org/learn/state-budget.</dd><dt>BibTeX<button type="button" class="citecopy" data-citecopy="cite-bibtex" data-citename="BibTeX" aria-label="Copy the BibTeX citation" hidden>Copy</button></dt><dd id="cite-bibtex"><code>@misc{learn-state-budget,
+  title = {The State Budget},
+  howpublished = {Granite Record},
+  url = {https://graniterecord.org/learn/state-budget},
+  note = {Accessed <span class="citeday">30 Oct. 2026</span>}
+}</code></dd></dl><p class="citestate" id="citestate" role="status" aria-live="polite"></p></div></details></div></header><div class="l-art"><div class="bud-mock" role="note"><b>Design mock.</b> Not on the site. Real figures where a source on hand gives them; <span class="bud-mockneed">dashed boxes</span> are placeholders for sources still needed.</div><section class="l-sec" id="s-two-bills-two-years"><h2 class="l-sech">Two Bills, Two Years</h2><div class="l-secb">
+<p>The state budget covers two fiscal years at once. The one in force now made
+appropriations &ldquo;for the expenses of certain departments of the state for
+fiscal years ending June 30, 2026 and June 30, 2027&rdquo;, in the words of its
+title, and took effect on July 1, 2025. <span class="l-rsa">(HB 1 of 2025, title and 140:18)</span></p>
+
+<p>It comes as two bills. The constitution limits a budget bill to the
+operating and capital expenses of the executive, legislative and judicial
+branches: no section or footnote of one may establish, amend or repeal any
+other statutory law. <span class="l-rsa">(<a href="/laws#part2-art18-a">Part Second, Article 18-a</a>)</span>
+The statutes then make the changes to the law a document of their own, the
+trailer bill, separate from the budget and not a budget bill.
+<span class="l-rsa">(<a href="/laws/9#s2-a">RSA 9:2-a</a>)</span> So <a href="bill/2025/hb1">HB 1</a> carries the
+amounts, and <a href="bill/2025/hb2">HB 2</a> the changes to the law that go with them. Both were
+introduced in the House. The constitution says all money bills shall
+originate there, and that the Senate may propose or concur with amendments.
+<span class="l-rsa">(<a href="/laws#part2-art18">Part Second, Article 18</a>)</span></p>
+</div><div class="l-wide"><div class="l-who" style="--n:2" role="group" aria-label="The two budget bills of 2025">
+<section class="l-body"><h3>HB 1</h3><p class="l-lbl">The operating budget</p><dl>
+<div><dt>What it holds</dt><dd>The amounts each department may spend, the footnotes that govern them, and the estimates of revenue.</dd></div>
+<div><dt>Became</dt><dd>Chapter 140, signed June 27, 2025; in force July 1, 2025</dd></div></dl></section>
+<section class="l-body"><h3>HB 2</h3><p class="l-lbl">The trailer bill</p><dl>
+<div><dt>What it holds</dt><dd>&ldquo;Relative to state fees, funds, revenues, and expenditures&rdquo;: the changes to the law. Its analysis lists 247.</dd></div>
+<div><dt>Became</dt><dd>Chapter 141, signed June 27, 2025; most of it in force July 1, 2025, some sections on dates of their own</dd></div></dl></section>
+</div></div><div class="l-secb">
+<p>HB 1 and HB 2 have been the budget's two numbers in every term since 1993&ndash;1994.
+<span class="l-rsa">(This site's bill notes)</span></p>
+</div></section><section class="l-sec" id="s-where-the-money-comes-from"><h2 class="l-sech">Where the Money Comes From</h2><div class="l-secb">
+<p>HB 1 ends with the state's estimates of its unrestricted revenue for each of
+the two years, fund by fund: what each tax and fee is expected to bring in.
+<span class="l-rsa">(HB 1 of 2025, 140:17)</span> For fiscal 2026 and 2027 together
+they come to $6.71 billion, in four funds.</p>
+<figure class="l-fig l-bar" role="group" aria-label="The four funds' estimated unrestricted revenue for fiscal 2026 and 2027 together: General Fund $3,573.6 million; Education Fund $2,590.0 million; Highway Fund $522.4 million; Fish and Game Fund $28.0 million"><figcaption>Estimated Unrestricted Revenue, Fiscal 2026 and 2027: $6.71 billion</figcaption><div class="l-barb" aria-hidden="true"><i class="c-gf" style="flex:3573600000" title="General Fund: $3,573.6 million"></i><i class="c-ef" style="flex:2590000000" title="Education Fund: $2,590.0 million"></i><i class="c-hf" style="flex:522400000" title="Highway Fund: $522.4 million"></i><i class="c-fg" style="flex:28000000" title="Fish and Game Fund: $28.0 million"></i></div><ul class="l-barkey"><li><span class="l-sw c-gf" aria-hidden="true"></span><span><b>$3,573.6 million</b> General Fund <span class="l-sub">(53.2%)</span></span></li><li><span class="l-sw c-ef" aria-hidden="true"></span><span><b>$2,590.0 million</b> Education Fund <span class="l-sub">(38.6%)</span></span></li><li><span class="l-sw c-hf" aria-hidden="true"></span><span><b>$522.4 million</b> Highway Fund <span class="l-sub">(7.8%)</span></span></li><li><span class="l-sw c-fg" aria-hidden="true"></span><span><b>$28.0 million</b> Fish and Game Fund <span class="l-sub">(0.4%)</span></span></li></ul></figure>
+<p>The General Fund is estimated at $1,764.5 million in fiscal 2026 and $1,809.1 million
+in 2027. Business taxes are the largest line in both the General Fund and the
+Education Fund.</p>
+<figure class="l-chart bud-fig" role="img" aria-label="Bar chart of estimated unrestricted revenue by source, fiscal 2026 and 2027 together, all four funds: Business Taxes 2,305.4 million dollars; Statewide Property Tax 726.2 million dollars; Meals and Rooms Tax 716.0 million dollars; Lottery Transfer 458.2 million dollars; Real Estate Transfer Tax 442.0 million dollars; Tobacco Tax 352.0 million dollars; Insurance 333.0 million dollars; Motor Vehicle Fees 266.4 million dollars; Gasoline Road Toll 255.6 million dollars; Other Revenue 246.0 million dollars; Liquor Commission Transfer 205.9 million dollars; 11 other sources 407.3 million dollars. The table below lists every source."><h3 aria-hidden="true">By Source, All Four Funds</h3><p aria-hidden="true">Millions of dollars, the two years added together. The table below splits each between the funds.</p><ol class="l-bars bud-bars" aria-hidden="true" style="--l-grid:16.6667%"><li class="is-lab" title="Business Taxes: $2,305.4 million over the two years, General Fund $1,360.2 million, Education Fund $945.2 million"><span class="l-bl">Business Taxes</span><span class="l-bt"><span class="l-bf" style="width:96.06%"></span><span class="l-bv" style="left:96.06%">2,305.4</span></span></li><li class="is-lab" title="Statewide Property Tax: $726.2 million over the two years, Education Fund $726.2 million"><span class="l-bl">Statewide Property Tax</span><span class="l-bt"><span class="l-bf" style="width:30.26%"></span><span class="l-bv" style="left:30.26%">726.2</span></span></li><li class="is-lab" title="Meals and Rooms Tax: $716.0 million over the two years, General Fund $693.4 million, Education Fund $22.6 million"><span class="l-bl">Meals and Rooms Tax</span><span class="l-bt"><span class="l-bf" style="width:29.83%"></span><span class="l-bv" style="left:29.83%">716.0</span></span></li><li class="is-lab" title="Lottery Transfer: $458.2 million over the two years, Education Fund $458.2 million"><span class="l-bl">Lottery Transfer</span><span class="l-bt"><span class="l-bf" style="width:19.09%"></span><span class="l-bv" style="left:19.09%">458.2</span></span></li><li class="is-lab" title="Real Estate Transfer Tax: $442.0 million over the two years, General Fund $296.2 million, Education Fund $145.8 million"><span class="l-bl">Real Estate Transfer Tax</span><span class="l-bt"><span class="l-bf" style="width:18.42%"></span><span class="l-bv" style="left:18.42%">442.0</span></span></li><li class="is-lab" title="Tobacco Tax: $352.0 million over the two years, General Fund $223.5 million, Education Fund $128.5 million"><span class="l-bl">Tobacco Tax</span><span class="l-bt"><span class="l-bf" style="width:14.67%"></span><span class="l-bv" style="left:14.67%">352.0</span></span></li><li class="is-lab" title="Insurance: $333.0 million over the two years, General Fund $333.0 million"><span class="l-bl">Insurance</span><span class="l-bt"><span class="l-bf" style="width:13.88%"></span><span class="l-bv" style="left:13.88%">333.0</span></span></li><li class="is-lab" title="Motor Vehicle Fees: $266.4 million over the two years, Highway Fund $266.4 million"><span class="l-bl">Motor Vehicle Fees</span><span class="l-bt"><span class="l-bf" style="width:11.10%"></span><span class="l-bv" style="left:11.10%">266.4</span></span></li><li class="is-lab" title="Gasoline Road Toll: $255.6 million over the two years, Highway Fund $255.6 million"><span class="l-bl">Gasoline Road Toll</span><span class="l-bt"><span class="l-bf" style="width:10.65%"></span><span class="l-bv" style="left:10.65%">255.6</span></span></li><li class="is-lab" title="Other Revenue: $246.0 million over the two years, General Fund $246.0 million"><span class="l-bl">Other Revenue</span><span class="l-bt"><span class="l-bf" style="width:10.25%"></span><span class="l-bv" style="left:10.25%">246.0</span></span></li><li class="is-lab" title="Liquor Commission Transfer: $205.9 million over the two years, General Fund $205.9 million"><span class="l-bl">Liquor Commission Transfer</span><span class="l-bt"><span class="l-bf" style="width:8.58%"></span><span class="l-bv" style="left:8.58%">205.9</span></span></li><li class="is-lab" title="11 other sources together: $407.3 million -- the table lists each"><span class="l-bl">11 other sources</span><span class="l-bt"><span class="l-bf" style="width:16.97%"></span><span class="l-bv" style="left:16.97%">407.3</span></span></li></ol><div class="l-axis" aria-hidden="true"><span>Liquor Commission Transfer</span><span class="l-ticks"><i class="t0" style="left:0.0000%">0</i><i class="t10" style="left:16.6667%">400</i><i class="t20" style="left:33.3333%">800</i><i class="t30" style="left:50.0000%">1,200</i><i class="t40" style="left:66.6667%">1,600</i><i class="t50" style="left:83.3333%">2,000</i><i class="t60" style="left:100.0000%">2,400</i></span></div></figure><details class="l-fold"><summary>Every source, fund by fund (millions of dollars)</summary><div class="l-tablewrap l-numwrap"><table class="l-table l-numtab numtab"><thead><tr><th>Source</th><th class="l-num">General Fund</th><th class="l-num">Education Fund</th><th class="l-num">Highway Fund</th><th class="l-num">Fish and Game Fund</th><th class="l-num">Both years</th></tr></thead><tbody><tr><td>Business Taxes</td><td class="l-num">1,360.2</td><td class="l-num">945.2</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num"><b>2,305.4</b></td></tr><tr><td>Statewide Property Tax</td><td class="l-num">&ndash;</td><td class="l-num">726.2</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num"><b>726.2</b></td></tr><tr><td>Meals and Rooms Tax</td><td class="l-num">693.4</td><td class="l-num">22.6</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num"><b>716.0</b></td></tr><tr><td>Lottery Transfer</td><td class="l-num">&ndash;</td><td class="l-num">458.2</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num"><b>458.2</b></td></tr><tr><td>Real Estate Transfer Tax</td><td class="l-num">296.2</td><td class="l-num">145.8</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num"><b>442.0</b></td></tr><tr><td>Tobacco Tax</td><td class="l-num">223.5</td><td class="l-num">128.5</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num"><b>352.0</b></td></tr><tr><td>Insurance</td><td class="l-num">333.0</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num"><b>333.0</b></td></tr><tr><td>Motor Vehicle Fees</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num">266.4</td><td class="l-num">&ndash;</td><td class="l-num"><b>266.4</b></td></tr><tr><td>Gasoline Road Toll</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num">255.6</td><td class="l-num">&ndash;</td><td class="l-num"><b>255.6</b></td></tr><tr><td>Other Revenue</td><td class="l-num">246.0</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num"><b>246.0</b></td></tr><tr><td>Liquor Commission Transfer</td><td class="l-num">205.9</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num"><b>205.9</b></td></tr><tr><td>Utility Property Tax</td><td class="l-num">&ndash;</td><td class="l-num">101.0</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num"><b>101.0</b></td></tr><tr><td>Securities Revenue</td><td class="l-num">88.9</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num"><b>88.9</b></td></tr><tr><td>Tobacco Settlement</td><td class="l-num">&ndash;</td><td class="l-num">62.5</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num"><b>62.5</b></td></tr><tr><td>Communications Tax</td><td class="l-num">58.2</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num"><b>58.2</b></td></tr><tr><td>Court Fines and Fees</td><td class="l-num">27.4</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num"><b>27.4</b></td></tr><tr><td>Beer Tax</td><td class="l-num">26.0</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num"><b>26.0</b></td></tr><tr><td>Fish and Game Licenses</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num">20.0</td><td class="l-num"><b>20.0</b></td></tr><tr><td>Interest and Dividends Tax</td><td class="l-num">8.7</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num"><b>8.7</b></td></tr><tr><td>Fines and Miscellaneous (Fish and Game)</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num">8.0</td><td class="l-num"><b>8.0</b></td></tr><tr><td>Medicaid Recoveries</td><td class="l-num">6.2</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num"><b>6.2</b></td></tr><tr><td>Miscellaneous (Highway Fund)</td><td class="l-num">&ndash;</td><td class="l-num">&ndash;</td><td class="l-num">0.4</td><td class="l-num">&ndash;</td><td class="l-num"><b>0.4</b></td></tr><tr class="bud-tot"><td>Total</td><td class="l-num">3,573.6</td><td class="l-num">2,590.0</td><td class="l-num">522.4</td><td class="l-num">28.0</td><td class="l-num"><b>6,714.0</b></td></tr></tbody></table></div></details>
+<p class="l-note">These are estimates, made when the budget passed, not what was
+collected. Nor are they all the money the budget spends: HB 1's own footnotes
+speak of revenue agencies take in themselves &mdash; transfers from other
+agencies, revolving funds, agency income, private and local funds &mdash; and of
+federal funds. <span class="l-rsa">(HB 1 of 2025, 140:1.08, footnote I)</span></p>
+<div class="bud-need" role="note"><p class="l-lbl">Placeholder &middot; needs a source</p><p><b>Every source of money, federal funds included</b></p><p>The total the budget appropriates from every source, and how much of it is federal. That is in section 1 of HB 1, the department tables, which the bill text on hand does not carry (it begins at section 1.08). Request 1 on the design's source list.</p></div>
+<p class="l-note">One line of the estimates is printed &ldquo;$127,7000,000&rdquo; (the gasoline road
+toll, fiscal 2026). The Highway Fund's own printed total, $259,600,000, is
+$127,700,000 plus the fund's other two lines, and that is the figure used here.</p>
+</div></section><section class="l-sec" id="s-where-it-goes"><h2 class="l-sech">Where It Goes</h2><div class="l-secb">
+<div class="bud-need" role="note"><p class="l-lbl">Placeholder &middot; needs a source</p><p><b>Spending by department, fiscal 2026 and 2027</b></p><p>A bar for each department's appropriation, all funds and General Fund, with the share of the whole. Section 1 of HB 1 (sections 1.01 to 1.07) is where these are, and it is not in the bill text on hand. Requests 1 and 2 on the design's source list.</p></div>
+<p>The amounts appropriated, increases and decreases alike, are in that section.
+Until it is on hand this section shows nothing else.</p>
+</div></section><section class="l-sec" id="s-other-directions-in-hb-1"><h2 class="l-sech">Other Directions in HB 1</h2><div class="l-secb">
+<p>Beside the amounts, the act gives directions of its own. Among them, it tells
+these parts of government to reduce their appropriations, each section saying
+how:</p>
+<div class="l-tablewrap"><table class="l-table"><thead><tr><th>Who, and from which money</th><th class="l-num">How much</th></tr></thead><tbody><tr><td>Legislative branch<span class="bud-sub">General fund &middot; <span class="l-rsa">140:7</span></span></td><td class="l-num bud-amt">$500,000<span class="bud-sub">in each year</span></td></tr><tr><td>Office of the governor<span class="bud-sub">General fund &middot; <span class="l-rsa">140:8</span></span></td><td class="l-num bud-amt">$50,000<span class="bud-sub">in each year</span></td></tr><tr><td>Department of information technology<span class="bud-sub">All appropriations &middot; <span class="l-rsa">140:9</span></span></td><td class="l-num bud-amt">$5,000,000<span class="bud-sub">in each year</span></td></tr><tr><td>Department of natural and cultural resources<span class="bud-sub">General fund &middot; <span class="l-rsa">140:10</span></span></td><td class="l-num bud-amt">$300,000<span class="bud-sub">in each year</span></td></tr><tr><td>Department of environmental services<span class="bud-sub">General fund &middot; <span class="l-rsa">140:11</span></span></td><td class="l-num bud-amt">$3,000,000<span class="bud-sub">in each year</span></td></tr><tr><td>Department of health and human services<span class="bud-sub">General fund &middot; <span class="l-rsa">140:12</span></span></td><td class="l-num bud-amt">$25,500,000<span class="bud-sub">in each year</span></td></tr><tr><td>Department of state<span class="bud-sub">General fund &middot; <span class="l-rsa">140:13</span></span></td><td class="l-num bud-amt">$225,000<span class="bud-sub">in 2026, and $240,000 in 2027</span></td></tr><tr><td>Human rights commission<span class="bud-sub">General fund &middot; <span class="l-rsa">140:14</span></span></td><td class="l-num bud-amt">$254,000<span class="bud-sub">in 2026, and $267,000 in 2027</span></td></tr><tr><td>Liquor commission<span class="bud-sub">Liquor fund &middot; <span class="l-rsa">140:15</span></span></td><td class="l-num bud-amt">$1,000,000<span class="bud-sub">over the two years</span></td></tr><tr><td>Department of corrections<span class="bud-sub">General fund &middot; <span class="l-rsa">140:16</span></span></td><td class="l-num bud-amt">$10,000,000<span class="bud-sub">over the two years</span></td></tr></tbody></table></div>
+<p>It also abolishes positions it lists by number in eight agencies, from the
+Developmental Disabilities Council to the Department of Corrections.
+<span class="l-rsa">(HB 1 of 2025, 140:5)</span></p>
+</div></section><section class="l-sec" id="s-how-the-budget-is-made"><h2 class="l-sech">How the Budget Is Made</h2><div class="l-secb">
+<p>RSA 9 sets the calendar, and the docket of 2025 shows it happening.</p>
+<ol class="l-time" aria-label="How the budget is made">
+<li><p><b>Departments ask.</b> Every department sends the commissioner of
+administrative services its request for each year of the coming biennium.
+<span class="l-rsa">(<a href="/laws/9#s4">RSA 9:4</a>)</span></p><span class="l-mk is-need is-bare"><span class="l-mt">By October 1 of the year before</span></span></li>
+<li><p><b>Income is estimated.</b> The commissioner estimates the state's total
+income for each year of the biennium, source by source.
+<span class="l-rsa">(<a href="/laws/9#s5">RSA 9:5</a>)</span></p><span class="l-mk is-need is-bare"><span class="l-mt">By October 1 of the year before</span></span></li>
+<li><p><b>A tentative budget.</b> The commissioner puts the requests and the
+estimates together, and the director of the budget submits them to the Governor.
+<span class="l-rsa">(<a href="/laws/9#s6">RSA 9:6</a>)</span></p><span class="l-mk is-need is-bare"><span class="l-mt">By November 1</span></span></li>
+<li><p><b>The Governor proposes.</b> The Governor sends the legislature a budget
+and a trailer bill. The proposals are the Governor's own judgment.
+<span class="l-rsa">(<a href="/laws/9#s2">RSA 9:2</a>, <a href="/laws/9#s2-a">9:2-a</a>,
+<a href="/laws/9#s8">9:8</a>)</span> In 2025 HB 1 and HB 2 were introduced
+on February 20 and referred to <a href="committee/H34">House Finance</a>.</p><span class="l-mk is-need is-bare"><span class="l-mt">By February 15</span></span></li>
+<li><p><b>House Finance.</b> A public hearing on March 12, 2025; on April 3 the
+committee recommended both bills, amended, by 14 votes to 11.</p><span class="l-mk is-need is-bare"><span class="l-mt">March and April 2025</span></span></li>
+<li><p><b>The House.</b> On April 10 it passed HB 1 by 192 to 183 and HB 2 by 185
+to 175. That was HB 2's 26th roll call of the day; most of the others were on amendments.</p><span class="l-mk is-need is-bare"><span class="l-mt">April 10, 2025</span></span></li>
+<li><p><b>The Senate.</b> <a href="committee/S07">Senate Finance</a> held its
+hearing on May 6 and recommended both, amended, by 6 to 2. On June 5 the Senate
+passed HB 1 by 15 to 9 and HB 2 by 14 to 10.</p><span class="l-mk is-need is-bare"><span class="l-mt">May and June 2025</span></span></li>
+<li><p><b>A committee of conference.</b> The House did not accept the Senate's
+amendments and asked for a committee of conference; five representatives and
+three senators met on six days from June 12 to June 19.</p><span class="l-mk is-need is-bare"><span class="l-mt">June 2025</span></span></li>
+<li><p><b>Both chambers vote on its report.</b> On June 26 the House first rejected
+the HB 1 report by 182 to 183, reconsidered, and adopted it by 185 to 180; it
+adopted the HB 2 report by 184 to 183. The Senate adopted both by 16 to 8.</p><span class="l-mk is-need is-bare"><span class="l-mt">June 26, 2025</span></span></li>
+<li><p><b>The Governor signs.</b> Governor Ayotte signed both on June 27, 2025, as
+chapters 140 and 141, in force July 1.</p><span class="l-mk is-need is-bare"><span class="l-mt">June 27, 2025</span></span></li>
+</ol>
+<p>One rule binds the result. &ldquo;The general court shall not adopt an
+operating budget for any fund, or any other legislation which provides for
+appropriations, which exceed the state's total estimated revenues from
+existing, increased, or new taxes, fees, operating income and other
+sources.&rdquo; The operating budget may not use bonded debt to fund operating
+appropriations, and projected lapses may be counted in judging whether the
+rule is met. <span class="l-rsa">(<a href="/laws/9#s8-b">RSA 9:8-b</a>)</span></p>
+<div class="bud-need" role="note"><p class="l-lbl">Placeholder &middot; needs a source</p><p><b>The Ways and Means committees' part</b></p><p>The brief names House Ways and Means. Neither 2025 budget bill's docket shows it: both went to Finance in each chamber. A source that says what Ways and Means does with the revenue estimates is needed before the page says anything. Request 6.</p></div>
+</div></section><section class="l-sec" id="s-what-hb-2-changed"><h2 class="l-sech">What HB 2 Changed</h2><div class="l-secb">
+<p><a href="bill/2025/hb2">HB 2</a>'s analysis, printed with its final text, lists 247 changes to the law,
+in the bill's own order. The first &ldquo;adds new definitions to the endangered species
+conservation act&rdquo;; the last &ldquo;exempts ambulatory surgical centers, emergency medical
+care centers, birthing centers&rdquo; and others from a notice and consent requirement.</p>
+<details class="l-fold"><summary>All 247, as the analysis prints them</summary>
+<ol class="bud-list"><li>Adds new definitions to the endangered species conservation act.</li><li>Requires the department of environmental services to adopt rules and review procedures such that actions of state agencies do not jeopardize the existence or habitats of species protected under the endangered species conservation act.</li><li>Establishes an environmental scientist position within the department of environmental services to ensure that state agencies do not jeopardize the existence or habitats of species protected under the endangered species conservation act.</li><li class="bud-more">&hellip; and 244 more, rendered from the analysis at build time</li></ol></details>
+<p>On the House floor on April 10, 2025, members offered amendments to HB 2 one
+after another: 26 roll calls on it that day, final passage included; in the Senate on June 5, 15, final passage included. Each
+is on the bill's page, with how every member voted.</p>
+</div></section><section class="l-sec" id="s-compared-with-the-last-budget"><h2 class="l-sech">Compared With the Last Budget</h2><div class="l-secb">
+<p>The budget before this one, <a href="bill/2023/hb1">HB 1 of 2023</a>, printed
+the same four funds' estimates for fiscal 2024 and 2025.
+<span class="l-rsa">(HB 1 of 2023, 106:9)</span> Set side by side, both years of
+each added together, in millions of dollars:</p>
+<div class="l-tablewrap l-numwrap"><table class="l-table l-numtab numtab bud-tight"><thead><tr><th>Fund</th><th class="l-num">2024&ndash;25</th><th class="l-num">2026&ndash;27</th><th class="l-num">Change</th></tr></thead><tbody><tr><td>General</td><td class="l-num">3,829.1</td><td class="l-num">3,573.6</td><td class="l-num">&minus;255.5</td></tr><tr><td>Education</td><td class="l-num">2,561.5</td><td class="l-num">2,590.0</td><td class="l-num">+28.5</td></tr><tr><td>Highway</td><td class="l-num">520.5</td><td class="l-num">522.4</td><td class="l-num">+1.9</td></tr><tr><td>Fish and Game</td><td class="l-num">27.5</td><td class="l-num">28.0</td><td class="l-num">+0.5</td></tr><tr class="bud-tot"><td>All four</td><td class="l-num"><b>6,938.6</b></td><td class="l-num"><b>6,714.0</b></td><td class="l-num"><b>&minus;224.6</b></td></tr></tbody></table></div>
+<figure class="l-chart bud-fig" role="img" aria-label="Paired bars, estimated unrestricted revenue by source, 2024-2025 against 2026-2027, millions of dollars: Business Taxes 2,503.0 then 2,305.4; Statewide Property Tax 726.2 then 726.2; Meals and Rooms Tax 645.6 then 716.0; Lottery Transfer 324.0 then 458.2; Real Estate Transfer Tax 420.0 then 442.0; Tobacco Tax 426.7 then 352.0; Insurance 283.0 then 333.0; Liquor Commission Transfer 271.5 then 205.9; Motor Vehicle Fees 269.5 then 266.4; Gasoline Road Toll 250.6 then 255.6; Other Revenue 193.4 then 246.0; Interest and Dividends Tax 222.2 then 8.7"><h3 aria-hidden="true">The Twelve Largest Sources, Two Budgets</h3><p aria-hidden="true">The twelve sources largest in either budget, by the larger figure. Millions of dollars, both years of each budget added together; the figure at the end of each pair is the change, and the table below gives both amounts.</p><ul class="l-barkey bud-key"><li><span class="l-sw bud-was" aria-hidden="true"></span><span>2024&ndash;2025, as HB 1 of 2023 estimated</span></li><li><span class="l-sw bud-now" aria-hidden="true"></span><span>2026&ndash;2027, as HB 1 of 2025 estimated</span></li></ul><ol class="l-bars bud-bars" aria-hidden="true" style="--l-grid:14.2857%"><li class="is-lab" title="Business Taxes: 2,503.0 million estimated for 2024-2025, 2,305.4 million for 2026-2027"><span class="l-bl">Business Taxes</span><span class="l-bt bud-pair"><span class="l-bf is-was" style="width:89.39%"></span><span class="l-bf is-now" style="width:82.34%"></span><span class="l-bv" style="left:89.39%">&minus;197.6</span></span></li><li class="is-lab" title="Statewide Property Tax: 726.2 million estimated for 2024-2025, 726.2 million for 2026-2027"><span class="l-bl">Statewide Property Tax</span><span class="l-bt bud-pair"><span class="l-bf is-was" style="width:25.94%"></span><span class="l-bf is-now" style="width:25.94%"></span><span class="l-bv" style="left:25.94%">&plusmn;0.0</span></span></li><li class="is-lab" title="Meals and Rooms Tax: 645.6 million estimated for 2024-2025, 716.0 million for 2026-2027"><span class="l-bl">Meals and Rooms Tax</span><span class="l-bt bud-pair"><span class="l-bf is-was" style="width:23.06%"></span><span class="l-bf is-now" style="width:25.57%"></span><span class="l-bv" style="left:25.57%">+70.4</span></span></li><li class="is-lab" title="Lottery Transfer: 324.0 million estimated for 2024-2025, 458.2 million for 2026-2027"><span class="l-bl">Lottery Transfer</span><span class="l-bt bud-pair"><span class="l-bf is-was" style="width:11.57%"></span><span class="l-bf is-now" style="width:16.36%"></span><span class="l-bv" style="left:16.36%">+134.2</span></span></li><li class="is-lab" title="Real Estate Transfer Tax: 420.0 million estimated for 2024-2025, 442.0 million for 2026-2027"><span class="l-bl">Real Estate Transfer Tax</span><span class="l-bt bud-pair"><span class="l-bf is-was" style="width:15.00%"></span><span class="l-bf is-now" style="width:15.79%"></span><span class="l-bv" style="left:15.79%">+22.0</span></span></li><li class="is-lab" title="Tobacco Tax: 426.7 million estimated for 2024-2025, 352.0 million for 2026-2027"><span class="l-bl">Tobacco Tax</span><span class="l-bt bud-pair"><span class="l-bf is-was" style="width:15.24%"></span><span class="l-bf is-now" style="width:12.57%"></span><span class="l-bv" style="left:15.24%">&minus;74.7</span></span></li><li class="is-lab" title="Insurance: 283.0 million estimated for 2024-2025, 333.0 million for 2026-2027"><span class="l-bl">Insurance</span><span class="l-bt bud-pair"><span class="l-bf is-was" style="width:10.11%"></span><span class="l-bf is-now" style="width:11.89%"></span><span class="l-bv" style="left:11.89%">+50.0</span></span></li><li class="is-lab" title="Liquor Commission Transfer: 271.5 million estimated for 2024-2025, 205.9 million for 2026-2027"><span class="l-bl">Liquor Commission Transfer</span><span class="l-bt bud-pair"><span class="l-bf is-was" style="width:9.70%"></span><span class="l-bf is-now" style="width:7.35%"></span><span class="l-bv" style="left:9.70%">&minus;65.6</span></span></li><li class="is-lab" title="Motor Vehicle Fees: 269.5 million estimated for 2024-2025, 266.4 million for 2026-2027"><span class="l-bl">Motor Vehicle Fees</span><span class="l-bt bud-pair"><span class="l-bf is-was" style="width:9.62%"></span><span class="l-bf is-now" style="width:9.51%"></span><span class="l-bv" style="left:9.62%">&minus;3.1</span></span></li><li class="is-lab" title="Gasoline Road Toll: 250.6 million estimated for 2024-2025, 255.6 million for 2026-2027"><span class="l-bl">Gasoline Road Toll</span><span class="l-bt bud-pair"><span class="l-bf is-was" style="width:8.95%"></span><span class="l-bf is-now" style="width:9.13%"></span><span class="l-bv" style="left:9.13%">+5.0</span></span></li><li class="is-lab" title="Other Revenue: 193.4 million estimated for 2024-2025, 246.0 million for 2026-2027"><span class="l-bl">Other Revenue</span><span class="l-bt bud-pair"><span class="l-bf is-was" style="width:6.91%"></span><span class="l-bf is-now" style="width:8.79%"></span><span class="l-bv" style="left:8.79%">+52.6</span></span></li><li class="is-lab" title="Interest and Dividends Tax: 222.2 million estimated for 2024-2025, 8.7 million for 2026-2027"><span class="l-bl">Interest and Dividends Tax</span><span class="l-bt bud-pair"><span class="l-bf is-was" style="width:7.94%"></span><span class="l-bf is-now" style="width:0.31%"></span><span class="l-bv" style="left:7.94%">&minus;213.5</span></span></li></ol><div class="l-axis" aria-hidden="true"><span>Liquor Commission Transfer</span><span class="l-ticks"><i class="t0" style="left:0.0000%">0</i><i class="t10" style="left:14.2857%">400</i><i class="t20" style="left:28.5714%">800</i><i class="t30" style="left:42.8571%">1,200</i><i class="t40" style="left:57.1429%">1,600</i><i class="t50" style="left:71.4286%">2,000</i><i class="t60" style="left:85.7143%">2,400</i><i class="t70" style="left:100.0000%">2,800</i></span></div></figure><details class="l-fold"><summary>Every source, both budgets (millions of dollars)</summary><div class="l-tablewrap l-numwrap"><table class="l-table l-numtab numtab bud-tight"><thead><tr><th>Source</th><th class="l-num">2024&ndash;25</th><th class="l-num">2026&ndash;27</th><th class="l-num">Change</th></tr></thead><tbody><tr><td>Business Taxes</td><td class="l-num">2,503.0</td><td class="l-num">2,305.4</td><td class="l-num">&minus;197.6</td></tr><tr><td>Statewide Property Tax</td><td class="l-num">726.2</td><td class="l-num">726.2</td><td class="l-num">+0.0</td></tr><tr><td>Meals and Rooms Tax</td><td class="l-num">645.6</td><td class="l-num">716.0</td><td class="l-num">+70.4</td></tr><tr><td>Lottery Transfer</td><td class="l-num">324.0</td><td class="l-num">458.2</td><td class="l-num">+134.2</td></tr><tr><td>Real Estate Transfer Tax</td><td class="l-num">420.0</td><td class="l-num">442.0</td><td class="l-num">+22.0</td></tr><tr><td>Tobacco Tax</td><td class="l-num">426.7</td><td class="l-num">352.0</td><td class="l-num">&minus;74.7</td></tr><tr><td>Insurance</td><td class="l-num">283.0</td><td class="l-num">333.0</td><td class="l-num">+50.0</td></tr><tr><td>Motor Vehicle Fees</td><td class="l-num">269.5</td><td class="l-num">266.4</td><td class="l-num">&minus;3.1</td></tr><tr><td>Gasoline Road Toll</td><td class="l-num">250.6</td><td class="l-num">255.6</td><td class="l-num">+5.0</td></tr><tr><td>Other Revenue</td><td class="l-num">193.4</td><td class="l-num">246.0</td><td class="l-num">+52.6</td></tr><tr><td>Liquor Commission Transfer</td><td class="l-num">271.5</td><td class="l-num">205.9</td><td class="l-num">&minus;65.6</td></tr><tr><td>Utility Property Tax</td><td class="l-num">85.0</td><td class="l-num">101.0</td><td class="l-num">+16.0</td></tr><tr><td>Securities Revenue</td><td class="l-num">92.4</td><td class="l-num">88.9</td><td class="l-num">&minus;3.5</td></tr><tr><td>Tobacco Settlement</td><td class="l-num">78.5</td><td class="l-num">62.5</td><td class="l-num">&minus;16.0</td></tr><tr><td>Communications Tax</td><td class="l-num">60.0</td><td class="l-num">58.2</td><td class="l-num">&minus;1.8</td></tr><tr><td>Court Fines and Fees</td><td class="l-num">26.7</td><td class="l-num">27.4</td><td class="l-num">+0.7</td></tr><tr><td>Beer Tax</td><td class="l-num">26.4</td><td class="l-num">26.0</td><td class="l-num">&minus;0.4</td></tr><tr><td>Fish and Game Licenses</td><td class="l-num">19.6</td><td class="l-num">20.0</td><td class="l-num">+0.4</td></tr><tr><td>Interest and Dividends Tax</td><td class="l-num">222.2</td><td class="l-num">8.7</td><td class="l-num">&minus;213.5</td></tr><tr><td>Fines and Miscellaneous (Fish and Game)</td><td class="l-num">7.9</td><td class="l-num">8.0</td><td class="l-num">+0.1</td></tr><tr><td>Medicaid Recoveries</td><td class="l-num">6.0</td><td class="l-num">6.2</td><td class="l-num">+0.2</td></tr><tr><td>Miscellaneous (Highway Fund)</td><td class="l-num">0.4</td><td class="l-num">0.4</td><td class="l-num">+0.0</td></tr></tbody></table></div></details>
+<p>The largest change is the interest and dividends tax: $222.2 million
+estimated for 2024&ndash;2025, $8.7 million for 2026&ndash;2027,
+and nothing at all for fiscal 2027.
+In 2023 business taxes were printed as two lines, the business profits tax and the
+business enterprise tax, with a subtotal; the subtotal is the figure used here.</p>
+<p class="l-note">Both columns are estimates, each made when its budget passed. Neither
+is what the state collected, and the change between them is not a change in
+spending.</p>
+<div class="bud-need" role="note"><p class="l-lbl">Placeholder &middot; needs a source</p><p><b>What the state actually collected, and actually spent</b></p><p>Actual revenue for fiscal 2024 and 2025, and actual spending, from the state's own year-end reports, so the page can say how the last budget's estimates turned out. Requests 3 and 4.</p></div>
+<figure class="l-chart bud-fig" role="img" aria-label="Bar chart: the General Fund and Education Fund estimates each budget printed, both years added, from 2016–2017 4,609.0 million dollars; 2018–2019 4,971.1 million dollars; 2020–2021 5,250.5 million dollars; 2022–2023 5,905.9 million dollars; 2024–2025 6,390.6 million dollars; 2026–2027 6,163.6 million dollars. Not adjusted for inflation."><h3 aria-hidden="true">Six Budgets' Estimates, General and Education Funds</h3><p aria-hidden="true">Millions of dollars, both years added, as each budget's HB 1 printed them. Not adjusted for inflation.</p><ol class="l-bars bud-bars" aria-hidden="true" style="--l-grid:14.2857%"><li class="is-lab" title="2016–2017: General Fund $2,844.4 million, Education Fund $1,764.6 million, as HB 1 of 2015 estimated"><span class="l-bl">2016–2017</span><span class="l-bt"><span class="l-bf" style="width:65.84%"></span><span class="l-bv" style="left:65.84%">4,609.0</span></span></li><li class="is-lab" title="2018–2019: General Fund $3,111.4 million, Education Fund $1,859.7 million, as HB 1 of 2017 estimated"><span class="l-bl">2018–2019</span><span class="l-bt"><span class="l-bf" style="width:71.02%"></span><span class="l-bv" style="left:71.02%">4,971.1</span></span></li><li class="is-lab" title="2020–2021: General Fund $3,174.3 million, Education Fund $2,076.2 million, as HB 1 of 2019 estimated"><span class="l-bl">2020–2021</span><span class="l-bt"><span class="l-bf" style="width:75.01%"></span><span class="l-bv" style="left:75.01%">5,250.5</span></span></li><li class="is-lab" title="2022–2023: General Fund $3,610.2 million, Education Fund $2,295.7 million, as HB 1 of 2021 estimated"><span class="l-bl">2022–2023</span><span class="l-bt"><span class="l-bf" style="width:84.37%"></span><span class="l-bv" style="left:84.37%">5,905.9</span></span></li><li class="is-lab" title="2024–2025: General Fund $3,829.1 million, Education Fund $2,561.5 million, as HB 1 of 2023 estimated"><span class="l-bl">2024–2025</span><span class="l-bt"><span class="l-bf" style="width:91.29%"></span><span class="l-bv" style="left:91.29%">6,390.6</span></span></li><li class="is-lab" title="2026–2027: General Fund $3,573.6 million, Education Fund $2,590.0 million, as HB 1 of 2025 estimated"><span class="l-bl">2026–2027</span><span class="l-bt"><span class="l-bf" style="width:88.05%"></span><span class="l-bv" style="left:88.05%">6,163.6</span></span></li></ol><div class="l-axis" aria-hidden="true"><span>2026–2027</span><span class="l-ticks"><i class="t0" style="left:0.0000%">0</i><i class="t10" style="left:14.2857%">1,000</i><i class="t20" style="left:28.5714%">2,000</i><i class="t30" style="left:42.8571%">3,000</i><i class="t40" style="left:57.1429%">4,000</i><i class="t50" style="left:71.4286%">5,000</i><i class="t60" style="left:85.7143%">6,000</i><i class="t70" style="left:100.0000%">7,000</i></span></div></figure>
+</div></section><section class="l-sec" id="s-in-the-record"><h2 class="l-sech">In the Record</h2><div class="l-secb">
+<p><b>The bills:</b> <a href="bill/2025/hb1">HB 1</a> and <a href="bill/2025/hb2">HB 2</a> of 2025, with every printing, hearing,
+committee vote and roll call, and the recordings where there are any. The two before:
+<a href="bill/2023/hb1">HB 1</a> and <a href="bill/2023/hb2">HB 2</a> of 2023.</p>
+<p><b>The committees:</b> <a href="committee/H34">House Finance</a> and
+<a href="committee/S07">Senate Finance</a>, with their meetings.</p>
+<p><b>The law:</b> <a href="/laws/9">RSA 9, Budget and Appropriations</a>, and the
+constitution's <a href="/laws#part2-art18">Article 18</a> and
+<a href="/laws#part2-art18-a">Article 18-a</a>.</p>
+</div></section><section class="l-sec" id="sources"><h2 class="l-sech">Where This Comes From</h2><div class="l-secb"><ul class="l-docs"><li class="l-doc"><a href="bill/2025/hb1">HB 1 of 2025 (chapter 140), the chaptered final version</a><span class="l-dmeta">The General Court's database, LegislationText; printing stamped June 30, 2025; read October 30, 2026</span></li><li class="l-doc"><a href="bill/2025/hb2">HB 2 of 2025 (chapter 141), the chaptered final version, and its analysis</a><span class="l-dmeta">The same; printing stamped July 23, 2025; read October 30, 2026</span></li><li class="l-doc"><a href="bill/2023/hb1">HB 1 of 2015, 2017, 2019, 2021 and 2023, final versions</a><span class="l-dmeta">This project's saved copies of gc.nh.gov/legislation/; read October 30, 2026</span></li><li class="l-doc"><a href="bill/2025/hb1">The docket and roll calls of HB 1 and HB 2, 2025</a><span class="l-dmeta">The General Court's day files and the 2025 roll-call files on this site; read October 30, 2026</span></li><li class="l-doc"><a href="/laws/9">RSA 9, Budget and Appropriations; Revolving Funds</a><span class="l-dmeta">This site's Laws pages, from the statutes as dumped on October 26, 2026</span></li><li class="l-doc"><a href="/laws#part2-art18-a">The New Hampshire Constitution, Part Second, Articles 18 and 18-a</a><span class="l-dmeta">nh.gov, read October 17, 2026</span></li></ul></div></section><nav class="l-pager" aria-label="Other topics"><a class="l-pgp" href="learn/governor-and-council"><span class="l-pgw">Previous Topic</span><span class="l-pgd">The Governor and the Executive Council</span></a><a class="l-pgm" href="/resources#learn">All Topics</a><a class="l-pgn" href="learn/the-courts"><span class="l-pgw">Next Topic</span><span class="l-pgd">The Courts</span></a></nav><section class="l-sec" id="all-topics"><h2 class="l-sech">The Fourteen Pages</h2><div class="l-secb"><nav class="l-all" aria-label="The pages of this section"><div><h3>How the State Works</h3><ol><li><a href="learn/general-court">The General Court</a></li><li><a href="learn/how-a-bill-becomes-law">How a Bill Becomes Law</a></li><li><a href="learn/legislative-year">NH Legislative Schedule</a></li><li><a href="learn/governor-and-council">The Governor and the Executive Council</a></li><li><span aria-current="page">The State Budget</span></li><li><a href="learn/the-courts">The Courts</a></li><li><a href="learn/the-constitution">The Constitution</a></li><li><a href="learn/state-agencies">State Agencies</a></li><li><a href="learn/administrative-rules">Administrative Rules</a></li><li><a href="learn/local-government">Town Meeting and Local Government</a></li><li><a href="learn/county-government">County Government</a></li><li><a href="learn/city-and-town-government">Cities, Towns and Who Runs Them</a></li></ol></div><div><h3>About New Hampshire</h3><ol><li><a href="learn/state-house-and-branches">The State House and What Makes New Hampshire&#x27;s Government Different</a></li><li><a href="learn/state-symbols">New Hampshire’s State Symbols</a></li></ol></div></nav></div></section></div></div><script>
+(function(){
+  var d=document.querySelector(".l-otp");
+  if(!d)return;
+  document.addEventListener("click",function(e){
+    if(!d.open)return;
+    if(e.target.closest(".l-otpb a")||!e.target.closest(".l-otp"))d.open=false;
+  });
+  document.addEventListener("keydown",function(e){
+    if(e.key==="Escape"&&d.open){d.open=false;d.querySelector("summary").focus();}
+  });
+  // Common Questions print open (civics.faq).
+  window.addEventListener("beforeprint",function(){
+    document.querySelectorAll(".l-faq details").forEach(function(x){x.open=true;});
+  });
+  // The same list beside the page, where app.css gives it a column
+  // (.l-sidewrap), the section being read marked as the reader scrolls.
+  var page=document.querySelector(".l-page"),src=d.querySelector(".l-otpb");
+  if(!page||!src)return;
+  var wrap=document.createElement("div"),nav=document.createElement("nav"),h=document.createElement("p");
+  wrap.className="l-sidewrap";nav.className="l-side";
+  nav.setAttribute("aria-label",src.getAttribute("aria-label")||"On this page");
+  h.className="l-sidehead";h.textContent=d.querySelector("summary").textContent;
+  nav.appendChild(h);nav.appendChild(src.querySelector("ol").cloneNode(true));
+  wrap.appendChild(nav);page.insertBefore(wrap,page.firstChild);
+  var links={};
+  nav.querySelectorAll("a").forEach(function(a){var i=a.href.indexOf("#");if(i>=0)links[decodeURIComponent(a.href.slice(i+1))]=a;});
+  var secs=[].slice.call(document.querySelectorAll(".l-art > .l-sec[id]")).filter(function(s){return links[s.id];});
+  if(!secs.length||!("IntersectionObserver" in window))return;
+  var cur=null;
+  function mark(){
+    var y=window.innerHeight*0.25,best=secs[0];
+    secs.forEach(function(s){if(s.getBoundingClientRect().top<=y)best=s;});
+    if(best===cur)return;
+    if(cur)links[cur.id].removeAttribute("aria-current");
+    cur=best;links[cur.id].setAttribute("aria-current","location");
+  }
+  var io=new IntersectionObserver(mark,{rootMargin:"0px 0px -75% 0px"});
+  secs.forEach(function(s){io.observe(s);});
+  window.addEventListener("scroll",mark,{passive:true});mark();
+})();
+</script></div></main></div>
+
+<footer><div class="in">
+<div class="fcols">
+<div class="fcol">
+<p class="fcolhead">Granite Record</p>
+<p class="attrib">Built from public records published by the <b>New Hampshire General Court</b>. Not affiliated with the General Court, and not a substitute for it &mdash; where this site and the Court&rsquo;s own record disagree, the Court is right and we want to know.</p>
+<p class="footby">An independent project by Alice Wade &middot; <a href="about">About</a></p>
+<p class="logocredit">Logo drawn by Debra Caplan, an artist in Peterborough, NH
+&middot; <a href="https://www.linescapesnh.com/" rel="noopener">linescapesnh.com</a></p>
+</div>
+<div class="fcol">
+<p class="fcolhead">The record</p>
+<ul class="flinks">
+<li><a href="data">Bulk data</a></li>
+<li><a href="learn/glossary">Glossary</a></li>
+<li><a class="out" href="https://github.com/granite-record/granite-record" target="_blank" rel="noopener">Source on GitHub</a></li>
+</ul>
+</div>
+<div class="fcol">
+<p class="fcolhead">Tell us</p>
+<a class="fbk out" href="https://forms.gle/PYw9c3xgpDDwvX7E9" target="_blank"
+ rel="noopener">What do you think?</a>
+<p class="fbknote">The site is new and being tested. Found an error?
+<a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a></p>
+</div>
+</div>
+<div class="footlang"><label class="footlangl" for="footlang"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.75"/><path d="M3.25 12h17.5"/><path d="M12 3.25c2.4 2.4 3.6 5.3 3.6 8.75s-1.2 6.35-3.6 8.75c-2.4-2.4-3.6-5.3-3.6-8.75s1.2-6.35 3.6-8.75z"/></svg><span>Language · Idioma</span></label>
+<select id="footlang" data-footlang><option value="en" lang="en" data-href="" selected>English</option><option value="es" lang="es" data-href="/es/learn/state-budget">Español</option></select></div>
+<p class="footdata"><span id="built"></span><span class="lic">Open source (MIT License)</span></p>
+</div></footer>
+<script>fetch(new URL("build.json",location.origin+"/").href).then(r=>r.json()).then(B=>{var e=document.getElementById("built");if(!e||!B.finished)return;e.textContent=" "+tr("foot.rebuilt","Data rebuilt {date}.",{date:new Date(B.finished).toLocaleDateString(window.GR_LOCALE||"en-US",{year:"numeric",month:"long",day:"numeric"})});}).catch(function(){});</script>
+<script>window.GR_STATIC=true;</script>
+<script src="app.js"></script>
+<script src="/find.js" defer></script>
+<script>
+/* The control, as the person set it out on 13 September. The page follows the
+   reader's system until they choose; the button names the theme on screen,
+   Light or Dark, and swaps to the other; the choice is kept, so it is made
+   once. There is no Auto to cycle through: following the system is what
+   happens before anyone chooses, and a third state was a click nobody asked
+   for. A value this control no longer writes ("auto", from the one before)
+   reads as no choice.
+   It starts hidden and is revealed here, so a reader with JavaScript off is
+   not shown a control that cannot do anything -- the stylesheet still
+   follows their system, which is the sensible default and needs no script. */
+(function(){
+  var b=document.getElementById("themer"); if(!b) return;
+  var K="gr-theme", r=document.documentElement;
+  var mq=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)"):null;
+  function chosen(){ try{ var v=localStorage.getItem(K); return v==="light"||v==="dark"?v:""; }
+                     catch(e){ return r.dataset.theme||""; } }
+  function shown(){ return chosen()||(mq&&mq.matches?"dark":"light"); }
+  function draw(){
+    var v=shown();
+    // NAME THE DESTINATION, NOT THE STATE. It read "Light" while the page was
+    // light, which is a label describing what you are already looking at --
+    // so the one thing a reader wants from it, what happens if I press this,
+    // was the one thing it did not say. The aria-label has always named the
+    // destination; the visible word now agrees with it.
+    // AN ICON SINCE 24 SEPTEMBER, at the person's request: a sun or a moon
+    // for the theme a press will give, the same destination the word named.
+    // The word stays in the markup -- hidden beside the icon on a desktop,
+    // shown in the phone's Sections panel, where nothing else says "theme".
+    var to=v==="dark"?"light":"dark";
+    b.setAttribute("data-to",to);
+    var w=b.querySelector(".thword"); if(w) w.textContent=to==="light"?tr("theme.light","Light"):tr("theme.dark","Dark");
+    b.title=to==="light"?tr("theme.to_light","Switch to the light theme"):tr("theme.to_dark","Switch to the dark theme");
+    b.setAttribute("aria-label",v==="dark"
+      ?tr("theme.now_dark","Color theme: dark. Activate to switch to light.")
+      :tr("theme.now_light","Color theme: light. Activate to switch to dark."));
+  }
+  b.hidden=false; draw();
+  b.addEventListener("click",function(){
+    var next=shown()==="dark"?"light":"dark";
+    r.dataset.theme=next;
+    try{ localStorage.setItem(K,next); }catch(e){}
+    draw();
+  });
+  // The system changing while nothing is chosen -- a laptop turning to its
+  // evening setting -- changes the page through the stylesheet; the label
+  // follows it.
+  if(mq){ var f=function(){ if(!chosen()) draw(); };
+    if(mq.addEventListener) mq.addEventListener("change",f);
+    else if(mq.addListener) mq.addListener(f); }
+})();
+</script>
+</body>
+</html>
