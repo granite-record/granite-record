@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.256
+// GRANITE_VERSION: 2026-09-07.260
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9638,7 +9638,17 @@ function chamberShow(i,write){
   vwStick();
   if(!write||!VW_CHAMBER)return;
   const path=`/session/${VW_CHAMBER.slug}${i?"/videos":""}`;
-  try{history.replaceState(history.state,"",path+location.search+(i&&/^#v-/.test(location.hash)?location.hash:""));}catch(_){}
+  // THE VIDEOS TAB TURNED TO AGAIN names the recording chosen there, as a
+  // study committee's does (ssShow): Session Days had taken the #v- off the
+  // address, so Share, a copied link or a reload opened on the newest and
+  // not on what was shown (the walk of 30 October 2026). An address that
+  // already names one keeps it; the newest stays unnamed.
+  const named=i&&/^#v-/.test(location.hash), vw=i&&!named&&vids&&vids.querySelector&&vids.querySelector(".vw");
+  const back=vw&&VVIEW&&VVIEW.rows&&VVIEW.rows.length&&VVIEW.chosen
+    &&VVIEW.chosen!==VVIEW.rows[0].id?VVIEW.chosen:"";
+  try{history.replaceState(history.state,"",path+location.search+(named?location.hash:back?`#v-${back}`:""));}catch(_){}
+  // Already chosen: not an arrival (showVideo) to be scrolled to.
+  if(back)vwTried=vwLanded=back;
   addressed();
 }
 document.addEventListener("click",e=>{

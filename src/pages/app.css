@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.334 */
+/* GRANITE_VERSION: 2026-09-07.338 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -7003,9 +7003,15 @@ color:var(--ink);text-decoration:none;line-height:1.35}
    its edge. The chips here a little smaller than a card's, the same words
    and colours, and first in their line at every width: on a phone the
    Calendar's rule for its own rows (.calkind{order:3}) had put them after
-   the bills. */
+   the bills.
+   THE LINE HOLDS ITS HIDDEN COMMAS (the walk of 30 October 2026): a
+   screen reader's commas (.sr) are absolutely placed, so the line's
+   overflow:hidden held them only if it was their containing block; it was
+   not, and the commas of a long line stood past the list's edge, so
+   /committee/ss1729/videos scrolled sideways. position:relative makes it
+   theirs. */
 .vwd .vwi{font-weight:400;font-size:var(--t-sm);color:var(--ink-2)}
-.vwb{grid-column:1 / -1;display:flex;align-items:center;min-width:0;font-size:var(--t-sm);line-height:1.5;
+.vwb{position:relative;grid-column:1 / -1;display:flex;align-items:center;min-width:0;font-size:var(--t-sm);line-height:1.5;
 color:var(--ink-2);white-space:nowrap;overflow:hidden}
 .vwb .chip{flex:none;order:0;margin-right:var(--sp-2);padding:0 var(--sp-3);line-height:1.4}
 .vwl{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
@@ -8794,7 +8800,10 @@ padding-top:calc(var(--sp-3) + 1px)}
    by the script over the chart: above the seat it names, or under it where
    there is no room above, with a triangle in the box's own edge and ground
    pointing at the seat from --arrow along it. The name is the link, in the
-   ink; the party, the district and the seat under it in the second ink. */
+   ink; the party, the district and the seat under it in the second ink.
+   THE TRIANGLE TAKES NO TAP (the walk of 30 October 2026): it lies over the
+   seat it points at and those beside it, and on a phone a tap there landed
+   on it and chose nothing. A tap goes through it to the seat. */
 :where(body.pg) .seatstage .seatpop{top:0;left:0;z-index:6;max-width:min(17rem,calc(100% - 1rem));
   padding:var(--sp-3) var(--sp-4);font:400 var(--t-sm)/1.4 var(--sans)}
 :where(body.pg) .seatpop.gone{visibility:hidden}
@@ -8803,7 +8812,8 @@ padding-top:calc(var(--sp-3) + 1px)}
 :where(body.pg) .seatpop .spwhat{margin-top:var(--sp-1)}
 :where(body.pg) .seatpop .spwhat:empty{display:none}
 :where(body.pg) .seatpop::before,:where(body.pg) .seatpop::after{content:"";position:absolute;
-  left:var(--arrow,50%);width:0;height:0;border:8px solid transparent;transform:translateX(-50%)}
+  left:var(--arrow,50%);width:0;height:0;border:8px solid transparent;transform:translateX(-50%);
+  pointer-events:none}
 :where(body.pg) .seatpop::before{top:100%;border-top-color:var(--rule-2)}
 :where(body.pg) .seatpop::after{top:calc(100% - 1px);border-top-color:var(--surface)}
 :where(body.pg) .seatpop.below::before{top:auto;bottom:100%;border-top-color:transparent;

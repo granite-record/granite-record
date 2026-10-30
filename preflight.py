@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.743
+# GRANITE_VERSION: 2026-09-04.752
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -55761,6 +55761,21 @@ def _seat_callout(BP, SEAT):
     won = note({"seatnote"})
     if "".join(won.get("border-top-width", ("",))[0].split()) in ("0", "0px"):
         bad.append("the note under the chart has no rule while it shows what a search has left")
+    # THE TRIANGLE TAKES NO TAP (the walk of 30 October 2026): it lies over
+    # the seat it points at and those beside it, and on a phone a tap there
+    # landed on it and chose nothing. Its two halves, ::before and ::after,
+    # above the seat and below it, take none; nothing gives one back.
+    arrows = {}
+    for _o, _ctx, one, decls, _line in rules:
+        simple = _css_simple((_css_parts(one) or [("", "")])[-1][1])
+        half = next((s[1] for s in simple if s[0] == "element"), None)
+        if half in ("before", "after") and ("class", "seatpop") in simple:
+            arrows.setdefault(half, []).append((one, decls.get("pointer-events", ("",))[0]))
+    took = [f"{s} {{pointer-events:{pe}}}" for v in arrows.values() for s, pe in v if pe not in ("", "none")]
+    if sorted(arrows) != ["after", "before"] or took or not all(
+            any(pe == "none" and "below" not in s for s, pe in v) for v in arrows.values()):
+        bad.append("the callout's triangle takes a tap, so one on the seat it points at, or beside it, chooses "
+                   f"nothing: {took or {k: [pe for _s, pe in v] for k, v in arrows.items()}}")
     assert not bad, "the seating chart's callout: " + "; ".join(bad[:5])
     return "ok", ("a seat tapped, focused or under the pointer has the popovers' box above it, its arrow at "
                   "the seat, below it at the top, inside 366px at either side; Tab from a seat reaches its "
@@ -71410,11 +71425,46 @@ process.stdout.write("\n@@" + JSON.stringify(out));
         # is told again once loaded, and not if its pane is shown by then.
         assert paused["loadedHidden"] == ["days pauseVideo"] and paused["loadedShown"] == [], (
             f"a frame that loads after its pane is hidden plays on, or one shown again is paused: {paused}")
+    # THE VIDEOS TAB TURNED TO AGAIN NAMES THE RECORDING CHOSEN THERE: Session
+    # Days took the #v- off the address and the Videos tab did not put it
+    # back, so Share, a copied link or a reload opened on the newest and not
+    # on what was shown (the walk of 30 October 2026). The newest stays
+    # unnamed, and an address that already names one keeps it.
+    turned = _node_app(r"""
+require("./stub.js");
+const fs = require("fs");
+location.pathname = "/session/senate/videos"; location.search = "?term=2023-2024"; location.hash = "#v-mid";
+const at = () => location.pathname + location.search + location.hash;
+history.replaceState = (st, t, u) => { const m = /^([^?#]*)(\?[^#]*)?(#.*)?$/.exec(u);
+  location.pathname = m[1]; location.search = m[2] || ""; location.hash = m[3] || ""; };
+const s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({chamberShow, set: (d, v) => { VW_CHAMBER = d; VVIEW = v; }, landed: () => vwLanded})");
+const pane = (hidden) => ({hidden, querySelectorAll: () => [], querySelector: (q) => q === ".vw" ? {} : null});
+const days = pane(true), vids = pane(false);
+document.getElementById = (id) => id === "chdays" ? days : id === "chvids" ? vids : null;
+const out = {};
+try {
+  const v = {rows: [{id: "new"}, {id: "mid"}, {id: "old"}], chosen: "mid"};
+  s.set({kind: "chamber", body: "S", slug: "senate", term: "2023-2024", latest: "2025-2026", days: []}, v);
+  s.chamberShow(0, true); out.days = at();
+  s.chamberShow(1, true); out.back = at(); out.landed = s.landed();
+  v.chosen = "new"; s.chamberShow(0, true); s.chamberShow(1, true); out.newest = at();
+  v.chosen = "old"; location.hash = "#v-mid"; s.chamberShow(1, true); out.kept = at();
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+""")
+    if turned is not None:
+        assert "threw" not in turned and turned["days"] == "/session/senate?term=2023-2024" \
+            and turned["back"] == "/session/senate/videos?term=2023-2024#v-mid" and turned["landed"] == "mid", (
+                f"the chamber's Videos tab turned to again does not name the recording chosen there: {turned}")
+        assert turned["newest"] == "/session/senate/videos?term=2023-2024" \
+            and turned["kept"] == "/session/senate/videos?term=2023-2024#v-mid", (
+                f"the chamber's Videos tab names the newest, or drops a recording the address named: {turned}")
     return "ok", ("a day takes its channel's session recording where no moment names one; the "
                   "folds play it and the Videos tab, at its own address, lists the term's, counts "
                   "and no bills; a term before the channels says so; another term's recording the "
                   "address names is chosen and shown in its list; one playing in a pane its tab "
-                  "hides is paused")
+                  "hides is paused; the tab turned to again names the recording chosen there")
 
 
 # A chamber's page as app.js meets it when it loads (GR_STATIC): the two
@@ -79569,6 +79619,34 @@ process.stdout.write("\n@@" + JSON.stringify(out));
              "a row's kinds and bills can run onto a third line, or its kinds follow its bills on a "
              "phone (the Calendar's .calkind{order:3})")):
         assert ok, f"app.css: {why}"
+    # THE SECOND LINE HOLDS ITS HIDDEN COMMAS (the walk of 30 October 2026):
+    # .sr is absolutely placed, so the line's overflow:hidden clips it only
+    # where the line, or something inside it, is its containing block. None
+    # was, and the commas of a long line stood 1px wide past the list's edge:
+    # /committee/ss1729/videos scrolled sideways at 390 and at 1280. Each .sr
+    # in a row's second line, as renderPage draws it: its nearest positioned
+    # ancestor is inside the row, and it or one between it and the row clips.
+    # A committee's row and a study committee's, whose line is its parts
+    # (studyVideoRows), each part after the first behind a hidden comma.
+    study = _app_js('scope.videoView(scope.VW_STATIC.study(' + json.dumps({
+        "kind": "study", "who": "Commission to Study Stable Tokens", "key": "1729", "path": "/committee/ss1729",
+        "rows": [{"id": "agPR9tSyTok", "date": "2026-10-29", "seconds": 7200, "venue": "State House 122-123",
+                  "type": "Regular meeting", "anchor": "day-2026-10-29"}]}) + "))", names=("videoView", "VW_STATIC"))
+    rules, srs = _css_screen_rules(css), []
+    for drawn in (got["videos"], study or ""):
+        _html_walk(drawn, element=lambda c: srs.append(c) if "sr" in c[0]["classes"]
+                   and any("vwb" in e["classes"] for e in c[1:]) else None)
+    has = lambda c, k, v: _css_won(rules, c).get(k, (v,))[0]
+    loose = []
+    for c in srs:
+        row = next(j for j, e in enumerate(c) if "vwrow" in e["classes"])
+        held = next((j for j in range(1, len(c)) if has(c[j:], "position", "static") != "static"), len(c))
+        if held >= row or not any(has(c[k:], "overflow", "visible") in ("hidden", "clip") for k in range(held, row)):
+            loose.append(".".join(sorted(c[1]["classes"])) + (f" held by {'.'.join(sorted(c[held]['classes']))}"
+                                                              if held < len(c) else " held by the page"))
+    assert any("vwl" in c[1]["classes"] for c in srs) and not loose, (
+        "app.css: a hidden comma in a recording's second line is not clipped with it, so a long line "
+        f"can push the page sideways ({len(srs)} drawn): " + "; ".join(sorted(set(loose))[:4]))
     # What is cut is the bills' numbers: the count is on the first line, beside
     # the date, so the cut never takes it.
     assert '<span class="vwd">Feb 10, 2026<span class="sr">,</span> <span class="vwi"><span aria-hidden="true">' \
