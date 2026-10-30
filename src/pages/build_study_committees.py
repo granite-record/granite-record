@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-18.5
+# GRANITE_VERSION: 2026-10-18.6
 """
 A page for every statutory and study committee the General Court lists as
 active, at /committee/ss<CommitteeID>.
@@ -991,7 +991,7 @@ def write_page(c, ctx, today):
                   title=f"{S.clip(c['name'], S.TITLE_ROOM)} | Granite Record",
                   og_title=c["name"], og_image="og-committee.png",
                   og_alt="Granite Record: committees and hearings", description=desc,
-                  globals={"GR_STATIC": True},
+                  globals={"GR_STATIC": True, "GR_REPORT": f"study:ss{c['cid']}"},
                   jsonld=LD.study_committee(c["name"], ctx["base"], S.canon(path),
                                             legislative=not c["nonleg"]),
                   noscript="", skip_label="Skip to this committee",

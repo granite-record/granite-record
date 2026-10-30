@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.746
+# GRANITE_VERSION: 2026-09-04.747
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -84264,6 +84264,21 @@ for (const [rec, url] of [["committee:S03-1989", "/committee/S03"],
     ["committee:S03-1989-1990", "/committee/S03-1989-1990"], ["committee:S03-", "/committee/S03-"],
     ["committee:S03-1989x", "/committee/S03-1989x"], ["committee:1989", "/committee/1989"]])
   ok(`${rec} from ${url} is refused`, validate({ ...cmte, record: rec, url }) === null);
+// A session day and a study committee (the cohesion audit, I-8), each from
+// its own address and from no other.
+const day = { ...good, record: "session:H/2010-03-11", url: "/session/H/2010-03-11", tab: "" };
+ok("a session day's page is accepted", validate(day) !== null);
+ok("a Senate session day's page is accepted",
+   validate({ ...day, record: "session:S/2024-12-04", url: "/session/S/2024-12-04" }) !== null);
+const ss = { ...good, record: "study:ss1451", url: "/committee/ss1451", tab: "Meetings (3)" };
+ok("a study committee's page is accepted", validate(ss) !== null && validate(ss).tab === "Meetings");
+for (const [rec, url] of [["session:H/2010-03-11", "/session/H/2010-03-12"],
+    ["session:H/2010-03-11", "/session/S/2010-03-11"], ["session:X/2010-03-11", "/session/X/2010-03-11"],
+    ["session:H/2010-3-11", "/session/H/2010-3-11"], ["session:H/2010-03-11", "/committee/ss1451"],
+    ["study:ss1451", "/committee/ss1452"], ["study:ss1451", "/session/H/2010-03-11"],
+    ["study:H05", "/committee/H05"], ["committee:ss1451", "/committee/ss1451"],
+    ["study:ss1451", "/legislator/jane-doe-hills-12"], ["session:H/2010-03-11", "/legislator/x"]])
+  ok(`${rec} from ${url} is refused`, validate({ ...good, record: rec, url, tab: "" }) === null);
 // A report that passed every rule and could not be kept answers 503, so the box
 // offers the reader the email address (24 September 2026). It answered 204, and
 // the reader was thanked for a report that existed only in the Function's log.

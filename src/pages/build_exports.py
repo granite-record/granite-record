@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.51
+# GRANITE_VERSION: 2026-09-10.52
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -708,7 +708,7 @@ browser.</p>
 linked in the footer. That is a Google form, and what you put in it goes to
 Google and to us.</p>
 <p>__REPORT_OPENS__, from the button marked <i>Report a problem</i> on
-bill, committee and legislator pages. A report holds the page and
+bill, committee, legislator, session-day and study committee pages. A report holds the page and
 the record it is about, the tab that was open, the kind of problem chosen from
 a list, what you wrote, the time it arrived and which build of the site you
 were reading. Nothing in it identifies you &mdash; no IP address, no cookie, no
