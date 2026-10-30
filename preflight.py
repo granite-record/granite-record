@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.696
+# GRANITE_VERSION: 2026-09-04.697
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -573,13 +573,21 @@ def _history_addresses():
     which costs nothing while no remote exists and costs a force-push and every
     clone anyone has taken once one does.
 
-    So: every author and every committer, across every ref, is the project's
-    own address.
+    So: every author and every committer in the history being built is the
+    project's own address.
+
+    THE HISTORY BEING BUILT, NOT EVERY REF (30 October 2026). This read
+    `git log --all`, and GitHub's night checks out with fetch-depth 0, so it
+    held every branch on GitHub: one merge pushed to an unmerged side branch
+    under another address stopped dry run 157 at preflight, and would have
+    stopped the live night from main with it. A branch nobody is building
+    must not decide whether the site is built. What the night builds, and
+    what reaches main, is HEAD's history, and that is what is read.
     """
     import subprocess
     CORRECT = "contact@graniterecord.org"
     try:
-        out = _run(["git", "log", "--all", "--format=%ae%n%ce"],
+        out = _run(["git", "log", "HEAD", "--format=%ae%n%ce"],
                    capture_output=True, text=True, timeout=120)
     except (OSError, subprocess.SubprocessError) as e:
         return "skip", f"git would not read the history ({e})"
@@ -597,8 +605,8 @@ def _history_addresses():
           "it -- the raw commit object keeps the address.\n  Rewrite with "
           "`git filter-branch --env-filter` over --all, then delete "
           "refs/original, expire the reflog and gc --prune=now.")
-    return "ok", (f"{len(seen):,} author and committer fields across the whole "
-                  f"history, every one {CORRECT}")
+    return "ok", (f"{len(seen):,} author and committer fields in the history being "
+                  f"built (HEAD), every one {CORRECT}")
 
 
 @check("files", "no tracked file carries a credential")
