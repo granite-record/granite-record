@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.253
+// GRANITE_VERSION: 2026-09-07.254
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9286,12 +9286,19 @@ window.addEventListener("resize",()=>vwStick());
 // app.css's margin alone, and none with this (measured 29 October 2026).
 // Where the player does not stay (a wide screen, or a window too short for
 // it), what stays is the strip, and the focus is put clear of that.
+// And to where the player's foot comes to rest, not where it is: Shift+Tab
+// back into a short list from below has the end of the view pushing the
+// staying player up, and a scroll up lets it drop back to --vwstick, over
+// the row just put clear of it (ss57's 19 rows at 390px, the review of 30
+// October 2026).
 document.addEventListener("focusin",e=>{
   const t=e.target, box=t&&t.closest&&t.closest(".vw");
   if(!box||t.closest(".vwmain"))return;
   requestAnimationFrame(()=>{
     const under=vwUnder(box), top=t.getBoundingClientRect().top;
-    if(under>0&&top<under)window.scrollBy(0,top-under-8);
+    const rest=vwPinned(box)?parseFloat(box.style.getPropertyValue("--vwstick"))||0:0;
+    const clear=Math.max(under,rest);
+    if(under>0&&top<clear)window.scrollBy(0,top-clear-8);
   });
 });
 document.addEventListener("click",e=>{
@@ -9687,8 +9694,17 @@ function ssShow(tab,write,keep){
   vwStick();
   if(!write)return;
   const slug=tab.dataset.sstab;
+  // THE VIDEOS TAB TURNED TO AGAIN names the recording chosen there, as a
+  // standing committee's does (vwBackTo): the address had lost its #v-, so
+  // Share, a copied link or a reload opened on the newest and not on what
+  // was shown (the review of 30 October 2026). The newest stays unnamed.
+  const pane=ssPaneOf(tab), vw=pane&&pane.querySelector&&pane.querySelector(".vw");
+  const back=!keep&&vw&&VVIEW&&VVIEW.rows&&VVIEW.rows.length&&VVIEW.chosen
+    &&VVIEW.chosen!==VVIEW.rows[0].id?VVIEW.chosen:"";
   try{history.replaceState(history.state,"",strip.dataset.base+(slug?`/${slug}`:"")+location.search
-    +(keep?location.hash:""));}catch(_){}
+    +(keep?location.hash:back?`#v-${back}`:""));}catch(_){}
+  // Already chosen: not an arrival (showVideo) to be scrolled to.
+  if(back)vwTried=vwLanded=back;
   addressed();
 }
 // The tab the address names, and the meeting it names opened and in view.

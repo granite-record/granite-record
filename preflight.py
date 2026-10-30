@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.732
+# GRANITE_VERSION: 2026-09-04.733
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -65732,7 +65732,7 @@ def _study_committee_tabs(SC, BP):
         ("SB 434", "2026", "bill/2026/sb434.html", "Set it up"), ("HB 1442", "2026", "", "Amended it")] and \
         none == [], f"a study committee's bills are not the one that set it up and those that changed it, once: {rows}"
     assert early == [{"n": "HB 366", "year": "1983", "href": "", "line": "Set it up",
-                      "title": "Before 1989, when this site's record of bills begins."}], (
+                      "title": "Before 1989, when this site’s record of bills begins."}], (
         f"a bill from before the site's record stands blank, or says something else: {early}")
     assert [(r["n"], r["line"]) for r in council] == [
         ("HB 746", "Older than the bill that set it up"), ("HB 110", "Older than the bill that set it up"),
@@ -79846,10 +79846,27 @@ process.stdout.write("\n@@" + JSON.stringify(out));
             "its line's first baseline")
     assert '<a class="vwbn" href="bill/2026/hb675.html">HB 675-FN-A-LOCAL</a>' in one, (
         "a long number is not drawn whole in the description")
+    # A LINK IN THE PLAYER'S CAPTION OR UNDER IT IS 24px TALL (the review of
+    # 30 October 2026; WCAG 2.5.8): "On YouTube" in the caption and the links
+    # under the player sit in a line of text, where the player bar's
+    # ".pbar > a" never reaches, and were 19px. Each, as renderPage draws it,
+    # takes --tap-text top and bottom from the cascade.
+    rules, links = _css_screen_rules(css), {}
+    for k in ("vid1", "meetings"):
+        _html_walk(got[k], element=lambda c: links.setdefault(
+            next((n for n in ("vwcap", "vwlinks") for e in c[1:] if e and n in e["classes"]), ""), []).append(c)
+            if c[0]["tag"] == "a" else None)
+    short = [f".{n} a: {pad}" for n in ("vwcap", "vwlinks") for c in links.get(n, [])
+             for pad in [tuple(_css_won(rules, c).get(f"padding-{s_}", ("0",))[0] for s_ in ("top", "bottom"))]
+             if any("".join(v.split()) != "var(--tap-text)" for v in pad)]
+    assert links.get("vwcap") and links.get("vwlinks") and not short, (
+        "a link in the player's caption or under the player is under 24px tall, or renderPage drew none to "
+        f"measure ({len(links.get('vwcap', []))} in the caption, {len(links.get('vwlinks', []))} under it): "
+        + "; ".join(short[:4]))
     return "ok", ("the kinds, the count and how the times are used, then a line a bill -- number, the "
                   "Meetings tab's own buttons, title -- in the order the recording reaches them, the numbers "
                   "in a column as wide as the longest and on their lines' first baseline; a recording "
-                  "with no moment says so")
+                  "with no moment says so; the caption's and the links' under the player 24px tall")
 
 
 @check("frontend", "the committees index says its counts of bills and sessions are every "

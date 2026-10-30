@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-18.4
+# GRANITE_VERSION: 2026-10-18.5
 """
 A page for every statutory and study committee the General Court lists as
 active, at /committee/ss<CommitteeID>.
@@ -591,7 +591,7 @@ def bills_of(c, ctx):
         seen.add((bid, str(year)))
         title = ctx["titles"].get((bid, str(year)), "")
         if not title and first and str(year) < first:
-            title = f"Before {first}, when this site's record of bills begins."
+            title = f"Before {first}, when this site’s record of bills begins."
         out.append({"n": re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bid), "year": str(year),
                     "href": bill_page(bid, year, ctx["bills"], ctx["site"]), "title": title, "line": role})
     return sorted(out, key=lambda r: (r["year"], r["line"] != "Set it up"))

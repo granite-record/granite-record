@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.333 */
+/* GRANITE_VERSION: 2026-09-07.334 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -6967,6 +6967,11 @@ align-items:baseline;padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
 .vwbt{grid-column:2;font-size:var(--t-sm);line-height:1.45;color:var(--ink-2)}
 .vwbills .mjumps{grid-column:2;display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);align-items:center;margin-left:0}
 .vwlinks{margin:var(--sp-4) 0 0}
+/* A link a finger taps is 24px tall here too (WCAG 2.5.8): the player bar's
+   ".pbar > a" rule never reaches the caption's "On YouTube", which sits in a
+   line of text, nor the links under the player, and both were 19px (the
+   review of 30 October 2026). An inline link's token, as a.psent's. */
+.vwcap a,.vwlinks a{padding-block:var(--tap-text)}
 /* Past the bills to the list, for a keyboard: shown when it has focus. */
 .vwskip:not(:focus){position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;
 clip:rect(0 0 0 0);white-space:nowrap}
