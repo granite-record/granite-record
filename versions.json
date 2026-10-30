@@ -26,7 +26,7 @@
     "build_committees.py": "2026-09-07.67",
     "build_data.py": "2026-09-04.59",
     "build_date.py": "2026-10-02.1",
-    "build_exports.py": "2026-09-10.51",
+    "build_exports.py": "2026-09-10.52",
     "build_feeds.py": "2026-09-04.46",
     "build_floor_index.py": "2026-09-04.12",
     "build_indexes.py": "2026-09-13.23",
@@ -159,7 +159,7 @@
     "past_members.py": "2026-09-10.3",
     "past_sponsors.py": "2026-09-26.6",
     "plain_action.py": "2026-10-14.13",
-    "preflight.py": "2026-09-04.731",
+    "preflight.py": "2026-09-04.732",
     "print.css": "2026-10-09.3",
     "print.js": "2026-10-09.10",
     "probe_alignment.py": "2026-09-05.66",
@@ -236,7 +236,9 @@
     "officials_tabs.py": "2026-10-10.8",
     "tests/test_map_labels.js": "2026-10-09.1",
     "tests/test_follow_panel.js": "2026-10-18.1",
-    "strip_js.py": "2026-10-23.1"
+    "strip_js.py": "2026-10-23.1",
+    "people.py": "2026-10-30.1",
+    "person_numbers.py": "2026-10-30.1"
   },
   "generated": "2026-09-04"
 }

@@ -1,0 +1,316 @@
+#!/usr/bin/env python3
+# GRANITE_VERSION: 2026-10-30.1
+"""
+One entry a person, joining every number the General Court uses for them.
+
+    import people as PE
+    PE.build(site, data, db, careers, register)  ->  (people, report)
+
+The public data API's people file (docs/design/api/DESIGN.md, 2.5) and the
+register of person numbers (person_numbers.py) both come from here, so the
+night and the run that issues numbers cannot join two people differently.
+Nothing here writes a file or asks the network.
+
+WHY A PERSON IS NOT ANY OF THE GENERAL COURT'S NUMBERS
+
+The General Court numbers a member twice, an Employeeno (six digits, the roll
+calls') and a PersonID (the roster's), and mints new ones of both when a member
+moves between the House and the Senate. This site's member_id is the PersonID
+where there is one and the Employeeno where there is not (build_data.py). So
+Cindy Rosenwald votes as 515 in the House and 9406 in the Senate, and every
+file keyed by one of those numbers breaks her in two. A person number is the
+site's own, issued once (generated/person_numbers.json) and never reissued to
+anybody else.
+
+WHICH NUMBERS ARE ONE PERSON: TWO JOINS, AND ONE RULE OVER BOTH
+
+  careers.json   joins Employeenos on the same first and last name where the
+                 service never overlaps (build_careers.py). It reaches anyone
+                 the roster names, which is nobody whose service ended before
+                 2015.
+  member_ids     each member's own file (site/legislators/<id>.json) lists the
+                 earlier numbers member_links.py joined to them, by six rules
+                 and with the names of byAnyMember.aspx, so it reaches back
+                 before 2015 -- but only for a member who sits now.
+
+They are unioned, under member_links's first rule: TWO NUMBERS IN ONE CHAMBER
+ARE TWO PEOPLE, because a member who returns to a chamber gets their old
+number back. careers.json breaks that rule twice. It attaches Sen. Pat Long's
+House record (376696, 2007-2024) to a freshman representative, Patrick Long of
+Hillsborough 26 (409256, from 2025) -- member_links.py says whose it is, as the
+person settled on 17 September 2026 -- and it joins two House numbers for Mark
+Pearson, Rockingham 4 in 2007-2008 and Rockingham 34 from 2017. A careers
+group holding two numbers of one chamber is not joined at all, and the report
+names it, so that a person decides.
+
+THE REGISTER WINS. Once a number is issued it is what the night publishes,
+whatever tonight's join says: a join that now disagrees (two issued people
+it would merge, or one it would split) is reported and left alone, because
+moving a published number is the thing the register exists to prevent.
+Numbers the register does not hold yet are grouped by the join; a group with
+no issued number is published with a provisional person number, "p" and its
+first Employeeno, marked "provisional".
+"""
+
+import csv
+import json
+from pathlib import Path
+
+FORMAT = 1
+
+
+def _load(p, default):
+    try:
+        return json.loads(Path(p).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return default
+
+
+def emp_to_pid(db):
+    """Employeeno -> PersonID, from the roster view the database dump holds."""
+    db = Path(db)
+    cols = _load(db / "_columns.json", {}).get("Legislators")
+    cols = cols if isinstance(cols, list) else (cols or {}).get("columns") or []
+    if "Employeeno" not in cols or not (db / "Legislators.psv").exists():
+        return None
+    iE, iP = cols.index("Employeeno"), cols.index("PersonID")
+    out = {}
+    with (db / "Legislators.psv").open(encoding="utf-8") as fh:
+        for line in fh:
+            f = line.rstrip("\n").split("|")
+            if len(f) > max(iE, iP) and f[iE].strip() and f[iP].strip():
+                out[f[iE].strip()] = f[iP].strip()
+    return out
+
+
+class _Union:
+    def __init__(self):
+        self.up = {}
+
+    def find(self, x):
+        self.up.setdefault(x, x)
+        while self.up[x] != x:
+            self.up[x] = self.up[self.up[x]]
+            x = self.up[x]
+        return x
+
+    def join(self, a, b):
+        ra, rb = self.find(a), self.find(b)
+        if ra != rb:
+            self.up[max(ra, rb)] = min(ra, rb)
+
+
+def _term_key(e, careers_by_emp):
+    """When a number first voted: its earliest term, then the number itself."""
+    terms = careers_by_emp.get(e, {}).get("terms") or ["9999"]
+    return (min(terms), int(e) if e.isdigit() else 0, e)
+
+
+def build(site, data, db, careers, register):
+    """(people, report). people is the list people.json publishes; report is
+    what a person should know: the joins left undone and why, the register's
+    disagreements with tonight, and the provisional numbers."""
+    site, data = Path(site), Path(data)
+    e2p = emp_to_pid(db) or {}
+    p2e = {}
+    for e, p in e2p.items():
+        p2e.setdefault(p, e)
+
+    # What each Employeeno is, from careers.json: its terms and chambers.
+    by_emp = {}
+    for key, c in (careers or {}).items():
+        for term, v in (c.get("by_term") or {}).items():
+            for e in v.get("employee_nos") or []:
+                b = by_emp.setdefault(e, {"terms": set(), "chambers": set(), "first": c.get("first") or "",
+                                          "last": c.get("last") or ""})
+                b["terms"].add(term)
+                b["chambers"].update(v.get("chambers") or [])
+
+    # Every id the site's files use for a member, and the rows that carry a page.
+    rows = {}
+    for f in ("legislators.json", "former.json"):
+        for m in _load(site / f, []):
+            rows.setdefault(str(m.get("id")), dict(m, _sitting=(f == "legislators.json")))
+    used = set(rows)
+    for v in _load(data / "member_votes.json", []):
+        if v.get("member_id"):
+            used.add(str(v["member_id"]))
+    sp = _load(data / "sponsors.json", {})
+    for bills in (sp.values() if isinstance(sp, dict) else []):
+        for people_ in (bills.values() if isinstance(bills, dict) else []):
+            for m in (people_ if isinstance(people_, list) else []):
+                if m.get("member_id"):
+                    used.add(str(m["member_id"]))
+
+    def emp_of(mid):
+        """The Employeeno an id stands for: itself when it is one, its
+        Employeeno when it is a PersonID, and None when neither is known."""
+        if mid in by_emp or mid in e2p:
+            return mid
+        return p2e.get(mid)
+
+    U = _Union()
+    report = {"careers_not_joined": [], "unknown_ids": [], "register_disagrees": [],
+              "provisional": [], "unissued_numbers": []}
+    # Every Employeeno is a node, and so is any id that stands for none.
+    for e in by_emp:
+        U.find("e" + e)
+    for mid in sorted(used):
+        e = emp_of(mid)
+        if e is None:
+            report["unknown_ids"].append(mid)
+            U.find("m" + mid)
+        else:
+            U.find("e" + e)
+
+    # careers.json's join, under the one-chamber rule.
+    for key, c in sorted((careers or {}).items()):
+        emps = list(dict.fromkeys(c.get("employee_nos") or []))
+        if len(emps) < 2:
+            continue
+        ch = [frozenset(by_emp.get(e, {}).get("chambers") or ()) for e in emps]
+        clash = any(len(x) != 1 for x in ch) or len(set(ch)) != len(ch)
+        if clash:
+            report["careers_not_joined"].append({
+                "numbers": emps, "name": f'{c.get("first", "")} {c.get("last", "")}'.strip(),
+                "why": "two of its numbers voted in one chamber, which is two people "
+                       "(member_links.py, rule 1)"})
+            continue
+        for e in emps[1:]:
+            U.join("e" + emps[0], "e" + e)
+
+    # member_links.py's joins, as each member's own file carries them.
+    for f in sorted((site / "legislators").glob("*.json")):
+        ids = [str(i) for i in (_load(f, {}).get("member_ids") or [])]
+        nodes = [("e" + emp_of(i)) if emp_of(i) else ("m" + i) for i in ids]
+        for n in nodes[1:]:
+            U.join(nodes[0], n)
+
+    groups = {}
+    for node in list(U.up):
+        groups.setdefault(U.find(node), []).append(node)
+
+    # The register: every issued number, and which person holds it.
+    reg = register or {"format": FORMAT, "people": []}
+    issued = {}
+    for entry in reg.get("people") or []:
+        for n in entry.get("numbers") or []:
+            issued[n] = entry["person"]
+
+    def label(node):
+        return node[1:] if node[0] == "e" else "m" + node[1:]
+
+    people = {}
+    for root, nodes in sorted(groups.items()):
+        nums = sorted({label(n) for n in nodes})
+        held = sorted({issued[n] for n in nums if n in issued})
+        if len(held) > 1:
+            report["register_disagrees"].append({
+                "numbers": nums, "issued_to": held,
+                "why": "tonight's join puts numbers of two issued people together; "
+                       "they stay apart until a person merges them"})
+        if held:
+            for n in nums:
+                person = issued.get(n) or (held[0] if len(held) == 1 else None)
+                if person is None:
+                    # Between two issued people and issued to neither: not
+                    # published tonight, and said, until a person places it.
+                    report["unissued_numbers"].append({"number": n, "person": None})
+                    continue
+                if n not in issued:
+                    report["unissued_numbers"].append({"number": n, "person": person})
+                people.setdefault(person, {"numbers": set(), "provisional": False})["numbers"].add(n)
+        else:
+            emps = sorted((n for n in nums if not n.startswith("m")),
+                          key=lambda e: _term_key(e, by_emp))
+            person = "p" + (emps[0] if emps else nums[0].lstrip("m"))
+            people.setdefault(person, {"numbers": set(), "provisional": True})["numbers"].update(nums)
+            report["provisional"].append({"person": person, "numbers": nums})
+    # A register person tonight's join split across groups is still one person
+    # (the loop above gathers its numbers wherever they fell); say so.
+    seen_in = {}
+    for root, nodes in groups.items():
+        for n in {label(x) for x in nodes}:
+            if n in issued:
+                seen_in.setdefault(issued[n], set()).add(root)
+    for person, roots in sorted(seen_in.items()):
+        if len(roots) > 1:
+            report["register_disagrees"].append({
+                "person": person,
+                "why": "tonight's join splits this issued person; they stay one "
+                       "until a person splits them"})
+
+    # Each person's published entry.
+    out = []
+    for person, p in sorted(people.items()):
+        nums = p["numbers"]
+        emps = sorted((n for n in nums if not n.startswith("m")), key=lambda e: _term_key(e, by_emp))
+        pids = list(dict.fromkeys(e2p[e] for e in emps if e in e2p))
+        cand = list(dict.fromkeys(pids + emps + [n[1:] for n in nums if n.startswith("m")]))
+        mids = [i for i in cand if i in used]
+        own = [rows[i] for i in mids if i in rows]
+        sitting = [r for r in own if r["_sitting"]]
+        best = (sitting or own or [None])[0]
+        terms = sorted({t for e in emps for t in by_emp.get(e, {}).get("terms", ())})
+        name = None
+        if best and best.get("name"):
+            last, _, first = str(best["name"]).partition(", ")
+            name = f"{first} {last}".strip() if first else last
+        elif emps and (by_emp.get(emps[0], {}).get("first") or by_emp.get(emps[0], {}).get("last")):
+            b = by_emp[emps[0]]
+            name = f'{b["first"]} {b["last"]}'.strip()
+        entry = {
+            "person": person,
+            "name": name,
+            "employee_numbers": emps,
+            "person_ids": pids,
+            "member_ids": mids,
+            "page": f'/legislator/{best["slug"]}' if best and best.get("slug") else None,
+            "sitting": bool(sitting),
+            "chambers": sorted({c for e in emps for c in by_emp.get(e, {}).get("chambers", ())}),
+            "first_term": terms[0] if terms else None,
+            "last_term": terms[-1] if terms else None,
+        }
+        if p["provisional"]:
+            entry["provisional"] = True
+        out.append(entry)
+    # A person the register retired, or split from another, keeps an entry.
+    for e in reg.get("people") or []:
+        if e.get("replaced_by"):
+            out.append({"person": e["person"], "replaced_by": e["replaced_by"]})
+    for entry in out:
+        r = next((x for x in reg.get("people") or [] if x["person"] == entry["person"]), None)
+        if r and r.get("split_from"):
+            entry["split_from"] = r["split_from"]
+    out.sort(key=lambda x: x["person"])
+    return out, report
+
+
+def write(people, out_dir):
+    """people.json and people.csv into out_dir; returns their manifest rows."""
+    out_dir = Path(out_dir)
+    doc = {"format": FORMAT,
+           "what": "One entry for each person with a recorded vote since 1999, and "
+                   "every number the General Court and this site use for them. "
+                   "person is this site's own number, issued once; see "
+                   "/data/schema.json.",
+           "people": people}
+    pj = out_dir / "people.json"
+    pj.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    pc = out_dir / "people.csv"
+    n = 0
+    with pc.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["person", "number_kind", "number", "name", "page"])
+        for p in people:
+            if p.get("replaced_by"):
+                w.writerow([p["person"], "replaced_by", p["replaced_by"], "", ""])
+                n += 1
+                continue
+            for kind, field in (("employee_number", "employee_numbers"),
+                                ("person_id", "person_ids"), ("member_id", "member_ids")):
+                for num in p.get(field) or []:
+                    w.writerow([p["person"], kind, num, p.get("name") or "", p.get("page") or ""])
+                    n += 1
+    return [{"path": "/data/people.json", "rows": len(people), "bytes": pj.stat().st_size},
+            {"path": "/data/people.csv", "rows": n, "bytes": pc.stat().st_size}]

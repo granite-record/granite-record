@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.731
+# GRANITE_VERSION: 2026-09-04.732
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28211,6 +28211,60 @@ def _record_untouched():
                   "only a person writes them: " + ", ".join(present) + "; no generator "
                   "names the bench's record or writes into either folder, and the bench "
                   "is not on the network")
+
+
+@check("files", "only a person's run writes the register of person numbers, and it is well formed")
+def _person_register():
+    """generated/person_numbers.json holds the person numbers the public data
+    API publishes (docs/design/api/DESIGN.md, 2.5; the owner's decision of 30
+    October 2026, Q14). Other sites store those numbers, so one issued is
+    never moved or reissued, and the only writer is src/ops/person_numbers.py
+    --issue, which a person runs. The nightly reads it. Two things are held
+    here: no other code file writes it, by any of the shapes the hand-made
+    files' check reads, and what is there is well formed (no number held by
+    two people, no person issued twice)."""
+    REG = "person_numbers.json"
+    stem = r"(?<![\w-])" + re.escape(REG)
+    HELD = re.compile(r'^[ \t]*([A-Za-z_]\w*)[ \t]*(?::[^=\n]*)?=[^=\n][^\n]*' + stem, re.M)
+
+    def writes(src):
+        if re.search(r'open\s*\([^)]*' + stem + r'[^)]*["\'][wax]', src) or \
+           re.search(stem + r'[^\n]{0,60}\.write_(?:text|bytes)', src):
+            return True
+        for held in set(HELD.findall(src)):
+            n = re.escape(held)
+            if re.search(r'\b%s\s*\.\s*(?:write_text|write_bytes)\s*\('
+                         r'|\b%s\s*\.\s*open\s*\(\s*(?:mode\s*=\s*)?["\'][wax]'
+                         r'|\bopen\s*\(\s*%s\s*,\s*(?:mode\s*=\s*)?["\'][wax]'
+                         r'|\b(?:os\.replace|os\.rename|shutil\.(?:copy\w*|move))'
+                         r'\s*\([^)\n]*,\s*%s\s*\)' % (n, n, n, n), src):
+                return True
+        return False
+
+    for text, w in (('open("generated/person_numbers.json", "w")', True),
+                    ('Path("generated/person_numbers.json").write_text(t)', True),
+                    ('REG = Path("generated") / "person_numbers.json"\nREG.write_text(t)', True),
+                    ('R = "generated/person_numbers.json"\nos.replace(tmp, R)', True),
+                    ('def f(register="generated/person_numbers.json"):\n    reg = load(register, None)', False),
+                    ('json.loads(Path("generated/person_numbers.json").read_text())', False)):
+        assert writes(text) == w, f"the register's reader reads {text!r} as " + ("no write" if w else "a write")
+    bad = []
+    for f in _paths.code_files("*.py"):
+        # The writer, and this file, whose cases above name it on purpose.
+        if f.name in ("person_numbers.py", "preflight.py"):
+            continue
+        if writes(f.read_text(encoding="utf-8", errors="replace")):
+            bad.append(f.name)
+    assert not bad, "these write the register of person numbers, which only " \
+                    "person_numbers.py --issue may: " + ", ".join(bad)
+    reg = _paths.ROOT / "generated" / REG
+    if not reg.exists():
+        return "ok", "no other code file writes it; no register issued yet, so every person is provisional"
+    sys.path.insert(0, str(_paths.locate("person_numbers.py").parent))
+    import person_numbers as PN
+    problems = PN.check_register(json.loads(reg.read_text(encoding="utf-8")))
+    assert not problems, "the register is not well formed: " + "; ".join(problems[:5])
+    return "ok", "no other code file writes it, and it is well formed"
 
 
 @check("markers", "every phrasing read from a transcript still matches")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.51
+# GRANITE_VERSION: 2026-09-10.52
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -1173,6 +1173,42 @@ def bill_indexes(site, origin):
     }
 
 
+def people_files(out, site, data, db="db", careers="generated/careers.json",
+                 register="generated/person_numbers.json"):
+    """people.json and people.csv: every number the General Court uses for a
+    person, joined to one person number (src/lib/people.py says how, and
+    src/ops/person_numbers.py issues the numbers). Returns their rows for
+    the manifest's "files"; none where the inputs are not on this disk, and
+    says so -- a clone without the database dump builds everything else."""
+    import people as PE
+    if PE.emp_to_pid(db) is None or not Path(careers).exists():
+        print(f"  {'people.json':<28} not written: no {db}/Legislators.psv or {careers} here")
+        return []
+    reg = load(register, None)
+    people, rep = PE.build(site, data, db, load(careers, {}), reg)
+    if not people:
+        raise SystemExit("people.json would hold nobody: the join found no one. "
+                         "Not writing an empty file.")
+    rows = PE.write(people, out)
+    prov = len(rep["provisional"])
+    print(f"  {'people.json':<28} {len(people):>9,} people  "
+          f"{rows[0]['bytes'] / 1e6:>7.1f} MB"
+          + (f"  ({prov:,} provisional: not in {register} yet)" if prov else ""))
+    print(f"  {'people.csv':<28} {rows[1]['rows']:>9,} rows  {rows[1]['bytes'] / 1e6:>7.1f} MB")
+    for c in rep["careers_not_joined"]:
+        print(f"    not joined, for a person: {c['name']} {', '.join(c['numbers'])}")
+    for d in rep["register_disagrees"]:
+        print(f"    WARNING: the register disagrees with tonight's join: {d}")
+    unplaced = [u["number"] for u in rep["unissued_numbers"] if not u.get("person")]
+    if unplaced:
+        print(f"    WARNING: {len(unplaced)} number(s) between two issued people, not "
+              f"published until a person places them: {', '.join(unplaced[:10])}")
+    if rep["unknown_ids"]:
+        print(f"    {len(rep['unknown_ids'])} site id(s) the roster does not know, each "
+              f"its own person: {', '.join(rep['unknown_ids'][:10])}")
+    return rows
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
@@ -1222,6 +1258,11 @@ def main():
                    for t in tables],
     }
     manifest["bill_indexes"] = bill_indexes(site, manifest["site"])
+    # THE PUBLIC DATA API'S FILES (docs/design/api/DESIGN.md; the owner's OK
+    # of 30 October 2026). Built unlinked until the announcement: listed here,
+    # under a key of their own, and not on the data page, so that nothing a
+    # reader sees today moves while they are built.
+    manifest["files"] = people_files(out, site, a.data)
     (out / "manifest.json").write_text(
         json.dumps(manifest, indent=1), encoding="utf-8")
     total = sum(t["bytes"] for t in tables)
