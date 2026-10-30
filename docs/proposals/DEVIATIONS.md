@@ -784,3 +784,23 @@ that made it.
      ladder, 97 requests). The ladder with the night asking at 08:23:40,
      09:23:40, 10:23:40 and 11:10 every morning is 94 knocks, at most 19 in
      a day.
+117. **What the night says of a refusal, after the review of d7d64bb.**
+     - The "not clean" line (`plain_why()`, the run's page and the night's
+       email) for a night refused says, of a record the night tests itself,
+       that GitHub tests it and that the "a refusal is yours" check emails
+       if it becomes a person's; "every fetch waits until a person clears
+       the refusal" is kept for a person's record. The day-0 email and a
+       relapse night's said both at once.
+     - **A setting typed wrong is the warnings' check's, every night**
+       (`settings_warn()` in `warns_of()`): KNOCK_HOURLY_HOURS,
+       KNOCK_EVERY_HOURS or KNOCK_DAYS out of range, or NIGHT_KNOCK neither
+       "on" nor "off". OWNER_STEPS §4 said the "a refusal is yours" check
+       emails; it did only for a record on file, so an ordinary night was
+       silent. That check still emails for a record on file. Preflight
+       takes the five settings out of its checks' environment
+       (`WORKFLOW_WORDS`), so a typo on GitHub cannot fail the night's own
+       preflight.
+     - The deferred line (`fetch: deferred: ...`) is read again after the
+       knock whatever it answered, and a knock answered no tonight is a
+       person's in it (`gc_quiet(said_no)`), where it gave the night's
+       sentence from before the knock.

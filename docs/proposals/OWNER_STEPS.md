@@ -78,14 +78,17 @@ Variables**. Leave any of them unset for its default.
 
 | Variable | Unset means | Allowed values | What it does |
 |---|---|---|---|
-| `NIGHT_KNOCK` | `on` | `on`, or anything else for off | The off switch. Anything but exactly `on` turns all testing off. A refusal being tested becomes yours, with one email |
+| `NIGHT_KNOCK` | `on` | `on` or `off` | The off switch. Anything but exactly `on` turns all testing off; anything but `on` or `off` is also reported as typed wrong (below). A refusal being tested becomes yours, with one email |
 | `KNOCK_HOURLY_HOURS` | 48 | a whole number of hours, 0 to 384 | How long after the refusal the knocks are hourly |
 | `KNOCK_EVERY_HOURS` | 6 | 1, 2, 3, 4, 6, 8, 12 or 24 | The knocks' spacing after that |
 | `KNOCK_DAYS` | 16 | a whole number of days, 1 to 16 | When the refusal becomes yours at the latest |
 
 A value outside these, such as "48h", " 48", "-1", 17 days, or 5 hours a
-rung, turns testing off. The "a refusal is yours" check then emails you,
-naming the variable. To stop only the hourly knock: **Actions → knock →
+rung, turns testing off. The night's warnings check
+(`HEALTHCHECKS_WARN_URL`) then emails you, naming the variable, and says
+so every night until it reads, whether or
+not a refusal is on file. A refusal on file meanwhile is yours, and the "a
+refusal is yours" check emails you too. To stop only the hourly knock: **Actions → knock →
 "..." → Disable workflow**.
 
 **Before you check or clear a refusal early yourself**, set `NIGHT_KNOCK`

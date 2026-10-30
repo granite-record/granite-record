@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.744
+# GRANITE_VERSION: 2026-09-04.745
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -88557,7 +88557,9 @@ def _nightly_knocks(NI, PD, DF):
         child's 2, the entry "no answer"): no held night, no database, the
         verdict's "web" a person's, the third check told that night with
         the night's alert naming clear-refusal, and sixteen minutes on a
-        person's with no knock due;
+        person's with no knock due. Either way the verdict's deferred line
+        is read after the knock, and says a person's (the reviewers of 30
+        October 2026);
       - no knock, no "knock" and no database for run 151's record as it
         stands (no kind), a 403's, NIGHT_KNOCK off, "ON " or unset,
         NIGHT_PERSON_CHECK unset or "none", a setting typed wrong, or a
@@ -88698,7 +88700,11 @@ def _nightly_knocks(NI, PD, DF):
             if who == "night":
                 wrong += held(n, v, f"a knock {answer}")
             elif code != 1 or n.asked("fetch_day_db.py") or \
-                    not str(v.get("fetch", "")).startswith("deferred"):
+                    not str(v.get("fetch", "")).startswith("deferred") or \
+                    "tests it itself" in str(v.get("fetch")) or \
+                    "a person's to clear" not in str(v.get("fetch")):
+                # The deferred line read after the knock (the reviewers of 30
+                # October 2026): a person's, not the night's from before it.
                 wrong.append(f"a knock answered with the firewall's page: exit {code}, "
                              f"{len(n.asked('fetch_day_db.py'))} asks of the database, "
                              f"{v.get('fetch')!r}")
@@ -88725,6 +88731,8 @@ def _nightly_knocks(NI, PD, DF):
         if len(n.knocks()) != 1 or n.exports() or n.asked("fetch_day_db.py") or code != 1 or \
                 not str(v.get("knock", "")).startswith(NI.KNOCK_SAID_NO) or \
                 not str(v.get("fetch", "")).startswith("deferred") or \
+                "tests it itself" in str(v.get("fetch")) or \
+                "a person's to clear" not in str(v.get("fetch")) or \
                 (v.get("web") or {}).get("state") != "person" or last.get("answer") != "no answer" or \
                 later != ("person", (False, None), (False, None)):
             wrong.append(f"a knock answered no, its answer not written down: {len(n.knocks())} "
@@ -88963,7 +88971,16 @@ def _person_check_rings(NI, PD, DF):
          morning; the 13:47 look tells it again and no claim is allowed. And
          the hourly knock job's: "What the refusal is now" with --knock-rc=2
          tells it /fail and exits 1, and the next hour's look tells it again
-         and claims nothing.
+         and claims nothing;
+      7. day 0, then a relapse the next morning (the knock lifts, the export
+         drops again): the third check up both mornings, and neither
+         night's alert says the refusal waits for a person -- each says
+         GitHub tests it (the reviewers of 30 October 2026);
+      8. an ordinary night, nothing on file, with KNOCK_DAYS 17,
+         NIGHT_KNOCK "On" or KNOCK_EVERY_HOURS 5: clean, the night's check
+         and the third told nothing, the warnings' check told the setting
+         by name and value; NIGHT_KNOCK "off", a setting, tells nobody (the
+         reviewers of 30 October 2026).
 
     Sequence 2's held nights have the hourly knock's trace between them (a
     claim of its marked "not asked"), as they would with knock.yml running;
@@ -89149,6 +89166,48 @@ def _person_check_rings(NI, PD, DF):
             wrong.append(f"the hourly knock answered no, its answer not written down: asked "
                          f"{asked}, the step exited {step} and told {told[:60]!r}; an hour on the "
                          f"look wrote {look[:60]!r}, a claim {claimed}")
+
+        # 7: ONE THE NIGHT TESTS ITSELF (the reviewers of 30 October 2026).
+        # Day 0, then the next morning a relapse -- the knock answered with
+        # the file, the export asked once and dropped again. Each night's
+        # alert gives the night's sentence and never "waits until a person
+        # clears"; the third check stays up.
+        n.fresh()
+        day0 += 30 * 24 * H
+        n.knob.update(export="whole")
+        n.night(day0 - 24 * H, run_id="z0")
+        n.knob.update(export="drop", knock="dropped")
+        code, v, _ = n.night(day0, run_id="z1")
+        seen = [_rings(n, day0 + 600, "z1", code)]
+        said = [NI.ALERT_FILE.read_text(encoding="utf-8") if NI.ALERT_FILE.exists() else ""]
+        n.knob.update(export="drop", knock="whole")
+        code, v, _ = n.night(day0 + 24 * H + 180, run_id="z2")
+        seen.append(_rings(n, day0 + 24 * H + 600, "z2", code))
+        said.append(NI.ALERT_FILE.read_text(encoding="utf-8") if NI.ALERT_FILE.exists() else "")
+        relapses = (n.R.read_knocks()[0].get("current") or {}).get("relapses")
+        if seen != [("down", "up"), ("down", "up")] or relapses != 1 or \
+                any("waits until a person clears" in s or "GitHub tests the refusal itself"
+                    not in s for s in said):
+            wrong.append(f"day 0 and a relapse the night tests itself: (the night's check, the "
+                         f"third) {seen}, {relapses} relapses, the night's alerts {said}")
+
+        # 8: A SETTING TYPED WRONG ON AN ORDINARY NIGHT (the reviewers of 30
+        # October 2026): nothing on file, and the warnings' check is told,
+        # naming it, every night -- the third check is not; NIGHT_KNOCK off
+        # is a setting, and tells nobody.
+        n.knob.update(export="whole", knock="whole")
+        for name, value, typed in (("KNOCK_DAYS", "17", True), ("NIGHT_KNOCK", "On", True),
+                                   ("KNOCK_EVERY_HOURS", "5", True), ("NIGHT_KNOCK", "off", False)):
+            n.fresh()
+            day0 += 24 * H
+            code, v, _ = n.night(day0, run_id=f"t{name}{value}", **{name: value})
+            alert, person, warn = n.close(day0 + 600, "night=success" if code == 0 else
+                                          "night=failure", f"t{name}{value}", **{name: value})
+            told = name in (warn or "") and repr(value) in (warn or "") and \
+                "typed wrong" in (warn or "")
+            if code != 0 or alert or person or told != typed:
+                wrong.append(f"an ordinary night with {name}={value!r}: exit {code}, the night's "
+                             f"check told {alert!r}, the third {person!r}, the warnings' {warn!r}")
     assert not wrong, "the \"a refusal is yours\" check: " + "; ".join(wrong)
     return "ok", ("the third check goes down, an email, the morning a knock is answered with "
                   "the firewall's page, the morning NIGHT_KNOCK is turned off and the sixteenth "
@@ -101356,7 +101415,13 @@ NIGHT_DRY_OUTPUT = "      dry_run: ${{ env.DRY_RUN }}"
 # _nightly_review_says, reading the night's page lines, found the gate-on
 # wording where its fixture expects shadow's. A laptop run never has the word,
 # so no run here could see it. A check that wants the gate on sets it itself.
-WORKFLOW_WORDS = ("DRY_RUN", "GITHUB_REF", "GITHUB_REF_NAME", "REVIEW_GATE")
+# AND THE NIGHT'S OWN TESTING'S FIVE (the reviewers of 30 October 2026). The
+# warnings' file now says, every night, a setting of it typed wrong
+# (nightly.settings_warn), so a typo in a repository variable would have
+# reached every check that reads warns_of() and stopped the night at its
+# own preflight. The knock checks set them themselves (_KnockEnv).
+WORKFLOW_WORDS = ("DRY_RUN", "GITHUB_REF", "GITHUB_REF_NAME", "REVIEW_GATE", "NIGHT_KNOCK",
+                  "NIGHT_PERSON_CHECK", "KNOCK_HOURLY_HOURS", "KNOCK_EVERY_HOURS", "KNOCK_DAYS")
 CHECKS_REF = ("GITHUB_REF", MAIN_REF)
 # THE NIGHT'S CLOCK IN THE FIXTURES (26 October 2026). The steps after the
 # day's files ask only inside the night's own hours, by refusal's clock
@@ -101646,8 +101711,9 @@ def _not_the_runs():
 def _preflight_not_the_runs(NI, CL):
     """THE REVIEW OF 7 OCTOBER 2026 (_not_the_runs says what it found). The
     word nightly.py and cloud.py read is among the words taken out; taken out,
-    neither reads a dry run from GitHub's environment; and main() takes them
-    out before it runs any check."""
+    neither reads a dry run from GitHub's environment, nor nightly.py a
+    setting of the night's own testing typed wrong (settings_warn); and
+    main() takes them out before it runs any check."""
     import inspect
     assert NI.DRY_ENV in WORKFLOW_WORDS and CL.DRY_ENV in WORKFLOW_WORDS, \
         (NI.DRY_ENV, CL.DRY_ENV, WORKFLOW_WORDS)
@@ -101666,6 +101732,14 @@ def _preflight_not_the_runs(NI, CL):
         assert NI.gate_on(), "nightly.gate_on() does not read the workflow's word"
         _not_the_runs()
         assert not NI.gate_on(), "the gate's word on GitHub's machine reaches the checks"
+        # The night's own testing's settings, typed wrong on GitHub (the
+        # reviewers of 30 October 2026): warns_of() says so every night, and
+        # every check that reads it would fail the night's own preflight.
+        os.environ.update(NIGHT_KNOCK="On", KNOCK_DAYS="17")
+        assert NI.settings_warn(), "nightly.settings_warn() does not read a setting typed wrong"
+        _not_the_runs()
+        assert not NI.settings_warn(), \
+            "a setting of the night's testing typed wrong on GitHub's machine reaches the checks"
         # A dry run by the box, a run of dev with the box unticked, and a run
         # whose ref is missing -- not main's either -- as GitHub's machine
         # hands each to preflight.
@@ -118836,7 +118910,10 @@ def _alarm_stays_able_to_ring(NI):
     KNOCK): the third check is told nothing; the night's alert, on the
     night not clean that meets it, gives the knock's pattern and the day it
     becomes the person's, says nothing is needed of them on GitHub's side or
-    the laptop's, and to set NIGHT_KNOCK off first for an early clear; and a
+    the laptop's, and to set NIGHT_KNOCK off first for an early clear, and
+    its "not clean" line that GitHub tests it, never that it waits for a
+    person -- a relapse's too, while a person's record's still does (the
+    reviewers of 30 October 2026); and a
     clean night under it alerts nothing, a held night that built giving its
     held line to the warnings' check alone. --close writes ALERT_PERSON_FILE
     every real night, empty with no refusal and the line with one, and the
@@ -118897,7 +118974,7 @@ def _alarm_stays_able_to_ring(NI):
         import refusal
         mark = Path(refusal.MARK)
         mark.parent.mkdir(parents=True, exist_ok=True)
-        day0 = dict(clean, clean=False, not_clean=["the export: refused"])
+        day0 = dict(clean, clean=False, not_clean=["the export: refused"], fetch="refused")
         with _KnockEnv(**_KNOCK_MAIN):
             if NI.person_alerts_of(day0) or NI.refusal_alert(day0):
                 bad.append(f"a refusal is told with none on file: {NI.person_alerts_of(day0)}, "
@@ -118929,6 +119006,22 @@ def _alarm_stays_able_to_ring(NI):
         if missing or "clear-refusal" in first or "refusal.py --clear" in first or person:
             bad.append(f"the day GitHub's night meets a drop it tests itself, the night's alert is "
                        f"{first!r} (missing {missing}) and the third check is told {person}")
+        # ... and its "not clean" line says GitHub tests it, never that it
+        # waits for a person (the reviewers of 30 October 2026: plain_why
+        # said so beside "Nothing is needed from you"); a relapse's the same.
+        said = " ".join(alerts)
+        if "waits until a person clears" in said or "GitHub tests the refusal itself" not in said:
+            bad.append(f"the day GitHub's night meets a drop it tests itself, the night's alert "
+                       f"says {said!r}")
+        refusal._write_knocks({"current": {"refusal": refusal._sha(_knock_record()),
+                                           "since": _KNOCK_SINCE - 30 * 3600, "knocks": [],
+                                           "person": None, "carried_from": "0" * 64,
+                                           "relapses": 1}, "lifted": []})
+        with _KnockEnv(**dict(_KNOCK_MAIN, GRANITE_CLOCK_UTC=_utc_iso(_KNOCK_SINCE + 3600))):
+            said = " ".join(NI.alerts_of(day0))
+        refusal.knocks_file().unlink(missing_ok=True)
+        if "waits until a person clears" in said or "GitHub tests the refusal itself" not in said:
+            bad.append(f"a relapse GitHub's night tests itself: the night's alert says {said!r}")
         if calm or calm_person:
             bad.append(f"a clean night under a refusal the night tests alerts {calm}, and tells the "
                        f"third check {calm_person}")
@@ -118960,8 +119053,9 @@ def _alarm_stays_able_to_ring(NI):
                                   **env)):
                 alerts, person = NI.alerts_of(day0), NI.person_alerts_of(day0)
             first = alerts[0] if alerts else ""
-            if "clear-refusal" not in first or "knock" in first.lower():
-                bad.append(f"{what}: the night's alert is {first!r}")
+            if "clear-refusal" not in first or "knock" in first.lower() or \
+                    "every fetch waits until a person clears the refusal" not in " ".join(alerts):
+                bad.append(f"{what}: the night's alert is {alerts!r}")
             if len(person) != 1 or not person[0].startswith("A REFUSAL IS YOURS") or \
                     "clear-refusal" not in person[0] or says not in person[0]:
                 bad.append(f"{what}: the third check is told {person}")

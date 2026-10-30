@@ -307,7 +307,9 @@ email and its recovery is the sign it was cleared, or lifted by the night's
 knock. That is also why a warning that stands is kept off this check (18
 October 2026): a night the gate holds for approval, with the gate's reasons,
 which GitHub otherwise tells only the reviewer (`held_for_approval()`, since
-22 October 2026), a failed check of the built site against the record, and a
+22 October 2026), a failed check of the built site against the record, a
+setting of the night's own testing of a refusal typed wrong, every night
+(`settings_warn()`, since 30 October 2026), and a
 reminder that fails on a date until a person acts, go to
 `logs/alert-warn.txt` (`WARN_FILE`, from
 `warns_of()`) and to a check of their own, `HEALTHCHECKS_WARN_URL` -- `/fail`

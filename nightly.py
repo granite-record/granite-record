@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.86
+# GRANITE_VERSION: 2026-09-04.87
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -1455,34 +1455,38 @@ def failure_lines(lines, tail=6):
     return hits + [ln for ln in last if ln not in hits]
 
 
-def gc_quiet():
+def gc_quiet(said_no=""):
     """Whether tonight may ask the General Court for anything: (ok, why).
 
     A refusal on file says no at any age, and its sentence begins "a refusal
     is on file"; it then says whose the record is (refusal_whose): one the
     night tests itself, and when its next knock is due (THE NIGHT'S KNOCK),
-    or a person's, and why."""
+    or a person's, and why -- `said_no`, when tonight's knock was answered
+    no (knock_said_no), whatever whose() can say yet."""
     if refusal.MARK.exists():
         try:
             d = json.loads(refusal.MARK.read_text(encoding="utf-8"))
             why = f"{d.get('where', '?')} at {d.get('at', '?')}"
         except (ValueError, OSError, AttributeError):
             why = "unreadable"
-        return False, f"a refusal is on file ({why}); {refusal_whose()}"
+        return False, f"a refusal is on file ({why}); {refusal_whose(said_no)}"
     if refusal.LOCK.exists():
         held = refusal.LOCK.read_text(encoding="utf-8", errors="replace").strip()
         return False, f"archive/.lock is held (pid {held or '?'}): the lane or a fetch is running"
     return True, ""
 
 
-def refusal_whose():
+def refusal_whose(said_no=""):
     """What the night says of the refusal on file, after "a refusal is on
     file (...)": that GitHub's night tests it itself, and when the next knock
     is due; or that it is a person's to clear, why, and that clearing one is a
     person's decision. refusal.whose() is the one reader; a record it cannot
-    read is a person's."""
+    read is a person's, and so is one tonight's knock was answered no for
+    (`said_no`, why)."""
     try:
         who, why = refusal.whose()
+        if said_no:
+            who, why = "person", said_no
         if who == "night":
             due, at = refusal.knock_due()
             return ("GitHub's night tests it itself, one request at a time (THE NIGHT'S KNOCK): "
@@ -2075,8 +2079,12 @@ def main():
             lifted = False
             if not ok and night and not a.new_term and night_tests():
                 lifted = knock(a, night)
-                if lifted:
-                    ok, why = gc_quiet()
+                # READ AGAIN, WHATEVER THE KNOCK DID (the reviewers of 30
+                # October 2026): a lift opens the way, and a knock answered no
+                # makes the record a person's, which the deferred line must
+                # say -- it said the night's sentence from before the knock.
+                ok, why = gc_quiet(night.v["knock"][len(KNOCK_SAID_NO):]
+                                   if knock_said_no(night.v) else "")
             # A HELD NIGHT (THE NIGHT'S KNOCK; the person's decision of 29
             # October 2026): the refusal the night tests itself still stands
             # after its knock, so the day's files come from the database and
@@ -2865,8 +2873,15 @@ def plain_why(v, weekly=False):
     elif v.get("preflight") == "failed":
         why = "The code checks failed, so nothing was fetched or built."
     elif fetch == "refused":
+        # ONE THE NIGHT TESTS ITSELF (the reviewers of 30 October 2026): the
+        # day-0 email and a relapse night's said "waits until a person clears"
+        # beside the alert's "Nothing is needed from you". Only a person's
+        # record waits for a person.
         why = ("The General Court refused a request. Nothing more was asked, and "
-               "every fetch waits until a person clears the refusal.")
+               + ("GitHub tests the refusal itself, one request at a time; the \"a refusal is "
+                  "yours\" check emails if it becomes a person's to clear."
+                  if whose_night() else
+                  "every fetch waits until a person clears the refusal."))
     elif fetch.startswith("empty"):
         # Some or all: at 02:04 on 20 September two of the fourteen came back
         # 3 bytes long, at 06:33 on 27 September thirteen.
@@ -6518,14 +6533,49 @@ def warns_of(v):
     the night tests a refusal itself (held_line; THE NIGHT'S KNOCK), which
     is no alarm of the night's and no refusal of the person's yet -- with,
     after the first morning, when it was an alarm (Night.alarms), that the
-    hourly knock has fallen silent (refusal.hourly_silent). [] for none."""
+    hourly knock has fallen silent (refusal.hourly_silent); and a setting of
+    the night's own testing typed wrong (settings_warn), every night. [] for
+    none."""
     said = built_warn_alert(v.get("built_checks"))
     held = held_for_approval(v)
     web = held_line(v.get("web"))
     w = v.get("web") if isinstance(v.get("web"), dict) else {}
     silent = w.get("silent") if web and not w.get("silent_new") else ""
+    typed = settings_warn()
     return ([held] if held else []) + ([said] if said else []) + ([web] if web else []) + \
-        ([silent] if silent else []) + [s for _kind, s in not_moving_of(v)]
+        ([silent] if silent else []) + ([typed] if typed else []) + \
+        [s for _kind, s in not_moving_of(v)]
+
+
+def settings_warn():
+    """The warnings' line for a setting of the night's own testing typed
+    wrong, or "": KNOCK_HOURLY_HOURS, KNOCK_EVERY_HOURS or KNOCK_DAYS out of
+    range (refusal.knock_settings), or NIGHT_KNOCK neither "on" nor "off".
+
+    EVERY NIGHT, A REFUSAL ON FILE OR NOT (the reviewers of 30 October 2026).
+    whose() reads the settings only for a record on file, so an ordinary
+    night with KNOCK_DAYS=17 or NIGHT_KNOCK=On told nobody: the owner would
+    learn of it at the next outage, which would then not heal. The
+    warnings' check emails on the change, and says it every night until the
+    setting reads; a refusal on file meanwhile is a person's, and the "a
+    refusal is yours" check is told as well (whose())."""
+    said = []
+    try:
+        bad = refusal.knock_settings()[3]
+    except Exception as e:                                      # noqa: BLE001
+        bad = f"the settings could not be read ({type(e).__name__})"
+    if bad:
+        said.append(bad)
+    switch = os.environ.get(refusal.KNOCK_ENV)
+    if switch is not None and switch not in ("on", "off"):
+        said.append(f"{refusal.KNOCK_ENV} is {switch!r}, neither \"on\" nor \"off\", which "
+                    "turns the night's own testing off")
+    if not said:
+        return ""
+    return ("a setting of GitHub's own testing of a refusal is typed wrong, so a refusal met "
+            "now would not be tested and would be yours to clear: " + "; ".join(said)
+            + ". The repository variables are under Settings, Secrets and variables, Actions, "
+            "Variables")
 
 
 def refusal_alert(v):
