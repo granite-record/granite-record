@@ -170,7 +170,7 @@ EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[a-z]{2,}", re.I)
 # "8 a.m." as a source writes it, and "8:00 AM" as a guide does, clock()'s
 # form since the cohesion audit of 30 October 2026 (I-3): the hours a guide
 # prints in its own words are held to their claims whichever way.
-CLOCK = re.compile(r"\b(\d{1,2}(?::\d\d)?)(?:\s|&nbsp;)?(?:[ap]\.m\.|[AP]M\b)")
+CLOCK = re.compile(r"\b(\d{1,2}(?::\d\d)?)(?:\s|&nbsp;)?(?:[aApP]\.[mM]\.|[AP]M\b)")
 STREET = re.compile(r"\b(\d{1,5})\s+((?:[A-Z][a-z]+\s){1,3}(?:Street|Road|Drive|Avenue|Lane|Way|"
                     r"Boulevard|Place|Square|Highway))\b")
 MONTH_DAY = re.compile(r"\b(January|February|March|April|May|June|July|August|September|"

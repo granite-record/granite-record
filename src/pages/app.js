@@ -6879,7 +6879,8 @@ function focusActions(id){
     const row=document.importNode(acts,true);
     row.dataset.focus="1";
     // as the page's own script does on load: the day read, and Copy shown
-    row.querySelectorAll(".citeday").forEach(x=>{x.textContent=citeDay(new Date());});
+    row.querySelectorAll(".citeday").forEach(x=>{
+      x.textContent=x.classList.contains("citefull")?citeDayFull(new Date()):citeDay(new Date());});
     row.querySelectorAll("[data-citecopy]").forEach(x=>{x.hidden=false;});
     const res=$("#results");
     if(!res)return;
@@ -10309,14 +10310,24 @@ function plainRecord(){
 // stop where its content is wider than it is, again when the window changes.
 // Without this script Chrome and Firefox make a scrolling box a stop
 // themselves.
+// A Learn table's box carries its name (data-scrolllabel) and is a region
+// only while it scrolls, so a table that fits is no landmark: the glossary's
+// sixteen letters were sixteen (the review of 30 October 2026). And a box in a
+// fold is 0px wide until the fold opens, so each fold's opening measures again.
 function scrollStops(){
   const boxes=[...document.querySelectorAll("[data-scrollstop]")];
   const set=()=>boxes.forEach(b=>{
-    if(b.scrollWidth>b.clientWidth+1)b.setAttribute("tabindex","0");
-    else b.removeAttribute("tabindex");});
+    const wide=b.scrollWidth>b.clientWidth+1, name=b.getAttribute?b.getAttribute("data-scrolllabel"):null;
+    if(wide)b.setAttribute("tabindex","0");
+    else b.removeAttribute("tabindex");
+    if(name!==null){
+      if(wide){b.setAttribute("role","region");b.setAttribute("aria-label",name);}
+      else{b.removeAttribute("role");b.removeAttribute("aria-label");}
+    }});
   if(!boxes.length)return;
   set();
   window.addEventListener("resize",set);
+  if(document.addEventListener)document.addEventListener("toggle",set,true);
 }
 
 // Every term this record has anything in, newest first. Worked out once,

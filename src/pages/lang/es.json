@@ -23464,13 +23464,13 @@
    "state": "draft"
   },
   "sess.play_house": {
-   "en": "Play the House floor session of {date}",
-   "es": "Reproducir la sesión plenaria de la Cámara del {date}",
+   "en": "Play the recording of the House floor session, {date}",
+   "es": "Reproducir la grabación de la sesión plenaria de la Cámara, {date}",
    "state": "draft"
   },
   "sess.play_senate": {
-   "en": "Play the Senate floor session of {date}",
-   "es": "Reproducir la sesión plenaria del Senado del {date}",
+   "en": "Play the recording of the Senate floor session, {date}",
+   "es": "Reproducir la grabación de la sesión plenaria del Senado, {date}",
    "state": "draft"
   },
   "sess.rec_house": {

@@ -3394,11 +3394,13 @@ def recent_sessions(H, lang="en", sits=None):
         if b == "S":
             name = say(lang, "sess.senate", "Senate Session")
             rec = say(lang, "sess.rec_senate", "Recording of the Senate floor session, {date}", date=day)
-            play = say(lang, "sess.play_senate", "Play the Senate floor session of {date}", date=day)
+            play = say(lang, "sess.play_senate", "Play the recording of the Senate floor session, {date}",
+                       date=day)
         else:
             name = say(lang, "sess.house", "House Session")
             rec = say(lang, "sess.rec_house", "Recording of the House floor session, {date}", date=day)
-            play = say(lang, "sess.play_house", "Play the House floor session of {date}", date=day)
+            play = say(lang, "sess.play_house", "Play the recording of the House floor session, {date}",
+                       date=day)
         cells.append(
             f'<div class="sess"><p class="sesstitle"><b>{name}</b> ({dated})</p>'
             f'<div class="player"><button type="button" class="pstub" '

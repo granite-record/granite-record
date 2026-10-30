@@ -1247,6 +1247,7 @@ def tables(content):
 # wider than it is, and only then.
 _TABLEWRAP = re.compile(r'<div class="l-tablewrap([^"]*)">(\s*<table[^>]*>\s*(?:<caption[^>]*>(.*?)</caption>)?)',
                         re.S)
+_SUBHEAD = re.compile(r"<(h3|h4|summary)\b[^>]*>(.*?)</\1>", re.S)
 
 
 def _words(x):
@@ -1256,11 +1257,19 @@ def _words(x):
 
 def scroll_regions(content, heading):
     """content with each Learn table's box named and marked as a Tab stop
-    while it scrolls."""
+    while it scrolls. Its name is its caption, or else its section's heading
+    with the nearest heading or fold above it in the section ("The Bills Each
+    Committee Received, 2025–2026"), so ten boxes in one section are not ten
+    of one name (the review of 30 October 2026); app.js's scrollStops makes it
+    a region under that name while it scrolls."""
     def one(m):
-        label = _words(m.group(3)) or _words(heading)
-        return (f'<div class="l-tablewrap{m.group(1)}" data-scrollstop="1" role="region" '
-                f'aria-label="{html.escape(label, quote=True)}">{m.group(2)}')
+        label = _words(m.group(3))
+        if not label:
+            subs = [_words(s.group(2)).split(":")[0].strip() for s in _SUBHEAD.finditer(content, 0, m.start())]
+            sub = subs[-1] if subs else ""
+            label = f"{_words(heading)}, {sub}" if sub and sub != _words(heading) else _words(heading)
+        return (f'<div class="l-tablewrap{m.group(1)}" data-scrollstop="1" '
+                f'data-scrolllabel="{html.escape(label, quote=True)}">{m.group(2)}')
     return _TABLEWRAP.sub(one, content)
 
 

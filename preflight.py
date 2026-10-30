@@ -75007,21 +75007,26 @@ def _learn_tables_reachable(BCV):
     section itself and on every Learn and guide page the fixture builds."""
     got = BCV.section("s-x", "The Numbers", '<div class="l-tablewrap l-stack"><table class="l-table">'
                       "<caption>Seats in each chamber</caption><tbody></tbody></table></div>"
+                      '<details class="l-fold"><summary>2025-2026: the bills</summary>'
+                      '<div class="l-tablewrap"><table class="l-table"><tbody></tbody></table></div></details>'
                       '<div class="l-tablewrap"><table class="l-table"><tbody></tbody></table></div>')
     bad = []
-    if got.count('data-scrollstop="1" role="region"') != 2 or 'aria-label="Seats in each chamber"' not in got \
-            or 'aria-label="The Numbers"' not in got:
-        bad.append(f"build_civics.section does not name and mark a table's box: {got[:300]}")
+    if got.count('data-scrollstop="1" data-scrolllabel="') != 3 or 'data-scrolllabel="Seats in each chamber"' not in got \
+            or got.count('data-scrolllabel="The Numbers, 2025-2026"') != 2 or 'role="region"' in got:
+        bad.append(f"build_civics.section does not name and mark a table's box: {got[:400]}")
     app = Path("src/pages/app.js").read_text(encoding="utf-8")
-    if not re.search(r'querySelectorAll\("\[data-scrollstop\]"\)', app) or "scrollStops();" not in app:
-        bad.append("app.js no longer makes a [data-scrollstop] box a Tab stop while it scrolls")
+    stops = app[app.find("function scrollStops"):app.find("function scrollStops") + 1200]
+    if not re.search(r'querySelectorAll\("\[data-scrollstop\]"\)', stops) or "scrollStops();" not in app \
+            or 'setAttribute("role","region")' not in stops or 'removeAttribute("role")' not in stops \
+            or 'addEventListener("toggle",set,true)' not in stops:
+        bad.append("app.js no longer makes a [data-scrollstop] box a named region and Tab stop while it scrolls, "
+                   "and only then, measured again when a fold opens")
     shared = _fixture_site_shared()[0] / "site"
     boxes = 0
     for f in sorted(list((shared / "learn").rglob("*.html")) + list((shared / "guides").rglob("*.html"))):
         for m in re.finditer(r'<div class="l-tablewrap[^"]*"([^>]*)>', f.read_text(encoding="utf-8")):
             boxes += 1
-            if 'data-scrollstop="1"' not in m.group(1) or 'role="region"' not in m.group(1) \
-                    or not re.search(r'aria-label="[^"]+"', m.group(1)):
+            if 'data-scrollstop="1"' not in m.group(1) or not re.search(r'data-scrolllabel="[^"]+"', m.group(1)):
                 bad.append(f"{f.relative_to(shared)}: a table's box {m.group(0)[:120]!r}")
     # A floor, so that this cannot pass by reading no page: 41 when written.
     if boxes < 20:
@@ -75071,7 +75076,7 @@ def _subsections_under_sections():
 
 
 @check("frontend", "every control that switches a view marks the chosen one the same way: solid pine, "
-       "its words in --on-pine, outlined in forced colours")
+       "its words in --on-pine, filled with Highlight in forced colours")
 def _switches_one_look():
     """The cohesion audit of 30 October 2026 (I-6): Officials showed a solid
     pine "selected" in its roster switch and a pale one in its map's, on the
@@ -75092,7 +75097,7 @@ def _switches_one_look():
         for part in (x.strip() for x in sel.split(",")):
             if part in chosen and not at:
                 chosen[part] = {**(chosen[part] or {}), **d}
-            if any("forced-colors" in a for a in at) and "Highlight" in d.get("outline", ""):
+            if any("forced-colors" in a for a in at) and d.get("background") == "Highlight":
                 outlined.add(part.replace(":where(body.pg) ", ""))
     for part, d in chosen.items():
         if not d:
@@ -75102,7 +75107,7 @@ def _switches_one_look():
         if "var(--pine)" not in ground or d.get("color") != "var(--on-pine)":
             bad.append(f"{part} is {ground or 'no ground'} with {d.get('color')} words, not solid pine and --on-pine")
         if part != ".gm .gmseg label:has(input:checked)" and part.replace(":where(body.pg) ", "") not in outlined:
-            bad.append(f"{part} is not outlined in forced colours, where its ground is the system's")
+            bad.append(f"{part} is not filled with Highlight in forced colours, where its ground is the system's")
     for f, at, sel, d in rules:
         if "999px" in d.get("border-radius", "") and any(k in sel for k in (".wkchips", ".vtog", ".calviews")):
             bad.append(f"{f}: {sel} is round again")
@@ -75144,7 +75149,7 @@ def _term_button_24():
             bad.append(f"the ::after box's {k} is {hit.get(k)!r}, where max(100%,24px) keeps it 24px at the least")
     if any(k in hit for k in ("background", "background-color", "border", "outline")):
         bad.append("the ::after box is drawn, where it must be a target only")
-    if any(k in btn for k in ("padding", "padding-inline", "min-width", "width")) and \
+    if any(k in btn for k in ("padding", "padding-inline", "padding-left", "padding-right", "width")) or \
             btn.get("min-width") not in (None, "0"):
         bad.append("the button grows itself, which moves the letters beside it")
     assert not bad, "; ".join(bad)
@@ -77916,11 +77921,11 @@ def _home_says_each_once(BP, chrome):
     want = [("House Session (Aug 19, 2026)", "session/H/2026-08-19.html",
              {"data-embed": "vH",
               "data-title": "Recording of the House floor session, Aug 19, 2026",
-              "aria-label": "Play the House floor session of Aug 19, 2026"}, "Play the recording"),
+              "aria-label": "Play the recording of the House floor session, Aug 19, 2026"}, "Play the recording"),
             ("Senate Session (Aug 19, 2026)", "session/S/2026-08-19.html",
              {"data-embed": "vS",
               "data-title": "Recording of the Senate floor session, Aug 19, 2026",
-              "aria-label": "Play the Senate floor session of Aug 19, 2026"}, "Play the recording")]
+              "aria-label": "Play the recording of the Senate floor session, Aug 19, 2026"}, "Play the recording")]
     assert [d[:4] for d in drawn] == want, (
         f"both chambers' sittings of 19 August are drawn as {[d[:4] for d in drawn]}, not two "
         f"players titled \"House Session (Aug 19, 2026)\" and \"Senate Session (Aug 19, 2026)\", "
@@ -77939,8 +77944,8 @@ def _home_says_each_once(BP, chrome):
     drawn = cells(BP.recent_sessions(apart, "en", {("H", "2026-06-04")}))
     assert [(d[0], d[1], d[2].get("aria-label")) for d in drawn] == [
         ("House Session (Jun 4, 2026)", "session/H/2026-06-04.html",
-         "Play the House floor session of Jun 4, 2026"),
-        ("Senate Session (Jun 11, 2026)", None, "Play the Senate floor session of Jun 11, 2026")], (
+         "Play the recording of the House floor session, Jun 4, 2026"),
+        ("Senate Session (Jun 11, 2026)", None, "Play the recording of the Senate floor session, Jun 11, 2026")], (
         f"chambers that sat on different days, one without a page, are drawn as "
         f"{[(d[0], d[1], d[2].get('aria-label')) for d in drawn]}")
     assert BP.recent_sessions({}, "en", sits) == "" and BP.recent_sessions(

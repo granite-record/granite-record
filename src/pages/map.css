@@ -56,7 +56,8 @@
 .gm .gmseg label:has(input:checked){background:var(--pine);color:var(--on-pine);font-weight:600}
 .gm .gmseg label:has(input:focus-visible){outline:2px solid var(--ink);outline-offset:-4px}
 .gm .gmseg label:has(input:checked:focus-visible){outline-color:var(--on-pine)}
-@media (forced-colors:active){.gm .gmseg label:has(input:checked){outline:2px solid Highlight;outline-offset:-3px}}
+@media (forced-colors:active){.gm .gmseg label:has(input:checked){forced-color-adjust:none;
+  background:Highlight;color:HighlightText}}
 /* WINDOWS HIGH CONTRAST. The map is a picture of data. In forced colours the
    legend's stripes and hatch lost their pattern and stood blank, and the
    labels lost their halo and became blots on the fills (the review of 8
