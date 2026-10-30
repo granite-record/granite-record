@@ -225,7 +225,8 @@ export function htmlResponse(status, body, nonce = "") {
     headers: {
       ...BASE,
       "Content-Type": "text/html; charset=utf-8",
-      "Content-Security-Policy": `default-src 'none'; style-src 'unsafe-inline'; ` +
+      "Content-Security-Policy": `default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; ` +
+        `font-src https://fonts.gstatic.com; ` +
         `script-src ${script}; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`,
       "X-Frame-Options": "DENY",
     },
