@@ -656,12 +656,12 @@ def main():
                 f'session day</a> <span class="dircount">{n_days[ch]:,}</span></li>'
                 for ch in ("S", "H") if ch in n_days]
         hub += ["</ul>"]
-    write(site, base, "/directory.html", "The whole record, as lists | Granite Record",
+    write(site, base, "/directory.html", "The Whole Record, as Lists | Granite Record",
           # The terms of bills: the requests are a list here and not a term,
           # and counted as one this said "all 20 terms" of a record of 19.
           f"Every bill of all {n_terms} terms from 1989, every sitting legislator and every "
           "town in New Hampshire, as plain lists of links.",
-          "The whole record, as lists",
+          "The Whole Record, as Lists",
           "The same record the search draws, as plain lists: nothing to type, "
           "nothing that needs JavaScript.", "".join(hub), urls)
 

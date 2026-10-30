@@ -22931,7 +22931,7 @@ def _find_guides(G, civics, BP):
     assert not bad, "; ".join(bad)
     js = BP.SEARCH_JS
     assert js.index('{t:"How-To Guides",') < js.index('{t:"Senators",'), "/search does not list the guides first"
-    assert '{t:"Learn",' in js and '"Learn","Pages on this site"]' in js, "/search does not list the Learn pages"
+    assert '{t:"Learn",' in js and '"Learn","Pages on This Site"]' in js, "/search does not list the Learn pages"
     assert "const named=!findBill(s)&&rows.some(" in js, "/search can put a guide above a bill number's bills"
     bi = Path("src/pages/build_indexes.py").read_text(encoding="utf-8")
     assert 'G.search_words(p.stem) if kind == "guide"' in bi, "find.json no longer carries a guide's task words"
@@ -23278,7 +23278,7 @@ def _find_committee_names(BP):
     text = re.sub(r"<[^>]+>", "", got["html"])
     assert text.index("House Special Committee on Housing") > text.index("House Housing Committee"), (
         "the drawn panel puts the former committee first")
-    assert '{t:"Former committees",' in Path("src/pages/build_pages.py").read_text(encoding="utf-8") \
+    assert '{t:"Former Committees",' in Path("src/pages/build_pages.py").read_text(encoding="utf-8") \
         and 'k:r=>r[0]==="committee"&&!r[5]}' in Path("src/pages/build_pages.py").read_text(
             encoding="utf-8"), "the search page lists former committees among the ones that sit"
     bi = Path("src/pages/build_indexes.py").read_text(encoding="utf-8")
@@ -23365,12 +23365,12 @@ def _find_study_committees_rank(BP):
     js = BP.SEARCH_JS
     # The group's own words for the line a screen reader hears (w:, 29
     # October 2026) may stand between its title and its test.
-    m = re.search(r'\{t:"Statutory and study committees",(?:w:\[[^\]]*\],)?'
+    m = re.search(r'\{t:"Statutory and Study Committees",(?:w:\[[^\]]*\],)?'
                   r'k:r=>r\[0\]==="statutory"\|\|r\[0\]==="study"\}', js)
     assert m, "/search has no group of statutory and study committees"
     g = m.start()
-    assert js.index('{t:"Subjects"') < g < js.index('{t:"Former senators"') and re.search(
-        r'const AFTER=new Set\(\["Statutory and study committees",', js), (
+    assert js.index('{t:"Subjects"') < g < js.index('{t:"Former Senators"') and re.search(
+        r'const AFTER=new Set\(\["Statutory and Study Committees",', js), (
         "/search does not list the statutory and study committees as their own group after the bills")
     # And the built find.json carries the fixture's, each its class.
     absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
@@ -51238,7 +51238,7 @@ def _calendar_documents():
             assert canon in head[cite:], f"{f}: the citation does not name the week at {canon}"
         lp = (site / "calendar" / "documents.html").read_text(encoding="utf-8")
         assert body in lp and f'<link rel="canonical" href="{base}/calendar/documents">' in lp \
-            and "<h1>Calendars and journals of the General Court</h1>" in lp, (
+            and "<h1>Calendars and Journals of the General Court</h1>" in lp, (
             "the list page was not written with its body, its heading and its own address")
         assert lp.count('class="pcite"') == 1 and lp.find(lead) < lp.find(
             '<div class="pageacts" id="pageacts">') < lp.find(body), (
@@ -65816,7 +65816,7 @@ def _study_committees_listed(SC):
         "the statutory and study committees' slot is missing or doubled")
     sec = t[t.index("<!-- statstud -->"):t.index("<!-- /statstud -->")]
     assert sec.startswith('<!-- statstud --><details class="sfold ssfold" id="statstud"><summary>') \
-        and "<span class=\"sflab\">Statutory and study committees</span> <span class=\"w4n\">3</span>" in sec, (
+        and "<span class=\"sflab\">Statutory and Study Committees</span> <span class=\"w4n\">3</span>" in sec, (
         "the section is not one shut fold that says how many: " + sec[:200])
     assert t.index('<div class="ctwo">') < t.index("<!-- statstud -->") and (
         "Former committees" not in t or t.index("<!-- statstud -->") < t.index("Former committees")), (
@@ -70738,7 +70738,7 @@ def _spanish_home(i18n):
     times = lambda t: re.findall(r'data-time="([^"]*)"', t)
     assert cbn(up["es"]) == cbn(up["en"]) and times(up["es"]) == times(up["en"]), (
         "Coming up for 10 March 2026 lists different bills or times in Spanish")
-    assert i18n.say("es", "cal.coming", "Coming up") in up["es"] and "Coming up" not in up["es"], (
+    assert i18n.say("es", "cal.coming", "Coming Up") in up["es"] and "Coming Up" not in up["es"], (
         "Coming up's heading is not the Spanish one")
     offered = i18n.offered("es")
     assert ('<meta name="robots" content="noindex">' in es) == (not offered), (
@@ -73526,7 +73526,7 @@ def _coming_up_scrolls():
         and not w.outside["note"] and not w.inside["note"], (
             "the line to next week belongs under the box, in view, not scrolled away "
             "inside it, and the home page carries no note on hearings")
-    assert page.index("<h2>Coming up</h2>") < page.index('class="calscroll"'), (
+    assert page.index("<h2>Coming Up</h2>") < page.index('class="calscroll"'), (
         "the Coming up heading is not above the box")
 
     css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"), flags=re.S)
@@ -75110,6 +75110,58 @@ def _subsections_under_sections():
             bad.append(f"{sel} is {won.get(sel)}, not --t-read under its section")
     assert not bad, "; ".join(bad[:6])
     return "ok", f"{len(under)} kinds of heading at --t-read under sections at --t-h3"
+
+
+@check("frontend", "a Laws chapter's outline skips no level: its sections an h2 under the title, or an h3 "
+       "under a part's h2", needs=("build_rsa", "rsa", "shell"))
+def _laws_chapter_outline(B, RSA, S):
+    """The cohesion audit of 30 October 2026 (I-1): a chapter without parts,
+    most of them, went from its h1 to an h3 for every section, with no h2
+    anywhere. _heading_levels reads only the pages a fixture site writes at
+    the top and in learn/, so it never saw one. Two chapters are drawn here
+    through build_rsa's chapter_page, one with a part and one without, and
+    each outline must step down one level at a time."""
+    cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
+            "rsa", "EntireRSA", "titleNumber", "url"]
+
+    def chapter(part):
+        rows = []
+        for i, (no, name) in enumerate((("659-1", "Hours of Polling."), ("659-2", "Moderator."))):
+            rows.append(dict(zip(cols, (
+                str(i), "LXIII", "659", no, "TITLE LXIII ELECTIONS", "CHAPTER 659 ELECTION PROCEDURE",
+                f"Section {no.replace('-', ':')} {name}", "",
+                "<center><h2>CHAPTER 659<br>ELECTION PROCEDURE</h2></center>"
+                + ("<h2>Hours of Polling</h2>" if part else ""),
+                "<codesect> <br> I. The polls shall be open at least 8 hours.</codesect>", "63",
+                f"LXIII\\659\\{no}.htm"))))
+        data = {"bills": {}, "enacted": {}, "statute": {}, "asof": {"laws_through": 2025}}
+        tmp = Path(tempfile.mkdtemp(prefix="gr-rsaoutline-"))
+        try:
+            (tmp / "idx").mkdir()
+            return B.chapter_page(S.template(Path("site")), RSA.Table(rows), data, B.Bills(tmp, "2025-2026"),
+                                  "659", "https://graniterecord.org")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    bad, said = [], []
+    for part in (False, True):
+        page = chapter(part)
+        main = page[page.find("<main"):page.find("</main>")] if "<main" in page else page
+        levels = [int(m.group(1)) for m in re.finditer(r"<h([1-6])[ >]", main)]
+        secs = re.findall(r'<h([1-6]) class="rs-h"', main)
+        what = "with a part" if part else "without parts"
+        if not secs:
+            bad.append(f"a chapter {what} drew no section heading")
+            continue
+        prev = 0
+        for lv in levels:
+            if prev and lv > prev + 1:
+                bad.append(f"a chapter {what} goes from h{prev} to h{lv}")
+                break
+            prev = lv
+        said.append(f"{what}, its sections h{secs[0]}")
+    assert not bad, "; ".join(bad)
+    return "ok", "a Laws chapter " + " and ".join(said)
 
 
 @check("frontend", "a bill's tabs head their sections one way: an h2 in the serif at --t-h3, Title Case, "

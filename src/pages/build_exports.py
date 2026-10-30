@@ -772,7 +772,7 @@ DATA_SECTIONS = (
     ("how-built", "How the Record Is Built"),
     ("privacy", "Privacy in Detail"),
     ("developers", "For Developers"),
-    ("lists", "The Whole Record as Lists"),
+    ("lists", "The Whole Record, as Lists"),
 )
 
 

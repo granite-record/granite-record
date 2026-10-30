@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.8
+# GRANITE_VERSION: 2026-10-01.9
 """
 The General Court's calendars and journals, as the PDFs the General Court
 serves: the list the Calendar page's picker reads.
@@ -681,7 +681,7 @@ def _canon(path):
 
 # ---- the list page --------------------------------------------------------------
 
-LIST_TITLE = "Calendars and journals of the General Court"
+LIST_TITLE = "Calendars and Journals of the General Court"
 
 # Opens the year an address names -- /calendar/documents#hc-2019 -- which a
 # browser will not do for a <details> on its own.

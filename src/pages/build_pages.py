@@ -884,7 +884,7 @@ def calendar_html(out, today=None, rows=None, lang="en", events=None):
                                         else say(lang, "cal.this_week", "This Week"))
              + f' <span>{esc(date_span(monday, monday + _dt.timedelta(days=4), "medium", lang))}'
              + "</span></p>")
-    coming = say(lang, "cal.coming", "Coming up")
+    coming = say(lang, "cal.coming", "Coming Up")
 
     # WHERE THE REST IS: next week's own page, which build_calendar writes
     # for every week in its range, empty ones included -- linked here only
@@ -2379,20 +2379,20 @@ const GROUPS=[
   // the ones that do (find.js, _fgone).
   {t:"Committees",          w:["committee","committees"],k:r=>r[0]==="committee"&&!r[5]},
   // A city above its wards, each ward a Ward (find.json, 25 October 2026).
-  {t:"Towns and wards",     w:["town or ward","towns and wards"],k:r=>r[0]==="town"||r[0]==="ward"},
+  {t:"Towns and Wards",     w:["town or ward","towns and wards"],k:r=>r[0]==="town"||r[0]==="ward"},
   {t:"Subjects",            w:["subject","subjects"],k:r=>r[0]==="topic"},
   // THE OFFICIALS PAGE AND ITS TABS, before the bills where a name of theirs
   // was typed (the audit of 25 October 2026, M3): "my senator" is the page,
   // "ayotte" its Executive Branch, "shaheen" its Federal Delegation.
   {t:"Officials",           w:["officials page","officials pages"],k:r=>r[0]==="page"&&/^[/]?officials([#?]|$)/.test(r[3])},
   // Their own group, after the bills (AFTER): find.js, _fstudy (18 October 2026).
-  {t:"Statutory and study committees",w:["statutory or study committee","statutory and study committees"],k:r=>r[0]==="statutory"||r[0]==="study"},
-  {t:"Former senators",     w:["former senator","former senators"],k:r=>r[0]==="former"&&/^Senate/.test(r[2])},
-  {t:"Former representatives",w:["former representative","former representatives"],k:r=>r[0]==="former"&&/^House/.test(r[2])},
-  {t:"Former members",      w:["former member","former members"],k:r=>r[0]==="former"},
-  {t:"Former committees",   w:["former committee","former committees"],k:r=>r[0]==="committee"},
+  {t:"Statutory and Study Committees",w:["statutory or study committee","statutory and study committees"],k:r=>r[0]==="statutory"||r[0]==="study"},
+  {t:"Former Senators",     w:["former senator","former senators"],k:r=>r[0]==="former"&&/^Senate/.test(r[2])},
+  {t:"Former Representatives",w:["former representative","former representatives"],k:r=>r[0]==="former"&&/^House/.test(r[2])},
+  {t:"Former Members",      w:["former member","former members"],k:r=>r[0]==="former"},
+  {t:"Former Committees",   w:["former committee","former committees"],k:r=>r[0]==="committee"},
   {t:"Learn",               w:["Learn page","Learn pages"],k:r=>r[0]==="learn"},
-  {t:"Pages on this site",  w:["page on this site","pages on this site"],k:r=>r[0]==="page"}
+  {t:"Pages on This Site",  w:["page on this site","pages on this site"],k:r=>r[0]==="page"}
 ];
 
 // A committee by its chamber, as the header's rows show it (find.js, findName).
@@ -2493,8 +2493,8 @@ const bills=(q,B,C,counting,R,mem)=>{
 };
 // Groups a reader reaches for after the bills: members who have left, and
 // this site's own pages.
-const AFTER=new Set(["Statutory and study committees","Former senators","Former representatives",
-  "Former members","Learn","Pages on this site"]);
+const AFTER=new Set(["Statutory and Study Committees","Former Senators","Former Representatives",
+  "Former Members","Learn","Pages on This Site"]);
 let waiting=false,waitingAll=false,waitingWords=false,waitingLaw=false,waitingReq=false;
 
 function draw(q){
@@ -3715,7 +3715,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
       const more=cal.querySelector(".calall");
       // In calendar_html's words for an empty week: the rail holds the
       // chambers' own meetings, not the study committees.
-      cal.innerHTML=`<h2>${tr("cal.coming","Coming up")}</h2><p class="note">${tr("cal.none_else","No more House or Senate committee meetings are scheduled this week.")}</p>`
+      cal.innerHTML=`<h2>${tr("cal.coming","Coming Up")}</h2><p class="note">${tr("cal.none_else","No more House or Senate committee meetings are scheduled this week.")}</p>`
         +(more?more.outerHTML:"");
     }
     // "Last updated N days ago" is the one line whose whole job is to say the

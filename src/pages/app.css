@@ -145,8 +145,10 @@
                (On the record, Members, What it does, each stage of a
                bill's story, the home page's columns, a footer column's
                head excepted, which is the size of its links).
-     prose h2  h2 read as a phrase: --t-h2, serif 600, sentence case
-               (Learn's, About's and Data's sections, a list's groups).
+     prose h2  h2 read as a phrase: --t-h2, serif 600, Title Case, over
+               the prose pages' text (About's, a list's groups). Learn's and
+               Data's sections are the sub's size in a margin beside their
+               text (.l-sech, .dpsech).
      sub       h3: --t-h3, serif 600, sentence case (Learn's subsections,
                a vote's question, a speaker, a day on a committee's page).
      pane      h2 that heads a section of a record's tab, in Title Case:
@@ -7170,9 +7172,14 @@ padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
    reader opens it, the find box the script shows, the two classes each a
    grid of the standing committees' cards. */
 .clist .ssfold{margin:var(--sp-8) 0 0}
-.clist .ssfold > summary .ssfh{margin:0;padding:0;border:0;font:600 var(--t-ui)/1.3 var(--sans);
-letter-spacing:0;text-transform:none;color:var(--ink)}
-.ssfold > summary .w4n{font-weight:400;color:var(--ink-2);margin-left:var(--sp-2)}
+/* Its heading is the page's other sections' -- HOUSE, SENATE, FORMER
+   COMMITTEES -- in a fold (the cohesion audit of 30 October 2026, I-1): it was
+   16px sans in pine beside their 20px serif capitals. The caret and the box
+   say it opens. */
+.clist .ssfold > summary .ssfh{margin:0;padding:0;border:0}
+.clist .ssfold > summary .sflab{color:inherit;text-decoration:none}
+.ssfold > summary .w4n{font:400 var(--t-sm)/1 var(--sans);letter-spacing:0;text-transform:none;
+color:var(--ink-2);margin-left:var(--sp-2)}
 .ssfind{margin:var(--sp-4) 0 0}
 .ssfind label{display:block;font-size:var(--t-sm);font-weight:600;color:var(--ink-2);margin:0 0 var(--sp-2)}
 .ssfind input{width:100%;max-width:28rem;min-height:44px;padding:var(--sp-3) var(--sp-4);font-size:var(--t-ui);
