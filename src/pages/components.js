@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.23
+// GRANITE_VERSION: 2026-10-09.24
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -91,6 +91,16 @@ function dateWords(iso,form,lang){
 // Two days as one span: "October 5–11, 2026", "September 28 – October
 // 4, 2026", "December 28, 2026 – January 3, 2027" -- components.date_span.
 // The form "medium" says the months short: "Feb 9–13, 2026", the pager's.
+// A TERM'S YEARS, ONE WAY: "2025\u20132026", with an en dash (the cohesion
+// audit of 30 October 2026, I-2), as a span of days is (dateSpan). About half
+// the site wrote "2025-2026" with a hyphen, sometimes beside the dash on the
+// same screen. Only what a reader sees changes: a term's key, its address
+// and a file's name keep the hyphen, and anything that is not a term of two
+// years ("2027-requests") comes back as it came.
+function termWords(t){
+  var s=String(t==null?"":t), m=/^(\d{4})-(\d{4})$/.exec(s);
+  return m?m[1]+"\u2013"+m[2]:s;
+}
 function dateSpan(a,b,form,lang){
   form=form||"full";
   if(String(a).slice(0,10)===String(b).slice(0,10))return dateWords(a,form,lang);

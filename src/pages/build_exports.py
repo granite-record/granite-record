@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.51
+# GRANITE_VERSION: 2026-09-10.52
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -403,7 +403,7 @@ def sponsors(out, data):
                  "Sponsoring is not voting and is not counted as one. source "
                  "says where each name was read: the General Court's sponsor "
                  "file or its bill status page for the current term; its "
-                 "sponsor record for 2023-2024, where each bill's printed "
+                 "sponsor record for 2023\u20132024, where each bill's printed "
                  "sponsor line agrees with it; or the sponsor line printed on "
                  "the bill's text, "
                  "where the first name is taken as prime -- every term before "
@@ -803,6 +803,7 @@ def data_page(site, out, tables, base, cov=()):
     and checks, and HOW_BUILT's figures."""
     try:
         import shell as S
+        import components as C
     except ImportError:
         print("  (shell.py not here, so no data.html)")
         return
@@ -855,14 +856,15 @@ def data_page(site, out, tables, base, cov=()):
             # A space between the parts, so the link's name reads as words and
             # not "1999-2000118,968" where its spans are drawn as blocks.
             f'<li><a href="data/{E(t["file"])}" download><span class="dpt">'
-            f'{E(term(t))}</span> <span class="dpm">{t["rows"]:,} rows &middot; '
+            f'{E(C.term_words(term(t)))}</span> <span class="dpm">{t["rows"]:,} rows &middot; '
             f'{mb(t["bytes"])}</span> <span class="sr">{E(t["file"])}</span></a></li>'
             for t in votes)
         vote_rows = (
             f'<tr role="row" class="dpgroup"><th scope="row" role="rowheader">Votes by Term'
             f'<code>votes-&lt;term&gt;.csv</code></th>'
             f'<td role="cell" class="dpw"><p class="dpwhat">{E(lead)} One file a term, '
-            f'{len(votes)} in all, from {E(term(votes[0]))} to {E(term(votes[-1]))}.</p>'
+            f'{len(votes)} in all, from {E(C.term_words(term(votes[0])))} to '
+            f'{E(C.term_words(term(votes[-1])))}.</p>'
             f'{more("votes-<term>.csv", rest, votes[0]["columns"])}</td>'
             f'<td role="cell" class="n dpr">{sum(t["rows"] for t in votes):,}'
             f'<span class="dpu"> rows</span></td>'
@@ -872,7 +874,7 @@ def data_page(site, out, tables, base, cov=()):
             f'<ul class="dptermgrid" aria-label="Votes by term">{grid}</ul></td></tr>')
 
     cov_rows = "".join(
-        f'''<tr><th scope="row">{E(c["term"])}</th><td class="n">{c["bills"]:,}</td>
+        f'''<tr><th scope="row">{E(C.term_words(c["term"]))}</th><td class="n">{c["bills"]:,}</td>
         <td>{_pct(c["sponsor"], c["bills"])}</td>
         <td>{_pct(c["committee"], c["bills"])}</td>
         <td>{_pct(c["topic"], c["bills"])}</td>

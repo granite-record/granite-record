@@ -1649,7 +1649,7 @@ archived bill has its docket &#8212; the General Court's own line-by-line list
 of actions &#8212; and its sponsors, the committee it went to, its hearings and
 its text. Three parts of the record start later, because the General Court's
 copies of them that this site reads start later. The House committees'
-written reports start with the 1997-1998 term, the first in its online
+written reports start with the 1997–1998 term, the first in its online
 calendars, and the Senate committees' with the current term, the only one its
 database holds them for. Before those, the page gives each committee's
 recommendation as the docket records it, and the committee's vote wherever the
@@ -2471,11 +2471,11 @@ const bills=(q,B,C,counting,R,mem)=>{
   const every=counted&&B.every;
   const what=every?WHAT_ALL:counting?"Counting the earlier terms&hellip;":WHAT;
   const none=every?`None in any of the ${B.terms.length} terms.`
-    :counted?`None in the ${esc(B.term)} term.`:"";
+    :counted?`None in the ${esc(termWords(B.term))} term.`:"";
   const now=every&&C&&C.state==="ready"&&C.n&&C.n<B.n
     ?`<a class="fbills" href="/bills?q=${_fenc(q)}">
       <span class="fl1"><span class="fname">${C.n.toLocaleString()} of them in
-        the ${esc(C.term)} term</span></span>
+        the ${esc(termWords(C.term))} term</span></span>
       <span class="fwhat">The current term, where the bill search starts.</span></a>`:"";
   const top=B&&B.top?(B.numbers?B.top:B.top.slice(0,5)):[];
   const body=(counted&&B.n
@@ -2536,7 +2536,7 @@ function draw(q){
   const counting=!!(A&&A.state==="loading"&&B&&B.state==="ready");
   const nB=B&&B.state==="ready"?B.n:null;
   const term=nB===null?"":B.every?`across all ${B.terms.length} terms`
-    :`in the ${B.term} term`;
+    :`in the ${termWords(B.term)} term`;
   const noBill=nB===null?"":B.every?`no bill in any of the ${B.terms.length} terms`
     :`no bill ${term}`;
   // A member found by a whole word of their name, where no bill is: the

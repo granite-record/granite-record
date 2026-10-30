@@ -35,7 +35,7 @@ from pathlib import Path
 
 import build_date
 import chrome
-from components import date_span, date_words  # noqa: F401 (the builders ask for them here)
+from components import date_span, date_words, term_words  # noqa: F401 (the builders ask for them here)
 from components import icon
 
 E = html.escape

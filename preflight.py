@@ -20846,7 +20846,7 @@ def _find_bills(BP):
         in html and 'href="/bills?q=firearms&amp;term=all"' in html, (
         "/search?q=firearms does not lead with every term's bills, counted, "
         "and a link to them on All terms")
-    assert re.search(rf"{n['firearms']} of them in\s+the 2025-2026 term", html), (
+    assert re.search(rf"{n['firearms']} of them in\s+the 2025\u20132026 term", html), (
         "/search?q=firearms does not say how many of them are this term's")
     assert "HB 101 (2025)" in html and "HB 101 (2023)" in html, (
         "/search lists bills of two terms without the year that tells them apart")
@@ -20873,12 +20873,12 @@ def _find_bills(BP):
     # the page says the rest are still being counted.
     fl, fh = FO["search"]["firearms"]["lead"], FO["search"]["firearms"]["html"]
     assert FO["all"]["state"] == "failed" and fl.startswith(
-        f"{n['firearms']} bills in the 2025-2026 term match") \
+        f"{n['firearms']} bills in the 2025–2026 term match") \
         and "term=all" not in fh and "all 2 terms" not in fl + fh, (
         f"with an earlier term's index missing, /search says {fl!r}")
     sl, sh = SO["search"]["firearms"]["lead"], SO["search"]["firearms"]["html"]
     assert SO["all"]["state"] == "loading" and sl.startswith(
-        f"{n['firearms']} bills in the 2025-2026 term match") \
+        f"{n['firearms']} bills in the 2025–2026 term match") \
         and "Counting the earlier terms" in sl and "Counting the earlier terms" in sh \
         and "Nothing on this site" not in SO["search"]["xyzzy"]["lead"], (
         f"while an earlier term is on its way, /search says {sl!r}")
@@ -48657,7 +48657,7 @@ def _directory_pages():
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-300:]
         bills = (site / "directory" / "bills-2025-2026.html").read_text(encoding="utf-8")
         assert 'href="bill/2025/hb1"' in bills and 'href="bill/2026/sb2"' in bills, "a bill is not linked"
-        assert "<title>Every bill of the 2025-2026 term | Granite Record</title>" in bills
+        assert "<title>Every bill of the 2025\u20132026 term | Granite Record</title>" in bills
         assert 'og:type" content="website"' in bills and "CollectionPage" in bills
         people = (site / "directory" / "legislators.html").read_text(encoding="utf-8")
         assert 'href="legislator/jane-doe-hills-12"' in people and "jane@x.test" not in people
@@ -53493,7 +53493,7 @@ def _laws_changed_offers():
     bill changes fits, one
     line and nothing offered: a number names the chapter typed ("404", RSA
     404, Dog Licensing, which no bill of the term changes); words name no
-    law, "No bill in the 2025-2026 term changes a law whose name has “dog
+    law, "No bill in the 2025–2026 term changes a law whose name has “dog
     licensing” in it." -- the law of the whole list they fitted best was
     named, and on real data "students" named RSA 110-E and "driving" RSA
     287-G (the review) -- and so do "unlicensed insurers", the name RSA
@@ -53569,11 +53569,11 @@ def _laws_changed_offers():
             bad.append(f"{t!r}: an offer is not an option, or the box does not say the list is open")
         elif r["note"]:
             bad.append(f"{t!r} offers and says {r['note']!r} as well")
-    none = {"404": "No bill in the 2025-2026 term changes RSA 404, Dog Licensing.",
-            "210-": "No bill in the 2025-2026 term changes a law whose number begins “210-”."}
+    none = {"404": "No bill in the 2025–2026 term changes RSA 404, Dog Licensing.",
+            "210-": "No bill in the 2025–2026 term changes a law whose number begins “210-”."}
     for t in ("dog licensing", "unlicensed insurers", "revised statutes", "insurance department", "elections",
               "xyzzy"):
-        none[t] = f"No bill in the 2025-2026 term changes a law whose name has “{t}” in it."
+        none[t] = f"No bill in the 2025–2026 term changes a law whose name has “{t}” in it."
     odd = "RSA numbers look like 91-A or 91-A:4."
     for t, r, line in [(t, got["t:" + t], line) for t, line in none.items()] + [
             ("criminal code, Tabled ticked", got["codeNarrowed"], "None of these bills changes the Criminal Code."),
@@ -53585,7 +53585,7 @@ def _laws_changed_offers():
         bad.append(f"'21-' and Return chose {ed['rsa']}, offering {_offered(ed)} and saying {ed['note']!r}: "
                    "nothing to choose, and nothing to say against the 21-J it offers")
     s99 = got["t:91-A:99"]
-    if _offered(s99) != a91 or s99["note"] != f"No bill in the 2025-2026 term changes RSA 91-A:99, in {name}.":
+    if _offered(s99) != a91 or s99["note"] != f"No bill in the 2025–2026 term changes RSA 91-A:99, in {name}.":
         bad.append(f"'91-A:99', a section no bill changes, offers {_offered(s99)} and says "
                    f"{s99['note']!r}, not its chapter under a line that says no bill changes it")
     if got["t:9"]["say"] != "1 law matches; the down arrow chooses it." \
@@ -53695,7 +53695,7 @@ def _laws_changed_chosen():
     if '<span class="badge">1</span>' not in c["group"]:
         bad.append("the chosen law is not counted on the group's head")
     e = got["enter404"]
-    if e["rsa"] != ["91-A"] or e["note"] != "No bill in the 2025-2026 term changes RSA 404, Dog Licensing.":
+    if e["rsa"] != ["91-A"] or e["note"] != "No bill in the 2025–2026 term changes RSA 404, Dog Licensing.":
         bad.append(f"404 and Return chose {e['rsa']} and said {e['note']!r}: a law no bill "
                    "changes is not to be chosen, and the line says why")
     sc = got["section"]
@@ -53723,7 +53723,7 @@ def _laws_changed_chosen():
                    f"under {u['line']!r} {u['links']}")
     e91, r91 = got["enter91"], got["retyped"]
     if e91["rsa"] != ["194-G"] or _offered(e91) != ["RSA 91-A, " + name + " 2 bills"] \
-            or e91["note"] != ("No bill in the 2025-2026 term changes RSA 91, Eligibility to Hold "
+            or e91["note"] != ("No bill in the 2025–2026 term changes RSA 91, Eligibility to Hold "
                                "Public Office; Removal.") or r91["note"]:
         bad.append(f"91 and Return, which no bill changes: chose {e91['rsa']}, offering "
                    f"{_offered(e91)} and saying {e91['note']!r}, and typed again {r91['note']!r}")
@@ -54967,10 +54967,10 @@ def _search_count_always():
     empty until something narrowed the list (A COUNT THAT SAYS N OF N SAYS
     NOTHING, app.js, now THE COUNT IS ALWAYS THERE); nothing held that, so
     nothing here is relaxed. Held, in node over _search_groups_fixture: the
-    list with nothing narrowing it says "20 bills in the 2025-2026 term", a
-    filter "4 of 20 bills in the 2025-2026 term", another term its own
+    list with nothing narrowing it says "20 bills in the 2025–2026 term", a
+    filter "4 of 20 bills in the 2025–2026 term", another term its own
     whole count, All Terms "23 bills across all terms", a number search "1
-    matching in the 2025-2026 term", and the requests "3 bill requests for
+    matching in the 2025–2026 term", and the requests "3 bill requests for
     2027" -- they said nothing until something narrowed them, which the
     review of 8 October 2026 read as short of "always" -- and All Terms
     opened after the requests still "23 bills across all terms": the
@@ -54986,11 +54986,11 @@ def _search_count_always():
     if got is None:
         return "skip", "app.js, dom_stub.js or node is not here"
     assert "threw" not in got, f"the bill search threw {got['threw']}"
-    want = {"start": "20 bills in the 2025-2026 term", "none": "20 bills in the 2025-2026 term",
-            "progress": "4 of 20 bills in the 2025-2026 term",
-            "older": "3 bills in the 2023-2024 term", "all": "23 bills across all terms",
+    want = {"start": "20 bills in the 2025–2026 term", "none": "20 bills in the 2025–2026 term",
+            "progress": "4 of 20 bills in the 2025–2026 term",
+            "older": "3 bills in the 2023–2024 term", "all": "23 bills across all terms",
             "requests": "3 bill requests for 2027", "allAfterRequests": "23 bills across all terms",
-            "number": "1 matching in the 2025-2026 term"}
+            "number": "1 matching in the 2025–2026 term"}
     bad = [f"{k}: {got[k]['count']!r}, not {v!r}" for k, v in want.items()
            if got[k]["count"] != v]
     for k, what in (("rewritesWhole", "with nothing narrowing the list"),

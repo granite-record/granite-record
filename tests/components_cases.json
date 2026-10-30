@@ -81,6 +81,15 @@
     {"args": ["2026-05-21", "later", "full", "es"], "want": "21 de mayo de 2026 – later"},
     {"args": ["2026-02-09", "2026-02-13", "short", "es"], "want": "9–13 de febrero de 2026"}
   ],
+  "term_words": [
+    {"args": ["2025-2026"], "want": "2025\u20132026"},
+    {"args": ["1989-1990"], "want": "1989\u20131990"},
+    {"args": ["2025\u20132026"], "want": "2025\u20132026"},
+    {"args": ["2027-requests"], "want": "2027-requests"},
+    {"args": ["all"], "want": "all"},
+    {"args": [""], "want": ""},
+    {"args": [null], "want": ""}
+  ],
   "clock": [
     {"args": ["00:00"], "want": "12:00\u00a0AM"},
     {"args": ["00:30"], "want": "12:30\u00a0AM"},

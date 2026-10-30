@@ -2645,7 +2645,7 @@ const inTermOf=b=>(term===ALL_TERMS&&!b.lsr)||!term||!b.term||b.term===term;
 const reqYear=()=>META.requests?String(META.requests.year||String(META.requests.term||"").slice(0,4)):"";
 const termPhrase=()=>term===ALL_TERMS?"across all terms"
   :(META.requests&&term===META.requests.term)?`for ${reqYear()}`
-  :`in the ${term} term`;
+  :`in the ${termDash(term)} term`;
 const termNoun=()=>(META.requests&&term===META.requests.term)
   ?"bill requests":"bills";
 // A bill number is unique within a two-year term and not beyond it, so
@@ -3050,7 +3050,7 @@ if(window.GR_STATIC){
    ys.innerHTML=`<option value="${ALL_TERMS}">All Terms</option>`
      +(META.requests?`<option value="${esc(META.requests.term)}">${
        esc(META.requests.label)}</option>`:"")
-     +terms.map(t=>`<option value="${t}">${t} Term</option>`).join("");
+     +terms.map(t=>`<option value="${t}">${termDash(t)} Term</option>`).join("");
    ys.value=term;
    ys.addEventListener("change",e=>{
      // On a record page there is no list to re-filter, and render() would
@@ -7765,7 +7765,9 @@ const SUFFIX_TERM={FN:"FN",A:"A",L:"LOCAL",LOCAL:"LOCAL"};
 const billNumberTerms=n=>esc(n).replace(/-(FN|A|LOCAL|L)(?=-|$)/g,
   (_m,k)=>"-"+termMark(SUFFIX_TERM[k],k));
 // "2025-2026" as a term is written in words: "2025–2026".
-const termDash=t=>String(t||"").replace("-","\u2013");
+// components.js's termWords, under the name this file has always used;
+// a declaration, so the term menu can ask for it before this line is reached.
+function termDash(t){ return termWords(t||""); }
 // A STAGE IS NOT WHERE A DEAD BILL STANDS (the audit of 25 October 2026, S4).
 // HB 520 of 2017 showed "Died" over "Status: In committee": once its session
 // has ended the chip says Died (build_site_v2.chip_word), and the record keeps
@@ -8020,7 +8022,7 @@ function termControl(){
   if(ts.length<2)return "";
   return `<div class="bfilt pterm"><label>Term
     <select data-pf="term">${ts.map(x=>
-      `<option value="${esc(x)}"${x===t?" selected":""}>${esc(x)}</option>`
+      `<option value="${esc(x)}"${x===t?" selected":""}>${esc(termDash(x))}</option>`
     ).join("")}</select></label></div>`;
 }
 
@@ -8220,9 +8222,9 @@ function renderMemberBills(m, prime){
   const rows=memberBills(m,prime).map(b=>prime?Object.assign({},b,{_self:true}):b);
   const t=pageTerm();
   if(!rows.length)return `<p class="src">No bills ${prime?"prime sponsored"
-    :"co-sponsored"} in the ${esc(t)} term.</p>`;
+    :"co-sponsored"} in the ${esc(termDash(t))} term.</p>`;
   return billPane(rows,(n,of)=>`${billsOf(n,of)}${
-    prime?" prime sponsored":" co-sponsored"} in ${esc(t)}. Sponsoring a bill is
+    prime?" prime sponsored":" co-sponsored"} in ${esc(termDash(t))}. Sponsoring a bill is
     putting a name to it, which is not the same as voting for it and is not
     counted as one here.`);
 }
@@ -8369,7 +8371,7 @@ function renderMemberVotes(m){
   const v=memberVotes(m);
   const t=pageTerm();
   if(!v.length)return `<p class="src">No recorded roll call votes in the
-    ${esc(t)} term. Voice and division votes leave no record of individual
+    ${esc(termDash(t))} term. Voice and division votes leave no record of individual
     members, so a member can have taken part in many votes and appear in none
     of them.</p>`;
   needRollcalls();
@@ -8422,7 +8424,7 @@ function renderMemberVotes(m){
       <input type="search" data-pf="vq" value="${esc(find)}" placeholder="HB 1442, or words"
         aria-label="Find a bill by its number or words"></label></div>
     <p class="src">${rows.length.toLocaleString()} of ${v.length.toLocaleString()}
-      recorded votes in ${esc(t)}${castIn}, newest first: every roll call this member is
+      recorded votes in ${esc(termDash(t))}${castIn}, newest first: every roll call this member is
       recorded in, what it was on, and what it decided. The prevailing side is a yes on a
       motion that carried or a no on one that failed; it describes the vote, not the
       member, and nothing here is rated or scored.</p>
@@ -8733,9 +8735,9 @@ function renderCommitteeBills(c){
   const rows=cmteBills(c),t=pageTerm();
   // .fill on the notes that stand in for an empty pane: the width it has (F9).
   if(!rows.length)return `<p class="src fill">No bills were referred to this
-    committee in the ${esc(t)} term.</p>`;
+    committee in the ${esc(termDash(t))} term.</p>`;
   return billPane(rows,(n,of)=>`${billsOf(n,of)} referred to
-    this committee in ${esc(t)}.`,true);
+    this committee in ${esc(termDash(t))}.`,true);
 }
 
 // ============================================ POLISH 2: A COMMITTEE'S MEETINGS
@@ -8957,7 +8959,7 @@ function renderCommitteeSessions(c){
     on record. Committees that no longer meet keep their page so the bills they
     handled still have somewhere to point.</p>`;
   if(!ss.length)return `<p class="src fill">No day of this committee is on record in
-    the ${esc(t)} term.</p>`;
+    the ${esc(termDash(t))} term.</p>`;
   // A DAY STILL TO COME IS NOT ONE IT MET (the survey of 7 October 2026):
   // "56 days this committee met" counted 14 October 2026, booked ahead. The
   // build marks such a day `ahead`; it is listed, told as scheduled, and
@@ -10691,7 +10693,7 @@ function render(more){
       shown.length.toLocaleString()} of ${rows.length.toLocaleString()} — <button
       class="link" data-more="1">show ${Math.min(PAGE_SIZE,rows.length-SHOWN)} more</button></p>`:"")
     :(elsewhere.length
-      ?`<div class="empty"><b>Not in the ${esc(term)} term.</b><br><br>
+      ?`<div class="empty"><b>Not in the ${esc(termDash(term))} term.</b><br><br>
         ${elsewhere.map(b=>`${esc(b.n)} exists in the
           <button class="link" data-term="${esc(b.term)}">${esc(b.term)}</button>
           term — ${esc(b.title||"")}`).join("<br>")}</div>`

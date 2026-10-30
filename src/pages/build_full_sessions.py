@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.12
+# GRANITE_VERSION: 2026-10-10.13
 """
 The House and the Senate as committees of the whole: a card at the top of
 each column of /committees, and a page for each chamber's session days.
@@ -154,7 +154,7 @@ def card(c):
         bits.append(f"Presided over by {E(role)} {E(bare_name(m))}")
     if c["members"]:
         bits.append(plural(c["members"], "member"))
-    bits.append(f"{plural(len(c['days']), 'session day')} in {E(c['latest'])} and "
+    bits.append(f"{plural(len(c['days']), 'session day')} in {E(C.term_words(c['latest']))} and "
                 f"{len(c['dates']):,} since {c['dates'][0][:4]}")
     return (f'<a class="ccard chcard" href="session/{SLUG[c["body"]]}.html">'
             f'<span class="cc-n">{CHAMBER[c["body"]]} Session Days</span>'
@@ -235,7 +235,7 @@ def page_head(c, path, base):
     facts = [["Members", f'<a href="officials.html#legislators">'
                          f'{plural(c["members"], "sitting member")}</a>'],
              ["This Term", f"{plural(len(c['days']), 'session day')}",
-              f"in {E(c['latest'])}"],
+              f"in {E(C.term_words(c['latest']))}"],
              ["On Record", f"{plural(len(c['dates']), 'session day')}",
               f"since {c['dates'][0][:4]}"]]
     cite = S.cite_block(path, f"{CHAMBER[body]} Session Days | Granite Record", base, S.BUILT)
