@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.743
+# GRANITE_VERSION: 2026-09-04.744
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -47513,6 +47513,289 @@ def _calendar_copies():
     return "ok", (f"{left} known base calendar(s) still their supplement's copy, waiting on a "
                   "person's fetch" if left else "no base calendar is its supplement's copy")
 
+
+
+# THE KIT'S MISFILED HOUSE JOURNALS (wf20, 29 October 2026;
+# docs/design/journals-misfiled/report.md on design/committee-videos). The
+# General Court's index filed thirteen 2011 issues under its 2010 folder and
+# two 1999 issues under 2000, and the fetch kept its folders: twelve are
+# byte-for-byte copies of files in journals/2011/, and three are moves. The
+# move is the owner's, in the bucket. Until it is made these fifteen are known,
+# and the check below that holds the rest passes; the one after it holds them
+# and fails as expected until the move, when it says to take its mark off.
+JOURNALS_MISFILED = {
+    "journals/2010/Daily Journal #1, 12-1-10, Organization Day Final.txt",
+    "journals/2010/HJ006.txt", "journals/2010/HJ009.txt", "journals/2010/HJ010.txt",
+    "journals/2010/HJ013.txt", "journals/2010/HJ018.txt", "journals/2010/HJ019.txt",
+    "journals/2010/HJ020.txt", "journals/2010/HJ021.txt", "journals/2010/HJ022.txt",
+    "journals/2010/HJ023.txt", "journals/2010/HJ024.txt", "journals/2010/HJ025.txt",
+    "journals/2000/HJ025.txt", "journals/2000/HJ026.txt",
+}
+
+
+def _journal_folders_known(line, names):
+    """Whether a problem is one the fifteen known files were measured to
+    give, exactly: a numbered 2010 copy said to be the same bytes as its
+    2011 file, the pair of them as duplicates, or one of the three moves with
+    nothing of its name in the way. A third copy, a half-done move or a
+    different file in the way is a new problem, though it names a known file."""
+    if len(names) == 1 and names[0] in JOURNALS_MISFILED:
+        p = names[0]
+        tail = ("nothing of that name there." if "/2000/" in p or "Organization Day" in p
+                else "this copy goes.")
+        return line.startswith(p + ": in ") and line.endswith(tail)
+    if len(names) == 2 and names[0] in JOURNALS_MISFILED and "/2010/HJ0" in names[0]:
+        return names[1] == names[0].replace("/2010/", "/2011/")
+    return False
+
+
+def _journal_folders_found(JF):
+    """(the audit, its problems other than the fifteen known files' own), or
+    None where no journals are on this disk."""
+    r = JF.audit(".")
+    if "skip" in r:
+        return None
+    other = [ln for ln, names in zip(r["problems"], r["named_in"])
+             if not _journal_folders_known(ln, names)]
+    return r, other
+
+
+@check("data", "every journal file is in its session's folder and no two are the same bytes, "
+               "but the fifteen known misfiled House journals the owner is to move",
+       needs=("journal_folders",))
+def _journal_folders(JF):
+    got = _journal_folders_found(JF)
+    if got is None:
+        return "skip", "no journals/ or journals_senate/ here"
+    r, other = got
+    assert not other, "\n".join(other)
+    if not r["problems"]:
+        return "ok", JF.ok_line(r)
+    left = {n for names in r["named_in"] for n in names} & JOURNALS_MISFILED
+    return "ok", (JF.counts(r) + f"; every file in its session's folder but {len(left)} of the "
+                  "fifteen known misfiled House journals, waiting on the owner's move")
+
+
+@check("data", "the fifteen known misfiled House journals are moved",
+       needs=("journal_folders",),
+       expect_fail="the kit's 15 misfiled House journals not yet moved (wf20): "
+                   "docs/design/journals-misfiled/report.md section 6 is the owner's")
+def _journal_folders_moved(JF):
+    got = _journal_folders_found(JF)
+    if got is None:
+        return "skip", "no journals/ or journals_senate/ here"
+    r, _ = got
+    assert not r["problems"], "\n".join(r["problems"])
+    return "ok", JF.ok_line(r)
+
+
+# The fixtures for journal_folders, every one quoted from the kit's own files
+# (file and lines named), leading spaces shortened. \r\n is kept where the
+# file has it, and the form feed where it prints one.
+_JF_ORG_2010 = (  # journals/2010/Daily Journal #1, 12-1-10, Organization Day Final.txt l.1-12
+    "         HOUSE RECORD\r\n\r\n                First Year of the 162nd General Court\r\n"
+    "             Calendar and Journal of the 2011 Session\r\n\r\n"
+    "Vol. 33      Concord, N.H.  Wednesday, December 1, 2010  No. 5\r\n\r\n"
+    "             HOUSE JOURNAL No. 1\r\n\r\n                               Wednesday, December 1, 2010\r\n"
+    "\r\nOn the first Wednesday in December in the year of our Lord, two thousand ten, it being the\r\n")
+_JF_HJ19_2025 = (  # journals/2025/HJ 19 December 17, 2025.txt l.18-22
+    "             HOUSE JOURNAL NO. 19\n\n                             Wednesday, December 17, 2025\n\n"
+    "The House assembled at 10:00 a.m. and was called to order by the Speaker.\n")
+_JF_HJ022_2001 = (  # journals/2001/HJ022.txt l.1004-1006
+    "         HOUSE JOURNAL No. 23\n\n                                 (Wednesday, December 12, 2001)\n")
+_JF_HJ023_2003 = (  # journals/2003/HJ023.txt l.1-10 and l.75-76
+    "         HOUSE RECORD\n\nFirst Year of the 158th Session of the General Court\n"
+    "       Calendar and Journal of the 2003 Session\n\n"
+    "Vol. 25  Concord N.H.  January 7, 2004  No. 74\n\nHOUSE JOURNAL No. 23 (cont.)\n\n"
+    "                              (Thursday, September 4, 2003)\n\n"
+    "The Speaker called the recessed session of September 4, 2003 to order at 10:00 a.m. on\n"
+    "Wednesday, January 7, 2004 and declared a quorum present.\n")
+_JF_HJ027_2000 = (  # journals/2000/HJ027.txt l.1-12 and l.737-740
+    "         HOUSE RECORD\n\nFirst Year of the 156th Session of the General\n"
+    "                              Court\n\n         Calendar and Journal of the 1999 Session\n\n"
+    "Vol. 22  Concord N.H.  Wednesday, January 5, 2000  No. 5\n\nHOUSE JOURNAL No. 27 (cont.)\n\n"
+    "                                   Wednesday, November 3, 1999\n"
+    "HB 707-FN, relative to the family division of the courts.\n"
+    "\f          HOUSE JOURNAL No. 1\n\n                                     Wednesday, January 5, 2000\n")
+_JF_HJ001_2020 = (  # journals/2020/HJ001.txt l.9-13 and l.483-485
+    "                Concord,N.H.  Wednesday,January8,2020                         No.1X\n\n"
+    "      HOUSE JOURNAL NO. 23 (Cont'd)\n\n                             Wednesday, September 25, 2019\n"
+    "adjourned.\n\n              HOUSE JOURNAL NO. 1\n\n                               Wednesday, January 8, 2020\n")
+_JF_HJ004_2006 = (  # journals/2006/HJ004.txt l.1-10
+    "HOUSE RECORD\n\n Second Year of the 159th General Court\nCalendar and Journal of the 2006 Session\n\n"
+    "Vol. 27 Concord, N.H.  Wednesday, February 15, 2006  No. 19\n\nHOUSE JOURNAL No. 4 (cont.)\n\n"
+    "                                 Thursday, February 2, 2006\n")
+_JF_HJ004_1998 = (  # journals/1998/HJ004.txt l.1-16
+    "  HOUSE RECORD\n\n Second Year of the 155th Session of the General Court\n"
+    "          Calendar and Journal of the 1997 Session\n\n"
+    "             Vol. 20 Concord N.H. Wednesday, February 18, 1998 No. 18\n\nHOUSE JOURNAL No. 4 (cont.)\n\n"
+    "Adopted.                 Thursday, February 12, 1998\n\n"
+    "                         Rep. Lozeau moved that the House adjourn.\n\n          HOUSE JOURNAL No. 5\n\n"
+    "                                   Wednesday, February 18, 1998\n")
+_JF_SJ01_2024 = (  # journals_senate/2025/SJ 01 December 4, 2024 Organization Day.txt l.1-21
+    "                December4,2024\n                No.1\n\n           STATEOFNEWHAMPSHIRE\n\n"
+    "        SENATEJOURNAL\n\nORGANIZATION DAY - DECEMBER 4, 2024 SESSION\n"
+    "\f2  SENATEJOURNAL4DECEMBER2024\n\nSENATE      December 4, 2024\nJOU RNA L1\n\n"
+    "                                                           ORGANIZATION DAY\n"
+    "The Honorable Tammy L. Wright, Clerk of the Senate, called the Senate to order at 10:00 a.m.\n")
+_JF_SJ9_2005 = (  # journals_senate/2005/SJ 9.txt l.1-17 and l.75
+    "                March 17, 2005\n                Nos. 8 - 9\n\n          STATE OF NEW HAMPSHIRE\n\n"
+    "       SENATE JOURNAL\n\n ADJOURNMENT - MARCH 10, 2005 SESSION\n"
+    "COMMENCEMENT - MARCH 17, 2005 SESSION\n\f110                           SENATE JOURNAL 10 MARCH 2005\n\n"
+    "SENATE                                                                    March 10, 2005\n"
+    "JOURNAL 8 (Cont.)\n"
+    "\f                             SENATE JOURNAL 17 MARCH 2004                                             111\n")
+_JF_SJ001_2018 = (  # journals_senate/2018/SJ001.txt l.1-9
+    "SENATEJOURNAL3JANUARY2018  1\n\nSTATE OF NEW HAMPSHIRE\n\n              CONVENING DAY\n\n"
+    "                                 January 3, 2018\n\n"
+    "The Senate reconvened at 10:00 a.m., a quorum being present.\n")
+_JF_SJ02_2023 = (  # journals_senate/2023/SJ 02 January 4, 2023 - Convening Day.txt l.15-21
+    "\f26  SENATEJOURNAL4JANUARY2023\r\n\r\nSENATE                         January 4, 2023\r\n"
+    "JOU RNA L2\r\n\r\n                                                              CONVENING DAY\r\n"
+    "The Senate convened at 10:00 a.m., a quorum being present.\r\n")
+_JF_HB1 = (  # journals/2003/HB1_FinanceAmended.txt l.1-6
+    "       House Finance\n       April 10, 2003\n       2003-1268h\n       03/10\n\n"
+    "                                                             Amendment to HB 1-A\n")
+_JF_HJ010_2011 = (  # journals/2011/HJ010.txt l.1-19
+    "         State of New Hampshire\n\n         HOUSE RECORD\n\n"
+    "            First Year of the 162nd General Court\n         Calendar and Journal of the 2011 Session\n\n"
+    "Vol. 33  Concord, N. H.  Tuesday, March 15, 2011  No. 26\n\n         HOUSE JOURNAL No. 9 (cont.)\n\n"
+    "                                  Wednesday, March 2, 2011\n\nRep. Silva moved that the House adjourn.\n"
+    "Adopted.\n\n         HOUSE JOURNAL No. 10\n\n                                   Tuesday, March 15, 2011\n")
+_JF_HJ025_2000 = (  # journals/2000/HJ025.txt l.1-8 and l.135-137
+    "         HOUSE RECORD\n\nFirst Year of the 156th Session of the General\n"
+    "                              Court\n\n         Calendar and Journal of the 1999 Session\n\n"
+    "Vol. 21  Concord N.H.  Thursday, October 28, 1999  No. 89\n\n"
+    "         HOUSE JOURNAL No. 26\n\n                                     Thursday, October 28, 1999\n")
+_JF_HJ015_2010 = (  # journals/2010/HJ015.txt l.16-18
+    "         HOUSE JOURNAL No. 15\n\n                                  Wednesday, April 21, 2010\n")
+
+_JF_GOOD = {
+    "journals/2011/Daily Journal #1, 12-1-10, Organization Day Final.txt": _JF_ORG_2010,
+    "journals/2025/HJ 19 December 17, 2025.txt": _JF_HJ19_2025,
+    "journals/2001/HJ022.txt": _JF_HJ022_2001,
+    "journals/2003/HJ023.txt": _JF_HJ023_2003,
+    "journals/2000/HJ027.txt": _JF_HJ027_2000,
+    "journals/2020/HJ001.txt": _JF_HJ001_2020,
+    "journals/2006/HJ004.txt": _JF_HJ004_2006,
+    "journals/1998/HJ004.txt": _JF_HJ004_1998,
+    "journals/2011/HJ010.txt": _JF_HJ010_2011,
+    "journals_senate/2025/SJ 01 December 4, 2024 Organization Day.txt": _JF_SJ01_2024,
+    "journals_senate/2005/SJ 9.txt": _JF_SJ9_2005,
+    "journals_senate/2018/SJ001.txt": _JF_SJ001_2018,
+    "journals_senate/2023/SJ 02 January 4, 2023 - Convening Day.txt": _JF_SJ02_2023,
+    "journals/2003/HB1_FinanceAmended.txt": _JF_HB1,
+    "journals/2003/HB1_Floor_Amendment.txt": _JF_HB1.replace("House Finance", "Floor"),
+}
+
+
+@check("code", "journal_folders places each journal by the sittings it prints: an Organization "
+               "Day in the next year's folder, an odd-year December in its own, a heading after "
+               "a form feed; it names a misfiled file, a copy, a file of two sessions and a file "
+               "with no date, and fails rather than pass a tree it cannot read",
+       needs=("journal_folders",))
+def _journal_folders_rule(JF):
+    import tempfile
+    base = tempfile.TemporaryDirectory(prefix="pf_jf_")
+    try:
+        return _journal_folders_cases(JF, Path(base.name))
+    finally:
+        base.cleanup()
+
+
+def _journal_folders_cases(JF, base):
+    import tempfile
+
+    def tree(files):
+        d = Path(tempfile.mkdtemp(dir=base))
+        for rel, text in files.items():
+            (d / rel).parent.mkdir(parents=True, exist_ok=True)
+            (d / rel).write_bytes(text.encode("utf-8"))
+        return d
+
+    def found(files, *gone, **more):
+        f = {k: v for k, v in files.items() if k not in gone}
+        f.update({k.replace("__", "/"): v for k, v in more.items()})
+        return JF.audit(tree(f))
+
+    r = JF.audit(tree(_JF_GOOD))
+    assert not r["problems"], "a correctly filed fixture was flagged:\n" + "\n".join(r["problems"])
+    said = {ln.split(": ", 1)[0]: ln for ln in r["detail"]}
+    assert "HOUSE JOURNAL No. 1 of January 5, 2000 (line 14)" in said["journals/2000/HJ027.txt"], (
+        "the heading after a form feed was not read: " + said["journals/2000/HJ027.txt"])
+    assert "prints no sitting of its own" in said["journals/2003/HJ023.txt"], (
+        "2003/HJ023's issue line has no weekday and dated it: " + said["journals/2003/HJ023.txt"])
+    assert "prints the 2001 series" in said["journals/2001/HJ022.txt"], said["journals/2001/HJ022.txt"]
+    assert "prints the 2025 series" in said["journals/2025/HJ 19 December 17, 2025.txt"]
+    assert "not a journal" in said["journals/2003/HB1_FinanceAmended.txt"]
+    assert r["named"] == 2 and r["weak"] == 1, (r["named"], r["weak"])
+
+    org = "Daily Journal #1, 12-1-10, Organization Day Final.txt"
+    cases = [
+        ("an Organization Day under its own year",
+         found(_JF_GOOD, f"journals/2011/{org}", **{f"journals__2010__{org}": _JF_ORG_2010}),
+         f"journals/2010/{org}: in 2010, prints the 2011 series: its own sitting HOUSE JOURNAL "
+         "No. 1 of December 1, 2010 (line 8)", "Belongs in journals/2011/, nothing of that name there."),
+        ("a copy of a 2011 issue under 2010",
+         found(_JF_GOOD, **{"journals__2010__HJ010.txt": _JF_HJ010_2011}),
+         "journals/2010/HJ010.txt: in 2010, prints the 2011 series",
+         "where HJ010.txt is the same bytes: this copy goes."),
+        ("the same copy, as bytes",
+         found(_JF_GOOD, **{"journals__2010__HJ010.txt": _JF_HJ010_2011}),
+         "the same bytes, twice: journals/2010/HJ010.txt and journals/2011/HJ010.txt", ""),
+        ("a 1999 issue under 2000",
+         found(_JF_GOOD, **{"journals__2000__HJ025.txt": _JF_HJ025_2000}),
+         "journals/2000/HJ025.txt: in 2000, prints the 1999 series",
+         "Belongs in journals/1999/, nothing of that name there."),
+        ("a Senate Organization Day under its own year",
+         found(_JF_GOOD, "journals_senate/2025/SJ 01 December 4, 2024 Organization Day.txt",
+               **{"journals_senate__2024__SJ 01 December 4, 2024 Organization Day.txt": _JF_SJ01_2024}),
+         "journals_senate/2024/SJ 01 December 4, 2024 Organization Day.txt: in 2024, prints the 2025 "
+         "series", "Belongs in journals_senate/2025/, nothing of that name there."),
+        ("a file with no date",
+         found(_JF_GOOD, **{"journals__2004__HJ099.txt":  # journals/2011/HJ010.txt l.14
+                            "Rep. Silva moved that the House adjourn.\n"}),
+         "journals/2004/HJ099.txt: no date read", ""),
+        ("a file of two sessions",
+         found(_JF_GOOD, **{"journals__2010__HJ015.txt": _JF_HJ015_2010 + _JF_HJ010_2011}),
+         "journals/2010/HJ015.txt: spans two sessions: the 2010 series by its own sitting HOUSE "
+         "JOURNAL No. 15 of April 21, 2010",
+         "the 2011 series by its own sitting HOUSE JOURNAL No. 10 of March 15, 2011 (line 20), "
+         "its issue of March 15, 2011 (line 11)"),
+        ("a named non-journal gone",
+         found(_JF_GOOD, "journals/2003/HB1_Floor_Amendment.txt"),
+         "journals/2003/HB1_Floor_Amendment.txt: named in NOT_JOURNALS and no longer there", ""),
+    ]
+    for what, got, start, end in cases:
+        hit = [ln for ln in got["problems"] if ln.startswith(start) and ln.endswith(end)]
+        assert hit, f"{what}: no line '{start} ... {end}' in:\n" + "\n".join(got["problems"])
+        assert all(p for p in got["named_in"][got["problems"].index(hit[0])]), what
+    # The data check excuses the fifteen known files' own lines and nothing
+    # more: not a third copy of one, nor a move half done.
+    def unexcused(files):
+        got = JF.audit(tree(files))
+        return [ln for ln, names in zip(got["problems"], got["named_in"])
+                if not _journal_folders_known(ln, names)]
+    known = dict(_JF_GOOD, **{"journals/2010/HJ010.txt": _JF_HJ010_2011})
+    assert unexcused(known) == [], unexcused(known)
+    third = unexcused(dict(known, **{"journals/2011/HJ 10 March 15, 2011.txt": _JF_HJ010_2011}))
+    assert third and all("same bytes" in ln for ln in third), third
+    half = unexcused(dict(_JF_GOOD, **{f"journals/2010/{org}": _JF_ORG_2010}))
+    assert len(half) == 2 and half[0].endswith("is the same bytes: this copy goes.") \
+        and half[1].startswith("the same bytes, twice:"), half
+    # Nothing dated by its own sittings: the floor, rather than a pass.
+    weak_only = {f"journals/{y}/HJ00{i}.txt": "         Calendar and Journal of the %s Session\n" % y
+                 for i, y in enumerate(("2003", "2004", "2005"), 1)}
+    weak_only["journals_senate/2018/SJ001.txt"] = "SENATEJOURNAL3JANUARY2018  1\n"
+    got = JF.audit(tree(weak_only))
+    assert any("under the 90% floor" in ln for ln in got["problems"]), got["problems"]
+    assert not any("no date read" in ln for ln in got["problems"]), got["problems"]
+    # A chamber with no files at all, and a tree with neither.
+    got = JF.audit(tree({k: v for k, v in _JF_GOOD.items() if k.startswith("journals/")}))
+    assert any(ln.startswith("journals_senate/: no Senate journal files") for ln in got["problems"])
+    assert JF.audit(tree({})) == {"skip": "no journals/ or journals_senate/ here"}
+    return "ok", (f"{len(_JF_GOOD) - 2} journals filed rightly pass, two named texts pass, and "
+                  f"{len(cases) + 2} wrong trees are each named")
 
 # The shape of House Calendar 12 of 2023, pages 57-58, and of 4 March 2022's
 # last amendment: a heading on its own line with the number under it, one of
@@ -114840,6 +115123,7 @@ RECORD_CHECKS = {
     "_calendar_meetings", "_cite_survives", "_corrections_still_match",
     "_docket_dotted_month_on_disk", "_dropped", "_every_speaker_where_the_journal_decides",
     "_first_referral_on_disk", "_freeze_on_disk", "_introductions_against_journal",
+    "_journal_folders", "_journal_folders_moved",
     "_journal_intros_on_record", "_learn_statutes_in_force", "_manifests_hold_no_called_off_sitting",
     "_no_phantom_sittings", "_own_lsr_on_disk", "_past_flags_data", "_past_measures_on_record",
     "_rail_endings_on_the_site", "_report_rec", "_rollcall_outcomes_data",

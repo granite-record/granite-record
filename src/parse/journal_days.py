@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.16
+# GRANITE_VERSION: 2026-09-19.19
 """
 What the House journal adds that the record does not: who spoke, and what.
 
@@ -146,14 +146,24 @@ def joined(block):
 # files. It needs the body of the day, which IS in one file. The continuation
 # header at the top is the previous day's tail and is cut off.
 
+# A form feed may open the heading's line: pdftotext writes a page break as
+# one, and ten headings in the kit sit at the top of a page (2000/HJ027's
+# "\fHOUSE JOURNAL No. 1", 5 January 2000, among them).
 DAY_HEADER = re.compile(
-    r"^[ \t]*HOUSE\s+JOURNAL\s+N[Oo]\.?\s*(?P<num>\d*)\s*(?P<cont>\([Cc]on'?t\.?'?d?\.?\))?",
+    r"^[ \t\f]*HOUSE\s+JOURNAL\s+N[Oo]\.?\s*(?P<num>\d*)\s*(?P<cont>\([Cc]on'?t\.?'?d?\.?\))?",
     re.M)
 
+# A sitting's date under its heading. Most print the weekday; fifteen in the
+# kit print none, or the date in parentheses -- "December 4, 1996" (1997/HJ001),
+# "(December 6, 2000)" (2001/HJ001), "January 24, 2002" (2002/HJ003),
+# "(Thursday, January 6, 2005)" (2005/HJ002) -- and were lost until 30
+# October 2026. With no weekday the date must stand alone on its line
+# (officers.H_DATE's rule), so a sentence that opens with a date is not read.
 DATELINE = re.compile(
-    r"^[ \t]*(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+"
+    r"^[ \t\f]*\(?[ \t]*(?P<wd>(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+)?"
     r"(?P<mon>January|February|March|April|May|June|July|August|September|"
-    r"October|November|December)\s+(?P<day>\d{1,2}),?\s*(?P<yr>\d{4})",
+    r"October|November|December)\s+(?P<day>\d{1,2}),?\s*(?P<yr>\d{4})"
+    r"(?(wd)|[ \t]*\)?[ \t]*$)",
     re.M | re.I)
 
 MONTHS = {m: i for i, m in enumerate(
@@ -1227,11 +1237,36 @@ def read_year(year, root=HOUSE):
 
 
 def read_day(date, root=HOUSE):
-    """Everything this module can find for one House sitting date."""
-    return read_year(date[:4], root).get(
-        date, {"date": date, "attributions": [], "debates": [],
-               "unanimous_consent": [], "opening": {}, "absences": [],
-               "consent": {}, "files": []})
+    """Everything this module can find for one House sitting date.
+
+    A December Organization Day opens the next year's numbered series, so it
+    is filed in the next year's folder (journals/2023/HJ 01 December 7,
+    2022.txt), as read_senate_day and session_days._journal_day already
+    read it. Both folders are read for a December date; an odd-year December
+    sitting is in its own year's folder (2001/HJ022), and the next year's
+    holds at most its "(cont.)" tail, which day_blocks drops. The same day
+    read alike from both, as a copy left behind by a move would give, is
+    taken once (preflight's journal-folder check names such a copy).
+    """
+    years = (date[:4],) + ((str(int(date[:4]) + 1),) if date[5:7] == "12" else ())
+    found = [read_year(y, root)[date] for y in years if date in read_year(y, root)]
+    if len(found) == 1:
+        return found[0]
+    out = {"date": date, "attributions": [], "debates": [],
+           "unanimous_consent": [], "opening": {}, "absences": [],
+           "consent": {}, "files": []}
+    for got in [g for i, g in enumerate(found) if g not in found[:i]]:
+        for k in ("attributions", "debates", "unanimous_consent", "absences", "files"):
+            out[k] += got[k]
+        for k, v in got["opening"].items():
+            out["opening"].setdefault(k, v)
+        for k, v in got["consent"].items():
+            if k in ("removed", "removed_elsewhere"):
+                out["consent"].setdefault(k, [])
+                out["consent"][k] += v
+            else:
+                out["consent"].setdefault(k, v)
+    return out
 
 
 # ------------------------------------------------- the Senate's leave list --

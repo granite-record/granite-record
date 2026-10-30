@@ -12,6 +12,9 @@ Scripts that write no record and no page, only a verdict or a report:
   measured) and one JSON report;
 - what the General Court changed overnight (`gc_changes`);
 - how complete the archive is (`archive_status`);
+- whether every journal file is in its session's folder, by the sittings it
+  prints, and no two are the same bytes (`journal_folders`; preflight runs it
+  as a data check against the record);
 - how near launch is (`readiness`);
 - dead CSS (`audit_css`);
 - what the browser draws on a built site's record pages, tab by tab, and on
