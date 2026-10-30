@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.1
+# Unstamped on purpose: a design aid under docs/, which versions.json (bare names in the code folders) cannot list.
 """A prototype people file: one row per person, every number they carry.
 
     python3 measure_people.py BUILD_DIR OUT_DIR       (BUILD_DIR holds site/, db/, generated/)

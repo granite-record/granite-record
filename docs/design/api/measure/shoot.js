@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.1
+// Unstamped on purpose: a design aid under docs/, which versions.json cannot list.
 // node shoot.js BASE_URL OUT_DIR page1 [page2 ...]
 // Screenshots each page at 390 and 1280 wide, light and dark, full page.
 const { chromium } = require('playwright');

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.1
+# Unstamped on purpose: a design aid under docs/, which versions.json (bare names in the code folders) cannot list.
 """Prototype the API's new files from a built site and measure them.
 
     python3 measure_api.py SITE_DIR OUT_DIR

@@ -1,0 +1,109 @@
+{
+ "files": {
+  "votes-1999-2000.csv": {
+   "now": 12747685,
+   "iso_in_place": 12888825,
+   "iso_in_place_plus_person": 13840576,
+   "date_iso_plus_person": 15008093,
+   "safe": 23592960
+  },
+  "votes-2001-2002.csv": {
+   "now": 11135601,
+   "iso_in_place": 11270498,
+   "iso_in_place_plus_person": 12094201,
+   "date_iso_plus_person": 13091895,
+   "safe": 23592960
+  },
+  "votes-2003-2004.csv": {
+   "now": 9193525,
+   "iso_in_place": 9300782,
+   "iso_in_place_plus_person": 9985293,
+   "date_iso_plus_person": 10819238,
+   "safe": 23592960
+  },
+  "votes-2005-2006.csv": {
+   "now": 14340148,
+   "iso_in_place": 14529802,
+   "iso_in_place_plus_person": 15609001,
+   "date_iso_plus_person": 16903245,
+   "safe": 23592960
+  },
+  "votes-2007-2008.csv": {
+   "now": 12312390,
+   "iso_in_place": 12480185,
+   "iso_in_place_plus_person": 13460952,
+   "date_iso_plus_person": 14641711,
+   "safe": 23592960
+  },
+  "votes-2009-2010.csv": {
+   "now": 14882227,
+   "iso_in_place": 15107409,
+   "iso_in_place_plus_person": 16401344,
+   "date_iso_plus_person": 17955322,
+   "safe": 23592960
+  },
+  "votes-2011-2012.csv": {
+   "now": 20671722,
+   "iso_in_place": 20944394,
+   "iso_in_place_plus_person": 22699961,
+   "date_iso_plus_person": 24841193,
+   "safe": 23592960
+  },
+  "votes-2013-2014.csv": {
+   "now": 16367959,
+   "iso_in_place": 16599259,
+   "iso_in_place_plus_person": 18084242,
+   "date_iso_plus_person": 19894793,
+   "safe": 23592960
+  },
+  "votes-2015-2016.csv": {
+   "now": 14523166,
+   "iso_in_place": 14751058,
+   "iso_in_place_plus_person": 16100329,
+   "date_iso_plus_person": 17727684,
+   "safe": 23592960
+  },
+  "votes-2017-2018.csv": {
+   "now": 13807496,
+   "iso_in_place": 14067842,
+   "iso_in_place_plus_person": 15424177,
+   "date_iso_plus_person": 17028791,
+   "safe": 23592960
+  },
+  "votes-2019-2020.csv": {
+   "now": 16266967,
+   "iso_in_place": 16527397,
+   "iso_in_place_plus_person": 18115684,
+   "date_iso_plus_person": 20039148,
+   "safe": 23592960
+  },
+  "votes-2021-2022.csv": {
+   "now": 16618061,
+   "iso_in_place": 16904000,
+   "iso_in_place_plus_person": 18478535,
+   "date_iso_plus_person": 20357581,
+   "safe": 23592960
+  },
+  "votes-2023-2024.csv": {
+   "now": 16559695,
+   "iso_in_place": 16822292,
+   "iso_in_place_plus_person": 18417379,
+   "date_iso_plus_person": 20348026,
+   "safe": 23592960
+  },
+  "votes-2025-2026.csv": {
+   "now": 19832506,
+   "iso_in_place": 20148565,
+   "iso_in_place_plus_person": 22055108,
+   "date_iso_plus_person": 24360545,
+   "safe": 23592960
+  }
+ },
+ "member_ids_with_no_person": 0,
+ "ballots_with_no_person": 0,
+ "member_ids_in_two_people": 0,
+ "short_id_range": [
+  27,
+  11524
+ ]
+}
