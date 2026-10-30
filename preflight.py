@@ -75184,9 +75184,13 @@ def _interim_report_one_colour(BP):
     # review of 30 October 2026): only the ink a rule names as plain is plain.
     tok = lambda c: ("missing" if c is None else {"var(--st-law)": "law", "var(--st-done)": "done",
                                                   "var(--st-study)": "study"}.get(c, ""))
-    want = {"rec": "law", "not": "done", "without": ""}
+    # "" is a report whose row states none of the three ("Interim Study
+    # Report filed"; committee_acts.study_said): plain, as "without" is (the
+    # person, 30 October 2026).
+    want = {"rec": "law", "not": "done", "without": "", "": ""}
     words = {"rec": "RECOMMENDED FOR FUTURE LEGISLATION", "not": "NOT RECOMMENDED FOR FUTURE LEGISLATION",
-             "without": "WITHOUT RECOMMENDATION"}
+             "without": "WITHOUT RECOMMENDATION", "": "Interim Study Report filed"}
+    n = len(words)
     bad = []
     got = _app_js(
         "[" + ",".join(f"scope.recColour({json.dumps(w)})" for w in words.values()) + ","
@@ -75197,7 +75201,7 @@ def _interim_report_one_colour(BP):
         names=("recColour", "actSaid", "journeyList"))
     if got is None:
         return "skip", "node, app.js or dom_stub.js is not here"
-    chips, cards, journey = got[:3], got[3:6], got[6]
+    chips, cards, journey = got[:n], got[n:2 * n], got[2 * n]
     lines = re.findall(r'<li class="([^"]*)"', journey)
     for i, k in enumerate(words):
         places = {"the Reports tab's chip": {"s-law": "law", "s-done": "done", "": ""}.get(chips[i], chips[i]),
@@ -75214,7 +75218,8 @@ def _interim_report_one_colour(BP):
             card = "?"
         places["a committee meeting's card"] = card
         jl = lines[i].split() if i < len(lines) else []
-        places["the docket line's mark"] = (tok(colour.get(f".jl .jrec-{k} .jg")) if f"jrec-{k}" in jl
+        kk = k or "without"     # the line of a report that states none takes the "without" class
+        places["the docket line's mark"] = (tok(colour.get(f".jl .jrec-{kk} .jg")) if f"jrec-{kk}" in jl
                                             else "no jrec class")
         for where, saw in places.items():
             if saw != want[k]:
@@ -75222,7 +75227,7 @@ def _interim_report_one_colour(BP):
     # The docket line's three colours must come after the orange both kinds
     # of line already draw (.j-istudy, .j-ifuture), or that orange wins.
     first = order.get(".jl .j-istudy .jg", -1)
-    for k in words:
+    for k in ("rec", "not", "without"):
         if order.get(f".jl .jrec-{k} .jg", -1) <= first:
             bad.append(f".jl .jrec-{k} .jg is not after .jl .j-istudy .jg, so the orange wins")
     src = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")

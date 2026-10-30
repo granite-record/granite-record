@@ -65,6 +65,7 @@ the same way:
 | Recommends future legislation | green, `--st-law` |
 | Does not recommend it | red, `--st-done` |
 | Makes no recommendation | plain |
+| States none of the three ("Interim Study Report filed") | plain, as "without" (the manager, 30 October) |
 
 Where each place was before:
 

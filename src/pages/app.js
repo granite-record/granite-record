@@ -4125,9 +4125,13 @@ const AVK={VV:"Voice Vote",DV:"Division Vote",RC:"Roll Call"};
 // "RECOMMENDED", and before the motions below. As the clerks varied it too
 // (src/parse/interim_statements.py): "Recommended for Further Legislation"
 // (SB 366 of 2010), "Not Recommended for Legislation" (HB 1415 of 2006).
+// A report that states none of the three ("Interim Study Report filed") is
+// plain, as one without a recommendation is, and not the orange of the
+// motion to study below.
 const RECCOLOUR=[[/\b(?:WITHOUT|NO)\s+RECOMM?ENDATION\b/i,""],
                  [/\bNOT\s+RECOMMENDED\b/i,"s-done"],
                  [/\bRECOMMENDED\s+FOR\b/i,"s-law"],
+                 [/\bINTERIM\s+STUDY\s+REPORT\b/i,""],
                  [/INEXPEDIENT/i,"s-done"],
                  [/INTERIM\s+STUDY|RE-?REFER/i,"s-study"],
                  [/OUGHT\s+TO\s+PASS/i,"s-law"]];
@@ -4468,7 +4472,7 @@ function journeyList(b,d){
   const k=dkey(b.id);
   const cut=st.length>JOURNEY_SHOWN&&!jOpen.has(k);
   const hide=i=>cut&&i>=2&&i<st.length-(JOURNEY_SHOWN-2);
-  const line=(s,i)=>`<li class="j-${esc(JCLASS[s.mark]||s.mark)}${s.rec?` jrec-${esc(s.rec)}`:""}"${hide(i)?" hidden":""}><span class="jg"
+  const line=(s,i)=>`<li class="j-${esc(JCLASS[s.mark]||s.mark)}${s.rec!==undefined?` jrec-${esc(s.rec||"without")}`:""}"${hide(i)?" hidden":""}><span class="jg"
     aria-hidden="true">${JMARK[s.mark]||""}</span><span class="jb">${
     esc(JBODY[s.body]||s.body)}</span><span class="jt">${tallyWhole(jText(s))}</span><span
     class="jd">${s.date?esc(dateWords(s.date)):""}</span></li>`;
@@ -8825,9 +8829,10 @@ function actSaid(a,who,tail){
       :"reported on its study";
     // "Died", the word the Bills chip and the bill's own page give a bill
     // that ended so, where this said "Killed" (the cohesion audit of 30
-    // October 2026, I-11). Without a recommendation, its mark is plain (the
-    // person, 30 October 2026: one colour rule, as RECCOLOUR's).
-    return `<p class="mact mkill${a.said==="without"?" mwithout":""}"><span class="mmark" aria-hidden="true">${ACTMARK.kill}</span><b>Died:</b> ${
+    // October 2026, I-11). Without a recommendation, or a report whose row
+    // states none, its mark is plain (the person, 30 October 2026: one
+    // colour rule, as RECCOLOUR's).
+    return `<p class="mact mkill${a.said==="without"||!a.said?" mwithout":""}"><span class="mmark" aria-hidden="true">${ACTMARK.kill}</span><b>Died:</b> ${
       who==="The committee"?"the committee's":esc(who)+"'s"} interim study report ${said}${
       t?`, ${t}`:""}${end}</p>`;
   }

@@ -3122,7 +3122,8 @@ REC_KIND = {"OTP": "law", "OTPA": "law", "ITL": "done", "IS": "study", "RR": "st
 # no recommendation in none -- as the Reports tab's chip (app.js RECCOLOUR),
 # the docket line's mark (app.css .jrec-*) and a committee's meeting card
 # (.mrec, .mkill, .mwithout) colour it.
-STUDY_KIND = {"rec": "law", "not": "done", "without": ""}
+# A report whose row states none of the three ("") is plain, as "without" is.
+STUDY_KIND = {"rec": "law", "not": "done", "without": "", "": ""}
 
 
 def _vote_chip_said(key, passed, bill, fill, lang="en"):
