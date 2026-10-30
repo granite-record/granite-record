@@ -27687,6 +27687,67 @@ CHIP_NOWRAP_OK = {
 }
 
 
+@check("frontend", "every tab strip that scrolls says so with the one deep edge: 40px covers of its "
+       "own ground over 32px of --scrolledge, a token deeper in dark than the faint --shadow was")
+def _scroll_edges():
+    """The R2 polish batch, 30 October 2026. A tab strip that scrolls on a
+    phone shows more is there only by its edge, and on three strips the edge
+    was 16px of --shadow: at 390px the Officials strip hid three of its six
+    tabs and an opened bill card hid Reports, Sponsors and Documents, with
+    5 grey levels between the edge and the ground (measured on the preview).
+    The record strip had already been given a deeper one ("nobody saw it",
+    14 October), but in --lift, which all but vanishes in dark mode.
+
+    So one token, --scrolledge: --lift's .22 in light and on paper, and in
+    dark at least the .5 --shadow was. Every scrolling strip -- the Officials
+    and town strip below 1024px, a list card's on a tablet and a phone, and
+    the record strip -- has two covers of its own ground that travel with
+    its tabs (local), at least as wide as the two shadows of --scrolledge
+    fixed under them, and no --shadow."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    rules = _css_rules(css)
+    bad = []
+    tok = {}
+    head = css[:css.index("/* PALETTE END")]
+    for name, at in (("light", ":root{"), ("dark", "/* DARK:OS"), ("chosen", "/* DARK:CHOSEN")):
+        m = re.search(r"--scrolledge:rgba\(0,0,0,([\d.]+)\)", head[head.index(at):])
+        tok[name] = float(m.group(1)) if m else None
+    m = re.search(r"@media print\{\s*:root\[data-theme=\"dark\"\],:root:not\(\[data-theme=\"light\"\]\)\{([^}]*)\}", css)
+    p = re.search(r"--scrolledge:rgba\(0,0,0,([\d.]+)\)", m.group(1)) if m else None
+    tok["print"] = float(p.group(1)) if p else None
+    if tok["light"] != .22 or tok["print"] != .22:
+        bad.append(f"--scrolledge is {tok['light']} in light and {tok['print']} on paper, where --lift's .22 was chosen")
+    if not (tok["dark"] and tok["dark"] >= .5 and tok["dark"] == tok["chosen"]):
+        bad.append(f"--scrolledge in dark is {tok['dark']} (system) and {tok['chosen']} (chosen): "
+                   "at least the .5 the faint --shadow was, and the same in both")
+    strips = ((".twntabs", "max-width:63.9375em", "--paper"),
+              (".tabs", "max-width:45em", "--surface"),
+              (".card .tabs", "min-width:45.0625em) and (max-width:68.75em", "--surface"),
+              (".card.focus.rec > .cbody > .tabs", "max-width:68.75em", "--paper"))
+    for sel, media, ground in strips:
+        got = [b for at, sl, b, _l in rules
+               if any(media in a.replace(": ", ":") for a in at) and sel in [x.strip() for x in sl.split(",")]
+               and "background" in dict(_css_decls(b))]
+        if not got:
+            bad.append(f"{sel} at ({media}) has no scroll edge")
+            continue
+        bg = dict(_css_decls(got[-1]))["background"]
+        layers = re.split(r",\s*(?=linear-gradient)", bg)
+        covers = [x for x in layers if re.search(r"\blocal\b", x)]
+        edges = [x for x in layers if "var(--scrolledge)" in x]
+        cw = [int(n) for x in covers for n in re.findall(r"/(\d+)px 100%", x)]
+        ew = [int(n) for x in edges for n in re.findall(r"/(\d+)px 100%", x)]
+        if "var(--shadow)" in bg or len(covers) != 2 or len(edges) != 2 or not all(f"var({ground})" in x for x in covers):
+            bad.append(f"{sel} at ({media}): {len(covers)} covers of {ground} and {len(edges)} edges of "
+                       "--scrolledge, where it wants two of each and no --shadow")
+        elif len(cw) != 2 or len(ew) != 2 or min(cw) < max(ew) or min(ew) < 32:
+            bad.append(f"{sel} at ({media}): covers {cw}px over edges {ew}px; the covers must be at least "
+                       "as wide as the edges, and the edges 32px")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"--scrolledge .22 in light and on paper, {tok['dark']:g} in dark; {len(strips)} strips "
+                  "with 40px covers over 32px edges of it")
+
+
 @check("frontend", "every opener's mark points right while shut and down while open, the journal's "
        "debate among them, and the debate's opening sentences stand while it is shut")
 def _openers_turn_right_to_down():
@@ -108026,7 +108087,7 @@ def _town_tabs(B, BP):
     if re.search(r"\.twntabs \[role=tab\]\{flex:1", css):
         bad.append("a phone rule shares the strip's width out among the tabs, which wraps them")
     if not re.search(r"@media \(max-width:63\.9375em\)\{\s*\.twntabs \[role=tab\]\{flex:0 0 auto[^}]*\}"
-                     r"\s*\.twntabs\{background:[^}]*var\(--shadow\)", css):
+                     r"\s*\.twntabs\{background:[^}]*var\(--scrolledge\)", css):
         bad.append("below 1024px the strip's tabs are not kept whole with its edge's shadow")
     if re.search(r"\.oftabs(?: \[role=tab\])?\{(?:white-space|flex|background)", css):
         bad.append("the Officials page's strip has rules of its own again beside .twntabs's")
