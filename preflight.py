@@ -54722,19 +54722,19 @@ def _bill_status_note_counts_the_tab():
         return "skip", "app.js, dom_stub.js or node is not here"
     assert "threw" not in got, f"a bills tab threw {got['threw']}"
     want = {
-        "prime|": ("3 bills prime sponsored in 2025-2026.", 3),
-        "prime|Withdrawn": ("1 of 3 bills prime sponsored in 2025-2026.", 1),
-        "prime|Died": ("1 of 3 bills prime sponsored in 2025-2026.", 1),
-        "co|": ("2 bills co-sponsored in 2025-2026.", 2),
-        "co|Withdrawn": ("0 of 2 bills co-sponsored in 2025-2026.", 0),
-        "co|Died": ("0 of 2 bills co-sponsored in 2025-2026.", 0),
-        "five|": ("5 bills referred to this committee in 2025-2026.", 5),
-        "five|Withdrawn": ("0 of 5 bills referred to this committee in 2025-2026.", 0),
-        "five|Died": ("2 of 5 bills referred to this committee in 2025-2026.", 2),
-        "one|": ("1 bill referred to this committee in 2025-2026.", 1),
-        "one|Died": ("0 of 1 bill referred to this committee in 2025-2026.", 0),
-        "big|": ("1,001 bills referred to this committee in 2025-2026.", 1001),
-        "big|Died": ("1,000 of 1,001 bills referred to this committee in 2025-2026.", 1000),
+        "prime|": ("3 bills prime sponsored in 2025\u20132026.", 3),
+        "prime|Withdrawn": ("1 of 3 bills prime sponsored in 2025\u20132026.", 1),
+        "prime|Died": ("1 of 3 bills prime sponsored in 2025\u20132026.", 1),
+        "co|": ("2 bills co-sponsored in 2025\u20132026.", 2),
+        "co|Withdrawn": ("0 of 2 bills co-sponsored in 2025\u20132026.", 0),
+        "co|Died": ("0 of 2 bills co-sponsored in 2025\u20132026.", 0),
+        "five|": ("5 bills referred to this committee in 2025\u20132026.", 5),
+        "five|Withdrawn": ("0 of 5 bills referred to this committee in 2025\u20132026.", 0),
+        "five|Died": ("2 of 5 bills referred to this committee in 2025\u20132026.", 2),
+        "one|": ("1 bill referred to this committee in 2025\u20132026.", 1),
+        "one|Died": ("0 of 1 bill referred to this committee in 2025\u20132026.", 0),
+        "big|": ("1,001 bills referred to this committee in 2025\u20132026.", 1001),
+        "big|Died": ("1,000 of 1,001 bills referred to this committee in 2025\u20132026.", 1000),
     }
     bad = []
     for k, (words, n) in want.items():
