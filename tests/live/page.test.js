@@ -234,8 +234,70 @@ test("the votes file is asked every 30 seconds while a reader is at work, else e
   assert.equal(L.votesEvery({ next_read_by: "2027-01-07T15:51:00Z" }, now), 30000, "overdue by 9 minutes: still close");
   assert.equal(L.votesEvery({ next_read_by: "2027-01-07T16:15:00Z" }, now), 120000, "the quarter-hour heartbeat");
   assert.equal(L.votesEvery({ next_read_by: "2027-01-07T13:00:00Z" }, now), 120000, "a reader stopped hours ago");
-  assert.equal(L.votesEvery({ next_read_by: null }, now), 120000);
+  assert.equal(L.votesEvery({ next_read_by: null }, now), 0, "no next read: the day is finished");
   assert.equal(L.votesEvery(null, now), 120000);
+});
+
+test("a finished day is asked no more: day_over, off, or no next read", () => {
+  const now = T("2027-01-07T22:00:00Z");
+  const done = [{ status: { state: "day_over" }, next_read_by: "2027-01-07T22:02:00Z" },
+                { status: { state: "off" }, next_read_by: "2027-01-07T22:02:00Z" },
+                { status: { state: "reading" }, next_read_by: null }];
+  for (const f of done) {
+    assert.equal(L.votesDone(f), true, JSON.stringify(f));
+    assert.equal(L.votesEvery(f, now), 0);
+  }
+  assert.equal(L.votesDone(null), false, "no file yet: the sitting may not have started");
+  assert.equal(L.votesEvery(null, now), 120000);
+  assert.equal(L.votesEvery({ status: { state: "reading" }, next_read_by: "2027-01-07T22:02:00Z" }, now), 30000);
+});
+
+test("the poller: a finished file is not asked again on returning to the tab; resume() asks again", async () => {
+  const asked = [];
+  const doc = { hidden: false, _on: {}, addEventListener(t, f) { (this._on[t] = this._on[t] || []).push(f); } };
+  let body = { n: 1, done: true };
+  const p = L.poller({ doc, url: () => "/x", every: f => (f && f.done ? 0 : 60000),
+    fetch: async u => { asked.push(u); return { status: 200, ok: true, headers: { get: () => '"e"' }, json: async () => body }; },
+    onFile: () => {} });
+  try {
+    await p.first;
+    assert.equal(asked.length, 1);
+    doc.hidden = true; doc._on.visibilitychange.forEach(f => f());
+    doc.hidden = false; doc._on.visibilitychange.forEach(f => f());
+    await new Promise(r => setImmediate(r));
+    assert.equal(asked.length, 1, "done: back to the tab asks nothing");
+    body = { n: 2, done: true };
+    await p.resume();
+    assert.equal(asked.length, 2, "resume() asks");
+  } finally { p.stop(); }
+});
+
+test("/live's card: a finished day stops asking; the next reader's day starts a fresh poller", async () => {
+  const sched = { days: { "2027-01-07": [{ id: "f", chamber: "H", kind: "floor", name: "House Session", match: [] }],
+                          "2027-01-08": [{ id: "g", chamber: "H", kind: "floor", name: "House Session", match: [] }] } };
+  let at = T("2027-01-07T23:00:00Z");
+  const { doc, els } = page();
+  els["live-schedule"] = { textContent: JSON.stringify(sched) };
+  els["live-now-votes"] = { hidden: true, innerHTML: "" };
+  const asked = [];
+  const fetch = async url => {
+    asked.push(url);
+    if (url === "/api/live/streams") return { status: 200, ok: true, headers: { get: () => '"s"' }, json: async () => file() };
+    return { status: 200, ok: true, headers: { get: () => '"v"' },
+             json: async () => ({ status: { state: "day_over", problem: "day_over", since: "2027-01-07T22:30:00Z" }, next_read_by: null, rollcalls: [] }) };
+  };
+  const p = L.start(doc, { fetch, now: () => at });
+  try {
+    await p.first;
+    await p.votes.first;
+    const first = p.votes;
+    assert.deepEqual(asked.filter(u => u.startsWith("/api/live/votes/")), ["/api/live/votes/2027-01-07"]);
+    at = T("2027-01-08T12:00:00Z");                                // 07:00 on the 8th
+    await p.poll();
+    assert.notEqual(p.votes, first, "a fresh poller for the new day");
+    await p.votes.first;
+    assert.equal(asked.at(-1), "/api/live/votes/2027-01-08");
+  } finally { p.stop(); }
 });
 
 test("the poller: If-None-Match, a 304 keeps the file, a 404 forgets it, a new address starts afresh", async () => {

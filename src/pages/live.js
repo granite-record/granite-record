@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.9
+// GRANITE_VERSION: 2026-10-30.10
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -326,7 +326,16 @@ L.votesItems = function (file, body, bills, opts) {
 // (a reader is at work), otherwise every 2 minutes; never while hidden.
 L.VOTES_FAST_MS = 30000;
 L.VOTES_SLOW_MS = 120000;
+// Whether the reader has finished with the day: the file says so (day_over),
+// reading is switched off, or it names no next read. Then nothing more is
+// asked of that day's file.
+L.votesDone = function (file) {
+  if (!file) return false;
+  var st = (file.status && file.status.state) || "";
+  return st === "day_over" || st === "off" || !file.next_read_by;
+};
 L.votesEvery = function (file, now) {
+  if (L.votesDone(file)) return 0;
   var by = Date.parse((file && file.next_read_by) || "");
   return isFinite(by) && Math.abs(by - now) <= 10 * MINUTE ? L.VOTES_FAST_MS : L.VOTES_SLOW_MS;
 };
@@ -360,12 +369,17 @@ L.poller = function (o) {
     var ms = stopped || o.doc.hidden ? 0 : o.every(file);
     if (ms) timer = setTimeout(function () { poll().then(next); }, ms);
   }
+  // Back to a visible tab: asked at once, unless every() has said it is done
+  // (0) with the file in hand -- a finished day is not asked again.
   o.doc.addEventListener("visibilitychange", function () {
     if (o.doc.hidden) clearTimeout(timer);
-    else if (!stopped) poll().then(next);
+    else if (!stopped && (!file || o.every(file))) poll().then(next);
   });
   var first = poll().then(next);
-  return { poll: poll, first: first, stop: function () { stopped = true; clearTimeout(timer); } };
+  // resume(): ask again now and carry on, for a page that has turned to a new
+  // day since every() said it was done.
+  return { poll: poll, first: first, resume: function () { return stopped ? Promise.resolve() : poll().then(next); },
+           stop: function () { stopped = true; clearTimeout(timer); } };
 };
 
 var CHAMBER = { H: "House", S: "Senate" };
@@ -506,7 +520,11 @@ L.start = function (doc, opts) {
       if (votesBox && !stopped) { votesBox.innerHTML = ""; votesBox.hidden = true; }
       return;
     }
+    // A new reader's day (06:00): the last day's poller, finished or not, goes,
+    // and a fresh one asks for the new day.
+    if (out.votes && out.votesDay !== L.readerDay(now())) { out.votes.stop(); out.votes = null; }
     if (out.votes) return;
+    out.votesDay = L.readerDay(now());
     out.votes = L.poller({ fetch: fetchImpl, doc: doc,
       url: function () { return "/api/live/votes/" + L.readerDay(now()); },
       every: function (f) { return L.votesEvery(f, now()); },
