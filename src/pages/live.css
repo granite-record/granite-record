@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-10-30.4 */
+/* GRANITE_VERSION: 2026-10-30.5 */
 /* LIVE NOW'S OWN RULES (/live, src/pages/live.js). Only .lv* classes, drawn in
    the site's tokens (app.css), so both themes work and nothing here reaches
    another page. The player and its stub are the site's own (.player, .pstub);
@@ -12,7 +12,7 @@
 border-radius:var(--r-out);padding:var(--sp-5) var(--sp-6);box-shadow:0 3px 10px var(--shadow)}
 /* A card's name is an h2 (no skipped level under the h1), drawn as a card's
    name rather than as .clist's section heading. */
-.lv-card h2,.lv-session h2{font-size:var(--t-card);font-weight:600;letter-spacing:normal;text-transform:none;
+.lv-card h2,.lv-card p.lv-name,.lv-session h2{font-size:var(--t-card);font-weight:600;letter-spacing:normal;text-transform:none;
 color:var(--ink);margin:0;padding:0;border:0}
 .lv-card .lv-since{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-1) 0 0}
 .lv-card .lv-since::before{content:"";display:inline-block;width:.6em;height:.6em;border-radius:50%;
@@ -34,4 +34,10 @@ background:var(--brick);margin-right:.45em;vertical-align:.05em}
 .lv-prov,.lv-note{display:block;font-size:var(--t-sm)}
 .lv-rc .votewrap{margin-top:var(--sp-3,8px)}
 .lv-provisional,.lv-more{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-3,8px) 0 0}
+/* A committee page's live stream, above the page app.js draws (section 1.6).
+   Never sticky: it scrolls away as the page's head does. */
+/* In #results's own column (the hook is its sibling), left-aligned with the
+   page's head; the card no wider than a player wants. */
+.lv-committee{margin:var(--sp-5) 0;display:grid;gap:var(--sp-4)}
+.lv-committee .lv-card{margin:0;max-width:46rem}
 @media (max-width:600px){.lvpage{padding:var(--sp-5) var(--sp-4)}.lv-card,.lv-session{padding:var(--sp-4) var(--sp-5)}}

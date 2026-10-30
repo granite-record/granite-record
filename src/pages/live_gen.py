@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-26.4
+# GRANITE_VERSION: 2026-10-26.5
 """
 What the live Worker (workers/live/) shares with the rest of this repository,
 written into workers/live/live.gen.js from where each value is kept.
@@ -38,6 +38,8 @@ written into workers/live/live.gen.js from where each value is kept.
                    upper case, the -FN/-L/-A/-LOCAL flags off, HCACR read as
                    CACR. "SUSPRULE", "RULE 1-2" and "HRULE64" name no bill,
                    and the live file's `bill` is then null, as the record's is.
+    WINDOW         here: the Worker's day window (weekdays, New Hampshire
+                   hours), which clock.js and a committee page's hook share.
 
 THE PATTERN WRITTEN WITH ITS STEM. A title's stem is the title without its
 date, in lower case, with "&" said as "and" and every run of other
@@ -100,6 +102,13 @@ CHAMBER = {"house": "H", "senate": "S"}
 # ("House Session (12/04/2024)", "Senate Session (12/04/24)"), and no other
 # title begins this way.
 SESSION_TITLE = {"H": r"^house session\b", "S": r"^senate session\b"}
+
+# The Worker's day window: weekdays, New Hampshire hours [from, to). Its one
+# source: the Worker's clock.js imports it through live.gen.js, and a
+# committee page's hook carries it (live_hook.py), so the page asks only
+# while the Worker looks often (design section 1.6). Every stream start on
+# record, 2020 to 2026, fell inside it.
+WINDOW = {"from": 7, "to": 20}
 
 # A title's date and everything after it: "(01/07/2027)", "(1/7/27",
 # "(5/27/20 - morning session)", "(01/12/2026) (Full Stream)".
@@ -272,6 +281,8 @@ def values(root=None):
                            "an outcome, as the General Court's key writes them", docket_outcomes(root)),
         "BILL_NUMBER": ("src/parse/rollcall_parser.py BILL_NO (case-blind) and FLAGS: a roll call's bill "
                         "field read as a bill, as bill_number reads it", bill_number_rule()),
+        "WINDOW": ("src/pages/live_gen.py WINDOW: the Worker's day window, weekdays, New Hampshire "
+                   "hours [from, to); a committee page asks for streams only inside it", WINDOW),
     }
 
 

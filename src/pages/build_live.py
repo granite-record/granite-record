@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.4
+# GRANITE_VERSION: 2026-10-30.5
 """
 Live Now's page and its schedule (the live layer's design, sections 1.2 and
 1.4), written by the night beside the Calendar and from the Calendar's own
@@ -90,15 +90,15 @@ def kind_of(key, rows):
 
 
 def match_of(key, rows, kind, history):
-    import build_manifest as BM
     chamber = "".join(BP.card_bodies(key, rows))
     if kind == "floor":
         return [{"H": "house session", "S": "senate session"}[c] for c in chamber if c in "HS"]
     if kind == "conference":
         return [LG.stem(f"committee of conference on {key.bill}")] if key.bill else []
-    out = [LG.stem(BP.card_name(key)), LG.stem(key.name)]
-    out += sorted(history.get(BM.canon(key.name), ()))
-    return [m for i, m in enumerate(out) if m and m not in out[:i]]
+    # The committee page's hook takes its stems from the same function
+    # (live_hook.stems, design section 1.6), so /live and the page agree.
+    import live_hook
+    return live_hook.stems(key.chamber, key.name, history)
 
 
 def schedule(site, today, weeks=None, history=None):

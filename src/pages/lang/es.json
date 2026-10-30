@@ -342,6 +342,46 @@
    "es": "Guías prácticas, cómo funciona la Legislatura y fuentes oficiales",
    "state": "draft"
   },
+  "committee.ended": {
+   "en": "Ended at {time}",
+   "es": "Terminó a las {time}",
+   "state": "draft"
+  },
+  "committee.ended_note": {
+   "en": "The recording reaches this page's Videos tab after the next nightly update.",
+   "es": "La grabación llega a la pestaña de videos de esta página después de la próxima actualización nocturna.",
+   "state": "draft"
+  },
+  "committee.is_live": {
+   "en": "{name} is live now",
+   "es": "{name} está en vivo ahora",
+   "state": "draft"
+  },
+  "committee.live_now": {
+   "en": "Live now",
+   "es": "En vivo ahora",
+   "state": "draft"
+  },
+  "committee.live_title": {
+   "en": "Live stream of {name}",
+   "es": "Transmisión en vivo de {name}",
+   "state": "draft"
+  },
+  "committee.playing": {
+   "en": "Playing live",
+   "es": "Reproduciendo en vivo",
+   "state": "draft"
+  },
+  "committee.scheduled": {
+   "en": "Scheduled to stream at {time}",
+   "es": "Transmisión programada a las {time}",
+   "state": "draft"
+  },
+  "committee.watch": {
+   "en": "Watch",
+   "es": "Ver",
+   "state": "draft"
+  },
   "comp.county_district": {
    "en": "{county} District {district}",
    "es": "{county}, distrito {district}",

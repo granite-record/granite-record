@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.743
+# GRANITE_VERSION: 2026-09-04.744
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -84765,7 +84765,7 @@ def _live_sql(live_gen, dayfiles_from_db, fetch_past_db, refusal):
 # The live Worker's suite, and how many tests it had when this was written: a
 # count that falls means a file stopped loading or a test was lost.
 LIVE_TESTS = "tests/live/index.js"
-LIVE_TESTS_AT_LEAST = 169
+LIVE_TESTS_AT_LEAST = 195
 # The person's ready-made switches (workers/live/control/), each as the Worker
 # must read it; and the values control.json may hold (store.js CONTROL_VALUES).
 LIVE_CONTROL = {"all-off.json": {"youtube": "off", "sql": "off"},
@@ -84778,6 +84778,61 @@ LIVE_CONTROL_VALUES = {"youtube": ("on", "off"), "sql": ("off", "test", "on")}
 # follower's database, which is another Worker's.
 LIVE_NEVER = re.compile(r"gc\.nh\.gov|gencourt|graniterecord-follow|FOLLOW_DB", re.I)
 LOOPBACK = ("127.0.0.1", "::1", "localhost")
+
+
+@check("build", "a committee page's live hook: outside app.js's root, carrying the Worker's own window "
+       "and the very stems /live's schedule gives the committee, on every committee page once placed",
+       needs=("live_hook", "build_live"))
+def _live_committee(LH, BL):
+    """Design section 1.6. live_hook.place() puts the hook directly before
+    <div id="results">, which app.js draws into, so no re-render reaches a
+    playing stream; its data-window is live_gen.WINDOW, which the Worker's
+    clock.js imports through live.gen.js; and its data-match is
+    live_hook.stems, the function build_live.match_of calls for a committee,
+    so /live and the committee page cannot disagree about whose a stream is.
+    build_committees.py and build_study_committees.py place it once
+    workers/live/PATCHES.md 11 is applied; until then the patch says how."""
+    import html as H
+    from collections import namedtuple
+    root = Path(".")
+    page = ('<html><head></head><body><nav></nav><div id="results"></div>'
+            '<script src="app.js"></script></body></html>')
+    hist = {"finance": {"house finance division i"}}
+    out = LH.place(page, code="H09", chamber="H", name="Finance", history=hist)
+    i, j = out.index('id="live-now"'), out.index('<div id="results">')
+    assert i < j and out.index("</section>", i) < j, "the hook is not before app.js's root, and outside it"
+    assert (out.count('id="live-now"') == 1 and '<script src="/live.js" defer></script>' in out
+            and 'href="/live.css"' in out), "the page lacks the hook, live.js or live.css"
+    try:
+        LH.place(out, code="H09", chamber="H", name="Finance", history=hist)
+        raise AssertionError("a page was given a second hook")
+    except ValueError:
+        pass
+    attr = lambda k: H.unescape(re.search(k + r'="([^"]*)"', out).group(1))
+    gen = (root / "workers/live/live.gen.js").read_text(encoding="utf-8")
+    w = re.search(r"^export const WINDOW = (\{.*\});$", gen, re.M)
+    assert w and json.loads(attr("data-window")) == json.loads(w.group(1)), (
+        f"the hook's window {attr('data-window')} is not live.gen.js's {w and w.group(1)}")
+    clock = (root / "workers/live/clock.js").read_text(encoding="utf-8")
+    assert "WINDOW as GEN_WINDOW" in clock and "export const WINDOW = { from:" not in clock, (
+        "clock.js keeps a window of its own rather than live.gen.js's")
+    Key = namedtuple("Key", "chamber name bill")
+    for chamber, name in (("H", "Finance"), ("S", "Judiciary"), ("H", "House Ways and Means"), ("", "Commission on Aging")):
+        want = BL.match_of(Key(chamber, name, ""), [{"body": chamber}], "standing", hist)
+        got = json.loads(attr("data-match")) if (chamber, name) == ("H", "Finance") else LH.stems(chamber, name, hist)
+        assert got == want, f"{chamber} {name}: the hook's stems {got} are not /live's {want}"
+    assert json.loads(attr("data-match")) == ["house finance", "finance", "house finance division i"], attr("data-match")
+    # Placed by the two builders once PATCHES.md 11 is applied: then on every
+    # committee page; until then the patch must still say how.
+    builders = [Path(_paths.locate(f)).read_text(encoding="utf-8")
+                for f in ("build_committees.py", "build_study_committees.py")]
+    placed = ["live_hook.place(" in b for b in builders]
+    if not all(placed):
+        patches = (root / "workers/live/PATCHES.md").read_text(encoding="utf-8")
+        assert "## 11." in patches and "live_hook.place(" in patches, (
+            "the committee builders do not place the live hook, and PATCHES.md 11 no longer says how")
+    return "ok", ("hook before app.js's root, window and stems held to live.gen.js and /live's; "
+                  + ("placed by both builders" if all(placed) else "awaiting PATCHES.md 11"))
 
 
 @check("build", "the live Worker reads a roll call's bill field as the record does: every field in "
@@ -84853,6 +84908,7 @@ def _live_tests():
             "tests/live/store.test.js", "tests/live/tds.test.js", "tests/live/youtube.test.js",
             "tests/live/fake_r2.js", "tests/live/fake_youtube.js", "tests/live/fake_tds.js",
             "tests/live/world.js", "tests/live/compare_test.mjs", "tests/live/wire.test.js",
+            "tests/live/committee.test.js",
             "tests/live/from_records.js", "workers/live/votes.js", "workers/live/merge.js",
             "tests/live/votes.test.js", "tests/live/replay.test.js", "tests/live/functions.test.js",
             "functions/api/live/_store.js", "functions/api/live/streams.js", "functions/api/live/votes/[day].js",
