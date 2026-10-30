@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.8
+# GRANITE_VERSION: 2026-09-18.9
 """
 Next session's bill requests, before any of them is a bill.
 
@@ -93,13 +93,24 @@ ROW = re.compile(
 LSR_NO = re.compile(r"^\s*(\d{4})-(\d{3,4})\s*$")
 
 
-def refused(why):
+def refused(why, kind=None):
     """Record a refusal and stop with status 2, as every fetcher of the
-    General Court does (refusal.note)."""
-    refusal.note("fetch_lsrs", why)
+    General Court does (refusal.note); `kind` where this can say what kind
+    it was -- "refused" for a redirect."""
+    refusal.note("fetch_lsrs", why, kind=kind)
     print(f"  REFUSED: {why}. refusal.py now holds the lane; netcheck.py says what "
           "kind of refusal it was.")
     sys.exit(2)
+
+
+# NO REDIRECT IS FOLLOWED (the reviewers of 30 October 2026), as in the
+# snapshot and the committee pages fetch: urlopen followed a 3xx to its
+# Location -- a second request, to a target nobody chose, on a night with
+# no refusal on file -- and read what came back as the page or the file.
+# The opener has no redirect handler (refusal.no_redirect_opener): a 3xx is
+# an HTTPError, read as a refusal of the kind "refused"
+# (refusal.redirected), and the run ends at it with a record, as at a 403.
+_OPENER = refusal.no_redirect_opener()
 
 
 def get(url, timeout=60):
@@ -112,9 +123,12 @@ def get(url, timeout=60):
     it ended with 1."""
     req = urllib.request.Request(url, headers=UA)
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        with _OPENER.open(req, timeout=timeout) as r:
             body, enc = r.read(), r.headers.get_content_charset() or "utf-8"
     except Exception as e:                              # noqa: BLE001
+        if refusal.redirected(e):
+            refused(f"{type(e).__name__}: {e} from {url}, a redirect, not followed",
+                    kind="refused")
         if refusal.classify(e) == "refused":
             refused(f"{type(e).__name__}: {e} from {url}")
         sys.exit(f"  {type(e).__name__}: {e} from {url}")
@@ -151,11 +165,14 @@ def post(url, fields, timeout=90):
         **UA, "Content-Type": "application/x-www-form-urlencoded",
         "Referer": url})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        with _OPENER.open(req, timeout=timeout) as r:
             got = (r.read(), r.headers.get_content_charset() or "utf-8",
                    r.headers.get("Content-Type", ""),
                    r.headers.get("Content-Disposition", ""))
     except Exception as e:                              # noqa: BLE001
+        if refusal.redirected(e):
+            refused(f"{type(e).__name__}: {e} posting to {url}, a redirect, not followed",
+                    kind="refused")
         if refusal.classify(e) == "refused":
             refused(f"{type(e).__name__}: {e} posting to {url}")
         sys.exit(f"  {type(e).__name__}: {e} posting to {url}")

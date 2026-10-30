@@ -59,7 +59,9 @@ Three things follow, and they are not negotiable:
    that is not the firewall's page) or `"refused"`, a redirect among them:
    they follow none (`refusal.no_redirect_opener()`) -- and for a week after a
    refusal is lifted by a knock (`archive/knocks.json`), one dropped
-   connection ends them (`refusal.drops_allowed()`). A record without a kind
+   connection ends them (`refusal.drops_allowed()`). The night's other two,
+   the bill requests and the calendar listing, follow no redirect either,
+   and record one as `"refused"`. A record without a kind
    is a person's to clear, as every record always was (`refusal.whose()`).
    `.github/workflows/knock.yml` is the knock's second caller, hourly, outside
    the night's hours; starting it by hand on `main` asks the General Court

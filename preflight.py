@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.741
+# GRANITE_VERSION: 2026-09-04.742
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -99838,10 +99838,10 @@ def _committees_fetch_stops(FC):
                   "record of its kind; nothing found is exit 1")
 
 
-@check("build", "the night's two fetchers follow no redirect: a 3xx from a server of the "
+@check("build", "the night's four fetchers follow no redirect: a 3xx from a server of the "
                 "check's own is one request, read as a refusal, and ends the run with a record",
-       needs=("snapshot_gencourt", "fetch_committees"))
-def _night_fetchers_no_redirect(SG, FC):
+       needs=("snapshot_gencourt", "fetch_committees", "fetch_lsrs", "fetch_calendar_archive"))
+def _night_fetchers_no_redirect(SG, FC, FL, CA):
     """The reviewers of 29 October 2026: on the night a redirect stopped
     nothing. urlopen followed a 302 on a data file to its Location -- two
     requests -- and read the answer as "not a data file", a failed file, so
@@ -99857,9 +99857,22 @@ def _night_fetchers_no_redirect(SG, FC):
     a refusal of the kind "refused" on file and nothing installed; the
     committee pages fetch ends at a redirected first page the same way. Each
     keeps its opener as _OPENER, and neither holds a redirect handler of any
-    kind (refusal.no_redirect_opener)."""
+    kind (refusal.no_redirect_opener).
+
+    AND THE NIGHT'S OTHER TWO (the reviewers of 30 October 2026; DEVIATIONS
+    25, closed): the bill requests and the calendar listing ask on every
+    night with no refusal on file, and followed a redirect too. Now each
+    keeps a no-redirect _OPENER as well. For each of the five codes the bill
+    requests' get() and post() make ONE request and end with status 2 and a
+    refusal of the kind "refused" on file, and the listing's _get() makes
+    one, a GET or a POST, and raises its HTTPError. The bill requests'
+    main() ends at a redirected search page after that one request, and at a
+    redirected postback after the page and the postback, with nothing
+    written but the page; the listing ends at a redirected index page after
+    one request, Stop(2), with a refusal of the kind "refused" on file."""
     import argparse
     import contextlib
+    import datetime
     import http.server
     import io
     import socket
@@ -99871,19 +99884,32 @@ def _night_fetchers_no_redirect(SG, FC):
     import refusal
     data = b"2026|0001|12/4/2024 10:44:26 AM|SR1|S|Introduced and Adopted, VV\n" * 3
     page = b"<html><body><h1>DYNAMIC DATA FILES</h1></body></html>"
+    # The LSR search page as fetch_lsrs reads it: its CSV link, a postback.
+    search = (b'<html><a href="javascript:__doPostBack(&#39;ctl00$pageBody$lnkCVS&#39;,'
+              b'&#39;&#39;)">Download CSV File</a></html>')
     hits = []
 
     class Here(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
-            hits.append(self.path)
+            self.answer(False)
+
+        def do_POST(self):
+            self.rfile.read(int(self.headers.get("Content-Length") or 0))
+            self.answer(True)
+
+        def answer(self, posted):
+            # /to/<code>/...: that redirect, to any request. /search/<code>:
+            # the search page to a GET, that redirect to its postback.
+            hits.append(("POST " if posted else "") + self.path)
             parts = self.path.split("/")
-            if parts[1] == "to":
+            if parts[1] == "to" or (parts[1] == "search" and posted):
                 self.send_response(int(parts[2]))
                 self.send_header("Location", "/elsewhere")
                 self.send_header("Content-Length", "0")
                 self.end_headers()
                 return
-            body = page if self.path in ("/page", "/committees") else data
+            body = search if parts[1] == "search" else \
+                page if self.path in ("/page", "/committees") else data
             self.send_response(200)
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
@@ -99904,6 +99930,8 @@ def _night_fetchers_no_redirect(SG, FC):
         return real_connect(sock, address, *a, **k)
     tmp = Path(tempfile.mkdtemp(prefix="gr-noredirect-"))
     saved = (SG.PAGE, SG.BASE, SG.EXTRA, SG.time, FC.PAGES, refusal.MARK, refusal.LOCK, sys.argv)
+    saved_fl = (FL.SEARCH, FL.RAW_PAGE, FL.RAW_CSV, FL.OUT, FL.time)
+    saved_ca = (CA.SOURCES, CA.time)
     env_keys = ("no_proxy", "NO_PROXY", "GITHUB_ACTIONS")
     saved_env = {k: os.environ.get(k) for k in env_keys}
     try:
@@ -99911,7 +99939,11 @@ def _night_fetchers_no_redirect(SG, FC):
         os.environ["no_proxy"] = os.environ["NO_PROXY"] = "127.0.0.1"
         os.environ["GITHUB_ACTIONS"] = "true"      # never stood down, whatever this folder holds
         SG.EXTRA, SG.time = [], types.SimpleNamespace(sleep=lambda s: None, time=time.time)
-        for M in (SG, FC):
+        FL.time = types.SimpleNamespace(sleep=lambda s: None, time=time.time)
+        CA.time = types.SimpleNamespace(sleep=lambda s: None, time=time.time,
+                                        strftime=time.strftime)
+        FL.RAW_PAGE, FL.RAW_CSV, FL.OUT = tmp / "lsr_search.html", tmp / "lsrs.csv", tmp / "lsrs.json"
+        for M in (SG, FC, FL, CA):
             held = [type(h).__name__ for h in M._OPENER.handlers
                     if isinstance(h, urllib.request.HTTPRedirectHandler)]
             assert not held, f"{M.__name__}'s opener follows redirects: {held}"
@@ -99975,18 +100007,95 @@ def _night_fetchers_no_redirect(SG, FC):
                 if refusal.MARK.exists() else None)
         assert (rc, hits, kind) == (2, ["/to/302/senate"], "refused"), \
             f"the committee pages fetch, a redirected page: exit {rc}, asked {hits}, {kind!r}"
+
+        # AND THE NIGHT'S OTHER TWO (the reviewers of 30 October 2026): the
+        # bill requests' get() and post(), and the listing's _get(), GET and
+        # POST -- one request each, and the bill requests' a record.
+        def noted():
+            d = (json.loads(refusal.MARK.read_text(encoding="utf-8"))
+                 if refusal.MARK.exists() else {})
+            refusal.MARK.unlink(missing_ok=True)
+            return d.get("kind")
+
+        def ends(fn, *args):
+            hits.clear()
+            refusal.MARK.unlink(missing_ok=True)
+            with contextlib.redirect_stdout(io.StringIO()), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                try:
+                    fn(*args)
+                    rc = None
+                except SystemExit as e:
+                    rc = e.code
+            return rc, list(hits), noted()
+        refusal.MARK = tmp / "one-refused.json"
+        for code in (301, 302, 303, 307, 308):
+            path = f"/to/{code}/lsr_search/"
+            for what, fn, args, asked in (
+                    ("the bill requests' get()", FL.get, (base + path,), [path]),
+                    ("the bill requests' post()", FL.post, (base + path, {"a": "b"}),
+                     ["POST " + path])):
+                got = ends(fn, *args)
+                if got != (2, asked, "refused"):
+                    wrong.append(f"{what}: a {code} gave exit {got[0]}, asked {got[1]}, a "
+                                 f"refusal of the kind {got[2]!r}")
+            for what, body, asked in (("GET", None, [path]), ("POST", b"a=b", ["POST " + path])):
+                hits.clear()
+                try:
+                    CA._get(base + path, body)
+                    wrong.append(f"the listing's _get(), a {what}: a {code} came back as a page")
+                except urllib.error.HTTPError as e:
+                    if e.code != code or not refusal.redirected(e):
+                        wrong.append(f"the listing's _get(), a {what}: a {code} raised {e.code}")
+                if hits != asked:
+                    wrong.append(f"the listing's _get(), a {what}: a {code} asked {hits}")
+        assert not wrong, "a redirect was followed, or not read as a refusal: " + "; ".join(wrong)
+        # The bill requests' main(): a redirected search page, and a
+        # redirected postback after the page.
+        refusal.MARK = tmp / "lsrs-refused.json"
+        sys.argv = ["fetch_lsrs.py"]
+        for what, url, want in (
+                ("a redirected search page", f"{base}/to/302/lsr_search/", ["/to/302/lsr_search/"]),
+                ("a redirected postback", f"{base}/search/302",
+                 ["/search/302", "POST /search/302"])):
+            FL.SEARCH = url
+            got = ends(FL.main) + (FL.RAW_CSV.exists() or FL.OUT.exists(),)
+            assert got == (2, want, "refused", False), \
+                (f"the bill requests, {what}: exit {got[0]}, asked {got[1]}, a refusal of the kind "
+                 f"{got[2]!r}, a file written {got[3]}")
+        # The listing: a redirected index page, its first request.
+
+        class Held:
+            def still(self):
+                return True
+        refusal.MARK = tmp / "listing-refused.json"
+        CA.SOURCES = {k: (f"{base}/to/302/{'house' if k[0] == 'H' else 'senate'}/",) + v[1:]
+                      for k, v in saved_ca[0].items()}
+        hits.clear()
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                CA.listing(Held(), day=datetime.date(2026, 10, 2))
+            stop = "it read every list"
+        except CA.Stop as e:
+            stop = (e.code, e.requests)
+        kind = noted()
+        assert (stop, hits, kind) == ((2, 1), ["/to/302/house/"], "refused"), \
+            (f"the calendar listing, a redirected index page: {stop}, asked {hits}, a refusal of "
+             f"the kind {kind!r}")
     finally:
         socket.socket.connect = real_connect
         (SG.PAGE, SG.BASE, SG.EXTRA, SG.time, FC.PAGES, refusal.MARK, refusal.LOCK,
          sys.argv) = saved
+        FL.SEARCH, FL.RAW_PAGE, FL.RAW_CSV, FL.OUT, FL.time = saved_fl
+        CA.SOURCES, CA.time = saved_ca
         for k, v in saved_env.items():
             os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
         srv.shutdown()
         srv.server_close()
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", ("five redirect codes are one request each and a refusal, in both fetchers; the "
-                  "snapshot and the committee pages fetch end at one with a record, and their "
-                  "openers hold no redirect handler")
+    return "ok", ("five redirect codes are one request each and a refusal, in all four fetchers; "
+                  "the snapshot, the committee pages, the bill requests and the calendar listing "
+                  "end at one with a record, and their openers hold no redirect handler")
 
 
 # ---- the workflows ----------------------------------------------------------------

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.14
+# GRANITE_VERSION: 2026-09-08.15
 """
 Thirty years of calendars and journals, a night at a time.
 
@@ -215,12 +215,23 @@ SAID = {("H", "calendar"): "House Calendar", ("H", "journal"): "House Journal",
 LINK_RE = re.compile(r'href\s*=\s*"[^"]*?viewer\.aspx\?fileName=([^"]*)"', re.I)
 
 
+# NO REDIRECT IS FOLLOWED (the reviewers of 30 October 2026), as in the
+# snapshot and the committee pages fetch: urlopen followed a 3xx to its
+# Location -- a second request, to a target nobody chose, on the night's
+# listing with no refusal on file. The opener has no redirect handler
+# (refusal.no_redirect_opener), so a 3xx is an HTTPError: the night's
+# listing reads it as a refusal of the kind "refused" (refusal.redirected,
+# in listing()'s ask), and the laptop's drain and --discover as the failed
+# request classify() makes of it -- never followed, by any of them.
+_OPENER = refusal.no_redirect_opener()
+
+
 def _get(url, data=None, timeout=60):
     req = urllib.request.Request(
         url, data=data,
         headers=dict(UA, **({"Content-Type":
                              "application/x-www-form-urlencoded"} if data else {})))
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with _OPENER.open(req, timeout=timeout) as r:
         return r.read()
 
 
@@ -604,10 +615,13 @@ def listing(held, day=None, on_file=None):
         try:
             body = _get(url, data).decode("utf-8", errors="replace")
         except Exception as e:                              # noqa: BLE001
-            kind = refusal.classify(e) or "failed"
+            # A redirect is the address saying no (_OPENER): "refused".
+            redirect = refusal.redirected(e)
+            kind = "refused" if redirect else (refusal.classify(e) or "failed")
             print(f"    {kind}: {type(e).__name__}: {e}", flush=True)
             if kind == "refused":
-                refusal.note("fetch_calendar_archive", f"{type(e).__name__}: {e}"[:180])
+                refusal.note("fetch_calendar_archive", f"{type(e).__name__}: {e}"[:180],
+                             kind="refused" if redirect else None)
                 raise Stop(2, "the General Court refused a request")
             # One dropped connection is not pushed through, and not asked
             # again tonight: the list waits for tomorrow.

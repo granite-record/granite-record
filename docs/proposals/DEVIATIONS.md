@@ -197,8 +197,8 @@ that made it.
     check pins (its 3xx is an ordinary failure, through an opener of its
     own); the two night fetchers ask `redirected()` first. The opener holds
     no `HTTPRedirectHandler` of any kind, so the knock (build plan commit 4)
-    can take the same one and meet H6 as written. **Not changed here:** the
-    night's other two General Court fetches,
+    can take the same one and meet H6 as written. **Not changed here**
+    (closed since, by 115 below): the night's other two General Court fetches,
     `src/fetch/gc_web/fetch_lsrs.py` (`get()`, its two `urlopen` calls) and
     `src/fetch/gc_web/fetch_calendar_archive.py --listing` (`_get()`), still
     follow a redirect. They ask only on a night with no
@@ -752,3 +752,20 @@ that made it.
      example the record rewritten as "refused"), is not built: it would
      write beside the file that has just failed to take a write, and the
      "no answer" rule above needs no second file.
+115. **DEVIATIONS 25 is closed: the night's other two fetches follow no
+     redirect either.** `src/fetch/gc_web/fetch_lsrs.py` (`get()` and
+     `post()`, the search page and its postback) and
+     `src/fetch/gc_web/fetch_calendar_archive.py` (`_get()`) keep a
+     `refusal.no_redirect_opener()` as `_OPENER`, as the snapshot and the
+     committee pages fetch do. A 3xx to the bill requests ends the run with
+     status 2 and a refusal of the kind "refused" on file; a 3xx to the
+     night's listing (`--listing`, `listing()`'s `ask`) is `Stop(2)` with the
+     same record. The laptop's drain and `--discover` share `_get()`, so
+     they follow no redirect either; they read a 3xx as `classify()` reads
+     it, a failed request (two in a row stop the drain), and not as a
+     refusal: they are not the night's, and nothing about them was found.
+     `_night_fetchers_no_redirect` drives all four fetchers against a server
+     of its own on 127.0.0.1. Nobody has seen either page answer with a
+     redirect: if the postback or an index page did so in the ordinary way,
+     the first night after this lands would record a refusal the night
+     cannot test (kind "refused" is a person's), and the email says so.
