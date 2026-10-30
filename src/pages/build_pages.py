@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.250
+# GRANITE_VERSION: 2026-09-04.251
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2940,6 +2940,13 @@ Promise.all([fetch(DATA("districts.json")).then(r=>r.json()).catch(()=>({})),
       2026), and the reader came for a ward. */
    const city=TOWNS.find(t=>t.wards.length>1&&t.town.toLowerCase()===pre.toLowerCase());
    if(city)picked=city.town;
+   /* AND THE TAB NAMES THE TOWN (the cohesion audit of 30 October 2026,
+      B-4): /town/concord comes here for its wards (MOVED), and the tab and
+      a bookmark said only "Officials". The page's own title, with the town
+      ?town= names before it -- only a town of the list, never a search's
+      words. The canonical stays this page's: the address is this page. */
+   const named=TOWNS.find(t=>t.town.toLowerCase()===(pr.get("town")||"").trim().toLowerCase());
+   if(named)document.title=named.town+" \u2014 "+document.title;
    render();
    box.focus();
    box.addEventListener("input",()=>{picked=null;render();});
