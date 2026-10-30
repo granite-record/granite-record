@@ -69701,6 +69701,42 @@ def _guide_parts(BC, G):
     return "ok", f"{parted} of {len(G.GUIDES)} guides in parts, each numbered from 1"
 
 
+@check("code", "a guide and the home page write a time as clock() does, \"8:30 AM\", and \"8:30 a. m.\" in "
+               "Spanish; a claim's words and a quoted calendar line keep their source's", needs=("guides",))
+def _times_as_clock(G):
+    """The cohesion audit of 30 October 2026 (I-3): the bills, committees,
+    Calendar and session days say "10:00 AM" (components.clock), while the
+    guides said "8:30 a.m." and "5 p.m." and the home page's webinar "6:30
+    p.m.". A guide's own words, its Spanish and the webinar line now write
+    clock()'s forms, a whole hour with its ":00"; what a claim records its
+    source as saying, and the House calendar lines a guide quotes, are the
+    source's own and keep its "a.m.". And the hours a guide prints stay held
+    to its claims: guides.CLOCK reads "8:00 AM" as it read "8 a.m."."""
+    import json as _json
+    import build_pages as BP
+    old = re.compile(r"\d(?:\s|&nbsp;| )?[ap]\.m\.|\d(?:\s|&nbsp;| )?[AP]M\b(?!\.?\s*\w)")
+    bad = []
+    for g in G.GUIDES:
+        for m in re.finditer(r"\d(?:\s| )?[ap]\.m\.", G._plain(G.text(g))):
+            bad.append(f"{g['slug']} says {G._plain(G.text(g))[max(0, m.start() - 30):m.end()]!r}")
+    if not any(G.CLOCK.search(G._plain(G.text(g))) for g in G.GUIDES):
+        bad.append("guides.CLOCK reads no hour in any guide, so none is held to a claim")
+    web = BP.home_webinar("2026-11-01")
+    if re.search(r"\d(?:\s|&nbsp;)?[ap]\.m\.", web) or not re.search(r"6:30&nbsp;PM", web):
+        bad.append(f"the home page's webinar line: {re.sub(r'<[^>]+>', ' ', web)[:120]!r}")
+    es = _json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    for k, e in es.items():
+        if not isinstance(e, dict) or not (k.startswith("guide.") or k.startswith("web.")):
+            continue
+        if re.search(r"\d(?:\s|&nbsp;)?[ap]\.m\.", e.get("en", "")):
+            bad.append(f"es.json {k}: its English still says a.m. or p.m.")
+        if re.search(r"\d(?:\s|&nbsp;)?(?:[ap]\.m\.|[AP]M\b)", e.get("es", "")):
+            bad.append(f"es.json {k}: its Spanish is not clock()'s \"a. m.\"")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", ("the guides, their Spanish and the webinar line write clock()'s times; claims and "
+                  "quoted calendar lines keep their source's")
+
+
 @check("code", "every phone number, email, office hours, street address and date a guide "
                "prints is in the words a claim of it records its source as saying, but for "
                "the few named as waiting for a printout", needs=("guides",))

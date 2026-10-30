@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.250
+# GRANITE_VERSION: 2026-09-04.251
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2986,7 +2986,7 @@ def home_webinar(today=None, lang="en"):
         return ""
     return (f'<aside class="webinar" aria-label="{_html.escape(say(lang, "web.label", "Webinar"))}"'
             f'{until_attrs(WEBINAR_UNTIL, today)}>'
-            f'<p class="wbwhen">{say(lang, "web.when", "Free webinar &middot; Tuesday, November 10, 6:30 p.m.")}</p>'
+            f'<p class="wbwhen">{say(lang, "web.when", "Free webinar &middot; Tuesday, November 10, 6:30&nbsp;PM")}</p>'
             f'<p class="wbwhat">{say(lang, "web.what", "How Granite Record works, and how to use it to keep up with Concord this session. Hosted by Alice Wade. All are welcome to join, ask questions and say which features they would like most.")}</p>'
             f'<a class="wbgo" href="{_html.escape(WEBINAR_URL, quote=True)}" target="_blank" rel="noopener">'
             f'{say(lang, "web.go", "Register on Zoom")}</a></aside>')
