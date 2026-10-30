@@ -1,0 +1,141 @@
+{
+ "paragraphs": [
+  {
+   "para": "I",
+   "who": "Department of Administrative Services",
+   "projects": 4,
+   "sum": 3150002,
+   "total": 15400000,
+   "total_para": "I"
+  },
+  {
+   "para": "II",
+   "who": "Community College System of New Hampshire",
+   "projects": 4,
+   "sum": 2650487,
+   "total": 2650487,
+   "total_para": "II"
+  },
+  {
+   "para": "III",
+   "who": "Department of Corrections",
+   "projects": 4,
+   "sum": 12200000,
+   "total": 12200000,
+   "total_para": "III"
+  },
+  {
+   "para": "IV",
+   "who": "Department of Education",
+   "projects": 5,
+   "sum": 323001,
+   "total": 323001,
+   "total_para": "IV"
+  },
+  {
+   "para": "V",
+   "who": "Department of Environmental Services",
+   "projects": 6,
+   "sum": 54653073,
+   "total": 34953073,
+   "total_para": "V"
+  },
+  {
+   "para": "VI",
+   "who": "Fish and Game Department",
+   "projects": 3,
+   "sum": 2379000,
+   "total": null,
+   "total_para": null
+  },
+  {
+   "para": "VII",
+   "who": "Department of Health and Human Services",
+   "projects": 3,
+   "sum": 36075878,
+   "total": 4481557,
+   "total_para": "VII"
+  },
+  {
+   "para": "VIII",
+   "who": "Department of Information Technology",
+   "projects": 1,
+   "sum": 2380000,
+   "total": 2380000,
+   "total_para": "VIII"
+  },
+  {
+   "para": "IX",
+   "who": "Department of Justice",
+   "projects": 1,
+   "sum": 2231696,
+   "total": 2231696,
+   "total_para": "IX"
+  },
+  {
+   "para": "X",
+   "who": "Department of Military Affairs and Veterans Services",
+   "projects": 6,
+   "sum": 35100000,
+   "total": 9550000,
+   "total_para": "X"
+  },
+  {
+   "para": "XI",
+   "who": "Department of Natural and Cultural Resources",
+   "projects": 3,
+   "sum": 27910000,
+   "total": 27910000,
+   "total_para": "XI"
+  },
+  {
+   "para": "XII",
+   "who": "Pease Development Authority",
+   "projects": 2,
+   "sum": 2182000,
+   "total": 4155300,
+   "total_para": "XII"
+  },
+  {
+   "para": "XIII",
+   "who": "Police Standards and Training Council",
+   "projects": 1,
+   "sum": 480000,
+   "total": 480000,
+   "total_para": "XIII"
+  },
+  {
+   "para": "XIV",
+   "who": "Department of Safety",
+   "projects": 3,
+   "sum": 6464950,
+   "total": 5162000,
+   "total_para": "XIV"
+  },
+  {
+   "para": "XV",
+   "who": "University System of New Hampshire",
+   "projects": 1,
+   "sum": 8000000,
+   "total": 8000000,
+   "total_para": "XV"
+  },
+  {
+   "para": "XVI",
+   "who": "Veterans Home",
+   "projects": 6,
+   "sum": 3335000,
+   "total": 3335000,
+   "total_para": "XVI"
+  },
+  {
+   "para": "XVII",
+   "who": "Department of Transportation",
+   "projects": 3,
+   "sum": 69429812,
+   "total": 4466831,
+   "total_para": "XVII"
+  }
+ ],
+ "section_total": 137678945
+}

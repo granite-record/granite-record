@@ -185,6 +185,150 @@ def history_chart():
                       rows, 7000, 1000, "2026–2027", aria)
 
 
+HERE = Path(sys.argv[2]).parent
+ACT = json.loads((HERE / "actuals.json").read_text())        # LBA collections, $ millions, cash basis
+REQ = json.loads((HERE / "requests.json").read_text())       # DAS summary of submissions, dollars
+CAP = json.loads((HERE / "capital.json").read_text())        # HB 25 of 2025, 159:1
+LBA_REV = ("https://gc.nh.gov/lba/Revenues/FY%2026-27/REVISED%20FY20-26%20GF%20ETF%20Revenue%20"
+           "Collection%20(Thru%206-30-2026).pdf")
+LBA_PAGE = "https://gc.nh.gov/lba/budget/fy2026_2027_budget.aspx"
+DAS_BUDGET = "https://www.das.nh.gov/budget/"
+DAS_CAP = ("https://www.das.nh.gov/budget/Budget2028-2029/capital-budget-presentations/"
+           "Dept%20of%20Administrative%20Services%20Capital%20Budget%20Presentation.pdf")
+
+
+def das_name(s):
+    """A DAS agency name, as printed, in title case: nothing expanded or guessed."""
+    out = s.title().replace("&", "and").replace("Hhs:", "HHS:")
+    out = re.sub(r"\bNh\b", "NH", out).replace("Dltss", "DLTSS")
+    return out.replace(" Of ", " of ").replace(" The ", " the ").replace(" And ", " and ")
+
+
+def collected_chart():
+    """Estimated (HB 1) against collected (LBA), General + Education funds, by fiscal year."""
+    est = {"FY 2024": figs["funds"]["2023"], "FY 2025": figs["funds"]["2023"], "FY 2026": figs["funds"]["2025"]}
+    idx = {"FY 2024": 0, "FY 2025": 1, "FY 2026": 0}
+    rows = []
+    for y in ("FY 2024", "FY 2025", "FY 2026"):
+        e = (est[y]["General Fund"]["total"][idx[y]] + est[y]["Education Fund"]["total"][idx[y]]) / 1e6
+        c = ACT["Grand Total"][y]
+        rows.append((y.replace("FY ", ""), e, c))
+    top, step = 4000, 1000
+    lis = "".join(
+        f'<li class="is-lab" title="{l}: {e:,.1f} million estimated, {c:,.1f} million collected">'
+        f'<span class="l-bl">{l}</span><span class="l-bt bud-pair">'
+        f'<span class="l-bf is-was" style="width:{e / top * 100:.2f}%"></span>'
+        f'<span class="l-bf is-now" style="width:{c / top * 100:.2f}%"></span>'
+        f'<span class="l-bv" style="left:{max(e, c) / top * 100:.2f}%">{c - e:+,.1f}</span></span></li>'
+        for l, e, c in rows).replace(">-", ">&minus;")
+    key = ('<ul class="l-barkey bud-key"><li><span class="l-sw bud-was" aria-hidden="true"></span><span>Estimated in HB 1</span></li>'
+           '<li><span class="l-sw bud-now" aria-hidden="true"></span><span>Collected, as the LBA reports it</span></li></ul>')
+    aria = ("Paired bars, General and Education funds together, millions of dollars: "
+            + "; ".join(f"{l} estimated {e:,.1f}, collected {c:,.1f}" for l, e, c in rows))
+    table = "".join(f'<tr><td>{l}</td><td class="l-num">{e:,.1f}</td><td class="l-num">{c:,.1f}</td>'
+                    f'<td class="l-num">{c - e:+,.1f}</td></tr>' for l, e, c in rows).replace(">-", ">&minus;")
+    return (f'<figure class="l-chart bud-fig" role="img" aria-label="{html.escape(aria)}">'
+            '<h3 aria-hidden="true">Estimated and Collected, General and Education Funds</h3>'
+            '<p aria-hidden="true">Millions of dollars, each fiscal year. The figure at the end of each pair is collected minus estimated.</p>'
+            f'{key}<ol class="l-bars bud-bars" aria-hidden="true" style="--l-grid:{step / top * 100:.4f}%">{lis}</ol>'
+            f'<div class="l-axis" aria-hidden="true"><span>2026</span><span class="l-ticks">{ticks(top, step)}</span></div></figure>'
+            '<div class="l-tablewrap l-numwrap"><table class="l-table l-numtab numtab bud-tight"><thead><tr><th>FY</th>'
+            '<th class="l-num">Estimated</th><th class="l-num">Collected</th><th class="l-num">Diff.</th></tr></thead>'
+            f'<tbody>{table}</tbody></table></div>')
+
+
+def collections_history():
+    years = ["FY 2020", "FY 2021", "FY 2022", "FY 2023", "FY 2024", "FY 2025", "FY 2026"]
+    rows = [(y.replace("FY ", "Fiscal "), ACT["Grand Total"][y], f"{y}: {ACT['Grand Total'][y]:,.1f} million collected") for y in years]
+    aria = ("Bar chart: General and Education Trust Fund unrestricted revenue collected, cash basis, millions of dollars: "
+            + "; ".join(f"{l} {v:,.1f}" for l, v, _ in rows))
+    return bars_chart("Collected, Seven Fiscal Years",
+                      "General and Education Trust Fund unrestricted revenue, millions of dollars, cash basis, as the LBA reports it.",
+                      rows, 4000, 1000, "Fiscal 2026", aria)
+
+
+def departments():
+    """DAS rows grouped to departments by the crosswalk: the ten HHS divisions are department 095."""
+    dep = {}
+    for r in REQ["rows"]:
+        key = ("095", "Health and Human Services (ten agencies)") if r["group"] == "DHHS" else (r["num"], das_name(r["name"]))
+        d = dep.setdefault(key, {k: 0 for k in r if k not in ("num", "name", "group")})
+        for k in d:
+            d[k] += r[k]
+    return dep
+
+
+def where_chart():
+    dep = departments()
+    order = sorted(dep, key=lambda k: -dep[k]["FY26 Actuals"])
+    shown, rest = order[:10], order[10:]
+    rows = [(k[1], dep[k]["FY26 Actuals"] / 1e6, f"{k[1]}: {dep[k]['FY26 Actuals'] / 1e6:,.1f} million, fiscal 2026 actuals") for k in shown]
+    rv = sum(dep[k]["FY26 Actuals"] for k in rest) / 1e6
+    rows.append((f"{len(rest)} others", rv, f"{len(rest)} others together: {rv:,.1f} million -- the table lists each"))
+    aria = ("Bar chart, fiscal 2026 actuals by department, total funds, millions of dollars: "
+            + "; ".join(f"{l} {v:,.1f}" for l, v, _ in rows) + ". The table below lists every department.")
+    chart = bars_chart("Fiscal 2026 Actuals, by Department, Total Funds",
+                       "Millions of dollars. The table below lists every department, with fiscal 2027's adjusted authorized figure.",
+                       rows, 4000, 1000, "Health and Human Services (ten agencies)", aria)
+    body = "".join(f'<tr><td>{k[1]}</td><td class="l-num">{dep[k]["FY26 Actuals"] / 1e6:,.1f}</td>'
+                   f'<td class="l-num">{dep[k]["FY27 Adj Auth"] / 1e6:,.1f}</td></tr>' for k in order)
+    g = REQ["totals"]["GRAND TOTAL APPROPRIATIONS"]
+    body += (f'<tr class="bud-tot"><td>All</td><td class="l-num">{g["FY26 Actuals"] / 1e6:,.1f}</td>'
+             f'<td class="l-num">{g["FY27 Adj Auth"] / 1e6:,.1f}</td></tr>')
+    table = ('<details class="l-fold"><summary>Every department (millions of dollars, total funds)</summary>'
+             '<div class="l-tablewrap l-numwrap"><table class="l-table l-numtab numtab bud-tight"><thead><tr><th>Department</th>'
+             '<th class="l-num">FY26 actuals</th><th class="l-num">FY27 adj. auth.</th></tr></thead>'
+             f'<tbody>{body}</tbody></table></div></details>')
+    return chart + table
+
+
+def capital_chart():
+    ps = sorted([p for p in CAP["paragraphs"] if p["total"]], key=lambda p: -p["total"])
+    rows = [(p["who"].replace("Department of ", ""), (p["total"] or 0) / 1e6,
+             f"{p['who']}: ${p['total'] or 0:,} state appropriation (159:1, paragraph {p['para']})") for p in ps]
+    aria = ("Bar chart, HB 25 of 2025 section 1, total state appropriation by department, millions of dollars: "
+            + "; ".join(f"{l} {v:,.1f}" for l, v, _ in rows))
+    return bars_chart("Capital Appropriations by Department, HB 25 of 2025",
+                      "Section 1's &ldquo;total state appropriation&rdquo; for each department, millions of dollars. Section 2's $10 million of highway funds for Transportation is not in this chart.",
+                      rows, 40, 10, max((r[0] for r in rows), key=len), aria)
+
+
+def request_chart():
+    dep = departments()
+    order = sorted(dep, key=lambda k: -dep[k]["FY28 Request"])[:10]
+    top, step = 5000, 1000
+    lis = ""
+    for k in order:
+        x, y = dep[k]["FY27 Adj Auth"] / 1e6, dep[k]["FY28 Request"] / 1e6
+        lis += (f'<li class="is-lab" title="{k[1]}: fiscal 2027 adjusted authorized {x:,.1f} million; fiscal 2028 request {y:,.1f} million">'
+                f'<span class="l-bl">{k[1]}</span><span class="l-bt bud-pair">'
+                f'<span class="l-bf is-was" style="width:{x / top * 100:.2f}%"></span>'
+                f'<span class="l-bf is-req" style="width:{y / top * 100:.2f}%"></span>'
+                f'<span class="l-bv" style="left:{max(x, y) / top * 100:.2f}%">{y - x:+,.1f}</span></span></li>')
+    lis = lis.replace(">-", ">&minus;")
+    key = ('<ul class="l-barkey bud-key"><li><span class="l-sw bud-was" aria-hidden="true"></span><span>Fiscal 2027, adjusted authorized</span></li>'
+           '<li><span class="l-sw bud-req" aria-hidden="true"></span><span>Fiscal 2028, as requested</span></li></ul>')
+    aria = ("Paired bars, the ten largest fiscal 2028 requests by department, total funds, millions of dollars: "
+            + "; ".join(f"{k[1]} fiscal 2027 adjusted authorized {dep[k]['FY27 Adj Auth'] / 1e6:,.1f}, fiscal 2028 requested {dep[k]['FY28 Request'] / 1e6:,.1f}" for k in order))
+    dall = sorted(dep, key=lambda k: -dep[k]["FY28 Request"])
+    body = "".join(f'<tr><td>{k[1]}</td><td class="l-num">{dep[k]["FY27 Adj Auth"] / 1e6:,.1f}</td>'
+                   f'<td class="l-num">{dep[k]["FY28 Request"] / 1e6:,.1f}</td><td class="l-num">{dep[k]["FY29 Request"] / 1e6:,.1f}</td></tr>'
+                   for k in dall)
+    g = REQ["totals"]["GRAND TOTAL APPROPRIATIONS"]
+    body += (f'<tr class="bud-tot"><td>All</td><td class="l-num">{g["FY27 Adj Auth"] / 1e6:,.1f}</td>'
+             f'<td class="l-num">{g["FY28 Request"] / 1e6:,.1f}</td><td class="l-num">{g["FY29 Request"] / 1e6:,.1f}</td></tr>')
+    return (f'<figure class="l-chart bud-fig" role="img" aria-label="{html.escape(aria)}">'
+            '<h3 aria-hidden="true">Asked For: The Ten Largest Requests for Fiscal 2028</h3>'
+            '<p aria-hidden="true">Total funds, millions of dollars. The figure at the end of each pair is the request minus fiscal 2027&rsquo;s adjusted authorized amount. These are requests, not appropriations.</p>'
+            f'{key}<ol class="l-bars bud-bars" aria-hidden="true" style="--l-grid:{step / top * 100:.4f}%">{lis}</ol>'
+            f'<div class="l-axis" aria-hidden="true"><span>Health and Human Services (ten agencies)</span>'
+            f'<span class="l-ticks">{ticks(top, step)}</span></div></figure>'
+            '<details class="l-fold"><summary>Every department&rsquo;s request (millions of dollars, total funds)</summary>'
+            '<div class="l-tablewrap l-numwrap"><table class="l-table l-numtab numtab bud-tight"><thead><tr><th>Department</th>'
+            '<th class="l-num">FY27 adj. auth.</th><th class="l-num">FY28 request</th><th class="l-num">FY29 request</th></tr></thead>'
+            f'<tbody>{body}</tbody></table></div></details>')
+
+
 def reductions_table():
     R = [("Legislative branch", "General fund", "500,000", "500,000", "140:7"),
          ("Office of the governor", "General fund", "50,000", "50,000", "140:8"),
@@ -257,7 +401,8 @@ originate there, and that the Senate may propose or concur with amendments.
 <div><dt>Became</dt><dd>Chapter 141, signed June 27, 2025; most of it in force July 1, 2025, some sections on dates of their own</dd></div></dl></section>
 </div></div><div class="l-secb">
 <p>HB 1 and HB 2 have been the budget's two numbers in every term since 1993&ndash;1994.
-<span class="l-rsa">(This site's bill notes)</span></p>
+<span class="l-rsa">(This site's bill notes)</span> Buildings and other capital
+projects are in a third bill, HB 25, described below.</p>
 """)
 
 gf25 = F25["General Fund"]["total"]
@@ -285,13 +430,29 @@ toll, fiscal 2026). The Highway Fund's own printed total, $259,600,000, is
 $127,700,000 plus the fund's other two lines, and that is the figure used here.</p>
 """)
 
+g_ = REQ["totals"]["GRAND TOTAL APPROPRIATIONS"]
 sec("Where It Goes", f"""
-{need("Spending by department, fiscal 2026 and 2027",
-      "A bar for each department's appropriation, all funds and General Fund, with the "
-      "share of the whole. Section 1 of HB 1 (sections 1.01 to 1.07) is where these are, "
-      "and it is not in the bill text on hand. Requests 1 and 2 on the design's source list.")}
-<p>The amounts appropriated, increases and decreases alike, are in that section.
-Until it is on hand this section shows nothing else.</p>
+<p>The Department of Administrative Services' summary of the agencies' budget
+submissions, dated September 28, 2026, gives each agency's fiscal 2026
+&ldquo;actuals&rdquo; and fiscal 2027 &ldquo;adjusted authorized&rdquo; figures, under the heading
+&ldquo;Total Appropriations &ndash; Total Funds&rdquo;.
+<span class="l-rsa">(<a href="{DAS_BUDGET}">DAS summary</a>)</span>
+Fiscal 2026 actuals come to {m(g_["FY26 Actuals"])}; fiscal 2027&rsquo;s adjusted
+authorized figure to {m(g_["FY27 Adj Auth"])}. Health and Human Services is listed as
+ten agencies, from Medicaid Services to the New Hampshire Hospital, which the DAS
+crosswalk puts under one department number, 095; they are added together here.</p>
+{where_chart()}
+<p class="l-note">The statutes define the adjusted authorized budget as &ldquo;the
+level of funding for the second year of the current operating budget including
+budget footnote adjustments, executive orders, and adjustments by law including
+additional appropriations and any changes in laws that affect revenues and expenses
+outside of the operating budget&rdquo; <span class="l-rsa">(<a href="/laws/9#s4">RSA 9:4, IV(a)</a>)</span>,
+so it is not simply what HB 1 appropriated. The summary does not define
+&ldquo;actuals&rdquo;. Nor does it split the money by fund, so it does not say how much is
+general fund and how much federal.</p>
+{need("What HB 1 appropriated, department by department and fund by fund",
+      "Section 1 of HB 1 as enacted. The LBA's budget page lists it as &ldquo;HB 1 Chaptered Final Version (PDF)&rdquo; "
+      "and &ldquo;(Excel)&rdquo;. Request 1.")}
 """)
 
 sec("Other Directions in HB 1", f"""
@@ -302,6 +463,39 @@ how:</p>
 <p>It also abolishes positions it lists by number in eight agencies, from the
 Developmental Disabilities Council to the Department of Corrections.
 <span class="l-rsa">(HB 1 of 2025, 140:5)</span></p>
+""")
+
+cs = CAP["section_total"]
+sec("The Capital Budget", f"""
+<p>Buildings, equipment and other capital projects are in a third bill.
+<a href="bill/2025/hb25">HB 25</a> has been titled &ldquo;making appropriations for capital
+improvements&rdquo; in every budget year since 1999, and in 2025 it went to the House
+<a href="committee/H20">Public Works and Highways</a> committee and the Senate
+<a href="committee/S02">Capital Budget</a> committee. Governor Ayotte signed it on
+July 15, 2025, as chapter 159.</p>
+<p>Its section 1 appropriates {m(cs)} of state money to {sum(1 for p in CAP["paragraphs"] if p["total"])}
+departments and agencies, and section 2 a further $10,000,000 from highway funds for
+projects of the Department of Transportation. <span class="l-rsa">(HB 25 of 2025, 159:1 and 159:2)</span>
+The Fish and Game Department's three projects, $2,379,000, are each printed
+&ldquo;Less Other Funds (Fish and Game Fund)&rdquo;, &ldquo;Net State 0&rdquo;. <span class="l-rsa">(159:1, VI)</span></p>
+{capital_chart()}
+<p>The operating budget may not use bonded debt to fund operating
+appropriations (RSA 9:8-b). The capital budget is funded by borrowing: &ldquo;to provide
+funds for the total of the appropriations of state funds made in sections 1 and
+2&rdquo;, the act authorizes the state treasurer to borrow up to $171,060,895, and gives
+the source of funds as general fund $137,678,945, highway funds $10,000,000 and
+other funds $23,381,950. <span class="l-rsa">(HB 25 of 2025, 159:7)</span> The other funds
+are the amounts section 1 prints as &ldquo;Less Other Funds&rdquo;: $19,700,000 from a
+revolving loan fund, $2,379,000 from the Fish and Game Fund and $1,302,950 from the
+Plate Fund.</p>
+<p>It has a calendar of its own. Departments send their capital requests to the
+commissioner of administrative services by May 1 before the session; the
+commissioner sends the Governor a summary by May 31; the Governor holds public
+hearings on them by June 30. <span class="l-rsa">(<a href="/laws/9#s3-a">RSA 9:3-a</a>)</span>
+For the next budget, the Department of Administrative Services presented its own
+requests, {m(143.4e6)} in all, at the Governor's capital budget hearing on June 16, 2026. <span class="l-rsa">(<a href="{DAS_CAP}">DAS presentation</a>)</span>
+Its slide of past capital appropriations gives $15,400,000 for 2025, the figure HB 25
+printed for the department (paragraph I).</p>
 """)
 
 sec("How the Budget Is Made", f"""
@@ -380,18 +574,65 @@ business enterprise tax, with a subtotal; the subtotal is the figure used here.<
 <p class="l-note">Both columns are estimates, each made when its budget passed. Neither
 is what the state collected, and the change between them is not a change in
 spending.</p>
-{need("What the state actually collected, and actually spent",
-      "Actual revenue for fiscal 2024 and 2025, and actual spending, from the state's own year-end reports, so the page "
-      "can say how the last budget's estimates turned out. Requests 3 and 4.")}
 {history_chart()}
+<h3>What Came In</h3>
+<p>The Legislative Budget Assistant reports what the General and Education Trust
+funds actually collected each year, source by source, from the Department of
+Administrative Services' monthly revenue reports.
+<span class="l-rsa">(<a href="{LBA_REV}">LBA collections</a>)</span>
+Against HB 1's estimates for the same two funds:</p>
+{collected_chart()}
+<p class="l-note">The estimates are as each budget was enacted: fiscal 2024 and 2025
+from HB 1 of 2023, fiscal 2026 from HB 1 of 2025. The LBA's figures are on a cash
+basis, as its table says, from a revised edition dated through June 30, 2026; HB 1
+does not say on what basis its estimates are made, so the two may not be counted
+the same way. Fiscal 2026 is the first year of the present budget; 2027 is not
+over.</p>
+{collections_history()}
+""")
+
+sec("Now Under Way: The 2028–2029 Budget", f"""
+<div class="bud-mock bud-now-note"><b>Requests, not a budget.</b> What follows is what
+the agencies have asked for. The Governor's budget, and then the legislature, decide
+what is appropriated.</div>
+<p>The next budget, for fiscal 2028 and 2029, is being prepared now. The Department of
+Administrative Services' summary of the agencies' submissions, dated September 28,
+2026, totals {m(g_["FY28 Request"])} requested for fiscal 2028 and {m(g_["FY29 Request"])}
+for fiscal 2029, in total funds, against {m(g_["FY27 Adj Auth"])} adjusted authorized for
+fiscal 2027. <span class="l-rsa">(<a href="{DAS_BUDGET}">DAS summary</a>, version 2028B01)</span></p>
+<p>The summary shows each request in two columns, &ldquo;efficiency&rdquo; and
+&ldquo;prioritized needs&rdquo;, which add up to it. For fiscal 2028 they total
+{m(g_["FY28 Efficiency"])} and {m(g_["FY28 Prioritized Needs"])}; for fiscal 2029,
+{m(g_["FY29 Efficiency"])} and {m(g_["FY29 Prioritized Needs"])}. The statutes define the
+efficiency expenditure request as &ldquo;the cost of providing the services authorized and
+funded in the preceding biennium, considering and incorporating changes in the
+population and other factors outside the control of the department&hellip;&rdquo;, and ask
+it to identify &ldquo;special or problematic needs&rdquo;, which &ldquo;are expected to be few and
+prioritized&rdquo;. <span class="l-rsa">(<a href="/laws/9#s4">RSA 9:4, II and IV(f)</a>)</span>
+The summary does not say whether its &ldquo;prioritized needs&rdquo; column is those.</p>
+<p>The totals include the Legislative Branch, which does not submit a formal budget
+at this stage; its figures for fiscal 2028 and 2029 repeat its fiscal 2027 amount,
+as the summary's own note says.</p>
+{request_chart()}
+{need("The detail behind the requests",
+      "The FY28&ndash;29 Final Statewide Agency Budget Book, which the owner named and has not yet saved, and a source "
+      "for what the summary's &ldquo;prioritized needs&rdquo; column holds.")}
 """)
 
 sec("In the Record", f"""
 <p><b>The bills:</b> {hb1} and {hb2} of 2025, with every printing, hearing,
 committee vote and roll call, and the recordings where there are any. The two before:
 <a href="bill/2023/hb1">HB 1</a> and <a href="bill/2023/hb2">HB 2</a> of 2023.</p>
-<p><b>The committees:</b> <a href="committee/H34">House Finance</a> and
-<a href="committee/S07">Senate Finance</a>, with their meetings.</p>
+<p><b>The capital budget:</b> <a href="bill/2025/hb25">HB 25 of 2025</a>.</p>
+<p><b>The committees:</b> <a href="committee/H34">House Finance</a>,
+<a href="committee/S07">Senate Finance</a>, House
+<a href="committee/H20">Public Works and Highways</a> and Senate
+<a href="committee/S02">Capital Budget</a>, with their meetings.</p>
+<p><b>The state's own budget documents:</b> the Legislative Budget Assistant's
+<a href="{LBA_PAGE}">FY 2026&ndash;2027 operating budget page</a>, which lists the
+Governor's recommended budget, each chamber's version, the committee of conference
+documents and the chaptered final version, and the Department of Administrative
+Services' <a href="{DAS_BUDGET}">budget pages</a>.</p>
 <p><b>The law:</b> <a href="/laws/9">RSA 9, Budget and Appropriations</a>, and the
 constitution's <a href="/laws#part2-art18">Article 18</a> and
 <a href="/laws#part2-art18-a">Article 18-a</a>.</p>
@@ -415,6 +656,16 @@ SRC = [
      "This site's Laws pages, from the statutes as dumped on October 26, 2026"),
     ("The New Hampshire Constitution, Part Second, Articles 18 and 18-a", "/laws#part2-art18-a",
      "nh.gov, read October 17, 2026"),
+    ("HB 25 of 2025 (chapter 159), the capital budget, chaptered final version", "bill/2025/hb25",
+     "The General Court's database, LegislationText; read " + READ),
+    ("LBA: General and Education Trust Fund unrestricted revenue collections, FY 2020&ndash;2026 (revised, as of June 30, 2026)", LBA_REV,
+     "Legislative Budget Assistant, PDF; saved by the owner, read " + READ),
+    ("LBA: FY 2026&ndash;2027 operating budget page", LBA_PAGE,
+     "Legislative Budget Assistant; printed by the owner, read " + READ),
+    ("DAS: Summary of Budget Submissions by Agency, total funds (September 28, 2026), and the department crosswalk", DAS_BUDGET,
+     "Department of Administrative Services, PDFs; saved by the owner, read " + READ),
+    ("DAS: Capital budget presentation, Governor's capital budget hearings, June 16, 2026", DAS_CAP,
+     "Department of Administrative Services, PDF; saved by the owner, read " + READ),
 ]
 srcs = "".join(f'<li class="l-doc"><a href="{u}">{t}</a><span class="l-dmeta">{d}</span></li>' for t, u, d in SRC)
 
@@ -433,6 +684,9 @@ art += ('<nav class="l-pager" aria-label="Other topics"><a class="l-pgp" href="l
 # ---------------------------------------------------------------- template surgery
 
 page = tpl.replace("learn/county-government", "learn/state-budget")
+# The template's version stamp is the County Government page's; a mock is no
+# project file and carries none (preflight holds every stamp to versions.json).
+page = re.sub(r"<!-- GRANITE_VERSION: [^>]*-->\n?", "", page)
 TITLE = "The State Budget"
 LEAD = ("Two bills every two years: HB 1 says how much the state may spend, and HB 2 changes the laws "
         "that go with it. Where the money comes from, how the budget is made, and what changed from the last one.")

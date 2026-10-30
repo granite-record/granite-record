@@ -55,3 +55,12 @@
   .bud-tight th,.bud-tight td{padding-left:.5rem;padding-right:.5rem}
   .bud-tight th{letter-spacing:.03em}
 }
+/* A REQUEST IS NOT AN APPROPRIATION: hatched, as the site hatches what is
+   not (or not yet) the thing itself (.c-old, .c-none) */
+.bud-pair .l-bf.is-req{top:1rem;height:.625rem;background:repeating-linear-gradient(135deg,var(--pine) 0 3px,var(--pine-soft) 3px 5px);
+  box-shadow:inset 0 0 0 1px var(--pine)}
+.bud-req{background:repeating-linear-gradient(135deg,var(--pine) 0 3px,var(--pine-soft) 3px 5px);box-shadow:inset 0 0 0 1px var(--pine)}
+.bud-now-note{border-left:3px solid var(--pine)}
+/* the scale's last figure always shows, so a chart whose top is an odd
+   tick (5,000 in steps of 1,000) is not left with "0" alone on a phone */
+.bud-fig .l-ticks i:last-child{display:inline}
