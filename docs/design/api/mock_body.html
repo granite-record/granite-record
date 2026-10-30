@@ -2,8 +2,7 @@
      /api page, in the data page's own components (src/pages/app.css: dphead,
      dpsec, dpdl, dpfold, dptermgrid, repo). Every figure here was measured on
      a full local build of 30 October 2026 (DESIGN.md, "Measured"), except
-     three estimates DESIGN.md names: the manifest's and schema.json's sizes
-     and the database's 16.7 MB. Its wording follows the open questions'
+     two estimates DESIGN.md names: the manifest's and schema.json's sizes. Its wording follows the open questions'
      defaults (Q5, Q11, Q12) and changes with their answers. The page
      itself will count them on every build, as data.html does. mock_page.py
      drops this into a built data.html for the screenshots. -->
@@ -25,6 +24,7 @@
         <li><a href="/api.html#keys">Keys and Joins</a></li>
         <li><a href="/api.html#changes">What Changed Tonight</a></li>
         <li><a href="/api.html#live">Today&rsquo;s Votes</a></li>
+        <li><a href="/api.html#coverage">What It Covers</a></li>
         <li><a href="/api.html#stability">Versions and Stability</a></li>
         <li><a href="/api.html#using">Using It</a></li>
       </ol></nav></details>
@@ -36,8 +36,9 @@
       spreadsheets on <a href="/data.html">the data page</a>, and
       <a href="/data/manifest.json">data/manifest.json</a> lists every file with
       its address, size and the night it was built. Start there: one request
-      says what is here and how much. The large files are compressed with gzip,
-      which every language and every operating system can open.</p></div>
+      says what is here and how much. The bill files are compressed with gzip and the
+      database with xz, which Python, R and the command line on Linux and
+      macOS open with what they already have.</p></div>
     <div class="dptablewrap dpwide"><table class="dpdl" role="table">
       <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">File</th>
         <th scope="col" role="columnheader">What it holds</th>
@@ -60,20 +61,22 @@
           <td role="cell" class="n dpr">&mdash;</td>
           <td role="cell" class="n dps">0.1&nbsp;MB</td>
           <td role="cell" class="dpg"><a class="dpget" href="data/schema.json">Open<span class="sr"> schema.json</span></a></td></tr>
-        <tr role="row"><th scope="row" role="rowheader"><code>granite-record.sqlite.gz</code></th>
-          <td role="cell" class="dpw"><p class="dpwhat">Every table on the data page in one SQLite database, with each roll call and each member stored once.</p>
-            <details class="dpmore"><summary><span>More about <code>granite-record.sqlite.gz</code></span></summary>
-              <p>69&nbsp;MB once opened. Tables: bills, rollcalls, votes,
+        <tr role="row"><th scope="row" role="rowheader"><code>granite-record.sqlite.xz</code></th>
+          <td role="cell" class="dpw"><p class="dpwhat">Every table on the data page in one SQLite database, with the committee reports and their reasoning, interim study statements, testimony counts and every noticed meeting.</p>
+            <details class="dpmore"><summary><span>More about <code>granite-record.sqlite.xz</code></span></summary>
+              <p>109&nbsp;MB once opened. Tables: bills, rollcalls, votes,
                 vote_values, sponsors, proceedings, legislators, people,
-                person_numbers and meta.
+                person_numbers, committee_reports, docket_reports,
+                interim_study, testimony, meetings and meta. Testimony is
+                counts only, never a name.
                 A vote is its roll call, its person and its value, so
                 2,303,047 ballots take 38&nbsp;MB rather than the 209&nbsp;MB
                 of the vote spreadsheets.</p>
               <p class="dpjoin">votes.rollcall joins rollcalls.id;
                 votes.person joins people.person; bill + term joins bills.</p></details></td>
-          <td role="cell" class="n dpr">10<span class="dpu"> tables</span></td>
-          <td role="cell" class="n dps">16.7&nbsp;MB</td>
-          <td role="cell" class="dpg"><a class="dpget" href="data/granite-record.sqlite.gz" download>Download<span class="sr"> granite-record.sqlite.gz</span></a></td></tr>
+          <td role="cell" class="n dpr">15<span class="dpu"> tables</span></td>
+          <td role="cell" class="n dps">13.2&nbsp;MB</td>
+          <td role="cell" class="dpg"><a class="dpget" href="data/granite-record.sqlite.xz" download>Download<span class="sr"> granite-record.sqlite.xz</span></a></td></tr>
         <tr role="row"><th scope="row" role="rowheader"><code>people.json</code></th>
           <td role="cell" class="dpw"><p class="dpwhat">One entry for each of the 2,192 people with a recorded vote since 1999, with every number the General Court has used for them.</p>
             <details class="dpmore"><summary><span>More about <code>people.json</code></span></summary>
@@ -136,8 +139,8 @@ with urllib.request.urlopen(url) as r, gzip.open(r) as lines:
         bill = json.loads(line)
         print(bill["key"], bill["title"])</code></pre>
     <p>Or the whole database, opened in the <code>sqlite3</code> program:</p>
-<pre class="apicode"><code>curl -O https://graniterecord.org/data/granite-record.sqlite.gz
-gunzip granite-record.sqlite.gz
+<pre class="apicode"><code>curl -O https://graniterecord.org/data/granite-record.sqlite.xz
+xz -d granite-record.sqlite.xz
 sqlite3 granite-record.sqlite "SELECT term, COUNT(*) FROM bills GROUP BY term"</code></pre>
     <p>A page on another site may read every file here from the reader&rsquo;s
       browser too: each one is served to any origin.</p></div>
@@ -188,6 +191,25 @@ sqlite3 granite-record.sqlite "SELECT term, COUNT(*) FROM bills GROUP BY term"</
     <p class="dpnote">What is live on the General Court&rsquo;s video streams
       is not part of the API. Each bill&rsquo;s page links its
       recording.</p></div>
+  </section>
+
+  <section class="dpsec" id="coverage" aria-labelledby="coverage-h">
+    <h2 class="dpsech" id="coverage-h">What It Covers</h2>
+    <div class="dpsecb"><p>The General Court publishes its record as a
+      database. Every table of it this site reads lands somewhere here, and
+      <code>manifest.json</code> lists each one with where it goes. A few do
+      not, each for a reason:</p>
+    <details class="dpfold"><summary><span>What is not here, and why</span></summary>
+      <p><b>The names of people who sign in to testify.</b> Only the
+      counts for and against each hearing are published; names, towns and
+      written testimony are never collected. <b>Four tables nothing reads</b>:
+      the hearing view, two lists of codes, and a table of past districts.
+      <b>The statutes&rsquo; text</b>, which is on the
+      <a href="/laws.html">laws pages</a> rather than here.</p></details>
+    <details class="dpfold"><summary><span>What comes from outside the database</span></summary>
+      <p>The House and Senate calendars, for the House committee reports and
+      their reasoning, interim study statements and every noticed meeting.
+      The times within each recording are this site&rsquo;s own.</p></details></div>
   </section>
 
   <section class="dpsec" id="stability" aria-labelledby="stability-h">

@@ -5,6 +5,15 @@ Phase 1 of the API project the owner approved on 26 October 2026
 builds it on `feat/api`, after the owner's OK on this document, relayed by
 the manager.
 
+**The owner approved this design on 30 October 2026, with the default answer
+to all seventeen questions** (relayed by the manager), and asked for one
+widening: other sites should get a clean pipeline of the whole record,
+committee reports and recording links included. Sections 2.9 to 2.11 are that
+widening. It changes two approved things, each marked where it falls and put
+back to the owner: the database is compressed with xz rather than gzip (Q2,
+because the reports do not fit under the file limit in gzip), and the
+recording links wait on a question about YouTube's terms (Q18).
+
 Written 30 October 2026 on branch `design/api`. **Every size and count below
 was measured** on a full local build of that day (`build_all.py --local
 --no-captions`, `GRANITE_BUILD_DATE=2026-10-30`, on the kit as `cloud.py
@@ -16,7 +25,8 @@ at the end, says how to repeat them.
 ## In one paragraph
 
 Add five kinds of file to `/data/`, beside the spreadsheets that are there
-now: one SQLite database of every table (16.7 MB compressed); every bill's
+now: one SQLite database of every table, the committee reports and their
+reasoning included (13.2 MB compressed with xz; section 2.9); every bill's
 full record, one compressed file a term (17.0 MB for 2025-2026, 143.5 MB for
 all nineteen); a people file joining every number the General Court uses for
 a person (0.5 MB), whose person numbers are issued once and written down so
@@ -84,7 +94,7 @@ Everything under `/data/`. New names are in **bold**.
 |---|---|---|---|
 | `manifest.json` | the index: every file, its address, rows, bytes, sha256, the night it was built | JSON | ~30 KB (estimate) |
 | **`schema.json`** | what every column and field means, its type, what it joins to | JSON, Frictionless Data Package | ~100 KB (estimate) |
-| **`granite-record.sqlite.gz`** | every table in one SQLite database | SQLite 3, gzip | 16.7 MB (69 MB opened) |
+| **`granite-record.sqlite.xz`** | every table in one SQLite database, the reports included (2.9) | SQLite 3, xz | 13.2 MB (109 MB opened) |
 | **`bills-<term>.jsonl.gz`** | every bill's full record, one line a bill, 19 files | JSON Lines, gzip | 3.8 MB (1989-1990) to 17.0 MB (2025-2026); 143.5 MB in all |
 | **`people.json`**, **`people.csv`** | one entry a person, every number they carry | JSON; CSV, one row a number | 539 KB and 443 KB |
 | `bills.csv` … `votes-<term>.csv` | as today, with the changes in 2.6 | CSV | 238.5 MB today; the vote files about 1.1 MB more with ISO dates (measured on the two largest) |
@@ -133,7 +143,11 @@ Each field also carries `"x-stability": "stable" | "beta" | "page"`. `page`
 marks a field the bill's page draws and the API promises nothing about
 (section 4).
 
-### 2.3 `granite-record.sqlite.gz`: one database
+### 2.3 `granite-record.sqlite.xz`: one database
+
+*As first designed, in gzip; 2.9 adds the report tables and moves it to xz,
+which is 13.2 MB with them. The gzip figures below stay as the record of
+why.*
 
 Normalised, because a straight copy is too big (46.9 MB compressed):
 
@@ -395,6 +409,164 @@ are the follow work's owners' call, through the manager (section 7).
 `/changes/` is `build_feeds.py`'s and the follow contract's, not this
 project's: this goes to the manager as a request (section 7).
 
+### 2.9 Committee reports, hearings and testimony, as tables
+
+What the database held, as first designed: bills, roll calls, votes,
+sponsors, proceedings (every hearing, executive session and floor sitting on
+a bill, with its recording and moment where there is one), legislators and
+people. The committee reports, the interim study statements and the
+testimony counts were in the bill files only, inside each record, which a
+reader can open a term at a time but cannot query. So, five more tables.
+All but `meetings` are read from the bill records the pages draw, so a table
+and a page cannot disagree:
+
+| Table | One row is | From (the record's field) | Rows | Opened |
+|---|---|---|---|---|
+| `committee_reports` | one side of one committee report, with its reasoning in full: House calendar reports (majority and minority), Senate committee reports, and interim study statements (`interim` 1) | `reports[].reports[]` | 32,990 | 33.5 MB |
+| `docket_reports` | a report the docket records and no printed report carries: chamber, committee, side, recommendation, vote, amendment | `docket_reports[]` | 31,538 | 3.2 MB |
+| `interim_study` | the docket's line on an interim study: recommended or not, and the vote | `study_report` | 1,601 | 0.1 MB |
+| `testimony` | how many signed in for, against and neutral at one public hearing; counts only, never a name | `stations[].testimony` | 3,054 | 0.2 MB |
+| `meetings` | every meeting the House and Senate calendars noticed, those on no bill included (7,557 of them) | `meetings.json` (calendar_meetings.py) | 21,152 | 2.7 MB |
+
+Measured (`measure/measure_reports.py`): the database grows from 69.1 MB to
+108.7 MB opened. In gzip that is **26.9 MB, past the 25 MiB limit**; in xz
+(preset 6) it is **13.2 MB**, in 72 s. The core tables alone are 6.6 MB in xz
+against 16.6 MB in gzip. So the database becomes
+**`granite-record.sqlite.xz`** (Q2 changed; it goes back to the owner).
+Python, R and every Linux and macOS system read xz with what they already
+have (`lzma` is in Python's standard library; `xz -d` on the command line);
+whether Windows' own Explorer opens it is not checked here, and the
+documentation will say which tool to use. The bill files stay gzip: each fits,
+and gzip is what a browser and every language read without asking.
+
+One more piece of the record that pages show and no table held: the Senate's
+hearing reports, who spoke for and against a bill at its hearing
+(`stations[].reports`, 1,285 hearings in 2025-2026). They join
+`committee_reports`'s sibling as `hearing_reports` in branch 4; not yet
+measured, and small beside the committee reports (an estimate).
+
+### 2.10 Recordings and their moments, and YouTube's terms
+
+**What is published today.** `proceedings.csv` already carries, for each of
+its 105,476 rows, the recording's YouTube id (`video_id`, on 22,601 rows),
+the site's own start and end in seconds and how each was found
+(`how_placed`: stated, floor_precise, located and the rest), and two columns
+from YouTube itself: `video_title`, the title the channel gave the video, and
+`scheduled_seconds`, the meeting's called time minus the stream's start time,
+which YouTube's API reports. The database copies the table, so it holds the
+recordings and moments already.
+
+**What the owner asked**: publish a watch link and the site's own timestamp,
+the matched committee and date, and nothing of YouTube's own metadata, citing
+the policy relied on, read from a source rather than memory.
+
+**What the policies say, read on 30 October 2026** from
+developers.google.com/youtube/terms/developer-policies ("Last updated
+2026-10-15 UTC"), and the Terms of Service beside it ("Last updated
+2026-09-14 UTC"). Quoted exactly:
+
+- *API Data* is "data, content (including audiovisual content) and
+  information provided to API Clients … through the YouTube API services"
+  (Developer Policies, IV, Definitions; Terms of Service, section 1).
+- III.E.4, item 4: "API Clients may temporarily store limited amounts of
+  Non-Authorized Data for as long as is necessary for the purposes of the API
+  Client but not longer than 30 calendar days. … after 30 calendar days, the
+  API Client must either delete or refresh the stored data." (*Non-Authorized
+  Data* is "API Data accessible by an API Client without User Credentials",
+  which is how the site reads its channels.)
+- III.E.4, item 8: "Your API Clients must not (i) replace API Data with
+  similar, independently calculated data, or (ii) access or use API Data to
+  create new or derived data or metrics."
+- III.I.15: "You and your API Clients must not … offer an API service that
+  allows users to access any data or functionality directly or indirectly
+  provided by the YouTube API Services".
+- III.G.1: must not "sell, purchase, lease, lend, convey, redistribute, or
+  sublicense all or any portion of YouTube API Services".
+- Nothing on any page read names video ids or watch links, either as API Data
+  or as an exception.
+
+**Where that leaves it.** The site learns each video's id, title and stream
+start through the YouTube Data API (`src/fetch/youtube/fetch_channel_index.py`
+and `src/ops/livestreams.py`, with the site's API key). A video id received
+that way reads as API Data under the definition above, and the policies give
+no exception for ids. Read plainly, item 4 limits keeping it to 30 days, and
+III.I.15 is close to describing a public data file of it; item 8 is close to
+describing a timestamp worked out within a video the API named. That is
+not a ruling: the text is silent on ids, and a watch link is an ordinary web
+address anyone can write. But it does not support "ours to publish" as
+plainly as the brief assumed, and the same reading touches what the site
+already does (it keeps ids for years and publishes them on every bill page
+and in `proceedings.csv`), which is a question about the site and not only
+the API. **This is the owner's decision, and it may want a lawyer's** (Q18).
+
+**Until it is decided**, the API adds nothing from YouTube: no `watch_url`
+column and no new recordings table. What `proceedings.csv` publishes today is
+left as it is, since that is the site's current practice and not this
+project's to change unasked, except that the API's own new files leave out
+`video_title` and `scheduled_seconds`, the two columns that are YouTube's
+metadata, which the owner asked to keep out in any case. When the owner
+decides to publish the links: a `recordings` table (video id; the site's
+matched committee, chamber and date; the site's own `start_seconds`,
+`end_seconds` and `how_placed`) and a `watch_url` column built from them,
+`https://www.youtube.com/watch?v=<id>&t=<seconds>s`, in the database and in
+`proceedings.csv`.
+
+Q12 dedicated "the site's timings" to the public domain. The timings that
+place a moment in a YouTube recording are inside this question too: the CC0
+line covers them only once Q18 is answered.
+
+Two neighbours of the question, for the owner, from the same text: III.I.14,
+"use any technology other than YouTube API Services to access or retrieve API
+Data", sits beside the captions the site reads through yt-dlp rather than the
+API (`livestreams.py`); and III.E.2 restricts aggregating API Data. Neither is
+this project's to settle; both are noted so that the decision is made with
+them in view.
+
+### 2.11 Coverage: every General Court source, and where it lands
+
+This table goes on the `/api` page and, as `coverage.sources`, into
+`manifest.json`, so a site using the API knows what it gets and what it does
+not. Rows are the General Court's database tables and views as the site's
+dump holds them (`db/_manifest.json`; the day files from gc.nh.gov/downloads
+carry the same tables). Counts are that dump's.
+
+| General Court table | Rows | Where it lands |
+|---|---|---|
+| Docket | 317,811 | each bill's `events`, `stages`, `chapter`; `proceedings`; `docket_reports`; bills.csv status and chapter |
+| Legislation | 2,234 | bills.csv; each bill's title, committees, subject |
+| Sponsors | 13,326 | sponsors.csv; each bill's `sponsors` |
+| Legislators | 1,081 | legislators.csv, people.json; names the voters in the vote files |
+| RollCallSummary | 9,565 | rollcalls.csv; each bill's `rollcalls` |
+| RollCallHistory | 2,303,047 | votes-<term>.csv; the database's `votes` |
+| CandH_Reports | 5,597 | `committee_reports` (Senate); `hearing_reports` |
+| LegislationText | 6,825 | each bill's `billtext` (the current printing); earlier printings later |
+| DocumentVersion | 54 | not published as a table: it only orders and names the printings |
+| NH_RSA | 30,076 | each bill's `rsa`; the /laws pages, not a /data file (Q19) |
+| houseRemoteTestify | 402,908 | `testimony`, **counts only**. Names, towns and written testimony are never fetched (DATA.md) |
+| Committees, CommitteeMembers | 54, 814 | legislators.csv `committees`; the committee pages, not a /data file (Q19) |
+| StatStudDetails, StatStudMembers, StatStudMeetings | 1,543, 12,436, 11,526 | the statutory and study committee pages, not a /data file (Q19) |
+| HouseDistricts, senateDistricts, County, Towns | 494, 320, 11, 275 | legislators.csv district and county; the town pages, not a /data file |
+| Subject, GeneralStatusCodes, BodyStatusCodes | 48, 10, 76 | as words in bills.csv (`topic`, `status`), not as code tables |
+| PastLegislation, PastSponsors, PastDocket, PastLegislationText | 34,084, 144,565, 677,618, 39,089 | the same places as their current-term tables, for 1989 to 2024 |
+| PastCommitteeReports | 20,379 | not published itself: it corrects misprinted House reports in `committee_reports` |
+| PastAmendments | 7,958 | each bill's `related` |
+| VHearings | 8,739 | **not published**: read by nothing; hearings come from the Docket and the calendars |
+| hearingType, committeeType, DistrictPast | 27, 13, 235 | **not published**: dumped, read by nothing |
+
+One source that is not the General Court's database also feeds the tables:
+the House and Senate calendars, which carry the House committee reports and
+their reasoning, the interim study statements and `meetings`. The coverage
+block names it too, and every other source a /data file draws on as the
+branches add them.
+
+**What the pages show and no /data file holds yet**, from the rows above:
+committees and their members, the statutory and study committees (their
+members and meetings), districts and towns, and each bill's statute
+citations. Each is small, and the owner's rule is to add a table unless there
+is a reason not to (Q19). The statute text itself (NH_RSA's sections) is the
+one left out by default: it is the State's published law, the /laws pages
+show it, and a mirror of it is a different project.
+
 ---
 
 ## 3. Versioning
@@ -444,7 +616,7 @@ compares tonight's `schema.json` with the last published one and fails on a
 |---|---|---|---|
 | Files on the site | 57,626 | 57,650 (+24: 19 bill files, the database, two people files, `schema.json`, and `api.html`) | counted |
 | `check_site` warning line | 90,000 | unchanged; 32,350 to spare | |
-| Bytes deployed | 2,905 MB | +about 161 MB: 143.5 bill files (measured), 16.7 database (estimate, 2.3), 0.5 and 0.4 people (measured), and `schema.json` and the page, well under 1 MB together (estimate) | |
+| Bytes deployed | 2,905 MB | +about 158 MB: 143.5 bill files (measured), 13.2 database (measured with the report tables, 2.9), 0.5 and 0.4 people (measured), and `schema.json` and the page, well under 1 MB together (estimate) | |
 | Build time | 1,549 s here | +about 90 s: 71 s for the bill files, 15 s for the database (written and gzipped), under a second for people and the schema | measured on this machine; the nightly's machine will differ |
 
 Where it runs: in `build_exports.py`, the last step, which already reads
@@ -458,7 +630,7 @@ program gets the bytes the manifest's sha256 describes. That is expected of
 Cloudflare Pages and not yet verified: Phase 2 checks it on the live host
 before the announcement, and `_headers` (the release session's `build_pages.py`)
 gets two lines: `Access-Control-Allow-Origin: *` on `/data/*`, and
-`Content-Type` for `.jsonl.gz` and `.sqlite.gz`.
+`Content-Type` for `.jsonl.gz` and `.sqlite.xz`.
 
 ---
 
@@ -491,7 +663,7 @@ The mock is `mock_body.html`, put into a built `data.html` by
 
 No page sideways-scrolls at either width (measured: 0 px in all eight). The
 mock's figures are the measured ones except three it marks as estimates (the
-manifest's and `schema.json`'s sizes, and the database's 16.7 MB); the page
+manifest's and `schema.json`'s sizes); the page
 will count its own each build, as the data page does. Its wording follows the
 defaults of Q5, Q11 and Q12 and changes with the answers; its line on
 cross-origin reads depends on the `_headers` request (section 7).
@@ -529,7 +701,7 @@ refactor"), so that existing files change only where intended.
 3. **Bill files**: the 19 `bills-<term>.jsonl.gz`. Proof: new files only; a
    check that every line parses, keys are unique, and the count per term
    equals `/idx/<term>.json`'s.
-4. **Database**: `granite-record.sqlite.gz`. Proof: new file only; a check
+4. **Database**: `granite-record.sqlite.xz`, with the tables of 2.9 and Q19. Proof: new file only; a check
    that every table's row count equals its CSV's.
 5. **`schema.json` and the manifest's `files`**, with the preflight check that
    every column of every file is described and every description names a
@@ -569,6 +741,9 @@ Timetable against the plan: branches 1 to 4 by 13 November, 5 to 7 by
 | Q15 | A person number for a member who is not yet in the register (a special election): publish a provisional one, or none until it is issued? | Provisional, marked `"provisional": true`, counted in the night's verdict. |
 | Q16 | `person` in the vote spreadsheets too, at the cost of the 2011-2012 file's headroom (2.6)? | No: through `people.csv` and the database. |
 | Q17 | Does a bill count as changed (2.8) when only its page's presentation changed? | No: the hash covers the `stable` fields only. |
+| Q18 | Publish recording links (a `recordings` table and a `watch_url` column) given YouTube's terms as quoted in 2.10? | **Not until the owner decides**, perhaps with a lawyer. Meanwhile the API's new files carry no YouTube metadata (`video_title`, `scheduled_seconds`), and `proceedings.csv` stays as the site publishes it today. |
+| Q19 | Add tables for what the pages show and no /data file holds: committees and members, study committees with members and meetings, districts and towns, bill-to-statute citations, Senate hearing reports? | Yes, in the database and as CSVs, built in branch 4; the statute text itself stays on the /laws pages. |
+| Q20 | (Changes approved Q2.) Compress the database with xz rather than gzip? With the reports, gzip is 26.9 MB, past the limit; xz is 13.2 MB. | xz: `granite-record.sqlite.xz`. The bill files stay gzip. |
 
 ---
 

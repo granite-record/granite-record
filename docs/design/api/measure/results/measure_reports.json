@@ -1,0 +1,19 @@
+{
+ "rows": {
+  "committee_reports": 32990,
+  "docket_reports": 31538,
+  "interim_study": 1601,
+  "testimony": 3054,
+  "meetings": 21152
+ },
+ "raw": 108711936,
+ "gz": 26929140,
+ "seconds": 42.3,
+ "new_tables_bytes": {
+  "committee_reports": 33456128,
+  "docket_reports": 3153920,
+  "interim_study": 81920,
+  "testimony": 217088,
+  "meetings": 2732032
+ }
+}
