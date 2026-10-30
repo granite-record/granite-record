@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.744
+# GRANITE_VERSION: 2026-09-04.745
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -27920,6 +27920,39 @@ def _small_visual_s9():
     assert not bad, "; ".join(bad[:5])
     return "ok", ("two scrolling boxes with their edge, tables laid out as tables; a byline's dot "
                   "with what it leads to; a cut title faded below two whole lines; Report on a phone")
+
+
+@check("session", "a member a Journal names is given the site's member id, the PersonID where "
+       "the record has one, never careers.json's Employeeno key", needs=("journal_motions",))
+def _journal_member_site_id(JM):
+    """journal_motions.resolve_member returned careers.json's key, an
+    Employeeno, as the site's member id (30 October 2026): all 25 it named on
+    the kit were numbers no member page answers to. The site's id is the
+    PersonID where the record has one, else the Employeeno."""
+    careers = {
+        "376171": {"named": True, "first": "Steve", "last": "Vaillancourt", "person_id": "453",
+                   "by_term": {"2011-2012": {"chambers": ["H"]}}},
+        "408864": {"named": True, "first": "Wendy", "last": "Thomas", "person_id": "",
+                   "by_term": {"2023-2024": {"chambers": ["H"]}}},
+        "377001": {"named": True, "first": "Pat", "last": "Long", "person_id": "700",
+                   "by_term": {"2023-2024": {"chambers": ["H"]}}},
+        "377002": {"named": True, "first": "Patricia", "last": "Long", "person_id": "701",
+                   "by_term": {"2023-2024": {"chambers": ["H"]}}},
+        "218745": {"named": True, "first": "Bill", "last": "Gannon", "person_id": "8745",
+                   "by_term": {"2023-2024": {"chambers": ["S"]}}},
+    }
+    got = {
+        "a PersonID": JM.resolve_member("Vaillancourt", "H", "2011-2012", careers),
+        "no PersonID": JM.resolve_member("Wendy Thomas", "H", "2023-2024", careers),
+        "two of the name": JM.resolve_member("Long", "H", "2023-2024", careers),
+        "by first name": JM.resolve_member("Patricia Long", "H", "2023-2024", careers),
+        "another chamber": JM.resolve_member("Gannon", "H", "2023-2024", careers),
+        "a senator": JM.resolve_member("Gannon", "S", "2023-2024", careers),
+    }
+    want = {"a PersonID": "453", "no PersonID": "408864", "two of the name": "",
+            "by first name": "701", "another chamber": "", "a senator": "8745"}
+    assert got == want, f"resolve_member gave {got}, not {want}"
+    return "ok", "the PersonID where there is one, the Employeeno where not, and nobody when two fit"
 
 
 # ============================================================= code: pipeline ==
