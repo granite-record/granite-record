@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.1
+# GRANITE_VERSION: 2026-10-30.2
 """
 A committee page's live stream at the top (the live layer's design, section
 1.6): the hook the night writes into every committee and study-committee page,
@@ -72,25 +72,47 @@ def past():
     return BL.past_stems()
 
 
-def hook(code, chamber, name, history):
+def longer(chamber, name, others):
+    """The stems of the other committees whose names extend this one's.
+
+    A stream's title matches a stem it equals or begins with, followed by a
+    space. So the Senate's "Education" would take "Senate Education Finance
+    (1/7/2027)" -- another committee's stream (the review of 30 October
+    2026). The page refuses a title that matches one of these, the longer
+    name winning. `others` is every committee the run writes a page for, as
+    (chamber, name); one of the other chamber is not this page's concern."""
+    mine = stems(chamber, name, {})
+    out = []
+    for c2, n2 in others or ():
+        if (c2 or "", n2) == (chamber or "", name) or (chamber and c2 and c2 != chamber):
+            continue
+        for s2 in stems(c2, n2, {}):
+            if s2 not in mine and any(s2.startswith(m + " ") for m in mine) and s2 not in out:
+                out.append(s2)
+    return sorted(out)
+
+
+def hook(code, chamber, name, history, others=()):
     """The hook's HTML: hidden, empty, and filled by live.js."""
     attrs = {
         "data-committee": code, "data-chamber": chamber or "", "data-name": card_name(chamber, name),
         "data-match": json.dumps(stems(chamber, name, history), ensure_ascii=False),
+        "data-not": json.dumps(longer(chamber, name, others), ensure_ascii=False),
         "data-window": json.dumps(LG.WINDOW, sort_keys=True),
     }
     a = "".join(f' {k}="{S.E(v)}"' for k, v in attrs.items())
     return f'<section id="live-now" class="lv lv-committee" hidden{a}></section>'
 
 
-def place(html, code, chamber, name, history):
+def place(html, code, chamber, name, history, others=()):
     """The page with the hook directly before app.js's root, and live.js and
     live.css loaded. Stops (ValueError) on a page with no root or a hook
-    already in it: a page drawn twice must not carry two."""
+    already in it: a page drawn twice must not carry two. `others`: every
+    committee the run writes a page for, as (chamber, name) (longer())."""
     if html.count(ROOT) != 1:
         raise ValueError(f"committee {code}: the page has {html.count(ROOT)} {ROOT} where one is expected")
     if 'id="live-now"' in html:
         raise ValueError(f"committee {code}: the page already has a live hook")
-    html = html.replace(ROOT, hook(code, chamber, name, history) + ROOT, 1)
+    html = html.replace(ROOT, hook(code, chamber, name, history, others) + ROOT, 1)
     html = html.replace("</head>", '<link rel="stylesheet" href="/live.css">\n</head>', 1)
     return html.replace("</body>", '<script src="/live.js" defer></script>\n</body>', 1)

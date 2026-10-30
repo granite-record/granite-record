@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.744
+# GRANITE_VERSION: 2026-09-04.745
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -84765,7 +84765,7 @@ def _live_sql(live_gen, dayfiles_from_db, fetch_past_db, refusal):
 # The live Worker's suite, and how many tests it had when this was written: a
 # count that falls means a file stopped loading or a test was lost.
 LIVE_TESTS = "tests/live/index.js"
-LIVE_TESTS_AT_LEAST = 195
+LIVE_TESTS_AT_LEAST = 201
 # The person's ready-made switches (workers/live/control/), each as the Worker
 # must read it; and the values control.json may hold (store.js CONTROL_VALUES).
 LIVE_CONTROL = {"all-off.json": {"youtube": "off", "sql": "off"},
@@ -84822,17 +84822,54 @@ def _live_committee(LH, BL):
         got = json.loads(attr("data-match")) if (chamber, name) == ("H", "Finance") else LH.stems(chamber, name, hist)
         assert got == want, f"{chamber} {name}: the hook's stems {got} are not /live's {want}"
     assert json.loads(attr("data-match")) == ["house finance", "finance", "house finance division i"], attr("data-match")
-    # Placed by the two builders once PATCHES.md 11 is applied: then on every
-    # committee page; until then the patch must still say how.
+    # A longer committee's stream is never this one's (the review of 30
+    # October 2026): the Senate's Education refuses Education Finance's.
+    others = [("S", "Education"), ("S", "Education Finance"), ("H", "Education Policy and Administration"),
+              ("S", "Finance")]
+    assert LH.longer("S", "Education", others) == ["education finance", "senate education finance"], \
+        LH.longer("S", "Education", others)
+    assert LH.longer("S", "Education Finance", others) == [] and LH.longer("H", "Education", others) == \
+        ["education policy and administration", "house education policy and administration"], "longer() by chamber"
+    # Placed by the two builders once PATCHES.md 11 is applied (a call, not a
+    # mention in a comment): then on every committee page; until then the
+    # patch must still say how.
+    call = re.compile(r"^[^#\n]*\blive_hook\.place\(", re.M)
     builders = [Path(_paths.locate(f)).read_text(encoding="utf-8")
                 for f in ("build_committees.py", "build_study_committees.py")]
-    placed = ["live_hook.place(" in b for b in builders]
+    placed = [bool(call.search(b)) for b in builders]
     if not all(placed):
         patches = (root / "workers/live/PATCHES.md").read_text(encoding="utf-8")
         assert "## 11." in patches and "live_hook.place(" in patches, (
             "the committee builders do not place the live hook, and PATCHES.md 11 no longer says how")
+    # On a built site: every page carries one hook once placed, and where
+    # /live's schedule has the committee, the page's stems are the schedule's.
+    site = root / "site"
+    built = ""
+    if (site / "committee").is_dir() and (site / "live" / "schedule.json").is_file():
+        sched = json.loads((site / "live" / "schedule.json").read_text(encoding="utf-8"))
+        rows = [r for d in (sched.get("days") or {}).values() for r in d
+                if re.fullmatch(r"/committee/[A-Za-z0-9]+", r.get("href") or "")]
+        differ = []
+        for r in rows:
+            f = site / (r["href"].lstrip("/") + ".html")
+            if not f.is_file():
+                continue
+            m = re.search(r'id="live-now"[^>]*data-match="([^"]*)"', f.read_text(encoding="utf-8"))
+            if m and json.loads(H.unescape(m.group(1))) != r.get("match"):
+                differ.append(f"{r['href']}: page {H.unescape(m.group(1))}, /live {r.get('match')}")
+        assert not differ, f"{len(differ)} committee pages and /live disagree on whose stream is whose: " + "; ".join(differ[:3])
+        if all(placed):
+            # Never two; and one on every page /live's schedule has a meeting
+            # for (a retired committee's page has none, by PATCHES.md 11).
+            twice = [p.name for p in (site / "committee").glob("*.html")
+                     if p.read_text(encoding="utf-8").count('id="live-now"') > 1]
+            lacking = sorted({r["href"] for r in rows if (site / (r["href"].lstrip("/") + ".html")).is_file()
+                              and 'id="live-now"' not in (site / (r["href"].lstrip("/") + ".html")).read_text(encoding="utf-8")})
+            assert not twice and not lacking, (
+                f"committee pages with two live hooks {twice[:5]}, or scheduled ones with none {lacking[:5]}")
+        built = f"; the built site's {len(rows)} scheduled committees agree with /live"
     return "ok", ("hook before app.js's root, window and stems held to live.gen.js and /live's; "
-                  + ("placed by both builders" if all(placed) else "awaiting PATCHES.md 11"))
+                  + ("placed by both builders" if all(placed) else "awaiting PATCHES.md 11") + built)
 
 
 @check("build", "the live Worker reads a roll call's bill field as the record does: every field in "

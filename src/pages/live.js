@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.10
+// GRANITE_VERSION: 2026-10-30.11
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -531,25 +531,28 @@ L.inWindow = function (t, win) {
   return wd >= 1 && wd <= 5 && h >= win.from && h < win.to;
 };
 // Whether a stream is this committee's: its title stem equals one of the
-// committee's stems, or begins with one and a space; its chamber is the
-// committee's (where the committee has one); and it is no session stream.
-L.isCommittees = function (s, match, chamber) {
+// committee's stems, or begins with one and a space; it does not so match a
+// longer committee's name (`not`, live_hook.longer: the Senate's Education
+// never takes Education Finance's stream); its chamber is the committee's
+// (where the committee has one); and it is no session stream.
+L.isCommittees = function (s, match, chamber, not) {
   if (!s || L.sessionOf(s.title)) return false;
   if (chamber && s.chamber && s.chamber !== chamber) return false;
   var st = L.stem(s.title);
-  return (match || []).some(function (m) { return m && (st === m || st.indexOf(m + " ") === 0); });
+  var hit = function (m) { return m && (st === m || st.indexOf(m + " ") === 0); };
+  return (match || []).some(hit) && !(not || []).some(hit);
 };
 L.SOON_MS = 15 * MINUTE;
 // What the committee's card list is from one streams file: [{video, kind:
 // "live" | "soon", at}], newest first. A file more than 5 minutes past its
 // next_check, or for another day, says nothing (null): the page then makes
 // no claim of its own.
-L.committeeStreams = function (file, now, match, chamber) {
+L.committeeStreams = function (file, now, match, chamber, not) {
   if (!file || !file.status || !file.status.ok || file.day !== L.nhDate(now) || !file.next_check
       || +now > Date.parse(file.next_check) + 5 * MINUTE) return null;
   var out = [];
   (file.streams || []).forEach(function (s) {
-    if (!L.isCommittees(s, match, chamber)) return;
+    if (!L.isCommittees(s, match, chamber, not)) return;
     if (s.status === "live") out.push({ video: s.video, kind: "live", at: s.started || s.scheduled || "" });
     else if (s.status === "upcoming" && s.scheduled && Date.parse(s.scheduled) - now <= L.SOON_MS
              && Date.parse(s.scheduled) >= +now - L.SOON_MS) {
@@ -567,14 +570,16 @@ L.startCommittee = function (doc, opts) {
   var now = opts.now || function () { return Date.now(); };
   var el = doc.getElementById("live-now");
   if (!el) return null;
-  var match = [], win = { from: 7, to: 20 };
+  var match = [], not = [], win = { from: 7, to: 20 };
   try { match = JSON.parse(el.getAttribute("data-match") || "[]"); } catch (e) { match = []; }
+  try { not = JSON.parse(el.getAttribute("data-not") || "[]"); } catch (e) { not = []; }
   try { win = JSON.parse(el.getAttribute("data-window") || "") || win; } catch (e) { /* the default */ }
   var chamber = el.getAttribute("data-chamber") || "", name = el.getAttribute("data-name") || "";
   var code = el.getAttribute("data-committee") || "";
-  if (el.setAttribute) el.setAttribute("aria-label", C.tr("committee.is_live", "{name} is live now", { name: name }));
+  // A neutral name for the region: it says nothing of whether anything is live.
+  if (el.setAttribute) el.setAttribute("aria-label", liveTitle(name));
   var etag = null, file = null, timer = null, stopped = false, carrying = false, agenda = null, agendaDay = null;
-  var cards = {};                                   // video -> {card, kind}
+  var cards = {};                                   // video -> {card, kind, at}
 
   function playing(card) { return !!(card && card.querySelector && card.querySelector("iframe")); }
   function head(c) {
@@ -593,22 +598,31 @@ L.startCommittee = function (doc, opts) {
         "The recording reaches this page's Videos tab after the next nightly update.")) + "</p>";
     card.setAttribute("data-ended", "1");
   }
-  // Today's calendar card for this committee, from the night's schedule,
-  // asked for once a day and only while a stream is shown.
+  // Today's calendar card for this committee, from the night's schedule:
+  // asked for while a card is shown, until it has been read once that day
+  // (a failed read is asked again on the next answer).
   function withAgenda() {
     var today = L.nhDate(now());
     if (agendaDay === today) return Promise.resolve();
-    agendaDay = today;
-    return Promise.resolve(fetchImpl("/live/schedule.json", { headers: {} })).then(function (r) {
-      return r && r.ok ? r.json() : null;
-    }).then(function (s) {
-      var rows = (s && s.days && s.days[today]) || [];
-      var row = rows.filter(function (x) { return x.href === "/committee/" + code && x.card; })[0];
-      agenda = row ? row.card : null;
-    }).catch(function () { agenda = null; });
+    var get = fetchImpl;
+    return Promise.resolve(get("/live/schedule.json", { headers: {} })).then(function (r) {
+      if (!r || !r.ok) return;
+      return r.json().then(function (s) {
+        var rows = (s && s.days && s.days[today]) || [];
+        var row = rows.filter(function (x) { return x.href === "/committee/" + code && x.card; })[0];
+        agenda = row ? row.card : null;
+        agendaDay = today;
+      });
+    }).catch(function () { /* asked again next time */ });
+  }
+  // When the stream ended, by YouTube's own clock where the file has it.
+  function endedAt(video) {
+    var s = ((file && file.streams) || []).filter(function (x) { return x.video === video; })[0];
+    return (s && s.ended) || new Date(+now()).toISOString();
   }
   // `list` null: the answer is stale or failed, and says nothing. A card
-  // being watched is left exactly as it is; any other goes.
+  // being watched keeps its player, and its words go (nothing is claimed);
+  // any other card goes.
   function draw(list) {
     var keep = {}, unknown = list === null;
     (list || []).forEach(function (c) {
@@ -620,8 +634,16 @@ L.startCommittee = function (doc, opts) {
         card.setAttribute("data-video", c.video);
         card.innerHTML = '<div class="lv-head"></div>'
           + (c.kind === "live" ? stub({ video: c.video }, liveTitle(name)) : "") + '<div class="lv-foot"></div>';
-        el.appendChild(card);
-        have = cards[c.video] = { card: card, kind: c.kind };
+        // NEWEST FIRST, without moving a card already there (a moved frame
+        // reloads): before the first card that started earlier.
+        var before = null;
+        Object.keys(cards).forEach(function (v) {
+          var o = cards[v];
+          if (o.at < c.at && (!before || o.at > cards[before].at)) before = v;
+        });
+        if (before && el.insertBefore) el.insertBefore(card, cards[before].card);
+        else el.appendChild(card);
+        have = cards[c.video] = { card: card, kind: c.kind, at: c.at };
       } else if (have.kind === "soon" && c.kind === "live") {
         // It started: the card gains its stub, in place.
         have.card.innerHTML = '<div class="lv-head"></div>' + stub({ video: c.video }, liveTitle(name)) + '<div class="lv-foot"></div>';
@@ -636,7 +658,12 @@ L.startCommittee = function (doc, opts) {
       if (keep[v]) return;
       var c = cards[v];
       if (c.kind === "live" && playing(c.card)) {
-        if (!unknown && !c.card.getAttribute("data-ended")) ended(c.card, new Date(+now()).toISOString());
+        if (unknown) {
+          if (!c.card.getAttribute("data-ended")) {
+            var h = c.card.querySelector(".lv-head");
+            if (h) h.innerHTML = "";
+          }
+        } else if (!c.card.getAttribute("data-ended")) ended(c.card, endedAt(v));
       } else {
         c.card.remove();
         delete cards[v];
@@ -648,9 +675,12 @@ L.startCommittee = function (doc, opts) {
   // THE VIDEOS TAB'S BAR (PATCHES.md 4's hook, <div class="lv-strip" hidden>
   // in its sticky strip): one line while a stream of this committee is live
   // and its card has scrolled out of view, with a button back to it. The
-  // card itself is never sticky. Without the hook, nothing.
-  var bar = doc.querySelector ? doc.querySelector(".lv-strip") : null, outOfView = false;
+  // card itself is never sticky. app.js draws the strip, and draws it again,
+  // so the bar is looked up each time and its button heard on the document.
+  // Without the hook, nothing.
+  var outOfView = false;
   function strip() {
+    var bar = doc.querySelector ? doc.querySelector(".lv-strip") : null;
     if (!bar) return;
     var live = Object.keys(cards).filter(function (v) { return cards[v].kind === "live" && !cards[v].card.getAttribute("data-ended"); });
     var watching = live.some(function (v) { return playing(cards[v].card); });
@@ -660,17 +690,17 @@ L.startCommittee = function (doc, opts) {
       + '<button type="button" class="lv-strip-go">' + C.esc(C.tr("committee.watch", "Watch")) + "</button>";
     bar.hidden = false;
   }
-  if (bar) {
-    bar.addEventListener("click", function (e) {
-      if (e.target && e.target.closest && e.target.closest(".lv-strip-go") && el.scrollIntoView) el.scrollIntoView({ block: "start" });
-    });
-    if (root.IntersectionObserver) {
-      new root.IntersectionObserver(function (entries) {
-        outOfView = !entries[entries.length - 1].isIntersecting;
-        strip();
-      }).observe(el);
-    }
+  doc.addEventListener("click", function (e) {
+    if (e.target && e.target.closest && e.target.closest(".lv-strip-go") && el.scrollIntoView) el.scrollIntoView({ block: "start" });
+  });
+  if (root.IntersectionObserver) {
+    new root.IntersectionObserver(function (entries) {
+      outOfView = !entries[entries.length - 1].isIntersecting;
+      strip();
+    }).observe(el);
   }
+  // A failed answer keeps the last file: whether it still says anything is
+  // committeeStreams's to judge, by next_check (a blip is not an end).
   function poll() {
     if (stopped) return Promise.resolve();
     var headers = etag ? { "If-None-Match": etag } : {};
@@ -678,15 +708,15 @@ L.startCommittee = function (doc, opts) {
     return Promise.resolve(get("/api/live/streams", { headers: headers })).then(function (r) {
       if (r.status === 304) return r.status;
       if (r.status === 404) { stopped = true; file = null; return 404; }
-      if (!r.ok) { file = null; return r.status; }
+      if (!r.ok) return r.status;
       etag = r.headers.get("ETag");
       return r.json().then(function (j) { file = j; return 200; });
-    }).catch(function () { file = null; return 0; }).then(function (code) {
+    }).catch(function () { return 0; }).then(function (code) {
       if (code === 404) { draw(null); el.hidden = true; return; }     // no binding: hidden, and ask no more
-      var list = L.committeeStreams(file, now(), match, chamber);
+      var list = L.committeeStreams(file, now(), match, chamber, not);
       carrying = !!(list && list.some(function (c) { return c.kind === "live"; }));
-      if (!list) { draw(null); return; }                              // stale or failed: nothing claimed
-      return (carrying ? withAgenda() : Promise.resolve()).then(function () { draw(list); });
+      if (!list) { draw(null); return; }                              // stale: nothing claimed
+      return (list.length ? withAgenda() : Promise.resolve()).then(function () { draw(list); });
     });
   }
   // Inside the window, or while a stream shown is still live: a request a
@@ -703,7 +733,7 @@ L.startCommittee = function (doc, opts) {
     else if (due()) poll().then(tick);
     else tick();
   });
-  var first = (due() ? poll() : Promise.resolve()).then(tick);
+  var first = (due() && !doc.hidden ? poll() : Promise.resolve()).then(tick);
   return { poll: poll, first: first, stop: function () { stopped = true; clearTimeout(timer); } };
 };
 

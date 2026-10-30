@@ -29,11 +29,12 @@ const s = over => ({ video: "AAAAAAAAAAA", chamber: "H", title: "House Finance (
   scheduled: "2027-01-07T15:00:00Z", started: "2027-01-07T15:02:00Z", ended: null, embeddable: true, ...over });
 
 // The hook and the cards live.js makes, deep enough for startCommittee.
-function page({ match = MATCH, chamber = "H", win = WINDOW } = {}) {
+function page({ match = MATCH, chamber = "H", win = WINDOW, not = [] } = {}) {
   const mk = (tag = "div") => {
     const e = { tagName: tag, attrs: {}, children: [], hidden: false, _html: "", className: "",
       setAttribute(k, v) { this.attrs[k] = String(v); }, getAttribute(k) { return this.attrs[k] ?? null; },
       appendChild(c) { c.parent = this; this.children.push(c); return c; },
+      insertBefore(c, ref) { c.parent = this; const i = this.children.indexOf(ref); this.children.splice(i < 0 ? this.children.length : i, 0, c); return c; },
       remove() { if (this.parent) this.parent.children = this.parent.children.filter(x => x !== this); this.gone = true; },
       querySelector(sel) {
         if (sel === "iframe") return this.frame || null;
@@ -46,7 +47,8 @@ function page({ match = MATCH, chamber = "H", win = WINDOW } = {}) {
   const hook = mk("section");
   hook.hidden = true;
   Object.assign(hook.attrs, { "data-committee": "H09", "data-chamber": chamber, "data-name": "House Finance",
-                              "data-match": JSON.stringify(match), "data-window": JSON.stringify(win) });
+                              "data-match": JSON.stringify(match), "data-not": JSON.stringify(not),
+                              "data-window": JSON.stringify(win) });
   const doc = { hidden: false, _on: {}, getElementById: id => (id === "live-now" ? hook : null), createElement: mk,
                 addEventListener(t, f) { (this._on[t] = this._on[t] || []).push(f); } };
   return { doc, hook };
@@ -115,7 +117,7 @@ test("a live stream shows one card, with a stub and no frame, and the agenda fro
     assert.doesNotMatch(card.innerHTML, /<iframe/, "nothing from YouTube before a press");
     assert.match(card.parts[".lv-head"].innerHTML, /<p class="lv-name">Live now<\/p>.*Live since 10:02/);
     assert.doesNotMatch(card.innerHTML + card.parts[".lv-head"].innerHTML, /<h[1-6]/, "no heading above the page's own h1");
-    assert.equal(hook.attrs["aria-label"], "House Finance is live now");
+    assert.equal(hook.attrs["aria-label"], "Live stream of House Finance", "a neutral name: it claims nothing");
     assert.match(card.parts[".lv-foot"].innerHTML, /On YouTube.*class="lv-agenda".*HB 2/);
     assert.doesNotMatch(card.parts[".lv-foot"].innerHTML, /other/);
     assert.deepEqual(asked.map(a => a[0]), ["/api/live/streams", "/live/schedule.json"]);
@@ -198,7 +200,8 @@ test("stale or failed: an unplayed card goes, a watched one stays as it was, and
     at = T("2027-01-07T15:28:00Z");                                // 6 minutes past next_check
     await p.poll();
     assert.deepEqual(hook.children, [watched]);
-    assert.equal(watched.parts[".lv-head"].innerHTML, before, "no 'Ended at' on a stale answer");
+    assert.ok(before.includes("Live now"));
+    assert.equal(watched.parts[".lv-head"].innerHTML, "", "stale: no 'Ended at', and no 'Live now' either: nothing claimed");
     answer = { status: 503 };
     await p.poll();
     assert.deepEqual(hook.children, [watched]);
@@ -276,6 +279,115 @@ test("the Videos tab's bar: only while a stream is live and its card out of view
     await p.poll();
     seen([{ isIntersecting: false }]);
     assert.equal(bar.hidden, true, "nothing live: no bar");
+  } finally { p.stop(); }
+});
+
+test("a longer committee's stream is never this one's: Senate Education and Education Finance", () => {
+  const edu = ["senate education", "education"], not = ["education finance", "senate education finance"];
+  const fin = s({ chamber: "S", title: "Senate Education Finance (1/7/2027)" });
+  assert.equal(L.isCommittees(fin, edu, "S"), true, "without the night's list it would match");
+  assert.equal(L.isCommittees(fin, edu, "S", not), false);
+  assert.equal(L.isCommittees(s({ chamber: "S", title: "Senate Education (1/7/2027)" }), edu, "S", not), true);
+  assert.equal(L.isCommittees(fin, ["senate education finance", "education finance"], "S", []), true, "and on its own page, it is");
+});
+
+test("a failure is not an end: the last file holds until its next_check is 5 minutes past", async () => {
+  const held = [];
+  const ctx = load({ setTimeout: (f, ms) => { held.push([f, ms]); return held.length; }, clearTimeout: () => {} });
+  const next = async () => { const [f] = held.shift(); f(); for (let i = 0; i < 4; i++) await new Promise(r => setImmediate(r)); };
+  let at = T("2027-01-08T00:59:00Z");                                // 19:59 EST: opened in the window
+  let answer = { body: streams({ checked: "2027-01-08T00:59:00Z", next_check: "2027-01-08T01:06:00Z", streams: [s({})] }) };
+  const { doc, hook } = page();
+  const { fetch, asked } = server(url => (url === "/api/live/streams" ? answer : null));
+  const p = ctx.GRLive.startCommittee(doc, { fetch, now: () => at });
+  const n = () => asked.filter(a => a[0] === "/api/live/streams").length;
+  try {
+    await p.first;
+    const card = hook.children[0];
+    card.frame = { id: "yt_lv-AAAAAAAAAAA" };
+    answer = { status: 503 };
+    at = T("2027-01-08T01:06:00Z");
+    await next();
+    assert.equal(n(), 2);
+    at = T("2027-01-08T01:07:00Z");
+    await next();
+    assert.equal(n(), 3, "a 503 did not end the carrying past 20:00");
+    assert.match(card.parts[".lv-head"].innerHTML, /Live now/, "the last file still holds");
+    at = T("2027-01-08T01:12:00Z");                                  // 6 minutes past next_check
+    await next();
+    assert.equal(card.parts[".lv-head"].innerHTML, "", "stale: the watched card keeps its player, and claims nothing");
+    assert.equal(hook.children[0], card);
+    assert.equal(n(), 4);
+    at = T("2027-01-08T01:13:00Z");
+    await next();
+    assert.equal(n(), 4, "stale past 20:00: no more requests");
+  } finally { p.stop(); }
+});
+
+test("'Ended at' is when YouTube says the stream ended, not when the page noticed", async () => {
+  const { doc, hook } = page();
+  let body = streams({ streams: [s({})] });
+  const { fetch } = server(url => (url === "/api/live/streams" ? { body } : null));
+  let at = T("2027-01-07T15:21:00Z");
+  const p = L.startCommittee(doc, { fetch, now: () => at });
+  try {
+    await p.first;
+    hook.children[0].frame = { id: "yt_lv-AAAAAAAAAAA" };
+    body = streams({ checked: "2027-01-07T18:39:00Z", next_check: "2027-01-07T18:41:00Z",
+                     streams: [s({ status: "ended", ended: "2027-01-07T17:10:00Z" })] });
+    at = T("2027-01-07T18:40:00Z");                                  // 1:40 PM, the tab back from hidden
+    await p.poll();
+    assert.match(hook.children[0].parts[".lv-head"].innerHTML, /Ended at 12:10/);
+  } finally { p.stop(); }
+});
+
+test("a stream starting later goes above, and a playing card is never moved", async () => {
+  const { doc, hook } = page();
+  let body = streams({ streams: [s({ video: "AAAAAAAAAAA", started: "2027-01-07T15:02:00Z" })] });
+  const { fetch } = server(url => (url === "/api/live/streams" ? { body } : null));
+  const p = L.startCommittee(doc, { fetch, now: () => T("2027-01-07T15:21:00Z") });
+  try {
+    await p.first;
+    const a = hook.children[0];
+    a.frame = { id: "yt_lv-AAAAAAAAAAA" };
+    body = streams({ streams: [s({ video: "AAAAAAAAAAA", started: "2027-01-07T15:02:00Z" }),
+                               s({ video: "BBBBBBBBBBB", title: "House Finance Division I (01/07/2027)", started: "2027-01-07T15:15:00Z" })] });
+    await p.poll();
+    assert.deepEqual(hook.children.map(c => c.attrs["data-video"]), ["BBBBBBBBBBB", "AAAAAAAAAAA"], "newest first");
+    assert.equal(hook.children[1], a, "the playing card is the same object, not moved by re-appending");
+  } finally { p.stop(); }
+});
+
+test("the agenda: for a scheduled card too, and asked again after a failed read", async () => {
+  const { doc, hook } = page();
+  let sched = null;
+  const { fetch, asked } = server(url => (url === "/api/live/streams"
+    ? { body: streams({ streams: [s({ status: "upcoming", started: null, scheduled: "2027-01-07T15:30:00Z" })] }) }
+    : url === "/live/schedule.json" && sched ? { body: sched } : null));
+  const p = L.startCommittee(doc, { fetch, now: () => T("2027-01-07T15:21:00Z") });
+  try {
+    await p.first;
+    assert.doesNotMatch(hook.children[0].parts[".lv-foot"].innerHTML, /lv-agenda/, "the schedule would not read");
+    sched = { days: { "2027-01-07": [{ href: "/committee/H09", card: "<details>HB 2</details>" }] } };
+    await p.poll();
+    assert.match(hook.children[0].parts[".lv-foot"].innerHTML, /lv-agenda.*HB 2/, "asked again, and a scheduled card has it");
+    await p.poll();
+    assert.equal(asked.filter(a => a[0] === "/live/schedule.json").length, 2, "read once it worked");
+  } finally { p.stop(); }
+});
+
+test("a page loaded in a hidden tab asks nothing until it is shown", async () => {
+  const { doc } = page();
+  doc.hidden = true;
+  const { fetch, asked } = server({ "/api/live/streams": { body: streams() } });
+  const p = L.startCommittee(doc, { fetch, now: () => T("2027-01-07T15:21:00Z") });
+  try {
+    await p.first;
+    assert.deepEqual(asked, []);
+    doc.hidden = false;
+    doc._on.visibilitychange.forEach(f => f());
+    await new Promise(r => setImmediate(r));
+    assert.equal(asked.length, 1);
   } finally { p.stop(); }
 });
 

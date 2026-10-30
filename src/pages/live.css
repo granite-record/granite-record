@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-10-30.5 */
+/* GRANITE_VERSION: 2026-10-30.6 */
 /* LIVE NOW'S OWN RULES (/live, src/pages/live.js). Only .lv* classes, drawn in
    the site's tokens (app.css), so both themes work and nothing here reaches
    another page. The player and its stub are the site's own (.player, .pstub);
@@ -39,5 +39,14 @@ background:var(--brick);margin-right:.45em;vertical-align:.05em}
 /* In #results's own column (the hook is its sibling), left-aligned with the
    page's head; the card no wider than a player wants. */
 .lv-committee{margin:var(--sp-5) 0;display:grid;gap:var(--sp-4)}
+/* A display set here beats the browser's own [hidden] (app.css says so of
+   its own rules): the empty hook must take no room and be no landmark. */
+.lv-committee[hidden],.lv-strip[hidden]{display:none}
 .lv-committee .lv-card{margin:0;max-width:46rem}
+/* The Videos tab's bar (PATCHES.md 4's hook): one line in its sticky strip. */
+.lv-strip{display:flex;align-items:center;gap:var(--sp-3,8px);font-size:var(--t-sm);padding:var(--sp-2,4px) 0}
+.lv-strip-t::before{content:"";display:inline-block;width:.55em;height:.55em;border-radius:50%;
+background:var(--brick);margin-right:.45em;vertical-align:.05em}
+.lv-strip-go{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--rule-2);
+border-radius:var(--r-out);padding:2px var(--sp-3,8px);cursor:pointer}
 @media (max-width:600px){.lvpage{padding:var(--sp-5) var(--sp-4)}.lv-card,.lv-session{padding:var(--sp-4) var(--sp-5)}}
