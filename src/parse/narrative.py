@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.114
+# GRANITE_VERSION: 2026-09-04.115
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -4349,8 +4349,8 @@ def _calendar_rows(chamber, term):
         try:
             import calendar_meetings as CM
             years = [int(y) for y in (term or "").split("-") if y.isdigit()]
-            CALENDAR_ROWS[key] = CM.load(chamber, years=range(min(years) - 1, max(years) + 2)) \
-                if years else []
+            CALENDAR_ROWS[key] = CM.load(chamber, years=range(min(years) - 1, max(years) + 2),
+                                         cache=True) if years else []
         except Exception as exc:                    # noqa: BLE001
             CALENDAR_ROWS[key] = []
             CALENDAR_UNREAD[key] = f"{type(exc).__name__}: {exc}"
