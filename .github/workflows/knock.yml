@@ -300,7 +300,9 @@ jobs:
       # Every General Court request in this workflow is this one step's child,
       # under refusal.hold("the knock"): one request, never retried, following
       # no redirect, killed at refusal.KNOCK_MINUTES by itself and at three
-      # minutes by this step. Its statuses are answers, so the step is green.
+      # minutes by this step. Its statuses are answers, so the step is green;
+      # its status goes to "What the refusal is now", where a 2 whose answer
+      # could not be written down is a person's all the same, and fails the job.
       - name: The knock, one request
         id: knock
         if: steps.claimsent.outcome == 'success'
@@ -311,6 +313,7 @@ jobs:
           python src/fetch/gc_web/snapshot_gencourt.py --knock
           $rc = $LASTEXITCODE
           Write-Output "The knock ended $rc: 0 lifted, 1 not answered, 2 a person's, 4 not asked."
+          Write-Output "rc=$rc" >> $env:GITHUB_OUTPUT
           if ($rc -in 0, 1, 2, 4) { exit 0 }
           exit $rc
       # A CLAIM THE CHILD DID NOT USE IS NOT A KNOCK. knocking() turns this
@@ -336,8 +339,10 @@ jobs:
           exit $LASTEXITCODE
       - name: What the refusal is now
         if: always() && steps.statedown.outcome == 'success'
+        env:
+          KNOCK_RC: ${{ steps.knock.outputs.rc }}
         run: |
-          python refusal.py --person-line --person-file logs/alert-person.txt
+          python refusal.py --person-line "--knock-rc=$env:KNOCK_RC" --person-file logs/alert-person.txt
           exit $LASTEXITCODE
       # /fail only, never a plain ping: "up" comes only from the night, the
       # morning after a person clears the record. After the state-up, so the

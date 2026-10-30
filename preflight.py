@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.740
+# GRANITE_VERSION: 2026-09-04.741
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -84849,7 +84849,10 @@ def _knock_ladder(R):
     whose(), each asserted), the last near 383.9. And a 503's Retry-After of
     50 hours holds the next knock past it; another run's claim 14 minutes old
     holds it while in flight, and 16 minutes old makes the record a person's,
-    as an answer the bucket never heard; this run's own claim holds nothing."""
+    as an answer the bucket never heard; this run's own claim holds nothing.
+    And a knock left "no answer" (the reviewers of 30 October 2026) holds
+    the next 14 minutes on, and 16 minutes on, whoever made it, is an answer
+    never written down: a person's, nothing due."""
     from collections import Counter
     from datetime import datetime, timezone
     tmp = Path(tempfile.mkdtemp(prefix="gr-ladder-"))
@@ -84947,6 +84950,22 @@ def _knock_ladder(R):
             _KnockEnv.set(**dict(_KNOCK_MAIN, GITHUB_RUN_ID="mine", GITHUB_RUN_ATTEMPT="2"))
             assert claim(1, run="mine")[0] is False, \
                 "a claim of an earlier attempt of this run was taken as this attempt's own"
+
+            # THE ANSWER NOT WRITTEN DOWN (the reviewers of 30 October 2026): a
+            # knock still "no answer" 14 minutes on is in flight, not due
+            # again; 16 minutes on, from any run, this one's too, it is an
+            # answer lost, a person's, and nothing is ever due.
+            def unanswered(age, run="other"):
+                k["current"]["knocks"] = [{"utc": "-", "epoch": t - age * 60, "run_id": run,
+                                           "attempt": "1", "by": "night", "answer": "no answer"}]
+                return R.knock_due(None, k, now=t), R.whose(None, k, now=t)
+            young, old = unanswered(14), unanswered(16)
+            _KnockEnv.set(**dict(_KNOCK_MAIN, GITHUB_RUN_ID="mine", GITHUB_RUN_ATTEMPT="1"))
+            own = unanswered(16, run="mine")
+            assert young[0][0] is False and young[1][0] == "night" and \
+                old == ((False, None), old[1]) and old[1][0] == "person" and \
+                "never written down" in old[1][1] and own[1][0] == "person", \
+                f"a knock left \"no answer\": 14 minutes {young}, 16 {old}, this run's own {own}"
         return "ok", (f"94 knocks ({len(fast)} hourly-phase, {len(slow)} after), at most "
                       f"{most_fast} a day then {most_slow}, one a rung, none after 384 hours; a "
                       "Retry-After and a claim in flight hold it, a lost claim is a person's")
@@ -85356,8 +85375,19 @@ def _the_knock(SG, R):
       - an opener that raises SystemExit once the knock is written down
         leaves it "no answer"; a child whose opener never answers ends
         itself at KNOCK_KILL_SECONDS with 124, run here as a process of its
-        own, sealed, with the limit shortened -- and the limit is
-        KNOCK_MINUTES' two minutes, and 124 the night's RUN_KILLED;
+        own, sealed, with the limit shortened, writing "dropped" over its
+        "no answer" -- a failed knock, still the night's sixteen minutes on
+        -- and the limit is KNOCK_MINUTES' two minutes, and 124 the night's
+        RUN_KILLED; the kill run in this process too, its exit a stand-in,
+        writes "dropped" and releases its lock once, and does nothing once
+        the answer is written;
+      - THE ANSWER NOT WRITTEN DOWN (the reviewers of 30 October 2026): a
+        403 whose knocked() raises twice is exit 2, knocked() tried twice,
+        the entry "no answer"; sixteen minutes on the record is a person's,
+        an answer lost, and no knock is due then or an hour on. A drop whose
+        knocked() raises twice is exit 1, and a person's sixteen minutes on
+        too. A 403 whose first write raises is written by the second: exit
+        2, `person` set;
       - zero requests and exit 4 when the gate says no: a knock not due (one
         twenty minutes before, in the same rung), a record without a kind or
         of the kind "refused", a dry run, a run of dev, off GitHub,
@@ -85366,7 +85396,8 @@ def _the_knock(SG, R):
         14:00 UTC, the hourly one at 07:29, 07:30, 10:00 and 13:29, and on a
         Monday at 03:30 and 06:29 -- while the night's at 08:00 and 11:17:59
         and the hourly one at 07:27 and 13:31 ask;
-      - exit 2 only ever with `person` set;
+      - exit 2 only ever with `person` set, but for the answer not written
+        down;
       - read from the code: main()'s --knock branch calls
         refusal.check(..., knock=True) before knock(), and no other call in
         the repository passes knock=True; knock() calls the opener once, in
@@ -85469,6 +85500,82 @@ def _the_knock(SG, R):
                     wrong.append(f"a bare 503 asking 50 hours: the next knock due {r.due}")
             SG.KNOCK_TIMEOUT = saved[4]
 
+            # THE ANSWER NOT WRITTEN DOWN: knocked() raising, twice or once.
+            real_knocked, tries = R.knocked, []
+
+            def fails(times):
+                def k(*a, **kw):
+                    tries.append(a[0])
+                    if len(tries) <= times:
+                        raise OSError("the disk is full")
+                    return real_knocked(*a, **kw)
+                return k
+            try:
+                for what, answer, rc in (("a 403", {"status": 403, "body": b"no"}, 2),
+                                         ("a drop", {"drop": True}, 1)):
+                    del tries[:]
+                    R.knocked = fails(2)
+                    r, cur = knock(answer)
+                    seen.pop()        # exit 2 with no `person`: this case's own rule, below
+                    last = (cur.get("knocks") or [{}])[-1]
+                    with _KnockEnv(**dict(_KNOCK_MAIN, GRANITE_CLOCK_UTC=_utc_iso(night + 16 * 60))):
+                        later = (R.whose()[0], "never written down" in R.whose()[1],
+                                 R.knock_due(), R.knock_due(now=night + 3600))
+                    if r.rc != rc or len(tries) != 2 or last.get("answer") != "no answer" or \
+                            r.who != "night" or later != ("person", True, (False, None), (False, None)):
+                        wrong.append(f"{what} whose answer could not be written down: exit {r.rc}, "
+                                     f"knocked() tried {len(tries)} times, the entry "
+                                     f"{last.get('answer')!r}, {r.who}'s at once; sixteen minutes "
+                                     f"on {later}")
+                del tries[:]
+                R.knocked = fails(1)
+                r, cur = knock({"status": 403, "body": b"no"})
+                if r.rc != 2 or len(tries) != 2 or not cur.get("person"):
+                    wrong.append(f"a 403 whose first write failed: exit {r.rc}, knocked() tried "
+                                 f"{len(tries)} times, person {cur.get('person')!r}")
+            finally:
+                R.knocked = real_knocked
+
+            # The child's own kill, in this process, its os._exit a stand-in:
+            # it writes "dropped" over a "no answer" and ends 124, releasing
+            # its lock; once the answer is written (`done`) it does nothing.
+            import contextlib
+            import io
+            import threading
+            import types
+
+            class Ends(Exception):
+                pass
+
+            def ended(code):
+                raise Ends(code)
+            saved_os = SG.os
+            released = []
+            for done in (False, True):
+                R.MARK.unlink(missing_ok=True)
+                R.knocks_file().unlink(missing_ok=True)
+                R.MARK.write_bytes(record)
+                with _KnockEnv(**dict(_KNOCK_MAIN, GITHUB_RUN_ID=f"kill{done}",
+                                      GRANITE_CLOCK_UTC=_utc_iso(night))):
+                    R.knocking(_KNOCK_URL)
+                    SG.os = types.SimpleNamespace(_exit=ended)
+                    try:
+                        with contextlib.redirect_stderr(io.StringIO()):
+                            SG._knock_killed(types.SimpleNamespace(release=lambda: released.append(1)),
+                                             threading.Lock(), {"done": done})
+                        code = None
+                    except Ends as e:
+                        code = e.args[0]
+                    finally:
+                        SG.os = saved_os
+                last = ((R.read_knocks()[0].get("current") or {}).get("knocks") or [{}])[-1]
+                expect = ((None, "no answer") if done else (124, "dropped"))
+                if (code, last.get("answer")) != expect:
+                    wrong.append(f"the child's own kill, the answer {'written' if done else 'not'}: "
+                                 f"exit {code}, the entry {last.get('answer')!r}, not {expect}")
+            if released != [1]:
+                wrong.append(f"the child's own kill released its lock {len(released)} times, not once")
+
             class Exits:
                 handlers = []
                 calls = []
@@ -85551,9 +85658,14 @@ def _the_knock(SG, R):
         except subprocess.TimeoutExpired:
             code, said = None, "it was still waiting a minute later"
         last = ((R.read_knocks()[0].get("current") or {}).get("knocks") or [{}])[-1]
-        if code != 124 or last.get("answer") != "no answer" or not (tmp / "asked.txt").exists():
+        with _KnockEnv(**dict(_KNOCK_MAIN, GRANITE_CLOCK_UTC=_utc_iso(night + 16 * 60))):
+            later = R.whose()[0]
+        if code != 124 or last.get("answer") != "dropped" or \
+                "stopped itself" not in str(last.get("said")) or later != "night" or \
+                not (tmp / "asked.txt").exists():
             wrong.append(f"a knock that was never answered: exit {code}, the entry "
-                         f"{last.get('answer')!r}: {said}")
+                         f"{last.get('answer')!r} ({last.get('said')!r}), {later}'s sixteen "
+                         f"minutes on: {said}")
 
         # Read from the code.
         sg = ast.parse(_paths.locate("snapshot_gencourt.py").read_text(encoding="utf-8"))
@@ -88131,8 +88243,10 @@ class _KnockNights:
     child, in this process, under the environment the night hands it: its
     gate, refusal.knock_gate() -- 4, having asked nothing, when it says no --
     then knocking(), and n.knob["knock"]: "whole", "dropped" or "refused"
-    through knocked(); "killed" (RUN_KILLED, its entry left "no answer");
-    "notnow" (4 after the gate, nothing written). With DF (dayfiles_from_db),
+    through knocked(); "killed" (RUN_KILLED, its entry left "no answer" for
+    the night to write); "lost" (2, the entry left "no answer": the address
+    said no and the answer could not be written down); "notnow" (4 after
+    the gate, nothing written). With DF (dayfiles_from_db),
     fetch_day_db.py leaves the fixture's views (_dbday_views), so a night
     that turns to the database installs the fixture's files. n.calls is
     every step started, (args, env, timeout, whether the night's lock was
@@ -88252,6 +88366,10 @@ class _KnockNights:
             R.knocking(_KNOCK_URL)
             if answer == "killed":
                 return self.NI.RUN_KILLED
+            if answer == "lost":
+                # The address said no, and the child could not write that
+                # down (snapshot_gencourt.knock): "no answer" stays, exit 2.
+                return 2
             return {"lifted": 0, "person": 2}.get(R.knocked(answer, _KNOCK_SAID[answer]), 1)
         finally:
             os.environ.pop(R.KNOCK_BY_ENV, None)
@@ -88349,8 +88467,14 @@ def _nightly_knocks(NI, PD, DF):
         names when the next is due, and a held night;
       - the knock answered with a drop, killed, or not asked by the child's
         own gate: "not answered" or "not asked", the record still the
-        night's, and a held night; answered with the firewall's page: a
-        person's for good, nothing more asked, no database;
+        night's, and a held night -- the knock killed written "dropped" by
+        the night, so still the night's twenty minutes on; answered with the
+        firewall's page: a person's for good, nothing more asked, no
+        database; and answered no with its answer not written down (the
+        child's 2, the entry "no answer"): no held night, no database, the
+        verdict's "web" a person's, the third check told that night with
+        the night's alert naming clear-refusal, and sixteen minutes on a
+        person's with no knock due;
       - no knock, no "knock" and no database for run 151's record as it
         stands (no kind), a 403's, NIGHT_KNOCK off, "ON " or unset,
         NIGHT_PERSON_CHECK unset or "none", a setting typed wrong, or a
@@ -88495,6 +88619,41 @@ def _nightly_knocks(NI, PD, DF):
                 wrong.append(f"a knock answered with the firewall's page: exit {code}, "
                              f"{len(n.asked('fetch_day_db.py'))} asks of the database, "
                              f"{v.get('fetch')!r}")
+            if answer == "killed":
+                # Killed here, its entry is written "dropped": a failed knock,
+                # still the night's once its "no answer" would have been lost.
+                last = ((R.read_knocks()[0].get("current") or {}).get("knocks") or [{}])[-1]
+                with _KnockEnv(**dict(_KNOCK_MAIN, GRANITE_CLOCK_UTC=_utc_iso(morning + 20 * 60))):
+                    later = R.whose()[0]
+                if last.get("answer") != "dropped" or later != "night":
+                    wrong.append(f"a knock the night killed: its entry {last.get('answer')!r}, "
+                                 f"{later}'s twenty minutes on")
+        # THE ANSWER NOT WRITTEN DOWN (the reviewers of 30 October 2026): the
+        # address said no and the child could not write it down, so its entry
+        # stays "no answer" and it exits 2. No held night and no database;
+        # the third check is told that night, before whose() can say so; and
+        # sixteen minutes on the record is a person's, no knock ever due.
+        n.fresh(rec)
+        n.knob.update(export="whole", knock="lost")
+        code, v, _ = n.night(morning, run_id="k5lost")
+        last = ((R.read_knocks()[0].get("current") or {}).get("knocks") or [{}])[-1]
+        with _KnockEnv(**dict(_KNOCK_MAIN, GRANITE_CLOCK_UTC=_utc_iso(morning + 16 * 60))):
+            later = (R.whose()[0], R.knock_due(), R.knock_due(now=morning + 3 * H))
+        if len(n.knocks()) != 1 or n.exports() or n.asked("fetch_day_db.py") or code != 1 or \
+                not str(v.get("knock", "")).startswith(NI.KNOCK_SAID_NO) or \
+                not str(v.get("fetch", "")).startswith("deferred") or \
+                (v.get("web") or {}).get("state") != "person" or last.get("answer") != "no answer" or \
+                later != ("person", (False, None), (False, None)):
+            wrong.append(f"a knock answered no, its answer not written down: {len(n.knocks())} "
+                         f"knocks, {len(n.exports())} tries, {len(n.asked('fetch_day_db.py'))} of "
+                         f"the database, exit {code}, {v.get('knock')!r}, {v.get('fetch')!r}, the "
+                         f"entry {last.get('answer')!r}; sixteen minutes on {later}")
+        alert, person, warn = n.close(morning + 600, "night=failure", "k5lost")
+        if not (person or "").startswith("A REFUSAL IS YOURS") or "IT office" not in person or \
+                "clear-refusal" not in (alert or "") or "tests itself" in (alert or "") + (warn or ""):
+            wrong.append(f"a knock answered no, its answer not written down: the third check is "
+                         f"told {person!r} that night, the night's check {alert!r}, the "
+                         f"warnings' {warn!r}")
         n.knob.update(knock="whole")
 
         # A refusal the night does not test, or the switch off: no knock at all.
@@ -88714,7 +88873,14 @@ def _person_check_rings(NI, PD, DF):
          from 08:47 to 12:47, inside the night's hours, write nothing, and the
          13:47 look's /fail is a repeat. A chain the weekly began at 04:20 on
          a Monday ends at 04:20 on the Wednesday sixteen days on: the 03:47
-         look writes nothing, the 04:47 look the change.
+         look writes nothing, the 04:47 look the change;
+      6. the answer not written down (the reviewers of 30 October 2026):
+         day 0, then the night's knock answered no, its child exiting 2 with
+         the entry left "no answer" -- the third check up, then down that
+         morning; the 13:47 look tells it again and no claim is allowed. And
+         the hourly knock job's: "What the refusal is now" with --knock-rc=2
+         tells it /fail and exits 1, and the next hour's look tells it again
+         and claims nothing.
 
     Sequence 2's held nights have the hourly knock's trace between them (a
     claim of its marked "not asked"), as they would with knock.yml running;
@@ -88844,6 +89010,62 @@ def _person_check_rings(NI, PD, DF):
         if before or not after.startswith("A REFUSAL IS YOURS"):
             wrong.append(f"a chain the weekly started, at its sixteenth day: the 03:47 look wrote "
                          f"{before!r}, the 04:47 one {after!r}")
+
+        # 6: THE ANSWER NOT WRITTEN DOWN (the reviewers of 30 October 2026).
+        # The night's knock answered no, its answer not written down (the
+        # child's exit 2, the entry "no answer"): the third check down that
+        # morning, an email; the 13:47 look's /fail a repeat, and no claim.
+        n.fresh()
+        day0 += 60 * 24 * H
+        n.knob.update(export="whole")
+        n.night(day0 - 24 * H, run_id="x0")
+        n.knob.update(export="drop", knock="dropped")
+        code, v, _ = n.night(day0, run_id="x1")
+        seen = [_rings(n, day0 + 600, "x1", code)[1]]
+        n.knob.update(export="whole", knock="lost")
+        code, v, _ = n.night(day0 + 24 * H + 180, run_id="x2")
+        seen.append(_rings(n, day0 + 24 * H + 600, "x2", code)[1])
+        look = _knock_step_file(n, day0 + 29 * H + 20 * 60, "x-l", "--knock-look")   # 13:47:15
+        _KnockEnv.set(**dict(_KNOCK_MAIN, GITHUB_RUN_ID="x-c", GRANITE_KNOCK_BY="hourly"))
+        n.clock(day0 + 29 * H + 20 * 60)
+        claimed = n.R.knock_claim()[0]
+        if seen != ["up", "down"] or not look.startswith("A REFUSAL IS YOURS") or claimed:
+            wrong.append(f"the night's knock answered no, its answer not written down: the third "
+                         f"check {seen}, the 13:47 look wrote {look[:60]!r}, a claim {claimed}")
+        # ... and the hourly knock job's: "What the refusal is now", handed
+        # the child's 2, tells the third check and fails its step; the next
+        # hour's look tells it again, and claims nothing.
+        n.fresh()
+        day0 += 30 * 24 * H
+        n.knob.update(export="whole")
+        n.night(day0 - 24 * H, run_id="y0")
+        n.knob.update(export="drop", knock="dropped")
+        code, v, _ = n.night(day0, run_id="y1")
+        _rings(n, day0 + 600, "y1", code)
+        at = day0 + 6 * H + 20 * 60                                    # 14:47:15
+        _KnockEnv.set(**dict(_KNOCK_MAIN, GITHUB_RUN_ID="y-h1", GRANITE_KNOCK_BY="hourly"))
+        n.clock(at)
+        asked = n.R.knock_claim()[0] and n.R.knock_gate("hourly")[0]
+        if asked:
+            n.R.knocking(_KNOCK_URL)          # answered no; knocked() could not write it
+        n.R.knock_unclaim()
+        import contextlib
+        import io
+        p = Path("logs") / "alert-person-step.txt"
+        p.unlink(missing_ok=True)
+        sys.argv = ["refusal.py", "--person-line", "--knock-rc=2", "--person-file", str(p)]
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            step = n.R.main()
+        told = p.read_text(encoding="utf-8") if p.exists() else ""
+        look = _knock_step_file(n, at + H, "y-l", "--knock-look")
+        _KnockEnv.set(**dict(_KNOCK_MAIN, GITHUB_RUN_ID="y-h2", GRANITE_KNOCK_BY="hourly"))
+        n.clock(at + H)
+        claimed = n.R.knock_claim()[0]
+        if not asked or step != 1 or not told.startswith("A REFUSAL IS YOURS") or \
+                "IT office" not in told or not look.startswith("A REFUSAL IS YOURS") or claimed:
+            wrong.append(f"the hourly knock answered no, its answer not written down: asked "
+                         f"{asked}, the step exited {step} and told {told[:60]!r}; an hour on the "
+                         f"look wrote {look[:60]!r}, a claim {claimed}")
     assert not wrong, "the \"a refusal is yours\" check: " + "; ".join(wrong)
     return "ok", ("the third check goes down, an email, the morning a knock is answered with "
                   "the firewall's page, the morning NIGHT_KNOCK is turned off and the sixteenth "
@@ -101959,6 +102181,20 @@ def _wf_knock_order_problems(text):
     if len(unclaim) != 1 or not (knock[0] < unclaim[0] < ups[1]) or \
             "always()" not in _wf_step_if(steps[unclaim[0]][1]):
         out.append("no unclaim step, always(), after the knock and before the last state-up")
+    # THE ANSWER NOT WRITTEN DOWN (the reviewers of 30 October 2026): the
+    # knock's status reaches "What the refusal is now", which tells the third
+    # check of a 2 the child could not write down, and fails the job.
+    person = at(lambda s: "refusal.py --person-line" in s)
+    kid = _wf_step_id(steps[knock[0]][1])
+    pbody = "\n".join(steps[person[0]][1]) if len(person) == 1 else ""
+    if 'Write-Output "rc=$rc" >> $env:GITHUB_OUTPUT' not in body or len(person) != 1 or \
+            not ups[1] < person[0] or \
+            not re.search(r"^          KNOCK_RC: \$\{\{ steps\." + re.escape(str(kid))
+                          + r"\.outputs\.rc \}\}\s*$", pbody, re.M) or \
+            '"--knock-rc=$env:KNOCK_RC"' not in pbody:
+        out.append("the knock's status does not reach the person's line after the last state-up "
+                   "(rc= in the knock step's outputs, KNOCK_RC and --knock-rc in \"What the "
+                   "refusal is now\")")
     return out
 
 
@@ -101976,12 +102212,16 @@ def _workflows_knock_order():
     it once, in no loop. In the knock job the claim (refusal.py
     --knock-claim) comes first, then the state-up that sends it, on the
     claim's own word; the knock only once that succeeded; the unclaim,
-    always(), after the knock and before the last state-up. Its mutants:
+    always(), after the knock and before the last state-up; and the knock's
+    exit status, in its outputs, handed to "What the refusal is now" after
+    the last state-up (--knock-rc: a 2 whose answer was not written down is
+    a person's all the same, the reviewers of 30 October 2026). Its mutants:
     quiet dropped from the knock's needs; the quiet test, or the first
     attempt's, dropped from its if; gc-night moved to quiet; a step after
     the listing; the knock run in look; the unclaim dropped, or after the
     state-up; the child run twice, or with a sleep; the knock asked on the
-    claim alone; the claim sent whatever it said."""
+    claim alone; the claim sent whatever it said; the status not written,
+    not handed on, or not passed to --person-line."""
     text = _knock_text()
     if text is None:
         return "skip", "no .github/workflows/knock.yml here"
@@ -102016,6 +102256,12 @@ def _workflows_knock_order():
             "        if: steps.claim.outcome == 'success'\n        timeout-minutes: 3"),
         "the claim sent whatever it said": text.replace(
             "        if: steps.claim.outputs.claimed == 'true'", "        if: always()"),
+        "the knock's status not in its outputs": text.replace(
+            '          Write-Output "rc=$rc" >> $env:GITHUB_OUTPUT\n', ""),
+        "the knock's status not handed to the person's line": text.replace(
+            "          KNOCK_RC: ${{ steps.knock.outputs.rc }}\n", ""),
+        "the person's line not told the knock's status": text.replace(
+            ' "--knock-rc=$env:KNOCK_RC"', ""),
     }
     missed = [what for what, t in mutants.items() if t == text or not _wf_knock_order_problems(t)]
     assert not missed, f"_workflows_knock_order did not catch: {missed}"

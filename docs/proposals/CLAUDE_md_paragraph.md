@@ -53,7 +53,7 @@ The proposed paragraph:
 >   request;
 > - sixteen days;
 > - a fourth relapse;
-> - a knock whose answer never reached the bucket;
+> - a knock whose answer never reached the bucket, or was never written down;
 > - the switch turned off, or a setting typed wrong;
 > - any refusal met on this laptop or by a dry run;
 > - any refusal without a kind, which is every one written before this

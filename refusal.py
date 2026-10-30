@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.29
+# GRANITE_VERSION: 2026-09-09.30
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -78,7 +78,8 @@ it -- moved, whole, into knocks.json, and out of the bucket by the state-up
 that follows (cloud.lift_refusal). The night says once, by its own check,
 when the hourly knock has fallen silent (hourly_silent). A knock the address
 answers no to, a fourth relapse, KNOCK_DAYS, an answer that never reached the
-bucket, the switch turned off or a setting typed wrong: the record is a
+bucket or was never written down, the switch turned off or a setting typed
+wrong: the record is a
 person's, as every other always was, and the "a refusal is yours" check is
 told. Every request it makes is one knock_gate() let go.
 
@@ -96,7 +97,8 @@ that may ask has pulled it. A gate that says no exits KNOCK_NOT_NOW (4),
 around the knock are options here: --knock-look (whether one may go this
 hour), --knock-claim (the claim the bucket holds before the request),
 --knock-unclaim (a claim no knock took up is "not asked") and --person-line
-(the "a refusal is yours" sentence, person_line()).
+(the "a refusal is yours" sentence, person_line(); with --knock-rc 2, the
+knock's exit, a person's even where the answer was not written down).
 
 ON GITHUB'S MACHINE (25 September 2026) it is the same file. GitHub's
 machines start empty every night, so the record has to outlive the machine:
@@ -626,11 +628,23 @@ def whose(d=None, k=None, now=None):
          KNOCK_DAYS days from the chain's start (`since`), it has relapsed
          fewer than RELAPSES_MOST times, and no knock's answer is lost --
          an entry still "claimed" KNOCK_JOB_MINUTES after it was made,
-         other than this run's own;
+         other than this run's own, whose answer never reached the bucket;
+         or one still "no answer" that long after it was made, whose answer
+         was never written down (THE ANSWER NOT WRITTEN DOWN, below);
       7. knock_on(), its three settings reading.
 
     Anything else is a person's: every record without a kind, the ones
-    written before records said what they were among them."""
+    written before records said what they were among them.
+
+    THE ANSWER NOT WRITTEN DOWN (the reviewers of 30 October 2026). knocking()
+    writes "no answer" before the request, and the answer replaces it within
+    the knock's KNOCK_MINUTES: knocked() by the child, or, for a knock killed
+    with no answer, "dropped" by the child's own kill or by the night that
+    killed it. One still "no answer" KNOCK_JOB_MINUTES on is a knock whose
+    answer was lost -- a 403 among the possibilities -- and a 403 read as a
+    failed knock would be asked again an hour later. So it is the worst
+    answer, as a lost claim is: a person's, the third check told, and no
+    knock ever due again."""
     doc, raw = _record(d)
     if d is None and raw is None:
         return "none", "no refusal is on file"
@@ -650,12 +664,16 @@ def whose(d=None, k=None, now=None):
     if c["relapses"] >= RELAPSES_MOST:
         return "person", (f"the website answered a knock and then dropped the night's export "
                           f"{c['relapses']} times in this chain")
-    lost = [x for x in c["counted"] if x.get("answer") == "claimed"
+    lost = [x for x in c["counted"] if x.get("answer") in ("claimed", "no answer")
             and t - float(x.get("epoch") or 0) > KNOCK_JOB_MINUTES * 60]
     if lost:
         x = lost[-1]
-        return "person", (f"the answer to the knock claimed at {x.get('utc')} (run "
-                          f"{x.get('run_id')}) never reached the bucket, so it is taken as the "
+        if x.get("answer") == "claimed":
+            return "person", (f"the answer to the knock claimed at {x.get('utc')} (run "
+                              f"{x.get('run_id')}) never reached the bucket, so it is taken as "
+                              "the worst answer")
+        return "person", (f"the answer to the knock made at {x.get('utc')} (run "
+                          f"{x.get('run_id')}) was never written down, so it is taken as the "
                           "worst answer")
     if bad:
         return "person", bad
@@ -893,7 +911,7 @@ def knock_due(d=None, k=None, now=None):
     The last failed request is the latest of the record and every counted
     knock (chain()). due_epoch is None once the cap comes first, and for any
     record whose() does not call the night's -- a knock that made it a
-    person's, a fourth relapse, a lost claim, the switch off, its own fields:
+    person's, a fourth relapse, a lost answer, the switch off, its own fields:
     no knock is ever due for a person's record, whoever asks. The hours a
     caller may knock in are the caller's, not this function's."""
     hourly, every, days, _ = knock_settings()
@@ -1064,7 +1082,9 @@ def knocking(url):
     in knocks.json's "current" -- started from the record on file when it
     names another -- so that a knock killed mid-request still counts.
     Returns the entry. Raises, and so asks nothing, when there is no record
-    on file or knocks.json will not read.
+    on file or knocks.json will not read. Whatever kills a knock with no
+    answer writes "dropped" over it (knocked); an entry still "no answer"
+    KNOCK_JOB_MINUTES on is an answer lost, and a person's (whose()).
 
     THIS RUN'S OWN CLAIM IS THE KNOCK (the addendum's 1.6, rule 4). The
     hourly caller sent a "claimed" entry to the bucket before this
@@ -1376,7 +1396,7 @@ def knock_unclaim():
     return marked
 
 
-def person_line(d=None, k=None, now=None, tested=False):
+def person_line(d=None, k=None, now=None, tested=False, said_no=""):
     """The one sentence that says a refusal is a person's: "" when no record
     is on file or the night may test it (whose()), else the record, why it
     is a person's, and what clears it, in this project's words and none of a
@@ -1387,17 +1407,25 @@ def person_line(d=None, k=None, now=None, tested=False):
 
     `tested`: only a record the night was testing -- knocks.json's "current"
     names it -- for the knock workflow, which reports the records it tests
-    and leaves every other to the night."""
+    and leaves every other to the night.
+
+    `said_no`: why a knock its caller ran was answered no although the
+    chain may not say so -- the child exited 2, a block-type answer, and the
+    answer could not be written down (snapshot_gencourt.knock). The record is
+    then a person's whatever whose() says, for that reason: the knock's
+    caller hears it at once, and whose() only KNOCK_JOB_MINUTES later."""
     doc, raw = _record(d)
     if raw is None:
         return ""
     who, why = whose(raw, k, now)
     if who != "person":
-        return ""
+        if not said_no:
+            return ""
+        why = said_no
     c = chain(raw, k)
     if tested and not (c and c["named"]):
         return ""
-    told_no = doc.get("kind") == "refused" or bool(c and c.get("person"))
+    told_no = doc.get("kind") == "refused" or bool(c and c.get("person")) or bool(said_no)
     epoch = doc.get("epoch")
     try:
         when = _stamp(float(epoch))
@@ -2017,6 +2045,10 @@ def main():
     ap.add_argument("--person-file", metavar="PATH",
                     help="where --person-line and --knock-look write that sentence: "
                          "logs/alert-person.txt, the body of the third check's /fail")
+    ap.add_argument("--knock-rc", metavar="STATUS", default="",
+                    help="with --person-line: the knock step's exit status. 2, a block-type "
+                         "answer, is a person's even where its answer could not be written down "
+                         "(then the sentence says so, and this exits 1)")
     a = ap.parse_args()
     if a.knock_look or a.knock_claim or a.knock_unclaim or a.person_line:
         return knock_step(a)
@@ -2120,7 +2152,8 @@ def knock_step(a):
     """The knock workflow's steps, one per option: --knock-look, then
     --knock-claim, --knock-unclaim, and --person-line, each optionally with
     --person-file. Exit 0 whatever the answer; 1 only for what went wrong
-    (an unclaim that cannot read knocks.json), so a step fails visibly
+    (an unclaim that cannot read knocks.json, or --person-line --knock-rc 2
+    where the knock's answer was not written down), so a step fails visibly
     rather than saying nothing."""
     def out(**kv):
         for key, value in kv.items():
@@ -2159,9 +2192,18 @@ def knock_step(a):
               "no claim of this run's stands unanswered: nothing to mark.", file=sys.stderr)
         return 0
     line = person_line(tested=True)
+    # THE ANSWER NOT WRITTEN DOWN (whose()): the knock exited 2, the address
+    # said no, but the chain does not say so yet. A person's now, and the
+    # step fails, so the run is red as well as the email sent.
+    lost = str(a.knock_rc).strip() == "2" and not line
+    if lost:
+        line = person_line(tested=True, said_no=(
+            "this run's knock exited 2 -- the address said no -- and its answer could not be "
+            "written down; the bucket holds it as \"no answer\", which every reader takes as the "
+            f"worst answer {KNOCK_JOB_MINUTES} minutes after it was made"))
     person(line)
     print(line or "no refusal the night was testing has become a person's.", file=sys.stderr)
-    return 0
+    return 1 if lost else 0
 
 
 def say_whose(now=None):

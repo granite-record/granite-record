@@ -714,3 +714,41 @@ that made it.
      addendum §9's tables went in with the commits that changed the
      behaviour. The operator checklist is on the laptop; its D5 steps are
      in `OWNER_STEPS.md`.
+
+## After the review of d7d64bb: an answer not written down is a person's
+
+114. **DEVIATIONS 36 is replaced.** A knock answered no whose answer could
+     not be written down was left "no answer", a failed knock: the night
+     took the held path and asked the database, nothing told the third
+     check, and the hourly knock asked again an hour later. Now:
+     - the child tries the write a second time (`_answer_down`); if that
+       fails too it exits 2 for an answer `knocked()` would have made a
+       person's (a block-type answer, or a 503 asking longer than
+       `RETRY_AFTER_MOST`) and 1 for any other, the entry left "no answer";
+     - **a knock entry still "no answer" `KNOCK_JOB_MINUTES` after it was
+       made is an answer lost, and a person's** (`whose()` condition 6,
+       beside the lost claim), from any run, this one's included: a run
+       longer than `KNOCK_JOB_MINUTES` has written its knock's answer long
+       before;
+     - so whatever kills a knock with no answer writes the answer "dropped"
+       over its "no answer", as a killed knock was designed to count (a
+       failed knock): the child's own kill (`_knock_killed`, under a lock
+       the answer's own write holds, so the two never both write), and the
+       night after `RUN_KILLED`. The addendum's C5 and H7 say a killed knock
+       "leaves 'no answer'"; it now leaves "dropped". A kill that cannot
+       write leaves "no answer", which becomes a person's: the safe way;
+     - the night reads the knock's exit 2 itself (`knock_said_no(v)`, the
+       verdict's `knock` beginning `KNOCK_SAID_NO`): no held path, no
+       database, `web` a person's, the night's alert the person's sentence
+       naming `clear-refusal`, and `person_alerts_of` the person's line
+       (`refusal.person_line(said_no=...)`) that night, before `whose()`
+       can say so;
+     - knock.yml's knock step puts its exit in its outputs (`rc=`), and
+       "What the refusal is now" passes it as `--knock-rc`: a 2 the chain
+       does not show writes the person's line (the /fail that follows) and
+       exits 1, so the job is red. The bucket holds the "no answer" entry,
+       which the next look reads as a person's.
+     The reviewers' simplest option, a second write by another route (for
+     example the record rewritten as "refused"), is not built: it would
+     write beside the file that has just failed to take a write, and the
+     "no answer" rule above needs no second file.

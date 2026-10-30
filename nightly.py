@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.85
+# GRANITE_VERSION: 2026-09-04.86
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -842,6 +842,12 @@ LISTING_MINUTES = 7
 # copy of this gate, which preflight holds equal to it.
 KNOCK_MINUTES = refusal.KNOCK_MINUTES
 EXPORT_MINUTES = 40
+# How the verdict's "knock" begins for a knock the address said no to: the
+# child's exit 2. The night reads it (knock_said_no), not whose() alone, so
+# that an answer the child could not write down still closes the held path
+# and reaches the "a refusal is yours" check that night (the reviewers of
+# 30 October 2026).
+KNOCK_SAID_NO = "a person's: "
 
 # RECORDINGS WAITING FOR THEIR START TIMES (30 September 2026; the night's own
 # since 10 October 2026). The night's livestream step captions the new
@@ -1507,13 +1513,15 @@ def night_tests():
     return whose_night()
 
 
-def web_state(lifted=False):
+def web_state(lifted=False, said_no=""):
     """The verdict's "web" (THE NIGHT'S KNOCK): how the General Court's
     website stands for tonight's refusal, in this project's words and times.
     {"state": "held", "kind", "since", "knocks", "last", "by", "next",
     "until"} while the night tests the refusal on file -- the knocks counted
     unanswered, the last and whose, the next due, and the day it becomes a
-    person's; {"state": "person", "kind", "why"} once it is a person's;
+    person's; {"state": "person", "kind", "why"} once it is a person's, or
+    tonight's knock was answered no (`said_no`, the verdict's "knock",
+    whatever knocks.json could be made to say: knock_said_no);
     {"state": "lifted", "kind", "since", "knocks", "lifted"} the night a
     knock lifted it. None with nothing on file and nothing lifted."""
     try:
@@ -1531,8 +1539,8 @@ def web_state(lifted=False):
         doc = load_json(refusal.MARK)
         kind = doc.get("kind") if isinstance(doc, dict) else None
         who, why = refusal.whose()
-        if who != "night":
-            return {"state": "person", "kind": kind, "why": why}
+        if who != "night" or said_no:
+            return {"state": "person", "kind": kind, "why": why if who != "night" else said_no}
         c = refusal.chain()
         due, at = refusal.knock_due()
         tried = [x for x in c["counted"] if x.get("answer") != "claimed"]
@@ -1662,9 +1670,11 @@ def knock(a, night):
     the night's lock with GRANITE_KNOCK_BY "night", which its own gate
     (refusal.knock_gate) holds to the night's hours, and is killed at
     KNOCK_MINUTES, counted from the gate's reading of the clock. Its status:
-    0 lifted; 2 a person's for good; 4 not asked, by the child's own gate or
-    the lock; RUN_KILLED, or anything else, a knock not answered -- the
-    child wrote it down before it asked, and a knock killed counts."""
+    0 lifted; 2 a person's for good (KNOCK_SAID_NO), whether or not the
+    child could write its answer down; 4 not asked, by the child's own gate
+    or the lock; RUN_KILLED, or anything else, a knock not answered -- the
+    child wrote it down before it asked, and a knock killed counts, its
+    entry written "dropped" here."""
     v = night.v
 
     def said(line, lifted=False):
@@ -1712,18 +1722,40 @@ def knock(a, night):
                     "refusal.py --clear; the laptop's next pull says THE NIGHT LIFTED THIS "
                     "REFUSAL", lifted=True)
     if rc == 2:
-        return said(f"a person's: the knock at {when} was answered: {what or 'the address said no'}. "
-                    "The refusal is a person's to clear now, and nothing more is asked")
+        # The address said no. Whether or not the child could write that down
+        # (snapshot_gencourt.knock: an answer lost stays "no answer"), the
+        # night takes it as said: no held path (main) and the third check told
+        # (person_alerts_of), both by this line.
+        return said(f"{KNOCK_SAID_NO}the knock at {when} was answered: "
+                    f"{what or 'the address said no'}. The refusal is a person's to clear now, "
+                    "and nothing more is asked")
     if rc == refusal.KNOCK_NOT_NOW:
         ok, why = refusal.knock_gate("night")
         return said("not asked: the knock's own gate said no" + ("" if ok else f" ({why})"))
     if rc == RUN_KILLED:
+        # THE KNOCK KILLED HERE IS A FAILED KNOCK (the reviewers of 30 October
+        # 2026): its entry, still "no answer", is written "dropped", as the
+        # child's own kill writes it. Left "no answer", whose() would take it
+        # for an answer lost, a person's. An answer the child did write is
+        # never written over: knocked() answers only a "no answer" entry.
+        try:
+            refusal.knocked("dropped", f"no answer within {KNOCK_MINUTES * 60} seconds: stopped "
+                                       "by the night")
+        except Exception:                                       # noqa: BLE001
+            pass
         return said(f"not answered: no answer within {KNOCK_MINUTES * 60} seconds, its limit "
                     f"here, so it was stopped; {next_due()}")
     return said(f"not answered: the knock at {when}: "
                 + (what or f"it ended on {rc}" + (", with the refusal still on file" if rc == 0
                                                   else ""))
                 + f"; {next_due()}")
+
+
+def knock_said_no(v):
+    """Whether tonight's knock was answered no (its exit 2, KNOCK_SAID_NO),
+    from the verdict `v`: a person's tonight, whatever knocks.json could be
+    made to say."""
+    return isinstance(v, dict) and str(v.get("knock") or "").startswith(KNOCK_SAID_NO)
 
 
 def build_running():
@@ -2050,10 +2082,14 @@ def main():
             # after its knock, so the day's files come from the database and
             # the website is asked nothing more (held_night). Not on a New
             # term run, nor once the refusal is a person's for any reason:
-            # whose() closes this door with the knock's.
-            held = not ok and night is not None and not a.new_term and night_tests()
+            # whose() closes this door with the knock's -- and so does a knock
+            # answered no tonight, whose answer the child may not have been
+            # able to write down (knock_said_no).
+            held = not ok and night is not None and not a.new_term and night_tests() \
+                and not knock_said_no(night.v)
             if night and (lifted or refusal.MARK.exists()):
-                night.v["web"] = web_state(lifted)
+                night.v["web"] = web_state(lifted, night.v.get("knock", "")
+                                           if knock_said_no(night.v) else "")
             if ok and night and a.new_term:
                 # THE TERM BEING LEFT IS FROZEN FIRST (5 October 2026), before
                 # anything is asked: a New term run that took the new term's
@@ -6514,7 +6550,9 @@ def refusal_alert(v):
         who = refusal.whose()[0]
     except Exception:                                           # noqa: BLE001
         who = "person"
-    if who != "night":
+    # A knock answered no tonight is a person's whatever knocks.json could be
+    # made to say (knock_said_no).
+    if who != "night" or knock_said_no(v):
         return (f"A refusal from the General Court has been on file since {at}. Every fetch "
                 "waits until a person clears it: python3 netcheck.py says what kind it was, "
                 "then python3 src/ops/cloud.py clear-refusal.")
@@ -6575,11 +6613,16 @@ def person_alerts_of(v):
     (ALERT_PERSON_FILE): [refusal.person_line()'s sentence] while the
     refusal on file is a person's to clear, [] while none is on file or the
     night tests the one on file itself (THE NIGHT'S KNOCK). `v`, the
-    verdict, is the alerts' signature; the record on file is what it reads.
-    An alert must not stop the verdict: a record that cannot be judged is
-    said to be a person's."""
+    verdict, is the alerts' signature; the record on file is what it reads,
+    and the verdict's "knock" besides: a knock answered no tonight
+    (knock_said_no) is a person's whatever knocks.json says, its answer
+    perhaps never written down (refusal.person_line's said_no). An alert
+    must not stop the verdict: a record that cannot be judged is said to be
+    a person's."""
     try:
-        line = refusal.person_line()
+        line = refusal.person_line(said_no=(
+            "the night's knock was answered no (its exit 2), and its answer could not be "
+            "written down" if knock_said_no(v) else ""))
     except Exception as e:   # noqa: BLE001 -- an alert must not stop the verdict
         if not refusal.MARK.exists():
             return []

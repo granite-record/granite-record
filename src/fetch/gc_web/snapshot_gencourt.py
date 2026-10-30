@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.19
+# GRANITE_VERSION: 2026-09-04.20
 """
 Daily snapshot of the NH General Court bulk data files.
 
@@ -56,14 +56,17 @@ refusal.check(knock=True) first, and nothing at all unless that gate lets
 the caller GRANITE_KNOCK_BY names ask now -- else exit 4, "not asked". The
 knock is written down before it is made (refusal.knocking), and the child
 ends itself KNOCK_KILL_SECONDS later, exit 124, if no answer has come,
-leaving that entry "no answer": a failed knock. The answer decides:
+writing "dropped" over that entry's "no answer": a failed knock. An entry
+left "no answer" is an answer lost, and a person's (refusal.whose). The
+answer decides:
 
   0  lifted: a 200 that is not the firewall's page and not a web page,
      whatever its size -- the files are often empty until the page
      rebuilds them, and an empty export is never a refusal;
   2  a person's, for good: a 403, a 429, the block page at any status, any
      redirect, a Retry-After on anything but a 503, a 503 with the block
-     page or one asking more than refusal.RETRY_AFTER_MOST;
+     page or one asking more than refusal.RETRY_AFTER_MOST -- and such an
+     answer that could not be written down, twice tried (knock());
   1  a failed knock, the next rung: dropped, reset or timed out, a bare 503
      (kept with its Retry-After), a 404 or 410, another error, a web page;
   4  not asked: the gate, the lock, or a knock that could not be written
@@ -71,7 +74,8 @@ leaving that entry "no answer": a failed knock. The answer decides:
 
 GitHub's night starts it, at its start and under its own lock, with
 GRANITE_KNOCK_BY "night" (nightly.knock, THE NIGHT'S KNOCK there), and reads
-the status; the hourly knock workflow is to be its second caller. Every
+the status; the hourly knock workflow (.github/workflows/knock.yml) is its
+second caller. Every
 answer it records is in this project's words, a status number or a size,
 never a server's.
 
@@ -401,21 +405,57 @@ def knock_body(status, body):
     return "whole", f"{KNOCK_NAME}, {len(body):,} bytes", None
 
 
-def _knock_killed(held):
-    """The child's own kill: no answer within KNOCK_KILL_SECONDS. The knock
-    stays "no answer", a failed knock, as written down before it was made."""
-    print(f"\nTHE KNOCK WAS STOPPED: no answer within {KNOCK_KILL_SECONDS:.0f} seconds, its "
-          f"limit. It counts as a failed knock (exit {KNOCK_KILLED}).", file=sys.stderr, flush=True)
-    sys.stdout.flush()
-    held.release()
-    os._exit(KNOCK_KILLED)
+def _knock_killed(held, guard, state):
+    """The child's own kill: no answer within KNOCK_KILL_SECONDS. It writes
+    the answer "dropped" over the knock's "no answer" -- a failed knock, the
+    next rung, as a knock that never answers always was; left "no answer",
+    whose() would take it for an answer lost, a person's -- and ends the
+    process. Under `guard`, which the answer's own writing holds: once that
+    is written (`state["done"]`) the kill does nothing, and the knock ends
+    with its own status."""
+    with guard:
+        if state["done"]:
+            return
+        try:
+            refusal.knocked("dropped", f"no answer within {KNOCK_KILL_SECONDS:.0f} seconds: the "
+                                       "knock stopped itself")
+            how = "It counts as a failed knock"
+        except Exception as e:                              # noqa: BLE001
+            how = (f"Its answer could not be written down ({type(e).__name__}), so it stands as "
+                   f"\"no answer\": a person's {refusal.KNOCK_JOB_MINUTES} minutes on")
+        print(f"\nTHE KNOCK WAS STOPPED: no answer within {KNOCK_KILL_SECONDS:.0f} seconds, its "
+              f"limit. {how} (exit {KNOCK_KILLED}).", file=sys.stderr, flush=True)
+        sys.stdout.flush()
+        held.release()
+        os._exit(KNOCK_KILLED)
+
+
+def _answer_down(answer, said, ra):
+    """(what refusal.knocked() made of the record, the failures): the
+    knock's answer written down, and tried once more if that raises; (None,
+    [two failures]) when neither write went. Asks nothing."""
+    failed = []
+    for _attempt in range(2):
+        try:
+            return refusal.knocked(answer, said, ra), failed
+        except Exception as e:                              # noqa: BLE001
+            failed.append(f"{type(e).__name__}: {e}")
+    return None, failed
 
 
 def knock(held):
     """The knock: one request, judged, and written down before and after.
     0 lifted, 1 not answered, 2 a person's, 4 not asked (the docstring's THE
     KNOCK). check(knock=True) has let it come here; this asks only the one
-    file, once, through _OPENER, which follows no redirect."""
+    file, once, through _OPENER, which follows no redirect.
+
+    THE ANSWER IS WRITTEN DOWN, OR SAID LOST (the reviewers of 30 October
+    2026). A write of the answer that fails is tried once more. If that fails
+    too, the entry stays "no answer" -- which whose() takes as the worst
+    answer KNOCK_JOB_MINUTES on -- and the status says what was heard: 2 for a
+    block-type answer, which the night and the knock workflow read as a
+    person's at once (nightly.knock_said_no, refusal.py --person-line
+    --knock-rc), and 1 for any other."""
     url = BASE + KNOCK_NAME
     if not held.still():
         print("  the knock is not asked: the run holding archive/.lock is gone.", flush=True)
@@ -426,7 +466,8 @@ def knock(held):
         print(f"  the knock is not asked: it could not be written down first ({type(e).__name__}: "
               f"{e}).", flush=True)
         return refusal.KNOCK_NOT_NOW
-    timer = threading.Timer(KNOCK_KILL_SECONDS, _knock_killed, args=(held,))
+    guard, state = threading.Lock(), {"done": False}
+    timer = threading.Timer(KNOCK_KILL_SECONDS, _knock_killed, args=(held, guard, state))
     timer.daemon = True
     timer.start()
     try:
@@ -436,12 +477,20 @@ def knock(held):
                 answer, said, ra = knock_body(getattr(r, "status", 200), r.read())
         except Exception as e:                              # noqa: BLE001
             answer, said, ra = knock_error(e)
-        try:
-            became = refusal.knocked(answer, said, ra)
-        except Exception as e:                              # noqa: BLE001
-            print(f"  the knock was answered ({said}), but the answer could not be written down "
-                  f"({type(e).__name__}: {e}): it stands as \"no answer\".", flush=True)
-            return 2 if answer == "refused" else 1
+        with guard:
+            became, failed = _answer_down(answer, said, ra)
+            state["done"] = True
+        if became is None:
+            # A person's, as knocked() would have made it: the address said
+            # no, or a 503 asked longer than RETRY_AFTER_MOST.
+            told_no = answer == "refused" or (answer == "unavailable" and ra is not None
+                                              and float(ra) > refusal.RETRY_AFTER_MOST)
+            print(f"  the knock was answered ({said}), but the answer could not be written down, "
+                  f"twice ({'; '.join(failed)}): it stands as \"no answer\", which is taken as the "
+                  f"worst answer {refusal.KNOCK_JOB_MINUTES} minutes on."
+                  + (" The address said no: this is a person's now (exit 2)." if told_no else ""),
+                  flush=True)
+            return 2 if told_no else 1
     finally:
         timer.cancel()
     print(f"  the knock: {url} answered: {said}: "
