@@ -75129,6 +75129,9 @@ def _interim_report_chip_colours():
              ("NOT RECOMMENDED FOR FUTURE LEGISLATION", "s-done"),
              ("Not Recommended for Future Legislation", "s-done"),
              ("WITHOUT RECOMMENDATION", ""), ("Without Recomendation", ""), ("No Recommendation", ""),
+             # As the clerks varied it (src/parse/interim_statements.py).
+             ("RECOMMENDED FOR FURTHER LEGISLATION", "s-law"), ("NOT RECOMMENDED FOR LEGISLATION", "s-done"),
+             ("NOT RECOMMENDED FOR FUTURE RECOMMENDATION", "s-done"),
              ("OUGHT TO PASS", "s-law"), ("INEXPEDIENT TO LEGISLATE", "s-done"), ("INTERIM STUDY", "s-study"),
              ("RE-REFER TO COMMITTEE", "s-study")]
     got = _app_js("[" + ",".join(f"scope.recColour({json.dumps(w)})" for w, _ in cases) + "]",

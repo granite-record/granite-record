@@ -4113,10 +4113,12 @@ const AVK={VV:"Voice Vote",DV:"Division Vote",RC:"Roll Call"};
 // legislation, red where it does not, and no colour where it makes no
 // recommendation -- the clerks' "Without Recomendation" and "No
 // Recommendation" among them. First, so that "NOT RECOMMENDED" is read before
-// "RECOMMENDED", and before the motions below.
-const RECCOLOUR=[[/WITHOUT\s+RECOMM?ENDATION|NO\s+RECOMM?ENDATION/i,""],
-                 [/NOT\s+RECOMMENDED\s+FOR\s+FUTURE/i,"s-done"],
-                 [/RECOMMENDED\s+FOR\s+FUTURE/i,"s-law"],
+// "RECOMMENDED", and before the motions below. As the clerks varied it too
+// (src/parse/interim_statements.py): "Recommended for Further Legislation"
+// (SB 366 of 2010), "Not Recommended for Legislation" (HB 1415 of 2006).
+const RECCOLOUR=[[/\b(?:WITHOUT|NO)\s+RECOMM?ENDATION\b/i,""],
+                 [/\bNOT\s+RECOMMENDED\b/i,"s-done"],
+                 [/\bRECOMMENDED\s+FOR\b/i,"s-law"],
                  [/INEXPEDIENT/i,"s-done"],
                  [/INTERIM\s+STUDY|RE-?REFER/i,"s-study"],
                  [/OUGHT\s+TO\s+PASS/i,"s-law"]];
