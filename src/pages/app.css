@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.334 */
+/* GRANITE_VERSION: 2026-09-07.335 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -5796,10 +5796,13 @@ color:var(--pine);background:var(--surface);border:1px solid var(--edge);border-
    state hides the cards (build_calendar.study_hidden). Both are the line's
    own words in the site's link colour, not a second button beside Reset. */
 .calshowst[hidden]{display:none}
-.calshowst,.calstline label{min-height:40px;padding:var(--sp-2) 0;font-size:var(--t-ui);font-weight:600;
+.calshowst,.calstline label,.calshowday,.calstonly label{min-height:40px;padding:var(--sp-2) 0;font-size:var(--t-ui);font-weight:600;
 color:var(--pine);background:none;border:0;cursor:pointer;text-decoration:underline;
 text-decoration-thickness:1px;text-underline-offset:.2em}
-.calshowst:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.calshowst:focus-visible,.calshowday:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+/* A day's own "Show them" (the R2 polish batch, 30 October 2026) sits in its
+   sentence, at the sentence's size. */
+.calshowday,.calstonly label{min-height:24px;padding:0;font-size:inherit}
 .calview > .calst{position:absolute;width:1px;height:1px;margin:0;opacity:0}
 .calview > .calst:focus-visible + .calstline label{outline:2px solid var(--pine);outline-offset:2px}
 .calstline{margin:0 0 var(--sp-5);font-size:var(--t-ui);color:var(--ink-2)}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.45
+# GRANITE_VERSION: 2026-09-18.46
 """
 The General Court's week, one page per week.
 
@@ -807,6 +807,13 @@ WEEK_JS = r"""
   }
   function countLine(t,where){
     var line;
+    // A WEEK OF STUDY COMMITTEES ALONE (the R2 polish batch, 30 October
+    // 2026): "None of the 18 meetings this week match." spoke of a filter
+    // the reader never set. Where every meeting the boxes hide is a study
+    // committee's, the line says only that.
+    if(!t.seen && t.study && t.study===t.total)
+      return (t.study===1 ? "1 study committee meeting is" : t.study+" study committee meetings are")
+        +" hidden.";
     if(t.shown===t.total)
       line=(t.total?plural(t.total,"meeting"):"No meetings")+" "+where+".";
     else if(!t.seen)
@@ -904,12 +911,25 @@ WEEK_JS = r"""
   // said it: the clutter the person asked to be rid of. The count is said
   // once, in the week's line (countLine), with the control that shows them
   // beside it; a day says only that nothing is shown.
+  //
+  // AND IT SAYS WHAT THEY ARE (the R2 polish batch, 30 October 2026): "No
+  // meetings shown." on every weekday of a week of study committees alone
+  // read as an empty calendar, and the why was 500 pixels away. Still no
+  // count -- the week's line keeps that -- but the day says what it holds
+  // and "Show them" (emptyHtml) shows them, as the line's own button does.
+  function studyOnly(cards,f){
+    return !!cards.length && cards.every(function(e){ return e.who==="study"; })
+      && f.cats.indexOf("study")<0 && !f.picks.length && !String(f.q||"").trim();
+  }
   function emptyWords(cards,f){
     if(!cards.length) return "No meetings";
-    var st=cards.filter(function(e){ return e.who==="study"; }).length;
-    if(st===cards.length && f.cats.indexOf("study")<0 && !f.picks.length && !String(f.q||"").trim())
-      return "No meetings shown.";
+    if(studyOnly(cards,f)) return "Study committee meetings only.";
     return (cards.length===1?"1 meeting is":cards.length+" meetings are")+" hidden by the filters.";
+  }
+  function emptyHtml(cards,f){
+    return esc(emptyWords(cards,f))+(studyOnly(cards,f)
+      ? ' <button type="button" class="calshowday">Show them'
+        +'<span class="sr"> (the study committee meetings)</span></button>' : "");
   }
   // THE DAY BEFORE AND AFTER A READER WANTS, for the Day view's Previous Day
   // and Next Day: a Saturday or Sunday with nothing on it is stepped over,
@@ -1058,7 +1078,8 @@ WEEK_JS = r"""
       // study committee's, for a reader who has not ticked them): "no
       // meetings" alone said the day was empty (the audit of 25 October 2026).
       var hidden=day.cards.filter(function(e){ return !isKD(e)&&!e.cancelled&&!matches(e,c.f); }).length;
-      name+=", "+(live?plural(live,"meeting"):hidden?"no meetings shown":"no meetings");
+      name+=", "+(live?plural(live,"meeting"):!hidden?"no meetings"
+        :studyOnly(meetings(day.cards),c.f)?"study committee meetings only":"no meetings shown");
       if(vis.length>live) name+=", "+(vis.length-live)+" cancelled";
       // The day's key dates by name: the dot alone says only that one is there.
       kds.forEach(function(e){ name+=", "+e.name; });
@@ -1089,8 +1110,8 @@ WEEK_JS = r"""
     if(!day) return h+'<p class="pkmore">Loading&hellip;</p>';
     var vis=day.cards.filter(function(e){ return matches(e,c.f); });
     if(!vis.length)
-      return h+'<p class="pkmore">'+(day.cards.length?"Nothing on this day matches the filters."
-                                                     :"Nothing is scheduled.")+'</p>';
+      return h+'<p class="pkmore">'+(meetings(day.cards).length ? esc(emptyWords(meetings(day.cards),c.f))
+        : day.cards.length ? "Nothing on this day matches the filters." : "Nothing is scheduled.")+'</p>';
     h+='<ul class="pklist">'+vis.slice(0,cap).map(function(e){
       return '<li><span class="pkbar">'+(e.kinds.length?e.kinds:["other"]).map(function(k){
           return '<i class="k-'+k+'"></i>'; }).join("")+'</span>'
@@ -1120,7 +1141,7 @@ WEEK_JS = r"""
     shiftMonth:shiftMonth, dayWords:dayWords, weekLabel:weekLabel, relWord:relWord, parseCard:parseCard,
     parseDay:parseDay, dayHtml:dayHtml, defaults:defaults, catsOf:catsOf, matches:matches,
     narrowed:narrowed, sideOn:sideOn, tally:tally, countLine:countLine, listDates:listDates,
-    weekCols:weekCols, entryHtml:entryHtml, emptyWords:emptyWords, stepDay:stepDay,
+    weekCols:weekCols, entryHtml:entryHtml, emptyWords:emptyWords, emptyHtml:emptyHtml, stepDay:stepDay,
     firstDay:firstDay, clock:clock,
     isDay:isDay, isWeek:isWeek, readQuery:readQuery, writeQuery:writeQuery, readHash:readHash,
     barsOf:barsOf, cellHtml:cellHtml, gridHtml:gridHtml,
@@ -1435,7 +1456,7 @@ WEEK_JS = r"""
         if(!day.cards.length) return dayHtml(day,vis);
         if(!mt.length) return day.head+kdHtml(vis)+day.tail+"</div>";
         return meetings(vis).length ? dayHtml(day,vis)
-          : day.head+kdHtml(vis)+'<p class="calempty">'+esc(emptyWords(mt,S))+'</p></div>'; }).join("")
+          : day.head+kdHtml(vis)+'<p class="calempty">'+emptyHtml(mt,S)+'</p></div>'; }).join("")
       || '<p class="calempty">Nothing this week matches the filters.</p>';
   }
   // THE DAY, with the day either side under it as a pager in the week's
@@ -1451,10 +1472,8 @@ WEEK_JS = r"""
       +'</nav>';
     var mt=meetings(day.cards);
     if(day.cards.length && !mt.length) return day.head+kdHtml(vis)+day.tail+"</div>"+step;
-    if(day.cards.length && !vis.length)
-      return day.head+'<p class="calempty">Nothing on this day matches the filters.</p></div>'+step;
     if(!meetings(vis).length)
-      return day.head+kdHtml(vis)+'<p class="calempty">'+esc(emptyWords(mt,S))+'</p></div>'+step;
+      return day.head+kdHtml(vis)+'<p class="calempty">'+emptyHtml(mt,S)+'</p></div>'+step;
     return dayHtml(day,vis)+step;
   }
   // THE WEEK: a column a day, Monday to Friday, beside the month as the list
@@ -1472,7 +1491,7 @@ WEEK_JS = r"""
           +'<span class="wkdd">'+dateWords(d,"short")+(d===TODAY?" · Today":"")+'</span>'
           +'<span class="sr">: open this day</span></button></h2>'
           +(vis.length?'<ul class="wkes">'+vis.map(entryHtml).join("")+'</ul>':"")
-          +(meetings(vis).length?"":'<p class="wkempty">'+esc(emptyWords(mt,S))+'</p>')
+          +(meetings(vis).length?"":'<p class="wkempty">'+emptyHtml(mt,S)+'</p>')
           +'</li>'; }).join("")
       +'</ol></div>';
   }
@@ -1955,7 +1974,8 @@ WEEK_JS = r"""
   });
   // "Show them": the Study Committee box ticked, as a reader's own tick is,
   // remembered the same way, and the focus left on the box, which unticks it.
-  if(showst) showst.addEventListener("click",function(){
+  // The week line's button and a day's (emptyHtml) alike.
+  function showStudy(){
     var box=cats.querySelector('input[name="cat"][value="study"]');
     if(!box) return;
     box.checked=true;
@@ -1963,7 +1983,8 @@ WEEK_JS = r"""
     try{ localStorage.setItem(SKEY,"1"); }catch(e2){}
     apply();
     box.focus();
-  });
+  }
+  if(showst) showst.addEventListener("click",showStudy);
   form.addEventListener("submit",function(e){ e.preventDefault(); });
   form.addEventListener("change",function(e){
     var t=e.target;
@@ -2022,6 +2043,7 @@ WEEK_JS = r"""
       });
     }else if(b.hasAttribute("data-step"))
       select(b.getAttribute("data-to")||addDays(SEL,+b.getAttribute("data-step")),"step");
+    else if(b.classList.contains("calshowday")) showStudy();
   });
   // The week's arrows move to the week before or after in place, keeping
   // the view and the filters, on the calendar's own address; opened in a new
@@ -2666,8 +2688,12 @@ WEEK_ROBOTS = '<meta name="robots" content="noindex,follow">'
 # all; the script draws the schedule again from the cards, and its own line
 # and "Show them" take its place. A card counts as a study committee's by the
 # rule the script's filter uses (build_pages.meeting_who); a day holding
-# nothing else says that nothing is shown, while the box is unticked.
-STUDY_ONLY = '<p class="calempty calstonly">No meetings shown.</p>'
+# nothing else says so, while the box is unticked, with a label for that
+# box -- "Study committee meetings only. Show them", the script's words
+# (emptyHtml; the R2 polish batch, 30 October 2026, where it said "No
+# meetings shown.").
+STUDY_ONLY = ('<p class="calempty calstonly">Study committee meetings only. '
+              '<label for="calst">Show them</label></p>')
 
 
 def study_hidden(days, meets, draw):

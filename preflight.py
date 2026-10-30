@@ -65565,8 +65565,7 @@ process.stdout.write(C.countLine(C.tally(cards,on),"this week")+" | "
             r = _run([node, str(go), str(site / "calendar.html")], capture_output=True,
                      text=True, encoding="utf-8", timeout=60)
             assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
-            assert r.stdout == ("1 meeting this week. | The one meeting this week does not match."
-                                " 1 study committee meeting is hidden."), (
+            assert r.stdout == "1 meeting this week. | 1 study committee meeting is hidden.", (
                 f"the week script counts {r.stdout!r} with one meeting cancelled, with the "
                 "study committees shown and then as a new reader sees the week")
         js = BC.WEEK_JS
@@ -65597,9 +65596,11 @@ def _calendar_study_hidden_once():
     carries its page (build_calendar.study_page) and its card leads into the
     meeting there, an archived one's leads nowhere; the built week opens
     with the checkbox and the one line, a day of study committees alone
-    says only that nothing is shown, and app.css hides the cards while the
-    box is unticked; the script's day says "No meetings shown." and its week
-    line keeps the count, with "Show them" beside it while there is one."""
+    says "Study committee meetings only." with a label for that box, and
+    app.css hides the cards while the box is unticked; the script's day says
+    the same, with its own "Show them", and its week line keeps the count,
+    with "Show them" beside it while there is one (the R2 polish batch, 30
+    October 2026, where a day said "No meetings shown.")."""
     import contextlib
     import datetime as _dt
     import io
@@ -65664,6 +65665,13 @@ def _calendar_study_hidden_once():
         days = re.findall(r'<div class="calday[^"]*" data-d="([^"]+)">(.*?)(?=<div class="calday|$)',
                           view, re.S)
         alone = {d for d, h in days if BC.STUDY_ONLY in h}
+        assert BC.STUDY_ONLY == ('<p class="calempty calstonly">Study committee meetings only. '
+                                 '<label for="calst">Show them</label></p>'), (
+            "a built day of study committees alone does not say what it holds, with the box's "
+            "own label to show them: " + BC.STUDY_ONLY)
+        css = (here / "src/pages/app.css").read_text(encoding="utf-8")
+        assert re.search(r"\.calstonly label\{|,\.calstonly label[,{]", css), (
+            "the built day's Show them is not drawn as the week line's is, in the link colour")
         assert alone == {"2026-10-12", "2026-10-14"}, (
             f"the days of study committees alone that say nothing is shown are {sorted(alone)}; "
             "a day with a hearing on it must not say so")
@@ -65674,7 +65682,7 @@ def _calendar_study_hidden_once():
         assert re.search(r'\.calst:not\(:checked\) ~ \.calday \.calmeet\[data-who="study"\]', css) \
             and re.search(r"\.calst:checked ~ \.calday \.calstonly", css), (
                 "app.css no longer hides the built week's study committee cards while its box is "
-                "unticked, or shows the day's 'No meetings shown.' while it is ticked")
+                "unticked, or shows the day's 'Study committee meetings only.' while it is ticked")
         assert '<button type="button" class="calshowst" id="calshowst" hidden>' in t, (
             "the Calendar's bar has no Show them for the script to show")
         js = BC.WEEK_JS
@@ -65691,21 +65699,30 @@ const view=t.slice(t.indexOf('<div class="calview"'),t.indexOf('<nav class="wkna
 const cards=(view.match(new RegExp('<details class="cal'+'meet"[\\s\\S]*?</details>','g'))||[]).map(C.parseCard);
 const st=cards.filter(c=>c.who==="study");
 process.stdout.write(JSON.stringify({day:C.emptyWords(st.slice(0,1),C.defaults()),
-  week:C.countLine(C.tally(cards,C.defaults()),"this week")}));
+  html:C.emptyHtml(st.slice(0,1),C.defaults()),
+  week:C.countLine(C.tally(cards,C.defaults()),"this week"),
+  alone:C.countLine(C.tally(st,C.defaults()),"this week")}));
 """, encoding="utf-8")
             r = _run([node, str(go), str(site / "calendar.html")], capture_output=True,
                      text=True, encoding="utf-8", timeout=60)
             assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
             got = json.loads(r.stdout)
-            assert got["day"] == "No meetings shown.", (
+            assert got["day"] == "Study committee meetings only.", (
                 f"the script's day of study committees alone says {got['day']!r}")
+            assert got["html"] == ('Study committee meetings only. <button type="button" '
+                                   'class="calshowday">Show them<span class="sr"> (the study '
+                                   'committee meetings)</span></button>'), (
+                f"the script's day of study committees alone has no Show them: {got['html']!r}")
+            assert got["alone"] == "2 study committee meetings are hidden.", (
+                "a week of study committees alone speaks of a filter nobody set: "
+                + repr(got["alone"]))
             assert got["week"] == "1 of 3 meetings shown. 2 study committee meetings are hidden.", (
                 f"the script's week line says {got['week']!r}")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("an active committee's card leads into its meeting on its page; the built week "
                   "hides the study cards behind one line and a box, a day of them alone says "
-                  "nothing is shown, and the script counts them once with Show them")
+                  "so with Show them, and the script counts them once with Show them")
 
 
 # The fixture's statutory and study committees (_study_fixture): the active
@@ -72126,13 +72143,23 @@ const linked=C.parseCard(jud.html.replace("</div></details>",'<p class="calmore 
   +'<p class="calmore"><a href="committee/H05.html#day-2026-03-10">This meeting on the House Judiciary page</a></p></div></details>'));
 ok(/<li class="wke"[^>]*><a class="wkgo" href="committee\/H05\.html#day-2026-03-10"><span class="wkbar"/.test(E(linked)),
    "an entry whose card leads to its committee's page at that day does not: "+E(linked));
-// What an empty column says. A day of study committees alone says only that
-// nothing is shown: their count is the week's line's (18 October 2026).
-ok(C.emptyWords([],F({}))==="No meetings" && C.emptyWords([aging[0]],F({}))==="No meetings shown."
-   && C.emptyWords([aging[0],aging[0]],F({}))==="No meetings shown."
+// What an empty column says. A day of study committees alone says what it
+// holds, with no count: their count is the week's line's (18 October 2026;
+// the words, the R2 polish batch, 30 October 2026).
+ok(C.emptyWords([],F({}))==="No meetings" && C.emptyWords([aging[0]],F({}))==="Study committee meetings only."
+   && C.emptyWords([aging[0],aging[0]],F({}))==="Study committee meetings only."
    && C.emptyWords([aging[0]],F({cats:[],q:"x"}))==="1 meeting is hidden by the filters."
    && C.emptyWords([jud,aging[0]],F({cats:[]}))==="2 meetings are hidden by the filters.",
    "an empty column's words: "+[C.emptyWords([],F({})),C.emptyWords([aging[0]],F({})),C.emptyWords([jud,aging[0]],F({cats:[]}))]);
+ok(/^Study committee meetings only\. <button type="button" class="calshowday">Show them<span class="sr">/.test(C.emptyHtml([aging[0]],F({})))
+   && C.emptyHtml([aging[0]],F({cats:[],q:"x"}))==="1 meeting is hidden by the filters."
+   && C.emptyHtml([aging[0]],ON).indexOf("button")<0,
+   "Show them is on a day of study committees alone and only there: "+C.emptyHtml([aging[0]],F({})));
+ok(C.countLine({total:3,shown:0,seen:0,study:3},"this week")==="3 study committee meetings are hidden."
+   && C.countLine({total:1,shown:0,seen:0,study:1},"this week")==="1 study committee meeting is hidden."
+   && C.countLine({total:3,shown:0,seen:0,study:2},"this week")==="None of the 3 meetings this week match. 2 study committee meetings are hidden."
+   && C.countLine({total:0,shown:0,seen:0,study:0},"this week")==="No meetings this week.",
+   "a week of study committees alone speaks of a filter nobody set: "+C.countLine({total:3,shown:0,seen:0,study:3},"this week"));
 // The Day view steps over a weekend with nothing on it, and not over one that holds something.
 ok(C.stepDay("2026-03-13",1,days)==="2026-03-14" && C.stepDay("2026-03-14",1,days)==="2026-03-16"
    && C.stepDay("2026-03-16",-1,days)==="2026-03-14" && C.stepDay("2026-03-23",-1,days)==="2026-03-20"
@@ -72175,7 +72202,7 @@ ok(/data-d="2026-02-23"[^>]*aria-disabled="true"/.test(g), "a day before the cal
 const cellOf=(h,d)=>{ const m=new RegExp('data-d="'+d+'"[^>]*>(.*?)</td>').exec(h); return m&&m[1]; };
 ok(/<i class="k-hearing"><\/i><i class="k-exec"><\/i><\/span><span class="sr">Tuesday, March 10, 2026, 2 meetings</.test(cellOf(g,"2026-03-10")),
    "10 March in the grid: "+cellOf(g,"2026-03-10"));
-ok(/cmdots" aria-hidden="true"><\/span><span class="sr">Friday, March 13, 2026, no meetings shown</.test(cellOf(g,"2026-03-13")),
+ok(/cmdots" aria-hidden="true"><\/span><span class="sr">Friday, March 13, 2026, study committee meetings only</.test(cellOf(g,"2026-03-13")),
    "a study committee's day for a new reader: "+cellOf(g,"2026-03-13"));
 const gOn=C.gridHtml({view:"2026-03",sel:"2026-03-10",focus:"2026-03-10",today:"2026-03-11",first:"2026-03-02",last:"2026-04-05",days,f:ON});
 ok(/cmdots" aria-hidden="true"><i class="k-study"><\/i><\/span><span class="sr">Friday, March 13, 2026, 1 meeting</.test(cellOf(gOn,"2026-03-13")),
@@ -72193,7 +72220,8 @@ const p=C.peekHtml("2026-03-10",{days:{"2026-03-10":many},f:F({})},5);
 ok((p.match(/<li>/g)||[]).length===5 && /and 2 more/.test(p), "the preview is not capped at five with the rest counted: "+p);
 ok(p.indexOf('<span class="pkt">1:00'+NB+'AM</span>')>=0 && !/<span class="pkt">0/.test(p), "the preview's times are not a reader's: "+p);
 ok(/<em>cancelled<\/em>/.test(C.peekHtml("2026-03-14",{days,f:ON},5)), "the preview does not mark a cancelled meeting");
-ok(/Nothing on this day matches the filters/.test(C.peekHtml("2026-03-13",{days,f:F({})},5)), "a day whose one meeting is hidden: "+C.peekHtml("2026-03-13",{days,f:F({})},5));
+ok(/<p class="pkmore">Study committee meetings only\.<\/p>/.test(C.peekHtml("2026-03-13",{days,f:F({})},5)), "a day whose one meeting is hidden: "+C.peekHtml("2026-03-13",{days,f:F({})},5));
+ok(/<p class="pkmore">1 meeting is hidden by the filters\.<\/p>/.test(C.peekHtml("2026-03-13",{days,f:F({cats:[],q:"x"})},5)), "a day the reader's own filter emptied: "+C.peekHtml("2026-03-13",{days,f:F({cats:[],q:"x"})},5));
 ok(/Nothing is scheduled/.test(C.peekHtml("2026-03-09",{days,f:F({})},5)), "an empty day's preview");
 // ---- the address: the query ----
 const s=F({v:"week",cats:["hearing","exec"],body:"H",picks:["Health, Human Services and Elderly Affairs"],q:"HB 1"});
@@ -72578,10 +72606,12 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(!QA(".cmdots i",c13).length, "a study committee's day has a dot while its box is unticked");
   ok(QA(".cdrel",$("calview")).map(r=>r.textContent).join()===",,today,tomorrow,in 2 days", "the days' relative words: "+QA(".cdrel",$("calview")).map(r=>r.textContent));
   // MONDAY TO FRIDAY IN THE LIST TOO: Friday, whose one meeting is a study
-  // committee's, stays and says nothing is shown, as the Week view's column
-  // does; the week's line has the count (18 October 2026).
+  // committee's, stays and says what it holds, with Show them, as the Week
+  // view's column does; the week's line has the count (18 October 2026; the
+  // words, the R2 polish batch, 30 October 2026).
   const fri=Q('.calday[data-d="2026-03-13"]',$("calview"));
-  ok(fri && Q(".calempty",fri) && Q(".calempty",fri).textContent==="No meetings shown.",
+  ok(fri && Q(".calempty",fri) && /^Study committee meetings only\. Show them/.test(Q(".calempty",fri).textContent)
+     && Q(".calshowday",Q(".calempty",fri)),
      "the list drops a weekday the filters emptied, or does not say why it is empty: "+(fri&&fri.textContent));
   ok(W.addr()==="/calendar" && W.G.history.length===1, "opening the tab wrote an address: "+W.addr());
   // EVERY TIME AS A READER SAYS IT, on the cards and on the items inside them.
@@ -72650,7 +72680,8 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(!QA("table",$("calview")).length && !QA(".calmeet",$("calview")).length && QA(".wke",$("calview")).length===5,
      "the week is still whole cards in a table of hours, or not one entry a meeting shown");
   ok(W.keys().sort().join()===plain.slice().sort().join(), "the week at a glance does not hold the week's cards: "+W.keys());
-  ok(Q(".wkempty",wcols[0]).textContent==="No meetings" && Q(".wkempty",wcols[4]).textContent==="No meetings shown.",
+  ok(Q(".wkempty",wcols[0]).textContent==="No meetings"
+     && /^Study committee meetings only\. Show them/.test(Q(".wkempty",wcols[4]).textContent),
      "an empty column does not say why: "+[Q(".wkempty",wcols[0]),Q(".wkempty",wcols[4])].map(x=>x&&x.textContent));
   ok(wcols[2].getAttribute("aria-current")==="date" && Q(".wkdd",wcols[2]).textContent==="Mar 11 · Today",
      "today is not marked in the week: "+Q(".wkdd",wcols[2]).textContent);
@@ -72695,6 +72726,28 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   await W.tick("study",false);
   ok(W.store.get("gr.calendar.showstudy")==="0" && W.keys().join()===plain.join() && $("calreset").hidden && W.addr()==="/calendar?week=2026-W11",
      "Study Committee unticked again: "+W.addr());
+  // A DAY OF STUDY COMMITTEES ALONE, in the Day view, says what it holds and
+  // never "matches the filters", which no reader had set; the month's cell
+  // says it to a screen reader; and the day's own Show them shows them, as
+  // the week line's does (the R2 polish batch, 30 October 2026).
+  W.view("day").click(); await W.settle();
+  Q('td[data-d="2026-03-13"]',$("cmgrid")).click(); await W.step();
+  const d13=Q('.calday[data-d="2026-03-13"]',$("calview")), e13=d13&&Q(".calempty",d13);
+  ok(W.sel()==="2026-03-13" && e13 && /^Study committee meetings only\. Show them/.test(e13.textContent)
+     && !/matches the filters/.test($("calview").textContent) && Q(".calshowday",e13),
+     "a day of study committees alone in the Day view: "+(d13&&d13.textContent));
+  const n13=Q(".sr",Q('td[data-d="2026-03-13"]',$("cmgrid")));
+  ok(n13 && /Friday, March 13, 2026, study committee meetings only/.test(n13.textContent),
+     "the month's cell of a study committees' day: "+(n13&&n13.textContent));
+  if(e13&&Q(".calshowday",e13)){ Q(".calshowday",e13).click(); await W.settle(); }
+  ok(W.box("study").checked && W.store.get("gr.calendar.showstudy")==="1" && D.activeElement===W.box("study")
+     && W.keys().some(k=>/2026-03-13\|Commission on Aging/.test(k)) && QA(".calmeet",$("calview")).length===1,
+     "a day's Show them does not tick the box and draw the day's study committee: "+W.keys());
+  await W.tick("study",false);
+  Q('td[data-d="2026-03-11"]',$("cmgrid")).click(); await W.step();
+  W.view("list").click(); await W.settle();
+  ok(W.store.get("gr.calendar.showstudy")==="0" && W.keys().join()===plain.join() && W.addr()==="/calendar?week=2026-W11",
+     "the Day view's Show them left the list as it was not: "+W.addr());
   await W.tick("exec",false);
   ok(!W.keys().some(k=>/House Commerce/.test(k)) && W.keys().some(k=>/House Judiciary/.test(k)) && $("wkcount").textContent==="4 of 6 meetings shown. 1 study committee meeting is hidden.",
      "Executive Session unticked: "+$("wkcount").textContent+" "+W.keys()+" -- a committee that also heard bills stays");
