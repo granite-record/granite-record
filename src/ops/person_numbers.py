@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.1
+# GRANITE_VERSION: 2026-10-30.2
 """
 The register of person numbers: what it would issue, and issuing it.
 
@@ -21,8 +21,9 @@ that), and publishes anybody it does not hold yet as provisional.
 
 WHAT --issue DOES, AND WHAT IT LEAVES FOR A PERSON
 
-  adds     a person for every provisional group, numbered "p" and its first
-           Employeeno; and an issued person's numbers that the register does
+  adds     a person for every provisional group, numbered by the rule
+           people.py states (their earliest General Court PersonID, else
+           their earliest employee number); and an issued person's numbers that the register does
            not hold yet (a member's new number after a chamber change)
   never    changes or removes an issued number, merges two issued people or
            splits one. Those are printed, with the join's reasons, for a
@@ -62,7 +63,7 @@ def check_register(reg):
     bad, seen_p, seen_n = [], set(), {}
     for e in reg.get("people") or []:
         p = e.get("person")
-        if not p or not str(p).startswith("p"):
+        if not p or not (str(p).isdigit() or str(p).startswith("s")):
             bad.append(f"an entry with no person number: {e}")
             continue
         if p in seen_p:
@@ -130,7 +131,7 @@ def main():
     for u in more:
         by_person[u["person"]]["numbers"] = sorted(set(by_person[u["person"]]["numbers"]) | {u["number"]})
     reg["format"] = PE.FORMAT
-    reg["people"].sort(key=lambda e: e["person"])
+    reg["people"].sort(key=lambda e: PE.person_key(e["person"]))
     bad = check_register(reg)
     if bad:
         raise SystemExit("Refusing to write a register that is not well formed:\n  " + "\n  ".join(bad))

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.1
+# GRANITE_VERSION: 2026-10-30.2
 """
 One entry a person, joining every number the General Court uses for them.
 
@@ -18,9 +18,28 @@ calls') and a PersonID (the roster's), and mints new ones of both when a member
 moves between the House and the Senate. This site's member_id is the PersonID
 where there is one and the Employeeno where there is not (build_data.py). So
 Cindy Rosenwald votes as 515 in the House and 9406 in the Senate, and every
-file keyed by one of those numbers breaks her in two. A person number is the
-site's own, issued once (generated/person_numbers.json) and never reissued to
-anybody else.
+file keyed by one of those numbers breaks her in two. A person number joins
+them, and is issued once (generated/person_numbers.json) and never reissued
+to anybody else.
+
+WHICH NUMBER IS A PERSON'S (the owner, 30 October 2026: "consistent with the
+General Court's where possible", since the General Court issues numbers). One
+of the General Court's own, by a fixed rule:
+
+  1. their earliest PersonID -- the one under which they first cast a
+     recorded vote: the earliest term, and the lower number of two that
+     first voted in the same term; else
+  2. their earliest employee number, by the same order; else
+  3. "s" and the site id, made here, for a person the General Court numbers
+     nowhere this site can read (nobody, on 30 October 2026).
+
+Earliest rather than latest, because a member's latest number changes every
+time they move between the chambers and their earliest never does. The two
+kinds cannot be taken for each other: PersonIDs run 27 to 11,524 and employee
+numbers are six digits (201723 to 999999), and the register refuses a number
+held by two people. Measured on 30 October 2026: 1,056 people by a PersonID,
+1,131 by an employee number (all whose service ended before 2015, which the
+General Court's roster view does not cover), none made here.
 
 WHICH NUMBERS ARE ONE PERSON: TWO JOINS, AND ONE RULE OVER BOTH
 
@@ -48,8 +67,8 @@ whatever tonight's join says: a join that now disagrees (two issued people
 it would merge, or one it would split) is reported and left alone, because
 moving a published number is the thing the register exists to prevent.
 Numbers the register does not hold yet are grouped by the join; a group with
-no issued number is published with a provisional person number, "p" and its
-first Employeeno, marked "provisional".
+no issued number is published with the number the rule above gives it,
+marked "provisional" until it is issued.
 """
 
 import csv
@@ -104,6 +123,25 @@ def _term_key(e, careers_by_emp):
     """When a number first voted: its earliest term, then the number itself."""
     terms = careers_by_emp.get(e, {}).get("terms") or ["9999"]
     return (min(terms), int(e) if e.isdigit() else 0, e)
+
+
+def choose(nums, by_emp, e2p):
+    """The person number the rule gives a group of numbers (the docstring
+    above): its earliest PersonID, else its earliest employee number, else
+    one made here."""
+    emps = sorted((n for n in nums if not n.startswith("m")), key=lambda e: _term_key(e, by_emp))
+    pids = [e2p[e] for e in emps if e in e2p]
+    if pids:
+        return pids[0]
+    if emps:
+        return emps[0]
+    return "s" + sorted(nums)[0].lstrip("m")
+
+
+def person_key(p):
+    """Person numbers in number order: 27 before 515 before 376312."""
+    p = str(p)
+    return (0, int(p), p) if p.isdigit() else (1, 0, p)
 
 
 def build(site, data, db, careers, register):
@@ -221,9 +259,7 @@ def build(site, data, db, careers, register):
                     report["unissued_numbers"].append({"number": n, "person": person})
                 people.setdefault(person, {"numbers": set(), "provisional": False})["numbers"].add(n)
         else:
-            emps = sorted((n for n in nums if not n.startswith("m")),
-                          key=lambda e: _term_key(e, by_emp))
-            person = "p" + (emps[0] if emps else nums[0].lstrip("m"))
+            person = choose(nums, by_emp, e2p)
             people.setdefault(person, {"numbers": set(), "provisional": True})["numbers"].update(nums)
             report["provisional"].append({"person": person, "numbers": nums})
     # A register person tonight's join split across groups is still one person
@@ -242,7 +278,7 @@ def build(site, data, db, careers, register):
 
     # Each person's published entry.
     out = []
-    for person, p in sorted(people.items()):
+    for person, p in sorted(people.items(), key=lambda kv: person_key(kv[0])):
         nums = p["numbers"]
         emps = sorted((n for n in nums if not n.startswith("m")), key=lambda e: _term_key(e, by_emp))
         pids = list(dict.fromkeys(e2p[e] for e in emps if e in e2p))
@@ -282,7 +318,7 @@ def build(site, data, db, careers, register):
         r = next((x for x in reg.get("people") or [] if x["person"] == entry["person"]), None)
         if r and r.get("split_from"):
             entry["split_from"] = r["split_from"]
-    out.sort(key=lambda x: x["person"])
+    out.sort(key=lambda x: person_key(x["person"]))
     return out, report
 
 
