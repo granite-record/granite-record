@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.732
+# GRANITE_VERSION: 2026-09-04.737
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -35649,6 +35649,8 @@ CLOCK_OF_THEIR_OWN = {
     "build_date.py": "the one place the build's day is read",
     "build_all.py": "site/build.json's record of when the run itself finished",
     "cloud.py": "the bucket's records of a send",
+    "state_sources.py": "the day a state document was read, and the bucket's records of a "
+                        "send; reached from cloud.py's sources-up, never from a build",
     "refusal.py": "the record of a refusal, and the night's window",
     "livestreams.py": "the night's own record of its livestream runs",
     "fetch_legislation.py": "the day a page was asked for, on the gone-list",
@@ -56848,6 +56850,197 @@ def _cloud_call(CL, *argv):
 def _bucket_keys(bucket):
     return {p.relative_to(bucket).as_posix() for p in bucket.rglob("*")
             if p.is_file() and ".meta" not in p.relative_to(bucket).parts}
+
+
+@check("cloud", "the state documents travel apart from the kit: nothing the night takes "
+       "can match sources/, the registry reads, and up and down lose nothing",
+       needs=("cloud", "state_sources"))
+def _state_sources_apart(CL, SS):
+    """The state documents the guides rest on are read in a browser on the
+    laptop and carried to the sessions under the bucket's sources/ prefix
+    (state_sources.py, 30 October 2026). They are evidence for people, not
+    inputs to the build: a night that took them would build from whatever a
+    browser saved last, unchecked. So no entry of cloud_kit.json's kit, state
+    or dry_run lists can match a path under sources/, neither the nightly nor
+    its workflows names the module, the registry reads (a General Court
+    address in it is the owner's alone), and a round trip through a folder
+    bucket sends each version once, records a reading that did not change as
+    a check, never replaces a reading, and brings every version down whole.
+    """
+    import contextlib
+    import io
+    kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))
+    samples = ["sources/manifest.json", "sources/reports/20261030T000000000000.json"]
+    samples += [f"sources/sos-register-vote/2026-10-30{n}.{x}"
+                for x in sorted(SS.EXTS) for n in ("", "-2")]
+    pats = [p for e in kit.get("kit", []) for p in e.get("paths", []) + e.get("globs", [])]
+    pats += [s["path"] for s in kit.get("state", [])]
+    d = kit.get("dry_run") or {}
+    pats += list(d.get("globs", [])) + ([d["store"]] if d.get("store") else [])
+    hits = sorted({p for p in pats for s in samples
+                   if CL.glob_re(p).match(s) or s == p or p.startswith("sources/")})
+    assert not hits, (f"cloud_kit.json names what can match the state documents' folder, "
+                      f"which the night must never take: {hits}")
+    for f in [_paths.locate("nightly.py"), *sorted(Path(".github/workflows").glob("*.yml"))]:
+        if f.exists():
+            src = f.read_text(encoding="utf-8", errors="replace")
+            assert "state_sources" not in src and "sources-down" not in src, (
+                f"{f.name} names the state documents' hand-over, which the night never runs")
+    reg = SS.load_registry(_paths.ROOT)
+    gc = [i for i, r in reg.items() if SS.is_gc(r["url"])]
+    assert all(reg[i]["read_by"] == "owner-only" for i in gc), gc
+    t = Path(tempfile.mkdtemp(prefix="granite-sources-"))
+    try:
+        root, bucket = t / "root", t / "bucket"
+        (root / "records" / "sources").mkdir(parents=True)
+        shutil.copy(_paths.ROOT / SS.REGISTRY, root / SS.REGISTRY)
+        one = next(i for i, r in reg.items() if r["read_by"] == "browser")
+        folder = root / SS.FOLDER / one
+        folder.mkdir(parents=True)
+
+        def run(*argv):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+                code = SS.main([*argv, "--root", str(root), "--local-bucket", str(bucket)])
+            return code, out.getvalue()
+
+        (folder / "2026-10-01.pdf").write_bytes(b"first")
+        assert run("up")[0] == 0
+        (folder / "2026-10-02.pdf").write_bytes(b"first")
+        (folder / "2026-10-03.pdf").write_bytes(b"second")
+        code, out = run("up")
+        heads = [ln for ln in out.splitlines() if ln.isupper() or ln.endswith(":")]
+        assert code == 0 and "CHANGED since the last reading:" in heads \
+            and "READ AGAIN, UNCHANGED:" in heads, out
+        keys = _bucket_keys(bucket)
+        assert f"sources/{one}/2026-10-02.pdf" not in keys, "an unchanged reading was sent again"
+        assert {f"sources/{one}/2026-10-01.pdf", f"sources/{one}/2026-10-03.pdf",
+                "sources/manifest.json"} <= keys, keys
+        assert any(k.startswith("replaced/") and k.endswith("sources/manifest.json")
+                   for k in keys), "the manifest was replaced without its old copy kept"
+        n = len(keys)
+        code, out = run("up")
+        assert code == 0 and len(_bucket_keys(bucket)) == n, ("a run with nothing new "
+                                                             "wrote to the bucket")
+        (folder / "2026-10-01.pdf").write_bytes(b"edited")
+        code, out = run("up")
+        assert code == 1 and "never replaced" in out, out
+        assert (bucket / f"sources/{one}/2026-10-01.pdf").read_bytes() == b"first"
+        (folder / "2026-10-01.pdf").write_bytes(b"first")
+        # Two readings in one day: the second, -2, is the newer, whatever a
+        # sort of the names says.
+        (folder / "2026-10-04.pdf").write_bytes(b"third")
+        (folder / "2026-10-04-2.pdf").write_bytes(b"fourth")
+        assert run("up")[0] == 0
+        man = json.loads((bucket / "sources" / "manifest.json").read_text(encoding="utf-8"))
+        assert man["ids"][one]["versions"][-1]["file"] == f"{one}/2026-10-04-2.pdf", (
+            "the second reading of a day is not the latest version", man["ids"][one])
+        down = t / "down"
+        code, out = run("down", "--into", str(down))
+        assert code == 0, out
+        got = sorted(p.relative_to(down).as_posix() for p in down.rglob("*") if p.is_file())
+        assert got == [f"{one}/2026-10-01.pdf", f"{one}/2026-10-03.pdf",
+                       f"{one}/2026-10-04-2.pdf", f"{one}/2026-10-04.pdf"], got
+        (down / one / "2026-10-01.pdf").write_bytes(b"mine")
+        code, out = run("down", "--into", str(down))
+        assert code == 1 and (down / one / "2026-10-01.pdf").read_bytes() == b"mine", (
+            "down wrote over a reading that differs from the bucket's", out)
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            code = SS.main(["down", "--root", str(root), "--local-bucket", str(t / "empty"),
+                            "--into", str(t / "down2")])
+        assert code == 1, "down from a bucket with no record said it succeeded"
+        (root / SS.FOLDER / "not-an-id").mkdir()
+        (root / SS.FOLDER / "not-an-id" / "2026-10-01.pdf").write_bytes(b"x")
+        code, out = run("up")
+        assert code == 1 and "not an id" in out, out
+    finally:
+        shutil.rmtree(t, ignore_errors=True)
+    return "ok", (f"{len(reg)} registered documents ({len(gc)} the General Court's, the "
+                  "owner's alone); nothing in the kit can match sources/; a round trip "
+                  "sends each version once and replaces none")
+
+
+@check("cloud", "a browser's downloads are filed by the address each came from, copied "
+       "and never moved, and a state document that cannot be placed is named",
+       needs=("state_sources",))
+def _state_sources_file(SS):
+    """state_sources.py file reads the folder Chrome saved into on the laptop
+    (30 October 2026). Windows records each download's address in a stream
+    beside it, which reads as "<name>:Zone.Identifier"; on this machine that
+    is an ordinary file of that name, which is how it is made here. A file is
+    placed by that address, else by a name only one registered address ends
+    in ("name (1).pdf" being Chrome's second copy); --as names one by hand and
+    is refused where the recorded address says otherwise. Nothing is moved or
+    deleted, a document filed once is not filed again, and a state document
+    the registry lacks is named with the row it would need, not filed.
+    """
+    import contextlib
+    import io
+    reg = SS.load_registry(_paths.ROOT)
+    pdfs = [(i, r) for i, r in reg.items() if r["kind"] == "pdf" and r["read_by"] == "browser"]
+    leaves = {}
+    for i, r in pdfs:
+        leaves.setdefault(SS.leaf(r["url"]), []).append(i)
+    (a_id, a_row), = pdfs[:1]
+    b_id, b_row = next((i, r) for i, r in pdfs[1:] if len(leaves[SS.leaf(r["url"])]) == 1)
+    t = Path(tempfile.mkdtemp(prefix="granite-file-"))
+    try:
+        root, dl = t / "root", t / "Downloads"
+        (root / "records" / "sources").mkdir(parents=True)
+        dl.mkdir()
+        shutil.copy(_paths.ROOT / SS.REGISTRY, root / SS.REGISTRY)
+
+        def run(*argv):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+                code = SS.main(["file", *argv, "--root", str(root)])
+            return code, out.getvalue()
+
+        def zone(name, url):
+            (dl / f"{name}:Zone.Identifier").write_text(
+                f"[ZoneTransfer]\r\nZoneId=3\r\nHostUrl={url}\r\n", encoding="utf-8")
+
+        (dl / "download.pdf").write_bytes(b"by address")
+        zone("download.pdf", a_row["url"])
+        stem, ext = SS.leaf(b_row["url"]).rsplit(".", 1)
+        (dl / f"{stem} (1).{ext}").write_bytes(b"by name")
+        (dl / "unknown.pdf").write_bytes(b"not registered")
+        zone("unknown.pdf", "https://www.das.nh.gov/budget/not-in-the-registry.pdf")
+        (dl / "holiday.jpg").write_bytes(b"not a document")
+        code, out = run(str(dl), "--day", "2026-10-29", "--dry-run")
+        assert code == 1 and not (root / "sources").exists(), ("a dry run wrote, or did not "
+                                                              "say a document was not placed", out)
+        code, out = run(str(dl), "--day", "2026-10-29")
+        assert code == 1 and "could not be placed" in out, (
+            "a state document that could not be placed went unremarked", out)
+        assert (root / "sources" / a_id / "2026-10-29.pdf").read_bytes() == b"by address", out
+        assert (root / "sources" / b_id / "2026-10-29.pdf").read_bytes() == b"by name", out
+        assert "NOT PLACED unknown.pdf" in out and "not-in-the-registry.pdf,pdf," in out, out
+        assert (dl / "download.pdf").exists(), "the filer moved a download rather than copy it"
+        (dl / "unknown.pdf").rename(t / "unknown.pdf")
+        (dl / "unknown.pdf:Zone.Identifier").rename(t / "unknown.pdf:Zone.Identifier")
+        n = sorted(p.relative_to(root).as_posix() for p in (root / "sources").rglob("*")
+                   if p.is_file())
+        code, out = run(str(dl), "--day", "2026-10-29")
+        assert code == 0 and "ALREADY" in out, out
+        assert sorted(p.relative_to(root).as_posix() for p in (root / "sources").rglob("*")
+                      if p.is_file()) == n, "a document already filed that day was filed again"
+        # The same bytes read on a later day are a reading that found no
+        # change: filed, so that up records the check and due moves on.
+        code, out = run(str(dl), "--day", "2026-10-30")
+        assert code == 0 and (root / "sources" / a_id / "2026-10-30.pdf").is_file(), (
+            "a later reading with no change was not filed, so due would list it forever", out)
+        code, out = run(str(dl / "download.pdf"), "--as", b_id)
+        assert code == 1 and "not from" in out, ("--as filed a download under an id its "
+                                                 "recorded address contradicts", out)
+        empty = t / "empty"
+        empty.mkdir()
+        code, out = run(str(empty))
+        assert code == 0 and "Nothing new to file" in out, out
+    finally:
+        shutil.rmtree(t, ignore_errors=True)
+    return "ok", ("placed by recorded address and by name, copied not moved, filed once, "
+                  "--as checked against the address, an unregistered state document named")
 
 
 @check("cloud", "cloud.py sends, fetches and backs up without losing anything",
@@ -114427,6 +114620,9 @@ NOT_INPUT_NAMERS = {
     "build_all.py": "archive/cloud/kit-down.json: whether the build is the kit's, which "
                     "decides whether a missing input stops it, never what it writes",
     "cloud.py": "the bucket's logs and reports, which it sends; nothing a page is made of",
+    "state_sources.py": "archive/cloud/sources-down.json, its record of what this machine "
+                        "last took of the state documents; no build step runs it, and "
+                        "nothing a page is made of",
     "livestreams.py": "logs/youtube-<day>.log, yt-dlp's warnings, which its asks write "
                       "(--since-state, before the build) and nothing reads; nothing a page "
                       "is made of",
