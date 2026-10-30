@@ -95,6 +95,9 @@ report_corrections.json
 # calendars' text, calendars.json and archive/queue.csv it reads). Tracked
 # until 6 October 2026; a run with no earlier copy writes the same file.
 /veto_messages.json
+# What each House committee said about the bills it held for interim study,
+# read off the autumn House Calendars by interim_statements.py on every kit build.
+/interim_statements.json
 # One per term now: build_manifest.py writes verification_manifest.csv for
 # the current term and verification_manifest_<term>.csv for each archived
 # one, and build_proceedings.py reads them all. Named individually, the
