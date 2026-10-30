@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.3
+# GRANITE_VERSION: 2026-10-30.4
 """
 Live Now's page and its schedule (the live layer's design, sections 1.2 and
 1.4), written by the night beside the Calendar and from the Calendar's own
@@ -179,16 +179,16 @@ def page_body(sched, today):
                 f'<a href="https://www.youtube.com/channel/{LG_CHANNEL("H")}/streams" rel="noopener">House</a> and '
                 f'<a href="https://www.youtube.com/channel/{LG_CHANNEL("S")}/streams" rel="noopener">Senate</a>.</p>')
     return ('<div class="clist lvpage"><h1>Live Now</h1>'
-            '<p id="live-now-status" class="lv-status" role="status"></p>'
+            '<p id="live-now-status" class="lv-status"></p>'
             '<noscript><p class="lv-status">Live status needs this page\'s script; today\'s meetings are below.</p></noscript>'
             '<div id="live-now-streams" class="lv-streams"></div>'
             '<div id="live-now-votes" class="lv-sessions" hidden></div>'
-            '<h2>Scheduled to stream today</h2><ul id="live-now-scheduled" class="lv-list" hidden></ul>'
+            '<h2 id="live-now-scheduled-h" hidden>Scheduled to stream today</h2><ul id="live-now-scheduled" class="lv-list" hidden></ul>'
             '<h2 id="live-now-cal-h">On today\'s calendar</h2>'
             + (f'<ul id="live-now-today" class="lv-today">{cards}</ul>' if cards
                else '<p id="live-now-today" class="calempty">No meetings scheduled.</p>')
             + '<ul id="live-now-nostream" class="lv-list" hidden></ul>'
-            '<h2>Earlier today</h2><ul id="live-now-earlier" class="lv-list" hidden></ul>'
+            '<h2 id="live-now-earlier-h" hidden>Earlier today</h2><ul id="live-now-earlier" class="lv-list" hidden></ul>'
             + channels
             + f'<script type="application/json" id="live-schedule">{json.dumps(sched, ensure_ascii=False).replace("</", "<\\/")}</script>'
             '<script src="live.js" defer></script></div>')
