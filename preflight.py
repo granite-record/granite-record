@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.733
+# GRANITE_VERSION: 2026-09-04.734
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -80293,6 +80293,12 @@ def _live_docs(LD):
     k = re.search(r"export const KEEP_DAYS = (\d+);", store)
     assert k and int(k.group(1)) == LD.KEEP_DAYS, f"store.js keeps {k and k.group(1)} days, the docs say {LD.KEEP_DAYS}"
     assert (root / LD.SCHEMA.lstrip("/")).is_file(), f"{LD.SCHEMA} is named and is not in the repository"
+    for header in ('"Access-Control-Allow-Origin": "*"', '"Access-Control-Expose-Headers": "ETag"'):
+        assert header in fn, f"the docs say CORS is open with the ETag exposed; the Function no longer sends {header}"
+    bls = Path(_paths.locate("build_live_session.py")).read_text(encoding="utf-8")
+    assert 'f"/session/H/{date}.json"' in bls and LD.RECORD == "/session/{body}/{date}.json", \
+        "the record's copy is no longer where the docs say: /session/<H|S>/<date>.json"
+    assert '"Cache-Control": "no-store"' in fn, "the docs say a 503 is never cached; the Function's 503 no longer says no-store"
     ex = Path(_paths.locate("build_exports.py")).read_text(encoding="utf-8")
     assert "live_docs.developers_html()" in ex and "live_docs.manifest_entry(" in ex, \
         "build_exports.py no longer places the live votes file's section and manifest entry"
@@ -80307,12 +80313,14 @@ def _live_docs(LD):
         LD.PUBLIC = was
     for want in (f"{LD.MAX_AGE} seconds", f"{LD.NOT_FOUND_AGE} seconds", f"{LD.KEEP_DAYS} days",
                  f"every {LD.POLL_AT_MOST} seconds", "/api/live/votes/", "schema/session.votes.json",
-                 "beta and provisional", "If-None-Match"):
+                 "beta and provisional", "If-None-Match", "supersedes", "is not rewritten"):
         assert want in html, f"the section no longer says {want!r}"
     assert entry["url_template"] == "https://graniterecord.org/api/live/votes/{date}" \
         and entry["schema"].endswith(LD.SCHEMA) and entry["max_age_seconds"] == LD.MAX_AGE, entry
-    for word in ("youtube", "stream"):
-        assert word not in html.lower(), f"the section names {word!r}: the live votes file carries no video data"
+    for word in ("youtube", "stream", "replace"):
+        assert word not in html.lower() + entry["what"].lower(), (
+            f"the docs say {word!r}: the live votes file carries no video data, and the night "
+            "never rewrites it (its record is a separate file that supersedes it)")
     return "ok", (f"{LD.MAX_AGE} s, {LD.NOT_FOUND_AGE} s and {LD.KEEP_DAYS} days held to the code; "
                   f"{'public' if was else 'not yet public'}")
 

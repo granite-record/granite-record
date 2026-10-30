@@ -265,7 +265,8 @@ deletes, lists or uploads. No other object in the bucket is reachable.
 
 Nothing here writes the site, and the night never writes the bucket
 (DESIGN.md 4.4). The pages fetch the two Functions' answers; the night
-writes everything else.
+writes everything else, once PATCHES.md 1 and 5 put build_live.py and
+build_live_session.py into build_all.py (until then they run by hand).
 
 | What | Written by | Reads |
 |---|---|---|

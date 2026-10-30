@@ -106,7 +106,7 @@ go in once patch 5 runs on the night; the third only with
 
     | `/session/<H\|S>/<date>.json` | one session day's roll calls as the night's record holds them, one file beside each dated session-day page, in the live votes file's shape (`/schema/session.votes.json`) with `"provisional": false`: each roll call's id, bill (null for a vote on no bill, its words in `bill_as_recorded`), question, tally, whether it passed and what it needed, and the members' ballots, one character each in the order of `members` |
     | `/schema/session.votes.json` | the JSON Schema both of those files and the live votes file hold to |
-    | `/api/live/votes/<YYYY-MM-DD>` | beta and provisional: one sitting day's roll calls as read from the General Court's public database during the day, replaced by the night's record every morning; where the record and this both hold a roll call's id, the record's wins. CORS open, ETag and 304, kept 15 s; ask at most every 30 s. The data page's For Developers section says the rest |
+    | `/api/live/votes/<YYYY-MM-DD>` | beta and provisional: one sitting day's roll calls as read from the General Court's public database during the day. It is not rewritten; the night's record of the day (`/session/<H\|S>/<date>.json`) supersedes it, and where both hold a roll call's id, use the record's. CORS open, ETag and 304, kept 15 s; ask at most every 30 s; removed 30 days after it was last written. The data page's For Developers section says the rest |
 
 ## 8. watchers/README.md: the laptop's courtesy (DESIGN.md 10, default 5)
 
@@ -125,14 +125,29 @@ It is not enforced (DESIGN.md 10 names the alternative, refusal.window_check
 over those hours, and why it was not chosen). watchers/README.md has no
 GRANITE_VERSION; nothing to bump.
 
+## 8a. The courtesy note to the IT office (DESIGN.md 10, default 3)
+
+Not a file: a note the owner sends, before the November test, in the
+owner's own words. The facts it rests on, each from DESIGN.md 2.3 and the
+code:
+
+- what: SELECT statements only, on the public SQL database's published
+  read-only login, never gc.nh.gov;
+- how often: one connection every 2 minutes while a chamber sits; one small
+  query every 15 minutes on weekdays from January to June otherwise;
+- how much: about 450 statements on a typical sitting day, never more than
+  1,200 (the Worker's own budget, votes.js BUDGET);
+- from where: Cloudflare's addresses, not GitHub's or the laptop's;
+- the switch: control.json stops the database half at its next run.
+
 ## 9. CLAUDE.md: the paragraph for the owner (DESIGN.md 6.5)
 
 CLAUDE.md is the owner's. This is DESIGN.md 6.5's paragraph, brought up to
 what was built, for the owner to place under "Static site" once approved,
 with the date of approval:
 
-    Live Now and live session votes add one more, approved by the person on
-    [date]: `workers/live/`, a Worker with no address whose cron, every two
+    Live Now and live session votes add one more, and its read-only Functions,
+    approved by the person on [date]: `workers/live/`, a Worker with no address whose cron, every two
     minutes, asks YouTube's Data API which House and Senate streams are live,
     and — while a chamber sits, plus one small query every fifteen minutes on
     weekdays from January to June — asks the General Court's public SQL
