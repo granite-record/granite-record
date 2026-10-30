@@ -69714,7 +69714,6 @@ def _times_as_clock(G):
     to its claims: guides.CLOCK reads "8:00 AM" as it read "8 a.m."."""
     import json as _json
     import build_pages as BP
-    old = re.compile(r"\d(?:\s|&nbsp;| )?[ap]\.m\.|\d(?:\s|&nbsp;| )?[AP]M\b(?!\.?\s*\w)")
     bad = []
     for g in G.GUIDES:
         for m in re.finditer(r"\d(?:\s| )?[ap]\.m\.", G._plain(G.text(g))):
@@ -74958,6 +74957,46 @@ def _tap_targets_24(C, BSP):
                      + "; ".join(bad[:5]))
     return "ok", ("each takes the tap token: " + ", ".join(held)
                   + f"; {blocks} on a line of its own (a debate's speaker) --tap-line, given back")
+
+
+@check("frontend", "every control that switches a view marks the chosen one the same way: solid pine, "
+       "its words in --on-pine, outlined in forced colours")
+def _switches_one_look():
+    """The cohesion audit of 30 October 2026 (I-6): Officials showed a solid
+    pine "selected" in its roster switch and a pale one in its map's, on the
+    same page; the Calendar put round pills ("Both chambers / House /
+    Senate") beside its square List / Week / Day; a bill's versions and
+    "What changed / Full text" were pale too. One look now: the chosen one
+    solid pine with its words in --on-pine, the group edged and square, and,
+    where forced colours take the ground away, an outline in Highlight."""
+    rules = []
+    for f in ("src/pages/app.css", "src/pages/map.css"):
+        rules += [(f, at, sel, dict(_css_decls(b))) for at, sel, b, _l in
+                  _css_rules(Path(f).read_text(encoding="utf-8"))]
+    chosen = {".calviews button[aria-pressed=\"true\"]": None, ".wkchips button[aria-pressed=\"true\"]": None,
+              ":where(body.pg) .rtabs [role=tab][aria-selected=true]": None, ".vbtn.sel": None,
+              ".vtog.sel": None, ".gm .gmseg label:has(input:checked)": None}
+    bad, outlined = [], set()
+    for f, at, sel, d in rules:
+        for part in (x.strip() for x in sel.split(",")):
+            if part in chosen and not at:
+                chosen[part] = {**(chosen[part] or {}), **d}
+            if any("forced-colors" in a for a in at) and "Highlight" in d.get("outline", ""):
+                outlined.add(part.replace(":where(body.pg) ", ""))
+    for part, d in chosen.items():
+        if not d:
+            bad.append(f"no rule draws the chosen {part}")
+            continue
+        ground = d.get("background", d.get("background-color", ""))
+        if "var(--pine)" not in ground or d.get("color") != "var(--on-pine)":
+            bad.append(f"{part} is {ground or 'no ground'} with {d.get('color')} words, not solid pine and --on-pine")
+        if part != ".gm .gmseg label:has(input:checked)" and part.replace(":where(body.pg) ", "") not in outlined:
+            bad.append(f"{part} is not outlined in forced colours, where its ground is the system's")
+    for f, at, sel, d in rules:
+        if "999px" in d.get("border-radius", "") and any(k in sel for k in (".wkchips", ".vtog", ".calviews")):
+            bad.append(f"{f}: {sel} is round again")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", f"{len(chosen)} switches mark the chosen one solid pine, and outline it in forced colours"
 
 
 @check("frontend", "a glossary term's button is a 24px target at the least, without moving a letter: "

@@ -1570,7 +1570,7 @@ line-height:1.1}
   .stop.s-p b,.stop.s-x b,.stop.s-istudy b,.stop.s-ontable b,
   .fhead .badge,.wkchips button[aria-pressed="true"],
   .cmgrid td.cmpick,.calviews button[aria-pressed="true"],.cdopen,
-  .calcat input:checked + .cbx,.searchbig button,.wbtn.sel,h1.lockup,
+  .calcat input:checked + .cbx,.searchbig button,.wbtn.sel,h1.lockup,.vbtn.sel,.vtog.sel,
   .rtabs [role=tab][aria-selected=true],.l-g,.l-reach > span.is-me,
   .g-btn,.g-btn:hover,.g-step::before,.tab[aria-selected=true] .tn,
   /* the legislature's year: You Are Here's words on their pine, and its
@@ -5583,17 +5583,23 @@ text-decoration-thickness:1px;text-underline-offset:3px}
 .wkfilter{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--sp-4);
 margin:0 0 var(--sp-6);padding:var(--sp-4) 0}
 .wkfilter[hidden]{display:none}
-.wkchips{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+/* ONE SWITCH, NOT PILLS (the cohesion audit of 30 October 2026, I-6): the
+   chamber was the site's only round buttons, beside the square List / Week /
+   Day. It is that switch's edged group now, the chosen one filled. */
+.wkchips{display:inline-flex;flex-wrap:wrap;border:1px solid var(--edge);
+border-radius:var(--r-in);overflow:hidden;background:var(--surface)}
 .wkchips button{font:inherit;font-size:var(--t-ui);font-weight:600;
-padding:var(--sp-2) var(--sp-4);min-height:40px;cursor:pointer;
+padding:var(--sp-2) var(--sp-5);min-height:40px;cursor:pointer;
 color:var(--ink-2);background:var(--surface);
-border:1px solid var(--rule-2);border-radius:999px}
-.wkchips button:hover{border-color:var(--edge);color:var(--ink)}
+border:0;border-left:1px solid var(--rule-2);border-radius:0}
+.wkchips button:first-child{border-left:0}
+.wkchips button:hover{color:var(--ink);background:var(--wash)}
+.wkchips button:focus-visible{outline:2px solid var(--ink);outline-offset:-4px}
 /* PRESSED IS A STATE, NOT A HOVER. aria-pressed is what a screen reader
    announces, so the styling hangs off the same attribute rather than off a
    class kept in step with it by hand. */
-.wkchips button[aria-pressed="true"]{color:var(--surface);background:var(--pine);
-border-color:var(--pine)}
+.wkchips button[aria-pressed="true"]{color:var(--on-pine);background:var(--pine)}
+.wkchips button[aria-pressed="true"]:focus-visible{outline-color:var(--on-pine)}
 .wkfind{display:flex;flex-direction:column;gap:var(--sp-2);
 font-size:var(--t-sm);font-weight:600;letter-spacing:.04em;
 text-transform:uppercase;color:var(--ink-2);flex:1 1 16rem;min-width:0}
@@ -6252,7 +6258,10 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
 .vbtn{border:1px solid var(--rule);background:var(--surface);border-radius:var(--r-out);
   padding:var(--sp-3) var(--sp-5);font-size:var(--t-sm);text-align:left;cursor:pointer;line-height:1.3}
 .vbtn i{display:block;font-style:normal;font-size:var(--t-sm);color:var(--ink-2);margin-top:var(--sp-1)}
-.vbtn.sel{border-color:var(--pine);background:var(--pine-soft);color:var(--pine);font-weight:600}
+/* Chosen, solid pine, as every switch of a view is (the cohesion audit of
+   30 October 2026, I-6), with its date in the same white. */
+.vbtn.sel{border-color:var(--pine);background:var(--pine);color:var(--on-pine);font-weight:600}
+.vbtn.sel i{color:var(--on-pine)}
 
 /* THE VERSION SEQUENCE. The picker above is a row of buttons and says nothing
    about the distance between any two of them; this is the same buttons down a
@@ -6269,9 +6278,10 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
    stated exactly, in .vcount below. */
 
 .vmode{display:flex;gap:var(--sp-4);align-items:center;flex-wrap:wrap;margin:0 0 var(--sp-5)}
-.vtog{border:1px solid var(--rule);background:var(--surface);border-radius:var(--r-pill);
-  padding:var(--sp-2) var(--sp-5);font-size:var(--t-sm);cursor:pointer}
-.vtog.sel{border-color:var(--pine);background:var(--pine-soft);color:var(--pine);font-weight:600}
+.vtog{border:1px solid var(--edge);background:var(--surface);border-radius:var(--r-in);
+  padding:var(--sp-2) var(--sp-5);font-size:var(--t-sm);cursor:pointer;color:var(--ink-2)}
+.vtog:hover{color:var(--ink);background:var(--wash)}
+.vtog.sel{border-color:var(--pine);background:var(--pine);color:var(--on-pine);font-weight:600}
 .vcount{font-size:var(--t-sm);color:var(--ink-2)}
 .vdiff{font-family:var(--serif);font-size:var(--t-ui);line-height:1.7;white-space:pre-wrap;
   word-break:break-word;background:var(--wash);border-radius:var(--r-out);padding:var(--sp-5) var(--sp-6)}
@@ -9159,3 +9169,11 @@ text-wrap:balance}
 /* ==== /HUBS, PAGES ======================================================== */
 
 /* ---- /THE PAGES build_pages.py WRITES ---------------------------------- */
+
+/* THE CHOSEN ONE OF A SWITCH, IN FORCED COLOURS (the cohesion audit of 30
+   October 2026, I-6): its pine ground is the system's there, so nothing
+   said which was chosen. Outlined, as the map's switch already is. */
+@media (forced-colors:active){
+  .calviews button[aria-pressed="true"],.wkchips button[aria-pressed="true"],
+  .rtabs [role=tab][aria-selected=true],.vbtn.sel,.vtog.sel{outline:2px solid Highlight;outline-offset:-3px}
+}
