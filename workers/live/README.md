@@ -1,25 +1,32 @@
 # workers/live/
 
-The live Worker, `graniterecord-live`: Live Now's data. Every 2 minutes its
-cron asks YouTube's Data API which House and Senate streams are live,
-scheduled for today, or ended today, and writes the answer to a private R2
-bucket, `graniterecord-live`. A read-only Pages Function serves that file to
-the Live Now page (both come in later branches); no page waits on it, and
-the page says when live status was last checked, never "nothing is live".
+The live Worker, `graniterecord-live`: Live Now's data and the day's votes.
+Every 2 minutes its cron does two things:
+- **Streams.** It asks YouTube's Data API which House and Senate streams are
+  live, scheduled for today, or ended today.
+- **Votes.** While a chamber sits, and once a quarter hour on weekdays from
+  January to June, it reads the day's roll calls, ballots and docket tally
+  lines from the General Court's public SQL database. This half is off unless
+  `control.json` says `"sql": "on"` (or `"test"`, the November test).
+It writes both to a private R2 bucket, `graniterecord-live`. Two read-only
+Pages Functions serve what the pages need (below). No page waits on them, and
+a page says when live data was last read, never "nothing is live".
 
-It has no address, answers no request, and asks nobody but YouTube and
-Healthchecks. It never asks gc.nh.gov or the General Court's database (its
-database half is a later branch, and `control.json` keeps it off until the
-person turns it on), never reads the site, and keeps nothing a reader
+It has no address and answers no request. It asks YouTube, Healthchecks and,
+when switched on, the public SQL database on its published read-only login.
+It never asks gc.nh.gov, never reads the site, and keeps nothing a reader
 gave it.
 
 | File | What it is |
 |---|---|
-| `index.js` | the run: reads the switch and the state, works out what is due, takes the lease, looks, writes, releases, pings |
+| `index.js` | the run: reads the switch and the state, works out what is due, takes the lease, looks, reads, writes, releases, pings |
 | `clock.js` | New Hampshire's clock and the cadence (below) |
 | `youtube.js` | the calls, how a video's status is read, and today's file |
+| `votes.js`, `merge.js` | when the database is read, the holds and the budget; how a read is merged into the day's votes file |
+| `sql.js`, `tds.js` | the three statements, and the database's wire protocol over a TCP socket |
+| `test_mode.js` | the November test (`"sql": "test"`): one connection a weekday, reading two past sittings once each in the live file's shape for `tests/live/compare_test.mjs` to hold against the record, then a login check a day |
 | `store.js` | the bucket: the switch, the state, the lease, the 30-day sweep |
-| `live.gen.js` | written by `python3 src/pages/live_gen.py`: the channels, the night's windows, the session-title pattern. Never edit it by hand |
+| `live.gen.js` | written by `python3 src/pages/live_gen.py`: the channels, the night's windows, the session-title pattern, the published login, the ballot and docket keys, the bill-field rule. Never edit it by hand |
 | `control/` | the person's four ready-made switches |
 | `wrangler.toml` | the local Worker at the top level; production under `[env.production]` |
 
