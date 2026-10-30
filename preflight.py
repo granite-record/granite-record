@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.751
+# GRANITE_VERSION: 2026-09-04.755
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -56138,6 +56138,28 @@ svg.fire("mouseout", {relatedTarget: pop});
 out.hover = {over, ontoIt: at()};
 if (pop) pop.fire("mouseleave", {relatedTarget: null});
 out.hover.off = at();
+// A TAP ON THE TRIANGLE (the walk of 30 October 2026): on a phone the
+// callout opens under the finger before the tap lands, and the tap landed on
+// the triangle over the top of the seat. What is under it, the callout out of
+// the way, is chosen; a click in the box itself, or on its name, is no seat's.
+// The callout of the seat at 180..197 x 1300..1317: 200 by 64, its foot 10px
+// above the seat, its triangle 16px down from there, over the seat's top.
+const looked = [];
+doc.elementFromPoint = (x, y) => { looked.push([x, y, pop.style.pointerEvents]);
+  return pop.style.pointerEvents === "none" ? seats[0] : pop; };
+svg.fire("mouseover", {target: seats[0]});
+if (pop) {
+  pop.box = {left: 88.5, top: 1226, width: 200, height: 64};
+  pop.fire("click", {target: pop, clientX: 188.5, clientY: 1260});
+  pop.fire("click", {target: pop.kids[0], clientX: 188.5, clientY: 1240});
+}
+svg.fire("mouseout", {relatedTarget: null});
+out.tri = {box: Object.assign(at(), {looked: looked.length})};
+svg.fire("mouseover", {target: seats[0]});
+if (pop) pop.fire("click", {target: pop, clientX: 188.5, clientY: 1303});
+const tapped = looked.slice();
+svg.fire("mouseout", {relatedTarget: null});
+out.tri.tap = Object.assign(at(), {looked: tapped, restored: pop ? pop.style.pointerEvents : null});
 process.stdout.write("\n@@" + JSON.stringify(out));
 """
 
@@ -56237,6 +56259,15 @@ def _seat_callout(BP, SEAT):
         h = got["hover"]
         if h["over"]["hidden"] or h["ontoIt"]["hidden"] or h["ontoIt"]["name"] != "Rep. top" or not h["off"]["hidden"]:
             bad.append(f"the pointer cannot move from a seat onto its callout, or it stays after: {h}")
+        # A tap on the triangle is the seat's under it (the walk of 30
+        # October 2026: on a phone none of 21 seats tried could be chosen).
+        tri = got["tri"]
+        if not tri["box"]["hidden"] or tri["box"]["looked"]:
+            bad.append(f"a click in the callout's box, or on its name, chose a seat: {tri['box']}")
+        tt = tri["tap"]
+        if tt["hidden"] or tt["name"] != "Rep. mid" or tt["looked"] != [[188.5, 1303, "none"]] or tt["restored"] != "":
+            bad.append("a tap on the callout's triangle does not choose the seat under it, found with the callout "
+                       f"out of the way -- on a phone a tap on a seat lands there and chose nothing: {tt}")
     # Read: the seats carry the callout's words, and the rows under the chart
     # their names only, for the eye.
     drawn = SEAT.svg({1001: {"name": "Rep. A", "slug": "a", "party_code": "R", "party": "Republican",
@@ -56335,7 +56366,7 @@ def _seat_callout(BP, SEAT):
     return "ok", ("a seat tapped, focused or under the pointer has the popovers' box above it, its arrow at "
                   "the seat, below it at the top, inside 366px at either side; Tab from a seat reaches its "
                   "link and a mouseout, another seat and a scroll leave it there; Escape puts focus on the "
-                  f"seat; the note says it in words, an unruled strip to the eye; the fixture's {len(tags)} row(s) under the chart are names and "
+                  f"seat; a tap on its triangle chooses the seat under it; the note says it in words, an unruled strip to the eye; the fixture's {len(tags)} row(s) under the chart are names and "
                   f"{', '.join(shown)} to the eye, the district a screen reader's")
 
 
@@ -72040,11 +72071,46 @@ process.stdout.write("\n@@" + JSON.stringify(out));
         # is told again once loaded, and not if its pane is shown by then.
         assert paused["loadedHidden"] == ["days pauseVideo"] and paused["loadedShown"] == [], (
             f"a frame that loads after its pane is hidden plays on, or one shown again is paused: {paused}")
+    # THE VIDEOS TAB TURNED TO AGAIN NAMES THE RECORDING CHOSEN THERE: Session
+    # Days took the #v- off the address and the Videos tab did not put it
+    # back, so Share, a copied link or a reload opened on the newest and not
+    # on what was shown (the walk of 30 October 2026). The newest stays
+    # unnamed, and an address that already names one keeps it.
+    turned = _node_app(r"""
+require("./stub.js");
+const fs = require("fs");
+location.pathname = "/session/senate/videos"; location.search = "?term=2023-2024"; location.hash = "#v-mid";
+const at = () => location.pathname + location.search + location.hash;
+history.replaceState = (st, t, u) => { const m = /^([^?#]*)(\?[^#]*)?(#.*)?$/.exec(u);
+  location.pathname = m[1]; location.search = m[2] || ""; location.hash = m[3] || ""; };
+const s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({chamberShow, set: (d, v) => { VW_CHAMBER = d; VVIEW = v; }})");
+const pane = (hidden) => ({hidden, querySelectorAll: () => [], querySelector: (q) => q === ".vw" ? {} : null});
+const days = pane(true), vids = pane(false);
+document.getElementById = (id) => id === "chdays" ? days : id === "chvids" ? vids : null;
+const out = {};
+try {
+  const v = {rows: [{id: "new"}, {id: "mid"}, {id: "old"}], chosen: "mid"};
+  s.set({kind: "chamber", body: "S", slug: "senate", term: "2023-2024", latest: "2025-2026", days: []}, v);
+  s.chamberShow(0, true); out.days = at();
+  s.chamberShow(1, true); out.back = at();
+  v.chosen = "new"; s.chamberShow(0, true); s.chamberShow(1, true); out.newest = at();
+  v.chosen = "old"; location.hash = "#v-mid"; s.chamberShow(1, true); out.kept = at();
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+""")
+    if turned is not None:
+        assert "threw" not in turned and turned["days"] == "/session/senate?term=2023-2024" \
+            and turned["back"] == "/session/senate/videos?term=2023-2024#v-mid", (
+                f"the chamber's Videos tab turned to again does not name the recording chosen there: {turned}")
+        assert turned["newest"] == "/session/senate/videos?term=2023-2024" \
+            and turned["kept"] == "/session/senate/videos?term=2023-2024#v-mid", (
+                f"the chamber's Videos tab names the newest, or drops a recording the address named: {turned}")
     return "ok", ("a day takes its channel's session recording where no moment names one; the "
                   "folds play it and the Videos tab, at its own address, lists the term's, counts "
                   "and no bills; a term before the channels says so; another term's recording the "
                   "address names is chosen and shown in its list; one playing in a pane its tab "
-                  "hides is paused")
+                  "hides is paused; the tab turned to again names the recording chosen there")
 
 
 # A chamber's page as app.js meets it when it loads (GR_STATIC): the two
@@ -80811,6 +80877,70 @@ process.stdout.write("\n@@" + JSON.stringify(out));
              "a row's kinds and bills can run onto a third line, or its kinds follow its bills on a "
              "phone (the Calendar's .calkind{order:3})")):
         assert ok, f"app.css: {why}"
+    # THE SECOND LINE HOLDS ITS HIDDEN COMMAS (the walk of 30 October 2026):
+    # .sr is absolutely placed, so the line's overflow:hidden clips it only
+    # where the line, or something inside it, is its containing block. None
+    # was, and the commas of a long line stood 1px wide past the list's edge:
+    # /committee/ss1729/videos scrolled sideways at 390 and at 1280. Each .sr
+    # in a row's second line, as renderPage draws it: its nearest positioned
+    # ancestor is inside the row, and it or one between it and the row clips.
+    # A committee's row and a study committee's, whose line is its parts
+    # (studyVideoRows), each part after the first behind a hidden comma.
+    study = _app_js('scope.videoView(scope.VW_STATIC.study(' + json.dumps({
+        "kind": "study", "who": "Commission to Study Stable Tokens", "key": "1729", "path": "/committee/ss1729",
+        "rows": [{"id": "agPR9tSyTok", "date": "2026-10-29", "seconds": 7200, "venue": "State House 122-123",
+                  "type": "Regular meeting", "anchor": "day-2026-10-29"}]}) + "))", names=("videoView", "VW_STATIC"))
+    # AND EVERY ONE IN THE LIST (the review of 30 October 2026): on a wide
+    # screen the list scrolls inside its box (.vwin .vwlist{overflow:auto}),
+    # and a comma in a row's first line was placed against the box round it,
+    # outside the scrolling, where its row would be with the list unscrolled:
+    # the page ran on past its footer by the list's hidden height, 4,865px on
+    # House Finance's (H34) at 1280. Each .sr in the list: its nearest
+    # positioned ancestor is the list or inside it.
+    rules, srs = _css_screen_rules(css), []
+    for drawn in (got["videos"], study or ""):
+        _html_walk(drawn, element=lambda c: srs.append(c) if "sr" in c[0]["classes"]
+                   and any("vwlist" in e["classes"] for e in c[1:]) else None)
+    has = lambda c, k, v: _css_won(rules, c).get(k, (v,))[0]
+    name = lambda c, j: ".".join(sorted(c[j]["classes"])) or c[j]["tag"] if j < len(c) else "the page"
+    loose, outside = [], []
+    for c in srs:
+        at = lambda cls: next((j for j, e in enumerate(c) if cls in e["classes"]), len(c))
+        row, lst = at("vwrow"), at("vwlist")
+        held = next((j for j in range(1, len(c)) if has(c[j:], "position", "static") != "static"), len(c))
+        if held > lst:
+            outside.append(f"{name(c, 1)} held by {name(c, held)}")
+        if any("vwb" in e["classes"] for e in c[1:row]) and (held >= row or not any(
+                has(c[k:], "overflow", "visible") in ("hidden", "clip") for k in range(held, row))):
+            loose.append(f"{name(c, 1)} held by {name(c, held)}")
+    in_line = [c for c in srs if any("vwb" in e["classes"] for e in c[1:])]
+    assert any("vwl" in c[1]["classes"] for c in in_line) and not loose, (
+        "app.css: a hidden comma in a recording's second line is not clipped with it, so a long line "
+        f"can push the page sideways ({len(in_line)} drawn): " + "; ".join(sorted(set(loose))[:4]))
+    assert len(srs) > len(in_line) and not outside, (
+        "app.css: a hidden comma in the list of recordings is placed outside the list, so on a wide screen the "
+        f"page runs on past its footer by the list's hidden height ({len(srs)} drawn): "
+        + "; ".join(sorted(set(outside))[:4]))
+    # The list the rows' offsetParent, a row is measured from its top: taking
+    # the list's own offset (its heading, above it in the box) off a row's
+    # offsetTop that no longer counts it, vwListShow showed a row landed on at
+    # the foot of the list cut short by the heading's height. A row at 660 to
+    # 720px down a list 440px tall: 280px either way it is measured.
+    kept = _node_app(r"""
+require("./stub.js");
+const fs = require("fs");
+const s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({vwListShow})");
+const out = {};
+for (const [k, held] of [["list", true], ["box", false]]) {
+  const list = {scrollHeight: 2400, clientHeight: 440, scrollTop: 0, offsetTop: 40};
+  const li = {offsetTop: 660 + (held ? 0 : 40), offsetHeight: 60, offsetParent: held ? list : {}};
+  try { s.vwListShow({closest: (q) => q === ".vwlist" ? list : q === "li" ? li : null}); out[k] = list.scrollTop; }
+  catch (e) { out[k] = e.constructor.name + ": " + e.message; }
+}
+process.stdout.write("\n@@" + JSON.stringify(out));
+""")
+    assert kept is None or kept == {"list": 280, "box": 280}, (
+        f"a row chosen at the foot of the list is not shown whole inside it, measured from the list's top: {kept}")
     # What is cut is the bills' numbers: the count is on the first line, beside
     # the date, so the cut never takes it.
     assert '<span class="vwd">Feb 10, 2026<span class="sr">,</span> <span class="vwi"><span aria-hidden="true">' \

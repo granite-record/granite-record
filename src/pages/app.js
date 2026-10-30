@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.259
+// GRANITE_VERSION: 2026-09-07.263
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9204,11 +9204,13 @@ function videoView(o){
 }
 // The chosen row in view INSIDE its list, the least that shows it, and never
 // by scrollIntoView, which would move the page as well. A list that does not
-// scroll (a phone's) is left alone.
+// scroll (a phone's) is left alone. A row is measured from the list's top:
+// the list is the rows' offsetParent (app.css, .vwlist{position:relative}),
+// and where it is not, the list's own offset is taken off.
 function vwListShow(a){
   const list=a&&a.closest(".vwlist"), li=a&&a.closest("li");
   if(!list||!li||list.scrollHeight<=list.clientHeight)return;
-  const top=li.offsetTop-list.offsetTop, end=top+li.offsetHeight;
+  const top=li.offsetParent===list?li.offsetTop:li.offsetTop-list.offsetTop, end=top+li.offsetHeight;
   if(top<list.scrollTop)list.scrollTop=top;
   else if(end>list.scrollTop+list.clientHeight)list.scrollTop=end-list.clientHeight;
 }
@@ -9696,7 +9698,15 @@ function chamberShow(i,write){
   vwStick();
   if(!write||!VW_CHAMBER)return;
   const path=`/session/${VW_CHAMBER.slug}${i?"/videos":""}`;
-  try{history.replaceState(history.state,"",path+location.search+(i&&/^#v-/.test(location.hash)?location.hash:""));}catch(_){}
+  // THE VIDEOS TAB TURNED TO AGAIN names the recording chosen there, as a
+  // study committee's does (ssShow): Session Days had taken the #v- off the
+  // address, so Share, a copied link or a reload opened on the newest and
+  // not on what was shown (the walk of 30 October 2026). An address that
+  // already names one keeps it; the newest stays unnamed.
+  const named=i&&/^#v-/.test(location.hash), vw=i&&!named&&vids&&vids.querySelector&&vids.querySelector(".vw");
+  const back=vw&&VVIEW&&VVIEW.rows&&VVIEW.rows.length&&VVIEW.chosen
+    &&VVIEW.chosen!==VVIEW.rows[0].id?VVIEW.chosen:"";
+  try{history.replaceState(history.state,"",path+location.search+(named?location.hash:back?`#v-${back}`:""));}catch(_){}
   addressed();
 }
 document.addEventListener("click",e=>{

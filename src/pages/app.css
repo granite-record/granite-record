@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.337 */
+/* GRANITE_VERSION: 2026-09-07.340 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -7078,7 +7078,14 @@ clip:rect(0 0 0 0);white-space:nowrap}
    one way whichever: an h2 had taken the page's serif. */
 .vwh{margin:0 0 var(--sp-3);font-family:var(--sans);font-size:var(--t-label);font-weight:600;letter-spacing:.06em;
 text-transform:uppercase;color:var(--ink-2)}
-.vwlist{list-style:none;margin:0;padding:0;border:1px solid var(--rule);border-radius:var(--r-out);
+/* THE LIST HOLDS ITS ROWS' HIDDEN COMMAS (the review of 30 October 2026):
+   on a wide screen it scrolls inside its box, and a screen reader's comma
+   (.sr, absolutely placed) in a row's first line was placed against the box
+   round it (.vwin), outside the scrolling, where its row would be with the
+   list unscrolled. The page ran on past its footer by the list's hidden
+   height: 4,865px on House Finance's at 1280. position:relative makes the
+   list theirs, so they scroll with it and are clipped with it. */
+.vwlist{position:relative;list-style:none;margin:0;padding:0;border:1px solid var(--rule);border-radius:var(--r-out);
 background:var(--surface)}
 .vwlist li+li{border-top:1px solid var(--rule)}
 /* A row: the date and when it began and ran on one line, its kinds and
@@ -7100,9 +7107,15 @@ color:var(--ink);text-decoration:none;line-height:1.35}
    its edge. The chips here a little smaller than a card's, the same words
    and colours, and first in their line at every width: on a phone the
    Calendar's rule for its own rows (.calkind{order:3}) had put them after
-   the bills. */
+   the bills.
+   THE LINE HOLDS ITS HIDDEN COMMAS (the walk of 30 October 2026): a
+   screen reader's commas (.sr) are absolutely placed, so the line's
+   overflow:hidden held them only if it was their containing block; it was
+   not, and the commas of a long line stood past the list's edge, so
+   /committee/ss1729/videos scrolled sideways. position:relative makes it
+   theirs. */
 .vwd .vwi{font-weight:400;font-size:var(--t-sm);color:var(--ink-2)}
-.vwb{grid-column:1 / -1;display:flex;align-items:center;min-width:0;font-size:var(--t-sm);line-height:1.5;
+.vwb{position:relative;grid-column:1 / -1;display:flex;align-items:center;min-width:0;font-size:var(--t-sm);line-height:1.5;
 color:var(--ink-2);white-space:nowrap;overflow:hidden}
 .vwb .chip{flex:none;order:0;margin-right:var(--sp-2);padding:0 var(--sp-3);line-height:1.4}
 .vwl{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}

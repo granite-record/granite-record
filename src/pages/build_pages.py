@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.252
+# GRANITE_VERSION: 2026-09-04.254
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2145,6 +2145,23 @@ SEATING_JS = """
     if(pop)pop.addEventListener("mouseleave",function(e){
       if(onSeat(e.relatedTarget))return;
       say();
+    });
+    // A TAP ON THE TRIANGLE IS THE SEAT'S UNDER IT (the walk of 30 October
+    // 2026). The triangle reaches past the gap onto the top of the seat it
+    // points at, and on a phone the callout opens under the finger before
+    // the tap lands, so a tap on a seat landed on the triangle and chose
+    // nothing: none of 21 seats tried at 390. It stays where it is, the
+    // pointer's way from a seat onto the callout over the seats above it,
+    // and a tap or a click on it, below or above the box, goes to the seat
+    // under it, found with the callout taken out of the way for a moment.
+    if(pop)pop.addEventListener("click",function(e){
+      if(e.target!==pop||!pop.getBoundingClientRect||!document.elementFromPoint)return;
+      var r=pop.getBoundingClientRect();
+      if(e.clientY>=r.top&&e.clientY<=r.bottom)return;
+      pop.style.pointerEvents="none";
+      var c=onSeat(document.elementFromPoint(e.clientX,e.clientY));
+      pop.style.pointerEvents="";
+      if(c){e.preventDefault();pick(c===picked?null:c);}
     });
     // Escape lets the callout go, and the keyboard stays where it was: on
     // the seat, or back on it from the name (WCAG 1.4.13, dismissible).
