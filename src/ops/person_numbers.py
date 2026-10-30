@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.2
+# GRANITE_VERSION: 2026-10-30.3
 """
 The register of person numbers: what it would issue, and issuing it.
 
@@ -21,11 +21,13 @@ that), and publishes anybody it does not hold yet as provisional.
 
 WHAT --issue DOES, AND WHAT IT LEAVES FOR A PERSON
 
-  adds     a person for every provisional group, numbered by the rule
-           people.py states (their earliest General Court PersonID, else
-           their earliest employee number); and an issued person's numbers that the register does
+  adds     every person the night numbered by the rule people.py states
+           (their earliest General Court PersonID, else their earliest
+           employee number), so that the number is frozen; and an issued person's numbers that the register does
            not hold yet (a member's new number after a chamber change)
-  never    changes or removes an issued number, merges two issued people or
+  never    issues a provisional number (one made here, for a person the
+           General Court numbers nowhere this site can read), issues a number
+           someone already holds, changes or removes an issued number, merges two issued people or
            splits one. Those are printed, with the join's reasons, for a
            person to make by hand in the register: a merge keeps the earlier
            number and gives the other "replaced_by"; a split keeps the number
@@ -108,13 +110,24 @@ def main():
     if rep["unknown_ids"]:
         print(f"  {len(rep['unknown_ids'])} site id(s) stand for no Employeeno or PersonID "
               f"the roster knows: {rep['unknown_ids'][:10]}")
-    new = rep["provisional"]
+    new = rep["by_rule"]
+    for c in rep["clashes"]:
+        print(f"  REFUSED, a number someone already holds: {c['person']} for {c['numbers']}")
+    if rep["provisional"]:
+        print(f"  not issued, provisional: {len(rep['provisional'])} with no General Court "
+              f"number this site can read: {[g['numbers'] for g in rep['provisional'][:5]]}")
+    bad = PE.check_unique(people)
+    if bad:
+        raise SystemExit("Tonight's people hold a number twice; nothing issued:\n  " + "\n  ".join(bad[:10]))
     more = [u for u in rep["unissued_numbers"] if u.get("person")]
     print(f"  to issue: {len(new):,} new people, {len(more):,} new numbers of issued people")
-    for g in new[:15]:
-        print(f"    {g['person']}  {g['numbers']}")
-    if len(new) > 15:
-        print(f"    ... and {len(new) - 15:,} more")
+    kinds = {"PersonID": 0, "employee number": 0}
+    for g in new:
+        kinds["employee number" if g["person"] in g["numbers"] else "PersonID"] += 1
+    print(f"    numbered by a PersonID: {kinds['PersonID']:,}; by an employee number: "
+          f"{kinds['employee number']:,}; made here: 0")
+    for g in new:
+        print(f"    {g['person']:>8}  {', '.join(g['numbers'])}")
 
     if not a.issue:
         print("\nNothing written. --issue writes these to the register.")

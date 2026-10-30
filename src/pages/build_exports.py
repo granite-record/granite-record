@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.52
+# GRANITE_VERSION: 2026-09-10.53
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -1189,11 +1189,19 @@ def people_files(out, site, data, db="db", careers="generated/careers.json",
     if not people:
         raise SystemExit("people.json would hold nobody: the join found no one. "
                          "Not writing an empty file.")
+    bad = PE.check_unique(people)
+    if bad:
+        raise SystemExit("people.json would hold a number twice, so it is not written: "
+                         + "; ".join(bad[:5]))
     rows = PE.write(people, out)
-    prov = len(rep["provisional"])
+    prov, ruled = len(rep["provisional"]), len(rep["by_rule"])
     print(f"  {'people.json':<28} {len(people):>9,} people  "
           f"{rows[0]['bytes'] / 1e6:>7.1f} MB"
-          + (f"  ({prov:,} provisional: not in {register} yet)" if prov else ""))
+          + (f"  ({ruled:,} numbered by the rule and not in {register} yet)" if ruled else "")
+          + (f"  ({prov:,} provisional: no General Court number)" if prov else ""))
+    for c in rep["clashes"]:
+        print(f"    WARNING: held back, its number {c['person']} is someone else's: "
+              f"{', '.join(c['numbers'])}")
     print(f"  {'people.csv':<28} {rows[1]['rows']:>9,} rows  {rows[1]['bytes'] / 1e6:>7.1f} MB")
     for c in rep["careers_not_joined"]:
         print(f"    not joined, for a person: {c['name']} {', '.join(c['numbers'])}")

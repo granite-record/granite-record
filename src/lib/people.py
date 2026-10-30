@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.3
+# GRANITE_VERSION: 2026-10-30.4
 """
 One entry a person, joining every number the General Court uses for them.
 
@@ -66,9 +66,23 @@ THE REGISTER WINS. Once a number is issued it is what the night publishes,
 whatever tonight's join says: a join that now disagrees (two issued people
 it would merge, or one it would split) is reported and left alone, because
 moving a published number is the thing the register exists to prevent.
-Numbers the register does not hold yet are grouped by the join; a group with
-no issued number is published with the number the rule above gives it,
-marked "provisional" until it is issued.
+
+A NEW MEMBER NEEDS NOBODY (the owner's condition, 30 October 2026). Numbers
+the register does not hold yet are grouped by the join, and a group with no
+issued number is published the same night with the number the rule gives
+it: a new member with a PersonID gets their PersonID; one with only an
+employee number gets that; neither is marked provisional, because the rule
+leaves no choice to make. Only someone the General Court numbers nowhere this
+site can read gets a number made here, "s" and their site id, marked
+"provisional" -- and the night a General Court number appears for them, the
+rule gives them that instead. The next issue of the register freezes the
+night's numbers; person_numbers.py --issue never freezes a provisional one.
+
+NEVER TWO PEOPLE UNDER ONE NUMBER. A group whose rule number is already
+someone's -- issued, or given to another group tonight -- is held back and
+reported (report["clashes"]), never published under a number another person
+holds; build_exports says so, and check_unique() is the proof that what is
+published holds no number twice.
 """
 
 import csv
@@ -189,7 +203,7 @@ def build(site, data, db, careers, register):
 
     U = _Union()
     report = {"careers_not_joined": [], "unknown_ids": [], "register_disagrees": [],
-              "provisional": [], "unissued_numbers": []}
+              "provisional": [], "by_rule": [], "clashes": [], "unissued_numbers": []}
     # Every Employeeno is a node, and so is any id that stands for none.
     for e in by_emp:
         U.find("e" + e)
@@ -231,7 +245,9 @@ def build(site, data, db, careers, register):
     # The register: every issued number, and which person holds it.
     reg = register or {"format": FORMAT, "people": []}
     issued = {}
+    issued_to = set()
     for entry in reg.get("people") or []:
+        issued_to.add(entry["person"])
         for n in entry.get("numbers") or []:
             issued[n] = entry["person"]
 
@@ -259,9 +275,23 @@ def build(site, data, db, careers, register):
                     report["unissued_numbers"].append({"number": n, "person": person})
                 people.setdefault(person, {"numbers": set(), "provisional": False})["numbers"].add(n)
         else:
+            # NOT IN THE REGISTER YET: a new member, or the night before the
+            # first issue. The rule leaves no choice, so the night gives them
+            # their number itself (the owner's condition, 30 October 2026):
+            # the General Court's own, published as theirs, and frozen the
+            # next time the register is issued. Provisional only when the
+            # General Court numbers them nowhere this site can read, and then
+            # only until it does.
             person = choose(nums, by_emp, e2p)
-            people.setdefault(person, {"numbers": set(), "provisional": True})["numbers"].update(nums)
-            report["provisional"].append({"person": person, "numbers": nums})
+            site_made = person.startswith("s")
+            if person in issued_to or person in people:
+                # NEVER TWO PEOPLE UNDER ONE NUMBER. A General Court number is
+                # one person's, so this is a fault in the record or the join;
+                # the group is held back and said, not published.
+                report["clashes"].append({"person": person, "numbers": nums})
+                continue
+            people[person] = {"numbers": set(nums), "provisional": site_made}
+            report["provisional" if site_made else "by_rule"].append({"person": person, "numbers": nums})
     # A register person tonight's join split across groups is still one person
     # (the loop above gathers its numbers wherever they fell); say so.
     seen_in = {}
@@ -320,6 +350,25 @@ def build(site, data, db, careers, register):
             entry["split_from"] = r["split_from"]
     out.sort(key=lambda x: person_key(x["person"]))
     return out, report
+
+
+def check_unique(people):
+    """Problems with a set of published people: a person number twice, or a
+    General Court or site number held by two people. Empty is right."""
+    bad, seen_p, seen_n = [], set(), {}
+    for p in people:
+        if p["person"] in seen_p:
+            bad.append(f"person {p['person']} is published twice")
+        seen_p.add(p["person"])
+        if p.get("replaced_by"):
+            continue
+        for field in ("employee_numbers", "person_ids", "member_ids"):
+            for n in p.get(field) or []:
+                k = (field, n)
+                if k in seen_n and seen_n[k] != p["person"]:
+                    bad.append(f"{field[:-1]} {n} is held by {seen_n[k]} and {p['person']}")
+                seen_n[k] = p["person"]
+    return bad
 
 
 def write(people, out_dir):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.732
+# GRANITE_VERSION: 2026-09-04.733
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28211,6 +28211,75 @@ def _record_untouched():
                   "only a person writes them: " + ", ".join(present) + "; no generator "
                   "names the bench's record or writes into either folder, and the bench "
                   "is not on the network")
+
+
+@check("files", "a new member gets their number by the rule with nobody's help, and no two people ever share one")
+def _person_rule():
+    """The owner's conditions for issuing person numbers (30 October 2026),
+    held on a record made up here, so they hold whatever tonight's data is:
+
+      a new member with a PersonID      is numbered by it, the same night,
+                                        and not marked provisional
+      a new member with only an employee number   is numbered by that
+      a new member with neither         gets one made here ("s" and the site
+                                        id), marked provisional, and the
+                                        night a General Court number appears
+                                        for them, that instead
+      a number someone already holds    is never given to a second person:
+                                        the newcomer is held back and said
+
+    and what is published holds no number twice (people.check_unique)."""
+    import tempfile
+    sys.path.insert(0, str(_paths.locate("people.py").parent))
+    import people as PE
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        (d / "db").mkdir()
+        (d / "site" / "legislators").mkdir(parents=True)
+        (d / "data").mkdir()
+        (d / "db" / "_columns.json").write_text(json.dumps(
+            {"Legislators": ["PersonID", "LastName", "FirstName", "Employeeno"]}))
+        (d / "db" / "Legislators.psv").write_text("11600|Newcomb|Ada|376001\n")
+        careers = {e: {"by_term": {"2027-2028": {"chambers": ["H"], "employee_nos": [e]}},
+                       "employee_nos": [e], "first": f, "last": "Newcomb"}
+                   for e, f in (("376001", "Ada"), ("376002", "Bea"), ("376003", "Cy"))}
+        (d / "site" / "legislators.json").write_text(json.dumps(
+            [{"id": "11600", "name": "Newcomb, Ada", "slug": "ada-newcomb-hills-1"}]))
+        (d / "site" / "former.json").write_text("[]")
+        (d / "data" / "sponsors.json").write_text("{}")
+        (d / "data" / "member_votes.json").write_text(json.dumps(
+            [{"member_id": m} for m in ("11600", "376002", "376003", "99")]))
+        # 376003's rule number is already issued to somebody else.
+        reg = {"format": 1, "people": [{"person": "376003", "numbers": ["376777"]}]}
+        people, rep = PE.build(d / "site", d / "data", d / "db", careers, reg)
+        by = {p["person"]: p for p in people}
+        got = {
+            "PersonID": (by.get("11600") or {}).get("provisional", False) is False and "11600" in by,
+            "employee number only": "376002" in by and not by["376002"].get("provisional"),
+            "neither": (by.get("s99") or {}).get("provisional") is True,
+            "a number already held": any(c["person"] == "376003" for c in rep["clashes"])
+                                     and not any("376003" in (p.get("employee_numbers") or [])
+                                                 for p in people),
+        }
+        assert all(got.values()), "the rule does not hold for: " + ", ".join(k for k, v in got.items() if not v)
+        assert not PE.check_unique(people), PE.check_unique(people)
+        # And the night a General Court number appears for the one with none,
+        # the rule gives them that.
+        (d / "db" / "Legislators.psv").write_text("11600|Newcomb|Ada|376001\n11601|Newcomb|Dee|376004\n")
+        careers["376004"] = {"by_term": {"2027-2028": {"chambers": ["S"], "employee_nos": ["376004"]}},
+                             "employee_nos": ["376004"], "first": "Dee", "last": "Newcomb"}
+        (d / "data" / "member_votes.json").write_text(json.dumps([{"member_id": "11601"}]))
+        later, _ = PE.build(d / "site", d / "data", d / "db", careers, {"format": 1, "people": []})
+        assert any(p["person"] == "11601" and not p.get("provisional") for p in later), \
+            "a member who gains a PersonID is not numbered by it"
+        bad = PE.check_unique([{"person": "1", "employee_numbers": ["376001"]},
+                               {"person": "2", "employee_numbers": ["376001"]}])
+        assert bad, "check_unique let two people share an employee number"
+    return "ok", ("a new member with a PersonID is numbered by it (11600), with only an employee "
+                  "number by that (376002), with neither by one made here and marked provisional "
+                  "(s99) until a General Court number appears (then 11601); a number already "
+                  "held is refused for a second person (376003), and the check finds a shared "
+                  "number")
 
 
 @check("files", "only a person's run writes the register of person numbers, and it is well formed")
