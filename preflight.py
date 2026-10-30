@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.732
+# GRANITE_VERSION: 2026-09-04.733
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -80274,6 +80274,49 @@ def _live_session(BLS):
         "the today pages must be noindex and in no sitemap"
     return "ok", (f"{len(cases)} shared cases judged alike; three day files on a fixture site, "
                   "ballots the record's, a file gone with its page, the today pages noindex")
+@check("build", "the live votes file's documentation says what the code does: its cache times, its "
+       "30 days and its addresses are the Function's, the Worker's and the night's, and none of it "
+       "is published until the person makes it public", needs=("live_docs",))
+def _live_docs(LD):
+    """live_docs.py is the For Developers section and the manifest entry of
+    the live votes file (build_exports.py places both). A number in the text
+    that drifts from the code tells a program the wrong thing, so each is
+    read back from where it is decided; and until PUBLIC, the page and the
+    manifest say nothing of an endpoint that is not yet answering."""
+    root = Path(".")
+    fn = (root / "functions/api/live/votes/[day].js").read_text(encoding="utf-8")
+    store = (root / "workers/live/store.js").read_text(encoding="utf-8")
+    m = re.search(r"export const MAX_AGE = (\d+);", fn)
+    assert m and int(m.group(1)) == LD.MAX_AGE, f"the Function's MAX_AGE is {m and m.group(1)}, the docs say {LD.MAX_AGE}"
+    nf = set(re.findall(r"notFound\((\d+)", fn))
+    assert nf == {str(LD.NOT_FOUND_AGE)}, f"the Function's 404s are kept {sorted(nf)} s, the docs say {LD.NOT_FOUND_AGE}"
+    k = re.search(r"export const KEEP_DAYS = (\d+);", store)
+    assert k and int(k.group(1)) == LD.KEEP_DAYS, f"store.js keeps {k and k.group(1)} days, the docs say {LD.KEEP_DAYS}"
+    assert (root / LD.SCHEMA.lstrip("/")).is_file(), f"{LD.SCHEMA} is named and is not in the repository"
+    ex = Path(_paths.locate("build_exports.py")).read_text(encoding="utf-8")
+    assert "live_docs.developers_html()" in ex and "live_docs.manifest_entry(" in ex, \
+        "build_exports.py no longer places the live votes file's section and manifest entry"
+    was = LD.PUBLIC
+    try:
+        LD.PUBLIC = False
+        assert LD.developers_html() == "" and LD.manifest_entry("https://x") is None, \
+            "something of the live votes file is published before PUBLIC"
+        LD.PUBLIC = True
+        html, entry = LD.developers_html(), LD.manifest_entry("https://graniterecord.org")
+    finally:
+        LD.PUBLIC = was
+    for want in (f"{LD.MAX_AGE} seconds", f"{LD.NOT_FOUND_AGE} seconds", f"{LD.KEEP_DAYS} days",
+                 f"every {LD.POLL_AT_MOST} seconds", "/api/live/votes/", "schema/session.votes.json",
+                 "beta and provisional", "If-None-Match"):
+        assert want in html, f"the section no longer says {want!r}"
+    assert entry["url_template"] == "https://graniterecord.org/api/live/votes/{date}" \
+        and entry["schema"].endswith(LD.SCHEMA) and entry["max_age_seconds"] == LD.MAX_AGE, entry
+    for word in ("youtube", "stream"):
+        assert word not in html.lower(), f"the section names {word!r}: the live votes file carries no video data"
+    return "ok", (f"{LD.MAX_AGE} s, {LD.NOT_FOUND_AGE} s and {LD.KEEP_DAYS} days held to the code; "
+                  f"{'public' if was else 'not yet public'}")
+
+
 @check("build", "the live Worker reads a roll call's bill field as the record does: every field in "
        "records/rollcalls/ and the procedural ones (SUSPRULE, RULE 1-2, HRULE64) give merge.js's "
        "billNumber what rollcall_parser.bill_number gives", needs=("rollcall_parser",))

@@ -261,6 +261,36 @@ read, and keep a copy per data centre through the Cache API.
 hands back `get` and `head` alone; preflight fails if any file there writes,
 deletes, lists or uploads. No other object in the bucket is reachable.
 
+## The pages that read it, and the night's copy
+
+Nothing here writes the site, and the night never writes the bucket
+(DESIGN.md 4.4). The pages fetch the two Functions' answers; the night
+writes everything else.
+
+| What | Written by | Reads |
+|---|---|---|
+| `/live` and `live/schedule.json` | `src/pages/build_live.py` (night) | `/api/live/streams`, every minute; on a sitting day, `/api/live/votes/<day>` |
+| `/session/H/today`, `/session/S/today` | `src/pages/build_live_session.py` (night) | the reader's day (the day before until 06:00): its record file, the votes file and the streams |
+| a dated session-day page's overlay (`#live-votes`) | `build_session_pages.py`, PATCHES.md 6 | within 14 days: its record file, then the votes file, polled only on the day itself |
+| `/session/<H\|S>/<date>.json` | `build_live_session.py` (night) | nothing; this is the record's copy of the day, in the live file's shape |
+| `/schema/session.votes.json` | copied from `schema/` by the same step | the one shape for both |
+
+**The record wins by id.** A page draws the record's roll calls, and adds
+from the live file only the ids the record lacks, marked provisional. Once
+the night's record holds a roll call, its live copy is not drawn again.
+Nobody has to supersede anything by hand.
+
+`src/pages/live.js` is the browser's half of all of it. Tests:
+`tests/live/page.test.js`. The shape's tests are `tests/live/schema.test.js`
+and preflight's `_live_session`, which run the same cases through the node
+checker and the Python one.
+
+**The documentation waits for the person.** `src/pages/live_docs.py` holds
+the data page's "Same Day, Provisional" section and the manifest's `live`
+entry. Neither is published until `live_docs.PUBLIC` is True, which the
+person sets in the change that links Live Now. preflight's `_live_docs` holds
+the numbers in that text (15 s, 60 s, 30 days) to the Function and the Worker.
+
 ## When Healthchecks says it failed
 
 The ping body says why. `/fail` is sent when:
