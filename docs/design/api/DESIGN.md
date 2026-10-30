@@ -235,7 +235,7 @@ is to drop each roll call's member list from the bundle and point to
 
 ```json
 {"format": 1, "people": [
-  {"person": "p376622", "name": "Cindy Rosenwald",
+  {"person": "515", "name": "Cindy Rosenwald",
    "employee_numbers": ["376622", "209106"], "person_ids": ["515", "9406"],
    "member_ids": ["515", "9406"], "page": "/legislator/cindy-rosenwald-sd-13",
    "sitting": true, "chambers": ["H", "S"],
@@ -243,10 +243,21 @@ is to drop each roll call's member list from the bundle and point to
 ]}
 ```
 
-- **`person`** is this site's own number, the "person number" the plan adds.
-  It does not change when a member moves chambers, which is the case every
-  General Court number fails. It is issued once, written down, and never
-  worked out again (below).
+- **`person`** is the "person number" the plan adds, and **it is one of the
+  General Court's own numbers** for the person (the owner, 30 October 2026:
+  "consistent with the General Court's where possible"), chosen by a fixed
+  rule: their earliest PersonID, the one they first cast a recorded vote
+  under; else their earliest employee number, by the same order; else, for
+  someone the General Court numbers nowhere this site can read, "s" and the
+  site id. Earliest, because a chamber move changes a member's latest number
+  and never their earliest. Measured on a full build: 1,056 people by a
+  PersonID (19 of them have two, and get the earlier: Rosenwald 515, not
+  9406), 1,131 by an employee number (everyone whose service ended before
+  2015, which the General Court's roster view does not cover), none made
+  here. The kinds cannot be taken for each other (PersonIDs 27 to 11,524;
+  employee numbers six digits) and no General Court number is held by two
+  people. It is chosen once, written down, and never worked out again
+  (below).
 - **`member_ids`** are every id the other files use for the person:
   `member_id` in every vote and sponsor row, and `id` in `legislators.json`
   and `former.json`. Measured: every one of the 2,303,047 ballots' member ids
@@ -266,12 +277,14 @@ falls to exactly one person; six people have no page (their votes carry a
 number no roster names). 539 KB, 69 KB gzipped.
 
 **A person number must be issued, not computed.** Computed afresh each night
-from the joins ("`p` and the first Employeeno"), a number moves whenever a
+from the joins, a number moves whenever a
 join is corrected, and the joins are corrected: `member_links.py` records
 that `careers.json` attached Sen. Pat Long's House record (Employeeno
 376696, PersonID 540) to a freshman, Rep. Patrick Long, and the prototype
-repeats it, giving `p376696` to the freshman. Fix that join after
-publication and `p376696` would pass from one man to the other.
+repeats it, giving the senator's House number to the freshman. Fix that
+join after publication and the number would pass from one man to the
+other. (Now settled: the senator's number is his earliest PersonID, 540; the
+freshman's is his own, 11177.)
 
 So the design is a **register**, `generated/person_numbers.json`, which git
 keeps, as it keeps `careers.json`:
@@ -281,9 +294,9 @@ keeps, as it keeps `careers.json`:
   to someone else.
 - **The nightly never writes it.** It reads it, and a General Court number
   the register does not hold (a new member, mid-term) gets a number the
-  night marks `"provisional": true` in `people.json`, `p` and that number. A
+  night marks `"provisional": true` in `people.json`, numbered by the rule. A
   person adds it to the register with
-  `python3 src/pages/build_people.py --issue`, which prints every new entry
+  `python3 src/ops/person_numbers.py --issue`, which prints every new entry
   and every disagreement between the joins before it writes; the night's
   verdict says how many provisional numbers there are, so they are not
   forgotten.
@@ -293,9 +306,11 @@ keeps, as it keeps `careers.json`:
   the person whose General Court number it was first issued for, the other
   gets a new number, and their entry carries `"split_from"`. The documentation
   says a split can happen, and why.
-- **Before the first publication** the known disagreement (Pat Long) is
-  settled by hand and the register is issued from the corrected join, so no
-  number has to move on day one.
+- **Before the first publication** the register is issued once from the
+  corrected join, so no number has to move on day one. Mark Pearson's two
+  House numbers are two people (the owner, 30 October 2026: the 2007-2008
+  one was a Democrat, and she finds no record of the current one serving
+  then).
 
 Which join decides (Q3). `careers.json` joins any two numbers by exact name
 and no overlap in service; `member_links.py` joins an earlier number only
@@ -746,7 +761,8 @@ Timetable against the plan: branches 1 to 4 by 13 November, 5 to 7 by
 | Q19 | Add tables for what the pages show and no /data file holds: committees and members, study committees with members and meetings, districts and towns, bill-to-statute citations, Senate hearing reports? | Yes, in the database and as CSVs, built in branch 4; the statute text itself stays on the /laws pages. |
 | Q20 | (Changes approved Q2.) Compress the database with xz rather than gzip? With the reports, gzip is 26.9 MB, past the limit; xz is 13.2 MB. | xz: `granite-record.sqlite.xz`. The bill files stay gzip. |
 | Q21 | The Senate's hearing reports (each bill's `stations[].reports`, about 1,300 hearings in 2025-2026) name the members of the public who testified and summarise what each said. The bill pages show them one bill at a time. Publish them in the bulk files too? | **Not until the owner decides.** A file of every bill is a list of private people's positions, and DATA.md's line is that what the public sends is never published as an individual's. The bill files and the database leave them out (`build_exports.api_record`). |
-| Q22 | Mark Pearson: careers.json joined two House numbers (Rockingham 4, 2007-2008; Rockingham 34, from 2017). Same-chamber numbers are two people by member_links.py's first rule, and the site already shows two pages. One man or two? | Two, as the rule and the pages say, until she says otherwise; a hand edit to the register joins them. |
+| Q22 | Mark Pearson: careers.json joined two House numbers (Rockingham 4, 2007-2008; Rockingham 34, from 2017). One man or two? | **Answered by the owner, 30 October 2026: two people.** |
+| Q23 | Jessica Ayala's employee number in the General Court's data is 999999, which looks like a placeholder. | Nothing depends on it: she is numbered by her PersonID, 8540. If 999999 is ever the earliest number of someone with no PersonID, the register refuses the clash rather than publishing it. |
 
 ---
 
