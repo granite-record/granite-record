@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-18.6
+# GRANITE_VERSION: 2026-10-18.7
 """
 A page for every statutory and study committee the General Court lists as
 active, at /committee/ss<CommitteeID>.
@@ -462,9 +462,12 @@ def marks_of(webtext, location):
 # letter against a digit as two lines run together and gives no venue, which
 # was right for none of these: 485 of the active committees' 3,567 meetings
 # had no place until they were read as the room and building they are --
-# "LOB Room 205", "LOB Rooms 306-308", "State House Room 105-A" -- with what
-# follows the dash kept as the meeting's note. 191 still have none, measured
-# on 18 October 2026: their lines really did run together, as place() says.
+# "LOB 205", "LOB 306-308", "SH 105-A" -- with what follows the dash kept as
+# the meeting's note. 191 still have none, measured on 18 October 2026: their
+# lines really did run together, as place() says. The clerk's codes, so that
+# plain_action.place words them as it does every other room on the site,
+# "State House 105-A" (the R2 polish batch, 30 October 2026; they read "State
+# House Room 105-A" and "LOB Rooms 306-308" until then).
 OLD_ROOM = re.compile(r"^RM(s?)\s*(\d+(?:-?[A-Z])?(?:\s*[-/]\s*\d+(?:-?[A-Z])?)?)\s*[,/]\s*"
                       r"(LOB|St(?:ate)?\.?\s*House|SH)\b\s*-?\s*(.*)$", re.I)
 
@@ -474,10 +477,9 @@ def old_room(room):
     m = OLD_ROOM.match((room or "").strip())
     if not m:
         return room, ""
-    where = "LOB" if m.group(3).upper() == "LOB" else "State House"
+    where = "LOB" if m.group(3).upper() == "LOB" else "SH"
     rooms = re.sub(r"\s+", "", m.group(2))
-    many = m.group(1) or re.search(r"[-/]\d", rooms)
-    return f"{where} Room{'s' if many else ''} {rooms}", m.group(4).strip(" -()")
+    return f"{where} {rooms}", m.group(4).strip(" -()")
 
 
 def meetings_of(c, recent, today):

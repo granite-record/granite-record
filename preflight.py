@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.747
+# GRANITE_VERSION: 2026-09-04.748
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -27695,6 +27695,196 @@ CHIP_NOWRAP_OK = {
 }
 
 
+@check("frontend", "every tab strip that scrolls says so with the one deep edge: 40px covers of its "
+       "own ground over 32px of --scrolledge, a token deeper in dark than the faint --shadow was")
+def _scroll_edges():
+    """The R2 polish batch, 30 October 2026. A tab strip that scrolls on a
+    phone shows more is there only by its edge, and on three strips the edge
+    was 16px of --shadow: at 390px the Officials strip hid three of its six
+    tabs and an opened bill card hid Reports, Sponsors and Documents, with
+    5 grey levels between the edge and the ground (measured on the preview).
+    The record strip had already been given a deeper one ("nobody saw it",
+    14 October), but in --lift, which all but vanishes in dark mode.
+
+    So one token, --scrolledge: --lift's .22 in light and on paper, and in
+    dark at least the .5 --shadow was. Every scrolling strip -- the Officials
+    and town strip at every width, a list card's on a tablet and a phone, and
+    the record strip -- has two covers of its own ground that travel with
+    its tabs (local), at least as wide as the two shadows of --scrolledge
+    fixed under them, and no --shadow."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    rules = _css_rules(css)
+    bad = []
+    tok = {}
+    head = css[:css.index("/* PALETTE END")]
+    for name, at in (("light", ":root{"), ("dark", "/* DARK:OS"), ("chosen", "/* DARK:CHOSEN")):
+        m = re.search(r"--scrolledge:rgba\(0,0,0,([\d.]+)\)", head[head.index(at):])
+        tok[name] = float(m.group(1)) if m else None
+    m = re.search(r"@media print\{\s*:root\[data-theme=\"dark\"\],:root:not\(\[data-theme=\"light\"\]\)\{([^}]*)\}", css)
+    p = re.search(r"--scrolledge:rgba\(0,0,0,([\d.]+)\)", m.group(1)) if m else None
+    tok["print"] = float(p.group(1)) if p else None
+    if tok["light"] != .22 or tok["print"] != .22:
+        bad.append(f"--scrolledge is {tok['light']} in light and {tok['print']} on paper, where --lift's .22 was chosen")
+    if not (tok["dark"] and tok["dark"] >= .5 and tok["dark"] == tok["chosen"]):
+        bad.append(f"--scrolledge in dark is {tok['dark']} (system) and {tok['chosen']} (chosen): "
+                   "at least the .5 the faint --shadow was, and the same in both")
+    strips = ((".twntabs", "", "--paper"),
+              (".tabs", "max-width:45em", "--surface"),
+              (".card .tabs", "min-width:45.0625em) and (max-width:68.75em", "--surface"),
+              (".card.focus.rec > .cbody > .tabs", "max-width:68.75em", "--paper"))
+    for sel, media, ground in strips:
+        got = [b for at, sl, b, _l in rules
+               if (any(media in a.replace(": ", ":") for a in at) if media else not at)
+               and sel in [x.strip() for x in sl.split(",")]
+               and "background" in dict(_css_decls(b))]
+        if not got:
+            bad.append(f"{sel} at ({media}) has no scroll edge")
+            continue
+        bg = dict(_css_decls(got[-1]))["background"]
+        layers = re.split(r",\s*(?=linear-gradient)", bg)
+        covers = [x for x in layers if re.search(r"\blocal\b", x)]
+        edges = [x for x in layers if "var(--scrolledge)" in x]
+        cw = [int(n) for x in covers for n in re.findall(r"/(\d+)px 100%", x)]
+        ew = [int(n) for x in edges for n in re.findall(r"/(\d+)px 100%", x)]
+        if "var(--shadow)" in bg or len(covers) != 2 or len(edges) != 2 or not all(f"var({ground})" in x for x in covers):
+            bad.append(f"{sel} at ({media}): {len(covers)} covers of {ground} and {len(edges)} edges of "
+                       "--scrolledge, where it wants two of each and no --shadow")
+        elif len(cw) != 2 or len(ew) != 2 or min(cw) < max(ew) or min(ew) < 32:
+            bad.append(f"{sel} at ({media}): covers {cw}px over edges {ew}px; the covers must be at least "
+                       "as wide as the edges, and the edges 32px")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"--scrolledge .22 in light and on paper, {tok['dark']:g} in dark; {len(strips)} strips "
+                  "with 40px covers over 32px edges of it")
+
+
+@check("frontend", "every opener's mark points right while shut and down while open, the journal's "
+       "debate among them, and the debate's opening sentences stand while it is shut")
+def _openers_turn_right_to_down():
+    """The R2 polish batch, 30 October 2026: "every opener turns right to
+    down". The House journal's debates ("Debate printed in the permanent
+    journal ▸") drew the shared triangle and no rule turned it, so it pointed
+    right open and shut; and three openers pointed down while shut and up
+    when open -- the Learn pages' and The Data's "On this page" and the
+    Resources topics -- where the other eighteen go right to down.
+
+    Here, from app.css: every rule that turns a summary's mark under [open]
+    (or a .open class) is read with the rule for the same mark shut, and with
+    how the mark is drawn -- the shared triangle (a left border), the
+    chevron mask --l-chev and the ▸ glyph point right; a box with only its
+    right and bottom borders is a corner pointing down and right -- and the
+    mark must point right shut and down open. And every <details> the pages
+    write with a mark in its summary has a rule that turns it. The debate's
+    opening sentences sit after its fold, so they show while it is shut, and
+    hide once it is open."""
+    import glob
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    rules = _css_rules(css)
+    mark = re.compile(r"(summary\s*::?(?:before|after)|\.caret|\.chev|\.cmcaret)$")
+    opened = re.compile(r"\[open\]|\.open\b")
+
+    def norm(sel):
+        return re.sub(r"\s*([>+~])\s*", r" \1 ", " ".join(sel.split())).strip()
+
+    def turn(v):
+        return sum(float(x) for x in re.findall(r"rotate\((-?[\d.]+)deg\)", v or ""))
+
+    def drawn(parts, cls):
+        if cls == ".chev":       # the ▸ glyph in the markup, held below
+            return 0
+        ds = {}
+        for at, sel, body, _line in rules:
+            if not at and any(norm(p) in parts for p in sel.split(",")):
+                ds.update(dict(_css_decls(body)))
+        width = ds.get("border-width", "").split()
+        if ("border-right" in ds and "border-bottom" in ds) or (
+                len(width) == 4 and width[0] == width[3] == "0" and width[1] != "0" and width[2] != "0"):
+            return 45
+        if "border-left" in ds or "--l-chev" in ds.get("mask", "") + ds.get("-webkit-mask", ""):
+            return 0
+        return None
+
+    bad, seen, turned = [], 0, set()
+    for at, sel, body, line in rules:
+        d = dict(_css_decls(body))
+        if "transform" not in d or (at and not all(a.startswith(("@media", "@container")) for a in at)):
+            continue
+        for part in sel.split(","):
+            p = norm(part)
+            m = mark.search(p)
+            if not opened.search(p) or not m:
+                continue
+            cls, shut = m.group(1), norm(opened.sub("", p))
+            parts = {shut} | ({norm(x) for _a, s0, _b, _l in rules for x in s0.split(",")
+                               if not opened.search(x) and norm(x).endswith(cls)
+                               and (norm(x).split(" ")[-1] == cls or ":where(" in x)}
+                              if cls in (".caret", ".cmcaret") else set())
+            base = drawn(parts, cls)
+            if base is None:
+                bad.append(f"app.css:{line} {p}: no rule says how its mark is drawn")
+                continue
+            shut_t = 0.0
+            for a2, s2, b2, _l2 in rules:
+                if not a2 and any(norm(x) == shut for x in s2.split(",")):
+                    t2 = dict(_css_decls(b2)).get("transform")
+                    if t2:
+                        shut_t = turn(t2)
+            was, now = (base + shut_t) % 360, (base + turn(d["transform"])) % 360
+            seen += 1
+            turned.update(re.findall(r"\.([\w-]+)(?:\[open\]|\.open\b)", p))
+            if (was, now) != (0, 90):
+                bad.append(f"app.css:{line} {p} points {was:g}° shut and {now:g}° open, "
+                           "where right (0°) and down (90°) are every opener's")
+    # Every <details> written with a mark in its summary has its turn.
+    pat = re.compile(r'<details class=\\?"([\w-]+)[^"\\]*\\?"[^>]*>(?:(?!</summary>|<details).){0,900}?'
+                     r'class=\\?"(caret|chev|cmcaret)\b', re.S)
+    written = set()
+    for f in sorted(glob.glob("src/pages/*.py") + glob.glob("src/pages/*.js") + glob.glob("src/pages/*.html")):
+        for mm in pat.finditer(Path(f).read_text(encoding="utf-8")):
+            written.add((mm.group(1), Path(f).name))
+    for x, f in sorted(written):
+        if x not in turned:
+            bad.append(f"{f} writes <details class=\"{x}\"> with a mark in its summary, and no rule "
+                       f"turns it when it is open")
+    for f in sorted(glob.glob("src/pages/*.py") + glob.glob("src/pages/*.js") + glob.glob("src/pages/*.html")):
+        for mm in re.finditer(r'class=\\?"chev\\?"[^>]*>([^<]{0,12})<', Path(f).read_text(encoding="utf-8")):
+            if mm.group(1) not in ("▸", "&#9656;", "${", ""):
+                bad.append(f"{Path(f).name}: a .chev draws {mm.group(1)!r}, which this check reads as ▸")
+    assert len(written) >= 8 and seen >= 20, (
+        f"only {seen} turns and {len(written)} written openers were found; the reading has broken")
+    # The journal's debate: its sentences after the fold, shown shut and hidden open.
+    import build_session_pages as BSP
+    if not re.search(r"\.sdebate\[open\] \+ \.sdopen\{display:none\}", css):
+        bad.append("app.css does not hide a debate's opening sentences once it is open")
+    # And they are its argument: a title does not end a sentence, and thanks to the chair are
+    # passed over (every debate of 14 May 2026 opened "Thank you, Mr. Speaker.…").
+    for said, want in (
+            ("Thank you, Mr. Speaker. I rise today in opposition of Senate Bill 430 as amended. "
+             "Education is not simply about academics. Schools are places of trust.",
+             "I rise today in opposition of Senate Bill 430 as amended. Education is not simply about academics."),
+            ("Thank you very much, Mr. Speaker. Mr. Speaker, you and I have a lot in common. More than that.",
+             "Mr. Speaker, you and I have a lot in common. More than that."),
+            ("Thank you, Madam Speaker.", "Thank you, Madam Speaker."),
+            ("I rise in support. Thank you, Mr. Speaker.", "I rise in support. Thank you, Mr. Speaker."),
+            ("Rep. Smith and Dr. Jones agree. So do I. And so does the committee.",
+             "Rep. Smith and Dr. Jones agree. So do I."),
+            ("THANK YOU, MR. SPEAKER. I RISE IN SUPPORT. IT IS SOUND. MORE.", "I RISE IN SUPPORT. IT IS SOUND."),
+            ("Thank you, Mr Speaker. Gov. Ayotte signed it. We should too.", "Gov. Ayotte signed it. We should too.")):
+        if BSP.debate_opening(said) != want:
+            bad.append(f"a debate opening {said[:40]!r} reads {BSP.debate_opening(said)!r}")
+    page = BSP._debate_html({"bill": "HB1", "speeches": [
+        ("Rep. Wade", "Thank you, Mr. Speaker. I rise in support of the committee report. It is sound.")]},
+        "H", BSP.Members(Path("no-such-site")), __import__("html").escape)
+    if not page.endswith('</details><p class="sdopen">I rise in support of the committee report. It is sound.</p>'):
+        bad.append(f"a debate's opening is not after its fold, in its own words: {page[-160:]!r}")
+    empty = BSP._debate_html({"bill": "HB1", "speeches": [("Rep. Wade", "")]}, "H",
+                             BSP.Members(Path("no-such-site")), __import__("html").escape)
+    if "sdopen" in empty:
+        bad.append("a debate whose first speech is empty shows a bare ellipsis under its fold")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"{seen} turns of a summary's mark, each right to down; {len(written)} openers the "
+                  "pages write, each turned; the debate's opening stands while it is shut")
+
+
 @check("frontend", "a chip is held on one line only where its words are short or its box scrolls: a vote's result wraps")
 def _chip_nowrap():
     """A chip that says a vote's result in the bill page's words is a phrase,
@@ -42879,7 +43069,29 @@ def _rooms_in_words(PA):
              "LOB 205-207": "Legislative Office Building 205-207",
              "NH Hospital Association, 125 Airport Rd, Concord, NH":
                  "NH Hospital Association, 125 Airport Rd, Concord, NH",
-             "DNCR, 172 Pembroke Road, Concord": "DNCR, 172 Pembroke Road, Concord", "": ""}
+             "DNCR, 172 Pembroke Road, Concord": "DNCR, 172 Pembroke Road, Concord", "": "",
+             # The clerk's old codes (the R2 polish batch, 30 October 2026): the docket's
+             # room-first "RM207,LOB" before 2007, a study committee's "Room 102 LOB" and
+             # "LOB Rooms 306-308", the Senate calendar's "SH RM 207"; what follows the
+             # room stays as written.
+             "RM207,LOB": "Legislative Office Building 207",
+             "RMs210-211,LOB": "Legislative Office Building 210-211",
+             "RM105A,ST HOUSE": "State House 105A", "RM100, St House": "State House 100",
+             "Rm,208, LOB": "Legislative Office Building 208",
+             "RM 202LOB": "Legislative Office Building 202",
+             "RM210-211/LOB": "Legislative Office Building 210-211",
+             "Room 102 LOB": "Legislative Office Building 102", "Room 100 SH": "State House 100",
+             "LOB Rooms 306-308": "Legislative Office Building 306-308",
+             "Executive Council Chambers SH RM 207": "Executive Council Chambers State House 207",
+             "RM207,LOB :EDUC": "Legislative Office Building 207 :EDUC",
+             "RMS205-207,LOB (NOTE TIME CHANGE)": "Legislative Office Building 205-207 (NOTE TIME CHANGE)",
+             "SH 105-A": "State House 105-A",
+             # A room with a name stays as typed: the old codes are read only where a room begins.
+             "Conference Room 2 LOB": "Conference Room 2 LOB", "Hearing Room 100 SH": "Hearing Room 100 SH",
+             "Map Room 102 LOB": "Map Room 102 LOB",
+             "Senate Conference Rm 100, SH": "Senate Conference Rm 100, SH",
+             "Legislative Office Building Room 302 LOB": "Legislative Office Building Room 302 LOB",
+             "NHDES, RM 111, LOB": "NHDES, Legislative Office Building 111"}
     bad = [f"plain_action.place({raw!r}) is {PA.place(raw)!r}" for raw, want in cases.items()
            if PA.place(raw) != want]
     got = _app_js(f"{json.dumps(list(cases))}.map(scope.roomWords)", names=("roomWords",))
@@ -42899,7 +43111,7 @@ def _rooms_in_words(PA):
     cal = shared / "site" / "calendar.html"
     if cal.exists():
         raw = re.findall(r'<span class="calwhere">([^<]*)</span>', cal.read_text(encoding="utf-8"))
-        left = [r for r in raw if re.match(r"(?:LOBO?|SH|GP) ?(?:Room )?\d", r)]
+        left = [r for r in raw if re.search(r"(?:RMs?\s*\d|(?:LOBO?|SH|GP) ?(?:Rooms? |RMS? ?)?\d)", r, re.I)]
         if left:
             bad.append(f"the fixture's Calendar says {left[:3]}")
     assert not bad, "; ".join(bad[:6])
@@ -51337,6 +51549,23 @@ def _calendar_documents():
             assert CD.name_date(name, 2027) == iso, (
                 f"{name!r} states {CD.name_date(name, 2027) or 'no date'}, not {iso or 'none'}")
 
+        # ---- a file's other suffixes leave its label, never its address ----
+        for name, label in (("SC 36.tagged.pdf", "SC 36"),
+                            ("Daily Journal No 22 9-5-07 Veto Day Final.doc.pdf",
+                             "Daily Journal No 22 9-5-07 Veto Day Final"),
+                            ("HC 33.DOCX.pdf", "HC 33"), ("No30 August 14 2026.pdf", "No30 August 14 2026"),
+                            ("hb0001_final.pdf", "hb0001_final"), ("63", "63"),
+                            ("Tagged.pdf", "Tagged"), ("SC 36.tagged", "SC 36.tagged")):
+            assert CD.clean(name) == label, f"{name!r} is labelled {CD.clean(name)!r}, not {label!r}"
+        assert CD.number_of("SC 36.tagged.pdf") == CD.number_of("SC 36.pdf"), (
+            "SC 36.tagged is numbered apart from SC 36")
+        tagged = docs[0]._replace(label=CD.clean("SC 36.tagged.pdf"),
+                                  url=docs[0].url.rsplit("%5C", 1)[0] + "%5CSC%2036.tagged.pdf")
+        t_ix = CD.index([tagged])
+        t_doc = t_ix["sets"][0]["years"][next(iter(t_ix["sets"][0]["years"]))][0]
+        assert t_doc[0] == "SC 36" and CD.address(t_ix, CD.CHAMBER[tagged.set], t_doc) == tagged.url, (
+            f"SC 36.tagged is listed as {t_doc[:2]}, not 'SC 36' at its recorded address")
+
         # ---- the index: every address whole, and none made ----
         ix = CD.index(docs)
         assert ix["base"] == {"H": H, "S": SN}, f"the viewer prefixes read as {ix['base']}"
@@ -51344,6 +51573,9 @@ def _calendar_documents():
             f"the index holds {sorted(ix)}: a date of its making makes it a new file every "
             "day, for the deploy to send again unchanged")
         flat = [(s["chamber"], d) for s in ix["sets"] for ds in s["years"].values() for d in ds]
+        assert not [d[0] for _ch, d in flat if re.search(r"(?i)\.(?:pdf|tagged|docx?)$", d[0])], (
+            "a label still ends in a file's suffix: "
+            + ", ".join(d[0] for _ch, d in flat if re.search(r"(?i)\.(?:pdf|tagged|docx?)$", d[0])))
         assert len(flat) == len(docs) and {CD.address(ix, ch, d) for ch, d in flat} == \
             {d.url for d in docs}, "the index's addresses are not the documents' own"
         assert all(not d[1].startswith("https://") and "%5C" in d[1] for _ch, d in flat), (
@@ -65888,8 +66120,7 @@ process.stdout.write(C.countLine(C.tally(cards,on),"this week")+" | "
             r = _run([node, str(go), str(site / "calendar.html")], capture_output=True,
                      text=True, encoding="utf-8", timeout=60)
             assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
-            assert r.stdout == ("1 meeting this week. | The one meeting this week does not match."
-                                " 1 study committee meeting is hidden."), (
+            assert r.stdout == "1 meeting this week. | 1 study committee meeting is hidden.", (
                 f"the week script counts {r.stdout!r} with one meeting cancelled, with the "
                 "study committees shown and then as a new reader sees the week")
         js = BC.WEEK_JS
@@ -65920,9 +66151,11 @@ def _calendar_study_hidden_once():
     carries its page (build_calendar.study_page) and its card leads into the
     meeting there, an archived one's leads nowhere; the built week opens
     with the checkbox and the one line, a day of study committees alone
-    says only that nothing is shown, and app.css hides the cards while the
-    box is unticked; the script's day says "No meetings shown." and its week
-    line keeps the count, with "Show them" beside it while there is one."""
+    says "Study committee meetings only." with a label for that box, and
+    app.css hides the cards while the box is unticked; the script's day says
+    the same, with its own "Show them", and its week line keeps the count,
+    with "Show them" beside it while there is one (the R2 polish batch, 30
+    October 2026, where a day said "No meetings shown.")."""
     import contextlib
     import datetime as _dt
     import io
@@ -65977,16 +66210,23 @@ def _calendar_study_hidden_once():
             "an archived committee's card links a page nobody writes")
         # ONCE A WEEK: the box, then the one line, then the days.
         assert view.startswith('<div class="calview" id="calview">'
-                               '<input type="checkbox" class="calst" id="calst">'
+                               '<input type="checkbox" class="calst" id="calst" aria-labelledby="calstl">'
                                '<p class="calstline"><span class="cs-off">2 study committee '
                                'meetings are hidden.</span>'), (
             "the built week does not open with the box and the one line counting its study "
             "committee meetings: " + view[:240])
-        assert '<label for="calst"><span class="cs-off">Show them</span>' in view, (
+        assert '<label for="calst" id="calstl"><span class="cs-off">Show them</span>' in view, (
             "the built week's line has no way to show them")
         days = re.findall(r'<div class="calday[^"]*" data-d="([^"]+)">(.*?)(?=<div class="calday|$)',
                           view, re.S)
         alone = {d for d, h in days if BC.STUDY_ONLY in h}
+        assert BC.STUDY_ONLY == ('<p class="calempty calstonly">Study committee meetings only. '
+                                 '<label for="calst">Show them</label></p>'), (
+            "a built day of study committees alone does not say what it holds, with the box's "
+            "own label to show them: " + BC.STUDY_ONLY)
+        css = (here / "src/pages/app.css").read_text(encoding="utf-8")
+        assert re.search(r"\.calstonly label\{|,\.calstonly label[,{]", css), (
+            "the built day's Show them is not drawn as the week line's is, in the link colour")
         assert alone == {"2026-10-12", "2026-10-14"}, (
             f"the days of study committees alone that say nothing is shown are {sorted(alone)}; "
             "a day with a hearing on it must not say so")
@@ -65997,7 +66237,7 @@ def _calendar_study_hidden_once():
         assert re.search(r'\.calst:not\(:checked\) ~ \.calday \.calmeet\[data-who="study"\]', css) \
             and re.search(r"\.calst:checked ~ \.calday \.calstonly", css), (
                 "app.css no longer hides the built week's study committee cards while its box is "
-                "unticked, or shows the day's 'No meetings shown.' while it is ticked")
+                "unticked, or shows the day's 'Study committee meetings only.' while it is ticked")
         assert '<button type="button" class="calshowst" id="calshowst" hidden>' in t, (
             "the Calendar's bar has no Show them for the script to show")
         js = BC.WEEK_JS
@@ -66014,21 +66254,30 @@ const view=t.slice(t.indexOf('<div class="calview"'),t.indexOf('<nav class="wkna
 const cards=(view.match(new RegExp('<details class="cal'+'meet"[\\s\\S]*?</details>','g'))||[]).map(C.parseCard);
 const st=cards.filter(c=>c.who==="study");
 process.stdout.write(JSON.stringify({day:C.emptyWords(st.slice(0,1),C.defaults()),
-  week:C.countLine(C.tally(cards,C.defaults()),"this week")}));
+  html:C.emptyHtml(st.slice(0,1),C.defaults()),
+  week:C.countLine(C.tally(cards,C.defaults()),"this week"),
+  alone:C.countLine(C.tally(st,C.defaults()),"this week")}));
 """, encoding="utf-8")
             r = _run([node, str(go), str(site / "calendar.html")], capture_output=True,
                      text=True, encoding="utf-8", timeout=60)
             assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
             got = json.loads(r.stdout)
-            assert got["day"] == "No meetings shown.", (
+            assert got["day"] == "Study committee meetings only.", (
                 f"the script's day of study committees alone says {got['day']!r}")
+            assert got["html"] == ('Study committee meetings only. <button type="button" '
+                                   'class="calshowday">Show them<span class="sr"> (the study '
+                                   'committee meetings)</span></button>'), (
+                f"the script's day of study committees alone has no Show them: {got['html']!r}")
+            assert got["alone"] == "2 study committee meetings are hidden.", (
+                "a week of study committees alone speaks of a filter nobody set: "
+                + repr(got["alone"]))
             assert got["week"] == "1 of 3 meetings shown. 2 study committee meetings are hidden.", (
                 f"the script's week line says {got['week']!r}")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("an active committee's card leads into its meeting on its page; the built week "
                   "hides the study cards behind one line and a box, a day of them alone says "
-                  "nothing is shown, and the script counts them once with Show them")
+                  "so with Show them, and the script counts them once with Show them")
 
 
 # The fixture's statutory and study committees (_study_fixture): the active
@@ -66604,8 +66853,8 @@ def _study_committee_tabs(SC, BP):
 @check("build", "the study committees' record is read as it was written: a lost break parted only "
        "where the record says so, an old room read as its room, a kind from its name, and the "
        "statute and the session law put back where the record swapped them",
-       needs=("build_study_committees",))
-def _study_committee_reading(SC):
+       needs=("build_study_committees", "plain_action"))
+def _study_committee_reading(SC, PA):
     """The database copy lost the line breaks inside its text, as it did in a
     venue: "chairpersons of thehouse and senate committees". A word is parted
     only where the vocabulary says so, never a word the statutes' headings
@@ -66631,13 +66880,19 @@ def _study_committee_reading(SC):
     assert said == Counter({"thehouse": 1}), said
     assert SC.seat_words("(j)  Fifteen members of the public. (Reappointed 12/12/24)", w) == (
         "Fifteen members of the public."), "a seat keeps its paragraph's letter or an appointment's note"
-    rooms = {"RM205,LOB -": ("LOB Room 205", ""),
-             "RMs306-308,LOB - Continued Meeting": ("LOB Rooms 306-308", "Continued Meeting"),
-             "RM105-A, St House -": ("State House Room 105-A", ""),
-             "RM101,LOB   (Org meeting)": ("LOB Room 101", "Org meeting"),
+    # The clerk's codes, which plain_action.place then words as every room on the site
+    # (the R2 polish batch, 30 October 2026: "State House 105-A", not "State House Room 105-A").
+    rooms = {"RM205,LOB -": ("LOB 205", ""),
+             "RMs306-308,LOB - Continued Meeting": ("LOB 306-308", "Continued Meeting"),
+             "RM105-A, St House -": ("SH 105-A", ""),
+             "RM101,LOB   (Org meeting)": ("LOB 101", "Org meeting"),
              "GP Room 230": ("GP Room 230", "")}
     for r, want in rooms.items():
         assert SC.old_room(r) == want, f"{r!r} reads as {SC.old_room(r)}"
+    for r, want in (("RM205,LOB -", "Legislative Office Building 205"),
+                    ("RMs306-308,LOB - Continued Meeting", "Legislative Office Building 306-308"),
+                    ("RM105-A, St House -", "State House 105-A")):
+        assert PA.place(SC.old_room(r)[0]) == want, f"{r!r} is said {PA.place(SC.old_room(r)[0])!r}"
     kinds = {"Business Finance Authority Board of Directors": "Board",
              "Advisory Committee on the Human Rights Commission": "Committee",
              "Commission to Study Stable Tokens": "Commission",
@@ -72443,13 +72698,24 @@ const linked=C.parseCard(jud.html.replace("</div></details>",'<p class="calmore 
   +'<p class="calmore"><a href="committee/H05.html#day-2026-03-10">This meeting on the House Judiciary page</a></p></div></details>'));
 ok(/<li class="wke"[^>]*><a class="wkgo" href="committee\/H05\.html#day-2026-03-10"><span class="wkbar"/.test(E(linked)),
    "an entry whose card leads to its committee's page at that day does not: "+E(linked));
-// What an empty column says. A day of study committees alone says only that
-// nothing is shown: their count is the week's line's (18 October 2026).
-ok(C.emptyWords([],F({}))==="No meetings" && C.emptyWords([aging[0]],F({}))==="No meetings shown."
-   && C.emptyWords([aging[0],aging[0]],F({}))==="No meetings shown."
+// What an empty column says. A day of study committees alone says what it
+// holds, with no count: their count is the week's line's (18 October 2026;
+// the words, the R2 polish batch, 30 October 2026).
+ok(C.emptyWords([],F({}))==="No meetings" && C.emptyWords([aging[0]],F({}))==="Study committee meetings only."
+   && C.emptyWords([aging[0],aging[0]],F({}))==="Study committee meetings only."
    && C.emptyWords([aging[0]],F({cats:[],q:"x"}))==="1 meeting is hidden by the filters."
    && C.emptyWords([jud,aging[0]],F({cats:[]}))==="2 meetings are hidden by the filters.",
    "an empty column's words: "+[C.emptyWords([],F({})),C.emptyWords([aging[0]],F({})),C.emptyWords([jud,aging[0]],F({cats:[]}))]);
+ok(/^Study committee meetings only\. <button type="button" class="calshowday">Show them<span class="sr">/.test(C.emptyHtml([aging[0]],F({})))
+   && C.emptyHtml([aging[0]],F({cats:[],q:"x"}))==="1 meeting is hidden by the filters."
+   && C.emptyHtml([aging[0]],ON).indexOf("button")<0
+   && C.emptyHtml([aging[0]],F({body:"H"})).indexOf("button")<0,
+   "Show them is on a day of study committees alone and only there: "+C.emptyHtml([aging[0]],F({})));
+ok(C.countLine({total:3,shown:0,seen:0,study:3},"this week")==="3 study committee meetings are hidden."
+   && C.countLine({total:1,shown:0,seen:0,study:1},"this week")==="1 study committee meeting is hidden."
+   && C.countLine({total:3,shown:0,seen:0,study:2},"this week")==="None of the 3 meetings this week match. 2 study committee meetings are hidden."
+   && C.countLine({total:0,shown:0,seen:0,study:0},"this week")==="No meetings this week.",
+   "a week of study committees alone speaks of a filter nobody set: "+C.countLine({total:3,shown:0,seen:0,study:3},"this week"));
 // The Day view steps over a weekend with nothing on it, and not over one that holds something.
 ok(C.stepDay("2026-03-13",1,days)==="2026-03-14" && C.stepDay("2026-03-14",1,days)==="2026-03-16"
    && C.stepDay("2026-03-16",-1,days)==="2026-03-14" && C.stepDay("2026-03-23",-1,days)==="2026-03-20"
@@ -72492,7 +72758,7 @@ ok(/data-d="2026-02-23"[^>]*aria-disabled="true"/.test(g), "a day before the cal
 const cellOf=(h,d)=>{ const m=new RegExp('data-d="'+d+'"[^>]*>(.*?)</td>').exec(h); return m&&m[1]; };
 ok(/<i class="k-hearing"><\/i><i class="k-exec"><\/i><\/span><span class="sr">Tuesday, March 10, 2026, 2 meetings</.test(cellOf(g,"2026-03-10")),
    "10 March in the grid: "+cellOf(g,"2026-03-10"));
-ok(/cmdots" aria-hidden="true"><\/span><span class="sr">Friday, March 13, 2026, no meetings shown</.test(cellOf(g,"2026-03-13")),
+ok(/cmdots" aria-hidden="true"><\/span><span class="sr">Friday, March 13, 2026, study committee meetings only</.test(cellOf(g,"2026-03-13")),
    "a study committee's day for a new reader: "+cellOf(g,"2026-03-13"));
 const gOn=C.gridHtml({view:"2026-03",sel:"2026-03-10",focus:"2026-03-10",today:"2026-03-11",first:"2026-03-02",last:"2026-04-05",days,f:ON});
 ok(/cmdots" aria-hidden="true"><i class="k-study"><\/i><\/span><span class="sr">Friday, March 13, 2026, 1 meeting</.test(cellOf(gOn,"2026-03-13")),
@@ -72510,7 +72776,8 @@ const p=C.peekHtml("2026-03-10",{days:{"2026-03-10":many},f:F({})},5);
 ok((p.match(/<li>/g)||[]).length===5 && /and 2 more/.test(p), "the preview is not capped at five with the rest counted: "+p);
 ok(p.indexOf('<span class="pkt">1:00'+NB+'AM</span>')>=0 && !/<span class="pkt">0/.test(p), "the preview's times are not a reader's: "+p);
 ok(/<em>cancelled<\/em>/.test(C.peekHtml("2026-03-14",{days,f:ON},5)), "the preview does not mark a cancelled meeting");
-ok(/Nothing on this day matches the filters/.test(C.peekHtml("2026-03-13",{days,f:F({})},5)), "a day whose one meeting is hidden: "+C.peekHtml("2026-03-13",{days,f:F({})},5));
+ok(/<p class="pkmore">Study committee meetings only\.<\/p>/.test(C.peekHtml("2026-03-13",{days,f:F({})},5)), "a day whose one meeting is hidden: "+C.peekHtml("2026-03-13",{days,f:F({})},5));
+ok(/<p class="pkmore">1 meeting is hidden by the filters\.<\/p>/.test(C.peekHtml("2026-03-13",{days,f:F({cats:[],q:"x"})},5)), "a day the reader's own filter emptied: "+C.peekHtml("2026-03-13",{days,f:F({cats:[],q:"x"})},5));
 ok(/Nothing is scheduled/.test(C.peekHtml("2026-03-09",{days,f:F({})},5)), "an empty day's preview");
 // ---- the address: the query ----
 const s=F({v:"week",cats:["hearing","exec"],body:"H",picks:["Health, Human Services and Elderly Affairs"],q:"HB 1"});
@@ -72895,10 +73162,12 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(!QA(".cmdots i",c13).length, "a study committee's day has a dot while its box is unticked");
   ok(QA(".cdrel",$("calview")).map(r=>r.textContent).join()===",,today,tomorrow,in 2 days", "the days' relative words: "+QA(".cdrel",$("calview")).map(r=>r.textContent));
   // MONDAY TO FRIDAY IN THE LIST TOO: Friday, whose one meeting is a study
-  // committee's, stays and says nothing is shown, as the Week view's column
-  // does; the week's line has the count (18 October 2026).
+  // committee's, stays and says what it holds, with Show them, as the Week
+  // view's column does; the week's line has the count (18 October 2026; the
+  // words, the R2 polish batch, 30 October 2026).
   const fri=Q('.calday[data-d="2026-03-13"]',$("calview"));
-  ok(fri && Q(".calempty",fri) && Q(".calempty",fri).textContent==="No meetings shown.",
+  ok(fri && Q(".calempty",fri) && /^Study committee meetings only\. Show them/.test(Q(".calempty",fri).textContent)
+     && Q(".calshowday",Q(".calempty",fri)),
      "the list drops a weekday the filters emptied, or does not say why it is empty: "+(fri&&fri.textContent));
   ok(W.addr()==="/calendar" && W.G.history.length===1, "opening the tab wrote an address: "+W.addr());
   // EVERY TIME AS A READER SAYS IT, on the cards and on the items inside them.
@@ -72967,7 +73236,8 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(!QA("table",$("calview")).length && !QA(".calmeet",$("calview")).length && QA(".wke",$("calview")).length===5,
      "the week is still whole cards in a table of hours, or not one entry a meeting shown");
   ok(W.keys().sort().join()===plain.slice().sort().join(), "the week at a glance does not hold the week's cards: "+W.keys());
-  ok(Q(".wkempty",wcols[0]).textContent==="No meetings" && Q(".wkempty",wcols[4]).textContent==="No meetings shown.",
+  ok(Q(".wkempty",wcols[0]).textContent==="No meetings"
+     && /^Study committee meetings only\. Show them/.test(Q(".wkempty",wcols[4]).textContent),
      "an empty column does not say why: "+[Q(".wkempty",wcols[0]),Q(".wkempty",wcols[4])].map(x=>x&&x.textContent));
   ok(wcols[2].getAttribute("aria-current")==="date" && Q(".wkdd",wcols[2]).textContent==="Mar 11 · Today",
      "today is not marked in the week: "+Q(".wkdd",wcols[2]).textContent);
@@ -73012,6 +73282,30 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   await W.tick("study",false);
   ok(W.store.get("gr.calendar.showstudy")==="0" && W.keys().join()===plain.join() && $("calreset").hidden && W.addr()==="/calendar?week=2026-W11",
      "Study Committee unticked again: "+W.addr());
+  // A DAY OF STUDY COMMITTEES ALONE, in the Day view, says what it holds and
+  // never "matches the filters", which no reader had set; the month's cell
+  // says it to a screen reader; and the day's own Show them shows them, as
+  // the week line's does (the R2 polish batch, 30 October 2026).
+  W.view("day").click(); await W.settle();
+  Q('td[data-d="2026-03-13"]',$("cmgrid")).click(); await W.step();
+  const d13=Q('.calday[data-d="2026-03-13"]',$("calview")), e13=d13&&Q(".calempty",d13);
+  ok(W.sel()==="2026-03-13" && e13 && /^Study committee meetings only\. Show them/.test(e13.textContent)
+     && !/matches the filters/.test($("calview").textContent) && Q(".calshowday",e13),
+     "a day of study committees alone in the Day view: "+(d13&&d13.textContent));
+  const n13=Q(".sr",Q('td[data-d="2026-03-13"]',$("cmgrid")));
+  ok(n13 && /Friday, March 13, 2026, study committee meetings only/.test(n13.textContent),
+     "the month's cell of a study committees' day: "+(n13&&n13.textContent));
+  if(e13&&Q(".calshowday",e13)){ Q(".calshowday",e13).click(); await W.settle(); }
+  ok(W.box("study").checked && W.store.get("gr.calendar.showstudy")==="1"
+     && W.keys().some(k=>/2026-03-13\|Commission on Aging/.test(k)) && QA(".calmeet",$("calview")).length===1,
+     "a day's Show them does not tick the box and draw the day's study committee: "+W.keys());
+  ok(D.activeElement && D.activeElement.tagName==="SUMMARY" && /Commission on Aging/.test(D.activeElement.textContent),
+     "a day's Show them leaves the focus off the meeting it shows: "+(D.activeElement&&D.activeElement.tagName));
+  await W.tick("study",false);
+  Q('td[data-d="2026-03-11"]',$("cmgrid")).click(); await W.step();
+  W.view("list").click(); await W.settle();
+  ok(W.store.get("gr.calendar.showstudy")==="0" && W.keys().join()===plain.join() && W.addr()==="/calendar?week=2026-W11",
+     "the Day view's Show them left the list as it was not: "+W.addr());
   await W.tick("exec",false);
   ok(!W.keys().some(k=>/House Commerce/.test(k)) && W.keys().some(k=>/House Judiciary/.test(k)) && $("wkcount").textContent==="4 of 6 meetings shown. 1 study committee meeting is hidden.",
      "Executive Session unticked: "+$("wkcount").textContent+" "+W.keys()+" -- a committee that also heard bills stays");
@@ -108236,8 +108530,8 @@ def _town_tabs(B, BP):
         bad.append("a tab's label can wrap: .twntabs [role=tab] has no white-space:nowrap")
     if re.search(r"\.twntabs \[role=tab\]\{flex:1", css):
         bad.append("a phone rule shares the strip's width out among the tabs, which wraps them")
-    if not re.search(r"@media \(max-width:63\.9375em\)\{\s*\.twntabs \[role=tab\]\{flex:0 0 auto[^}]*\}"
-                     r"\s*\.twntabs\{background:[^}]*var\(--shadow\)", css):
+    if not re.search(r"@media \(max-width:63\.9375em\)\{\s*\.twntabs \[role=tab\]\{flex:0 0 auto", css) or \
+            not re.search(r"\n\.twntabs\{display:flex[^}]*background:[^}]*var\(--scrolledge\)", css):
         bad.append("below 1024px the strip's tabs are not kept whole with its edge's shadow")
     if re.search(r"\.oftabs(?: \[role=tab\])?\{(?:white-space|flex|background)", css):
         bad.append("the Officials page's strip has rules of its own again beside .twntabs's")
