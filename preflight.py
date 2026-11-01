@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.756
+# GRANITE_VERSION: 2026-09-04.757
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -35653,9 +35653,21 @@ def _chain():
         week = BC.weeks_from(_P.load(root / "proceedings.csv")).get(
             BC.week_key(built)) or {}
         due = sorted(d for d in week if d >= built.isoformat() and week[d])
-        assert rail == due, (
+        # AND A DAY OF THE WEEK'S KEY DATES (the owner, 24 October 2026: the
+        # election days, town meeting day, organization day "would show up
+        # under the coming up section when they are within that week's
+        # days"; build_pages.calendar_html). A day on the rail with no
+        # sitting is one only if it holds a key date's card (.calkd). Held to
+        # sittings alone, this failed every night from Saturday 31 October
+        # 2026, when the rail's week took in Election Day, 3 November, and
+        # stopped the night at preflight on main and dev alike.
+        block = dict(re.findall(r'class="calday" data-d="([^"]+)"(.*?)(?=class="calday" data-d=|\Z)',
+                                coming, re.S))
+        keyed = [d for d in rail if d not in due and 'class="calkd"' in block.get(d, "")]
+        assert rail == sorted(set(due) | set(keyed)), (
             f"the built home page's Coming up shows {rail}; the fixture's "
-            f"sittings from {built} to {wk_end} fall on {due}")
+            f"sittings from {built} to {wk_end} fall on {due}, and of the other days "
+            f"only {keyed} hold a key date")
 
         idx = SR.bill_index(root / "site")
         current = max((b.get("term") or "" for b in idx), default="")
