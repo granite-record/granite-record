@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.5
+# GRANITE_VERSION: 2026-10-30.6
 """
 The state documents the guides and Learn pages rest on: from the laptop, where
 a real browser can read them, to the sessions, which cannot.
@@ -48,6 +48,14 @@ the old. The manifest is the one object replaced, and its previous copy goes
 to replaced/<day>/ as cloud.py does for every object it replaces. Each `up`
 also leaves its change report at sources/reports/<stamp>.json.
 
+THE PRINTOUTS (30 October 2026, the owner's word through the manager). The
+owner's printouts of official pages are filed on the laptop by
+file_printouts.py in records/sources/printouts/, named and hashed by its
+INDEX.csv, and kept out of git. up sends each one the bucket lacks to
+sources/printouts/<name>, once its bytes match the index; down puts each
+one this machine lacks back in records/sources/printouts/, checked against
+the index the same way. A printout is never replaced, here or there.
+
 The nightly never reads sources/: its kit is cloud_kit.json's list, kit-down
 takes kit/ alone, and preflight fails if anything in the kit could match
 sources/. These are evidence for the people and sessions who write the guides,
@@ -90,6 +98,13 @@ PREFIX = "sources/"
 MANIFEST_KEY = PREFIX + "manifest.json"
 REPORTS = PREFIX + "reports/"
 DOWN_RECORD = "archive/cloud/sources-down.json"
+# The owner's printouts of official pages: filed on the laptop by
+# file_printouts.py under the names INDEX.csv gives, with their sha256, and
+# kept out of git. up sends them to the bucket beside the readings, and down
+# puts them back where file_printouts.py files them.
+PRINTOUTS = "records/sources/printouts"
+PRINTOUTS_INDEX = PRINTOUTS + "/INDEX.csv"
+PRINTOUTS_PREFIX = PREFIX + "printouts/"
 
 FIELDS = ["id", "url", "kind", "title", "publisher", "owner_page", "changes",
           "read_by", "used_by", "listed_in", "note"]
@@ -102,7 +117,7 @@ EXTS = {"pdf", "html", "txt", "md", "csv", "xls", "xlsx", "json", "png", "mhtml"
 NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:-([2-9]|[1-9]\d))?\.([a-z0-9]+)$")
 ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,80}$")
 # Names Windows will not give a folder, and files a desktop leaves behind.
-RESERVED = {"con", "prn", "aux", "nul", *(f"com{n}" for n in range(1, 10)),
+RESERVED = {"con", "prn", "aux", "nul", "printouts", "reports", "manifest", *(f"com{n}" for n in range(1, 10)),
             *(f"lpt{n}" for n in range(1, 10))}
 JUNK = {"thumbs.db", "desktop.ini"}
 # The General Court's hosts. Written without a scheme on purpose: this file
@@ -319,10 +334,146 @@ def _up(a, root):
     if bad:
         raise Failed(f"{len(bad)} file(s) in {FOLDER}/ are not filed under the registry, "
                      "and nothing is sent until they are:\n  " + "\n  ".join(bad))
-    if not files:
-        raise Failed(f"nothing in {FOLDER}/ to send: a run that sends nothing is not a "
-                     "success")
+    prints, wrong, missing, unindexed = printouts_here(root)
+    if wrong:
+        raise Failed(f"{len(wrong)} printout(s) in {PRINTOUTS}/ differ from the sha256 "
+                     f"{PRINTOUTS_INDEX} gives them, or have a name it refuses, and nothing "
+                     "is sent until they agree:\n  " + "\n  ".join(wrong))
+    if not files and not prints:
+        raise Failed(f"nothing in {FOLDER}/ or {PRINTOUTS}/ to send: a run that sends "
+                     "nothing is not a success")
     bucket = open_bucket(a)
+    # Every printout is checked against the bucket before anything is written,
+    # so that a printout the bucket holds with other bytes stops the run before
+    # a reading is sent, not after.
+    todo, same = plan_printouts(bucket, prints)
+    if files:
+        _readings_up(a, root, reg, files, bucket)
+    if prints:
+        send_printouts(a, bucket, todo, same)
+    if missing or unindexed:
+        say(f"Printouts not here, so not sent: {len(missing)} in the index and not filed "
+            f"in {PRINTOUTS}/ (python3 src/ops/file_printouts.py --check names them)"
+            + (f"; {len(unindexed)} PDF(s) there the index does not name: "
+               + ", ".join(unindexed) if unindexed else ""))
+
+
+PRINTOUT_NAME = re.compile(r"^[a-z0-9][a-z0-9._-]{0,120}\.pdf$")
+
+
+def printouts_index(root):
+    """The index's rows: [row] for each one, its name checked."""
+    p = Path(root) / PRINTOUTS_INDEX
+    if not p.is_file():
+        return []
+    with open(p, encoding="utf-8", newline="") as f:
+        return [r for r in csv.DictReader(f) if r.get("new_name")]
+
+
+def printout_name_ok(name):
+    return bool(PRINTOUT_NAME.match(name)) and name.split(".")[0] not in RESERVED
+
+
+def printouts_here(root):
+    """(ok, wrong, missing, unindexed): [(row, path)] for each indexed printout
+    filed here whose bytes are the sha256 the index gives; the filed ones whose
+    are not, or whose name the index should not give; the indexed names not
+    filed here; and the PDFs here the index does not name."""
+    ok, wrong, missing = [], [], []
+    rows = printouts_index(root)
+    for r in rows:
+        if not printout_name_ok(r["new_name"]):
+            wrong.append(f"{PRINTOUTS_INDEX}: {r['new_name']!r} is not a plain lower-case "
+                         "name ending .pdf")
+            continue
+        f = Path(root) / PRINTOUTS / r["new_name"]
+        if not f.is_file():
+            missing.append(r["new_name"])
+        elif sha256_of(f) == r["sha256"]:
+            ok.append((r, f))
+        else:
+            wrong.append(f"{PRINTOUTS}/{r['new_name']}")
+    home = Path(root) / PRINTOUTS
+    names = {r["new_name"] for r in rows}
+    unindexed = sorted(f.name for f in home.glob("*.pdf")) if home.is_dir() else []
+    unindexed = [n for n in unindexed if n not in names]
+    return ok, wrong, missing, unindexed
+
+
+def bucket_sha(bucket, key):
+    """The sha256 of an object: its own record of it where it carries one,
+    else its bytes read; None where there is no such object."""
+    meta = bucket.head(key)
+    if meta is None:
+        return None
+    if isinstance(meta, dict) and re.fullmatch(r"[0-9a-f]{64}", str(meta.get("sha256", ""))):
+        return meta["sha256"]
+    got = bucket.get_bytes(key)
+    return None if got is None else hashlib.sha256(got).hexdigest()
+
+
+def plan_printouts(bucket, prints):
+    """([(row, path, key)] to send, how many the bucket holds already), or
+    Failed where it holds one with other bytes: a printout is never replaced."""
+    todo, same = [], 0
+    for r, f in prints:
+        key = PRINTOUTS_PREFIX + r["new_name"]
+        theirs = bucket_sha(bucket, key)
+        if theirs is None:
+            todo.append((r, f, key))
+        elif theirs != r["sha256"]:
+            raise Failed(f"{key} is in the bucket with other bytes than {PRINTOUTS_INDEX} "
+                         "gives it; nothing is sent. A person looks first")
+        else:
+            same += 1
+    return todo, same
+
+
+def send_printouts(a, bucket, todo, same):
+    n = sum(f.stat().st_size for _, f, _ in todo)
+    if a.dry_run:
+        say(f"\nPrintouts: {len(todo)} would be sent, {same} already in the bucket.")
+        return
+    for r, f, key in todo:
+        bucket.put_file(f, key, {"sha256": r["sha256"]})
+    say(f"\nPrintouts: sent {len(todo)}, {n:,} bytes; {same} already in the bucket.")
+
+
+def printouts_down(a, bucket, root, home):
+    """(taken, bytes, problems, held, unindexed): each indexed printout the
+    bucket holds and `home` lacks, checked against the index; and the
+    printouts the bucket holds that this machine's index does not name yet."""
+    took = n = 0
+    bad = []
+    have = {k: v for k, v in bucket.list(PRINTOUTS_PREFIX).items()}
+    rows = {r["new_name"]: r for r in printouts_index(root) if printout_name_ok(r["new_name"])}
+    held = [k for k in have if k[len(PRINTOUTS_PREFIX):] in rows]
+    unindexed = sorted(k[len(PRINTOUTS_PREFIX):] for k in have
+                       if k[len(PRINTOUTS_PREFIX):] not in rows)
+    for key in sorted(held):
+        r = rows[key[len(PRINTOUTS_PREFIX):]]
+        dst = home / r["new_name"]
+        if dst.is_file():
+            if sha256_of(dst) != r["sha256"]:
+                bad.append(f"{dst.name} here differs from the index and was left as it is")
+            continue
+        if a.dry_run:
+            took += 1
+            continue
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        tmp = dst.with_name(dst.name + ".part")
+        bucket.get_file(key, tmp, have[key])
+        if sha256_of(tmp) != r["sha256"]:
+            tmp.unlink(missing_ok=True)
+            bad.append(f"{key} came down with other bytes than the index gives")
+            continue
+        os.replace(tmp, dst)
+        took += 1
+        n += dst.stat().st_size
+    return took, n, bad, len(held), unindexed
+
+
+def _readings_up(a, root, reg, files, bucket):
     man, raw = read_manifest(bucket)
     plan, ids = plan_up(root, reg, man, files)
     sends = [p for p in plan if p[0] in ("new", "changed")]
@@ -398,12 +549,37 @@ def show_report(report, dry=False):
 # -------------------------------------------------------------------- down --
 
 def cmd_down(a, root):
+    """The readings into --into (default sources/), and the printouts into
+    records/sources/printouts/, or into <--into>/printouts/ when --into is
+    given, so that a session asking to leave the checkout alone gets that.
+    A problem with either is told at the end, after the other was taken."""
     into = Path(a.into).resolve() if a.into else Path(root) / FOLDER
+    home = into / "printouts" if a.into else Path(root) / PRINTOUTS
     bucket = open_bucket(a)
     man, raw = read_manifest(bucket)
+    p_took, p_n, p_bad, p_held, p_new = printouts_down(a, bucket, root, home)
+    if raw is None and not p_held and not p_new:
+        raise Failed(f"the bucket holds no {MANIFEST_KEY} and no printouts: nothing has been "
+                     "sent, or this is the wrong bucket")
+    say(f"Printouts: {p_held} in the bucket that the index names; "
+        + (f"{p_took} would be taken" if a.dry_run else f"took {p_took}, {p_n:,} bytes")
+        + f", into {home}.")
+    if p_new:
+        say(f"  {len(p_new)} more in the bucket that this machine's {PRINTOUTS_INDEX} does "
+            "not name yet (its next pull of dev will): " + ", ".join(p_new))
+    problems = list(p_bad)
     if raw is None:
-        raise Failed(f"the bucket holds no {MANIFEST_KEY}: nothing has been sent, or this "
-                     "is the wrong bucket")
+        say(f"No readings yet: the bucket holds no {MANIFEST_KEY}.")
+    else:
+        try:
+            _readings_down(a, root, bucket, man, into)
+        except Failed as e:
+            problems.append(str(e))
+    if problems:
+        raise Failed("\n  ".join(["not everything came down:"] + problems))
+
+
+def _readings_down(a, root, bucket, man, into):
     rec_path = Path(root) / DOWN_RECORD
     try:
         rec = json.loads(rec_path.read_text(encoding="utf-8"))
