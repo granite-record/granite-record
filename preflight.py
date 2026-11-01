@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.757
+# GRANITE_VERSION: 2026-09-04.758
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -35665,9 +35665,17 @@ def _chain():
                                 coming, re.S))
         keyed = [d for d in rail if d not in due and 'class="calkd"' in block.get(d, "")]
         assert rail == sorted(set(due) | set(keyed)), (
-            f"the built home page's Coming up shows {rail}; the fixture's "
-            f"sittings from {built} to {wk_end} fall on {due}, and of the other days "
-            f"only {keyed} hold a key date")
+            f"the built home page's Coming up shows {rail} for the week {built} to "
+            f"{wk_end}: sitting days missing from it {sorted(set(due) - set(rail))}, "
+            f"days on it with neither a sitting nor a key date "
+            f"{sorted(set(rail) - set(due) - set(keyed))}")
+        # A SITTING DAY CARRIES ITS SITTING. A key date's day is on the rail
+        # whatever it holds, so the day being there no longer says the
+        # meeting card is: 4 November is a key date and a sitting day both.
+        unmet = [d for d in due if '<details class="calmeet"' not in block.get(d, "")]
+        assert not unmet, (
+            f"the built home page's Coming up draws {unmet} without the fixture's "
+            f"sitting on it")
 
         idx = SR.bill_index(root / "site")
         current = max((b.get("term") or "" for b in idx), default="")
