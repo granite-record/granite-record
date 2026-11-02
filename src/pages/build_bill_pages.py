@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.77
+# GRANITE_VERSION: 2026-09-04.78
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -54,7 +54,7 @@ import re
 
 import build_date
 import build_rsa as BR
-from components import clock
+from components import clock, term_words
 import plain_action as PA
 import rsa
 import shell as S
@@ -163,7 +163,7 @@ def static_record(b, d, data_url=None):
     if b.get("status"):
         facts.append(f"<b>Status:</b> {E(status_shown(b))}")
     if b.get("term"):
-        facts.append(f"<b>Term:</b> {E(b['term'])}")
+        facts.append(f"<b>Term:</b> {E(term_words(b['term']))}")
     for ch, key in (("House", "house_committee"), ("Senate", "senate_committee")):
         if d.get(key):
             facts.append(f"<b>{ch} committee:</b> {E(d[key])}")

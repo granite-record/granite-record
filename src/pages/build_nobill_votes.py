@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.6
+# GRANITE_VERSION: 2026-10-23.7
 """
 A page a term of the votes not on a bill: what each was about, how it went,
 and the session day it was taken on.
@@ -255,13 +255,13 @@ def page_body(term, rows, terms, path, base):
     opts = '<option value="">Every kind</option>' + "".join(
         f'<option value="{E(g)}">{E(VP.group_words(g))} ({n[g]})</option>' for g in groups if n[g])
     others = " &middot; ".join(
-        (f'<b>{E(t)}</b>' if t == term else f'<a href="{E(href(t))}">{E(t)}</a>')
+        (f'<b>{E(C.term_words(t))}</b>' if t == term else f'<a href="{E(href(t))}">{E(C.term_words(t))}</a>')
         for t in sorted(terms, reverse=True))
     shown = sum(1 for x in rows if x["shown"])
-    cite = S.cite_block(path, f"Votes Not on a Bill, {term} | Granite Record", base, S.BUILT)
+    cite = S.cite_block(path, f"Votes Not on a Bill, {C.term_words(term)} | Granite Record", base, S.BUILT)
     head = C.record_head({
         "trail": [["Committees", "committees.html"], ["Votes Not on a Bill", ""]],
-        "title": f"Votes Not on a Bill, {E(term)}",
+        "title": f"Votes Not on a Bill, {E(C.term_words(term))}",
         "line": ("Every vote the House and the Senate took in the term on a question that was on "
                  "no bill: its own rules, a ruling of the chair, a member allowed to go on "
                  "speaking, and the rest."),
@@ -286,8 +286,8 @@ def page_body(term, rows, terms, path, base):
 
 def write(site, base, term, rows, terms):
     path = address(term)
-    name = f"Votes Not on a Bill, {term}"
-    desc = (f"Every roll call and division the New Hampshire House and Senate took in {term} on a "
+    name = f"Votes Not on a Bill, {C.term_words(term)}"
+    desc = (f"Every roll call and division the New Hampshire House and Senate took in {C.term_words(term)} on a "
             "question that was on no bill -- rules suspensions, appeals of the chair's ruling, "
             "members allowed to continue, and the rest -- with what the Journal says each was "
             "about.")

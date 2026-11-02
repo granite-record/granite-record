@@ -51,10 +51,10 @@ const SHELL = () => page(200, {
   title: "Confirm email updates",
   fill: "t",
   body: `<h1>Confirm email updates</h1>
-<p>Press Confirm to start receiving email updates on what you asked to follow.
+<div data-waits><p>Press Confirm to start receiving email updates on what you asked to follow.
 Nothing is sent until you do.</p>
 <form method="post" action="${PATH}"><input type="hidden" name="t" value="">
-<button type="submit">Confirm</button></form>
+<button type="submit">Confirm</button></form></div>
 <p class="quiet">If it was not you who asked, close this page. The request, and
 the address with it, is deleted within 48 hours without being used.</p>`,
 });
