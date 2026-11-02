@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.255
+# GRANITE_VERSION: 2026-09-04.256
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -4357,7 +4357,12 @@ def main():
                     + "</p>")
         chamber = {"House": say(lang, "comp.house", "House"),
                    "Senate": say(lang, "comp.senate", "Senate")}.get(x["chamber"], x["chamber"])
-        filled = (say(lang, "comp.filled_vacant", "{sitting} of {seats} seats filled, {vacant} "
+        # One vacancy in words of its own (the release walk, 2 November 2026:
+        # "1 vacantes"); the English is the same.
+        filled = (say(lang, "comp.filled_vacant_one", "{sitting} of {seats} seats filled, {vacant} "
+                      "vacant", sitting=x["sitting"], seats=x["seats"], vacant=x["vacant"])
+                  if x.get("vacant") == 1 else
+                  say(lang, "comp.filled_vacant", "{sitting} of {seats} seats filled, {vacant} "
                       "vacant", sitting=x["sitting"], seats=x["seats"], vacant=x["vacant"])
                   if x.get("vacant") else
                   say(lang, "comp.filled", "{sitting} of {seats} seats filled",
@@ -4534,7 +4539,9 @@ def main():
         senate_rows = "".join(li(m, say(lang, "off.district", "District {d}", d=m.get("district")))
                               for m in S)
 
-        seats_said = (say(lang, "roster.filled_vacant", "{seated} of the 400 seats are filled and "
+        seats_said = (say(lang, "roster.filled_vacant_one", "{seated} of the 400 seats are filled and "
+                          "{vacant} is vacant.", seated=seated, vacant=vacant) if vacant == 1 else
+                      say(lang, "roster.filled_vacant", "{seated} of the 400 seats are filled and "
                           "{vacant} are vacant.", seated=seated, vacant=vacant) if vacant else
                       say(lang, "roster.filled", "{seated} of the 400 seats are filled.",
                           seated=seated))

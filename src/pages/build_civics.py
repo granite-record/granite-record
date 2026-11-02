@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.86
+# GRANITE_VERSION: 2026-09-08.87
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -2367,11 +2367,19 @@ def guide_page(tmpl, g, base, record, draft_why=""):
         note = (f'<p class="g-draft" role="note"><strong>Draft, not published.</strong> '
                 f'{E(draft_why)}.</p>')
     elif when and (build_date.today() - _day(when)).days > G.STALE_DAYS:
-        note = ('<p class="g-stale" role="note"><strong>This guide may be out of date.</strong> It was '
-                f'last checked {E(C.date_words(_day(when), "full"))}. Check each step against the '
-                'official page it links before you rely on it.</p>')
-    checked = (f'<p class="g-checked">Checked against its sources '
-               f'{E(C.date_words(_day(when), "full"))}.</p>' if when and not draft_why else "")
+        # The oldest read, said as the oldest, beside the newest the line
+        # under it gives (the review of 2 November 2026).
+        note = ('<p class="g-stale" role="note"><strong>This guide may be out of date.</strong> Some of '
+                f'its sources were last read {E(C.date_words(_day(when), "full"))}. Check each step '
+                'against the official page it links before you rely on it.</p>')
+    # SOURCES LAST CHECKED, the newest read of its claims (G.sources_checked),
+    # and where to find the current rules: the official page each step
+    # links, in the words the out-of-date notice uses, which says it itself
+    # when it is there (the person, 2 November 2026).
+    last = G.sources_checked(g)
+    checked = (f'<p class="g-checked">Sources last checked {E(C.date_words(_day(last), "full"))}.'
+               + ("" if note else " Check each step against the official page it links before you "
+                  "rely on it.") + "</p>" if last and not draft_why else "")
     # THE STATE IN THE TITLE (the SEO review, 12 October 2026): a reader
     # searches "how to get a public record in NH", and a guide whose name
     # does not already say New Hampshire says it in the title a search
@@ -2496,20 +2504,30 @@ def guide_page_lang(g, lang, base, record=""):
     note = ""
     if when and (build_date.today() - _day(when)).days > G.STALE_DAYS:
         note = ('<p class="g-stale" role="note">' + I.say(
-            lang, "guides.stale", "<strong>This guide may be out of date.</strong> It was last checked "
-            "{date}. Check each step against the official page it links before you rely on it.",
+            lang, "guides.stale", "<strong>This guide may be out of date.</strong> Some of its sources "
+            "were last read {date}. Check each step against the official page it links before you "
+            "rely on it.",
             date=E(C.date_words(_day(when), "full", lang))) + "</p>")
-    checked = ('<p class="g-checked">' + I.say(lang, "guides.checked", "Checked against its sources {date}.",
-                                                date=E(C.date_words(_day(when), "full", lang)))
-               + "</p>" if when else "")
+    last = G.sources_checked(g)
+    checked = ('<p class="g-checked">' + I.say(lang, "guides.checked", "Sources last checked {date}.",
+                                                date=E(C.date_words(_day(last), "full", lang)))
+               + ("" if note else " " + I.say(lang, "guides.check_each", "Check each step against the "
+                                              "official page it links before you rely on it."))
+               + "</p>" if last else "")
     head_ = (f'<header class="l-head"><h1>{title}</h1>'
              f'<p class="l-lead">{dashes(w.t(g["blurb"]))}</p>' + lang_note(lang) + note + checked
              + lang_otp(secs, page, lang, step_parts(g, w)) + "</header>")
     article = lang_links("".join(section(*s_) for s_ in secs), lang)
+    # In the Record's year menu works here as on the English page: its
+    # script, wherever the record drew one (the release walk, 2 November
+    # 2026: 41 Spanish guides drew the menu and nothing to drive it).
     body = ('<div class="l-page g-page">' + lang_hub_bar(lang) + head_
-            + f'<div class="l-art">{article}</div></div>{OTP_JS}')
+            + f'<div class="l-art">{article}</div></div>{OTP_JS}'
+            + (YR_JS if 'class="g-yr"' in article else ""))
     plain = html.unescape(re.sub(r"<[^>]+>", "", title))
-    return BP.shell(f"{E(plain)} — Granite Record", page, body,
+    # " | Granite Record", as the English page's title has it (S.title_of;
+    # the release walk, 2 November 2026: these four wrote " — ").
+    return BP.shell(f"{E(plain)} | Granite Record", page, body,
                     desc=html.unescape(re.sub(r"<[^>]+>", "", w.t(g["blurb"], attr=True))),
                     base=base, lang=lang)
 
@@ -2579,7 +2597,7 @@ def article_page_lang(t, lang, base, figures, names=None, con=None):
              + (f'<p class="l-lead">{lead}</p>' if lead else "") + lang_note(lang)
              + lang_otp(secs, page, lang) + "</header>")
     article = lang_links("".join(section(*s_) for s_ in secs), lang) + foot
-    out = BP.shell(f"{E(html.unescape(re.sub(r'<[^>]+>', '', title)))} — Granite Record", page,
+    out = BP.shell(f"{E(html.unescape(re.sub(r'<[^>]+>', '', title)))} | Granite Record", page,
                    '<div class="l-page">' + lang_hub_bar(lang) + head_
                    + f'<div class="l-art">{article}</div></div>{OTP_JS}',
                    desc=html.unescape(re.sub(r"<[^>]+>", "", w.t(t["blurb"], attr=True))),
@@ -2684,7 +2702,7 @@ def learn_page_lang(t, lang, base, figures, topics, open_=(), names=None, con=No
     i = next((k for k, x in enumerate(topics) if x["slug"] == t["slug"]), None)
     article = lang_links("".join(section(*s_) for s_ in secs) + pager_lang(i, topics, lang)
                          + section(*after), lang)
-    out = BP.shell(f"{E(html.unescape(re.sub(r'<[^>]+>', '', title)))} — Granite Record", page,
+    out = BP.shell(f"{E(html.unescape(re.sub(r'<[^>]+>', '', title)))} | Granite Record", page,
                    '<div class="l-page">' + lang_hub_bar(lang, "learn") + head_
                    + f'<div class="l-art">{article}</div></div>{OTP_JS}',
                    desc=html.unescape(re.sub(r"<[^>]+>", "", w.t(t["blurb"], attr=True))),
@@ -2718,7 +2736,7 @@ def hub_page_lang(lang, base, published=(), articles=(), topics=None, groups=Non
                 "lists. The official pages they link to, and the record itself, are in English.")
             + '</p></header>'
             + lang_links(hub_tabs(lang, topics, groups, published, articles), lang))
-    return BP.shell(f"{title} — Granite Record", HUB_PAGE, body,
+    return BP.shell(f"{title} | Granite Record", HUB_PAGE, body,
                     desc=html.unescape(re.sub(r"<[^>]+>", "", lead)), base=base, lang=lang)
 
 

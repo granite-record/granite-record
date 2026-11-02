@@ -397,6 +397,11 @@
    "es": "{sitting} de {seats} escaños ocupados, {vacant} vacantes",
    "state": "draft"
   },
+  "comp.filled_vacant_one": {
+   "en": "{sitting} of {seats} seats filled, {vacant} vacant",
+   "es": "{sitting} de {seats} escaños ocupados, {vacant} vacante",
+   "state": "draft"
+  },
   "comp.house": {
    "en": "House",
    "es": "Cámara",
@@ -11746,8 +11751,8 @@
    "state": "draft"
   },
   "guide.run-for-office.qualifications-by-office-secretary-of": {
-   "en": "Qualifications by office (Secretary of State, October 17, 2026)",
-   "es": "Requisitos por cargo (Secretaría de Estado, 17 de octubre de 2026)",
+   "en": "Qualifications by office (Secretary of State, October 17, 2026; RSA 655:29)",
+   "es": "Requisitos por cargo (Secretaría de Estado, 17 de octubre de 2026; RSA 655:29)",
    "state": "draft"
   },
   "guide.run-for-office.qualifications-for-office": {
@@ -11761,18 +11766,18 @@
    "state": "draft"
   },
   "guide.run-for-office.registered-voter-domiciled-in-new": {
-   "en": "Registered voter; domiciled in New Hampshire 7 years",
-   "es": "Votante inscrito; con domicilio en New Hampshire durante 7 años",
+   "en": "Registered voter; domiciled in New Hampshire at least 7 years immediately preceding the election",
+   "es": "Votante inscrito; con domicilio en New Hampshire durante al menos los 7 años inmediatamente anteriores a la elección",
    "state": "draft"
   },
   "guide.run-for-office.registered-voter-domiciled-in-new-2": {
-   "en": "Registered voter; domiciled in New Hampshire 7 years; living in the district",
-   "es": "Votante inscrito; con domicilio en New Hampshire durante 7 años; que viva en el distrito",
+   "en": "Registered voter; domiciled in New Hampshire at least 7 years immediately preceding the election; living in the district",
+   "es": "Votante inscrito; con domicilio en New Hampshire durante al menos los 7 años inmediatamente anteriores a la elección; que viva en el distrito",
    "state": "draft"
   },
   "guide.run-for-office.registered-voter-domiciled-in-new-3": {
-   "en": "Registered voter; domiciled in New Hampshire 2 years; living in the town or ward",
-   "es": "Votante inscrito; con domicilio en New Hampshire durante 2 años; que viva en el municipio o barrio electoral",
+   "en": "Registered voter; domiciled in New Hampshire at least 2 years immediately preceding the election; living in the town or ward",
+   "es": "Votante inscrito; con domicilio en New Hampshire durante al menos los 2 años inmediatamente anteriores a la elección; que viva en el municipio o barrio electoral",
    "state": "draft"
   },
   "guide.run-for-office.registered-voter-in-the-county-where": {
@@ -16384,9 +16389,14 @@
    "es": "Todas las guías por tema",
    "state": "draft"
   },
+  "guides.check_each": {
+   "en": "Check each step against the official page it links before you rely on it.",
+   "es": "Compruebe cada paso en la página oficial que enlaza antes de confiar en él.",
+   "state": "draft"
+  },
   "guides.checked": {
-   "en": "Checked against its sources {date}.",
-   "es": "Cotejada con sus fuentes el {date}.",
+   "en": "Sources last checked {date}.",
+   "es": "Fuentes revisadas por última vez el {date}.",
    "state": "draft"
   },
   "guides.common": {
@@ -16566,8 +16576,8 @@
    "state": "draft"
   },
   "guides.stale": {
-   "en": "<strong>This guide may be out of date.</strong> It was last checked {date}. Check each step against the official page it links before you rely on it.",
-   "es": "<strong>Es posible que esta guía no esté al día.</strong> Se revisó por última vez el {date}. Compruebe cada paso en la página oficial que enlaza antes de confiar en él.",
+   "en": "<strong>This guide may be out of date.</strong> Some of its sources were last read {date}. Check each step against the official page it links before you rely on it.",
+   "es": "<strong>Es posible que esta guía no esté al día.</strong> Algunas de sus fuentes se leyeron por última vez el {date}. Compruebe cada paso en la página oficial que enlaza antes de confiar en él.",
    "state": "draft"
   },
   "guides.steps": {
@@ -16641,7 +16651,7 @@
   },
   "home.search_hint": {
    "en": "Bill number, topic, name or town",
-   "es": "Número de proyecto, tema, nombre o municipio",
+   "es": "Proyecto, tema, nombre o municipio",
    "state": "draft"
   },
   "home.search_label": {
@@ -20356,8 +20366,8 @@
    "state": "draft"
   },
   "learn.state-house-and-branches.the-governor-is-chosen-biennially-in": {
-   "en": "The governor is chosen biennially, in November (Part Second, Article 42): a two-year term. Until 1877 the election was every year. A candidate must be 30 years old and have lived in the state for the 7 years before the election. If no one has a plurality of the votes, more than any other candidate, the House and Senate together elect one of the two with the most votes, by joint ballot.",
-   "es": "El gobernador se elige cada dos años, en noviembre (Parte Segunda, Artículo 42): un período de dos años. Hasta 1877 la elección era cada año. Un candidato debe tener 30 años y haber vivido en el estado durante los 7 años anteriores a la elección. Si nadie obtiene la mayoría relativa de los votos, es decir, más que cualquier otro candidato, la Cámara y el Senado juntos eligen, en votación conjunta, a uno de los dos con más votos.",
+   "en": "The governor is chosen biennially, in November (Part Second, Article 42): a two-year term. Until 1877 the election was every year. A candidate must be 30 years old and have lived in the state for the 7 years immediately before the election. If no one has a plurality of the votes, more than any other candidate, the House and Senate together elect one of the two with the most votes, by joint ballot.",
+   "es": "El gobernador se elige cada dos años, en noviembre (Parte Segunda, Artículo 42): un período de dos años. Hasta 1877 la elección era cada año. Un candidato debe tener 30 años y haber vivido en el estado durante los 7 años inmediatamente anteriores a la elección. Si nadie obtiene la mayoría relativa de los votos, es decir, más que cualquier otro candidato, la Cámara y el Senado juntos eligen, en votación conjunta, a uno de los dos con más votos.",
    "state": "draft"
   },
   "learn.state-house-and-branches.the-governor-is-the-states-supreme": {
@@ -22080,6 +22090,11 @@
    "es": "&middot; {n} vacantes",
    "state": "draft"
   },
+  "map.dot_vacant_one": {
+   "en": "&middot; {n} vacant",
+   "es": "&middot; {n} vacante",
+   "state": "draft"
+  },
   "map.ex_flo_on": {
    "en": "A floterial district (neighboring districts that elect extra members together) is framed in its members&rsquo; party.",
    "es": "Un distrito flotante (distritos vecinos que eligen juntos a miembros adicionales) aparece enmarcado con el partido de sus miembros.",
@@ -22233,6 +22248,11 @@
   "map.n_vacant": {
    "en": "{n} vacant",
    "es": "{n} vacantes",
+   "state": "draft"
+  },
+  "map.n_vacant_one": {
+   "en": "{n} vacant",
+   "es": "{n} vacante",
    "state": "draft"
   },
   "map.name_base": {
@@ -23406,6 +23426,11 @@
   "roster.filled_vacant": {
    "en": "{seated} of the 400 seats are filled and {vacant} are vacant.",
    "es": "{seated} de los 400 escaños están ocupados y {vacant} están vacantes.",
+   "state": "draft"
+  },
+  "roster.filled_vacant_one": {
+   "en": "{seated} of the 400 seats are filled and {vacant} is vacant.",
+   "es": "{seated} de los 400 escaños están ocupados y {vacant} está vacante.",
    "state": "draft"
   },
   "roster.find": {

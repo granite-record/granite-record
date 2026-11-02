@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.45
+// GRANITE_VERSION: 2026-09-16.46
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -126,6 +126,15 @@ function _fwasNamed(r,s){
 // by an old name says which.
 function findWhat(r,s){
   const w=r?String(r[2]||""):"";
+  // A CITY'S ROW, "10 wards · Merrimack County" (build_indexes), in the
+  // page's language from its parts: find.json is written once, in English
+  // (the release walk, 2 November 2026).
+  const cw=r&&r[0]==="town"?/^(\d+) wards · /.exec(w):null;
+  if(cw)return tr("lf.wards","{n} wards",{n:Number(cw[1])})+" · "
+    +(r[4]?tr("yt.county","{county} County",{county:r[4]}):w.slice(cw[0].length));
+  // And a town's or a ward's own row, which is its county alone.
+  if(r&&(r[0]==="town"||r[0]==="ward")&&r[4]&&w===r[4]+" County")
+    return tr("yt.county","{county} County",{county:r[4]});
   if(!r||r[0]!=="committee")return w;
   const was=_fwasNamed(r,s);
   const bits=[was?tr("find.formerly","Formerly {name}",{name:was}):"",
