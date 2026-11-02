@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.54
+# GRANITE_VERSION: 2026-09-10.55
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -1188,7 +1188,8 @@ def people_files(out, site, data, db="db", careers="generated/careers.json",
     # well formed, stops the build (PE.load_register), because without it the
     # register would quietly stop winning.
     reg = PE.load_register(register)
-    people, rep = PE.build(site, data, db, load(careers, {}), reg)
+    people, rep = PE.build(site, data, db, load(careers, {}), reg,
+                           PE.load_links("generated/person_links.json"))
     if not people:
         raise SystemExit("people.json would hold nobody: the join found no one. "
                          "Not writing an empty file.")

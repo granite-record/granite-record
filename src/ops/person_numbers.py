@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.5
+# GRANITE_VERSION: 2026-10-30.6
 """
 The register of person numbers: what it would issue, and issuing it.
 
@@ -100,7 +100,8 @@ def main():
     careers = json.loads(Path(a.careers).read_text(encoding="utf-8"))
     if PE.emp_to_pid(a.db) is None:
         raise SystemExit(f"No roster view in {a.db}/ (Legislators.psv): run after kit-down.")
-    people, rep = PE.build(a.site, a.data, a.db, careers, reg)
+    people, rep = PE.build(a.site, a.data, a.db, careers, reg,
+                           PE.load_links("generated/person_links.json"))
     if not any(p.get("member_ids") for p in people):
         raise SystemExit("No person carries a site id: is site/ built? Nothing issued.")
 
