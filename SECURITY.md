@@ -27,7 +27,7 @@ request, which is why a contact address on the page only resolves once a
 Cloudflare script has run. Those two are dashboard switches rather than
 anything this repository emits, and `src/checks/check_live.py` reports both.
 
-**In this project's own code there are three exceptions**, and each says so
+**In this project's own code there are four exceptions**, and each says so
 in its own header or README:
 
 - `functions/api/report.js`, the endpoint behind the "report a problem" box
@@ -47,6 +47,23 @@ in its own header or README:
   `workers/follow/README.md` says how, and what each endpoint answers.
 - `workers/night-timer/`, a Worker with no address that starts the nightly
   build on GitHub at its hour. It answers no request and stores nothing.
+- `workers/live/`, a Worker with no address whose cron, every two minutes,
+  asks YouTube's Data API which House and Senate streams are live and keeps
+  that day's list in a private R2 bucket for the Live Now page. It answers no
+  request, keeps nothing a reader gives it, and deletes what YouTube gave it
+  after 30 days. Its one switch, `control.json` in that bucket, is written
+  only by a person; the Worker reads it and never writes it. Its reader of
+  the General Court's public SQL database, built and not yet switched on, is
+  SELECT only, with the login the General Court publishes, through a small
+  TDS client (`tds.js`) that refuses any host but the loopback address
+  outside production, and stops before the login if the server asks for
+  encryption, which a Worker cannot carry.
+- `functions/api/live/`, two read-only Pages Functions that serve what the
+  live Worker wrote: `/api/live/votes/<date>` (the public, provisional live
+  votes file) and `/api/live/streams` (Live Now's own data, with no CORS
+  header). They can read the bucket and nothing else -- `_store.js` hands
+  them `get` and `head` alone -- and every other object in it, the switch
+  and the Worker's state among them, is unreachable from them.
 
 If you are looking for something to attack, it is the first two.
 
