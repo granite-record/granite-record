@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.54
+# GRANITE_VERSION: 2026-09-19.57
 """
 A page for every day the House sat.
 
@@ -452,7 +452,7 @@ def others_html(others, body, members, esc, payloads, day="", term="", years=Non
          "how the General Court&rsquo;s roll-call file words it, and the quotation "
          "is the Journal&rsquo;s own account, with its page."
          + (f' <a href="session/nobill/{esc(term)}.html">Every vote on no bill in '
-            f"{esc(term)}</a>." if term else "") + "</p>"]
+            f"{esc(C.term_words(term))}</a>." if term else "") + "</p>"]
     for it in others:
         e = VP.entry(rollcall_id(it.rc), motions) if it.rc is not None else None
         # A ROLL CALL ON NO BILL IS DRAWN AS ONE ON A BILL IS (23 October
@@ -2662,6 +2662,29 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
     return page, payloads
 
 
+# A DEBATE'S OPENING, AS IT STANDS UNDER THE SHUT FOLD (the R2 polish batch,
+# 30 October 2026). Once the sentences stood where a reader sees them, every
+# debate of 14 May 2026 opened "Thank you, Mr. Speaker.…": the split took
+# "Mr." for the end of a sentence, and the courtesy for the opening. A title
+# does not end a sentence, and thanks to the chair are not what the member
+# said, so the two sentences after them are the opening; a speech of thanks
+# alone keeps them.
+_TITLE_END = "".join(rf"(?<!\b{t}\.)" for w in ("Mr", "Mrs", "Ms", "Dr", "Rep", "Sen", "St", "No", "Gov", "Jr")
+                     for t in (w, w.upper()))
+_SENTENCE_END = re.compile(rf"(?<=[.!?]){_TITLE_END}\s+")
+_COURTESY = re.compile(r"(?i)^(?:thank you|thanks)(?: very much| so much)?,? (?:mr\.?|madam|mister) "
+                       r"(?:deputy )?speaker[.!]$")
+
+
+def debate_opening(text):
+    """The first two sentences of a speech, after any thanks to the chair,
+    cut at 420 characters."""
+    said = _SENTENCE_END.split(text.strip())
+    while len(said) > 1 and _COURTESY.match(said[0]):
+        said = said[1:]
+    return " ".join(said[:2])[:420]
+
+
 def _debate_html(d, body, members, esc, head=False, chair=None):
     """A printed debate: the opening, and the rest behind a disclosure.
 
@@ -2691,7 +2714,7 @@ def _debate_html(d, body, members, esc, head=False, chair=None):
     # is handed, and shadowing it made every speaker link raise.
     spoke = [x for x in sp if not x[0].lower().startswith(CHAIR)]
     first = (spoke or sp)[0][1]
-    opener = " ".join(re.split(r"(?<=[.!?])\s+", first)[:2])[:420]
+    opener = debate_opening(first)
     n = len(spoke)
     title = ""
     if head and d.get("bill"):
@@ -2701,7 +2724,6 @@ def _debate_html(d, body, members, esc, head=False, chair=None):
            f'journal</span>',
            f'<span class="sdn">{n} speech{"" if n == 1 else "es"}</span>',
            '<span class="caret"></span></summary>',
-           f'<p class="sdopen">{esc(opener)}…</p>',
            '<div class="sdbody">']
     for who, said in sp:
         nm = re.sub(r"^(Rep(?:resentative)?\.?|Speaker|Deputy Speaker)\s+",
@@ -2712,7 +2734,11 @@ def _debate_html(d, body, members, esc, head=False, chair=None):
                 if not who.lower().startswith("speaker")
                 else f"<span>{esc(who)}</span>")
         out.append(f'<p class="sdsp">{link}<span class="sdtx">{esc(said)}</span></p>')
-    out.append("</div></details>")
+    # THE OPENING SENTENCES AFTER THE FOLD, so they stand while it is shut,
+    # as app.css meant them to; inside it they showed only once it was open,
+    # which app.css then hid (the R2 polish batch, 30 October 2026).
+    tail = "" if re.search(r"[.!?][\"'”’)]*$", opener) else "…"
+    out.append("</div></details>" + (f'<p class="sdopen">{esc(opener)}{tail}</p>' if opener.strip() else ""))
     return "".join(out)
 
 
@@ -3676,7 +3702,8 @@ def chamber(a, site, base, body, days):
                       description=(f"What the New Hampshire {CHAMBER[body]} did on "
                                    f"{words(date)}: every bill, motion and vote, "
                                    "in the order the journal records them."),
-                      og_title=label, globals={"GR_STATIC": True}, noscript="",
+                      og_title=label, globals={"GR_STATIC": True, "GR_REPORT": f"session:{body}/{date}"},
+                      noscript="",
                       skip_label="Skip to the session day", sr_title="",
                       # COMMITTEES, WHERE ITS TRAIL BEGINS (the person, 10
                       # October 2026; the audit of 25 October 2026, S6): the

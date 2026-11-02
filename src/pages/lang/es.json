@@ -7,7 +7,7 @@
  "offered": false,
  "strings": {
   "cal.coming": {
-   "en": "Coming up",
+   "en": "Coming Up",
    "es": "Próximamente",
    "state": "draft"
   },
@@ -342,6 +342,46 @@
    "es": "Guías prácticas, cómo funciona la Legislatura y fuentes oficiales",
    "state": "draft"
   },
+  "committee.ended": {
+   "en": "Ended at {time}",
+   "es": "Terminó a las {time}",
+   "state": "draft"
+  },
+  "committee.ended_note": {
+   "en": "The recording reaches this page's Videos tab after the next nightly update.",
+   "es": "La grabación llega a la pestaña de videos de esta página después de la próxima actualización nocturna.",
+   "state": "draft"
+  },
+  "committee.is_live": {
+   "en": "{name} is live now",
+   "es": "{name} está en vivo ahora",
+   "state": "draft"
+  },
+  "committee.live_now": {
+   "en": "Live now",
+   "es": "En vivo ahora",
+   "state": "draft"
+  },
+  "committee.live_title": {
+   "en": "Live stream of {name}",
+   "es": "Transmisión en vivo de {name}",
+   "state": "draft"
+  },
+  "committee.playing": {
+   "en": "Playing live",
+   "es": "Reproduciendo en vivo",
+   "state": "draft"
+  },
+  "committee.scheduled": {
+   "en": "Scheduled to stream at {time}",
+   "es": "Transmisión programada a las {time}",
+   "state": "draft"
+  },
+  "committee.watch": {
+   "en": "Watch",
+   "es": "Ver",
+   "state": "draft"
+  },
   "comp.county_district": {
    "en": "{county} District {district}",
    "es": "{county}, distrito {district}",
@@ -355,6 +395,11 @@
   "comp.filled_vacant": {
    "en": "{sitting} of {seats} seats filled, {vacant} vacant",
    "es": "{sitting} de {seats} escaños ocupados, {vacant} vacantes",
+   "state": "draft"
+  },
+  "comp.filled_vacant_one": {
+   "en": "{sitting} of {seats} seats filled, {vacant} vacant",
+   "es": "{sitting} de {seats} escaños ocupados, {vacant} vacante",
    "state": "draft"
   },
   "comp.house": {
@@ -2643,8 +2688,8 @@
    "state": "draft"
   },
   "guide.child-care-scholarship.the-scholarship-is-paid-to-the": {
-   "en": "The scholarship is paid to the provider, so the provider must be enrolled with the Department to accept it. Ask a provider you are considering whether it is. The Department&rsquo;s free Child Care Search, linked from the same page as the scholarship, shows providers&rsquo; quality ratings, licensing history and services, and Child Care Aware of New Hampshire helps families find care for free: call 1-855-393-1731, extension 2531, weekdays 8 a.m. to 5 p.m.",
-   "es": "La beca se paga al proveedor, así que el proveedor debe estar inscrito con el Departamento para aceptarla. Pregúntele a un proveedor que esté considerando si lo está. La búsqueda gratuita de cuidado infantil del Departamento (Child Care Search), enlazada desde la misma página que la beca, muestra la calificación de calidad, el historial de licencias y los servicios de cada proveedor, y Child Care Aware of New Hampshire ayuda gratis a las familias a encontrar cuidado: llame al 1-855-393-1731, extensión 2531, de lunes a viernes de 8 a. m. a 5 p. m.",
+   "en": "The scholarship is paid to the provider, so the provider must be enrolled with the Department to accept it. Ask a provider you are considering whether it is. The Department&rsquo;s free Child Care Search, linked from the same page as the scholarship, shows providers&rsquo; quality ratings, licensing history and services, and Child Care Aware of New Hampshire helps families find care for free: call 1-855-393-1731, extension 2531, weekdays 8:00&nbsp;AM to 5:00&nbsp;PM.",
+   "es": "La beca se paga al proveedor, así que el proveedor debe estar inscrito con el Departamento para aceptarla. Pregúntele a un proveedor que esté considerando si lo está. La búsqueda gratuita de cuidado infantil del Departamento (Child Care Search), enlazada desde la misma página que la beca, muestra la calificación de calidad, el historial de licencias y los servicios de cada proveedor, y Child Care Aware of New Hampshire ayuda gratis a las familias a encontrar cuidado: llame al 1-855-393-1731, extensión 2531, de lunes a viernes de 8:00&nbsp;a.&nbsp;m. a 5:00&nbsp;p.&nbsp;m.",
    "state": "draft"
   },
   "guide.child-care-scholarship.the-scholarship-pays-part-of-the": {
@@ -3599,8 +3644,8 @@
    "state": "draft"
   },
   "guide.discrimination.the-commission-also-takes-complaints-of": {
-   "en": "The Commission also takes complaints of discrimination in K-12 public schools, and offers mediation. Submit a complaint from its website, or call (603) 271-2767, Monday through Friday, 8 a.m. to 4 p.m.; its office is at 57 Regional Drive, Suite 8, in Concord.",
-   "es": "La Comisión también recibe quejas por discriminación en las escuelas públicas de K-12, y ofrece mediación. Presente una queja desde su sitio web, o llame al (603) 271-2767, de lunes a viernes, de 8 a.m. a 4 p.m.; su oficina está en 57 Regional Drive, Suite 8, en Concord.",
+   "en": "The Commission also takes complaints of discrimination in K-12 public schools, and offers mediation. Submit a complaint from its website, or call (603) 271-2767, Monday through Friday, 8:00&nbsp;AM to 4:00&nbsp;PM; its office is at 57 Regional Drive, Suite 8, in Concord.",
+   "es": "La Comisión también recibe quejas por discriminación en las escuelas públicas de K-12, y ofrece mediación. Presente una queja desde su sitio web, o llame al (603) 271-2767, de lunes a viernes, de 8:00&nbsp;a.&nbsp;m. a 4:00&nbsp;p.&nbsp;m.; su oficina está en 57 Regional Drive, Suite 8, en Concord.",
    "state": "draft"
   },
   "guide.discrimination.the-commission-for-human-rights-can": {
@@ -4010,8 +4055,8 @@
    "state": "draft"
   },
   "guide.election-worker.after-the-polls-close-the-votes-2": {
-   "en": "<b>After the polls close.</b> The votes are counted in public and the count is not stopped until it is finished. Where officers disagree on how to count a mark, the majority of those counting decides; if no count has a majority, the ballot is not counted for that office. The counting documents are open for public review when the results are announced, and a machine&rsquo;s printed results are posted within 60 minutes of the last ballot. The moderator announces the final count, and the clerk prepares the election return in front of the other officials, signs it, and sends a copy to the Secretary of State by 8:00 a.m. the next day. The other copy is kept by the clerk, open to the public.",
-   "es": "<b>Después del cierre de la votación.</b> Los votos se cuentan en público y el conteo no se detiene hasta terminar. Cuando los funcionarios no están de acuerdo sobre cómo contar una marca, decide la mayoría de quienes cuentan; si ninguna forma de contarla obtiene mayoría, la boleta no se cuenta para ese cargo. Los documentos del conteo están disponibles para revisión pública cuando se anuncian los resultados, y los resultados impresos de una máquina se publican dentro de los 60 minutos de la última boleta. El moderador anuncia el conteo final, y el secretario prepara el acta de resultados frente a los demás funcionarios, la firma y envía una copia a la Secretaría de Estado antes de las 8:00 a.m. del día siguiente. El secretario guarda la otra copia, abierta al público.",
+   "en": "<b>After the polls close.</b> The votes are counted in public and the count is not stopped until it is finished. Where officers disagree on how to count a mark, the majority of those counting decides; if no count has a majority, the ballot is not counted for that office. The counting documents are open for public review when the results are announced, and a machine&rsquo;s printed results are posted within 60 minutes of the last ballot. The moderator announces the final count, and the clerk prepares the election return in front of the other officials, signs it, and sends a copy to the Secretary of State by 8:00&nbsp;AM the next day. The other copy is kept by the clerk, open to the public.",
+   "es": "<b>Después del cierre de la votación.</b> Los votos se cuentan en público y el conteo no se detiene hasta terminar. Cuando los funcionarios no están de acuerdo sobre cómo contar una marca, decide la mayoría de quienes cuentan; si ninguna forma de contarla obtiene mayoría, la boleta no se cuenta para ese cargo. Los documentos del conteo están disponibles para revisión pública cuando se anuncian los resultados, y los resultados impresos de una máquina se publican dentro de los 60 minutos de la última boleta. El moderador anuncia el conteo final, y el secretario prepara el acta de resultados frente a los demás funcionarios, la firma y envía una copia a la Secretaría de Estado antes de las 8:00&nbsp;a.&nbsp;m. del día siguiente. El secretario guarda la otra copia, abierta al público.",
    "state": "draft"
   },
   "guide.election-worker.appointed-by-the-moderator-for-that": {
@@ -4545,8 +4590,8 @@
    "state": "draft"
   },
   "guide.file-for-unemployment.new-hampshire-employment-securitys": {
-   "en": "New Hampshire Employment Security&rsquo;s unemployment hotline, (603) 271-7700, answers questions on weekdays from 8:00 a.m. to 4:30 p.m. Its NH Works offices help in person, with claims and with finding work.",
-   "es": "La línea de desempleo de New Hampshire Employment Security, (603) 271-7700, responde preguntas de lunes a viernes de 8:00 a. m. a 4:30 p. m. Sus oficinas NH Works ayudan en persona, con las solicitudes y con la búsqueda de trabajo.",
+   "en": "New Hampshire Employment Security&rsquo;s unemployment hotline, (603) 271-7700, answers questions on weekdays from 8:00&nbsp;AM to 4:30&nbsp;PM. Its NH Works offices help in person, with claims and with finding work.",
+   "es": "La línea de desempleo de New Hampshire Employment Security, (603) 271-7700, responde preguntas de lunes a viernes de 8:00&nbsp;a.&nbsp;m. a 4:30&nbsp;p.&nbsp;m. Sus oficinas NH Works ayudan en persona, con las solicitudes y con la búsqueda de trabajo.",
    "state": "draft"
   },
   "guide.file-for-unemployment.nh-works-offices": {
@@ -5204,9 +5249,9 @@
    "es": "Conducir y vehículos",
    "state": "draft"
   },
-  "guide.group.federal-benefits": {
-   "en": "Federal Benefits",
-   "es": "Beneficios federales",
+  "guide.group.federal-programs-and-services": {
+   "en": "Federal Programs and Services",
+   "es": "Programas y servicios federales",
    "state": "draft"
   },
   "guide.group.help-and-benefits": {
@@ -5955,8 +6000,8 @@
    "state": "draft"
   },
   "guide.help.adrc.aging-and-disability-resource-centers": {
-   "en": "<b>Aging and Disability Resource Centers</b> (formerly ServiceLink), a Department of Health and Human Services program with local resource centers: free counseling for older adults, adults with disabilities and caregivers, on benefits, applications, housing, Medicare and Medicaid, with no eligibility requirement. Call 1-866-634-9412, weekdays 8:30 a.m. to 4:30 p.m.",
-   "es": "<b>Aging and Disability Resource Centers</b> (centros de recursos para el envejecimiento y la discapacidad, antes ServiceLink), un programa del Departamento de Salud y Servicios Humanos con centros de recursos locales: orientación gratuita para adultos mayores, adultos con discapacidades y cuidadores, sobre beneficios, solicitudes, vivienda, Medicare y Medicaid, sin requisitos para recibirla. Llame al 1-866-634-9412, de lunes a viernes de 8:30 a. m. a 4:30 p. m.",
+   "en": "<b>Aging and Disability Resource Centers</b> (formerly ServiceLink), a Department of Health and Human Services program with local resource centers: free counseling for older adults, adults with disabilities and caregivers, on benefits, applications, housing, Medicare and Medicaid, with no eligibility requirement. Call 1-866-634-9412, weekdays 8:30&nbsp;AM to 4:30&nbsp;PM.",
+   "es": "<b>Aging and Disability Resource Centers</b> (centros de recursos para el envejecimiento y la discapacidad, antes ServiceLink), un programa del Departamento de Salud y Servicios Humanos con centros de recursos locales: orientación gratuita para adultos mayores, adultos con discapacidades y cuidadores, sobre beneficios, solicitudes, vivienda, Medicare y Medicaid, sin requisitos para recibirla. Llame al 1-866-634-9412, de lunes a viernes de 8:30&nbsp;a.&nbsp;m. a 4:30&nbsp;p.&nbsp;m.",
    "state": "draft"
   },
   "guide.help.dmv.dmv-offices-and-hours": {
@@ -5975,8 +6020,8 @@
    "state": "draft"
   },
   "guide.help.lawyer.the-new-hampshire-bar-associations": {
-   "en": "<b>The New Hampshire Bar Association&rsquo;s Lawyer Referral Service</b> refers you to a lawyer who handles your kind of problem, for an administrative fee. Call 603-229-0002, weekdays 9 a.m. to 3:30 p.m., or ask online.",
-   "es": "<b>El servicio de referencia de abogados (Lawyer Referral Service) del Colegio de Abogados de New Hampshire</b> lo remite a un abogado que se ocupa de su tipo de problema, por una cuota administrativa. Llame al 603-229-0002, de lunes a viernes de 9 a. m. a 3:30 p. m., o consulte en línea.",
+   "en": "<b>The New Hampshire Bar Association&rsquo;s Lawyer Referral Service</b> refers you to a lawyer who handles your kind of problem, for an administrative fee. Call 603-229-0002, weekdays 9:00&nbsp;AM to 3:30&nbsp;PM, or ask online.",
+   "es": "<b>El servicio de referencia de abogados (Lawyer Referral Service) del Colegio de Abogados de New Hampshire</b> lo remite a un abogado que se ocupa de su tipo de problema, por una cuota administrativa. Llame al 603-229-0002, de lunes a viernes de 9:00&nbsp;a.&nbsp;m. a 3:30&nbsp;p.&nbsp;m., o consulte en línea.",
    "state": "draft"
   },
   "guide.help.legal_aid.free-civil-legal-aid-new-hampshire": {
@@ -6756,8 +6801,8 @@
    "state": "draft"
   },
   "guide.how-to-vote.send-the-absentee-ballot-application-to": {
-   "en": "Send the absentee ballot application to your town or city clerk, not the state, with the proof of identity the form asks for. The deadline to ask by mail is noon the day before the election, and to ask and vote in person at the clerk&rsquo;s office, 5 p.m. the day before. A mailed ballot must reach your clerk by 5 p.m. on election day, so ask for it more than two weeks ahead.",
-   "es": "Envíe la solicitud de boleta de voto en ausencia al secretario de su municipio o ciudad, no al estado, con la prueba de identidad que pide el formulario. El plazo para pedirla por correo es el mediodía del día anterior a la elección, y para pedirla y votar en persona en la oficina del secretario, las 5 p. m. del día anterior. Una boleta enviada por correo debe llegar a su secretario a más tardar a las 5 p. m. del día de la elección, así que pídala con más de dos semanas de anticipación.",
+   "en": "Send the absentee ballot application to your town or city clerk, not the state, with the proof of identity the form asks for. The deadline to ask by mail is noon the day before the election, and to ask and vote in person at the clerk&rsquo;s office, 5:00&nbsp;PM the day before. A mailed ballot must reach your clerk by 5:00&nbsp;PM on election day, so ask for it more than two weeks ahead.",
+   "es": "Envíe la solicitud de boleta de voto en ausencia al secretario de su municipio o ciudad, no al estado, con la prueba de identidad que pide el formulario. El plazo para pedirla por correo es el mediodía del día anterior a la elección, y para pedirla y votar en persona en la oficina del secretario, las 5:00&nbsp;p.&nbsp;m. del día anterior. Una boleta enviada por correo debe llegar a su secretario a más tardar a las 5:00&nbsp;p.&nbsp;m. del día de la elección, así que pídala con más de dos semanas de anticipación.",
    "state": "draft"
   },
   "guide.how-to-vote.statement-on-the-court-s-hb": {
@@ -7541,8 +7586,8 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.apply-to-the-department-of-health": {
-   "en": "Apply to the Department of Health and Human Services through NH Easy, under Medicare beneficiary assistance; its Customer Service Center answers at 1-844-ASK-DHHS (1-844-275-3447), Monday through Friday, 8 a.m. to 4 p.m. Medicare advises applying even if you do not think you qualify.",
-   "es": "Presente su solicitud al Departamento de Salud y Servicios Humanos a través de NH Easy, en la asistencia para beneficiarios de Medicare; su Centro de Servicio al Cliente atiende en el 1-844-ASK-DHHS (1-844-275-3447), de lunes a viernes, de 8 a.m. a 4 p.m. Medicare aconseja presentar la solicitud aunque crea que no reúne los requisitos.",
+   "en": "Apply to the Department of Health and Human Services through NH Easy, under Medicare beneficiary assistance; its Customer Service Center answers at 1-844-ASK-DHHS (1-844-275-3447), Monday through Friday, 8:00&nbsp;AM to 4:00&nbsp;PM. Medicare advises applying even if you do not think you qualify.",
+   "es": "Presente su solicitud al Departamento de Salud y Servicios Humanos a través de NH Easy, en la asistencia para beneficiarios de Medicare; su Centro de Servicio al Cliente atiende en el 1-844-ASK-DHHS (1-844-275-3447), de lunes a viernes, de 8:00&nbsp;a.&nbsp;m. a 4:00&nbsp;p.&nbsp;m. Medicare aconseja presentar la solicitud aunque crea que no reúne los requisitos.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.can-i-get-medicare-before-i": {
@@ -7761,8 +7806,8 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.medicare-part-a-and-part-b": {
-   "en": "Medicare Part A and Part B are signed up for through the Social Security Administration, not through Medicare. The easiest way is online, with a my Social Security account, if you are 65 or older. You can also call Social Security at 1-800-772-1213, Monday through Friday, 8 a.m. to 7 p.m. (TTY 1-800-325-0778), and make an appointment.",
-   "es": "La inscripción en la Parte A y la Parte B de Medicare se hace a través de la Administración del Seguro Social, no a través de Medicare. La forma más fácil es en línea, con una cuenta my Social Security, si tiene 65 años o más. También puede llamar al Seguro Social al 1-800-772-1213, de lunes a viernes, de 8 a.m. a 7 p.m. (TTY 1-800-325-0778), y pedir una cita.",
+   "en": "Medicare Part A and Part B are signed up for through the Social Security Administration, not through Medicare. The easiest way is online, with a my Social Security account, if you are 65 or older. You can also call Social Security at 1-800-772-1213, Monday through Friday, 8:00&nbsp;AM to 7:00&nbsp;PM (TTY 1-800-325-0778), and make an appointment.",
+   "es": "La inscripción en la Parte A y la Parte B de Medicare se hace a través de la Administración del Seguro Social, no a través de Medicare. La forma más fácil es en línea, con una cuenta my Social Security, si tiene 65 años o más. También puede llamar al Seguro Social al 1-800-772-1213, de lunes a viernes, de 8:00&nbsp;a.&nbsp;m. a 7:00&nbsp;p.&nbsp;m. (TTY 1-800-325-0778), y pedir una cita.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.medicare-savings-programs-medicare": {
@@ -11706,8 +11751,8 @@
    "state": "draft"
   },
   "guide.run-for-office.qualifications-by-office-secretary-of": {
-   "en": "Qualifications by office (Secretary of State, October 17, 2026)",
-   "es": "Requisitos por cargo (Secretaría de Estado, 17 de octubre de 2026)",
+   "en": "Qualifications by office (Secretary of State, October 17, 2026; RSA 655:29)",
+   "es": "Requisitos por cargo (Secretaría de Estado, 17 de octubre de 2026; RSA 655:29)",
    "state": "draft"
   },
   "guide.run-for-office.qualifications-for-office": {
@@ -11721,18 +11766,18 @@
    "state": "draft"
   },
   "guide.run-for-office.registered-voter-domiciled-in-new": {
-   "en": "Registered voter; domiciled in New Hampshire 7 years",
-   "es": "Votante inscrito; con domicilio en New Hampshire durante 7 años",
+   "en": "Registered voter; domiciled in New Hampshire at least 7 years immediately preceding the election",
+   "es": "Votante inscrito; con domicilio en New Hampshire durante al menos los 7 años inmediatamente anteriores a la elección",
    "state": "draft"
   },
   "guide.run-for-office.registered-voter-domiciled-in-new-2": {
-   "en": "Registered voter; domiciled in New Hampshire 7 years; living in the district",
-   "es": "Votante inscrito; con domicilio en New Hampshire durante 7 años; que viva en el distrito",
+   "en": "Registered voter; domiciled in New Hampshire at least 7 years immediately preceding the election; living in the district",
+   "es": "Votante inscrito; con domicilio en New Hampshire durante al menos los 7 años inmediatamente anteriores a la elección; que viva en el distrito",
    "state": "draft"
   },
   "guide.run-for-office.registered-voter-domiciled-in-new-3": {
-   "en": "Registered voter; domiciled in New Hampshire 2 years; living in the town or ward",
-   "es": "Votante inscrito; con domicilio en New Hampshire durante 2 años; que viva en el municipio o barrio electoral",
+   "en": "Registered voter; domiciled in New Hampshire at least 2 years immediately preceding the election; living in the town or ward",
+   "es": "Votante inscrito; con domicilio en New Hampshire durante al menos los 2 años inmediatamente anteriores a la elección; que viva en el municipio o barrio electoral",
    "state": "draft"
   },
   "guide.run-for-office.registered-voter-in-the-county-where": {
@@ -11796,8 +11841,8 @@
    "state": "draft"
   },
   "guide.run-for-office.to-run-in-a-partys-primary": {
-   "en": "To run in a party&rsquo;s primary you must be a registered member of that party. File a declaration of candidacy, with a statement of financial interests, between the first Wednesday in June and the Friday of the following week. In 2026 that was June 3 to June 12. A filing on the last day must be made in person by the candidate, by 5 p.m.",
-   "es": "Para postularse en las primarias de un partido debe ser miembro inscrito de ese partido. Presente una declaración de candidatura, con una declaración de intereses financieros, entre el primer miércoles de junio y el viernes de la semana siguiente. En 2026 fue del 3 al 12 de junio. Si se inscribe el último día, debe hacerlo el propio candidato en persona, a más tardar a las 5 p. m.",
+   "en": "To run in a party&rsquo;s primary you must be a registered member of that party. File a declaration of candidacy, with a statement of financial interests, between the first Wednesday in June and the Friday of the following week. In 2026 that was June 3 to June 12. A filing on the last day must be made in person by the candidate, by 5:00&nbsp;PM.",
+   "es": "Para postularse en las primarias de un partido debe ser miembro inscrito de ese partido. Presente una declaración de candidatura, con una declaración de intereses financieros, entre el primer miércoles de junio y el viernes de la semana siguiente. En 2026 fue del 3 al 12 de junio. Si se inscribe el último día, debe hacerlo el propio candidato en persona, a más tardar a las 5:00&nbsp;p.&nbsp;m.",
    "state": "draft"
   },
   "guide.run-for-office.to-the-supervisors-of-the-checklist": {
@@ -15660,8 +15705,8 @@
    "state": "draft"
   },
   "guide.wage-rights.file-your-claim-online-with-the": {
-   "en": "File your claim online with the Department&rsquo;s wage claim form. Its office answers at 603-271-3176, Monday through Friday, 8 a.m. to 4:30 p.m.; mail and hearings stay at 95 Pleasant Street, Spaulding Building, in Concord.",
-   "es": "Presente su reclamo en línea con el formulario de reclamo de salario del Departamento. Su oficina atiende en el 603-271-3176, de lunes a viernes, de 8 a.m. a 4:30 p.m.; el correo y las audiencias siguen en 95 Pleasant Street, Spaulding Building, en Concord.",
+   "en": "File your claim online with the Department&rsquo;s wage claim form. Its office answers at 603-271-3176, Monday through Friday, 8:00&nbsp;AM to 4:30&nbsp;PM; mail and hearings stay at 95 Pleasant Street, Spaulding Building, in Concord.",
+   "es": "Presente su reclamo en línea con el formulario de reclamo de salario del Departamento. Su oficina atiende en el 603-271-3176, de lunes a viernes, de 8:00&nbsp;a.&nbsp;m. a 4:30&nbsp;p.&nbsp;m.; el correo y las audiencias siguen en 95 Pleasant Street, Spaulding Building, en Concord.",
    "state": "draft"
   },
   "guide.wage-rights.how-can-i-be-paid": {
@@ -16344,9 +16389,14 @@
    "es": "Todas las guías por tema",
    "state": "draft"
   },
+  "guides.check_each": {
+   "en": "Check each step against the official page it links before you rely on it.",
+   "es": "Compruebe cada paso en la página oficial que enlaza antes de confiar en él.",
+   "state": "draft"
+  },
   "guides.checked": {
-   "en": "Checked against its sources {date}.",
-   "es": "Cotejada con sus fuentes el {date}.",
+   "en": "Sources last checked {date}.",
+   "es": "Fuentes revisadas por última vez el {date}.",
    "state": "draft"
   },
   "guides.common": {
@@ -16526,8 +16576,8 @@
    "state": "draft"
   },
   "guides.stale": {
-   "en": "<strong>This guide may be out of date.</strong> It was last checked {date}. Check each step against the official page it links before you rely on it.",
-   "es": "<strong>Es posible que esta guía no esté al día.</strong> Se revisó por última vez el {date}. Compruebe cada paso en la página oficial que enlaza antes de confiar en él.",
+   "en": "<strong>This guide may be out of date.</strong> Some of its sources were last read {date}. Check each step against the official page it links before you rely on it.",
+   "es": "<strong>Es posible que esta guía no esté al día.</strong> Algunas de sus fuentes se leyeron por última vez el {date}. Compruebe cada paso en la página oficial que enlaza antes de confiar en él.",
    "state": "draft"
   },
   "guides.steps": {
@@ -16601,7 +16651,7 @@
   },
   "home.search_hint": {
    "en": "Bill number, topic, name or town",
-   "es": "Número de proyecto, tema, nombre o municipio",
+   "es": "Proyecto, tema, nombre o municipio",
    "state": "draft"
   },
   "home.search_label": {
@@ -20316,8 +20366,8 @@
    "state": "draft"
   },
   "learn.state-house-and-branches.the-governor-is-chosen-biennially-in": {
-   "en": "The governor is chosen biennially, in November (Part Second, Article 42): a two-year term. Until 1877 the election was every year. A candidate must be 30 years old and have lived in the state for the 7 years before the election. If no one has a plurality of the votes, more than any other candidate, the House and Senate together elect one of the two with the most votes, by joint ballot.",
-   "es": "El gobernador se elige cada dos años, en noviembre (Parte Segunda, Artículo 42): un período de dos años. Hasta 1877 la elección era cada año. Un candidato debe tener 30 años y haber vivido en el estado durante los 7 años anteriores a la elección. Si nadie obtiene la mayoría relativa de los votos, es decir, más que cualquier otro candidato, la Cámara y el Senado juntos eligen, en votación conjunta, a uno de los dos con más votos.",
+   "en": "The governor is chosen biennially, in November (Part Second, Article 42): a two-year term. Until 1877 the election was every year. A candidate must be 30 years old and have lived in the state for the 7 years immediately before the election. If no one has a plurality of the votes, more than any other candidate, the House and Senate together elect one of the two with the most votes, by joint ballot.",
+   "es": "El gobernador se elige cada dos años, en noviembre (Parte Segunda, Artículo 42): un período de dos años. Hasta 1877 la elección era cada año. Un candidato debe tener 30 años y haber vivido en el estado durante los 7 años inmediatamente anteriores a la elección. Si nadie obtiene la mayoría relativa de los votos, es decir, más que cualquier otro candidato, la Cámara y el Senado juntos eligen, en votación conjunta, a uno de los dos con más votos.",
    "state": "draft"
   },
   "learn.state-house-and-branches.the-governor-is-the-states-supreme": {
@@ -21905,6 +21955,66 @@
    "es": "{n} barrios electorales",
    "state": "draft"
   },
+  "live.at": {
+   "en": "scheduled for {time}",
+   "es": "programada para las {time}",
+   "state": "draft"
+  },
+  "live.cal_h": {
+   "en": "On today's calendar",
+   "es": "En el calendario de hoy",
+   "state": "draft"
+  },
+  "live.checked": {
+   "en": "Checked {time}",
+   "es": "Comprobado a las {time}",
+   "state": "draft"
+  },
+  "live.none_found": {
+   "en": "No stream found right now (checked {time})",
+   "es": "No se encontró ninguna transmisión en este momento (comprobado a las {time})",
+   "state": "draft"
+  },
+  "live.nostream_h": {
+   "en": "On today's calendar, no stream found (checked {time})",
+   "es": "En el calendario de hoy, sin transmisión encontrada (comprobado a las {time})",
+   "state": "draft"
+  },
+  "live.off": {
+   "en": "Live status is turned off",
+   "es": "La comprobación en vivo está desactivada",
+   "state": "draft"
+  },
+  "live.on_youtube": {
+   "en": "On YouTube",
+   "es": "En YouTube",
+   "state": "draft"
+  },
+  "live.play": {
+   "en": "Play the live stream",
+   "es": "Reproducir la transmisión en vivo",
+   "state": "draft"
+  },
+  "live.since": {
+   "en": "Live since {time}",
+   "es": "En vivo desde las {time}",
+   "state": "draft"
+  },
+  "live.stale": {
+   "en": "Live status has not been checked since {time}",
+   "es": "El estado en vivo no se ha comprobado desde las {time}",
+   "state": "draft"
+  },
+  "live.stale_never": {
+   "en": "Live status has not been checked yet today",
+   "es": "El estado en vivo aún no se ha comprobado hoy",
+   "state": "draft"
+  },
+  "live.unavailable": {
+   "en": "Live status is not available",
+   "es": "El estado en vivo no está disponible",
+   "state": "draft"
+  },
   "map.all_vacant": {
    "en": "Every seat is vacant.",
    "es": "Todos los escaños están vacantes.",
@@ -21978,6 +22088,11 @@
   "map.dot_vacant": {
    "en": "&middot; {n} vacant",
    "es": "&middot; {n} vacantes",
+   "state": "draft"
+  },
+  "map.dot_vacant_one": {
+   "en": "&middot; {n} vacant",
+   "es": "&middot; {n} vacante",
    "state": "draft"
   },
   "map.ex_flo_on": {
@@ -22133,6 +22248,11 @@
   "map.n_vacant": {
    "en": "{n} vacant",
    "es": "{n} vacantes",
+   "state": "draft"
+  },
+  "map.n_vacant_one": {
+   "en": "{n} vacant",
+   "es": "{n} vacante",
    "state": "draft"
   },
   "map.name_base": {
@@ -23308,6 +23428,11 @@
    "es": "{seated} de los 400 escaños están ocupados y {vacant} están vacantes.",
    "state": "draft"
   },
+  "roster.filled_vacant_one": {
+   "en": "{seated} of the 400 seats are filled and {vacant} is vacant.",
+   "es": "{seated} de los 400 escaños están ocupados y {vacant} está vacante.",
+   "state": "draft"
+  },
   "roster.find": {
    "en": "Find",
    "es": "Buscar",
@@ -23459,18 +23584,18 @@
    "state": "draft"
   },
   "sess.play": {
-   "en": "Play",
-   "es": "Reproducir",
+   "en": "Play the recording",
+   "es": "Reproducir la grabación",
    "state": "draft"
   },
   "sess.play_house": {
-   "en": "Play the House floor session of {date}",
-   "es": "Reproducir la sesión plenaria de la Cámara del {date}",
+   "en": "Play the recording of the House floor session, {date}",
+   "es": "Reproducir la grabación de la sesión plenaria de la Cámara, {date}",
    "state": "draft"
   },
   "sess.play_senate": {
-   "en": "Play the Senate floor session of {date}",
-   "es": "Reproducir la sesión plenaria del Senado del {date}",
+   "en": "Play the recording of the Senate floor session, {date}",
+   "es": "Reproducir la grabación de la sesión plenaria del Senado, {date}",
    "state": "draft"
   },
   "sess.rec_house": {
@@ -23949,6 +24074,161 @@
    "es": "este lado se impuso",
    "state": "draft"
   },
+  "votes.budget": {
+   "en": "Live votes reached today's limit on queries and stop until tomorrow.",
+   "es": "Las votaciones en vivo alcanzaron el límite de consultas de hoy y se detienen hasta mañana.",
+   "state": "draft"
+  },
+  "votes.connect": {
+   "en": "Votes last read at {time}; the General Court's database could not be reached since.",
+   "es": "Votaciones leídas por última vez a las {time}; desde entonces no se ha podido acceder a la base de datos de la Legislatura.",
+   "state": "draft"
+  },
+  "votes.day_over": {
+   "en": "Reading stopped for the day at {time}.",
+   "es": "La lectura se detuvo por hoy a las {time}.",
+   "state": "draft"
+  },
+  "votes.encrypt": {
+   "en": "Live votes are off: the database asks for an encrypted connection this site's reader cannot make.",
+   "es": "Las votaciones en vivo están desactivadas: la base de datos exige una conexión cifrada que el lector de este sitio no puede establecer.",
+   "state": "draft"
+  },
+  "votes.ends": {
+   "en": "Every vote reaches this page with tomorrow morning's record.",
+   "es": "Cada votación llega a esta página con el registro de mañana por la mañana.",
+   "state": "draft"
+  },
+  "votes.ends_morning": {
+   "en": "Every vote reaches this page with this morning's record.",
+   "es": "Cada votación llega a esta página con el registro de esta mañana.",
+   "state": "draft"
+  },
+  "votes.head_house": {
+   "en": "House roll calls today",
+   "es": "Votaciones nominales de la Cámara hoy",
+   "state": "draft"
+  },
+  "votes.head_house_day": {
+   "en": "House roll calls of {day}",
+   "es": "Votaciones nominales de la Cámara del {day}",
+   "state": "draft"
+  },
+  "votes.head_senate": {
+   "en": "Senate roll calls today",
+   "es": "Votaciones nominales del Senado hoy",
+   "state": "draft"
+  },
+  "votes.head_senate_day": {
+   "en": "Senate roll calls of {day}",
+   "es": "Votaciones nominales del Senado del {day}",
+   "state": "draft"
+  },
+  "votes.login": {
+   "en": "Votes last read at {time}; the database has refused the published login since.",
+   "es": "Votaciones leídas por última vez a las {time}; desde entonces la base de datos ha rechazado el acceso publicado.",
+   "state": "draft"
+  },
+  "votes.names_follow": {
+   "en": "names follow",
+   "es": "los nombres llegarán después",
+   "state": "draft"
+  },
+  "votes.names_in": {
+   "en": "names: in",
+   "es": "nombres: completos",
+   "state": "draft"
+  },
+  "votes.no_outcome": {
+   "en": "outcome not yet in the docket",
+   "es": "resultado aún no anotado en el registro de trámites",
+   "state": "draft"
+  },
+  "votes.none_day": {
+   "en": "No roll calls read on {day}.",
+   "es": "No se leyeron votaciones nominales el {day}.",
+   "state": "draft"
+  },
+  "votes.none_today": {
+   "en": "No roll calls read today.",
+   "es": "Hoy no se ha leído ninguna votación nominal.",
+   "state": "draft"
+  },
+  "votes.none_yet": {
+   "en": "No roll calls read yet today (read at {time}).",
+   "es": "Aún no se ha leído ninguna votación nominal hoy (leído a las {time}).",
+   "state": "draft"
+  },
+  "votes.not_read": {
+   "en": "Not read since {time}.",
+   "es": "Sin leer desde las {time}.",
+   "state": "draft"
+  },
+  "votes.off": {
+   "en": "Live votes were turned off by this site at {time}.",
+   "es": "Este sitio desactivó las votaciones en vivo a las {time}.",
+   "state": "draft"
+  },
+  "votes.outcome": {
+   "en": "{outcome}, clerk's docket",
+   "es": "{outcome}, según el registro de trámites",
+   "state": "draft"
+  },
+  "votes.provisional": {
+   "en": "provisional",
+   "es": "provisional",
+   "state": "draft"
+  },
+  "votes.provisional_at": {
+   "en": "provisional · read at {time}",
+   "es": "provisional · leído a las {time}",
+   "state": "draft"
+  },
+  "votes.provisional_line": {
+   "en": "Provisional: the night's record replaces this tomorrow morning; excusals settle days later.",
+   "es": "Provisional: el registro de la noche lo reemplaza mañana por la mañana; las excusas se resuelven días después.",
+   "state": "draft"
+  },
+  "votes.query": {
+   "en": "Votes last read at {time}; a query has failed since.",
+   "es": "Votaciones leídas por última vez a las {time}; desde entonces ha fallado una consulta.",
+   "state": "draft"
+  },
+  "votes.read": {
+   "en": "Read from the General Court's database at {time}.",
+   "es": "Leído de la base de datos de la Legislatura a las {time}.",
+   "state": "draft"
+  },
+  "votes.saved_at": {
+   "en": "saved at {time}",
+   "es": "guardada a las {time}",
+   "state": "draft"
+  },
+  "votes.senate_after": {
+   "en": "The Senate enters its roll calls after it rises.",
+   "es": "El Senado anota sus votaciones nominales después de levantar la sesión.",
+   "state": "draft"
+  },
+  "votes.senate_line": {
+   "en": "Senate names follow once the Senate enters them, usually that afternoon or the next day.",
+   "es": "Los nombres del Senado se añaden cuando el Senado los registra, normalmente esa tarde o al día siguiente.",
+   "state": "draft"
+  },
+  "votes.today_house": {
+   "en": "The House today",
+   "es": "La Cámara hoy",
+   "state": "draft"
+  },
+  "votes.today_senate": {
+   "en": "The Senate today",
+   "es": "El Senado hoy",
+   "state": "draft"
+  },
+  "votes.unfetched": {
+   "en": "The live votes could not be fetched at {time}; this page asks again.",
+   "es": "No se pudieron obtener las votaciones en vivo a las {time}; esta página volverá a intentarlo.",
+   "state": "draft"
+  },
   "web.go": {
    "en": "Register on Zoom",
    "es": "Inscribirse en Zoom",
@@ -23965,8 +24245,8 @@
    "state": "draft"
   },
   "web.when": {
-   "en": "Free webinar &middot; Tuesday, November 10, 6:30 p.m.",
-   "es": "Seminario web gratuito &middot; martes 10 de noviembre, 6:30 p. m.",
+   "en": "Free webinar &middot; Tuesday, November 10, 6:30&nbsp;PM",
+   "es": "Seminario web gratuito &middot; martes 10 de noviembre, 6:30&nbsp;p.&nbsp;m.",
    "state": "draft"
   },
   "year.a-bill-is-introduced-when-it": {

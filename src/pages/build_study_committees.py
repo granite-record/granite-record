@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-18.5
+# GRANITE_VERSION: 2026-10-18.9
 """
 A page for every statutory and study committee the General Court lists as
 active, at /committee/ss<CommitteeID>.
@@ -64,6 +64,7 @@ import datetime
 import io
 import json
 import re
+import shutil
 from collections import Counter, OrderedDict
 from urllib.parse import quote_plus
 
@@ -72,6 +73,7 @@ import build_date
 import build_full_sessions as FS
 import build_rsa as RSA
 import components as C
+import live_hook
 import plain_action as PA
 import proceedings
 import shell as S
@@ -462,9 +464,12 @@ def marks_of(webtext, location):
 # letter against a digit as two lines run together and gives no venue, which
 # was right for none of these: 485 of the active committees' 3,567 meetings
 # had no place until they were read as the room and building they are --
-# "LOB Room 205", "LOB Rooms 306-308", "State House Room 105-A" -- with what
-# follows the dash kept as the meeting's note. 191 still have none, measured
-# on 18 October 2026: their lines really did run together, as place() says.
+# "LOB 205", "LOB 306-308", "SH 105-A" -- with what follows the dash kept as
+# the meeting's note. 191 still have none, measured on 18 October 2026: their
+# lines really did run together, as place() says. The clerk's codes, so that
+# plain_action.place words them as it does every other room on the site,
+# "State House 105-A" (the R2 polish batch, 30 October 2026; they read "State
+# House Room 105-A" and "LOB Rooms 306-308" until then).
 OLD_ROOM = re.compile(r"^RM(s?)\s*(\d+(?:-?[A-Z])?(?:\s*[-/]\s*\d+(?:-?[A-Z])?)?)\s*[,/]\s*"
                       r"(LOB|St(?:ate)?\.?\s*House|SH)\b\s*-?\s*(.*)$", re.I)
 
@@ -474,10 +479,9 @@ def old_room(room):
     m = OLD_ROOM.match((room or "").strip())
     if not m:
         return room, ""
-    where = "LOB" if m.group(3).upper() == "LOB" else "State House"
+    where = "LOB" if m.group(3).upper() == "LOB" else "SH"
     rooms = re.sub(r"\s+", "", m.group(2))
-    many = m.group(1) or re.search(r"[-/]\d", rooms)
-    return f"{where} Room{'s' if many else ''} {rooms}", m.group(4).strip(" -()")
+    return f"{where} {rooms}", m.group(4).strip(" -()")
 
 
 def meetings_of(c, recent, today):
@@ -991,7 +995,7 @@ def write_page(c, ctx, today):
                   title=f"{S.clip(c['name'], S.TITLE_ROOM)} | Granite Record",
                   og_title=c["name"], og_image="og-committee.png",
                   og_alt="Granite Record: committees and hearings", description=desc,
-                  globals={"GR_STATIC": True},
+                  globals={"GR_STATIC": True, "GR_REPORT": f"study:ss{c['cid']}"},
                   jsonld=LD.study_committee(c["name"], ctx["base"], S.canon(path),
                                             legislative=not c["nonleg"]),
                   noscript="", skip_label="Skip to this committee",
@@ -999,6 +1003,13 @@ def write_page(c, ctx, today):
     assert '<div id="results"></div>' in html, f"{path}: the template has no results slot"
     html = html.replace('<div id="results"></div>',
                         f'<div id="results">{page_body(c, ctx, today, path)}</div>', 1)
+    # THE LIVE HOOK (workers/live/PATCHES.md 11, applied for the 11 November
+    # train), live.js's to fill while one of its meetings streams. The
+    # chamber is "" on purpose: build_pages.meeting_key keys a study
+    # committee's rows with chamber "", so the stems are /live's own.
+    if "live_past" in ctx:
+        html = live_hook.place(html, code="ss" + str(c["cid"]), chamber="", name=c["name"],
+                               history=ctx["live_past"], others=ctx.get("live_all", ()))
     out = Path(site) / BC.study_page(c["cid"])
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(S.clean_links(html), encoding="utf-8")
@@ -1052,7 +1063,7 @@ def section_html(rows):
                           '<div class="ccards sscards">' + "".join(card(r) for r in mine)
                           + "</div></section>")
     return ('<details class="sfold ssfold" id="statstud"><summary><h2 class="ssfh">'
-            '<span class="sflab">Statutory and study committees</span> '
+            '<span class="sflab">Statutory and Study Committees</span> '
             f'<span class="w4n">{len(rows)}</span></h2>'
             '<span class="cmcaret" aria-hidden="true"></span></summary>'
             '<p class="src fill">Commissions, councils, boards and committees the law sets up, '
@@ -1183,6 +1194,14 @@ def main():
         print(f"  FAILED: {db}/StatStudDetails.psv lists no active committee: the copy is "
               "empty or its CommitteeStatus is no longer read")
         return 1
+    # THE LIVE HOOK'S STEMS AND THIS RUN'S COMMITTEES, once (PATCHES.md 11):
+    # each page refuses a stream whose committee's name extends its own.
+    ctx["live_past"] = live_hook.past()
+    ctx["live_all"] = [("", c["name"]) for c in comms]
+    # And the two files the hook loads, beside the pages (build_committees
+    # says why: build_live copies them again later in a full build).
+    for f in ("live.js", "live.css"):
+        shutil.copyfile(_paths.locate(f"src/pages/{f}"), site / f)
     urls = [write_page(c, ctx, today) for c in comms]
     assert len(urls) == len(comms) == len({u for u in urls}), "a committee's page was not written once"
     # THE LIST OF THEM, a line each, for the readers after this step: the

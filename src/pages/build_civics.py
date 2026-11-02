@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.84
+# GRANITE_VERSION: 2026-09-08.87
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -834,7 +834,7 @@ def record_figures(site, root=Path(".")):
             - status["Died when the session ended"])
     figures["fig_ends"] = civics.bar(
         f"The {len(cur):,} bills and resolutions of the {shown} term",
-        f"How the {len(cur):,} bills and resolutions of the {term} term ended",
+        f"How the {len(cur):,} bills and resolutions of the {C.term_words(term)} term ended",
         [(status["Killed"], "c-died", "killed (ITL)"),
          (status["Signed into law"], "c-law", "signed into law"),
          (status["Referred for interim study"], "c-study", "sent for interim study"),
@@ -885,7 +885,7 @@ def record_figures(site, root=Path(".")):
                 I.say(lang, "learn.ends.caption", "The {n} bills and resolutions of the {term} term",
                     n=n_(len(cur)), term=shown),
                 I.say(lang, "learn.ends.label", "How the {n} bills and resolutions of the {term} term ended",
-                    n=n_(len(cur)), term=term),
+                    n=n_(len(cur)), term=C.term_words(term)),
                 [(status["Killed"], "c-died", I.say(lang, "learn.ends.killed", "killed (ITL)")),
                  (status["Signed into law"], "c-law", I.say(lang, "learn.ends.signed", "signed into law")),
                  (status["Referred for interim study"], "c-study",
@@ -1237,11 +1237,47 @@ def tables(content):
             if "<table>" in content else content)
 
 
+# A TABLE'S BOX IS A NAMED PLACE A KEYBOARD CAN REACH (the cohesion audit of
+# 30 October 2026, B-2). By the Numbers' fourteen tables are 428-811px wide
+# in a 364px box on a phone; they scrolled, but the box had no name and no
+# Tab stop, so a keyboard could not pan it. /data's coverage table already
+# did it right, and this is the same: role="region" named by the table's
+# caption (or its section's heading, where it has none), and data-scrollstop,
+# by which app.js's scrollStops makes the box a Tab stop while its table is
+# wider than it is, and only then.
+_TABLEWRAP = re.compile(r'<div class="l-tablewrap([^"]*)">(\s*<table[^>]*>\s*(?:<caption[^>]*>(.*?)</caption>)?)',
+                        re.S)
+_SUBHEAD = re.compile(r"<(h3|h4|summary)\b[^>]*>(.*?)</\1>", re.S)
+
+
+def _words(x):
+    """The words of a piece of HTML, as a name reads them."""
+    return " ".join(html.unescape(re.sub(r"<[^>]+>", " ", x or "")).split())
+
+
+def scroll_regions(content, heading):
+    """content with each Learn table's box named and marked as a Tab stop
+    while it scrolls. Its name is its caption, or else its section's heading
+    with the nearest heading or fold above it in the section ("The Bills Each
+    Committee Received, 2025–2026"), so ten boxes in one section are not ten
+    of one name (the review of 30 October 2026); app.js's scrollStops makes it
+    a region under that name while it scrolls."""
+    def one(m):
+        label = _words(m.group(3))
+        if not label:
+            subs = [_words(s.group(2)).split(":")[0].strip() for s in _SUBHEAD.finditer(content, 0, m.start())]
+            sub = subs[-1] if subs else ""
+            label = f"{_words(heading)}, {sub}" if sub and sub != _words(heading) else _words(heading)
+        return (f'<div class="l-tablewrap{m.group(1)}" data-scrollstop="1" '
+                f'data-scrolllabel="{html.escape(label, quote=True)}">{m.group(2)}')
+    return _TABLEWRAP.sub(one, content)
+
+
 def section(sid, heading, content, level=2):
     """One W4 section: the heading in the margin, the prose beside it at
     about 100 characters, and a figure marked wide (civics.wide) across both
     columns where it falls, the prose resuming beside the margin under it."""
-    content = tables(content)
+    content = scroll_regions(tables(content), heading)
     blocks, pos = [], 0
     for m in _WIDE.finditer(content):
         blocks.append(("col", content[pos:m.start()]))
@@ -1544,7 +1580,7 @@ TOPIC_ICON = {
     # the How-To Guides tab (guides.TASKS)
     "Take Part in the Legislature": "testify", "Voting and Elections": "ballot",
     "Driving and Vehicles": "car", "Help and Benefits": "heart", "Property and Records": "house",
-    "Federal Benefits": "idcard", "Know Your Rights": "law", "Insurance": "shield",
+    "Federal Programs and Services": "idcard", "Know Your Rights": "law", "Insurance": "shield",
     "Outdoors and Recreation": "tree",
     "Around Your Town": "pin", "Visiting the State House": "capitol", G.MORE: "grid",
     # the Learn tab (civics.GROUPS, and what follows them)
@@ -2054,7 +2090,7 @@ def guide_record(g, data, bills, chapters, lang=I.DEFAULT):
     # Pending does; a guide says them apart, the passed ones under the Laws
     # page's own words, "Passed, not yet in effect", and out of the laws that
     # changed the chapter, which they have not yet done.
-    passing = set(bills.passing(data))
+    passing = bills.passing(data)     # {bill: Passed}, its law year among them
     when = {}                     # every law of the block: the year it passed
     for ch in g["laws"]:
         if ch not in chapters:
@@ -2062,20 +2098,34 @@ def guide_record(g, data, bills, chapters, lang=I.DEFAULT):
         name = BR.chapter_label(ch, chapters[ch]["name"])
         now = [k for k in pend.get(ch, []) if k not in passing]
         passed = [k for k in pend.get(ch, []) if k in passing]
-        recent = {}
+        recent, chaptered = {}, {}
         for addr, hist in data.get("enacted", {}).items():
             if addr == ch or addr.startswith(ch + ":"):
                 for y, _law, b in hist:
-                    if b and b not in passing and str(y).isdigit():
-                        recent[b] = max(recent.get(b, 0), int(y))
+                    if b and str(y).isdigit():
+                        into = chaptered if b in passing else recent
+                        into[b] = max(into.get(b, 0), int(y))
         past = sorted(recent, key=lambda k: (-recent[k], BR.bill_order(k)))
         bits = [f'<h3 class="g-ch"><a href="{E(BR.chapter_path(ch))}">{E(name)}</a></h3>']
         if now:
             bits.append('<p class="g-what">Bills now before the General Court that would change it:</p>'
                         + BR.folded([bills.chip(k) for k in now]))
         if passed:
-            bits.append('<p class="g-what">Passed, not yet in effect:</p>'
-                        + BR.folded([bills.chip(k) for k in passed]))
+            # BY THE YEAR IT PASSED TOO (the walk of 31 October 2026): outside
+            # the laws' boxes the year chooser left these in whatever year was
+            # chosen. Each says the year it passed -- its chapter's in the
+            # notes, else its law's (Passed.year, the year the Laws page
+            # prints), else, awaiting the Governor, the build's -- and YR_JS
+            # shows the list only in that year, or All. Not the bill's own
+            # year: a bill of 2025 retained and passed in 2026 is 2026's.
+            def passed_in(k):
+                as_of = getattr(bills, "as_of", None)
+                return (chaptered.get(k) or getattr(passing.get(k), "year", "")
+                        or (as_of.year if as_of else "")
+                        or str(bills.row(k).get("year") or k.split("/")[0][:4]))
+            bits.append('<div class="g-pass"><p class="g-what">Passed, not yet in effect:</p>'
+                        + BR.folded([bills.chip(k).replace("<li", f'<li data-y="{passed_in(k)}"', 1)
+                                     for k in passed]) + "</div>")
         if past:
             bits.append(record_laws(past, recent, bills))
             when.update({k: recent[k] for k in past})
@@ -2139,6 +2189,14 @@ YR_JS = """<script>
         li.hidden=!!y&&li.getAttribute("data-y")!==y; if(!li.hidden)shown++; });
       if(more){ if(y){more.open=true;} more.querySelector("summary").hidden=!!y; }
       if(none)none.hidden=!y||shown>0;
+    });
+    // Passed, not yet in effect: in the year each passed, or under All.
+    document.querySelectorAll(".g-pass").forEach(function(box){
+      var more=box.querySelector(".rs-more"), shown=0;
+      box.querySelectorAll("li[data-y]").forEach(function(li){
+        li.hidden=!!y&&li.getAttribute("data-y")!==y; if(!li.hidden)shown++; });
+      if(more){ if(y){more.open=true;} more.querySelector("summary").hidden=!!y; }
+      box.hidden=!!y&&!shown;
     });
   });
 })();
@@ -2233,6 +2291,28 @@ def guide_flow(g, w=Words()):
             f'<ol>{"".join(items)}</ol></figure>')
 
 
+def step_parts(g, w=Words()):
+    """[(id, label)]: a guide's parts in Step by Step (guides.step's `part`),
+    each with the address of its heading, for On This Page and the index
+    beside the page (the person's walk of the preview, 30 October 2026: a
+    reader jumps to "Renewing an adult passport"). The address is the
+    English part's, so it is the same in every language; [] for a guide
+    whose steps are one list."""
+    out = [("steps-" + _slug(s_["part"]), w.t(s_["part"])) for s_ in g["steps"] if s_.get("part")]
+    ids = [i for i, _ in out]
+    assert len(ids) == len(set(ids)), f"{g['slug']}: two parts share an address: {ids}"
+    return out
+
+
+def otp_items(secs, href, parts=()):
+    """On This Page's rows: a row for each section, and under Step by Step a
+    list one level down of its parts (step_parts), where it has any."""
+    sub = ('<ol class="l-otpsub">' + "".join(f'<li><a href="{E(href)}#{E(pid)}">{_plain(label)}</a></li>'
+                                             for pid, label in parts) + "</ol>") if parts else ""
+    return "".join(f'<li><a href="{E(href)}#{E(sid)}">{_plain(h)}</a>{sub if sid == "steps" else ""}</li>'
+                   for sid, h, _ in secs)
+
+
 def guide_steps(g, w=Words()):
     """THE STEPS, numbered: each one's words, a note set apart where
     something has changed, a button to the official page it needs, and the
@@ -2251,7 +2331,7 @@ def guide_steps(g, w=Words()):
             if out:
                 lists.append(f'<ol class="g-steps">{"".join(out)}</ol>')
                 out = []
-            lists.append(f'<h3 class="g-part">{w.t(s_["part"])}</h3>')
+            lists.append(f'<h3 class="g-part" id="steps-{_slug(s_["part"])}">{w.t(s_["part"])}</h3>')
         acts = "".join(f'<a class="g-btn" href="{E(u)}"'
                        + ('' if u.startswith("/") else ' target="_blank" rel="noopener"'
                           + ('' if w.lang == I.DEFAULT else ' hreflang="en"'))
@@ -2287,11 +2367,19 @@ def guide_page(tmpl, g, base, record, draft_why=""):
         note = (f'<p class="g-draft" role="note"><strong>Draft, not published.</strong> '
                 f'{E(draft_why)}.</p>')
     elif when and (build_date.today() - _day(when)).days > G.STALE_DAYS:
-        note = ('<p class="g-stale" role="note"><strong>This guide may be out of date.</strong> It was '
-                f'last checked {E(C.date_words(_day(when), "full"))}. Check each step against the '
-                'official page it links before you rely on it.</p>')
-    checked = (f'<p class="g-checked">Checked against its sources '
-               f'{E(C.date_words(_day(when), "full"))}.</p>' if when and not draft_why else "")
+        # The oldest read, said as the oldest, beside the newest the line
+        # under it gives (the review of 2 November 2026).
+        note = ('<p class="g-stale" role="note"><strong>This guide may be out of date.</strong> Some of '
+                f'its sources were last read {E(C.date_words(_day(when), "full"))}. Check each step '
+                'against the official page it links before you rely on it.</p>')
+    # SOURCES LAST CHECKED, the newest read of its claims (G.sources_checked),
+    # and where to find the current rules: the official page each step
+    # links, in the words the out-of-date notice uses, which says it itself
+    # when it is there (the person, 2 November 2026).
+    last = G.sources_checked(g)
+    checked = (f'<p class="g-checked">Sources last checked {E(C.date_words(_day(last), "full"))}.'
+               + ("" if note else " Check each step against the official page it links before you "
+                  "rely on it.") + "</p>" if last and not draft_why else "")
     # THE STATE IN THE TITLE (the SEO review, 12 October 2026): a reader
     # searches "how to get a public record in NH", and a guide whose name
     # does not already say New Hampshire says it in the title a search
@@ -2302,7 +2390,7 @@ def guide_page(tmpl, g, base, record, draft_why=""):
                jsonld=None if draft_why else LD.howto(g, base, S.canon(path), when or ""),
                globals={"GR_STATIC": True}, noscript="", skip_label="Skip to the guide", sr_title="",
                nav_current="resources.html", cite=False)
-    items = "".join(f'<li><a href="{E(S.canon(path))}#{E(sid)}">{_plain(h)}</a></li>' for sid, h, _ in secs)
+    items = otp_items(secs, S.canon(path), step_parts(g))
     otp = ('<details class="l-otp"><summary>On this page</summary>'
            f'<nav class="l-otpb" aria-label="On this page"><ol>{items}</ol></nav></details>')
     acts = S.cite_block(path, g["title"], base, S.BUILT)
@@ -2382,10 +2470,11 @@ def lang_sources(sources, w):
                                       'target="_blank" rel="noopener" hreflang="en">')
 
 
-def lang_otp(secs, path, lang):
-    """On This Page, in `lang`, for a page drawn in the home page's frame."""
+def lang_otp(secs, path, lang, parts=()):
+    """On This Page, in `lang`, for a page drawn in the home page's frame;
+    a guide's parts (step_parts, in `lang`) under its Step by Step."""
     here = I.href(lang, path)
-    items = "".join(f'<li><a href="{E(here)}#{E(sid)}">{_plain(h)}</a></li>' for sid, h, _ in secs)
+    items = otp_items(secs, here, parts)
     on = I.say(lang, "guides.on_page", "On this page")
     return (f'<div class="pageacts" id="pageacts"><details class="l-otp"><summary>{on}</summary>'
             f'<nav class="l-otpb" aria-label="{E(on)}"><ol>{items}</ol></nav></details></div>')
@@ -2415,20 +2504,30 @@ def guide_page_lang(g, lang, base, record=""):
     note = ""
     if when and (build_date.today() - _day(when)).days > G.STALE_DAYS:
         note = ('<p class="g-stale" role="note">' + I.say(
-            lang, "guides.stale", "<strong>This guide may be out of date.</strong> It was last checked "
-            "{date}. Check each step against the official page it links before you rely on it.",
+            lang, "guides.stale", "<strong>This guide may be out of date.</strong> Some of its sources "
+            "were last read {date}. Check each step against the official page it links before you "
+            "rely on it.",
             date=E(C.date_words(_day(when), "full", lang))) + "</p>")
-    checked = ('<p class="g-checked">' + I.say(lang, "guides.checked", "Checked against its sources {date}.",
-                                                date=E(C.date_words(_day(when), "full", lang)))
-               + "</p>" if when else "")
+    last = G.sources_checked(g)
+    checked = ('<p class="g-checked">' + I.say(lang, "guides.checked", "Sources last checked {date}.",
+                                                date=E(C.date_words(_day(last), "full", lang)))
+               + ("" if note else " " + I.say(lang, "guides.check_each", "Check each step against the "
+                                              "official page it links before you rely on it."))
+               + "</p>" if last else "")
     head_ = (f'<header class="l-head"><h1>{title}</h1>'
              f'<p class="l-lead">{dashes(w.t(g["blurb"]))}</p>' + lang_note(lang) + note + checked
-             + lang_otp(secs, page, lang) + "</header>")
+             + lang_otp(secs, page, lang, step_parts(g, w)) + "</header>")
     article = lang_links("".join(section(*s_) for s_ in secs), lang)
+    # In the Record's year menu works here as on the English page: its
+    # script, wherever the record drew one (the release walk, 2 November
+    # 2026: 41 Spanish guides drew the menu and nothing to drive it).
     body = ('<div class="l-page g-page">' + lang_hub_bar(lang) + head_
-            + f'<div class="l-art">{article}</div></div>{OTP_JS}')
+            + f'<div class="l-art">{article}</div></div>{OTP_JS}'
+            + (YR_JS if 'class="g-yr"' in article else ""))
     plain = html.unescape(re.sub(r"<[^>]+>", "", title))
-    return BP.shell(f"{E(plain)} — Granite Record", page, body,
+    # " | Granite Record", as the English page's title has it (S.title_of;
+    # the release walk, 2 November 2026: these four wrote " — ").
+    return BP.shell(f"{E(plain)} | Granite Record", page, body,
                     desc=html.unescape(re.sub(r"<[^>]+>", "", w.t(g["blurb"], attr=True))),
                     base=base, lang=lang)
 
@@ -2498,7 +2597,7 @@ def article_page_lang(t, lang, base, figures, names=None, con=None):
              + (f'<p class="l-lead">{lead}</p>' if lead else "") + lang_note(lang)
              + lang_otp(secs, page, lang) + "</header>")
     article = lang_links("".join(section(*s_) for s_ in secs), lang) + foot
-    out = BP.shell(f"{E(html.unescape(re.sub(r'<[^>]+>', '', title)))} — Granite Record", page,
+    out = BP.shell(f"{E(html.unescape(re.sub(r'<[^>]+>', '', title)))} | Granite Record", page,
                    '<div class="l-page">' + lang_hub_bar(lang) + head_
                    + f'<div class="l-art">{article}</div></div>{OTP_JS}',
                    desc=html.unescape(re.sub(r"<[^>]+>", "", w.t(t["blurb"], attr=True))),
@@ -2603,7 +2702,7 @@ def learn_page_lang(t, lang, base, figures, topics, open_=(), names=None, con=No
     i = next((k for k, x in enumerate(topics) if x["slug"] == t["slug"]), None)
     article = lang_links("".join(section(*s_) for s_ in secs) + pager_lang(i, topics, lang)
                          + section(*after), lang)
-    out = BP.shell(f"{E(html.unescape(re.sub(r'<[^>]+>', '', title)))} — Granite Record", page,
+    out = BP.shell(f"{E(html.unescape(re.sub(r'<[^>]+>', '', title)))} | Granite Record", page,
                    '<div class="l-page">' + lang_hub_bar(lang, "learn") + head_
                    + f'<div class="l-art">{article}</div></div>{OTP_JS}',
                    desc=html.unescape(re.sub(r"<[^>]+>", "", w.t(t["blurb"], attr=True))),
@@ -2637,7 +2736,7 @@ def hub_page_lang(lang, base, published=(), articles=(), topics=None, groups=Non
                 "lists. The official pages they link to, and the record itself, are in English.")
             + '</p></header>'
             + lang_links(hub_tabs(lang, topics, groups, published, articles), lang))
-    return BP.shell(f"{title} — Granite Record", HUB_PAGE, body,
+    return BP.shell(f"{title} | Granite Record", HUB_PAGE, body,
                     desc=html.unescape(re.sub(r"<[^>]+>", "", lead)), base=base, lang=lang)
 
 

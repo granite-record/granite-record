@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.23
+# GRANITE_VERSION: 2026-10-11.24
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -1205,9 +1205,14 @@ def chapter_page(tmpl, table, data, bills, ch, base):
             f'<details class="rs-fold"><summary>{E(h)}</summary>'
             + (f'<p class="rs-note">{E(n)}</p>' if n else "") + f"{c}</details>"
             for h, n, c in rows)
+        # ONE LEVEL UNDER WHAT HEADS IT (the cohesion audit of 30 October
+        # 2026, I-1): an h3 under a part's h2, and an h2 straight under the
+        # title, where a chapter has no parts -- most of them -- and went from
+        # h1 to h3. The look is .rs-h's at either level.
+        lv = 3 if sub else 2
         body.append(
-            f'<section class="rs-sec" id="{E(anchor)}"><h3 class="rs-h"><a href="{E(path)}#{E(anchor)}">'
-            f'{E(a)}</a> {E(s.heading)}</h3>{tag}'
+            f'<section class="rs-sec" id="{E(anchor)}"><h{lv} class="rs-h"><a href="{E(path)}#{E(anchor)}">'
+            f'{E(a)}</a> {E(s.heading)}</h{lv}>{tag}'
             f'<div class="rs-text" translate="no">{linked_text(table, s.text, a, terms.get(a), wraps.get(a))}</div>'
             + (f'<p class="rs-source">Source. {E(s.note)}</p>' if s.note else "")
             + (f'<div class="rs-folds">{folds}</div>' if folds else "") + "</section>")

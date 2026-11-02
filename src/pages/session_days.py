@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.39
+# GRANITE_VERSION: 2026-09-19.40
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -4000,9 +4000,14 @@ def holidays(year):
 
 def journal_series(date):
     """The year whose journal numbering a sitting's date belongs to. Numbers
-    restart each session, and the December organization day opens the NEXT
-    year's: journals/2023/HJ 01 December 7, 2022.txt."""
-    return str(int(date[:4]) + 1) if date[5:7] == "12" else date[:4]
+    restart each session, and the December organization day, held in an even
+    year, opens the NEXT year's: journals/2023/HJ 01 December 7, 2022.txt. A
+    December sitting of an odd year is that year's own session and keeps its
+    numbering: journals/2001/HJ022.txt (12 December 2001) and
+    journals/2025/HJ 19 December 17, 2025.txt."""
+    if date[5:7] == "12" and int(date[:4]) % 2 == 0:
+        return str(int(date[:4]) + 1)
+    return date[:4]
 
 
 JOURNAL_NO = re.compile(r"^([HS])J\s*(\d+)$")

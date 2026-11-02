@@ -60,10 +60,13 @@ What changed in `map.js`, on a town's own map (a framed map) only:
   resize slid the view off the town. A map hidden with its tab and shown
   again stays where it was. The Officials map, which has no frame, is as on
   dev.
-- **For the owner:** a town's map now opens zoomed in, so on a phone a swipe
-  that starts on the map pans the map rather than scrolling the page. On dev
-  the town's map could not pan at the size it opened, so the same swipe
-  scrolled the page.
+- **One finger pans the map on a phone, by the owner's choice.** A town's
+  map now opens zoomed in, so on a phone a swipe that starts on the map pans
+  the map rather than scrolling the page. Before, the town's map could not
+  pan at the size it opened, so the same swipe scrolled the page. A
+  two-finger alternative was built (branch touch/two-finger-pan, not
+  merged), and the owner chose one-finger panning on 30 October 2026: it is
+  what they want, and it has not been a problem.
 
 ## (c) A law's citations stay whole on a phone (in dev's 1 November bundle)
 

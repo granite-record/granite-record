@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.20
+# GRANITE_VERSION: 2026-09-14.21
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -146,8 +146,9 @@ def law_chart(oc, terms):
     ticks = "".join(f'<i class="t{x}" style="left:{x / top * 100:.4f}%">{x}%</i>'
                     for x in range(0, top + 1, 10))
     said = (f"Bar chart: the share of the bills filed in each term that became law, from "
-            f"{pct[0][3]:.1f}% in {pct[0][0]} to {pct[-1][3]:.1f}% in {pct[-1][0]}; the highest "
-            f"{hi[3]:.1f}% in {hi[0]}, the lowest {lo[3]:.1f}% in {lo[0]}. The figures are in "
+            f"{pct[0][3]:.1f}% in {components.term_words(pct[0][0])} to {pct[-1][3]:.1f}% in "
+            f"{components.term_words(pct[-1][0])}; the highest {hi[3]:.1f}% in {components.term_words(hi[0])}, "
+            f"the lowest {lo[3]:.1f}% in {components.term_words(lo[0])}. The figures are in "
             "the table below.")
     return (f'<figure class="l-chart" role="img" aria-label="{E(said)}">'
             '<h3 aria-hidden="true">Became Law, as a Share of the Bills Filed</h3>'
