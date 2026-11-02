@@ -1,0 +1,13 @@
+{
+ "what": "Links between a General Court employee number and its PersonID that no General Court view this site reads makes, each settled by a person, with the evidence. Read by src/lib/people.py; written by hand only (preflight holds that no code writes it). docs/design/api/DESIGN.md, 2.5.",
+ "links": [
+  {
+   "employee_number": "800061",
+   "person_id": "1444",
+   "name": "Joyce Fulweiler",
+   "decided": "2026-10-30",
+   "by": "the manager, on the owner's leaving it to their judgement",
+   "evidence": "Employee number 800061 cast 478 recorded House votes in 2019 and 2020, and no General Court view this site reads names it; corrections/member_corrections.json (the owner's own correction) identifies it as Joyce Fulweiler, Merrimack 3, Democrat, from the House's December 2018 roll and the Journal's county header, and records that no other employee number in the roll-call record carries the surname. former_members.json (PersonID-keyed, from the General Court's database, with names and no employee numbers) gives PersonID 1444 as 'Fulweiler, Joyce', and no other PersonID there is a Fulweiler. The General Court's Legislators view does carry her, as PersonID 1444, but under another employee number, 800404, which cast no recorded vote (LastName Fulweiler, FirstName Joyce, Active False; its LegislativeBody reads S, though she sat in the House): so the General Court itself gives Joyce Fulweiler the PersonID 1444, and this link joins the number she voted under to it. Of the 676 PersonIDs in former_members.json, this site's join already links 669; she is the only one of the 1,131 people numbered by an employee number whose name matches one of the rest, one to one."
+  }
+ ]
+}
