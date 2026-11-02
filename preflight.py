@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.759
+# GRANITE_VERSION: 2026-09-04.760
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -27496,10 +27496,10 @@ LEARN_CONSTITUTION_CLAIMS = [
      2, "41", "whose title shall be his excellency"),
     ("state-house-and-branches", "The governor is chosen biennially, in November (Part Second, Article 42)",
      2, "42", "the governor shall be chosen biennially in the month of november"),
-    ("state-house-and-branches", "30 years old and have lived in the state for the 7 years before the "
-     "election", 2, "42", "an inhabitant of this state for 7 years next preceding"),
-    ("state-house-and-branches", "30 years old and have lived in the state for the 7 years before the "
-     "election", 2, "42", "of the age of 30 years"),
+    ("state-house-and-branches", "30 years old and have lived in the state for the 7 years immediately "
+     "before the election", 2, "42", "an inhabitant of this state for 7 years next preceding"),
+    ("state-house-and-branches", "30 years old and have lived in the state for the 7 years immediately "
+     "before the election", 2, "42", "of the age of 30 years"),
     ("state-house-and-branches", "the House and Senate together elect one of the two with the most votes, "
      "by joint ballot", 2, "42", "by joint ballot elect one of the two persons, having the highest number "
                                  "of votes"),
@@ -42528,7 +42528,7 @@ def _guides_gate(BC, G, GS, RSA, S):
             pub, urls = BC.build_guides(tmp / "site", tmpl, "https://graniterecord.org")
         page = (tmp / "site" / "guides" / "test-guide.html").read_text(encoding="utf-8")
         assert [g["slug"] for g in pub] == ["test-guide"] and urls, "a guide checked throughout was held back"
-        assert "Checked against its sources" in page and 'class="g-stale"' not in page and "Draft" not in page
+        assert "Sources last checked" in page and 'class="g-stale"' not in page and "Draft" not in page
         assert 'href="/laws/91-a"' in page and "Laws that changed it, newest first" in page, \
             "the guide does not list the laws that changed its chapter"
         assert 'class="g-flow"' in page and page.count('class="g-step"') == 2 and 'class="g-btn"' in page \
@@ -75981,6 +75981,71 @@ def _interim_report_one_colour(BP):
         bad.append("build_site_v2's interim report line no longer says which of the three it was")
     assert not bad, "; ".join(bad[:8])
     return "ok", "recommends green, does not red, without plain, alike in all four places"
+
+
+@check("frontend", "the 11 November polish holds: the domicile years run immediately before the election, a "
+       "guide says when its sources were last checked, and the Spanish pages' six fixes stay",
+       needs=("guides", "civics"))
+def _polish_11nov(G, CV):
+    """The person's items of 2 November 2026, through the manager session.
+
+    1. The years of domicile for governor, councilor, senator and
+       representative run "immediately preceding the election" (RSA 655:29,
+       Part Second, Article 29). Every row of How to Run for Office's table
+       that names them says so, and the Learn page on the governor too.
+    2. A guide says "Sources last checked" on the day of its newest claim's
+       read (guides.sources_checked), in both languages, not the oldest
+       (checked_on, which still decides the out-of-date notice).
+    3. The Spanish pages: one vacancy said in the singular; a city's search
+       row in the page's language; a home search hint that fits its box; the
+       Officials tabs all in sight at 1,280px; the year menu's script on a
+       Spanish guide; and titles ending " | Granite Record"."""
+    bad = []
+    run = next((g for g in G.GUIDES if g["slug"] == "run-for-office"), None)
+    assert run, "no run-for-office guide"
+    cells = [c for s_ in run["steps"] for c in re.findall(r"<td[^>]*>(.*?)</td>", s_["text"])
+             if "domiciled in New Hampshire" in c]
+    if len(cells) < 4:
+        bad.append(f"the qualifications table names the domicile years in {len(cells)} rows, not 4")
+    bad += [f"a qualification says no 'immediately': {c!r}" for c in cells
+            if "immediately preceding the election" not in c]
+    gov = re.sub(r"\s+", " ", Path("src/pages/civics.py").read_text(encoding="utf-8"))
+    if "for the 7 years immediately before the election" not in gov:
+        bad.append("the Learn page's governor is not for the 7 years immediately before the election")
+    later = [g["slug"] for g in G.GUIDES if G.sources_checked(g) and G.sources_checked(g) > G.checked_on(g)]
+    if not later:
+        bad.append("no guide has a claim read later than its first, so nothing here tells the dates apart")
+    bc = Path("src/pages/build_civics.py").read_text(encoding="utf-8")
+    if bc.count("G.sources_checked(g)") < 2 or "Checked against its sources" in bc:
+        bad.append("a guide's page in one of its languages does not say Sources last checked on its newest claim")
+    if '" Check each step against the official page it links before you "' not in bc \
+            or '"guides.check_each"' not in bc:
+        bad.append("a guide does not point to the official page for the current rules")
+    if "+ (YR_JS if 'class=\"g-yr\"' in article else \"\"))" not in bc:
+        bad.append("a Spanish guide draws In the Record's year menu without its script")
+    if " — Granite Record" in bc:
+        bad.append("a page in another language still titles itself ' — Granite Record'")
+    bp = Path("src/pages/build_pages.py").read_text(encoding="utf-8")
+    mp = Path("src/pages/map.js").read_text(encoding="utf-8")
+    for key, src in (("comp.filled_vacant_one", bp), ("roster.filled_vacant_one", bp),
+                     ("map.n_vacant_one", mp), ("map.dot_vacant_one", mp)):
+        if f'"{key}"' not in src:
+            bad.append(f"one vacancy is said with the plural's words: {key} is not asked for")
+    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    for key in ("comp.filled_vacant_one", "roster.filled_vacant_one", "map.n_vacant_one", "map.dot_vacant_one"):
+        if "vacantes" in (es.get(key) or {}).get("es", "vacantes"):
+            bad.append(f"{key}'s Spanish is not the singular")
+    if 'tr("lf.wards"' not in Path("src/pages/find.js").read_text(encoding="utf-8"):
+        bad.append("a city's search row is said in English on a Spanish page")
+    hint = (es.get("home.search_hint") or {}).get("es", "")
+    if len(hint) > len("Bill number, topic, name or town") + 3:
+        bad.append(f"the home page's Spanish search hint runs past its box: {hint!r}")
+    if ":where(body.pg) .oftabs:lang(es) [role=tab]{padding-left:var(--sp-5)" not in Path(
+            "src/pages/app.css").read_text(encoding="utf-8"):
+        bad.append("the Spanish Officials tabs keep the padding that hid the last one")
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(cells)} domicile rows immediately preceding; {len(later)} guides whose newest "
+                  "check is later than their oldest; the six Spanish fixes in place")
 
 
 @check("frontend", "a guide whose steps are in parts lists each part under Step by Step in its index, "
