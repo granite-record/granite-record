@@ -285,15 +285,14 @@ flapping:
 - `control.json` cannot be read;
 - a votes hold (connect, login, encrypt, query, budget) stands.
 
-## The guard's two entries (the person's to apply)
+## The guard's two entries
 
-`guard.patch` is a proposed change to `.claude/hooks/guard.py`, which only the
-person changes: `git apply workers/live/guard.patch`. It **denies** `wrangler dev`
-aimed at this Worker (`--config`/`-c workers/live/...`, or run from inside
-`workers/live/`) with `--env`/`-e production` or `--remote`, which would run it
-against the General Court's database from a laptop; it **asks**, with its own
-reason, before a put of `graniterecord-live/control.json`. It also makes the
-guard see `npx.cmd wrangler`, PowerShell's form, which today's guard misses.
+`.claude/hooks/guard.py` (the person's) **denies** `wrangler dev` aimed at this
+Worker (`--config`/`-c workers/live/...`, or run from inside `workers/live/`)
+with `--env`/`-e production` or `--remote`, which would run it against the
+General Court's database from a laptop; it **asks**, with its own reason,
+before a put of `graniterecord-live/control.json`. It sees `npx.cmd wrangler`,
+PowerShell's form, as well.
 
 ## Trying it on this machine
 

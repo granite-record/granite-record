@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.68
+# GRANITE_VERSION: 2026-09-07.69
 """
 A page's worth of data for every committee.
 
@@ -836,7 +836,7 @@ def static_record(code, name, chamber_word, rec, sessions):
     terms = sorted((t for t in (rec.get("bills") or {}) if t), reverse=True)
     if terms:
         t0, rows = terms[0], rec["bills"][terms[0]]
-        out.append(f"<h2>Bills Referred, {E(t0)}</h2><ul>" + "".join(
+        out.append(f"<h2>Bills Referred, {E(C.term_words(t0))}</h2><ul>" + "".join(
             f'<li><a href="bill/{E(str(b.get("year")))}/{E(str(b.get("id", "")).lower())}">'
             f'{E(b.get("n") or b.get("id") or "")}</a>'
             + (f": {E(b['title'])}" if b.get("title") else "")

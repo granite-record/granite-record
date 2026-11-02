@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.4
+# GRANITE_VERSION: 2026-10-23.5
 """
 The site's colours and words the email sender draws with, written into
 workers/follow/site.gen.js from the files the site itself draws them from.
@@ -42,7 +42,8 @@ that mail.js imports:
 What is the email's own and not the site's stays in mail.js: the white
 ground, the mark's empty alt, every other sentence. What is the manage page's own
 stays in page.js: its font stacks, which name the site's fonts and then the
-system's, since the page loads no font from anywhere.
+system's, and the link that loads the site's two from Google Fonts (30 October
+2026; until then the page loaded none).
 
 WHAT A CHANGE TAKES. Change the value where the site keeps it, run this, and
 commit workers/follow/site.gen.js with the change. preflight fails while the
