@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.66
+# GRANITE_VERSION: 2026-10-11.67
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -3117,18 +3117,22 @@ RUN = guide(
     [step("Check that you qualify",
           "<p>To hold any elected office in New Hampshire, you must be domiciled in the state. Each "
           "office adds its own requirements:</p>"
-          + table("Qualifications by office (Secretary of State, October 17, 2026)",
+          + table("Qualifications by office (Secretary of State, October 17, 2026; RSA 655:29)",
                   ["Office", "Age", "Also"],
-                  [["Governor", "30", "Registered voter; domiciled in New Hampshire 7 years"],
+                  # IN THE SOURCES' WORDS (the person, 2 November 2026): the
+                  # years run "immediately preceding the election" (RSA
+                  # 655:29; Part Second, Article 29), not any seven.
+                  [["Governor", "30", "Registered voter; domiciled in New Hampshire at least 7 years "
+                    "immediately preceding the election"],
                    ["U.S. senator", "30", "U.S. citizen 9 years; living in New Hampshire when elected"],
                    ["U.S. representative", "25", "U.S. citizen 7 years; living in New Hampshire when "
                     "elected"],
-                   ["Executive councilor", "30", "Registered voter; domiciled in New Hampshire 7 "
-                    "years; living in the district"],
-                   ["State senator", "30", "Registered voter; domiciled in New Hampshire 7 years; "
-                    "living in the district"],
-                   ["State representative", "18", "Registered voter; domiciled in New Hampshire 2 "
-                    "years; living in the town or ward"],
+                   ["Executive councilor", "30", "Registered voter; domiciled in New Hampshire at least 7 "
+                    "years immediately preceding the election; living in the district"],
+                   ["State senator", "30", "Registered voter; domiciled in New Hampshire at least 7 years "
+                    "immediately preceding the election; living in the district"],
+                   ["State representative", "18", "Registered voter; domiciled in New Hampshire at least 2 "
+                    "years immediately preceding the election; living in the town or ward"],
                    ["County officer", "18", "Registered voter in the county where you live"]]),
           actions=[("Qualifications for office", SOS_QUAL)], law=["RSA 655:2", "RSA 655:29"]),
      step("File in the filing period",
@@ -3191,8 +3195,9 @@ RUN = guide(
      # federal offices' citizenship years stay on the Secretary of State's
      # page, the federal constitution not being on this disk.
      claim("A candidate swears to have been domiciled in New Hampshire for at least 7 years "
-           "before the election for governor, executive councilor and state senator, and for at "
-           "least 2 years for state representative.", "RSA 655:29", READ),
+           "immediately preceding the election for governor, executive councilor and state senator, "
+           "and for at least 2 years immediately preceding it for state representative.",
+           "RSA 655:29", READ),
      claim("A primary candidate is a registered member of the party, meets the age and domicile "
            "qualifications by the general election, and files a declaration of candidacy between "
            "the first Wednesday in June and the Friday of the following week.", "RSA 655:14", READ),
@@ -10608,6 +10613,17 @@ def unchecked(g):
 def checked_on(g):
     """The oldest check on the guide: what its date says it is worth."""
     return min((c["checked"] for c in g["claims"] if c["checked"]), default=None)
+
+
+def sources_checked(g):
+    """The newest check on the guide: the day its sources were last read,
+    which its page says (the person, 2 November 2026: How to Vote said 11
+    October over claims read weeks later). A claim about this site's own
+    pages (ours, a path) is not a source read, so it does not count.
+    checked_on, the oldest, still decides whether the page warns that it may
+    be out of date."""
+    return max((c["checked"] for c in g["claims"]
+                if c["checked"] and not str(c["source"]).startswith("/")), default=None)
 
 
 # ---------------------------------------------------------------------------

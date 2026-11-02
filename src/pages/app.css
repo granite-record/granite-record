@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.340 */
+/* GRANITE_VERSION: 2026-09-07.341 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -561,6 +561,9 @@ border-radius:var(--r-in);padding:var(--sp-2) var(--sp-6);min-height:36px;cursor
    it is handed. Found by measuring the computed ::placeholder colour rather
    than by looking: grey on grey at 3:1 looks deliberate. */
 ::placeholder{color:var(--ink-2);opacity:1}
+/* A hint longer than its box ends in an ellipsis rather than mid-word (the
+   release walk, 2 November 2026: the Spanish hints run a third longer). */
+input[type=search]{text-overflow:ellipsis}
 /* THE HEADER TABS. Seven sections, and until now the only thing that said
    which one you were on was a 2px pine rule under a 14px grey word -- at a
    glance indistinguishable from the six beside it. On a phone it was worse:
@@ -9125,6 +9128,11 @@ font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink-2)}
    its edge shadow -- rules that were this page's until 25 October 2026 and
    are every strip's now -- and its count quieter. */
 :where(body.pg) .oftabs .ofn{font-weight:400;color:var(--ink-2)}
+/* In Spanish the six tabs need 1,168px at the desktop's padding, and the
+   strip has 1,132: "Funcionarios del condado" scrolled out of sight at every
+   desktop width (the release walk, 2 November 2026). The phone's padding
+   fits all six from 1,280px. */
+:where(body.pg) .oftabs:lang(es) [role=tab]{padding-left:var(--sp-5);padding-right:var(--sp-5)}
 /* My Town: the finder, then the map, each under its own heading. */
 :where(body.pg) .ofpart{margin:0 0 var(--sp-10)}
 :where(body.pg) .ofpart > h3,:where(body.pg) .ofpres > h3{font-family:var(--serif);
