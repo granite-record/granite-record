@@ -19,9 +19,12 @@ import { PAGE_PALETTE } from "./site.gen.js";
 
 // THE SITE'S OWN LOOK (the person's manage-page redesign, 14 October 2026):
 // the site's palette and spacing, its serif for headings and its sans for the
-// rest -- by name, where the reader has them, since the page's policy loads no
-// font from anywhere (common.js, default-src 'none'), and the system's own
-// otherwise. Each part of the page is a card; a choice of two is a segmented
+// rest. THE FONTS ARE THE SITE'S, loaded as every page of it loads them (the
+// cohesion audit of 30 October 2026, B-3: Georgia stood in for both and the
+// wordmark looked like another site's): the policy (common.js) lets in the
+// stylesheet from fonts.googleapis.com and the faces from fonts.gstatic.com
+// and nothing else, and the referrer policy (same-origin) tells neither this
+// page's address. The system's own fonts stand in until they load. Each part of the page is a card; a choice of two is a segmented
 // switch; following is a switch beside each record; Save stays in reach.
 //
 // THE COLOURS ARE THE SITE'S, read from app.css by src/pages/follow_site.py
@@ -39,7 +42,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 var(--sans
 main{max-width:720px;margin:0 auto;padding:20px 16px 72px}
 .brand{font:600 20px/1 var(--serif);margin:4px 0 24px}
 .brand a{color:var(--ink);text-decoration:none}
-h1{font:600 30px/1.2 var(--serif);margin:0 0 6px}
+h1{font:600 2.125rem/1.2 var(--serif);margin:0 0 6px}
 .lede{color:var(--ink-2);margin:0 0 20px}
 h2{font:600 20px/1.3 var(--serif);margin:0 0 4px}
 h3{font:600 12px/1 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);margin:22px 0 8px}
@@ -148,7 +151,9 @@ box-shadow:0 -2px 10px rgba(0,0,0,.08)}
 .card.danger{border-color:var(--brick);background:linear-gradient(var(--brick-soft),var(--brick-soft)) top/100% 4px no-repeat,var(--surface)}
 :focus-visible{outline:2px solid var(--pine);outline-offset:2px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-@media (max-width:600px){.pair{grid-template-columns:1fr}.card{padding:16px}h1{font-size:26px}}
+@media (max-width:600px){.pair{grid-template-columns:1fr}.card{padding:16px}}
+/* The site's title size, 34 and 28 on a phone (app.css --t-title). */
+@media (max-width:45em){h1{font-size:1.75rem}}
 `;
 
 export function nonce() {
@@ -159,6 +164,15 @@ const NOSCRIPT = `<noscript><p class="note">This page needs JavaScript. Your pri
 keeps its key after the &ldquo;#&rdquo; in its address, which your browser does not send
 to any server, and a few lines of script on this page read it from there.</p></noscript>`;
 
+// THE SITE'S FONTS, the two this page draws in (chrome.FONTS has the rest).
+const FONTS = `<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet">`;
+
+// ONE MESSAGE WHEN THE LINK IS INCOMPLETE (B-3): the script shows this and
+// hides whatever a caller marked data-waits -- a line that says the page is
+// opening, a button that can no longer be pressed -- so the page does not say
+// two things at once.
 const MISSING = `<p id="missing" class="note" hidden>This link is missing its private part.
 Open the link from your most recent email from Granite Record, whole.</p>`;
 
@@ -196,6 +210,11 @@ box.addEventListener("keydown",function(e){if(e.key==="Enter"||e.keyCode===13)e.
 })(picks[i]);
 })();`;
 
+// The note a link-reading page may need, under the page's title where it
+// has one, so it reads as what the page says rather than above it.
+const withNote = (body, note) =>
+  body.includes("</h1>") ? body.replace("</h1>", "</h1>\n" + note) : note + "\n" + body;
+
 // status, title (plain text), body (HTML already escaped by the caller), and
 // fill: the name of the form field the token from "#" goes into, if any, and
 // submit: the id of a form to post as soon as it is filled; script: one more
@@ -209,6 +228,7 @@ if(location.hash){try{history.replaceState(null,"",location.pathname);}catch(e){
 var fs=document.querySelectorAll('input[name=${JSON.stringify(fill)}]');
 for(var i=0;i<fs.length;i++)fs[i].value=v;
 if(!v||!/^[A-Za-z0-9_-]{43}$/.test(v)){document.getElementById("missing").hidden=false;
+var w=document.querySelectorAll("[data-waits]");for(var j=0;j<w.length;j++)w[j].hidden=true;
 var b=document.querySelectorAll("form button");for(var j=0;j<b.length;j++)b[j].disabled=true;return;}
 ${submit ? `var f=document.getElementById(${JSON.stringify(submit)}),k=h.get("n")||"";
 if(f.notice)f.notice.value=k;f.submit();` : ""}
@@ -218,11 +238,11 @@ if(f.notice)f.notice.value=k;f.submit();` : ""}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>${esc(title)} — Granite Record</title>
+${FONTS}
 <style>${STYLE}</style></head>
 <body><main>
 <p class="brand"><a href="/">Granite Record</a></p>
-${fill ? NOSCRIPT + MISSING : ""}
-${body}
+${fill ? withNote(body, NOSCRIPT + MISSING) : body}
 </main>${script ? `<script nonce="${n}">${script}</script>` : ""}</body></html>`;
   return htmlResponse(status, html, n);
 }

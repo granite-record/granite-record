@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.15
+# GRANITE_VERSION: 2026-09-08.17
 """
 Who is hearing what, when, and in which room -- out of the calendars on disk.
 
@@ -618,13 +618,145 @@ def parse(text, chamber):
 UNPAIRED = []
 
 
-def load(chamber, limit=None, years=None):
+# ------------------------------------------------------------------ the cache
+#
+# EACH CALENDAR IS PARSED ONCE A BUILD, AND ONCE EVER WHILE IT AND THE CODE
+# STAND (30 October 2026, profile item 2). narrative.py reads a term's two
+# years and the one either side, so every calendar was parsed by two terms,
+# and narrative.py runs twice a build (the sitting term, then narrate_archive's
+# eighteen): about 50 s of a build, of which one pass over the 2,567 calendars
+# is 33. parse() is a function of one file's text and the chamber, so its
+# answer is kept by those (build_cache.digest) under a signature of this code
+# and everything it imports, in .build_cache/calendar_meetings.json.gz, which
+# the kit carries as it carries the others.
+#
+# ONLY WHERE A CALLER ASKS (cache=True): narrative.py's build does. A check
+# reads the calendars themselves, so that it holds the parser and not a copy
+# of an earlier answer, and writes nothing.
+#
+# KEPT WHOLE, NEVER PAST THE RECORD. No one run reads every calendar, so a run
+# that parsed anything keeps, as it ends, what is kept and what it parsed, less
+# any answer for a text no calendar on disk now holds -- the one cache that
+# saves after a run on part of the record (build_cache's rule), because its
+# answers are each one file's and the pruning holds it to the record.
+KEPT = "calendar_meetings"
+_KEPT = None        # {key: [rows, pub, unpaired]}, as JSON holds them
+_SIG = None
+_PARSED = 0         # answers this run worked out and has not saved
+
+
+def _signature():
+    global _SIG
+    if _SIG is None:
+        import build_cache as BC
+        _SIG = BC.signature("calendar_meetings.py")
+    return _SIG
+
+
+def _key(text, chamber):
+    import build_cache as BC
+    return BC.digest(_signature(), chamber, text)
+
+
+def parsed(text, chamber):
+    """parse(text, chamber), from the build's cache where this code parsed
+    this text before. Rows are fresh dicts each time: load() adds to them."""
+    global _KEPT, _PARSED
+    import build_cache as BC
+    if _KEPT is None:
+        _KEPT = dict(BC.load(KEPT, _signature()))
+    key = _key(text, chamber)
+    got = _KEPT.get(key)
+    if isinstance(got, list) and len(got) == 3:
+        rows, pub, unpaired = got
+        return ([dict(r) for r in rows], tuple(pub) if pub is not None else None,
+                [tuple(u) for u in unpaired])
+    rows, pub, unpaired = parse(text, chamber)
+    if not _PARSED:
+        # Once, as the run ends: a build's run reads term after term, and
+        # saving after each would write the whole file each time.
+        import atexit
+        atexit.register(keep)
+    _KEPT[key] = [json.loads(json.dumps(rows)), list(pub) if pub is not None else None,
+                  [list(u) for u in unpaired]]
+    _PARSED += 1
+    return rows, pub, unpaired
+
+
+def _lock(path, wait=60.0, stale=600.0):
+    """Take `path` as a lock file, made only if it is not there (O_EXCL), and
+    True; False if it cannot be had within `wait` seconds. A lock older than
+    `stale` is a run that died holding it, and is taken over."""
+    import os
+    import time
+    end = time.monotonic() + wait
+    while True:
+        try:
+            os.close(os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+            return True
+        except FileExistsError:
+            try:
+                if time.time() - os.path.getmtime(path) > stale:
+                    os.unlink(path)
+                    continue
+            except OSError:
+                pass
+            if time.monotonic() > end:
+                return False
+            time.sleep(0.2)
+        except OSError:
+            return False
+
+
+def keep():
+    """Save what this run parsed, with what is kept, less any answer for a
+    text no calendar on disk now holds. True if it wrote.
+
+    MERGED UNDER A LOCK (the review of 30 October 2026): narrate_archive runs
+    four narrative.py processes at once, and each saving the whole of what it
+    held left only the last one's answers -- 303 of 631 in the reviewer's run.
+    Each now reads what is there under the lock, adds its own and saves, in
+    the keys' order, so the file is the same whichever finished last. A lock
+    it cannot have within a minute saves nothing: the next run parses again."""
+    global _PARSED
+    if not _PARSED or _KEPT is None:
+        return False
+    import build_cache as BC
+    now = set()
+    for ch, conf in CHAMBERS.items():
+        root = Path(conf["dir"])
+        for f in (sorted(root.rglob(conf["glob"])) if root.exists() else []):
+            now.add(_key(f.read_text(encoding="utf-8", errors="replace"), ch))
+    path = BC.path_of(KEPT)
+    lock = path.with_name(path.name + ".lock")
+    try:
+        lock.parent.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return False
+    if not _lock(lock):
+        return False
+    try:
+        merged = {**BC.load(KEPT, _signature()), **_KEPT}
+        wrote = BC.save(KEPT, _signature(), {k: merged[k] for k in sorted(merged) if k in now})
+    finally:
+        try:
+            lock.unlink()
+        except OSError:
+            pass
+    if wrote:
+        _PARSED = 0
+    return wrote
+
+
+def load(chamber, limit=None, years=None, cache=False):
     """Every row the chamber's calendars announce.
 
     `years`, an iterable of ints, reads only the calendars filed under those
     years' folders -- a term's own two years and the one either side, since a
     December calendar announces January's meetings and a folder can hold a
-    calendar reprinted into the next year. None reads every folder."""
+    calendar reprinted into the next year. None reads every folder.
+    `cache` reads each calendar's answer from the build's cache where it has
+    one, and keeps what it parses (above)."""
     conf = CHAMBERS[chamber]
     root = Path(conf["dir"])
     if not root.exists():
@@ -639,7 +771,7 @@ def load(chamber, limit=None, years=None):
     out = []
     for f in files:
         text = f.read_text(encoding="utf-8", errors="replace")
-        rows, pub, unpaired = parse(text, chamber)
+        rows, pub, unpaired = (parsed if cache else parse)(text, chamber)
         UNPAIRED.extend(unpaired)
         if not rows:
             continue
