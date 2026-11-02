@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.6
+# GRANITE_VERSION: 2026-10-30.7
 """
 Live Now's page and its schedule (the live layer's design, sections 1.2 and
 1.4), written by the night beside the Calendar and from the Calendar's own
@@ -217,6 +217,11 @@ def write(site, base, today):
     (site / PAGE).write_text(S.clean_links(styled(html)), encoding="utf-8")
     for f in ("live.js", "live.css"):
         shutil.copyfile(_paths.locate(f"src/pages/{f}"), site / f)
+    # IN THE SITEMAP, as every builder lists its own pages (the release
+    # session, applying PATCHES.md 1, 2 November 2026): /live asks to be
+    # indexed at its own address, and check_site refuses a page that does
+    # and is not listed, which would stop the night.
+    S.sitemap_merge(site, base, [base.rstrip("/") + S.canon(ADDRESS)], "/live")
     return sched
 
 

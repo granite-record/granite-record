@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-18.8
+# GRANITE_VERSION: 2026-10-18.9
 """
 A page for every statutory and study committee the General Court lists as
 active, at /committee/ss<CommitteeID>.
@@ -72,6 +72,7 @@ import build_date
 import build_full_sessions as FS
 import build_rsa as RSA
 import components as C
+import live_hook
 import plain_action as PA
 import proceedings
 import shell as S
@@ -1001,6 +1002,13 @@ def write_page(c, ctx, today):
     assert '<div id="results"></div>' in html, f"{path}: the template has no results slot"
     html = html.replace('<div id="results"></div>',
                         f'<div id="results">{page_body(c, ctx, today, path)}</div>', 1)
+    # THE LIVE HOOK (workers/live/PATCHES.md 11, applied for the 11 November
+    # train), live.js's to fill while one of its meetings streams. The
+    # chamber is "" on purpose: build_pages.meeting_key keys a study
+    # committee's rows with chamber "", so the stems are /live's own.
+    if "live_past" in ctx:
+        html = live_hook.place(html, code="ss" + str(c["cid"]), chamber="", name=c["name"],
+                               history=ctx["live_past"], others=ctx.get("live_all", ()))
     out = Path(site) / BC.study_page(c["cid"])
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(S.clean_links(html), encoding="utf-8")
@@ -1185,6 +1193,10 @@ def main():
         print(f"  FAILED: {db}/StatStudDetails.psv lists no active committee: the copy is "
               "empty or its CommitteeStatus is no longer read")
         return 1
+    # THE LIVE HOOK'S STEMS AND THIS RUN'S COMMITTEES, once (PATCHES.md 11):
+    # each page refuses a stream whose committee's name extends its own.
+    ctx["live_past"] = live_hook.past()
+    ctx["live_all"] = [("", c["name"]) for c in comms]
     urls = [write_page(c, ctx, today) for c in comms]
     assert len(urls) == len(comms) == len({u for u in urls}), "a committee's page was not written once"
     # THE LIST OF THEM, a line each, for the readers after this step: the
