@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.243
+# GRANITE_VERSION: 2026-09-05.244
 """
 Generate the faceted site from real General Court data.
 
@@ -3158,7 +3158,26 @@ FORMER_LABEL = re.compile(r"\(\s*[A-Za-z]?\s*\)\s*(?P<county>[A-Za-z .']+?)\s+"
                           r"(?P<district>\d+)\s*$")
 
 
-def former_movers(register, e2p, legs, links, votes_by_member):
+def same_person(path=Path("corrections/member_corrections.json")):
+    """[[house id, senate id], ...] the owner confirmed are one person: the
+    "same_person" entries of member_corrections.json whose "confirmed" begins
+    with a date (2 November 2026: thirty, of the 31 pairs no rule joined; the
+    thirty-first, "no, two people", is kept as the answer and joins nothing).
+    Read, never written: the file is the owner's."""
+    try:
+        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    out = []
+    for e in (doc.get("same_person") or []) if isinstance(doc, dict) else []:
+        if isinstance(e, dict) and re.match(r"\d{4}-\d{2}-\d{2}", str(e.get("confirmed") or "")):
+            ids = [str(e[k]) for k in ("house", "senate") if e.get(k)]
+            if len(ids) == 2:
+                out.append(ids)
+    return out
+
+
+def former_movers(register, e2p, legs, links, votes_by_member, confirmed=()):
     """{later id: [earlier ids]} for a member who sat in both chambers and sits
     in neither now, as the person register joins them (30 October 2026).
 
@@ -3175,7 +3194,11 @@ def former_movers(register, e2p, legs, links, votes_by_member):
     or more site ids that voted, none of them a sitting member's or already
     joined to one; the page kept is the one that voted last -- the later
     chamber's, as a sitting mover's is -- and it carries every chamber's
-    votes."""
+    votes.
+
+    AND THE PAIRS THE OWNER CONFIRMED (`confirmed`, same_person): site ids
+    already, joined on the same terms, after the register's and only where
+    neither id is in a join yet."""
     sitting = {str(k) for k in legs} | {str(k) for k in (links or {})} | \
         {str(x) for v in (links or {}).values() for x in v}
     # By the day, not the text of it: dates are M/D/YYYY, and as text
@@ -3183,10 +3206,13 @@ def former_movers(register, e2p, legs, links, votes_by_member):
     last = lambda i: max((vote_date(v.get("date")) for v in votes_by_member.get(i, [])),
                          default=vote_date(""))
     out = {}
-    for person in (register or {}).get("people") or []:
-        ids = list(dict.fromkeys(str((e2p or {}).get(n) or n) for n in person.get("numbers") or []))
-        ids = [i for i in ids if votes_by_member.get(i)]
-        if len(ids) < 2 or any(i in sitting for i in ids):
+    groups = [[str((e2p or {}).get(n) or n) for n in person.get("numbers") or []]
+              for person in (register or {}).get("people") or []]
+    groups += [[str(i) for i in pair] for pair in confirmed or ()]
+    for ids in groups:
+        ids = [i for i in dict.fromkeys(ids) if votes_by_member.get(i)]
+        placed = set(out) | {x for v in out.values() for x in v}
+        if len(ids) < 2 or any(i in sitting or i in placed for i in ids):
             continue
         ids.sort(key=last)
         out[ids[-1]] = ids[:-1]
@@ -12333,7 +12359,8 @@ def main():
         # of the members who moved and left come back in two halves.
         print("  WARNING: db/Legislators.psv is not here, so no member who sat in both "
               "chambers and has left is joined; their pages stand split, one per chamber")
-    movers = former_movers(register, e2p or {}, legs, links, votes_by_member)
+    movers = former_movers(register, e2p or {}, legs, links, votes_by_member,
+                           confirmed=same_person())
     movers = {k: v for k, v in movers.items() if k in former and all(e in former for e in v)}
     if movers:
         def _addr(m):
