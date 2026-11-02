@@ -9665,8 +9665,10 @@ function vwLand(slot){
 // of the window, a study committee's and a chamber's view went 45 to 49px
 // under the page's tab strip, which stays there, at every width (measured on
 // ss57 and the House at 1280 and 390). The page is moved down by what the
-// strip still covers, and no further. A committee's own page lands its .vw
-// clear of the strip already (showVideo; 57px below it at 1280 on S07).
+// strip still covers, and no further. A committee's own page too
+// (showVideo): .vw's scroll margin is set on a phone only, and S07's view at
+// 1280 came to rest clear of the strip only because the page above it grew
+// after the scroll (the review of 2 November 2026).
 function vwClearStrip(el){
   if(!el||!el.getBoundingClientRect)return;
   const box=el.matches&&el.matches(".vw")?el:(el.querySelector&&el.querySelector(".vw"))||el;
@@ -10556,6 +10558,7 @@ function showVideo(){
   vwLanded=want;
   vwListShow(a);
   box.scrollIntoView({block:"start"});
+  vwClearStrip(box);
 }
 window.addEventListener("hashchange", function(){ if(PAGE){ showDay(); showVideo(); } });
 /* BACK AND FORWARD ON A RECORD PAGE bring back the tab the address names.

@@ -189,7 +189,7 @@ def unstopped(who):
     -- "Rep. Franklin W. Sterling." (HB 1303 of 2010; the walk of 31 October
     2026) -- and with the one an initial or a Jr. or Sr. needs."""
     who = who.rstrip()
-    if who.endswith(".") and not re.search(r"(?:\b[A-Z]|\b[JS]r)\.$", who):
+    if who.endswith(".") and not re.search(r"(?:\b[A-Z]|\b(?i:[JS]r))\.$", who):
         who = who[:-1].rstrip()
     return who
 

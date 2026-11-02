@@ -2090,7 +2090,7 @@ def guide_record(g, data, bills, chapters, lang=I.DEFAULT):
     # Pending does; a guide says them apart, the passed ones under the Laws
     # page's own words, "Passed, not yet in effect", and out of the laws that
     # changed the chapter, which they have not yet done.
-    passing = set(bills.passing(data))
+    passing = bills.passing(data)     # {bill: Passed}, its law year among them
     when = {}                     # every law of the block: the year it passed
     for ch in g["laws"]:
         if ch not in chapters:
@@ -2113,10 +2113,16 @@ def guide_record(g, data, bills, chapters, lang=I.DEFAULT):
         if passed:
             # BY THE YEAR IT PASSED TOO (the walk of 31 October 2026): outside
             # the laws' boxes the year chooser left these in whatever year was
-            # chosen. Each says the year it passed -- its chapter's, else its
-            # bill's -- and YR_JS shows the list only in that year, or All.
+            # chosen. Each says the year it passed -- its chapter's in the
+            # notes, else its law's (Passed.year, the year the Laws page
+            # prints), else, awaiting the Governor, the build's -- and YR_JS
+            # shows the list only in that year, or All. Not the bill's own
+            # year: a bill of 2025 retained and passed in 2026 is 2026's.
             def passed_in(k):
-                return chaptered.get(k) or str(bills.row(k).get("year") or k.split("/")[0][:4])
+                as_of = getattr(bills, "as_of", None)
+                return (chaptered.get(k) or getattr(passing.get(k), "year", "")
+                        or (as_of.year if as_of else "")
+                        or str(bills.row(k).get("year") or k.split("/")[0][:4]))
             bits.append('<div class="g-pass"><p class="g-what">Passed, not yet in effect:</p>'
                         + BR.folded([bills.chip(k).replace("<li", f'<li data-y="{passed_in(k)}"', 1)
                                      for k in passed]) + "</div>")

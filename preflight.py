@@ -43845,6 +43845,7 @@ def _interim_statements(I, B):
     # Jr.'s stay.
     for raw, name in (("Rep. Franklin W. Sterling.", "Rep. Franklin W. Sterling"),
                       ("Rep. John E. Tholl, Jr.", "Rep. John E. Tholl, Jr."),
+                      ("Rep. John E. Tholl, JR.", "Rep. John E. Tholl, JR."),
                       ("Rep. Bette R.", "Rep. Bette R."), ("Rep Peter Bixby", "Rep Peter Bixby")):
         assert I.unstopped(raw) == name, f"{raw!r} is read as {I.unstopped(raw)!r}"
     assert s["HB1779"]["title"] == "supporting the cultural background of children placed in foster care" \
@@ -70497,13 +70498,22 @@ def _guide_record_passed(BC, BR):
     # chapter's, else its bill's -- in a box of its own that YR_JS filters.
     assert '<div class="g-pass">' in got and '<li data-y="2026">2025-2026/HB 2</li>' in passed, (
         "a bill passed and not yet in effect does not carry the year it passed")
+    # Not the bill's own year (the review, 2 November 2026): HB 3 of 2025,
+    # retained and chaptered in 2026 before the notes name it, is 2026's by
+    # its law year; HB 5, awaiting the Governor with no law year, the build's.
     class Unchaptered(Bills):
+        as_of = __import__("datetime").date(2026, 6, 1)
+
         def passing(self, data):
-            return {"2025-2026/HB 3": NS(effect=NS(parts=[1], awaiting=True), addrs=["654:1"])}
+            return {"2025-2026/HB 3": NS(effect=NS(parts=[1], awaiting=False), addrs=["654:1"], year="2026"),
+                    "2025-2026/HB 5": NS(effect=NS(parts=[], awaiting=True), addrs=["654:1"], year="")}
+
+        def row(self, k):
+            return {"year": "2025"}
     data3 = {"bills": {}, "enacted": {"654:1": [["2024", "5:1", "2023-2024/SB 9"]]}}
     awaits = BC.guide_record({"laws": ["654"]}, data3, Unchaptered(), {"654": {"name": "Voters"}})
-    assert '<li data-y="2025">2025-2026/HB 3</li>' in awaits, (
-        "a passed bill with no chapter yet does not carry its own year")
+    assert '<li data-y="2026">2025-2026/HB 3</li>' in awaits and '<li data-y="2026">2025-2026/HB 5</li>' in awaits, (
+        "a passed bill the notes do not name yet carries its own year, not the year it passed")
     assert ".g-pass" in BC.YR_JS, "the year chooser does not filter Passed, not yet in effect"
     # ONE CHOOSER FOR THE BLOCK, AND NO STATUS ON A LAW (the manager's review,
     # 29 October 2026): a guide of two chapters draws one menu, before the
@@ -76175,6 +76185,7 @@ def _interim_report_chip_colours():
              ("WITHOUT RECOMMENDATION", ""), ("Without Recomendation", ""), ("No Recommendation", ""),
              # As the clerks varied it (src/parse/interim_statements.py).
              ("RECOMMENDED FOR FURTHER LEGISLATION", "s-law"), ("NOT RECOMMENDED FOR LEGISLATION", "s-done"),
+             ("NOT RECOMMENDED FOR FURTHER LEGISLATION", "s-done"),
              ("NOT RECOMMENDED FOR FUTURE RECOMMENDATION", "s-done"),
              ("OUGHT TO PASS", "s-law"), ("INEXPEDIENT TO LEGISLATE", "s-done"), ("INTERIM STUDY", "s-study"),
              ("RE-REFER TO COMMITTEE", "s-study")]
