@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.762
+# GRANITE_VERSION: 2026-09-04.763
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28202,6 +28202,24 @@ def _former_movers_one_page(build_site_v2, build_pages):
     assert fr["9404"]["served"]["first"] == "3/1/2009" and "2009-2010" in fr["9404"]["served"]["terms"], \
         f"the page kept gives only its own chamber's years: {fr['9404']['served']}"
     assert V.former_movers(None, {}, {}, {}, votes) == {}, "no register still joined someone"
+    # The pairs the owner confirmed (same_person): joined as the register's
+    # are; one whose id a register join holds already is left as it is.
+    conf = dict(votes, **{"374827": [v("2001", "H")], "36": [v("2012", "S")]})
+    got = V.former_movers(reg, e2p, {"9406": {}}, {"9406": ["515"]}, conf,
+                          confirmed=[["374827", "36"], ["568", "36"]])
+    assert got == {"9404": ["568"], "36": ["374827"]}, f"the confirmed pairs joined {got}"
+    root = Path(tempfile.mkdtemp(prefix="gr-moved-"))
+    try:
+        (root / "mc.json").write_text(json.dumps({"members": {}, "same_person": [
+            {"house": "374827", "senate": "36", "confirmed": "2026-11-02, owner"},
+            {"house": "862", "senate": "44", "confirmed": "no, two people"},
+            {"house": "1", "senate": "2", "confirmed": ""}]}), encoding="utf-8")
+        assert V.same_person(root / "mc.json") == [["374827", "36"]], V.same_person(root / "mc.json")
+        assert V.same_person(root / "nowhere.json") == []
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
+    assert "confirmed=same_person()" in src, "build_site_v2 no longer takes the pairs the owner confirmed"
     root = Path(tempfile.mkdtemp(prefix="gr-moved-"))
     try:
         (root / "former.json").write_text(json.dumps([
