@@ -42780,6 +42780,16 @@ def _follow_site_current(FS):
     typed = sorted({h.upper() for h in re.findall(r"#[0-9A-Fa-f]{3}(?:[0-9A-Fa-f]{3})?\b", code)})
     assert not typed, (f"page.js types the colours {typed} itself; the manage page's colours are "
                        f"site.gen.js's PAGE_PALETTE, from app.css (run `{FS.COMMAND}`)")
+    # THE WORDMARK'S FACE IS THE SITE'S (the walk of 31 October 2026): the
+    # follow pages drew "Granite Record" in Source Serif 4, the header in
+    # app.css's --brand-face, Playfair Display 600 at 22px.
+    face = re.search(r"--brand-face:([^;]+);", Path("src/pages/app.css").read_text(encoding="utf-8"))
+    brand = re.search(r"\.brand\{[^}]*\}", code)
+    assert face and f"--brand-face:{face.group(1)}" in code and brand \
+        and "var(--brand-face)" in brand.group(0) and "600 22px" in brand.group(0) \
+        and "family=Playfair+Display:wght@600" in code, (
+            "the follow pages' wordmark is not in app.css's --brand-face, Playfair Display 600 at "
+            "22px, loaded with the page's fonts")
     names = {n: v for n, (_, v) in FS.values().items()}
     return "ok", (f"{FS.OUT.as_posix()} is current: {len(names['STATUS_INK'])} status inks, "
                   f"{len(names['SITE_PALETTE'])} text inks and the ring's two from app.css, "
@@ -43562,7 +43572,7 @@ RECOMMENDED FOR FUTURE LEGISLATION.
 The committee is opposed to the basic concept of allowing a review of parental rights and
 responsibilities every three years. Vote 10-1.
 
-                                                      Rep. Caroline Gargasz
+                                                      Rep. Caroline Gargasz.
 HB 541, relative to the obligation of religious leaders to report child abuse.
 Rep. Margaret D. Hallyburton for Commerce and Consumer Affairs: The state Supreme
 Court has before it an appeal that will likely address this issue. Vote 10-0.
@@ -43653,6 +43663,14 @@ def _interim_statements(I, B):
     for b, (rec, printed, who, y, n) in want.items():
         assert (s[b]["rec"], s[b]["printed"], s[b]["author"], s[b].get("vote_yeas"),
                 s[b].get("vote_nays")) == (rec, printed, who, y, n), f"{b} reads {s[b]}"
+    # A SIGNER'S LINE ENDS ON THE NAME (the walk of 31 October 2026): HB 1303
+    # of 2010 was signed "Rep. Franklin W. Sterling." and its card kept the
+    # stop -- Gargasz's line above carries one -- while an initial's and a
+    # Jr.'s stay.
+    for raw, name in (("Rep. Franklin W. Sterling.", "Rep. Franklin W. Sterling"),
+                      ("Rep. John E. Tholl, Jr.", "Rep. John E. Tholl, Jr."),
+                      ("Rep. Bette R.", "Rep. Bette R."), ("Rep Peter Bixby", "Rep Peter Bixby")):
+        assert I.unstopped(raw) == name, f"{raw!r} is read as {I.unstopped(raw)!r}"
     assert s["HB1779"]["title"] == "supporting the cultural background of children placed in foster care" \
         and "HOUSERECORD" not in s["HB1779"]["text"] and s["HB1779"]["text"].endswith("necessary."), (
         f"HB 1779's statement: {s['HB1779']}")
@@ -70180,6 +70198,79 @@ def _spanish_glossary(i18n, BC, chrome):
                   "the English page names its twin")
 
 
+@check("build", "a House report is dated by its calendar's filename however the clerk spaced it",
+       needs=("build_site_v2",))
+def _cal_date_spaced(SV):
+    """The walk of 31 October 2026: every interim study report House
+    Calendar 39 of 2018 printed had no date on its card, because the
+    calendar's filename has two spaces before the year
+    ("November%2009%20%202018") and CAL_DATE allowed one. Held on the shapes
+    the addresses on file take: escaped, doubled, and typed as spaces."""
+    base = "https://gc.nh.gov/house/calendars_journals/viewer.aspx?fileName=calendars%5C"
+    cases = {base + "2026%5CNo10%20March%206%202026.pdf": "2026-03-06",
+             base + "2018%5CNo%2039%20November%2009%20%202018.pdf": "2018-11-09",
+             base + "2026%5CNo10 March 6 2026.pdf": "2026-03-06",
+             base + "2018%5CNo%2039.pdf": ""}
+    wrong = {u.rsplit("%5C", 1)[1]: SV._cal_date(u) for u, want in cases.items() if SV._cal_date(u) != want}
+    assert not wrong, f"a calendar's filename gives the wrong date: {wrong}"
+    return "ok", f"{len(cases)} calendar filenames, each dated as printed or not at all"
+
+
+_VW_CLEAR_JS = r"""
+const src = %s;
+const grab = re => { const m = src.match(re); if (!m) throw new Error("not in app.js: " + re); return m[0]; };
+const code = [/function vwStrip\(box\)\{[\s\S]*?\n\}/, /function vwClearStrip\(el\)\{[\s\S]*?\n\}/].map(grab).join("\n");
+const moved = [];
+const window = { scrollBy: (x, y) => moved.push(y) };
+const strip = { sticky: true, getBoundingClientRect: () => ({ bottom: 45 }) };
+const tab = { closest: s => s === "[role=tablist]" ? strip : null };
+const pane = { getAttribute: () => "sstab-videos" };
+const document = { getElementById: id => id === "sstab-videos" ? tab : null };
+const getComputedStyle = el => ({ position: el.sticky ? "sticky" : "static" });
+const clear = new Function("window", "document", "getComputedStyle", code + "\nreturn vwClearStrip;")(
+  window, document, getComputedStyle);
+const slot = top => ({ getBoundingClientRect: () => ({ top }), matches: () => false,
+  querySelector: () => null, closest: s => s === "[role=tabpanel]" ? pane : null });
+const out = {};
+clear(slot(0)); out.under = moved.splice(0);
+clear(slot(60)); out.clear = moved.splice(0);
+strip.sticky = false; clear(slot(0)); out.unstuck = moved.splice(0);
+console.log("@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "a recording the address names is landed on clear of the tab strip that stays "
+       "at the top of the window", needs=())
+def _vw_lands_clear_of_strip():
+    """The walk of 31 October 2026: arriving at /committee/ss57/videos#v-...
+    or /session/house/videos#v-..., vwLand brought the view to the top of the
+    window and 45 to 49px of it went under the page's tab strip, which stays
+    there, at 1280 and at 390. vwClearStrip moves the page down by what the
+    strip covers, and only that: run here on a view under the strip, one
+    clear of it, and one under a strip that does not stay."""
+    js = Path("src/pages/app.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and node):
+        return "skip", "app.js or node is not here"
+    src = js.read_text(encoding="utf-8")
+    land = re.search(r"function vwLand\(slot\)\{[\s\S]*?\n\}", src)
+    assert land and re.search(r"scrollIntoView\(\{block:\"start\"\}\);\s*vwClearStrip\(slot\);", land.group(0)), (
+        "vwLand no longer clears the tab strip after bringing the view to the top")
+    root = Path(tempfile.mkdtemp())
+    try:
+        t = root / "go.js"
+        t.write_text(_VW_CLEAR_JS % json.dumps(src), encoding="utf-8")
+        r = _run([node, str(t)], capture_output=True, text=True, timeout=60)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert r.returncode == 0 and "@@" in (r.stdout or ""), (r.stderr or r.stdout or "")[-400:]
+    got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    assert got == {"under": [-45], "clear": [], "unstuck": []}, (
+        f"the view under the strip, clear of it, and under one that does not stay moved {got}; "
+        "want -45px, nothing, nothing")
+    return "ok", "a view 45px under the strip is moved 45px down; one clear of it, or under a strip that scrolls, is not moved"
+
+
 @check("build", "a guide's In the Record says a bill passed and not yet in effect apart from the "
                 "bills still before the General Court, and not among the laws that changed the "
                 "chapter", needs=("build_civics", "build_rsa"))
@@ -70204,6 +70295,9 @@ def _guide_record_passed(BC, BR):
 
         def chip(self, k, *a, **kw):
             return f"<li>{k}</li>"
+
+        def row(self, k):
+            return {"year": "2025"} if k == "2025-2026/HB 3" else {}
     data = {"bills": {"2025-2026": {"HB 1": {"changes": ["654:2"]}}},
             "enacted": {"654:1": [["2026", "1:1", "2025-2026/HB 2"],
                                   ["2024", "5:1", "2023-2024/SB 9"]]}}
@@ -70222,6 +70316,19 @@ def _guide_record_passed(BC, BR):
         "a law that changed the chapter does not show the year it passed")
     assert '<option value="2024">2024 (1)</option>' in got and 'class="g-yrp" hidden' in got, (
         "the laws that changed the chapter have no year to choose, or show it without its script")
+    # AND THE PASSED ONES FOLLOW THE CHOSEN YEAR (the walk of 31 October
+    # 2026): they stood in every year. Each carries the year it passed -- its
+    # chapter's, else its bill's -- in a box of its own that YR_JS filters.
+    assert '<div class="g-pass">' in got and '<li data-y="2026">2025-2026/HB 2</li>' in passed, (
+        "a bill passed and not yet in effect does not carry the year it passed")
+    class Unchaptered(Bills):
+        def passing(self, data):
+            return {"2025-2026/HB 3": NS(effect=NS(parts=[1], awaiting=True), addrs=["654:1"])}
+    data3 = {"bills": {}, "enacted": {"654:1": [["2024", "5:1", "2023-2024/SB 9"]]}}
+    awaits = BC.guide_record({"laws": ["654"]}, data3, Unchaptered(), {"654": {"name": "Voters"}})
+    assert '<li data-y="2025">2025-2026/HB 3</li>' in awaits, (
+        "a passed bill with no chapter yet does not carry its own year")
+    assert ".g-pass" in BC.YR_JS, "the year chooser does not filter Passed, not yet in effect"
     # ONE CHOOSER FOR THE BLOCK, AND NO STATUS ON A LAW (the manager's review,
     # 29 October 2026): a guide of two chapters draws one menu, before the
     # first chapter, counting a law that changed both once; and a law in the
@@ -86326,24 +86433,37 @@ const src = %s;
 const grab = re => { const m = src.match(re); if (!m) throw new Error("not in app.js: " + re); return m[0]; };
 const code = [/const BILL_TABS=\{[^}]*\};/, /const MEMBER_TABS=\{[^}]*\};/, /const COMMITTEE_TABS=\{[^}]*\};/,
   /const TAB_PATH=.*;/, /const ownSlug=.*;/, /const isTabSlug=.*;/,
-  /function reportPath\(\)\{[\s\S]*?\n\}/].map(grab).join("\n");
+  /function reportPath\(\)\{[\s\S]*?\n\}/, /const REPORT_TABS=new Set\(\[[\s\S]*?\]\);/].map(grab).join("\n");
 const location = { pathname: "" };
-const reportPath = new Function("location", code + "\nreturn reportPath;")(location);
-const base = { tab: "", field: "status", note: "the date is wrong", build: "", elapsed: 9000 };
+const [reportPath, REPORT_TABS] = new Function("location",
+  code + "\nreturn [reportPath, REPORT_TABS];")(location);
+const base = { field: "status", note: "the date is wrong", build: "", elapsed: 9000 };
 const out = [];
+// Each address with the label its open tab shows, sent as app.js sends it.
 for (const [record, paths] of [
-    ["bill:2026/HB1", ["/bill/2026/hb1", "/bill/2026/hb1.html", "/bill/2026/hb1/votes", "/bill/2026/hb1/text/",
-                       "/bill/2026/hb1/hearings", "/bill/2026/hb1/related"]],
-    ["committee:H05", ["/committee/H05", "/committee/H05/sessions", "/committee/H05/videos", "/committee/H05/bills"]],
-    ["committee:S03-1989", ["/committee/S03-1989", "/committee/S03-1989/videos"]]]) {
-  for (const p of paths) {
+    ["bill:2026/HB1", [["/bill/2026/hb1", "Summary"], ["/bill/2026/hb1.html", "Summary"],
+                       ["/bill/2026/hb1/votes", "Votes (12)"], ["/bill/2026/hb1/text/", "Bill Text"],
+                       ["/bill/2026/hb1/hearings", "Hearings (2)"], ["/bill/2026/hb1/related", "Related (3)"]]],
+    ["committee:H05", [["/committee/H05", "Bills (40)"], ["/committee/H05/sessions", "Meetings (9)"],
+                       ["/committee/H05/videos", "Videos (7)"], ["/committee/H05/bills", "Bills (40)"]]],
+    ["committee:S03-1989", [["/committee/S03-1989", "Bills (1,204)"], ["/committee/S03-1989/videos", "Videos (1)"]]],
+    ["study:ss1451", [["/committee/ss1451", "Meetings (4)"], ["/committee/ss1451/bills", "Bills (2)"],
+                      ["/committee/ss1451/videos", "Videos (3)"]]]]) {
+  for (const [p, label] of paths) {
     location.pathname = p;
     const url = reportPath();
-    out.push([record, p, url, validate({ ...base, record, url }) !== null]);
+    const name = label.replace(/\s*\([\d.,\s']+\)\s*$/, "");
+    const tab = REPORT_TABS.has(name) ? name : "";
+    const got = validate({ ...base, record, url, tab });
+    out.push([record, p, url, got !== null, tab, got ? got.tab : null]);
   }
 }
+// A bill's page loaded before its Hearings tab was renamed still sends Videos.
+location.pathname = "/bill/2026/hb1/videos";
+const old = validate({ ...base, record: "bill:2026/HB1", url: reportPath(), tab: "Videos" });
+out.push(["bill:2026/HB1", location.pathname, reportPath(), old !== null, "Videos", old ? old.tab : null]);
 location.pathname = "/legislator/jane-doe-hills-12/votes";
-out.push(["member", location.pathname, reportPath(), null]);
+out.push(["member", location.pathname, reportPath(), null, "", null]);
 console.log("@@" + JSON.stringify(out));
 """
 
@@ -86371,11 +86491,22 @@ def _report_from_any_tab():
         shutil.rmtree(root, ignore_errors=True)
     assert r.returncode == 0 and "@@" in (r.stdout or ""), (r.stderr or r.stdout or "")[-400:]
     rows = json.loads(r.stdout.rsplit("@@", 1)[1])
-    bad = [f"{p} sent as {u} for {rec}" for rec, p, u, ok in rows if ok is False]
+    bad = [f"{p} sent as {u} for {rec}" for rec, p, u, ok, _t, _s in rows if ok is False]
     assert not bad, "report.js refuses a report from a tab: " + "; ".join(bad[:4])
-    member = [u for rec, p, u, ok in rows if rec == "member"]
+    member = [u for rec, p, u, ok, _t, _s in rows if rec == "member"]
     assert member == ["/legislator/jane-doe-hills-12"], f"a member's Votes tab sent {member}"
-    return "ok", f"{len(rows)} addresses, every tab's report sent from its record's own address"
+    # AND THE TAB IT WAS SENT FROM (the walk of 31 October 2026): a
+    # committee's and a study committee's Videos tab sent tab "", and a bill's
+    # old Videos is stored as its Hearings, a committee's Videos as Videos.
+    unnamed = [p for rec, p, u, ok, t, _s in rows if ok and not t]
+    assert not unnamed, f"a report from these tabs names no tab: {unnamed}"
+    stored = {(rec.split(":")[0], p.rstrip("/").rsplit("/", 1)[-1]): s for rec, p, u, ok, t, s in rows if ok}
+    assert stored.get(("bill", "videos")) == "Hearings" and stored.get(("bill", "hearings")) == "Hearings", (
+        "a bill's Hearings tab, by its old name or its new, is not stored as Hearings")
+    assert stored.get(("committee", "videos")) == "Videos" and stored.get(("study", "videos")) == "Videos", (
+        "a committee's or a study committee's Videos tab is not stored as Videos")
+    return "ok", (f"{len(rows)} addresses, every tab's report sent from its record's own address, "
+                  "naming the tab it was sent from")
 
 
 @check("build", "the report endpoint accepts only what a page can name, and stores nothing about the reader")
@@ -86900,7 +87031,15 @@ def _report_agree(CR):
     fn_tabs = set(re.findall(r'"([^"]*)"', re.search(r"const TABS = new Set\(\[(.*?)\]\)", js, re.S).group(1)))
     box_tabs = set(re.findall(r'"([^"]*)"', re.search(r"const REPORT_TABS=new Set\(\[(.*?)\]\)", app, re.S).group(1)))
     assert fn_tabs == set(CR.TABS) == box_tabs | {""}, (sorted(fn_tabs), sorted(CR.TABS), sorted(box_tabs))
-    rendered = set(re.findall(r'\["(Prime sponsored|Co-sponsored|Votes|Bills|Sessions|Meetings)"', app))
+    rendered = set(re.findall(r'\["(Prime sponsored|Co-sponsored|Votes|Bills|Sessions|Meetings|Videos)"',
+                              app))
+    # A STUDY COMMITTEE'S STRIP is drawn by its builder, not app.js, and its
+    # Videos tab sent no tab until the walk of 31 October 2026 found it.
+    sc = Path("src/pages/build_study_committees.py")
+    if sc.exists():
+        st = re.search(r"^TABS = \((.*)\)$", sc.read_text(encoding="utf-8"), re.M)
+        assert st, "build_study_committees.py has no TABS line to read its tabs from"
+        rendered |= set(re.findall(r'\("\w+", "([^"]+)", "\w+"\)', st.group(1)))
     rendered |= {t for t in ("Summary", "Bill Text", "Votes", "Videos", "Reports", "Sponsors", "Documents")
                  if re.search(rf">{t}(\$\{{|<)", app)}
     # READ OFF THE BUTTONS, NOT OFF A LIST OF NAMES (8 October 2026). The
@@ -86926,8 +87065,16 @@ def _report_agree(CR):
     assert rm, "report.js has no RENAMED_TABS"
     fn_renamed = dict(re.findall(r'\[\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\]', rm.group(1)))
     assert fn_renamed == CR.RENAMED_TABS, (fn_renamed, CR.RENAMED_TABS)
-    assert all(new in fn_tabs and old not in fn_tabs and old not in rendered
-               for old, new in fn_renamed.items()), fn_renamed
+    # WHOSE OLD NAME (31 October 2026): "Videos" is a bill's old Hearings and
+    # a committee's tab now, so each old name says whose it is, and is a tab
+    # drawn now only on another kind's page.
+    km = re.search(r"const RENAMED_KIND = new Map\(\[(.*?)\]\);", js, re.S)
+    assert km, "report.js has no RENAMED_KIND"
+    fn_kind = dict(re.findall(r'\[\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\]', km.group(1)))
+    assert fn_kind == CR.RENAMED_KIND and set(fn_kind) == set(fn_renamed), (fn_kind, CR.RENAMED_KIND)
+    assert all(new in fn_tabs for new in fn_renamed.values()), fn_renamed
+    assert "Videos" in rendered and "Videos" in box_tabs, (
+        "a committee's Videos tab is not among the tabs a report names")
     stored = {"id": 7, "at": "2026-09-30T12:00:00.000Z", "record": "bill:2026/HB100",
               "kind": "bill", "url": "/bill/2026/hb100", "tab": "Videos", "field": "hearing",
               "note": "The hearing was on the 3rd.", "build": "", "hidden": 0}
@@ -86939,6 +87086,10 @@ def _report_agree(CR):
     assert CR.well_formed(stored), "a report stored from the Sessions tab is set aside as malformed"
     assert [r["tab"] for r, _why, _page in CR.judge([stored], {})[0]] == ["Meetings"], (
         "a report stored from the Sessions tab is not shown as the Meetings tab's")
+    stored = dict(stored, id=9, tab="Videos", note="The recording is of another meeting.")
+    assert CR.well_formed(stored), "a report stored from a committee's Videos tab is set aside as malformed"
+    assert [r["tab"] for r, _why, _page in CR.judge([stored], {})[0]] == ["Videos"], (
+        "a report stored from a committee's Videos tab is shown as a bill's Hearings")
     return "ok", (f"{len(fn_fields)} fields, one record shape, {len(sent)} keys sent and read, "
                   f"{len(box_tabs)} tabs the same in all three, {len(rendered)} drawn; "
                   f"{', '.join(sorted(fn_renamed))} read as {', '.join(fn_renamed[k] for k in sorted(fn_renamed))}")

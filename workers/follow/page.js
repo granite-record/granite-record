@@ -35,12 +35,13 @@ const tokens = (theme) => Object.entries(PAGE_PALETTE[theme]).map(([k, v]) => `-
 const STYLE = `
 :root{${tokens("light")}
 --sans:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
---serif:"Source Serif 4",Georgia,"Times New Roman",serif}
+--serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+--brand-face:"Playfair Display",Georgia,serif}
 @media (prefers-color-scheme: dark){:root{${tokens("dark")}}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 var(--sans)}
 main{max-width:720px;margin:0 auto;padding:20px 16px 72px}
-.brand{font:600 20px/1 var(--serif);margin:4px 0 24px}
+.brand{font:600 22px/1.1 var(--brand-face);margin:4px 0 24px}
 .brand a{color:var(--ink);text-decoration:none}
 h1{font:600 2.125rem/1.2 var(--serif);margin:0 0 6px}
 .lede{color:var(--ink-2);margin:0 0 20px}
@@ -164,10 +165,13 @@ const NOSCRIPT = `<noscript><p class="note">This page needs JavaScript. Your pri
 keeps its key after the &ldquo;#&rdquo; in its address, which your browser does not send
 to any server, and a few lines of script on this page read it from there.</p></noscript>`;
 
-// THE SITE'S FONTS, the two this page draws in (chrome.FONTS has the rest).
+// THE SITE'S FONTS, the three this page draws in (chrome.FONTS has the
+// rest): the wordmark in the header's own face, Playfair Display 600 at 22px,
+// as app.css's --brand-face sets it (the walk of 31 October 2026 found it in
+// Source Serif 4 here and nowhere else).
 const FONTS = `<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet">`;
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">`;
 
 // ONE MESSAGE WHEN THE LINK IS INCOMPLETE (B-3): the script shows this and
 // hides whatever a caller marked data-waits -- a line that says the page is

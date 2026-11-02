@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-29.1
+# GRANITE_VERSION: 2026-10-29.2
 """
 What each House committee said about the bills it held for interim study:
 the INTERIM STUDY STATEMENTS of the House Calendar's autumn edition.
@@ -108,8 +108,8 @@ NOT_CMTE = re.compile(r"RECOMMEND|FUTURE|LEGISLATION|STATEMENTS|^(?:LEG|LEGIS)?-
                       r"|^LEG(?:IS)?-$")
 # The recommendation as printed, wherever the line breaks it: "FUTURE LEG-"
 # over "ISLATION.", and 2026's stray space before the stop.
-# And as the clerks varied it: RECOMMENDED FOR FURTHER LEGISLATION (SB 366 of
-# 2010), NOT RECOMMENDED FOR LEGISLATION (HB 1415 of 2006), NOT RECOMMENDED
+# And as the clerks varied it: NOT RECOMMENDED FOR FURTHER LEGISLATION (SB 366
+# of 2010), NOT RECOMMENDED FOR LEGISLATION (HB 1415 of 2006), NOT RECOMMENDED
 # FOR FUTURE RECOMMENDATION (HB 579 of 2000), NO RECOMMENDATION (HB 1592 of
 # 2014), and a footnote's number set inside the words where a page's note
 # is keyed: "NOT RECOMMENDED FOR FUTURE 2 LEGISLATION" (HB 1191 of 2010).
@@ -182,6 +182,16 @@ def printed_words(m):
 # "Rep Bette R. Lasky" with no stop, and 2010's "Reo. Suzanne H. Gottling";
 # at the top of a page, after its form feed.
 SIGNED = re.compile(r"(?m)^\f?[ \t]{12,}(?P<who>(?:Re[po]|Sen)\.?[ \t]+[A-Z][^\n]*?\S)[ \t]*$")
+
+
+def unstopped(who):
+    """A member's name without the full stop the calendar ended its line with
+    -- "Rep. Franklin W. Sterling." (HB 1303 of 2010; the walk of 31 October
+    2026) -- and with the one an initial or a Jr. or Sr. needs."""
+    who = who.rstrip()
+    if who.endswith(".") and not re.search(r"(?:\b[A-Z]|\b[JS]r)\.$", who):
+        who = who[:-1].rstrip()
+    return who
 
 
 # 1998 to 2004 also print the member's line in forms the report reader does
@@ -280,7 +290,7 @@ def statement(cmte, raw, source, names=None):
                  else (names or {}).get(cmte) or titled(cmte))
     out = {"source": source, "committee_heading": cmte, "title": title,
            "printed": printed_words(r) if r else "", "rec": rec,
-           "author": re.sub(r"\s+", " ", who).strip(),
+           "author": unstopped(re.sub(r"\s+", " ", who).strip()),
            "committee": committee, **({"signed": True} if sig else {})}
     # The vote, as the report reader takes it: the last one with only page
     # furniture after it, cut out of the text, the sentence keeping its stop.

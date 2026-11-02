@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.85
+# GRANITE_VERSION: 2026-09-08.86
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -2098,20 +2098,28 @@ def guide_record(g, data, bills, chapters, lang=I.DEFAULT):
         name = BR.chapter_label(ch, chapters[ch]["name"])
         now = [k for k in pend.get(ch, []) if k not in passing]
         passed = [k for k in pend.get(ch, []) if k in passing]
-        recent = {}
+        recent, chaptered = {}, {}
         for addr, hist in data.get("enacted", {}).items():
             if addr == ch or addr.startswith(ch + ":"):
                 for y, _law, b in hist:
-                    if b and b not in passing and str(y).isdigit():
-                        recent[b] = max(recent.get(b, 0), int(y))
+                    if b and str(y).isdigit():
+                        into = chaptered if b in passing else recent
+                        into[b] = max(into.get(b, 0), int(y))
         past = sorted(recent, key=lambda k: (-recent[k], BR.bill_order(k)))
         bits = [f'<h3 class="g-ch"><a href="{E(BR.chapter_path(ch))}">{E(name)}</a></h3>']
         if now:
             bits.append('<p class="g-what">Bills now before the General Court that would change it:</p>'
                         + BR.folded([bills.chip(k) for k in now]))
         if passed:
-            bits.append('<p class="g-what">Passed, not yet in effect:</p>'
-                        + BR.folded([bills.chip(k) for k in passed]))
+            # BY THE YEAR IT PASSED TOO (the walk of 31 October 2026): outside
+            # the laws' boxes the year chooser left these in whatever year was
+            # chosen. Each says the year it passed -- its chapter's, else its
+            # bill's -- and YR_JS shows the list only in that year, or All.
+            def passed_in(k):
+                return chaptered.get(k) or str(bills.row(k).get("year") or k.split("/")[0][:4])
+            bits.append('<div class="g-pass"><p class="g-what">Passed, not yet in effect:</p>'
+                        + BR.folded([bills.chip(k).replace("<li", f'<li data-y="{passed_in(k)}"', 1)
+                                     for k in passed]) + "</div>")
         if past:
             bits.append(record_laws(past, recent, bills))
             when.update({k: recent[k] for k in past})
@@ -2175,6 +2183,14 @@ YR_JS = """<script>
         li.hidden=!!y&&li.getAttribute("data-y")!==y; if(!li.hidden)shown++; });
       if(more){ if(y){more.open=true;} more.querySelector("summary").hidden=!!y; }
       if(none)none.hidden=!y||shown>0;
+    });
+    // Passed, not yet in effect: in the year each passed, or under All.
+    document.querySelectorAll(".g-pass").forEach(function(box){
+      var more=box.querySelector(".rs-more"), shown=0;
+      box.querySelectorAll("li[data-y]").forEach(function(li){
+        li.hidden=!!y&&li.getAttribute("data-y")!==y; if(!li.hidden)shown++; });
+      if(more){ if(y){more.open=true;} more.querySelector("summary").hidden=!!y; }
+      box.hidden=!!y&&!shown;
     });
   });
 })();

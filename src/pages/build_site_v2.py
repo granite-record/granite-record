@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.242
+# GRANITE_VERSION: 2026-09-05.243
 """
 Generate the faceted site from real General Court data.
 
@@ -3910,9 +3910,13 @@ def build_status(a, index, procs, floor, today, latest_by_body, upcoming):
 # "calendars%5C2026%5CNo10%20March%206%202026.pdf". Every one of the 24
 # calendars a committee report cites resolves this way, so a report that the
 # docket does not date can still be placed on the day it was printed.
+# ONE SPACE OR MORE (the walk of 31 October 2026): 2018's House Calendar 39
+# is "November%2009%20%202018", two before the year, and every interim report
+# it printed had no date. A space as typed counts too (SOURCE_YEAR's second
+# shape, "No10 March 6 2026.pdf").
 CAL_DATE = re.compile(
     r"(January|February|March|April|May|June|July|August|September|October"
-    r"|November|December)%20(\d{1,2})%20(\d{4})", re.I)
+    r"|November|December)(?:%20| )+(\d{1,2})(?:%20| )+(\d{4})", re.I)
 MONTHS = ["january", "february", "march", "april", "may", "june", "july",
           "august", "september", "october", "november", "december"]
 # "House Calendar 51, 2025" is how a report names the calendar it was printed
