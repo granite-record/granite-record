@@ -70455,6 +70455,34 @@ def _spanish_glossary(i18n, BC, chrome):
                   "the English page names its twin")
 
 
+@check("build", "the build writes /live after the week pages and lists it in the sitemap, and both "
+       "committee builders place the live hook", needs=())
+def _live_in_the_build():
+    """workers/live/PATCHES.md 1 and 11, applied 2 November 2026. build_all
+    runs build_live.py after build_calendar.py, whose week pages it reads;
+    build_live lists /live in the sitemap, as every builder lists its own --
+    check_site refuses a page that asks to be indexed and is not listed, and
+    /live would have stopped the night; and build_committees and
+    build_study_committees each call live_hook.place, which _live_committee
+    holds once both do but no longer requires (a builder that dropped the
+    call would pass it, the patch still saying how)."""
+    import build_all as BA
+    A = type("A", (), {"key": None, "session": "2026", "base": "https://graniterecord.org",
+                       "archive": "nh-archive", "keep_going": False, "allow_prune": False})
+    plan = [(s.args or [""])[0] for s in BA.plan(A())]
+    assert "build_live.py" in plan and "build_calendar.py" in plan \
+        and plan.index("build_calendar.py") < plan.index("build_live.py"), (
+            f"build_all does not run build_live.py after build_calendar.py: {plan}")
+    live = Path(_paths.locate("build_live.py")).read_text(encoding="utf-8")
+    assert re.search(r'^\s*S\.sitemap_merge\(site, base, \[[^\]]*S\.canon\(ADDRESS\)\], "/live"\)', live, re.M), (
+        "build_live does not list /live in the sitemap, and check_site would refuse the page")
+    call = re.compile(r"^[^#\n]*\blive_hook\.place\(", re.M)
+    lacking = [f for f in ("build_committees.py", "build_study_committees.py")
+               if not call.search(Path(_paths.locate(f)).read_text(encoding="utf-8"))]
+    assert not lacking, f"{', '.join(lacking)} no longer places the live hook (PATCHES.md 11)"
+    return "ok", "/live built after the week pages and in the sitemap; the hook placed by both committee builders"
+
+
 @check("build", "a House report is dated by its calendar's filename however the clerk spaced it",
        needs=("build_site_v2",))
 def _cal_date_spaced(SV):
