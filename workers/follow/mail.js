@@ -36,8 +36,8 @@ import { addDays, esc, nhClock, oneLine, parseKey, siteUrl } from "./common.js";
 // mark's file and size -- is in site.gen.js, which src/pages/follow_site.py
 // writes from the file the site draws it from. Change it there and run that;
 // nothing here types one of them.
-import { FOLLOW_BETA, MARK_FILE, SITE_PALETTE, STATUS_CLASS, STATUS_INK, STUDY_REPORT, TESTIFY_FORMS,
-         VOTE_INK } from "./site.gen.js";
+import { CHIP_WORDS, FOLLOW_BETA, MARK_FILE, SITE_PALETTE, STATUS_CLASS, STATUS_INK, STUDY_REPORT,
+         TESTIFY_FORMS, VOTE_INK } from "./site.gen.js";
 export { FOLLOW_BETA, STATUS_CLASS, STATUS_INK, TESTIFY_FORMS, VOTE_INK };
 
 const RESEND = "https://api.resend.com/emails";
@@ -150,8 +150,42 @@ export const statusInk = words => STATUS_INK[STATUS_CLASS[String(words || "").tr
 function statusChip(words) {
   return `<span style="display:inline-block;padding:0 8px;border:1px solid ${RULE};` +
     `border-left:4px solid ${statusInk(words)};border-radius:3px;color:${INK};` +
-    `font-size:14px;line-height:1.6;font-weight:600">${esc(words)}</span>`;
+    `font-size:14px;line-height:1.6;font-weight:600">${esc(chipWord(words))}</span>`;
 }
+
+// THE SITE'S CHIP WORDS (the email pass, 29 October 2026: "the status words
+// should match the site's chip words"). A bill card's chip says "In
+// Committee" or "To the Governor" where the record says "In committee" or
+// "Passed, awaiting the governor" (chips.json "short", components.card_word);
+// "Now" said the record's words. This is card_word with no passage, as
+// components.js's cardWord is, and its Title Case as titleWords; the words it
+// reads are site.gen.js's CHIP_WORDS, from chips.json and meeting_kinds.json.
+// The colour stays the record's word's (statusInk), as the site's does.
+const TW_DASHES = ["-", "–", "—"];
+function titleWords(s) {
+  const t = s == null ? "" : String(s), shout = !/[a-z]/.test(t), words = t.split(" ");
+  return words.map((w, i) => {
+    if (CHIP_WORDS.capitals.includes(w.toUpperCase())) return w.toUpperCase();
+    if (/[0-9]/.test(w) || (!shout && /^[^a-z]*[A-Z][^a-z]*[A-Z][^a-z]*$/.test(w))) return w;
+    const low = w.toLowerCase();
+    return i && !TW_DASHES.includes(words[i - 1]) && CHIP_WORDS.small.includes(low) ? low
+      : low.replace(/^([^A-Za-z]*)([a-z])/, (m, a, b) => a + b.toUpperCase());
+  }).join(" ");
+}
+export function chipWord(words) {
+  const s = words == null ? "" : String(words).trim();
+  if (Object.prototype.hasOwnProperty.call(CHIP_WORDS.short, s)) return CHIP_WORDS.short[s];
+  const pre = CHIP_WORDS.short_prefix.find(x => s.startsWith(x[0]));
+  return pre ? pre[1] : titleWords(s);
+}
+
+// A TALLY KEPT WHOLE (the email pass: "14–" at the end of one line and "0"
+// at the start of the next). Every count of the form 14–0 or 201-163 in the
+// words of an email's HTML is held on one line; nothing inside a tag is
+// touched, so no address or attribute changes.
+const TALLY = /\b\d{1,4} ?[–-] ?\d{1,4}\b/g;
+export const keepWhole = html => String(html).replace(/>([^<]+)</g, (m, t) =>
+  ">" + t.replace(TALLY, x => `<span style="white-space:nowrap">${x}</span>`) + "<");
 
 export function dayDate(day) {
   const [y, m, d] = String(day).split("-").map(Number);
@@ -693,7 +727,7 @@ export const HEARING_SET = /^(public )?hearing\b/i;
 // of the bill's list where the block is drawn: a hearing's line, of the
 // block's day, at its hour where both have one, that set it. A line that
 // moved it, put it off or recessed it stays, since what changed is news the
-// block does not carry; and the subject and "at a glance" keep it, as they
+// block does not carry; and the subject and the preheader keep it, as they
 // carry no block.
 const setsHearing = (it, t) => !!it.meeting && HEARING_SET.test(it.meeting.what || "") &&
   it.meeting.date === t.date && !it.meeting.state &&
@@ -767,8 +801,10 @@ function weekLine(w) {
 }
 
 // THE ORDER A DIGEST IS IN (the design the person approved, 11 October
-// 2026): what matters most at a glance, then -- in the weekly -- the week
-// ahead, then each kind of record under its own heading.
+// 2026; the email pass, 29 October 2026): one line of counts, then -- in the
+// weekly -- the week ahead, then each kind of record under its own heading,
+// the most pressing record of each kind first. "At a glance", which led
+// until 29 October, repeated the sections' first lines and is gone.
 // AN ITEM IN PLAIN WORDS (the person's choice of 14 October 2026): the
 // build's plain sentence where it has one (CHANGES_FORMAT.md, "plain"), the
 // clerk's line where it does not. A newly recorded old event says so, and a
@@ -779,7 +815,7 @@ const LATE_SHOWN = 3;        // newly recorded entries listed a record, the rest
 const said = it => it.plain || it.summary;
 export const late = it => !!it.seen && it.date < addDays(String(it.seen).slice(0, 10), -LATE_DAYS);
 // beside: whether the entry's own date is printed beside these words, as it
-// is in a record's list and is not in the subject or "at a glance".
+// is in a record's list and is not in the subject or the preheader.
 function itemWords(it, date, beside = true) {
   if (it.meeting) {
     const w = meetingLine(it, beside);
@@ -800,7 +836,7 @@ function itemWords(it, date, beside = true) {
 // meeting the clerk marked rescheduled, recessed, cancelled or moved says so
 // in the same way. The meeting's day is said once, as every entry's is: where
 // it is the entry's own date, printed beside, the hour says when; the
-// subject and "at a glance" have no date beside them, so they always say it.
+// subject and the preheader have no date beside them, so they always say it.
 const SET = {
   "": (k, when) => `${k} set for ${when}`,
   rescheduled: (k, when) => `${k} rescheduled for ${when}`,
@@ -870,8 +906,12 @@ const GROUPS = [["bill", "Bills you follow"], ["lsr", "Bill requests you follow"
                 ["member", "Legislators you follow"], ["committee", "Committees you follow"],
                 ["topic", "Topics you follow"]];
 const AHEAD = "Coming up";
+// What one and several of each are called in the line of counts.
+const KIND_WORDS = { bill: ["bill", "bills"], lsr: ["bill request", "bill requests"],
+  law: ["law", "laws"], member: ["legislator", "legislators"],
+  committee: ["committee", "committees"], topic: ["topic", "topics"] };
 
-// What most deserves the subject line and the "at a glance" list, best first:
+// What most deserves the preheader, and a single update's subject, best first:
 // how a record ended, then a roll call, a study's report, a meeting
 // scheduled, an executive session, a committee report, any other milestone.
 const RANK = { vote: 1, study: 2, scheduled: 3, exec: 4, report: 5 };
@@ -895,6 +935,35 @@ export function headlines(sections, date = "", skipAhead = false) {
   return out.sort((a, b) => a[0] - b[0])
     .map(([, t]) => oneLine(t, 140).replace(/\.$/, ""))
     .filter(t => !seen.has(t) && seen.add(t));
+}
+
+// Whether a record has an update of its own, as `count` counts them.
+const hasNews = s => !!(s.items.length || (s.votes || []).length || s.more || s.study || s.ended);
+
+// How a record's own lines open with its name: its label, and for a bill its
+// number however the label writes it -- "HB 9902", "HB 9902-FN", or "HB 9902
+// (2026)", the label a bill gone from the list is given (common.js
+// fallbackLabel) -- so the one that ended loses its name like the rest.
+function ownName(s) {
+  const q = t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const alts = [q(s.label)];
+  const n = s.kind === "bill" && /^\d{4}\/([A-Z]+)0*(\d+)$/.exec(String(s.ref || ""));
+  if (n) alts.push(`${n[1]} ${n[2]}(?:-[A-Z]+)*(?: \\(\\d{4}\\))?`);
+  return new RegExp(`^(?:${alts.join("|")}) — `);
+}
+
+// Which record the subject names first: a hearing today or tomorrow to
+// testify at, then how a record ended, a hearing just set that testimony is
+// open for, a study's report, a roll call, then its best milestone by RANK;
+// a record with none of those last.
+function sectionRank(s) {
+  if (s.testify?.phase === "day") return 0;
+  if (s.testify?.phase === "eve") return 0.5;
+  if (s.ended && !s.ended.fallback) return 1;
+  if (s.testify?.phase === "open") return 1.5;
+  if (s.study) return 2;
+  if ((s.votes || []).length) return 3;
+  return Math.min(9, ...s.items.filter(it => it.milestone && !late(it)).map(it => (RANK[it.kind] || 6) + 3));
 }
 
 // The week ahead, from every section's upcoming: one row a meeting, with
@@ -964,17 +1033,40 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
     (s.study ? 1 : 0) + (s.ended ? 1 : 0), 0);
   const ahead = weekly ? weekAhead(sections) : [];
   const tops = headlines(sections, date, ahead.length > 0);
-  const more = n => n > 0 ? `, and ${plural(n, "more update", "more updates")}` : "";
-  // "Proceedings" was the code's word for them (the language sweep, 17
-  // October 2026); every one in the week ahead is a committee's meeting.
+  // A SHORT SUBJECT (the email pass, 29 October 2026: a subject that was a
+  // study report's whole sentence, its tally and "and 4 more updates" was
+  // too long to read in an inbox). How many updates, and the records
+  // they are on, the most pressing first, two by name and the rest counted:
+  // "5 updates: HB 1004, HB 1024 and 3 more". A hearing today or tomorrow on
+  // a bill the reader can testify on still leads, since it has a deadline.
+  // What the top news is goes in the preheader, the line an inbox shows
+  // after the subject.
+  const urgent = sections.find(s => s.testify?.phase === "day") ||
+    sections.find(s => s.testify?.phase === "eve");
+  // Only a record with an update is named or counted: one that is in the
+  // email for a hearing coming up and nothing else adds no update (the
+  // review of 29 October 2026: "3 updates on 4 bills"). "On" before the
+  // names, so that "and 3 more" reads as three more records, not updates.
+  const news = sections.filter(hasNews);
+  const ranked = [...news].sort((x, y) => sectionRank(x) - sectionRank(y));
+  const named = n => {
+    const ls = ranked.map(s => s.label);
+    return ls.length <= n + 1 ? andList(ls) : `${ls.slice(0, n).join(", ")} and ${ls.length - n} more`;
+  };
+  const updates = plural(count, "update", "updates");
+  const meetings = plural(ahead.length, "meeting", "meetings");
+  // One update with words of its own is said in them: the subject is short
+  // already, and it is the news ("HB 9901 — Became law unsigned").
+  const one = count === 1 && tops.length === 1 ? tops[0] : "";
   const subject = oneLine(weekly
-    ? (ahead.length
-        ? `Your week: ${plural(ahead.length, "committee meeting", "committee meetings")} coming up` +
-          (tops.length ? `, and ${tops[0]}` : "")
-        : tops.length ? `Your week: ${tops[0]}${more(count - 1)}`
+    ? (ahead.length ? `Your week: ${meetings} coming up${count ? ` and ${updates} on ${named(2)}` : ""}`
+        : one ? `Your week: ${one}` : count ? `Your week: ${updates} on ${named(2)}`
           : `Your week to ${longDate(date, true)}`)
-    : tops.length ? `${tops[0]}${more(count - 1)}`
-      : `${plural(count, "update", "updates")} on what you follow`, 150);
+    : one && !urgent ? one
+    : urgent
+      ? `Public hearing ${urgent.testify.phase === "day" ? "today" : "tomorrow"} on ${urgent.label}: ` +
+        `testify online${count ? `, and ${updates}` : ""}`
+      : count ? `${updates} on ${named(2)}` : `${updates} on what you follow`, 150);
   // NO OPENING SENTENCE, ONLY THE DAY (the person, 17 October 2026: "This
   // sentence is unnecessary: 'What changed on the record you follow, as of
   // last night's build.'"). The footer says how current the email is.
@@ -982,15 +1074,17 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
   const text = [dateline, ""];
   let html = "";
 
-  // AT A GLANCE: where there is enough to need it.
-  const glance = tops.slice(0, 3);
-  if (glance.length && (count >= 4 || sections.length >= 3)) {
-    text.push("At a glance:", ...glance.map(g => `  * ${g}`), "");
-    html += `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ` +
-      `style="border:1px solid ${RULE};border-radius:4px;margin:0 0 8px"><tr><td bgcolor="${WHITE}" ` +
-      `style="background:${WHITE};padding:12px 14px"><p style="margin:0 0 6px;font-weight:600">At a glance</p>` +
-      `<ul style="margin:0;padding-left:18px">` +
-      glance.map(g => `<li style="margin:0 0 4px">${link(g)}</li>`).join("") + "</ul></td></tr></table>";
+  // ONE LINE OF COUNTS, NOT "AT A GLANCE" (the email pass, 29 October 2026:
+  // "each bill appears twice"). The glance repeated, word for word, the
+  // first lines of the sections under it; the email now says once how much
+  // there is and on what, and each update is told once, under its record.
+  const kinds = GROUPS.map(([k]) => [KIND_WORDS[k], news.filter(s => s.kind === k).length])
+    .filter(([, n]) => n).map(([w, n]) => plural(n, w[0], w[1]));
+  const tally = [ahead.length ? `${meetings} coming up` : "",
+    count ? `${updates} on ${andList(kinds, 9)}` : ""].filter(Boolean).join(", and ");
+  if (tally) {
+    text.push(`${tally}.`, "");
+    html += `<p style="margin:0 0 4px;font-size:15px;color:${INK2}">${esc(cap(tally))}.</p>`;
   }
 
   const heading = h => {
@@ -1045,7 +1139,9 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
   }
 
   for (const [kind, name] of GROUPS) {
-    const mine = sections.filter(s => s.kind === kind);
+    // The most pressing record of its kind first (sectionRank), so a hearing
+    // today, an ending or a testimony deadline is not fifth in its list.
+    const mine = sections.filter(s => s.kind === kind).sort((x, y) => sectionRank(x) - sectionRank(y));
     if (!mine.length) continue;
     if (weekly && ahead.length && !mine.some(s => s.items.length || (s.votes || []).length ||
         s.study || s.ended || s.week)) continue;
@@ -1057,8 +1153,18 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
         `${a(url, s.label)}</h3>`;
       if (s.title) html += `<p style="margin:0 0 6px;color:${INK2};font-size:14px">${esc(s.title)}</p>`;
       if (s.now) {
-        text.push(`  Now: ${s.now}`);
+        text.push(`  Now: ${chipWord(s.now)}`);
         html += `<p style="margin:2px 0 6px;font-size:14px;color:${INK2}">Now ${statusChip(s.now)}</p>`;
+      }
+      // HOW IT ENDED, FIRST (the review of 29 October 2026): with no list at
+      // the top any more, an ending said after a record's rows was the last
+      // thing in its section; it is the news, so it leads.
+      if (s.ended) {
+        const how = s.ended.summary || `${s.label} has concluded.`;
+        // A request drafted into a bill: the follow has moved, not ended.
+        const tail = s.ended.becomes ? MOVED_TAIL : ENDED_TAIL;
+        text.push(`  ${how} ${tail}`);
+        html += `<p style="margin:0 0 8px"><b>${link(how)}</b> ${esc(tail)}</p>`;
       }
       // The weekly's is in its week ahead, beside the hearing.
       const block = !!s.testify && !!TESTIFY_FORMS[s.testify.chamber] && !(weekly && ahead.length);
@@ -1070,14 +1176,17 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
       if ((s.votes || []).length) {
         text.push(`  Roll calls (${s.votes.length}):`);
         html += `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ` +
-          `style="font-size:14px;margin:0 0 10px">`;
+          `style="margin:2px 0 10px;font-size:15px;line-height:1.45">`;
         for (const it of s.votes) {
           const v = it.vote;
           const on = v.motion ? `On ${v.motion}: ` : "";
           text.push(`  ${longDate(it.date)}  ${v.bill || ""}${v.title ? ` (${oneLine(v.title, 90)})` : ""}` +
             ` — ${on}${ballotLine(v)}`);
-          html += `<tr><td style="padding:6px 0;border-bottom:1px solid ${RULE}">` +
-            `<span style="color:${INK2}">${esc(shortDate(it.date, date))}</span> — ` +
+          // A ROW AS EVERY OTHER ENTRY IS (the email pass, 29 October 2026):
+          // its date in the column of dates, the bill and the ballot beside it.
+          html += `<tr><td valign="top" width="64" style="width:64px;padding:5px 8px 5px 0;` +
+            `color:${INK2};font-size:14px;white-space:nowrap">${esc(shortDate(it.date, date))}</td>` +
+            `<td valign="top" style="padding:5px 0 5px 10px;border-left:3px solid ${PINE}">` +
             (v.bill ? (it.url ? a(siteUrl(origin, it.url), v.bill) : link(v.bill)) : "") +
             (v.title ? ` <span style="color:${INK2}">${esc(oneLine(v.title, 140))}</span>` : "") +
             `<br>${esc(on)}<b>${esc(ballotLine(v))}</b></td></tr>`;
@@ -1092,11 +1201,21 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
       const told = it => block && setsHearing(it, s.testify);
       const fresh = s.items.filter(it => !late(it) && !(weekly && ahead.length && it.date > date) && !told(it));
       const old = s.items.filter(it => late(it) && !told(it));
+      // NOT THE RECORD'S OWN NAME AGAIN (the email pass, 29 October 2026):
+      // under "HB 1080-FN" every line began "HB 1080-FN — ". A line under
+      // its own record starts with what happened; a topic's or a law's
+      // lines, which are of other bills, keep the bill they are about.
+      const mine = ownName(s);
+      const own = w => {
+        const m = /^((?:Newly recorded|Scheduled): )?(.*)$/.exec(w);
+        const hit = mine.exec(m[2]);
+        return hit ? (m[1] || "") + cap(m[2].slice(hit[0].length)) : w;
+      };
       const shown = [...fresh, ...old.slice(0, LATE_SHOWN)]
-        .map(it => ({ date: it.date, words: itemWords(it, date), bold: it.milestone && !late(it),
+        .map(it => ({ date: it.date, words: own(itemWords(it, date)), bold: it.milestone && !late(it),
                       rc: it.rollcall || null }));
       if (s.study) shown.unshift({ date: s.study.date || date, bold: true,
-                                   words: `${s.label} — ${studyWords(s.study)}` });
+                                   words: cap(studyWords(s.study)) });
       const earlier = old.length - Math.min(old.length, LATE_SHOWN);
       // AN ENTRY IS A ROW (22 October 2026): its short date in a column of
       // its own, so the words start at one edge on a phone rather than
@@ -1134,13 +1253,6 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
             (u.venue ? `, ${esc(u.venue)}` : "") + ".</p>";
         }
       }
-      if (s.ended) {
-        const how = s.ended.summary || `${s.label} has concluded.`;
-        // A request drafted into a bill: the follow has moved, not ended.
-        const tail = s.ended.becomes ? MOVED_TAIL : ENDED_TAIL;
-        text.push(`  ${how} ${tail}`);
-        html += `<p style="margin:0 0 8px"><b>${link(how)}</b> ${esc(tail)}</p>`;
-      }
       text.push("");
     }
   }
@@ -1149,8 +1261,8 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
   return {
     subject,
     text: text.join("\n"),
-    html: frame(origin, html + f.html, { dateline, preheader: glance.slice(1).join("; ") || dateline,
-                                   title: subject }),
+    html: frame(origin, keepWhole(html) + f.html, { dateline, title: subject,
+      preheader: tops.find(t => !subject.includes(t)) || tally || dateline }),
     headers: gone ? undefined : listHeaders(origin, unsub),
   };
 }

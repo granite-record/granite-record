@@ -109,7 +109,11 @@ of the first four parts below, `cloud.py`'s of the morning and the kit, and
 
 **The night, on GitHub.** `.github/workflows/nightly.yml` runs every night at
 08:17 UTC on an empty Windows machine, from the commit of the branch it was
-started on -- `main` on a schedule. Its first job brings the small state
+started on -- `main` on a schedule. The start is the night timer's
+(`workers/night-timer/`, a Cloudflare Worker that dispatches the workflow at
+08:17 UTC, since 23 October 2026, because GitHub's scheduler had begun
+starting the night hours late); GitHub's own cron stays as the fallback, and
+`workers/night-timer/README.md` says how its token is made and renewed. Its first job brings the small state
 files and the kit down from R2 (`cloud.py state-down`, `cloud.py kit-down`),
 looks for new livestreams (`src/ops/livestreams.py --since-state`), and runs
 `nightly.py --runner`: the day's bulk files from gc.nh.gov, asked only when no

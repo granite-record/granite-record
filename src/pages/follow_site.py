@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.3
+# GRANITE_VERSION: 2026-10-23.4
 """
 The site's colours and words the email sender draws with, written into
 workers/follow/site.gen.js from the files the site itself draws them from.
@@ -32,6 +32,12 @@ that mail.js imports:
     FOLLOW_BETA     follow_beta.json: the line that says email following is
                     in beta, and the day it is no longer said (26 October
                     2026), which the Follow by email pane says too
+    CHIP_WORDS      chips.json "short", "short_prefix" and "capitals", and
+                    meeting_kinds.json "small": what a bill card's chip says
+                    for where a bill stands (components.card_word), so that
+                    an email's "Now" says "In Committee" where the site's
+                    chip does, not the record's "In committee" (the email
+                    pass, 29 October 2026)
 
 What is the email's own and not the site's stays in mail.js: the white
 ground, the mark's empty alt, every other sentence. What is the manage page's own
@@ -78,9 +84,10 @@ APP_JS = Path("src/pages/app.js")
 CHIPS = Path("src/pages/words/chips.json")
 STUDY = Path("src/pages/words/study_report.json")
 BETA = Path("src/pages/words/follow_beta.json")
+KINDS = Path("src/pages/words/meeting_kinds.json")
 BRAND = Path("src/pages/build_brand.py")    # imported, for the mark
 # Every file the written one is made from.
-SOURCES = (APP_CSS, APP_JS, CHIPS, STUDY, BETA, BRAND)
+SOURCES = (APP_CSS, APP_JS, CHIPS, STUDY, BETA, KINDS, BRAND)
 
 HEX = re.compile(r"#[0-9A-Fa-f]{6}")
 
@@ -202,6 +209,12 @@ def values(root=None):
     if not (isinstance(beta.get("note"), str) and beta["note"].strip()
             and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(beta.get("until") or ""))):
         raise SourceError('follow_beta.json has no "note", or no "until" as YYYY-MM-DD')
+    chips = json.loads((base / CHIPS).read_text(encoding="utf-8"))
+    small = json.loads((base / KINDS).read_text(encoding="utf-8")).get("small")
+    if not (isinstance(chips.get("short"), dict) and isinstance(chips.get("short_prefix"), list)
+            and isinstance(chips.get("capitals"), list) and isinstance(small, list)):
+        raise SourceError('chips.json has no "short", "short_prefix" or "capitals", or '
+                          'meeting_kinds.json no "small"')
     import build_brand as BB
     mark = {"path": f"/{BB.MAIL_MARK}", "width": BB.MARK_BOX[0] + 2 * BB.MAIL_PAD,
             "height": BB.MARK_BOX[1] + 2 * BB.MAIL_PAD}
@@ -220,6 +233,10 @@ def values(root=None):
                          {"head": study["head"], "said": {k: said[k] for k in ("rec", "not", "without")}}),
         "FOLLOW_BETA": ("src/pages/words/follow_beta.json: the beta line, and the day it is no longer said",
                         {"note": beta["note"], "until": beta["until"]}),
+        "CHIP_WORDS": ('src/pages/words/chips.json "short", "short_prefix" and "capitals", and '
+                       'meeting_kinds.json "small": a bill card\'s chip words (components.card_word)',
+                       {"short": chips["short"], "short_prefix": chips["short_prefix"],
+                        "capitals": chips["capitals"], "small": small}),
         "MARK_FILE": ("src/pages/build_brand.py: MAIL_MARK, at MARK_BOX plus MAIL_PAD on every side", mark),
         "PAGE_PALETTE": ("src/pages/app.css, light :root and dark :root[data-theme=\"dark\"]: the manage "
                          "page's colours, --brick-soft from --st-done-bg",

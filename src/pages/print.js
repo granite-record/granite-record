@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.9
+// GRANITE_VERSION: 2026-10-09.10
 /* A BILL'S PRINT SHEET. A reference sheet of one bill's record for paper,
    composed in the reader's browser from the record the page already holds,
    beside a short menu of settings, and printed with the browser's own dialog
@@ -743,7 +743,12 @@ function reports(d,W){
         e.vote_yeas!=null&&e.vote_nays!=null?`, ${tally(e.vote_yeas,e.vote_nays)}`:""}${e.amendment?`, amendment ${esc(e.amendment)}`:""}${
         r.calendar?`, on the ${esc(r.calendar)}`:""}. ${e.author?`For the committee: ${esc(e.author)}. `:""}${
         r.cite?`Source: ${esc(r.body==="S"?r.cite:(r.source||r.cite))}.`:""}</p>${
-        (e.text||"").trim()?`<p>${esc(e.text)}</p>`:e.note?`<p class="ps-note">${esc(e.note)}</p>`:""}`;}).join("")}</div>`;}).join("");
+        /* The note above the reasons, as the Reports tab draws it: an
+           interim study statement's "the recommendation shown is the House
+           docket's" (build_site_v2.INTERIM_FROM_DOCKET) is printed beside
+           the reasons it stands over, not only where there are none. */
+        e.note?`<p class="ps-note">${esc(e.note)}</p>`:""}${
+        (e.text||"").trim()?`<p>${esc(e.text)}</p>`:""}`;}).join("")}</div>`;}).join("");
   const docket=(d.docket_reports||[]).map(r=>`<div class="ps-rep">${head(r,r.committee)}<p class="ps-sub2">${
     r.recommendation?`<span class="ps-word">${esc(r.recommendation)}</span> `:""}<b>${
     esc(r.side||"Committee")}</b>${r.vote_yeas!=null&&r.vote_nays!=null?`, ${tally(r.vote_yeas,r.vote_nays)}`:""}${

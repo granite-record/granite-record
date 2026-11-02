@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.20
+# GRANITE_VERSION: 2026-09-05.21
 """
 Write STATE.md from what is actually on disk.
 
@@ -167,7 +167,7 @@ def data_state():
     return h.hexdigest()
 
 
-def record_run(mode, results, before, seconds, data=None):
+def record_run(mode, results, before, seconds, data=None, timings=None):
     """Write RUN: what a preflight run found, and the code it ran on.
 
     `mode` is "code", "data" or "all"; `results` is preflight's own list of
@@ -176,8 +176,11 @@ def record_run(mode, results, before, seconds, data=None):
     checks ran is recorded as no tree at all: such a run vouches for neither
     state, and a reader keyed on the tree refuses it. `data` is data_state()
     as the run began, recorded the same way: no digest at all where the data
-    files moved under the run. Never raises -- a record that cannot be
-    written must not change what preflight reports.
+    files moved under the run. `timings` is [(function, seconds)], one for
+    each of `results` in its order, kept as "timings" (26 October 2026: the
+    night's checks grew from 110 s to 285 s in 17 days and no record said
+    which). Never raises -- a record that cannot be written must not change
+    what preflight reports.
     """
     try:
         after, data_after = tree_state(), data_state()
@@ -190,6 +193,8 @@ def record_run(mode, results, before, seconds, data=None):
             "data": data_after if data in (None, data_after) else None,
             "python": sys.version.split()[0],
             "checks": [[g, name, status] for g, name, status, _ in results],
+            **({"timings": [[fn, round(s, 2)] for fn, s in timings]}
+               if timings is not None else {}),
         }, indent=1) + "\n", encoding="utf-8", newline="\n")
         tmp.replace(RUN)
         return True

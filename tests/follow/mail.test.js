@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import { checkCurrent, checkNight } from "../../workers/follow/changes.js";
 import { parseKey } from "../../workers/follow/common.js";
-import { FOLLOW_BETA, MARK, PALETTE, STATUS_INK, TESTIFY_FORMS, VOTE_INK, ballotWords, betaNote, confirmationEmail,
+import { FOLLOW_BETA, chipWord, keepWhole, MARK, PALETTE, STATUS_INK, TESTIFY_FORMS, VOTE_INK, ballotWords, betaNote, confirmationEmail,
          dateOnce, dayDate, digestEmail, longDate, meetingWords, newLinkEmail, nothingNewEmail, pageNames, shortDate,
          siteClock, welcomeEmail } from "../../workers/follow/mail.js";
 import { collect, testifyFor } from "../../workers/follow/sender.js";
@@ -292,13 +292,16 @@ for (const c of MEETINGS) {
     const m = digestEmail({ origin: SITE, frequency: "daily", date: TODAY, sections: [billWith([meetingItem(c)])],
       names: pageNames(CURRENT), ...LINKS });
     if (!c.meeting) {
-      // A line the email does not word stays as the clerk wrote it.
-      assert.ok(m.text.includes(`  ${longDate(c.date)}  HB 9903-FN — ${dateOnce(c.line, c.date)}\n`), m.text);
+      // A line the email does not word stays as the clerk wrote it -- under
+      // its own bill without the bill's number again (the email pass, 29
+      // October 2026).
+      const line = dateOnce(c.line, c.date);
+      assert.ok(m.text.includes(`  ${longDate(c.date)}  ${line.charAt(0).toUpperCase() + line.slice(1)}\n`), m.text);
       return;
     }
-    assert.ok(m.text.includes(`  ${longDate(c.date)}  HB 9903-FN — ${c.words}\n`),
+    assert.ok(m.text.includes(`  ${longDate(c.date)}  ${c.words}\n`),
       `the plain text lacks: ${c.words}\n${m.text}`);
-    assert.ok(visible(m.html).includes(`${shortDate(c.date, TODAY)}\nHB 9903-FN — ${c.words}\n`),
+    assert.ok(visible(m.html).includes(`${shortDate(c.date, TODAY)}\n${c.words}\n`),
       `the HTML lacks: ${c.words}`);
     const clerk = c.line.slice(c.line.indexOf(":") + 1).trim();
     assert.ok(!(m.text + visible(m.html)).includes(clerk), `the clerk's line is still printed: ${clerk}`);
@@ -314,20 +317,20 @@ for (const c of MEETINGS) {
   });
 }
 
-test("a meeting's day is said where no date stands beside it: the subject and at a glance", () => {
+test("a meeting's day is said where no date stands beside it: the subject and the preheader", () => {
   const same = MEETINGS.find(c => c.form === "same day");
   const m = digestEmail({ origin: SITE, frequency: "daily", date: TODAY, sections: [billWith([meetingItem(same)])],
     names: pageNames(CURRENT), ...LINKS });
   assert.equal(m.subject, "HB 9903-FN — Executive session set for Tuesday, October 6, 1:00 p.m., " +
     "Legislative Office Building 305");
-  assert.match(m.text, /October 6, 2026 {2}HB 9903-FN — Executive session set for 1:00 p\.m\., Legislative Office Building 305\n/,
+  assert.match(m.text, /October 6, 2026 {2}Executive session set for 1:00 p\.m\., Legislative Office Building 305\n/,
     "beside its own date, the hour alone");
   // A meeting still to come is "set for", so it is not also "Scheduled:".
   const ahead = { ...same, date: "2026-10-14",
     meeting: { ...same.meeting, date: "2026-10-14", what: "public hearing" } };
   const later = digestEmail({ origin: SITE, frequency: "daily", date: TODAY,
     sections: [billWith([meetingItem(ahead)])], names: pageNames(CURRENT), ...LINKS });
-  assert.match(later.text, /October 14, 2026 {2}HB 9903-FN — Hearing set for 1:00 p\.m\., Legislative Office Building 305\n/);
+  assert.match(later.text, /October 14, 2026 {2}Hearing set for 1:00 p\.m\., Legislative Office Building 305\n/);
   assert.match(later.subject, /^HB 9903-FN — Hearing set for Wednesday, October 14, 1:00 p\.m\./);
   assert.doesNotMatch(later.text + later.subject, /Scheduled:/);
   // A meeting the contract does not know how to read is left out, with a note.
@@ -350,7 +353,7 @@ test("the week ahead lists what a meeting concerns without a run-on, and the sit
   assert.match(m.text, /Wednesday, October 14, 10:00 a\.m\.: Executive session, House Example Committee, Granite Place 231\. For HB 9901, HB 9903, HB 9905, HB 9906 and 3 more you follow\.\n/);
   assert.doesNotMatch(m.text, /HB \d+ and HB \d+ and|For [^\n]*House Example Committee/);
   assert.doesNotMatch(m.html, /For (?:(?!<\/span>).)*House Example Committee/);
-  assert.match(m.subject, /^Your week: 1 committee meeting coming up/);
+  assert.match(m.subject, /^Your week: 1 meeting coming up/);
 });
 
 test("a ballot and its motion are said in the site's words", () => {
@@ -644,4 +647,131 @@ test("a floor roll call is drawn as the bill page's two sides, and said in words
   assert.ok(failed.includes("Failed (243 needed, two thirds of those voting)."), failed);
   // No roll call, no bar.
   assert.doesNotMatch(voted(undefined).html, /aria-hidden/);
+});
+
+// ---- the email pass (29 October 2026) ------------------------------------------------------
+// The person, through the manager session: the emails "aren't actively wrong
+// or bad, but definitely could use another pass at the layout and visuals to
+// ensure the information is easy to parse". Each bill was told twice; a tally
+// broke across two lines; the subject ran long; "Now" said the record's words
+// where the site's chip says its own.
+test("the email pass: each update once, a line of counts, and a short subject", () => {
+  const bill = (n, items, extra = {}) => ({ key: `bill:2026/HB${n}`, kind: "bill", ref: `2026/HB${n}`,
+    label: `HB ${n}`, url: `/bill/2026/hb${n}`, title: "", now: "", items, votes: [], more: 0, study: null,
+    ended: null, week: null, upcoming: [], ...extra });
+  const item = (n, i) => ({ guid: `g${n}${i}`, date: "2026-10-09", kind: "report", milestone: true,
+    summary: `HB ${n} — Committee report: Ought to Pass, 14–0`, plain: "", url: `/bill/2026/hb${n}` });
+  const sections = [9901, 9903, 9905, 9906].map(n => bill(n, [item(n, 1), item(n, 2)]));
+  const m = digestEmail({ origin: SITE, frequency: "daily", date: TODAY, sections, ...LINKS });
+  assert.equal(m.subject, "8 updates on HB 9901, HB 9903 and 2 more");
+  assert.doesNotMatch(m.text + visible(m.html), /at a glance/i, "no list that repeats the sections");
+  assert.match(m.text, /^Daily update — [^\n]+\n\n8 updates on 4 bills\.\n/);
+  assert.equal((visible(m.html).match(/Committee report: Ought to Pass/g) || []).length, 8,
+    "each update told once");
+  assert.doesNotMatch(m.text, /October 9, 2026 {2}HB 99\d\d — /, "a bill's line does not name its bill again");
+  // A tally is held on one line wherever it is printed in the HTML, and no
+  // address or attribute is touched.
+  assert.match(m.html, /<span style="white-space:nowrap">14–0<\/span>/);
+  assert.equal(keepWhole('<a href="/bill/2026/hb9901?x=10-4">10-4 and 201 - 163</a>'),
+    '<a href="/bill/2026/hb9901?x=10-4"><span style="white-space:nowrap">10-4</span> and ' +
+    '<span style="white-space:nowrap">201 - 163</span></a>');
+  // One update with words of its own is still said in them.
+  const one = digestEmail({ origin: SITE, frequency: "daily", date: TODAY, ...LINKS,
+    sections: [bill(9901, [item(9901, 1)])] });
+  assert.equal(one.subject, "HB 9901 — Committee report: Ought to Pass, 14–0");
+  // A hearing today on a bill the reader may testify on still leads.
+  const day = digestEmail({ origin: SITE, frequency: "daily", date: TODAY, ...LINKS, sections: [
+    ...sections, bill(9907, [], { testify: { phase: "day", chamber: "H", date: TODAY, time: "10:00",
+      committee: "House Example Committee", venue: "Legislative Office Building 305" } })] });
+  assert.match(day.subject, /^Public hearing today on HB 9907: testify online, and 8 updates$/);
+});
+
+test("the email pass: Now says the site's chip word, coloured by the record's", () => {
+  // components.card_word's words, from chips.json "short" and Title Case.
+  assert.equal(chipWord("In committee"), "In Committee");
+  assert.equal(chipWord("Passed, awaiting the governor"), "To the Governor");
+  assert.equal(chipWord("Passed both chambers, goes to the voters in November"), "To the Voters");
+  assert.equal(chipWord("Interim Study"), "Interim Study");
+  assert.equal(chipWord("Became Law"), "Became Law");
+  const chips = JSON.parse(readFileSync(new URL("../../src/pages/words/chips.json", import.meta.url), "utf8"));
+  for (const [record, card] of Object.entries(chips.short)) assert.equal(chipWord(record), card, record);
+  const m = digestEmail({ origin: SITE, frequency: "daily", date: TODAY, ...LINKS, sections: [{
+    key: "bill:2026/HB9901", kind: "bill", ref: "2026/HB9901", label: "HB 9901", url: "/bill/2026/hb9901",
+    title: "", now: "In committee", votes: [], more: 0, study: null, ended: null, week: null, upcoming: [],
+    items: [{ guid: "g", date: "2026-10-09", kind: "report", milestone: true, url: "/bill/2026/hb9901",
+              summary: "HB 9901 — Committee report: Ought to Pass, 14–0", plain: "" }] }] });
+  assert.match(m.text, /\n {2}Now: In Committee\n/);
+  assert.match(visible(m.html), /Now\s*In Committee/);
+});
+
+// The review of the email pass (29 October 2026).
+const PREHEADER = /<div style="display:none;max-height:0;[^"]*">([^<]*)<\/div>/;
+const sec = (n, items, extra = {}) => ({ key: `bill:2026/HB${n}`, kind: "bill", ref: `2026/HB${n}`,
+  label: `HB ${n}`, url: `/bill/2026/hb${n}`, title: "", now: "", items, votes: [], more: 0, study: null,
+  ended: null, week: null, upcoming: [], ...extra });
+const rpt = (n, i, date = "2026-10-09") => ({ guid: `r${n}${i}`, date, kind: "report", milestone: true,
+  summary: `HB ${n} — Committee report: Ought to Pass, 14–0`, plain: "", url: `/bill/2026/hb${n}` });
+const hearing = phase => ({ phase, chamber: "H", date: phase === "day" ? TODAY : "2026-10-11", time: "10:00",
+  committee: "House Example Committee", venue: "Legislative Office Building 305" });
+
+test("the email pass: the chip word is components.js's cardWord, for every word the site knows", () => {
+  const read = f => JSON.parse(readFileSync(new URL(`../../src/pages/words/${f}`, import.meta.url), "utf8"));
+  const ctx = {};
+  vm.createContext(ctx);
+  vm.runInContext(`var WORDBOOK=${JSON.stringify({ chips: read("chips.json"), meeting_kinds: read("meeting_kinds.json") })};` +
+    readFileSync(new URL("../../src/pages/components.js", import.meta.url), "utf8") + ";this.cardWord=cardWord;", ctx);
+  const chips = read("chips.json");
+  const words = [...Object.keys(chips.short), ...Object.keys(chips.chip), ...chips.short_passed,
+    ...chips.short_prefix.map(([p]) => `${p} in November`), "Filed as a request", "INEXPEDIENT TO LEGISLATE",
+    "In Committee", "Passed House", "To the Governor"];
+  for (const w of words) assert.equal(chipWord(w), ctx.cardWord(w, ""), w);
+});
+
+test("the email pass: the preheader says what the subject does not", () => {
+  const sections = [9901, 9903].map(n => sec(n, [rpt(n, 1), rpt(n, 2)]));
+  const many = digestEmail({ origin: SITE, frequency: "daily", date: TODAY, sections, ...LINKS });
+  assert.equal(many.subject, "4 updates on HB 9901 and HB 9903");
+  assert.equal(PREHEADER.exec(many.html)[1], "HB 9901 — Committee report: Ought to Pass, 14–0");
+  // One update is its own subject, so the preheader is the count, not it again.
+  const one = digestEmail({ origin: SITE, frequency: "daily", date: TODAY, ...LINKS, sections: [sec(9901, [rpt(9901, 1)])] });
+  assert.equal(one.subject, "HB 9901 — Committee report: Ought to Pass, 14–0");
+  assert.equal(PREHEADER.exec(one.html)[1], "1 update on 1 bill");
+  // A hearing tomorrow leads the subject, and the preheader is the next news.
+  const eve = digestEmail({ origin: SITE, frequency: "daily", date: TODAY, ...LINKS,
+    sections: [...sections, sec(9907, [], { testify: hearing("eve") })] });
+  assert.equal(eve.subject, "Public hearing tomorrow on HB 9907: testify online, and 4 updates");
+  assert.notEqual(PREHEADER.exec(eve.html)[1], "Public hearing tomorrow on HB 9907: testify online");
+});
+
+test("the email pass: a record with no update is neither counted nor named, but its hearing leads its list", () => {
+  const sections = [sec(9901, [rpt(9901, 1), rpt(9901, 2)]), sec(9903, [rpt(9903, 1)]),
+    sec(9907, [], { testify: hearing("open") })];
+  const m = digestEmail({ origin: SITE, frequency: "daily", date: TODAY, sections, ...LINKS });
+  assert.equal(m.subject, "3 updates on HB 9901 and HB 9903");
+  assert.match(m.text, /\n3 updates on 2 bills\.\n/);
+  assert.ok(m.text.indexOf("HB 9907\n") < m.text.indexOf("HB 9901\n"), "the bill with testimony open comes first");
+  // A weekly with nothing new and nothing coming up says so plainly.
+  const quiet = digestEmail({ origin: SITE, frequency: "weekly", date: TODAY, ...LINKS, sections: [] });
+  assert.equal(quiet.subject, "Your week to Saturday, October 10, 2026");
+});
+
+test("the email pass: an ending leads its record, and a bill's own name comes off however it is written", () => {
+  const ended = sec(9902, [{ guid: "x", date: "2026-10-09", kind: "report", milestone: true, url: "/bill/2026/hb9902",
+    summary: "HB 9902-FN — Committee report: Ought to Pass, 14–0", plain: "" },
+    { guid: "y", date: "2026-10-12", kind: "scheduled", milestone: true, url: "/bill/2026/hb9902",
+      summary: "HB 9902 — Conference committee report filed", plain: "" }],
+    { label: "HB 9902 (2026)", ended: { how: "law", summary: "HB 9902 — Signed into law." } });
+  const m = digestEmail({ origin: SITE, frequency: "daily", date: TODAY, ...LINKS, sections: [ended, sec(9901, [rpt(9901, 1)])] });
+  const block = m.text.slice(m.text.indexOf("HB 9902 (2026)"));
+  assert.ok(block.indexOf("Signed into law") < block.indexOf("Committee report"), "the ending before the rows");
+  assert.match(block, /October 9, 2026 {2}Committee report: Ought to Pass, 14–0\n/, "the -FN number comes off too");
+  assert.match(block, /October 12, 2026 {2}Scheduled: Conference committee report filed\n/, "and after Scheduled:");
+  assert.match(m.subject, /^4 updates on HB 9902 \(2026\) and HB 9901$/, "two lines, the ending and one more");
+});
+
+test("the email pass: keepWhole holds tallies, and only between tags", () => {
+  assert.equal(keepWhole("<p>passed, 201-163; 14–0</p>"),
+    '<p>passed, <span style="white-space:nowrap">201-163</span>; <span style="white-space:nowrap">14–0</span></p>');
+  assert.equal(keepWhole('<a title="11-9" href="/x?a=1-2">see</a>'), '<a title="11-9" href="/x?a=1-2">see</a>');
+  assert.equal(keepWhole("<p>2026-0422h and &#8211; alone</p>"), "<p>2026-0422h and &#8211; alone</p>");
 });

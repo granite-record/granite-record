@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.45
+# GRANITE_VERSION: 2026-09-04.46
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -634,7 +634,12 @@ def main():
         if on_record and S.still_moving(b, current) and str(b.get("year") or "").strip():
             followable[key] = {"label": FC.line(b["n"], 120),
                                "title": FC.line(b.get("title") or "", 300),
-                               "now": FC.line(b.get("chip") or "", 120),
+                               # The card's chip word, as the site's bill card says
+                               # it -- "In Committee", "Passed House" -- not the
+                               # record's (the email pass, 29 October 2026; the
+                               # email and the manage page print it as "Now").
+                               "now": FC.line(C.card_word(b["chip"], b.get("passage"))
+                                              if b.get("chip") else "", 120),
                                "url": path_of(url)}
             for f in ("title", "now"):
                 if not followable[key][f]:

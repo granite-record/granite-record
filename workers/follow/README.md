@@ -178,10 +178,18 @@ on its own:
 1. **The databases.** `npx wrangler d1 create graniterecord-follow` and
    `npx wrangler d1 create graniterecord-follow-preview`. Put each id into
    `workers/follow/wrangler.toml` where it says FILL IN, and into the root
-   `wrangler.toml` (below). Then apply the schema to both:
+   `wrangler.toml` (below). Then apply the schema to both.
 
-       npx wrangler d1 execute graniterecord-follow --remote --file workers/follow/schema.sql
-       npx wrangler d1 execute graniterecord-follow-preview --remote --file workers/follow/schema.sql
+   Every `d1 execute` below names `--config workers/follow/wrangler.toml`,
+   and the preview's adds `--env preview`. Without them wrangler reads the
+   root `wrangler.toml`, which lists this database only under
+   `env.production`, cannot find it by name, and answers "Authentication
+   error [code: 10000]" although the login is fine (the person met this on
+   26 October 2026). In Windows PowerShell, where running scripts is
+   disabled, type `npx.cmd` for `npx`.
+
+       npx wrangler d1 execute graniterecord-follow --remote --config workers/follow/wrangler.toml --file workers/follow/schema.sql
+       npx wrangler d1 execute graniterecord-follow-preview --remote --config workers/follow/wrangler.toml --env preview --file workers/follow/schema.sql
 
    **A database made before 11 October 2026** needs the manage page's two
    settings (pause, and everything or milestones only) added once, with
@@ -189,15 +197,15 @@ on its own:
    October, production on 11 October), so each takes it once; a database
    made from today's `schema.sql` has them already and must not:
 
-       npx wrangler d1 execute graniterecord-follow-preview --remote --file workers/follow/migrations/0001_manager.sql
-       npx wrangler d1 execute graniterecord-follow --remote --file workers/follow/migrations/0001_manager.sql
+       npx wrangler d1 execute graniterecord-follow-preview --remote --config workers/follow/wrangler.toml --env preview --file workers/follow/migrations/0001_manager.sql
+       npx wrangler d1 execute graniterecord-follow --remote --config workers/follow/wrangler.toml --file workers/follow/migrations/0001_manager.sql
 
    **And the sender's index** (15 October 2026), on any database made before
    that day, both of this project's included; running it again changes
    nothing:
 
-       npx wrangler d1 execute graniterecord-follow-preview --remote --file workers/follow/migrations/0002_due_index.sql
-       npx wrangler d1 execute graniterecord-follow --remote --file workers/follow/migrations/0002_due_index.sql
+       npx wrangler d1 execute graniterecord-follow-preview --remote --config workers/follow/wrangler.toml --env preview --file workers/follow/migrations/0002_due_index.sql
+       npx wrangler d1 execute graniterecord-follow --remote --config workers/follow/wrangler.toml --file workers/follow/migrations/0002_due_index.sql
 
    **And the sign-up box's daily or weekly** (16 October 2026), kept with a
    request until its confirmation, on any database made before that day,
@@ -213,8 +221,8 @@ on its own:
    on our side. Your link still works for 48 hours." and logs only
    `follow confirm.error.Error`, because confirm.js reads the column back.
 
-       npx wrangler d1 execute graniterecord-follow-preview --remote --file workers/follow/migrations/0003_pending_frequency.sql
-       npx wrangler d1 execute graniterecord-follow --remote --file workers/follow/migrations/0003_pending_frequency.sql
+       npx wrangler d1 execute graniterecord-follow-preview --remote --config workers/follow/wrangler.toml --env preview --file workers/follow/migrations/0003_pending_frequency.sql
+       npx wrangler d1 execute graniterecord-follow --remote --config workers/follow/wrangler.toml --file workers/follow/migrations/0003_pending_frequency.sql
 
    `0001` and `0003` add columns: run a second time, each answers "duplicate
    column name" and changes nothing.

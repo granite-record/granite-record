@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.10
+// GRANITE_VERSION: 2026-10-09.11
 /* THE DISTRICT MAP (map v1), as a module a page mounts:
 
      <link rel="stylesheet" href="/map.css">
@@ -194,6 +194,8 @@ function outlineD(M,lk,fid){const k=lk+"|out|"+fid;if(M.cache[k])return M.cache[
   const n={};M.T.layers[lk].f[fid].r.forEach(ring=>ring.forEach(a=>{const i=a<0?~a:a;n[i]=(n[i]||0)+1;}));
   return M.cache[k]=Object.keys(n).filter(i=>n[i]===1).map(i=>"M"+M.ARCS[i].map(p=>p[0]+" "+p[1]).join("L")).join("");}
 function meshD(M,lk){const k=lk+"|mesh";if(!M.cache[k])M.cache[k]=M.T.layers[lk].m.map(i=>"M"+M.ARCS[i].map(p=>p[0]+" "+p[1]).join("L")).join("");return M.cache[k];}
+/* the box holding two boxes; null is no box */
+const union=(a,b)=>!a?b:!b?a:[Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[2],b[2]),Math.max(a[3],b[3])];
 /* a feature's box in the map's units: [x0, y0, x1, y1] */
 function fbox(M,lk,fid){const k=lk+"|"+fid;if(M.bx[k])return M.bx[k];
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
@@ -494,19 +496,26 @@ function mount(root,opts){
     (opts.legend?`<div class="gmkey"><div class="gmleg" role="list" aria-label="${tr("map.legend","What the colors mean")}"></div>${opts.note?`<p class="gmnote gmexplain"></p>`:""}</div>`:"")+
     `<div class="gmbox">
       <div class="gmwrap" tabindex="0" role="group" aria-label="${tr("map.keys","The map. Arrow keys move it; plus and minus zoom in and out.")}"><svg class="gmsvg" role="img" aria-label="${tr("map.of_nh","Map of New Hampshire")}"></svg></div>
-      ${opts.zoom?`<div class="gmzoom"><button type="button" class="zo" aria-label="${tr("map.zoom_out","Zoom out")}">&minus;</button><button type="button" class="zi" aria-label="${tr("map.zoom_in","Zoom in")}">+</button><button type="button" class="zf" aria-label="${tr("map.fit_all","Fit the whole map")}">${tr("map.fit","Fit")}</button></div>`:""}
+      ${opts.zoom?`<div class="gmzoom"><button type="button" class="zo" aria-label="${tr("map.zoom_out","Zoom out")}">&minus;</button><button type="button" class="zi" aria-label="${tr("map.zoom_in","Zoom in")}">+</button><button type="button" class="zf" title="${tr("map.zoom_fit","Zoom to fit")}"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M1 5.5V1h4.5M10.5 1H15v4.5M15 10.5V15h-4.5M5.5 15H1v-4.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`:""}
       <p class="gmcredit">${tr("map.credit","Boundaries: NH GRANIT, University of New Hampshire (2022). Not for legal use.")}</p>
     </div>${opts.panel?`<div class="gmpanel" role="status" aria-live="polite"><p class="quiet">${esc(opts.prompt)}</p></div>`:""}</div>`+
     (opts.list?`<details class="gmlist"><summary>${tr("map.as_list","Every district, as a list")}</summary><div class="gmlistbody"></div></details>`:"");
   const svg=root.querySelector("svg"),wrap=root.querySelector(".gmwrap"),panel=root.querySelector(".gmpanel");
-  let M=null,layer=opts.layer,mode=opts.labels,picked=null,townPicked=null,zoom=1,vb=null,last=null;
+  let M=null,layer=opts.layer,mode=opts.labels,picked=null,townPicked=null,zoom=1,vb=null,last=null,town0=null;
   const api={root,ready:null,select,pickTown,clear,setLayer,setLabels,zoomOn,
     layer:()=>layer,labels:()=>mode,shown:()=>last,model:()=>M};
 
   api.ready=load(opts.data).then(m=>{M=m;
     vb=[0,0,M.T.w,M.T.h];
-    if(opts.frame&&M.T.layers.towns.f[opts.frame]){const b=fbox(M,"towns",opts.frame),w=b[2]-b[0],h=b[3]-b[1],pad=Math.max(w,h)*0.06;
-      vb=[b[0]-pad,b[1]-pad,w+2*pad,h+2*pad];}
+    /* A town's own map is framed on the town's districts, on every kind it
+       shows, so zooming out (or to fit) takes in the whole of its Senate,
+       Council and Congress districts, not the town alone (the board, item
+       6, 29 October 2026). It still opens on the town (centreOn below). */
+    if(opts.frame&&M.T.layers.towns.f[opts.frame]){
+      const t=fbox(M,"towns",opts.frame),b=layersShown.map(([lk])=>homeBox(lk)).reduce(union,t),w=b[2]-b[0],h=b[3]-b[1],pad=Math.max(w,h)*0.06;
+      vb=[b[0]-pad,b[1]-pad,w+2*pad,h+2*pad];
+      // the frame the town alone had, for the deepest zoom (zmax)
+      const tp=Math.max(t[2]-t[0],t[3]-t[1])*0.06;town0=[t[2]-t[0]+2*tp||1,t[3]-t[1]+2*tp||1];}
     svg.setAttribute("viewBox",vb.join(" "));
     svg.setAttribute("preserveAspectRatio","xMidYMid meet");
     wire();draw();list();
@@ -518,7 +527,11 @@ function mount(root,opts){
       .then(()=>new Promise(r=>setTimeout(r,250))).then(()=>centreOn(fbox(M,"towns",opts.town)));
     // the labels are measured in their own face, so once more when it loads
     if(document.fonts)document.fonts.ready.then(()=>{measures={};relabel();});
-    if(window.ResizeObserver)new ResizeObserver(()=>sizeAll()).observe(wrap);
+    // a resize (a phone turned, a window narrowed) keeps the middle of the
+    // view where it was: a town's own map opens zoomed in on the town
+    // the map is hidden with its tab (0 by 0) and shown again: neither moves it
+    if(window.ResizeObserver)new ResizeObserver(()=>{if(!wrap.clientWidth)return;const c=mid;sizeAll();
+      if(c&&zoom>1&&opts.frame)lookAt(c);}).observe(wrap);
     root.dataset.ready="1";
     return api;}).catch(e=>{
       const box=root.querySelector(".gmbox");
@@ -722,11 +735,26 @@ function mount(root,opts){
     if(opts.zoom&&centre)centreOn(fbox(M,"towns",t));
     if(say)changed();
   }
+  /* the districts of one kind that hold the framed town, as one box */
+  function homeBox(lk){
+    if(!opts.frame||!M.T.layers[lk])return null;
+    // the State House takes in the town's floterial district too, framed with it
+    if(lk==="base"&&M.T.layers.float)return union(own("base"),own("float"));
+    return own(lk);
+  }
+  function own(lk){
+    return Object.keys(M.T.layers[lk].f).filter(fid=>(M.tw[lk+"|"+fid]||[]).some(([t])=>t===opts.frame))
+      .map(fid=>fbox(M,lk,fid)).reduce(union,null);
+  }
   function setLayer(lk){
     if(!layersShown.some(([v])=>v===lk))return;
     layer=lk;const r=root.querySelector(`input[name="${id}ly"][value="${lk}"]`);if(r)r.checked=true;
     if(picked&&picked[0]!==lk&&!(picked[0]==="float"&&lk==="base"))picked=null;
     draw();list();
+    // on a town's own map, a kind of district is shown whole: the town's
+    // district of that kind, with the town, fitted to the view
+    if(opts.frame&&opts.zoom&&M.T.layers.towns.f[opts.frame]){const hb=homeBox(lk);
+      if(hb)centreOn(union(hb,fbox(M,"towns",opts.frame)),0.92);}
     if(panel&&!picked)panel.innerHTML=townPicked?`<h4>${esc(townPicked)}</h4>`+townSummary(townPicked):`<p class="quiet">${esc(opts.prompt)}</p>`;
     changed();
   }
@@ -765,8 +793,22 @@ function mount(root,opts){
       const [a,b]=p.querySelectorAll("rect");a.setAttribute("width",hs);a.setAttribute("height",hs);b.setAttribute("width",1.25/s);b.setAttribute("height",hs);});
     relabel();
   }
+  /* the middle of the view in the map's units, kept as the view moves */
+  let mid=null;
+  /* the deepest zoom: 12 times the whole map, or on a town's own map 12 times
+     the town alone, as deep as when the frame was the town (on a box of any
+     shape: the scale the town's frame had at 1 over the scale the larger
+     frame has at 1) */
+  function zmax(){
+    if(!town0)return 12;const W=wrap.clientWidth||1,H=wrap.clientHeight||1;
+    return 12*Math.max(1,Math.min(W/town0[0],H/town0[1])/Math.min(W/vb[2],H/vb[3]));
+  }
+  function lookAt(c){const s=scale(),ox=(svg.clientWidth-vb[2]*s)/2,oy=(svg.clientHeight-vb[3]*s)/2;
+    wrap.scrollLeft=ox+(c[0]-vb[0])*s-wrap.clientWidth/2;wrap.scrollTop=oy+(c[1]-vb[1])*s-wrap.clientHeight/2;}
   function relabel(){
     if(!M||!vb)return;
+    if(wrap.clientWidth){const s=scale(),ox=(svg.clientWidth-vb[2]*s)/2,oy=(svg.clientHeight-vb[3]*s)/2;
+      mid=[(wrap.scrollLeft+wrap.clientWidth/2-ox)/s+vb[0],(wrap.scrollTop+wrap.clientHeight/2-oy)/s+vb[1]];}
     const g=svg.querySelector("g.labels"),tg=svg.querySelector("g.dtag");if(!g||!tg)return;
     last=layout(M,view(),{mode,layer,here:opts.frame||townPicked,ward:opts.ward,frame:opts.frame,dim:opts.dim,
       picked:mode==="names"?picked:null,rootPx:rootPx(),measure,zoom});
@@ -778,18 +820,21 @@ function mount(root,opts){
       const t=el("text",{class:"tagt",x:b.x,y:b.y});t.textContent=b.text;tg.appendChild(t);}
     root.dataset.labels=mode;root.dataset.shown=last.shown.length;
   }
-  function centreOn(bb){
-    // the box at about 45% of the view, whichever way the view is shaped
+  function centreOn(bb,share){
+    // the box at about 45% of the view (or the share asked), whichever way
+    // the view is shaped; on a town's own map the town fills the view, as it
+    // did when the frame was the town alone
+    share=share||(opts.frame&&opts.dim?0.88:0.45);
     const k0=Math.min(wrap.clientWidth/vb[2],wrap.clientHeight/vb[3]),w=bb[2]-bb[0]||1,h=bb[3]-bb[1]||1;
-    setZoom(Math.max(1,Math.min(12,0.45*Math.min(wrap.clientWidth/(w*k0),wrap.clientHeight/(h*k0)))));
+    setZoom(Math.max(1,Math.min(zmax(),share*Math.min(wrap.clientWidth/(w*k0),wrap.clientHeight/(h*k0)))));
     const s=scale(),ox=(svg.clientWidth-vb[2]*s)/2,oy=(svg.clientHeight-vb[3]*s)/2;
     wrap.scrollLeft=ox+((bb[0]+bb[2])/2-vb[0])*s-wrap.clientWidth/2;
     wrap.scrollTop=oy+((bb[1]+bb[3])/2-vb[1])*s-wrap.clientHeight/2;
     relabel();
   }
-  function setZoom(z){zoom=Math.max(1,Math.min(12,z));svg.style.width=(zoom*100)+"%";svg.style.height=(zoom*100)+"%";sizeAll();}
+  function setZoom(z){zoom=Math.max(1,Math.min(zmax(),z));svg.style.width=(zoom*100)+"%";svg.style.height=(zoom*100)+"%";sizeAll();}
   function zoomAt(next,cx,cy){const r=wrap.getBoundingClientRect();const ox=cx===undefined?r.width/2:cx-r.left,oy=cy===undefined?r.height/2:cy-r.top;
-    const k=Math.max(1,Math.min(12,next))/zoom;const sx=(wrap.scrollLeft+ox)*k-ox,sy=(wrap.scrollTop+oy)*k-oy;setZoom(zoom*k);wrap.scrollLeft=sx;wrap.scrollTop=sy;relabel();}
+    const k=Math.max(1,Math.min(zmax(),next))/zoom;const sx=(wrap.scrollLeft+ox)*k-ox,sy=(wrap.scrollTop+oy)*k-oy;setZoom(zoom*k);wrap.scrollLeft=sx;wrap.scrollTop=sy;relabel();}
   /* zoom to z with town t in the middle of the view (for a page's address,
      and for the screenshots) */
   function zoomOn(t,z){
