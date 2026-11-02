@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.760
+# GRANITE_VERSION: 2026-09-04.761
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28163,6 +28163,68 @@ def _journal_member_site_id(JM):
             "by first name": "701", "another chamber": "", "a senator": "8745"}
     assert got == want, f"resolve_member gave {got}, not {want}"
     return "ok", "the PersonID where there is one, the Employeeno where not, and nobody when two fit"
+
+
+@check("build", "a member who sat in both chambers and has left has one page, the later "
+       "chamber's, as the person register joins them, and the earlier page's address "
+       "answers with a 301", needs=("build_site_v2", "build_pages"))
+def _former_movers_one_page(build_site_v2, build_pages):
+    """build_site_v2.former_movers (30 October 2026): Shannon Chandley voted
+    as 568 in the House and 9404 in the Senate and had a page for each,
+    because member_links joins a mover's numbers only while they sit. The
+    register's join -- the one the public data API publishes -- is taken for
+    those who have left: the page that voted last keeps every chamber's
+    votes, and build_pages answers the other's address with a 301. A number
+    a sitting member holds or is joined to, and a person with one number
+    that voted, are left as they were."""
+    V, BP = build_site_v2, build_pages
+    reg = {"people": [
+        {"person": "568", "numbers": ["209104", "376802"]},    # moved and left
+        {"person": "515", "numbers": ["209077", "376503"]},    # sits now (member_links has her)
+        {"person": "900", "numbers": ["200001", "300001"]},    # only one number voted
+        {"person": "27", "numbers": ["209015"]}]}
+    e2p = {"209104": "9404", "376802": "568", "209077": "9406", "376503": "515",
+           "200001": "901", "300001": "900"}
+    # The record's own date form, m/d/Y, which sorts by the day only through
+    # vote_date: as text, 9/13/2018 would come after 10/10/2018.
+    v = lambda y, b, md="3/1": {"year": y, "date": f"{md}/{y}", "body": b}
+    votes = {"568": [v("2009", "H"), v("2018", "H")], "9404": [v("2019", "S"), v("2024", "S")],
+             "515": [v("2009", "H")], "9406": [v("2023", "S")], "900": [v("2005", "H")],
+             "209015": [v("2001", "S")]}
+    got = V.former_movers(reg, e2p, {"9406": {}}, {"9406": ["515"]}, votes)
+    assert got == {"9404": ["568"]}, f"former_movers joined {got}"
+    # A move within one year: the later day keeps the page, read as a day.
+    same = dict(votes, **{"568": [v("2018", "H", "9/13")], "9404": [v("2018", "S", "10/10")]})
+    assert V.former_movers(reg, e2p, {}, {}, same).get("9404") == ["568"], \
+        "a move within a year kept the earlier page: dates compared as text"
+    # The page kept says the years of every chamber (former_roster's served).
+    fr = V.former_roster({}, votes, {"9404": ["568"]}, {}, "2025-2026")
+    assert fr["9404"]["served"]["first"] == "3/1/2009" and "2009-2010" in fr["9404"]["served"]["terms"], \
+        f"the page kept gives only its own chamber's years: {fr['9404']['served']}"
+    assert V.former_movers(None, {}, {}, {}, votes) == {}, "no register still joined someone"
+    root = Path(tempfile.mkdtemp(prefix="gr-moved-"))
+    try:
+        (root / "former.json").write_text(json.dumps([
+            {"id": "9404", "slug": "shannon-chandley-sd-11",
+             "moved_from": ["/legislator/shannon-chandley-hills-22"]},
+            {"id": "27", "slug": "someone-sd-1"}]), encoding="utf-8")
+        lines = BP.moved_members(root)
+        assert lines == ("/legislator/shannon-chandley-hills-22 /legislator/shannon-chandley-sd-11 301\n"
+                         "/legislator/shannon-chandley-hills-22.html "
+                         "/legislator/shannon-chandley-sd-11 301\n"
+                         "/legislator/shannon-chandley-hills-22/* "
+                         "/legislator/shannon-chandley-sd-11/:splat 301\n"), lines
+        assert BP.moved_members(root / "nowhere") == "", "no former.json still wrote a rule"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
+    assert "former_movers(register, e2p or {}" in src, "build_site_v2 no longer joins the movers who left"
+    src = _paths.locate("build_pages.py").read_text(encoding="utf-8")
+    assert 'head + "\\n" + moved_members(out) + rest' in src, (
+        "build_pages no longer writes their 301s ahead of the tab rules, where the first match is served")
+    return "ok", ("a mover who left is joined to the later page, by the day of the last vote, with "
+                  "every chamber's years; a sitting one and a one-number one are not; their 301s "
+                  "ahead of the tab rules, tabs included")
 
 
 # ============================================================= code: pipeline ==
