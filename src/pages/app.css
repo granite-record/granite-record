@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.332 */
+/* GRANITE_VERSION: 2026-09-07.340 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -145,10 +145,20 @@
                (On the record, Members, What it does, each stage of a
                bill's story, the home page's columns, a footer column's
                head excepted, which is the size of its links).
-     prose h2  h2 read as a phrase: --t-h2, serif 600, sentence case
-               (Learn's, About's and Data's sections, a list's groups).
+     prose h2  h2 read as a phrase: --t-h2, serif 600, Title Case, over
+               the prose pages' text (About's, a list's groups). Learn's and
+               Data's sections are the sub's size in a margin beside their
+               text (.l-sech, .dpsech).
      sub       h3: --t-h3, serif 600, sentence case (Learn's subsections,
                a vote's question, a speaker, a day on a committee's page).
+     pane      h2 that heads a section of a record's tab, in Title Case:
+               the sub's look, .sech (Summary's .w4h and a vote's .rcq
+               draw the same). Reports, Sponsors, Documents, Related and
+               the bill text all open this way; a part label stands only
+               inside one of these, for a group of it, and never opens a
+               pane (the cohesion audit of 30 October 2026, I-1: the
+               bill's tabs drew five looks, among them a 14px sans label
+               with no h2 above it).
      label     not a heading: --t-label, sans 600 capitals over its value.
    A new heading takes one of these by its selector; nothing else sets a
    heading's size. */
@@ -177,7 +187,7 @@
    shadow, and the scrim that dims the page behind it. Literal rgb() in the
    finder's rules until 8 October 2026, so the one colour this file wrote
    outside its palette. Black in both themes, because both dim the page. */
---lift:rgba(0,0,0,.22);--scrim:rgba(0,0,0,.32);
+--lift:rgba(0,0,0,.22);--scrolledge:rgba(0,0,0,.22);--scrim:rgba(0,0,0,.32);
 /* INK, in two steps rather than three. --ink-2 and --ink-3 were 0.041 apart
    in relative luminance and were used interchangeably for metadata, which is
    one colour with two names. --ink is no longer #191C1D: at 17.7:1 that is
@@ -365,7 +375,7 @@ color-scheme:light}
 --paper:#171B1C;--surface:#21282A;--wash:#2C3436;
 --on-pine:#0F1414;          /* 8.76:1 on pine */
 --shadow:rgba(0,0,0,.5);
---lift:rgba(0,0,0,.22);--scrim:rgba(0,0,0,.32);
+--lift:rgba(0,0,0,.22);--scrolledge:rgba(0,0,0,.7);--scrim:rgba(0,0,0,.32);
 --ink:#E6E9E8;--ink-2:#A7B0B0;
 --rule:#3D4547;             /* 1.43:1 on a card; light ships 1.42:1 */
 --rule-2:#525C5D;           /* 2.03:1 on a card; light ships 1.99:1 */
@@ -421,7 +431,7 @@ color-scheme:dark}
 --paper:#171B1C;--surface:#21282A;--wash:#2C3436;
 --on-pine:#0F1414;          /* 8.76:1 on pine */
 --shadow:rgba(0,0,0,.5);
---lift:rgba(0,0,0,.22);--scrim:rgba(0,0,0,.32);
+--lift:rgba(0,0,0,.22);--scrolledge:rgba(0,0,0,.7);--scrim:rgba(0,0,0,.32);
 --ink:#E6E9E8;--ink-2:#A7B0B0;
 --rule:#3D4547;             /* 1.43:1 on a card; light ships 1.42:1 */
 --rule-2:#525C5D;           /* 2.03:1 on a card; light ships 1.99:1 */
@@ -1510,7 +1520,7 @@ line-height:1.1}
 @media print{
   :root[data-theme="dark"],:root:not([data-theme="light"]){
   --paper:#E9EAEC;--surface:#FBFBFC;--wash:#DFE1E4;--on-pine:#fff;--shadow:rgba(35,40,42,.10);
-  --lift:rgba(0,0,0,.22);--scrim:rgba(0,0,0,.32);
+  --lift:rgba(0,0,0,.22);--scrolledge:rgba(0,0,0,.22);--scrim:rgba(0,0,0,.32);
   --ink:#1C2126;--ink-2:#4A5259;--rule:#D3D6DA;--rule-2:#B2B7BD;
   --film:#000;--film-stub:#14181A;--film-stub-ink:#C8CFD1;--film-stub-hot:#1D2225;
   --sheet:#FFFFFF;--sheet-ink:#1C2126;--sheet-ink-2:#4A5259;--sheet-rule:#B2B7BD;
@@ -1570,7 +1580,7 @@ line-height:1.1}
   .stop.s-p b,.stop.s-x b,.stop.s-istudy b,.stop.s-ontable b,
   .fhead .badge,.wkchips button[aria-pressed="true"],
   .cmgrid td.cmpick,.calviews button[aria-pressed="true"],.cdopen,
-  .calcat input:checked + .cbx,.searchbig button,.wbtn.sel,h1.lockup,
+  .calcat input:checked + .cbx,.searchbig button,.wbtn.sel,h1.lockup,.vbtn.sel,.vtog.sel,
   .rtabs [role=tab][aria-selected=true],.l-g,.l-reach > span.is-me,
   .g-btn,.g-btn:hover,.g-step::before,.tab[aria-selected=true] .tn,
   /* the legislature's year: You Are Here's words on their pine, and its
@@ -1609,7 +1619,11 @@ line-height:1.1}
    panel is on the page under its own heading and a strip of buttons that did
    nothing would only be in the way. */
 .twntabs{display:flex;border-bottom:1px solid var(--rule);
-  margin:var(--sp-7) 0 var(--sp-6);overflow-x:auto}
+  margin:var(--sp-7) 0 var(--sp-6);overflow-x:auto;background:
+    linear-gradient(var(--paper),var(--paper)) 0 0/40px 100% no-repeat local,
+    linear-gradient(var(--paper),var(--paper)) 100% 0/40px 100% no-repeat local,
+    linear-gradient(to right,var(--scrolledge),transparent) 0 0/32px 100% no-repeat scroll,
+    linear-gradient(to left,var(--scrolledge),transparent) 100% 0/32px 100% no-repeat scroll}
 .twntabs[hidden]{display:none}
 .twntabs [role=tab]{flex:0 1 auto;background:none;border:0;cursor:pointer;
   font:inherit;font-size:var(--t-ui);font-weight:600;line-height:1.25;
@@ -1622,13 +1636,17 @@ line-height:1.1}
 /* Below 1024px the strip scrolls, closer, its edge saying so ("Seven tabs
    scroll on a tablet and a phone, with the kit's edge shadow"): a shadow at
    whichever end has more, made by the strip's own background. */
+/* A SCROLLING STRIP'S EDGE (the R2 polish batch, 30 October 2026): 40px
+   blocks of the strip's own ground that travel with its tabs, over 32px of
+   --scrolledge fixed to the box, so an edge shows exactly where there is
+   more to reach. At 16px of --shadow the town strip hid "Services" and an
+   opened bill card hid Reports, Sponsors and Documents, and nobody saw the
+   edge; --scrolledge is --lift in light and deeper in dark, where --lift
+   all but vanished. The town strip's is on its own rule above, at every
+   width: it scrolls at every width, and at 1024-1120px "County Officials"
+   was cut with no edge at all (the review of 30 October 2026). */
 @media (max-width:63.9375em){
   .twntabs [role=tab]{flex:0 0 auto;padding:var(--sp-3) var(--sp-5)}
-  .twntabs{background:
-    linear-gradient(to right,var(--paper) 30%,transparent) 0 0/2rem 100% no-repeat local,
-    linear-gradient(to left,var(--paper) 30%,transparent) 100% 0/2rem 100% no-repeat local,
-    linear-gradient(to right,var(--shadow),transparent) 0 0/1rem 100% no-repeat scroll,
-    linear-gradient(to left,var(--shadow),transparent) 100% 0/1rem 100% no-repeat scroll}
 }
 .twnpane[hidden]{display:none}
 /* A panel's own heading, which is the page's outline with or without the
@@ -1653,6 +1671,15 @@ letter-spacing:inherit}
    for a button stood each line holding one 44px tall (the look of 10 October
    2026). WCAG 2.5.8 excepts a target in a sentence. */
 .term .termbtn{min-height:0;min-width:0;line-height:inherit;vertical-align:baseline}
+/* BUT NO SMALLER THAN A FINGER (the cohesion audit of 30 October 2026, B-6):
+   a bill's suffix -- the "A" of HB 1-A, the "FN" -- is a term of its own, a
+   letter or two beside the bill's number and not a word in a sentence, and
+   its button was 12px wide. The box a tap lands in is 24px each way at the
+   least, drawn by a transparent ::after over the word, so nothing beside it
+   moves and the letter looks as it did. */
+.term .termbtn{position:relative}
+.term .termbtn::after{content:"";position:absolute;left:50%;top:50%;
+width:max(100%,24px);height:max(100%,24px);transform:translate(-50%,-50%)}
 .termbtn:hover,.termbtn[aria-expanded="true"]{text-decoration-style:solid}
 .termpop{position:absolute;left:0;top:calc(100% + 6px);z-index:30;display:block;
 width:max-content;max-width:min(22rem,calc(100vw - 2rem));padding:var(--sp-4) var(--sp-5);
@@ -2117,10 +2144,14 @@ b,strong,h1,h2,h3,h4{font-weight:600}button{font:inherit;color:inherit;backgroun
 #year,#sort{width:var(--pickw);max-width:100%;flex:0 0 auto}
 #sort{height:26px;padding:0 var(--sp-2);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
 border-radius:var(--r-in);background:var(--surface);color:var(--ink-2);cursor:pointer}
-#year{height:42px;padding:0 var(--sp-4);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
+#year{height:44px;padding:0 var(--sp-4);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
 border-radius:var(--r-out);background:var(--surface);cursor:pointer}
-#q,#rsq{flex:1;height:42px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
-border-radius:var(--r-out);background:var(--paper)}
+/* ONE SEARCH BOX (the cohesion audit of 30 October 2026, I-7): white, 16px,
+   44px, whichever page it is on. The Bills box was 42px on the page's grey,
+   a member's Votes box grey-filled, and the Officials and /search boxes
+   20px type in a 52px box. */
+#q,#rsq{flex:1;height:44px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
+border-radius:var(--r-out);background:var(--surface)}
 /* THE FOCUS IS THE SITE'S 2px PINE OUTLINE, as the How-to tab's box draws it
    (.g-find input:focus), not a soft ring in a box-shadow (the accessibility
    sweep of 29 October 2026, WCAG 2.4.7): forced colours paint no shadow and
@@ -2140,7 +2171,9 @@ border-radius:var(--r-out);background:var(--paper)}
    screen: at 24px on a 375px phone the box stood 7px past the edge (the
    rendered sweep, 8 October 2026). */
 .qbox #q,.qbox #rsq{flex:1;padding-right:46px;min-width:0}
-#qgo,#rsgo{position:absolute;right:4px;top:4px;width:34px;height:34px;font-size:var(--t-ui);
+/* min-height:0, or a phone's 44px least for a button (body.pg, below) makes
+   it overhang the 44px box by 5px (the review of 30 October 2026). */
+#qgo,#rsgo{position:absolute;right:4px;top:5px;width:34px;height:34px;min-height:0;font-size:var(--t-ui);
 line-height:1;border:1px solid transparent;border-radius:var(--r-out);background:none;
 color:var(--ink-2);cursor:pointer}
 #qgo:hover,#rsgo:hover{border-color:var(--edge);background:var(--wash);color:var(--pine)}
@@ -2636,10 +2669,10 @@ line-height:1.5}
   .card .tabs{flex-wrap:nowrap;gap:0 var(--sp-6);overflow-x:auto;scrollbar-width:none;
   width:0;min-width:100%;
   background:
-    linear-gradient(var(--surface),var(--surface)) 0 0/24px 100% local no-repeat,
-    linear-gradient(var(--surface),var(--surface)) 100% 0/24px 100% local no-repeat,
-    linear-gradient(to right,var(--shadow),transparent) 0 0/16px 100% no-repeat,
-    linear-gradient(to left,var(--shadow),transparent) 100% 0/16px 100% no-repeat}
+    linear-gradient(var(--surface),var(--surface)) 0 0/40px 100% local no-repeat,
+    linear-gradient(var(--surface),var(--surface)) 100% 0/40px 100% local no-repeat,
+    linear-gradient(to right,var(--scrolledge),transparent) 0 0/32px 100% no-repeat,
+    linear-gradient(to left,var(--scrolledge),transparent) 100% 0/32px 100% no-repeat}
   .card .tabs::-webkit-scrollbar{display:none}
   .card .tabs [role=tab]{white-space:nowrap;flex:0 0 auto}
 }
@@ -2832,7 +2865,7 @@ letter-spacing:.04em;text-transform:uppercase}
 .card .pane > .vpick,
 .card .pane > .vmode,
 .card .pane > .vdoc,
-.card .pane > .amdsec,
+.card .pane > .sech,
 .card .pane > .vamds{max-width:none}
 
 /* ---- TWO COLUMNS ON A BILL'S OWN PAGE ---------------------------------
@@ -3041,13 +3074,22 @@ font-variant-numeric:tabular-nums;color:var(--pine);background:var(--paper)}
    because that is what this rule styled, so a record page went from its
    hidden h1 to an h3 with no level 2 anywhere on it. Now a heading can move
    up a level without moving a pixel. */
-.stg :is(h2,h3),.btan :is(h2,h3),.bttext :is(h2,h3),.spgrp,
+.stg :is(h2,h3),.btan :is(h2,h3),.bttext :is(h2,h3),
 .mlist :is(h2,h3),.amdsec{
 font-size:var(--t-part);font-weight:600;color:var(--ink-2);letter-spacing:.05em;
 text-transform:uppercase;margin:0 0 var(--sp-3);padding-bottom:var(--sp-3);
 border-bottom:1px solid var(--rule);font-family:var(--serif)}
-.spgrp span,.mlist :is(h2,h3) span{font-weight:400;letter-spacing:0;text-transform:none;
+.mlist :is(h2,h3) span{font-weight:400;letter-spacing:0;text-transform:none;
 font-size:var(--t-ui);color:var(--ink-2)}
+/* A LABEL UNDER A SECTION IS SMALLER THAN THE SECTION (the review of 30
+   October 2026): under "Bill Text" at --t-h3, THE BILL, FISCAL IMPACT and
+   HOW IT GOT HERE drew at --t-part, larger than what heads them. */
+.btsec :is(.bttext h3,h3.amdsec,.fnsec h3,.fnraw h4){font-size:var(--t-ui)}
+/* A SECTION OF A RECORD'S TAB (the heading map's "pane", above). */
+.sech{font:600 var(--t-h3)/1.35 var(--serif);color:var(--ink);letter-spacing:0;
+text-transform:none;margin:0 0 var(--sp-3);text-wrap:balance}
+.sech .sechn{font:400 var(--t-sm)/1 var(--sans);color:var(--ink-2);margin-left:var(--sp-2);
+font-variant-numeric:tabular-nums}
 .story .stg{margin-top:var(--sp-7)}
 .story .stg:first-child{margin-top:var(--sp-1)}
 .btver{display:flex;gap:var(--sp-4);align-items:baseline;flex-wrap:wrap;margin-bottom:var(--sp-5)}
@@ -3089,8 +3131,7 @@ cursor:pointer;list-style:none;padding:var(--sp-2) 0;min-height:32px}
 .btdoc:not([open]) .open,.btdoc[open] .shut{display:none}
 .btsec{margin:var(--sp-10) var(--sp-1) var(--sp-4);padding:var(--sp-7) var(--sp-7) var(--sp-4);background:var(--paper);
 border:1px solid var(--rule-2);border-radius:var(--r-out)}
-.btsec > .amdsec{font-size:var(--t-part);letter-spacing:.05em;color:var(--ink);
-border-bottom:0;margin:0 0 var(--sp-1);font-family:var(--serif);font-weight:600;text-transform:uppercase}
+.btsec > .sech{margin:0 0 var(--sp-1)}
 /* A line under the heading saying what this is. The tabs above are views OF
    the record; this is the document itself, and bleeding it to the card's edge
    under a small heading made it read as one more tab that had run on. */
@@ -3171,8 +3212,7 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-3);font-family:v
 color:var(--ink-2);margin:0 0 var(--sp-4);font-family:var(--serif)}
 /* Whose report this is, as a heading rather than as small print. */
 .rephead{border-top:1px solid var(--rule);padding-top:var(--sp-5);margin-bottom:var(--sp-4)}
-.rephead :is(h2,h3){font-size:var(--t-part);font-weight:600;letter-spacing:.05em;
-text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-2);font-family:var(--serif)}
+.rephead .sech{margin:0 0 var(--sp-2)}
 .repmeta{display:flex;gap:var(--sp-4);align-items:baseline;flex-wrap:wrap}
 /* ONE REPORT IS ONE OBJECT, which is what makes the two-column arrangement
    below possible at all: the head and its blocks used to be siblings of the
@@ -3250,7 +3290,7 @@ margin:var(--sp-4) 0 0;max-width:var(--measure)}
 .plink:hover{background:var(--pine-soft);text-decoration:underline}
 .spcount{font-size:var(--t-ui);color:var(--ink-2);margin:0 0 var(--sp-5);
 font-variant-numeric:tabular-nums}
-.spgrp{display:flex;align-items:baseline;gap:var(--sp-3);margin-top:var(--sp-6)}
+.spgrp{margin-top:var(--sp-6)}
 .loaderr{background:var(--st-done-bg);color:var(--st-done);border-radius:var(--r-out);
 padding:var(--sp-5) var(--sp-5);margin:0 0 var(--sp-5);font-size:var(--t-ui)}
 .loaderr span{display:block;margin-top:var(--sp-2);font-family:ui-monospace,monospace;
@@ -3269,6 +3309,9 @@ min-height:34px;display:flex;align-items:center;gap:var(--sp-3);list-style:none}
 :where(body:not(.pg)) .caret{width:0;height:0;border-left:6px solid currentColor;
 border-top:4.5px solid transparent;border-bottom:4.5px solid transparent;
 transition:transform .12s;flex:none}
+/* In forced colours its two transparent borders took the text colour and it
+   drew a square, which no turn can point (the review of 30 October 2026). */
+@media (forced-colors:active){:where(body:not(.pg)) .caret{forced-color-adjust:none;color:CanvasText}}
 .docket[open] .caret{transform:rotate(90deg)}
 .docket .tl{margin-top:var(--sp-4)}
 .docket .cite{color:var(--ink-2);font-size:var(--t-ui)}
@@ -3290,8 +3333,7 @@ border-bottom:1px solid var(--rule);font-size:var(--t-ui)}
    the citation, what happened in plain words, and the clerk's line under
    them in the small monospace of a quotation. On a phone the day goes back
    above the citation. */
-.docgrp{font:600 var(--t-sm)/1 var(--sans);letter-spacing:.07em;text-transform:uppercase;
-  color:var(--ink-2);margin:var(--sp-7) 0 var(--sp-3)}
+.docgrp{margin:var(--sp-7) 0 var(--sp-3)}
 .docgrp:first-child{margin-top:0}
 .docs-bill{display:flex;flex-wrap:wrap;gap:var(--sp-3)}
 .docs-bill .doc{flex-direction:column;gap:2px;align-items:flex-start;border:1px solid var(--rule-2);
@@ -3494,12 +3536,13 @@ text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
      Solid blocks rather than fading ones on purpose: a gradient running to
      `transparent` interpolates through transparent BLACK, which greys the
      card in light mode. The blocks are hard-edged and sit under the shadows,
-     so nothing of them is ever seen. */
+     so nothing of them is ever seen. 40px over 32px of --scrolledge since the
+     R2 polish batch (30 October 2026), as the record strip's. */
   .tabs{background:
-    linear-gradient(var(--surface),var(--surface)) 0 0/24px 100% local no-repeat,
-    linear-gradient(var(--surface),var(--surface)) 100% 0/24px 100% local no-repeat,
-    linear-gradient(to right,var(--shadow),transparent) 0 0/16px 100% no-repeat,
-    linear-gradient(to left,var(--shadow),transparent) 100% 0/16px 100% no-repeat}
+    linear-gradient(var(--surface),var(--surface)) 0 0/40px 100% local no-repeat,
+    linear-gradient(var(--surface),var(--surface)) 100% 0/40px 100% local no-repeat,
+    linear-gradient(to right,var(--scrolledge),transparent) 0 0/32px 100% no-repeat,
+    linear-gradient(to left,var(--scrolledge),transparent) 100% 0/32px 100% no-repeat}
   .tabs button{font-size:var(--t-ui);padding:var(--sp-3) 0;white-space:nowrap;flex:0 0 auto}
   .searchrow{flex-direction:column;align-items:stretch;gap:var(--sp-4)}
   .searchbig{flex-direction:column}
@@ -3721,12 +3764,19 @@ column-gap:var(--sp-3);align-items:baseline;padding:var(--sp-1) 0}
    bars on the line that laid it on the table -- it still lies there, or it
    died there and the line after says so with the cross. And the interim
    study committee's report that recommended the subject for future
-   legislation, once the session is over: a bare orange arrow (app.js
+   legislation, once the session is over: a bare arrow, green below (app.js
    ARROW, the person's option (d) of 9 October 2026), the wave's ink and
    size, which the rail never draws. */
 .jl .j-istudy .jg,.jl .j-ifuture .jg{color:var(--st-study);display:flex;align-items:center;
 justify-content:center;align-self:start;height:1.5em}
 .jl .j-istudy .jg .wave,.jl .j-ifuture .jg .arrow{width:1em;height:1em}
+/* AN INTERIM STUDY REPORT'S MARK, BY WHAT IT SAID (the person, 30 October
+   2026: one rule wherever the report is shown, as RECCOLOUR's): green where
+   it recommends future legislation, red where it does not, plain where it
+   makes no recommendation. The "sent to interim study" wave stays orange. */
+.jl .jrec-rec .jg{color:var(--st-law)}
+.jl .jrec-not .jg{color:var(--st-done)}
+.jl .jrec-without .jg{color:var(--ink-2)}
 .jl .j-ontable .jg{display:flex;align-items:center;justify-content:center;
 align-self:start;height:1.5em}
 .jl .j-ontable .jg::after{content:"";display:block;width:.5rem;height:.7em;box-sizing:border-box;
@@ -4180,7 +4230,7 @@ background:var(--paper);
    committee pages. The control is what must fit; the option text is the
    browser's to shorten. */
 max-width:100%}
-.bfilt input[type=search]{font-weight:400}
+.bfilt input[type=search]{font-weight:400;background:var(--surface);min-height:44px}
 /* THE BILL STATUS SELECT IS PAINTED AS THE SEARCH'S STATUS FILTER IS (the
    person, 8 October 2026: the same categories as the search, on a member's
    and a committee's page). Each option carries its category's chip class
@@ -4576,8 +4626,8 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
   -webkit-mask:var(--l-list) center/contain no-repeat;mask:var(--l-list) center/contain no-repeat}
 .l-otp > summary::after{content:"";width:.875rem;height:.875rem;background:var(--ink-2);
   -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;
-  transform:rotate(90deg);transition:transform .15s}
-.l-otp[open] > summary::after{transform:rotate(-90deg)}
+  transition:transform .15s}
+.l-otp[open] > summary::after{transform:rotate(90deg)}
 .l-otpb{position:absolute;left:0;top:calc(100% + 6px);z-index:30;width:min(40rem,100%);box-sizing:border-box;
   background:var(--surface);border:1px solid var(--rule-2);border-top:2px solid var(--ink);border-radius:var(--r-in);
   box-shadow:0 8px 22px var(--shadow);padding:.5rem 1rem .75rem}
@@ -4586,6 +4636,14 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
 .l-otpb a{display:flex;align-items:center;min-height:2.75rem;font:500 var(--t-ui)/1.3 var(--sans);color:var(--pine);
   text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .l-otpb a:hover{color:var(--ink)}
+/* A GUIDE'S PARTS, ONE LEVEL DOWN (the person's walk of the preview, 30
+   October 2026): under Step by Step, each part of a guide's steps, indented
+   and a size smaller than the sections, as the part's heading is under
+   its section's (build_civics.step_parts). */
+.l-otpb .l-otpsub{columns:auto;margin:0 0 .375rem;padding:0 0 0 1rem}
+.l-otpb .l-otpsub li{border-bottom:0}
+.l-otpb .l-otpsub a{min-height:2.75rem;font:400 var(--t-sm)/1.3 var(--sans)}
+.g-part[id]{scroll-margin-top:1rem}
 @media (prefers-reduced-motion:reduce){.l-otp > summary::after{transition:none}}
 /* ON THIS PAGE, BESIDE THE PAGE (the person, 26 October 2026: "an index
    along the left side that scrolls with you like on the laws pages"). On a
@@ -4611,6 +4669,8 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
   .l-side a:hover{color:var(--ink);background:var(--wash)}
   .l-side a:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
   .l-side a[aria-current]{color:var(--ink);font-weight:600;border-left-color:var(--pine);background:var(--pine-soft)}
+  .l-side .l-otpsub{border-left:0}
+  .l-side .l-otpsub a{padding:.25rem .75rem .25rem 1.75rem;font-size:var(--t-sm);line-height:1.3}
   .l-page:has(> .l-sidewrap) .l-head .l-otp{display:none}
   :where(body.pg) .wrap:has(> .l-page > .l-sidewrap){max-width:1180px}
 }
@@ -4647,6 +4707,16 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
 .l-art .glsl{display:block;font-weight:400;color:var(--ink-2);margin-top:2px}
 .l-sec{border-top:1px solid var(--rule);padding:1.125rem 0 0;margin:0 0 1.75rem;scroll-margin-top:1rem}
 .l-sec:first-child{border-top:0;padding-top:0}
+/* ONE LOOK PER LEVEL, AND A SUBSECTION UNDER ITS SECTION (the cohesion
+   audit of 30 October 2026, B-1 and I-1): a guide's step titles were 20px
+   under its 19px "Step by Step", and Learn's and /data's subsections the
+   same 19px as their sections, so the outline read flat or upside down.
+   A section here is --t-h3 in the serif; every heading under it -- a guide's
+   step, Learn's phases, tables and examples, /data's subsections -- is
+   --t-read, the size of the text it heads, in the same weight; on Learn and
+   /data in the sans, since their text is the serif at that size and a
+   subsection read as a bold first sentence (the review of 30 October 2026).
+   A guide's steps stay serif over its sans. */
 .l-sech{font:600 var(--t-h3)/1.35 var(--serif);color:var(--ink);margin:0 0 .5rem;text-wrap:balance}
 .l-sech a{color:var(--pine);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .l-sech a:hover{color:var(--ink)}
@@ -4659,7 +4729,7 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
   margin:0 0 .875rem;padding-left:1.25rem;max-width:var(--l-meas)}
 .l-secb > :is(ul,ol):not([class]) > li{margin:0 0 .4375rem;padding-left:.25rem}
 .l-secb > :is(ul,ol):not([class]) > li::marker{color:var(--ink-2)}
-:is(.l-secb,.l-wide) > h3{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:1.75rem 0 .5rem}
+:is(.l-secb,.l-wide) > h3{font:600 var(--t-read)/1.3 var(--sans);color:var(--ink);margin:1.75rem 0 .5rem}
 .l-art .l-secb a:not([class]){color:var(--pine);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .l-art .l-secb a:not([class]):hover{color:var(--ink)}
 @media (min-width:60em){
@@ -4751,7 +4821,10 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 
 /* the thirteen pages, at the foot, in the hub's two groups */
 .l-all{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr));gap:1rem 2.5rem}
-.l-all h3{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);
+/* Its group's name at the size of its links, as a footer column's head is
+   (the heading map; the accessibility sweep of 29 October 2026): it was
+   13px capitals over 16px links. */
+.l-all h3{font:600 var(--t-ui)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);
   margin:0;padding-bottom:.375rem;border-bottom:1px solid var(--ink)}
 .l-all ol{list-style:none;margin:0;padding:0}
 .l-all li{border-bottom:1px solid var(--rule)}
@@ -4810,7 +4883,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .l-phase{position:relative;min-width:0}
 .l-phase:not(:last-child)::after{content:"";position:absolute;top:.25rem;right:-2.125rem;width:1.5rem;height:1.5rem;
   background:var(--ink-2);-webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat}
-.l-phname{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0 0 .75rem;padding:0 0 .5rem;border-bottom:1px solid var(--ink)}
+.l-phname{font:600 var(--t-read)/1.3 var(--sans);color:var(--ink);margin:0 0 .75rem;padding:0 0 .5rem;border-bottom:1px solid var(--ink)}
 /* the phase names held level however many lines one takes */
 .l-level .l-phases{gap:0 2.75rem}
 .l-level .l-phase{display:grid;grid-row:span 2;grid-template-rows:subgrid;margin-bottom:1.5rem}
@@ -4955,8 +5028,8 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .g-topic > summary::-webkit-details-marker{display:none}
 .g-topic > summary::after{content:"";flex:none;margin-left:auto;width:.5rem;height:.5rem;
   border-right:2px solid var(--ink-2);border-bottom:2px solid var(--ink-2);
-  transform:translateY(-.15rem) rotate(45deg);transition:transform .15s}
-.g-topic[open] > summary::after{transform:translateY(.1rem) rotate(-135deg)}
+  transform:rotate(-45deg);transition:transform .15s}
+.g-topic[open] > summary::after{transform:translateY(-.15rem) rotate(45deg)}
 .g-topic > summary:hover{background:var(--wash)}
 .g-topic > summary:hover .g-tname{color:var(--pine)}
 .g-topic > summary:hover .g-ic{background:var(--surface)}
@@ -4992,7 +5065,12 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
    it do. A question and its answers share one panel, so the arrow out of it
    leaves the whole decision -- the next box follows either answer -- and
    never seems to hang from the answer nearest it (the polish, 25 October
-   2026). */
+   2026).
+   AT THE LEAD'S SIZE UNDER A 19px HEADING, ON PURPOSE: the glance is 20px
+   regular under At a Glance's 19px bold (.l-sech), 1px over what heads it.
+   The accessibility sweep of 29 October 2026 noted it; the manager kept it
+   on 30 October as the person's choice of 11 October, the weight carrying
+   the heading. Not a defect for the next audit to reopen. */
 .g-glance{font:400 var(--t-lead)/1.5 var(--serif);color:var(--ink);margin:0 0 1rem;max-width:46rem}
 .g-flow{margin:.5rem 0 0}
 .g-flow > ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;align-items:center;gap:1.75rem;
@@ -5022,7 +5100,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
   border-radius:50%;background:var(--pine);color:var(--on-pine);font:700 var(--t-ui)/2.25rem var(--sans);text-align:center}
 .g-step:not(:last-child)::after{content:"";position:absolute;left:1.0625rem;top:2.5rem;bottom:.25rem;
   border-left:2px solid var(--rule-2)}
-.g-sh{font:600 var(--t-lead)/1.3 var(--serif);color:var(--ink);margin:.25rem 0 .5rem}
+.g-sh{font:600 var(--t-read)/1.3 var(--serif);color:var(--ink);margin:.25rem 0 .5rem}
 .g-step p,.g-step li{font:400 var(--t-ui)/1.6 var(--sans);color:var(--ink)}
 .g-step p{margin:0 0 .625rem}
 .g-step ul{margin:0 0 .625rem;padding-left:1.25rem}
@@ -5101,7 +5179,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 
 .l-chart{max-width:var(--l-meas);margin:.75rem 0 1.25rem;padding:1rem 1.125rem;background:var(--surface);
   border:1px solid var(--rule-2);border-radius:var(--r-in)}
-.l-chart > h3{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0 0 .25rem}
+.l-chart > h3{font:600 var(--t-read)/1.3 var(--sans);color:var(--ink);margin:0 0 .25rem}
 .l-chart > p{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:0 0 .875rem}
 .l-bars{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:.875rem;position:relative}
 .l-bars li{display:grid;grid-template-columns:subgrid;grid-column:1 / -1}
@@ -5234,7 +5312,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .l-rcol{min-width:0;display:flex;flex-direction:column}
 .l-rcol::before{content:"";display:block;width:1.5rem;height:1.5rem;margin:0 0 .375rem .5rem;background:var(--ink-2);
   -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;transform:rotate(90deg)}
-.l-rh{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0;padding:0 0 .5rem;border-bottom:1px solid var(--ink)}
+.l-rh{font:600 var(--t-read)/1.3 var(--sans);color:var(--ink);margin:0;padding:0 0 .5rem;border-bottom:1px solid var(--ink)}
 .l-rstep{margin:.75rem 0 0}
 .l-rends{list-style:none;margin:0;padding:0;display:grid;gap:.5rem}
 .l-rstep + .l-rends,.l-rh + .l-rends{margin-top:.75rem}
@@ -5366,7 +5444,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
   -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;transition:transform .15s}
 .l-tlseason > details[open] > summary::before{transform:rotate(90deg)}
 .l-tlseason > details > summary:hover .l-tlh{color:var(--pine)}
-.l-tlh{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0}
+.l-tlh{font:600 var(--t-read)/1.3 var(--sans);color:var(--ink);margin:0}
 .l-tlwhen{font:400 var(--t-sm)/1.4 var(--sans);color:var(--ink-2)}
 .l-tlseason.is-here .l-tlwhen{color:var(--pine);font-weight:600}
 .l-tlsteps{list-style:none;margin:0 0 .75rem;padding:0;position:relative}
@@ -5449,7 +5527,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .l-who{display:grid;grid-template-columns:repeat(var(--n,3),minmax(0,1fr));gap:.875rem;margin:1.25rem 0 1.5rem}
 .l-body{background:var(--surface);border:1px solid var(--rule-2);border-top:3px solid var(--ink);border-radius:var(--r-in);
   padding:.875rem 1rem 1rem;min-width:0}
-.l-body h3{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0 0 .125rem}
+.l-body h3{font:600 var(--t-read)/1.3 var(--sans);color:var(--ink);margin:0 0 .125rem}
 .l-body .l-lbl{margin:0 0 .625rem}
 .l-body dl{margin:0;display:grid;gap:.625rem}
 .l-body dt{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
@@ -5574,23 +5652,32 @@ text-decoration-thickness:1px;text-underline-offset:3px}
 .wkfilter{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--sp-4);
 margin:0 0 var(--sp-6);padding:var(--sp-4) 0}
 .wkfilter[hidden]{display:none}
-.wkchips{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+/* ONE SWITCH, NOT PILLS (the cohesion audit of 30 October 2026, I-6): the
+   chamber was the site's only round buttons, beside the square List / Week /
+   Day. It is that switch's edged group now, the chosen one filled, across
+   the side column with the room shared out, on one row: "Both chambers",
+   "House" and "Senate" need 243px and the column is 254px at 1024 (the
+   review of 30 October 2026, where 12px a side wrapped "Senate"). */
+.wkchips{display:flex;width:100%;max-width:24rem;flex-wrap:nowrap;border:1px solid var(--edge);
+border-radius:var(--r-in);overflow:hidden;background:var(--surface)}
 .wkchips button{font:inherit;font-size:var(--t-ui);font-weight:600;
-padding:var(--sp-2) var(--sp-4);min-height:40px;cursor:pointer;
+padding:var(--sp-2) var(--sp-2);min-height:40px;cursor:pointer;white-space:nowrap;flex:1 1 auto;text-align:center;
 color:var(--ink-2);background:var(--surface);
-border:1px solid var(--rule-2);border-radius:999px}
-.wkchips button:hover{border-color:var(--edge);color:var(--ink)}
+border:0;border-left:1px solid var(--rule-2);border-radius:0}
+.wkchips button:first-child{border-left:0}
+.wkchips button:hover{color:var(--ink);background:var(--wash)}
+.wkchips button:focus-visible{outline:2px solid var(--ink);outline-offset:-4px}
 /* PRESSED IS A STATE, NOT A HOVER. aria-pressed is what a screen reader
    announces, so the styling hangs off the same attribute rather than off a
    class kept in step with it by hand. */
-.wkchips button[aria-pressed="true"]{color:var(--surface);background:var(--pine);
-border-color:var(--pine)}
+.wkchips button[aria-pressed="true"]{color:var(--on-pine);background:var(--pine)}
+.wkchips button[aria-pressed="true"]:focus-visible{outline-color:var(--on-pine)}
 .wkfind{display:flex;flex-direction:column;gap:var(--sp-2);
 font-size:var(--t-sm);font-weight:600;letter-spacing:.04em;
 text-transform:uppercase;color:var(--ink-2);flex:1 1 16rem;min-width:0}
 .wkfind input{font:inherit;font-size:var(--t-ui);font-weight:400;
 letter-spacing:0;text-transform:none;color:var(--ink);
-padding:var(--sp-3) var(--sp-4);min-height:40px;width:100%;
+padding:var(--sp-3) var(--sp-4);min-height:44px;width:100%;
 background:var(--surface);border:1px solid var(--edge);border-radius:4px}
 /* --edge, as every text box's is (see the pages' own input rule): it was
    --rule-2, 1.68:1 against the page. */
@@ -5796,10 +5883,13 @@ color:var(--pine);background:var(--surface);border:1px solid var(--edge);border-
    state hides the cards (build_calendar.study_hidden). Both are the line's
    own words in the site's link colour, not a second button beside Reset. */
 .calshowst[hidden]{display:none}
-.calshowst,.calstline label{min-height:40px;padding:var(--sp-2) 0;font-size:var(--t-ui);font-weight:600;
+.calshowst,.calstline label,.calshowday,.calstonly label{min-height:40px;padding:var(--sp-2) 0;font-size:var(--t-ui);font-weight:600;
 color:var(--pine);background:none;border:0;cursor:pointer;text-decoration:underline;
 text-decoration-thickness:1px;text-underline-offset:.2em}
-.calshowst:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.calshowst:focus-visible,.calshowday:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+/* A day's own "Show them" (the R2 polish batch, 30 October 2026) sits in its
+   sentence, at the sentence's size. */
+.calshowday,.calstonly label{min-height:24px;padding:0;font-size:inherit}
 .calview > .calst{position:absolute;width:1px;height:1px;margin:0;opacity:0}
 .calview > .calst:focus-visible + .calstline label{outline:2px solid var(--pine);outline-offset:2px}
 .calstline{margin:0 0 var(--sp-5);font-size:var(--t-ui);color:var(--ink-2)}
@@ -6189,17 +6279,21 @@ font-style:italic}
 .svote .votewrap{margin-top:var(--sp-3)}
 
 /* A debate the House voted to keep. They run long -- 5,507 speeches across 298
-   of them -- so the opening sentences stand and the rest opens on request. */
+   of them -- so the opening sentences stand and the rest opens on request.
+   The sentences sit after the fold, so they show while it is shut, and its
+   triangle turns down as every other opener's does (the R2 polish batch, 30
+   October 2026: they were inside it, and the triangle never turned). */
 .sdebate{margin:var(--sp-4) 0 0;border-top:1px solid var(--rule);
 padding-top:var(--sp-4)}
 .sdebate > summary{display:flex;flex-wrap:wrap;align-items:center;
 gap:var(--sp-3);cursor:pointer;list-style:none;min-height:44px}
 .sdebate > summary::-webkit-details-marker{display:none}
+.sdebate[open] > summary .caret{transform:rotate(90deg)}
 .sdlab{font-size:var(--t-label);font-weight:600;letter-spacing:.04em;
 text-transform:uppercase;color:var(--pine)}
 .sdn{font-size:var(--t-sm);color:var(--ink-2)}
 .sdopen{margin:var(--sp-3) 0 0;font-family:var(--serif);color:var(--ink-2)}
-.sdebate[open] .sdopen{display:none}
+.sdebate[open] + .sdopen{display:none}
 .sdbody{margin-top:var(--sp-4)}
 .sdsp{margin:0 0 var(--sp-4);font-family:var(--serif)}
 .sdsp a,.sdsp > span:first-child{font-family:var(--sans);font-weight:600;
@@ -6243,7 +6337,10 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
 .vbtn{border:1px solid var(--rule);background:var(--surface);border-radius:var(--r-out);
   padding:var(--sp-3) var(--sp-5);font-size:var(--t-sm);text-align:left;cursor:pointer;line-height:1.3}
 .vbtn i{display:block;font-style:normal;font-size:var(--t-sm);color:var(--ink-2);margin-top:var(--sp-1)}
-.vbtn.sel{border-color:var(--pine);background:var(--pine-soft);color:var(--pine);font-weight:600}
+/* Chosen, solid pine, as every switch of a view is (the cohesion audit of
+   30 October 2026, I-6), with its date in the same white. */
+.vbtn.sel{border-color:var(--pine);background:var(--pine);color:var(--on-pine);font-weight:600}
+.vbtn.sel i{color:var(--on-pine)}
 
 /* THE VERSION SEQUENCE. The picker above is a row of buttons and says nothing
    about the distance between any two of them; this is the same buttons down a
@@ -6260,9 +6357,10 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
    stated exactly, in .vcount below. */
 
 .vmode{display:flex;gap:var(--sp-4);align-items:center;flex-wrap:wrap;margin:0 0 var(--sp-5)}
-.vtog{border:1px solid var(--rule);background:var(--surface);border-radius:var(--r-pill);
-  padding:var(--sp-2) var(--sp-5);font-size:var(--t-sm);cursor:pointer}
-.vtog.sel{border-color:var(--pine);background:var(--pine-soft);color:var(--pine);font-weight:600}
+.vtog{border:1px solid var(--edge);background:var(--surface);border-radius:var(--r-in);
+  padding:var(--sp-2) var(--sp-5);font-size:var(--t-sm);cursor:pointer;color:var(--ink-2)}
+.vtog:hover{color:var(--ink);background:var(--wash)}
+.vtog.sel{border-color:var(--pine);background:var(--pine);color:var(--on-pine);font-weight:600}
 .vcount{font-size:var(--t-sm);color:var(--ink-2)}
 .vdiff{font-family:var(--serif);font-size:var(--t-ui);line-height:1.7;white-space:pre-wrap;
   word-break:break-word;background:var(--wash);border-radius:var(--r-out);padding:var(--sp-5) var(--sp-6)}
@@ -6392,20 +6490,19 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
    click away, which is where the rest of the bill already is. */
 .votes .vt{color:var(--ink);font-size:var(--t-ui);line-height:1.35;
   margin-top:var(--sp-1);
-  /* max-height RATHER THAN -webkit-line-clamp, and not for want of trying it.
-     The clamp needs display:-webkit-box, and inside this table cell the
-     computed display came back flow-root with the clamp inert -- the rule
-     applied, the box did not. Two lines at 1.35 is 2.7em, which is a number
-     this can be asked for directly and which every engine honours.
-     A CUT TITLE SHOWS AS CUT (the audit of 25 October 2026, S9): it stopped
-     at the end of its second line, mid-phrase and with no "...", as if that
-     were all of it. The box keeps the top of a third line where there is one
-     and fades it out, so the words can be seen going on; a title of one or
-     two lines ends above the fade and is drawn whole, as it was (54 of the
-     191 shown on one member's tab are two lines exactly). */
-  display:block;max-height:3.5em;overflow:hidden;
-  -webkit-mask-image:linear-gradient(#000 2.7em,transparent 3.5em);
-  mask-image:linear-gradient(#000 2.7em,transparent 3.5em)}
+  /* TWO LINES AND AN ELLIPSIS (the cohesion audit of 30 October 2026, B-7).
+     A CUT TITLE SHOWS AS CUT (the audit of 25 October 2026, S9), and the
+     fade that said so kept the top of a third line, which sat 4px over the
+     motion's line below it on a phone and read as text printed over text.
+     The clamp ends the second line with "..." instead, as truncation is
+     drawn elsewhere. It was set aside here once because the computed
+     display reads flow-root inside this cell; that is how Chromium now
+     carries the clamp, and it clamps -- measured on Rep. Presa's tab at 390
+     and 1280, every cut title 43px, two lines at 1.35. max-height is the
+     same two lines for an engine without the clamp, which then cuts without
+     the "...". A title of one or two lines is drawn whole, as it was. */
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;
+  max-height:2.7em;overflow:hidden}
 .votes .vq{display:block;color:var(--ink-2);font-size:var(--t-sm);margin-top:var(--sp-2)}
 /* The record's own word for the motion, in brackets after the plain one,
    takes the line's --ink-2 and no opacity: `opacity:.8` on it was 4.14:1 on
@@ -6545,10 +6642,10 @@ table.votes tr:has(+ tr.vring) td{border-bottom:0}
   background:var(--surface);color:var(--ink);font-family:var(--sans);font-size:var(--t-ui);
   font-weight:500;cursor:pointer;list-style:none}
 .dponp > summary::-webkit-details-marker{display:none}
-.dponp > summary::after{content:"";width:.45em;height:.45em;margin:0 0 .2em var(--sp-1);
-  border-right:1.5px solid var(--ink-2);border-bottom:1.5px solid var(--ink-2);transform:rotate(45deg)}
+.dponp > summary::after{content:"";width:.45em;height:.45em;margin:0 0 0 var(--sp-1);
+  border-right:1.5px solid var(--ink-2);border-bottom:1.5px solid var(--ink-2);transform:rotate(-45deg)}
 .dponp[open] > summary{border-color:var(--ink)}
-.dponp[open] > summary::after{transform:rotate(225deg);margin:.25em 0 0 var(--sp-1)}
+.dponp[open] > summary::after{transform:rotate(45deg);margin:0 0 .2em var(--sp-1)}
 .dponp > summary:hover{border-color:var(--pine)}
 .dponpb{position:absolute;left:0;top:calc(100% + var(--sp-3));z-index:30;width:min(40rem,calc(100vw - 2rem));
   box-sizing:border-box;background:var(--surface);border:1px solid var(--rule-2);border-top:2px solid var(--ink);
@@ -6572,7 +6669,7 @@ table.votes tr:has(+ tr.vring) td{border-bottom:0}
 .dpsecb > :last-child{margin-bottom:0}
 .dpsecb p{font-family:var(--serif);font-size:var(--t-read);line-height:1.65;color:var(--ink);
   margin:0 0 var(--sp-5);max-width:51.1875rem}
-.dph3{font-family:var(--serif);font-size:var(--t-h3);font-weight:600;line-height:1.35;color:var(--ink);
+.dph3{font-family:var(--sans);font-size:var(--t-read);font-weight:600;line-height:1.35;color:var(--ink);
   margin:var(--sp-9) 0 var(--sp-4)}
 .dpsecb > .dph3:first-child{margin-top:0}
 .dpsecb p.dpnote{font-family:var(--sans);font-size:var(--t-ui);line-height:1.55;
@@ -6915,12 +7012,206 @@ transition:transform .15s}
 .cmplay .pwho{flex:1 1 100%;color:var(--ink-2)}
 .cmplay .pwho b{color:var(--ink);font-weight:600}
 .cmplay .tolnote{margin-left:0}
+/* THE VIDEOS VIEW (app.js, THE VIDEOS VIEW): a committee's Videos tab, a
+   chamber's and a study committee's Videos tab. The player and its one
+   caption, then what the chosen recording covers, then the list of
+   recordings; on a wide screen the list stands beside the player, as tall
+   as the player block and scrolling inside it, so it never runs past it
+   (the manager's review of 26 October 2026, 6). On a phone everything is one
+   column in that order, the player staying at the top while the whole list
+   flows on the page beneath it: no box that scrolls inside a page that
+   scrolls. */
+.vw{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-5);
+grid-template-areas:"main" "det" "side" "src"}
+.vwmain{grid-area:main;min-width:0}
+.vw .vwplay{margin-top:0}
+.vwcap{display:block}
+.vwcap p{margin:0;color:var(--ink-2);line-height:1.5}
+.vwcap b{color:var(--ink);font-weight:600}
+/* A date, a time, a length and "On YouTube" each kept whole with the dot
+   at its head (app.js, vwJoin), so the line breaks before a dot and never
+   after one (the owner's fix S9): at 390px the link broke between its two
+   words, and the caption ended a line on a dot. */
+.vwcap .vwi{white-space:nowrap}
+.vwdet{grid-area:det;min-width:0}
+/* What the recording is of, in a line: its kinds as chips, then the room or
+   the kind of meeting in words. */
+.vwkinds{margin:0 0 var(--sp-4);font-size:var(--t-ui);line-height:1.8;color:var(--ink-2)}
+.vwkinds .chip{margin-right:var(--sp-3)}
+/* No bill tied to it: said once, here, in muted text (review, 3). */
+.vwnone{margin:0;font-size:var(--t-ui);color:var(--ink-2)}
+/* THE RECORDING'S DESCRIPTION (app.js, cmteVideoDetail): how many bills and
+   how the times are used, then a line a bill -- its number, its moments
+   beside it, and its title under them in smaller, quieter type -- so the eye
+   runs down the numbers and across to the times. */
+.vwlead{margin:0 0 var(--sp-3);font-size:var(--t-ui);color:var(--ink-2)}
+/* THE NUMBERS' COLUMN IS AS WIDE AS THE LONGEST NUMBER IN THE LIST, and the
+   same for every bill (each line a subgrid of the list), so the moments
+   start on one line down the list and no number runs under its first
+   button: at a fixed 7.5rem, "HB 675-FN-A-LOCAL" (164px at 1280) ran 36px
+   under it and read "HB 675-FN-A-LO" (the review of 29 October 2026, 3; the
+   committees' recordings carry 122 numbers of 15 characters or more). And
+   each number sits on its line's first baseline, level with the first line
+   beside it -- its moments, or its title where it has none -- where it had
+   been centred against a title of two or three lines (6). */
+.vwbills{list-style:none;margin:0;padding:0;display:grid;
+grid-template-columns:minmax(7.5rem,max-content) minmax(0,1fr);column-gap:var(--sp-4)}
+.vwbills li{grid-column:1 / -1;display:grid;grid-template-columns:minmax(7.5rem,max-content) minmax(0,1fr);
+grid-template-columns:subgrid;gap:var(--sp-2) var(--sp-4);
+align-items:baseline;padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
+.vwbills li:first-child{border-top:0;padding-top:0}
+.vwbn{grid-column:1;font-weight:600;white-space:nowrap}
+.vwbt{grid-column:2;font-size:var(--t-sm);line-height:1.45;color:var(--ink-2)}
+.vwbills .mjumps{grid-column:2;display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);align-items:center;margin-left:0}
+.vwlinks{margin:var(--sp-4) 0 0}
+/* A link a finger taps is 24px tall here too (WCAG 2.5.8): the player bar's
+   ".pbar > a" rule never reaches the caption's "On YouTube", which sits in a
+   line of text, nor the links under the player, and both were 19px (the
+   review of 30 October 2026). An inline link's token, as a.psent's. */
+.vwcap a,.vwlinks a{padding-block:var(--tap-text)}
+/* Past the bills to the list, for a keyboard: shown when it has focus. */
+.vwskip:not(:focus){position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;
+clip:rect(0 0 0 0);white-space:nowrap}
+.vwskip:focus{display:inline-block;margin-top:var(--sp-4)}
+.vwside{grid-area:side;min-width:0}
+/* The list's heading, an h3 or a chamber's h2 (videoView, level), drawn the
+   one way whichever: an h2 had taken the page's serif. */
+.vwh{margin:0 0 var(--sp-3);font-family:var(--sans);font-size:var(--t-label);font-weight:600;letter-spacing:.06em;
+text-transform:uppercase;color:var(--ink-2)}
+/* THE LIST HOLDS ITS ROWS' HIDDEN COMMAS (the review of 30 October 2026):
+   on a wide screen it scrolls inside its box, and a screen reader's comma
+   (.sr, absolutely placed) in a row's first line was placed against the box
+   round it (.vwin), outside the scrolling, where its row would be with the
+   list unscrolled. The page ran on past its footer by the list's hidden
+   height: 4,865px on House Finance's at 1280. position:relative makes the
+   list theirs, so they scroll with it and are clipped with it. */
+.vwlist{position:relative;list-style:none;margin:0;padding:0;border:1px solid var(--rule);border-radius:var(--r-out);
+background:var(--surface)}
+.vwlist li+li{border-top:1px solid var(--rule)}
+/* A row: the date and when it began and ran on one line, its kinds and
+   bills on the next. The chosen one carries a bar as well as a ground, so
+   it is not told by colour alone (review, 7). */
+.vwrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--sp-1) var(--sp-3);
+padding:var(--sp-2) var(--sp-4) var(--sp-3) calc(var(--sp-4) - 4px);border-left:4px solid transparent;
+color:var(--ink);text-decoration:none;line-height:1.35}
+.vwrow:hover{background:var(--wash)}
+.vwrow[aria-current="true"]{border-left-color:var(--pine);background:var(--wash)}
+/* The ring inside the row, so the list's own edge does not clip it. */
+.vwrow:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+.vwd{font-weight:600;white-space:nowrap}
+.vwt{font-size:var(--t-sm);color:var(--ink-2);text-align:right;white-space:nowrap}
+/* TWO LINES A ROW (app.js, vwRow; the review of 29 October 2026): the
+   date and the count of bills, with when it began and ran; then the kinds
+   and the first bills on one line, the bills cut short with an ellipsis
+   where they do not fit, and a run of kinds too long for the line cut at
+   its edge. The chips here a little smaller than a card's, the same words
+   and colours, and first in their line at every width: on a phone the
+   Calendar's rule for its own rows (.calkind{order:3}) had put them after
+   the bills.
+   THE LINE HOLDS ITS HIDDEN COMMAS (the walk of 30 October 2026): a
+   screen reader's commas (.sr) are absolutely placed, so the line's
+   overflow:hidden held them only if it was their containing block; it was
+   not, and the commas of a long line stood past the list's edge, so
+   /committee/ss1729/videos scrolled sideways. position:relative makes it
+   theirs. */
+.vwd .vwi{font-weight:400;font-size:var(--t-sm);color:var(--ink-2)}
+.vwb{position:relative;grid-column:1 / -1;display:flex;align-items:center;min-width:0;font-size:var(--t-sm);line-height:1.5;
+color:var(--ink-2);white-space:nowrap;overflow:hidden}
+.vwb .chip{flex:none;order:0;margin-right:var(--sp-2);padding:0 var(--sp-3);line-height:1.4}
+.vwl{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.vwall{margin-top:var(--sp-3)}
+.vwsrc{grid-area:src;margin:0}
+/* The ground the player stands on where it stays: the pane's sheet on a
+   committee's page, the page's own on a chamber's. */
+.vw{--vwbg:var(--paper)}
+.pane .vw{--vwbg:var(--surface)}
+/* On paper every bill prints: this is a screen's, a phone's first few bills
+   under the player and a button for the rest. */
+@media screen and (max-width:59.99em){
+  .vwbills:not(.vwopen) .vwrest{display:none}
+  /* ON A PHONE THE PLAYER STAYS AT THE TOP and the recordings scroll under
+     it, as a YouTube playlist does (the owner, 29 October 2026): the player
+     and its caption stick under the tab strip that stays there already
+     (--vwtop, its height, measured by app.js's vwStick), on a band of the
+     ground they stand on, so nothing scrolling under them shows through.
+     The band reaches a little below the caption without moving what follows
+     it. Whatever the keyboard or a link moves to under the player stops
+     clear of it (--vwstick, the player's foot), and the view itself, landed
+     on, stops under the strip. The page is what scrolls: no box scrolls
+     inside it (review, 6).
+
+     ONLY WHERE IT LEAVES THE LIST ROOM (the review of 29 October 2026, 1):
+     vwStick marks the view [data-vwpin] where the strip, the player and its
+     caption take no more than three fifths of the window's height. On a
+     phone held sideways (844 by 390) they were 468px of 390, and in a
+     900 by 600 window 548 of 600, and the list scrolled out of sight under
+     them; there the player scrolls with the page, as it did before. The
+     band is drawn the same pinned or not, so marking it does not change
+     the height it is measured by. */
+  .vwmain{background:var(--vwbg);padding-bottom:var(--sp-3);margin-bottom:calc(-1 * var(--sp-3))}
+  .vw[data-vwpin] .vwmain{position:sticky;top:var(--vwtop,0px);z-index:4}
+  /* And while it stays over the list, a foot to it (7): the rows went
+     under the caption with the tops of their chips cut off and nothing to
+     say the player was a layer above them. Drawn only once the view has
+     gone up under it (vwEdge), so the player at rest has no line under it. */
+  .vw[data-vwstuck] .vwmain{box-shadow:0 1px 0 var(--rule-2),0 6px 8px -6px var(--shadow)}
+  .vw{scroll-margin-top:var(--vwtop,0px)}
+  .vwdet,.vwdet :is(a,button),.vwside :is(a,button),.vwsrc a{scroll-margin-top:calc(var(--vwstick,0px) + var(--sp-3))}
+}
+/* On a phone the number and its moments run on one line as far as they fit,
+   a moment that does not fit going whole to the next, and the title takes
+   the width under them: in a column beside the number, "Full Committee Work
+   Session 01:23:11" broke over two lines inside its button at 390px. */
+@media (max-width:45em){
+  .vwbills{display:block}
+  .vwbills li{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3)}
+  .vwbills .mjumps{display:contents}
+  .vwbt{flex:1 1 100%}
+}
+@media screen and (min-width:60em){
+  .vw{grid-template-columns:minmax(0,1fr) 22rem;grid-template-areas:"main side" "det ." "src src"}
+  .vwside{position:relative}
+  .vwin{position:absolute;inset:0;display:flex;flex-direction:column}
+  .vwin .vwlist{flex:1 1 auto;min-height:0;overflow:auto}
+  .vwall{display:none}
+}
+@media (forced-colors:active){
+  .vwrow[aria-current="true"]{border-left-color:Highlight}
+}
+/* A CHAMBER'S TWO TABS, Session Days | Videos (app.js, chamberStrip), under
+   the term as a committee's are, each pane below them. */
+.chtabs{margin-top:var(--sp-6)}
+.chpane{margin-top:var(--sp-6)}
+.chpane > .chorder:first-child{margin-top:0}
+@media print{
+  .vwall,.vwskip{display:none}
+}
 /* A STATUTORY OR STUDY COMMITTEE'S PAGE (18 October 2026,
    build_study_committees.py): the record head, then W4 sections -- What It
-   Does, Report, Members, Meetings -- each meeting folded as a committee's is.
-   The rules it meets by and its report's due date are a short list of label
-   and value, the legislators a row of chips by chamber, and every other seat
-   a line of the statute's own description with how many hold it. */
+   Does, Report, Members -- and then a standing committee's tabs, Bills |
+   Meetings | Videos (29 October 2026), each meeting folded as a committee's
+   is. The rules it meets by and its report's due date are a short list of
+   label and value, the legislators a row of chips by chamber, and every
+   other seat a line of the statute's own description with how many hold it.
+
+   THE TABS ARE A STANDING COMMITTEE'S (.rhead ~ .tabs, the panes the
+   record's white sheet), written whole by the build: without JavaScript the
+   strip is hidden and every pane is on the page in turn under its own
+   heading, a sheet of its own; with it (html.js, before the first paint) the
+   first pane alone shows until app.js (ssTabs) turns to another, and a
+   pane's heading is the tab's, kept for a screen reader. */
+html:not(.js) .sstabs{display:none}
+html.js .sspane:not([data-on]){display:none}
+.ssph{font-size:var(--t-h2);line-height:1.25;margin:0 0 var(--sp-5)}
+html.js .ssph{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+clip:rect(0 0 0 0);white-space:nowrap;border:0}
+html:not(.js) .rhead ~ .sspane{border-top:1px solid var(--rule-2);border-radius:var(--r-out);margin-top:var(--sp-7)}
+/* A meeting the address names (#day-<date>, a Calendar card's link, the
+   Videos tab's "This meeting") lands below the strip, which stays at the top
+   of the window: its height as app.js measured it (ssClear, --ssheld; until
+   then about a strip's) and a little more. Brought to the top, the
+   meeting's date was under the strip (the review of 29 October 2026, 2). */
+.sspane .cmeet{scroll-margin-top:calc(var(--ssheld,3.25rem) + var(--sp-6))}
 .ssbody{margin-top:var(--sp-7)}
 .ssbody > .w4:first-child{border-top:1px solid var(--rule);padding-top:var(--sp-5)}
 .ssduty{font:400 var(--t-read)/1.65 var(--serif);color:var(--ink);max-width:51.1875rem;margin:0 0 var(--sp-4)}
@@ -6943,9 +7234,14 @@ padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
    reader opens it, the find box the script shows, the two classes each a
    grid of the standing committees' cards. */
 .clist .ssfold{margin:var(--sp-8) 0 0}
-.clist .ssfold > summary .ssfh{margin:0;padding:0;border:0;font:600 var(--t-ui)/1.3 var(--sans);
-letter-spacing:0;text-transform:none;color:var(--ink)}
-.ssfold > summary .w4n{font-weight:400;color:var(--ink-2);margin-left:var(--sp-2)}
+/* Its heading is the page's other sections' -- HOUSE, SENATE, FORMER
+   COMMITTEES -- in a fold (the cohesion audit of 30 October 2026, I-1): it was
+   16px sans in pine beside their 20px serif capitals. The caret and the box
+   say it opens. */
+.clist .ssfold > summary .ssfh{margin:0;padding:0;border:0}
+.clist .ssfold > summary .sflab{color:inherit;text-decoration:none}
+.ssfold > summary .w4n{font:400 var(--t-sm)/1 var(--sans);letter-spacing:0;text-transform:none;
+color:var(--ink-2);margin-left:var(--sp-2)}
 .ssfind{margin:var(--sp-4) 0 0}
 .ssfind label{display:block;font-size:var(--t-sm);font-weight:600;color:var(--ink-2);margin:0 0 var(--sp-2)}
 .ssfind input{width:100%;max-width:28rem;min-height:44px;padding:var(--sp-3) var(--sp-4);font-size:var(--t-ui);
@@ -6963,12 +7259,17 @@ color:var(--ink-2);margin:var(--sp-6) 0 var(--sp-3)}
 /* THE LINE FOR THIS MEETING, inside the card's well (.cline): its kinds and
    time, the moment in the recording where each was taken up, and what
    happened, each act on a line of its own. A killing is said in the red of
-   the cross that marks it, a study recommended in the orange of its arrow,
+   the cross that marks it, a study recommended in the green of its arrow,
    both as a mark and a word, never by colour alone. */
 .mline{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-4);margin-bottom:var(--sp-3)}
 .mkinds{display:inline-flex;flex-wrap:wrap;gap:var(--sp-2)}
 .mtime{font-weight:600;font-size:var(--t-ui);white-space:nowrap}
 .mjumps{display:inline-flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3);margin-left:auto}
+/* A moment's button and its "approximate", kept on one line together
+   (app.js, jumpButtons): the row of moments wraps between moments, never
+   between a button and its word. Where the two are wider than the line,
+   the button's own words wrap inside it. */
+.mjump{display:inline-flex;flex-wrap:nowrap;align-items:center;gap:var(--sp-3);max-width:100%}
 .mjumps .jump{display:inline-flex;align-items:center;gap:var(--sp-2);background:var(--surface)}
 .mjumps .jump .icon{width:.75rem;height:.75rem}
 .mjumps .approx{font-style:normal;font-size:var(--t-sm);color:var(--ink-2)}
@@ -6976,7 +7277,8 @@ color:var(--ink-2);margin:var(--sp-6) 0 var(--sp-3)}
 .mmark{display:inline-flex;vertical-align:-.1em;margin-right:var(--sp-2);font-weight:700}
 .mmark svg{width:.9em;height:.9em}
 .mkill .mmark,.mkill b{color:var(--st-done)}
-.mrec .mmark{color:var(--st-study)}
+.mrec .mmark{color:var(--st-law)}
+.mwithout .mmark,.mwithout b{color:inherit}
 .msign b{font-variant-numeric:tabular-nums}
 .mwhen{color:var(--ink-2)}
 /* POLISH 2 -- MEETINGS: END --------------------------------------------- */
@@ -7116,14 +7418,14 @@ border-radius:var(--r-in);background:var(--surface);font-size:var(--t-ui)}
   .card.focus.rec > .cbody > .tabs,.rhead ~ .tabs{background:
     linear-gradient(var(--paper),var(--paper)) 0 0/40px 100% local no-repeat,
     linear-gradient(var(--paper),var(--paper)) 100% 0/40px 100% local no-repeat,
-    linear-gradient(to right,var(--lift),transparent) 0 0/32px 100% no-repeat,
-    linear-gradient(to left,var(--lift),transparent) 100% 0/32px 100% no-repeat;
+    linear-gradient(to right,var(--scrolledge),transparent) 0 0/32px 100% no-repeat,
+    linear-gradient(to left,var(--scrolledge),transparent) 100% 0/32px 100% no-repeat;
     background-color:var(--paper)}
 }
-.card.focus.rec > .cbody > .pane,.rhead ~ #ppane{background:var(--surface);border:1px solid var(--rule-2);
+.card.focus.rec > .cbody > .pane,.rhead ~ #ppane,.rhead ~ .sspane{background:var(--surface);border:1px solid var(--rule-2);
 border-top:0;border-radius:0 0 var(--r-out) var(--r-out);padding:var(--sp-7) var(--sp-8) var(--sp-8)}
 @media (max-width:45em){
-  .card.focus.rec > .cbody > .pane,.rhead ~ #ppane{padding:var(--sp-5) var(--sp-4) var(--sp-6)}
+  .card.focus.rec > .cbody > .pane,.rhead ~ #ppane,.rhead ~ .sspane{padding:var(--sp-5) var(--sp-4) var(--sp-6)}
 }
 
 /* W4 SECTIONS (C7): the heading in a left margin level with its first line,
@@ -7393,7 +7695,7 @@ letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
 /* THE RELATED TAB (app.js renderRelated). Each row the sentence, at reading
    size, and the other bill's title and status under it at the size of meta. */
 .rl-g{margin:0 0 1.25rem}
-.rl-g h2{font:600 var(--t-ui)/1.35 var(--sans);color:var(--ink);margin:1rem 0 .5rem}
+.rl-g .sech{margin:1rem 0 .5rem}
 .rl-list{list-style:none;margin:0;padding:0}
 .rl-row{padding:.625rem 0;border-top:1px solid var(--rule)}
 .rl-s{font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink);margin:0}
@@ -7797,7 +8099,7 @@ padding:var(--sp-5) var(--sp-5);margin:0 0 var(--sp-5);line-height:1.6}
    by 1.16:1, so the edge is the whole of what says "type here" (the audit of
    2 October 2026, S10; WCAG 1.4.11 asks 3:1). --edge is 3.98:1 and 4.64:1,
    and preflight holds it there. */
-:where(body.pg) input[type=search], :where(body.pg) input[type=text]{width:100%;height:42px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-ui);
+:where(body.pg) input[type=search], :where(body.pg) input[type=text]{width:100%;height:44px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-ui);
 border:1px solid var(--edge);border-radius:var(--r-out);background:var(--surface)}
 :where(body.pg) input:focus{outline:2px solid var(--pine);outline-offset:1px;border-color:var(--pine)}
 :where(body.pg) table{width:100%;border-collapse:collapse;font-size:var(--t-ui)}
@@ -7953,7 +8255,7 @@ var(--rule-2) 3px,var(--surface) 3px,var(--surface) 6px);border:1px solid var(--
    the prime sponsor filter on the bill search behaves and is what was asked
    for here. Below two letters it says what it will match rather than
    listing 726 things. */:where(body.pg) .lfind{margin:var(--sp-6) 0 var(--sp-8)}
-:where(body.pg) .lfind input[type=search]{font-size:var(--t-lead);height:52px}
+:where(body.pg) .lfind input[type=search]{font-size:var(--t-ui);height:44px}
 :where(body.pg) .lfind .count{margin:var(--sp-4) var(--sp-1) 0}
 /* A WINDOW ON THE LIST, NOT THE WHOLE LIST. Every town is in here so that
    somebody who is not sure how their town is spelled -- or lives in one of
@@ -8802,7 +9104,7 @@ border:1px solid var(--rule);border-radius:var(--r-out);background:var(--surface
 :where(body.pg) .resout .fkind{display:none}
 :where(body.pg) .resout a{border-radius:0;padding:var(--sp-4) var(--sp-5)}
 :where(body.pg) .resfind{margin:var(--sp-6) 0 var(--sp-8)}
-:where(body.pg) .resfind input[type=search]{font-size:var(--t-lead);height:52px}
+:where(body.pg) .resfind input[type=search]{font-size:var(--t-ui);height:44px}
 :where(body.pg) .resgrp{margin:0 0 var(--sp-8)}
 :where(body.pg) .resgrp h2{display:flex;align-items:baseline;gap:var(--sp-4);
 margin:0 0 var(--sp-4)}
@@ -8964,3 +9266,15 @@ text-wrap:balance}
 /* ==== /HUBS, PAGES ======================================================== */
 
 /* ---- /THE PAGES build_pages.py WRITES ---------------------------------- */
+
+/* THE CHOSEN ONE OF A SWITCH, IN FORCED COLOURS (the cohesion audit of 30
+   October 2026, I-6): its pine ground is the system's there, so nothing
+   said which was chosen. Filled with the system's Highlight, as a chosen
+   list item is, so a focused one, which is outlined, is not taken for it
+   (the review of 30 October 2026). */
+@media (forced-colors:active){
+  .calviews button[aria-pressed="true"],.wkchips button[aria-pressed="true"],
+  .rtabs [role=tab][aria-selected=true],.vbtn.sel,.vtog.sel{forced-color-adjust:none;
+    background:Highlight;color:HighlightText;border-color:Highlight}
+  .vbtn.sel i{color:HighlightText}
+}

@@ -124,7 +124,7 @@ const SHELL = () => page(200, {
 <form id="view" method="post" action="${PATH}"><input type="hidden" name="t" value="">
 <input type="hidden" name="action" value="view"><input type="hidden" name="notice" value="">
 </form>
-<p class="quiet">Opening your page&hellip;</p>`,
+<p class="quiet" data-waits>Opening your page&hellip;</p>`,
 });
 
 const STALE = () => message(400, "This link is no longer current",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.4
+# GRANITE_VERSION: 2026-10-09.5
 """
 Who held the chair's offices, and on which days, from the record on disk.
 
@@ -286,9 +286,9 @@ def _title(t):
 
 # A sitting's date under its "HOUSE JOURNAL No. 1" heading, with or without
 # its weekday: an organization day of 1996 and 2000 prints "December 4, 1996"
-# and "(December 6, 2000)" alone, which journal_days.DATELINE, asking for the
-# weekday, does not read -- and those two are where Speakers Sytek and
-# Chandler were elected.
+# and "(December 6, 2000)" alone -- and those two are where Speakers Sytek and
+# Chandler were elected. journal_days.DATELINE asked for the weekday until 30
+# October 2026 and now reads these too; this stays its own, case-sensitive.
 H_DATE = re.compile(
     r"^[ \t]*\(?(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+)?"
     r"(?P<mon>January|February|March|April|May|June|July|August|September|October|"
