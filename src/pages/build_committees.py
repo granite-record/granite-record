@@ -69,6 +69,7 @@ import argparse
 import collections
 import json
 import re
+import shutil
 import types
 
 import proceedings as P
@@ -1204,6 +1205,12 @@ def main():
     live_past = live_hook.past()
     live_all = [(chamber_of(c).strip().upper(), committee_name(c, lead, codes)) for c in codes_
                 if c not in retired and presentable(committee_name(c, lead, codes))]
+    # AND THE TWO FILES THE HOOK LOADS, beside the pages that load them:
+    # build_live copies the same two later in a full build, and a build
+    # without it (a fast path, a partial run, preflight's fixture) left
+    # every committee page linking a script and a stylesheet not there.
+    for f in ("live.js", "live.css"):
+        shutil.copyfile(_paths.locate(f"src/pages/{f}"), site / f)
 
     for code in codes_:
         info = lead.get(code, {})

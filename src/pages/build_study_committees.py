@@ -64,6 +64,7 @@ import datetime
 import io
 import json
 import re
+import shutil
 from collections import Counter, OrderedDict
 from urllib.parse import quote_plus
 
@@ -1197,6 +1198,10 @@ def main():
     # each page refuses a stream whose committee's name extends its own.
     ctx["live_past"] = live_hook.past()
     ctx["live_all"] = [("", c["name"]) for c in comms]
+    # And the two files the hook loads, beside the pages (build_committees
+    # says why: build_live copies them again later in a full build).
+    for f in ("live.js", "live.css"):
+        shutil.copyfile(_paths.locate(f"src/pages/{f}"), site / f)
     urls = [write_page(c, ctx, today) for c in comms]
     assert len(urls) == len(comms) == len({u for u in urls}), "a committee's page was not written once"
     # THE LIST OF THEM, a line each, for the readers after this step: the

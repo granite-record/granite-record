@@ -229,9 +229,11 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0].strip())
     ap.add_argument("--site", default="site")
     ap.add_argument("--base", default="https://graniterecord.org")
-    ap.add_argument("--today", help="the day to write for, YYYY-MM-DD (default: the build's)")
+    # dest="day": preflight's _build_date_stated reads any `.today` on the
+    # build's path as asking the clock, and this one is the reader's.
+    ap.add_argument("--today", dest="day", help="the day to write for, YYYY-MM-DD (default: the build's)")
     a = ap.parse_args()
-    today = datetime.date.fromisoformat(a.today) if a.today else build_date.today()
+    today = datetime.date.fromisoformat(a.day) if a.day else build_date.today()
     sched = write(a.site, a.base, today)
     n = sum(len(v) for v in sched["days"].values())
     print(f"live: {PAGE} and {SCHEDULE.as_posix()}, {n} meetings over {len(sched['days'])} days "

@@ -25858,7 +25858,9 @@ def _built_sites():
 
 # A stylesheet a page may take BESIDE app.css: the district map's, on the pages
 # that draw it. Anything else a page links is a second stylesheet.
-BESIDE_APP_CSS = ("/map.css",)
+# And the live layer's, on /live and beside every committee page's live hook
+# (live_hook.place; workers/live/PATCHES.md 11, 2 November 2026).
+BESIDE_APP_CSS = ("/map.css", "/live.css")
 
 
 @check("frontend", "every page links the one stylesheet, /app.css, and none links style.css")
@@ -25917,7 +25919,8 @@ def _one_stylesheet_linked():
         assert not bad, (f"{len(bad)} pages of {what} do not link the one stylesheet "
                          f"alone: " + "; ".join(bad[:5]))
         said.append(f"{n:,} pages of {what}")
-    return "ok", "each links /app.css once and no other of ours but the map's: " + ", ".join(said)
+    return "ok", ("each links /app.css once and no other of ours but the map's and the live layer's: "
+                  + ", ".join(said))
 
 
 @check("frontend", "the published app.css is the source without its comments, and nothing else")
