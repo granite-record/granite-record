@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.759
+# GRANITE_VERSION: 2026-09-04.761
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28624,6 +28624,182 @@ def _record_untouched():
                   "only a person writes them: " + ", ".join(present) + "; no generator "
                   "names the bench's record or writes into either folder, and the bench "
                   "is not on the network")
+
+
+@check("files", "a new member gets their number by the rule with nobody's help, the register wins, and no two people ever share one")
+def _person_rule():
+    """The owner's conditions for person numbers (30 October 2026), and the
+    register's promise, held on a record made up here, so they hold whatever
+    tonight's data is:
+
+      a new member with a PersonID      is numbered by it, the same night,
+                                        and not marked provisional
+      a new member with only an employee number   is numbered by that
+      a new member with neither         gets one made here ("s" and the site
+                                        id), marked provisional
+      a member who gains a PersonID     keeps the number the register issued
+                                        them: the register wins over the rule
+      a number someone already holds    is never given to a second person,
+                                        whether the register holds it or
+                                        another newcomer took it tonight
+      an issued person tonight's record lacks   is reported, never dropped
+                                        in silence
+
+    and what is published holds no number twice (people.check_unique)."""
+    import tempfile
+    sys.path.insert(0, str(_paths.locate("people.py").parent))
+    import people as PE
+
+    def world(d, roster, careers_, votes, legs=()):
+        (d / "db").mkdir(exist_ok=True)
+        (d / "site" / "legislators").mkdir(parents=True, exist_ok=True)
+        (d / "data").mkdir(exist_ok=True)
+        (d / "db" / "_columns.json").write_text(json.dumps(
+            {"Legislators": ["PersonID", "LastName", "FirstName", "Employeeno"]}))
+        (d / "db" / "Legislators.psv").write_text("".join(f"{p}|N|F|{e}\n" for p, e in roster))
+        (d / "site" / "legislators.json").write_text(json.dumps(list(legs)))
+        (d / "site" / "former.json").write_text("[]")
+        (d / "data" / "sponsors.json").write_text("{}")
+        (d / "data" / "member_votes.json").write_text(json.dumps([{"member_id": m} for m in votes]))
+        return {e: {"by_term": {"2027-2028": {"chambers": [ch], "employee_nos": [e]}},
+                    "employee_nos": [e], "first": e, "last": "Newcomb"} for e, ch in careers_}
+
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        # 376003's PersonID, 11602, is already issued to someone else.
+        careers = world(d, [("11600", "376001"), ("11602", "376003")],
+                        [("376001", "H"), ("376002", "H"), ("376003", "S")],
+                        ["11600", "376002", "11602", "99"],
+                        [{"id": "11600", "name": "Newcomb, Ada", "slug": "ada-newcomb-hills-1"}])
+        reg = {"format": 1, "people": [{"person": "11602", "numbers": ["376777"]}]}
+        assert not PE.check_register(reg), PE.check_register(reg)
+        people, rep = PE.build(d / "site", d / "data", d / "db", careers, reg)
+        by = {p["person"]: p for p in people}
+        got = {
+            "a PersonID": "11600" in by and not by["11600"].get("provisional"),
+            "only an employee number": "376002" in by and not by["376002"].get("provisional"),
+            "neither": (by.get("s99") or {}).get("provisional") is True,
+            "a number the register holds": any(c["person"] == "11602" for c in rep["clashes"])
+                                           and not any("376003" in (p.get("employee_numbers") or [])
+                                                       for p in people),
+            "an issued person missing tonight": rep["missing_issued"] == ["11602"],
+        }
+        assert all(got.values()), "the rule does not hold for: " + ", ".join(k for k, v in got.items() if not v)
+        assert not PE.check_unique(people), PE.check_unique(people)
+
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        # 376002 was issued under its employee number; tonight the roster
+        # gives it a PersonID, 11605, and the register still wins. And two
+        # newcomers whose roster rows share a PersonID, 11610, take it once.
+        careers = world(d, [("11605", "376002"), ("11610", "376010"), ("11610", "376011")],
+                        [("376002", "H"), ("376010", "H"), ("376011", "S")],
+                        ["11605", "376010", "376011"])
+        reg = {"format": 1, "people": [{"person": "376002", "numbers": ["376002"]}]}
+        people, rep = PE.build(d / "site", d / "data", d / "db", careers, reg)
+        persons = [p["person"] for p in people]
+        assert "376002" in persons and "11605" not in persons, \
+            f"the register did not win over the rule: {persons}"
+        assert persons.count("11610") == 1 and len(rep["clashes"]) == 1, \
+            f"a number was given twice in one night: {persons}, {rep['clashes']}"
+        assert not PE.check_unique(people), PE.check_unique(people)
+    assert PE.check_unique([{"person": "1", "employee_numbers": ["376001"]},
+                            {"person": "2", "employee_numbers": ["376001"]}]), \
+        "check_unique let two people share an employee number"
+    for bad in ({"people": [{"person": "s99", "numbers": ["m99"]}]},
+                {"people": [{"person": "376003", "numbers": ["376777"]}]},
+                {"people": [{"person": "11600", "numbers": []}]},
+                {"people": [{"person": "1", "numbers": ["376001"]}, {"person": "2", "numbers": ["376001"]}]},
+                []):
+        assert PE.check_register(bad), f"check_register passed a malformed register: {bad}"
+    return "ok", ("a new member is numbered by their PersonID (11600), else their employee number "
+                  "(376002), else one made here and provisional (s99); the register wins over a "
+                  "PersonID found later (376002 stays); a number already held, by the register or "
+                  "by another newcomer the same night, is refused (11602, 11610); an issued person "
+                  "missing tonight is reported; and the checks of uniqueness and of the register's "
+                  "shape catch what they should")
+
+
+@check("files", "only a person's run writes the register of person numbers, and it is well formed")
+def _person_register():
+    """generated/person_numbers.json holds the person numbers the public data
+    API publishes (docs/design/api/DESIGN.md, 2.5; the owner's decision of 30
+    October 2026, Q14). Other sites store those numbers, so one issued is
+    never moved or reissued, and the only writer is src/ops/person_numbers.py
+    --issue, which a person runs. The nightly reads it. Two things are held
+    here: no other code file writes it, by any of the shapes the hand-made
+    files' check reads, and what is there is well formed (no number held by
+    two people, no person issued twice)."""
+    REG = "person_numbers.json"
+    # And the hand links beside it, which no code writes at all.
+    stem = r"(?<![\w-])(?:person_numbers|person_links)\.json"
+    HELD = re.compile(r'^[ \t]*([A-Za-z_]\w*)[ \t]*(?::[^=\n]*)?=[^=\n][^\n]*' + stem, re.M)
+
+    def writes(src):
+        if re.search(r'open\s*\([^)]*' + stem + r'[^)]*["\'][wax]', src) or \
+           re.search(stem + r'[^\n]{0,60}\.write_(?:text|bytes)', src):
+            return True
+        for held in set(HELD.findall(src)):
+            n = re.escape(held)
+            if re.search(r'\b%s\s*\.\s*(?:write_text|write_bytes)\s*\('
+                         r'|\b%s\s*\.\s*open\s*\(\s*(?:mode\s*=\s*)?["\'][wax]'
+                         r'|\bopen\s*\(\s*%s\s*,\s*(?:mode\s*=\s*)?["\'][wax]'
+                         r'|\b(?:os\.replace|os\.rename|shutil\.(?:copy\w*|move))'
+                         r'\s*\([^)\n]*,\s*%s\s*\)' % (n, n, n, n), src):
+                return True
+        return False
+
+    for text, w in (('open("generated/person_numbers.json", "w")', True),
+                    ('Path("generated/person_numbers.json").write_text(t)', True),
+                    ('REG = Path("generated") / "person_numbers.json"\nREG.write_text(t)', True),
+                    ('R = "generated/person_numbers.json"\nos.replace(tmp, R)', True),
+                    ('def f(register="generated/person_numbers.json"):\n    reg = load(register, None)', False),
+                    ('json.loads(Path("generated/person_numbers.json").read_text())', False)):
+        assert writes(text) == w, f"the register's reader reads {text!r} as " + ("no write" if w else "a write")
+    bad = []
+    for f in _paths.code_files("*.py"):
+        # The writer, and this file, whose cases above name it on purpose.
+        if f.name in ("person_numbers.py", "preflight.py"):
+            continue
+        if writes(f.read_text(encoding="utf-8", errors="replace")):
+            bad.append(f.name)
+    assert not bad, "these write the register of person numbers or its hand links, which " \
+                    "only person_numbers.py --issue (the register) and a person (the links) " \
+                    "may: " + ", ".join(bad)
+    links = _paths.ROOT / "generated" / "person_links.json"
+    if links.exists():
+        sys.path.insert(0, str(_paths.locate("people.py").parent))
+        import people as PE
+        try:
+            PE.load_links(links)
+        except SystemExit as e:
+            raise AssertionError(f"person_links.json is not well formed: {e}")
+    reg = _paths.ROOT / "generated" / REG
+    if not reg.exists():
+        return "ok", ("no other code file writes it; no register issued yet, so every person is "
+                      "numbered by the rule each night")
+    sys.path.insert(0, str(_paths.locate("person_numbers.py").parent))
+    import person_numbers as PN
+    now = json.loads(reg.read_text(encoding="utf-8"))
+    problems = PN.check_register(now)
+    assert not problems, "the register is not well formed: " + "; ".join(problems[:5])
+    # ONLY EVER ADDED TO. Against dev's copy, where there is one: every person
+    # issued there is still here, holding at least the numbers it held, or
+    # retired with replaced_by. A number moved or a person deleted fails.
+    r = _run(["git", "show", "origin/dev:generated/person_numbers.json"],
+             capture_output=True, text=True)
+    if r.returncode == 0 and r.stdout.strip():
+        then = {e["person"]: e for e in json.loads(r.stdout).get("people") or []}
+        here = {e["person"]: e for e in now.get("people") or []}
+        moved = []
+        for p_, e in then.items():
+            h = here.get(p_)
+            if h is None:
+                moved.append(f"{p_} is gone")
+            elif not h.get("replaced_by") and not set(e.get("numbers") or []) <= set(h.get("numbers") or []):
+                moved.append(f"{p_} lost a number")
+        assert not moved, "the register is only ever added to, and against dev's: " + "; ".join(moved[:5])
+    return "ok", "no other code file writes it, and it is well formed"
 
 
 @check("markers", "every phrasing read from a transcript still matches")
