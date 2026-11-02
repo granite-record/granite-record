@@ -2345,9 +2345,11 @@ def guide_page(tmpl, g, base, record, draft_why=""):
         note = (f'<p class="g-draft" role="note"><strong>Draft, not published.</strong> '
                 f'{E(draft_why)}.</p>')
     elif when and (build_date.today() - _day(when)).days > G.STALE_DAYS:
-        note = ('<p class="g-stale" role="note"><strong>This guide may be out of date.</strong> It was '
-                f'last checked {E(C.date_words(_day(when), "full"))}. Check each step against the '
-                'official page it links before you rely on it.</p>')
+        # The oldest read, said as the oldest, beside the newest the line
+        # under it gives (the review of 2 November 2026).
+        note = ('<p class="g-stale" role="note"><strong>This guide may be out of date.</strong> Some of '
+                f'its sources were last read {E(C.date_words(_day(when), "full"))}. Check each step '
+                'against the official page it links before you rely on it.</p>')
     # SOURCES LAST CHECKED, the newest read of its claims (G.sources_checked),
     # and where to find the current rules: the official page each step
     # links, in the words the out-of-date notice uses, which says it itself
@@ -2480,8 +2482,9 @@ def guide_page_lang(g, lang, base, record=""):
     note = ""
     if when and (build_date.today() - _day(when)).days > G.STALE_DAYS:
         note = ('<p class="g-stale" role="note">' + I.say(
-            lang, "guides.stale", "<strong>This guide may be out of date.</strong> It was last checked "
-            "{date}. Check each step against the official page it links before you rely on it.",
+            lang, "guides.stale", "<strong>This guide may be out of date.</strong> Some of its sources "
+            "were last read {date}. Check each step against the official page it links before you "
+            "rely on it.",
             date=E(C.date_words(_day(when), "full", lang))) + "</p>")
     last = G.sources_checked(g)
     checked = ('<p class="g-checked">' + I.say(lang, "guides.checked", "Sources last checked {date}.",

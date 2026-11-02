@@ -11711,8 +11711,8 @@
    "state": "draft"
   },
   "guide.run-for-office.qualifications-by-office-secretary-of": {
-   "en": "Qualifications by office (Secretary of State, October 17, 2026)",
-   "es": "Requisitos por cargo (Secretaría de Estado, 17 de octubre de 2026)",
+   "en": "Qualifications by office (Secretary of State, October 17, 2026; RSA 655:29)",
+   "es": "Requisitos por cargo (Secretaría de Estado, 17 de octubre de 2026; RSA 655:29)",
    "state": "draft"
   },
   "guide.run-for-office.qualifications-for-office": {
@@ -16536,8 +16536,8 @@
    "state": "draft"
   },
   "guides.stale": {
-   "en": "<strong>This guide may be out of date.</strong> It was last checked {date}. Check each step against the official page it links before you rely on it.",
-   "es": "<strong>Es posible que esta guía no esté al día.</strong> Se revisó por última vez el {date}. Compruebe cada paso en la página oficial que enlaza antes de confiar en él.",
+   "en": "<strong>This guide may be out of date.</strong> Some of its sources were last read {date}. Check each step against the official page it links before you rely on it.",
+   "es": "<strong>Es posible que esta guía no esté al día.</strong> Algunas de sus fuentes se leyeron por última vez el {date}. Compruebe cada paso en la página oficial que enlaza antes de confiar en él.",
    "state": "draft"
   },
   "guides.steps": {

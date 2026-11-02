@@ -3117,7 +3117,7 @@ RUN = guide(
     [step("Check that you qualify",
           "<p>To hold any elected office in New Hampshire, you must be domiciled in the state. Each "
           "office adds its own requirements:</p>"
-          + table("Qualifications by office (Secretary of State, October 17, 2026)",
+          + table("Qualifications by office (Secretary of State, October 17, 2026; RSA 655:29)",
                   ["Office", "Age", "Also"],
                   # IN THE SOURCES' WORDS (the person, 2 November 2026): the
                   # years run "immediately preceding the election" (RSA
@@ -10618,9 +10618,12 @@ def checked_on(g):
 def sources_checked(g):
     """The newest check on the guide: the day its sources were last read,
     which its page says (the person, 2 November 2026: How to Vote said 11
-    October over claims read as late as the 22nd). checked_on, the oldest,
-    still decides whether the page warns that it may be out of date."""
-    return max((c["checked"] for c in g["claims"] if c["checked"]), default=None)
+    October over claims read weeks later). A claim about this site's own
+    pages (ours, a path) is not a source read, so it does not count.
+    checked_on, the oldest, still decides whether the page warns that it may
+    be out of date."""
+    return max((c["checked"] for c in g["claims"]
+                if c["checked"] and not str(c["source"]).startswith("/")), default=None)
 
 
 # ---------------------------------------------------------------------------

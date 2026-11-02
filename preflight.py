@@ -76037,6 +76037,15 @@ def _polish_11nov(G, CV):
             bad.append(f"{key}'s Spanish is not the singular")
     if 'tr("lf.wards"' not in Path("src/pages/find.js").read_text(encoding="utf-8"):
         bad.append("a city's search row is said in English on a Spanish page")
+    for key, v in es.items():
+        if key.startswith("guide.run-for-office.registered-voter-domiciled") and \
+                "inmediatamente" not in v.get("es", ""):
+            bad.append(f"{key}'s Spanish does not say the years run immediately before the election")
+    gov_es = (es.get("learn.state-house-and-branches.the-governor-is-chosen-biennially-in") or {}).get("es", "")
+    if "7 años inmediatamente anteriores" not in gov_es:
+        bad.append("the Learn page's governor in Spanish is not the 7 years immediately before the election")
+    if "were last read {date}" not in (es.get("guides.stale") or {}).get("en", "") or "It was last checked" in bc:
+        bad.append("the out-of-date notice still says 'last checked' on the oldest read, beside the newest")
     hint = (es.get("home.search_hint") or {}).get("es", "")
     if len(hint) > len("Bill number, topic, name or town") + 3:
         bad.append(f"the home page's Spanish search hint runs past its box: {hint!r}")
