@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.14
+# GRANITE_VERSION: 2026-09-19.20
 """
 What the House journal adds that the record does not: who spoke, and what.
 
@@ -77,6 +77,43 @@ FURNITURE = re.compile(
     rf"\s*+\d{{0,4}}\s*+\d{{1,2}}\s*+(?i:{_MON})\s*+\d{{4}}\s*+HOUSE\s*+RECORD\s*+\d{{0,4}}",
     re.I)
 
+# AND IT IS TRIED ONLY JUST BEFORE A "HOUSE RECORD" (30 October 2026). Tried
+# at every character, FURNITURE took 14 s of the 24 s cleaning every House
+# journal, nearly all of it where no running head is: none before 2013. Every
+# match holds HOUSE RECORD, and what comes before that in a match is white
+# space, digits and one month's name -- nine letters at most, and never the
+# word HOUSE -- so a match can begin no earlier than the walk back from a
+# HOUSE RECORD over white space, digits and up to nine letters. furniture()
+# tries the pattern from there, as finditer would, and only there. It rests on
+# _MON being plain month names, which preflight holds.
+_HEAD_WORDS = re.compile(r"HOUSE\s*+RECORD", re.I)
+_MONTH_LETTERS = max(len(m) for m in _MON.split("|"))
+
+
+def furniture(text):
+    """FURNITURE.finditer(text): the same matches, in the same order."""
+    pos = 0
+    for h in _HEAD_WORDS.finditer(text):
+        h = h.start()
+        if h < pos:
+            continue
+        lo, letters = h, 0
+        while lo > pos:
+            c = text[lo - 1]
+            if c.isalpha():
+                letters += 1
+                if letters > _MONTH_LETTERS:
+                    break
+            elif not (c.isspace() or c.isdigit()):
+                break
+            lo -= 1
+        for q in range(lo, h):
+            m = FURNITURE.match(text, q)
+            if m:
+                yield m
+                pos = m.end()
+                break
+
 # A word broken by the page break and resumed hyphenated on the next line.
 HYPHEN_WRAP = re.compile(r"([A-Za-z])-\n([a-z])")
 
@@ -95,10 +132,36 @@ def clean(text, lines=False):
     the consent calendar, which were measured without them, are not yet.
     """
     text = text.replace("\r\n", "\n").replace("\r", "\n")
-    text = FURNITURE.sub((lambda m: "\n" if re.search(r"[\n\f]", m.group(0)) else " ")
-                         if lines else " ", text)
-    text = HYPHEN_WRAP.sub(r"\1\2", text)
-    return text
+    out, at = [], 0
+    for m in furniture(text):
+        out += (text[at:m.start()],
+                "\n" if lines and re.search(r"[\n\f]", m.group(0)) else " ")
+        at = m.end()
+    out.append(text[at:])
+    return HYPHEN_WRAP.sub(r"\1\2", "".join(out))
+
+
+def clean_both(text):
+    """(clean(text), clean(text, lines=True)), with the running heads found
+    once.
+
+    read_year wants the file both ways, and the running-head pattern was run
+    over every House journal twice to get them (29 October 2026: 36 s of the
+    sitting pages' 314 under a profiler). The two differ only in what a head
+    is replaced with, so one finditer gives both: re.sub replaces the same
+    non-overlapping matches, left to right, and FURNITURE never matches
+    nothing. preflight holds the pair to clean()'s two answers."""
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    flat, lined, at = [], [], 0
+    for m in furniture(text):
+        piece = text[at:m.start()]
+        flat += (piece, " ")
+        lined += (piece, "\n" if re.search(r"[\n\f]", m.group(0)) else " ")
+        at = m.end()
+    flat.append(text[at:])
+    lined.append(text[at:])
+    return (HYPHEN_WRAP.sub(r"\1\2", "".join(flat)),
+            HYPHEN_WRAP.sub(r"\1\2", "".join(lined)))
 
 
 def joined(block):
@@ -123,14 +186,24 @@ def joined(block):
 # files. It needs the body of the day, which IS in one file. The continuation
 # header at the top is the previous day's tail and is cut off.
 
+# A form feed may open the heading's line: pdftotext writes a page break as
+# one, and ten headings in the kit sit at the top of a page (2000/HJ027's
+# "\fHOUSE JOURNAL No. 1", 5 January 2000, among them).
 DAY_HEADER = re.compile(
-    r"^[ \t]*HOUSE\s+JOURNAL\s+N[Oo]\.?\s*(?P<num>\d*)\s*(?P<cont>\([Cc]on'?t\.?'?d?\.?\))?",
+    r"^[ \t\f]*HOUSE\s+JOURNAL\s+N[Oo]\.?\s*(?P<num>\d*)\s*(?P<cont>\([Cc]on'?t\.?'?d?\.?\))?",
     re.M)
 
+# A sitting's date under its heading. Most print the weekday; fifteen in the
+# kit print none, or the date in parentheses -- "December 4, 1996" (1997/HJ001),
+# "(December 6, 2000)" (2001/HJ001), "January 24, 2002" (2002/HJ003),
+# "(Thursday, January 6, 2005)" (2005/HJ002) -- and were lost until 30
+# October 2026. With no weekday the date must stand alone on its line
+# (officers.H_DATE's rule), so a sentence that opens with a date is not read.
 DATELINE = re.compile(
-    r"^[ \t]*(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+"
+    r"^[ \t\f]*\(?[ \t]*(?P<wd>(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+)?"
     r"(?P<mon>January|February|March|April|May|June|July|August|September|"
-    r"October|November|December)\s+(?P<day>\d{1,2}),?\s*(?P<yr>\d{4})",
+    r"October|November|December)\s+(?P<day>\d{1,2}),?\s*(?P<yr>\d{4})"
+    r"(?(wd)|[ \t]*\)?[ \t]*$)",
     re.M | re.I)
 
 MONTHS = {m: i for i, m in enumerate(
@@ -407,6 +480,57 @@ UC_LINE = re.compile(
 # only as a hint -- leading whitespace ranges 0 to 58 across the corpus, so
 # centring is never the test.
 NEXT_HEAD = re.compile(r"^[ \t]{4,}[A-Z][A-Z' ’.,&-]{6,}[ \t]*$", re.M)
+
+# WHERE A PRINTED DEBATE ENDS: at the next heading, and a heading may end on a
+# bill's number. NEXT_HEAD's capitals take no digit, so "GOVERNOR'S VETO
+# MESSAGE ON HB 319-FN" was no heading to it, and HB 148's override debate of
+# 17 December 2025 ran on through HB 319's veto message and roll call to the
+# end of the day (the owner's report, 29 October 2026). Nine debates on disk,
+# 2011 to 2026 (one 2011 file is there twice), ran on the same way, each into
+# another bill's veto message or a committee of conference report; with the
+# number allowed each ends at its own business -- seven on the chair's
+# announcement of its own vote -- and no other debate changes. Only the
+# number: what follows one -- "DEBATE ON HB 1419-FN CONTINUED", "HB 2-FN-A-L
+# CONT'D" -- is the same debate going on over the page, and digits anywhere
+# would end debates at those and at tallies. NEXT_HEAD itself is unchanged:
+# journal_bills and the consent and leave readers measured theirs on it.
+DEBATE_END = re.compile(
+    r"^[ \t]{4,}[A-Z][A-Z' ’.,&-]{6,}"
+    r"(?:[ \t]+(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR)[ \t]?\d+(?:-[A-Z]+)*)?[ \t]*$", re.M)
+
+# AND WHERE THE CALENDAR GOES ON WITH NO HEADING: the next bill's report,
+# "HB 1555-FN, relative to an E-Z Pass discount ... INEXPEDIENT TO LEGISLATE."
+# at the start of a line, after "REGULAR CALENDAR (CONT'D)" or straight after
+# the debate. Twenty-eight debates on disk, 2004 to 2026 (the 2011 file there
+# twice holds one), ran on into the next bill's report, its speeches and its
+# roll call that way (the review of 29 October 2026). A bill's number starting
+# a line is not enough: a speech wraps "HB 1279," onto a line of its own, and
+# 2024's HB 1279 debate lost four speeches to that. A report states its
+# committee's recommendation in capitals among its own lines, before a blank
+# line or a speaker's, and a speech does not; with that asked, each of the
+# twenty-eight keeps every speech and loses only the other bill's business,
+# and no other debate changes.
+REPORT_AFTER = re.compile(
+    r"\b(?:MAJORITY|MINORITY|OUGHT\s+TO\s+PASS|INEXPEDIENT\s+TO\s+LEGISLATE|"
+    r"REFER\s+FOR\s+INTERIM\s+STUDY|RE-?REFER\s+TO\s+COMMITTEE)\b")
+
+
+# Where a report's own lines end: a blank line, or a line a speaker begins.
+ENTRY_STOP = re.compile(r"\n[ \t\f]*(?:\n|Reps?\.|Representative|Speaker|Deputy\s+Speaker|Sen\.)")
+
+
+def _is_report(block, at):
+    """Whether the bill entry ending at `at` is a committee's report: its
+    recommendation in capitals among its own lines, before a blank line or a
+    speaker's. A speech that wraps "HB 1279," onto a new line, a few lines
+    above the next bill's report, has a speaker's line between."""
+    stop = ENTRY_STOP.search(block, at, at + 700)
+    return bool(REPORT_AFTER.search(block, at, stop.start() if stop else at + 700))
+
+
+def _bill_no(b):
+    """HB1555 from "HB 1555-FN": a bill's number without its suffixes."""
+    return re.sub(r"\s", "", b or "").upper().split("-")[0]
 
 
 def _names(s):
@@ -863,13 +987,6 @@ def debates(block):
     heads = list(DEBATE_HEAD.finditer(block))
     for i, h in enumerate(heads):
         start = h.end()
-        end = len(block)
-        for nh in NEXT_HEAD.finditer(block, start + 40):
-            end = nh.start()
-            break
-        if i + 1 < len(heads):
-            end = min(end, heads[i + 1].start())
-        body = block[start:end]
 
         bill = ""
         before = block[max(0, h.start() - 900):h.start()]
@@ -881,6 +998,20 @@ def debates(block):
                           h.group("tail") or "", re.I)
             if t:
                 bill = t.group(0).replace(" ", "").upper()
+
+        end = len(block)
+        for nh in DEBATE_END.finditer(block, start + 40):
+            end = nh.start()
+            break
+        if i + 1 < len(heads):
+            end = min(end, heads[i + 1].start())
+        # And at another bill's committee report, where the calendar goes on
+        # with no capitals heading between (DEBATE_END, the second part).
+        for bh in BILL_HEAD.finditer(block, start + 40, end):
+            if _bill_no(bh.group("bill")) != _bill_no(bill) and _is_report(block, bh.end()):
+                end = bh.start()
+                break
+        body = block[start:end]
 
         spoken, cuts = [], list(SPEECH.finditer(body))
         for j, s in enumerate(cuts):
@@ -1117,10 +1248,10 @@ def read_year(year, root=HOUSE):
                 raw = f.read_text(encoding="utf-8", errors="replace")
             except OSError:
                 continue
-            text = clean(raw)
+            text, lined = clean_both(raw)
             # The speeches from the file with its lines kept (clean): the
             # same sittings in the same order, or the block read for the rest.
-            lined = day_blocks(clean(raw, lines=True))
+            lined = day_blocks(lined)
             for i, (iso, block) in enumerate(day_blocks(text)):
                 got = out.setdefault(iso, {"date": iso, "attributions": [],
                                            "debates": [],
@@ -1146,11 +1277,36 @@ def read_year(year, root=HOUSE):
 
 
 def read_day(date, root=HOUSE):
-    """Everything this module can find for one House sitting date."""
-    return read_year(date[:4], root).get(
-        date, {"date": date, "attributions": [], "debates": [],
-               "unanimous_consent": [], "opening": {}, "absences": [],
-               "consent": {}, "files": []})
+    """Everything this module can find for one House sitting date.
+
+    A December Organization Day opens the next year's numbered series, so it
+    is filed in the next year's folder (journals/2023/HJ 01 December 7,
+    2022.txt), as read_senate_day and session_days._journal_day already
+    read it. Both folders are read for a December date; an odd-year December
+    sitting is in its own year's folder (2001/HJ022), and the next year's
+    holds at most its "(cont.)" tail, which day_blocks drops. The same day
+    read alike from both, as a copy left behind by a move would give, is
+    taken once (preflight's journal-folder check names such a copy).
+    """
+    years = (date[:4],) + ((str(int(date[:4]) + 1),) if date[5:7] == "12" else ())
+    found = [read_year(y, root)[date] for y in years if date in read_year(y, root)]
+    if len(found) == 1:
+        return found[0]
+    out = {"date": date, "attributions": [], "debates": [],
+           "unanimous_consent": [], "opening": {}, "absences": [],
+           "consent": {}, "files": []}
+    for got in [g for i, g in enumerate(found) if g not in found[:i]]:
+        for k in ("attributions", "debates", "unanimous_consent", "absences", "files"):
+            out[k] += got[k]
+        for k, v in got["opening"].items():
+            out["opening"].setdefault(k, v)
+        for k, v in got["consent"].items():
+            if k in ("removed", "removed_elsewhere"):
+                out["consent"].setdefault(k, [])
+                out["consent"][k] += v
+            else:
+                out["consent"].setdefault(k, v)
+    return out
 
 
 # ------------------------------------------------- the Senate's leave list --

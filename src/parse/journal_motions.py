@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.8
+# GRANITE_VERSION: 2026-10-23.10
 """
 What the Journals say a vote on no bill was about.
 
@@ -552,12 +552,48 @@ def _heads(text, lo, hi):
     return out
 
 
+# A sentence as last_decision reads one: up to the next full stop, over at
+# most three line ends. sentence_spans() finds what this pattern finds; the
+# pattern stays as the definition, and preflight holds the two to each other.
+SENTENCE = re.compile(r"[^.\n]*(?:\n[^.\n]*){0,3}?\.")
+
+
+def sentence_spans(s):
+    """(start, end) of every match of SENTENCE.finditer(s), in order, found in
+    one pass.
+
+    THE PATTERN, RUN WITH FINDITER, TOOK FIVE AND A HALF MINUTES OF EVERY
+    BUILD (29 October 2026: 334 s of journal_motions' 378 under a profiler). Where no full stop
+    falls within four lines -- the columns of names under a roll call -- every
+    start fails after reading to the fifth line, and the next start is one
+    character on, so a 40,000-character window was read thousands of times.
+    The match can end only at the first full stop after its start, since none
+    of the characters before the stop may be one; it exists when at most three
+    line ends lie between them, and otherwise the first start that works is
+    just after the fourth line end back from the stop. Each stretch between
+    stops is read once."""
+    pos = 0
+    while True:
+        stop = s.find(".", pos)
+        if stop < 0:
+            return
+        start = pos
+        if s.count("\n", pos, stop) > 3:
+            nl = stop
+            for _ in range(4):
+                nl = s.rfind("\n", pos, nl)
+            start = nl + 1
+        yield start, stop + 1
+        pos = stop + 1
+
+
 def last_decision(text, lo, hi):
     """The offset just after the last verdict between lo and hi -- where the
     question this passage ends on was put -- or lo."""
     best = lo
-    for m in re.finditer(r"[^.\n]*(?:\n[^.\n]*){0,3}?\.", text[lo:hi]):
-        s = re.sub(r"\s+", " ", m.group(0)).strip()
+    seg = text[lo:hi]
+    for start, end in sentence_spans(seg):
+        s = re.sub(r"\s+", " ", seg[start:end]).strip()
         v = VERDICT.search(s) if s else None
         # A verdict is said early in a short sentence: "Committee report
         # adopted and ordered to third reading." A resolution's "that all
@@ -566,7 +602,7 @@ def last_decision(text, lo, hi):
             continue
         # "On a division vote, ... the motion was adopted." is one decision;
         # "I move that ... be reprimanded" is a motion, caught above.
-        best = lo + m.end()
+        best = lo + end
     # A division's sentence runs over the line ends, and NOT_VERDICT's
     # "question" never stands in it.
     # "with" or not: "On a division vote, with 206 members having voted"
@@ -1621,8 +1657,17 @@ def load_careers(path=CAREERS):
 
 def resolve_member(name, body, term, careers):
     """The one member of `body` serving in `term` the printed name can mean,
-    by their employee number (careers.json's key, the site's member id), or
-    "" where it can mean none or more than one."""
+    by the site's member id, or "" where it can mean none or more than one.
+
+    THE SITE'S ID, NOT careers.json's KEY (30 October 2026). careers.json is
+    keyed by the Employeeno, and this returned that key as "the site's member
+    id"; the site numbers a member by their PersonID where the record has one
+    and the Employeeno where it has not (build_data.py, data/member_votes.json),
+    so every one of the 25 it named was an Employeeno no page answers to. It
+    returns the career's person_id where there is one, as member_votes.json
+    does; a member's file (site/legislators/<id>.json) lists every such id it
+    stands for in member_ids, so a House term filed under another PersonID
+    still finds its page."""
     if not name or not careers:
         return ""
     parts = name.replace(".", " ").split()
@@ -1637,7 +1682,7 @@ def resolve_member(name, body, term, careers):
             continue
         if first and not (c.get("first") or "").lower().startswith(first):
             continue
-        hits.append(eid)
+        hits.append(str(c.get("person_id") or eid))
     return hits[0] if len(hits) == 1 else ""
 
 

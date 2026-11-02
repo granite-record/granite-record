@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.5
+# GRANITE_VERSION: 2026-10-23.6
 """
 The Journal's words for a vote on no bill, as every page shows them.
 
@@ -65,11 +65,12 @@ WO_NOTE = "Adopted without objection: no member objected, so no vote was taken."
 
 def load(path=SOURCE):
     """{"rollcalls": {key: entry}, "journal_only": [entry], "kinds": {kind:
-    words}} -- empty where the step has not run here."""
-    key = str(path)
+    words}} -- empty where the step has not run here, and for `path` None:
+    a sitting made by hand, which has no file (session_days.Day.motions)."""
+    key = None if path is None else str(path)
     if key not in _CACHE:
         try:
-            d = json.loads(Path(path).read_text(encoding="utf-8"))
+            d = json.loads(Path(path).read_text(encoding="utf-8")) if path is not None else {}
         except (OSError, ValueError):
             d = {}
         _CACHE[key] = {"rollcalls": d.get("rollcalls") or {},

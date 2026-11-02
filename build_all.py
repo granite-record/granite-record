@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.82
+# GRANITE_VERSION: 2026-09-05.83
 """
 Run the whole pipeline in the right order.
 
@@ -789,6 +789,21 @@ def plan(a):
              note="verbatim, cited to the page, and held back wherever the "
                   "Journal's tally, date, question or outcome does not agree with "
                   "the roll call"),
+
+        # WHAT EACH COMMITTEE SAID OF THE BILLS IT HELD FOR INTERIM STUDY (the
+        # owner, 29 October 2026): the INTERIM STUDY STATEMENTS of one House
+        # Calendar every second autumn, read off the calendars' text on disk,
+        # for each bill's Reports tab. BEFORE the site data, which shows each
+        # beside the committee's reports and holds back any the docket's own
+        # Interim Study Report line disagrees with. Kit-required: the
+        # calendars are in the kit, and a night that skipped it would take
+        # every statement off the tab while reporting success.
+        Step("what each committee said of its interim study bills",
+             ["interim_statements.py"],
+             needs=["calendars"],
+             produces=["interim_statements.json"], kit_required=True,
+             note="1,202 statements in fourteen calendars, 1998 to 2024, on 29 "
+                  "October 2026's kit"),
 
         Step("site data",
              ["build_site_v2.py", "--data", "data", "--out", "site",

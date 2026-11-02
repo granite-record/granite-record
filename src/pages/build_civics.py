@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.83
+# GRANITE_VERSION: 2026-09-08.85
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -834,7 +834,7 @@ def record_figures(site, root=Path(".")):
             - status["Died when the session ended"])
     figures["fig_ends"] = civics.bar(
         f"The {len(cur):,} bills and resolutions of the {shown} term",
-        f"How the {len(cur):,} bills and resolutions of the {term} term ended",
+        f"How the {len(cur):,} bills and resolutions of the {C.term_words(term)} term ended",
         [(status["Killed"], "c-died", "killed (ITL)"),
          (status["Signed into law"], "c-law", "signed into law"),
          (status["Referred for interim study"], "c-study", "sent for interim study"),
@@ -885,7 +885,7 @@ def record_figures(site, root=Path(".")):
                 I.say(lang, "learn.ends.caption", "The {n} bills and resolutions of the {term} term",
                     n=n_(len(cur)), term=shown),
                 I.say(lang, "learn.ends.label", "How the {n} bills and resolutions of the {term} term ended",
-                    n=n_(len(cur)), term=term),
+                    n=n_(len(cur)), term=C.term_words(term)),
                 [(status["Killed"], "c-died", I.say(lang, "learn.ends.killed", "killed (ITL)")),
                  (status["Signed into law"], "c-law", I.say(lang, "learn.ends.signed", "signed into law")),
                  (status["Referred for interim study"], "c-study",
@@ -1237,11 +1237,47 @@ def tables(content):
             if "<table>" in content else content)
 
 
+# A TABLE'S BOX IS A NAMED PLACE A KEYBOARD CAN REACH (the cohesion audit of
+# 30 October 2026, B-2). By the Numbers' fourteen tables are 428-811px wide
+# in a 364px box on a phone; they scrolled, but the box had no name and no
+# Tab stop, so a keyboard could not pan it. /data's coverage table already
+# did it right, and this is the same: role="region" named by the table's
+# caption (or its section's heading, where it has none), and data-scrollstop,
+# by which app.js's scrollStops makes the box a Tab stop while its table is
+# wider than it is, and only then.
+_TABLEWRAP = re.compile(r'<div class="l-tablewrap([^"]*)">(\s*<table[^>]*>\s*(?:<caption[^>]*>(.*?)</caption>)?)',
+                        re.S)
+_SUBHEAD = re.compile(r"<(h3|h4|summary)\b[^>]*>(.*?)</\1>", re.S)
+
+
+def _words(x):
+    """The words of a piece of HTML, as a name reads them."""
+    return " ".join(html.unescape(re.sub(r"<[^>]+>", " ", x or "")).split())
+
+
+def scroll_regions(content, heading):
+    """content with each Learn table's box named and marked as a Tab stop
+    while it scrolls. Its name is its caption, or else its section's heading
+    with the nearest heading or fold above it in the section ("The Bills Each
+    Committee Received, 2025–2026"), so ten boxes in one section are not ten
+    of one name (the review of 30 October 2026); app.js's scrollStops makes it
+    a region under that name while it scrolls."""
+    def one(m):
+        label = _words(m.group(3))
+        if not label:
+            subs = [_words(s.group(2)).split(":")[0].strip() for s in _SUBHEAD.finditer(content, 0, m.start())]
+            sub = subs[-1] if subs else ""
+            label = f"{_words(heading)}, {sub}" if sub and sub != _words(heading) else _words(heading)
+        return (f'<div class="l-tablewrap{m.group(1)}" data-scrollstop="1" '
+                f'data-scrolllabel="{html.escape(label, quote=True)}">{m.group(2)}')
+    return _TABLEWRAP.sub(one, content)
+
+
 def section(sid, heading, content, level=2):
     """One W4 section: the heading in the margin, the prose beside it at
     about 100 characters, and a figure marked wide (civics.wide) across both
     columns where it falls, the prose resuming beside the margin under it."""
-    content = tables(content)
+    content = scroll_regions(tables(content), heading)
     blocks, pos = [], 0
     for m in _WIDE.finditer(content):
         blocks.append(("col", content[pos:m.start()]))
@@ -1544,7 +1580,7 @@ TOPIC_ICON = {
     # the How-To Guides tab (guides.TASKS)
     "Take Part in the Legislature": "testify", "Voting and Elections": "ballot",
     "Driving and Vehicles": "car", "Help and Benefits": "heart", "Property and Records": "house",
-    "Federal Benefits": "idcard", "Know Your Rights": "law", "Insurance": "shield",
+    "Federal Programs and Services": "idcard", "Know Your Rights": "law", "Insurance": "shield",
     "Outdoors and Recreation": "tree",
     "Around Your Town": "pin", "Visiting the State House": "capitol", G.MORE: "grid",
     # the Learn tab (civics.GROUPS, and what follows them)
@@ -1748,6 +1784,12 @@ def guides_tab(lang, published=(), articles=()):
     function for every language, so the English tab and the Spanish one can
     never be laid out differently.
 
+    LAID OUT AS LEARN IS (the person, 29 October 2026: "I generally prefer
+    the formatting of the hub of the learn tab over the how to tab"): Most
+    Common as Learn's Start Here cards, a badge, the headline and its line
+    (cards()), and each group's guides in Learn's two-column list
+    (r-topics), where they had been small boxes and a single column.
+
     WITHOUT JAVASCRIPT the search is a form that asks the site's own search
     (/search?q=), and every group opens when its heading is pressed, so nothing
     on the tab needs the script. The suggestions read a list of the tab's
@@ -1762,8 +1804,11 @@ def guides_tab(lang, published=(), articles=()):
             return E(got) if plain else got
         return f'<span lang="en">{E(text) if plain else text}</span>'
 
+    def raw(slug):
+        return guide_href(slug) if en else I.href(lang, guide_href(slug))
+
     def href(slug):
-        return E(guide_href(slug) if en else I.href(lang, guide_href(slug)))
+        return E(raw(slug))
 
     def bare(h):
         return html.unescape(re.sub(r"<[^>]+>", "", h))
@@ -1796,11 +1841,10 @@ def guides_tab(lang, published=(), articles=()):
             + E(html.unescape(I.say(lang, "guides.find_list", "Suggested guides")))
             + '" hidden></ul></div><p id="gfind-status" class="g-findstat" aria-live="polite">'
             '</p></form>')
-    # MOST COMMON, by headline, as a row of short boxes.
+    # MOST COMMON, by headline and line, as Learn's Start Here cards.
     by_slug = {r[2]: r for r in rows}
-    common = "".join(f'<li><a href="{href(s)}">{badge(CARD_ICON.get(s, by_slug[s][0]))}'
-                     f'<span>{by_slug[s][3]}</span></a></li>'
-                     for s in G.COMMON if s in by_slug)
+    common = cards([(raw(s), CARD_ICON.get(s, by_slug[s][0]), by_slug[s][3], by_slug[s][4])
+                    for s in G.COMMON if s in by_slug])
     # EVERY GUIDE BY TOPIC, each group a <details> shut until opened.
     topics, order = [], []
     for r in rows:
@@ -1808,10 +1852,10 @@ def guides_tab(lang, published=(), articles=()):
             order.append(r[0])
     for group in order:
         mine = [r for r in rows if r[0] == group]
-        lis = "".join(f'<li><a href="{href(r[2])}">{r[3]}</a><span>{dashes(r[4])}</span></li>'
+        lis = "".join(f'<li><a href="{href(r[2])}">{r[3]}</a><p>{dashes(r[4])}</p></li>'
                       for r in mine)
         topics.append(fold(f"g-{_slug(group)}", group, mine[0][1], len(mine),
-                           f'<ul class="g-list">{lis}</ul>'))
+                           f'<ul class="r-topics">{lis}</ul>'))
     # What the suggestions read: each guide's headline and line as shown, and
     # every word it is known by, in English and, on another language's tab,
     # in that language too, so a reader may type either.
@@ -1838,8 +1882,7 @@ def guides_tab(lang, published=(), articles=()):
         "taking part in the legislature. Each step-by-step guide links the official page that has the "
         "final word, and says when it was last checked against it.") + "</p>")
     return (intro + find
-            + hub_section("g-common", I.say(lang, "guides.common", "Most Common"),
-                          f'<ul class="g-common">{common}</ul>')
+            + hub_section("g-common", I.say(lang, "guides.common", "Most Common"), common)
             + hub_section("g-topics", I.say(lang, "guides.by_topic", "All Guides by Topic"),
                           "".join(topics))
             + f'<script type="application/json" id="gfind-data">{blob}</script>' + GFIND_JS)
@@ -2048,6 +2091,7 @@ def guide_record(g, data, bills, chapters, lang=I.DEFAULT):
     # page's own words, "Passed, not yet in effect", and out of the laws that
     # changed the chapter, which they have not yet done.
     passing = set(bills.passing(data))
+    when = {}                     # every law of the block: the year it passed
     for ch in g["laws"]:
         if ch not in chapters:
             continue
@@ -2058,9 +2102,9 @@ def guide_record(g, data, bills, chapters, lang=I.DEFAULT):
         for addr, hist in data.get("enacted", {}).items():
             if addr == ch or addr.startswith(ch + ":"):
                 for y, _law, b in hist:
-                    if b and b not in passing and str(y).isdigit() and int(y) >= RECENT_FROM:
-                        recent[b] = int(y)
-        past = sorted(recent, key=lambda k: (-recent[k], BR.bill_order(k)))[:RECENT_SHOWN]
+                    if b and b not in passing and str(y).isdigit():
+                        recent[b] = max(recent.get(b, 0), int(y))
+        past = sorted(recent, key=lambda k: (-recent[k], BR.bill_order(k)))
         bits = [f'<h3 class="g-ch"><a href="{E(BR.chapter_path(ch))}">{E(name)}</a></h3>']
         if now:
             bits.append('<p class="g-what">Bills now before the General Court that would change it:</p>'
@@ -2069,17 +2113,72 @@ def guide_record(g, data, bills, chapters, lang=I.DEFAULT):
             bits.append('<p class="g-what">Passed, not yet in effect:</p>'
                         + BR.folded([bills.chip(k) for k in passed]))
         if past:
-            bits.append(f'<p class="g-what">Laws that changed it since {RECENT_FROM}, newest first:</p>'
-                        + BR.folded([bills.chip(k) for k in past]))
+            bits.append(record_laws(past, recent, bills))
+            when.update({k: recent[k] for k in past})
         if not now and not passed and not past:
-            bits.append(f'<p class="g-what">No bill has changed it since {RECENT_FROM}, and none now '
+            bits.append('<p class="g-what">No law in the record has changed it, and none now '
                         'before the General Court would.</p>')
         rows.append("".join(bits))
-    return "".join(rows)
+    return (record_years(when) if when else "") + "".join(rows)
 
 
-RECENT_FROM = 2020
-RECENT_SHOWN = 8
+# THE LAWS THAT CHANGED A CHAPTER, BY YEAR (the person's notes, 29 October
+# 2026: "laws changed since 2020" was an arbitrary cutoff, and the sitting
+# term's laws showed no year). Every law the record holds is listed, newest
+# first, each with the year it passed; the list folds after the newest 8, as
+# the Laws pages' do (build_rsa.SHOWN). Each is its number and its year and
+# no status: every law in the list became law, and the word said so on
+# every row (the manager's review of the screenshots, 29 October 2026).
+def record_laws(past, years, bills):
+    """The laws that changed one chapter, each with the year it passed, and
+    a line for a year the reader chose that has none of them."""
+    import build_rsa as BR
+    items = []
+    for k in past:
+        chip = re.sub(r' <span class="rs-st">[^<]*</span>', "", bills.chip(k, with_year=False))
+        yr = f' <span class="rs-yr">{years[k]}</span>'
+        chip = chip.replace("</a>", "</a>" + yr, 1) if "</a>" in chip else chip.replace(
+            "</li>", yr + "</li>", 1)
+        items.append(chip.replace("<li", f'<li data-y="{years[k]}"', 1))
+    return ('<div class="g-laws"><p class="g-what">Laws that changed it, newest first:</p>'
+            + BR.folded(items) + '<p class="g-what g-yrnone" hidden>None that year.</p></div>')
+
+
+# ONE CHOOSER FOR THE WHOLE OF IN THE RECORD (the same review: How to Vote
+# drew four identical menus in a row, one a chapter). It chooses among the
+# laws only -- a bill still before the General Court has no year it passed --
+# and says so. Each year counts its laws once, however many of the guide's
+# chapters one changed. Hidden until the page's script runs, so without it
+# every list still reads whole.
+def record_years(when):
+    """The year chooser over every chapter's laws: {law: year it passed}."""
+    count = {}
+    for y in when.values():
+        count[y] = count.get(y, 0) + 1
+    opts = "".join(f'<option value="{y}">{y} ({n})</option>'
+                   for y, n in sorted(count.items(), reverse=True))
+    return ('<p class="g-yrp" hidden><label>Show the laws passed in <select class="g-yr">'
+            f'<option value="">All years</option>{opts}</select></label></p>')
+
+
+YR_JS = """<script>
+(function(){
+  // The year of the laws to show, in every chapter at once (record_years).
+  var p=document.querySelector(".g-yrp"), sel=p&&p.querySelector(".g-yr");
+  if(!sel)return;
+  p.hidden=false;
+  sel.addEventListener("change",function(){
+    var y=sel.value;
+    document.querySelectorAll(".g-laws").forEach(function(box){
+      var more=box.querySelector(".rs-more"), none=box.querySelector(".g-yrnone"), shown=0;
+      box.querySelectorAll("li[data-y]").forEach(function(li){
+        li.hidden=!!y&&li.getAttribute("data-y")!==y; if(!li.hidden)shown++; });
+      if(more){ if(y){more.open=true;} more.querySelector("summary").hidden=!!y; }
+      if(none)none.hidden=!y||shown>0;
+    });
+  });
+})();
+</script>"""
 
 
 def _record_lang(english, lang):
@@ -2088,19 +2187,25 @@ def _record_lang(english, lang):
     if not english:
         return english
     now = I.say(lang, "guides.rec_now", "Bills now before the General Court that would change it:")
-    since = I.say(lang, "guides.rec_since", "Laws that changed it since {year}, newest first:",
-                  year=RECENT_FROM)
-    none = I.say(lang, "guides.rec_none", "No bill has changed it since {year}, and none now "
-                 "before the General Court would.", year=RECENT_FROM)
+    since = I.say(lang, "guides.rec_laws", "Laws that changed it, newest first:")
+    none = I.say(lang, "guides.rec_none_any", "No law in the record has changed it, and none now "
+                 "before the General Court would.")
+    year = I.say(lang, "guides.rec_year_laws", "Show the laws passed in")
+    none_yr = I.say(lang, "guides.rec_none_year", "None that year.")
+    every = I.say(lang, "guides.rec_years_all", "All years")
     passed = I.say(lang, "guides.rec_passed", "Passed, not yet in effect:")
     out = english.replace(
         '<p class="g-what">Bills now before the General Court that would change it:</p>',
         f'<p class="g-what">{now}</p>').replace(
         '<p class="g-what">Passed, not yet in effect:</p>', f'<p class="g-what">{passed}</p>').replace(
-        f'<p class="g-what">Laws that changed it since {RECENT_FROM}, newest first:</p>',
+        '<p class="g-what">Laws that changed it, newest first:</p>',
         f'<p class="g-what">{since}</p>').replace(
-        f'<p class="g-what">No bill has changed it since {RECENT_FROM}, and none now before the '
-        'General Court would.</p>', f'<p class="g-what">{none}</p>')
+        '<p class="g-what">No law in the record has changed it, and none now before the '
+        'General Court would.</p>', f'<p class="g-what">{none}</p>').replace(
+        '<label>Show the laws passed in <select class="g-yr">', f'<label>{year} <select class="g-yr">').replace(
+        '<p class="g-what g-yrnone" hidden>None that year.</p>',
+        f'<p class="g-what g-yrnone" hidden>{none_yr}</p>').replace(
+        '<option value="">All years</option>', f'<option value="">{every}</option>')
     out = re.sub(r'<h3 class="g-ch"><a href="([^"]*)">Chapter ([^:<]+)(?:: ([^<]*))?</a></h3>',
                  lambda m: (f'<h3 class="g-ch"><a href="{m.group(1)}">'
                             + I.say(lang, "guides.rec_chapter", "Chapter {n}", n=m.group(2))
@@ -2164,6 +2269,28 @@ def guide_flow(g, w=Words()):
             f'<ol>{"".join(items)}</ol></figure>')
 
 
+def step_parts(g, w=Words()):
+    """[(id, label)]: a guide's parts in Step by Step (guides.step's `part`),
+    each with the address of its heading, for On This Page and the index
+    beside the page (the person's walk of the preview, 30 October 2026: a
+    reader jumps to "Renewing an adult passport"). The address is the
+    English part's, so it is the same in every language; [] for a guide
+    whose steps are one list."""
+    out = [("steps-" + _slug(s_["part"]), w.t(s_["part"])) for s_ in g["steps"] if s_.get("part")]
+    ids = [i for i, _ in out]
+    assert len(ids) == len(set(ids)), f"{g['slug']}: two parts share an address: {ids}"
+    return out
+
+
+def otp_items(secs, href, parts=()):
+    """On This Page's rows: a row for each section, and under Step by Step a
+    list one level down of its parts (step_parts), where it has any."""
+    sub = ('<ol class="l-otpsub">' + "".join(f'<li><a href="{E(href)}#{E(pid)}">{_plain(label)}</a></li>'
+                                             for pid, label in parts) + "</ol>") if parts else ""
+    return "".join(f'<li><a href="{E(href)}#{E(sid)}">{_plain(h)}</a>{sub if sid == "steps" else ""}</li>'
+                   for sid, h, _ in secs)
+
+
 def guide_steps(g, w=Words()):
     """THE STEPS, numbered: each one's words, a note set apart where
     something has changed, a button to the official page it needs, and the
@@ -2172,17 +2299,28 @@ def guide_steps(g, w=Words()):
     language, which says so once at its top."""
     out = []
     the_law = I.say(w.lang, "guides.the_law", "The law:")
+    # IN PARTS, EACH NUMBERED FROM 1 (guides.step's `part`): a heading closes
+    # one list and opens the next, and a step under one is a level lower.
+    grouped = any(s_.get("part") for s_ in g["steps"])
+    sh = "h4" if grouped else "h3"
+    lists = []
     for s_ in g["steps"]:
+        if s_.get("part"):
+            if out:
+                lists.append(f'<ol class="g-steps">{"".join(out)}</ol>')
+                out = []
+            lists.append(f'<h3 class="g-part" id="steps-{_slug(s_["part"])}">{w.t(s_["part"])}</h3>')
         acts = "".join(f'<a class="g-btn" href="{E(u)}"'
                        + ('' if u.startswith("/") else ' target="_blank" rel="noopener"'
                           + ('' if w.lang == I.DEFAULT else ' hreflang="en"'))
                        + f'>{w.t(label)}</a>' for label, u in s_["actions"])
         law = ", ".join(f'<a href="{E(G.law_href(r))}">{E(r)}</a>' for r in s_["law"])
-        out.append(f'<li class="g-step"><h3 class="g-sh">{w.t(s_["title"])}</h3>{w.h(s_["text"])}'
+        out.append(f'<li class="g-step"><{sh} class="g-sh">{w.t(s_["title"])}</{sh}>{w.h(s_["text"])}'
                    + (f'<p class="g-note" role="note">{w.h(s_["note"])}</p>' if s_["note"] else "")
                    + (f'<p class="g-acts">{acts}</p>' if acts else "")
                    + (f'<p class="g-law">{the_law} {law}</p>' if law else "") + "</li>")
-    return f'<ol class="g-steps">{"".join(out)}</ol>'
+    lists.append(f'<ol class="g-steps">{"".join(out)}</ol>')
+    return "".join(lists)
 
 
 def guide_page(tmpl, g, base, record, draft_why=""):
@@ -2222,7 +2360,7 @@ def guide_page(tmpl, g, base, record, draft_why=""):
                jsonld=None if draft_why else LD.howto(g, base, S.canon(path), when or ""),
                globals={"GR_STATIC": True}, noscript="", skip_label="Skip to the guide", sr_title="",
                nav_current="resources.html", cite=False)
-    items = "".join(f'<li><a href="{E(S.canon(path))}#{E(sid)}">{_plain(h)}</a></li>' for sid, h, _ in secs)
+    items = otp_items(secs, S.canon(path), step_parts(g))
     otp = ('<details class="l-otp"><summary>On this page</summary>'
            f'<nav class="l-otpb" aria-label="On this page"><ol>{items}</ol></nav></details>')
     acts = S.cite_block(path, g["title"], base, S.BUILT)
@@ -2234,7 +2372,8 @@ def guide_page(tmpl, g, base, record, draft_why=""):
     article = "".join(section(*s_) for s_ in secs)
     return p.replace('<div id="results"></div>',
                      '<div id="results"><div class="l-page g-page">' + hub_bar("guides") + headx
-                     + f'<div class="l-art">{article}</div></div>{OTP_JS}</div>', 1)
+                     + f'<div class="l-art">{article}</div></div>{OTP_JS}'
+                     + (YR_JS if 'class="g-yr"' in article else "") + '</div>', 1)
 
 
 # ---------------------------------------------------------------------------
@@ -2301,10 +2440,11 @@ def lang_sources(sources, w):
                                       'target="_blank" rel="noopener" hreflang="en">')
 
 
-def lang_otp(secs, path, lang):
-    """On This Page, in `lang`, for a page drawn in the home page's frame."""
+def lang_otp(secs, path, lang, parts=()):
+    """On This Page, in `lang`, for a page drawn in the home page's frame;
+    a guide's parts (step_parts, in `lang`) under its Step by Step."""
     here = I.href(lang, path)
-    items = "".join(f'<li><a href="{E(here)}#{E(sid)}">{_plain(h)}</a></li>' for sid, h, _ in secs)
+    items = otp_items(secs, here, parts)
     on = I.say(lang, "guides.on_page", "On this page")
     return (f'<div class="pageacts" id="pageacts"><details class="l-otp"><summary>{on}</summary>'
             f'<nav class="l-otpb" aria-label="{E(on)}"><ol>{items}</ol></nav></details></div>')
@@ -2342,7 +2482,7 @@ def guide_page_lang(g, lang, base, record=""):
                + "</p>" if when else "")
     head_ = (f'<header class="l-head"><h1>{title}</h1>'
              f'<p class="l-lead">{dashes(w.t(g["blurb"]))}</p>' + lang_note(lang) + note + checked
-             + lang_otp(secs, page, lang) + "</header>")
+             + lang_otp(secs, page, lang, step_parts(g, w)) + "</header>")
     article = lang_links("".join(section(*s_) for s_ in secs), lang)
     body = ('<div class="l-page g-page">' + lang_hub_bar(lang) + head_
             + f'<div class="l-art">{article}</div></div>{OTP_JS}')
