@@ -4071,10 +4071,18 @@ def take_lsrs(v=None):
                 for line in refused:
                     say(f"    {line}")
             say(f"  the {len(gone)} it would withdraw (digest {digest}), to hold to the General "
-                f"Court's list" + ("" if refused else
-                                   f" before the counts go into {LSR_ACCEPTED.as_posix()}") + ":")
+                f"Court's list:")
             for r in named:
                 say(f"    {r['lsr']}  {r['body'] or ''}  {r['sponsor'] or ''}")
+            # And the entry that takes this withdrawal, in this night's own
+            # values, to ADD: an earlier entry is the record of an earlier
+            # withdrawal and stays as it was (the second review of 5 November
+            # 2026, where reasons alone sent a person to edit the old one).
+            day = datetime.now().date().isoformat()
+            say(f"  held to it, this entry added to the \"accepted\" list of "
+                f"{LSR_ACCEPTED.as_posix()} takes it, for {LSR_ACCEPT_DAYS} days:")
+            say("    " + json.dumps({"day": day, "standing": len(standing), "withdraw": len(gone),
+                                     "confirmed": f"{day}, who checked it", "digest": digest}))
     if why:
         if before is not None:
             tmp = LSRS.with_name(LSRS.name + ".part")

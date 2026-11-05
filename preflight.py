@@ -28628,12 +28628,16 @@ def _record_untouched():
             return True
         for held in set(HELD.findall(src)):
             n = re.escape(held)
-            if re.search(r'\b%s\s*\.\s*(?:write_text|write_bytes)\s*\('
+            # ... or handed to a writer of the scripts' own, write_json(NAME,
+            # ...) as nightly.py has, or deleted (the second review of 5
+            # November 2026, whose mutant emptied the person's file that way).
+            if re.search(r'\b%s\s*\.\s*(?:write_text|write_bytes|unlink)\s*\('
                          r'|\b%s\s*\.\s*open\s*\(\s*(?:mode\s*=\s*)?["\'][wax]'
                          r'|\bopen\s*\(\s*%s\s*,\s*(?:mode\s*=\s*)?["\'][wax]'
                          r'|\.(?:replace|rename)\s*\(\s*%s\s*\)'
                          r'|\b(?:os\.replace|os\.rename|shutil\.(?:copy\w*|move))'
-                         r'\s*\([^)\n]*,\s*%s\s*\)' % (n, n, n, n, n), src):
+                         r'\s*\([^)\n]*,\s*%s\s*\)'
+                         r'|\bwrite_\w+\s*\(\s*%s\s*[,)]' % (n, n, n, n, n, n), src):
                 return True
         return False
 
@@ -28644,6 +28648,9 @@ def _record_untouched():
                          ('OUT = ROOT / "corrections" / "x.json"\nOUT.write_text(t)', True),
                          ('T = Path("review") / "a.csv"\nos.replace(tmp, T)', True),
                          ('NOTES: Path = Path("corrections/n.json")\nwith NOTES.open("w") as fh:', True),
+                         ('X = Path("corrections") / "x.json"\nwrite_json(X, {"accepted": []})', True),
+                         ('X = Path("corrections") / "x.json"\nX.unlink(missing_ok=True)', True),
+                         ('X = Path("corrections") / "x.json"\nd = read_json(X)', False),
                          ('json.loads(Path("corrections/bill_notes.json").read_text())', False),
                          ('open(ROOT / "corrections" / "x.json", encoding="utf-8")', False),
                          ('gt = Path("review/ground_truth.csv")\nrows = read_any(gt)\n'
@@ -90342,9 +90349,13 @@ def _nightly_runner(NI):
         digest = v.get("lsrs_gone_digest")
         assert digest == NI.lsr_digest(r["lsr"] for r in v["lsrs_gone"]) and \
             f"(digest {digest})" in out, ("the digest is not of the requests named", digest)
-        # With no file of the person's, the log asks for the counts.
-        assert "before the counts go into corrections/lsr_withdrawals.json" in out and \
-            "is on file" not in out, out[-600:]
+        # With no file of the person's, the log gives the entry that would take
+        # it, in this night's own values, and gives no reasons.
+        today = datetime.now().date().isoformat()
+        printed = [ln.strip() for ln in out.splitlines() if ln.strip().startswith('{"day"')]
+        assert len(printed) == 1 and json.loads(printed[0]) == {
+            "day": today, "standing": 10, "withdraw": 8, "confirmed": f"{today}, who checked it",
+            "digest": digest} and "is on file" not in out, (printed, out[-600:])
         # An acceptance that raises is no acceptance, and the list goes back:
         # between the fetch and the restore nothing may stop the night.
         real_accepted = NI.lsr_accepted
@@ -90359,26 +90370,33 @@ def _nightly_runner(NI):
         v = verdict()
         assert code == 0 and v["lsrs"].startswith("not taken: it would newly withdraw 8") and \
             Path("lsrs.json").read_bytes() == good and \
-            "could not be read as an acceptance (RecursionError)" in out, (code, v.get("lsrs"))
+            "could not be read as an acceptance (RecursionError)" in out and \
+            "nested past the limit" not in out, (code, v.get("lsrs"))
         # The person's count lets that withdrawal in, and nothing else
-        # (LSR_ACCEPTED): an entry with another set's digest is refused and the
-        # log says so, not that the counts are wanted; the same night again
-        # with the digest it printed installs it; and the file is only read.
+        # (LSR_ACCEPTED): an earlier entry, here with another set's digest, is
+        # refused and the log says why, and still gives the entry to add; the
+        # same night again with that printed entry ADDED after the old one
+        # installs it; and the night only reads the file, either way.
         Path("corrections").mkdir(exist_ok=True)
-        entry = {"day": datetime.now().date().isoformat(), "standing": 10, "withdraw": 8,
-                 "confirmed": f"{datetime.now().date().isoformat()}, the person"}
+        old = {"day": today, "standing": 10, "withdraw": 8, "confirmed": f"{today}, the person",
+               "digest": "0" * 12}
         try:
             Path("corrections/lsr_withdrawals.json").write_text(json.dumps(
-                {"accepted": [{**entry, "digest": "0" * 12}]}), encoding="utf-8")
+                {"accepted": [old]}), encoding="utf-8")
+            theirs = Path("corrections/lsr_withdrawals.json").read_bytes()
             code, out = night("--runner", run_id="115")
             v = verdict()
             assert code == 0 and v["lsrs"].startswith("not taken: it would newly withdraw 8") and \
                 Path("lsrs.json").read_bytes() == good and \
                 "corrections/lsr_withdrawals.json is on file and took nothing" in out and \
-                f"its digest is not the one this night printed ({digest})" in out and \
-                "before the counts go into" not in out, (v.get("lsrs"), out[-800:])
+                f"entry 1: its digest is not the one this night printed ({digest})" in out, \
+                (v.get("lsrs"), out[-800:])
+            assert Path("corrections/lsr_withdrawals.json").read_bytes() == theirs, \
+                "a night that refused the person's file changed it"
+            printed = [ln.strip() for ln in out.splitlines() if ln.strip().startswith('{"day"')]
+            assert len(printed) == 1, ("the entry to add was not given beside the reasons", out[-800:])
             Path("corrections/lsr_withdrawals.json").write_text(json.dumps(
-                {"accepted": [{**entry, "digest": digest}]}), encoding="utf-8")
+                {"accepted": [old, json.loads(printed[0])]}), encoding="utf-8")
             theirs = Path("corrections/lsr_withdrawals.json").read_bytes()
             code, _ = night("--runner", run_id="115")
             v = verdict()
@@ -90734,7 +90752,8 @@ def _lsr_accepted_by_the_person(NI):
         # An entry that fails any one rule does not stop the search: a later
         # one that matches is found, whichever rule the earlier one failed.
         for first in ({**good, "withdraw": 79}, {**good, "digest": "111111111111"},
-                      {**good, "day": "x"}, {**good, "withdraw": "80"}, None, "x"):
+                      {**good, "day": "x"}, {**good, "confirmed": "yes"}, {**good, "withdraw": "80"},
+                      {**good, "day": "2026-10-29"}, {**good, "day": "2026-11-07"}, None, "x"):
             assert given(first, good) == good, f"a later matching entry was not found after {first!r}"
         assert given(None, "x", good) == good, "a list holding a non-object hid the entry after it"
         assert given({**good, "day": (today - timedelta(days=NI.LSR_ACCEPT_DAYS)).isoformat()}), \
