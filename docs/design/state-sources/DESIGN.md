@@ -358,3 +358,52 @@ a folder standing in for the bucket.
   task's prompt, the manual mode, and the first job (the budget page's DAS
   documents).
 - Still open: items 4 to 6 above.
+
+## County officers (5 November 2026)
+
+**The problem.** Strafford County's commissioners on the site went stale
+after a resignation between elections. Every county officer in
+`corrections/officials.json` comes from the Secretary of State's county
+roster, dated 5 December 2024. A vacancy is filled by the county convention
+(RSA 661:9), or by the probate court for a register of probate (661:9-a), and
+the roster does not change when that happens. The owner wants these offices
+"checked regularly".
+
+**The design.**
+
+- **Registry rows.** A new `jurisdiction` column: `state`, `federal` or
+  `county:<Name>`. Nine county rows (`county-<name>`), each the county's own
+  site, with an address from a web search on 5 November 2026 that no one has
+  opened yet. Cheshire is a wanted row: the search found only an old
+  address. The roster itself is a row, and so is its successor, wanted after
+  the 3 November election. Their interval is a new `officials` value, read
+  weekly.
+- **The first laptop run** confirms each county's address and reports the
+  pages that name its elected officers. Each becomes a row of its own,
+  through the manager.
+- **The check.** `state_sources.py officials` compares each county officer
+  on record with the latest reading of that county's pages:
+  - `SAME`: the person is named on a page that names the office.
+  - `FLAG`: a page names the office and not the person.
+  - `NOT ON THE PAGES`: no page read names the office.
+
+  A name matches on first name and surname, so "Sean M. Leavitt" on record
+  is "Sean Leavitt" on a page.
+- **Nothing is written.** A flag is a question for the owner, who confirms
+  it before anyone edits the officials file by hand. Preflight holds this:
+  the file's bytes are unchanged after a run, nothing is written beside it,
+  and the code has no path that writes it.
+
+**What it cannot do.**
+
+- It does not say who replaced whom. A page can name a new person in prose
+  the check does not parse; the owner reads the page.
+- A county's own page can be stale too.
+- A word like "treasurer" used for another reason can raise a flag that
+  means nothing.
+
+**One lead, unverified.** A search result on 5 November quoted a Strafford
+County page naming Leslie Feliciano as the commissioners' vice chair. Joe
+Pitre, on record for District 1, was not named in that snippet. This is a
+snippet, not a reading: the first laptop run reads the page, and the owner
+confirms.

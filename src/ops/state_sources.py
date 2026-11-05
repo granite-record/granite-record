@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.6
+# GRANITE_VERSION: 2026-10-30.7
 """
 The state documents the guides and Learn pages rest on: from the laptop, where
 a real browser can read them, to the sessions, which cannot.
@@ -11,6 +11,9 @@ a real browser can read them, to the sessions, which cannot.
     python3 src/ops/state_sources.py report [--since DAY]  what changed, from the bucket's record
     python3 src/ops/state_sources.py due [--used-by X]     registered documents never read,
                                                             or not read in their interval
+    python3 src/ops/state_sources.py officials [--county C] the county officers on record,
+                                                            against the latest reading of
+                                                            each county's pages
     python3 src/ops/state_sources.py file FOLDER [...]     file a browser's downloads under
                      [--as ID] [--day DAY] [--dry-run]      sources/, by the address each
                                                             came from
@@ -73,6 +76,19 @@ modified in the last 14 days are read unless --all says otherwise, so a
 Downloads folder of years is not read whole. The day is the file's own
 modification day, which is when it was saved, unless --day says otherwise.
 
+COUNTY OFFICERS (5 November 2026). The owner found Strafford County's
+commissioners stale after a resignation between elections, and asked that
+such offices be checked regularly. RSA 661:9 has the county convention fill
+a vacancy and 661:9-a the probate court a register of probate's, so a holder
+can change while the Secretary of State's roster, the source of every county
+officer in corrections/officials.json, stays as it was. `officials` reads the
+latest reading of each county's registered pages (jurisdiction county:<Name>,
+used by officials:county) and, for each office one of them names, says
+whether the person on record is named there too. A FLAG is a person on record
+whom a page naming the office does not name: a question for the owner, who
+confirms it before anyone edits corrections/officials.json by hand. It writes
+nothing, anywhere: that file is the owner's.
+
 WHAT IT ASKS. The bucket, and nothing else. No state site, and never the
 General Court. boto3 only for the real bucket.
 """
@@ -107,12 +123,17 @@ PRINTOUTS_INDEX = PRINTOUTS + "/INDEX.csv"
 PRINTOUTS_PREFIX = PREFIX + "printouts/"
 
 FIELDS = ["id", "url", "kind", "title", "publisher", "owner_page", "changes",
-          "read_by", "used_by", "listed_in", "note"]
+          "read_by", "used_by", "listed_in", "note", "jurisdiction"]
+# Whose page it is: the state's, the federal government's, or one county's.
+COUNTIES = ("Belknap", "Carroll", "Cheshire", "Coos", "Grafton", "Hillsborough",
+            "Merrimack", "Rockingham", "Strafford", "Sullivan")
+JURISDICTIONS = {"state", "federal", *(f"county:{c}" for c in COUNTIES)}
 KINDS = {"page", "pdf", "app", "data", "wanted"}
 READ_BY = {"browser", "owner-only", "find"}
 # How often each is read again, in days: a guess per kind of change, to be
 # replaced by what the change reports measure (DESIGN.md, "How often").
-CHANGES = {"live": 7, "election": 7, "budget": 14, "yearly": 30, "unknown": 30, "rarely": 90}
+CHANGES = {"live": 7, "election": 7, "officials": 7, "budget": 14, "yearly": 30,
+           "unknown": 30, "rarely": 90}
 EXTS = {"pdf", "html", "txt", "md", "csv", "xls", "xlsx", "json", "png", "mhtml"}
 NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:-([2-9]|[1-9]\d))?\.([a-z0-9]+)$")
 ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,80}$")
@@ -171,6 +192,9 @@ def load_registry(root):
             bad.append(f"{where}: kind {r['kind']!r} is not one of {sorted(KINDS)}")
         if r["read_by"] not in READ_BY:
             bad.append(f"{where}: read_by {r['read_by']!r} is not one of {sorted(READ_BY)}")
+        if r["jurisdiction"] not in JURISDICTIONS:
+            bad.append(f"{where}: jurisdiction {r['jurisdiction']!r} is not state, federal "
+                       "or county:<one of the ten>")
         if r["changes"] not in CHANGES:
             bad.append(f"{where}: changes {r['changes']!r} is not one of {sorted(CHANGES)}")
         if not r["used_by"].strip() or "<" in r["used_by"]:
@@ -889,15 +913,159 @@ def suggest_row(url, reg=None):
         i = f"{base}-{n}"
     kind = "pdf" if leaf(url).endswith(".pdf") else "page"
     row = [i, url, kind, "", "", "", "unknown", "owner-only" if is_gc(url) else "browser",
-           "<who uses it>", "discovered", f"downloaded {date.today().isoformat()}"]
+           "<who uses it>", "discovered", f"downloaded {date.today().isoformat()}",
+           "state" if is_state_url(url) else "<state, federal or county:Name>"]
     import io
     out = io.StringIO()
     csv.writer(out, lineterminator="").writerow(row)
     return out.getvalue()
 
 
+# --------------------------------------------------------------- officials --
+
+OFFICIALS = "corrections/officials.json"
+# What a page says when it names the office, as the words to look for.
+OFFICE_WORDS = {
+    "commissioners": ("commissioner",),
+    "sheriff": ("sheriff",),
+    "county_attorney": ("county attorney",),
+    "treasurer": ("treasurer",),
+    "register_of_deeds": ("register of deeds", "registry of deeds", "register of the deeds"),
+    "register_of_probate": ("register of probate",),
+}
+SUFFIXES = {"jr", "sr", "ii", "iii", "iv"}
+
+
+def plain(text):
+    """Lower case, accents gone (Coös), every run of other characters one space."""
+    import unicodedata
+    t = unicodedata.normalize("NFKD", text)
+    t = "".join(c for c in t if not unicodedata.combining(c)).lower()
+    return " " + re.sub(r"[^a-z0-9]+", " ", t).strip() + " "
+
+
+def name_found(name, text):
+    """Whether a page's plain text names this person: their surname and their
+    first name both as words. A middle name or initial, and Jr. or II, are
+    not required, since pages write them one way and the roster another."""
+    words = [w for w in plain(name).split() if w not in SUFFIXES]
+    if len(words) < 2:
+        return f" {words[0]} " in text if words else False
+    first, last = words[0], words[-1]
+    return f" {last} " in text and f" {first} " in text
+
+
+def reading_text(path):
+    """The text of one reading: a .txt as it is, an .html with its tags gone,
+    a .pdf through pdfplumber where it is installed. None where it cannot be
+    read."""
+    ext = path.suffix.lower()
+    try:
+        if ext in (".txt", ".md", ".csv"):
+            return path.read_text(encoding="utf-8", errors="replace")
+        if ext in (".html", ".mhtml"):
+            raw = path.read_text(encoding="utf-8", errors="replace")
+            return re.sub(r"<[^>]+>", " ", raw)
+        if ext == ".pdf":
+            import pdfplumber
+            with pdfplumber.open(path) as pdf:
+                return "\n".join(pg.extract_text() or "" for pg in pdf.pages)
+    except Exception:                                           # noqa: BLE001
+        return None
+    return None
+
+
+def latest_local(root, i):
+    """The newest reading of id i in sources/, by the order up reads them."""
+    d = Path(root) / FOLDER / i
+    if not d.is_dir():
+        return None
+    got = []
+    for f in d.iterdir():
+        m = NAME.match(f.name)
+        if f.is_file() and m:
+            got.append(((m.group(1), int(m.group(2) or 1)), f))
+    return max(got)[1] if got else None
+
+
+def officials_on_record(root):
+    p = Path(root) / OFFICIALS
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        raise Failed(f"{OFFICIALS} will not read ({e})")
+    counties = (doc.get("county") or {}).get("counties") or {}
+    out = {}
+    for key, c in counties.items():
+        people = []
+        for office in OFFICE_WORDS:
+            rec = c.get(office)
+            if office == "commissioners" and isinstance(rec, dict):
+                for seat, who in sorted(rec.items()):
+                    if isinstance(who, dict) and who.get("name"):
+                        people.append((office, who.get("office") or f"Commissioner {seat}",
+                                       who["name"]))
+            elif isinstance(rec, dict) and rec.get("name"):
+                people.append((office, rec.get("office") or office, rec["name"]))
+        out[key] = people
+    if not out:
+        raise Failed(f"{OFFICIALS} holds no county officers to check")
+    return out
+
+
+def check_officials(root, reg, only=None):
+    """[(county, line)] and a count of flags: for each county, each person on
+    record, against the latest reading of that county's pages."""
+    people = officials_on_record(root)
+    lines, flags = [], 0
+    for county in sorted(people):
+        if only and county.lower() != only.lower():
+            continue
+        ids = [i for i, r in reg.items() if r["jurisdiction"] == f"county:{county}"
+               and "officials:county" in r["used_by"].split() and r["kind"] != "wanted"]
+        texts, read = [], []
+        for i in ids:
+            f = latest_local(root, i)
+            t = reading_text(f) if f else None
+            if t is not None:
+                texts.append(plain(t))
+                read.append(f"{i} ({f.stem})")
+        if not ids:
+            lines.append((county, "NO PAGE    none registered yet: nothing to check against"))
+            continue
+        if not texts:
+            lines.append((county, f"NOT READ   {len(ids)} page(s) registered, none read yet "
+                                  "(or none readable here)"))
+            continue
+        lines.append((county, "READ       " + "; ".join(read)))
+        text = " ".join(texts)
+        for office, title, name in people[county]:
+            if not any(f" {plain(w).strip()} " in text for w in OFFICE_WORDS[office]):
+                lines.append((county, f"NOT ON THE PAGES  {title}: {name} (no page read names "
+                                      "this office)"))
+            elif name_found(name, text):
+                lines.append((county, f"SAME       {title}: {name}"))
+            else:
+                flags += 1
+                lines.append((county, f"FLAG       {title}: {name} is on record, and a page "
+                                      "that names the office does not name them"))
+    return lines, flags
+
+
+def cmd_officials(a, root):
+    reg = load_registry(root)
+    if a.county and a.county.lower() not in {c.lower() for c in COUNTIES}:
+        raise Failed(f"--county {a.county}: not one of {', '.join(COUNTIES)}")
+    lines, flags = check_officials(root, reg, a.county)
+    for county, line in lines:
+        say(f"{county:<13} {line}")
+    same = sum(1 for _, ln in lines if ln.startswith("SAME"))
+    say(f"\n{flags} flag(s); {same} officer(s) named as on record. Nothing was written: "
+        f"a flag is for the owner to confirm before {OFFICIALS} is edited by hand.")
+
+
 COMMANDS = {"check": cmd_check, "up": cmd_up, "down": cmd_down, "report": cmd_report,
-            "due": cmd_due, "file": cmd_file}
+            "due": cmd_due, "file": cmd_file, "officials": cmd_officials}
 
 
 def main(argv=None, locked=False):
@@ -914,6 +1082,8 @@ def main(argv=None, locked=False):
                     help="file: the day it was read (default: the file's own day)")
     ap.add_argument("--all", action="store_true",
                     help=f"file: read every file, not only the last {RECENT_DAYS} days'")
+    ap.add_argument("--county", metavar="NAME",
+                    help="officials: one county only, e.g. Strafford")
     ap.add_argument("--used-by", metavar="X",
                     help="due: only what this guide or page uses, e.g. learn:state-budget")
     ap.add_argument("--into", metavar="FOLDER", help="down: where to put them (default sources/)")
