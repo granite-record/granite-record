@@ -226,8 +226,9 @@ def who(rec, seat="", lang="en", partisan=True):
 #           "vacant": {"since": "2026-10-30", "source": "https://...",
 #                      "read": "2026-11-06"}}
 #
-# The row is a dashed chip reading Vacant -- a dashed outline is what says
-# vacant on the seat chart too -- with the seat, the day and the source
+# The row is a dashed box reading Vacant -- a dashed outline is what says
+# vacant on the seat chart too, and it is not a chip, which is a person's --
+# with the seat, the day and the source
 # under it, and the successor's line where the record names one. No name is
 # drawn for an empty seat: who left it is the source's to say. On the day
 # the successor takes office, build_members_elect.officials_on makes them the
@@ -252,7 +253,7 @@ def vacant(rec, seat="", lang="en", partisan=True):
         raise SystemExit(f"corrections/officials.json: the vacancy of {office!r} is dated {since!r}, "
                          "not a day written YYYY-MM-DD")
     link = source_link(src) or E(src)
-    return ('<li class="ofwho ofvac"><span class="mchip ofvacant">'
+    return ('<li class="ofwho ofvac"><span class="ofvacant">'
             + E(I.say(lang, "off.vacant", "Vacant")) + "</span>"
             + (f'<span class="ofseat">{E(seat)}</span>' if seat else "")
             + '<ul class="ofhow"><li>'

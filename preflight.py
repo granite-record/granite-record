@@ -80735,8 +80735,10 @@ def _officials_vacant_seat(BME, OT):
         bad.append("a sheriff's successor is drawn with a party")
     if "District 3" in t:
         bad.append("a record with no name and no vacancy draws a row")
-    if 'class="mchip ofvacant"' not in en or "Ann Holder" not in t:
-        bad.append("the Vacant chip, or the holder beside it, is missing")
+    if 'class="ofvacant"' not in en or "Ann Holder" not in t:
+        bad.append("the Vacant box, or the holder beside it, is missing")
+    if re.search(r'class="mchip[^"]*"[^>]*>(?:Vacant|Vacante)<', en):
+        bad.append("an empty seat is drawn as a person's chip")
     es = plain(tab(BME.officials_on(doc, "2026-11-20"), "es"))
     if "Vacante desde el 30 de octubre de 2026." not in es or "Vacante" not in es:
         bad.append("the Spanish tab does not say Vacante desde el 30 de octubre de 2026.")
@@ -80755,8 +80757,8 @@ def _officials_vacant_seat(BME, OT):
     if json.dumps(doc, sort_keys=True) != snap:
         bad.append("drawing the tab changed the file it read")
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
-    if ".mchip.ofvacant{border:1px dashed" not in css:
-        bad.append("the Vacant chip is not dashed")
+    if not re.search(r"\.ofvacant\{[^}]*border:1px dashed", css):
+        bad.append("the Vacant box is not dashed")
     # The real file's vacancies, if it names any, each draw.
     real, n = _officials_now(), 0
     for c in ((real.get("county") or {}).get("counties") or {}).values():

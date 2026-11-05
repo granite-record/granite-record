@@ -30,8 +30,9 @@ the holder, and a record with a name is never drawn as vacant.
 
 The row has:
 
-- a dashed chip reading **Vacant**, the same dashed outline the seat chart
-  uses for a vacant seat, with no party bar;
+- a dashed box reading **Vacant**, the same dashed outline the seat chart
+  uses for a vacant seat. It sits where a chip would, but it is not one:
+  the chip is a person's, and preflight holds every chip to that;
 - the seat;
 - *Vacant since {day}.*;
 - *Source:* and the source's host, linked;
