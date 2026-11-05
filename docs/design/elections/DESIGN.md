@@ -47,9 +47,9 @@ that.
   numbers come from, or terms that would let us republish it. §1 recommends
   asking two of them for permission and getting a quote from the AP. The owner
   sends those requests; drafts are in §8.
-- **The target date has moved.** NHPR reports that the state primary moves to
-  June starting in 2028 (§1.7). The first live test would then be June 2028,
-  not September.
+- **The target is the June 2028 state primary, then the November 2028
+  general.** The primary moves to June from 2028 (NHPR; the owner confirmed it
+  on 5 November 2026; §1.7).
 
 Mock (2024 official, finished election), 1280 light:
 `mock/2024-1280-light.png`; the same at 390 and in dark: `mock/2024-390-light.png`,
@@ -205,15 +205,21 @@ Mock (2026, election night, **illustrative numbers**): `mock/night-1280-light.pn
 
 - **The state primary moves to June from 2028** (reported, NHPR, 11 May 2026:
   "will move to June starting in 2028", "holding primaries on the second
-  Tuesday in June"). The bill and the new RSA 653:8 were not found. **The owner
-  should confirm this.** If it holds, the first live election is about 13 June
-  2028.
-- **The recount deadline is not a fixed day.** The 2024 deadline was "Friday,
-  Nov. 8th at 5 p.m." (NHPR). In 2022 it fell on a Monday, 14 November (Granite
-  Memo). RSA 660:1 was reportedly amended in 2025. **The 2026 deadline is
-  unsourced here.** `docs/ELECTION_WEEK.md` gives Friday 6 November. That
-  should be checked against the Secretary of State's own notice before it is
-  entered.
+  Tuesday in June"). **The owner confirmed it on 5 November 2026.** The second
+  Tuesday in June 2028 is 13 June. The bill and the new RSA 653:8 were not
+  found; the page's first primary should cite the statute once it is read.
+- **The recount deadline: the Friday after the election.** Ballotpedia quotes
+  RSA 660:1 as "no later than the Friday following the election". For 2026
+  that is Friday 6 November (confirmed by the owner, 5 November), as
+  `docs/ELECTION_WEEK.md` has it. 2024's was "Friday, Nov. 8th at 5 p.m."
+  (NHPR). 2022's fell on a Monday, 14 November (Granite Memo), which a search
+  snippet ties to an extension for affidavit verification (RSA 659:23-a). So
+  the page takes each election's deadline from `members_elect.json`'s
+  `recount_deadline`, entered by the owner, never computes it.
+- **Recounts themselves** (the Secretary of State's "Rules for Recounts", which
+  the owner sent for background; not quoted here): held by the Secretary of
+  State, with appeals to the Ballot Law Commission under RSA 665:6. The page
+  shows only what the SoS schedule and the next numbered upload say.
 
 ### 1.8 Recommendation
 
@@ -495,7 +501,7 @@ Effort figures are **guesses**, in working sessions.
 | Count seats on the night? | Only where every polling place has reported, as "most votes" |
 | Percent or count for reporting? | Count, with the source's denominator |
 | Where does the page live? | Under Officials, `/elections/<date>-<general|primary>`; a link from the home page during election week |
-| Is the 2028 primary in June? | Plan for June; the owner confirms |
+| Is the 2028 primary in June? | Settled: June (13 June 2028), confirmed by the owner 5 November |
 | One more feed snapshot to score against the SoS files? | The owner decides; three requests on 6 November if yes |
 | Primaries: one party at a time? | Yes, Republican first |
 | Build the official-only page before a source is settled? | Yes. It is useful alone |
