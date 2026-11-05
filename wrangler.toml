@@ -1,4 +1,4 @@
-# GRANITE_VERSION: 2026-09-12.5
+# GRANITE_VERSION: 2026-09-12.6
 #
 # The Pages project's configuration, which this file now owns. Until
 # 12 September there was none: the dashboard held a name and a compatibility
@@ -27,6 +27,17 @@ binding = "DB"
 database_name = "graniterecord-reports"
 database_id = "1fb4afb6-62dc-455a-9357-0125bcf7577a"
 
+# LIVE NOW AND THE LIVE VOTES FILE (the person, 26 October 2026: the live
+# layer, its defaults): functions/api/live/ read the live Worker's private
+# bucket through _store.js's get and head alone. Locally a bucket of its own
+# name; production and PREVIEWS both the real one, accepted explicitly (design
+# 6.4, default 4): a preview can show the real day's live data, and the
+# read-only facade, held by preflight, is why that is safe. Lands only once
+# the person has created the bucket graniterecord-live.
+[[r2_buckets]]
+binding = "LIVE"
+bucket_name = "graniterecord-live-local"
+
 [vars]
 REPORT_ORIGINS = "localhost:8788 localhost:8790 127.0.0.1:8788 127.0.0.1:8790"
 
@@ -45,6 +56,10 @@ database_id = "1fb4afb6-62dc-455a-9357-0125bcf7577a"
 binding = "FOLLOW_DB"
 database_name = "graniterecord-follow"
 database_id = "c43becf3-b914-4d17-8548-4f066af4544a"
+
+[[env.production.r2_buckets]]
+binding = "LIVE"
+bucket_name = "graniterecord-live"
 
 # The site's names only. Every production deployment also answers at its own
 # <hash>.graniterecord.pages.dev address for good, and those are not the site.
@@ -72,6 +87,10 @@ database_id = "39c58ee3-73cd-41a5-b998-b259bcf1d902"
 binding = "FOLLOW_DB"
 database_name = "graniterecord-follow-preview"
 database_id = "296ea738-2f5f-4ec6-8951-6496282c35c3"
+
+[[env.preview.r2_buckets]]
+binding = "LIVE"
+bucket_name = "graniterecord-live"
 
 [env.preview.vars]
 REPORT_ORIGINS = "*.graniterecord.pages.dev"

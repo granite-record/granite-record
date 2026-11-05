@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.760
+# GRANITE_VERSION: 2026-09-04.766
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -25894,7 +25894,9 @@ def _built_sites():
 
 # A stylesheet a page may take BESIDE app.css: the district map's, on the pages
 # that draw it. Anything else a page links is a second stylesheet.
-BESIDE_APP_CSS = ("/map.css",)
+# And the live layer's, on /live and beside every committee page's live hook
+# (live_hook.place; workers/live/PATCHES.md 11, 2 November 2026).
+BESIDE_APP_CSS = ("/map.css", "/live.css")
 
 
 @check("frontend", "every page links the one stylesheet, /app.css, and none links style.css")
@@ -25953,7 +25955,8 @@ def _one_stylesheet_linked():
         assert not bad, (f"{len(bad)} pages of {what} do not link the one stylesheet "
                          f"alone: " + "; ".join(bad[:5]))
         said.append(f"{n:,} pages of {what}")
-    return "ok", "each links /app.css once and no other of ours but the map's: " + ", ".join(said)
+    return "ok", ("each links /app.css once and no other of ours but the map's and the live layer's: "
+                  + ", ".join(said))
 
 
 @check("frontend", "the published app.css is the source without its comments, and nothing else")
@@ -27532,10 +27535,10 @@ LEARN_CONSTITUTION_CLAIMS = [
      2, "41", "whose title shall be his excellency"),
     ("state-house-and-branches", "The governor is chosen biennially, in November (Part Second, Article 42)",
      2, "42", "the governor shall be chosen biennially in the month of november"),
-    ("state-house-and-branches", "30 years old and have lived in the state for the 7 years before the "
-     "election", 2, "42", "an inhabitant of this state for 7 years next preceding"),
-    ("state-house-and-branches", "30 years old and have lived in the state for the 7 years before the "
-     "election", 2, "42", "of the age of 30 years"),
+    ("state-house-and-branches", "30 years old and have lived in the state for the 7 years immediately "
+     "before the election", 2, "42", "an inhabitant of this state for 7 years next preceding"),
+    ("state-house-and-branches", "30 years old and have lived in the state for the 7 years immediately "
+     "before the election", 2, "42", "of the age of 30 years"),
     ("state-house-and-branches", "the House and Senate together elect one of the two with the most votes, "
      "by joint ballot", 2, "42", "by joint ballot elect one of the two persons, having the highest number "
                                  "of votes"),
@@ -28201,6 +28204,86 @@ def _journal_member_site_id(JM):
     return "ok", "the PersonID where there is one, the Employeeno where not, and nobody when two fit"
 
 
+@check("build", "a member who sat in both chambers and has left has one page, the later "
+       "chamber's, as the person register joins them, and the earlier page's address "
+       "answers with a 301", needs=("build_site_v2", "build_pages"))
+def _former_movers_one_page(build_site_v2, build_pages):
+    """build_site_v2.former_movers (30 October 2026): Shannon Chandley voted
+    as 568 in the House and 9404 in the Senate and had a page for each,
+    because member_links joins a mover's numbers only while they sit. The
+    register's join -- the one the public data API publishes -- is taken for
+    those who have left: the page that voted last keeps every chamber's
+    votes, and build_pages answers the other's address with a 301. A number
+    a sitting member holds or is joined to, and a person with one number
+    that voted, are left as they were."""
+    V, BP = build_site_v2, build_pages
+    reg = {"people": [
+        {"person": "568", "numbers": ["209104", "376802"]},    # moved and left
+        {"person": "515", "numbers": ["209077", "376503"]},    # sits now (member_links has her)
+        {"person": "900", "numbers": ["200001", "300001"]},    # only one number voted
+        {"person": "27", "numbers": ["209015"]}]}
+    e2p = {"209104": "9404", "376802": "568", "209077": "9406", "376503": "515",
+           "200001": "901", "300001": "900"}
+    # The record's own date form, m/d/Y, which sorts by the day only through
+    # vote_date: as text, 9/13/2018 would come after 10/10/2018.
+    v = lambda y, b, md="3/1": {"year": y, "date": f"{md}/{y}", "body": b}
+    votes = {"568": [v("2009", "H"), v("2018", "H")], "9404": [v("2019", "S"), v("2024", "S")],
+             "515": [v("2009", "H")], "9406": [v("2023", "S")], "900": [v("2005", "H")],
+             "209015": [v("2001", "S")]}
+    got = V.former_movers(reg, e2p, {"9406": {}}, {"9406": ["515"]}, votes)
+    assert got == {"9404": ["568"]}, f"former_movers joined {got}"
+    # A move within one year: the later day keeps the page, read as a day.
+    same = dict(votes, **{"568": [v("2018", "H", "9/13")], "9404": [v("2018", "S", "10/10")]})
+    assert V.former_movers(reg, e2p, {}, {}, same).get("9404") == ["568"], \
+        "a move within a year kept the earlier page: dates compared as text"
+    # The page kept says the years of every chamber (former_roster's served).
+    fr = V.former_roster({}, votes, {"9404": ["568"]}, {}, "2025-2026")
+    assert fr["9404"]["served"]["first"] == "3/1/2009" and "2009-2010" in fr["9404"]["served"]["terms"], \
+        f"the page kept gives only its own chamber's years: {fr['9404']['served']}"
+    assert V.former_movers(None, {}, {}, {}, votes) == {}, "no register still joined someone"
+    # The pairs the owner confirmed (same_person): joined as the register's
+    # are; one whose id a register join holds already is left as it is.
+    conf = dict(votes, **{"374827": [v("2001", "H")], "36": [v("2012", "S")]})
+    got = V.former_movers(reg, e2p, {"9406": {}}, {"9406": ["515"]}, conf,
+                          confirmed=[["374827", "36"], ["568", "36"]])
+    assert got == {"9404": ["568"], "36": ["374827"]}, f"the confirmed pairs joined {got}"
+    root = Path(tempfile.mkdtemp(prefix="gr-moved-"))
+    try:
+        (root / "mc.json").write_text(json.dumps({"members": {}, "same_person": [
+            {"house": "374827", "senate": "36", "confirmed": "2026-11-02, owner"},
+            {"house": "862", "senate": "44", "confirmed": "no, two people"},
+            {"house": "1", "senate": "2", "confirmed": ""}]}), encoding="utf-8")
+        assert V.same_person(root / "mc.json") == [["374827", "36"]], V.same_person(root / "mc.json")
+        assert V.same_person(root / "nowhere.json") == []
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
+    assert "confirmed=same_person()" in src, "build_site_v2 no longer takes the pairs the owner confirmed"
+    root = Path(tempfile.mkdtemp(prefix="gr-moved-"))
+    try:
+        (root / "former.json").write_text(json.dumps([
+            {"id": "9404", "slug": "shannon-chandley-sd-11",
+             "moved_from": ["/legislator/shannon-chandley-hills-22"]},
+            {"id": "27", "slug": "someone-sd-1"}]), encoding="utf-8")
+        lines = BP.moved_members(root)
+        assert lines == ("/legislator/shannon-chandley-hills-22 /legislator/shannon-chandley-sd-11 301\n"
+                         "/legislator/shannon-chandley-hills-22.html "
+                         "/legislator/shannon-chandley-sd-11 301\n"
+                         "/legislator/shannon-chandley-hills-22/* "
+                         "/legislator/shannon-chandley-sd-11/:splat 301\n"), lines
+        assert BP.moved_members(root / "nowhere") == "", "no former.json still wrote a rule"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
+    assert "former_movers(register, e2p or {}" in src, "build_site_v2 no longer joins the movers who left"
+    src = _paths.locate("build_pages.py").read_text(encoding="utf-8")
+    assert 'head + "\\n" + moved_members(out) + rest' in src, (
+        "build_pages no longer writes their 301s ahead of the tab rules, where the first match is served")
+    return "ok", ("a mover who left is joined to the later page, by the day of the last vote, with "
+                  "every chamber's years; a sitting one and a one-number one are not; their 301s "
+                  "ahead of the tab rules, tabs included")
+
+
 # ============================================================= code: pipeline ==
 
 @check("pipeline", "build_all runs the steps in the right order", needs=("build_all",))
@@ -28660,6 +28743,182 @@ def _record_untouched():
                   "only a person writes them: " + ", ".join(present) + "; no generator "
                   "names the bench's record or writes into either folder, and the bench "
                   "is not on the network")
+
+
+@check("files", "a new member gets their number by the rule with nobody's help, the register wins, and no two people ever share one")
+def _person_rule():
+    """The owner's conditions for person numbers (30 October 2026), and the
+    register's promise, held on a record made up here, so they hold whatever
+    tonight's data is:
+
+      a new member with a PersonID      is numbered by it, the same night,
+                                        and not marked provisional
+      a new member with only an employee number   is numbered by that
+      a new member with neither         gets one made here ("s" and the site
+                                        id), marked provisional
+      a member who gains a PersonID     keeps the number the register issued
+                                        them: the register wins over the rule
+      a number someone already holds    is never given to a second person,
+                                        whether the register holds it or
+                                        another newcomer took it tonight
+      an issued person tonight's record lacks   is reported, never dropped
+                                        in silence
+
+    and what is published holds no number twice (people.check_unique)."""
+    import tempfile
+    sys.path.insert(0, str(_paths.locate("people.py").parent))
+    import people as PE
+
+    def world(d, roster, careers_, votes, legs=()):
+        (d / "db").mkdir(exist_ok=True)
+        (d / "site" / "legislators").mkdir(parents=True, exist_ok=True)
+        (d / "data").mkdir(exist_ok=True)
+        (d / "db" / "_columns.json").write_text(json.dumps(
+            {"Legislators": ["PersonID", "LastName", "FirstName", "Employeeno"]}))
+        (d / "db" / "Legislators.psv").write_text("".join(f"{p}|N|F|{e}\n" for p, e in roster))
+        (d / "site" / "legislators.json").write_text(json.dumps(list(legs)))
+        (d / "site" / "former.json").write_text("[]")
+        (d / "data" / "sponsors.json").write_text("{}")
+        (d / "data" / "member_votes.json").write_text(json.dumps([{"member_id": m} for m in votes]))
+        return {e: {"by_term": {"2027-2028": {"chambers": [ch], "employee_nos": [e]}},
+                    "employee_nos": [e], "first": e, "last": "Newcomb"} for e, ch in careers_}
+
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        # 376003's PersonID, 11602, is already issued to someone else.
+        careers = world(d, [("11600", "376001"), ("11602", "376003")],
+                        [("376001", "H"), ("376002", "H"), ("376003", "S")],
+                        ["11600", "376002", "11602", "99"],
+                        [{"id": "11600", "name": "Newcomb, Ada", "slug": "ada-newcomb-hills-1"}])
+        reg = {"format": 1, "people": [{"person": "11602", "numbers": ["376777"]}]}
+        assert not PE.check_register(reg), PE.check_register(reg)
+        people, rep = PE.build(d / "site", d / "data", d / "db", careers, reg)
+        by = {p["person"]: p for p in people}
+        got = {
+            "a PersonID": "11600" in by and not by["11600"].get("provisional"),
+            "only an employee number": "376002" in by and not by["376002"].get("provisional"),
+            "neither": (by.get("s99") or {}).get("provisional") is True,
+            "a number the register holds": any(c["person"] == "11602" for c in rep["clashes"])
+                                           and not any("376003" in (p.get("employee_numbers") or [])
+                                                       for p in people),
+            "an issued person missing tonight": rep["missing_issued"] == ["11602"],
+        }
+        assert all(got.values()), "the rule does not hold for: " + ", ".join(k for k, v in got.items() if not v)
+        assert not PE.check_unique(people), PE.check_unique(people)
+
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        # 376002 was issued under its employee number; tonight the roster
+        # gives it a PersonID, 11605, and the register still wins. And two
+        # newcomers whose roster rows share a PersonID, 11610, take it once.
+        careers = world(d, [("11605", "376002"), ("11610", "376010"), ("11610", "376011")],
+                        [("376002", "H"), ("376010", "H"), ("376011", "S")],
+                        ["11605", "376010", "376011"])
+        reg = {"format": 1, "people": [{"person": "376002", "numbers": ["376002"]}]}
+        people, rep = PE.build(d / "site", d / "data", d / "db", careers, reg)
+        persons = [p["person"] for p in people]
+        assert "376002" in persons and "11605" not in persons, \
+            f"the register did not win over the rule: {persons}"
+        assert persons.count("11610") == 1 and len(rep["clashes"]) == 1, \
+            f"a number was given twice in one night: {persons}, {rep['clashes']}"
+        assert not PE.check_unique(people), PE.check_unique(people)
+    assert PE.check_unique([{"person": "1", "employee_numbers": ["376001"]},
+                            {"person": "2", "employee_numbers": ["376001"]}]), \
+        "check_unique let two people share an employee number"
+    for bad in ({"people": [{"person": "s99", "numbers": ["m99"]}]},
+                {"people": [{"person": "376003", "numbers": ["376777"]}]},
+                {"people": [{"person": "11600", "numbers": []}]},
+                {"people": [{"person": "1", "numbers": ["376001"]}, {"person": "2", "numbers": ["376001"]}]},
+                []):
+        assert PE.check_register(bad), f"check_register passed a malformed register: {bad}"
+    return "ok", ("a new member is numbered by their PersonID (11600), else their employee number "
+                  "(376002), else one made here and provisional (s99); the register wins over a "
+                  "PersonID found later (376002 stays); a number already held, by the register or "
+                  "by another newcomer the same night, is refused (11602, 11610); an issued person "
+                  "missing tonight is reported; and the checks of uniqueness and of the register's "
+                  "shape catch what they should")
+
+
+@check("files", "only a person's run writes the register of person numbers, and it is well formed")
+def _person_register():
+    """generated/person_numbers.json holds the person numbers the public data
+    API publishes (docs/design/api/DESIGN.md, 2.5; the owner's decision of 30
+    October 2026, Q14). Other sites store those numbers, so one issued is
+    never moved or reissued, and the only writer is src/ops/person_numbers.py
+    --issue, which a person runs. The nightly reads it. Two things are held
+    here: no other code file writes it, by any of the shapes the hand-made
+    files' check reads, and what is there is well formed (no number held by
+    two people, no person issued twice)."""
+    REG = "person_numbers.json"
+    # And the hand links beside it, which no code writes at all.
+    stem = r"(?<![\w-])(?:person_numbers|person_links)\.json"
+    HELD = re.compile(r'^[ \t]*([A-Za-z_]\w*)[ \t]*(?::[^=\n]*)?=[^=\n][^\n]*' + stem, re.M)
+
+    def writes(src):
+        if re.search(r'open\s*\([^)]*' + stem + r'[^)]*["\'][wax]', src) or \
+           re.search(stem + r'[^\n]{0,60}\.write_(?:text|bytes)', src):
+            return True
+        for held in set(HELD.findall(src)):
+            n = re.escape(held)
+            if re.search(r'\b%s\s*\.\s*(?:write_text|write_bytes)\s*\('
+                         r'|\b%s\s*\.\s*open\s*\(\s*(?:mode\s*=\s*)?["\'][wax]'
+                         r'|\bopen\s*\(\s*%s\s*,\s*(?:mode\s*=\s*)?["\'][wax]'
+                         r'|\b(?:os\.replace|os\.rename|shutil\.(?:copy\w*|move))'
+                         r'\s*\([^)\n]*,\s*%s\s*\)' % (n, n, n, n), src):
+                return True
+        return False
+
+    for text, w in (('open("generated/person_numbers.json", "w")', True),
+                    ('Path("generated/person_numbers.json").write_text(t)', True),
+                    ('REG = Path("generated") / "person_numbers.json"\nREG.write_text(t)', True),
+                    ('R = "generated/person_numbers.json"\nos.replace(tmp, R)', True),
+                    ('def f(register="generated/person_numbers.json"):\n    reg = load(register, None)', False),
+                    ('json.loads(Path("generated/person_numbers.json").read_text())', False)):
+        assert writes(text) == w, f"the register's reader reads {text!r} as " + ("no write" if w else "a write")
+    bad = []
+    for f in _paths.code_files("*.py"):
+        # The writer, and this file, whose cases above name it on purpose.
+        if f.name in ("person_numbers.py", "preflight.py"):
+            continue
+        if writes(f.read_text(encoding="utf-8", errors="replace")):
+            bad.append(f.name)
+    assert not bad, "these write the register of person numbers or its hand links, which " \
+                    "only person_numbers.py --issue (the register) and a person (the links) " \
+                    "may: " + ", ".join(bad)
+    links = _paths.ROOT / "generated" / "person_links.json"
+    if links.exists():
+        sys.path.insert(0, str(_paths.locate("people.py").parent))
+        import people as PE
+        try:
+            PE.load_links(links)
+        except SystemExit as e:
+            raise AssertionError(f"person_links.json is not well formed: {e}")
+    reg = _paths.ROOT / "generated" / REG
+    if not reg.exists():
+        return "ok", ("no other code file writes it; no register issued yet, so every person is "
+                      "numbered by the rule each night")
+    sys.path.insert(0, str(_paths.locate("person_numbers.py").parent))
+    import person_numbers as PN
+    now = json.loads(reg.read_text(encoding="utf-8"))
+    problems = PN.check_register(now)
+    assert not problems, "the register is not well formed: " + "; ".join(problems[:5])
+    # ONLY EVER ADDED TO. Against dev's copy, where there is one: every person
+    # issued there is still here, holding at least the numbers it held, or
+    # retired with replaced_by. A number moved or a person deleted fails.
+    r = _run(["git", "show", "origin/dev:generated/person_numbers.json"],
+             capture_output=True, text=True)
+    if r.returncode == 0 and r.stdout.strip():
+        then = {e["person"]: e for e in json.loads(r.stdout).get("people") or []}
+        here = {e["person"]: e for e in now.get("people") or []}
+        moved = []
+        for p_, e in then.items():
+            h = here.get(p_)
+            if h is None:
+                moved.append(f"{p_} is gone")
+            elif not h.get("replaced_by") and not set(e.get("numbers") or []) <= set(h.get("numbers") or []):
+                moved.append(f"{p_} lost a number")
+        assert not moved, "the register is only ever added to, and against dev's: " + "; ".join(moved[:5])
+    return "ok", "no other code file writes it, and it is well formed"
 
 
 @check("markers", "every phrasing read from a transcript still matches")
@@ -42564,7 +42823,7 @@ def _guides_gate(BC, G, GS, RSA, S):
             pub, urls = BC.build_guides(tmp / "site", tmpl, "https://graniterecord.org")
         page = (tmp / "site" / "guides" / "test-guide.html").read_text(encoding="utf-8")
         assert [g["slug"] for g in pub] == ["test-guide"] and urls, "a guide checked throughout was held back"
-        assert "Checked against its sources" in page and 'class="g-stale"' not in page and "Draft" not in page
+        assert "Sources last checked" in page and 'class="g-stale"' not in page and "Draft" not in page
         assert 'href="/laws/91-a"' in page and "Laws that changed it, newest first" in page, \
             "the guide does not list the laws that changed its chapter"
         assert 'class="g-flow"' in page and page.count('class="g-step"') == 2 and 'class="g-btn"' in page \
@@ -42816,6 +43075,16 @@ def _follow_site_current(FS):
     typed = sorted({h.upper() for h in re.findall(r"#[0-9A-Fa-f]{3}(?:[0-9A-Fa-f]{3})?\b", code)})
     assert not typed, (f"page.js types the colours {typed} itself; the manage page's colours are "
                        f"site.gen.js's PAGE_PALETTE, from app.css (run `{FS.COMMAND}`)")
+    # THE WORDMARK'S FACE IS THE SITE'S (the walk of 31 October 2026): the
+    # follow pages drew "Granite Record" in Source Serif 4, the header in
+    # app.css's --brand-face, Playfair Display 600 at 22px.
+    face = re.search(r"--brand-face:([^;]+);", Path("src/pages/app.css").read_text(encoding="utf-8"))
+    brand = re.search(r"\.brand\{[^}]*\}", code)
+    assert face and f"--brand-face:{face.group(1)}" in code and brand \
+        and "var(--brand-face)" in brand.group(0) and "600 22px" in brand.group(0) \
+        and "family=Playfair+Display:wght@600" in code, (
+            "the follow pages' wordmark is not in app.css's --brand-face, Playfair Display 600 at "
+            "22px, loaded with the page's fonts")
     names = {n: v for n, (_, v) in FS.values().items()}
     return "ok", (f"{FS.OUT.as_posix()} is current: {len(names['STATUS_INK'])} status inks, "
                   f"{len(names['SITE_PALETTE'])} text inks and the ring's two from app.css, "
@@ -43598,7 +43867,7 @@ RECOMMENDED FOR FUTURE LEGISLATION.
 The committee is opposed to the basic concept of allowing a review of parental rights and
 responsibilities every three years. Vote 10-1.
 
-                                                      Rep. Caroline Gargasz
+                                                      Rep. Caroline Gargasz.
 HB 541, relative to the obligation of religious leaders to report child abuse.
 Rep. Margaret D. Hallyburton for Commerce and Consumer Affairs: The state Supreme
 Court has before it an appeal that will likely address this issue. Vote 10-0.
@@ -43689,6 +43958,15 @@ def _interim_statements(I, B):
     for b, (rec, printed, who, y, n) in want.items():
         assert (s[b]["rec"], s[b]["printed"], s[b]["author"], s[b].get("vote_yeas"),
                 s[b].get("vote_nays")) == (rec, printed, who, y, n), f"{b} reads {s[b]}"
+    # A SIGNER'S LINE ENDS ON THE NAME (the walk of 31 October 2026): HB 1303
+    # of 2010 was signed "Rep. Franklin W. Sterling." and its card kept the
+    # stop -- Gargasz's line above carries one -- while an initial's and a
+    # Jr.'s stay.
+    for raw, name in (("Rep. Franklin W. Sterling.", "Rep. Franklin W. Sterling"),
+                      ("Rep. John E. Tholl, Jr.", "Rep. John E. Tholl, Jr."),
+                      ("Rep. John E. Tholl, JR.", "Rep. John E. Tholl, JR."),
+                      ("Rep. Bette R.", "Rep. Bette R."), ("Rep Peter Bixby", "Rep Peter Bixby")):
+        assert I.unstopped(raw) == name, f"{raw!r} is read as {I.unstopped(raw)!r}"
     assert s["HB1779"]["title"] == "supporting the cultural background of children placed in foster care" \
         and "HOUSERECORD" not in s["HB1779"]["text"] and s["HB1779"]["text"].endswith("necessary."), (
         f"HB 1779's statement: {s['HB1779']}")
@@ -70219,6 +70497,107 @@ def _spanish_glossary(i18n, BC, chrome):
                   "the English page names its twin")
 
 
+@check("build", "the build writes /live after the week pages and lists it in the sitemap, and both "
+       "committee builders place the live hook", needs=())
+def _live_in_the_build():
+    """workers/live/PATCHES.md 1 and 11, applied 2 November 2026. build_all
+    runs build_live.py after build_calendar.py, whose week pages it reads;
+    build_live lists /live in the sitemap, as every builder lists its own --
+    check_site refuses a page that asks to be indexed and is not listed, and
+    /live would have stopped the night; and build_committees and
+    build_study_committees each call live_hook.place, which _live_committee
+    holds once both do but no longer requires (a builder that dropped the
+    call would pass it, the patch still saying how)."""
+    import build_all as BA
+    A = type("A", (), {"key": None, "session": "2026", "base": "https://graniterecord.org",
+                       "archive": "nh-archive", "keep_going": False, "allow_prune": False})
+    plan = [(s.args or [""])[0] for s in BA.plan(A())]
+    assert "build_live.py" in plan and "build_calendar.py" in plan \
+        and plan.index("build_calendar.py") < plan.index("build_live.py"), (
+            f"build_all does not run build_live.py after build_calendar.py: {plan}")
+    live = Path(_paths.locate("build_live.py")).read_text(encoding="utf-8")
+    assert re.search(r'^\s*S\.sitemap_merge\(site, base, \[[^\]]*S\.canon\(ADDRESS\)\], "/live"\)', live, re.M), (
+        "build_live does not list /live in the sitemap, and check_site would refuse the page")
+    call = re.compile(r"^[^#\n]*\blive_hook\.place\(", re.M)
+    lacking = [f for f in ("build_committees.py", "build_study_committees.py")
+               if not call.search(Path(_paths.locate(f)).read_text(encoding="utf-8"))]
+    assert not lacking, f"{', '.join(lacking)} no longer places the live hook (PATCHES.md 11)"
+    return "ok", "/live built after the week pages and in the sitemap; the hook placed by both committee builders"
+
+
+@check("build", "a House report is dated by its calendar's filename however the clerk spaced it",
+       needs=("build_site_v2",))
+def _cal_date_spaced(SV):
+    """The walk of 31 October 2026: every interim study report House
+    Calendar 39 of 2018 printed had no date on its card, because the
+    calendar's filename has two spaces before the year
+    ("November%2009%20%202018") and CAL_DATE allowed one. Held on the shapes
+    the addresses on file take: escaped, doubled, and typed as spaces."""
+    base = "https://gc.nh.gov/house/calendars_journals/viewer.aspx?fileName=calendars%5C"
+    cases = {base + "2026%5CNo10%20March%206%202026.pdf": "2026-03-06",
+             base + "2018%5CNo%2039%20November%2009%20%202018.pdf": "2018-11-09",
+             base + "2026%5CNo10 March 6 2026.pdf": "2026-03-06",
+             base + "2018%5CNo%2039.pdf": ""}
+    wrong = {u.rsplit("%5C", 1)[1]: SV._cal_date(u) for u, want in cases.items() if SV._cal_date(u) != want}
+    assert not wrong, f"a calendar's filename gives the wrong date: {wrong}"
+    return "ok", f"{len(cases)} calendar filenames, each dated as printed or not at all"
+
+
+_VW_CLEAR_JS = r"""
+const src = %s;
+const grab = re => { const m = src.match(re); if (!m) throw new Error("not in app.js: " + re); return m[0]; };
+const code = [/function vwStrip\(box\)\{[\s\S]*?\n\}/, /function vwClearStrip\(el\)\{[\s\S]*?\n\}/].map(grab).join("\n");
+const moved = [];
+const window = { scrollBy: (x, y) => moved.push(y) };
+const strip = { sticky: true, getBoundingClientRect: () => ({ bottom: 45 }) };
+const tab = { closest: s => s === "[role=tablist]" ? strip : null };
+const pane = { getAttribute: () => "sstab-videos" };
+const document = { getElementById: id => id === "sstab-videos" ? tab : null };
+const getComputedStyle = el => ({ position: el.sticky ? "sticky" : "static" });
+const clear = new Function("window", "document", "getComputedStyle", code + "\nreturn vwClearStrip;")(
+  window, document, getComputedStyle);
+const slot = top => ({ getBoundingClientRect: () => ({ top }), matches: () => false,
+  querySelector: () => null, closest: s => s === "[role=tabpanel]" ? pane : null });
+const out = {};
+clear(slot(0)); out.under = moved.splice(0);
+clear(slot(60)); out.clear = moved.splice(0);
+strip.sticky = false; clear(slot(0)); out.unstuck = moved.splice(0);
+console.log("@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "a recording the address names is landed on clear of the tab strip that stays "
+       "at the top of the window", needs=())
+def _vw_lands_clear_of_strip():
+    """The walk of 31 October 2026: arriving at /committee/ss57/videos#v-...
+    or /session/house/videos#v-..., vwLand brought the view to the top of the
+    window and 45 to 49px of it went under the page's tab strip, which stays
+    there, at 1280 and at 390. vwClearStrip moves the page down by what the
+    strip covers, and only that: run here on a view under the strip, one
+    clear of it, and one under a strip that does not stay."""
+    js = Path("src/pages/app.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and node):
+        return "skip", "app.js or node is not here"
+    src = js.read_text(encoding="utf-8")
+    land = re.search(r"function vwLand\(slot\)\{[\s\S]*?\n\}", src)
+    assert land and re.search(r"scrollIntoView\(\{block:\"start\"\}\);\s*vwClearStrip\(slot\);", land.group(0)), (
+        "vwLand no longer clears the tab strip after bringing the view to the top")
+    root = Path(tempfile.mkdtemp())
+    try:
+        t = root / "go.js"
+        t.write_text(_VW_CLEAR_JS % json.dumps(src), encoding="utf-8")
+        r = _run([node, str(t)], capture_output=True, text=True, timeout=60)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert r.returncode == 0 and "@@" in (r.stdout or ""), (r.stderr or r.stdout or "")[-400:]
+    got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    assert got == {"under": [-45], "clear": [], "unstuck": []}, (
+        f"the view under the strip, clear of it, and under one that does not stay moved {got}; "
+        "want -45px, nothing, nothing")
+    return "ok", "a view 45px under the strip is moved 45px down; one clear of it, or under a strip that scrolls, is not moved"
+
+
 @check("build", "a guide's In the Record says a bill passed and not yet in effect apart from the "
                 "bills still before the General Court, and not among the laws that changed the "
                 "chapter", needs=("build_civics", "build_rsa"))
@@ -70243,6 +70622,9 @@ def _guide_record_passed(BC, BR):
 
         def chip(self, k, *a, **kw):
             return f"<li>{k}</li>"
+
+        def row(self, k):
+            return {"year": "2025"} if k == "2025-2026/HB 3" else {}
     data = {"bills": {"2025-2026": {"HB 1": {"changes": ["654:2"]}}},
             "enacted": {"654:1": [["2026", "1:1", "2025-2026/HB 2"],
                                   ["2024", "5:1", "2023-2024/SB 9"]]}}
@@ -70261,6 +70643,28 @@ def _guide_record_passed(BC, BR):
         "a law that changed the chapter does not show the year it passed")
     assert '<option value="2024">2024 (1)</option>' in got and 'class="g-yrp" hidden' in got, (
         "the laws that changed the chapter have no year to choose, or show it without its script")
+    # AND THE PASSED ONES FOLLOW THE CHOSEN YEAR (the walk of 31 October
+    # 2026): they stood in every year. Each carries the year it passed -- its
+    # chapter's, else its bill's -- in a box of its own that YR_JS filters.
+    assert '<div class="g-pass">' in got and '<li data-y="2026">2025-2026/HB 2</li>' in passed, (
+        "a bill passed and not yet in effect does not carry the year it passed")
+    # Not the bill's own year (the review, 2 November 2026): HB 3 of 2025,
+    # retained and chaptered in 2026 before the notes name it, is 2026's by
+    # its law year; HB 5, awaiting the Governor with no law year, the build's.
+    class Unchaptered(Bills):
+        as_of = __import__("datetime").date(2026, 6, 1)
+
+        def passing(self, data):
+            return {"2025-2026/HB 3": NS(effect=NS(parts=[1], awaiting=False), addrs=["654:1"], year="2026"),
+                    "2025-2026/HB 5": NS(effect=NS(parts=[], awaiting=True), addrs=["654:1"], year="")}
+
+        def row(self, k):
+            return {"year": "2025"}
+    data3 = {"bills": {}, "enacted": {"654:1": [["2024", "5:1", "2023-2024/SB 9"]]}}
+    awaits = BC.guide_record({"laws": ["654"]}, data3, Unchaptered(), {"654": {"name": "Voters"}})
+    assert '<li data-y="2026">2025-2026/HB 3</li>' in awaits and '<li data-y="2026">2025-2026/HB 5</li>' in awaits, (
+        "a passed bill the notes do not name yet carries its own year, not the year it passed")
+    assert ".g-pass" in BC.YR_JS, "the year chooser does not filter Passed, not yet in effect"
     # ONE CHOOSER FOR THE BLOCK, AND NO STATUS ON A LAW (the manager's review,
     # 29 October 2026): a guide of two chapters draws one menu, before the
     # first chapter, counting a law that changed both once; and a law in the
@@ -75931,6 +76335,7 @@ def _interim_report_chip_colours():
              ("WITHOUT RECOMMENDATION", ""), ("Without Recomendation", ""), ("No Recommendation", ""),
              # As the clerks varied it (src/parse/interim_statements.py).
              ("RECOMMENDED FOR FURTHER LEGISLATION", "s-law"), ("NOT RECOMMENDED FOR LEGISLATION", "s-done"),
+             ("NOT RECOMMENDED FOR FURTHER LEGISLATION", "s-done"),
              ("NOT RECOMMENDED FOR FUTURE RECOMMENDATION", "s-done"),
              ("OUGHT TO PASS", "s-law"), ("INEXPEDIENT TO LEGISLATE", "s-done"), ("INTERIM STUDY", "s-study"),
              ("RE-REFER TO COMMITTEE", "s-study")]
@@ -76020,6 +76425,80 @@ def _interim_report_one_colour(BP):
         bad.append("build_site_v2's interim report line no longer says which of the three it was")
     assert not bad, "; ".join(bad[:8])
     return "ok", "recommends green, does not red, without plain, alike in all four places"
+
+
+@check("frontend", "the 11 November polish holds: the domicile years run immediately before the election, a "
+       "guide says when its sources were last checked, and the Spanish pages' six fixes stay",
+       needs=("guides", "civics"))
+def _polish_11nov(G, CV):
+    """The person's items of 2 November 2026, through the manager session.
+
+    1. The years of domicile for governor, councilor, senator and
+       representative run "immediately preceding the election" (RSA 655:29,
+       Part Second, Article 29). Every row of How to Run for Office's table
+       that names them says so, and the Learn page on the governor too.
+    2. A guide says "Sources last checked" on the day of its newest claim's
+       read (guides.sources_checked), in both languages, not the oldest
+       (checked_on, which still decides the out-of-date notice).
+    3. The Spanish pages: one vacancy said in the singular; a city's search
+       row in the page's language; a home search hint that fits its box; the
+       Officials tabs all in sight at 1,280px; the year menu's script on a
+       Spanish guide; and titles ending " | Granite Record"."""
+    bad = []
+    run = next((g for g in G.GUIDES if g["slug"] == "run-for-office"), None)
+    assert run, "no run-for-office guide"
+    cells = [c for s_ in run["steps"] for c in re.findall(r"<td[^>]*>(.*?)</td>", s_["text"])
+             if "domiciled in New Hampshire" in c]
+    if len(cells) < 4:
+        bad.append(f"the qualifications table names the domicile years in {len(cells)} rows, not 4")
+    bad += [f"a qualification says no 'immediately': {c!r}" for c in cells
+            if "immediately preceding the election" not in c]
+    gov = re.sub(r"\s+", " ", Path("src/pages/civics.py").read_text(encoding="utf-8"))
+    if "for the 7 years immediately before the election" not in gov:
+        bad.append("the Learn page's governor is not for the 7 years immediately before the election")
+    later = [g["slug"] for g in G.GUIDES if G.sources_checked(g) and G.sources_checked(g) > G.checked_on(g)]
+    if not later:
+        bad.append("no guide has a claim read later than its first, so nothing here tells the dates apart")
+    bc = Path("src/pages/build_civics.py").read_text(encoding="utf-8")
+    if bc.count("G.sources_checked(g)") < 2 or "Checked against its sources" in bc:
+        bad.append("a guide's page in one of its languages does not say Sources last checked on its newest claim")
+    if '" Check each step against the official page it links before you "' not in bc \
+            or '"guides.check_each"' not in bc:
+        bad.append("a guide does not point to the official page for the current rules")
+    if "+ (YR_JS if 'class=\"g-yr\"' in article else \"\"))" not in bc:
+        bad.append("a Spanish guide draws In the Record's year menu without its script")
+    if " — Granite Record" in bc:
+        bad.append("a page in another language still titles itself ' — Granite Record'")
+    bp = Path("src/pages/build_pages.py").read_text(encoding="utf-8")
+    mp = Path("src/pages/map.js").read_text(encoding="utf-8")
+    for key, src in (("comp.filled_vacant_one", bp), ("roster.filled_vacant_one", bp),
+                     ("map.n_vacant_one", mp), ("map.dot_vacant_one", mp)):
+        if f'"{key}"' not in src:
+            bad.append(f"one vacancy is said with the plural's words: {key} is not asked for")
+    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    for key in ("comp.filled_vacant_one", "roster.filled_vacant_one", "map.n_vacant_one", "map.dot_vacant_one"):
+        if "vacantes" in (es.get(key) or {}).get("es", "vacantes"):
+            bad.append(f"{key}'s Spanish is not the singular")
+    if 'tr("lf.wards"' not in Path("src/pages/find.js").read_text(encoding="utf-8"):
+        bad.append("a city's search row is said in English on a Spanish page")
+    for key, v in es.items():
+        if key.startswith("guide.run-for-office.registered-voter-domiciled") and \
+                "inmediatamente" not in v.get("es", ""):
+            bad.append(f"{key}'s Spanish does not say the years run immediately before the election")
+    gov_es = (es.get("learn.state-house-and-branches.the-governor-is-chosen-biennially-in") or {}).get("es", "")
+    if "7 años inmediatamente anteriores" not in gov_es:
+        bad.append("the Learn page's governor in Spanish is not the 7 years immediately before the election")
+    if "were last read {date}" not in (es.get("guides.stale") or {}).get("en", "") or "It was last checked" in bc:
+        bad.append("the out-of-date notice still says 'last checked' on the oldest read, beside the newest")
+    hint = (es.get("home.search_hint") or {}).get("es", "")
+    if len(hint) > len("Bill number, topic, name or town") + 3:
+        bad.append(f"the home page's Spanish search hint runs past its box: {hint!r}")
+    if ":where(body.pg) .oftabs:lang(es) [role=tab]{padding-left:var(--sp-5)" not in Path(
+            "src/pages/app.css").read_text(encoding="utf-8"):
+        bad.append("the Spanish Officials tabs keep the padding that hid the last one")
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(cells)} domicile rows immediately preceding; {len(later)} guides whose newest "
+                  "check is later than their oldest; the six Spanish fixes in place")
 
 
 @check("frontend", "a guide whose steps are in parts lists each part under Step by Step in its index, "
@@ -85950,6 +86429,914 @@ def _night_timer():
     return "ok", f"{count['pass']} tests of the timer, its cron the workflow's"
 
 
+# ---- the live layer's reader of the General Court's public SQL database ----------
+# The live layer's design (26 October 2026, approved by the person as
+# "defaults"), sections 2.1, 2.2, 2.7 and 6.2: workers/live/tds.js, sql.js and
+# test_mode.js, tests/live/, and workers/live/live.gen.js.
+LIVE_DIRS = ("workers/live", "tests/live", "functions/api/live")
+LIVE_VIEWS = ("RollCallSummary", "RollCallHistory", "legislators", "Docket")
+LIVE_TDS_CASES = ("logs in with the published login", "LOGIN7, decoded field by field",
+                  "many 4,096-byte packets", "two statements on one connection",
+                  "encryption REQ stops the client before LOGIN7", "a refused login is `login`; 4060",
+                  "the server's ERROR is `query`", "dropped halfway through a reply", "a fixed-length INT4 column",
+                  "LOGINACK older than TDS 7.2", "never answers fails inside the deadline",
+                  "never opens, each fail inside the deadline", "loopback is refused without ENV production",
+                  "day 1 reads 11 March 2026", "day 2 reads veto day", "compare_test finds a changed ballot",
+                  "compare_test finds each difference the go rests on", "compare_test's time rule",
+                  "requires encryption: the file says so", "the sitting is not asked again",
+                  "the run's 45 s SQL budget bounds the test",
+                  "a packet size past TDS's 32,767 is not taken", "a statement on a closed connection is `query`")
+
+
+def _live_host_problems(root, host):
+    """Where the General Court's SQL host is named under `root` and should not
+    be: nowhere in the live layer's code or tests, and in
+    workers/live/wrangler.toml only as production's SQL_HOST, equal to
+    probe_db.HOST; the top level and every other environment on the loopback
+    address, and ENV = "production" under production alone (design 6.2)."""
+    import tomllib
+    root, bad = Path(root), []
+    # Exempt by its path, not its name: a wrangler.toml anywhere else under
+    # these folders is a configuration `wrangler dev --config` could run.
+    toml = root / "workers" / "live" / "wrangler.toml"
+    for top in LIVE_DIRS:
+        d = root / top
+        for p in sorted(d.rglob("*")) if d.is_dir() else []:
+            if p.is_file() and p != toml and host in p.read_text(encoding="utf-8", errors="replace"):
+                bad.append(f"{p.relative_to(root).as_posix()} names the SQL host")
+    if toml.is_file():
+        text = toml.read_text(encoding="utf-8")
+        conf = tomllib.loads(text)
+        envs = conf.get("env", {})
+        prod = envs.get("production", {}).get("vars", {})
+        if sum(host in ln for ln in text.splitlines()) > 1:
+            bad.append("workers/live/wrangler.toml names the SQL host on more than one line")
+        if host in text and prod.get("SQL_HOST") != host:
+            bad.append("workers/live/wrangler.toml names the SQL host somewhere but production's SQL_HOST")
+        if prod.get("SQL_HOST") not in (None, host, "127.0.0.1", "::1"):
+            bad.append(f"production's SQL_HOST is {prod.get('SQL_HOST')}, not probe_db.HOST")
+        for name, v in [("the top level", conf.get("vars", {}))] + \
+                [(f"[env.{n}]", e.get("vars", {})) for n, e in envs.items() if n != "production"]:
+            if v.get("SQL_HOST") not in (None, "127.0.0.1", "::1"):
+                bad.append(f"{name} of workers/live/wrangler.toml sets SQL_HOST to {v['SQL_HOST']}, "
+                           f"not the loopback address")
+            if "ENV" in v:
+                bad.append(f"{name} of workers/live/wrangler.toml sets ENV, which production's vars alone may")
+    return bad
+
+
+def _sql_split(s):
+    """`s` cut at its commas outside brackets and quotes."""
+    parts, depth, quote, cur = [], 0, False, ""
+    for ch in s:
+        if ch == "'":
+            quote = not quote
+        elif not quote and ch == "(":
+            depth += 1
+        elif not quote and ch == ")":
+            depth -= 1
+        if ch == "," and not depth and not quote:
+            parts.append(cur.strip())
+            cur = ""
+        else:
+            cur += ch
+    return parts + [cur.strip()]
+
+
+def _sql_textual(e):
+    """Whether an output column comes back as nvarchar(n), n at most 4000: a
+    CAST to it, a date as CONVERT(nvarchar(19), x, 126), or an ISNULL of such
+    a column and either '' or another."""
+    e = e.strip()
+    m = re.fullmatch(r"CAST\((.*) AS nvarchar\((\d+)\)\)", e, re.S)
+    if m and _sql_split(m.group(1)) == [m.group(1).strip()] and m.group(1).count("(") == m.group(1).count(")"):
+        return 1 <= int(m.group(2)) <= 4000
+    if re.fullmatch(r"CONVERT\(nvarchar\(19\), [a-z]\.\w+, 126\)", e):
+        return True
+    m = re.fullmatch(r"ISNULL\((.*)\)", e, re.S)
+    if m:
+        args = _sql_split(m.group(1))
+        return len(args) == 2 and _sql_textual(args[0]) and (args[1] == "''" or _sql_textual(args[1]))
+    return False
+
+
+def _live_statement_problems(name, sql, views, width, refused):
+    """What is wrong with one of sql.js's statements as written, {NAME} where a
+    value goes: one SELECT over the four views, every column it names one the
+    view has (`views`: {view: [columns]}), every output column nvarchar(n),
+    `width` of them, no statement end, comment, star or variable, no word of
+    fetch_past_db's refused list (JOIN alone, as Q2's one LEFT JOIN of the
+    roster), and no literal but '' and Q3's '%RC [0-9]%'."""
+    bad = []
+    places = set(re.findall(r"\{([A-Z0-9]+)\}", sql))
+    if places - {"Y", "FIRST", "UNTIL", "CHAMBERS", "BODY", "SEQS", "DAY", "NEXT", "SINCE", "MDY"}:
+        bad.append(f"{name} has a place no builder fills: {sorted(places)}")
+    literals = re.findall(r"'(?:[^']|'')*'", sql)
+    odd = [x for x in literals if x not in ("''", "'%RC [0-9]%'")]
+    if odd:
+        bad.append(f"{name} carries the literal {odd[0]}: a value goes in through fill() and lit()")
+    # A literal or a place is set aside before the words are read: '%RC [0-9]%'
+    # is no identifier, and {UNTIL} no keyword.
+    bare = re.sub(r"\{[A-Z0-9]+\}", "0", re.sub(r"'(?:[^']|'')*'", "''", sql))
+    if not re.match(r"SELECT\s", bare):
+        bad.append(f"{name} is not a SELECT")
+    if re.search(r";|--|/\*|\*/|\*|@|#|\\", bare):
+        bad.append(f"{name} holds a statement end, a comment, a star or a variable")
+    said = [w for w in refused if re.search(rf"\b{w}\b", bare, re.I)]
+    if said:
+        bad.append(f"{name} says {said[0]}")
+    joins = re.findall(r"\b\w+\s+JOIN\b[^\n]*", bare)
+    if joins and (name != "Q2" or joins != ["LEFT JOIN legislators l ON l.Employeeno = h.EmployeeNumber"]):
+        bad.append(f"{name} joins: {joins}")
+    called = {c.upper() for c in re.findall(r"([A-Za-z_]\w*)\s*\(", bare)}
+    if called - {"CAST", "CONVERT", "ISNULL", "NVARCHAR", "IN", "AND", "OR"}:
+        bad.append(f"{name} calls {sorted(called - {'CAST', 'CONVERT', 'ISNULL', 'NVARCHAR', 'IN', 'AND', 'OR'})}")
+    if len(re.findall(r"\bFROM\b", bare)) != 1 or len(re.findall(r"\bSELECT\b", bare)) != 1:
+        bad.append(f"{name} is not one SELECT with one FROM")
+    aliases = dict((a, v) for v, a in re.findall(r"\b(?:FROM|JOIN)\s+(\w+)\s+([a-z])\b", bare))
+    known = {v.lower(): v for v in views}
+    for a, v in aliases.items():
+        if v not in LIVE_VIEWS or v.lower() not in known:
+            bad.append(f"{name} reads {v}, which is not one of {', '.join(LIVE_VIEWS)}")
+    for a, col in re.findall(r"\b([a-z])\.(\w+)", bare):
+        v = aliases.get(a)
+        if v is None:
+            bad.append(f"{name} names {a}.{col}, and {a} is no view it reads")
+        elif v.lower() in known and col not in views[known[v.lower()]]:
+            bad.append(f"{name} names {v}.{col}, which the view's columns do not include")
+    head = re.match(r"SELECT\s(.*?)\nFROM\s", bare, re.S)
+    items = _sql_split(head.group(1)) if head else []
+    if len(items) != width:
+        bad.append(f"{name} returns {len(items)} columns, and its reader takes {width}")
+    plain = [x for x in items if not _sql_textual(x)]
+    if plain:
+        bad.append(f"{name}'s column {plain[0]!r} is not cast to nvarchar(n), n at most 4000")
+    return bad
+
+
+def _live_web_named(root):
+    """The live layer's code under `root` (workers/live/ and functions/api/live/)
+    that names the General Court's web server, which it never asks."""
+    root, said = Path(root), []
+    for top in ("workers/live", "functions/api/live"):
+        d = root / top
+        for p in sorted(d.rglob("*")) if d.is_dir() else []:
+            if p.is_file() and p.suffix in (".js", ".mjs") and re.search(
+                    r"gc\.nh\.gov|gencourt", p.read_text(encoding="utf-8", errors="replace"), re.I):
+                said.append(p.relative_to(root).as_posix())
+    return said
+
+
+def _live_hours_meet(start, end, windows, margin):
+    """Where weekdays from hour `start` to hour `end` in New Hampshire, in
+    daylight time and in standard time, meet one of `windows`
+    (refusal.NIGHT_WINDOWS, in UTC) or the `margin` minutes before one."""
+    met = []
+    for offset in (4, 5):                                   # daylight time, standard time
+        for weekday in range(5):
+            for minute in range(start * 60, end * 60):
+                utc = minute + offset * 60
+                day, at = (weekday + utc // 1440) % 7, utc % 1440
+                for wd, (h1, m1), (h2, m2), what in windows:
+                    if (wd is None or wd == day) and h1 * 60 + m1 - margin <= at < h2 * 60 + m2:
+                        met.append(f"UTC{-offset:+d} {minute // 60:02d}:{minute % 60:02d} meets {what}")
+    return sorted(set(met))
+
+
+def _live_sql(live_gen, dayfiles_from_db, fetch_past_db, refusal):
+    """Part of _live_layer, which calls it: The design's section 6.2 and 7.1, for the half of the live Worker that
+    reads the General Court's public SQL database:
+
+    LIVE.GEN.JS is what src/pages/live_gen.py writes from the repository, and
+    its SQL_LOGIN is probe_db.py's DATABASE, USER and PASSWORD -- the login the
+    General Court publishes -- read here again from the committed file.
+
+    THE HOST is named in no file of the live layer's code or tests, and in
+    workers/live/wrangler.toml, once there is one, only as production's
+    SQL_HOST, equal to probe_db.HOST, with every other level on the loopback
+    address; tds.js refuses any other host without ENV = "production" too.
+    The rule is tried on fixtures first, so that a rule that stopped biting
+    is caught along with a file that breaks it.
+
+    THE STATEMENTS in workers/live/sql.js: each one SELECT over the four views,
+    every column it names one db/_columns.json lists (dayfiles_from_db.VIEWS,
+    which keeps that file's names, where the dump is not on this disk), every
+    output column nvarchar(n) so that tds.js reads one type, as many as its
+    reader takes, and no literal but '' and '%RC [0-9]%': a value goes in
+    through fill() and lit() alone. fetch_past_db.select_only's refused words
+    are refused here, all but JOIN, which Q2's one LEFT JOIN of the roster
+    needs (HISTORY_SQL's own). And no word of gc.nh.gov or gencourt in
+    workers/live/ or functions/api/live/: the live layer never asks the web
+    server.
+
+    THE TEST HOURS of workers/live/test_mode.js, weekdays from TEST_HOURS[0]
+    to TEST_HOURS[1] in New Hampshire, meet no window of refusal.NIGHT_WINDOWS
+    nor START_MARGIN_MINUTES before one, in standard time or daylight time.
+
+    Every rule is first tried on a fixture that breaks it alone, and must say
+    so in its own words, so that a rule which stopped catching anything fails
+    here along with a file that breaks it."""
+    gen, sql_js, test_js = (Path("workers/live") / n for n in ("live.gen.js", "sql.js", "test_mode.js"))
+    if not gen.is_file():
+        return "skip", "workers/live/ is not here"
+    ok, why = live_gen.current()
+    assert ok, f"{why}: run {live_gen.COMMAND}"
+    m = re.search(r"^export const SQL_LOGIN = (\{.*\});$", gen.read_text(encoding="utf-8"), re.M)
+    assert m and json.loads(m.group(1)) == live_gen.published_login(), \
+        "live.gen.js's SQL_LOGIN is not probe_db.py's DATABASE, USER and PASSWORD"
+    host = live_gen.assigned(live_gen.PROBE_DB, ("HOST",))["HOST"]
+
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        fx = Path(tmp)
+        main_toml = fx / "workers" / "live" / "wrangler.toml"
+        good = ('name = "x-local"\n[vars]\nSQL_HOST = "127.0.0.1"\n[env.production.vars]\nENV = "production"\n'
+                f'SQL_HOST = "{host}"\n')
+        main_toml.parent.mkdir(parents=True)
+        main_toml.write_text(good, encoding="utf-8")
+        assert not _live_host_problems(fx, host), _live_host_problems(fx, host)
+        prod = f'[env.production.vars]\nENV = "production"\nSQL_HOST = "{host}"\n'
+        for path, text in (("workers/live/x.js", f'const h = "{host}";'),
+                           ("tests/live/x.js", f'const h = "{host}";'),
+                           ("functions/api/live/x.js", f'const h = "{host}";'),
+                           ("tests/live/wrangler.toml", prod),
+                           ("workers/live/sub/wrangler.toml", prod),
+                           ("workers/live/wrangler.toml", f'[vars]\nSQL_HOST = "{host}"\n'),
+                           ("workers/live/wrangler.toml", '[vars]\nENV = "production"\nSQL_HOST = "127.0.0.1"\n')):
+            (fx / path).parent.mkdir(parents=True, exist_ok=True)
+            (fx / path).write_text(text, encoding="utf-8")
+            assert _live_host_problems(fx, host), f"the host rule no longer bites on {path}: {text}"
+            if fx / path == main_toml:
+                main_toml.write_text(good, encoding="utf-8")
+            else:
+                (fx / path).unlink()
+        (fx / "functions" / "api" / "live" / "x.js").write_text('fetch("https://gc.nh.gov/x")', encoding="utf-8")
+        assert _live_web_named(fx) == ["functions/api/live/x.js"], "the web server rule no longer bites"
+    bad = _live_host_problems(".", host)
+    assert not bad, "; ".join(bad)
+
+    said = _live_web_named(".")
+    assert not said, "these name the General Court's web server, which the live layer never asks: " + ", ".join(said)
+
+    src = sql_js.read_text(encoding="utf-8")
+    t = dict(re.findall(r"^export const (Q1|Q2|Q2_CHAMBER|Q3|VERSION) = `([^`]*)`;", src, re.M))
+    assert set(t) == {"Q1", "Q2", "Q2_CHAMBER", "Q3", "VERSION"}, \
+        f"sql.js no longer writes its statements where this reads them (found {sorted(t)})"
+    width = {k: int(v) for k, v in re.findall(r"(\w+): (\d+)", re.search(r"export const WIDTH = \{([^}]*)\}", src).group(1))}
+    assert t["VERSION"] == "SELECT @@VERSION", "the test's version statement is not SELECT @@VERSION"
+    cols_file = Path("db/_columns.json")
+    if cols_file.is_file():
+        views, whose = json.loads(cols_file.read_text(encoding="utf-8")), "db/_columns.json"
+        views = {v: [c if isinstance(c, str) else c.get("name") for c in cs] for v, cs in views.items()}
+    else:
+        views, whose = dayfiles_from_db.VIEWS, "dayfiles_from_db.VIEWS (db/ is not on this disk)"
+    refused = [w for w in re.findall(r"[A-Z]+", fetch_past_db._NOT_READ.pattern) if w != "JOIN"]
+    chambers = f"{t['Q2_CHAMBER']} OR {t['Q2_CHAMBER']}"
+    statements = {"Q1": (t["Q1"], width["q1"]), "Q2": (t["Q2"].replace("{CHAMBERS}", chambers), width["q2"]),
+                  "Q3": (t["Q3"], width["q3"])}
+    bad = [p for name, (sql, w) in statements.items()
+           for p in _live_statement_problems(name, sql, views, w, refused)]
+    assert not bad, "; ".join(bad[:6])
+    # Each rule bites, by its own words: a fixture that breaks it alone.
+    one = "SELECT CAST(d.Description AS nvarchar(9))\nFROM Docket d"
+    q2 = statements["Q2"][0]
+    for name, wrong, width, says in (
+            ("X", one.replace("nvarchar(9))", "nvarchar(9)), *"), 2, "a star"),
+            ("X", one.replace("nvarchar", "varchar"), 1, "is not cast to nvarchar"),
+            ("X", one.replace("Description", "Nothing"), 1, "which the view's columns do not include"),
+            ("X", one + "; SELECT 1", 1, "a statement end"),
+            ("X", one + " WHERE d.SessionYear = 'x'", 1, "carries the literal 'x'"),
+            ("X", one + " WHERE d.SessionYear = {EVIL}", 1, "a place no builder fills"),
+            ("X", one + " WHERE d.SessionYear IN (SELECT 1)", 1, "not one SELECT with one FROM"),
+            ("X", "SELECT CAST(x.Name AS nvarchar(9))\nFROM Sessions x", 1, "reads Sessions, which is not one of"),
+            ("X", one + " JOIN Docket e ON e.SessionYear = d.SessionYear", 1, "X joins"),
+            ("Q2", q2.replace("h.EmployeeNumber\n", "h.EmployeeNumber\n  LEFT JOIN legislators m "
+                                                   "ON m.Employeeno = h.EmployeeNumber\n"), 4, "Q2 joins"),
+            ("X", one.replace("CAST(d.Description", "CAST(LEN(d.Description)"), 1, "calls ['LEN']"),
+            ("X", one + "\nEXEC xp_cmdshell", 1, "says EXEC"),
+            ("X", one, 2, "returns 1 columns, and its reader takes 2")):
+        got = _live_statement_problems(name, wrong, views, width, refused)
+        assert any(says in p for p in got), f"the statement rule no longer says {says!r} of {wrong!r}: {got}"
+
+    hours = re.search(r"export const TEST_HOURS = \[(\d+), (\d+)\];", test_js.read_text(encoding="utf-8"))
+    assert hours, "test_mode.js no longer says TEST_HOURS where this reads it"
+    start, end = int(hours.group(1)), int(hours.group(2))
+    margin = refusal.START_MARGIN_MINUTES
+    # The rule bites: hours over the nightly, past midnight into Monday's
+    # weekly job, and a window's margin before it opens.
+    assert _live_hours_meet(4, 10, refusal.NIGHT_WINDOWS, margin), "the hours rule misses the nightly"
+    assert any("Monday" in m for m in _live_hours_meet(0, 2, refusal.NIGHT_WINDOWS, margin)), \
+        "the hours rule misses Monday's weekly job"
+    edge = ((None, (9, 10), (9, 20), "a window at 09:10 UTC"),)
+    assert _live_hours_meet(3, 4, edge, 30) and not _live_hours_meet(3, 4, edge, 0), \
+        "the hours rule no longer keeps the margin before a window"
+    met = _live_hours_meet(start, end, refusal.NIGHT_WINDOWS, margin)
+    assert not met, "the November test's hours meet the night's window: " + "; ".join(met[:3])
+    return "ok", (f"live.gen.js current, its login probe_db.py's; the host production's alone; Q1, Q2 and "
+                  f"Q3 cast every column and name only columns {whose} lists; the test's "
+                  f"{start:02d}:00-{end:02d}:00 misses the night's windows")
+# ======================================================= code: the live layer ==
+# workers/live/, the Worker graniterecord-live (the person, 26 October 2026:
+# the live layer approved with its defaults). Its YouTube half is built; its
+# database half, the two read-only Functions and the pages come in later
+# branches, each adding to these two checks rather than a check of its own.
+
+# The live Worker's suite, and how many tests it had when this was written: a
+# count that falls means a file stopped loading or a test was lost.
+LIVE_TESTS = "tests/live/index.js"
+LIVE_TESTS_AT_LEAST = 201
+# The person's ready-made switches (workers/live/control/), each as the Worker
+# must read it; and the values control.json may hold (store.js CONTROL_VALUES).
+LIVE_CONTROL = {"all-off.json": {"youtube": "off", "sql": "off"},
+                "on.json": {"youtube": "on", "sql": "on"},
+                "sql-off.json": {"youtube": "on", "sql": "off"},
+                "sql-test.json": {"youtube": "on", "sql": "test"}}
+LIVE_CONTROL_VALUES = {"youtube": ("on", "off"), "sql": ("off", "test", "on")}
+# What the live code may not name: the General Court's web server (it asks
+# only YouTube, and in a later branch the published SQL host) and the email
+# follower's database, which is another Worker's.
+LIVE_NEVER = re.compile(r"gc\.nh\.gov|gencourt|graniterecord-follow|FOLLOW_DB", re.I)
+LOOPBACK = ("127.0.0.1", "::1", "localhost")
+
+
+@check("build", "a committee page's live hook: outside app.js's root, carrying the Worker's own window "
+       "and the very stems /live's schedule gives the committee, on every committee page once placed",
+       needs=("live_hook", "build_live"))
+def _live_committee(LH, BL):
+    """Design section 1.6. live_hook.place() puts the hook directly before
+    <div id="results">, which app.js draws into, so no re-render reaches a
+    playing stream; its data-window is live_gen.WINDOW, which the Worker's
+    clock.js imports through live.gen.js; and its data-match is
+    live_hook.stems, the function build_live.match_of calls for a committee,
+    so /live and the committee page cannot disagree about whose a stream is.
+    build_committees.py and build_study_committees.py place it once
+    workers/live/PATCHES.md 11 is applied; until then the patch says how."""
+    import html as H
+    from collections import namedtuple
+    root = Path(".")
+    page = ('<html><head></head><body><nav></nav><div id="results"></div>'
+            '<script src="app.js"></script></body></html>')
+    hist = {"finance": {"house finance division i"}}
+    out = LH.place(page, code="H09", chamber="H", name="Finance", history=hist)
+    i, j = out.index('id="live-now"'), out.index('<div id="results">')
+    assert i < j and out.index("</section>", i) < j, "the hook is not before app.js's root, and outside it"
+    assert (out.count('id="live-now"') == 1 and '<script src="/live.js" defer></script>' in out
+            and 'href="/live.css"' in out), "the page lacks the hook, live.js or live.css"
+    try:
+        LH.place(out, code="H09", chamber="H", name="Finance", history=hist)
+        raise AssertionError("a page was given a second hook")
+    except ValueError:
+        pass
+    attr = lambda k: H.unescape(re.search(k + r'="([^"]*)"', out).group(1))
+    gen = (root / "workers/live/live.gen.js").read_text(encoding="utf-8")
+    w = re.search(r"^export const WINDOW = (\{.*\});$", gen, re.M)
+    assert w and json.loads(attr("data-window")) == json.loads(w.group(1)), (
+        f"the hook's window {attr('data-window')} is not live.gen.js's {w and w.group(1)}")
+    clock = (root / "workers/live/clock.js").read_text(encoding="utf-8")
+    assert "WINDOW as GEN_WINDOW" in clock and "export const WINDOW = { from:" not in clock, (
+        "clock.js keeps a window of its own rather than live.gen.js's")
+    Key = namedtuple("Key", "chamber name bill")
+    for chamber, name in (("H", "Finance"), ("S", "Judiciary"), ("H", "House Ways and Means"), ("", "Commission on Aging")):
+        want = BL.match_of(Key(chamber, name, ""), [{"body": chamber}], "standing", hist)
+        got = json.loads(attr("data-match")) if (chamber, name) == ("H", "Finance") else LH.stems(chamber, name, hist)
+        assert got == want, f"{chamber} {name}: the hook's stems {got} are not /live's {want}"
+    assert json.loads(attr("data-match")) == ["house finance", "finance", "house finance division i"], attr("data-match")
+    # A longer committee's stream is never this one's (the review of 30
+    # October 2026): the Senate's Education refuses Education Finance's.
+    others = [("S", "Education"), ("S", "Education Finance"), ("H", "Education Policy and Administration"),
+              ("S", "Finance")]
+    assert LH.longer("S", "Education", others) == ["education finance", "senate education finance"], \
+        LH.longer("S", "Education", others)
+    assert LH.longer("S", "Education Finance", others) == [] and LH.longer("H", "Education", others) == \
+        ["education policy and administration", "house education policy and administration"], "longer() by chamber"
+    # Placed by the two builders once PATCHES.md 11 is applied (a call, not a
+    # mention in a comment): then on every committee page; until then the
+    # patch must still say how.
+    call = re.compile(r"^[^#\n]*\blive_hook\.place\(", re.M)
+    builders = [Path(_paths.locate(f)).read_text(encoding="utf-8")
+                for f in ("build_committees.py", "build_study_committees.py")]
+    placed = [bool(call.search(b)) for b in builders]
+    if not all(placed):
+        patches = (root / "workers/live/PATCHES.md").read_text(encoding="utf-8")
+        assert "## 11." in patches and "live_hook.place(" in patches, (
+            "the committee builders do not place the live hook, and PATCHES.md 11 no longer says how")
+    # On a built site: every page carries one hook once placed, and where
+    # /live's schedule has the committee, the page's stems are the schedule's.
+    site = root / "site"
+    built = ""
+    if (site / "committee").is_dir() and (site / "live" / "schedule.json").is_file():
+        sched = json.loads((site / "live" / "schedule.json").read_text(encoding="utf-8"))
+        rows = [r for d in (sched.get("days") or {}).values() for r in d
+                if re.fullmatch(r"/committee/[A-Za-z0-9]+", r.get("href") or "")]
+        differ = []
+        for r in rows:
+            f = site / (r["href"].lstrip("/") + ".html")
+            if not f.is_file():
+                continue
+            m = re.search(r'id="live-now"[^>]*data-match="([^"]*)"', f.read_text(encoding="utf-8"))
+            if m and json.loads(H.unescape(m.group(1))) != r.get("match"):
+                differ.append(f"{r['href']}: page {H.unescape(m.group(1))}, /live {r.get('match')}")
+        assert not differ, f"{len(differ)} committee pages and /live disagree on whose stream is whose: " + "; ".join(differ[:3])
+        if all(placed):
+            # Never two; and one on every page /live's schedule has a meeting
+            # for (a retired committee's page has none, by PATCHES.md 11).
+            twice = [p.name for p in (site / "committee").glob("*.html")
+                     if p.read_text(encoding="utf-8").count('id="live-now"') > 1]
+            lacking = sorted({r["href"] for r in rows if (site / (r["href"].lstrip("/") + ".html")).is_file()
+                              and 'id="live-now"' not in (site / (r["href"].lstrip("/") + ".html")).read_text(encoding="utf-8")})
+            assert not twice and not lacking, (
+                f"committee pages with two live hooks {twice[:5]}, or scheduled ones with none {lacking[:5]}")
+        built = f"; the built site's {len(rows)} scheduled committees agree with /live"
+    return "ok", ("hook before app.js's root, window and stems held to live.gen.js and /live's; "
+                  + ("placed by both builders" if all(placed) else "awaiting PATCHES.md 11") + built)
+
+
+@check("build", "the live Worker reads a roll call's bill field as the record does: every field in "
+       "records/rollcalls/ and the procedural ones (SUSPRULE, RULE 1-2, HRULE64) give merge.js's "
+       "billNumber what rollcall_parser.bill_number gives", needs=("rollcall_parser",))
+def _live_bill_number(RP):
+    """The live file's `bill` is the term and the bill the record would file
+    the roll call under, or null where the field names no bill: a procedural
+    vote written "2025-2026/SUSPRULE" is a link to nothing, and breaks
+    schema/session.votes.json. The patterns reach the Worker through
+    live.gen.js (BILL_NUMBER); this holds the whole function equal."""
+    root = Path(".")
+    fields = {"SUSPRULE", "RULE 1-2", "HRULE64", "SEN/RULE", "SR1 (2009)", "SSRULES", "REPORT", "",
+              "HB 1", "hb1", "HB1-FN", "HB 1-FN-A", "HB1-FN-LOCAL", "HCACR13", "CACR 13", "SSSB 1", "HA1",
+              "HCO2", "HR 10", "SCR3", "HJR1", "SJR 2", "HB1-L", "SB12-A", "HB", "1", "HBX1"}
+    for f in sorted((root / "records/rollcalls").glob("RollCallSummary*.txt")):
+        for line in f.read_text(encoding="utf-8-sig", errors="replace").splitlines():
+            q = line.split("|")
+            if len(q) >= 13:
+                fields.add(q[4])
+    fields = sorted(fields)
+    want = [RP.bill_number(x) for x in fields]
+    node = shutil.which("node")
+    assert node, "node is not on PATH, and the Worker's billNumber is the thing held here"
+    src = ("import { billNumber } from " + json.dumps((root.resolve() / "workers/live/merge.js").as_uri())
+           + ";\nlet s = ''; process.stdin.on('data', d => s += d); process.stdin.on('end', () => "
+           "process.stdout.write(JSON.stringify(JSON.parse(s).map(billNumber))));\n")
+    r = _run([node, "--input-type=module", "-e", src], input=json.dumps(fields),
+             capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0, f"node could not read the fields: {(r.stderr or r.stdout).strip()[-400:]}"
+    got = json.loads(r.stdout)
+    differ = [f"{x!r}: the Worker {g!r}, the record {w!r}" for x, g, w in zip(fields, got, want) if g != w]
+    assert not differ, f"{len(differ)} bill fields read apart: " + "; ".join(differ[:5])
+    none = sum(1 for w in want if not w)
+    assert none >= 8, f"only {none} fields name no bill: the procedural cases are not being read"
+    return "ok", f"{len(fields):,} bill fields read alike, {none} of them naming no bill"
+
+
+@check("build", "the live Worker's own tests pass, every one: node --test runs tests/live/index.js, "
+       "which imports every test file in tests/live/")
+def _live_tests():
+    """workers/live/ is held by its own node suite, as the night's timer is by
+    tests/night-timer.test.js: the YouTube half against a YouTube that is a
+    function answering synthetic answers in the documented shape (recorded
+    ones would be YouTube's data kept in git past its 30 days), and the store
+    against an R2 bucket in memory with etags. It proves the cadence across
+    both changes of the clock in 2027; live, upcoming, ended, unscheduled and
+    cancelled streams each written as they are; a heavy week's quota under
+    1,300 units and at 52 searches a weekday; every failure said in the file
+    and to Healthchecks, never written as a look that found nothing; the
+    lease; the sweep; and the person's switch.
+
+    In one process through index.js, as _follow_tests learned to (a folder
+    run passed on Node 22 and failed on GitHub's Node 24 under Windows), and
+    every *.test.js in the folder imported there, so none passes in silence."""
+    index = Path(LIVE_TESTS)
+    if not index.is_file():
+        return "skip", f"{LIVE_TESTS} is not here"
+    imported = re.findall(r'^import\s+"\./([^"]+)";', index.read_text(encoding="utf-8"), re.M)
+    files = sorted(p.name for p in index.parent.glob("*.test.js"))
+    missing = [f for f in files if f not in imported]
+    assert not missing, (f"{LIVE_TESTS} does not import {', '.join(missing)}, so node --test never "
+                         "runs it: add an import line for each")
+    assert imported and imported[0] == "no_network.js", (
+        f"{LIVE_TESTS} must import no_network.js first, so that no test can reach the network")
+    # What the suite imports, named here by path and held equal to its imports
+    # as they stand, so that preflight --changed (check_select.py reads this
+    # function's strings) runs this check when any of it changes.
+    held = {"workers/live/index.js", "workers/live/clock.js", "workers/live/youtube.js",
+            "workers/live/store.js", "workers/live/tds.js", "workers/live/sql.js",
+            "workers/live/test_mode.js", "workers/live/live.gen.js", "workers/follow/common.js",
+            "tests/live/no_network.js", "tests/live/clock.test.js", "tests/live/sql.test.js",
+            "tests/live/store.test.js", "tests/live/tds.test.js", "tests/live/youtube.test.js",
+            "tests/live/fake_r2.js", "tests/live/fake_youtube.js", "tests/live/fake_tds.js",
+            "tests/live/world.js", "tests/live/compare_test.mjs", "tests/live/wire.test.js",
+            "tests/live/committee.test.js",
+            "tests/live/from_records.js", "workers/live/votes.js", "workers/live/merge.js",
+            "tests/live/votes.test.js", "tests/live/replay.test.js", "tests/live/functions.test.js",
+            "functions/api/live/_store.js", "functions/api/live/streams.js", "functions/api/live/votes/[day].js",
+            "tests/live/page.test.js"}
+    reached, todo = set(), [index]
+    while todo:
+        f = todo.pop()
+        for rel in re.findall(r"""^\s*import\s+(?:[^;]*?\sfrom\s+)?["'](\.{1,2}/[^"']+)["']""",
+                              f.read_text(encoding="utf-8"), re.M | re.S):
+            p = Path(os.path.relpath(f.parent / rel)).as_posix()
+            if p not in reached:
+                reached.add(p)
+                todo.append(Path(p))
+    assert reached == held, (
+        f"tests/live/ reaches {sorted(reached - held)} unnamed here, or no longer reaches "
+        f"{sorted(held - reached)}: name each in _live_tests's `held`, so preflight --changed runs it")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", f"node is not on PATH, so the {len(files)} test files in tests/live/ did not run"
+    r = _run([node, "--test", "--test-reporter=tap", index.as_posix()],
+             capture_output=True, text=True, timeout=600)
+    out = (r.stdout or "") + (r.stderr or "")
+    count = {k: int(v) for k, v in re.findall(r"^# (tests|pass|fail|cancelled|skipped|todo) (\d+)$",
+                                               out, re.M)}
+    fails = _tap_failures(out)
+    assert not fails, (
+        f"tests/live/ fails {len(fails)} of {count.get('tests', '?')}: "
+        + "; ".join(f"{n!r} ({s})" if s else repr(n) for n, s in fails[:6])
+        + (f" (+{len(fails) - 6} more)" if len(fails) > 6 else "")
+        + f". `node --test {index.as_posix()}` shows each in full")
+    assert r.returncode == 0 and not count.get("fail") and not count.get("cancelled") \
+        and count.get("pass", 0) >= LIVE_TESTS_AT_LEAST, (
+        f"node --test {index.as_posix()} exited {r.returncode} with {count or 'no count'}, and "
+        f"{LIVE_TESTS_AT_LEAST} or more must pass: " + out.strip()[-500:])
+    passed = [m.replace("\\#", "#") for m in re.findall(r"^ok \d+ - (.*)$", out, re.M)]
+    gone = [c for c in LIVE_TDS_CASES if not any(c in n for n in passed)]
+    assert not gone, "these cases the design names no longer pass, or no longer exist: " + "; ".join(gone)
+    week = re.search(r"quota by Pacific day: (.*)$", out, re.M)
+    spent = [(int(u), int(s)) for u, s in re.findall(r"(\d+)u/(\d+)s", week.group(1))] if week else []
+    busiest = max(spent, default=None)
+    return "ok", (f"tests/live: {count['pass']} passed of {count.get('tests')}, from {len(files)} test "
+                  f"files" + (f"; the busiest simulated weekday spent {busiest[0]:,} units and "
+                              f"{busiest[1]} searches" if busiest else ""))
+
+
+def _live_host(root):
+    """probe_db.HOST, read by parsing probe_db.py (importing no fetcher)."""
+    tree = ast.parse((root / "src/fetch/gc_db/probe_db.py").read_text(encoding="utf-8"))
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "HOST"
+                                                for t in node.targets):
+            return ast.literal_eval(node.value)
+    raise AssertionError("src/fetch/gc_db/probe_db.py no longer assigns HOST")
+
+
+def _live_problems(root):
+    """[sentence] for each way workers/live/ breaks a rule node cannot see:
+    its configuration, where the General Court's host may be named, what its
+    code imports and names, its README's commands and its switch's files."""
+    import tomllib
+    bad = []
+    live = root / "workers/live"
+    toml_text = (live / "wrangler.toml").read_text(encoding="utf-8")
+    conf = tomllib.loads(toml_text)
+    envs = conf.get("env", {})
+    prod = envs.get("production") or {}
+    # Production alone runs: its cron, its name, its bucket; nothing answers.
+    # A route is refused wherever it is written: under a [[...]] table it
+    # parses as that table's key, and would be read nowhere else.
+    if re.search(r"^\s*(?:\[+[^\]]*\broutes?\]+|routes?\s*=)", toml_text, re.M):
+        bad.append("wrangler.toml declares a route: the live Worker answers no request")
+    if set(envs) != {"production"}:
+        bad.append(f"wrangler.toml has the environments {sorted(envs)}, and the live Worker has "
+                   "production alone")
+    if "triggers" in conf:
+        bad.append("wrangler.toml has a cron at the top level, which `wrangler dev` runs and which every "
+                   "environment inherits: it belongs under [env.production.triggers] alone")
+    if prod.get("triggers", {}).get("crons") != ["*/2 * * * *"]:
+        bad.append(f"production's cron is {prod.get('triggers', {}).get('crons')}, not every 2 minutes, "
+                   "which clock.js's STEP and every cadence assume")
+    for where, d in (("the top level", conf), ("production", prod)):
+        if d.get("workers_dev") is not False:
+            bad.append(f"wrangler.toml: {where} does not set workers_dev = false")
+        if {"route", "routes"} & set(d):
+            bad.append(f"wrangler.toml gives {where} a route: the live Worker answers no request")
+        if not (d.get("observability") or {}).get("enabled"):
+            bad.append(f"wrangler.toml: {where} does not keep Workers Logs, where each run's codes go")
+    if prod.get("name") != "graniterecord-live" or conf.get("name") == "graniterecord-live":
+        bad.append(f"the production Worker is named {prod.get('name')!r} and the local one "
+                   f"{conf.get('name')!r}: production is graniterecord-live, and only production")
+    top_b = [(b.get("binding"), b.get("bucket_name")) for b in conf.get("r2_buckets", [])]
+    prod_b = [(b.get("binding"), b.get("bucket_name")) for b in prod.get("r2_buckets", [])]
+    if prod_b != [("LIVE", "graniterecord-live")]:
+        bad.append(f"production binds {prod_b}, and the live Worker binds LIVE to graniterecord-live alone")
+    if len(top_b) != 1 or top_b[0][0] != "LIVE" or top_b[0][1] == "graniterecord-live":
+        bad.append(f"the top level binds {top_b}: LIVE to a local bucket, never the real one")
+    for d in (conf, prod):
+        for k in ("d1_databases", "kv_namespaces", "services", "durable_objects", "queues"):
+            if d.get(k):
+                bad.append(f"wrangler.toml binds {k}: the live Worker has its bucket and nothing else")
+    clock = (live / "clock.js").read_text(encoding="utf-8")
+    if not re.search(r"^export const STEP = 2 \* MINUTE;", clock, re.M):
+        bad.append("clock.js's STEP is not the cron's 2 minutes")
+    # The General Court's SQL host: in production's vars, as probe_db has it, or nowhere.
+    host = _live_host(root)
+    for k, v in (conf.get("vars") or {}).items():
+        if k.endswith("_HOST") and v not in LOOPBACK:
+            bad.append(f"wrangler.toml's top-level {k} is {v!r}: what `wrangler dev` runs reaches "
+                       "loopback alone")
+    pvars = prod.get("vars") or {}
+    if "SQL_HOST" in pvars and pvars["SQL_HOST"] != host:
+        bad.append(f"production's SQL_HOST is {pvars['SQL_HOST']!r}, not probe_db.HOST")
+    roots = [live, root / "tests/live", root / "functions/api/live"]
+    files = sorted(p for r_ in roots if r_.is_dir() for p in r_.rglob("*") if p.is_file())
+    for p in files:
+        rel = p.relative_to(root).as_posix()
+        text = p.read_text(encoding="utf-8", errors="replace")
+        if host in text:
+            lines = [ln for ln in text.splitlines() if host in ln]
+            ok = (rel == "workers/live/wrangler.toml" and len(lines) == 1
+                  and re.fullmatch(rf'\s*SQL_HOST\s*=\s*"{re.escape(host)}"\s*(#.*)?', lines[0])
+                  and pvars.get("SQL_HOST") == host)
+            if not ok:
+                bad.append(f"{rel} names the General Court's SQL host, which only production's "
+                           "SQL_HOST in workers/live/wrangler.toml may")
+        if p.suffix in (".js", ".toml", ".json") and LIVE_NEVER.search(text):
+            bad.append(f"{rel} names {LIVE_NEVER.search(text).group(0)!r}: the live code asks neither the "
+                       "General Court's web server nor the follow database")
+    # The Worker's code imports its own folder, common.js's clock and
+    # cloudflare:sockets (the database's socket, imported when a run needs it),
+    # and nothing else; an import() is read as an import.
+    for p in sorted(live.glob("*.js")):
+        text = p.read_text(encoding="utf-8")
+        specs = re.findall(r'^\s*import\s[^;]*?from\s+"([^"]+)"', text, re.M | re.S) + \
+            re.findall(r'\bimport\(\s*["\']([^"\']+)["\']\s*\)', text)
+        for spec in specs:
+            if not (re.fullmatch(r"\./[\w.-]+\.js", spec) or spec in ("../follow/common.js", "cloudflare:sockets")):
+                bad.append(f"workers/live/{p.name} imports {spec}: the Worker imports its own folder, "
+                           "../follow/common.js and cloudflare:sockets, nothing else")
+    # The live Functions read the bucket and do nothing else (design 6.4):
+    # _store.js alone names env.LIVE, and hands back get and head; no file
+    # there writes, deletes, lists or uploads. Previews read the production
+    # bucket on the strength of this rule.
+    fdir = root / "functions/api/live"
+    for p in sorted(fdir.rglob("*.js")) if fdir.is_dir() else []:
+        rel = p.relative_to(root).as_posix()
+        text = p.read_text(encoding="utf-8", errors="replace")
+        m = re.search(r"(?<!cache)\.(put|delete|list|createMultipartUpload|resumeMultipartUpload)\s*\(", text)
+        if m:
+            bad.append(f"{rel} calls {m.group(1)}(): the live Functions read the bucket, through _store.js's "
+                       "get and head alone")
+        if p.name != "_store.js" and re.search(r"\benv\s*(?:\.\s*LIVE\b|\[\s*[\"']LIVE[\"']\s*\])", text):
+            bad.append(f"{rel} names env.LIVE: only functions/api/live/_store.js may")
+        if p.name == "_store.js":
+            other = sorted(set(re.findall(r"\bbucket\.(\w+)", text)) - {"get", "head"})
+            if other:
+                bad.append(f"{rel} hands the bucket's {', '.join(other)} on: the facade is get and head alone")
+    # The site's binding of LIVE (root wrangler.toml), once it is there:
+    # production and previews the real bucket, the local top level never.
+    site_toml = root / "wrangler.toml"
+    site = tomllib.loads(site_toml.read_text(encoding="utf-8")) if site_toml.is_file() else {}
+    lv = lambda d: [b.get("bucket_name") for b in (d.get("r2_buckets") or []) if b.get("binding") == "LIVE"]
+    senv = site.get("env") or {}
+    bound = {"top": lv(site), "production": lv(senv.get("production") or {}), "preview": lv(senv.get("preview") or {})}
+    if any(bound.values()):
+        for where in ("production", "preview"):
+            if bound[where] != ["graniterecord-live"]:
+                bad.append(f"the site's wrangler.toml binds LIVE for {where} to {bound[where]}, not graniterecord-live")
+        if bound["top"] != ["graniterecord-live-local"]:
+            bad.append(f"the site's wrangler.toml binds LIVE at the top level to {bound['top']}: `wrangler pages dev` "
+                       "reads a local bucket, graniterecord-live-local, never the real one")
+    # The README's commands: every one reaches the real bucket and production.
+    readme = (live / "README.md").read_text(encoding="utf-8")
+    # The commands are the lines of its fenced blocks: prose may name them.
+    fenced = re.findall(r"^[ \t]*```[^\n]*\n(.*?)^[ \t]*```", readme, re.M | re.S)
+    cmds = [ln.strip() for block in fenced for ln in block.splitlines() if "wrangler " in ln]
+    for ln in cmds:
+        if re.search(r"wrangler\s+r2\s+object\b", ln) and "--remote" not in ln.split():
+            bad.append(f"README.md: `{ln}` lacks --remote, and wrangler's r2 object commands write "
+                       "local storage without it")
+        if re.search(r"wrangler\s+(deploy|secret)\b", ln) and not (
+                "--config workers/live/wrangler.toml" in ln and "--env production" in ln):
+            bad.append(f"README.md: `{ln}` does not name --config workers/live/wrangler.toml --env "
+                       "production, so it would reach the local Worker's name")
+    for want in ("wrangler r2 bucket create graniterecord-live",
+                 "wrangler deploy --config workers/live/wrangler.toml --env production",
+                 "wrangler secret put YOUTUBE_API_KEY", "wrangler secret put HEALTHCHECK_URL"):
+        if not any(want in ln for ln in cmds):
+            bad.append(f"README.md gives no `{want}`")
+    # The switch: the four files, each one the Worker reads as it says.
+    ctl = live / "control"
+    names = sorted(p.name for p in ctl.glob("*")) if ctl.is_dir() else []
+    if names != sorted(LIVE_CONTROL):
+        bad.append(f"workers/live/control/ holds {names}, not {sorted(LIVE_CONTROL)}")
+    for name, want in LIVE_CONTROL.items():
+        p = ctl / name
+        try:
+            got = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            bad.append(f"workers/live/control/{name} is not JSON: {e}")
+            continue
+        if got != want or any(got.get(k) not in v for k, v in LIVE_CONTROL_VALUES.items()):
+            bad.append(f"workers/live/control/{name} says {got}, not {want}")
+        if not re.search(rf"--file workers/live/control/{re.escape(name)}\b.*--remote", readme):
+            bad.append(f"README.md gives no command that puts control/{name}, with --remote")
+    store = (live / "store.js").read_text(encoding="utf-8")
+    m = re.search(r"CONTROL_VALUES = Object\.freeze\((\{.*?\})\);", store)
+    try:
+        js_values = json.loads(re.sub(r"(\w+):", r'"\1":', m.group(1))) if m else None
+    except ValueError:
+        js_values = None
+    if js_values != {k: list(v) for k, v in LIVE_CONTROL_VALUES.items()}:
+        bad.append(f"store.js's CONTROL_VALUES is {js_values}, not {LIVE_CONTROL_VALUES}")
+    return bad
+
+
+def _live_titles(root):
+    """{video id: title} of every committed recording, collected/videos/."""
+    out = {}
+    for f in sorted((root / "collected/videos").glob("videos_*.csv")):
+        with open(f, encoding="utf-8", newline="") as fh:
+            for row in csv.DictReader(fh):
+                if row.get("video_id") and row.get("title") is not None:
+                    out[row["video_id"]] = row["title"]
+    return out
+
+
+def _live_problems_bite(root):
+    """Each rule of _live_problems, broken alone on a copy of workers/live/,
+    must be said in its own words: a rule that stopped catching anything fails
+    here, not in silence. [what failed to be said]."""
+    import tempfile
+    host = _live_host(root)
+    cases = (
+        ("wrangler.toml", lambda t: t + '\nroutes = [{ pattern = "x.org/*" }]\n', "declares a route"),
+        ("wrangler.toml", lambda t: t + '\n[env.staging]\nname = "x"\n', "has the environments"),
+        ("wrangler.toml", lambda t: t.replace("[[r2_buckets]]", '[triggers]\ncrons = ["*/2 * * * *"]\n\n'
+                                              "[[r2_buckets]]", 1), "a cron at the top level"),
+        ("wrangler.toml", lambda t: t.replace('"*/2 * * * *"', '"*/5 * * * *"'), "not every 2 minutes"),
+        ("wrangler.toml", lambda t: t.replace("workers_dev = false\n", "", 1),
+         "the top level does not set workers_dev = false"),
+        ("wrangler.toml", lambda t: t.replace("[env.production.observability]\nenabled = true", ""),
+         "production does not keep Workers Logs"),
+        ("wrangler.toml", lambda t: t.replace('name = "graniterecord-live"', 'name = "graniterecord-x"'),
+         "the production Worker is named"),
+        ("wrangler.toml", lambda t: t.replace('bucket_name = "graniterecord-live"\n', 'bucket_name = "x"\n'),
+         "production binds"),
+        ("wrangler.toml", lambda t: t.replace('bucket_name = "graniterecord-live-local"',
+                                              'bucket_name = "graniterecord-live"'), "the top level binds"),
+        ("wrangler.toml", lambda t: t + '\n[[kv_namespaces]]\nbinding = "K"\nid = "x"\n', "binds kv_namespaces"),
+        ("wrangler.toml", lambda t: t.replace('SQL_HOST = "127.0.0.1"', 'SQL_HOST = "192.0.2.1"', 1),
+         "top-level SQL_HOST"),
+        ("clock.js", lambda t: t.replace("export const STEP = 2 * MINUTE;", "export const STEP = 3 * MINUTE;"),
+         "STEP is not the cron's 2 minutes"),
+        ("x.js", lambda t: f'const h = "{host}";\n', "names the General Court's SQL host"),
+        ("x.js", lambda t: 'fetch("https://gc.nh.gov/x");\n', "names 'gc.nh.gov'"),
+        ("x.js", lambda t: 'import { y } from "../../src/y.js";\n', "imports ../../src/y.js"),
+        ("x.js", lambda t: 'const m = await import("node:net");\n', "imports node:net"),
+        ("README.md", lambda t: t.replace("--file workers/live/control/on.json --remote",
+                                          "--file workers/live/control/on.json"), "lacks --remote"),
+        ("README.md", lambda t: t.replace("wrangler deploy --config workers/live/wrangler.toml --env production",
+                                          "wrangler deploy --config workers/live/wrangler.toml"),
+         "does not name --config workers/live/wrangler.toml --env"),
+        ("control/on.json", lambda t: '{"youtube": "on", "sql": "test"}\n', "control/on.json says"),
+        ("control/extra.json", lambda t: "{}\n", "workers/live/control/ holds"),
+        ("store.js", lambda t: t.replace('sql: ["off", "test", "on"]', 'sql: ["off", "on"]'),
+         "store.js's CONTROL_VALUES is"),
+        ("fn:functions/api/live/x.js", lambda t: "export const f = s => s.put('state.json', '{}');\n", "calls put()"),
+        ("fn:functions/api/live/x.js", lambda t: "export const f = s => s.delete(['control.json']);\n", "calls delete()"),
+        ("fn:functions/api/live/x.js", lambda t: "export const f = s => s.list({ prefix: '' });\n", "calls list()"),
+        ("fn:functions/api/live/x.js", lambda t: "export const f = e => e.env.LIVE.get('state.json');\n", "names env.LIVE"),
+        ("fn:functions/api/live/_store.js", lambda t: t.replace("head: key => bucket.head(key),",
+                                                                "head: key => bucket.head(key),\n    w: k => bucket.put(k, ''),"),
+         "hands the bucket's put on"),
+    )
+    missed = []
+    with tempfile.TemporaryDirectory() as tmp:
+        fx = Path(tmp)
+        shutil.copytree(root / "workers/live", fx / "workers/live")
+        if (root / "functions/api/live").is_dir():
+            shutil.copytree(root / "functions/api/live", fx / "functions/api/live")
+        (fx / "src/fetch/gc_db").mkdir(parents=True)
+        shutil.copy(root / "src/fetch/gc_db/probe_db.py", fx / "src/fetch/gc_db/probe_db.py")
+        assert not _live_problems(fx), f"the copy itself breaks a rule: {_live_problems(fx)}"
+        for name, change, says in cases:
+            p = fx / (name[3:] if name.startswith("fn:") else f"workers/live/{name}")
+            p.parent.mkdir(parents=True, exist_ok=True)
+            before = p.read_text(encoding="utf-8") if p.is_file() else None
+            after = change(before or "")
+            assert after != before, f"the fixture for {says!r} no longer changes {name}"
+            p.write_text(after, encoding="utf-8")
+            got = _live_problems(fx)
+            if not any(says in g for g in got):
+                missed.append(f"{says!r} ({name}: {got[:2]})")
+            if before is None:
+                p.unlink()
+            else:
+                p.write_text(before, encoding="utf-8")
+    return missed
+
+
+@check("build", "the live Worker: live.gen.js is what live_gen.py writes, the cron and the bucket are "
+       "production's alone, the General Court's host is named nowhere it may not be, the README's "
+       "commands reach the real bucket, its switch's files are ones it reads, and it reads a title "
+       "and a stream as the Python does; the votes reader's statements are SELECTs over four views "
+       "that cast every column to nvarchar and take values through one builder, and its test hours "
+       "miss the night's windows",
+       needs=("live_gen", "livestreams", "dayfiles_from_db", "fetch_past_db", "refusal"))
+def _live_layer(LG, LS, DF, FP, RF):
+    """workers/live/ (the person, 26 October 2026: "defaults"; the design's
+    §6.2 and §7.1). What its node suite cannot see, held here:
+
+      - live.gen.js is what src/pages/live_gen.py writes from
+        fetch_channel_index.CHANNELS and refusal.NIGHT_WINDOWS, with the
+        session-title pattern: a copy nothing holds is how a constant drifts;
+      - wrangler.toml: production alone has the cron, every 2 minutes as
+        clock.js's STEP assumes, the name graniterecord-live and the bucket
+        graniterecord-live; the top level, which `wrangler dev` runs, has
+        neither; workers_dev = false and no route at either; nothing bound
+        but the bucket;
+      - the General Court's SQL host (probe_db.HOST) appears in workers/live/,
+        tests/live/ and functions/api/live/ only as production's SQL_HOST, and
+        a top-level host var is loopback: so no local run or test can reach
+        it (the database half, a later branch, adds the client's own guard);
+      - no live code names gc.nh.gov, gencourt or the follow database, and the
+        Worker imports its own folder and workers/follow/common.js alone;
+      - every `wrangler r2 object` line in its README carries --remote
+        (wrangler's r2 object commands write local storage without it), and
+        every deploy and secret line names its config and --env production;
+      - workers/live/control/ is the four switches, each one the Worker
+        reads as its name says, and store.js's allowed values are these;
+      - the Worker's title stem is live_gen.stem on every committed title,
+        and its session pattern matches every title that begins "House
+        Session" or "Senate Session" and no other;
+      - livestreams.status_of says of each synthetic answer in
+        tests/live/youtube_items.json what the file says, and the Worker's
+        statusOf (held there by youtube.test.js) differs from it only where
+        it is meant to: an end time is "ended" while YouTube still reports
+        P0D, and an ordinary upload is no stream.
+
+    SECURITY.md naming workers/live/ is _follow_documents_live's."""
+    root = _paths.ROOT
+    if not (root / "workers/live/wrangler.toml").is_file():
+        return "skip", "workers/live/ is not here"
+    # What live.gen.js is written from, by path here as in live_gen.py, so that
+    # a change to either reaches this check under preflight --changed.
+    sources = ("src/fetch/youtube/fetch_channel_index.py", "refusal.py", "src/fetch/gc_db/probe_db.py",
+               "src/fetch/gc_db/fetch_rollcalls_db.py", "records/docket_abbrev.json")
+    assert sorted(sources) == sorted(p.as_posix() for p in LG.SOURCES), (
+        f"live_gen.py reads {sorted(p.as_posix() for p in LG.SOURCES)}, and this check names "
+        f"{sorted(sources)}: name each here, so preflight --changed runs this when one moves")
+    try:
+        ok, why = LG.current()
+    except LG.SourceError as e:
+        raise AssertionError(f"live_gen.py cannot read its sources: {e}") from None
+    assert ok, f"{why}: run `{LG.COMMAND}` and commit workers/live/live.gen.js"
+    bad = _live_problems(root)
+    assert not bad, "; ".join(bad[:6]) + (f" (+{len(bad) - 6} more)" if len(bad) > 6 else "")
+    missed = _live_problems_bite(root)
+    assert not missed, "these rules no longer catch a file that breaks them: " + "; ".join(missed)
+    # The votes reader's statements, login, host and test hours.
+    _live_sql(LG, DF, FP, RF)
+
+    # The synthetic answers, read by the night's Python as the file says.
+    items = json.loads((root / "tests/live/youtube_items.json").read_text(encoding="utf-8"))["items"]
+    wrong = []
+    for c in items:
+        py, js, it = LS.status_of(c["item"]), c["js"], c["item"]
+        ls = it.get("liveStreamingDetails")
+        if py != c["python"]:
+            wrong.append(f"{c['name']}: status_of says {py}, the file {c['python']}")
+        if not (py == js or (js == "ended" and (ls or {}).get("actualEndTime") and py in ("live", "finished"))
+                or (js == "upload" and not ls and py == "finished")):
+            wrong.append(f"{c['name']}: the Worker reads {js} where the night reads {py}")
+    assert not wrong, "; ".join(wrong)
+    told = {c["js"] for c in items}
+    assert {"live", "upcoming", "ended", "never", "upload"} <= told, (
+        f"tests/live/youtube_items.json covers {sorted(told)}: each of live, upcoming, ended, never "
+        "and upload needs an answer")
+
+    # Every committed title, stemmed by the Worker and by live_gen.py.
+    titles = _live_titles(root)
+    if not titles:
+        return "ok", (f"live.gen.js current; the configuration, host, README and switch hold; "
+                      f"{len(items)} synthetic answers read alike; no collected/videos/ here, so the "
+                      "stem was not compared")
+    node = shutil.which("node") or shutil.which("node.exe")
+    names = list(titles.values())
+    want = [(LG.stem(t), LG.session_of(t)) for t in names]
+    sessions = sum(1 for _, s in want if s)
+    honest = [t for t in names if re.match(r"\s*(house|senate)\s+session\b", t, re.I)]
+    assert sessions == len(honest) and all(LG.session_of(t) for t in honest), (
+        f"SESSION_TITLE matches {sessions} committed titles, and {len(honest)} begin House Session "
+        "or Senate Session")
+    assert sessions >= 172, f"only {sessions} session titles matched; 172 were committed on 26 October 2026"
+    if not node:
+        return "ok", (f"live.gen.js current; the rest holds; {sessions} session titles of "
+                      f"{len(names):,}; node is not on PATH, so the Worker's stem was not compared")
+    src = ("import { stem, sessionOf } from " + json.dumps((root / "workers/live/youtube.js").as_uri())
+           + ";\nlet s = ''; process.stdin.on('data', d => s += d); process.stdin.on('end', () => "
+           "process.stdout.write(JSON.stringify(JSON.parse(s).map(t => [stem(t), sessionOf(t)]))));\n")
+    r = _run([node, "--input-type=module", "-e", src], input=json.dumps(names),
+             capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0, f"node could not stem the titles: {(r.stderr or r.stdout).strip()[-400:]}"
+    got = [tuple(x) for x in json.loads(r.stdout)]
+    differ = [f"{t!r}: the Worker {g}, live_gen {w}" for t, g, w in zip(names, got, want) if g != w]
+    assert not differ, f"{len(differ)} titles stem apart: " + "; ".join(differ[:4])
+    return "ok", (f"live.gen.js current; the configuration, host, README and switch hold; "
+                  f"{len(items)} synthetic answers read alike; {len(names):,} committed titles stem "
+                  f"alike, {sessions} of them session streams")
+
+
 # The sign-up box's daily or weekly drawn and sent by app.js under node, with
 # a form of the box's own parts: the Turnstile token already in hand, the
 # answer a 202, and every request the box makes kept for the check to read.
@@ -86365,24 +87752,37 @@ const src = %s;
 const grab = re => { const m = src.match(re); if (!m) throw new Error("not in app.js: " + re); return m[0]; };
 const code = [/const BILL_TABS=\{[^}]*\};/, /const MEMBER_TABS=\{[^}]*\};/, /const COMMITTEE_TABS=\{[^}]*\};/,
   /const TAB_PATH=.*;/, /const ownSlug=.*;/, /const isTabSlug=.*;/,
-  /function reportPath\(\)\{[\s\S]*?\n\}/].map(grab).join("\n");
+  /function reportPath\(\)\{[\s\S]*?\n\}/, /const REPORT_TABS=new Set\(\[[\s\S]*?\]\);/].map(grab).join("\n");
 const location = { pathname: "" };
-const reportPath = new Function("location", code + "\nreturn reportPath;")(location);
-const base = { tab: "", field: "status", note: "the date is wrong", build: "", elapsed: 9000 };
+const [reportPath, REPORT_TABS] = new Function("location",
+  code + "\nreturn [reportPath, REPORT_TABS];")(location);
+const base = { field: "status", note: "the date is wrong", build: "", elapsed: 9000 };
 const out = [];
+// Each address with the label its open tab shows, sent as app.js sends it.
 for (const [record, paths] of [
-    ["bill:2026/HB1", ["/bill/2026/hb1", "/bill/2026/hb1.html", "/bill/2026/hb1/votes", "/bill/2026/hb1/text/",
-                       "/bill/2026/hb1/hearings", "/bill/2026/hb1/related"]],
-    ["committee:H05", ["/committee/H05", "/committee/H05/sessions", "/committee/H05/videos", "/committee/H05/bills"]],
-    ["committee:S03-1989", ["/committee/S03-1989", "/committee/S03-1989/videos"]]]) {
-  for (const p of paths) {
+    ["bill:2026/HB1", [["/bill/2026/hb1", "Summary"], ["/bill/2026/hb1.html", "Summary"],
+                       ["/bill/2026/hb1/votes", "Votes (12)"], ["/bill/2026/hb1/text/", "Bill Text"],
+                       ["/bill/2026/hb1/hearings", "Hearings (2)"], ["/bill/2026/hb1/related", "Related (3)"]]],
+    ["committee:H05", [["/committee/H05", "Bills (40)"], ["/committee/H05/sessions", "Meetings (9)"],
+                       ["/committee/H05/videos", "Videos (7)"], ["/committee/H05/bills", "Bills (40)"]]],
+    ["committee:S03-1989", [["/committee/S03-1989", "Bills (1,204)"], ["/committee/S03-1989/videos", "Videos (1)"]]],
+    ["study:ss1451", [["/committee/ss1451", "Meetings (4)"], ["/committee/ss1451/bills", "Bills (2)"],
+                      ["/committee/ss1451/videos", "Videos (3)"]]]]) {
+  for (const [p, label] of paths) {
     location.pathname = p;
     const url = reportPath();
-    out.push([record, p, url, validate({ ...base, record, url }) !== null]);
+    const name = label.replace(/\s*\([\d.,\s']+\)\s*$/, "");
+    const tab = REPORT_TABS.has(name) ? name : "";
+    const got = validate({ ...base, record, url, tab });
+    out.push([record, p, url, got !== null, tab, got ? got.tab : null]);
   }
 }
+// A bill's page loaded before its Hearings tab was renamed still sends Videos.
+location.pathname = "/bill/2026/hb1/videos";
+const old = validate({ ...base, record: "bill:2026/HB1", url: reportPath(), tab: "Videos" });
+out.push(["bill:2026/HB1", location.pathname, reportPath(), old !== null, "Videos", old ? old.tab : null]);
 location.pathname = "/legislator/jane-doe-hills-12/votes";
-out.push(["member", location.pathname, reportPath(), null]);
+out.push(["member", location.pathname, reportPath(), null, "", null]);
 console.log("@@" + JSON.stringify(out));
 """
 
@@ -86410,11 +87810,22 @@ def _report_from_any_tab():
         shutil.rmtree(root, ignore_errors=True)
     assert r.returncode == 0 and "@@" in (r.stdout or ""), (r.stderr or r.stdout or "")[-400:]
     rows = json.loads(r.stdout.rsplit("@@", 1)[1])
-    bad = [f"{p} sent as {u} for {rec}" for rec, p, u, ok in rows if ok is False]
+    bad = [f"{p} sent as {u} for {rec}" for rec, p, u, ok, _t, _s in rows if ok is False]
     assert not bad, "report.js refuses a report from a tab: " + "; ".join(bad[:4])
-    member = [u for rec, p, u, ok in rows if rec == "member"]
+    member = [u for rec, p, u, ok, _t, _s in rows if rec == "member"]
     assert member == ["/legislator/jane-doe-hills-12"], f"a member's Votes tab sent {member}"
-    return "ok", f"{len(rows)} addresses, every tab's report sent from its record's own address"
+    # AND THE TAB IT WAS SENT FROM (the walk of 31 October 2026): a
+    # committee's and a study committee's Videos tab sent tab "", and a bill's
+    # old Videos is stored as its Hearings, a committee's Videos as Videos.
+    unnamed = [p for rec, p, u, ok, t, _s in rows if ok and not t]
+    assert not unnamed, f"a report from these tabs names no tab: {unnamed}"
+    stored = {(rec.split(":")[0], p.rstrip("/").rsplit("/", 1)[-1]): s for rec, p, u, ok, t, s in rows if ok}
+    assert stored.get(("bill", "videos")) == "Hearings" and stored.get(("bill", "hearings")) == "Hearings", (
+        "a bill's Hearings tab, by its old name or its new, is not stored as Hearings")
+    assert stored.get(("committee", "videos")) == "Videos" and stored.get(("study", "videos")) == "Videos", (
+        "a committee's or a study committee's Videos tab is not stored as Videos")
+    return "ok", (f"{len(rows)} addresses, every tab's report sent from its record's own address, "
+                  "naming the tab it was sent from")
 
 
 @check("build", "the report endpoint accepts only what a page can name, and stores nothing about the reader")
@@ -86939,7 +88350,15 @@ def _report_agree(CR):
     fn_tabs = set(re.findall(r'"([^"]*)"', re.search(r"const TABS = new Set\(\[(.*?)\]\)", js, re.S).group(1)))
     box_tabs = set(re.findall(r'"([^"]*)"', re.search(r"const REPORT_TABS=new Set\(\[(.*?)\]\)", app, re.S).group(1)))
     assert fn_tabs == set(CR.TABS) == box_tabs | {""}, (sorted(fn_tabs), sorted(CR.TABS), sorted(box_tabs))
-    rendered = set(re.findall(r'\["(Prime sponsored|Co-sponsored|Votes|Bills|Sessions|Meetings)"', app))
+    rendered = set(re.findall(r'\["(Prime sponsored|Co-sponsored|Votes|Bills|Sessions|Meetings|Videos)"',
+                              app))
+    # A STUDY COMMITTEE'S STRIP is drawn by its builder, not app.js, and its
+    # Videos tab sent no tab until the walk of 31 October 2026 found it.
+    sc = Path("src/pages/build_study_committees.py")
+    if sc.exists():
+        st = re.search(r"^TABS = \((.*)\)$", sc.read_text(encoding="utf-8"), re.M)
+        assert st, "build_study_committees.py has no TABS line to read its tabs from"
+        rendered |= set(re.findall(r'\("\w+", "([^"]+)", "\w+"\)', st.group(1)))
     rendered |= {t for t in ("Summary", "Bill Text", "Votes", "Videos", "Reports", "Sponsors", "Documents")
                  if re.search(rf">{t}(\$\{{|<)", app)}
     # READ OFF THE BUTTONS, NOT OFF A LIST OF NAMES (8 October 2026). The
@@ -86965,8 +88384,16 @@ def _report_agree(CR):
     assert rm, "report.js has no RENAMED_TABS"
     fn_renamed = dict(re.findall(r'\[\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\]', rm.group(1)))
     assert fn_renamed == CR.RENAMED_TABS, (fn_renamed, CR.RENAMED_TABS)
-    assert all(new in fn_tabs and old not in fn_tabs and old not in rendered
-               for old, new in fn_renamed.items()), fn_renamed
+    # WHOSE OLD NAME (31 October 2026): "Videos" is a bill's old Hearings and
+    # a committee's tab now, so each old name says whose it is, and is a tab
+    # drawn now only on another kind's page.
+    km = re.search(r"const RENAMED_KIND = new Map\(\[(.*?)\]\);", js, re.S)
+    assert km, "report.js has no RENAMED_KIND"
+    fn_kind = dict(re.findall(r'\[\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\]', km.group(1)))
+    assert fn_kind == CR.RENAMED_KIND and set(fn_kind) == set(fn_renamed), (fn_kind, CR.RENAMED_KIND)
+    assert all(new in fn_tabs for new in fn_renamed.values()), fn_renamed
+    assert "Videos" in rendered and "Videos" in box_tabs, (
+        "a committee's Videos tab is not among the tabs a report names")
     stored = {"id": 7, "at": "2026-09-30T12:00:00.000Z", "record": "bill:2026/HB100",
               "kind": "bill", "url": "/bill/2026/hb100", "tab": "Videos", "field": "hearing",
               "note": "The hearing was on the 3rd.", "build": "", "hidden": 0}
@@ -86978,6 +88405,10 @@ def _report_agree(CR):
     assert CR.well_formed(stored), "a report stored from the Sessions tab is set aside as malformed"
     assert [r["tab"] for r, _why, _page in CR.judge([stored], {})[0]] == ["Meetings"], (
         "a report stored from the Sessions tab is not shown as the Meetings tab's")
+    stored = dict(stored, id=9, tab="Videos", note="The recording is of another meeting.")
+    assert CR.well_formed(stored), "a report stored from a committee's Videos tab is set aside as malformed"
+    assert [r["tab"] for r, _why, _page in CR.judge([stored], {})[0]] == ["Videos"], (
+        "a report stored from a committee's Videos tab is shown as a bill's Hearings")
     return "ok", (f"{len(fn_fields)} fields, one record shape, {len(sent)} keys sent and read, "
                   f"{len(box_tabs)} tabs the same in all three, {len(rendered)} drawn; "
                   f"{', '.join(sorted(fn_renamed))} read as {', '.join(fn_renamed[k] for k in sorted(fn_renamed))}")

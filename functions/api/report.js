@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-12.14
+// GRANITE_VERSION: 2026-09-12.15
 /*
  * POST /api/report -- a reader says something on a page is wrong.
  *
@@ -57,13 +57,19 @@ export const FIELDS = new Set(["date", "status", "sponsor", "vote", "hearing",
 // The tabs the pages render. compile_reports.TABS is the same list, and
 // preflight holds the two together.
 export const TABS = new Set(["", "Summary", "Bill Text", "Votes", "Hearings", "Reports",
-  "Sponsors", "Documents", "Related", "Prime sponsored", "Co-sponsored", "Bills", "Meetings"]);
+  "Sponsors", "Documents", "Related", "Prime sponsored", "Co-sponsored", "Bills", "Meetings",
+  "Videos"]);
 // A TAB'S OLD NAME, AND ITS NAME NOW (8 October 2026). A bill's Hearings tab
 // was Videos, and a committee's Meetings tab was Sessions (the person's words,
 // D19), and a page loaded before either was renamed still sends the old name;
 // it is stored under the name the tab has. compile_reports.RENAMED_TABS is the
 // same map, for the reports already stored under the old one.
 export const RENAMED_TABS = new Map([["Videos", "Hearings"], ["Sessions", "Meetings"]]);
+// WHOSE OLD NAME EACH IS (the walk of 31 October 2026). A committee's and a
+// study committee's Videos tab is a tab of its own, so "Videos" is read as
+// Hearings on a bill's record only, and "Sessions" as Meetings on a
+// committee's. compile_reports.RENAMED_KIND is the same map.
+export const RENAMED_KIND = new Map([["Videos", "bill"], ["Sessions", "committee"]]);
 
 // What a page can be, and the one shape its record takes. Measured from the
 // built site on 12 September: bills 2026/HB100, members by numeric id,
@@ -142,16 +148,16 @@ export function validate(body) {
   if (body.website) return null;                       // the honeypot
   const record = String(body.record ?? "");
   const url = String(body.url ?? "");
-  const sent = tabName(body.tab);
-  const tab = RENAMED_TABS.get(sent) ?? sent;
   const field = String(body.field ?? "");
   const build = String(body.build ?? "");
   const elapsed = Number(body.elapsed);
   if (!RECORD.test(record) || !PATH.test(url)) return null;
-  if (!TABS.has(tab) || !BUILD.test(build)) return null;
-  if (!Number.isFinite(elapsed) || elapsed < MIN_ELAPSED_MS) return null;
   // The record and the page must be the same thing.
   const kind = record.slice(0, record.indexOf(":"));
+  const sent = tabName(body.tab);
+  const tab = RENAMED_KIND.get(sent) === kind ? RENAMED_TABS.get(sent) : sent;
+  if (!TABS.has(tab) || !BUILD.test(build)) return null;
+  if (!Number.isFinite(elapsed) || elapsed < MIN_ELAPSED_MS) return null;
   const ref = record.slice(kind.length + 1);
   // A translation is reported as one, and nothing else is.
   if (kind === "translation" ? field !== TRANSLATION : !FIELDS.has(field)) return null;

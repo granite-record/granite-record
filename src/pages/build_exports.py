@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.53
+# GRANITE_VERSION: 2026-09-10.58
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -17,7 +17,7 @@ anything.
 WHAT IT REFUSES TO DO
 
 It writes no file over the host's limit. Cloudflare Pages rejects anything
-past 25 MiB, and the member votes are 437,702 rows and 27.9 MB in one piece --
+past 25 MiB, and the member votes were 437,702 rows and 27.9 MB in one piece --
 which would have failed at deploy time, after a five-minute build, with an
 error about a file rather than about a decision. So the votes are split by
 term, and every table's size is checked against the cap before it is written
@@ -154,22 +154,29 @@ def bills(out, site):
                  "their bill column the same way.")
 
 
-def legislators(out, site):
+def legislators(out, site, person_of=None):
     legs = load(site / "legislators.json", [])
     # No phone column (22 October 2026): a legislator's number is often their
     # own (build_site_v2, NO TELEPHONE FOR A LEGISLATOR).
+    # person last (30 October 2026, the data API's branch 2): the person
+    # number people.json joins every one of a member's numbers to, so that a
+    # reader who counts columns finds each of the others where it was.
+    person_of = person_of or {}
     cols = ["id", "name", "chamber", "party", "district", "county", "email",
-            "committees", "bills_sponsored", "recorded_votes"]
+            "committees", "bills_sponsored", "recorded_votes", "person"]
     rows = ([m.get("id", ""), m.get("display_full") or m.get("name", ""),
              "Senate" if m.get("chamber") == "S" else "House",
              m.get("party", ""), m.get("district", ""), m.get("county", ""),
              m.get("email", ""),
              "; ".join(m.get("committees") or []),
-             m.get("n_sponsored", 0), m.get("n_votes", 0)]
+             m.get("n_sponsored", 0), m.get("n_votes", 0),
+             person_of.get(str(m.get("id")), "")]
             for m in sorted(legs, key=lambda m: str(m.get("name"))))
     return write(out, "legislators.csv", cols, rows,
                  "The sitting roster, with district, contact details and "
-                 "committee seats.")
+                 "committee seats. person is one number for the member across "
+                 "every number the General Court has given them: their earliest "
+                 "PersonID, else their earliest employee number.")
 
 
 def rollcalls(out):
@@ -213,6 +220,26 @@ def rollcalls(out):
                  "names no outcome and the count decides it.")
 
 
+def iso_day(d):
+    """A day as YYYY-MM-DD. The roll-call files write the General Court's
+    own month/day/year ("1/7/2026"), and every other table here writes ISO
+    (the data API's branch 2, 30 October 2026: one shape for every date, the
+    column's name and meaning unchanged). Anything not in that shape is
+    returned as it is rather than guessed at -- a two-digit year, a day that
+    is no day -- and votes() counts and says them, so a column of two shapes
+    is never silent."""
+    import re
+    from datetime import date
+    t = str(d or "").strip()
+    m = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", t)
+    if not m:
+        return t
+    try:
+        return date(int(m[3]), int(m[1]), int(m[2])).isoformat()
+    except ValueError:
+        return t
+
+
 def votes(out, data):
     """Member votes, split by term because one file would exceed the cap."""
     import proceedings as P
@@ -229,7 +256,7 @@ def votes(out, data):
         if not term:
             continue
         rows = ([f'{v.get("year")}-{v.get("body")}-{v.get("vote_number")}',
-                 term, v.get("date", ""), v.get("bill", ""),
+                 term, iso_day(v.get("date", "")), v.get("bill", ""),
                  v.get("question", ""), v.get("member_id", ""),
                  v.get("name", ""), v.get("party", ""),
                  "Senate" if v.get("body") == "S" else "House",
@@ -238,7 +265,15 @@ def votes(out, data):
         made.append(write(
             out, f"votes-{term}.csv", cols, rows,
             f"How every member voted on every roll call of {term}. "
-            "Join to rollcalls.csv on roll_call."))
+            "Join to rollcalls.csv on roll_call. date is YYYY-MM-DD, as in "
+            "every other table here; before October 30, 2026 it was the "
+            "General Court's month, day and year."))
+    import re
+    odd = [v.get("date") for v in mv if v.get("date")
+           and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", iso_day(v.get("date")))]
+    if odd:
+        print(f"    WARNING: {len(odd):,} ballot date(s) are in no shape iso_day reads and are "
+              f"written as they came: {', '.join(sorted(set(map(str, odd)))[:5])}")
     return made
 
 
@@ -351,7 +386,7 @@ def proceedings_table(out, site, table=None, histories=None):
                  "stream's start, which is the schedule and not a finding.")
 
 
-def sponsors(out, data):
+def sponsors(out, data, person_of=None):
     sp = load(Path(data) / "sponsors.json", {})
     # The same merge build_site_v2 makes, or the download would name nobody for
     # the bills whose pages name their sponsors from the bill's own text.
@@ -386,8 +421,9 @@ def sponsors(out, data):
         PSP.merge_into(sp)
         bills_ = load(Path(data) / "bills.json", {})
         TS.seat_into(sp, current=max(bills_) if bills_ else None)
+    person_of = person_of or {}
     cols = ["term", "bill", "member_id", "member", "party", "chamber",
-            "prime", "role", "source"]
+            "prime", "role", "source", "person"]
     rows = []
     for term, bills_ in (sp.items() if isinstance(sp, dict) else []):
         for bill, people in (bills_.items() if isinstance(bills_, dict) else []):
@@ -396,7 +432,8 @@ def sponsors(out, data):
                              m.get("label") or m.get("name", ""),
                              m.get("party", ""), m.get("chamber", ""),
                              1 if m.get("prime") else 0, m.get("role", ""),
-                             m.get("source") or "sponsor file"])
+                             m.get("source") or "sponsor file",
+                             person_of.get(str(m.get("member_id") or ""), "")])
     rows.sort(key=lambda r: (r[0], BO.bill_key(r[1]), -r[6]))
     return write(out, "sponsors.csv", cols, rows,
                  "Who put their name to which bill, and who was prime. "
@@ -422,7 +459,10 @@ def sponsors(out, data):
                  "1999, when the roll-call files it matches against begin, "
                  "and a few after; a sponsor from the sponsor record carries "
                  "the id its number votes under where any roll call was cast "
-                 "under it, in any term.")
+                 "under it, in any term. person is one number for the member "
+                 "across every number the General Court has given them, their "
+                 "earliest PersonID, else their earliest employee number; empty "
+                 "where member_id is.")
 
 
 # How the tables join, said once here rather than guessed at by everyone
@@ -1175,6 +1215,237 @@ def bill_indexes(site, origin):
     }
 
 
+# What a hearing in a bill's record carries that the bill files leave out.
+#   reports    the Senate's hearing reports: the members of the public who
+#              testified, by name, and what each said. A bill's page shows
+#              them one bill at a time; a file of every bill is a list of
+#              private people's positions, which is the owner's call
+#              (docs/design/api/DESIGN.md, Q21).
+#   title      the YouTube video's own title, and
+#   predicted  the meeting's called time less the stream's start, which
+#              YouTube's API reports: YouTube's metadata, which the owner
+#              asked to keep out, and
+#   watch      a YouTube watch link, which waits on her answer about
+#              YouTube's terms (Q18). video_id stays, as proceedings.csv
+#              already publishes it.
+API_LEAVES_OUT = ("reports", "title", "predicted", "watch")
+
+
+def api_record(rec):
+    """A bill's record as the bill files publish it: the page's own, less
+    what API_LEAVES_OUT names on each of its hearings (stations)."""
+    st = rec.get("stations")
+    if not st:
+        return rec
+    return {**rec, "stations": [{k: v for k, v in s.items() if k not in API_LEAVES_OUT}
+                                if isinstance(s, dict) else s for s in st]}
+
+
+def bill_files(out, site, collect=None):
+    """Every bill's full record, one gzipped JSON Lines file a term:
+    bills-<term>.jsonl.gz (the data API's branch 3; docs/design/api/DESIGN.md,
+    2.4). Each line is the record the bill's own page carries, read back by
+    site_read.records, with "key" put first, "2025-2026/HB1442": a bill
+    number is a key only with its term. Lines run in the order bills.csv
+    lists them (bill_order). Returns their rows for the manifest's "files".
+    collect(term, record), where given, is handed every record on the way,
+    so that the database's tables read the same records in the same pass.
+
+    A TERM AT A TIME. All nineteen terms' records are about 900 MB of JSON
+    opened; holding them at once is gigabytes on the nightly's machine. Each
+    term is read from its own two year folders, written, and let go.
+
+    THE BYTES ARE THE SAME FOR THE SAME RECORDS. The gzip header names no
+    file and no time (mtime 0), so a night that changed nothing writes the
+    file it wrote before, and the manifest's sha256 says so.
+
+    EVERY BILL OR NONE. Each term is written under a temporary name and
+    checked against its bill index; only when every term holds every bill do
+    the files take their names. A page no index names is left out and said.
+    Otherwise the build stops with the counts and none is published
+    (CLAUDE.md, a writer run on a subset)."""
+    import gzip
+    import hashlib
+    import re as _re
+    site = Path(site)
+    idx = SR.bill_index_or_stop(site, "build_exports.py")
+    term_of, years_of, want = {}, {}, {}
+    for b in idx:
+        t = str(b.get("term") or "")
+        if _re.fullmatch(r"\d{4}-\d{4}", t) and b.get("year"):
+            term_of[(str(b["year"]), str(b["id"]).upper())] = t
+            years_of.setdefault(t, set()).add(str(b["year"]))
+            want[t] = want.get(t, 0) + 1
+    pages = [(d.name, f.stem.upper()) for d in sorted((site / "bill").glob("*")) if d.is_dir()
+             for f in d.glob("*.html")]
+    # NO PAGES AT ALL is a site built without them (a fixture, or a build
+    # stopped short), said and not written; SOME PAGES is a subset, refused.
+    if not pages:
+        print(f"  {'bills-<term>.jsonl.gz':<28} not written: no bill pages in {site}/bill/")
+        return []
+    stray = sorted(f"{y}/{b}" for y, b in pages if (y, b) not in term_of)
+    rows, short, parts = [], {}, []
+    for term in sorted(want, reverse=True):
+        recs = [r for y, b, r in SR.records(site, years=sorted(years_of[term]))
+                if term_of.get((y, b)) == term]
+        if len(recs) != want[term]:
+            short[term] = (len(recs), want[term])
+            continue
+        recs.sort(key=lambda r: BO.bill_key(r.get("id")))
+        if collect:
+            for r in recs:
+                collect(term, r)
+        # A LINE AT A TIME into the gzip stream: the same bytes as one write
+        # (deflate does not depend on how its input is cut), without a second
+        # whole copy of the term in memory.
+        name = f"bills-{term}.jsonl.gz"
+        part = out / (name + ".part")
+        opened = 0
+        with part.open("wb") as fh, \
+                gzip.GzipFile(filename="", mode="wb", fileobj=fh, compresslevel=9, mtime=0) as gz:
+            for r in recs:
+                line = (json.dumps({"key": f'{term}/{r["id"]}',
+                                    **{k: v for k, v in api_record(r).items() if k != "key"}},
+                                   ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
+                gz.write(line)
+                opened += len(line)
+        parts.append((part, out / name))
+        size = part.stat().st_size
+        rows.append({"path": f"/data/{name}", "kind": "bills", "term": term,
+                     "rows": len(recs), "bytes": size,
+                     "sha256": hashlib.sha256(part.read_bytes()).hexdigest(),
+                     "encoding": "gzip", "media_type": "application/x-ndjson"})
+        flag = "  OVER THE 25 MiB CAP" if size > SAFE else ""
+        print(f"  {name:<28} {len(recs):>9,} bills {size / 1e6:>7.1f} MB "
+              f"({opened / 1e6:,.1f} MB opened){flag}")
+        del recs
+    # A PAGE NO INDEX NAMES is no bill of any term: a page left in a laptop's
+    # site/ by a bill that has since moved or gone (build_bill_pages writes
+    # pages and removes none). It is left out, and said, with what to do.
+    if stray:
+        print(f"    WARNING: {len(stray)} bill page(s) no term's index names, left out of the "
+              f"bill files: {', '.join(stray[:5])}. A page left from an earlier build; "
+              "delete it, or build site/ afresh.")
+    if short:
+        for part, _ in parts:
+            part.unlink(missing_ok=True)
+        raise SystemExit(
+            "The bill files would not hold every bill, so none is written: "
+            + "; ".join(f"{t} has {got:,} records of {n:,}" for t, (got, n) in sorted(short.items())))
+    for part, final in parts:
+        part.replace(final)
+    return rows
+
+
+def database_file(out, collector, joined):
+    """The data API's database (api_db.py): every table above and the
+    record's committee reports, in one SQLite file in xz. Returns its row
+    for the manifest's "files", or none where it is not written -- and then
+    it is not listed, and a file an earlier build left is taken away, so the
+    manifest never names a file that is not tonight's. Says each table's
+    rows; stops on a table that must hold rows and holds none, and warns of
+    one that may be empty."""
+    import api_db
+    path = out / api_db.NAME
+    why = ("no bill records were read" if not collector.bills else
+           "no people join (no db/Legislators.psv or generated/careers.json here)"
+           if joined is None else None)
+    if why:
+        path.unlink(missing_ok=True)
+        print(f"  {api_db.NAME:<28} not written: {why}")
+        return []
+    row = api_db.write(out, collector, joined[0])
+    must = ("bills", "rollcalls", "votes", "vote_values", "sponsors", "legislators",
+            "proceedings", "people", "person_numbers", "committee_reports")
+    empty = [t for t in must if not row["counts"].get(t)]
+    if empty:
+        path.unlink(missing_ok=True)
+        raise SystemExit(f"The database's {', '.join(empty)} came out empty; not publishing it.")
+    flag = "  OVER THE 25 MiB CAP" if row["bytes"] > SAFE else ""
+    print(f"  {api_db.NAME:<28} {row['rows']:>9,} rows  {row['bytes'] / 1e6:>7.1f} MB "
+          f"({row['opened_bytes'] / 1e6:,.1f} MB opened){flag}")
+    print("    " + ", ".join(f"{t} {n:,}" for t, n in row["counts"].items()))
+    for t in ("docket_reports", "interim_study", "testimony", "meetings"):
+        if not row["counts"].get(t):
+            print(f"    WARNING: the database's {t} is empty"
+                  + (": meetings.json is not here" if t == "meetings" else ""))
+    return [row]
+
+
+def people_join(site, data, db="db", careers="generated/careers.json",
+                register="generated/person_numbers.json"):
+    """Every number the General Court uses for a person, joined to one person
+    number (src/lib/people.py says how, and src/ops/person_numbers.py issues
+    the numbers): (people, report), or None where the inputs are not on this
+    disk -- a clone without the database dump builds everything else, and
+    people_files says so."""
+    import people as PE
+    if PE.emp_to_pid(db) is None or not Path(careers).exists():
+        return None
+    # The register strictly: one that is there and does not read, or is not
+    # well formed, stops the build (PE.load_register), because without it the
+    # register would quietly stop winning.
+    reg = PE.load_register(register)
+    people, rep = PE.build(site, data, db, load(careers, {}), reg,
+                           PE.load_links("generated/person_links.json"))
+    if not people:
+        raise SystemExit("people.json would hold nobody: the join found no one. "
+                         "Not writing an empty file.")
+    if rep["missing_issued"]:
+        raise SystemExit(f"{len(rep['missing_issued'])} issued person(s) would vanish from "
+                         "people.json, their numbers gone from tonight's record: "
+                         + ", ".join(rep["missing_issued"][:10])
+                         + ". A published number does not disappear; the build stops.")
+    bad = PE.check_unique(people)
+    if bad:
+        raise SystemExit("people.json would hold a number twice, so it is not written: "
+                         + "; ".join(bad[:5]))
+    return people, rep
+
+
+def person_map(joined):
+    """member_id -> person, for the person column of the tables keyed by
+    member_id. Empty where there is no join, and the column is empty."""
+    return {mid: p["person"] for p in (joined or ((), None))[0]
+            for mid in p.get("member_ids") or ()}
+
+
+def people_files(out, joined, db="db", careers="generated/careers.json",
+                 register="generated/person_numbers.json"):
+    """people.json and people.csv, from people_join's answer. Returns their
+    rows for the manifest's "files"."""
+    import people as PE
+    if joined is None:
+        print(f"  {'people.json':<28} not written: no {db}/Legislators.psv or {careers} here")
+        return []
+    people, rep = joined
+    rows = PE.write(people, out)
+    prov, ruled = len(rep["provisional"]), len(rep["by_rule"])
+    print(f"  {'people.json':<28} {len(people):>9,} people  "
+          f"{rows[0]['bytes'] / 1e6:>7.1f} MB"
+          + (f"  ({ruled:,} numbered by the rule and not in {register} yet)" if ruled else "")
+          + (f"  ({prov:,} provisional: no General Court number)" if prov else ""))
+    for c in rep["clashes"]:
+        print(f"    WARNING: held back, its number {c['person']} is someone else's: "
+              f"{', '.join(c['numbers'])}")
+    print(f"  {'people.csv':<28} {rows[1]['rows']:>9,} rows  {rows[1]['bytes'] / 1e6:>7.1f} MB")
+    for c in rep["careers_not_joined"]:
+        print(f"    not joined, for a person: {c['name']} {', '.join(c['numbers'])}")
+    for g in rep.get("one_chamber") or []:
+        print(f"    WARNING: the joins put two numbers of one chamber in one person, "
+              f"{g['same_chamber']}; not issued until a person looks")
+    for d in rep["register_disagrees"]:
+        print(f"    WARNING: the register disagrees with tonight's join: {d}")
+    unplaced = [u["number"] for u in rep["unissued_numbers"] if not u.get("person")]
+    if unplaced:
+        print(f"    WARNING: {len(unplaced)} number(s) between two issued people, not "
+              f"published until a person places them: {', '.join(unplaced[:10])}")
+    if rep["unknown_ids"]:
+        print(f"    {len(rep['unknown_ids'])} site id(s) stand for no employee number or "
+              f"PersonID the roster knows: {', '.join(rep['unknown_ids'][:10])}")
+    return rows
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
@@ -1186,8 +1457,10 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
 
     print("Bulk downloads:")
-    tables = [bills(out, site), legislators(out, site), rollcalls(out),
-              proceedings_table(out, site), sponsors(out, a.data)]
+    joined = people_join(site, a.data)
+    person_of = person_map(joined)
+    tables = [bills(out, site), legislators(out, site, person_of), rollcalls(out),
+              proceedings_table(out, site), sponsors(out, a.data, person_of)]
     tables += votes(out, a.data)
 
     over = [t for t in tables if t["over_cap"]]
@@ -1224,6 +1497,16 @@ def main():
                    for t in tables],
     }
     manifest["bill_indexes"] = bill_indexes(site, manifest["site"])
+    # THE PUBLIC DATA API'S FILES (docs/design/api/DESIGN.md; the owner's OK
+    # of 30 October 2026). Built unlinked until the announcement: listed here,
+    # under a key of their own, and not on the data page, so that nothing a
+    # reader sees today moves while they are built.
+    import api_db
+    collector = api_db.Collector()
+    manifest["files"] = people_files(out, joined) + bill_files(out, site, collect=collector.add)
+    manifest["files"] += database_file(out, collector, joined)
+    over += [{"file": f["path"].rsplit("/", 1)[-1], "bytes": f["bytes"]}
+             for f in manifest["files"] if f["bytes"] > SAFE]
     (out / "manifest.json").write_text(
         json.dumps(manifest, indent=1), encoding="utf-8")
     total = sum(t["bytes"] for t in tables)

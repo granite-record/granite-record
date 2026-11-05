@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.69
+# GRANITE_VERSION: 2026-09-07.70
 """
 A page's worth of data for every committee.
 
@@ -69,6 +69,7 @@ import argparse
 import collections
 import json
 import re
+import shutil
 import types
 
 import proceedings as P
@@ -78,6 +79,7 @@ import committee_acts as CA
 import committee_details as CD
 import committee_names as CN
 import components as C
+import live_hook
 import names
 import report_check as RC
 import shell as S
@@ -1186,6 +1188,30 @@ def main():
         days, carried, facts, code_of,
         {c for c in codes_ if presentable(committee_name(c, lead, codes))})
 
+    # The code carries the chamber where nothing else states it.
+    def chamber_of(code):
+        return (lead.get(code, {}).get("chamber")
+                or (seats.get(code) or [{}])[0].get("chamber")
+                or (code[:1].upper() if code[:1].upper() in "HS" else ""))
+
+    # THE LIVE HOOK (workers/live/PATCHES.md 11, applied for the 11 November
+    # train): a sitting committee's page carries live_hook's hidden section,
+    # which live.js fills while one of its meetings streams. Its stems are
+    # read once a run (past), and every committee this run writes a page for
+    # is passed to each (others), so a committee whose name another's extends
+    # never takes that one's stream: the Senate's Education never takes
+    # Education Finance's. A retired committee has none: it never streams
+    # again, and S33 and S50 share a name, which would light both pages.
+    live_past = live_hook.past()
+    live_all = [(chamber_of(c).strip().upper(), committee_name(c, lead, codes)) for c in codes_
+                if c not in retired and presentable(committee_name(c, lead, codes))]
+    # AND THE TWO FILES THE HOOK LOADS, beside the pages that load them:
+    # build_live copies the same two later in a full build, and a build
+    # without it (a fast path, a partial run, preflight's fixture) left
+    # every committee page linking a script and a stylesheet not there.
+    for f in ("live.js", "live.css"):
+        shutil.copyfile(_paths.locate(f"src/pages/{f}"), site / f)
+
     for code in codes_:
         info = lead.get(code, {})
         name = committee_name(code, lead, codes)
@@ -1194,10 +1220,7 @@ def main():
         if not presentable(name):
             skipped.append(f"{code}" + (f" ({name})" if name else " (unnamed)"))
             continue
-        # The code carries the chamber where nothing else states it.
-        chamber = (info.get("chamber")
-                   or (seats.get(code) or [{}])[0].get("chamber")
-                   or (code[:1].upper() if code[:1].upper() in "HS" else ""))
+        chamber = chamber_of(code)
         members = []
         for m in seats.get(code, []):
             if not on_it_today(m, code):
@@ -1344,7 +1367,7 @@ def main():
         # where a <noscript> line said the page needs JavaScript.
         nos = static_record(code, name, chamber_word, rec, sessions)
         path = f"/committee/{code}.html"
-        (out / f"{code}.html").write_text(S.clean_links(S.page(
+        html = S.page(
             t, path=path, base=a.base,
             title=f"{name}{when} — {chamber_word} committee | Granite Record",
             og_title=f"{name}{when} — New Hampshire {chamber_word}",
@@ -1364,8 +1387,14 @@ def main():
                   nav_current="committees.html",
                   # The page draws the committee's own <h1>; the template's
                   # hidden "New Hampshire bills" one went first until now.
-                  sr_title="")),
-            encoding="utf-8")
+                  sr_title="")
+        # The chamber is "H" or "S" exactly: the hook's stems and its
+        # chamber guard both read it.
+        live_ch = chamber.strip().upper()
+        if code not in retired and live_ch in ("H", "S"):
+            html = live_hook.place(html, code=code, chamber=live_ch, name=name,
+                                   history=live_past, others=live_all)
+        (out / f"{code}.html").write_text(S.clean_links(html), encoding="utf-8")
         urls.append(a.base + S.canon(path))
         written += 1
         index.append({

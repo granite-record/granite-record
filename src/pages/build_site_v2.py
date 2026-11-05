@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.242
+# GRANITE_VERSION: 2026-09-05.245
 """
 Generate the faceted site from real General Court data.
 
@@ -3158,6 +3158,67 @@ FORMER_LABEL = re.compile(r"\(\s*[A-Za-z]?\s*\)\s*(?P<county>[A-Za-z .']+?)\s+"
                           r"(?P<district>\d+)\s*$")
 
 
+def same_person(path=Path("corrections/member_corrections.json")):
+    """[[house id, senate id], ...] the owner confirmed are one person: the
+    "same_person" entries of member_corrections.json whose "confirmed" begins
+    with a date (2 November 2026: thirty, of the 31 pairs no rule joined; the
+    thirty-first, "no, two people", is kept as the answer and joins nothing).
+    Read, never written: the file is the owner's."""
+    try:
+        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    out = []
+    for e in (doc.get("same_person") or []) if isinstance(doc, dict) else []:
+        if isinstance(e, dict) and re.match(r"\d{4}-\d{2}-\d{2}", str(e.get("confirmed") or "")):
+            ids = [str(e[k]) for k in ("house", "senate") if e.get(k)]
+            if len(ids) == 2:
+                out.append(ids)
+    return out
+
+
+def former_movers(register, e2p, legs, links, votes_by_member, confirmed=()):
+    """{later id: [earlier ids]} for a member who sat in both chambers and sits
+    in neither now, as the person register joins them (30 October 2026).
+
+    A member who changes chamber is given a new number in each, and the site
+    numbers a member by the PersonID their votes carry: Shannon Chandley voted
+    as 568 in the House and as 9404 in the Senate, and had a page for each.
+    member_links joins those numbers only for a member who sits today, so once
+    such a member left, their record stayed in two halves. The register
+    (generated/person_numbers.json, people.py) is the one join the public data
+    API publishes, under the one-chamber rule; the site takes the same one, so
+    the two say the same about who is one person. Each register number is an
+    Employeeno, and the site's id for it is the PersonID the roster gives it
+    (people.emp_to_pid), else the number itself. A person joined here has two
+    or more site ids that voted, none of them a sitting member's or already
+    joined to one; the page kept is the one that voted last -- the later
+    chamber's, as a sitting mover's is -- and it carries every chamber's
+    votes.
+
+    AND THE PAIRS THE OWNER CONFIRMED (`confirmed`, same_person): site ids
+    already, joined on the same terms, after the register's and only where
+    neither id is in a join yet."""
+    sitting = {str(k) for k in legs} | {str(k) for k in (links or {})} | \
+        {str(x) for v in (links or {}).values() for x in v}
+    # By the day, not the text of it: dates are M/D/YYYY, and as text
+    # "9/13/2018" sorts after "10/10/2018" (the review of 30 October 2026).
+    last = lambda i: max((vote_date(v.get("date")) for v in votes_by_member.get(i, [])),
+                         default=vote_date(""))
+    out = {}
+    groups = [[str((e2p or {}).get(n) or n) for n in person.get("numbers") or []]
+              for person in (register or {}).get("people") or []]
+    groups += [[str(i) for i in pair] for pair in confirmed or ()]
+    for ids in groups:
+        ids = [i for i in dict.fromkeys(ids) if votes_by_member.get(i)]
+        placed = set(out) | {x for v in out.values() for x in v}
+        if len(ids) < 2 or any(i in sitting or i in placed for i in ids):
+            continue
+        ids.sort(key=last)
+        out[ids[-1]] = ids[:-1]
+    return out
+
+
 def former_roster(legs, votes_by_member, links, former_file, current_term):
     """People who voted in the current term and hold no seat in it now.
 
@@ -3215,6 +3276,9 @@ def former_roster(legs, votes_by_member, links, former_file, current_term):
             continue
         dated = sorted(mv, key=lambda v: vote_date(v.get("date")))
         last = dated[-1]
+        every = sorted([v for x in (mid, *(links or {}).get(mid, []))
+                        for v in votes_by_member.get(x, [])],
+                       key=lambda v: vote_date(v.get("date")))
         rec = dict(former_file.get(mid) or {})
         # THE BALLOT'S OWN LABEL FIRST, because it is the only thing here that
         # has been through member_corrections.json. That file is the person's,
@@ -3245,10 +3309,15 @@ def former_roster(legs, votes_by_member, links, former_file, current_term):
             # What the record can say about their service, and nothing beyond
             # it. Not why they left: the site does not distinguish a member
             # who resigned from one who died, and must not start here.
-            "served": {"first": dated[0].get("date") or "",
-                       "last": last.get("date") or "",
+            # OVER EVERY NUMBER JOINED TO THEM (former_movers, the review of 30
+            # October 2026): Shannon Chandley's page read "on record 2019 to
+            # 2024" above 1,838 votes back to 2009, and her House years went
+            # from the directory. The name, chamber and seat stay the ones of
+            # her own latest vote.
+            "served": {"first": every[0].get("date") or "",
+                       "last": every[-1].get("date") or "",
                        "terms": sorted({P.vote_term(v.get("year", ""), v.get("date"))
-                                        for v in mv if v.get("year")})},
+                                        for v in every if v.get("year")})},
         }
     return out
 
@@ -3647,6 +3716,10 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
             row.update({"former": True, "served": m.get("served") or {},
                         "email": "", "towns": [],
                         "committees": [], "seat": ""})
+            if m.get("moved_from"):
+                # The addresses of the pages this one took in (former_movers),
+                # which build_pages answers with a 301 to this one.
+                row["moved_from"] = list(m["moved_from"])
             fm.append(row)
         else:
             lg.append(row)
@@ -3910,9 +3983,13 @@ def build_status(a, index, procs, floor, today, latest_by_body, upcoming):
 # "calendars%5C2026%5CNo10%20March%206%202026.pdf". Every one of the 24
 # calendars a committee report cites resolves this way, so a report that the
 # docket does not date can still be placed on the day it was printed.
+# ONE SPACE OR MORE (the walk of 31 October 2026): 2018's House Calendar 39
+# is "November%2009%20%202018", two before the year, and every interim report
+# it printed had no date. A space as typed counts too (SOURCE_YEAR's second
+# shape, "No10 March 6 2026.pdf").
 CAL_DATE = re.compile(
     r"(January|February|March|April|May|June|July|August|September|October"
-    r"|November|December)%20(\d{1,2})%20(\d{4})", re.I)
+    r"|November|December)(?:%20| )+(\d{1,2})(?:%20| )+(\d{4})", re.I)
 MONTHS = ["january", "february", "march", "april", "may", "june", "july",
           "august", "september", "october", "november", "december"]
 # "House Calendar 51, 2025" is how a report names the calendar it was printed
@@ -10933,7 +11010,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     _people = {**legs, **(former or {})}
     for _sit, _earlier in (links or {}).items():
         for _old in _earlier:
-            _people.setdefault(str(_old), legs.get(_sit) or {})
+            _people.setdefault(str(_old), legs.get(_sit) or (former or {}).get(_sit) or {})
     # And, for a term whose own roster is frozen and not the sitting one
     # (main says which), the members who left by name: bill_sponsor_list
     # says why. Every one of a name, in order, since only the one who sat
@@ -12272,6 +12349,42 @@ def main():
     former = former_roster(legs, votes_by_member, links,
                            load("former_members.json", {}),
                            max(bills) if bills else "")
+    # AND A MEMBER WHO MOVED AND HAS LEFT (former_movers): one page, the later
+    # chamber's, with every chamber's votes, as for a sitting mover; the
+    # earlier page's address answers with a 301 to it (build_pages, from the
+    # index row's moved_from). Worked out from the former members as they
+    # would stand apart, so each earlier page's address is the one it had.
+    import people as PE
+    register = PE.load_register(Path("generated/person_numbers.json"))
+    e2p = PE.emp_to_pid("db")
+    if register and e2p is None:
+        # NOT SILENT (the review of 30 October 2026): without the roster view
+        # no register number maps to a site id, nothing joins, and the pages
+        # of the members who moved and left come back in two halves.
+        print("  WARNING: db/Legislators.psv is not here, so no member who sat in both "
+              "chambers and has left is joined; their pages stand split, one per chamber")
+    movers = former_movers(register, e2p or {}, legs, links, votes_by_member,
+                           confirmed=same_person())
+    movers = {k: v for k, v in movers.items() if k in former and all(e in former for e in v)}
+    if movers:
+        def _addr(m):
+            lab = member_labels(m.get("name"), chamber=m.get("chamber"),
+                                party=m.get("party_code") or m.get("party"),
+                                district=m.get("district"), county=m.get("county"),
+                                county_abbr=m.get("county_abbr"))
+            return "/legislator/" + (m.get("slug") or member_slug(m, lab))
+        moved_from = {k: [_addr(former[e]) for e in v] for k, v in movers.items()}
+        for k, v in movers.items():
+            links[k] = [*links.get(k, []), *v]
+        former = former_roster(legs, votes_by_member, links,
+                               load("former_members.json", {}),
+                               max(bills) if bills else "")
+        for k, addrs in moved_from.items():
+            former[k]["moved_from"] = addrs
+        print(f"{len(movers)} member(s) who sat in both chambers and have left now have one "
+              "page, the later chamber's, with every chamber's votes: "
+              + ", ".join(f"{former[k].get('name')} ({'+'.join([k, *v])})"
+                          for k, v in sorted(movers.items())))
     if former:
         print(f"{len(former):,} member(s) in the record hold no seat now; "
               "they get a page of their own and the sitting roster is "

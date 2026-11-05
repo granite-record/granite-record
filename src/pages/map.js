@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.12
+// GRANITE_VERSION: 2026-10-09.13
 /* THE DISTRICT MAP (map v1), as a module a page mounts:
 
      <link rel="stylesheet" href="/map.css">
@@ -585,7 +585,7 @@ function mount(root,opts){
       if(cls==="vac")p.setAttribute("fill",`url(#${id}vac)`);
       if(cls==="mix")p.setAttribute("fill",`url(#${id}mix-${ps})`);
       const t=el("title",{}),ms=sitting(M,lk,fid),seats=seatsOf(M,lk,fid);
-      t.textContent=(NAME[lk]?NAME[lk]+" ":"")+label(lk,fid)+(TINTED[lk]?": "+(ms.length?countWords(ms):tr("map.vacant_l","vacant"))+(seats>ms.length&&ms.length?", "+tr("map.n_vacant","{n} vacant",{n:seats-ms.length}):""):"");
+      t.textContent=(NAME[lk]?NAME[lk]+" ":"")+label(lk,fid)+(TINTED[lk]?": "+(ms.length?countWords(ms):tr("map.vacant_l","vacant"))+(seats>ms.length&&ms.length?", "+(seats-ms.length===1?tr("map.n_vacant_one","{n} vacant",{n:1}):tr("map.n_vacant","{n} vacant",{n:seats-ms.length})):""):"");
       p.appendChild(t);fills.appendChild(p);});
     svg.appendChild(fills);
     if(lk!=="towns")svg.appendChild(el("path",{class:"under",d:meshD(M,"towns")}));
@@ -689,7 +689,7 @@ function mount(root,opts){
   }
   function seatLine(lk,fid){
     const ms=sitting(M,lk,fid),seats=seatsOf(M,lk,fid),E=elected(lk,fid);
-    return `<div class="pk">${seats===1?tr("map.seat_one","{n} seat",{n:seats}):tr("map.seats","{n} seats",{n:seats})}${seats>ms.length?" "+tr("map.dot_vacant","&middot; {n} vacant",{n:seats-ms.length}):""}</div>`+
+    return `<div class="pk">${seats===1?tr("map.seat_one","{n} seat",{n:seats}):tr("map.seats","{n} seats",{n:seats})}${seats>ms.length?" "+(seats-ms.length===1?tr("map.dot_vacant_one","&middot; {n} vacant",{n:1}):tr("map.dot_vacant","&middot; {n} vacant",{n:seats-ms.length})):""}</div>`+
       (E?electNow(E.takes_office,null):"")+
       (ms.length?`<div class="chips">${ms.map(chip).join("")}</div>`:`<p class="quiet">${tr("map.all_vacant","Every seat is vacant.")}</p>`)+
       (E?electBlock([["",E.races[lk+"|"+fid]]],E.election,E.takes_office,null,globalThis.GR_LANG):"");

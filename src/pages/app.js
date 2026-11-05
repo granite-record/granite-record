@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.263
+// GRANITE_VERSION: 2026-09-07.264
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4135,8 +4135,9 @@ const AVK={VV:"Voice Vote",DV:"Division Vote",RC:"Roll Call"};
 // recommendation -- the clerks' "Without Recomendation" and "No
 // Recommendation" among them. First, so that "NOT RECOMMENDED" is read before
 // "RECOMMENDED", and before the motions below. As the clerks varied it too
-// (src/parse/interim_statements.py): "Recommended for Further Legislation"
-// (SB 366 of 2010), "Not Recommended for Legislation" (HB 1415 of 2006).
+// (src/parse/interim_statements.py): "Not Recommended for Further
+// Legislation" (SB 366 of 2010), "Not Recommended for Legislation" (HB 1415
+// of 2006).
 // A report that states none of the three ("Interim Study Report filed") is
 // plain, as one without a recommendation is, and not the orange of the
 // motion to study below.
@@ -6841,8 +6842,11 @@ const REPORT_TO="contact@graniterecord.org";
 // no tab at all. The Function still takes "Videos" from a page loaded before
 // the rename and stores it as "Hearings" (report.js RENAMED_TABS), and a
 // committee's "Sessions", the Meetings tab's name before D19, as "Meetings".
+// A COMMITTEE'S VIDEOS TAB, AND A STUDY COMMITTEE'S (the walk of 31 October
+// 2026): a tab of its own since the Videos section, and missing here, so a
+// report from it named no tab. report.js renames "Videos" only on a bill.
 const REPORT_TABS=new Set(["Summary","Bill Text","Votes","Hearings","Reports","Sponsors",
-  "Documents","Related","Prime sponsored","Co-sponsored","Bills","Meetings"]);
+  "Documents","Related","Prime sponsored","Co-sponsored","Bills","Meetings","Videos"]);
 let reportBuild=null;       // site/build.json's "finished", fetched once, on first open
 
 function reportBox(kind,ref){
@@ -9655,6 +9659,23 @@ function vwLand(slot){
   const want=vwWanted();
   vwListShow([...slot.querySelectorAll("a[data-vwpick]")].find(x=>x.dataset.vwpick===want));
   slot.scrollIntoView({block:"start"});
+  vwClearStrip(slot);
+}
+// AND NOT UNDER THE STRIP (the walk of 31 October 2026): brought to the top
+// of the window, a study committee's and a chamber's view went 45 to 49px
+// under the page's tab strip, which stays there, at every width (measured on
+// ss57 and the House at 1280 and 390). The page is moved down by what the
+// strip still covers, and no further. A committee's own page too
+// (showVideo): .vw's scroll margin is set on a phone only, and S07's view at
+// 1280 came to rest clear of the strip only because the page above it grew
+// after the scroll (the review of 2 November 2026).
+function vwClearStrip(el){
+  if(!el||!el.getBoundingClientRect)return;
+  const box=el.matches&&el.matches(".vw")?el:(el.querySelector&&el.querySelector(".vw"))||el;
+  const strip=box&&box.closest?vwStrip(box):null;
+  if(!strip)return;
+  const gap=strip.getBoundingClientRect().bottom-el.getBoundingClientRect().top;
+  if(gap>0)window.scrollBy(0,-Math.ceil(gap));
 }
 /* A CHAMBER'S TWO TABS, Session Days | Videos, put above the two panes the
    page carries (build_full_sessions), as a committee's are drawn: the same
@@ -10537,6 +10558,7 @@ function showVideo(){
   vwLanded=want;
   vwListShow(a);
   box.scrollIntoView({block:"start"});
+  vwClearStrip(box);
 }
 window.addEventListener("hashchange", function(){ if(PAGE){ showDay(); showVideo(); } });
 /* BACK AND FORWARD ON A RECORD PAGE bring back the tab the address names.
