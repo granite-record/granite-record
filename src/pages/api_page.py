@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.6
+# GRANITE_VERSION: 2026-10-30.7
 """
 /api: the data API's documentation page, drawn in the data page's own
 components and counted from tonight's manifest.
@@ -168,9 +168,10 @@ def body(manifest):
             '<a href="/data.html">the data page</a>, and '
             '<a href="data/manifest.json">data/manifest.json</a> lists every file with its address, '
             "size and checksum. Start there: one request says what is here and how much. The bill "
-            "files are compressed with gzip and the database with xz. Python and R open both with "
-            "nothing to install; on the command line, gzip is everywhere, and xz is on most Linux "
-            "systems but has to be installed on a Mac.</p>",
+            "files are compressed with gzip and the database with xz. Python opens and reads both "
+            "with nothing to install; R unpacks both, and reads the database with its RSQLite "
+            "package. On the command line, gzip and xz are on most Linux systems; a Mac has gzip "
+            "and needs xz installed.</p>",
             '<div class="dptablewrap dpwide"><table class="dpdl" role="table">'
             '<thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">File</th>'
             '<th scope="col" role="columnheader">What it holds</th>'

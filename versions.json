@@ -167,7 +167,7 @@
     "past_members.py": "2026-09-10.3",
     "past_sponsors.py": "2026-09-26.6",
     "plain_action.py": "2026-10-14.14",
-    "preflight.py": "2026-09-04.771",
+    "preflight.py": "2026-09-04.772",
     "print.css": "2026-10-09.3",
     "print.js": "2026-10-09.10",
     "probe_alignment.py": "2026-09-05.66",
@@ -248,9 +248,9 @@
     "strip_js.py": "2026-10-23.1",
     "people.py": "2026-10-30.8",
     "person_numbers.py": "2026-10-30.7",
-    "api_db.py": "2026-10-30.6",
+    "api_db.py": "2026-10-30.7",
     "api_schema.py": "2026-10-30.5",
-    "api_page.py": "2026-10-30.6"
+    "api_page.py": "2026-10-30.7"
   },
   "generated": "2026-09-04"
 }

@@ -94,7 +94,9 @@ CSV = {
     # offset): no download carries it (the owner, 5 November 2026; Q18).
     "proceedings.csv": {
         "term": ("string", "The two-year term.", S),
-        "bill": ("string", "The bill, as the docket or the calendar writes it. " + BILL_KEY, S),
+        "bill": ("string", "The bill, as the docket or the calendar writes it. " + BILL_KEY
+                 + " A few rows of the oldest terms write it otherwise (HB 0306) and do not join "
+                 "bills.csv.", S),
         "body": ("string", "H or S.", S),
         "kind": ("string", "public hearing, executive session, work session, floor session and the like.", S),
         "date": ("date", "The day, YYYY-MM-DD.", S),
@@ -129,7 +131,7 @@ CSV = {
         "member": ("string", "The member's name.", S),
         "party": ("string", "Party at the vote.", S),
         "chamber": ("string", "House or Senate.", S),
-        "vote": ("string", "Yea, Nay, Not Voting/Excused, Not Voting/Not Excused, Presiding, or No vote recorded.", S),
+        "vote": ("string", "Yea, Nay, Not Voting/Excused, Not Voting/Not Excused, Presiding, or No vote recorded; empty on the few ballots the record leaves blank.", S),
     },
     "people.csv": {
         "person": ("string", PERSON, S),
@@ -221,7 +223,7 @@ STATION_FIELDS = {
     "end_from": ("string", "How the end was decided; where end is null, the candidate this site would not publish.", P),
     "said_how": ("string", "How the chair's words were found, by method; the words themselves are never published.", P),
     "candidate": ("number", "The start the clustering model found, in seconds, whether or not it is the one shown in start.", P),
-    "tolerance": ("number", "The margin the page gives the start: the model's own for its segment, or 5 where the chair's words placed it. The page reads its unit from start_stated.", P),
+    "tolerance": ("number", "The margin the page gives the start: the model's own for its segment, and usually 5 where the chair's words placed it. The page reads its unit from start_stated.", P),
     "short": ("boolean", "True where the model judged the span short.", P),
     "testimony": ("object", "The hearing's sign-in counts: date, total, support, oppose, neutral, and dated (whether the date is the record's). Counts only; never a name.", S),
     "debate_start": ("number", "On the floor: seconds into the recording where the debate opens, where the chair said so.", P),
@@ -269,7 +271,8 @@ DB_COLUMNS = {
         "vote": (_I, "vote_values.code.", S),
     },
     "vote_values": {"code": (_I, "The code votes.vote uses.", S),
-                    "vote": (_T, "Its words: Yea, Nay, Not Voting/Excused and so on.", S)},
+                    "vote": (_T, "Its words, as the vote files write them: Yea, Nay, Not Voting/Excused "
+                                 "and so on, and empty for a ballot the record leaves blank.", S)},
     "people": {
         "person": (_T, PERSON, S),
         "name": (_T, "Their name.", S),
@@ -293,7 +296,7 @@ DB_COLUMNS = {
         "chamber": (_T, "H or S, the chamber whose committee reported.", S),
         "source": (_T, "Where it is printed: House Calendar 15, 2013; Senate committee report, released 2025-05-13.", S),
         "cite": (_T, "The short citation, HC 15.", S),
-        "date": (_T, "The report's date, YYYY-MM-DD.", S),
+        "date": (_T, "The report's date, YYYY-MM-DD; empty where the printing gives none.", S),
         "interim": (_I, "1 for an interim study statement.", S),
         "majority_recommendation": (_T, "The committee's recommendation, as printed.", S),
         "minority_recommendation": (_T, "The minority's, where there is one.", S),
@@ -317,7 +320,8 @@ DB_COLUMNS = {
         "vote_yeas": (_I, "The committee's vote for, where the docket gives it.", S),
         "vote_nays": (_I, "And against.", S),
         "amendment": (_T, "The amendment it recommends, where named.", S),
-        "cite": (_T, "The calendar the docket says it is printed in, SC 11; empty where it names none.", S),
+        "cite": (_T, "Where the docket says it is printed, as the docket writes it: a calendar or a "
+                     "journal (SC 11, SC 15A, SJ 11); empty where it names none.", S),
     },
     "interim_study": {
         "term": (_T, "The two-year term.", S),
@@ -346,11 +350,14 @@ DB_COLUMNS = {
         "chamber": (_T, "H or S.", S),
         "committee": (_T, "The committee.", S),
         "kind": (_T, "public hearing, executive session, work session and the like; other for the rest.", S),
-        "venue": (_T, "The place, as the calendar prints it, where it gives more than a room.", S),
+        "venue": (_T, "What the calendar prints where the room would be, when it is not a room: usually "
+                      "a place, but on some notices the bill's title. "
+                      "Read it as text, not as an address.", B),
         "room": (_T, "The room, written as the docket writes it: LOB 206-208.", S),
         "bill": (_T, "The bill, where the meeting is on one.", S),
         "noticed": (_T, "The day of the calendar that noticed it, YYYY-MM-DD.", S),
-        "calendar": (_T, "That calendar: year/HC010 for the House's, year/SC005 for the Senate's.", S),
+        "calendar": (_T, "That calendar: year/HC010 for the House's, year/SC005 for the Senate's, with a "
+                         "letter after the number for a supplement (2023/HC010A).", S),
     },
     "meta": {"key": (_T, "format, what, rights or upstream.", S), "value": (_T, "Its value.", S)},
 }
@@ -552,6 +559,10 @@ def package(tables, files, base, built, record_keys=(), station_keys=(),
                      schema={"fields": _fields(CSV["people.csv"],
                                                set(people_columns) if people_columns else None)})
         res.append(r)
+    # The terms of each file, on the file itself (DATA.md: "schema.json names
+    # the terms of each file"). Every download carries the same line today.
+    for r in res:
+        r["licenses"] = LICENSES
     return {"profile": "data-package", "name": "granite-record",
             "title": "Granite Record: the New Hampshire General Court's record",
             "homepage": "https://graniterecord.org/api", "x-format": FORMAT,

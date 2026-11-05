@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.6
+# GRANITE_VERSION: 2026-10-30.7
 """
 The data API's database: every table on the data page, and the record's
 committee reports, in one SQLite file, compressed with xz.
@@ -44,9 +44,10 @@ spreadsheets cannot either.
 
 WHY XZ. With the report tables the file is about 109 MB opened: 26.9 MB in
 gzip, past the 25 MiB a file may be on the host, and 13.2 MB in xz
-(measured 30 October 2026). Python's lzma and R read it with nothing to
-install, and so does the xz program, which most Linux systems have; macOS
-does not come with it.
+(measured 30 October 2026). Python opens it, and queries it, with nothing to
+install (lzma, sqlite3). R unpacks it as it comes and needs the RSQLite
+package to query it. The xz program is on most Linux systems and has to be
+installed on a Mac or on Windows.
 
 THE SAME ROWS GIVE THE SAME BYTES. Rows go in in a stated order, the file is
 vacuumed, and xz writes no time, so the manifest's sha256 moves only when
@@ -168,6 +169,13 @@ def _int(v):
         return None
 
 
+def _num(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
 def write(out, collector, people, meetings_path="meetings.json"):
     """Build the database (_write), and whatever happens, leave no
     temporary file behind: a stop part-way would otherwise leave about
@@ -239,25 +247,26 @@ def _write(out, collector, people, meetings_path, tmp):
     ins("vote_values", 2, sorted((c, v) for v, c in codes.items()))
     counts["votes"], counts["vote_values"] = n, len(codes)
 
-    for name in ("sponsors", "legislators"):
-        cols = None
-        rows = []
+    # THE TYPES schema.json STATES. A column the CSV's description calls an
+    # integer or a number is stored as one, an empty cell as NULL, so that
+    # ORDER BY start_seconds and recorded_votes > 100 compare numbers rather
+    # than text ("100" sorts before "20" as text).
+    from api_schema import CSV as SPEC
+    for name in ("sponsors", "legislators", "proceedings"):
+        spec = SPEC[f"{name}.csv"]
+        cols, rows, conv = None, [], None
         for r in _csv(out / f"{name}.csv"):
-            cols = cols or list(r)
-            rows.append(tuple(r[c] for c in cols))
+            if cols is None:
+                cols = [c for c in r if c not in PROCEEDINGS_DROP]
+                conv = [_int if spec.get(c, ("",))[0] == "integer" else
+                        _num if spec.get(c, ("",))[0] == "number" else None for c in cols]
+            rows.append(tuple(f(r[c]) if f else r[c] for c, f in zip(cols, conv)))
         if cols:
-            con.execute(f'CREATE TABLE {name} ({", ".join(chr(34) + c + chr(34) + " TEXT" for c in cols)})')
+            kind = {"integer": "INT", "number": "REAL"}
+            con.execute(f'CREATE TABLE {name} (' + ", ".join(
+                f'"{c}" {kind.get(spec.get(c, ("",))[0], "TEXT")}' for c in cols) + ")")
             ins(name, len(cols), rows)
         counts[name] = len(rows)
-
-    cols, rows = None, []
-    for r in _csv(out / "proceedings.csv"):
-        cols = cols or [c for c in r if c not in PROCEEDINGS_DROP]
-        rows.append(tuple(r[c] for c in cols))
-    if cols:
-        con.execute(f'CREATE TABLE proceedings ({", ".join(chr(34) + c + chr(34) + " TEXT" for c in cols)})')
-        ins("proceedings", len(cols), rows)
-    counts["proceedings"] = len(rows)
 
     prow, nrow = [], []
     for p in people:
