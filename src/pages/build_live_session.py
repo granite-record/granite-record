@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.4
+# GRANITE_VERSION: 2026-10-30.5
 """
 The session days' side of the live layer (design sections 4.2 to 4.4),
 written by the night after the session-day pages:
@@ -233,8 +233,9 @@ def day_files(site, seen=None, skip=()):
     return out
 
 
-def write_day_files(site, docs, shape=None):
-    """Writes each document after checking it; removes a date's file whose page is gone."""
+def write_day_files(site, docs, shape=None, skip=()):
+    """Writes each document after checking it; removes a date's file whose page
+    is gone, or is a morning page in `skip` ({(body, date)}), which has none."""
     site, shape = Path(site), shape or schema()
     for (body, date), doc in docs.items():
         try:
@@ -253,7 +254,7 @@ def write_day_files(site, docs, shape=None):
         folder = site / "session" / body
         if not folder.is_dir():
             continue
-        pages = page_dates(site, body)
+        pages = page_dates(site, body) - {d for (bb, d) in skip if bb == body}
         for f in sorted(folder.glob("*.json")):
             if DATE_PAGE.fullmatch(f.stem) and f.stem not in pages:
                 f.unlink()
@@ -262,7 +263,11 @@ def write_day_files(site, docs, shape=None):
 
 
 # ---- the morning page: the dated address from the morning of a sitting ----------
-MORNING = 'data-morning="1"'
+# The marker sits in the page's head, so telling a morning page from the
+# record's reads the first HEAD_BYTES of a page, not all of it: the step looks
+# at every dated page each night.
+MORNING = '<meta name="gr-morning" content="1">'
+HEAD_BYTES = 65536
 TOP_LINE = ("Votes as they are read. Who spoke and the debate come with the {journal}, "
             "which can take months.")
 JOURNAL = {"H": "House Journal", "S": "Senate Journal"}
@@ -271,7 +276,8 @@ JOURNAL = {"H": "House Journal", "S": "Senate Journal"}
 def is_morning(path):
     """Whether a dated page is a morning page (this step's), not the record's."""
     try:
-        return MORNING in Path(path).read_text(encoding="utf-8")
+        with open(path, "rb") as f:
+            return MORNING.encode() in f.read(HEAD_BYTES)
     except OSError:
         return False
 
@@ -320,12 +326,13 @@ def morning_cards(site, body, today, bills):
                        and row.get("topic_by") == "granite record") else (row.get("topic") or "")
         sponsor = ({"display_full": row.get("sponsor_label"), "slug": row.get("sponsor_slug") or "",
                     "party": row.get("sponsor_party") or ""} if row.get("sponsor_label") else None)
+        # No status chip: it is last night's, and beside the day's votes a
+        # reader would take "Passed One Chamber" for what the day did (the
+        # reader review, 5 November 2026). The rail's stops carry their dates.
         out.append(C.bill_card({
             "id": bill, "href": f"bill/{year}/{bill.lower()}.html" if year else "",
             "n": re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bill), "year": year,
-            "word": C.card_word(chip_w, row.get("passage")) if chip_w else "",
-            "cls": (C.WORDBOOK["chips"]["chip"].get(chip_w)
-                    or C.WORDBOOK["chips"]["kind"].get(row.get("kind") or "", "")),
+            "word": "", "cls": "",
             "title": titles.get((term, bill)) or row.get("title") or "",
             "byline": C.bill_byline(sponsor, row.get("committees") or [], topic, term, codes),
             "notes": C.rail_html(row.get("rail") or [], chip_w == "Died"),
@@ -343,8 +350,13 @@ def morning_body(site, body, today, bills):
     day_words = S.date_words(today, "long")
     cards = morning_cards(site, body, today, bills)
     n = len(bills)
-    line = (f"The {name} is scheduled to sit today"
+    # The day by its name, not "today": a page left up by a late night is
+    # still read the next morning.
+    line = (f"The {name} is scheduled to sit on {S.date_words(today, 'day')}"
             + (f", with {n} bill{'s' if n != 1 else ''} on its calendar." if n else "."))
+    none = ("" if cards else
+            '<p class="calempty" id="lv-none">No bills are listed for this day yet. Each bill '
+            "appears here as its first vote is read.</p>")
     # The record page's head (build_session_pages' record_head call): the same
     # trail, up to the chamber's session days at the day's term, and the top
     # line as its note, where a Senate record page says its journal has no
@@ -356,13 +368,13 @@ def morning_body(site, body, today, bills):
                                        ["Session Day", ""]],
                              "title": S.E(f"The {name}, {day_words}"), "line": S.E(line), "kind": "day"})
             + f'<p class="rnote lv-top">{S.E(TOP_LINE.format(journal=JOURNAL[body]))}</p>'
-            f'<div id="live-day" {MORNING} data-day="{iso}" data-body="{body}">'
-            f'<p id="live-day-status" class="lv-status"></p>'
+            f'<div id="live-day" data-day="{iso}" data-body="{body}">'
+            f'<p id="live-day-status" class="lv-status" aria-live="polite"></p>'
             f'<noscript><p class="lv-status">This page fills in with the {name}\'s votes as they are '
             f'read, which needs its script.</p></noscript></div>'
             f'<div class="w4s"><section class="w4 wday" id="order"><div class="wside">'
             f'<h2 class="w4h">The Day in Order</h2></div>'
-            f'<div class="w4b" id="lv-cards">{"".join(cards)}</div></section>'
+            f'<div class="w4b" id="lv-cards">{none}{"".join(cards)}</div></section>'
             f'<section class="w4" id="nobill" hidden><h2 class="w4h">Votes on No Bill</h2>'
             f'<div class="w4b" id="lv-nobill"></div></section></div>'
             # The term's bills by the year each was introduced, for the link of
@@ -394,9 +406,10 @@ def write_morning(site, base, body, today, rows=None):
                   noscript="", skip_label="Skip to the votes", sr_title="", og_type="website", cite=False)
     html = html.replace('<div id="results"></div>',
                         f'<div id="results">{morning_body(site, body, today, bills)}</div>', 1)
-    assert MORNING in html, f"{path}: the template has no results slot"
-    html = html.replace("</head>", '<meta name="robots" content="noindex">\n'
+    assert 'id="live-day"' in html, f"{path}: the template has no results slot"
+    html = html.replace("</head>", f'{MORNING}\n<meta name="robots" content="noindex">\n'
                                    '<link rel="stylesheet" href="/live.css">\n</head>', 1)
+    assert MORNING.encode() in html.encode()[:HEAD_BYTES], f"{path}: the marker is not in the page's head"
     html = html.replace("</body>", '<script src="/live.js" defer></script>\n</body>', 1)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(S.clean_links(html), encoding="utf-8")
@@ -424,12 +437,17 @@ def write(site, base, today, seen=None, rows=None):
         old = site / "session" / b / "today.html"
         if old.is_file():
             old.unlink()
-        for d in sorted(page_dates(site, b) - {today.isoformat()}):
+        # Earlier days only: a run with an earlier --today leaves a later one.
+        for d in sorted(x for x in page_dates(site, b) if x < today.isoformat()):
             if is_morning(site / "session" / b / f"{d}.html"):
                 (site / "session" / b / f"{d}.html").unlink()
+    if rows is None:                                       # read once for both chambers
+        import proceedings
+        rows = proceedings.load()
     mornings = [p for b in "HS" if (p := write_morning(site, base, b, today, rows))]
-    docs = day_files(site, seen, skip={(p.parent.name, p.stem) for p in mornings})
-    wrote, gone = write_day_files(site, docs)
+    skip = {(p.parent.name, p.stem) for p in mornings}
+    docs = day_files(site, seen, skip=skip)
+    wrote, gone = write_day_files(site, docs, skip=skip)
     (site / "schema").mkdir(exist_ok=True)
     shutil.copyfile(_paths.locate(SCHEMA.as_posix()), site / SCHEMA)
     for f in ("live.js", "live.css"):                      # the same files build_live copies
@@ -445,7 +463,7 @@ def main():
     ap.add_argument("--base", default="https://graniterecord.org")
     ap.add_argument("--today", help="the day to write for, YYYY-MM-DD (default: the build's)")
     a = ap.parse_args()
-    today = datetime.date.fromisoformat(a.today) if a.today else build_date.today()
+    today = datetime.date.fromisoformat(a.today) if a.today else BL.nh_today()
     seen = {}
     wrote, gone, docs = write(a.site, a.base, today, seen)
     n = sum(len(d["rollcalls"]) for d in docs.values())
@@ -462,6 +480,12 @@ def main():
         balloted = sum(1 for d in docs.values() for r in d["rollcalls"] if r["ballots"].strip("."))
         if not balloted:
             raise SystemExit(f"live session: {n:,} roll calls and not one ballot read for them")
+    # Without /live's schedule a floor day with no bills listed yet
+    # (Organization Day) would get no page while /live links to it, and the
+    # step would say "no sitting" and exit 0. /live's step runs first.
+    if not (Path(a.site) / "live" / "schedule.json").is_file():
+        raise SystemExit("live session: no live/schedule.json to say which chamber sits today "
+                         "(build_live.py runs before this step)")
     mornings = seen.get("mornings") or []
     print(f"live session: {wrote} day files ({n:,} roll calls), {SCHEMA.as_posix()}; "
           + (f"morning page(s) {', '.join(mornings)}" if mornings else "no sitting on the calendar today")

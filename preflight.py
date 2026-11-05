@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.734
+# GRANITE_VERSION: 2026-09-04.735
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -34774,11 +34774,14 @@ def _chain():
         # chamber's list, and to its week only where the calendar wrote that
         # week; and the home page hands its script only days that have a page.
         sess = root / "site" / "session"
-        # Dated pages only, and not a morning page (build_live_session): a
-        # sitting still to come is in no list.
+        # Dated pages only, and not a morning page (build_live_session's
+        # is_morning, its marker in the page's head): a sitting still to come
+        # is in no list. NOT YET EXERCISED: the chain has no live step until
+        # workers/live/PATCHES.md 5 is applied, so no morning page reaches it;
+        # _live_session holds the step on its own.
+        import build_live_session as _BLS
         on_disk = {b: sorted(p.stem for p in (sess / b).glob("*.html")
-                             if re.fullmatch(r"\d{4}-\d\d-\d\d", p.stem)
-                             and 'data-morning="1"' not in p.read_text(encoding="utf-8"))
+                             if re.fullmatch(r"\d{4}-\d\d-\d\d", p.stem) and not _BLS.is_morning(p))
                    for b in ("H", "S")}
         assert all(on_disk.values()), f"the chain built no sitting pages for a chamber: {on_disk}"
         listed = json.loads((sess / "days.json").read_text(encoding="utf-8"))
@@ -80282,20 +80285,32 @@ def _live_session(BLS):
             (site / "session/H/2026-03-12.html").read_text(encoding="utf-8") == "<p>x</p>", \
             "a morning page was written over the record's page"
         (site / "session/H/today.html").write_text("old", encoding="utf-8")
+        (site / "session/H/2026-03-13.json").write_text("{}", encoding="utf-8")   # an old file on the date
         seen = {}
         BLS.write(site, "https://x.org", D(2026, 3, 13), seen, rows)
         assert sorted(seen["mornings"]) == ["H/2026-03-13.html", "S/2026-03-13.html"], seen["mornings"]
         assert not (site / "session/H/today.html").exists(), "the retired today page was kept"
         page = (site / "session/H/2026-03-13.html").read_text(encoding="utf-8")
-        assert BLS.MORNING in page and '<meta name="robots" content="noindex">' in page \
-            and '<script src="/live.js" defer>' in page and 'data-day="2026-03-13" data-body="H"' in page
+        head = page.encode()[:BLS.HEAD_BYTES]
+        assert BLS.MORNING.encode() in head and BLS.is_morning(site / "session/H/2026-03-13.html") \
+            and not BLS.is_morning(site / "session/H/2026-03-12.html"), "the marker is not in the head"
+        assert '<meta name="robots" content="noindex">' in page \
+            and '<script src="/live.js" defer>' in page and 'data-day="2026-03-13" data-body="H"' in page \
+            and 'id="live-day-status" class="lv-status" aria-live="polite"' in page
         assert [m for m in re.findall(r'class="lv-rcs" data-bill="(\w+)"', page)] == ["HB2", "HB1376"], \
             "each bill's card has a place for its votes, in the calendar's order"
         assert "Votes as they are read. Who spoke and the debate come with the House Journal, which can " \
-               "take months." in page and "scheduled to sit today, with 2 bills" in page
+               "take months." in page and "scheduled to sit on Friday, March 13, with 2 bills" in page
+        assert "today" not in re.sub(r"<script.*?</script>", "", page.split('id="results"', 1)[1], flags=re.S), \
+            "the page says today, which a page left up a day longer would say of the wrong day"
+        assert "cstat" not in page, "last night's status chip beside the day's votes"
+        assert "lv-none" not in page, "the no-bills line on a day with bills"
         assert '"2025-2026":{"2025":["HB2"],"2026":["HB1376"]}' in page, "the bills' own years"
         assert not (site / "session/H/2026-03-13.json").exists(), \
             "a morning page has a record day file: a sitting still to come would read as one with no roll call"
+        # A run for an earlier day leaves a later day's morning page.
+        BLS.write(site, "https://x.org", D(2026, 3, 11), {}, rows)
+        assert BLS.is_morning(site / "session/H/2026-03-13.html"), "a later day's morning page went"
         # The next day: the morning page of an earlier day goes; a floor day
         # with no bills listed yet (Organization Day) still has its page.
         (site / "live").mkdir(exist_ok=True)
@@ -80307,8 +80322,31 @@ def _live_session(BLS):
             not (site / "session/H/2026-03-13.html").exists() and \
             not (site / "session/S/2026-03-13.html").exists(), "an earlier day's morning page was kept"
         assert (site / "session/H/2026-03-12.html").exists(), "the record's page went with the morning pages"
-        assert "The Senate is scheduled to sit today." in \
-            (site / "session/S/2026-03-17.html").read_text(encoding="utf-8")
+        org = (site / "session/S/2026-03-17.html").read_text(encoding="utf-8")
+        assert "The Senate is scheduled to sit on Tuesday, March 17." in org and 'id="lv-none"' in org, \
+            "a sitting with no bills listed says so"
+        # Without /live's schedule the step stops, by name.
+        (site / "live/schedule.json").unlink()
+        r = _run([sys.executable, str(Path(_paths.locate("build_live_session.py"))), "--site", str(site),
+                  "--today", "2026-03-17"], capture_output=True, text=True, timeout=120)
+        assert r.returncode != 0 and "no live/schedule.json" in (r.stderr + r.stdout), \
+            f"without live/schedule.json the step exited {r.returncode}: {(r.stderr or r.stdout).strip()[-300:]}"
+    # New Hampshire's day, by the rule: a stated day; then the clock on each
+    # side of the changes of 2026 (8 March 07:00 UTC, 1 November 06:00 UTC).
+    import build_live as BL
+    import build_date
+    saved = build_date.utcnow, build_date.stated
+    try:
+        build_date.stated = lambda: None
+        for at, want in (("2026-03-08T06:59:00", "2026-03-08"), ("2026-03-08T04:59:00", "2026-03-07"),
+                         ("2026-03-09T03:59:00", "2026-03-08"), ("2026-03-09T04:00:00", "2026-03-09"),
+                         ("2026-11-01T05:59:00", "2026-11-01"), ("2026-11-02T04:59:00", "2026-11-01"),
+                         ("2026-11-02T05:00:00", "2026-11-02"), ("2026-07-01T03:59:00", "2026-06-30")):
+            build_date.utcnow = lambda at=at: __import__("datetime").datetime.fromisoformat(at + "+00:00")
+            got = BL.nh_today().isoformat()
+            assert got == want, f"at {at} UTC New Hampshire's day is {want}, and nh_today says {got}"
+    finally:
+        build_date.utcnow, build_date.stated = saved
     src = Path(_paths.locate("build_live_session.py")).read_text(encoding="utf-8")
     assert "sitemap" not in src.split('"""', 2)[2], "the morning pages must be in no sitemap"
     return "ok", (f"{len(cases)} shared cases judged alike; three day files on a fixture site, "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.5
+# GRANITE_VERSION: 2026-10-30.6
 """
 Live Now's page and its schedule (the live layer's design, sections 1.2 and
 1.4), written by the night beside the Calendar and from the Calendar's own
@@ -54,6 +54,28 @@ PAGE = "live.html"
 ADDRESS = "/live.html"
 CARD = re.compile(r'<details class="calmeet".*?</details>', re.S)
 HREF = re.compile(r'href="/?(committee/[A-Za-z0-9]+)(?:\.html)?(?:#[^"]*)?"')
+
+
+def nh_today():
+    """New Hampshire's day: the stated one (build_date), or the clock's in
+    US Eastern time, worked out from the rule rather than from zoneinfo,
+    which needs the tzdata package on Windows. The machine's own date is not
+    it: a nightly started after 00:00 UTC (19:00 EST) is a day ahead, and
+    would write the next day's pages (the build review, 5 November 2026).
+    Daylight time runs from 02:00 local on the second Sunday of March (07:00
+    UTC) to 02:00 local on the first Sunday of November (06:00 UTC)."""
+    when = build_date.stated()
+    if when:
+        return when.date()
+    u = build_date.utcnow()
+
+    def sunday(month, nth):
+        d = datetime.date(u.year, month, 1)
+        return d + datetime.timedelta(days=(6 - d.weekday()) % 7, weeks=nth - 1)
+    utc = datetime.timezone.utc
+    start = datetime.datetime.combine(sunday(3, 2), datetime.time(7), utc)
+    end = datetime.datetime.combine(sunday(11, 1), datetime.time(6), utc)
+    return (u + datetime.timedelta(hours=-4 if start <= u < end else -5)).date()
 
 
 def weekdays(today, n):
@@ -228,7 +250,7 @@ def main():
     ap.add_argument("--base", default="https://graniterecord.org")
     ap.add_argument("--today", help="the day to write for, YYYY-MM-DD (default: the build's)")
     a = ap.parse_args()
-    today = datetime.date.fromisoformat(a.today) if a.today else build_date.today()
+    today = datetime.date.fromisoformat(a.today) if a.today else nh_today()
     sched = write(a.site, a.base, today)
     n = sum(len(v) for v in sched["days"].values())
     print(f"live: {PAGE} and {SCHEDULE.as_posix()}, {n} meetings over {len(sched['days'])} days "

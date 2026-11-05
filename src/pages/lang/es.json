@@ -23849,6 +23849,11 @@
    "es": "Este sitio desactivó las votaciones en vivo a las {time}.",
    "state": "draft"
   },
+  "votes.off_calendar": {
+   "en": "Voted on today; not on the day's calendar.",
+   "es": "Votado hoy; no figura en el calendario del día.",
+   "state": "draft"
+  },
   "votes.on_roll_call": {
    "en": "on a roll call",
    "es": "en votación nominal",

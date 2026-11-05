@@ -570,6 +570,7 @@ function dayPage({ body = "H", day = "2027-01-07", agenda = [], bills = {}, hook
     els["lv-cards"] = mk();
     els["lv-cards"].places = agenda.map(b => mk({ "data-bill": b }, "lv-rcs"));
     els["lv-nobill"] = mk();
+    if (!agenda.length) els["lv-none"] = mk();             // the night's "No bills are listed" line
     els["nobill"] = mk();
     els["nobill"].hidden = true;
   }
@@ -645,6 +646,8 @@ test("the morning page fills each card's place, adds a card for a bill off the c
     const added = els["lv-cards"].children;
     assert.equal(added.length, 1, "one card added: HB 40, voted on and not on the calendar");
     assert.match(added[0].innerHTML, /data-id="HB40".*href="\/bill\/2027\/hb40\.html".*HB 40/);
+    assert.match(added[0].innerHTML, /class="lv-offcal">Voted on today; not on the day's calendar\.</,
+                 "an added card says why it is there");
     assert.match(added[0].querySelector(".lv-rcs").innerHTML, /data-rc="2027-H-15".*outcome not yet in the docket/);
     assert.match(els["lv-nobill"].innerHTML, /data-rc="2027-H-16"/);
     assert.equal(els["nobill"].hidden, false);
@@ -664,7 +667,8 @@ test("the morning page polls only on its own day, and a finished day is asked no
   for (const [at, want, file] of [["2027-01-07T16:44:00Z", [30000]], ["2027-01-07T20:00:00Z", [120000]],
                                   ["2027-01-08T10:30:00Z", [120000], "05:30 on the 8th: still the 7th's day"],
                                   ["2027-01-08T11:30:00Z", [], "06:30 on the 8th: asked once, no more"],
-                                  ["2027-01-06T20:00:00Z", [], "the night before: asked once, no more"]]) {
+                                  ["2027-01-07T10:30:00Z", [120000], "05:30 on its own day: asked every 2 minutes, to find the day"],
+                                  ["2027-01-06T20:00:00Z", [120000], "the day before: asked every 2 minutes"]]) {
     timers.length = 0;
     const pg = dayPage();
     const p = c2.GRLive.startDay(pg.doc, { fetch: server(files).fetch, now: () => T(at) });
@@ -699,6 +703,20 @@ test("live.js starts the morning page by itself where the page has #live-day, an
     assert.deepEqual(asked, want, ids ? "the page's own day, asked by itself" : "no #live-day: nothing asked");
     assert.ok(ctx.GRLive);
   }
+});
+
+test("a sitting with no bills listed: the night's line stays until a bill's first vote adds its card", async () => {
+  const pg = dayPage({ bills: { "2027-2028": { 2027: ["HB1"] } } });
+  const files = { "/api/live/votes/2027-01-07": liveFile("2027-01-07", [rcOf({ bill: null, bill_as_recorded: "SUSPRULE" })]) };
+  const p = L.startDay(pg.doc, { fetch: server(files).fetch, now: () => T("2027-01-07T16:44:00Z") });
+  try {
+    await p.first;
+    assert.equal(pg.els["lv-none"].hidden, false, "a vote on no bill adds no card");
+    files["/api/live/votes/2027-01-07"] = liveFile("2027-01-07", [rcOf({ id: "2027-H-2", seq: 2, bill: "2027-2028/HB1" })]);
+    await p.votes.poll();
+    assert.equal(pg.els["lv-cards"].children.length, 1);
+    assert.equal(pg.els["lv-none"].hidden, true, "the first card: the line goes");
+  } finally { p.stop(); }
 });
 
 test("the morning page with no live file: says so, never as a sitting with no votes yet when it could not be fetched", async () => {

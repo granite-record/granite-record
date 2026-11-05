@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.14
+// GRANITE_VERSION: 2026-10-30.15
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -624,8 +624,13 @@ L.startDay = function (doc, opts) {
     var wrap = doc.createElement("div");
     wrap.className = "lv-added";
     wrap.innerHTML = billCard({ id: id, href: L.billHref(r, bills) || "", n: id.replace(/^([A-Z]+)(\d)/, "$1 $2"),
-                                title: "", open: null, line: '<div class="lv-rcs" data-bill="' + C.esc(id) + '"></div>' });
+                                title: "", open: null,
+                                line: '<p class="lv-offcal">' + C.esc(C.tr("votes.off_calendar",
+                                        "Voted on today; not on the day's calendar.")) + "</p>"
+                                      + '<div class="lv-rcs" data-bill="' + C.esc(id) + '"></div>' });
     box.appendChild(wrap);
+    var none = doc.getElementById("lv-none");
+    if (none) none.hidden = true;
     places[id] = wrap.querySelector(".lv-rcs");
     return places[id];
   }
@@ -642,7 +647,13 @@ L.startDay = function (doc, opts) {
   }
   var votes = L.poller({ fetch: fetchImpl, doc: doc,
     url: function () { return "/api/live/votes/" + day; },
-    every: function (f) { return L.readerDay(now()) === day ? L.votesEvery(f, now()) : 0; },
+    // On the day, at the day's pace; before it (a page the night wrote at
+    // 04:17, opened before 06:00) every two minutes, so a tab left open finds
+    // the day's votes (the reader review, 5 November 2026); after it, never.
+    every: function (f) {
+      var r = L.readerDay(now());
+      return r === day ? L.votesEvery(f, now()) : r < day ? L.VOTES_SLOW_MS : 0;
+    },
     onFile: function (f, code) { draw(f, code); } });
   return { votes: votes, first: votes.first, stop: function () { votes.stop(); } };
 };
