@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.765
+# GRANITE_VERSION: 2026-09-04.767
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -23883,6 +23883,89 @@ def _check_live_reads_what_it_checks():
                   "look at again")
 
 
+@check("build", "check_live asks for _redirects' last rule and its first plain rewrite as real "
+                "addresses, and a deploy that does not serve them has not landed")
+def _check_live_reads_the_last_rule():
+    """THE LAST RULE IS THE FIRST ONE LOST (check_live.rule_probes, 5
+    November 2026). The dry run of 4613f04 served a _redirects Cloudflare had
+    stopped reading after its 102nd rule, and check_live, asking only
+    /legislators, said nothing of the tab addresses gone. It now asks for the
+    file's last rule, made an address with a page of the build, and for its
+    first rewrite with no placeholder."""
+    import contextlib
+    import io
+    import check_live as CL_
+    root = Path(tempfile.mkdtemp(prefix="gr-live-rules-"))
+    try:
+        assert CL_.rule_probes(root) == [], "a site with no _redirects was given addresses to ask"
+        for d in ("bill/2026", "legislator", "committee"):
+            (root / d).mkdir(parents=True)
+        (root / "bill/2026/hb1442.html").write_text("x", encoding="utf-8")
+        (root / "legislator/ann-ames-hills-1.html").write_text("x", encoding="utf-8")
+        (root / "committee/ss57.html").write_text("x", encoding="utf-8")
+        (root / "committee/H43.html").write_text("x", encoding="utf-8")
+        rules = ["# head", "/legislators /officials 301", "/session/house/videos /session/house 200",
+                 "/bill/:year/:bill/votes /bill/:year/:bill 200",
+                 "/legislator/:who/votes /legislator/:who 200",
+                 "/committee/:code/videos /committee/:code 200"]
+        for last, want in ((rules, "/committee/H43/videos"),
+                           (rules[:-1], "/legislator/ann-ames-hills-1/votes"),
+                           (rules[:-2], "/bill/2026/hb1442/votes")):
+            (root / "_redirects").write_text("\n".join(last) + "\n", encoding="utf-8")
+            got = CL_.rule_probes(root)
+            assert got == [want, "/session/house/videos"], f"the probes for {last[-1]!r} are {got}"
+        (root / "_redirects").write_text("\n".join(rules) + "\n", encoding="utf-8")
+        page = b"<!doctype html><html><!-- GRANITE_VERSION: 2026-09-05.1 -->bills</html>"
+        (root / "bills.html").write_bytes(page)
+        (root / "meta.json").write_text(json.dumps({"terms": ["2025-2026"]}), encoding="utf-8")
+        served = {
+            "/": (200, "text/html", b"<!doctype html><html>home</html>"),
+            "/bills": (200, "text/html", page),
+            "/app.css": (200, "text/css", b"body{}"),
+            "/meta.json": (200, "application/json", json.dumps({"terms": ["2025-2026"]}).encode()),
+            "/idx/2025-2026.json": (200, "application/json", b'[{"id":"HB1"}]'),
+            "/legislators": (200, "text/html", b"<!doctype html><html>members</html>"),
+            "/committee/H43/videos": (200, "text/html", b"<!doctype html><html>H43</html>"),
+            "/session/house/videos": (200, "text/html", b"<!doctype html><html>house</html>"),
+            "/feed/all.xml": (200, "application/rss+xml", b'<?xml version="1.0"?><rss/>'),
+            "/sitemap.xml": (200, "application/xml",
+                             b'<?xml version="1.0"?><urlset><url><loc>http://site.invalid/</loc>'
+                             b'</url></urlset>'),
+            "/robots.txt": (200, "text/plain",
+                            b"User-agent: *\nSitemap: http://site.invalid/sitemap.xml\n"),
+        }
+        asked = []
+
+        def fake_get(url, limit=400_000):
+            path = url[len("http://site.invalid"):]
+            asked.append(path)
+            st, ct, body = served.get(path, (404, "text/html", b"not found"))
+            return st, ct, body[:limit], None
+
+        def gate():
+            saved = (CL_.get, sys.argv)
+            CL_.get = fake_get
+            sys.argv = ["check_live.py", "--gate", "--base", "http://site.invalid", "--site", str(root)]
+            try:
+                with contextlib.redirect_stdout(io.StringIO()) as out:
+                    code = CL_.main()
+            finally:
+                CL_.get, sys.argv = saved
+            return code, out.getvalue()
+        code, out = gate()
+        assert code == 0 and "/committee/H43/videos" in asked and "/session/house/videos" in asked, (
+            f"a deploy serving the whole file did not pass, or the probes were not asked: {asked}\n"
+            f"{out[-400:]}")
+        del served["/committee/H43/videos"]
+        code, out = gate()
+        assert code != 0 and "/committee/H43/videos returned HTTP 404" in out and \
+            "THE DEPLOY DID NOT LAND" in out, f"a deploy that lost the last rule passed:\n{out[-400:]}"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("the last rule asked as a bill's, a member's or a committee's real address, and "
+                  "the first plain rewrite; a deploy that does not serve the last rule has not landed")
+
+
 @check("build", "the bill index is read one way: no site, a broken one and a whole one kept apart")
 def _bill_index_three_answers():
     """site_read.bill_index is the build's one reader of every bill's row,
@@ -28230,22 +28313,107 @@ def _former_movers_one_page(build_site_v2, build_pages):
              "moved_from": ["/legislator/shannon-chandley-hills-22"]},
             {"id": "27", "slug": "someone-sd-1"}]), encoding="utf-8")
         lines = BP.moved_members(root)
-        assert lines == ("/legislator/shannon-chandley-hills-22 /legislator/shannon-chandley-sd-11 301\n"
-                         "/legislator/shannon-chandley-hills-22.html "
-                         "/legislator/shannon-chandley-sd-11 301\n"
-                         "/legislator/shannon-chandley-hills-22/* "
-                         "/legislator/shannon-chandley-sd-11/:splat 301\n"), lines
+        old, new = "/legislator/shannon-chandley-hills-22", "/legislator/shannon-chandley-sd-11"
+        assert lines == "".join(sorted([f"{old} {new} 301\n", f"{old}.html {new} 301\n",
+                                        f"{old}/ {new} 301\n"]
+                                       + [f"{old}/{s} {new}/{s} 301\n" for s in BP.MEMBER_TAB_SLUGS])), \
+            lines
         assert BP.moved_members(root / "nowhere") == "", "no former.json still wrote a rule"
     finally:
         shutil.rmtree(root, ignore_errors=True)
     src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
     assert "former_movers(register, e2p or {}" in src, "build_site_v2 no longer joins the movers who left"
     src = _paths.locate("build_pages.py").read_text(encoding="utf-8")
-    assert 'head + "\\n" + moved_members(out) + rest' in src, (
+    assert "want = redirects_file(out)" in src, (
         "build_pages no longer writes their 301s ahead of the tab rules, where the first match is served")
     return "ok", ("a mover who left is joined to the later page, by the day of the last vote, with "
                   "every chamber's years; a sitting one and a one-number one are not; their 301s "
                   "ahead of the tab rules, tabs included")
+
+
+# Cloudflare Pages' rules for a _redirects file, from its documentation
+# (developers.cloudflare.com/pages/configuration/redirects/, read 5 November
+# 2026): "limited to 2,000 static redirects and 100 dynamic redirects", "a
+# 1,000-character limit" a declaration, and "Static redirects should appear
+# before dynamic redirects".
+CF_STATIC_MOST, CF_DYNAMIC_MOST, CF_LINE_MOST = 2000, 100, 1000
+
+
+def _cf_rules(text):
+    """[(parts, dynamic, length)] of a _redirects text's rules: a rule is
+    dynamic where its source or destination holds a splat (*) or a
+    placeholder (:name), which is how Cloudflare's own examples tell them."""
+    out = []
+    for ln in text.splitlines():
+        s = ln.strip()
+        if not s or s.startswith("#"):
+            continue
+        parts = s.split()
+        dyn = any("*" in p or re.search(r"(?:^|/):[A-Za-z]", p) for p in parts[:2])
+        out.append((parts, dyn, len(ln)))
+    return out
+
+
+@check("build", "the _redirects file is as Cloudflare Pages keeps it: every static rule before "
+                "the first dynamic one, at most 2,000 static and 100 dynamic, none over 1,000 "
+                "characters, no source twice -- the fixture's, and one written for forty moved "
+                "members", needs=("build_pages",))
+def _redirects_cloudflare(BP):
+    """THE RULES CLOUDFLARE KEEPS (5 November 2026). The dry run of 4613f04,
+    with the owner's thirty confirmed pairs, wrote 34 moved members' rules
+    first -- three a member, one of them a dynamic old/* -- and Cloudflare
+    served none of the 52 rules after them: every tab address, /legislators,
+    /learn, the cities, all 404, where the same file with 4 members had
+    worked. build_pages now writes every member's rules static, a tab by
+    name, and every static rule before the dynamic tab rewrites. This holds
+    the writer to that for more members than the record has, and the
+    fixture's built file to the writer."""
+    def judge(text, what):
+        rules = _cf_rules(text)
+        bad = [p for p, _d, _w in rules if len(p) not in (2, 3)]
+        assert not bad, f"{what}: a rule that is not 'source destination [code]': {bad[:2]}"
+        first = next((i for i, r in enumerate(rules) if r[1]), len(rules))
+        late = [p[0] for p, d, _w in rules[first:] if not d]
+        assert not late, f"{what}: static rules after the first dynamic one: {late[:3]}"
+        dyn = sum(1 for _p, d, _w in rules if d)
+        sta = len(rules) - dyn
+        assert sta <= CF_STATIC_MOST and dyn <= CF_DYNAMIC_MOST, (
+            f"{what}: {sta} static and {dyn} dynamic rules, over Cloudflare's "
+            f"{CF_STATIC_MOST:,} and {CF_DYNAMIC_MOST}")
+        long_ = [p[0] for p, _d, w in rules if w > CF_LINE_MOST]
+        assert not long_, f"{what}: a rule over {CF_LINE_MOST} characters: {long_[:2]}"
+        srcs = [p[0] for p, _d, _w in rules]
+        twice = sorted({s for s in srcs if srcs.count(s) > 1})
+        assert not twice, f"{what}: a source twice, of which only the first is served: {twice[:3]}"
+        return sta, dyn
+
+    tabs = len(BP.BILL_TAB_SLUGS) + len(BP.MEMBER_TAB_SLUGS) + len(BP.COMMITTEE_TAB_SLUGS)
+    root = Path(tempfile.mkdtemp(prefix="gr-redirects-"))
+    try:
+        movers = [{"id": str(9000 + i), "slug": f"member-{i}-sd-{i % 24 + 1}",
+                   "moved_from": [f"/legislator/member-{i}-hills-{i}"]} for i in range(40)]
+        (root / "former.json").write_text(json.dumps(movers), encoding="utf-8")
+        text = BP.redirects_file(root)
+        sta, dyn = judge(text, "forty movers")
+        assert dyn == tabs, f"forty movers: {dyn} dynamic rules, not the {tabs} tab rewrites"
+        for m in movers:
+            old, new = m["moved_from"][0], "/legislator/" + m["slug"]
+            for src, dst in [(old, new), (old + ".html", new), (old + "/", new)] + [
+                    (f"{old}/{s}", f"{new}/{s}") for s in BP.MEMBER_TAB_SLUGS]:
+                assert f"\n{src} {dst} 301\n" in text, f"{src} does not 301 to {dst}"
+        first = movers[0]["moved_from"][0]
+        assert text.index(f"\n{first}/votes ") < text.index("\n/legislator/:who/votes "), (
+            "a moved member's /votes comes after the tab rewrite, which would serve it first")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    built = (shared / "site" / "_redirects").read_text(encoding="utf-8")
+    assert built == BP.redirects_file(shared / "site"), (
+        "the fixture's _redirects is not the one redirects_file writes")
+    fs, fd = judge(built, "the fixture's")
+    return "ok", (f"forty movers: {sta} static rules, then the {dyn} tab rewrites; the fixture's "
+                  f"{fs} static and {fd} dynamic, in that order, under Cloudflare's "
+                  f"{CF_STATIC_MOST:,} and {CF_DYNAMIC_MOST}")
 
 
 # ============================================================= code: pipeline ==
@@ -65615,6 +65783,14 @@ def _words_written_once(B):
     if tuple(B.CHIP_WORDS) != tuple(W["chips"]["chip"]):
         bad.append(f"build_site_v2.CHIP_WORDS is {B.CHIP_WORDS}, not chips.json's "
                    f"{tuple(W['chips']['chip'])}")
+    # The session days' closing line (5 November 2026): its tables are
+    # closing.json's own, which the live session page reads too.
+    import build_session_pages as BSP
+    for name, key in (("CLOSING", "sentences"), ("CLOSING_WHO", "who"), ("CLOSING_AFTER", "after"),
+                      ("CLOSING_LEFT", "left"), ("NARRATIVE_KEY", "narrative_key"),
+                      ("VOTE_SAID", "vote_said"), ("NUANCE_OF", "nuance_of")):
+        if getattr(BSP, name) is not W.get("closing", {}).get(key):
+            bad.append(f"build_session_pages.{name} is not closing.json's {key}")
 
     # The browser reads them, and nothing types them again.
     app = Path("src/pages/app.js").read_text(encoding="utf-8")
@@ -69145,6 +69321,64 @@ def _drawn_pages():
     return "ok", (f"{len(drawn)} pages and tabs drawn without an error: {len(records)} records "
                   f"at their own address and each tab's, and {len(DP.LISTS)} pages that draw "
                   "part of themselves")
+
+
+@check("frontend", "a committee page carrying Live Now's hook is drawn to its end on a Saturday "
+                   "and on a Sunday, when the hook asks nothing, as on a weekday")
+def _drawn_on_a_weekend():
+    """THE WEEKEND (5 November 2026). live.js's hook on a committee page
+    looks at the clock once a minute until it learns there is no stream to
+    show. On a weekday, inside its hours, it asks /api/live/streams, meets the
+    fixture's 404 and stops; on a weekend it asks nothing and keeps looking,
+    which in a browser costs one look a minute. The stub runs every timer at
+    once, so in drawn_pages that look re-armed itself without end: every
+    committee page drawn on a Saturday or a Sunday hung until the drawing's
+    half-hour limit, and _drawn_pages, run by the clock, would have failed
+    every weekend night once the hook was on main. drawn_pages now lets no
+    timer ten seconds or more away fire (LATER_MS). This draws the fixture's
+    hooked committee pages on the Saturday and the Sunday after the build
+    day, with a three-minute limit, so the hang is found on any day of the
+    week, and fast."""
+    import contextlib
+    import datetime
+    import io
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), (
+            "node is not on PATH on the nightly, which installs it")
+        return "skip", "node is not on PATH"
+    import drawn_pages as DP
+    shared, _base, _ran, days = _fixture_site_shared()
+    site = shared / "site"
+    # The hook's section and the script that runs it, /live.js, drawn against
+    # tests/dom_stub.js: naming both here is also what makes check_select
+    # choose this check when either file changes.
+    def is_hooked(p):
+        html = p.read_text(encoding="utf-8")
+        return 'id="live-now"' in html and '<script src="/live.js"' in html
+    hooked = sorted(p.relative_to(site).as_posix() for p in (site / "committee").glob("*.html")
+                    if not p.stem.startswith("ss") and is_hooked(p))
+    assert hooked, ("no fixture committee page carries Live Now's hook (live_hook.place) with "
+                    "/live.js, so this would draw nothing that waits on the clock")
+    sat = days[-1] + datetime.timedelta(days=(5 - days[-1].weekday()) % 7)
+    tabs = len(DP.tab_slugs(site)["committee"])
+    root = Path(tempfile.mkdtemp(prefix="gr-weekend-"))
+    said = []
+    try:
+        for day in (sat, sat + datetime.timedelta(days=1)):
+            with contextlib.redirect_stdout(io.StringIO()):
+                drawn = DP.draw(site, root / day.isoformat(), day, only=hooked, timeout=180)
+            assert len(drawn) == len(hooked) * (1 + tabs), (
+                f"{day:%A %d %B}: {len(drawn)} committee pages and tabs drawn, not "
+                f"{len(hooked) * (1 + tabs)}")
+            errs = [f"{k}: {d['errors'][0]}" for k, d in drawn.items() if d["errors"]]
+            assert not errs, (f"drawn on {day:%A %d %B %Y} against tests/dom_stub.js, "
+                              f"{len(errs)} met an error: " + "; ".join(errs[:3]))
+            said.append(f"{day:%a %d %b}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", (f"{len(hooked)} committee page(s) with the hook, and each tab, drawn to the end "
+                  f"on {' and '.join(said)}")
 
 
 # The harness of _no_index_off_the_list: app.js loaded as one kind of page,
@@ -96961,8 +97195,12 @@ def _fetch_day_db(FD, DF, P, NI):
         P.HELD.unlink()
         os.environ.pop("GITHUB_ACTIONS")
 
-        # Another fetch holds the lock: it does not start.
-        Path("archive/.lock").write_text("1", encoding="utf-8")
+        # Another fetch holds the lock: it does not start. Its pid is any but
+        # this process's parent's, which refusal.hold takes for the lane that
+        # started the fetch and lets through. It was "1", and a suite started
+        # in the background from a shell that had since exited can have pid 1
+        # for its parent: the fetch went on, and this failed only in such runs.
+        Path("archive/.lock").write_text(str(os.getppid() + 1), encoding="utf-8")
         code, said = go("--fetch-only")
         assert code == 3 and "archive/.lock is held" in said, (code, said[-300:])
         Path("archive/.lock").unlink()

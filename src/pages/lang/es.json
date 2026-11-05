@@ -24084,9 +24084,19 @@
    "es": "Votaciones leídas por última vez a las {time}; desde entonces no se ha podido acceder a la base de datos de la Legislatura.",
    "state": "draft"
   },
+  "votes.day_house": {
+   "en": "The House on {day}",
+   "es": "La Cámara el {day}",
+   "state": "draft"
+  },
   "votes.day_over": {
    "en": "Reading stopped for the day at {time}.",
    "es": "La lectura se detuvo por hoy a las {time}.",
+   "state": "draft"
+  },
+  "votes.day_senate": {
+   "en": "The Senate on {day}",
+   "es": "El Senado el {day}",
    "state": "draft"
   },
   "votes.encrypt": {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.57
+# GRANITE_VERSION: 2026-09-19.58
 """
 A page for every day the House sat.
 
@@ -1763,114 +1763,30 @@ def clerk_adds(it, bill, k, head, amds=()):
 # the English beside each key ("session.close.voted", ...), as every other
 # translated sentence is said; nothing is pieced together from another
 # sentence's words.
-CLOSING = {
-    "voted": "The {chamber} voted to {verb}{how}.",
-    "rejected": "The {chamber} rejected a motion to {verb}{how}.",
-    "voted_third": "The {chamber} voted to {verb}{how} and ordered it to a third reading.",
-    "rejected_third": "The {chamber} rejected a motion to {verb}{how} and ordered it to a third "
-                      "reading.",
-    "rejected_short": "The {chamber} rejected a motion to {verb}{how}, short of the {needed} "
-                      "majority it needed.",
-    "open": "The {chamber} took up a motion to {verb}{how}; the record does not say "
-            "whether it carried.",
-    "pending": "The {chamber} adopted the motion that it ought to pass{amended}{how}{left}.",
-    "amd_adopted": "{who}{num}{by} was adopted{how}, changing the text of the bill.",
-    "amd_rejected": "{who}{num}{by} was rejected{how}.",
-    "amd_open": "{who}{num}{by} was taken up{how}; the record does not say how the vote went.",
-    "enrolled": "An enrolled bill amendment{num} was adopted{how}, to correct technical "
-                "errors found after passage.",
-    "overridden": "The {chamber} voted{tally} to override the governor's veto{how}, "
-                  "meeting the two thirds threshold.",
-    "sustained": "The {chamber} voted{tally} on overriding the governor's veto{how}, and the "
-                 "veto was sustained, failing to meet the two thirds threshold.",
-    "override_open": "The {chamber} voted{tally} on overriding the governor's veto{how}; the "
-                     "record does not say the outcome.",
-    "quoted_adopted": "The {chamber} adopted “{words}”{how}.",
-    "quoted_rejected": "The {chamber} rejected “{words}”{how}.",
-    "quoted_open": "The {chamber} took up “{words}”{how}; the record does not say how the "
-                   "vote went.",
-    "unnamed_adopted": "The {chamber} voted on a question the record does not name{how}, and "
-                       "the motion carried.",
-    "unnamed_rejected": "The {chamber} voted on a question the record does not name{how}, and "
-                        "the motion failed.",
-    "unnamed_open": "The {chamber} voted on a question the record does not name{how}.",
-    # What it means for the bill.
-    "to_other": "That sends it to the {other}.",
-    "back": "It goes back to the {origin}, which can accept or reject the {chamber}'s "
-            "changes.",
-    "agreed": "Both chambers have passed it in the same form, so it goes to {after}.",
-    "agreed_only": "Both chambers have passed it in the same form.",
-    "second": "It goes to the {chamber} {committee} committee, and the {chamber} votes on it "
-              "again once that committee reports.",
-    "second_other": "It goes to a second {chamber} committee, and the {chamber} votes on it "
-                    "again once that committee reports.",
-    "conference_asked": "If the {other} agrees, a committee of conference from both chambers "
-                        "will try to settle the differences.",
-    "conference_on": "A committee of conference from both chambers will try to settle the "
-                     "differences.",
-    "conference_report": "Once both chambers adopt the report, it goes to {after}.",
-    "back_before": "It is back before the {chamber}.",
-    "stays_tabled": "It stays on the table.",
-    "override_too": "The {other} must also override the veto for the bill to become law.",
-    "no_law": "The bill did not become law.",
-}
+# The tables are src/pages/words/closing.json's (5 November 2026), which the
+# browser reads too, so the live session page says a day's votes in these
+# same words: sentences, who, after, left, narrative_key, vote_said and
+# nuance_of.
+CLOSING = C.WORDBOOK["closing"]["sentences"]
 # The places' words that are themselves a choice of words. An amendment no
 # report of the chamber names is one offered on the floor, as the history
 # calls it (narrative.whose_amendment: "any other is one offered on the
 # floor"), whatever the row's own word.
-CLOSING_WHO = {"committee_amendment": "The committee's amendment",
-               "floor_amendment": "A floor amendment", "amendment": "A floor amendment"}
-CLOSING_AFTER = {"G": "the Governor", "V": "the voters"}
-CLOSING_LEFT = {"third": ", but its third reading was left pending",
-                "finance": ", but its referral to the Finance committee was left pending"}
+CLOSING_WHO = C.WORDBOOK["closing"]["who"]
+CLOSING_AFTER = C.WORDBOOK["closing"]["after"]
+CLOSING_LEFT = C.WORDBOOK["closing"]["left"]
 
 # The history's own verb for a motion, by the card's reading of it: the row
 # of narrative.RECOMMENDATION that names the same motion. A key that is not
 # here has no words in the history but a quotation, and is said by VOTE_SAID.
-NARRATIVE_KEY = {
-    "otp": "ought to pass", "otp_finance": "ought to pass",
-    "otpa": "ought to pass with amendment", "otpa_finance": "ought to pass with amendment",
-    "itl": "inexpedient to legislate", "ought_not_to_pass": "ought not to pass",
-    "is": "interim study", "rerefer": "rerefer to committee",
-    "recommit": "rerefer to committee", "table": "lay on table",
-    "postpone": "indefinitely postpone", "adopt": "adopt", "concur": "concur",
-    "nonconcur": "nonconcur"}
+NARRATIVE_KEY = C.WORDBOOK["closing"]["narrative_key"]
 # A motion the history has no words for, said in the plain words of its
 # head's gloss (votes.json), as the history says a motion: "voted to ...",
 # "rejected a motion to ...". {committee} is the committee the motion names.
-VOTE_SAID = {
-    "untable": "take it off the table",
-    "reconsider": "reconsider an earlier vote",
-    "table_amendment": "lay the amendment on the table",
-    "table_motion": "lay the motion on the table",
-    "nonconcur_conference": "reject the other chamber's changes and ask for a committee of "
-                            "conference",
-    "request_conference": "ask for a committee of conference",
-    "accede": "agree to a committee of conference",
-    "refuse_accede": "refuse a committee of conference",
-    "conference_report": "adopt the committee of conference's report",
-    "special_order": "take it up at a set time",
-    "suspend_rules": "suspend its rules",
-    "previous_question": "end debate and vote",
-    "limit_debate": "limit debate",
-    "divide": "divide the question and vote on its parts separately",
-    "order_third_reading": "order it to a third reading",
-    "third_reading": "pass it at its third reading",
-    "final_passage": "give it final passage",
-    "introduce": "introduce it",
-    "introduce_adopt": "introduce and adopt it",
-    "withdraw": "withdraw it",
-    "vacate_referral": "move it to another committee",
-    "vacate_referral_to": "send it to the {committee} committee",
-    "refer": "send it to the {committee} committee",
-    "uphold_ruling": "uphold the ruling of the chair",
-    "member_continue": "let the member keep speaking",
-    "print_debate": "print the debate in the permanent journal",
-    "reprimand": "reprimand the member",
-}
+VOTE_SAID = C.WORDBOOK["closing"]["vote_said"]
 OTHER = {"H": "S", "S": "H"}
 # What the history's two notes say (narrative.NUANCE), by the motion.
-NUANCE_OF = {"table": "lay on table", "is": "interim study"}
+NUANCE_OF = C.WORDBOOK["closing"]["nuance_of"]
 # The motions that pass a bill in a chamber; the card's chip says "Bill
 # Passed" for each.
 PASSES = frozenset({"otp", "otpa", "third_reading", "final_passage", "order_third_reading"})
