@@ -2395,7 +2395,9 @@ def guide_page(tmpl, g, base, record, draft_why=""):
     seo = g["title"] if "New Hampshire" in g["title"] else f'{g["title"]} in New Hampshire'
     p = S.page(tmpl, path=path, base=base, title=S.title_of(seo),
                og_title=seo, description=g["blurb"], og_image="og-learn.png", og_alt=OG_ALT,
-               jsonld=None if draft_why else LD.howto(g, base, S.canon(path), when or ""),
+               # dateModified is the newest read, the day the line under the
+               # heading gives (the manager session, 5 November 2026).
+               jsonld=None if draft_why else LD.howto(g, base, S.canon(path), last or ""),
                globals={"GR_STATIC": True}, noscript="", skip_label="Skip to the guide", sr_title="",
                nav_current="resources.html", cite=False)
     items = otp_items(secs, S.canon(path), step_parts(g))
@@ -3235,15 +3237,17 @@ def main():
     added, dropped = S.sitemap_merge(site, a.base, urls, owns="/" + LEARN_DIR)
     if added or dropped:
         print(f"  sitemap.xml: {added} added, {dropped} dropped")
-    # A guide's sitemap date is the day it was last checked against its
-    # sources: the day what it says last changed.
+    # A guide's sitemap date is the day its sources were last read, the
+    # newest claim's (G.sources_checked): the day what it says last changed,
+    # and the day its page says and its HowTo data gives (the manager
+    # session, 5 November 2026).
     added, dropped = S.sitemap_merge(
         site, a.base, gurls, owns="/" + GUIDE_DIR,
         # never later than the build's own day, as a bill's is not
         # (build_bill_pages.lastmod)
         lastmod={a.base + S.canon("/" + guide_href(g["slug"])):
-                 min(G.checked_on(g), build_date.today().isoformat())
-                 for g in published if G.checked_on(g)})
+                 min(G.sources_checked(g), build_date.today().isoformat())
+                 for g in published if G.sources_checked(g)})
     if added or dropped:
         print(f"  sitemap.xml: {added} guides added, {dropped} dropped")
 
