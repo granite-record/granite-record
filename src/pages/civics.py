@@ -626,54 +626,90 @@ COMMISSIONER_DISTRICTS = {
 }
 
 
-def county_cards():
-    """The ten counties, a card each: how its commissioners are elected and
-    for how long, its other officers' term, its county convention, its
-    commissioner districts, and where its officers are named."""
+def county_cards(lang=I.DEFAULT):
+    """The ten counties in `lang`, a card each: how its commissioners are
+    elected and for how long, its other officers' term, its county
+    convention, its commissioner districts, its website where a source for
+    it is on hand (COUNTY_SITES), and where its officers are named.
+
+    Drawn once a language, as the shorthand table is, and not translated
+    piece by piece: the ten cards say the same dozen things with a county's
+    own numbers in them, so each is one entry of the catalog with {n} in it
+    rather than ten. The counts stay [[figures]] for build_civics.fill. In
+    another language, RSA 662:4's words stay the law's English."""
+    other = lang != I.DEFAULT
     out = []
     for name, (letter, at_large, staggered, since, four, numeral) in COUNTY_RULES.items():
         slug = name.lower()
+        seats, dists_n = f"[[co_seats_{slug}]]", f"[[co_dists_{slug}]]"
         # Where a county departs from what most do, those words are bold, so
         # the ten cards can be told apart at a glance.
-        elected = ("Three, one from each district, and <b>the voters of the whole county</b> vote "
-                   "for each one." if at_large else
-                   "Three, one from each district, each elected by the voters of that district.")
-        terms = (("Staggered" + (f" since the {since} election" if since else "")
-                  + ". Two of the three seats are on the ballot at each state general election, "
-                  "one for four years and one for two, and the four-year term rotates among the "
-                  "districts in sequence.") if staggered else
-                 "<b>Two years. All three seats are on the ballot at every state general "
-                 "election.</b>")
-        officers = (f"<b>Four years</b>, since the {four} election." if four else "Two years.")
-        dists = "".join(f"<li><b>District {i}:</b> {d.replace(chr(39), '&rsquo;')}</li>"
-                        for i, d in enumerate(COMMISSIONER_DISTRICTS[name], 1))
+        elected = (I.say(lang, "learn.counties.elected_county", "Three, one from each district, and <b>the "
+                       "voters of the whole county</b> vote for each one.") if at_large else
+                   I.say(lang, "learn.counties.elected_district", "Three, one from each district, each "
+                       "elected by the voters of that district."))
+        rest = I.say(lang, "learn.counties.staggered_how", "Two of the three seats are on the ballot at each "
+                   "state general election, one for four years and one for two, and the four-year "
+                   "term rotates among the districts in sequence.")
+        terms = ((I.say(lang, "learn.counties.staggered_since", "Staggered since the {year} election.",
+                      year=since) if since else I.say(lang, "learn.counties.staggered", "Staggered."))
+                 + " " + rest if staggered else
+                 I.say(lang, "learn.counties.all_three", "<b>Two years. All three seats are on the ballot at "
+                     "every state general election.</b>"))
+        officers = (I.say(lang, "learn.counties.officers_four", "<b>Four years</b>, since the {year} election.",
+                        year=four) if four else I.say(lang, "learn.counties.officers_two", "Two years."))
+        statute = (lambda d: f'<span lang="en">{d}</span>') if other else (lambda d: d)
+        dists = "".join(
+            f"<li><b>{I.say(lang, 'learn.counties.district', 'District {n}:', n=i)}</b> "
+            f"{statute(d.replace(chr(39), '&rsquo;'))}</li>"
+            for i, d in enumerate(COMMISSIONER_DISTRICTS[name], 1))
         rows = [
-            ("Commissioners", elected),
-            ("Commissioners&rsquo; terms", terms),
-            ("Sheriff and the other four officers", officers),
-            ("County convention", f"The county&rsquo;s [[co_seats_{slug}]] state representatives, "
-                                  f"from [[co_dists_{slug}]] House districts."),
-            ("Commissioner districts",
-             '<details class="l-cdist"><summary>The towns in each</summary>'
-             f'<ol class="l-cdl">{dists}</ol></details>'),
+            (I.say(lang, "learn.counties.h_commissioners", "Commissioners"), elected),
+            (I.say(lang, "learn.counties.h_terms", "Commissioners&rsquo; terms"), terms),
+            (I.say(lang, "learn.counties.h_officers", "Sheriff and the other four officers"), officers),
+            (I.say(lang, "learn.counties.h_convention", "County convention"),
+             I.say(lang, "learn.counties.convention", "The county&rsquo;s {n} state representatives, from {d} "
+                 "House districts.", n=seats, d=dists_n)),
+            (I.say(lang, "learn.counties.h_districts", "Commissioner districts"),
+             '<details class="l-cdist"><summary>'
+             + (I.say(lang, "learn.counties.towns_each_en", "The towns in each, in the law&rsquo;s English")
+                if other else I.say(lang, "learn.counties.towns_each", "The towns in each"))
+             + f'</summary><ol class="l-cdl">{dists}</ol></details>'),
         ]
+        site = COUNTY_SITES.get(name)
+        if site:
+            rows.append((I.say(lang, "learn.counties.h_website", "Website"),
+                         f'<a href="{site[0]}">{re.sub(r"^https?://(www[.])?", "", site[0]).rstrip("/")}'
+                         "</a>"))
         dl = "".join(f"<div><dt>{f}</dt><dd>{t}</dd></div>" for f, t in rows)
         # The card's law, once, at its foot: which subparagraph of 653:1, VI
         # is this county's, and which paragraph of 662:4.
-        law = ('<p class="l-claw">The law: '
-               + ", ".join(f'<a href="{h}">{c}</a>' for c, h in (
-                   (f"RSA 653:1, V and VI({letter})", "laws/653#s1"),
-                   (f"662:4, {numeral}", "laws/662#s4"), ("662:5", "laws/662#s5")))
-               + "</p>")
-        out.append(f'<section class="l-body" id="county-{slug}"><h3>{name} County</h3>'
-                   f'<p class="l-lbl">[[co_seats_{slug}]] state representatives</p><dl>{dl}</dl>'
-                   + law +
-                   # The County Officials tab: an address naming one county's
-                   # heading in it (#of-county-<name>) does not open the tab.
-                   '<p class="l-cwho"><a href="officials.html#counties">Who holds these offices '
-                   "now</a></p></section>")
-    return wide('<div class="l-who l-counties" style="--n:2" role="group" '
-                'aria-label="The ten counties">' + "".join(out) + "</div>")
+        law = ('<p class="l-claw">' + I.say(lang, "learn.counties.law", "The law: {cites}", cites=", ".join(
+            f'<a href="{h}">{c}</a>' for c, h in (
+                ("RSA 653:1, V", "laws/653#s1"), (f"653:1, VI({letter})", "laws/653#s1"),
+                (f"662:4, {numeral}", "laws/662#s4"), ("662:5", "laws/662#s5")))) + "</p>")
+        out.append(f'<section class="l-body" id="county-{slug}"><h3>'
+                   + I.say(lang, "off.county_name", "{name} County", name=name) + "</h3>"
+                   + '<p class="l-lbl">' + I.say(lang, "learn.counties.seats", "{n} state representatives",
+                                               n=seats) + f"</p><dl>{dl}</dl>" + law
+                   # Each county's own section of the County Officials tab.
+                   + f'<p class="l-cwho"><a href="officials.html#of-county-{slug}">'
+                   + I.say(lang, "learn.counties.who_holds", "Who holds these offices now")
+                   + "</a></p></section>")
+    return wide('<div class="l-who l-counties" style="--n:2" role="group" aria-label="'
+                + I.say(lang, "learn.counties.label", "The ten counties") + '">' + "".join(out) + "</div>")
+
+
+# EACH COUNTY'S OWN WEBSITE, where a source for the address is on hand:
+# county: (address, the page that gives it, the day it was read). Empty until
+# the owner's printouts arrive (the manager session, 5 November 2026: the
+# state-sources session collects the ten); a county with none draws no
+# Website row, never one from memory.
+COUNTY_SITES = {}
+
+# Where the cards stand in the page, for build_civics to draw them in
+# another language (guides.topic_body).
+COUNTY_SLOT = "<!-- counties -->"
 
 # THE COUNTY BUDGET, STEP BY STEP: the page's five paragraphs as a numbered
 # line, each with the time limit it states as an amber tag.
@@ -2245,6 +2281,17 @@ notice to the members, towns and cities, a public hearing within 30 days of
 that notice, and its own vote of the convention (RSA 24:14-a). A narrower
 emergency route runs through the executive committee, again after a public
 hearing (RSA 24:15).</p>
+</details>
+<details><summary>Who fills a commissioner&rsquo;s seat that falls vacant?</summary>
+<p>The county convention (RSA 661:9, II). Which of its members vote depends on
+how the county elects its commissioners. Where only a district&rsquo;s voters
+elect its commissioner, only the convention members who represent the towns
+and city wards in that district vote, unless that leaves fewer than 3 of them,
+when every member votes. Where the whole county votes for each commissioner,
+as in Carroll and Sullivan, every member votes, by a majority of the ballots
+cast, and the seat is filled until the next biennial election of county
+officers. These rules apply to a vacancy that occurs no later than 30 days
+before the ballots for the primary are printed.</p>
 </details>
 <details><summary>Who sets the county officers&rsquo; pay?</summary>
 <p>The convention also sets what the elected county officers are paid. It

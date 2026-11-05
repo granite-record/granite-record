@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.67
+# GRANITE_VERSION: 2026-10-11.68
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -10665,8 +10665,11 @@ def learn_topic(slug):
 
 def topic_body(t):
     """A page of civics.py's as it is translated: its shorthand table, which
-    is drawn from the glossary in the page's language, left as a slot."""
-    return t["body"].replace(civics.SHORTHAND_TABLE, SHORTHAND_SLOT)
+    is drawn from the glossary in the page's language, and County
+    Government's ten county cards, drawn in each language from a dozen
+    entries of the catalog (civics.county_cards), each left as a slot."""
+    return (t["body"].replace(civics.SHORTHAND_TABLE, SHORTHAND_SLOT)
+            .replace(civics.county_cards(), civics.COUNTY_SLOT))
 
 
 def wording(slug):
