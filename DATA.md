@@ -64,6 +64,23 @@ term, so the counts are read from the file rather than from a document.
 /index.json, which held every bill of every term in one file, was retired on
 5 October 2026; the files under /idx/ are the same rows, a term at a time.
 
+THE DATA API
+
+Every download under /data/ -- the spreadsheets (bills.csv and the others
+/data/manifest.json lists), the database (granite-record.sqlite.xz), the bill
+files (bills-<term>.jsonl.gz), and people.json and people.csv -- carries the
+same record, and the same line between what is the State's and what is this
+project's. The record is the State of New Hampshire's, and so are
+the numbers it gives people and bills. What this project adds to it -- the
+keys it makes (a bill's term and number together), the joins it makes (which
+of the General Court's numbers are one person, which of them is that
+person's number in these files, which report belongs to which bill) and the
+corrections made here by hand -- is dedicated to the public domain under
+CC0 1.0
+(https://creativecommons.org/publicdomain/zero/1.0/): anyone may use it for
+anything, without asking. The plain-English histories (narrative and stages
+in a bill's record) stay under the terms above.
+
 One file is published for a few weeks every two years and is gone the rest
 of the time. /members_elect.json is who a general election sent to the New
 Hampshire House and Senate, for the weeks between the election and

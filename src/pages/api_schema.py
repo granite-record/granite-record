@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.3
+# GRANITE_VERSION: 2026-10-30.4
 """
 What every file of the data API holds, field by field: /data/schema.json.
 
@@ -24,8 +24,8 @@ tonight's files break. A bill record's field, or a field inside its
 stations, that is not described is listed as undocumented and does not stop
 the build, because the records are the pages' and the pages change.
 
-The data page's proceedings.csv is not an API file (NOT_API): it carries
-YouTube's own metadata, which no API file may (Q18).
+No file carries YouTube's own metadata (Q18): a recording is its id, and
+the moment in it is this site's.
 """
 
 FORMAT = 1
@@ -90,10 +90,8 @@ CSV = {
         "threshold_rule": ("string", "The rule that set that threshold.", S),
         "outcome_source": ("string", "Where passed comes from: docket, docket, implied, journal, count or rule.", S),
     },
-    # The data page's proceedings.csv is not an API file: it carries two
-    # columns of YouTube's own metadata (video_title, scheduled_seconds) that
-    # no API file may (DESIGN.md, Q18). The API's proceedings are the
-    # database's table, which leaves them out; these are its columns.
+    # No YouTube metadata (a recording's title, the stream's scheduled
+    # offset): no download carries it (the owner, 5 November 2026; Q18).
     "proceedings.csv": {
         "term": ("string", "The two-year term.", S),
         "bill": ("string", "The bill, as the docket or the calendar writes it. " + BILL_KEY, S),
@@ -154,10 +152,6 @@ KEYS = {
     "legislators.csv": (["id"], []),
     "people.csv": ([], []),
 }
-
-# The data page's CSVs that are not API files, and why.
-NOT_API = {"proceedings.csv": "it carries YouTube's own metadata; the database's proceedings "
-                              "table is the API's (DESIGN.md, Q18)"}
 
 # --------------------------------------------------- a bill's full record --
 BILL_FIELDS = {
@@ -363,14 +357,9 @@ DB_COLUMNS = {
 DB_FROM_CSV = {"bills": "bills.csv", "rollcalls": "rollcalls.csv", "sponsors": "sponsors.csv",
                "legislators": "legislators.csv", "proceedings": "proceedings.csv"}
 
-# One rights line for every machine-readable place the API states it (the
-# database's meta, schema.json), in the words of DATA.md's paragraph the
-# owner approved on 30 October 2026. Change it here, and only with them.
-RIGHTS = ("The record is the State of New Hampshire's, and so are the numbers it gives "
-          "people and bills. What this site adds -- the keys and joins it makes and the "
-          "corrections made here by hand -- is dedicated to the public domain under "
-          "CC0 1.0; the plain-English histories and the software are MIT licensed. "
-          "DATA.md says which is which.")
+# The one rights line every download states (manifest.json, the database's
+# meta, and here schema.json): api_db.RIGHTS, the owner's words.
+from api_db import RIGHTS  # noqa: E402
 LICENSES = [
     {"name": "CC0-1.0", "path": "https://creativecommons.org/publicdomain/zero/1.0/",
      "title": "What this site adds: the keys and joins it makes and the corrections made "
