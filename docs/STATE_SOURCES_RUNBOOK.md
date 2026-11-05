@@ -123,13 +123,42 @@ From the repository folder on the laptop.
    not hold yet.
    The bucket keeps the report under `sources/reports/`.
 
-7. **Report**, in the session's last message, in plain words:
+7. **The county officers.**
+   ```
+   python3 src/ops/state_sources.py officials
+   ```
+   Each county's pages are in the registry and read weekly like any other
+   page that is due. A county's home page (`county-<name>`) is read to find
+   the pages that list its officers. Only those officers' pages are
+   compared, because a home page's menu names every office and no one. This
+   compares the county officers on record in `corrections/officials.json`
+   with the latest reading of each county's officers' pages. It writes
+   nothing. Each line says one of:
+   - `SAME`: a page names the person on record beside their office;
+   - `FLAG`: a page names the office and not the person, or names the person
+     beside a word like "resigned", "vacant", "former" or "interim" on the
+     same line. That is a question for the owner, never an edit: a
+     resignation, an appointment, or a page out of date. **Never edit
+     `corrections/officials.json`**, here or anywhere: it is the owner's file;
+   - `NAMED`: the person is named on a page, but not beside this office;
+   - `NOT ON THE PAGES`: no page read names that office, so nothing is known.
+     A deputy's title ("Deputy Sheriff") does not count as the office;
+   - `NOT READ` or `NO PAGE`: the county's officers' page has not been read,
+     or none is registered yet.
+   A flag is only as good as the page: a county site can be out of date
+   itself. A first name the check does not know as a short form of another
+   (it knows the common ones, Bill for William) shows as a flag. The owner
+   decides.
+
+8. **Report**, in the session's last message, in plain words:
    - what changed (the CHANGED lines) and what was read for the first time
      (NEW);
    - any refusal: the address, and the time;
    - any download not placed, with its suggested row;
    - any new document found on a page that lists them;
-   - anything due that was not read, and why.
+   - anything due that was not read, and why;
+   - every `FLAG` line from `officials`, as it printed, with the page and the
+     day it was read.
 
 ---
 
@@ -144,17 +173,19 @@ Paste this as the scheduled task's prompt in the Claude desktop app:
 > Chrome tab with Claude in Chrome, one at a time, a few seconds apart. Save
 > each page's text unedited to `sources/<id>/<today>.txt`, and let each PDF
 > download. Then run `python3 src/ops/state_sources.py file ~/Downloads`,
-> `python3 src/ops/state_sources.py check` and
-> `python3 src/ops/cloud.py sources-up`. Never open gc.nh.gov or any address
+> `python3 src/ops/state_sources.py check`,
+> `python3 src/ops/cloud.py sources-up` and
+> `python3 src/ops/state_sources.py officials`. Never open gc.nh.gov or any address
 > `due` did not list, and never a link to gc.nh.gov. Never fill in a form,
 > sign in or submit anything. If any page refuses (Access Denied, 403, a
 > challenge, a CAPTCHA), or a PDF's download fails in Chrome's downloads
 > list, stop at once, open nothing more, and report it. If `file` says some
 > document could not be placed, still run `check` and `sources-up`, and list
 > those documents in the report. Do not pull, edit the registry, commit, or
-> push. End with a short plain report: what changed, what was new, any
-> refusal, anything not placed, any new documents found, and anything due
-> that was not read.
+> push, and never edit `corrections/officials.json`. End with a short plain
+> report: what changed, what was new, any refusal, anything not placed, any
+> new documents found, anything due that was not read, and every FLAG line
+> from `officials`, word for word.
 
 ---
 
@@ -242,6 +273,64 @@ and report each result to the manager.
    and never the web) and read the address printed in its footer. Report the list to the manager: the file name, and the address as
    printed, or "no address printed". Change nothing.
 5. **The first job**, below.
+
+## The counties' first reading
+
+Added 5 November 2026. The nine county rows carry addresses from a web
+search, not yet opened, and Cheshire's is not known at all (the registry's
+`note` says so for each). This is done once, on an attended run with the
+owner watching, not by the weekly task: finding the officers' pages means
+following a site's links, which the weekly run never does. *The rules,
+always* hold throughout. **Never open a link to gc.nh.gov**: a county
+delegation's page may well link there. For each county:
+
+1. Open its registered address. If it is not the county government's own
+   site (a town, a different county or state, a parked domain), say so and
+   read nothing more there.
+2. On the county's own site, find the page or pages that name its elected
+   officers: the three commissioners, the sheriff, the county attorney, the
+   treasurer, the register of deeds and the register of probate. Follow only
+   the site's own menu links, and only to pages on that county's own site.
+   Do not search the web.
+3. Save the text of the registered address's page under the county's id,
+   as for any page (`sources/county-<name>/<today>.txt`). Save no other page
+   under that id: an id is one address, and a second page filed under it
+   would look like a new version of the first.
+4. Report each officers' page's address to the manager, with the county and
+   the offices it names, so that each can become a registry row of its own
+   (used by `officials:county`). From then on the weekly run reads them, and
+   `officials` checks them. Grafton's and Strafford's registered addresses
+   are already commissioners' pages, and are checked from the first run.
+5. For Cheshire, look only from a link the owner gives; otherwise report it
+   as still to find.
+6. Report each county's **home page**, for the site's county page to link
+   to (the manager's request of 5 November):
+   - its address as Chrome shows it once the page has loaded, after any
+     redirect;
+   - its title as the page itself gives it: the browser tab's title, word
+     for word;
+   - the day it was read.
+
+   For Grafton and Strafford, whose `county-<name>` rows are commissioners'
+   pages, the home page has a row of its own (`county-grafton-home`,
+   `county-strafford-home`, unconfirmed like the rest). Check it against the
+   page the site's own logo or "Home" link opens.
+
+The weekly session never edits the registry. The manager puts what step 6
+reports into `records/sources/REGISTRY.csv` on a branch:
+- the confirmed address in `url`;
+- the page's own title in `title`;
+- "address confirmed in a browser on <day>" in `note`, in place of the web
+  search's caveat.
+
+Every county home page's row is used by `officials:county-site` and by the
+Learn page on county government (`learn:county-government`), which links it.
+Cheshire's wanted row becomes a page row once its address is found. The day each page was read is also in the bucket's
+record from then on: `python3 src/ops/state_sources.py report` lists every
+reading with its day.
+
+The register of probate may be listed with the probate court rather than the
+county. If the county's site names it nowhere, report that.
 
 ## The first job: the budget page's documents
 
