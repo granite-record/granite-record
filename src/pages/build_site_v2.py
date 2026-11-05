@@ -3094,10 +3094,15 @@ def floor_moment(st):
             "stated": st.get("debate_start") is not None, "s": state}
 
 
+_SUFFIX = {"jr", "sr", "ii", "iii", "iv"}
+
+
 def _surname(name):
-    """The last word of a surname as a ballot ("McCarty, Winston") or a
-    sponsor line ("McCarty", "K. Rice", "Fuller Clark") gives it."""
-    words = str(name or "").split(",")[0].replace(".", " ").split()
+    """The last word of a surname as a ballot ("McCarty, Winston", "Barnes,
+    Jr., John") or a sponsor line ("McCarty", "K. Rice", "Fuller Clark",
+    "John Barnes Jr.") gives it, a Jr. or a III not counted as one."""
+    words = [w for w in str(name or "").split(",")[0].replace(".", " ").split()
+             if w.lower() not in _SUFFIX]
     return words[-1].lower() if words else ""
 
 
@@ -3109,28 +3114,37 @@ def printed_record(path="text_sponsors.json"):
             build_data.date_ballot_seats already uses for the sitting members;
       two   {(term, member id)}: a member printed at two seats, so neither
             is proven;
-      named {(term, chamber, surname): {(county, district)}}: every seat
-            printed under a surname, placed on a member or not (1999
-            "Rep. McCarty, Hills 38", which text_sponsors could not place).
+      named {(term, chamber, surname): {(county, district)}}: the seats
+            printed under a surname that text_sponsors could not place on
+            anyone (1999 "Rep. McCarty, Hills 38") -- and not one it placed
+            on a member of that surname elsewhere, which is that member's
+            line printed once more. A seat placed on a namesake is the
+            namesake's, and says nothing of this member (the second review
+            of 5 November 2026: counting those refused 29 seats that were
+            right, David Flanders's Rock 20 among them).
     Empty where the file is not here."""
     p = Path(path)
     try:
         text = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
     except ValueError:
         text = {}
-    seen, named = defaultdict(set), defaultdict(set)
+    seen, loose, placed = defaultdict(set), defaultdict(set), defaultdict(set)
     for term, bills in text.items():
         for recs in (bills or {}).values():
             for r in recs or []:
                 if not r.get("district"):
                     continue
                 s = (r.get("chamber") or "", r.get("county") or "", str(r["district"]).lstrip("0"))
-                named[(term, s[0], _surname(r.get("name")))].add(s[1:])
+                k = (term, s[0], _surname(r.get("name")))
                 if r.get("member_id"):
                     seen[(term, str(r["member_id"]))].add(s)
+                    placed[k].add(s[1:])
+                else:
+                    loose[k].add(s[1:])
     one = {k: next(iter(v)) for k, v in seen.items() if len(v) == 1}
     two = {k for k, v in seen.items() if len(v) > 1}
-    return one, two, dict(named)
+    named = {k: v - placed.get(k, set()) for k, v in loose.items() if v - placed.get(k, set())}
+    return one, two, named
 
 
 def printed_seats(path="text_sponsors.json"):

@@ -3539,6 +3539,12 @@ def chamber(a, site, base, body, days):
     if not members.seats:
         print("  WARNING: the floor record names no member's seat by term: every chip "
               "outside the current term is drawn without a seat")
+    elif not members.ballots:
+        # NOT SILENT: a floor record from before 5 November 2026 carries no
+        # ballots, and by_ballot then links among the seats shown, which no
+        # longer hold every member who voted in a term
+        print("  WARNING: the floor record names who held a seat but not who voted in each "
+              "term (ballots): a name no roster matches is linked among the seats instead")
     floor = collections.defaultdict(list)
     for (b_, d_), day_ in days.items():
         if b_ == body:

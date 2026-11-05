@@ -69142,6 +69142,27 @@ def _term_seats_printed_first(B2, BSP):
             ("2015-2016", "7439"): "Rep. Bonnie Ham (D - Graf 5)"}
     assert got == want, f"term_seats gives {got}, not {want}"
     assert B2.printed_seats(Path("no-such-file.json")) == {}, "no file, no printed seats"
+    # printed_record off a text_sponsors.json: a line nobody was placed on
+    # doubts the member of the surname; a namesake's placed seat does not,
+    # nor that seat printed again unplaced; "Barnes Jr." is a Barnes
+    def rec(name, county, dist, mid=""):
+        return {"member_id": mid, "name": name, "chamber": "H", "county": county, "district": dist}
+    root = Path(tempfile.mkdtemp(prefix="gr-printed-"))
+    try:
+        (root / "t.json").write_text(json.dumps({"1999-2000": {
+            "HB1": [rec("McCarty", "Hillsborough", "38"), rec("Flanders", "Rockingham", "18", "371948")],
+            "HB2": [rec("Flanders", "Rockingham", "18"), rec("John Barnes Jr.", "Belknap", "4")]}}),
+            encoding="utf-8")
+        one2, two2, named2 = B2.printed_record(root / "t.json")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert named2 == {("1999-2000", "H", "mccarty"): {("Hillsborough", "38")},
+                      ("1999-2000", "H", "barnes"): {("Belknap", "4")}} and \
+        one2 == {("1999-2000", "371948"): ("H", "Rockingham", "18")}, (one2, named2)
+    flanders = [ballot(1999, "Flanders, David(D) Rockingham 20", "376001", "Flanders, David")]
+    kept = B2.term_seats({"376001": flanders, "375883": mccarty}, record=(one2, two2, named2))
+    assert kept == {"1999-2000": {"376001": "Rep. David Flanders (D - Rock 20)"}}, (
+        f"a namesake's seat refused a member's own, or McCarty's doubted one was kept: {kept}")
     # who presided: the term's seat, else the name alone -- never a later
     # record's seat, never the party letter alone
     chair = [dict(ballot(y, "Ham, Bonnie(D) Grafton 5", "7439", "Ham, Bonnie", "Presiding"),
@@ -69293,16 +69314,17 @@ def _session_chips_seat_of_their_term(BSP):
         # who presided and who moved, named in a sentence (components.person_link):
         # the term's seat, else the name alone -- never a party letter alone
         for slug, said in link.findall(html):
-            n["read"] += 1
             n["linked"] += 1
             said = __import__("html").unescape(said)
             want = BSP.seat_of(held, ids.get(slug, []), page.parent.name) or None
             if said != want and (want or said.endswith(")")):
                 bad.append(f"{page.parent.name} {page.stem}: {said} in a sentence, the seat of "
                            f"{term} is {want!r}")
+    # each pattern on its own: one finding names must not cover for the other
     assert n["read"], "no member chip was read on any past term's session day: the pattern has drifted"
+    assert n["linked"], "no member named in a sentence was read on any past term's day: the pattern has drifted"
     assert not bad, f"{len(bad)} chip(s) name a seat not held that term: " + "; ".join(bad[:4])
-    return "ok", (f"{n['read']:,} member names on past terms' days: {n['named']:,} chips and "
+    return "ok", (f"{n['read'] + n['linked']:,} member names on past terms' days: {n['named']:,} chips and "
                   f"{n['linked']:,} in sentences named by the seat of their term or none, "
                   f"{n['sponsor']:,} sponsor lines agreeing with it")
 
