@@ -320,21 +320,28 @@ def moved_members(site):
             # /legislator/:who/votes would otherwise rewrite the old address to
             # a page that is gone (the review of 30 October 2026). Each tab
             # by name, a static rule, never old/* (STATIC RULES FIRST, below).
-            out += [f"{old} {new} 301\n", f"{old}.html {new} 301\n"]
+            # And the address with a trailing slash, which old/* caught.
+            out += [f"{old} {new} 301\n", f"{old}.html {new} 301\n", f"{old}/ {new} 301\n"]
             out += [f"{old}/{s} {new}/{s} 301\n" for s in MEMBER_TAB_SLUGS]
     return "".join(sorted(out))
 
 
 # STATIC RULES FIRST, THEN THE DYNAMIC ONES (5 November 2026). Cloudflare
-# Pages: "Static redirects should appear before dynamic redirects", and a
-# file holds at most 2,000 static and 100 dynamic ones. The movers' rules
-# went first, each mover with a dynamic old/* rule among its static ones;
-# with the owner's thirty confirmed pairs that was 34 movers and 102 lines,
-# and the dry run of 4613f04 found every rule after them ignored -- every
-# tab address, /legislators, /learn, the cities -- where 4 movers had worked.
-# So every rule here is static but the tab rewrites, which come last, and
-# preflight's _redirects_cloudflare holds the built file to the order and the
-# limits.
+# Pages allows a file 2,000 static and 100 dynamic redirects and says
+# "Static redirects should appear before dynamic redirects". The movers'
+# rules went first, each mover with a dynamic old/* rule among its static
+# ones; with the owner's thirty confirmed pairs that was 34 movers and 102
+# lines, and the dry run of 4613f04 (run 175) served those 102 and none of
+# the 52 after them -- every tab address, /legislators, /learn, the cities.
+# Measured on that deployment: static rules after the first dynamic one
+# were still served (its 5th and its 102nd), and the file stopped exactly
+# 100 rules after the first dynamic one, its 3rd. So, counted from the first
+# rule with a placeholder or a splat, every rule counts against the 100, and
+# the 101st ends the file; that is how Cloudflare's parser reads it, as the
+# review recalled it. The order is what keeps the count at the tab rewrites
+# alone: every rule here is static but those, and they come last.
+# preflight's _redirects_cloudflare holds the built file to it, and
+# check_live asks for the last rule's address (rule_probes).
 REDIRECTS_STATIC = (
     # A chamber's Videos tab (build_full_sessions), its page's.
     "".join(f"/session/{c}/videos /session/{c} 200\n" for c in CHAMBER_TAB_PAGES)

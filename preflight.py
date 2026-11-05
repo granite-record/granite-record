@@ -23883,6 +23883,89 @@ def _check_live_reads_what_it_checks():
                   "look at again")
 
 
+@check("build", "check_live asks for _redirects' last rule and its first plain rewrite as real "
+                "addresses, and a deploy that does not serve them has not landed")
+def _check_live_reads_the_last_rule():
+    """THE LAST RULE IS THE FIRST ONE LOST (check_live.rule_probes, 5
+    November 2026). The dry run of 4613f04 served a _redirects Cloudflare had
+    stopped reading after its 102nd rule, and check_live, asking only
+    /legislators, said nothing of the tab addresses gone. It now asks for the
+    file's last rule, made an address with a page of the build, and for its
+    first rewrite with no placeholder."""
+    import contextlib
+    import io
+    import check_live as CL_
+    root = Path(tempfile.mkdtemp(prefix="gr-live-rules-"))
+    try:
+        assert CL_.rule_probes(root) == [], "a site with no _redirects was given addresses to ask"
+        for d in ("bill/2026", "legislator", "committee"):
+            (root / d).mkdir(parents=True)
+        (root / "bill/2026/hb1442.html").write_text("x", encoding="utf-8")
+        (root / "legislator/ann-ames-hills-1.html").write_text("x", encoding="utf-8")
+        (root / "committee/ss57.html").write_text("x", encoding="utf-8")
+        (root / "committee/H43.html").write_text("x", encoding="utf-8")
+        rules = ["# head", "/legislators /officials 301", "/session/house/videos /session/house 200",
+                 "/bill/:year/:bill/votes /bill/:year/:bill 200",
+                 "/legislator/:who/votes /legislator/:who 200",
+                 "/committee/:code/videos /committee/:code 200"]
+        for last, want in ((rules, "/committee/H43/videos"),
+                           (rules[:-1], "/legislator/ann-ames-hills-1/votes"),
+                           (rules[:-2], "/bill/2026/hb1442/votes")):
+            (root / "_redirects").write_text("\n".join(last) + "\n", encoding="utf-8")
+            got = CL_.rule_probes(root)
+            assert got == [want, "/session/house/videos"], f"the probes for {last[-1]!r} are {got}"
+        (root / "_redirects").write_text("\n".join(rules) + "\n", encoding="utf-8")
+        page = b"<!doctype html><html><!-- GRANITE_VERSION: 2026-09-05.1 -->bills</html>"
+        (root / "bills.html").write_bytes(page)
+        (root / "meta.json").write_text(json.dumps({"terms": ["2025-2026"]}), encoding="utf-8")
+        served = {
+            "/": (200, "text/html", b"<!doctype html><html>home</html>"),
+            "/bills": (200, "text/html", page),
+            "/app.css": (200, "text/css", b"body{}"),
+            "/meta.json": (200, "application/json", json.dumps({"terms": ["2025-2026"]}).encode()),
+            "/idx/2025-2026.json": (200, "application/json", b'[{"id":"HB1"}]'),
+            "/legislators": (200, "text/html", b"<!doctype html><html>members</html>"),
+            "/committee/H43/videos": (200, "text/html", b"<!doctype html><html>H43</html>"),
+            "/session/house/videos": (200, "text/html", b"<!doctype html><html>house</html>"),
+            "/feed/all.xml": (200, "application/rss+xml", b'<?xml version="1.0"?><rss/>'),
+            "/sitemap.xml": (200, "application/xml",
+                             b'<?xml version="1.0"?><urlset><url><loc>http://site.invalid/</loc>'
+                             b'</url></urlset>'),
+            "/robots.txt": (200, "text/plain",
+                            b"User-agent: *\nSitemap: http://site.invalid/sitemap.xml\n"),
+        }
+        asked = []
+
+        def fake_get(url, limit=400_000):
+            path = url[len("http://site.invalid"):]
+            asked.append(path)
+            st, ct, body = served.get(path, (404, "text/html", b"not found"))
+            return st, ct, body[:limit], None
+
+        def gate():
+            saved = (CL_.get, sys.argv)
+            CL_.get = fake_get
+            sys.argv = ["check_live.py", "--gate", "--base", "http://site.invalid", "--site", str(root)]
+            try:
+                with contextlib.redirect_stdout(io.StringIO()) as out:
+                    code = CL_.main()
+            finally:
+                CL_.get, sys.argv = saved
+            return code, out.getvalue()
+        code, out = gate()
+        assert code == 0 and "/committee/H43/videos" in asked and "/session/house/videos" in asked, (
+            f"a deploy serving the whole file did not pass, or the probes were not asked: {asked}\n"
+            f"{out[-400:]}")
+        del served["/committee/H43/videos"]
+        code, out = gate()
+        assert code != 0 and "/committee/H43/videos returned HTTP 404" in out and \
+            "THE DEPLOY DID NOT LAND" in out, f"a deploy that lost the last rule passed:\n{out[-400:]}"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("the last rule asked as a bill's, a member's or a committee's real address, and "
+                  "the first plain rewrite; a deploy that does not serve the last rule has not landed")
+
+
 @check("build", "the bill index is read one way: no site, a broken one and a whole one kept apart")
 def _bill_index_three_answers():
     """site_read.bill_index is the build's one reader of every bill's row,
@@ -28231,7 +28314,8 @@ def _former_movers_one_page(build_site_v2, build_pages):
             {"id": "27", "slug": "someone-sd-1"}]), encoding="utf-8")
         lines = BP.moved_members(root)
         old, new = "/legislator/shannon-chandley-hills-22", "/legislator/shannon-chandley-sd-11"
-        assert lines == "".join(sorted([f"{old} {new} 301\n", f"{old}.html {new} 301\n"]
+        assert lines == "".join(sorted([f"{old} {new} 301\n", f"{old}.html {new} 301\n",
+                                        f"{old}/ {new} 301\n"]
                                        + [f"{old}/{s} {new}/{s} 301\n" for s in BP.MEMBER_TAB_SLUGS])), \
             lines
         assert BP.moved_members(root / "nowhere") == "", "no former.json still wrote a rule"
@@ -28314,7 +28398,7 @@ def _redirects_cloudflare(BP):
         assert dyn == tabs, f"forty movers: {dyn} dynamic rules, not the {tabs} tab rewrites"
         for m in movers:
             old, new = m["moved_from"][0], "/legislator/" + m["slug"]
-            for src, dst in [(old, new), (old + ".html", new)] + [
+            for src, dst in [(old, new), (old + ".html", new), (old + "/", new)] + [
                     (f"{old}/{s}", f"{new}/{s}") for s in BP.MEMBER_TAB_SLUGS]:
                 assert f"\n{src} {dst} 301\n" in text, f"{src} does not 301 to {dst}"
         first = movers[0]["moved_from"][0]
