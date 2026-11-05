@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.83
+# GRANITE_VERSION: 2026-09-05.84
 """
 Run the whole pipeline in the right order.
 
@@ -1049,6 +1049,17 @@ def plan(a):
                   "side a link away -- and sitting days listed at all, which "
                   "nothing else on the site does because every listing is "
                   "keyed on a committee and the floor has none"),
+
+        # LIVE NOW (the live layer's PATCHES.md 1, applied for the 11
+        # November train): /live from the Calendar's own cards, so after
+        # the week pages. It asks no network; live.js, in the reader's
+        # browser, adds what is streaming.
+        Step("Live Now: /live and its schedule, from the Calendar's own cards",
+             ["build_live.py", "--site", "site", "--base", a.base],
+             needs=["site/calendar.html", "proceedings.csv"],
+             produces=["site/live.html", "site/live/schedule.json", "site/live.js", "site/live.css"],
+             note="today's meetings and the next four weekdays', each with the Calendar's card; "
+                  "live.js adds what is streaming"),
 
         # THE FEEDS ARE WRITTEN BEFORE THE PAGE THAT DOCUMENTS THEM.
         # This pair used to run the other way round, and the consequence was

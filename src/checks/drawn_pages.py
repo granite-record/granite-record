@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.3
+# GRANITE_VERSION: 2026-10-09.4
 """
 What the browser draws on a built site's pages, written down, so that two
 builds can be compared by what a reader is shown and not only by the HTML.
@@ -27,7 +27,8 @@ preflight runs app.js against, told only what the page itself holds: an
 element is there if the page or something already drawn carries its id, a
 record's JSON is the page's own, and fetch is answered from the site folder.
 The day is fixed (--today), so a page that says "in 3 days" says it the same
-in both runs. What each page's scripts wrote -- every element's markup and
+in both runs. A timer set ten seconds or more away never fires: the drawing
+is the page as it first stands (LATER_MS). What each page's scripts wrote -- every element's markup and
 text, the title, and every error, in the order met -- goes to one file per
 page and tab under --out, with manifest.json, the sha256 of each.
 
@@ -55,6 +56,21 @@ import tempfile
 
 # The pages that are not a record but draw part of themselves in the browser.
 LISTS = ("bills.html", "index.html", "calendar.html", "search.html", "officials.html")
+
+# A timer set this many milliseconds or more away never fires in a drawing (A
+# TIMER A WHILE AWAY IS THE PAGE LATER, in the driver): above the timers the
+# pages set while they load, which wait six seconds at most, and below
+# live.js's every look, at thirty seconds and more (VOTES_FAST_MS, POLL_MS,
+# VOTES_SLOW_MS). The pages' two twenty-second timers (find.js's address
+# lookup, app.js's follow form) start only when a reader acts, never in a
+# drawing.
+LATER_MS = 10_000
+
+# How long the pages' scripts may run, in seconds, before a drawing is called
+# one that never stops (draw's `timeout`). The fixture's 51 pages and tabs
+# draw in about a second; five minutes is room for a slow machine, and a
+# script that never stops costs a run five minutes, not half an hour.
+DRAW_TIMEOUT = 300
 
 # The node side. One context a page, so nothing one page's scripts declare is
 # another's; the stub is loaded into it and then told what the page holds.
@@ -131,6 +147,16 @@ var ALL = [];
     return q.call(document, sel); };
   globalThis.clearTimeout = globalThis.clearInterval = () => {};
   globalThis.setInterval = () => 0;
+  // A TIMER A WHILE AWAY IS THE PAGE LATER (5 November 2026). The stub runs
+  // every timer's callback at once. live.js's hook on a committee page looks
+  // at the clock once a minute until it learns there is no stream; on a
+  // weekend, outside its hours, it never asks, so run at once that look
+  // re-armed itself without end and no committee page drawn on a Saturday or
+  // a Sunday ever finished. A drawing is the page as it first stands: a timer
+  // set LATER_MS or more away never fires in it, as an interval never does.
+  // The pages' own short timers (six seconds and under) still fire at once.
+  { const soon = globalThis.setTimeout;
+    globalThis.setTimeout = (f, ms, ...a) => (Number(ms) >= __LATER_MS ? 0 : soon(f, ms, ...a)); }
   const heard = {};
   document.addEventListener = (t, f) => (heard["d:" + t] = heard["d:" + t] || []).push(f);
   globalThis.addEventListener = (t, f) => (heard["w:" + t] = heard["w:" + t] || []).push(f);
@@ -150,7 +176,7 @@ function draw(job) {
   const ctx = vm.createContext({
     console: {log() {}, warn() {}, error() {}, info() {}, debug() {}},
     URL, URLSearchParams, setImmediate, queueMicrotask, TextEncoder, TextDecoder,
-    __today: job.today, __page: html, __path: job.path,
+    __today: job.today, __page: html, __path: job.path, __LATER_MS: job.later_ms,
     __err: m => errors.push(m),
     __read: u => {
       let p;
@@ -244,25 +270,45 @@ def jobs_for(site, today):
     for j in out:
         j["site"] = str(site.resolve())
         j["today"] = [today.year, today.month, today.day]
+        j["later_ms"] = LATER_MS
     return out
 
 
-def draw(site, out, today):
-    """Draw every page and tab of `site` into `out`; returns how many."""
+def draw(site, out, today, only=None, timeout=DRAW_TIMEOUT):
+    """Draw every page and tab of `site` into `out`; returns how many.
+
+    `only`: the page addresses to draw, as prefixes ("committee/"), where not
+    every one. `timeout`: the seconds the scripts may run, after which the
+    drawing stops and says so rather than waiting on a script that never
+    ends."""
     node = shutil.which("node") or shutil.which("node.exe")
     if not node:
         raise SystemExit("node is not on PATH, and the pages' scripts run in node")
     stub = _paths.ROOT / "tests" / "dom_stub.js"
     jobs = jobs_for(site, today)
+    if only:
+        only = (only,) if isinstance(only, str) else tuple(only)
+        jobs = [j for j in jobs if j["page"].startswith(only)]
+        if not jobs:
+            raise RuntimeError(f"no page under {site} begins with {', '.join(only)}: nothing "
+                               "to draw")
     if not jobs:
         raise SystemExit(f"no record page under {site}: nothing to draw")
     tmp = Path(tempfile.mkdtemp(prefix="gr-drawn-"))
     try:
         (tmp / "drive.js").write_text(DRIVER, encoding="utf-8")
         (tmp / "jobs.json").write_text(json.dumps(jobs), encoding="utf-8")
-        r = subprocess.run([node, str(tmp / "drive.js"), str(stub), str(tmp / "jobs.json"),
-                            str(tmp / "out.json")], capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=1800)
+        try:
+            r = subprocess.run([node, str(tmp / "drive.js"), str(stub), str(tmp / "jobs.json"),
+                                str(tmp / "out.json")], capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", timeout=timeout)
+        except subprocess.TimeoutExpired:
+            # Said in words: the day drawn on and how many pages, which a
+            # weekend-only hang needs. An error, as TimeoutExpired was, so
+            # preflight records that check's ERROR and goes on.
+            raise RuntimeError(f"the pages' scripts did not finish in {timeout} s, drawn on "
+                               f"{today.isoformat()}: a script on one of {len(jobs)} pages "
+                               "and tabs never stops") from None
         if r.returncode != 0 or not (tmp / "out.json").exists():
             raise SystemExit("the pages' scripts did not run: " + (r.stderr or r.stdout)[-400:])
         drawn = json.loads((tmp / "out.json").read_text(encoding="utf-8"))

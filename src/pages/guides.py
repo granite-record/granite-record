@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.65
+# GRANITE_VERSION: 2026-10-11.67
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -167,7 +167,10 @@ def unbacked(g):
 # by its number and street, a date by its month and day.
 PHONE = re.compile(r"(?<![\d-])(?:1[-\s.]?)?\(?\d{3}\)?[-\s.]\d{3}[-\s.]\d{4}(?!\d)")
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[a-z]{2,}", re.I)
-CLOCK = re.compile(r"\b(\d{1,2}(?::\d\d)?)(?:\s|&nbsp;)?[ap]\.m\.", re.I)
+# "8 a.m." as a source writes it, and "8:00 AM" as a guide does, clock()'s
+# form since the cohesion audit of 30 October 2026 (I-3): the hours a guide
+# prints in its own words are held to their claims whichever way.
+CLOCK = re.compile(r"\b(\d{1,2}(?::\d\d)?)(?:\s|&nbsp;)?(?:[aApP]\.[mM]\.|[AP]M\b)")
 STREET = re.compile(r"\b(\d{1,5})\s+((?:[A-Z][a-z]+\s){1,3}(?:Street|Road|Drive|Avenue|Lane|Way|"
                     r"Boulevard|Place|Square|Highway))\b")
 MONTH_DAY = re.compile(r"\b(January|February|March|April|May|June|July|August|September|"
@@ -208,7 +211,7 @@ def unsourced_contacts(g):
             out.append(f"email {e}")
     for m in CLOCK.finditer(words):
         n = m.group(1)
-        # "8 a.m." is the "8:00 AM" a page prints, and the other way round.
+        # "8 a.m." in a claim is the "8:00 AM" a guide prints, and the other way round.
         alts = {n, n[:-3]} if n.endswith(":00") else {n, n + ":00"}
         if not any(re.search(r"(?<![\d:])" + re.escape(a) + r"(?![\d:])", s) for a in alts
                    for s in said):
@@ -310,7 +313,7 @@ HELP = {
         "Health and Human Services program with local resource centers: free counseling for "
         "older adults, adults with disabilities and caregivers, on benefits, applications, "
         "housing, Medicare and Medicaid, with no eligibility requirement. Call 1-866-634-9412, "
-        "weekdays 8:30 a.m. to 4:30 p.m.</li>",
+        "weekdays 8:30&nbsp;AM to 4:30&nbsp;PM.</li>",
         [],
         [("ADRC, formerly ServiceLink, a DHHS program of locally accessible resource centers; "
           "options counseling on benefits, applications, housing, Medicare and Medicaid; no fee "
@@ -329,7 +332,7 @@ HELP = {
     "lawyer": (
         "<li><b>The New Hampshire Bar Association&rsquo;s Lawyer Referral Service</b> refers you "
         "to a lawyer who handles your kind of problem, for an administrative fee. Call "
-        "603-229-0002, weekdays 9 a.m. to 3:30 p.m., or ask online.</li>",
+        "603-229-0002, weekdays 9:00&nbsp;AM to 3:30&nbsp;PM, or ask online.</li>",
         [("Lawyer Referral Service", LRS)],
         [("NHBA Lawyer Referral Service: 603-229-0002, Monday to Friday 9 to 3:30, an "
           "administrative fee, referral by phone or online.", LRS)]),
@@ -543,8 +546,8 @@ VOTING = guide(
           "at your clerk&rsquo;s office on the day before the election.</p>"
           "<p>Send the absentee ballot application to your town or city clerk, not the state, "
           "with the proof of identity the form asks for. The deadline to ask by mail is noon the day before the election, and "
-          "to ask and vote in person at the clerk&rsquo;s office, 5 p.m. the day before. A "
-          "mailed ballot must reach your clerk by 5 p.m. on election day, so ask for it more "
+          "to ask and vote in person at the clerk&rsquo;s office, 5:00&nbsp;PM the day before. A "
+          "mailed ballot must reach your clerk by 5:00&nbsp;PM on election day, so ask for it more "
           "than two weeks ahead.</p>",
           actions=[("Absentee ballots", SOS_ABSENTEE), ("Absentee ballot application", SOS_ABS_APP)],
           law=["RSA 657:1", "RSA 657:4", "RSA 7:46"])],
@@ -3068,7 +3071,7 @@ UNEMPLOYMENT = guide(
          "an Appeal Tribunal chairperson.</p>"))
          + "<h2>Who Can Help</h2>"
          "<p>New Hampshire Employment Security&rsquo;s unemployment hotline, (603) 271-7700, "
-         "answers questions on weekdays from 8:00 a.m. to 4:30 p.m. Its NH Works offices help in "
+         "answers questions on weekdays from 8:00&nbsp;AM to 4:30&nbsp;PM. Its NH Works offices help in "
          "person, with claims and with finding work.</p>"
          f'<p class="g-acts"><a class="g-btn" href="{NHES_OFFICES}" target="_blank" rel="noopener">'
          "NH Works offices</a></p>",
@@ -3114,25 +3117,29 @@ RUN = guide(
     [step("Check that you qualify",
           "<p>To hold any elected office in New Hampshire, you must be domiciled in the state. Each "
           "office adds its own requirements:</p>"
-          + table("Qualifications by office (Secretary of State, October 17, 2026)",
+          + table("Qualifications by office (Secretary of State, October 17, 2026; RSA 655:29)",
                   ["Office", "Age", "Also"],
-                  [["Governor", "30", "Registered voter; domiciled in New Hampshire 7 years"],
+                  # IN THE SOURCES' WORDS (the person, 2 November 2026): the
+                  # years run "immediately preceding the election" (RSA
+                  # 655:29; Part Second, Article 29), not any seven.
+                  [["Governor", "30", "Registered voter; domiciled in New Hampshire at least 7 years "
+                    "immediately preceding the election"],
                    ["U.S. senator", "30", "U.S. citizen 9 years; living in New Hampshire when elected"],
                    ["U.S. representative", "25", "U.S. citizen 7 years; living in New Hampshire when "
                     "elected"],
-                   ["Executive councilor", "30", "Registered voter; domiciled in New Hampshire 7 "
-                    "years; living in the district"],
-                   ["State senator", "30", "Registered voter; domiciled in New Hampshire 7 years; "
-                    "living in the district"],
-                   ["State representative", "18", "Registered voter; domiciled in New Hampshire 2 "
-                    "years; living in the town or ward"],
+                   ["Executive councilor", "30", "Registered voter; domiciled in New Hampshire at least 7 "
+                    "years immediately preceding the election; living in the district"],
+                   ["State senator", "30", "Registered voter; domiciled in New Hampshire at least 7 years "
+                    "immediately preceding the election; living in the district"],
+                   ["State representative", "18", "Registered voter; domiciled in New Hampshire at least 2 "
+                    "years immediately preceding the election; living in the town or ward"],
                    ["County officer", "18", "Registered voter in the county where you live"]]),
           actions=[("Qualifications for office", SOS_QUAL)], law=["RSA 655:2", "RSA 655:29"]),
      step("File in the filing period",
           "<p>To run in a party&rsquo;s primary you must be a registered member of that party. File "
           "a declaration of candidacy, with a statement of financial interests, between the first "
           "Wednesday in June and the Friday of the following week. In 2026 that was June 3 to June "
-          "12. A filing on the last day must be made in person by the candidate, by 5 p.m.</p>"
+          "12. A filing on the last day must be made in person by the candidate, by 5:00&nbsp;PM.</p>"
           "<p>Candidates for governor, U.S. senator, U.S. representative, executive councilor, "
           "state senator and county office file with the Secretary of State. Candidates for state "
           "representative file with the clerk of the town or city where they live.</p>",
@@ -3188,8 +3195,9 @@ RUN = guide(
      # federal offices' citizenship years stay on the Secretary of State's
      # page, the federal constitution not being on this disk.
      claim("A candidate swears to have been domiciled in New Hampshire for at least 7 years "
-           "before the election for governor, executive councilor and state senator, and for at "
-           "least 2 years for state representative.", "RSA 655:29", READ),
+           "immediately preceding the election for governor, executive councilor and state senator, "
+           "and for at least 2 years immediately preceding it for state representative.",
+           "RSA 655:29", READ),
      claim("A primary candidate is a registered member of the party, meets the age and domicile "
            "qualifications by the general election, and files a declaration of candidacy between "
            "the first Wednesday in June and the Friday of the following week.", "RSA 655:14", READ),
@@ -4310,7 +4318,7 @@ ELECTION = guide(
           "when the results are announced, and a machine&rsquo;s printed results are posted "
           "within 60 minutes of the last ballot. The moderator announces the final count, and "
           "the clerk prepares the election return in front of the other officials, signs it, "
-          "and sends a copy to the Secretary of State by 8:00 a.m. the next day. The other "
+          "and sends a copy to the Secretary of State by 8:00&nbsp;AM the next day. The other "
           "copy is kept by the clerk, open to the public.</p>"
           "<p><b>Sealing the ballots.</b> The moderator, with the selectmen, seals every "
           "ballot in containers from the Secretary of State, writes the number of ballots on "
@@ -4937,7 +4945,7 @@ CHILD_CARE = guide(
           "Department&rsquo;s free Child Care Search, linked from the same page as the "
           "scholarship, shows providers&rsquo; quality ratings, "
           "licensing history and services, and Child Care Aware of New Hampshire helps families "
-          "find care for free: call 1-855-393-1731, extension 2531, weekdays 8 a.m. to 5 p.m.</p>",
+          "find care for free: call 1-855-393-1731, extension 2531, weekdays 8:00&nbsp;AM to 5:00&nbsp;PM.</p>",
           actions=[("Providers and the scholarship", DHHS_CC_PROVIDERS)]),
      step("Keeping the scholarship",
           "<p>Your eligibility is checked again every 12 months, and you reapply each year.</p>"),
@@ -5609,7 +5617,7 @@ DISCRIMINATION = guide(
           "things down as they happen, and keep any letters, emails, texts or notices.</p>"
           "<p>The Commission also takes complaints of discrimination in K-12 public schools, and "
           "offers mediation. Submit a complaint from its website, or call (603) 271-2767, "
-          "Monday through Friday, 8 a.m. to 4 p.m.; its office is at 57 Regional Drive, Suite 8, "
+          "Monday through Friday, 8:00&nbsp;AM to 4:00&nbsp;PM; its office is at 57 Regional Drive, Suite 8, "
           "in Concord.</p>"
           "<p>A commissioner investigates, with the Commission&rsquo;s staff, and encourages "
           "both sides to settle. If the commissioner finds no probable cause, the complaint is "
@@ -7522,7 +7530,7 @@ WAGES = guide(
           "and the court may order your employer to pay your costs and reasonable "
           "attorney&rsquo;s fees.</p>"
           "<p>File your claim online with the Department&rsquo;s wage claim form. Its office "
-          "answers at 603-271-3176, Monday through Friday, 8 a.m. to 4:30 p.m.; mail and "
+          "answers at 603-271-3176, Monday through Friday, 8:00&nbsp;AM to 4:30&nbsp;PM; mail and "
           "hearings stay at 95 Pleasant Street, Spaulding Building, in Concord.</p>",
           actions=[("File a wage claim online (Department of Labor)", NH_WAGE_CLAIM),
                    ("New Hampshire Department of Labor", NH_DOL)],
@@ -8125,7 +8133,7 @@ MEDICARE = guide(
           "<p>Medicare Part A and Part B are signed up for through the Social Security "
           "Administration, not through Medicare. The easiest way is online, with a my Social "
           "Security account, if you are 65 or older. You can also call Social Security at "
-          "1-800-772-1213, Monday through Friday, 8 a.m. to 7 p.m. (TTY 1-800-325-0778), and "
+          "1-800-772-1213, Monday through Friday, 8:00&nbsp;AM to 7:00&nbsp;PM (TTY 1-800-325-0778), and "
           "make an appointment.</p>",
           actions=[("Sign up for Medicare (Medicare)", MEDICARE_SIGNUP),
                    ("Sign up for Medicare (Social Security)", SSA_MEDICARE)]),
@@ -8150,7 +8158,7 @@ MEDICARE = guide(
                     "lost Medicare because of their earnings."]])
           + "<p>Apply to the Department of Health and Human Services through NH Easy, under "
           "Medicare beneficiary assistance; its Customer Service Center answers at 1-844-ASK-DHHS "
-          "(1-844-275-3447), Monday through Friday, 8 a.m. to 4 p.m. Medicare advises applying "
+          "(1-844-275-3447), Monday through Friday, 8:00&nbsp;AM to 4:00&nbsp;PM. Medicare advises applying "
           "even if you do not think you qualify.</p>"
           "<p><b>Extra Help</b> is a federal program that pays part of your drug plan&rsquo;s "
           "costs. You get it automatically if you have full-benefit Medicaid, a Medicare Savings "
@@ -10307,12 +10315,19 @@ TASKS = [
              "Emergency alerts, supplies, power outage and winter storm safety, and where to "
              "find a warm place."),
     ]),
-    ("Federal Benefits", [
+    # Named for what it holds since the passport joined it (the person, 30
+    # October 2026); it was Federal Benefits.
+    ("Federal Programs and Services", [
         task("medicare-and-social-security", "Sign up for Medicare and Social Security",
              "When to sign up, choosing coverage, and help paying Medicare&rsquo;s costs."),
         task("disability-help", "Get disability benefits and services",
              "SSDI and SSI, the state&rsquo;s cash and medical assistance, area agencies and "
              "vocational rehabilitation."),
+        # Under the federal section, where the person looks for it (the
+        # preview walk, 30 October 2026). It was under Property and Records.
+        task("passport", "Get a U.S. passport",
+             "A first passport or a renewal, what to bring to a post office, and a child&rsquo;s "
+             "passport."),
     ]),
     ("Know Your Rights", [
         task("tenant-rights", "Know your rights as a tenant",
@@ -10364,9 +10379,6 @@ TASKS = [
              "evicting through the court."),
         task("vital-records", "Get a birth, death, marriage or divorce certificate",
              "From your town or city clerk or the state: who may ask and what to bring."),
-        task("passport", "Get a U.S. passport",
-             "A first passport or a renewal, what to bring to a post office, and a child&rsquo;s "
-             "passport."),
     ]),
     ("Outdoors and Recreation", [
         task("fishing-license", "Get a fishing license",
@@ -10601,6 +10613,17 @@ def unchecked(g):
 def checked_on(g):
     """The oldest check on the guide: what its date says it is worth."""
     return min((c["checked"] for c in g["claims"] if c["checked"]), default=None)
+
+
+def sources_checked(g):
+    """The newest check on the guide: the day its sources were last read,
+    which its page says (the person, 2 November 2026: How to Vote said 11
+    October over claims read weeks later). A claim about this site's own
+    pages (ours, a path) is not a source read, so it does not count.
+    checked_on, the oldest, still decides whether the page warns that it may
+    be out of date."""
+    return max((c["checked"] for c in g["claims"]
+                if c["checked"] and not str(c["source"]).startswith("/")), default=None)
 
 
 # ---------------------------------------------------------------------------

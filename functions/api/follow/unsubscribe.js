@@ -38,9 +38,9 @@ function button(u) {
     title: "Unsubscribe",
     fill: u ? "" : "u",
     body: `<h1>Unsubscribe from email updates</h1>
-<p>${esc(DELETES)}</p>
+<div${u ? "" : " data-waits"}><p>${esc(DELETES)}</p>
 <form method="post" action="${PATH}"><input type="hidden" name="u" value="${esc(u)}">
-<button type="submit" class="danger">Unsubscribe and delete my address</button></form>`,
+<button type="submit" class="danger">Unsubscribe and delete my address</button></form></div>`,
   });
 }
 
