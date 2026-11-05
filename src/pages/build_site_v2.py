@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.245
+# GRANITE_VERSION: 2026-09-05.246
 """
 Generate the faceted site from real General Court data.
 
@@ -3705,6 +3705,12 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
                **lab, "n_votes": len(mv), "counts": dict(counts),
                "n_sponsored": len((sponsored or {}).get(mid, [])),
                "slug": member_slug(m, lab)}
+        if joined:
+            # The numbers this page stands for, as the member's own file lists
+            # them: a session day names a mover by the seat their ballots of
+            # that term give, and those ballots are under the earlier number
+            # (build_session_pages.Members.label, 5 November 2026).
+            row["member_ids"] = [mid, *joined]
         if m.get("former"):
             # No email and no telephone, whatever the roster once held: the
             # address belonged to the office. The towns go too -- the town map

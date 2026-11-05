@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.58
+# GRANITE_VERSION: 2026-09-19.59
 """
 A page for every day the House sat.
 
@@ -205,6 +205,10 @@ class Members:
         # label their record gives: a session day's term file counts the
         # excused by party and names who presided (day_record).
         self.by_id, self.by_slug = {}, {}
+        # Every number a page stands for (its row's member_ids): a mover's
+        # page is kept under the later chamber's number, and the ballots of
+        # the earlier terms are filed under the earlier one.
+        self.by_number = {}
         served = []
         for f, in (("legislators.json",), ("former.json",)):
             p = site / f
@@ -222,9 +226,14 @@ class Members:
                             "label": r.get("display_full") or r.get("label") or "",
                             "party": party_letter(r.get("party") or r.get("party_code")),
                             "sitting": f == "legislators.json"}
+                    info["ids"] = ([str(x) for x in r.get("member_ids") or [] if x]
+                                   or [info["id"]])
                     self.by_slug.setdefault(slug, info)
                     if info["id"]:
                         self.by_id.setdefault(info["id"], info)
+                    for x in info["ids"]:
+                        if x:
+                            self.by_number.setdefault(x, info)
                 if not slug or "," not in name:
                     continue
                 last, first = (x.strip() for x in name.split(",", 1))
@@ -265,9 +274,14 @@ class Members:
         sitting member's roster label; anywhere else the name alone, with the
         day's chamber's honorific -- no seat rather than a seat they may not
         have held. A member renumbered or moved between terms is named on an
-        old day by the old seat."""
+        old day by the old seat. A member who moved between chambers has a
+        number for each (Sen. Shannon Chandley's page is 9404, her House
+        ballots 568): the seat is looked up under every number the page
+        stands for, its own first."""
         info = self.by_slug.get(slug) or {}
-        got = (self.seats.get(self.term) or {}).get(info.get("id") or "")
+        held = self.seats.get(self.term) or {}
+        got = next((held[i] for i in [info.get("id") or "", *(info.get("ids") or [])]
+                    if i and held.get(i)), "")
         if got:
             return got
         if info.get("sitting") and self.term and self.term == self.current:
@@ -319,9 +333,10 @@ class Members:
         hits = []
         for mid, lab in (self.seats.get(self.term) or {}).items():
             words = re.sub(r"\s*\([^()]*\)\s*$", "", lab or "").split()
+            page = self.by_id.get(str(mid)) or self.by_number.get(str(mid)) or {}
             if (len(words) >= 2 and words[0].lower() == hon and words[-1].lower() == want
-                    and (self.by_id.get(str(mid)) or {}).get("slug")):
-                hits.append(self.by_id[str(mid)]["slug"])
+                    and page.get("slug")):
+                hits.append(page["slug"])
         hits = list(dict.fromkeys(hits))
         return hits[0] if len(hits) == 1 else None
 
