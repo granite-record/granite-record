@@ -84191,6 +84191,11 @@ def _mover_seat_on_old_day(BSP):
     m.term = "2009-2010"
     assert m.by_ballot("H", "Chandley") == "shannon-chandley-sd-11", (
         "a ballot under the joined number links no page")
+    # the other chamber's seat is never the one held on this chamber's day
+    # (Sen. David Boutin, April 2010, once "Rep. David Boutin (R - Merr 9)")
+    assert m.label("shannon-chandley-sd-11", "S") == "Sen. Shannon Chandley", (
+        f"a Senate day of 2009-2010 names her {m.label('shannon-chandley-sd-11', 'S')!r}: "
+        "the House seat her other number held")
     # a move in mid-term: both numbers hold a seat in one term, and each
     # chamber's day names its own (the review of 5 November 2026)
     m.term = "2017-2018"

@@ -160,12 +160,15 @@ def _careers():
 
 def seat_of(held, numbers, body):
     """The seat `held` ({member number: label}, one term's) gives the first of
-    `numbers` that has one -- the day's chamber's seat first, where two of a
-    mover's numbers hold one in the same term (a move in mid-term: the review
-    of 5 November 2026), so a House day names the House seat."""
+    `numbers` that has one in the day's chamber -- a House day names the
+    House seat -- and none where only the other chamber's is known. Sen.
+    David Boutin moved from the House to the Senate in 2010: the term's
+    bills print no Senate seat for him, and a Senate day of April 2010 once
+    named him "Rep. David Boutin (R - Merr 9)", his House seat of that term
+    (the lens of 5 November 2026). He is "Sen. David Boutin" there now."""
     hon = "Sen." if body == "S" else "Rep."
     got = [held[i] for i in dict.fromkeys(numbers) if i and held.get(i)]
-    return next((x for x in got if x.startswith(hon + " ")), got[0] if got else "")
+    return next((x for x in got if x.startswith(hon + " ")), "")
 
 
 class Members:
