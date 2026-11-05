@@ -3138,7 +3138,7 @@ def printed_seats(path="text_sponsors.json"):
     return printed_record(path)[0]
 
 
-def term_seats(votes_by_member, printed=None, record=None):
+def term_seats(votes_by_member, printed=None, record=None, ballots=None):
     """{term: {member id: label}}: the seat each member held in each term --
     the label a session day of the term names them by (labels-use-the-seat-
     held-at-the-time; the person, 16 September 2026).
@@ -3205,6 +3205,16 @@ def term_seats(votes_by_member, printed=None, record=None):
                                               county=c)["display_full"] for c, d in said}:
             continue
         out[t][mid] = lab
+    if ballots is not None:
+        # WHO VOTED, AS THEIR BALLOTS NAME THEM: the map term_seats was before
+        # 5 November 2026, one label with a seat per member and term. Not a
+        # seat to show; build_session_pages.by_ballot links a name no roster
+        # matches among these, as it did, so the seats' new source moves no
+        # link (the lens of 5 November: 102 gained and 56 lost when it read
+        # the seats instead -- Rep. Jeb Bradley among them, who voted that
+        # term whatever seat he held).
+        ballots.update({t: {m: next(iter(ls)) for m, ls in sorted(ms.items()) if len(ls) == 1}
+                        for t, ms in sorted(seen.items())})
     return {t: dict(sorted(ms.items())) for t, ms in sorted(out.items()) if ms}
 
 
@@ -3213,7 +3223,8 @@ def write_floor_record(data_dir, votes_by_member, cards, moments=None, nobill=No
     """data/floor_record.json (FLOOR_RECORD, above). Returns its path.
     `record` is term_seats' printed record, read from text_sponsors.json when
     not given."""
-    seats = term_seats(votes_by_member, record=record)
+    ballots = {}
+    seats = term_seats(votes_by_member, record=record, ballots=ballots)
     presiding = defaultdict(list)
     for rows in votes_by_member.values():
         for v in rows:
@@ -3232,11 +3243,13 @@ def write_floor_record(data_dir, votes_by_member, cards, moments=None, nobill=No
                   "Presiding ballot names (presiding), and where each roll call's card is "
                   "on its bill's Votes tab (cards, the index into the bill record's "
                   "rollcalls); the seat each member held in each term, as its bills "
-                  "print it, else their ballots' in their last term (seats); and where each roll call on no bill is in its term's "
+                  "print it, else their ballots' in their last term (seats); who voted in "
+                  "each term, as their ballots label them, for linking a name and not for "
+                  "showing a seat (ballots); and where each roll call on no bill is in its term's "
                   "nobill/<term>.json (nobill). Written by build_site_v2.py, which reads "
                   "the ballots.",
         "presiding": {k: sorted(v) for k, v in sorted(presiding.items())},
-        "cards": cards, "moments": moments or {}, "seats": seats,
+        "cards": cards, "moments": moments or {}, "seats": seats, "ballots": ballots,
         "nobill": nobill or {}},
         separators=(",", ":"), sort_keys=True),
         encoding="utf-8")

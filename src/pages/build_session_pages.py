@@ -202,8 +202,10 @@ class Members:
         # {term: {member id: label}}, the seat the term's bills print, else
         # the ballots' in the member's last term (floor_record's seats,
         # build_site_v2.term_seats), and the term the roster describes. Set by
-        # main(); label() reads them.
-        self.seats, self.current = {}, ""
+        # main(); label() reads them. And who voted in each term as their
+        # ballots label them (floor_record's ballots), which by_ballot links
+        # a name among.
+        self.seats, self.current, self.ballots = {}, "", {}
         # The names left as words, (chamber, name) -> times, said at the end
         # of the run so a name that should have linked can be found.
         self.unmatched = collections.Counter()
@@ -342,7 +344,10 @@ class Members:
         hon = "sen." if body == "S" else "rep."
         want = (last or "").strip().lower()
         hits = []
-        for mid, lab in (self.seats.get(self.term) or {}).items():
+        # who voted in the term as their ballots label them (floor_record's
+        # ballots), not the seats shown: a member whose seat of the term no
+        # source gives still voted in it. The seats where a run has no ballots.
+        for mid, lab in ((self.ballots or self.seats).get(self.term) or {}).items():
             words = re.sub(r"\s*\([^()]*\)\s*$", "", lab or "").split()
             page = self.by_id.get(str(mid)) or self.by_number.get(str(mid)) or {}
             if (len(words) >= 2 and words[0].lower() == hon and words[-1].lower() == want
@@ -3528,6 +3533,7 @@ def chamber(a, site, base, body, days):
     fr = floor_record()
     # Each member by the seat they held in the day's term (Members.label).
     members.seats = fr.get("seats") or {}
+    members.ballots = fr.get("ballots") or {}
     _today = build_date.today().isoformat()
     members.current = proceedings.vote_term(_today[:4], _today)
     if not members.seats:

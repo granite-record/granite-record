@@ -69149,12 +69149,18 @@ def _term_seats_printed_first(B2):
     root = Path(tempfile.mkdtemp(prefix="gr-seats-"))
     try:
         f = B2.write_floor_record(root, {"7439": chair}, {}, record=({}, set(), {}))
-        pres = json.loads(Path(f).read_text(encoding="utf-8"))["presiding"]
+        rec = json.loads(Path(f).read_text(encoding="utf-8"))
+        pres = rec["presiding"]
     finally:
         shutil.rmtree(root, ignore_errors=True)
     labs = sorted(lab for rows in pres.values() for _mid, lab in rows)
     assert labs == ["Rep. Bonnie Ham", "Rep. Bonnie Ham (D - Graf 5)"], (
         f"who presided reads {labs}: 2011's must be the name alone, 2015's the last term's seat")
+    # who voted, for linking a name, is every term's, whatever seat is shown
+    assert (rec.get("ballots") or {}).get("2011-2012", {}).get("7439") == "Rep. Bonnie Ham (D - Graf 5)" \
+        and "2011-2012" not in rec["seats"], (
+        f"the floor record's ballots {rec.get('ballots')} and seats {rec['seats']}: 2011-2012's "
+        "voter is linked by her ballots and shown with no seat")
     return "ok", ("Chandley Hills 6 in 2009-2010 as printed, Hills 22 where printed and in her last "
                   "term; Ham's 2011-2012 seatless, as chair too; McCarty's and King's last-term "
                   "records refused where their term's bills say otherwise")
@@ -84105,9 +84111,12 @@ def _speaker_by_ballot(BSP):
              "served": {"terms": ["2023-2024"]}}]), encoding="utf-8")
         m = BSP.Members(root)
         m.term = "2025-2026"
-        m.seats = {"2025-2026": {"1": "Rep. Paul Terry (R - Belk 7)",
-                                 "2": "Rep. Joe Quill (R - Hills 9)",
-                                 "3": "Rep. Ann Lee (D - Hills 1)", "4": "Rep. Bo Lee (R - Hills 2)"}}
+        # who voted (floor_record's ballots), not the seats shown: Quill's
+        # seat of the term no source gives, and he voted in it
+        m.seats = {"2025-2026": {"1": "Rep. Paul Terry (R - Belk 7)"}}
+        m.ballots = {"2025-2026": {"1": "Rep. Paul Terry (R - Belk 7)",
+                                   "2": "Rep. Joe Quill (R - Hills 9)",
+                                   "3": "Rep. Ann Lee (D - Hills 1)", "4": "Rep. Bo Lee (R - Hills 2)"}}
         got = (m.slug("H", "Quill"), m.slug("H", "Terry"), m.slug("H", "Lee"), m.slug("H", "Nobody"))
     finally:
         shutil.rmtree(root, ignore_errors=True)
