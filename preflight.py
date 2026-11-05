@@ -28653,7 +28653,11 @@ def _record_untouched():
             f"the reader of writes into {' and '.join(HANDMADE_DIRS)}/ reads {text!r} as "
             + ("no write" if writes else "a write"))
     bad, names = [], []
-    scanned = _paths.code_files("build_*.py") + _paths.code_files("fetch_*.py")
+    # And nightly.py, which reads one of them (corrections/lsr_withdrawals.json,
+    # 5 November 2026) and writes a great deal: a write into the person's
+    # file from the night would otherwise pass (the review of that day).
+    scanned = (_paths.code_files("build_*.py") + _paths.code_files("fetch_*.py")
+               + [_paths.locate("nightly.py")])
     for f in scanned:
         src = f.read_text(encoding="utf-8", errors="replace")
         if "checked.jsonl" in src:
@@ -89990,7 +89994,8 @@ def _nightly_runner(NI):
                 NI.say(f"  (0s, exit {lsr['rc']})")
                 return lsr["rc"]
             rows = [{"lsr": f"2027-{i:04d}", "session": 2027, "body": "HB", "title": "t",
-                     "sponsor": "s", "withdrawn": False} for i in range(1, lsr["rows"] + 1)]
+                     "sponsor": "s", "withdrawn": False}
+                    for i in [*range(1, lsr["rows"] + 1), *lsr.get("new", ())]]
             here_now = {r["lsr"] for r in rows}
             if Path("lsrs.json").exists():
                 rows += [{**r, "withdrawn": True} for r in
@@ -90297,6 +90302,13 @@ def _nightly_runner(NI):
         lsr["rows"] = 10
         code, _ = night("--runner", run_id="113")
         assert code == 0 and verdict()["lsrs"] == "installed, 10 requests (was 3)", verdict()["lsrs"]
+        # A request withdrawn on an earlier night, as fetch_lsrs keeps them,
+        # so that the list's length, its withdrawn and its standing all differ
+        # from what a night withdraws (the review of 5 November 2026).
+        Path("lsrs.json").write_text(json.dumps(
+            json.loads(Path("lsrs.json").read_text(encoding="utf-8")) + [
+                {"lsr": "2026-0099", "session": 2027, "body": "SB", "title": "t", "sponsor": "s",
+                 "withdrawn": True}]), encoding="utf-8")
         good = Path("lsrs.json").read_bytes()
         lsr["rc"] = 1
         code, _ = night("--runner", run_id="114")
@@ -90312,8 +90324,10 @@ def _nightly_runner(NI):
             os.environ.pop("GITHUB_ACTIONS", None)
         assert code == 0 and any(ln.startswith("::warning title=The night was clean")
                                  for ln in out.splitlines()), out[-300:]
-        lsr["rc"], lsr["rows"] = 0, 2
-        code, _ = night("--runner", run_id="115")
+        # Two of the ten stay, one new request comes: eight are newly withdrawn,
+        # of a list of twelve holding nine withdrawn.
+        lsr["rc"], lsr["rows"], lsr["new"] = 0, 2, [100]
+        code, out = night("--runner", run_id="115")
         v = verdict()
         assert code == 0 and v["clean"] and "would newly withdraw 8 of the 10" in v["lsrs"] \
             and Path("lsrs.json").read_bytes() == good, v.get("lsrs")
@@ -90324,23 +90338,60 @@ def _nightly_runner(NI):
             not any("lsrs_gone" in w or "2027-" in w for w in v.get("warnings") or []), (
             "the requests the night would withdraw are not named apart from its warning",
             v.get("lsrs_gone"), v.get("warnings"))
-        # The person's count lets that withdrawal in, and nothing else
-        # (LSR_ACCEPTED): the same night again, with their entry, installs it.
-        Path("corrections").mkdir(exist_ok=True)
-        Path("corrections/lsr_withdrawals.json").write_text(json.dumps({"accepted": [
-            {"day": datetime.now().date().isoformat(), "standing": 10, "withdraw": 8,
-             "confirmed": f"{datetime.now().date().isoformat()}, the person"}]}), encoding="utf-8")
+        # The digest the night prints is the eight's, the one a person copies.
+        digest = v.get("lsrs_gone_digest")
+        assert digest == NI.lsr_digest(r["lsr"] for r in v["lsrs_gone"]) and \
+            f"(digest {digest})" in out, ("the digest is not of the requests named", digest)
+        # With no file of the person's, the log asks for the counts.
+        assert "before the counts go into corrections/lsr_withdrawals.json" in out and \
+            "is on file" not in out, out[-600:]
+        # An acceptance that raises is no acceptance, and the list goes back:
+        # between the fetch and the restore nothing may stop the night.
+        real_accepted = NI.lsr_accepted
+
+        def boom(*_a, **_k):
+            raise RecursionError("a file nested past the limit")
+        NI.lsr_accepted = boom
         try:
+            code, out = night("--runner", run_id="115")
+        finally:
+            NI.lsr_accepted = real_accepted
+        v = verdict()
+        assert code == 0 and v["lsrs"].startswith("not taken: it would newly withdraw 8") and \
+            Path("lsrs.json").read_bytes() == good and \
+            "could not be read as an acceptance (RecursionError)" in out, (code, v.get("lsrs"))
+        # The person's count lets that withdrawal in, and nothing else
+        # (LSR_ACCEPTED): an entry with another set's digest is refused and the
+        # log says so, not that the counts are wanted; the same night again
+        # with the digest it printed installs it; and the file is only read.
+        Path("corrections").mkdir(exist_ok=True)
+        entry = {"day": datetime.now().date().isoformat(), "standing": 10, "withdraw": 8,
+                 "confirmed": f"{datetime.now().date().isoformat()}, the person"}
+        try:
+            Path("corrections/lsr_withdrawals.json").write_text(json.dumps(
+                {"accepted": [{**entry, "digest": "0" * 12}]}), encoding="utf-8")
+            code, out = night("--runner", run_id="115")
+            v = verdict()
+            assert code == 0 and v["lsrs"].startswith("not taken: it would newly withdraw 8") and \
+                Path("lsrs.json").read_bytes() == good and \
+                "corrections/lsr_withdrawals.json is on file and took nothing" in out and \
+                f"its digest is not the one this night printed ({digest})" in out and \
+                "before the counts go into" not in out, (v.get("lsrs"), out[-800:])
+            Path("corrections/lsr_withdrawals.json").write_text(json.dumps(
+                {"accepted": [{**entry, "digest": digest}]}), encoding="utf-8")
+            theirs = Path("corrections/lsr_withdrawals.json").read_bytes()
             code, _ = night("--runner", run_id="115")
             v = verdict()
             assert code == 0 and v["clean"] and v["lsrs"].startswith(
-                "installed, 2 requests (was 10); 8 newly withdrawn, as the person accepted on") \
+                "installed, 3 requests (was 10); 8 newly withdrawn, as the person accepted on") \
                 and not any("bill requests" in w for w in v.get("warnings") or []) \
                 and "lsrs_gone" not in v, (v.get("lsrs"), v.get("warnings"))
+            assert Path("corrections/lsr_withdrawals.json").read_bytes() == theirs, \
+                "the night changed the person's file"
         finally:
-            Path("corrections/lsr_withdrawals.json").unlink()
+            Path("corrections/lsr_withdrawals.json").unlink(missing_ok=True)
             Path("lsrs.json").write_bytes(good)
-        lsr["rows"] = 10
+        lsr["rows"], lsr["new"] = 10, []
 
         # Recordings the laptop has not read three days after they ended are
         # a warning, not a failure; a read one, a young one, one with no
@@ -90606,20 +90657,41 @@ def _lsr_accepted_by_the_person(NI):
         f.write_text(json.dumps({"accepted": list(entries)}), encoding="utf-8")
         return NI.lsr_accepted(300, 80, today=today, path=f)
     good = {"day": "2026-11-05", "standing": 300, "withdraw": 80, "confirmed": "2026-11-05, owner"}
+
+    def said(*args, **kw):
+        why = []
+        got = NI.lsr_accepted(*args, why=why, **kw)
+        return got, why
     try:
-        assert NI.lsr_accepted(300, 80, today=today, path=root / "none.json") is None, \
-            "a withdrawal was taken with no file of the person's"
+        assert said(300, 80, today=today, path=root / "none.json") == (None, []), \
+            "a withdrawal was taken with no file of the person's, or a missing file was reasoned about"
         f.write_text("{not json", encoding="utf-8")
-        assert NI.lsr_accepted(300, 80, today=today, path=f) is None, "an unreadable file let one in"
+        got, why = said(300, 80, today=today, path=f)
+        assert got is None and len(why) == 1 and "will not read" in why[0], \
+            ("an unreadable file let one in, or did not say it would not read", why)
+        # Windows PowerShell 5.1 writes UTF-8 with a byte-order mark, and its
+        # > writes UTF-16: the first is read, the second said, never silence
+        # (the review of 5 November 2026).
+        f.write_text(json.dumps({"accepted": [good]}), encoding="utf-8-sig")
+        assert NI.lsr_accepted(300, 80, today=today, path=f) == good, \
+            "a file with a byte-order mark was not read"
+        f.write_text(json.dumps({"accepted": [good]}), encoding="utf-16")
+        got, why = said(300, 80, today=today, path=f)
+        assert got is None and why and "will not read" in why[0], ("UTF-16 went unsaid", why)
         # A file of another shape accepts nothing and raises nothing: between
         # the fetch and the restore, take_lsrs must not stop (the review of 5
-        # November 2026, which found {"accepted": 5} raising there).
+        # November 2026, which found {"accepted": 5} raising there). And it
+        # says what shape it wants.
         for shape in ({"accepted": 5}, {"accepted": True}, {"accepted": "x"},
-                      {"accepted": {"day": "2026-11-05"}}, [good], 7):
+                      {"accepted": {"day": "2026-11-05"}}, {"accepted": []}, [good], 7, good):
             f.write_text(json.dumps(shape), encoding="utf-8")
-            assert NI.lsr_accepted(300, 80, today=today, path=f) is None, \
-                f"a file shaped {shape!r} let one in"
+            got, why = said(300, 80, today=today, path=f)
+            assert got is None and len(why) == 1 and '"accepted"' in why[0], \
+                (f"a file shaped {shape!r} let one in, or did not say the shape", why)
         assert given(good) == good, "the person's own count did not let the withdrawal in"
+        assert NI.LSR_ACCEPT_DAYS == 7, "the week the owner chose is not the window"
+        assert given({**good, "day": "2026-10-30"}) == {**good, "day": "2026-10-30"}, \
+            "an entry seven days old was refused"
         for bad, why in (({**good, "withdraw": 79}, "another count withdrawn"),
                          ({**good, "standing": 301}, "another count standing"),
                          ({**good, "withdraw": "80"}, "a count written as text"),
@@ -90629,11 +90701,24 @@ def _lsr_accepted_by_the_person(NI):
                          ({**good, "day": "2026-11-07"}, "an entry dated after the night"),
                          ({**good, "day": "5 November"}, "a day that is no date"),
                          ({**good, "day": "20261105"}, "a day in ISO's compact form"),
+                         ({**good, "day": "2026-11-05, owner"}, "a day with words after it"),
+                         ({**good, "day": "2026-W45-4"}, "a day as an ISO week date"),
+                         ({**good, "confirmed": "2026-W45-4, owner"}, "a week date confirmed"),
                          ({**good, "standing": 300.0}, "a count written as a fraction"),
-                         ({**good, "withdraw": True}, "a count that is true"),
                          ({**good, "confirmed": "9999-99-99, owner"}, "a confirmation on no day"),
                          ({**good, "digest": "000000000000"}, "another set's digest")):
-            assert given(bad) is None, f"{why} let the withdrawal in"
+            f.write_text(json.dumps({"accepted": [bad]}), encoding="utf-8")
+            got, said_ = said(300, 80, today=today, path=f)
+            assert got is None, f"{why} let the withdrawal in"
+            assert len(said_) == 1 and said_[0].startswith("entry 1") and \
+                not any(w in said_[0] for w in ("owner", "W45", "000000000000")), (
+                f"{why} was refused without its reason, or the reason quotes the entry's own "
+                "words, which the public log must not", said_)
+        # A count that is true is one, and is no count: held where the counts
+        # would otherwise match, so the type and not the number refuses it.
+        f.write_text(json.dumps({"accepted": [{**good, "standing": True, "withdraw": True}]}),
+                     encoding="utf-8")
+        assert NI.lsr_accepted(1, 1, today=today, path=f) is None, "a count that is true let one in"
         # The digest, where the person gives it, ties the entry to one set.
         d = NI.lsr_digest(["2027-0002", "2027-0001"])
         assert d == NI.lsr_digest(["2027-0001", "2027-0002"]) and len(d) == 12 and \
@@ -90642,16 +90727,26 @@ def _lsr_accepted_by_the_person(NI):
         assert NI.lsr_accepted(300, 80, today=today, path=f, digest=d) and \
             NI.lsr_accepted(300, 80, today=today, path=f, digest="0" * 12) is None, \
             "an entry's digest does not decide which set it takes"
-        assert given({**good, "withdraw": 79}, good) == good, "a later matching entry was not found"
+        for empty in ("", None):
+            f.write_text(json.dumps({"accepted": [{**good, "digest": empty}]}), encoding="utf-8")
+            assert NI.lsr_accepted(300, 80, today=today, path=f, digest=d) is None, \
+                f"a digest of {empty!r} was taken as no digest"
+        # An entry that fails any one rule does not stop the search: a later
+        # one that matches is found, whichever rule the earlier one failed.
+        for first in ({**good, "withdraw": 79}, {**good, "digest": "111111111111"},
+                      {**good, "day": "x"}, {**good, "withdraw": "80"}, None, "x"):
+            assert given(first, good) == good, f"a later matching entry was not found after {first!r}"
+        assert given(None, "x", good) == good, "a list holding a non-object hid the entry after it"
         assert given({**good, "day": (today - timedelta(days=NI.LSR_ACCEPT_DAYS)).isoformat()}), \
             "an entry exactly LSR_ACCEPT_DAYS old was refused"
         assert NI.LSR_ACCEPTED.as_posix() == "corrections/lsr_withdrawals.json", (
             "the person's file is not in corrections/, where the person's files are (HANDMADE)")
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    return "ok", ("the person's entry lets in exactly the withdrawal it counts, for a week; another "
-                  "count, a text count, no dated confirmation, an old or future day, no file and an "
-                  "unreadable one let none in")
+    return "ok", ("the person's entry lets in exactly the withdrawal it counts, for a week, with a "
+                  "byte-order mark or none; another count, a text count, no dated confirmation, an "
+                  "old or future day, no file and an unreadable one let none in, and a file that is "
+                  "there says why in no words of its own")
 
 
 @check("build", "the night publishes the commit it was built from in build.json, and reads the "

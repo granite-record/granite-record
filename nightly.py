@@ -689,7 +689,9 @@ LSR_GONE_FLOOR = 5
 # written for one withdrawal cannot let a later one through; an entry may
 # also give the "digest" the night prints beside the requests (lsr_digest),
 # and then only that set is taken. Read, never written: the file is the
-# person's, in corrections/, the folder preflight's HANDMADE lists.
+# person's, in corrections/, the folder preflight's HANDMADE lists, and
+# _record_untouched reads this file for a write into it. Its shape is in
+# lsr_accepted's docstring.
 LSR_ACCEPTED = Path("corrections") / "lsr_withdrawals.json"
 LSR_ACCEPT_DAYS = 7
 
@@ -3942,21 +3944,41 @@ def lsr_digest(lsrs):
     return hashlib.sha256("\n".join(sorted(str(x) for x in lsrs)).encode()).hexdigest()[:12]
 
 
-def lsr_accepted(standing, gone, today=None, path=None, digest=None):
+def lsr_accepted(standing, gone, today=None, path=None, digest=None, why=None):
     """The person's entry in corrections/lsr_withdrawals.json that accepts
     withdrawing `gone` of `standing` requests (LSR_ACCEPTED), or None: both
     counts exactly, as whole numbers; "day" and the date "confirmed" begins
     with, each a real YYYY-MM-DD; the day no more than LSR_ACCEPT_DAYS before
     `today` and not after it; and, where the entry gives a "digest", that
     digest the night's own for the requests (lsr_digest). A file that will
-    not read, or is not the shape, accepts nothing."""
+    not read, or is not the shape, accepts nothing.
+
+    The file is {"accepted": [{"day": "YYYY-MM-DD", "standing": N,
+    "withdraw": N, "confirmed": "YYYY-MM-DD, who", "digest": "..."}]}, the
+    digest optional. Read as UTF-8 with or without a byte-order mark, which
+    Windows PowerShell writes.
+
+    SAID WHEN A FILE IS THERE AND TAKES NOTHING (the review of 5 November
+    2026). `why`, a list, is given one line for each reason: the file will not
+    read, it is not that shape, or each entry and the first rule it did not
+    meet. Nothing for a file that is not there. Never a word of the entry's
+    own text, because the night's log is public: counts, dates and the
+    night's digest only."""
     path = Path(path or LSR_ACCEPTED)
     today = today or datetime.now().date()
+    said = why if isinstance(why, list) else []
+    if not path.exists():
+        return None
     try:
-        doc = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+        doc = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError) as e:
+        said.append(f"it will not read as UTF-8 JSON ({type(e).__name__})")
         return None
     got = doc.get("accepted") if isinstance(doc, dict) else None
+    if not isinstance(got, list) or not got:
+        said.append('it holds no entries in an "accepted" list: {"accepted": [{"day": '
+                    '"YYYY-MM-DD", "standing": N, "withdraw": N, "confirmed": "YYYY-MM-DD, who"}]}')
+        return None
 
     def a_day(s):
         s = str(s or "")
@@ -3966,19 +3988,34 @@ def lsr_accepted(standing, gone, today=None, path=None, digest=None):
             return date.fromisoformat(s[:10])
         except ValueError:
             return None
-    for e in got if isinstance(got, list) else []:
+    for n, e in enumerate(got, 1):
         if not isinstance(e, dict):
+            said.append(f"entry {n} is not an object")
             continue
         day = a_day(e.get("day")) if len(str(e.get("day") or "")) == 10 else None
-        if day is None or a_day(e.get("confirmed")) is None:
+        if day is None:
+            said.append(f'entry {n}: its "day" is not a date written YYYY-MM-DD')
+            continue
+        if a_day(e.get("confirmed")) is None:
+            said.append(f'entry {n}: its "confirmed" does not begin with a date written YYYY-MM-DD')
             continue
         counts = (e.get("standing"), e.get("withdraw"))
-        if not all(isinstance(n, int) and not isinstance(n, bool) for n in counts):
+        if not all(isinstance(c, int) and not isinstance(c, bool) for c in counts):
+            said.append(f'entry {n}: its "standing" and "withdraw" are not both whole numbers')
             continue
         if "digest" in e and e.get("digest") != digest:
+            said.append(f"entry {n}: its digest is not the one this night printed ({digest})")
             continue
-        if counts == (standing, gone) and 0 <= (today - day).days <= LSR_ACCEPT_DAYS:
-            return e
+        if counts != (standing, gone):
+            said.append(f"entry {n} counts {counts[1]} of {counts[0]}; this night would "
+                        f"withdraw {gone} of {standing}")
+            continue
+        age = (today - day).days
+        if not 0 <= age <= LSR_ACCEPT_DAYS:
+            said.append(f"entry {n} is dated {day}, " + (f"after today, {today}" if age < 0 else
+                        f"{age} days before today: an entry is good for {LSR_ACCEPT_DAYS}"))
+            continue
+        return e
     return None
 
 
@@ -4014,11 +4051,11 @@ def take_lsrs(v=None):
         # Between the fetch, which has written lsrs.json, and the restore
         # below, nothing may raise: a person's file that will not read as
         # meant is no acceptance (the review of 5 November 2026).
+        refused = []
         try:
-            accepted = lsr_accepted(len(standing), len(gone), digest=digest)
+            accepted = lsr_accepted(len(standing), len(gone), digest=digest, why=refused)
         except Exception as e:  # noqa: BLE001
-            say(f"  {LSR_ACCEPTED.as_posix()} could not be read as an acceptance "
-                f"({type(e).__name__}: {e}); nothing taken on it")
+            refused.append(f"it could not be read as an acceptance ({type(e).__name__})")
             accepted = None
         if accepted is None:
             why = f"it would newly withdraw {len(gone)} of the {len(standing)} standing requests"
@@ -4027,8 +4064,15 @@ def take_lsrs(v=None):
             if v is not None:
                 v["lsrs_gone"] = named
                 v["lsrs_gone_digest"] = digest
+            # A file that is there and took nothing says why, first: told to
+            # write the counts, a person who had would not know what was wrong.
+            if refused:
+                say(f"  {LSR_ACCEPTED.as_posix()} is on file and took nothing for this night:")
+                for line in refused:
+                    say(f"    {line}")
             say(f"  the {len(gone)} it would withdraw (digest {digest}), to hold to the General "
-                f"Court's list before the counts go into {LSR_ACCEPTED.as_posix()}:")
+                f"Court's list" + ("" if refused else
+                                   f" before the counts go into {LSR_ACCEPTED.as_posix()}") + ":")
             for r in named:
                 say(f"    {r['lsr']}  {r['body'] or ''}  {r['sponsor'] or ''}")
     if why:
