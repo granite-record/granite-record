@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.765
+# GRANITE_VERSION: 2026-09-04.766
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -65615,6 +65615,14 @@ def _words_written_once(B):
     if tuple(B.CHIP_WORDS) != tuple(W["chips"]["chip"]):
         bad.append(f"build_site_v2.CHIP_WORDS is {B.CHIP_WORDS}, not chips.json's "
                    f"{tuple(W['chips']['chip'])}")
+    # The session days' closing line (5 November 2026): its tables are
+    # closing.json's own, which the live session page reads too.
+    import build_session_pages as BSP
+    for name, key in (("CLOSING", "sentences"), ("CLOSING_WHO", "who"), ("CLOSING_AFTER", "after"),
+                      ("CLOSING_LEFT", "left"), ("NARRATIVE_KEY", "narrative_key"),
+                      ("VOTE_SAID", "vote_said"), ("NUANCE_OF", "nuance_of")):
+        if getattr(BSP, name) is not W.get("closing", {}).get(key):
+            bad.append(f"build_session_pages.{name} is not closing.json's {key}")
 
     # The browser reads them, and nothing types them again.
     app = Path("src/pages/app.js").read_text(encoding="utf-8")
