@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.765
+# GRANITE_VERSION: 2026-09-04.766
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -112410,6 +112410,190 @@ def _elect_reader_decisions(PSR):
     return "ok", ("write-ins the file does not name, as many as the last seat's votes, refused; "
                   "a county's later upload read in place of its earlier, two under one number "
                   "refused")
+
+
+@check("build", "members-elect: the Senate is read whole (2024's one file) or in parts (2026's "
+                "fifteen, named for their districts), each part's later upload in place of its "
+                "earlier; a gap, an overlap or a file holding other than its name is refused",
+       needs=("parse_sos_results", "election_week"))
+def _elect_senate_parts(PSR, EW):
+    """THE SENATE IN PARTS (5 November 2026). The Secretary of State published
+    2024's Senate results as one file, -district-1-24, and 2026's as fifteen:
+    -1 to -9, -10-11, -12-13, -14-16, -17-18, -19-21 and -22-24. The reader
+    takes either; election_week counts the Senate as one of its eleven files
+    only once every district is held. Names and merges only: the files are
+    empty here, and read_senate is not asked."""
+    split = [f"2026-ge-state-senate-{n}.xlsx" for n in range(1, 10)] + [
+        f"2026-ge-state-senate-{s}.xlsx" for s in ("10-11", "12-13", "14-16", "17-18", "19-21",
+                                                    "22-24")]
+    spans = [PSR.senate_span(n) for n in split]
+    assert spans[0] == (1, 1) and spans[11] == (14, 16) and \
+        PSR.senate_span("2024-ge-state-senate-district-1-24_4.xls") == (1, 24) and \
+        PSR.senate_span("2026-ge-state-senate-14-16_2.xlsx") == (14, 16), (
+        f"the names are not read for their districts: {spans[:2]}, {spans[11]}")
+    for no in ("2026-ge-state-senate.xlsx", "2026-ge-state-senate-1-.xlsx",
+               "2026-ge-us-senator-summary.xlsx", "2026-ge-executive-council-1.xlsx"):
+        assert PSR.senate_span(no) is None, f"{no} was read as a State Senate file"
+    root = Path(tempfile.mkdtemp(prefix="gr-sos-senate-"))
+    was = os.getcwd()
+    try:
+        d = root / PSR.SOURCES
+        d.mkdir(parents=True)
+        for n in [f"2026-ge-house-{c}.xlsx" for c in PSR.COUNTIES] + split + [
+                "2026-ge-state-senate-14-16_1.xlsx", "2026-ge-us-senator-summary.xlsx"]:
+            (d / n).write_bytes(b"")
+        got = PSR.source_files(root, 2026)
+        names = [p.name for p in got["senate"]]
+        assert len(names) == 15 and "2026-ge-state-senate-14-16_1.xlsx" in names and \
+            "2026-ge-state-senate-14-16.xlsx" not in names, f"the parts read are {names}"
+        assert [(a.name, b.name) for a, b in got["replaced"]] == [
+            ("2026-ge-state-senate-14-16.xlsx", "2026-ge-state-senate-14-16_1.xlsx")], (
+            f"the part replaced is said as {got['replaced']}")
+        os.chdir(root)
+        lines, complete, latest = EW.status("2026")
+        assert lines[0].startswith("11 of 11") and \
+            "2026-ge-state-senate-14-16_1.xlsx" in {p.name for p in latest}, (
+            f"election_week with every part saved: {lines[:2]}")
+        for name, why in (("2026-ge-state-senate-15.xlsx", "more than one saved file"),
+                          ("2026-ge-state-senate-district-1-24.xlsx", "more than one saved file")):
+            (d / name).write_bytes(b"")
+            try:
+                PSR.source_files(root, 2026)
+                raise AssertionError(f"{name} beside the fifteen parts was read")
+            except PSR.Refused as e:
+                assert why in str(e), f"{name}: refused, but not for the overlap: {e}"
+            (d / name).unlink()
+        for p in d.glob("2026-ge-state-senate-14-16*"):
+            p.unlink()
+        try:
+            PSR.source_files(root, 2026)
+            raise AssertionError("the Senate was read without districts 14 to 16")
+        except PSR.Refused as e:
+            assert "district(s) 14, 15, 16" in str(e), f"refused, but not for the gap: {e}"
+        lines, complete, _latest = EW.status("2026")
+        assert lines[0].startswith("10 of 11") and not complete and \
+            any("not saved yet for district(s) 14, 15, 16" in x for x in lines), (
+            f"election_week with a part missing: {lines}")
+    finally:
+        os.chdir(was)
+        shutil.rmtree(root, ignore_errors=True)
+    rec = {"candidates": []}
+    merged = PSR.senate_merged([("2026-ge-state-senate-1.xlsx", {1: rec}),
+                                ("2026-ge-state-senate-14-16.xlsx", {14: rec, 15: rec, 16: rec})])
+    assert sorted(merged) == [1, 14, 15, 16], f"merged {sorted(merged)}"
+    for read, why in (([("2026-ge-state-senate-14-16.xlsx", {14: rec, 16: rec})], "its name says"),
+                      ([("2026-ge-state-senate-14-16.xlsx", {14: rec, 15: rec, 16: rec, 17: rec})],
+                       "its name says"),
+                      ([("2026-ge-state-senate-1.xlsx", {1: rec}),
+                        ("2026-ge-state-senate-1_2.xlsx", {1: rec})], "in both")):
+        try:
+            PSR.senate_merged(read)
+            raise AssertionError(f"{[n for n, _ in read]} merged")
+        except PSR.Refused as e:
+            assert why in str(e), f"refused, but not as it should be: {e}"
+    return "ok", ("2024's one Senate file and 2026's fifteen parts read for their districts, a "
+                  "part's later upload in place of its earlier; an overlap, a gap and a file "
+                  "holding other than its name refused, and election_week counts the Senate "
+                  "once every district is saved")
+
+
+@check("build", "members-elect: what the 2026 files write differently from 2024's is read, "
+                "each odd cell flagged and nothing looser taken -- the day in words, a write-in "
+                "named before its word, a Totals formula that leaves out a town, N/A for "
+                "write-ins, a named write-in's empty cell, a place spelt whole or shortened",
+       needs=("parse_sos_results",))
+def _elect_2026_layout(PSR):
+    """THE 2026 FILES, AS READ ON 5 NOVEMBER 2026. Each rule here was met in
+    the Secretary of State's own 2026 files (src/parse/parse_sos_results.py
+    names where), and each is held to its narrow case: the near miss beside
+    it is still refused. No file is opened; Block is fed rows, and a formula
+    as an .xlsx would give it."""
+    import datetime
+    day = datetime.date(2026, 11, 3)
+    for v in ("November 03, 2026", "NOVEMBER 03, 2026", "November 3, 2026"):
+        assert PSR.as_day(v) == day, f"{v!r} read as {PSR.as_day(v)}"
+    for v in ("Nov 03, 2026", "3 November 2026", "November 03 2026", "11/03/2026", "Novembr 03, 2026"):
+        assert PSR.as_day(v) is None, f"{v!r} was read as a day: {PSR.as_day(v)}"
+    for v, name in (("WRITE-IN   Kathy DesRoches", "Kathy DesRoches"),
+                    ("Amanda Allen       WRITE-IN", "Amanda Allen"),
+                    ("Desiree McLaughlin                  WRITE-IN", "Desiree McLaughlin")):
+        m = PSR.WRITE_IN.match(v)
+        assert m and (m.group("name") or m.group("after")).strip() == name, f"{v!r}: {m}"
+    for v in ("Write-Ins", "Amanda Allen", "Amanda WRITE-IN Allen"):
+        assert not PSR.WRITE_IN.match(v), f"{v!r} was read as a named write-in"
+    assert PSR.place_key("Thompson & Meserve's Purchase") == \
+        PSR.place_key("Thompson & Mes's Purchase"), "the Purchase spelt whole is not the table's"
+    assert PSR.one_place("Thompson & Meserve's", "Thompson & Mes's Purchase") and \
+        PSR.one_place("Newfield", "Newfields") and not PSR.one_place("Thompson", "Thompson & "
+                                                                     "Mes's Purchase") and \
+        not PSR.one_place("Meserve's Purchase", "Thompson & Mes's Purchase"), (
+        "a place shortened by more than its last word, or from the front, was taken")
+
+    fake = Path(tempfile.gettempdir()) / "gr-sos-formulas-not-a-file.xlsx"
+    key = str(fake.resolve())
+
+    def block(rows, totals, ents, formula=None):
+        PSR._FORMULAS[key] = {("s", totals[0], c): f for c, f in (formula or {}).items()}
+        b = PSR.Block(ents, "the block", source=(fake, "s"))
+        b.rows = [(t, r, f"f, sheet 's', row {n}") for n, t, r in rows]
+        b.totals = (totals[1], f"f, sheet 's', row {totals[0]}") if totals else None
+        return b
+
+    cand = [{"name": "Ella", "party": "d", "write_in": False, "col": 1, "recount": None},
+            {"name": "Brad", "party": "r", "write_in": False, "col": 2, "recount": None}]
+    towns = [(47, "Canaan", ["Canaan", 1077, 653]), (48, "Dorchester", ["Dorchester", 75, 105]),
+             (49, "Orange", ["Orange", 88, 63])]
+    try:
+        b = block(towns, (50, ["Totals", 1152, 821]), cand, {1: "=SUM(B47:B48)", 2: "=SUM(C47:C49)"})
+        out = b.read(None)
+        assert sum(v[0][0] for v in out.values()) == 1240 and len(b.notes) == 1 and \
+            "leaves out Orange" in b.notes[0], f"the short Totals formula: {b.notes}"
+        for formula, totals, why in (({1: "=SUM(B47:B49)"}, 1152, "covers every town"),
+                                     ({1: "=SUM(C47:C48)"}, 1152, "another column"),
+                                     ({1: "=SUM(B46:B48)"}, 1152, "a row that is no town"),
+                                     ({1: "=SUM(B47:B48)"}, 1150, "not the towns it names"),
+                                     ({}, 1152, "no formula, as an .xls")):
+            try:
+                block(towns, (50, ["Totals", totals, 821]), cand, formula).read(None)
+                raise AssertionError(f"a Totals of {totals} with {formula} ({why}) was read")
+            except PSR.Refused as e:
+                assert "adds up to 1,240" in str(e), f"{why}: refused, but not as it should be: {e}"
+        meta = cand + [{"meta": "scatter", "col": 3, "recount": None}]
+        b = block([(29, "Merrimack", ["Merrimack", 6318, 6543, "N/A"])], None, meta)
+        out = b.read(None)
+        assert out["Merrimack"][2][0] is None and "N/A" in b.notes[0], f"N/A for write-ins: {out}"
+        try:
+            block([(29, "Merrimack", ["Merrimack", "N/A", 6543, 0])], None, meta).read(None)
+            raise AssertionError("a candidate's N/A was read")
+        except PSR.Refused as e:
+            assert "where a count belongs" in str(e), f"a candidate's N/A: {e}"
+        wi = cand + [{"name": "Desiree McLaughlin", "party": "", "write_in": True, "col": 3,
+                      "recount": None}]
+        wards = [(9, "Franklin Ward 1", ["Franklin Ward 1", 505, 418, None]),
+                 (10, "Franklin Ward 2", ["Franklin Ward 2", 491, 433, 46]),
+                 (11, "Franklin Ward 3", ["Franklin Ward 3", 575, 504, 45])]
+        b = block(wards, (12, ["Totals", 1571, 1355, 91]), wi)
+        out = b.read(None)
+        assert out["Franklin Ward 1"][2][0] == 0 and any("empty cell" in n for n in b.notes), (
+            f"the named write-in's empty cell the Totals account for: {out}")
+        for totals, why in ((["Totals", 1571, 1355, None], "no Totals for the column"),
+                            (["Totals", 1571, 1355, 92], "Totals that do not add up")):
+            try:
+                block(wards, (12, totals), wi).read(None)
+                raise AssertionError(f"a named write-in's empty cell was read with {why}")
+            except PSR.Refused as e:
+                assert "empty" in str(e) or "adds up" in str(e), f"{why}: {e}"
+        try:
+            block([(9, "Franklin Ward 1", ["Franklin Ward 1", 505, 418, None])], None, wi).read(None)
+            raise AssertionError("a one-town district's empty write-in cell was read")
+        except PSR.Refused as e:
+            assert "no Totals row accounts for it" in str(e), f"one town: {e}"
+    finally:
+        PSR._FORMULAS.pop(key, None)
+    return "ok", ("the day in words, a write-in named either side of its word, a Totals formula "
+                  "short of one town, N/A for write-ins, a named write-in's empty cell the Totals "
+                  "account for, and a place spelt whole or shortened by its last word, read and "
+                  "flagged; each near miss refused")
 
 
 @check("build", "members-elect: the results page's address reaches /members_elect.json -- the "
