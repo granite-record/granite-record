@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.7
+# GRANITE_VERSION: 2026-10-30.8
 """
 The state documents the guides and Learn pages rest on: from the laptop, where
 a real browser can read them, to the sessions, which cannot.
@@ -923,7 +923,10 @@ def suggest_row(url, reg=None):
 
 # --------------------------------------------------------------- officials --
 
-OFFICIALS = "corrections/officials.json"
+# The officers on record are read through build_members_elect.read_officials,
+# the hand file's one reader (preflight's _officials_one_reader), which also
+# puts a recorded successor in office on their day, as every page does.
+HAND_FILE = "the officials file in corrections/"
 # What a page says when it names the office, as the words to look for.
 OFFICE_WORDS = {
     "commissioners": ("commissioner",),
@@ -988,12 +991,16 @@ def latest_local(root, i):
     return max(got)[1] if got else None
 
 
-def officials_on_record(root):
-    p = Path(root) / OFFICIALS
-    try:
-        doc = json.loads(p.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as e:
-        raise Failed(f"{OFFICIALS} will not read ({e})")
+def officials_on_record(doc=None):
+    """{county: [(office key, office as printed, name)]}, from the officials
+    on record as the site shows them today; `doc` is that record already
+    read (preflight's), else it is read through its one reader."""
+    if doc is None:
+        import build_members_elect
+        try:
+            doc = build_members_elect.read_officials()
+        except (OSError, ValueError) as e:
+            raise Failed(f"{HAND_FILE} will not read ({e})")
     counties = (doc.get("county") or {}).get("counties") or {}
     out = {}
     for key, c in counties.items():
@@ -1009,14 +1016,14 @@ def officials_on_record(root):
                 people.append((office, rec.get("office") or office, rec["name"]))
         out[key] = people
     if not out:
-        raise Failed(f"{OFFICIALS} holds no county officers to check")
+        raise Failed(f"{HAND_FILE} holds no county officers to check")
     return out
 
 
-def check_officials(root, reg, only=None):
+def check_officials(root, reg, only=None, doc=None):
     """[(county, line)] and a count of flags: for each county, each person on
-    record, against the latest reading of that county's pages."""
-    people = officials_on_record(root)
+    record, against the latest reading of that county's pages under `root`."""
+    people = officials_on_record(doc)
     lines, flags = [], 0
     for county in sorted(people):
         if only and county.lower() != only.lower():
@@ -1061,7 +1068,7 @@ def cmd_officials(a, root):
         say(f"{county:<13} {line}")
     same = sum(1 for _, ln in lines if ln.startswith("SAME"))
     say(f"\n{flags} flag(s); {same} officer(s) named as on record. Nothing was written: "
-        f"a flag is for the owner to confirm before {OFFICIALS} is edited by hand.")
+        f"a flag is for the owner to confirm before {HAND_FILE} is edited by hand.")
 
 
 COMMANDS = {"check": cmd_check, "up": cmd_up, "down": cmd_down, "report": cmd_report,

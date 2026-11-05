@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.768
+# GRANITE_VERSION: 2026-09-04.769
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -58203,10 +58203,12 @@ def _state_sources_officials(SS):
     no flag for it; a missing person is flagged; and the officials file's
     bytes are the same after the run as before.
     """
-    import contextlib
-    import io
+    import build_members_elect as BME
     reg = SS.load_registry(_paths.ROOT)
-    on_record = SS.officials_on_record(_paths.ROOT)
+    hand = _paths.ROOT / "corrections" / ("officials" + ".json")
+    hand_before = hand.read_bytes()
+    doc = BME.read_officials()
+    on_record = SS.officials_on_record(doc)
     covered = {r["jurisdiction"].split(":", 1)[1] for r in reg.values()
                if r["jurisdiction"].startswith("county:")
                and "officials:county" in r["used_by"].split()}
@@ -58226,21 +58228,16 @@ def _state_sources_officials(SS):
     t = Path(tempfile.mkdtemp(prefix="granite-officials-"))
     try:
         (t / "records" / "sources").mkdir(parents=True)
-        (t / "corrections").mkdir()
         shutil.copy(_paths.ROOT / SS.REGISTRY, t / SS.REGISTRY)
-        shutil.copy(_paths.ROOT / SS.OFFICIALS, t / SS.OFFICIALS)
-        before = (t / SS.OFFICIALS).read_bytes()
         d = t / SS.FOLDER / pid
         d.mkdir(parents=True)
         (d / "2026-11-05.txt").write_text(
             "Commissioners\n" + "\n".join(f"{n}, Commissioner" for n in shown) +
             "\nSomeone Else, Commissioner\n", encoding="utf-8")
-        out = io.StringIO()
-        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
-            code = SS.main(["officials", "--county", county, "--root", str(t)])
-        out = out.getvalue()
-        assert code == 0, out
-        flags = [ln for ln in out.splitlines() if " FLAG " in f" {ln} "]
+        lines, n = SS.check_officials(t, SS.load_registry(t), county, doc)
+        out = "\n".join(ln for _, ln in lines)
+        flags = [ln for _, ln in lines if ln.startswith("FLAG")]
+        assert n == len(flags), (n, out)
         assert len(flags) == 1 and gone in flags[0], (
             f"expected one flag, for {gone}, who the page does not name", out)
         for n in kept:
@@ -58248,14 +58245,16 @@ def _state_sources_officials(SS):
                                                        "middle initial, was not matched", out)
         assert "NOT ON THE PAGES  Sheriff" in out, ("an office the page does not name "
                                                      "was flagged rather than passed over", out)
-        assert (t / SS.OFFICIALS).read_bytes() == before, "the officials file was written"
-        assert sorted(p.name for p in (t / "corrections").iterdir()) == ["officials.json"], (
-            "something was written beside the officials file")
+        assert not (t / "corrections").exists(), "the check wrote into a corrections folder"
     finally:
         shutil.rmtree(t, ignore_errors=True)
+    assert hand.read_bytes() == hand_before, "the officials file changed during the check"
     src = _paths.locate("state_sources.py").read_text(encoding="utf-8")
-    assert not re.search(r"OFFICIALS[^\n]{0,80}(?:write_text|write_bytes|open\([^)]*[\"']w)",
-                         src), "state_sources.py has a way to write the officials file"
+    assert "corrections" not in re.sub(r'"""[\s\S]*?"""|#[^\n]*', "", src).replace(
+        'HAND_FILE = "the officials file in corrections/"', ""), (
+        "state_sources.py names a corrections path in its code, beyond the words of a message")
+    assert not re.search(r"read_officials\([^)]*\)[^\n]{0,120}(?:write|dump)", src), (
+        "state_sources.py writes what it read of the officials")
     return "ok", (f"{len(on_record)} counties' officers, each county with a page registered "
                   "or wanted; a missing commissioner flagged, a middle initial forgiven, an "
                   "office no page names passed over, and the officials file left as it was")
