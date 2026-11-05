@@ -97195,8 +97195,12 @@ def _fetch_day_db(FD, DF, P, NI):
         P.HELD.unlink()
         os.environ.pop("GITHUB_ACTIONS")
 
-        # Another fetch holds the lock: it does not start.
-        Path("archive/.lock").write_text("1", encoding="utf-8")
+        # Another fetch holds the lock: it does not start. Its pid is any but
+        # this process's parent's, which refusal.hold takes for the lane that
+        # started the fetch and lets through. It was "1", and a suite started
+        # in the background from a shell that had since exited can have pid 1
+        # for its parent: the fetch went on, and this failed only in such runs.
+        Path("archive/.lock").write_text(str(os.getppid() + 1), encoding="utf-8")
         code, said = go("--fetch-only")
         assert code == 3 and "archive/.lock is held" in said, (code, said[-300:])
         Path("archive/.lock").unlink()
