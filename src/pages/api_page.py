@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.4
+# GRANITE_VERSION: 2026-10-30.5
 """
 /api: the data API's documentation page, drawn in the data page's own
 components and counted from tonight's manifest.
@@ -69,7 +69,11 @@ def body(manifest):
     db = next((f for f in files if f.get("kind") == "database" and not f.get("skipped")), None)
     people = by.get("people.json")
     schema = by.get("schema.json")
-    newest = bills[0]["term"] if bills else "2025-2026"
+    # No made-up names: where tonight's build has no bill files or no
+    # database, the examples that would name them are left out, not drawn
+    # with an address that is not there.
+    newest = bills[0]["term"] if bills else None
+    notices = (manifest.get("api") or {}).get("notices") or []
 
     rows = [_row("manifest.json",
                  "Every file here, with its address, rows, size, checksum and the night it was built.",
@@ -129,19 +133,46 @@ def body(manifest):
     if tables:
         rows.append(_row("bills.csv and the rest",
                          "The spreadsheets, as on the data page, with every date written YYYY-MM-DD "
-                         "and a person column in the sponsor and legislator tables.",
+                         "and a person column in the sponsor and legislator tables. Not "
+                         "proceedings.csv, which carries YouTube&rsquo;s own titles: here the "
+                         "database&rsquo;s proceedings table holds its rows.",
                          "", f"{sum(t['rows'] for t in tables):,}", "rows",
                          mb(sum(t["bytes"] for t in tables)), "/data.html#downloads", "See them"))
 
-    db_name = db["path"].rsplit("/", 1)[-1] if db else "granite-record.sqlite.xz"
+    db_name = db["path"].rsplit("/", 1)[-1] if db else None
+    start = ""
+    if newest:
+        start += ("<p>Every bill of the current term: download its file, then read it a line at a "
+                  "time, here in Python with nothing to install.</p>"
+                  + _code("An example on the command line",
+                          f"curl -O https://graniterecord.org/data/bills-{newest}.jsonl.gz")
+                  + _code("An example in Python",
+                          "import gzip, json\n"
+                          f'with gzip.open("bills-{newest}.jsonl.gz") as lines:\n'
+                          "    for line in lines:\n"
+                          "        bill = json.loads(line)\n"
+                          '        print(bill["key"], bill["title"])'))
+    if db_name:
+        start += ("<p>Or the whole database, in the <code>sqlite3</code> program:</p>"
+                  + _code("An example on the command line",
+                          f"curl -O https://graniterecord.org/data/{db_name}\n"
+                          f"xz -d {db_name}\n"
+                          f'sqlite3 {db_name[:-3]} "SELECT term, COUNT(*) FROM bills GROUP BY term"'))
+    start += ("<p>A page on another site may read the manifest and the spreadsheets from a "
+              "reader&rsquo;s browser too: each is served to any origin.</p>")
+    announced = ("<ul>" + "".join(
+        f"<li>{E(n.get('date', ''))} {E(n.get('text', ''))}</li>" if isinstance(n, dict)
+        else f"<li>{E(n)}</li>" for n in notices) + "</ul>") if notices else (
+        "<p>No change is announced now.</p>")
     sections = {
         "files": (
             '<p>Everything is under <code>/data/</code>, beside the spreadsheets on '
             '<a href="/data.html">the data page</a>, and '
             '<a href="data/manifest.json">data/manifest.json</a> lists every file with its address, '
             "size and checksum. Start there: one request says what is here and how much. The bill "
-            "files are compressed with gzip and the database with xz, which Python, R and the "
-            "command line on Linux and macOS open with what they already have.</p>",
+            "files are compressed with gzip and the database with xz. Python and R open both with "
+            "nothing to install; on the command line, gzip is everywhere, and xz is on most Linux "
+            "systems but has to be installed on a Mac.</p>",
             '<div class="dptablewrap dpwide"><table class="dpdl" role="table">'
             '<thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">File</th>'
             '<th scope="col" role="columnheader">What it holds</th>'
@@ -149,24 +180,7 @@ def body(manifest):
             '<th scope="col" role="columnheader" class="n">Size</th>'
             '<th scope="col" role="columnheader"><span class="sr">Download</span></th></tr></thead>'
             f'<tbody role="rowgroup">{"".join(rows)}</tbody></table></div>'),
-        "start": (
-            "<p>Every bill of the current term: download its file, then read it a line at a "
-            "time, here in Python with nothing to install.</p>"
-            + _code("An example on the command line",
-                    f"curl -O https://graniterecord.org/data/bills-{newest}.jsonl.gz")
-            + _code("An example in Python",
-                    "import gzip, json\n"
-                    f'with gzip.open("bills-{newest}.jsonl.gz") as lines:\n'
-                    "    for line in lines:\n"
-                    "        bill = json.loads(line)\n"
-                    '        print(bill["key"], bill["title"])')
-            + "<p>Or the whole database, in the <code>sqlite3</code> program:</p>"
-            + _code("An example on the command line",
-                    f"curl -O https://graniterecord.org/data/{db_name}\n"
-                    f"xz -d {db_name}\n"
-                    f'sqlite3 {db_name[:-3]} "SELECT term, COUNT(*) FROM bills GROUP BY term"')
-            + "<p>A page on another site may read the manifest and the spreadsheets from a "
-            "reader&rsquo;s browser too: each is served to any origin.</p>", ""),
+        "start": (start, ""),
         "keys": (
             "<p><b>A bill is its term and its number.</b> HB 100 names a different bill in every "
             "term, so every file writes a bill as <code>2025-2026/HB1442</code>, or as a "
@@ -196,8 +210,8 @@ def body(manifest):
             "site can fetch only the files that moved.</p>", ""),
         "live": (
             "<p>On a day the House or the Senate sits, <code>/api/live/votes/&lt;date&gt;</code> "
-            "holds the roll calls recorded so far that day. The nightly files above take the day in "
-            "the next morning.</p>"
+            "holds the roll calls recorded so far that day. They are provisional: the nightly files "
+            "above take the day in the next morning, from the General Court&rsquo;s own record.</p>"
             '<p class="dpnote">What is live on the General Court&rsquo;s video streams is not part of '
             "the API. Each bill&rsquo;s page links its recording.</p>", ""),
         "coverage": (
@@ -208,12 +222,14 @@ def body(manifest):
                 f"<dt>{E(s['source'])}</dt><dd>{E(s['lands'])}</dd>"
                 for s in manifest.get("sources") or []) + "</dl>", ""),
         "stability": (
-            "<p>Every JSON file carries <code>&quot;format&quot;: 1</code>. Until February 1, 2027 "
-            "the API is a beta, and a field may be renamed or removed; each such change is listed "
-            "here and in <code>manifest.json</code> a week before it is made. From February 1, "
-            "changes only add: a new file, a new field, a new column at the end. A change that "
-            "cannot be made by adding becomes a new file beside the old one, and both are published "
-            "for a year. <code>schema.json</code> marks what the promise covers.</p>", ""),
+            "<p>The format is numbered: 1 now, in <code>manifest.json</code> under "
+            "<code>api</code>, in <code>schema.json</code> and in <code>people.json</code>. Until "
+            "February 1, 2027 the API is a beta, and a field may be renamed or removed; each such "
+            "change is listed here and in <code>manifest.json</code> a week before it is made. From "
+            "February 1, changes only add: a new file, a new field, a new column at the end. A "
+            "change that cannot be made by adding becomes a new file beside the old one, and both "
+            "are published for a year. <code>schema.json</code> marks what the promise covers.</p>"
+            + announced, ""),
         "using": (
             "<p>The record is the State of New Hampshire&rsquo;s and is public, and so are the "
             "numbers it gives people and bills. What this site adds &mdash; the keys and joins it "
