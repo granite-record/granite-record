@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.246
+# GRANITE_VERSION: 2026-09-05.247
 """
 Generate the faceted site from real General Court data.
 
@@ -3094,35 +3094,96 @@ def floor_moment(st):
             "stated": st.get("debate_start") is not None, "s": state}
 
 
-def term_seats(votes_by_member):
-    """{term: {member id: label}}: the seat each member held in each term, as
-    their own ballots of that term give it (ballot_seat) -- the label a
-    session day of the term names them by (labels-use-the-seat-held-at-the-
-    time; the person, 16 September 2026). Only a label with a seat in it, and
-    only where every ballot of the term gives the same one: a member whose
-    ballots of a term name two seats is named without one there, which is
-    true, rather than with either, which may not be."""
+def printed_seats(path="text_sponsors.json"):
+    """{(term, member id): (chamber, county, district)}: the one seat the
+    term's bills print for a member, from the sponsor lines text_sponsors.py
+    read off each bill's own text and placed on a member -- the rule
+    build_data.date_ballot_seats already uses for the sitting members. A
+    member the term's bills print at two seats is left out: neither is
+    proven. Empty where the file is not here."""
+    p = Path(path)
+    try:
+        text = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except ValueError:
+        text = {}
+    seen = defaultdict(set)
+    for term, bills in text.items():
+        for recs in (bills or {}).values():
+            for r in recs or []:
+                if r.get("member_id") and r.get("district"):
+                    seen[(term, str(r["member_id"]))].add(
+                        (r.get("chamber") or "", r.get("county") or "", str(r["district"]).lstrip("0")))
+    return {k: next(iter(v)) for k, v in seen.items() if len(v) == 1}
+
+
+def term_seats(votes_by_member, printed=None):
+    """{term: {member id: label}}: the seat each member held in each term --
+    the label a session day of the term names them by (labels-use-the-seat-
+    held-at-the-time; the person, 16 September 2026).
+
+    THE SEAT A TERM'S BILLS PRINT, FIRST (5 November 2026). A ballot's label
+    is not dated: a former member's is built from one record of their seat
+    (build_data._former_label), the seat they last held, so Shannon Chandley
+    read "Hills 22" on her 2009-2010 ballots, the seat she took in 2016, where
+    every bill she sponsored in 2010 prints "Hills 6". Measured against the
+    bills' sponsor lines, the ballots' seat was the printed one on 29-47% of
+    member-years in 1999-2004 and 48-76% in 2005-2012. So:
+      - where the term's bills print one seat for the member (`printed`,
+        printed_seats), that seat;
+      - else, in the member's last term in the record only, the seat their
+        ballots give: today's roster for a sitting member, the corrected
+        record of where they last sat for one who has left. It is that
+        record's own claim about that term, not a carried guess;
+      - else no seat. The name alone is true; an earlier term's seat taken
+        from a later record is not known to be (the manager's condition, 5
+        November: no source, no seat).
+    Only a label with a seat, and only one per member and term: ballots of a
+    term that name two seats name neither."""
+    printed = printed_seats() if printed is None else printed
     seen, cache = defaultdict(lambda: defaultdict(set)), {}
+    body, who, last = {}, {}, {}
     for mid, rows in votes_by_member.items():
+        mid = str(mid)
         for v in rows:
+            t = P.vote_term(v["year"], v.get("date"))
+            last[mid] = max(last.get(mid, ""), t)
+            body.setdefault((t, mid), v.get("body"))
+            who.setdefault((t, mid), v)
             k = (v.get("label"), v.get("name"), v.get("body"), v.get("party"))
             if k not in cache:
                 cache[k] = ballot_seat(v, v.get("body"))
             if " - " in cache[k]:
-                seen[P.vote_term(v["year"], v.get("date"))][str(mid)].add(cache[k])
-    return {t: {m: next(iter(ls)) for m, ls in sorted(ms.items()) if len(ls) == 1}
-            for t, ms in sorted(seen.items())}
+                seen[t][mid].add(cache[k])
+    out = defaultdict(dict)
+    for (t, mid), v in sorted(who.items()):
+        got = printed.get((t, mid))
+        if got and got[0] == body[(t, mid)]:
+            ch, county, dist = got
+            lab = member_labels(v.get("name"), chamber=ch, party=v.get("party"),
+                                district=dist, county=county)["display_full"]
+            if " - " in lab:
+                out[t][mid] = lab
+                continue
+        ls = seen.get(t, {}).get(mid) or set()
+        if t == last[mid] and len(ls) == 1:
+            out[t][mid] = next(iter(ls))
+    return {t: dict(sorted(ms.items())) for t, ms in sorted(out.items()) if ms}
 
 
 def write_floor_record(data_dir, votes_by_member, cards, moments=None, nobill=None):
     """data/floor_record.json (FLOOR_RECORD, above). Returns its path."""
+    seats = term_seats(votes_by_member)
     presiding = defaultdict(list)
     for rows in votes_by_member.values():
         for v in rows:
             if v.get("vote") == "Presiding":
-                presiding[_roll_call_key(v)].append(
-                    [str(v.get("member_id") or ""), ballot_seat(v, v.get("body"))])
-    seats = term_seats(votes_by_member)
+                # the seat of the term (term_seats), else the name and party
+                # alone: not a later record's seat
+                mid = str(v.get("member_id") or "")
+                lab = ((seats.get(P.vote_term(v["year"], v.get("date"))) or {}).get(mid)
+                       or member_labels(v.get("name"), chamber=v.get("body"),
+                                        party=v.get("party"))["display"])
+                presiding[_roll_call_key(v)].append([mid, lab])
     f = Path(data_dir) / FLOOR_RECORD
     f.write_text(json.dumps({
         "_about": "Not published. For build_session_pages.py: who each roll call's "

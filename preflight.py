@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.771
+# GRANITE_VERSION: 2026-09-04.772
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -69103,6 +69103,45 @@ def _motion_keys():
     return "ok", f"{len(MOTION_CASES)} forms of the record's questions, each the approved words' key"
 
 
+@check("session", "the seat of a term is the one its bills print, else the ballots' in the "
+                  "member's last term only, else none: never a later record's seat on an "
+                  "earlier term", needs=("build_site_v2",))
+def _term_seats_printed_first(B2):
+    """term_seats' order (5 November 2026). A ballot's label is not dated: a
+    former member's is built from one record of the seat they last held, so
+    Shannon Chandley read "Hills 22" on her 2009-2010 ballots, the seat she
+    took in 2016, where the bills she sponsored in 2010 print "Hills 6". The
+    seat of a term is the one its bills print; else, in the member's last
+    term only, the one their ballots give; else none -- never a later
+    record's seat on an earlier term (the manager's condition: no source, no
+    seat). And who presided is named the same way."""
+    def ballot(year, label, member, name, vote="Yea"):
+        return {"year": str(year), "body": "H", "vote_number": 1, "member_id": member,
+                "name": name, "party": "D", "label": label, "date": f"3/1/{year}",
+                "vote": vote, "bill": "HB1"}
+    chandley = [ballot(y, "Chandley, Shannon(D) Hillsborough 22", "568", "Chandley, Shannon")
+                for y in (2009, 2010, 2013, 2017)]
+    ham = [ballot(y, "Ham, Bonnie(D) Grafton 5", "7439", "Ham, Bonnie") for y in (2011, 2015)]
+    printed = {("2009-2010", "568"): ("H", "Hillsborough", "6"),
+               ("2013-2014", "568"): ("H", "Hillsborough", "22"),
+               # a seat in the other chamber is not this number's
+               ("2011-2012", "7439"): ("S", "", "5")}
+    seats = B2.term_seats({"568": chandley, "7439": ham}, printed=printed)
+    got = {(t, m): lab for t, ms in seats.items() for m, lab in ms.items()}
+    want = {("2009-2010", "568"): "Rep. Shannon Chandley (D - Hills 6)",
+            ("2013-2014", "568"): "Rep. Shannon Chandley (D - Hills 22)",
+            ("2017-2018", "568"): "Rep. Shannon Chandley (D - Hills 22)",
+            ("2015-2016", "7439"): "Rep. Bonnie Ham (D - Graf 5)"}
+    assert got == want, f"term_seats gives {got}, not {want}"
+    assert B2.printed_seats(Path("no-such-file.json")) == {}, "no file, no printed seats"
+    import inspect
+    src = inspect.getsource(B2.write_floor_record)
+    assert src.index("term_seats(") < src.index('"Presiding"') and "ballot_seat(" not in src, (
+        "write_floor_record names who presided by the ballot's own label, not the term's seat")
+    return "ok", ("Chandley Hills 6 in 2009-2010 as printed, Hills 22 where printed and in her last "
+                  "term; Ham's 2011-2012 left without a seat, not given the later record's")
+
+
 @check("session", "a session day names each member by the seat they held in its term: the old "
                   "seat on an old day, the roster's in the term it describes, and no seat where "
                   "the record gives none", needs=("build_session_pages", "build_site_v2"))
@@ -69121,13 +69160,16 @@ def _session_seat_at_the_time(BSP, B2):
     def ballot(year, label, member="905", name="Spillane, James"):
         return {"year": str(year), "body": "H", "vote_number": 1, "member_id": member,
                 "name": name, "party": "R", "label": label, "date": f"3/1/{year}"}
+    # The ballots carry one undated label, today's roster's; the seat of
+    # 2015-2016 is the one that term's bills print (term_seats' `printed`).
     seats = B2.term_seats({
-        "905": [ballot(2015, "Rep. James Spillane (R - Rock 5)"),
-                ballot(2016, "Rep. James Spillane (R - Rock 5)"),
+        "905": [ballot(2015, "Rep. James Spillane (R - Rock 2)"),
+                ballot(2016, "Rep. James Spillane (R - Rock 2)"),
                 ballot(2025, "Rep. James Spillane (R - Rock 2)")],
         # two seats in one term name neither
         "77": [ballot(2015, "Rep. Pat Two (D - Hills 3)", "77", "Two, Pat"),
-               ballot(2016, "Rep. Pat Two (D - Hills 4)", "77", "Two, Pat")]})
+               ballot(2016, "Rep. Pat Two (D - Hills 4)", "77", "Two, Pat")]},
+        printed={("2015-2016", "905"): ("H", "Rockingham", "5")})
     assert seats.get("2015-2016", {}).get("905") == "Rep. James Spillane (R - Rock 5)" and \
         seats.get("2025-2026", {}).get("905") == "Rep. James Spillane (R - Rock 2)" and \
         "77" not in seats.get("2015-2016", {}), f"the seats of a term read off its ballots: {seats}"
@@ -69158,13 +69200,25 @@ def _session_seat_at_the_time(BSP, B2):
                   "2025-2026, and seatless on one of 2009-2010, where no ballot says")
 
 
-@check("data", "every chip on a past term's session day names the seat its member's own ballots "
-               "of that term give, or none", needs=("build_session_pages",))
+@check("data", "every chip on a past term's session day names the seat of its term or none, and a "
+               "bill's sponsor line of the day's term agrees with it", needs=("build_session_pages",))
 def _session_chips_seat_of_their_term(BSP):
-    """The built pages, held to _session_seat_at_the_time's rule: on every
-    session day outside the term the roster describes, a member's chip with
-    a seat names the seat that member's ballots of the day's term give
-    (data/floor_record.json's seats)."""
+    """The built pages, held to _session_seat_at_the_time's rule, on every
+    session day outside the term the roster describes:
+      - who spoke, was excused or presided is named by the seat of the term
+        (data/floor_record.json's seats, build_site_v2.term_seats), or with
+        none where the term has none;
+      - a card's sponsor line is the bill's own record, so it is not held to
+        the term's seat -- except that a bill of the day's term naming a
+        member at another seat than the term's is one page naming one member
+        two ways (Chandley on 3 March 2010: "Hills 6" as HB 1387's sponsor,
+        "Hills 22" as a speaker, until 5 November 2026). A bill carried over
+        from another term may name the seat it was filed under; a sponsor
+        line with a party and no seat names none.
+    THIS CHECK ONCE PASSED ON NOTHING (5 November 2026): its pattern wanted
+    "legislator/<slug>.html" and the pages link "legislator/<slug>", so it
+    read no chip at all for as long as it stood. It now fails on a run that
+    reads none."""
     sess, fr = Path("site/session"), BSP.floor_record()
     if not sess.exists() or not fr.get("seats"):
         return "skip", "no built session days or no floor record seats here"
@@ -69181,24 +69235,38 @@ def _session_chips_seat_of_their_term(BSP):
     import proceedings
     today = build_date.today().isoformat()
     current = proceedings.vote_term(today[:4], today)
-    chip = re.compile(r'<span class="mchip p-\w" translate="no"><a href="legislator/([^"]+)\.html">([^<]*?)'
-                      r'(?: <span class="mtag">([^<]*)</span>)?</a>')
-    bad, seen = [], 0
+    chip = re.compile(r'<span class="mchip p-\w" translate="no"><a href="legislator/([^"]+?)(?:\.html)?">'
+                      r'([^<]*?)(?: <span class="mtag">([^<]*)</span>)?</a>')
+    seat = re.compile(r"\(\w - ([^()]+)\)$")
+    bad, n = [], Counter()
     for page in sorted(sess.glob("[HS]/*.html")):
         term = proceedings.vote_term(page.stem[:4], page.stem)
         if term == current:
             continue
-        for slug, name, tag in chip.findall(page.read_text(encoding="utf-8")):
-            if not tag:
+        html = page.read_text(encoding="utf-8")
+        held = fr["seats"].get(term) or {}
+        for m in chip.finditer(html):
+            slug, name, tag = m.groups()
+            n["read"] += 1
+            want = BSP.seat_of(held, ids.get(slug, []), page.parent.name) or None
+            before = html[:m.start()]
+            if before.rfind('class="cmeta"') > before.rfind("</div>"):
+                # a sponsor line: the bill's own record
+                n["sponsor"] += 1
+                year = (re.findall(r'href="bill/(\d{4})/', before[-4000:]) or [""])[-1]
+                got, w = seat.search(tag or ""), seat.search(want or "")
+                if got and w and year in (term[:4], term[5:]) and got.group(1) != w.group(1):
+                    bad.append(f"{page.parent.name} {page.stem}: {name} as {year}'s sponsor at "
+                               f"{got.group(1)}, the term's seat {w.group(1)}")
                 continue
-            seen += 1
-            want = BSP.seat_of(fr["seats"].get(term) or {}, ids.get(slug, []),
-                               page.parent.name) or None
-            if f"{name} {tag}" != want:
-                bad.append(f"{page.parent.name} {page.stem}: {name} {tag}, the ballots of "
-                           f"{term} say {want!r}")
+            n["named"] += 1
+            if (f"{name} {tag}" if tag else None) != want and (tag or want):
+                bad.append(f"{page.parent.name} {page.stem}: {name} {tag or '(no seat)'}, the seat of "
+                           f"{term} is {want!r}")
+    assert n["read"], "no member chip was read on any past term's session day: the pattern has drifted"
     assert not bad, f"{len(bad)} chip(s) name a seat not held that term: " + "; ".join(bad[:4])
-    return "ok", f"{seen:,} chips with a seat on past terms' days, each the seat of its term"
+    return "ok", (f"{n['read']:,} chips on past terms' days: {n['named']:,} named by the seat of "
+                  f"their term or none, {n['sponsor']:,} sponsor lines agreeing with it")
 
 
 @check("frontend", "a session day folds the consent calendar and the excused with their counts, "
