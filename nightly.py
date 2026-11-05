@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.80
+# GRANITE_VERSION: 2026-09-04.81
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -678,6 +678,18 @@ STUDY_NIGHTLY = ("StatStudMeetings", "StatStudDetails")
 LSRS = Path("lsrs.json")
 LSR_GONE_MOST = 0.10
 LSR_GONE_FLOOR = 5
+# A WITHDRAWAL THE PERSON HAS SEEN IS TAKEN (5 November 2026). The day after
+# the 2026 election the General Court's list went from 300 requests to 220;
+# the rule above kept the 300 and would have kept them every night after,
+# with no way to let a real withdrawal in. The person's file holds an entry
+# for a withdrawal they have checked against the General Court's list: the
+# standing count and the count withdrawn, exactly as the night's warning says
+# them, the day, and "confirmed". The night takes a withdrawal only where an
+# entry names both counts and is no older than LSR_ACCEPT_DAYS, so a count
+# written for one withdrawal cannot let a later one through. Read, never
+# written: the file is the person's (preflight's HANDMADE).
+LSR_ACCEPTED = Path("corrections") / "lsr_withdrawals.json"
+LSR_ACCEPT_DAYS = 7
 
 # THE CALENDARS AND JOURNALS THE GENERAL COURT LISTS (1 October 2026): the
 # list the Calendar page's picker is built from, and what its pages listed
@@ -1691,7 +1703,7 @@ def main():
                             # And next session's bill requests, from the site.
                             EXITS.clear()
                             if not refusal.MARK.exists():
-                                night.v["lsrs"] = take_lsrs()
+                                night.v["lsrs"] = take_lsrs(night.v)
                             # And the statutes, on the nights a new law takes
                             # effect (STATUTE_NIGHTS), from the same host.
                             if not a.new_term and not refusal.MARK.exists() \
@@ -3921,11 +3933,43 @@ def not_moving_of(v):
             if isinstance(x, (list, tuple)) and len(x) == 2]
 
 
-def take_lsrs():
+def lsr_accepted(standing, gone, today=None, path=None):
+    """The person's entry in corrections/lsr_withdrawals.json that accepts
+    withdrawing `gone` of `standing` requests (LSR_ACCEPTED), or None: both
+    counts exactly, "confirmed" beginning with a date, and its "day" no more
+    than LSR_ACCEPT_DAYS before `today` and not after it."""
+    path = Path(path or LSR_ACCEPTED)
+    today = today or datetime.now().date()
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    for e in (doc.get("accepted") or []) if isinstance(doc, dict) else []:
+        if not isinstance(e, dict) or not re.match(r"\d{4}-\d{2}-\d{2}", str(e.get("confirmed") or "")):
+            continue
+        try:
+            day = date.fromisoformat(str(e.get("day")))
+        except ValueError:
+            continue
+        if e.get("standing") == standing and e.get("withdraw") == gone and \
+                0 <= (today - day).days <= LSR_ACCEPT_DAYS:
+            return e
+    return None
+
+
+def take_lsrs(v=None):
     """Next session's bill requests into lsrs.json, whole or not at all, and a
     line saying what happened: "installed, ..." or "not taken: ...". The fetch
     runs here, in the working folder, so that a refusal it meets is recorded in
-    the refusal record every other fetch reads."""
+    the refusal record every other fetch reads.
+
+    WHICH REQUESTS, NAMED (5 November 2026). Where the night will not take a
+    withdrawal, the requests it would have withdrawn are said in the log and
+    kept in the verdict `v` under "lsrs_gone" -- number, kind and sponsor --
+    so a person can hold them to the General Court's list before writing the
+    count into LSR_ACCEPTED. Never in the warning's own words: those name the
+    kind of warning the gate compares (warning_kinds), and a list there would
+    be a new kind every night."""
     before = LSRS.read_bytes() if LSRS.exists() else None
     old = load_json(LSRS) if before is not None else []
     old = old if isinstance(old, list) else []
@@ -3935,13 +3979,23 @@ def take_lsrs():
     new = load_json(LSRS)
     gone = [r for r in (new if isinstance(new, list) else [])
             if isinstance(r, dict) and r.get("withdrawn") and r.get("lsr") in standing]
-    why = ""
+    why, accepted = "", None
     if rc != 0:
         why = f"the fetch did not complete (exit {rc})"
     elif not isinstance(new, list) or not new:
         why = "the fetch wrote no requests"
     elif len(gone) > max(LSR_GONE_FLOOR, LSR_GONE_MOST * len(standing)):
-        why = f"it would newly withdraw {len(gone)} of the {len(standing)} standing requests"
+        accepted = lsr_accepted(len(standing), len(gone))
+        if accepted is None:
+            why = f"it would newly withdraw {len(gone)} of the {len(standing)} standing requests"
+            named = [{"lsr": r.get("lsr"), "body": r.get("body"), "sponsor": r.get("sponsor")}
+                     for r in sorted(gone, key=lambda r: str(r.get("lsr")))]
+            if v is not None:
+                v["lsrs_gone"] = named
+            say(f"  the {len(gone)} it would withdraw, to hold to the General Court's list before "
+                f"the count goes into {LSR_ACCEPTED.as_posix()}:")
+            for r in named:
+                say(f"    {r['lsr']}  {r['body'] or ''}  {r['sponsor'] or ''}")
     if why:
         if before is not None:
             tmp = LSRS.with_name(LSRS.name + ".part")
@@ -3954,7 +4008,9 @@ def take_lsrs():
                 + (f"the earlier {len(standing)} kept" if before is not None else "none on file"))
     active = sum(1 for r in new if isinstance(r, dict) and not r.get("withdrawn"))
     return (f"installed, {active} requests (was {len(standing)})"
-            + (f"; {len(gone)} newly withdrawn" if gone else ""))
+            + (f"; {len(gone)} newly withdrawn" if gone else "")
+            + (f", as the person accepted on {accepted.get('day')} "
+               f"({LSR_ACCEPTED.as_posix()})" if accepted else ""))
 
 
 def take_documents(v=None):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.765
+# GRANITE_VERSION: 2026-09-04.766
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -90251,6 +90251,29 @@ def _nightly_runner(NI):
         v = verdict()
         assert code == 0 and v["clean"] and "would newly withdraw 8 of the 10" in v["lsrs"] \
             and Path("lsrs.json").read_bytes() == good, v.get("lsrs")
+        # The eight are named in the verdict, and the warning's words are the
+        # kind the gate already knows (take_lsrs, WHICH REQUESTS, NAMED).
+        assert len(v.get("lsrs_gone") or []) == 8 and \
+            all(set(r) == {"lsr", "body", "sponsor"} for r in v["lsrs_gone"]) and \
+            not any("lsrs_gone" in w or "2027-" in w for w in v.get("warnings") or []), (
+            "the requests the night would withdraw are not named apart from its warning",
+            v.get("lsrs_gone"), v.get("warnings"))
+        # The person's count lets that withdrawal in, and nothing else
+        # (LSR_ACCEPTED): the same night again, with their entry, installs it.
+        Path("corrections").mkdir(exist_ok=True)
+        Path("corrections/lsr_withdrawals.json").write_text(json.dumps({"accepted": [
+            {"day": datetime.now().date().isoformat(), "standing": 10, "withdraw": 8,
+             "confirmed": f"{datetime.now().date().isoformat()}, the person"}]}), encoding="utf-8")
+        try:
+            code, _ = night("--runner", run_id="115")
+            v = verdict()
+            assert code == 0 and v["clean"] and v["lsrs"].startswith(
+                "installed, 2 requests (was 10); 8 newly withdrawn, as the person accepted on") \
+                and not any("bill requests" in w for w in v.get("warnings") or []) \
+                and "lsrs_gone" not in v, (v.get("lsrs"), v.get("warnings"))
+        finally:
+            Path("corrections/lsr_withdrawals.json").unlink()
+            Path("lsrs.json").write_bytes(good)
         lsr["rows"] = 10
 
         # Recordings the laptop has not read three days after they ended are
@@ -90496,6 +90519,52 @@ class _GateNights:
         self.NI.write_json(self.NI.RUN_VERDICT, self.kept[run_id])
         code, _ = self.night("--runner", "--deploy-to", "production", run_id=run_id)
         assert code == 0, f"the fixture's production deploy of run {run_id} did not land"
+
+
+@check("build", "a withdrawal of next session's bill requests too large to take on its own is "
+                "taken only on the person's word: both counts, confirmed, and no older than a "
+                "week; a count for one withdrawal lets no other through", needs=("nightly",))
+def _lsr_accepted_by_the_person(NI):
+    """A WITHDRAWAL THE PERSON HAS SEEN IS TAKEN (nightly.LSR_ACCEPTED, 5
+    November 2026). The night after the 2026 election would have withdrawn
+    80 of 300 requests, and the rule against a truncated download kept the
+    300 with no way to let a real withdrawal in. lsr_accepted reads the
+    person's corrections/lsr_withdrawals.json; this holds it to the narrow
+    case, entry by entry. _nightly_runner holds a whole night to it."""
+    from datetime import date, timedelta
+    today = date(2026, 11, 6)
+    root = Path(tempfile.mkdtemp(prefix="gr-lsr-accept-"))
+    f = root / "lsr_withdrawals.json"
+
+    def given(*entries):
+        f.write_text(json.dumps({"accepted": list(entries)}), encoding="utf-8")
+        return NI.lsr_accepted(300, 80, today=today, path=f)
+    good = {"day": "2026-11-05", "standing": 300, "withdraw": 80, "confirmed": "2026-11-05, owner"}
+    try:
+        assert NI.lsr_accepted(300, 80, today=today, path=root / "none.json") is None, \
+            "a withdrawal was taken with no file of the person's"
+        f.write_text("{not json", encoding="utf-8")
+        assert NI.lsr_accepted(300, 80, today=today, path=f) is None, "an unreadable file let one in"
+        assert given(good) == good, "the person's own count did not let the withdrawal in"
+        for bad, why in (({**good, "withdraw": 79}, "another count withdrawn"),
+                         ({**good, "standing": 301}, "another count standing"),
+                         ({**good, "withdraw": "80"}, "a count written as text"),
+                         ({**good, "confirmed": ""}, "no confirmation"),
+                         ({**good, "confirmed": "yes"}, "a confirmation with no date"),
+                         ({**good, "day": "2026-10-29"}, "an entry eight days old"),
+                         ({**good, "day": "2026-11-07"}, "an entry dated after the night"),
+                         ({**good, "day": "5 November"}, "a day that is no date")):
+            assert given(bad) is None, f"{why} let the withdrawal in"
+        assert given({**good, "withdraw": 79}, good) == good, "a later matching entry was not found"
+        assert given({**good, "day": (today - timedelta(days=NI.LSR_ACCEPT_DAYS)).isoformat()}), \
+            "an entry exactly LSR_ACCEPT_DAYS old was refused"
+        assert NI.LSR_ACCEPTED.as_posix() == "corrections/lsr_withdrawals.json", (
+            "the person's file is not in corrections/, where the person's files are (HANDMADE)")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("the person's entry lets in exactly the withdrawal it counts, for a week; another "
+                  "count, a text count, no dated confirmation, an old or future day, no file and an "
+                  "unreadable one let none in")
 
 
 @check("build", "the night publishes the commit it was built from in build.json, and reads the "
