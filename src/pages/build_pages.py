@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.256
+# GRANITE_VERSION: 2026-09-04.257
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -318,19 +318,40 @@ def moved_members(site):
             # And a tab of the old page to the same tab of the new one: the
             # first rule that matches is the one served, and the tab rules'
             # /legislator/:who/votes would otherwise rewrite the old address to
-            # a page that is gone (the review of 30 October 2026).
-            out += [f"{old} {new} 301\n", f"{old}.html {new} 301\n",
-                    f"{old}/* {new}/:splat 301\n"]
+            # a page that is gone (the review of 30 October 2026). Each tab
+            # by name, a static rule, never old/* (STATIC RULES FIRST, below).
+            out += [f"{old} {new} 301\n", f"{old}.html {new} 301\n"]
+            out += [f"{old}/{s} {new}/{s} 301\n" for s in MEMBER_TAB_SLUGS]
     return "".join(sorted(out))
 
 
-REDIRECTS = ("# Written by build_pages.py. Not an asset; Pages reads it.\n"
-             + "".join(f"/bill/:year/:bill/{s} /bill/:year/:bill 200\n" for s in BILL_TAB_SLUGS)
-             + "".join(f"/legislator/:who/{s} /legislator/:who 200\n" for s in MEMBER_TAB_SLUGS)
-             + "".join(f"/committee/:code/{s} /committee/:code 200\n" for s in COMMITTEE_TAB_SLUGS)
-             # A chamber's Videos tab (build_full_sessions), its page's.
-             + "".join(f"/session/{c}/videos /session/{c} 200\n" for c in CHAMBER_TAB_PAGES)
-             + "".join(f"{old} {new} 301\n" for old, new in MOVED))
+# STATIC RULES FIRST, THEN THE DYNAMIC ONES (5 November 2026). Cloudflare
+# Pages: "Static redirects should appear before dynamic redirects", and a
+# file holds at most 2,000 static and 100 dynamic ones. The movers' rules
+# went first, each mover with a dynamic old/* rule among its static ones;
+# with the owner's thirty confirmed pairs that was 34 movers and 102 lines,
+# and the dry run of 4613f04 found every rule after them ignored -- every
+# tab address, /legislators, /learn, the cities -- where 4 movers had worked.
+# So every rule here is static but the tab rewrites, which come last, and
+# preflight's _redirects_cloudflare holds the built file to the order and the
+# limits.
+REDIRECTS_STATIC = (
+    # A chamber's Videos tab (build_full_sessions), its page's.
+    "".join(f"/session/{c}/videos /session/{c} 200\n" for c in CHAMBER_TAB_PAGES)
+    + "".join(f"{old} {new} 301\n" for old, new in MOVED))
+REDIRECTS_DYNAMIC = (
+    "".join(f"/bill/:year/:bill/{s} /bill/:year/:bill 200\n" for s in BILL_TAB_SLUGS)
+    + "".join(f"/legislator/:who/{s} /legislator/:who 200\n" for s in MEMBER_TAB_SLUGS)
+    + "".join(f"/committee/:code/{s} /committee/:code 200\n" for s in COMMITTEE_TAB_SLUGS))
+REDIRECTS_HEAD = "# Written by build_pages.py. Not an asset; Pages reads it.\n"
+REDIRECTS = REDIRECTS_HEAD + REDIRECTS_STATIC + REDIRECTS_DYNAMIC
+
+
+def redirects_file(site):
+    """_redirects as written: the head, every static rule -- the moved
+    members' (moved_members) and REDIRECTS_STATIC -- and then the dynamic
+    tab rewrites (STATIC RULES FIRST)."""
+    return REDIRECTS_HEAD + moved_members(site) + REDIRECTS_STATIC + REDIRECTS_DYNAMIC
 
 
 # THE REPOSITORY, NAMED ONCE: chrome.REPO, which the footer links too.
@@ -4265,10 +4286,10 @@ def main():
     # are the same lists; preflight holds them together.
     red = out / "_redirects"
     # The moved members' rules FIRST, under the header line: a rule is
-    # served by the first that matches, and the tab rules below catch
-    # /legislator/<anyone>/votes before a later 301 could.
-    head, _, rest = REDIRECTS.partition("\n")
-    want = head + "\n" + moved_members(out) + rest
+    # served by the first that matches, and the tab rules, last, would catch
+    # /legislator/<anyone>/votes before a later 301 could. All static, and
+    # every static rule before the dynamic ones (STATIC RULES FIRST).
+    want = redirects_file(out)
     if (not red.exists()
             or red.read_text(encoding="utf-8", newline="") != want):
         red.write_text(want, encoding="utf-8", newline="\n")

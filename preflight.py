@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.766
+# GRANITE_VERSION: 2026-09-04.767
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28230,22 +28230,106 @@ def _former_movers_one_page(build_site_v2, build_pages):
              "moved_from": ["/legislator/shannon-chandley-hills-22"]},
             {"id": "27", "slug": "someone-sd-1"}]), encoding="utf-8")
         lines = BP.moved_members(root)
-        assert lines == ("/legislator/shannon-chandley-hills-22 /legislator/shannon-chandley-sd-11 301\n"
-                         "/legislator/shannon-chandley-hills-22.html "
-                         "/legislator/shannon-chandley-sd-11 301\n"
-                         "/legislator/shannon-chandley-hills-22/* "
-                         "/legislator/shannon-chandley-sd-11/:splat 301\n"), lines
+        old, new = "/legislator/shannon-chandley-hills-22", "/legislator/shannon-chandley-sd-11"
+        assert lines == "".join(sorted([f"{old} {new} 301\n", f"{old}.html {new} 301\n"]
+                                       + [f"{old}/{s} {new}/{s} 301\n" for s in BP.MEMBER_TAB_SLUGS])), \
+            lines
         assert BP.moved_members(root / "nowhere") == "", "no former.json still wrote a rule"
     finally:
         shutil.rmtree(root, ignore_errors=True)
     src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
     assert "former_movers(register, e2p or {}" in src, "build_site_v2 no longer joins the movers who left"
     src = _paths.locate("build_pages.py").read_text(encoding="utf-8")
-    assert 'head + "\\n" + moved_members(out) + rest' in src, (
+    assert "want = redirects_file(out)" in src, (
         "build_pages no longer writes their 301s ahead of the tab rules, where the first match is served")
     return "ok", ("a mover who left is joined to the later page, by the day of the last vote, with "
                   "every chamber's years; a sitting one and a one-number one are not; their 301s "
                   "ahead of the tab rules, tabs included")
+
+
+# Cloudflare Pages' rules for a _redirects file, from its documentation
+# (developers.cloudflare.com/pages/configuration/redirects/, read 5 November
+# 2026): "limited to 2,000 static redirects and 100 dynamic redirects", "a
+# 1,000-character limit" a declaration, and "Static redirects should appear
+# before dynamic redirects".
+CF_STATIC_MOST, CF_DYNAMIC_MOST, CF_LINE_MOST = 2000, 100, 1000
+
+
+def _cf_rules(text):
+    """[(parts, dynamic, length)] of a _redirects text's rules: a rule is
+    dynamic where its source or destination holds a splat (*) or a
+    placeholder (:name), which is how Cloudflare's own examples tell them."""
+    out = []
+    for ln in text.splitlines():
+        s = ln.strip()
+        if not s or s.startswith("#"):
+            continue
+        parts = s.split()
+        dyn = any("*" in p or re.search(r"(?:^|/):[A-Za-z]", p) for p in parts[:2])
+        out.append((parts, dyn, len(ln)))
+    return out
+
+
+@check("build", "the _redirects file is as Cloudflare Pages keeps it: every static rule before "
+                "the first dynamic one, at most 2,000 static and 100 dynamic, none over 1,000 "
+                "characters, no source twice -- the fixture's, and one written for forty moved "
+                "members", needs=("build_pages",))
+def _redirects_cloudflare(BP):
+    """THE RULES CLOUDFLARE KEEPS (5 November 2026). The dry run of 4613f04,
+    with the owner's thirty confirmed pairs, wrote 34 moved members' rules
+    first -- three a member, one of them a dynamic old/* -- and Cloudflare
+    served none of the 52 rules after them: every tab address, /legislators,
+    /learn, the cities, all 404, where the same file with 4 members had
+    worked. build_pages now writes every member's rules static, a tab by
+    name, and every static rule before the dynamic tab rewrites. This holds
+    the writer to that for more members than the record has, and the
+    fixture's built file to the writer."""
+    def judge(text, what):
+        rules = _cf_rules(text)
+        bad = [p for p, _d, _w in rules if len(p) not in (2, 3)]
+        assert not bad, f"{what}: a rule that is not 'source destination [code]': {bad[:2]}"
+        first = next((i for i, r in enumerate(rules) if r[1]), len(rules))
+        late = [p[0] for p, d, _w in rules[first:] if not d]
+        assert not late, f"{what}: static rules after the first dynamic one: {late[:3]}"
+        dyn = sum(1 for _p, d, _w in rules if d)
+        sta = len(rules) - dyn
+        assert sta <= CF_STATIC_MOST and dyn <= CF_DYNAMIC_MOST, (
+            f"{what}: {sta} static and {dyn} dynamic rules, over Cloudflare's "
+            f"{CF_STATIC_MOST:,} and {CF_DYNAMIC_MOST}")
+        long_ = [p[0] for p, _d, w in rules if w > CF_LINE_MOST]
+        assert not long_, f"{what}: a rule over {CF_LINE_MOST} characters: {long_[:2]}"
+        srcs = [p[0] for p, _d, _w in rules]
+        twice = sorted({s for s in srcs if srcs.count(s) > 1})
+        assert not twice, f"{what}: a source twice, of which only the first is served: {twice[:3]}"
+        return sta, dyn
+
+    tabs = len(BP.BILL_TAB_SLUGS) + len(BP.MEMBER_TAB_SLUGS) + len(BP.COMMITTEE_TAB_SLUGS)
+    root = Path(tempfile.mkdtemp(prefix="gr-redirects-"))
+    try:
+        movers = [{"id": str(9000 + i), "slug": f"member-{i}-sd-{i % 24 + 1}",
+                   "moved_from": [f"/legislator/member-{i}-hills-{i}"]} for i in range(40)]
+        (root / "former.json").write_text(json.dumps(movers), encoding="utf-8")
+        text = BP.redirects_file(root)
+        sta, dyn = judge(text, "forty movers")
+        assert dyn == tabs, f"forty movers: {dyn} dynamic rules, not the {tabs} tab rewrites"
+        for m in movers:
+            old, new = m["moved_from"][0], "/legislator/" + m["slug"]
+            for src, dst in [(old, new), (old + ".html", new)] + [
+                    (f"{old}/{s}", f"{new}/{s}") for s in BP.MEMBER_TAB_SLUGS]:
+                assert f"\n{src} {dst} 301\n" in text, f"{src} does not 301 to {dst}"
+        first = movers[0]["moved_from"][0]
+        assert text.index(f"\n{first}/votes ") < text.index("\n/legislator/:who/votes "), (
+            "a moved member's /votes comes after the tab rewrite, which would serve it first")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    built = (shared / "site" / "_redirects").read_text(encoding="utf-8")
+    assert built == BP.redirects_file(shared / "site"), (
+        "the fixture's _redirects is not the one redirects_file writes")
+    fs, fd = judge(built, "the fixture's")
+    return "ok", (f"forty movers: {sta} static rules, then the {dyn} tab rewrites; the fixture's "
+                  f"{fs} static and {fd} dynamic, in that order, under Cloudflare's "
+                  f"{CF_STATIC_MOST:,} and {CF_DYNAMIC_MOST}")
 
 
 # ============================================================= code: pipeline ==
