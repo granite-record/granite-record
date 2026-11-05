@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.2
+# GRANITE_VERSION: 2026-10-30.3
 """
 What every file of the data API holds, field by field: /data/schema.json.
 
@@ -17,10 +17,15 @@ one field of this project's own on every field, "x-stability":
   undocumented  a field a bill record carries that this file has not
              described yet: listed so a reader knows it is there
 
-Every column of every CSV must be described here: build_exports stops on one
-that is not, so a column is never published unexplained. A bill record's
-field that is not described is listed as undocumented and does not stop the
-build, because the records are the pages' and the pages change.
+Every column of every API CSV, of people.csv and of every table in the
+database must be described here: build_exports stops on one that is not, so
+a column is never published unexplained. So it does on a foreign key
+tonight's files break. A bill record's field, or a field inside its
+stations, that is not described is listed as undocumented and does not stop
+the build, because the records are the pages' and the pages change.
+
+The data page's proceedings.csv is not an API file (NOT_API): it carries
+YouTube's own metadata, which no API file may (Q18).
 """
 
 FORMAT = 1
@@ -30,6 +35,9 @@ FORMAT = 1
 S, B, P = "stable", "beta", "page"
 
 BILL_KEY = "bill + term is the key: a bill number names a different bill in every term."
+PERSON = ("One of the General Court's own numbers for the person: their earliest PersonID, "
+          "else their earliest employee number (the ones they first voted under). Chosen "
+          "once, and never given to anyone else.")
 
 CSV = {
     "bills.csv": {
@@ -67,7 +75,10 @@ CSV = {
         "body": ("string", "H or S.", S),
         "number": ("integer", "The roll call's number in that chamber's year.", S),
         "date": ("date", "The day, YYYY-MM-DD.", S),
-        "bill": ("string", "The bill voted on; empty for a vote on no bill.", S),
+        "bill": ("string", "The bill voted on, as the record writes it; empty for a vote on no "
+                           "bill. Some name what bills.csv has no row for -- a House resolution "
+                           "(HR), a motion to suspend the rules (SUSPRULE) -- so not every one "
+                           "joins bills.csv.", S),
         "question": ("string", "The question in the record's words.", S),
         "question_plain": ("string", "The question in plain English, where one could be made.", S),
         "yeas": ("integer", "Yeas.", S),
@@ -79,9 +90,13 @@ CSV = {
         "threshold_rule": ("string", "The rule that set that threshold.", S),
         "outcome_source": ("string", "Where passed comes from: docket, docket, implied, journal, count or rule.", S),
     },
+    # The data page's proceedings.csv is not an API file: it carries two
+    # columns of YouTube's own metadata (video_title, scheduled_seconds) that
+    # no API file may (DESIGN.md, Q18). The API's proceedings are the
+    # database's table, which leaves them out; these are its columns.
     "proceedings.csv": {
         "term": ("string", "The two-year term.", S),
-        "bill": ("string", "The bill. " + BILL_KEY, S),
+        "bill": ("string", "The bill, as the docket or the calendar writes it. " + BILL_KEY, S),
         "body": ("string", "H or S.", S),
         "kind": ("string", "public hearing, executive session, work session, floor session and the like.", S),
         "date": ("date", "The day, YYYY-MM-DD.", S),
@@ -89,12 +104,10 @@ CSV = {
         "committee": ("string", "The committee.", S),
         "venue": ("string", "The room.", S),
         "video_id": ("string", "The recording's YouTube id, where one was matched.", B),
-        "video_title": ("string", "The recording's title on YouTube. YouTube's metadata: the database leaves it out, and it may go (DESIGN.md, Q18).", B),
         "start_seconds": ("number", "Where in the recording this site places the bill's start.", B),
         "end_seconds": ("number", "Where it places the end.", B),
         "how_placed": ("string", "How the start was found: stated, floor_stated, floor_precise, located, whole_video, floor_dated; approximate, consent or empty where no moment was found.", B),
         "end_how": ("string", "How the end was found.", B),
-        "scheduled_seconds": ("number", "The called time less the stream's start, which YouTube reports: a schedule, not a finding. The database leaves it out, and it may go (Q18).", B),
     },
     "sponsors.csv": {
         "term": ("string", "The two-year term.", S),
@@ -121,7 +134,7 @@ CSV = {
         "vote": ("string", "Yea, Nay, Not Voting/Excused, Not Voting/Not Excused, Presiding, or No vote recorded.", S),
     },
     "people.csv": {
-        "person": ("string", "This site's person number, issued once and never given to anyone else.", S),
+        "person": ("string", PERSON, S),
         "number_kind": ("string", "employee_number, person_id or member_id; replaced_by on a retired person number.", S),
         "number": ("string", "The number; on a replaced_by row, the person number that replaces it.", S),
         "name": ("string", "The person's name.", S),
@@ -129,15 +142,22 @@ CSV = {
     },
 }
 
+# Only the keys every row keeps: a foreign key a tool checks must hold on
+# every row, and rollcalls.csv's bill does not (it names resolutions and
+# motions bills.csv has no row for). build_exports checks each one against
+# tonight's files and stops on a break.
 KEYS = {
     "bills.csv": (["term", "bill"], []),
-    "rollcalls.csv": (["roll_call"], [(["term", "bill"], "bills", ["term", "bill"])]),
+    "rollcalls.csv": (["roll_call"], []),
     "votes-<term>.csv": ([], [(["roll_call"], "rollcalls", ["roll_call"])]),
     "sponsors.csv": ([], [(["term", "bill"], "bills", ["term", "bill"])]),
-    "proceedings.csv": ([], [(["term", "bill"], "bills", ["term", "bill"])]),
     "legislators.csv": (["id"], []),
     "people.csv": ([], []),
 }
+
+# The data page's CSVs that are not API files, and why.
+NOT_API = {"proceedings.csv": "it carries YouTube's own metadata; the database's proceedings "
+                              "table is the API's (DESIGN.md, Q18)"}
 
 # --------------------------------------------------- a bill's full record --
 BILL_FIELDS = {
@@ -159,7 +179,7 @@ BILL_FIELDS = {
     "veto_message": ("object", "The governor's veto message, in the governor's own words, from the House calendar it was read into.", S),
     "rsa": ("object", "Every statute cited by the bill, its reports and amendments, each with its page on this site.", S),
     "amends": ("object", "The statutes the bill's own text says it changes.", S),
-    "stations": ("array", "Each sitting on the bill: when, time, what, committee, body, venue, video_id, and where in the recording this site places it (start, end, state). The Senate's hearing reports, YouTube's titles and offsets, and watch links are left out (DESIGN.md, Q18, Q21).", B),
+    "stations": ("array", "Each sitting on the bill, one object each; x-fields names every field one carries. The Senate's hearing reports, YouTube's titles and offsets, and watch links are left out (DESIGN.md, Q18, Q21).", B),
     "documents": ("array", "Links to the General Court's own documents for the bill.", S),
     "text_url": ("string", "The General Court's page for the bill's text.", S),
     "docket_url": ("string", "The General Court's docket page for the bill.", S),
@@ -188,36 +208,176 @@ BILL_FIELDS = {
     "changed": ("object", "What the bill's text changes, as the page draws it.", P),
 }
 
+# Inside each of a bill's stations. A field tonight's records carry that is
+# not here is listed as undocumented, as a bill's own fields are.
+STATION_FIELDS = {
+    "when": ("string", "The day, YYYY-MM-DD.", B),
+    "time": ("string", "The time called, HH:MM, where the record gives one.", B),
+    "what": ("string", "The kind of sitting: public hearing, executive session, work session, floor debate, consent calendar and the like.", B),
+    "committee": ("string", "The committee.", B),
+    "body": ("string", "H or S.", B),
+    "venue": ("string", "The room, as the record writes it.", B),
+    "video_id": ("string", "The recording's YouTube id; empty where none was matched.", B),
+    "start": ("number", "Seconds into the recording where this site places the bill's start; null where it places none.", B),
+    "end": ("number", "Seconds into the recording where it places the end; null where it places none.", B),
+    "state": ("string", "How the start was placed, or why there is none: stated, floor_stated, floor_precise, floor_dated, located, approximate, whole_video, consent, candidates (several recordings, none chosen), novideo, prestream (before the chamber streamed).", B),
+    "start_stated": ("boolean", "True where the chair's own words placed the start.", P),
+    "end_stated": ("boolean", "True where the chair's own words placed the end.", P),
+    "end_stated_cluster": ("boolean", "True where the clustering model marked its end as stated.", P),
+    "end_from": ("string", "How the end was decided; where end is null, the candidate this site would not publish.", P),
+    "said_how": ("string", "How the chair's words were found, by method; the words themselves are never published.", P),
+    "candidate": ("number", "The start the clustering model found, in seconds, whether or not it is the one shown in start.", P),
+    "tolerance": ("number", "The margin the page gives the start: the model's own for its segment, or 5 where the chair's words placed it. The page reads its unit from start_stated.", P),
+    "short": ("boolean", "True where the model judged the span short.", P),
+    "testimony": ("object", "The hearing's sign-in counts: date, total, support, oppose, neutral, and dated (whether the date is the record's). Counts only; never a name.", S),
+    "debate_start": ("number", "On the floor: seconds into the recording where the debate opens, where the chair said so.", P),
+    "debate_end": ("number", "On the floor: where the debate ends, from the roll call's clock.", P),
+    "window_start": ("number", "On the floor: where the stretch that ends at the bill's roll call opens, which is the roll call before it.", P),
+    "motions": ("array", "On the floor: the motions voted on, in the record's words.", P),
+    "tallies": ("array", "On the floor: each motion's yeas-nays, in the same order.", P),
+    "mks": ("array", "Those motions as the keys the page's words are looked up by.", P),
+    "candidate_ids": ("array", "Where the day held several recordings and none was chosen: their YouTube ids.", P),
+    "not_named": ("boolean", "True where the recording never names the bill, by number or by title.", P),
+    "dated_by": ("string", "report: a Senate hearing dated from its committee report.", P),
+    "docket_heard": ("array", "On such a hearing: the days the docket gives for it.", P),
+}
+
 # ------------------------------------------------------------ the database --
 DB_TABLES = {
-    "bills": "bills.csv, as written.",
+    "bills": "bills.csv's rows and columns.",
     "rollcalls": "rollcalls.csv, with id, an integer key the votes table uses.",
-    "votes": "Every ballot: rollcall (rollcalls.id), member_id, person, party, and vote (vote_values.code).",
+    "votes": "Every ballot, one row each.",
     "vote_values": "The words of each vote code.",
     "sponsors": "sponsors.csv, as written.",
     "legislators": "legislators.csv, as written.",
-    "proceedings": "proceedings.csv without video_title and scheduled_seconds, YouTube's own metadata.",
+    "proceedings": "Every sitting on a bill, with where this site places it in the recording. "
+                   "YouTube's own metadata (a recording's title, its scheduled offset) is left out.",
     "people": "people.json, one row a person.",
-    "person_numbers": "Every number of every person: person, kind (employee_number, person_id, member_id), number.",
-    "committee_reports": "Each side of each printed committee report, with its reasoning in text: House calendar reports, Senate committee reports, interim study statements (interim 1).",
+    "person_numbers": "Every number of every person, one row a number.",
+    "committee_reports": "Each side of each printed committee report, with its reasoning in text: House calendar reports, Senate committee reports, interim study statements.",
     "docket_reports": "Reports the docket records and no printed report carries.",
     "interim_study": "The docket's line on each interim study.",
-    "testimony": "Sign-in counts at each public hearing: total, support, oppose, neutral. Counts only; never a name.",
+    "testimony": "Sign-in counts at each public hearing. Counts only; never a name.",
     "meetings": "Every meeting the House and Senate calendars noticed, on a bill or not.",
-    "meta": "What the file is, when it was built, and whose the record is.",
+    "meta": "What the file is and whose the record is. Not when it was built: the manifest says that.",
 }
 
+# Every column of every table, where the table is not a CSV's (those take
+# the CSV's descriptions). build_exports stops on a column described nowhere.
+_T, _I = "string", "integer"
+DB_COLUMNS = {
+    "rollcalls": {"id": (_I, "This file's key for the roll call, which votes.rollcall uses. Not stable between nights: join on roll_call.", S)},
+    "votes": {
+        "rollcall": (_I, "rollcalls.id.", S),
+        "member_id": (_T, "This site's member id.", S),
+        "person": (_T, "Their person number; empty where they have none.", S),
+        "party": (_T, "Party at the vote.", S),
+        "vote": (_I, "vote_values.code.", S),
+    },
+    "vote_values": {"code": (_I, "The code votes.vote uses.", S),
+                    "vote": (_T, "Its words: Yea, Nay, Not Voting/Excused and so on.", S)},
+    "people": {
+        "person": (_T, PERSON, S),
+        "name": (_T, "Their name.", S),
+        "page": (_T, "Their page on this site.", S),
+        "sitting": (_I, "1 where they sit now.", S),
+        "chambers": (_T, "H, S or HS.", S),
+        "first_term": (_T, "Their first term with a recorded vote.", S),
+        "last_term": (_T, "Their last.", S),
+        "provisional": (_I, "1 until the person number is issued into the register; it may change until then.", S),
+        "replaced_by": (_T, "On a retired person number: the one that replaces it.", S),
+        "split_from": (_T, "On a person found to be two: the number they were split from.", S),
+    },
+    "person_numbers": {
+        "person": (_T, "The person number.", S),
+        "kind": (_T, "employee_number, person_id or member_id.", S),
+        "number": (_T, "The number.", S),
+    },
+    "committee_reports": {
+        "term": (_T, "The two-year term.", S),
+        "bill": (_T, "The bill. " + BILL_KEY, S),
+        "chamber": (_T, "H or S, the chamber whose committee reported.", S),
+        "source": (_T, "Where it is printed: House Calendar 15, 2013; Senate committee report, released 2025-05-13.", S),
+        "cite": (_T, "The short citation, HC 15.", S),
+        "date": (_T, "The report's date, YYYY-MM-DD.", S),
+        "interim": (_I, "1 for an interim study statement.", S),
+        "majority_recommendation": (_T, "The committee's recommendation, as printed.", S),
+        "minority_recommendation": (_T, "The minority's, where there is one.", S),
+        "side": (_T, "Whose this row is: Majority, Minority, Committee (a report with no minority) or Interim study report.", S),
+        "committee": (_T, "The committee.", S),
+        "author": (_T, "The member who wrote it, as printed.", S),
+        "vote_yeas": (_I, "The committee's vote for, where printed.", S),
+        "vote_nays": (_I, "And against.", S),
+        "amendment": (_T, "The amendment it recommends, where it names one.", S),
+        "text": (_T, "The reasoning, in the report's words.", S),
+    },
+    "docket_reports": {
+        "term": (_T, "The two-year term.", S),
+        "bill": (_T, "The bill. " + BILL_KEY, S),
+        "date": (_T, "The day, YYYY-MM-DD.", S),
+        "dated": (_T, "Which day date is: signed (the report's own date) or recorded (the day the docket recorded it).", S),
+        "chamber": (_T, "H or S.", S),
+        "committee": (_T, "The committee.", S),
+        "side": (_T, "Majority, Minority, or empty where the docket names no side.", S),
+        "recommendation": (_T, "The recommendation, in the docket's words.", S),
+        "vote_yeas": (_I, "The committee's vote for, where the docket gives it.", S),
+        "vote_nays": (_I, "And against.", S),
+        "amendment": (_T, "The amendment it recommends, where named.", S),
+        "cite": (_T, "The calendar the docket says it is printed in, SC 11; empty where it names none.", S),
+    },
+    "interim_study": {
+        "term": (_T, "The two-year term.", S),
+        "bill": (_T, "The bill. " + BILL_KEY, S),
+        "date": (_T, "The day, YYYY-MM-DD.", S),
+        "chamber": (_T, "H or S.", S),
+        "rec": (_T, "What the committee said of future legislation: rec (recommended), not (not recommended) or without (without recommendation).", S),
+        "recommended": (_I, "1 where it recommended future legislation.", S),
+        "vote": (_T, "The committee's vote, yeas–nays.", S),
+    },
+    "testimony": {
+        "term": (_T, "The two-year term.", S),
+        "bill": (_T, "The bill. " + BILL_KEY, S),
+        "date": (_T, "The hearing's day, YYYY-MM-DD.", S),
+        "date_known": (_I, "1 where the sign-in record gives the day; 0 where the day is the sitting's.", S),
+        "chamber": (_T, "H or S.", S),
+        "committee": (_T, "The committee.", S),
+        "total": (_I, "Everyone who signed in.", S),
+        "support": (_I, "In support.", S),
+        "oppose": (_I, "Opposed.", S),
+        "neutral": (_I, "Neither.", S),
+    },
+    "meetings": {
+        "date": (_T, "The day, YYYY-MM-DD.", S),
+        "time": (_T, "The time, HH:MM.", S),
+        "chamber": (_T, "H or S.", S),
+        "committee": (_T, "The committee.", S),
+        "kind": (_T, "public hearing, executive session, work session and the like; other for the rest.", S),
+        "venue": (_T, "The place, as the calendar prints it, where it gives more than a room.", S),
+        "room": (_T, "The room, written as the docket writes it: LOB 206-208.", S),
+        "bill": (_T, "The bill, where the meeting is on one.", S),
+        "noticed": (_T, "The day of the calendar that noticed it, YYYY-MM-DD.", S),
+        "calendar": (_T, "That calendar: year/HC010 for the House's, year/SC005 for the Senate's.", S),
+    },
+    "meta": {"key": (_T, "format, what, rights or upstream.", S), "value": (_T, "Its value.", S)},
+}
+DB_FROM_CSV = {"bills": "bills.csv", "rollcalls": "rollcalls.csv", "sponsors": "sponsors.csv",
+               "legislators": "legislators.csv", "proceedings": "proceedings.csv"}
+
+# One rights line for every machine-readable place the API states it (the
+# database's meta, schema.json), in the words of DATA.md's paragraph the
+# owner approved on 30 October 2026. Change it here, and only with them.
+RIGHTS = ("The record is the State of New Hampshire's, and so are the numbers it gives "
+          "people and bills. What this site adds -- the keys and joins it makes and the "
+          "corrections made here by hand -- is dedicated to the public domain under "
+          "CC0 1.0; the plain-English histories and the software are MIT licensed. "
+          "DATA.md says which is which.")
 LICENSES = [
     {"name": "CC0-1.0", "path": "https://creativecommons.org/publicdomain/zero/1.0/",
-     "title": "What this site adds -- the keys and joins it makes and its corrections -- "
-              "dedicated to the public domain"},
+     "title": "What this site adds: the keys and joins it makes and the corrections made "
+              "here by hand"},
+    {"name": "MIT", "path": "https://opensource.org/license/mit",
+     "title": "The plain-English histories (a bill's narrative and stages) and the software"},
 ]
-RIGHTS = ("The record is the State of New Hampshire's, published by the General Court, and "
-          "so are the numbers it gives people and bills; this project claims nothing over "
-          "them. What this site adds -- the keys and joins it makes and the corrections made "
-          "here by hand -- is dedicated to the public domain under CC0 1.0. "
-          "The plain-English histories (narrative, stages) are authored here and offered "
-          "under the MIT License, as DATA.md says. The software is MIT licensed.")
 
 
 # Every General Court source the pipeline reads, and where it lands
@@ -248,48 +408,117 @@ SOURCES = [
 ]
 
 
-def _fields(spec):
+def _fields(spec, only=None):
+    """The Table Schema fields of spec, in spec's order; only those in
+    `only` where it is given (the columns the file really has)."""
     return [{"name": n, "type": t, "description": d, "x-stability": st}
-            for n, (t, d, st) in spec.items()]
+            for n, (t, d, st) in spec.items() if only is None or n in only]
 
 
-def undescribed_columns(tables):
-    """Every CSV column the build wrote that CSV does not describe:
-    [(file, column)]. build_exports stops on any."""
+def _key(file):
+    return "votes-<term>.csv" if file.startswith("votes-") else file
+
+
+def db_spec(table):
+    """Every column of a database table, described: a CSV's table takes the
+    CSV's descriptions, the rest DB_COLUMNS."""
+    spec = dict(CSV.get(DB_FROM_CSV.get(table, ""), {}))
+    spec.update(DB_COLUMNS.get(table, {}))
+    return spec
+
+
+def undescribed_columns(tables, people_columns=(), db_columns=None):
+    """Every column the build wrote that this file does not describe:
+    [(file, column)]. tables are the API's CSVs; people_columns people.csv's
+    header; db_columns {table: [column]} of the database. build_exports
+    stops on any, so nothing is published unexplained."""
     out = []
     for t in tables:
-        key = "votes-<term>.csv" if t["file"].startswith("votes-") else t["file"]
-        spec = CSV.get(key, {})
+        spec = CSV.get(_key(t["file"]), {})
         out += [(t["file"], c) for c in t["columns"] if c not in spec]
+    out += [("people.csv", c) for c in people_columns if c not in CSV["people.csv"]]
+    for table, cols in (db_columns or {}).items():
+        if table not in DB_TABLES:
+            out.append(("the database", table))
+            continue
+        spec = db_spec(table)
+        out += [(f"the database's {table}", c) for c in cols if c not in spec]
     return out
 
 
-def package(tables, files, base, built, record_keys=()):
-    """The Data Package: one resource a file. tables are the manifest's
-    CSV rows (file, rows, bytes, columns, what); files its "files" rows;
-    record_keys every top-level field the bill records carried tonight."""
-    res = []
+def broken_keys(out, tables):
+    """Every foreign key KEYS declares, checked against tonight's files:
+    [(file, columns, how many rows do not join)]. A tool that checks the
+    schema checks every row, so build_exports stops on any."""
+    import csv
+    from pathlib import Path
+    files = {t["file"]: t for t in tables}
+    bad = []
     for t in tables:
-        key = "votes-<term>.csv" if t["file"].startswith("votes-") else t["file"]
-        pk, fks = KEYS.get(key, ([], []))
-        schema = {"fields": [f for f in _fields(CSV[key]) if f["name"] in t["columns"]]}
+        _, fks = KEYS.get(_key(t["file"]), ([], []))
+        for cols, ref, refcols in fks:
+            ref_file = f"{ref}.csv"
+            if ref_file not in files:
+                bad.append((t["file"], cols, f"refers to {ref_file}, which is not an API file"))
+                continue
+            with (Path(out) / ref_file).open(encoding="utf-8", newline="") as fh:
+                have = {tuple(r[c] for c in refcols) for r in csv.DictReader(fh)}
+            miss = 0
+            with (Path(out) / t["file"]).open(encoding="utf-8", newline="") as fh:
+                for r in csv.DictReader(fh):
+                    if tuple(r[c] for c in cols) not in have:
+                        miss += 1
+            if miss:
+                bad.append((t["file"], cols, f"{miss:,} rows do not join {ref_file}"))
+    return bad
+
+
+def _name(path, used):
+    """A resource's name, unique as Data Package v1 requires: the file's
+    stem, or the whole name where two files share a stem (people.json and
+    people.csv)."""
+    stem = path.split(".")[0].lower().replace("_", "-")
+    name = stem if stem not in used else path.lower().replace(".", "-").replace("_", "-")
+    if name in used:
+        raise SystemExit(f"schema.json would name two files {name}; Data Package names are unique.")
+    used.add(name)
+    return name
+
+
+def package(tables, files, base, built, record_keys=(), station_keys=(),
+            db_columns=None, people_columns=None):
+    """The Data Package: one resource a file. tables are the API's CSV
+    rows (file, rows, bytes, columns, what, sha256); files the manifest's
+    other "files" rows; record_keys every top-level field the bill records
+    carried tonight, station_keys every field inside their stations;
+    db_columns the database's {table: [column]}; people_columns
+    people.csv's header."""
+    res, used = [], set()
+    for t in tables:
+        pk, fks = KEYS.get(_key(t["file"]), ([], []))
+        schema = {"fields": _fields(CSV[_key(t["file"])], set(t["columns"]))}
         if pk:
             schema["primaryKey"] = pk
         if fks:
             schema["foreignKeys"] = [{"fields": a, "reference": {"resource": r, "fields": b}}
                                      for a, r, b in fks]
-        res.append({"name": t["file"][:-4].replace("_", "-").lower(), "path": t["file"],
+        res.append({"name": _name(t["file"], used), "path": t["file"],
                     "profile": "tabular-data-resource", "format": "csv", "mediatype": "text/csv",
                     "encoding": "utf-8", "bytes": t["bytes"], "x-rows": t["rows"],
                     **({"hash": "sha256:" + t["sha256"]} if t.get("sha256") else {}),
                     "description": t.get("what", ""), "schema": schema})
-    keys = set(record_keys)
+    keys, skeys = set(record_keys), set(station_keys)
     for f in files:
         name = f["path"].rsplit("/", 1)[-1]
-        r = {"name": name.split(".")[0].lower(), "path": name, "bytes": f.get("bytes"),
+        r = {"name": _name(name, used), "path": name, "bytes": f.get("bytes"),
              "x-rows": f.get("rows"), **({"hash": "sha256:" + f["sha256"]} if f.get("sha256") else {})}
         if f.get("kind") == "bills":
             known = _fields(BILL_FIELDS)
+            for k in known:
+                if k["name"] == "stations":
+                    k["x-fields"] = _fields(STATION_FIELDS) + [
+                        {"name": s, "type": "any", "description": "", "x-stability": "undocumented"}
+                        for s in sorted(skeys - set(STATION_FIELDS))]
             extra = [{"name": k, "type": "any", "description": "", "x-stability": "undocumented"}
                      for k in sorted(keys - set(BILL_FIELDS))]
             r.update(format="jsonl", mediatype="application/x-ndjson", compression="gz",
@@ -297,18 +526,19 @@ def package(tables, files, base, built, record_keys=()):
                                  "full record as its page carries it, keyed term/bill.",
                      schema={"fields": known + extra})
         elif f.get("kind") == "database":
+            cols = db_columns or {}
             r.update(format="sqlite", mediatype="application/vnd.sqlite3", compression="xz",
                      description="Every table above and the record's committee reports, in one "
                                  "SQLite database.",
-                     **{"x-tables": {t: {"description": d, "rows": (f.get("counts") or {}).get(t)}
+                     **{"x-tables": {t: {"description": d, "rows": (f.get("counts") or {}).get(t),
+                                         "fields": _fields(db_spec(t), set(cols.get(t) or ()))}
                                      for t, d in DB_TABLES.items()}})
         elif name == "people.json":
             r.update(format="json", mediatype="application/json",
                      description="One entry a person, with every number the General Court and "
                                  "this site use for them.",
                      schema={"fields": [
-                         {"name": "person", "type": "string", "x-stability": S,
-                          "description": "This site's person number, issued once."},
+                         {"name": "person", "type": "string", "x-stability": S, "description": PERSON},
                          {"name": "name", "type": "string", "x-stability": S, "description": "Their name."},
                          {"name": "employee_numbers", "type": "array", "x-stability": S,
                           "description": "The General Court's employee numbers, earliest first."},
@@ -328,10 +558,10 @@ def package(tables, files, base, built, record_keys=()):
                          {"name": "split_from", "type": "string", "x-stability": S,
                           "description": "On a person found to be two: the number they were split from."}]})
         elif name == "people.csv":
-            pk, _ = KEYS["people.csv"]
             r.update(format="csv", mediatype="text/csv", profile="tabular-data-resource",
-                     description="people.json, one row a number.",
-                     schema={"fields": _fields(CSV["people.csv"])})
+                     encoding="utf-8", description="people.json, one row a number.",
+                     schema={"fields": _fields(CSV["people.csv"],
+                                               set(people_columns) if people_columns else None)})
         res.append(r)
     return {"profile": "data-package", "name": "granite-record",
             "title": "Granite Record: the New Hampshire General Court's record",

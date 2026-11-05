@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.4
+# GRANITE_VERSION: 2026-10-30.5
 """
 The data API's database: every table on the data page, and the record's
 committee reports, in one SQLite file, compressed with xz.
@@ -31,6 +31,7 @@ WHAT IT HOLDS
   interim_study           the docket's line on each interim study
   testimony               sign-in counts at each public hearing; never a name
   meetings                every meeting the calendars noticed
+  (schema.json describes every column of every table: api_schema.py)
   meta                    what this file is and whose. Not when: the
                           manifest says that, and a time inside the file
                           would change its bytes every night
@@ -42,8 +43,9 @@ spreadsheets cannot either.
 
 WHY XZ. With the report tables the file is about 109 MB opened: 26.9 MB in
 gzip, past the 25 MiB a file may be on the host, and 13.2 MB in xz
-(measured 30 October 2026). Python's lzma, R, and xz on Linux and macOS read
-it with what they already have.
+(measured 30 October 2026). Python's lzma and R read it with nothing to
+install, and so does the xz program, which most Linux systems have; macOS
+does not come with it.
 
 THE SAME ROWS GIVE THE SAME BYTES. Rows go in in a stated order, the file is
 vacuumed, and xz writes no time, so the manifest's sha256 moves only when
@@ -58,6 +60,8 @@ import lzma
 import sqlite3
 from pathlib import Path
 
+from api_schema import RIGHTS
+
 FORMAT = 1
 NAME = "granite-record.sqlite.xz"
 PROCEEDINGS_DROP = ("video_title", "scheduled_seconds")
@@ -70,10 +74,14 @@ class Collector:
         self.reports, self.docket, self.study, self.testimony = [], [], [], []
         self.bills = 0
         self.keys = set()
+        self.station_keys = set()
 
     def add(self, term, r):
         self.bills += 1
         self.keys.update(r)
+        for st in r.get("stations") or []:
+            if isinstance(st, dict):
+                self.station_keys.update(st)
         bill = r.get("id")
         for rep in r.get("reports") or []:
             src = rep.get("source") or ""
@@ -182,11 +190,7 @@ def _write(out, collector, people, meetings_path, tmp):
         "format": str(FORMAT),
         "what": "Granite Record: the public record of the New Hampshire General Court, "
                 "as one database. See https://graniterecord.org/api",
-        "rights": "The record is the State of New Hampshire's, and so are the numbers it gives "
-                  "people and bills. What this site adds -- the keys and joins it makes and the "
-                  "corrections made here by hand -- is dedicated to the public domain under "
-                  "CC0 1.0; the plain-English histories and the software are MIT licensed. "
-                  "DATA.md says which is which.",
+        "rights": RIGHTS,
         "upstream": "https://gc.nh.gov",
     }.items()))
 
@@ -275,6 +279,9 @@ def _write(out, collector, people, meetings_path, tmp):
                          m.get("noticed"), m.get("calendar")) for m in meet])
     counts["meetings"] = len(meet)
 
+    # Every table's columns, for schema.json, which describes each one.
+    columns = {t: [c[1] for c in con.execute(f'PRAGMA table_info("{t}")')]
+               for (t,) in con.execute("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")}
     con.commit()
     con.execute("VACUUM")
     con.close()
@@ -287,4 +294,4 @@ def _write(out, collector, people, meetings_path, tmp):
     return {"path": f"/data/{NAME}", "kind": "database", "rows": sum(counts.values()),
             "bytes": len(packed), "opened_bytes": opened,
             "sha256": hashlib.sha256(packed).hexdigest(), "encoding": "xz",
-            "media_type": "application/vnd.sqlite3", "counts": counts}
+            "media_type": "application/vnd.sqlite3", "counts": counts, "columns": columns}
