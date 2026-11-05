@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.8
+# GRANITE_VERSION: 2026-10-30.7
 """
 The state documents the guides and Learn pages rest on: from the laptop, where
 a real browser can read them, to the sessions, which cannot.
