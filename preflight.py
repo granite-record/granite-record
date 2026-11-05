@@ -71379,7 +71379,9 @@ def _spanish_learn(i18n, G, BC, chrome, civics):
         for slug in slugs:
             t = G.learn_topic(slug)
             body = G.reused(G.topic_body(t)) + (t.get("holds") or "")
-            figures = {k: "7" for k in re.findall(r"\[\[(\w+)\]\]", body)}
+            # The page's own words, and what a slot draws in it (County
+            # Government's cards, civics.county_cards), which name figures too.
+            figures = {k: "7" for k in re.findall(r"\[\[(\w+)\]\]", body + civics.county_cards())}
             page = BC.learn_page_lang(t, "es", base, figures, learn,
                                       open_={g["slug"] for g in G.GUIDES} | set(civics.HOW_TO))
             if not page.startswith(f'<!DOCTYPE html><html lang="es" data-alt-en="/learn/{slug}"'):
@@ -71535,7 +71537,7 @@ def _spanish_guides(i18n, G, BC, chrome, civics):
             t = G.topic_of(slug)
             if t:
                 body = G.reused(G.topic_body(t)) + (t.get("holds") or "")
-                figures = {k: "7" for k in re.findall(r"\[\[(\w+)\]\]", body)}
+                figures = {k: "7" for k in re.findall(r"\[\[(\w+)\]\]", body + civics.county_cards())}
                 page = BC.article_page_lang(t, "es", base, figures)
                 title = t["title"]
             else:
