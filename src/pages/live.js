@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.12
+// GRANITE_VERSION: 2026-10-30.13
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -396,7 +396,12 @@ L.sessionCard = function (file, body, now, http, bills) {
     ? (body === "S" ? C.tr("votes.head_senate_day", "Senate roll calls of {day}", words)
                     : C.tr("votes.head_house_day", "House roll calls of {day}", words))
     : (body === "S" ? C.tr("votes.head_senate", "Senate roll calls today") : C.tr("votes.head_house", "House roll calls today"));
-  var today = body === "S" ? C.tr("votes.today_senate", "The Senate today") : C.tr("votes.today_house", "The House today");
+  // The day's one page, at its dated address (/session/<B>/today was
+  // retired on 30 October 2026).
+  var link = past
+    ? (body === "S" ? C.tr("votes.day_senate", "The Senate on {day}", words)
+                    : C.tr("votes.day_house", "The House on {day}", words))
+    : (body === "S" ? C.tr("votes.today_senate", "The Senate today") : C.tr("votes.today_house", "The House today"));
   return '<section class="lv-session" data-body="' + body + '">'
     + '<h2 class="lv-name">' + C.esc(head) + "</h2>"
     + (items.length ? '<ol class="lv-votes">' + items.join("") + "</ol>" : "")
@@ -405,7 +410,7 @@ L.sessionCard = function (file, body, now, http, bills) {
         "Provisional: the night's record replaces this tomorrow morning; excusals settle days later.")) + "</p>" : "")
     + (body === "S" && items.length ? '<p class="lv-provisional">' + C.esc(C.tr("votes.senate_line",
         "Senate names follow once the Senate enters them, usually that afternoon or the next day.")) + "</p>" : "")
-    + '<p class="lv-more"><a href="/session/' + body + '/today">' + C.esc(today) + "</a></p></section>";
+    + '<p class="lv-more"><a href="/session/' + body + "/" + day + '">' + C.esc(link) + "</a></p></section>";
 };
 
 // The chambers with a session card today: those the night's schedule has a

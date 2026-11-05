@@ -35,7 +35,7 @@ const stream = over => ({ video: "AbCdEfGhIjK", chamber: "H", title: "House Fina
 const SCHEDULE = { days: { "2027-01-07": [
   { id: "H|Finance|2027-01-07", chamber: "H", kind: "standing", name: "House Finance", href: "/committee/H09",
     card: '<div class="calcard">House Finance, 10:00 AM</div>', match: ["house finance", "finance"] },
-  { id: "H|Floor|2027-01-07", chamber: "H", kind: "floor", name: "House Session", href: "/session/H/today",
+  { id: "H|Floor|2027-01-07", chamber: "H", kind: "floor", name: "House Session", href: "/session/H/2027-01-07",
     card: "", match: ["house session"] },
   { id: "S|Judiciary|2027-01-07", chamber: "S", kind: "standing", name: "Senate Judiciary", href: "/committee/S11",
     card: "", match: ["senate judiciary", "judiciary"] }] } };
@@ -339,7 +339,8 @@ test("Live Now's session card: the chamber's list, its sentence, provisional, an
   assert.match(h, /href="\/bill\/2027\/hb2\.html"/);
   assert.match(h, /Read from the General Court's database at 11:43/);
   assert.match(h, /Provisional: the night's record replaces this tomorrow morning; excusals settle days later\./);
-  assert.match(h, /href="\/session\/H\/today">The House today</);
+  assert.match(h, /href="\/session\/H\/2027-01-07">The House today</);
+  assert.doesNotMatch(h, /\/today"/, "the retired today page is linked nowhere");
   assert.doesNotMatch(h, /Senate names follow/);
   const s = L.sessionCard(f, "S", now, 200);
   assert.doesNotMatch(s, /<ol/, "no Senate roll calls: no list");
@@ -462,6 +463,7 @@ test("/live's session card before 06:00 is the day before's, and says so by its 
   assert.match(h, /<h2 class="lv-name">House roll calls of Thursday, January 7<\/h2>/);
   assert.match(h, /No roll calls read on Thursday, January 7\. Every vote reaches this page with this morning's record\./);
   assert.doesNotMatch(h, /today<\/h2>|tomorrow/);
+  assert.match(h, /href="\/session\/H\/2027-01-07">The House on Thursday, January 7</, "the day before's dated page");
   assert.match(L.sessionCard(null, "S", T("2027-01-07T16:00:00Z"), 404), /Senate roll calls today/);
 });
 
