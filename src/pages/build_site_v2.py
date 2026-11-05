@@ -3494,7 +3494,12 @@ def date_former_seats(former, votes_by_member, printed, corrected, legs):
     change whose new address another page already has is not made."""
     abbr = {m["county"]: m["county_abbr"] for m in legs.values()
             if m.get("county") and m.get("county_abbr")}
-    taken = {_member_address(m) for m in former.values()}
+    # every address a page or a 301 already answers: the former members', the
+    # sitting members', and each one a page has moved from (the review of 5
+    # November 2026: a sitting member's address was not in the set)
+    taken = ({_member_address(m) for m in former.values()}
+             | {_member_address(m) for m in legs.values() if m.get("name")}
+             | {a for m in former.values() for a in m.get("moved_from") or []})
     out = {}
     for mid, m in former.items():
         rows = votes_by_member.get(mid) or []
@@ -3525,6 +3530,41 @@ def date_former_seats(former, votes_by_member, printed, corrected, legs):
         out[mid] = (f"{m.get('county') or ''} {m.get('district') or ''}".strip(),
                     f"{county} {dist}".strip())
     return former, out
+
+
+# EVERY ADDRESS A FORMER MEMBER'S PAGE HAS HAD, KEPT (the review of 5 November
+# 2026; the manager: "keep the 301s permanently -- old emails link through
+# them"). A page's moved_from is worked out afresh every build, so an address
+# a page left would die the day the reason it moved went away: the person
+# correcting that seat, or the record coming to agree with the bills. This
+# file holds {address: member id} for every move ever published, is merged
+# into and never pruned (src/ops/record_moves.py), and is read by every build.
+MOVED_ADDRESSES = Path("generated/moved_addresses.json")
+
+
+def keep_moved(former, path=MOVED_ADDRESSES):
+    """Every recorded address of a former member's page answers with a 301 to
+    the page they have now: appended to the row's moved_from where it is not
+    the page's own address and not there already. Returns (kept, unrecorded):
+    how many recorded addresses were put back, and the moves this build made
+    that the file does not hold yet, said so they get recorded."""
+    try:
+        moved = json.loads(Path(path).read_text(encoding="utf-8")) if Path(path).exists() else {}
+    except ValueError:
+        print(f"  WARNING: {path} will not read: no recorded former address is kept this build")
+        moved = {}
+    kept = 0
+    for addr, mid in sorted(moved.items()):
+        m = former.get(str(mid))
+        if m is None:
+            print(f"  WARNING: {addr} is recorded for member {mid}, who has no former page now")
+            continue
+        if addr != _member_address(m) and addr not in (m.get("moved_from") or []):
+            m["moved_from"] = [*(m.get("moved_from") or []), addr]
+            kept += 1
+    unrecorded = sorted(a for k, m in former.items() for a in m.get("moved_from") or []
+                        if a not in moved)
+    return kept, unrecorded
 
 
 # What one ballot says about whether the member took part, in the order a
@@ -12607,6 +12647,16 @@ def main():
               + ", ".join(f"{former[k].get('name')} ({was} -> {now})"
                           for k, (was, now) in sorted(redated.items())[:12])
               + (" ..." if len(redated) > 12 else ""))
+    _kept, _unrecorded = keep_moved(former)
+    if _kept:
+        print(f"{_kept} recorded former address(es) kept answering with a 301 though the page "
+              f"no longer moves from them ({MOVED_ADDRESSES})")
+    if _unrecorded:
+        # NOT SILENT: a move this build made and the file does not hold dies
+        # the first build after its reason goes away
+        print(f"  WARNING: {len(_unrecorded)} former address(es) answered with a 301 are not "
+              f"in {MOVED_ADDRESSES}: record them with python3 src/ops/record_moves.py "
+              f"after this build, and commit the file. First: {', '.join(_unrecorded[:4])}")
     if former:
         print(f"{len(former):,} member(s) in the record hold no seat now; "
               "they get a page of their own and the sitting roster is "

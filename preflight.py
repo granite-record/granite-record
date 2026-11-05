@@ -29053,6 +29053,43 @@ def _person_register():
     return "ok", "no other code file writes it, and it is well formed"
 
 
+@check("files", "only record_moves.py writes the former addresses kept for a 301, and they only grow")
+def _moved_addresses():
+    """generated/moved_addresses.json keeps every address a former member's
+    page has moved from, so each answers with a 301 for good (the manager, 5
+    November 2026: old emails link through them). The build reads it
+    (build_site_v2.keep_moved) and src/ops/record_moves.py, which a person
+    runs, merges into it. Held: no other code file writes it; each entry is a
+    /legislator/ address and a member id; and nothing recorded on dev is
+    gone or pointed at another member."""
+    stem = r"moved_addresses\.json"
+    bad = []
+    for f in _paths.code_files("*.py"):
+        if f.name in ("record_moves.py", "preflight.py"):
+            continue
+        src = f.read_text(encoding="utf-8", errors="replace")
+        if re.search(r'open\s*\([^)]*' + stem + r'[^)]*["\'][wax]', src) or \
+           re.search(stem + r'[^\n]{0,60}\.write_(?:text|bytes)', src) or \
+           re.search(r'MOVED_ADDRESSES\s*\.\s*(?:write_text|write_bytes|open)\s*\(', src):
+            bad.append(f.name)
+    assert not bad, "these write the kept former addresses, which only record_moves.py may: " + \
+        ", ".join(bad)
+    f = _paths.ROOT / "generated" / "moved_addresses.json"
+    if not f.exists():
+        return "ok", "no other code file writes it; none recorded yet"
+    now = json.loads(f.read_text(encoding="utf-8"))
+    odd = [f"{k} -> {v}" for k, v in now.items()
+           if not (isinstance(k, str) and k.startswith("/legislator/") and isinstance(v, str) and v)]
+    assert not odd, "entries that are not an address and a member id: " + "; ".join(odd[:4])
+    r = _run(["git", "show", "origin/dev:generated/moved_addresses.json"],
+             capture_output=True, text=True)
+    if r.returncode == 0 and r.stdout.strip():
+        then = json.loads(r.stdout)
+        lost = [f"{k} ({v})" for k, v in then.items() if now.get(k) != v]
+        assert not lost, "recorded addresses gone or re-pointed against dev's: " + "; ".join(lost[:5])
+    return "ok", f"{len(now):,} former address(es) kept, only ever added to"
+
+
 @check("markers", "every phrasing read from a transcript still matches")
 def _marker_cases():
     """tests/test_markers.py holds the 34 phrasings that were read out of real
@@ -69119,24 +69156,51 @@ def _former_seat_from_bills(B2):
               "9237": row("9237", "Chase, Wendy", "Strafford", "18"),
               "500": row("500", "Same, Sam", "Hillsborough", "4"),
               "600": row("600", "Taken, Tom", "Merrimack", "2"),
-              "601": row("601", "Taken, Tom", "Merrimack", "9")}
+              "601": row("601", "Taken, Tom", "Merrimack", "9"),
+              # the county abbreviated, the seat the bills' own: nothing moves
+              "700": row("700", "Short, Sue", "Rock", "8"),
+              # onto a sitting member's address: not made
+              "800": row("800", "Sitting, Sid", "Coos", "1")}
     votes = {k: [ballot(k, 1999)] for k in former}
     printed = {("1999-2000", "376132"): ("H", "Rockingham", "8"),
                ("1999-2000", "9237"): ("H", "Belknap", "5"),       # the person's seat stands
                ("1999-2000", "500"): ("H", "Hillsborough", "4"),   # already the bills'
-               ("1999-2000", "600"): ("H", "Merrimack", "9")}      # another page's address
-    legs = {"1": {"county": "Rockingham", "county_abbr": "Rock"}}
-    got, redated = B2.date_former_seats(dict(former), votes, printed, {"9237"}, legs)
+               ("1999-2000", "600"): ("H", "Merrimack", "9"),      # another page's address
+               ("1999-2000", "700"): ("H", "Rockingham", "8"),
+               ("1999-2000", "800"): ("H", "Coos", "2")}
+    legs = {"1": {"name": "Sitting, Sid", "chamber": "H", "party_code": "D", "county": "Coos",
+                  "district": "2", "county_abbr": "Coos"},
+            "2": {"county": "Rockingham", "county_abbr": "Rock"}}
+    import copy
+    got, redated = B2.date_former_seats(copy.deepcopy(former), votes, printed, {"9237"}, legs)
     h = got["376132"]
     assert (h["county"], h["district"], h["county_abbr"]) == ("Rockingham", "8", "Rock") and \
         h.get("moved_from") == ["/legislator/rebecca-hutchinson-rock-73"], h
     assert B2._member_address(h) == "/legislator/rebecca-hutchinson-rock-8", B2._member_address(h)
-    assert got["9237"] == former["9237"] and got["500"] == former["500"], "a seat moved that should not"
-    assert got["600"] == former["600"], "a page took another page's address"
+    for k in ("9237", "500", "600", "700", "800"):
+        assert got[k] == former[k], f"{k} changed: {got[k]} from {former[k]}"
     assert set(redated) == {"376132"}, redated
     assert B2.corrected_seats(Path("no-such-file.json")) == set()
+    # KEPT FOR GOOD: a recorded address answers though nothing moves the page
+    # from it any more, and a move the record lacks is said
+    root = Path(tempfile.mkdtemp(prefix="gr-moves-"))
+    try:
+        rec = root / "moved.json"
+        rec.write_text(json.dumps({"/legislator/wendy-chase-belknap-5": "9237"}), encoding="utf-8")
+        kept, unrecorded = B2.keep_moved(got, rec)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert kept == 1 and got["9237"]["moved_from"] == ["/legislator/wendy-chase-belknap-5"] and \
+        unrecorded == ["/legislator/rebecca-hutchinson-rock-73"], (kept, unrecorded, got["9237"])
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("record_moves", "src/ops/record_moves.py")
+    RM = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(RM)
+    merged = RM.merge({"/a": "1"}, {"/a": "2", "/b": "3"})
+    assert merged == {"/a": "1", "/b": "3"}, f"record_moves re-pointed or dropped: {merged}"
     return "ok", ("Hutchinson Rock 73 -> Rockingham 8 with a 301 from the old address; the person's "
-                  "seat, a seat already right, and one whose address another page has, left alone")
+                  "seat, a seat already right, an abbreviated county, and moves onto another page's "
+                  "or a sitting member's address left alone; a recorded address kept for good")
 
 
 @check("session", "the seat of a term is the one its bills print, else the ballots' in the "
