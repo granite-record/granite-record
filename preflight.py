@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.765
+# GRANITE_VERSION: 2026-09-04.766
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -69145,6 +69145,58 @@ def _drawn_pages():
     return "ok", (f"{len(drawn)} pages and tabs drawn without an error: {len(records)} records "
                   f"at their own address and each tab's, and {len(DP.LISTS)} pages that draw "
                   "part of themselves")
+
+
+@check("frontend", "a committee page carrying Live Now's hook is drawn to its end on a Saturday "
+                   "and on a Sunday, when the hook asks nothing, as on a weekday")
+def _drawn_on_a_weekend():
+    """THE WEEKEND (5 November 2026). live.js's hook on a committee page
+    looks at the clock once a minute until it learns there is no stream to
+    show. On a weekday, inside its hours, it asks /api/live/streams, meets the
+    fixture's 404 and stops; on a weekend it asks nothing and keeps looking,
+    which in a browser costs one look a minute. The stub runs every timer at
+    once, so in drawn_pages that look re-armed itself without end: every
+    committee page drawn on a Saturday or a Sunday hung until the drawing's
+    half-hour limit, and _drawn_pages, run by the clock, would have failed
+    every weekend night once the hook was on main. drawn_pages now lets no
+    timer ten seconds or more away fire (LATER_MS). This draws the fixture's
+    hooked committee pages on the Saturday and the Sunday after the build
+    day, with a three-minute limit, so the hang is found on any day of the
+    week, and fast."""
+    import contextlib
+    import datetime
+    import io
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), (
+            "node is not on PATH on the nightly, which installs it")
+        return "skip", "node is not on PATH"
+    import drawn_pages as DP
+    shared, _base, _ran, days = _fixture_site_shared()
+    site = shared / "site"
+    hooked = sorted(p.relative_to(site).as_posix() for p in (site / "committee").glob("*.html")
+                    if not p.stem.startswith("ss")
+                    and 'id="live-now"' in p.read_text(encoding="utf-8"))
+    assert hooked, ("no fixture committee page carries Live Now's hook (live_hook.place), so "
+                    "this would draw nothing that waits on the clock")
+    sat = days[-1] + datetime.timedelta(days=(5 - days[-1].weekday()) % 7)
+    tabs = len(DP.tab_slugs(site)["committee"])
+    root = Path(tempfile.mkdtemp(prefix="gr-weekend-"))
+    said = []
+    try:
+        for day in (sat, sat + datetime.timedelta(days=1)):
+            with contextlib.redirect_stdout(io.StringIO()):
+                drawn = DP.draw(site, root / day.isoformat(), day, only=hooked, timeout=180)
+            assert len(drawn) == len(hooked) * (1 + tabs), (
+                f"{day:%A %d %B}: {len(drawn)} committee pages and tabs drawn, not "
+                f"{len(hooked) * (1 + tabs)}")
+            errs = [f"{k}: {d['errors'][0]}" for k, d in drawn.items() if d["errors"]]
+            assert not errs, f"drawn on {day:%A %d %B %Y}, {len(errs)} met an error: " + "; ".join(errs[:3])
+            said.append(f"{day:%a %d %b}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", (f"{len(hooked)} committee page(s) with the hook, and each tab, drawn to the end "
+                  f"on {' and '.join(said)}")
 
 
 # The harness of _no_index_off_the_list: app.js loaded as one kind of page,
