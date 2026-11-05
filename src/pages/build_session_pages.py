@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.53
+# GRANITE_VERSION: 2026-09-19.58
 """
 A page for every day the House sat.
 
@@ -452,7 +452,7 @@ def others_html(others, body, members, esc, payloads, day="", term="", years=Non
          "how the General Court&rsquo;s roll-call file words it, and the quotation "
          "is the Journal&rsquo;s own account, with its page."
          + (f' <a href="session/nobill/{esc(term)}.html">Every vote on no bill in '
-            f"{esc(term)}</a>." if term else "") + "</p>"]
+            f"{esc(C.term_words(term))}</a>." if term else "") + "</p>"]
     for it in others:
         e = VP.entry(rollcall_id(it.rc), motions) if it.rc is not None else None
         # A ROLL CALL ON NO BILL IS DRAWN AS ONE ON A BILL IS (23 October
@@ -1763,114 +1763,30 @@ def clerk_adds(it, bill, k, head, amds=()):
 # the English beside each key ("session.close.voted", ...), as every other
 # translated sentence is said; nothing is pieced together from another
 # sentence's words.
-CLOSING = {
-    "voted": "The {chamber} voted to {verb}{how}.",
-    "rejected": "The {chamber} rejected a motion to {verb}{how}.",
-    "voted_third": "The {chamber} voted to {verb}{how} and ordered it to a third reading.",
-    "rejected_third": "The {chamber} rejected a motion to {verb}{how} and ordered it to a third "
-                      "reading.",
-    "rejected_short": "The {chamber} rejected a motion to {verb}{how}, short of the {needed} "
-                      "majority it needed.",
-    "open": "The {chamber} took up a motion to {verb}{how}; the record does not say "
-            "whether it carried.",
-    "pending": "The {chamber} adopted the motion that it ought to pass{amended}{how}{left}.",
-    "amd_adopted": "{who}{num}{by} was adopted{how}, changing the text of the bill.",
-    "amd_rejected": "{who}{num}{by} was rejected{how}.",
-    "amd_open": "{who}{num}{by} was taken up{how}; the record does not say how the vote went.",
-    "enrolled": "An enrolled bill amendment{num} was adopted{how}, to correct technical "
-                "errors found after passage.",
-    "overridden": "The {chamber} voted{tally} to override the governor's veto{how}, "
-                  "meeting the two thirds threshold.",
-    "sustained": "The {chamber} voted{tally} on overriding the governor's veto{how}, and the "
-                 "veto was sustained, failing to meet the two thirds threshold.",
-    "override_open": "The {chamber} voted{tally} on overriding the governor's veto{how}; the "
-                     "record does not say the outcome.",
-    "quoted_adopted": "The {chamber} adopted “{words}”{how}.",
-    "quoted_rejected": "The {chamber} rejected “{words}”{how}.",
-    "quoted_open": "The {chamber} took up “{words}”{how}; the record does not say how the "
-                   "vote went.",
-    "unnamed_adopted": "The {chamber} voted on a question the record does not name{how}, and "
-                       "the motion carried.",
-    "unnamed_rejected": "The {chamber} voted on a question the record does not name{how}, and "
-                        "the motion failed.",
-    "unnamed_open": "The {chamber} voted on a question the record does not name{how}.",
-    # What it means for the bill.
-    "to_other": "That sends it to the {other}.",
-    "back": "It goes back to the {origin}, which can accept or reject the {chamber}'s "
-            "changes.",
-    "agreed": "Both chambers have passed it in the same form, so it goes to {after}.",
-    "agreed_only": "Both chambers have passed it in the same form.",
-    "second": "It goes to the {chamber} {committee} committee, and the {chamber} votes on it "
-              "again once that committee reports.",
-    "second_other": "It goes to a second {chamber} committee, and the {chamber} votes on it "
-                    "again once that committee reports.",
-    "conference_asked": "If the {other} agrees, a committee of conference from both chambers "
-                        "will try to settle the differences.",
-    "conference_on": "A committee of conference from both chambers will try to settle the "
-                     "differences.",
-    "conference_report": "Once both chambers adopt the report, it goes to {after}.",
-    "back_before": "It is back before the {chamber}.",
-    "stays_tabled": "It stays on the table.",
-    "override_too": "The {other} must also override the veto for the bill to become law.",
-    "no_law": "The bill did not become law.",
-}
+# The tables are src/pages/words/closing.json's (5 November 2026), which the
+# browser reads too, so the live session page says a day's votes in these
+# same words: sentences, who, after, left, narrative_key, vote_said and
+# nuance_of.
+CLOSING = C.WORDBOOK["closing"]["sentences"]
 # The places' words that are themselves a choice of words. An amendment no
 # report of the chamber names is one offered on the floor, as the history
 # calls it (narrative.whose_amendment: "any other is one offered on the
 # floor"), whatever the row's own word.
-CLOSING_WHO = {"committee_amendment": "The committee's amendment",
-               "floor_amendment": "A floor amendment", "amendment": "A floor amendment"}
-CLOSING_AFTER = {"G": "the Governor", "V": "the voters"}
-CLOSING_LEFT = {"third": ", but its third reading was left pending",
-                "finance": ", but its referral to the Finance committee was left pending"}
+CLOSING_WHO = C.WORDBOOK["closing"]["who"]
+CLOSING_AFTER = C.WORDBOOK["closing"]["after"]
+CLOSING_LEFT = C.WORDBOOK["closing"]["left"]
 
 # The history's own verb for a motion, by the card's reading of it: the row
 # of narrative.RECOMMENDATION that names the same motion. A key that is not
 # here has no words in the history but a quotation, and is said by VOTE_SAID.
-NARRATIVE_KEY = {
-    "otp": "ought to pass", "otp_finance": "ought to pass",
-    "otpa": "ought to pass with amendment", "otpa_finance": "ought to pass with amendment",
-    "itl": "inexpedient to legislate", "ought_not_to_pass": "ought not to pass",
-    "is": "interim study", "rerefer": "rerefer to committee",
-    "recommit": "rerefer to committee", "table": "lay on table",
-    "postpone": "indefinitely postpone", "adopt": "adopt", "concur": "concur",
-    "nonconcur": "nonconcur"}
+NARRATIVE_KEY = C.WORDBOOK["closing"]["narrative_key"]
 # A motion the history has no words for, said in the plain words of its
 # head's gloss (votes.json), as the history says a motion: "voted to ...",
 # "rejected a motion to ...". {committee} is the committee the motion names.
-VOTE_SAID = {
-    "untable": "take it off the table",
-    "reconsider": "reconsider an earlier vote",
-    "table_amendment": "lay the amendment on the table",
-    "table_motion": "lay the motion on the table",
-    "nonconcur_conference": "reject the other chamber's changes and ask for a committee of "
-                            "conference",
-    "request_conference": "ask for a committee of conference",
-    "accede": "agree to a committee of conference",
-    "refuse_accede": "refuse a committee of conference",
-    "conference_report": "adopt the committee of conference's report",
-    "special_order": "take it up at a set time",
-    "suspend_rules": "suspend its rules",
-    "previous_question": "end debate and vote",
-    "limit_debate": "limit debate",
-    "divide": "divide the question and vote on its parts separately",
-    "order_third_reading": "order it to a third reading",
-    "third_reading": "pass it at its third reading",
-    "final_passage": "give it final passage",
-    "introduce": "introduce it",
-    "introduce_adopt": "introduce and adopt it",
-    "withdraw": "withdraw it",
-    "vacate_referral": "move it to another committee",
-    "vacate_referral_to": "send it to the {committee} committee",
-    "refer": "send it to the {committee} committee",
-    "uphold_ruling": "uphold the ruling of the chair",
-    "member_continue": "let the member keep speaking",
-    "print_debate": "print the debate in the permanent journal",
-    "reprimand": "reprimand the member",
-}
+VOTE_SAID = C.WORDBOOK["closing"]["vote_said"]
 OTHER = {"H": "S", "S": "H"}
 # What the history's two notes say (narrative.NUANCE), by the motion.
-NUANCE_OF = {"table": "lay on table", "is": "interim study"}
+NUANCE_OF = C.WORDBOOK["closing"]["nuance_of"]
 # The motions that pass a bill in a chamber; the card's chip says "Bill
 # Passed" for each.
 PASSES = frozenset({"otp", "otpa", "third_reading", "final_passage", "order_third_reading"})
@@ -2662,6 +2578,29 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
     return page, payloads
 
 
+# A DEBATE'S OPENING, AS IT STANDS UNDER THE SHUT FOLD (the R2 polish batch,
+# 30 October 2026). Once the sentences stood where a reader sees them, every
+# debate of 14 May 2026 opened "Thank you, Mr. Speaker.…": the split took
+# "Mr." for the end of a sentence, and the courtesy for the opening. A title
+# does not end a sentence, and thanks to the chair are not what the member
+# said, so the two sentences after them are the opening; a speech of thanks
+# alone keeps them.
+_TITLE_END = "".join(rf"(?<!\b{t}\.)" for w in ("Mr", "Mrs", "Ms", "Dr", "Rep", "Sen", "St", "No", "Gov", "Jr")
+                     for t in (w, w.upper()))
+_SENTENCE_END = re.compile(rf"(?<=[.!?]){_TITLE_END}\s+")
+_COURTESY = re.compile(r"(?i)^(?:thank you|thanks)(?: very much| so much)?,? (?:mr\.?|madam|mister) "
+                       r"(?:deputy )?speaker[.!]$")
+
+
+def debate_opening(text):
+    """The first two sentences of a speech, after any thanks to the chair,
+    cut at 420 characters."""
+    said = _SENTENCE_END.split(text.strip())
+    while len(said) > 1 and _COURTESY.match(said[0]):
+        said = said[1:]
+    return " ".join(said[:2])[:420]
+
+
 def _debate_html(d, body, members, esc, head=False, chair=None):
     """A printed debate: the opening, and the rest behind a disclosure.
 
@@ -2691,7 +2630,7 @@ def _debate_html(d, body, members, esc, head=False, chair=None):
     # is handed, and shadowing it made every speaker link raise.
     spoke = [x for x in sp if not x[0].lower().startswith(CHAIR)]
     first = (spoke or sp)[0][1]
-    opener = " ".join(re.split(r"(?<=[.!?])\s+", first)[:2])[:420]
+    opener = debate_opening(first)
     n = len(spoke)
     title = ""
     if head and d.get("bill"):
@@ -2701,7 +2640,6 @@ def _debate_html(d, body, members, esc, head=False, chair=None):
            f'journal</span>',
            f'<span class="sdn">{n} speech{"" if n == 1 else "es"}</span>',
            '<span class="caret"></span></summary>',
-           f'<p class="sdopen">{esc(opener)}…</p>',
            '<div class="sdbody">']
     for who, said in sp:
         nm = re.sub(r"^(Rep(?:resentative)?\.?|Speaker|Deputy Speaker)\s+",
@@ -2712,7 +2650,11 @@ def _debate_html(d, body, members, esc, head=False, chair=None):
                 if not who.lower().startswith("speaker")
                 else f"<span>{esc(who)}</span>")
         out.append(f'<p class="sdsp">{link}<span class="sdtx">{esc(said)}</span></p>')
-    out.append("</div></details>")
+    # THE OPENING SENTENCES AFTER THE FOLD, so they stand while it is shut,
+    # as app.css meant them to; inside it they showed only once it was open,
+    # which app.css then hid (the R2 polish batch, 30 October 2026).
+    tail = "" if re.search(r"[.!?][\"'”’)]*$", opener) else "…"
+    out.append("</div></details>" + (f'<p class="sdopen">{esc(opener)}{tail}</p>' if opener.strip() else ""))
     return "".join(out)
 
 
@@ -3415,10 +3357,34 @@ def day_record(day, narrative, jurl, ctx):
     # The chamber's page draws the day from these two (build_full_sessions):
     # what it did in general, and its recordings.
     rec["summary"] = day_summary(rec, day.body)
-    vids = day_videos(day, ctx.get("moments") or {})
+    # ITS RECORDINGS: those a bill's moment of the day is in, and where no
+    # moment names one -- every day before 2025, whose floor debates have no
+    # moments, and a few since -- the recording the chamber's own channel
+    # titles as that day's session, "House Session (03/06/2026)" (the Videos
+    # tab, 26 October 2026: the chamber's folds said "No recording of this day
+    # is on file" on 108 days the channel has). The chamber's page plays them
+    # in the day's fold and lists them on its Videos tab, from these two
+    # lists, which hold the same recordings in the same order.
+    vids = day_videos(day, ctx.get("moments") or {}) \
+        or list((ctx.get("session_videos") or {}).get((day.body, day.date)) or [])
     if vids:
+        facts = ctx.get("facts") or {}
         rec["videos"] = vids
+        rec["recordings"] = [{"id": v, **{k: (facts.get(v) or {})[k] for k in ("began", "seconds")
+                                          if (facts.get(v) or {}).get(k)}} for v in vids]
     return rec
+
+
+def session_videos(facts):
+    """{(chamber, date): [video_id, ...]} of the recordings each chamber's
+    channel titles as a day's session ("Senate Session (01/07/2026)", parsed
+    "Session"), that have streamed, in the order they began."""
+    out = collections.defaultdict(list)
+    for vid, v in sorted(facts.items(), key=lambda kv: (kv[1].get("began") or "", kv[0])):
+        if v.get("parsed_committee") == "Session" and v.get("streamed") and v.get("date") \
+                and v.get("chamber") in ("H", "S"):
+            out[(v["chamber"], v["date"])].append(vid)
+    return out
 
 
 TERM_ABOUT = (
@@ -3432,7 +3398,10 @@ TERM_ABOUT = (
     "consent: the calendar's outcomes, the bills taken off it and its counted vote. bills: "
     "every bill voted on that day, each vote in order (rollcall is the roll-call file's id; "
     "card is the vote's place on the bill's Votes tab), and the committee recommendation "
-    "the chamber acted on.")
+    "the chamber acted on. videos: the day's recordings, those a bill's moment of the day is "
+    "in or else the one the chamber's YouTube channel titles as the day's session; "
+    "recordings: the same, with when each began (began, Eastern) and how long it ran "
+    "(seconds), where the channel's index says.")
 
 
 def write_term_records(site, body, records):
@@ -3557,6 +3526,18 @@ def chamber(a, site, base, body, days):
            "amendments": amendments, "cards": fr["cards"], "presided": fr["presiding"],
            "offices": published_officers(site), "acts": acts_of, "floor": floor,
            "data": data, "moments": fr.get("moments") or {}, "nobill": fr.get("nobill") or {}}
+    # Each recording's start and length, and the channel's session recordings
+    # by day, for the term file's `videos` and `recordings` (day_record).
+    # SILENCE IS NOT SUCCESS: the index is in git (collected/videos/), so moments
+    # that name recordings beside an index that reads as nothing is a broken
+    # checkout, and every day before 2025 would lose its recording unsaid.
+    ctx["facts"] = proceedings.video_facts()
+    ctx["session_videos"] = session_videos(ctx["facts"])
+    if ctx["moments"] and not ctx["facts"]:
+        raise SystemExit(
+            f"the floor record names recordings and the video index ({proceedings.VIDEO_DIR.as_posix()}"
+            "/videos_*.csv, and the night's videos_*.csv beside it) reads as empty: the index is in "
+            "git, so this checkout is missing it, and the chamber's days would lose their recordings.")
     # WHAT THE PAGE'S CARDS ARE DRAWN FROM (the record pages' bill cards,
     # 10 October 2026): each bill's index row, for its chip, byline and rail;
     # meta.json's committee codes, for a committee's link; and each floor
@@ -3637,7 +3618,8 @@ def chamber(a, site, base, body, days):
                       description=(f"What the New Hampshire {CHAMBER[body]} did on "
                                    f"{words(date)}: every bill, motion and vote, "
                                    "in the order the journal records them."),
-                      og_title=label, globals={"GR_STATIC": True}, noscript="",
+                      og_title=label, globals={"GR_STATIC": True, "GR_REPORT": f"session:{body}/{date}"},
+                      noscript="",
                       skip_label="Skip to the session day", sr_title="",
                       # COMMITTEES, WHERE ITS TRAIL BEGINS (the person, 10
                       # October 2026; the audit of 25 October 2026, S6): the
@@ -3679,6 +3661,13 @@ def chamber(a, site, base, body, days):
               f"who presided, {sum(1 for v in records.values() for d in v if d['excused']):,}"
               f" count the excused by party; {len(unplaced_amendments):,} amendment row(s) "
               "on no sitting")
+        # Their recordings, said (day_record): by a bill's moment, or by the
+        # channel's own title for the day's session.
+        days_ = [d for v in records.values() for d in v]
+        by_title = sum(1 for d in days_ if d.get("videos")
+                       and not day_videos(days[(body, d["date"])], ctx["moments"]))
+        print(f"  {sum(1 for d in days_ if d.get('videos')):,} of {len(days_):,} days with a "
+              f"recording: {by_title:,} of them by the channel's title for the day's session")
 
     # This chamber's days only, and all of them unless --limit cut the run
     # short: a limited run takes out only entries that were never an address.
