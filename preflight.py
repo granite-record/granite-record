@@ -84072,6 +84072,20 @@ def _speaker_other_chamber(BSP):
     return "ok", "Rosenwald on a House day of 2017; nobody of that name on one of 2021"
 
 
+@check("session", "how the day began keeps the case of the member who led the Pledge",
+       needs=("build_session_pages",))
+def _opening_keeps_case(BSP):
+    """opening_html put its sentence's first letter up with str.capitalize(),
+    which lowers the rest: 16 days read "rep. frederick andrews (r - hills
+    34) led the pledge of allegiance" (found 5 November 2026)."""
+    import html as _html
+    out = BSP.opening_html({"opening": {"prayer": True, "pledge": "Andrews"}}, "H",
+                           BSP.Members(Path("no-such-site")), _html.escape)
+    assert out.startswith("<p>A prayer was offered, and ") and "Rep. Andrews" in out and \
+        "Pledge of Allegiance" in out, f"the opening reads {out!r}"
+    return "ok", "the first letter up, the member's name and the Pledge as written"
+
+
 @check("session", "a speaker the rosters miss is linked by the term's own ballots, where one member has the name",
        needs=("build_session_pages",))
 def _speaker_by_ballot(BSP):

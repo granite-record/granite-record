@@ -1031,8 +1031,12 @@ def opening_html(narrative, body, members, esc):
                    + " led the Pledge of Allegiance")
     line = ". ".join(bits)
     if say:
-        line = (line + ". " if line else "") + ", and ".join(say).capitalize() \
-            if not line else line + ", " + " and ".join(say)
+        # The first letter up and nothing else: str.capitalize() lowers the
+        # rest, and printed "rep. frederick andrews (r - hills 34) led the
+        # pledge of allegiance" on 16 days (found 5 November 2026, by the chip
+        # check once it read the names in sentences).
+        first = ", and ".join(say)
+        line = (first[:1].upper() + first[1:]) if not line else line + ", " + " and ".join(say)
     return f"<p>{line}.</p>"
 
 
