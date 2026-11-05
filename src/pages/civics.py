@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.72
+# GRANITE_VERSION: 2026-09-08.73
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -516,6 +516,164 @@ COUNTY_BODIES = boxes("Who governs a county", [
                 "register of probate."),
         ("Term", "Two years, except in Rockingham and Coos, which moved to four-year terms. "
                  + _RSA.format("RSA 653:1, V"))])])
+
+# COUNTY BY COUNTY (a tester's request, approved by the owner for 24 November
+# 2026, through the manager session): what differs between the ten counties,
+# one card each. Every value rests on a section of the statutes, read from
+# the statute table the Laws pages are built from:
+#   how the commissioners are elected and whether their terms are staggered,
+#     RSA 653:1, VI, one lettered subparagraph a county;
+#   the other five officers' term, RSA 653:1, V (four years in Rockingham
+#     from the 2022 election and in Coos from the 2024 one);
+#   the commissioner districts, RSA 662:4, in the statute's own words;
+#   the county's state representatives and House districts, counted at build
+#     time from records/districts/house.txt (build_civics.figures,
+#     co_seats_<county> and co_dists_<county>), the table RSA 662:5 enacts.
+# Nothing here is a county's own website: none is on hand yet, and the owner
+# has the list of pages to save.
+#
+# county: (653:1, VI's letter, whole county votes, staggered, staggered since,
+#          officers' four-year term since, 662:4's numeral)
+COUNTY_RULES = {
+    "Belknap": ("f", False, True, None, None, "I"),
+    "Carroll": ("b", True, True, None, None, "II"),
+    "Cheshire": ("d", False, True, None, None, "III"),
+    "Coos": ("i", False, True, None, 2024, "IV"),
+    "Grafton": ("j", False, True, 2022, None, "V"),
+    "Hillsborough": ("a", False, False, None, None, "VI"),
+    "Merrimack": ("h", False, True, None, None, "VII"),
+    "Rockingham": ("g", False, True, None, 2022, "VIII"),
+    "Strafford": ("c", False, False, None, None, "IX"),
+    "Sullivan": ("e", True, True, None, None, "X"),
+}
+
+# RSA 662:4, each district in the statute's words, District 1 to 3.
+COMMISSIONER_DISTRICTS = {
+    "Belknap": (
+        "the towns of Center Harbor and Meredith and the city of Laconia, Wards 1, 3, 4, 5, and 6",
+        "the towns of Belmont, Gilmanton, New Hampton, Sanbornton, and Tilton",
+        "the towns of Alton, Barnstead, and Gilford and the city of Laconia, Ward 2",
+    ),
+    "Carroll": (
+        "the towns of Albany, Bartlett, Chatham, Conway, Hart's Location, Jackson, and Sandwich, "
+        "and the unincorporated place of Hale's Location",
+        "the towns of Madison, Moultonborough, Ossipee, Tamworth, and Tuftonboro",
+        "the towns of Brookfield, Eaton, Effingham, Freedom, Wakefield, and Wolfeboro",
+    ),
+    "Cheshire": (
+        "the towns of Chesterfield, Fitzwilliam, Hinsdale, Richmond, Swanzey, Troy, and Winchester",
+        "the towns of Marlborough and Roxbury and the city of Keene",
+        "the towns of Alstead, Dublin, Gilsum, Harrisville, Jaffrey, Marlow, Nelson, Rindge, "
+        "Stoddard, Sullivan, Surry, Walpole, and Westmoreland",
+    ),
+    "Coos": (
+        "the city of Berlin and the town of Milan",
+        "the unincorporated place of Kilkenny and the towns of Dalton, Jefferson, Lancaster, "
+        "Northumberland, Randolph and Whitefield",
+        "the unincorporated places of Atkinson and Gilmanton Academy Grant, Bean's Grant, Bean's "
+        "Purchase, Cambridge, Chandler's Purchase, Crawford's Purchase, Cutt's Grant, Dix's Grant, "
+        "Dixville, Erving's Location, Green's Grant, Hadley's Purchase, Low and Burbank's Grant, "
+        "Martin's Location, Odell, Pinkham's Grant, Sargent's Purchase, Second College Grant, "
+        "Success, and Thompson and Meserve's Purchase, and the towns of Carroll, Clarksville, "
+        "Colebrook, Columbia, Dummer, Errol, Gorham, Millsfield, Pittsburg, Shelburne, Stark, "
+        "Stewartstown, Stratford, and Wentworth's Location",
+    ),
+    "Grafton": (
+        "the towns of Enfield and Hanover and the city of Lebanon",
+        "the unincorporated place of Livermore and the towns of Bath, Benton, Bethlehem, Easton, "
+        "Franconia, Haverhill, Landaff, Lincoln, Lisbon, Littleton, Lyman, Lyme, Monroe, Orford, "
+        "Piermont, Sugar Hill, Thornton, Waterville Valley, and Woodstock",
+        "the towns of Alexandria, Ashland, Bridgewater, Bristol, Campton, Canaan, Dorchester, "
+        "Ellsworth, Grafton, Groton, Hebron, Holderness, Orange, Plymouth, Rumney, Warren, and "
+        "Wentworth",
+    ),
+    "Hillsborough": (
+        "the towns of Bedford and New Boston and the city of Manchester",
+        "the towns of Hudson, Litchfield, and Pelham and the city of Nashua",
+        "the towns of Amherst, Antrim, Bennington, Brookline, Deering, Francestown, Goffstown, "
+        "Greenfield, Greenville, Hancock, Hillsborough, Hollis, Lyndeborough, Mason, Merrimack, "
+        "Milford, Mont Vernon, New Ipswich, Peterborough, Sharon, Temple, Weare, Wilton, and Windsor",
+    ),
+    "Merrimack": (
+        "the town of Bow and the city of Concord",
+        "the towns of Andover, Boscawen, Bradford, Canterbury, Chichester, Danbury, Hill, Loudon, "
+        "New London, Newbury, Northfield, Salisbury, Sutton, Warner, Webster, and Wilmot, and the "
+        "city of Franklin",
+        "the towns of Allenstown, Dunbarton, Epsom, Henniker, Hooksett, Hopkinton, Pembroke, "
+        "Pittsfield",
+    ),
+    "Rockingham": (
+        "the towns of Epping, Exeter, Greenland, Hampton, Hampton Falls, Kensington, New Castle, "
+        "Newfields, Newington, Newmarket, North Hampton, Rye, and Stratham and the city of "
+        "Portsmouth",
+        "the towns of Atkinson, Derry, Newton, Plaistow, Salem, Seabrook, South Hampton, and Windham",
+        "the towns of Auburn, Brentwood, Candia, Chester, Danville, Deerfield, East Kingston, "
+        "Fremont, Hampstead, Kingston, Londonderry, Northwood, Nottingham, Raymond, and Sandown",
+    ),
+    "Strafford": (
+        "the towns of Farmington, Middleton, Milton, New Durham, wards 1, 5, and 6, of the city of "
+        "Rochester, and wards 1, 2, 3, 4, and 5 of the city of Somersworth",
+        "wards 1, 2, 3, and 4 of the city of Dover, and the towns of Durham, Lee, and Rollinsford",
+        "Barrington, wards 5 and 6 of the city of Dover, Madbury, wards 2, 3, and 4 of the city of "
+        "Rochester, and the town of Strafford",
+    ),
+    "Sullivan": (
+        "the town of Cornish and the city of Claremont",
+        "the towns of Croydon, Grantham, Newport, Plainfield, and Springfield",
+        "the towns of Acworth, Charlestown, Goshen, Langdon, Lempster, Sunapee, Unity, and "
+        "Washington",
+    ),
+}
+
+
+def county_cards():
+    """The ten counties, a card each: how its commissioners are elected and
+    for how long, its other officers' term, its county convention, its
+    commissioner districts, and where its officers are named."""
+    out = []
+    for name, (letter, at_large, staggered, since, four, numeral) in COUNTY_RULES.items():
+        slug = name.lower()
+        # Where a county departs from what most do, those words are bold, so
+        # the ten cards can be told apart at a glance.
+        elected = ("Three, one from each district, and <b>the voters of the whole county</b> vote "
+                   "for each one." if at_large else
+                   "Three, one from each district, each elected by the voters of that district.")
+        terms = (("Staggered" + (f" since the {since} election" if since else "")
+                  + ". Two of the three seats are on the ballot at each state general election, "
+                  "one for four years and one for two, and the four-year term rotates among the "
+                  "districts in sequence.") if staggered else
+                 "<b>Two years. All three seats are on the ballot at every state general "
+                 "election.</b>")
+        officers = (f"<b>Four years</b>, since the {four} election." if four else "Two years.")
+        dists = "".join(f"<li><b>District {i}:</b> {d.replace(chr(39), '&rsquo;')}</li>"
+                        for i, d in enumerate(COMMISSIONER_DISTRICTS[name], 1))
+        rows = [
+            ("Commissioners", elected),
+            ("Commissioners&rsquo; terms", terms),
+            ("Sheriff and the other four officers", officers),
+            ("County convention", f"The county&rsquo;s [[co_seats_{slug}]] state representatives, "
+                                  f"from [[co_dists_{slug}]] House districts."),
+            ("Commissioner districts",
+             '<details class="l-cdist"><summary>The towns in each</summary>'
+             f'<ol class="l-cdl">{dists}</ol></details>'),
+        ]
+        dl = "".join(f"<div><dt>{f}</dt><dd>{t}</dd></div>" for f, t in rows)
+        # The card's law, once, at its foot: which subparagraph of 653:1, VI
+        # is this county's, and which paragraph of 662:4.
+        law = ('<p class="l-claw">The law: '
+               + ", ".join(f'<a href="{h}">{c}</a>' for c, h in (
+                   (f"RSA 653:1, V and VI({letter})", "laws/653#s1"),
+                   (f"662:4, {numeral}", "laws/662#s4"), ("662:5", "laws/662#s5")))
+               + "</p>")
+        out.append(f'<section class="l-body" id="county-{slug}"><h3>{name} County</h3>'
+                   f'<p class="l-lbl">[[co_seats_{slug}]] state representatives</p><dl>{dl}</dl>'
+                   + law +
+                   # The County Officials tab: an address naming one county's
+                   # heading in it (#of-county-<name>) does not open the tab.
+                   '<p class="l-cwho"><a href="officials.html#counties">Who holds these offices '
+                   "now</a></p></section>")
+    return wide('<div class="l-who l-counties" style="--n:2" role="group" '
+                'aria-label="The ten counties">' + "".join(out) + "</div>")
 
 # THE COUNTY BUDGET, STEP BY STEP: the page's five paragraphs as a numbered
 # line, each with the time limit it states as an amber tag.
@@ -2040,6 +2198,14 @@ documents that affect title to land are recorded there, and a deed that has
 not been recorded does not hold against a later buyer who paid for the land in
 good faith (RSA 477:3-a, 478:4). The register keeps the records safe in the
 office the county provides (RSA 478:1).</p>
+
+<h2>County by County</h2>
+<p>The ten counties follow the same law with three differences: whether the
+whole county votes for each commissioner, whether the commissioners&rsquo;
+terms are staggered, and how long the other officers serve. Each county&rsquo;s
+card says which, with its county convention and the towns in each of its
+commissioner districts.</p>
+""" + county_cards() + """
 
 <h2>What the County Pays For, and Where the Money Comes From</h2>
 <p>Two things dominate a county budget. A county may provide, keep and

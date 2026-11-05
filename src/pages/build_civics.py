@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.87
+# GRANITE_VERSION: 2026-09-08.88
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -770,6 +770,14 @@ def record_figures(site, root=Path(".")):
                              if (m.get("email") or "").strip()),
         "floterial_seats": sum(h.get("seats") or 1 for h in house.values()
                                if h.get("floterial")),
+        # Each county's state representatives and House districts, floterials
+        # among them, for County Government's card of that county
+        # (civics.county_cards): its county convention, counted from the map
+        # rather than typed.
+        **{f"co_seats_{c.lower()}": sum(h.get("seats") or 1 for (co, _d), h in house.items() if co == c)
+           for c in civics.COUNTY_RULES},
+        **{f"co_dists_{c.lower()}": sum(1 for (co, _d) in house if co == c)
+           for c in civics.COUNTY_RULES},
         # How many places -- towns and city wards, 320 of them -- have more
         # than one state representative, whether from a district of several
         # seats, a floterial over it, or both. The page used to explain this

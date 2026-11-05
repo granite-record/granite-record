@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.341 */
+/* GRANITE_VERSION: 2026-09-07.342 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -5538,6 +5538,23 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .l-rsa{color:var(--ink-2);white-space:nowrap}
 @media (max-width:59.99em){.l-who{grid-template-columns:repeat(min(var(--n,3),2),minmax(0,1fr))}}
 @media (max-width:37.5em){.l-who{grid-template-columns:1fr}}
+/* County Government's ten county cards (civics.county_cards): the towns in
+   each commissioner district folded under a chevron, as a Learn fold is, and
+   the line to the county's officers at the card's foot. */
+.l-counties .l-body{display:flex;flex-direction:column}
+.l-cdist{margin:0 0 .25rem}
+.l-cdist > summary{list-style:none;display:inline-flex;align-items:center;gap:.5rem;min-height:2.75rem;
+  cursor:pointer;font:600 var(--t-ui)/1.4 var(--sans);color:var(--pine)}
+.l-cdist > summary::-webkit-details-marker{display:none}
+.l-cdist > summary::before{content:"";flex:0 0 auto;width:.75rem;height:.75rem;background:var(--pine);
+  -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;transition:transform .15s}
+.l-cdist[open] > summary::before{transform:rotate(90deg)}
+.l-cdl{margin:.25rem 0 .5rem;padding:0;list-style:none;display:grid;gap:.5rem}
+.l-cdl li{font:400 var(--t-sm)/1.5 var(--sans);color:var(--ink-2)}
+.l-cdl b{color:var(--ink);font-weight:600}
+.l-counties dd b{font-weight:600}
+.l-claw{margin:auto 0 0;padding-top:.75rem;font:400 var(--t-sm)/1.5 var(--sans);color:var(--ink-2)}
+.l-cwho{margin:.75rem 0 0;padding-top:.75rem;border-top:1px solid var(--rule);font:600 var(--t-ui)/1.4 var(--sans)}
 
 /* the county's budget, step by step: a numbered line down the column */
 .l-time{list-style:none;margin:.5rem 0 1rem;padding:0;max-width:var(--l-meas);counter-reset:lt}
