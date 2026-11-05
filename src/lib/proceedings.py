@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.17
+# GRANITE_VERSION: 2026-09-05.18
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -90,6 +90,77 @@ def video_indexes(root="."):
     root = Path(root)
     found = list((root / VIDEO_DIR).glob("videos_*.csv")) + list(root.glob("videos_*.csv"))
     return sorted((p for p in found if p.is_file()), key=lambda p: (p.name, p.as_posix()))
+
+
+# WHAT EACH RECORDING SAYS OF ITSELF (the Videos tab, 26 October 2026: the
+# owner asked for a body's recordings "in a structured table with the date,
+# list of bills, and other pertinent information"). One reader of every video
+# index for the three pages that list recordings -- a committee's, a chamber's
+# and a study committee's -- so none of them reads a subset. From each row:
+# the channel, which is the chamber (videos_house_*, videos_senate_*); the
+# committee its title names as the index parsed it ("Finance", "Finance
+# Division II", "Session"; empty for a title in the older form, "Education
+# 1/26/21", which the index could not parse); its day, the title's or else the
+# stream's; when the stream began, YouTube's own start in Eastern time; and
+# how long it ran. A scheduled stream that has not run carries no start and a
+# length of nothing ("P0D"): it is not `streamed`, and no page lists it.
+# Where two rows name one recording -- the night's livestreams beside the
+# channel's own -- the row that knows more is kept (a length once it is over,
+# a start while it was live), the first of equals in video_indexes' order,
+# and a start or a length that only the other row has is taken from it.
+_LENGTH = re.compile(r"P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?")
+
+
+def iso_seconds(s):
+    """"PT1H52M3S" -> 6723; 0 for no length, "P0D", or one that will not read."""
+    m = _LENGTH.fullmatch(str(s or "").strip())
+    if not m or not any(m.groups()):
+        return 0
+    d, h, mi, sec = (int(x or 0) for x in m.groups())
+    return d * 86400 + h * 3600 + mi * 60 + sec
+
+
+def video_facts(root="."):
+    """{video_id: {"date", "chamber" ("H"|"S"|""), "title", "parsed_committee",
+    "began" ("13:13", or ""), "seconds" (int, 0 where unknown), "streamed"}}
+    out of every video index here (video_indexes). Standard library; asks
+    nobody anything."""
+    out, knows = {}, {}
+    for f in video_indexes(root):
+        ch = {"house": "H", "senate": "S"}.get(f.name.split("_")[1] if f.name.count("_") else "", "")
+        try:
+            fh = open(f, encoding="utf-8-sig", newline="")
+        except OSError:
+            continue
+        with fh:
+            for r in csv.DictReader(fh):
+                vid = (r.get("video_id") or "").strip()
+                if not vid:
+                    continue
+                start = (r.get("start_eastern") or "").strip()
+                secs = iso_seconds(r.get("duration_iso"))
+                began = start[11:16] if re.match(r"\d{4}-\d\d-\d\d \d\d:\d\d", start) else ""
+                rank = 2 * bool(secs) + bool(began)
+                day = (r.get("parsed_date") or "").strip()[:10] or start[:10]
+                parsed = (r.get("title_parsed") or "").strip().lower() == "yes"
+                row = {"date": day if re.fullmatch(r"\d{4}-\d\d-\d\d", day) else "",
+                       "chamber": ch, "title": (r.get("title") or "").strip(),
+                       "parsed_committee": (r.get("parsed_committee") or "").strip()
+                       if parsed else "",
+                       "began": began, "seconds": secs}
+                if vid in out:
+                    # The row that knows more is kept, and what it lacks is
+                    # taken from the other: a channel file's row can carry a
+                    # length and no start (93 of the committed ones do)
+                    # beside the night's row, which has both, and the start
+                    # was lost whenever the first of the two had a length.
+                    # Its day, its parsed name or its chamber the same way.
+                    keep, other = (out[vid], row) if rank <= knows[vid] else (row, out[vid])
+                    row = {k: keep[k] or other[k] for k in row}
+                    rank = 2 * bool(row["seconds"]) + bool(row["began"])
+                out[vid] = dict(row, streamed=bool(row["began"] or row["seconds"]))
+                knows[vid] = rank
+    return out
 
 COLS = ["term", "bill", "body", "kind", "date", "time", "committee", "venue",
         "video_id", "video_title", "stream_start", "predicted_offset", "match",

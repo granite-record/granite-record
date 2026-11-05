@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.249
+# GRANITE_VERSION: 2026-09-04.257
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -254,7 +254,16 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
 BILL_TAB_SLUGS = ("text", "votes", "hearings", "videos", "reports",
                   "sponsors", "documents", "related")
 MEMBER_TAB_SLUGS = ("cosponsored", "votes")
-COMMITTEE_TAB_SLUGS = ("sessions",)
+# A committee's Videos tab (26 October 2026); its rule serves a study or
+# statutory committee's /committee/ss<id>/videos too, which opens that page
+# on its Videos tab, and /committee/ss<id>/sessions on its Meetings tab.
+# And /bills (29 October 2026): a study committee's page opens on its
+# Meetings, so its Bills tab has an address of its own; a standing
+# committee's Bills is its page's own address, and /bills opens it too.
+COMMITTEE_TAB_SLUGS = ("bills", "sessions", "videos")
+# The chambers' pages (build_full_sessions.SLUG), whose Videos tab is
+# /session/<chamber>/videos.
+CHAMBER_TAB_PAGES = ("house", "senate")
 # THE LEARN HUB MOVED. /learn was the hub of the Learn pages and is now the
 # first tab of the Resources hub, /resources (the person, 8 October 2026,
 # decision 128: "/learn redirects to /resources ... the articles keep their
@@ -292,11 +301,64 @@ MOVED =(("/learn", "/resources"), ("/learn.html", "/resources"),
          # "Jr. Barnes John" until build_site_v2.person_name put the suffix
          # last (12 October 2026).
          ("/legislator/jr-barnes-john-sd-17", "/legislator/john-barnes-jr-sd-17"))
-REDIRECTS = ("# Written by build_pages.py. Not an asset; Pages reads it.\n"
-             + "".join(f"/bill/:year/:bill/{s} /bill/:year/:bill 200\n" for s in BILL_TAB_SLUGS)
-             + "".join(f"/legislator/:who/{s} /legislator/:who 200\n" for s in MEMBER_TAB_SLUGS)
-             + "".join(f"/committee/:code/{s} /committee/:code 200\n" for s in COMMITTEE_TAB_SLUGS)
-             + "".join(f"{old} {new} 301\n" for old, new in MOVED))
+def moved_members(site):
+    """The 301s from the page of a member's earlier chamber to the one page
+    they have now (build_site_v2.former_movers, 30 October 2026): Shannon
+    Chandley's House page answers with her Senate page, which carries both
+    chambers' votes. Read off former.json's rows, where build_site_v2 says
+    which addresses each took in; in both spellings, as MOVED's are."""
+    try:
+        rows = json.loads((Path(site) / "former.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    out = []
+    for r in rows if isinstance(rows, list) else []:
+        new = f"/legislator/{r.get('slug')}" if r.get("slug") else ""
+        for old in (r.get("moved_from") or []) if new else []:
+            # And a tab of the old page to the same tab of the new one: the
+            # first rule that matches is the one served, and the tab rules'
+            # /legislator/:who/votes would otherwise rewrite the old address to
+            # a page that is gone (the review of 30 October 2026). Each tab
+            # by name, a static rule, never old/* (STATIC RULES FIRST, below).
+            # And the address with a trailing slash, which old/* caught.
+            out += [f"{old} {new} 301\n", f"{old}.html {new} 301\n", f"{old}/ {new} 301\n"]
+            out += [f"{old}/{s} {new}/{s} 301\n" for s in MEMBER_TAB_SLUGS]
+    return "".join(sorted(out))
+
+
+# STATIC RULES FIRST, THEN THE DYNAMIC ONES (5 November 2026). Cloudflare
+# Pages allows a file 2,000 static and 100 dynamic redirects and says
+# "Static redirects should appear before dynamic redirects". The movers'
+# rules went first, each mover with a dynamic old/* rule among its static
+# ones; with the owner's thirty confirmed pairs that was 34 movers and 102
+# lines, and the dry run of 4613f04 (run 175) served those 102 and none of
+# the 52 after them -- every tab address, /legislators, /learn, the cities.
+# Measured on that deployment: static rules after the first dynamic one
+# were still served (its 5th and its 102nd), and the file stopped exactly
+# 100 rules after the first dynamic one, its 3rd. So, counted from the first
+# rule with a placeholder or a splat, every rule counts against the 100, and
+# the 101st ends the file; that is how Cloudflare's parser reads it, as the
+# review recalled it. The order is what keeps the count at the tab rewrites
+# alone: every rule here is static but those, and they come last.
+# preflight's _redirects_cloudflare holds the built file to it, and
+# check_live asks for the last rule's address (rule_probes).
+REDIRECTS_STATIC = (
+    # A chamber's Videos tab (build_full_sessions), its page's.
+    "".join(f"/session/{c}/videos /session/{c} 200\n" for c in CHAMBER_TAB_PAGES)
+    + "".join(f"{old} {new} 301\n" for old, new in MOVED))
+REDIRECTS_DYNAMIC = (
+    "".join(f"/bill/:year/:bill/{s} /bill/:year/:bill 200\n" for s in BILL_TAB_SLUGS)
+    + "".join(f"/legislator/:who/{s} /legislator/:who 200\n" for s in MEMBER_TAB_SLUGS)
+    + "".join(f"/committee/:code/{s} /committee/:code 200\n" for s in COMMITTEE_TAB_SLUGS))
+REDIRECTS_HEAD = "# Written by build_pages.py. Not an asset; Pages reads it.\n"
+REDIRECTS = REDIRECTS_HEAD + REDIRECTS_STATIC + REDIRECTS_DYNAMIC
+
+
+def redirects_file(site):
+    """_redirects as written: the head, every static rule -- the moved
+    members' (moved_members) and REDIRECTS_STATIC -- and then the dynamic
+    tab rewrites (STATIC RULES FIRST)."""
+    return REDIRECTS_HEAD + moved_members(site) + REDIRECTS_STATIC + REDIRECTS_DYNAMIC
 
 
 # THE REPOSITORY, NAMED ONCE: chrome.REPO, which the footer links too.
@@ -873,7 +935,7 @@ def calendar_html(out, today=None, rows=None, lang="en", events=None):
                                         else say(lang, "cal.this_week", "This Week"))
              + f' <span>{esc(date_span(monday, monday + _dt.timedelta(days=4), "medium", lang))}'
              + "</span></p>")
-    coming = say(lang, "cal.coming", "Coming up")
+    coming = say(lang, "cal.coming", "Coming Up")
 
     # WHERE THE REST IS: next week's own page, which build_calendar writes
     # for every week in its range, empty ones included -- linked here only
@@ -1638,7 +1700,7 @@ archived bill has its docket &#8212; the General Court's own line-by-line list
 of actions &#8212; and its sponsors, the committee it went to, its hearings and
 its text. Three parts of the record start later, because the General Court's
 copies of them that this site reads start later. The House committees'
-written reports start with the 1997-1998 term, the first in its online
+written reports start with the 1997–1998 term, the first in its online
 calendars, and the Senate committees' with the current term, the only one its
 database holds them for. Before those, the page gives each committee's
 recommendation as the docket records it, and the committee's vote wherever the
@@ -2135,6 +2197,23 @@ SEATING_JS = """
       if(onSeat(e.relatedTarget))return;
       say();
     });
+    // A TAP ON THE TRIANGLE IS THE SEAT'S UNDER IT (the walk of 30 October
+    // 2026). The triangle reaches past the gap onto the top of the seat it
+    // points at, and on a phone the callout opens under the finger before
+    // the tap lands, so a tap on a seat landed on the triangle and chose
+    // nothing: none of 21 seats tried at 390. It stays where it is, the
+    // pointer's way from a seat onto the callout over the seats above it,
+    // and a tap or a click on it, below or above the box, goes to the seat
+    // under it, found with the callout taken out of the way for a moment.
+    if(pop)pop.addEventListener("click",function(e){
+      if(e.target!==pop||!pop.getBoundingClientRect||!document.elementFromPoint)return;
+      var r=pop.getBoundingClientRect();
+      if(e.clientY>=r.top&&e.clientY<=r.bottom)return;
+      pop.style.pointerEvents="none";
+      var c=onSeat(document.elementFromPoint(e.clientX,e.clientY));
+      pop.style.pointerEvents="";
+      if(c){e.preventDefault();pick(c===picked?null:c);}
+    });
     // Escape lets the callout go, and the keyboard stays where it was: on
     // the seat, or back on it from the name (WCAG 1.4.13, dismissible).
     var dismiss=function(e){
@@ -2368,20 +2447,20 @@ const GROUPS=[
   // the ones that do (find.js, _fgone).
   {t:"Committees",          w:["committee","committees"],k:r=>r[0]==="committee"&&!r[5]},
   // A city above its wards, each ward a Ward (find.json, 25 October 2026).
-  {t:"Towns and wards",     w:["town or ward","towns and wards"],k:r=>r[0]==="town"||r[0]==="ward"},
+  {t:"Towns and Wards",     w:["town or ward","towns and wards"],k:r=>r[0]==="town"||r[0]==="ward"},
   {t:"Subjects",            w:["subject","subjects"],k:r=>r[0]==="topic"},
   // THE OFFICIALS PAGE AND ITS TABS, before the bills where a name of theirs
   // was typed (the audit of 25 October 2026, M3): "my senator" is the page,
   // "ayotte" its Executive Branch, "shaheen" its Federal Delegation.
   {t:"Officials",           w:["officials page","officials pages"],k:r=>r[0]==="page"&&/^[/]?officials([#?]|$)/.test(r[3])},
   // Their own group, after the bills (AFTER): find.js, _fstudy (18 October 2026).
-  {t:"Statutory and study committees",w:["statutory or study committee","statutory and study committees"],k:r=>r[0]==="statutory"||r[0]==="study"},
-  {t:"Former senators",     w:["former senator","former senators"],k:r=>r[0]==="former"&&/^Senate/.test(r[2])},
-  {t:"Former representatives",w:["former representative","former representatives"],k:r=>r[0]==="former"&&/^House/.test(r[2])},
-  {t:"Former members",      w:["former member","former members"],k:r=>r[0]==="former"},
-  {t:"Former committees",   w:["former committee","former committees"],k:r=>r[0]==="committee"},
+  {t:"Statutory and Study Committees",w:["statutory or study committee","statutory and study committees"],k:r=>r[0]==="statutory"||r[0]==="study"},
+  {t:"Former Senators",     w:["former senator","former senators"],k:r=>r[0]==="former"&&/^Senate/.test(r[2])},
+  {t:"Former Representatives",w:["former representative","former representatives"],k:r=>r[0]==="former"&&/^House/.test(r[2])},
+  {t:"Former Members",      w:["former member","former members"],k:r=>r[0]==="former"},
+  {t:"Former Committees",   w:["former committee","former committees"],k:r=>r[0]==="committee"},
   {t:"Learn",               w:["Learn page","Learn pages"],k:r=>r[0]==="learn"},
-  {t:"Pages on this site",  w:["page on this site","pages on this site"],k:r=>r[0]==="page"}
+  {t:"Pages on This Site",  w:["page on this site","pages on this site"],k:r=>r[0]==="page"}
 ];
 
 // A committee by its chamber, as the header's rows show it (find.js, findName).
@@ -2460,11 +2539,11 @@ const bills=(q,B,C,counting,R,mem)=>{
   const every=counted&&B.every;
   const what=every?WHAT_ALL:counting?"Counting the earlier terms&hellip;":WHAT;
   const none=every?`None in any of the ${B.terms.length} terms.`
-    :counted?`None in the ${esc(B.term)} term.`:"";
+    :counted?`None in the ${esc(termWords(B.term))} term.`:"";
   const now=every&&C&&C.state==="ready"&&C.n&&C.n<B.n
     ?`<a class="fbills" href="/bills?q=${_fenc(q)}">
       <span class="fl1"><span class="fname">${C.n.toLocaleString()} of them in
-        the ${esc(C.term)} term</span></span>
+        the ${esc(termWords(C.term))} term</span></span>
       <span class="fwhat">The current term, where the bill search starts.</span></a>`:"";
   const top=B&&B.top?(B.numbers?B.top:B.top.slice(0,5)):[];
   const body=(counted&&B.n
@@ -2482,8 +2561,8 @@ const bills=(q,B,C,counting,R,mem)=>{
 };
 // Groups a reader reaches for after the bills: members who have left, and
 // this site's own pages.
-const AFTER=new Set(["Statutory and study committees","Former senators","Former representatives",
-  "Former members","Learn","Pages on this site"]);
+const AFTER=new Set(["Statutory and Study Committees","Former Senators","Former Representatives",
+  "Former Members","Learn","Pages on This Site"]);
 let waiting=false,waitingAll=false,waitingWords=false,waitingLaw=false,waitingReq=false;
 
 function draw(q){
@@ -2525,7 +2604,7 @@ function draw(q){
   const counting=!!(A&&A.state==="loading"&&B&&B.state==="ready");
   const nB=B&&B.state==="ready"?B.n:null;
   const term=nB===null?"":B.every?`across all ${B.terms.length} terms`
-    :`in the ${B.term} term`;
+    :`in the ${termWords(B.term)} term`;
   const noBill=nB===null?"":B.every?`no bill in any of the ${B.terms.length} terms`
     :`no bill ${term}`;
   // A member found by a whole word of their name, where no bill is: the
@@ -2929,6 +3008,13 @@ Promise.all([fetch(DATA("districts.json")).then(r=>r.json()).catch(()=>({})),
       2026), and the reader came for a ward. */
    const city=TOWNS.find(t=>t.wards.length>1&&t.town.toLowerCase()===pre.toLowerCase());
    if(city)picked=city.town;
+   /* AND THE TAB NAMES THE TOWN (the cohesion audit of 30 October 2026,
+      B-4): /town/concord comes here for its wards (MOVED), and the tab and
+      a bookmark said only "Officials". The page's own title, with the town
+      ?town= names before it -- only a town of the list, never a search's
+      words. The canonical stays this page's: the address is this page. */
+   const named=TOWNS.find(t=>t.town.toLowerCase()===(pr.get("town")||"").trim().toLowerCase());
+   if(named)document.title=named.town+" \u2014 "+document.title;
    render();
    box.focus();
    box.addEventListener("input",()=>{picked=null;render();});
@@ -2975,7 +3061,7 @@ def home_webinar(today=None, lang="en"):
         return ""
     return (f'<aside class="webinar" aria-label="{_html.escape(say(lang, "web.label", "Webinar"))}"'
             f'{until_attrs(WEBINAR_UNTIL, today)}>'
-            f'<p class="wbwhen">{say(lang, "web.when", "Free webinar &middot; Tuesday, November 10, 6:30 p.m.")}</p>'
+            f'<p class="wbwhen">{say(lang, "web.when", "Free webinar &middot; Tuesday, November 10, 6:30&nbsp;PM")}</p>'
             f'<p class="wbwhat">{say(lang, "web.what", "How Granite Record works, and how to use it to keep up with Concord this session. Hosted by Alice Wade. All are welcome to join, ask questions and say which features they would like most.")}</p>'
             f'<a class="wbgo" href="{_html.escape(WEBINAR_URL, quote=True)}" target="_blank" rel="noopener">'
             f'{say(lang, "web.go", "Register on Zoom")}</a></aside>')
@@ -3105,11 +3191,14 @@ def state_box(S, lang="en", today=None, events=None):
 # own kinds (chips.json), so the colours are the chips'. Without
 # Recommendation takes none.
 REC_KIND = {"OTP": "law", "OTPA": "law", "ITL": "done", "IS": "study", "RR": "study"}
-# An interim study report: recommending the subject for future legislation in
-# the orange of its mark on a committee's page (app.css .mrec), and not
-# recommending it, or making no recommendation, in the grey of the killing
-# the person called it (committee_acts, v8; .mkill).
-STUDY_KIND = {"rec": "study", "not": "done", "without": "done"}
+# An interim study report, by one rule wherever it is shown (the person, 30
+# October 2026): recommending the subject for future legislation in the green
+# of a law, not recommending it in the colour of a bill that died, and making
+# no recommendation in none -- as the Reports tab's chip (app.js RECCOLOUR),
+# the docket line's mark (app.css .jrec-*) and a committee's meeting card
+# (.mrec, .mkill, .mwithout) colour it.
+# A report whose row states none of the three ("") is plain, as "without" is.
+STUDY_KIND = {"rec": "law", "not": "done", "without": "", "": ""}
 
 
 def _vote_chip_said(key, passed, bill, fill, lang="en"):
@@ -3383,16 +3472,20 @@ def recent_sessions(H, lang="en", sits=None):
         if b == "S":
             name = say(lang, "sess.senate", "Senate Session")
             rec = say(lang, "sess.rec_senate", "Recording of the Senate floor session, {date}", date=day)
-            play = say(lang, "sess.play_senate", "Play the Senate floor session of {date}", date=day)
+            play = say(lang, "sess.play_senate", "Play the recording of the Senate floor session, {date}",
+                       date=day)
         else:
             name = say(lang, "sess.house", "House Session")
             rec = say(lang, "sess.rec_house", "Recording of the House floor session, {date}", date=day)
-            play = say(lang, "sess.play_house", "Play the House floor session of {date}", date=day)
+            play = say(lang, "sess.play_house", "Play the recording of the House floor session, {date}",
+                       date=day)
         cells.append(
             f'<div class="sess"><p class="sesstitle"><b>{name}</b> ({dated})</p>'
             f'<div class="player"><button type="button" class="pstub" '
             f'data-embed="{esc(v["video_id"])}" data-title="{esc(rec)}" aria-label="{esc(play)}">'
-            f'<span>{icon("play")}</span><span>{say(lang, "sess.play", "Play")}</span>'
+            # "Play the recording", as every other player's button says (the
+            # cohesion audit of 30 October 2026, I-11); its name says which.
+            f'<span>{icon("play")}</span><span>{say(lang, "sess.play", "Play the recording")}</span>'
             "</button></div></div>")
     return (f'<h2>{say(lang, "sess.recent", "Recent Session Days")}</h2>'
             f'<div class="twoup">{"".join(cells)}</div>')
@@ -3700,7 +3793,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
       const more=cal.querySelector(".calall");
       // In calendar_html's words for an empty week: the rail holds the
       // chambers' own meetings, not the study committees.
-      cal.innerHTML=`<h2>${tr("cal.coming","Coming up")}</h2><p class="note">${tr("cal.none_else","No more House or Senate committee meetings are scheduled this week.")}</p>`
+      cal.innerHTML=`<h2>${tr("cal.coming","Coming Up")}</h2><p class="note">${tr("cal.none_else","No more House or Senate committee meetings are scheduled this week.")}</p>`
         +(more?more.outerHTML:"");
     }
     // "Last updated N days ago" is the one line whose whole job is to say the
@@ -4199,9 +4292,14 @@ def main():
     # once. The slugs here and BILL_TABS/MEMBER_TABS/COMMITTEE_TABS in app.js
     # are the same lists; preflight holds them together.
     red = out / "_redirects"
+    # The moved members' rules FIRST, under the header line: a rule is
+    # served by the first that matches, and the tab rules, last, would catch
+    # /legislator/<anyone>/votes before a later 301 could. All static, and
+    # every static rule before the dynamic ones (STATIC RULES FIRST).
+    want = redirects_file(out)
     if (not red.exists()
-            or red.read_text(encoding="utf-8", newline="") != REDIRECTS):
-        red.write_text(REDIRECTS, encoding="utf-8", newline="\n")
+            or red.read_text(encoding="utf-8", newline="") != want):
+        red.write_text(want, encoding="utf-8", newline="\n")
         print("  _redirects: a tab's address serves its record's page")
 
     legs = json.loads((out / "legislators.json").read_text(encoding="utf-8")) \
@@ -4287,7 +4385,12 @@ def main():
                     + "</p>")
         chamber = {"House": say(lang, "comp.house", "House"),
                    "Senate": say(lang, "comp.senate", "Senate")}.get(x["chamber"], x["chamber"])
-        filled = (say(lang, "comp.filled_vacant", "{sitting} of {seats} seats filled, {vacant} "
+        # One vacancy in words of its own (the release walk, 2 November 2026:
+        # "1 vacantes"); the English is the same.
+        filled = (say(lang, "comp.filled_vacant_one", "{sitting} of {seats} seats filled, {vacant} "
+                      "vacant", sitting=x["sitting"], seats=x["seats"], vacant=x["vacant"])
+                  if x.get("vacant") == 1 else
+                  say(lang, "comp.filled_vacant", "{sitting} of {seats} seats filled, {vacant} "
                       "vacant", sitting=x["sitting"], seats=x["seats"], vacant=x["vacant"])
                   if x.get("vacant") else
                   say(lang, "comp.filled", "{sitting} of {seats} seats filled",
@@ -4464,7 +4567,9 @@ def main():
         senate_rows = "".join(li(m, say(lang, "off.district", "District {d}", d=m.get("district")))
                               for m in S)
 
-        seats_said = (say(lang, "roster.filled_vacant", "{seated} of the 400 seats are filled and "
+        seats_said = (say(lang, "roster.filled_vacant_one", "{seated} of the 400 seats are filled and "
+                          "{vacant} is vacant.", seated=seated, vacant=vacant) if vacant == 1 else
+                      say(lang, "roster.filled_vacant", "{seated} of the 400 seats are filled and "
                           "{vacant} are vacant.", seated=seated, vacant=vacant) if vacant else
                       say(lang, "roster.filled", "{seated} of the 400 seats are filled.",
                           seated=seated))

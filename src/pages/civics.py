@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.71
+# GRANITE_VERSION: 2026-09-08.72
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -3174,7 +3174,7 @@ constitution gives the office the title <b>His Excellency</b> (Part Second,
 Article 41). The office was called President until an amendment of 1792.</p>
 <p>The governor is chosen biennially, in November (Part Second, Article 42):
 a two-year term. Until 1877 the election was every year. A candidate must be
-30 years old and have lived in the state for the 7 years before the election.
+30 years old and have lived in the state for the 7 years immediately before the election.
 If no one has a plurality of the votes, more than any other candidate, the House and Senate together elect
 one of the two with the most votes, by joint ballot.</p>
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.6
+# GRANITE_VERSION: 2026-10-30.7
 """
 The register of person numbers: what it would issue, and issuing it.
 

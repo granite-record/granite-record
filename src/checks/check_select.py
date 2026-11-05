@@ -82,7 +82,7 @@ SCAN_WORDS = ("ls-files",)
 # main() runs the checks in, and which of them it runs.
 RUNNER = {"main", "check", "imp", "_run", "CHECKS", "_in_order"}
 
-FILE_RX = re.compile(r"[\w./-]*?[\w-]+\.(?:py|js|css|html|json|jsonl|csv|psv|txt|md|yml|yaml"
+FILE_RX = re.compile(r"[\w./-]*?[\w-]+\.(?:py|js|mjs|css|html|json|jsonl|csv|psv|txt|md|yml|yaml"
                      r"|bat|toml|xml|webmanifest)\b")
 IMPORT_RX = re.compile(r"^[ \t]*(?:from[ \t]+([A-Za-z_]\w*)|import[ \t]+([A-Za-z_][\w \t,.]*))",
                        re.M)
