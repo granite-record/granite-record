@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.769
+# GRANITE_VERSION: 2026-09-04.770
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -75766,15 +75766,17 @@ def _webinar_under_search(BP):
 
 # The kinds of address docs/DEMO_PATH.md may stop at: each a page the site
 # builds (_demo_path). A stop of another kind is added here once it has been
-# opened on the preview.
+# opened on the preview, or on the live site: /officials and /resources were,
+# at 390px on 5 November 2026, with the deck's three new slides.
 DEMO_ADDRESSES = (r"/", r"/search\?q=[^#\s]+", r"/bills\?[^#\s]+",
                   r"/bill/\d{4}/[a-z]{2,5}\d+(?:/(?P<billtab>[a-z]+))?",
                   r"/committee/[A-Za-z0-9-]+", r"/legislator/[a-z0-9-]+",
                   r"/laws/[0-9a-z-]+(?:#s[0-9a-z-]+)?", r"/town/[a-z0-9-]+(?:#(?P<towntab>[a-z]+))?",
-                  r"/guides/(?P<guide>[a-z0-9-]+)", r"/calendar/\d{4}-W\d{2}")
+                  r"/guides/(?P<guide>[a-z0-9-]+)", r"/calendar/\d{4}-W\d{2}",
+                  r"/officials", r"/resources")
 
 
-@check("frontend", "the webinar's demo path is a draft of ten to twelve stops, each a kind of "
+@check("frontend", "the webinar's demo path is a draft of ten to fifteen stops, each a kind of "
        "address the site builds, its tab or guide one the site still has", needs=("civics", "guides"))
 def _demo_path(CV, G):
     """The audit of 25 October 2026 (C7): the 10 November webinar had a deck
@@ -75793,8 +75795,10 @@ def _demo_path(CV, G):
     assert "draft for the owner's approval" in " ".join(text.split()), \
         "docs/DEMO_PATH.md no longer says it is a draft for the owner's approval"
     stops = re.findall(r"(?m)^(\d+)\. `(/[^`]*)`", text)
-    assert 10 <= len(stops) <= 12 and [int(n) for n, _ in stops] == list(range(1, len(stops) + 1)), \
-        f"the demo path has {len(stops)} stops, numbered {[n for n, _ in stops]}: ten to twelve, in order"
+    # Fifteen at most since the deck's three new slides (the owner's board,
+    # 27 October 2026: "the demo path gains the same stops").
+    assert 10 <= len(stops) <= 15 and [int(n) for n, _ in stops] == list(range(1, len(stops) + 1)), \
+        f"the demo path has {len(stops)} stops, numbered {[n for n, _ in stops]}: ten to fifteen, in order"
     app = (_paths.ROOT / "src/pages/app.js").read_text(encoding="utf-8")
     tabs = re.search(r"const BILL_TABS=\{([^}]*)\}", app)
     assert tabs, "app.js no longer says BILL_TABS where this check reads it"
