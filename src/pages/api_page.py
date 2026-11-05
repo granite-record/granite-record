@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.5
+# GRANITE_VERSION: 2026-10-30.6
 """
 /api: the data API's documentation page, drawn in the data page's own
 components and counted from tonight's manifest.
@@ -133,9 +133,7 @@ def body(manifest):
     if tables:
         rows.append(_row("bills.csv and the rest",
                          "The spreadsheets, as on the data page, with every date written YYYY-MM-DD "
-                         "and a person column in the sponsor and legislator tables. Not "
-                         "proceedings.csv, which carries YouTube&rsquo;s own titles: here the "
-                         "database&rsquo;s proceedings table holds its rows.",
+                         "and a person column in the sponsor and legislator tables.",
                          "", f"{sum(t['rows'] for t in tables):,}", "rows",
                          mb(sum(t["bytes"] for t in tables)), "/data.html#downloads", "See them"))
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.72
+# GRANITE_VERSION: 2026-09-08.73
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1911,7 +1911,14 @@ them assume you already know all of this."""
 # set this to the date of that review, as "2026-11-20". preflight's reminder
 # (_probate_after_the_vote) fails from the day the count is entered, or from
 # 2 December 2026 if it never is, until this holds a date on or after it.
-REGISTER_OF_PROBATE_REVIEWED = ""
+#
+# Reviewed 5 November 2026, the day the count was entered: CACR 13 failed,
+# 365,359 yes to 198,791 no, 64.8% where two thirds was needed (the
+# Secretary of State's spreadsheet, through the manager session). The
+# register of probate is "still elected", the five officers sentence stands,
+# and the paragraph's last sentence is probate_vote's "did not reach the two
+# thirds it needed". Nothing in the words changes.
+REGISTER_OF_PROBATE_REVIEWED = "2026-11-05"
 
 BODY_COUNTY = """
 <h2>Ten Counties</h2>

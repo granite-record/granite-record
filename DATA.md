@@ -66,10 +66,11 @@ term, so the counts are read from the file rather than from a document.
 
 THE DATA API
 
-The files /api describes -- the database (granite-record.sqlite.xz), the bill
+Every download under /data/ -- the spreadsheets (bills.csv and the others
+/data/manifest.json lists), the database (granite-record.sqlite.xz), the bill
 files (bills-<term>.jsonl.gz), people.json and people.csv, and schema.json --
-carry the same record, and the same line between what is the State's and what
-is this project's. The record is the State of New Hampshire's, and so are
+carries the same record, and the same line between what is the State's and
+what is this project's. The record is the State of New Hampshire's, and so are
 the numbers it gives people and bills. What this project adds to it -- the
 keys it makes (a bill's term and number together), the joins it makes (which
 of the General Court's numbers are one person, which of them is that

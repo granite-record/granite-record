@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.61
+# GRANITE_VERSION: 2026-09-10.62
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -38,6 +38,7 @@ import argparse
 import csv
 import json
 
+import api_db
 import ballot_source as BS
 import bill_order as BO
 import build_date
@@ -307,9 +308,13 @@ def proceedings_table(out, site, table=None, histories=None):
     from disk unless a caller hands them in.
     """
     import proceedings as P
+    # NO YOUTUBE METADATA (the owner, 5 November 2026). The recording's
+    # title and the stream's scheduled offset are YouTube's own data, which
+    # no download carries (docs/design/api/DESIGN.md, Q18, on YouTube's API
+    # terms); the id is the link, and the moment in it is this site's.
     cols = ["term", "bill", "body", "kind", "date", "time", "committee",
-            "venue", "video_id", "video_title", "start_seconds",
-            "end_seconds", "how_placed", "end_how", "scheduled_seconds"]
+            "venue", "video_id", "start_seconds",
+            "end_seconds", "how_placed", "end_how"]
     # The year folder each bill's page is under. No site is no folders, and
     # then no station either; main() has already stopped in bills() for it.
     folder = {(b.get("term"), b.get("id")): str(b.get("year") or "")
@@ -345,11 +350,10 @@ def proceedings_table(out, site, table=None, histories=None):
         rows.append([r.get("term", ""), r.get("bill", ""), r.get("body", ""),
                      r.get("kind", ""), r.get("date", ""), r.get("time", ""),
                      r.get("committee", ""), r.get("venue", ""),
-                     r.get("video_id", ""), r.get("video_title", ""),
+                     r.get("video_id", ""),
                      "" if st.get("start") is None else st["start"],
                      "" if st.get("end") is None else st["end"],
-                     st.get("state") or "", st.get("end_from") or "",
-                     r.get("predicted_offset") or ""])
+                     st.get("state") or "", st.get("end_from") or ""])
     rows.sort(key=lambda r: (r[4], BO.bill_key(r[1])))
     print(f"  proceedings.csv: {placed:,} rows carry the time their page "
           "prints" + (f"; {len(notices)} docket notice(s) for a bill withdrawn "
@@ -381,9 +385,7 @@ def proceedings_table(out, site, table=None, histories=None):
                  "A meeting the docket gave notice of for a bill that was "
                  "never introduced, or for a day after the bill was "
                  "withdrawn, is not a row: the bill's own page says what the "
-                 "docket entered. "
-                 "scheduled_seconds is the meeting's called time minus the "
-                 "stream's start, which is the schedule and not a finding.")
+                 "docket entered.")
 
 
 def sponsors(out, data, person_of=None):
@@ -1348,10 +1350,9 @@ def api_index(manifest, out, tables, collector):
     import hashlib
     import api_schema as AS
     sha = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()
-    # The data page's CSVs that are not the API's (AS.NOT_API says why) are
-    # neither listed in "files" nor described in schema.json.
-    tables = [t for t in tables if t["file"] not in AS.NOT_API]
-    api = [f for f in manifest["files"] if not f.get("skipped")]
+    # A column YouTube's metadata would come back in (video_title,
+    # scheduled_seconds) is described nowhere, so it stops the build here.
+    api =[f for f in manifest["files"] if not f.get("skipped")]
     db = next((f for f in api if f.get("kind") == "database"), None)
     db_columns = db.pop("columns", None) if db else None
     people_csv = out / "people.csv"
@@ -1416,7 +1417,6 @@ def database_file(out, collector, joined):
     manifest never names a file that is not tonight's. Says each table's
     rows; stops on a table that must hold rows and holds none, and warns of
     one that may be empty."""
-    import api_db
     path = out / api_db.NAME
     why = ("no bill records were read" if not collector.bills else
            "no people join (no db/Legislators.psv or generated/careers.json here)"
@@ -1551,11 +1551,8 @@ def main():
         "site": "https://graniterecord.org",
         "upstream": "https://gc.nh.gov",
         "generated": build_date.now().replace(microsecond=0).isoformat(),
-        "rights": "The underlying record is the New Hampshire General Court's "
-                  "and this project claims nothing over it; cite gc.nh.gov "
-                  "rather than this site. The software that built these files, "
-                  "and the summaries and other texts generated here, are MIT "
-                  "licensed -- see LICENSE in the source repository.",
+        # One wording for every download (api_db.RIGHTS, the owner's).
+        "rights": api_db.RIGHTS,
         "caveat": "An empty cell has one of three reasons: the record leaves "
                   "it empty (a document that names no sponsor, a resolution "
                   "never referred to a committee, a sitting with no "
@@ -1572,7 +1569,6 @@ def main():
     # of 30 October 2026). Built unlinked until the announcement: listed here,
     # under a key of their own, and not on the data page, so that nothing a
     # reader sees today moves while they are built.
-    import api_db
     collector = api_db.Collector()
     manifest["files"] = people_files(out, joined) + bill_files(out, site, collect=collector.add)
     manifest["files"] += database_file(out, collector, joined)
