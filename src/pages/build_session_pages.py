@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.59
+# GRANITE_VERSION: 2026-09-19.60
 """
 A page for every day the House sat.
 
@@ -199,8 +199,9 @@ class Members:
         self.by_full = collections.defaultdict(list)
         self.term = ""
         # THE SEAT HELD AT THE TIME (labels-use-the-seat-held-at-the-time):
-        # {term: {member id: label}} off each member's own ballots of the term
-        # (floor_record's seats), and the term the roster describes. Set by
+        # {term: {member id: label}}, the seat the term's bills print, else
+        # the ballots' in the member's last term (floor_record's seats,
+        # build_site_v2.term_seats), and the term the roster describes. Set by
         # main(); label() reads them.
         self.seats, self.current = {}, ""
         # The names left as words, (chamber, name) -> times, said at the end
@@ -279,8 +280,8 @@ class Members:
 
     def label(self, slug, body):
         """The member as the day's term names them (the person, 16 September
-        2026: "show them as a rep when they were a rep"): the seat their own
-        ballots of the term give (seats); in the term the roster describes, a
+        2026: "show them as a rep when they were a rep"): the seat of the term
+        (seats, build_site_v2.term_seats); in the term the roster describes, a
         sitting member's roster label; anywhere else the name alone, with the
         day's chamber's honorific -- no seat rather than a seat they may not
         have held. A member renumbered or moved between terms is named on an

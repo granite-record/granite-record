@@ -69122,11 +69122,19 @@ def _term_seats_printed_first(B2):
     chandley = [ballot(y, "Chandley, Shannon(D) Hillsborough 22", "568", "Chandley, Shannon")
                 for y in (2009, 2010, 2013, 2017)]
     ham = [ballot(y, "Ham, Bonnie(D) Grafton 5", "7439", "Ham, Bonnie") for y in (2011, 2015)]
-    printed = {("2009-2010", "568"): ("H", "Hillsborough", "6"),
-               ("2013-2014", "568"): ("H", "Hillsborough", "22"),
-               # a seat in the other chamber is not this number's
-               ("2011-2012", "7439"): ("S", "", "5")}
-    seats = B2.term_seats({"568": chandley, "7439": ham}, printed=printed)
+    # the last term's record refused where that term's bills say otherwise:
+    # an unplaced sponsor line of the surname at another seat, or two seats
+    mccarty = [ballot(1999, "McCarty, Winston(D) Merrimack 10", "375883", "McCarty, Winston")]
+    king = [ballot(1999, "King, John(D) Coos 1", "500", "King, John")]
+    one = {("2009-2010", "568"): ("H", "Hillsborough", "6"),
+           ("2013-2014", "568"): ("H", "Hillsborough", "22"),
+           # a seat in the other chamber is not this number's
+           ("2011-2012", "7439"): ("S", "", "5")}
+    two = {("1999-2000", "500")}
+    named = {("1999-2000", "H", "mccarty"): {("Hillsborough", "38")},
+             ("2017-2018", "H", "chandley"): {("Hillsborough", "22")}}
+    votes = {"568": chandley, "7439": ham, "375883": mccarty, "500": king}
+    seats = B2.term_seats(votes, record=(one, two, named))
     got = {(t, m): lab for t, ms in seats.items() for m, lab in ms.items()}
     want = {("2009-2010", "568"): "Rep. Shannon Chandley (D - Hills 6)",
             ("2013-2014", "568"): "Rep. Shannon Chandley (D - Hills 22)",
@@ -69134,12 +69142,22 @@ def _term_seats_printed_first(B2):
             ("2015-2016", "7439"): "Rep. Bonnie Ham (D - Graf 5)"}
     assert got == want, f"term_seats gives {got}, not {want}"
     assert B2.printed_seats(Path("no-such-file.json")) == {}, "no file, no printed seats"
-    import inspect
-    src = inspect.getsource(B2.write_floor_record)
-    assert src.index("term_seats(") < src.index('"Presiding"') and "ballot_seat(" not in src, (
-        "write_floor_record names who presided by the ballot's own label, not the term's seat")
+    # who presided: the term's seat, else the name alone -- never a later
+    # record's seat, never the party letter alone
+    chair = [dict(ballot(y, "Ham, Bonnie(D) Grafton 5", "7439", "Ham, Bonnie", "Presiding"),
+                  vote_number=9) for y in (2011, 2015)]
+    root = Path(tempfile.mkdtemp(prefix="gr-seats-"))
+    try:
+        f = B2.write_floor_record(root, {"7439": chair}, {}, record=({}, set(), {}))
+        pres = json.loads(Path(f).read_text(encoding="utf-8"))["presiding"]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    labs = sorted(lab for rows in pres.values() for _mid, lab in rows)
+    assert labs == ["Rep. Bonnie Ham", "Rep. Bonnie Ham (D - Graf 5)"], (
+        f"who presided reads {labs}: 2011's must be the name alone, 2015's the last term's seat")
     return "ok", ("Chandley Hills 6 in 2009-2010 as printed, Hills 22 where printed and in her last "
-                  "term; Ham's 2011-2012 left without a seat, not given the later record's")
+                  "term; Ham's 2011-2012 seatless, as chair too; McCarty's and King's last-term "
+                  "records refused where their term's bills say otherwise")
 
 
 @check("session", "a session day names each member by the seat they held in its term: the old "
@@ -69238,6 +69256,7 @@ def _session_chips_seat_of_their_term(BSP):
     chip = re.compile(r'<span class="mchip p-\w" translate="no"><a href="legislator/([^"]+?)(?:\.html)?">'
                       r'([^<]*?)(?: <span class="mtag">([^<]*)</span>)?</a>')
     seat = re.compile(r"\(\w - ([^()]+)\)$")
+    link = re.compile(r'<a class="psent" href="legislator/([^"]+?)(?:\.html)?" translate="no">([^<]*)</a>')
     bad, n = [], Counter()
     for page in sorted(sess.glob("[HS]/*.html")):
         term = proceedings.vote_term(page.stem[:4], page.stem)
@@ -69263,10 +69282,21 @@ def _session_chips_seat_of_their_term(BSP):
             if (f"{name} {tag}" if tag else None) != want and (tag or want):
                 bad.append(f"{page.parent.name} {page.stem}: {name} {tag or '(no seat)'}, the seat of "
                            f"{term} is {want!r}")
+        # who presided and who moved, named in a sentence (components.person_link):
+        # the term's seat, else the name alone -- never a party letter alone
+        for slug, said in link.findall(html):
+            n["read"] += 1
+            n["linked"] += 1
+            said = __import__("html").unescape(said)
+            want = BSP.seat_of(held, ids.get(slug, []), page.parent.name) or None
+            if said != want and (want or said.endswith(")")):
+                bad.append(f"{page.parent.name} {page.stem}: {said} in a sentence, the seat of "
+                           f"{term} is {want!r}")
     assert n["read"], "no member chip was read on any past term's session day: the pattern has drifted"
     assert not bad, f"{len(bad)} chip(s) name a seat not held that term: " + "; ".join(bad[:4])
-    return "ok", (f"{n['read']:,} chips on past terms' days: {n['named']:,} named by the seat of "
-                  f"their term or none, {n['sponsor']:,} sponsor lines agreeing with it")
+    return "ok", (f"{n['read']:,} member names on past terms' days: {n['named']:,} chips and "
+                  f"{n['linked']:,} in sentences named by the seat of their term or none, "
+                  f"{n['sponsor']:,} sponsor lines agreeing with it")
 
 
 @check("frontend", "a session day folds the consent calendar and the excused with their counts, "
