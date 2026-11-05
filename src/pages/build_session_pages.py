@@ -158,6 +158,16 @@ def _careers():
     return out
 
 
+def seat_of(held, numbers, body):
+    """The seat `held` ({member number: label}, one term's) gives the first of
+    `numbers` that has one -- the day's chamber's seat first, where two of a
+    mover's numbers hold one in the same term (a move in mid-term: the review
+    of 5 November 2026), so a House day names the House seat."""
+    hon = "Sen." if body == "S" else "Rep."
+    got = [held[i] for i in dict.fromkeys(numbers) if i and held.get(i)]
+    return next((x for x in got if x.startswith(hon + " ")), got[0] if got else "")
+
+
 class Members:
     """Names to pages, and only where the name can mean one person.
 
@@ -277,11 +287,11 @@ class Members:
         old day by the old seat. A member who moved between chambers has a
         number for each (Sen. Shannon Chandley's page is 9404, her House
         ballots 568): the seat is looked up under every number the page
-        stands for, its own first."""
+        stands for, its own first, the day's chamber's seat before another
+        (seat_of)."""
         info = self.by_slug.get(slug) or {}
-        held = self.seats.get(self.term) or {}
-        got = next((held[i] for i in [info.get("id") or "", *(info.get("ids") or [])]
-                    if i and held.get(i)), "")
+        got = seat_of(self.seats.get(self.term) or {},
+                      [info.get("id") or "", *(info.get("ids") or [])], body)
         if got:
             return got
         if info.get("sitting") and self.term and self.term == self.current:

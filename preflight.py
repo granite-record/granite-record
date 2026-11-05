@@ -69070,8 +69070,8 @@ def _session_chips_seat_of_their_term(BSP):
             if not tag:
                 continue
             seen += 1
-            held = fr["seats"].get(term) or {}
-            want = next((held[i] for i in ids.get(slug, []) if i and held.get(i)), None)
+            want = BSP.seat_of(fr["seats"].get(term) or {}, ids.get(slug, []),
+                               page.parent.name) or None
             if f"{name} {tag}" != want:
                 bad.append(f"{page.parent.name} {page.stem}: {name} {tag}, the ballots of "
                            f"{term} say {want!r}")
@@ -83920,6 +83920,14 @@ def _mover_seat_on_old_day(BSP):
     m.term = "2009-2010"
     assert m.by_ballot("H", "Chandley") == "shannon-chandley-sd-11", (
         "a ballot under the joined number links no page")
+    # a move in mid-term: both numbers hold a seat in one term, and each
+    # chamber's day names its own (the review of 5 November 2026)
+    m.term = "2017-2018"
+    m.seats["2017-2018"] = {"9404": "Sen. Shannon Chandley (D - SD 11)",
+                            "568": "Rep. Shannon Chandley (D - Hills 22)"}
+    both = (m.label("shannon-chandley-sd-11", "H"), m.label("shannon-chandley-sd-11", "S"))
+    assert both == ("Rep. Shannon Chandley (D - Hills 22)", "Sen. Shannon Chandley (D - SD 11)"), (
+        f"a member who moved in mid-term is named {both} on a House and a Senate day")
     return "ok", ("Chandley (former) and Rosenwald (sitting) named by the House seat of 2009-2010 "
                   "their earlier numbers held; Chandley by SD 11 in 2019-2020")
 
