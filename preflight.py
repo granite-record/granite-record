@@ -58192,39 +58192,47 @@ def _state_sources_officials(SS):
     """The owner found Strafford County's commissioners stale after a
     resignation between elections (5 November 2026), and wants such offices
     checked regularly. state_sources.py officials reads the latest reading of
-    each county's registered pages and flags a person on record whom a page
-    naming that office does not name. It is a question for the owner, never
-    an edit: corrections/officials.json is the owner's file, and the command
-    must leave it as it was, and write nothing beside it.
+    each county's registered officers' pages and says, for each person on
+    record, whether a page names them beside their office. A flag is a
+    question for the owner, never an edit: corrections/officials.json is the
+    owner's file, read through its one reader.
 
-    Held here: every county in the record has a registered page or a wanted
-    row; a person named with a middle initial on record and without one on
-    the page is the same person; a page that does not name an office raises
-    no flag for it; a missing person is flagged; and the officials file's
-    bytes are the same after the run as before.
+    Held here, on pages written the way county sites write them (the review
+    of 5 November): every county on record has a page registered or wanted;
+    "Board of Commissioners", plural, names the office; a person named
+    without their middle initial, or by a common short form of their first
+    name, is the same person; one named beside "resigned" is flagged; a
+    first name and a surname that appear apart are not the person; a
+    deputy's title is not the office; a page naming no office raises no flag;
+    a county's home page, whose menu names every office and no one, is never
+    checked; and the officials file is the same after the run as before.
     """
     import build_members_elect as BME
     reg = SS.load_registry(_paths.ROOT)
     hand = _paths.ROOT / "corrections" / ("officials" + ".json")
     hand_before = hand.read_bytes()
-    doc = BME.read_officials()
+    doc = json.loads(json.dumps(BME.read_officials()))
     on_record = SS.officials_on_record(doc)
     covered = {r["jurisdiction"].split(":", 1)[1] for r in reg.values()
                if r["jurisdiction"].startswith("county:")
-               and "officials:county" in r["used_by"].split()}
+               and {"officials:county", "officials:county-site"} & set(r["used_by"].split())}
     missing = sorted(set(on_record) - covered)
     assert not missing, (f"these counties' officers are on record and no page of theirs is "
                          f"registered, not even as wanted: {missing}")
-    county = "Strafford"
-    pid = next(i for i, r in reg.items() if r["jurisdiction"] == f"county:{county}"
-               and r["kind"] != "wanted")
-    commissioners = [(o, n) for off, o, n in on_record[county] if off == "commissioners"]
-    assert len(commissioners) == 3, commissioners
-    gone, kept = commissioners[0][1], [n for _, n in commissioners[1:]]
-    shown = []
-    for n in kept:
-        words = [w for w in n.replace(".", " ").split() if len(w) > 1]
-        shown.append(f"{words[0]} {words[-1]}")          # no middle name or initial
+    sites = [i for i, r in reg.items() if "officials:county-site" in r["used_by"].split()]
+    # The fixture's officers, so that it does not rest on who holds office today.
+    c = doc["county"]["counties"]["Strafford"]
+    c["commissioners"] = {
+        "1": {"name": "Joseph Q. Pitman", "office": "County Commissioner, District 1"},
+        "2": {"name": "Georgia Maglor", "office": "County Commissioner, District 2"},
+        "3": {"name": "Sean M. Lovell", "office": "County Commissioner, District 3"}}
+    c["sheriff"] = {"name": "William Wrightson", "office": "Sheriff"}
+    c["treasurer"] = {"name": "Pamela Arnet", "office": "County Treasurer"}
+    c["county_attorney"] = {"name": "Emily Garrod", "office": "County Attorney"}
+    c["register_of_deeds"] = {"name": "Mary Deedham", "office": "Register of Deeds"}
+    c["register_of_probate"] = {"name": "Jan Probert", "office": "Register of Probate"}
+    pid = next(i for i, r in reg.items() if r["jurisdiction"] == "county:Strafford"
+               and "officials:county" in r["used_by"].split())
     t = Path(tempfile.mkdtemp(prefix="granite-officials-"))
     try:
         (t / "records" / "sources").mkdir(parents=True)
@@ -58232,32 +58240,56 @@ def _state_sources_officials(SS):
         d = t / SS.FOLDER / pid
         d.mkdir(parents=True)
         (d / "2026-11-05.txt").write_text(
-            "Commissioners\n" + "\n".join(f"{n}, Commissioner" for n in shown) +
-            "\nSomeone Else, Commissioner\n", encoding="utf-8")
-        lines, n = SS.check_officials(t, SS.load_registry(t), county, doc)
-        out = "\n".join(ln for _, ln in lines)
-        flags = [ln for _, ln in lines if ln.startswith("FLAG")]
-        assert n == len(flags), (n, out)
-        assert len(flags) == 1 and gone in flags[0], (
-            f"expected one flag, for {gone}, who the page does not name", out)
-        for n in kept:
-            assert f"SAME       " in out and n in out, (f"{n}, named on the page without the "
-                                                       "middle initial, was not matched", out)
-        assert "NOT ON THE PAGES  Sheriff" in out, ("an office the page does not name "
-                                                     "was flagged rather than passed over", out)
+            "Board of Commissioners\n"
+            "Georgia Maglor, Chair\nSean Lovell, Vice Chair\n"
+            "Commissioner Joe Pitman resigned in October; the seat is vacant.\n"
+            "Sheriff's Office: Sheriff Bill Wrightson\n"
+            "Deputy Treasurer: Robin Hood\n"
+            "County Attorney's Office\n"
+            "Emily is our clerk. Garrod Road is closed.\n", encoding="utf-8")
+        # A newer file that cannot be read must not hide the reading.
+        (d / "2026-11-05-2.png").write_bytes(b"not a page")
+        for site in sites[:1]:
+            (t / SS.FOLDER / site).mkdir(parents=True)
+            (t / SS.FOLDER / site / "2026-11-05.txt").write_text(
+                "Commissioners | Sheriff | County Attorney | Treasurer | Registry of Deeds",
+                encoding="utf-8")
+        lines, n = SS.check_officials(t, SS.load_registry(t), None, doc)
+        mine = {}
+        for county, ln in lines:
+            m = re.match(r"(FLAG|SAME|NAMED|NOT ON THE PAGES)\s+(.+?): ", ln)
+            if county == "Strafford" and m:
+                mine[m.group(2)] = m.group(1).split()[0]
+        out = "\n".join(f"{c} {ln}" for c, ln in lines)
+        want = {"County Commissioner, District 1": "FLAG",      # beside "resigned"
+                "County Commissioner, District 2": "SAME",      # plural board heading
+                "County Commissioner, District 3": "SAME",      # no middle initial
+                "Sheriff": "SAME",                              # Bill for William
+                "County Treasurer": "NOT",                      # a deputy's title only
+                "County Attorney": "FLAG",                      # named apart, not her
+                "Register of Deeds": "NOT", "Register of Probate": "NOT"}
+        assert mine == want, (f"the officers' judgements are not as written: {mine}", out)
+        site_counties = {reg[s]["jurisdiction"].split(":", 1)[1] for s in sites[:1]}
+        for county, ln in lines:
+            if county in site_counties:
+                assert not ln.startswith(("FLAG", "SAME")), (
+                    "a county's home page was checked as a list of its officers", out)
+        assert n == sum(1 for v in want.values() if v == "FLAG") + sum(
+            1 for c, ln in lines if c != "Strafford" and ln.startswith("FLAG")), out
         assert not (t / "corrections").exists(), "the check wrote into a corrections folder"
     finally:
         shutil.rmtree(t, ignore_errors=True)
     assert hand.read_bytes() == hand_before, "the officials file changed during the check"
     src = _paths.locate("state_sources.py").read_text(encoding="utf-8")
-    assert "corrections" not in re.sub(r'"""[\s\S]*?"""|#[^\n]*', "", src).replace(
-        'HAND_FILE = "the officials file in corrections/"', ""), (
+    code = re.sub(r'"""[\s\S]*?"""|#[^\n]*', "", src)
+    assert "corrections" not in code.replace('HAND_FILE = "the officials file in corrections/"',
+                                             ""), (
         "state_sources.py names a corrections path in its code, beyond the words of a message")
-    assert not re.search(r"read_officials\([^)]*\)[^\n]{0,120}(?:write|dump)", src), (
-        "state_sources.py writes what it read of the officials")
     return "ok", (f"{len(on_record)} counties' officers, each county with a page registered "
-                  "or wanted; a missing commissioner flagged, a middle initial forgiven, an "
-                  "office no page names passed over, and the officials file left as it was")
+                  "or wanted; a plural heading, a short first name and a missing initial "
+                  "matched, a resignation and a name split apart flagged, a deputy's title "
+                  "not taken for the office, a home page's menu left unchecked, and the "
+                  "officials file left as it was")
 
 
 @check("cloud", "a browser's downloads are filed by the address each came from, copied "

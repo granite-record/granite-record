@@ -364,17 +364,22 @@ a folder standing in for the bucket.
 **The problem.** Strafford County's commissioners on the site went stale
 after a resignation between elections. Every county officer in
 `corrections/officials.json` comes from the Secretary of State's county
-roster, dated 5 December 2024. A vacancy is filled by the county convention
-(RSA 661:9), or by the probate court for a register of probate (661:9-a), and
-the roster does not change when that happens. The owner wants these offices
-"checked regularly".
+roster, dated 5 December 2024. A vacancy between elections is filled by the
+county convention, or by the probate court for a register of probate. Those
+are RSA 661:9 and 661:9-a as `parse_county_roster.py` cites them; the
+statutes' text is not on disk here. A holder chosen that way is not in a
+roster printed in December 2024. The owner wants these offices "checked
+regularly".
 
 **The design.**
 
 - **Registry rows.** A new `jurisdiction` column: `state`, `federal` or
   `county:<Name>`. Nine county rows (`county-<name>`), each the county's own
   site, with an address from a web search on 5 November 2026 that no one has
-  opened yet. Cheshire is a wanted row: the search found only an old
+  opened yet. Seven are home pages (`officials:county-site`), read to find
+  the officers' pages and never checked themselves, since a menu names every
+  office and no one. Grafton's and Strafford's are commissioners' pages
+  (`officials:county`), checked. Cheshire is a wanted row: the search found only an old
   address. The roster itself is a row, and so is its successor, wanted after
   the 3 November election. Their interval is a new `officials` value, read
   weekly.
@@ -382,25 +387,33 @@ the roster does not change when that happens. The owner wants these offices
   pages that name its elected officers. Each becomes a row of its own,
   through the manager.
 - **The check.** `state_sources.py officials` compares each county officer
-  on record with the latest reading of that county's pages:
-  - `SAME`: the person is named on a page that names the office.
-  - `FLAG`: a page names the office and not the person.
-  - `NOT ON THE PAGES`: no page read names the office.
+  on record with the latest reading of that county's officers' pages, each
+  page on its own:
+  - `SAME`: a page names the person within a few words of the office.
+  - `FLAG`: a page names the office and not the person, or names the person
+    beside "resigned", "vacant", "former" or "interim" on the same line.
+  - `NAMED`: named, but not beside this office.
+  - `NOT ON THE PAGES`: no page read names the office; a deputy's title does
+    not count.
 
-  A name matches on first name and surname, so "Sean M. Leavitt" on record
-  is "Sean Leavitt" on a page.
+  A name is the first name, or a common short form of it, followed within
+  two words by the surname. So "Sean M. Leavitt" on record is "Sean Leavitt"
+  on a page, "William" is "Bill", and a first name and surname found apart
+  are not the person.
 - **Nothing is written.** A flag is a question for the owner, who confirms
-  it before anyone edits the officials file by hand. Preflight holds this:
-  the file's bytes are unchanged after a run, nothing is written beside it,
-  and the code has no path that writes it.
+  it before anyone edits the officials file by hand. The file is read only
+  through its one reader, as preflight requires of every reader. Preflight
+  also checks that its bytes are unchanged after the check runs, and that
+  the code names no `corrections` path.
 
 **What it cannot do.**
 
 - It does not say who replaced whom. A page can name a new person in prose
   the check does not parse; the owner reads the page.
 - A county's own page can be stale too.
-- A word like "treasurer" used for another reason can raise a flag that
-  means nothing.
+- A word like "treasurer" used for another reason, or a short first name
+  the check does not know, can raise a flag that means nothing. The owner
+  decides.
 
 **One lead, unverified.** A search result on 5 November quoted a Strafford
 County page naming Leslie Feliciano as the commissioners' vice chair. Joe

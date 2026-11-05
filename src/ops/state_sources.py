@@ -82,10 +82,12 @@ such offices be checked regularly. RSA 661:9 has the county convention fill
 a vacancy and 661:9-a the probate court a register of probate's, so a holder
 can change while the Secretary of State's roster, the source of every county
 officer in corrections/officials.json, stays as it was. `officials` reads the
-latest reading of each county's registered pages (jurisdiction county:<Name>,
-used by officials:county) and, for each office one of them names, says
-whether the person on record is named there too. A FLAG is a person on record
-whom a page naming the office does not name: a question for the owner, who
+latest reading of each county's registered officers' pages (jurisdiction
+county:<Name>, used by officials:county; a county's home page, used by
+officials:county-site, is read only to find them) and says, for each person
+on record, whether a page names them beside their office. A FLAG is a person
+whom a page naming the office does not name, or who is named beside a word
+like "resigned" or "former": a question for the owner, who
 confirms it before anyone edits corrections/officials.json by hand. It writes
 nothing, anywhere: that file is the owner's.
 
@@ -927,16 +929,41 @@ def suggest_row(url, reg=None):
 # the hand file's one reader (preflight's _officials_one_reader), which also
 # puts a recorded successor in office on their day, as every page does.
 HAND_FILE = "the officials file in corrections/"
-# What a page says when it names the office, as the words to look for.
+# What a page says when it names the office, as runs of plain words. A word
+# matches with or without a trailing "s" (Commissioners, the Sheriff's Office).
 OFFICE_WORDS = {
-    "commissioners": ("commissioner",),
-    "sheriff": ("sheriff",),
-    "county_attorney": ("county attorney",),
-    "treasurer": ("treasurer",),
-    "register_of_deeds": ("register of deeds", "registry of deeds", "register of the deeds"),
-    "register_of_probate": ("register of probate",),
+    "commissioners": (("commissioner",),),
+    "sheriff": (("sheriff",),),
+    "county_attorney": (("county", "attorney"),),
+    "treasurer": (("treasurer",),),
+    "register_of_deeds": (("register", "of", "deeds"), ("registry", "of", "deeds"),
+                          ("register", "of", "the", "deeds")),
+    "register_of_probate": (("register", "of", "probate"),),
 }
+# A mention of the office that is not the office itself: its deputy's.
+NOT_THE_OFFICE = {"deputy", "assistant", "deputies"}
+# Words that, beside a name, say the person may no longer hold the office.
+CUES = ("resign", "vacan", "former", "retir", "decease", "interim", "acting", "passed")
+NEAR_OFFICE = 15          # words between a name and the office it is listed under
+NEAR_CUE = 8              # words between a name and a word above, on its own line
 SUFFIXES = {"jr", "sr", "ii", "iii", "iv"}
+# Common short forms, both ways: a page may print the one the record does not.
+NICKNAMES = [
+    {"william", "bill", "billy", "will"}, {"robert", "bob", "rob", "bobby"},
+    {"charles", "chuck", "charlie"}, {"joseph", "joe"}, {"james", "jim", "jimmy"},
+    {"michael", "mike"}, {"david", "dave"}, {"richard", "dick", "rich", "rick"},
+    {"thomas", "tom"}, {"anthony", "tony"}, {"steven", "stephen", "steve"},
+    {"daniel", "dan", "danny"}, {"edward", "ed", "eddie", "ted"}, {"kenneth", "ken"},
+    {"katherine", "kathryn", "catherine", "kathy", "kate", "katie", "cathy"},
+    {"patricia", "pat", "patty"}, {"patrick", "pat"}, {"susan", "sue"},
+    {"elizabeth", "beth", "liz", "betty"}, {"margaret", "peggy", "meg"},
+    {"jennifer", "jen", "jenny"}, {"christopher", "chris"}, {"christine", "chris"},
+    {"matthew", "matt"}, {"nicholas", "nick"}, {"samuel", "sam"}, {"andrew", "andy"},
+    {"gregory", "greg"}, {"jeffrey", "jeff"}, {"jonathan", "jon"}, {"frederick", "fred"},
+    {"lawrence", "larry"}, {"raymond", "ray"}, {"ronald", "ron"}, {"donald", "don"},
+    {"timothy", "tim"}, {"benjamin", "ben"}, {"douglas", "doug"}, {"gerald", "jerry"},
+    {"peter", "pete"}, {"philip", "phillip", "phil"}, {"zachary", "zach"},
+]
 
 
 def plain(text):
@@ -947,28 +974,65 @@ def plain(text):
     return " " + re.sub(r"[^a-z0-9]+", " ", t).strip() + " "
 
 
-def name_found(name, text):
-    """Whether a page's plain text names this person: their surname and their
-    first name both as words. A middle name or initial, and Jr. or II, are
-    not required, since pages write them one way and the roster another."""
-    words = [w for w in plain(name).split() if w not in SUFFIXES]
-    if len(words) < 2:
-        return f" {words[0]} " in text if words else False
-    first, last = words[0], words[-1]
-    return f" {last} " in text and f" {first} " in text
+def word_is(tok, w):
+    return tok == w or tok == w + "s"
+
+
+def office_at(words, office):
+    """Where in a page's words the office itself is named, its deputy's aside."""
+    out = []
+    for phrase in OFFICE_WORDS[office]:
+        n = len(phrase)
+        for i in range(len(words) - n + 1):
+            if all(word_is(words[i + k], phrase[k]) for k in range(n)) and not (
+                    i and words[i - 1] in NOT_THE_OFFICE):
+                out.append(i)
+    return out
+
+
+def first_names(word):
+    names = {word}
+    for group in NICKNAMES:
+        if word in group:
+            names |= group
+    return names
+
+
+def name_at(words, name):
+    """Where in a page's words this person is named: the first name (or a
+    common short form of it) with the surname at most two words after it, so
+    a middle name or initial may stand between. A one-letter first initial
+    is passed over for the next name, as "D. Chris McLaughlin" is printed
+    "Chris McLaughlin" too."""
+    parts = [w for w in plain(name).split() if w not in SUFFIXES]
+    if parts and len(parts[0]) == 1 and len(parts) > 2:
+        parts = parts[1:]
+    if len(parts) < 2:
+        return []
+    firsts, last = first_names(parts[0]), parts[-1]
+    out = []
+    for i, w in enumerate(words):
+        if w in firsts and last in words[i + 1:i + 4]:
+            out.append(i)
+    return out
 
 
 def reading_text(path):
-    """The text of one reading: a .txt as it is, an .html with its tags gone,
-    a .pdf through pdfplumber where it is installed. None where it cannot be
-    read."""
+    """The text of one reading: a .txt as it is, an .html with its tags and
+    entities gone, a saved .mhtml undone first, a .pdf through pdfplumber.
+    None where it cannot be read."""
+    import html
     ext = path.suffix.lower()
     try:
         if ext in (".txt", ".md", ".csv"):
             return path.read_text(encoding="utf-8", errors="replace")
         if ext in (".html", ".mhtml"):
-            raw = path.read_text(encoding="utf-8", errors="replace")
-            return re.sub(r"<[^>]+>", " ", raw)
+            raw = path.read_bytes()
+            if ext == ".mhtml":
+                import quopri
+                raw = quopri.decodestring(raw)
+            text = raw.decode("utf-8", errors="replace")
+            return html.unescape(re.sub(r"<[^>]+>", " ", text))
         if ext == ".pdf":
             import pdfplumber
             with pdfplumber.open(path) as pdf:
@@ -978,16 +1042,20 @@ def reading_text(path):
     return None
 
 
+READABLE = {"txt": 0, "md": 1, "html": 2, "mhtml": 3, "pdf": 4, "csv": 5}
+
+
 def latest_local(root, i):
-    """The newest reading of id i in sources/, by the order up reads them."""
+    """The newest readable reading of id i in sources/: by the order up reads
+    them, and of two the same day, a .txt before anything else."""
     d = Path(root) / FOLDER / i
     if not d.is_dir():
         return None
     got = []
     for f in d.iterdir():
         m = NAME.match(f.name)
-        if f.is_file() and m:
-            got.append(((m.group(1), int(m.group(2) or 1)), f))
+        if f.is_file() and m and m.group(3) in READABLE:
+            got.append(((m.group(1), int(m.group(2) or 1), -READABLE[m.group(3)]), f))
     return max(got)[1] if got else None
 
 
@@ -1009,6 +1077,10 @@ def officials_on_record(doc=None):
             rec = c.get(office)
             if office == "commissioners" and isinstance(rec, dict):
                 for seat, who in sorted(rec.items()):
+                    # A seat is a district: a board-level note (an "elect"
+                    # waiting for its day, an "_about") is not a seat.
+                    if seat.startswith("_") or seat == "elect":
+                        continue
                     if isinstance(who, dict) and who.get("name"):
                         people.append((office, who.get("office") or f"Commissioner {seat}",
                                        who["name"]))
@@ -1020,9 +1092,47 @@ def officials_on_record(doc=None):
     return out
 
 
+def page_words(text):
+    """(words, line of each word): a page's plain words, and which line of it
+    (or which sentence, where a line runs on) each one stands in."""
+    words, line = [], []
+    for n, part in enumerate(re.split(r"[\r\n]+|(?<=[.;!?])\s+", text)):
+        w = plain(part).split()
+        words += w
+        line += [n] * len(w)
+    return words, line
+
+
+def judge(pages, office, name):
+    """(kind, detail) for one officer against a county's officers' pages,
+    each [(id, (words, line))]: each page is judged on its own words, and a
+    word like "resigned" counts only on the name's own line or sentence."""
+    named_anywhere, office_anywhere = [], False
+    for pid, (words, line) in pages:
+        offices = office_at(words, office)
+        office_anywhere = office_anywhere or bool(offices)
+        for i in name_at(words, name):
+            cue = next((words[j] for j in range(max(0, i - NEAR_CUE), i + NEAR_CUE + 1)
+                        if j < len(words) and line[j] == line[i]
+                        and words[j].startswith(CUES)), None)
+            if cue:
+                return "FLAG", f"named on {pid} beside the word {cue!r}"
+            if any(abs(i - k) <= NEAR_OFFICE for k in offices):
+                return "SAME", f"on {pid}"
+            named_anywhere.append(pid)
+    if named_anywhere:
+        return "NAMED", f"on {named_anywhere[0]}, but not beside this office"
+    if office_anywhere:
+        return "FLAG", "a page names the office and not this person"
+    return "NOT ON THE PAGES", "no page read names this office"
+
+
 def check_officials(root, reg, only=None, doc=None):
     """[(county, line)] and a count of flags: for each county, each person on
-    record, against the latest reading of that county's pages under `root`."""
+    record, against the latest reading of that county's officers' pages (rows
+    used by officials:county) under `root`. A county's own home page
+    (officials:county-site) is read to find those pages, not checked: its
+    menu names every office and no one."""
     people = officials_on_record(doc)
     lines, flags = [], 0
     for county in sorted(people):
@@ -1030,32 +1140,26 @@ def check_officials(root, reg, only=None, doc=None):
             continue
         ids = [i for i, r in reg.items() if r["jurisdiction"] == f"county:{county}"
                and "officials:county" in r["used_by"].split() and r["kind"] != "wanted"]
-        texts, read = [], []
+        pages, read = [], []
         for i in ids:
             f = latest_local(root, i)
             t = reading_text(f) if f else None
             if t is not None:
-                texts.append(plain(t))
+                pages.append((i, page_words(t)))
                 read.append(f"{i} ({f.stem})")
         if not ids:
-            lines.append((county, "NO PAGE    none registered yet: nothing to check against"))
+            lines.append((county, "NO PAGE    no page listing its officers is registered yet"))
             continue
-        if not texts:
+        if not pages:
             lines.append((county, f"NOT READ   {len(ids)} page(s) registered, none read yet "
                                   "(or none readable here)"))
             continue
         lines.append((county, "READ       " + "; ".join(read)))
-        text = " ".join(texts)
         for office, title, name in people[county]:
-            if not any(f" {plain(w).strip()} " in text for w in OFFICE_WORDS[office]):
-                lines.append((county, f"NOT ON THE PAGES  {title}: {name} (no page read names "
-                                      "this office)"))
-            elif name_found(name, text):
-                lines.append((county, f"SAME       {title}: {name}"))
-            else:
+            kind, detail = judge(pages, office, name)
+            if kind == "FLAG":
                 flags += 1
-                lines.append((county, f"FLAG       {title}: {name} is on record, and a page "
-                                      "that names the office does not name them"))
+            lines.append((county, f"{kind:<10} {title}: {name} ({detail})"))
     return lines, flags
 
 
@@ -1067,7 +1171,9 @@ def cmd_officials(a, root):
     for county, line in lines:
         say(f"{county:<13} {line}")
     same = sum(1 for _, ln in lines if ln.startswith("SAME"))
-    say(f"\n{flags} flag(s); {same} officer(s) named as on record. Nothing was written: "
+    named = sum(1 for _, ln in lines if ln.startswith("NAMED"))
+    say(f"\n{flags} flag(s); {same} officer(s) named beside their office as on record, "
+        f"{named} named but not beside it. Nothing was written: "
         f"a flag is for the owner to confirm before {HAND_FILE} is edited by hand.")
 
 
