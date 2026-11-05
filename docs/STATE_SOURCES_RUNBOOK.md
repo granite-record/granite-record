@@ -303,6 +303,29 @@ delegation's page may well link there. For each county:
    are already commissioners' pages, and are checked from the first run.
 5. For Cheshire, look only from a link the owner gives; otherwise report it
    as still to find.
+6. Report each county's **home page**, for the site's county page to link
+   to (the manager's request of 5 November):
+   - its address as Chrome shows it once the page has loaded, after any
+     redirect;
+   - its title as the page itself gives it: the browser tab's title, word
+     for word;
+   - the day it was read.
+
+   For Grafton and Strafford, whose registered addresses are commissioners'
+   pages, the home page is the one the site's own logo or "Home" link opens.
+
+The weekly session never edits the registry. The manager puts what step 6
+reports into `records/sources/REGISTRY.csv` on a branch:
+- the confirmed address in `url`;
+- the page's own title in `title`;
+- "address confirmed in a browser on <day>" in `note`, in place of the web
+  search's caveat.
+
+A home page that is not yet a row (Grafton's, Strafford's, and Cheshire's
+once found) becomes one, used by `officials:county-site` and by the county
+page that links it. The day each page was read is also in the bucket's
+record from then on: `python3 src/ops/state_sources.py report` lists every
+reading with its day.
 
 The register of probate may be listed with the probate court rather than the
 county. If the county's site names it nowhere, report that.
