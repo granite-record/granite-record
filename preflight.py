@@ -69174,11 +69174,16 @@ def _drawn_on_a_weekend():
     import drawn_pages as DP
     shared, _base, _ran, days = _fixture_site_shared()
     site = shared / "site"
+    # The hook's section and the script that runs it, /live.js, drawn against
+    # tests/dom_stub.js: naming both here is also what makes check_select
+    # choose this check when either file changes.
+    def is_hooked(p):
+        html = p.read_text(encoding="utf-8")
+        return 'id="live-now"' in html and '<script src="/live.js"' in html
     hooked = sorted(p.relative_to(site).as_posix() for p in (site / "committee").glob("*.html")
-                    if not p.stem.startswith("ss")
-                    and 'id="live-now"' in p.read_text(encoding="utf-8"))
-    assert hooked, ("no fixture committee page carries Live Now's hook (live_hook.place), so "
-                    "this would draw nothing that waits on the clock")
+                    if not p.stem.startswith("ss") and is_hooked(p))
+    assert hooked, ("no fixture committee page carries Live Now's hook (live_hook.place) with "
+                    "/live.js, so this would draw nothing that waits on the clock")
     sat = days[-1] + datetime.timedelta(days=(5 - days[-1].weekday()) % 7)
     tabs = len(DP.tab_slugs(site)["committee"])
     root = Path(tempfile.mkdtemp(prefix="gr-weekend-"))
@@ -69191,7 +69196,8 @@ def _drawn_on_a_weekend():
                 f"{day:%A %d %B}: {len(drawn)} committee pages and tabs drawn, not "
                 f"{len(hooked) * (1 + tabs)}")
             errs = [f"{k}: {d['errors'][0]}" for k, d in drawn.items() if d["errors"]]
-            assert not errs, f"drawn on {day:%A %d %B %Y}, {len(errs)} met an error: " + "; ".join(errs[:3])
+            assert not errs, (f"drawn on {day:%A %d %B %Y} against tests/dom_stub.js, "
+                              f"{len(errs)} met an error: " + "; ".join(errs[:3]))
             said.append(f"{day:%a %d %b}")
     finally:
         shutil.rmtree(root, ignore_errors=True)

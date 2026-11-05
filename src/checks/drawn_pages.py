@@ -58,14 +58,19 @@ import tempfile
 LISTS = ("bills.html", "index.html", "calendar.html", "search.html", "officials.html")
 
 # A timer set this many milliseconds or more away never fires in a drawing (A
-# TIMER A WHILE AWAY IS THE PAGE LATER, in the driver): above the pages' own
-# timers, which wait six seconds at most, and below live.js's every look, at
-# thirty seconds and more (VOTES_FAST_MS, POLL_MS, VOTES_SLOW_MS).
+# TIMER A WHILE AWAY IS THE PAGE LATER, in the driver): above the timers the
+# pages set while they load, which wait six seconds at most, and below
+# live.js's every look, at thirty seconds and more (VOTES_FAST_MS, POLL_MS,
+# VOTES_SLOW_MS). The pages' two twenty-second timers (find.js's address
+# lookup, app.js's follow form) start only when a reader acts, never in a
+# drawing.
 LATER_MS = 10_000
 
 # How long the pages' scripts may run, in seconds, before a drawing is called
-# one that never stops (draw's `timeout`).
-DRAW_TIMEOUT = 1800
+# one that never stops (draw's `timeout`). The fixture's 51 pages and tabs
+# draw in about a second; five minutes is room for a slow machine, and a
+# script that never stops costs a run five minutes, not half an hour.
+DRAW_TIMEOUT = 300
 
 # The node side. One context a page, so nothing one page's scripts declare is
 # another's; the stub is loaded into it and then told what the page holds.
@@ -282,7 +287,11 @@ def draw(site, out, today, only=None, timeout=DRAW_TIMEOUT):
     stub = _paths.ROOT / "tests" / "dom_stub.js"
     jobs = jobs_for(site, today)
     if only:
-        jobs = [j for j in jobs if j["page"].startswith(tuple(only))]
+        only = (only,) if isinstance(only, str) else tuple(only)
+        jobs = [j for j in jobs if j["page"].startswith(only)]
+        if not jobs:
+            raise RuntimeError(f"no page under {site} begins with {', '.join(only)}: nothing "
+                               "to draw")
     if not jobs:
         raise SystemExit(f"no record page under {site}: nothing to draw")
     tmp = Path(tempfile.mkdtemp(prefix="gr-drawn-"))
@@ -294,8 +303,9 @@ def draw(site, out, today, only=None, timeout=DRAW_TIMEOUT):
                                 str(tmp / "out.json")], capture_output=True, text=True,
                                encoding="utf-8", errors="replace", timeout=timeout)
         except subprocess.TimeoutExpired:
-            # An error, not SystemExit: preflight runs this inside a check, and
-            # an error there is that check's ERROR rather than the end of the run.
+            # Said in words: the day drawn on and how many pages, which a
+            # weekend-only hang needs. An error, as TimeoutExpired was, so
+            # preflight records that check's ERROR and goes on.
             raise RuntimeError(f"the pages' scripts did not finish in {timeout} s, drawn on "
                                f"{today.isoformat()}: a script on one of {len(jobs)} pages "
                                "and tabs never stops") from None
