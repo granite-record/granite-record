@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.64
+# GRANITE_VERSION: 2026-10-11.67
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -167,7 +167,10 @@ def unbacked(g):
 # by its number and street, a date by its month and day.
 PHONE = re.compile(r"(?<![\d-])(?:1[-\s.]?)?\(?\d{3}\)?[-\s.]\d{3}[-\s.]\d{4}(?!\d)")
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[a-z]{2,}", re.I)
-CLOCK = re.compile(r"\b(\d{1,2}(?::\d\d)?)(?:\s|&nbsp;)?[ap]\.m\.", re.I)
+# "8 a.m." as a source writes it, and "8:00 AM" as a guide does, clock()'s
+# form since the cohesion audit of 30 October 2026 (I-3): the hours a guide
+# prints in its own words are held to their claims whichever way.
+CLOCK = re.compile(r"\b(\d{1,2}(?::\d\d)?)(?:\s|&nbsp;)?(?:[aApP]\.[mM]\.|[AP]M\b)")
 STREET = re.compile(r"\b(\d{1,5})\s+((?:[A-Z][a-z]+\s){1,3}(?:Street|Road|Drive|Avenue|Lane|Way|"
                     r"Boulevard|Place|Square|Highway))\b")
 MONTH_DAY = re.compile(r"\b(January|February|March|April|May|June|July|August|September|"
@@ -208,7 +211,7 @@ def unsourced_contacts(g):
             out.append(f"email {e}")
     for m in CLOCK.finditer(words):
         n = m.group(1)
-        # "8 a.m." is the "8:00 AM" a page prints, and the other way round.
+        # "8 a.m." in a claim is the "8:00 AM" a guide prints, and the other way round.
         alts = {n, n[:-3]} if n.endswith(":00") else {n, n + ":00"}
         if not any(re.search(r"(?<![\d:])" + re.escape(a) + r"(?![\d:])", s) for a in alts
                    for s in said):
@@ -258,11 +261,19 @@ def fig_faults(g):
     return faults
 
 
-def step(title, text, actions=(), law=(), note=""):
+def step(title, text, actions=(), law=(), note="", part=""):
     """One numbered step: its words (HTML), the buttons to the official pages
     it needs [(label, url)], the sections of law it rests on ["RSA 654:7"],
-    and a note to set apart, where something has changed or is disputed."""
-    return {"title": title, "text": text, "actions": list(actions), "law": list(law), "note": note}
+    and a note to set apart, where something has changed or is disputed.
+
+    `part` is a heading over this step and the ones after it, numbered from 1
+    again (the person's notes, 29 October 2026: a guide would "finish
+    explaining how to do the first thing and switch to a different topic, but
+    keep the step by step format as though step 5 is a continuation"). A guide
+    that has parts gives its first step one, so no step stands outside a
+    heading."""
+    return {"title": title, "text": text, "actions": list(actions), "law": list(law), "note": note,
+            "part": part}
 
 
 def box(text):
@@ -302,7 +313,7 @@ HELP = {
         "Health and Human Services program with local resource centers: free counseling for "
         "older adults, adults with disabilities and caregivers, on benefits, applications, "
         "housing, Medicare and Medicaid, with no eligibility requirement. Call 1-866-634-9412, "
-        "weekdays 8:30 a.m. to 4:30 p.m.</li>",
+        "weekdays 8:30&nbsp;AM to 4:30&nbsp;PM.</li>",
         [],
         [("ADRC, formerly ServiceLink, a DHHS program of locally accessible resource centers; "
           "options counseling on benefits, applications, housing, Medicare and Medicaid; no fee "
@@ -321,7 +332,7 @@ HELP = {
     "lawyer": (
         "<li><b>The New Hampshire Bar Association&rsquo;s Lawyer Referral Service</b> refers you "
         "to a lawyer who handles your kind of problem, for an administrative fee. Call "
-        "603-229-0002, weekdays 9 a.m. to 3:30 p.m., or ask online.</li>",
+        "603-229-0002, weekdays 9:00&nbsp;AM to 3:30&nbsp;PM, or ask online.</li>",
         [("Lawyer Referral Service", LRS)],
         [("NHBA Lawyer Referral Service: 603-229-0002, Monday to Friday 9 to 3:30, an "
           "administrative fee, referral by phone or online.", LRS)]),
@@ -535,8 +546,8 @@ VOTING = guide(
           "at your clerk&rsquo;s office on the day before the election.</p>"
           "<p>Send the absentee ballot application to your town or city clerk, not the state, "
           "with the proof of identity the form asks for. The deadline to ask by mail is noon the day before the election, and "
-          "to ask and vote in person at the clerk&rsquo;s office, 5 p.m. the day before. A "
-          "mailed ballot must reach your clerk by 5 p.m. on election day, so ask for it more "
+          "to ask and vote in person at the clerk&rsquo;s office, 5:00&nbsp;PM the day before. A "
+          "mailed ballot must reach your clerk by 5:00&nbsp;PM on election day, so ask for it more "
           "than two weeks ahead.</p>",
           actions=[("Absentee ballots", SOS_ABSENTEE), ("Absentee ballot application", SOS_ABS_APP)],
           law=["RSA 657:1", "RSA 657:4", "RSA 7:46"])],
@@ -3060,7 +3071,7 @@ UNEMPLOYMENT = guide(
          "an Appeal Tribunal chairperson.</p>"))
          + "<h2>Who Can Help</h2>"
          "<p>New Hampshire Employment Security&rsquo;s unemployment hotline, (603) 271-7700, "
-         "answers questions on weekdays from 8:00 a.m. to 4:30 p.m. Its NH Works offices help in "
+         "answers questions on weekdays from 8:00&nbsp;AM to 4:30&nbsp;PM. Its NH Works offices help in "
          "person, with claims and with finding work.</p>"
          f'<p class="g-acts"><a class="g-btn" href="{NHES_OFFICES}" target="_blank" rel="noopener">'
          "NH Works offices</a></p>",
@@ -3106,25 +3117,29 @@ RUN = guide(
     [step("Check that you qualify",
           "<p>To hold any elected office in New Hampshire, you must be domiciled in the state. Each "
           "office adds its own requirements:</p>"
-          + table("Qualifications by office (Secretary of State, October 17, 2026)",
+          + table("Qualifications by office (Secretary of State, October 17, 2026; RSA 655:29)",
                   ["Office", "Age", "Also"],
-                  [["Governor", "30", "Registered voter; domiciled in New Hampshire 7 years"],
+                  # IN THE SOURCES' WORDS (the person, 2 November 2026): the
+                  # years run "immediately preceding the election" (RSA
+                  # 655:29; Part Second, Article 29), not any seven.
+                  [["Governor", "30", "Registered voter; domiciled in New Hampshire at least 7 years "
+                    "immediately preceding the election"],
                    ["U.S. senator", "30", "U.S. citizen 9 years; living in New Hampshire when elected"],
                    ["U.S. representative", "25", "U.S. citizen 7 years; living in New Hampshire when "
                     "elected"],
-                   ["Executive councilor", "30", "Registered voter; domiciled in New Hampshire 7 "
-                    "years; living in the district"],
-                   ["State senator", "30", "Registered voter; domiciled in New Hampshire 7 years; "
-                    "living in the district"],
-                   ["State representative", "18", "Registered voter; domiciled in New Hampshire 2 "
-                    "years; living in the town or ward"],
+                   ["Executive councilor", "30", "Registered voter; domiciled in New Hampshire at least 7 "
+                    "years immediately preceding the election; living in the district"],
+                   ["State senator", "30", "Registered voter; domiciled in New Hampshire at least 7 years "
+                    "immediately preceding the election; living in the district"],
+                   ["State representative", "18", "Registered voter; domiciled in New Hampshire at least 2 "
+                    "years immediately preceding the election; living in the town or ward"],
                    ["County officer", "18", "Registered voter in the county where you live"]]),
           actions=[("Qualifications for office", SOS_QUAL)], law=["RSA 655:2", "RSA 655:29"]),
      step("File in the filing period",
           "<p>To run in a party&rsquo;s primary you must be a registered member of that party. File "
           "a declaration of candidacy, with a statement of financial interests, between the first "
           "Wednesday in June and the Friday of the following week. In 2026 that was June 3 to June "
-          "12. A filing on the last day must be made in person by the candidate, by 5 p.m.</p>"
+          "12. A filing on the last day must be made in person by the candidate, by 5:00&nbsp;PM.</p>"
           "<p>Candidates for governor, U.S. senator, U.S. representative, executive councilor, "
           "state senator and county office file with the Secretary of State. Candidates for state "
           "representative file with the clerk of the town or city where they live.</p>",
@@ -3180,8 +3195,9 @@ RUN = guide(
      # federal offices' citizenship years stay on the Secretary of State's
      # page, the federal constitution not being on this disk.
      claim("A candidate swears to have been domiciled in New Hampshire for at least 7 years "
-           "before the election for governor, executive councilor and state senator, and for at "
-           "least 2 years for state representative.", "RSA 655:29", READ),
+           "immediately preceding the election for governor, executive councilor and state senator, "
+           "and for at least 2 years immediately preceding it for state representative.",
+           "RSA 655:29", READ),
      claim("A primary candidate is a registered member of the party, meets the age and domicile "
            "qualifications by the general election, and files a declaration of candidacy between "
            "the first Wednesday in June and the Friday of the following week.", "RSA 655:14", READ),
@@ -3637,7 +3653,8 @@ PLATES = guide(
                     "3, two of them letters, no ampersand"]])
           + "<p>The DMV&rsquo;s Vanity Plate Search shows whether a choice looks available, but "
           "it cannot save a plate for you, so it may be gone by the time you apply.</p>"
-          "<p>For a special plate, find yours in the table in step 4: who may have it and what "
+          "<p>For a special plate, find yours in the table under &ldquo;A special plate&rdquo;, below: who may "
+          "have it and what "
           "it costs.</p>",
           actions=[("Vanity plates (DMV)", DMV_VANITY)], law=["RSA 261:89"]),
      step("Apply when you register, or change your plate during the year",
@@ -3665,12 +3682,14 @@ PLATES = guide(
           "number plates and a new registration. The vanity fee you paid is credited to your "
           "customer account, and you can choose a new plate or ask for a refund.</p>",
           law=["RSA 261:89", "RSA 261:75"]),
-     step("A special plate: show that you qualify",
+     step("Show that you qualify",
           "<p>Each special plate is issued on application, and the plates for a group need "
           "proof that you belong to it. For a Gold Star plate, that is a report of casualty (DD "
           "Form 1300) or an official casualty notice; proof of your relationship, such as a "
           "birth certificate; or a marriage certificate or a letter from the U.S. Department of "
-          "Veterans Affairs.</p>"
+          "Veterans Affairs.</p><p>To change to a special plate during the year, the DMV asks "
+          "for a completed Application for Replacement Plates and Decals, the plate fees, a new "
+          "registration fee, and any other fees for the plate you want.</p>"
           + table("Special plates and who may have them (RSA 261)",
                   ["Plate", "Who qualifies", "What it costs", "The law"],
                   [(a, b, c, f'<a href="/laws/261#s{d.split(":")[1]}">{d}</a>')
@@ -4299,7 +4318,7 @@ ELECTION = guide(
           "when the results are announced, and a machine&rsquo;s printed results are posted "
           "within 60 minutes of the last ballot. The moderator announces the final count, and "
           "the clerk prepares the election return in front of the other officials, signs it, "
-          "and sends a copy to the Secretary of State by 8:00 a.m. the next day. The other "
+          "and sends a copy to the Secretary of State by 8:00&nbsp;AM the next day. The other "
           "copy is kept by the clerk, open to the public.</p>"
           "<p><b>Sealing the ballots.</b> The moderator, with the selectmen, seals every "
           "ballot in containers from the Secretary of State, writes the number of ballots on "
@@ -4926,7 +4945,7 @@ CHILD_CARE = guide(
           "Department&rsquo;s free Child Care Search, linked from the same page as the "
           "scholarship, shows providers&rsquo; quality ratings, "
           "licensing history and services, and Child Care Aware of New Hampshire helps families "
-          "find care for free: call 1-855-393-1731, extension 2531, weekdays 8 a.m. to 5 p.m.</p>",
+          "find care for free: call 1-855-393-1731, extension 2531, weekdays 8:00&nbsp;AM to 5:00&nbsp;PM.</p>",
           actions=[("Providers and the scholarship", DHHS_CC_PROVIDERS)]),
      step("Keeping the scholarship",
           "<p>Your eligibility is checked again every 12 months, and you reapply each year.</p>"),
@@ -5598,7 +5617,7 @@ DISCRIMINATION = guide(
           "things down as they happen, and keep any letters, emails, texts or notices.</p>"
           "<p>The Commission also takes complaints of discrimination in K-12 public schools, and "
           "offers mediation. Submit a complaint from its website, or call (603) 271-2767, "
-          "Monday through Friday, 8 a.m. to 4 p.m.; its office is at 57 Regional Drive, Suite 8, "
+          "Monday through Friday, 8:00&nbsp;AM to 4:00&nbsp;PM; its office is at 57 Regional Drive, Suite 8, "
           "in Concord.</p>"
           "<p>A commissioner investigates, with the Commission&rsquo;s staff, and encourages "
           "both sides to settle. If the commissioner finds no probable cause, the complaint is "
@@ -6324,7 +6343,7 @@ LANDLORD = guide(
           "guests caused it, or extreme weather or the tenant&rsquo;s refusal of access "
           "prevented the repair.</p>",
           law=["RSA 540-A:3", "RSA 540-A:4", "RSA 48-A:14", "RSA 540:13-d"]),
-     step("Ending a tenancy",
+     step("Reasons and notice",
           "<p><b>The reasons.</b> For restricted property: unpaid rent, substantial damage, "
           "breaking a material term of the lease, behavior that threatens others&rsquo; health "
           "or safety, or other good cause, which can be a legitimate business or economic "
@@ -6778,7 +6797,7 @@ CONSUMER = guide(
           "prize to be yours without any obligation, delivered at no cost to you within 10 days. "
           "A &ldquo;prize&rdquo; that asks you to pay a handling, registration, redemption or "
           "delivery fee, or to buy something first, is not one the law allows. Do not pay, and "
-          "report it (step 5).</p>",
+          "report it (see &ldquo;Complain to the Attorney General&rdquo;, below).</p>",
           law=["RSA 358-O:3", "RSA 358-O:4"]),
      step("Cancel a sale made at your door",
           "<p>A sale of goods or services priced at $150 or more, made anywhere other than the "
@@ -6981,7 +7000,7 @@ HEALTH_INSURANCE = guide(
           ("On your own",
            "Apply for a Marketplace plan, and see if you can get help paying."),
           ("On a low income, at 65, or with a disability",
-           "Medicaid or Medicare may cover you (step 8).")]),
+           "Medicaid or Medicare may cover you (see &ldquo;Where Medicaid and Medicare fit&rdquo;, below).")]),
      box("If your insurance company denies a claim, appeal to it first, then ask the Insurance "
          "Department for an external review within 180 days.")],
     [step("Know when you can sign up",
@@ -7500,7 +7519,7 @@ WAGES = guide(
           "employer lets you.</p>",
           actions=[("Overtime pay (U.S. Department of Labor)", WHD_OVERTIME)],
           law=["RSA 279:21", "RSA 275:30-a"]),
-     step("If you were not paid: file a wage claim",
+     step("File a wage claim",
           "<p>You can file a <b>wage claim</b> with the New Hampshire Department of Labor, no "
           "later than 36 months after the wages were due. The Department sends a copy to your "
           "employer, who has 20 days to object; if it does not, the Department may order it to "
@@ -7511,7 +7530,7 @@ WAGES = guide(
           "and the court may order your employer to pay your costs and reasonable "
           "attorney&rsquo;s fees.</p>"
           "<p>File your claim online with the Department&rsquo;s wage claim form. Its office "
-          "answers at 603-271-3176, Monday through Friday, 8 a.m. to 4:30 p.m.; mail and "
+          "answers at 603-271-3176, Monday through Friday, 8:00&nbsp;AM to 4:30&nbsp;PM; mail and "
           "hearings stay at 95 Pleasant Street, Spaulding Building, in Concord.</p>",
           actions=[("File a wage claim online (Department of Labor)", NH_WAGE_CLAIM),
                    ("New Hampshire Department of Labor", NH_DOL)],
@@ -8047,7 +8066,7 @@ MEDICARE = guide(
                   ["Part", "What it helps cover", "How you get it"],
                   [["Part A (Hospital Insurance)", "Inpatient care in hospitals, skilled nursing "
                     "facility care, hospice care, and home health care.",
-                    "Through Social Security. Many people are enrolled automatically (step 2)."],
+                    "Through Social Security. Many people are enrolled automatically (Medicare, step 1)."],
                    ["Part B (Medical Insurance)", "Services from doctors and other health care "
                     "providers, outpatient care, home health care, durable medical equipment "
                     "(like wheelchairs, walkers and hospital beds), and many preventive services "
@@ -8060,11 +8079,11 @@ MEDICARE = guide(
                     "Part D. You may need to use the plan&rsquo;s network of doctors, and most plans "
                     "offer extra benefits Original Medicare does not cover, like vision, hearing "
                     "and dental. You need both Part A and Part B to join one.",
-                    "You choose one on Medicare.gov (step 5)."],
+                    "You choose one on Medicare.gov (Medicare, step 3)."],
                    ["Part D (Drug coverage)", "The cost of prescription drugs. Plans are run by "
                     "private insurance companies that follow rules set by Medicare.",
                     "You add a drug plan to Original Medicare, or get it in a Medicare Advantage "
-                    "Plan with drug coverage, on Medicare.gov (step 5)."]])
+                    "Plan with drug coverage, on Medicare.gov (Medicare, step 3)."]])
           + "<p><b>Original Medicare</b> is Part A and Part B. With it you can use any doctor or "
           "hospital that takes Medicare, join a separate drug plan, and buy supplemental "
           "coverage, called <b>Medigap</b>, from a private company to help pay your share of the "
@@ -8092,7 +8111,8 @@ MEDICARE = guide(
           "<p><b>Help with the costs</b> comes from two programs: the state&rsquo;s <b>Medicare "
           "Savings Programs</b>, which help pay Medicare premiums and, for some people, other "
           "costs; and the federal <b>Extra Help</b> program, which pays part of the cost of drug "
-          "coverage. Step 6 says who qualifies and how to apply.</p>",
+          "coverage. The step &ldquo;Get help paying the costs&rdquo;, below, says who qualifies and how "
+          "to apply.</p>",
           actions=[("What Medicare costs (Medicare)", MEDICARE_COSTS)]),
      step("Know when to sign up for Medicare",
           "<p>Your first chance is your Initial Enrollment Period: 7 months, starting 3 months "
@@ -8113,16 +8133,10 @@ MEDICARE = guide(
           "<p>Medicare Part A and Part B are signed up for through the Social Security "
           "Administration, not through Medicare. The easiest way is online, with a my Social "
           "Security account, if you are 65 or older. You can also call Social Security at "
-          "1-800-772-1213, Monday through Friday, 8 a.m. to 7 p.m. (TTY 1-800-325-0778), and "
+          "1-800-772-1213, Monday through Friday, 8:00&nbsp;AM to 7:00&nbsp;PM (TTY 1-800-325-0778), and "
           "make an appointment.</p>",
           actions=[("Sign up for Medicare (Medicare)", MEDICARE_SIGNUP),
                    ("Sign up for Medicare (Social Security)", SSA_MEDICARE)]),
-     step("Apply for Social Security retirement benefits",
-          "<p>You can get retirement benefits from age 62 if you have worked and paid Social "
-          "Security taxes for at least 10 years, and you must apply for them: they do not "
-          "start on their own. Apply online on Social Security&rsquo;s Apply page, which also "
-          "lets you enroll in Medicare, or call 1-800-772-1213.</p>",
-          actions=[("Apply for benefits (Social Security)", SSA_APPLY)]),
      step("Choose your coverage, and review it every fall",
           "<p>With Part A and Part B, you choose between Original Medicare, with or without a "
           "drug plan, and a Medicare Advantage Plan. Each fall, from <b>October 15 to December "
@@ -8144,7 +8158,7 @@ MEDICARE = guide(
                     "lost Medicare because of their earnings."]])
           + "<p>Apply to the Department of Health and Human Services through NH Easy, under "
           "Medicare beneficiary assistance; its Customer Service Center answers at 1-844-ASK-DHHS "
-          "(1-844-275-3447), Monday through Friday, 8 a.m. to 4 p.m. Medicare advises applying "
+          "(1-844-275-3447), Monday through Friday, 8:00&nbsp;AM to 4:00&nbsp;PM. Medicare advises applying "
           "even if you do not think you qualify.</p>"
           "<p><b>Extra Help</b> is a federal program that pays part of your drug plan&rsquo;s "
           "costs. You get it automatically if you have full-benefit Medicaid, a Medicare Savings "
@@ -8154,6 +8168,12 @@ MEDICARE = guide(
                    ("Medicare Savings Programs (NH Department of Health and Human Services)", DHHS_MSP),
                    ("Extra Help (Medicare)", MEDICARE_EXTRA)],
           law=["RSA 167:4-g"]),
+     step("Apply for Social Security retirement benefits",
+          "<p>You can get retirement benefits from age 62 if you have worked and paid Social "
+          "Security taxes for at least 10 years, and you must apply for them: they do not "
+          "start on their own. Apply online on Social Security&rsquo;s Apply page, which also "
+          "lets you enroll in Medicare, or call 1-800-772-1213.</p>",
+          actions=[("Apply for benefits (Social Security)", SSA_APPLY)]),
      step("Manage your benefits online",
           "<p>A <b>my Social Security</b> account lets you change your address or direct "
           "deposit, print proof of your benefits or a tax form, request a replacement Social "
@@ -9711,7 +9731,7 @@ CAR_INSURANCE = guide(
           "explains.</p>"
           "<p>The <b>financial responsibility law</b> decides when the state requires proof that "
           "you can pay for damage you cause: after a crash you had to report and had no "
-          "insurance for, or after certain convictions (steps 2 and 3).</p>"
+          "insurance for, or after certain convictions (the next two steps).</p>"
           "<p>That proof means being able to pay $25,000 for injury to or death of one person, "
           "$50,000 for injury to or death of two or more people in one accident, and $25,000 "
           "for damage to property, for each vehicle registered in your name.</p>"
@@ -10144,6 +10164,83 @@ COMMON = ["how-to-vote", "renew-drivers-license", "register-a-car", "your-repres
           "submit-testimony", "new-to-new-hampshire"]
 
 
+# A GUIDE'S STEPS IN PARTS (the person's notes, 29 October 2026, through the
+# manager session: a guide would "finish explaining how to do the first thing
+# and switch to a different topic, but keep the step by step format as though
+# step 5 is a continuation"). Where a guide's steps change subject, each part
+# has a heading and is numbered from 1 (guides.step's `part`). Named by the
+# title of the step each part opens; a title that is not there stops the
+# build, so a renamed step cannot silently lose its heading. election-worker
+# waits until after the 3 November election, at the person's word.
+PARTS = {
+    "passport": {"Check whether you can renew instead": "Renewing an adult passport",
+                 "Fill out Form DS-11, and do not sign it yet": "Applying in person",
+                 "If you travel soon": "Either way"},
+    "vanity-and-special-plates": {"Choose your plate": "A vanity plate",
+                                  "Show that you qualify": "A special plate"},
+    "medicare-and-social-security": {"Know how the programs fit together": "Start here",
+                                     "Know when to sign up for Medicare": "Medicare",
+                                     "Apply for Social Security retirement benefits": "Social Security"},
+    "motorcycle-license": {"Get a learner's permit": "A motorcycle",
+                           "If you ride a moped": "A moped"},
+    "run-for-office": {"Check that you qualify": "An office on the state ballot",
+                       "Town and city offices": "A town or city office"},
+    "wage-rights": {"Know when you must be paid": "Your rights to your pay",
+                    "File a wage claim": "If your employer breaks the law"},
+    "consumer-rights": {"Know what the law forbids": "What the law protects",
+                        "Complain to the Attorney General": "If a business breaks the law"},
+    "discrimination": {"Know what the law protects": "What the law protects",
+                       "File a complaint with the Commission for Human Rights": "Making a complaint"},
+    "health-insurance": {"Know when you can sign up": "Getting coverage",
+                         "Appeal a denied claim to your insurance company": "If a claim is denied, or you have a complaint",
+                         "Where Medicaid and Medicare fit": "Medicaid and Medicare"},
+    "car-insurance": {"What the law requires": "Financial responsibility",
+                      "What a car insurance policy must include": "Your policy"},
+    "renters-insurance": {"What renters insurance covers": "Your policy",
+                          "If you have a loss: filing a claim": "After a loss, or a dispute"},
+    "homeowners-insurance": {"What homeowners insurance covers": "Your policy",
+                             "If you have a loss: filing a claim": "After a loss, or a dispute"},
+    "boating": {"Get your safe boater education certificate": "Boater education",
+                "Register your boat every year": "Your boat"},
+    "building-permits": {"Start with your town’s building office": "Building work",
+                         "Electrical work": "Electrical, plumbing and gas work",
+                         "Septic systems": "Septic systems and work near water"},
+    "homelessness-help": {"Call 2-1-1, or your town’s welfare office": "Finding shelter now",
+                          "If you may be evicted": "Keeping or finding a home",
+                          "Keep your children in school": "Children and school"},
+    "domestic-violence-help": {"Reach someone now": "Staying safe",
+                               "After a sexual assault: medical care": "After a sexual assault",
+                               "Other protections and help": "More help"},
+    "who-to-contact": {"Find who represents you": "Start here",
+                       "Your town or city: roads, sidewalks, trash and local rules": "Who handles what"},
+    "tenant-rights": {"Only a court can make you leave": "Your rights as a tenant",
+                      "If you get an eviction notice or court papers": "If you are facing eviction"},
+    "landlord-duties": {"Before you rent": "Renting",
+                        "Reasons and notice": "Ending a tenancy"},
+    "property-tax-bill": {"How your property is assessed": "Understanding your bill",
+                          "Apply for an exemption or credit by April 15, or a deferral by March 1":
+                              "Relief and appeals"},
+    "disability-help": {"Apply to Social Security for SSDI or SSI": "Where to apply",
+                        "If you are turned down": "Appealing a decision"},
+}
+
+
+def _parts():
+    import html as _h
+    by = {g["slug"]: g for g in GUIDES}
+    for slug, heads in PARTS.items():
+        # A step two guides share is copied, so one guide's heading is never the other's.
+        by[slug]["steps"] = [dict(s_) for s_ in by[slug]["steps"]]
+        titles = {_h.unescape(s_["title"]): s_ for s_ in by[slug]["steps"]}
+        for title, head in heads.items():
+            assert title in titles, f"PARTS: {slug} has no step {title!r}"
+            titles[title]["part"] = head
+        assert by[slug]["steps"][0].get("part"), f"PARTS: {slug}'s first step has no heading"
+
+
+_parts()
+
+
 TASKS = [
     ("Take Part in the Legislature", [
         task("your-representatives", "Find your representatives",
@@ -10218,12 +10315,19 @@ TASKS = [
              "Emergency alerts, supplies, power outage and winter storm safety, and where to "
              "find a warm place."),
     ]),
-    ("Federal Benefits", [
+    # Named for what it holds since the passport joined it (the person, 30
+    # October 2026); it was Federal Benefits.
+    ("Federal Programs and Services", [
         task("medicare-and-social-security", "Sign up for Medicare and Social Security",
              "When to sign up, choosing coverage, and help paying Medicare&rsquo;s costs."),
         task("disability-help", "Get disability benefits and services",
              "SSDI and SSI, the state&rsquo;s cash and medical assistance, area agencies and "
              "vocational rehabilitation."),
+        # Under the federal section, where the person looks for it (the
+        # preview walk, 30 October 2026). It was under Property and Records.
+        task("passport", "Get a U.S. passport",
+             "A first passport or a renewal, what to bring to a post office, and a child&rsquo;s "
+             "passport."),
     ]),
     ("Know Your Rights", [
         task("tenant-rights", "Know your rights as a tenant",
@@ -10275,9 +10379,6 @@ TASKS = [
              "evicting through the court."),
         task("vital-records", "Get a birth, death, marriage or divorce certificate",
              "From your town or city clerk or the state: who may ask and what to bring."),
-        task("passport", "Get a U.S. passport",
-             "A first passport or a renewal, what to bring to a post office, and a child&rsquo;s "
-             "passport."),
     ]),
     ("Outdoors and Recreation", [
         task("fishing-license", "Get a fishing license",
@@ -10492,7 +10593,8 @@ def text(g):
         if node[0] == "ask":
             bits += [f"{a} {b}" for a, b in node[2]]
     for s_ in g["steps"]:
-        bits += [s_["title"], s_["text"], s_["note"]] + [label for label, _u in s_["actions"]]
+        bits += [s_.get("part", ""), s_["title"], s_["text"], s_["note"]]
+        bits += [label for label, _u in s_["actions"]]
         bits += [f'href="{law_href(r)}"' for r in s_["law"]]
     return " ".join(bits)
 
@@ -10511,6 +10613,17 @@ def unchecked(g):
 def checked_on(g):
     """The oldest check on the guide: what its date says it is worth."""
     return min((c["checked"] for c in g["claims"] if c["checked"]), default=None)
+
+
+def sources_checked(g):
+    """The newest check on the guide: the day its sources were last read,
+    which its page says (the person, 2 November 2026: How to Vote said 11
+    October over claims read weeks later). A claim about this site's own
+    pages (ours, a path) is not a source read, so it does not count.
+    checked_on, the oldest, still decides whether the page warns that it may
+    be out of date."""
+    return max((c["checked"] for c in g["claims"]
+                if c["checked"] and not str(c["source"]).startswith("/")), default=None)
 
 
 # ---------------------------------------------------------------------------
@@ -10580,8 +10693,14 @@ def wording(slug):
         if node[0] == "ask":
             for a, then in node[2]:
                 out += [("At a Glance, the diagram", a, True), ("At a Glance, the diagram", then, True)]
-    for k, s_ in enumerate(g["steps"], 1):
-        where = f"step {k}"
+    part, k = "", 0
+    for s_ in g["steps"]:
+        if s_.get("part"):
+            part, k = s_["part"], 0
+        k += 1
+        where = f"{part}, step {k}" if part else f"step {k}"
+        if s_.get("part"):
+            out.append((f"{part}, its heading", s_["part"], False))
         out += [(where, s_["title"], False), (where, s_["text"], True), (where, s_["note"], True)]
         out += [(where, label, False) for label, _u in s_["actions"]]
     out.append(("after the steps", g["more"], True))

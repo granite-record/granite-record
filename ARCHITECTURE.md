@@ -109,7 +109,11 @@ of the first four parts below, `cloud.py`'s of the morning and the kit, and
 
 **The night, on GitHub.** `.github/workflows/nightly.yml` runs every night at
 08:17 UTC on an empty Windows machine, from the commit of the branch it was
-started on -- `main` on a schedule. Its first job brings the small state
+started on -- `main` on a schedule. The start is the night timer's
+(`workers/night-timer/`, a Cloudflare Worker that dispatches the workflow at
+08:17 UTC, since 23 October 2026, because GitHub's scheduler had begun
+starting the night hours late); GitHub's own cron stays as the fallback, and
+`workers/night-timer/README.md` says how its token is made and renewed. Its first job brings the small state
 files and the kit down from R2 (`cloud.py state-down`, `cloud.py kit-down`),
 looks for new livestreams (`src/ops/livestreams.py --since-state`), and runs
 `nightly.py --runner`: the day's bulk files from gc.nh.gov, asked only when no
@@ -264,15 +268,16 @@ checks are how a problem is heard of, and none is pinged by a dry run. The
 night's check is pinged at the end of every real night, as `/fail` when the
 night failed -- and also when `nightly.py --close` wrote anything to
 `logs/alert.txt` (`ALERT_FILE`, from `alerts_of()`): a refusal from the General
-Court on file, a hold on the SQL host, a night the gate holds for approval
-(with the gate's reasons, which GitHub otherwise tells only the reviewer), or
-a night that was not clean, one sentence each, sent as the ping's body so that
+Court on file, a hold on the SQL host, a check of tonight's build that holds
+the night, or a night that was not clean, one sentence each, sent as the ping's body so that
 Healthchecks puts it in its email. Healthchecks writes when a check goes down
 and again when it comes back, not every night between, so a refusal held for
 three nights is one email and its recovery is the sign it was cleared. That
 is also why a warning that stands is kept off this check (18 October 2026): a
-failed check of the built site against the record, and a reminder that fails
-on a date until a person acts, go to `logs/alert-warn.txt` (`WARN_FILE`, from
+failed check of the built site against the record, a reminder that fails
+on a date until a person acts, and since 22 October a night the gate holds
+for approval (with the gate's reasons, which GitHub otherwise tells only the
+reviewer; `held_for_approval()`), go to `logs/alert-warn.txt` (`WARN_FILE`, from
 `warns_of()`) and to a check of their own, `HEALTHCHECKS_WARN_URL` -- `/fail`
 with the file as the body while one stands, a plain ping when none does --
 and with no such secret they stay on the run's page and in the verdict.

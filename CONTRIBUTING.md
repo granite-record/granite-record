@@ -371,6 +371,9 @@ that nothing is found missing a session later. Every one ends the same way:
    the night.
 6. A check written ahead of the change that makes it pass carries
    `expect_fail="the change"`.
+7. A check of what the whole run left behind carries `last=True`, and
+   `main()` runs it after every other check wherever it is defined:
+   `_no_watch_left`, which counts the machine watches the others left going.
 
 **Add a build step, or give one a new input.**
 1. A `Step("what it does", ["script.py", ...], needs=[...], produces=[...])`

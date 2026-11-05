@@ -5,6 +5,7 @@
 // network, YouTube or Healthchecks.
 import "./no_network.js";
 import "./clock.test.js";
+import "./committee.test.js";
 import "./sql.test.js";
 import "./store.test.js";
 import "./replay.test.js";

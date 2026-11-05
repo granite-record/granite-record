@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-26.1
+# GRANITE_VERSION: 2026-10-26.2
 """
 A How-To guide's or a Learn page's every word, beside its evidence: for a
 person, or an assistant, checking that the page says nothing its sources do
@@ -65,7 +65,12 @@ def guide_sheet(g):
         else:
             out.append("- ASK " + plain(n[1]) + " -> " +
                        " / ".join(f"{a}: {plain(b)}" for a, b in n[2]))
-    for i, s in enumerate(g["steps"], 1):
+    i = 0
+    for s in g["steps"]:
+        if s.get("part"):
+            out += ["", f"# PART: {plain(s['part'])} (its steps numbered from 1)"]
+            i = 0
+        i += 1
         out += ["", f"## STEP {i}: {plain(s['title'])}", plain(s["text"])]
         if s["note"]:
             out.append("NOTE: " + plain(s["note"]))

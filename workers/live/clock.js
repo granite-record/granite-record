@@ -24,14 +24,15 @@
  * than copied: the IANA zone carries the daylight-saving rule.
  */
 import { addDays, nhClock } from "../follow/common.js";
-import { NIGHT_WINDOWS } from "./live.gen.js";
+import { NIGHT_WINDOWS, WINDOW as GEN_WINDOW } from "./live.gen.js";
 
 export const MINUTE = 60_000;
 export const HOUR = 60 * MINUTE;
 export const DAY = 24 * HOUR;
 
-// Weekdays, New Hampshire hours [from, to).
-export const WINDOW = { from: 7, to: 20 };
+// Weekdays, New Hampshire hours [from, to): live_gen.py WINDOW, which a
+// committee page's hook carries too (design section 1.6).
+export const WINDOW = Object.freeze({ ...GEN_WINDOW });
 export const EVERY = {
   window: 2 * MINUTE,     // discovery, in the window: every run
   outside: 30 * MINUTE,   // discovery, outside it and at weekends

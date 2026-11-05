@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.10
+# GRANITE_VERSION: 2026-09-13.11
 """
 What a search engine is told a page is about, in schema.org's vocabulary.
 
@@ -188,6 +188,23 @@ def study_committee(name, base, canon_path, legislative=True):
                                 (name, canon_path)])]
 
 
+def _howto_steps(steps, plain, url):
+    """HowToSteps numbered as the page numbers them: a guide in parts gives
+    one HowToSection a part, each numbered from 1 (guides.step's `part`)."""
+    one = lambda i, s_: {"@type": "HowToStep", "position": i, "name": plain(s_["title"]),
+                         "text": plain(s_["text"]), "url": url + "#steps"}
+    if not any(s_.get("part") for s_ in steps):
+        return [one(i, s_) for i, s_ in enumerate(steps, 1)]
+    out = []
+    for s_ in steps:
+        if s_.get("part"):
+            out.append({"@type": "HowToSection", "name": plain(s_["part"]),
+                        "position": len(out) + 1, "itemListElement": []})
+        items = out[-1]["itemListElement"]
+        items.append(one(len(items) + 1, s_))
+    return out
+
+
 def howto(g, base, canon_path, checked=""):
     """A how-to guide (the person, 12 October 2026: "The guides should also
     be optimized for SEO"): its steps as HowToSteps, each in the guide's own
@@ -200,9 +217,7 @@ def howto(g, base, canon_path, checked=""):
     obj = {"@type": "HowTo", "@id": url + "#howto", "url": url, "name": g["title"],
            "description": plain(g.get("blurb")), "inLanguage": "en-US",
            "about": {"@type": "AdministrativeArea", "name": "New Hampshire"},
-           "step": [{"@type": "HowToStep", "position": i, "name": plain(s_["title"]),
-                     "text": plain(s_["text"]), "url": url + "#steps"}
-                    for i, s_ in enumerate(g.get("steps") or [], 1)],
+           "step": _howto_steps(g.get("steps") or [], plain, url),
            "isPartOf": _site(base), "publisher": _publisher(base)}
     if checked:
         obj["dateModified"] = checked

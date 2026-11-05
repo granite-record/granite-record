@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.6
+# GRANITE_VERSION: 2026-10-30.8
 """
 Live Now's page and its schedule (the live layer's design, sections 1.2 and
 1.4), written by the night beside the Calendar and from the Calendar's own
@@ -112,15 +112,15 @@ def kind_of(key, rows):
 
 
 def match_of(key, rows, kind, history):
-    import build_manifest as BM
     chamber = "".join(BP.card_bodies(key, rows))
     if kind == "floor":
         return [{"H": "house session", "S": "senate session"}[c] for c in chamber if c in "HS"]
     if kind == "conference":
         return [LG.stem(f"committee of conference on {key.bill}")] if key.bill else []
-    out = [LG.stem(BP.card_name(key)), LG.stem(key.name)]
-    out += sorted(history.get(BM.canon(key.name), ()))
-    return [m for i, m in enumerate(out) if m and m not in out[:i]]
+    # The committee page's hook takes its stems from the same function
+    # (live_hook.stems, design section 1.6), so /live and the page agree.
+    import live_hook
+    return live_hook.stems(key.chamber, key.name, history)
 
 
 def schedule(site, today, weeks=None, history=None):
@@ -241,6 +241,11 @@ def write(site, base, today):
     (site / PAGE).write_text(S.clean_links(styled(html)), encoding="utf-8")
     for f in ("live.js", "live.css"):
         shutil.copyfile(_paths.locate(f"src/pages/{f}"), site / f)
+    # IN THE SITEMAP, as every builder lists its own pages (the release
+    # session, applying PATCHES.md 1, 2 November 2026): /live asks to be
+    # indexed at its own address, and check_site refuses a page that does
+    # and is not listed, which would stop the night.
+    S.sitemap_merge(site, base, [base.rstrip("/") + S.canon(ADDRESS)], "/live")
     return sched
 
 
@@ -248,9 +253,11 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0].strip())
     ap.add_argument("--site", default="site")
     ap.add_argument("--base", default="https://graniterecord.org")
-    ap.add_argument("--today", help="the day to write for, YYYY-MM-DD (default: the build's)")
+    # dest="day": preflight's _build_date_stated reads any `.today` on the
+    # build's path as asking the clock, and this one is the reader's.
+    ap.add_argument("--today", dest="day", help="the day to write for, YYYY-MM-DD (default: the build's)")
     a = ap.parse_args()
-    today = datetime.date.fromisoformat(a.today) if a.today else nh_today()
+    today = datetime.date.fromisoformat(a.day) if a.day else nh_today()
     sched = write(a.site, a.base, today)
     n = sum(len(v) for v in sched["days"].values())
     print(f"live: {PAGE} and {SCHEDULE.as_posix()}, {n} meetings over {len(sched['days'])} days "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.79
+# GRANITE_VERSION: 2026-09-04.80
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -12,16 +12,28 @@ readers reported and what changed -- and publish only if told to.
 Meant for Task Scheduler. Everything it prints also goes to
 logs/nightly-YYYY-MM-DD.log.
 
-WHAT IT ASKS THE GENERAL COURT FOR: fourteen files, once
+WHAT IT ASKS THE GENERAL COURT FOR
 
-snapshot_gencourt.py's bulk files, a few seconds apart, and nothing else. They
-are enough to notice what a day changed -- Docket.txt drives the build, and a
-newly scheduled hearing, a status change, a referral, a roll call and a new
-sponsor all arrive through it -- and they are the one fetch that cannot be done
-later, because the files are live views overwritten as a session moves. Every
-other network step build_all has (bill pages, testimony, committee pages) has
-no refusal handling or budget and stays out of the nightly; the build runs
---local.
+First the day's bulk files: snapshot_gencourt.py opens the Dynamic Data
+Files page once, which rebuilds them, and takes its thirteen files and
+Members.txt, a few seconds apart. They are enough to notice what a day
+changed -- Docket.txt drives the build, and a newly scheduled hearing, a
+status change, a referral, a roll call and a new sponsor all arrive through it
+-- and they are the one fetch that cannot be done later, because the files are
+live views overwritten as a session moves. On the laptop that is all, and
+once. On GitHub's machine (--runner, below) an export that comes back empty is
+asked again, with the database once in its place (EMPTY_TRIES, DB_AFTER_TRIES,
+TRIES_AFTER_DB); and under the same lock, each only while no refusal is on
+file, the night goes on to the SQL host the General Court publishes (the study
+committees' meetings, the current term's data, and the statutes on the nights
+a new law takes effect), next session's bill requests (fetch_lsrs.py) and the
+two index pages of its calendars and journals (fetch_calendar_archive.py
+--listing). Every other network step build_all has (bill pages, testimony,
+committee pages) stays out of the nightly; the build runs --local. Sunday
+night's weekly job (weekly(), on GitHub's machine only) asks for more: the
+database's views of the committee rosters, the members who have left, the
+study committees and the statutes, then two pages of gc.nh.gov for
+committees.json.
 
 IT ASKS ONLY WHEN NOTHING ELSE IS ASKING. This address has blocked the project
 twice, the second time for two fetches at once, and the bill-text lane runs for
@@ -137,7 +149,8 @@ night itself does is here, and what differs on that machine is behind --runner:
                       morning triage pulls them
   the log             the whole log to logs/nightly-<date>.log, which goes to
                       R2; GitHub's log, which is public, gets each step's name
-                      and result, and a failing step's last lines
+                      and result, a failing step's last lines, and preflight's
+                      line of its slowest checks (SLOWEST_LINE)
   the verdict         archive/last-night.json (R2's state/last-night.json):
                       what the night did and whether it was clean, finished
                       by --close with the workflow's own step results. A dry
@@ -474,6 +487,7 @@ sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py
 import _paths  # noqa: E402,F401
 
 import argparse
+import functools
 import gzip
 import hashlib
 import json
@@ -1213,13 +1227,38 @@ def run(args, label, cwd=None):
     for ln in proc.stdout:
         say("  " + ln.rstrip(), echo=False)
     proc.wait()
-    if QUIET and proc.returncode:
+    if QUIET:
+        public = slowest_said(args, LOG[mark:])
         # GitHub's log says why a step failed without anyone opening the
         # whole log: its failure lines and its last few.
-        for ln in failure_lines(LOG[mark:]):
+        if proc.returncode:
+            public += [ln for ln in failure_lines(LOG[mark:]) if ln not in public]
+        for ln in public:
             print(ln, flush=True)
     say(f"  ({time.time() - t0:.0f}s, exit {proc.returncode})")
     return proc.returncode
+
+
+# PREFLIGHT'S SLOWEST CHECKS IN GITHUB'S LOG (27 October 2026). Every
+# preflight run ends on a line naming its ten slowest checks
+# (preflight._slowest), so that growth like the night's --code, from 110 s on
+# 9 October to 285 s on 26 October, is seen. But with --runner a step's own
+# lines go to the log file only (say), and GitHub's job log, where that growth
+# went unseen, showed the step's header and its seconds. So that one line of
+# a preflight step is printed there too, and only in exactly its shape:
+# counts, seconds and the names of preflight's own functions, nothing a check
+# read. preflight's _slowest_reaches_the_job_log holds the two together.
+SLOWEST_LINE = re.compile(
+    r"slowest \d+ of \d+ checks, of \d+ s in all \(\d+ s of it compiling and loading "
+    r"preflight\.py\): [A-Za-z_]\w* \d+\.\d s(?:; [A-Za-z_]\w* \d+\.\d s)*", re.ASCII)
+
+
+def slowest_said(args, lines):
+    """The lines of `lines`, a step's stretch of LOG, that are preflight's
+    line of its slowest checks, where the step `args` runs preflight.py."""
+    if Path(args[0]).name != "preflight.py":
+        return []
+    return [ln for ln in lines if SLOWEST_LINE.fullmatch(ln.strip())]
 
 
 def failure_lines(lines, tail=6):
@@ -1402,6 +1441,19 @@ def gated(before, after, force, new_term=False):
     return hard + blocked, blocked, lines
 
 
+def _watch_ends(main):
+    """`main` with the machine watch it may start (machine_watch) stopped
+    however it returns: a value, SystemExit or an error."""
+    @functools.wraps(main)
+    def night():
+        try:
+            return main()
+        finally:
+            machine_unwatch()
+    return night
+
+
+@_watch_ends
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
@@ -1997,18 +2049,42 @@ def machine_line():
             f"{g(head)} of {g(limit)} GB, disk free {g(disk)} GB; step: {WATCH['step'] or '-'}")
 
 
+# THE WATCH ENDS WITH main() (26 October 2026). It had no way to stop, and
+# preflight runs main() in its own process dozens of times: every run of the
+# night or the week there left a thread behind that printed a [machine ...]
+# line a minute into whatever came next: 222 threads after one
+# `preflight.py --code`, and over a thousand such lines in its output. One
+# watch at a time now, and main() stops it however it returns (_watch_ends).
+# On GitHub's machine nothing changes: the watch ran until the process ended,
+# and main()'s return is that end.
+WATCHING = {}
+
+
 def machine_watch():
+    """Start the watch: machine_line() now and every WATCH_EVERY seconds,
+    until machine_unwatch()."""
     import threading
 
+    machine_unwatch()
     # Its own clock, not time.sleep, which the checks replace to count a
     # night's waits.
-    tick = threading.Event()
+    stop = threading.Event()
 
     def watch():
-        while True:
+        while not stop.is_set():
             print(machine_line(), flush=True)
-            tick.wait(WATCH_EVERY)
-    threading.Thread(target=watch, name="machine-watch", daemon=True).start()
+            stop.wait(WATCH_EVERY)
+    t = threading.Thread(target=watch, name="machine-watch", daemon=True)
+    WATCHING.update(stop=stop, thread=t)
+    t.start()
+
+
+def machine_unwatch():
+    """Stop the watch machine_watch() started, if one is going."""
+    stop, t = WATCHING.pop("stop", None), WATCHING.pop("thread", None)
+    if stop is not None:
+        stop.set()
+        t.join(timeout=5)
 
 
 def machine_lows():

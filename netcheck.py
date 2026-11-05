@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Why is the General Court refusing us?
 
@@ -114,10 +114,6 @@ def raw_try(host, version, scheme="https", label=""):
         return f"HTTP {r.status}, {len(body):,}+ bytes"
     finally:
         c.close()
-
-
-def raw_try_l(host, version, scheme="https", label=""):
-    return raw_try(host, version, scheme, label)
 
 
 def main():

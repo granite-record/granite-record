@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.67
+# GRANITE_VERSION: 2026-09-07.70
 """
 A page's worth of data for every committee.
 
@@ -69,6 +69,7 @@ import argparse
 import collections
 import json
 import re
+import shutil
 import types
 
 import proceedings as P
@@ -78,6 +79,7 @@ import committee_acts as CA
 import committee_details as CD
 import committee_names as CN
 import components as C
+import live_hook
 import names
 import report_check as RC
 import shell as S
@@ -836,7 +838,7 @@ def static_record(code, name, chamber_word, rec, sessions):
     terms = sorted((t for t in (rec.get("bills") or {}) if t), reverse=True)
     if terms:
         t0, rows = terms[0], rec["bills"][terms[0]]
-        out.append(f"<h2>Bills Referred, {E(t0)}</h2><ul>" + "".join(
+        out.append(f"<h2>Bills Referred, {E(C.term_words(t0))}</h2><ul>" + "".join(
             f'<li><a href="bill/{E(str(b.get("year")))}/{E(str(b.get("id", "")).lower())}">'
             f'{E(b.get("n") or b.get("id") or "")}</a>'
             + (f": {E(b['title'])}" if b.get("title") else "")
@@ -855,6 +857,89 @@ def static_record(code, name, chamber_word, rec, sessions):
         links.append(f'<a href="{E(rec["url"])}" rel="noopener">This committee on the General Court&rsquo;s site</a>')
     out.append("<h2>Sources</h2><ul>" + "".join(f"<li>{x}</li>" for x in links) + "</ul></div>")
     return "".join(out)
+
+
+# THE VIDEOS TAB'S LIST (the owner, 26 October 2026: "Committee pages should
+# have a videos tab that essentially compiles the youtube playlist of that
+# committee's meetings in a structured table with the date, list of bills,
+# and other pertinent information"). A page's `recordings`, newest first, are
+# every recording one of its own bill rows names (the video_id on an item),
+# and every recording in the video index that NO row of proceedings.csv
+# carries, that has streamed, and whose own title names this committee in the
+# channel's chamber, read through code_of with the term of its day. The
+# House's "Finance Division I/II/III" is House Finance's, and any recording
+# whose own title names a division is marked with it. Nothing is weighed or guessed: a title in the older form
+# ("Education 1/26/21") names no committee the index could parse, so it stays
+# off unless a bill row places it. The Senate's docket lists hearings only,
+# so its committees' executive sessions are on their channel and on no row:
+# Senate Finance's of April and May 2026 are listed this way, with no bill.
+# Each entry is {"id", "date", "term"} and "began" ("13:13"), "seconds" and
+# "label" ("Division II") where the recording says them. The bills, their
+# kinds and their moments are the page's own items, which it holds already,
+# so an entry carries none: about ninety bytes a recording, in the file the
+# page loads already, and no file of its own.
+# The division's numeral as the channel's titles write it: I, II or III, and
+# twice otherwise -- "Finance - Division 1" and "Finance Division l", a
+# lower-case L -- which fell to code_of under the whole name, found no page,
+# and left House Finance's list (the review of 29 October 2026). A run of
+# I's or l's is counted, as "ll" for II would be; a figure is its numeral.
+DIVISION = re.compile(r"^Finance\s*-?\s*Division\s+([Il]{1,3}|[1-3])(?:\s*,.*)?$")
+
+
+def division_label(numeral):
+    """"Division II" for "II", "ll" or "2"."""
+    return "Division " + ("I" * int(numeral) if numeral.isdigit() else "I" * len(numeral))
+
+
+def committee_recordings(days, carried, facts, code_of, pages):
+    """({code: [entry, ...] newest first}, Counter of how each was found:
+    by_bills, by_titles, no_page). `days` is {code: {(term, date): [items]}},
+    `carried` every video_id on any row of proceedings.csv, `facts`
+    proceedings.video_facts(), `code_of` who_sits' and `pages` the codes that
+    get a page."""
+    out = collections.defaultdict(dict)
+    # A recording any page's items name is that page's, and no title adds it
+    # to another.
+    carried = set(carried) | {it.get("video_id") for by_day in days.values()
+                              for items in by_day.values() for it in items} - {"", None}
+
+    def entry(vid, date, term):
+        v = facts.get(vid) or {}
+        # The division its own title names, whether a bill row or the title
+        # placed it: House Finance's division days stream one recording a
+        # division, the tied ones among them ("Finance - Division I", 4 May
+        # 2026, seven bills).
+        m = DIVISION.match(v.get("parsed_committee") or "") if v.get("chamber") == "H" else None
+        label = division_label(m.group(1)) if m else ""
+        return {"id": vid, "date": date, "term": term,
+                **({"began": v["began"]} if v.get("began") else {}),
+                **({"seconds": v["seconds"]} if v.get("seconds") else {}),
+                **({"label": label} if label else {})}
+    for code, by_day in days.items():
+        if code not in pages:
+            continue
+        for (term, date), items in sorted(by_day.items(), key=lambda kv: kv[0][1] or ""):
+            for it in items:
+                vid = it.get("video_id") or ""
+                if vid and vid not in out[code]:
+                    out[code][vid] = entry(vid, date, term)
+    found = collections.Counter(by_bills=sum(len(v) for v in out.values()))
+    for vid, v in sorted(facts.items()):
+        name = v.get("parsed_committee") or ""
+        if vid in carried or not v.get("streamed") or not v.get("date") or not name \
+                or name == "Session":
+            continue
+        m = DIVISION.match(name) if v.get("chamber") == "H" else None
+        term = P.term_on(v["date"])
+        code = code_of("Finance" if m else name, v.get("chamber"), term)
+        if code not in pages:
+            found["no_page"] += 1
+            continue
+        out[code][vid] = entry(vid, v["date"], term)
+        found["by_titles"] += 1
+    return ({code: sorted(recs.values(), key=lambda r: (r["date"], r.get("began") or "", r["id"]),
+                          reverse=True)
+             for code, recs in out.items() if recs}, found)
 
 def main():
     ap = argparse.ArgumentParser()
@@ -928,6 +1013,10 @@ def main():
     # SUCCESS: with no histories here every notice would be filed as a
     # sitting and nothing would say so.
     rows, histories = P.load(), load("narratives.json", {})
+    # Every recording a row of the table names, the floor's included: the
+    # Videos tab adds by its title only a recording no row carries (THE
+    # VIDEOS TAB'S LIST).
+    carried = {(r.get("video_id") or "").strip() for r in rows} - {""}
     if rows and not histories:
         raise SystemExit("narratives.json is not there, or holds nothing. A docket "
                          "notice for a bill withdrawn or never introduced is told "
@@ -1083,7 +1172,47 @@ def main():
     index, written, urls, skipped = [], 0, [], []
     span_of = {}
 
-    for code in sorted(set(list(seats) + list(referred) + list(days))):
+    codes_ = sorted(set(list(seats) + list(referred) + list(days)))
+    # THE VIDEOS TAB'S LIST. SILENCE IS NOT SUCCESS: the index is in git
+    # (collected/videos/), so a table naming recordings beside an index that
+    # reads as nothing is a broken checkout, and every page would lose its
+    # Videos tab with nothing to say why.
+    facts = P.video_facts()
+    if carried and not facts:
+        raise SystemExit(
+            f"proceedings.csv names {len(carried):,} recordings and the video index "
+            f"({P.VIDEO_DIR.as_posix()}/videos_*.csv, and the night's videos_*.csv beside "
+            "it) reads as empty: the index is in git, so this checkout is missing it, and no "
+            "committee page would list its recordings.")
+    recordings, vfound = committee_recordings(
+        days, carried, facts, code_of,
+        {c for c in codes_ if presentable(committee_name(c, lead, codes))})
+
+    # The code carries the chamber where nothing else states it.
+    def chamber_of(code):
+        return (lead.get(code, {}).get("chamber")
+                or (seats.get(code) or [{}])[0].get("chamber")
+                or (code[:1].upper() if code[:1].upper() in "HS" else ""))
+
+    # THE LIVE HOOK (workers/live/PATCHES.md 11, applied for the 11 November
+    # train): a sitting committee's page carries live_hook's hidden section,
+    # which live.js fills while one of its meetings streams. Its stems are
+    # read once a run (past), and every committee this run writes a page for
+    # is passed to each (others), so a committee whose name another's extends
+    # never takes that one's stream: the Senate's Education never takes
+    # Education Finance's. A retired committee has none: it never streams
+    # again, and S33 and S50 share a name, which would light both pages.
+    live_past = live_hook.past()
+    live_all = [(chamber_of(c).strip().upper(), committee_name(c, lead, codes)) for c in codes_
+                if c not in retired and presentable(committee_name(c, lead, codes))]
+    # AND THE TWO FILES THE HOOK LOADS, beside the pages that load them:
+    # build_live copies the same two later in a full build, and a build
+    # without it (a fast path, a partial run, preflight's fixture) left
+    # every committee page linking a script and a stylesheet not there.
+    for f in ("live.js", "live.css"):
+        shutil.copyfile(_paths.locate(f"src/pages/{f}"), site / f)
+
+    for code in codes_:
         info = lead.get(code, {})
         name = committee_name(code, lead, codes)
         # A code with no name, or H29's, is not a committee this site can
@@ -1091,10 +1220,7 @@ def main():
         if not presentable(name):
             skipped.append(f"{code}" + (f" ({name})" if name else " (unnamed)"))
             continue
-        # The code carries the chamber where nothing else states it.
-        chamber = (info.get("chamber")
-                   or (seats.get(code) or [{}])[0].get("chamber")
-                   or (code[:1].upper() if code[:1].upper() in "HS" else ""))
+        chamber = chamber_of(code)
         members = []
         for m in seats.get(code, []):
             if not on_it_today(m, code):
@@ -1204,6 +1330,10 @@ def main():
             "members": members,
             "bills": bills_in_order(referred.get(code, {})),
             "sessions": sessions,
+            # Its recordings, newest first, for the Videos tab (THE VIDEOS
+            # TAB'S LIST); absent where it has none, and then the page has no
+            # such tab.
+            **({"recordings": recordings[code]} if recordings.get(code) else {}),
         }
         (out / f"{code}.json").write_text(json.dumps(rec), encoding="utf-8")
 
@@ -1237,7 +1367,7 @@ def main():
         # where a <noscript> line said the page needs JavaScript.
         nos = static_record(code, name, chamber_word, rec, sessions)
         path = f"/committee/{code}.html"
-        (out / f"{code}.html").write_text(S.clean_links(S.page(
+        html = S.page(
             t, path=path, base=a.base,
             title=f"{name}{when} — {chamber_word} committee | Granite Record",
             og_title=f"{name}{when} — New Hampshire {chamber_word}",
@@ -1257,8 +1387,14 @@ def main():
                   nav_current="committees.html",
                   # The page draws the committee's own <h1>; the template's
                   # hidden "New Hampshire bills" one went first until now.
-                  sr_title="")),
-            encoding="utf-8")
+                  sr_title="")
+        # The chamber is "H" or "S" exactly: the hook's stems and its
+        # chamber guard both read it.
+        live_ch = chamber.strip().upper()
+        if code not in retired and live_ch in ("H", "S"):
+            html = live_hook.place(html, code=code, chamber=live_ch, name=name,
+                                   history=live_past, others=live_all)
+        (out / f"{code}.html").write_text(S.clean_links(html), encoding="utf-8")
         urls.append(a.base + S.canon(path))
         written += 1
         index.append({
@@ -1440,6 +1576,10 @@ def main():
           f"{sum(i['n_sessions'] for i in index):,} sitting days")
     lead_n = sum(1 for i in index if i["chair"])
     print(f"  {lead_n} of {written} have a chair on file")
+    # The Videos tab's lists, said (SILENCE IS NOT SUCCESS).
+    print(f"  {sum(len(v) for v in recordings.values()):,} recordings on {len(recordings)} "
+          f"committee pages: {vfound['by_bills']:,} by their bills, {vfound['by_titles']:,} by "
+          f"their titles; {vfound['no_page']:,} named for no page")
     # WHAT HAPPENED AT EACH MEETING, said (committee_acts): nothing voted at
     # any meeting would be the docket's vote dates no longer read, and every
     # bill would read as heard and nothing more.

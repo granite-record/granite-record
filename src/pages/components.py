@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.20
+# GRANITE_VERSION: 2026-10-09.21
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -187,6 +187,19 @@ def _date_span_es(a, b, form):
     if ma == mb:
         return f"{da}–{db} de {MONTHS_ES[int(mb) - 1]} de {yb}"
     return f"{da} de {MONTHS_ES[int(ma) - 1]} – {db} de {MONTHS_ES[int(mb) - 1]} de {yb}"
+
+
+def term_words(t):
+    """A TERM'S YEARS, ONE WAY: "2025\u20132026", with an en dash (the cohesion
+audit of 30 October 2026, I-2), as a span of days is (dateSpan). About half
+the site wrote "2025-2026" with a hyphen, sometimes beside the dash on the
+same screen. Only what a reader sees changes: a term's key, its address
+and a file's name keep the hyphen, and anything that is not a term of two
+years ("2027-requests") comes back as it came.
+    components.js's termWords is the same in the browser."""
+    s = "" if t is None else str(t)
+    m = re.fullmatch(r"(\d{4})-(\d{4})", s)
+    return f"{m.group(1)}\u2013{m.group(2)}" if m else s
 
 
 def date_span(a, b, form="full", lang="en"):

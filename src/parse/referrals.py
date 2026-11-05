@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.13
+# GRANITE_VERSION: 2026-09-10.14
 """The committee a bill was referred to, read out of the docket.
 
     python3 src/parse/referrals.py            # what it finds, by term, no network
@@ -757,7 +757,10 @@ def _read_docket(path, term, lsr_of=None):
 
 
 def read_dockets(found=None, lsr_of=None):
-    """(from_dockets(), first_bodies()) in one pass over the files."""
+    """(from_dockets(), {(term, bill): "H" or "S"}) in one pass over the
+    files: the second is the chamber of each bill's first docket row. The
+    search page files every CACR under the House, and 80 archived CACRs were
+    the Senate's; its own docket says which chamber it began in."""
     refs, began = {}, {}
     for term, path in (found if found is not None else term_dockets()).items():
         if Path(path).exists():
@@ -786,15 +789,6 @@ def from_dockets(found=None, lsr_of=None):
     {(term, bill): the archive record's own LSR}.
     """
     return read_dockets(found, lsr_of)[0]
-
-
-def first_bodies(found=None, lsr_of=None):
-    """{(term, bill): "H" or "S"} -- the chamber of the bill's first docket row.
-
-    The search page files every CACR under the House, and 80 archived CACRs
-    were the Senate's. Its own docket says which chamber it began in.
-    """
-    return read_dockets(found, lsr_of)[1]
 
 
 def _corpus(path=SRC, lo=1989, hi=2015):

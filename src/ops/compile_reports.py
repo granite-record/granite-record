@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.13
+# GRANITE_VERSION: 2026-09-12.17
 """
 What readers reported, compiled for a person and for the session that triages.
 
@@ -15,9 +15,10 @@ WHERE REPORTS COME FROM
 functions/api/report.js writes each one to a D1 database. This reads new rows
 with `wrangler d1 execute --json` -- the same login `publish` already uses, so
 there is no API token to keep -- lands them in reports/issues-<db>-<date>.jsonl
-and writes reports/triage-<db>-<date>.md. reports/ is not in git except for
-the ledger of what was done (handled.jsonl), because what a stranger typed does
-not belong in a public repository.
+and writes reports/triage-<db>-<date>.md. reports/ is not in git but for
+schema.sql, the table report.js writes: what a stranger typed does not belong
+in a public repository, and the ledger of what was done (handled.jsonl) stays
+on this machine too, where the triage session reads it (.gitignore).
 
 HOW LONG A REPORT IS KEPT
 
@@ -140,24 +141,30 @@ FIELDS = ("date", "status", "sponsor", "vote", "hearing", "committee", "text",
 # And a page in another language whose translation a reader reports (the
 # owner, 24 October 2026): "translation:" and the page's own address, with
 # TRANSLATION as its field and no other kind's (report.js says the same).
-RECORD = re.compile(r"^(bill:\d{4}/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3}(?:-\d{4})?|translation:/es/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*){0,2})?)$")
-PATH = re.compile(r"^/(bill/\d{4}/[a-z]{2,6}\d{1,4}|legislator/[a-z0-9-]{1,80}|committee/[A-Za-z]\d{2,3}(?:-\d{4})?|es/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*){0,2})?)$")
+RECORD = re.compile(r"^(bill:\d{4}/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3}(?:-\d{4})?|session:[HS]/\d{4}-\d{2}-\d{2}|study:ss\d{1,6}|translation:/es/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*){0,2})?)$")
+PATH = re.compile(r"^/(bill/\d{4}/[a-z]{2,6}\d{1,4}|legislator/[a-z0-9-]{1,80}|committee/[A-Za-z]\d{2,3}(?:-\d{4})?|session/[HS]/\d{4}-\d{2}-\d{2}|committee/ss\d{1,6}|es/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*){0,2})?)$")
 TRANSLATION = "translation"
 # The tabs the pages render, and nothing else: a tab is a label, and a
 # free-text tab was 24 letters of a reader's own words outside the quotation.
 TABS = ("", "Summary", "Bill Text", "Votes", "Hearings", "Reports", "Sponsors",
-        "Documents", "Related", "Prime sponsored", "Co-sponsored", "Bills", "Meetings")
+        "Documents", "Related", "Prime sponsored", "Co-sponsored", "Bills", "Meetings",
+        "Videos")
 # A TAB'S OLD NAME, AND ITS NAME NOW (8 October 2026): functions/api/report.js
 # RENAMED_TABS. A bill's Hearings tab was Videos and a committee's Meetings tab
 # was Sessions, and a report stored before the Function learnt the new name
 # carries the old one. It is read, and shown, under the name the tab has.
 RENAMED_TABS = {"Videos": "Hearings", "Sessions": "Meetings"}
+# WHOSE OLD NAME EACH IS (report.js RENAMED_KIND, the walk of 31 October
+# 2026): a committee's and a study committee's Videos tab is its own, and
+# stays Videos.
+RENAMED_KIND = {"Videos": "bill", "Sessions": "committee"}
 
 
 def renamed_tab(r):
     """The row with its tab under the name the tab has now."""
-    if r.get("tab") in RENAMED_TABS:
-        r = dict(r, tab=RENAMED_TABS[r["tab"]])
+    old = r.get("tab")
+    if old in RENAMED_TABS and str(r.get("record") or "").split(":", 1)[0] == RENAMED_KIND[old]:
+        r = dict(r, tab=RENAMED_TABS[old])
     return r
 BUILD = re.compile(r"^[0-9T:.+\-Z]{0,40}$")
 AT = re.compile(r"^\d{4}-\d\d-\d\dT[\d:.]+Z?$")
@@ -505,8 +512,10 @@ def page_of(record, members, pages=frozenset()):
     if kind == "bill":
         yr, bid = ref.split("/")
         return f"/bill/{yr}/{bid.lower()}"
-    if kind == "committee":
+    if kind in ("committee", "study"):
         return f"/committee/{ref}"
+    if kind == "session":
+        return f"/session/{ref}"
     return members.get(ref)
 
 
@@ -746,6 +755,10 @@ def producer(record, field):
         return "build_site_v2.py (member_labels), build_legislator_pages.py"
     if kind == "committee":
         return "build_committees.py"
+    if kind == "study":
+        return "build_study_committees.py"
+    if kind == "session":
+        return "build_session_pages.py (session_days.py, journal_days.py)"
     current = ref.split("/")[0] in current_years()
     return PRODUCERS[field][0 if current else 1]
 

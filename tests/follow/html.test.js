@@ -100,6 +100,10 @@ test("every page refuses framing, other scripts and other forms' targets", async
     for (const p of pages) {
       const csp = p.headers["content-security-policy"];
       assert.match(csp, /default-src 'none'/);
+      // The site's fonts and nothing else (the cohesion audit, B-3).
+      assert.match(csp, /style-src 'unsafe-inline' https:\/\/fonts\.googleapis\.com;/);
+      assert.match(csp, /font-src https:\/\/fonts\.gstatic\.com;/);
+      assert.doesNotMatch(csp, /(img|connect|frame|media|object)-src/);
       assert.match(csp, /frame-ancestors 'none'/);
       assert.match(csp, /form-action 'self'/);
       assert.match(csp, /script-src ('none'|'nonce-[A-Za-z0-9_-]{22}')/);
@@ -110,6 +114,12 @@ test("every page refuses framing, other scripts and other forms' targets", async
       clean(p.body);
       const scripts = p.body.match(/<script[^>]*>/g) || [];
       for (const tag of scripts) assert.match(tag, /^<script nonce="[A-Za-z0-9_-]{22}">$/);
+      // A link without its private part shows one message: what waits on the
+      // link is marked, and the script hides it.
+      if (/location\.hash/.test(p.body))
+        assert.match(p.body, /querySelectorAll\("\[data-waits\]"\)/);
+      if (/Opening your page/.test(p.body))
+        assert.match(p.body, /<p class="quiet" data-waits>Opening your page/);
       // A page that reads a link from after "#" takes it out of the address bar.
       if (/location\.hash/.test(p.body))
         assert.match(p.body, /history\.replaceState\(null,"",location\.pathname\)/);

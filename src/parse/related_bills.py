@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.3
+# GRANITE_VERSION: 2026-10-11.4
 """
 Related bills: which bills and amendments share their proposed language.
 
@@ -271,6 +271,21 @@ class Shingler:
         return np.unique(h)
 
 
+def shared_in(a, b):
+    """Which of a's shingles b holds, as a mask over a: the positions
+    np.intersect1d(a, b, assume_unique=True, return_indices=True) gives as its
+    second answer. Every set here is np.unique's, filtered, so sorted with no
+    repeats, and one binary search of b for each of a's shingles answers it
+    without sorting the two together again, as intersect1d does for each of
+    the quarter of a million pairs (29 October 2026: 26 s of the step under a
+    profiler)."""
+    if not len(a) or not len(b):
+        return a.astype(bool) & False
+    k = b.searchsorted(a)
+    k[k == len(b)] = len(b) - 1
+    return b[k] == a
+
+
 # ------------------------------------------------------------------ documents
 
 def documents(root=None):
@@ -425,15 +440,19 @@ def amendment_fates(narratives):
 def relate(docs, table, became_law, fates=None):
     import numpy as np
     sh = Shingler(np)
+    # Each text's words are read once, for its length and its shingles both
+    # (29 October 2026: reading them twice was 9 s of every build).
+    sets = []
     for d in docs:
-        n = len(words_of(d["body"]))
-        d["_approp"] = n <= APPROP_SHORT and bool(APPROP.search(d["body"]))
+        words = words_of(d["body"])
+        d["_approp"] = len(words) <= APPROP_SHORT and bool(APPROP.search(d["body"]))
         d["_districts"] = bool(DISTRICTS.search(d["body"]))
         # An amendment's own number names its year (2021-2222s), whatever
         # record it was read from.
         m = re.match(r"(\d{4})-", str(d.get("num") or ""))
         d["_year"] = int(m.group(1)) if d["kind"] == "amend" and m else d["year"]
-    sets = [sh(words_of(d.pop("body"))) for d in docs]
+        del d["body"]
+        sets.append(sh(words))
     allh = np.concatenate(sets)
     u, cnt = np.unique(allh, return_counts=True)
     boiler = u[cnt > DF_CUT]
@@ -486,8 +505,7 @@ def relate(docs, table, became_law, fates=None):
         li, lj = lyof(i), lyof(j)
         mi = (li >= 0) & ~(np.bool_(not en) & np.bool_(ln) & (li >= ye))
         mj = (lj >= 0) & ~(np.bool_(not en) & np.bool_(ln) & (lj >= ye))
-        _, ia, _jb = np.intersect1d(sets[i], sets[j], assume_unique=True, return_indices=True)
-        return int((~mi[ia]).sum()), int((~mi).sum()), int((~mj).sum())
+        return int((~mi[shared_in(sets[i], sets[j])]).sum()), int((~mi).sum()), int((~mj).sum())
 
     out = collections.defaultdict(lambda: collections.defaultdict(list))
 
