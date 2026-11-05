@@ -35061,7 +35061,7 @@ def _fixture_site_whole(root):
     return base, ran
 
 
-@check("frontend", "every published guide is reached from the home page, in the site search and in the sitemap by the day it was checked, with HowTo data and the state in its title")
+@check("frontend", "every published guide is reached from the home page, in the site search and in the sitemap, its sitemap date and HowTo data dated by the newest read of its sources, and the state in its title")
 def _guides_reach():
     """The person, 12 October 2026: a link to the guides on the home page,
     the guides in the site-wide search, and the guides optimized for SEO."""
@@ -35085,7 +35085,7 @@ def _guides_reach():
     find = json.loads((site / "find.json").read_text(encoding="utf-8"))
     sm = (site / "sitemap.xml").read_text(encoding="utf-8")
     by_slug = {g["slug"]: g for g in G.GUIDES}
-    bad = []
+    bad, told_apart = [], 0
     for p in pages:
         g, t = by_slug[p.stem], p.read_text(encoding="utf-8")
         addr = f"/guides/{p.stem}"
@@ -35101,8 +35101,22 @@ def _guides_reach():
             bad.append(f"{p.stem}'s title {title!r} does not say New Hampshire")
         if '"@type": "HowTo"' not in t and '"@type":"HowTo"' not in t:
             bad.append(f"{p.stem} carries no HowTo data")
-        if not re.search(re.escape(f"<loc>{base}{addr}</loc>") + r"<lastmod>\d{4}-\d\d-\d\d</lastmod>", sm):
+        # BOTH DATES ARE THE NEWEST READ (the manager session, 5 November
+        # 2026): dateModified and the sitemap's lastmod mean what the page's
+        # "Sources last checked" means, G.sources_checked, not the oldest
+        # read (checked_on), which decides only the out-of-date notice. The
+        # sitemap's is never later than the build's day.
+        newest = G.sources_checked(g)
+        lm = re.search(re.escape(f"<loc>{base}{addr}</loc>") + r"<lastmod>(\d{4}-\d\d-\d\d)</lastmod>", sm)
+        if not lm:
             bad.append(f"{p.stem}'s sitemap entry is not dated by its check")
+        elif newest and lm.group(1) not in {min(newest, d.isoformat()) for d in _days}:
+            bad.append(f"{p.stem}'s sitemap lastmod is {lm.group(1)}, not its newest read {newest}")
+        dm = re.findall(r'"dateModified":\s*"([^"]*)"', t)
+        if newest and dm != [newest]:
+            bad.append(f"{p.stem}'s HowTo dateModified is {dm}, not its newest read {newest}")
+        if newest and newest != G.checked_on(g):
+            told_apart += 1
     # EVERY COMMON QUESTION LEADS TO A GUIDE THAT IS THERE. Each link the
     # home page's block carries opens a page of the built site that is not a
     # draft -- the pages that became guides (civics.HOW_TO) included, which
@@ -35123,7 +35137,8 @@ def _guides_reach():
         bad.append("the home page does not lead to every guide")
     assert not bad, "; ".join(bad)
     return "ok", (f"{len(pages)} published guide{'s' if len(pages) != 1 else ''} reached from the home "
-                  "page, in the search and dated in the sitemap, each with HowTo data"
+                  "page, in the search and dated in the sitemap, each with HowTo data, both dated by the "
+                  f"newest read ({told_apart} where it differs from the oldest)"
                   if pages else "no guide published on the fixture")
 
 
