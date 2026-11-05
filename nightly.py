@@ -686,8 +686,10 @@ LSR_GONE_FLOOR = 5
 # standing count and the count withdrawn, exactly as the night's warning says
 # them, the day, and "confirmed". The night takes a withdrawal only where an
 # entry names both counts and is no older than LSR_ACCEPT_DAYS, so a count
-# written for one withdrawal cannot let a later one through. Read, never
-# written: the file is the person's (preflight's HANDMADE).
+# written for one withdrawal cannot let a later one through; an entry may
+# also give the "digest" the night prints beside the requests (lsr_digest),
+# and then only that set is taken. Read, never written: the file is the
+# person's, in corrections/, the folder preflight's HANDMADE lists.
 LSR_ACCEPTED = Path("corrections") / "lsr_withdrawals.json"
 LSR_ACCEPT_DAYS = 7
 
@@ -3933,26 +3935,49 @@ def not_moving_of(v):
             if isinstance(x, (list, tuple)) and len(x) == 2]
 
 
-def lsr_accepted(standing, gone, today=None, path=None):
+def lsr_digest(lsrs):
+    """A short digest of a set of request numbers, as the night prints it
+    beside the requests it would withdraw: the first 12 hex characters of
+    the sha256 of the sorted numbers, one to a line."""
+    return hashlib.sha256("\n".join(sorted(str(x) for x in lsrs)).encode()).hexdigest()[:12]
+
+
+def lsr_accepted(standing, gone, today=None, path=None, digest=None):
     """The person's entry in corrections/lsr_withdrawals.json that accepts
     withdrawing `gone` of `standing` requests (LSR_ACCEPTED), or None: both
-    counts exactly, "confirmed" beginning with a date, and its "day" no more
-    than LSR_ACCEPT_DAYS before `today` and not after it."""
+    counts exactly, as whole numbers; "day" and the date "confirmed" begins
+    with, each a real YYYY-MM-DD; the day no more than LSR_ACCEPT_DAYS before
+    `today` and not after it; and, where the entry gives a "digest", that
+    digest the night's own for the requests (lsr_digest). A file that will
+    not read, or is not the shape, accepts nothing."""
     path = Path(path or LSR_ACCEPTED)
     today = today or datetime.now().date()
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-    for e in (doc.get("accepted") or []) if isinstance(doc, dict) else []:
-        if not isinstance(e, dict) or not re.match(r"\d{4}-\d{2}-\d{2}", str(e.get("confirmed") or "")):
-            continue
+    got = doc.get("accepted") if isinstance(doc, dict) else None
+
+    def a_day(s):
+        s = str(s or "")
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", s[:10]):
+            return None
         try:
-            day = date.fromisoformat(str(e.get("day")))
+            return date.fromisoformat(s[:10])
         except ValueError:
+            return None
+    for e in got if isinstance(got, list) else []:
+        if not isinstance(e, dict):
             continue
-        if e.get("standing") == standing and e.get("withdraw") == gone and \
-                0 <= (today - day).days <= LSR_ACCEPT_DAYS:
+        day = a_day(e.get("day")) if len(str(e.get("day") or "")) == 10 else None
+        if day is None or a_day(e.get("confirmed")) is None:
+            continue
+        counts = (e.get("standing"), e.get("withdraw"))
+        if not all(isinstance(n, int) and not isinstance(n, bool) for n in counts):
+            continue
+        if "digest" in e and e.get("digest") != digest:
+            continue
+        if counts == (standing, gone) and 0 <= (today - day).days <= LSR_ACCEPT_DAYS:
             return e
     return None
 
@@ -3985,15 +4010,25 @@ def take_lsrs(v=None):
     elif not isinstance(new, list) or not new:
         why = "the fetch wrote no requests"
     elif len(gone) > max(LSR_GONE_FLOOR, LSR_GONE_MOST * len(standing)):
-        accepted = lsr_accepted(len(standing), len(gone))
+        digest = lsr_digest(r.get("lsr") for r in gone)
+        # Between the fetch, which has written lsrs.json, and the restore
+        # below, nothing may raise: a person's file that will not read as
+        # meant is no acceptance (the review of 5 November 2026).
+        try:
+            accepted = lsr_accepted(len(standing), len(gone), digest=digest)
+        except Exception as e:  # noqa: BLE001
+            say(f"  {LSR_ACCEPTED.as_posix()} could not be read as an acceptance "
+                f"({type(e).__name__}: {e}); nothing taken on it")
+            accepted = None
         if accepted is None:
             why = f"it would newly withdraw {len(gone)} of the {len(standing)} standing requests"
             named = [{"lsr": r.get("lsr"), "body": r.get("body"), "sponsor": r.get("sponsor")}
                      for r in sorted(gone, key=lambda r: str(r.get("lsr")))]
             if v is not None:
                 v["lsrs_gone"] = named
-            say(f"  the {len(gone)} it would withdraw, to hold to the General Court's list before "
-                f"the count goes into {LSR_ACCEPTED.as_posix()}:")
+                v["lsrs_gone_digest"] = digest
+            say(f"  the {len(gone)} it would withdraw (digest {digest}), to hold to the General "
+                f"Court's list before the counts go into {LSR_ACCEPTED.as_posix()}:")
             for r in named:
                 say(f"    {r['lsr']}  {r['body'] or ''}  {r['sponsor'] or ''}")
     if why:

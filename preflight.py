@@ -90603,6 +90603,14 @@ def _lsr_accepted_by_the_person(NI):
             "a withdrawal was taken with no file of the person's"
         f.write_text("{not json", encoding="utf-8")
         assert NI.lsr_accepted(300, 80, today=today, path=f) is None, "an unreadable file let one in"
+        # A file of another shape accepts nothing and raises nothing: between
+        # the fetch and the restore, take_lsrs must not stop (the review of 5
+        # November 2026, which found {"accepted": 5} raising there).
+        for shape in ({"accepted": 5}, {"accepted": True}, {"accepted": "x"},
+                      {"accepted": {"day": "2026-11-05"}}, [good], 7):
+            f.write_text(json.dumps(shape), encoding="utf-8")
+            assert NI.lsr_accepted(300, 80, today=today, path=f) is None, \
+                f"a file shaped {shape!r} let one in"
         assert given(good) == good, "the person's own count did not let the withdrawal in"
         for bad, why in (({**good, "withdraw": 79}, "another count withdrawn"),
                          ({**good, "standing": 301}, "another count standing"),
@@ -90611,8 +90619,21 @@ def _lsr_accepted_by_the_person(NI):
                          ({**good, "confirmed": "yes"}, "a confirmation with no date"),
                          ({**good, "day": "2026-10-29"}, "an entry eight days old"),
                          ({**good, "day": "2026-11-07"}, "an entry dated after the night"),
-                         ({**good, "day": "5 November"}, "a day that is no date")):
+                         ({**good, "day": "5 November"}, "a day that is no date"),
+                         ({**good, "day": "20261105"}, "a day in ISO's compact form"),
+                         ({**good, "standing": 300.0}, "a count written as a fraction"),
+                         ({**good, "withdraw": True}, "a count that is true"),
+                         ({**good, "confirmed": "9999-99-99, owner"}, "a confirmation on no day"),
+                         ({**good, "digest": "000000000000"}, "another set's digest")):
             assert given(bad) is None, f"{why} let the withdrawal in"
+        # The digest, where the person gives it, ties the entry to one set.
+        d = NI.lsr_digest(["2027-0002", "2027-0001"])
+        assert d == NI.lsr_digest(["2027-0001", "2027-0002"]) and len(d) == 12 and \
+            d != NI.lsr_digest(["2027-0001", "2027-0003"]), "the digest is not of the set"
+        f.write_text(json.dumps({"accepted": [{**good, "digest": d}]}), encoding="utf-8")
+        assert NI.lsr_accepted(300, 80, today=today, path=f, digest=d) and \
+            NI.lsr_accepted(300, 80, today=today, path=f, digest="0" * 12) is None, \
+            "an entry's digest does not decide which set it takes"
         assert given({**good, "withdraw": 79}, good) == good, "a later matching entry was not found"
         assert given({**good, "day": (today - timedelta(days=NI.LSR_ACCEPT_DAYS)).isoformat()}), \
             "an entry exactly LSR_ACCEPT_DAYS old was refused"
