@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.247
+# GRANITE_VERSION: 2026-09-05.248
 """
 Generate the faceted site from real General Court data.
 
@@ -3450,6 +3450,81 @@ def former_roster(legs, votes_by_member, links, former_file, current_term):
                                         for v in every if v.get("year")})},
         }
     return out
+
+
+def corrected_seats(path=Path("corrections/member_corrections.json")):
+    """The member ids whose seat the person set in member_corrections.json
+    ("members", an entry with a county or a district). Read, never written:
+    a seat the person gave is theirs, and nothing dated from the bills goes
+    over it."""
+    try:
+        got = json.loads(Path(path).read_text(encoding="utf-8")).get("members") or {}
+    except (OSError, ValueError):
+        return set()
+    return {str(k) for k, v in got.items()
+            if isinstance(v, dict) and (v.get("county") or v.get("district"))}
+
+
+def _member_address(m):
+    lab = member_labels(m.get("name"), chamber=m.get("chamber"),
+                        party=m.get("party_code") or m.get("party"),
+                        district=m.get("district"), county=m.get("county"),
+                        county_abbr=m.get("county_abbr"))
+    return "/legislator/" + (m.get("slug") or member_slug(m, lab))
+
+
+def date_former_seats(former, votes_by_member, printed, corrected, legs):
+    """(former, {id: (record's seat, bills' seat)}): each former member's
+    page seat put right from the bills of their last term (5 November 2026).
+
+    A former member's page took its seat from their last ballot's label, and
+    that label from one record of where they last sat (build_data.
+    _former_label, from former_members.json, which the General Court's
+    current-state Legislators view fills). Against the bills their last term
+    printed it was wrong on 75 of the 1,468 pages where the bills print one
+    seat: Rebecca Hutchinson's 1999-2000 seat was "Rock 73", in a county the
+    1992 map numbered to 36, where her bills print Rockingham 8.
+
+    So where the member's own number's last term's bills print one seat in
+    their chamber (printed_seats) and it is not the record's, the page takes
+    the bills' -- unless the person set the seat in member_corrections.json
+    (`corrected`), which stands as they wrote it. The page's address is built
+    from the seat, so it moves; the old one is kept in the row's moved_from,
+    and build_pages answers it with a 301 (build_pages.moved_members). A
+    change whose new address another page already has is not made."""
+    abbr = {m["county"]: m["county_abbr"] for m in legs.values()
+            if m.get("county") and m.get("county_abbr")}
+    taken = {_member_address(m) for m in former.values()}
+    out = {}
+    for mid, m in former.items():
+        rows = votes_by_member.get(mid) or []
+        if not rows or mid in corrected:
+            continue
+        last = max(rows, key=lambda v: vote_date(v.get("date")))
+        got = printed.get((P.vote_term(last.get("year", ""), last.get("date")), mid))
+        if not got or got[0] != (m.get("chamber") or ""):
+            continue
+        _ch, county, dist = got
+        same = (dist == str(m.get("district") or "").lstrip("0")
+                and (m.get("chamber") == "S"
+                     or county.lower()[:4] == str(m.get("county") or "").lower()[:4]))
+        if same:
+            continue
+        was = _member_address(m)
+        new = dict(m, county=county if m.get("chamber") != "S" else (m.get("county") or ""),
+                   district=dist, county_abbr=abbr.get(county, m.get("county_abbr") or ""))
+        now = _member_address(new)
+        if now != was and now in taken:
+            print(f"  WARNING: {m.get('name')} ({mid}) not given the seat the bills print: "
+                  f"{now} is another page's address")
+            continue
+        if now != was:
+            new["moved_from"] = [*(m.get("moved_from") or []), was]
+            taken.add(now)
+        former[mid] = new
+        out[mid] = (f"{m.get('county') or ''} {m.get('district') or ''}".strip(),
+                    f"{county} {dist}".strip())
+    return former, out
 
 
 # What one ballot says about whether the member took part, in the order a
@@ -12521,6 +12596,17 @@ def main():
               "page, the later chamber's, with every chamber's votes: "
               + ", ".join(f"{former[k].get('name')} ({'+'.join([k, *v])})"
                           for k, v in sorted(movers.items())))
+    # THE SEAT A FORMER MEMBER'S PAGE GIVES, FROM THE BILLS OF THEIR LAST TERM
+    # (date_former_seats): the record of where they last sat is wrong on 75
+    # of the 1,468 pages whose last term's bills print one seat.
+    former, redated = date_former_seats(former, votes_by_member, printed_seats(),
+                                        corrected_seats(), legs)
+    if redated:
+        print(f"{len(redated)} former member(s) given the seat their last term's bills print, "
+              "not the record's; the old address answers with a 301: "
+              + ", ".join(f"{former[k].get('name')} ({was} -> {now})"
+                          for k, (was, now) in sorted(redated.items())[:12])
+              + (" ..." if len(redated) > 12 else ""))
     if former:
         print(f"{len(former):,} member(s) in the record hold no seat now; "
               "they get a page of their own and the sitting roster is "

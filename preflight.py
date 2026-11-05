@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.772
+# GRANITE_VERSION: 2026-09-04.773
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -69101,6 +69101,42 @@ def _motion_keys():
     sd = Path("src/pages/build_session_pages.py").read_text(encoding="utf-8")
     assert "MO.classify(" in sd, "a session day no longer reads the motion's key"
     return "ok", f"{len(MOTION_CASES)} forms of the record's questions, each the approved words' key"
+
+
+@check("build", "a former member's page takes the seat their last term's bills print over the "
+                "record's, the person's correction stands, and the old address is kept for a 301",
+       needs=("build_site_v2",))
+def _former_seat_from_bills(B2):
+    """date_former_seats (5 November 2026): Rebecca Hutchinson's page read
+    "Rock 73", in a county the 1992 map numbered to 36, where the bills she
+    sponsored in 1999-2000 print Rockingham 8."""
+    def row(mid, name, county, dist, chamber="H"):
+        return {"id": mid, "name": name, "chamber": chamber, "party": "D", "party_code": "D",
+                "county": county, "district": dist, "county_abbr": "", "former": True}
+    def ballot(mid, year):
+        return {"member_id": mid, "year": str(year), "date": f"3/1/{year}", "body": "H"}
+    former = {"376132": row("376132", "Hutchinson, Rebecca", "Rock", "73"),
+              "9237": row("9237", "Chase, Wendy", "Strafford", "18"),
+              "500": row("500", "Same, Sam", "Hillsborough", "4"),
+              "600": row("600", "Taken, Tom", "Merrimack", "2"),
+              "601": row("601", "Taken, Tom", "Merrimack", "9")}
+    votes = {k: [ballot(k, 1999)] for k in former}
+    printed = {("1999-2000", "376132"): ("H", "Rockingham", "8"),
+               ("1999-2000", "9237"): ("H", "Belknap", "5"),       # the person's seat stands
+               ("1999-2000", "500"): ("H", "Hillsborough", "4"),   # already the bills'
+               ("1999-2000", "600"): ("H", "Merrimack", "9")}      # another page's address
+    legs = {"1": {"county": "Rockingham", "county_abbr": "Rock"}}
+    got, redated = B2.date_former_seats(dict(former), votes, printed, {"9237"}, legs)
+    h = got["376132"]
+    assert (h["county"], h["district"], h["county_abbr"]) == ("Rockingham", "8", "Rock") and \
+        h.get("moved_from") == ["/legislator/rebecca-hutchinson-rock-73"], h
+    assert B2._member_address(h) == "/legislator/rebecca-hutchinson-rock-8", B2._member_address(h)
+    assert got["9237"] == former["9237"] and got["500"] == former["500"], "a seat moved that should not"
+    assert got["600"] == former["600"], "a page took another page's address"
+    assert set(redated) == {"376132"}, redated
+    assert B2.corrected_seats(Path("no-such-file.json")) == set()
+    return "ok", ("Hutchinson Rock 73 -> Rockingham 8 with a 301 from the old address; the person's "
+                  "seat, a seat already right, and one whose address another page has, left alone")
 
 
 @check("session", "the seat of a term is the one its bills print, else the ballots' in the "
