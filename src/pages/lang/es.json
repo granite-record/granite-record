@@ -23171,6 +23171,16 @@
    "es": "Senado de EE. UU.",
    "state": "draft"
   },
+  "off.vacant": {
+   "en": "Vacant",
+   "es": "Vacante",
+   "state": "draft"
+  },
+  "off.vacant_since": {
+   "en": "Vacant since {day}.",
+   "es": "Vacante desde el {day}.",
+   "state": "draft"
+  },
   "off.which_district": {
    "en": "Which district is yours?",
    "es": "¿Cuál es su distrito?",

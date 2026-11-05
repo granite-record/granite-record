@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.341 */
+/* GRANITE_VERSION: 2026-09-07.342 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -9158,6 +9158,10 @@ line-height:1.35;margin:0 0 var(--sp-5);color:var(--ink);text-wrap:balance}
 grid-template-columns:repeat(auto-fill,minmax(min(100%,17.5rem),1fr));gap:var(--sp-7) var(--sp-9)}
 :where(body.pg) .ofwho{min-width:0}
 :where(body.pg) .ofwho .mchip{margin:0}
+/* An empty seat (officials_tabs.vacant): the chip's shape, dashed all round
+   as the seat chart dashes a vacant seat, and no party's bar. */
+:where(body.pg) .mchip.ofvacant{border:1px dashed var(--rule-2);color:var(--ink-2);font-style:italic}
+:where(body.pg) .mchip.ofvacant:hover{border-color:var(--rule-2)}
 :where(body.pg) .ofseat{display:block;font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-3) 0 0}
 :where(body.pg) .ofhow{list-style:none;margin:var(--sp-3) 0 0;padding:0;font-size:var(--t-ui);
 line-height:1.6;color:var(--ink-2)}
