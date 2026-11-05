@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.771
+# GRANITE_VERSION: 2026-09-04.772
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -24428,6 +24428,144 @@ def _asset_headers():
     return "ok", (f"_headers names all three, and none of "
                   f"{len([f for f in pages if f.exists()])} page kinds "
                   f"carries a version query")
+
+
+def _cors_rules(text):
+    """[(address pattern, compiled, value)] for each Access-Control-Allow-Origin
+    line of a _headers text, read as Cloudflare Pages reads one: a line that,
+    trimmed, starts with "/" or a scheme starts a rule, whatever its
+    indentation, and any other line is a header of the rule above it; a
+    pattern's splat (*) matches anything, a placeholder (:name) one segment.
+    A rule that carries the header twice is listed twice, as Pages sends it."""
+    out, at = [], None
+    for ln in text.splitlines():
+        s = ln.strip()
+        if not s or s.startswith("#"):
+            continue
+        if re.match(r"(?:[^\s]+://|/)", s):
+            at = s
+            continue
+        name, _, value = s.partition(":")
+        if at and name.strip().lower() == "access-control-allow-origin":
+            out.append((at, re.compile("".join(
+                ".*" if t == "*" else "[^/]+" if t.startswith(":") else re.escape(t)
+                for t in re.split(r"(\*|:[A-Za-z]\w*)", at) if t)), value.strip()))
+    return out
+
+
+def _cors_said(rules, path):
+    """The Access-Control-Allow-Origin values _headers sends `path`: one per
+    matching rule, in order. Pages appends a header a second rule names
+    again, so two values are served as "*, *", which a browser refuses."""
+    return [v for _at, rx, v in rules if rx.fullmatch(path)]
+
+
+@check("build", "every address the data manifest names may be read from another origin: "
+                "_headers gives each Access-Control-Allow-Origin: *")
+def _data_cors():
+    """A MANIFEST A BROWSER CANNOT FOLLOW (5 November 2026, the API session's
+    review). /data/manifest.json is where the Data page sends a program, and
+    _headers let a page on another origin read it, the CSVs and the term
+    indexes -- but not the public data API's files the manifest also lists:
+    people.json, each term's bills-<term>.jsonl.gz, the database, and
+    schema.json once the API's branch writes it. Cloudflare Pages sends the
+    header on every response today, so nothing failed; the rules are there so
+    that the promise does not rest on the host's default (build_pages'
+    _headers says why), and a list of rules kept by hand had already missed
+    four files.
+
+    So every address the manifest names -- the manifest itself, each table,
+    each of its "files", each term index -- is held to a rule, on the
+    fixture's whole build. The fixture's record is too small to write the
+    register, the database or a second term's bills, so those are named here
+    as their writers name them (people.py, api_db.NAME, build_exports'
+    bills-<term>.jsonl.gz); and schema.json, which nothing on this branch
+    writes yet: the API's branch adds its writer, and from then on the
+    fixture writes and lists it too. And where a site/ built from the real
+    record is here, as on the laptop, its manifest's addresses are held to
+    the same rules. So a file the API adds later is caught by --code when the
+    fixture writes it, and otherwise only by a preflight run beside a real
+    build (the laptop's), or by adding it to the five named here: the night
+    runs --code before it builds, and this is not among its built checks.
+
+    The rules are the ones the build writes now (the fixture's _headers), not
+    a site/'s, which may be an older build's. Each address must be given the
+    header by exactly one rule, and as "*": Pages appends a header a second
+    matching rule names again, and "*, *" is a value a browser refuses, so
+    widening to /data/* beside the rules already there would break every
+    file it meant to open. They stay narrow, as build_pages says they must:
+    none may cover /_headers, /_redirects or the pages. And the reading of a
+    _headers text is tested first, so that a reader that matched everything,
+    or read the lines otherwise than Pages does, cannot pass this."""
+    from urllib.parse import urlsplit
+    import api_db
+
+    toy = _cors_rules("/a/*.csv\n  Access-Control-Allow-Origin: *\n"
+                      "/b/:x/c\n  Access-Control-Allow-Origin: *\n"
+                      "/c\n  Cache-Control: public\n"
+                      "/d\n  Access-Control-Allow-Origin: https://example.org\n"
+                      "/e/*\n  Access-Control-Allow-Origin: *\n"
+                      "/e/f\n  Access-Control-Allow-Origin: *\n"
+                      "/g\n  Access-Control-Allow-Origin: *\n  Access-Control-Allow-Origin: *\n"
+                      "/h\n  Cache-Control: public\n  /i\n  Access-Control-Allow-Origin: *\n"
+                      "/j\nAccess-Control-Allow-Origin: *\n")
+    for p, want in (("/a/x.csv", ["*"]), ("/a/x/y.csv", ["*"]), ("/a/x.json", []),
+                    ("/b/q/c", ["*"]), ("/b/q/r/c", []), ("/c", []),
+                    ("/d", ["https://example.org"]), ("/a/x.csv/", []),
+                    ("/e/g", ["*"]), ("/e/f", ["*", "*"]), ("/g", ["*", "*"]),
+                    ("/h", []), ("/i", ["*"]), ("/j", ["*"])):
+        got = _cors_said(toy, p)
+        assert got == want, f"_cors_rules reads {p!r} as sent {got}, not {want}"
+
+    shared, _base, _ran, _days = _fixture_site_shared()
+    built = shared / "site"
+    rules = _cors_rules((built / "_headers").read_text(encoding="utf-8"))
+    assert rules, "the fixture's _headers gives no address Access-Control-Allow-Origin"
+
+    wide = [p for p in ("/_headers", "/_redirects", "/", "/bills", "/bill/2026/hb1")
+            if _cors_said(rules, p)]
+    assert not wide, ("_headers lets another origin read " + ", ".join(wide)
+                      + ": a rule is wider than the record's files (build_pages' _headers)")
+
+    def judge(paths, where):
+        none = [p for p in paths if not _cors_said(rules, p)]
+        assert not none, (f"{where} names " + ", ".join(none[:6]) + ", and _headers gives no "
+                          "rule Access-Control-Allow-Origin: * that covers it (build_pages' "
+                          "_headers text)")
+        twice = [f"{p} ({', '.join(_cors_said(rules, p))})" for p in paths
+                 if len(_cors_said(rules, p)) > 1]
+        assert not twice, (f"{where} names " + "; ".join(twice[:6]) + ": more than one "
+                           "_headers rule gives it Access-Control-Allow-Origin, and Pages sends "
+                           "them joined, a value a browser refuses")
+        other = [f"{p} ({_cors_said(rules, p)[0]})" for p in paths
+                 if _cors_said(rules, p) != ["*"]]
+        assert not other, (f"{where} names " + "; ".join(other[:6]) + ": _headers gives it "
+                           "Access-Control-Allow-Origin other than *")
+
+    def addresses(site):
+        man = json.loads((site / "data" / "manifest.json").read_text(encoding="utf-8"))
+        out = ["/data/manifest.json"]
+        out += [f"/data/{t['file']}" for t in man.get("tables") or []]
+        out += [str(f.get("path") or "") for f in man.get("files") or []]
+        out += [urlsplit(t["url"]).path
+                for t in (man.get("bill_indexes") or {}).get("terms") or []]
+        return man, sorted(set(out))
+
+    _man, paths = addresses(built)
+    real_only = ["/data/people.json", "/data/people.csv", f"/data/{api_db.NAME}",
+                 "/data/schema.json", "/data/bills-1989-1990.jsonl.gz"]
+    judge(paths + real_only, "the data manifest")
+    said = f"the fixture's {len(paths)} and {len(real_only)} only a real record writes"
+
+    real = Path("site") / "data" / "manifest.json"
+    if real.is_file():
+        man, got = addresses(real.parent.parent)
+        judge(got, f"site/data/manifest.json (generated {man.get('generated')}), against the "
+                   "_headers this code writes,")
+        said += f", and site/'s {len(got)}"
+    return "ok", (f"{len(rules)} rules give every address the data manifest names "
+                  f"Access-Control-Allow-Origin: *, once each ({said}), and none covers "
+                  "/_headers, /_redirects or a page")
 
 
 @check("frontend", "every record's own page is a working shell for app.js")
