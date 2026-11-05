@@ -424,7 +424,7 @@ federal funds. <span class="l-rsa">(HB 1 of 2025, 140:1.08, footnote I)</span></
 {need("Every source of money, federal funds included",
       "The total the budget appropriates from every source, and how much of it is federal. That is in section 1 "
       "of HB 1, the department tables, which the bill text on hand does not carry (it begins at section 1.08). "
-      "Request 1 on the design's source list.")}
+      "Request A on the design's source list.")}
 <p class="l-note">One line of the estimates is printed &ldquo;$127,7000,000&rdquo; (the gasoline road
 toll, fiscal 2026). The Highway Fund's own printed total, $259,600,000, is
 $127,700,000 plus the fund's other two lines, and that is the figure used here.</p>
@@ -452,7 +452,7 @@ so it is not simply what HB 1 appropriated. The summary does not define
 general fund and how much federal.</p>
 {need("What HB 1 appropriated, department by department and fund by fund",
       "Section 1 of HB 1 as enacted. The LBA's budget page lists it as &ldquo;HB 1 Chaptered Final Version (PDF)&rdquo; "
-      "and &ldquo;(Excel)&rdquo;. Request 1.")}
+      "and &ldquo;(Excel)&rdquo;. Request A.")}
 """)
 
 sec("Other Directions in HB 1", f"""
@@ -540,20 +540,20 @@ appropriations, and projected lapses may be counted in judging whether the
 rule is met. <span class="l-rsa">(<a href="/laws/9#s8-b">RSA 9:8-b</a>)</span></p>
 {need("The Ways and Means committees' part",
       "The brief names House Ways and Means. Neither 2025 budget bill's docket shows it: both went to Finance in each chamber. "
-      "A source that says what Ways and Means does with the revenue estimates is needed before the page says anything. Request 6.")}
+      "A source that says what Ways and Means does with the revenue estimates is needed before the page says anything. Request J.")}
 """)
 
-items = ["Adds new definitions to the endangered species conservation act.",
-         "Requires the department of environmental services to adopt rules and review procedures such that actions of state agencies do not jeopardize the existence or habitats of species protected under the endangered species conservation act.",
-         "Establishes an environmental scientist position within the department of environmental services to ensure that state agencies do not jeopardize the existence or habitats of species protected under the endangered species conservation act."]
-lis = "".join(f"<li>{t}</li>" for t in items)
+# HB 2's analysis, item by item, as printed (tools/hb2_analysis.py split it and
+# checked the numbering runs 1 to 247 unbroken). Each item keeps its own number.
+items = json.loads((HERE / "hb2_analysis.json").read_text())
+lis = "".join(f'<li value="{o["n"]}">{html.escape(o["text"])}</li>' for o in items)
 sec("What HB 2 Changed", f"""
 <p>{hb2}'s analysis, printed with its final text, lists 247 changes to the law,
 in the bill's own order. The first &ldquo;adds new definitions to the endangered species
 conservation act&rdquo;; the last &ldquo;exempts ambulatory surgical centers, emergency medical
 care centers, birthing centers&rdquo; and others from a notice and consent requirement.</p>
-<details class="l-fold"><summary>All 247, as the analysis prints them</summary>
-<ol class="bud-list">{lis}<li class="bud-more">&hellip; and 244 more, rendered from the analysis at build time</li></ol></details>
+<details class="l-fold"><summary>All {len(items)}, as the analysis prints them</summary>
+<ol class="bud-list">{lis}</ol></details>
 <p>On the House floor on April 10, 2025, members offered amendments to HB 2 one
 after another: 26 roll calls on it that day, final passage included; in the Senate on June 5, 15, final passage included. Each
 is on the bill's page, with how every member voted.</p>
@@ -616,7 +616,7 @@ as the summary's own note says.</p>
 {request_chart()}
 {need("The detail behind the requests",
       "The FY28&ndash;29 Final Statewide Agency Budget Book, which the owner named and has not yet saved, and a source "
-      "for what the summary's &ldquo;prioritized needs&rdquo; column holds.")}
+      "for what the summary's &ldquo;prioritized needs&rdquo; column holds. Request F.")}
 """)
 
 sec("In the Record", f"""

@@ -78,7 +78,25 @@ is.** That is request 1.
 141:461) and its **analysis, a numbered list of 247 changes** to the law
 (four of them, 150, 153, 154 and 245, are printed without the full stop after
 the number; the numbering itself runs 1 to 247 unbroken). The page can show
-that list verbatim and link each change to its section.
+that list verbatim and link each change to its section. *Since block 3 the
+mock shows all 247 in their fold, each with its own number
+(`tools/hb2_analysis.py`, `figures/hb2_analysis.json`). Item 131 is printed
+with no closing full stop and is shown as printed.*
+
+**The conference reports' texts are on hand too.** `db/LegislationText.psv`
+holds an "OLS Release" printing of each bill marked "CofC", both stamped 19
+June 2025 (HB 1 at 15:24, HB 2 at 15:17), headed "2025-2865-CofC" and
+"2025-2871-CofC". HB 1's opens "Committee of Conference Report on HB 1-A", and
+gives the recommendation ("That the House recede from its position of
+nonconcurrence with the Senate amendment, and concur with the Senate
+amendment, and That the Senate and House adopt the following new
+amendment…"), the replacement text, and the conferees' names under
+"Conferees on the Part of the Senate" and "…of the House". (HB 2's report
+reads "Senate amendments" and replaces "all after the enacting clause".) So
+the reports' texts are on hand. Whether the LBA's copies add anything, such as
+signatures, is a guess until one is opened (request E, low priority). HB 1's report amends
+the bill "by replacing all after section 1.07", which confirms again that
+section 1 travels outside these texts.
 
 **What it cannot support:** amounts in a form a chart can use. Its
 appropriations are scattered through the sections in prose; totalling them
@@ -309,14 +327,47 @@ Governor by May 31. The page states the statute's dates only.
 
 ---
 
-## 2. Sources needed from the owner
+## 2. Sources needed from the owner (current, 5 November 2026)
 
-The table below is the first block's list. Section 1a gives where each now
-stands.
+The owner saves these in a browser or files a printout. State sites refuse
+scripted fetches, and this project does not pretend to be a browser. Nothing
+here was fetched.
 
-The owner saves these in a browser or files a printout (state sites refuse
-scripted fetches, and this project does not pretend to be a browser). Nothing
-here was fetched. **Where a page name or address is a guess, it says so.**
+**Names in quotation marks are the link text exactly as the LBA's "FY
+2026-2027 OPERATING BUDGET" page prints it** (the owner's printout,
+`sources/LBA_fy2026_2027_budget_page_printout.pdf`; the page's address is in
+`sources/README.md`), or the file name in an address the owner gave. **Where a
+name or a place is a guess, it says so.**
+
+| # | Save this | Where | What it gives the page |
+|---|---|---|---|
+| A | **"HB 1 Chaptered Final Version (PDF)"**, or **"HB 1 Chaptered Final Version (Excel)"** (the Excel is probably easier to read exactly: a guess, not seen) | LBA operating budget page, under "HB 1" | Section 1 of HB 1: what each department may spend, by fund. "Where It Goes" as enacted, the all-funds total, and the federal share. **The page's biggest gap.** That it holds section 1 is a guess until opened. |
+| B | **"Governor's Recommended Operating Budget (PDF)"** (or "(Excel)"), and **"Governor's Executive Budget Summary"** | LBA operating budget page, under "Governor's Recommended Budget and Trailer Bill Language" | The first step with figures: what was proposed against what passed. |
+| C | **"General and Education Trust Fund Surplus Statements - 06/27/25"**, **"Committee of Conference Highway Fund Surplus Statement - 6/19/25"** and **"Committee of Conference Fish and Game Fund Surplus Statement - 6/19/25"** | LBA operating budget page, under "Surplus Statements" | Inferred from the titles, not opened: each fund's balances, revenue and appropriations as passed, which would show how the budget meets RSA 9:8-b in the state's own figures. |
+| D | **"C of C vs House Passed - 07/01/25"** and **"C of C vs. Senate Passed - 07/01/25"**; optionally **"House Passed vs. Governor Recommended (Full) - 04/11/25"** | LBA operating budget page, under "Compare Reports" | How the amounts changed at each step, for the timeline. |
+| E | **"HB 1 - Committee of Conference Report (#2025-2865c) - 6/19/25"** and **"HB 2 - Committee of Conference Report (#2025-2871c) 6/19/25"** | LBA operating budget page, under "Committee of Conference Documents" | Perhaps nothing new; perhaps signatures (a guess: not opened). The reports' texts (recommendation, text and conferees' names) are already on hand as the "OLS Release" printings headed "2025-2865-CofC" and "2025-2871-CofC" in `db/LegislationText.psv` (section 1). Low priority; probably not needed. |
+| F | **"FY28-29-Final-Statewide-Agency-Budget-Book.pdf"** | Department of Administrative Services (address in `sources/README.md`) | The detail behind the FY28-29 requests, and perhaps what "prioritized needs" means (a guess). |
+| G | **The exact addresses of the two DAS files already saved**: the summary headed "Summary of Budget Submissions by Agency" and "Total Appropriations - Total Funds" (dated 9/28/2026), and the "Department and Agency Crosswalk" (headings as printed on the files) | Department of Administrative Services' budget pages (the owner gave only the budget page's address) | So the page links each straight to its PDF, as the owner asked. |
+| H | **Highway Fund and Fish and Game Fund collections, fiscal 2024 to 2026** | **Guess:** the Department of Administrative Services' monthly revenue reports (the LBA file names "DAS Monthly Revenue Focus Reports" as its source) | "What Came In" for the other two funds; the LBA file covers only the General and Education funds. |
+| I | **The Annual Comprehensive Financial Report, fiscal 2025** | Named by HB 1 itself (140:15) as "the audited annual comprehensive financial report pursuant to RSA 21-I:8, II(a)"; **guess:** the Department of Administrative Services | Audited actuals, by fund. Lower priority now that the DAS summary gives fiscal 2026 actuals by department. |
+| J | **A source on the Ways and Means committees' part in the budget** | **Guess:** the 2025-2026 House Rules the owner printed on 26 October 2026, if they cover it; otherwise the LBA. Nothing on the LBA page names Ways and Means. | Whether the page says anything about Ways and Means at all. |
+| K | **A source that RSA 77 was the interest and dividends tax** | **Guess:** the Department of Revenue Administration's page on the tax, or RSA 77's text before 2025 | Lets the page set RSA 77's repeal beside the fall in that estimate. |
+| L | Optional: **"Dept of Business and Economic Affairs Capital Budget Presentation.pdf"** | Department of Administrative Services (address in `sources/README.md`) | A second agency's capital requests; named by the owner. Not needed for the page. |
+| M | Later: **town and county budgets** | **Guess:** the Department of Revenue Administration's municipal forms (the MS series) | A possible next phase. |
+
+**Most useful first: A, then C and B.** A alone fills the page's largest
+placeholder.
+
+The first block numbered its requests 1 to 9; the letters replace them. Old 1
+is now A, and so, probably, is old 2 (a guess until A is opened). Old 3 is done
+for the General and Education funds (the LBA collections), and the rest of it
+is H. 4 is I, 5 is B, 6 is J, 7 is
+E, 8 is K and 9 is M. Sections 1 and 1a keep the old numbers, as records of
+those blocks.
+
+### The first block's list, for the record
+
+Section 1a gives where each stood after the owner's five PDFs.
 
 | # | What | Why | Where it officially lives |
 |---|---|---|---|
@@ -353,7 +404,7 @@ approved.
 
 Not a new top-level section: one page, linked from where people already are,
 is "clean and simple, not a labyrinth". If town and county budgets come later
-(request 9), they can be sections of County Government and Town Meeting, or a
+(request M), they can be sections of County Government and Town Meeting, or a
 second page, decided then.
 
 ### Sections
@@ -366,7 +417,7 @@ second page, decided then.
    (`l-bar`), then every source as a bar chart (`l-chart`), with every source
    by fund in a table in a fold. A note that these are estimates and are not
    all the money. A placeholder for the all-funds, federal-included total
-   (request 1).
+   (request A).
 3. **Where It Goes.** The DAS summary's fiscal 2026 actuals by department,
    total funds, as a bar chart: the ten largest, then the rest together. HHS's
    ten agencies are added into one department, by the DAS crosswalk. Every
@@ -374,7 +425,7 @@ second page, decided then.
    amounts are in a table in a fold. A note quotes RSA 9:4 IV(a)'s definition
    of the adjusted authorized budget, says the summary does not define
    "actuals", and that it does not split by fund. A placeholder
-   remains for HB 1's own section 1 (request 1).
+   remains for HB 1's own section 1 (request A).
 4. **Other Directions in HB 1.** The reductions the act directs, each with
    its section (which says how: some name accounts, one spreads its cut across
    other agencies), and the positions it abolishes. Kept apart from "Where It
@@ -387,7 +438,7 @@ second page, decided then.
    Government uses for the county budget): RSA 9's calendar, then 2025's own
    dates and votes from the docket. The balanced-budget rule (RSA 9:8-b),
    quoted, with its bonded-debt and projected-lapse provisions. A
-   placeholder for Ways and Means (request 6).
+   placeholder for Ways and Means (request J).
 7. **What HB 2 Changed.** The analysis's 247 changes, verbatim and in order,
    in a fold, so the page does not choose which ones matter. The roll-call
    counts, linked to the bill pages.
@@ -495,7 +546,7 @@ after the Governor. A banner at the top says it is a mock.
 1. **Ship before section 1 arrives?** *Settled by the owner on 30 October
    2026: the page stays private until every detail is complete and current.*
    The DAS summary now gives where the money went by department in total
-   funds, but HB 1's own amounts by fund still need request 1.
+   funds, but HB 1's own amounts by fund still need request A.
 2. **Placement.** *Default: Learn, after The Governor and the Executive
    Council*, plus the one-line link under the bill note on HB 1 and HB 2
    (a request to the manager).
@@ -512,7 +563,7 @@ after the Governor. A banner at the top says it is a mock.
 7. **The reductions table.** It is what the act says, but it is a list of
    cuts with no list of increases beside it (the increases are in section 1,
    not on hand). *Default: keep it in its own section, "Other Directions in
-   HB 1", and ship it only with the department chart from request 1*, so the
+   HB 1", and ship it only with the department chart from request A*, so the
    page shows both.
 8. **Inflation.** The six-budget chart is in dollars of each year. *Default:
    no adjustment*, and the chart says so; adjusting needs a price index from
@@ -523,7 +574,7 @@ after the Governor. A banner at the top says it is a mock.
 10. **The interest and dividends line.** The repeal of RSA 77 (on hand) sat
     beside the fall in the estimate in the first draft; the review read it as
     implying cause, and it is out of the mock. *Default: add it back only once
-    request 8 confirms RSA 77 was that tax*, quoting the RSA note's own words.
+    request K confirms RSA 77 was that tax*, quoting the RSA note's own words.
 11. **Spanish.** *Default: later*, through the guides session, once the
     English is approved (new keys flagged in `lang/es.json` then).
 12. **Party breakdown of the budget votes.** *Default: no*; the bill pages
@@ -546,7 +597,7 @@ after the Governor. A banner at the top says it is a mock.
     DAS names and expands nothing.
 17. **FY2027 "adjusted authorized" against HB 1.** *Default: quote RSA 9:4
     IV(a)'s definition, which already says why it is not simply HB 1's
-    figure*, and show both once request 1 is on hand.
+    figure*, and show both once request A is on hand.
 18. **How long the requests section stays.** It is current only until the
     Governor's budget (due by February 15, 2027, by RSA 9:2). *Default: the
     page carries the date the summary was dated, and the section is replaced
@@ -556,7 +607,7 @@ after the Governor. A banner at the top says it is a mock.
 20. **Wide tables on a phone.** The every-source and every-department
     tables scroll sideways inside their folds at 390px, as By the Numbers'
     tables do; the page itself does not. *Default: keep the site's pattern.*
-21. **Town and county budgets.** *Default: a later phase*, after request 9,
+21. **Town and county budgets.** *Default: a later phase*, after request M,
     probably as sections of the existing County Government and Town Meeting
     pages rather than new pages.
 
@@ -574,6 +625,10 @@ python3 -I tools/extract_budget.py KIT OUT/          # every printing of HB 1/HB
 python3 -I tools/estimates.py KIT OUT/HB1_2025_*CHAPTERED*.txt estimates.json
 python3 -I tools/figures.py estimates.json figures.json   # checks each fund sums to its total
 python3 -I tools/history.py estimates.json history.json   # the six budgets
+python3 -I tools/hb2_analysis.py OUT/HB2_2025_*CHAPTERED*.txt hb2_analysis.json  # HB 2's 247 items
+python3 -I tools/actuals.py LBA.txt actuals.json          # pdftotext -layout of the LBA collections PDF
+python3 -I tools/requests.py DAS.txt CROSSWALK.txt requests.json
+python3 -I tools/capital.py HB25_2025_CHAPTERED.txt capital.json
 python3 -I tools/mock.py KIT/site figures.json history.json KIT/site/learn/state-budget.html
 node tools/shoot.js http://127.0.0.1:8765 SHOTS budget=/learn/state-budget.html
 ```
@@ -657,3 +712,26 @@ It found these, all fixed:
     not in it.
   - The requests chart's scale shows its last figure on a phone.
   - "Nh" and "Of The" are fixed in the title-cased DAS names.
+
+## Block 3 (5 November 2026)
+
+- **HB 2's analysis in full.** All 247 items are in the mock's fold, each
+  under its own number.
+- **The conference reports' texts are on hand.** See the HB 2 subsection in
+  section 1.
+- **Section 2 is rewritten as the current request list**, A to M, with names
+  exactly as printed.
+- **Rebuilt on current `dev`.** `dev` is merged (246 commits), and the site
+  was rebuilt from it (48 steps, 0 failed). The mock was redrawn on that
+  build's County Government page, checked beside it at 1280, and
+  screenshotted again.
+
+A fresh reviewer found no wrong figure or name: every quoted link text, both
+stamps and all 247 items, word for word. It found these, all fixed:
+- guesses not marked as guesses (rows A, C and E, and the "signed copy"
+  remark in section 1);
+- old request 2's mapping to A, which is a guess;
+- the rest of old 3, which is H;
+- row G's quotation joining two printed lines;
+- a misleading field name in `hb2_analysis.json`;
+- an "It" that read as covering both reports.
