@@ -31,7 +31,7 @@ CSS = """<style>
 .er-maj::after{content:"";position:absolute;top:-.375rem;bottom:-.375rem;left:var(--at);border-left:2px solid var(--ink)}
 .er-majw{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-2) 0 0}
 .R{background:var(--rep)}.D{background:var(--dem)}.I{background:var(--ind)}
-.er-open{background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--edge)}
+.er-open{background:var(--wash);outline:1px dashed var(--edge);outline-offset:-1px}
 .er-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,24rem),1fr));gap:var(--sp-5);margin:var(--sp-5) 0}
 .er-card{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-out);padding:var(--sp-5) var(--sp-6)}
 .er-card h3{margin:0}
@@ -42,7 +42,7 @@ CSS = """<style>
 .er-b{grid-column:1/-1;height:.5rem;border-radius:2px;background:var(--wash);overflow:hidden}
 .er-b > i{display:block;height:100%}
 .er-row .mchip{max-width:100%;white-space:normal}
-.er-win{display:inline-block;white-space:nowrap;font-size:var(--t-sm);font-weight:600;color:var(--ink);margin:var(--sp-1) 0 0 var(--sp-3)}
+.er-row > span:first-child{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);align-items:center}
 .er-foot{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-4) 0 0}
 .er-card details{margin-top:var(--sp-4)}
 .er-card summary{cursor:pointer;color:var(--pine);font-size:var(--t-ui)}
@@ -65,7 +65,7 @@ def pc(n, tot):
     return f"{100*n/tot:.1f}%" if tot else "0%"
 
 
-def chamber(name, seats, parts, open_=0, open_word=""):
+def chamber(name, seats, parts, open_=0, open_word="", final=True):
     maj = seats // 2 + 1
     segs = "".join(f'<i class="{p}" style="flex:{n}"></i>' for n, p, _ in parts if n)
     if open_:
@@ -77,9 +77,11 @@ def chamber(name, seats, parts, open_=0, open_word=""):
     return (f'<section class="er-chb"><h3>{name}</h3><p class="er-meta">{seats} seats; {maj} make a majority.</p>'
             f'<figure class="l-fig l-bar" role="img" aria-label="{name}: '
             + "; ".join(f"{n} {w}" for n, p, w in parts) + (f"; {open_} {open_word}" if open_ else "") + '">'
-            f'<div class="l-barb er-maj" style="--at:{100*maj/seats:.2f}%" aria-hidden="true">{segs}</div>'
-            f'<p class="er-majw">The line is the majority, {maj} seats.</p>'
-            f'<ul class="l-barkey">{key}</ul></figure></section>')
+            + (f'<div class="l-barb er-maj" style="--at:{100*maj/seats:.2f}%" aria-hidden="true">{segs}</div>'
+               f'<p class="er-majw">The line is the majority, {maj} seats.</p>' if final else
+               f'<div class="l-barb" aria-hidden="true">{segs}</div>'
+               f'<p class="er-majw">{seats - open_} of {seats} seats fully counted, unofficially; {maj} make a majority.</p>')
+            + f'<ul class="l-barkey">{key}</ul></figure></section>')
 
 
 def pchip(name, party, slug=""):
@@ -97,8 +99,8 @@ def race_card(title, meta, cands, seats, foot, won_word="Elected", towns=None, l
     for i, (n, p, v) in enumerate(order):
         win = mark and i < seats
         rows.append('<div class="er-row"><span>' + pchip(n, p, n in linked)
-                    + (f'<span class="er-win">{won_word}</span>' if win and won_word else "")
-                    + f'</span><span class="c">{fmt(v)} <span>· {pc(v, tot)}</span></span>'
+                    + (f'<span class="chip">{won_word}</span>' if win and won_word else "")
+                    + f'</span><span class="c">{fmt(v)}' + (f' <span>· {pc(v, tot)}</span>' if seats == 1 else '') + '</span>'
                     + f'<span class="er-b" aria-hidden="true"><i class="{p.upper()[:1]}" style="width:{100*v/top:.1f}%"></i></span></div>')
     t = ""
     if towns:
@@ -107,6 +109,8 @@ def race_card(title, meta, cands, seats, foot, won_word="Elected", towns=None, l
              + "".join(f"<th>{esc(h)}</th>" for h in hdr) + "</tr></thead><tbody>"
              + "".join("<tr>" + "".join((f'<td class="n">{fmt(x)}</td>' if isinstance(x, int) else f"<td>{esc(x)}</td>") for x in r) + "</tr>" for r in body)
              + "</tbody></table></div></details>")
+    if seats > 1:
+        foot = "Each voter could choose up to %d, so no shares are given; each bar is scaled to the most votes. " % seats + foot
     return (f'<article class="er-card"><h3>{esc(title)}</h3><p class="er-meta">{meta}</p>'
             + "".join(rows) + t + (f'<p class="er-foot">{foot}</p>' if foot else "") + "</article>")
 
@@ -187,6 +191,10 @@ closest = "".join(
     + (' <span class="chip">Recounted</span>' if r.get("recounted") else "") + "</li>"
     for m, k, r in close[:6])
 
+tabs24 = ('<div class="twntabs" role="tablist" aria-label="Offices"><button type="button" role="tab" aria-selected="true">Overview</button>'
+        '<button type="button" role="tab" aria-selected="false">State Senate <span class="ofn">(24)</span></button>'
+        '<button type="button" role="tab" aria-selected="false">State House <span class="ofn">(203)</span></button></div>'
+        '<p class="src">The Governor, Executive Council, Congress, county offices and ballot questions are not on this page yet: their 2024 files have not been read.</p>')
 tabs = ('<div class="twntabs" role="tablist" aria-label="Offices"><button type="button" role="tab" aria-selected="true">Overview</button>'
         '<button type="button" role="tab" aria-selected="false">State Senate <span class="ofn">(24)</span></button>'
         '<button type="button" role="tab" aria-selected="false">State House <span class="ofn">(203)</span></button>'
@@ -201,9 +209,9 @@ body = (
     '<p class="lead">November 5, 2024. Every State Senate and State House race, as the Secretary of State&rsquo;s '
     'results files count it. Choose a district for its towns and wards.</p>'
     '<div class="er-state"><span class="chip">Official results</span>'
-    '<span>Read from the Secretary of State&rsquo;s results files, saved October 17, 2026; '
-    '7 House races carry a recount&rsquo;s figures.</span></div>'
-    + tabs +
+    '<span>Read from the Secretary of State&rsquo;s results files, saved October 17, 2026. '
+    'Past the recount deadline; 7 House races carry a recount&rsquo;s figures.</span></div>'
+    + tabs24 +
     '<section class="ofpart"><h2>Seats Won</h2><div class="er-ch">'
     + chamber("State Senate", 24, [(won["S"]["r"], "R", "Republican"), (won["S"]["d"], "D", "Democratic")])
     + chamber("State House", 400, [(won["H"]["r"], "R", "Republican"), (won["H"]["d"], "D", "Democratic")])
@@ -254,7 +262,7 @@ ncards += race_card(
     "Belknap District 6",
     f'Every polling place reported ({be6["precincts_total"]} of {be6["precincts_total"]}) · 4 seats',
     wcands(be6), 4,
-    "Unofficial. The fourth and fifth places are 24 votes apart. A candidate may ask for a recount until the Secretary of State&rsquo;s deadline.",
+    "Unofficial. Counts as the source reported them at 9:41 a.m.",
     won_word="Most votes", mark=True)
 
 body = (
@@ -268,8 +276,8 @@ body = (
     '<span>Updated 9:41 a.m., November 4. This page fills in by itself; there is no need to refresh.</span></div>'
     + tabs.replace("2024", "2026") +
     '<section class="ofpart"><h2>Seats So Far</h2><div class="er-ch">'
-    + chamber("State Senate", 24, [(sd["R"], "R", "Republican"), (sd["D"], "D", "Democratic")], so, "still counting")
-    + chamber("State House", 400, [(hd["R"], "R", "Republican"), (hd["D"], "D", "Democratic")] + ([(hd["I"], "I", "other")] if hd["I"] else []), ho, "still counting")
+    + chamber("State Senate", 24, [(sd["R"], "R", "Republican"), (sd["D"], "D", "Democratic")], so, "still counting", final=False)
+    + chamber("State House", 400, [(hd["R"], "R", "Republican"), (hd["D"], "D", "Democratic")] + ([(hd["I"], "I", "other")] if hd["I"] else []), ho, "still counting", final=False)
     + '</div><p class="src">A seat is counted for a party only once every polling place in its district has reported, '
     'and then for the candidates with the most votes. None of it is final: the Secretary of State&rsquo;s count, and any '
     'recount, decide.</p></section>'

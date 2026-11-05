@@ -1,6 +1,7 @@
 # Election results: design (draft for the owner)
 
-Status: **design only, first draft, 4 November 2026.** Nothing here is built, and
+Status: **design only, second draft, 5 November 2026**, revised after one
+review (its fifteen findings are answered in the text and the mocks). Nothing here is built, and
 nothing reaches the site until the owner approves it. Branch
 `design/election-results`.
 
@@ -13,11 +14,12 @@ of display they want.
 or a cited page), **reported** (a secondary source says so; the primary was not
 read), **guess**.
 
-**What I asked of other servers today:** six requests to nhelectionresults.org
-(home, `/contested`, `/api/topline`, one board, one district's results) and
-three to WMUR's election hub (widgets 1318, 1321 and 1323). All six used a plain
-client named `granite-record-design/1.0`, about two seconds apart, with no
-polling. A research helper read news pages and searched the web. Nothing went to
+**What I asked of other servers on 4 November:** five requests to
+nhelectionresults.org (home, `/contested`, `/api/topline`, one board, one
+district's results) and three to WMUR's election hub (widgets 1318, 1321 and
+1323). All eight used a plain client named `granite-record-design/1.0`, a few
+seconds apart, with no polling. **5 November:** none; one reviewer read the
+draft and the files on disk. A research helper read news pages and searched the web. Nothing went to
 gc.nh.gov. sos.nh.gov refused the helper (403), and nobody tried to get round
 that.
 
@@ -25,22 +27,26 @@ that.
 
 ## 0. The design on one page
 
-- **One page per election**, under Officials: `/elections/2026-general`,
-  `/elections/2028-primary` and so on. It opens on an overview. Below that come
+- **One page per election**, under Officials, named by its day and kind:
+  `/elections/2026-11-03-general`, `/elections/2028-06-13-primary`. It opens on an overview. Below that come
   tabs, one for each kind of office.
-- **On election night it fills in by itself**, the way Live Now does. One small
-  program (a Worker) reads one outside source every few minutes and writes a
-  file to the live layer's store. The static page reads that file. The
-  election-night version of this needs the owner's approval as a new running
-  piece (CLAUDE.md).
+- **On election night it fills in by itself**, on the same plan as Live Now: a
+  Worker reads one outside source every few minutes and writes to R2, and the
+  page asks a read-only address for it. It is not the approved Live Now Worker
+  as it stands: that one polls only on weekdays, 07:00 to 20:00, and an
+  election night runs to the small hours (§6). Either way it is a new running
+  piece and needs the owner's approval (CLAUDE.md).
 - **It shows reported counts only.** Every card names its source and its time.
   It never makes a race call of its own. A seat is counted toward a party only
   once every polling place in that district has reported. Even then the page
   says "most votes", not "elected".
 - **The Secretary of State's files are the final word.** Once they are saved and
-  read, they replace everything unofficial, race by race. "Elected" then follows
-  the rule the site already uses for members-elect: past the recount deadline,
-  or the recount's own count.
+  read, they replace everything unofficial, race by race. Then each race reads
+  "Result not final" until the recount deadline the owner enters has passed,
+  or the recount's own count is posted, and only then "Elected" (the
+  members-elect rule as it stands). The files mark no winners: "Elected" is the
+  most votes for as many seats as the race has, as `collected/election_2024.json`
+  says of itself.
 - **Winners link to their member pages** through the same matching file the
   members-elect flow already uses.
 - **The source is still open.** No feed I found states who runs it, where its
@@ -133,6 +139,10 @@ Mock (2026, election night, **illustrative numbers**): `mock/night-1280-light.pn
     all three). Each candidate has first and last name, party, whether they are
     the incumbent, and votes.
   - Every race carries `"source":"hearst"`.
+  - **Its `seats` field is `0` for every single-seat race** (100 of the 203
+    House races, all 24 Senate and all 5 Council races). The non-zero values
+    add to 300. So the adapter takes a race's seats from `site/districts.json`,
+    never from a feed.
   - 146 House candidates carried `"winner": true` at that time. That is a race
     call: somebody's judgment.
 - **Not seen:** town-by-town counts, and any statement of where the numbers come
@@ -165,11 +175,11 @@ Mock (2026, election night, **illustrative numbers**): `mock/night-1280-light.pn
 - **Reliability concerns** (seen):
   - The same page says "of 320 polling places reporting" in one place and
     "282 /316" in another.
-  - Its State House totals at the time read 267 won by Democrats and 96 by
-    Republicans. WMUR's count at about the same time, for races where every
-    polling place had reported, was 207 and 71 (§1.5). The two measure different
-    things (its model's calls against complete counts), so this is not an error,
-    but it shows how far a projection runs ahead of the count.
+  - Its State House totals at the time read 267 won by Democrats, 96 by
+    Republicans and 1 by an independent. WMUR's count at about the same time, for races where every
+    polling place had reported, was 207 and 71 (§1.5). The first counts the
+    races its model has decided; the second only the races fully counted. It
+    shows how far a projection runs ahead of the count.
 - **What it takes:** finding out who runs it, then asking. Until then it is a
   reference to compare against, not a source.
 
@@ -196,8 +206,7 @@ Mock (2026, election night, **illustrative numbers**): `mock/night-1280-light.pn
 
 - **Towns and cities themselves** (reported): the moderator "publicly announces
   the results" in each polling place. Manchester and Dover post ward results on
-  their own sites. That makes 300-odd places with no common format, so it is
-  not a feed. It is useful to check a single disputed number.
+  their own sites. Hundreds of places with no common format is not a feed. It is useful to check a single disputed number.
 - **Decision Desk HQ** (reported): it carried State Senate and all 400 House
   seats in 2022 (Granite Memo). It is a commercial licence; no price was found.
 
@@ -269,13 +278,27 @@ ratified it.
 | County commissioner | `CC|Belknap|2` | County Officials tab |
 | Ballot questions | `Q|2026|1` (and a CACR's own bill key) | `corrections/ballot_results.json`, the bill page |
 | Delegates (a presidential year) | `DEL|…` | none |
+| A special election | the office's key plus its day: `H|Strafford|4@<YYYY-MM-DD>` | as the office |
+| The presidential primary | `PP#R`, `PP#D` | none |
+| Out of scope | town and school ballots, town meeting | none |
+
+Party convention delegates may also be elected at a state primary (**guess**;
+to check when the 2028 primary ballot is published).
+
+A floterial district is a House district laid over several base districts, so
+that a town too small for a seat of its own shares one; districts.json marks
+each. The map draws them as their own layer (`float`), and the results map
+keeps that switch.
 
 - **A primary** is the same race key plus a party: `S|9#R`, `S|9#D`. Each
   party's primary is its own race with its own seats and winners. The page
   shows one party at a time, Republican first, as every list on the site does.
 - **Places:** each race carries its towns and wards as `site/districts.json`
-  names them. A drill-down row is a town or a city ward, and its key is the
-  place name the district table uses. Floterial districts share towns with base
+  names them. A drill-down row is a town, a city ward or an unincorporated
+  place (the 2024 file has "Atk. & Gil. Academy Grant"), and its key is the
+  place name the district table uses. History draws each election on the
+  districts in force that year; the map's geometry is 2022's, so a results map
+  before 2022 needs that decade's boundaries first. Floterial districts share towns with base
   districts, and the drill-down shows the same town under both.
 
 ### 2.2 People
@@ -298,15 +321,21 @@ ratified it.
   wider to hold every office. Same shape: races keyed as above, each candidate
   with a party, votes, `elected`, `recounted`, and per-place counts. **New:**
   `"places": {"Bedford": [6921, 7295], …}` in candidate order, so the
-  drill-down can be built from the official file.
+  drill-down can be built from the official file; and, for a recounted race,
+  `"first_count"`, the figures before the recount, which the card shows
+  beside the recount's.
 - Live store (R2, the live layer's bucket): `elections/<date>.json`, written by
   the Worker. Each race has the source's name, the time it was read, the
   polling places reported and expected *as the source gives them*, and the
   counts. A source's calls, projections and probabilities are thrown away when
   read, so they can never be shown by accident (§4).
-- The page's own file, `/elections/<date>.json`, is built each night from the
-  official file where there is one, and points to the live file where there is
-  not.
+- The page's own file, `/elections/<date>-<general|primary>.json`, is built
+  each night from the official file where there is one, and points to the live
+  file where there is not.
+- **Official always wins, race by race, in the page's script too.** A race
+  in the official file never draws the live copy, even while the Worker still
+  writes it. Where the overview's seat count mixes the two, its line under the
+  bar says how many seats come from each.
 
 ---
 
@@ -325,8 +354,8 @@ so in a box at the top.
 |---|---|
 | Page shell, title, lead, breadcrumb | every page |
 | Tabs by office | Officials' `twntabs` (My Town, Legislators …) |
-| A candidate | the one person chip (`pchip`), with the party letter as printed; linked only when matched |
-| Status words | `chip` neutral: "Official results", "Recounted"; the members-elect words as they are: "Elected November 3, 2026", "Result not final", "a recount was requested" |
+| A candidate | the one person chip (`pchip`), as `elect_race` already draws a member-elect: a cross-nomination ("I/D") on the neutral chip with both letters kept, no letter where none was printed; linked only when matched |
+| Status words | `chip` neutral: "Official results", "Recounted", "Elected", "Most votes"; the members-elect words as they are: "Elected November 3, 2026", "Result not final", "a recount was requested" |
 | The map | `map.js` as Officials draws it, with a results file in place of the roster fill; Republican, Democratic, striped for a split district |
 | Seats by party | the Learn pages' proportion bar (`l-bar`) and its key |
 | Town table | `table.votes` |
@@ -334,17 +363,21 @@ so in a box at the top.
 
 **New, with reasons:**
 
-- **A majority line on the seats bar.** The first thing a reader asks of a
-  chamber is "who has a majority"; a line at 201 of 400 answers it without
-  arithmetic.
+- **A majority line on the seats bar, for a finished election only.** The
+  first thing a reader asks of a chamber is "who has a majority"; a line at 201
+  of 400 answers it without arithmetic. On the night the line is left out: a
+  party's segment crossing it would say "this party has the majority" before
+  anything is final, which is a call (§4). The night's bar says instead "278
+  of 400 seats fully counted, unofficially; 201 make a majority."
 - **A thin bar under each candidate's count.** House races run to eight or ten
   candidates for four or more seats, and a ring cannot be read with that many.
-  A bar per row can, and on a phone too.
-- **A "still counting" hollow segment** (the vacant-seat hollow square's style).
-- **On the map at night, a "still counting" outline.** Today the map's hatch
-  means a vacant seat. A district not fully counted needs its own word in the
-  legend, not the vacancy hatch. That is a small change to `map.js`, not drawn
-  in the mock.
+  A bar per row can, and on a phone too. Each bar is scaled to the most votes
+  in the race, and the card says so.
+- **"Still counting", one look everywhere:** a grey ground with a dashed edge,
+  in the seat bar and, at night, on the map, with its own word in each key. It
+  is not the vacant seat's hollow square or the map's vacancy hatch, which mean
+  something else. The map's half is a small change to `map.js`, not drawn in
+  the mock.
 
 ### 3.2 The overview
 
@@ -364,29 +397,43 @@ so in a box at the top.
 
 - **Title and meta:** the district; its towns or wards; the number of seats;
   "Recounted" where the count is a recount's.
-- **One row per candidate:** the person chip, the count, the share, and a bar.
-  - In a finished race (official, past the deadline), the winners carry
+- **One row per candidate:** the person chip, the count, and a bar. The share
+  of the vote is given only in a one-seat race: where each voter may choose up
+  to four, a share of all votes cast is misleading.
+  - In an official race past the recount deadline, the winners carry the chip
     "Elected".
-  - In a finished race where a recount was asked for, the card reads "Result not
-    final — a recount was requested", the wording the site already uses.
+  - In an official race before the deadline, the card reads "Result not
+    final", and "— a recount was requested" where the SoS schedule lists it,
+    the wording the site already uses.
   - On the night, nobody carries "Elected". Where every polling place has
     reported, the top candidates (as many as there are seats) carry "Most
     votes". Otherwise no candidate is marked.
-- **"By town and ward":** a folded table with a row per place. On the night,
-  places not yet in are listed as "not reported".
+- **"By town and ward":** a folded table with a row per town, ward or place.
+  On the night, places not yet in are listed as "not reported".
 - **Footer:** the source by name, the file or the time it was read, and the
   scattered write-ins.
   - A recount card shows the first count beside the recount (Hillsborough 18:
     Kesselring 2,048 then 2,050).
 
+**The cases a card must handle:**
+
+| Case | What the card does |
+|---|---|
+| A tie for the last seat | the tied candidates carry "Tied for the last seat"; no "Elected"; the seat counts for nobody in the bar (the 2024 file already sets `elected` to null) |
+| A cross-nominated candidate ("i/d") | both letters on the neutral chip; in the seat bar, a seat of its own colour, "other", never given to either party |
+| A write-in winner | official: named as the file names them; the reader already refuses one it cannot name. On the night: not shown; the feeds carry no write-ins, and the card says "write-ins are not in the unofficial count" |
+| One candidate, or no more candidates than seats | "Unopposed"; counts still shown |
+| A town split between districts, or a city with many wards | each ward or part is its own row, as the district table names it |
+| A floterial district | its own card; its towns also appear under their base districts |
+
 ### 3.4 Wording for how much is counted
 
-- **Counts, not percentages, and the source's own denominator:** "72 of 92
-  polling places reported". New Hampshire votes in towns and in city wards, so
-  "towns" would be wrong for Manchester and Nashua. "Polling places" is what
-  both feeds count, and the denominators differ (§1.5), so the page never
-  states a percentage it did not compute from a count it can name. "Every
-  polling place reported (3 of 3)" when complete.
+- **Counts, never percentages:** "72 of 92 polling places reported", where 92
+  is how many the source expects. New Hampshire votes in towns and in city
+  wards, so "towns" would be wrong for Manchester and Nashua. The two feeds
+  expect different numbers of polling places for the same district (§1.5), so
+  a percentage would hide whose count it is. "Every polling place reported (3
+  of 3)" when complete.
 - **The day's standing line:** "Unofficial count. Updated 9:41 a.m., November 4.
   This page fills in by itself; there is no need to refresh." Once official:
   "Official results. Read from the Secretary of State's results files, saved
@@ -429,7 +476,10 @@ source named. In practice that means rarely.
 
 The seat count on the night counts a seat only where every polling place has
 reported, and labels it "most votes". That is arithmetic on a complete
-unofficial count, not a call, and the page says so beneath the bars.
+unofficial count, not a call, and the page says so beneath the bars. For the
+same reason the night's seat bar has no majority line (§3.1): it gives the
+count of seats fully counted and the number that make a majority, and leaves
+the comparison to the reader.
 
 ---
 
@@ -438,12 +488,12 @@ unofficial count, not a call, and the page says so beneath the bars.
 | When | What the page shows | What makes it |
 |---|---|---|
 | Before the night | the races and candidates, "No votes counted yet" | the candidate list; the SoS publishes one (**guess**; to confirm) |
-| Polls close to the next morning | the counts as the source reports them; fills in by itself | the Worker, every 2–5 minutes, writing `elections/<date>.json`; the page reads it the way Live Now does |
+| Polls close to the next morning | the counts as the source reports them; fills in by itself | the Worker, every 2–5 minutes, writing `elections/<date>.json` to R2; the page asks `/api/live/elections/<date>` |
 | The days after | the same, slower; the Worker stops when the source stops changing, or after 3 days | the Worker; then the night's build |
-| SoS files posted | race by race, "Official results"; unofficial counts gone for those races | the person saves the files; `parse_sos_results.py`; the night's build |
-| Recount deadline to recount results | "Result not final — a recount was requested", then the recount's figures with "Recounted" | `members_elect.json` (`not_final`, `recount_deadline`); the next numbered upload |
-| Certification | "Elected" | the existing members-elect rule: past the deadline, or the recount's count |
-| History | `/elections/2024-general`, finished | `collected/election_2024.json` (House and Senate only until the other files are saved) |
+| SoS files posted, up to the recount deadline | race by race, "Official results" with "Result not final"; unofficial counts gone for those races | the person saves the files; `parse_sos_results.py`; the night's build |
+| Past the recount deadline | "Elected" in every race not on the recount schedule; "Result not final — a recount was requested" in those that are | `members_elect.json` (`recount_deadline`, `not_final`), entered by the owner |
+| A recount's result | the recount's figures beside the first count, "Recounted", then "Elected" | the next numbered upload |
+| History | `/elections/2024-11-05-general`, finished | `collected/election_2024.json` (House and Senate only until the other files are saved); "Elected" needs a `2024-11-05` entry with its recount deadline in `members_elect.json`, which the owner adds (the 2024 mock assumes it) |
 
 - **Certification has no fixed date** (reported, NHPR: "There is no deadline
   for the formal certification of election results in New Hampshire"). The
@@ -463,10 +513,22 @@ Effort figures are **guesses**, in working sessions.
    2026 files are saved.
 2. **Map results layer** (1 session): a results fill, and the "still counting"
    legend entry, in `map.js`.
-3. **The live adapter** (2 sessions, once a source agrees): a Worker in
-   `workers/live/` or beside it, reading one source and keeping only counts and
-   reporting. Checks and replays run against saved snapshots, as the live layer
-   does.
+3. **The live adapter** (2 sessions, once a source agrees). It reads one
+   source and keeps only counts, seats from `site/districts.json`, and polling
+   places reported. Checks and replays run against saved snapshots, as the
+   live layer's do. Two ways to place it, both needing the owner's approval:
+   - **Recommended: its own small Worker**, `graniterecord-elections`,
+     switched on by a person for an election's dates only, and writing to the
+     live layer's R2 bucket. The approved `graniterecord-live` stays as
+     approved.
+   - Or a third duty for `graniterecord-live`. That changes an approved
+     design: its window is weekdays 07:00–20:00, and an election night runs
+     past midnight.
+
+   The page reads it through a new read-only Pages Function,
+   `/api/live/elections/<date>`, cached 30 seconds at the edge like
+   `/api/live/streams`. Every reader's poll is still one Function call, so on
+   a busy night the cache does the work.
 4. **A rehearsal** on a real election night before June 2028: a special
    election, or a September 2027 town vote if the source covers it (**guess**).
 
@@ -475,7 +537,8 @@ Effort figures are **guesses**, in working sessions.
 - choose the source;
 - send the requests in §8 and say yes or no to any terms;
 - approve a new running piece (the Worker);
-- confirm the 2028 primary date;
+- add each past election's recount deadline to `members_elect.json`, so its
+  page can say "Elected";
 - save the SoS pages listed in §1.1.
 
 **Risks:**
@@ -500,7 +563,9 @@ Effort figures are **guesses**, in working sessions.
 | Show "too close to call"? | Only where a cited source says it in words |
 | Count seats on the night? | Only where every polling place has reported, as "most votes" |
 | Percent or count for reporting? | Count, with the source's denominator |
-| Where does the page live? | Under Officials, `/elections/<date>-<general|primary>`; a link from the home page during election week |
+| Where does the page live? | Under Officials, `/elections/<YYYY-MM-DD>-<general|primary>`; a link from the home page during election week |
+| A new Worker, or a duty for the Live Now one? | A new one, on only for an election's dates (§6) |
+| How does a past election say "Elected"? | The owner enters its recount deadline in `members_elect.json`, as for 2026 |
 | Is the 2028 primary in June? | Settled: June (13 June 2028), confirmed by the owner 5 November |
 | One more feed snapshot to score against the SoS files? | The owner decides; three requests on 6 November if yes |
 | Primaries: one party at a time? | Yes, Republican first |
