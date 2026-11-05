@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-18.1
+// GRANITE_VERSION: 2026-10-18.2
 /* THE FOLLOW PANEL'S STATES, RUN IN NODE.
 
      node tests/test_follow_panel.js PAGE_JS tests/dom_stub.js
@@ -34,7 +34,7 @@ document.addEventListener = (t, f) => { (on[t] = on[t] || []).push(f); };
 let S;
 try {
   S = (0, eval)(fs.readFileSync(pageJs, "utf8") +
-    ";({mountFollow, followSubmit, FOLLOW_TS, FOLLOW_SAID, FOLLOW_OFTEN})");
+    ";({mountFollow, followSubmit, FOLLOW_TS, FOLLOW_SAID, FOLLOW_OFTEN, followUp, followOk})");
 } catch (e) { console.log(JSON.stringify({ load: e.constructor.name + ": " + e.message })); process.exit(1); }
 // dom_stub runs a timer at once; the token's wait needs a real one.
 globalThis.setTimeout = RT;
@@ -258,9 +258,17 @@ const settle = async (n = 8) => { for (let i = 0; i < n; i++) await tick(); };
 const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
 const KEY = "bill:2026/HB1442", FEED = "/feeds/bill/2026/hb1442.xml";
 let net;
+// The count page's answer carries a body whose letting-go is counted: the
+// page asks only for the status, and an answer left unread stays open in a
+// browser (followUp, 5 November 2026).
+const countReply = () => {
+  net.asked = (net.asked || 0) + 1;
+  return { ...reply(net.count, { count: 3 }),
+    body: { cancel: () => { net.cancelled = (net.cancelled || 0) + 1; return Promise.resolve(); } } };
+};
 globalThis.fetch = async (u, init) => {
   u = String(u);
-  if (u.startsWith("/api/follow/count")) return reply(net.count, { count: 3 });
+  if (u.startsWith("/api/follow/count")) return countReply();
   if (u.startsWith("/changes/current.json")) return reply(200, { followable: net.followable });
   if (u === "/api/follow/signup") { net.sent.push(JSON.parse(init.body)); return net.signup(); }
   return reply(404, {});
@@ -490,6 +498,25 @@ await test("the RSS disclosure opens inside the pane without shutting it, and st
   cite.open = true;
   await fire("toggle", cite);
   ok(!p.follow.open, "opening Cite no longer shuts Follow");
+});
+
+await test("the count page is asked only through followUp, which lets its body go, answered or not", async () => {
+  const src = fs.readFileSync(pageJs, "utf8");
+  const asks = src.split('fetch("/api/follow/count"').length - 1;
+  ok(asks === 1, `the page asks the count page in ${asks} places, not only in followUp`);
+  for (const count of [200, 404]) {
+    net = { count, followable: {}, sent: [] };
+    ok(await S.followUp() === (count === 200), `followUp did not say whether a ${count} answered`);
+    ok(net.asked === 1 && net.cancelled === 1,
+      `a ${count} answer's body was not let go: asked ${net.asked}, let go ${net.cancelled || 0}`);
+  }
+  const p = await page();
+  ok(net.asked >= 1 && net.cancelled === net.asked,
+    `opening a record's Follow asked the count ${net.asked} times and let go of ${net.cancelled || 0}`);
+  ok(p.form, "the email box was not drawn from a let-go answer");
+  net = { count: 200, followable: {}, sent: [] };
+  ok(await S.followOk() === true && net.asked === 1 && net.cancelled === 1,
+    `a request card's ask did not let its answer go: asked ${net.asked}, let go ${net.cancelled || 0}`);
 });
 
 finished = true;

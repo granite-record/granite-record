@@ -296,11 +296,15 @@ function siteOrigin(env) {
 }
 
 // THE WAY OUT FIRST (run(), below): the status the site's count page answers,
-// 0 for none at all.
+// 0 for none at all. Its body is let go unread: a Worker holds an unread
+// response open, and an invocation has six connections at once for the
+// changes files and Resend that follow (5 November 2026).
 async function followPagesLive(origin, now) {
   try {
-    return (await fetch(`${origin}/api/follow/count?run=${now.getTime()}`,
-      { headers: { Accept: "application/json" } })).status;
+    const r = await fetch(`${origin}/api/follow/count?run=${now.getTime()}`,
+      { headers: { Accept: "application/json" } });
+    if (r.body) await r.body.cancel().catch(() => {});
+    return r.status;
   } catch { return 0; }
 }
 

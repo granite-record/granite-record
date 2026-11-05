@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.264
+// GRANITE_VERSION: 2026-09-07.265
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3029,8 +3029,8 @@ if(window.GR_STATIC||window.GR_STANDALONE){
 // email: the box is drawn only where the sign-up answers, so the live site
 // shows no Follow with nothing in it before email goes live.
 if(window.GR_STATIC){
-  if(window.GR_LAW)fetch("/api/follow/count",{cache:"no-store"})
-    .then(r=>{if(r.ok)mountFollow("law","",String(window.GR_LAW));}).catch(()=>{});
+  if(window.GR_LAW)followUp()
+    .then(ok=>{if(ok)mountFollow("law","",String(window.GR_LAW));}).catch(()=>{});
   // REPORT A PROBLEM ON A SESSION DAY AND A STUDY COMMITTEE (the cohesion
   // audit of 30 October 2026, I-8): the page names its record (GR_REPORT,
   // "session:H/2010-03-11", "study:ss1451") and the box goes after the Share
@@ -7161,8 +7161,8 @@ function followMail(box){
   const key=box.dataset.fkey||"", slot=box.querySelector(".followmail");
   if(!key||!slot||box.dataset.mail)return;
   box.dataset.mail="asked";
-  Promise.all([fetch("/api/follow/count",{cache:"no-store"}),fetch("/changes/current.json")])
-    .then(([c,cur])=>c.ok&&cur.ok?cur.json():null)
+  Promise.all([followUp(),fetch("/changes/current.json")])
+    .then(([up,cur])=>up&&cur.ok?cur.json():null)
     .then(cur=>{
       if(!cur||!cur.followable||!Object.prototype.hasOwnProperty.call(cur.followable,key))return;
       slot.innerHTML=followMailForm(key);
@@ -7615,9 +7615,19 @@ const termOfYear=y=>{
 let FOLLOW_OK=null;
 function followOk(){
   if(FOLLOW_OK)return FOLLOW_OK;
-  FOLLOW_OK=fetch("/api/follow/count",{cache:"no-store"}).then(r=>{
-    if(r.ok)document.documentElement.classList.add("followok");return r.ok;}).catch(()=>false);
+  FOLLOW_OK=followUp().then(ok=>{
+    if(ok)document.documentElement.classList.add("followok");return ok;}).catch(()=>false);
   return FOLLOW_OK;
+}
+// WHETHER THE FOLLOW PAGES ANSWER, AND NOTHING MORE (5 November 2026). The
+// three that ask -- a law's Follow, a record's email box, a request card's --
+// want only the status, and read none of the count's two bytes; a response
+// whose body is never read stays open in the browser until it is collected,
+// so a law page and /bills never went quiet (seen by the deck's screenshots:
+// network idle never came). Every ask is this one, and lets the body go.
+function followUp(){
+  return fetch("/api/follow/count",{cache:"no-store"}).then(r=>{
+    if(r.body&&r.body.cancel)r.body.cancel().catch(()=>{});return r.ok;});
 }
 // `cls`: a class beside "card lsr" (a paged list's "unshown").
 function lsrCardHtml(b,cls){
