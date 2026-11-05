@@ -7627,7 +7627,8 @@ function followOk(){
 // network idle never came). Every ask is this one, and lets the body go.
 function followUp(){
   return fetch("/api/follow/count",{cache:"no-store"}).then(r=>{
-    if(r.body&&r.body.cancel)r.body.cancel().catch(()=>{});return r.ok;});
+    if(r.body&&r.body.cancel)Promise.resolve().then(()=>r.body.cancel()).catch(()=>{});
+    return r.ok;});
 }
 // `cls`: a class beside "card lsr" (a paged list's "unshown").
 function lsrCardHtml(b,cls){

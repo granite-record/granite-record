@@ -501,9 +501,17 @@ await test("the RSS disclosure opens inside the pane without shutting it, and st
 });
 
 await test("the count page is asked only through followUp, which lets its body go, answered or not", async () => {
-  const src = fs.readFileSync(pageJs, "utf8");
-  const asks = src.split('fetch("/api/follow/count"').length - 1;
-  ok(asks === 1, `the page asks the count page in ${asks} places, not only in followUp`);
+  // The address in the code, in any quotes, comments left out; once, and in
+  // followUp. And the law page's ask, which runs only as a law page loads
+  // and so is not pressed here, is followUp's (the review of 5 November 2026).
+  const code = fs.readFileSync(pageJs, "utf8").replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:"'`\\])\/\/.*$/gm, "$1");
+  const asks = code.split("/api/follow/count").length - 1;
+  const up = code.slice(code.indexOf("function followUp("), code.indexOf("function followUp(") + 400);
+  ok(asks === 1 && up.includes("/api/follow/count"),
+    `the page names the count page in ${asks} places, not only in followUp`);
+  ok(/if\s*\(\s*window\.GR_LAW\s*\)\s*followUp\(\)/.test(code),
+    "a law page's Follow no longer asks through followUp");
   for (const count of [200, 404]) {
     net = { count, followable: {}, sent: [] };
     ok(await S.followUp() === (count === 200), `followUp did not say whether a ${count} answered`);
