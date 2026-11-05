@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-05.1
+# GRANITE_VERSION: 2026-11-05.2
 """
 Record every address a former member's page has moved from, so it answers
 with a 301 for good.
@@ -56,11 +56,24 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--site", default="site")
     ap.add_argument("--check", action="store_true", help="write nothing")
+    ap.add_argument("--current", nargs="*", default=[], metavar="ID",
+                    help="also keep these members' pages' addresses as they are now, ahead of "
+                         "a change that will move them (a seat the person is about to set in "
+                         "member_corrections.json): the build answers each with a 301 once the "
+                         "page has moved, and does nothing while it has not")
     a = ap.parse_args()
     src = Path(a.site) / "former.json"
     if not src.exists():
         sys.exit(f"{src} is not here: build the site first")
-    found = moves(json.loads(src.read_text(encoding="utf-8")))
+    rows = json.loads(src.read_text(encoding="utf-8"))
+    found = moves(rows)
+    want = {str(x) for x in a.current}
+    for r in rows:
+        if str(r.get("id")) in want and r.get("slug"):
+            found.setdefault(f"/legislator/{r['slug']}", str(r["id"]))
+    missing = want - {str(r.get("id")) for r in rows}
+    if missing:
+        sys.exit(f"no former member's page for {', '.join(sorted(missing))} in {src}")
     have = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else {}
     new = {k: v for k, v in found.items() if k not in have}
     clash = {k: (have[k], v) for k, v in found.items() if k in have and have[k] != v}
