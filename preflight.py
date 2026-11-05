@@ -69105,8 +69105,8 @@ def _motion_keys():
 
 @check("session", "the seat of a term is the one its bills print, else the ballots' in the "
                   "member's last term only, else none: never a later record's seat on an "
-                  "earlier term", needs=("build_site_v2",))
-def _term_seats_printed_first(B2):
+                  "earlier term", needs=("build_site_v2", "build_session_pages"))
+def _term_seats_printed_first(B2, BSP):
     """term_seats' order (5 November 2026). A ballot's label is not dated: a
     former member's is built from one record of the seat they last held, so
     Shannon Chandley read "Hills 22" on her 2009-2010 ballots, the seat she
@@ -69149,7 +69149,9 @@ def _term_seats_printed_first(B2):
     root = Path(tempfile.mkdtemp(prefix="gr-seats-"))
     try:
         f = B2.write_floor_record(root, {"7439": chair}, {}, record=({}, set(), {}))
-        rec = json.loads(Path(f).read_text(encoding="utf-8"))
+        # as the session-day step reads it: floor_record() hands on the keys
+        # it names, and once left the ballots behind (5 November 2026)
+        rec = BSP.floor_record(f)
         pres = rec["presiding"]
     finally:
         shutil.rmtree(root, ignore_errors=True)

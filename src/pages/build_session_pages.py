@@ -2908,7 +2908,7 @@ def floor_record(path=FLOOR_RECORD):
         got = {}
     return {"presiding": got.get("presiding") or {}, "cards": got.get("cards") or {},
             "moments": got.get("moments") or {}, "seats": got.get("seats") or {},
-            "nobill": got.get("nobill") or {}}
+            "ballots": got.get("ballots") or {}, "nobill": got.get("nobill") or {}}
 
 
 def load_rows(site):
