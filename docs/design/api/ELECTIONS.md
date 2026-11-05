@@ -59,19 +59,38 @@ names and recounts by hand in `corrections/members_elect.json`.
 ## When a race is included
 
 When the election design's page would say "Elected" for it (its §5), and
-never before. That is the rule the members-elect file already uses, from
-`docs/ELECTION_WEEK.md`:
+never before. There is one rule for this, and it exists today:
+`members_elect()` with `recount_open()` in `src/parse/build_members_elect.py`,
+which follows `docs/ELECTION_WEEK.md`. The election design would move it into
+one importable function in `src/lib` (working name
+`race_final(race, hand, today)`), and the page, members-elect and the API
+would all call it. The API never keeps a copy of the rule. Per race:
 
-- The owner has entered that election's `"recount_deadline"` in
-  `corrections/members_elect.json`. Candidates may ask for a recount until
+- A race whose count is a recount's (`"recounted": true`) is final.
+- Any other race is final only when the owner has entered that election's
+  `"recount_deadline"` in `corrections/members_elect.json`, today is past it,
+  and the race is not in `"not_final"`. Candidates may ask for a recount until
   5 p.m. on the Friday after the election (RSA 660:1, as ELECTION_WEEK.md
   cites it); in 2026 that is 6 November.
-- The race is not in `"not_final"`, or its recount's file has been read
-  (`"recounted": true`).
+- A tie for a last seat (a candidate with `"elected": null`) is never final
+  for that seat. `"not_final": {"seats": n}` holds back only the n winners
+  with the fewest votes.
+
+The API is stricter about the last of these: **a race is included only when
+every one of its seats is final**. A race with a tie, or with any seat held
+back, is left out until it is settled. Including only some of a race's
+winners would publish a list of winners that isn't complete.
+
+**A winner `"held"` in `members_elect.json`** is kept off every page, so the
+race they won is left out of the API too, for as long as they are held.
+Leaving out only that winner would make the gap point to them. The reason for
+a hold is private: no file says it, and none says that a race is being held.
 
 A race that is not final is left out entirely, rather than included with a
 flag. That way a program that ignores flags still never reads a count that
-may change. `elections.csv`'s description and `schema.json` say so.
+may change. `elections.csv`'s description and `schema.json` say that only
+final races are included, without giving any race's reason for being left
+out.
 
 - **Only the official file.** The live store (`elections/<date>.json` in R2)
   and the page's own night file are not read. Their counts are unofficial,
@@ -95,12 +114,20 @@ beside the other tables:
 
 ```
 election_races(election, day, kind, term, race, office, county, district,
-               party, seats, floterial, scattered, recounted,
+               party, seats, floterial, scatter, recounted,
                source_file, source_sha256)
 election_candidates(election, race, candidate, party, votes, first_votes,
                     write_in, elected, person)
 election_places(election, race, place)
 ```
+
+The names follow the official file's, as the election design fixes them.
+For each candidate: `name` (here `candidate`), `party` (the letters as
+printed, with cross-nominations joined by "/"), `votes`, `write_in` and
+`elected`. For each race: `seats`, `floterial`, `towns` (here
+`election_places`), `scatter` and `recounted`. Two are new in that design:
+`places`, and `first_count` (here `first_votes`). A written-in winner appears
+only where the file names them, since the reader refuses any it cannot name.
 
 `/data/elections.csv` has one row per candidate, with the race's columns
 beside it, so a spreadsheet needs no join. Every election goes in one file.
@@ -166,13 +193,14 @@ These go to the owner together with the election design's own questions
 No build until the owner has answered these questions together with the
 election design's. Then it would be a branch after the December train:
 
-- a reader of `collected/election_*.json` and of the owner's
-  `corrections/members_elect.json` (for `recount_deadline`, `not_final`,
-  `recounted` and `matches`), which fills the tables and `elections.csv`
-  through `build_exports.py` and `api_db.py`. It should be the same function
-  the election page's night build uses to decide "Elected", not a copy of it;
+- a reader of `collected/election_*.json` that fills the tables and
+  `elections.csv` through `build_exports.py` and `api_db.py`. It decides
+  final by calling the shared `race_final()` and reads `matches` and `held`
+  from the owner's `corrections/members_elect.json`, which it only ever
+  reads;
 - the columns in `api_schema.py`;
-- a preflight check that no race in `not_final` is ever a row;
+- a preflight check that no race that isn't final, and no race with a held
+  winner, is ever a row;
 - proof against a full build, like the others.
 
 It changes no page. It waits on the 2026 results reaching `dev`.
