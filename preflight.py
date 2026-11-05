@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.770
+# GRANITE_VERSION: 2026-09-04.771
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -69173,7 +69173,10 @@ def _session_chips_seat_of_their_term(BSP):
         if Path(f).exists():
             for r in json.loads(Path(f).read_text(encoding="utf-8")):
                 if r.get("slug"):
-                    ids.setdefault(r["slug"], str(r.get("id") or ""))
+                    # a mover's page stands for every number it lists, its own first
+                    own = str(r.get("id") or "")
+                    ids.setdefault(r["slug"], [own, *(str(x) for x in r.get("member_ids") or []
+                                                      if str(x) != own)])
     import build_date
     import proceedings
     today = build_date.today().isoformat()
@@ -69189,7 +69192,8 @@ def _session_chips_seat_of_their_term(BSP):
             if not tag:
                 continue
             seen += 1
-            want = (fr["seats"].get(term) or {}).get(ids.get(slug, ""))
+            want = BSP.seat_of(fr["seats"].get(term) or {}, ids.get(slug, []),
+                               page.parent.name) or None
             if f"{name} {tag}" != want:
                 bad.append(f"{page.parent.name} {page.stem}: {name} {tag}, the ballots of "
                            f"{term} say {want!r}")
@@ -83998,6 +84002,60 @@ def _speaker_by_ballot(BSP):
     assert got == ("joe-quill-hills-9", "paul-terry-belk-7", None, None), got
     assert m.unmatched[("H", "Lee")] == 1 and m.unmatched[("H", "Nobody")] == 1, m.unmatched
     return "ok", "Quill by the term's ballots; Terry by the roster; Lee, two of them, and Nobody left as words"
+
+
+@check("session", "a member who moved between chambers is named on an old day by the seat their "
+                  "ballots under the earlier number give", needs=("build_session_pages",))
+def _mover_seat_on_old_day(BSP):
+    """The follow-up of the former movers (5 November 2026): Sen. Shannon
+    Chandley's page is 9404, and her House ballots of 2009-2010 are filed
+    under 568, the number joined to it (the row's member_ids). label() read
+    the page's own number only, so her 2010 speaker lines said "Rep. Shannon
+    Chandley" without the seat she held. A sitting mover and one who has left
+    are drawn alike; a name no roster matches is linked by a ballot under the
+    joined number too (by_ballot)."""
+    root = Path(tempfile.mkdtemp(prefix="gr-mover-"))
+    try:
+        (root / "legislators.json").write_text(json.dumps([
+            {"id": "9401", "slug": "cindy-rosenwald-sd-13", "name": "Rosenwald, Cindy",
+             "chamber": "S", "display_full": "Sen. Cindy Rosenwald (D - SD 13)",
+             "member_ids": ["9401", "177"]}]), encoding="utf-8")
+        (root / "former.json").write_text(json.dumps([
+            {"id": "9404", "slug": "shannon-chandley-sd-11", "name": "Chandley, Shannon",
+             "chamber": "S", "display_full": "Former Sen. Shannon Chandley (D - SD 11)",
+             "member_ids": ["9404", "568"], "served": {"terms": ["2009-2010", "2019-2020"]}},
+            {"id": "70", "slug": "pat-quay-hills-3", "name": "Quay, Pat", "chamber": "H",
+             "served": {"terms": ["2009-2010"]}}]), encoding="utf-8")
+        m = BSP.Members(root)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    m.current, m.term = "2025-2026", "2009-2010"
+    m.seats = {"2009-2010": {"568": "Rep. Shannon Chandley (D - Hills 22)",
+                             "177": "Rep. Cindy Rosenwald (D - Hills 30)",
+                             "70": "Rep. Pat Quay (R - Hills 3)"},
+               "2019-2020": {"9404": "Sen. Shannon Chandley (D - SD 11)"}}
+    got = {s: m.label(s, "H") for s in ("shannon-chandley-sd-11", "cindy-rosenwald-sd-13",
+                                         "pat-quay-hills-3")}
+    want = {"shannon-chandley-sd-11": "Rep. Shannon Chandley (D - Hills 22)",
+            "cindy-rosenwald-sd-13": "Rep. Cindy Rosenwald (D - Hills 30)",
+            "pat-quay-hills-3": "Rep. Pat Quay (R - Hills 3)"}
+    assert got == want, f"a mover on a day of 2009-2010 reads {got}, not {want}"
+    m.term = "2019-2020"
+    assert m.label("shannon-chandley-sd-11", "S") == "Sen. Shannon Chandley (D - SD 11)", (
+        "the page's own number no longer names its own term's seat")
+    m.term = "2009-2010"
+    assert m.by_ballot("H", "Chandley") == "shannon-chandley-sd-11", (
+        "a ballot under the joined number links no page")
+    # a move in mid-term: both numbers hold a seat in one term, and each
+    # chamber's day names its own (the review of 5 November 2026)
+    m.term = "2017-2018"
+    m.seats["2017-2018"] = {"9404": "Sen. Shannon Chandley (D - SD 11)",
+                            "568": "Rep. Shannon Chandley (D - Hills 22)"}
+    both = (m.label("shannon-chandley-sd-11", "H"), m.label("shannon-chandley-sd-11", "S"))
+    assert both == ("Rep. Shannon Chandley (D - Hills 22)", "Sen. Shannon Chandley (D - SD 11)"), (
+        f"a member who moved in mid-term is named {both} on a House and a Senate day")
+    return "ok", ("Chandley (former) and Rosenwald (sitting) named by the House seat of 2009-2010 "
+                  "their earlier numbers held; Chandley by SD 11 in 2019-2020")
 
 
 @check("build", "build_bills binds each of its names that hold every member once")
