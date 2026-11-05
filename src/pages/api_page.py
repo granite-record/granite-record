@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.3
+# GRANITE_VERSION: 2026-10-30.4
 """
 /api: the data API's documentation page, drawn in the data page's own
 components and counted from tonight's manifest.
@@ -24,6 +24,7 @@ wider than a phone scrolls inside its own box rather than widening the page.
 
 import json
 
+import components as C
 import shell
 
 E = lambda s: (str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
@@ -106,7 +107,7 @@ def body(manifest):
     if bills:
         grid = "".join(
             f'<li><a href="data/{E(f["path"].rsplit("/", 1)[-1])}" download><span class="dpt">'
-            f'{E(f["term"])}</span> <span class="dpm">{f["rows"]:,} bills &middot; {mb(f["bytes"])}'
+            f'{E(C.term_words(f["term"]))}</span> <span class="dpm">{f["rows"]:,} bills &middot; {mb(f["bytes"])}'
             f'</span> <span class="sr">{E(f["path"].rsplit("/", 1)[-1])}</span></a></li>' for f in bills)
         rows.append(
             '<tr role="row" class="dpgroup"><th scope="row" role="rowheader">Bills by Term'
@@ -114,7 +115,7 @@ def body(manifest):
             '<td role="cell" class="dpw"><p class="dpwhat">Every bill&rsquo;s full record, one line a '
             "bill: its docket, hearings, votes, sponsors, committee reports, and the text of its "
             f"latest printing where the record has it. One file a term, {len(bills)} in all, from "
-            f"{E(bills[-1]['term'])} to {E(bills[0]['term'])}.</p>"
+            f"{E(C.term_words(bills[-1]['term']))} to {E(C.term_words(bills[0]['term']))}.</p>"
             '<details class="dpmore"><summary><span>More about <code>bills-&lt;term&gt;.jsonl.gz'
             "</code></span></summary><p>Each line is one JSON object, keyed "
             f'<code>"key": "{E(newest)}/HB1442"</code>: the record the bill&rsquo;s own page is '
