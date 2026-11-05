@@ -140,12 +140,11 @@ longer holds: it is 20 bills.
 ---
 
 **After pasting:** the next build shows each page with its seat, and the
-address moves with it. For example, Edith Hogan's page moves to
-`/legislator/edith-hogan-hills-34`. The build does **not** make redirects
-for addresses that move because of a correction; an address that existed
-would need one.
+address moves with it. For example, Edith Hogan's page moves from
+`/legislator/edith-hogan` to `/legislator/edith-hogan-hills-34`.
 
-Today's addresses for the six with no seat end in the bare name (e.g.
-`edith-hogan`), because `member_slug` has no district to add. If the
-addresses should not move, say so before pasting, and I'll add redirects for
-these nine on the branch.
+The old addresses are already kept: all nine are in
+`generated/moved_addresses.json`, recorded on `fix/former-seats` with
+`record_moves.py --current`. The build does nothing with them while each is
+still its page's own. Once the paste moves a page, the build answers the old
+address with a 301, for good. Nothing more is needed.
