@@ -21,12 +21,16 @@ added, never dropped or re-pointed, and a run over a build that moved fewer
 pages takes nothing away. Run it after a build that warns of unrecorded
 addresses, and commit the file. No network.
 """
-import argparse
-import json
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
 import sys
 from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
 
-OUT = Path("generated/moved_addresses.json")
+import argparse  # noqa: E402
+import json  # noqa: E402
+
+OUT = _paths.ROOT / "generated" / "moved_addresses.json"
 
 
 def moves(former_rows):
