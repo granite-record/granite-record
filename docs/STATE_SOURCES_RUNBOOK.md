@@ -311,8 +311,10 @@ delegation's page may well link there. For each county:
      for word;
    - the day it was read.
 
-   For Grafton and Strafford, whose registered addresses are commissioners'
-   pages, the home page is the one the site's own logo or "Home" link opens.
+   For Grafton and Strafford, whose `county-<name>` rows are commissioners'
+   pages, the home page has a row of its own (`county-grafton-home`,
+   `county-strafford-home`, unconfirmed like the rest). Check it against the
+   page the site's own logo or "Home" link opens.
 
 The weekly session never edits the registry. The manager puts what step 6
 reports into `records/sources/REGISTRY.csv` on a branch:
@@ -321,9 +323,9 @@ reports into `records/sources/REGISTRY.csv` on a branch:
 - "address confirmed in a browser on <day>" in `note`, in place of the web
   search's caveat.
 
-A home page that is not yet a row (Grafton's, Strafford's, and Cheshire's
-once found) becomes one, used by `officials:county-site` and by the county
-page that links it. The day each page was read is also in the bucket's
+Every county home page's row is used by `officials:county-site` and by the
+Learn page on county government (`learn:county-government`), which links it.
+Cheshire's wanted row becomes a page row once its address is found. The day each page was read is also in the bucket's
 record from then on: `python3 src/ops/state_sources.py report` lists every
 reading with its day.
 
