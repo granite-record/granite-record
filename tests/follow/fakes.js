@@ -52,6 +52,9 @@ export class FakeNet {
     // The site's follow pages answer (the sender asks /api/follow/count
     // before it mails anyone); false is a deploy that lost the database.
     this.followLive = true;
+    // Every answer the count page gave, kept to ask whether its body was let
+    // go (sender.test.js, the count's body).
+    this.countReplies = [];
     // A 429 carries Resend's retry-after, short here so a test waits little;
     // resendStatusOnce answers the next request alone with that status.
     this.retryAfter = "0.01";
@@ -117,8 +120,11 @@ export class FakeNet {
       this.pings.push({ url: u.pathname, body: await req.text() });
       return new Response("OK");
     }
-    if (u.origin === SITE && u.pathname === "/api/follow/count")
-      return this.followLive ? Response.json(1) : new Response("Not found", { status: 404 });
+    if (u.origin === SITE && u.pathname === "/api/follow/count") {
+      const r = this.followLive ? Response.json(1) : new Response("Not found", { status: 404 });
+      this.countReplies.push(r);
+      return r;
+    }
     if (u.origin === SITE) return this.asset(u.pathname);
     throw new Error(`the tests ask no network, and this asked ${u.origin}`);
   }

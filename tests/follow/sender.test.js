@@ -677,6 +677,22 @@ test("the sender asks nothing but the site's changes files and Resend", async ()
   } finally { w.close(); }
 });
 
+test("the count page's answer is let go unread, whether it answers or not", async () => {
+  for (const live of [true, false]) {
+    const w = makeWorld();
+    try {
+      w.net.followLive = live;
+      siteAsOf(w, "2026-10-08");
+      await subscribe(w, "reader.count", ["bill:2026/HB9901"], { cursor: "2026-10-07" });
+      w.now = new Date("2026-10-08T12:00:00Z");
+      await run(w.env, w.now);
+      assert.ok(w.net.countReplies.length >= 1, "the sender did not ask the count page");
+      assert.ok(w.net.countReplies.every(r => r.bodyUsed),
+        `a count answer's body was left open (the page ${live ? "answered" : "was gone"})`);
+    } finally { w.close(); }
+  }
+});
+
 // ---- the reader's own settings (the manage page, 11 October 2026) ----------------------
 const setRow = (w, id, sql, ...v) => w.d1.sql.prepare(`UPDATE subscribers SET ${sql} WHERE id = ?`).run(...v, id);
 
