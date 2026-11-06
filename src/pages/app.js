@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.265
+// GRANITE_VERSION: 2026-09-07.266
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4959,11 +4959,15 @@ function testifyButton(d,b,now=new Date()){
   // last past hearing's day, the month in full -- and, only where it can
   // open again (`again`, unchanged), the plain reason, naming the other
   // chamber: "They may open again if the bill goes to the Senate and the
-  // Senate holds its own public hearing."
+  // Senate holds its own public hearing." Where it is already there, unheard
+  // ("h") or tabled ("t") (the owner, 6 November 2026): "They may open again
+  // if the Senate holds its own public hearing."
   const there=other&&("the "+other.stop);
+  const arrived=again&&/^[ht]$/.test(other.mark||"");
   const why=last
     ?`Online testimony submissions for this bill have closed as of ${esc(dateWords(last.when,"full"))}.`
-      +(again?` They may open again if the bill goes to ${there} and ${there} holds its own public hearing.`:"")
+      +(!again?"":arrived?` They may open again if ${there} holds its own public hearing.`
+        :` They may open again if the bill goes to ${there} and ${there} holds its own public hearing.`)
     :moving?"Online testimony has not opened yet: it opens once a public hearing is scheduled."
     :"Online testimony did not open for this bill: it had no public hearing.";
   const shut=last?", closed":moving?", not open yet":", not open: no hearing was held";

@@ -77386,6 +77386,10 @@ def _testify_box_senate():
     ended: box([st("hearing", "2000-01-13", "S", "Finance")],
                {rail: [{stop: "Introduced", mark: "p"}, {stop: "Senate", mark: "x"}]}, term, {n: "SB 406"}),
     old: box([st("hearing", "2999-01-13", "S", "Finance")], moving, "1999-2000"),
+    // passed by the Senate and in the House now, unheard there
+    inHouse: box([st("hearing", "2000-01-13", "S", "Finance")],
+                 {rail: [{stop: "Introduced", mark: "p"}, {stop: "Senate", mark: "p"}, {stop: "House", mark: "h"},
+                         {stop: "Governor", mark: "-"}, {stop: "Law", mark: "-"}]}),
   };
 })()""", names=("testifyButton", "sittingTerm"))
     if got is None:
@@ -77408,6 +77412,9 @@ def _testify_box_senate():
     assert "has not opened yet" in said["none"], f"a bill with no hearing is told: {said['none']!r}"
     assert "have closed as of" in said["ended"] and "open again" not in said["ended"], (
         f"a bill whose rail has ended is told: {said['ended']!r}")
+    # in the House already, unheard there: the owner's shorter line (6 November 2026)
+    assert "They may open again if the House holds its own public hearing." in said["inHouse"] \
+        and "goes to" not in said["inHouse"], f"a Senate bill now in the House is told: {said['inHouse']!r}"
     assert got["old"] == "", "a bill of an earlier term has a Testify button"
     return "ok", ("a Senate hearing is a public hearing, past or ahead; \"may open again\" only while one "
                   "chamber has heard it; an ended bill and an earlier term as before")
@@ -78351,7 +78358,7 @@ def _testify_when_it_cannot_open():
     said = {k: " ".join(re.sub(r"<[^>]+>", " ", v).replace("&rsquo;", "’").split()) for k, v in got.items()}
     did_not = "Online testimony did not open for this bill: it had no public hearing."
     passed = "Online testimony submissions for this bill have closed as of January 21, 2000."
-    again = "They may open again if the bill goes to"
+    again = "They may open again if"
     for name in ("hr17", "hr17Bare", "hr48", "hr48Bare", "overUnheard", "endedAhead"):
         assert did_not in said[name] and "not opened yet" not in said[name], (
             f"{name}, which can no longer be heard and never was, is told: {said[name]!r}")
@@ -78361,8 +78368,17 @@ def _testify_when_it_cannot_open():
             f"{name}, which cannot be heard in another chamber, is told: {said[name]!r}")
     for name in ("sitting", "hb7", "movingBare", "tabled"):
         assert passed in said[name] and again in said[name], (
-            f"{name}, still moving with the other chamber ahead, is not told testimony opens again there: "
+            f"{name}, still moving with the other chamber ahead, is not told testimony may open again there: "
             f"{said[name]!r}")
+    # THE OWNER'S TWO LINES (6 November 2026): a bill already in the other
+    # chamber, unheard there (its stop "h"), is told only of that chamber's
+    # hearing; one that has not reached it ("-") that it must go there first
+    for name in ("sitting", "hb7", "movingBare"):
+        assert "They may open again if the Senate holds its own public hearing." in said[name] \
+            and "goes to" not in said[name], (
+            f"{name}, in the Senate already and unheard there, is told: {said[name]!r}")
+    assert "They may open again if the bill goes to the Senate and the Senate holds its own public " \
+        "hearing." in said["tabled"], f"a bill that has not reached the Senate is told: {said['tabled']!r}"
     for name, url in (("noBody", "gc.nh.gov/remotecommittee/senate.aspx"),
                       ("jointBody", "gc.nh.gov/house/committees/remotetestimony/")):
         h = got[name]
