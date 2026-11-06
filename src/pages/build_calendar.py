@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.47
+# GRANITE_VERSION: 2026-09-18.48
 """
 The General Court's week, one page per week.
 
@@ -1386,10 +1386,34 @@ WEEK_JS = r"""
       else if(c.nodeType===1) swapText(c,pairs);
     }
   }
+  // shell.cite_url's rule, for an address drawn again: a break after each
+  // slash past the site's own, and the last part kept whole with what follows
+  // it (the full stop, BibTeX's "},") in .citetail. Its <wbr>s split the
+  // address across text nodes, so swapText cannot find it there; its span is
+  // found by its text -- the address, then only that punctuation -- and
+  // redrawn whole.
+  function citeUrlFill(span,url,after){
+    var m=/^(https?:\/\/[^\/]+\/)([\s\S]+)$/.exec(url);
+    span.textContent="";
+    if(!m){ span.appendChild(document.createTextNode(url+after)); return; }
+    var parts=m[2].match(/[^\/]*\/|[^\/]+$/g);
+    span.appendChild(document.createTextNode(m[1]));
+    parts.forEach(function(p,i){
+      span.appendChild(document.createElement("wbr"));
+      if(i<parts.length-1){ span.appendChild(document.createTextNode(p)); return; }
+      var tail=document.createElement("span");
+      tail.className="citetail"; tail.textContent=p+after;
+      span.appendChild(tail);
+    });
+  }
   function rename(k,label){
     var to={label:label, url:ORIGIN+hrefFor(k)};
     to.key=citeKey(to.url);
     if(to.label===NAMED.label && to.url===NAMED.url) return;
+    all(document,".pcite .citeurl").forEach(function(s){
+      var t=s.textContent, after=t.slice(NAMED.url.length);
+      if(t.slice(0,NAMED.url.length)===NAMED.url && /^[.,}]*$/.test(after)) citeUrlFill(s,to.url,after);
+    });
     // The address first and whole: "/calendar" is the start of every week's.
     var pairs=[[NAMED.url,to.url],[NAMED.label,to.label],["{"+NAMED.key+",","{"+to.key+","]];
     all(document,".pcite dd").forEach(function(dd){ swapText(dd,pairs); });
