@@ -57,8 +57,8 @@ These were measured on the real built site, on HB 1123 and on 21 May, at
   - the pane never covers its own button;
   - Escape closes the pane and returns keyboard focus to the button.
 - **Large default text (24px):** the nub stays clear of the button on both
-  phone and desktop. The page scrolls sideways at 1280 at that text size,
-  but it does so with every pane closed too; that predates this change.
+  phone and desktop. (This said the page scrolled sideways at 1280 at that
+  size. That was the test, not the site: see `../polish/README.md`.)
 
 ## Not changed
 
