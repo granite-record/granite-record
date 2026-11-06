@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.771
+# GRANITE_VERSION: 2026-09-04.772
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -108261,6 +108261,78 @@ def _learn_examples_record():
             "the closest-votes table has rows this cannot read, so none of them was checked")
     return "ok", (f"{checked} worked examples match their ballots; {rows} closest votes, "
                   "each a majority question")
+
+
+@check("code", "the source recheck lists every guide that rests on an agency page, voting, DMV, "
+               "property tax and benefits first, and tells a changed figure from one that holds",
+       needs=("recheck_sources", "guides"))
+def _recheck_order(RS, G):
+    """The manager session, 6 November 2026: when the laptop's readings of
+    the state's pages land, the guides are checked against them in an order
+    (recheck_sources.ORDER, docs/SOURCE_RECHECK.md), the busiest first. A
+    guide left out of the order would never be rechecked, and nothing would
+    say so. So every guide with a claim on an agency page (an http source
+    that is not the General Court's) has one place in the order, every slug
+    in it is a guide, and the four themes asked for come first.
+
+    And the worksheet's outcomes, on a made-up guide, registry and readings
+    folder: a fee the page no longer prints is LOOK, naming it; a phone
+    number written another way is still on the page; a page read before
+    the claim is NOT NEWER; a claim with nothing to look for is READ IT; a
+    page with no reading is NOT READ; and one the registry lacks is NOT IN
+    REGISTRY. An empty readings folder ends in a failure, not a quiet list."""
+    bad = []
+    slugs = [s for _t, ss in RS.ORDER for s in ss]
+    dup = sorted({s for s in slugs if slugs.count(s) > 1})
+    if dup:
+        bad.append(f"the order names {dup} twice")
+    known = {g["slug"] for g in G.GUIDES}
+    if set(slugs) - known:
+        bad.append(f"the order names guides there are none of: {sorted(set(slugs) - known)}")
+    rests = {g["slug"] for g in G.GUIDES
+             if any(str(c["source"]).startswith("http") and "gc.nh.gov" not in str(c["source"])
+                    for c in g["claims"])}
+    if rests - set(slugs):
+        bad.append(f"guides on agency pages the order leaves out: {sorted(rests - set(slugs))}")
+    if [t for t, _ss in RS.ORDER[:4]] != ["Voting", "DMV", "Property tax", "Benefits"]:
+        bad.append(f"the order does not open on voting, DMV, property tax and benefits: "
+                   f"{[t for t, _ss in RS.ORDER[:4]]}")
+    g = {"slug": "made-up", "title": "Made Up", "claims": [
+        G.claim("Fees: $50 operator, $60 REAL ID.", "https://www.agency.example.gov/fees", "2026-10-17"),
+        G.claim("Call 603-555-0100 to book.", "https://www.agency.example.gov/book", "2026-10-17"),
+        G.claim("Apply in person.", "https://www.agency.example.gov/apply", "2026-10-17"),
+        G.claim("Old page, read later than its reading.", "https://www.agency.example.gov/old", "2026-11-09"),
+        G.claim("No reading yet: $5.", "https://www.agency.example.gov/unread", "2026-10-17"),
+        G.claim("A page nobody registered.", "https://elsewhere.example.org/page", "2026-10-17"),
+        G.claim("The General Court's own words.", "https://gc.nh.gov/rsa", "2026-10-17")]}
+    reg = {RS.url_key(f"https://agency.example.gov/{p}"): {"id": f"ag-{p}"}
+           for p in ("fees", "book", "apply", "old", "unread")}
+    with tempfile.TemporaryDirectory() as d:
+        for rid, words in (("ag-fees", "Operator $55. REAL ID $60."), ("ag-book", "Call (603) 555-0100."),
+                           ("ag-apply", "Apply at any office."), ("ag-old", "As before.")):
+            (Path(d) / rid).mkdir()
+            (Path(d) / rid / "2026-11-08.txt").write_text(words, encoding="utf-8")
+        got = {c["registry"] or c["source"]: c for c in RS.sheet(g, reg, d)}
+        want = {"ag-fees": "LOOK", "ag-book": "ANCHORS HOLD", "ag-apply": "READ IT", "ag-old": "NOT NEWER",
+                "ag-unread": "NOT READ", "https://elsewhere.example.org/page": "NOT IN REGISTRY"}
+        for k, w in want.items():
+            if (got.get(k) or {}).get("outcome") != w:
+                bad.append(f"{k} is {(got.get(k) or {}).get('outcome')!r}, not {w}")
+        if len(got) != len(want):
+            bad.append(f"the worksheet lists {sorted(got)}: a General Court source among them, or one lost")
+        miss = [w for _k, w, ok in (got.get("ag-fees") or {}).get("anchors", []) if not ok]
+        if miss != ["$50"]:
+            bad.append(f"the changed fee is reported as {miss}, not ['$50']")
+        empty = Path(d) / "empty"
+        empty.mkdir()
+        r = subprocess.run([sys.executable, str(_paths.locate("recheck_sources.py")), "--readings",
+                            str(empty)], capture_output=True, text=True)
+        if r.returncode == 0:
+            bad.append("an empty readings folder ends in success")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"{len(slugs)} guides on agency pages in the order, voting, DMV, property tax and "
+                  "benefits first; a changed fee LOOK, a held phone number found, a page not newer, "
+                  "unread or unregistered each said so; an empty folder refused")
 
 
 @check("data", "every RSA section the Learn pages cite is in force, and says what they quote")
