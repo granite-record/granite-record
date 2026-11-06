@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.341 */
+/* GRANITE_VERSION: 2026-09-07.342 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -5198,6 +5198,14 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .l-bars li.is-lab .l-bv,.l-bars li:hover .l-bv{visibility:visible}
 .l-bars li:hover{background:var(--wash)}
 .l-bars li:hover .l-bl{color:var(--ink)}
+/* With no pointer to hover (a phone), every value is at its bar's end, and
+   the line over the chart says so (the cohesion audit's P-6). */
+.l-tap{display:none}
+@media (hover:none){
+  .l-hov{display:none}
+  .l-tap{display:inline}
+  .l-bars li .l-bv{visibility:visible}
+}
 .l-axis{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:.875rem;margin-top:.25rem}
 .l-axis span:first-child{visibility:hidden;font:400 var(--t-sm)/1 var(--sans);white-space:nowrap}
 .l-ticks{position:relative;height:1.125rem;margin-right:3.25rem;font:400 var(--t-sm)/1 var(--sans);color:var(--ink-2);

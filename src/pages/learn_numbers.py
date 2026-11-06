@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.21
+# GRANITE_VERSION: 2026-09-14.22
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -152,8 +152,12 @@ def law_chart(oc, terms):
             "the table below.")
     return (f'<figure class="l-chart" role="img" aria-label="{E(said)}">'
             '<h3 aria-hidden="true">Became Law, as a Share of the Bills Filed</h3>'
+            # ON A SCREEN WITH NO POINTER TO HOVER (the cohesion audit of 30
+            # October 2026, P-6: "no hover on a phone"), every bar's value is
+            # at its end, and the line says that instead (app.css, .l-hov).
             '<p aria-hidden="true">The figures are the table&rsquo;s, its Became Law column. '
-            "Hover over a term to see its value.</p>"
+            '<span class="l-hov">Hover over a term to see its value.</span>'
+            '<span class="l-tap">Each term&rsquo;s value is at the end of its bar.</span></p>'
             f'<ol class="l-bars" aria-hidden="true" style="--l-grid:{1000 / top:.4f}%">'
             f'{"".join(bar(*r) for r in pct)}</ol>'
             f'<div class="l-axis" aria-hidden="true"><span>{_t(pct[-1][0])}</span>'
