@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.267
+// GRANITE_VERSION: 2026-09-07.268
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -5324,8 +5324,11 @@ function recTitle(what,when){
 // Only the kind is title-cased: a committee's name is the General Court's own
 // and "Labor, Industrial And Rehabilitative Services" is not how it spells it.
 const CHWORD={H:"House",S:"Senate"};
+// The kind through kindTitle, which keeps a small word after the first small
+// (the cohesion audit's P-5, 30 October 2026): capitalising every word made a
+// 1995 hearing "Committee Of Conference".
 function stationTitle(b,s){
-  const kind=(s.what||"").replace(/\b[a-z]/g,c=>c.toUpperCase());
+  const kind=s.what?kindTitle(s.what):"";
   const cmte=(s.committee||"").trim();
   const ch=CHWORD[s.body]||"";
   // A floor row's "committee" is already the chamber, so it is not repeated.
@@ -8895,7 +8898,10 @@ function votedElsewhere(v,date){
     :esc(dateWords(v.date));
   const before=v.date<date;
   if(!v.meeting&&v.act==="report")
-    return `No report is dated this meeting; the docket dates the committee's report ${day}.`;
+    // Plainer (the cohesion audit's P-8), and still no claim that the
+    // committee did not vote here: a Senate report's date is the sitting's
+    // that took it up, and an older House row has no vote date at all.
+    return `The docket dates the committee's report ${day}, not this meeting.`;
   const what=v.act==="study report"?"voted its interim study report"
     :v.act==="retained"?"retained the bill":"voted";
   return `No vote at this meeting; the committee ${before?"had ":""}${

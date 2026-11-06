@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.48
+# GRANITE_VERSION: 2026-09-18.49
 """
 The General Court's week, one page per week.
 
@@ -1510,10 +1510,14 @@ WEEK_JS = r"""
       +cols.map(function(d){
         var vis=visible(d), mt=meetings(((DAYS[d]||{}).cards)||[]);
         return '<li class="wkcol'+(d===SEL?" wksel":"")+(d<TODAY?" wkpast":"")+'"'
-          +(d===TODAY?' aria-current="date"':"")+'><h2 class="wkdh"><button type="button" class="wkday" data-d="'+d+'">'
+          +(d===TODAY?' aria-current="date"':"")+'><h2 class="wkdh"><button type="button" class="wkday" data-d="'+d+'"'
+          // ONE NAME FOR THE BUTTON (the cohesion audit's P-9): its spans were
+          // read joined, "Monday Nov 2 : open this day". The label starts with
+          // the words on the button, so a voice command naming them still finds it.
+          +' aria-label="'+DAYNAME[weekday(d)]+' '+dateWords(d,"short")+(d===TODAY?", today":"")+': open this day">'
           +'<span class="wkdn">'+DAYNAME[weekday(d)]+'</span> '
           +'<span class="wkdd">'+dateWords(d,"short")+(d===TODAY?" · Today":"")+'</span>'
-          +'<span class="sr">: open this day</span></button></h2>'
+          +'</button></h2>'
           +(vis.length?'<ul class="wkes">'+vis.map(entryHtml).join("")+'</ul>':"")
           +(meetings(vis).length?"":'<p class="wkempty">'+emptyHtml(mt,S)+'</p>')
           +'</li>'; }).join("")
