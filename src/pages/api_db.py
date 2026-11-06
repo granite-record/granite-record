@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.4
+# GRANITE_VERSION: 2026-10-30.7
 """
 The data API's database: every table on the data page, and the record's
 committee reports, in one SQLite file, compressed with xz.
@@ -32,6 +32,7 @@ WHAT IT HOLDS
   interim_study           the docket's line on each interim study
   testimony               sign-in counts at each public hearing; never a name
   meetings                every meeting the calendars noticed
+  (schema.json describes every column of every table: api_schema.py)
   meta                    what this file is and whose. Not when: the
                           manifest says that, and a time inside the file
                           would change its bytes every night
@@ -43,8 +44,10 @@ spreadsheets cannot either.
 
 WHY XZ. With the report tables the file is about 109 MB opened: 26.9 MB in
 gzip, past the 25 MiB a file may be on the host, and 13.2 MB in xz
-(measured 30 October 2026). Python's lzma, R, and xz on Linux and macOS read
-it with what they already have.
+(measured 30 October 2026). Python opens it, and queries it, with nothing to
+install (lzma, sqlite3). R unpacks it as it comes and needs the RSQLite
+package to query it. The xz program is on most Linux systems and has to be
+installed on a Mac or on Windows.
 
 THE SAME ROWS GIVE THE SAME BYTES. Rows go in in a stated order, the file is
 vacuumed, and xz writes no time, so the manifest's sha256 moves only when
@@ -79,9 +82,15 @@ class Collector:
     def __init__(self):
         self.reports, self.docket, self.study, self.testimony = [], [], [], []
         self.bills = 0
+        self.keys = set()
+        self.station_keys = set()
 
     def add(self, term, r):
         self.bills += 1
+        self.keys.update(r)
+        for st in r.get("stations") or []:
+            if isinstance(st, dict):
+                self.station_keys.update(st)
         bill = r.get("id")
         for rep in r.get("reports") or []:
             src = rep.get("source") or ""
@@ -160,6 +169,13 @@ def _int(v):
         return None
 
 
+def _num(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
 def write(out, collector, people, meetings_path="meetings.json"):
     """Build the database (_write), and whatever happens, leave no
     temporary file behind: a stop part-way would otherwise leave about
@@ -231,25 +247,26 @@ def _write(out, collector, people, meetings_path, tmp):
     ins("vote_values", 2, sorted((c, v) for v, c in codes.items()))
     counts["votes"], counts["vote_values"] = n, len(codes)
 
-    for name in ("sponsors", "legislators"):
-        cols = None
-        rows = []
+    # THE TYPES schema.json STATES. A column the CSV's description calls an
+    # integer or a number is stored as one, an empty cell as NULL, so that
+    # ORDER BY start_seconds and recorded_votes > 100 compare numbers rather
+    # than text ("100" sorts before "20" as text).
+    from api_schema import CSV as SPEC
+    for name in ("sponsors", "legislators", "proceedings"):
+        spec = SPEC[f"{name}.csv"]
+        cols, rows, conv = None, [], None
         for r in _csv(out / f"{name}.csv"):
-            cols = cols or list(r)
-            rows.append(tuple(r[c] for c in cols))
+            if cols is None:
+                cols = [c for c in r if c not in PROCEEDINGS_DROP]
+                conv = [_int if spec.get(c, ("",))[0] == "integer" else
+                        _num if spec.get(c, ("",))[0] == "number" else None for c in cols]
+            rows.append(tuple(f(r[c]) if f else r[c] for c, f in zip(cols, conv)))
         if cols:
-            con.execute(f'CREATE TABLE {name} ({", ".join(chr(34) + c + chr(34) + " TEXT" for c in cols)})')
+            kind = {"integer": "INT", "number": "REAL"}
+            con.execute(f'CREATE TABLE {name} (' + ", ".join(
+                f'"{c}" {kind.get(spec.get(c, ("",))[0], "TEXT")}' for c in cols) + ")")
             ins(name, len(cols), rows)
         counts[name] = len(rows)
-
-    cols, rows = None, []
-    for r in _csv(out / "proceedings.csv"):
-        cols = cols or [c for c in r if c not in PROCEEDINGS_DROP]
-        rows.append(tuple(r[c] for c in cols))
-    if cols:
-        con.execute(f'CREATE TABLE proceedings ({", ".join(chr(34) + c + chr(34) + " TEXT" for c in cols)})')
-        ins("proceedings", len(cols), rows)
-    counts["proceedings"] = len(rows)
 
     prow, nrow = [], []
     for p in people:
@@ -279,6 +296,9 @@ def _write(out, collector, people, meetings_path, tmp):
                          m.get("noticed"), m.get("calendar")) for m in meet])
     counts["meetings"] = len(meet)
 
+    # Every table's columns, for schema.json, which describes each one.
+    columns = {t: [c[1] for c in con.execute(f'PRAGMA table_info("{t}")')]
+               for (t,) in con.execute("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")}
     con.commit()
     con.execute("VACUUM")
     con.close()
@@ -291,4 +311,4 @@ def _write(out, collector, people, meetings_path, tmp):
     return {"path": f"/data/{NAME}", "kind": "database", "rows": sum(counts.values()),
             "bytes": len(packed), "opened_bytes": opened,
             "sha256": hashlib.sha256(packed).hexdigest(), "encoding": "xz",
-            "media_type": "application/vnd.sqlite3", "counts": counts}
+            "media_type": "application/vnd.sqlite3", "counts": counts, "columns": columns}

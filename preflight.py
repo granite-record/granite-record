@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.771
+# GRANITE_VERSION: 2026-09-04.772
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -29051,6 +29051,105 @@ def _person_register():
                 moved.append(f"{p_} lost a number")
         assert not moved, "the register is only ever added to, and against dev's: " + "; ".join(moved[:5])
     return "ok", "no other code file writes it, and it is well formed"
+
+
+@check("build", "the data API's schema.json describes every column it publishes, with the types "
+                "the database stores, its keys hold, its names are unique, and no file carries "
+                "YouTube's metadata")
+def _api_schema():
+    """docs/design/api/DESIGN.md, 2.2. The fixture build writes no database
+    and no people files (it has no roster), so the paths that describe them
+    run only in a full build; this builds a small database with api_db and
+    runs the schema over it. Each part is a finding of the review of 5
+    November 2026 that no check had caught."""
+    import csv as _csv_
+    import lzma
+    import sqlite3
+    import tempfile
+    import api_db
+    import api_schema as AS
+
+    def put(d, name, cols, rows):
+        with (d / name).open("w", encoding="utf-8", newline="") as fh:
+            w = _csv_.writer(fh)
+            w.writerow(cols)
+            w.writerows(rows)
+
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        put(d, "bills.csv", list(AS.CSV["bills.csv"]),
+            [["2025-2026", "2025", "HB1", "a title", "", "", "", "", "", "", "0", "", ""],
+             ["2025-2026", "2025", "HB2", "a title", "", "", "", "", "", "", "0", "", ""]])
+        put(d, "rollcalls.csv", list(AS.CSV["rollcalls.csv"]),
+            [["2025-H-1", "2025-2026", "2025", "H", "1", "2025-01-08", "HR", "q", "", "200", "100",
+              "0", "1", "1", "", "", "count"]])
+        put(d, "votes-2025-2026.csv", list(AS.CSV["votes-<term>.csv"]),
+            [["2025-H-1", "2025-2026", "2025-01-08", "", "q", "m1", "A Member", "R", "House", "Yea"]])
+        put(d, "sponsors.csv", list(AS.CSV["sponsors.csv"]),
+            [["2025-2026", "HB1", "m1", "A Member", "R", "H", "1", "", "the sponsor file", "1"]])
+        put(d, "legislators.csv", list(AS.CSV["legislators.csv"]),
+            [["m1", "A Member", "House", "R", "1", "Belknap", "", "", "3", "120", "1"]])
+        put(d, "proceedings.csv", list(AS.CSV["proceedings.csv"]),
+            [["2025-2026", "HB1", "H", "public hearing", "2025-01-09", "10:00", "Finance", "LOB 210",
+              "abc", "100", "620.5", "stated", "", ][:len(AS.CSV["proceedings.csv"])],
+             ["2025-2026", "HB2", "H", "public hearing", "2025-01-09", "11:00", "Finance", "LOB 210",
+              "abc", "20", "", "stated", ""][:len(AS.CSV["proceedings.csv"])]])
+        people = [{"person": "1", "name": "A Member", "member_ids": ["m1"], "employee_numbers": ["m1"]}]
+        row = api_db.write(d, api_db.Collector(), people, meetings_path=d / "none.json")
+        cols = row["columns"]
+        # Every table and column the database holds is described, with the
+        # type it is stored as, and no description names a column it lacks.
+        assert set(cols) == set(AS.DB_TABLES), f"tables {sorted(set(cols) ^ set(AS.DB_TABLES))} are in one and not the other"
+        assert not AS.undescribed_columns([], [], cols), AS.undescribed_columns([], [], cols)
+        for t, spec in AS.DB_COLUMNS.items():
+            extra = set(spec) - set(cols[t])
+            assert not extra, f"api_schema describes {t}.{sorted(extra)}, which the database does not hold"
+        raw = d / "db.sqlite"
+        raw.write_bytes(lzma.decompress((d / api_db.NAME).read_bytes()))
+        con = sqlite3.connect(raw)
+        stored = {(t, c): ty for t in cols for (_, c, ty, *_r) in con.execute(f'PRAGMA table_info("{t}")')}
+        want = {"integer": "INT", "number": "REAL"}
+        wrong = [f"{t}.{c} is {stored[(t, c)] or 'untyped'}, described {f[0]}"
+                 for t in cols for c, f in AS.db_spec(t).items()
+                 if (t, c) in stored and f[0] in want
+                 and not (stored[(t, c)] or "").startswith(want[f[0]])]
+        assert not wrong, "the database stores numbers as text: " + "; ".join(wrong)
+        order = [r[0] for r in con.execute("SELECT start_seconds FROM proceedings ORDER BY start_seconds")]
+        assert order == [20.0, 100.0], f"start_seconds sorts as text: {order}"
+        assert dict(con.execute("SELECT key, value FROM meta"))["rights"] == api_db.RIGHTS
+        con.close()
+
+        tables = [{"file": f, "rows": 1, "bytes": 1, "what": "",
+                   "columns": next(_csv_.reader((d / f).open(encoding="utf-8")))}
+                  for f in ("bills.csv", "rollcalls.csv", "votes-2025-2026.csv", "sponsors.csv",
+                            "legislators.csv", "proceedings.csv")]
+        assert not AS.broken_keys(d, tables), AS.broken_keys(d, tables)
+        # A sponsor of a bill bills.csv has no row for breaks a declared key.
+        put(d, "sponsors.csv", list(AS.CSV["sponsors.csv"]),
+            [["2025-2026", "HB9", "m1", "A Member", "R", "H", "1", "", "the sponsor file", "1"]])
+        assert AS.broken_keys(d, tables), "a sponsor of a bill bills.csv lacks passed the keys"
+        # YouTube's metadata coming back in a column is described nowhere.
+        yt = [dict(t, columns=t["columns"] + ["video_title", "scheduled_seconds"])
+              if t["file"] == "proceedings.csv" else t for t in tables]
+        assert {c for _, c in AS.undescribed_columns(yt)} == {"video_title", "scheduled_seconds"}
+        for spec in list(AS.CSV.values()) + list(AS.DB_COLUMNS.values()) + [AS.BILL_FIELDS, AS.STATION_FIELDS]:
+            assert not {"video_title", "scheduled_seconds", "predicted", "watch"} & set(spec), \
+                "api_schema describes one of YouTube's own fields, which no file may carry"
+
+        files = [{"path": "/data/people.json", "rows": 1, "bytes": 1},
+                 {"path": "/data/people.csv", "rows": 1, "bytes": 1},
+                 dict(row, path="/data/" + api_db.NAME)]
+        pkg = AS.package(tables, files, "", "2026-11-05", (), (), cols, list(AS.CSV["people.csv"]))
+        names = [r["name"] for r in pkg["resources"]]
+        assert len(names) == len(set(names)), f"two resources share a name: {names}"
+        assert all(r.get("licenses") == AS.LICENSES for r in pkg["resources"]), "a file names no terms"
+        assert pkg["x-rights"] == api_db.RIGHTS
+        assert not any(fk["reference"]["resource"] == "bills"
+                       for r in pkg["resources"] if r["name"] == "rollcalls"
+                       for fk in r["schema"].get("foreignKeys", [])), "rollcalls.bill is declared to join bills"
+    return "ok", ("a small database is built and every table and column of it described, numbers "
+                  "stored as numbers; a broken key and a YouTube column are each caught; names are "
+                  "unique and every file names its terms")
 
 
 @check("markers", "every phrasing read from a transcript still matches")
