@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.771
+# GRANITE_VERSION: 2026-09-04.772
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -77392,11 +77392,13 @@ def _testify_box_senate():
         return "skip", "node, app.js or dom_stub.js is not here"
     said = {k: " ".join(re.sub(r"<[^>]+>", " ", v).split()) for k, v in got.items()}
     assert "has not opened yet" not in said["senate"] and \
-        "its public hearing was Jan 13, 2000" in said["senate"], (
+        "have closed as of January 13, 2000" in said["senate"], (
             f"a bill heard only by a Senate committee is told: {said['senate']!r}")
-    assert "opens again" in said["senate"], (
-        f"a bill heard in one chamber is no longer told testimony opens again in the other: {said['senate']!r}")
-    assert "its last public hearing was Apr 23, 2000" in said["both"] and "opens again" not in said["both"], (
+    # the other chamber named, for a Senate bill the House (the owner, 6 November 2026)
+    assert "They may open again if the bill goes to the House and the House holds its own public " \
+        "hearing." in said["senate"], (
+        f"a bill heard in one chamber is no longer told testimony may open again in the other: {said['senate']!r}")
+    assert "have closed as of April 23, 2000" in said["both"] and "open again" not in said["both"], (
         f"a bill heard in both chambers is told: {said['both']!r}")
     assert "The public hearing on SB 406 is scheduled for" in said["ahead"] \
         and "Senate Judiciary Committee" in said["ahead"] \
@@ -77404,7 +77406,7 @@ def _testify_box_senate():
         and 'class="testify tlive"' in got["ahead"], (
             f"a Senate hearing still to come does not open the Senate's form: {said['ahead']!r}")
     assert "has not opened yet" in said["none"], f"a bill with no hearing is told: {said['none']!r}"
-    assert "has passed" in said["ended"] and "opens again" not in said["ended"], (
+    assert "have closed as of" in said["ended"] and "open again" not in said["ended"], (
         f"a bill whose rail has ended is told: {said['ended']!r}")
     assert got["old"] == "", "a bill of an earlier term has a Testify button"
     return "ok", ("a Senate hearing is a public hearing, past or ahead; \"opens again\" only while one "
@@ -77632,7 +77634,7 @@ def _testify_in_the_row():
             f"a hearing today, {got['todayShort']} in New Hampshire, is not live: {got['today'][:200]!r}")
     la, london = got["la"], got["london"]
     assert la["local"] == 13 and la["html"].startswith('<details class="testify toff">') \
-        and "its public hearing was Jan 13, 2026." in flat(la["html"]), (
+        and "have closed as of January 13, 2026." in flat(la["html"]), (
             "at 11:30 p.m. on 13 January in Los Angeles, 2:30 a.m. on the 14th in Concord, SB 406's Testify "
             f"is not shut: {la['html'][:200]!r}")
     assert london["local"] == 14 and london["html"].startswith('<details class="testify tlive">') \
@@ -77729,9 +77731,9 @@ def _testify_in_the_row():
         "a House hearing's live pane does not link the House's form")
     # PASSED AND NOT OPENED: greyed, saying which, linking nothing
     for name, h, said, heard in (
-            ("passed", passed, "Online testimony for this bill has passed: its public hearing was Jan 13, 2000. "
-             "It opens again if the bill is scheduled for a hearing in the other chamber.",
-             "Testify, not open: its hearing has passed"),
+            ("passed", passed, "Online testimony submissions for this bill have closed as of January 13, 2000. "
+             "They may open again if the bill goes to the House and the House holds its own public hearing.",
+             "Testify, closed"),
             ("not opened", none, "Online testimony has not opened yet: it opens once a public hearing "
              "is scheduled.", "Testify, not open yet"),
             ("ended without a hearing", got["ended"], "Online testimony did not open for this bill: it had no "
@@ -78348,8 +78350,8 @@ def _testify_when_it_cannot_open():
         return "skip", "node, app.js or dom_stub.js is not here"
     said = {k: " ".join(re.sub(r"<[^>]+>", " ", v).replace("&rsquo;", "’").split()) for k, v in got.items()}
     did_not = "Online testimony did not open for this bill: it had no public hearing."
-    passed = "Online testimony for this bill has passed: its public hearing was Jan 21, 2000."
-    again = "It opens again if the bill is scheduled for a hearing in the other chamber."
+    passed = "Online testimony submissions for this bill have closed as of January 21, 2000."
+    again = "They may open again if the bill goes to"
     for name in ("hr17", "hr17Bare", "hr48", "hr48Bare", "overUnheard", "endedAhead"):
         assert did_not in said[name] and "not opened yet" not in said[name], (
             f"{name}, which can no longer be heard and never was, is told: {said[name]!r}")
@@ -78625,8 +78627,8 @@ def _testify_hears_an_amendment():
             f"HB 1560-FN's live pane gives {vals(before)} to choose, not the House's hearing of 3 February")
     after = got["after"]
     assert after.startswith('<details class="testify toff">') and pane(after) == (
-        "Online testimony for this bill has passed: its last public hearing was Feb 3, 2026. It opens again "
-        "if the bill is scheduled for a hearing in the other chamber."), (
+        "Online testimony submissions for this bill have closed as of February 3, 2026. They may open again "
+        "if the bill goes to the Senate and the Senate holds its own public hearing."), (
             f"HB 1560-FN on 5 February names another hearing as its last: {pane(after)!r}")
     assert summ(got["cacr12"]) == "Testify until Apr 15" and pane(got["cacr12"]).startswith(
         "The public hearing on a proposed non-germane amendment (2026-1134h) to CACR 12 is scheduled for "
@@ -78634,10 +78636,10 @@ def _testify_hears_an_amendment():
         and vals(got["cacr12"]) == ["Wednesday, April 15, 2026", "House Ways and Means Committee", "CACR 12"], (
             f"CACR 12 on 13 April, its hearing on a proposed amendment at 3 p.m. on the 15th, reads "
             f"{summ(got['cacr12'])!r}: {pane(got['cacr12'])[:220]!r} {vals(got['cacr12'])}")
-    assert pane(got["cacr12After"]) == "Online testimony for this bill has passed: its last public hearing was " \
-        "Apr 15, 2026.", f"CACR 12 after its hearing of 15 April reads {pane(got['cacr12After'])!r}"
+    assert pane(got["cacr12After"]) == "Online testimony submissions for this bill have closed as of " \
+        "April 15, 2026.", f"CACR 12 after its hearing of 15 April reads {pane(got['cacr12After'])!r}"
     assert got["called"].startswith('<details class="testify toff">') \
-        and "its public hearing was Jan 27, 2026." in pane(got["called"]), (
+        and "have closed as of January 27, 2026." in pane(got["called"]), (
             f"a hearing on an amendment the docket called off is counted: {pane(got['called'])!r}")
     assert got["sb210"].startswith('<details class="testify tlive">') and summ(got["sb210"]) == "Testify until May 27" \
         and pane(got["sb210"]).startswith("The public hearing on a proposed amendment (2025-2318h) to SB 210 is "
@@ -78647,8 +78649,8 @@ def _testify_hears_an_amendment():
             f"{summ(got['sb210'])!r}: {pane(got['sb210'])[:200]!r}")
     assert summ(got["corrected"]) == "Testify until Feb 4", (
         f"a row a person corrected to 4 February keeps the clerk's day: {summ(got['corrected'])!r}")
-    assert pane(got["same"]) == "Online testimony for this bill has passed: its public hearing was Jan 20, 2026. " \
-        "It opens again if the bill is scheduled for a hearing in the other chamber.", (
+    assert pane(got["same"]) == "Online testimony submissions for this bill have closed as of January 20, 2026. " \
+        "They may open again if the bill goes to the Senate and the Senate holds its own public hearing.", (
             f"a House station and the line for it, one hearing, are counted as two: {pane(got['same'])!r}")
     assert " at 9:30 AM in Granite Place 158." in pane(got["twoOneDay"]) \
         and pane(got["twoOneDay"]).startswith("The public hearing on a proposed non-germane amendment (2026-0093h)"), (
@@ -78947,10 +78949,10 @@ def _testify_report_dated():
     flat = lambda h: " ".join(re.sub(r"<[^>]+>", " ", h).replace("&rsquo;", "’").split())
     pane = lambda h: flat((re.search(r'<div class="testifypane">(.*?)</div></details>', h, re.S) or [None, ""])[1])
     for name, said in (
-            ("sb76", "Online testimony for this bill has passed: its public hearing was Jan 14, 2025."),
-            ("sb76Between", "Online testimony for this bill has passed: its public hearing was Jan 14, 2025."),
-            ("hb183", "Online testimony for this bill has passed: its last public hearing was Apr 2, 2025."),
-            ("hb183Ahead", "Online testimony for this bill has passed: its public hearing was Jan 24, 2025.")):
+            ("sb76", "Online testimony submissions for this bill have closed as of January 14, 2025."),
+            ("sb76Between", "Online testimony submissions for this bill have closed as of January 14, 2025."),
+            ("hb183", "Online testimony submissions for this bill have closed as of April 2, 2025."),
+            ("hb183Ahead", "Online testimony submissions for this bill have closed as of January 24, 2025.")):
         h = got[name]
         assert h.startswith('<details class="testify toff">'), (
             f"{name}: a day a committee's report gives is taken as a hearing ahead: {pane(h)[:200]!r}")
