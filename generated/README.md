@@ -15,6 +15,15 @@ the run named beside it, never edited by hand.
   --issue`, which a person runs, and a number once issued is never given to
   anyone else. The nightly reads it and never writes it (preflight holds
   that, and that it only grows). First issued 30 October 2026.
+- `moved_addresses.json` -- every address a former member's page has moved
+  from, {address: member id}, so each answers with a 301 to the page they
+  have now, for good: their seat put right from the bills of their last
+  term, or two of their numbers made one page. Like `person_numbers.json`
+  it only grows: `python3 src/ops/record_moves.py` merges in what a build
+  moved and never drops or re-points an address, a person runs it and
+  commits the file, and every build reads it (build_site_v2.keep_moved),
+  saying what it moved that is not recorded yet. First recorded 5 November
+  2026.
 - `person_links.json` -- links between an employee number and its PersonID
   that no General Court view this site reads makes, each settled by a
   person with its evidence. Written by hand only; preflight holds that no

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.772
+# GRANITE_VERSION: 2026-09-04.774
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -29288,6 +29288,43 @@ def _api_schema():
     return "ok", ("a small database is built and every table and column of it described, numbers "
                   "stored as numbers; a broken key and a YouTube column are each caught; names are "
                   "unique and every file names its terms")
+
+
+@check("files", "only record_moves.py writes the former addresses kept for a 301, and they only grow")
+def _moved_addresses():
+    """generated/moved_addresses.json keeps every address a former member's
+    page has moved from, so each answers with a 301 for good (the manager, 5
+    November 2026: old emails link through them). The build reads it
+    (build_site_v2.keep_moved) and src/ops/record_moves.py, which a person
+    runs, merges into it. Held: no other code file writes it; each entry is a
+    /legislator/ address and a member id; and nothing recorded on dev is
+    gone or pointed at another member."""
+    stem = r"moved_addresses\.json"
+    bad = []
+    for f in _paths.code_files("*.py"):
+        if f.name in ("record_moves.py", "preflight.py"):
+            continue
+        src = f.read_text(encoding="utf-8", errors="replace")
+        if re.search(r'open\s*\([^)]*' + stem + r'[^)]*["\'][wax]', src) or \
+           re.search(stem + r'[^\n]{0,60}\.write_(?:text|bytes)', src) or \
+           re.search(r'MOVED_ADDRESSES\s*\.\s*(?:write_text|write_bytes|open)\s*\(', src):
+            bad.append(f.name)
+    assert not bad, "these write the kept former addresses, which only record_moves.py may: " + \
+        ", ".join(bad)
+    f = _paths.ROOT / "generated" / "moved_addresses.json"
+    if not f.exists():
+        return "ok", "no other code file writes it; none recorded yet"
+    now = json.loads(f.read_text(encoding="utf-8"))
+    odd = [f"{k} -> {v}" for k, v in now.items()
+           if not (isinstance(k, str) and k.startswith("/legislator/") and isinstance(v, str) and v)]
+    assert not odd, "entries that are not an address and a member id: " + "; ".join(odd[:4])
+    r = _run(["git", "show", "origin/dev:generated/moved_addresses.json"],
+             capture_output=True, text=True)
+    if r.returncode == 0 and r.stdout.strip():
+        then = json.loads(r.stdout)
+        lost = [f"{k} ({v})" for k, v in then.items() if now.get(k) != v]
+        assert not lost, "recorded addresses gone or re-pointed against dev's: " + "; ".join(lost[:5])
+    return "ok", f"{len(now):,} former address(es) kept, only ever added to"
 
 
 @check("markers", "every phrasing read from a transcript still matches")
@@ -69340,6 +69377,155 @@ def _motion_keys():
     return "ok", f"{len(MOTION_CASES)} forms of the record's questions, each the approved words' key"
 
 
+@check("build", "a former member's page takes the seat their last term's bills print over the "
+                "record's, the person's correction stands, and the old address is kept for a 301",
+       needs=("build_site_v2",))
+def _former_seat_from_bills(B2):
+    """date_former_seats (5 November 2026): Rebecca Hutchinson's page read
+    "Rock 73", in a county the 1992 map numbered to 36, where the bills she
+    sponsored in 1999-2000 print Rockingham 8."""
+    def row(mid, name, county, dist, chamber="H"):
+        return {"id": mid, "name": name, "chamber": chamber, "party": "D", "party_code": "D",
+                "county": county, "district": dist, "county_abbr": "", "former": True}
+    def ballot(mid, year):
+        return {"member_id": mid, "year": str(year), "date": f"3/1/{year}", "body": "H"}
+    former = {"376132": row("376132", "Hutchinson, Rebecca", "Rock", "73"),
+              "9237": row("9237", "Chase, Wendy", "Strafford", "18"),
+              "500": row("500", "Same, Sam", "Hillsborough", "4"),
+              "600": row("600", "Taken, Tom", "Merrimack", "2"),
+              "601": row("601", "Taken, Tom", "Merrimack", "9"),
+              # the county abbreviated, the seat the bills' own: nothing moves
+              "700": row("700", "Short, Sue", "Rock", "8"),
+              # onto a sitting member's address: not made
+              "800": row("800", "Sitting, Sid", "Coos", "1")}
+    votes = {k: [ballot(k, 1999)] for k in former}
+    printed = {("1999-2000", "376132"): ("H", "Rockingham", "8"),
+               ("1999-2000", "9237"): ("H", "Belknap", "5"),       # the person's seat stands
+               ("1999-2000", "500"): ("H", "Hillsborough", "4"),   # already the bills'
+               ("1999-2000", "600"): ("H", "Merrimack", "9"),      # another page's address
+               ("1999-2000", "700"): ("H", "Rockingham", "8"),
+               ("1999-2000", "800"): ("H", "Coos", "2")}
+    legs = {"1": {"name": "Sitting, Sid", "chamber": "H", "party_code": "D", "county": "Coos",
+                  "district": "2", "county_abbr": "Coos"},
+            "2": {"county": "Rockingham", "county_abbr": "Rock"}}
+    import copy
+    got, redated = B2.date_former_seats(copy.deepcopy(former), votes, printed, {"9237"}, legs)
+    h = got["376132"]
+    assert (h["county"], h["district"], h["county_abbr"]) == ("Rockingham", "8", "Rock") and \
+        h.get("moved_from") == ["/legislator/rebecca-hutchinson-rock-73"], h
+    assert B2._member_address(h) == "/legislator/rebecca-hutchinson-rock-8", B2._member_address(h)
+    for k in ("9237", "500", "600", "700", "800"):
+        assert got[k] == former[k], f"{k} changed: {got[k]} from {former[k]}"
+    assert set(redated) == {"376132"}, redated
+    assert B2.corrected_seats(Path("no-such-file.json")) == set()
+    # KEPT FOR GOOD: a recorded address answers though nothing moves the page
+    # from it any more, and a move the record lacks is said
+    root = Path(tempfile.mkdtemp(prefix="gr-moves-"))
+    try:
+        rec = root / "moved.json"
+        rec.write_text(json.dumps({"/legislator/wendy-chase-belknap-5": "9237"}), encoding="utf-8")
+        kept, unrecorded = B2.keep_moved(got, rec)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert kept == 1 and got["9237"]["moved_from"] == ["/legislator/wendy-chase-belknap-5"] and \
+        unrecorded == ["/legislator/rebecca-hutchinson-rock-73"], (kept, unrecorded, got["9237"])
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("record_moves", "src/ops/record_moves.py")
+    RM = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(RM)
+    merged = RM.merge({"/a": "1"}, {"/a": "2", "/b": "3"})
+    assert merged == {"/a": "1", "/b": "3"}, f"record_moves re-pointed or dropped: {merged}"
+    return "ok", ("Hutchinson Rock 73 -> Rockingham 8 with a 301 from the old address; the person's "
+                  "seat, a seat already right, an abbreviated county, and moves onto another page's "
+                  "or a sitting member's address left alone; a recorded address kept for good")
+
+
+@check("session", "the seat of a term is the one its bills print, else the ballots' in the "
+                  "member's last term only, else none: never a later record's seat on an "
+                  "earlier term", needs=("build_site_v2", "build_session_pages"))
+def _term_seats_printed_first(B2, BSP):
+    """term_seats' order (5 November 2026). A ballot's label is not dated: a
+    former member's is built from one record of the seat they last held, so
+    Shannon Chandley read "Hills 22" on her 2009-2010 ballots, the seat she
+    took in 2016, where the bills she sponsored in 2010 print "Hills 6". The
+    seat of a term is the one its bills print; else, in the member's last
+    term only, the one their ballots give; else none -- never a later
+    record's seat on an earlier term (the manager's condition: no source, no
+    seat). And who presided is named the same way."""
+    def ballot(year, label, member, name, vote="Yea"):
+        return {"year": str(year), "body": "H", "vote_number": 1, "member_id": member,
+                "name": name, "party": "D", "label": label, "date": f"3/1/{year}",
+                "vote": vote, "bill": "HB1"}
+    chandley = [ballot(y, "Chandley, Shannon(D) Hillsborough 22", "568", "Chandley, Shannon")
+                for y in (2009, 2010, 2013, 2017)]
+    ham = [ballot(y, "Ham, Bonnie(D) Grafton 5", "7439", "Ham, Bonnie") for y in (2011, 2015)]
+    # the last term's record refused where that term's bills say otherwise:
+    # an unplaced sponsor line of the surname at another seat, or two seats
+    mccarty = [ballot(1999, "McCarty, Winston(D) Merrimack 10", "375883", "McCarty, Winston")]
+    king = [ballot(1999, "King, John(D) Coos 1", "500", "King, John")]
+    one = {("2009-2010", "568"): ("H", "Hillsborough", "6"),
+           ("2013-2014", "568"): ("H", "Hillsborough", "22"),
+           # a seat in the other chamber is not this number's
+           ("2011-2012", "7439"): ("S", "", "5")}
+    two = {("1999-2000", "500")}
+    named = {("1999-2000", "H", "mccarty"): {("Hillsborough", "38")},
+             ("2017-2018", "H", "chandley"): {("Hillsborough", "22")}}
+    votes = {"568": chandley, "7439": ham, "375883": mccarty, "500": king}
+    seats = B2.term_seats(votes, record=(one, two, named))
+    got = {(t, m): lab for t, ms in seats.items() for m, lab in ms.items()}
+    want = {("2009-2010", "568"): "Rep. Shannon Chandley (D - Hills 6)",
+            ("2013-2014", "568"): "Rep. Shannon Chandley (D - Hills 22)",
+            ("2017-2018", "568"): "Rep. Shannon Chandley (D - Hills 22)",
+            ("2015-2016", "7439"): "Rep. Bonnie Ham (D - Graf 5)"}
+    assert got == want, f"term_seats gives {got}, not {want}"
+    assert B2.printed_seats(Path("no-such-file.json")) == {}, "no file, no printed seats"
+    # printed_record off a text_sponsors.json: a line nobody was placed on
+    # doubts the member of the surname; a namesake's placed seat does not,
+    # nor that seat printed again unplaced; "Barnes Jr." is a Barnes
+    def rec(name, county, dist, mid=""):
+        return {"member_id": mid, "name": name, "chamber": "H", "county": county, "district": dist}
+    root = Path(tempfile.mkdtemp(prefix="gr-printed-"))
+    try:
+        (root / "t.json").write_text(json.dumps({"1999-2000": {
+            "HB1": [rec("McCarty", "Hillsborough", "38"), rec("Flanders", "Rockingham", "18", "371948")],
+            "HB2": [rec("Flanders", "Rockingham", "18"), rec("John Barnes Jr.", "Belknap", "4")]}}),
+            encoding="utf-8")
+        one2, two2, named2 = B2.printed_record(root / "t.json")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert named2 == {("1999-2000", "H", "mccarty"): {("Hillsborough", "38")},
+                      ("1999-2000", "H", "barnes"): {("Belknap", "4")}} and \
+        one2 == {("1999-2000", "371948"): ("H", "Rockingham", "18")}, (one2, named2)
+    flanders = [ballot(1999, "Flanders, David(D) Rockingham 20", "376001", "Flanders, David")]
+    kept = B2.term_seats({"376001": flanders, "375883": mccarty}, record=(one2, two2, named2))
+    assert kept == {"1999-2000": {"376001": "Rep. David Flanders (D - Rock 20)"}}, (
+        f"a namesake's seat refused a member's own, or McCarty's doubted one was kept: {kept}")
+    # who presided: the term's seat, else the name alone -- never a later
+    # record's seat, never the party letter alone
+    chair = [dict(ballot(y, "Ham, Bonnie(D) Grafton 5", "7439", "Ham, Bonnie", "Presiding"),
+                  vote_number=9) for y in (2011, 2015)]
+    root = Path(tempfile.mkdtemp(prefix="gr-seats-"))
+    try:
+        f = B2.write_floor_record(root, {"7439": chair}, {}, record=({}, set(), {}))
+        # as the session-day step reads it: floor_record() hands on the keys
+        # it names, and once left the ballots behind (5 November 2026)
+        rec = BSP.floor_record(f)
+        pres = rec["presiding"]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    labs = sorted(lab for rows in pres.values() for _mid, lab in rows)
+    assert labs == ["Rep. Bonnie Ham", "Rep. Bonnie Ham (D - Graf 5)"], (
+        f"who presided reads {labs}: 2011's must be the name alone, 2015's the last term's seat")
+    # who voted, for linking a name, is every term's, whatever seat is shown
+    assert (rec.get("ballots") or {}).get("2011-2012", {}).get("7439") == "Rep. Bonnie Ham (D - Graf 5)" \
+        and "2011-2012" not in rec["seats"], (
+        f"the floor record's ballots {rec.get('ballots')} and seats {rec['seats']}: 2011-2012's "
+        "voter is linked by her ballots and shown with no seat")
+    return "ok", ("Chandley Hills 6 in 2009-2010 as printed, Hills 22 where printed and in her last "
+                  "term; Ham's 2011-2012 seatless, as chair too; McCarty's and King's last-term "
+                  "records refused where their term's bills say otherwise")
+
+
 @check("session", "a session day names each member by the seat they held in its term: the old "
                   "seat on an old day, the roster's in the term it describes, and no seat where "
                   "the record gives none", needs=("build_session_pages", "build_site_v2"))
@@ -69358,13 +69544,16 @@ def _session_seat_at_the_time(BSP, B2):
     def ballot(year, label, member="905", name="Spillane, James"):
         return {"year": str(year), "body": "H", "vote_number": 1, "member_id": member,
                 "name": name, "party": "R", "label": label, "date": f"3/1/{year}"}
+    # The ballots carry one undated label, today's roster's; the seat of
+    # 2015-2016 is the one that term's bills print (term_seats' `printed`).
     seats = B2.term_seats({
-        "905": [ballot(2015, "Rep. James Spillane (R - Rock 5)"),
-                ballot(2016, "Rep. James Spillane (R - Rock 5)"),
+        "905": [ballot(2015, "Rep. James Spillane (R - Rock 2)"),
+                ballot(2016, "Rep. James Spillane (R - Rock 2)"),
                 ballot(2025, "Rep. James Spillane (R - Rock 2)")],
         # two seats in one term name neither
         "77": [ballot(2015, "Rep. Pat Two (D - Hills 3)", "77", "Two, Pat"),
-               ballot(2016, "Rep. Pat Two (D - Hills 4)", "77", "Two, Pat")]})
+               ballot(2016, "Rep. Pat Two (D - Hills 4)", "77", "Two, Pat")]},
+        printed={("2015-2016", "905"): ("H", "Rockingham", "5")})
     assert seats.get("2015-2016", {}).get("905") == "Rep. James Spillane (R - Rock 5)" and \
         seats.get("2025-2026", {}).get("905") == "Rep. James Spillane (R - Rock 2)" and \
         "77" not in seats.get("2015-2016", {}), f"the seats of a term read off its ballots: {seats}"
@@ -69395,13 +69584,25 @@ def _session_seat_at_the_time(BSP, B2):
                   "2025-2026, and seatless on one of 2009-2010, where no ballot says")
 
 
-@check("data", "every chip on a past term's session day names the seat its member's own ballots "
-               "of that term give, or none", needs=("build_session_pages",))
+@check("data", "every chip on a past term's session day names the seat of its term or none, and a "
+               "bill's sponsor line of the day's term agrees with it", needs=("build_session_pages",))
 def _session_chips_seat_of_their_term(BSP):
-    """The built pages, held to _session_seat_at_the_time's rule: on every
-    session day outside the term the roster describes, a member's chip with
-    a seat names the seat that member's ballots of the day's term give
-    (data/floor_record.json's seats)."""
+    """The built pages, held to _session_seat_at_the_time's rule, on every
+    session day outside the term the roster describes:
+      - who spoke, was excused or presided is named by the seat of the term
+        (data/floor_record.json's seats, build_site_v2.term_seats), or with
+        none where the term has none;
+      - a card's sponsor line is the bill's own record, so it is not held to
+        the term's seat -- except that a bill of the day's term naming a
+        member at another seat than the term's is one page naming one member
+        two ways (Chandley on 3 March 2010: "Hills 6" as HB 1387's sponsor,
+        "Hills 22" as a speaker, until 5 November 2026). A bill carried over
+        from another term may name the seat it was filed under; a sponsor
+        line with a party and no seat names none.
+    THIS CHECK ONCE PASSED ON NOTHING (5 November 2026): its pattern wanted
+    "legislator/<slug>.html" and the pages link "legislator/<slug>", so it
+    read no chip at all for as long as it stood. It now fails on a run that
+    reads none."""
     sess, fr = Path("site/session"), BSP.floor_record()
     if not sess.exists() or not fr.get("seats"):
         return "skip", "no built session days or no floor record seats here"
@@ -69418,24 +69619,51 @@ def _session_chips_seat_of_their_term(BSP):
     import proceedings
     today = build_date.today().isoformat()
     current = proceedings.vote_term(today[:4], today)
-    chip = re.compile(r'<span class="mchip p-\w" translate="no"><a href="legislator/([^"]+)\.html">([^<]*?)'
-                      r'(?: <span class="mtag">([^<]*)</span>)?</a>')
-    bad, seen = [], 0
+    chip = re.compile(r'<span class="mchip p-\w" translate="no"><a href="legislator/([^"]+?)(?:\.html)?">'
+                      r'([^<]*?)(?: <span class="mtag">([^<]*)</span>)?</a>')
+    seat = re.compile(r"\(\w - ([^()]+)\)$")
+    link = re.compile(r'<a class="psent" href="legislator/([^"]+?)(?:\.html)?" translate="no">([^<]*)</a>')
+    bad, n = [], Counter()
     for page in sorted(sess.glob("[HS]/*.html")):
         term = proceedings.vote_term(page.stem[:4], page.stem)
         if term == current:
             continue
-        for slug, name, tag in chip.findall(page.read_text(encoding="utf-8")):
-            if not tag:
+        html = page.read_text(encoding="utf-8")
+        held = fr["seats"].get(term) or {}
+        for m in chip.finditer(html):
+            slug, name, tag = m.groups()
+            n["read"] += 1
+            want = BSP.seat_of(held, ids.get(slug, []), page.parent.name) or None
+            before = html[:m.start()]
+            if before.rfind('class="cmeta"') > before.rfind("</div>"):
+                # a sponsor line: the bill's own record
+                n["sponsor"] += 1
+                year = (re.findall(r'href="bill/(\d{4})/', before[-4000:]) or [""])[-1]
+                got, w = seat.search(tag or ""), seat.search(want or "")
+                if got and w and year in (term[:4], term[5:]) and got.group(1) != w.group(1):
+                    bad.append(f"{page.parent.name} {page.stem}: {name} as {year}'s sponsor at "
+                               f"{got.group(1)}, the term's seat {w.group(1)}")
                 continue
-            seen += 1
-            want = BSP.seat_of(fr["seats"].get(term) or {}, ids.get(slug, []),
-                               page.parent.name) or None
-            if f"{name} {tag}" != want:
-                bad.append(f"{page.parent.name} {page.stem}: {name} {tag}, the ballots of "
-                           f"{term} say {want!r}")
+            n["named"] += 1
+            if (f"{name} {tag}" if tag else None) != want and (tag or want):
+                bad.append(f"{page.parent.name} {page.stem}: {name} {tag or '(no seat)'}, the seat of "
+                           f"{term} is {want!r}")
+        # who presided and who moved, named in a sentence (components.person_link):
+        # the term's seat, else the name alone -- never a party letter alone
+        for slug, said in link.findall(html):
+            n["linked"] += 1
+            said = __import__("html").unescape(said)
+            want = BSP.seat_of(held, ids.get(slug, []), page.parent.name) or None
+            if said != want and (want or said.endswith(")")):
+                bad.append(f"{page.parent.name} {page.stem}: {said} in a sentence, the seat of "
+                           f"{term} is {want!r}")
+    # each pattern on its own: one finding names must not cover for the other
+    assert n["read"], "no member chip was read on any past term's session day: the pattern has drifted"
+    assert n["linked"], "no member named in a sentence was read on any past term's day: the pattern has drifted"
     assert not bad, f"{len(bad)} chip(s) name a seat not held that term: " + "; ".join(bad[:4])
-    return "ok", f"{seen:,} chips with a seat on past terms' days, each the seat of its term"
+    return "ok", (f"{n['read'] + n['linked']:,} member names on past terms' days: {n['named']:,} chips and "
+                  f"{n['linked']:,} in sentences named by the seat of their term or none, "
+                  f"{n['sponsor']:,} sponsor lines agreeing with it")
 
 
 @check("frontend", "a session day folds the consent calendar and the excused with their counts, "
@@ -84211,6 +84439,20 @@ def _speaker_other_chamber(BSP):
     return "ok", "Rosenwald on a House day of 2017; nobody of that name on one of 2021"
 
 
+@check("session", "how the day began keeps the case of the member who led the Pledge",
+       needs=("build_session_pages",))
+def _opening_keeps_case(BSP):
+    """opening_html put its sentence's first letter up with str.capitalize(),
+    which lowers the rest: 16 days read "rep. frederick andrews (r - hills
+    34) led the pledge of allegiance" (found 5 November 2026)."""
+    import html as _html
+    out = BSP.opening_html({"opening": {"prayer": True, "pledge": "Andrews"}}, "H",
+                           BSP.Members(Path("no-such-site")), _html.escape)
+    assert out.startswith("<p>A prayer was offered, and ") and "Rep. Andrews" in out and \
+        "Pledge of Allegiance" in out, f"the opening reads {out!r}"
+    return "ok", "the first letter up, the member's name and the Pledge as written"
+
+
 @check("session", "a speaker the rosters miss is linked by the term's own ballots, where one member has the name",
        needs=("build_session_pages",))
 def _speaker_by_ballot(BSP):
@@ -84230,9 +84472,12 @@ def _speaker_by_ballot(BSP):
              "served": {"terms": ["2023-2024"]}}]), encoding="utf-8")
         m = BSP.Members(root)
         m.term = "2025-2026"
-        m.seats = {"2025-2026": {"1": "Rep. Paul Terry (R - Belk 7)",
-                                 "2": "Rep. Joe Quill (R - Hills 9)",
-                                 "3": "Rep. Ann Lee (D - Hills 1)", "4": "Rep. Bo Lee (R - Hills 2)"}}
+        # who voted (floor_record's ballots), not the seats shown: Quill's
+        # seat of the term no source gives, and he voted in it
+        m.seats = {"2025-2026": {"1": "Rep. Paul Terry (R - Belk 7)"}}
+        m.ballots = {"2025-2026": {"1": "Rep. Paul Terry (R - Belk 7)",
+                                   "2": "Rep. Joe Quill (R - Hills 9)",
+                                   "3": "Rep. Ann Lee (D - Hills 1)", "4": "Rep. Bo Lee (R - Hills 2)"}}
         got = (m.slug("H", "Quill"), m.slug("H", "Terry"), m.slug("H", "Lee"), m.slug("H", "Nobody"))
     finally:
         shutil.rmtree(root, ignore_errors=True)
@@ -84283,6 +84528,11 @@ def _mover_seat_on_old_day(BSP):
     m.term = "2009-2010"
     assert m.by_ballot("H", "Chandley") == "shannon-chandley-sd-11", (
         "a ballot under the joined number links no page")
+    # the other chamber's seat is never the one held on this chamber's day
+    # (Sen. David Boutin, April 2010, once "Rep. David Boutin (R - Merr 9)")
+    assert m.label("shannon-chandley-sd-11", "S") == "Sen. Shannon Chandley", (
+        f"a Senate day of 2009-2010 names her {m.label('shannon-chandley-sd-11', 'S')!r}: "
+        "the House seat her other number held")
     # a move in mid-term: both numbers hold a seat in one term, and each
     # chamber's day names its own (the review of 5 November 2026)
     m.term = "2017-2018"

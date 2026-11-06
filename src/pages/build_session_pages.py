@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.59
+# GRANITE_VERSION: 2026-09-19.60
 """
 A page for every day the House sat.
 
@@ -160,12 +160,15 @@ def _careers():
 
 def seat_of(held, numbers, body):
     """The seat `held` ({member number: label}, one term's) gives the first of
-    `numbers` that has one -- the day's chamber's seat first, where two of a
-    mover's numbers hold one in the same term (a move in mid-term: the review
-    of 5 November 2026), so a House day names the House seat."""
+    `numbers` that has one in the day's chamber -- a House day names the
+    House seat -- and none where only the other chamber's is known. Sen.
+    David Boutin moved from the House to the Senate in 2010: the term's
+    bills print no Senate seat for him, and a Senate day of April 2010 once
+    named him "Rep. David Boutin (R - Merr 9)", his House seat of that term
+    (the lens of 5 November 2026). He is "Sen. David Boutin" there now."""
     hon = "Sen." if body == "S" else "Rep."
     got = [held[i] for i in dict.fromkeys(numbers) if i and held.get(i)]
-    return next((x for x in got if x.startswith(hon + " ")), got[0] if got else "")
+    return next((x for x in got if x.startswith(hon + " ")), "")
 
 
 class Members:
@@ -199,10 +202,13 @@ class Members:
         self.by_full = collections.defaultdict(list)
         self.term = ""
         # THE SEAT HELD AT THE TIME (labels-use-the-seat-held-at-the-time):
-        # {term: {member id: label}} off each member's own ballots of the term
-        # (floor_record's seats), and the term the roster describes. Set by
-        # main(); label() reads them.
-        self.seats, self.current = {}, ""
+        # {term: {member id: label}}, the seat the term's bills print, else
+        # the ballots' in the member's last term (floor_record's seats,
+        # build_site_v2.term_seats), and the term the roster describes. Set by
+        # main(); label() reads them. And who voted in each term as their
+        # ballots label them (floor_record's ballots), which by_ballot links
+        # a name among.
+        self.seats, self.current, self.ballots = {}, "", {}
         # The names left as words, (chamber, name) -> times, said at the end
         # of the run so a name that should have linked can be found.
         self.unmatched = collections.Counter()
@@ -279,8 +285,8 @@ class Members:
 
     def label(self, slug, body):
         """The member as the day's term names them (the person, 16 September
-        2026: "show them as a rep when they were a rep"): the seat their own
-        ballots of the term give (seats); in the term the roster describes, a
+        2026: "show them as a rep when they were a rep"): the seat of the term
+        (seats, build_site_v2.term_seats); in the term the roster describes, a
         sitting member's roster label; anywhere else the name alone, with the
         day's chamber's honorific -- no seat rather than a seat they may not
         have held. A member renumbered or moved between terms is named on an
@@ -341,7 +347,10 @@ class Members:
         hon = "sen." if body == "S" else "rep."
         want = (last or "").strip().lower()
         hits = []
-        for mid, lab in (self.seats.get(self.term) or {}).items():
+        # who voted in the term as their ballots label them (floor_record's
+        # ballots), not the seats shown: a member whose seat of the term no
+        # source gives still voted in it. The seats where a run has no ballots.
+        for mid, lab in ((self.ballots or self.seats).get(self.term) or {}).items():
             words = re.sub(r"\s*\([^()]*\)\s*$", "", lab or "").split()
             page = self.by_id.get(str(mid)) or self.by_number.get(str(mid)) or {}
             if (len(words) >= 2 and words[0].lower() == hon and words[-1].lower() == want
@@ -1030,8 +1039,12 @@ def opening_html(narrative, body, members, esc):
                    + " led the Pledge of Allegiance")
     line = ". ".join(bits)
     if say:
-        line = (line + ". " if line else "") + ", and ".join(say).capitalize() \
-            if not line else line + ", " + " and ".join(say)
+        # The first letter up and nothing else: str.capitalize() lowers the
+        # rest, and printed "rep. frederick andrews (r - hills 34) led the
+        # pledge of allegiance" on 16 days (found 5 November 2026, by the chip
+        # check once it read the names in sentences).
+        first = ", and ".join(say)
+        line = (first[:1].upper() + first[1:]) if not line else line + ", " + " and ".join(say)
     return f"<p>{line}.</p>"
 
 
@@ -2898,7 +2911,7 @@ def floor_record(path=FLOOR_RECORD):
         got = {}
     return {"presiding": got.get("presiding") or {}, "cards": got.get("cards") or {},
             "moments": got.get("moments") or {}, "seats": got.get("seats") or {},
-            "nobill": got.get("nobill") or {}}
+            "ballots": got.get("ballots") or {}, "nobill": got.get("nobill") or {}}
 
 
 def load_rows(site):
@@ -3523,11 +3536,18 @@ def chamber(a, site, base, body, days):
     fr = floor_record()
     # Each member by the seat they held in the day's term (Members.label).
     members.seats = fr.get("seats") or {}
+    members.ballots = fr.get("ballots") or {}
     _today = build_date.today().isoformat()
     members.current = proceedings.vote_term(_today[:4], _today)
     if not members.seats:
         print("  WARNING: the floor record names no member's seat by term: every chip "
               "outside the current term is drawn without a seat")
+    elif not members.ballots:
+        # NOT SILENT: a floor record from before 5 November 2026 carries no
+        # ballots, and by_ballot then links among the seats shown, which no
+        # longer hold every member who voted in a term
+        print("  WARNING: the floor record names who held a seat but not who voted in each "
+              "term (ballots): a name no roster matches is linked among the seats instead")
     floor = collections.defaultdict(list)
     for (b_, d_), day_ in days.items():
         if b_ == body:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.246
+# GRANITE_VERSION: 2026-09-05.248
 """
 Generate the faceted site from real General Court data.
 
@@ -3030,8 +3030,8 @@ def write_nobill_cards(out, rollcalls, votes_by_bill, legs, unnamed):
 # each chamber's term files of session days, and published by nothing.
 #
 #   presiding  {roll call: [[member id, label], ...]}: whom each roll call's
-#              "Presiding" ballot names, labelled with the seat they held
-#              when it was cast (ballot_seat). The record's word for who was
+#              "Presiding" ballot names, labelled with the seat of the term
+#              (term_seats), else the name alone. The record's word for who was
 #              in the chair, ballot by ballot -- the person, 9 October 2026,
 #              v18: "a general line naming the members who presided over the
 #              chamber during the day" -- and never attendance_context's
@@ -3094,46 +3094,176 @@ def floor_moment(st):
             "stated": st.get("debate_start") is not None, "s": state}
 
 
-def term_seats(votes_by_member):
-    """{term: {member id: label}}: the seat each member held in each term, as
-    their own ballots of that term give it (ballot_seat) -- the label a
-    session day of the term names them by (labels-use-the-seat-held-at-the-
-    time; the person, 16 September 2026). Only a label with a seat in it, and
-    only where every ballot of the term gives the same one: a member whose
-    ballots of a term name two seats is named without one there, which is
-    true, rather than with either, which may not be."""
+_SUFFIX = {"jr", "sr", "ii", "iii", "iv"}
+
+
+def _surname(name):
+    """The last word of a surname as a ballot ("McCarty, Winston", "Barnes,
+    Jr., John") or a sponsor line ("McCarty", "K. Rice", "Fuller Clark",
+    "John Barnes Jr.") gives it, a Jr. or a III not counted as one."""
+    words = [w for w in str(name or "").split(",")[0].replace(".", " ").split()
+             if w.lower() not in _SUFFIX]
+    return words[-1].lower() if words else ""
+
+
+def printed_record(path="text_sponsors.json"):
+    """What the term's bills print about where members sat, from the sponsor
+    lines text_sponsors.py read off each bill's own text:
+      one   {(term, member id): (chamber, county, district)}: the one seat
+            printed for a member it placed -- the rule
+            build_data.date_ballot_seats already uses for the sitting members;
+      two   {(term, member id)}: a member printed at two seats, so neither
+            is proven;
+      named {(term, chamber, surname): {(county, district)}}: the seats
+            printed under a surname that text_sponsors could not place on
+            anyone (1999 "Rep. McCarty, Hills 38") -- and not one it placed
+            on a member of that surname elsewhere, which is that member's
+            line printed once more. A seat placed on a namesake is the
+            namesake's, and says nothing of this member (the second review
+            of 5 November 2026: counting those refused 29 seats that were
+            right, David Flanders's Rock 20 among them).
+    Empty where the file is not here."""
+    p = Path(path)
+    try:
+        text = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except ValueError:
+        text = {}
+    seen, loose, placed = defaultdict(set), defaultdict(set), defaultdict(set)
+    for term, bills in text.items():
+        for recs in (bills or {}).values():
+            for r in recs or []:
+                if not r.get("district"):
+                    continue
+                s = (r.get("chamber") or "", r.get("county") or "", str(r["district"]).lstrip("0"))
+                k = (term, s[0], _surname(r.get("name")))
+                if r.get("member_id"):
+                    seen[(term, str(r["member_id"]))].add(s)
+                    placed[k].add(s[1:])
+                else:
+                    loose[k].add(s[1:])
+    one = {k: next(iter(v)) for k, v in seen.items() if len(v) == 1}
+    two = {k for k, v in seen.items() if len(v) > 1}
+    named = {k: v - placed.get(k, set()) for k, v in loose.items() if v - placed.get(k, set())}
+    return one, two, named
+
+
+def printed_seats(path="text_sponsors.json"):
+    """printed_record's `one`: the one seat a term's bills print for a member."""
+    return printed_record(path)[0]
+
+
+def term_seats(votes_by_member, printed=None, record=None, ballots=None):
+    """{term: {member id: label}}: the seat each member held in each term --
+    the label a session day of the term names them by (labels-use-the-seat-
+    held-at-the-time; the person, 16 September 2026).
+
+    THE SEAT A TERM'S BILLS PRINT, FIRST (5 November 2026). A ballot's label
+    is not dated: a former member's is built from one record of their seat
+    (build_data._former_label), the seat they last held, so Shannon Chandley
+    read "Hills 22" on her 2009-2010 ballots, the seat she took in 2016, where
+    every bill she sponsored in 2010 prints "Hills 6". Measured against the
+    bills' sponsor lines, the ballots' seat was the printed one on 29-47% of
+    member-years in 1999-2004 and 48-76% in 2005-2012. So:
+      - where the term's bills print one seat for the member (`printed`,
+        printed_seats), that seat;
+      - else, in the member's last term in the record only, the seat their
+        ballots give: today's roster for a sitting member, the corrected
+        record of where they last sat for one who has left. It is that
+        record's own claim about that term, not a carried guess -- and it is
+        refused where the term's bills say otherwise: a member they print at
+        two seats, or a sponsor line of the member's surname, in their
+        chamber, at another seat that text_sponsors could not place on
+        anyone (Winston McCarty, 1999-2000: the record's Merr 10, the bills'
+        Hills 38; the review of 5 November 2026). That record matches the
+        bills' seat in 1,439 of the 1,517 last terms where both say;
+      - else no seat. The name alone is true; an earlier term's seat taken
+        from a later record is not known to be (the manager's condition, 5
+        November: no source, no seat).
+    Only a label with a seat, and only one per member and term: ballots of a
+    term that name two seats name neither. `record` is printed_record's
+    (one, two, named); `printed` alone stands for `one` with nothing doubted."""
+    if record is None:
+        record = printed_record() if printed is None else (printed, set(), {})
+    printed, two, named = record
     seen, cache = defaultdict(lambda: defaultdict(set)), {}
+    body, who, last = {}, {}, {}
     for mid, rows in votes_by_member.items():
+        mid = str(mid)
         for v in rows:
+            t = P.vote_term(v["year"], v.get("date"))
+            last[mid] = max(last.get(mid, ""), t)
+            body.setdefault((t, mid), v.get("body"))
+            who.setdefault((t, mid), v)
             k = (v.get("label"), v.get("name"), v.get("body"), v.get("party"))
             if k not in cache:
                 cache[k] = ballot_seat(v, v.get("body"))
             if " - " in cache[k]:
-                seen[P.vote_term(v["year"], v.get("date"))][str(mid)].add(cache[k])
-    return {t: {m: next(iter(ls)) for m, ls in sorted(ms.items()) if len(ls) == 1}
-            for t, ms in sorted(seen.items())}
+                seen[t][mid].add(cache[k])
+    out = defaultdict(dict)
+    for (t, mid), v in sorted(who.items()):
+        got = printed.get((t, mid))
+        if got and got[0] == body[(t, mid)]:
+            ch, county, dist = got
+            lab = member_labels(v.get("name"), chamber=ch, party=v.get("party"),
+                                district=dist, county=county)["display_full"]
+            if " - " in lab:
+                out[t][mid] = lab
+                continue
+        ls = seen.get(t, {}).get(mid) or set()
+        if t != last[mid] or len(ls) != 1 or (t, mid) in two:
+            continue
+        lab = next(iter(ls))
+        said = named.get((t, body[(t, mid)], _surname(v.get("name"))))
+        if said and lab not in {member_labels(v.get("name"), chamber=body[(t, mid)],
+                                              party=v.get("party"), district=d,
+                                              county=c)["display_full"] for c, d in said}:
+            continue
+        out[t][mid] = lab
+    if ballots is not None:
+        # WHO VOTED, AS THEIR BALLOTS NAME THEM: the map term_seats was before
+        # 5 November 2026, one label with a seat per member and term. Not a
+        # seat to show; build_session_pages.by_ballot links a name no roster
+        # matches among these, as it did, so the seats' new source moves no
+        # link (the lens of 5 November: 102 gained and 56 lost when it read
+        # the seats instead -- Rep. Jeb Bradley among them, who voted that
+        # term whatever seat he held).
+        ballots.update({t: {m: next(iter(ls)) for m, ls in sorted(ms.items()) if len(ls) == 1}
+                        for t, ms in sorted(seen.items())})
+    return {t: dict(sorted(ms.items())) for t, ms in sorted(out.items()) if ms}
 
 
-def write_floor_record(data_dir, votes_by_member, cards, moments=None, nobill=None):
-    """data/floor_record.json (FLOOR_RECORD, above). Returns its path."""
+def write_floor_record(data_dir, votes_by_member, cards, moments=None, nobill=None,
+                       record=None):
+    """data/floor_record.json (FLOOR_RECORD, above). Returns its path.
+    `record` is term_seats' printed record, read from text_sponsors.json when
+    not given."""
+    ballots = {}
+    seats = term_seats(votes_by_member, record=record, ballots=ballots)
     presiding = defaultdict(list)
     for rows in votes_by_member.values():
         for v in rows:
             if v.get("vote") == "Presiding":
-                presiding[_roll_call_key(v)].append(
-                    [str(v.get("member_id") or ""), ballot_seat(v, v.get("body"))])
-    seats = term_seats(votes_by_member)
+                # the seat of the term (term_seats), else the name alone --
+                # not a later record's seat, and not the party letter alone,
+                # which a member's link never shows (components.person_link)
+                mid = str(v.get("member_id") or "")
+                lab = ((seats.get(P.vote_term(v["year"], v.get("date"))) or {}).get(mid)
+                       or member_labels(v.get("name"), chamber=v.get("body"),
+                                        party=v.get("party"))["display_plain"])
+                presiding[_roll_call_key(v)].append([mid, lab])
     f = Path(data_dir) / FLOOR_RECORD
     f.write_text(json.dumps({
         "_about": "Not published. For build_session_pages.py: who each roll call's "
                   "Presiding ballot names (presiding), and where each roll call's card is "
                   "on its bill's Votes tab (cards, the index into the bill record's "
-                  "rollcalls); the seat each member held in each term, off their own "
-                  "ballots (seats); and where each roll call on no bill is in its term's "
+                  "rollcalls); the seat each member held in each term, as its bills "
+                  "print it, else their ballots' in their last term (seats); who voted in "
+                  "each term, as their ballots label them, for linking a name and not for "
+                  "showing a seat (ballots); and where each roll call on no bill is in its term's "
                   "nobill/<term>.json (nobill). Written by build_site_v2.py, which reads "
                   "the ballots.",
         "presiding": {k: sorted(v) for k, v in sorted(presiding.items())},
-        "cards": cards, "moments": moments or {}, "seats": seats,
+        "cards": cards, "moments": moments or {}, "seats": seats, "ballots": ballots,
         "nobill": nobill or {}},
         separators=(",", ":"), sort_keys=True),
         encoding="utf-8")
@@ -3320,6 +3450,121 @@ def former_roster(legs, votes_by_member, links, former_file, current_term):
                                         for v in every if v.get("year")})},
         }
     return out
+
+
+def corrected_seats(path=Path("corrections/member_corrections.json")):
+    """The member ids whose seat the person set in member_corrections.json
+    ("members", an entry with a county or a district). Read, never written:
+    a seat the person gave is theirs, and nothing dated from the bills goes
+    over it."""
+    try:
+        got = json.loads(Path(path).read_text(encoding="utf-8")).get("members") or {}
+    except (OSError, ValueError):
+        return set()
+    return {str(k) for k, v in got.items()
+            if isinstance(v, dict) and (v.get("county") or v.get("district"))}
+
+
+def _member_address(m):
+    lab = member_labels(m.get("name"), chamber=m.get("chamber"),
+                        party=m.get("party_code") or m.get("party"),
+                        district=m.get("district"), county=m.get("county"),
+                        county_abbr=m.get("county_abbr"))
+    return "/legislator/" + (m.get("slug") or member_slug(m, lab))
+
+
+def date_former_seats(former, votes_by_member, printed, corrected, legs):
+    """(former, {id: (record's seat, bills' seat)}): each former member's
+    page seat put right from the bills of their last term (5 November 2026).
+
+    A former member's page took its seat from their last ballot's label, and
+    that label from one record of where they last sat (build_data.
+    _former_label, from former_members.json, which the General Court's
+    current-state Legislators view fills). Against the bills their last term
+    printed it was wrong on 75 of the 1,468 pages where the bills print one
+    seat: Rebecca Hutchinson's 1999-2000 seat was "Rock 73", in a county the
+    1992 map numbered to 36, where her bills print Rockingham 8.
+
+    So where the member's own number's last term's bills print one seat in
+    their chamber (printed_seats) and it is not the record's, the page takes
+    the bills' -- unless the person set the seat in member_corrections.json
+    (`corrected`), which stands as they wrote it. The page's address is built
+    from the seat, so it moves; the old one is kept in the row's moved_from,
+    and build_pages answers it with a 301 (build_pages.moved_members). A
+    change whose new address another page already has is not made."""
+    abbr = {m["county"]: m["county_abbr"] for m in legs.values()
+            if m.get("county") and m.get("county_abbr")}
+    # every address a page or a 301 already answers: the former members', the
+    # sitting members', and each one a page has moved from (the review of 5
+    # November 2026: a sitting member's address was not in the set)
+    taken = ({_member_address(m) for m in former.values()}
+             | {_member_address(m) for m in legs.values() if m.get("name")}
+             | {a for m in former.values() for a in m.get("moved_from") or []})
+    out = {}
+    for mid, m in former.items():
+        rows = votes_by_member.get(mid) or []
+        if not rows or mid in corrected:
+            continue
+        last = max(rows, key=lambda v: vote_date(v.get("date")))
+        got = printed.get((P.vote_term(last.get("year", ""), last.get("date")), mid))
+        if not got or got[0] != (m.get("chamber") or ""):
+            continue
+        _ch, county, dist = got
+        same = (dist == str(m.get("district") or "").lstrip("0")
+                and (m.get("chamber") == "S"
+                     or county.lower()[:4] == str(m.get("county") or "").lower()[:4]))
+        if same:
+            continue
+        was = _member_address(m)
+        new = dict(m, county=county if m.get("chamber") != "S" else (m.get("county") or ""),
+                   district=dist, county_abbr=abbr.get(county, m.get("county_abbr") or ""))
+        now = _member_address(new)
+        if now != was and now in taken:
+            print(f"  WARNING: {m.get('name')} ({mid}) not given the seat the bills print: "
+                  f"{now} is another page's address")
+            continue
+        if now != was:
+            new["moved_from"] = [*(m.get("moved_from") or []), was]
+            taken.add(now)
+        former[mid] = new
+        out[mid] = (f"{m.get('county') or ''} {m.get('district') or ''}".strip(),
+                    f"{county} {dist}".strip())
+    return former, out
+
+
+# EVERY ADDRESS A FORMER MEMBER'S PAGE HAS HAD, KEPT (the review of 5 November
+# 2026; the manager: "keep the 301s permanently -- old emails link through
+# them"). A page's moved_from is worked out afresh every build, so an address
+# a page left would die the day the reason it moved went away: the person
+# correcting that seat, or the record coming to agree with the bills. This
+# file holds {address: member id} for every move ever published, is merged
+# into and never pruned (src/ops/record_moves.py), and is read by every build.
+MOVED_ADDRESSES = Path("generated/moved_addresses.json")
+
+
+def keep_moved(former, path=MOVED_ADDRESSES):
+    """Every recorded address of a former member's page answers with a 301 to
+    the page they have now: appended to the row's moved_from where it is not
+    the page's own address and not there already. Returns (kept, unrecorded):
+    how many recorded addresses were put back, and the moves this build made
+    that the file does not hold yet, said so they get recorded."""
+    try:
+        moved = json.loads(Path(path).read_text(encoding="utf-8")) if Path(path).exists() else {}
+    except ValueError:
+        print(f"  WARNING: {path} will not read: no recorded former address is kept this build")
+        moved = {}
+    kept = 0
+    for addr, mid in sorted(moved.items()):
+        m = former.get(str(mid))
+        if m is None:
+            print(f"  WARNING: {addr} is recorded for member {mid}, who has no former page now")
+            continue
+        if addr != _member_address(m) and addr not in (m.get("moved_from") or []):
+            m["moved_from"] = [*(m.get("moved_from") or []), addr]
+            kept += 1
+    unrecorded = sorted(a for k, m in former.items() for a in m.get("moved_from") or []
+                        if a not in moved)
+    return kept, unrecorded
 
 
 # What one ballot says about whether the member took part, in the order a
@@ -12391,6 +12636,27 @@ def main():
               "page, the later chamber's, with every chamber's votes: "
               + ", ".join(f"{former[k].get('name')} ({'+'.join([k, *v])})"
                           for k, v in sorted(movers.items())))
+    # THE SEAT A FORMER MEMBER'S PAGE GIVES, FROM THE BILLS OF THEIR LAST TERM
+    # (date_former_seats): the record of where they last sat is wrong on 75
+    # of the 1,468 pages whose last term's bills print one seat.
+    former, redated = date_former_seats(former, votes_by_member, printed_seats(),
+                                        corrected_seats(), legs)
+    if redated:
+        print(f"{len(redated)} former member(s) given the seat their last term's bills print, "
+              "not the record's; the old address answers with a 301: "
+              + ", ".join(f"{former[k].get('name')} ({was} -> {now})"
+                          for k, (was, now) in sorted(redated.items())[:12])
+              + (" ..." if len(redated) > 12 else ""))
+    _kept, _unrecorded = keep_moved(former)
+    if _kept:
+        print(f"{_kept} recorded former address(es) kept answering with a 301 though the page "
+              f"no longer moves from them ({MOVED_ADDRESSES})")
+    if _unrecorded:
+        # NOT SILENT: a move this build made and the file does not hold dies
+        # the first build after its reason goes away
+        print(f"  WARNING: {len(_unrecorded)} former address(es) answered with a 301 are not "
+              f"in {MOVED_ADDRESSES}: record them with python3 src/ops/record_moves.py "
+              f"after this build, and commit the file. First: {', '.join(_unrecorded[:4])}")
     if former:
         print(f"{len(former):,} member(s) in the record hold no seat now; "
               "they get a page of their own and the sitting roster is "
