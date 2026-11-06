@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.777
+# GRANITE_VERSION: 2026-09-04.778
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -108917,6 +108917,32 @@ def _recheck_order(RS, G):
     return "ok", (f"{len(slugs)} guides on agency pages in the order, voting, DMV, property tax and "
                   "benefits first; a changed fee LOOK, a held phone number found, a page not newer, "
                   "unread or unregistered each said so; an empty folder refused")
+
+
+@check("frontend", "By the Numbers' chart shows every value where nothing can hover, and says so",
+       needs=("learn_numbers",))
+def _chart_values_without_hover(LN):
+    """The cohesion audit of 30 October 2026, P-6: the chart said "Hover over
+    a term to see its value", and a phone has no hover. On a screen that
+    cannot hover, every bar's value is shown and the line over the chart
+    says where the values are; with a pointer, the four named values and
+    the hover line, as before."""
+    terms = [f"{y}-{y + 1}" for y in range(2017, 2027, 2)]
+    html_ = LN.law_chart({t: {"filed": 100, "Became Law": 20 + 3 * i} for i, t in enumerate(terms)}, terms)
+    bad = []
+    if '<span class="l-hov">Hover over a term to see its value.</span>' not in html_ \
+            or '<span class="l-tap">' not in html_:
+        bad.append("the line over the chart does not say both, one for each kind of screen")
+    css = re.sub(r"\s+", "", Path("src/pages/app.css").read_text(encoding="utf-8"))
+    m = re.search(r"@media\(hover:none\)\{(.*?)\}\}", css)
+    rules = m.group(1) if m else ""
+    for want in (".l-hov{display:none", ".l-tap{display:inline", ".l-barsli.l-bv{visibility:visible"):
+        if want not in rules:
+            bad.append(f"with no hover, app.css lacks {want}")
+    if ".l-tap{display:none}" not in css:
+        bad.append("with a pointer, the no-hover line shows too")
+    assert not bad, "; ".join(bad)
+    return "ok", "every value shown and said so with no hover; the hover line with a pointer"
 
 
 @check("data", "every RSA section the Learn pages cite is in force, and says what they quote")
