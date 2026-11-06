@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.266
+// GRANITE_VERSION: 2026-09-07.267
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -11817,6 +11817,27 @@ document.addEventListener("toggle",e=>{
 // where an address it could not copy waits to be selected.
 const ACT_PANES="#pageacts details[open], .pageacts details[open], .racts details[open]";
 const SHARE_PRESS="[data-share]";   // named here: Share's own listener is the one that names it
+// UNDER ITS OWN BUTTON, AS WIDE AS THE ROW (the owner, 6 November 2026; app.css
+// at "AND ON A PHONE, UNDER ITS OWN BUTTON"). A head's pane is measured from
+// the button that opens it, and on a phone the buttons are two to a row: CSS
+// cannot know which of the two a button is, so this says where the row
+// starts, from the button, and how wide it is (--pl, --pw), as it opens --
+// on the press, before the pane is drawn, and on the toggle for a pane
+// opened any other way -- and again when the window changes. A desktop's
+// rule does not read them. Nothing here opens, shuts or moves focus.
+function placeActPane(d){
+  if(!d||!d.closest||d.tagName!=="DETAILS"||!d.closest(".racts"))return;
+  const row=d.closest(".pageacts")||d.closest(".racts");
+  const r=row.getBoundingClientRect(), b=d.getBoundingClientRect();
+  d.style.setProperty("--pl",Math.round(r.left-b.left)+"px");
+  d.style.setProperty("--pw",Math.round(r.width)+"px");
+}
+document.addEventListener("click",e=>{
+  const s=e.target&&e.target.closest&&e.target.closest(".racts details > summary");
+  if(s)placeActPane(s.parentElement);
+},true);
+document.addEventListener("toggle",e=>{if(e.target&&e.target.open)placeActPane(e.target);},true);
+window.addEventListener("resize",()=>document.querySelectorAll(".racts details[open]").forEach(placeActPane));
 document.addEventListener("click",e=>{
   const at=e.target;
   if(!at||!at.closest)return;

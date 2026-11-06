@@ -80150,48 +80150,83 @@ def _home_finder_suggests_towns():
                   "no finder of towns beside it")
 
 
-@check("frontend", "on a desktop a head's action pane opens to the left of its button, level with it; "
-                   "on a phone below the row, as before")
+@check("frontend", "a head's action pane opens from its own button with a nub pointing at it: on a desktop "
+                   "to its left, level with it; on a phone under it, as wide as the row")
 def _panes_open_left():
     """The owner, 6 November 2026: a pane hung from the actions' foot read as
-    disconnected from the button that opened it. Above a phone's width, where
-    the actions are the head's right-hand column (.racts), each button is
-    what its pane is measured from: top 0, right a gap past the column's left
-    edge, its width the window less the column and the gutters -- Cite's,
-    Testify's, Follow's and Report a problem's. The phone's rule, at 45em,
-    is not touched, and the two widths do not overlap. Measured in a browser
-    at 1024, 1280 and 1440 on a bill and a session day (the branch's notes):
-    on screen, no sideways scroll, never over its own button."""
+    disconnected from the button that opened it. Each of Cite, Testify,
+    Follow and Report a problem in a head's actions (.racts) is what its pane
+    is measured from, at every width -- Testify's details by name, since it
+    sits in a box of its own (mountTestify). Above a phone's width (the
+    actions the head's right-hand column) the pane opens to the button's
+    left, top level with it, its width the window less the column and the
+    gutters; at 45em and under (two buttons to a row) under the button, as
+    wide as the row, where app.js placeActPane says the row is. And a nub
+    connects them (the owner's second word the same day): the open button's
+    ::after, a square of the pane's surface and border turned 45deg, laid on
+    the pane's edge at the button's middle -- the right edge on a desktop,
+    the top on a phone -- its tip short of the button: the gap (12px) is
+    more than half the turned square's diagonal (14px / 2 * 1.414 = 9.9px).
+    Measured in a browser at 360, 390, 1024 and 1280, light and dark, on a
+    bill and a session day (the branch's notes)."""
     css = Path(_paths.locate("app.css")).read_text(encoding="utf-8")
-    blocks = [b for b in re.findall(r"@media \(min-width:45\.0625em\)\{\n(.*?)\n\}", css, re.S)
-              if ".racts" in b]
-    assert len(blocks) == 1, f"{len(blocks)} rules above a phone's width place the head's panes, not one"
-    body = blocks[0]
-    # each by name: Testify's details sits in a box of its own (mountTestify), so a
-    # rule on the row's children missed it and its pane stood at the row's top
-    assert ".racts :is(.pcite,.follow,.testify,.report){position:relative}" in body, (
-        "a head's pane is not measured from its own button above a phone's width")
-    rule = re.search(r"\.racts :is\(\.followpane,\.citebody,\.testifypane\),\.racts \.report > \.reportform\{([^}]*)\}",
-                     body)
-    assert rule and "top:0" in rule.group(1) and re.search(r"right:calc\(100% \+ var\(--sp-\d\)\)", rule.group(1)) \
-        and "left:auto" in rule.group(1), (
-        f"a head's pane does not open to the left of its button, level with it: {rule and rule.group(1)!r}")
-    # the phone's breakpoint is 45em, max; the desktop's starts just past it
-    assert "@media (max-width:45em){\n  .rhead{" in css, "the head's phone breakpoint moved: move the desktop's with it"
-    phone = css[css.index("@media (max-width:45em){\n  .rhead{"):]
-    phone = phone[:phone.index("\n}\n")]
-    assert "citebody" not in phone and "testifypane" not in phone, (
-        "the phone's rule now places the panes too: say which wins")
+    js = Path(_paths.locate("app.js")).read_text(encoding="utf-8")
+    shared = ".racts :is(.pcite,.follow,.testify,.report){position:relative;--nub:.875rem}"
+    assert shared in css, "a head's pane is not measured from its own button, or its nub has no size"
+    nub = re.search(r"\.racts :is\(\.pcite,\.follow,\.testify,\.report\)\[open\] > summary::after\{([^}]*)\}", css)
+    assert nub and all(x in nub.group(1) for x in (
+            'content:""', "position:absolute", "background:var(--surface)", "solid var(--rule-2)",
+            "rotate(45deg)", "pointer-events:none", "z-index:21")), (
+        f"the nub is not the pane's own fill and border, turned, over the pane: {nub and nub.group(1)!r}")
+    pane = re.search(r"\.followpane,\.citebody,\.testifypane\{position:absolute;[^}]*\}", css)
+    assert pane and "background:var(--surface)" in pane.group(0) and "border:1px solid var(--rule-2)" in pane.group(0) \
+        and "z-index:20" in pane.group(0), "the pane's fill, border or layer no longer match the nub's"
+    sp5 = re.search(r"--sp-5:(\d+)px", css)
+    assert sp5 and int(sp5.group(1)) > 14 / 2 * 2 ** .5, "the nub's tip would reach the button"
+
+    def block(media):
+        got = [b for b in re.findall(re.escape(media) + r"\{\n(.*?)\n\}", css, re.S)
+               if ".racts :is(.followpane" in b]
+        assert len(got) == 1, f"{len(got)} rules at {media} place the head's panes, not one"
+        return got[0]
+    desk, phone = block("@media (min-width:45.0625em)"), block("@media (max-width:45em)")
+    pane_of = lambda b: re.search(
+        r"\.racts :is\(\.followpane,\.citebody,\.testifypane\),\.racts \.report > \.reportform\{([^}]*)\}", b)
+    nub_of = lambda b: re.search(r"\[open\] > summary::after\{([^}]*)\}", b)
+    d, dn = pane_of(desk), nub_of(desk)
+    assert d and "top:0" in d.group(1) and re.search(r"right:calc\(100% \+ var\(--sp-5\)\)", d.group(1)) \
+        and "left:auto" in d.group(1), f"on a desktop a pane does not open to its button's left: {d and d.group(1)!r}"
+    assert dn and "top:calc(50% - var(--nub) / 2)" in dn.group(1) \
+        and "left:calc(-1 * var(--sp-5) - var(--nub) / 2)" in dn.group(1) \
+        and "border-top-width:1px;border-right-width:1px" in dn.group(1), (
+        f"on a desktop the nub is not on the pane's right edge at the button's middle: {dn and dn.group(1)!r}")
+    p, pn = pane_of(phone), nub_of(phone)
+    assert p and "top:calc(100% + var(--sp-5))" in p.group(1) and "left:var(--pl,0)" in p.group(1) \
+        and "width:var(--pw," in p.group(1), f"on a phone a pane does not open under its button: {p and p.group(1)!r}"
+    assert pn and "top:calc(100% + var(--sp-5) - var(--nub) / 2)" in pn.group(1) \
+        and "left:calc(50% - var(--nub) / 2)" in pn.group(1) \
+        and "border-top-width:1px;border-left-width:1px" in pn.group(1), (
+        f"on a phone the nub is not on the pane's top edge at the button's middle: {pn and pn.group(1)!r}")
+    # where the row is, said by the script as the pane opens: on the press,
+    # on the toggle and when the window changes; and nothing else
+    fn = js[js.index("function placeActPane("):]
+    fn = fn[:fn.index("\n}\n")]
+    assert '"--pl"' in fn and '"--pw"' in fn and ".open" not in fn.replace("d.closest", "") \
+        and "focus" not in fn, "placeActPane does more than say where the row is"
+    for hook in ('e.target.closest(".racts details > summary");\n  if(s)placeActPane(s.parentElement);\n},true);',
+                 'document.addEventListener("toggle",e=>{if(e.target&&e.target.open)placeActPane(e.target);},true);',
+                 'window.addEventListener("resize",()=>document.querySelectorAll(".racts details[open]").forEach(placeActPane));'):
+        assert hook in js, f"placeActPane is no longer called where it was: {hook[:60]!r}"
     # THE CASCADE, not only the text (the review of 6 November 2026): two
     # rules of the same weight put these buttons back to position:static,
-    # and only their place in the file lets the new one win. Moved after it,
-    # Report's pane would hang from the column again and every line above
-    # would still pass.
-    at = css.index(".racts :is(.pcite,.follow,.testify,.report){position:relative}")
+    # and only their place in the file lets the new one win.
+    at = css.index(shared)
     for older in (".pageacts .follow,.pageacts .testify{position:static}", ".racts .report{position:static}"):
         assert older in css and css.index(older) < at, (
             f"{older!r} now comes after the rule that measures a pane from its button, and wins")
-    return "ok", "above 45em each pane at its button's top, to its left; at 45em and under, below as before"
+    return "ok", ("each pane from its own button: to its left and level above 45em, under it and as wide as the "
+                  "row at 45em and under; a nub of its own fill and border on its edge at the button's middle, "
+                  "clear of the button")
 
 
 @check("frontend", "Follow's, Cite's and Testify's panes, opened below the fold, are brought into view")

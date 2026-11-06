@@ -7405,16 +7405,45 @@ border-radius:var(--r-in);background:var(--surface);font-size:var(--t-ui)}
    gap short of the column, over the room between the title and facts and
    the buttons -- never over the button that opened it. Every page whose head
    carries the column (components.record_head, app.js billHead) opens them so:
-   a bill's, a member's, a committee's, a session day's. On a phone, where the
-   buttons are a row under the head, they open below as before. The width
-   leaves the column, the gap and the page's gutters: 22rem of the window. */
+   a bill's, a member's, a committee's, a session day's. The width leaves the
+   column, the gap and the page's gutters: 22rem of the window.
+
+   AND ON A PHONE, UNDER ITS OWN BUTTON, EACH WITH A NUB (the owner, 6
+   November 2026: "connect each pane to its button"). On a phone the buttons
+   are two to a row under the head, and a pane hung from the row's foot read
+   as no button's; it opens under the button that was pressed now, as wide as
+   the row (app.js placeActPane says where the row is, from the button). And
+   at every width a small triangle on the pane's edge points at that button
+   -- on a desktop on its right edge at the button's middle, on a phone on
+   its top edge -- the pane's own fill and border, one shape with it: a
+   square of the pane's surface, turned, its two outer edges the pane's
+   border, laid over the pane's edge so the edge does not show through it.
+   The button draws it (summary::after), not the pane, whose own overflow
+   (Cite's scrolls) would clip it; it stands clear of the button. */
+/* each by name: Testify's sits in its own box (app.js mountTestify) */
+.racts :is(.pcite,.follow,.testify,.report){position:relative;--nub:.875rem}
+.racts :is(.pcite,.follow,.testify,.report)[open] > summary::after{content:"";position:absolute;z-index:21;
+  width:var(--nub);height:var(--nub);box-sizing:border-box;background:var(--surface);
+  border:0 solid var(--rule-2);transform:rotate(45deg);pointer-events:none}
 @media (min-width:45.0625em){
-  /* each by name: Testify's sits in its own box (app.js mountTestify) */
-  .racts :is(.pcite,.follow,.testify,.report){position:relative}
   .racts :is(.followpane,.citebody,.testifypane),.racts .report > .reportform{
     top:0;right:calc(100% + var(--sp-5));left:auto;
     width:min(36rem,calc(100vw - 22rem))}
   .racts .citebody{width:min(42rem,calc(100vw - 22rem))}
+  .racts :is(.pcite,.follow,.testify,.report)[open] > summary::after{
+    top:calc(50% - var(--nub) / 2);left:calc(-1 * var(--sp-5) - var(--nub) / 2);
+    border-top-width:1px;border-right-width:1px}
+}
+@media (max-width:45em){
+  /* The row under the pressed button starts 4px below it and the pane 12px:
+     a band of the page's own ground over those 10px, so the next row's tops
+     do not show between the button and its pane (the shots of 6 November). */
+  .racts :is(.followpane,.citebody,.testifypane),.racts .report > .reportform{
+    top:calc(100% + var(--sp-5));left:var(--pl,0);right:auto;width:var(--pw,calc(100vw - 28px));
+    box-shadow:0 -10px 0 var(--paper)}
+  .racts :is(.pcite,.follow,.testify,.report)[open] > summary::after{
+    top:calc(100% + var(--sp-5) - var(--nub) / 2);left:calc(50% - var(--nub) / 2);
+    border-top-width:1px;border-left-width:1px}
 }
 
 /* THE TABS HANG FROM THE HEAD'S FOOT (the kit's part 9): a strip on a 2px
