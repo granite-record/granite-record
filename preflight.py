@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.775
+# GRANITE_VERSION: 2026-09-04.776
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -81261,6 +81261,101 @@ def _officials_successor(BME, OT, BT, BDM):
                   "predecessor's carried over; one line before the day; a successor with no name or "
                   f"day refused; the real file names {len(pending)} successor(s) to come, each "
                   "with its source and address")
+
+
+@check("frontend", "an empty seat in corrections/officials.json is drawn Vacant, with its day, its source "
+                   "and who takes it next, in English and Spanish, until its successor's day",
+       needs=("build_members_elect", "officials_tabs"))
+def _officials_vacant_seat(BME, OT):
+    """The owner's word through the manager session, 5 November 2026: a
+    Strafford County commissioner resigned mid-term, and a record with no
+    name drew nothing, so the county showed two commissioners and said
+    nothing of the third. A record whose name is empty and which says
+    "vacant", with its day and its source, is a dashed Vacant chip with the
+    seat, "Vacant since <day>.", the source and the successor's line --
+    the party where the office is drawn with one, none for a sheriff. A
+    record with no name and no "vacant" still draws nothing, as before. A
+    vacancy with no source, or no day, stops the build. From the successor's
+    day (build_members_elect.officials_on) they are the holder and nothing
+    says vacant. And every vacancy the real file names draws."""
+    import datetime as _dt
+    import html as _html
+    src = "https://www.co.example.nh.us/notice"
+    seat2 = {"name": "", "office": "County Commissioner, District 2", "district": "2", "party": "",
+             "vacant": {"since": "2026-10-30", "source": src, "read": "2026-11-06"},
+             "elect": {"name": "Bea After", "party": "D", "source": "https://sos.example.org/results",
+                       "takes_office": "2027-01-06"}}
+    doc = {"county": {"counties": {"Strafford": {
+        "name": "Strafford County",
+        "commissioners": {"1": {"name": "Ann Holder", "office": "County Commissioner, District 1",
+                                "district": "1", "party": "R"},
+                          "2": seat2,
+                          "3": {"name": "", "office": "County Commissioner, District 3", "district": "3"}},
+        "sheriff": {"name": "", "office": "Sheriff",
+                    "vacant": {"since": "2026-10-01", "source": src, "read": "2026-11-06"},
+                    "elect": {"name": "Cy After", "party": "R", "source": "https://sos.example.org/results",
+                              "takes_office": "2027-01-06"}}}}}}
+    snap = json.dumps(doc, sort_keys=True)
+
+    def tab(d, lang="en"):
+        return OT.county(d, [], _dt.date(2026, 11, 20), lang)
+
+    def plain(h):
+        return re.sub(r"\s+", " ", _html.unescape(re.sub(r"<[^>]+>", " ", h))).strip()
+    bad = []
+    en = tab(BME.officials_on(doc, "2026-11-20"))
+    rows = re.findall(r'<li class="ofwho ofvac">(.*?)</li></ul>(.*?)</li>', en, re.S)
+    if len(rows) != 2:
+        bad.append(f"two vacancies draw {len(rows)} Vacant rows")
+    t = plain(en)
+    for want in ("Vacant Commissioner, District 2 Vacant since October 30, 2026.",
+                 "Source: co.example.nh.us", "Bea After (D) takes office January 6, 2027.",
+                 "Vacant Sheriff Vacant since October 1, 2026.", "Cy After takes office January 6, 2027."):
+        if want not in t:
+            bad.append(f"the County Officials tab does not say {want!r}")
+    if "Cy After (R)" in t:
+        bad.append("a sheriff's successor is drawn with a party")
+    if "District 3" in t:
+        bad.append("a record with no name and no vacancy draws a row")
+    if 'class="ofvacant"' not in en or "Ann Holder" not in t:
+        bad.append("the Vacant box, or the holder beside it, is missing")
+    if re.search(r'class="mchip[^"]*"[^>]*>(?:Vacant|Vacante)<', en):
+        bad.append("an empty seat is drawn as a person's chip")
+    es = plain(tab(BME.officials_on(doc, "2026-11-20"), "es"))
+    if "Vacante desde el 30 de octubre de 2026." not in es or "Vacante" not in es:
+        bad.append("the Spanish tab does not say Vacante desde el 30 de octubre de 2026.")
+    on = plain(tab(BME.officials_on(doc, "2027-01-06")))
+    if "Vacant" in on or "Bea After" not in on or "Cy After" not in on:
+        bad.append("on the successors' day the seats still say Vacant, or the successors are not the holders")
+    for broken, said in (({"since": "2026-10-30"}, "no source"), ({"source": src}, "YYYY-MM-DD"),
+                         ({"since": "2026-02-30", "source": src}, "YYYY-MM-DD")):
+        try:
+            OT.vacant({"name": "", "office": "Sheriff", "vacant": broken})
+        except SystemExit as e:
+            if said not in str(e):
+                bad.append(f"a vacancy {broken!r} stops the build saying {e}")
+        else:
+            bad.append(f"a vacancy {broken!r} does not stop the build")
+    if json.dumps(doc, sort_keys=True) != snap:
+        bad.append("drawing the tab changed the file it read")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    if not re.search(r"\.ofvacant\{[^}]*border:1px dashed", css):
+        bad.append("the Vacant box is not dashed")
+    # The real file's vacancies, if it names any, each draw.
+    real, n = _officials_now(), 0
+    for c in ((real.get("county") or {}).get("counties") or {}).values():
+        for r in [*((c or {}).get("commissioners") or {}).values(),
+                  *[(c or {}).get(k) or {} for k, _t in OT.COUNTY_OFFICES]]:
+            if isinstance((r or {}).get("vacant"), dict) and not (r.get("name") or "").strip():
+                n += 1
+                try:
+                    OT.vacant(r)
+                except SystemExit as e:
+                    bad.append(str(e))
+    assert not bad, "; ".join(bad[:6])
+    return "ok", ("on a made-up county, an empty seat drawn Vacant with its day, source and successor, "
+                  "a sheriff's successor with no party, in English and Spanish, the holder on the "
+                  f"successor's day, a vacancy with no source or day refused; the real file names {n}")
 
 
 @check("files", "corrections/officials.json has one reader, build_members_elect.read_officials, "

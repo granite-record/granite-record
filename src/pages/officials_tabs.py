@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.8
+# GRANITE_VERSION: 2026-10-10.9
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -202,18 +202,67 @@ def how(rec, dc_word=None, lang="en"):
     return f'<ul class="ofhow">{"".join(out)}</ul>' if out else ""
 
 
-def who(rec, seat="", lang="en"):
+def who(rec, seat="", lang="en", partisan=True):
     """One official: the chip, the seat under it, then how to reach them,
-    and who takes the office next where the record names a successor."""
+    and who takes the office next where the record names a successor. A
+    record with no name is a vacancy where it says so (vacant), and draws
+    nothing where it does not. `partisan` False for an office drawn with no
+    party, so that no successor's party is said either."""
     name = (rec.get("name") or "").strip()
     if not name:
-        return ""
+        return vacant(rec, seat, lang, partisan)
     return (f'<li class="ofwho">{person(name, rec.get("party"))}'
             + (f'<span class="ofseat">{E(seat)}</span>' if seat else "")
             + how(rec, lang=lang) + successor(rec, lang) + "</li>")
 
 
-def successor(rec, lang="en"):
+# A SEAT THAT IS EMPTY, SAID SO (the owner's word through the manager
+# session, 5 November 2026, for the Strafford County commissioner who
+# resigned mid-term). The hand file's record of the office keeps its name
+# empty and says, under "vacant", the day the seat fell empty and the page
+# that says so:
+#
+#     "2": {"name": "", "office": "County Commissioner, District 2", ...,
+#           "vacant": {"since": "2026-10-30", "source": "https://...",
+#                      "read": "2026-11-06"}}
+#
+# The row is a dashed box reading Vacant -- a dashed outline is what says
+# vacant on the seat chart too, and it is not a chip, which is a person's --
+# with the seat, the day and the source
+# under it, and the successor's line where the record names one. No name is
+# drawn for an empty seat: who left it is the source's to say. On the day
+# the successor takes office, build_members_elect.officials_on makes them the
+# holder, and a record with a name is never drawn as vacant, so a "vacant"
+# left in it says nothing. A vacancy with no day or no source stops the
+# build: the page would say a seat is empty on nobody's word.
+def vacant(rec, seat="", lang="en", partisan=True):
+    """The row of an empty seat, or "" where the record does not say it is one."""
+    v = rec.get("vacant")
+    if (rec.get("name") or "").strip() or not isinstance(v, dict):
+        return ""
+    since, src = str(v.get("since") or ""), str(v.get("source") or "").strip()
+    office = rec.get("office") or seat
+    if not src:
+        raise SystemExit(f"corrections/officials.json: the vacancy of {office!r} names no source, "
+                         "the page that says the seat is empty")
+    try:
+        day = datetime.date.fromisoformat(since) if re.fullmatch(r"\d{4}-\d\d-\d\d", since) else None
+    except ValueError:
+        day = None
+    if day is None:
+        raise SystemExit(f"corrections/officials.json: the vacancy of {office!r} is dated {since!r}, "
+                         "not a day written YYYY-MM-DD")
+    link = source_link(src) or E(src)
+    return ('<li class="ofwho ofvac"><span class="ofvacant">'
+            + E(I.say(lang, "off.vacant", "Vacant")) + "</span>"
+            + (f'<span class="ofseat">{E(seat)}</span>' if seat else "")
+            + '<ul class="ofhow"><li>'
+            + I.say(lang, "off.vacant_since", "Vacant since {day}.", day=E(date_words(day, "full", lang)))
+            + "</li><li>" + I.say(lang, "off.source", "Source: {source}", source=link) + "</li></ul>"
+            + successor(rec, lang, partisan) + "</li>")
+
+
+def successor(rec, lang="en", partisan=None):
     """ONE LINE UNDER A HOLDER WHOSE SUCCESSOR IS NOT IN OFFICE YET (the
     person's approval of 23 October 2026): "B. Successor (D) takes office
     January 7, 2027." -- in words true of an office won at the polls and of
@@ -224,14 +273,18 @@ def successor(rec, lang="en"):
     successor, or names the holder again: a holder re-elected is still the
     holder, and nothing on the page changes. On the day,
     build_members_elect.officials_on has made the successor the holder, and
-    there is no "elect" left to draw."""
+    there is no "elect" left to draw. `partisan` says whether the office
+    is drawn with a party where the record cannot: an empty seat has no
+    holder's party to go by (vacant)."""
     e = rec.get("elect")
     if not isinstance(e, dict):
         return ""
     name = (e.get("name") or "").strip()
     if not name or name == (rec.get("name") or "").strip():
         return ""
-    party = str(e.get("party") or "").strip().upper() if rec.get("party") else ""
+    if partisan is None:
+        partisan = bool(rec.get("party"))
+    party = str(e.get("party") or "").strip().upper() if partisan else ""
     said = f"{name} ({party})" if ONE_PARTY.match(party) or BOTH.match(party) else name
     takes = e.get("takes_office")
     return (f'<span class="ofseat"{until_attrs(takes, None)}>'
@@ -586,10 +639,12 @@ def county(off, legs, today=None, lang="en"):
                                      key=lambda kv: (not kv[0].isdigit(), kv[0].zfill(3)))]
         for key, title in COUNTY_OFFICES:
             r = c.get(key)
-            if r and r.get("name"):
-                # The neutral roles carry no party, whatever a file says.
+            if r and (r.get("name") or r.get("vacant")):
+                # The neutral roles carry no party, whatever a file says, and
+                # nor does whoever takes one next.
                 people.append(who({**r, "party": ""},
-                                  said_text(lang, "office", r.get("office") or title), lang))
+                                  said_text(lang, "office", r.get("office") or title), lang,
+                                  partisan=False))
         people = [p for p in people if p]
         n = reps.get(name, 0)
         listed = ('<a href="officials.html#legislators">'
