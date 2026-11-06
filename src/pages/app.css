@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.341 */
+/* GRANITE_VERSION: 2026-09-07.342 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -9154,6 +9154,12 @@ line-height:1.35;margin:0 0 var(--sp-5);color:var(--ink);text-wrap:balance}
   column-gap:var(--sp-9);align-items:start}
   :where(body.pg) .ofsech{margin:0;padding-top:var(--sp-1)}
 }
+/* ARRIVING AT A COUNTY OR AN OFFICE (6 November 2026): an address naming a
+   section opens its tab (build_town_pages.TABS_JS) and lands on its heading,
+   marked and off the top of the window, as a Learn section is (ARRIVING
+   HALFWAY DOWN A PAGE, above). */
+:where(body.pg) .ofsech:target{scroll-margin-top:var(--sp-7);
+background:var(--pine-soft);box-shadow:0 0 0 var(--sp-3) var(--pine-soft)}
 :where(body.pg) .ofwhos{list-style:none;margin:0;padding:0;display:grid;
 grid-template-columns:repeat(auto-fill,minmax(min(100%,17.5rem),1fr));gap:var(--sp-7) var(--sp-9)}
 :where(body.pg) .ofwho{min-width:0}
