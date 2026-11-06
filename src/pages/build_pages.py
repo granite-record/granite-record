@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.257
+# GRANITE_VERSION: 2026-09-04.258
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -241,6 +241,24 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
 /data/manifest.json
   Access-Control-Allow-Origin: *
 /data/*.csv
+  Access-Control-Allow-Origin: *
+
+# And the public data API's files, which the manifest lists under "files":
+# the people register as JSON (its CSV is a CSV above); each term's bills a
+# line at a time; the whole record as one database; and schema.json, which
+# describes every file here, once the API's branch writes it. A program that
+# reads the manifest is handed these addresses, so a browser has to be let
+# follow them. preflight's _data_cors holds every address the manifest names
+# to exactly one rule here -- a second rule that matched too would send the
+# header twice, "*, *", which a browser refuses, so do not add /data/* beside
+# these -- and it says which new files it can and cannot see.
+/data/schema.json
+  Access-Control-Allow-Origin: *
+/data/people.json
+  Access-Control-Allow-Origin: *
+/data/bills-*.jsonl.gz
+  Access-Control-Allow-Origin: *
+/data/granite-record.sqlite.xz
   Access-Control-Allow-Origin: *
 """
 
