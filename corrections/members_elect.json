@@ -13,7 +13,438 @@
 
   "2026-11-03": {
     "recount_deadline": null,
-    "matches": {},
+    "matches": {
+      "S|8": {
+        "Jim Creighton": "9917"
+      },
+      "H|Cheshire|9": {
+        "Jim Gruber": "11171"
+      },
+      "H|Coos|5": {
+        "Peter Morency": "8401",
+        "Mark Evans": null
+      },
+      "H|Hillsborough|9": {
+        "Rich Green": "209050"
+      },
+      "H|Hillsborough|16": {
+        "Ben Baroody": "977",
+        "Maxine Mosley": null
+      },
+      "H|Hillsborough|21": {
+        "Jeff Goley": "460"
+      },
+      "S|2": {
+        "Kurt Webber": null
+      },
+      "S|7": {
+        "Rebecca Harned": null
+      },
+      "S|9": {
+        "Matthew McLaughlin": null
+      },
+      "S|12": {
+        "Carryl L. Roy": null
+      },
+      "S|16": {
+        "Dian McCarthy": null
+      },
+      "S|18": {
+        "Leonard Bell": null
+      },
+      "H|Belknap|1": {
+        "Amber Schaefer": null
+      },
+      "H|Belknap|2": {
+        "Seth Wheeler": null
+      },
+      "H|Belknap|3": {
+        "William Lawrence, Jr.": null
+      },
+      "H|Belknap|4": {
+        "Kevin M. Nugent, Jr.": null
+      },
+      "H|Belknap|5": {
+        "Marcia Hayward": null,
+        "Denise Riley": null,
+        "Eric Hoffman": null
+      },
+      "H|Belknap|6": {
+        "Bob McLean": null,
+        "Jade Wood": null,
+        "Lisa Rivard": null
+      },
+      "H|Belknap|8": {
+        "Cameron Thompson": null
+      },
+      "H|Carroll|1": {
+        "Benjamin Colbath": null,
+        "Ellin M. Leonard": null
+      },
+      "H|Carroll|2": {
+        "Adam Heard": null
+      },
+      "H|Carroll|3": {
+        "Todd Milliken": null
+      },
+      "H|Carroll|5": {
+        "Steven Brown": null
+      },
+      "H|Carroll|6": {
+        "Deirdre McEachern": null
+      },
+      "H|Carroll|7": {
+        "Dale Fincher": null
+      },
+      "H|Carroll|8": {
+        "Colin Mitchell": null,
+        "George Randell": null
+      },
+      "H|Cheshire|8": {
+        "Christine L. Parshall": null
+      },
+      "H|Cheshire|10": {
+        "Alan Gross": null,
+        "Steve Russell": null
+      },
+      "H|Cheshire|11": {
+        "Lindseigh Picard": null
+      },
+      "H|Cheshire|12": {
+        "Kristan Tilton": null
+      },
+      "H|Cheshire|13": {
+        "Tom Ahlborn-Hsu": null
+      },
+      "H|Cheshire|18": {
+        "Allen Davis": null,
+        "Rory Lovett Sherman": null
+      },
+      "H|Coos|1": {
+        "Amy Norris": null,
+        "Sam Hoehn": null
+      },
+      "H|Coos|6": {
+        "Richard Umiker": null
+      },
+      "H|Grafton|5": {
+        "Greg Mathieson": null
+      },
+      "H|Grafton|6": {
+        "Paul J. Goundrey": null
+      },
+      "H|Grafton|9": {
+        "Ella V. Barrett": null
+      },
+      "H|Grafton|10": {
+        "Marc E. Bourassa": null
+      },
+      "H|Grafton|11": {
+        "Jake Abuhav": null
+      },
+      "H|Grafton|14": {
+        "Kathryn Brennan": null
+      },
+      "H|Grafton|15": {
+        "Zoe Hill": null
+      },
+      "H|Grafton|18": {
+        "Marko Kloos": null
+      },
+      "H|Hillsborough|1": {
+        "Diane Rogers": null,
+        "Deborah Kruzel": null
+      },
+      "H|Hillsborough|2": {
+        "Jeff Kerr": null,
+        "John K. Fitzgerald": null,
+        "Todd C. Fahey": null,
+        "Geoffrey Wellington": null,
+        "Ryan Nugent": null,
+        "Sheila Quick": null
+      },
+      "H|Hillsborough|3": {
+        "Suzanne A. Beaulieu": null,
+        "Michael Joseph": null
+      },
+      "H|Hillsborough|4": {
+        "Camille Pattison": null,
+        "Renae Lias": null
+      },
+      "H|Hillsborough|6": {
+        "Adam R. Thompson": null,
+        "Michele Roussel Buckley": null
+      },
+      "H|Hillsborough|7": {
+        "Jim Mahoney": null,
+        "Charlene Bangs Pedersen": null
+      },
+      "H|Hillsborough|10": {
+        "Samantha O'Loughlin": null,
+        "Marty Jack": "733"
+      },
+      "H|Hillsborough|11": {
+        "Arya Shams": null
+      },
+      "H|Hillsborough|12": {
+        "Heather Robitaille": null,
+        "Matthew Brown": null,
+        "Mary Beth Raven": null,
+        "Marc Nozell": null,
+        "Rebecca Boutin": null
+      },
+      "H|Hillsborough|13": {
+        "Kate Messner": null,
+        "James M. Caron": null,
+        "Cathy Kenny": "10640",
+        "Tom Trost": null
+      },
+      "H|Hillsborough|15": {
+        "Michael Fitzell": null
+      },
+      "H|Hillsborough|17": {
+        "Sean Parr": null,
+        "Rob Fox": null
+      },
+      "H|Hillsborough|18": {
+        "James Normand": null
+      },
+      "H|Hillsborough|19": {
+        "Chrissy Simonds": null
+      },
+      "H|Hillsborough|20": {
+        "Pauline Martineau": null
+      },
+      "H|Hillsborough|22": {
+        "Greg Erskine": null
+      },
+      "H|Hillsborough|24": {
+        "Jessica Margeson": null,
+        "Frank Anthony": null
+      },
+      "H|Hillsborough|25": {
+        "Heather Deiner": null
+      },
+      "H|Hillsborough|29": {
+        "Christopher Calhoun": null,
+        "Marie B. Morgan": null,
+        "Karyn Battey": null
+      },
+      "H|Hillsborough|30": {
+        "Janet McEwen": null,
+        "Tim Morehouse": null,
+        "W. Gordon Allen": null
+      },
+      "H|Hillsborough|36": {
+        "Michael Pellerito": null
+      },
+      "H|Hillsborough|38": {
+        "Heidi P. Jakoby": null,
+        "Ted Trost": null
+      },
+      "H|Hillsborough|39": {
+        "Ellen A. Boudreau": null,
+        "Tommy Katsiantonis": "499"
+      },
+      "H|Hillsborough|40": {
+        "Robert Richard-Snipes": null
+      },
+      "H|Hillsborough|41": {
+        "Tom Stewart": null,
+        "Bishwa Bahadur Shah": null
+      },
+      "H|Hillsborough|42": {
+        "Lee C. Nyquist": null,
+        "Teri Harkins": null,
+        "Peter Ryder": null
+      },
+      "H|Hillsborough|43": {
+        "Claire Holston": null,
+        "Ethan Aho": null
+      },
+      "H|Hillsborough|44": {
+        "Chris Conroy": null
+      },
+      "H|Hillsborough|45": {
+        "Jerry Roche": null
+      },
+      "H|Merrimack|3": {
+        "Michael Visconti": null
+      },
+      "H|Merrimack|4": {
+        "Cody York": null
+      },
+      "H|Merrimack|5": {
+        "Thomas Ware": null,
+        "Lorna Carlisle": null
+      },
+      "H|Merrimack|10": {
+        "William Lynch": null,
+        "Lucas J. Coriaty": null,
+        "Germano Mendes Martins": null
+      },
+      "H|Merrimack|11": {
+        "Al Turcotte": "787"
+      },
+      "H|Merrimack|12": {
+        "Mariana R. Beer": null,
+        "Kenneth Nivison": null
+      },
+      "H|Merrimack|13": {
+        "Becky Berk": null
+      },
+      "H|Merrimack|14": {
+        "Gary Matteson": null
+      },
+      "H|Merrimack|18": {
+        "Lisa D. Beaudoin": null
+      },
+      "H|Merrimack|20": {
+        "Nathan Giffard": null
+      },
+      "H|Merrimack|22": {
+        "Alison Murphy": null
+      },
+      "H|Merrimack|23": {
+        "Kristopher Levesque": null
+      },
+      "H|Merrimack|26": {
+        "Harold D. Tuttle": null
+      },
+      "H|Merrimack|27": {
+        "Vanessa Poulin": null,
+        "Phillip James Walker": null
+      },
+      "H|Merrimack|28": {
+        "Lisa Brown": null
+      },
+      "H|Merrimack|30": {
+        "Jason Quinno": null
+      },
+      "H|Rockingham|1": {
+        "Pamela Sanderson": null,
+        "Donna Danis": null
+      },
+      "H|Rockingham|2": {
+        "Will Huebner": null
+      },
+      "H|Rockingham|5": {
+        "John Scully": null
+      },
+      "H|Rockingham|9": {
+        "Kevin M. Major": null,
+        "Matthew Brooks": null
+      },
+      "H|Rockingham|11": {
+        "Enna Grazier": null,
+        "Steven C. Jones": null
+      },
+      "H|Rockingham|13": {
+        "Kristine Trow": null,
+        "Jamie Carreau": null,
+        "Matthew Glavin": null,
+        "Hollie Hesse": null,
+        "Jim Marshall": null,
+        "Haley Carreau": null,
+        "David Provencher": null,
+        "Paula Mahon d'Entremont": null
+      },
+      "H|Rockingham|14": {
+        "Paul C. Paone": null
+      },
+      "H|Rockingham|16": {
+        "Bob Cote": null,
+        "Jane Cooper": null,
+        "Michela Hites": null,
+        "Paul Skudlarek": null,
+        "Isaac Fernandez": null,
+        "Ted Combes": null
+      },
+      "H|Rockingham|20": {
+        "Rick A. Faulconer": null
+      },
+      "H|Rockingham|21": {
+        "Anna Howard": null
+      },
+      "H|Rockingham|22": {
+        "Rebecca Audet": null
+      },
+      "H|Rockingham|24": {
+        "Michael J. Moody": null
+      },
+      "H|Rockingham|25": {
+        "George I. Kassas": null,
+        "Donna Loranger": null
+      },
+      "H|Rockingham|29": {
+        "Molly McCoy": null,
+        "Rebecca LaPierre": null,
+        "Nathan Andrew Riggs": null,
+        "Ward Galanis": null
+      },
+      "H|Rockingham|35": {
+        "Michelle Stith": null
+      },
+      "H|Rockingham|37": {
+        "Kate Cook": null
+      },
+      "H|Rockingham|39": {
+        "Barbara M. Ward": null
+      },
+      "H|Rockingham|40": {
+        "Justin G. Packard": null
+      },
+      "H|Strafford|1": {
+        "Andy Dow": null
+      },
+      "H|Strafford|4": {
+        "Scott Shepard": null,
+        "Kimberly S. McGlinchey": null,
+        "Ginna Schonwald": null
+      },
+      "H|Strafford|5": {
+        "William F. Fessenden": null
+      },
+      "H|Strafford|8": {
+        "Ty Wyman": null
+      },
+      "H|Strafford|9": {
+        "Nevin Dexter": null
+      },
+      "H|Strafford|10": {
+        "Siena R. Schaier": null
+      },
+      "H|Strafford|12": {
+        "Will Hurley": null
+      },
+      "H|Strafford|15": {
+        "Samuel Chouinard": null
+      },
+      "H|Strafford|19": {
+        "Nick Paul": null,
+        "Justin McIsaac": null,
+        "Jonathan J. King": null
+      },
+      "H|Sullivan|2": {
+        "Jenny Ramsey": null
+      },
+      "H|Sullivan|4": {
+        "Ron Rule": null
+      },
+      "H|Sullivan|5": {
+        "Judith M. Thackaberry": null
+      },
+      "H|Sullivan|6": {
+        "Lisa R. Gosselin": null,
+        "Chris Cogswell": null
+      },
+      "H|Sullivan|7": {
+        "Lawrence A. Schissel": null
+      },
+      "H|Sullivan|8": {
+        "Samuel Deering": null
+      }
+    },
     "not_final": {},
     "held": {}
   }

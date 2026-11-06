@@ -568,11 +568,13 @@ rules above still apply where it cannot see.
 
 ## Data, and what it is not ours to license
 
-The underlying record is the New Hampshire General Court's, and this project
-claims nothing over it. The code is MIT (`LICENSE`); `DATA.md` separates the
-software from the state's record from the texts generated here. If you are
-redistributing the data, cite gc.nh.gov rather than this site — every page here
-links what it was drawn from, for exactly that reason.
+The record is the State of New Hampshire's, and so are the numbers it gives
+people and bills. What this site adds -- the keys and joins it makes and the
+corrections made here by hand -- is dedicated to the public domain under CC0
+1.0; the plain-English histories and the software are MIT licensed. DATA.md
+says which is which. If you are redistributing the data, cite gc.nh.gov rather
+than this site — every page here links what it was drawn from, for exactly
+that reason.
 
 ## Reporting a problem rather than fixing one
 

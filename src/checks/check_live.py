@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.20
+# GRANITE_VERSION: 2026-09-04.21
 """
 What is the live site actually serving?
 
@@ -40,6 +40,12 @@ WHAT IT CHECKS
   /idx/<newest>.json    the newest term's bills, which every visitor's list and
                         search load first: served as JSON, parses, has bills
   /legislators          served, and is a different page from /
+  _redirects' last rule the built _redirects' last rule, made an address with
+                        a page of the build (a bill's, a member's, a
+                        committee's), served; and its first rewrite (200)
+                        with no placeholder: Cloudflare stops reading the
+                        file at its 101st dynamic rule, and the last rule is
+                        the first one lost (rule_probes)
   /feed/all.xml         served as XML
   /sitemap.xml          served as XML and read whole: the same number of
                         addresses, and the same first and last, as the
@@ -346,6 +352,61 @@ LOC = re.compile(rb"<loc>([^<]*)</loc>")
 SITEMAP_LINE = re.compile(r"(?mi)^\s*Sitemap:\s*(\S+)\s*$")
 
 
+def rule_probes(site):
+    """Addresses that only _redirects serves: its last rule and its first
+    rewrite (200) with no placeholder, each made a real address, where the
+    built site/_redirects has them. [] where it has none.
+
+    THE LAST RULE IS THE FIRST ONE LOST (5 November 2026). The dry run of
+    4613f04 deployed a _redirects that Cloudflare stopped reading after its
+    102nd rule -- the 100th counted from the first rule with a placeholder or
+    a splat -- and every tab address, /session/<chamber>/videos and every
+    301 after it answered 404. This asked only /legislators, which a file in
+    the new order keeps among its static rules whatever is cut, so it would
+    not have seen the tab addresses go. The last rule's address is served
+    only if the whole file was read."""
+    p = Path(site) / "_redirects"
+    if not p.is_file():
+        return []
+    rules = [ln.split() for ln in p.read_text(encoding="utf-8", errors="replace").splitlines()
+             if ln.strip() and not ln.lstrip().startswith("#")]
+    rules = [r for r in rules if len(r) in (2, 3)]
+    if not rules:
+        return []
+
+    def page(folder, pattern):
+        f = next(iter(sorted((Path(site) / folder).glob(pattern))), None)
+        return f
+
+    def fill(src):
+        if ":year" in src or ":bill" in src:
+            f = page("bill", "*/*.html")
+            if f is None:
+                return None
+            src = src.replace(":year", f.parent.name).replace(":bill", f.stem)
+        if ":who" in src:
+            f = page("legislator", "*.html")
+            if f is None:
+                return None
+            src = src.replace(":who", f.stem)
+        if ":code" in src:
+            f = next((g for g in sorted((Path(site) / "committee").glob("*.html"))
+                      if not g.stem.startswith("ss")), None)
+            if f is None:
+                return None
+            src = src.replace(":code", f.stem)
+        return None if ("*" in src or ":" in src) else src
+    out = []
+    last = fill(rules[-1][0])
+    if last:
+        out.append(last)
+    plain = next((r[0] for r in rules if len(r) == 3 and r[2] == "200"
+                  and "*" not in r[0] and ":" not in r[0]), None)
+    if plain and plain not in out:
+        out.append(plain)
+    return out
+
+
 def locs_of(body):
     """The addresses a sitemap's bytes list, in order."""
     return [m.decode("utf-8", "replace") for m in LOC.findall(body or b"")]
@@ -523,6 +584,8 @@ def main():
         if differ:
             problems.append(f"/meta.json is not the file in {site}/: {differ}")
     row("/legislators", "html")
+    for path in rule_probes(site):
+        row(path, "html")
     row("/feed/all.xml", "xml")
     sitemap(base, site, seen, problems, row)
     # WHICH BUILD IS SERVED (15 October 2026). Everything above shows that a

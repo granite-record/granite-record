@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.767
+# GRANITE_VERSION: 2026-09-04.772
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -23883,6 +23883,89 @@ def _check_live_reads_what_it_checks():
                   "look at again")
 
 
+@check("build", "check_live asks for _redirects' last rule and its first plain rewrite as real "
+                "addresses, and a deploy that does not serve them has not landed")
+def _check_live_reads_the_last_rule():
+    """THE LAST RULE IS THE FIRST ONE LOST (check_live.rule_probes, 5
+    November 2026). The dry run of 4613f04 served a _redirects Cloudflare had
+    stopped reading after its 102nd rule, and check_live, asking only
+    /legislators, said nothing of the tab addresses gone. It now asks for the
+    file's last rule, made an address with a page of the build, and for its
+    first rewrite with no placeholder."""
+    import contextlib
+    import io
+    import check_live as CL_
+    root = Path(tempfile.mkdtemp(prefix="gr-live-rules-"))
+    try:
+        assert CL_.rule_probes(root) == [], "a site with no _redirects was given addresses to ask"
+        for d in ("bill/2026", "legislator", "committee"):
+            (root / d).mkdir(parents=True)
+        (root / "bill/2026/hb1442.html").write_text("x", encoding="utf-8")
+        (root / "legislator/ann-ames-hills-1.html").write_text("x", encoding="utf-8")
+        (root / "committee/ss57.html").write_text("x", encoding="utf-8")
+        (root / "committee/H43.html").write_text("x", encoding="utf-8")
+        rules = ["# head", "/legislators /officials 301", "/session/house/videos /session/house 200",
+                 "/bill/:year/:bill/votes /bill/:year/:bill 200",
+                 "/legislator/:who/votes /legislator/:who 200",
+                 "/committee/:code/videos /committee/:code 200"]
+        for last, want in ((rules, "/committee/H43/videos"),
+                           (rules[:-1], "/legislator/ann-ames-hills-1/votes"),
+                           (rules[:-2], "/bill/2026/hb1442/votes")):
+            (root / "_redirects").write_text("\n".join(last) + "\n", encoding="utf-8")
+            got = CL_.rule_probes(root)
+            assert got == [want, "/session/house/videos"], f"the probes for {last[-1]!r} are {got}"
+        (root / "_redirects").write_text("\n".join(rules) + "\n", encoding="utf-8")
+        page = b"<!doctype html><html><!-- GRANITE_VERSION: 2026-09-05.1 -->bills</html>"
+        (root / "bills.html").write_bytes(page)
+        (root / "meta.json").write_text(json.dumps({"terms": ["2025-2026"]}), encoding="utf-8")
+        served = {
+            "/": (200, "text/html", b"<!doctype html><html>home</html>"),
+            "/bills": (200, "text/html", page),
+            "/app.css": (200, "text/css", b"body{}"),
+            "/meta.json": (200, "application/json", json.dumps({"terms": ["2025-2026"]}).encode()),
+            "/idx/2025-2026.json": (200, "application/json", b'[{"id":"HB1"}]'),
+            "/legislators": (200, "text/html", b"<!doctype html><html>members</html>"),
+            "/committee/H43/videos": (200, "text/html", b"<!doctype html><html>H43</html>"),
+            "/session/house/videos": (200, "text/html", b"<!doctype html><html>house</html>"),
+            "/feed/all.xml": (200, "application/rss+xml", b'<?xml version="1.0"?><rss/>'),
+            "/sitemap.xml": (200, "application/xml",
+                             b'<?xml version="1.0"?><urlset><url><loc>http://site.invalid/</loc>'
+                             b'</url></urlset>'),
+            "/robots.txt": (200, "text/plain",
+                            b"User-agent: *\nSitemap: http://site.invalid/sitemap.xml\n"),
+        }
+        asked = []
+
+        def fake_get(url, limit=400_000):
+            path = url[len("http://site.invalid"):]
+            asked.append(path)
+            st, ct, body = served.get(path, (404, "text/html", b"not found"))
+            return st, ct, body[:limit], None
+
+        def gate():
+            saved = (CL_.get, sys.argv)
+            CL_.get = fake_get
+            sys.argv = ["check_live.py", "--gate", "--base", "http://site.invalid", "--site", str(root)]
+            try:
+                with contextlib.redirect_stdout(io.StringIO()) as out:
+                    code = CL_.main()
+            finally:
+                CL_.get, sys.argv = saved
+            return code, out.getvalue()
+        code, out = gate()
+        assert code == 0 and "/committee/H43/videos" in asked and "/session/house/videos" in asked, (
+            f"a deploy serving the whole file did not pass, or the probes were not asked: {asked}\n"
+            f"{out[-400:]}")
+        del served["/committee/H43/videos"]
+        code, out = gate()
+        assert code != 0 and "/committee/H43/videos returned HTTP 404" in out and \
+            "THE DEPLOY DID NOT LAND" in out, f"a deploy that lost the last rule passed:\n{out[-400:]}"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("the last rule asked as a bill's, a member's or a committee's real address, and "
+                  "the first plain rewrite; a deploy that does not serve the last rule has not landed")
+
+
 @check("build", "the bill index is read one way: no site, a broken one and a whole one kept apart")
 def _bill_index_three_answers():
     """site_read.bill_index is the build's one reader of every bill's row,
@@ -28230,22 +28313,107 @@ def _former_movers_one_page(build_site_v2, build_pages):
              "moved_from": ["/legislator/shannon-chandley-hills-22"]},
             {"id": "27", "slug": "someone-sd-1"}]), encoding="utf-8")
         lines = BP.moved_members(root)
-        assert lines == ("/legislator/shannon-chandley-hills-22 /legislator/shannon-chandley-sd-11 301\n"
-                         "/legislator/shannon-chandley-hills-22.html "
-                         "/legislator/shannon-chandley-sd-11 301\n"
-                         "/legislator/shannon-chandley-hills-22/* "
-                         "/legislator/shannon-chandley-sd-11/:splat 301\n"), lines
+        old, new = "/legislator/shannon-chandley-hills-22", "/legislator/shannon-chandley-sd-11"
+        assert lines == "".join(sorted([f"{old} {new} 301\n", f"{old}.html {new} 301\n",
+                                        f"{old}/ {new} 301\n"]
+                                       + [f"{old}/{s} {new}/{s} 301\n" for s in BP.MEMBER_TAB_SLUGS])), \
+            lines
         assert BP.moved_members(root / "nowhere") == "", "no former.json still wrote a rule"
     finally:
         shutil.rmtree(root, ignore_errors=True)
     src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
     assert "former_movers(register, e2p or {}" in src, "build_site_v2 no longer joins the movers who left"
     src = _paths.locate("build_pages.py").read_text(encoding="utf-8")
-    assert 'head + "\\n" + moved_members(out) + rest' in src, (
+    assert "want = redirects_file(out)" in src, (
         "build_pages no longer writes their 301s ahead of the tab rules, where the first match is served")
     return "ok", ("a mover who left is joined to the later page, by the day of the last vote, with "
                   "every chamber's years; a sitting one and a one-number one are not; their 301s "
                   "ahead of the tab rules, tabs included")
+
+
+# Cloudflare Pages' rules for a _redirects file, from its documentation
+# (developers.cloudflare.com/pages/configuration/redirects/, read 5 November
+# 2026): "limited to 2,000 static redirects and 100 dynamic redirects", "a
+# 1,000-character limit" a declaration, and "Static redirects should appear
+# before dynamic redirects".
+CF_STATIC_MOST, CF_DYNAMIC_MOST, CF_LINE_MOST = 2000, 100, 1000
+
+
+def _cf_rules(text):
+    """[(parts, dynamic, length)] of a _redirects text's rules: a rule is
+    dynamic where its source or destination holds a splat (*) or a
+    placeholder (:name), which is how Cloudflare's own examples tell them."""
+    out = []
+    for ln in text.splitlines():
+        s = ln.strip()
+        if not s or s.startswith("#"):
+            continue
+        parts = s.split()
+        dyn = any("*" in p or re.search(r"(?:^|/):[A-Za-z]", p) for p in parts[:2])
+        out.append((parts, dyn, len(ln)))
+    return out
+
+
+@check("build", "the _redirects file is as Cloudflare Pages keeps it: every static rule before "
+                "the first dynamic one, at most 2,000 static and 100 dynamic, none over 1,000 "
+                "characters, no source twice -- the fixture's, and one written for forty moved "
+                "members", needs=("build_pages",))
+def _redirects_cloudflare(BP):
+    """THE RULES CLOUDFLARE KEEPS (5 November 2026). The dry run of 4613f04,
+    with the owner's thirty confirmed pairs, wrote 34 moved members' rules
+    first -- three a member, one of them a dynamic old/* -- and Cloudflare
+    served none of the 52 rules after them: every tab address, /legislators,
+    /learn, the cities, all 404, where the same file with 4 members had
+    worked. build_pages now writes every member's rules static, a tab by
+    name, and every static rule before the dynamic tab rewrites. This holds
+    the writer to that for more members than the record has, and the
+    fixture's built file to the writer."""
+    def judge(text, what):
+        rules = _cf_rules(text)
+        bad = [p for p, _d, _w in rules if len(p) not in (2, 3)]
+        assert not bad, f"{what}: a rule that is not 'source destination [code]': {bad[:2]}"
+        first = next((i for i, r in enumerate(rules) if r[1]), len(rules))
+        late = [p[0] for p, d, _w in rules[first:] if not d]
+        assert not late, f"{what}: static rules after the first dynamic one: {late[:3]}"
+        dyn = sum(1 for _p, d, _w in rules if d)
+        sta = len(rules) - dyn
+        assert sta <= CF_STATIC_MOST and dyn <= CF_DYNAMIC_MOST, (
+            f"{what}: {sta} static and {dyn} dynamic rules, over Cloudflare's "
+            f"{CF_STATIC_MOST:,} and {CF_DYNAMIC_MOST}")
+        long_ = [p[0] for p, _d, w in rules if w > CF_LINE_MOST]
+        assert not long_, f"{what}: a rule over {CF_LINE_MOST} characters: {long_[:2]}"
+        srcs = [p[0] for p, _d, _w in rules]
+        twice = sorted({s for s in srcs if srcs.count(s) > 1})
+        assert not twice, f"{what}: a source twice, of which only the first is served: {twice[:3]}"
+        return sta, dyn
+
+    tabs = len(BP.BILL_TAB_SLUGS) + len(BP.MEMBER_TAB_SLUGS) + len(BP.COMMITTEE_TAB_SLUGS)
+    root = Path(tempfile.mkdtemp(prefix="gr-redirects-"))
+    try:
+        movers = [{"id": str(9000 + i), "slug": f"member-{i}-sd-{i % 24 + 1}",
+                   "moved_from": [f"/legislator/member-{i}-hills-{i}"]} for i in range(40)]
+        (root / "former.json").write_text(json.dumps(movers), encoding="utf-8")
+        text = BP.redirects_file(root)
+        sta, dyn = judge(text, "forty movers")
+        assert dyn == tabs, f"forty movers: {dyn} dynamic rules, not the {tabs} tab rewrites"
+        for m in movers:
+            old, new = m["moved_from"][0], "/legislator/" + m["slug"]
+            for src, dst in [(old, new), (old + ".html", new), (old + "/", new)] + [
+                    (f"{old}/{s}", f"{new}/{s}") for s in BP.MEMBER_TAB_SLUGS]:
+                assert f"\n{src} {dst} 301\n" in text, f"{src} does not 301 to {dst}"
+        first = movers[0]["moved_from"][0]
+        assert text.index(f"\n{first}/votes ") < text.index("\n/legislator/:who/votes "), (
+            "a moved member's /votes comes after the tab rewrite, which would serve it first")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    built = (shared / "site" / "_redirects").read_text(encoding="utf-8")
+    assert built == BP.redirects_file(shared / "site"), (
+        "the fixture's _redirects is not the one redirects_file writes")
+    fs, fd = judge(built, "the fixture's")
+    return "ok", (f"forty movers: {sta} static rules, then the {dyn} tab rewrites; the fixture's "
+                  f"{fs} static and {fd} dynamic, in that order, under Cloudflare's "
+                  f"{CF_STATIC_MOST:,} and {CF_DYNAMIC_MOST}")
 
 
 # ============================================================= code: pipeline ==
@@ -34893,7 +35061,7 @@ def _fixture_site_whole(root):
     return base, ran
 
 
-@check("frontend", "every published guide is reached from the home page, in the site search and in the sitemap by the day it was checked, with HowTo data and the state in its title")
+@check("frontend", "every published guide is reached from the home page, in the site search and in the sitemap, its sitemap date and HowTo data dated by the newest read of its sources, and the state in its title")
 def _guides_reach():
     """The person, 12 October 2026: a link to the guides on the home page,
     the guides in the site-wide search, and the guides optimized for SEO."""
@@ -34917,7 +35085,7 @@ def _guides_reach():
     find = json.loads((site / "find.json").read_text(encoding="utf-8"))
     sm = (site / "sitemap.xml").read_text(encoding="utf-8")
     by_slug = {g["slug"]: g for g in G.GUIDES}
-    bad = []
+    bad, told_apart = [], 0
     for p in pages:
         g, t = by_slug[p.stem], p.read_text(encoding="utf-8")
         addr = f"/guides/{p.stem}"
@@ -34933,8 +35101,22 @@ def _guides_reach():
             bad.append(f"{p.stem}'s title {title!r} does not say New Hampshire")
         if '"@type": "HowTo"' not in t and '"@type":"HowTo"' not in t:
             bad.append(f"{p.stem} carries no HowTo data")
-        if not re.search(re.escape(f"<loc>{base}{addr}</loc>") + r"<lastmod>\d{4}-\d\d-\d\d</lastmod>", sm):
+        # BOTH DATES ARE THE NEWEST READ (the manager session, 5 November
+        # 2026): dateModified and the sitemap's lastmod mean what the page's
+        # "Sources last checked" means, G.sources_checked, not the oldest
+        # read (checked_on), which decides only the out-of-date notice. The
+        # sitemap's is never later than the build's day.
+        newest = G.sources_checked(g)
+        lm = re.search(re.escape(f"<loc>{base}{addr}</loc>") + r"<lastmod>(\d{4}-\d\d-\d\d)</lastmod>", sm)
+        if not lm:
             bad.append(f"{p.stem}'s sitemap entry is not dated by its check")
+        elif newest and lm.group(1) not in {min(newest, d.isoformat()) for d in _days}:
+            bad.append(f"{p.stem}'s sitemap lastmod is {lm.group(1)}, not its newest read {newest}")
+        dm = re.findall(r'"dateModified":\s*"([^"]*)"', t)
+        if newest and dm != [newest]:
+            bad.append(f"{p.stem}'s HowTo dateModified is {dm}, not its newest read {newest}")
+        if newest and newest != G.checked_on(g):
+            told_apart += 1
     # EVERY COMMON QUESTION LEADS TO A GUIDE THAT IS THERE. Each link the
     # home page's block carries opens a page of the built site that is not a
     # draft -- the pages that became guides (civics.HOW_TO) included, which
@@ -34955,7 +35137,8 @@ def _guides_reach():
         bad.append("the home page does not lead to every guide")
     assert not bad, "; ".join(bad)
     return "ok", (f"{len(pages)} published guide{'s' if len(pages) != 1 else ''} reached from the home "
-                  "page, in the search and dated in the sitemap, each with HowTo data"
+                  "page, in the search and dated in the sitemap, each with HowTo data, both dated by the "
+                  f"newest read ({told_apart} where it differs from the oldest)"
                   if pages else "no guide published on the fixture")
 
 
@@ -58025,6 +58208,113 @@ def _state_sources_apart(CL, SS):
                   "sends each version once and replaces none")
 
 
+@check("cloud", "a county officer the record names and the county's own page does not is "
+       "flagged for the owner, and nothing writes the officials file",
+       needs=("state_sources",))
+def _state_sources_officials(SS):
+    """The owner found Strafford County's commissioners stale after a
+    resignation between elections (5 November 2026), and wants such offices
+    checked regularly. state_sources.py officials reads the latest reading of
+    each county's registered officers' pages and says, for each person on
+    record, whether a page names them beside their office. A flag is a
+    question for the owner, never an edit: corrections/officials.json is the
+    owner's file, read through its one reader.
+
+    Held here, on pages written the way county sites write them (the review
+    of 5 November): every county on record has a page registered or wanted;
+    "Board of Commissioners", plural, names the office; a person named
+    without their middle initial, or by a common short form of their first
+    name, is the same person; one named beside "resigned" is flagged; a
+    first name and a surname that appear apart are not the person; a
+    deputy's title is not the office; a page naming no office raises no flag;
+    a county's home page, whose menu names every office and no one, is never
+    checked; and the officials file is the same after the run as before.
+    """
+    import build_members_elect as BME
+    reg = SS.load_registry(_paths.ROOT)
+    hand = _paths.ROOT / "corrections" / ("officials" + ".json")
+    hand_before = hand.read_bytes()
+    doc = json.loads(json.dumps(BME.read_officials()))
+    on_record = SS.officials_on_record(doc)
+    covered = {r["jurisdiction"].split(":", 1)[1] for r in reg.values()
+               if r["jurisdiction"].startswith("county:")
+               and {"officials:county", "officials:county-site"} & set(r["used_by"].split())}
+    missing = sorted(set(on_record) - covered)
+    assert not missing, (f"these counties' officers are on record and no page of theirs is "
+                         f"registered, not even as wanted: {missing}")
+    sites = [i for i, r in reg.items() if "officials:county-site" in r["used_by"].split()]
+    # The fixture's officers, so that it does not rest on who holds office today.
+    c = doc["county"]["counties"]["Strafford"]
+    c["commissioners"] = {
+        "1": {"name": "Joseph Q. Pitman", "office": "County Commissioner, District 1"},
+        "2": {"name": "Georgia Maglor", "office": "County Commissioner, District 2"},
+        "3": {"name": "Sean M. Lovell", "office": "County Commissioner, District 3"}}
+    c["sheriff"] = {"name": "William Wrightson", "office": "Sheriff"}
+    c["treasurer"] = {"name": "Pamela Arnet", "office": "County Treasurer"}
+    c["county_attorney"] = {"name": "Emily Garrod", "office": "County Attorney"}
+    c["register_of_deeds"] = {"name": "Mary Deedham", "office": "Register of Deeds"}
+    c["register_of_probate"] = {"name": "Jan Probert", "office": "Register of Probate"}
+    pid = next(i for i, r in reg.items() if r["jurisdiction"] == "county:Strafford"
+               and "officials:county" in r["used_by"].split())
+    t = Path(tempfile.mkdtemp(prefix="granite-officials-"))
+    try:
+        (t / "records" / "sources").mkdir(parents=True)
+        shutil.copy(_paths.ROOT / SS.REGISTRY, t / SS.REGISTRY)
+        d = t / SS.FOLDER / pid
+        d.mkdir(parents=True)
+        (d / "2026-11-05.txt").write_text(
+            "Board of Commissioners\n"
+            "Georgia Maglor, Chair\nSean Lovell, Vice Chair\n"
+            "Commissioner Joe Pitman resigned in October; the seat is vacant.\n"
+            "Sheriff's Office: Sheriff Bill Wrightson\n"
+            "Deputy Treasurer: Robin Hood\n"
+            "County Attorney's Office\n"
+            "Emily is our clerk. Garrod Road is closed.\n", encoding="utf-8")
+        # A newer file that cannot be read must not hide the reading.
+        (d / "2026-11-05-2.png").write_bytes(b"not a page")
+        for site in sites[:1]:
+            (t / SS.FOLDER / site).mkdir(parents=True)
+            (t / SS.FOLDER / site / "2026-11-05.txt").write_text(
+                "Commissioners | Sheriff | County Attorney | Treasurer | Registry of Deeds",
+                encoding="utf-8")
+        lines, n = SS.check_officials(t, SS.load_registry(t), None, doc)
+        mine = {}
+        for county, ln in lines:
+            m = re.match(r"(FLAG|SAME|NAMED|NOT ON THE PAGES)\s+(.+?): ", ln)
+            if county == "Strafford" and m:
+                mine[m.group(2)] = m.group(1).split()[0]
+        out = "\n".join(f"{c} {ln}" for c, ln in lines)
+        want = {"County Commissioner, District 1": "FLAG",      # beside "resigned"
+                "County Commissioner, District 2": "SAME",      # plural board heading
+                "County Commissioner, District 3": "SAME",      # no middle initial
+                "Sheriff": "SAME",                              # Bill for William
+                "County Treasurer": "NOT",                      # a deputy's title only
+                "County Attorney": "FLAG",                      # named apart, not her
+                "Register of Deeds": "NOT", "Register of Probate": "NOT"}
+        assert mine == want, (f"the officers' judgements are not as written: {mine}", out)
+        site_counties = {reg[s]["jurisdiction"].split(":", 1)[1] for s in sites[:1]}
+        for county, ln in lines:
+            if county in site_counties:
+                assert not ln.startswith(("FLAG", "SAME")), (
+                    "a county's home page was checked as a list of its officers", out)
+        assert n == sum(1 for v in want.values() if v == "FLAG") + sum(
+            1 for c, ln in lines if c != "Strafford" and ln.startswith("FLAG")), out
+        assert not (t / "corrections").exists(), "the check wrote into a corrections folder"
+    finally:
+        shutil.rmtree(t, ignore_errors=True)
+    assert hand.read_bytes() == hand_before, "the officials file changed during the check"
+    src = _paths.locate("state_sources.py").read_text(encoding="utf-8")
+    code = re.sub(r'"""[\s\S]*?"""|#[^\n]*', "", src)
+    assert "corrections" not in code.replace('HAND_FILE = "the officials file in corrections/"',
+                                             ""), (
+        "state_sources.py names a corrections path in its code, beyond the words of a message")
+    return "ok", (f"{len(on_record)} counties' officers, each county with a page registered "
+                  "or wanted; a plural heading, a short first name and a missing initial "
+                  "matched, a resignation and a name split apart flagged, a deputy's title "
+                  "not taken for the office, a home page's menu left unchecked, and the "
+                  "officials file left as it was")
+
+
 @check("cloud", "a browser's downloads are filed by the address each came from, copied "
        "and never moved, and a state document that cannot be placed is named",
        needs=("state_sources",))
@@ -68891,7 +69181,10 @@ def _session_chips_seat_of_their_term(BSP):
         if Path(f).exists():
             for r in json.loads(Path(f).read_text(encoding="utf-8")):
                 if r.get("slug"):
-                    ids.setdefault(r["slug"], str(r.get("id") or ""))
+                    # a mover's page stands for every number it lists, its own first
+                    own = str(r.get("id") or "")
+                    ids.setdefault(r["slug"], [own, *(str(x) for x in r.get("member_ids") or []
+                                                      if str(x) != own)])
     import build_date
     import proceedings
     today = build_date.today().isoformat()
@@ -68907,7 +69200,8 @@ def _session_chips_seat_of_their_term(BSP):
             if not tag:
                 continue
             seen += 1
-            want = (fr["seats"].get(term) or {}).get(ids.get(slug, ""))
+            want = BSP.seat_of(fr["seats"].get(term) or {}, ids.get(slug, []),
+                               page.parent.name) or None
             if f"{name} {tag}" != want:
                 bad.append(f"{page.parent.name} {page.stem}: {name} {tag}, the ballots of "
                            f"{term} say {want!r}")
@@ -75484,15 +75778,17 @@ def _webinar_under_search(BP):
 
 # The kinds of address docs/DEMO_PATH.md may stop at: each a page the site
 # builds (_demo_path). A stop of another kind is added here once it has been
-# opened on the preview.
+# opened on the preview, or on the live site: /officials and /resources were,
+# at 390px on 5 November 2026, with the deck's three new slides.
 DEMO_ADDRESSES = (r"/", r"/search\?q=[^#\s]+", r"/bills\?[^#\s]+",
                   r"/bill/\d{4}/[a-z]{2,5}\d+(?:/(?P<billtab>[a-z]+))?",
                   r"/committee/[A-Za-z0-9-]+", r"/legislator/[a-z0-9-]+",
                   r"/laws/[0-9a-z-]+(?:#s[0-9a-z-]+)?", r"/town/[a-z0-9-]+(?:#(?P<towntab>[a-z]+))?",
-                  r"/guides/(?P<guide>[a-z0-9-]+)", r"/calendar/\d{4}-W\d{2}")
+                  r"/guides/(?P<guide>[a-z0-9-]+)", r"/calendar/\d{4}-W\d{2}",
+                  r"/officials", r"/resources")
 
 
-@check("frontend", "the webinar's demo path is a draft of ten to twelve stops, each a kind of "
+@check("frontend", "the webinar's demo path is a draft of ten to fifteen stops, each a kind of "
        "address the site builds, its tab or guide one the site still has", needs=("civics", "guides"))
 def _demo_path(CV, G):
     """The audit of 25 October 2026 (C7): the 10 November webinar had a deck
@@ -75511,8 +75807,10 @@ def _demo_path(CV, G):
     assert "draft for the owner's approval" in " ".join(text.split()), \
         "docs/DEMO_PATH.md no longer says it is a draft for the owner's approval"
     stops = re.findall(r"(?m)^(\d+)\. `(/[^`]*)`", text)
-    assert 10 <= len(stops) <= 12 and [int(n) for n, _ in stops] == list(range(1, len(stops) + 1)), \
-        f"the demo path has {len(stops)} stops, numbered {[n for n, _ in stops]}: ten to twelve, in order"
+    # Fifteen at most since the deck's three new slides (the owner's board,
+    # 27 October 2026: "the demo path gains the same stops").
+    assert 10 <= len(stops) <= 15 and [int(n) for n, _ in stops] == list(range(1, len(stops) + 1)), \
+        f"the demo path has {len(stops)} stops, numbered {[n for n, _ in stops]}: ten to fifteen, in order"
     app = (_paths.ROOT / "src/pages/app.js").read_text(encoding="utf-8")
     tabs = re.search(r"const BILL_TABS=\{([^}]*)\}", app)
     assert tabs, "app.js no longer says BILL_TABS where this check reads it"
@@ -83712,6 +84010,60 @@ def _speaker_by_ballot(BSP):
     assert got == ("joe-quill-hills-9", "paul-terry-belk-7", None, None), got
     assert m.unmatched[("H", "Lee")] == 1 and m.unmatched[("H", "Nobody")] == 1, m.unmatched
     return "ok", "Quill by the term's ballots; Terry by the roster; Lee, two of them, and Nobody left as words"
+
+
+@check("session", "a member who moved between chambers is named on an old day by the seat their "
+                  "ballots under the earlier number give", needs=("build_session_pages",))
+def _mover_seat_on_old_day(BSP):
+    """The follow-up of the former movers (5 November 2026): Sen. Shannon
+    Chandley's page is 9404, and her House ballots of 2009-2010 are filed
+    under 568, the number joined to it (the row's member_ids). label() read
+    the page's own number only, so her 2010 speaker lines said "Rep. Shannon
+    Chandley" without the seat she held. A sitting mover and one who has left
+    are drawn alike; a name no roster matches is linked by a ballot under the
+    joined number too (by_ballot)."""
+    root = Path(tempfile.mkdtemp(prefix="gr-mover-"))
+    try:
+        (root / "legislators.json").write_text(json.dumps([
+            {"id": "9401", "slug": "cindy-rosenwald-sd-13", "name": "Rosenwald, Cindy",
+             "chamber": "S", "display_full": "Sen. Cindy Rosenwald (D - SD 13)",
+             "member_ids": ["9401", "177"]}]), encoding="utf-8")
+        (root / "former.json").write_text(json.dumps([
+            {"id": "9404", "slug": "shannon-chandley-sd-11", "name": "Chandley, Shannon",
+             "chamber": "S", "display_full": "Former Sen. Shannon Chandley (D - SD 11)",
+             "member_ids": ["9404", "568"], "served": {"terms": ["2009-2010", "2019-2020"]}},
+            {"id": "70", "slug": "pat-quay-hills-3", "name": "Quay, Pat", "chamber": "H",
+             "served": {"terms": ["2009-2010"]}}]), encoding="utf-8")
+        m = BSP.Members(root)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    m.current, m.term = "2025-2026", "2009-2010"
+    m.seats = {"2009-2010": {"568": "Rep. Shannon Chandley (D - Hills 22)",
+                             "177": "Rep. Cindy Rosenwald (D - Hills 30)",
+                             "70": "Rep. Pat Quay (R - Hills 3)"},
+               "2019-2020": {"9404": "Sen. Shannon Chandley (D - SD 11)"}}
+    got = {s: m.label(s, "H") for s in ("shannon-chandley-sd-11", "cindy-rosenwald-sd-13",
+                                         "pat-quay-hills-3")}
+    want = {"shannon-chandley-sd-11": "Rep. Shannon Chandley (D - Hills 22)",
+            "cindy-rosenwald-sd-13": "Rep. Cindy Rosenwald (D - Hills 30)",
+            "pat-quay-hills-3": "Rep. Pat Quay (R - Hills 3)"}
+    assert got == want, f"a mover on a day of 2009-2010 reads {got}, not {want}"
+    m.term = "2019-2020"
+    assert m.label("shannon-chandley-sd-11", "S") == "Sen. Shannon Chandley (D - SD 11)", (
+        "the page's own number no longer names its own term's seat")
+    m.term = "2009-2010"
+    assert m.by_ballot("H", "Chandley") == "shannon-chandley-sd-11", (
+        "a ballot under the joined number links no page")
+    # a move in mid-term: both numbers hold a seat in one term, and each
+    # chamber's day names its own (the review of 5 November 2026)
+    m.term = "2017-2018"
+    m.seats["2017-2018"] = {"9404": "Sen. Shannon Chandley (D - SD 11)",
+                            "568": "Rep. Shannon Chandley (D - Hills 22)"}
+    both = (m.label("shannon-chandley-sd-11", "H"), m.label("shannon-chandley-sd-11", "S"))
+    assert both == ("Rep. Shannon Chandley (D - Hills 22)", "Sen. Shannon Chandley (D - SD 11)"), (
+        f"a member who moved in mid-term is named {both} on a House and a Senate day")
+    return "ok", ("Chandley (former) and Rosenwald (sitting) named by the House seat of 2009-2010 "
+                  "their earlier numbers held; Chandley by SD 11 in 2019-2020")
 
 
 @check("build", "build_bills binds each of its names that hold every member once")
@@ -97225,8 +97577,12 @@ def _fetch_day_db(FD, DF, P, NI):
         P.HELD.unlink()
         os.environ.pop("GITHUB_ACTIONS")
 
-        # Another fetch holds the lock: it does not start.
-        Path("archive/.lock").write_text("1", encoding="utf-8")
+        # Another fetch holds the lock: it does not start. Its pid is any but
+        # this process's parent's, which refusal.hold takes for the lane that
+        # started the fetch and lets through. It was "1", and a suite started
+        # in the background from a shell that had since exited can have pid 1
+        # for its parent: the fetch went on, and this failed only in such runs.
+        Path("archive/.lock").write_text(str(os.getppid() + 1), encoding="utf-8")
         code, said = go("--fetch-only")
         assert code == 3 and "archive/.lock is held" in said, (code, said[-300:])
         Path("archive/.lock").unlink()

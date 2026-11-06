@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.3
+# GRANITE_VERSION: 2026-10-30.4
 """
 The data API's database: every table on the data page, and the record's
 committee reports, in one SQLite file, compressed with xz.
@@ -20,9 +20,10 @@ WHAT IT HOLDS
                           roll call and each member is stored once, which is
                           what keeps 2.3 million ballots under the host's
                           limit
-  proceedings             proceedings.csv without video_title and
-                          scheduled_seconds, the two columns that are
-                          YouTube's own metadata (Q18)
+  proceedings             proceedings.csv, which carries none of YouTube's
+                          own metadata; PROCEEDINGS_DROP keeps the recording's
+                          title and scheduled offset out of this table should
+                          they ever come back to the CSV (Q18)
   people, person_numbers  people.json, as one row a person and one a number
   committee_reports       each side of each printed committee report, with
                           its reasoning: House calendar reports, Senate
@@ -60,6 +61,15 @@ from pathlib import Path
 
 FORMAT = 1
 NAME = "granite-record.sqlite.xz"
+# One rights line for every download, in the words the owner approved
+# (DATA.md, THE DATA API; the owner's word of 5 November 2026 that CC0 covers
+# the spreadsheets too). manifest.json's "rights" and this file's meta carry
+# it; change it here, and only with the owner.
+RIGHTS = ("The record is the State of New Hampshire's, and so are the numbers it gives "
+          "people and bills. What this site adds -- the keys and joins it makes and the "
+          "corrections made here by hand -- is dedicated to the public domain under "
+          "CC0 1.0; the plain-English histories and the software are MIT licensed. "
+          "DATA.md says which is which.")
 PROCEEDINGS_DROP = ("video_title", "scheduled_seconds")
 
 
@@ -180,11 +190,7 @@ def _write(out, collector, people, meetings_path, tmp):
         "format": str(FORMAT),
         "what": "Granite Record: the public record of the New Hampshire General Court, "
                 "as one database. See https://graniterecord.org/api",
-        "rights": "The record is the State of New Hampshire's, and so are the numbers it gives "
-                  "people and bills. What this site adds -- the keys and joins it makes and the "
-                  "corrections made here by hand -- is dedicated to the public domain under "
-                  "CC0 1.0; the plain-English histories and the software are MIT licensed. "
-                  "DATA.md says which is which.",
+        "rights": RIGHTS,
         "upstream": "https://gc.nh.gov",
     }.items()))
 

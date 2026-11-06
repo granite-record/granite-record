@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.7
+# GRANITE_VERSION: 2026-10-30.8
 """
 One entry a person, joining every number the General Court uses for them.
 
@@ -508,8 +508,7 @@ def write(people, out_dir):
                    "every number the General Court and this site use for them. "
                    "person is one of the General Court's own numbers for them, "
                    "chosen once by a fixed rule: their earliest PersonID, else their "
-                   "earliest employee number. See "
-                   "/data/schema.json.",
+                   "earliest employee number.",
            "people": people}
     pj = out_dir / "people.json"
     pj.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")

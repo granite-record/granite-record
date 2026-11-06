@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.16
+// GRANITE_VERSION: 2026-10-30.17
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -399,8 +399,8 @@ L.sessionCard = function (file, body, now, http, bills) {
     ? (body === "S" ? C.tr("votes.head_senate_day", "Senate roll calls of {day}", words)
                     : C.tr("votes.head_house_day", "House roll calls of {day}", words))
     : (body === "S" ? C.tr("votes.head_senate", "Senate roll calls today") : C.tr("votes.head_house", "House roll calls today"));
-  // The day's one page, at its dated address (the morning page, or the
-  // record's once it has the day).
+  // The day's one page, at its dated address (/session/<B>/today was
+  // retired on 30 October 2026).
   var link = past
     ? (body === "S" ? C.tr("votes.day_senate", "The Senate on {day}", words)
                     : C.tr("votes.day_house", "The House on {day}", words))
