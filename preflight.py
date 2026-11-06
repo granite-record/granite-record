@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.778
+# GRANITE_VERSION: 2026-09-04.779
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -77816,7 +77816,7 @@ def _headings_outrank(B, RSA, S):
     return "ok", "; ".join(said) + ("" if glance is not None else " (node is not here for termGlance)")
 
 
-@check("frontend", "a bill's Testify button counts the Senate's hearings, and says testimony opens again "
+@check("frontend", "a bill's Testify button counts the Senate's hearings, and says testimony may open again "
        "only while one chamber has heard it")
 def _testify_box_senate():
     """The audit of 25 October 2026 (M2): the House's hearings are "public
@@ -77853,17 +77853,27 @@ def _testify_box_senate():
     ended: box([st("hearing", "2000-01-13", "S", "Finance")],
                {rail: [{stop: "Introduced", mark: "p"}, {stop: "Senate", mark: "x"}]}, term, {n: "SB 406"}),
     old: box([st("hearing", "2999-01-13", "S", "Finance")], moving, "1999-2000"),
+    // passed by the Senate and in the House now, unheard there
+    inHouse: box([st("hearing", "2000-01-13", "S", "Finance")],
+                 {rail: [{stop: "Introduced", mark: "p"}, {stop: "Senate", mark: "p"}, {stop: "House", mark: "h"},
+                         {stop: "Governor", mark: "-"}, {stop: "Law", mark: "-"}]}),
+    // and on the House's table, the owner's second case of the same line
+    tabledInHouse: box([st("hearing", "2000-01-13", "S", "Finance")],
+                 {rail: [{stop: "Introduced", mark: "p"}, {stop: "Senate", mark: "p"}, {stop: "House", mark: "t"},
+                         {stop: "Governor", mark: "-"}, {stop: "Law", mark: "-"}]}),
   };
 })()""", names=("testifyButton", "sittingTerm"))
     if got is None:
         return "skip", "node, app.js or dom_stub.js is not here"
     said = {k: " ".join(re.sub(r"<[^>]+>", " ", v).split()) for k, v in got.items()}
     assert "has not opened yet" not in said["senate"] and \
-        "its public hearing was Jan 13, 2000" in said["senate"], (
+        "have closed as of January 13, 2000" in said["senate"], (
             f"a bill heard only by a Senate committee is told: {said['senate']!r}")
-    assert "opens again" in said["senate"], (
-        f"a bill heard in one chamber is no longer told testimony opens again in the other: {said['senate']!r}")
-    assert "its last public hearing was Apr 23, 2000" in said["both"] and "opens again" not in said["both"], (
+    # the other chamber named, for a Senate bill the House (the owner, 6 November 2026)
+    assert "They may open again if the bill goes to the House and the House holds its own public " \
+        "hearing." in said["senate"], (
+        f"a bill heard in one chamber is no longer told testimony may open again in the other: {said['senate']!r}")
+    assert "have closed as of April 23, 2000" in said["both"] and "open again" not in said["both"], (
         f"a bill heard in both chambers is told: {said['both']!r}")
     assert "The public hearing on SB 406 is scheduled for" in said["ahead"] \
         and "Senate Judiciary Committee" in said["ahead"] \
@@ -77871,10 +77881,16 @@ def _testify_box_senate():
         and 'class="testify tlive"' in got["ahead"], (
             f"a Senate hearing still to come does not open the Senate's form: {said['ahead']!r}")
     assert "has not opened yet" in said["none"], f"a bill with no hearing is told: {said['none']!r}"
-    assert "has passed" in said["ended"] and "opens again" not in said["ended"], (
+    assert "have closed as of" in said["ended"] and "open again" not in said["ended"], (
         f"a bill whose rail has ended is told: {said['ended']!r}")
+    # in the House already, unheard there: the owner's shorter line (6 November 2026)
+    assert "They may open again if the House holds its own public hearing." in said["inHouse"] \
+        and "goes to" not in said["inHouse"], f"a Senate bill now in the House is told: {said['inHouse']!r}"
+    assert "They may open again if the House holds its own public hearing." in said["tabledInHouse"] \
+        and "goes to" not in said["tabledInHouse"], (
+        f"a Senate bill on the House's table is told: {said['tabledInHouse']!r}")
     assert got["old"] == "", "a bill of an earlier term has a Testify button"
-    return "ok", ("a Senate hearing is a public hearing, past or ahead; \"opens again\" only while one "
+    return "ok", ("a Senate hearing is a public hearing, past or ahead; \"may open again\" only while one "
                   "chamber has heard it; an ended bill and an earlier term as before")
 
 
@@ -78099,7 +78115,7 @@ def _testify_in_the_row():
             f"a hearing today, {got['todayShort']} in New Hampshire, is not live: {got['today'][:200]!r}")
     la, london = got["la"], got["london"]
     assert la["local"] == 13 and la["html"].startswith('<details class="testify toff">') \
-        and "its public hearing was Jan 13, 2026." in flat(la["html"]), (
+        and "have closed as of January 13, 2026." in flat(la["html"]), (
             "at 11:30 p.m. on 13 January in Los Angeles, 2:30 a.m. on the 14th in Concord, SB 406's Testify "
             f"is not shut: {la['html'][:200]!r}")
     assert london["local"] == 14 and london["html"].startswith('<details class="testify tlive">') \
@@ -78196,9 +78212,9 @@ def _testify_in_the_row():
         "a House hearing's live pane does not link the House's form")
     # PASSED AND NOT OPENED: greyed, saying which, linking nothing
     for name, h, said, heard in (
-            ("passed", passed, "Online testimony for this bill has passed: its public hearing was Jan 13, 2000. "
-             "It opens again if the bill is scheduled for a hearing in the other chamber.",
-             "Testify, not open: its hearing has passed"),
+            ("passed", passed, "Online testimony submissions for this bill have closed as of January 13, 2000. "
+             "They may open again if the bill goes to the House and the House holds its own public hearing.",
+             "Testify, closed"),
             ("not opened", none, "Online testimony has not opened yet: it opens once a public hearing "
              "is scheduled.", "Testify, not open yet"),
             ("ended without a hearing", got["ended"], "Online testimony did not open for this bill: it had no "
@@ -78815,8 +78831,8 @@ def _testify_when_it_cannot_open():
         return "skip", "node, app.js or dom_stub.js is not here"
     said = {k: " ".join(re.sub(r"<[^>]+>", " ", v).replace("&rsquo;", "’").split()) for k, v in got.items()}
     did_not = "Online testimony did not open for this bill: it had no public hearing."
-    passed = "Online testimony for this bill has passed: its public hearing was Jan 21, 2000."
-    again = "It opens again if the bill is scheduled for a hearing in the other chamber."
+    passed = "Online testimony submissions for this bill have closed as of January 21, 2000."
+    again = "They may open again if"
     for name in ("hr17", "hr17Bare", "hr48", "hr48Bare", "overUnheard", "endedAhead"):
         assert did_not in said[name] and "not opened yet" not in said[name], (
             f"{name}, which can no longer be heard and never was, is told: {said[name]!r}")
@@ -78826,8 +78842,17 @@ def _testify_when_it_cannot_open():
             f"{name}, which cannot be heard in another chamber, is told: {said[name]!r}")
     for name in ("sitting", "hb7", "movingBare", "tabled"):
         assert passed in said[name] and again in said[name], (
-            f"{name}, still moving with the other chamber ahead, is not told testimony opens again there: "
+            f"{name}, still moving with the other chamber ahead, is not told testimony may open again there: "
             f"{said[name]!r}")
+    # THE OWNER'S TWO LINES (6 November 2026): a bill already in the other
+    # chamber, unheard there (its stop "h"), is told only of that chamber's
+    # hearing; one that has not reached it ("-") that it must go there first
+    for name in ("sitting", "hb7", "movingBare"):
+        assert "They may open again if the Senate holds its own public hearing." in said[name] \
+            and "goes to" not in said[name], (
+            f"{name}, in the Senate already and unheard there, is told: {said[name]!r}")
+    assert "They may open again if the bill goes to the Senate and the Senate holds its own public " \
+        "hearing." in said["tabled"], f"a bill that has not reached the Senate is told: {said['tabled']!r}"
     for name, url in (("noBody", "gc.nh.gov/remotecommittee/senate.aspx"),
                       ("jointBody", "gc.nh.gov/house/committees/remotetestimony/")):
         h = got[name]
@@ -79092,8 +79117,8 @@ def _testify_hears_an_amendment():
             f"HB 1560-FN's live pane gives {vals(before)} to choose, not the House's hearing of 3 February")
     after = got["after"]
     assert after.startswith('<details class="testify toff">') and pane(after) == (
-        "Online testimony for this bill has passed: its last public hearing was Feb 3, 2026. It opens again "
-        "if the bill is scheduled for a hearing in the other chamber."), (
+        "Online testimony submissions for this bill have closed as of February 3, 2026. They may open again "
+        "if the bill goes to the Senate and the Senate holds its own public hearing."), (
             f"HB 1560-FN on 5 February names another hearing as its last: {pane(after)!r}")
     assert summ(got["cacr12"]) == "Testify until Apr 15" and pane(got["cacr12"]).startswith(
         "The public hearing on a proposed non-germane amendment (2026-1134h) to CACR 12 is scheduled for "
@@ -79101,10 +79126,10 @@ def _testify_hears_an_amendment():
         and vals(got["cacr12"]) == ["Wednesday, April 15, 2026", "House Ways and Means Committee", "CACR 12"], (
             f"CACR 12 on 13 April, its hearing on a proposed amendment at 3 p.m. on the 15th, reads "
             f"{summ(got['cacr12'])!r}: {pane(got['cacr12'])[:220]!r} {vals(got['cacr12'])}")
-    assert pane(got["cacr12After"]) == "Online testimony for this bill has passed: its last public hearing was " \
-        "Apr 15, 2026.", f"CACR 12 after its hearing of 15 April reads {pane(got['cacr12After'])!r}"
+    assert pane(got["cacr12After"]) == "Online testimony submissions for this bill have closed as of " \
+        "April 15, 2026.", f"CACR 12 after its hearing of 15 April reads {pane(got['cacr12After'])!r}"
     assert got["called"].startswith('<details class="testify toff">') \
-        and "its public hearing was Jan 27, 2026." in pane(got["called"]), (
+        and "have closed as of January 27, 2026." in pane(got["called"]), (
             f"a hearing on an amendment the docket called off is counted: {pane(got['called'])!r}")
     assert got["sb210"].startswith('<details class="testify tlive">') and summ(got["sb210"]) == "Testify until May 27" \
         and pane(got["sb210"]).startswith("The public hearing on a proposed amendment (2025-2318h) to SB 210 is "
@@ -79114,8 +79139,8 @@ def _testify_hears_an_amendment():
             f"{summ(got['sb210'])!r}: {pane(got['sb210'])[:200]!r}")
     assert summ(got["corrected"]) == "Testify until Feb 4", (
         f"a row a person corrected to 4 February keeps the clerk's day: {summ(got['corrected'])!r}")
-    assert pane(got["same"]) == "Online testimony for this bill has passed: its public hearing was Jan 20, 2026. " \
-        "It opens again if the bill is scheduled for a hearing in the other chamber.", (
+    assert pane(got["same"]) == "Online testimony submissions for this bill have closed as of January 20, 2026. " \
+        "They may open again if the bill goes to the Senate and the Senate holds its own public hearing.", (
             f"a House station and the line for it, one hearing, are counted as two: {pane(got['same'])!r}")
     assert " at 9:30 AM in Granite Place 158." in pane(got["twoOneDay"]) \
         and pane(got["twoOneDay"]).startswith("The public hearing on a proposed non-germane amendment (2026-0093h)"), (
@@ -79414,10 +79439,10 @@ def _testify_report_dated():
     flat = lambda h: " ".join(re.sub(r"<[^>]+>", " ", h).replace("&rsquo;", "’").split())
     pane = lambda h: flat((re.search(r'<div class="testifypane">(.*?)</div></details>', h, re.S) or [None, ""])[1])
     for name, said in (
-            ("sb76", "Online testimony for this bill has passed: its public hearing was Jan 14, 2025."),
-            ("sb76Between", "Online testimony for this bill has passed: its public hearing was Jan 14, 2025."),
-            ("hb183", "Online testimony for this bill has passed: its last public hearing was Apr 2, 2025."),
-            ("hb183Ahead", "Online testimony for this bill has passed: its public hearing was Jan 24, 2025.")):
+            ("sb76", "Online testimony submissions for this bill have closed as of January 14, 2025."),
+            ("sb76Between", "Online testimony submissions for this bill have closed as of January 14, 2025."),
+            ("hb183", "Online testimony submissions for this bill have closed as of April 2, 2025."),
+            ("hb183Ahead", "Online testimony submissions for this bill have closed as of January 24, 2025.")):
         h = got[name]
         assert h.startswith('<details class="testify toff">'), (
             f"{name}: a day a committee's report gives is taken as a hearing ahead: {pane(h)[:200]!r}")
@@ -80597,6 +80622,101 @@ def _home_finder_suggests_towns():
             "app.css does not put the dropdown under the box, or still styles the old finder")
     return "ok", ("one box, the header's finder, its top results in its own dropdown under it; "
                   "no finder of towns beside it")
+
+
+@check("frontend", "a head's action pane opens from its own button with a nub pointing at it: on a desktop "
+                   "to its left, level with it; on a phone under it, as wide as the row")
+def _panes_open_left():
+    """The owner, 6 November 2026: a pane hung from the actions' foot read as
+    disconnected from the button that opened it. Each of Cite, Testify,
+    Follow and Report a problem in a head's actions (.racts) is what its pane
+    is measured from, at every width -- Testify's details by name, since it
+    sits in a box of its own (mountTestify). Above a phone's width (the
+    actions the head's right-hand column) the pane opens to the button's
+    left, top level with it, its width the window less the column and the
+    gutters; at 45em and under (two buttons to a row) under the button, as
+    wide as the row, where app.js placeActPane says the row is. And a nub
+    connects them (the owner's second word the same day): the open button's
+    ::after, a square of the pane's surface and border turned 45deg, laid on
+    the pane's edge at the button's middle -- the right edge on a desktop,
+    the top on a phone -- its tip short of the button: the gap (12px) is
+    more than half the turned square's diagonal (14px / 2 * 1.414 = 9.9px).
+    Measured in a browser at 360, 390, 1024 and 1280, light and dark, on a
+    bill and a session day (the branch's notes)."""
+    css = Path(_paths.locate("app.css")).read_text(encoding="utf-8")
+    js = Path(_paths.locate("app.js")).read_text(encoding="utf-8")
+    # the nub in px, as the gap is: in rem a large default text grew it into
+    # the button (the review of 6 November 2026)
+    shared = ".racts :is(.pcite,.follow,.testify,.report){position:relative;--nub:14px}"
+    assert shared in css, "a head's pane is not measured from its own button, or its nub has no size in px"
+    # drawn turned and hidden, shown while open: nothing turns as it opens,
+    # so the openers' check does not take it for an opener's mark
+    nub = re.search(r"\.racts :is\(\.pcite,\.follow,\.testify,\.report\) > summary::after\{([^}]*)\}", css)
+    assert nub and all(x in nub.group(1) for x in (
+            'content:""', "display:none", "position:absolute", "background:var(--surface)",
+            "solid var(--rule-2)", "rotate(45deg)", "pointer-events:none", "z-index:21")), (
+        f"the nub is not the pane's own fill and border, turned, over the pane: {nub and nub.group(1)!r}")
+    assert ".racts :is(.pcite,.follow,.testify,.report)[open] > summary::after{display:block}" in css, (
+        "the nub is not shown while its pane is open")
+    pane = re.search(r"\.followpane,\.citebody,\.testifypane\{position:absolute;[^}]*\}", css)
+    assert pane and "background:var(--surface)" in pane.group(0) and "border:1px solid var(--rule-2)" in pane.group(0) \
+        and "z-index:20" in pane.group(0), "the pane's fill, border or layer no longer match the nub's"
+    sp5 = re.search(r"--sp-5:(\d+)px", css)
+    assert sp5 and int(sp5.group(1)) > 14 / 2 * 2 ** .5, "the nub's tip would reach the button"
+
+    def block(media):
+        got = [b for b in re.findall(re.escape(media) + r"\{\n(.*?)\n\}", css, re.S)
+               if ".racts :is(.followpane" in b]
+        assert len(got) == 1, f"{len(got)} rules at {media} place the head's panes, not one"
+        return got[0]
+    desk, phone = block("@media (min-width:45.0625em)"), block("@media (max-width:45em)")
+    pane_of = lambda b: re.search(
+        r"\.racts :is\(\.followpane,\.citebody,\.testifypane\),\.racts \.report > \.reportform\{([^}]*)\}", b)
+    nub_of = lambda b: re.search(r"\[open\] > summary::after\{([^}]*)\}", b)
+    d, dn = pane_of(desk), nub_of(desk)
+    assert d and "top:0" in d.group(1) and re.search(r"right:calc\(100% \+ var\(--sp-5\)\)", d.group(1)) \
+        and "left:auto" in d.group(1), f"on a desktop a pane does not open to its button's left: {d and d.group(1)!r}"
+    assert dn and "top:calc(50% - var(--nub) / 2)" in dn.group(1) \
+        and "left:calc(-1 * var(--sp-5) - var(--nub) / 2)" in dn.group(1) \
+        and "border-top-width:1px;border-right-width:1px" in dn.group(1), (
+        f"on a desktop the nub is not on the pane's right edge at the button's middle: {dn and dn.group(1)!r}")
+    p, pn = pane_of(phone), nub_of(phone)
+    assert p and "top:calc(100% + var(--sp-5))" in p.group(1) and "left:var(--pl,0)" in p.group(1) \
+        and "width:var(--pw," in p.group(1), f"on a phone a pane does not open under its button: {p and p.group(1)!r}"
+    # from the lifted button's padding box, inside its 1px border
+    assert pn and "top:calc(100% + 1px + var(--sp-5) - var(--nub) / 2)" in pn.group(1) \
+        and "left:calc(50% - var(--nub) / 2)" in pn.group(1) \
+        and "border-top-width:1px;border-left-width:1px" in pn.group(1), (
+        f"on a phone the nub is not on the pane's top edge at the button's middle: {pn and pn.group(1)!r}")
+    # on a phone the pressed button stands above the band of ground over the
+    # gap, so the band does not cut its focus ring (the review of 6 November)
+    assert ".racts :is(.pcite,.follow,.testify,.report)[open] > summary{position:relative;z-index:22}" in phone, (
+        "on a phone the band over the gap cuts the pressed button's focus ring")
+    # in forced colours, the nub in the pane's own system colours
+    assert re.search(r"@media \(forced-colors:active\)\{\s*\.racts :is\(\.pcite,\.follow,\.testify,\.report\) > "
+                     r"summary::after\{forced-color-adjust:none;\s*background:Canvas;border-color:CanvasText\}", css), (
+        "in forced colours the nub takes the button's colours, not the pane's")
+    # where the row is, said by the script as the pane opens: on the press,
+    # on the toggle and when the window changes; and nothing else -- it opens,
+    # shuts and focuses nothing
+    fn = js[js.index("function placeActPane("):]
+    fn = fn[:fn.index("\n}\n")]
+    assert '"--pl"' in fn and '"--pw"' in fn and not re.search(r"open|focus|click", fn), (
+        "placeActPane does more than say where the row is")
+    for hook in ('e.target.closest(".racts details > summary");\n  if(s)placeActPane(s.parentElement);\n},true);',
+                 'document.addEventListener("toggle",e=>{if(e.target&&e.target.open)placeActPane(e.target);},true);',
+                 'window.addEventListener("resize",()=>document.querySelectorAll(".racts details[open]").forEach(placeActPane));'):
+        assert hook in js, f"placeActPane is no longer called where it was: {hook[:60]!r}"
+    # THE CASCADE, not only the text (the review of 6 November 2026): two
+    # rules of the same weight put these buttons back to position:static,
+    # and only their place in the file lets the new one win.
+    at = css.index(shared)
+    for older in (".pageacts .follow,.pageacts .testify{position:static}", ".racts .report{position:static}"):
+        assert older in css and css.index(older) < at, (
+            f"{older!r} now comes after the rule that measures a pane from its button, and wins")
+    return "ok", ("each pane from its own button: to its left and level above 45em, under it and as wide as the "
+                  "row at 45em and under; a nub of its own fill and border on its edge at the button's middle, "
+                  "clear of the button")
 
 
 @check("frontend", "Follow's, Cite's and Testify's panes, opened below the fold, are brought into view")

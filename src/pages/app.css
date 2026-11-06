@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.344 */
+/* GRANITE_VERSION: 2026-09-07.345 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -7421,6 +7421,70 @@ border-radius:var(--r-in);background:var(--surface);font-size:var(--t-ui)}
      Follow before it (shell.still_moving), which keeps the row two to a
      line around it: Cite and Follow, Testify, Print and Share, Report. */
   .racts .pageacts > .tliverow{grid-column:1 / -1}
+}
+/* ON A DESKTOP, A PANE OPENS TO THE LEFT OF ITS BUTTON (the owner, 6
+   November 2026). Where the actions are the head's right-hand column, a
+   pane hung from the stack's foot read as disconnected from the button that
+   opened it. So above a phone's width each button is what its pane is
+   measured from: the pane's top level with the button's, its right edge a
+   gap short of the column, over the room between the title and facts and
+   the buttons -- never over the button that opened it. Every page whose head
+   carries the column (components.record_head, app.js billHead) opens them so:
+   a bill's, a member's, a committee's, a session day's. The width leaves the
+   column, the gap and the page's gutters: 22rem of the window.
+
+   AND ON A PHONE, UNDER ITS OWN BUTTON, EACH WITH A NUB (the owner, 6
+   November 2026: "connect each pane to its button"). On a phone the buttons
+   are two to a row under the head, and a pane hung from the row's foot read
+   as no button's; it opens under the button that was pressed now, as wide as
+   the row (app.js placeActPane says where the row is, from the button). And
+   at every width a small triangle on the pane's edge points at that button
+   -- on a desktop on its right edge at the button's middle, on a phone on
+   its top edge -- the pane's own fill and border, one shape with it: a
+   square of the pane's surface, turned, its two outer edges the pane's
+   border, laid over the pane's edge so the edge does not show through it.
+   The button draws it (summary::after), not the pane, whose own overflow
+   (Cite's scrolls) would clip it; it stands clear of the button. */
+/* each by name: Testify's sits in its own box (app.js mountTestify) */
+/* The nub in px, as the gap is: in rem a large default text grew it into the
+   button (the review of 6 November 2026, 24px text). 14px turned reaches
+   9.9px; the gap is 12px. */
+.racts :is(.pcite,.follow,.testify,.report){position:relative;--nub:14px}
+/* Drawn turned and hidden, and shown while open: a nub, not an opener's
+   mark, so nothing turns when the button opens. */
+.racts :is(.pcite,.follow,.testify,.report) > summary::after{content:"";display:none;position:absolute;z-index:21;
+  width:var(--nub);height:var(--nub);box-sizing:border-box;background:var(--surface);
+  border:0 solid var(--rule-2);transform:rotate(45deg);pointer-events:none}
+.racts :is(.pcite,.follow,.testify,.report)[open] > summary::after{display:block}
+/* In forced colours, the pane's own: its ground and its border. */
+@media (forced-colors:active){
+  .racts :is(.pcite,.follow,.testify,.report) > summary::after{forced-color-adjust:none;
+    background:Canvas;border-color:CanvasText}
+}
+@media (min-width:45.0625em){
+  .racts :is(.followpane,.citebody,.testifypane),.racts .report > .reportform{
+    top:0;right:calc(100% + var(--sp-5));left:auto;
+    width:min(36rem,calc(100vw - 22rem))}
+  .racts .citebody{width:min(42rem,calc(100vw - 22rem))}
+  .racts :is(.pcite,.follow,.testify,.report)[open] > summary::after{
+    top:calc(50% - var(--nub) / 2);left:calc(-1 * var(--sp-5) - var(--nub) / 2);
+    border-top-width:1px;border-right-width:1px}
+}
+@media (max-width:45em){
+  /* The row under the pressed button starts 4px below it and the pane 12px:
+     a band of the page's own ground over those 10px, so the next row's tops
+     do not show between the button and its pane (the shots of 6 November). */
+  .racts :is(.followpane,.citebody,.testifypane),.racts .report > .reportform{
+    top:calc(100% + var(--sp-5));left:var(--pl,0);right:auto;width:var(--pw,calc(100vw - 28px));
+    box-shadow:0 -10px 0 var(--paper)}
+  /* the pressed button above the band, so its focus ring, 2-4px under it,
+     is not cut by it (the review of 6 November 2026) */
+  .racts :is(.pcite,.follow,.testify,.report)[open] > summary{position:relative;z-index:22}
+  .racts :is(.pcite,.follow,.testify,.report)[open] > summary::after{
+    /* measured from the button's padding box, inside its 1px border: the 1px
+       puts the nub's middle on the pane's edge */
+    top:calc(100% + 1px + var(--sp-5) - var(--nub) / 2);left:calc(50% - var(--nub) / 2);
+    border-top-width:1px;border-left-width:1px}
 }
 
 /* THE TABS HANG FROM THE HEAD'S FOOT (the kit's part 9): a strip on a 2px

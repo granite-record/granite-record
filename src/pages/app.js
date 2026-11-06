@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.265
+// GRANITE_VERSION: 2026-09-07.266
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4954,13 +4954,23 @@ function testifyButton(d,b,now=new Date()){
   // pane says so. The button stays, greyed, since every bill of the sitting
   // term has one (the person, 22 October 2026: "Bills that are from the
   // current year should have the testimony box but greyed out").
+  // CLOSED, IN THE OWNER'S WORDS (6 November 2026): "Online testimony
+  // submissions for this bill have closed as of January 13, 2026." -- the
+  // last past hearing's day, the month in full -- and, only where it can
+  // open again (`again`, unchanged), the plain reason, naming the other
+  // chamber: "They may open again if the bill goes to the Senate and the
+  // Senate holds its own public hearing." Where it is already there, unheard
+  // ("h") or tabled ("t") (the owner, 6 November 2026): "They may open again
+  // if the Senate holds its own public hearing."
+  const there=other&&("the "+other.stop);
+  const arrived=again&&/^[ht]$/.test(other.mark||"");
   const why=last
-    ?`Online testimony for this bill has passed: its ${past.length>1?"last ":""}public hearing was ${
-      esc(dateWords(last.when))}.`
-      +(again?" It opens again if the bill is scheduled for a hearing in the other chamber.":"")
+    ?`Online testimony submissions for this bill have closed as of ${esc(dateWords(last.when,"full"))}.`
+      +(!again?"":arrived?` They may open again if ${there} holds its own public hearing.`
+        :` They may open again if the bill goes to ${there} and ${there} holds its own public hearing.`)
     :moving?"Online testimony has not opened yet: it opens once a public hearing is scheduled."
     :"Online testimony did not open for this bill: it had no public hearing.";
-  const shut=last?", not open: its hearing has passed":moving?", not open yet":", not open: no hearing was held";
+  const shut=last?", closed":moving?", not open yet":", not open: no hearing was held";
   return button("toff",`Testify<span class="sr">${shut}</span>`)
     +`<div class="testifypane"><p>${why}</p></div></details>`;
 }
@@ -11818,6 +11828,27 @@ document.addEventListener("toggle",e=>{
 // where an address it could not copy waits to be selected.
 const ACT_PANES="#pageacts details[open], .pageacts details[open], .racts details[open]";
 const SHARE_PRESS="[data-share]";   // named here: Share's own listener is the one that names it
+// UNDER ITS OWN BUTTON, AS WIDE AS THE ROW (the owner, 6 November 2026; app.css
+// at "AND ON A PHONE, UNDER ITS OWN BUTTON"). A head's pane is measured from
+// the button that opens it, and on a phone the buttons are two to a row: CSS
+// cannot know which of the two a button is, so this says where the row
+// starts, from the button, and how wide it is (--pl, --pw), as it opens --
+// on the press, before the pane is drawn, and on the toggle for a pane
+// opened any other way -- and again when the window changes. A desktop's
+// rule does not read them. Nothing here opens, shuts or moves focus.
+function placeActPane(d){
+  if(!d||!d.closest||d.tagName!=="DETAILS"||!d.closest(".racts"))return;
+  const row=d.closest(".pageacts")||d.closest(".racts");
+  const r=row.getBoundingClientRect(), b=d.getBoundingClientRect();
+  d.style.setProperty("--pl",Math.round(r.left-b.left)+"px");
+  d.style.setProperty("--pw",Math.round(r.width)+"px");
+}
+document.addEventListener("click",e=>{
+  const s=e.target&&e.target.closest&&e.target.closest(".racts details > summary");
+  if(s)placeActPane(s.parentElement);
+},true);
+document.addEventListener("toggle",e=>{if(e.target&&e.target.open)placeActPane(e.target);},true);
+window.addEventListener("resize",()=>document.querySelectorAll(".racts details[open]").forEach(placeActPane));
 document.addEventListener("click",e=>{
   const at=e.target;
   if(!at||!at.closest)return;
