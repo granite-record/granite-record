@@ -77349,7 +77349,7 @@ def _headings_outrank(B, RSA, S):
     return "ok", "; ".join(said) + ("" if glance is not None else " (node is not here for termGlance)")
 
 
-@check("frontend", "a bill's Testify button counts the Senate's hearings, and says testimony opens again "
+@check("frontend", "a bill's Testify button counts the Senate's hearings, and says testimony may open again "
        "only while one chamber has heard it")
 def _testify_box_senate():
     """The audit of 25 October 2026 (M2): the House's hearings are "public
@@ -77409,7 +77409,7 @@ def _testify_box_senate():
     assert "have closed as of" in said["ended"] and "open again" not in said["ended"], (
         f"a bill whose rail has ended is told: {said['ended']!r}")
     assert got["old"] == "", "a bill of an earlier term has a Testify button"
-    return "ok", ("a Senate hearing is a public hearing, past or ahead; \"opens again\" only while one "
+    return "ok", ("a Senate hearing is a public hearing, past or ahead; \"may open again\" only while one "
                   "chamber has heard it; an ended bill and an earlier term as before")
 
 
@@ -80166,6 +80166,15 @@ def _panes_open_left():
     phone = phone[:phone.index("\n}\n")]
     assert "citebody" not in phone and "testifypane" not in phone, (
         "the phone's rule now places the panes too: say which wins")
+    # THE CASCADE, not only the text (the review of 6 November 2026): two
+    # rules of the same weight put these buttons back to position:static,
+    # and only their place in the file lets the new one win. Moved after it,
+    # Report's pane would hang from the column again and every line above
+    # would still pass.
+    at = css.index(".racts :is(.pcite,.follow,.testify,.report){position:relative}")
+    for older in (".pageacts .follow,.pageacts .testify{position:static}", ".racts .report{position:static}"):
+        assert older in css and css.index(older) < at, (
+            f"{older!r} now comes after the rule that measures a pane from its button, and wins")
     return "ok", "above 45em each pane at its button's top, to its left; at 45em and under, below as before"
 
 
