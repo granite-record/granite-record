@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.246
+# GRANITE_VERSION: 2026-09-05.247
 """
 Generate the faceted site from real General Court data.
 
@@ -9888,12 +9888,19 @@ def bill_documents(b, bid, st, narr, sources, rep_written, rep_docket):
     # committee_reports() has already turned each report's calendar into
     # a key and a URL, so this cites what the report itself is citing
     # rather than parsing "House Calendar 51, 2025" a second time.
+    # THE LABEL SAYS WHAT IT IS FIRST, AND THE YEAR IN BRACKETS (the cohesion
+    # audit's P-12, 6 November 2026): "House Calendar 12, 2026, committee
+    # report" read as a date, December 2026. The citation is the General
+    # Court's own and is not changed where it is shown as one, on the Reports
+    # tab; only this list's label is.
+    def report_label(cite):
+        return "Committee report, " + re.sub(r",\s*((?:19|20)\d\d)\s*$", r" (\1)", cite or "")
     for r in rep_written:
-        add_doc(f"{r.get('source') or r.get('cite')}, committee report",
+        add_doc(report_label(r.get('source') or r.get('cite')),
                 r.get("cite_url", ""), "report")
     for r in rep_docket:
         if r.get("cite_url"):
-            add_doc(f"{r['cite']}, committee report", r["cite_url"], "report")
+            add_doc(report_label(r['cite']), r["cite_url"], "report")
     return docs, text_url
 
 

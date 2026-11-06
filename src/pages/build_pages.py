@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.257
+# GRANITE_VERSION: 2026-09-04.258
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1536,7 +1536,6 @@ def shell(title, current, body, wide=False, script="", desc="",
 
 
 NOT_FOUND = """
-<p class="note">NO PAGE AT THIS ADDRESS</p>
 <h1>Nothing is published here</h1>
 <p class="lead">The address may be mistyped, or name a bill in a year it does
 not exist in: every bill since 1989 has a page of its own, for example
@@ -4598,11 +4597,11 @@ def main():
 {seats_said}
 {say(lang, "roster.rostrum", "The Speaker&rsquo;s chair is on the rostrum rather than on the floor, so\n{empty} of the places drawn below are empty.", empty=empty_places)}</p>
 <div class="seatctl">
-  <label for="sgo">{say(lang, "roster.go", "Go to a seat")}</label>
-  <select id="sgo"><option value="">{say(lang, "roster.seat_number", "Seat number&hellip;")}</option>{opts}</select>
-  <label for="sq">{say(lang, "roster.find", "Find")}</label>
+  <div class="seatfld"><label for="sgo">{say(lang, "roster.go", "Go to a seat")}</label>
+  <select id="sgo"><option value="">{say(lang, "roster.seat_number", "Seat number&hellip;")}</option>{opts}</select></div>
+  <div class="seatfld seatfind"><label for="sq">{say(lang, "roster.find", "Find")}</label>
   <input id="sq" type="search" autocomplete="off"
-    placeholder="{say(lang, "roster.find_ph", "Name, county or seat")}">
+    placeholder="{say(lang, "roster.find_ph", "Name, county or seat")}"></div>
 </div>
 <div class="seatbar">
   <p class="seathint">{say(lang, "roster.hint", "Scroll or pinch to zoom, drag to move about the floor.")}</p>

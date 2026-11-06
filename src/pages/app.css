@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.341 */
+/* GRANITE_VERSION: 2026-09-07.342 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -503,6 +503,9 @@ padding:var(--sp-4) var(--sp-6);border-radius:var(--r-out);flex:0 0 auto;min-hei
 line-height:22px}
 .fbk:hover{text-decoration:underline}
 .fbknote{font-size:var(--t-ui);color:var(--ink-2);min-width:0;flex:1 1 260px}
+/* The note under the button keeps a gap from it (the cohesion audit's P-1,
+   30 October 2026): with none, the button sat flush on the line below it. */
+.fbk + .fbknote{margin-top:var(--sp-4)}
 @media (max-width:38.75em){
   .fbk{min-height:44px;line-height:28px}
   .fbknote{flex:1 1 100%}
@@ -6477,6 +6480,11 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
    comma, an underlined link on two lines down the whole column. 11% and 16%
    hold it from a 1,100px window down to the 720px the table stops at. */
 .vfull td.d > a{white-space:nowrap}
+/* A 24px TAP AREA FOR A SMALL LINK THAT STANDS ALONE (the cohesion audit's
+   P-15): a member's vote dates and a statute's breadcrumb drew 16px tall.
+   An inline link's padding widens what a tap can hit without moving a line,
+   and the link still wraps with the words round it. */
+.vfull td.d > a,.rs-crumb a{padding-block:var(--sp-2)}
 /* TWO LINES OF TITLE, NOT SIX. A legislator's Votes tab is a scanning
    surface -- 591 rows for Rep. Daniels, 200 of them rendered at once -- and
    the bill title was the only thing setting the row height. Measured before:
@@ -8863,7 +8871,7 @@ font:600 var(--t-sm) var(--sans);letter-spacing:.04em}
 :where(body.pg) .seatmap .divlabel{fill:var(--ink-2);font:600 var(--t-sm) var(--sans);
 letter-spacing:.08em;text-transform:uppercase;dominant-baseline:auto}
 
-:where(body.pg) .seatctl{display:flex;flex-wrap:wrap;align-items:center;
+:where(body.pg) .seatctl{display:flex;flex-wrap:wrap;align-items:flex-start;
 gap:var(--sp-3) var(--sp-5)}
 :where(body.pg) .seatctl label{font-size:var(--t-sm);letter-spacing:.04em;
 text-transform:uppercase;color:var(--ink-2)}
@@ -8871,7 +8879,12 @@ text-transform:uppercase;color:var(--ink-2)}
 font-size:var(--t-ui);padding:var(--sp-3) var(--sp-4);color:var(--ink);
 background:var(--surface);border:1px solid var(--edge);
 border-radius:var(--r-in);max-width:100%}
-:where(body.pg) .seatctl input{flex:1 1 200px;min-width:0}
+:where(body.pg) .seatctl input{min-width:0}
+/* EACH LABEL ABOVE ITS CONTROL, as every other form on the site has it (the
+   cohesion audit's P-13): side by side, "FIND" sat in the row of its box on a
+   phone while "GO TO A SEAT" wrapped above its menu. */
+:where(body.pg) .seatfld{display:flex;flex-direction:column;gap:var(--sp-2);min-width:0}
+:where(body.pg) .seatfind{flex:1 1 200px}
 /* The readout and the zoom sit together above the chart: one says what you
    have chosen, the other changes what you can see of it. */
 :where(body.pg) .seatbar{display:flex;flex-wrap:wrap;align-items:center;
