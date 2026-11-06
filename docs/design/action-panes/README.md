@@ -37,8 +37,8 @@ at 730, 800 and 900, and on a member, a committee and the no-bill page):
 - at 720px panes still open below, and at 721px they open to the left.
 
 **Shots** (`*-before.png`, `*-after.png`): HB 1123 with Testify and with
-Cite open, and the House's 21 May 2026 with Cite and Report open, at 1280
-and 390, light and dark.
+Cite open, and the House's 21 May 2026 with Cite open, at 1280 and 390,
+light and dark. Report a problem was measured but not shot.
 
 ## 2. Testify's closed wording
 
