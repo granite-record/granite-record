@@ -80173,11 +80173,15 @@ def _panes_open_left():
     js = Path(_paths.locate("app.js")).read_text(encoding="utf-8")
     shared = ".racts :is(.pcite,.follow,.testify,.report){position:relative;--nub:.875rem}"
     assert shared in css, "a head's pane is not measured from its own button, or its nub has no size"
-    nub = re.search(r"\.racts :is\(\.pcite,\.follow,\.testify,\.report\)\[open\] > summary::after\{([^}]*)\}", css)
+    # drawn turned and hidden, shown while open: nothing turns as it opens,
+    # so the openers' check does not take it for an opener's mark
+    nub = re.search(r"\.racts :is\(\.pcite,\.follow,\.testify,\.report\) > summary::after\{([^}]*)\}", css)
     assert nub and all(x in nub.group(1) for x in (
-            'content:""', "position:absolute", "background:var(--surface)", "solid var(--rule-2)",
-            "rotate(45deg)", "pointer-events:none", "z-index:21")), (
+            'content:""', "display:none", "position:absolute", "background:var(--surface)",
+            "solid var(--rule-2)", "rotate(45deg)", "pointer-events:none", "z-index:21")), (
         f"the nub is not the pane's own fill and border, turned, over the pane: {nub and nub.group(1)!r}")
+    assert ".racts :is(.pcite,.follow,.testify,.report)[open] > summary::after{display:block}" in css, (
+        "the nub is not shown while its pane is open")
     pane = re.search(r"\.followpane,\.citebody,\.testifypane\{position:absolute;[^}]*\}", css)
     assert pane and "background:var(--surface)" in pane.group(0) and "border:1px solid var(--rule-2)" in pane.group(0) \
         and "z-index:20" in pane.group(0), "the pane's fill, border or layer no longer match the nub's"

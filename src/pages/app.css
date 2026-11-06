@@ -7422,9 +7422,12 @@ border-radius:var(--r-in);background:var(--surface);font-size:var(--t-ui)}
    (Cite's scrolls) would clip it; it stands clear of the button. */
 /* each by name: Testify's sits in its own box (app.js mountTestify) */
 .racts :is(.pcite,.follow,.testify,.report){position:relative;--nub:.875rem}
-.racts :is(.pcite,.follow,.testify,.report)[open] > summary::after{content:"";position:absolute;z-index:21;
+/* Drawn turned and hidden, and shown while open: a nub, not an opener's
+   mark, so nothing turns when the button opens. */
+.racts :is(.pcite,.follow,.testify,.report) > summary::after{content:"";display:none;position:absolute;z-index:21;
   width:var(--nub);height:var(--nub);box-sizing:border-box;background:var(--surface);
   border:0 solid var(--rule-2);transform:rotate(45deg);pointer-events:none}
+.racts :is(.pcite,.follow,.testify,.report)[open] > summary::after{display:block}
 @media (min-width:45.0625em){
   .racts :is(.followpane,.citebody,.testifypane),.racts .report > .reportform{
     top:0;right:calc(100% + var(--sp-5));left:auto;
