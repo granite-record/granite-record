@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.780
+# GRANITE_VERSION: 2026-09-04.781
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -112443,14 +112443,39 @@ function node2(){
 const tabEls = %s.map(([p]) => { const t = node2(); t.dataset.pane = p; return t; });
 const panes = {}; tabEls.forEach(t => { panes[t.dataset.pane] = node2(); });
 const bar = node2(); bar.hidden = true; bar.querySelectorAll = () => tabEls;
-// A phone's strip: 300px showing tabs 200px apart, each 150px wide.
+// A phone's strip: 300px showing tabs 200px apart, each 150px wide; and its
+// top, which a link to a tab from further down the page has above the window.
 bar.scrollWidth = 600; bar.clientWidth = 300; bar.scrollLeft = 0;
-bar.getBoundingClientRect = () => ({left: 0, right: 300});
+let barTop = 0;
+bar.getBoundingClientRect = () => ({left: 0, right: 300, top: barTop});
+const scrolled = []; globalThis.scrollTo = (x, y) => scrolled.push(y); globalThis.scrollY = 1000;
+// How the page was reached (a reload is put back by the browser, not landed
+// on), and the web fonts' arrival, which the script lands again on.
+const mode = process.argv[3] || "";
+Object.defineProperty(globalThis, "performance", {configurable: true,
+  value: {getEntriesByType: k => k === "navigation" ? [{type: mode === "reload" ? "reload" : "navigate"}] : []}});
+const fontsCb = []; document.fonts = {ready: {then: f => fontsCb.push(f)}};
 tabEls.forEach((t, i) => { t.getBoundingClientRect = () =>
   ({left: i * 200 - bar.scrollLeft, right: i * 200 + 150 - bar.scrollLeft}); });
 bar.querySelector = () => tabEls.find(t => t.attrs["aria-selected"] === "true") || null;
 document.querySelector = s => s === ".twntabs" ? bar : null;
-document.getElementById = id => panes[id] || null;
+// A section inside the third panel, as /officials#of-county-strafford names a
+// county's heading inside County Officials; and #results, which wraps the
+// panels and is in none. Each counts the times the page is brought to it.
+// A panel landed on, rather than its strip, counts too; and something inside
+// a panel that is none of the strip's tabs, which opens nothing.
+let landed = 0, wrapped = 0, paneLanded = 0;
+Object.keys(panes).forEach(k => { panes[k].id = k;
+  panes[k].closest = s => s === ".twnpane" ? panes[k] : null;
+  panes[k].scrollIntoView = () => { paneLanded++; }; });
+const sec = node2(); sec.closest = s => s === ".twnpane" ? panes.vote : null;
+sec.scrollIntoView = () => { landed++; };
+const wrap = node2(); wrap.closest = () => null; wrap.scrollIntoView = () => { wrapped++; };
+const loose = node2(); loose.id = "loose";
+const lost = node2(); lost.closest = s => s === ".twnpane" ? loose : null;
+lost.scrollIntoView = () => { landed += 100; };
+document.getElementById = id => panes[id]
+  || ({"vote-where": sec, "results": wrap, "lost-x": lost})[id] || null;
 const wrote = []; let pushed = 0;
 history.replaceState = (a, b, u) => wrote.push(u);
 history.pushState = () => { pushed++; };
@@ -112461,11 +112486,26 @@ const shown = () => Object.keys(panes).filter(p => !panes[p].hidden);
 const out = {};
 %s
 out.load = shown(); out.bar = bar.hidden; out.strip = bar.scrollLeft;
+out.early = landed;
+// A reader who scrolls on before the page has loaded.
+if (mode === "moved") (on.wheel || []).forEach(f => f());
+(on.load || []).forEach(f => f()); out.landed = landed; out.wrapped = wrapped;
+fontsCb.forEach(f => f()); out.fonts = landed; out.paneLanded = paneLanded;
 tabEls[1].fire("click"); out.click = shown();
 document.activeElement = tabEls[1]; bar.fire("keydown", {key: "ArrowRight"});
 out.arrow = shown();
+// A link to a tab from below the strip brings the strip back into view.
+barTop = -500;
 location.hash = "#representatives"; (on.hashchange || []).forEach(f => f());
 out.back = shown(); out.wrote = wrote.slice(); out.pushed = pushed;
+out.toStrip = scrolled.slice(); barTop = 0;
+// A link on the page to a section in another tab: its tab opens, the page is
+// brought to it, and the address is left as the link wrote it.
+location.hash = "#vote-where"; (on.hashchange || []).forEach(f => f());
+out.section = shown(); out.landed2 = landed - out.fonts; out.wrote2 = wrote.length;
+// A link to a tab whose strip is in view moves nothing.
+location.hash = "#officials"; (on.hashchange || []).forEach(f => f());
+out.stripStill = scrolled.length; out.paneLanded2 = paneLanded;
 // Home and End, as the bill's and the member's tabs answer them, and the
 // page's own scroll held off (the review of 2 October 2026).
 const keyed = k => { let held = false;
@@ -112475,9 +112515,14 @@ document.activeElement = tabEls[0]; out.end = keyed("End"); out.home = keyed("Ho
 process.stdout.write(JSON.stringify(out));
 """ % (tabs, script)
         stub = Path("tests/dom_stub.js").read_text(encoding="utf-8")
-        for hsh, first in (("#vote", "vote"), ("", "representatives"),
-                           ("#results", "representatives")):
-            r = subprocess.run([node, "-e", stub + "\n" + harness, "x", hsh],
+        for hsh, first, mode in (("#vote", "vote", ""), ("", "representatives", ""),
+                                 ("#results", "representatives", ""),
+                                 ("#vote-where", "vote", ""),
+                                 ("#nowhere", "representatives", ""),
+                                 ("#lost-x", "representatives", ""),
+                                 ("#vote-where", "vote", "moved"),
+                                 ("#vote-where", "vote", "reload")):
+            r = subprocess.run([node, "-e", stub + "\n" + harness, "x", hsh, mode],
                                capture_output=True, encoding="utf-8",
                                timeout=60)
             if r.returncode:
@@ -112496,6 +112541,31 @@ process.stdout.write(JSON.stringify(out));
                     or got["back"] != ["representatives"]:
                 bad.append(f"click, arrow and address showed {got['click']}, "
                            f"{got['arrow']} and {got['back']}")
+            # A section's address opens the tab holding it and the page is
+            # brought to it once loaded and when the fonts arrive -- not
+            # before, and not at all for a reload or a reader who has already
+            # scrolled on. Any other address is not scrolled; a panel is never
+            # landed on in place of its strip.
+            where = f"arriving at {hsh or 'no hash'!r}{' (' + mode + ')' if mode else ''}"
+            lands = hsh == "#vote-where" and not mode
+            if got["early"] or got["landed"] != (1 if lands else 0) \
+                    or got["fonts"] != (2 if lands else 0) or got["wrapped"] or got["paneLanded"]:
+                bad.append(f"{where} landed on the section {got['early']} time(s) before "
+                           f"load, {got['landed']} by load and {got['fonts']} by the fonts, on "
+                           f"#results {got['wrapped']} and on a panel {got['paneLanded']}: "
+                           "only an address naming something inside a panel is landed on, "
+                           "once loaded and once the fonts arrive, and never on a reload or "
+                           "after the reader has scrolled")
+            if got["section"] != ["vote"] or got["landed2"] != 1 or got["wrote2"] != 2:
+                bad.append(f"a link to #vote-where showed {got['section']}, landed "
+                           f"{got['landed2']} time(s) and wrote {got['wrote2']} addresses: "
+                           "an address naming a section must open the tab holding it, "
+                           "bring the page to it, and leave the address as it was")
+            if got["toStrip"] != [492] or got["stripStill"] != 1 or got["paneLanded2"]:
+                bad.append(f"a link to a tab scrolled to {got['toStrip']} with the strip 500px "
+                           f"above the window, made {got['stripStill']} scroll(s) in all, and "
+                           f"landed on a panel {got['paneLanded2']} time(s): the strip, not the "
+                           "panel, comes back into view, and only when it is out of sight")
             if got["end"] != ["vote", 2, True] or got["home"] != ["representatives", 0, True]:
                 bad.append(f"End and Home gave {got['end']} and {got['home']} "
                            "([tab shown, tab focused, page scroll held off]): "
@@ -112514,7 +112584,8 @@ process.stdout.write(JSON.stringify(out));
     assert not bad, "\n  ".join(bad)
     return "ok", ("tabs wired as the roster's, none empty, none for a place with "
                   "no town government; #vote opens its tab and a click writes "
-                  "the town's own address and the tab, without a history entry"
+                  "the town's own address and the tab, without a history entry; "
+                  "an address naming a section opens the tab holding it and lands on it"
                   + ("" if node else " (node absent: script not run)"))
 
 

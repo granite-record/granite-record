@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.44
+# GRANITE_VERSION: 2026-09-09.45
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -1625,6 +1625,16 @@ def tabbed(label, panels):
 # A hash that names no tab -- #results, from the skip link -- is left alone
 # and the first tab shown.
 #
+# A SECTION'S ADDRESS OPENS ITS TAB (6 November 2026), as the Constitution
+# tab's script already does (constitution_tab.TABS_JS): an address naming
+# something inside a panel -- /officials#of-county-strafford, a county's
+# heading on County Officials -- opened the first tab and landed nowhere,
+# because what it named was hidden. The panel holding it opens, the address
+# is left as it was, and the page is brought to it once loaded and again
+# when the web fonts arrive, since the browser's own jump came while the
+# panel was still hidden. #results wraps the panels and is in none, so it is
+# left alone as before.
+#
 # THE ADDRESS IS WRITTEN WITH THE PAGE'S OWN PATH. The page carries
 # <base href="/">, so a bare "#officials" resolves against the site's root:
 # choosing "Town officials" on /town/acworth wrote /#officials into the address
@@ -1641,9 +1651,42 @@ TABS_JS = """<script>
   if(!bar)return;
   var tabs=[].slice.call(bar.querySelectorAll("[role=tab]"));
   if(!tabs.length)return;
+  // The tab an address names: a panel's own, or the one holding what it names.
   function named(h){
+    if(!h)return null;
     for(var i=0;i<tabs.length;i++)if(tabs[i].dataset.pane===h)return h;
+    var el=document.getElementById(h),p=el&&el.closest&&el.closest(".twnpane");
+    for(i=0;p&&i<tabs.length;i++)if(tabs[i].dataset.pane===p.id)return p.id;
     return null;
+  }
+  function hash(){try{return decodeURIComponent(location.hash.slice(1));}catch(e){return "";}}
+  // To what a section's address names, once its panel is open.
+  function land(){
+    var h=hash(),id=named(h);
+    if(!id||h===id)return;
+    var el=document.getElementById(h);
+    if(el)el.scrollIntoView();
+  }
+  // AGAIN ONCE LOADED AND WHEN THE FONTS ARRIVE, but only on a first arrival
+  // and only while the reader has not moved: a reload or Back is put back
+  // where the reader was by the browser itself, and a reader who has scrolled
+  // on, on a slow connection, was pulled back to the heading 17 seconds later
+  // (the review of 6 November 2026).
+  var moved=false,restored=false;
+  try{var nv=performance.getEntriesByType("navigation")[0];
+    restored=!!nv&&(nv.type==="reload"||nv.type==="back_forward");}catch(e){}
+  ["wheel","touchmove","keydown","pointerdown"].forEach(function(t){
+    addEventListener(t,function(){moved=true;},{passive:true,once:true});
+  });
+  function later(){if(!moved&&!restored)land();}
+  // A LINK TO A TAB from inside another -- County Officials' "by county in
+  // Legislators" -- shows that tab; the browser's own jump went to a panel
+  // still hidden and left the reader where they were, halfway down a
+  // different list. The strip is brought back into view, as the hub's
+  // LAND_JS sets it for a tab's address.
+  function toStrip(){
+    var t=bar.getBoundingClientRect().top;
+    if(t<0)window.scrollTo(0,Math.max(0,t+window.scrollY-8));
   }
   function show(id,write){
     tabs.forEach(function(t){
@@ -1684,13 +1727,17 @@ TABS_JS = """<script>
     tabs[j].focus(); show(tabs[j].dataset.pane,true);
   });
   addEventListener("hashchange",function(){
-    var h=named(location.hash.slice(1));
-    if(h)show(h,false);
+    var h=hash(),id=named(h);
+    if(!id)return;
+    show(id,false);
+    if(h===id)toStrip();else land();
   });
   bar.hidden=false;
-  show(named(location.hash.slice(1))||tabs[0].dataset.pane,false);
+  show(named(hash())||tabs[0].dataset.pane,false);
+  addEventListener("load",later);
   // and again once the fonts have their widths
-  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(inView);
+  if(document.fonts&&document.fonts.ready)
+    document.fonts.ready.then(function(){inView();later();});
 })();
 </script>"""
 
