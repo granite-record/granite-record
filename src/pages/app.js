@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.268
+// GRANITE_VERSION: 2026-09-07.269
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2990,9 +2990,19 @@ function wantedTerm(m){
 // A term already in IDX is never fetched again. All terms is every one of
 // them, which is what the picker's own "All Terms" fetches.
 const LOADED=new Set();
+// THE TERMS THE SITE PUBLISHES AN INDEX OF (6 November 2026): meta.json's,
+// and the bill requests' (idx/<year>-requests.json). A record can name a term
+// the site has not built yet -- a committee's meeting the General Court posts
+// after Organization Day, before the new term's first night -- and its
+// idx/2027-2028.json answered 404, unhandled, on the committee's page and
+// every tab. With no terms in meta.json, every term is taken as published.
+function published(t){
+  const ts=(META&&META.terms)||[];
+  return !ts.length||ts.includes(t)||!!(META&&META.requests&&t===META.requests.term);
+}
 function ensureTerm(t){
   if(t===ALL_TERMS)return Promise.all(((META&&META.terms)||[]).map(ensureTerm));
-  if(!t||LOADED.has(t))return Promise.resolve();
+  if(!t||LOADED.has(t)||!published(t))return Promise.resolve();
   return need("idx/"+encodeURIComponent(t)+".json").then(rows=>{
     LOADED.add(t);
     // TWO HAYSTACKS, NOT THREE (17 October 2026): the sponsor's name had one
@@ -10656,7 +10666,12 @@ function openPage(kind,ref){
     PAGE.terms=recordTerms(kind,d);
     // The global term follows the page's, because dkey and yearOf resolve a
     // bill number inside it and a card opened here fetches by that key.
-    PAGE.term=PAGE.terms[0]||"";
+    // THE NEWEST TERM THE SITE PUBLISHES, not the newest the record names
+    // (6 November 2026): a committee with one meeting posted for the term
+    // still to come opened on it, an empty "No bills were referred to this
+    // committee in the 2027–2028 term", over the term it has a record of.
+    // The new term stays in the Term control, its meeting under it.
+    PAGE.term=PAGE.terms.find(published)||PAGE.terms[0]||"";
     if(PAGE.term)term=PAGE.term;
     landingTab();
     renderPage();

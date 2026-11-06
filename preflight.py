@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.781
+# GRANITE_VERSION: 2026-09-04.782
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -70057,6 +70057,148 @@ def _drawn_on_a_weekend():
         shutil.rmtree(root, ignore_errors=True)
     return "ok", (f"{len(hooked)} committee page(s) with the hook, and each tab, drawn to the end "
                   f"on {' and '.join(said)}")
+
+
+# The harness of _committee_term_to_come: app.js as committee H43's own page,
+# its record rec.json and meta.json the files beside it, every index the site
+# publishes answered and any other refused; then the Term control changed to
+# the term to come, and ensureTerm handed it. Every path asked, what the page
+# drew and every unhandled rejection, as JSON.
+_TERM_TO_COME_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+window.GR_COMMITTEE = "H43"; window.GR_STANDALONE = true;
+location.pathname = "/committee/H43"; location.href = "https://x/committee/H43";
+const docOn = {}; document.addEventListener = (t, f) => (docOn[t] = docOn[t] || []).push(f);
+const meta = JSON.parse(fs.readFileSync("./meta.json", "utf8"));
+const files = {"/meta.json": meta, "/committee/H43.json": JSON.parse(fs.readFileSync("./rec.json", "utf8"))};
+const indexed = new Set([...(meta.terms || []), meta.requests && meta.requests.term].filter(Boolean));
+const asked = [], errs = [];
+process.on("unhandledRejection", e => errs.push(String((e && e.message) || e)));
+const ok = v => ({ok: true, status: 200, json: async () => v, text: async () => JSON.stringify(v)});
+globalThis.fetch = async u => { const p = new URL(u, "https://x").pathname; asked.push(p);
+  if (p in files) return ok(files[p]);
+  const m = /^\/idx\/(.+)\.json$/.exec(p);
+  if (m && indexed.has(decodeURIComponent(m[1]))) return ok([]);
+  return {ok: false, status: 404, statusText: "Not Found",
+          json: async () => { throw new Error(p + " returned 404"); }, text: async () => ""}; };
+const ticks = async n => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+const coming = process.argv[2];
+(async () => {
+  (0, eval)(fs.readFileSync("./page.js", "utf8"));
+  await ticks(60);
+  const opened = {asked: asked.slice(), html: document.querySelector("#results").innerHTML};
+  (docOn.change || []).forEach(f => f({target: {dataset: {pf: "term"}, value: coming}}));
+  await ticks(60);
+  const picked = {asked: asked.slice(), html: document.querySelector("#results").innerHTML};
+  await ensureTerm(coming); await ticks(10);
+  const direct = asked.slice();
+  // The bill requests' index is published too, though it is no term.
+  await ensureTerm(process.argv[3]); await ticks(10);
+  process.stdout.write("\n@@" + JSON.stringify({opened, picked, direct, requests: asked.slice(), errs}));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "a committee page whose record names a term the site has not built yet opens on "
+                   "the newest term the site publishes, offers the other, and asks for no index "
+                   "of it")
+def _committee_term_to_come():
+    """THE TERM STILL TO COME (6 November 2026, Fix B). A committee's record
+    can name a term the site has not built: a meeting the General Court posts
+    for after Organization Day (2 December 2026), filed under 2027-2028,
+    before the new term's first night. The page opened on the newest term the
+    record named, so it read "No bills were referred to this committee in the
+    2027–2028 term" over the term it has a record of, and asked for
+    idx/2027-2028.json, which answered 404, unhandled, on the page and every
+    tab. The fixture showed it only when built from 29 November, three days
+    before the turn, since it dates its one meeting to come three days ahead
+    by the real clock; so this puts such a meeting into a copy of the
+    fixture's committee record on any day, draws the page and each tab, and
+    holds it to opening on the site's newest term, the term to come still in
+    its Term control, with no error met."""
+    import contextlib
+    import io
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), (
+            "node is not on PATH on the nightly, which installs it")
+        return "skip", "node is not on PATH"
+    import drawn_pages as DP
+    shared, _base, _ran, days = _fixture_site_shared()
+    built = shared / "site"
+    terms = json.loads((built / "meta.json").read_text(encoding="utf-8")).get("terms") or []
+    assert terms, "the fixture's meta.json names no term"
+    newest = terms[0]
+    y = int(newest[:4]) + 2
+    coming = f"{y}-{y + 1}"
+    recs = [p for p in sorted((built / "committee").glob("*.json"))
+            if not p.stem.startswith("ss") and (p.with_suffix(".html")).exists()]
+    code, d = next(((p.stem, json.loads(p.read_text(encoding="utf-8"))) for p in recs
+                    if json.loads(p.read_text(encoding="utf-8")).get("sessions")), (None, None))
+    assert code, "no fixture committee record has a meeting to put in the term to come"
+    meeting = dict(d["sessions"][0], term=coming, date=f"{y - 1}-12-02", ahead=True)
+    d["sessions"] = [meeting] + [s for s in d["sessions"] if s.get("term") != coming]
+
+    # app.js alone, in node: the page opens on the newest term the site
+    # publishes, and neither the Term control nor ensureTerm asks for the
+    # index of the term to come -- a reader can still choose it, for its
+    # meeting -- and nothing is left unhandled.
+    meta = json.loads((built / "meta.json").read_text(encoding="utf-8"))
+    reqs = f"{y - 1}-requests"
+    meta["requests"] = dict(meta.get("requests") or {}, term=reqs, year=y - 1)
+    run = _node_app(_TERM_TO_COME_HARNESS, args=(coming, reqs), files={
+        "rec.json": json.dumps(d), "meta.json": json.dumps(meta)})
+    if run is not None:
+        want = f"/idx/{coming}.json"
+        for when, got in (("opening", run["opened"]["asked"]), ("choosing it",
+                          run["picked"]["asked"]), ("ensureTerm", run["direct"])):
+            assert want not in got, (f"committee {code}'s page asked for {want}, an index the "
+                                     f"site does not publish, on {when}: {got}")
+        assert f"/idx/{newest}.json" in run["opened"]["asked"], (
+            f"committee {code}'s page did not ask for /idx/{newest}.json, the index of the term "
+            f"it opened on: {run['opened']['asked']}")
+        assert f"/idx/{reqs}.json" in run["requests"], (
+            f"ensureTerm did not ask for /idx/{reqs}.json, the bill requests' index, which "
+            "meta.json names as published")
+        assert f'<option value="{newest}" selected>' in run["opened"]["html"], (
+            f"committee {code}'s page, in node, opened on another term than {newest}: "
+            + (re.search(r'<select data-pf="term">.*?</select>', run["opened"]["html"], re.S)
+               or [run["opened"]["html"][:200]])[0])
+        assert f'<option value="{coming}" selected>' in run["picked"]["html"], (
+            f"choosing {coming} in committee {code}'s Term control did not show it")
+        assert not run["errs"], f"committee {code}'s page left unhandled: {run['errs'][:3]}"
+
+    root = Path(tempfile.mkdtemp(prefix="gr-term-to-come-"))
+    try:
+        site = root / "site"
+        shutil.copytree(built, site)
+        (site / "committee" / f"{code}.json").write_text(json.dumps(d), encoding="utf-8")
+        assert coming not in terms and not (site / "idx" / f"{coming}.json").exists(), (
+            f"the fixture already publishes {coming}: this would test nothing")
+        with contextlib.redirect_stdout(io.StringIO()):
+            drawn = DP.draw(site, root / "drawn", days[-1], only=f"committee/{code}.html",
+                            timeout=180)
+        tabs = len(DP.tab_slugs(site)["committee"])
+        assert len(drawn) == 1 + tabs, f"{len(drawn)} of committee {code}'s page and tabs drawn"
+        errs = [f"{k}: {v['errors'][0]}" for k, v in drawn.items() if v["errors"]]
+        assert not errs, (f"committee {code}, its record naming {coming}, which the site does not "
+                          f"publish, met {len(errs)} error(s): " + "; ".join(errs[:3]))
+        page = (root / "drawn" / "committee" / f"{code}.html" / "_.txt").read_text(encoding="utf-8")
+        ctl = re.search(r'<select data-pf="term">(.*?)</select>', page, re.S)
+        assert ctl, f"committee {code}'s page drew no Term control"
+        assert f'<option value="{newest}" selected>' in ctl.group(1), (
+            f"committee {code} opened on another term than {newest}, the newest the site "
+            f"publishes: {ctl.group(1)[:200]}")
+        assert f'<option value="{coming}">' in ctl.group(1), (
+            f"committee {code}'s Term control no longer offers {coming}, where its meeting is")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", (f"committee {code}, with a meeting put in {coming}, opens on {newest} and offers "
+                  f"{coming}; its page and {tabs} tabs drawn with no error"
+                  + ("; in node, no index of it asked for, on opening, on choosing it or by "
+                     "ensureTerm, and the requests' still asked for" if run is not None
+                     else " (node or app.js absent: the request half not run)"))
 
 
 # The harness of _no_index_off_the_list: app.js loaded as one kind of page,
