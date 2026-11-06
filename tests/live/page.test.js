@@ -636,7 +636,7 @@ test("In short: each vote in the session page's sentence, in the day's order, a 
                rcOf({ id: "b", seq: 2, question: "Ought to Pass", passed: true }),
                rcOf({ id: "c", seq: 3, question: "Ought to Pass", passed: true })];
   const h = L.inShort(rcs, "H", WORDS);
-  assert.equal(h, '<p class="dsum"><span class="dsumlab">In short</span>The House rejected a motion to kill it on a '
+  assert.equal(h, '<p class="dsum"><span class="dsumlab">In short</span> The House rejected a motion to kill it on a '
     + "roll call 150–200. The House voted to pass it on a roll call 186–169. The House again voted to pass "
     + "it on a roll call 186–169.</p>");
   assert.match(L.inShort([rcOf({ question: "Ought to Pass", passed: null, docket: null })], "S", WORDS),
@@ -646,6 +646,38 @@ test("In short: each vote in the session page's sentence, in the day's order, a 
                /short of the two-thirds majority it needed/);
   assert.equal(L.inShort([], "H", WORDS), "", "no vote: no In short");
   assert.doesNotMatch(h, /goes to|sends it|Governor/, "nothing the day cannot know about what the votes mean");
+});
+
+test("In short says a veto vote and a failed two-thirds motion as the night's page does", () => {
+  assert.match(L.inShort([rcOf({ question: "Veto Override", passed: true, yeas: 250, nays: 110 })], "H", WORDS),
+               /The House voted 250–110 to override the governor's veto on a roll call, meeting the two thirds threshold\./);
+  assert.match(L.inShort([rcOf({ question: "VETO MESSAGE - Roll Call Required", passed: false, yeas: 14, nays: 10, body: "S" })], "S", WORDS),
+               /the veto was sustained/, "the clerk's veto question is a veto, never quoted");
+  const s = L.inShort([rcOf({ question: "Suspend the Rules", bill: null, passed: false, yeas: 220, nays: 150 })], "H", WORDS);
+  assert.match(s, /short of the two-thirds majority it needed/, "a majority of yeas and Motion Failed say why, with no threshold in the file");
+  assert.doesNotMatch(L.inShort([rcOf({ question: "Ought to Pass", passed: false, yeas: 220, nays: 150 })], "H", WORDS), /short of/,
+                      "a majority motion is never said to have needed more");
+});
+
+test("the day over, a bill still pending had no roll call, and says so", async () => {
+  const pg = dayPage({ agenda: ["HB2", "HB9"], bills: { "2027-2028": { 2027: ["HB2", "HB9"] } } });
+  for (const p of pg.els["lv-cards"].places) p.innerHTML = '<p class="lv-pending">Pending: Ought to Pass ...</p>';
+  const done = liveFile("2027-01-07", [rcOf({ id: "2027-H-14", seq: 14, passed: true })],
+    { status: { state: "day_over", problem: "day_over", since: "2027-01-07T22:30:00Z" }, next_read_by: null });
+  const p = L.startDay(pg.doc, { fetch: server({ "/api/live/votes/2027-01-07": done }).fetch, now: () => T("2027-01-07T23:00:00Z") });
+  try {
+    await p.first;
+    const [hb2, hb9] = pg.els["lv-cards"].places;
+    assert.match(hb2.innerHTML, /data-rc="2027-H-14"/);
+    assert.match(hb9.innerHTML, /No roll call on this bill was read today\. The night's record will say what happened to it\./);
+    assert.doesNotMatch(hb9.innerHTML, /Pending/);
+  } finally { p.stop(); }
+  // While the day is still being read, the pending line stands.
+  const pg2 = dayPage({ agenda: ["HB9"] });
+  pg2.els["lv-cards"].places[0].innerHTML = '<p class="lv-pending">Pending: Ought to Pass ...</p>';
+  const p2 = L.startDay(pg2.doc, { fetch: server({ "/api/live/votes/2027-01-07": liveFile("2027-01-07", []) }).fetch,
+                                   now: () => T("2027-01-07T16:44:00Z") });
+  try { await p2.first; assert.match(pg2.els["lv-cards"].places[0].innerHTML, /Pending/); } finally { p2.stop(); }
 });
 
 test("the morning page draws In short under a bill's votes, replacing the night's pending line", async () => {
@@ -658,7 +690,7 @@ test("the morning page draws In short under a bill's votes, replacing the night'
     await p.first;
     const place = pg.els["lv-cards"].places[0].innerHTML;
     assert.doesNotMatch(place, /lv-pending/, "the first vote replaces the pending line");
-    assert.match(place, /data-rc="2027-H-14".*<p class="dsum"><span class="dsumlab">In short<\/span>The House voted to pass it/);
+    assert.match(place, /data-rc="2027-H-14".*<p class="dsum"><span class="dsumlab">In short<\/span> The House voted to pass it/);
   } finally { p.stop(); }
 });
 

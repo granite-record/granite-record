@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.18
+// GRANITE_VERSION: 2026-10-30.19
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -637,9 +637,20 @@ function say(W, key, vals) {
   return s;
 }
 // needed_words: "three-fifths" or "two-thirds" where a motion failed with more
-// yeas than nays because it needed that much.
-function neededWords(r, carried) {
-  var y = Number(r.yeas), n = Number(r.nays), need = r.threshold_needed;
+// yeas than nays because it needed that much. A live roll call carries no
+// threshold (the Worker never works one out), so a motion votes.json says
+// needs two thirds is given the night record's: two thirds of those voting,
+// rounded up (L.twoThirds). Without it, "rejected a motion to suspend its
+// rules on a roll call 220-150" read as a contradiction (the reader review,
+// 6 November 2026).
+L.twoThirds = function (mk, r) {
+  var rows = typeof WORDBOOK !== "undefined" ? WORDBOOK.votes.motions : {};
+  var row = Object.prototype.hasOwnProperty.call(rows, mk) ? rows[mk] : null;
+  var y = Number(r.yeas), n = Number(r.nays);
+  return row && /\btwo thirds\b/.test(row.gloss || "") && isFinite(y) && isFinite(n) ? Math.ceil((y + n) * 2 / 3) : null;
+};
+function neededWords(r, carried, mk) {
+  var y = Number(r.yeas), n = Number(r.nays), need = r.threshold_needed || L.twoThirds(mk, r);
   if (carried !== false || !isFinite(y) || !isFinite(n) || y <= n) return "";
   var tot = y + n;
   if (need && need === Math.ceil(tot * 2 / 3)) return "two-thirds";
@@ -658,6 +669,15 @@ L.voteSaid = function (r, body, W) {
   var how = " on a " + W.roll_call + (counted ? " " + r.yeas + "–" + r.nays : "");
   var done = carried === true ? "adopted" : carried === false ? "rejected" : "open";
   var CL = W.closing, own = function (o, x) { return Object.prototype.hasOwnProperty.call(o, x); };
+  // A vote on the Governor's veto, said as the night's page says one: its
+  // docket row makes the record's vote a veto (session_days, it.veto), and
+  // the live question is the same vote ("Veto Override", "VETO MESSAGE -
+  // Roll Call Required"), read as override_first or override_second.
+  if (mk.indexOf("override") === 0) {
+    var key0 = carried === true ? "overridden" : carried === false ? "sustained" : "override_open";
+    return say(W, key0, { chamber: chamber, tally: counted ? " " + r.yeas + "–" + r.nays : "",
+                          how: " on a " + W.roll_call });
+  }
   if (!words || mk === "unnamed") return say(W, "unnamed_" + done, { chamber: chamber, how: how });
   if (own(CL.who, mk) || mk === "enrolled_amendment") {
     var amds = L.amendmentNumbers(words), num = amds.length ? " (" + amds.join(", ") + ")" : "";
@@ -681,7 +701,7 @@ L.voteSaid = function (r, body, W) {
     verb = hit ? hit[1] : null;
   }
   if (!verb) return say(W, "quoted_" + done, { chamber: chamber, words: words, how: how });
-  var needed = neededWords(r, carried);
+  var needed = neededWords(r, carried, mk);
   if (needed) return say(W, "rejected_short", { chamber: chamber, verb: verb, how: how, needed: needed });
   var key = carried === true ? "voted" : carried === false ? "rejected" : "open";
   return say(W, key, { chamber: chamber, verb: verb, how: how });
@@ -698,7 +718,9 @@ L.inShort = function (rcs, body, W) {
     if (s) said.push(s);
   });
   if (!said.length) return "";
-  return '<p class="dsum"><span class="dsumlab">' + C.esc(C.tr("votes.in_short", "In short")) + "</span>"
+  // A space after the label: shown as a block, it runs into the sentence
+  // for a screen reader and a copy without one ("In shortThe House ...").
+  return '<p class="dsum"><span class="dsumlab">' + C.esc(C.tr("votes.in_short", "In short")) + "</span> "
     + C.esc(said.join(" ")) + "</p>";
 };
 // The day's roll calls of `body`, by bill, each bill's in the day's order:
@@ -770,6 +792,21 @@ L.startDay = function (doc, opts) {
       // place, and the first vote replaces it.
       if (place) place.innerHTML = x[1].map(block).join("") + (W ? L.inShort(x[1], body, W) : "");
     });
+    // THE DAY OVER, A BILL STILL PENDING HAD NO ROLL CALL: decided by voice,
+    // by division or on the consent calendar, or not reached. Its pending
+    // line would say "Pending" all evening (the reader review, 6 November
+    // 2026), so it says what the page knows instead.
+    if (L.votesDone(f)) {
+      var voted = {};
+      g.bills.forEach(function (x) { voted[x[0]] = true; });
+      Object.keys(places).forEach(function (id) {
+        var p = places[id];
+        if (!voted[id] && p && /lv-pending/.test(p.innerHTML || "")) {
+          p.innerHTML = '<p class="lv-pending">' + C.esc(C.tr("votes.no_roll_call",
+            "No roll call on this bill was read today. The night's record will say what happened to it.")) + "</p>";
+        }
+      });
+    }
     if (nob) nob.innerHTML = g.nobill.map(block).join("");
     if (nobSec) nobSec.hidden = !g.nobill.length;
     var say = doc.getElementById("live-day-status");

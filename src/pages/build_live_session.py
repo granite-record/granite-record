@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.7
+# GRANITE_VERSION: 2026-10-30.8
 """
 The session days' side of the live layer (design sections 4.2 to 4.4),
 written by the night after the session-day pages:
@@ -271,6 +271,12 @@ HEAD_BYTES = 65536
 TOP_LINE = ("Votes as they are read. Who spoke and the debate come with the {journal}, "
             "which can take months.")
 JOURNAL = {"H": "House Journal", "S": "Senate Journal"}
+# What the day does not show: only roll calls are read from the database
+# during the day. A bill decided by voice, by division or on the consent
+# calendar stays "Pending" until the day is over (the reader review, 6
+# November 2026).
+ROLL_CALLS_ONLY = ("Only roll calls are read during the day. A bill decided by voice vote, by "
+                   "division or on the consent calendar comes with the night's record.")
 
 
 def is_morning(path):
@@ -297,6 +303,24 @@ def agenda(body, today, rows=None):
             k = (r.get("term") or "", r["bill"].strip().upper())
             if k not in out:
                 out.append(k)
+    return out
+
+
+def floor_items(events, body):
+    """The bill's floor votes in `body` as recommendation_on reads them,
+    [(date, vote)], from its history (narratives.json's events): so a
+    report the chamber has already acted on -- a bill passed months ago and
+    back for a concurrence -- is no pending motion (the reader review, 6
+    November 2026: passing none turned the guard off)."""
+    import types
+    import session_days
+    out = []
+    for e in events or ():
+        if e.get("type") != "floor" or e.get("cancelled") or (e.get("body") or "").strip().upper() != body:
+            continue
+        out.append(((e.get("date") or "")[:10], types.SimpleNamespace(
+            carried=session_days.CARRIED.get((e.get("motion") or "").strip().upper()),
+            consent=bool(e.get("consent")), action=(e.get("action") or "").strip())))
     return out
 
 
@@ -345,8 +369,9 @@ def morning_cards(site, body, today, bills):
     for term, bill in bills:
         row = rows.get((term, bill)) or {}
         year = years.get((term, bill)) or row.get("year") or ""
-        acts = CA.acts(((data.get(term) or {}).get(bill) or {}).get("events"))
-        rec = BSP.recommendation_on(acts, body, today.isoformat(), [])
+        events = ((data.get(term) or {}).get(bill) or {}).get("events") or []
+        acts = CA.acts(events)
+        rec = BSP.recommendation_on(acts, body, today.isoformat(), floor_items(events, body))
         chip_w = row.get("chip") or ""
         topic = "" if (row.get("topic") == "Miscellaneous"
                        and row.get("topic_by") == "granite record") else (row.get("topic") or "")
@@ -394,6 +419,7 @@ def morning_body(site, body, today, bills):
                                        ["Session Day", ""]],
                              "title": S.E(f"The {name}, {day_words}"), "line": S.E(line), "kind": "day"})
             + f'<p class="rnote lv-top">{S.E(TOP_LINE.format(journal=JOURNAL[body]))}</p>'
+            + f'<p class="rnote">{S.E(ROLL_CALLS_ONLY)}</p>'
             f'<div id="live-day" data-day="{iso}" data-body="{body}">'
             f'<p id="live-day-status" class="lv-status" aria-live="polite"></p>'
             f'<noscript><p class="lv-status">This page fills in with the {name}\'s votes as they are '
@@ -563,6 +589,17 @@ def main():
     print(f"live session: {wrote} day files ({n:,} roll calls), {SCHEMA.as_posix()}; "
           + (f"morning page(s) {', '.join(mornings)}" if mornings else "no sitting on the calendar today")
           + (f"; removed {len(gone)} for pages gone: {', '.join(gone[:5])}" if gone else ""))
+    # SILENCE IS NOT SUCCESS (the build review, 6 November 2026): a morning
+    # page whose Calendar link was not shown is said, by name. It happens
+    # when the Calendar's day (build_date.today, the machine's) is not this
+    # step's (New Hampshire's), in a night started after 00:00 UTC, or when
+    # cal_days' marker changes. The page stands; only its Calendar link is
+    # missing, so the night goes on.
+    cal = seen.get("calendar") or []
+    if mornings:
+        print("  Calendar link shown in " + ", ".join(cal) if cal else
+              "  NOT SHOWN: no Calendar file held the morning page's hidden link for "
+              + ", ".join(mornings) + " (the Calendar built for another day, or its marker changed)")
     return 0
 
 

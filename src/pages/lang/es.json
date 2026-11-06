@@ -24164,6 +24164,11 @@
    "es": "resultado aún no anotado en el registro de trámites",
    "state": "draft"
   },
+  "votes.no_roll_call": {
+   "en": "No roll call on this bill was read today. The night's record will say what happened to it.",
+   "es": "Hoy no se leyó ninguna votación nominal sobre este proyecto. El registro de la noche dirá qué pasó con él.",
+   "state": "draft"
+  },
   "votes.none_day": {
    "en": "No roll calls read on {day}.",
    "es": "No se leyeron votaciones nominales el {day}.",

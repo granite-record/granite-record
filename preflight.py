@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.774
+# GRANITE_VERSION: 2026-09-04.775
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -87133,8 +87133,8 @@ def _live_sql(live_gen, dayfiles_from_db, fetch_past_db, refusal):
 LIVE_TESTS = "tests/live/index.js"
 # (On 30 October 2026 the retired /session/<B>/today page's eight tests went
 # with it, and the morning page's came in; 216 with the committee player's,
-# 218 with In short's.)
-LIVE_TESTS_AT_LEAST = 218
+# 218 with In short's, 220 with the reviews' of 6 November.)
+LIVE_TESTS_AT_LEAST = 220
 # The person's ready-made switches (workers/live/control/), each as the Worker
 # must read it; and the values control.json may hold (store.js CONTROL_VALUES).
 LIVE_CONTROL = {"all-off.json": {"youtube": "off", "sql": "off"},
@@ -87331,6 +87331,21 @@ def _live_session(BLS):
                         'first.</p>'), pend
         assert BLS.pending_html(None, "HB2", "H") == "" and BLS.pending_html({}, "HB2", "S") == "", \
             "a pending line with no recommendation"
+        assert BLS.S.E(BLS.ROLL_CALLS_ONLY) in page, "the page does not say that only roll calls are read during the day"
+        # A report the chamber has already acted on is no pending motion: a
+        # bill passed in January and back in March for a concurrence.
+        import build_session_pages as BSP
+        import committee_acts as CA
+        evs = [{"date": "2026-01-10", "type": "report", "body": "H", "cancelled": False, "side": "",
+                "committee": "House Commerce", "recommendation": "Ought to Pass", "amendment": "",
+                "report_date": "01/10/2026", "yeas": "12", "nays": "8", "raw": "Committee Report: OTP 01/10/2026"},
+               {"date": "2026-01-20", "type": "floor", "body": "H", "cancelled": False, "motion": "MA",
+                "action": "Ought to Pass", "vote_kind": "VV", "raw": "Ought to Pass: MA VV 01/20/2026"}]
+        assert BSP.recommendation_on(CA.acts(evs), "H", "2026-03-12", BLS.floor_items(evs, "H")) is None, \
+            "a report the House acted on in January is the pending motion in March"
+        assert BSP.recommendation_on(CA.acts(evs[:1]), "H", "2026-03-12", BLS.floor_items(evs[:1], "H")), \
+            "a report not yet acted on is no pending motion"
+        assert BLS.floor_items(evs, "S") == [], "the other chamber's floor vote was read as this one's"
         assert "lv-none" not in page, "the no-bills line on a day with bills"
         assert '"2025-2026":{"2025":["HB2"],"2026":["HB1376"]}' in page, "the bills' own years"
         assert not (site / "session/H/2026-03-13.json").exists(), \
@@ -87593,17 +87608,28 @@ def _in_short_twin(BSP, BLS, RP):
         seen.add((words, "SB12", "S"))
     for words, bill, body in sorted(seen):
         for carried, yeas, nays, need in ((True, 200, 150, None), (False, 150, 200, None), (None, 180, 170, None),
-                                          (False, 220, 150, -(-370 * 2 // 3))):
+                                          (False, 220, 150, -(-370 * 2 // 3)), (False, 220, 150, None),
+                                          (None, None, None, None)):
             cases.append({"words": words, "bill": bill, "body": body, "carried": carried,
                           "yeas": yeas, "nays": nays, "need": need})
     assert len(seen) >= 500, f"only {len(seen)} questions read off records/rollcalls/: the corpus is not there"
+    # Each vote as the night's record gives it to vote_said: a vote on the
+    # Governor's veto is a veto (session_days sets it.veto from its docket
+    # row), and a motion votes.json says needs two thirds carries two thirds
+    # of those voting as its threshold (vote_passage), which the live file
+    # never carries and live.js supplies the same way.
+    motions = C.WORDBOOK["votes"]["motions"]
     want = []
     for c in cases:
         it = types.SimpleNamespace(action=c["words"], carried=c["carried"], kind="RC", yeas=c["yeas"],
-                                   nays=c["nays"], counted=True, wo=False, veto=False, fifths=False,
-                                   need=c["need"], raw="")
+                                   nays=c["nays"], counted=c["yeas"] is not None and c["nays"] is not None,
+                                   wo=False, veto=False, fifths=False, need=c["need"], raw="")
         k = BSP.motion_chip(it, c["bill"], c["body"])[1]
-        want.append([k.get("mk") or "", BSP.vote_said(it, c["bill"], c["body"])])
+        mk = k.get("mk") or ""
+        it.veto = mk.startswith("override")
+        if it.need is None and it.counted and re.search(r"\btwo thirds\b", (motions.get(mk) or {}).get("gloss") or ""):
+            it.need = -(-(it.yeas + it.nays) * 2 // 3)
+        want.append([mk, BSP.vote_said(it, c["bill"], c["body"])])
     node = shutil.which("node")
     assert node, "node is not on PATH, and live.js's In short is the thing held here"
     feed = {"wordbook": C.WORDBOOK, "words": BLS.live_words(),
