@@ -149,7 +149,8 @@ def text_of(f):
     exe = shutil.which("pdftotext")
     if not exe:
         return None
-    r = subprocess.run([exe, "-layout", str(f), "-"], capture_output=True, text=True)
+    r = subprocess.run([exe, "-layout", "-enc", "UTF-8", str(f), "-"], capture_output=True,
+                       text=True, encoding="utf-8", errors="replace")
     return r.stdout if r.returncode == 0 else None
 
 

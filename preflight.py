@@ -108326,7 +108326,7 @@ def _recheck_order(RS, G):
         empty = Path(d) / "empty"
         empty.mkdir()
         r = subprocess.run([sys.executable, str(_paths.locate("recheck_sources.py")), "--readings",
-                            str(empty)], capture_output=True, text=True)
+                            str(empty)], capture_output=True, text=True, encoding="utf-8")
         if r.returncode == 0:
             bad.append("an empty readings folder ends in success")
     assert not bad, "; ".join(bad[:6])
