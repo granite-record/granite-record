@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.772
+# GRANITE_VERSION: 2026-09-04.773
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19755,6 +19755,88 @@ def _class_collisions():
                   + (f"; {len(gone)} in SHARED no longer shared" if gone else ""))
 
 
+def _cite_plain(html_text):
+    """A citation's address as one run of text again, for a check that reads
+    a page's HTML: shell.cite_url draws it with a <wbr> after each slash and
+    its last part in a span of its own, so turning tags into spaces, or
+    looking for the address as a string, would find it in pieces. The spans
+    are unwrapped where they open; their ends follow the address's stop."""
+    return re.sub(r'<wbr>|<span class="cite(?:url|tail)">', "", html_text)
+
+
+@check("frontend", "a citation's address breaks after a slash, keeps its last part whole with its full "
+       "stop, and copies as the address it is")
+def _cite_url_breaks():
+    """The cohesion audit's P-4: in the Cite panel on a phone the address
+    wrapped and left its full stop alone on the last line -- Chicago at 385
+    to 388px on HB 1123, BibTeX's comma at 445 to 451, measured in a browser.
+    An address is one word to a browser and overflow-wrap broke it wherever
+    the box ran out, the last character before the stop included; no CSS
+    holds the stop to it in Chrome. shell.cite_url offers a break after each
+    slash with <wbr>, and puts the last part and what follows it -- the stop,
+    or BibTeX's "}," -- in one inline-block, .citetail. The review of 6
+    November 2026 found why both are needed: with the breaks alone, a last
+    part with hyphens ("abigail-rooney-straf-1", "2026-05-21", "2026-W12")
+    broke at its last hyphen and left "1." alone, on every member's page,
+    session day and calendar week.
+
+    Fails if a form's address loses its span, its breaks or its whole last
+    part, if a break is offered right before the stop, if the stop is left
+    outside the last part, or if the text a reader copies -- the form
+    without its tags -- is not the address and its punctuation as they were.
+    """
+    import html as _html
+    try:
+        import shell as S
+    except ImportError:
+        return "skip", "shell.py will not import"
+    css = Path(_paths.locate("app.css")).read_text(encoding="utf-8")
+    assert ".citeforms .citetail{display:inline-block}" in css, (
+        "an address's last part is not one box, so it breaks at its own hyphens and leaves its stop alone")
+    base = "https://graniterecord.org"
+    cases = {"/bill/2026/hb1123.html": ("hb1123", f"{base}/bill/2026/hb1123"),
+             "/legislator/abigail-rooney-straf-1.html": ("abigail-rooney-straf-1",
+                                                         f"{base}/legislator/abigail-rooney-straf-1"),
+             "/session/H/2026-05-21.html": ("2026-05-21", f"{base}/session/H/2026-05-21"),
+             "/laws/404/index.html": ("404/", f"{base}/laws/404/"),
+             "/index.html": (None, f"{base}/")}
+    after = {"mla": ".", "apa": "", "chicago": ".", "bibtex": "},"}
+    bad = []
+    for path, (last, url) in cases.items():
+        assert S.address(base, path) == url, f"{path} is at {S.address(base, path)}, not {url}"
+        block = S.cite_block(path, "A Page | Granite Record", base, "1 January 2026")
+        forms = dict(re.findall(r'<dd id="cite-([a-z]+)">(.*?)</dd>', block, re.S))
+        if sorted(forms) != sorted(after):
+            bad.append(f"{path}: the forms are {sorted(forms)}")
+            continue
+        for name, dd in forms.items():
+            drawn = S.cite_url(url, after[name])
+            if dd.count('<span class="citeurl">') != 1 or drawn not in dd:
+                bad.append(f"{path}: {name}'s address is not shell.cite_url's with {after[name]!r} after it")
+                continue
+            if _html.unescape(re.sub(r"<[^>]+>", "", drawn)) != url + after[name]:
+                bad.append(f"{path}: {name}'s address copies as {drawn}")
+            want = url.count("/") - 2 - url.endswith("/")
+            if drawn.count("<wbr>") != want:
+                bad.append(f"{path}: {name} offers {drawn.count('<wbr>')} breaks, not one after each of its {want} slashes")
+            tail = f'<span class="citetail">{last}{after[name]}</span></span>'
+            if last is not None and not drawn.endswith(tail):
+                bad.append(f"{path}: {name}'s last part and its stop are not one box: {drawn}")
+            if re.search(r"<wbr>(?:</span>|[.,}])", dd):
+                bad.append(f"{path}: {name} offers a break before its stop: {dd[-120:]}")
+            text = _html.unescape(re.sub(r"<[^>]+>", "", dd))
+            if url + after[name] not in text:
+                bad.append(f"{path}: {name} copies without its address: {text[-120:]!r}")
+    # An address with a character HTML must escape keeps it, escaped once;
+    # and one that is not this site's is still broken by its slashes.
+    odd = S.cite_url(f"{base}/a&b/c", ".")
+    if odd != f'<span class="citeurl">{base}/<wbr>a&amp;b/<wbr><span class="citetail">c.</span></span>':
+        bad.append(f"an address with & draws as {odd}")
+    assert not bad, "; ".join(bad[:5])
+    return "ok", (f"{len(cases)} addresses in four forms each: hyphens in a last part, a closing slash "
+                  "and the home page among them")
+
+
 @check("frontend", "a citation closes a title with one full stop, whatever the title ended on")
 def _cite_one_stop():
     """'...retirement benefits..”' and '...Circle.".”': 101 bills' citations.
@@ -19999,7 +20081,8 @@ def _cite_under_a_towns_line(B):
     assert page.count('class="pcite"') == 1, "Cite this page is drawn twice, or not at all"
     assert at["results"] < at["h1"] < at["lede"] < at["row"] < at["tabs"], (
         f"Cite this page is not under the town's line and above its tabs: {at}")
-    row = page[at["row"]:at["tabs"]]
+    # read without shell.cite_url's <wbr>s, which are no characters
+    row = _cite_plain(page[at["row"]:at["tabs"]])
     assert "https://x.test/town/lyme" in row and "Who represents Lyme, New Hampshire" in row, (
         "the citation does not name the town's page as shell.page named it")
     # Whole selectors: the list inside :is() has commas of its own.
@@ -47185,7 +47268,10 @@ def _addresses_have_slash():
             found += [("og:url", u) for u in
                       re.findall(r'<meta property="og:url" content="([^"]*)"', t)]
             for block in re.findall(r'<dl class="citeforms">(.*?)</dl>', t, re.S):
-                found += [("citation", u) for u in at_base.findall(_html.unescape(block))]
+                # shell.cite_url offers a break after each slash with <wbr>,
+                # which is no character: the address is read without them.
+                found += [("citation", u) for u in
+                          at_base.findall(_html.unescape(_cite_plain(block)))]
             for ld in re.findall(r'<script type="application/ld\+json">(.*?)</script>', t, re.S):
                 found += [("structured data", u) for u in at_base.findall(ld)]
             for what, u in found:
@@ -52275,7 +52361,8 @@ def _calendar_documents():
                 head.find('<p class="src">') < cite < head.find('<nav class="wknav"'), (
                 f"{f}: Cite this page is not under the week's line, once, above its arrows")
             canon = re.search(r'<link rel="canonical" href="([^"]+)"', t).group(1)
-            assert canon in head[cite:], f"{f}: the citation does not name the week at {canon}"
+            assert canon in _cite_plain(head[cite:]), (
+                f"{f}: the citation does not name the week at {canon}")
         lp = (site / "calendar" / "documents.html").read_text(encoding="utf-8")
         assert body in lp and f'<link rel="canonical" href="{base}/calendar/documents">' in lp \
             and "<h1>Calendars and Journals of the General Court</h1>" in lp, (
@@ -73992,7 +74079,7 @@ function makeWorld(o){
   doc._later=(f)=>later.push(f);
   doc.getElementById=(id)=>html.querySelector("#"+id);
   doc.querySelector=(s)=>html.querySelector(s); doc.querySelectorAll=(s)=>html.querySelectorAll(s);
-  doc.createElement=(t)=>new E(doc,t);
+  doc.createElement=(t)=>new E(doc,t); doc.createTextNode=(d)=>new T(doc,String(d));
   const win={document:doc, innerHeight:800, _on:{}, addEventListener:N.prototype.addEventListener,
     removeEventListener:N.prototype.removeEventListener,
     matchMedia:(q)=>({matches:!!(o.narrow&&/max-width/.test(q)), addEventListener(){}})};
@@ -74155,6 +74242,15 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
      && /"@id":"https:\/\/graniterecord\.org\/calendar\/2026-W12"/.test(nm.ld) && !/9–15 March/.test(nm.ld) && nm.days===4,
      "another week's page still names the week it was loaded as: "+JSON.stringify(nm));
   ok(nm.skip==="/calendar?week=2026-W12#results", "the skip link leaves the week shown: "+nm.skip);
+  // The address is drawn again whole, as shell.cite_url draws it: a break
+  // after the site's slash and after "calendar/", and the last part kept
+  // whole with what follows it -- MLA's and Chicago's stop, APA's nothing,
+  // BibTeX's "},".
+  const drawnAs=(u,last)=>QA(".pcite .citeurl").map(x=>x.innerHTML).join(" | ")===
+    [".","",".","},"].map(a=>u+'<span class="citetail">'+last+a+"</span>").join(" | ");
+  ok(drawnAs("https://graniterecord.org/<wbr>calendar/<wbr>","2026-W12"),
+     "another week's address in the citation is not drawn as shell.cite_url draws it: "
+     +QA(".pcite .citeurl").map(u=>u.innerHTML).join(" | "));
   // A day that is not the one its week opens on is named in the address.
   Q('td[data-d="2026-03-19"]',$("cmgrid")).click(); await W.step();
   ok(W.addr()==="/calendar?week=2026-W12&day=2026-03-19" && W.G.history.length===h0+2, "a day chosen is at "+W.addr());
@@ -74165,6 +74261,9 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   nm=named();
   ok(nm.canon==="https://graniterecord.org/calendar" && /“The Week of March 9–14, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\. Accessed/.test(nm.cite)
      && /@misc\{calendar,/.test(nm.cite) && nm.skip==="/calendar#results", "Back did not name this week again: "+JSON.stringify(nm));
+  ok(drawnAs("https://graniterecord.org/<wbr>","calendar"),
+     "back on this week, its address in the citation is not drawn as shell.cite_url draws it: "
+     +QA(".pcite .citeurl").map(u=>u.innerHTML).join(" | "));
   // THE ARROWS KEEP FOCUS. The week after, from the head's arrows, then This
   // week from the foot's: the same arrow in the new ones, and the heading
   // where that arrow is gone. Each is a week on the calendar's own address.
@@ -76517,6 +76616,10 @@ def _terms_with_a_dash(C):
     for f in sorted(site.rglob("*.html")):
         t = f.read_text(encoding="utf-8", errors="replace")
         t = re.sub(r"<(script|style|code|pre)\b.*?</\1>|<!--.*?-->", " ", t, flags=re.S)
+        # <wbr> is no character: a citation's address offers a break after
+        # each slash with one (shell.cite_url), and read as a space it would
+        # be a term's years standing alone in the words
+        t = _cite_plain(t)
         said = _h.unescape(re.sub(r"<[^>]+>", " ", re.sub(r'\s(?:aria-label|title)="([^"]*)"', r"> \1 <", t)))
         pages += 1
         for m in term.finditer(said):
@@ -80225,6 +80328,19 @@ def _panes_open_left():
     # gap, so the band does not cut its focus ring (the review of 6 November)
     assert ".racts :is(.pcite,.follow,.testify,.report)[open] > summary{position:relative;z-index:22}" in phone, (
         "on a phone the band over the gap cuts the pressed button's focus ring")
+    # A short pane covers the buttons it lies on, down to the actions' foot
+    # (the owner's follow-up of 6 November: the foot of Report a problem
+    # showed under Testify's one sentence, 8px at 390)
+    assert "min-height:calc(var(--pdown,0px) - var(--sp-5))" in p.group(1), (
+        "on a phone a short pane leaves the foot of the buttons under it showing")
+    # and forced colours, which take the pane's shadow and the band with it,
+    # get the band from the open button instead, in the mode's own ground
+    band = re.search(r"@media \(forced-colors:active\)\{\s*\.racts :is\(\.pcite,\.follow,\.testify,\.report\)"
+                     r"\[open\] > summary::before\{([^}]*)\}", phone)
+    assert band and all(x in band.group(1) for x in (
+            'content:""', "position:absolute", "left:var(--bl,0)", "var(--bt,100%)", "width:var(--pw,100%)",
+            "height:10px", "forced-color-adjust:none", "background:Canvas", "pointer-events:none")), (
+        f"in forced colours on a phone nothing covers the next row's tops in the gap: {band and band.group(1)!r}")
     # in forced colours, the nub in the pane's own system colours
     assert re.search(r"@media \(forced-colors:active\)\{\s*\.racts :is\(\.pcite,\.follow,\.testify,\.report\) > "
                      r"summary::after\{forced-color-adjust:none;\s*background:Canvas;border-color:CanvasText\}", css), (
@@ -80234,8 +80350,9 @@ def _panes_open_left():
     # shuts and focuses nothing
     fn = js[js.index("function placeActPane("):]
     fn = fn[:fn.index("\n}\n")]
-    assert '"--pl"' in fn and '"--pw"' in fn and not re.search(r"open|focus|click", fn), (
-        "placeActPane does more than say where the row is")
+    assert all(f'"--{v}"' in fn for v in ("pl", "pw", "pdown", "bl", "bt")) \
+        and not re.search(r"open|focus|click", fn), (
+        "placeActPane does more than say where the row, the actions' foot and the button are, or not all of it")
     for hook in ('e.target.closest(".racts details > summary");\n  if(s)placeActPane(s.parentElement);\n},true);',
                  'document.addEventListener("toggle",e=>{if(e.target&&e.target.open)placeActPane(e.target);},true);',
                  'window.addEventListener("resize",()=>document.querySelectorAll(".racts details[open]").forEach(placeActPane));'):
@@ -80250,6 +80367,36 @@ def _panes_open_left():
     return "ok", ("each pane from its own button: to its left and level above 45em, under it and as wide as the "
                   "row at 45em and under; a nub of its own fill and border on its edge at the button's middle, "
                   "clear of the button")
+
+
+@check("frontend", "a record head's facts follow its line, however tall the actions beside them")
+def _head_facts_follow_line():
+    """The cohesion audit's P-2: on a bill at 1280 PRIME SPONSOR stood 110px
+    under the title where a member's facts stand 74px under theirs -- about
+    90px of empty band, set by the actions' height. The actions span the line
+    and facts rows, and a grid shares a spanning item's extra height among
+    the rows it spans, so a column of five buttons stretched both. An empty
+    1fr row under the facts, spanned by the actions too, takes it all: an
+    item crossing a flexible row grows that row alone. Measured after in a
+    browser: 53px on a bill, a member and a session day, at 1280 and 1024,
+    and the rail where it was. On a phone the head is one column and the
+    rows are the content's own."""
+    css = Path(_paths.locate("app.css")).read_text(encoding="utf-8")
+    head = re.search(r"\n\.rhead\{([^}]*)\}", css)
+    assert head, "app.css has no .rhead rule"
+    areas = re.search(r"grid-template-areas:([^;}]*)", head.group(1))
+    rows = re.search(r"grid-template-rows:([^;}]*)", head.group(1))
+    names = re.findall(r'"([^"]*)"', areas.group(1)) if areas else []
+    assert names == ["trail trail", "top top", "line acts", "facts acts", ". acts", "rail rail"], (
+        f"the head's areas no longer put an empty row under the facts beside the actions: {names}")
+    assert rows and rows.group(1).split() == ["auto", "auto", "auto", "auto", "1fr", "auto"], (
+        "the empty row under the facts is not the head's one flexible row, so the actions' height "
+        f"stretches the line and the facts again: {rows and rows.group(1)!r}")
+    phone = re.search(r"@media \(max-width:45em\)\{\n  \.rhead\{([^}]*)\}", css)
+    assert phone and '"trail" "top" "line" "facts" "rail" "acts"' in phone.group(1) \
+        and "grid-template-rows:none" in phone.group(1), (
+        "on a phone the head keeps the desktop's six rows, one of them flexible, under one column")
+    return "ok", "the actions' extra height goes to an empty row under the facts; on a phone, one column"
 
 
 @check("frontend", "Follow's, Cite's and Testify's panes, opened below the fold, are brought into view")
@@ -120435,7 +120582,8 @@ def _laws_rows_link_chapters(B, RSA, S, CS, BBP):
                           ("og:url", r'<meta property="og:url" content="([^"]*)"')):
             got = re.findall(pat, ch404)
             assert got == [f"{base}/laws/404/"], f"RSA 404's {what} is {got}, not {base}/laws/404/"
-        cites = re.findall(re.escape(base) + r"/laws/404/?", ch404[ch404.index('class="citeforms"'):])
+        cites = re.findall(re.escape(base) + r"/laws/404/?",
+                           _cite_plain(ch404[ch404.index('class="citeforms"'):]))
         assert cites and all(u == f"{base}/laws/404/" for u in cites), (
             f"RSA 404's citation names {sorted(set(cites))}")
         assert 'href="/laws/404/#s1"' in ch3a, "RSA 3-A's Cited by does not link RSA 404:1 at /laws/404/"

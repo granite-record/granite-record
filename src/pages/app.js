@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.265
+// GRANITE_VERSION: 2026-09-07.266
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -11825,12 +11825,27 @@ const SHARE_PRESS="[data-share]";   // named here: Share's own listener is the o
 // on the press, before the pane is drawn, and on the toggle for a pane
 // opened any other way -- and again when the window changes. A desktop's
 // rule does not read them. Nothing here opens, shuts or moves focus.
+// AND HOW FAR DOWN THE BUTTONS GO (--pdown): a short pane -- Testify's, one
+// sentence -- lay over the buttons beneath it and left the foot of Report a
+// problem showing under it, 8px of a button at 390 (the owner's follow-up,
+// 6 November 2026). The pane is at least as tall as what is left of the
+// actions below its button, so it covers what it lies on.
+// AND WHERE THE BUTTON'S OWN BOX STARTS (--bl, --bt), for the band that a
+// high-contrast mode draws with the button rather than the pane's shadow,
+// which that mode takes away (app.css, at "IN FORCED COLOURS").
 function placeActPane(d){
   if(!d||!d.closest||d.tagName!=="DETAILS"||!d.closest(".racts"))return;
   const row=d.closest(".pageacts")||d.closest(".racts");
   const r=row.getBoundingClientRect(), b=d.getBoundingClientRect();
   d.style.setProperty("--pl",Math.round(r.left-b.left)+"px");
   d.style.setProperty("--pw",Math.round(r.width)+"px");
+  d.style.setProperty("--pdown",Math.max(0,Math.round(d.closest(".racts").getBoundingClientRect().bottom-b.bottom))+"px");
+  const s=d.querySelector(":scope > summary");
+  if(s){
+    const sr=s.getBoundingClientRect();
+    d.style.setProperty("--bl",Math.round(r.left-sr.left-s.clientLeft)+"px");
+    d.style.setProperty("--bt",Math.round(sr.height-s.clientTop)+"px");
+  }
 }
 document.addEventListener("click",e=>{
   const s=e.target&&e.target.closest&&e.target.closest(".racts details > summary");

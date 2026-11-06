@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.36
+# GRANITE_VERSION: 2026-09-07.37
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -239,6 +239,43 @@ GUIDE_CITE = ('<p class="citenote">This guide is written by Granite Record from 
               'day the page was read.</p>')
 
 
+def cite_url(url, after=""):
+    """The address in a citation, with a break offered after each slash, and
+    its last part kept whole with what follows it (`after`: the full stop,
+    or BibTeX's "},").
+
+    NO FULL STOP ON A LINE OF ITS OWN (the cohesion audit, P-4). To a browser
+    an address is one word, so it was broken where the box ran out -- by
+    overflow-wrap -- and where the address and its full stop overflowed by
+    the stop alone, the stop went down a line by itself: Chicago at 385 to
+    388px on HB 1123, measured. No CSS keeps the stop with it in Chrome, which
+    ignores both white-space and overflow-wrap on the element boundary there.
+    So: <wbr> after each slash gives the address real places to break, and
+    the last part, with the stop, is one inline-block (app.css .citetail),
+    which goes down a line whole when it does not fit, and wraps inside
+    itself only when it is wider than a line. A <wbr> alone was not enough
+    (the review of 6 November 2026): a last part with hyphens in it --
+    every member's, every session day's, every calendar week's -- broke at
+    its last hyphen, "abigail-rooney-straf-" and then "1." alone, and an
+    atomic box with the stop outside it let the stop drop by itself.
+
+    <wbr> is no character, so a copy of the form, which reads its
+    textContent, is the address as it was. The calendar, which renames a
+    week's citation as a reader steps through weeks, finds the span by its
+    textContent (the address and `after`) and redraws it whole with
+    citeUrlFill in build_calendar, which is this rule again.
+    """
+    m = re.match(r"(https?://[^/]+/)(.+)\Z", url, re.S)
+    if not m:
+        return f'<span class="citeurl">{E(url)}{E(after)}</span>'
+    # Each part with its slash; the last is the one with none, or the last
+    # slash's own part where the address ends in one ("404/").
+    parts = re.findall(r"[^/]*/|[^/]+\Z", m.group(2))
+    head = "".join(f"{E(x)}<wbr>" for x in parts[:-1])
+    return (f'<span class="citeurl">{E(m.group(1))}<wbr>{head}'
+            f'<span class="citetail">{E(parts[-1])}{E(after)}</span></span>')
+
+
 def cite_block(path, title, base, built=""):
     """How to cite this page, in the four forms a paper or a newsroom asks for.
 
@@ -281,14 +318,14 @@ def cite_block(path, title, base, built=""):
     # BibTeX treats as syntax.
     key = canon(path).strip("/").replace("/", "-").replace(".", "") or "granite-record"
     forms = [
-        ("MLA", f'&ldquo;{E(closed)}&rdquo; <i>{BRAND}</i>, {E(url)}. '
+        ("MLA", f'&ldquo;{E(closed)}&rdquo; <i>{BRAND}</i>, {cite_url(url, ".")} '
                 f'Accessed {day}.'),
         ("APA", f'{BRAND}. (n.d.). <i>{E(stem)}</i>. Retrieved {full}, '
-                f'from {E(url)}'),
+                f'from {cite_url(url)}'),
         ("Chicago", f'{BRAND}. &ldquo;{E(closed)}&rdquo; Accessed {full}. '
-                    f'{E(url)}.'),
+                    f'{cite_url(url, ".")}'),
         ("BibTeX", f'<code>@misc{{{E(key)},\n  title = {{{E(bib)}}},\n'
-                   f'  howpublished = {{{BRAND}}},\n  url = {{{E(url)}}},\n'
+                   f'  howpublished = {{{BRAND}}},\n  url = {{{cite_url(url, "},")}\n'
                    f'  note = {{Accessed {day}}}\n}}</code>'),
     ]
     # One id per form, so the button names the text it copies; there is one
