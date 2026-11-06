@@ -26,6 +26,7 @@ function load(extra = {}) {
   const ctx = vm.createContext({ console, Intl, Date, Math, JSON, Promise, setTimeout, clearTimeout, WORDBOOK, ...extra });
   ctx.window = ctx;
   vm.runInContext(read("src/pages/components.js"), ctx, { filename: "components.js" });
+  vm.runInContext(read("src/pages/motions.js"), ctx, { filename: "motions.js" });
   vm.runInContext(read("src/pages/live.js"), ctx, { filename: "live.js" });
   return ctx;
 }
@@ -606,16 +607,59 @@ test("the reader's session day is New Hampshire's, the day before until 06:00", 
   assert.equal(L.dayWords("2027-01-07"), "Thursday, January 7");
 });
 
-test("a roll call on the day is the session page's vote block: its question, the outcome a source gives, the count; no time, no names", () => {
-  const b = L.voteBlock(rcOf({ id: "2027-H-14", passed: true, taken: "2027-01-07T15:31:00Z", ballots_complete: true }));
-  assert.match(b, /^<div class="dvote" data-rc="2027-H-14"><p class="dvh">Ought to Pass<\/p>/);
-  assert.match(b, /class="chip[^"]*rcres pass/);
+test("a roll call on the day is the session page's vote block: its motion in the vote words, the outcome a source gives, the count; no time, no names", () => {
+  const b = L.voteBlock(rcOf({ id: "2027-H-14", passed: true, taken: "2027-01-07T15:31:00Z", ballots_complete: true }), "H");
+  assert.match(b, /^<div class="dvote" data-rc="2027-H-14"><p class="dvh">Ought to Pass \(<span data-term="OTP">OTP<\/span>, Pass the bill\)<\/p>/,
+               "the head in votes.json's words, as the session page heads it");
+  assert.match(b, /class="chip rcres pass">Motion Passed: Bill Passed</);
   assert.match(b, /<b>186&ndash;169<\/b> on a roll call/);
-  assert.doesNotMatch(b, /10:31|names|provisional/, "no clock and no names on the day");
-  const open = L.voteBlock(rcOf({ docket: null, passed: null }));
+  assert.doesNotMatch(b, /10:31|names|provisional|rcrec/, "no clock, no names, and no record line where the words are the head's");
+  const otp = L.voteBlock(rcOf({ question: "OTP", passed: true }), "H");
+  assert.match(otp, /<p class="dvh">Ought to Pass \(/, "the clerk's OTP read as the motion");
+  assert.match(otp, /<p class="rcrec">In the record: OTP<\/p>/, "and the clerk's words kept under it");
+  const open = L.voteBlock(rcOf({ docket: null, passed: null }), "H");
   assert.match(open, /outcome not yet in the docket/);
   assert.doesNotMatch(open, /rcres/, "no source, no chip: the tally never says who prevailed");
-  assert.match(L.voteBlock(rcOf({ docket: { outcome: "Motion Failed" } })), /rcres fail/);
+  assert.match(L.voteBlock(rcOf({ docket: { outcome: "Motion Failed" } }), "H"), /rcres fail/);
+});
+
+// The words the night writes into the page (build_live_session.live_words),
+// enough of narrative.RECOMMENDATION for these votes; closing.json's from
+// WORDBOOK, as components.js carries them.
+const WORDS = { closing: WORDBOOK.closing, roll_call: "roll call",
+  recommendation: [["ought to pass with amendment", "pass it with changes"], ["ought to pass", "pass it"],
+                   ["inexpedient to legislate", "kill it"], ["lay on table", "lay it on the table"],
+                   ["indefinitely postpone", "kill it and keep it from coming back this session"]] };
+
+test("In short: each vote in the session page's sentence, in the day's order, a second alike said again", () => {
+  const rcs = [rcOf({ id: "a", seq: 1, question: "Inexpedient to Legislate", passed: false, yeas: 150, nays: 200 }),
+               rcOf({ id: "b", seq: 2, question: "Ought to Pass", passed: true }),
+               rcOf({ id: "c", seq: 3, question: "Ought to Pass", passed: true })];
+  const h = L.inShort(rcs, "H", WORDS);
+  assert.equal(h, '<p class="dsum"><span class="dsumlab">In short</span>The House rejected a motion to kill it on a '
+    + "roll call 150–200. The House voted to pass it on a roll call 186–169. The House again voted to pass "
+    + "it on a roll call 186–169.</p>");
+  assert.match(L.inShort([rcOf({ question: "Ought to Pass", passed: null, docket: null })], "S", WORDS),
+               /The Senate took up a motion to pass it on a roll call 186–169; the record does not say whether it carried\./,
+               "no source for the outcome: said as open, never guessed from the count");
+  assert.match(L.inShort([rcOf({ question: "Ought to Pass", passed: false, yeas: 220, nays: 150, threshold_needed: 247 })], "H", WORDS),
+               /short of the two-thirds majority it needed/);
+  assert.equal(L.inShort([], "H", WORDS), "", "no vote: no In short");
+  assert.doesNotMatch(h, /goes to|sends it|Governor/, "nothing the day cannot know about what the votes mean");
+});
+
+test("the morning page draws In short under a bill's votes, replacing the night's pending line", async () => {
+  const pg = dayPage({ agenda: ["HB2"], bills: { "2027-2028": { 2027: ["HB2"] } } });
+  pg.els["lv-cards"].places[0].innerHTML = '<p class="lv-pending">Pending: the committee recommends ...</p>';
+  pg.els["live-words"] = { textContent: JSON.stringify({ recommendation: WORDS.recommendation, roll_call: "roll call" }) };
+  const files = { "/api/live/votes/2027-01-07": liveFile("2027-01-07", [rcOf({ id: "2027-H-14", seq: 14, passed: true })]) };
+  const p = L.startDay(pg.doc, { fetch: server(files).fetch, now: () => T("2027-01-07T16:44:00Z") });
+  try {
+    await p.first;
+    const place = pg.els["lv-cards"].places[0].innerHTML;
+    assert.doesNotMatch(place, /lv-pending/, "the first vote replaces the pending line");
+    assert.match(place, /data-rc="2027-H-14".*<p class="dsum"><span class="dsumlab">In short<\/span>The House voted to pass it/);
+  } finally { p.stop(); }
 });
 
 test("the day's roll calls by bill, in the order each was first voted on; a vote on no bill apart; the other chamber's not", () => {

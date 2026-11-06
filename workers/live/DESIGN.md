@@ -734,7 +734,8 @@ Under the list:
 - It polls only while its date is the reader's session day (§4.1's 06:00 rule), and stops when the day is finished.
 - The next night the record's page takes the address; without one the page is gone.
 - Live Now's session card and `/live`'s floor row link to it.
-- Still to come: each card's "In short" from the session pages' own code and words, and the pending committee-report motion for a bill not yet voted on.
+- Each card's "In short" (6 November 2026) is the session page's: `motions.js` is `motions.py` line for line, and `live.js`'s `voteSaid` is `build_session_pages.vote_said` for what a live roll call carries, in `closing.json`'s words and `narrative.py`'s, which the night writes into the page. What the day cannot know — the bill's history, a passage left pending, what the votes mean for the bill — is not said: the votes' own sentences and nothing more. preflight's `_in_short_twin` runs both sides over every roll call's question on disk.
+- A bill not yet voted on shows the motion it stands on: "Pending: the committee recommends Ought to Pass (OTP, Pass the bill), 12–8. A special order, a motion to table or a motion to indefinitely postpone can change what the House votes on first." The first roll call replaces it.
 
 The section as first written follows, for the record of why.
 

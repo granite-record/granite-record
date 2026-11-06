@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.5
+# GRANITE_VERSION: 2026-10-30.6
 """
 The session days' side of the live layer (design sections 4.2 to 4.4),
 written by the night after the session-day pages:
@@ -300,6 +300,31 @@ def agenda(body, today, rows=None):
     return out
 
 
+PENDING_CAN = ("A special order, a motion to table or a motion to indefinitely postpone can "
+               "change what the {chamber} votes on first.")
+
+
+def pending_html(rec, bill, body):
+    """The motion a bill not yet voted on stands on: the committee majority's
+    recommendation, in votes.json's words for the motion (components.
+    vote_head, as a vote's head on the session page), with its tally, and
+    what can change what the chamber takes up first (the owner, 30 October
+    2026; the wording the manager's, 30 October 2026). Inside the bill's
+    .lv-rcs place, so the first roll call live.js draws there replaces it.
+    "" where the docket names no recommendation."""
+    import components as C
+    import motions as MO
+    words = ((rec or {}).get("recommendation") or "").strip()
+    if not words:
+        return ""
+    k = MO.classify(words, bill, body, C.WORDBOOK["votes"]["motions"])
+    head = C.vote_head(k["mk"], words, k["mf"])
+    tally = (f", {rec['yeas']}–{rec['nays']}" if rec.get("yeas") is not None
+             and rec.get("nays") is not None else "")
+    return (f'<p class="lv-pending">Pending: the committee recommends {head}{tally}. '
+            f'{S.E(PENDING_CAN.format(chamber=CHAMBER_NAME[body]))}</p>')
+
+
 def morning_cards(site, body, today, bills):
     """Each bill as the session page's card (components.bill_card, as
     build_session_pages draws it), with the committee's report the chamber
@@ -337,7 +362,7 @@ def morning_cards(site, body, today, bills):
             "byline": C.bill_byline(sponsor, row.get("committees") or [], topic, term, codes),
             "notes": C.rail_html(row.get("rail") or [], chip_w == "Died"),
             "line": BSP.recommendation_html(rec, body, term, codes, S.E)
-                    + f'<div class="lv-rcs" data-bill="{S.E(bill)}"></div>',
+                    + f'<div class="lv-rcs" data-bill="{S.E(bill)}">{pending_html(rec, bill, body)}</div>',
             "rail": "", "open": None}))
     return out
 
@@ -381,7 +406,22 @@ def morning_body(site, body, today, bills):
             # a bill that is not on the calendar (build_live.bill_years).
             f'<script type="application/json" id="live-bills">'
             f'{json.dumps(BL.bill_years(site, today), separators=(",", ":")).replace("</", "<\\/")}</script>'
+            # In short's words that are narrative.py's (live_words); the rest
+            # are closing.json's, in components.js.
+            f'<script type="application/json" id="live-words">'
+            f'{json.dumps(live_words(), ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")}</script>'
             '</div>')
+
+
+def live_words():
+    """The words live.js's In short needs that are not a words file's:
+    narrative.RECOMMENDATION in its own order (vote_said reads it by key, and
+    by the first opening a motion's words start with), and VOTE_KIND's words
+    for a roll call. Written from the tables themselves, so the page says a
+    vote as the night's session page will."""
+    import narrative as NR
+    return {"recommendation": [[k, v] for k, v in NR.RECOMMENDATION.items()],
+            "roll_call": NR.VOTE_KIND["RC"][0]}
 
 
 def write_morning(site, base, body, today, rows=None):
@@ -410,7 +450,8 @@ def write_morning(site, base, body, today, rows=None):
     html = html.replace("</head>", f'{MORNING}\n<meta name="robots" content="noindex">\n'
                                    '<link rel="stylesheet" href="/live.css">\n</head>', 1)
     assert MORNING.encode() in html.encode()[:HEAD_BYTES], f"{path}: the marker is not in the page's head"
-    html = html.replace("</body>", '<script src="/live.js" defer></script>\n</body>', 1)
+    html = html.replace("</body>", '<script src="/motions.js" defer></script>\n'
+                                   '<script src="/live.js" defer></script>\n</body>', 1)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(S.clean_links(html), encoding="utf-8")
     return out
@@ -450,7 +491,7 @@ def write(site, base, today, seen=None, rows=None):
     wrote, gone = write_day_files(site, docs, skip=skip)
     (site / "schema").mkdir(exist_ok=True)
     shutil.copyfile(_paths.locate(SCHEMA.as_posix()), site / SCHEMA)
-    for f in ("live.js", "live.css"):                      # the same files build_live copies
+    for f in ("live.js", "live.css", "motions.js"):       # live.js and live.css as build_live copies them
         shutil.copyfile(_paths.locate(f"src/pages/{f}"), site / f)
     if seen is not None:
         seen["mornings"] = [f"{p.parent.name}/{p.name}" for p in mornings]

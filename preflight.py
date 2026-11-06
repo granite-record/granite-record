@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.772
+# GRANITE_VERSION: 2026-09-04.773
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -87132,8 +87132,9 @@ def _live_sql(live_gen, dayfiles_from_db, fetch_past_db, refusal):
 # count that falls means a file stopped loading or a test was lost.
 LIVE_TESTS = "tests/live/index.js"
 # (On 30 October 2026 the retired /session/<B>/today page's eight tests went
-# with it, and the morning page's came in; 216 with the committee player's.)
-LIVE_TESTS_AT_LEAST = 216
+# with it, and the morning page's came in; 216 with the committee player's,
+# 218 with In short's.)
+LIVE_TESTS_AT_LEAST = 218
 # The person's ready-made switches (workers/live/control/), each as the Worker
 # must read it; and the values control.json may hold (store.js CONTROL_VALUES).
 LIVE_CONTROL = {"all-off.json": {"youtube": "off", "sql": "off"},
@@ -87285,6 +87286,19 @@ def _live_session(BLS):
         assert "today" not in re.sub(r"<script.*?</script>", "", page.split('id="results"', 1)[1], flags=re.S), \
             "the page says today, which a page left up a day longer would say of the wrong day"
         assert "cstat" not in page, "last night's status chip beside the day's votes"
+        # In short's words and the motions twin reach the page; the pending
+        # line is the manager's wording, with the motion in votes.json's words.
+        assert 'id="live-words"' in page and '"roll_call":"roll call"' in page \
+            and '["ought to pass","pass it"]' in page, "In short's words are not in the page"
+        assert page.index('<script src="/motions.js" defer>') < page.index('<script src="/live.js" defer>'), \
+            "motions.js must load before live.js"
+        pend = BLS.pending_html({"recommendation": "Ought to Pass", "yeas": 12, "nays": 8}, "HB2", "H")
+        assert pend == ('<p class="lv-pending">Pending: the committee recommends Ought to Pass '
+                        '(<span data-term="OTP">OTP</span>, Pass the bill), 12–8. A special order, a motion '
+                        'to table or a motion to indefinitely postpone can change what the House votes on '
+                        'first.</p>'), pend
+        assert BLS.pending_html(None, "HB2", "H") == "" and BLS.pending_html({}, "HB2", "S") == "", \
+            "a pending line with no recommendation"
         assert "lv-none" not in page, "the no-bills line on a day with bills"
         assert '"2025-2026":{"2025":["HB2"],"2026":["HB1376"]}' in page, "the bills' own years"
         assert not (site / "session/H/2026-03-13.json").exists(), \
@@ -87461,6 +87475,72 @@ def _live_bill_number(RP):
     none = sum(1 for w in want if not w)
     assert none >= 8, f"only {none} fields name no bill: the procedural cases are not being read"
     return "ok", f"{len(fields):,} bill fields read alike, {none} of them naming no bill"
+
+
+@check("build", "the live session page's In short says a vote as the session page does: motions.js reads "
+       "every roll call's question on disk as motions.py does, and live.js's voteSaid gives "
+       "build_session_pages.vote_said's sentence, passed, failed, not known and short of two thirds",
+       needs=("build_session_pages", "build_live_session", "rollcall_parser"))
+def _in_short_twin(BSP, BLS, RP):
+    """The owner, 30 October 2026: the live day's In short is a finished
+    day's, from the same code and the same words. motions.js is motions.py
+    line for line, and live.js's voteSaid is vote_said for what a live roll
+    call carries; this runs both over the questions the General Court's
+    roll-call files hold (RollCallSummary's question, the field the Worker
+    reads) and fails on any key or sentence that differs. What the day
+    cannot know -- the bill's history, a passage left pending -- is not in
+    either side's input: the history is empty and nothing is left pending."""
+    import types
+    import components as C
+    root = Path(".")
+    seen, cases = set(), []
+    for f in sorted((root / "records/rollcalls").glob("RollCallSummary*.txt")):
+        for line in f.read_text(encoding="utf-8-sig", errors="replace").splitlines():
+            q = line.split("|")
+            if len(q) < 13 or q[1].strip() not in ("H", "S"):
+                continue
+            k = (q[11].strip(), RP.bill_number(q[4]) or "", q[1].strip())
+            if k not in seen:
+                seen.add(k)
+    # Forms no roll-call file holds that a docket line does, so each branch of
+    # vote_said is held: an enrolled bill amendment, and a Senate mover before
+    # a motion no row of the vote words names (narrative.split_mover).
+    for words in ("Enrolled Bill Amendment 2026-1234e", "Sen. Abbas Moved Retain",
+                  "Sen. Abbas Moved Without Recommendation", "Floor Amendment 2026-0531h (Rep. Rice)"):
+        seen.add((words, "SB12", "S"))
+    for words, bill, body in sorted(seen):
+        for carried, yeas, nays, need in ((True, 200, 150, None), (False, 150, 200, None), (None, 180, 170, None),
+                                          (False, 220, 150, -(-370 * 2 // 3))):
+            cases.append({"words": words, "bill": bill, "body": body, "carried": carried,
+                          "yeas": yeas, "nays": nays, "need": need})
+    assert len(seen) >= 500, f"only {len(seen)} questions read off records/rollcalls/: the corpus is not there"
+    want = []
+    for c in cases:
+        it = types.SimpleNamespace(action=c["words"], carried=c["carried"], kind="RC", yeas=c["yeas"],
+                                   nays=c["nays"], counted=True, wo=False, veto=False, fifths=False,
+                                   need=c["need"], raw="")
+        k = BSP.motion_chip(it, c["bill"], c["body"])[1]
+        want.append([k.get("mk") or "", BSP.vote_said(it, c["bill"], c["body"])])
+    node = shutil.which("node")
+    assert node, "node is not on PATH, and live.js's In short is the thing held here"
+    feed = {"wordbook": C.WORDBOOK, "words": BLS.live_words(),
+            "cases": [{"body": c["body"], "r": {"question": c["words"],
+                                                "bill": f"t/{c['bill']}" if c["bill"] else None,
+                                                "passed": c["carried"], "yeas": c["yeas"], "nays": c["nays"],
+                                                "threshold_needed": c["need"]}} for c in cases]}
+    r = _run([node, str(root / "tests/live/in_short_twin.mjs")], input=json.dumps(feed),
+             capture_output=True, text=True, timeout=300)
+    assert r.returncode == 0, f"node could not run In short: {(r.stderr or r.stdout).strip()[-400:]}"
+    got = json.loads(r.stdout)
+    keys = [f"{c['words']!r} on {c['bill'] or 'no bill'}: motions.js {g[0]!r}, motions.py {w[0]!r}"
+            for c, g, w in zip(cases, got, want) if g[0] != w[0]]
+    said = [f"{c['words']!r} ({c['carried']}): live.js {g[1]!r}, the session page {w[1]!r}"
+            for c, g, w in zip(cases, got, want) if g[1] != w[1]]
+    assert not keys, f"{len(keys)} motions read apart: " + "; ".join(keys[:4])
+    assert not said, f"{len(said)} votes said apart: " + "; ".join(said[:4])
+    quoted = sum(1 for w in want if "“" in w[1])
+    return "ok", (f"{len(seen):,} questions, {len(cases):,} votes said alike by live.js and the session "
+                  f"page ({quoted:,} in the clerk's own words, quoted)")
 
 
 @check("build", "the live Worker's own tests pass, every one: node --test runs tests/live/index.js, "

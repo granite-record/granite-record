@@ -24134,6 +24134,16 @@
    "es": "Votaciones nominales del Senado del {day}",
    "state": "draft"
   },
+  "votes.in_record": {
+   "en": "In the record:",
+   "es": "En el registro:",
+   "state": "draft"
+  },
+  "votes.in_short": {
+   "en": "In short",
+   "es": "En resumen",
+   "state": "draft"
+  },
   "votes.login": {
    "en": "Votes last read at {time}; the database has refused the published login since.",
    "es": "Votaciones leídas por última vez a las {time}; desde entonces la base de datos ha rechazado el acceso publicado.",
