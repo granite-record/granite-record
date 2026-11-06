@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.774
+# GRANITE_VERSION: 2026-09-04.775
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -71955,7 +71955,9 @@ def _spanish_learn(i18n, G, BC, chrome, civics):
         for slug in slugs:
             t = G.learn_topic(slug)
             body = G.reused(G.topic_body(t)) + (t.get("holds") or "")
-            figures = {k: "7" for k in re.findall(r"\[\[(\w+)\]\]", body)}
+            # The page's own words, and what a slot draws in it (County
+            # Government's cards, civics.county_cards), which name figures too.
+            figures = {k: "7" for k in re.findall(r"\[\[(\w+)\]\]", body + civics.county_cards())}
             page = BC.learn_page_lang(t, "es", base, figures, learn,
                                       open_={g["slug"] for g in G.GUIDES} | set(civics.HOW_TO))
             if not page.startswith(f'<!DOCTYPE html><html lang="es" data-alt-en="/learn/{slug}"'):
@@ -72111,7 +72113,7 @@ def _spanish_guides(i18n, G, BC, chrome, civics):
             t = G.topic_of(slug)
             if t:
                 body = G.reused(G.topic_body(t)) + (t.get("holds") or "")
-                figures = {k: "7" for k in re.findall(r"\[\[(\w+)\]\]", body)}
+                figures = {k: "7" for k in re.findall(r"\[\[(\w+)\]\]", body + civics.county_cards())}
                 page = BC.article_page_lang(t, "es", base, figures)
                 title = t["title"]
             else:
@@ -108821,6 +108823,134 @@ def _learn_statutes_in_force():
     assert not bad, "; ".join(bad[:4]) + (f" (and {len(bad) - 4} more)" if len(bad) > 4 else "")
     return "ok", (f"{len({r for _s, r in cited})} cited sections and chapters in force; "
                   f"{len(LEARN_STATUTE_CLAIMS)} anchored claims say what their sections say")
+
+
+@check("data", "County Government's ten county cards say what RSA 653:1 and 662:4 say of each county")
+def _county_cards_statute():
+    """The county cards (civics.county_cards, 24 November 2026) were written
+    from the statute table the Laws pages are built from, read on the Laws
+    pages themselves because the cloud machine had no kit. Here they are held
+    to db/NH_RSA.psv. For each county, its lettered subparagraph of RSA 653:1,
+    VI must name it, say "all the voters of the county" exactly where the card
+    says the whole county votes, say "4-year term" exactly where the card says
+    the terms are staggered, and name the election the card dates a
+    staggering from; 653:1, V must give a four-year term to exactly the
+    counties the card does, from the election it names; and RSA 662:4's
+    paragraph for the county must say, district by district, the words the
+    card quotes. A data check, as _learn_statutes_in_force is: a statute
+    amended under a card is a reason to reread it, not to stop the night."""
+    import html as _html
+    rsa_p = Path("db/NH_RSA.psv")
+    if not rsa_p.exists():
+        return "skip", "db/NH_RSA.psv is not on this disk"
+    import civics
+    secs = _rsa_sections(rsa_p, {"653:1", "662:4"})
+    assert secs and "653:1" in secs and "662:4" in secs, "db/NH_RSA.psv lacks RSA 653:1 or 662:4"
+
+    def norm(s):
+        s = _html.unescape(s).replace("’", "'").replace("&rsquo;", "'")
+        return re.sub(r"\s+", " ", s).strip().rstrip(".;").lower()
+    s653, s662 = secs["653:1"][1], secs["662:4"][1]
+    v = re.search(r"\bV\. (.*?)\bVI\. ", s653, re.S)
+    vi = re.search(r"\bVI\. (.*)$", s653, re.S)
+    assert v and vi, "RSA 653:1 has no paragraphs V and VI as the cards read them"
+    subs = dict(re.findall(r"\(([a-j])\) (.*?)(?=\([a-j]\) [A-Z]|$)", vi.group(1), re.S))
+    bad = []
+    for name, (letter, at_large, staggered, since, four, numeral) in civics.COUNTY_RULES.items():
+        sub = subs.get(letter, "")
+        if not sub.lower().startswith(name.lower()):
+            bad.append(f"RSA 653:1, VI({letter}) is not {name}'s: {sub[:40]!r}")
+            continue
+        if ("all the voters of the county" in sub) != at_large:
+            bad.append(f"{name}'s card says the whole county votes={at_large}, and VI({letter}) does not")
+        if ("4-year term" in sub) != staggered:
+            bad.append(f"{name}'s card says staggered={staggered}, and VI({letter}) does not")
+        if since and f"at the {since} state general election" not in sub:
+            bad.append(f"{name}'s card dates its staggering from {since}, and VI({letter}) does not")
+        four_here = re.search(rf"at the (\d{{4}}) state general election, and at each subsequent state "
+                              rf"general election, any such officer in {name} county shall be chosen "
+                              r"in the county by the voters for a 4-year term", v.group(1), re.I)
+        if (four_here.group(1) if four_here else None) != (str(four) if four else None):
+            bad.append(f"{name}'s card gives its officers four years from {four}, and 653:1, V "
+                       f"{'from ' + four_here.group(1) if four_here else 'not at all'}")
+        para = re.search(rf"\b{numeral}\. {name}: (.*?)(?=\b[IVX]+\. [A-Z][a-z]+: |Source\.|$)", s662, re.S)
+        if not para:
+            bad.append(f"RSA 662:4 has no paragraph {numeral} for {name}")
+            continue
+        said = [norm(d) for d in re.split(r";?\s*District \d,? ", " " + para.group(1))[1:]]
+        want = [norm(d) for d in civics.COMMISSIONER_DISTRICTS[name]]
+        if said != want:
+            i = next((k for k, (a, b) in enumerate(zip(said, want)) if a != b), min(len(said), len(want)))
+            bad.append(f"{name} District {i + 1} on the card is not RSA 662:4, {numeral}'s words")
+    assert not bad, "; ".join(bad[:4]) + (f" (and {len(bad) - 4} more)" if len(bad) > 4 else "")
+    return "ok", (f"{len(civics.COUNTY_RULES)} county cards: each one's election, staggering and officer "
+                  "terms are its subparagraph of RSA 653:1, and its districts RSA 662:4's words")
+
+
+@check("frontend", "County Government's ten county cards are on the built page in English and "
+                   "Spanish, each counted, linked to its county on the Officials page, with no "
+                   "website line where no source is on hand", needs=("civics",))
+def _county_cards_built(CV):
+    """The tester's request, approved by the owner for 24 November 2026: one
+    card a county. On preflight's fixture site: ten cards on each language's
+    page, each with its own id and a link to its own section of the County
+    Officials tab (#of-county-<name>), no figure left unfilled; on the
+    Spanish page the cards' words are the catalog's, drawn once there
+    (civics.county_cards) rather than ten copies of each, and RSA 662:4's
+    words are marked as English; a Website row only for a county
+    COUNTY_SITES names, each with the page it was read from and its day."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    bad = []
+    for lang, rel, name in (("en", "learn/county-government.html", "Strafford County"),
+                            ("es", "es/learn/county-government.html", "Condado de Strafford")):
+        p = site / rel
+        if not p.is_file():
+            bad.append(f"{rel} was not built")
+            continue
+        t = p.read_text(encoding="utf-8")
+        grid = re.search(r'<div class="l-who l-counties".*?</section></div>', t, re.S)
+        if not grid:
+            bad.append(f"{rel} has no county cards")
+            continue
+        g = grid.group(0)
+        ids = re.findall(r'<section class="l-body" id="county-([a-z]+)">', g)
+        if ids != [c.lower() for c in CV.COUNTY_RULES]:
+            bad.append(f"{rel}'s cards are {ids}")
+        links = re.findall(r'href="[^"]*officials(?:\.html)?#of-county-([a-z]+)"', g)
+        if links != ids:
+            bad.append(f"{rel}'s cards link {links} on the Officials page")
+        if "[[" in g:
+            bad.append(f"{rel}'s cards leave a figure unfilled")
+        if f"<h3>{name}</h3>" not in g:
+            bad.append(f"{rel} does not name its card {name!r}")
+        sites = len(re.findall(r'<dt>(?:Website|Sitio web)</dt>', g))
+        if sites != len(CV.COUNTY_SITES):
+            bad.append(f"{rel} draws {sites} Website rows for {len(CV.COUNTY_SITES)} sourced addresses")
+        if lang == "es":
+            if "Escalonados" not in g or "Staggered" in re.sub(r'<span lang="en">.*?</span>', "", g):
+                bad.append("the Spanish cards are not in Spanish")
+            if g.count('<span lang="en">the towns of') + g.count('<span lang="en">the city of') < 20:
+                bad.append("the Spanish cards do not mark RSA 662:4's words as English")
+        if "County by County" not in t and "Condado por condado" not in t:
+            bad.append(f"{rel} has no County by County heading")
+    for c, rec in CV.COUNTY_SITES.items():
+        if c not in CV.COUNTY_RULES or len(rec) != 3 or not all(rec) or not str(rec[0]).startswith("https://"):
+            bad.append(f"COUNTY_SITES[{c!r}] is not (an https address, its source, the day read)")
+    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    many = [k for k in es if re.match(r"learn\.county-government\.(the-law|state-representatives|"
+                                      r"the-countys-state-representatives)", k)]
+    if many:
+        bad.append(f"the catalog holds per-county copies of the cards' words: {many[:3]}")
+    bc = Path("src/pages/build_civics.py").read_text(encoding="utf-8")
+    if "co not in civics.COUNTY_RULES" not in bc:
+        bad.append("a House district in no known county would leave a card short, silently")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"ten cards on the English and Spanish pages, each counted and linked to its county; "
+                  f"{len(CV.COUNTY_SITES)} website lines, one for each sourced address")
 
 
 @check("frontend", "the language sweep's clear fixes hold: plain words for the record's "

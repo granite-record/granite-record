@@ -18105,6 +18105,116 @@
    "es": "¿Qué es un distrito de aldea (village district)?",
    "state": "draft"
   },
+  "learn.counties.all_three": {
+   "en": "<b>Two years. All three seats are on the ballot at every state general election.</b>",
+   "es": "<b>Dos años. Los tres cargos están en la boleta en cada elección general estatal.</b>",
+   "state": "draft"
+  },
+  "learn.counties.convention": {
+   "en": "The county&rsquo;s {n} state representatives, from {d} House districts.",
+   "es": "Los {n} representantes estatales del condado, de {d} distritos de la Cámara.",
+   "state": "draft"
+  },
+  "learn.counties.district": {
+   "en": "District {n}:",
+   "es": "Distrito {n}:",
+   "state": "draft"
+  },
+  "learn.counties.elected_county": {
+   "en": "Three, one from each district, and <b>the voters of the whole county</b> vote for each one.",
+   "es": "Tres, uno de cada distrito, y <b>los votantes de todo el condado</b> votan por cada uno.",
+   "state": "draft"
+  },
+  "learn.counties.elected_district": {
+   "en": "Three, one from each district, each elected by the voters of that district.",
+   "es": "Tres, uno de cada distrito, cada uno elegido por los votantes de ese distrito.",
+   "state": "draft"
+  },
+  "learn.counties.h_commissioners": {
+   "en": "Commissioners",
+   "es": "Comisionados",
+   "state": "draft"
+  },
+  "learn.counties.h_convention": {
+   "en": "County convention",
+   "es": "Convención del condado",
+   "state": "draft"
+  },
+  "learn.counties.h_districts": {
+   "en": "Commissioner districts",
+   "es": "Distritos de comisionados",
+   "state": "draft"
+  },
+  "learn.counties.h_officers": {
+   "en": "Sheriff and the other four officers",
+   "es": "El sheriff y los otros cuatro funcionarios",
+   "state": "draft"
+  },
+  "learn.counties.h_terms": {
+   "en": "Commissioners&rsquo; terms",
+   "es": "Períodos de los comisionados",
+   "state": "draft"
+  },
+  "learn.counties.h_website": {
+   "en": "Website",
+   "es": "Sitio web",
+   "state": "draft"
+  },
+  "learn.counties.label": {
+   "en": "The ten counties",
+   "es": "Los diez condados",
+   "state": "draft"
+  },
+  "learn.counties.law": {
+   "en": "The law: {cites}",
+   "es": "La ley: {cites}",
+   "state": "draft"
+  },
+  "learn.counties.officers_four": {
+   "en": "<b>Four years</b>, since the {year} election.",
+   "es": "<b>Cuatro años</b>, desde la elección de {year}.",
+   "state": "draft"
+  },
+  "learn.counties.officers_two": {
+   "en": "Two years.",
+   "es": "Dos años.",
+   "state": "draft"
+  },
+  "learn.counties.seats": {
+   "en": "{n} state representatives",
+   "es": "{n} representantes estatales",
+   "state": "draft"
+  },
+  "learn.counties.staggered": {
+   "en": "Staggered.",
+   "es": "Escalonados.",
+   "state": "draft"
+  },
+  "learn.counties.staggered_how": {
+   "en": "Two of the three seats are on the ballot at each state general election, one for four years and one for two, and the four-year term rotates among the districts in sequence.",
+   "es": "Dos de los tres cargos están en la boleta en cada elección general estatal, uno por cuatro años y otro por dos, y el período de cuatro años rota entre los distritos por turno.",
+   "state": "draft"
+  },
+  "learn.counties.staggered_since": {
+   "en": "Staggered since the {year} election.",
+   "es": "Escalonados desde la elección de {year}.",
+   "state": "draft"
+  },
+  "learn.counties.towns_each": {
+   "en": "The towns in each",
+   "es": "Los municipios de cada uno",
+   "state": "draft"
+  },
+  "learn.counties.towns_each_en": {
+   "en": "The towns in each, in the law&rsquo;s English",
+   "es": "Los municipios de cada uno, en el inglés de la ley",
+   "state": "draft"
+  },
+  "learn.counties.who_holds": {
+   "en": "Who holds these offices now",
+   "es": "Quién ocupa estos cargos ahora",
+   "state": "draft"
+  },
   "learn.county-government.5-to-20-days-after-it": {
    "en": "5 to 20 days after it is mailed",
    "es": "De 5 a 20 días después del envío",
@@ -18153,6 +18263,11 @@
   "learn.county-government.county-attorney-acts-under-the-direction": {
    "en": "<b>County attorney:</b> acts under the direction of the Attorney General, performs the Attorney General's duties for the county in the Attorney General's absence, and, if no other representation is provided, prosecutes or defends suits in which the county has an interest, under the direction of the county commissioners (RSA 7:34).",
    "es": "<b>Fiscal del condado (county attorney):</b> actúa bajo la dirección del Fiscal General (Attorney General), cumple las funciones del Fiscal General en el condado en su ausencia y, si no se dispone otra representación, presenta o defiende las demandas en que el condado tiene interés, bajo la dirección de los comisionados del condado (RSA 7:34).",
+   "state": "draft"
+  },
+  "learn.county-government.county-by-county": {
+   "en": "County by County",
+   "es": "Condado por condado",
    "state": "draft"
   },
   "learn.county-government.county-commissioners-the-county-s": {
@@ -18335,6 +18450,11 @@
    "es": "Los comisionados del condado",
    "state": "draft"
   },
+  "learn.county-government.the-county-convention-rsa-661-9": {
+   "en": "The county convention (RSA 661:9, II). Which of its members vote depends on how the county elects its commissioners. Where only a district&rsquo;s voters elect its commissioner, only the convention members who represent the towns and city wards in that district vote, unless that leaves fewer than 3 of them, when every member votes. Where the whole county votes for each commissioner, as in Carroll and Sullivan, every member votes, by a majority of the ballots cast, and the seat is filled until the next biennial election of county officers. These rules apply to a vacancy that occurs no later than 30 days before the ballots for the primary are printed.",
+   "es": "La convención del condado (RSA 661:9, II). Qué miembros votan depende de cómo elige el condado a sus comisionados. Donde solo los votantes de un distrito eligen a su comisionado, votan solo los miembros de la convención que representan a los municipios y distritos electorales de ciudad (wards) de ese distrito, salvo que así queden menos de 3, y entonces votan todos los miembros. Donde todo el condado vota por cada comisionado, como en Carroll y Sullivan, votan todos los miembros, por mayoría de las boletas emitidas, y el cargo se ocupa hasta la siguiente elección bienal de funcionarios del condado. Estas reglas se aplican a una vacante que ocurra a más tardar 30 días antes de que se impriman las boletas de la primaria.",
+   "state": "draft"
+  },
   "learn.county-government.the-county-convention-which-is-the": {
    "en": "The County Convention, Which Is the County Delegation",
    "es": "La convención del condado, que es la delegación del condado",
@@ -18378,6 +18498,11 @@
   "learn.county-government.the-state-representatives-of-the": {
    "en": "The state representatives of the representative districts of the county. Nobody is elected to it separately.",
    "es": "Los representantes estatales de los distritos de representantes del condado. Nadie es elegido para ella por separado.",
+   "state": "draft"
+  },
+  "learn.county-government.the-ten-counties-follow-the-same": {
+   "en": "The ten counties follow the same law with three differences: whether the whole county votes for each commissioner, whether the commissioners&rsquo; terms are staggered, and how long the other officers serve. Each county&rsquo;s card says which, with its county convention and the towns in each of its commissioner districts.",
+   "es": "Los diez condados siguen la misma ley con tres diferencias: si todo el condado vota por cada comisionado, si los períodos de los comisionados son escalonados, y cuánto duran los demás funcionarios. La tarjeta de cada condado dice cuál es su caso, con su convención del condado y los municipios de cada uno de sus distritos de comisionados.",
    "state": "draft"
   },
   "learn.county-government.there-is-a-public-hearing-it": {
@@ -18448,6 +18573,11 @@
   "learn.county-government.who": {
    "en": "Who",
    "es": "Quiénes",
+   "state": "draft"
+  },
+  "learn.county-government.who-fills-a-commissioners-seat-that": {
+   "en": "Who fills a commissioner&rsquo;s seat that falls vacant?",
+   "es": "¿Quién ocupa el cargo de un comisionado que queda vacante?",
    "state": "draft"
   },
   "learn.county-government.who-sets-the-county-officers-pay": {

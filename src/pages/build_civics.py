@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.88
+# GRANITE_VERSION: 2026-09-08.89
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -642,6 +642,15 @@ def record_figures(site, root=Path(".")):
                 house[(h.get("county"), h.get("district"))] = h
     ordinary = [h for h in house.values() if not h.get("floterial")]
     seats = sum(h.get("seats") or 1 for h in house.values())
+    # SILENCE IS NOT SUCCESS: County Government's cards count each county's
+    # seats by its name (co_seats_<county>), so a district whose county is
+    # spelled other than civics.COUNTY_RULES spells it would quietly leave
+    # a county short. Every seat is in one of the ten, or the build stops.
+    stray = sorted({str(co) for co, _d in house if co not in civics.COUNTY_RULES})
+    if stray:
+        raise SystemExit(f"districts.json names House districts in {', '.join(stray)}, which is none "
+                         "of civics.COUNTY_RULES' ten counties; County Government's cards would "
+                         "count them nowhere")
     sitting = sum(1 for m in _load(Path(site) / "legislators.json", []) if m.get("chamber") == "H")
 
     # How many members each House roll call of the term recorded, voting or not.
@@ -770,6 +779,14 @@ def record_figures(site, root=Path(".")):
                              if (m.get("email") or "").strip()),
         "floterial_seats": sum(h.get("seats") or 1 for h in house.values()
                                if h.get("floterial")),
+        # Each county's state representatives and House districts, floterials
+        # among them, for County Government's card of that county
+        # (civics.county_cards): its county convention, counted from the map
+        # rather than typed.
+        **{f"co_seats_{c.lower()}": sum(h.get("seats") or 1 for (co, _d), h in house.items() if co == c)
+           for c in civics.COUNTY_RULES},
+        **{f"co_dists_{c.lower()}": sum(1 for (co, _d) in house if co == c)
+           for c in civics.COUNTY_RULES},
         # How many places -- towns and city wards, 320 of them -- have more
         # than one state representative, whether from a district of several
         # seats, a floterial over it, or both. The page used to explain this
@@ -2576,7 +2593,8 @@ def article_page_lang(t, lang, base, figures, names=None, con=None):
     w = Words(lang, t["slug"])
     english = G.reused(G.topic_body(t))
     body = w.h(english)
-    body = body.replace(G.SHORTHAND_SLOT, civics.shorthand_table(lang))
+    body = (body.replace(G.SHORTHAND_SLOT, civics.shorthand_table(lang))
+            .replace(civics.COUNTY_SLOT, civics.county_cards(lang)))
     body = fill(body, figures)
     if names is not None:
         body = suffixed(body, names)
@@ -2672,7 +2690,8 @@ def learn_page_lang(t, lang, base, figures, topics, open_=(), names=None, con=No
     page = learn_href(t["slug"])
     w = Words(lang, t["slug"])
     english = G.reused(G.topic_body(t))
-    body = w.h(english).replace(G.SHORTHAND_SLOT, civics.shorthand_table(lang))
+    body = (w.h(english).replace(G.SHORTHAND_SLOT, civics.shorthand_table(lang))
+            .replace(civics.COUNTY_SLOT, civics.county_cards(lang)))
     body = fill(body, figures)
     if names is not None:
         body = suffixed(body, names)
