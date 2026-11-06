@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.758
+# GRANITE_VERSION: 2026-09-04.759
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -68818,6 +68818,155 @@ def _drawn_pages():
     return "ok", (f"{len(drawn)} pages and tabs drawn without an error: {len(records)} records "
                   f"at their own address and each tab's, and {len(DP.LISTS)} pages that draw "
                   "part of themselves")
+
+
+# The harness of _same_number_one_bill: app.js as the bill search, two bills
+# of one number in two terms (rows.json, records.json beside it), the page
+# opened at process.argv[2] ("?q=HB703", or with a term), All Terms chosen,
+# and then the steps in process.argv[3] -- "click:<year>" (a result's number,
+# clicked as a reader clicks it), "back" (to the list) and "forward:<year>"
+# (to the entry focusBill pushed for that year's bill). After each, what the
+# page drew, the address it pushed and the records it asked for, as JSON.
+_SAME_NUMBER_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+const rows = JSON.parse(fs.readFileSync("./rows.json", "utf8"));
+const recs = JSON.parse(fs.readFileSync("./records.json", "utf8"));
+const terms = [...new Set(rows.map(r => r.term))].sort().reverse();
+const [, , start, steps] = process.argv;
+location.pathname = "/bills"; location.search = start; location.href = "https://x/bills" + start;
+const docOn = {}, winOn = {};
+document.addEventListener = (t, f) => (docOn[t] = docOn[t] || []).push(f);
+globalThis.addEventListener = (t, f) => (winOn[t] = winOn[t] || []).push(f);
+const pushed = [];
+history.pushState = (s, _t, u) => { pushed.push(String(u)); history.state = s;
+  const p = new URL(String(u), "https://x"); location.pathname = p.pathname; location.search = p.search; };
+history.replaceState = (s, _t, u) => { if (u) { const p = new URL(String(u), "https://x");
+  location.pathname = p.pathname; location.search = p.search; } };
+let asked = [];
+const ok = v => ({ok: true, status: 200, json: async () => v, text: async () =>
+  typeof v === "string" ? v : JSON.stringify(v)});
+globalThis.fetch = async u => { const p = new URL(u, "https://x").pathname.replace(/\.html$/, ""); asked.push(p);
+  if (p === "/meta.json") return ok({terms});
+  const m = /^\/idx\/(.+)\.json$/.exec(p);
+  if (m && terms.includes(decodeURIComponent(m[1]))) return ok(rows.filter(r => r.term === decodeURIComponent(m[1])));
+  if (p in recs) return ok('<script type="application/json" id="gr-data">' + JSON.stringify(recs[p]) + "</script>");
+  return {ok: false, status: 404, statusText: "Not Found", json: async () => { throw new Error(p + " 404"); },
+          text: async () => ""}; };
+globalThis.DOMParser = class { parseFromString(h) {
+  const m = /id="gr-data">([\s\S]*?)<\/script>/.exec(h);
+  return {getElementById: id => (id === "gr-data" && m ? {textContent: m[1]} : null),
+          querySelector: () => null}; } };
+const ticks = async n => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+const errs = []; process.on("unhandledRejection", e => errs.push(String((e && e.message) || e)));
+// A plain left click on a result's number: the target is the link, inside
+// the card whose data-id is the bare number, as cardHtml draws them.
+const click = year => { const row = rows.find(r => String(r.year) === year);
+  const card = {dataset: {id: row.id}};
+  const link = {getAttribute: k => (k === "href" ? `bill/${year}/${row.id.toLowerCase()}.html` : null),
+                closest: s => (s === ".card" ? card : null), dataset: {}};
+  const target = {dataset: {}, closest: s => (s === "a.cnum" ? link : null), getAttribute: () => null};
+  (docOn.click || []).forEach(f => f({target, button: 0, metaKey: false, ctrlKey: false, shiftKey: false,
+                                      altKey: false, preventDefault(){}, stopPropagation(){}})); };
+(async () => {
+  try { (0, eval)(fs.readFileSync("./page.js", "utf8")); }
+  catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+  await ticks(40);
+  const year = document.querySelector("#year"); year.value = "all";
+  year.fire("change", {target: year}); await ticks(60);
+  const out = [];
+  for (const step of steps.split(",")) {
+    asked = []; const was = pushed.length;
+    const [what, y] = step.split(":");
+    if (what === "click") click(y);
+    else if (what === "back") { location.pathname = "/bills"; history.state = null;
+      (winOn.popstate || []).forEach(f => f({state: null})); }
+    else if (what === "forward") { const row = rows.find(r => String(r.year) === y);
+      location.pathname = `/bill/${y}/${row.id.toLowerCase()}`;
+      (winOn.popstate || []).forEach(f => f({state: {focus: row.id, term: row.term}})); }
+    await ticks(60);
+    out.push({step, html: document.querySelector("#results").innerHTML, pushed: pushed.slice(was), asked});
+  }
+  process.stdout.write("\n@@" + JSON.stringify({out, errs}));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "two bills of one number in two terms stay two: with All Terms chosen, the "
+                   "result clicked opens that bill -- its head, its record, its address -- in "
+                   "either order, whichever term's index arrived first, and on Back and Forward")
+def _same_number_one_bill():
+    """THE OWNER'S HB 703 (6 November 2026). With All Terms chosen, HB 703
+    is two bills: 2020's on prescription drugs (Rep. Edward Butler, Chapter 4
+    of 2020) and 2025's on school meals (Rep. Hope Damon). The list knows a
+    bill by its number, and with every term in the index the number named
+    both: clicking the "(2020)" result opened 2025's bill at
+    /bill/2025/hb703, and with 2019-2020's index arrived first the head was
+    2025's over 2020's record, rail and summary, with no Testify -- what the
+    owner saw. focusBill now opens the bill in the term of the link clicked,
+    holding the reader's own until the bill is closed.
+
+    Run in node over two rows of one number, each with its own record, each
+    marked in what the head draws (the row's title and sponsor) and what the
+    body draws (the record's title, narrative and first event): with All
+    Terms chosen, a click on each result in both orders, from the newest
+    term's index first and from the older's, Back to the list between them,
+    and Forward to an entry pushed for the older bill. Every step must draw
+    the bill clicked and none of the other, push that bill's own address and
+    ask for that bill's record only; Back must draw the list of both again."""
+    built = _fixture_site_shared()[0] / "site"
+    row0 = json.loads((built / "idx" / "2025-2026.json").read_text(encoding="utf-8"))[0]
+    page = (built / "bill" / str(row0["year"]) / f"{row0['id'].lower()}.html").read_text(encoding="utf-8")
+    rec0 = json.loads(re.search(r'id="gr-data">(.*?)</script>', page, re.S).group(1))
+    marks = {"2025": "MEALS", "2020": "DRUG"}
+    rows, recs = [], {}
+    for year, term, n, sponsor in (("2025", "2025-2026", "HB 703-FN-A-LOCAL", "Hope Damon"),
+                                   ("2020", "2019-2020", "HB 703-FN", "Edward Butler")):
+        mk = marks[year]
+        rows.append(dict(row0, id="HB703", n=n, year=int(year), term=term,
+                         title=f"{mk}-ROW title", sponsor=sponsor,
+                         sponsor_label=f"Rep. {sponsor} {mk}-ROW"))
+        events = [dict(e, text=f"{mk}-REC event {i}") for i, e in enumerate(rec0.get("events") or [])] \
+            or [{"date": f"{year}-01-03", "text": f"{mk}-REC event 0", "routine": False}]
+        recs[f"/bill/{year}/hb703"] = dict(rec0, id="HB703", year=int(year), term=term,
+                                           title=f"{mk}-REC title", narrative=f"{mk}-REC narrative",
+                                           events=events)
+    files = {"rows.json": json.dumps(rows), "records.json": json.dumps(recs)}
+    plans = (("?q=HB703", "click:2020,back,click:2025"),
+             ("?q=HB703", "click:2025,back,click:2020,back,forward:2020"),
+             ("?term=2019-2020&q=HB703", "click:2025,back,click:2020"))
+    bad, steps = [], 0
+    for start, plan in plans:
+        run = _node_app(_SAME_NUMBER_HARNESS, files=files, args=(start, plan))
+        if run is None:
+            return "skip", "app.js, dom_stub.js or node is not here"
+        if run["errs"]:
+            bad.append(f"from {start}, {plan}: left unhandled: {run['errs'][:2]}")
+        for got in run["out"]:
+            steps += 1
+            what, _, y = got["step"].partition(":")
+            html, where = got["html"], f"from /bills{start}, {plan}, at {got['step']}"
+            if what == "back":
+                if not all(f"{m}-ROW" in html for m in marks.values()):
+                    bad.append(f"{where}: the list of both bills is not drawn again under All Terms")
+                continue
+            other = next(o for o in marks if o != y)
+            for part in ("ROW", "REC"):
+                if f"{marks[y]}-{part}" not in html:
+                    bad.append(f"{where}: the {y} bill's {'head' if part == 'ROW' else 'record'} "
+                               "is not drawn")
+                if f"{marks[other]}-{part}" in html:
+                    bad.append(f"{where}: the {other} bill's {'head' if part == 'ROW' else 'record'} "
+                               "is drawn")
+            if what == "click" and not (len(got["pushed"]) == 1
+                                        and got["pushed"][0].endswith(f"/bill/{y}/hb703")):
+                bad.append(f"{where}: pushed {got['pushed']}, not /bill/{y}/hb703")
+            if f"/bill/{other}/hb703" in got["asked"]:
+                bad.append(f"{where}: asked for the {other} bill's record: {got['asked']}")
+    assert not bad, f"{len(bad)} wrong:\n  " + "\n  ".join(bad[:8])
+    return "ok", (f"HB 703 of 2020 and of 2025 under All Terms: {steps} steps over {len(plans)} "
+                  "orders, each drawing, pushing and fetching only the bill clicked, Back drawing "
+                  "both again")
 
 
 # The harness of _no_index_off_the_list: app.js loaded as one kind of page,

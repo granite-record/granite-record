@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.263
+// GRANITE_VERSION: 2026-09-07.264
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -10816,6 +10816,23 @@ function render(more){
 function focusBill(id,href){
   focusY=window.scrollY;
   savePlace(focusY);
+  // THE BILL CLICKED, IN ITS OWN TERM (6 November 2026). A number is a bill
+  // only within a term: under All Terms, HB 703 is 2020's prescription-drug
+  // bill and 2025's school-meals bill, and everything that finds the open
+  // bill finds it by its number in the term chosen. With All Terms chosen,
+  // yearOf fell back to the HB 703 whose term's index arrived first and the
+  // head to the first in the list's order, so the "(2020)" result opened
+  // 2025's bill at /bill/2025/hb703, or the 2025 head over 2020's record (the
+  // owner's report). The link's own year says which was clicked; while it is
+  // open the term is its own -- as an address naming it already makes it,
+  // and as THE OPEN BILL KEEPS ITS OWN TERM says of the picker -- and the
+  // term the reader chose is held and put back when it is closed (unfocus).
+  const hy=/(?:^|\/)bill\/(\d{4})\//.exec(href||"");
+  const own=hy&&IDX.find(b=>b.id===id&&String(b.year)===hy[1]);
+  if(own&&own.term&&own.term!==term){
+    if(heldTerm===null)heldTerm=term;
+    term=own.term;
+  }
   focused=id;
   // /bill/2026/hb1123 -- the address a person would paste, and the same
   // shape a legislator's page uses.
@@ -10828,7 +10845,9 @@ function focusBill(id,href){
   // open, so reloading the clean address reopens exactly this view.
   const _y=yearOf(id);
   if(_y){
-    try{history.pushState({focus:id},"",
+    // The entry names the bill's term too, so Back and Forward open this
+    // bill and not another of its number (the popstate handler, below).
+    try{history.pushState({focus:id,term},"",
       `${BASE}bill/${_y}/${id.toLowerCase()}`);}catch(_){}
     addressed();
   }
@@ -10965,9 +10984,15 @@ window.addEventListener("popstate",e=>{
   const was=STOOD;
   addressed();
   if(f){
+    // An entry focusBill pushed names the bill's term: back in it, with the
+    // reader's own term held as focusBill held it, before the number is
+    // looked up (THE BILL CLICKED, IN ITS OWN TERM).
+    const t=e.state.term;
+    const moved=!!t&&t!==term&&IDX.some(b=>b.id===f&&b.term===t);
+    if(moved){if(heldTerm===null)heldTerm=term;term=t;}
     // Back from a place on the bill's page to the entry that opened it: the
     // bill is already drawn, and the browser puts the scroll back itself.
-    if(focused!==f){focused=f;openBill(f);window.scrollTo(0,0);}
+    if(focused!==f||moved){focused=f;openBill(f);window.scrollTo(0,0);}
     return;
   }
   if(!focused||was===STOOD||BILL_PATH.test(location.pathname))return;
