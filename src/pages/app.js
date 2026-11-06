@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.270
+// GRANITE_VERSION: 2026-09-07.271
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -6946,15 +6946,19 @@ function dropFocusActions(){
   const a=document.getElementById("pageacts");
   if(a&&a.dataset.focus)a.remove();
 }
+// KEPT UNDER THE BILL, NOT ITS NUMBER: its year and number, as the record is
+// (dkey). Under the number alone, history taken straight from 2025's HB 703
+// to 2020's drew 2020's record under 2025's Cite and Report, since the row
+// for "HB703" was already up (the review of 6 November 2026).
 function focusActions(id){
-  if(window.GR_STANDALONE||PAGE||focusActs===id)return;
+  const y=yearOf(id), k=`${y}/${id}`;
+  if(window.GR_STANDALONE||PAGE||focusActs===k)return;
   dropFocusActions();
-  const y=yearOf(id);
   if(!y||document.getElementById("pageacts")||typeof fetch!=="function"||typeof DOMParser==="undefined")return;
-  focusActs=id;
+  focusActs=k;
   const path=`bill/${y}/${String(id).toLowerCase()}`;
   fetch(`${BASE}${path}.html`).then(r=>r.ok?r.text():Promise.reject(r.status)).then(html=>{
-    if(focusActs!==id||focused!==id||document.getElementById("pageacts"))return;
+    if(focusActs!==k||focused!==id||document.getElementById("pageacts"))return;
     const doc=new DOMParser().parseFromString(html,"text/html");
     const acts=doc.getElementById("pageacts");
     if(!acts)return;
@@ -6976,7 +6980,7 @@ function focusActions(id){
     // own term, and nobody else's: this hands it the number alone.
     mountTestify({id,n:id},detail[dkey(id)]);
     placeActions();
-  }).catch(()=>{if(focusActs===id)focusActs=null;});
+  }).catch(()=>{if(focusActs===k)focusActs=null;});
 }
 // The row, out of the record before the record is drawn again, and into the
 // head once it is drawn. The template's hidden <h1> gives way to the head's.
@@ -10790,7 +10794,17 @@ function render(more){
   // temporal dead zone until this line runs, so reading fb above it threw
   // "Cannot access 'fb' before initialization" and took the whole of render()
   // with it. The page loaded, the data loaded, and nothing listed.
-  const fb=focused?(rows.find(b=>b.id===focused)||IDX.find(b=>b.id===focused)):null;
+  //
+  // AND IT IS THE BILL ITS RECORD IS: the row of the year yearOf gives, which
+  // is the year of the record fetched (dkey) and of the address pushed, and
+  // not merely the first of its number. A search typed with 2020's HB 703
+  // open leaves it out of the list, and Back to it drew the first HB 703 in
+  // the index -- 2025's, where that term's index arrived first -- over 2020's
+  // record: the owner's page of 6 November 2026, by another road (that day's
+  // review).
+  const fy=focused?yearOf(focused):"";
+  const isFb=b=>b.id===focused&&(!fy||String(b.year)===fy);
+  const fb=focused?(rows.find(isFb)||IDX.find(isFb)):null;
   document.querySelector(".shell").classList.toggle("focused",!!fb);
   const shown=fb?[fb]:rows.slice(0,SHOWN);
   // WHAT AN LSR IS, in front of the list rather than behind a link, because
@@ -11345,7 +11359,13 @@ document.addEventListener("click",e=>{
         .catch(()=>{VTEXT[a.text_url]=null;repaint();});
     }
     render();return;}
-  const jt=e.target.closest("[data-term]");
+  // THE TERM BUTTONS AND NOTHING ELSE: "exists in the X term" and the
+  // requests' offer are button.link[data-term]. A glossary mark is a
+  // span[data-term] too, with its tooltip inside it (components.js, arm), and
+  // a click on the tooltip's words set the term to "FN" -- an empty picker,
+  // idx/FN.json asked for, and the open bill drawn as another of its number
+  // (the review of 6 November 2026).
+  const jt=e.target.closest("button[data-term]");
   // Its bills fetched first where they are not here yet: a request's
   // number is offered next session's requests (requestOffer), which no
   // search has loaded.

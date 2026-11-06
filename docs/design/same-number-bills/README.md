@@ -38,3 +38,40 @@ Not shown, and checked the same way: Back returns to the All Terms list of every
 terms have one), and clicking the 2025 result then opens 2025's bill. The owner's case, 2025's
 heading over 2020's record, is reproduced in preflight's `_same_number_one_bill`, which draws the
 page in node from either term's bills arriving first.
+
+## The same page by other roads (the follow-up, `fix/bill-same-number-2`)
+
+The review of 6 November found three more ways to two bills on one page. All three were on the
+live site before the fix above. Each is now closed, on `fix/bill-same-number-2` and on
+`hotfix/same-number-bills` alike:
+
+- **A search typed, then Back.** The page found the open bill by its number when the list on screen
+  did not hold it. Now it finds the bill of the record's own year.
+- **A click on the words of a glossary tooltip.** The tooltip's FN mark was taken for a button
+  that changes the term. Now only those buttons change it.
+- **Back straight from one HB 703 to the other** through the Back button's list of pages. The page
+  kept the first bill's Cite and Report. They are now kept under the bill's year as well as its
+  number.
+
+In these shots, **before** is the live site with the `app.js` of `dd3f7ef9`, which has the fix
+above, served in its place; **after** is the same with this follow-up's `app.js`.
+
+### 3. A search typed, then Back (`c5`–`c8`)
+
+The "(2020)" result's number clicked, `HB1` typed in the box and Return pressed, then the
+browser's Back. `c5`, before: the address is `/bill/2020/hb703` and the record under it is 2020's
+(Rep. Edward Butler, Chapter 4, Laws of 2020, the prescription-drug analysis). But the heading,
+trail, committee and subject are 2025's: HB 703-FN-A-LOCAL, school meals, 2025–2026 Term, House
+Education Funding. That is the owner's page, reached another way. `c6`, after: 2020's bill, whole.
+`c7` and `c8` are the same at 390 pixels.
+
+### 4. A click inside a glossary tooltip (`c9`, `c10`)
+
+The "(2020)" result opened, the FN in its heading clicked to open its tooltip, then the tooltip's
+words clicked. `c9`, before: the picker goes blank, and the page turns to 2025's bill (Rep. Hope
+Damon) at 2020's address, with its record still loading. `c10`, after: the tooltip stays open and
+nothing else changes.
+
+Not shown: the jump between the two bills, and an address that names one with a search for
+another (`/bills?q=HB1&term=all#2020/HB703`). Both are in `_same_number_one_bill`, which now walks
+32 steps over 10 orders.
