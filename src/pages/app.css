@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.341 */
+/* GRANITE_VERSION: 2026-09-07.342 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -7396,6 +7396,25 @@ border-radius:var(--r-in);background:var(--surface);font-size:var(--t-ui)}
      Follow before it (shell.still_moving), which keeps the row two to a
      line around it: Cite and Follow, Testify, Print and Share, Report. */
   .racts .pageacts > .tliverow{grid-column:1 / -1}
+}
+/* ON A DESKTOP, A PANE OPENS TO THE LEFT OF ITS BUTTON (the owner, 6
+   November 2026). Where the actions are the head's right-hand column, a
+   pane hung from the stack's foot read as disconnected from the button that
+   opened it. So above a phone's width each button is what its pane is
+   measured from: the pane's top level with the button's, its right edge a
+   gap short of the column, over the room between the title and facts and
+   the buttons -- never over the button that opened it. Every page whose head
+   carries the column (components.record_head, app.js billHead) opens them so:
+   a bill's, a member's, a committee's, a session day's. On a phone, where the
+   buttons are a row under the head, they open below as before. The width
+   leaves the column, the gap and the page's gutters: 22rem of the window. */
+@media (min-width:45.0625em){
+  /* each by name: Testify's sits in its own box (app.js mountTestify) */
+  .racts :is(.pcite,.follow,.testify,.report){position:relative}
+  .racts :is(.followpane,.citebody,.testifypane),.racts .report > .reportform{
+    top:0;right:calc(100% + var(--sp-5));left:auto;
+    width:min(36rem,calc(100vw - 22rem))}
+  .racts .citebody{width:min(42rem,calc(100vw - 22rem))}
 }
 
 /* THE TABS HANG FROM THE HEAD'S FOOT (the kit's part 9): a strip on a 2px

@@ -80134,6 +80134,41 @@ def _home_finder_suggests_towns():
                   "no finder of towns beside it")
 
 
+@check("frontend", "on a desktop a head's action pane opens to the left of its button, level with it; "
+                   "on a phone below the row, as before")
+def _panes_open_left():
+    """The owner, 6 November 2026: a pane hung from the actions' foot read as
+    disconnected from the button that opened it. Above a phone's width, where
+    the actions are the head's right-hand column (.racts), each button is
+    what its pane is measured from: top 0, right a gap past the column's left
+    edge, its width the window less the column and the gutters -- Cite's,
+    Testify's, Follow's and Report a problem's. The phone's rule, at 45em,
+    is not touched, and the two widths do not overlap. Measured in a browser
+    at 1024, 1280 and 1440 on a bill and a session day (the branch's notes):
+    on screen, no sideways scroll, never over its own button."""
+    css = Path(_paths.locate("app.css")).read_text(encoding="utf-8")
+    blocks = [b for b in re.findall(r"@media \(min-width:45\.0625em\)\{\n(.*?)\n\}", css, re.S)
+              if ".racts" in b]
+    assert len(blocks) == 1, f"{len(blocks)} rules above a phone's width place the head's panes, not one"
+    body = blocks[0]
+    # each by name: Testify's details sits in a box of its own (mountTestify), so a
+    # rule on the row's children missed it and its pane stood at the row's top
+    assert ".racts :is(.pcite,.follow,.testify,.report){position:relative}" in body, (
+        "a head's pane is not measured from its own button above a phone's width")
+    rule = re.search(r"\.racts :is\(\.followpane,\.citebody,\.testifypane\),\.racts \.report > \.reportform\{([^}]*)\}",
+                     body)
+    assert rule and "top:0" in rule.group(1) and re.search(r"right:calc\(100% \+ var\(--sp-\d\)\)", rule.group(1)) \
+        and "left:auto" in rule.group(1), (
+        f"a head's pane does not open to the left of its button, level with it: {rule and rule.group(1)!r}")
+    # the phone's breakpoint is 45em, max; the desktop's starts just past it
+    assert "@media (max-width:45em){\n  .rhead{" in css, "the head's phone breakpoint moved: move the desktop's with it"
+    phone = css[css.index("@media (max-width:45em){\n  .rhead{"):]
+    phone = phone[:phone.index("\n}\n")]
+    assert "citebody" not in phone and "testifypane" not in phone, (
+        "the phone's rule now places the panes too: say which wins")
+    return "ok", "above 45em each pane at its button's top, to its left; at 45em and under, below as before"
+
+
 @check("frontend", "Follow's, Cite's and Testify's panes, opened below the fold, are brought into view")
 def _panes_into_view():
     """The webinar's phone check (16 October 2026): on a phone with the action
