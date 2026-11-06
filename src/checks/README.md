@@ -31,7 +31,11 @@ Scripts that write no record and no page, only a verdict or a report:
 - a How-To guide's or Learn page's every word beside its evidence
   (`fact_sheet`: the claims ledger, the figures and their statute words, and
   any contact detail no claim records), for the reader who checks that a page
-  says nothing its sources do not.
+  says nothing its sources do not;
+- which guide claims a fresh reading of the state's pages may have overtaken,
+  guide by guide in the checking order (`recheck_sources`: reads the folder
+  `state_sources.py down` fills; `docs/SOURCE_RECHECK.md` says how the list
+  is worked).
 
 Run by: the night (`check_site`, `check_live`, `gc_changes`), `publish.bat`
 (`check_site`, `check_live`), and a person (`rendered_sweep` before a front-end
