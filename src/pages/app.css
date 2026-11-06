@@ -7421,13 +7421,21 @@ border-radius:var(--r-in);background:var(--surface);font-size:var(--t-ui)}
    The button draws it (summary::after), not the pane, whose own overflow
    (Cite's scrolls) would clip it; it stands clear of the button. */
 /* each by name: Testify's sits in its own box (app.js mountTestify) */
-.racts :is(.pcite,.follow,.testify,.report){position:relative;--nub:.875rem}
+/* The nub in px, as the gap is: in rem a large default text grew it into the
+   button (the review of 6 November 2026, 24px text). 14px turned reaches
+   9.9px; the gap is 12px. */
+.racts :is(.pcite,.follow,.testify,.report){position:relative;--nub:14px}
 /* Drawn turned and hidden, and shown while open: a nub, not an opener's
    mark, so nothing turns when the button opens. */
 .racts :is(.pcite,.follow,.testify,.report) > summary::after{content:"";display:none;position:absolute;z-index:21;
   width:var(--nub);height:var(--nub);box-sizing:border-box;background:var(--surface);
   border:0 solid var(--rule-2);transform:rotate(45deg);pointer-events:none}
 .racts :is(.pcite,.follow,.testify,.report)[open] > summary::after{display:block}
+/* In forced colours, the pane's own: its ground and its border. */
+@media (forced-colors:active){
+  .racts :is(.pcite,.follow,.testify,.report) > summary::after{forced-color-adjust:none;
+    background:Canvas;border-color:CanvasText}
+}
 @media (min-width:45.0625em){
   .racts :is(.followpane,.citebody,.testifypane),.racts .report > .reportform{
     top:0;right:calc(100% + var(--sp-5));left:auto;
@@ -7444,8 +7452,13 @@ border-radius:var(--r-in);background:var(--surface);font-size:var(--t-ui)}
   .racts :is(.followpane,.citebody,.testifypane),.racts .report > .reportform{
     top:calc(100% + var(--sp-5));left:var(--pl,0);right:auto;width:var(--pw,calc(100vw - 28px));
     box-shadow:0 -10px 0 var(--paper)}
+  /* the pressed button above the band, so its focus ring, 2-4px under it,
+     is not cut by it (the review of 6 November 2026) */
+  .racts :is(.pcite,.follow,.testify,.report)[open] > summary{position:relative;z-index:22}
   .racts :is(.pcite,.follow,.testify,.report)[open] > summary::after{
-    top:calc(100% + var(--sp-5) - var(--nub) / 2);left:calc(50% - var(--nub) / 2);
+    /* measured from the button's padding box, inside its 1px border: the 1px
+       puts the nub's middle on the pane's edge */
+    top:calc(100% + 1px + var(--sp-5) - var(--nub) / 2);left:calc(50% - var(--nub) / 2);
     border-top-width:1px;border-left-width:1px}
 }
 

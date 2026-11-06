@@ -77390,6 +77390,10 @@ def _testify_box_senate():
     inHouse: box([st("hearing", "2000-01-13", "S", "Finance")],
                  {rail: [{stop: "Introduced", mark: "p"}, {stop: "Senate", mark: "p"}, {stop: "House", mark: "h"},
                          {stop: "Governor", mark: "-"}, {stop: "Law", mark: "-"}]}),
+    // and on the House's table, the owner's second case of the same line
+    tabledInHouse: box([st("hearing", "2000-01-13", "S", "Finance")],
+                 {rail: [{stop: "Introduced", mark: "p"}, {stop: "Senate", mark: "p"}, {stop: "House", mark: "t"},
+                         {stop: "Governor", mark: "-"}, {stop: "Law", mark: "-"}]}),
   };
 })()""", names=("testifyButton", "sittingTerm"))
     if got is None:
@@ -77415,6 +77419,9 @@ def _testify_box_senate():
     # in the House already, unheard there: the owner's shorter line (6 November 2026)
     assert "They may open again if the House holds its own public hearing." in said["inHouse"] \
         and "goes to" not in said["inHouse"], f"a Senate bill now in the House is told: {said['inHouse']!r}"
+    assert "They may open again if the House holds its own public hearing." in said["tabledInHouse"] \
+        and "goes to" not in said["tabledInHouse"], (
+        f"a Senate bill on the House's table is told: {said['tabledInHouse']!r}")
     assert got["old"] == "", "a bill of an earlier term has a Testify button"
     return "ok", ("a Senate hearing is a public hearing, past or ahead; \"may open again\" only while one "
                   "chamber has heard it; an ended bill and an earlier term as before")
@@ -80171,8 +80178,10 @@ def _panes_open_left():
     bill and a session day (the branch's notes)."""
     css = Path(_paths.locate("app.css")).read_text(encoding="utf-8")
     js = Path(_paths.locate("app.js")).read_text(encoding="utf-8")
-    shared = ".racts :is(.pcite,.follow,.testify,.report){position:relative;--nub:.875rem}"
-    assert shared in css, "a head's pane is not measured from its own button, or its nub has no size"
+    # the nub in px, as the gap is: in rem a large default text grew it into
+    # the button (the review of 6 November 2026)
+    shared = ".racts :is(.pcite,.follow,.testify,.report){position:relative;--nub:14px}"
+    assert shared in css, "a head's pane is not measured from its own button, or its nub has no size in px"
     # drawn turned and hidden, shown while open: nothing turns as it opens,
     # so the openers' check does not take it for an opener's mark
     nub = re.search(r"\.racts :is\(\.pcite,\.follow,\.testify,\.report\) > summary::after\{([^}]*)\}", css)
@@ -80207,16 +80216,26 @@ def _panes_open_left():
     p, pn = pane_of(phone), nub_of(phone)
     assert p and "top:calc(100% + var(--sp-5))" in p.group(1) and "left:var(--pl,0)" in p.group(1) \
         and "width:var(--pw," in p.group(1), f"on a phone a pane does not open under its button: {p and p.group(1)!r}"
-    assert pn and "top:calc(100% + var(--sp-5) - var(--nub) / 2)" in pn.group(1) \
+    # from the lifted button's padding box, inside its 1px border
+    assert pn and "top:calc(100% + 1px + var(--sp-5) - var(--nub) / 2)" in pn.group(1) \
         and "left:calc(50% - var(--nub) / 2)" in pn.group(1) \
         and "border-top-width:1px;border-left-width:1px" in pn.group(1), (
         f"on a phone the nub is not on the pane's top edge at the button's middle: {pn and pn.group(1)!r}")
+    # on a phone the pressed button stands above the band of ground over the
+    # gap, so the band does not cut its focus ring (the review of 6 November)
+    assert ".racts :is(.pcite,.follow,.testify,.report)[open] > summary{position:relative;z-index:22}" in phone, (
+        "on a phone the band over the gap cuts the pressed button's focus ring")
+    # in forced colours, the nub in the pane's own system colours
+    assert re.search(r"@media \(forced-colors:active\)\{\s*\.racts :is\(\.pcite,\.follow,\.testify,\.report\) > "
+                     r"summary::after\{forced-color-adjust:none;\s*background:Canvas;border-color:CanvasText\}", css), (
+        "in forced colours the nub takes the button's colours, not the pane's")
     # where the row is, said by the script as the pane opens: on the press,
-    # on the toggle and when the window changes; and nothing else
+    # on the toggle and when the window changes; and nothing else -- it opens,
+    # shuts and focuses nothing
     fn = js[js.index("function placeActPane("):]
     fn = fn[:fn.index("\n}\n")]
-    assert '"--pl"' in fn and '"--pw"' in fn and ".open" not in fn.replace("d.closest", "") \
-        and "focus" not in fn, "placeActPane does more than say where the row is"
+    assert '"--pl"' in fn and '"--pw"' in fn and not re.search(r"open|focus|click", fn), (
+        "placeActPane does more than say where the row is")
     for hook in ('e.target.closest(".racts details > summary");\n  if(s)placeActPane(s.parentElement);\n},true);',
                  'document.addEventListener("toggle",e=>{if(e.target&&e.target.open)placeActPane(e.target);},true);',
                  'window.addEventListener("resize",()=>document.querySelectorAll(".racts details[open]").forEach(placeActPane));'):
