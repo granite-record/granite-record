@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.773
+# GRANITE_VERSION: 2026-09-04.774
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -87268,8 +87268,40 @@ def _live_session(BLS):
             "a morning page was written over the record's page"
         (site / "session/H/today.html").write_text("old", encoding="utf-8")
         (site / "session/H/2026-03-13.json").write_text("{}", encoding="utf-8")   # an old file on the date
+        # The Calendar, which runs before this step, leaves the floor card's
+        # link to the build's day hidden (build_pages.cal_days); the step
+        # shows it once it has written the page, and only that day's.
+        import build_pages as BP
+        import html as _h
+        floor = BP.Meet("2026-03-13", "H", "House Floor", "")
+        slot = {floor: [{"bill": "HB2", "time": "10:00", "what": "floor debate",
+                         "venue": "Representatives Hall", "body": "H"}]}
+
+        def card(sessions, morning):
+            return BP.cal_days({floor.date: [floor]}, slot, {}, {}, {}, lambda d: (d, ""), _h.escape,
+                               sessions=sessions, morning=morning)[0]
+        waiting = card(set(), "2026-03-13")
+        assert 'data-morning="H/2026-03-13" hidden><a data-href="session/H/2026-03-13">' in waiting \
+            and ' href="session/H/2026-03-13' not in waiting \
+            and "did that day" not in waiting, "the Calendar does not leave the morning page's link waiting"
+        assert "data-morning" not in card(set(), "2026-03-12") and "session/H/2026-03-13" not in \
+            card(set(), "2026-03-12"), "a sitting of another day with no page was given a link"
+        assert "did that day" in card({("H", "2026-03-13")}, "2026-03-13") and "data-morning" not in \
+            card({("H", "2026-03-13")}, "2026-03-13"), "a sitting with its record page lost its own link"
+        other = waiting.replace("2026-03-13", "2026-03-20")
+        (site / "calendar/data").mkdir(parents=True)
+        (site / "calendar.html").write_text(waiting + other, encoding="utf-8")
+        (site / "calendar/data/2026-03.json").write_text(json.dumps({"days": {"2026-03-13": waiting}}),
+                                                        encoding="utf-8")
         seen = {}
         BLS.write(site, "https://x.org", D(2026, 3, 13), seen, rows)
+        cal = (site / "calendar.html").read_text(encoding="utf-8")
+        assert 'data-morning="H/2026-03-13"><a href="session/H/2026-03-13">' in cal \
+            and 'data-morning="H/2026-03-20" hidden><a data-href=' in cal, \
+            "the morning page's Calendar link was not shown, or another day's was"
+        assert json.loads((site / "calendar/data/2026-03.json").read_text(encoding="utf-8"))["days"][
+            "2026-03-13"].count('data-morning="H/2026-03-13"><a href=') == 1, "the month's data still hides the link"
+        assert sorted(seen["calendar"]) == ["calendar.html", "calendar/data/2026-03.json"], seen["calendar"]
         assert sorted(seen["mornings"]) == ["H/2026-03-13.html", "S/2026-03-13.html"], seen["mornings"]
         assert not (site / "session/H/today.html").exists(), "the retired today page was kept"
         page = (site / "session/H/2026-03-13.html").read_text(encoding="utf-8")
@@ -87293,8 +87325,8 @@ def _live_session(BLS):
         assert page.index('<script src="/motions.js" defer>') < page.index('<script src="/live.js" defer>'), \
             "motions.js must load before live.js"
         pend = BLS.pending_html({"recommendation": "Ought to Pass", "yeas": 12, "nays": 8}, "HB2", "H")
-        assert pend == ('<p class="lv-pending">Pending: the committee recommends Ought to Pass '
-                        '(<span data-term="OTP">OTP</span>, Pass the bill), 12–8. A special order, a motion '
+        assert pend == ('<p class="lv-pending">Pending: Ought to Pass '
+                        '(<span data-term="OTP">OTP</span>, Pass the bill). A special order, a motion '
                         'to table or a motion to indefinitely postpone can change what the House votes on '
                         'first.</p>'), pend
         assert BLS.pending_html(None, "HB2", "H") == "" and BLS.pending_html({}, "HB2", "S") == "", \
@@ -87475,6 +87507,57 @@ def _live_bill_number(RP):
     none = sum(1 for w in want if not w)
     assert none >= 8, f"only {none} fields name no bill: the procedural cases are not being read"
     return "ok", f"{len(fields):,} bill fields read alike, {none} of them naming no bill"
+
+
+@check("build", "/live's two links, the home page's line and the header search's row, are written by /live's "
+       "own step, once however often it runs, and only while build_live.LINKED (the owner's switch) is on",
+       needs=("build_live", "shell"))
+def _live_links(BL, S):
+    """PATCHES.md 2 and 3 by the release session's plan (5 November 2026):
+    build_pages and build_indexes run before /live exists, so build_pages
+    leaves the home page a slot and /live's step fills it and puts its own
+    row in find.json (shell.find_merge). LINKED off takes both out again,
+    which is how the owner unlinks /live (SWITCH_ON.md)."""
+    import tempfile
+    import datetime as _dt
+    import build_pages as BP
+    src = Path(_paths.locate("build_pages.py")).read_text(encoding="utf-8")
+    assert BL.HOME_SLOT in src, "build_pages no longer leaves the home page's Live Now slot as build_live fills it"
+    day = _dt.date(2026, 3, 12)
+    sched = {"days": {"2026-03-12": [{"id": "a"}, {"id": "b"}], "2026-03-13": []}}
+    with tempfile.TemporaryDirectory() as tmp:
+        site = Path(tmp)
+        home = f"<main><div id=\"session\"></div>\n{BL.HOME_SLOT}\n</main>"
+        (site / "index.html").write_text(home, encoding="utf-8")
+        live = S.canon(BL.PAGE)                       # "live", as the site's other links are written
+        rows = [["page", "Bills", "x", S.canon("bills.html"), ""], ["page", "Live Now", "old", live, ""]]
+        (site / "find.json").write_text(json.dumps(rows), encoding="utf-8")
+        saved = BL.LINKED
+        try:
+            BL.LINKED = True
+            for _ in range(2):
+                BL.link_home(site, sched, day)
+                S.find_merge(site, ["page", "Live Now", "now", S.canon(BL.PAGE), BL.FIND_WORDS], S.canon(BL.PAGE))
+            page = (site / "index.html").read_text(encoding="utf-8")
+            assert page.count('class="lv-home"') == 1 and 'data-day="2026-03-12"' in page \
+                and f'<a href="{live}">Live Now</a><span class="lv-count"> — 2 meetings today</span>' in page, page
+            found = json.loads((site / "find.json").read_text(encoding="utf-8"))
+            assert [r[3] for r in found].count(live) == 1 and found[0] == rows[0] \
+                and found[-1][2] == "now", f"find.json after two runs: {found}"
+            assert "—" not in BL.home_line(sched, _dt.date(2026, 3, 13)), "a day with no meetings has a count"
+            BL.LINKED = False
+            BL.link_home(site, sched, day)
+            S.find_merge(site, None, S.canon(BL.PAGE))
+            assert (site / "index.html").read_text(encoding="utf-8") == home, "LINKED off left the home line"
+            assert json.loads((site / "find.json").read_text(encoding="utf-8")) == rows[:1], \
+                "LINKED off left /live's row in find.json"
+        finally:
+            BL.LINKED = saved
+    assert BL.HOME_SLOT not in BP.home_body("es", False, "", "", "", ""), \
+        "the Spanish home has the English-only Live Now slot"
+    assert BL.HOME_SLOT in BP.home_body("en", False, "", "", "", ""), "the English home has no Live Now slot"
+    return "ok", ("home line and search row filled once in two runs, taken out with LINKED off; LINKED is "
+                  + ("on" if BL.LINKED else "off"))
 
 
 @check("build", "the live session page's In short says a vote as the session page does: motions.js reads "

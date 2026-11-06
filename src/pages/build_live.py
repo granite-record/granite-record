@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.9
+# GRANITE_VERSION: 2026-10-30.10
 """
 Live Now's page and its schedule (the live layer's design, sections 1.2 and
 1.4), written by the night beside the Calendar and from the Calendar's own
@@ -49,6 +49,24 @@ import live_gen as LG
 import shell as S
 
 AHEAD = 4                  # weekdays after today
+# LINKED IS THE OWNER'S SWITCH (workers/live/SWITCH_ON.md, step 5): whether the
+# home page's line and the header search's row lead to /live. /live is built
+# and in the sitemap either way; this decides only whether the site points at
+# it. While False, a run takes out any line or row an earlier run put in.
+LINKED = False
+# The home page's slot, as build_pages.home_body leaves it (PATCHES.md 2),
+# and the whole line this fills it with, matched together so a second run
+# replaces the first's.
+HOME_SLOT = '<p class="lv-home" hidden data-day=""></p>'
+HOME_LINE = re.compile(r'<p class="lv-home"[^>]*>.*?</p>', re.S)
+# A count dated for another day is taken off the line by the reader's own
+# clock, so a missed night never shows yesterday's meetings as today's, and
+# the home page asks nothing for it.
+HOME_JS = ('<script>(function(){var p=document.currentScript.parentNode,'
+           'd=new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York"}).format(new Date());'
+           'if(p.getAttribute("data-day")!==d){var c=p.querySelector(".lv-count");if(c)c.remove();}})();'
+           '</script>')
+FIND_WORDS = "live stream streaming watch video hearing now today"
 SCHEDULE = Path("live") / "schedule.json"
 PAGE = "live.html"
 ADDRESS = "/live.html"
@@ -247,7 +265,44 @@ def write(site, base, today):
     # indexed at its own address, and check_site refuses a page that does
     # and is not listed, which would stop the night.
     S.sitemap_merge(site, base, [base.rstrip("/") + S.canon(ADDRESS)], "/live")
+    link_home(site, sched, today)
+    # THE HEADER SEARCH'S ROW (PATCHES.md 3, by the release session's plan of
+    # 5 November 2026): build_indexes writes find.json before this step, when
+    # /live is not on disk, so this step puts its own row in.
+    S.find_merge(site, ["page", "Live Now",
+                        "Which House and Senate meetings are streaming now, with today's calendar.",
+                        S.canon(PAGE), FIND_WORDS] if LINKED else None, S.canon(PAGE))
     return sched
+
+
+def home_line(sched, today):
+    """The home page's Live Now line for `today` (design section 1.5): the
+    link, and the day's meeting count from the schedule this step wrote;
+    "Live Now" alone on a day with none."""
+    n = len((sched.get("days") or {}).get(today.isoformat()) or [])
+    count = (f'<span class="lv-count"> — {n} meeting{"s" if n != 1 else ""} today</span>'
+             if n else "")
+    return (f'<p class="lv-home" data-day="{today.isoformat()}"><a href="{S.canon(PAGE)}">Live Now</a>'
+            f"{count}{HOME_JS}</p>")
+
+
+def link_home(site, sched, today):
+    """Fill the home page's slot (PATCHES.md 2): build_pages, which runs
+    before the Calendar and so before this step, leaves it empty, and this
+    puts the day's line in, or the empty slot back while LINKED is off.
+    English home only. Returns whether index.html changed; False where it
+    has no slot (a build without the patch)."""
+    f = Path(site) / "index.html"
+    if not f.exists():
+        return False
+    html = f.read_text(encoding="utf-8")
+    if not HOME_LINE.search(html):
+        return False
+    new = HOME_LINE.sub(lambda _m: home_line(sched, today) if LINKED else HOME_SLOT, html, count=1)
+    if new == html:
+        return False
+    f.write_text(new, encoding="utf-8")
+    return True
 
 
 def main():

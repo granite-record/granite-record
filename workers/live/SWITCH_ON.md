@@ -63,8 +63,7 @@ owner's word, and each is undone by reverting it.
 
 | Link | Where | Whose word |
 |---|---|---|
-| The home page's line, "Live Now — N meetings today" | `build_pages` leaves the marker, `build_live` fills it (PATCHES.md 2) | **owner's** |
-| The site search's row for Live Now | `build_live` merges its own row into `find.json` (PATCHES.md 3) | **owner's** |
+| The home page's line, "Live Now — N meetings today", and the header search's row for Live Now | one switch: `LINKED = True` in `src/pages/build_live.py` (with its version stamp). `build_pages` leaves the home page a slot and `build_live` fills it, and puts its own row in `find.json`; while `LINKED` is `False` it takes both out (PATCHES.md 2 and 3) | **owner's** |
 | The committee pages' player | `live_hook.place` in the committee builders (PATCHES.md 11) | **owner's** |
 | The live votes file's documentation, For Developers | `live_docs.PUBLIC = True` (live/docs) | **owner's** |
 

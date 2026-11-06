@@ -20,6 +20,13 @@ the nightly, so who applies it is the manager's call.
 
 ## 2. build_pages.home_body: the home line (design section 1.5)
 
+**Built on live/session (6 November 2026), by the release session's plan of
+5 November.** build_pages runs before /live exists, so `home_body` leaves the
+English home an empty slot, `<p class="lv-home" hidden data-day=""></p>`,
+and build_live fills it from its own schedule (`link_home`) while
+`build_live.LINKED` is on, the owner's switch (SWITCH_ON.md 5). preflight's
+`_live_links` holds it. What follows is the line as first proposed.
+
 Under #session (Recent Session Days), one line:
 
     <p class="lv-home" data-day="2027-01-07"><a href="/live">Live Now</a><span class="lv-count"> — 7 meetings today</span></p>
@@ -33,7 +40,10 @@ Under #session (Recent Session Days), one line:
 
 ## 3. build_indexes.py: the find.json row
 
-If /live exists in site/:
+**Built on live/session (6 November 2026), not in build_indexes:** /live is
+not on disk when build_indexes runs, so build_live puts its own row in
+through `shell.find_merge` (one row per address, however often it runs) while
+`LINKED` is on, and takes it out while it is off. As first proposed:
 
     ["page", "Live Now", "Which House and Senate meetings are streaming now, with today's calendar.",
      S.canon("live.html"), "live stream streaming watch video hearing now today"]

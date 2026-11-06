@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.6
+# GRANITE_VERSION: 2026-10-30.7
 """
 The session days' side of the live layer (design sections 4.2 to 4.4),
 written by the night after the session-day pages:
@@ -307,8 +307,8 @@ PENDING_CAN = ("A special order, a motion to table or a motion to indefinitely p
 def pending_html(rec, bill, body):
     """The motion a bill not yet voted on stands on: the committee majority's
     recommendation, in votes.json's words for the motion (components.
-    vote_head, as a vote's head on the session page), with its tally, and
-    what can change what the chamber takes up first (the owner, 30 October
+    vote_head, as a vote's head on the session page), and what can change
+    what the chamber takes up first (the owner, 30 October
     2026; the wording the manager's, 30 October 2026). Inside the bill's
     .lv-rcs place, so the first roll call live.js draws there replaces it.
     "" where the docket names no recommendation."""
@@ -319,9 +319,10 @@ def pending_html(rec, bill, body):
         return ""
     k = MO.classify(words, bill, body, C.WORDBOOK["votes"]["motions"])
     head = C.vote_head(k["mk"], words, k["mf"])
-    tally = (f", {rec['yeas']}–{rec['nays']}" if rec.get("yeas") is not None
-             and rec.get("nays") is not None else "")
-    return (f'<p class="lv-pending">Pending: the committee recommends {head}{tally}. '
+    # The motion alone: the committee and its count are the line above it
+    # (recommendation_html), and one fact is said once (the manager, 6
+    # November 2026).
+    return (f'<p class="lv-pending">Pending: {head}. '
             f'{S.E(PENDING_CAN.format(chamber=CHAMBER_NAME[body]))}</p>')
 
 
@@ -457,6 +458,33 @@ def write_morning(site, base, body, today, rows=None):
     return out
 
 
+def show_calendar_links(site, mornings):
+    """Show the Calendar's link to each morning page written this run.
+    build_calendar runs before this step, so on a sitting's morning it leaves
+    the floor card's link hidden, marked data-morning="<B>/<date>"
+    (build_pages.cal_days); this shows it in the files that carry that day's
+    card: calendar.html (the current week), the week's own page where it has
+    one, and the month's data file, whose card is the same HTML inside JSON.
+    A reader meets the one address everywhere. Returns the files changed."""
+    import build_calendar as BC
+    site, changed = Path(site), []
+    for p in mornings:
+        body, day = p.parent.name, p.stem
+        d = datetime.date.fromisoformat(day)
+        hid = f'data-morning="{body}/{day}" hidden><a data-href='
+        shown = f'data-morning="{body}/{day}"><a href='
+        for f in (site / "calendar.html", site / "calendar" / f"{BC.week_key(d)}.html",
+                  site / "calendar" / "data" / f"{day[:7]}.json"):
+            if not f.is_file():
+                continue
+            text = f.read_text(encoding="utf-8")
+            new = text.replace(hid, shown).replace(json.dumps(hid)[1:-1], json.dumps(shown)[1:-1])
+            if new != text:
+                f.write_text(new, encoding="utf-8")
+                changed.append(f.relative_to(site).as_posix())
+    return changed
+
+
 def floor_today(site, body, today):
     """Whether /live's schedule has the chamber's floor today (a sitting with
     no bills listed yet: Organization Day)."""
@@ -486,6 +514,7 @@ def write(site, base, today, seen=None, rows=None):
         import proceedings
         rows = proceedings.load()
     mornings = [p for b in "HS" if (p := write_morning(site, base, b, today, rows))]
+    calendar = show_calendar_links(site, mornings)
     skip = {(p.parent.name, p.stem) for p in mornings}
     docs = day_files(site, seen, skip=skip)
     wrote, gone = write_day_files(site, docs, skip=skip)
@@ -495,6 +524,7 @@ def write(site, base, today, seen=None, rows=None):
         shutil.copyfile(_paths.locate(f"src/pages/{f}"), site / f)
     if seen is not None:
         seen["mornings"] = [f"{p.parent.name}/{p.name}" for p in mornings]
+        seen["calendar"] = calendar
     return wrote, gone, docs
 
 
@@ -502,9 +532,11 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0].strip())
     ap.add_argument("--site", default="site")
     ap.add_argument("--base", default="https://graniterecord.org")
-    ap.add_argument("--today", help="the day to write for, YYYY-MM-DD (default: the build's)")
+    # dest="day", as build_live's: preflight's _build_date_stated reads any
+    # `.today` on the build's path as asking the clock.
+    ap.add_argument("--today", dest="day", help="the day to write for, YYYY-MM-DD (default: the build's)")
     a = ap.parse_args()
-    today = datetime.date.fromisoformat(a.today) if a.today else BL.nh_today()
+    today = datetime.date.fromisoformat(a.day) if a.day else BL.nh_today()
     seen = {}
     wrote, gone, docs = write(a.site, a.base, today, seen)
     n = sum(len(d["rollcalls"]) for d in docs.values())
