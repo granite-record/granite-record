@@ -70,10 +70,19 @@ Losers are shown by name and party only.
 - `build_all.py`: one Step, after the district map.
 - `preflight.py`: `_elections_page`.
 
-## Proof so far
+## Proof
 
-- `preflight.py --code`: 986 passed, 0 failed, 9 skipped (cloud session,
-  7 November).
+- `preflight.py --code` on the branch with `dev` (92247871) merged in: 988
+  passed, 0 failed, 9 skipped (cloud session, 7 November).
+- 2026, with the owner's entries (deadline 6 November; 16 recounts holding
+  19 seats): 405 elected and 19 not final. That is the members-elect step's
+  own count, as it must be from the same rule. The House bar is 99 + 279 + 3
+  cross-nominated + 19 not final = 400; the Senate bar is 9 + 15 = 24.
+- Grafton 9's card: "The Secretary of State's file prints 1,152 as Ella V.
+  Barrett's total, but its own town counts add up to 1,240, the count shown
+  here: the file's total leaves out Orange."
+- Rich Green (Hillsborough 9) is shown elected and unlinked, as the owner's
+  `null` says.
 - `_elections_page` builds the fixture's made-up election and checks four
   things:
   - every count against the results file;
@@ -83,16 +92,8 @@ Losers are shown by name and party only.
   - the cases: the tie, the recount, the held winner unseen, the
     cross-nomination striped, the bars adding up, and Grafton 9's note.
 - One adversarial review found 13 problems; all 13 are fixed in 0117dd45.
-- Screenshots: 2024 only, from the real data. They are in this folder,
+- Screenshots: 2026 and 2024, from the real data. They are in this folder,
   overview and House tab at 390 and 1280, light and dark.
-
-## Still to do before READY
-
-1. **Merge `dev` once it carries e10505d2.** It was not on any remote branch
-   by the time of this commit. It brings `collected/election_2026.json` and
-   the owner's 2026 recount entries.
-2. **2026 screenshots** with those entries.
-3. **The full preflight again,** after the merge.
 
 ## For the owner
 
