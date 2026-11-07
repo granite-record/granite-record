@@ -1,16 +1,21 @@
 # The owner's walk of the weekend release
 
 The release and backend session wrote this on Saturday 7 November 2026, at about 8 a.m.
-Eastern. At about 9 a.m. it was corrected after two checks of the list itself, and the deeper
-walks' findings were added. It replaces the 3 a.m. version, which was written against dry run
+Eastern, and has updated it through the day. At about 9 a.m. it was corrected after two checks
+of the list itself, and the deeper walks' findings were added. It replaces the 3 a.m. version, which was written against dry run
 183.
 
 Sections 1 to 9 and 11 were opened on **dry run 2** (dev e308cee5) at its own address, and
 each stop says what that page showed. Section 10 covers the election: the members-elect and
 CACR 13's count.
 - It was added at about 11 a.m., and given your recounts and CACR 13 at about 2 p.m.
-- It comes from dry run 4's code and data, read before dry run 4 was up.
-- It will be checked on dry run 4's own address and corrected here.
+- It came from dry run 4's code and data, read before dry run 4 was up.
+- The laptop manager's retest on dry run 4 matched it, and this session's own walk of it is
+  under way.
+
+At about 3 p.m. the list took in your answers and dry run 6's three new stops: the directory
+in section 3, Hillsborough's sheriff in section 5, and the reworded note in section 8. Those
+three were not yet up on any dry run, so they say what the code and your words give.
 
 The list covers every change a reader can see between graniterecord.org today and the weekend
 release, the second batch and the election included. A few stops check that a slip seen
@@ -18,15 +23,21 @@ on an earlier dry run stays fixed; those say so.
 
 ## Where to walk
 
-- **Walk dry run 4 at its own address.** The laptop manager gives it to you tonight.
-  - Dry run 4 is dry run 2 plus three changes:
+- **Walk dry run 6 at its own address.** The laptop manager gives it to you tonight.
+  - Dry run 6 (dev 953fc547) is dry run 2 plus:
     - Strafford's District 1 commissioner, in section 5 and on the Spanish Officials page in
-      section 8;
-    - the members-elect of 3 November, and CACR 13's count, in section 10;
-    - Rich Green left unlinked, as you said, in section 10.
-  - Every other stop reads the same on both. Dry run 3 was clean, and dry run 4 replaces it.
-  - Dry run 2 is **https://4e2d47d7.graniterecord.pages.dev**, and dry run 183 is
-    https://dc501057.graniterecord.pages.dev.
+      section 8 (from dry run 3);
+    - the members-elect of 3 November, Rich Green left unlinked, and CACR 13's count, in
+      section 10 (from dry run 4);
+    - Hillsborough's sheriff, in section 5 (from dry run 5);
+    - your two answers of this afternoon: the former-members directory, in section 3, and the
+      reworded Spanish note, in section 8.
+  - Every other stop reads the same as on dry run 2.
+  - Dry runs 3, 4 and 5 were clean, and dry run 6 replaces them.
+  - Earlier addresses, for comparison:
+    - dry run 4, **https://ff30d1c7.graniterecord.pages.dev**;
+    - dry run 2, **https://4e2d47d7.graniterecord.pages.dev**;
+    - dry run 183, https://dc501057.graniterecord.pages.dev.
   - Not the alias, dry-run.graniterecord.pages.dev, which can serve a page cached from an
     earlier dry run.
   - If a page looks wrong, reload it. On a stop whose address has no ? or # in it, adding
@@ -113,10 +124,19 @@ The session pages are long: use Find for the names.
 - `/bill/1999/cacr17/votes`: the Senate's 15–8 roll call ordering it to third reading is dated
   **Oct 22, 1999**. Live dates it 2009. It is 1999-S-109 in your corrections line, but the page
   does not print the number.
-- `/directory/former-legislators`: each joined person's row names each chamber with its years,
-  for example "Sen. Jeb Bradley R, SD3 · Senate 2009–2024 · House 1999–2002". **The count line
-  still reads 89 former senators and 1,662 former representatives: see "For you to decide",
-  item 1.**
+- `/directory/former-legislators` (new in dry run 6: "Your answers", item 1).
+  - The count line reads **"97 former senators and 1,688 former representatives with a
+    recorded roll call vote since 1999, by surname. The 34 who sat in both chambers are under
+    each."**
+  - Dry run 2 and dry run 4 read 89 and 1,662. Live reads 97 and 1,688, with no sentence
+    about the 34, because live still has a page for each chamber.
+  - Under its own chamber a joined person's row is as before: "Sen. Jeb Bradley R, SD3 ·
+    Senate 2009–2024 · House 1999–2002".
+  - Under the other chamber the row has that chamber's title and its years first, and no
+    party or seat: "Rep. Jeb Bradley House 1999–2002 · Senate 2009–2024". Both rows link to
+    the one page.
+  - The Senate list now has Leo Fraser, Edward Gordon and Fenton Groen among its F's and G's,
+    with the Senate's years first. Before, they were only in the House list.
 - `/legislator/rebecca-hutchinson-rock-73` lands on **Rebecca Hutchinson (D - Rock 8)**. 75
   former members now carry the seat their last term's bills print, and every address a page
   moved from lands on the page it is now.
@@ -156,7 +176,15 @@ The session pages are long: use Find for the names.
   the top. Live opens My Town.
   - **New from dry run 3:** Strafford County's Commissioner, District 1 reads **Leslie
     Feliciano (R)**, in Joe Pitre's place. Dry run 2 shows Joe Pitre.
-  - Read the line under the last county too: see "For you to decide", item 3.
+  - Read the line under the last county too: see "Your answers", item 3.
+- `/officials#of-county-hillsborough` (new in dry run 5): Hillsborough County's Sheriff reads
+  **Brian J. Newcomb**, in Christopher Connelly's place.
+  - He took office on March 5, 2025, chosen by the county delegation after Connelly resigned.
+    The source is your word and the county's Sheriff's Office page.
+  - Like every sheriff on the page, he carries no party. No town is shown, because his is not
+    given.
+  - Dry run 2 and dry run 4 show Christopher Connelly, as the Secretary of State's roster
+    does.
 - `/officials`, Legislators, By seat: "Go to a seat" and "Find" each sit above their control.
 
 ## 6. The data: /api and the downloads (about 6 minutes)
@@ -197,9 +225,13 @@ The session pages are long: use Find for the names.
   - All six tabs are in view, "Funcionarios del condado (80)" last, and the same note is there,
     once.
   - On dry run 4, Strafford's first commissioner there is Leslie Feliciano too.
-- `/es/officials` again: open the note. Its second reason says names stay as the record prints
-  them, "personas, comités, municipios y cargos". The Poder Ejecutivo tab just under it reads
-  Gobernador, Consejo Ejecutivo, Secretaría de Estado: see "For you to decide", item 4.
+- `/es/officials` again: open the note (reworded in dry run 6: your answer to item 4).
+  - Its second reason now says, in your words, "Names of people, committees and towns stay as
+    the record prints them; where a committee is given a Spanish name, its English name is
+    beside it", in Spanish.
+  - "Cargos" (offices) is gone, so it no longer contradicts the Poder Ejecutivo tab just
+    under it, which reads Gobernador, Consejo Ejecutivo, Secretaría de Estado.
+  - The other three reasons are as before. Dry run 4 still has the old second reason.
 - `/es/guides/how-to-vote`: the same note, once. No English page carries it.
 - The header search on a Spanish page, typing Concord: "10 barrios electorales · Condado de
   Merrimack". Live reads "10 wards · Merrimack County".
@@ -232,10 +264,11 @@ count:
 Every block says "Elected November 3, 2026" and "Takes office December 2, 2026.", and all of
 it disappears on 2 December. Town and legislator pages are in English only.
 
-**Not yet walked.** These stops come from dry run 4's code and its data (dev 9052784d: the
+**How these stops were made.** They come from dry run 4's code and data (dev 9052784d: the
 results, your 16 recounts and Rich Green), read before dry run 4 was up. A build of the
-members-elect from them gives your counts exactly: 405, 213, 24, 168 and 19. Each stop will be
-checked on dry run 4 and corrected here.
+members-elect from them gives your counts exactly: 405, 213, 24, 168 and 19. Dry run 4's own
+file says the same. The laptop manager's retest on dry run 4 matched these stops, and this
+session's own walk of each one is under way.
 
 - ★ `/town/derry`, the Representatives tab, which the page opens on.
   - Rockingham district 13, 10 seats: "Serving now" sits over the ten sitting members.
@@ -333,37 +366,29 @@ checked on dry run 4 and corrected here.
     "O Neil", they already worked.
 - `/legislator/melanie-levesque-sd-12`, for the nit below.
 
-## For you to decide
+## Your answers (7 November, about 2:30 p.m.)
 
-The walk of dry run 2 found nothing that holds the release. These four are new with it.
+The walk of dry run 2 found nothing that holds the release. You answered the four items it
+raised:
 
-1. **The former-members directory lists each of the 34 people who sat in both chambers under
-   one chamber only.**
-   - It is still so on dry run 2, and will be on dry run 4. `/directory/former-legislators`
-     lists each joined person once, under the chamber of the page kept.
-   - Eight sat in the Senate but are listed only under the House: Jacalyn Cilley, Leo Fraser,
-     Edward Gordon, Fenton Groen, Frederick King, Amanda Merrill, Andrew Peterson and Frank
-     Sapareto.
-   - The other 26, Jeb Bradley among them, sat in the House but are listed only under the
-     Senate.
-   - So its count line says 89 former senators and 1,662 former representatives. The record
-     has 97 and 1,688, and live says so.
-   - **The fix is ready**, on `fix/former-directory-both`, and is in neither dry run 2 nor 3.
-     - With it, the count line reads "97 former senators and 1,688 former representatives…
-       The 34 who sat in both chambers are under each."
-     - Under the other chamber a person's row has that chamber's title and its years first,
-       and no party or seat. For example: "Rep. Jeb Bradley House 1999–2002 · Senate
-       2009–2024".
-     - Decide whether it goes into this release, which would mean another dry run, or waits
-       for 24 November.
-2. **Michael Downing's one page calls him a Republican throughout.**
-   - He sat in the House in 1999–2002 as a Democrat, as your note on the pair says.
-   - His old House address now lands on that page, and his 1999 bill still names him "(D -
-     Rock 26)".
-   - He is the only one of the 30 whose party differs between chambers. The fix, a party for
-     each chamber's years, is larger, and fits 24 November better.
-3. **The source line under County Officials does not cover Leslie Feliciano's row** (from dry
-   run 3).
+1. **The former-members directory: in this release.** It is in dry run 6, and section 3 has
+   its stop.
+   - Before, each of the 34 people who sat in both chambers was listed under one chamber only.
+     Eight who sat in the Senate (Jacalyn Cilley, Leo Fraser, Edward Gordon, Fenton Groen,
+     Frederick King, Amanda Merrill, Andrew Peterson, Frank Sapareto) were under the House
+     alone, and 26 who sat in the House, Jeb Bradley among them, were under the Senate alone.
+   - So its count line said 89 and 1,662.
+2. **Michael Downing's party: for 24 November.**
+   - His one page calls him a Republican throughout. He sat in the House in 1999–2002 as a
+     Democrat, and his 1999 bill still names him "(D - Rock 26)".
+   - The fix, a party for each chamber's years, will be built on a branch after the release.
+3. **The source line under County Officials: for 24 November.** It will name the two rows read
+   from somewhere other than the Secretary of State's roster:
+   - Strafford's Leslie Feliciano, from the county's own list, read 6 November;
+   - Hillsborough's Sheriff Brian J. Newcomb, from your word and the county's Sheriff's Office
+     page.
+
+   Until then, the one line below names only the roster. The detail as found:
    - The line under the counties reads "Kept by hand, read from the Secretary of State's
      county roster for 2025–2026, dated December 5, 2024; read October 9, 2026. Most of these
      seats were on the ballot on November 3, 2026; this is the roster read before it."
@@ -371,26 +396,15 @@ The walk of dry run 2 found nothing that holds the release. These four are new w
      Joe Pitre.
    - This was seen first by building the County Officials tab from dry run 3's code and
      corrections file. It was then seen on dry run 3 itself, https://6e462616.graniterecord.pages.dev.
-   - The page draws one source line for all 80 rows, and never a row's own source.
-   - A fix would add a sentence naming the rows read from another source. It needs a Spanish
-     line in the translation file, which is the translation work's to add, not this session's.
-4. **The Spanish note's second reason says what the Officials page right under it does not
-   do.**
-   - The reason reads "Los nombres se dejan como los imprime el registro: personas, comités,
-     municipios y cargos." The English reads "Names stay as the record prints them: people,
-     committees, towns and offices."
-   - `/es/officials` gives every office in Spanish, with no English beside it: Gobernador,
-     Consejo Ejecutivo, Comisionado(a), Registrador(a) de escrituras. Only Sheriff stays in
-     English.
-   - The Learn pages and the glossary give committees in Spanish, with the English in
-     brackets: "Comité Judicial de la Cámara (House Judiciary Committee)", "Medios y Arbitrios
-     (Ways and Means)".
-   - The note was written so that a reader can tell why some parts are translated. On
-     Officials it says the opposite of what the reader sees.
-   - The wording is your approved draft, still marked draft for the caucus's review, so the
-     change is yours. One way: drop "y cargos", and say that a committee's name in Spanish
-     carries the English beside it.
-   - Two smaller gaps in the same note, also yours to word:
+   - The page draws one source line for all 80 rows, and never a row's own source. The fix
+     adds a sentence, with its Spanish line as a draft.
+4. **The Spanish note: reworded, in dry run 6.** Section 8 has its stop.
+   - The second reason said names stay as the record prints them, "people, committees, towns
+     and offices". But `/es/officials` gives every office in Spanish.
+   - It now reads, in your words, "Names of people, committees and towns stay as the record
+     prints them; where a committee is given a Spanish name, its English name is beside it."
+     It is still a draft for the caucus's review.
+   - Two smaller gaps stay for the caucus's review:
      - Its fourth reason lists the pages still in English as if the list were complete. The
        footer's About and Data, the town pages, the House and Senate session lists and the
        towns directory are English too, linked from Spanish pages, and are neither named nor

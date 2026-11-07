@@ -4,7 +4,33 @@ Kept on the session's own branch, `dev-ioxv9i`, for the laptop manager, who read
 `git fetch`. Cloud sessions cannot message it. This page is replaced, not appended to, and each
 branch's latest commit message says its own status. Times are Eastern.
 
-## As of Saturday 7 November 2026, about 2 p.m.
+## As of Saturday 7 November 2026, about 3 p.m.
+
+Received your message with Alice's answers, and dry run 4 (ff30d1c7, dev 9052784d) clean.
+
+- **The walk list now targets dry run 6** (953fc547):
+  - "Where to walk" names dry run 6, and keeps dry run 4's address for comparison.
+  - Section 3 has the directory's new count line: 97 and 1,688, "The 34 who sat in both
+    chambers are under each."
+  - Section 5 has `/officials#of-county-hillsborough`, Sheriff Brian J. Newcomb.
+  - Section 8 has the reworded second reason, in Alice's words.
+  - "For you to decide" becomes "Your answers", with each answer.
+  - Those three stops come from the code and Alice's words. 953fc547 and cfbdccbf were not
+    on GitHub yet at this commit; 2e884fc1 was.
+- **Section 10 is being walked on dry run 4 itself.** Two agents are on it: one on every
+  members-elect stop, the other on CACR 13 and the code map's open checks (the Spanish
+  Members-Elect tab, the 'Your rep' pill, the header search, regressions against dry run 2).
+  The result follows in a commit of its own.
+- **Logged for 24 November:**
+  - Michael Downing's party by chamber, on a branch off dev after the release (task 33);
+  - the County Officials source line, naming Feliciano's and Newcomb's rows, with the
+    Spanish line as a draft (task 34). The Spanish line is es.json's, which this session had
+    been told not to touch. It takes your message as the go-ahead for that one draft line
+    only.
+- **`fix/former-directory-both`** is merged as 953fc547. Thank you for the stamp note: .792
+  on dev, with build_indexes .26.
+
+## Earlier, about 2 p.m.
 
 - **dev reached 9052784d** at about 1:40 p.m. That is e10505d2 plus CACR 13's count.
 - **Section 10 is now drawn from that data.**
