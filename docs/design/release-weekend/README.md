@@ -2,7 +2,11 @@
 
 The release and backend session built this for the laptop manager on Friday 6 November 2026, at
 about 10:30 p.m. Eastern, as asked in its message of 7 November. Alice's decisions of 6 November,
-9:30 p.m., set what is in it.
+9:30 p.m., set what is in it. **Status: READY** (10:30 p.m.).
+
+The laptop's test findings of 7 November (Back from a search; the not-found page) are on a
+small branch on top of this one, `fix/bill-back-notfound`, for the second dry run. This branch
+stays as it is.
 
 **Dev is not touched.** The laptop runs the full preflight (with the data checks, since the kit
 is there), moves dev to this branch, and starts the dry run.
@@ -42,6 +46,35 @@ branch's stamp.
 ## Checked here (the cloud, without the kit)
 
 Preflight on Python 3.14: 995 passed, 0 failed, 130 skipped (the data checks).
+
+A review of the candidate (two lenses, each finding verified by a skeptic) found nothing
+blocking and nothing to fix before the dry run.
+
+- **The merges are whole.** Each branch's change is in it once, hunk for hunk, and nothing
+  else; the merges changed only stamp lines. 553 checks on the branches' areas ran: 0 failed,
+  and every skip names data this clone lacks.
+- **Where the branches meet, replayed on all 2,303,047 published ballots:**
+  - With Alice's line, exactly six former members change: the six senators of 1999–2000, whose
+    last vote becomes 2000-S-75 of 12 July 2000, so they read "1999 to 2000". Nothing else in
+    `former.json`, the redirects or `people.json` moves.
+  - King and Fraser are among the 30 merges. Each is one person, whose page is their House page.
+  - All 34 joined pages are one person each, at an address that answers 200.
+- **Nits, none blocking:**
+  - `/api` says "2,157 people" for `people.json` and, in the database's fold of row counts,
+    "people (2,187)". Both are right (30 rows are numbers retired with `replaced_by`), but
+    the two side by side may read as a disagreement. For 24 November.
+  - The movers-term README described the release before Alice's line and the merges; it is
+    corrected here.
+
+## For the laptop
+
+- **After the dry run's build, run `python3 src/ops/record_moves.py` and commit
+  `generated/moved_addresses.json` to dev.** King's and Fraser's Senate addresses
+  (`/legislator/frederick-king-sd-1`, `/legislator/leo-fraser-sd-4`) answer 200 on live today.
+  In the release they become 301s to the House pages, and the build will say they are not
+  recorded. The join makes them again every night, so nothing breaks meanwhile.
+- **`hotfix/same-number-bills` is carried whole by this release**, so it must not be merged
+  into main as well.
 
 ## For the dry run and the deep walk
 

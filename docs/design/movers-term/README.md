@@ -41,11 +41,12 @@ so for every senator of 1999 who cast it, that ballot counted as their last vote
   2009", the 13 of senators who served after 2000 and left before 2009 are on record to their
   real last year. A member's list of votes is ordered the same way, so 1999-S-109 no longer
   heads it.
-- **Six senators still read "to 2009".** The 6 who sat only in 1999–2000 (John King, Richard
-  Russman, James Squires, Mary Brown, Patricia Krueger and Rick Trombly) have no later term to set against the misdated vote.
-  They read right once the owner corrects the roll call's date. That fix is held on
-  `fix/rollcall-date`. It reads the owner's line in `corrections/rollcall_corrections.json`, and
-  its README has the line drafted for the owner to paste.
+- **Six senators read "to 2009" on this branch alone.** The 6 who sat only in 1999–2000
+  (John King, Richard Russman, James Squires, Mary Brown, Patricia Krueger and Rick Trombly)
+  have no later term to set against the misdated vote. In the weekend release they read "1999
+  to 2000": it carries `fix/rollcall-date-line`, with the owner's line in
+  `corrections/rollcall_corrections.json`, which dates 1999-S-109 22 October 1999. Replayed on
+  the real ballots, their last vote becomes 2000-S-75 of 12 July 2000, and nothing else moves.
 - **The recorded 301s still hold.** `generated/moved_addresses.json` recorded King's and
   Fraser's House addresses under their Senate numbers. A recorded number joined to another's
   page now resolves to that page (`keep_moved`'s links), so nothing in the file is re-pointed.
@@ -88,6 +89,6 @@ These are the preview as it was: `https://6502d18c.graniterecord.pages.dev`, dry
 build the real pages, so the after shots come from the next dry run's preview. Preflight's
 `_movers_by_term` holds each case in the meantime.
 
-`people.json`, which still gives each of the owner's 30 confirmed pairs as two people, is a
-separate question for the owner. It needs merges in the person register, which the design
-leaves to a person.
+`people.json` gave each of the owner's 30 confirmed pairs as two people. That is
+`fix/movers-merge`, which the owner approved; in the weekend release each pair is one person,
+whose page is the joined page this branch keeps (King's and Fraser's are their House pages).
