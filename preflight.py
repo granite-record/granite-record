@@ -69578,6 +69578,14 @@ def _movers_by_term(B2, BL, BP, BI):
     assert k["chamber"] == "H" and k["served"]["first"] == "2/11/1999" and \
         k["served"]["last"] == "6/4/2008", f"King's joined page: {k['chamber']}, {k['served']}"
     assert {"1999-2000", "2007-2008"} <= set(k["served"]["terms"]), k["served"]["terms"]
+    # One number, no join: the misdated ballot names neither the party nor
+    # the end of a record that runs on to 2004.
+    one_no = {"205020": [dict(ballot(1999, "10/22/2009", "S"), party="D", name="Turn, Tess"),
+                         dict(ballot(2003, "6/1/2004", "S"), party="R", name="Turn, Tess")]}
+    t = B2.former_roster({}, one_no, {}, {}, "2025-2026")["205020"]
+    assert t["party"] == "R" and t["served"]["last"] == "6/1/2004" and \
+        t["served"]["terms"] == ["1999-2000", "2003-2004"], (
+        f"the misdated ballot took the party or the last day: {t['party']}, {t['served']}")
     # Carl Johnson: one number, the Senate's, SD3 in 1999-2002 and SD2 after;
     # the record's seat is SD2, as 2005-2006's bills print it.
     cj = {"205015": [ballot(1999, "10/22/2009", "S"), ballot(2001, "3/1/2001", "S"),
@@ -69620,9 +69628,34 @@ def _movers_by_term(B2, BL, BP, BI):
     assert "205005, who has no former page now" in unjoined, (
         "the case no longer shows a recorded number lost without the joins")
     src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
-    assert "keep_moved(former, links=links)" in src, (
-        "build_site_v2 no longer hands keep_moved the joins: a recorded address of a joined number "
-        "would stop answering")
+    assert "keep_moved(former, links=links,\n" in src and \
+        "sitting={_member_address(m) for m in legs.values()" in src, (
+        "build_site_v2 no longer hands keep_moved the joins and the sitting members' addresses: a "
+        "recorded address of a joined number would stop answering, or a live page's would be "
+        "answered with a 301")
+    # A pair joined and then parted: each page's address recorded for the
+    # other's number. Neither live page answers the other's address with a
+    # 301, nor a sitting member's; both said.
+    sen = dict(page, id="205005", chamber="S", county="", district="1", county_abbr="",
+               slug="frederick-king-sd-1", moved_from=[])
+    house = dict(page, id="376486", moved_from=[])
+    root = Path(tempfile.mkdtemp(prefix="gr-moves-"))
+    try:
+        rec = root / "moved.json"
+        rec.write_text(json.dumps({"/legislator/frederick-king-coos-1": "205005",
+                                   "/legislator/frederick-king-sd-1": "376486",
+                                   "/legislator/seth-king-coos-1": "376486"}), encoding="utf-8")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            crossed, _ = B2.keep_moved({"205005": sen, "376486": house}, rec, links={},
+                                       sitting={"/legislator/seth-king-coos-1"})
+        said = out.getvalue()
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert crossed == 0 and sen["moved_from"] == [] and house["moved_from"] == [] and \
+        said.count("is the address of another page now") == 3, (
+        f"a live page's address answered with a 301: {crossed}, {sen['moved_from']}, "
+        f"{house['moved_from']}, {said!r}")
     # Each chamber of a joined page named with its years; one chamber's page
     # and a sitting member's as they were.
     m = {"former": True, "display_full": "Sen. Jeb Bradley (R - SD3)", "chamber": "S",
@@ -69636,6 +69669,11 @@ def _movers_by_term(B2, BL, BP, BI):
                          {"chamber": "S", "spans": [[2001, 2002]]}]}
     assert "House of Representatives, 1999 to 2000 and 2003 to 2008, and Senate, 2001 to 2002." \
         in BL.describe(dict(m, chamber="H"), split), BL.describe(dict(m, chamber="H"), split)
+    three = {"service": [{"chamber": "H", "spans": [[1999, 2002], [2009, 2014], [2017, 2018]]},
+                         {"chamber": "S", "spans": [[2003, 2004]]}]}
+    assert "House of Representatives, 1999 to 2002, 2009 to 2014 and 2017 to 2018, and Senate, " \
+        "2003 to 2004." in BL.describe(dict(m, chamber="H"), three), \
+        BL.describe(dict(m, chamber="H"), three)
     one = {"service": [{"chamber": "S", "spans": [[2009, 2024]]}]}
     for r in (one, {}, None):
         assert BL.describe(m, r) == BL.describe(m), (r, BL.describe(m, r))
@@ -69653,8 +69691,17 @@ def _movers_by_term(B2, BL, BP, BI):
            "served": {"first": "3/1/1999", "last": "6/1/2024",
                       "terms": ["1999-2000", "2001-2002", "2009-2010", "2023-2024"]},
            "member_ids": ["36", "374827"], **two}
-    assert BI.chamber_years(jeb, "SD3") == ["SD3 2009–2024", "House 1999–2002"], \
+    assert BI.chamber_years(jeb, "SD3") == ["SD3", "Senate 2009–2024", "House 1999–2002"], \
         BI.chamber_years(jeb, "SD3")
+    # The page's own chamber first, whichever the record lists first; every
+    # span of a chamber, and no seat where none is known.
+    rep = dict(jeb, chamber="H", service=three["service"])
+    assert BI.chamber_years(rep, "Rock 6") == [
+        "Rock 6", "House 1999–2002, 2009–2014, 2017–2018", "Senate 2003–2004"], \
+        BI.chamber_years(rep, "Rock 6")
+    assert BI.chamber_years(dict(rep, service=three["service"][::-1]), "") == [
+        "House 1999–2002, 2009–2014, 2017–2018", "Senate 2003–2004"], \
+        BI.chamber_years(dict(rep, service=three["service"][::-1]), "")
     assert BI.chamber_years(dict(jeb, service=one["service"]), "SD3") is None
     assert BI.chamber_years({k: v for k, v in jeb.items() if k != "service"}, "SD3") is None
     root = Path(tempfile.mkdtemp(prefix="gr-movers-"))
@@ -69674,15 +69721,19 @@ def _movers_by_term(B2, BL, BP, BI):
                  for r in BI.find_index(site, [], {}) if r and r[0] == "former"}
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    assert "R, SD3 2009–2024 · House 1999–2002</span>" in page and \
+    assert "R, SD3 · Senate 2009–2024 · House 1999–2002</span>" in page and \
         "R, SD24, 2011–2016</span>" in page, re.findall(r'class="dirstatus">([^<]*)<', page)
     assert rules == "/legislators/374827.json /legislators/36.json 301\n", (
         f"a joined number's data has no 301 to the page's: moved_members wrote {rules!r}")
-    assert found.get("jeb-bradley-sd-3") == "Senate · SD3 2009–2024 · House 1999–2002" \
+    assert found.get("jeb-bradley-sd-3") == "SD3 · Senate 2009–2024 · House 1999–2002" \
         and found.get("nancy-alone-sd-24") == "Senate · SD24 · 2011–2016", found
     src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
     assert 'row["service"] = ML.service(mv)' in src, (
         "former.json's rows no longer carry each chamber's years for a joined page")
+    assert re.search(r"mv = sorted\(\[v for x in \(mid, \*joined\)[^\n]*\n\s*key=service_order, "
+                     r"reverse=True\)", src), (
+        "a member's vote list is no longer newest by term: 1999-S-109, dated 2009, would head the "
+        "votes of every senator of 1999 who cast it")
     return "ok", ("a misdated 1999 Senate ballot no longer makes King's page the Senate's or moves "
                   "Carl Johnson to SD3; a recorded address follows its number onto the joined page "
                   "without a warning; a joined number's JSON answers with the page's; a joined "
@@ -85255,6 +85306,92 @@ def _speaker_other_chamber(BSP):
     assert later is None, f"Rosenwald matched on a House day of 2021, when she sat in the Senate: {later!r}"
     assert senate == "cindy-rosenwald-13"
     return "ok", "Rosenwald on a House day of 2017; nobody of that name on one of 2021"
+
+
+@check("session", "a former member whose one page joins both chambers is matched in each chamber "
+       "in the terms they sat in it, so a namesake does not take their days",
+       needs=("build_session_pages",))
+def _joined_mover_session_days(BSP):
+    """THE DEEP WALK OF 6 NOVEMBER 2026, on dry run 181's preview: 44 House
+    session days named the wrong member. A former member who sat in both
+    chambers has one page, filed under one chamber, and the pass for the
+    other chamber read careers.json under the page's own number only, while
+    the other chamber's years are under the number joined to it. So
+    Frederick King's House years (2003-2008) and Melanie Levesque's
+    (2007-2014) counted nowhere in the House. Every "Rep. King" of them went
+    to Seth King and every "Rep. Levesque" to Cassandra Levesque, sitting
+    members, the only ones of those names left. "Rep. Jeb Bradley" went to
+    Paula Bradley, though the journal gave the first name.
+
+    Here: King's page under the House (as fix/movers-term keeps it) and
+    Levesque's under the Senate, each joined to their other number, and a
+    sitting namesake of each, careers.json in its real shape. Each is
+    matched in each chamber in the terms they sat in it, the namesakes in
+    theirs, and nobody in a term where neither King sat."""
+    root = Path(tempfile.mkdtemp(prefix="gr-joined-"))
+    keep = BSP._careers
+    try:
+        (root / "legislators.json").write_text(json.dumps([
+            {"id": "11001", "slug": "seth-king-coos-4", "name": "King, Seth", "chamber": "H"},
+            {"id": "11002", "slug": "cassandra-levesque-straf-4", "name": "Levesque, Cassandra",
+             "chamber": "H"}]), encoding="utf-8")
+        (root / "former.json").write_text(json.dumps([
+            {"id": "376486", "slug": "frederick-king-coos-1", "name": "King, Frederick", "chamber": "H",
+             "member_ids": ["376486", "205005"],
+             "served": {"terms": ["1999-2000", "2003-2004", "2005-2006", "2007-2008"]}},
+            {"id": "9405", "slug": "melanie-levesque-sd-12", "name": "Levesque, Melanie", "chamber": "S",
+             "member_ids": ["9405", "376690"],
+             "served": {"terms": ["2007-2008", "2013-2014", "2019-2020"]}}]), encoding="utf-8")
+        table = {"376486": {"by_term": {t: {"chambers": ["H"]}
+                                        for t in ("2003-2004", "2005-2006", "2007-2008")}},
+                 "205005": {"by_term": {"1999-2000": {"chambers": ["S"]}}},
+                 "209108": {"person_id": "9405", "employee_nos": ["209108"],
+                            "by_term": {"2019-2020": {"chambers": ["S"]}}},
+                 "376690": {"by_term": {t: {"chambers": ["H"]} for t in ("2007-2008", "2013-2014")}}}
+        (root / "generated").mkdir()
+        (root / "generated" / "careers.json").write_text(json.dumps(table), encoding="utf-8")
+        import os as _os
+        here = Path.cwd()
+        _os.chdir(root)
+        try:
+            careers = keep()
+        finally:
+            _os.chdir(here)
+        BSP._careers = lambda: careers
+        m = BSP.Members(root)
+        got = {}
+        for term, body, said in (("2005-2006", "H", "Frederick King"), ("1999-2000", "S", "King"),
+                                 ("2025-2026", "H", "King"),
+                                 ("2013-2014", "H", "Melanie Levesque"), ("2019-2020", "S", "Levesque"),
+                                 ("2025-2026", "H", "Levesque")):
+            m.term = term
+            got[(term, body, said)] = m.slug(body, said)
+        # The page's own chamber counts its own terms only: King sat in the
+        # Senate in 1999-2000, and is no House King of it.
+        m.term = "1999-2000"
+        house_1999 = m.serving(m.by_last.get(("H", "king"), []))
+        # The bare surname where the namesake also sits: the term's ballots
+        # say which King voted that term (by_ballot), as on a real night.
+        m.term, m.ballots = "2005-2006", {"2005-2006": {"376486": "Rep. Frederick King (R - Coos 1)"}}
+        got[("2005-2006", "H", "King")] = m.slug("H", "King")
+    finally:
+        BSP._careers = keep
+        shutil.rmtree(root, ignore_errors=True)
+    want = {("2005-2006", "H", "Frederick King"): "frederick-king-coos-1",
+            ("1999-2000", "S", "King"): "frederick-king-coos-1",
+            ("2025-2026", "H", "King"): "seth-king-coos-4",
+            ("2013-2014", "H", "Melanie Levesque"): "melanie-levesque-sd-12",
+            ("2019-2020", "S", "Levesque"): "melanie-levesque-sd-12",
+            ("2025-2026", "H", "Levesque"): "cassandra-levesque-straf-4",
+            ("2005-2006", "H", "King"): "frederick-king-coos-1"}
+    bad = [f"{b} {t} {s!r} is {got.get((t, b, s))!r}, not {w!r}" for (t, b, s), w in want.items()
+           if got.get((t, b, s)) != w]
+    assert not bad, "a joined mover's days: " + "; ".join(bad)
+    assert "frederick-king-coos-1" not in house_1999, (
+        f"King counts as a House member of 1999-2000, when he sat in the Senate: {house_1999}")
+    return "ok", ("Frederick King in the House in 2005 and the Senate in 1999, Melanie Levesque in "
+                  "the House in 2013 and the Senate in 2019, each by their own name; the sitting "
+                  "Seth King and Cassandra Levesque in their own terms only")
 
 
 @check("session", "how the day began keeps the case of the member who led the Pledge",

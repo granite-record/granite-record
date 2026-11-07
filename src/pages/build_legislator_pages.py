@@ -137,7 +137,9 @@ def _chambers_served(rec):
     if len({c["chamber"] for c in svc}) < 2:
         return ""
     def years(spans):
-        return " and ".join(str(a) if a == b else f"{a} to {b}" for a, b in spans)
+        # "1999 to 2002, 2009 to 2014 and 2017 to 2018": one "and", at the end.
+        said = [str(a) if a == b else f"{a} to {b}" for a, b in spans]
+        return said[0] if len(said) == 1 else ", ".join(said[:-1]) + " and " + said[-1]
     return ", and ".join(
         f"{'Senate' if c['chamber'] == 'S' else 'House of Representatives'}, {years(c['spans'])}"
         for c in svc)

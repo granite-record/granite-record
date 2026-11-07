@@ -26,6 +26,12 @@ so for every senator of 1999 who cast it, that ballot counted as their last vote
   for Carroll 8 in 1999–2002.
 - **The JSON of a joined number.** Each of the 34 joined members' second numbers lost its
   `/legislators/<id>.json`, which live serves and live pages link to.
+- **Session days named the wrong member (blocking).** A session day names a member by surname
+  ("Rep. King"), and it is matched against the members who sat in that chamber that term. A
+  joined page counted only under its own chamber, so its other chamber's years matched no one
+  of that name, and they went to a namesake. In 44 days, Frederick King's House years named
+  Seth King, Melanie Levesque's named Cassandra Levesque, Jeb Bradley's named Paula Bradley,
+  and Leo Fraser's named Marilyn Fraser.
 
 ## What it does now
 
@@ -33,17 +39,30 @@ so for every senator of 1999 who cast it, that ballot counted as their last vote
   roll call's own, from its session year (`service_order`). King's and Fraser's pages are the
   House's again, and Carl Johnson stays at SD2. Of the 19 pages that read "served … 1999 to
   2009", the 13 of senators who served after 2000 and left before 2009 are on record to their
-  real last year. The 6 who sat only in 1999–2000 still read "to 2009" until the owner corrects
-  the roll call's date.
+  real last year. A member's list of votes is ordered the same way, so 1999-S-109 no longer
+  heads it.
+- **Six senators still read "to 2009".** The 6 who sat only in 1999–2000 (John King, Richard
+  Russman, James Squires, Mary Brown, Patricia Krueger and Rick Trombly) have no later term to set against the misdated vote.
+  They read right once the owner corrects the roll call's date. That fix is held on
+  `fix/rollcall-date`. It reads the owner's line in `corrections/rollcall_corrections.json`, and
+  its README has the line drafted for the owner to paste.
 - **The recorded 301s still hold.** `generated/moved_addresses.json` recorded King's and
   Fraser's House addresses under their Senate numbers. A recorded number joined to another's
   page now resolves to that page (`keep_moved`'s links), so nothing in the file is re-pointed.
+- **A live page's address is never a 301.** The file only grows. So if a pair were joined and
+  later parted, each page's address would be on record for the other's number, and the two
+  pages would redirect to each other. A recorded address that is now a page's own, whether
+  former or sitting, stays that page's, and the build names it.
 - **Each chamber gets its own years.** A joined page's description, directory line and search
   row name each chamber with its own years, as the page's own "On record" line already did:
-  "House of Representatives, 1999 to 2002, and Senate, 2009 to 2024"; "R, SD3 2009–2024 ·
-  House 1999–2002".
+  "House of Representatives, 1999 to 2002, and Senate, 2009 to 2024"; "R, SD3 · Senate
+  2009–2024 · House 1999–2002". The seat stands alone because it is the last term's, and the
+  maps of 2002 and 2012 renumbered the seats of earlier years.
 - **A joined number's JSON redirects.** `/legislators/<joined number>.json` answers with a 301
   to the page's own.
+- **Session days name each member in both chambers.** A joined page counts in each chamber for
+  the terms it sat there, read from `careers.json` under every number the page stands for.
+  The sitting Seth King and Cassandra Levesque are named only in their own terms.
 
 ## The shots
 

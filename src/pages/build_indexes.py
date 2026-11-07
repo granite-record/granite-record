@@ -197,25 +197,26 @@ def legislators_page(site, base, legs, urls, former=0):
 
 
 def chamber_years(m, seat):
-    """["SD3 2009–2024", "House 1999–2002"]: the seat with its own
-    chamber's years, then the other chamber's, for a former member whose one
-    page joins two (former.json's service, member_links.service: years with a
-    roll call in each chamber). None for a page of one chamber, whose seat and
-    span are said as before.
+    """["SD3", "Senate 2009–2024", "House 1999–2002"]: the page's seat, then
+    each chamber with the years it has a roll call there, the page's own
+    chamber first, for a former member whose one page joins two (former.json's
+    service, member_links.service). None for a page of one chamber, whose seat
+    and span are said as before.
 
     THE LAST SEAT IS NOT THE WHOLE CAREER (the deep walk of 6 November 2026):
     "Sen. Jeb Bradley R, SD3, 1999–2024" read as Senate District 3 from
-    1999, where he sat in the House until 2002."""
+    1999, where he sat in the House until 2002. And the seat stands alone,
+    not beside the years: it is the last term's, and the maps of 2002 and
+    2012 renumbered the seats of the years before (that day's review)."""
     svc = [c for c in (m.get("service") or [])
            if c.get("chamber") in ("H", "S") and c.get("spans")]
     if len({c["chamber"] for c in svc}) < 2:
         return None
     def yrs(c):
         return ", ".join(str(a) if a == b else f"{a}–{b}" for a, b in c["spans"])
-    own = [c for c in svc if c["chamber"] == m.get("chamber")]
-    rest = [c for c in svc if c["chamber"] != m.get("chamber")]
-    return ([" ".join(x for x in (seat, yrs(c)) if x) for c in own]
-            + [f"{'Senate' if c['chamber'] == 'S' else 'House'} {yrs(c)}" for c in rest])
+    svc.sort(key=lambda c: c["chamber"] != m.get("chamber"))
+    return ([seat] if seat else []) + [
+        f"{'Senate' if c['chamber'] == 'S' else 'House'} {yrs(c)}" for c in svc]
 
 
 def former_page(site, base, urls):
@@ -556,9 +557,9 @@ def find_index(site, legs, towns):
         both = chamber_years(m, m.get("district_label") or "")
         rows.append(["former",
                      "Former " + (m.get("display_plain") or m.get("name") or ""),
-                     " · ".join(x for x in (
+                     " · ".join(x for x in (both or (
                          "Senate" if m.get("chamber") == "S" else "House",
-                         *(both or (m.get("district_label") or "", span))) if x),
+                         m.get("district_label") or "", span)) if x),
                      S.canon(f"legislator/{m['slug']}.html"),
                      " ".join(str(x) for x in (m.get("county_abbr"), m.get("party"))
                               if x),
