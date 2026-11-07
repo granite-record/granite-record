@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.60
+# GRANITE_VERSION: 2026-09-19.61
 """
 A page for every day the House sat.
 
@@ -144,10 +144,19 @@ def _careers():
     (218760, 408908), so each record is keyed by its person_id as well as by
     each of its employee numbers: keyed by employee number alone, the dry run
     of 3b43bf7 matched no one and still left Rosenwald and Abbas as words."""
+    # NOT SILENT (the review of 6 November 2026): without it a member who
+    # changed chamber counts in one chamber only, and the other chamber's
+    # days go to a namesake, as on the 44 days of dry run 181.
     p = Path("generated/careers.json")
+    if not p.is_file():
+        print(f"  WARNING: {p} is not here: a member who changed chamber is matched on session "
+              "days in one chamber only")
+        return {}
     try:
-        raw = json.loads(p.read_text(encoding="utf-8")) if p.is_file() else {}
-    except (OSError, ValueError):
+        raw = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        print(f"  WARNING: {p} will not read ({e}): a member who changed chamber is matched on "
+              "session days in one chamber only")
         return {}
     out = {}
     for k, v in raw.items():
@@ -156,6 +165,25 @@ def _careers():
                 continue
             out.setdefault(str(i), v)
     return out
+
+
+def _chamber_terms(careers, ids):
+    """{chamber: {terms}} a member sat in, from careers.json's records
+    (_careers) under each of `ids`, the numbers one page stands for: a member
+    who moved between the chambers has a record under each, which careers.json
+    does not join where the roster names neither (the deep walk of 6 November
+    2026). A record reached by two numbers counts once."""
+    out, seen = collections.defaultdict(set), set()
+    for i in ids:
+        rec = careers.get(str(i))
+        if not rec or id(rec) in seen:
+            continue
+        seen.add(id(rec))
+        for t, x in (rec.get("by_term") or {}).items():
+            for c in x.get("chambers") or []:
+                if c in ("H", "S"):
+                    out[c].add(t)
+    return dict(out)
 
 
 def seat_of(held, numbers, body):
@@ -226,6 +254,7 @@ class Members:
         # the earlier terms are filed under the earlier one.
         self.by_number = {}
         served = []
+        careers = _careers()
         for f, in (("legislators.json",), ("former.json",)):
             p = site / f
             if not p.exists():
@@ -255,13 +284,27 @@ class Members:
                 last, first = (x.strip() for x in name.split(",", 1))
                 terms = (set((r.get("served") or {}).get("terms") or [])
                          if f == "former.json" else None)
+                # EVERY NUMBER THE PAGE STANDS FOR (the deep walk of 6
+                # November 2026). A former member who sat in both chambers has
+                # one page, under one chamber, and its served.terms are both
+                # chambers' years: filed by those under its own chamber alone,
+                # Frederick King's House years of 2003-2008 counted nowhere in
+                # the House, and every "Rep. King" of them went to Seth King, a
+                # sitting member, the only King left (Levesque, Bradley and
+                # Fraser the same, 44 days). Its own chamber counts its own
+                # terms, and the other chamber its, from careers.json read
+                # under each of its numbers (_chamber_terms, below).
+                ids = list(dict.fromkeys([str(r.get("id") or ""),
+                                          *[str(x) for x in r.get("member_ids") or [] if x]]))
+                if terms is not None and len(ids) > 1:
+                    terms = _chamber_terms(careers, ids).get(ch) or terms
                 self.by_last[(ch, last.lower())].append((slug, terms))
                 self.by_full[(ch, f"{first} {last}".lower())].append((slug, terms))
                 # "Peter Schmidt" where the record holds "Schmidt, Peter E."
                 bare = first.split()[0] if first.split() else ""
                 if bare and bare != first:
                     self.by_full[(ch, f"{bare} {last}".lower())].append((slug, terms))
-                served.append((str(r.get("id") or ""), slug, ch, last, first, bare))
+                served.append((ids, slug, ch, last, first, bare))
         # THE OTHER CHAMBER, IN THE TERMS THEY SAT IN IT (the dry run of
         # e82bd06: "H Rosenwald (177)", "H Abbas (149)" and "H McConkey (58)"
         # among the House speakers left as words). A member is filed under the
@@ -269,14 +312,9 @@ class Members:
         # years were matched against no one. careers.json says which chamber
         # each member sat in, term by term; a member is filed under each other
         # chamber for those terms only, so the term rule above still decides.
-        careers = _careers()
-        for mid, slug, ch, last, first, bare in served:
-            rec = careers.get(mid) or {}
-            other = collections.defaultdict(set)
-            for t, x in (rec.get("by_term") or {}).items():
-                for c in x.get("chambers") or []:
-                    if c in ("H", "S") and c != ch:
-                        other[c].add(t)
+        # Under every number the page stands for, not its own alone.
+        for ids, slug, ch, last, first, bare in served:
+            other = {c: t for c, t in _chamber_terms(careers, ids).items() if c != ch}
             for c, terms in other.items():
                 self.by_last[(c, last.lower())].append((slug, terms))
                 self.by_full[(c, f"{first} {last}".lower())].append((slug, terms))

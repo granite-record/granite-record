@@ -31,5 +31,14 @@
       ],
       "checked": "2026-10-29"
     }
+  },
+
+  "misdated": {
+    "1999-S-109": {
+      "says": "10/22/2009",
+      "is": "10/22/1999",
+      "evidence": "CACR 17 (1999)'s docket dates the Senate's 15-8 roll call to order it to third reading (Sen. Brown's floor amendment 2165, three fifths necessary) 22 October 1999; the roll-call file entered it on 10/25/1999 10:26:07 AM, the morning it entered 1999-S-108 and 1999-S-110, both dated 10/22/1999; it is the only ballot of 2,303,047 dated outside its term.",
+      "checked": "2026-11-07"
+    }
   }
 }

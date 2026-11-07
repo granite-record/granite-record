@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.249
+# GRANITE_VERSION: 2026-09-05.250
 """
 Generate the faceted site from real General Court data.
 
@@ -2871,6 +2871,23 @@ def vote_date(s):
         return (0, 0, 0)
 
 
+def service_order(v):
+    """A ballot's place in a member's service: its term first, then its day.
+
+    BY THE TERM BEFORE THE DAY (the deep walk of 6 November 2026). The day
+    alone is the clerk's, and one is wrong: roll call 1999-S-109, CACR 17, is
+    dated 22 October 2009 between two of 22 October 1999, the only one of
+    2,303,047 ballots dated outside its term. Taken by the day, it was the
+    last vote of every senator of 1999 who cast it. Frederick King's and Leo
+    Fraser's one page was kept as the Senate's, though both sat in the House
+    after; Frederick King's House address answered with a 301 to "Former Sen.
+    Frederick King". And Carl Johnson's seat was taken from 1999-2000's bills
+    (SD3), not from his last term's (SD2). The term is the roll call's, from
+    its session year (proceedings.vote_term): 1999-2000 for 1999-S-109,
+    whatever its day says."""
+    return (P.vote_term(v.get("year", ""), v.get("date")), vote_date(v.get("date")))
+
+
 def write_rollcall_index(out, rollcalls, cards=None, nobill=None):
     """One shared file describing all 1,504 roll calls.
 
@@ -3333,8 +3350,10 @@ def former_movers(register, e2p, legs, links, votes_by_member, confirmed=()):
         {str(x) for v in (links or {}).values() for x in v}
     # By the day, not the text of it: dates are M/D/YYYY, and as text
     # "9/13/2018" sorts after "10/10/2018" (the review of 30 October 2026).
-    last = lambda i: max((vote_date(v.get("date")) for v in votes_by_member.get(i, [])),
-                         default=vote_date(""))
+    # And by the term before the day (service_order): a day the clerk got
+    # wrong made two House members' page the Senate's.
+    last = lambda i: max((service_order(v) for v in votes_by_member.get(i, [])),
+                         default=("", vote_date("")))
     out = {}
     groups = [[str((e2p or {}).get(n) or n) for n in person.get("numbers") or []]
               for person in (register or {}).get("people") or []]
@@ -3404,11 +3423,13 @@ def former_roster(legs, votes_by_member, links, former_file, current_term):
         # that person's voting record exists.
         if not mv:
             continue
-        dated = sorted(mv, key=lambda v: vote_date(v.get("date")))
+        # The term before the day (service_order): the last ballot names the
+        # seat, and the last of a joined page's says where its record ends.
+        dated = sorted(mv, key=service_order)
         last = dated[-1]
         every = sorted([v for x in (mid, *(links or {}).get(mid, []))
                         for v in votes_by_member.get(x, [])],
-                       key=lambda v: vote_date(v.get("date")))
+                       key=service_order)
         rec = dict(former_file.get(mid) or {})
         # THE BALLOT'S OWN LABEL FIRST, because it is the only thing here that
         # has been through member_corrections.json. That file is the person's,
@@ -3505,7 +3526,8 @@ def date_former_seats(former, votes_by_member, printed, corrected, legs):
         rows = votes_by_member.get(mid) or []
         if not rows or mid in corrected:
             continue
-        last = max(rows, key=lambda v: vote_date(v.get("date")))
+        # The last term by the roll call's own, not the day's (service_order).
+        last = max(rows, key=service_order)
         got = printed.get((P.vote_term(last.get("year", ""), last.get("date")), mid))
         if not got or got[0] != (m.get("chamber") or ""):
             continue
@@ -3542,22 +3564,47 @@ def date_former_seats(former, votes_by_member, printed, corrected, legs):
 MOVED_ADDRESSES = Path("generated/moved_addresses.json")
 
 
-def keep_moved(former, path=MOVED_ADDRESSES):
+def keep_moved(former, path=MOVED_ADDRESSES, links=None, sitting=()):
     """Every recorded address of a former member's page answers with a 301 to
     the page they have now: appended to the row's moved_from where it is not
     the page's own address and not there already. Returns (kept, unrecorded):
     how many recorded addresses were put back, and the moves this build made
-    that the file does not hold yet, said so they get recorded."""
+    that the file does not hold yet, said so they get recorded.
+
+    A MEMBER JOINED TO ANOTHER'S PAGE IS ON THAT PAGE (`links`, {page's id:
+    [ids joined to it]}). The file records an address for the member whose
+    page it then led to, and the page a member's record is on can change:
+    the night of 6 November recorded Frederick King's House address for his
+    Senate number, 205005, whose page was the one kept, and once his page was
+    kept as the House's (service_order) 205005 had none of its own. The
+    address goes to the page that carries 205005's record now -- here, the
+    House page whose own address it is, so nothing is added. The file is not
+    re-pointed: it only grows (record_moves.py)."""
     try:
         moved = json.loads(Path(path).read_text(encoding="utf-8")) if Path(path).exists() else {}
     except ValueError:
         print(f"  WARNING: {path} will not read: no recorded former address is kept this build")
         moved = {}
+    on_page = {str(x): str(k) for k, v in (links or {}).items() for x in v}
+    # NEVER A LIVE PAGE'S OWN ADDRESS (the review of 6 November 2026). The
+    # file records an address for the member whose page it led to and is
+    # never re-pointed, so a pair joined and then parted would have each of
+    # its two pages' addresses recorded for the other -- King's House address
+    # under his Senate number, his Senate address under his House number --
+    # and each page would answer the other's address with a 301: a loop
+    # between two live pages. An address that is a page's own now stays that
+    # page's, and is said.
+    own = {_member_address(x): k for k, x in former.items()}
+    own.update({a: "sitting" for a in sitting or ()})
     kept = 0
     for addr, mid in sorted(moved.items()):
-        m = former.get(str(mid))
+        m = former.get(str(mid)) or former.get(on_page.get(str(mid), ""))
         if m is None:
             print(f"  WARNING: {addr} is recorded for member {mid}, who has no former page now")
+            continue
+        if addr in own and addr != _member_address(m):
+            print(f"  WARNING: {addr} is recorded for member {mid}, and is the address of another "
+                  "page now: it is not answered with a 301")
             continue
         if addr != _member_address(m) and addr not in (m.get("moved_from") or []):
             m["moved_from"] = [*(m.get("moved_from") or []), addr]
@@ -3922,10 +3969,14 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
         # A MEMBER WHO CHANGED CHAMBER VOTED UNDER TWO NUMBERS, one for each:
         # Sen. Cindy Rosenwald's page carried 1,399 of her 4,218 votes. A page
         # keeps every chamber the member sat in. Own votes first, so a member
-        # nobody is joined to sorts exactly as before.
+        # nobody is joined to sorts exactly as before. Newest first, by the
+        # term and then the day (service_order): 1999-S-109, dated 2009 in
+        # the record, headed the whole list of every senator of 1999 who cast
+        # it, and now heads their 1999-2000 votes. The day it prints is the
+        # record's until the person corrects it (rollcall_corrections.json).
         joined = (links or {}).get(mid, [])
         mv = sorted([v for x in (mid, *joined) for v in votes_by_member.get(x, [])],
-                    key=lambda v: vote_date(v.get("date")), reverse=True)
+                    key=service_order, reverse=True)
         counts = defaultdict(int)
         for v in mv:
             counts[v["vote"]] += 1
@@ -3971,6 +4022,15 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
                 # The addresses of the pages this one took in (former_movers),
                 # which build_pages answers with a 301 to this one.
                 row["moved_from"] = list(m["moved_from"])
+            if joined:
+                # EACH CHAMBER'S YEARS, for the lists that name a former
+                # member's seat and years (the directory, the site search):
+                # the one row of a member whose page joins two chambers gave
+                # every year under the last seat, "Sen. Jeb Bradley R, SD3,
+                # 1999-2024" of a senator whose 1999-2002 were in the House
+                # (the deep walk of 6 November 2026). As their own file gives
+                # them (`both`, below).
+                row["service"] = ML.service(mv)
             fm.append(row)
         else:
             lg.append(row)
@@ -12654,7 +12714,8 @@ def main():
               + ", ".join(f"{former[k].get('name')} ({was} -> {now})"
                           for k, (was, now) in sorted(redated.items())[:12])
               + (" ..." if len(redated) > 12 else ""))
-    _kept, _unrecorded = keep_moved(former)
+    _kept, _unrecorded = keep_moved(former, links=links,
+                                    sitting={_member_address(m) for m in legs.values() if m.get("name")})
     if _kept:
         print(f"{_kept} recorded former address(es) kept answering with a 301 though the page "
               f"no longer moves from them ({MOVED_ADDRESSES})")
