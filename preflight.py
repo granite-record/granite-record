@@ -70261,20 +70261,33 @@ def _movers_by_term(B2, BL, BP, BI):
     assert "R, SD3 · Senate 2009–2024 · House 1999–2002</span>" in page and \
         "R, SD24, 2011–2016</span>" in page, re.findall(r'class="dirstatus">([^<]*)<', page)
     # A PERSON WHO SAT IN BOTH IS UNDER EACH (the deep walk of dry run 183):
-    # Jeb Bradley in the Senate list and in the House's, named there as the
-    # House named him; each chamber's count counts everyone who sat in it.
-    lists = {h: re.findall(r'<a href="[^"]*">([^<]*)</a>', ul) for h, ul in
-             re.findall(r'<h2 id="(s|h)">.*?</h2><ul class="dirpeople">(.*?)</ul>', page, re.S)}
-    assert lists == {"s": ["Sen. Nancy Alone", "Sen. Jeb Bradley"], "h": ["Rep. Jeb Bradley"]}, (
-        f"a person who sat in both chambers is not under each in the directory: {lists}")
-    assert "2 former senators and 1 former representatives" in page and \
+    # Jeb Bradley in the Senate list and in the House's, with the House's
+    # title there and the House's years first, and no party or seat, which
+    # are the page's chamber's (the review of 7 November 2026: "Sen. Leo
+    # Fraser R, Merr 37"); each chamber's count counts everyone who sat in it.
+    lists = {h: re.findall(r'<a href="[^"]*">([^<]*)</a> <span class="dirstatus">([^<]*)<', ul)
+             for h, ul in re.findall(r'<h2 id="(s|h)">.*?</h2><ul class="dirpeople">(.*?)</ul>',
+                                     page, re.S)}
+    assert lists == {"s": [("Sen. Nancy Alone", "R, SD24, 2011–2016"),
+                           ("Sen. Jeb Bradley", "R, SD3 · Senate 2009–2024 · House 1999–2002")],
+                     "h": [("Rep. Jeb Bradley", "House 1999–2002 · Senate 2009–2024")]}, (
+        f"a person who sat in both chambers is not under each in the directory, as that "
+        f"chamber's: {lists}")
+    assert "2 former senators and 1 former representative with" in page and \
         "The one who sat in both chambers is under each." in page, (
         "the directory's counts do not count everyone who sat in each chamber: "
         + (re.search(r'<p class="src">([^<]*)<', page) or [None, page[:200]])[1])
     assert rules == "/legislators/374827.json /legislators/36.json 301\n", (
         f"a joined number's data has no 301 to the page's: moved_members wrote {rules!r}")
-    assert found.get("jeb-bradley-sd-3") == "SD3 · Senate 2009–2024 · House 1999–2002" \
+    # The site search groups former members by the chamber their line starts
+    # with: a joined row's starts with its page's, as a one-chamber row's does.
+    assert found.get("jeb-bradley-sd-3") == "Senate · SD3 · 2009–2024 · House 1999–2002" \
         and found.get("nancy-alone-sd-24") == "Senate · SD24 · 2011–2016", found
+    grouped = _paths.locate("build_pages.py").read_text(encoding="utf-8")
+    assert 'k:r=>r[0]==="former"&&/^Senate/.test(r[2])' in grouped and \
+        'k:r=>r[0]==="former"&&/^House/.test(r[2])' in grouped, (
+        "the site search no longer groups former members by the chamber their line starts with; "
+        "say here what it groups by now")
     src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
     assert 'row["service"] = ML.service(mv)' in src, (
         "former.json's rows no longer carry each chamber's years for a joined page")
@@ -70286,7 +70299,8 @@ def _movers_by_term(B2, BL, BP, BI):
                   "Carl Johnson to SD3; a recorded address follows its number onto the joined page "
                   "without a warning; a joined number's JSON answers with the page's; a joined "
                   "page's description and directory line name the House and the Senate with "
-                  "their years")
+                  "their years; the directory lists a joined person under each chamber, and "
+                  "the site search under its page's")
 
 
 @check("session", "the seat of a term is the one its bills print, else the ballots' in the "

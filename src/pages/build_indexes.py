@@ -259,11 +259,16 @@ def former_page(site, base, urls):
             both = chamber_years(m, seat)
             said = (", ".join(x for x in (m.get("party") or "", " \u00b7 ".join(both)) if x) if both
                     else ", ".join(x for x in (m.get("party") or "", seat, span) if x))
-            # Under the other chamber, named as that chamber named them: "Rep.
-            # Jeb Bradley" in the House list, as his page of those years was.
+            # Under the other chamber, with that chamber's title -- "Rep. Jeb
+            # Bradley" in the House list -- and its years first. The party and
+            # the seat are the page's, its own chamber's: "Sen. Leo Fraser R,
+            # Merr 37" read as a Senate seat he never held, and Michael Downing
+            # sat in the House as a Democrat (the review of 7 November 2026).
+            # No source gives either for the other chamber, so neither is said.
             nm = m.get("display_plain") or m.get("name") or ""
             if both and ch != m.get("chamber"):
                 nm = re.sub(r"^(?:Sen|Rep)\. ", "Rep. " if ch == "H" else "Sen. ", nm)
+                said = " \u00b7 ".join(reversed(chamber_years(m, "")))
             body.append(f'<li><a href="{S.E(S.canon("legislator/" + m["slug"] + ".html"))}">'
                         f'{S.E(nm)}</a> <span class="dirstatus">'
                         f'{S.E(said)}</span></li>')
@@ -273,7 +278,8 @@ def former_page(site, base, urls):
           f"{len(people):,} former members of the New Hampshire House and Senate on record since "
           "1999, with party, seat and years, each linked to their votes and sponsored bills.",
           "Former legislators",
-          f"{len(by['S'])} former senators and {len(by['H']):,} former representatives with a "
+          f"{len(by['S'])} former senator{'' if len(by['S']) == 1 else 's'} and {len(by['H']):,} "
+          f"former representative{'' if len(by['H']) == 1 else 's'} with a "
           "recorded roll call vote since 1999, by surname."
           + (f" The {joined} who sat in both chambers are under each." if joined > 1 else
              " The one who sat in both chambers is under each." if joined else ""),
@@ -571,13 +577,20 @@ def find_index(site, legs, towns):
         terms = (m.get("served") or {}).get("terms") or []
         span = f"{terms[0].split('-')[0]}–{terms[-1].split('-')[1]}" if terms else ""
         last = re.search(r"(\d{4})", (m.get("served") or {}).get("last") or "")
-        # Each chamber its own years where the page joins two (chamber_years).
-        both = chamber_years(m, m.get("district_label") or "")
+        # Each chamber its own years where the page joins two (chamber_years),
+        # in the shape of a one-chamber row -- its chamber, its seat, its
+        # years -- with the other chamber's after: "Senate · SD3 · 2009–2024 ·
+        # House 1999–2002". The site search groups former members by the word
+        # their line starts with, and a joined row starting "SD3" fell out of
+        # Former Senators and Former Representatives both (the review of 7
+        # November 2026).
+        both = chamber_years(m, "")
+        own = "Senate" if m.get("chamber") == "S" else "House"
         rows.append(["former",
                      "Former " + (m.get("display_plain") or m.get("name") or ""),
-                     " · ".join(x for x in (both or (
-                         "Senate" if m.get("chamber") == "S" else "House",
-                         m.get("district_label") or "", span)) if x),
+                     " · ".join(x for x in ((own, m.get("district_label") or "",
+                                             both[0].split(" ", 1)[1], *both[1:]) if both else (
+                         own, m.get("district_label") or "", span)) if x),
                      S.canon(f"legislator/{m['slug']}.html"),
                      " ".join(str(x) for x in (m.get("county_abbr"), m.get("party"))
                               if x),
