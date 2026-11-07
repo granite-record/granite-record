@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.783
+# GRANITE_VERSION: 2026-09-04.784
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -14107,6 +14107,144 @@ _RC_ROLLS = [
     _rc_seated("2007", "S", 170, "2007-06-14", "CACR19", "Laid on Table Sen. Sgambati/Sen. Reynolds",
         17, 7, 24),
 ]
+
+
+# The real rows of records/rollcalls/RollCallSummary_1999.txt: the Senate's
+# votes of 22 October 1999 on CACR 16 and CACR 17, the middle one dated 2009
+# by the file, though it was entered the same morning as the others, 25
+# October 1999.
+_RC_MISDATED = [
+    "1999|S|108|10/22/1999 12:00:00 AM|CACR16|17|6|23|0|||Order to 3rd Reading3/5 Necessary|relating to use of statewide property and personal income taxes.||10/25/1999 10:29:09 AM",
+    "1999|S|109|10/22/2009 12:00:00 AM|CACR17|15|8|23|0|||Order to 3rd Reading3/5 Necessary|relating to establishing a restricted education trust fund.||10/25/1999 10:26:07 AM",
+    "1999|S|110|10/22/1999 12:00:00 AM|CACR16|12|9|23|0|||Final Passage3/5 Necessary|relating to use of statewide property and personal income taxes.||10/25/1999 10:26:57 AM",
+]
+
+
+@check("rollcalls", "a roll call a person shows is misdated is drawn on the day the record gives, "
+       "for rollcalls.json, the ballots and the floor index alike, and only while the roll-call "
+       "file still gives the day the entry says (corrections/rollcall_corrections.json)",
+       needs=("rollcall_parser",))
+def _rollcall_misdated(RP):
+    """THE DEEP WALK OF 6 NOVEMBER 2026. Roll call 1999-S-109 is dated 22
+    October 2009 in the General Court's file. CACR 17's docket dates the
+    15-8 vote to order it to third reading 22 October 1999; the file itself
+    entered it on 25 October 1999, the morning it entered 1999-S-108 and
+    1999-S-110, both dated 22 October 1999; and it is the only one of
+    2,303,047 ballots dated outside its term. CACR 17's Votes tab and 23 senators' own drew it as
+    2009, and the six who sat only in 1999-2000 read "1999 to 2009". The
+    person's file could move a roll call to another bill ("misfiled") and
+    not to another day; "misdated" does, read by
+    rollcall_parser.roll_call_when wherever a roll call's day is read.
+
+    Driven here by a corrections folder of the check's own in a temporary
+    project, never the real one: an entry dates 1999-S-109 22 October 1999
+    in roll_call_when and in parse, keeping its time; an entry the file no
+    longer bears out is not applied and is said; one no file holds is said;
+    a malformed entry, or one without evidence, stops the run; no file
+    changes nothing."""
+    import contextlib
+    import io
+    keep = (RP.REFILED, dict(RP._MISDATED), {k: set(v) for k, v in RP.MISDATED_SEEN.items()},
+            dict(RP._REFILED))
+
+    def reset(path):
+        RP.REFILED = path
+        RP._MISDATED.clear()
+        RP._REFILED.clear()
+        RP.MISDATED_SEEN.clear()
+
+    d = Path(tempfile.mkdtemp(prefix="gr-misdated-"))
+    try:
+        corr = _mk(d / "corrections" / "rollcall_corrections.json")
+        entry = {"says": "10/22/2009", "is": "10/22/1999",
+                 "evidence": "CACR 17's docket dates the 15-8 vote 10/22/1999", "checked": "2026-11-07"}
+        corr.write_text(json.dumps({"misdated": {
+            "1999-S-109": entry, "1999-S-108": dict(entry, says="10/23/1999", **{"is": "10/22/1999"}),
+            "1999-S-500": entry}}), encoding="utf-8")
+        (d / "RollCallSummary.txt").write_text("\n".join(_RC_MISDATED) + "\n", encoding="utf-8")
+        reset(corr)
+        got = [RP.roll_call_when("1999", "S", 109, "10/22/2009 12:00:00 AM"),
+               RP.roll_call_when("1999", "S", "109", "10/22/2009"),
+               RP.roll_call_when("1999", "H", 109, "10/22/2009 12:00:00 AM"),
+               RP.roll_call_when("1999", "S", 109, "10/23/2009 12:00:00 AM"),
+               RP.roll_call_when("1999", "S", 110, "10/22/1999 12:00:00 AM")]
+        assert got == ["10/22/1999 12:00:00 AM", "10/22/1999", "10/22/2009 12:00:00 AM",
+                       "10/23/2009 12:00:00 AM", "10/22/1999 12:00:00 AM"], (
+            f"roll_call_when gives 1999-S-109 twice, 1999-H-109, 1999-S-109 dated another day and "
+            f"1999-S-110 as {got}")
+        rows = {r["number"]: r for r in RP.parse(d / "RollCallSummary.txt")}
+        assert {n: r["date"] for n, r in rows.items()} == \
+            {108: "1999-10-22", 109: "1999-10-22", 110: "1999-10-22"}, (
+            f"parse dates them {[(n, r['date']) for n, r in rows.items()]}")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            told = RP.misdated_report()
+            quiet = RP.misdated_report(complete=False)
+        assert told == (["1999-S-109"], ["1999-S-108"], ["1999-S-500"]) and \
+            quiet == (["1999-S-109"], ["1999-S-108"], []), (
+            f"the report says applied, stale, unread: {told}; where not every file was read {quiet}")
+        assert "NOT applied" in out.getvalue() and "did nothing" in out.getvalue(), out.getvalue()
+        # An entry this cannot apply stops the run rather than passing.
+        for bad in ({"1999-S-109": dict(entry, **{"is": "10/22/2009"})}, {"S-109": entry},
+                    {"1999-S-109": dict(entry, says="2009-10-22")},
+                    {"1999-S-109": dict(entry, evidence="")}, ["1999-S-109"]):
+            corr.write_text(json.dumps({"misdated": bad}), encoding="utf-8")
+            reset(corr)
+            try:
+                RP.misdated()
+            except SystemExit:
+                continue
+            raise AssertionError(f"rollcall_corrections.json took {bad} rather than refusing it")
+        # "misfiled" alone, as the person's file has it today: nothing moves.
+        corr.write_text(json.dumps({"misfiled": {}}), encoding="utf-8")
+        reset(corr)
+        assert RP.misdated() == {} and \
+            RP.roll_call_when("1999", "S", 109, "10/22/2009 12:00:00 AM") == "10/22/2009 12:00:00 AM"
+        reset(d / "corrections" / "absent.json")
+        assert RP.misdated() == {}, "with no corrections file a roll call still moved"
+    finally:
+        RP.REFILED = keep[0]
+        RP._MISDATED.clear()
+        RP._MISDATED.update(keep[1])
+        RP.MISDATED_SEEN.clear()
+        RP.MISDATED_SEEN.update(keep[2])
+        RP._REFILED.clear()
+        RP._REFILED.update(keep[3])
+        shutil.rmtree(d, ignore_errors=True)
+    # Every reader of a roll call's day beside its bill reads it through the
+    # same function, and the two that report say what the file did.
+    src = _paths.locate("build_data.py").read_text(encoding="utf-8")
+    assert '"datetime": RP.roll_call_when(r[0], r[1], r[2], r[3])' in src and \
+        "RP.misdated_report(complete=False)" in src, (
+        "build_data.py no longer dates a ballot through rollcall_parser.roll_call_when, or no "
+        "longer says what rollcall_corrections.json's misdated did")
+    assert "RP.roll_call_when(p[0], p[1], p[2], p[3])" in \
+        _paths.locate("build_floor_index.py").read_text(encoding="utf-8"), (
+        "build_floor_index.py no longer dates a roll call through rollcall_parser.roll_call_when")
+    src = _paths.locate("rollcall_parser.py").read_text(encoding="utf-8")
+    assert "roll_call_when(year, body, num, p[3])" in src and "    misdated_report()" in src, (
+        "rollcall_parser.parse no longer dates a roll call through roll_call_when")
+    # THE PERSON'S OWN FILE, where there is one, against the files on disk.
+    real = _paths.ROOT / "corrections" / "rollcall_corrections.json"
+    files = sorted((_paths.ROOT / "records" / "rollcalls").glob("RollCallSummary_*.txt"))
+    if not real.is_file() or not RP.misdated(real):
+        return "ok", ("1999-S-109 is drawn on 22 October 1999 while the file dates it 2009, and "
+                      "not once the file stops; a stale or unread entry is said; a malformed one "
+                      "stops; the person's file has no misdated entry")
+    seen = {}
+    for f in files:
+        for line in f.read_text(encoding="utf-8", errors="replace").splitlines():
+            p = line.split("|")
+            if len(p) > 3 and REFILED_ROW.fullmatch("|".join(p[:3])):
+                seen[(p[0], p[1], int(p[2]))] = RP._file_day(p[3])
+    stale = [f"{k[0]}-{k[1]}-{k[2]}" for k, e in RP.misdated(real).items()
+             if seen.get(k) is not None and seen.get(k) != RP._file_day(e.get("says"))]
+    assert not stale, f"rollcall_corrections.json's misdated entries no longer match the files: {stale}"
+    return "ok", (f"{len(RP.misdated(real))} misdated entr(ies) in the person's file, each matching "
+                  "the roll-call files on disk; the made-up cases hold")
+
+
+REFILED_ROW = re.compile(r"\d{4}\|[HS]\|\d+")
 
 # (passed, threshold_needed, outcome_source), as the Journals record them
 _RC_WANT = {
