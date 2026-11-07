@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.792
+# GRANITE_VERSION: 2026-09-04.793
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -73497,7 +73497,10 @@ def _one_language_note(chrome, i18n):
     # THE WORDING THE OWNER APPROVED AS DRAFTED (6 November 2026, "fine as is
     # for now"), word for word in both languages, read as a reader sees it:
     # a change goes through the catalog on purpose (the Latino caucus's
-    # review may bring one), and then here.
+    # review may bring one), and then here. lang.why_names was reworded at
+    # the owner's word on 7 November 2026: "y cargos" dropped, since the
+    # Spanish Officials page translates offices, and a committee's Spanish
+    # name carries its English beside it.
     approved = {
         "lang.note": ("This page is in Spanish. Some parts stay in English on purpose, and some "
                       "pages aren't translated yet.",
@@ -73514,11 +73517,12 @@ def _one_language_note(chrome, i18n):
             "son el registro oficial de la Legislatura, que está escrito en inglés. Traducir un texto "
             "legal puede cambiar su significado, así que el sitio lo muestra tal como está escrito."),
         "lang.why_names": (
-            "Names stay as the record prints them: people, committees, towns and offices. Search "
-            "finds subjects by their English words (housing, not vivienda).",
-            "Los nombres se dejan como los imprime el registro: personas, comités, municipios y "
-            "cargos. La búsqueda encuentra los temas por sus palabras en inglés (housing, no "
-            "vivienda)."),
+            "Names of people, committees and towns stay as the record prints them; where a "
+            "committee is given a Spanish name, its English name is beside it. Search finds "
+            "subjects by their English words (housing, not vivienda).",
+            "Los nombres de personas, comités y municipios se dejan como los imprime el registro; "
+            "donde un comité aparece con un nombre en español, su nombre en inglés va al lado. La "
+            "búsqueda encuentra los temas por sus palabras en inglés (housing, no vivienda)."),
         "lang.why_links": ("Official state pages the site links to are in English.",
                            "Las páginas oficiales del estado a las que enlaza el sitio están en inglés."),
         "lang.why_not_yet": (
