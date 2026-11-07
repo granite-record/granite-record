@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.5
+# GRANITE_VERSION: 2026-10-30.6
 """
 What every file of the data API holds, field by field: /data/schema.json.
 
@@ -91,7 +91,9 @@ CSV = {
         "outcome_source": ("string", "Where passed comes from: docket, docket, implied, journal, count or rule.", S),
     },
     # No YouTube metadata (a recording's title, the stream's scheduled
-    # offset): no download carries it (the owner, 5 November 2026; Q18).
+    # offset): no download carries it (the owner, 5 November 2026; Q18). A
+    # watch link made of the id and this site's start does (the owner, 7
+    # November 2026). PROCEEDINGS_COLUMNS below is the approved list.
     "proceedings.csv": {
         "term": ("string", "The two-year term.", S),
         "bill": ("string", "The bill, as the docket or the calendar writes it. " + BILL_KEY
@@ -108,6 +110,9 @@ CSV = {
         "end_seconds": ("number", "Where it places the end.", B),
         "how_placed": ("string", "How the start was found: stated, floor_stated, floor_precise, located, whole_video, floor_dated; approximate, consent or empty where no moment was found.", B),
         "end_how": ("string", "How the end was found.", B),
+        "watch_url": ("string", "The recording on YouTube, opening at start_seconds where there "
+                                "is one: https://www.youtube.com/watch?v=<video_id>&t=<seconds>s. "
+                                "Empty where no recording was matched.", B),
     },
     "sponsors.csv": {
         "term": ("string", "The two-year term.", S),
@@ -248,6 +253,9 @@ DB_TABLES = {
     "legislators": "legislators.csv, as written.",
     "proceedings": "Every sitting on a bill, with where this site places it in the recording. "
                    "YouTube's own metadata (a recording's title, its scheduled offset) is left out.",
+    "recordings": "Every sitting on a bill that has a recording, one row each: the recording's id, "
+                  "the committee, chamber and day this site matched it to, where in it this site "
+                  "places the bill, how, and a link that opens it there (DESIGN.md, 2.10).",
     "people": "people.json, one row a person.",
     "person_numbers": "Every number of every person, one row a number.",
     "committee_reports": "Each side of each printed committee report, with its reasoning in text: House calendar reports, Senate committee reports, interim study statements.",
@@ -261,7 +269,19 @@ DB_TABLES = {
 # Every column of every table, where the table is not a CSV's (those take
 # the CSV's descriptions). build_exports stops on a column described nowhere.
 _T, _I = "string", "integer"
+_PC = CSV["proceedings.csv"]
 DB_COLUMNS = {
+    "recordings": {
+        "term": _PC["term"], "bill": _PC["bill"],
+        "video_id": (_T, "The recording's YouTube id.", B),
+        "committee": (_T, "The committee this site matched the recording to.", B),
+        "chamber": (_T, "H or S.", B),
+        "date": (_T, "The day this site matched it to, YYYY-MM-DD.", B),
+        "start_seconds": (("number",) + _PC["start_seconds"][1:]),
+        "end_seconds": (("number",) + _PC["end_seconds"][1:]),
+        "how_placed": _PC["how_placed"],
+        "watch_url": _PC["watch_url"],
+    },
     "rollcalls": {"id": (_I, "This file's key for the roll call, which votes.rollcall uses. Not stable between nights: join on roll_call.", S)},
     "votes": {
         "rollcall": (_I, "rollcalls.id.", S),
@@ -363,6 +383,32 @@ DB_COLUMNS = {
 }
 DB_FROM_CSV = {"bills": "bills.csv", "rollcalls": "rollcalls.csv", "sponsors": "sponsors.csv",
                "legislators": "legislators.csv", "proceedings": "proceedings.csv"}
+
+# THE APPROVED COLUMNS of the two places a recording is published (the owner,
+# 7 November 2026; DESIGN.md, 2.10). preflight holds the files to these
+# exactly, so a column of YouTube's own (a title, a scheduled offset, a view
+# count) cannot come in beside them unasked, and neither can anything else.
+PROCEEDINGS_COLUMNS = ("term", "bill", "body", "kind", "date", "time", "committee", "venue",
+                       "video_id", "start_seconds", "end_seconds", "how_placed", "end_how",
+                       "watch_url")
+RECORDINGS_COLUMNS = ("term", "bill", "video_id", "committee", "chamber", "date",
+                      "start_seconds", "end_seconds", "how_placed", "watch_url")
+YOUTUBE_OWN = ("video_title", "scheduled_seconds", "title", "predicted", "watch", "views",
+               "duration", "description", "thumbnail")
+
+
+def watch_url(video_id, start=None):
+    """A recording on YouTube, opening at this site's own start where there
+    is one: made of the id and that start, nothing of YouTube's. Empty for no
+    id. A start is whole seconds, rounded down, never below 0."""
+    if not video_id:
+        return ""
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    try:
+        t = max(int(float(start)), 0)
+    except (TypeError, ValueError):
+        return url
+    return f"{url}&t={t}s"
 
 # The one rights line every download states (manifest.json, the database's
 # meta, and here schema.json): api_db.RIGHTS, the owner's words.

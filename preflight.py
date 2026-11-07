@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.790
+# GRANITE_VERSION: 2026-09-04.791
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -29819,11 +29819,13 @@ def _api_schema():
             [["2025-2026", "HB1", "m1", "A Member", "R", "H", "1", "", "the sponsor file", "1"]])
         put(d, "legislators.csv", list(AS.CSV["legislators.csv"]),
             [["m1", "A Member", "House", "R", "1", "Belknap", "", "", "3", "120", "1"]])
-        put(d, "proceedings.csv", list(AS.CSV["proceedings.csv"]),
+        put(d, "proceedings.csv", list(AS.PROCEEDINGS_COLUMNS),
             [["2025-2026", "HB1", "H", "public hearing", "2025-01-09", "10:00", "Finance", "LOB 210",
-              "abc", "100", "620.5", "stated", "", ][:len(AS.CSV["proceedings.csv"])],
+              "abc", "100", "620.5", "stated", "", AS.watch_url("abc", "100")],
              ["2025-2026", "HB2", "H", "public hearing", "2025-01-09", "11:00", "Finance", "LOB 210",
-              "abc", "20", "", "stated", ""][:len(AS.CSV["proceedings.csv"])]])
+              "abc", "20", "", "stated", "", AS.watch_url("abc", "20")],
+             ["2025-2026", "HB2", "S", "public hearing", "2025-01-10", "11:00", "Finance", "SH 100",
+              "", "", "", "", "", AS.watch_url("", "")]])
         people = [{"person": "1", "name": "A Member", "member_ids": ["m1"], "employee_numbers": ["m1"]}]
         row = api_db.write(d, api_db.Collector(), people, meetings_path=d / "none.json")
         cols = row["columns"]
@@ -29844,8 +29846,24 @@ def _api_schema():
                  if (t, c) in stored and f[0] in want
                  and not (stored[(t, c)] or "").startswith(want[f[0]])]
         assert not wrong, "the database stores numbers as text: " + "; ".join(wrong)
-        order = [r[0] for r in con.execute("SELECT start_seconds FROM proceedings ORDER BY start_seconds")]
+        order = [r[0] for r in con.execute("SELECT start_seconds FROM proceedings "
+                                           "WHERE start_seconds IS NOT NULL ORDER BY start_seconds")]
         assert order == [20.0, 100.0], f"start_seconds sorts as text: {order}"
+        # RECORDINGS (the owner, 7 November 2026): the approved columns
+        # exactly, a row for each sitting with a recording and none without,
+        # and the link made of the id and this site's own start.
+        assert tuple(cols["recordings"]) == AS.RECORDINGS_COLUMNS, (
+            f"the database's recordings holds {cols['recordings']}, not the approved "
+            f"{list(AS.RECORDINGS_COLUMNS)}")
+        recs = con.execute("SELECT bill, chamber, start_seconds, watch_url FROM recordings").fetchall()
+        assert recs == [("HB1", "H", 100.0, "https://www.youtube.com/watch?v=abc&t=100s"),
+                        ("HB2", "H", 20.0, "https://www.youtube.com/watch?v=abc&t=20s")], recs
+        assert AS.watch_url("abc", "61.9") == "https://www.youtube.com/watch?v=abc&t=61s"
+        assert AS.watch_url("abc", "") == "https://www.youtube.com/watch?v=abc"
+        assert AS.watch_url("", "5") == ""
+        for approved in (AS.PROCEEDINGS_COLUMNS, AS.RECORDINGS_COLUMNS):
+            assert not set(approved) & set(AS.YOUTUBE_OWN), (
+                f"an approved list names one of YouTube's own fields: {set(approved) & set(AS.YOUTUBE_OWN)}")
         assert dict(con.execute("SELECT key, value FROM meta"))["rights"] == api_db.RIGHTS
         con.close()
 
@@ -50888,7 +50906,14 @@ def _committee_not_a_notice(BC, P, B, BE, BV):
         with contextlib.redirect_stdout(io.StringIO()) as said:
             BE.proceedings_table(out_dir, root / "site", table=table, histories=histories)
         with (out_dir / "proceedings.csv").open(encoding="utf-8", newline="") as fh:
-            got = {(r["term"], r["bill"], r["kind"], r["date"]) for r in csv.DictReader(fh)}
+            rd = csv.DictReader(fh)
+            got = {(r["term"], r["bill"], r["kind"], r["date"]) for r in rd}
+        # THE APPROVED COLUMNS, EXACTLY (the owner, 7 November 2026): a watch
+        # link of this site's making, and nothing of YouTube's own.
+        import api_schema as _AS
+        assert tuple(rd.fieldnames) == _AS.PROCEEDINGS_COLUMNS, (
+            f"proceedings.csv is written with {rd.fieldnames}, not the approved "
+            f"{list(_AS.PROCEEDINGS_COLUMNS)}")
         assert got == {("2017-2018", "HB255", "public hearing", "2017-01-10"),
                        ("2017-2018", "HB255", "executive session", "2017-01-10")}, (
             f"the download of HB 255's two sittings and two notices holds {sorted(got)}")

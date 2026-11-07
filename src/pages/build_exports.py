@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.63
+# GRANITE_VERSION: 2026-09-10.64
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -311,10 +311,13 @@ def proceedings_table(out, site, table=None, histories=None):
     # NO YOUTUBE METADATA (the owner, 5 November 2026). The recording's
     # title and the stream's scheduled offset are YouTube's own data, which
     # no download carries (docs/design/api/DESIGN.md, Q18, on YouTube's API
-    # terms); the id is the link, and the moment in it is this site's.
-    cols = ["term", "bill", "body", "kind", "date", "time", "committee",
-            "venue", "video_id", "start_seconds",
-            "end_seconds", "how_placed", "end_how"]
+    # terms); the id is the link, and the moment in it is this site's. AND A
+    # WATCH LINK (the owner, 7 November 2026, Q18 answered): watch_url, made
+    # of the id and this site's own start and nothing of YouTube's, at the
+    # end, as a new column goes. api_schema.PROCEEDINGS_COLUMNS is the
+    # approved list, and preflight holds the file to it exactly.
+    import api_schema as AS
+    cols = list(AS.PROCEEDINGS_COLUMNS)
     # The year folder each bill's page is under. No site is no folders, and
     # then no station either; main() has already stopped in bills() for it.
     folder = {(b.get("term"), b.get("id")): str(b.get("year") or "")
@@ -353,7 +356,8 @@ def proceedings_table(out, site, table=None, histories=None):
                      r.get("video_id", ""),
                      "" if st.get("start") is None else st["start"],
                      "" if st.get("end") is None else st["end"],
-                     st.get("state") or "", st.get("end_from") or ""])
+                     st.get("state") or "", st.get("end_from") or "",
+                     AS.watch_url(r.get("video_id"), st.get("start"))])
     rows.sort(key=lambda r: (r[4], BO.bill_key(r[1])))
     print(f"  proceedings.csv: {placed:,} rows carry the time their page "
           "prints" + (f"; {len(notices)} docket notice(s) for a bill withdrawn "
@@ -385,7 +389,9 @@ def proceedings_table(out, site, table=None, histories=None):
                  "A meeting the docket gave notice of for a bill that was "
                  "never introduced, or for a day after the bill was "
                  "withdrawn, is not a row: the bill's own page says what the "
-                 "docket entered.")
+                 "docket entered. "
+                 "watch_url opens the recording on YouTube at start_seconds, "
+                 "or at its beginning where there is none.")
 
 
 def sponsors(out, data, person_of=None):
@@ -1435,7 +1441,7 @@ def database_file(out, collector, joined):
         return []
     row = api_db.write(out, collector, joined[0])
     must = ("bills", "rollcalls", "votes", "vote_values", "sponsors", "legislators",
-            "proceedings", "people", "person_numbers", "committee_reports")
+            "proceedings", "recordings", "people", "person_numbers", "committee_reports")
     empty = [t for t in must if not row["counts"].get(t)]
     if empty:
         path.unlink(missing_ok=True)

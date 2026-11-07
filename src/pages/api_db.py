@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.7
+# GRANITE_VERSION: 2026-10-30.8
 """
 The data API's database: every table on the data page, and the record's
 committee reports, in one SQLite file, compressed with xz.
@@ -24,6 +24,8 @@ WHAT IT HOLDS
                           own metadata; PROCEEDINGS_DROP keeps the recording's
                           title and scheduled offset out of this table should
                           they ever come back to the CSV (Q18)
+  recordings              its rows that have a recording, with a watch link
+                          (the owner's answer to Q18, 7 November 2026)
   people, person_numbers  people.json, as one row a person and one a number
   committee_reports       each side of each printed committee report, with
                           its reasoning: House calendar reports, Senate
@@ -267,6 +269,20 @@ def _write(out, collector, people, meetings_path, tmp):
                 f'"{c}" {kind.get(spec.get(c, ("",))[0], "TEXT")}' for c in cols) + ")")
             ins(name, len(cols), rows)
         counts[name] = len(rows)
+
+    # RECORDINGS (the owner, 7 November 2026; DESIGN.md, 2.10): every sitting
+    # that has a recording, with the committee, chamber and day this site
+    # matched it to, where it places the bill and a link there -- the rows of
+    # proceedings.csv that carry a video_id, in their order. Nothing of
+    # YouTube's own: api_schema.RECORDINGS_COLUMNS is the approved list.
+    from api_schema import RECORDINGS_COLUMNS as RC
+    rec = [(r["term"], r["bill"], r["video_id"], r["committee"], r["body"], r["date"],
+            _num(r["start_seconds"]), _num(r["end_seconds"]), r["how_placed"], r["watch_url"])
+           for r in _csv(out / "proceedings.csv") if r.get("video_id")]
+    con.execute("CREATE TABLE recordings (" + ", ".join(
+        f'"{c}" {"REAL" if c.endswith("_seconds") else "TEXT"}' for c in RC) + ")")
+    ins("recordings", len(RC), rec)
+    counts["recordings"] = len(rec)
 
     prow, nrow = [], []
     for p in people:

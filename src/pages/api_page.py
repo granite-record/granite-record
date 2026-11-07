@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.10
+# GRANITE_VERSION: 2026-10-30.11
 """
 /api: the data API's documentation page, drawn in the data page's own
 components and counted from tonight's manifest.
@@ -94,11 +94,15 @@ def body(manifest):
         rows.append(_row(
             db["path"].rsplit("/", 1)[-1],
             "Every table on the data page in one SQLite database, with the committee reports and "
-            "their reasoning, interim study statements, testimony counts and every noticed meeting.",
+            "their reasoning, interim study statements, testimony counts, every noticed meeting, "
+            "and every recording with a link to where this site places the bill in it.",
             f"<p>{mb(db.get('opened_bytes'))} once opened. Tables: "
             + ", ".join(f"{E(t)} ({n:,})" for t, n in c.items())
             + ". Testimony is counts only, never a name. A vote is its roll call, its member, "
-            "their person and a value, so each roll call and each member is stored once.</p>"
+            "their person and a value, so each roll call and each member is stored once. "
+            "A recording is its YouTube id and a <code>watch_url</code> that opens it at this "
+            "site&rsquo;s start for the bill; nothing of YouTube&rsquo;s own, such as a "
+            "video&rsquo;s title, is kept.</p>"
             '<p class="dpjoin">votes.rollcall joins rollcalls.id; votes.person and '
             "person_numbers.person join people.person; term + bill joins bills.</p>",
             f"{len(c):,}", "tables", mb(db["bytes"]), f"data/{E(db['path'].rsplit('/', 1)[-1])}"))
@@ -134,7 +138,8 @@ def body(manifest):
             "</code></span></summary><p>Each line is one JSON object, keyed "
             f'<code>"key": "{E(newest)}/HB1442"</code>: the record the bill&rsquo;s own page is '
             "drawn from. It leaves out the Senate&rsquo;s hearing reports, which name members of "
-            "the public, and YouTube&rsquo;s own titles and links.</p></details></td>"
+            "the public, and YouTube&rsquo;s own titles. The link to each moment in a recording "
+            "is in the database&rsquo;s recordings and in proceedings.csv.</p></details></td>"
             f'<td role="cell" class="n dpr">{sum(f["rows"] for f in bills):,} bills</td>'
             f'<td role="cell" class="n dps">{mb(sum(f["bytes"] for f in bills))}</td>'
             '<td role="cell" class="dpg"><span class="dpeach">Each term below</span></td></tr>'
