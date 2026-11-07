@@ -33,9 +33,9 @@ python3 preflight.py           # the checks; builds the whole site on a fixture
 python3 src/ops/handoff.py     # writes STATE.md with current counts
 ```
 
-Several minutes, no network -- `preflight` is nearly all of it, and its
-`--code` half alone takes three to four (measured 23 October 2026; it grows
-with every check). **Trust their output
+Twenty minutes or more, no network -- `preflight` is nearly all of it. On
+the laptop the whole of it took about 20 minutes and its `--code` half 15 to
+25 (measured 6 and 7 November 2026; it grows with every check). **Trust their output
 over anything written in prose, including this file.** If `preflight` is not
 green, fix that before anything else.
 

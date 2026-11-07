@@ -542,6 +542,11 @@
    "es": "Proyecto de ley",
    "state": "draft"
   },
+  "find.kind.request": {
+   "en": "Bill Request",
+   "es": "Solicitud de proyecto de ley",
+   "state": "draft"
+  },
   "find.kind.committee": {
    "en": "Committee",
    "es": "Comité",
@@ -16470,11 +16475,6 @@
    "es": "Ayuda paso a paso con los trámites que la gente hace con el estado y con la participación en la Legislatura. Cada guía enlaza la página oficial que tiene la última palabra y dice cuándo se cotejó con ella por última vez.",
    "state": "draft"
   },
-  "guides.hub_lang_note": {
-   "en": "This page is in Spanish, and so are the guides it lists. The official pages they link to, and the record itself, are in English.",
-   "es": "Esta página está en español, igual que las guías que enumera. Las páginas oficiales que enlazan, y el propio registro, están en inglés.",
-   "state": "draft"
-  },
   "guides.hub_lead": {
    "en": "How to get things done with New Hampshire&rsquo;s state and local government, how it works, and where to find what it publishes itself.",
    "es": "Cómo hacer trámites con el gobierno estatal y local de New Hampshire, cómo funciona y dónde encontrar lo que el propio gobierno publica.",
@@ -16498,11 +16498,6 @@
   "guides.in_short": {
    "en": "{title}, in short",
    "es": "{title}, en resumen",
-   "state": "draft"
-  },
-  "guides.lang_note": {
-   "en": "This guide is in Spanish. The official pages it links to, and the record itself, are in English.",
-   "es": "Esta guía está en español. Las páginas oficiales que enlaza, y el propio registro, están en inglés.",
    "state": "draft"
   },
   "guides.on_page": {
@@ -16605,12 +16600,6 @@
    "en": "Every bill, vote, hearing and floor debate of the New Hampshire General Court, linked to the moment in the recording where it happened.",
    "es": "Cada proyecto de ley, votación, audiencia y debate en el pleno de la Legislatura de New Hampshire, enlazado al momento de la grabación en que ocurrió.",
    "state": "draft"
-  },
-  "home.lang_note": {
-   "en": "This page is in Spanish. The rest of the site is in English for now, and so is what the record itself says: bill titles, committee names, each bill&rsquo;s history and the subjects the search knows.",
-   "es": "Esta página está en español. El resto del sitio está en inglés por ahora, igual que lo que dice el propio registro: los títulos de los proyectos de ley, los nombres de los comités, el historial de cada proyecto y los temas que reconoce la búsqueda.",
-   "state": "draft",
-   "note": "Shown only on the Spanish page, under the lead."
   },
   "home.lead": {
    "en": "Keep up with New Hampshire legislation, find bills on the issues you care about, learn how the legislature works, and explore the record from 1989 to today.",
@@ -17188,6 +17177,38 @@
   "kind.work_session": {
    "en": "Work Session",
    "es": "Sesión de trabajo",
+   "state": "draft"
+  },
+  "lang.note": {
+   "en": "This page is in Spanish. Some parts stay in English on purpose, and some pages aren&rsquo;t translated yet.",
+   "es": "Esta página está en español. Algunas partes se quedan en inglés a propósito, y algunas páginas todavía no están traducidas.",
+   "state": "draft",
+   "note": "The line under the title of every Spanish page (chrome.lang_note). This entry and the five lang.why entries are the wording the owner approved as drafted on 6 November 2026, still draft for the Latino caucus's review."
+  },
+  "lang.why": {
+   "en": "Why some parts are in English",
+   "es": "Por qué algunas partes están en inglés",
+   "state": "draft",
+   "note": "The opener under that line; the four lang.why_* reasons are inside it."
+  },
+  "lang.why_links": {
+   "en": "Official state pages the site links to are in English.",
+   "es": "Las páginas oficiales del estado a las que enlaza el sitio están en inglés.",
+   "state": "draft"
+  },
+  "lang.why_names": {
+   "en": "Names stay as the record prints them: people, committees, towns and offices. Search finds subjects by their English words (housing, not vivienda).",
+   "es": "Los nombres se dejan como los imprime el registro: personas, comités, municipios y cargos. La búsqueda encuentra los temas por sus palabras en inglés (housing, no vivienda).",
+   "state": "draft"
+  },
+  "lang.why_not_yet": {
+   "en": "Not translated yet: the pages for bills, legislators, committees, the calendar and the laws, and any page marked &ldquo;in English&rdquo; where it is listed.",
+   "es": "Todavía sin traducir: las páginas de proyectos de ley, legisladores, comités, el calendario y las leyes, y cualquier página marcada &ldquo;en inglés&rdquo; donde aparece en una lista.",
+   "state": "draft"
+  },
+  "lang.why_record": {
+   "en": "The official record stays in English. Bill titles and text, the laws, each bill&rsquo;s history, votes and committee reports are the General Court&rsquo;s official record, which is written in English. Translating legal wording can change what it means, so the site shows it as written.",
+   "es": "El registro oficial se queda en inglés. Los títulos y el texto de los proyectos de ley, las leyes, el historial de cada proyecto, las votaciones y los informes de los comités son el registro oficial de la Legislatura, que está escrito en inglés. Traducir un texto legal puede cambiar su significado, así que el sitio lo muestra tal como está escrito.",
    "state": "draft"
   },
   "learn.administrative-rules.21-to-180-days-after-the": {
@@ -19663,11 +19684,6 @@
   "learn.how-a-bill-becomes-law.you-may-speak-here": {
    "en": "You may speak here",
    "es": "Aquí puede hablar",
-   "state": "draft"
-  },
-  "learn.lang_note": {
-   "en": "This page is in Spanish. The official pages it links to, and the record itself, are in English.",
-   "es": "Esta página está en español. Las páginas oficiales que enlaza, y el propio registro, están en inglés.",
    "state": "draft"
   },
   "learn.legislative-year.house-calendars-and-journals": {

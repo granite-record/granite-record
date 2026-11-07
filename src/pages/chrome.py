@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.5
+# GRANITE_VERSION: 2026-10-23.6
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -322,6 +322,44 @@ def tr_report(lang):
     return ('\n<p class="trrep"><button type="button" class="trbtn" data-trreport hidden>'
             + say(lang, "foot.tr_report", "See a mistake in the translation? Tell us")
             + "</button></p>")
+
+
+# WHAT STAYS IN ENGLISH, AND WHY, SAID ONE WAY ON EVERY PAGE IN ANOTHER
+# LANGUAGE (the laptop manager session, 7 November 2026; the wording, English
+# and Spanish, approved by the owner as drafted: "fine as is for now", on her
+# translator friend's word, and still draft for the Latino caucus's review).
+# A native Spanish speaker who read the Spanish pages for
+# the owner on 6 November found them natural and accurate, but could not
+# tell why some parts were translated and others, a bill's legal text among
+# them, were not. Four pages said it four ways (home.lang_note,
+# guides.lang_note, guides.hub_lang_note, learn.lang_note), and none said
+# why. Now one line under the title on every such page -- home, Officials,
+# Resources, the glossary, each guide and Learn page -- and under it an
+# opener with the four reasons. The inline "(en inglés)" markers where a
+# list names an English page stay as they are.
+def lang_note(lang):
+    """The line under a page's title in another language, and the opener
+    under it saying what on the site stays in English and why; "" in
+    English."""
+    if lang == i18n.DEFAULT:
+        return ""
+    why = [say(lang, "lang.why_record", "The official record stays in English. Bill titles and "
+               "text, the laws, each bill&rsquo;s history, votes and committee reports are the "
+               "General Court&rsquo;s official record, which is written in English. Translating "
+               "legal wording can change what it means, so the site shows it as written."),
+           say(lang, "lang.why_names", "Names stay as the record prints them: people, committees, "
+               "towns and offices. Search finds subjects by their English words (housing, not "
+               "vivienda)."),
+           say(lang, "lang.why_links", "Official state pages the site links to are in English."),
+           say(lang, "lang.why_not_yet", "Not translated yet: the pages for bills, legislators, "
+               "committees, the calendar and the laws, and any page marked &ldquo;in "
+               "English&rdquo; where it is listed.")]
+    return ('<div class="langnote"><p>'
+            + say(lang, "lang.note", "This page is in Spanish. Some parts stay in English on "
+                  "purpose, and some pages aren&rsquo;t translated yet.")
+            + '</p><details class="langwhy"><summary>'
+            + say(lang, "lang.why", "Why some parts are in English")
+            + "</summary><ul>" + "".join(f"<li>{w}</li>" for w in why) + "</ul></details></div>")
 
 
 # The footer. The line under the attribution is the person's own credit, asked

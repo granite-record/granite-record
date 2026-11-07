@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.349 */
+/* GRANITE_VERSION: 2026-09-07.350 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -1849,6 +1849,21 @@ border-radius:var(--r-in);font-size:var(--t-sm);color:var(--ink)}
 .langbar .langx{margin-left:auto;background:none;border:0;color:var(--ink-2);cursor:pointer;
 min-width:44px;min-height:44px;font:inherit}
 .langnote{margin:var(--sp-3) 0 0;font-size:var(--t-sm);color:var(--ink-2)}
+/* The note's line, and under it why some parts are in English, folded
+   (chrome.lang_note): a chevron and the question in pine, as County
+   Government's district lists fold. */
+.langnote p{margin:0}
+.langwhy{margin:var(--sp-2) 0 0;
+  /* Learn's chevron (.l-page's --l-chev), here too: the home page and
+     Officials are not Learn pages. */
+  --l-chev:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.25%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M9 5.5l6.5 6.5L9 18.5%22/%3E%3C/svg%3E")}
+.langwhy > summary{list-style:none;display:inline-flex;align-items:center;gap:.5rem;min-height:2.75rem;
+  cursor:pointer;font-weight:600;color:var(--pine)}
+.langwhy > summary::-webkit-details-marker{display:none}
+.langwhy > summary::before{content:"";flex:0 0 auto;width:.75rem;height:.75rem;background:var(--pine);
+  -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;transition:transform .15s}
+.langwhy[open] > summary::before{transform:rotate(90deg)}
+.langwhy ul{margin:.25rem 0 .5rem;padding-left:1.25rem;display:grid;gap:.5rem;max-width:46rem;line-height:1.5}
 /* A Learn page not yet in the page's language, named on the hub's Learn tab (25 October 2026). */
 .r-en{margin-left:.3em;font-weight:400;font-size:var(--t-sm);color:var(--ink-2);white-space:nowrap}
 .ytpanel .findin{max-width:40rem}
