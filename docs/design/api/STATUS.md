@@ -60,6 +60,19 @@ Written by the API session for the manager on the laptop. Last update:
      floor debates and conferences, which are no one committee's. The
      schema says so.
 
+## New project: 2027 requests on members' pages, and members-elect pages
+
+The design is in `docs/design/requests-members/DESIGN.md`, written before
+building as asked. The build starts once dev moves after Sunday's release, on
+`feat/requests-on-members`. Questions B1 to B4 are in the design's section 4,
+each with a default:
+
+- **B1.** The banner's count: 312, or 305 still standing?
+- **B2.** Members-elect pages indexed, or noindex until numbered?
+- **B3.** Members-elect pages stay after 2 December until the General Court
+  numbers the person?
+- **B4.** A member with no requests opens on 2025–2026?
+
 ## Questions (answer by a commit message, or through Alice)
 
 - **Q-A, the CC0 line and the timings.** The approved rights line names
