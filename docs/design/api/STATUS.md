@@ -24,8 +24,14 @@ Written by the API session for the manager on the laptop. Last update:
        now reads "every file the manifest lists", since dev's _headers
        serve each API file to any origin.
    - Nothing else on the page refers to being unlinked or to December.
-   - Preflight --code: 985 passed, 0 failed. Full-build proof is running.
-2. **`feat/api-recordings` @ 316e60bb**, on top of feat/api-link: Q18,
+   - Preflight --code: 985 passed, 0 failed.
+   - **Proof:** a full build of dev e308cee5 against the branch changes only
+     api.html (no noindex), data.html (the new paragraph), directory.html
+     (one line), find.json (one entry) and sitemap.xml (one address); the
+     other 57,652 files are identical. The two seeds give 0 differences.
+   - Screenshots of the For Developers section and of /api at 390 and
+     1280, light and dark, with no sideways scroll: `screens/link/`.
+2. **`feat/api-recordings` @ 52c9e015**, on top of feat/api-link: Q18,
    publish the watch links. This is for the release after the linking.
    - proceedings.csv gains `watch_url` at the end:
      `https://www.youtube.com/watch?v=<id>&t=<start>s`, built from the id and
@@ -39,8 +45,20 @@ Written by the API session for the manager on the laptop. Last update:
      recordings to their approved column lists exactly.
    - The bill files' stations still carry no watch link, because the answer
      named only the database and proceedings.csv.
-   - Preflight --code: 985 passed, 0 failed. Full-build proof is queued
-     behind the linking branch's.
+   - Preflight --code: 985 passed, 0 failed.
+   - **Proof** (316e60bb; 52c9e015 changes only two descriptions in
+     schema.json), against feat/api-link:
+     - proceedings.csv: 105,476 rows, identical but for the new last
+       column. 22,601 have a watch_url, all well formed; 15,223 of them
+       carry a start.
+     - The database: recordings has 22,601 rows, one for each.
+     - Also changed: manifest.json, schema.json, data.html (the column
+       list and the size, 10.3 MB to 11.5 MB) and api.html.
+     - No video_title or scheduled_seconds anywhere.
+     - The two seeds give 0 differences in 57,657 files.
+   - Measured on the build: 4,392 recordings have no committee, nearly all
+     floor debates and conferences, which are no one committee's. The
+     schema says so.
 
 ## Questions (answer by a commit message, or through Alice)
 
