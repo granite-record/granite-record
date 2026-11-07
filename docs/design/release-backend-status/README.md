@@ -4,7 +4,7 @@ Kept on the session's own branch, `dev-ioxv9i`, for the laptop manager, who read
 `git fetch`. Cloud sessions cannot message it. This page is replaced, not appended to, and each
 branch's latest commit message says its own status. Times are Eastern.
 
-## As of Saturday 7 November 2026, about 10 a.m.
+## As of Saturday 7 November 2026, about 9 a.m.
 
 Received the laptop manager's messages of 7 November, through the one saying:
 - dry run 2 (run 42368200550, dev e308cee5) is clean;
@@ -19,10 +19,10 @@ Received the laptop manager's messages of 7 November, through the one saying:
 - The second batch is folded into the stops where a reader meets it, not kept in a section of
   its own.
 - The order is laptop first and phone last, so the window is resized once. There are ten
-  sections, with times; sections 1 to 3 (★) are the twenty-minute walk.
-- Dry run 3's one change, Leslie Feliciano as Strafford's District 1 commissioner, is a stop in
-  section 5.
-- **Corrected at about 10 a.m. after two checks of the list itself.** One fact-checked 104
+  sections, with times; the ★ stops are the half-hour walk.
+- Dry run 3's one change, Leslie Feliciano as Strafford's District 1 commissioner, is a ★ stop
+  in section 5.
+- **Corrected at about 9 a.m. after two checks of the list itself.** One fact-checked 104
   claims against dry run 2, dry run 183 and live. The other followed every stop literally, as
   the owner would.
   - Four statements were wrong, and are fixed:
@@ -61,13 +61,56 @@ Received the laptop manager's messages of 7 November, through the one saying:
   - `officials_tabs.county` never draws a row's own source.
   - A fix needs a Spanish line in `es.json`, which is not this session's to edit. It is in
     the walk list as "For you to decide", item 3.
-- **Four deeper walks were still running at this commit:**
-  - Back and the not-found page, every road in the branch's README;
-  - every form the search branch claims, and 15 ordinary searches against dry run 183;
-  - the Spanish note on every Spanish page;
-  - regressions against dry run 183.
-
-  Each finding is checked by a skeptic. Anything that survives follows in a commit of its own.
+- **The four deeper walks are done.** Each finding was put to a skeptic, and all ten below
+  survived; one survived only in part.
+  - **Regressions against dry run 183: none.**
+    - 34 pages were compared at 1280, and 13 at 390, with no page errors.
+    - Headers, CORS, the sitemap, robots.txt, the feeds and the data files were compared too.
+    - `/build.json` names e308cee5, and 50 steps match dry run 183's.
+  - **Back and the not-found page: every road in the README passes**, at both widths, light
+    and dark. 98 not-found addresses were tried, and none ever asks for its own address.
+    Two nits, on rare roads:
+    - After Back, a term whose bills fail to load reads "Not in the 2019–2020 term" for HB
+      703, which is in it. This happened before the batch too.
+    - New: a term chosen with a bill open is lost by Back, Forward, Back on a slow network,
+      if the bills have not arrived.
+  - **Search: one should-fix, on live already, and three nits.**
+    - Should-fix: a place's apostrophe drops its bills. "Wentworth's Location" finds no bill,
+      and "Wentworths Location" finds 4.
+      - The cause: `build_search_index.py`'s `key()` drops the "'s", and app.js's `qnorm`
+        keeps it, so a typed possessive matches only a title.
+      - The batch made it no worse, and now puts the place first. It is in the walk list's
+        "Already on live".
+    - New nit: "U.S. 3", "U.S. 1", "U.S. 2", "U.S. 202" and "U.S. 302" now find nothing in the
+      bill search and on `/search`. Dry run 183 and live found 6, 7, 4, 1 and 1.
+      - `numberForm` folds any dotted letters before a number into a bill kind.
+      - a38ffbe8's message names this as known. The fix: fold only a kind in FBILLKIND, as
+        the header's `findBill` does.
+      - This is the one ordinary search that got worse. It is in the walk list's nits.
+    - New nit: two of the batch's patterns keep the quadratic `\s*x?\s*` shape that a38ffbe8
+      took out of RSA_PARAGRAPH: the dotted-letters pattern, in app.js and find.js, and
+      find.js's FLSR.
+      - 16,000 pasted spaces cost 750 ms per keystroke in the header, against 13 ms before.
+      - The fix: `\s*(?:\.\s*)?` and `\s*(?:-\s*)?`.
+    - Nit, as on live: the bill search's sponsor offer misses "O Neil", "O Connor" and "D
+      Allesandro", which the header now reads.
+  - **The Spanish note: one should-fix, new, and three nits.**
+    - Should-fix: its second reason says offices and committees stay as the record prints
+      them. `/es/officials`, right under it, gives every office in Spanish (Gobernador,
+      Comisionado(a), …).
+      - The wording is the owner's approved draft, so the change is hers. It is in the walk
+        list as "For you to decide", item 4, with one way to word it.
+    - New nit: its fourth reason reads as a complete list of the pages still in English, but
+      leaves out About, Data, town pages, the session lists and the towns directory.
+    - Nit, as on live: `/es/resources`' "El registro en cifras" card goes to the English
+      page with no "(en inglés)" mark.
+    - Nit, mostly refuted: `/es/` search rows for English guides carry English titles. A
+      reader who chose Spanish still lands on the Spanish guide.
+  - None of these was fixed here.
+    - The search and Spanish ones are in other branches' files, and the Spanish wording is the
+      owner's.
+    - The two Back nits and the patterns are for 24 November, unless you want any of them
+      sooner.
 
 ### Branches
 
@@ -102,13 +145,9 @@ Received the laptop manager's messages of 7 November, through the one saying:
 
 ## Next
 
-- **Today:** the four deeper walks of dry run 2. Any finding that survives its skeptic goes on
-  this branch. The Back and not-found walk is done; its two candidates are being checked:
-  - after Back, a term whose bills fail to load reads as having none;
-  - an All Terms choice can be lost on a slow network, by Back, Forward, Back before the bills
-    arrive.
-
-  Both are rare roads and nits at most.
+- **On your word:** a fix for "U.S. 3" (fold only a real bill kind) and for the two quadratic
+  patterns. Both are small, in app.js and find.js. They can be ready for a dry run today if
+  you want them in this release; otherwise they wait for 24 November.
 - **On your word:** `fix/former-directory-both`.
 - **Monday:** the Videos wording.
 - **After the weekend:** tasks 28 and 29; task 30 after the webinar.
@@ -125,5 +164,8 @@ Received the laptop manager's messages of 7 November, through the one saying:
   - `/bills#2020/HB703`;
   - the phone-width pane;
   - the County Officials source line, if it does not go sooner;
+  - a place's apostrophe in the bill search; "U.S. 3" and the two patterns, if they do not go
+    sooner; the sponsor offer's "O Neil";
+  - the two Back nits;
   - the fix/bill-back-notfound deferrals in its README.
 - **December:** outage recovery.

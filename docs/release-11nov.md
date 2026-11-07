@@ -1,8 +1,9 @@
 # The owner's walk of the weekend release
 
 The release and backend session wrote this on Saturday 7 November 2026, at about 8 a.m.
-Eastern, and corrected it at about 10 a.m. after two checks of the list itself. It replaces
-the 3 a.m. version, which was written against dry run 183.
+Eastern. At about 9 a.m. it was corrected after two checks of the list itself, and the deeper
+walks' findings were added. It replaces the 3 a.m. version, which was written against dry run
+183.
 
 Every stop below was opened on **dry run 2** (dev e308cee5) at its own address, and each says
 what that page showed. The list covers every change a reader can see between
@@ -187,6 +188,9 @@ The session pages are long: use Find for the names.
   - All six tabs are in view, "Funcionarios del condado (80)" last, and the same note is there,
     once.
   - On dry run 3, Strafford's first commissioner there is Leslie Feliciano too.
+- `/es/officials` again: open the note. Its second reason says names stay as the record prints
+  them, "personas, comités, municipios y cargos". The Poder Ejecutivo tab just under it reads
+  Gobernador, Consejo Ejecutivo, Secretaría de Estado: see "For you to decide", item 4.
 - `/es/guides/how-to-vote`: the same note, once. No English page carries it.
 - The header search on a Spanish page, typing Concord: "10 barrios electorales · Condado de
   Merrimack". Live reads "10 wards · Merrimack County".
@@ -230,7 +234,7 @@ The session pages are long: use Find for the names.
 
 ## For you to decide
 
-The walk of dry run 2 found nothing that holds the release. These three are new with it.
+The walk of dry run 2 found nothing that holds the release. These four are new with it.
 
 1. **The former-members directory lists each of the 34 people who sat in both chambers under
    one chamber only.**
@@ -269,6 +273,29 @@ The walk of dry run 2 found nothing that holds the release. These three are new 
    - The page draws one source line for all 80 rows, and never a row's own source.
    - A fix would add a sentence naming the rows read from another source. It needs a Spanish
      line in the translation file, which is the translation work's to add, not this session's.
+4. **The Spanish note's second reason says what the Officials page right under it does not
+   do.**
+   - The reason reads "Los nombres se dejan como los imprime el registro: personas, comités,
+     municipios y cargos." The English reads "Names stay as the record prints them: people,
+     committees, towns and offices."
+   - `/es/officials` gives every office in Spanish, with no English beside it: Gobernador,
+     Consejo Ejecutivo, Comisionado(a), Registrador(a) de escrituras. Only Sheriff stays in
+     English.
+   - The Learn pages and the glossary give committees in Spanish, with the English in
+     brackets: "Comité Judicial de la Cámara (House Judiciary Committee)", "Medios y Arbitrios
+     (Ways and Means)".
+   - The note was written so that a reader can tell why some parts are translated. On
+     Officials it says the opposite of what the reader sees.
+   - The wording is your approved draft, still marked draft for the caucus's review, so the
+     change is yours. One way: drop "y cargos", and say that a committee's name in Spanish
+     carries the English beside it.
+   - Two smaller gaps in the same note, also yours to word:
+     - Its fourth reason lists the pages still in English as if the list were complete. The
+       footer's About and Data, the town pages, the House and Senate session lists and the
+       towns directory are English too, linked from Spanish pages, and are neither named nor
+       marked.
+     - On `/es/resources`, the Learn tab's card "El registro en cifras" goes to the English
+       page with no "(en inglés)" mark. That was so before the note, and live is the same.
 
 ## Already on live, and still there (for 24 November)
 
@@ -288,9 +315,26 @@ The walk of dry run 2 found nothing that holds the release. These three are new 
   list. After a reload it does not. Dry run 183 and live do the same.
 - The status box on `/es/` has an English sentence, "The 2026 session ended Aug 19 (veto
   day)…", which none of the new note's four reasons covers.
+- **Typing a place's apostrophe drops its bills.** `/search?q=Wentworth's Location` says "no
+  bill in any of the 19 terms", and `/bills` on All Terms finds 0. "Wentworths Location"
+  finds 4, among them SB 77 of 2003, whose text names "Wentworth's Location".
+  - Crawford's Purchase, Green's Grant, Chandler's Purchase, Bean's Grant and others do the
+    same.
+  - The second batch now puts the place itself first, where dry run 183 and live found
+    nothing at all, but the bills still go missing.
+  - It is the one should-fix on live that this walk found.
 
 ## Small things the walk noted (nits)
 
+- **"U.S. 3" now finds nothing**, new with the release.
+  - In the bill search on All Terms and on `/search`, "U.S. 3" finds no bill. Dry run 183 and
+    live find 6.
+  - The same goes for U.S. 1 (7 before), U.S. 2 (4), U.S. 202 and U.S. 302. "U.S. Route 3"
+    still works.
+  - The search change reads letters with full stops before a number as a bill's kind, as in
+    "H.B. 703". Its review knew of this and left it.
+  - The fix is small: fold the full stops only for a kind of bill the General Court uses, as
+    the header search already does.
 - At phone width, Cite's and Testify's panes lie over the buttons below until they are closed.
   This is new with the release, and dry run 183 is the same. Live puts the pane below the whole
   group of buttons.
