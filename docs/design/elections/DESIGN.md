@@ -198,6 +198,18 @@ Mock (2026, election night, **illustrative numbers**): `mock/night-1280-light.pn
   - "% reported" depends on whose denominator it is, and the page must say so.
   - Names differ between sources, so linking a person needs the matching step
     (§2), never a string match.
+- **Three days on (seen, 6 November, 8:07 p.m. ET; the approved three
+  requests: WMUR 1318 and nhelectionresults.org's House and Senate boards).**
+  - WMUR, last updated 5:52 p.m. ET on 6 November, still shows 34 of 203
+    House races with not every polling place reported.
+  - nhelectionresults.org shows every polling place in for all 203. Its own
+    statuses read 159 "called", 31 "unopposed", 13 "too_close".
+  - The candidates' totals are identical in 139 House races and differ in 64
+    (Rockingham 25, Belknap 7, Cheshire 2 among them).
+  - So the two feeds are not one feed copied, whatever they share. Which is
+    nearer the truth can be said only against the Secretary of State's 2026
+    files, race by race, once saved (§1.8, 5). Hashes: WMUR `14e0c0ce…`,
+    House board `e541514e…`, Senate board `fc8daca9…`.
 - **The snapshots** are kept in scratch, not in git, with these sha256 hashes:
   topline `cd392aa9…`, house board `f56783db…`, BE6 results `89833ec7…`, WMUR
   1318 `7ec680f3…`, 1321 `592ccd77…`, 1323 `eac417e8…`.
