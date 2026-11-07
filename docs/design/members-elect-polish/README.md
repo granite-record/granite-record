@@ -24,11 +24,13 @@ script still get. Each Spanish word is a draft.
 | federal | **Federal (4)** | **Federal (4)** | Federal Delegation / Delegación federal |
 | executive | **Executive (26)** | **Ejecutivo (26)** | Executive Branch / Poder Ejecutivo |
 | judicial | **Judicial (29)** | **Judicial (29)** | Judicial Branch / Poder Judicial |
-| counties | **County (80)** | **Condado (80)** | County Officials / Funcionarios del condado |
+| counties | **County (80)** | **Condados (80)** | County Officials / Funcionarios del condado |
 | (unchanged) | Members-Elect (405) | Miembros electos (405) | Members-Elect |
 
-- Measured on dry run 6 with the web fonts, the seven tabs take 1,016px in English and 971px in
-  Spanish, of the strip's 1,132, at 1280 and at 1440.
+- "Condados" is plural: a reader of Spanish took "Condado (80)" for one county, and the tab is
+  the ten counties' (the review of 7 November 2026).
+- Measured on dry run 6 with the web fonts, the seven tabs take 1,016px in English and about
+  979px in Spanish, of the strip's 1,132, at 1280 and at 1440.
 - Below 1024px the strip scrolls with its edge's shadow, as before. On a phone only the labels
   are shorter.
 - The search rows (find.json) keep the panels' whole names.
@@ -69,6 +71,8 @@ writes `#legislators` into the address.
 - From the 2 December build the tab is not drawn at all. OFFICIALS_HASH_JS sends
   `#members-elect`, `#of-elect-senate` and `#of-elect-house` to `#legislators` while nothing
   on the page has that id.
+- Once the page has loaded, a reader sent this way is shown the strip, with Legislators chosen,
+  so that nothing hides where they were sent. A reader who has scrolled on is not moved.
 - With no address the page still opens My Town. A town page, whose strip names no
   `data-retired` tab and has no retiring tab, is as it was.
 
@@ -132,26 +136,42 @@ shots are the same pages with this branch applied in the browser. Each is descri
     drafts.
   - TABS_JS in node, in seven cases: the day before, the day itself, no address, a section
     inside the retired panel, the tab built hidden, a strip naming no tab for it, and an
-    ordinary tab. Each covers load, End, ArrowLeft, a hashchange, and a page left open across
-    midnight with the tab focused.
-  - OFFICIALS_HASH_JS in seven cases.
+    ordinary tab. Each covers load (and whether the strip is brought into view), End,
+    ArrowLeft, a hashchange, and a page left open across midnight with the tab focused.
+  - OFFICIALS_HASH_JS in seven cases, among them the tab not drawn at all.
 - **Changed.** `_legislators_page_tabs`, `_executive_branch_renamed`, `_officials_heads_and_judges`
   and `_spanish_officials` read the short labels on the tabs and the whole names on the panels.
   The members-elect cases in tests/components_cases.json gain an own winner and an unlinked one.
   `elown` is a known class.
-- **Mutants.** 18 of 19 each turn a check red, one per piece. The 19th keeps `own` on a winner
-  whose link "one person, one seat" took away. Nothing can draw it, because the renderers want a
-  link too.
+- **Mutants.** 24 of 25 each turn a check red, one per piece, in two runs: 19 on the first
+  commit and 6 on what the reviews added. The 25th keeps `own` on a winner whose link "one
+  person, one seat" took away. Nothing can draw it, because the renderers want a link too.
+- **Two reviews**, one for correctness and one reading as Alice would, each with experiments in
+  Chromium on dry run 6.
+  - Their two blocking findings are fixed: the rule did not reach the Officials tab, and every
+    town-page row widened, not just a member's.
+  - So are their should-fix findings: the address after the 2 December build, "Condados", and
+    the strip for a reader sent from a retired tab.
+  - What stays the owner's call is under "Not here".
 - **The town pages.** A sweep of all 320 on dry run 6, every panel shown and every `<details>`
   open, at 700, 820 and 1280, with this app.css in place. No page scrolls sideways and no
   contact column is squeezed. One row is past its edge, Plaistow's highway supervisor's phone,
   and dev's own app.css has it too.
 - `preflight --code`: see the STATUS commit.
 
-## Not here
+## Not here, for Alice to say
 
-- The My Town card still says "The county's own officials are under County Officials", the
-  panel's heading, over a tab that reads "County (80)". It is the reader's to judge whether
-  that wording should change. It would be a draft in Spanish too.
+- **A long-named member's address.** At 1280 and 1440, where the House and Senate cards sit side
+  by side, Prudhomme-O'Brien's address breaks onto two lines beside her chip ("kpo@ /
+  gc.nh.gov"). Derry's House list then has address edges at 405, 411 and 499px. Seabrook's
+  "Matt.Sabourin@ / gc.nh.gov" breaks the same way. Nothing overlaps any more.
+  - One alternative the reader's review tried: when a member's chip is wider than the column,
+    the address drops under the chip in one piece.
+- **The English strip between 1024 and about 1062px** still scrolls, by up to 40px, with its
+  edge's shadow; the chosen tab is always brought into view. Spanish fits there, on its
+  tighter padding, which English could take too.
+- **The My Town card** still says "The county's own officials are under County Officials", the
+  panel's heading, over a tab that reads "County (80)". Any new wording would be a draft in
+  Spanish too.
 - The 2 December switch night itself is not exercised here. The cases above are the browser's
   side of it.
