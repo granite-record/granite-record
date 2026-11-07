@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.350 */
+/* GRANITE_VERSION: 2026-09-07.351 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -3225,6 +3225,52 @@ letter-spacing:.05em;color:var(--ink-2);text-transform:uppercase}
 table.fn tbody th{text-align:left;font-weight:400;color:var(--ink);
 background:var(--wash)}
 table.fn td[colspan]{text-align:left;color:var(--ink-2)}
+/* ON A PHONE, ONE ROW PER LINE, ITS YEARS BENEATH (the person, 7 November
+   2026). The table was 357px in a 288px box at 375px: FY 2029 off the edge,
+   FY 2028's figures cut to "$C", the box scrolling sideways, and "FY / 2026"
+   and "Funding / Source" wrapped. Now each row is its name across the top,
+   and under it its figures, each over the short heading app.js gives it
+   (fiscalTable, data-y). How many figures share a line is the row's class:
+   all of them for "fns" (FY26 FY27 FY28 FY29), at most two for "fnm", whose
+   figures ("$15,000,000", "Indeterminable Increase") do not fit a quarter of
+   288px, and one for "fnl" (a sentence). A row the source did not break down
+   by year shows its value once. The column heads stay in the table for a
+   screen reader, hidden as the Data page's are, and the roles in the markup
+   keep it a table once its rows are not drawn as table rows. The caption
+   wraps. Nothing here reaches past 45em: wider than that, the table is the
+   one above. */
+@media (max-width:45em){
+  .fnwrap{overflow-x:visible}
+  table.fn{display:block;min-width:0}
+  table.fn caption{display:block;overflow-wrap:break-word}
+  table.fn thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);
+    white-space:nowrap}
+  table.fn tbody{display:block;border-top:1px solid var(--rule)}
+  /* A row is a line that wraps, not a grid of fixed columns: a figure that
+     cannot keep its longest word whole beside the others takes a line of its
+     own instead of breaking it ("Indeterminab / le" at 320px). The name
+     takes the first line; "fns" figures share the next in equal parts;
+     "fnm" ones (a basis of 40%) at most two to a line; "fnl" ones and a
+     spanning value one each. break-word, not anywhere, so a figure's
+     longest word still decides when it takes a line of its own; and a
+     max-width of the row, so that a word wider than the whole row is broken
+     there rather than run past it (a flex item never shrinks below its
+     longest word otherwise). The phone's own rule for every table
+     (`:where(body:not(.pg)) table`, below) still lets the table scroll,
+     which it never needs to now: kept as the last resort it was. */
+  table.fn tbody tr{display:flex;flex-wrap:wrap;border:1px solid var(--rule);border-top:0}
+  table.fn tbody tr > *{display:block;border:0}
+  table.fn tbody th{flex:1 0 100%;font-weight:600;border-bottom:1px solid var(--rule)}
+  table.fn td{flex:1 1 0;max-width:100%;text-align:left;overflow-wrap:break-word}
+  table.fn tbody tr.fnm td{flex-basis:40%}
+  table.fn tbody tr.fnl td,table.fn td[colspan]{flex-basis:100%}
+  /* The short heading over each figure: the column head said again where
+     it is not drawn. Its words are the head's, so a screen reader is not told
+     them twice where the browser can say so (the second content). */
+  table.fn td[data-y]::before{content:attr(data-y);content:attr(data-y) / "";display:block;
+    margin-bottom:var(--sp-1);font-size:var(--t-label);font-weight:600;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--ink-2)}
+}
 .fnsec .src{margin-top:var(--sp-1)}
 .fnraw p{margin:0;font-size:var(--t-ui);color:var(--ink-2)}
 .fnraw h4{font-size:var(--t-part);font-weight:600;letter-spacing:.05em;

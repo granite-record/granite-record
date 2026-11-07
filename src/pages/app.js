@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.275
+// GRANITE_VERSION: 2026-09-07.276
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -6224,20 +6224,36 @@ function renderSponsors(b,d){
 // under a year only where the row has one figure per year; where it has fewer
 // the row spans, because which years the second figure covers is not stated
 // and putting it under one of them would be inventing an answer.
+//
+// ON A PHONE, ONE ROW PER LINE, ITS YEARS BENEATH (the person, 7 November
+// 2026). The same table, reflowed by app.css below 45em: each row's name on
+// a line of its own, and under it its figures, each over a short heading
+// (`data-y`, "FY26" for "FY 2026"), since the column heads are not drawn
+// there. A row's class says how wide its figures run, which decides how many
+// share a line: "fns" (six characters at most, "$0", "$5,000") all of them,
+// "fnm" at most two, "fnl" (a sentence) one each; "fnspan" is a row the
+// source did not break down by year, its value once. The roles keep it a
+// table to a screen reader when its rows are not drawn as table rows, as on
+// the Data page (.dpdl).
+const FN_SHORT=6, FN_LONG=40;
+const fnYear=y=>{const m=/^FY\s*\d{2}(\d{2})$/i.exec(String(y).trim());return m?`FY${m[1]}`:String(y);};
+const fnFit=vs=>{const w=Math.max(0,...vs.map(v=>String(v).length));
+  return w<=FN_SHORT?"fns":w<=FN_LONG?"fnm":"fnl";};
 function fiscalTable(f){
   if(!f)return "";
   const table=t=>{
     if(t.raw)return `<div class="fnraw">${t.caption?`<h4>${esc(t.caption)}</h4>`:""}
       ${t.raw.map(l=>`<p>${esc(l)}</p>`).join("")}</div>`;
     const n=(t.years||[]).length;
-    return `<div class="fnwrap"><table class="fn">
+    const short=t.years.map(fnYear);
+    return `<div class="fnwrap"><table class="fn" role="table">
       ${t.caption?`<caption>${esc(t.caption)}</caption>`:""}
-      <thead><tr><th></th>${t.years.map(y=>
-        `<th scope="col">${esc(y)}</th>`).join("")}</tr></thead>
-      <tbody>${t.rows.map(r=>`<tr><th scope="row">${esc(r.label)}</th>${
+      <thead role="rowgroup"><tr role="row"><th role="columnheader"></th>${t.years.map(y=>
+        `<th scope="col" role="columnheader">${esc(y)}</th>`).join("")}</tr></thead>
+      <tbody role="rowgroup">${t.rows.map(r=>`<tr role="row" class="${r.span?"fnspan":fnFit(r.values)}"><th scope="row" role="rowheader">${esc(r.label)}</th>${
         r.span
-          ? `<td colspan="${n}">${esc(r.values.join(" \u00b7 "))}</td>`
-          : r.values.map(v=>`<td>${esc(v)}</td>`).join("")
+          ? `<td colspan="${n}" role="cell">${esc(r.values.join(" \u00b7 "))}</td>`
+          : r.values.map((v,i)=>`<td role="cell" data-y="${esc(short[i]||"")}">${esc(v)}</td>`).join("")
       }</tr>`).join("")}</tbody></table></div>
       ${t.footnote?`<p class="src">${esc(t.footnote)}</p>`:""}`;
   };
