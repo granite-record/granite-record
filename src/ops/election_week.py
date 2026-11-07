@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-29.1
+# GRANITE_VERSION: 2026-10-29.2
 """
 Election week's routine work, around the one step a person does: saving the
 Secretary of State's results files in a browser.
@@ -119,21 +119,32 @@ def status(year, root="."):
     """(lines to say, complete, the latest files) -- the plain-words state of
     the eleven files."""
     s = saved(year, root)
-    latest = [ps[-1] for ps in s["house"].values()] + s["senate"][-1:]
-    have = len(s["house"]) + (1 if s["senate"] else 0)
+    # THE SENATE COUNTS AS ONE, WHOLE OR IN PARTS (5 November 2026): 2024's
+    # one file or 2026's fifteen, each part's latest upload, and saved once
+    # every district is held by one part and none by two (PSR.senate_unheld).
+    parts = PSR.senate_parts(s["senate"])
+    gaps, overlaps = PSR.senate_unheld(parts)
+    latest = [ps[-1] for ps in s["house"].values()] + [ps[-1] for ps in parts.values()]
+    have = len(s["house"]) + (1 if parts and not gaps and not overlaps else 0)
     lines = [f"{have} of {EXPECTED} {year} results files saved in "
              f"{(Path(root) / PSR.SOURCES).as_posix()}/"]
     missing = [c for c in PSR.COUNTIES if c not in s["house"]]
     if missing:
         lines.append("  House, not saved yet: " + ", ".join(missing))
-    if not s["senate"]:
+    if not parts:
         lines.append("  the State Senate file, not saved yet")
+    elif gaps:
+        lines.append("  State Senate, not saved yet for district(s) " + ", ".join(map(str, gaps)))
+    if overlaps:
+        lines.append(f"  State Senate: district {overlaps[0][0]} is in more than one saved file; "
+                     "the reader will refuse until one way of saving it is kept")
     for c, ps in sorted(s["house"].items()):
         if len(ps) > 1:
             lines.append(f"  {c}: {len(ps)} uploads saved; the reader takes {ps[-1].name}")
-    if len(s["senate"]) > 1:
-        lines.append(f"  State Senate: {len(s['senate'])} uploads saved; the reader takes "
-                     f"{s['senate'][-1].name}")
+    for span, ps in parts.items():
+        if len(ps) > 1:
+            lines.append(f"  State Senate {PSR.span_words(span)}: {len(ps)} uploads saved; "
+                         f"the reader takes {ps[-1].name}")
     done = read_already(year, root)
     if done is not None:
         new = sorted(p.name for p in latest if p.name not in done)
