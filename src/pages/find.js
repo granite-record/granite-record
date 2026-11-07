@@ -1384,12 +1384,16 @@ function ytMark(p){
     +"font:600 .75rem/1.5 var(--sans);letter-spacing:.02em;text-transform:none;"
     +"text-decoration:none;background:var(--pine-soft);color:var(--pine);vertical-align:.08em}"
     +".ytpanel a::after,.yt a::after{content:none !important}"
-    // IN A MEMBERS-ELECT BLOCK, ONLY ONE RE-ELECTED TO THEIR OWN SEAT (the
+    // AMONG THE MEMBERS-ELECT, ONLY ONE RE-ELECTED TO THEIR OWN SEAT (the
     // owner, 7 November 2026): "Charles Foote (R) Your rep" among Derry's
     // winners is right; "Jim Creighton (R) Your rep" under Antrim's Senate
     // seat was not, for he holds Hillsborough 30, not district 8. The item
     // components.electRace marks "elown" keeps the tag; no other link does.
-    +".elect li:not(.elown) a::after{content:none !important}"
+    // Keyed on the winners' own list, which elect_race draws wherever they
+    // are -- a town page's block, the map's panel and the Officials page's
+    // Members-Elect tab, which has no .elect round it (the review of 7
+    // November 2026).
+    +".ellist > li:not(.elown) a::after{content:none !important}"
     // On a town page the chip sits in a narrow cell beside the contact
     // column, and the tag ran out of the chip into it: it goes under the name.
     +(p.m||[]).map(s=>sel(s,"::after").split(",").map(x=>".offwho "+x).join(",")).join(",")

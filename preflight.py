@@ -73410,10 +73410,15 @@ def _spanish_officials(i18n, BP, OT, seating):
     main = es[es.index("<main"):es.index("</main>")]
     if f"<h1>{strings['of.title']['es']}</h1>" not in main:
         bad.append("its <h1> is not the catalog's of.title")
-    for key in ("of.tab.town", "of.tab.legislators", "of.tab.executive", "of.tab.judicial",
-                "of.tab.counties", "of.tab.federal"):
-        if not re.search(r'role="tab"[^>]*>' + re.escape(strings[key]["es"]), main):
+    # Four tabs say their short names, and their panels the whole ones (the
+    # owner, 7 November 2026; _officials_tabs_fit_and_retire).
+    for key in ("of.tab.town", "of.tab.legislators", "of.tab_short.executive",
+                "of.tab_short.judicial", "of.tab_short.counties", "of.tab_short.federal"):
+        if not re.search(r'role="tab"[^>]*>' + re.escape(strings[key]["es"]) + r"[ <]", main):
             bad.append(f"no tab labelled {strings[key]['es']!r} ({key})")
+    for key in ("of.tab.executive", "of.tab.judicial", "of.tab.counties", "of.tab.federal"):
+        if f'<h2 class="twnph">{strings[key]["es"]}</h2>' not in main:
+            bad.append(f"no panel headed {strings[key]['es']!r} ({key})")
     if '<span lang="en">' in main:
         bad.append("a tab says something in English: " + main[main.index('<span lang="en">'):][:80])
     own = re.findall(r'href="([^"]*officials[^"]*)"', main)
@@ -114375,7 +114380,7 @@ function node2(){
   e.focus = function(){ document.activeElement = this; };
   return e;
 }
-const [day, hsh, built, retired] = process.argv.slice(2);
+let [day, hsh, built, retired] = process.argv.slice(2);
 const RealDate = Date;
 globalThis.Date = class extends RealDate {
   constructor(...a){ if (a.length) super(...a); else super(day + "T12:00:00"); } };
@@ -114415,6 +114420,9 @@ document.activeElement = tabEls[0]; out.end = key("End");
 document.activeElement = tabEls[0]; out.left = key("ArrowLeft");
 location.hash = "#members-elect"; (on.hashchange || []).forEach(f => f());
 out.change = shown(); out.wrote2 = wrote.slice();
+// A page left open past midnight with the tab focused: at the reader's 2
+// December the keys go from the tab it hands over to.
+day = "2026-12-02"; document.activeElement = tabEls[2]; out.midnight = key("ArrowLeft");
 process.stdout.write(JSON.stringify(out));
 """ % script
     stub = Path("tests/dom_stub.js").read_text(encoding="utf-8")
@@ -114456,6 +114464,36 @@ process.stdout.write(JSON.stringify(out));
                        f"{got['left']}, not {end} and {left}: the keys pass over a retired tab")
         if got["change"] != change:
             bad.append(f"{where}, a link to #members-elect then shows {got['change']}, not {change}")
+        # From Legislators, ArrowLeft is My Town; from My Town, where a strip
+        # naming no tab hands over, it goes round to Legislators.
+        night = ["legislators", 1] if args[3] == "none" else ["my-town", 0]
+        if got["midnight"] != night:
+            bad.append(f"{where}, ArrowLeft on the tab once it has retired gave {got['midnight']}, "
+                       f"not {night}: the keys go from the tab it hands over to")
+    # FROM THE BUILD OF 2 DECEMBER the tab is not drawn at all, and its
+    # address, or a heading inside it, named nothing: OFFICIALS_HASH_JS sends
+    # it to #legislators before TABS_JS reads it, while nothing has that id.
+    import build_pages as BP
+    alias = re.search(r"<script>(.*?)</script>", BP.OFFICIALS_HASH_JS, re.S).group(1)
+    probe = ("var L={},loc={pathname:'/officials',search:'',hash:process.argv[2]};"
+             "var ids=process.argv[3]?process.argv[3].split(','):[];"
+             "global.location=loc;global.document={getElementById:function(i){"
+             "return ids.indexOf(i)>=0?{}:null;}};global.history={replaceState:function(s,t,u){"
+             "var i=u.indexOf('#');loc.hash=i<0?'':u.slice(i);}};"
+             "global.addEventListener=function(n,f){(L[n]=L[n]||[]).push(f);};"
+             + alias + ";process.stdout.write(loc.hash);")
+    for hsh, ids, want in (("#members-elect", "", "#legislators"),
+                           ("#of-elect-house", "", "#legislators"),
+                           ("#of-elect-senate", "", "#legislators"),
+                           ("#members-elect", "members-elect", "#members-elect"),
+                           ("#of-elect-house", "members-elect,of-elect-house", "#of-elect-house"),
+                           ("#elect-nothing", "", "#elect-nothing"),
+                           ("#statewide", "", "#executive")):
+        r = subprocess.run([node, "-e", probe, "x", hsh, ids], capture_output=True,
+                           encoding="utf-8", timeout=60)
+        if r.returncode or r.stdout != want:
+            bad.append(f"/officials{hsh} with {ids or 'nothing'} on the page becomes "
+                       f"{r.stdout or r.stderr[-200:]!r}, not {want!r}")
     assert not bad, "\n  ".join(bad)
     return "ok", ("Federal, Executive, Judicial and County -- Federal, Ejecutivo, Judicial and "
                   "Condado -- over panels headed in full; from 2 December #members-elect, or a "
@@ -115183,9 +115221,28 @@ def _elect_own_seat(BME):
         "an item with no link is marked elown")
     fj = Path("src/pages/find.js").read_text(encoding="utf-8")
     mark = re.search(r"function ytMark\(p\)\{(.*?)\n\}", fj, re.S)
-    off = '".elect li:not(.elown) a::after{content:none !important}"'
+    off = '".ellist > li:not(.elown) a::after{content:none !important}"'
     assert mark and off in mark.group(1), (
-        "ytMark does not turn the tag off on a members-elect block's other links")
+        "ytMark does not turn the tag off on the members-elect list's other links")
+    # The rule reaches every place the winners are drawn: the list is
+    # elect_race's own, round each race's chips -- the town page's block, the
+    # map's panel and the Officials tab, which draws elect_race with no .elect
+    # round it (the review of 7 November 2026).
+    import officials_tabs as OT
+    elect = {"election": "2026-11-03", "takes_office": "2026-12-02", "races": {
+        "S|8": {"seats": 1, "not_final": 0, "held": 0, "elected": [creighton]},
+        "H|Rockingham|13": {"seats": 2, "not_final": 0, "held": 0, "elected": [foote]}}}
+    for where, page in (("the Officials tab", OT.members_elect(elect, "2026-11-20")),
+                        ("a town page's block", C.elect_block(
+                            [["", elect["races"]["S|8"]], ["", elect["races"]["H|Rockingham|13"]]],
+                            "2026-11-03", "2026-12-02", "2026-11-20"))):
+        links = re.findall(r'<a href="legislator/[^"]+"', page)
+        listed = re.findall(r'<ul class="ellist">(?:<li(?: class="elown")?>.*?</li>)*</ul>', page)
+        inside = sum(len(re.findall(r'<a href="legislator/[^"]+"', u)) for u in listed)
+        if not links or inside != len(links):
+            raise AssertionError(f"on {where}, {len(links) - inside} of {len(links)} winners' links "
+                                 "are outside a <ul class=\"ellist\">, where ytMark's rule does not "
+                                 "reach them")
     body = mark.group(1)
     assert body.index(off) > body.index('tr("yt.your_rep","Your rep")') \
         and body.index(off) > body.index('tr("yt.your_senator","Your senator")'), (

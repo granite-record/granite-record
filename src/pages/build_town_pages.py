@@ -1739,8 +1739,11 @@ TABS_JS = """<script>
     t.addEventListener("click",function(){show(t.dataset.pane,true);});
   });
   // The keys go round the tabs still shown: a retired one takes no focus.
+  // One that retired while it had it -- a page left open past midnight --
+  // gives the keys to the tab it hands over to.
   bar.addEventListener("keydown",function(e){
     var on=live(),i=on.indexOf(document.activeElement);
+    if(i<0&&tabs.indexOf(document.activeElement)>=0)i=on.indexOf(tab(instead()));
     if(i<0)return;
     var j;
     if(e.key==="ArrowRight")j=(i+1)%on.length;

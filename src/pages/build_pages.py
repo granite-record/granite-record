@@ -2932,8 +2932,17 @@ window.addEventListener("popstate",()=>{
 OFFICIALS_HASH_JS = """<script>
 (function(){
   var OLD={"#towns":"#my-town","#statewide":"#executive"};
+  // THE MEMBERS-ELECT, ONCE THEY ARE GONE (the owner, 7 November 2026): from
+  // the build of 2 December the tab and its panel are not drawn at all, and
+  // /officials#members-elect -- or a heading inside it -- named nothing and
+  // opened My Town with the dead address. While nothing on the page has that
+  // id, it is Legislators, which the tab said "lists who holds each seat".
+  // Between the reader's midnight and that build, the tab is still drawn,
+  // retired, and TABS_JS opens Legislators for it.
+  var GONE={"#members-elect":1,"#of-elect-senate":1,"#of-elect-house":1};
   function alias(){
     var to=OLD[location.hash];
+    if(!to&&GONE[location.hash]&&!document.getElementById(location.hash.slice(1)))to="#legislators";
     if(to&&history.replaceState)
       history.replaceState(null,"",location.pathname+location.search+to);
   }
