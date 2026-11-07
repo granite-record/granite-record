@@ -4,82 +4,95 @@ Kept on the session's own branch, `dev-ioxv9i`, for the laptop manager, who read
 `git fetch`. Cloud sessions cannot message it. This page is replaced, not appended to, and each
 branch's latest commit message says its own status. Times are Eastern.
 
-## As of Saturday 7 November 2026, about 3 a.m.
+## As of Saturday 7 November 2026, about 8:30 a.m.
 
-Received the laptop manager's messages of 7 November, through the one saying dry run 1 of dev
-969c27fa is clean, with the edge-cache trap and the second batch.
+Received the laptop manager's messages of 7 November, through the one saying:
+- dry run 2 (run 42368200550, dev e308cee5) is clean;
+- dry run 3 (run 42372029110, dev d2a8e027) is running, as the release candidate for the
+  owner's walk tonight;
+- please write the walk list against dry run 2's preview.
 
-### Dry run 183 (dev 969c27fa): the deep walk
+### The owner's walk list: `docs/release-11nov.md`, rewritten
 
-Walked at the run's own deployment address, **https://dc501057.graniterecord.pages.dev**,
-never the alias. Six lenses, each finding checked by a skeptic. The verdict: **nothing holds
-the release.**
+- Every stop was opened on dry run 2's own address, **https://4e2d47d7.graniterecord.pages.dev**,
+  never the alias, and each says what that page showed.
+- The second batch is folded into the stops where a reader meets it, not kept in a section of
+  its own.
+- The order is laptop first and phone last, so the window is resized once. There are ten
+  sections, with times; sections 1 to 3 (★) are the twenty-minute walk.
+- Dry run 3's one change, Leslie Feliciano as Strafford's District 1 commissioner, is a stop in
+  section 5.
+- Two checks of the list itself, a fact-check against the preview and a read as the owner,
+  were running at this commit. Anything they find follows in a commit of its own.
 
-- **The three redirects: pass.**
-  - `/legislator/frederick-king-sd-1` and `/legislator/leo-fraser-sd-4` answer 301 to the
-    House pages, tabs and trailing slash included.
-  - `/legislator/carl-johnson-sd-2` is SD2, 1999 to 2006. `/legislator/carl-johnson-sd-3` is a
-    404 with no-store, with or without `?v=1`; the "1999 to 2009" seen on the alias was its
-    cache.
-  - Each joined number's JSON answers 301 to the page's own file.
-- **The joined pages: pass.** All 34 answer 200. Each names both chambers with its years, in
-  the head, the meta, the On Record line, the directory and the site search.
-- **The six senators of 1999–2000: pass.** Each reads "1999 to 2000" on the page, in the meta,
-  in find.json, in former.json and in the directory. 1999-S-109 is on 22 October 1999
-  everywhere.
-- **people.json: pass.** The 30 pairs are one person each, Pierce stays two, and /api says
-  "2,157 people".
-- **HB 703 by every road: pass.** No step mixes the two bills: All Terms, open 2020, a new
-  search typed while it is open, Back, each bill's address and tabs. The known Back fault is
-  there, as expected; fix/bill-back-notfound's app.js served in place fixes it on this
-  preview.
-- **Every redirect rule: 631 of 631.** All 121 recorded moved addresses were tried too.
-- **No regression against dry run 181 or live.** 26 pages were compared in English and
-  Spanish at both widths. There were no script errors, and the headers, robots and feeds were
-  checked. The sitemap's only changes are the three swaps.
-- **Dry run 181's 26 confirmed findings:**
-  - Fixed: the blocking one (session days giving a joined member's other-chamber days to a
-    namesake), and ten should-fix ones (items 1–9 and 15).
-  - Partly fixed: item 10. The spans are right; the two residuals are below, for a decision.
-  - Still there:
-    - item 11 (the tab title), which is on live;
-    - item 13 (Back), which is fixed in dry run 2;
-    - the nits, listed in the walk list.
+### Dry run 2 (dev e308cee5): the walk
 
-**For a decision**, both new with the release, from the 30 joins:
-1. `/directory/former-legislators` lists each joined person under one chamber only. Eight who
-   sat in the Senate are under the House alone, so the count reads 89 former senators and
-   1,662 former representatives, where the record has 97 and 1,688.
-   - The cause is `former_page()` in `build_indexes.py`.
-   - The fix is small: list each joined person under each chamber. It can be ready for dry
-     run 2 on your word.
-2. Michael Downing's one page calls him a Republican throughout. He was a Democrat in the
-   House, 1999–2002.
-   - He is the only pair whose party differs between chambers.
-   - The fix needs a party for each chamber's years. It is larger, and suits 24 November.
+**Nothing found holds the release.**
 
-**The owner's walk list** is `docs/release-11nov.md` on this branch. It was written fresh,
-since no branch carried the old one. It has every reader-visible change since live, from the
-release's commits, each opened on the dry run, and the second batch marked "dry run 2". It
-gives the deployment address to walk.
+- **Every redirect rule: 631 of 631.**
+- **Every stop of the walk list holds as written.** The list carries the exact words seen.
+- **New from this walk:**
+  - At phone width a record's pane (Cite, Testify) lies over the buttons below its own until
+    it is closed. Dry run 183 does the same, and live does not. It is a nit.
+  - `/bills#2020/HB703` shows the 2025–2026 list, on dry run 2 and on live. It does not open
+    2025's bill, as the 3 a.m. list said. This is on live, for 24 November.
+  - The status box on `/es/` has an English sentence that none of the new note's four reasons
+    covers. Also on live.
+- **For dry run 3, seen by building County Officials from d2a8e027's own code:**
+  - Leslie Feliciano's row sits under the one source line for all 80 rows: "read from the
+    Secretary of State's county roster for 2025–2026, dated December 5, 2024; read October 9,
+    2026 … this is the roster read before it."
+  - Her row comes from Strafford County's own list, read 6 November, and the roster names Joe
+    Pitre.
+  - `officials_tabs.county` never draws a row's own source.
+  - A fix needs a Spanish line in `es.json`, which is not this session's to edit. It is in
+    the walk list as "For you to decide", item 3.
+- **Four deeper walks were still running at this commit:**
+  - Back and the not-found page, every road in the branch's README;
+  - every form the search branch claims, and 15 ordinary searches against dry run 183;
+  - the Spanish note on every Spanish page;
+  - regressions against dry run 183.
 
-### The second batch, for dry run 2
+  Each finding is checked by a skeptic. Anything that survives follows in a commit of its own.
+
+### Branches
 
 | What | Branch | Status |
 |---|---|---|
-| Back keeps the search; the not-found page finds the bill and the town | `fix/bill-back-notfound` c7d6041e | **READY** (2:36 a.m.). It is release/weekend with dev 969c27fa merged in, plus the fix. Three reviews, each finding verified, and every should-fix and blocking finding fixed. Preflight: 996 passed, 0 failed, 130 skipped; `--changed` 909 passed, 0 failed. 48 of 49 mutants turn red; the 49th undoes a guard the harness cannot time. A browser walk on dc501057 matches its README. The status count is there: 253 of 12,106 laws have a Law date before their signing, and 1,618 have none. |
+| The former-members directory lists a person who sat in both chambers under each | `fix/former-directory-both` 1c740815 | **READY**, offered on your word. It is dev d2a8e027 plus the fix, so it is in neither dry run 2 nor 3. Over dry run 2's `former.json`: 97 former senators and 1,688 former representatives, with 34 people under both. The search groups them 89 / 1,662 / 0. Under the other chamber a row has that chamber's title and its years first, with no party or seat ("Rep. Michael Downing R" would be wrong). Two reviews; every should-fix finding is fixed. `preflight --changed`: 915 passed, 0 failed, 76 skipped. Its README has before and after shots of dry run 183's page. Whether it rides this release or 24 November is the owner's call, in the walk list. |
+| Back keeps the search; the not-found page finds the bill and the town | `fix/bill-back-notfound` c7d6041e | Merged by you into dev e308cee5, and walked on dry run 2. |
 
-### Not in the weekend release
+### Noted from your list for after this weekend
 
-| What | Branch | Status |
-|---|---|---|
-| HB 703 alone, for main | `hotfix/same-number-bills` 66e5a4a9 | Not needed: HB 703 rides in the release. |
+- **CORS for `schema.json` and `people.json`:** already in the release, as you say. Nothing to
+  do.
+- **Healthchecks noise** (task 28). From reading the code:
+  - The preview sender reads `dry-run.graniterecord.pages.dev`. That has a changes file only
+    on a night a dry run ran.
+  - So at noon it raises `tonight` and pings `/fail` on any day it has been given a
+    `HEALTHCHECK_URL`.
+  - The plan:
+    - the preview sender never pings (`ping()` returns early on a preview-only var in
+      `[env.preview.vars]`);
+    - the README's secrets table says `HEALTHCHECK_URL` is production's only;
+    - a preflight check holds both.
+- **The night-warnings check becomes "Night waiting for your approval"** (task 29). Only a
+  warning that holds a night for approval pings it (`nightly.py`, `nightly.yml`).
+- **After the webinar** (task 30), sample the two groups against the chaptered laws, and bring
+  a fix with counts:
+  - the 253 laws with a Law date before the Governor's;
+  - the 1,618 with none.
+
+  HB 703 of 2020 is one of the 253: its Law step is its effective date, Jan 1, 2020, before
+  the Governor's Feb 10.
 
 ## Next
 
-- **On your word:** the directory fix, for dry run 2.
-- **After dry run 2:** a walk of its own address. Its first lens is the second batch's merges.
+- **Today:** the four deeper walks of dry run 2, then the two checks of the walk list. Any
+  finding goes on this branch.
+- **On your word:** `fix/former-directory-both`.
 - **Monday:** the Videos wording.
+- **After the weekend:** tasks 28 and 29; task 30 after the webinar.
 - **24 November:**
   - night-clock, then lsr-accept;
   - the check_live mode that walks every redirect;
@@ -90,6 +103,8 @@ gives the deployment address to walk.
   - `careers.json`'s two same-chamber joins of namesakes;
   - Michael Downing's party per chamber;
   - the motion movers credited to namesakes (Seth King 2006, Butler 2014, Grossman, Schultz);
-  - `/bills#2020/HB703` opening the newest term's bill;
+  - `/bills#2020/HB703`;
+  - the phone-width pane;
+  - the County Officials source line, if it does not go sooner;
   - the fix/bill-back-notfound deferrals in its README.
-- **December:** outage-recovery.
+- **December:** outage recovery.
