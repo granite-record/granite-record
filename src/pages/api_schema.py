@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.6
+# GRANITE_VERSION: 2026-10-30.7
 """
 What every file of the data API holds, field by field: /data/schema.json.
 
@@ -274,9 +274,11 @@ DB_COLUMNS = {
     "recordings": {
         "term": _PC["term"], "bill": _PC["bill"],
         "video_id": (_T, "The recording's YouTube id.", B),
-        "committee": (_T, "The committee this site matched the recording to.", B),
+        "committee": (_T, "The committee this site matched the recording to; empty on a floor "
+                          "debate or a committee of conference, which is no one committee's.", B),
         "chamber": (_T, "H or S.", B),
-        "date": (_T, "The day this site matched it to, YYYY-MM-DD.", B),
+        "date": (_T, "The day this site matched it to, YYYY-MM-DD; empty on the few rows the "
+                     "record gives no day.", B),
         "start_seconds": (("number",) + _PC["start_seconds"][1:]),
         "end_seconds": (("number",) + _PC["end_seconds"][1:]),
         "how_placed": _PC["how_placed"],
