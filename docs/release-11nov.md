@@ -10,8 +10,9 @@ each stop says what that page showed. Section 10 covers the election: the member
 CACR 13's count.
 - It was added at about 11 a.m., and given your recounts and CACR 13 at about 2 p.m.
 - It came from dry run 4's code and data, read before dry run 4 was up.
-- The laptop manager's retest on dry run 4 matched it, and this session's own walk of it is
-  under way.
+- By about 3 p.m. this session had walked every stop of it on dry run 4's own address, and
+  corrected the words where they differed. The laptop manager's retest on dry run 4 also
+  matched.
 
 At about 3 p.m. the list took in your answers and dry run 6's three new stops: the directory
 in section 3, Hillsborough's sheriff in section 5, and the reworded note in section 8. Those
@@ -104,14 +105,17 @@ on an earlier dry run stays fixed; those say so.
 
 ## 3. Members who sat in both chambers, and former members ★ (about 12 minutes)
 
-The session pages are long: use Find for the names.
+The session pages are long: use Find for the names. A member page's heading is the name, with
+the party and seat on the line under it; the browser tab's title carries the short form, as
+in "Former Rep. Frederick King (R - Coos 1)".
 
-- `/legislator/frederick-king-sd-1` lands on **Former Representative Frederick King (R - Coos
-  1)**. Its On Record line reads "Senate, 1999–2000 · House, 2003–2008".
-- `/legislator/leo-fraser-sd-4` lands on **Former Representative Leo Fraser (R - Merr 37)**,
-  with "Senate, 1999–2000 · House, 2001–2004".
-- `/legislator/carl-johnson-sd-2` is **Former Senator Carl Johnson (R - SD2)**. Its On Record
-  line reads "Senate, 1999–2006". Live says 1999 to 2009.
+- `/legislator/frederick-king-sd-1` lands on **Former Representative Frederick King**,
+  "Republican · Coos District 1". Its On Record line reads "Senate, 1999–2000 · House,
+  2003–2008".
+- `/legislator/leo-fraser-sd-4` lands on **Former Representative Leo Fraser**, "Republican ·
+  Merr District 37", with "Senate, 1999–2000 · House, 2001–2004".
+- `/legislator/carl-johnson-sd-2` is **Former Senator Carl Johnson**, "Republican · Senate
+  District 2". Its On Record line reads "Senate, 1999–2006". Live says 1999 to 2009.
 - `/legislator/jeb-bradley-carr-8` lands on Jeb Bradley's one page, which names both chambers:
   "House, 1999–2002 · Senate, 2009–2024".
   - This holds for all 30 people you confirmed on 2 November.
@@ -137,7 +141,8 @@ The session pages are long: use Find for the names.
     the one page.
   - The Senate list now has Leo Fraser, Edward Gordon and Fenton Groen among its F's and G's,
     with the Senate's years first. Before, they were only in the House list.
-- `/legislator/rebecca-hutchinson-rock-73` lands on **Rebecca Hutchinson (D - Rock 8)**. 75
+- `/legislator/rebecca-hutchinson-rock-73` lands on **Rebecca Hutchinson**, "Democrat ·
+  Rockingham District 8" (the browser tab: "(D - Rock 8)"). 75
   former members now carry the seat their last term's bills print, and every address a page
   moved from lands on the page it is now.
   - That was checked by machine on dry run 2, for every old address. Nothing for you to do
@@ -222,8 +227,11 @@ The session pages are long: use Find for the names.
     Algunas partes se quedan en inglés a propósito…". Under it, "Por qué algunas partes están
     en inglés" is folded: open it, and there are four reasons.
 - `/es/officials` at laptop width:
-  - All six tabs are in view, "Funcionarios del condado (80)" last, and the same note is there,
-    once.
+  - From dry run 4 there are seven tabs. Six are in view, "Funcionarios del condado (80)" the
+    last whole one. The seventh, "Miembros electos (405)", shows only its "M" at the right
+    edge until the row is scrolled sideways: see "From the walk of dry run 4", item 1.
+  - On dry run 2 the six tabs were all in view.
+  - The same note is there, once.
   - On dry run 4, Strafford's first commissioner there is Leslie Feliciano too.
 - `/es/officials` again: open the note (reworded in dry run 6: your answer to item 4).
   - Its second reason now says, in your words, "Names of people, committees and towns stay as
@@ -267,8 +275,7 @@ it disappears on 2 December. Town and legislator pages are in English only.
 **How these stops were made.** They come from dry run 4's code and data (dev 9052784d: the
 results, your 16 recounts and Rich Green), read before dry run 4 was up. A build of the
 members-elect from them gives your counts exactly: 405, 213, 24, 168 and 19. Dry run 4's own
-file says the same. The laptop manager's retest on dry run 4 matched these stops, and this
-session's own walk of each one is under way.
+file says the same. Each stop was then walked on dry run 4, and says what that page showed.
 
 - ★ `/town/derry`, the Representatives tab, which the page opens on.
   - Rockingham district 13, 10 seats: "Serving now" sits over the ten sitting members.
@@ -290,20 +297,33 @@ session's own walk of each one is under way.
   - Its panel shows "Serving now", the sitting members, and the same block, the "Result not
     final" line included.
   - The district's colour is still the sitting members' party.
-  - Switch to the State Senate layer and pick 19: Regina Birdsell.
+  - Switch to the State Senate layer. District 19 is outlined, but the panel stays on
+    Rockingham 13 until you click.
+  - Click 19 twice. The first click clears the panel ("Choose a district on the map…"). The
+    second shows "State Senate district 19", "Serving now" Sen. Regina Birdsell, and the block
+    with "Regina Birdsell (R)".
+  - Dry run 2 does the same, without the block.
 - ★ A single-seat recount: `/town/hebron`, Grafton district 11, 1 seat.
   - "Serving now" Rep. Lex Berezhny, then a block that names nobody: "Elected November 3,
     2026", "Takes office December 2, 2026.", "Result not final — a recount was requested".
   - Below it, Grafton 18 (floterial) is final: Marko Kloos (D), new, with no link.
   - Its Vote tab reads "Last election: November 3, 2026".
-  - `/town/hollis`, Hillsborough 45 (floterial), is the other single-seat recount, in the same
+  - `/town/hollis`, Hillsborough 45 (floterial), is another single-seat recount, in the same
     shape. Hollis's own Hillsborough 35 is final: Ben Ming (D), returning, and Kat McGhee (D),
     re-elected, both linked.
+  - Six blocks name nobody:
+    - the four single-seat recounts, Grafton 11, Hillsborough 45, Merrimack 26 and Strafford
+      18;
+    - Cheshire 18 and Merrimack 5, two seats each, where you held both.
 - A former member returning: `/legislator/benjamin-baroody-hills-39`.
-  - The heading stays "Former Representative Benjamin Baroody (D - Hills 39)".
-  - Under it: "Elected November 3, 2026, for Hillsborough district 16. Takes office December
-    2, 2026." The line names the seat he won, not the one in the heading.
-  - His chip on the town page reads "Ben Baroody (D)", as the ballot spells it.
+  - The heading stays "Former Representative Benjamin Baroody", with "Democrat · Hillsborough
+    District 39" under it, then "On Record House, 1999–2024".
+  - Below "This page is their record in the General Court; it is not a current directory
+    entry." it reads "Elected November 3, 2026, for Hillsborough district 16. Takes office
+    December 2, 2026."
+  - The line names the seat he won, not the one under his name.
+  - His chip on `/town/manchester-ward-6`, Hillsborough district 16, reads "Ben Baroody (D)",
+    as the ballot spells it, and links to this page.
   - One returning to the same seat: `/legislator/charlotte-dilorenzo-rock-10`, "… for
     Rockingham district 10 …".
 - A new member-elect with no link: `/town/nashua-ward-5`, Hillsborough district 9.
@@ -311,9 +331,14 @@ session's own walk of each one is under way.
     link to their pages.
   - As you said, he is not former Sen. Richard Green: `/legislator/richard-green-sd-6` carries
     no "Elected" line.
-  - A new member has no page, and the header search does not find one. "Rich Green" there
-    finds former Sen. Richard Green.
-- ★ `/officials#members-elect`: the last tab, **Members-Elect (405)**.
+  - A new member has no page, and the header search does not find one.
+    - "Rich Green" there finds only former Sen. Richard Green.
+    - `/search?q=Kristine Trow` says "Nothing on this site matches that", though her name is
+      on the Members-Elect tab and Derry's page.
+- ★ `/officials#members-elect`: the last tab, **Members-Elect (405)**, scrolled into view and
+  selected.
+  - Opened from `/officials` itself at laptop width, the tab shows only its "M" at the right
+    edge of the tab row: see "From the walk of dry run 4", item 1.
   - It says "Elected November 3, 2026, by the Secretary of State's count. They take office on
     December 2, 2026; until then the Legislators tab lists who holds each seat."
   - State Senate comes first, District 1 to 24, then State House by county.
@@ -324,23 +349,42 @@ session's own walk of each one is under way.
     E. Chandley (D)", a former senator returning, linked to her page.
   - `/town/antrim`, district 8: "Jim Creighton (R)", a sitting representative elected to the
     Senate, linked to his House page. That page's line reads "… for Senate District 8 …".
+  - Laura Telerski, district 13, is the other: `/legislator/laura-telerski-hills-11` reads "…
+    for Senate District 13 …". Both are among the 213 counted as sitting.
   - The new senators are plain chips: Kurt Webber (2), Rebecca Harned (7), Matthew McLaughlin
     (9), Carryl L. Roy (12), Dian McCarthy (16) and Leonard Bell (18).
 - **CACR 13, the register of probate amendment.** Its count is in: 365,359 yes and 198,791 no,
   64.8%, short of two thirds.
-  - `/bill/2026/cacr13`: the status reads "Passed both chambers, not ratified by the voters".
-    The tracker's Voters step reads "Not ratified, 365,359–198,791", with whose count it is.
-    Dry run 2 reads "went to the voters in November 2026".
+  - `/bill/2026/cacr13`:
+    - The status reads "Passed both chambers, not ratified by the voters". Dry run 2 reads
+      "went to the voters in November 2026".
+    - The tracker under the title ends in a red ✕ at Voters, dated Nov 3, 2026. Dry run 2 has
+      an empty circle there.
+    - On the Summary tab, How It Got Here has a third row: "Voters Nov 3, 2026 Not ratified,
+      365,359–198,791 (the Secretary of State's count)".
+  - `/bill/2026/cacr13/votes`: the last card, The voters, Nov 3, 2026, reads "Not ratified:
+    64.8% voted yes, short of the two thirds it needed."
+    - It shows Yes 365,359 · 64.8% and No 198,791 · 35.2%.
+    - Its source line reads "Source: Secretary of State, 2026 general election results,
+      sos.nh.gov, read Nov 7, 2026, which lists it as 'Question No. 1'."
+    - The tick beside No is the two-thirds rule's: No prevailed. CACR 6 of 2024 is drawn the
+      same way.
+    - Dry run 2's card says its count is not recorded yet, and cites Ballotpedia.
   - `/learn/county-government`, Common Questions, open "What does the register of probate
-    still do?": the answer ends
-    "… as CACR 13 (2026), and on November 3, 2026 it did not reach the two thirds it needed:
-    64.8% of those voting on it voted yes." The same is on `/es/learn/county-government`.
-    Dry run 2 says the count is not on the site yet.
-  - `/learn/by-the-numbers`, Constitutional Amendments Sent to the Voters: a CACR 13 of
-    2025–2026 row, Nov 3, 2026, 365,359, 198,791, 64.8%, Not Ratified. The line saying its
-    count is not on the site yet is gone.
+    still do?". The answer ends "… as CACR 13 (2026), and on November 3, 2026 it did not reach
+    the two thirds it needed: 64.8% of those voting on it voted yes."
+    - On `/es/learn/county-government`, open "¿Qué hace todavía el registrador de testamentos
+      (register of probate)?". It ends "… el 64.8% de quienes votaron sobre ella votó que sí."
+    - Dry run 2 says the count is not on the site yet.
+  - `/learn/by-the-numbers`, Constitutional Amendments Sent to the Voters.
+    - The line above the table ends "5 of the 18 below were ratified." Dry run 2's said 17,
+      and that CACR 13's count was not on the site yet.
+    - The last row reads CACR 13, 2025–2026, Nov 3, 2026, 365,359, 198,791, 64.8%, Not
+      Ratified, 2026 general election results.
+  - `/bills`, 2025–2026: the Status filter no longer offers In Progress, and Died reads 1,333.
+    CACR 13 has moved there.
 - Things a reader may ask about. These are as the code draws them, not faults found:
-  - A single-seat recount's block heads "Elected November 3, 2026" over nobody.
+  - A block with every seat held heads "Elected November 3, 2026" over nobody. There are six.
   - A part-held recount does not say how many seats are held, or name the winners held back.
   - Chips use the ballot's spelling ("Ben Baroody", "Jim Creighton"); the pages use the
     record's (Benjamin, James).
@@ -411,6 +455,55 @@ raised:
        marked.
      - On `/es/resources`, the Learn tab's card "El registro en cifras" goes to the English
        page with no "(en inglés)" mark. That was so before the note, and live is the same.
+
+## From the walk of dry run 4 (for you to decide)
+
+This session walked section 10 on dry run 4's own address, https://ff30d1c7.graniterecord.pages.dev,
+at laptop and phone width.
+- The data held everywhere it was checked:
+  - every one of the 320 town pages' 814 blocks matches the members-elect file;
+  - all 237 linked members' pages carry one right "Elected" line;
+  - every race on the Members-Elect tab adds up;
+  - no Senate block says "Result not final".
+- There were no script errors and no sideways scroll at phone width.
+- Every script and stylesheet is the same as dry run 2's.
+
+Nothing holds the release. Four things are new with the members-elect:
+
+1. **The Members-Elect tab is cut off at laptop width.**
+   - On `/officials` and `/es/officials`, at 1280 and at 1440 pixels, the seventh tab shows
+     only its "M" at the right edge. The row scrolls sideways.
+   - A reader arriving at `/officials` has to scroll the tab row to find the new tab.
+     `/officials#members-elect` scrolls it into view.
+   - The fix is a design choice: shorter labels, a row that wraps, or the tab placed after
+     Legislators.
+2. **With a town saved, "Your rep" marks only the re-elected winners.**
+   - Saved in the header's Your town, Derry's Rockingham 13 block marks "Charles Foote (R)
+     Your rep" alone among its eight winners. That reads as if he alone will be the reader's
+     rep.
+   - In Antrim, "Jim Creighton (R)" under State Senate — district 8 reads "Your rep", because
+     he is a sitting representative.
+   - The same is on the Members-Elect tab and the map.
+   - The fix is one line: no pill inside a members-elect block. Whether a re-elected member
+     should be marked at all is yours to say.
+3. **From midnight on 2 December, `/officials#members-elect` is a blank page.**
+   - The tab hides, as it should, but the address still names it: six tabs, none chosen,
+     nothing under them. A shared link or a bookmark lands there.
+   - It matters on the 2 December switch night, not this weekend.
+   - The fix: when the address names a hidden tab, open Legislators, which the tab's own
+     intro promised "lists who holds each seat".
+4. **In Spanish, the heads of a members-elect block do not agree in number.**
+   - In the Mi municipio card of `/es/officials`, with Derry saved, "Elegidos el 3 de
+     noviembre de 2026" (plural) heads Regina Birdsell alone. "Asume el cargo el 2 de
+     diciembre de 2026." (singular) heads Rockingham 13's eight.
+   - Both are drafts, for the translation work. A wording that fits both: "Elección del
+     {day}" and "Toma de posesión: {day}."
+   - The Members-Elect tab's own intro is plural and right.
+
+Two smaller things, both as on live:
+- `/bill/2026/cacr13` at laptop width: its status chip runs past the right edge, by 30
+  pixels. Live's longer status runs 128.
+- Derry at laptop width: Katherine Prudhomme-O'Brien's chip runs under her email address.
 
 ## Already on live, and still there (for 24 November)
 

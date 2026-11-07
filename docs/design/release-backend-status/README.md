@@ -4,7 +4,50 @@ Kept on the session's own branch, `dev-ioxv9i`, for the laptop manager, who read
 `git fetch`. Cloud sessions cannot message it. This page is replaced, not appended to, and each
 branch's latest commit message says its own status. Times are Eastern.
 
-## As of Saturday 7 November 2026, about 3 p.m.
+## As of Saturday 7 November 2026, about 3:15 p.m.
+
+**Section 10 has been walked on dry run 4** (https://ff30d1c7.graniterecord.pages.dev).
+Two agents covered every stop, at 1280 and 390. Nothing holds the release.
+
+- **The data held everywhere it was checked:**
+  - all 320 town pages' 814 blocks match members_elect.json;
+  - all 237 linked members' pages carry one right "Elected" line;
+  - all 227 races on the Members-Elect tab add up;
+  - no Senate block says "Result not final";
+  - CACR 13's status, How It Got Here, Votes card, Learn answer (in English and Spanish) and
+    by-the-numbers row are right.
+- **No regressions against dry run 2.** Every JS and CSS file is byte-identical, and every
+  other difference traces to CACR 13, the members-elect or Feliciano. That includes `/bills`'
+  Status filter losing "In Progress" (CACR 13 is now under Died, 1,333) and `/data`'s 1,128 →
+  1,130 checks.
+- **The list's words are corrected where the page differs:**
+  - the map's Senate layer needs two clicks on 19 (as on dry run 2);
+  - a member page's heading is the name, with party and seat under it; "(D - Hills 39)" is
+    only the browser tab's title. Section 3's four quotes are fixed the same way;
+  - Hollis is one of four single-seat recounts, and six blocks name nobody;
+  - Baroody's chip is on `/town/manchester-ward-6`;
+  - CACR 13's words are in How It Got Here, not the tracker, which shows a red ✕. The Votes
+    card is added, and the by-the-numbers line reads "5 of the 18";
+  - section 8's "six tabs in view" is now seven, the last cut off;
+  - Laura Telerski is the second representative elected to the Senate.
+- **New, for Alice to decide**, in the list's new section "From the walk of dry run 4":
+  1. **Should-fix:** the Members-Elect tab is cut off to an "M" at 1280 and 1440, in English
+     and Spanish, and the tab row scrolls sideways. The fix is a design choice: shorter
+     labels, a wrapping row, or the tab after Legislators.
+  2. **Should-fix:** with a town saved, find.js's ytMark puts "Your rep" / "Your senator" on
+     member-elect chips that link a sitting member's page. In Derry it marks Foote alone of
+     eight, and in Antrim Creighton's Senate chip reads "Your rep". The one-selector fix is
+     `.elect a::after` in the existing `content:none` rule.
+  3. **Should-fix, for the 2 December switch night:** from the reader's midnight,
+     `/officials#members-elect` shows six tabs, none selected, and nothing under them. The
+     fix: a hidden tab in the address opens Legislators.
+  4. **Spanish drafts:** the Mi municipio card's "Elegidos el" (plural) heads one senator, and
+     "Asume el cargo" (singular) heads a list. A neutral wording is suggested for the
+     translation work.
+- **On your word, this session can have 2 and 3 ready on a branch today**, and 1 once a
+  design is chosen. Each would come with a check and a browser walk.
+
+## Earlier, about 3 p.m.
 
 Received your message with Alice's answers, and dry run 4 (ff30d1c7, dev 9052784d) clean.
 
