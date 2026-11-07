@@ -1,0 +1,57 @@
+# The members who moved, by the term of their last vote (for 11 November)
+
+The branch is `fix/movers-term`, from dev `dd3f7ef9`. The deep walk of dry run 181's preview
+found these faults on 6 November 2026. Each is new in the 11 November update, which was held
+back from that night for them.
+
+## What was wrong
+
+One roll call is misdated in the record. 1999-S-109, the Senate's vote on CACR 17, is dated
+22 October 2009. It sits between two votes of 22 October 1999, and it is the only one of
+2,303,047 ballots dated outside its term. Each former member's last vote was taken by its day,
+so for every senator of 1999 who cast it, that ballot counted as their last vote.
+
+- **Two members joined to the wrong page.** Frederick King (Senate 1999–2000, House 2003–2008)
+  and Leo Fraser (Senate 1999–2000, House 2001–2004) each have one page now. The page kept was
+  the Senate's, though both sat in the House after. Their live House addresses answered with a
+  301 to "Former Senator Frederick King (R - SD1)" and "Former Senator Leo Fraser" (`m1`,
+  against live's `m2`, and `m5` on a phone).
+- **One seat taken from the wrong term.** Carl Johnson's seat was read from 1999–2000's bills,
+  SD3, not from his last term's (2005–2006), which print him as SD2 118 times. His right
+  address, `/legislator/carl-johnson-sd-2`, answered with a 301 to `carl-johnson-sd-3` (`m3`).
+- **Whole careers under the last chamber.** Each joined page's search description, its line in
+  the former-legislators directory and its row in the site search put all its years under its
+  last chamber's seat. For example, "Sen. Jeb Bradley (R - SD3) served in the New Hampshire
+  Senate, 1999 to 2024", and "R, SD3, 1999–2024" in the directory (`m4`). He sat in the House
+  for Carroll 8 in 1999–2002.
+- **The JSON of a joined number.** Each of the 34 joined members' second numbers lost its
+  `/legislators/<id>.json`, which live serves and live pages link to.
+
+## What it does now
+
+- **A member's last vote is the last of their last term, then of its days.** The term is the
+  roll call's own, from its session year (`service_order`). King's and Fraser's pages are the
+  House's again, and Carl Johnson stays at SD2. Of the 19 pages that read "served … 1999 to
+  2009", the 13 of senators who served after 2000 and left before 2009 are on record to their
+  real last year. The 6 who sat only in 1999–2000 still read "to 2009" until the owner corrects
+  the roll call's date.
+- **The recorded 301s still hold.** `generated/moved_addresses.json` recorded King's and
+  Fraser's House addresses under their Senate numbers. A recorded number joined to another's
+  page now resolves to that page (`keep_moved`'s links), so nothing in the file is re-pointed.
+- **Each chamber gets its own years.** A joined page's description, directory line and search
+  row name each chamber with its own years, as the page's own "On record" line already did:
+  "House of Representatives, 1999 to 2002, and Senate, 2009 to 2024"; "R, SD3 2009–2024 ·
+  House 1999–2002".
+- **A joined number's JSON redirects.** `/legislators/<joined number>.json` answers with a 301
+  to the page's own.
+
+## The shots
+
+These are the preview as it was: `https://6502d18c.graniterecord.pages.dev`, dry run 181,
+`dd3f7ef9`, taken on 6 November 2026. `m2` is the live site. This machine holds no data to
+build the real pages, so the after shots come from the next dry run's preview. Preflight's
+`_movers_by_term` holds each case in the meantime.
+
+`people.json`, which still gives each of the owner's 30 confirmed pairs as two people, is a
+separate question for the owner. It needs merges in the person register, which the design
+leaves to a person.

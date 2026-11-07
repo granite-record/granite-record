@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.23
+# GRANITE_VERSION: 2026-09-04.24
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -70,8 +70,9 @@ def person_slug(m):
     return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", raw.lower())).strip("-")
 
 
-def describe(m):
-    """The sentence a search engine shows under the link."""
+def describe(m, rec=None):
+    """The sentence a search engine shows under the link. rec is the member's
+    own JSON, whose service names each chamber of a page that joins two."""
     # THE SEAT ONCE. display_full already carries it -- "Rep. Aboul Khan (R -
     # Rock 30)" -- and the seat was appended again, so all 406 of these read
     # "(R - Rock 30) Rock 30." in a search result. The places come straight
@@ -93,7 +94,19 @@ def describe(m):
     # year the evidence starts. List the terms the record covers and leave the
     # wording plain: the case is rare enough that a sentence of hedging costs
     # the reader more than the imprecision does.
-    if m.get("former"):
+    #
+    # EACH CHAMBER ITS OWN YEARS, where the page joins two (the deep walk of 6
+    # November 2026). A member who sat in both and has left has one page, the
+    # later chamber's, with every chamber's votes (build_site_v2.
+    # former_movers), and the record's span under the page's chamber read
+    # "Sen. Jeb Bradley (R - SD3) served in the New Hampshire Senate, 1999 to
+    # 2024" of a senator whose 1999-2002 were in the House. The years are the
+    # page's own "Votes on record" line's: member_links.service, years with a
+    # roll call in that chamber.
+    both = _chambers_served(rec)
+    if m.get("former") and both:
+        lead = f"{who} served in the New Hampshire {both}."
+    elif m.get("former"):
         yrs = _served_years(m)
         lead = (f"{who} served in the New Hampshire {body}"
                 + (f", {yrs}." if yrs else "."))
@@ -111,6 +124,23 @@ def describe(m):
     # A clip at a word, not a slice: [:300] would cut a word in half the day a
     # member represented enough towns to reach it.
     return S.clip(text, 300)
+
+
+def _chambers_served(rec):
+    """"House of Representatives, 1999 to 2002, and Senate, 2009 to 2024": each
+    chamber of a page that joins two, in the order it was first sat in, with
+    the years it has a recorded roll call (the member's own service, as
+    member_links.service writes it: [{"chamber": "H", "spans": [[1999,
+    2002]]}, ...]). "" for a page of one chamber, or none on record."""
+    svc = [c for c in ((rec or {}).get("service") or [])
+           if c.get("chamber") in ("H", "S") and c.get("spans")]
+    if len({c["chamber"] for c in svc}) < 2:
+        return ""
+    def years(spans):
+        return " and ".join(str(a) if a == b else f"{a} to {b}" for a, b in spans)
+    return ", and ".join(
+        f"{'Senate' if c['chamber'] == 'S' else 'House of Representatives'}, {years(c['spans'])}"
+        for c in svc)
 
 
 def _served_years(m):
@@ -329,6 +359,9 @@ def main():
         # "Former Rep. ..." for a member who has left: heading() says why.
         who = heading(m)
         mid = str(m.get("id") or "")
+        # Their own JSON, read once: the static record draws from it, and the
+        # description names each chamber of a joined page from its service.
+        rec = own(m)
         # THE MEMBER'S FEED, WHERE ONE IS WRITTEN: their recorded votes and the
         # bills they sponsored. build_feeds once wrote one for each of the 406
         # and no page named any, so the only way to one was
@@ -362,7 +395,7 @@ def main():
             # General Court" in a link card read as the General Court's own page.
             og_title=who, og_image="og-legislator.png",
             og_alt="Granite Record: legislators and their voting records",
-            description=describe(m), alternate=feed,
+            description=describe(m, rec), alternate=feed,
             # Name, office, chamber, party, district. Not email or telephone:
             # structured.py says why.
             jsonld=LD.person(m, a.base, S.canon(path)),
@@ -374,7 +407,7 @@ def main():
             # sitting member is.
             globals={"GR_MEMBER": str(m.get("id", "")), "GR_STANDALONE": True,
                      **({"GR_FORMER": True} if m.get("former") else {}), **also},
-            static=static_record(m, own(m), line, places), skip_label="Skip to this member",
+            static=static_record(m, rec, line, places), skip_label="Skip to this member",
             # Without this the template's marker stays on Bills, and all 406
             # member pages told a screen reader they were Bills.
             nav_current="officials.html",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.259
+# GRANITE_VERSION: 2026-09-04.260
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -341,6 +341,16 @@ def moved_members(site):
             # And the address with a trailing slash, which old/* caught.
             out += [f"{old} {new} 301\n", f"{old}.html {new} 301\n", f"{old}/ {new} 301\n"]
             out += [f"{old}/{s} {new}/{s} 301\n" for s in MEMBER_TAB_SLUGS]
+        # AND THE DATA OF A NUMBER JOINED TO THIS PAGE (the deep walk of 6
+        # November 2026): each page linked "This page's data as JSON" to
+        # /legislators/<its id>.json, and a number joined to another's page
+        # has no file of its own now, so the second number of each of the 34
+        # joined members answered 404 where live gave their record. It
+        # answers with the file of the page it was joined to.
+        mid = str(r.get("id") or "")
+        for j in (r.get("member_ids") or [])[1:] if new and mid else []:
+            if str(j) != mid:
+                out.append(f"/legislators/{j}.json /legislators/{mid}.json 301\n")
     return "".join(sorted(out))
 
 
