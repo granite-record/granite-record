@@ -1,25 +1,33 @@
 # The owner's walk of the weekend release
 
 The release and backend session wrote this on Saturday 7 November 2026, at about 8 a.m.
-Eastern. It replaces the 3 a.m. version, which was written against dry run 183. Every stop
-below was opened on **dry run 2** (dev e308cee5) at its own address, and each says what that
-page showed. It covers every change a reader can see between graniterecord.org today and the
-weekend release, the second batch included.
+Eastern, and corrected it at about 10 a.m. after two checks of the list itself. It replaces
+the 3 a.m. version, which was written against dry run 183.
+
+Every stop below was opened on **dry run 2** (dev e308cee5) at its own address, and each says
+what that page showed. The list covers every change a reader can see between
+graniterecord.org today and the weekend release, the second batch included. A few stops check
+that a slip seen on an earlier dry run stays fixed; those say so.
 
 ## Where to walk
 
 - **Walk dry run 3 at its own address.** The laptop manager gives it to you tonight.
-  - Dry run 3 is dry run 2 plus one change: Strafford's District 1 commissioner (section 5).
-    Every other stop reads the same on both.
+  - Dry run 3 is dry run 2 plus one change: Strafford's District 1 commissioner. It shows in
+    section 5, and on the Spanish Officials page in section 8. Every other stop reads the
+    same on both.
   - Dry run 2 is **https://4e2d47d7.graniterecord.pages.dev**, and dry run 183 is
     https://dc501057.graniterecord.pages.dev.
   - Not the alias, dry-run.graniterecord.pages.dev, which can serve a page cached from an
-    earlier dry run. If a page looks wrong, add `?v=1` to its address.
+    earlier dry run.
+  - If a page looks wrong, reload it. On a stop whose address has no ? or # in it, adding
+    `?v=1` to the end also fetches it fresh. Don't add it to an address that has either: it
+    changes what the page shows.
 - **Each stop is an address to put after the deployment address.**
-- **Laptop first, phone last.** Sections 1 to 9 are at laptop width. Section 10 is on a phone,
-  or a window narrowed to phone width, so you resize once.
-- **The whole list takes about an hour.** With twenty minutes, walk sections 1, 2 and 3,
-  marked ★.
+- **Laptop first, phone last.** Sections 1 to 9 are at laptop width. Section 10 is on your
+  phone itself: a narrowed laptop window types a straight apostrophe, and section 10's
+  searches need the phone's curly one.
+- **The whole list takes about an hour.** With half an hour, walk the ★ sections 1, 2 and 3
+  and the ★ stop in section 5, dry run 3's one change.
 
 ## 1. HB 703, and Back to the search ★ (about 12 minutes)
 
@@ -29,27 +37,28 @@ weekend release, the second batch included.
   - The address is `/bill/2020/hb703`.
   - It is the prescription-drug bill: Rep. Edward Butler (D - Carr 7), House Commerce and
     Consumer Affairs, Chapter 4, Laws of 2020.
-  - Cite reads "HB 703-FN (2020): relative to providing notice of the introduction of new
-    high-cost prescription drugs."
-  - Before the release, the 2020 result could open 2025's school-meals bill, or mix the two.
-  - Its tracker shows the Law step (Jan 1, 2020, the act's effective date) before the
-    Governor's (Feb 10, 2020). Live shows the same. It is one of the 253 laws to sample after
-    the webinar, not part of this release.
-- On that bill, type **HB 1** in the box and press Return, then press Back. 2020's bill comes
-  back whole, with nothing of 2025's in it: no school meals, no Hope Damon.
+  - Click **Cite this page**. Its MLA line reads "HB 703-FN (2020): relative to providing
+    notice of the introduction of new high-cost prescription drugs."
+  - On live, clicking the 2020 result opens 2025's school-meals bill.
+  - Its tracker's last step, Law, is dated Jan 1, 2020, the act's effective date. That is
+    earlier than the Governor's step before it, Feb 10, 2020. Live shows the same. It is one
+    of the 253 laws to sample after the webinar, not part of this release.
+- On that bill, replace HB 703 in the box with **HB 1** and press Return, then press Back.
+  2020's bill comes back whole, with nothing of 2025's in it: no school meals, no Hope Damon.
 - **Press Back again, to the search** (new in the second batch).
-  - The address is `/bills?q=HB+703&term=all`, the box says HB 703, and the 10 bills are
-    listed, with 2020's card shaded where you left it.
+  - The address is `/bills?q=HB+703&term=all`, and the box says HB 703.
+  - The 10 bills are listed, 2020's second, at the place you left.
   - Forward reopens 2020's bill.
   - Dry run 183 and live drop the words (`/bills?term=all`), and Forward goes nowhere.
-- `/bill/2020/hb703/text` and `/bill/2025/hb703/votes`: each bill on its own tab. 2025's
-  Votes tab shows the House's 202–173 roll call of Mar 13, 2025.
+- `/bill/2020/hb703/text` opens 2020's bill at its Bill Text tab.
+- `/bill/2025/hb703/votes` opens 2025's at its Votes tab, with the House's 202–173 roll call
+  of Mar 13, 2025.
 - `/bills?q=housing`.
   - Tick Passed, choose the order Bill number, and change the words in the box to **dog**.
     The list filters as you type.
   - Open a bill and press Back. The address is `/bills?q=dog&status=Passed&sort=num`, and
-    the box, the tick and the order are as you left them. A reload keeps all of it. Dry run
-    183 loses the words.
+    the box, the tick and the order are as you left them. A reload keeps all of it.
+  - Dry run 183 loses the words.
 - `/bills?q=housing` again. Scroll well down, open a bill, reload the page, then press Back.
   - The same search (138 of 2,243 bills) comes back at the same place in the list.
   - Dry run 183 gives bare `/bills`, at the top.
@@ -65,13 +74,12 @@ weekend release, the second batch included.
   The link goes where `/town/manchester` goes, Officials on Manchester.
 - `/town/dover-ward-9`: "Did you mean Dover? It has wards 1 to 6."
 - `/town/harts-location`: a moment later, Hart's Location's own page.
-- **The header search** (the magnifier), on any English page. Dry run 183 found nothing for
-  the last three.
+- **The header search** (the magnifier), on any English page:
   - "Senate Bill 11" puts SB 11 first. Dry run 183 put CACR 11 above it.
-  - "H.B. 703" puts 2025's HB 703 first.
-  - "Hart's Location" puts the town first.
-  - "LSR 2027-0002" puts the 2027 bill request first.
-  - O'Neil waits for the phone (section 10), where the apostrophe types curly.
+  - "H.B. 703" puts 2025's HB 703 first. Dry run 183 found nothing.
+  - "LSR 2027-0002" puts the 2027 bill request first. Dry run 183 found nothing.
+  - O'Neil and Hart's Location wait for the phone (section 10). Typed on a laptop, they
+    already worked on dry run 183.
 
 ## 3. Members who sat in both chambers, and former members ★ (about 12 minutes)
 
@@ -88,9 +96,10 @@ The session pages are long: use Find for the names.
   - This holds for all 30 people you confirmed on 2 November.
   - `/legislator/david-pierce-hills-6` is still a page of its own, apart from David Pierce of
     SD5.
-- `/legislator/john-king-sd-18`, the first of the six senators of 1999–2000: its On Record
-  line reads **"Senate, 1999–2000"**, not to 2009. The other five are Richard Russman, James
-  Squires, Mary Brown, Patricia Krueger and Rick Trombly.
+- `/legislator/john-king-sd-18`: its On Record line reads **"Senate, 1999–2000"**.
+  - He is the first of six 1999–2000 senators whose pages said they served to 2009.
+  - The other five are Richard Russman, James Squires, Mary Brown, Patricia Krueger and Rick
+    Trombly.
 - `/bill/1999/cacr17/votes`: the Senate's 15–8 roll call ordering it to third reading is dated
   **Oct 22, 1999**. Live dates it 2009. It is 1999-S-109 in your corrections line, but the page
   does not print the number.
@@ -99,26 +108,28 @@ The session pages are long: use Find for the names.
   still reads 89 former senators and 1,662 former representatives: see "For you to decide",
   item 1.**
 - `/legislator/rebecca-hutchinson-rock-73` lands on **Rebecca Hutchinson (D - Rock 8)**. 75
-  former members now carry the seat their last term's bills print.
-  - Every address a page moved from redirects to the page it is now.
-  - On dry run 2 all 631 redirect rules answer as written. On dry run 183 the walk tried all
-    121 recorded moved addresses: 109 redirect, and the other 12 are still a page's own
-    address. The second batch changes no data.
+  former members now carry the seat their last term's bills print, and every address a page
+  moved from lands on the page it is now.
+  - That was checked by machine on dry run 2, for every old address. Nothing for you to do
+    here.
 - `/session/H/2010-03-03`: Rep. Shannon Chandley reads **(D - Hills 6)** in both places, the
   seat she held that term. Live shows Hills 22, a seat she took in 2016, in one of the two.
-- `/session/H/2004-03-17`: "Rep. Frederick King (R - Coos 1)" links his page. Dry run 181
-  linked Seth King, who was not yet in the House.
+- `/session/H/2004-03-17`: "Rep. Frederick King (R - Coos 1)" links his page. Live links him
+  the same way. This checks that a slip of dry run 181, which linked Seth King, stays fixed.
 - `/session/H/2002-01-31`: "Rep. William Zolla (R - Rock 13) led the Pledge of Allegiance",
-  with its capitals. Live lowers them.
+  with its capitals and his 2001–2002 seat. Live lowers them, and reads Rock 5.
 
-## 4. A record's head: Cite, Testify, Report (about 3 minutes)
+## 4. A record's head: Cite this page, Testify, Report a problem (about 3 minutes)
 
-- `/bill/2026/hb1123` on a laptop: Cite, Testify and Report each open a pane beside its own
-  button, level with it, with a small triangle pointing at it. No pane covers the buttons, and
-  Escape closes each. HB 1123 has no Follow button, because it died.
+- `/bill/2026/hb1123` on a laptop.
+  - Cite this page, Testify and Report a problem each open a pane beside their own button,
+    level with it, with a small triangle pointing at it.
+  - No pane covers the buttons, and Escape closes each.
+  - HB 1123 has no Follow button, because it died.
 - Testify reads, in your words of 6 November, "Online testimony submissions for this bill have
   closed as of January 13, 2026."
-- The facts under the title (prime sponsor, committee) sit just under it, with no empty band.
+- The facts (prime sponsor, committee) sit just under the title. The space below them, beside
+  the buttons and above the tracker, is expected.
 - The phone is in section 10.
 
 ## 5. Learn and Officials (about 6 minutes)
@@ -129,8 +140,9 @@ The session pages are long: use Find for the names.
   - The Strafford card reads "Two years. All three seats are on the ballot at every state
     general election."
   - Its "Who holds these offices now" opens Officials on Strafford County.
-- The same page's Common Questions: "Who fills a commissioner's seat that falls vacant?"
-- `/officials#of-county-strafford` opens the **County Officials (80)** tab with Strafford at
+- The same page's Common Questions: open "Who fills a commissioner's seat that falls
+  vacant?". It answers "The county convention (RSA 661:9, II)."
+- ★ `/officials#of-county-strafford` opens the **County Officials (80)** tab with Strafford at
   the top. Live opens My Town.
   - **Dry run 3's one change:** Strafford County's Commissioner, District 1 reads **Leslie
     Feliciano (R)**, in Joe Pitre's place. Dry run 2 shows Joe Pitre.
@@ -139,16 +151,17 @@ The session pages are long: use Find for the names.
 
 ## 6. The data: /api and the downloads (about 6 minutes)
 
-- `/api` is a new page. It is not linked from anywhere and is not in the sitemap. It carries
-  noindex until you announce it.
+- `/api` is a new page. On live it is the not-found page.
+  - No page links to it; only manifest.json and schema.json name its address. It is not in
+    the sitemap, and search engines are told not to list it until you announce it.
   - The heading is "The Data API", and it says "A beta until February 1, 2027".
   - Its Count column says what it counts: "43 files", "14 tables", "2,157 people", "33,717
     bills".
   - The people.json row now says it also has 30 entries for numbers that proved to be one of
     the 2,157 people's.
-  - Up to iPad width the table is a list, as on a phone.
-- `/data`, under proceedings.csv: it no longer carries YouTube's titles and times. It lists 13
-  columns, 105,476 rows, and is 10.3 MB.
+- `/data`: find proceedings.csv and open "More about proceedings.csv".
+  - Its Columns line names 13 columns, from term to end_how. None is a YouTube title or time.
+  - The row says 105,476 rows and 10.3 MB.
 - `/data/manifest.json` and `/data/schema.json`, Find "rights": the one rights line, in your
   words of 5 November. It begins "The record is the State of New Hampshire's".
 - `/data/people.json` (0.8 MB; Find "Jeb Bradley"): one person for each of your 30 pairs, with
@@ -161,7 +174,7 @@ The session pages are long: use Find for the names.
 - The same page, In the Record near the bottom, "Show the laws passed in": choose 2025, and
   the 2026 laws passed but not yet in effect (HB 481, HB 1541-FN) drop out.
 - `/guides/run-for-office`: the qualifications say "domiciled in New Hampshire at least 7 years
-  immediately preceding the election", in RSA 655:29's words, with RSA 655:29 in the caption.
+  immediately preceding the election", with RSA 655:29 in the caption.
 
 ## 8. Spanish pages (about 6 minutes)
 
@@ -170,8 +183,10 @@ The session pages are long: use Find for the names.
   - **New in the second batch:** one note under the title, "Esta página está en español.
     Algunas partes se quedan en inglés a propósito…". Under it, "Por qué algunas partes están
     en inglés" is folded: open it, and there are four reasons.
-- `/es/officials` at laptop width: all six tabs are in view, "Funcionarios del condado (80)"
-  last, and the same note is there, once.
+- `/es/officials` at laptop width:
+  - All six tabs are in view, "Funcionarios del condado (80)" last, and the same note is there,
+    once.
+  - On dry run 3, Strafford's first commissioner there is Leslie Feliciano too.
 - `/es/guides/how-to-vote`: the same note, once. No English page carries it.
 - The header search on a Spanish page, typing Concord: "10 barrios electorales · Condado de
   Merrimack". Live reads "10 wards · Merrimack County".
@@ -190,34 +205,46 @@ The session pages are long: use Find for the names.
 - `/live` is a new page, linked from nowhere yet.
   - Give it a few seconds. With nothing streaming it says "No stream found right now
     (checked …)" and names the House's and Senate's own streams.
-  - It has no `/session/H/today` link.
-- `/committee/H43` draws to its end on a weekend, with no live box. It is the slowest and
-  longest stop, about six seconds.
+  - Its only links are those two YouTube streams; none goes to a House session.
+- `/committee/H43` draws to its end on a weekend, with no live box. It is the longest stop,
+  and can take several seconds to draw.
 
-## 10. On a phone (about 6 minutes)
+## 10. On your phone (about 6 minutes)
 
-- `/bill/2026/hb1123`: each pane drops under its own button. It lies over the buttons below
-  it (Print, Share, Report) until you close it. See the nits.
-- `/learn/by-the-numbers`: the Became Law chart is several screens down. Every bar shows its
-  value, and the line above it says "Each term's value is at the end of its bar."
+- `/bill/2026/hb1123`: tap Cite this page, then Testify.
+  - Each pane opens under its own row of buttons.
+  - Each hides Print, Share and Report a problem until you tap the same button again to close
+    it. See the nits.
+  - Report a problem is the last button, so its pane covers nothing.
+- `/learn/by-the-numbers`: the Became Law chart, under "Became Law, as a Share of the Bills
+  Filed", is about a screen and a half down. Every bar shows its value, and the line above
+  it says "Each term's value is at the end of its bar."
 - `/api`: the table is a list.
-- The header search: **O'Neil**, with the phone's curly apostrophe, lists Candice, William and
-  James O'Neil. "O Neil" gives the same. Dry run 183 found nothing.
+- **The header search** (the magnifier). Read the list under the box, without pressing Go,
+  which jumps straight to the first result.
+  - **O'Neil**, with the phone's curly apostrophe: five O'Neils, Candice first.
+  - **Hart's Location**, with the curly apostrophe: the town first.
+  - Dry run 183 found nothing for either with the curly apostrophe. With a straight one, or as
+    "O Neil", they already worked.
 - `/legislator/melanie-levesque-sd-12`, for the nit below.
 
 ## For you to decide
 
 The walk of dry run 2 found nothing that holds the release. These three are new with it.
 
-1. **The former-members directory lists eight people under one chamber only.**
+1. **The former-members directory lists each of the 34 people who sat in both chambers under
+   one chamber only.**
    - It is still so on dry run 2, and will be on dry run 3. `/directory/former-legislators`
      lists each joined person once, under the chamber of the page kept.
-   - Cilley, Leo Fraser, Edward (Ned) Gordon, Fenton Groen, Frederick King, Amanda Merrill,
-     Andrew Peterson and Frank Sapareto sat in the Senate, but appear only under the House.
+   - Eight sat in the Senate but are listed only under the House: Jacalyn Cilley, Leo Fraser,
+     Edward Gordon, Fenton Groen, Frederick King, Amanda Merrill, Andrew Peterson and Frank
+     Sapareto.
+   - The other 26, Jeb Bradley among them, sat in the House but are listed only under the
+     Senate.
    - So its count line says 89 former senators and 1,662 former representatives. The record
      has 97 and 1,688, and live says so.
    - **The fix is ready**, on `fix/former-directory-both`, and is in neither dry run 2 nor 3.
-     - With it the count line reads "97 former senators and 1,688 former representatives…
+     - With it, the count line reads "97 former senators and 1,688 former representatives…
        The 34 who sat in both chambers are under each."
      - Under the other chamber a person's row has that chamber's title and its years first,
        and no party or seat. For example: "Rep. Jeb Bradley House 1999–2002 · Senate
@@ -237,8 +264,9 @@ The walk of dry run 2 found nothing that holds the release. These three are new 
      seats were on the ballot on November 3, 2026; this is the roster read before it."
    - Her row comes from Strafford County's own list, read on 6 November 2026. The roster names
      Joe Pitre.
-   - This was seen by building that tab from dry run 3's code; dry run 3 itself was not up
-     yet. The page draws one source line for all 80 rows, and never a row's own source.
+   - This was seen by building the County Officials tab from dry run 3's own code and
+     corrections file. Dry run 3 itself was not up yet, so look tonight.
+   - The page draws one source line for all 80 rows, and never a row's own source.
    - A fix would add a sentence naming the rows read from another source. It needs a Spanish
      line in the translation file, which is the translation work's to add, not this session's.
 
@@ -256,16 +284,16 @@ The walk of dry run 2 found nothing that holds the release. These three are new 
 - A tab clicked on a bill opened from such an address writes `/bills/votes?…`, which is not a
   page.
 - A bill opened from the search keeps the search's tab title in the browser tab.
-- After a bill is reloaded, Back to the search leaves that bill drawn open inside its card in
-  the list. Dry run 183 and live do the same.
+- A bill opened from the search and left with Back stays drawn open inside its card in the
+  list. After a reload it does not. Dry run 183 and live do the same.
 - The status box on `/es/` has an English sentence, "The 2026 session ended Aug 19 (veto
   day)…", which none of the new note's four reasons covers.
 
 ## Small things the walk noted (nits)
 
-- At phone width a record's pane (Cite, Testify) lies over the buttons below its own until it
-  is closed. This is new with the release, and dry run 183 is the same. Live puts the pane
-  below the whole group of buttons.
+- At phone width, Cite's and Testify's panes lie over the buttons below until they are closed.
+  This is new with the release, and dry run 183 is the same. Live puts the pane below the whole
+  group of buttons.
 - At phone width, Melanie Levesque's On Record line breaks inside "2019–2020".
 - `/api` says "2,157 people" beside the database's "people (2,187)". Both are right: the 30
   extra are numbers retired by the joins. `people.json`'s own description still says one entry

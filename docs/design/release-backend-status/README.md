@@ -4,7 +4,7 @@ Kept on the session's own branch, `dev-ioxv9i`, for the laptop manager, who read
 `git fetch`. Cloud sessions cannot message it. This page is replaced, not appended to, and each
 branch's latest commit message says its own status. Times are Eastern.
 
-## As of Saturday 7 November 2026, about 8:30 a.m.
+## As of Saturday 7 November 2026, about 10 a.m.
 
 Received the laptop manager's messages of 7 November, through the one saying:
 - dry run 2 (run 42368200550, dev e308cee5) is clean;
@@ -22,8 +22,22 @@ Received the laptop manager's messages of 7 November, through the one saying:
   sections, with times; sections 1 to 3 (★) are the twenty-minute walk.
 - Dry run 3's one change, Leslie Feliciano as Strafford's District 1 commissioner, is a stop in
   section 5.
-- Two checks of the list itself, a fact-check against the preview and a read as the owner,
-  were running at this commit. Anything they find follows in a commit of its own.
+- **Corrected at about 10 a.m. after two checks of the list itself.** One fact-checked 104
+  claims against dry run 2, dry run 183 and live. The other followed every stop literally, as
+  the owner would.
+  - Four statements were wrong, and are fixed:
+    - the ★ walk is half an hour, not twenty minutes, and now includes dry run 3's stop;
+    - Hart's Location typed on a laptop already worked on dry run 183, so it moved to the
+      phone with O'Neil;
+    - the directory lists all 34 people under one chamber, not eight (8 missing from the
+      Senate list, 26 from the House's);
+    - a plain Back, not a reload, leaves a bill drawn open in the list.
+  - The rest were steps left out or words that mislead, and are fixed too: the folded
+    proceedings.csv columns, the button names, closing a pane on a phone, the `?v=1` advice
+    (it breaks an address with ? or #), and which stops only check an earlier dry run's slip.
+  - Not taken: "seen by building the tab" in item 3 stands. This session built County
+    Officials from d2a8e027's own code and corrections file, which the checker did not find on
+    disk.
 
 ### Dry run 2 (dev e308cee5): the walk
 
@@ -88,8 +102,13 @@ Received the laptop manager's messages of 7 November, through the one saying:
 
 ## Next
 
-- **Today:** the four deeper walks of dry run 2, then the two checks of the walk list. Any
-  finding goes on this branch.
+- **Today:** the four deeper walks of dry run 2. Any finding that survives its skeptic goes on
+  this branch. The Back and not-found walk is done; its two candidates are being checked:
+  - after Back, a term whose bills fail to load reads as having none;
+  - an All Terms choice can be lost on a slow network, by Back, Forward, Back before the bills
+    arrive.
+
+  Both are rare roads and nits at most.
 - **On your word:** `fix/former-directory-both`.
 - **Monday:** the Videos wording.
 - **After the weekend:** tasks 28 and 29; task 30 after the webinar.
