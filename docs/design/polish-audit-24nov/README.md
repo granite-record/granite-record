@@ -85,3 +85,8 @@ light and dark:
   link. Saves about 420 px; the card is three lines.
 
 It changes the home page's layout, so it needs the owner's choice.
+
+**Decided: no change.** The owner (6 November 2026, 9:30 p.m. Eastern, relayed
+by the laptop manager) wants the home page's video players kept as they are
+for now. Neither option is built, and P-11 is closed. The mocks stay here in
+case the question comes back.
