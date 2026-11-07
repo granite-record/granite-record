@@ -6,12 +6,14 @@ walks' findings were added. It replaces the 3 a.m. version, which was written ag
 183.
 
 Sections 1 to 9 and 11 were opened on **dry run 2** (dev e308cee5) at its own address, and
-each stop says what that page showed. Section 10, the members-elect, was added at about 10
-a.m. from dry run 4's code and the election data, before dry run 4 was up. It will be checked
-on dry run 4's own address and corrected here.
+each stop says what that page showed. Section 10 covers the election: the members-elect and
+CACR 13's count.
+- It was added at about 11 a.m., and given your recounts and CACR 13 at about 2 p.m.
+- It comes from dry run 4's code and data, read before dry run 4 was up.
+- It will be checked on dry run 4's own address and corrected here.
 
 The list covers every change a reader can see between graniterecord.org today and the weekend
-release, the second batch and the members-elect included. A few stops check that a slip seen
+release, the second batch and the election included. A few stops check that a slip seen
 on an earlier dry run stays fixed; those say so.
 
 ## Where to walk
@@ -20,7 +22,7 @@ on an earlier dry run stays fixed; those say so.
   - Dry run 4 is dry run 2 plus three changes:
     - Strafford's District 1 commissioner, in section 5 and on the Spanish Officials page in
       section 8;
-    - the members-elect of 3 November, in section 10;
+    - the members-elect of 3 November, and CACR 13's count, in section 10;
     - Rich Green left unlinked, as you said, in section 10.
   - Every other stop reads the same on both. Dry run 3 was clean, and dry run 4 replaces it.
   - Dry run 2 is **https://4e2d47d7.graniterecord.pages.dev**, and dry run 183 is
@@ -34,7 +36,7 @@ on an earlier dry run stays fixed; those say so.
 - **Laptop first, phone last.** Sections 1 to 10 are at laptop width. Section 11 is on your
   phone itself: a narrowed laptop window types a straight apostrophe, and section 11's
   searches need the phone's curly one.
-- **The whole list takes about an hour and a quarter.** With forty minutes, walk the ★
+- **The whole list takes about an hour and twenty minutes.** With forty minutes, walk the ★
   sections 1, 2 and 3, and the ★ stops in sections 5 and 10.
 
 ## 1. HB 703, and Back to the search ★ (about 12 minutes)
@@ -220,7 +222,7 @@ The session pages are long: use Find for the names.
 - `/committee/H43` draws to its end on a weekend, with no live box. It is the longest stop,
   and can take several seconds to draw.
 
-## 10. Members-elect ★ (dry run 4; about 12 minutes)
+## 10. The 3 November election: members-elect and CACR 13 ★ (dry run 4; about 15 minutes)
 
 Dry run 4 adds the members-elect of the 3 November election, by the Secretary of State's
 count:
@@ -230,19 +232,22 @@ count:
 Every block says "Elected November 3, 2026" and "Takes office December 2, 2026.", and all of
 it disappears on 2 December. Town and legislator pages are in English only.
 
-**Not yet walked.** These stops come from dry run 4's code and the election data, read before
-dry run 4 was up. The 16 recounts were not on hand, so which seats are held is not yet seen.
-Each stop will be checked on dry run 4 and corrected here.
+**Not yet walked.** These stops come from dry run 4's code and its data (dev 9052784d: the
+results, your 16 recounts and Rich Green), read before dry run 4 was up. A build of the
+members-elect from them gives your counts exactly: 405, 213, 24, 168 and 19. Each stop will be
+checked on dry run 4 and corrected here.
 
 - ★ `/town/derry`, the Representatives tab, which the page opens on.
   - Rockingham district 13, 10 seats: "Serving now" sits over the ten sitting members.
   - Under them is a shaded block: "Elected November 3, 2026", "Takes office December 2,
-    2026.", and the winners, most votes first. It starts Kristine Trow (D), Jamie Carreau (D),
-    Matthew Glavin (D), Hollie Hesse (D), Charles Foote (R).
-  - Charles Foote is re-elected and links to his page. A new member has no link.
-  - Rockingham 13 is being recounted, and its closest seats are held. The winners with the
-    fewest votes are left out, and the block ends "Result not final — a recount was
+    2026.", and eight winners, most votes first: Kristine Trow (D), Jamie Carreau (D), Matthew
+    Glavin (D), Hollie Hesse (D), Charles Foote (R), Jim Marshall (D), Haley Carreau (D) and
+    David Provencher (D).
+  - Charles Foote is re-elected and links to his page. The seven others are new, with no link.
+  - Rockingham 13 is being recounted, and you held its two closest seats. So the two winners
+    with the fewest votes are left out, and the block ends "Result not final — a recount was
     requested". It does not say how many seats are held.
+  - `/town/salem`, Rockingham 25, has the same shape: 8 of its 9 winners, one seat held.
   - State Senate — district 19: "Serving now" Sen. Regina Birdsell, then "Regina Birdsell
     (R)", re-elected, linked.
 - `/town/derry`, the Vote tab: its heading reads "Last election: November 3, 2026".
@@ -259,7 +264,8 @@ Each stop will be checked on dry run 4 and corrected here.
   - Below it, Grafton 18 (floterial) is final: Marko Kloos (D), new, with no link.
   - Its Vote tab reads "Last election: November 3, 2026".
   - `/town/hollis`, Hillsborough 45 (floterial), is the other single-seat recount, in the same
-    shape.
+    shape. Hollis's own Hillsborough 35 is final: Ben Ming (D), returning, and Kat McGhee (D),
+    re-elected, both linked.
 - A former member returning: `/legislator/benjamin-baroody-hills-39`.
   - The heading stays "Former Representative Benjamin Baroody (D - Hills 39)".
   - Under it: "Elected November 3, 2026, for Hillsborough district 16. Takes office December
@@ -287,6 +293,19 @@ Each stop will be checked on dry run 4 and corrected here.
     Senate, linked to his House page. That page's line reads "… for Senate District 8 …".
   - The new senators are plain chips: Kurt Webber (2), Rebecca Harned (7), Matthew McLaughlin
     (9), Carryl L. Roy (12), Dian McCarthy (16) and Leonard Bell (18).
+- **CACR 13, the register of probate amendment.** Its count is in: 365,359 yes and 198,791 no,
+  64.8%, short of two thirds.
+  - `/bill/2026/cacr13`: the status reads "Passed both chambers, not ratified by the voters".
+    The tracker's Voters step reads "Not ratified, 365,359–198,791", with whose count it is.
+    Dry run 2 reads "went to the voters in November 2026".
+  - `/learn/county-government`, Common Questions, open "What does the register of probate
+    still do?": the answer ends
+    "… as CACR 13 (2026), and on November 3, 2026 it did not reach the two thirds it needed:
+    64.8% of those voting on it voted yes." The same is on `/es/learn/county-government`.
+    Dry run 2 says the count is not on the site yet.
+  - `/learn/by-the-numbers`, Constitutional Amendments Sent to the Voters: a CACR 13 of
+    2025–2026 row, Nov 3, 2026, 365,359, 198,791, 64.8%, Not Ratified. The line saying its
+    count is not on the site yet is gone.
 - Things a reader may ask about. These are as the code draws them, not faults found:
   - A single-seat recount's block heads "Elected November 3, 2026" over nobody.
   - A part-held recount does not say how many seats are held, or name the winners held back.
@@ -432,5 +451,3 @@ The walk of dry run 2 found nothing that holds the release. These four are new w
 
 - **The Vacant mark on County Officials:** no vacancy is entered in the corrections file.
 - **Testify's "They may open again…":** no bill is moving between chambers in November.
-- **Members-elect:** the 2026 results file is not in yet.
-- **The register of probate paragraph:** it changes only when CACR 13's count is entered.

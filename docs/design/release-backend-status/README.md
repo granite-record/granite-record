@@ -4,7 +4,31 @@ Kept on the session's own branch, `dev-ioxv9i`, for the laptop manager, who read
 `git fetch`. Cloud sessions cannot message it. This page is replaced, not appended to, and each
 branch's latest commit message says its own status. Times are Eastern.
 
-## As of Saturday 7 November 2026, about 11 a.m.
+## As of Saturday 7 November 2026, about 2 p.m.
+
+- **dev reached 9052784d** at about 1:40 p.m. That is e10505d2 plus CACR 13's count.
+- **Section 10 is now drawn from that data.**
+  - A scratch build of the members-elect with your real recount list gives exactly 405
+    elected (213 sitting, 24 returning, 168 new) and 19 not final. It used dry run 2's roster,
+    and nothing under corrections/ was written.
+  - Rockingham 13 holds two seats, which answers the question below. So Derry shows 8
+    winners: Trow, J. Carreau, Glavin, Hesse, Foote, Marshall, H. Carreau and Provencher.
+  - The four returning winners held are the four close ones named below.
+  - No stop in the list depends on a held winner.
+- **CACR 13 joins section 10**, in three places:
+  - `/bill/2026/cacr13`: "Passed both chambers, not ratified by the voters", and the Voters
+    step "Not ratified, 365,359–198,791";
+  - `/learn/county-government` and `/es/learn/county-government`, "What does the register of
+    probate still do?": "… it did not reach the two thirds it needed: 64.8% of those voting
+    on it voted yes.";
+  - `/learn/by-the-numbers`: a Not Ratified row.
+
+  These come from the code, before dry run 4 was up. "What cannot be walked yet" loses the
+  register of probate paragraph and the members-elect.
+- **Next:** walk section 10 on dry run 4's own address when you send it, then correct the
+  list and push.
+
+## Earlier, about 11 a.m.
 
 Received the laptop manager's messages of 7 November, through the one saying members-elect
 joins this weekend's release at Alice's word.
