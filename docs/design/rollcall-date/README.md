@@ -3,6 +3,10 @@
 The branch is `fix/rollcall-date`, from dev `dd3f7ef9`. The deep walk of dry run 181 found it on
 6 November 2026.
 
+**Status: held.** The code is done, and preflight passed: 990 passed, 0 failed. It does nothing
+until the owner adds the line below to their file. It can be merged before or after they do: with
+no `misdated` entry, nothing changes.
+
 ## What is wrong
 
 Roll call **1999-S-109** is dated 22 October **2009** in the General Court's roll-call file
