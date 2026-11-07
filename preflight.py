@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.784
+# GRANITE_VERSION: 2026-09-04.785
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -29280,6 +29280,52 @@ def _person_merge():
     return "ok", ("a merge passes the register's check and nothing else like it does; built, the "
                   "kept person holds both numbers with the page and the name, the other is one "
                   "replaced_by line, and the API page counts one person")
+
+
+@check("files", "every pair the owner confirmed as one person is one person in the register, "
+                "as the site joins their pages")
+def _same_person_one_person():
+    """corrections/member_corrections.json's same_person entries with a date
+    in "confirmed" are the pairs the owner settled as one person (2 November
+    2026); build_site_v2.former_movers joins each pair's pages. The register
+    (generated/person_numbers.json), which people.json follows, must say the
+    same, or the public data gives one person as two, the second with no
+    name and no page (the deep walk of 6 November 2026).
+
+    A pair names site ids, a PersonID or an employee number. Each is found
+    in the register as a person or as a number someone holds, and followed
+    through replaced_by to the person it is now; both must be found, and be
+    the same person. A pair answered "no, two people" is not looked at."""
+    mc = _paths.ROOT / "corrections" / "member_corrections.json"
+    reg_path = _paths.ROOT / "generated" / "person_numbers.json"
+    if not mc.exists() or not reg_path.exists():
+        return "skip", "member_corrections.json or the register is not here"
+    pairs = [e for e in json.loads(mc.read_text(encoding="utf-8")).get("same_person") or []
+             if isinstance(e, dict) and re.match(r"\d{4}-\d{2}-\d{2}", str(e.get("confirmed") or ""))]
+    people = json.loads(reg_path.read_text(encoding="utf-8")).get("people") or []
+    persons = {e["person"]: e for e in people}
+    holder = {str(n): e["person"] for e in people if not e.get("replaced_by")
+              for n in e.get("numbers") or []}
+
+    def now(x):
+        p = holder.get(str(x)) or (str(x) if str(x) in persons else None)
+        seen = set()
+        while p and persons.get(p, {}).get("replaced_by") and p not in seen:
+            seen.add(p)
+            p = str(persons[p]["replaced_by"])
+        return p
+
+    bad = []
+    for e in pairs:
+        h, s = now(e.get("house")), now(e.get("senate"))
+        if not (h and s):
+            bad.append(f"{e.get('name')}: {e.get('house') if not h else e.get('senate')} is no "
+                       "person or number in the register")
+        elif h != s:
+            bad.append(f"{e.get('name')}: two people, {h} and {s}")
+    assert not bad, (f"{len(bad)} of {len(pairs)} pairs the owner confirmed are not one person in "
+                     "the register (merge them: person_numbers.py says how): " + "; ".join(bad[:5]))
+    return "ok", f"all {len(pairs)} pairs the owner confirmed are one person in the register"
 
 
 @check("files", "only a person's run writes the register of person numbers, and it is well formed")
