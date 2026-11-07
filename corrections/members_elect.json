@@ -12,7 +12,7 @@
   },
 
   "2026-11-03": {
-    "recount_deadline": null,
+    "recount_deadline": "2026-11-06",
     "matches": {
       "S|8": {
         "Jim Creighton": "9917"
@@ -445,7 +445,24 @@
         "Samuel Deering": null
       }
     },
-    "not_final": {},
+    "not_final": {
+      "H|Carroll|8": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
+      "H|Strafford|1": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
+      "H|Rockingham|25": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
+      "H|Rockingham|13": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 2},
+      "H|Merrimack|5": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06"},
+      "H|Merrimack|26": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06"},
+      "H|Rockingham|14": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
+      "H|Grafton|1": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
+      "H|Belknap|6": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
+      "H|Grafton|11": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06"},
+      "H|Merrimack|3": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
+      "H|Strafford|18": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06"},
+      "H|Hillsborough|36": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
+      "H|Hillsborough|45": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06"},
+      "H|Hillsborough|44": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
+      "H|Cheshire|18": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06"}
+    },
     "held": {}
   }
 }
