@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.25
+# GRANITE_VERSION: 2026-09-13.26
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -231,9 +231,20 @@ def former_page(site, base, urls):
               if m.get("slug") and (site / "legislator" / f"{m['slug']}.html").exists()]
     if not people:
         return 0
+    # A PERSON WHO SAT IN BOTH IS UNDER EACH (the deep walk of dry run 183, 7
+    # November 2026). Since the joins one page holds both chambers, and the
+    # page was listed under its own chamber alone: Ned Gordon, Senate
+    # 1999-2002, was not in the Senate list, and the counts said 89 former
+    # senators and 1,662 former representatives where the record has 97 and
+    # 1,688. Each chamber's list is everyone with years in it (service).
     by = {"H": [], "S": []}
+    joined = 0
     for m in people:
-        by.get(m.get("chamber"), by["H"]).append(m)
+        chs = sorted({c.get("chamber") for c in (m.get("service") or [])
+                      if c.get("chamber") in ("H", "S") and c.get("spans")})
+        joined += len(chs) > 1
+        for ch in (chs if len(chs) > 1 else [m.get("chamber")]):
+            by.get(ch, by["H"]).append(m)
     body = []
     for ch, name in (("S", "Senate"), ("H", "House of Representatives")):
         rows = sorted(by[ch], key=lambda m: (m.get("name") or "").lower())
@@ -248,8 +259,13 @@ def former_page(site, base, urls):
             both = chamber_years(m, seat)
             said = (", ".join(x for x in (m.get("party") or "", " \u00b7 ".join(both)) if x) if both
                     else ", ".join(x for x in (m.get("party") or "", seat, span) if x))
+            # Under the other chamber, named as that chamber named them: "Rep.
+            # Jeb Bradley" in the House list, as his page of those years was.
+            nm = m.get("display_plain") or m.get("name") or ""
+            if both and ch != m.get("chamber"):
+                nm = re.sub(r"^(?:Sen|Rep)\. ", "Rep. " if ch == "H" else "Sen. ", nm)
             body.append(f'<li><a href="{S.E(S.canon("legislator/" + m["slug"] + ".html"))}">'
-                        f'{S.E(m.get("display_plain") or m.get("name"))}</a> <span class="dirstatus">'
+                        f'{S.E(nm)}</a> <span class="dirstatus">'
                         f'{S.E(said)}</span></li>')
         body.append("</ul>")
     write(site, base, "/directory/former-legislators.html",
@@ -258,7 +274,9 @@ def former_page(site, base, urls):
           "1999, with party, seat and years, each linked to their votes and sponsored bills.",
           "Former legislators",
           f"{len(by['S'])} former senators and {len(by['H']):,} former representatives with a "
-          "recorded roll call vote since 1999, by surname.",
+          "recorded roll call vote since 1999, by surname."
+          + (f" The {joined} who sat in both chambers are under each." if joined > 1 else
+             " The one who sat in both chambers is under each." if joined else ""),
           "".join(body), urls, nav="officials.html")
     return len(people)
 

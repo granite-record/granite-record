@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.786
+# GRANITE_VERSION: 2026-09-04.787
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -70096,6 +70096,17 @@ def _movers_by_term(B2, BL, BP, BI):
         shutil.rmtree(root, ignore_errors=True)
     assert "R, SD3 · Senate 2009–2024 · House 1999–2002</span>" in page and \
         "R, SD24, 2011–2016</span>" in page, re.findall(r'class="dirstatus">([^<]*)<', page)
+    # A PERSON WHO SAT IN BOTH IS UNDER EACH (the deep walk of dry run 183):
+    # Jeb Bradley in the Senate list and in the House's, named there as the
+    # House named him; each chamber's count counts everyone who sat in it.
+    lists = {h: re.findall(r'<a href="[^"]*">([^<]*)</a>', ul) for h, ul in
+             re.findall(r'<h2 id="(s|h)">.*?</h2><ul class="dirpeople">(.*?)</ul>', page, re.S)}
+    assert lists == {"s": ["Sen. Nancy Alone", "Sen. Jeb Bradley"], "h": ["Rep. Jeb Bradley"]}, (
+        f"a person who sat in both chambers is not under each in the directory: {lists}")
+    assert "2 former senators and 1 former representatives" in page and \
+        "The one who sat in both chambers is under each." in page, (
+        "the directory's counts do not count everyone who sat in each chamber: "
+        + (re.search(r'<p class="src">([^<]*)<', page) or [None, page[:200]])[1])
     assert rules == "/legislators/374827.json /legislators/36.json 301\n", (
         f"a joined number's data has no 301 to the page's: moved_members wrote {rules!r}")
     assert found.get("jeb-bradley-sd-3") == "SD3 · Senate 2009–2024 · House 1999–2002" \
