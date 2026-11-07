@@ -114311,8 +114311,9 @@ def _officials_tabs_fit_and_retire(B):
     its 1,132 at 1280 and 1440, and the new tab showed only its "M" behind
     the edge, in English and in Spanish. The tabs say "Federal", "Executive",
     "Judicial" and "County" -- "Federal", "Ejecutivo", "Judicial" and
-    "Condado" -- with their counts, which measured 1,016px and 971px on dry
-    run 6 with the web fonts; the panels keep "Federal Delegation" and the
+    "Condados", the plural, as the tab is the ten counties' -- with their
+    counts, which measured 1,016px and about 979px on dry run 6 with the web
+    fonts; the panels keep "Federal Delegation" and the
     rest as their headings, which a screen reader walking the headings and a
     page read without the script still get. Each Spanish word is a draft.
 
@@ -114334,7 +114335,7 @@ def _officials_tabs_fit_and_retire(B):
     short = {"en": {"federal": "Federal", "executive": "Executive", "judicial": "Judicial",
                     "counties": "County"},
              "es": {"federal": "Federal", "executive": "Ejecutivo", "judicial": "Judicial",
-                    "counties": "Condado"}}
+                    "counties": "Condados"}}
     for pid, en in short["en"].items():
         e = cat.get(f"of.tab_short.{pid}") or {}
         if (e.get("en"), e.get("es"), e.get("state")) != (en, short["es"][pid], "draft"):
@@ -114395,7 +114396,9 @@ const bar = node2(); bar.hidden = true;
 if (retired !== "none") bar.attrs["data-retired"] = "legislators";
 bar.querySelectorAll = () => tabEls;
 bar.scrollWidth = 300; bar.clientWidth = 300; bar.scrollLeft = 0;
-bar.getBoundingClientRect = () => ({left: 0, right: 300, top: 0});
+// The strip 100px above the window, where the browser's own jump to an
+// address leaves it.
+bar.getBoundingClientRect = () => ({left: 0, right: 300, top: -100});
 tabEls.forEach((t, i) => { t.getBoundingClientRect = () => ({left: i * 100, right: i * 100 + 90}); });
 bar.querySelector = () => tabEls.find(t => t.attrs["aria-selected"] === "true") || null;
 document.querySelector = s => s === ".twntabs" ? bar : null;
@@ -114404,7 +114407,7 @@ let landed = 0; sec.scrollIntoView = () => { landed++; };
 document.getElementById = id => panes[id] || (id === "elect-s-8" ? sec : null);
 const wrote = []; history.replaceState = (a, b, u) => wrote.push(u); history.pushState = () => {};
 const on = {}; globalThis.addEventListener = (t, f) => (on[t] = on[t] || []).push(f);
-globalThis.scrollTo = () => {}; globalThis.scrollY = 0;
+const scrolled = []; globalThis.scrollTo = (x, y) => scrolled.push(y); globalThis.scrollY = 1000;
 Object.defineProperty(globalThis, "performance", {configurable: true,
   value: {getEntriesByType: () => [{type: "navigate"}]}});
 document.fonts = {ready: {then: () => {}}};
@@ -114413,7 +114416,7 @@ const shown = () => Object.keys(panes).filter(p => !panes[p].hidden);
 const out = {};
 %s
 out.load = shown(); out.wrote = wrote.slice();
-(on.load || []).forEach(f => f()); out.landed = landed;
+(on.load || []).forEach(f => f()); out.landed = landed; out.lifted = scrolled.slice();
 const key = k => { bar.fire("keydown", {key: k, preventDefault(){}});
   return [shown()[0], tabEls.indexOf(document.activeElement)]; };
 document.activeElement = tabEls[0]; out.end = key("End");
@@ -114459,6 +114462,14 @@ process.stdout.write(JSON.stringify(out));
                        f"and {wrote}")
         if got["landed"]:
             bad.append(f"{where} brought the page to something inside a retired panel")
+        # Sent from a retired tab, the reader is shown the strip once the page
+        # has loaded, with what they were given chosen; anyone else is not moved.
+        sent = bool(args[1]) and wrote and wrote[0] != "/officials" + args[1]
+        lift = [892] if sent else []
+        if got["lifted"] != lift:
+            bad.append(f"{where}, the page was scrolled to {got['lifted']} by load, not {lift}: "
+                       "a reader sent from a retired tab is shown the strip, and nobody else is "
+                       "moved")
         if got["end"] != end or got["left"] != left:
             bad.append(f"{where}, End and ArrowLeft from My Town gave {got['end']} and "
                        f"{got['left']}, not {end} and {left}: the keys pass over a retired tab")
@@ -114496,7 +114507,7 @@ process.stdout.write(JSON.stringify(out));
                        f"{r.stdout or r.stderr[-200:]!r}, not {want!r}")
     assert not bad, "\n  ".join(bad)
     return "ok", ("Federal, Executive, Judicial and County -- Federal, Ejecutivo, Judicial and "
-                  "Condado -- over panels headed in full; from 2 December #members-elect, or a "
+                  "Condados -- over panels headed in full; from 2 December #members-elect, or a "
                   f"section in it, opens Legislators and says so in the address ({len(cases)} "
                   "cases in node)")
 

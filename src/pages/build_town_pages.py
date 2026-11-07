@@ -1702,7 +1702,10 @@ TABS_JS = """<script>
   ["wheel","touchmove","keydown","pointerdown"].forEach(function(t){
     addEventListener(t,function(){moved=true;},{passive:true,once:true});
   });
-  function later(){if(!moved&&!restored)land();}
+  // A reader sent from a retired tab is shown the strip, once loaded, so
+  // that what they were given -- Legislators, chosen -- is in view.
+  var sent=false;
+  function later(){if(moved||restored)return;if(sent)toStrip();else land();}
   // A LINK TO A TAB from inside another -- County Officials' "by county in
   // Legislators" -- shows that tab; the browser's own jump went to a panel
   // still hidden and left the reader where they were, halfway down a
@@ -1763,7 +1766,7 @@ TABS_JS = """<script>
   });
   bar.hidden=false;
   var first=named(hash());
-  if(first&&gone(tab(first)))show(instead(),true);
+  if(first&&gone(tab(first))){sent=true;show(instead(),true);}
   else show(first||(live()[0]||tabs[0]).dataset.pane,false);
   addEventListener("load",later);
   // and again once the fonts have their widths
