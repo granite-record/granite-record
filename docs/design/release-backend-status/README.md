@@ -4,7 +4,69 @@ Kept on the session's own branch, `dev-ioxv9i`, for the laptop manager, who read
 `git fetch`. Cloud sessions cannot message it. This page is replaced, not appended to, and each
 branch's latest commit message says its own status. Times are Eastern.
 
-## As of Saturday 7 November 2026, about 9 a.m.
+## As of Saturday 7 November 2026, about 11 a.m.
+
+Received the laptop manager's messages of 7 November, through the one saying members-elect
+joins this weekend's release at Alice's word.
+- Dry run 3 (6e462616) is clean but superseded. Dry run 4 of dev e10505d2 will be the walk
+  candidate.
+- e10505d2 is d2a8e027 plus three things:
+  - Rich Green unlinked;
+  - data/election-2026-sos merged;
+  - the recount deadline 2026-11-06, with the 16 recounts holding 19 seats.
+- The ask: add the members-elect stops to the walk list.
+
+### The members-elect stops: walk list section 10, a draft for dry run 4
+
+- **Written before dry run 4 was up**, and marked so in the list. Two agents prepared it.
+  - One mapped every element a reader sees from the code. The data branch changes no page
+    code, so this holds for e10505d2.
+  - The other built the members-elect file in a scratch tree from d2a8e027 and
+    data/election-2026-sos (58b8c6fc), with dry run 2's roster JSON. It applied your two
+    unpushed changes in memory only: the deadline 2026-11-06, and Rich Green null.
+- **Its counts, with no recounts entered:** 424 elected, as 215 sitting, 28 returning and 181
+  new.
+  - Your 405 / 213 / 24 / 168 differs by exactly the 19 held seats.
+  - So the held winners are 2 sitting, 4 returning and 13 new.
+  - The 16 recounts are not in git anywhere, so which seats are held is unseen until dry run
+    4.
+- **The stops:**
+  - `/town/derry`: Rockingham 13, 10 seats, recounted and part held, with sitting, returning
+    and new in one block. Senate 19, and "Last election: November 3, 2026" on its Vote tab.
+  - `/town/derry#map`.
+  - `/town/hebron`: Grafton 11, a single-seat recount, 6 votes apart. `/town/hollis` is the
+    other one, Hillsborough 45.
+  - `/legislator/benjamin-baroody-hills-39`: returning, and the line names Hillsborough 16.
+  - `/legislator/charlotte-dilorenzo-rock-10`: returning to the same seat.
+  - `/town/nashua-ward-5`: Rich Green as a plain chip; `/legislator/richard-green-sd-6` has no
+    "Elected" line.
+  - `/officials#members-elect`: Members-Elect (405).
+  - The Senate side: `/town/amherst` (Chandley returning) and `/town/antrim` (Creighton, a
+    representative elected to the Senate). No Senate race says "Result not final".
+- **To ask you:** does Rockingham 13 hold one seat or two?
+  - With one, Brian Chirichiello (returning, +12) shows. With two, he is held too.
+  - The four returning winners within 18 votes are Chirichiello, W. Packy Campbell, Andrew
+    Dorsett and Stephen Spratt. They may well be the four held returning winners, so the
+    list avoids them as examples.
+- **Things a reader may ask about.** These are as the code draws them, not faults:
+  - a single-seat recount's block heads "Elected November 3, 2026" over nobody;
+  - a part-held recount does not say how many seats are held;
+  - chips use the ballot's spelling;
+  - "Serving now" can sit over "1 seat vacant" (`/town/new-castle`).
+- **Also, from the code map, to check on dry run 4:**
+  - In Spanish, "Elegidos el" (plural) heads a single senator, and "Asume el cargo"
+    (singular) a list. The `/es/` Members-Elect tab is unlisted while es.json says
+    `offered: false`.
+  - The 'Your rep' pill may land on a member-elect chip that links a saved town's member's
+    page. This was not seen in a browser.
+  - A new member-elect is not in the header search: "Green" finds former Sen. Richard Green.
+- **On dry run 3 itself** (6e462616), Feliciano's row sits under the roster's source line, as
+  item 3 of "For you to decide" said. That was first seen by building the code; now it is
+  seen on the deployment.
+- **Next:** walk section 10 on dry run 4's own address when you send it, then correct the
+  list and push.
+
+## Earlier on 7 November, about 9 a.m.
 
 Received the laptop manager's messages of 7 November, through the one saying:
 - dry run 2 (run 42368200550, dev e308cee5) is clean;

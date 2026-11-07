@@ -5,17 +5,24 @@ Eastern. At about 9 a.m. it was corrected after two checks of the list itself, a
 walks' findings were added. It replaces the 3 a.m. version, which was written against dry run
 183.
 
-Every stop below was opened on **dry run 2** (dev e308cee5) at its own address, and each says
-what that page showed. The list covers every change a reader can see between
-graniterecord.org today and the weekend release, the second batch included. A few stops check
-that a slip seen on an earlier dry run stays fixed; those say so.
+Sections 1 to 9 and 11 were opened on **dry run 2** (dev e308cee5) at its own address, and
+each stop says what that page showed. Section 10, the members-elect, was added at about 10
+a.m. from dry run 4's code and the election data, before dry run 4 was up. It will be checked
+on dry run 4's own address and corrected here.
+
+The list covers every change a reader can see between graniterecord.org today and the weekend
+release, the second batch and the members-elect included. A few stops check that a slip seen
+on an earlier dry run stays fixed; those say so.
 
 ## Where to walk
 
-- **Walk dry run 3 at its own address.** The laptop manager gives it to you tonight.
-  - Dry run 3 is dry run 2 plus one change: Strafford's District 1 commissioner. It shows in
-    section 5, and on the Spanish Officials page in section 8. Every other stop reads the
-    same on both.
+- **Walk dry run 4 at its own address.** The laptop manager gives it to you tonight.
+  - Dry run 4 is dry run 2 plus three changes:
+    - Strafford's District 1 commissioner, in section 5 and on the Spanish Officials page in
+      section 8;
+    - the members-elect of 3 November, in section 10;
+    - Rich Green left unlinked, as you said, in section 10.
+  - Every other stop reads the same on both. Dry run 3 was clean, and dry run 4 replaces it.
   - Dry run 2 is **https://4e2d47d7.graniterecord.pages.dev**, and dry run 183 is
     https://dc501057.graniterecord.pages.dev.
   - Not the alias, dry-run.graniterecord.pages.dev, which can serve a page cached from an
@@ -24,11 +31,11 @@ that a slip seen on an earlier dry run stays fixed; those say so.
     `?v=1` to the end also fetches it fresh. Don't add it to an address that has either: it
     changes what the page shows.
 - **Each stop is an address to put after the deployment address.**
-- **Laptop first, phone last.** Sections 1 to 9 are at laptop width. Section 10 is on your
-  phone itself: a narrowed laptop window types a straight apostrophe, and section 10's
+- **Laptop first, phone last.** Sections 1 to 10 are at laptop width. Section 11 is on your
+  phone itself: a narrowed laptop window types a straight apostrophe, and section 11's
   searches need the phone's curly one.
-- **The whole list takes about an hour.** With half an hour, walk the ★ sections 1, 2 and 3
-  and the ★ stop in section 5, dry run 3's one change.
+- **The whole list takes about an hour and a quarter.** With forty minutes, walk the ★
+  sections 1, 2 and 3, and the ★ stops in sections 5 and 10.
 
 ## 1. HB 703, and Back to the search ★ (about 12 minutes)
 
@@ -79,7 +86,7 @@ that a slip seen on an earlier dry run stays fixed; those say so.
   - "Senate Bill 11" puts SB 11 first. Dry run 183 put CACR 11 above it.
   - "H.B. 703" puts 2025's HB 703 first. Dry run 183 found nothing.
   - "LSR 2027-0002" puts the 2027 bill request first. Dry run 183 found nothing.
-  - O'Neil and Hart's Location wait for the phone (section 10). Typed on a laptop, they
+  - O'Neil and Hart's Location wait for the phone (section 11). Typed on a laptop, they
     already worked on dry run 183.
 
 ## 3. Members who sat in both chambers, and former members ★ (about 12 minutes)
@@ -131,7 +138,7 @@ The session pages are long: use Find for the names.
   closed as of January 13, 2026."
 - The facts (prime sponsor, committee) sit just under the title. The space below them, beside
   the buttons and above the tracker, is expected.
-- The phone is in section 10.
+- The phone is in section 11.
 
 ## 5. Learn and Officials (about 6 minutes)
 
@@ -145,7 +152,7 @@ The session pages are long: use Find for the names.
   vacant?". It answers "The county convention (RSA 661:9, II)."
 - ★ `/officials#of-county-strafford` opens the **County Officials (80)** tab with Strafford at
   the top. Live opens My Town.
-  - **Dry run 3's one change:** Strafford County's Commissioner, District 1 reads **Leslie
+  - **New from dry run 3:** Strafford County's Commissioner, District 1 reads **Leslie
     Feliciano (R)**, in Joe Pitre's place. Dry run 2 shows Joe Pitre.
   - Read the line under the last county too: see "For you to decide", item 3.
 - `/officials`, Legislators, By seat: "Go to a seat" and "Find" each sit above their control.
@@ -187,7 +194,7 @@ The session pages are long: use Find for the names.
 - `/es/officials` at laptop width:
   - All six tabs are in view, "Funcionarios del condado (80)" last, and the same note is there,
     once.
-  - On dry run 3, Strafford's first commissioner there is Leslie Feliciano too.
+  - On dry run 4, Strafford's first commissioner there is Leslie Feliciano too.
 - `/es/officials` again: open the note. Its second reason says names stay as the record prints
   them, "personas, comités, municipios y cargos". The Poder Ejecutivo tab just under it reads
   Gobernador, Consejo Ejecutivo, Secretaría de Estado: see "For you to decide", item 4.
@@ -213,7 +220,82 @@ The session pages are long: use Find for the names.
 - `/committee/H43` draws to its end on a weekend, with no live box. It is the longest stop,
   and can take several seconds to draw.
 
-## 10. On your phone (about 6 minutes)
+## 10. Members-elect ★ (dry run 4; about 12 minutes)
+
+Dry run 4 adds the members-elect of the 3 November election, by the Secretary of State's
+count:
+- 405 elected: 213 sitting members re-elected, 24 former members returning, and 168 new;
+- 19 seats "Result not final", in the 16 races being recounted.
+
+Every block says "Elected November 3, 2026" and "Takes office December 2, 2026.", and all of
+it disappears on 2 December. Town and legislator pages are in English only.
+
+**Not yet walked.** These stops come from dry run 4's code and the election data, read before
+dry run 4 was up. The 16 recounts were not on hand, so which seats are held is not yet seen.
+Each stop will be checked on dry run 4 and corrected here.
+
+- ★ `/town/derry`, the Representatives tab, which the page opens on.
+  - Rockingham district 13, 10 seats: "Serving now" sits over the ten sitting members.
+  - Under them is a shaded block: "Elected November 3, 2026", "Takes office December 2,
+    2026.", and the winners, most votes first. It starts Kristine Trow (D), Jamie Carreau (D),
+    Matthew Glavin (D), Hollie Hesse (D), Charles Foote (R).
+  - Charles Foote is re-elected and links to his page. A new member has no link.
+  - Rockingham 13 is being recounted, and its closest seats are held. The winners with the
+    fewest votes are left out, and the block ends "Result not final — a recount was
+    requested". It does not say how many seats are held.
+  - State Senate — district 19: "Serving now" Sen. Regina Birdsell, then "Regina Birdsell
+    (R)", re-elected, linked.
+- `/town/derry`, the Vote tab: its heading reads "Last election: November 3, 2026".
+  - `/town/salem` reads "Where you vote", because the Secretary of State's clerk list names no
+    election for Salem. That is not new.
+- `/town/derry#map`: the map opens on Rockingham 13.
+  - Its panel shows "Serving now", the sitting members, and the same block, the "Result not
+    final" line included.
+  - The district's colour is still the sitting members' party.
+  - Switch to the State Senate layer and pick 19: Regina Birdsell.
+- ★ A single-seat recount: `/town/hebron`, Grafton district 11, 1 seat.
+  - "Serving now" Rep. Lex Berezhny, then a block that names nobody: "Elected November 3,
+    2026", "Takes office December 2, 2026.", "Result not final — a recount was requested".
+  - Below it, Grafton 18 (floterial) is final: Marko Kloos (D), new, with no link.
+  - Its Vote tab reads "Last election: November 3, 2026".
+  - `/town/hollis`, Hillsborough 45 (floterial), is the other single-seat recount, in the same
+    shape.
+- A former member returning: `/legislator/benjamin-baroody-hills-39`.
+  - The heading stays "Former Representative Benjamin Baroody (D - Hills 39)".
+  - Under it: "Elected November 3, 2026, for Hillsborough district 16. Takes office December
+    2, 2026." The line names the seat he won, not the one in the heading.
+  - His chip on the town page reads "Ben Baroody (D)", as the ballot spells it.
+  - One returning to the same seat: `/legislator/charlotte-dilorenzo-rock-10`, "… for
+    Rockingham district 10 …".
+- A new member-elect with no link: `/town/nashua-ward-5`, Hillsborough district 9.
+  - "Rich Green (D)" is a plain chip. Santosh D. Salvi and Sanjeev K. Manohar, re-elected,
+    link to their pages.
+  - As you said, he is not former Sen. Richard Green: `/legislator/richard-green-sd-6` carries
+    no "Elected" line.
+  - A new member has no page, and the header search does not find one. "Rich Green" there
+    finds former Sen. Richard Green.
+- ★ `/officials#members-elect`: the last tab, **Members-Elect (405)**.
+  - It says "Elected November 3, 2026, by the Secretary of State's count. They take office on
+    December 2, 2026; until then the Legislators tab lists who holds each seat."
+  - State Senate comes first, District 1 to 24, then State House by county.
+  - There is no "Serving now" here, and no contact details.
+- **The Senate side is names only.** No Senate race is being recounted, so no Senate block says
+  "Result not final".
+  - `/town/amherst`, State Senate — district 11: "Serving now" Sen. Tim McGough, then "Shannon
+    E. Chandley (D)", a former senator returning, linked to her page.
+  - `/town/antrim`, district 8: "Jim Creighton (R)", a sitting representative elected to the
+    Senate, linked to his House page. That page's line reads "… for Senate District 8 …".
+  - The new senators are plain chips: Kurt Webber (2), Rebecca Harned (7), Matthew McLaughlin
+    (9), Carryl L. Roy (12), Dian McCarthy (16) and Leonard Bell (18).
+- Things a reader may ask about. These are as the code draws them, not faults found:
+  - A single-seat recount's block heads "Elected November 3, 2026" over nobody.
+  - A part-held recount does not say how many seats are held, or name the winners held back.
+  - Chips use the ballot's spelling ("Ben Baroody", "Jim Creighton"); the pages use the
+    record's (Benjamin, James).
+  - `/town/new-castle`: Rockingham 22 has no sitting member, so "Serving now" sits over "1 seat
+    vacant", then Rebecca Audet (D), new.
+
+## 11. On your phone (about 6 minutes)
 
 - `/bill/2026/hb1123`: tap Cite this page, then Testify.
   - Each pane opens under its own row of buttons.
@@ -238,7 +320,7 @@ The walk of dry run 2 found nothing that holds the release. These four are new w
 
 1. **The former-members directory lists each of the 34 people who sat in both chambers under
    one chamber only.**
-   - It is still so on dry run 2, and will be on dry run 3. `/directory/former-legislators`
+   - It is still so on dry run 2, and will be on dry run 4. `/directory/former-legislators`
      lists each joined person once, under the chamber of the page kept.
    - Eight sat in the Senate but are listed only under the House: Jacalyn Cilley, Leo Fraser,
      Edward Gordon, Fenton Groen, Frederick King, Amanda Merrill, Andrew Peterson and Frank
@@ -261,15 +343,15 @@ The walk of dry run 2 found nothing that holds the release. These four are new w
      Rock 26)".
    - He is the only one of the 30 whose party differs between chambers. The fix, a party for
      each chamber's years, is larger, and fits 24 November better.
-3. **The source line under County Officials does not cover Leslie Feliciano's row** (dry run
-   3 only).
+3. **The source line under County Officials does not cover Leslie Feliciano's row** (from dry
+   run 3).
    - The line under the counties reads "Kept by hand, read from the Secretary of State's
      county roster for 2025–2026, dated December 5, 2024; read October 9, 2026. Most of these
      seats were on the ballot on November 3, 2026; this is the roster read before it."
    - Her row comes from Strafford County's own list, read on 6 November 2026. The roster names
      Joe Pitre.
-   - This was seen by building the County Officials tab from dry run 3's own code and
-     corrections file. Dry run 3 itself was not up yet, so look tonight.
+   - This was seen first by building the County Officials tab from dry run 3's code and
+     corrections file. It was then seen on dry run 3 itself, https://6e462616.graniterecord.pages.dev.
    - The page draws one source line for all 80 rows, and never a row's own source.
    - A fix would add a sentence naming the rows read from another source. It needs a Spanish
      line in the translation file, which is the translation work's to add, not this session's.
