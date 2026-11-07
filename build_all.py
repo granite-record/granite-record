@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.84
+# GRANITE_VERSION: 2026-09-05.85
 """
 Run the whole pipeline in the right order.
 
@@ -976,6 +976,20 @@ def plan(a):
                   "who sits for each district with the party it is filled "
                   "with, in one file the map draws; and map.js and map.css "
                   "beside it"),
+
+        # THE ELECTIONS PAGES (the owner's word of 7 November 2026: official
+        # results only, from the Secretary of State's files). After the
+        # district map, whose data each election's map starts from; it
+        # decides who is elected through build_members_elect.members_elect,
+        # the members-elect step's own rule, and asks no network.
+        Step("elections: each general election's official results",
+             ["build_elections.py", "--site", "site", "--base", a.base],
+             needs=["site/district_map.json", "site/districts.json",
+                    "site/legislators.json", "site/former.json"],
+             produces=["site/elections/index.html"],
+             note="one page per general election in collected/election_<year>.json: "
+                  "every State Senate and State House race with every candidate's "
+                  "votes, Elected only once final by the members-elect rule"),
 
         Step("the whole record, as lists",
              ["build_indexes.py", "--site", "site", "--base", a.base],

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.790
+# GRANITE_VERSION: 2026-09-04.791
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -114695,6 +114695,110 @@ def _elect_part(out, title):
     """One part of the step's report, from its title to the next blank line."""
     at = out.find(title)
     return "" if at < 0 else out[at:].split("\n\n")[0]
+
+
+@check("build", "the elections page shows every count as the results file has it, Elected only "
+       "where the members-elect rule says a seat is final, a link only where that rule links, "
+       "no private reason, no word of a projection, and a printed total the towns contradict "
+       "said so", needs=("build_elections", "build_members_elect"))
+def _elections_page(BE, BME):
+    """src/pages/build_elections.py (the owner's word of 7 November 2026:
+    official results only). On a copy of the fixture with its made-up
+    election (tests/election_fixture.json: a tie, a write-in winner, a
+    cross-nomination, a recount asked for, a held winner) and the person's
+    file the members-elect checks use:
+
+    - every candidate's count on the page is the results file's, race by race;
+    - "Elected" marks exactly the winners build_members_elect.members_elect
+      returns, on the build's day -- none before the recount deadline, the
+      tie's two never, Danville's not while its recount is asked for (which
+      reads "Result not final -- a recount was requested"), the held winner
+      never;
+    - a candidate links to a member page only where that function gave an
+      id and a slug;
+    - the person's private reasons are nowhere in what was written;
+    - no projection, call or "leading" is on the page;
+    - the pages are in the sitemap;
+    - and a Totals note of the reader's (Grafton 9, 2026) puts the printed
+      total and the towns' sum on its race's card."""
+    if _elect_absent():
+        return "skip", "not here: " + ", ".join(_elect_absent())
+    root = Path(tempfile.mkdtemp(prefix="el_"))
+    try:
+        site = _elect_fixture(root)
+        res = json.loads((root / "collected" / "election_2026.json").read_text(encoding="utf-8"))
+        (root / "corrections").mkdir(exist_ok=True)
+        hand_p = root / "corrections" / "members_elect.json"
+        legs = json.loads((site / "legislators.json").read_text(encoding="utf-8"))
+        former = json.loads((site / "former.json").read_text(encoding="utf-8"))
+        dist = json.loads((site / "districts.json").read_text(encoding="utf-8"))
+        if not (site / "district_map.json").exists():
+            return "skip", "the fixture's build wrote no district_map.json"
+        for day, hand in ((_ELECT_IN, _ELECT_HAND), ("2026-11-10", _ELECT_HAND)):
+            hand_p.write_text(json.dumps(hand), encoding="utf-8")
+            r = _run([sys.executable, _paths.script("build_elections.py"), "--site", "site"],
+                     cwd=root, capture_output=True, text=True, timeout=120,
+                     env={"GRANITE_BUILD_DATE": day})
+            assert r.returncode == 0, f"build_elections.py failed on {day}: {r.stderr[-600:]}"
+            page = site / "elections" / "2026-11-03-general.html"
+            assert page.exists() and (site / "elections" / "index.html").exists() and \
+                (site / "elections" / "2026-11-03-map.json").exists(), (
+                    f"build_elections wrote {sorted(p.name for p in (site / 'elections').glob('*'))}")
+            html = page.read_text(encoding="utf-8")
+            want, _rep = BME.members_elect(res, legs, former, dist,
+                                           BME.read_hand(hand_p, "2026-11-03")[0], day)
+            for key, race in res["races"].items():
+                m = re.search(r'<article class="er-race" id="' + re.escape(BE.race_id(key))
+                              + r'".*?</article>', html, re.S)
+                assert m, f"{day}: no card for {key}"
+                card = m.group(0)
+                rows = re.findall(r'<li class="er-row">(.*?)</li>', card, re.S)
+                got = {}
+                for row in rows:
+                    name = re.sub(r"<[^>]+>", "", row.split('<span class="er-n">')[0])
+                    name = re.sub(r"\s*\([A-Z/]*\)\s*|\s*write-in\s*|\s*Elected\s*", " ", name).strip()
+                    n = int(re.search(r'<span class="er-n">([\d,]+)', row).group(1).replace(",", ""))
+                    got[name] = (n, "Elected</span>" in row, re.search(r'href="legislator/([^"]+?)(?:\.html)?"', row))
+                assert {k: v[0] for k, v in got.items()} == {c["name"]: c["votes"] for c in race["candidates"]}, (
+                    f"{day}, {key}: the page's counts {got} are not the results file's")
+                elected = {e["n"]: e for e in want[key]["elected"]}
+                assert {k for k, v in got.items() if v[1]} == set(elected), (
+                    f"{day}, {key}: Elected on {sorted(k for k, v in got.items() if v[1])}; the "
+                    f"members-elect rule says {sorted(elected)}")
+                for k, v in got.items():
+                    e = elected.get(k)
+                    should = e["s"] if e and e.get("id") and e.get("s") else None
+                    assert (v[2].group(1) if v[2] else None) == should, (
+                        f"{day}, {key}: {k} links to {v[2] and v[2].group(1)}; the rule says {should}")
+            if day == "2026-11-10":
+                assert "Elected</span>" not in html, (
+                    "before the recount deadline a race reads Elected though none was recounted")
+            else:
+                dan = re.search(r'id="' + BE.race_id("H|Rockingham|8") + r'".*?</article>', html, re.S).group(0)
+                assert "Result not final" in dan and "a recount was requested" in dan, (
+                    "Danville's race, its recount asked for, does not say so")
+            for w in ("PRIVATE-NOT-FINAL", "PRIVATE-HELD"):
+                assert all(w not in p.read_text(encoding="utf-8") for p in (site / "elections").iterdir()), (
+                    f"a private reason, {w}, reached the elections pages")
+            low = re.sub(r"<[^>]+>", " ", html).lower()
+            for w in ("projected", "projection", "leading", "too close to call", "race call", "unofficial"):
+                assert w not in low, f"the official page says {w!r}"
+        sm = (site / "sitemap.xml").read_text(encoding="utf-8")
+        assert "/elections/2026-11-03-general" in sm and "/elections/" in sm, (
+            "the elections pages are not in the sitemap, and check_site would refuse them")
+        # The reader's note of a printed total that leaves out a town.
+        note = ("2026-ge-house-grafton.xlsx, sheet 'rgrafrep', row 50: the file's Totals cell is "
+                "=SUM(B47:B48), which leaves out Orange; read as the towns add up: Ella V. Barrett's "
+                "column, 1,240, where the Totals say 1,152")
+        fake = {"_notes": [note], "_source": [{"file": "records/sources/2026-ge-house-grafton.xlsx"}]}
+        race = {"seats": 1, "towns": ["Orange"], "candidates": [
+            {"name": "Ella V. Barrett", "party": "d", "votes": 1240, "write_in": False, "elected": True}]}
+        card = BE.race_card("H|Grafton|9", race, {"seats": 1, "elected": [], "not_final": 1},
+                            fake, BE.totals_notes(fake), "2026-11-03")
+        assert "prints 1,152" in card and "add up to 1,240" in card and "leaves out Orange" in card, (
+            f"Grafton 9's printed total and the towns' sum are not both on its card: {card}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
 
 
 @check("build", "election week's helper drafts from what the steps print, proposes only what the "
