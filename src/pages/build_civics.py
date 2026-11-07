@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.89
+# GRANITE_VERSION: 2026-09-08.90
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -39,6 +39,7 @@ import unicodedata
 from collections import Counter
 
 import build_date
+import chrome
 import civics
 import i18n as I
 import components as C
@@ -1124,7 +1125,7 @@ def glossary_page_lang(lang, base):
                  "record is in English, so each term is given as it prints it, with its name and "
                  "what it means in plain words.")
     body = (f'<div class="l-page"><header class="l-head"><h1>{E(title)}</h1>'
-            f'<p class="l-lead">{curly(lead)}</p></header>'
+            f'<p class="l-lead">{curly(lead)}</p>{chrome.lang_note(lang)}</header>'
             f'<div class="l-art">{secs}</div></div>')
     return BP.shell(f"{E(title)} \u2014 Granite Record", GLOSSARY_PAGE, body, desc=lead,
                     base=base, lang=lang)
@@ -2475,10 +2476,9 @@ def lang_hub_bar(lang, current="guides"):
 
 
 def lang_note(lang):
-    """The line under a guide's title in another language: what is in it."""
-    return ('<p class="langnote">' + I.say(
-        lang, "guides.lang_note", "This guide is in Spanish. The official pages it links to, and "
-        "the record itself, are in English.") + "</p>")
+    """The line under a guide's title in another language, and why some of
+    it is in English: the one note every such page carries (chrome.lang_note)."""
+    return chrome.lang_note(lang)
 
 
 def lang_sources(sources, w):
@@ -2716,9 +2716,7 @@ def learn_page_lang(t, lang, base, figures, topics, open_=(), names=None, con=No
     lead = dashes(w.t(t["blurb"])) if t["blurb"] else ""
     head_ = (f'<header class="l-head"><h1>{title}</h1>'
              + (f'<p class="l-lead">{lead}</p>' if lead else "")
-             + '<p class="langnote">' + I.say(
-                 lang, "learn.lang_note", "This page is in Spanish. The official pages it links "
-                 "to, and the record itself, are in English.") + "</p>"
+             + lang_note(lang)
              + lang_otp(secs + [after], page, lang) + "</header>")
     i = next((k for k, x in enumerate(topics) if x["slug"] == t["slug"]), None)
     article = lang_links("".join(section(*s_) for s_ in secs) + pager_lang(i, topics, lang)
@@ -2752,10 +2750,7 @@ def hub_page_lang(lang, base, published=(), articles=(), topics=None, groups=Non
     lead = I.say(lang, "guides.hub_lead", "How to get things done with New Hampshire&rsquo;s state "
                  "and local government, how it works, and where to find what it publishes itself.")
     body = ('<div class="l-page r-hub"><header class="l-head r-head">'
-            f'<h1>{title}</h1><p class="l-lead">{lead}</p><p class="langnote">' + I.say(
-                lang, "guides.hub_lang_note", "This page is in Spanish, and so are the guides it "
-                "lists. The official pages they link to, and the record itself, are in English.")
-            + '</p></header>'
+            f'<h1>{title}</h1><p class="l-lead">{lead}</p>' + lang_note(lang) + '</header>'
             + lang_links(hub_tabs(lang, topics, groups, published, articles), lang))
     return BP.shell(f"{title} | Granite Record", HUB_PAGE, body,
                     desc=html.unescape(re.sub(r"<[^>]+>", "", lead)), base=base, lang=lang)

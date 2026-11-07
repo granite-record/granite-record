@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.261
+# GRANITE_VERSION: 2026-09-04.262
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -3694,10 +3694,9 @@ def home_body(lang, has_lockup, static_state, static_up, static_recent, static_s
     # it. A build that placed no lockup.png writes the name as text instead.
     home_h1 = ('<h1 class="lockup"><span>Granite Record</span></h1>' if has_lockup
                else '<h1 class="wordmark">Granite Record</h1>')
-    # WHAT IS IN THE PAGE'S LANGUAGE, SAID ONCE (i18n.py): this page, and not
-    # yet the pages it leads to, nor the record's own words.
-    only = ("" if lang == i18n.DEFAULT else
-            f'<p class="langnote">{say(lang, "home.lang_note", "This page is in Spanish. The rest of the site is in English for now, and so is what the record itself says: bill titles, committee names, each bill&rsquo;s history and the subjects the search knows.")}</p>\n')
+    # WHAT IS IN THE PAGE'S LANGUAGE, AND WHY THE REST IS NOT: the one note
+    # every page in another language carries (chrome.lang_note).
+    only = "" if lang == i18n.DEFAULT else chrome.lang_note(lang) + "\n"
     # THE GUIDES' SLOT is the English page's: build_civics fills it with
     # guides, and the guides are in English.
     guides = "<!-- guides --><!-- /guides -->" if lang == i18n.DEFAULT else ""
@@ -4959,7 +4958,7 @@ def main():
             for pid, name, _n, inner in of_panes)
         leg_body = f"""<h1>{say(lang, "of.title", "Officials")}</h1>
 <p class="lead">{say(lang, "of.lead", "Everyone who represents your town, from your select board to\nCongress; the {n} sitting members of the New Hampshire House and\nSenate; and the state&rsquo;s other officials.", n=len(legs))}</p>
-<div class="twntabs oftabs" role="tablist" aria-label="{say(lang, "of.title", "Officials")}" hidden>{of_tabs}</div>
+{chrome.lang_note(lang)}<div class="twntabs oftabs" role="tablist" aria-label="{say(lang, "of.title", "Officials")}" hidden>{of_tabs}</div>
 {of_body}
 {OFFICIALS_HASH_JS}{TOWN_TABS_JS}{OFFICIALS_MAP_JS}"""
         return shell(say(lang, "of.page_title", "Officials | Granite Record"), "officials.html",
