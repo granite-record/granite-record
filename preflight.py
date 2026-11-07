@@ -85327,27 +85327,42 @@ def _joined_mover_session_days(BSP):
     Levesque's under the Senate, each joined to their other number, and a
     sitting namesake of each, careers.json in its real shape. Each is
     matched in each chamber in the terms they sat in it, the namesakes in
-    theirs, and nobody in a term where neither King sat."""
+    theirs, and nobody in a term where neither King sat.
+
+    And the review of that night: a joined page whose numbers careers.json
+    does not hold (Leo Fraser here) counts in its page's terms, not in every
+    term and not in none; and a sitting senator's House number, in her
+    member_ids (Tara Reardon, House 1999-2010), files her under the House in
+    those terms, as six sitting senators are on the real record."""
     root = Path(tempfile.mkdtemp(prefix="gr-joined-"))
     keep = BSP._careers
     try:
         (root / "legislators.json").write_text(json.dumps([
             {"id": "11001", "slug": "seth-king-coos-4", "name": "King, Seth", "chamber": "H"},
             {"id": "11002", "slug": "cassandra-levesque-straf-4", "name": "Levesque, Cassandra",
-             "chamber": "H"}]), encoding="utf-8")
+             "chamber": "H"},
+            {"id": "11003", "slug": "marilyn-fraser-merr-1", "name": "Fraser, Marilyn", "chamber": "H"},
+            {"id": "11461", "slug": "tara-reardon-sd-15", "name": "Reardon, Tara", "chamber": "S",
+             "member_ids": ["11461", "376162"]}]), encoding="utf-8")
         (root / "former.json").write_text(json.dumps([
             {"id": "376486", "slug": "frederick-king-coos-1", "name": "King, Frederick", "chamber": "H",
              "member_ids": ["376486", "205005"],
              "served": {"terms": ["1999-2000", "2003-2004", "2005-2006", "2007-2008"]}},
             {"id": "9405", "slug": "melanie-levesque-sd-12", "name": "Levesque, Melanie", "chamber": "S",
              "member_ids": ["9405", "376690"],
-             "served": {"terms": ["2007-2008", "2013-2014", "2019-2020"]}}]), encoding="utf-8")
+             "served": {"terms": ["2007-2008", "2013-2014", "2019-2020"]}},
+            {"id": "371138", "slug": "leo-fraser-merr-37", "name": "Fraser, Leo", "chamber": "H",
+             "member_ids": ["371138", "202333"],
+             "served": {"terms": ["1999-2000", "2001-2002", "2003-2004"]}}]), encoding="utf-8")
         table = {"376486": {"by_term": {t: {"chambers": ["H"]}
                                         for t in ("2003-2004", "2005-2006", "2007-2008")}},
                  "205005": {"by_term": {"1999-2000": {"chambers": ["S"]}}},
                  "209108": {"person_id": "9405", "employee_nos": ["209108"],
                             "by_term": {"2019-2020": {"chambers": ["S"]}}},
-                 "376690": {"by_term": {t: {"chambers": ["H"]} for t in ("2007-2008", "2013-2014")}}}
+                 "376690": {"by_term": {t: {"chambers": ["H"]} for t in ("2007-2008", "2013-2014")}},
+                 "218765": {"person_id": "11461", "employee_nos": ["218765"],
+                            "by_term": {"2025-2026": {"chambers": ["S"]}}},
+                 "376162": {"by_term": {t: {"chambers": ["H"]} for t in ("1999-2000", "2001-2002")}}}
         (root / "generated").mkdir()
         (root / "generated" / "careers.json").write_text(json.dumps(table), encoding="utf-8")
         import os as _os
@@ -85363,7 +85378,9 @@ def _joined_mover_session_days(BSP):
         for term, body, said in (("2005-2006", "H", "Frederick King"), ("1999-2000", "S", "King"),
                                  ("2025-2026", "H", "King"),
                                  ("2013-2014", "H", "Melanie Levesque"), ("2019-2020", "S", "Levesque"),
-                                 ("2025-2026", "H", "Levesque")):
+                                 ("2025-2026", "H", "Levesque"),
+                                 ("2003-2004", "H", "Leo Fraser"), ("2025-2026", "H", "Fraser"),
+                                 ("2001-2002", "H", "Tara Reardon"), ("2025-2026", "S", "Reardon")):
             m.term = term
             got[(term, body, said)] = m.slug(body, said)
         # The page's own chamber counts its own terms only: King sat in the
@@ -85383,15 +85400,40 @@ def _joined_mover_session_days(BSP):
             ("2013-2014", "H", "Melanie Levesque"): "melanie-levesque-sd-12",
             ("2019-2020", "S", "Levesque"): "melanie-levesque-sd-12",
             ("2025-2026", "H", "Levesque"): "cassandra-levesque-straf-4",
-            ("2005-2006", "H", "King"): "frederick-king-coos-1"}
+            ("2005-2006", "H", "King"): "frederick-king-coos-1",
+            # careers.json holds neither of Leo Fraser's numbers: his page's
+            # own terms, so he is a House Fraser of 2003-2004 and not of
+            # 2025-2026, where the sitting Marilyn Fraser is the only one
+            ("2003-2004", "H", "Leo Fraser"): "leo-fraser-merr-37",
+            ("2025-2026", "H", "Fraser"): "marilyn-fraser-merr-1",
+            # a sitting senator's House number, among her member_ids
+            ("2001-2002", "H", "Tara Reardon"): "tara-reardon-sd-15",
+            ("2025-2026", "S", "Reardon"): "tara-reardon-sd-15"}
     bad = [f"{b} {t} {s!r} is {got.get((t, b, s))!r}, not {w!r}" for (t, b, s), w in want.items()
            if got.get((t, b, s)) != w]
     assert not bad, "a joined mover's days: " + "; ".join(bad)
     assert "frederick-king-coos-1" not in house_1999, (
         f"King counts as a House member of 1999-2000, when he sat in the Senate: {house_1999}")
+    # Silence is not success: no careers.json is said.
+    import contextlib
+    import io
+    empty = Path(tempfile.mkdtemp(prefix="gr-nocareers-"))
+    here = Path.cwd()
+    out = io.StringIO()
+    try:
+        _os.chdir(empty)
+        with contextlib.redirect_stdout(out):
+            none = keep()
+    finally:
+        _os.chdir(here)
+        shutil.rmtree(empty, ignore_errors=True)
+    assert none == {} and "WARNING" in out.getvalue() and "careers.json" in out.getvalue(), (
+        f"a missing careers.json is not said: {out.getvalue()!r}")
     return "ok", ("Frederick King in the House in 2005 and the Senate in 1999, Melanie Levesque in "
-                  "the House in 2013 and the Senate in 2019, each by their own name; the sitting "
-                  "Seth King and Cassandra Levesque in their own terms only")
+                  "the House in 2013 and the Senate in 2019, each by their own name, and the "
+                  "sitting Seth King and Cassandra Levesque where they are the only one; Leo "
+                  "Fraser, whom careers.json lacks, in his page's terms; the sitting Tara Reardon "
+                  "in her House years; a missing careers.json said")
 
 
 @check("session", "how the day began keeps the case of the member who led the Pledge",

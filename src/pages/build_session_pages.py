@@ -144,10 +144,19 @@ def _careers():
     (218760, 408908), so each record is keyed by its person_id as well as by
     each of its employee numbers: keyed by employee number alone, the dry run
     of 3b43bf7 matched no one and still left Rosenwald and Abbas as words."""
+    # NOT SILENT (the review of 6 November 2026): without it a member who
+    # changed chamber counts in one chamber only, and the other chamber's
+    # days go to a namesake, as on the 44 days of dry run 181.
     p = Path("generated/careers.json")
+    if not p.is_file():
+        print(f"  WARNING: {p} is not here: a member who changed chamber is matched on session "
+              "days in one chamber only")
+        return {}
     try:
-        raw = json.loads(p.read_text(encoding="utf-8")) if p.is_file() else {}
-    except (OSError, ValueError):
+        raw = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        print(f"  WARNING: {p} will not read ({e}): a member who changed chamber is matched on "
+              "session days in one chamber only")
         return {}
     out = {}
     for k, v in raw.items():

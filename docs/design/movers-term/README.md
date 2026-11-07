@@ -60,9 +60,26 @@ so for every senator of 1999 who cast it, that ballot counted as their last vote
   maps of 2002 and 2012 renumbered the seats of earlier years.
 - **A joined number's JSON redirects.** `/legislators/<joined number>.json` answers with a 301
   to the page's own.
-- **Session days name each member in both chambers.** A joined page counts in each chamber for
-  the terms it sat there, read from `careers.json` under every number the page stands for.
-  The sitting Seth King and Cassandra Levesque are named only in their own terms.
+- **Session days name a joined member in each chamber they sat in.** A page counts in each
+  chamber for the terms it sat there, read from `careers.json` under every number the page
+  stands for. A page whose numbers `careers.json` lacks counts in its own terms. Replayed on
+  the real ballots, the 32 House days that linked Seth King or Cassandra Levesque, who were not
+  yet sitting, now link Frederick King and Melanie Levesque. "Jeb Bradley" and "Leo Fraser" on
+  days of 2001–2002 now link them, not Paula Bradley or Marilyn Fraser. A bare "Bradley" or
+  "Fraser" there stays plain words, as on live, since both of each name sat then.
+- **What it does not do.** A sitting member still counts in every term, so a bare "King" in
+  2003–2008 reaches Frederick King through that term's ballots, not by the roster. And
+  `careers.json` itself joins two pairs of namesakes: Sen. Pat Long's House number with the
+  sitting Rep. Patrick Long of Hills 26, and the two Mark Pearsons. So 34 House days of
+  2007–2024 still link the Patrick Long of Hills 26, as live does. That is set out for
+  24 November; `people.json` has both pairs right.
+- **Sitting senators too.** The same reading reaches the House numbers in a sitting senator's
+  `member_ids`. Six sitting senators are now matched on House days of the years they sat
+  there: Avard, Birdsell, Carson, Gannon, Reardon and Watters. Every change is right by the
+  votes. One a reader sees: a bare "Reardon" on House days of 1999–2002 becomes plain words
+  instead of a link to Neil Reardon, since Tara Reardon sat in the House then too.
+- **A missing `careers.json` is said.** Without it, a member who changed chamber would be
+  matched in one chamber only, and the build now prints a warning.
 
 ## The shots
 
