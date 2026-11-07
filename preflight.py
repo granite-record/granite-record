@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.783
+# GRANITE_VERSION: 2026-09-04.785
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -21264,7 +21264,11 @@ const cards = (html) => [...html.matchAll(/<article class="card[^"]*" data-id="(
   const offer = /data-term="([^"]+)"/.exec(out.q[Q.app[0]].html);
   if (offer && MODE === "") {
     box.value = Q.app[0]; box.fire("input"); await settle();
-    const target = {dataset: {term: offer[1]}, closest: (sel) => sel === "[data-term]" ? target : null};
+    // The button as requestOffer draws it, button.link[data-term]: closest()
+    // answers each selector such a button matches, and no other.
+    const target = {tagName: "BUTTON", dataset: {term: offer[1]},
+                    closest: (sel) => sel.split(",").some(s => /^(?:button)?(?:\.link)?\[data-term\]$/.test(s.trim()))
+                      ? target : null};
     for (const f of DOCON.click || [])
       try { f({target, detail: 1, button: 0, preventDefault() {}, stopPropagation() {}}); } catch (e) {}
     await settle();
@@ -70061,11 +70065,17 @@ def _drawn_on_a_weekend():
 
 # The harness of _same_number_one_bill: app.js as the bill search, two bills
 # of one number in two terms (rows.json, records.json beside it), the page
-# opened at process.argv[2] ("?q=HB703", or with a term), All Terms chosen,
-# and then the steps in process.argv[3] -- "click:<year>" (a result's number,
-# clicked as a reader clicks it), "back" (to the list) and "forward:<year>"
-# (to the entry focusBill pushed for that year's bill). After each, what the
-# page drew, the address it pushed and the records it asked for, as JSON.
+# opened at process.argv[2] ("?q=HB703", or with a term), All Terms chosen --
+# unless that address names a bill after a "#", which it opens as it stands --
+# and then the steps in process.argv[3]: "click:<year>" (a result's number,
+# clicked as a reader clicks it), "back" (to the list), "forward:<year>" and
+# "pop:<year>" (history, to the entry focusBill pushed for that year's bill),
+# "search:<words>" (typed in the box, then Return), "gloss:<year>" (a click
+# on the words of a glossary tooltip in the head of that year's bill, open)
+# and "look:<year>" (nothing done: the bill the address opened). After each,
+# what the page drew, the address it pushed, what it asked for, the bill
+# whose Cite and Report row (#pageacts) is up and what the picker reads, as
+# JSON.
 _SAME_NUMBER_HARNESS = r"""
 require("./stub.js");
 const fs = require("fs");
@@ -70073,13 +70083,28 @@ const rows = JSON.parse(fs.readFileSync("./rows.json", "utf8"));
 const recs = JSON.parse(fs.readFileSync("./records.json", "utf8"));
 const terms = [...new Set(rows.map(r => r.term))].sort().reverse();
 const [, , start, steps] = process.argv;
-location.pathname = "/bills"; location.search = start; location.href = "https://x/bills" + start;
+const [qs, named = ""] = start.split("#");
+location.pathname = "/bills"; location.search = qs; location.hash = named ? "#" + named : "";
+location.href = "https://x/bills" + start;
+// THE CITE AND REPORT ROW (focusActions): fetched from the bill's own page,
+// which says whose it is, and put before the results; the stub's
+// getElementById would otherwise hand back a row for any id, and none would
+// ever be fetched.
+let acts = null;
+const byId = document.getElementById.bind(document);
+document.getElementById = id => (id === "pageacts" ? acts : byId(id));
+document.importNode = n => { const r = document.createElement("div"); r.bill = n.bill;
+  r.remove = () => { if (acts === r) acts = null; }; return r; };
+document.querySelector("#results").before = r => { acts = r; };
 const docOn = {}, winOn = {};
 document.addEventListener = (t, f) => (docOn[t] = docOn[t] || []).push(f);
 globalThis.addEventListener = (t, f) => (winOn[t] = winOn[t] || []).push(f);
-const pushed = [];
-history.pushState = (s, _t, u) => { pushed.push(String(u)); history.state = s;
+const pushed = [], entries = [];
+history.pushState = (s, _t, u) => { pushed.push(String(u)); entries.push({u: String(u), s}); history.state = s;
   const p = new URL(String(u), "https://x"); location.pathname = p.pathname; location.search = p.search; };
+// A record held on its way (clickslow), let go by "release": the reader who
+// opens a bill and goes Back before its record arrives.
+const holding = new Set(), waiting = [];
 history.replaceState = (s, _t, u) => { if (u) { const p = new URL(String(u), "https://x");
   location.pathname = p.pathname; location.search = p.search; } };
 let asked = [];
@@ -70089,12 +70114,15 @@ globalThis.fetch = async u => { const p = new URL(u, "https://x").pathname.repla
   if (p === "/meta.json") return ok({terms});
   const m = /^\/idx\/(.+)\.json$/.exec(p);
   if (m && terms.includes(decodeURIComponent(m[1]))) return ok(rows.filter(r => r.term === decodeURIComponent(m[1])));
-  if (p in recs) return ok('<script type="application/json" id="gr-data">' + JSON.stringify(recs[p]) + "</script>");
+  if (p in recs) { const page = () => ok('<script type="application/json" id="gr-data">' + JSON.stringify(recs[p]) + "</script>");
+    return holding.has(p) ? new Promise(res => waiting.push(() => res(page()))) : page(); }
   return {ok: false, status: 404, statusText: "Not Found", json: async () => { throw new Error(p + " 404"); },
           text: async () => ""}; };
 globalThis.DOMParser = class { parseFromString(h) {
   const m = /id="gr-data">([\s\S]*?)<\/script>/.exec(h);
-  return {getElementById: id => (id === "gr-data" && m ? {textContent: m[1]} : null),
+  const bill = m ? String(JSON.parse(m[1]).title).split("-")[0] : "";
+  return {getElementById: id => (!m ? null : id === "gr-data" ? {textContent: m[1]}
+                                 : id === "pageacts" ? {bill} : null),
           querySelector: () => null}; } };
 const ticks = async n => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
 const errs = []; process.on("unhandledRejection", e => errs.push(String((e && e.message) || e)));
@@ -70107,24 +70135,85 @@ const click = year => { const row = rows.find(r => String(r.year) === year);
   const target = {dataset: {}, closest: s => (s === "a.cnum" ? link : null), getAttribute: () => null};
   (docOn.click || []).forEach(f => f({target, button: 0, metaKey: false, ctrlKey: false, shiftKey: false,
                                       altKey: false, preventDefault(){}, stopPropagation(){}})); };
+// A click on the words of a glossary tooltip, as components.js arm() draws
+// one in a bill's head: span.termpop inside span.term[data-term="FN"], in the
+// open card; and on a card's Bill Text tab. Its closest() matches the
+// selectors a handler asks of it -- tags, ids, classes, [attr] and
+// [attr="v"], :not(), descendants and lists -- up the chain, as a browser's
+// would; any other selector (a child or sibling combinator) matches nothing.
+const node = (tag, cls, attrs, up) => { const n = {tag, cls, attrs, up};
+  const ds = {}; for (const [k, v] of Object.entries(attrs))
+    if (k.startsWith("data-")) ds[k.slice(5).replace(/-(\w)/g, (_, c) => c.toUpperCase())] = v;
+  n.el = {tagName: tag.toUpperCase(), id: attrs.id || "", dataset: ds, textContent: "",
+          getAttribute: k => (k in attrs ? attrs[k] : null), classList: {contains: c => cls.includes(c)},
+          closest: s => { for (let p = n; p; p = p.up) if (s.split(",").some(x => under(p, x.trim()))) return p.el;
+                          return null; }};
+  return n; };
+// "A B": the node is B, and some node above it is A.
+function under(n, s) {
+  const parts = s.split(/\s+/);
+  if (parts.some(x => /[>+~]/.test(x)) || !fits(n, parts[parts.length - 1])) return false;
+  let k = parts.length - 2;
+  for (let p = n.up; p && k >= 0; p = p.up) if (fits(p, parts[k])) k--;
+  return k < 0;
+}
+function fits(n, s) {
+  const nots = []; s = s.replace(/:not\(([^)]*)\)/g, (_, x) => (nots.push(x), ""));
+  if (!s || /[\s>+~:]/.test(s)) return false;
+  const tag = /^[a-z][a-z0-9]*/i.exec(s);
+  if (tag && tag[0].toLowerCase() !== n.tag) return false;
+  for (const c of s.match(/\.[\w-]+/g) || []) if (!n.cls.includes(c.slice(1))) return false;
+  for (const i of s.match(/#[\w-]+/g) || []) if (n.attrs.id !== i.slice(1)) return false;
+  for (const a of s.match(/\[[^\]]+\]/g) || []) { const [k, v] = a.slice(1, -1).split("=");
+    if (!(k in n.attrs) || (v !== undefined && n.attrs[k] !== v.replace(/^["']|["']$/g, ""))) return false; }
+  return !nots.some(x => fits(n, x.trim()));
+}
+const gloss = year => { const row = rows.find(r => String(r.year) === year);
+  const res = node("div", [], {id: "results"}, null);
+  const card = node("div", ["card", "focus", "open"], {"data-id": row.id}, res);
+  const h1 = node("h1", ["rh1"], {}, node("div", ["rhead"], {}, card));
+  const pop = node("span", ["termpop"], {id: "gr-term-1", role: "tooltip"},
+                   node("span", ["term"], {"data-term": "FN"}, h1));
+  const target = node("b", [], {}, pop).el;
+  (docOn.click || []).forEach(f => f({target, button: 0, detail: 1, metaKey: false, ctrlKey: false,
+                                      shiftKey: false, altKey: false, preventDefault(){}, stopPropagation(){}})); };
+// The open card's Bill Text tab (data-t="6"), as cardHtml draws its tabs.
+const textTab = year => { const row = rows.find(r => String(r.year) === year);
+  const card = node("div", ["card", "focus", "open"], {"data-id": row.id}, node("div", [], {id: "results"}, null));
+  const target = node("button", ["tab"], {"data-t": "6", role: "tab"}, node("div", ["tabs"], {}, card)).el;
+  (docOn.click || []).forEach(f => f({target, button: 0, detail: 1, metaKey: false, ctrlKey: false,
+                                      shiftKey: false, altKey: false, preventDefault(){}, stopPropagation(){}})); };
 (async () => {
   try { (0, eval)(fs.readFileSync("./page.js", "utf8")); }
   catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
   await ticks(40);
-  const year = document.querySelector("#year"); year.value = "all";
-  year.fire("change", {target: year}); await ticks(60);
+  const year = document.querySelector("#year");
+  if (!named) { year.value = "all"; year.fire("change", {target: year}); await ticks(60); }
   const out = [];
   for (const step of steps.split(",")) {
     asked = []; const was = pushed.length;
     const [what, y] = step.split(":");
+    let replayed = null;
     if (what === "click") click(y);
+    else if (what === "clickslow") { holding.add(`/bill/${y}/${rows.find(r => String(r.year) === y).id.toLowerCase()}`);
+      click(y); }
+    else if (what === "release") { holding.clear(); waiting.splice(0).forEach(f => f()); }
     else if (what === "back") { location.pathname = "/bills"; history.state = null;
       (winOn.popstate || []).forEach(f => f({state: null})); }
-    else if (what === "forward") { const row = rows.find(r => String(r.year) === y);
-      location.pathname = `/bill/${y}/${row.id.toLowerCase()}`;
-      (winOn.popstate || []).forEach(f => f({state: {focus: row.id, term: row.term}})); }
+    else if (what === "forward" || what === "pop") { const row = rows.find(r => String(r.year) === y);
+      // The entry focusBill pushed for that bill, as the browser hands it back.
+      const want = `/bill/${y}/${row.id.toLowerCase()}`;
+      const got = [...entries].reverse().find(e => e.u.endsWith(want));
+      replayed = !!got;
+      location.pathname = want; history.state = got ? got.s : {focus: row.id, term: row.term};
+      (winOn.popstate || []).forEach(f => f({state: history.state})); }
+    else if (what === "search") { const q = document.querySelector("#q"); q.value = y;
+      q.fire("keydown", {key: "Enter"}); }
+    else if (what === "gloss") gloss(y);
+    else if (what === "text") textTab(y);
     await ticks(60);
-    out.push({step, html: document.querySelector("#results").innerHTML, pushed: pushed.slice(was), asked});
+    out.push({step, html: document.querySelector("#results").innerHTML, pushed: pushed.slice(was), asked,
+              acts: acts && acts.bill || "", pick: year.value, replayed});
   }
   process.stdout.write("\n@@" + JSON.stringify({out, errs}));
 })().catch(e => { console.log("RUN " + e.message); process.exit(1); });
@@ -70132,8 +70221,10 @@ const click = year => { const row = rows.find(r => String(r.year) === year);
 
 
 @check("frontend", "two bills of one number in two terms stay two: with All Terms chosen, the "
-                   "result clicked opens that bill -- its head, its record, its address -- in "
-                   "either order, whichever term's index arrived first, and on Back and Forward")
+                   "bill opened -- by a click, Back or Forward, a search then Back, an address "
+                   "-- is drawn whole as itself: its head, its record, its address, its Cite "
+                   "row, in either order, whichever term's index arrived first; and a glossary "
+                   "tooltip leaves the term alone")
 def _same_number_one_bill():
     """THE OWNER'S HB 703 (6 November 2026). With All Terms chosen, HB 703
     is two bills: 2020's on prescription drugs (Rep. Edward Butler, Chapter 4
@@ -70145,14 +70236,40 @@ def _same_number_one_bill():
     owner saw. focusBill now opens the bill in the term of the link clicked,
     holding the reader's own until the bill is closed.
 
+    THE SAME PAGE BY OTHER ROADS (that day's review). A search typed with
+    the bill open, then Back to it, and an address naming the bill with a
+    search it is not in, drew the first HB 703 of the index over the bill's
+    record: render found the open bill by its number alone where the list
+    did not hold it, and now finds it as yearOf does. The words of a
+    glossary tooltip in its head set the term to "FN", since the term
+    buttons' handler took anything with a data-term, and the tooltip's
+    mark has one; it takes the buttons now. And history taken straight from
+    one HB 703 to the other, by the Back button's list of pages, kept the
+    first's Cite and Report row: focusActions kept it under the number, and
+    keeps it under the year and number now. A record that arrived after the
+    reader had gone Back was stored under the key the term then gave the
+    number -- the other bill's -- so the other bill, opened next, drew its
+    head over the first one's record: openBill keeps the key it asked with.
+    And the Bill Text tab asked for the versions of the first bill of the
+    number in the index, not the one drawn.
+
     Run in node over two rows of one number, each with its own record, each
-    marked in what the head draws (the row's title and sponsor) and what the
-    body draws (the record's title, narrative and first event): with All
-    Terms chosen, a click on each result in both orders, from the newest
-    term's index first and from the older's, Back to the list between them,
-    and Forward to an entry pushed for the older bill. Every step must draw
-    the bill clicked and none of the other, push that bill's own address and
-    ask for that bill's record only; Back must draw the list of both again."""
+    marked in what the head draws (the row's title and sponsor), what the
+    body draws (the record's title, narrative and first event) and what its
+    own page's Cite and Report row is: with All Terms chosen, a click on
+    each result in both orders, from the newest term's index first and from
+    the older's, Back to the list between them, and Forward to an entry
+    pushed for the older bill; a search typed and Back to the bill; the
+    address of each bill with a search for another; a click in a glossary
+    tooltip in each bill's head; Back from one bill to the other, by the
+    entry focusBill pushed; a record held until the reader has gone Back,
+    then the other bill opened; and each bill's Bill Text tab. Every step
+    must draw the bill opened and none of the other, its own Cite row, push
+    that bill's own address where it was clicked and ask for that bill's
+    record and versions only, never an index of no term; the tooltip must
+    leave the picker as it was; Back and a search must draw the list, both
+    bills in it where it names them, with no record and no Cite row over
+    it."""
     built = _fixture_site_shared()[0] / "site"
     row0 = json.loads((built / "idx" / "2025-2026.json").read_text(encoding="utf-8"))[0]
     page = (built / "bill" / str(row0["year"]) / f"{row0['id'].lower()}.html").read_text(encoding="utf-8")
@@ -70167,13 +70284,37 @@ def _same_number_one_bill():
                          sponsor_label=f"Rep. {sponsor} {mk}-ROW"))
         events = [dict(e, text=f"{mk}-REC event {i}") for i, e in enumerate(rec0.get("events") or [])] \
             or [{"date": f"{year}-01-03", "text": f"{mk}-REC event 0", "routine": False}]
+        # nver 2: each has an index of versions to ask for (hasVersionIndex)
         recs[f"/bill/{year}/hb703"] = dict(rec0, id="HB703", year=int(year), term=term,
                                            title=f"{mk}-REC title", narrative=f"{mk}-REC narrative",
-                                           events=events)
+                                           events=events, nver=2)
     files = {"rows.json": json.dumps(rows), "records.json": json.dumps(recs)}
+    terms = {r["term"] for r in rows}
     plans = (("?q=HB703", "click:2020,back,click:2025"),
              ("?q=HB703", "click:2025,back,click:2020,back,forward:2020"),
-             ("?term=2019-2020&q=HB703", "click:2025,back,click:2020"))
+             ("?term=2019-2020&q=HB703", "click:2025,back,click:2020"),
+             # A search typed with the bill open, then Back to the bill: the
+             # bill is not in the list the search drew (the review of 6
+             # November 2026, which found the owner's page this way).
+             ("?q=HB703", "click:2020,search:HB1,pop:2020"),
+             ("?term=2019-2020&q=HB703", "click:2025,search:HB1,pop:2025"),
+             # An address naming the bill, and a search it is not in.
+             ("?q=HB1&term=all#2020/HB703", "look:2020"),
+             ("?q=HB1&term=all#2025/HB703", "look:2025"),
+             # The words of a glossary tooltip in the open bill's head.
+             ("?q=HB703", "click:2020,gloss:2020,back,click:2025,gloss:2025"),
+             # History taken straight from one to the other, as the Back
+             # button's list of pages takes it.
+             ("?q=HB703", "click:2025,search:HB703,click:2020,pop:2025"),
+             ("?term=2019-2020&q=HB703", "click:2020,search:HB703,click:2025,pop:2020"),
+             # A record that arrives after the reader went Back, then the
+             # other bill opened: the owner's page on a slow connection (the
+             # reviews of 6 November 2026).
+             ("?q=HB703", "clickslow:2020,back,release,click:2025"),
+             ("?term=2019-2020&q=HB703", "clickslow:2025,back,release,click:2020"),
+             # The Bill Text tab asks for the open bill's versions.
+             ("?q=HB703", "click:2020,text:2020,back,click:2025,text:2025"),
+             ("?term=2019-2020&q=HB703", "click:2025,text:2025"))
     bad, steps = [], 0
     for start, plan in plans:
         run = _node_app(_SAME_NUMBER_HARNESS, files=files, args=(start, plan))
@@ -70181,31 +70322,59 @@ def _same_number_one_bill():
             return "skip", "app.js, dom_stub.js or node is not here"
         if run["errs"]:
             bad.append(f"from {start}, {plan}: left unhandled: {run['errs'][:2]}")
+        pick = None
         for got in run["out"]:
             steps += 1
             what, _, y = got["step"].partition(":")
             html, where = got["html"], f"from /bills{start}, {plan}, at {got['step']}"
-            if what == "back":
-                if not all(f"{m}-ROW" in html for m in marks.values()):
+            for p in got["asked"]:
+                m = re.match(r"/idx/(.+)\.json$", p)
+                if m and m.group(1) not in terms:
+                    bad.append(f"{where}: asked for {p}, the index of no term")
+            if what in ("back", "search", "release"):
+                both = what in ("back", "release") or y.upper() == "HB703"
+                if both and not all(f"{m}-ROW" in html for m in marks.values()):
                     bad.append(f"{where}: the list of both bills is not drawn again under All Terms")
+                if any(f"{m}-REC" in html for m in marks.values()):
+                    bad.append(f"{where}: a bill's record is still drawn over the list")
+                if got["acts"]:
+                    bad.append(f"{where}: the {got['acts']} bill's Cite and Report row is still up")
+                pick = got["pick"]
                 continue
             other = next(o for o in marks if o != y)
+            # A bill whose record is still on its way draws its head alone;
+            # one on its Bill Text tab draws the versions where the record was.
+            want = ("ROW",) if what in ("clickslow", "text") else ("ROW", "REC")
             for part in ("ROW", "REC"):
-                if f"{marks[y]}-{part}" not in html:
+                if part in want and f"{marks[y]}-{part}" not in html:
                     bad.append(f"{where}: the {y} bill's {'head' if part == 'ROW' else 'record'} "
                                "is not drawn")
                 if f"{marks[other]}-{part}" in html:
                     bad.append(f"{where}: the {other} bill's {'head' if part == 'ROW' else 'record'} "
                                "is drawn")
-            if what == "click" and not (len(got["pushed"]) == 1
-                                        and got["pushed"][0].endswith(f"/bill/{y}/hb703")):
+            if what != "clickslow" and got["acts"] != marks[y]:
+                bad.append(f"{where}: the Cite and Report row up is "
+                           f"{got['acts'] or 'none'}'s, not the {y} bill's ({marks[y]})")
+            if what in ("click", "clickslow") and not (len(got["pushed"]) == 1
+                                                       and got["pushed"][0].endswith(f"/bill/{y}/hb703")):
                 bad.append(f"{where}: pushed {got['pushed']}, not /bill/{y}/hb703")
+            if what in ("forward", "pop") and not got["replayed"]:
+                bad.append(f"{where}: no entry was pushed for the {y} bill to go back to")
+            if what == "text" and (f"/versions/{y}/HB703.json" not in got["asked"]
+                                   or f"/versions/{other}/HB703.json" in got["asked"]):
+                bad.append(f"{where}: the Bill Text tab asked for {[p for p in got['asked'] if 'versions' in p]}, "
+                           f"not /versions/{y}/HB703.json")
+            if what == "gloss" and got["pick"] != pick:
+                bad.append(f"{where}: the picker reads {got['pick']!r}, not {pick!r}")
             if f"/bill/{other}/hb703" in got["asked"]:
                 bad.append(f"{where}: asked for the {other} bill's record: {got['asked']}")
+            pick = got["pick"]
     assert not bad, f"{len(bad)} wrong:\n  " + "\n  ".join(bad[:8])
     return "ok", (f"HB 703 of 2020 and of 2025 under All Terms: {steps} steps over {len(plans)} "
-                  "orders, each drawing, pushing and fetching only the bill clicked, Back drawing "
-                  "both again")
+                  "orders -- clicks, Back, Forward, a search typed then Back, an address with "
+                  "another search, a glossary tooltip, a jump from one to the other, a record "
+                  "arriving after Back, the Bill Text tab -- each drawing, pushing and fetching "
+                  "only the bill opened, its Cite row its own, Back drawing both again")
 
 
 # The harness of _committee_term_to_come: app.js as committee H43's own page,
