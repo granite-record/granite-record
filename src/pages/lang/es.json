@@ -17197,8 +17197,8 @@
    "state": "draft"
   },
   "lang.why_names": {
-   "en": "Names stay as the record prints them: people, committees, towns and offices. Search finds subjects by their English words (housing, not vivienda).",
-   "es": "Los nombres se dejan como los imprime el registro: personas, comités, municipios y cargos. La búsqueda encuentra los temas por sus palabras en inglés (housing, no vivienda).",
+   "en": "Names of people, committees and towns stay as the record prints them; where a committee is given a Spanish name, its English name is beside it. Search finds subjects by their English words (housing, not vivienda).",
+   "es": "Los nombres de personas, comités y municipios se dejan como los imprime el registro; donde un comité aparece con un nombre en español, su nombre en inglés va al lado. La búsqueda encuentra los temas por sus palabras en inglés (housing, no vivienda).",
    "state": "draft"
   },
   "lang.why_not_yet": {

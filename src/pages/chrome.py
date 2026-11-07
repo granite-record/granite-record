@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.6
+# GRANITE_VERSION: 2026-10-23.7
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -347,8 +347,9 @@ def lang_note(lang):
                "text, the laws, each bill&rsquo;s history, votes and committee reports are the "
                "General Court&rsquo;s official record, which is written in English. Translating "
                "legal wording can change what it means, so the site shows it as written."),
-           say(lang, "lang.why_names", "Names stay as the record prints them: people, committees, "
-               "towns and offices. Search finds subjects by their English words (housing, not "
+           say(lang, "lang.why_names", "Names of people, committees and towns stay as the record "
+               "prints them; where a committee is given a Spanish name, its English name is "
+               "beside it. Search finds subjects by their English words (housing, not "
                "vivienda)."),
            say(lang, "lang.why_links", "Official state pages the site links to are in English."),
            say(lang, "lang.why_not_yet", "Not translated yet: the pages for bills, legislators, "

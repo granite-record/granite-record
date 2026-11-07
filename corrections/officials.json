@@ -938,15 +938,16 @@
           }
         },
         "sheriff": {
-          "name": "Christopher Connelly",
+          "name": "Brian J. Newcomb",
           "office": "Sheriff",
-          "domicile": "Mont Vernon",
+          "domicile": "",
           "phone": "",
           "email": "",
-          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 4 (the Secretary of State's COUNTY ROSTER 2025-2026)",
-          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
-          "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "source": "the owner, 7 November 2026; and Hillsborough County's Sheriff's Office page, read in a browser on 7 November 2026, which names him High Sheriff and \"the 30th Sheriff of Hillsborough County\"",
+          "source_url": "https://hcnh.org/Departments/Sheriffs-Office-Main",
+          "as_of": "2026-11-07",
+          "read": "2026-11-07",
+          "note": "Selected by the Hillsborough County delegation to fill the vacancy left by the resignation of Sheriff Christopher Connelly (Mont Vernon; the Secretary of State's COUNTY ROSTER 2025-2026, page 4), and took office on March 5, 2025 (the owner). His town is not given, so it is left empty. Entered at the owner's word, 7 November 2026."
         },
         "county_attorney": {
           "name": "John J. Coughlin",
