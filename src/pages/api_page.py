@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.7
+# GRANITE_VERSION: 2026-10-30.9
 """
 /api: the data API's documentation page, drawn in the data page's own
 components and counted from tonight's manifest.
@@ -53,9 +53,15 @@ def _code(label, text):
 def _row(name, what, more, count, unit, size, href, verb="Download"):
     fold = (f'<details class="dpmore"><summary><span>More about <code>{E(name)}</code></span>'
             f'</summary>{more}</details>') if more else ""
+    # THE UNIT IS ALWAYS SAID (the deep walk of 6 November 2026). The data
+    # page's downloads count rows alone, under a head that says Rows, so its
+    # " rows" (class dpu) is drawn only on a phone, where no head is. Here
+    # the count is of files, tables, people, bills or rows, so a desktop read
+    # "14" for the database and "43" for the manifest. The unit stands beside
+    # its count at every width, under a head that says Count.
     return (f'<tr role="row"><th scope="row" role="rowheader"><code>{E(name)}</code></th>'
             f'<td role="cell" class="dpw"><p class="dpwhat">{what}</p>{fold}</td>'
-            f'<td role="cell" class="n dpr">{count}<span class="dpu"> {unit}</span></td>'
+            f'<td role="cell" class="n dpr">{count}{" " + unit if unit else ""}</td>'
             f'<td role="cell" class="n dps">{size}</td>'
             f'<td role="cell" class="dpg"><a class="dpget" href="{href}"'
             f'{" download" if verb == "Download" else ""}>{verb}<span class="sr"> {E(name)}</span></a></td></tr>')
@@ -99,15 +105,21 @@ def body(manifest):
             "person_numbers.person join people.person; term + bill joins bills.</p>",
             f"{len(c):,}", "tables", mb(db["bytes"]), f"data/{E(db['path'].rsplit('/', 1)[-1])}"))
     if people:
+        # THE PEOPLE, NOT THE ENTRIES: a person merged into another keeps an
+        # entry with replaced_by, which is a row of the file and nobody new.
+        n_people = people.get("people", people["rows"])
+        merged = people["rows"] - n_people
         rows.append(_row(
             "people.json",
-            f"One entry for each of the {people['rows']:,} people with a recorded vote since 1999, "
-            "with every number the General Court has used for them.",
+            f"One entry for each of the {n_people:,} people with a recorded vote since 1999, "
+            "with every number the General Court has used for them"
+            + (f", and {merged:,} for a number that proved to be one of theirs "
+               "(<code>replaced_by</code>)." if merged > 0 else "."),
             "<p>The General Court gives a member a new employee number and a new person id when "
             "they move between the House and the Senate. This file joins every one of those, and "
             "the ids this site&rsquo;s other files use, to one <code>person</code>. "
             "<code>people.csv</code> is the same, one row a number.</p>",
-            f"{people['rows']:,}", "people", mb(people["bytes"]), "data/people.json"))
+            f"{n_people:,}", "people", mb(people["bytes"]), "data/people.json"))
     if bills:
         grid = "".join(
             f'<li><a href="data/{E(f["path"].rsplit("/", 1)[-1])}" download><span class="dpt">'
@@ -125,7 +137,7 @@ def body(manifest):
             f'<code>"key": "{E(newest)}/HB1442"</code>: the record the bill&rsquo;s own page is '
             "drawn from. It leaves out the Senate&rsquo;s hearing reports, which name members of "
             "the public, and YouTube&rsquo;s own titles and links.</p></details></td>"
-            f'<td role="cell" class="n dpr">{sum(f["rows"] for f in bills):,}<span class="dpu"> bills</span></td>'
+            f'<td role="cell" class="n dpr">{sum(f["rows"] for f in bills):,} bills</td>'
             f'<td role="cell" class="n dps">{mb(sum(f["bytes"] for f in bills))}</td>'
             '<td role="cell" class="dpg"><span class="dpeach">Each term below</span></td></tr>'
             f'<tr role="row" class="dpterms"><td role="cell" colspan="5"><ul class="dptermgrid" '
@@ -172,10 +184,13 @@ def body(manifest):
             "with nothing to install; R unpacks both, and reads the database with its RSQLite "
             "package. On the command line, gzip and xz are on most Linux systems; a Mac has gzip "
             "and needs xz installed.</p>",
-            '<div class="dptablewrap dpwide"><table class="dpdl" role="table">'
+            # dpapi: a list, as on a phone, up to 58em (app.css), where the
+            # counts with their units and the database's name make the table
+            # wider than a tablet held upright.
+            '<div class="dptablewrap dpwide"><table class="dpdl dpapi" role="table">'
             '<thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">File</th>'
             '<th scope="col" role="columnheader">What it holds</th>'
-            '<th scope="col" role="columnheader" class="n">Rows</th>'
+            '<th scope="col" role="columnheader" class="n">Count</th>'
             '<th scope="col" role="columnheader" class="n">Size</th>'
             '<th scope="col" role="columnheader"><span class="sr">Download</span></th></tr></thead>'
             f'<tbody role="rowgroup">{"".join(rows)}</tbody></table></div>'),

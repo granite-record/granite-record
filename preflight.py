@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.783
+# GRANITE_VERSION: 2026-09-04.786
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -14108,6 +14108,144 @@ _RC_ROLLS = [
         17, 7, 24),
 ]
 
+
+# The real rows of records/rollcalls/RollCallSummary_1999.txt: the Senate's
+# votes of 22 October 1999 on CACR 16 and CACR 17, the middle one dated 2009
+# by the file, though it was entered the same morning as the others, 25
+# October 1999.
+_RC_MISDATED = [
+    "1999|S|108|10/22/1999 12:00:00 AM|CACR16|17|6|23|0|||Order to 3rd Reading3/5 Necessary|relating to use of statewide property and personal income taxes.||10/25/1999 10:29:09 AM",
+    "1999|S|109|10/22/2009 12:00:00 AM|CACR17|15|8|23|0|||Order to 3rd Reading3/5 Necessary|relating to establishing a restricted education trust fund.||10/25/1999 10:26:07 AM",
+    "1999|S|110|10/22/1999 12:00:00 AM|CACR16|12|9|23|0|||Final Passage3/5 Necessary|relating to use of statewide property and personal income taxes.||10/25/1999 10:26:57 AM",
+]
+
+
+@check("rollcalls", "a roll call a person shows is misdated is drawn on the day the record gives, "
+       "for rollcalls.json, the ballots and the floor index alike, and only while the roll-call "
+       "file still gives the day the entry says (corrections/rollcall_corrections.json)",
+       needs=("rollcall_parser",))
+def _rollcall_misdated(RP):
+    """THE DEEP WALK OF 6 NOVEMBER 2026. Roll call 1999-S-109 is dated 22
+    October 2009 in the General Court's file. CACR 17's docket dates the
+    15-8 vote to order it to third reading 22 October 1999; the file itself
+    entered it on 25 October 1999, the morning it entered 1999-S-108 and
+    1999-S-110, both dated 22 October 1999; and it is the only one of
+    2,303,047 ballots dated outside its term. CACR 17's Votes tab and 23 senators' own drew it as
+    2009, and the six who sat only in 1999-2000 read "1999 to 2009". The
+    person's file could move a roll call to another bill ("misfiled") and
+    not to another day; "misdated" does, read by
+    rollcall_parser.roll_call_when wherever a roll call's day is read.
+
+    Driven here by a corrections folder of the check's own in a temporary
+    project, never the real one: an entry dates 1999-S-109 22 October 1999
+    in roll_call_when and in parse, keeping its time; an entry the file no
+    longer bears out is not applied and is said; one no file holds is said;
+    a malformed entry, or one without evidence, stops the run; no file
+    changes nothing."""
+    import contextlib
+    import io
+    keep = (RP.REFILED, dict(RP._MISDATED), {k: set(v) for k, v in RP.MISDATED_SEEN.items()},
+            dict(RP._REFILED))
+
+    def reset(path):
+        RP.REFILED = path
+        RP._MISDATED.clear()
+        RP._REFILED.clear()
+        RP.MISDATED_SEEN.clear()
+
+    d = Path(tempfile.mkdtemp(prefix="gr-misdated-"))
+    try:
+        corr = _mk(d / "corrections" / "rollcall_corrections.json")
+        entry = {"says": "10/22/2009", "is": "10/22/1999",
+                 "evidence": "CACR 17's docket dates the 15-8 vote 10/22/1999", "checked": "2026-11-07"}
+        corr.write_text(json.dumps({"misdated": {
+            "1999-S-109": entry, "1999-S-108": dict(entry, says="10/23/1999", **{"is": "10/22/1999"}),
+            "1999-S-500": entry}}), encoding="utf-8")
+        (d / "RollCallSummary.txt").write_text("\n".join(_RC_MISDATED) + "\n", encoding="utf-8")
+        reset(corr)
+        got = [RP.roll_call_when("1999", "S", 109, "10/22/2009 12:00:00 AM"),
+               RP.roll_call_when("1999", "S", "109", "10/22/2009"),
+               RP.roll_call_when("1999", "H", 109, "10/22/2009 12:00:00 AM"),
+               RP.roll_call_when("1999", "S", 109, "10/23/2009 12:00:00 AM"),
+               RP.roll_call_when("1999", "S", 110, "10/22/1999 12:00:00 AM")]
+        assert got == ["10/22/1999 12:00:00 AM", "10/22/1999", "10/22/2009 12:00:00 AM",
+                       "10/23/2009 12:00:00 AM", "10/22/1999 12:00:00 AM"], (
+            f"roll_call_when gives 1999-S-109 twice, 1999-H-109, 1999-S-109 dated another day and "
+            f"1999-S-110 as {got}")
+        rows = {r["number"]: r for r in RP.parse(d / "RollCallSummary.txt")}
+        assert {n: r["date"] for n, r in rows.items()} == \
+            {108: "1999-10-22", 109: "1999-10-22", 110: "1999-10-22"}, (
+            f"parse dates them {[(n, r['date']) for n, r in rows.items()]}")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            told = RP.misdated_report()
+            quiet = RP.misdated_report(complete=False)
+        assert told == (["1999-S-109"], ["1999-S-108"], ["1999-S-500"]) and \
+            quiet == (["1999-S-109"], ["1999-S-108"], []), (
+            f"the report says applied, stale, unread: {told}; where not every file was read {quiet}")
+        assert "NOT applied" in out.getvalue() and "did nothing" in out.getvalue(), out.getvalue()
+        # An entry this cannot apply stops the run rather than passing.
+        for bad in ({"1999-S-109": dict(entry, **{"is": "10/22/2009"})}, {"S-109": entry},
+                    {"1999-S-109": dict(entry, says="2009-10-22")},
+                    {"1999-S-109": dict(entry, evidence="")}, ["1999-S-109"]):
+            corr.write_text(json.dumps({"misdated": bad}), encoding="utf-8")
+            reset(corr)
+            try:
+                RP.misdated()
+            except SystemExit:
+                continue
+            raise AssertionError(f"rollcall_corrections.json took {bad} rather than refusing it")
+        # "misfiled" alone, as the person's file has it today: nothing moves.
+        corr.write_text(json.dumps({"misfiled": {}}), encoding="utf-8")
+        reset(corr)
+        assert RP.misdated() == {} and \
+            RP.roll_call_when("1999", "S", 109, "10/22/2009 12:00:00 AM") == "10/22/2009 12:00:00 AM"
+        reset(d / "corrections" / "absent.json")
+        assert RP.misdated() == {}, "with no corrections file a roll call still moved"
+    finally:
+        RP.REFILED = keep[0]
+        RP._MISDATED.clear()
+        RP._MISDATED.update(keep[1])
+        RP.MISDATED_SEEN.clear()
+        RP.MISDATED_SEEN.update(keep[2])
+        RP._REFILED.clear()
+        RP._REFILED.update(keep[3])
+        shutil.rmtree(d, ignore_errors=True)
+    # Every reader of a roll call's day beside its bill reads it through the
+    # same function, and the two that report say what the file did.
+    src = _paths.locate("build_data.py").read_text(encoding="utf-8")
+    assert '"datetime": RP.roll_call_when(r[0], r[1], r[2], r[3])' in src and \
+        "RP.misdated_report(complete=False)" in src, (
+        "build_data.py no longer dates a ballot through rollcall_parser.roll_call_when, or no "
+        "longer says what rollcall_corrections.json's misdated did")
+    assert "RP.roll_call_when(p[0], p[1], p[2], p[3])" in \
+        _paths.locate("build_floor_index.py").read_text(encoding="utf-8"), (
+        "build_floor_index.py no longer dates a roll call through rollcall_parser.roll_call_when")
+    src = _paths.locate("rollcall_parser.py").read_text(encoding="utf-8")
+    assert "roll_call_when(year, body, num, p[3])" in src and "    misdated_report()" in src, (
+        "rollcall_parser.parse no longer dates a roll call through roll_call_when")
+    # THE PERSON'S OWN FILE, where there is one, against the files on disk.
+    real = _paths.ROOT / "corrections" / "rollcall_corrections.json"
+    files = sorted((_paths.ROOT / "records" / "rollcalls").glob("RollCallSummary_*.txt"))
+    if not real.is_file() or not RP.misdated(real):
+        return "ok", ("1999-S-109 is drawn on 22 October 1999 while the file dates it 2009, and "
+                      "not once the file stops; a stale or unread entry is said; a malformed one "
+                      "stops; the person's file has no misdated entry")
+    seen = {}
+    for f in files:
+        for line in f.read_text(encoding="utf-8", errors="replace").splitlines():
+            p = line.split("|")
+            if len(p) > 3 and REFILED_ROW.fullmatch("|".join(p[:3])):
+                seen[(p[0], p[1], int(p[2]))] = RP._file_day(p[3])
+    stale = [f"{k[0]}-{k[1]}-{k[2]}" for k, e in RP.misdated(real).items()
+             if seen.get(k) is not None and seen.get(k) != RP._file_day(e.get("says"))]
+    assert not stale, f"rollcall_corrections.json's misdated entries no longer match the files: {stale}"
+    return "ok", (f"{len(RP.misdated(real))} misdated entr(ies) in the person's file, each matching "
+                  "the roll-call files on disk; the made-up cases hold")
+
+
+REFILED_ROW = re.compile(r"\d{4}\|[HS]\|\d+")
+
 # (passed, threshold_needed, outcome_source), as the Journals record them
 _RC_WANT = {
     ("2012", 180): (False, 239, "docket"), ("2012", 181): (True, None, "docket"),
@@ -21264,7 +21402,11 @@ const cards = (html) => [...html.matchAll(/<article class="card[^"]*" data-id="(
   const offer = /data-term="([^"]+)"/.exec(out.q[Q.app[0]].html);
   if (offer && MODE === "") {
     box.value = Q.app[0]; box.fire("input"); await settle();
-    const target = {dataset: {term: offer[1]}, closest: (sel) => sel === "[data-term]" ? target : null};
+    // The button as requestOffer draws it, button.link[data-term]: closest()
+    // answers each selector such a button matches, and no other.
+    const target = {tagName: "BUTTON", dataset: {term: offer[1]},
+                    closest: (sel) => sel.split(",").some(s => /^(?:button)?(?:\.link)?\[data-term\]$/.test(s.trim()))
+                      ? target : null};
     for (const f of DOCON.click || [])
       try { f({target, detail: 1, button: 0, preventDefault() {}, stopPropagation() {}}); } catch (e) {}
     await settle();
@@ -28547,8 +28689,8 @@ def _former_movers_one_page(build_site_v2, build_pages):
     src = _paths.locate("build_pages.py").read_text(encoding="utf-8")
     assert "want = redirects_file(out)" in src, (
         "build_pages no longer writes their 301s ahead of the tab rules, where the first match is served")
-    return "ok", ("a mover who left is joined to the later page, by the day of the last vote, with "
-                  "every chamber's years; a sitting one and a one-number one are not; their 301s "
+    return "ok", ("a mover who left is joined to the later page, by the term and then the day of the "
+                  "last vote, with every chamber's years; a sitting one and a one-number one are not; their 301s "
                   "ahead of the tab rules, tabs included")
 
 
@@ -29192,6 +29334,142 @@ def _person_rule():
                   "shape catch what they should")
 
 
+@check("files", "two issued people who prove to be one are merged in the register: the one kept "
+                "holds both numbers, the other stays with replaced_by, people.json gives one "
+                "person and the line for the other, and the API page counts the people")
+def _person_merge():
+    """THE OWNER'S THIRTY PAIRS (2 November 2026). Each member who sat in
+    both chambers was issued twice on 30 October, one person a chamber,
+    before the owner confirmed the pairs (member_corrections.json,
+    same_person). The site joined each pair's pages; people.json, which
+    takes the register's word, kept them two people, the second with no
+    name and no page (the deep walk of 6 November 2026).
+
+    A merge is the register's own way (person_numbers.py, the API page's
+    "When two entries prove to be one person"): the one kept takes the
+    other's numbers, and the other keeps an entry with replaced_by and no
+    numbers. check_register refused every such merge where the one that
+    goes is numbered by an employee number, as all thirty are: its number,
+    now the kept person's, read as "a person number and also someone else's
+    number". It is allowed for the person it is replaced by, and for nobody
+    else. Held here on a record made up for it."""
+    import tempfile
+    sys.path.insert(0, str(_paths.locate("people.py").parent))
+    import people as PE
+    import api_page
+    # The register's shape: a merge passes; a number held by anybody but the
+    # person it went to, a replacement nobody holds, a chain or a person
+    # replaced by themself do not.
+    merged = {"format": 1, "people": [
+        {"person": "44", "numbers": ["209092", "376682"]},
+        {"person": "376682", "replaced_by": "44"}]}
+    assert not PE.check_register(merged), PE.check_register(merged)
+    for bad, why in (
+            ({"people": [{"person": "44", "numbers": ["209092"]}, {"person": "45", "numbers": ["376682"]},
+                         {"person": "376682", "replaced_by": "44"}]}, "its number held by another"),
+            ({"people": [{"person": "44", "numbers": ["209092", "376682"]},
+                         {"person": "376682", "replaced_by": "45"}]}, "replaced by nobody it holds"),
+            ({"people": [{"person": "44", "numbers": ["209092", "376682"]},
+                         {"person": "376682", "replaced_by": "376682"}]}, "replaced by itself"),
+            ({"people": [{"person": "44", "replaced_by": "45"}, {"person": "45", "replaced_by": "46"},
+                         {"person": "46", "numbers": ["209092"]}]}, "a chain"),
+            ({"people": [{"person": "44", "numbers": ["209092"]},
+                         {"person": "376682", "replaced_by": "44", "numbers": ["376682"]}]},
+             "replaced and still holding numbers")):
+        assert PE.check_register(bad), f"check_register passed a merge {why}: {bad}"
+    # Built: one person with both numbers, and the line for the other.
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        for sub in ("db", "site/legislators", "data", "out"):
+            (d / sub).mkdir(parents=True, exist_ok=True)
+        (d / "db" / "_columns.json").write_text(json.dumps(
+            {"Legislators": ["PersonID", "LastName", "FirstName", "Employeeno"]}))
+        (d / "db" / "Legislators.psv").write_text("44|Pierce|David|209092\n")
+        (d / "site" / "legislators.json").write_text("[]")
+        (d / "site" / "former.json").write_text(json.dumps(
+            [{"id": "44", "name": "Pierce, David", "slug": "david-pierce-sd-5"}]))
+        # The joined page's own file, as build_site_v2 writes it for a mover
+        # who left (former_movers): tonight's join holds the pair together too.
+        (d / "site" / "legislators" / "44.json").write_text(json.dumps(
+            {"id": "44", "member_ids": ["44", "376682"]}))
+        (d / "data" / "sponsors.json").write_text("{}")
+        (d / "data" / "member_votes.json").write_text(json.dumps(
+            [{"member_id": "44"}, {"member_id": "376682"}]))
+        careers = {e: {"by_term": {t: {"chambers": [ch], "employee_nos": [e]}},
+                       "employee_nos": [e], "first": "David", "last": "Pierce"}
+                   for e, ch, t in (("376682", "H", "2007-2008"), ("209092", "S", "2013-2014"))}
+        people, rep = PE.build(d / "site", d / "data", d / "db", careers, merged)
+        rows = PE.write(people, d / "out")
+        csv_text = (d / "out" / "people.csv").read_text(encoding="utf-8")
+    by = {p["person"]: p for p in people}
+    assert set(by) == {"44", "376682"} and by["376682"] == {"person": "376682", "replaced_by": "44"}, people
+    p = by["44"]
+    assert p["employee_numbers"] == ["376682", "209092"] and p["name"] == "David Pierce" and \
+        p["page"] == "/legislator/david-pierce-sd-5", p
+    assert not PE.check_unique(people), PE.check_unique(people)
+    assert not rep["register_disagrees"] and not rep["missing_issued"], rep
+    assert rows[0]["rows"] == 2 and rows[0]["people"] == 1, rows[0]
+    assert "376682,replaced_by,44" in csv_text, csv_text
+    # The API page counts the people, and says what the other line is.
+    page = api_page.body({"files": [dict(rows[0]), dict(rows[1])]})
+    assert "One entry for each of the 1 people" in page and \
+        "and 1 for a number that proved to be one of theirs" in page, \
+        re.findall(r"One entry for each[^<]*", page)
+    page = api_page.body({"files": [{"path": "/data/people.json", "rows": 5, "bytes": 1}]})
+    assert "One entry for each of the 5 people with a recorded vote since 1999, with every " \
+           "number the General Court has used for them.</p>" in page, \
+        re.findall(r"One entry for each[^<]*", page)
+    return "ok", ("a merge passes the register's check and nothing else like it does; built, the "
+                  "kept person holds both numbers with the page and the name, the other is one "
+                  "replaced_by line, and the API page counts one person")
+
+
+@check("files", "every pair the owner confirmed as one person is one person in the register, "
+                "as the site joins their pages")
+def _same_person_one_person():
+    """corrections/member_corrections.json's same_person entries with a date
+    in "confirmed" are the pairs the owner settled as one person (2 November
+    2026); build_site_v2.former_movers joins each pair's pages. The register
+    (generated/person_numbers.json), which people.json follows, must say the
+    same, or the public data gives one person as two, the second with no
+    name and no page (the deep walk of 6 November 2026).
+
+    A pair names site ids, a PersonID or an employee number. Each is found
+    in the register as a person or as a number someone holds, and followed
+    through replaced_by to the person it is now; both must be found, and be
+    the same person. A pair answered "no, two people" is not looked at."""
+    mc = _paths.ROOT / "corrections" / "member_corrections.json"
+    reg_path = _paths.ROOT / "generated" / "person_numbers.json"
+    if not mc.exists() or not reg_path.exists():
+        return "skip", "member_corrections.json or the register is not here"
+    pairs = [e for e in json.loads(mc.read_text(encoding="utf-8")).get("same_person") or []
+             if isinstance(e, dict) and re.match(r"\d{4}-\d{2}-\d{2}", str(e.get("confirmed") or ""))]
+    people = json.loads(reg_path.read_text(encoding="utf-8")).get("people") or []
+    persons = {e["person"]: e for e in people}
+    holder = {str(n): e["person"] for e in people if not e.get("replaced_by")
+              for n in e.get("numbers") or []}
+
+    def now(x):
+        p = holder.get(str(x)) or (str(x) if str(x) in persons else None)
+        seen = set()
+        while p and persons.get(p, {}).get("replaced_by") and p not in seen:
+            seen.add(p)
+            p = str(persons[p]["replaced_by"])
+        return p
+
+    bad = []
+    for e in pairs:
+        h, s = now(e.get("house")), now(e.get("senate"))
+        if not (h and s):
+            bad.append(f"{e.get('name')}: {e.get('house') if not h else e.get('senate')} is no "
+                       "person or number in the register")
+        elif h != s:
+            bad.append(f"{e.get('name')}: two people, {h} and {s}")
+    assert not bad, (f"{len(bad)} of {len(pairs)} pairs the owner confirmed are not one person in "
+                     "the register (merge them: person_numbers.py says how): " + "; ".join(bad[:5]))
+    return "ok", f"all {len(pairs)} pairs the owner confirmed are one person in the register"
+
+
 @check("files", "only a person's run writes the register of person numbers, and it is well formed")
 def _person_register():
     """generated/person_numbers.json holds the person numbers the public data
@@ -29272,6 +29550,101 @@ def _person_register():
                 moved.append(f"{p_} lost a number")
         assert not moved, "the register is only ever added to, and against dev's: " + "; ".join(moved[:5])
     return "ok", "no other code file writes it, and it is well formed"
+
+
+@check("build", "every count on /api says what it counts, at every width: files, tables, people, "
+                "bills or rows, under a head that says Count, and the table is a list up to 55em",
+       needs=("api_page",))
+def _api_counts_say_units(AP):
+    """THE DEEP WALK OF 6 NOVEMBER 2026, on dry run 181's preview. /api's
+    downloads table is the data page's, whose counts are all rows: its head
+    says Rows, and its " rows" (class dpu) is drawn only on a phone, where
+    the head is not. /api's counts are of files, tables, people, bills and
+    rows, under the same hidden unit, so at a desktop's width the head said
+    Rows above a bare "43" for the files under /data/ and a bare "14" for
+    the database's tables. Each count carries its unit in the text itself,
+    and the head says Count.
+
+    And that branch's review: with its units the Count column is wider, and
+    the table was already wider than a tablet held upright, so the page
+    scrolled sideways from 721 to 842 pixels (dev: 803). Up to 55em /api's
+    table (class dpapi) is laid out as on a phone; the data page's is not."""
+    def f(path, kind, **k):
+        return dict({"path": f"data/{path}", "kind": kind, "rows": 0, "bytes": 1_000_000}, **k)
+    manifest = {"files": [
+        f("schema.json", "schema"),
+        f("granite-record.sqlite.xz", "database", counts={"bills": 9, "votes": 8, "people": 7},
+          opened_bytes=5_000_000),
+        f("people.json", "people", rows=2192),
+        f("bills-2025-2026.jsonl.gz", "bills", rows=2000, term="2025-2026"),
+        f("bills-2023-2024.jsonl.gz", "bills", rows=1999, term="2023-2024"),
+        f("bills.csv", "table", rows=33683, file="bills.csv"),
+        f("votes-2025-2026.csv", "table", rows=100, file="votes-2025-2026.csv")]}
+    page = AP.body(manifest)
+    cells = re.findall(r'<td role="cell" class="n dpr">(.*?)</td>', page)
+    want = ["8 files", "&mdash;", "3 tables", "2,192 people", "3,999 bills", "33,783 rows"]
+    assert cells == want, f"/api's counts read {cells}, not {want}"
+    assert 'class="dpu"' not in page, (
+        "/api hands a unit to class dpu, which app.css draws only below 45em: a desktop reads "
+        "the bare number")
+    heads = re.findall(r'<th scope="col" role="columnheader" class="n">([^<]*)</th>', page)
+    assert heads == ["Count", "Size"], f"/api's number columns are headed {heads}"
+    # THE LIST UP TO 58EM. /api's table carries dpapi; app.css has, at the
+    # top level and not commented out, one @media (max-width:58em) block whose
+    # every rule is a .dpdl rule of the phone block (max-width:45em) with
+    # .dpapi added, declaration for declaration, and nothing else: a selector
+    # without .dpapi would change the data page, which is live, and a phone
+    # rule changed without its twin would part /api's phones from /data's.
+    # The data page's table carries no dpapi. (The review of 6 November: a
+    # text search passed with the block nested, commented out or missing a
+    # brace, and with a selector that had lost .dpapi.)
+    assert '<table class="dpdl dpapi" role="table">' in page, (
+        "/api's table no longer carries dpapi: from 45em to 58em it is a table wider than a "
+        "tablet held upright")
+    css = re.sub(r"/\*.*?\*/", "", _paths.locate("app.css").read_text(encoding="utf-8"), flags=re.S)
+
+    def blocks(text):
+        """[(prelude, body)]: text's top-level blocks, by balanced braces."""
+        out, i = [], 0
+        while (j := text.find("{", i)) >= 0:
+            depth, k = 1, j + 1
+            while k < len(text) and depth:
+                depth += {"{": 1, "}": -1}.get(text[k], 0)
+                k += 1
+            assert not depth, "app.css's braces do not balance"
+            out.append((re.sub(r"\s+", "", text[i:j]), text[j + 1:k - 1]))
+            i = k
+        return out
+
+    def rules(body):
+        got = blocks(body)
+        assert all("{" not in b for _, b in got), "a rule nested inside a rule"
+        return [(re.sub(r"\s+", " ", s0).strip(), re.sub(r"\s+", " ", b).strip()) for s0, b in
+                [(body[m.start():m.end()].split("{")[0], m.group(1))
+                 for m in re.finditer(r"[^{}]*\{([^{}]*)\}", body)]]
+
+    top = blocks(css)
+    phone = [b for p, b in top if p == "@media(max-width:45em)" and re.search(r"\.dpdl thead\s*\{", b)]
+    lists = [b for p, b in top if p == "@media(max-width:58em)"]
+    assert len(phone) == 1, f"app.css has {len(phone)} top-level phone blocks for .dpdl, not 1"
+    assert len(lists) == 1, (f"app.css has {len(lists)} top-level @media (max-width:58em) blocks, "
+                             "not 1: /api's list up to 58em is gone, nested or doubled")
+    twin = rules(lists[0])
+    stray = [s for s, _ in twin if not s.startswith(".dpdl.dpapi ")]
+    assert not stray, f"the 58em block has rules without .dpdl.dpapi, which reach the data page: {stray}"
+    want = sorted((".dpdl.dpapi" + s[len(".dpdl"):], d) for s, d in rules(phone[0])
+                  if s.startswith(".dpdl "))
+    assert len(want) >= 11 and sorted(twin) == want, (
+        "the 58em block is not the phone block's .dpdl rules with .dpapi added: "
+        f"missing {sorted(set(want) - set(twin))}, extra {sorted(set(twin) - set(want))}")
+    printed = [b for p, b in top if p == "@mediaprint" and ".dpdl.dpapi tbody tr" in b]
+    assert printed and "break-inside:avoid" in printed[0], (
+        "a printed /api may break a file's row across two pages")
+    exports = _paths.locate("build_exports.py").read_text(encoding="utf-8")
+    assert "dpapi" not in exports, "the data page's table carries dpapi: it would change below 58em"
+    return "ok", ("the manifest's 8 files, the database's 3 tables, 2,192 people, 3,999 bills and "
+                  "33,783 rows each say their unit, under Count; /api's table is a list up to 58em, "
+                  f"its {len(twin)} rules the phone block's twins, and the data page's is not")
 
 
 @check("build", "the data API's schema.json describes every column it publishes, with the types "
@@ -69527,6 +69900,220 @@ def _former_seat_from_bills(B2):
                   "or a sitting member's address left alone; a recorded address kept for good")
 
 
+@check("build", "a former member's last vote is the last of their last term, whatever day the "
+                "clerk wrote: a mover's one page is the chamber they sat in last, their seat their "
+                "last term's, a recorded address follows them onto a joined page, a joined "
+                "number's data answers from the page's, and a joined page's description, "
+                "directory line and search entry name each chamber with its years",
+       needs=("build_site_v2", "build_legislator_pages", "build_pages", "build_indexes"))
+def _movers_by_term(B2, BL, BP, BI):
+    """THE DEEP WALK OF 6 NOVEMBER 2026, on dry run 181's preview. Roll call
+    1999-S-109 (CACR 17) is dated 22 October 2009 between two of 22 October
+    1999: the only ballot of 2,303,047 dated outside its term. Each former
+    member's last vote was taken by its day, so it was the last vote of every
+    senator of 1999 who cast it.
+
+    Frederick King (Senate 1999-2000, House 2003-2008) and Leo Fraser
+    (Senate 1999-2000, House 2001-2004) were kept as the Senate's page when
+    their two numbers were joined (former_movers), though both sat in the
+    House after: their live House addresses answered with a 301 to "Former
+    Sen. Frederick King (R - SD1)". Carl Johnson's seat was taken from
+    1999-2000's bills, SD3, not from 2005-2006's, SD2, which print him 118
+    times (date_former_seats), and his right address answered with a 301 to
+    the wrong one. And the 34 joined pages' search descriptions put the whole
+    record in the page's chamber: "Sen. Jeb Bradley (R - SD3) served in the
+    New Hampshire Senate, 1999 to 2024", of a senator who sat in the House in
+    1999-2002.
+
+    So a member's last vote is the last of the term the roll call belongs
+    to, by its session year (service_order), and then by its day. The
+    addresses the night recorded for the Senate numbers
+    (generated/moved_addresses.json, which only grows) follow those numbers
+    onto the page that carries their record now (keep_moved's links). Each
+    chamber of a joined page is named with its years in its description, as
+    the page's own "Votes on record" line names them."""
+    def ballot(year, date, body):
+        return {"year": str(year), "date": date, "body": body,
+                "label": "", "name": "King, Frederick", "party": "R"}
+    # Frederick King: the Senate number with the misdated roll call among its
+    # 1999 ballots, and the House number of 2003-2008.
+    king = {"205005": [ballot(1999, "2/11/1999", "S"), ballot(1999, "10/22/1999", "S"),
+                       ballot(1999, "10/22/2009", "S")],
+            "376486": [ballot(2003, "3/1/2003", "H"), ballot(2008, "6/4/2008", "H")]}
+    got = B2.former_movers(None, {}, {}, {}, king, confirmed=[["376486", "205005"]])
+    assert got == {"376486": ["205005"]}, (
+        f"former_movers kept {got}: the misdated 1999 Senate ballot outranked 2008's House votes")
+    # As the day alone would have it, for the record: the Senate page.
+    by_day = max(("205005", "376486"), key=lambda i: max(B2.vote_date(v["date"]) for v in king[i]))
+    assert by_day == "205005", "the case no longer tells the term from the day"
+    fr = B2.former_roster({}, king, {"376486": ["205005"]}, {}, "2025-2026")
+    k = fr["376486"]
+    assert k["chamber"] == "H" and k["served"]["first"] == "2/11/1999" and \
+        k["served"]["last"] == "6/4/2008", f"King's joined page: {k['chamber']}, {k['served']}"
+    assert {"1999-2000", "2007-2008"} <= set(k["served"]["terms"]), k["served"]["terms"]
+    # One number, no join: the misdated ballot names neither the party nor
+    # the end of a record that runs on to 2004.
+    one_no = {"205020": [dict(ballot(1999, "10/22/2009", "S"), party="D", name="Turn, Tess"),
+                         dict(ballot(2003, "6/1/2004", "S"), party="R", name="Turn, Tess")]}
+    t = B2.former_roster({}, one_no, {}, {}, "2025-2026")["205020"]
+    assert t["party"] == "R" and t["served"]["last"] == "6/1/2004" and \
+        t["served"]["terms"] == ["1999-2000", "2003-2004"], (
+        f"the misdated ballot took the party or the last day: {t['party']}, {t['served']}")
+    # Carl Johnson: one number, the Senate's, SD3 in 1999-2002 and SD2 after;
+    # the record's seat is SD2, as 2005-2006's bills print it.
+    cj = {"205015": [ballot(1999, "10/22/2009", "S"), ballot(2001, "3/1/2001", "S"),
+                     ballot(2005, "5/4/2006", "S")]}
+    row = {"id": "205015", "name": "Johnson, Carl", "chamber": "S", "party": "R",
+           "party_code": "R", "county": "", "district": "2", "county_abbr": "", "former": True}
+    printed = {("1999-2000", "205015"): ("S", "", "3"), ("2001-2002", "205015"): ("S", "", "3"),
+               ("2005-2006", "205015"): ("S", "", "2")}
+    import copy
+    seats, redated = B2.date_former_seats({"205015": copy.deepcopy(row)}, cj, printed, set(), {})
+    assert not redated and seats["205015"]["district"] == "2" and \
+        not seats["205015"].get("moved_from"), (
+        f"Carl Johnson was moved by 1999-2000's bills: {seats['205015']}, {redated}")
+    # The address the night recorded for King's Senate number is his House
+    # page's own now: nothing to add, and nothing said. One recorded for a
+    # joined number whose page has another address is answered from it.
+    import contextlib
+    import io
+    page = dict(k, id="376486", name="King, Frederick", county="Coos", district="1",
+                county_abbr="Coos", slug="frederick-king-coos-1")
+    former = {"376486": page}
+    root = Path(tempfile.mkdtemp(prefix="gr-moves-"))
+    try:
+        rec = root / "moved.json"
+        rec.write_text(json.dumps({"/legislator/frederick-king-coos-1": "205005",
+                                   "/legislator/frederick-king-sd-9": "205005"}), encoding="utf-8")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            kept, unrecorded = B2.keep_moved(former, rec, links={"376486": ["205005"]})
+        said = out.getvalue()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            B2.keep_moved({"376486": dict(page, moved_from=[])}, rec)
+        unjoined = out.getvalue()
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert B2._member_address(page) == "/legislator/frederick-king-coos-1", B2._member_address(page)
+    assert kept == 1 and page.get("moved_from") == ["/legislator/frederick-king-sd-9"] and \
+        "WARNING" not in said, (kept, page.get("moved_from"), said)
+    assert "205005, who has no former page now" in unjoined, (
+        "the case no longer shows a recorded number lost without the joins")
+    src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
+    assert "keep_moved(former, links=links,\n" in src and \
+        "sitting={_member_address(m) for m in legs.values()" in src, (
+        "build_site_v2 no longer hands keep_moved the joins and the sitting members' addresses: a "
+        "recorded address of a joined number would stop answering, or a live page's would be "
+        "answered with a 301")
+    # A pair joined and then parted: each page's address recorded for the
+    # other's number. Neither live page answers the other's address with a
+    # 301, nor a sitting member's; both said.
+    sen = dict(page, id="205005", chamber="S", county="", district="1", county_abbr="",
+               slug="frederick-king-sd-1", moved_from=[])
+    house = dict(page, id="376486", moved_from=[])
+    root = Path(tempfile.mkdtemp(prefix="gr-moves-"))
+    try:
+        rec = root / "moved.json"
+        rec.write_text(json.dumps({"/legislator/frederick-king-coos-1": "205005",
+                                   "/legislator/frederick-king-sd-1": "376486",
+                                   "/legislator/seth-king-coos-1": "376486"}), encoding="utf-8")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            crossed, _ = B2.keep_moved({"205005": sen, "376486": house}, rec, links={},
+                                       sitting={"/legislator/seth-king-coos-1"})
+        said = out.getvalue()
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert crossed == 0 and sen["moved_from"] == [] and house["moved_from"] == [] and \
+        said.count("is the address of another page now") == 3, (
+        f"a live page's address answered with a 301: {crossed}, {sen['moved_from']}, "
+        f"{house['moved_from']}, {said!r}")
+    # Each chamber of a joined page named with its years; one chamber's page
+    # and a sitting member's as they were.
+    m = {"former": True, "display_full": "Sen. Jeb Bradley (R - SD3)", "chamber": "S",
+         "served": {"first": "3/1/1999", "last": "6/1/2024"}}
+    two = {"service": [{"chamber": "H", "spans": [[1999, 2002]]},
+                       {"chamber": "S", "spans": [[2009, 2024]]}]}
+    d = BL.describe(m, two)
+    assert d.startswith("Sen. Jeb Bradley (R - SD3) served in the New Hampshire House of "
+                        "Representatives, 1999 to 2002, and Senate, 2009 to 2024. "), d
+    split = {"service": [{"chamber": "H", "spans": [[1999, 2000], [2003, 2008]]},
+                         {"chamber": "S", "spans": [[2001, 2002]]}]}
+    assert "House of Representatives, 1999 to 2000 and 2003 to 2008, and Senate, 2001 to 2002." \
+        in BL.describe(dict(m, chamber="H"), split), BL.describe(dict(m, chamber="H"), split)
+    three = {"service": [{"chamber": "H", "spans": [[1999, 2002], [2009, 2014], [2017, 2018]]},
+                         {"chamber": "S", "spans": [[2003, 2004]]}]}
+    assert "House of Representatives, 1999 to 2002, 2009 to 2014 and 2017 to 2018, and Senate, " \
+        "2003 to 2004." in BL.describe(dict(m, chamber="H"), three), \
+        BL.describe(dict(m, chamber="H"), three)
+    one = {"service": [{"chamber": "S", "spans": [[2009, 2024]]}]}
+    for r in (one, {}, None):
+        assert BL.describe(m, r) == BL.describe(m), (r, BL.describe(m, r))
+    assert "served in the New Hampshire Senate, 1999 to 2024." in BL.describe(m), BL.describe(m)
+    sitting = {"display_full": "Sen. Cindy Rosenwald (D - SD13)", "chamber": "S", "towns": ["Nashua"]}
+    assert BL.describe(sitting, two) == BL.describe(sitting), BL.describe(sitting, two)
+    src = _paths.locate("build_legislator_pages.py").read_text(encoding="utf-8")
+    assert "description=describe(m, rec)" in src, (
+        "the member pages no longer hand describe their own record: a joined page's description "
+        "names one chamber")
+    # The directory's line and the site search's entry: the seat with its own
+    # chamber's years, then the other chamber's; one chamber's as before.
+    jeb = {"id": "36", "slug": "jeb-bradley-sd-3", "name": "Bradley, Jeb", "chamber": "S",
+           "party": "R", "district_label": "SD3", "display_plain": "Sen. Jeb Bradley",
+           "served": {"first": "3/1/1999", "last": "6/1/2024",
+                      "terms": ["1999-2000", "2001-2002", "2009-2010", "2023-2024"]},
+           "member_ids": ["36", "374827"], **two}
+    assert BI.chamber_years(jeb, "SD3") == ["SD3", "Senate 2009–2024", "House 1999–2002"], \
+        BI.chamber_years(jeb, "SD3")
+    # The page's own chamber first, whichever the record lists first; every
+    # span of a chamber, and no seat where none is known.
+    rep = dict(jeb, chamber="H", service=three["service"])
+    assert BI.chamber_years(rep, "Rock 6") == [
+        "Rock 6", "House 1999–2002, 2009–2014, 2017–2018", "Senate 2003–2004"], \
+        BI.chamber_years(rep, "Rock 6")
+    assert BI.chamber_years(dict(rep, service=three["service"][::-1]), "") == [
+        "House 1999–2002, 2009–2014, 2017–2018", "Senate 2003–2004"], \
+        BI.chamber_years(dict(rep, service=three["service"][::-1]), "")
+    assert BI.chamber_years(dict(jeb, service=one["service"]), "SD3") is None
+    assert BI.chamber_years({k: v for k, v in jeb.items() if k != "service"}, "SD3") is None
+    root = Path(tempfile.mkdtemp(prefix="gr-movers-"))
+    try:
+        site = root / "site"
+        (site / "legislator").mkdir(parents=True)
+        (site / "legislator" / "jeb-bradley-sd-3.html").write_text("x", encoding="utf-8")
+        alone = {"id": "41", "slug": "nancy-alone-sd-24", "name": "Alone, Nancy", "chamber": "S",
+                 "party": "R", "district_label": "SD24", "display_plain": "Sen. Nancy Alone",
+                 "served": {"terms": ["2011-2012", "2015-2016"], "last": "6/1/2016"}}
+        (site / "legislator" / "nancy-alone-sd-24.html").write_text("x", encoding="utf-8")
+        (site / "former.json").write_text(json.dumps([jeb, alone]), encoding="utf-8")
+        BI.former_page(site, "https://x", [])
+        page = next(site.rglob("former-legislators.html")).read_text(encoding="utf-8")
+        rules = BP.moved_members(site)
+        found = {r[3].rsplit("/", 1)[-1].removesuffix(".html"): r[2]
+                 for r in BI.find_index(site, [], {}) if r and r[0] == "former"}
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert "R, SD3 · Senate 2009–2024 · House 1999–2002</span>" in page and \
+        "R, SD24, 2011–2016</span>" in page, re.findall(r'class="dirstatus">([^<]*)<', page)
+    assert rules == "/legislators/374827.json /legislators/36.json 301\n", (
+        f"a joined number's data has no 301 to the page's: moved_members wrote {rules!r}")
+    assert found.get("jeb-bradley-sd-3") == "SD3 · Senate 2009–2024 · House 1999–2002" \
+        and found.get("nancy-alone-sd-24") == "Senate · SD24 · 2011–2016", found
+    src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
+    assert 'row["service"] = ML.service(mv)' in src, (
+        "former.json's rows no longer carry each chamber's years for a joined page")
+    assert re.search(r"mv = sorted\(\[v for x in \(mid, \*joined\)[^\n]*\n\s*key=service_order, "
+                     r"reverse=True\)", src), (
+        "a member's vote list is no longer newest by term: 1999-S-109, dated 2009, would head the "
+        "votes of every senator of 1999 who cast it")
+    return "ok", ("a misdated 1999 Senate ballot no longer makes King's page the Senate's or moves "
+                  "Carl Johnson to SD3; a recorded address follows its number onto the joined page "
+                  "without a warning; a joined number's JSON answers with the page's; a joined "
+                  "page's description and directory line name the House and the Senate with "
+                  "their years")
+
+
 @check("session", "the seat of a term is the one its bills print, else the ballots' in the "
                   "member's last term only, else none: never a later record's seat on an "
                   "earlier term", needs=("build_site_v2", "build_session_pages"))
@@ -70061,11 +70648,17 @@ def _drawn_on_a_weekend():
 
 # The harness of _same_number_one_bill: app.js as the bill search, two bills
 # of one number in two terms (rows.json, records.json beside it), the page
-# opened at process.argv[2] ("?q=HB703", or with a term), All Terms chosen,
-# and then the steps in process.argv[3] -- "click:<year>" (a result's number,
-# clicked as a reader clicks it), "back" (to the list) and "forward:<year>"
-# (to the entry focusBill pushed for that year's bill). After each, what the
-# page drew, the address it pushed and the records it asked for, as JSON.
+# opened at process.argv[2] ("?q=HB703", or with a term), All Terms chosen --
+# unless that address names a bill after a "#", which it opens as it stands --
+# and then the steps in process.argv[3]: "click:<year>" (a result's number,
+# clicked as a reader clicks it), "back" (to the list), "forward:<year>" and
+# "pop:<year>" (history, to the entry focusBill pushed for that year's bill),
+# "search:<words>" (typed in the box, then Return), "gloss:<year>" (a click
+# on the words of a glossary tooltip in the head of that year's bill, open)
+# and "look:<year>" (nothing done: the bill the address opened). After each,
+# what the page drew, the address it pushed, what it asked for, the bill
+# whose Cite and Report row (#pageacts) is up and what the picker reads, as
+# JSON.
 _SAME_NUMBER_HARNESS = r"""
 require("./stub.js");
 const fs = require("fs");
@@ -70073,13 +70666,28 @@ const rows = JSON.parse(fs.readFileSync("./rows.json", "utf8"));
 const recs = JSON.parse(fs.readFileSync("./records.json", "utf8"));
 const terms = [...new Set(rows.map(r => r.term))].sort().reverse();
 const [, , start, steps] = process.argv;
-location.pathname = "/bills"; location.search = start; location.href = "https://x/bills" + start;
+const [qs, named = ""] = start.split("#");
+location.pathname = "/bills"; location.search = qs; location.hash = named ? "#" + named : "";
+location.href = "https://x/bills" + start;
+// THE CITE AND REPORT ROW (focusActions): fetched from the bill's own page,
+// which says whose it is, and put before the results; the stub's
+// getElementById would otherwise hand back a row for any id, and none would
+// ever be fetched.
+let acts = null;
+const byId = document.getElementById.bind(document);
+document.getElementById = id => (id === "pageacts" ? acts : byId(id));
+document.importNode = n => { const r = document.createElement("div"); r.bill = n.bill;
+  r.remove = () => { if (acts === r) acts = null; }; return r; };
+document.querySelector("#results").before = r => { acts = r; };
 const docOn = {}, winOn = {};
 document.addEventListener = (t, f) => (docOn[t] = docOn[t] || []).push(f);
 globalThis.addEventListener = (t, f) => (winOn[t] = winOn[t] || []).push(f);
-const pushed = [];
-history.pushState = (s, _t, u) => { pushed.push(String(u)); history.state = s;
+const pushed = [], entries = [];
+history.pushState = (s, _t, u) => { pushed.push(String(u)); entries.push({u: String(u), s}); history.state = s;
   const p = new URL(String(u), "https://x"); location.pathname = p.pathname; location.search = p.search; };
+// A record held on its way (clickslow), let go by "release": the reader who
+// opens a bill and goes Back before its record arrives.
+const holding = new Set(), waiting = [];
 history.replaceState = (s, _t, u) => { if (u) { const p = new URL(String(u), "https://x");
   location.pathname = p.pathname; location.search = p.search; } };
 let asked = [];
@@ -70089,12 +70697,15 @@ globalThis.fetch = async u => { const p = new URL(u, "https://x").pathname.repla
   if (p === "/meta.json") return ok({terms});
   const m = /^\/idx\/(.+)\.json$/.exec(p);
   if (m && terms.includes(decodeURIComponent(m[1]))) return ok(rows.filter(r => r.term === decodeURIComponent(m[1])));
-  if (p in recs) return ok('<script type="application/json" id="gr-data">' + JSON.stringify(recs[p]) + "</script>");
+  if (p in recs) { const page = () => ok('<script type="application/json" id="gr-data">' + JSON.stringify(recs[p]) + "</script>");
+    return holding.has(p) ? new Promise(res => waiting.push(() => res(page()))) : page(); }
   return {ok: false, status: 404, statusText: "Not Found", json: async () => { throw new Error(p + " 404"); },
           text: async () => ""}; };
 globalThis.DOMParser = class { parseFromString(h) {
   const m = /id="gr-data">([\s\S]*?)<\/script>/.exec(h);
-  return {getElementById: id => (id === "gr-data" && m ? {textContent: m[1]} : null),
+  const bill = m ? String(JSON.parse(m[1]).title).split("-")[0] : "";
+  return {getElementById: id => (!m ? null : id === "gr-data" ? {textContent: m[1]}
+                                 : id === "pageacts" ? {bill} : null),
           querySelector: () => null}; } };
 const ticks = async n => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
 const errs = []; process.on("unhandledRejection", e => errs.push(String((e && e.message) || e)));
@@ -70107,24 +70718,85 @@ const click = year => { const row = rows.find(r => String(r.year) === year);
   const target = {dataset: {}, closest: s => (s === "a.cnum" ? link : null), getAttribute: () => null};
   (docOn.click || []).forEach(f => f({target, button: 0, metaKey: false, ctrlKey: false, shiftKey: false,
                                       altKey: false, preventDefault(){}, stopPropagation(){}})); };
+// A click on the words of a glossary tooltip, as components.js arm() draws
+// one in a bill's head: span.termpop inside span.term[data-term="FN"], in the
+// open card; and on a card's Bill Text tab. Its closest() matches the
+// selectors a handler asks of it -- tags, ids, classes, [attr] and
+// [attr="v"], :not(), descendants and lists -- up the chain, as a browser's
+// would; any other selector (a child or sibling combinator) matches nothing.
+const node = (tag, cls, attrs, up) => { const n = {tag, cls, attrs, up};
+  const ds = {}; for (const [k, v] of Object.entries(attrs))
+    if (k.startsWith("data-")) ds[k.slice(5).replace(/-(\w)/g, (_, c) => c.toUpperCase())] = v;
+  n.el = {tagName: tag.toUpperCase(), id: attrs.id || "", dataset: ds, textContent: "",
+          getAttribute: k => (k in attrs ? attrs[k] : null), classList: {contains: c => cls.includes(c)},
+          closest: s => { for (let p = n; p; p = p.up) if (s.split(",").some(x => under(p, x.trim()))) return p.el;
+                          return null; }};
+  return n; };
+// "A B": the node is B, and some node above it is A.
+function under(n, s) {
+  const parts = s.split(/\s+/);
+  if (parts.some(x => /[>+~]/.test(x)) || !fits(n, parts[parts.length - 1])) return false;
+  let k = parts.length - 2;
+  for (let p = n.up; p && k >= 0; p = p.up) if (fits(p, parts[k])) k--;
+  return k < 0;
+}
+function fits(n, s) {
+  const nots = []; s = s.replace(/:not\(([^)]*)\)/g, (_, x) => (nots.push(x), ""));
+  if (!s || /[\s>+~:]/.test(s)) return false;
+  const tag = /^[a-z][a-z0-9]*/i.exec(s);
+  if (tag && tag[0].toLowerCase() !== n.tag) return false;
+  for (const c of s.match(/\.[\w-]+/g) || []) if (!n.cls.includes(c.slice(1))) return false;
+  for (const i of s.match(/#[\w-]+/g) || []) if (n.attrs.id !== i.slice(1)) return false;
+  for (const a of s.match(/\[[^\]]+\]/g) || []) { const [k, v] = a.slice(1, -1).split("=");
+    if (!(k in n.attrs) || (v !== undefined && n.attrs[k] !== v.replace(/^["']|["']$/g, ""))) return false; }
+  return !nots.some(x => fits(n, x.trim()));
+}
+const gloss = year => { const row = rows.find(r => String(r.year) === year);
+  const res = node("div", [], {id: "results"}, null);
+  const card = node("div", ["card", "focus", "open"], {"data-id": row.id}, res);
+  const h1 = node("h1", ["rh1"], {}, node("div", ["rhead"], {}, card));
+  const pop = node("span", ["termpop"], {id: "gr-term-1", role: "tooltip"},
+                   node("span", ["term"], {"data-term": "FN"}, h1));
+  const target = node("b", [], {}, pop).el;
+  (docOn.click || []).forEach(f => f({target, button: 0, detail: 1, metaKey: false, ctrlKey: false,
+                                      shiftKey: false, altKey: false, preventDefault(){}, stopPropagation(){}})); };
+// The open card's Bill Text tab (data-t="6"), as cardHtml draws its tabs.
+const textTab = year => { const row = rows.find(r => String(r.year) === year);
+  const card = node("div", ["card", "focus", "open"], {"data-id": row.id}, node("div", [], {id: "results"}, null));
+  const target = node("button", ["tab"], {"data-t": "6", role: "tab"}, node("div", ["tabs"], {}, card)).el;
+  (docOn.click || []).forEach(f => f({target, button: 0, detail: 1, metaKey: false, ctrlKey: false,
+                                      shiftKey: false, altKey: false, preventDefault(){}, stopPropagation(){}})); };
 (async () => {
   try { (0, eval)(fs.readFileSync("./page.js", "utf8")); }
   catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
   await ticks(40);
-  const year = document.querySelector("#year"); year.value = "all";
-  year.fire("change", {target: year}); await ticks(60);
+  const year = document.querySelector("#year");
+  if (!named) { year.value = "all"; year.fire("change", {target: year}); await ticks(60); }
   const out = [];
   for (const step of steps.split(",")) {
     asked = []; const was = pushed.length;
     const [what, y] = step.split(":");
+    let replayed = null;
     if (what === "click") click(y);
+    else if (what === "clickslow") { holding.add(`/bill/${y}/${rows.find(r => String(r.year) === y).id.toLowerCase()}`);
+      click(y); }
+    else if (what === "release") { holding.clear(); waiting.splice(0).forEach(f => f()); }
     else if (what === "back") { location.pathname = "/bills"; history.state = null;
       (winOn.popstate || []).forEach(f => f({state: null})); }
-    else if (what === "forward") { const row = rows.find(r => String(r.year) === y);
-      location.pathname = `/bill/${y}/${row.id.toLowerCase()}`;
-      (winOn.popstate || []).forEach(f => f({state: {focus: row.id, term: row.term}})); }
+    else if (what === "forward" || what === "pop") { const row = rows.find(r => String(r.year) === y);
+      // The entry focusBill pushed for that bill, as the browser hands it back.
+      const want = `/bill/${y}/${row.id.toLowerCase()}`;
+      const got = [...entries].reverse().find(e => e.u.endsWith(want));
+      replayed = !!got;
+      location.pathname = want; history.state = got ? got.s : {focus: row.id, term: row.term};
+      (winOn.popstate || []).forEach(f => f({state: history.state})); }
+    else if (what === "search") { const q = document.querySelector("#q"); q.value = y;
+      q.fire("keydown", {key: "Enter"}); }
+    else if (what === "gloss") gloss(y);
+    else if (what === "text") textTab(y);
     await ticks(60);
-    out.push({step, html: document.querySelector("#results").innerHTML, pushed: pushed.slice(was), asked});
+    out.push({step, html: document.querySelector("#results").innerHTML, pushed: pushed.slice(was), asked,
+              acts: acts && acts.bill || "", pick: year.value, replayed});
   }
   process.stdout.write("\n@@" + JSON.stringify({out, errs}));
 })().catch(e => { console.log("RUN " + e.message); process.exit(1); });
@@ -70132,8 +70804,10 @@ const click = year => { const row = rows.find(r => String(r.year) === year);
 
 
 @check("frontend", "two bills of one number in two terms stay two: with All Terms chosen, the "
-                   "result clicked opens that bill -- its head, its record, its address -- in "
-                   "either order, whichever term's index arrived first, and on Back and Forward")
+                   "bill opened -- by a click, Back or Forward, a search then Back, an address "
+                   "-- is drawn whole as itself: its head, its record, its address, its Cite "
+                   "row, in either order, whichever term's index arrived first; and a glossary "
+                   "tooltip leaves the term alone")
 def _same_number_one_bill():
     """THE OWNER'S HB 703 (6 November 2026). With All Terms chosen, HB 703
     is two bills: 2020's on prescription drugs (Rep. Edward Butler, Chapter 4
@@ -70145,14 +70819,40 @@ def _same_number_one_bill():
     owner saw. focusBill now opens the bill in the term of the link clicked,
     holding the reader's own until the bill is closed.
 
+    THE SAME PAGE BY OTHER ROADS (that day's review). A search typed with
+    the bill open, then Back to it, and an address naming the bill with a
+    search it is not in, drew the first HB 703 of the index over the bill's
+    record: render found the open bill by its number alone where the list
+    did not hold it, and now finds it as yearOf does. The words of a
+    glossary tooltip in its head set the term to "FN", since the term
+    buttons' handler took anything with a data-term, and the tooltip's
+    mark has one; it takes the buttons now. And history taken straight from
+    one HB 703 to the other, by the Back button's list of pages, kept the
+    first's Cite and Report row: focusActions kept it under the number, and
+    keeps it under the year and number now. A record that arrived after the
+    reader had gone Back was stored under the key the term then gave the
+    number -- the other bill's -- so the other bill, opened next, drew its
+    head over the first one's record: openBill keeps the key it asked with.
+    And the Bill Text tab asked for the versions of the first bill of the
+    number in the index, not the one drawn.
+
     Run in node over two rows of one number, each with its own record, each
-    marked in what the head draws (the row's title and sponsor) and what the
-    body draws (the record's title, narrative and first event): with All
-    Terms chosen, a click on each result in both orders, from the newest
-    term's index first and from the older's, Back to the list between them,
-    and Forward to an entry pushed for the older bill. Every step must draw
-    the bill clicked and none of the other, push that bill's own address and
-    ask for that bill's record only; Back must draw the list of both again."""
+    marked in what the head draws (the row's title and sponsor), what the
+    body draws (the record's title, narrative and first event) and what its
+    own page's Cite and Report row is: with All Terms chosen, a click on
+    each result in both orders, from the newest term's index first and from
+    the older's, Back to the list between them, and Forward to an entry
+    pushed for the older bill; a search typed and Back to the bill; the
+    address of each bill with a search for another; a click in a glossary
+    tooltip in each bill's head; Back from one bill to the other, by the
+    entry focusBill pushed; a record held until the reader has gone Back,
+    then the other bill opened; and each bill's Bill Text tab. Every step
+    must draw the bill opened and none of the other, its own Cite row, push
+    that bill's own address where it was clicked and ask for that bill's
+    record and versions only, never an index of no term; the tooltip must
+    leave the picker as it was; Back and a search must draw the list, both
+    bills in it where it names them, with no record and no Cite row over
+    it."""
     built = _fixture_site_shared()[0] / "site"
     row0 = json.loads((built / "idx" / "2025-2026.json").read_text(encoding="utf-8"))[0]
     page = (built / "bill" / str(row0["year"]) / f"{row0['id'].lower()}.html").read_text(encoding="utf-8")
@@ -70167,13 +70867,37 @@ def _same_number_one_bill():
                          sponsor_label=f"Rep. {sponsor} {mk}-ROW"))
         events = [dict(e, text=f"{mk}-REC event {i}") for i, e in enumerate(rec0.get("events") or [])] \
             or [{"date": f"{year}-01-03", "text": f"{mk}-REC event 0", "routine": False}]
+        # nver 2: each has an index of versions to ask for (hasVersionIndex)
         recs[f"/bill/{year}/hb703"] = dict(rec0, id="HB703", year=int(year), term=term,
                                            title=f"{mk}-REC title", narrative=f"{mk}-REC narrative",
-                                           events=events)
+                                           events=events, nver=2)
     files = {"rows.json": json.dumps(rows), "records.json": json.dumps(recs)}
+    terms = {r["term"] for r in rows}
     plans = (("?q=HB703", "click:2020,back,click:2025"),
              ("?q=HB703", "click:2025,back,click:2020,back,forward:2020"),
-             ("?term=2019-2020&q=HB703", "click:2025,back,click:2020"))
+             ("?term=2019-2020&q=HB703", "click:2025,back,click:2020"),
+             # A search typed with the bill open, then Back to the bill: the
+             # bill is not in the list the search drew (the review of 6
+             # November 2026, which found the owner's page this way).
+             ("?q=HB703", "click:2020,search:HB1,pop:2020"),
+             ("?term=2019-2020&q=HB703", "click:2025,search:HB1,pop:2025"),
+             # An address naming the bill, and a search it is not in.
+             ("?q=HB1&term=all#2020/HB703", "look:2020"),
+             ("?q=HB1&term=all#2025/HB703", "look:2025"),
+             # The words of a glossary tooltip in the open bill's head.
+             ("?q=HB703", "click:2020,gloss:2020,back,click:2025,gloss:2025"),
+             # History taken straight from one to the other, as the Back
+             # button's list of pages takes it.
+             ("?q=HB703", "click:2025,search:HB703,click:2020,pop:2025"),
+             ("?term=2019-2020&q=HB703", "click:2020,search:HB703,click:2025,pop:2020"),
+             # A record that arrives after the reader went Back, then the
+             # other bill opened: the owner's page on a slow connection (the
+             # reviews of 6 November 2026).
+             ("?q=HB703", "clickslow:2020,back,release,click:2025"),
+             ("?term=2019-2020&q=HB703", "clickslow:2025,back,release,click:2020"),
+             # The Bill Text tab asks for the open bill's versions.
+             ("?q=HB703", "click:2020,text:2020,back,click:2025,text:2025"),
+             ("?term=2019-2020&q=HB703", "click:2025,text:2025"))
     bad, steps = [], 0
     for start, plan in plans:
         run = _node_app(_SAME_NUMBER_HARNESS, files=files, args=(start, plan))
@@ -70181,31 +70905,59 @@ def _same_number_one_bill():
             return "skip", "app.js, dom_stub.js or node is not here"
         if run["errs"]:
             bad.append(f"from {start}, {plan}: left unhandled: {run['errs'][:2]}")
+        pick = None
         for got in run["out"]:
             steps += 1
             what, _, y = got["step"].partition(":")
             html, where = got["html"], f"from /bills{start}, {plan}, at {got['step']}"
-            if what == "back":
-                if not all(f"{m}-ROW" in html for m in marks.values()):
+            for p in got["asked"]:
+                m = re.match(r"/idx/(.+)\.json$", p)
+                if m and m.group(1) not in terms:
+                    bad.append(f"{where}: asked for {p}, the index of no term")
+            if what in ("back", "search", "release"):
+                both = what in ("back", "release") or y.upper() == "HB703"
+                if both and not all(f"{m}-ROW" in html for m in marks.values()):
                     bad.append(f"{where}: the list of both bills is not drawn again under All Terms")
+                if any(f"{m}-REC" in html for m in marks.values()):
+                    bad.append(f"{where}: a bill's record is still drawn over the list")
+                if got["acts"]:
+                    bad.append(f"{where}: the {got['acts']} bill's Cite and Report row is still up")
+                pick = got["pick"]
                 continue
             other = next(o for o in marks if o != y)
+            # A bill whose record is still on its way draws its head alone;
+            # one on its Bill Text tab draws the versions where the record was.
+            want = ("ROW",) if what in ("clickslow", "text") else ("ROW", "REC")
             for part in ("ROW", "REC"):
-                if f"{marks[y]}-{part}" not in html:
+                if part in want and f"{marks[y]}-{part}" not in html:
                     bad.append(f"{where}: the {y} bill's {'head' if part == 'ROW' else 'record'} "
                                "is not drawn")
                 if f"{marks[other]}-{part}" in html:
                     bad.append(f"{where}: the {other} bill's {'head' if part == 'ROW' else 'record'} "
                                "is drawn")
-            if what == "click" and not (len(got["pushed"]) == 1
-                                        and got["pushed"][0].endswith(f"/bill/{y}/hb703")):
+            if what != "clickslow" and got["acts"] != marks[y]:
+                bad.append(f"{where}: the Cite and Report row up is "
+                           f"{got['acts'] or 'none'}'s, not the {y} bill's ({marks[y]})")
+            if what in ("click", "clickslow") and not (len(got["pushed"]) == 1
+                                                       and got["pushed"][0].endswith(f"/bill/{y}/hb703")):
                 bad.append(f"{where}: pushed {got['pushed']}, not /bill/{y}/hb703")
+            if what in ("forward", "pop") and not got["replayed"]:
+                bad.append(f"{where}: no entry was pushed for the {y} bill to go back to")
+            if what == "text" and (f"/versions/{y}/HB703.json" not in got["asked"]
+                                   or f"/versions/{other}/HB703.json" in got["asked"]):
+                bad.append(f"{where}: the Bill Text tab asked for {[p for p in got['asked'] if 'versions' in p]}, "
+                           f"not /versions/{y}/HB703.json")
+            if what == "gloss" and got["pick"] != pick:
+                bad.append(f"{where}: the picker reads {got['pick']!r}, not {pick!r}")
             if f"/bill/{other}/hb703" in got["asked"]:
                 bad.append(f"{where}: asked for the {other} bill's record: {got['asked']}")
+            pick = got["pick"]
     assert not bad, f"{len(bad)} wrong:\n  " + "\n  ".join(bad[:8])
     return "ok", (f"HB 703 of 2020 and of 2025 under All Terms: {steps} steps over {len(plans)} "
-                  "orders, each drawing, pushing and fetching only the bill clicked, Back drawing "
-                  "both again")
+                  "orders -- clicks, Back, Forward, a search typed then Back, an address with "
+                  "another search, a glossary tooltip, a jump from one to the other, a record "
+                  "arriving after Back, the Bill Text tab -- each drawing, pushing and fetching "
+                  "only the bill opened, its Cite row its own, Back drawing both again")
 
 
 # The harness of _committee_term_to_come: app.js as committee H43's own page,
@@ -85092,6 +85844,134 @@ def _speaker_other_chamber(BSP):
     assert later is None, f"Rosenwald matched on a House day of 2021, when she sat in the Senate: {later!r}"
     assert senate == "cindy-rosenwald-13"
     return "ok", "Rosenwald on a House day of 2017; nobody of that name on one of 2021"
+
+
+@check("session", "a former member whose one page joins both chambers is matched in each chamber "
+       "in the terms they sat in it, so a namesake does not take their days",
+       needs=("build_session_pages",))
+def _joined_mover_session_days(BSP):
+    """THE DEEP WALK OF 6 NOVEMBER 2026, on dry run 181's preview: 44 House
+    session days named the wrong member. A former member who sat in both
+    chambers has one page, filed under one chamber, and the pass for the
+    other chamber read careers.json under the page's own number only, while
+    the other chamber's years are under the number joined to it. So
+    Frederick King's House years (2003-2008) and Melanie Levesque's
+    (2007-2014) counted nowhere in the House. Every "Rep. King" of them went
+    to Seth King and every "Rep. Levesque" to Cassandra Levesque, sitting
+    members, the only ones of those names left. "Rep. Jeb Bradley" went to
+    Paula Bradley, though the journal gave the first name.
+
+    Here: King's page under the House (as fix/movers-term keeps it) and
+    Levesque's under the Senate, each joined to their other number, and a
+    sitting namesake of each, careers.json in its real shape. Each is
+    matched in each chamber in the terms they sat in it, the namesakes in
+    theirs, and nobody in a term where neither King sat.
+
+    And the review of that night: a joined page whose numbers careers.json
+    does not hold (Leo Fraser here) counts in its page's terms, not in every
+    term and not in none; and a sitting senator's House number, in her
+    member_ids (Tara Reardon, House 1999-2010), files her under the House in
+    those terms, as six sitting senators are on the real record."""
+    root = Path(tempfile.mkdtemp(prefix="gr-joined-"))
+    keep = BSP._careers
+    try:
+        (root / "legislators.json").write_text(json.dumps([
+            {"id": "11001", "slug": "seth-king-coos-4", "name": "King, Seth", "chamber": "H"},
+            {"id": "11002", "slug": "cassandra-levesque-straf-4", "name": "Levesque, Cassandra",
+             "chamber": "H"},
+            {"id": "11003", "slug": "marilyn-fraser-merr-1", "name": "Fraser, Marilyn", "chamber": "H"},
+            {"id": "11461", "slug": "tara-reardon-sd-15", "name": "Reardon, Tara", "chamber": "S",
+             "member_ids": ["11461", "376162"]}]), encoding="utf-8")
+        (root / "former.json").write_text(json.dumps([
+            {"id": "376486", "slug": "frederick-king-coos-1", "name": "King, Frederick", "chamber": "H",
+             "member_ids": ["376486", "205005"],
+             "served": {"terms": ["1999-2000", "2003-2004", "2005-2006", "2007-2008"]}},
+            {"id": "9405", "slug": "melanie-levesque-sd-12", "name": "Levesque, Melanie", "chamber": "S",
+             "member_ids": ["9405", "376690"],
+             "served": {"terms": ["2007-2008", "2013-2014", "2019-2020"]}},
+            {"id": "371138", "slug": "leo-fraser-merr-37", "name": "Fraser, Leo", "chamber": "H",
+             "member_ids": ["371138", "202333"],
+             "served": {"terms": ["1999-2000", "2001-2002", "2003-2004"]}}]), encoding="utf-8")
+        table = {"376486": {"by_term": {t: {"chambers": ["H"]}
+                                        for t in ("2003-2004", "2005-2006", "2007-2008")}},
+                 "205005": {"by_term": {"1999-2000": {"chambers": ["S"]}}},
+                 "209108": {"person_id": "9405", "employee_nos": ["209108"],
+                            "by_term": {"2019-2020": {"chambers": ["S"]}}},
+                 "376690": {"by_term": {t: {"chambers": ["H"]} for t in ("2007-2008", "2013-2014")}},
+                 "218765": {"person_id": "11461", "employee_nos": ["218765"],
+                            "by_term": {"2025-2026": {"chambers": ["S"]}}},
+                 "376162": {"by_term": {t: {"chambers": ["H"]} for t in ("1999-2000", "2001-2002")}}}
+        (root / "generated").mkdir()
+        (root / "generated" / "careers.json").write_text(json.dumps(table), encoding="utf-8")
+        import os as _os
+        here = Path.cwd()
+        _os.chdir(root)
+        try:
+            careers = keep()
+        finally:
+            _os.chdir(here)
+        BSP._careers = lambda: careers
+        m = BSP.Members(root)
+        got = {}
+        for term, body, said in (("2005-2006", "H", "Frederick King"), ("1999-2000", "S", "King"),
+                                 ("2025-2026", "H", "King"),
+                                 ("2013-2014", "H", "Melanie Levesque"), ("2019-2020", "S", "Levesque"),
+                                 ("2025-2026", "H", "Levesque"),
+                                 ("2003-2004", "H", "Leo Fraser"), ("2025-2026", "H", "Fraser"),
+                                 ("2001-2002", "H", "Tara Reardon"), ("2025-2026", "S", "Reardon")):
+            m.term = term
+            got[(term, body, said)] = m.slug(body, said)
+        # The page's own chamber counts its own terms only: King sat in the
+        # Senate in 1999-2000, and is no House King of it.
+        m.term = "1999-2000"
+        house_1999 = m.serving(m.by_last.get(("H", "king"), []))
+        # The bare surname where the namesake also sits: the term's ballots
+        # say which King voted that term (by_ballot), as on a real night.
+        m.term, m.ballots = "2005-2006", {"2005-2006": {"376486": "Rep. Frederick King (R - Coos 1)"}}
+        got[("2005-2006", "H", "King")] = m.slug("H", "King")
+    finally:
+        BSP._careers = keep
+        shutil.rmtree(root, ignore_errors=True)
+    want = {("2005-2006", "H", "Frederick King"): "frederick-king-coos-1",
+            ("1999-2000", "S", "King"): "frederick-king-coos-1",
+            ("2025-2026", "H", "King"): "seth-king-coos-4",
+            ("2013-2014", "H", "Melanie Levesque"): "melanie-levesque-sd-12",
+            ("2019-2020", "S", "Levesque"): "melanie-levesque-sd-12",
+            ("2025-2026", "H", "Levesque"): "cassandra-levesque-straf-4",
+            ("2005-2006", "H", "King"): "frederick-king-coos-1",
+            # careers.json holds neither of Leo Fraser's numbers: his page's
+            # own terms, so he is a House Fraser of 2003-2004 and not of
+            # 2025-2026, where the sitting Marilyn Fraser is the only one
+            ("2003-2004", "H", "Leo Fraser"): "leo-fraser-merr-37",
+            ("2025-2026", "H", "Fraser"): "marilyn-fraser-merr-1",
+            # a sitting senator's House number, among her member_ids
+            ("2001-2002", "H", "Tara Reardon"): "tara-reardon-sd-15",
+            ("2025-2026", "S", "Reardon"): "tara-reardon-sd-15"}
+    bad = [f"{b} {t} {s!r} is {got.get((t, b, s))!r}, not {w!r}" for (t, b, s), w in want.items()
+           if got.get((t, b, s)) != w]
+    assert not bad, "a joined mover's days: " + "; ".join(bad)
+    assert "frederick-king-coos-1" not in house_1999, (
+        f"King counts as a House member of 1999-2000, when he sat in the Senate: {house_1999}")
+    # Silence is not success: no careers.json is said.
+    import contextlib
+    import io
+    empty = Path(tempfile.mkdtemp(prefix="gr-nocareers-"))
+    here = Path.cwd()
+    out = io.StringIO()
+    try:
+        _os.chdir(empty)
+        with contextlib.redirect_stdout(out):
+            none = keep()
+    finally:
+        _os.chdir(here)
+        shutil.rmtree(empty, ignore_errors=True)
+    assert none == {} and "WARNING" in out.getvalue() and "careers.json" in out.getvalue(), (
+        f"a missing careers.json is not said: {out.getvalue()!r}")
+    return "ok", ("Frederick King in the House in 2005 and the Senate in 1999, Melanie Levesque in "
+                  "the House in 2013 and the Senate in 2019, each by their own name, and the "
+                  "sitting Seth King and Cassandra Levesque where they are the only one; Leo "
+                  "Fraser, whom careers.json lacks, in his page's terms; the sitting Tara Reardon "
+                  "in her House years; a missing careers.json said")
 
 
 @check("session", "how the day began keeps the case of the member who led the Pledge",

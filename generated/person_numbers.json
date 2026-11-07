@@ -47,14 +47,16 @@
   {
    "person": "36",
    "numbers": [
-    "209078"
+    "209078",
+    "374827"
    ],
    "issued": "2026-10-30"
   },
   {
    "person": "37",
    "numbers": [
-    "209079"
+    "209079",
+    "375968"
    ],
    "issued": "2026-10-30"
   },
@@ -75,7 +77,8 @@
   {
    "person": "41",
    "numbers": [
-    "209088"
+    "209088",
+    "376631"
    ],
    "issued": "2026-10-30"
   },
@@ -97,14 +100,16 @@
   {
    "person": "44",
    "numbers": [
-    "209092"
+    "209092",
+    "376682"
    ],
    "issued": "2026-10-30"
   },
   {
    "person": "45",
    "numbers": [
-    "209093"
+    "209093",
+    "376444"
    ],
    "issued": "2026-10-30"
   },
@@ -118,7 +123,8 @@
   {
    "person": "47",
    "numbers": [
-    "209095"
+    "209095",
+    "376737"
    ],
    "issued": "2026-10-30"
   },
@@ -385,7 +391,8 @@
   {
    "person": "455",
    "numbers": [
-    "376188"
+    "376188",
+    "209055"
    ],
    "issued": "2026-10-30"
   },
@@ -3157,7 +3164,8 @@
   {
    "person": "7369",
    "numbers": [
-    "375849"
+    "375849",
+    "205010"
    ],
    "issued": "2026-10-30"
   },
@@ -4933,7 +4941,8 @@
   {
    "person": "9405",
    "numbers": [
-    "209108"
+    "209108",
+    "376690"
    ],
    "issued": "2026-10-30"
   },
@@ -5745,7 +5754,8 @@
   {
    "person": "9949",
    "numbers": [
-    "409049"
+    "409049",
+    "209082"
    ],
    "issued": "2026-10-30"
   },
@@ -7448,7 +7458,8 @@
   {
    "person": "202333",
    "numbers": [
-    "202333"
+    "202333",
+    "371138"
    ],
    "issued": "2026-10-30"
   },
@@ -7497,16 +7508,17 @@
   {
    "person": "205005",
    "numbers": [
-    "205005"
+    "205005",
+    "376486"
    ],
    "issued": "2026-10-30"
   },
   {
    "person": "205010",
-   "numbers": [
-    "205010"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "7369",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 7369: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "205015",
@@ -7608,10 +7620,10 @@
   },
   {
    "person": "209042",
-   "numbers": [
-    "209042"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "376100",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 376100: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209043",
@@ -7622,10 +7634,10 @@
   },
   {
    "person": "209044",
-   "numbers": [
-    "209044"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "375954",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 375954: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209045",
@@ -7643,17 +7655,17 @@
   },
   {
    "person": "209048",
-   "numbers": [
-    "209048"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "376291",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 376291: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209049",
-   "numbers": [
-    "209049"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "376013",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 376013: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209050",
@@ -7664,17 +7676,17 @@
   },
   {
    "person": "209051",
-   "numbers": [
-    "209051"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "376371",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 376371: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209052",
-   "numbers": [
-    "209052"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "376157",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 376157: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209053",
@@ -7692,45 +7704,45 @@
   },
   {
    "person": "209055",
-   "numbers": [
-    "209055"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "455",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 455: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209056",
-   "numbers": [
-    "209056"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "376117",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 376117: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209058",
-   "numbers": [
-    "209058"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "375976",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 375976: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209059",
-   "numbers": [
-    "209059"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "373134",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 373134: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209060",
-   "numbers": [
-    "209060"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "376142",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 376142: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209062",
-   "numbers": [
-    "209062"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "376311",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 376311: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209063",
@@ -7748,17 +7760,17 @@
   },
   {
    "person": "209065",
-   "numbers": [
-    "209065"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "376116",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 376116: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209066",
-   "numbers": [
-    "209066"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "376569",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 376569: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209067",
@@ -7783,24 +7795,24 @@
   },
   {
    "person": "209071",
-   "numbers": [
-    "209071"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "376564",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 376564: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209072",
-   "numbers": [
-    "209072"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "376666",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 376666: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209073",
-   "numbers": [
-    "209073"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "376778",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 376778: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209074",
@@ -7811,15 +7823,16 @@
   },
   {
    "person": "209075",
-   "numbers": [
-    "209075"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "376241",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 376241: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209077",
    "numbers": [
-    "209077"
+    "209077",
+    "373902"
    ],
    "issued": "2026-10-30"
   },
@@ -7832,10 +7845,10 @@
   },
   {
    "person": "209082",
-   "numbers": [
-    "209082"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "9949",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 9949: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "209084",
@@ -8105,10 +8118,10 @@
   },
   {
    "person": "371138",
-   "numbers": [
-    "371138"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "202333",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 202333: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "371294",
@@ -8232,7 +8245,8 @@
   {
    "person": "373134",
    "numbers": [
-    "373134"
+    "373134",
+    "209059"
    ],
    "issued": "2026-10-30"
   },
@@ -8357,10 +8371,10 @@
   },
   {
    "person": "373902",
-   "numbers": [
-    "373902"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "209077",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 209077: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "373910",
@@ -8504,10 +8518,10 @@
   },
   {
    "person": "374827",
-   "numbers": [
-    "374827"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "36",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 36: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "374843",
@@ -9086,7 +9100,8 @@
   {
    "person": "375954",
    "numbers": [
-    "375954"
+    "375954",
+    "209044"
    ],
    "issued": "2026-10-30"
   },
@@ -9134,10 +9149,10 @@
   },
   {
    "person": "375968",
-   "numbers": [
-    "375968"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "37",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 37: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "375971",
@@ -9170,7 +9185,8 @@
   {
    "person": "375976",
    "numbers": [
-    "375976"
+    "375976",
+    "209058"
    ],
    "issued": "2026-10-30"
   },
@@ -9338,7 +9354,8 @@
   {
    "person": "376013",
    "numbers": [
-    "376013"
+    "376013",
+    "209049"
    ],
    "issued": "2026-10-30"
   },
@@ -9583,7 +9600,8 @@
   {
    "person": "376100",
    "numbers": [
-    "376100"
+    "376100",
+    "209042"
    ],
    "issued": "2026-10-30"
   },
@@ -9639,14 +9657,16 @@
   {
    "person": "376116",
    "numbers": [
-    "376116"
+    "376116",
+    "209065"
    ],
    "issued": "2026-10-30"
   },
   {
    "person": "376117",
    "numbers": [
-    "376117"
+    "376117",
+    "209056"
    ],
    "issued": "2026-10-30"
   },
@@ -9772,7 +9792,8 @@
   {
    "person": "376142",
    "numbers": [
-    "376142"
+    "376142",
+    "209060"
    ],
    "issued": "2026-10-30"
   },
@@ -9821,7 +9842,8 @@
   {
    "person": "376157",
    "numbers": [
-    "376157"
+    "376157",
+    "209052"
    ],
    "issued": "2026-10-30"
   },
@@ -10304,7 +10326,8 @@
   {
    "person": "376241",
    "numbers": [
-    "376241"
+    "376241",
+    "209075"
    ],
    "issued": "2026-10-30"
   },
@@ -10619,7 +10642,8 @@
   {
    "person": "376291",
    "numbers": [
-    "376291"
+    "376291",
+    "209048"
    ],
    "issued": "2026-10-30"
   },
@@ -10752,7 +10776,8 @@
   {
    "person": "376311",
    "numbers": [
-    "376311"
+    "376311",
+    "209062"
    ],
    "issued": "2026-10-30"
   },
@@ -11095,7 +11120,8 @@
   {
    "person": "376371",
    "numbers": [
-    "376371"
+    "376371",
+    "209051"
    ],
    "issued": "2026-10-30"
   },
@@ -11556,10 +11582,10 @@
   },
   {
    "person": "376444",
-   "numbers": [
-    "376444"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "45",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 45: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "376445",
@@ -11829,10 +11855,10 @@
   },
   {
    "person": "376486",
-   "numbers": [
-    "376486"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "205005",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 205005: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "376487",
@@ -12271,7 +12297,8 @@
   {
    "person": "376564",
    "numbers": [
-    "376564"
+    "376564",
+    "209071"
    ],
    "issued": "2026-10-30"
   },
@@ -12306,7 +12333,8 @@
   {
    "person": "376569",
    "numbers": [
-    "376569"
+    "376569",
+    "209066"
    ],
    "issued": "2026-10-30"
   },
@@ -12676,10 +12704,10 @@
   },
   {
    "person": "376631",
-   "numbers": [
-    "376631"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "41",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 41: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "376633",
@@ -12852,7 +12880,8 @@
   {
    "person": "376666",
    "numbers": [
-    "376666"
+    "376666",
+    "209072"
    ],
    "issued": "2026-10-30"
   },
@@ -12928,10 +12957,10 @@
   },
   {
    "person": "376682",
-   "numbers": [
-    "376682"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "44",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 44: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "376683",
@@ -12977,10 +13006,10 @@
   },
   {
    "person": "376690",
-   "numbers": [
-    "376690"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "9405",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 9405: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "376691",
@@ -13250,10 +13279,10 @@
   },
   {
    "person": "376737",
-   "numbers": [
-    "376737"
-   ],
-   "issued": "2026-10-30"
+   "replaced_by": "47",
+   "issued": "2026-10-30",
+   "replaced": "2026-11-07",
+   "why": "one person with 47: the owner confirmed the pair on 2026-11-02 (corrections/member_corrections.json, same_person)"
   },
   {
    "person": "376738",
@@ -13496,7 +13525,8 @@
   {
    "person": "376778",
    "numbers": [
-    "376778"
+    "376778",
+    "209073"
    ],
    "issued": "2026-10-30"
   },
