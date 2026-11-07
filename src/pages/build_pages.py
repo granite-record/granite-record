@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.262
+# GRANITE_VERSION: 2026-09-04.263
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -4945,10 +4945,23 @@ def main():
              OT.members_elect(elect, today, lang)),
         ]
         of_panes = [p for p in of_panes if p[3]]
+        # SEVEN TABS ON ONE LINE (the owner, 7 November 2026): with
+        # Members-Elect the strip needed 1,282px of its 1,132 at 1280 and at
+        # 1440, and the new tab showed only its "M" behind the edge, in both
+        # languages. The tab says the short name -- "Federal (4)", "County
+        # (80)" -- and its panel's heading the whole one, which a screen
+        # reader walking the headings and a page read without the script
+        # still get. Measured on dry run 6 with the web fonts: 1,016px in
+        # English and 971 in Spanish, of 1,132.
+        short = {"federal": say(lang, "of.tab_short.federal", "Federal"),
+                 "executive": say(lang, "of.tab_short.executive", "Executive"),
+                 "judicial": say(lang, "of.tab_short.judicial", "Judicial"),
+                 "counties": say(lang, "of.tab_short.counties", "County")}
         of_tabs = "".join(
             f'<button type="button" role="tab" id="tab-{pid}" data-pane="{pid}" '
             f'aria-controls="{pid}" aria-selected="{"true" if i == 0 else "false"}" '
-            f'tabindex="{0 if i == 0 else -1}"{elect_attrs if pid == "members-elect" else ""}>{name}'
+            f'tabindex="{0 if i == 0 else -1}"{elect_attrs if pid == "members-elect" else ""}>'
+            f'{short.get(pid, name)}'
             + (f' <span class="ofn">({n:,})</span>' if n else "") + "</button>"
             for i, (pid, name, n, _h) in enumerate(of_panes))
         of_body = "".join(
@@ -4958,7 +4971,7 @@ def main():
             for pid, name, _n, inner in of_panes)
         leg_body = f"""<h1>{say(lang, "of.title", "Officials")}</h1>
 <p class="lead">{say(lang, "of.lead", "Everyone who represents your town, from your select board to\nCongress; the {n} sitting members of the New Hampshire House and\nSenate; and the state&rsquo;s other officials.", n=len(legs))}</p>
-{chrome.lang_note(lang)}<div class="twntabs oftabs" role="tablist" aria-label="{say(lang, "of.title", "Officials")}" hidden>{of_tabs}</div>
+{chrome.lang_note(lang)}<div class="twntabs oftabs" role="tablist" aria-label="{say(lang, "of.title", "Officials")}" data-retired="legislators" hidden>{of_tabs}</div>
 {of_body}
 {OFFICIALS_HASH_JS}{TOWN_TABS_JS}{OFFICIALS_MAP_JS}"""
         return shell(say(lang, "of.page_title", "Officials | Granite Record"), "officials.html",

@@ -444,7 +444,7 @@
   },
   "elect.elected": {
    "en": "Elected {day}",
-   "es": "Elegidos el {day}",
+   "es": "Elección del {day}",
    "state": "draft"
   },
   "elect.none": {
@@ -474,7 +474,7 @@
   },
   "elect.takes": {
    "en": "Takes office {day}.",
-   "es": "Asume el cargo el {day}.",
+   "es": "Toma de posesión: {day}.",
    "state": "draft"
   },
   "find.all_terms": {
@@ -22700,6 +22700,26 @@
   "of.tab.town": {
    "en": "My Town",
    "es": "Mi municipio",
+   "state": "draft"
+  },
+  "of.tab_short.counties": {
+   "en": "County",
+   "es": "Condado",
+   "state": "draft"
+  },
+  "of.tab_short.executive": {
+   "en": "Executive",
+   "es": "Ejecutivo",
+   "state": "draft"
+  },
+  "of.tab_short.federal": {
+   "en": "Federal",
+   "es": "Federal",
+   "state": "draft"
+  },
+  "of.tab_short.judicial": {
+   "en": "Judicial",
+   "es": "Judicial",
    "state": "draft"
   },
   "of.title": {

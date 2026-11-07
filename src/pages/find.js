@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.48
+// GRANITE_VERSION: 2026-09-16.49
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1384,6 +1384,12 @@ function ytMark(p){
     +"font:600 .75rem/1.5 var(--sans);letter-spacing:.02em;text-transform:none;"
     +"text-decoration:none;background:var(--pine-soft);color:var(--pine);vertical-align:.08em}"
     +".ytpanel a::after,.yt a::after{content:none !important}"
+    // IN A MEMBERS-ELECT BLOCK, ONLY ONE RE-ELECTED TO THEIR OWN SEAT (the
+    // owner, 7 November 2026): "Charles Foote (R) Your rep" among Derry's
+    // winners is right; "Jim Creighton (R) Your rep" under Antrim's Senate
+    // seat was not, for he holds Hillsborough 30, not district 8. The item
+    // components.electRace marks "elown" keeps the tag; no other link does.
+    +".elect li:not(.elown) a::after{content:none !important}"
     // On a town page the chip sits in a narrow cell beside the contact
     // column, and the tag ran out of the chip into it: it goes under the name.
     +(p.m||[]).map(s=>sel(s,"::after").split(",").map(x=>".offwho "+x).join(",")).join(",")

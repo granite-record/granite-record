@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.350 */
+/* GRANITE_VERSION: 2026-09-07.351 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -4397,8 +4397,13 @@ margin-top:var(--sp-1)}
 /* The name's column in rem, 290px at the browser's 16px: in px it held a
    chip that grows with the reader's text size, and at 24px a member's chip
    ran under the e-mail address beside it (the rendered sweep, 8 October
-   2026). */
-.offrow{display:grid;grid-template-columns:minmax(0,18.125rem) minmax(0,1fr);
+   2026). AND WIDER FOR A NAME THAT NEEDS IT (the walk of dry run 4, 7
+   November 2026): a chip is one line by rule (.mchip, ONE NAME, ONE LINE),
+   and "Rep. Katherine Prudhomme-O'Brien (R - Rock 13)" asks 383px, so on
+   Derry's page it ran under "kpo@gc.nh.gov". The column takes what such a
+   chip asks, its address moving right on that row alone; every other row
+   keeps the 290px line, and a row narrower than 290px still shrinks it. */
+.offrow{display:grid;grid-template-columns:minmax(min(18.125rem,100%),max-content) minmax(0,1fr);
 gap:var(--sp-1) var(--sp-7);align-items:baseline;padding:var(--sp-4) 0;
 border-bottom:1px solid var(--rule);font-size:var(--t-ui);line-height:1.55}
 .offrow:last-child{border-bottom:0}
@@ -7418,7 +7423,12 @@ border-right:1.5px solid var(--ink-2);transform:rotate(45deg);margin:0 .8em 0 .5
 .rtop{grid-area:top;display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4) var(--sp-6);flex-wrap:wrap}
 .rh1{font:600 var(--t-title)/1.12 var(--serif);margin:0;color:var(--ink);letter-spacing:-.01em;text-wrap:balance}
 .rh1 .ryear{font-weight:400;font-size:.6em;color:var(--ink-2);letter-spacing:0;white-space:nowrap}
-.rtop > .chip{margin-left:auto;flex:0 0 auto;max-width:18rem}
+/* A LONG STATUS WRAPS IN ITS 18rem (the walk of dry run 4, 7 November
+   2026): nowrap in a capped box ran "Passed both chambers, not ratified by
+   the voters" 87px out of its chip and the page 16px sideways at 1280 (on
+   live, "... went to the voters in November 2026", 128px). Below 45em every
+   chip already wraps. */
+.rtop > .chip{margin-left:auto;flex:0 0 auto;max-width:18rem;white-space:normal}
 /* A person's own page: the party's bar down the left of the name. */
 .rhead[class*="rh-p"] .rh1{padding-left:var(--sp-5);border-left:5px solid var(--pc,var(--edge))}
 .rhead.rh-pR{--pc:var(--rep)}.rhead.rh-pD{--pc:var(--dem)}.rhead.rh-pI,.rhead.rh-pL{--pc:var(--ind)}

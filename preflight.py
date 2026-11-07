@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.793
+# GRANITE_VERSION: 2026-09-04.794
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19836,8 +19836,10 @@ def _class_collisions():
         # line, written by components.js and components.py alike (elect_now,
         # elect_race, elect_block, elect_line) and held to one answer by
         # _components_agree -- a town page draws in Python what the My Town
-        # card and the map's panel draw in the browser
-        "elect", "elhead", "elwhere", "ellist", "elnf", "elnone", "elnow", "elline",
+        # card and the map's panel draw in the browser; and "elown", the item
+        # of a member re-elected to their own seat, the one a saved town's
+        # "Your rep" may tag (find.js, ytMark; the owner, 7 November 2026)
+        "elect", "elhead", "elwhere", "ellist", "elnf", "elnone", "elnow", "elline", "elown",
         # THE BILL SEARCH'S BOX AND FILTERS, drawn by bills.html and app.js
         # for /bills and by build_rsa for the Laws page's search, which the
         # person asked to work as the bill search does (24 October 2026): the
@@ -82500,13 +82502,20 @@ def _legislators_page_tabs():
     page = (site / "officials.html").read_text(encoding="utf-8")
     strips = re.findall(r'<div class="twntabs oftabs" role="tablist"[^>]*>(.*?)</div>', page, re.S)
     assert len(strips) == 1, f"the Officials page has {len(strips)} tab strips"
-    assert re.search(r'<div class="twntabs oftabs" role="tablist" aria-label="Officials" hidden>',
-                     page), "the strip is not written hidden for the script to show"
+    assert re.search(r'<div class="twntabs oftabs" role="tablist" aria-label="Officials" '
+                     r'data-retired="legislators" hidden>', page), (
+        "the strip is not written hidden for the script to show, naming Legislators as the tab "
+        "a retired tab's address opens")
     tabs = re.findall(r'role="tab" id="tab-([a-z-]+)" data-pane="([a-z-]+)"[^>]*>([^<]+)', strips[0])
     want = [("my-town", "My Town"), ("legislators", "Legislators"),
             ("federal", "Federal Delegation"), ("executive", "Executive Branch"),
             ("judicial", "Judicial Branch"), ("counties", "County Officials")]
-    assert [(t, n.strip()) for t, p, n in tabs if t == p] == want, f"the strip's tabs are {tabs}"
+    # SEVEN TABS ON ONE LINE (the owner, 7 November 2026): the tab says the
+    # short name and its panel's heading the whole one (_officials_tabs_fit).
+    on_tab = dict(want, federal="Federal", executive="Executive", judicial="Judicial",
+                  counties="County")
+    assert [(t, n.strip()) for t, p, n in tabs if t == p] == [(t, on_tab[t]) for t, _n in want], (
+        f"the strip's tabs are {tabs}")
     panes = {}
     starts = [(page.index(f'<div class="twnpane" id="{pid}" role="tabpanel" '
                           f'aria-labelledby="tab-{pid}">'), pid) for pid, _n in want]
@@ -82705,8 +82714,8 @@ def _executive_branch_renamed():
     page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
     assert "Statewide Officials" not in page and 'id="statewide"' not in page \
         and 'data-pane="statewide"' not in page, "the page still names Statewide Officials"
-    assert re.search(r'role="tab" id="tab-executive" data-pane="executive"[^>]*>Executive Branch',
-                     page), "no Executive Branch tab at #executive"
+    assert re.search(r'role="tab" id="tab-executive" data-pane="executive"[^>]*>Executive'
+                     r'(?: <span class="ofn">| ?</button>)', page), "no Executive tab at #executive"
     start = page.index('<div class="twnpane" id="executive" role="tabpanel"')
     pane = page[start:page.index('<div class="twnpane"', start + 1)]
     line = OT.CHOSEN_BY_LEGISLATURE
@@ -82855,7 +82864,7 @@ def _officials_heads_and_judges():
             f"Justice {r['name']} of the Superior Court is not on the Judicial Branch tab")
     assert f'href="{_html.escape(cc["judges_url"])}"' in jud, (
         "the Circuit Court's line does not link to the court's own list of judges")
-    for pid, name in (("executive", "Executive Branch"), ("judicial", "Judicial Branch")):
+    for pid, name in (("executive", "Executive"), ("judicial", "Judicial")):
         n = OT.count(off, pid)
         assert re.search(rf'id="tab-{pid}"[^>]*>{name} <span class="ofn">\({n:,}\)</span>', page), (
             f"the {name} tab does not count its {n}")
@@ -114287,6 +114296,173 @@ process.stdout.write(JSON.stringify(out));
                   + ("" if node else " (node absent: script not run)"))
 
 
+@check("build", "the Officials page's seven tabs say their short names, in both languages, over "
+                "panels headed in full; and from the day a tab retires, an address naming it "
+                "opens Legislators", needs=("build_town_pages",))
+def _officials_tabs_fit_and_retire(B):
+    """The owner, 7 November 2026, on the walk of dry run 4.
+
+    SEVEN TABS ON ONE LINE. With Members-Elect the strip needed 1,282px of
+    its 1,132 at 1280 and 1440, and the new tab showed only its "M" behind
+    the edge, in English and in Spanish. The tabs say "Federal", "Executive",
+    "Judicial" and "County" -- "Federal", "Ejecutivo", "Judicial" and
+    "Condado" -- with their counts, which measured 1,016px and 971px on dry
+    run 6 with the web fonts; the panels keep "Federal Delegation" and the
+    rest as their headings, which a screen reader walking the headings and a
+    page read without the script still get. Each Spanish word is a draft.
+
+    A RETIRED TAB'S ADDRESS. From 2 December the Members-Elect tab hides
+    itself, by the build or by the reader's own date, and
+    /officials#members-elect opened six tabs with none chosen and nothing
+    under them. The strip names Legislators as the tab such an address opens
+    (data-retired), and TABS_JS opens it and writes it into the address; an
+    address naming something inside the retired panel does the same; the day
+    before, the tab opens as it always has; a strip naming no such tab opens
+    its first one still shown; with no address the page opens My Town as
+    before; and the arrow keys and End pass over a retired tab."""
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    bad = []
+    full = {"federal": "Federal Delegation", "executive": "Executive Branch",
+            "judicial": "Judicial Branch", "counties": "County Officials"}
+    cat = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    short = {"en": {"federal": "Federal", "executive": "Executive", "judicial": "Judicial",
+                    "counties": "County"},
+             "es": {"federal": "Federal", "executive": "Ejecutivo", "judicial": "Judicial",
+                    "counties": "Condado"}}
+    for pid, en in short["en"].items():
+        e = cat.get(f"of.tab_short.{pid}") or {}
+        if (e.get("en"), e.get("es"), e.get("state")) != (en, short["es"][pid], "draft"):
+            bad.append(f"es.json's of.tab_short.{pid} is {e}, not {en!r} and "
+                       f"{short['es'][pid]!r} as a draft")
+    for key, es in (("elect.elected", "Elección del {day}"), ("elect.takes", "Toma de posesión: {day}.")):
+        e = cat.get(key) or {}
+        if e.get("es") != es or e.get("state") != "draft":
+            bad.append(f"es.json's {key} is {e}: the owner's words, a draft, read {es!r}, in "
+                       "number with one member-elect and with many")
+    for lang, rel in (("en", "officials.html"), ("es", "es/officials.html")):
+        f = site / rel
+        if not f.exists():
+            if lang == "en":
+                bad.append("the fixture built no officials.html")
+            continue
+        page = f.read_text(encoding="utf-8")
+        strip = re.search(r'<div class="twntabs oftabs" role="tablist" aria-label="[^"]+" '
+                          r'data-retired="legislators" hidden>(.*?)</div>', page, re.S)
+        if not strip:
+            bad.append(f"{rel}'s strip names no data-retired tab, or is not written hidden")
+            continue
+        for pid, word in short[lang].items():
+            got = re.search(rf'id="tab-{pid}"[^>]*>([^<]*)', strip.group(1))
+            if not got or got.group(1).strip() != word:
+                bad.append(f"{rel}'s {pid} tab says {got and got.group(1)!r}, not {word!r}")
+            head = re.search(rf'<div class="twnpane" id="{pid}"[^>]*><h2 class="twnph">([^<]*)</h2>',
+                             page)
+            want = full[pid] if lang == "en" else (cat.get(f"of.tab.{pid}") or {}).get("es")
+            if not head or head.group(1) != want:
+                bad.append(f"{rel}'s {pid} panel is headed {head and head.group(1)!r}, not "
+                           f"{want!r}: the panel keeps the whole name")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not bad, "\n  ".join(bad)
+        return "skip", "the labels and the strip's attribute hold; node is not installed to run TABS_JS"
+    script = re.search(r"<script>\n(.*?)</script>", B.TABS_JS, re.S).group(1)
+    harness = """
+function node2(){
+  const e = el(); e.attrs = {};
+  e.setAttribute = function(k, v){ this.attrs[k] = String(v); };
+  e.getAttribute = function(k){ return k in this.attrs ? this.attrs[k] : null; };
+  e.focus = function(){ document.activeElement = this; };
+  return e;
+}
+const [day, hsh, built, retired] = process.argv.slice(2);
+const RealDate = Date;
+globalThis.Date = class extends RealDate {
+  constructor(...a){ if (a.length) super(...a); else super(day + "T12:00:00"); } };
+const tabEls = ["my-town", "legislators", "members-elect"].map(p => {
+  const t = node2(); t.dataset.pane = p; return t; });
+tabEls[2].attrs["data-until"] = "2026-12-02";
+if (built === "built") tabEls[2].hidden = true;
+const panes = {};
+tabEls.forEach(t => { const p = node2(); p.id = t.dataset.pane; panes[p.id] = p;
+  p.closest = s => s === ".twnpane" ? p : null; });
+const bar = node2(); bar.hidden = true;
+if (retired !== "none") bar.attrs["data-retired"] = "legislators";
+bar.querySelectorAll = () => tabEls;
+bar.scrollWidth = 300; bar.clientWidth = 300; bar.scrollLeft = 0;
+bar.getBoundingClientRect = () => ({left: 0, right: 300, top: 0});
+tabEls.forEach((t, i) => { t.getBoundingClientRect = () => ({left: i * 100, right: i * 100 + 90}); });
+bar.querySelector = () => tabEls.find(t => t.attrs["aria-selected"] === "true") || null;
+document.querySelector = s => s === ".twntabs" ? bar : null;
+const sec = node2(); sec.closest = s => s === ".twnpane" ? panes["members-elect"] : null;
+let landed = 0; sec.scrollIntoView = () => { landed++; };
+document.getElementById = id => panes[id] || (id === "elect-s-8" ? sec : null);
+const wrote = []; history.replaceState = (a, b, u) => wrote.push(u); history.pushState = () => {};
+const on = {}; globalThis.addEventListener = (t, f) => (on[t] = on[t] || []).push(f);
+globalThis.scrollTo = () => {}; globalThis.scrollY = 0;
+Object.defineProperty(globalThis, "performance", {configurable: true,
+  value: {getEntriesByType: () => [{type: "navigate"}]}});
+document.fonts = {ready: {then: () => {}}};
+location.hash = hsh; location.pathname = "/officials"; location.search = "";
+const shown = () => Object.keys(panes).filter(p => !panes[p].hidden);
+const out = {};
+%s
+out.load = shown(); out.wrote = wrote.slice();
+(on.load || []).forEach(f => f()); out.landed = landed;
+const key = k => { bar.fire("keydown", {key: k, preventDefault(){}});
+  return [shown()[0], tabEls.indexOf(document.activeElement)]; };
+document.activeElement = tabEls[0]; out.end = key("End");
+document.activeElement = tabEls[0]; out.left = key("ArrowLeft");
+location.hash = "#members-elect"; (on.hashchange || []).forEach(f => f());
+out.change = shown(); out.wrote2 = wrote.slice();
+process.stdout.write(JSON.stringify(out));
+""" % script
+    stub = Path("tests/dom_stub.js").read_text(encoding="utf-8")
+    after = ["/officials#legislators"]
+    cases = [
+        # (day, hash, built hidden, data-retired) -> shown, written, End, ArrowLeft, hashchange
+        (("2026-12-01", "#members-elect", "", ""),
+         (["members-elect"], [], ["members-elect", 2], ["members-elect", 2], ["members-elect"])),
+        (("2026-12-02", "#members-elect", "", ""),
+         (["legislators"], after, ["legislators", 1], ["legislators", 1], ["legislators"])),
+        (("2026-12-02", "", "", ""),
+         (["my-town"], [], ["legislators", 1], ["legislators", 1], ["legislators"])),
+        (("2026-12-02", "#elect-s-8", "", ""),
+         (["legislators"], after, ["legislators", 1], ["legislators", 1], ["legislators"])),
+        (("2026-12-01", "#members-elect", "built", ""),
+         (["legislators"], after, ["legislators", 1], ["legislators", 1], ["legislators"])),
+        (("2026-12-02", "#members-elect", "", "none"),
+         (["my-town"], ["/officials#my-town"], ["legislators", 1], ["legislators", 1],
+          ["my-town"])),
+        (("2026-12-02", "#legislators", "", ""),
+         (["legislators"], [], ["legislators", 1], ["legislators", 1], ["legislators"]))]
+    for args, (load, wrote, end, left, change) in cases:
+        r = subprocess.run([node, "-e", stub + "\n" + harness, "x", *args],
+                           capture_output=True, encoding="utf-8", timeout=60)
+        if r.returncode:
+            bad.append("the tab script would not run: " + r.stderr[-300:])
+            break
+        got = json.loads(r.stdout)
+        where = f"on {args[0]}, arriving at {args[1] or 'no address'!r}" + (
+            ", the tab built hidden" if args[2] else "") + (
+            ", the strip naming no tab for it" if args[3] else "")
+        if got["load"] != load or got["wrote"] != wrote:
+            bad.append(f"{where} shows {got['load']} and writes {got['wrote']}, not {load} "
+                       f"and {wrote}")
+        if got["landed"]:
+            bad.append(f"{where} brought the page to something inside a retired panel")
+        if got["end"] != end or got["left"] != left:
+            bad.append(f"{where}, End and ArrowLeft from My Town gave {got['end']} and "
+                       f"{got['left']}, not {end} and {left}: the keys pass over a retired tab")
+        if got["change"] != change:
+            bad.append(f"{where}, a link to #members-elect then shows {got['change']}, not {change}")
+    assert not bad, "\n  ".join(bad)
+    return "ok", ("Federal, Executive, Judicial and County -- Federal, Ejecutivo, Judicial and "
+                  "Condado -- over panels headed in full; from 2 December #members-elect, or a "
+                  f"section in it, opens Legislators and says so in the address ({len(cases)} "
+                  "cases in node)")
+
+
 @check("build", "a town page's State House and Senate cards say how many of a district's seats "
                 "are vacant, in the map's word, and never that no member is matched",
        needs=("build_town_pages",))
@@ -114937,6 +115113,86 @@ def _elect_links():
     return "ok", ("Nelson and Altschiller to their own pages, Vose to his as the one former "
                   "member of his name and county; John Smith unlinked and named to the person "
                   "until the person's file names 900002; the new people unlinked")
+
+
+@check("build", "members-elect: \"Your rep\" tags only a member re-elected to the seat they hold "
+                "-- the file's own, the item both renderers mark elown, and find.js's rule that "
+                "turns the tag off on every other link in a block",
+       needs=("build_members_elect",))
+def _elect_own_seat(BME):
+    """The owner, 7 November 2026, on the walk of dry run 4: with a town saved
+    in the header, find.js's ytMark tags every link to one of its members'
+    pages "Your rep" or "Your senator", and a members-elect block is links
+    to pages. Derry's Rockingham 13 tagged Charles Foote alone of its eight
+    winners, which is right; Antrim's State Senate district 8 tagged Jim
+    Creighton "Your rep", a representative of Hillsborough 30 elected to the
+    Senate, which is not. Her rule: keep the tag on a member re-elected to
+    their own seat; take it off where the person is elected to another
+    seat, and off anyone not now holding that seat; the same on the
+    Members-Elect tab and the map, which draw the same block.
+
+    On the fixture's election, `own` is on Jodi Nelson (Rockingham 13) and
+    Debra Altschiller (Senate 24) alone, each re-elected to the seat they
+    hold, and not on a sitting member the person's file takes to be the
+    winner of another seat, nor on a former member or anyone new. Both
+    renderers mark such a winner's item elown, and only where it is linked
+    (tests/components_cases.json, held to one answer by _components_agree).
+    And ytMark turns the tag off on every link in a block but an elown
+    item's, after the rules that set it."""
+    absent = _elect_absent()
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    root = Path(tempfile.mkdtemp(prefix="gr-elect-own-"))
+    try:
+        site = _elect_fixture(root)
+        # A sitting member of another seat, Hillsborough 30, added to this
+        # copy of the fixture's roster, whom the person's file says won
+        # Rockingham 32: elected to another seat, as Creighton was.
+        lp = site / "legislators.json"
+        sitting = json.loads(lp.read_text(encoding="utf-8"))
+        other = _elect_rep("990017", "Creighton", "James", "Hillsborough", 30)
+        lp.write_text(json.dumps(sitting + [other]), encoding="utf-8")
+        assert BME.seat_of(other) == "H|Hillsborough|30"
+        hand = {"2026-11-03": {"recount_deadline": _ELECT_DEADLINE,
+                               "matches": {"H|Rockingham|32": {"Pat Newell": str(other["id"])}}}}
+        code, out, doc = _elect_run(root, _ELECT_IN, hand=hand)
+        assert code == 0 and doc, f"the step wrote no file on {_ELECT_IN}: {out[-300:]}"
+        own = sorted((k, e["n"]) for k, r in doc["races"].items() for e in r["elected"]
+                     if "own" in e)
+        assert own == [("H|Rockingham|13", "Jodi Nelson"), ("S|24", "Debra Altschiller")], (
+            f"'own' is on {own}: it is for a sitting member re-elected to the seat they hold, "
+            "and only them")
+        moved = [e for e in doc["races"]["H|Rockingham|32"]["elected"] if e["n"] == "Pat Newell"]
+        assert moved and moved[0]["k"] == "sitting" and moved[0].get("id") == str(other["id"]) \
+            and "own" not in moved[0], (
+            f"a sitting member elected to another seat is drawn as {moved}: linked, and not own")
+        assert all(e.get("own") is True for r in doc["races"].values() for e in r["elected"]
+                   if "own" in e), "'own' is written as something other than true"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    import components as C
+    foote = {"n": "Charles Foote", "p": "R", "k": "sitting", "id": "10691",
+             "s": "charles-foote-rock-13", "own": True}
+    creighton = {"n": "Jim Creighton", "p": "R", "k": "sitting", "id": "9917",
+                 "s": "james-creighton-hills-30"}
+    html = C.elect_race({"seats": 2, "elected": [foote, creighton]})
+    assert re.findall(r'<li class="elown"><span class="mchip p-R" translate="no"><a href="'
+                      r'legislator/([a-z0-9-]+)\.html"', html) == ["charles-foote-rock-13"] \
+        and html.count("elown") == 1, f"the block marks {html!r}: only Foote's item is elown"
+    assert "elown" not in C.elect_race({"seats": 1, "elected": [dict(foote, s="")]}), (
+        "an item with no link is marked elown")
+    fj = Path("src/pages/find.js").read_text(encoding="utf-8")
+    mark = re.search(r"function ytMark\(p\)\{(.*?)\n\}", fj, re.S)
+    off = '".elect li:not(.elown) a::after{content:none !important}"'
+    assert mark and off in mark.group(1), (
+        "ytMark does not turn the tag off on a members-elect block's other links")
+    body = mark.group(1)
+    assert body.index(off) > body.index('tr("yt.your_rep","Your rep")') \
+        and body.index(off) > body.index('tr("yt.your_senator","Your senator")'), (
+        "ytMark's rule taking the tag off comes before the rules that set it")
+    return "ok", ("own on Nelson and Altschiller alone, not on a sitting member elected to "
+                  "another seat; the renderers mark only a linked own winner elown; ytMark "
+                  "takes the tag off every other link in a block")
 
 
 @check("build", "members-elect: what the rule cannot be certain of goes to the person, never "

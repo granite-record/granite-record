@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.7
+# GRANITE_VERSION: 2026-10-16.8
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -97,14 +97,17 @@ THE FILE IT WRITES, site/members_elect.json:
      "races": {"S|24": {"seats": 1, "not_final": 0, "held": 0,
                         "elected": [{"n": "Debra Altschiller", "p": "D",
                                      "k": "sitting", "id": "377207",
-                                     "s": "debra-altschiller-sd-24"}]},
+                                     "s": "debra-altschiller-sd-24",
+                                     "own": true}]},
                "H|Rockingham|32": {"seats": 1, "not_final": 0, "held": 0,
                                    "elected": [{"n": "Pat Newell", "p": "R/D",
                                                 "k": "new"}]}, ...}}
 
 Every race the district table names is there, the Senate first. `k` is
 sitting, former or new; `id` and `s` (the page's slug) are there only on a
-link. `not_final` and `held` count seats; `recount` is true where the hand
+link; `own` is true only for a sitting member re-elected to the seat they
+hold, the one a saved town's "Your rep" marks (find.js, ytMark). `not_final`
+and `held` count seats; `recount` is true where the hand
 file says one was requested. A race's seats less its elected and its not
 final is the number of seats with no member-elect on file, held ones among
 them, and the pages say so. No reason the person gave is in it: those are
@@ -899,6 +902,13 @@ def members_elect(results, sitting, former, districts, hand, today):
             entry["k"] = p["kind"] if p else "new"
             if p:
                 entry["id"], entry["s"] = p["id"], p["slug"]
+                # RE-ELECTED TO THE SEAT THEY HOLD (the owner, 7 November
+                # 2026): the one member-elect a saved town's "Your rep" may
+                # mark. A sitting member elected to another seat -- Jim
+                # Creighton, Hillsborough 30, to the Senate's district 8 --
+                # is not that seat's rep yet, and is not marked there.
+                if p["kind"] == "sitting" and p["seat"] == key:
+                    entry["own"] = True
                 claims[p["id"]].append((key, c["name"], entry))
             row["elected"].append(entry)
         if len(row["elected"]) + row["not_final"] + row["held"] != seats:
@@ -911,6 +921,7 @@ def members_elect(results, sitting, former, districts, hand, today):
                 entry["k"] = "new"
                 entry.pop("id", None)
                 entry.pop("s", None)
+                entry.pop("own", None)
                 report["unlinked"].append((key, name, f"{len(hits)} winners were taken to "
                                            f"{who(people.by_id[mid])}"))
     for key in sorted(set(on_file) - set(races_in), key=race_order):
