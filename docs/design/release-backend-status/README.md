@@ -6,14 +6,15 @@ branch's latest commit message says its own status. Times are Eastern.
 
 ## As of Friday 6 November 2026, about 10:30 p.m.
 
-Received the laptop manager's message of 7 November (Alice's decisions and the weekend plan), and
-the one naming `fix/rollcall-date-line`.
+Received the laptop manager's messages of 7 November: Alice's decisions and the weekend plan,
+the one naming `fix/rollcall-date-line`, and the test findings.
 
 ### The weekend release
 
 | What | Branch | Status |
 |---|---|---|
-| The candidate | `release/weekend` 3c79e70e | **In review; please do not move dev yet.** It is dev dd3f7ef9 plus the five branches below; preflight gives 995 passed, 0 failed. The laptop's full preflight can start now. A review of the merges and of how the branches meet is running, and a READY commit follows. |
+| The candidate | `release/weekend` 3090bca7 | **READY.** It is dev dd3f7ef9 plus the five branches below; preflight gives 995 passed, 0 failed. The review found nothing blocking: the merges are whole, and on the real ballots exactly the six 1999–2000 senators change. After the dry run's build, run `record_moves.py` and commit `moved_addresses.json` (King's and Fraser's Senate addresses become 301s). |
+| The test findings of 7 November | `fix/bill-back-notfound` (on top of the candidate) | **In review, for the second dry run.** Back from a search keeps `?q=` and Forward. The not-found page goes to a bill under its term's other year, writes "HB 703", and offers the closest town. The status count: 253 bills have a Law date before their signing, and 1,618 have no Law date. |
 | HB 703, the same page by other roads | `fix/bill-same-number-2` 91d4206b | In the candidate. |
 | 1999-S-109's day, with Alice's line | `fix/rollcall-date-line` 6db56f00 | In the candidate, in place of `fix/rollcall-date`. |
 | The 30 confirmed pairs, one person each | `fix/movers-merge` 8798a1a4 | In the candidate (Alice's yes). |
