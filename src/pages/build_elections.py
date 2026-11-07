@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.1
+# GRANITE_VERSION: 2026-11-07.2
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -128,6 +128,19 @@ def decided(results, sitting, former, districts, hand_path, today):
     return races, report, hand
 
 
+def same_name(name):
+    """A candidate's name as members_elect names a winner ("n"): the
+    results file's own, read first name first (build_members_elect.reading_order),
+    so a winner is matched to their row however the file spaced or ordered it."""
+    return BME.reading_order(name)
+
+
+def held_names(hand, key):
+    """The winners the owner keeps off the pages in this race. Their rows
+    are not drawn: a held winner's name and count would say who won."""
+    return {same_name(n) for n in ((hand.get("held") or {}).get(key) or {})}
+
+
 def totals_notes(results):
     """{(file, candidate name): (towns' sum, printed total, place left out)}."""
     out = {}
@@ -155,8 +168,9 @@ def ballot_rows(election, path=BALLOTS):
     except (OSError, ValueError):
         return []
     rows = doc.get("rows") if isinstance(doc, dict) else None
+    count = lambda v: isinstance(v, int) and not isinstance(v, bool) and v >= 0
     return [r for r in rows or [] if isinstance(r, dict) and r.get("election") == election
-            and isinstance(r.get("yes"), int) and isinstance(r.get("no"), int)]
+            and count(r.get("yes")) and count(r.get("no")) and r["yes"] + r["no"] > 0]
 
 
 def bill_href(site, term, bill):
@@ -174,15 +188,17 @@ def bill_href(site, term, bill):
 
 # ------------------------------------------------------------------ drawing ---
 
-def candidate_rows(race, elected_names):
-    cands = sorted(race["candidates"], key=lambda c: (-c["votes"], c["name"]))
+def candidate_rows(race, elected_names, held=frozenset()):
+    shown = [c for c in race["candidates"] if same_name(c["name"]) not in held]
+    cands = sorted(shown, key=lambda c: (-c["votes"], c["name"]))
     top = max((c["votes"] for c in cands), default=0) or 1
-    counted = sum(c["votes"] for c in cands) + int(race.get("scatter") or 0)
-    one = race["seats"] == 1
+    counted = sum(c["votes"] for c in race["candidates"]) + int(race.get("scatter") or 0)
+    one = race["seats"] == 1 and not held
     out = []
     for c in cands:
         p = letters(c["party"])
-        won = elected_names.get(c["name"])
+        won = elected_names.get(same_name(c["name"]))
+        tied = c.get("elected") is None
         chipm = {"party_code": p if len(p) == 1 else "X",
                  "display_full": f'{c["name"]} ({p})' if p else c["name"],
                  "slug": won.get("s") if won and won.get("id") and won.get("s") else ""}
@@ -192,6 +208,7 @@ def candidate_rows(race, elected_names):
             '<li class="er-row"><span class="er-who">' + C.pchip(chipm)
             + (' <span class="er-wi">write-in</span>' if c.get("write_in") else "")
             + (" " + C.chip("Elected") if won else "")
+            + (" " + C.chip("Tied for the last seat") if tied and not won else "")
             + f'</span><span class="er-n">{c["votes"]:,}{share}</span>'
             + f'<span class="er-b" aria-hidden="true"><i class="er-{bar_cls}" '
               f'style="width:{100 * c["votes"] / top:.1f}%"></i></span></li>')
@@ -216,16 +233,21 @@ def status_lines(me):
     return out
 
 
-def race_card(key, race, me, results, tnotes, election):
+def race_card(key, race, me, results, tnotes, election, hand=None, h="h3"):
     elected_names = {e["n"]: e for e in me.get("elected") or []}
+    held = held_names(hand or {}, key)
     towns = race.get("towns") or []
     seats = race["seats"]
     meta = [", ".join(towns), f'{seats} seat{"s" if seats != 1 else ""}']
+    if len(race["candidates"]) <= seats:
+        meta.append("Unopposed")
     if race.get("recounted"):
         meta.append("<b>Recounted</b>")
     notes = []
     files = file_of(key, results)
     for c in race["candidates"]:
+        if same_name(c["name"]) in held:
+            continue
         for f in files:
             got = tnotes.get((f, c["name"]))
             if got:
@@ -238,13 +260,15 @@ def race_card(key, race, me, results, tnotes, election):
     if seats > 1:
         foot.append(f"Each voter could choose up to {seats}, so no share of the vote is given; "
                     "each bar is scaled to the most votes in the race.")
+    if held:
+        foot.append("A winner of this race is not shown here yet.")
     if scatter:
         foot.append(f'{scatter:,} scattered write-in vote{"s" if scatter != 1 else ""} '
                     f'{"are" if scatter != 1 else "is"} not shown.')
     return (f'<article class="er-race" id="{race_id(key)}" data-towns="{E(" | ".join(towns).lower())}">'
-            f'<h3>{E(race_name(key, race))}</h3>'
+            f'<{h}>{E(race_name(key, race))}</{h}>'
             f'<p class="er-meta">{" &middot; ".join(E(x) if not x.startswith("<b>") else x for x in meta)}</p>'
-            f'<ul class="er-rows">{candidate_rows(race, elected_names)}</ul>'
+            f'<ul class="er-rows">{candidate_rows(race, elected_names, held)}</ul>'
             + status_lines(me)
             + "".join(f'<p class="er-note">{n}</p>' for n in notes)
             + (f'<p class="er-foot">{" ".join(foot)}</p>' if foot else "")
@@ -264,8 +288,14 @@ def seat_tally(keys, decided_races):
     return t
 
 
-def chamber_block(name, seats, t):
+def chamber_block(name, t):
+    """A chamber's seats by party. Its seats are members_elect's, the same
+    races the parts are counted from, so the parts always add up to it. The
+    majority line is drawn only once every seat's result is final: before
+    then a party crossing it would say more than the count does."""
+    seats = t["R"] + t["D"] + t["other"] + t["open"] + t["none"]
     maj = seats // 2 + 1
+    final = not t["open"] and not t["none"]
     parts = [(t["R"], "er-R", "Republican"), (t["D"], "er-D", "Democratic"),
              (t["other"], "er-X", "other or cross-nominated"),
              (t["open"], "er-open", "result not final"), (t["none"], "er-none", "no winner shown")]
@@ -273,17 +303,20 @@ def chamber_block(name, seats, t):
     key = "".join(f'<li><span class="l-sw {c}" aria-hidden="true"></span><span><b>{n:,}</b> {w}</span></li>'
                   for n, c, w in parts if n)
     label = "; ".join(f"{n} {w}" for n, _, w in parts if n)
-    return (f'<section class="er-ch"><h3>{E(name)}</h3>'
+    bar = (f'<div class="l-barb er-maj" style="--at:{100 * maj / seats:.2f}%" aria-hidden="true">{segs}</div>'
+           f'<p class="er-majw">The line is the majority, {maj:,} seats.</p>' if final else
+           f'<div class="l-barb" aria-hidden="true">{segs}</div>')
+    return (f'<section class="er-ch"><h4>{E(name)}</h4>'
             f'<p class="er-meta">{seats:,} seats; {maj:,} make a majority.</p>'
             f'<figure class="l-fig l-bar" role="img" aria-label="{E(name)}: {E(label)}">'
-            f'<div class="l-barb er-maj" style="--at:{100 * maj / seats:.2f}%" aria-hidden="true">{segs}</div>'
-            f'<p class="er-majw">The line is the majority, {maj:,} seats.</p>'
-            f'<ul class="l-barkey">{key}</ul></figure></section>')
+            + bar + f'<ul class="l-barkey">{key}</ul></figure></section>')
 
 
-def closest(races, decided_races, path, n=8):
+def closest(races, decided_races, path, hand, n=8):
     rows = []
     for k, r in races.items():
+        if held_names(hand, k) or k not in decided_races:
+            continue
         c = sorted(r["candidates"], key=lambda c: -c["votes"])
         if len(c) > r["seats"]:
             rows.append((c[r["seats"] - 1]["votes"] - c[r["seats"]]["votes"], BME.race_order(k), k, r))
@@ -293,8 +326,9 @@ def closest(races, decided_races, path, n=8):
         me = decided_races.get(k) or {}
         tags = (" " + C.chip("Recounted") if r.get("recounted") else "") + \
                (" " + C.chip("Result not final") if me.get("not_final") else "")
-        out.append(f'<li><a href="{path}#{race_id(k)}">{E(race_name(k, r))}</a>'
-                   f'<span>last seat by <b>{m:,}</b> vote{"s" if m != 1 else ""}</span>{tags}</li>')
+        said = ("<span>tied for the last seat</span>" if m == 0 else
+                f'<span>last seat by <b>{m:,}</b> vote{"s" if m != 1 else ""}</span>')
+        out.append(f'<li><a href="{path}#{race_id(k)}">{E(race_name(k, r))}</a>{said}{tags}</li>')
     return '<ol class="er-close">' + "".join(out) + "</ol>"
 
 
@@ -315,6 +349,8 @@ def ballot_block(rows, site, results):
     for r in rows:
         yes, no = r["yes"], r["no"]
         tot = yes + no
+        if tot <= 0:
+            continue
         ok = B2.ratified(yes, no)
         href = bill_href(site, r.get("term") or "", r.get("bill") or "")
         name = f'{E(r.get("label") or "")} ({E(re.sub(r"^CACR", "CACR ", r.get("bill") or ""))})'
@@ -347,24 +383,23 @@ def sources_line(results):
             + (f", saved {day}" if day else "") + ".")
 
 
-MAP_WORDS_NOT_FINAL = {
-    "map.vacant": "Result not final", "map.vacant_l": "result not final",
-    "map.n_vacant_one": "{n} not final", "map.n_vacant": "{n} not final",
-    "map.dot_vacant_one": "&middot; {n} not final", "map.dot_vacant": "&middot; {n} not final",
-    "map.all_vacant": "No result is final yet.", "map.of_vacant": "{n} of {m} not final"}
-MAP_WORDS_NONE = {
-    "map.vacant": "No winner shown", "map.vacant_l": "no winner shown",
-    "map.n_vacant_one": "{n} with no winner shown", "map.n_vacant": "{n} with no winner shown",
-    "map.dot_vacant_one": "&middot; {n} with no winner shown",
-    "map.dot_vacant": "&middot; {n} with no winner shown",
-    "map.all_vacant": "No winner is shown yet.", "map.of_vacant": "{n} of {m} with no winner shown"}
+# ONE WORD FOR A SEAT THE MAP SHOWS NOBODY FOR: its result is not final, or
+# the owner has held its winner back. Which of the two is not drawn on the
+# map; the race's card says which.
+MAP_WORDS = {
+    "map.vacant": "No final winner shown", "map.vacant_l": "no final winner shown",
+    "map.n_vacant_one": "{n} with no final winner shown", "map.n_vacant": "{n} with no final winner shown",
+    "map.dot_vacant_one": "&middot; {n} with no final winner shown",
+    "map.dot_vacant": "&middot; {n} with no final winner shown",
+    "map.all_vacant": "No final winner is shown yet.",
+    "map.of_vacant": "{n} of {m} with no final winner shown"}
 
 
 def map_doc(base_map, decided_races, places):
     """The night's district map with its people and fill replaced by this
     election's winners. Only the House and Senate layers are drawn."""
     flo = {w[1] for t in places.values() for w in t["w"].values() if w[1]}
-    who = {}
+    who, nominated = {}, {}
     for key, me in decided_races.items():
         m = BME.KEY_RE.match(key)
         if m.group(3):
@@ -374,13 +409,19 @@ def map_doc(base_map, decided_races, places):
             mk = ("float|" if code in flo else "base|") + code
         else:
             continue
+        # A cross-nominated winner ("R/D") is drawn on the neutral chip, as
+        # the pages draw them, and fills the district with each party that
+        # nominated them: never one party's colour alone.
         who[mk] = [{"n": f'{e["n"]} ({e["p"]})' if e.get("p") else e["n"],
-                    "p": BDM.letter(e.get("p")),
+                    "p": e["p"] if len(str(e.get("p") or "")) == 1 else "X",
                     **({"s": e["s"]} if e.get("id") and e.get("s") else {})}
                    for e in me.get("elected") or []]
+        nominated[mk] = [x for e in me.get("elected") or [] for x in str(e.get("p") or "").split("/") if x]
     doc = {k: v for k, v in base_map.items() if k not in ("elect", "who", "fill")}
     doc["who"] = who
-    doc["fill"] = {lk: f for lk, f in BDM.fills(base_map, who).items() if lk in ("base", "float", "senate")}
+    doc["fill"] = {lk: {fid: BDM.letters(nominated.get(f"{lk}|{fid}", []))
+                        for fid in sorted(base_map["layers"][lk]["f"])}
+                   for lk in ("base", "float", "senate")}
     doc["_what"] = ("The district map's data for one general election: each House and Senate "
                     "district filled by the parties of the winners whose result is final, from "
                     "the Secretary of State's results (src/pages/build_elections.py). "
@@ -431,7 +472,7 @@ def tabs_html(panels):
             + "".join(panes))
 
 
-def county_groups(keys, races, decided_races, results, tnotes, election):
+def county_groups(keys, races, decided_races, results, tnotes, election, hand):
     by = {}
     for k in sorted(keys, key=BME.race_order):
         by.setdefault(BME.KEY_RE.match(k).group(1), []).append(k)
@@ -440,12 +481,12 @@ def county_groups(keys, races, decided_races, results, tnotes, election):
         out.append(f'<h3 class="er-county" id="er-{county.lower()}">{E(county)} County '
                    f'<span>{len(ks)} district{"s" if len(ks) != 1 else ""}</span></h3>'
                    '<div class="er-cards">'
-                   + "".join(race_card(k, races[k], decided_races.get(k) or {}, results, tnotes, election)
-                             for k in ks) + "</div>")
+                   + "".join(race_card(k, races[k], decided_races.get(k) or {}, results, tnotes,
+                                       election, hand, h="h4") for k in ks) + "</div>")
     return "".join(out)
 
 
-def page_body(election, results, decided_races, report, hand, site, ballots, has_held):
+def page_body(election, results, decided_races, report, hand, site, ballots):
     races = results["races"]
     path = page_path(election)
     senate = [k for k in races if k.startswith("S|")]
@@ -454,36 +495,36 @@ def page_body(election, results, decided_races, report, hand, site, ballots, has
     year = year_of(election)
     st, ht = seat_tally(senate, decided_races), seat_tally(house, decided_races)
     final_all = not st["open"] and not ht["open"] and not st["none"] and not ht["none"]
-    ss = sum(races[k]["seats"] for k in senate)
-    hs = sum(races[k]["seats"] for k in house)
     overview = (
         '<section class="ofpart"><h3 class="er-h">Seats Won</h3><div class="er-chs">'
-        + chamber_block("State Senate", ss, st) + chamber_block("State House", hs, ht) + "</div>"
+        + chamber_block("State Senate", st) + chamber_block("State House", ht) + "</div>"
         + '<p class="src">The winners are the candidates with the most votes, as many as a race has '
           "seats. The Secretary of State&rsquo;s files count the votes; they do not name winners.</p></section>"
         + '<section class="ofpart"><h3 class="er-h">The Map</h3>'
           '<p class="src fill">Each district is colored by the party of the candidates it elected; '
-          "a district that elected both parties is striped. A district whose result is not final is hatched.</p>"
-        + map_html(election, MAP_WORDS_NONE if has_held else MAP_WORDS_NOT_FINAL) + "</section>"
+          "a district that elected both parties, or a candidate both nominated, is striped. A district "
+          "with no final winner shown is hatched; choose a district to see what is still to come.</p>"
+        + map_html(election, MAP_WORDS) + "</section>"
         + '<section class="ofpart"><h3 class="er-h">Closest Races</h3>'
           '<p class="src">By how many votes the last seat was won, fewest first.</p>'
-        + closest(races, decided_races, path) + "</section>")
+        + closest(races, decided_races, path, hand) + "</section>")
     notes = [n for n in results.get("_notes") or [] if not TOTALS_NOTE.match(n)]
-    if notes or tnotes:
+    if notes:
         overview += ('<section class="ofpart"><h3 class="er-h">Notes on the Files</h3>'
                      '<p class="src">What the reader of the Secretary of State&rsquo;s files noticed in '
-                     "them, in its own words. None changes a winner.</p><ul class=\"er-notes\">"
-                     + "".join(f"<li>{E(n)}</li>" for n in results.get("_notes") or []) + "</ul></section>")
+                     "them, in its own words. A printed total that leaves out a town is said on its "
+                     "race&rsquo;s card instead.</p><ul class=\"er-notes\">"
+                     + "".join(f"<li>{E(n)}</li>" for n in notes) + "</ul></section>")
     find = ('<div class="er-find" id="er-find" hidden><label for="er-q">Find a town or ward</label>'
             '<input id="er-q" type="search" autocomplete="off" placeholder="A town or ward">'
             '<p class="count" id="er-found" role="status"></p></div>')
     panels = [("overview", "Overview", overview),
               ("senate", f'State Senate <span class="ofn">({len(senate)})</span>',
                '<div class="er-cards">' + "".join(
-                   race_card(k, races[k], decided_races.get(k) or {}, results, tnotes, election)
+                   race_card(k, races[k], decided_races.get(k) or {}, results, tnotes, election, hand)
                    for k in sorted(senate, key=BME.race_order)) + "</div>"),
               ("house", f'State House <span class="ofn">({len(house)})</span>',
-               find + county_groups(house, races, decided_races, results, tnotes, election))]
+               find + county_groups(house, races, decided_races, results, tnotes, election, hand))]
     if ballots:
         panels.append(("questions", f'Ballot Questions <span class="ofn">({len(ballots)})</span>',
                        ballot_block(ballots, site, results)))
@@ -513,14 +554,15 @@ def index_body(items):
             f'<ul class="er-index">{rows}</ul></div>')
 
 
-def write_page(site, base, path, title, desc, body):
+def write_page(site, base, path, title, desc, body, into):
     html = S.page(S.template(site), path=path, base=base, title=title, description=desc,
                   og_title=title.split(" | ")[0], globals={"GR_STATIC": True}, noscript="",
                   skip_label="Skip to the results", sr_title="", og_type="website",
                   nav_current="officials.html", cite=False)
     html = html.replace('<div id="results"></div>', f'<div id="results">{body}</div>', 1)
     assert body[:40] in html, f"{path}: the template has no results slot"
-    out = Path(site) / path.lstrip("/")
+    # Into the folder the build draws in, at the page's place under /elections/.
+    out = Path(into) / path.lstrip("/").split("/", 1)[1]
     if path.endswith("/"):
         out = out / "index.html"
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -528,41 +570,56 @@ def write_page(site, base, path, title, desc, body):
 
 
 def build(site, base, collected, hand_path, today):
+    """Every page drawn into a folder beside site/elections/ first, and put in
+    its place only once all of them are drawn: a results file the reader
+    refuses, or any failure, leaves last night's pages as they were rather
+    than none. With no results file at all, the folder and its addresses in
+    the sitemap both go."""
     site = Path(site)
     dest = site / OUT_DIR
-    if dest.exists():
-        shutil.rmtree(dest)
     items = elections_on_file(collected)
     if not items:
-        return []
+        if dest.exists():
+            shutil.rmtree(dest)
+        S.sitemap_merge(site, base, [], "/elections/")
+        return [], []
     sitting = BME.load_json(site / "legislators.json", "the sitting roster")
     former = BME.load_json(site / "former.json", "the former members")
     districts = BME.load_json(site / "districts.json", "the district table")
     base_map = BME.load_json(site / "district_map.json", "the district map's data")
     places = base_map["places"]
-    made, urls = [], []
+    new = site / f".{OUT_DIR}.new"
+    if new.exists():
+        shutil.rmtree(new)
+    new.mkdir()
+    made, urls, warn = [], [], []
     for election, _p, results in items:
         races_me, report, hand = decided(results, sitting, former, districts, hand_path, today)
-        has_held = any((r.get("held") or 0) for r in races_me.values())
+        if not hand.get("recount_deadline"):
+            warn.append(f"{election}: no recount_deadline in {Path(hand_path).as_posix()}, so every "
+                        "race but a recounted one reads Result not final")
         ballots = ballot_rows(election)
-        body = page_body(election, results, races_me, report, hand, site, ballots, has_held)
+        body = page_body(election, results, races_me, report, hand, site, ballots)
         year = year_of(election)
         path = page_path(election)
         write_page(site, base, path,
                    S.title_of(f"{year} New Hampshire General Election results"),
                    f"The official results of New Hampshire's {year} general election: every State "
-                   "Senate and State House race, from the Secretary of State's files.", body)
-        (dest / f"{election}-map.json").write_text(
+                   "Senate and State House race, from the Secretary of State's files.", body, new)
+        (new / f"{election}-map.json").write_text(
             json.dumps(map_doc(base_map, races_me, places), ensure_ascii=False, separators=(",", ":")),
             encoding="utf-8")
         made.append((election, races_me))
         urls.append(base.rstrip("/") + S.canon(path))
     write_page(site, base, INDEX, S.title_of("New Hampshire election results"),
                "The official results of each New Hampshire general election on file.",
-               index_body(made))
+               index_body(made), new)
     urls.append(base.rstrip("/") + INDEX)
+    if dest.exists():
+        shutil.rmtree(dest)
+    new.rename(dest)
     S.sitemap_merge(site, base, urls, "/elections/")
-    return made
+    return made, warn
 
 
 def main():
@@ -575,13 +632,16 @@ def main():
     a = ap.parse_args()
     today = build_date.today().isoformat()
     try:
-        made = build(a.site, a.base, a.collected, Path(a.hand), today)
+        made, warn = build(a.site, a.base, a.collected, Path(a.hand), today)
     except BME.Refused as e:
         print(f"REFUSED: {e}", file=sys.stderr)
         return 1
     if not made:
-        print(f"elections: no results in {a.collected}/ (election_<year>.json): no page written")
+        print(f"elections: WARNING no results in {a.collected}/ (election_<year>.json): no page "
+              "written, and any earlier pages removed")
         return 0
+    for w in warn:
+        print(f"elections: WARNING {w}")
     for election, races in made:
         seats = sum(r["seats"] for r in races.values())
         won = sum(len(r["elected"]) for r in races.values())

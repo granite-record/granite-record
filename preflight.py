@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.791
+# GRANITE_VERSION: 2026-09-04.792
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -114756,17 +114756,20 @@ def _elections_page(BE, BME):
                 got = {}
                 for row in rows:
                     name = re.sub(r"<[^>]+>", "", row.split('<span class="er-n">')[0])
-                    name = re.sub(r"\s*\([A-Z/]*\)\s*|\s*write-in\s*|\s*Elected\s*", " ", name).strip()
+                    name = re.sub(r"\s*\([A-Z/]*\)\s*|\s*write-in\s*|\s*Elected\s*|\s*Tied for the last seat\s*",
+                                  " ", name).strip()
                     n = int(re.search(r'<span class="er-n">([\d,]+)', row).group(1).replace(",", ""))
                     got[name] = (n, "Elected</span>" in row, re.search(r'href="legislator/([^"]+?)(?:\.html)?"', row))
-                assert {k: v[0] for k, v in got.items()} == {c["name"]: c["votes"] for c in race["candidates"]}, (
-                    f"{day}, {key}: the page's counts {got} are not the results file's")
+                held = set((hand["2026-11-03"].get("held") or {}).get(key) or {})
+                assert {k: v[0] for k, v in got.items()} == {c["name"]: c["votes"] for c in race["candidates"]
+                                                             if c["name"] not in held}, (
+                    f"{day}, {key}: the page's counts {got} are not the results file's, less any held winner")
                 elected = {e["n"]: e for e in want[key]["elected"]}
-                assert {k for k, v in got.items() if v[1]} == set(elected), (
+                assert {BME.reading_order(k) for k, v in got.items() if v[1]} == set(elected), (
                     f"{day}, {key}: Elected on {sorted(k for k, v in got.items() if v[1])}; the "
                     f"members-elect rule says {sorted(elected)}")
                 for k, v in got.items():
-                    e = elected.get(k)
+                    e = elected.get(BME.reading_order(k))
                     should = e["s"] if e and e.get("id") and e.get("s") else None
                     assert (v[2].group(1) if v[2] else None) == should, (
                         f"{day}, {key}: {k} links to {v[2] and v[2].group(1)}; the rule says {should}")
@@ -114777,6 +114780,26 @@ def _elections_page(BE, BME):
                 dan = re.search(r'id="' + BE.race_id("H|Rockingham|8") + r'".*?</article>', html, re.S).group(0)
                 assert "Result not final" in dan and "a recount was requested" in dan, (
                     "Danville's race, its recount asked for, does not say so")
+                # A held winner's name and count are not drawn anywhere: they would say who won.
+                for p in (site / "elections").iterdir():
+                    assert "Sam Wright" not in p.read_text(encoding="utf-8"), (
+                        f"the held winner is named on {p.name}")
+                # The tie: both marked so, no seat to either, and Closest Races says tied.
+                tie = re.search(r'id="' + BE.race_id("S|23") + r'".*?</article>', html, re.S).group(0)
+                assert tie.count("Tied for the last seat") == 2 and "Elected</span>" not in tie, (
+                    "Senate 23's tie is not drawn as a tie")
+                assert "tied for the last seat" in html, "Closest Races does not say Senate 23 is tied"
+                # A cross-nominated winner fills the map with both parties, never one.
+                mp = json.loads((site / "elections" / "2026-11-03-map.json").read_text(encoding="utf-8"))
+                assert mp["fill"]["float"].get("RO32") == "RD", (
+                    f"Pat Newell (r/d) fills Rockingham 32 as {mp['fill']['float'].get('RO32')!r}")
+                # Each chamber's bar adds up to its seats.
+                for name, keys in (("Senate", [k for k in res["races"] if k.startswith("S|")]),
+                                   ("House", [k for k in res["races"] if k.startswith("H|")])):
+                    lab = re.search(r'aria-label="State ' + name + r': ([^"]*)"', html).group(1)
+                    total = sum(int(x) for x in re.findall(r"(\d+) ", lab))
+                    assert total == sum(want[k]["seats"] for k in keys), (
+                        f"the State {name} bar says {lab!r}, which is not its {sum(want[k]['seats'] for k in keys)} seats")
             for w in ("PRIVATE-NOT-FINAL", "PRIVATE-HELD"):
                 assert all(w not in p.read_text(encoding="utf-8") for p in (site / "elections").iterdir()), (
                     f"a private reason, {w}, reached the elections pages")
@@ -114797,6 +114820,9 @@ def _elections_page(BE, BME):
                             fake, BE.totals_notes(fake), "2026-11-03")
         assert "prints 1,152" in card and "add up to 1,240" in card and "leaves out Orange" in card, (
             f"Grafton 9's printed total and the towns' sum are not both on its card: {card}")
+        return "ok", (f"{len(res['races'])} races on 20 and 10 November: counts the file's, Elected the "
+                      "rule's, the tie, the recount, the held winner unseen, a cross-nomination striped, "
+                      "the bars adding up, Grafton 9's total said")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
