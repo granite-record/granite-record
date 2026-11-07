@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.7
+# GRANITE_VERSION: 2026-10-30.8
 """
 /api: the data API's documentation page, drawn in the data page's own
 components and counted from tonight's manifest.
@@ -53,9 +53,15 @@ def _code(label, text):
 def _row(name, what, more, count, unit, size, href, verb="Download"):
     fold = (f'<details class="dpmore"><summary><span>More about <code>{E(name)}</code></span>'
             f'</summary>{more}</details>') if more else ""
+    # THE UNIT IS ALWAYS SAID (the deep walk of 6 November 2026). The data
+    # page's downloads count rows alone, under a head that says Rows, so its
+    # " rows" (class dpu) is drawn only on a phone, where no head is. Here
+    # the count is of files, tables, people, bills or rows, so a desktop read
+    # "14" for the database and "43" for the manifest. The unit stands beside
+    # its count at every width, under a head that says Count.
     return (f'<tr role="row"><th scope="row" role="rowheader"><code>{E(name)}</code></th>'
             f'<td role="cell" class="dpw"><p class="dpwhat">{what}</p>{fold}</td>'
-            f'<td role="cell" class="n dpr">{count}<span class="dpu"> {unit}</span></td>'
+            f'<td role="cell" class="n dpr">{count}{" " + unit if unit else ""}</td>'
             f'<td role="cell" class="n dps">{size}</td>'
             f'<td role="cell" class="dpg"><a class="dpget" href="{href}"'
             f'{" download" if verb == "Download" else ""}>{verb}<span class="sr"> {E(name)}</span></a></td></tr>')
@@ -125,7 +131,7 @@ def body(manifest):
             f'<code>"key": "{E(newest)}/HB1442"</code>: the record the bill&rsquo;s own page is '
             "drawn from. It leaves out the Senate&rsquo;s hearing reports, which name members of "
             "the public, and YouTube&rsquo;s own titles and links.</p></details></td>"
-            f'<td role="cell" class="n dpr">{sum(f["rows"] for f in bills):,}<span class="dpu"> bills</span></td>'
+            f'<td role="cell" class="n dpr">{sum(f["rows"] for f in bills):,} bills</td>'
             f'<td role="cell" class="n dps">{mb(sum(f["bytes"] for f in bills))}</td>'
             '<td role="cell" class="dpg"><span class="dpeach">Each term below</span></td></tr>'
             f'<tr role="row" class="dpterms"><td role="cell" colspan="5"><ul class="dptermgrid" '
@@ -172,10 +178,13 @@ def body(manifest):
             "with nothing to install; R unpacks both, and reads the database with its RSQLite "
             "package. On the command line, gzip and xz are on most Linux systems; a Mac has gzip "
             "and needs xz installed.</p>",
-            '<div class="dptablewrap dpwide"><table class="dpdl" role="table">'
+            # dpapi: a list, as on a phone, up to 58em (app.css), where the
+            # counts with their units and the database's name make the table
+            # wider than a tablet held upright.
+            '<div class="dptablewrap dpwide"><table class="dpdl dpapi" role="table">'
             '<thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">File</th>'
             '<th scope="col" role="columnheader">What it holds</th>'
-            '<th scope="col" role="columnheader" class="n">Rows</th>'
+            '<th scope="col" role="columnheader" class="n">Count</th>'
             '<th scope="col" role="columnheader" class="n">Size</th>'
             '<th scope="col" role="columnheader"><span class="sr">Download</span></th></tr></thead>'
             f'<tbody role="rowgroup">{"".join(rows)}</tbody></table></div>'),
