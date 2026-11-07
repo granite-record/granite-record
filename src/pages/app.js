@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.265
+// GRANITE_VERSION: 2026-09-07.266
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -11015,7 +11015,15 @@ window.addEventListener("popstate",e=>{
 
 function openBill(id){
   openCards.add(id);
-  if(detail[dkey(id)]){repaint();return;}
+  // THE KEY OF THE BILL ASKED FOR, taken now and kept (the reviews of 6
+  // November 2026). dkey follows the term, and the term moves while a record
+  // is on its way: opened from All Terms, 2020's HB 703 holds its own term
+  // until Back puts All Terms back, and a record that arrived after that was
+  // stored under the key All Terms gives the number -- 2025's -- so 2025's
+  // HB 703, opened next, drew 2025's head over 2020's record: the owner's
+  // page, on a slow connection.
+  const key=dkey(id);
+  if(detail[key]){repaint();return;}
   repaint();
   // What went wrong, not merely that something did.
   //
@@ -11032,7 +11040,7 @@ function openBill(id){
   // all roll call ballots, keep a file and the page says where it is.
   const url=DATA(`bill/${yr}/${id.toLowerCase()}`);
   const fail=(why)=>{
-    detail[dkey(id)]={events:[],rollcalls:[],stations:[],reports:[],sponsors:[],
+    detail[key]={events:[],rollcalls:[],stations:[],reports:[],sponsors:[],
       documents:[],amendments:[],next_step:"Detail unavailable",
       _error:why+"\n"+url};
     repaint();
@@ -11042,7 +11050,7 @@ function openBill(id){
     try{ d=JSON.parse(txt); }
     catch(_){ throw new Error(`${where} arrived but is not JSON. It starts: ${
       txt.slice(0,80).replace(/\s+/g," ")}`); }
-    detail[dkey(id)]=d; repaint();
+    detail[key]=d; repaint();
   };
 
   // ON A BILL'S OWN PAGE THE ANSWER IS ALREADY HERE. Either the record
@@ -11263,7 +11271,12 @@ document.addEventListener("click",e=>{
     // The versions index is fetched when the tab is opened and not before,
     // which is the whole reason it is a separate file.
     if(tab.dataset.t==="6"){
-      const row=IDX.find(x=>x.id===cid);
+      // The bill drawn, of the year its record is (yearOf), not the first of
+      // its number in the index: 2025's HB 2 opened from All Terms asked for
+      // 2023's versions and stayed on "Loading the versions…" (the reviews
+      // of 6 November 2026).
+      const y=yearOf(cid);
+      const row=IDX.find(x=>x.id===cid&&(!y||String(x.year)===y))||IDX.find(x=>x.id===cid);
       if(row)needVersions(row);
     }
     render();return;}
