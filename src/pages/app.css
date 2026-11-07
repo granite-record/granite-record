@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.348 */
+/* GRANITE_VERSION: 2026-09-07.349 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -6811,6 +6811,36 @@ table.dpdl{border-collapse:collapse;width:100%;font-family:var(--sans);font-size
   .dptermgrid{grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr))}
   .dponp{display:block}
   .dponp > summary{width:100%;justify-content:space-between}
+}
+/* /API'S TABLE IS A LIST UP TO 58EM (the review of fix/api-units, 6 November
+   2026). Its counts say their units ("2,581,692 rows") and its File column
+   holds granite-record.sqlite.xz, so as a table it is wider than a tablet in
+   portrait: the page scrolled sideways from 45em to 52.6em (an iPad at 768,
+   810, 820 and 834px), and to 56.4em with the database's fold open, whose
+   "person_numbers.person" does not break; the table ran past its box to
+   57.9em. Up to 58em it is laid out as on a phone, which has room at every
+   width. Each rule is the phone block's .dpdl rule above with .dpapi added,
+   declaration for declaration (preflight's _api_counts_say_units holds the
+   two together), and the data page's table (no dpapi) is as it was. */
+@media (max-width:58em){
+  .dpdl.dpapi thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .dpdl.dpapi tbody tr{display:grid;grid-template-columns:auto auto 1fr;column-gap:var(--sp-5);
+    padding:var(--sp-5) var(--sp-5);border-bottom:1px solid var(--rule)}
+  .dpdl.dpapi tbody tr:last-child{border-bottom:0}
+  .dpdl.dpapi tbody tr > *{display:block;padding:0;border:0}
+  .dpdl.dpapi tbody th{grid-column:1 / 3;align-self:center}
+  .dpdl.dpapi td.dpg{grid-column:3;grid-row:1;justify-self:end}
+  .dpdl.dpapi td.dpw{grid-column:1 / -1;margin-top:var(--sp-3)}
+  .dpdl.dpapi td.dpr{grid-column:1;text-align:left;color:var(--ink-2);font-size:var(--t-sm)}
+  .dpdl.dpapi td.dps{grid-column:2;text-align:left;color:var(--ink-2);font-size:var(--t-sm)}
+  .dpdl.dpapi tr.dpterms{padding-top:0}
+  .dpdl.dpapi tr.dpterms td{grid-column:1 / -1}
+}
+/* Printed, a file's row of the list is kept on one page: its name and link
+   at the foot of one page and its description and size on the next read as
+   two files. */
+@media print{
+  .dpdl.dpapi tbody tr{break-inside:avoid}
 }
 
 /* WHAT'S COVERED. Nineteen terms by five columns, on a phone as well. It

@@ -29552,6 +29552,101 @@ def _person_register():
     return "ok", "no other code file writes it, and it is well formed"
 
 
+@check("build", "every count on /api says what it counts, at every width: files, tables, people, "
+                "bills or rows, under a head that says Count, and the table is a list up to 55em",
+       needs=("api_page",))
+def _api_counts_say_units(AP):
+    """THE DEEP WALK OF 6 NOVEMBER 2026, on dry run 181's preview. /api's
+    downloads table is the data page's, whose counts are all rows: its head
+    says Rows, and its " rows" (class dpu) is drawn only on a phone, where
+    the head is not. /api's counts are of files, tables, people, bills and
+    rows, under the same hidden unit, so at a desktop's width the head said
+    Rows above a bare "43" for the files under /data/ and a bare "14" for
+    the database's tables. Each count carries its unit in the text itself,
+    and the head says Count.
+
+    And that branch's review: with its units the Count column is wider, and
+    the table was already wider than a tablet held upright, so the page
+    scrolled sideways from 721 to 842 pixels (dev: 803). Up to 55em /api's
+    table (class dpapi) is laid out as on a phone; the data page's is not."""
+    def f(path, kind, **k):
+        return dict({"path": f"data/{path}", "kind": kind, "rows": 0, "bytes": 1_000_000}, **k)
+    manifest = {"files": [
+        f("schema.json", "schema"),
+        f("granite-record.sqlite.xz", "database", counts={"bills": 9, "votes": 8, "people": 7},
+          opened_bytes=5_000_000),
+        f("people.json", "people", rows=2192),
+        f("bills-2025-2026.jsonl.gz", "bills", rows=2000, term="2025-2026"),
+        f("bills-2023-2024.jsonl.gz", "bills", rows=1999, term="2023-2024"),
+        f("bills.csv", "table", rows=33683, file="bills.csv"),
+        f("votes-2025-2026.csv", "table", rows=100, file="votes-2025-2026.csv")]}
+    page = AP.body(manifest)
+    cells = re.findall(r'<td role="cell" class="n dpr">(.*?)</td>', page)
+    want = ["8 files", "&mdash;", "3 tables", "2,192 people", "3,999 bills", "33,783 rows"]
+    assert cells == want, f"/api's counts read {cells}, not {want}"
+    assert 'class="dpu"' not in page, (
+        "/api hands a unit to class dpu, which app.css draws only below 45em: a desktop reads "
+        "the bare number")
+    heads = re.findall(r'<th scope="col" role="columnheader" class="n">([^<]*)</th>', page)
+    assert heads == ["Count", "Size"], f"/api's number columns are headed {heads}"
+    # THE LIST UP TO 58EM. /api's table carries dpapi; app.css has, at the
+    # top level and not commented out, one @media (max-width:58em) block whose
+    # every rule is a .dpdl rule of the phone block (max-width:45em) with
+    # .dpapi added, declaration for declaration, and nothing else: a selector
+    # without .dpapi would change the data page, which is live, and a phone
+    # rule changed without its twin would part /api's phones from /data's.
+    # The data page's table carries no dpapi. (The review of 6 November: a
+    # text search passed with the block nested, commented out or missing a
+    # brace, and with a selector that had lost .dpapi.)
+    assert '<table class="dpdl dpapi" role="table">' in page, (
+        "/api's table no longer carries dpapi: from 45em to 58em it is a table wider than a "
+        "tablet held upright")
+    css = re.sub(r"/\*.*?\*/", "", _paths.locate("app.css").read_text(encoding="utf-8"), flags=re.S)
+
+    def blocks(text):
+        """[(prelude, body)]: text's top-level blocks, by balanced braces."""
+        out, i = [], 0
+        while (j := text.find("{", i)) >= 0:
+            depth, k = 1, j + 1
+            while k < len(text) and depth:
+                depth += {"{": 1, "}": -1}.get(text[k], 0)
+                k += 1
+            assert not depth, "app.css's braces do not balance"
+            out.append((re.sub(r"\s+", "", text[i:j]), text[j + 1:k - 1]))
+            i = k
+        return out
+
+    def rules(body):
+        got = blocks(body)
+        assert all("{" not in b for _, b in got), "a rule nested inside a rule"
+        return [(re.sub(r"\s+", " ", s0).strip(), re.sub(r"\s+", " ", b).strip()) for s0, b in
+                [(body[m.start():m.end()].split("{")[0], m.group(1))
+                 for m in re.finditer(r"[^{}]*\{([^{}]*)\}", body)]]
+
+    top = blocks(css)
+    phone = [b for p, b in top if p == "@media(max-width:45em)" and re.search(r"\.dpdl thead\s*\{", b)]
+    lists = [b for p, b in top if p == "@media(max-width:58em)"]
+    assert len(phone) == 1, f"app.css has {len(phone)} top-level phone blocks for .dpdl, not 1"
+    assert len(lists) == 1, (f"app.css has {len(lists)} top-level @media (max-width:58em) blocks, "
+                             "not 1: /api's list up to 58em is gone, nested or doubled")
+    twin = rules(lists[0])
+    stray = [s for s, _ in twin if not s.startswith(".dpdl.dpapi ")]
+    assert not stray, f"the 58em block has rules without .dpdl.dpapi, which reach the data page: {stray}"
+    want = sorted((".dpdl.dpapi" + s[len(".dpdl"):], d) for s, d in rules(phone[0])
+                  if s.startswith(".dpdl "))
+    assert len(want) >= 11 and sorted(twin) == want, (
+        "the 58em block is not the phone block's .dpdl rules with .dpapi added: "
+        f"missing {sorted(set(want) - set(twin))}, extra {sorted(set(twin) - set(want))}")
+    printed = [b for p, b in top if p == "@mediaprint" and ".dpdl.dpapi tbody tr" in b]
+    assert printed and "break-inside:avoid" in printed[0], (
+        "a printed /api may break a file's row across two pages")
+    exports = _paths.locate("build_exports.py").read_text(encoding="utf-8")
+    assert "dpapi" not in exports, "the data page's table carries dpapi: it would change below 58em"
+    return "ok", ("the manifest's 8 files, the database's 3 tables, 2,192 people, 3,999 bills and "
+                  "33,783 rows each say their unit, under Count; /api's table is a list up to 58em, "
+                  f"its {len(twin)} rules the phone block's twins, and the data page's is not")
+
+
 @check("build", "the data API's schema.json describes every column it publishes, with the types "
                 "the database stores, its keys hold, its names are unique, and no file carries "
                 "YouTube's metadata")
