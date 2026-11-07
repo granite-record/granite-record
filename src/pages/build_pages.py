@@ -1588,6 +1588,11 @@ not exist in: every bill since 1989 has a page of its own, for example
   // And a town's, which is lower case without a slash at the end: /town/Dover
   // and /town/dover/ are /town/dover, which is a page (the review of 7
   // November 2026). Each is tried once, from an address that differs.
+  // THE GENERAL COURT'S OWN ADDRESS OF A BILL, with this site's host:
+  // /legislation/2025/HB0703.html is /bill/2025/hb703, which this page reads
+  // again if it is not there (the third review of 7 November 2026).
+  var g=lp.match(/^\\/legislation\\/(\\d{4})\\/([a-z]+)0*(\\d+)(?:\\.html?)?\\/?$/i);
+  if(g){location.replace("/bill/"+g[1]+"/"+(g[2]+g[3]).toLowerCase()+location.search+location.hash);return;}
   // A capital anywhere in the path counts, /BILL/2025/hb703 among them (the
   // second review of 7 November 2026).
   if(/^\\/(bill|laws|town)\\//i.test(lp)&&lp!==lp.toLowerCase()){location.replace(lp.toLowerCase()+location.search+location.hash);return;}
@@ -1629,8 +1634,15 @@ not exist in: every bill since 1989 has a page of its own, for example
     var WORDS={purchase:"pur",location:"loc",grant:"gt",and:"",atkinson:"atk",gilmanton:"gil",
       meserve:"mess",meserves:"mess"};
     var norm=function(s){return String(s).toLowerCase().replace(/[^a-z0-9]/g,"");};
+    // Words are made short only in a name of more than one word: Atkinson
+    // and Gilmanton are towns, and as "atk" and "gil" drew /town/ath and
+    // /town/hil away from Bath and Hill (the third review).
     var brief=function(s){var w=String(s).toLowerCase().replace(/['\\u2019]/g,"").split(/[^a-z0-9]+/),o="";
-      for(var i=0;i<w.length;i++)o+=WORDS.hasOwnProperty(w[i])?WORDS[w[i]]:w[i];return o;};
+      var many=w.filter(function(x){return x;}).length>1;
+      for(var i=0;i<w.length;i++)o+=many&&WORDS.hasOwnProperty(w[i])?WORDS[w[i]]:w[i];return o;};
+    // How far a slip may be: one letter in a word of four or fewer, so
+    // /town/xyz is not Rye; two, or a quarter of the letters, beyond that.
+    var reach=function(s){return s.length<=4?1:Math.max(2,Math.floor(s.length/4));};
     var dist=function(a,b){var d=[],i,j;for(i=0;i<=a.length;i++){d[i]=[i];}for(j=0;j<=b.length;j++)d[0][j]=j;
       for(i=1;i<=a.length;i++)for(j=1;j<=b.length;j++){
         var c=a.charAt(i-1)===b.charAt(j-1)?0:1;
@@ -1638,6 +1650,7 @@ not exist in: every bill since 1989 has a page of its own, for example
         if(i>1&&j>1&&a.charAt(i-1)===b.charAt(j-2)&&a.charAt(i-2)===b.charAt(j-1))d[i][j]=Math.min(d[i][j],d[i-2][j-2]+1);}
       return d[a.length][b.length];};
     var raw;try{raw=decodeURIComponent(t[1]).toLowerCase();}catch(_){raw=t[1].toLowerCase();}
+    raw=raw.replace(/\\.html?$/,"");
     var wm=raw.match(/^(.+?)[-_\\s]*ward[-_\\s]*0*(\\d+)$/);
     var wx=wm?null:raw.match(/^(.+?)[-_\\s]*wards?(?:[^a-z].*)?$/);
     if(typeof fetch!=="function"){nothing();return;}
@@ -1652,14 +1665,19 @@ not exist in: every bill since 1989 has a page of its own, for example
       var best=function(list,want){var b=null,bd=1e9,ws=[norm(want),brief(want)];
         for(var i=0;i<list.length;i++){var rs=[norm(list[i][1]),brief(list[i][1])];
           for(var f=0;f<2;f++){var dd=dist(ws[f],rs[f]);
-            if(dd<bd&&dd<=Math.max(2,Math.floor(ws[f].length/4))){bd=dd;b=list[i];}}}
+            if(dd<bd&&dd<=reach(ws[f])){bd=dd;b=list[i];}}}
         return b?{row:b,d:bd}:null;};
+      // The cities, which have wards: where an address names a ward, one of
+      // them is meant, before a town of the same distance with none --
+      // /town/ochester-ward-3 is Rochester's, not Chester (the third review).
+      var cities=places.filter(function(c){for(var j=0;j<wards.length;j++)
+        if(norm(wards[j][1]).indexOf(norm(c[1])+"ward")===0)return true;return false;});
       var offer=function(row,more){say(lead,["No town or ward has a page at this address. Did you mean ",
         [row[1],"/"+row[3]],"?"+(more||"")]);};
       var go=function(row){if("/"+row[3]===lp){offer(row);return;}location.replace("/"+row[3]);};
       // A ward named with no number is a ward only of a city that has them:
       // /town/edwards is no ward of Lee.
-      var ward=wm||wx,city=ward?best(places,ward[1]):null,its=[];
+      var ward=wm||wx,city=ward?(best(cities,ward[1])||best(places,ward[1])):null,its=[];
       if(city)for(var j=0;j<wards.length;j++)
         if(norm(wards[j][1]).indexOf(norm(city.row[1])+"ward")===0)its.push(wards[j]);
       if(wm&&!city){nothing();return;}
@@ -1671,7 +1689,15 @@ not exist in: every bill since 1989 has a page of its own, for example
       }
       var hit=best(places.concat(wards),raw);
       if(!hit){nothing();return;}
-      if(hit.d===0)go(hit.row);else offer(hit.row);
+      if(hit.d===0){go(hit.row);return;}
+      // A slip that lands near a ward names the city, never the ward: one
+      // letter from Ward 1 is one letter from Ward 11 too
+      // (/town/manchester-war-11; the third review).
+      if(hit.row[0]==="ward"){var cn=norm(String(hit.row[1]).split(",")[0]);
+        for(var ci=0;ci<cities.length;ci++)if(norm(cities[ci][1])===cn){var n2=0;
+          for(var j2=0;j2<wards.length;j2++)if(norm(wards[j2][1]).indexOf(cn+"ward")===0)n2++;
+          offer(cities[ci]," It has wards 1 to "+n2+".");return;}}
+      offer(hit.row);
     })["catch"](function(){nothing();});
     return;
   }
@@ -1686,8 +1712,9 @@ not exist in: every bill since 1989 has a page of its own, for example
   // number the term does not have keeps the search, of every term.
   //
   // And the second review of that night. The number as the General Court
-  // writes it, padded (/bill/2025/hb0703, its own /legislation/2025/
-  // HB0703.html with this host), and a real tab with a slash at its end
+  // writes it, padded (/bill/2025/hb0703; its own /legislation/2025/
+  // HB0703.html with this host is sent to /bill/2025/hb703 above), and a
+  // real tab with a slash at its end
   // (/bill/2025/hb703/votes/) answer 404 though the bill is there: each is
   // asked at its own year as the record writes it, the tab first where the
   // address names one. Every address asked is the bill's, never the one
@@ -1709,8 +1736,10 @@ not exist in: every bill since 1989 has a page of its own, for example
   if(y<1989||y>2099||typeof fetch!=="function"){none();return;}
   var term=y%2?y+"-"+(y+1):(y-1)+"-"+y,other=y%2?y+1:y-1;
   var tail=lp.slice(m[0].length).replace(/^\\.html/i,""),tab=/^(\\/[a-z]+)?\\/?$/i.test(tail)?tail.replace(/\\/$/,""):"";
+  // The address the page is on is the same page with or without .html.
+  var here=lp.replace(/\\.html?$/i,"");
   var ask=[],add=function(yy,tb){var to="/bill/"+yy+"/"+id.toLowerCase();
-    if(to+tb!==lp)ask.push([to,tb]);};
+    if(to+tb!==here)ask.push([to,tb]);};
   if(tab)add(y,tab);add(y,"");if(tab)add(other,tab);add(other,"");
   say(p,["Looking for "+said+" in the "+term.replace("-","\\u2013")+" term\\u2026"]);
   var next=function(i){

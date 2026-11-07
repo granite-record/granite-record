@@ -2826,16 +2826,17 @@ function filtersFromAddress(params){
 // all). Taking the words alone drew a list nobody saw -- Back twice, from a
 // list of HB 1 in 2023-2024 past the bill to /bills?q=HB+703&term=all, drew
 // HB 703 in 2023-2024 and wrote that over the entry. Words typed and never
-// run are not in an address, nor are a list's no words; where it names none,
-// the words the list was left with are in its entry (focusBill), and are
-// taken from there -- the box kept whatever a later list had put in it, and
-// Back twice drew those words over the first list (the second review of 7
-// November 2026). An entry with neither leaves the box as it is.
+// run are not in an address; where it names none, the words the list was
+// left with are in its entry (entryWords), and are taken from there -- the
+// box kept whatever a later list had put in it, and Back twice drew those
+// words over the first list (the second review of 7 November 2026).
 function listFromAddress(){
   const p=new URLSearchParams(location.search);
   const aq=p.get("q"),st=history.state;
-  const words=aq!==null?aq:(st&&typeof st.words==="string"?st.words:null);
-  if(words!==null){query=words;$("#q").value=words;}
+  // An entry whose address names no words and holds none is a list of no
+  // words (entryWords keeps them wherever there were any).
+  const words=aq!==null?aq:(st&&typeof st.words==="string"?st.words:"");
+  query=words;$("#q").value=words;
   const t=wantedTerm(META);
   if(t&&t!==term){term=t;forgetCardState();}
   const ys=$("#year"); if(ys)ys.value=term;
@@ -2999,7 +3000,7 @@ function forgetCardState(){
 // Back to a bill's entry). heldPicked says which: on Back to a list's entry
 // a term the reader chose is taken, and one only held gives way to the term
 // the entry names (listFromAddress).
-let focused=null,focusY=0,heldTerm=null,heldPicked=false;
+let focused=null,focusY=0,heldTerm=null,heldPicked=false,heldSort=null;
 // Bills whose procedural lines the reader has chosen to see.
 const showRoutine=new Set();
 
@@ -3085,6 +3086,11 @@ function published(t){
 // for the rest of the page's life. An ask on its way is handed to whoever
 // asks again; one that fails is forgotten, so the next ask tries again.
 const ASKING=new Map();
+// WHAT THE LIST WAITS FOR, said where it would be drawn (unfocus, render): a
+// term picked with a bill open whose bills are not here yet, after Back.
+// Drawn before they came, the list said "Not in the 2019-2020 term" or "0
+// bills" of a term that has them (the third review of 7 November 2026).
+let WAITING="";
 function ensureTerm(t){
   if(t===ALL_TERMS)return Promise.all(((META&&META.terms)||[]).map(ensureTerm));
   if(!t||LOADED.has(t)||!published(t))return Promise.resolve();
@@ -3209,6 +3215,10 @@ if(window.GR_STATIC){
    const so=$("#sort");
    if(so)so.addEventListener("change",e=>{
      if(PAGE||window.GR_STATIC)return;
+     // An order chosen with a bill open is the reader's for the list behind
+     // it, as the term picker's is (heldSort; the third review of 7 November
+     // 2026): Back read the list's address and dropped it.
+     if(focused)heldSort=e.target.value;
      sortChosen=true;sortBy=e.target.value;render();});
    $("#q").disabled=false;
    // 63 CHARACTERS IN A 342px BOX. The placeholder overflowed by 212px at
@@ -3226,7 +3236,13 @@ if(window.GR_STATIC){
    $("#qgo").disabled=false;
    // Arriving from the home page search box, with the query in the URL.
    const params=new URLSearchParams(location.search);
-   const pre=params.get("q");
+   // ...or loaded at a list's own entry that holds words its address does
+   // not name (entryWords): a bill reloaded, then Back, loads that entry, and
+   // the words typed and not run came back as an empty box (the third review
+   // of 7 November 2026). A shared link has no entry, and is its address.
+   const held=history.state&&typeof history.state.words==="string"&&!window.GR_STANDALONE
+     &&/^\/bills(?:\.html)?\/?$/.test(location.pathname)?history.state.words:null;
+   const pre=params.get("q")!==null?params.get("q"):held;
    if(pre){ $("#q").value=pre; query=pre; }
    // ...or from the header search, having clicked a subject. Asked for on 18
    // September: "when you click the topic it brings you to bill search and
@@ -10777,6 +10793,15 @@ function render(more){
   // Any change to the result set starts again at the first page. Every
   // existing caller passes nothing, so only the observer extends.
   if(!more)SHOWN=PAGE_SIZE;
+  // A list still waiting for its term's bills says so, and nothing else: no
+  // list of the bills that happen to be here (WAITING).
+  if(WAITING&&!focused&&!PAGE){
+    dropFocusActions();
+    const r=$("#results"),c=$("#count");
+    if(r)r.innerHTML=`<div class="empty">${esc(WAITING)}</div>`;
+    if(c)c.textContent=WAITING;
+    return;
+  }
   // Page scroll only. The facet panel restores itself inside renderFacets,
   // synchronously, which is the only way it survives the repaint.
   const _y=window.scrollY;
@@ -10981,15 +11006,14 @@ function focusBill(id,href){
   // open, so reloading the clean address reopens exactly this view.
   const _y=yearOf(id);
   if(_y){
-    // THE LIST'S WORDS IN ITS OWN ENTRY (the second review of 7 November
-    // 2026). A list's address names its words only where a search was run;
-    // words typed and not run, and a list of no words, are in no address.
-    // So the list being left keeps the words it was drawn with in its entry,
-    // and Back to it draws them (listFromAddress): Back twice from a later
-    // search to /bills?status=Passed drew the later words over it.
+    // The list being left keeps the words it was drawn with in its entry
+    // (entryWords), and Back to it draws them (listFromAddress): Back twice
+    // from a later search to /bills?status=Passed drew the later words over
+    // it (the second review of 7 November 2026). Words typed in the moment
+    // before the click, not yet drawn, are taken too.
     if(!wasFocused&&/^\/bills(?:\.html)?\/?$/.test(location.pathname)){
-      try{history.replaceState(Object.assign({},history.state||{},{words:query}),"",
-        location.pathname+location.search+location.hash);}catch(_){}
+      const ns=entryWords();
+      if(ns)try{history.replaceState(ns,"",location.pathname+location.search+location.hash);}catch(_){}
     }
     // The entry names the bill's term too, so Back and Forward open this
     // bill and not another of its number (the popstate handler, below).
@@ -11049,10 +11073,30 @@ function addressList(){
     for(const v of sel[k])p.append(k,v);
   if(sortChosen&&sortBy)p.set("sort",sortBy);
   const s=p.toString(),want=location.pathname+(s?"?"+s:"");
-  if(want!==location.pathname+location.search){
-    try{history.replaceState(history.state,"",want+location.hash);addressed();}catch(_){}
+  // The entry's words follow the list's at every drawing, so Back to it,
+  // after Forward or after a reload, draws what the reader left (the third
+  // review of 7 November 2026: they were kept only when a bill was opened,
+  // and went stale when the box changed after Back).
+  const ns=entryWords();
+  if(want!==location.pathname+location.search||ns){
+    try{history.replaceState(ns||history.state,"",want+location.hash);addressed();}catch(_){}
   }
   ssSet(LAST_KEY,want);
+}
+// THE LIST'S WORDS IN ITS OWN ENTRY (the reviews of 7 November 2026). A
+// list's address names its words only where a search was run; words typed
+// and not run are in no address. The entry holds them, beside its address,
+// only where the address does not already say them: no q and no words is a
+// list of no words. The state the entry should have, or null where it has it.
+function entryWords(){
+  const st=history.state&&typeof history.state==="object"?history.state:null;
+  const aq=new URLSearchParams(location.search).get("q")||"";
+  const want=query!==aq?query:undefined;
+  const has=st&&typeof st.words==="string"?st.words:undefined;
+  if(want===has)return null;
+  const ns=Object.assign({},st||{});
+  if(want===undefined)delete ns.words;else ns.words=want;
+  return ns;
 }
 function savePlace(y){
   if(!onList())return;
@@ -11115,7 +11159,6 @@ function unfocus(y,popped){
   // belongs to a list that is no longer on screen.
   if(y===undefined)y=focusY;
   focused=null;
-  let loading=false;
   // BUT NOT ON BACK (the laptop's test of 7 November 2026). Back has already
   // put the list's own entry back, /bills?q=HB+703&term=all, and pushing
   // /bills over it threw away the search's words -- the list still showed
@@ -11128,20 +11171,27 @@ function unfocus(y,popped){
     // A term the reader chose with the picker while the bill was open is
     // still theirs, and the list is drawn in it (its address follows); a
     // term only held while the bill was open gives way to the entry's.
-    const picked=heldPicked?heldTerm:null;
-    heldTerm=null;heldPicked=false;
+    const picked=heldPicked?heldTerm:null,order=heldSort;
+    heldTerm=null;heldPicked=false;heldSort=null;
     listFromAddress();
     if(picked!==null&&picked!==term){term=picked;forgetCardState();const ys=$("#year");if(ys)ys.value=term;}
+    // ...and so is an order chosen there.
+    if(order!==null){sortBy=order;sortChosen=true;const so=$("#sort");if(so)so.value=order;}
     // A term whose bills are still on their way is said to be loading, as
     // the picker says it, and drawn when they are here: one fetch each,
     // however many have asked (ensureTerm).
     const want=term===ALL_TERMS?((META&&META.terms)||[]):[term];
-    if(want.some(x=>!LOADED.has(x))){loading=true;Promise.all(want.map(ensureTerm)).then(()=>render());}
+    // A term that fails is drawn as far as it came, never left "loading".
+    if(want.some(x=>!LOADED.has(x))){
+      WAITING=term===ALL_TERMS?"loading every term…":"loading "+term+"…";
+      const done=()=>{WAITING="";render();};
+      Promise.all(want.map(ensureTerm)).then(done,done);
+    }
   }
   else{
     // The term the picker chose while the bill was open, taken now.
     if(heldTerm!==null){term=heldTerm;heldTerm=null;forgetCardState();}
-    heldPicked=false;
+    heldPicked=false;heldSort=null;
     // Leaving a bill named in the address would mean the next refresh
     // reopened it, which is not where the reader is standing. Back to the
     // list's own address rather than the bill's -- with the words where the
@@ -11152,7 +11202,6 @@ function unfocus(y,popped){
   }
   addressed();
   render();
-  if(loading){const c=$("#count");if(c)c.textContent=term===ALL_TERMS?"loading every term…":"loading "+term+"…";}
   window.scrollTo(0,y);
 }
 
@@ -11179,6 +11228,16 @@ window.addEventListener("popstate",e=>{
     const t=e.state.term;
     const moved=!!t&&t!==term&&IDX.some(b=>b.id===f&&b.term===t);
     if(moved){if(heldTerm===null)heldTerm=term;term=t;}
+    // ...on the tab its address names, as a page loaded there opens it: Back
+    // to All Terms forgot each card's tab, and Forward to /bill/2020/hb703/text
+    // drew the Summary under it (the deep walk of dry run 183).
+    const tb=BILL_TABS[tabFromPath()];
+    if(tb&&openTab[f]!==tb){
+      openTab[f]=tb;
+      if(tb==="6"){const y=yearOf(f);
+        const row=IDX.find(x=>x.id===f&&(!y||String(x.year)===y))||IDX.find(x=>x.id===f);
+        if(row)needVersions(row);}
+    }
     // Back from a place on the bill's page to the entry that opened it: the
     // bill is already drawn, and the browser puts the scroll back itself.
     if(focused!==f||moved){focused=f;openBill(f);window.scrollTo(0,0);}
