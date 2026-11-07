@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.787
+# GRANITE_VERSION: 2026-09-04.788
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -21330,7 +21330,12 @@ def _find_more_fixture():
         ["former", "Former Sen. Lou D'Allesandro", "Senate · SD20 · 1999–2024",
          "legislator/lou-dallesandro", "Hillsborough", 2024],
         ["town", "Hart's Location", "Carroll County", "town/hart-s-location", "Carroll"],
-        ["town", "Wentworth's Location", "Coos County", "town/wentworth-s-location", "Coos"]]
+        # As find.json names them, from the Secretary of State's returns: the
+        # record shortens a Location to "Loc." and a Purchase to "Pur.".
+        ["town", "Wentworth's Loc.", "Grafton County", "town/wentworth-s-location", "Grafton"],
+        ["town", "Chandler's Pur.", "Coos County", "town/chandler-s-pur", "Coos"],
+        ["former", "Former Rep. Candice O'Neil", "House · Rock 8 · 2015–2016",
+         "legislator/candice-oneil", "Rockingham", 2016]]
     return fx
 
 
@@ -21342,7 +21347,8 @@ _FIND_MORE_QUERIES = {
               # What people type (_search_reads_typed): an apostrophe curly or
               # missing, a law cited to its paragraph, a request's number.
               "O’Connor", "oconnor", "Lou D’Allesandro", "Hart’s Location",
-              "Wentworths Location", "RSA 91-A:4 IV", "91-A:4, IV", "rsa 91-a:4(iv)",
+              "Wentworths Location", "Wentworth's Loc.", "Chandlers Purchase", "O Neil",
+              "Candice O Neil", "Hart s Location", "RSA 91-A:4 IV", "91-A:4, IV", "rsa 91-a:4(iv)",
               "LSR 2027-0002", "2027-0002", "2026-0002"],
     "search": ["RSA 91-A", "data centers", "LSR 2027-0002", "firearms", "xyzzy",
                "O’Connor", "RSA 91-A:4 IV"],
@@ -21641,7 +21647,8 @@ def _search_reads_typed(BP):
     """The owner, 6 November 2026: test the update the way real people search.
     On the dry run, in the header and the bill search alike, "O’Connor", "Lou
     D’Allesandro" and "Hart’s Location" -- a phone's curly apostrophe --
-    found nothing, nor did "Wentworths Location" with none; "RSA 91-A:4 IV"
+    found nothing, nor did "Wentworths Location" with none, the record
+    naming the place "Wentworth's Loc."; "RSA 91-A:4 IV"
     and "91-A:4, IV" found nothing where "91-A:2" found the law; and the
     header offered no bill request for "2027-0001", which /search and /bills
     both find. (A bill number written out, "H.B. 703" and "Senate Bill 11",
@@ -21663,7 +21670,16 @@ def _search_reads_typed(BP):
                     ("oconnor", "/legislator/patrick-oconnor"),
                     ("Lou D’Allesandro", "/legislator/lou-dallesandro"),
                     ("Hart’s Location", "/town/hart-s-location"),
-                    ("Wentworths Location", "/town/wentworth-s-location")):
+                    # The record's "Loc." and "Pur." read as the words.
+                    ("Wentworths Location", "/town/wentworth-s-location"),
+                    ("Wentworth's Loc.", "/town/wentworth-s-location"),
+                    ("Chandlers Purchase", "/town/chandler-s-pur"),
+                    # An apostrophe typed as a space (the review of 7 November
+                    # 2026): "neil" is under five letters, so it must start a
+                    # word, and a row read only as "oneil" lost it.
+                    ("O Neil", "/legislator/candice-oneil"),
+                    ("Candice O Neil", "/legislator/candice-oneil"),
+                    ("Hart s Location", "/town/hart-s-location")):
         if first(P["panel"][q]) != href:
             bad.append(f"the header's first row for {q!r} is {first(P['panel'][q])!r}, not {href}")
     if P["search"]["O’Connor"]["say"] != "1 representative.":
@@ -21694,8 +21710,9 @@ def _search_reads_typed(BP):
     if "term=2027-requests" in P["panel"]["2026-0002"]:
         bad.append("the header offers a request for 2026-0002, which no request has")
     assert not bad, "; ".join(bad[:4])
-    return "ok", ("O’Connor, oconnor, Lou D’Allesandro, Hart’s Location and Wentworths Location "
-                  "find the record's straight-apostrophe names; RSA 91-A:4 IV, 91-A:4, IV and "
+    return "ok", ("O’Connor, oconnor, O Neil, Lou D’Allesandro, Hart’s Location, Hart s Location, "
+                  "Wentworths Location and Chandlers Purchase find the record's names, its "
+                  "\"Loc.\" and \"Pur.\" among them; RSA 91-A:4 IV, 91-A:4, IV and "
                   "(iv) the section; LSR 2027-0002 and 2027-0002 lead the header with the request")
 
 

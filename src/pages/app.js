@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.273
+// GRANITE_VERSION: 2026-09-07.274
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2779,9 +2779,13 @@ const RSA_SHAPE=/^\s*(?:rsa\s*)?(\d{1,3}(?:-[a-z]{1,2})?)(?:\s*:\s*([0-9]{1,4}(?
    that change it. Bills are indexed to the section, so a paragraph after
    one -- IV, "(iv)", "IV(a)", with or without a comma -- is read as the
    section. find.js's findLaw reads it the same way (RSA_PARAGRAPH there). */
-const RSA_PARAGRAPH=/^(\s*(?:rsa\s*)?\d{1,3}(?:-[a-z]{1,2})?\s*:\s*[0-9]{1,4}(?:\.[0-9]{1,2})?(?:-[a-z0-9]{1,4})?)\s*,?\s*(?:\(?[ivxlc]+\)?|\([a-z0-9]{1,4}\))(?:\s*\([a-z0-9]{1,4}\))*\s*$/i;
+const RSA_PARAGRAPH=/^(\s*(?:rsa\s*)?\d{1,3}(?:-[a-z]{1,2})?\s*:\s*[0-9]{1,4}(?:\.[0-9]{1,2})?(?:-[a-z0-9]{1,4})?)\s*(?:,\s*)?(?:\(?[ivxlc]+\)?|\([a-z0-9]{1,4}\))(?:\s*\([a-z0-9]{1,4}\))*\s*$/i;
 function rsaNorm(t){const m=RSA_SHAPE.exec(String(t||"").replace(RSA_PARAGRAPH,"$1"));return m?m[1].toUpperCase()+(m[2]?":"+m[2].toLowerCase():""):"";}
 function rsaHas(b,want){return (b.rsa||[]).includes(want);}
+// The statute a search names, worked out once for the search and not again
+// for each bill matches() is asked about (the review of 7 November 2026).
+let RSAQ_OF=null,RSAQ="";
+function rsaOfQuery(q){if(q!==RSAQ_OF){RSAQ_OF=q;RSAQ=rsaNorm(q);}return RSAQ;}
 // A CHAPTER'S ADDRESS, AS build_rsa.chapter_path WRITES IT (the sitemap
 // audit, 16 October 2026): RSA 404's page is a folder's index.html, which the
 // host serves at the address with a slash and redirects to from the one
@@ -3339,7 +3343,7 @@ function matches(b,ignore){
   const q=query.trim(); if(!q)return true;
   // A statute typed in the search box is the statute filter: "RSA 91-A:4"
   // lists the bills that change it, not the bills that print those words.
-  const rq=/^\s*rsa\b/i.test(q)&&hasRsa()?rsaNorm(q):"";
+  const rq=/^\s*rsa\b/i.test(q)&&hasRsa()?rsaOfQuery(q):"";
   if(rq)return rsaHas(b,rq);
   // Every group must match, and any of its alternatives will do.
   return groupsFor(q).every(g=>groupWeight(b,g)>0);

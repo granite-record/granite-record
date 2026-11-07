@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.47
+// GRANITE_VERSION: 2026-09-16.48
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -117,8 +117,8 @@ function _fwasNamed(r,s){
   const old=Array.isArray(r&&r[7])?r[7]:[];
   const words=s?_fwords(s):[];
   if(!old.length||!words.length)return "";
-  if(words.every(w=>_fhas(_fapos(String(r[1]||"").toLowerCase()),w)))return "";
-  return old.find(n=>words.every(w=>_fhas(_fapos(String(n).toLowerCase()),w)))||"";
+  if(words.every(w=>_fhas(_fboth(String(r[1]||"").toLowerCase()),w)))return "";
+  return old.find(n=>words.every(w=>_fhas(_fboth(String(n).toLowerCase()),w)))||"";
 }
 // The line under a row -- but not "House committee" under a name that now says
 // it. A committee that no longer sits says so in the person's own words for it
@@ -255,7 +255,7 @@ const FLAW_FOLDERS=["404"];
 // "IV(a)" -- is read as the section, the Laws page's anchor and the bills'
 // index both being the section's (the owner's test, 6 November 2026).
 // app.js's RSA_PARAGRAPH, the same.
-const FLAW_PARAGRAPH=/^(\s*(?:(?:rsa|chapter)\s*)?\d{1,3}(?:-[a-z]{1,2})?\s*:\s*[0-9]{1,4}(?:\.[0-9]{1,2})?(?:-[a-z0-9]{1,4})?)\s*,?\s*(?:\(?[ivxlc]+\)?|\([a-z0-9]{1,4}\))(?:\s*\([a-z0-9]{1,4}\))*\s*$/i;
+const FLAW_PARAGRAPH=/^(\s*(?:(?:rsa|chapter)\s*)?\d{1,3}(?:-[a-z]{1,2})?\s*:\s*[0-9]{1,4}(?:\.[0-9]{1,2})?(?:-[a-z0-9]{1,4})?)\s*(?:,\s*)?(?:\(?[ivxlc]+\)?|\([a-z0-9]{1,4}\))(?:\s*\([a-z0-9]{1,4}\))*\s*$/i;
 function findLaw(q){
   const m=FLAW_SHAPE.exec(String(q||"").replace(FLAW_PARAGRAPH,"$1"));
   if(!m||(!m[1]&&!m[3]&&!m[2].includes("-")))return null;
@@ -294,7 +294,21 @@ const _fbare=s=>String(s||"").replace(/^Former /,"");
    none. Every name and every search is matched with its apostrophes, of
    either kind, left out, so all three find the row the record spells with a
    straight one. A row is still drawn as it is written. */
-const _fapos=s=>String(s||"").replace(/['‘’ʼ]/g,"");
+const _fapos=s=>_fabbr(String(s||"").replace(/['‘’ʼ]/g,""));
+/* AND A NAME IS MATCHED BOTH WAYS (the review of 7 November 2026): with
+   the apostrophe left out, "oneil", and with it read as a space, "o neil".
+   Left out alone, "O Neil" and "Hart s Location" found nothing: "neil" is
+   under five letters, so it must start a word, and in "oneil" it does not.
+   A search is read the one way, its apostrophes left out; a row carries
+   both, so "O'Neil", "O’Neil", "ONeil" and "O Neil" all find it. */
+const _fboth=s=>{s=String(s||"");return /['‘’ʼ]/.test(s)
+  ?_fapos(s)+" "+_fabbr(s.replace(/['‘’ʼ]/g," ")):_fabbr(s);};
+/* "LOC." AND "PUR." ARE HOW THE RECORD SHORTENS A PLACE (the review of 7
+   November 2026). find.json names three unincorporated places as the
+   Secretary of State's returns do -- "Wentworth's Loc.", "Chandler's Pur.",
+   "Crawford's Pur." -- and "Wentworths Location" found none of them. Both
+   a row and a search read the short word as the whole one. */
+const _fabbr=s=>s.replace(/\bloc\.(?=\s|,|$)/g,"location").replace(/\bpur\.(?=\s|,|$)/g,"purchase");
 
 // A name that starts with what was typed first, then one with a word
 // starting with it -- "Litchfield" puts the town and Rep. Litchfield above
@@ -302,7 +316,7 @@ const _fapos=s=>String(s||"").replace(/['‘’ʼ]/g,"");
 // the query lowercased and trimmed; `edge` is _fedge(s).
 const _fedge=s=>new RegExp("\\b"+s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"));
 function _frank(r,s,edge){
-  const name=_fapos(_fbare(r[1]).toLowerCase());
+  const name=_fboth(_fbare(r[1]).toLowerCase());
   return name.startsWith(s)?0:edge.test(name)?1:2;
 }
 
@@ -347,7 +361,7 @@ const _fisword=(name,w)=>new RegExp("(^|[^\\p{L}\\p{N}])"
    "my sen." a reader's "my senator" becomes. */
 const _fnamed=r=>r&&(r[0]==="guide"||r[0]==="page")?`${_fbare(r[1])} ${r[4]||""}`:_fbare(r&&r[1]);
 function _fwhole(r,s){
-  const name=_ftitled(_fapos(_fnamed(r).toLowerCase()));
+  const name=_ftitled(_fboth(_fnamed(r).toLowerCase()));
   const words=_fwords(s);
   return words.length>0&&words.every(w=>_fisword(name,w));
 }
@@ -365,7 +379,7 @@ function _fwhole(r,s){
    typed that are not a whole word of the name, and findMatch orders by it
    before anything else. */
 function _fpart(r,s){
-  let name=_ftitled(_fapos(_fnamed(r).toLowerCase()));
+  let name=_fnamed(r).toLowerCase();
   // THE SEAT COUNTS ONLY WHEN A NUMBER IS TYPED. "(R - Merr 5)" made "merr"
   // a whole word of every Merrimack County representative, and forty of them
   // pushed the town of Merrimack out of the header's eight rows while a
@@ -374,6 +388,9 @@ function _fpart(r,s){
   // number -- "hills 29", "sd2" -- so a query with a digit still reads the
   // seat, and one without reads the name alone.
   if(!/\d/.test(s))name=name.replace(/\s*\([^()]*\)\s*$/,"");
+  // Both ways only now, the seat taken off first, or it would stay on the
+  // first of the two.
+  name=_ftitled(_fboth(name));
   return _fwords(s).filter(w=>!_fisword(name,w)).length;
 }
 
@@ -396,7 +413,7 @@ const _ftitled=s=>s.split(/\s+/).map(w=>
 const FHAY=new WeakMap();
 function _fhay(r){
   let h=FHAY.get(r);
-  if(h===undefined){h=_ftitled(_fapos(`${r[1]} ${r[2]} ${r[4]||""}`.toLowerCase()));FHAY.set(r,h);}
+  if(h===undefined){h=_ftitled(_fboth(`${r[1]} ${r[2]} ${r[4]||""}`.toLowerCase()));FHAY.set(r,h);}
   return h;
 }
 
