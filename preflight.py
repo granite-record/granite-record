@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.783
+# GRANITE_VERSION: 2026-09-04.784
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -72298,6 +72298,109 @@ def _spanish_officials(i18n, BP, OT, seating):
                   "every one current; Members-Elect and the county lines drawn in Spanish")
 
 
+@check("frontend", "every page in Spanish says once, in the same words, what on it stays in English "
+                   "and why, and no English page does", needs=("chrome", "i18n"))
+def _one_language_note(chrome, i18n):
+    """The laptop manager session, 7 November 2026: a native Spanish speaker
+    who read the Spanish pages for the owner could not tell why some parts
+    were translated and others were not. Four pages said it four ways
+    (home.lang_note, guides.lang_note, guides.hub_lang_note,
+    learn.lang_note), none said why, and Officials and the glossary said
+    nothing. Now chrome.lang_note draws one note, the line and an opener
+    with the four reasons, under the title of every page i18n.PAGES names in
+    Spanish, built on the fixture: each carries it exactly once. Each English
+    twin carries none. The four old keys are gone from the code and the
+    catalog. The "(en inglés)" markers where a list names an English page
+    stay."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    note = chrome.lang_note("es")
+    bad = []
+    if chrome.lang_note("en") != "":
+        bad.append("an English page would carry the note")
+    for key in ("lang.why_record", "lang.why_names", "lang.why_links", "lang.why_not_yet"):
+        if i18n.catalog("es")["strings"].get(key, {}).get("es", "\0") not in note:
+            bad.append(f"the note does not give its reason {key} in Spanish")
+    # THE WORDING THE OWNER APPROVED AS DRAFTED (6 November 2026, "fine as is
+    # for now"), word for word in both languages, read as a reader sees it:
+    # a change goes through the catalog on purpose (the Latino caucus's
+    # review may bring one), and then here.
+    approved = {
+        "lang.note": ("This page is in Spanish. Some parts stay in English on purpose, and some "
+                      "pages aren't translated yet.",
+                      "Esta página está en español. Algunas partes se quedan en inglés a propósito, "
+                      "y algunas páginas todavía no están traducidas."),
+        "lang.why": ("Why some parts are in English", "Por qué algunas partes están en inglés"),
+        "lang.why_record": (
+            "The official record stays in English. Bill titles and text, the laws, each bill's "
+            "history, votes and committee reports are the General Court's official record, which is "
+            "written in English. Translating legal wording can change what it means, so the site "
+            "shows it as written.",
+            "El registro oficial se queda en inglés. Los títulos y el texto de los proyectos de ley, "
+            "las leyes, el historial de cada proyecto, las votaciones y los informes de los comités "
+            "son el registro oficial de la Legislatura, que está escrito en inglés. Traducir un texto "
+            "legal puede cambiar su significado, así que el sitio lo muestra tal como está escrito."),
+        "lang.why_names": (
+            "Names stay as the record prints them: people, committees, towns and offices. Search "
+            "finds subjects by their English words (housing, not vivienda).",
+            "Los nombres se dejan como los imprime el registro: personas, comités, municipios y "
+            "cargos. La búsqueda encuentra los temas por sus palabras en inglés (housing, no "
+            "vivienda)."),
+        "lang.why_links": ("Official state pages the site links to are in English.",
+                           "Las páginas oficiales del estado a las que enlaza el sitio están en inglés."),
+        "lang.why_not_yet": (
+            'Not translated yet: the pages for bills, legislators, committees, the calendar and the '
+            'laws, and any page marked "in English" where it is listed.',
+            'Todavía sin traducir: las páginas de proyectos de ley, legisladores, comités, el '
+            'calendario y las leyes, y cualquier página marcada "en inglés" donde aparece en una '
+            'lista.')}
+
+    import html as _h
+
+    def seen(s):
+        s = _h.unescape(re.sub(r"<[^>]+>", "", s or ""))
+        return s.replace("’", "'").replace("“", '"').replace("”", '"')
+    cat = i18n.catalog("es")["strings"]
+    for key, (en, es) in approved.items():
+        e = cat.get(key) or {}
+        if seen(e.get("en")) != en or seen(e.get("es")) != es:
+            bad.append(f"{key} is not the wording the owner approved")
+        if e.get("state") != "draft":
+            bad.append(f"{key} is {e.get('state')!r}, not draft, before the caucus's review")
+    if '<details class="langwhy"><summary>' not in note:
+        bad.append("the reasons are not under an opener")
+    built = 0
+    for page in i18n.PAGES["es"]:
+        es, en = site / i18n.href("es", page).lstrip("/"), site / page
+        if es.is_dir() or es.suffix != ".html":
+            es = es / "index.html" if es.is_dir() or not es.suffix else es
+        if not es.is_file():
+            continue
+        built += 1
+        t = es.read_text(encoding="utf-8")
+        n = t.count(note)
+        if n != 1:
+            bad.append(f"{es.relative_to(site)} carries the note {n} times")
+        if en.is_file() and 'class="langwhy"' in en.read_text(encoding="utf-8"):
+            bad.append(f"{page}, in English, carries the Spanish note")
+    if built < 4:
+        bad.append(f"only {built} Spanish pages built on the fixture to look at")
+    # The markers show only where a listed page is still in English, which on
+    # the fixture none is, so the code that draws them is what is held.
+    if 'class="r-en">(' not in Path("src/pages/build_civics.py").read_text(encoding="utf-8"):
+        bad.append("the \"(en inglés)\" markers on a list's English pages are gone")
+    old = ("home.lang_note", "guides.lang_note", "guides.hub_lang_note", "learn.lang_note")
+    code = "".join(p.read_text(encoding="utf-8") for p in Path("src/pages").glob("*.py"))
+    left = [k for k in old if f'"{k}"' in code or k in i18n.catalog("es")["strings"]]
+    if left:
+        bad.append(f"the old notes are still asked for or kept: {left}")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", f"{built} Spanish pages each say it once; no English page does; the four old notes gone"
+
+
 @check("build", "the Learn pages i18n.PAGES names are built in Spanish at /es/learn/, piece by "
                 "piece from the catalog, each naming its English page and each English page "
                 "naming it, and the hub's Learn tab marks the ones still in English",
@@ -72345,8 +72448,8 @@ def _spanish_learn(i18n, G, BC, chrome, civics):
             es_title = strings[f"learn.{slug}.title"]["es"]
             if f"<h1>{_h.escape(es_title, quote=True)}</h1>" not in page:
                 bad.append(f"{slug}: its <h1> is not its Spanish title {es_title!r}")
-            if strings["learn.lang_note"]["es"] not in page:
-                bad.append(f"{slug}: no line saying what on it is in English")
+            if chrome.lang_note("es") not in page:
+                bad.append(f"{slug}: no note saying what on it is in English, and why")
             if "data-trreport hidden" not in page:
                 bad.append(f"{slug}: no button for a mistake in the translation")
             if 'href="/es/resources#learn" aria-current="true"' not in page:
@@ -72510,8 +72613,8 @@ def _spanish_guides(i18n, G, BC, chrome, civics):
             es_title = strings[f"guide.{slug}.title"]["es"]
             if f"<h1>{_h.escape(es_title, quote=True)}</h1>" not in page:
                 bad.append(f"{slug}: its <h1> is not its Spanish title {es_title!r}")
-            if strings["guides.lang_note"]["es"] not in page:
-                bad.append(f"{slug}: no line saying the pages it links are in English")
+            if chrome.lang_note("es") not in page:
+                bad.append(f"{slug}: no note saying what on it is in English, and why")
             # A link lang_links sent to a Spanish page, still called English
             # (the review of 25 October 2026 found four, left from before the
             # Learn pages they link were translated).
