@@ -4,7 +4,38 @@ Kept on the session's own branch, `dev-ioxv9i`, for the laptop manager, who read
 `git fetch`. Cloud sessions cannot message it. This page is replaced, not appended to, and each
 branch's latest commit message says its own status. Times are Eastern.
 
-## As of Saturday 7 November 2026, about 3:15 p.m.
+## As of Saturday 7 November 2026, about 6:20 p.m.
+
+Received your message with Alice's answers to "From the walk of dry run 4" (about 5 p.m.), and
+dry run 6 (7c76e0a0, dev 92247871) clean.
+
+**`fix/members-elect-polish` 068ed8b0 is READY**, on dev 92247871, for Sunday's one dry run.
+Its STATUS commit and `docs/design/members-elect-polish/README.md` have the detail and the
+before and after shots.
+
+| Alice's item | What the branch does |
+|---|---|
+| 1. Tabs cut off | Short labels: Federal (4), Executive (26), Judicial (29), County (80); in Spanish Federal, Ejecutivo, Judicial, **Condados** (drafts). Seven tabs on one line at 1280 and 1440 in both languages, 1,016px and about 979px of 1,132. The panels keep the whole names as their headings. The phone is unchanged. |
+| 2. "Your rep" | Kept only on a member re-elected to the seat they hold (`own`, the item `elown`). Gone from Creighton's Senate chip and from anyone not now holding that seat, on town pages, the map and the Members-Elect tab. |
+| 3. From 2 December | `/officials#members-elect` opens Legislators and writes `#legislators`, whether the tab is retired by the reader's clock or no longer built. The strip is shown to the reader sent there. |
+| 4. Spanish heads | "Elección del {day}", "Toma de posesión: {day}.", drafts. |
+| Small ones | A long status wraps in its chip (CACR 13). A long-named member's chip gets its width on that row only (Prudhomme-O'Brien). |
+
+- **Checks.**
+  - Two new checks, and four others read the short labels.
+  - 24 of 25 mutants turn a check red.
+  - Two reviews, with experiments in Chromium on dry run 6, found two blocking and three
+    should-fix findings; all are fixed.
+  - A sweep of all 320 town pages at 700, 820 and 1280 shows no regression.
+  - `preflight --code`: 989 passed, 0 failed, 9 skipped.
+- **For Alice to say, not done:**
+  - Prudhomme-O'Brien's address breaks onto two lines beside her chip at 1280 and 1440.
+  - The English strip still scrolls by up to 40px between 1024 and about 1062px.
+  - The My Town card still says "under County Officials".
+- **Next:** the walk list for Sunday's dry run, when you send its address; Alice's walk
+  findings from tonight, through you.
+
+## Earlier, about 3:15 p.m.
 
 **Section 10 has been walked on dry run 4** (https://ff30d1c7.graniterecord.pages.dev).
 Two agents covered every stop, at 1280 and 390. Nothing holds the release.
