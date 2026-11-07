@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.59
+# GRANITE_VERSION: 2026-09-04.60
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -2621,7 +2621,10 @@ def main():
         if len(r) < 13:
             continue
         summary[(r[0], r[1], r[2])] = {
-            "year": r[0], "body": r[1], "number": r[2], "datetime": r[3],
+            # The day a person put right, where one did (rollcall_parser.
+            # roll_call_when), so each ballot is dated as rollcalls.json is.
+            "year": r[0], "body": r[1], "number": r[2],
+            "datetime": RP.roll_call_when(r[0], r[1], r[2], r[3]),
             # The bill as data/bills.json keys it, so each ballot reaches its
             # bill's page: "SB 406" upper-cased and left spaced linked no
             # member's vote to SB 406. rollcall_parser.bill_number says which
@@ -2639,6 +2642,7 @@ def main():
     # says it, so the ballots and the bill's page are seen to move together.
     # Not "in no file read": a run of the frozen terms reads only theirs.
     RP.refiled_report(complete=False)
+    RP.misdated_report(complete=False)
 
     member_votes, vote_kinds, hist_bodies = [], Counter(), Counter()
     vnums, unmatched_votes, no_person = set(), 0, Counter()

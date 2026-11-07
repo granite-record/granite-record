@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.19
+# GRANITE_VERSION: 2026-09-04.20
 """
 Parse RollCallSummary.txt into per-bill voting records.
 
@@ -254,6 +254,109 @@ def refiled_report(complete=True, who="rollcall_corrections.json"):
     return applied, stale, unread
 
 
+# A ROLL CALL'S DAY, PUT RIGHT BY A PERSON (the same file's "misdated"; the
+# deep walk of 6 November 2026). Roll call 1999-S-109, the Senate's 15-8 vote
+# to order CACR 17 to third reading, is dated 22 October 2009 in the
+# roll-call file, between two of 22 October 1999. CACR 17's docket dates the
+# vote 22 October 1999, and it is the only one of 2,303,047 ballots dated
+# outside its term. The day drew it as 2009 on CACR 17's Votes tab and on 23
+# senators' own, and gave the six of them who sat only in 1999-2000 a record
+# "1999 to 2009". Kept as "misfiled" is: an entry is keyed by the roll call,
+# says the day the file gives ("says", m/d/Y) and the day it was ("is"), with
+# the evidence; it is applied only while the file still gives the day it
+# says, and one that has stopped matching is reported and not applied. Read
+# in roll_call_when, wherever a roll call's day is read beside its bill
+# (roll_call_bill): rollcalls.json, every ballot and the floor index.
+_MISDATED = {}
+# {(year, body, number): {the day the file gave it, each time it was read}}
+MISDATED_SEEN = defaultdict(set)
+
+
+def _file_day(s):
+    """The day of "10/22/2009" or "10/22/2009 11:02:00 AM", as the roll-call
+    file writes it, as a date; None where it is not one."""
+    try:
+        return datetime.strptime(str(s or "").strip().split(" ")[0], "%m/%d/%Y").date()
+    except ValueError:
+        return None
+
+
+def misdated(path=None):
+    """{(year, body, number): entry} from the file's "misdated", keyed as the
+    site names a roll call ("1999-S-109"), or {} where there is none. An entry
+    this cannot apply stops the run rather than being passed over: two days
+    that are not two m/d/Y days, or no evidence."""
+    p = Path(path or REFILED)
+    key = str(p.resolve())
+    if key not in _MISDATED:
+        out = {}
+        if p.is_file():
+            try:
+                doc = json.loads(p.read_text(encoding="utf-8"))
+            except ValueError as e:
+                raise SystemExit(f"{p} will not read: {e}") from None
+            got = doc.get("misdated") if isinstance(doc, dict) else None
+            if got is not None and not isinstance(got, dict):
+                raise SystemExit(f"{p}: \"misdated\" is keyed by the roll call, as the site "
+                                 "names it (\"1999-S-109\")")
+            for k, e in (got or {}).items():
+                m = REFILED_KEY.fullmatch(str(k).strip())
+                ok = isinstance(e, dict)
+                says, was = (_file_day(e.get("says")), _file_day(e.get("is"))) if ok else (None, None)
+                if not (m and says and was and says != was and str(e.get("evidence") or "").strip()):
+                    raise SystemExit(
+                        f"{p}: {k!r} is not an entry this can apply: the key is the roll call "
+                        "as the site names it (\"1999-S-109\"), \"says\" and \"is\" are two "
+                        "different days written m/d/Y, and \"evidence\" says how the record "
+                        "settles it")
+                out[(m.group(1), m.group(2), int(m.group(3)))] = e
+        _MISDATED[key] = out
+    return _MISDATED[key]
+
+
+def roll_call_when(year, body, number, raw):
+    """The roll call's day and time as the roll-call file writes them
+    ("10/22/2009 11:02:00 AM"), or, for one a person has shown is misdated
+    (rollcall_corrections.json's "misdated"), the same with the day the
+    record gives -- while the file still gives the day the entry says."""
+    raw = raw or ""
+    try:
+        k = (str(year).strip(), str(body).strip(), int(number))
+    except (TypeError, ValueError):
+        k = None
+    e = misdated().get(k) if k else None
+    if e is None:
+        return raw
+    head, _, rest = raw.strip().partition(" ")
+    MISDATED_SEEN[k].add(head)
+    if _file_day(head) != _file_day(e.get("says")):
+        return raw
+    d = _file_day(e.get("is"))
+    return f"{d.month}/{d.day}/{d.year}" + (f" {rest}" if rest else "")
+
+
+def misdated_report(complete=True, who="rollcall_corrections.json"):
+    """Say what "misdated" did to this run, as refiled_report says what
+    "misfiled" did: (applied, stale, unread) as "1999-S-109" keys."""
+    applied, stale, unread = [], [], []
+    for k, e in sorted(misdated().items()):
+        name = f"{k[0]}-{k[1]}-{k[2]}"
+        seen = {_file_day(s) for s in MISDATED_SEEN.get(k) or ()}
+        if _file_day(e.get("says")) in seen:
+            applied.append(name)
+            print(f"  {who}: {name} is dated {e.get('says')} in the roll-call file and "
+                  f"drawn on {e.get('is')}")
+        elif seen:
+            stale.append(name)
+            print(f"  ! {who}: {name} is dated {', '.join(sorted(str(s) for s in seen))} in the "
+                  f"roll-call file now, not {e.get('says')}: the entry was NOT applied and is "
+                  "the thing that is out of date")
+        elif complete:
+            unread.append(name)
+            print(f"  ! {who}: {name} is in no roll-call file read, so the entry did nothing")
+    return applied, stale, unread
+
+
 def other_measure(r):
     """True for a parsed roll call OTHER_MEASURE files under its own name."""
     try:
@@ -314,7 +417,9 @@ def parse(path, want_bill=None):
                 plain = ""
 
             try:
-                when = datetime.strptime(p[3].strip(), "%m/%d/%Y %I:%M:%S %p")
+                # The day a person put right, where one did (roll_call_when).
+                when = datetime.strptime(roll_call_when(year, body, num, p[3]).strip(),
+                                         "%m/%d/%Y %I:%M:%S %p")
             except ValueError:
                 when = None
 
@@ -514,6 +619,7 @@ def parse_all(current, extra_dir):
         print(f"  {f}: {kept:,} roll calls")
     # Every file is read here, so an entry no file holds is said too.
     refiled_report()
+    misdated_report()
     print(f"  who did not vote, from the ballots: {from_ballots:,} roll calls"
           + (f"; {differ:,} where the General Court's summary and its ballots "
              "disagree now take the headline from the ballots, and keep the "

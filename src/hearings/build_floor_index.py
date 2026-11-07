@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.12
+# GRANITE_VERSION: 2026-09-04.13
 """
 Build a per-bill index of floor debates, keyed to the session recordings.
 
@@ -222,7 +222,10 @@ def main():
                     continue
                 read.add(key)
                 try:
-                    when = datetime.strptime(p[3].strip(), "%m/%d/%Y %I:%M:%S %p")
+                    # The day a person put right, where one did, as
+                    # rollcalls.json and the ballots date it (roll_call_when).
+                    when = datetime.strptime(RP.roll_call_when(p[0], p[1], p[2], p[3]).strip(),
+                                             "%m/%d/%Y %I:%M:%S %p")
                 except ValueError:
                     continue
                 # The bill as rollcall_parser keys it, so "HB 315", "sb136" or
