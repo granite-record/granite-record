@@ -542,6 +542,11 @@
    "es": "Proyecto de ley",
    "state": "draft"
   },
+  "find.kind.request": {
+   "en": "Bill Request",
+   "es": "Solicitud de proyecto de ley",
+   "state": "draft"
+  },
   "find.kind.committee": {
    "en": "Committee",
    "es": "Comité",

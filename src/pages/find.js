@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.46
+// GRANITE_VERSION: 2026-09-16.47
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -117,8 +117,8 @@ function _fwasNamed(r,s){
   const old=Array.isArray(r&&r[7])?r[7]:[];
   const words=s?_fwords(s):[];
   if(!old.length||!words.length)return "";
-  if(words.every(w=>_fhas(String(r[1]||"").toLowerCase(),w)))return "";
-  return old.find(n=>words.every(w=>_fhas(String(n).toLowerCase(),w)))||"";
+  if(words.every(w=>_fhas(_fapos(String(r[1]||"").toLowerCase()),w)))return "";
+  return old.find(n=>words.every(w=>_fhas(_fapos(String(n).toLowerCase()),w)))||"";
 }
 // The line under a row -- but not "House committee" under a name that now says
 // it. A committee that no longer sits says so in the person's own words for it
@@ -190,8 +190,24 @@ const FBILLKIND=new Set(["HB","SB","CACR","HCR","SCR","HJR","SJR","HR","SR",
    A bill number typed in any of the ways people write one: hb115, HB 115,
    "hb 0115". Offered without looking anything up, and handed to the bill
    search, which knows which term is on screen. */
+/* And as people write it out (the owner's test, 6 November 2026): "H.B.
+   703", "H. B. 703" and "Senate Bill 11" are HB 703 and SB 11. app.js's
+   numberForm reads the same forms the same way for the bill search, which
+   the panel's count comes from. */
+const FNUMBER_WORDS=[
+  ["constitutional amendment concurrent resolution","CACR"],
+  ["house concurrent resolution","HCR"],["senate concurrent resolution","SCR"],
+  ["house joint resolution","HJR"],["senate joint resolution","SJR"],
+  ["house resolution","HR"],["senate resolution","SR"],
+  ["house bill","HB"],["senate bill","SB"]
+].map(([w,k])=>[new RegExp("^"+w.split(" ").join("\\s+")+"\\s*(?:no\\.?\\s*)?(?=\\d)","i"),k]);
+function _fnumberForm(q){
+  let s=String(q||"").trim();
+  for(const [rx,k] of FNUMBER_WORDS)if(rx.test(s)){s=s.replace(rx,k);break;}
+  return s.replace(/^((?:[a-z]\s*\.\s*){1,4}[a-z]\s*\.?\s*)(?=\d)/i,m=>m.replace(/[\s.]/g,""));
+}
 function findBill(q){
-  const m=/^\s*([a-z]{2,5})\s*0*(\d{1,4})\s*$/i.exec(q||"");
+  const m=/^\s*([a-z]{2,5})\s*0*(\d{1,4})\s*$/i.exec(_fnumberForm(q));
   if(!m)return "";
   const kind=m[1].toUpperCase();
   return FBILLKIND.has(kind)?`${kind} ${m[2]}`:"";
@@ -235,8 +251,13 @@ function findBillNumber(num,limit){
    holds it to). find.json does not grow by a row. */
 const FLAW_SHAPE=/^\s*(?:(rsa|chapter)\s*)?(\d{1,3}(?:-[a-z]{1,2})?)(?:\s*:\s*([0-9]{1,4}(?:\.[0-9]{1,2})?(?:-[a-z0-9]{1,4})?))?\s*$/i;
 const FLAW_FOLDERS=["404"];
+// A paragraph after a section -- "RSA 91-A:4 IV", "91-A:4, IV", "(iv)",
+// "IV(a)" -- is read as the section, the Laws page's anchor and the bills'
+// index both being the section's (the owner's test, 6 November 2026).
+// app.js's RSA_PARAGRAPH, the same.
+const FLAW_PARAGRAPH=/^(\s*(?:(?:rsa|chapter)\s*)?\d{1,3}(?:-[a-z]{1,2})?\s*:\s*[0-9]{1,4}(?:\.[0-9]{1,2})?(?:-[a-z0-9]{1,4})?)\s*,?\s*(?:\(?[ivxlc]+\)?|\([a-z0-9]{1,4}\))(?:\s*\([a-z0-9]{1,4}\))*\s*$/i;
 function findLaw(q){
-  const m=FLAW_SHAPE.exec(String(q||""));
+  const m=FLAW_SHAPE.exec(String(q||"").replace(FLAW_PARAGRAPH,"$1"));
   if(!m||(!m[1]&&!m[3]&&!m[2].includes("-")))return null;
   return {ch:m[2].toUpperCase(),sec:m[3]?m[3].toLowerCase():""};
 }
@@ -267,6 +288,13 @@ function findLawRow(q){
 // would put all 1,785 of them at the top the moment somebody typed "for",
 // and would stop "vail" from being a name that STARTS with what was typed.
 const _fbare=s=>String(s||"").replace(/^Former /,"");
+/* AN APOSTROPHE IS NOT WHAT TELLS ONE NAME FROM ANOTHER (the owner's test, 6
+   November 2026). A phone types "O’Connor" and "Hart’s Location" with a
+   curly apostrophe, which no row has; "Wentworths Location" was typed with
+   none. Every name and every search is matched with its apostrophes, of
+   either kind, left out, so all three find the row the record spells with a
+   straight one. A row is still drawn as it is written. */
+const _fapos=s=>String(s||"").replace(/['‘’ʼ]/g,"");
 
 // A name that starts with what was typed first, then one with a word
 // starting with it -- "Litchfield" puts the town and Rep. Litchfield above
@@ -274,7 +302,7 @@ const _fbare=s=>String(s||"").replace(/^Former /,"");
 // the query lowercased and trimmed; `edge` is _fedge(s).
 const _fedge=s=>new RegExp("\\b"+s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"));
 function _frank(r,s,edge){
-  const name=_fbare(r[1]).toLowerCase();
+  const name=_fapos(_fbare(r[1]).toLowerCase());
   return name.startsWith(s)?0:edge.test(name)?1:2;
 }
 
@@ -294,7 +322,7 @@ function _frank(r,s,edge){
 // "senator" and "representative" are the words a row prints as "Sen." and
 // "Rep." (A TITLE AS IT IS SAID, below): "senator carson" has every word of
 // it a whole word of her name, and leads with her, as "sen. carson" does.
-const _fwords=s=>String(s||"").toLowerCase().split(/\s+/)
+const _fwords=s=>_fapos(String(s||"").toLowerCase()).split(/\s+/)
   .map(w=>w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,""))
   .map(w=>w==="senator"?"sen":w==="representative"?"rep":w).filter(Boolean);
 const _fisword=(name,w)=>new RegExp("(^|[^\\p{L}\\p{N}])"
@@ -319,7 +347,7 @@ const _fisword=(name,w)=>new RegExp("(^|[^\\p{L}\\p{N}])"
    "my sen." a reader's "my senator" becomes. */
 const _fnamed=r=>r&&(r[0]==="guide"||r[0]==="page")?`${_fbare(r[1])} ${r[4]||""}`:_fbare(r&&r[1]);
 function _fwhole(r,s){
-  const name=_ftitled(_fnamed(r).toLowerCase());
+  const name=_ftitled(_fapos(_fnamed(r).toLowerCase()));
   const words=_fwords(s);
   return words.length>0&&words.every(w=>_fisword(name,w));
 }
@@ -337,7 +365,7 @@ function _fwhole(r,s){
    typed that are not a whole word of the name, and findMatch orders by it
    before anything else. */
 function _fpart(r,s){
-  let name=_ftitled(_fnamed(r).toLowerCase());
+  let name=_ftitled(_fapos(_fnamed(r).toLowerCase()));
   // THE SEAT COUNTS ONLY WHEN A NUMBER IS TYPED. "(R - Merr 5)" made "merr"
   // a whole word of every Merrimack County representative, and forty of them
   // pushed the town of Merrimack out of the header's eight rows while a
@@ -368,7 +396,7 @@ const _ftitled=s=>s.split(/\s+/).map(w=>
 const FHAY=new WeakMap();
 function _fhay(r){
   let h=FHAY.get(r);
-  if(h===undefined){h=_ftitled(`${r[1]} ${r[2]} ${r[4]||""}`.toLowerCase());FHAY.set(r,h);}
+  if(h===undefined){h=_ftitled(_fapos(`${r[1]} ${r[2]} ${r[4]||""}`.toLowerCase()));FHAY.set(r,h);}
   return h;
 }
 
@@ -389,7 +417,7 @@ function _fhas(hay,w){
   return false;
 }
 function findMatch(q,limit){
-  const s=_ftitled((q||"").trim().toLowerCase());
+  const s=_ftitled(_fapos((q||"").trim().toLowerCase()));
   if(!s||!FIND.rows)return [];
   const words=s.split(/\s+/);
   const edge=_fedge(s);
@@ -838,6 +866,21 @@ function findBillRow(b,q,dated,why){
     ${why?`<span class="fwhy">${tr("find.listed","Listed for &mdash; {why}",{why:_fesc(why)})}</span>`:""}</a>`;
 }
 
+// A bill request's number, as /bills reads one (app.js's requests offer):
+// "LSR" and the number, or the year, a dash and the number.
+const FLSR=/^\s*(?:lsr\s*\d{4}\s*-?\s*\d{1,4}|\d{4}\s*-\s*\d{1,4})\s*$/i;
+// A request's row, drawn as a bill's: its number, its kind, its title. It
+// opens the bill search on it, in the requests' list (`term`).
+function findRequestRow(b,term,q){
+  let t=String(b.title||"");
+  const cut=t.length>160;
+  if(cut)t=t.slice(0,157).replace(/\s+\S*$/,"");
+  return `<a href="/bills?q=${_fenc(b.n||b.id)}&amp;term=${_fenc(term)}">
+    <span class="fl1"><span class="fname">${_fesc(b.n||b.id)}</span>
+    ${chip(tr("find.kind.request","Bill Request"),"fkind")}</span>
+    ${t?`<span class="fwhat">${_fmark(t,q)}${cut?"&hellip;":""}</span>`:""}</a>`;
+}
+
 // "1989 to 2026", from the terms newest first.
 function _fspan(terms){
   const a=String(terms[terms.length-1]||"").slice(0,4),b=String(terms[0]||"").slice(-4);
@@ -964,8 +1007,23 @@ function findDraw(q,ids){
   // close to what was typed and, since 1 October, the word of the bills
   // that a misspelt one sounds like (findOffers). While the bills are being
   // counted, or a statute's chapter looked up, neither: it is not known.
+  // A BILL REQUEST BY ITS NUMBER (the owner's test, 6 November 2026):
+  // "2027-0001" and "LSR 2027-0001" were found by /search and /bills and not
+  // offered here. Next session's requests (FREQ, which /search counts) are
+  // read for a search of that shape, and the one with the number leads the
+  // panel as a bill's own row does, opening the bill search on it in the
+  // requests' list, since a request has no page of its own yet.
+  const R=!num&&FLSR.test(s)?findBills(s,3,"requests"):null;
+  if(R&&R.state==="loading"&&!FREQ.redraw){
+    FREQ.redraw=true;
+    findRequestsLoad().then(()=>{
+      const box=document.getElementById(ids.box);
+      if(box)findDraw(box.value,ids);});
+  }
+  const req=R&&R.state==="ready"?R.top.map(b=>findRequestRow(b,R.term,s)).join(""):"";
   let tail="";
-  if(!rows.length&&!num&&!(law&&law.loading)&&(!B||(counted&&!B.n)||B.state==="failed")){
+  if(!rows.length&&!num&&!req&&!(R&&R.state==="loading")&&!(law&&law.loading)
+     &&(!B||(counted&&!B.n)||B.state==="failed")){
     const none=!B||counted?tr("find.none","No matching results."):"";
     const offer=findOffers(s,false);
     if(offer.wait&&!FWORDS.redraw){
@@ -982,7 +1040,7 @@ function findDraw(q,ids){
       ?`${none?" ":""}${tr("find.did_you_mean","Did you mean {words}?",{words:did.join(" "+tr("find.or","or")+" ")})}`:""}</p>`;
   }
   const own=N&&N.state==="ready"?N.top.map(b=>findBillRow(b,s,false)).join(""):"";
-  out.innerHTML=num?own+all+list+every+tail:list+all+tail;
+  out.innerHTML=num?own+all+list+every+tail:req+list+all+tail;
   findSay(out.innerHTML,ids);
 }
 
