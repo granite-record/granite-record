@@ -4,97 +4,44 @@ Kept on the session's own branch, `dev-ioxv9i`, for the laptop manager, who read
 `git fetch`. Cloud sessions cannot message it. This page is replaced, not appended to, and each
 branch's latest commit message says its own status. Times are Eastern.
 
-## As of Friday 6 November 2026, about 9 p.m. (in progress updated at 9)
+## As of Friday 6 November 2026, about 10:30 p.m.
 
-### Waiting on the owner
+Received the laptop manager's message of 7 November (Alice's decisions and the weekend plan), and
+the one naming `fix/rollcall-date-line`.
 
-| What | Branch | Status |
-|---|---|---|
-| HB 703 for the live site, alone | `hotfix/same-number-bills` 66e5a4a9 | **Ready for main on the owner's word.** Main a0354996 plus the HB 703 fixes, app.js and preflight only. 959 passed, 0 failed. Dry run 182 (of the earlier 9f964f13) never started: "the night" was given no runner, almost certainly the "preview" environment's branch rule (only dev and main have ever run it). Either admit the branch there and dry-run it, or put it on main: the night then holds for approval, since its code differs from production's. |
-| The 30 confirmed pairs, one person each in people.json | `fix/movers-merge` 8798a1a4 | **Held for a yes or no** (default yes). Its README sets out the 30 merges. If no, drop it, and word the API page and people.json to list the pairs separately. |
-| 1999-S-109's date | `fix/rollcall-date` 0e1a568a | **Held, safe to merge.** The owner's file can now correct a roll call's date. The line for 1999-S-109 is drafted in its README for the owner to paste; their file stays theirs. |
-
-### Ready to merge into dev
+### The weekend release
 
 | What | Branch | Status |
 |---|---|---|
-| HB 703, the same page by other roads | `fix/bill-same-number-2` 91d4206b | **Ready.** Fixes the search then Back, a direct address, a glossary tooltip click, the Cite row on a history jump, a record arriving after Back, and the Bill Text tab. Both reviews done, 989 passed and 0 failed. |
+| The candidate | `release/weekend` 3c79e70e | **In review; please do not move dev yet.** It is dev dd3f7ef9 plus the five branches below; preflight gives 995 passed, 0 failed. The laptop's full preflight can start now. A review of the merges and of how the branches meet is running, and a READY commit follows. |
+| HB 703, the same page by other roads | `fix/bill-same-number-2` 91d4206b | In the candidate. |
+| 1999-S-109's day, with Alice's line | `fix/rollcall-date-line` 6db56f00 | In the candidate, in place of `fix/rollcall-date`. |
+| The 30 confirmed pairs, one person each | `fix/movers-merge` 8798a1a4 | In the candidate (Alice's yes). |
+| `/api`'s counts say their units | `fix/api-units` b142ee31 | In the candidate. Ready: both reviews done. Every count says what it counts, and up to 58em the table is a list. 990 passed, 0 failed. |
+| The deep walk's former-members regressions | `fix/movers-term` 04657c78 | In the candidate. Ready: both reviews done, and nothing blocks. 991 passed, 0 failed. |
 
-### In progress
+### Not in the weekend release
 
 | What | Branch | Status |
 |---|---|---|
-| The deep walk's former-members regressions | `fix/movers-term` 5fd28e63 | The deep walk's blocking finding is fixed, and so are the first review's findings. 991 passed, 0 failed. Each former member's last vote is taken by term, which keeps King and Fraser on their House pages and Carl Johnson at SD2. The fix also covers the descriptions, the directory and search lines, the JSON 301s, and the session days that named a namesake (blocking). A live page's address is never made a 301. A second review is running: the reader on real data, and the review response. A ready note follows. |
-| `/api`'s counts say their units | `fix/api-units` (pushed when its review is done) | **Under review, for 11 November.** The deep walk's should-fix: on a desktop the ROWS column read "14" for the database and "43" for the manifest. Each count now says what it counts, under a head that says Count. `api_page.py` only. 990 passed, 0 failed. |
+| HB 703 alone, for main | `hotfix/same-number-bills` 66e5a4a9 | Not needed: HB 703 rides in the release. Kept in case it slips past Sunday. |
 
-## Dry run 181 (dev dd3f7ef9, the 11 November candidate)
+## Next
 
-The run was clean. Preview: https://6502d18c.graniterecord.pages.dev
-
-**Redirect walk.** All 602 checks of `_redirects` were correct on the preview. 587 old addresses
-redirect to the right page, and 15 rewritten addresses serve the target's page.
-
-**Deep walk.** Five lenses (the record, links, words, access, regressions against live), each
-finding checked by a skeptic. The confirmed findings:
-
-- **Blocking: session days named the wrong member** where a joined former mover shares a surname
-  (Seth King for Frederick King, Cassandra Levesque for Melanie Levesque, Paula Bradley for Jeb
-  Bradley, Marilyn Fraser for Leo Fraser; 44 days). Fixed on `fix/movers-term`
-  (`_joined_mover_session_days`).
-- **Should-fix, regressions, fixed on `fix/movers-term`:**
-  - King and Fraser were kept as "Former Senator", and their live House addresses redirected there.
-  - Carl Johnson was moved to SD3.
-  - The joined pages' descriptions put the whole career in one chamber.
-  - So did their directory lines and their site-search rows.
-  - The JSON of each joined member's second number answered 404.
-- **Should-fix, on `fix/movers-merge` (held):** people.json gives each of the 30 confirmed pairs as
-  two people.
-- **Should-fix, on `fix/rollcall-date` (held):** 19 former senators read "1999 to 2009". 13 of them
-  are put right by `fix/movers-term`; the other 6, who sat only in 1999–2000, wait for the owner's
-  line.
-- **Should-fix, on `fix/api-units` (in review):** `/api`'s ROWS column hid its units at
-  desktop widths, so it read "14" for the database and "43" for the manifest. `/api` is new in
-  this update (it answers 404 on live), so readers would meet this new.
-- **Should-fix, not on any branch yet, proposed for 24 November:** opening a bill from the bill
-  search leaves the tab titled "New Hampshire Bills — search every bill since 1989", with focus
-  on the search box. Live does the same, and app.js is already changed by both HB 703 branches.
-- **Nits, for 24 November:**
-  - `/live` is linked from no page; a known deferral, PATCHES 2 and 3.
-  - A voice vote's date links to an anchor its session day lacks.
-  - Back from a bill drops `q=` from the address, and Forward is lost.
-  - An action pane stays open when Tab leaves it; the same on live.
-  - Three joined movers' heads abbreviate the county ("Straf District 6").
-  - `/api`'s code boxes have no inner padding.
-  - A law page's Follow pane opens far from its button.
-  - Former members' headings mix short and full county names.
-  - `/api` writes field names as prose.
-  - An ungrammatical CACR 21 sentence in the register of probate FAQ.
-  - Session-day chips title-case "And".
-  - English county cards don't say the district lists are in the statute's words.
-
-The skeptics refuted the rest:
-- Live Now's check time;
-- the rights wording on /data;
-- How to Vote's "may change again";
-- CACR 13's outcome: its count is not in `corrections/ballot_results.json` yet;
-- the Strafford vacancy: none on file.
-
-The record lens checked many things and found them right:
-- the manifest, the counts and the sha256 of every download;
-- all 119 recorded former addresses;
-- the 84 session days sampled for seats;
-- all 80 county officers;
-- the same-number bills;
-- the committee pages.
-
-## Next, unless the laptop manager says otherwise
-
-- Finish `fix/movers-term`: the second review's findings, then mark it ready.
-- Mark `fix/api-units` ready once its review is done.
-- **Monday 9 November:** the Videos wording, for Monday's second dry run.
+- **Now:** the candidate's review. Then READY, with what is in and what is out.
+- **Item (d):** which of the webinar deck's screenshots this release changes. A comparison of
+  live and dry run 181's preview, slide by slide, is running.
+- **After the dry run:** the deep walk of its preview, including the six senators of 1999–2000
+  reading "1999 to 2000". Then Alice's walk list (release-11nov.md) under docs/.
 - **24 November:**
   - night-clock, then lsr-accept;
   - the check_live mode that walks every redirect;
   - the tab-anchor follow-ups;
-  - the HB 703 nits above.
+  - the HB 703 nits;
+  - the bill search's tab title;
+  - a sitting member's joined number answering 404 as JSON;
+  - `careers.json`'s two same-chamber joins of namesakes (Pat Long and Patrick Long, the two
+    Mark Pearsons). The cause is build_careers.py's bucket loop, which needs a one-chamber rule,
+    rerun on the laptop with db/, plus a sitting member bounded by their own terms on session
+    days. On live, 34 House days of 2007–2024 link the Patrick Long of Hills 26.
 - **December:** outage-recovery.
