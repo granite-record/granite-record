@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.786
+# GRANITE_VERSION: 2026-09-04.788
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20412,7 +20412,10 @@ _FIND_BILLS_QUERIES = [
     "firearms", "guns", "property tax", "school funding", "right to know?",
     "voting", "minimum wage", "nelson", "commerce", "housing", "education",
     "concord", "abbas", "insurance coverage", "HB 0101", "HB101, SB5",
-    "hills 29", "xyzzy", "bail", "bailey", "SB 5", "aquifer"]
+    "hills 29", "xyzzy", "bail", "bailey", "SB 5", "aquifer",
+    # A bill number as people write it out (the owner's test, 6 November 2026).
+    "H.B. 101", "H.B.101", "H. B. 101", "S.B. 5", "Senate Bill 5",
+    "House Resolution 5", "C.A.C.R. 3"]
 
 # Both sides answer fetch from the fixture, by path.
 _FIND_BILLS_FETCH = r"""
@@ -20832,6 +20835,27 @@ def _find_bills(BP):
         and n["HB 0101"] == 1 and n["hills 29"] == 0 \
         and A["q"]["insurance coverage"]["ids"][:2] == ["HB1442", "HB100"], (
         f"the fixture no longer exercises the matcher: {n}")
+    # A NUMBER AS PEOPLE WRITE IT (the owner's test, 6 November 2026): "H.B.
+    # 101", "H. B. 101", "S.B. 5", "Senate Bill 5", "House Resolution 5" and
+    # "C.A.C.R. 3" are that bill's number on both sides -- /bills lists it
+    # alone, and the panel opens with it as it does for "SB 5". "H.B. 101"
+    # and "S.B. 5" found nothing, and "Senate Bill 5" was read as its words,
+    # so that on the real index HR 11 and CACR 11, which say "senate", came
+    # above SB 11.
+    forms = {"H.B. 101": "HB101", "H.B.101": "HB101", "H. B. 101": "HB101",
+             "S.B. 5": "SB5", "Senate Bill 5": "SB5", "House Resolution 5": "HR5",
+             "C.A.C.R. 3": "CACR3"}
+    wrong = []
+    for q, bid in forms.items():
+        h = P["panel"].get(q) or ""
+        lead = re.search(r'<a\b[^>]*href="([^"]*)"', h)
+        if A["q"][q]["ids"] != [bid]:
+            wrong.append(f"{q!r}: /bills lists {A['q'][q]['ids']}, not {bid} alone")
+        elif not (lead and lead.group(1).endswith("/" + bid.lower())) \
+                or "open this bill number" not in h:
+            wrong.append(f"{q!r}: the panel leads with {lead and lead.group(1)!r}, not {bid} "
+                         "read as its number")
+    assert not wrong, "a bill number written out is not read as one: " + "; ".join(wrong[:4])
 
     # Nothing is fetched for the bills until something is typed; a bill
     # number asks for this term's index, and its own bill leads the list, so
@@ -21286,6 +21310,32 @@ def _find_more_fixture():
         request("0091", "relative to the siting of data centers.")]
     fx["/meta.json"]["requests"] = {"term": "2027-requests", "label": "2027 Bill Requests",
                                     "year": 2027, "n": 3}
+    # NAMES WITH AN APOSTROPHE, as the record spells them, with a straight one
+    # (_search_reads_typed): a member, a former senator, two places, and a
+    # bill each about the places, filed by the two of them.
+    for bid, title, sponsor, cmte in (
+            ("HB640", "relative to the unincorporated place of Hart's Location",
+             "Patrick O'Connor", "House Municipal and County Government"),
+            ("SB410", "relative to the Wentworth's Location road agent",
+             "Lou D'Allesandro", "Senate Transportation")):
+        fx["/idx/2025-2026.json"].append(
+            {"id": bid, "n": f"{bid[:2]} {bid[2:]}", "year": 2025, "title": title,
+             "sponsor": sponsor, "sponsor_slug": "", "sponsor_label": f"Rep. {sponsor} (R)",
+             "committee": cmte, "committees": [cmte], "topic": "Other", "kind": "active",
+             "status": "Introduced", "term": "2025-2026", "last_action": "2025-01-15",
+             "votedays": []})
+    fx["/find.json"] = fx["/find.json"] + [
+        ["legislator", "Rep. Patrick O'Connor (R - Straf 9)", "House · Straf 9 · Republican",
+         "legislator/patrick-oconnor", "Strafford"],
+        ["former", "Former Sen. Lou D'Allesandro", "Senate · SD20 · 1999–2024",
+         "legislator/lou-dallesandro", "Hillsborough", 2024],
+        ["town", "Hart's Location", "Carroll County", "town/hart-s-location", "Carroll"],
+        # As find.json names them, from the Secretary of State's returns: the
+        # record shortens a Location to "Loc." and a Purchase to "Pur.".
+        ["town", "Wentworth's Loc.", "Grafton County", "town/wentworth-s-location", "Grafton"],
+        ["town", "Chandler's Pur.", "Coos County", "town/chandler-s-pur", "Coos"],
+        ["former", "Former Rep. Candice O'Neil", "House · Rock 8 · 2015–2016",
+         "legislator/candice-oneil", "Rockingham", 2016]]
     return fx
 
 
@@ -21293,12 +21343,21 @@ _FIND_MORE_QUERIES = {
     # The header's panel: each way a statute is asked for, a chapter in a
     # folder, a bare number, a chapter the Laws pages do not have, a time.
     "panel": ["RSA 91-A", "rsa 91-a:4", "91-A", "91-A:4", "chapter 91-a", "RSA 404:5",
-              "91", "RSA 999", "6:30"],
-    "search": ["RSA 91-A", "data centers", "LSR 2027-0002", "firearms", "xyzzy"],
+              "91", "RSA 999", "6:30",
+              # What people type (_search_reads_typed): an apostrophe curly or
+              # missing, a law cited to its paragraph, a request's number.
+              "O’Connor", "oconnor", "Lou D’Allesandro", "Hart’s Location",
+              "Wentworths Location", "Wentworth's Loc.", "Chandlers Purchase", "O Neil",
+              "Candice O Neil", "Hart s Location", "RSA 91-A:4 IV", "91-A:4, IV", "rsa 91-a:4(iv)",
+              "LSR 2027-0002", "2027-0002", "2026-0002"],
+    "search": ["RSA 91-A", "data centers", "LSR 2027-0002", "firearms", "xyzzy",
+               "O’Connor", "RSA 91-A:4 IV"],
     # /bills: a request's number three ways, a year that is not the
-    # requests', a statute, nothing, and words a request has.
+    # requests', a statute, nothing, and words a request has; and what people
+    # type (_search_reads_typed).
     "app": ["LSR 2027-0002", "2027-0002", "LSR20270002", "2026-0002", "RSA 91-A",
-            "xyzzy", "data centers"]}
+            "xyzzy", "data centers", "RSA 91-A:4 IV", "RSA 91-A:4, IV", "oconnor",
+            "Hart’s Location"]}
 
 # The header's panel and /search, as _FIND_BILLS_PANEL runs them.
 _FIND_MORE_PANEL = r"""
@@ -21580,6 +21639,81 @@ def _find_requests(BP):
     return "ok", ("'data centers' and 'LSR 2027-0002' counted on /search's one line as /bills "
                   "lists them on the requests' list; /bills offers that list for three forms of "
                   "a request's number, and taking it lists the request")
+
+
+@check("frontend", "the search reads what people type: a curly apostrophe or none in a name, a law "
+       "cited to its paragraph, and a bill request's number in the header", needs=("build_pages",))
+def _search_reads_typed(BP):
+    """The owner, 6 November 2026: test the update the way real people search.
+    On the dry run, in the header and the bill search alike, "O’Connor", "Lou
+    D’Allesandro" and "Hart’s Location" -- a phone's curly apostrophe --
+    found nothing, nor did "Wentworths Location" with none, the record
+    naming the place "Wentworth's Loc."; "RSA 91-A:4 IV"
+    and "91-A:4, IV" found nothing where "91-A:2" found the law; and the
+    header offered no bill request for "2027-0001", which /search and /bills
+    both find. (A bill number written out, "H.B. 703" and "Senate Bill 11",
+    is _find_bills'.) Over _find_more_fixture, which carries the record's
+    straight-apostrophe spellings of a member, a former senator and two
+    places, through find.js as the header and /search run it, and app.js as
+    /bills does."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
+    if not all(f.exists() for f in need):
+        return "skip", "app.js, find.js or dom_stub.js not in this directory"
+    P, A = _find_more_run(BP, ("panel", ""), ("app", ""))
+    first = lambda h: (re.search(r'<a [^>]*href="([^"]+)"', h or "") or [None, ""])[1]
+    bad = []
+    # A name, the apostrophe curly or left out: the row the record spells with
+    # a straight one, first.
+    for q, href in (("O’Connor", "/legislator/patrick-oconnor"),
+                    ("oconnor", "/legislator/patrick-oconnor"),
+                    ("Lou D’Allesandro", "/legislator/lou-dallesandro"),
+                    ("Hart’s Location", "/town/hart-s-location"),
+                    # The record's "Loc." and "Pur." read as the words.
+                    ("Wentworths Location", "/town/wentworth-s-location"),
+                    ("Wentworth's Loc.", "/town/wentworth-s-location"),
+                    ("Chandlers Purchase", "/town/chandler-s-pur"),
+                    # An apostrophe typed as a space (the review of 7 November
+                    # 2026): "neil" is under five letters, so it must start a
+                    # word, and a row read only as "oneil" lost it.
+                    ("O Neil", "/legislator/candice-oneil"),
+                    ("Candice O Neil", "/legislator/candice-oneil"),
+                    ("Hart s Location", "/town/hart-s-location")):
+        if first(P["panel"][q]) != href:
+            bad.append(f"the header's first row for {q!r} is {first(P['panel'][q])!r}, not {href}")
+    if P["search"]["O’Connor"]["say"] != "1 representative.":
+        bad.append(f"/search?q=O’Connor says {P['search']['O’Connor']['say']!r}")
+    # A law cited to its paragraph: the section's Law row, and its bills.
+    for q in ("RSA 91-A:4 IV", "91-A:4, IV", "rsa 91-a:4(iv)"):
+        r = P["first"].get(q) or []
+        if r[:2] != ["law", "RSA 91-A:4"] or first(P["panel"][q]) != "/laws/91-a#s4":
+            bad.append(f"the header's first row for {q!r} is {r[:2]}, not the Law RSA 91-A:4")
+    if "<h2>Laws" not in P["search"]["RSA 91-A:4 IV"]["html"]:
+        bad.append("/search?q=RSA 91-A:4 IV lists no Law")
+    for q in ("RSA 91-A:4 IV", "RSA 91-A:4, IV"):
+        if A["q"][q]["ids"] != ["HB300"]:
+            bad.append(f"/bills lists {A['q'][q]['ids']} for {q!r}, not HB 300, which changes 91-A:4")
+    # /bills: a name offers the Sponsor filter, apostrophe or none, and a
+    # place's bills list for a curly apostrophe.
+    if "Looking for bills sponsored by Rep. Patrick O'Connor?" not in A["q"]["oconnor"]["html"]:
+        bad.append("/bills does not offer Rep. O'Connor's bills for 'oconnor'")
+    if A["q"]["Hart’s Location"]["ids"] != ["HB640"]:
+        bad.append(f"/bills lists {A['q']['Hart’s Location']['ids']} for 'Hart’s Location'")
+    # A request's number: its row leads the header's list, opening the bill
+    # search on it among the requests; a number no request has is offered none.
+    row = '<a href="/bills?q=LSR%202027-0002&amp;term=2027-requests">'
+    for q in ("LSR 2027-0002", "2027-0002"):
+        h = P["panel"][q]
+        if not h.lstrip().startswith(row) or ">Bill Request<" not in h:
+            bad.append(f"the header does not lead with LSR 2027-0002 for {q!r}: {h[:200]!r}")
+    if "term=2027-requests" in P["panel"]["2026-0002"]:
+        bad.append("the header offers a request for 2026-0002, which no request has")
+    assert not bad, "; ".join(bad[:4])
+    return "ok", ("O’Connor, oconnor, O Neil, Lou D’Allesandro, Hart’s Location, Hart s Location, "
+                  "Wentworths Location and Chandlers Purchase find the record's names, its "
+                  "\"Loc.\" and \"Pur.\" among them; RSA 91-A:4 IV, 91-A:4, IV and "
+                  "(iv) the section; LSR 2027-0002 and 2027-0002 lead the header with the request")
 
 
 # THE FIXTURE FOR _best_match_words: thirty-seven real bills, their titles,
@@ -81757,10 +81891,12 @@ def _home_finder_suggests_towns():
     assert 'const FIND_IDS={out:"findout",box:"findq",clear:"findclear",say:"findsay"};' in fj \
         and "function findDraw(q,ids){\n  ids=ids||FIND_IDS;" in fj \
         and "function findSay(html,ids){" in fj, "find.js's findDraw does not take the ids it draws into"
-    # Three redraws: the bills counted, the words the bills use, and (25
-    # October 2026) a statute's chapter looked up -- each into the box that asked.
+    # Four redraws: the bills counted, the words the bills use, (25 October
+    # 2026) a statute's chapter looked up, and (6 November 2026) next
+    # session's bill requests read for a request's number -- each into the
+    # box that asked.
     redraws = fj[fj.index("function findDraw(q,ids){"):fj.index("function findSay(")]
-    assert "findDraw(box.value);" not in redraws and redraws.count("findDraw(box.value,ids);") == 3, (
+    assert "findDraw(box.value);" not in redraws and redraws.count("findDraw(box.value,ids);") == 4, (
         "a redraw find.js asks for draws into the header's panel whichever box asked")
     css = (site / "app.css").read_text(encoding="utf-8")
     assert ":where(body.pg) .hqdrop{position:absolute;top:calc(100% + var(--sp-2))" in css \

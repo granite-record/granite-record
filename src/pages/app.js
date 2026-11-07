@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.272
+// GRANITE_VERSION: 2026-09-07.274
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2180,9 +2180,11 @@ const HINT_TITLE=Object.assign(Object.create(null),
   {rep:"Rep.",reps:"Rep.",representative:"Rep.",sen:"Sen.",senator:"Sen."});
 const HINT_MOST=3;
 // A name's letters as a search reads them: lower case, accents off, a hyphen
-// or a full stop a space.
+// or a full stop a space, and an apostrophe, straight or curly, left out
+// (the owner's test, 6 November 2026): a phone types "O’Connor", and some
+// readers "OConnor", for the O'Connor the record names.
 const hintWords=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"")
-  .toLowerCase().replace(/’/g,"'").split(/[^a-z0-9']+/).filter(Boolean);
+  .toLowerCase().replace(/['‘’]/g,"").split(/[^a-z0-9]+/).filter(Boolean);
 function sponsorHint(q,rows){
   let title="";
   const want=[];
@@ -2772,8 +2774,18 @@ const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),status:new Set(
 // alike, in the address (?rsa=) and in the search box.
 let rsaText="";
 const RSA_SHAPE=/^\s*(?:rsa\s*)?(\d{1,3}(?:-[a-z]{1,2})?)(?:\s*:\s*([0-9]{1,4}(?:\.[0-9]{1,2})?(?:-[a-z0-9]{1,4})?))?\s*$/i;
-function rsaNorm(t){const m=RSA_SHAPE.exec(String(t||""));return m?m[1].toUpperCase()+(m[2]?":"+m[2].toLowerCase():""):"";}
+/* A LAW CITED TO ITS PARAGRAPH (the owner's test, 6 November 2026): "RSA
+   91-A:4 IV" and "91-A:4, IV" found nothing, while "91-A:4" listed the bills
+   that change it. Bills are indexed to the section, so a paragraph after
+   one -- IV, "(iv)", "IV(a)", with or without a comma -- is read as the
+   section. find.js's findLaw reads it the same way (RSA_PARAGRAPH there). */
+const RSA_PARAGRAPH=/^(\s*(?:rsa\s*)?\d{1,3}(?:-[a-z]{1,2})?\s*:\s*[0-9]{1,4}(?:\.[0-9]{1,2})?(?:-[a-z0-9]{1,4})?)\s*(?:,\s*)?(?:\(?[ivxlc]+\)?|\([a-z0-9]{1,4}\))(?:\s*\([a-z0-9]{1,4}\))*\s*$/i;
+function rsaNorm(t){const m=RSA_SHAPE.exec(String(t||"").replace(RSA_PARAGRAPH,"$1"));return m?m[1].toUpperCase()+(m[2]?":"+m[2].toLowerCase():""):"";}
 function rsaHas(b,want){return (b.rsa||[]).includes(want);}
+// The statute a search names, worked out once for the search and not again
+// for each bill matches() is asked about (the review of 7 November 2026).
+let RSAQ_OF=null,RSAQ="";
+function rsaOfQuery(q){if(q!==RSAQ_OF){RSAQ_OF=q;RSAQ=rsaNorm(q);}return RSAQ;}
 // A CHAPTER'S ADDRESS, AS build_rsa.chapter_path WRITES IT (the sitemap
 // audit, 16 October 2026): RSA 404's page is a folder's index.html, which the
 // host serves at the address with a slash and redirects to from the one
@@ -3279,13 +3291,36 @@ if(window.GR_STATIC){
 // Asked of every bill in the list, about the same search: the answer for
 // the search last asked about is kept. Reading 20,000 pasted letters again
 // for each of 2,243 bills, six times a drawing, was two seconds of nothing.
+/* A BILL NUMBER AS PEOPLE WRITE IT (the owner, 6 November 2026: test the
+   search the way real people search). "H.B. 703", "H. B. 703" and "H.B.703"
+   are how a letter, a newspaper or a lawyer's memo writes HB 703, and they
+   found nothing; "Senate Bill 11" was read as its words, so it listed HR 11
+   and CACR 11, which say "senate", above SB 11. A kind spelled out, or its
+   letters with full stops, is read as the kind's letters before the number.
+   The longer names first, so "house concurrent resolution" is HCR and not
+   "house" and the rest. The ten kinds the General Court names in words; the
+   others are written by their letters. */
+const NUMBER_WORDS=[
+  ["constitutional amendment concurrent resolution","CACR"],
+  ["house concurrent resolution","HCR"],["senate concurrent resolution","SCR"],
+  ["house joint resolution","HJR"],["senate joint resolution","SJR"],
+  ["house resolution","HR"],["senate resolution","SR"],
+  ["house bill","HB"],["senate bill","SB"]
+].map(([w,k])=>[new RegExp("^"+w.split(" ").join("\\s+")+"\\s*(?:no\\.?\\s*)?(?=\\d)","i"),k]);
+function numberForm(p){
+  let s=String(p).trim();
+  for(const [rx,k] of NUMBER_WORDS)if(rx.test(s)){s=s.replace(rx,k);break;}
+  // "H.B.", "H. B." and "H.B": two to five letters, a full stop after each
+  // but perhaps the last.
+  return s.replace(/^((?:[a-z]\s*\.\s*){1,4}[a-z]\s*\.?\s*)(?=\d)/i,m=>m.replace(/[\s.]/g,""));
+}
 let NUMBERS_OF=null,NUMBERS=null;
 function billNumbers(q){
   if(q===NUMBERS_OF)return NUMBERS;
   NUMBERS_OF=q;
   const parts=q.split(",").map(s=>s.trim()).filter(Boolean);
   if(!parts.length)return NUMBERS=null;
-  const ids=parts.map(p=>p.replace(/\s+/g,"").toUpperCase()
+  const ids=parts.map(p=>numberForm(p).replace(/\s+/g,"").toUpperCase()
                          .replace(/^([A-Z]{2,5})0+(?=\d)/,"$1"));
   return NUMBERS=ids.every(i=>/^[A-Z]{2,5}\d+$/.test(i))?ids:null;
 }
@@ -3308,7 +3343,7 @@ function matches(b,ignore){
   const q=query.trim(); if(!q)return true;
   // A statute typed in the search box is the statute filter: "RSA 91-A:4"
   // lists the bills that change it, not the bills that print those words.
-  const rq=/^\s*rsa\b/i.test(q)&&hasRsa()?rsaNorm(q):"";
+  const rq=/^\s*rsa\b/i.test(q)&&hasRsa()?rsaOfQuery(q):"";
   if(rq)return rsaHas(b,rq);
   // Every group must match, and any of its alternatives will do.
   return groupsFor(q).every(g=>groupWeight(b,g)>0);
