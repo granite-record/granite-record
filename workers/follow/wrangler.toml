@@ -23,7 +23,9 @@
 # HEALTHCHECK_URL, the ping address of a Healthchecks check of its own
 # (hourly period): each run pings it, /fail when it met a problem a person
 # must act on (sender.js, WHO IS TOLD WHEN IT BREAKS). Without it, no ping.
-# On the preview Worker alone, a fourth: TEST_SEND_TOKEN, the test send's
+# Production's alone (7 November 2026): never put it on the preview, which
+# pings nobody even with it set (sender.js, THE PREVIEW SENDER TELLS NOBODY).
+# On the preview Worker alone, in its place: TEST_SEND_TOKEN, the test send's
 # second guard. Without it, /test-send is a 404 there too.
 #
 # THE DATABASE IDS are the person's, from the output of
@@ -118,6 +120,8 @@ FEEDBACK_URL = "https://forms.gle/PYw9c3xgpDDwvX7E9"
 SEND_LIMIT = "200"
 D1_QUERIES_PER_RUN = "900"
 SEND_GAP_MS = "200"
-# The test send's first guard (sender.js, A TEST SEND). Here and nowhere
+# The test send's first guard (sender.js, A TEST SEND), and what marks this
+# Worker as the preview sender, which raises no `tonight` and pings no
+# Healthchecks (sender.js, THE PREVIEW SENDER TELLS NOBODY). Here and nowhere
 # else: never in [vars] above, which is production's.
 TEST_SEND = "on"

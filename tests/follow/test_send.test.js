@@ -10,31 +10,15 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import sender, { TEST_KINDS, TEST_SEND_MOST, run, testAsk } from "../../workers/follow/sender.js";
-import { makeKeys, makeWorld, SITE, tokensIn } from "./fakes.js";
+import { makeKeys, makeWorld, SITE, tokensIn, tomlVars } from "./fakes.js";
 import { signUp, snapshot } from "./flows.js";
 import { followKeys, insertSubscriber } from "./rows.js";
 
 const WORKER = "https://graniterecord-follow-sender-preview.example.workers.dev";
-const TOML = readFileSync(new URL("../../workers/follow/wrangler.toml", import.meta.url), "utf8");
 const MORNING = "2026-10-10T15:00:00Z";      // the fixtures' current.json is of 10 October
 
 const newToken = () => Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64");
-
-// One section's plain `KEY = "value"` lines of wrangler.toml: what Cloudflare
-// hands the Worker as env, for the section named ("vars" is production's).
-function tomlVars(section) {
-  const out = {};
-  let inside = false;
-  for (const line of TOML.split(/\r?\n/)) {
-    const head = /^\s*\[\[?\s*([^\]]+?)\s*\]\]?\s*(#.*)?$/.exec(line);
-    if (head) { inside = head[1] === section; continue; }
-    const m = inside && /^\s*([A-Z_][A-Z0-9_]*)\s*=\s*"([^"]*)"\s*(#.*)?$/.exec(line);
-    if (m) out[m[1]] = m[2];
-  }
-  return out;
-}
 
 // A world whose sender is the preview's: the var on and a token set.
 function preview(opts = {}) {

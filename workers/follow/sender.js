@@ -42,6 +42,8 @@
  * problem a person must act on (PROBLEMS). An hourly ping is also the
  * sender's heartbeat: Healthchecks writes when the pings stop. With no
  * secret, no ping. The body carries counts and codes, never an address.
+ * Production's alone: the preview sender pings nobody (THE PREVIEW SENDER
+ * TELLS NOBODY, below).
  *
  * ONE ADDRESS, ON THE PREVIEW ONLY: POST /test-send (A TEST SEND, below),
  * which sends the person test emails on request and records nothing. Every
@@ -114,6 +116,26 @@ export const PROBLEMS = {
   "all-refused": "every email this run tried was refused",
   "run-failed": "the run stopped on an error of its own",
 };
+
+// THE PREVIEW SENDER TELLS NOBODY (the person, 7 November 2026). The same
+// sender runs as the preview (`--env preview`), over the dry-run site and the
+// person's own test follows. That site has a night's changes file only on a
+// morning a dry run deployed, so at noon on most days the preview raised
+// `tonight`, its /fail emailed the person "down" and the next hour's plain
+// ping "up" -- five times in November, for a site nobody is sent from. Both
+// deployments had been given HEALTHCHECK_URL, because README.md's secrets
+// table said to add every sender secret with `--env preview`.
+//
+// So the preview raises no `tonight` and never pings, even with the secret
+// set. The rule is TEST_SEND = "on", not the site's name: wrangler.toml's
+// [env.preview.vars] alone sets it, and preflight (_follow_test_send) holds
+// both that production's [vars] never do and that the preview's always do.
+// A rule on the name graniterecord.org would hold here too, but would also
+// silence a fork's production sender, whose site has a name of its own.
+// preflight's _follow_preview_tells_nobody holds this.
+export function isPreviewSender(env) {
+  return env?.TEST_SEND === "on";
+}
 
 // A D1 binding that counts every statement it runs, a batch's one by one.
 export function counting(db) {
@@ -408,7 +430,9 @@ export async function run(env, now = new Date()) {
       return done();
     }
     note("sender.tonight-missing-sending-anyway", subs.length);
-    out.problems.push("tonight");
+    // Not the preview's (THE PREVIEW SENDER TELLS NOBODY): its site has a
+    // night's file only on a morning a dry run deployed.
+    if (!isPreviewSender(env)) out.problems.push("tonight");
   }
   const floor = addDays(when.date, -(NIGHTS_READ - 1));
   const oldest = subs.reduce((m, s) => (s.sent_date && s.sent_date < m ? s.sent_date : m),
@@ -573,8 +597,14 @@ export async function run(env, now = new Date()) {
 }
 
 // The run's ping (WHO IS TOLD WHEN IT BREAKS, above): codes and counts only.
+// Never the preview's, whatever secret it holds (THE PREVIEW SENDER TELLS
+// NOBODY); the log says so where one is set, so that it can be deleted.
 export async function ping(env, out) {
   const url = String(env.HEALTHCHECK_URL || "").trim().replace(/\/+$/, "");
+  if (isPreviewSender(env)) {
+    if (url) note("sender.healthcheck-ignored-on-preview");
+    return false;
+  }
   if (!/^https:\/\/[^\s]+$/.test(url)) return false;
   const bad = out.problems.length > 0;
   const body = [
