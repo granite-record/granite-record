@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.62
+# GRANITE_VERSION: 2026-09-10.63
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -1087,7 +1087,15 @@ def data_page(site, out, tables, base, cov=()):
         "how-built": how_built,
         "privacy": privacy_text(),
 
-        "developers": f'''<h3 class="dph3">The Manifest</h3>
+        "developers": f'''<h3 class="dph3">The Data API</h3>
+    <p><a href="api.html">The Data API</a> is the whole record as files a
+      program can read: every bill&#39;s full history, one term to a file;
+      one SQLite database with every table here and the committee reports and
+      their reasoning; and people.json, which joins every number the General
+      Court uses for a person. Each file is described column by column in
+      <a href="data/schema.json">data/schema.json</a>. No key and no account:
+      they are plain files, rebuilt every night.</p>
+    <h3 class="dph3">The Manifest</h3>
     <p><a href="data/manifest.json">data/manifest.json</a> lists
       every table with its rows, byte size and column names, so a script can
       discover what is here in one request instead of guessing from

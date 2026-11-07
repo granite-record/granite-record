@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.9
+# GRANITE_VERSION: 2026-10-30.10
 """
 /api: the data API's documentation page, drawn in the data page's own
 components and counted from tonight's manifest.
@@ -11,10 +11,10 @@ docs/design/api/DESIGN.md, 6; the mock it was drawn from is
 docs/design/api/mock_body.html. Every figure on it is the manifest's, so the
 page cannot say a size the files do not have.
 
-UNLINKED UNTIL THE ANNOUNCEMENT (the owner's plan: built by 24 November,
-announced in December). No navigation, no sitemap entry, and no link from the
-data page yet; the address works for whoever is given it. Linking it is one
-line in data_page's "For Developers" and one in the sitemap, on the day.
+LINKED AND INDEXED (the owner, 7 November 2026: announced after the webinar
+of 10 November). Reached from the data page's For Developers, the site
+search, the directory and the sitemap; not from the header, where Data
+already leads to it. Unlinked and noindexed until then.
 
 THE COMPONENTS ARE THE DATA PAGE'S: dphead and its lead, dponp, dpsec, the
 dpdl downloads table with dpmore folds, dptermgrid, dpfold, dl.repo, and the
@@ -30,8 +30,6 @@ import shell
 E = lambda s: (str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                .replace('"', "&quot;"))
 mb = lambda b: f"{(b or 0) / 1e6:.1f}&nbsp;MB"
-
-ROBOTS = '<meta name="robots" content="noindex,follow">'
 
 SECTIONS = (
     ("files", "The Files"),
@@ -168,7 +166,7 @@ def body(manifest):
                           f"curl -O https://graniterecord.org/data/{db_name}\n"
                           f"xz -d {db_name}\n"
                           f'sqlite3 {db_name[:-3]} "SELECT term, COUNT(*) FROM bills GROUP BY term"'))
-    start += ("<p>A page on another site may read the manifest and the spreadsheets from a "
+    start += ("<p>A page on another site may read every file the manifest lists from a "
               "reader&rsquo;s browser too: each is served to any origin.</p>")
     announced = ("<ul>" + "".join(
         f"<li>{E(n.get('date', ''))} {E(n.get('text', ''))}</li>" if isinstance(n, dict)
@@ -286,10 +284,5 @@ def write(site, manifest, base):
                       globals={"GR_STATIC": True}, noscript="", skip_label="Skip to the files",
                       sr_title="", nav_current="data.html")
     page = page.replace('<div id="results"></div>', f'<div id="results">{body(manifest)}</div>', 1)
-    # NOT INDEXED WHILE UNLINKED: a search engine is not to find a page the
-    # site does not link yet. Taken off, with a sitemap line, on the day it is
-    # announced.
-    page = page.replace('<link rel="canonical"', ROBOTS + '\n<link rel="canonical"', 1)
-    assert ROBOTS in page, "api.html: the template has no canonical link to put noindex before"
     (site / "api.html").write_text(shell.clean_links(page), encoding="utf-8")
-    print(f"  {'api.html':<28} the API, described (not linked until the announcement)")
+    print(f"  {'api.html':<28} the API, described")

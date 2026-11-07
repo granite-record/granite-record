@@ -16,7 +16,7 @@
     "bill_text_from_db.py": "2026-10-16.3",
     "build_addr_index.py": "2026-10-24.1",
     "build_all.py": "2026-09-05.84",
-    "build_bill_pages.py": "2026-09-04.78",
+    "build_bill_pages.py": "2026-09-04.79",
     "build_bill_versions.py": "2026-09-09.14",
     "build_brand.py": "2026-09-12.22",
     "build_cache.py": "2026-10-23.1",
@@ -26,10 +26,10 @@
     "build_committees.py": "2026-09-07.70",
     "build_data.py": "2026-09-04.60",
     "build_date.py": "2026-10-02.1",
-    "build_exports.py": "2026-09-10.62",
+    "build_exports.py": "2026-09-10.63",
     "build_feeds.py": "2026-09-04.46",
     "build_floor_index.py": "2026-09-04.13",
-    "build_indexes.py": "2026-09-13.25",
+    "build_indexes.py": "2026-09-13.26",
     "build_inputs.py": "2026-10-09.3",
     "build_legislator_pages.py": "2026-09-04.24",
     "build_lsrs.py": "2026-09-18.5",
@@ -252,7 +252,7 @@
     "person_numbers.py": "2026-10-30.7",
     "api_db.py": "2026-10-30.7",
     "api_schema.py": "2026-10-30.5",
-    "api_page.py": "2026-10-30.9"
+    "api_page.py": "2026-10-30.10"
   },
   "generated": "2026-09-04"
 }
