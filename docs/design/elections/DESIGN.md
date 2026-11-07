@@ -1,7 +1,15 @@
 # Election results: design (draft for the owner)
 
 Status: **design only, second draft, 5 November 2026**, revised after one
-review (its fifteen findings are answered in the text and the mocks). Nothing here is built, and
+review (its fifteen findings are answered in the text and the mocks).
+
+**The owner's answers, 7 November 2026:**
+- **Build the official-results page** for 2024 and 2026, after the webinar.
+  `BUILD_PLAN.md` is the plan.
+- **The election-night source is decided closer to 2028.** §8's drafts stay
+  drafts, and nothing is prepared or sent.
+- §4's race calls, the close-race wording and §6's Worker wait until a source
+  exists. Nothing here is built, and
 nothing reaches the site until the owner approves it. Branch
 `design/election-results`.
 
