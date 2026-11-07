@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.8
+# GRANITE_VERSION: 2026-10-30.9
 """
 One entry a person, joining every number the General Court uses for them.
 
@@ -427,10 +427,19 @@ def check_register(reg):
     formed. A person issued twice; a number held by two people; a person
     number that is someone else's number; an entry with no numbers that is
     not retired; a number made here (an "s" person), which is never issued;
-    an employee-number person whose number is not among its own."""
+    an employee-number person whose number is not among its own; a person
+    replaced by someone the register does not hold as a person.
+
+    A MERGE (the owner's thirty confirmed pairs, 2 November 2026): two issued
+    people who prove to be one. The one kept takes the other's numbers; the
+    other stays, with replaced_by and no numbers, so a number stored
+    elsewhere still finds them. An employee-number person's own number is
+    then the kept person's, which is what a merge is, and only that: a
+    person number held by anybody else is still two people under one
+    number."""
     if not isinstance(reg, dict) or not isinstance(reg.get("people"), list):
         return ["the register is not an object with a list of people"]
-    bad, seen_p, seen_n = [], set(), {}
+    bad, seen_p, seen_n, merged = [], set(), {}, {}
     for e in reg["people"]:
         if not isinstance(e, dict):
             bad.append(f"an entry that is not an object: {e!r}")
@@ -445,6 +454,7 @@ def check_register(reg):
             bad.append(f"{p} is issued twice")
         seen_p.add(p)
         if e.get("replaced_by"):
+            merged[p] = str(e["replaced_by"])
             if nums:
                 bad.append(f"{p} is replaced and still holds numbers")
             continue
@@ -456,8 +466,11 @@ def check_register(reg):
             if n in seen_n:
                 bad.append(f"{n} is held by {seen_n[n]} and {p}")
             seen_n[n] = p
+    for p, to in sorted(merged.items()):
+        if to == p or to not in seen_p or to in merged:
+            bad.append(f"{p} is replaced by {to}, who is not a person the register holds")
     for p in seen_p:
-        if p in seen_n and seen_n[p] != p:
+        if p in seen_n and seen_n[p] != p and merged.get(p) != seen_n[p]:
             bad.append(f"{p} is a person number and also {seen_n[p]}'s number")
     return bad
 
@@ -527,5 +540,9 @@ def write(people, out_dir):
                 for num in p.get(field) or []:
                     w.writerow([p["person"], kind, num, p.get("name") or "", p.get("page") or ""])
                     n += 1
-    return [{"path": "/data/people.json", "rows": len(people), "bytes": pj.stat().st_size},
+    # "people" beside "rows": an entry kept for a person merged into another
+    # (replaced_by) is a row of the file and not a person, and the API page
+    # counts the people.
+    return [{"path": "/data/people.json", "rows": len(people), "bytes": pj.stat().st_size,
+             "people": sum(1 for p in people if not p.get("replaced_by"))},
             {"path": "/data/people.csv", "rows": n, "bytes": pc.stat().st_size}]

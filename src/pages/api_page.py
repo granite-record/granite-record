@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.7
+# GRANITE_VERSION: 2026-10-30.8
 """
 /api: the data API's documentation page, drawn in the data page's own
 components and counted from tonight's manifest.
@@ -99,15 +99,21 @@ def body(manifest):
             "person_numbers.person join people.person; term + bill joins bills.</p>",
             f"{len(c):,}", "tables", mb(db["bytes"]), f"data/{E(db['path'].rsplit('/', 1)[-1])}"))
     if people:
+        # THE PEOPLE, NOT THE ENTRIES: a person merged into another keeps an
+        # entry with replaced_by, which is a row of the file and nobody new.
+        n_people = people.get("people", people["rows"])
+        merged = people["rows"] - n_people
         rows.append(_row(
             "people.json",
-            f"One entry for each of the {people['rows']:,} people with a recorded vote since 1999, "
-            "with every number the General Court has used for them.",
+            f"One entry for each of the {n_people:,} people with a recorded vote since 1999, "
+            "with every number the General Court has used for them"
+            + (f", and {merged:,} for a number that proved to be one of theirs "
+               "(<code>replaced_by</code>)." if merged > 0 else "."),
             "<p>The General Court gives a member a new employee number and a new person id when "
             "they move between the House and the Senate. This file joins every one of those, and "
             "the ids this site&rsquo;s other files use, to one <code>person</code>. "
             "<code>people.csv</code> is the same, one row a number.</p>",
-            f"{people['rows']:,}", "people", mb(people["bytes"]), "data/people.json"))
+            f"{n_people:,}", "people", mb(people["bytes"]), "data/people.json"))
     if bills:
         grid = "".join(
             f'<li><a href="data/{E(f["path"].rsplit("/", 1)[-1])}" download><span class="dpt">'

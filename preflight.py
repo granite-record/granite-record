@@ -29334,6 +29334,142 @@ def _person_rule():
                   "shape catch what they should")
 
 
+@check("files", "two issued people who prove to be one are merged in the register: the one kept "
+                "holds both numbers, the other stays with replaced_by, people.json gives one "
+                "person and the line for the other, and the API page counts the people")
+def _person_merge():
+    """THE OWNER'S THIRTY PAIRS (2 November 2026). Each member who sat in
+    both chambers was issued twice on 30 October, one person a chamber,
+    before the owner confirmed the pairs (member_corrections.json,
+    same_person). The site joined each pair's pages; people.json, which
+    takes the register's word, kept them two people, the second with no
+    name and no page (the deep walk of 6 November 2026).
+
+    A merge is the register's own way (person_numbers.py, the API page's
+    "When two entries prove to be one person"): the one kept takes the
+    other's numbers, and the other keeps an entry with replaced_by and no
+    numbers. check_register refused every such merge where the one that
+    goes is numbered by an employee number, as all thirty are: its number,
+    now the kept person's, read as "a person number and also someone else's
+    number". It is allowed for the person it is replaced by, and for nobody
+    else. Held here on a record made up for it."""
+    import tempfile
+    sys.path.insert(0, str(_paths.locate("people.py").parent))
+    import people as PE
+    import api_page
+    # The register's shape: a merge passes; a number held by anybody but the
+    # person it went to, a replacement nobody holds, a chain or a person
+    # replaced by themself do not.
+    merged = {"format": 1, "people": [
+        {"person": "44", "numbers": ["209092", "376682"]},
+        {"person": "376682", "replaced_by": "44"}]}
+    assert not PE.check_register(merged), PE.check_register(merged)
+    for bad, why in (
+            ({"people": [{"person": "44", "numbers": ["209092"]}, {"person": "45", "numbers": ["376682"]},
+                         {"person": "376682", "replaced_by": "44"}]}, "its number held by another"),
+            ({"people": [{"person": "44", "numbers": ["209092", "376682"]},
+                         {"person": "376682", "replaced_by": "45"}]}, "replaced by nobody it holds"),
+            ({"people": [{"person": "44", "numbers": ["209092", "376682"]},
+                         {"person": "376682", "replaced_by": "376682"}]}, "replaced by itself"),
+            ({"people": [{"person": "44", "replaced_by": "45"}, {"person": "45", "replaced_by": "46"},
+                         {"person": "46", "numbers": ["209092"]}]}, "a chain"),
+            ({"people": [{"person": "44", "numbers": ["209092"]},
+                         {"person": "376682", "replaced_by": "44", "numbers": ["376682"]}]},
+             "replaced and still holding numbers")):
+        assert PE.check_register(bad), f"check_register passed a merge {why}: {bad}"
+    # Built: one person with both numbers, and the line for the other.
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        for sub in ("db", "site/legislators", "data", "out"):
+            (d / sub).mkdir(parents=True, exist_ok=True)
+        (d / "db" / "_columns.json").write_text(json.dumps(
+            {"Legislators": ["PersonID", "LastName", "FirstName", "Employeeno"]}))
+        (d / "db" / "Legislators.psv").write_text("44|Pierce|David|209092\n")
+        (d / "site" / "legislators.json").write_text("[]")
+        (d / "site" / "former.json").write_text(json.dumps(
+            [{"id": "44", "name": "Pierce, David", "slug": "david-pierce-sd-5"}]))
+        # The joined page's own file, as build_site_v2 writes it for a mover
+        # who left (former_movers): tonight's join holds the pair together too.
+        (d / "site" / "legislators" / "44.json").write_text(json.dumps(
+            {"id": "44", "member_ids": ["44", "376682"]}))
+        (d / "data" / "sponsors.json").write_text("{}")
+        (d / "data" / "member_votes.json").write_text(json.dumps(
+            [{"member_id": "44"}, {"member_id": "376682"}]))
+        careers = {e: {"by_term": {t: {"chambers": [ch], "employee_nos": [e]}},
+                       "employee_nos": [e], "first": "David", "last": "Pierce"}
+                   for e, ch, t in (("376682", "H", "2007-2008"), ("209092", "S", "2013-2014"))}
+        people, rep = PE.build(d / "site", d / "data", d / "db", careers, merged)
+        rows = PE.write(people, d / "out")
+        csv_text = (d / "out" / "people.csv").read_text(encoding="utf-8")
+    by = {p["person"]: p for p in people}
+    assert set(by) == {"44", "376682"} and by["376682"] == {"person": "376682", "replaced_by": "44"}, people
+    p = by["44"]
+    assert p["employee_numbers"] == ["376682", "209092"] and p["name"] == "David Pierce" and \
+        p["page"] == "/legislator/david-pierce-sd-5", p
+    assert not PE.check_unique(people), PE.check_unique(people)
+    assert not rep["register_disagrees"] and not rep["missing_issued"], rep
+    assert rows[0]["rows"] == 2 and rows[0]["people"] == 1, rows[0]
+    assert "376682,replaced_by,44" in csv_text, csv_text
+    # The API page counts the people, and says what the other line is.
+    page = api_page.body({"files": [dict(rows[0]), dict(rows[1])]})
+    assert "One entry for each of the 1 people" in page and \
+        "and 1 for a number that proved to be one of theirs" in page, \
+        re.findall(r"One entry for each[^<]*", page)
+    page = api_page.body({"files": [{"path": "/data/people.json", "rows": 5, "bytes": 1}]})
+    assert "One entry for each of the 5 people with a recorded vote since 1999, with every " \
+           "number the General Court has used for them.</p>" in page, \
+        re.findall(r"One entry for each[^<]*", page)
+    return "ok", ("a merge passes the register's check and nothing else like it does; built, the "
+                  "kept person holds both numbers with the page and the name, the other is one "
+                  "replaced_by line, and the API page counts one person")
+
+
+@check("files", "every pair the owner confirmed as one person is one person in the register, "
+                "as the site joins their pages")
+def _same_person_one_person():
+    """corrections/member_corrections.json's same_person entries with a date
+    in "confirmed" are the pairs the owner settled as one person (2 November
+    2026); build_site_v2.former_movers joins each pair's pages. The register
+    (generated/person_numbers.json), which people.json follows, must say the
+    same, or the public data gives one person as two, the second with no
+    name and no page (the deep walk of 6 November 2026).
+
+    A pair names site ids, a PersonID or an employee number. Each is found
+    in the register as a person or as a number someone holds, and followed
+    through replaced_by to the person it is now; both must be found, and be
+    the same person. A pair answered "no, two people" is not looked at."""
+    mc = _paths.ROOT / "corrections" / "member_corrections.json"
+    reg_path = _paths.ROOT / "generated" / "person_numbers.json"
+    if not mc.exists() or not reg_path.exists():
+        return "skip", "member_corrections.json or the register is not here"
+    pairs = [e for e in json.loads(mc.read_text(encoding="utf-8")).get("same_person") or []
+             if isinstance(e, dict) and re.match(r"\d{4}-\d{2}-\d{2}", str(e.get("confirmed") or ""))]
+    people = json.loads(reg_path.read_text(encoding="utf-8")).get("people") or []
+    persons = {e["person"]: e for e in people}
+    holder = {str(n): e["person"] for e in people if not e.get("replaced_by")
+              for n in e.get("numbers") or []}
+
+    def now(x):
+        p = holder.get(str(x)) or (str(x) if str(x) in persons else None)
+        seen = set()
+        while p and persons.get(p, {}).get("replaced_by") and p not in seen:
+            seen.add(p)
+            p = str(persons[p]["replaced_by"])
+        return p
+
+    bad = []
+    for e in pairs:
+        h, s = now(e.get("house")), now(e.get("senate"))
+        if not (h and s):
+            bad.append(f"{e.get('name')}: {e.get('house') if not h else e.get('senate')} is no "
+                       "person or number in the register")
+        elif h != s:
+            bad.append(f"{e.get('name')}: two people, {h} and {s}")
+    assert not bad, (f"{len(bad)} of {len(pairs)} pairs the owner confirmed are not one person in "
+                     "the register (merge them: person_numbers.py says how): " + "; ".join(bad[:5]))
+    return "ok", f"all {len(pairs)} pairs the owner confirmed are one person in the register"
+
+
 @check("files", "only a person's run writes the register of person numbers, and it is well formed")
 def _person_register():
     """generated/person_numbers.json holds the person numbers the public data
