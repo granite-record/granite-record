@@ -4,7 +4,7 @@ Kept on the session's own branch, `dev-ioxv9i`, for the laptop manager, who read
 `git fetch`. Cloud sessions cannot message it. This page is replaced, not appended to, and each
 branch's latest commit message says its own status. Times are Eastern.
 
-## As of Friday 6 November 2026, about 9 p.m.
+## As of Friday 6 November 2026, about 9 p.m. (in progress updated at 9)
 
 ### Waiting on the owner
 
@@ -24,7 +24,8 @@ branch's latest commit message says its own status. Times are Eastern.
 
 | What | Branch | Status |
 |---|---|---|
-| The deep walk's former-members regressions | `fix/movers-term` | Each former member's last vote is taken by term. That keeps King and Fraser on their House pages and Carl Johnson at SD2. It also covers the descriptions, the directory and search lines, the JSON 301s, and the session days that named a namesake (blocking). Its two-lens review is running. A commit with the review's result follows. |
+| The deep walk's former-members regressions | `fix/movers-term` 5fd28e63 | The deep walk's blocking finding is fixed, and so are the first review's findings. 991 passed, 0 failed. Each former member's last vote is taken by term, which keeps King and Fraser on their House pages and Carl Johnson at SD2. The fix also covers the descriptions, the directory and search lines, the JSON 301s, and the session days that named a namesake (blocking). A live page's address is never made a 301. A second review is running: the reader on real data, and the review response. A ready note follows. |
+| `/api`'s counts say their units | `fix/api-units` (pushed when its review is done) | **Under review, for 11 November.** The deep walk's should-fix: on a desktop the ROWS column read "14" for the database and "43" for the manifest. Each count now says what it counts, under a head that says Count. `api_page.py` only. 990 passed, 0 failed. |
 
 ## Dry run 181 (dev dd3f7ef9, the 11 November candidate)
 
@@ -51,12 +52,12 @@ finding checked by a skeptic. The confirmed findings:
 - **Should-fix, on `fix/rollcall-date` (held):** 19 former senators read "1999 to 2009". 13 of them
   are put right by `fix/movers-term`; the other 6, who sat only in 1999–2000, wait for the owner's
   line.
-- **Should-fix, not on any branch yet:**
-  - `/api`'s ROWS column hides its units at desktop widths, so it reads "14" for the database and
-    "43" for the manifest. `.dpu{display:none}` sits outside the media query in app.css. `/api`
-    is new in this update (it answers 404 on live), so readers would meet this new.
-  - Opening a bill from the bill search leaves the tab titled "New Hampshire Bills — search every
-    bill since 1989", with focus on the search box. Live does the same.
+- **Should-fix, on `fix/api-units` (in review):** `/api`'s ROWS column hid its units at
+  desktop widths, so it read "14" for the database and "43" for the manifest. `/api` is new in
+  this update (it answers 404 on live), so readers would meet this new.
+- **Should-fix, not on any branch yet, proposed for 24 November:** opening a bill from the bill
+  search leaves the tab titled "New Hampshire Bills — search every bill since 1989", with focus
+  on the search box. Live does the same, and app.js is already changed by both HB 703 branches.
 - **Nits, for 24 November:**
   - `/live` is linked from no page; a known deferral, PATCHES 2 and 3.
   - A voice vote's date links to an anchor its session day lacks.
@@ -88,7 +89,8 @@ The record lens checked many things and found them right:
 
 ## Next, unless the laptop manager says otherwise
 
-- Finish `fix/movers-term`: the review's findings, then mark it ready.
+- Finish `fix/movers-term`: the second review's findings, then mark it ready.
+- Mark `fix/api-units` ready once its review is done.
 - **Monday 9 November:** the Videos wording, for Monday's second dry run.
 - **24 November:**
   - night-clock, then lsr-accept;
