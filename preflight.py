@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.786
+# GRANITE_VERSION: 2026-09-04.787
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -29553,7 +29553,7 @@ def _person_register():
 
 
 @check("build", "every count on /api says what it counts, at every width: files, tables, people, "
-                "bills or rows, under a head that says Count, and the table is a list up to 55em",
+                "bills or rows, under a head that says Count, and the table is a list up to 58em",
        needs=("api_page",))
 def _api_counts_say_units(AP):
     """THE DEEP WALK OF 6 NOVEMBER 2026, on dry run 181's preview. /api's
@@ -29567,8 +29567,10 @@ def _api_counts_say_units(AP):
 
     And that branch's review: with its units the Count column is wider, and
     the table was already wider than a tablet held upright, so the page
-    scrolled sideways from 721 to 842 pixels (dev: 803). Up to 55em /api's
-    table (class dpapi) is laid out as on a phone; the data page's is not."""
+    scrolled sideways from 721 to 842 pixels (dev: 803), and with the
+    database's fold open the table ran past its box to 926. Up to 58em
+    /api's table (class dpapi) is laid out as on a phone; the data page's is
+    not."""
     def f(path, kind, **k):
         return dict({"path": f"data/{path}", "kind": kind, "rows": 0, "bytes": 1_000_000}, **k)
     manifest = {"files": [
@@ -53820,6 +53822,19 @@ place("/bill/2026/hb1442", {focus: "HB1442"}, false); s.setFocused("HB1442");
 location.hash = "#results"; pop(null); out.pop.skipOverList = seen();
 location.hash = ""; pop({focus: "HB1442"}); out.pop.backToItsEntry = seen();
 go("/bills"); pop(null); out.pop.backToList = seen();
+// A bill's own page, reloaded after it was opened from the search: Back
+// reaches the search's entry without a load, and the page loads it as it is,
+// words and term, not bare /bills (the review of 7 November 2026).
+location.replace = u => { location.href = "replace " + u; };
+// The tab's own storage, for this one case: the list loaded is told it is
+// Back, so it opens where the reader stood (restorePlace; the second review).
+const ss = {};
+globalThis.sessionStorage = {getItem: k => (k in ss ? ss[k] : null), setItem: (k, v) => { ss[k] = String(v); },
+                             removeItem: k => { delete ss[k]; }};
+place("/bill/2026/hb1442", null, true); s.setFocused("HB1442");
+go("/bills?q=budget&term=all"); pop(null); out.pop.reloadedBack = seen();
+out.reloadedPlace = ss["gr.back"] || null;
+delete globalThis.sessionStorage;
 // And opened for real, by the card's arrow: the skip link has to name the
 // address the bill was given, or pressing it is a journey to another page;
 // and name the list's again once the bill is left.
@@ -53891,14 +53906,26 @@ process.stdout.write("\n@@" + JSON.stringify(out));
                 if got[group].get(k) != v]
 
     stay = {"href": "HERE", "wrote": [], "focused": "HB1442"}
+    # Back to the list writes nothing: the browser has put the list's own
+    # address back, and a /bills pushed over it lost the search's words and
+    # the bill's entry for Forward (the laptop's test of 7 November 2026).
     bad = off("pop", {"skipOwn": stay, "skipOwnTab": stay, "backOwnTab": stay,
                       "skipByAddress": stay, "skipOverList": stay, "backToItsEntry": stay,
-                      "backToList": {"href": "HERE", "wrote": ["push /bills"], "focused": None}})
+                      "backToList": {"href": "HERE", "wrote": [], "focused": None},
+                      "reloadedBack": {"href": "replace /bills?q=budget&term=all", "wrote": [],
+                                       "focused": "HB1442"}})
     assert not bad, (
         "a link to a place on the page, or back from one, leaves the bill or draws the "
         "list over it (the skip link is the first Tab stop on every bill's page): "
         + "; ".join(bad[:3]))
-    opened = {"wrote": ["push /bill/2026/hb1442"], "skip": "/bill/2026/hb1442#results",
+    assert got.get("reloadedPlace") == "1", (
+        "a reloaded bill page, then Back: the list it loads is not told it is Back "
+        f"(gr.back is {got.get('reloadedPlace')!r}), so it opens at its top, not where the "
+        "reader stood in it")
+    # The list's own entry is written again first, at its own address, with
+    # the words it was left with in its state (THE LIST'S WORDS IN ITS OWN
+    # ENTRY, the second review of 7 November 2026); then the bill's pushed.
+    opened = {"wrote": ["replace /bills", "push /bill/2026/hb1442"], "skip": "/bill/2026/hb1442#results",
               "atSkip": "HB1442", "left": {"skip": "/bills#results", "focused": None}}
     assert got["opened"] == opened, (
         "a bill opened over the list, and left again: the skip link must name the address "
@@ -70666,9 +70693,12 @@ const rows = JSON.parse(fs.readFileSync("./rows.json", "utf8"));
 const recs = JSON.parse(fs.readFileSync("./records.json", "utf8"));
 const terms = [...new Set(rows.map(r => r.term))].sort().reverse();
 const [, , start, steps] = process.argv;
-const [qs, named = ""] = start.split("#");
+// A start beginning "!" stays in the term its address names, and does not
+// choose All Terms first: its other term's index is not yet asked for.
+const keepTerm = start.startsWith("!");
+const [qs, named = ""] = (keepTerm ? start.slice(1) : start).split("#");
 location.pathname = "/bills"; location.search = qs; location.hash = named ? "#" + named : "";
-location.href = "https://x/bills" + start;
+location.href = "https://x/bills" + (keepTerm ? start.slice(1) : start);
 // THE CITE AND REPORT ROW (focusActions): fetched from the bill's own page,
 // which says whose it is, and put before the results; the stub's
 // getElementById would otherwise hand back a row for any id, and none would
@@ -70683,20 +70713,38 @@ const docOn = {}, winOn = {};
 document.addEventListener = (t, f) => (docOn[t] = docOn[t] || []).push(f);
 globalThis.addEventListener = (t, f) => (winOn[t] = winOn[t] || []).push(f);
 const pushed = [], entries = [];
-history.pushState = (s, _t, u) => { pushed.push(String(u)); entries.push({u: String(u), s}); history.state = s;
-  const p = new URL(String(u), "https://x"); location.pathname = p.pathname; location.search = p.search; };
+// THE HISTORY AS A BROWSER KEEPS IT (the reviews of 7 November 2026): a
+// stack of entries, each its address and state; a push drops what was ahead
+// of it, a replace rewrites the entry stood on, and Back and Forward move
+// along it and put that entry's address back, words and all.
+const stack = [{u: location.pathname + location.search, s: null}];
+let at = 0;
+const put = e => { const p = new URL(e.u, "https://x"); location.pathname = p.pathname;
+  location.search = p.search; history.state = e.s; };
+history.pushState = (s, _t, u) => { pushed.push(String(u));
+  entries.push({u: String(u), s, from: location.pathname + location.search});
+  stack.splice(at + 1); stack.push({u: String(u), s}); at = stack.length - 1; put(stack[at]); };
 // A record held on its way (clickslow), let go by "release": the reader who
 // opens a bill and goes Back before its record arrives.
 const holding = new Set(), waiting = [];
+// A replace sets the entry's state as well as its address, as a browser's
+// does: the list keeps its words in its entry (focusBill).
 history.replaceState = (s, _t, u) => { if (u) { const p = new URL(String(u), "https://x");
-  location.pathname = p.pathname; location.search = p.search; } };
+  location.pathname = p.pathname; location.search = p.search;
+  stack[at] = {u: p.pathname + p.search, s}; } else stack[at] = {u: stack[at].u, s};
+  history.state = s; };
+// A term's index held on its way (holdidx), let go by "release": the picker
+// turned with a bill open, and Back before the term's bills have arrived.
+let holdIdx = false;
 let asked = [];
 const ok = v => ({ok: true, status: 200, json: async () => v, text: async () =>
   typeof v === "string" ? v : JSON.stringify(v)});
 globalThis.fetch = async u => { const p = new URL(u, "https://x").pathname.replace(/\.html$/, ""); asked.push(p);
-  if (p === "/meta.json") return ok({terms});
+  if (p === "/meta.json") return ok({terms, topics: [...new Set(rows.map(r => r.topic))].sort()});
   const m = /^\/idx\/(.+)\.json$/.exec(p);
-  if (m && terms.includes(decodeURIComponent(m[1]))) return ok(rows.filter(r => r.term === decodeURIComponent(m[1])));
+  if (m && terms.includes(decodeURIComponent(m[1]))) {
+    const idx = () => ok(rows.filter(r => r.term === decodeURIComponent(m[1])));
+    return holdIdx ? new Promise(res => waiting.push(() => res(idx()))) : idx(); }
   if (p in recs) { const page = () => ok('<script type="application/json" id="gr-data">' + JSON.stringify(recs[p]) + "</script>");
     return holding.has(p) ? new Promise(res => waiting.push(() => res(page()))) : page(); }
   return {ok: false, status: 404, statusText: "Not Found", json: async () => { throw new Error(p + " 404"); },
@@ -70771,34 +70819,42 @@ const textTab = year => { const row = rows.find(r => String(r.year) === year);
   catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
   await ticks(40);
   const year = document.querySelector("#year");
-  if (!named) { year.value = "all"; year.fire("change", {target: year}); await ticks(60); }
+  if (!named && !keepTerm) { year.value = "all"; year.fire("change", {target: year}); await ticks(60); }
+  const init = {search: location.search, box: document.querySelector("#q").value};
   const out = [];
   for (const step of steps.split(",")) {
     asked = []; const was = pushed.length;
     const [what, y] = step.split(":");
-    let replayed = null;
+    let replayed = null, backTo = null;
     if (what === "click") click(y);
     else if (what === "clickslow") { holding.add(`/bill/${y}/${rows.find(r => String(r.year) === y).id.toLowerCase()}`);
       click(y); }
-    else if (what === "release") { holding.clear(); waiting.splice(0).forEach(f => f()); }
-    else if (what === "back") { location.pathname = "/bills"; history.state = null;
-      (winOn.popstate || []).forEach(f => f({state: null})); }
+    else if (what === "release") { holding.clear(); holdIdx = false; waiting.splice(0).forEach(f => f()); }
+    else if (what === "holdidx") holdIdx = true;
+    else if (what === "back") { if (at > 0) at--; backTo = stack[at].u; put(stack[at]);
+      (winOn.popstate || []).forEach(f => f({state: history.state})); }
     else if (what === "forward" || what === "pop") { const row = rows.find(r => String(r.year) === y);
       // The entry focusBill pushed for that bill, as the browser hands it back.
       const want = `/bill/${y}/${row.id.toLowerCase()}`;
-      const got = [...entries].reverse().find(e => e.u.endsWith(want));
-      replayed = !!got;
-      location.pathname = want; history.state = got ? got.s : {focus: row.id, term: row.term};
+      let k = stack.length - 1; while (k >= 0 && !stack[k].u.endsWith(want)) k--;
+      replayed = k >= 0;
+      if (k >= 0) { at = k; put(stack[k]); }
+      else { location.pathname = want; history.state = {focus: row.id, term: row.term}; }
       (winOn.popstate || []).forEach(f => f({state: history.state})); }
     else if (what === "search") { const q = document.querySelector("#q"); q.value = y;
       q.fire("keydown", {key: "Enter"}); }
+    // Words typed into the box and not run, and the term picker turned.
+    else if (what === "type") { const q = document.querySelector("#q"); q.value = y;
+      q.fire("input", {target: q}); }
+    else if (what === "term") { year.value = y; year.fire("change", {target: year}); }
     else if (what === "gloss") gloss(y);
     else if (what === "text") textTab(y);
     await ticks(60);
     out.push({step, html: document.querySelector("#results").innerHTML, pushed: pushed.slice(was), asked,
-              acts: acts && acts.bill || "", pick: year.value, replayed});
+              acts: acts && acts.bill || "", pick: year.value, replayed,
+              search: location.search, box: document.querySelector("#q").value, backTo});
   }
-  process.stdout.write("\n@@" + JSON.stringify({out, errs}));
+  process.stdout.write("\n@@" + JSON.stringify({out, errs, init}));
 })().catch(e => { console.log("RUN " + e.message); process.exit(1); });
 """
 
@@ -70859,11 +70915,12 @@ def _same_number_one_bill():
     rec0 = json.loads(re.search(r'id="gr-data">(.*?)</script>', page, re.S).group(1))
     marks = {"2025": "MEALS", "2020": "DRUG"}
     rows, recs = [], {}
-    for year, term, n, sponsor in (("2025", "2025-2026", "HB 703-FN-A-LOCAL", "Hope Damon"),
-                                   ("2020", "2019-2020", "HB 703-FN", "Edward Butler")):
+    # Each its own topic, so two can be ticked and both bills still drawn.
+    for year, term, n, sponsor, topic in (("2025", "2025-2026", "HB 703-FN-A-LOCAL", "Hope Damon", "Education"),
+                                          ("2020", "2019-2020", "HB 703-FN", "Edward Butler", "Insurance")):
         mk = marks[year]
         rows.append(dict(row0, id="HB703", n=n, year=int(year), term=term,
-                         title=f"{mk}-ROW title", sponsor=sponsor,
+                         title=f"{mk}-ROW title", sponsor=sponsor, topic=topic,
                          sponsor_label=f"Rep. {sponsor} {mk}-ROW"))
         events = [dict(e, text=f"{mk}-REC event {i}") for i, e in enumerate(rec0.get("events") or [])] \
             or [{"date": f"{year}-01-03", "text": f"{mk}-REC event 0", "routine": False}]
@@ -70897,24 +70954,92 @@ def _same_number_one_bill():
              ("?term=2019-2020&q=HB703", "clickslow:2025,back,release,click:2020"),
              # The Bill Text tab asks for the open bill's versions.
              ("?q=HB703", "click:2020,text:2020,back,click:2025,text:2025"),
-             ("?term=2019-2020&q=HB703", "click:2025,text:2025"))
+             ("?term=2019-2020&q=HB703", "click:2025,text:2025"),
+             # Back keeps the search, and Forward the bill (the laptop's
+             # test of 7 November 2026).
+             ("?q=HB+703&term=all", "click:2020,back,forward:2020,back"),
+             # Words typed with the bill open and never run: Back draws the
+             # list's own search, and the box says it (that night's review).
+             ("?q=HB703", "click:2020,type:zzz,back"),
+             # Back twice, past the bill, from a later list of another
+             # search in another term: the first list, its words and its
+             # term, as its own entry names them.
+             ("?q=HB703", "click:2020,search:HB1,term:2019-2020,back,back"),
+             ("?term=2019-2020&q=HB703", "click:2020,search:HB1,term:all,back,back,forward:2020"),
+             # The picker turned with the bill open, then Back: the term
+             # chosen is still the reader's (THE OPEN BILL KEEPS ITS OWN TERM).
+             ("?q=HB703", "click:2020,term:2025-2026,back"),
+             # The second review of 7 November 2026. A term only held while
+             # the bill was open -- the later list's, turned with no bill open
+             # -- gives way to the first list's own on Back twice.
+             ("?q=HB703", "click:2020,search:HB1,term:2025-2026,back,back"),
+             # Every topic ticked, and the order chosen, are the list's after
+             # Back as before it: the second of two was lost. No words, so the
+             # topics are what draws the list (a number searched for is drawn
+             # whatever is ticked).
+             ("?topic=Insurance&topic=Education&sort=recent", "click:2020,back,forward:2020,back"),
+             # A list of no words, and words typed on a list and not run, are
+             # in no address: Back twice, past a later search, draws them,
+             # not the later search's.
+             ("", "click:2020,search:HB1,back,back"),
+             ("", "type:HB703,click:2020,search:HB1,back,back"))
     bad, steps = [], 0
+    from urllib.parse import parse_qs, urlsplit
     for start, plan in plans:
         run = _node_app(_SAME_NUMBER_HARNESS, files=files, args=(start, plan))
         if run is None:
             return "skip", "app.js, dom_stub.js or node is not here"
         if run["errs"]:
             bad.append(f"from {start}, {plan}: left unhandled: {run['errs'][:2]}")
-        pick = None
+        pick, open_bill, held = None, bool(re.search(r"#\d{4}/", start)), None
+        # The page loaded takes every filter and the order its address names,
+        # as Back does: each topic of two, not the first alone.
+        named_q = parse_qs(start.lstrip("!").split("#")[0].lstrip("?"))
+        loaded_q = parse_qs(run["init"]["search"].lstrip("?"))
+        for k in ("topic", "status", "sort"):
+            if sorted(named_q.get(k, [])) != sorted(loaded_q.get(k, [])):
+                bad.append(f"from /bills{start}: the page loaded with {k} {loaded_q.get(k, [])}, "
+                           f"where its address named {named_q.get(k, [])}")
+        # The words each list was left with, by its address: what Back to it
+        # puts in the box where its address names none.
+        left, prev = {}, run["init"]
         for got in run["out"]:
             steps += 1
+            if got["step"].partition(":")[0] in ("click", "clickslow") and prev["search"] is not None:
+                left["/bills" + prev["search"]] = prev["box"]
+            prev = got
             what, _, y = got["step"].partition(":")
             html, where = got["html"], f"from /bills{start}, {plan}, at {got['step']}"
+            # Back to an entry focusBill pushed is that bill, opened again.
+            to_bill = re.match(r"/bill/(\d{4})/", got.get("backTo") or "")
+            if what == "back" and to_bill:
+                what, y = "backbill", to_bill.group(1)
+            if what in ("type", "term"):
+                # The picker turned with a bill open chooses the term the
+                # list is in once the bill is closed, by Back as by anything.
+                if what == "term" and open_bill:
+                    held = y
+                pick = got["pick"]
+                continue
+            open_bill = what not in ("back", "search", "release")
             for p in got["asked"]:
                 m = re.match(r"/idx/(.+)\.json$", p)
                 if m and m.group(1) not in terms:
                     bad.append(f"{where}: asked for {p}, the index of no term")
             if what in ("back", "search", "release"):
+                chose, held = held, None
+                if what == "back" and chose and chose != "all":
+                    # Back in the term the reader chose with the bill open:
+                    # that term's bill alone, and the picker on it.
+                    own = next(r for r in rows if r["term"] == chose)
+                    gone = next(m for k, m in marks.items() if k != str(own["year"]))
+                    if f"{marks[str(own['year'])]}-ROW" not in html or f"{gone}-ROW" in html:
+                        bad.append(f"{where}: Back after the picker was turned to {chose} with the bill "
+                                   "open does not draw that term's list")
+                    if got["pick"] != chose:
+                        bad.append(f"{where}: the picker reads {got['pick']!r}, not the {chose!r} chosen")
+                    pick = got["pick"]
+                    continue
                 both = what in ("back", "release") or y.upper() == "HB703"
                 if both and not all(f"{m}-ROW" in html for m in marks.values()):
                     bad.append(f"{where}: the list of both bills is not drawn again under All Terms")
@@ -70922,6 +71047,31 @@ def _same_number_one_bill():
                     bad.append(f"{where}: a bill's record is still drawn over the list")
                 if got["acts"]:
                     bad.append(f"{where}: the {got['acts']} bill's Cite and Report row is still up")
+                # BACK KEEPS THE SEARCH (the laptop's test of 7 November
+                # 2026): the list's own address, put back by the browser,
+                # stays, words and all; nothing is pushed over it, so Forward
+                # still reaches the bill; and the box says the words it names.
+                if what == "back":
+                    wants = parse_qs(urlsplit(got["backTo"] or "").query)
+                    wq = wants.get("q", [None])[0]
+                    wt = wants.get("term", [None])[0]
+                    has = parse_qs(got["search"].lstrip("?"))
+                    if got["pushed"]:
+                        bad.append(f"{where}: Back pushed {got['pushed']} over the list's own "
+                                   "address, and Forward is lost")
+                    # The whole of it: its words, its term, every filter
+                    # ticked and the order chosen, each as often as named.
+                    if {k: sorted(v) for k, v in has.items()} != {k: sorted(v) for k, v in wants.items()}:
+                        bad.append(f"{where}: Back left the address at {got['search']!r}, where the "
+                                   f"list's own was {got['backTo']!r}")
+                    if wq is not None and got["box"] != wq:
+                        bad.append(f"{where}: the box reads {got['box']!r} under a list of {wq!r}")
+                    elif wq is None and got["backTo"] in left and got["box"] != left[got["backTo"]]:
+                        bad.append(f"{where}: the box reads {got['box']!r} under a list left with "
+                                   f"{left[got['backTo']]!r}")
+                    if wt is not None and got["pick"] != wt:
+                        bad.append(f"{where}: the picker reads {got['pick']!r} under a list of the "
+                                   f"{wt!r} term")
                 pick = got["pick"]
                 continue
             other = next(o for o in marks if o != y)
@@ -70952,8 +71102,31 @@ def _same_number_one_bill():
             if f"/bill/{other}/hb703" in got["asked"]:
                 bad.append(f"{where}: asked for the {other} bill's record: {got['asked']}")
             pick = got["pick"]
+    # THE TERM ASKED FOR ONCE (the second review of 7 November 2026): in the
+    # newest term, 2025's bill open, the picker turned to 2019-2020 and Back
+    # before its index has arrived. The picker and Back both want it; it is
+    # fetched once, and its bill drawn once, as on a list that never waited.
+    held = _node_app(_SAME_NUMBER_HARNESS, files=files,
+                     args=("!?q=HB703", "click:2025,holdidx,term:2019-2020,back,release"))
+    plain = _node_app(_SAME_NUMBER_HARNESS, files=files, args=("!?term=2019-2020&q=HB703", "click:2020,back"))
+    if held and plain:
+        steps += len(held["out"])
+        if held["errs"]:
+            bad.append(f"the term held on its way: left unhandled: {held['errs'][:2]}")
+        idx = [p for got in held["out"] for p in got["asked"] if p == "/idx/2019-2020.json"]
+        if len(idx) != 1:
+            bad.append(f"the picker turned with the bill open, then Back before 2019-2020's index "
+                       f"arrived: it was asked for {len(idx)} times, not once")
+        last, once = held["out"][-1]["html"], plain["out"][-1]["html"]
+        if last.count("DRUG-ROW title") != once.count("DRUG-ROW title") or "MEALS-ROW" in last:
+            bad.append(f"the picker turned with the bill open, then Back before 2019-2020's index "
+                       f"arrived: its bill is drawn {last.count('DRUG-ROW title')} times, where a list "
+                       f"that never waited draws it {once.count('DRUG-ROW title')}"
+                       + (", with 2025's beside it" if "MEALS-ROW" in last else ""))
+        if held["out"][-1]["pick"] != "2019-2020":
+            bad.append(f"the picker reads {held['out'][-1]['pick']!r} after Back, not the 2019-2020 chosen")
     assert not bad, f"{len(bad)} wrong:\n  " + "\n  ".join(bad[:8])
-    return "ok", (f"HB 703 of 2020 and of 2025 under All Terms: {steps} steps over {len(plans)} "
+    return "ok", (f"HB 703 of 2020 and of 2025 under All Terms: {steps} steps over {len(plans) + 1} "
                   "orders -- clicks, Back, Forward, a search typed then Back, an address with "
                   "another search, a glossary tooltip, a jump from one to the other, a record "
                   "arriving after Back, the Bill Text tab -- each drawing, pushing and fetching "
@@ -122761,6 +122934,210 @@ def _chapter_addresses_one_rule(BR, BSV, G, BP, RSA):
     return "ok", (f"bill records, guides, app.js and the not-found page give /laws/404/; "
                   f"{sum(good.values())} addresses of it across {len(good)} built files, none without "
                   "its slash" + ("; " + "; ".join(said) if said else ""))
+
+
+@check("build", "the not-found page goes to a bill asked for under its term's other year, or its "
+       "filing year, writes its number as the record does, and offers the closest town for a "
+       "town not found; elsewhere it does not speak of bills", needs=("build_pages",))
+def _not_found_finds_the_bill(BP):
+    """THE LAPTOP'S TEST OF 7 NOVEMBER 2026, on dry run 181's preview.
+    /bill/2026/hb703 and /bill/2019/hb703 -- HB 703 of 2025-2026 asked for
+    under its term's other year, and HB 703 of 2020 under the year it was
+    filed -- offered only a search, for "HB703". The page now asks for the
+    bill's page at the term's other year, says where the bill is and goes
+    there, its tab and fragment kept; a number the term does not have keeps
+    the search, as "HB 9999", of every term. /town/harts-location was told
+    about bill numbers: a town's address not found says so, and offers the
+    town or ward of that name from the site search's list, or goes there
+    where the name is the address's exactly (Hart's Location is
+    /town/hart-s-location).
+
+    And the review of that night. A city's row in find.json is its Officials
+    page (officials?town=Dover), so /town/manchster offered Lancaster and
+    /town/kene Lee; a ward a city does not have offered its Ward 1, the
+    wrong representatives; /town/Dover and /town/dover/ are /town/dover; an
+    address under /bill/ that is not a bill's whole address kept no word of
+    bill addresses; the page said "No page" while it looked; a bill's page
+    with a tab that is not one is asked at its own year, and never in a way
+    that could go round.
+
+    And the second review. The number padded as the General Court writes it
+    (/bill/2025/hb0703), a real tab with a slash at its end, and /BILL/ in
+    capitals said "No page" or nothing for a bill that is there; a request
+    that failed said there was no page; /bill/hb703 kept the lead and gave
+    no search. A ward with no number the city has offered its Ward 1, or
+    went to Ward 12; the long name of a place the record writes short
+    (Chandler's Pur.) offered another place; two letters swapped counted
+    twice; an exact name whose page was not there went to itself for ever;
+    the town page said "No page" while it looked. Run in node over the
+    page's own script, with the pages a HEAD finds (each bill's real tabs
+    with it) and find.json as the site serves them."""
+    node = shutil.which("node")
+    if not node:
+        return "skip", "node is not here"
+    script = re.search(r"<script>(.*?)</script>", BP.NOT_FOUND, re.S).group(1)
+    pages = ["/bill/2025/hb703", "/bill/2020/hb703", "/bill/2025/hb1"]
+    find = [["town", "Hart's Location", "Carroll County", "town/hart-s-location", "Carroll"],
+            ["town", "Lancaster", "Coos County", "town/lancaster", "Coos"],
+            ["town", "Lee", "Strafford County", "town/lee", "Strafford"],
+            ["town", "Andover", "Merrimack County", "town/andover", "Merrimack"],
+            # a city's own row is its Officials page, as the site serves it
+            ["town", "Dover", "Strafford County", "officials?town=Dover", "Strafford"],
+            ["town", "Manchester", "Hillsborough County", "officials?town=Manchester", "Hillsborough"],
+            ["town", "Keene", "Cheshire County", "officials?town=Keene", "Cheshire"],
+            ["ward", "Dover, Ward 1", "Strafford County", "town/dover-ward-1", "Strafford"],
+            ["ward", "Dover, Ward 2", "Strafford County", "town/dover-ward-2", "Strafford"],
+            ["ward", "Manchester, Ward 1", "Hillsborough County", "town/manchester-ward-1", "Hillsborough"],
+            ["ward", "Manchester, Ward 12", "Hillsborough County", "town/manchester-ward-12", "Hillsborough"],
+            # places the record writes short, and one written long beside them
+            ["town", "Chandler's Pur.", "Coos County", "town/chandler-s-pur", "Coos"],
+            ["town", "Hadley's Purchase", "Coos County", "town/hadley-s-purchase", "Coos"],
+            ["town", "Wentworth's Loc.", "Coos County", "town/wentworth-s-loc", "Coos"],
+            ["town", "Thompson & Mes's Purchase", "Coos County", "town/thompson-mes-s-purchase", "Coos"],
+            # after Lee: a slip of two letters swapped is Lyme's, not Lee's
+            ["town", "Lyme", "Grafton County", "town/lyme", "Grafton"],
+            # a row whose page is not there, at the address the page is on
+            ["town", "Testtown", "Nowhere County", "town/testtown", "Nowhere"],
+            ["legislator", "Rep. Hart Lee", "", "legislator/hart-lee-carr-1", ""]]
+    prog = r"""
+const PAGES = new Set(%s), FIND = %s, SCRIPT = %s;
+// A bill's real tabs answer where its page does (the site's tab rewrites);
+// FAILS are asked and never answered, as when the connection is down.
+const TABS = ["text", "votes", "hearings", "videos", "reports", "sponsors", "documents", "related"];
+const FAILS = new Set(["/bill/2023/hb5"]);
+const there = u => { if (PAGES.has(u)) return true; const t = /^(.*)\/([a-z]+)$/.exec(u);
+  return !!t && TABS.includes(t[2]) && PAGES.has(t[1]); };
+async function go(path) {
+  let went = null, asked = [];
+  const els = {};
+  const el = id => (els[id] = els[id] || {id, hidden: true, kids: [], written: false, said: [],
+    set textContent(v) { this.written = true; this.kids = v ? [v] : []; },
+    get textContent() { return this.kids.map(k => typeof k === "string" ? k : k.textContent).join(""); },
+    appendChild(k) { this.kids.push(k.nodeText !== undefined ? k.nodeText : k); }});
+  const document = {getElementById: id => (id === "nf-lead" || id === "nf-bill" ? el(id) : null),
+    createTextNode: t => ({nodeText: t}), createElement: () => ({href: "", textContent: ""})};
+  const location = {pathname: path, search: "", hash: "#x", replace: u => { went = u; }};
+  const fetch = async (u, o) => {
+    asked.push(((o && o.method) || "GET") + " " + u);
+    if (o && o.method === "HEAD") { if (FAILS.has(u)) throw new Error("offline"); return {ok: there(u)}; }
+    return u === "/find.json" ? {ok: true, json: async () => FIND} : {ok: false, json: async () => null};
+  };
+  new Function("location", "document", "fetch", SCRIPT)(location, document, fetch);
+  const first = els["nf-bill"] && !els["nf-bill"].hidden ? els["nf-bill"].textContent : null;
+  const firstLead = els["nf-lead"] && els["nf-lead"].written ? els["nf-lead"].textContent : null;
+  for (let i = 0; i < 30; i++) await new Promise(r => setImmediate(r));
+  const links = k => (els[k] ? els[k].kids.filter(x => typeof x !== "string").map(a => a.href) : []);
+  return {went, asked, first, firstLead, lead: els["nf-lead"] && els["nf-lead"].written ? els["nf-lead"].textContent : null,
+          leadLinks: links("nf-lead"), billLinks: links("nf-bill"),
+          bill: els["nf-bill"] && !els["nf-bill"].hidden ? els["nf-bill"].textContent : null};
+}
+(async () => {
+  const out = {};
+  for (const p of ["/bill/2026/hb703", "/bill/2019/hb703", "/bill/2026/hb703/votes", "/bill/2025/hb9999",
+                   "/bill/1987/hb1", "/bill/0000/hb1", "/bill/2025/hb1", "/bill/2025/hb703/nosuchtab",
+                   "/bill/hb703", "/bill/2025-2026/hb703",
+                   "/town/harts-location", "/town/hartslocatoin", "/town/dovr-ward-2", "/town/dover-ward-9",
+                   "/town/manchster", "/town/kene", "/town/nowhere-at-all", "/town/%%e0%%a4%%a",
+                   "/town/Dover", "/town/dover/", "/legislator/nobody-here",
+                   "/bill/2025/hb0703", "/bill/2025/hb703/votes/", "/BILL/2025/hb703", "/bill/2024/hb5",
+                   "/bill/2025/hb-703", "/town/dover-ward", "/town/manchester-ward-1-2", "/town/edwards",
+                   "/town/chandlers-purchase", "/town/wentworths-location",
+                   "/town/thompson-and-meserves-purchase", "/town/lyem", "/town/testtown"]) out[p] = await go(p);
+  process.stdout.write(JSON.stringify(out));
+})();
+""" % (json.dumps(pages), json.dumps(find), json.dumps(script))
+    r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, f"the not-found page's script did not run: {(r.stderr or '')[-400:]}"
+    got = json.loads(r.stdout)
+    bad = []
+    want_went = {"/bill/2026/hb703": "/bill/2025/hb703#x", "/bill/2019/hb703": "/bill/2020/hb703#x",
+                 "/bill/2026/hb703/votes": "/bill/2025/hb703/votes#x",
+                 "/bill/2025/hb703/nosuchtab": "/bill/2025/hb703#x",
+                 "/town/harts-location": "/town/hart-s-location",
+                 "/town/Dover": "/town/dover#x", "/town/dover/": "/town/dover#x",
+                 # the second review: the number padded, a real tab with a
+                 # slash, capitals, and places the record writes short
+                 "/bill/2025/hb0703": "/bill/2025/hb703#x",
+                 "/bill/2025/hb703/votes/": "/bill/2025/hb703/votes#x",
+                 "/BILL/2025/hb703": "/bill/2025/hb703#x",
+                 "/town/chandlers-purchase": "/town/chandler-s-pur",
+                 "/town/wentworths-location": "/town/wentworth-s-loc",
+                 "/town/thompson-and-meserves-purchase": "/town/thompson-mes-s-purchase"}
+    for p, g in got.items():
+        if g["went"] != want_went.get(p):
+            bad.append(f"{p} went to {g['went']!r}, not {want_went.get(p)!r}")
+    if "HB 703 of the 2025–2026 term is at /bill/2025/hb703" not in (got["/bill/2026/hb703"]["bill"] or ""):
+        bad.append(f"/bill/2026/hb703 says {got['/bill/2026/hb703']['bill']!r}")
+    if got["/bill/2026/hb703"]["first"] != "Looking for HB 703 in the 2025–2026 term…":
+        bad.append(f"/bill/2026/hb703 says {got['/bill/2026/hb703']['first']!r} while it looks")
+    # No address is asked for that is the one the page is on: it is not
+    # there, and going to it would go round.
+    for p, g in got.items():
+        if any(a == "HEAD " + p.lower() for a in g["asked"]):
+            bad.append(f"{p} asked for itself: {g['asked']}")
+    for p, said, link in (
+            ("/bill/2025/hb9999", "No page for HB 9999 of 2025. Search for HB 9999 in every term",
+             "/bills?q=HB%209999&term=all"),
+            ("/bill/1987/hb1", "No page for HB 1 of 1987. Search for HB 1 in every term",
+             "/bills?q=HB%201&term=all"),
+            ("/bill/0000/hb1", "No page for HB 1 of 0. Search for HB 1 in every term",
+             "/bills?q=HB%201&term=all"),
+            ("/bill/2025/hb1", "No page for HB 1 of 2025. Search for HB 1 in every term",
+             "/bills?q=HB%201&term=all"),
+            # A request that fails is not a page that is not there.
+            ("/bill/2024/hb5", "Could not look for HB 5 just now. Search for HB 5 in every term",
+             "/bills?q=HB%205&term=all"),
+            # No bill's shape, but a number in it: the search for it.
+            ("/bill/hb703", "Search for HB 703 in every term", "/bills?q=HB%20703&term=all"),
+            ("/bill/2025-2026/hb703", "Search for HB 703 in every term", "/bills?q=HB%20703&term=all"),
+            ("/bill/2025/hb-703", "Search for HB 703 in every term", "/bills?q=HB%20703&term=all")):
+        if got[p]["bill"] != said or got[p]["billLinks"] != [link]:
+            bad.append(f"{p} says {got[p]['bill']!r} with {got[p]['billLinks']}, not {said!r} with {link}")
+    for p in ("/bill/1987/hb1", "/bill/0000/hb1"):
+        if got[p]["asked"]:
+            bad.append(f"{p}, a year with no bills, asked {got[p]['asked']}")
+    nf = "No town or ward has a page at this address."
+    for p, said, link in (("/town/hartslocatoin", nf + " Did you mean Hart's Location?",
+                           ["/town/hart-s-location"]),
+                          ("/town/dovr-ward-2", nf + " Did you mean Dover, Ward 2?", ["/town/dover-ward-2"]),
+                          ("/town/dover-ward-9", nf + " Did you mean Dover? It has wards 1 to 2.",
+                           ["/officials?town=Dover"]),
+                          ("/town/manchster", nf + " Did you mean Manchester?", ["/officials?town=Manchester"]),
+                          ("/town/kene", nf + " Did you mean Keene?", ["/officials?town=Keene"]),
+                          ("/town/nowhere-at-all", nf, []),
+                          ("/town/%e0%a4%a", nf, []),
+                          ("/legislator/nobody-here", "The address may be mistyped.", []),
+                          # the second review: a ward with no number the city
+                          # has names the city, never one of its wards
+                          ("/town/dover-ward", nf + " Did you mean Dover? It has wards 1 to 2.",
+                           ["/officials?town=Dover"]),
+                          ("/town/manchester-ward-1-2", nf + " Did you mean Manchester? It has wards 1 to 2.",
+                           ["/officials?town=Manchester"]),
+                          # ...and a name ending in "wards" is no ward of a
+                          # town that has none
+                          ("/town/edwards", nf, []),
+                          # two letters swapped are one slip
+                          ("/town/lyem", nf + " Did you mean Lyme?", ["/town/lyme"]),
+                          # a name whose page is the address the page is on is
+                          # offered, never gone to: that would go round
+                          ("/town/testtown", nf + " Did you mean Testtown?", ["/town/testtown"])):
+        if got[p]["lead"] != said or got[p]["leadLinks"] != link:
+            bad.append(f"{p}'s lead says {got[p]['lead']!r} with links {got[p]['leadLinks']}, "
+                       f"not {said!r} with {link}")
+    if got["/town/harts-location"]["firstLead"] != "Looking for a town or ward at this address…":
+        bad.append(f"/town/harts-location says {got['/town/harts-location']['firstLead']!r} while it looks")
+    for p in ("/bill/2026/hb703", "/bill/2025/hb9999", "/bill/hb703", "/bill/2025-2026/hb703"):
+        if got[p]["lead"] is not None:
+            bad.append(f"{p}'s lead was rewritten to {got[p]['lead']!r}: a bill's address keeps it")
+    assert not bad, f"{len(bad)} wrong:\n  " + "\n  ".join(bad)
+    return "ok", ("/bill/2026/hb703 and /bill/2019/hb703 go to HB 703 of 2025 and of 2020, a tab kept, "
+                  "saying they look meanwhile; a tab that is not one goes to the bill; HB 9999, HB 1 of "
+                  "1987 and of 2025 keep the search of every term, never asking for themselves; a "
+                  "padded number, a tab with a slash and /BILL/ go to the bill; a failed request "
+                  "says so; Hart's Location and the places written short gone to, Manchester, Keene, "
+                  "Lyme and Dover, Ward 2 offered, a ward a city lacks or a ward with no number "
+                  "offered as the city; nothing goes to itself; capitals and a slash put right; bill "
+                  "addresses keep their lead")
 
 
 @check("build", "the not-found page's example address is a bill page the build writes: HB 1 of the "
