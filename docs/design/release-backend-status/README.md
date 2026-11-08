@@ -4,7 +4,81 @@ Kept on the session's own branch, `dev-ioxv9i`, for the laptop manager, who read
 `git fetch`. Cloud sessions cannot message it. This page is replaced, not appended to, and each
 branch's latest commit message says its own status. Times are Eastern.
 
-## As of Saturday 7 November 2026, about 6:20 p.m.
+## As of Saturday 7 November 2026, about 10 p.m.
+
+Received your message with Alice's walk items A to D for Sunday's one dry run. **All four are
+READY**, well before 9 a.m. They build on `fix/members-elect-polish` 068ed8b0 and are stacked so
+that one merge carries all four:
+
+| Item | Branch and tip | Merges | preflight --code |
+|---|---|---|---|
+| A. The Presiding Officers' sentence gone | `fix/presiding-line` fb7d3e01 | on its own | 990 passed, 0 failed |
+| B and C. Members-Elect like Legislators; the seats at the top | `feat/members-elect-tab` 25890848 | carries A | 992 passed, 0 failed |
+| D. The map's party totals for the chamber shown | `feat/map-party-totals` 5acac99d | carries A, B and C | D alone (88107c77): 991 passed, 0 failed; the stacked tip's run is in progress, and its result and STATUS commit follow on this board |
+
+**To take all four, merge `feat/map-party-totals`.** If D is not wanted, `feat/members-elect-tab`
+is A to C, and if only A is wanted, `fix/presiding-line`. Each branch has its own README under
+`docs/design/` (`presiding-line`, `members-elect-tab`, `map-party-totals`) with real-data shots
+of dry run 6, before and after, at 1280 and 390, light and dark, and in Spanish.
+
+- **A.** The block is its heading and the three chips, in English and Spanish.
+- **B.** The Members-Elect tab has three views under a strip like the Legislators tab's:
+  - **The views:**
+    - **By last name:** party columns, Senate and House apart with counts.
+    - **By county:** the Senate by district, because its races name no county.
+    - **By district:** each race whole, as before.
+  - **The chips:** each one is the Legislators tab's chip, e.g. "Rep.-elect Kristine Trow
+    (D - Rock 13)" or "Sen.-elect David Rochefort (R - SD1)". Each carries a word: **Re-elected**,
+    **Returning**, **New**, or **New seat**. "New seat" is proposed for the seven sitting members
+    elected to another seat, e.g. Creighton.
+  - **The 19 seats not final:** said in every view, and named by county and by district.
+  - **Links and contact:** only where the file links them; no contact detail. Spanish drafts.
+- **C.** "Who holds the seats" is now under the Presiding Officers.
+  - **On a phone:** each chamber is one line: "Senate 16 R · 8 D", "House 212 R · 169 D · 1 I ·
+    18 vacant". Those are dry run 6's real numbers, the same as your example.
+  - **Members-Elect:** the tab gets "Who won the seats" in the same form, with not final and
+    nobody on file counted apart.
+- **D.** Under the map's legend, on the State House and State Senate layers:
+  - **The line:** "STATEWIDE House: 212 Republicans · 169 Democrats · 1 Independent · 18
+    vacant".
+  - **Where:** on Officials' My Town tab and on the town pages' Map tab.
+  - **Not drawn** on the Executive Council and US House layers.
+
+**Checks:**
+- **New checks:** `_presiding_chips_alone` (A); `_elect_tab_like_legislators` and
+  `_seat_totals_at_top` (B, C); `_map_party_totals` and `_map_totals_published` (D).
+- **Mutation:** 29 of 29 mutants on B and C turn a check red.
+- **Review:** an adversarial review of B and C, each finding put to a skeptic who reproduced
+  it on the real data, confirmed eleven findings.
+  - **Fixed:** chips for members-elect with no page drew their name one word to a line, and
+    in Spanish By county a label ran past the page's edge at 590–640px. Also fixed: By
+    district's heading levels, the strips without JavaScript, and three check gaps.
+  - **After the fixes:** no sideways scroll or chip overrun at any width from 320 to 1280px,
+    in either language, in any view.
+- **Stamps:** the three branches each raised `preflight.py` from .794. The stacked tip carries
+  .797, so the merge is conflict-free.
+
+**For Alice to say (none blocks the dry run):**
+- **"New seat"** for a sitting member elected to another seat. The alternative is the seat
+  they hold, e.g. "Now Hills 30".
+- **The Members-Elect House line on a phone is two lines** ("... 1 I/D · 1 R/D · / 19 not
+  final"). That is at 320–390px in English and at every phone width in Spanish. The options,
+  measured:
+  - fold the cross-nominations into one count, which fits 390 in English only;
+  - say "3 other", which fits everywhere;
+  - keep the two lines.
+- **The threshold sentences** (three fifths, veto) are not shown on a phone.
+- **/officials is 19 KB heavier gzipped** (92.5 → 111.7) until the tab goes on 2 December.
+
+**Found by the review, pre-existing and live today, not fixed here (for 11 November, fixes
+verified by injection):**
+- **Legislators tab, By county:** the page scrolls sideways at 840–1220px, by up to 108px.
+- **Spanish Presiding Officers:** their labels push the page sideways at 320–350 and
+  490–510px.
+
+**Next:** the walk list for Sunday's dry run, when you send its address.
+
+## Earlier, about 6:20 p.m.
 
 Received your message with Alice's answers to "From the walk of dry run 4" (about 5 p.m.), and
 dry run 6 (7c76e0a0, dev 92247871) clean.
