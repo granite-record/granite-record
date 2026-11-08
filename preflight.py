@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.802
+# GRANITE_VERSION: 2026-09-04.803
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -70214,6 +70214,68 @@ def _no_components_on_a_command_line():
     assert not bad, ("these run components.js with node -e, which Windows refuses once the "
                      "file is past 32,767 characters; use _node_file: " + ", ".join(bad))
     return "ok", "every harness that runs components.js runs it from a file"
+
+
+@check("frontend", "a press on a bill card's head opens it wherever the card sits, a tab panel "
+                   "with tabindex included, and a press on a control inside the head does not")
+def _card_background_in_a_tab_panel():
+    """THE CARDS THAT WOULD NOT OPEN (the owner's walk of dry run 8, 8 November
+    2026). On a member's or a committee's page the cards sit in a tab panel
+    with tabindex="0", and cardBackground's test for a control looked past the
+    head to that panel, so only the title opened a card there. This runs the
+    function from app.js in node on a small tree of fake elements."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    js = Path("src/pages/app.js")
+    if not node or not js.exists():
+        return "skip", "node or app.js is not here"
+    m = re.search(r"(?ms)^function cardBackground\(e\)\{.*?^\}", js.read_text(encoding="utf-8"))
+    assert m, "app.js has no function cardBackground(e){...}; this check reads it by that name"
+    prog = r"""
+function El(tag, cls, attrs, parent){this.tag=tag;this.cls=cls?cls.split(" "):[];
+  this.attrs=attrs||{};this.parent=parent||null;}
+// The selectors cardBackground uses: comma lists, tags, .class, [attr],
+// :not(.class), and one descendant step.
+function one(el, s){
+  const m=/^([a-z]*)((?:\.[a-z-]+|:not\(\.[a-z-]+\)|\[[a-z-]+\])*)$/.exec(s);
+  if(!m)throw new Error("selector this harness cannot read: "+s);
+  if(m[1]&&el.tag!==m[1])return false;
+  for(const p of m[2].match(/\.[a-z-]+|:not\(\.[a-z-]+\)|\[[a-z-]+\]/g)||[]){
+    if(p[0]==="."){if(!el.cls.includes(p.slice(1)))return false;}
+    else if(p[0]===":"){if(el.cls.includes(p.slice(6,-1)))return false;}
+    else if(!(p.slice(1,-1) in el.attrs))return false;}
+  return true;}
+function matches(el, sel){return sel.split(",").some(alt=>{
+  const parts=alt.trim().split(/\s+/);
+  if(!one(el, parts[parts.length-1]))return false;
+  if(parts.length===1)return true;
+  for(let a=el.parent;a;a=a.parent)if(one(a, parts[0]))return true;
+  return false;});}
+El.prototype.closest=function(sel){for(let n=this;n;n=n.parent)if(matches(n,sel))return n;return null;};
+El.prototype.contains=function(o){for(let n=o;n;n=n.parent)if(n===this)return true;return false;};
+const window={getSelection:()=>""};
+""" + m.group(0) + r"""
+const pane=new El("div","pane",{tabindex:"0"});
+const card=new El("article","card",{},pane);
+const head=new El("div","chead",{},card);
+const title=new El("button","ctitle",{},head);
+head.querySelector=()=>title;
+const meta=new El("div","cmeta",{},head);
+const link=new El("a","",{href:"x"},meta);
+const got={
+  meta: cardBackground({target:meta,button:0})===title,
+  head: cardBackground({target:head,button:0})===title,
+  link: cardBackground({target:link,button:0})===null,
+  right: cardBackground({target:meta,button:2})===null};
+console.log(JSON.stringify(got));
+"""
+    r = _node_file(node, prog, capture_output=True, timeout=60)
+    assert r.returncode == 0, f"cardBackground did not run in node: {(r.stderr or '')[-400:]}"
+    got = json.loads(r.stdout.strip().splitlines()[-1])
+    wrong = [k for k, ok in got.items() if not ok]
+    assert not wrong, ("cardBackground in a tab panel with tabindex: wrong for "
+                       + ", ".join(wrong) + " (meta and head should open the card; a link "
+                       "inside the head and a right press should not)")
+    return "ok", "a press on a card's head opens it inside a tabindex panel; its links still win"
 
 
 def _with_components(js, here="."):
