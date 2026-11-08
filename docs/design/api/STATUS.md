@@ -84,9 +84,20 @@ building as asked. Alice's answers of 7 November are recorded in its section
 - B3: elect pages stay past 2 December.
 - B4: a member with no requests opens on 2025–2026.
 
-**READY for review: `feat/requests-on-members` @ e9bb088b**, for the dry run
-on Wednesday 11 November. It contains dev 92247871, which is still dev's tip.
-Preflight --code: 990 passed, 0 failed.
+**READY for review: `feat/requests-on-members` @ 3f58ea9e** (8 November),
+for the dry run on Wednesday 11 November. It contains dev b9ee46e6
+(fix/search-polish). Preflight --code: 999 passed, 0 failed.
+
+- The merge's one content conflict was in render(): dev's one-line
+  requests note is kept, with the banner after it.
+- Members' pages and the provisional members-elect pages now say Alice's
+  two sentences, by the same tr() key, bills.requests_note.
+- Stamps are one past both sides, and inventory is clean.
+- The full-build proof below was made at e9bb088b. Since then only dev's
+  merge and the wording have come in; they have not been built again, to
+  save usage.
+
+The detail below is unchanged from e9bb088b.
 
 - **Bill search:** "300 bill requests filed for 2027 — see them" on
   2025–2026. On the live kit it will count n − withdrawn; this build's kit
