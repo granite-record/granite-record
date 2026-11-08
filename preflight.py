@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.802
+# GRANITE_VERSION: 2026-09-04.803
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43130,9 +43130,23 @@ doc.activeElement = elsewhere;
 fire("pointerdown", {pointerType: "touch", target: word});
 out.tap_stays = fire("click", {target: word}); out.tap_opens = !box().hidden;
 out.tap_link = !!link();
-tick(1500); fire("pointerdown", {pointerType: "touch", target: word});
-out.second_tap_goes = !fire("click", {target: word});
-fire("pointerdown", {pointerType: "touch", target: elsewhere}); fire("click", {target: elsewhere});
+// The owner's walk of dry run 8, 8 November 2026: a press on the word keeps
+// the box open, wherever the pointer goes, and never navigates; the word
+// again, Escape or a press elsewhere closes it; Space is a press.
+fire("pointerout", {pointerType: "mouse", target: word, relatedTarget: elsewhere}); tick(1500);
+out.pinned_stays = !box().hidden;
+(box().listeners.pointerleave || []).forEach(f => f({pointerType: "mouse"})); tick(1500);
+out.pinned_stays = out.pinned_stays && !box().hidden;
+fire("pointerdown", {pointerType: "touch", target: word});
+out.second_tap_closes = fire("click", {target: word}) && box().hidden;
+fire("click", {target: word}); out.reopens = !box().hidden;
+fire("keydown", {key: "Escape"}); out.pinned_escape = box().hidden;
+fire("keydown", {key: " ", target: word}); out.space_opens = !box().hidden;
+out.space_pins = (tick(1500), !box().hidden);
+fire("keydown", {key: " ", target: word}); out.space_closes = box().hidden;
+fire("click", {target: word}); fire("pointerdown", {pointerType: "touch", target: elsewhere});
+out.press_in_box_stays = (fire("click", {target: box().querySelector(".rs-dptext")}), !box().hidden);
+fire("click", {target: elsewhere});
 out.press_elsewhere = box().hidden;
 fire("pointerover", {pointerType: "mouse", target: word}); tick(200); out.hover_waits = box().hidden;
 tick(400); out.hover_opens = !box().hidden;
@@ -43279,7 +43293,9 @@ def _rsa_defined_terms(B, RSA, S):
         f"a long definition is not cut with Show more, or Show more does not open all of it, a "
         f"paragraph a line, and close it again: {out}")
     wrong = [k for k in ("focus", "in_text", "tab_in_stays", "escape", "link_follows", "tap_stays",
-                         "tap_opens", "tap_link", "second_tap_goes", "press_elsewhere", "hover_waits",
+                         "tap_opens", "tap_link", "pinned_stays", "second_tap_closes", "reopens",
+                         "pinned_escape", "space_opens", "space_pins", "space_closes",
+                         "press_in_box_stays", "press_elsewhere", "hover_waits",
                          "hover_opens", "onto_box_stays", "leave_closes", "escape_elsewhere",
                          "press_inside_stays") if not out[k]]
     # The word at 600-620 of a screen 900 high: under it, 626, and Show more's
@@ -43357,8 +43373,7 @@ def _rsa_section_fold(B, RSA, S):
 
     On the definitions check's own chapter, given a history of ten laws, a
     citation and eleven sections citing it: the section has one fold, "History
-    and citations" with "10 changes · cites 1 · cited by 11" in its line,
-    holding each list under a heading one level below the section's, the
+    and citations" with nothing else in its line, holding each list under a heading one level below the section's, the
     history drawn whole with data-fold, and no Show all of the old kind
     (rs-more) anywhere on the page; fold_counts says one in the singular
     and leaves out what is not there. Then the chapter's script in node: the
@@ -43366,10 +43381,6 @@ def _rsa_section_fold(B, RSA, S):
     showing all ten and taking the keyboard to the first it showed, "Show
     fewer" folding it again, closing the fold folding it too; and a list of
     eight given no button."""
-    assert B.fold_counts([("hist", 1), ("other", 1), ("cites", 1), ("cited", 1)]) == \
-        "1 change · 1 other bill · cites 1 · cited by 1", "fold_counts does not say one in the singular"
-    assert B.fold_counts([("hist", 3), ("other", 0), ("cites", 4), ("cited", 12)]) == \
-        "3 changes · cites 4 · cited by 12", "fold_counts says a list that is not there"
     t = _def_table(RSA, _DEF_PASSAGES)
     data = {"enacted": {"153:5": [[str(1990 + i), f"{10 + i}:1", ""] for i in range(10)]},
             "statute": dict({"153:5": ["153:1"], "153:2": ["153:5"], "153:10-a": ["153:5"]},
@@ -43387,16 +43398,20 @@ def _rsa_section_fold(B, RSA, S):
     folds = s5.count('<details class="rs-fold">')
     if folds != 1:
         bad.append(f"153:5 has {folds} folds, not one")
-    if ('<summary><span class="rs-fname">History and citations</span> <span class="rs-fcount">'
-            "10 changes · cites 1 · cited by 11</span></summary>") not in s5:
-        bad.append("the fold's line is not \"History and citations\" with its counts")
-    heads = re.findall(r'<div class="rs-fpart"><h(\d) class="rs-fh">([^<]+)</h\d>', s5)
-    if heads != [(str(lv + 1), "How it has changed"), (str(lv + 1), "Cites"), (str(lv + 1), "Cited by")]:
+    # The owner's walk of dry run 8, 8 November 2026: the fold's line is its
+    # name alone; each list's count is on its heading, Cites first.
+    if '<summary><span class="rs-fname">History and citations</span></summary>' not in s5:
+        bad.append("the fold's line is not \"History and citations\" alone")
+    heads = re.findall(r'<div class="rs-fpart"><h(\d) class="rs-fh">([^<]+) <span class="rs-fcount">'
+                       r'&middot; (\d+)</span></h\d>', s5)
+    if heads != [(str(lv + 1), "Cites", "1"), (str(lv + 1), "Cited by", "11"),
+                 (str(lv + 1), "How it has changed", "10")]:
         bad.append(f"the fold's lists are not headed one level under the section's h{lv}: {heads}")
-    if not re.search(r'How it has changed</h\d><p class="rs-note">[^<]*</p>'
+    if not re.search(r'How it has changed <span class="rs-fcount">&middot; 10</span></h\d>'
+                     r'<p class="rs-note">[^<]*</p>'
                      r'<ul class="rs-list" data-fold="8">(?:<li[^>]*>.*?</li>){10}</ul>', s5):
         bad.append("the history of ten is not drawn whole with data-fold=\"8\"")
-    if not re.search(r'<h\d class="rs-fh">Cited by</h\d><ul class="rs-refs" data-fold="8">(?:<li>.*?</li>){11}</ul>', s5):
+    if not re.search(r'<h\d class="rs-fh">Cited by <span class="rs-fcount">&middot; 11</span></h\d><ul class="rs-refs" data-fold="8">(?:<li>.*?</li>){11}</ul>', s5):
         bad.append("Cited by's eleven are not drawn whole with data-fold=\"8\"")
     if "rs-more" in page or "<summary>Show all" in page:
         bad.append("the page still draws a Show all of its own beside a list")
@@ -43480,7 +43495,8 @@ def _rsa_history_pills(B, RSA, S):
             no_bill("1913", "145", "Laws of 1913, chapter 145, section 18")]
     if pills != want:
         bad.append(f"history_pills draws {pills}, not one pill an act, newest first: {want}")
-    part = re.search(r'<h\d class="rs-fh">How it has changed</h\d><p class="rs-note">From the section'
+    part = re.search(r'<h\d class="rs-fh">How it has changed <span class="rs-fcount">&middot; 6</span></h\d>'
+                     r'<p class="rs-note">From the section'
                      r"(?:&#x27;|')s source note, newest first\.</p>(<ul[^>]*>.*?</ul>)", s5)
     ul = part.group(1) if part else ""
     if ul != '<ul class="rs-list">' + "".join(want) + "</ul>":
@@ -43488,8 +43504,8 @@ def _rsa_history_pills(B, RSA, S):
     seen = re.sub(r"<[^>]+>", " ", re.sub(r'<span class="sr">.*?</span>', "", ul))
     if "Laws of" in seen or "chapter" in seen:
         bad.append(f"a law's words are on a pill where they are seen: {seen.strip()[:200]!r}")
-    if '<span class="rs-fcount">6 changes</span>' not in s5:
-        bad.append("the fold does not count the pills, six acts of eight rows")
+    if 'How it has changed <span class="rs-fcount">&middot; 6</span>' not in s5:
+        bad.append("the heading does not count the pills, six acts of eight rows")
     if "rs-hist" in Path("src/pages/app.css").read_text(encoding="utf-8") \
             or "rs-hist" in Path("src/pages/build_rsa.py").read_text(encoding="utf-8"):
         bad.append("the history's rows (rs-hist) are still styled or drawn")

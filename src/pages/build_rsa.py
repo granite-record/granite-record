@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.26
+# GRANITE_VERSION: 2026-10-11.27
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -37,10 +37,10 @@ A CHAPTER PAGE, top to bottom (RSA_PAGE.md §5):
    table holds linked to its own anchor and the first use of each defined
    term that applies to it marked (rsa.Defined, the person's ask of 24
    October 2026), its source note, and one fold, History and citations
-   (the person, 7 November 2026), holding four lists -- How it has changed
+   (the person, 7 November 2026), holding four lists -- Cites, Cited by, How it has changed
    (the source note's laws, newest first, each the bill it was), Other
    bills that proposed changes (every other bill whose own instructions
-   name the section, failed ones included), Cites, Cited by.
+   name the section, failed ones included) -- each with its count.
 4. A repealed section is one muted line, its anchor kept, so an old bill's
    link still lands on something true.
 
@@ -919,19 +919,12 @@ def history_pills(hist, bills):
 # ONE FOLD FOR A SECTION'S HISTORY AND CITATIONS (the person, 7 November 2026:
 # "I'd like a more compact navigation of the how it has changed, other bills
 # that proposed changes, cites, and cited by sections all compacted into one
-# dropdown before you expand it"). Its line says what is in it, a count each,
-# in this order: "3 changes · 2 other bills · cites 4 · cited by 12" -- "other
-# bills", the list's own words, since "proposals" read as counting the
-# changes too (the review of 7 November 2026).
+# dropdown before you expand it"). Its line is its name; each list's count
+# sits on its own heading, in this order: Cites, Cited by, How it has changed,
+# Other bills that proposed changes (the owner's walk of dry run 8, 8 November
+# 2026). "Other bills", the list's own words, since "proposals" read as
+# counting the changes too (the review of 7 November 2026).
 FOLD_NAME = "History and citations"
-FOLD_COUNTS = {"hist": ("{n} change", "{n} changes"), "other": ("{n} other bill", "{n} other bills"),
-               "cites": ("cites {n}", "cites {n}"), "cited": ("cited by {n}", "cited by {n}")}
-
-
-def fold_counts(rows):
-    """The fold's line of counts, from its rows' (key, n): "3 changes · 2
-    other bills · cites 4 · cited by 12", a list with nothing left out."""
-    return " · ".join(FOLD_COUNTS[k][n != 1].format(n=f"{n:,}") for k, n in rows if n)
 
 
 # ------------------------------------------------------------------ text
@@ -1266,6 +1259,7 @@ def chapter_page(tmpl, table, data, bills, ch, base):
                          in_place([f'<li><a href="{E(href(t))}">RSA {E(t)}</a></li>'
                                    for t in sorted(cited_by[a], key=rsa.addr_key)], "rs-refs"),
                          len(cited_by[a])))
+        rows.sort(key=lambda r: ("cites", "cited", "hist", "other").index(r[0]))
         tag = ""
         if pend_k or passed_k:
             # One law passed and nothing else: the tag says the day its change
@@ -1289,12 +1283,12 @@ def chapter_page(tmpl, table, data, bills, ch, base):
         lv = 3 if sub else 2
         folds = ""
         if rows:
-            folds = (f'<details class="rs-fold"><summary><span class="rs-fname">{E(FOLD_NAME)}</span> '
-                     f'<span class="rs-fcount">{E(fold_counts([(k, n) for k, _h, _n, _c, n in rows]))}</span>'
+            folds = (f'<details class="rs-fold"><summary><span class="rs-fname">{E(FOLD_NAME)}</span>'
                      "</summary>"
-                     + "".join(f'<div class="rs-fpart"><h{lv + 1} class="rs-fh">{E(h)}</h{lv + 1}>'
+                     + "".join(f'<div class="rs-fpart"><h{lv + 1} class="rs-fh">{E(h)} '
+                               f'<span class="rs-fcount">&middot; {count:,}</span></h{lv + 1}>'
                                + (f'<p class="rs-note">{E(n)}</p>' if n else "") + f"{c}</div>"
-                               for _k, h, n, c, _count in rows)
+                               for _k, h, n, c, count in rows)
                      + "</details>")
         body.append(
             f'<section class="rs-sec" id="{E(anchor)}"><h{lv} class="rs-h"><a href="{E(path)}#{E(anchor)}">'
@@ -1376,8 +1370,9 @@ CHAPTER_JS = """<script>
 # its definition (linked_text's rs-tm), so with no script it still goes
 # there. With it, the definition opens in a box under the word, as the
 # site's term popovers do (components.js, C9): a pointer held over it half a
-# second, or keyboard focus; on a phone the first tap opens it and a second
-# follows the link. It stays while the pointer moves onto it, and closes on
+# second, or keyboard focus; a click or tap on the word, or Enter or Space,
+# opens it and keeps it open until a press elsewhere, Escape or the word again;
+# the word does not navigate, the citation in the box does. It stays while the pointer moves onto it, and closes on
 # Escape, a press elsewhere or focus leaving (WCAG 1.4.13). The words are
 # read from the definition's own paragraphs on the page (rs-dfn), the first
 # 400 characters of them, and the box says which section defines the word
@@ -1399,14 +1394,14 @@ CHAPTER_JS = """<script>
 # above, and no taller than the screen, its words scrolling inside it.
 DEFS_JS = r"""<script>
 (function(){
-  var pop=null,cur=null,wait=0,shut=0,opened=0,touch=false,quiet=false,side="",pressedIn=false,HOLD=500,CUT=400;
+  var pop=null,cur=null,wait=0,shut=0,opened=0,touch=false,quiet=false,side="",pressedIn=false,pinned=false,HOLD=500,CUT=400;
   function target(a){var h=a.getAttribute("href")||"",i=h.indexOf("#");return i<0?null:document.getElementById(h.slice(i+1));}
   // The definition's paragraphs, the first without the numbers it opens with.
   function paras(w){
     var ps=[].map.call(w.querySelectorAll("p"),function(p){return p.textContent;});
     if(ps.length)ps[0]=ps[0].replace(/^\s*(?:(?:[IVXLC]+(?:-[a-z]+)?|\d+|[A-H])\.\s*|\([0-9A-Za-z-]+\)\s*)+/,"");
     return ps;}
-  function hide(){if(!cur)return;pop.hidden=true;cur.removeAttribute("aria-describedby");cur=null;}
+  function hide(){if(!cur)return;pinned=false;pop.hidden=true;cur.removeAttribute("aria-describedby");cur=null;}
   function el(tag,cls,text){var s=document.createElement(tag);if(cls)s.className=cls;if(text!=null)s.textContent=text;return s;}
   // The words: cut at CUT characters, or whole, a paragraph a line.
   function fill(t,ps,whole){
@@ -1441,7 +1436,7 @@ DEFS_JS = r"""<script>
     if(cur)hide();
     if(!pop){pop=el("span","termpop rs-dpop");pop.id="rs-dpop";
       pop.addEventListener("pointerenter",function(){clearTimeout(shut);});
-      pop.addEventListener("pointerleave",function(e){if(e.pointerType==="mouse")shut=setTimeout(hide,250);});}
+      pop.addEventListener("pointerleave",function(e){if(e.pointerType==="mouse"&&!pinned)shut=setTimeout(hide,250);});}
     // Out of the text before its words are read, which can hold it.
     if(pop.parentNode)pop.parentNode.removeChild(pop);
     var ps=paras(w),f=w.getAttribute("data-for"),cite=w.getAttribute("data-cite")||"the definition";
@@ -1466,36 +1461,44 @@ DEFS_JS = r"""<script>
   // Escape closes the box, and gives the word the keyboard only where the
   // keyboard was on it or in the box: not from a search box elsewhere.
   document.addEventListener("keydown",function(e){touch=false;pressedIn=false;
+    var k=(e.key===" "||e.key==="Spacebar")&&term(e);
+    if(k&&target(k)){e.preventDefault();press(k);return;}
     if(e.key==="Escape"&&cur){var a=cur,back=document.activeElement===a||inPop(document.activeElement);hide();
       if(back){quiet=true;a.focus();quiet=false;}}});
+  // A press on the word opens the box and keeps it open, wherever the pointer
+  // goes, until a press elsewhere, Escape or the word again; it does not
+  // navigate (the owner's walk of dry run 8, 8 November 2026). The box's own
+  // link still goes to the definition. Enter on the link is a click; Space
+  // is given the same meaning here.
+  function press(a){
+    if(cur===a&&pinned){hide();return;}
+    show(a);if(cur===a)pinned=true;}
   document.addEventListener("click",function(e){
     var a=term(e);
-    // A tap opens the box; the next tap on the same word follows its link.
-    if(a&&touch&&target(a)&&(cur!==a||Date.now()-opened<700)){e.preventDefault();show(a);return;}
+    if(a&&target(a)){e.preventDefault();press(a);return;}
     // The box's own link goes to the definition, and the box closes behind it.
     if(cur&&inPop(e.target)&&e.target.closest("a")){hide();return;}
-    // A click on the word goes to the definition, which the page marks (rs-dfn:target).
-    if(cur&&(a===cur||!inPop(e.target)))hide();
+    if(cur&&!inPop(e.target))hide();
   });
   document.addEventListener("pointerover",function(e){
-    var a=term(e);if(!a||e.pointerType!=="mouse")return;
+    var a=term(e);if(!a||e.pointerType!=="mouse"||pinned)return;
     clearTimeout(shut);clearTimeout(wait);
     if(cur!==a)wait=setTimeout(function(){show(a);},HOLD);
   });
   document.addEventListener("pointerout",function(e){
     var a=term(e);if(!a||e.pointerType!=="mouse"||(e.relatedTarget&&(a.contains(e.relatedTarget)||inPop(e.relatedTarget))))return;
     clearTimeout(wait);
-    if(cur===a&&document.activeElement!==a)shut=setTimeout(hide,250);
+    if(cur===a&&!pinned&&document.activeElement!==a)shut=setTimeout(hide,250);
   });
   document.addEventListener("focusin",function(e){
     var a=term(e);
-    if(a){if(!quiet)show(a);}else if(cur&&!inPop(e.target))hide();
+    if(a){if(!quiet&&!(pinned&&cur!==a))show(a);}else if(cur&&!inPop(e.target))hide();
   });
   // Focus leaving the word or the box closes it, unless it went into the box
   // or back to the word, or a press inside the box sent it nowhere -- a click
   // on its words, to select them, after pressing Show more.
   document.addEventListener("focusout",function(e){
-    if(!cur||!(e.target===cur||inPop(e.target)))return;
+    if(!cur||pinned||!(e.target===cur||inPop(e.target)))return;
     var to=e.relatedTarget;
     if(to?(inPop(to)||to===cur):pressedIn)return;
     shut=setTimeout(hide,250);
