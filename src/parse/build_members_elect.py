@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.8
+# GRANITE_VERSION: 2026-10-16.9
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -513,9 +513,9 @@ def sources_hold(doc, root, notes):
 
 def read_hand(path, election):
     """The person's entries for this election: {"matches", "not_final",
-    "held"}, each a dict, empty where the file or the election is absent,
-    and "recount_deadline", a day or None."""
-    empty = {"matches": {}, "not_final": {}, "held": {}}
+    "held", "party"}, each a dict, empty where the file or the election is
+    absent, and "recount_deadline", a day or None."""
+    empty = {"matches": {}, "not_final": {}, "held": {}, "party": {}}
     p = Path(path)
     if not p.is_file():
         return dict(empty, recount_deadline=None), f"no {p.as_posix()}: nothing settled by hand"
@@ -529,7 +529,8 @@ def read_hand(path, election):
         return dict(empty, recount_deadline=None), f"{p.as_posix()} settles nothing for {election}"
     shape = (f"{p.as_posix()}'s \"{election}\" is not {{\"recount_deadline\": \"YYYY-MM-DD\" or "
              "null, \"matches\": {race: {name: id or null}}, \"not_final\": {race: {\"seats\": "
-             "n, \"recount\": true, \"why\": \"...\"}}, \"held\": {race: {name: \"why\"}}}")
+             "n, \"recount\": true, \"why\": \"...\"}}, \"held\": {race: {name: \"why\"}}, "
+             "\"party\": {race: {name: \"R\"}}}")
     if not isinstance(mine, dict) or any(not isinstance(mine.get(k) or {}, dict) for k in empty):
         raise Refused(shape)
     got = {k: mine.get(k) or {} for k in empty}
@@ -564,6 +565,9 @@ def read_hand(path, election):
     for key, v in got["held"].items():
         if not isinstance(v, dict):
             bad.append(f"held[{key!r}]")
+    for key, v in got["party"].items():
+        if not isinstance(v, dict) or any(not re.fullmatch(r"[RDIL]", str(x)) for x in v.values()):
+            bad.append(f"party[{key!r}]")
     if bad:
         raise Refused(shape + "; these are not: " + ", ".join(bad))
     return got, ""
@@ -824,8 +828,8 @@ def members_elect(results, sitting, former, districts, hand, today):
     races_in = results.get("races") or {}
     for key in sorted(set(races_in) - set(on_file), key=race_order):
         report["notes"].append(f"{key} is in the results and in no district on file: not drawn")
-    for kind in ("matches", "not_final", "held"):
-        for key in sorted(set(hand[kind]) - set(races_in)):
+    for kind in ("matches", "not_final", "held", "party"):
+        for key in sorted(set(hand.get(kind) or {}) - set(races_in)):
             report["notes"].append(f"the hand file's {kind} names {key}, which the results "
                                    "do not hold")
     out, claims = {}, defaultdict(list)
@@ -881,8 +885,23 @@ def members_elect(results, sitting, former, districts, hand, today):
         # EVERY WINNER IS MATCHED, DRAWN OR NOT, so that a name the rule
         # cannot settle is put to the person while its race is still not
         # final, and is settled by the day it is drawn.
+        # THE PARTY A WINNER FILED UNDER (the owner, 8 November 2026). A
+        # cross-nominated winner is printed with both nominations ("i&d"),
+        # which is not the party they filed under: William F. Fessenden filed
+        # as a Democrat and Kevin M. Major as a Republican. The hand file's
+        # "party" says so, and is the party drawn.
+        filed = (hand.get("party") or {}).get(key) or {}
+        for name in sorted(set(filed) - {c["name"] for c in cands if c.get("elected") is True}):
+            report["notes"].append(f"{key}: the hand file gives a party to {name}, who is not "
+                                   "a winner here")
         for i, c in enumerate(won):
             entry = {"n": reading_order(c["name"]), "p": party_letters(c.get("party"))}
+            if c["name"] in filed:
+                if filed[c["name"]] not in entry["p"].split("/"):
+                    report["notes"].append(f"{key}: the hand file gives {c['name']} the party "
+                                           f"{filed[c['name']]}, which the results do not print "
+                                           f"for them ({entry['p'] or 'none'})")
+                entry["p"] = filed[c["name"]]
             rule, why = auto_link(key, c["name"], people, on_file)
             if c["name"] in named:
                 v = named[c["name"]]
