@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.799
+# GRANITE_VERSION: 2026-09-04.800
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -21103,8 +21103,14 @@ def _find_bills(BP):
         "and a link to them on All terms")
     assert re.search(rf"{n['firearms']} of them in\s+the 2025\u20132026 term", html), (
         "/search?q=firearms does not say how many of them are this term's")
-    assert "HB 101 (2025)" in html and "HB 101 (2023)" in html, (
-        "/search lists bills of two terms without the year that tells them apart")
+    # Every term's bills, each with its year, a term at a time, newest first
+    # (Alice, 8 November 2026: /search's list is /bills on All Terms's); the
+    # number in every term is "SB 5" below.
+    years = [int(y) for y in re.findall(r'<span class="fname">[^<]*\((\d{4})\)</span>', html)]
+    starts = [y if y % 2 else y - 1 for y in years]
+    assert "HB 101 (2025)" in html and years and starts == sorted(starts, reverse=True), (
+        "/search lists bills of every term without the year that tells them apart, or not a "
+        f"term at a time: {years}")
     ab = s["abbas"]["html"]
     assert 0 <= ab.find("<h2>Senators") < ab.find("<h2>Bills"), (
         "/search?q=abbas puts the bills above the senator it names")
@@ -22108,8 +22114,18 @@ def _best_match_words(BP):
                            "table does not account for")
                 continue
             tier = {k: i for i, (_, ks) in enumerate(kinds) for k in ks}
+            # EVERY TERM'S LIST RUNS A TERM AT A TIME, newest first (Alice, 8
+            # November 2026; _search_polish), so there the word is held above
+            # the longer word within each term, and the terms in their order.
+            if scope is None:
+                starts = [y if y % 2 else y - 1 for y in (int(k.rsplit("/", 1)[1]) for k in order)]
+                if starts != sorted(starts, reverse=True):
+                    bad.append(f"{where} does not run a term at a time, newest first, for {q!r}: {order}")
+            one = (lambda a, b: True) if scope is not None else (
+                lambda a, b: (lambda x, y: (x if x % 2 else x - 1) == (y if y % 2 else y - 1))(
+                    int(a.rsplit("/", 1)[1]), int(b.rsplit("/", 1)[1])))
             up = [(a, b) for i, a in enumerate(order) for b in order[i + 1:]
-                  if tier[a] > tier[b]]
+                  if tier[a] > tier[b] and one(a, b)]
             if up:
                 a, b = up[0]
                 bad.append(f"{where} lists {a} ({kinds[tier[a]][0]}) above {b} "
@@ -23232,7 +23248,10 @@ def _find_guides(G, civics, BP):
     find.json its task and the plain words guides.WORDS declares
     (guides.search_words); find.js reads them as part of the guide's name
     (_fnamed), so a reader typing "renew my license" or "testify" meets the
-    guide first, and /search lists the guides first among the groups. Here the
+    guide first among the names (findMatch). Since 8 November 2026 the panel
+    and /search draw the guides straight after the bills (Alice: "minimum
+    wage" led with a guide above its seven bills), which _search_polish holds;
+    /search's group of them is drawn with the bills. Here the
     cases of tests/search_cases.json's "find" run through find.js over rows
     made the same way, with a member, a town, a subject, the Learn pages and
     a bill beside them, and a probe guide that declares a bill number's words,
@@ -23299,13 +23318,450 @@ def _find_guides(G, civics, BP):
                 bad.append(f"{c['q']!r}: the bill is not the panel's first answer above a guide with its words")
     assert not bad, "; ".join(bad)
     js = BP.SEARCH_JS
-    assert js.index('{t:"How-To Guides",') < js.index('{t:"Senators",'), "/search does not list the guides first"
+    assert '{t:"How-To Guides",' in js and 'const GUIDES=GROUPS.find(g=>g.t==="How-To Guides");' in js, (
+        "/search has no group of the guides, drawn with the bills")
     assert '{t:"Learn",' in js and '"Learn","Pages on This Site"]' in js, "/search does not list the Learn pages"
     assert "const named=!findBill(s)&&rows.some(" in js, "/search can put a guide above a bill number's bills"
     bi = Path("src/pages/build_indexes.py").read_text(encoding="utf-8")
     assert 'G.search_words(p.stem) if kind == "guide"' in bi, "find.json no longer carries a guide's task words"
     return "ok", (f"{len(cases)} searches: guides found by their task and plain words, labelled Guide, "
                   "above the Learn pages, and under a bill whose number was typed")
+
+
+# _search_polish's two runs. The first is app.js as /bills runs it, with
+# find.js beside it as bills.html loads it, so /search's bill list
+# (findBills) is asked with the bill search's own matcher; the second is
+# find.js and /search's script on a page without app.js.
+_SEARCH_POLISH_APP = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+const replaced = [];
+history.replaceState = (st, t, u) => { replaced.push(String(u)); };
+// A media query that keeps what listens to it, as a browser's does.
+globalThis.matchMedia = (q) => ({ media: q, matches: false, heard: [],
+  addEventListener(t, f) { this.heard.push([t, f]); } });
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({render, sortRows, matches, filtersFromAddress, addressList, fitPickers, sel, PHONE_ROW,"
+  + " setIdx:(a)=>{IDX=a;}, setMeta:(m)=>{META=m;}, setTerm:(t)=>{term=t;}, setQuery:(q)=>{query=q;},"
+  + " setSort:(x)=>{sortBy=x;sortChosen=true;}, unsort:()=>{sortChosen=false;sortBy='num';},"
+  + " getSort:()=>[sortBy,sortChosen], setShown:(n)=>{SHOWN=n;}})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const go = JSON.parse(fs.readFileSync("./go.json", "utf8"));
+const norm = x => String(x || "").toLowerCase().replace(/-/g, " ");
+const rows = go.bills.map(b => Object.assign(b, {hayT: norm([b.id, b.n, b.title].join(" ")),
+  hayC: norm((b.committees || []).join(" | "))}));
+s.setIdx(rows);
+s.setMeta(go.meta);
+const out = {};
+const html = () => document.querySelector("#results").innerHTML;
+const cards = h => [...h.matchAll(/<article class="card[^"]*" data-id="([^"]+)"[\s\S]*?bill\/(\d{4})\//g)].map(m => m[2] + "/" + m[1]);
+const heads = h => [...h.matchAll(/<h2 class="grp">([\s\S]*?)<\/h2>/g)].map(m => m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+try {
+  // Every term's bills by best match, and each term alone.
+  s.unsort(); s.setTerm("all"); s.setQuery(go.q); s.render();
+  out.all = {sort: s.getSort(), cards: cards(html()), heads: heads(html())};
+  out.alone = {};
+  for (const t of go.meta.terms) { s.unsort(); s.setTerm(t); s.render(); out.alone[t] = cards(html()); }
+  // No term's heading in one term, nor on All Terms by any other order.
+  s.unsort(); s.setTerm(go.meta.terms[0]); s.render(); out.oneTermHeads = heads(html());
+  s.setSort("num"); s.setTerm("all"); s.render(); out.numHeads = heads(html());
+  // One card drawn of the first term's two: its heading still counts both.
+  s.unsort(); s.setTerm("all"); s.setShown(1); s.render(true);
+  out.one = {cards: cards(html()), heads: heads(html())};
+  s.setShown(25);
+  // A chosen sponsor's headings, and no term's.
+  s.sel.sponsor.add(go.sponsor); s.unsort(); s.render();
+  out.sponsor = heads(html()); s.sel.sponsor.clear();
+  // The order each list starts in, and one the reader chose.
+  const deflt = (t, q) => { s.unsort(); s.setTerm(t); s.setQuery(q); s.render(); return s.getSort(); };
+  out.defaults = {all_none: deflt("all", ""), all_words: deflt("all", go.q), all_number: deflt("all", "HB 1"),
+                  term_none: deflt(go.meta.terms[0], ""), term_words: deflt(go.meta.terms[0], go.q)};
+  s.setSort("status"); s.setTerm("all"); s.setQuery(""); s.render(); out.defaults.chosen = s.getSort();
+  // The two ways in time, over the dated bills and over all of them.
+  const ids = (x, list) => { s.setSort(x); return s.sortRows(list).map(b => b.term + "/" + b.id); };
+  const once = rows.filter(b => b.last_action && rows.filter(x => x.last_action === b.last_action).length === 1);
+  out.recent = ids("recent", once); out.oldest = ids("oldest", once);
+  out.recentAll = ids("recent", rows); out.oldestAll = ids("oldest", rows);
+  // ?sort=oldest read from an address, and written into one.
+  s.unsort(); s.setTerm("all"); s.setQuery("");
+  s.filtersFromAddress(new URLSearchParams("sort=oldest&term=all"));
+  out.read = s.getSort(); replaced.length = 0; s.addressList(); out.written = replaced.slice(-1)[0] || "";
+  // The requests' note.
+  s.unsort(); s.setMeta(Object.assign({}, go.meta, {requests: go.requests})); s.setTerm(go.requests.term);
+  s.setQuery(""); s.render(); out.note = document.querySelector("#summary").innerHTML;
+  s.setMeta(go.meta);
+  // /search's list of every term's bills, asked of find.js beside app.js.
+  vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), {filename: "find.js"});
+  const F = vm.runInThisContext("({FBILLS, FALL, findBills, _fbillApi})");
+  F.FBILLS.api = F._fbillApi(); F.FALL.rows = rows; F.FALL.terms = go.meta.terms.slice();
+  const A = F.findBills(go.q, 40, true);
+  out.search = A && A.state === "ready" ? A.top.map(b => b.term + "/" + b.id) : A;
+  s.unsort(); s.setTerm("all"); s.setQuery(go.q); s.render();
+  out.listed = s.sortRows(rows.filter(b => s.matches(b))).map(b => b.term + "/" + b.id);
+  // The pickers' words on a phone: each option with data-short swapped for a
+  // new option with those words, the value kept, and back on a wide screen.
+  const opt = (value, text, short) => {
+    const o = {value, textContent: text, attrs: short ? {"data-short": short} : {},
+      getAttribute(k) { return Object.prototype.hasOwnProperty.call(this.attrs, k) ? this.attrs[k] : null; },
+      setAttribute(k, v) { this.attrs[k] = String(v); },
+      cloneNode() { const n = opt(this.value, this.textContent); n.attrs = Object.assign({}, this.attrs); return n; }};
+    return o;
+  };
+  const year = document.querySelector("#year"), sort = document.querySelector("#sort");
+  year.options = [opt("all", "All Terms"), opt("2027-requests", "2027 Bill Requests", "2027 Requests"),
+                  opt("2025-2026", "2025–2026 Term", "2025–2026")];
+  sort.options = [opt("best", "Best match"), opt("recent", "Most recent action", "Recent action"),
+                  opt("oldest", "Oldest action")];
+  // Replaced, the chosen option takes the choice with it, as in Chrome.
+  for (const x of [year, sort]) x.replaceChild = function (n, o) {
+    if (o.value === this.value) this.value = this.options[0].value;
+    this.options[this.options.indexOf(o)] = n; };
+  year.value = "2025-2026"; sort.value = "recent";
+  // The row as bills.html writes it: the picker and its label, then the
+  // box's label and the box.
+  const row = {kids: []}, part = (name, tag) => {
+    const e = name === "year" ? year : name === "qbox" ? document.querySelector(".searchrow .qbox") : {};
+    e.name = name; if (tag) e.tagName = tag; e._parent = row;
+    Object.defineProperty(e, "previousElementSibling", {configurable: true,
+      get() { const i = row.kids.indexOf(e); return i > 0 ? row.kids[i - 1] : null; }});
+    Object.defineProperty(e, "nextSibling", {configurable: true,
+      get() { return row.kids[row.kids.indexOf(e) + 1] || null; }});
+    e.compareDocumentPosition = (o) => row.kids.indexOf(o) > row.kids.indexOf(e) ? 4 : 2;
+    return e; };
+  row.kids = [part("yearLabel", "LABEL"), part("year", "SELECT"), part("qLabel", "LABEL"), part("qbox", "DIV")];
+  row.insertBefore = (n, ref) => { row.kids.splice(row.kids.indexOf(n), 1);
+    row.kids.splice(ref ? row.kids.indexOf(ref) : row.kids.length, 0, n); };
+  for (const k of row.kids) if (k.name !== "year" && k.name !== "qbox") k.parentNode = row;
+  const before = year.options[2];
+  s.PHONE_ROW.matches = true; s.fitPickers();
+  out.phone = {year: year.options.map(o => o.textContent), sort: sort.options.map(o => o.textContent),
+               replaced: year.options[2] !== before, values: [year.value, sort.value],
+               order: row.kids.map(k => k.name)};
+  s.PHONE_ROW.matches = false; s.fitPickers();
+  out.wide = {year: year.options.map(o => o.textContent), sort: sort.options.map(o => o.textContent),
+              values: [year.value, sort.value], order: row.kids.map(k => k.name)};
+  out.listens = s.PHONE_ROW.heard.some(([t, f]) => t === "change" && f === s.fitPickers);
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + String(e.stack).split("\n")[1]; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+_SEARCH_POLISH_FIND = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+globalThis.chip = (t, cls) => `<span class="${cls}">${t}</span>`;
+// components.js's, which every page loads ahead of find.js.
+globalThis.termWords = (t) => String(t || "").replace(/^(\d{4})-(\d{4})$/, "$1–$2");
+const ticks = async (n) => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+// The panel's box, kept: find.js asks the panel for it once and listens on it.
+const made = [], ce = document.createElement.bind(document);
+document.createElement = (t) => { const e = ce(t), kept = {};
+  e.querySelector = (q) => (kept[q] ||= ce("input")); made.push(e); return e; };
+const byId = document.getElementById.bind(document);
+let asked = 0;
+document.getElementById = (id) => id === "findbtn" && !asked++ ? null : byId(id);
+let ready = null;
+document.addEventListener = (t, f) => { if (t === "DOMContentLoaded") ready = f; };
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, findDraw})");
+const go = JSON.parse(fs.readFileSync("./go.json", "utf8"));
+F.FIND.rows = go.rows;
+const order = (h) => (h.match(/<a class="fbills"|<a href="[^"]*"/g) || []).map(a =>
+  a.startsWith('<a class="fbills"') ? "BILLS" : a.slice(9, -1));
+(async () => {
+  const out = { panel: {}, enter: {}, search: {} };
+  const panelOut = document.getElementById("findout");
+  for (const q of go.queries) { F.findDraw(q); out.panel[q] = order(panelOut.innerHTML); }
+  // Return in the header's box.
+  const panel = made.find(e => e.id === "findpanel");
+  const box = panel && panel.querySelector("#findq");
+  for (const q of go.enter) {
+    location.href = "(unchanged)"; box.value = q; let stopped = false;
+    for (const f of (box._on.keydown || []))
+      f({ key: "Enter", target: box, preventDefault() { stopped = true; }, stopPropagation() {} });
+    out.enter[q] = [location.href, stopped];
+  }
+  // /search's groups, in the order the page draws them.
+  vm.runInThisContext(fs.readFileSync("./search.js", "utf8"), { filename: "search.js" });
+  location.search = "?q=" + encodeURIComponent(go.queries[0]);
+  ready(); await ticks(30);
+  const rbox = document.getElementById("resq"), resout = document.getElementById("resout");
+  for (const q of go.queries) {
+    rbox.value = q; rbox.fire("input"); await ticks(30);
+    out.search[q] = [...resout.innerHTML.matchAll(/<h2>([^<]*)/g)].map(m => m[1].trim());
+  }
+  // Where no bill matches, counted: a matcher that finds none, over every term.
+  const G = vm.runInThisContext("({FBILLS, FALL})");
+  G.FBILLS.api = {billNumbers: () => null, queryGroups: (q) => [{word: q}], readShort: (g) => g,
+    matchScore: () => 0, looseness: () => 0, titleShare: () => 0, statusCat: () => "",
+    billKey: () => [0, 0], whyListed: () => null};
+  G.FBILLS.rows = []; G.FBILLS.file = []; G.FBILLS.term = go.term;
+  // This term counted at none while the rest are still being counted...
+  G.FALL.rows = null; G.FALL.failed = false; G.FALL.terms = [go.term]; G.FALL.loading = new Promise(() => {});
+  rbox.value = go.none; rbox.fire("input"); await ticks(30);
+  out.counting = [...resout.innerHTML.matchAll(/<h2>([^<]*)/g)].map(m => m[1].trim());
+  // ...and every term counted at none.
+  G.FALL.rows = [];
+  F.findDraw(go.none); out.panelNone = order(panelOut.innerHTML);
+  rbox.value = go.none; rbox.fire("input"); await ticks(30);
+  out.none = [...resout.innerHTML.matchAll(/<h2>([^<]*)/g)].map(m => m[1].trim());
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+def _css_media_blocks(css):
+    """[(condition, body)] of every @media block in a stylesheet without its
+    comments, the body brace-matched; and the text outside them all."""
+    blocks, outside, i = [], [], 0
+    for m in re.finditer(r"@media([^{]*)\{", css):
+        if m.start() < i:
+            continue
+        depth, j = 1, m.end()
+        while depth and j < len(css):
+            depth += {"{": 1, "}": -1}.get(css[j], 0)
+            j += 1
+        outside.append(css[i:m.start()])
+        blocks.append((m.group(1).strip(), css[m.end():j - 1]))
+        i = j
+    outside.append(css[i:])
+    return blocks, "".join(outside)
+
+
+@check("frontend", "the bill search on All Terms runs a term at a time under the term's heading by "
+       "best match, and opens on the newest action with no words; Oldest action is Most recent "
+       "action reversed; the guides follow the bills in the header's panel and on /search; "
+       "Return opens /search; the requests' note is Alice's; and a phone puts the box first",
+       needs=("build_pages",))
+def _search_polish(BP):
+    """Alice's answers of 8 November 2026, five changes and one more:
+
+    1. With words and All Terms on Best match, a heading per term, newest
+       first, each counted over the whole result as a Status heading is; inside
+       a term, the best match's order (sortRows). With no words on All Terms,
+       the newest action first; a bill number keeps number order; an order
+       the reader chose is kept. /search's list of every term's bills
+       (find.js, findBills) is the same list, in the same order.
+    2. The guides and the Learn pages after the bills in the header's panel,
+       and the How-To Guides straight after the Bills on /search: "minimum
+       wage" led with the guide to rights at work above its seven bills.
+    3. Return in the header's box opens /search on what was typed, a bill's
+       number too, and not the panel's first row.
+    4. On a phone the box first, then the term picker and the Sort in equal
+       halves, the count on one line and what the search read under it; the
+       pickers' shorter words there (fitPickers); a desktop unchanged.
+    5. The requests' note shorter, in Alice's words, with its Spanish a draft.
+    And "Oldest action" beside "Most recent action" (the same date, reversed,
+    the same tie by number), read from and written into the address.
+
+    Run in node over three terms of bills in which an older term's bill
+    matches better than a newer one's, so that a best match by the old
+    tie-break would run the terms together; and over a subject, a guide, a
+    Learn page and a member found only by the start of a word."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", "node is not installed"
+    terms = ["2025-2026", "2023-2024", "2021-2022"]
+
+    def bill(bid, term, title, last, sponsor="Ann Lee", status="Killed", chip="Died"):
+        return {"id": bid, "n": re.sub(r"^([A-Z]+)", r"\1 ", bid), "title": title, "kind": "done",
+                "status": status, "chip": chip, "committees": [], "committee": "", "topic": "",
+                "sponsor": sponsor, "term": term, "year": int(term[:4]), "passage": "",
+                "votedays": [], "nrc": 0, "last_action": last}
+    bills = [bill("HB1", terms[0], "relative to flying a kite at the beach", "2026-03-04"),
+             bill("SB3", terms[0], "relative to kite flying", "2025-05-06", sponsor="Bo Ray"),
+             bill("HB2", terms[0], "relative to licensing barbers", "2026-01-20"),
+             bill("HB4", terms[1], "kite flying", "2024-04-02"),
+             bill("HB5", terms[1], "relative to the wage board", "2023-03-08"),
+             bill("HB6", terms[2], "kite flying", "2022-01-14"),
+             bill("HB7", terms[2], "relative to fishing", "2021-06-09"),
+             bill("HB8", terms[2], "relative to dams", ""),
+             # Two of one day, which both orders list by number.
+             bill("HB10", terms[1], "relative to tunnels", "2023-05-05"),
+             bill("HB9", terms[1], "relative to bridges", "2023-05-05")]
+    app_fx = {"bills": bills, "q": "kite flying", "sponsor": "Ann Lee",
+              "meta": {"terms": terms, "committee_codes": {}, "topics": []},
+              "requests": {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027, "n": 1}}
+    rows = [["topic", "Minimum Wage", "Bills on this subject", "/bills?topic=Minimum+Wage", ""],
+            ["guide", "Your Rights at Work: Getting Paid", "Pay, breaks and overtime.",
+             "/guides/rights-at-work", "Get paid · minimum wage · overtime"],
+            ["learn", "The Minimum Wage, Explained", "How the state sets it.", "/learn/minimum-wage", ""],
+            ["legislator", "Rep. Ann Overtimer (D - Straf 1)", "House · Straf 1 · D",
+             "/legislator/ann-overtimer", "Strafford"],
+            # Found by its line alone, not its name, as the County Officials
+            # page is for "register my car".
+            ["page", "County Officials", "Officials who get paid by the county", "/officials#county", ""]]
+    find_fx = {"rows": rows, "queries": ["minimum wage", "overtime"],
+               "enter": ["minimum wage", "HB 1034", "   "], "none": "get paid", "term": terms[0]}
+    m = re.search(r"<script>(.*?)</script>", BP.SEARCH_JS, re.S)
+    assert m, "build_pages.SEARCH_JS carries no <script>"
+    root = Path(tempfile.mkdtemp(prefix="gr-polish-"))
+    try:
+        files = {"stub.js": Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+                 "page.js": _with_components(Path("src/pages/app.js").read_text(encoding="utf-8")),
+                 "find.js": Path("src/pages/find.js").read_text(encoding="utf-8"),
+                 "search.js": m.group(1), "app.js": _SEARCH_POLISH_APP,
+                 "panel.js": _SEARCH_POLISH_FIND}
+        for name, text in files.items():
+            (root / name).write_text(text, encoding="utf-8")
+        (root / "go.json").write_text(json.dumps(app_fx), encoding="utf-8")
+        r = _run([node, "app.js"], cwd=root, capture_output=True, text=True, timeout=90)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+        (root / "go.json").write_text(json.dumps(find_fx), encoding="utf-8")
+        r = _run([node, "panel.js"], cwd=root, capture_output=True, text=True, timeout=90)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), "node panel.js: " + said[-300:]
+        fnd = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert "threw" not in got, f"the bill search threw {got['threw']}"
+    bad = []
+    # 1. A term at a time, newest first, each in its own order, headed and counted.
+    a = got["all"]
+    seen = [c.split("/")[0] for c in a["cards"]]
+    years = [t[:4] for t in terms]
+    runs = [y for i, y in enumerate(seen) if not i or seen[i - 1] != y]
+    if a["sort"] != ["best", False] or runs != years or len(runs) != len(set(runs)):
+        bad.append(f"All Terms by best match does not run a term at a time, newest first: "
+                   f"{a['sort']} {a['cards']}")
+    for t in terms:
+        mine = [c for c in a["cards"] if c.startswith(t[:4] + "/") or c.startswith(str(int(t[:4]) + 1) + "/")]
+        if mine != got["alone"][t]:
+            bad.append(f"inside {t} All Terms lists {mine}, where the term alone lists {got['alone'][t]}")
+    want = ["2025–2026 Term 2 bills", "2023–2024 Term 1 bill", "2021–2022 Term 1 bill"]
+    if a["heads"] != want:
+        bad.append(f"All Terms by best match is headed {a['heads']}, not {want}")
+    if got["one"]["heads"] != want[:1] or len(got["one"]["cards"]) != 1:
+        bad.append(f"with one card drawn, the term's heading is {got['one']['heads']}: it is "
+                   "counted over what is drawn, not the whole result")
+    if any("Term" in h for h in got["sponsor"]) or not any("Prime sponsored" in h for h in got["sponsor"]):
+        bad.append(f"under a chosen sponsor the headings are {got['sponsor']}")
+    if got["search"] != got["listed"]:
+        bad.append(f"/search's list of every term's bills runs {got['search']}, where /bills on "
+                   f"All Terms runs {got['listed']}")
+    d = got["defaults"]
+    if d != {"all_none": ["recent", False], "all_words": ["best", False], "all_number": ["num", False],
+             "term_none": ["num", False], "term_words": ["best", False], "chosen": ["status", True]}:
+        bad.append(f"the order a list opens in: {d}")
+    # And Oldest action.
+    if got["oldest"] != got["recent"][::-1] or len(got["recent"]) < 7:
+        bad.append(f"Oldest action is not Most recent action reversed: {got['recent']} / {got['oldest']}")
+    if got["recentAll"][-1] != "2021-2022/HB8" or got["oldestAll"][-1] != "2021-2022/HB8":
+        bad.append("a bill with no action recorded is not last in both orders: "
+                   f"{got['recentAll'][-1]} / {got['oldestAll'][-1]}")
+    tie = ["2023-2024/HB9", "2023-2024/HB10"]
+    if any([k for k in got[o] if k in tie] != tie for o in ("recentAll", "oldestAll")):
+        bad.append(f"two bills of one day are not listed by number in both orders: "
+                   f"{got['recentAll']} / {got['oldestAll']}")
+    if got["oneTermHeads"] or got["numHeads"]:
+        bad.append(f"a term's heading stands in one term ({got['oneTermHeads']}) or on All Terms "
+                   f"by number ({got['numHeads']})")
+    if got["read"] != ["oldest", True] or "sort=oldest" not in got["written"]:
+        bad.append(f"?sort=oldest is read as {got['read']} and written as {got['written']!r}")
+    html_ = Path("src/pages/bills.html").read_text(encoding="utf-8")
+    opts = re.findall(r'<option value="(\w+)"[^>]*>([^<]*)</option>',
+                      html_[html_.index('<select id="sort">'):html_.index("</select>", html_.index('<select id="sort">'))])
+    if opts != [("best", "Best match"), ("num", "Bill number"), ("recent", "Most recent action"),
+                ("oldest", "Oldest action"), ("status", "Status")]:
+        bad.append(f"the Sort offers {opts}")
+    # 2 and 3. The panel, /search and Return.
+    p = fnd["panel"]["minimum wage"]
+    at = {k: (p.index(k) if k in p else -1) for k in
+          ("/bills?topic=Minimum+Wage", "BILLS", "/guides/rights-at-work", "/learn/minimum-wage")}
+    if not 0 <= at["/bills?topic=Minimum+Wage"] < at["BILLS"] < at["/guides/rights-at-work"] < at["/learn/minimum-wage"]:
+        bad.append(f"the panel for 'minimum wage' runs {p}: the subject, the bills, the guide, the Learn page")
+    p = fnd["panel"]["overtime"]
+    if not (p and p[0] == "BILLS" and p.index("/guides/rights-at-work") < p.index("/legislator/ann-overtimer")):
+        bad.append(f"the panel for 'overtime' runs {p}: the bills, then the guide, then a member found "
+                   "by the start of a word")
+    sg = fnd["search"]
+    if not (sg["minimum wage"][:3] == ["Subjects", "Bills", "How-To Guides"] and "Learn" in sg["minimum wage"]):
+        bad.append(f"/search for 'minimum wage' runs {sg['minimum wage']}")
+    if sg["overtime"][:3] != ["Bills", "How-To Guides", "Representatives"]:
+        bad.append(f"/search for 'overtime' runs {sg['overtime']}: the bills first, the guides "
+                   "straight after them")
+    if fnd["panelNone"] != ["/guides/rights-at-work", "/officials#county"] \
+            or fnd["none"] != ["How-To Guides", "Officials", "Bills"] \
+            or fnd["counting"] != ["How-To Guides", "Officials", "Bills"]:
+        bad.append(f"where no bill matches 'get paid', the panel runs {fnd['panelNone']} and /search "
+                   f"{fnd['none']}, and {fnd['counting']} while the earlier terms are counted: the "
+                   "guide is to lead, and the box saying there is no bill to follow what matches")
+    twice = {q: [h for h in p if p.count(h) > 1] for q, p in
+             list(fnd["panel"].items()) + [("get paid", fnd["panelNone"])]}
+    if any(twice.values()):
+        bad.append(f"the panel draws a row twice: {twice}")
+    # /search's draw() hides none of the page's own names: a const "box" in
+    # it hid the search box, and the redraw each load makes, draw(box.value),
+    # drew the page empty once the bills had come (8 November 2026). The
+    # loads here never come, so it is read off the script.
+    sj = m.group(1)
+    top = set(re.findall(r"^(?:const|let) (\w+)=", sj, re.M))
+    body = sj[sj.index("function draw(q){"):sj.index("\nfunction tell(")]
+    hid = sorted(n for n in top if re.search(rf"\b(?:const|let) {n}=", body))
+    if not {"box", "out", "lead"} <= top or hid:
+        bad.append(f"/search's draw() declares a name of the page's own again: {hid}")
+    e = fnd["enter"]
+    if e != {"minimum wage": ["/search?q=minimum%20wage", True], "HB 1034": ["/search?q=HB%201034", True],
+             "   ": ["(unchanged)", False]}:
+        bad.append(f"Return in the header's box: {e}")
+    # 5. The note, and its Spanish a draft.
+    note = ("<b>Requests, not bills yet.</b> Each is a member&rsquo;s request to have a bill drafted: "
+            "a title and a sponsor, nothing more, until it is filed as a numbered 2027 bill. Some "
+            "are withdrawn first.")
+    if got["note"] != note:
+        bad.append(f"the requests' note reads {got['note']!r}")
+    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"].get(
+        "bills.requests_note") or {}
+    if es.get("state") != "draft" or "{year}" not in es.get("es", ""):
+        bad.append(f"the note's Spanish is not a draft with its year: {es}")
+    # 4. A phone: the pickers' words, then the row itself.
+    ph, wd = got["phone"], got["wide"]
+    if ph["year"] != ["All Terms", "2027 Requests", "2025–2026"] \
+            or ph["sort"] != ["Best match", "Recent action", "Oldest action"] \
+            or not ph["replaced"] or ph["values"] != ["2025-2026", "recent"]:
+        bad.append(f"a phone's pickers read {ph}: their shorter words, each a new option, the value kept")
+    if wd["year"][1:] != ["2027 Bill Requests", "2025–2026 Term"] or wd["sort"][1] != "Most recent action" \
+            or wd["values"] != ["2025-2026", "recent"]:
+        bad.append(f"a wide screen's pickers read {wd}")
+    if ph["order"] != ["qLabel", "qbox", "yearLabel", "year"] \
+            or wd["order"] != ["yearLabel", "year", "qLabel", "qbox"]:
+        bad.append(f"the term picker is met in the page as {ph['order']} on a phone and "
+                   f"{wd['order']} on a wide screen: after the box there, before it here")
+    if not got["listens"]:
+        bad.append("the pickers are not fitted again when the screen changes width (a phone turned)")
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    if 'data-short="${termDash(t)}">${termDash(t)} Term</option>' not in app \
+            or ' data-short="${esc(reqYear())} Requests"' not in app or ".join(\"\");\n   fitPickers();" not in app:
+        bad.append("the term picker's options carry no shorter words, or are not fitted when drawn")
+    if 'data-short="Recent action">Most recent action</option>' not in html_:
+        bad.append("the Sort's Most recent action carries no shorter words")
+    css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"), flags=re.S)
+    blocks, outside = _css_media_blocks(css)
+    phone = "".join(b for c, b in blocks if re.fullmatch(r"\(\s*max-width:\s*45em\s*\)", c))
+    rules = {sel_.strip(): body.replace(" ", "") for sel_, body in re.findall(r"([^{}]+)\{([^{}]*)\}", phone)}
+    need = {".searchrow .in": ["display:flex", "flex-wrap:wrap", "padding-left:var(--sp-5)",
+                               "padding-right:var(--sp-5)"],
+            ".searchrow #year": ["padding:0var(--sp-2)"],
+            ".searchrow .qline,.searchrow .qhint": ["display:contents"],
+            ".searchrow .qbox": ["order:1", "flex:10100%"],
+            ".searchrow #year,.searchrow #sort": ["order:2", "flex:11calc(50%-var(--sp-4)/2)"],
+            ".searchrow #count": ["order:3", "flex:10100%", "max-width:none"],
+            ".searchrow #synhint": ["order:4", "flex:10100%"]}
+    for sel_, decls in need.items():
+        body = rules.get(sel_)
+        if body is None or not all(d in body for d in decls):
+            bad.append(f"a phone's search row has no {sel_}{{{';'.join(decls)}}}: {body}")
+    if re.search(r"\.searchrow\s+(?:\.qline|\.qhint|\.qbox|#year|#sort|#count|#synhint)\b", outside):
+        bad.append("a rule of the phone's search row reaches a desktop")
+    assert not bad, "; ".join(bad)
+    return "ok", ("All Terms by best match a term at a time under counted headings, the same list "
+                  "as /search's; no words on All Terms opens on the newest action; Oldest action "
+                  "reversed; guides after the bills in the panel and on /search; Return opens "
+                  "/search; the note in Alice's words; a phone's row box-first with fitted pickers")
 
 
 # The site search over find.json as build_indexes writes it (25 October 2026):
@@ -57343,7 +57799,13 @@ def _sort_beside_count():
     And what the search read (#synhint) is not a line of its own whatever
     the room: from 1024px up "also matching: education, student, teacher,
     classroom" fits after the count, and as a line of its own it pushed the
-    list down 28px at the first synonym typed (the review of 8 October)."""
+    list down 28px at the first synonym typed (the review of 8 October).
+    ON A PHONE, since 8 November 2026 (Alice): the box first, the term
+    picker and the Sort beside each other in equal halves, the count on a
+    line of its own and what the search read under it -- one wrapping row
+    in which .qline and .qhint lay out nothing, held by _search_polish. What
+    is held here still holds there: the two take one width, nothing gives
+    either a width of its own, and the Sort comes before the count."""
     html = Path("src/pages/bills.html").read_text(encoding="utf-8")
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     bad = []
@@ -110064,7 +110526,8 @@ def _requests_year_their_own(build_lsrs):
     stuck = [s for s in ('"for 2027"', "the 2027 bills", '"2027-requests"') if s in app] + \
             [s for s in ("2027-requests.json", '"the 2027 bill requests"') if s in plan]
     assert not stuck, f"a requests' year written in by hand: {stuck}"
-    assert "for ${reqYear()}" in app and "${esc(reqYear())} bills" in app, \
+    assert "for ${reqYear()}" in app and "a numbered {year} bill." in app \
+        and '{year:esc(reqYear())});' in app, \
         "app.js no longer takes the requests' year from meta.json"
     return "ok", ("2028's requests listed as 2028's, alone, the 2027 file gone and its request "
                   "counted; app.js and build_all name no year of their own")
