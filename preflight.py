@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.795
+# GRANITE_VERSION: 2026-09-04.796
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -21675,7 +21675,8 @@ def _requests_banner(BP):
         return "skip", "app.js, find.js or dom_stub.js not in this directory"
     B, R, A = _find_more_run(BP, ("app", "banner"), ("app", "req"), ("app", "all"))
     want = ('<b>2 bill requests filed for\n      2027</b> &mdash; '
-            '<button class="link" data-term="2027-requests">see them</button>')
+            '<button class="link" data-term="2027-requests">see them<span\n      '
+            'class="sr">: the bill requests for 2027</span></button>')
     assert B["term"] == "2025-2026" and want in B["summary"], (
         f"/bills opened on {B['term']!r} reads {B['summary']!r}: it should open on 2025-2026 "
         f"with the 2 standing requests of 3 (1 withdrawn) offered")
@@ -29867,31 +29868,55 @@ def _elect_provisional():
                                    "senate": 7}}}
     real = BME.members_elect
     BME.members_elect = lambda *a, **k: (races, {})
+    day = "2026-12-02"
     try:
-        got, said, need = EP.pages({}, sitting, [], districts, {}, "2026-11-08", {})
+        got, said, moves = EP.pages({}, sitting, [], districts, {}, "2026-11-08", day, {})
         slugs = [p["slug"] for p in got]
-        assert slugs == ["lee-park-belk-2", "jane-doe-rock-13"], (
+        assert slugs == ["lee-park-belk-2", "jane-doe-rock-13"] and not moves, (
             f"provisional pages for {slugs}: one for each new person, none for a sitting member, "
             "and none at a member's address")
         assert not any("id" in p for p in got), "a provisional page carries an id"
         assert any("pat-moore-sd-24" in s for s in said), f"the address clash is not said: {said}"
         assert got[1]["towns"] == ["Hampton"], f"Jane Doe's towns read {got[1]['towns']}"
-        # Numbered at the same address: no provisional page, nothing to record.
-        numbered = sitting + [{"id": "377100", "name": "Doe, Jane", "chamber": "H",
-                               "county": "Rockingham", "district": "13", "slug": "jane-doe-rock-13"}]
-        got2, _, need2 = EP.pages({}, numbered, [], districts, {}, "2026-12-10", {})
-        assert "jane-doe-rock-13" not in [p["slug"] for p in got2] and not need2, (
+        # An old address that already answers with a 301 is taken too.
+        got_m, _, _ = EP.pages({}, sitting, [], districts, {}, "2026-11-08", day,
+                               {"/legislator/lee-park-belk-2": "377050"})
+        assert "lee-park-belk-2" not in [p["slug"] for p in got_m], (
+            "a provisional page is given an address that already answers with a 301")
+        jane = {"id": "377100", "name": "Doe, Jane", "chamber": "H", "county": "Rockingham",
+                "district": "13", "slug": "jane-doe-rock-13"}
+        # Before Organization Day nobody is numbered: a sitting member of the
+        # name and district is somebody else, whom the owner told apart (at
+        # another address; at the same one it is a clash, said above).
+        got0, _, m0 = EP.pages({}, sitting + [dict(jane, slug="jane-q-doe-rock-13")], [],
+                               districts, {}, "2026-11-20", day, {})
+        assert "jane-doe-rock-13" in [p["slug"] for p in got0] and not m0, (
+            "before Organization Day a new member-elect lost their page to a sitting namesake")
+        # Numbered at the same address: their regular page replaces it.
+        got2, _, m2 = EP.pages({}, sitting + [jane], [], districts, {}, "2026-12-10", day, {})
+        assert "jane-doe-rock-13" not in [p["slug"] for p in got2] and not m2, (
             "a member-elect the roster now carries at the same address still has a provisional page")
-        # Numbered at another address: a 301 first, or the build stops.
-        moved = sitting + [{"id": "377100", "name": "Doe, Jane", "chamber": "H",
-                            "county": "Rockingham", "district": "13", "slug": "jane-q-doe-rock-13"}]
-        _, _, need3 = EP.pages({}, moved, [], districts, {}, "2026-12-10", {})
-        _, _, need4 = EP.pages({}, moved, [], districts, {}, "2026-12-10",
-                               {"/legislator/jane-doe-rock-13": "377100"})
-        assert need3 and "jane-doe-rock-13" in need3[0] and not need4, (
-            "a provisional address the roster does not keep is not held to a recorded 301")
+        # Numbered at another address: the provisional one answers with a 301.
+        other = dict(jane, slug="jane-q-doe-rock-13")
+        _, _, m3 = EP.pages({}, sitting + [other], [], districts, {}, "2026-12-10", day, {})
+        assert m3 == {"/legislator/jane-doe-rock-13": "/legislator/jane-q-doe-rock-13"}, m3
+        # And when the step comes to call them sitting, the owner's null match
+        # still says they were new: still followed to their new address.
+        races["H|Rockingham|13"]["elected"][0] = {"n": "Jane Doe", "p": "D", "k": "sitting",
+                                                  "id": "377100", "s": "jane-q-doe-rock-13"}
+        hand = {"matches": {"H|Rockingham|13": {"Jane Doe": None}}}
+        _, _, m4 = EP.pages({}, sitting + [other], [], districts, hand, "2026-12-10", day, {})
+        assert m4 == m3, f"a new person the step now calls sitting is not followed: {m4}"
+        races["H|Rockingham|13"]["elected"][0] = {"n": "Jane Doe", "p": "D", "k": "new"}
     finally:
         BME.members_elect = real
+    import build_pages as BPG
+    with tempfile.TemporaryDirectory() as d:
+        (Path(d) / "elect_pages.json").write_text(json.dumps({"moved": m3}), encoding="utf-8")
+        red = BPG.redirects_file(d)
+        assert "/legislator/jane-doe-rock-13 /legislator/jane-q-doe-rock-13 301\n" in red \
+            and red.index("jane-doe-rock-13") < red.index("/legislator/:who/"), (
+            "_redirects has no 301, ahead of the tab rewrites, for a provisional address moved")
 
     with tempfile.TemporaryDirectory() as d:
         site = Path(d)
@@ -85715,18 +85740,38 @@ def _member_requests():
                 "county": "Rockingham", "display_full": "Rep. Jodi Nelson (R - Rock 2)",
                 "towns": [], "sponsored": [{"id": "HB1", "term": "2025-2026", "prime": True}],
                 "votes": [], "term_figures": {}, "attendance": {}}
+    later = dict(meta, terms=["2027-2028", "2025-2026", "2023-2024"])
     js = ("scope.setMeta(" + json.dumps(meta) + "), scope.setIdx(" + json.dumps(idx) + "), "
+          "(() => { const m = " + json.dumps(member("jodi-nelson")) + "; const terms = "
+          "scope.recordTerms('member', m); scope.setPage({kind: 'member', data: m, terms, "
+          "term: terms[0]}); return scope.renderMemberBills(m, true); })(), "
+          "scope.addLoaded('2027-requests'), "
           "['jodi-nelson', 'pat-none'].map(s => { const m = " + json.dumps(member("x"))
           + "; m.slug = s; const terms = scope.recordTerms('member', m); "
           "scope.setPage({kind: 'member', data: m, terms, term: terms[0]}); "
           "return {terms, prime: scope.renderMemberBills(m, true), co: scope.renderMemberBills(m, false), "
-          "votes: scope.renderMemberVotes(m), picker: scope.termControl()}; })")
+          "votes: scope.renderMemberVotes(m), picker: scope.termControl()}; })"
+          ".concat([(() => { scope.setMeta(" + json.dumps(later) + "); const m = "
+          + json.dumps(member("jodi-nelson")) + "; m.sponsored.push({id: 'HB5', term: '2027-2028', "
+          "prime: true}); return {terms: scope.recordTerms('member', m)}; })()])")
     got = _app_js(js, names=("recordTerms", "renderMemberBills", "renderMemberVotes", "termControl",
                              "setPage: x => (PAGE = x)", "setMeta: x => (META = x)",
-                             "setIdx: x => (IDX = x)"))
+                             "setIdx: x => (IDX = x)", "addLoaded: t => LOADED.add(t)"))
     if got is None:
         return "skip", "node, app.js or the stub is not here"
-    has, none = got
+    has, none, jan = got
+    # The page is drawn before the requests are fetched: it says so, not "none".
+    src = Path("src/pages/app.js").read_text(encoding="utf-8")
+    assert "Loading the bill requests" in src and "if(!LOADED.has(META.requests.term))" in src, (
+        "a member's requests term says there are none before the list has come")
+    # The member's own file, as build_site_v2 writes it, carries the slug the
+    # page finds their requests by (the review of 8 November 2026: it did
+    # not, and no member was offered a request).
+    assert '"slug": row["slug"],' in Path("src/pages/build_site_v2.py").read_text(encoding="utf-8"), (
+        "build_site_v2 writes no slug into a member's own file, which the page reads")
+    assert jan["terms"][:3] == ["2027-2028", "2027-requests", "2025-2026"], (
+        f"once 2027-2028 is published a member is offered {jan['terms']}: their bills of that "
+        "term first, then the requests")
     assert has["terms"][0] == "2027-requests" and "2025-2026" in has["terms"], (
         f"a member with requests is offered {has['terms']}: the requests term first")
     assert '<option value="2027-requests" selected>2027 Bill Requests</option>' in has["picker"], (

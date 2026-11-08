@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.250
+# GRANITE_VERSION: 2026-09-05.251
 """
 Generate the faceted site from real General Court data.
 
@@ -4054,6 +4054,10 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
         att = member_attendance(mv, attending)
         (out / "legislators" / f"{mid}.json").write_text(json.dumps({
             **m, **lab, "counts": dict(counts), **both,
+            # The page's own address, as the roster row has it: the member's
+            # page finds their next session's requests by it (build_lsrs'
+            # sponsor_slug; Alice, 7 November 2026).
+            "slug": row["slug"],
             **({"office": office} if office else {}),
             # In the member's own file and nowhere else: not in the `row`
             # above, which is what the legislators page, the town pages and

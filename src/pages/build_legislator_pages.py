@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.25
+# GRANITE_VERSION: 2026-09-04.26
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -268,8 +268,9 @@ def elect_body(p, doc, reqs, req_meta, places, today):
     party = f" ({E(p['party'])})" if p.get("party") else ""
     out = ['<div class="static-rec" id="static-rec">',
            f"<h1>{E(p['name'])}{party}</h1>",
-           f"<p>Member-elect of the {CHAMBER_WORDS.get(p.get('chamber'), 'General Court')}, "
-           f"{E(elect_district(p))}.</p>",
+           # From the day they take office they are members, not members-elect.
+           f"<p>{'Member' if took else 'Member-elect'} of the "
+           f"{CHAMBER_WORDS.get(p.get('chamber'), 'General Court')}, {E(elect_district(p))}.</p>",
            f"<p>Elected {E(S.date_words(doc['election'], 'full'))}. "
            + (f"Took office {E(S.date_words(doc['takes_office'], 'full'))}."
               if took else f"Takes office {E(S.date_words(doc['takes_office'], 'full'))}.")
@@ -289,7 +290,7 @@ def elect_body(p, doc, reqs, req_meta, places, today):
                    "withdrawn first.</p><ul>" + "".join(
                        f"<li>{E(r.get('n'))}: {E(r.get('title'))} ({E(r.get('body_label') or '')})"
                        f" &mdash; {E(r.get('status') or '')}</li>" for r in reqs) + "</ul>"
-                   + (f'<p><a href="/bills?term={E(req_meta["term"])}">Every {E(label)}</a></p>'
+                   + (f'<p><a href="/bills?term={E(req_meta["term"])}">All {E(label)}</a></p>'
                       if (req_meta or {}).get("term") else ""))
     srcs = doc.get("sources") or []
     out.append("<h2>Sources</h2><ul><li>The election results: the New Hampshire Secretary of "
@@ -321,8 +322,10 @@ def write_elect_pages(site, out, t, base, written_slugs, pages_of_towns, today):
         reqs = [r for r in rows if r.get("sponsor_slug") == slug]
         places = towns_linked(p.get("towns") or [], pages_of_towns)
         who = f"{p['name']}" + (f" ({p['party']})" if p.get("party") else "")
-        page = S.page(t, path=path, base=base, title=f"{who}, member-elect | Granite Record",
-                      og_title=f"{who}, member-elect", og_image="og-legislator.png",
+        if today < doc["takes_office"]:
+            who += ", member-elect"
+        page = S.page(t, path=path, base=base, title=f"{who} | Granite Record",
+                      og_title=who, og_image="og-legislator.png",
                       og_alt="Granite Record: legislators and their voting records",
                       description=(f"{p['name']}, elected to the {CHAMBER_WORDS.get(p.get('chamber'), 'General Court')} "
                                    f"for {elect_district(p)} on {S.date_words(doc['election'], 'full')}."),

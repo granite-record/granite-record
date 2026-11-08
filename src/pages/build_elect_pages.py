@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.1
+# GRANITE_VERSION: 2026-11-08.2
 """
 A provisional page for each new member-elect: who they are until the General
 Court numbers them.
@@ -45,13 +45,16 @@ is numbered. One that is already a sitting or former member's page, or that
 two new people share, is not written: the person stays unlinked and this
 says so. No suffix is invented.
 
-NUMBERED. The night the roster carries the person -- exactly one sitting
-member of the same chamber and district whose name folds to theirs -- no
-provisional page is written for them: their regular page is. Where its
-address is the provisional one, it simply replaces it. Where it is another,
-the provisional address must be a 301 first: generated/moved_addresses.json
-is written only by a person (src/ops/record_moves.py), so this stops and
-names the address until it is recorded there.
+NUMBERED. From Organization Day, the night the roster carries the person --
+exactly one sitting member of the same chamber and district whose name folds
+to theirs -- no provisional page is written for them: their regular page is.
+Where its address is the provisional one, it simply replaces it. Where it is
+another, the provisional address goes in "moved", and build_pages writes a
+301 from it to the regular page for as long as these results are the newest.
+Before Organization Day nobody is numbered: the roster is still the old
+term's, and a sitting member of the same name and district is somebody else.
+Who is new is the step's word or the owner's (a null match), so a person the
+step comes to call sitting once the roster has them is still followed.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -105,22 +108,45 @@ def numbered_as(e_name, chamber, county, district, sitting):
     return hits[0] if len(hits) == 1 else None
 
 
-def pages(results, sitting, former, districts, hand, today, moved):
-    """(the pages, what to say, addresses that need a 301 first)."""
+def confirmed_new(hand):
+    """{(race, name)} the owner's hand file confirms new (a match of null):
+    new by the owner's word whatever the roster comes to say."""
+    return {(race, name) for race, names in ((hand or {}).get("matches") or {}).items()
+            for name, v in (names or {}).items() if v is None}
+
+
+def pages(results, sitting, former, districts, hand, today, takes_office, moved=None):
+    """(the pages, what to say, {old address: new address} for a person the
+    roster has numbered at another address).
+
+    NEW is the step's own word ("k": "new") or the owner's (a null match):
+    once the roster carries a person, the step's rule may call them sitting,
+    and their provisional address must still go somewhere. NUMBERED only from
+    Organization Day: before it the roster is the old term's, and a sitting
+    member of the same name and district is somebody else (a parent, say),
+    whom the owner has already told apart."""
     races, _report = BME.members_elect(results, sitting, former, districts, hand, today)
     on_file, _ = BME.races_on_file(districts)
+    sure = confirmed_new(hand)
+    # A member's page, and an old address that already answers with a 301
+    # (generated/moved_addresses.json), are both taken.
     taken = {m.get("slug") for m in [*sitting, *former] if m.get("slug")}
-    out, said, need_301, seen = [], [], [], {}
+    taken |= {a.rsplit("/", 1)[-1] for a in (moved or {})}
+    out, said, moves, seen = [], [], {}, {}
     for key in sorted(races, key=BME.race_order):
         for e in races[key].get("elected") or []:
-            if e.get("k") != "new":
+            if e.get("k") != "new" and (key, e.get("n")) not in sure:
                 continue
             chamber, county, district = race_parts(key)
             slug = slug_of(e.get("n"), chamber, county, district)
-            now = numbered_as(e.get("n"), chamber, county, district, sitting)
+            now = (numbered_as(e.get("n"), chamber, county, district, sitting)
+                   if today >= takes_office else None)
             if now:
-                if now.get("slug") != slug and f"/legislator/{slug}" not in moved:
-                    need_301.append(f"/legislator/{slug} -> {now.get('slug')} ({e.get('n')}, {key})")
+                # Their regular page now. At the same address it simply
+                # replaces this one; at another, this address answers with a
+                # 301 to it (build_pages writes them from "moved").
+                if now.get("slug") and now.get("slug") != slug:
+                    moves[f"/legislator/{slug}"] = f"/legislator/{now['slug']}"
                 continue
             if slug in taken:
                 said.append(f"{e.get('n')} ({key}): /legislator/{slug} is a member's page; "
@@ -135,7 +161,7 @@ def pages(results, sitting, former, districts, hand, today, moved):
         said += [f"{', '.join(seen[s])}: two new members-elect would share /legislator/{s}; "
                  "neither is given a page" for s in sorted(twice)]
         out = [p for p in out if p["slug"] not in twice]
-    return out, said, need_301
+    return out, said, moves
 
 
 def main():
@@ -165,18 +191,17 @@ def main():
         if (site / "former.json").exists() else []
     districts = BME.load_json(site / "districts.json", "the district table")
     moved = json.loads(MOVED.read_text(encoding="utf-8")) if MOVED.is_file() else {}
-    got, said, need_301 = pages(results, sitting, former, districts, hand,
-                                today.isoformat(), moved)
-    if need_301:
-        dest.unlink(missing_ok=True)
-        raise SystemExit("A member-elect's provisional page has an address the General Court's "
-                         "roster does not give them, and no 301 is recorded for it: "
-                         + "; ".join(need_301) + ". Record each with src/ops/record_moves.py "
-                         "before this runs again, or the address would stop working.")
     takes_office = proceedings.organization_day(election.year)
+    got, said, moves = pages(results, sitting, former, districts, hand,
+                             today.isoformat(), takes_office.isoformat(), moved)
     doc = {"election": results["election"], "takes_office": takes_office.isoformat(),
            "sources": [s.get("url") for s in results.get("_source") or [] if s.get("url")],
-           "pages": got}
+           "pages": got,
+           # A provisional address the roster numbered its person at another:
+           # build_pages writes a 301 for each, as long as these results are
+           # the newest. For good, a person can record it in
+           # generated/moved_addresses.json.
+           "moved": dict(sorted(moves.items()))}
     tmp = dest.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     tmp.replace(dest)
@@ -184,6 +209,8 @@ def main():
           f"{dest.as_posix()}")
     for s in said:
         print(f"    {s}")
+    for old, new in doc["moved"].items():
+        print(f"    numbered at another address: {old} answers with a 301 to {new}")
     return 0
 
 

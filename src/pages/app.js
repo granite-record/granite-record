@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.276
+// GRANITE_VERSION: 2026-09-07.277
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -8455,6 +8455,9 @@ const memberRequests=m=>IDX.filter(b=>b.lsr&&isReqTerm(b.term)&&m.slug&&b.sponso
 function renderMemberRequests(m,prime){
   if(!prime)return `<p class="src">A request names only its prime sponsor, so none is
     co-sponsored.</p>`;
+  // Not "none" before the list has come: the page is drawn before
+  // idx/<year>-requests.json is fetched (ensureTerm), and again after.
+  if(!LOADED.has(META.requests.term))return `<p class="src">Loading the bill requests&hellip;</p>`;
   const rows=memberRequests(m);
   if(!rows.length)return `<p class="src">No bill requests for ${esc(reqYear())}.</p>`;
   const left=rows.filter(b=>b.withdrawn).length;
@@ -10629,11 +10632,15 @@ function recordTerms(kind,d){
     // with no term drew its attendance as a note with no figures in it.
     (d.votes||[]).forEach(v=>{const x=termOfYear(voteYear(v));if(x)t.add(x);});
     // Next session's requests, where build_lsrs matched any to this member
-    // (meta.requests.by_slug). The requests' term sorts first, so a member with
-    // requests opens on them (published counts the requests term); one with
-    // none opens on their newest term, as before (Alice, B4).
+    // (meta.requests.by_slug). They sort after the term of their own session
+    // and before every earlier one, so a member with requests opens on them
+    // while 2025-2026 is the newest term (published counts the requests
+    // term), and on 2027-2028 from the night it is published; one with none
+    // opens on their newest term, as before (Alice, B4).
     const R=META.requests;
     if(R&&R.term&&d.slug&&(R.by_slug||{})[d.slug])t.add(R.term);
+    const key=x=>isReqTerm(x)?`${reqYear()}-0000`:x;
+    return [...t].sort((a,b)=>key(a)<key(b)?1:key(a)>key(b)?-1:0);
   }else{
     Object.keys(d.bills||{}).forEach(x=>x&&t.add(x));
     (d.sessions||[]).forEach(s=>s.term&&t.add(s.term));
@@ -10997,7 +11004,8 @@ function render(more){
     const R=META.requests;
     $("#summary").className="count lsrnote";
     $("#summary").innerHTML=`<b>${standingRequests().toLocaleString()} bill requests filed for
-      ${esc(reqYear())}</b> &mdash; <button class="link" data-term="${esc(R.term)}">see them</button>`;
+      ${esc(reqYear())}</b> &mdash; <button class="link" data-term="${esc(R.term)}">see them<span
+      class="sr">: the bill requests for ${esc(reqYear())}</span></button>`;
   }else{
     $("#summary").textContent=fb?"":(ids&&ids.length>1
       ?`Showing ${rows.length} of the ${ids.length} bills you listed.`:"");
