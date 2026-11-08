@@ -23352,11 +23352,6 @@
    "es": "Se mantiene a mano, leído de la lista de funcionarios de los condados de la Secretaría de Estado para 2025&ndash;2026, con fecha del {day}",
    "state": "draft"
   },
-  "off.seat_one": {
-   "en": "{n} seat",
-   "es": "{n} escaño",
-   "state": "draft"
-  },
   "off.seats": {
    "en": "{n} seats",
    "es": "{n} escaños",
@@ -23380,16 +23375,6 @@
   "off.src_and": {
    "en": "{src}, and {told}",
    "es": "{src}, y {told}",
-   "state": "draft"
-  },
-  "off.state_house": {
-   "en": "State House",
-   "es": "Cámara de Representantes estatal",
-   "state": "draft"
-  },
-  "off.state_senate": {
-   "en": "State Senate",
-   "es": "Senado estatal",
    "state": "draft"
   },
   "off.superior": {
