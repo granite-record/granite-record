@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.797
+# GRANITE_VERSION: 2026-09-04.798
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -25381,6 +25381,148 @@ def _css_decls(body):
         else:
             cur.append(c)
     return out
+
+
+@check("frontend", "a fiscal note's table on a phone is one row per line with its years beneath: "
+       "short headings, nothing wider than its box, the same table to a screen reader, and "
+       "the desktop table as it was")
+def _fiscal_note_on_a_phone():
+    """The person, 7 November 2026, of HB 1034 of 2026's fiscal note at 375px:
+    the table was 357px in a 288px box, FY 2029 off the edge, FY 2028 cut to
+    "$C", the box scrolling sideways, "FY / 2026" and "Funding / Source"
+    wrapped. Her layout, phones only: each row's name on its own line, its
+    figures in a compact row beneath under short headings (FY26), a row that
+    spans the years its value once, captions wrapping.
+
+    Held from both ends. THE MARKUP, drawn by app.js's fiscalTable in node
+    from a made-up note: every figure carries its short heading (data-y) and
+    its row the class that decides how many share a line -- "fns" for six
+    characters or fewer, "fnm" for up to forty, "fnl" past that, "fnspan" for
+    a spanning row, which keeps its colspan and no heading -- the table, its
+    groups, rows, heads and cells their roles, so a row drawn as a flex line
+    stays a table to a screen reader; a raw note draws no table. THE
+    STYLESHEET: inside @media (max-width:45em) alone, the wrapper does not
+    scroll, the table and caption are blocks, the column heads are hidden
+    the way the Data page's are (in the accessibility tree, not on screen),
+    each body row wraps, the name takes a line of its own, "fns" figures share
+    one, "fnm" at most two, "fnl" and a span one each, and the short heading
+    is drawn with alternative text "" so it is not read twice; and outside it
+    the desktop rules still scroll the wrapper and give the table its 22em."""
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
+    css = Path("src/pages/app.css")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and css.exists() and node):
+        return "skip", "app.js, app.css, dom_stub.js or node is not here"
+    note = {"lead": "", "tables": [
+        {"caption": "Estimated Political Subdivision Impact",
+         "years": ["FY 2026", "FY 2027", "FY 2028", "FY 2029"],
+         "rows": [{"label": "Revenue", "values": ["$0", "$5,000", "$0", "$0"], "span": False},
+                  {"label": "Revenue Fund", "values": ["General Fund"], "span": True},
+                  {"label": "Expenditures*", "values": ["$0", "Indeterminable Increase",
+                                                        "$15,000,000", "$0"], "span": False},
+                  {"label": "Appropriations*", "values": ["$0", "x" * 41, "$0", "$0"],
+                   "span": False}],
+         "footnote": "*Expenditure = Cost of bill"},
+        {"caption": "", "raw": ["The Office of Legislative Budget Assistant states this bill has no fiscal impact."]}]}
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "note.json").write_text(json.dumps(note), encoding="utf-8")
+        (root / "go.js").write_text("""
+require("./stub.js");
+const fs = require("fs");
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({fiscalTable})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+process.stdout.write("\\n@@" + JSON.stringify(s.fiscalTable(JSON.parse(fs.readFileSync("./note.json", "utf8")))));
+""", encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not draw a fiscal note under node: " + (r.stderr or r.stdout or "")[-300:])
+        page = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    bad = []
+    flat = re.sub(r"\s+", " ", page)
+    if flat.count('<table class="fn" role="table">') != 1:
+        bad.append("the note's one table is not drawn once as table.fn with role=\"table\"")
+    rows = re.findall(r'<tr role="row" class="([^"]*)"><th scope="row" role="rowheader">([^<]*)</th>(.*?)</tr>', flat)
+    want = {"Revenue": "fns", "Revenue Fund": "fnspan", "Expenditures*": "fnm", "Appropriations*": "fnl"}
+    if {lab: cls for cls, lab, _ in rows} != want:
+        bad.append(f"the rows' classes are {[(lab, cls) for cls, lab, _ in rows]}, not {want}")
+    for cls, lab, cells in rows:
+        heads = re.findall(r'<td role="cell" data-y="([^"]*)">', cells)
+        if cls == "fnspan":
+            if heads or '<td colspan="4" role="cell">' not in cells:
+                bad.append(f"the spanning row {lab!r} does not keep its colspan, or carries a year heading")
+        elif heads != ["FY26", "FY27", "FY28", "FY29"]:
+            bad.append(f"{lab!r}'s figures carry the headings {heads}, not FY26 to FY29")
+    if flat.count('role="columnheader"') != 5 or flat.count('role="rowgroup"') != 2:
+        bad.append("the column heads or the row groups lost their roles")
+    if '<div class="fnraw">' not in flat or flat.count("<table") != 1:
+        bad.append("a raw note is not drawn as its plain lines")
+
+    # Spacing is no part of a rule: "a, b" is "a,b", and "(max-width: 45em)"
+    # the phone's width as much as "(max-width:45em)" is.
+    rules = [(ctx, re.sub(r"\s*,\s*", ",", sel), body, ln) for ctx, sel, body, ln
+             in _css_rules(css.read_text(encoding="utf-8"))]
+    on_phone = lambda ctx: any(re.sub(r"\s+", "", c) == "@media(max-width:45em)" for c in ctx)
+    phone_only = re.compile(r"\.fn(?:s|m|l|span)\b|\[data-y\]")
+    phone = {sel: dict(_css_decls(body)) for ctx, sel, body, _ in rules
+             if on_phone(ctx) and ("table.fn" in sel or ".fnwrap" in sel)}
+    desk = {sel: dict(_css_decls(body)) for ctx, sel, body, _ in rules
+            if not ctx and ("table.fn" in sel or ".fnwrap" in sel)}
+    # What only a phone may do: a rule of the reflow's own classes anywhere
+    # else, a table.fn rule inside another width's at-rule, or the desktop's
+    # table.fn rules laying it out as anything but a table.
+    stray = sorted({sel for ctx, sel, body, _ in rules
+                    if not on_phone(ctx) and phone_only.search(sel)}
+                   | {sel for ctx, sel, body, _ in rules
+                      if ctx and not on_phone(ctx) and "table.fn" in sel
+                      and not any(c.startswith("@media print") or "forced-colors" in c for c in ctx)}
+                   | {sel for sel, d in desk.items()
+                      if {"display", "flex", "flex-wrap", "flex-basis", "content"} & set(d)})
+
+    def has(rules_, sel, prop, test):
+        v = rules_.get(sel, {}).get(prop)
+        return v is not None and test(v)
+    need = [
+        (".fnwrap", "overflow-x", lambda v: v == "visible", "the wrapper still scrolls sideways"),
+        ("table.fn", "display", lambda v: v == "block", "the table is not a block"),
+        ("table.fn", "min-width", lambda v: v == "0", "the table keeps a minimum width"),
+        ("table.fn caption", "display", lambda v: v == "block", "the caption does not wrap as a block"),
+        ("table.fn thead", "clip", lambda v: "rect(0 0 0 0)" in v.replace(",", " "),
+         "the column heads are not hidden the Data page's way"),
+        ("table.fn tbody tr", "flex-wrap", lambda v: v == "wrap", "a row does not wrap its figures"),
+        ("table.fn tbody th", "flex", lambda v: v.split()[-1] == "100%", "the row's name does not take a line"),
+        ("table.fn td", "flex", lambda v: v.split()[-1] in ("0", "0%"), "\"fns\" figures do not share a line"),
+        ("table.fn td", "max-width", lambda v: v == "100%",
+         "a figure can run past its row (a flex item never shrinks below its longest word without it)"),
+        ("table.fn tbody tr.fnm td", "flex-basis", lambda v: v == "40%", "\"fnm\" figures are not two to a line"),
+        ("table.fn tbody tr.fnl td,table.fn td[colspan]", "flex-basis", lambda v: v == "100%",
+         "\"fnl\" figures and a span are not one to a line"),
+    ]
+    for sel, prop, test, why in need:
+        if not has(phone, sel, prop, test):
+            bad.append(f"phone: {why} ({sel} {{{prop}: {phone.get(sel, {}).get(prop)}}})")
+    before = phone.get("table.fn td[data-y]::before", {})
+    contents = [v for k, v in _css_decls(next((body for ctx, sel, body, _ in rules
+                                               if sel == "table.fn td[data-y]::before"), ""))
+                if k == "content"]
+    if contents != ['attr(data-y)', 'attr(data-y) / ""'] or before.get("display") != "block":
+        bad.append(f"phone: the short heading is not drawn above its figure with alternative text \"\" "
+                   f"(content {contents})")
+    if not (has(desk, ".fnwrap", "overflow-x", lambda v: v == "auto")
+            and has(desk, "table.fn", "min-width", lambda v: v == "22em")):
+        bad.append("desktop: the wrapper no longer scrolls or the table lost its 22em: the desktop "
+                   "table is not as it was")
+    if stray:
+        bad.append(f"the phone's fiscal-table layout reaches past its 45em block: {stray}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("fiscalTable gives each figure its short heading and each row its class, keeps "
+                  "a span's colspan and every role; app.css reflows it within 45em alone and the "
+                  "desktop table keeps its scroller and 22em")
 
 
 def _css_palette(text):
