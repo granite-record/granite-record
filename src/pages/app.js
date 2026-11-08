@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.278
+// GRANITE_VERSION: 2026-09-07.279
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2727,12 +2727,13 @@ const primeChosen=b=>sel.sponsor.has(b.sponsor);
 
 // NEWER TERM FIRST, which changes nothing in a list of one term and orders
 // the list on All terms: by number, two bills of one number (HB 1 is in
-// every term) run newest first; by best match, among bills that match
-// equally well, the newer term's come first (after a bill still moving) and
-// then by the share of the title and the number (sortRows). Without it
-// those came in whichever order the terms' indexes happened to arrive, and
-// /search's list of every term's bills (find.js's findBills, which orders
-// them this way) could not be the same list (24 September).
+// every term) run newest first; by best match, each term's bills together,
+// the newest term's first, under a heading of their own (render, termHead;
+// Alice, 8 November 2026), and inside a term in the best match's order
+// (sortRows). Without it those came in whichever order the terms' indexes
+// happened to arrive, and /search's list of every term's bills (find.js's
+// findBills, which orders them this way) could not be the same list (24
+// September).
 const newerTerm=(a,b)=>{const x=String(a.term||""),y=String(b.term||"");
   return x<y?1:x>y?-1:0;};
 function sortRows(rows){
@@ -2740,6 +2741,14 @@ function sortRows(rows){
     num:(a,b)=>{const x=billKey(a),y=billKey(b);
                 return x[0]-y[0] || x[1]-y[1] || newerTerm(a,b);},
     recent:(a,b)=>(b.last_action||"").localeCompare(a.last_action||"")
+                  || billKey(a)[1]-billKey(b)[1],
+    // THE OTHER WAY IN TIME (Alice, 8 November 2026: "a sort option for
+    // the other chronological direction"): the same date as "recent", the
+    // oldest first, and the same tie by number. A bill with no action
+    // recorded has no date to be old by, and comes last either way, as it
+    // does in "recent".
+    oldest:(a,b)=>(!a.last_action)-(!b.last_action)
+                  || (a.last_action||"").localeCompare(b.last_action||"")
                   || billKey(a)[1]-billKey(b)[1],
     // Bills still moving come first, because those are the ones a reader can
     // still do something about -- turn up, sign in, write to the committee.
@@ -2761,16 +2770,18 @@ function sortRows(rows){
   // sponsor's name before the start of a longer one (looseness), then the
   // most of the search in the title, then the sponsor, then the committee
   // (matchScore). Among bills that match equally well (16 October 2026): a
-  // bill still moving first, where its title has the search; then the newer
-  // term; then the most of the title that is the search (titleShare); and
-  // bill number last.
+  // bill still moving first, where its title has the search; then the most
+  // of the title that is the search (titleShare); and bill number last.
   // "Still moving" is the one category put above another, for the reason
   // the Status sort gives -- a reader can still do something about it -- and
   // nothing else here reads a bill's status: Passed is not put above Died,
   // nor Died above Interim Study. Only where the title has the search, so
   // that a search by a sponsor's name keeps their bills in number order.
-  // The newer term before the share, so that All terms still runs newest
-  // term first; only the newest term holds a bill still moving.
+  // ON ALL TERMS, A TERM AT A TIME (Alice, 8 November 2026): the newest
+  // term's bills first, in that order, then the term before's, each under
+  // its heading (render, termHead). The newer term had been a tie-break, so
+  // an older term's bill ran in among the newest's wherever it matched
+  // better. In one term it decides nothing.
   if(sortBy==="best"){
     const gs=groupsFor(query.trim());
     const lo=new Map(rows.map(b=>[b,looseness(b,gs)]));
@@ -2778,8 +2789,8 @@ function sortRows(rows){
     const sh=new Map(rows.map(b=>[b,titleShare(b,gs)]));
     const live=b=>sh.get(b)>0&&statusCat(b)==="In Progress"?1:0;
     const num=(a,b)=>{const x=billKey(a),y=billKey(b);return x[0]-y[0]||x[1]-y[1];};
-    return rows.slice().sort((a,b)=>lo.get(a)-lo.get(b)||sc.get(b)-sc.get(a)
-      ||live(b)-live(a)||newerTerm(a,b)||sh.get(b)-sh.get(a)||num(a,b));
+    return rows.slice().sort((a,b)=>newerTerm(a,b)||lo.get(a)-lo.get(b)||sc.get(b)-sc.get(a)
+      ||live(b)-live(a)||sh.get(b)-sh.get(a)||num(a,b));
   }
   return rows.slice().sort(by);
 }
@@ -2820,7 +2831,7 @@ function filtersFromAddress(params){
    // sortChosen is set: without it the first render would helpfully put the
    // list back on bill number and the reader would land on the opposite of
    // what they clicked. An unknown value is ignored rather than accepted,
-   // because the picker only offers four.
+   // because the picker only offers five.
    // ...and the rest of the filters the list itself writes into its address
    // (addressList): a committee, a prime sponsor, a floor vote day, each as
    // the facet names it. Ticked as given; one this term has none of is
@@ -2829,7 +2840,7 @@ function filtersFromAddress(params){
      for(const w of params.getAll(k)){const v=String(w||"").trim();if(v)sel[k].add(v);}
    {const r=rsaNorm(params.get("rsa")||"");if(r){sel.rsa.add(r);rsaText=r;}}
    const psort=params.get("sort");
-   if(psort&&["best","num","recent","status"].includes(psort)){
+   if(psort&&["best","num","recent","oldest","status"].includes(psort)){
      sortBy=psort; sortChosen=true;
      const so=$("#sort"); if(so)so.value=psort;
    }
@@ -3196,10 +3207,13 @@ if(window.GR_STATIC){
    // stays the default "until the bills for next term are fully available".
    // "All Terms", in the Title Case of the terms below it (the person, 8
    // October 2026); a sentence that says "across all terms" stays a sentence.
+   // data-short: the words a phone shows (fitPickers).
    ys.innerHTML=`<option value="${ALL_TERMS}">All Terms</option>`
-     +(META.requests?`<option value="${esc(META.requests.term)}">${
+     +(META.requests?`<option value="${esc(META.requests.term)}"${reqYear()
+       ?` data-short="${esc(reqYear())} Requests"`:""}>${
        esc(META.requests.label)}</option>`:"")
-     +terms.map(t=>`<option value="${t}">${termDash(t)} Term</option>`).join("");
+     +terms.map(t=>`<option value="${t}" data-short="${termDash(t)}">${termDash(t)} Term</option>`).join("");
+   fitPickers();
    ys.value=term;
    ys.addEventListener("change",e=>{
      // On a record page there is no list to re-filter, and render() would
@@ -6237,20 +6251,36 @@ function renderSponsors(b,d){
 // under a year only where the row has one figure per year; where it has fewer
 // the row spans, because which years the second figure covers is not stated
 // and putting it under one of them would be inventing an answer.
+//
+// ON A PHONE, ONE ROW PER LINE, ITS YEARS BENEATH (the person, 7 November
+// 2026). The same table, reflowed by app.css below 45em: each row's name on
+// a line of its own, and under it its figures, each over a short heading
+// (`data-y`, "FY26" for "FY 2026"), since the column heads are not drawn
+// there. A row's class says how wide its figures run, which decides how many
+// share a line: "fns" (six characters at most, "$0", "$5,000") all of them,
+// "fnm" at most two, "fnl" (a sentence) one each; "fnspan" is a row the
+// source did not break down by year, its value once. The roles keep it a
+// table to a screen reader when its rows are not drawn as table rows, as on
+// the Data page (.dpdl).
+const FN_SHORT=6, FN_LONG=40;
+const fnYear=y=>{const m=/^FY\s*\d{2}(\d{2})$/i.exec(String(y).trim());return m?`FY${m[1]}`:String(y);};
+const fnFit=vs=>{const w=Math.max(0,...vs.map(v=>String(v).length));
+  return w<=FN_SHORT?"fns":w<=FN_LONG?"fnm":"fnl";};
 function fiscalTable(f){
   if(!f)return "";
   const table=t=>{
     if(t.raw)return `<div class="fnraw">${t.caption?`<h4>${esc(t.caption)}</h4>`:""}
       ${t.raw.map(l=>`<p>${esc(l)}</p>`).join("")}</div>`;
     const n=(t.years||[]).length;
-    return `<div class="fnwrap"><table class="fn">
+    const short=t.years.map(fnYear);
+    return `<div class="fnwrap"><table class="fn" role="table">
       ${t.caption?`<caption>${esc(t.caption)}</caption>`:""}
-      <thead><tr><th></th>${t.years.map(y=>
-        `<th scope="col">${esc(y)}</th>`).join("")}</tr></thead>
-      <tbody>${t.rows.map(r=>`<tr><th scope="row">${esc(r.label)}</th>${
+      <thead role="rowgroup"><tr role="row"><th role="columnheader"></th>${t.years.map(y=>
+        `<th scope="col" role="columnheader">${esc(y)}</th>`).join("")}</tr></thead>
+      <tbody role="rowgroup">${t.rows.map(r=>`<tr role="row" class="${r.span?"fnspan":fnFit(r.values)}"><th scope="row" role="rowheader">${esc(r.label)}</th>${
         r.span
-          ? `<td colspan="${n}">${esc(r.values.join(" \u00b7 "))}</td>`
-          : r.values.map(v=>`<td>${esc(v)}</td>`).join("")
+          ? `<td colspan="${n}" role="cell">${esc(r.values.join(" \u00b7 "))}</td>`
+          : r.values.map((v,i)=>`<td role="cell" data-y="${esc(short[i]||"")}">${esc(v)}</td>`).join("")
       }</tr>`).join("")}</tbody></table></div>
       ${t.footnote?`<p class="src">${esc(t.footnote)}</p>`:""}`;
   };
@@ -8465,11 +8495,11 @@ function renderMemberRequests(m,prime){
   const rows=memberRequests(m);
   if(!rows.length)return `<p class="src">No bill requests for ${esc(reqYear())}.</p>`;
   const left=rows.filter(b=>b.withdrawn).length;
-  return `<p class="src lsrnote"><b>These are requests, not bills yet.</b> Before a bill
-    exists, a member asks the Office of Legislative Services to draft one, and it is given a
-    request number. ${rows.length.toLocaleString()} filed for ${esc(reqYear())}${
-    left?`, ${left.toLocaleString()} of them withdrawn`:""}; each becomes a numbered bill when it
-    is drafted and filed.</p>
+  // Alice's two sentences, the bill search's own note (bills.requests_note),
+  // and then how many are this member's.
+  return `<p class="src lsrnote">${tr("bills.requests_note","<b>Requests, not bills yet.</b> Each is a member&rsquo;s request to have a bill drafted: a title and a sponsor, nothing more, until it is filed as a numbered {year} bill. Some are withdrawn first.",{year:esc(reqYear())})}
+    ${rows.length.toLocaleString()} filed for ${esc(reqYear())}${
+    left?`, ${left.toLocaleString()} of them withdrawn`:""}.</p>
     <div class="cards" id="pbills">${rows.map(b=>lsrCardHtml(b,"")).join("")}</div>`;
 }
 
@@ -10537,6 +10567,56 @@ document.addEventListener("change",e=>{
   renderPage();
 });
 
+// THE PICKERS' WORDS ON A PHONE (Alice, 8 November 2026: on a phone the
+// search box at full width, and under it the term picker and the Sort side
+// by side in equal halves; app.css). Half of a 375px screen's row is 159px
+// of select, and "2027 Bill Requests" asks for 185px, "2025–2026 Term"
+// 173px and "Most recent action" 169px (Chrome, 8 November 2026): the words
+// would be cut off. So at the phone's width an option with data-short shows
+// those words -- "2025–2026", "2027 Requests", "Recent action" -- and its
+// own again on a wider screen, a phone turned on its side among them.
+// Where even those do not fit two to a row (320px), the row stacks them.
+// AN OPTION REPLACED, NOT ITS WORDS: Chrome kept a select's width from the
+// words an option had before, where only the words changed and the fonts
+// were already in, so a reload of the requests at 390px stacked the two
+// with "2027 Requests" in a select sized for "2027 Bill Requests" (8
+// November 2026). The value chosen is kept.
+const PHONE_ROW=typeof matchMedia==="function"?matchMedia("(max-width:45em)"):null;
+function fitPickers(){
+  const narrow=!!(PHONE_ROW&&PHONE_ROW.matches);
+  for(const s of [$("#year"),$("#sort")]){
+    if(!s||!s.options)continue;
+    const was=s.value;
+    for(const o of [...s.options]){
+      const short=o.getAttribute("data-short");
+      if(!short)continue;
+      if(o.getAttribute("data-long")===null)o.setAttribute("data-long",o.textContent);
+      const want=narrow?short:o.getAttribute("data-long");
+      if(o.textContent===want)continue;
+      const n=o.cloneNode(false);
+      n.textContent=want;
+      s.replaceChild(n,o);
+    }
+    if(s.value!==was)s.value=was;
+  }
+  // AND MET IN THE ORDER THEY ARE DRAWN (the review of 8 November 2026): on
+  // a phone the term picker is drawn under the box, and Tab and a screen
+  // reader met it first, above; so there it is put after the box in the
+  // page, with its label, and back before the box's own label on a wider
+  // screen, where it stands to the box's left.
+  const y=$("#year"),qb=document.querySelector(".searchrow .qbox");
+  if(y&&qb&&y.parentNode&&y.parentNode===qb.parentNode&&typeof qb.compareDocumentPosition==="function"){
+    const prev=e=>e.previousElementSibling&&e.previousElementSibling.tagName==="LABEL"?e.previousElementSibling:null;
+    const lab=prev(y),after=!!(qb.compareDocumentPosition(y)&4);
+    if(narrow!==after){
+      const ref=narrow?qb.nextSibling:(prev(qb)||qb);
+      if(lab)qb.parentNode.insertBefore(lab,ref);
+      qb.parentNode.insertBefore(y,ref);
+    }
+  }
+}
+if(PHONE_ROW&&PHONE_ROW.addEventListener)PHONE_ROW.addEventListener("change",fitPickers);
+
 // The term and sort dropdowns order and filter a list of bills. On a page
 // showing one member or one committee there is no such list, and a control
 // that does nothing is worse than no control.
@@ -10902,9 +10982,12 @@ function render(more){
   const held=focusKey();
   // A search in words is ordered by how well each bill matches it, until the
   // reader picks an order themselves; a list with no search, or a search for
-  // bill numbers, keeps number order.
+  // bill numbers, keeps number order -- but EVERY TERM'S BILLS WITH NO
+  // SEARCH ARE THE NEWEST ACTION FIRST (Alice, 8 November 2026): in number
+  // order they ran every term's HB 1, then every term's HB 2.
   if(!sortChosen){
-    const want=query.trim()&&!billNumbers(query)?"best":"num";
+    const want=query.trim()&&!billNumbers(query)?"best"
+      :!query.trim()&&term===ALL_TERMS?"recent":"num";
     if(sortBy!==want){sortBy=want;const so=$("#sort");if(so)so.value=want;}
   }
   wantText();
@@ -10985,19 +11068,13 @@ function render(more){
   // nobody who has not worked in the building knows the word. Asked for on 18
   // September: "A brief explainer of what LSRs are should appear at the top of
   // the page", and confirmed that it is right to say some are withdrawn.
-  // innerHTML rather than textContent here because the explainer carries a
-  // link; every value in it is the site's own, none is a reader's.
+  // SHORTER, IN ALICE'S WORDS (8 November 2026): three sentences in place of
+  // five. innerHTML rather than textContent here because the explainer
+  // carries markup; every value in it is the site's own, none is a reader's.
   const req=META.requests&&term===META.requests.term;
   $("#summary").className=req?"count lsrnote":"count";
   if(req){
-    $("#summary").innerHTML=`<b>These are requests, not bills yet.</b> Before a
-      bill exists, a member asks the Office of Legislative Services to draft
-      one, and it is given a request number. A request has a title and a prime
-      sponsor and nothing else &mdash; no text, no committee, no hearing &mdash;
-      until it is drafted and filed, when it becomes a numbered bill and picks
-      up the rest of its record. Some are withdrawn first and never become
-      anything. These will be replaced by the ${esc(reqYear())} bills themselves as they are
-      filed.`;
+    $("#summary").innerHTML=tr("bills.requests_note","<b>Requests, not bills yet.</b> Each is a member&rsquo;s request to have a bill drafted: a title and a sponsor, nothing more, until it is filed as a numbered {year} bill. Some are withdrawn first.",{year:esc(reqYear())});
   }else if(!fb&&!(ids&&ids.length>1)&&requestsAhead()){
     // NEXT SESSION'S REQUESTS, OFFERED FROM THE TERM THE SEARCH OPENS ON
     // (Alice, 7 November 2026): the search stays on the newest term, and this
@@ -11027,6 +11104,17 @@ function render(more){
   const grpOf=b=>statusCat(b)||chipOf(b);
   const grpN={};
   if(sortBy==="status")for(const b of rows)grpN[grpOf(b)]=(grpN[grpOf(b)]||0)+1;
+  // EVERY TERM'S BILLS BY BEST MATCH, A TERM AT A TIME (Alice, 8 November
+  // 2026): sortRows puts the newest term's first, and each term is headed
+  // as the picker names it, with how many of the whole result are in it,
+  // as a Status heading is counted. Not under a chosen sponsor, whose own
+  // headings lead the list, as the Status headings give way to them.
+  const byTerm=!fb&&!bySponsor&&sortBy==="best"&&term===ALL_TERMS;
+  const termN={};
+  if(byTerm)for(const b of rows)termN[b.term]=(termN[b.term]||0)+1;
+  const termHead=(b,gi,arr)=>byTerm&&(gi===0||arr[gi-1].term!==b.term)
+    ?`<h2 class="grp">${esc(termDash(b.term))} Term
+       <span>${termN[b.term]===1?"1 bill":`${(termN[b.term]||0).toLocaleString()} bills`}</span></h2>`:"";
   // A LINK, TO THE BILL SEARCH. It was a button that called history.back(),
   // under a label that names a place: opened directly, a bill's page left
   // the site; reached from a member's page, "Back to bill search" went back
@@ -11037,7 +11125,7 @@ function render(more){
   const spHead=(b,gi,arr)=>!fb&&bySponsor&&(gi===0||primeChosen(arr[gi-1])!==primeChosen(b))
     ?`<h2 class="grp">${primeChosen(b)?"Prime sponsored":"Co-sponsored"}
        <span>${(primeChosen(b)?spN:rows.length-spN).toLocaleString()}</span></h2>`:"";
-  $("#results").innerHTML=((rows.length||fb)?shown.map((b,gi,arr)=>`${spHead(b,gi,arr)}
+  $("#results").innerHTML=((rows.length||fb)?shown.map((b,gi,arr)=>`${spHead(b,gi,arr)}${termHead(b,gi,arr)}
     ${!fb&&!bySponsor&&sortBy==="status"&&(gi===0||grpOf(arr[gi-1])!==grpOf(b))
       ?`<h2 class="grp">${esc(grpOf(b)||"No status recorded")}
          <span>${(grpN[grpOf(b)]||0).toLocaleString()}</span></h2>`:""}

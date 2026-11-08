@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.350 */
+/* GRANITE_VERSION: 2026-09-07.355 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -2217,8 +2217,12 @@ padding:var(--sp-2) var(--sp-5);font-size:var(--t-ui);line-height:1.35;color:var
 /* THE SORT FIRST, THEN THE COUNT (bills.html, 8 October 2026). Flush with
    the term picker above it, which is why the row has no side margin of its
    own, and held at the top of the row: when the count wraps to a second or
-   third line on a phone, it is the count that grows downward, not the Sort
-   that moves. The count's own line is centred on the Sort beside it. */
+   third line, it is the count that grows downward, not the Sort that moves.
+   The count's own line is centred on the Sort beside it. ABOVE A PHONE'S
+   WIDTH, since 8 November 2026: under 45em the box comes first, the term
+   picker and the Sort share a line, and the count has one of its own (THE
+   BILL SEARCH ON A PHONE, below), so what is said here of the count beside
+   the Sort is said of a tablet and a desktop. */
 .qhint{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-3) 0 0;display:flex;align-items:flex-start;
 gap:var(--sp-3) var(--sp-6);flex-wrap:wrap;max-width:840px}
 /* The count beside the Sort: never wider than the room the Sort leaves of
@@ -3225,6 +3229,52 @@ letter-spacing:.05em;color:var(--ink-2);text-transform:uppercase}
 table.fn tbody th{text-align:left;font-weight:400;color:var(--ink);
 background:var(--wash)}
 table.fn td[colspan]{text-align:left;color:var(--ink-2)}
+/* ON A PHONE, ONE ROW PER LINE, ITS YEARS BENEATH (the person, 7 November
+   2026). The table was 357px in a 288px box at 375px: FY 2029 off the edge,
+   FY 2028's figures cut to "$C", the box scrolling sideways, and "FY / 2026"
+   and "Funding / Source" wrapped. Now each row is its name across the top,
+   and under it its figures, each over the short heading app.js gives it
+   (fiscalTable, data-y). How many figures share a line is the row's class:
+   all of them for "fns" (FY26 FY27 FY28 FY29), at most two for "fnm", whose
+   figures ("$15,000,000", "Indeterminable Increase") do not fit a quarter of
+   288px, and one for "fnl" (a sentence). A row the source did not break down
+   by year shows its value once. The column heads stay in the table for a
+   screen reader, hidden as the Data page's are, and the roles in the markup
+   keep it a table once its rows are not drawn as table rows. The caption
+   wraps. Nothing here reaches past 45em: wider than that, the table is the
+   one above. */
+@media (max-width:45em){
+  .fnwrap{overflow-x:visible}
+  table.fn{display:block;min-width:0}
+  table.fn caption{display:block;overflow-wrap:break-word}
+  table.fn thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);
+    white-space:nowrap}
+  table.fn tbody{display:block;border-top:1px solid var(--rule)}
+  /* A row is a line that wraps, not a grid of fixed columns: a figure that
+     cannot keep its longest word whole beside the others takes a line of its
+     own instead of breaking it ("Indeterminab / le" at 320px). The name
+     takes the first line; "fns" figures share the next in equal parts;
+     "fnm" ones (a basis of 40%) at most two to a line; "fnl" ones and a
+     spanning value one each. break-word, not anywhere, so a figure's
+     longest word still decides when it takes a line of its own; and a
+     max-width of the row, so that a word wider than the whole row is broken
+     there rather than run past it (a flex item never shrinks below its
+     longest word otherwise). The phone's own rule for every table
+     (`:where(body:not(.pg)) table`, below) still lets the table scroll,
+     which it never needs to now: kept as the last resort it was. */
+  table.fn tbody tr{display:flex;flex-wrap:wrap;border:1px solid var(--rule);border-top:0}
+  table.fn tbody tr > *{display:block;border:0}
+  table.fn tbody th{flex:1 0 100%;font-weight:600;border-bottom:1px solid var(--rule)}
+  table.fn td{flex:1 1 0;max-width:100%;text-align:left;overflow-wrap:break-word}
+  table.fn tbody tr.fnm td{flex-basis:40%}
+  table.fn tbody tr.fnl td,table.fn td[colspan]{flex-basis:100%}
+  /* The short heading over each figure: the column head said again where
+     it is not drawn. Its words are the head's, so a screen reader is not told
+     them twice where the browser can say so (the second content). */
+  table.fn td[data-y]::before{content:attr(data-y);content:attr(data-y) / "";display:block;
+    margin-bottom:var(--sp-1);font-size:var(--t-label);font-weight:600;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--ink-2)}
+}
 .fnsec .src{margin-top:var(--sp-1)}
 .fnraw p{margin:0;font-size:var(--t-ui);color:var(--ink-2)}
 .fnraw h4{font-size:var(--t-part);font-weight:600;letter-spacing:.05em;
@@ -3575,12 +3625,43 @@ text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
   /* The term selector and the search box share a flex row, and at 375px the
      selector was squeezed to 68px -- "2025-2026 term" showing as "2025".
      Wrapping gives each a row of its own, which there is now room for since
-     the filters below them collapse on a phone. The selector keeps the width
-     it shares with the Sort (--pickw, above) rather than taking the whole
-     row, so the two stand one above the other at one width on a phone too,
-     with the count beside the Sort; the box takes the whole row. */
+     the filters below them collapse on a phone; the box takes the whole row.
+     (The Laws page's box is drawn with these too.) */
   .qline{flex-wrap:wrap}
   .qline .qbox{flex:1 0 100%}
+  /* THE BILL SEARCH ON A PHONE, THE BOX FIRST (Alice, 8 November 2026):
+     the search box at full width; under it the term picker and the Sort
+     side by side, in equal halves; then the count on one line of its own,
+     "91 of 33,717 bills across all terms", and what the search read under
+     it. The term picker stood alone at half the row above the box, and the
+     count wrapped to three lines beside the Sort. The two rows the page is
+     written in (.qline, .qhint) give their controls to one wrapping row
+     here, in that order. A record's page writes its .qhint hidden, which
+     .qhint's own display has always overridden (shell.BILL_ROW); what is in
+     it there is hidden or empty, and here it is no box of its own either,
+     where as a box it would stand empty above the search box.
+     The keyboard and a screen reader meet them in that order too: app.js's
+     fitPickers moves the term picker after the box in the page here, and
+     back before it on a wider screen, where it stands to the box's left.
+     Each half starts from half the row less half the gap -- not from 0,
+     which counts each select's own padding, and the picker's is 8px more
+     than the Sort's -- and is never narrower than its words, so where both
+     do not fit (320px, or the reader's text set large) the second takes a
+     line of its own rather than cutting off its words; fitPickers gives
+     them their shorter words here, and the picker's words start as the
+     Sort's do, 4px in, side by side.
+     THE ROW'S EDGES ARE THE PAGE'S, 12px in, as the header, the filters'
+     button and the bills below are: at 24px a term's count, "364 of 2,243
+     bills in the 2025-2026 term", 328px in Chrome, took two lines in the
+     327px a 375px phone left it, and the 312px of a 360px one. */
+  .searchrow .in{display:flex;flex-wrap:wrap;gap:var(--sp-4);padding-left:var(--sp-5);
+    padding-right:var(--sp-5)}
+  .searchrow .qline,.searchrow .qhint{display:contents}
+  .searchrow .qbox{order:1;flex:1 0 100%}
+  .searchrow #year,.searchrow #sort{order:2;flex:1 1 calc(50% - var(--sp-4) / 2)}
+  .searchrow #year{padding:0 var(--sp-2)}
+  .searchrow #count{order:3;flex:1 0 100%;max-width:none}
+  .searchrow #synhint{order:4;flex:1 0 100%}
   /* The last filter group's rule and the block's own rule sat together. */
   .facets .fgroup:last-child{border-bottom:0}
   /* And the count's room beside the Sort, at this row's narrower gap. */
@@ -4498,6 +4579,20 @@ color:var(--ink-2);font-variant-numeric:tabular-nums}
   /* One column: 290px of name and a column of contact beside it does not fit
      360px, and the row becomes name-then-contact stacked. */
   .offrow{grid-template-columns:1fr;gap:var(--sp-1)}
+}
+/* A MEMBER'S NAME THAT NEEDS MORE THAN 290px (the walk of dry run 4, 7
+   November 2026): a chip is one line by rule (.mchip, ONE NAME, ONE LINE),
+   and "Rep. Katherine Prudhomme-O'Brien (R - Rock 13)" asks 383px, so on
+   Derry's page it ran under "kpo@gc.nh.gov". A row whose first cell is a
+   member's chip gives the chip what it asks, its address moving right on
+   that row alone; a shorter name keeps the 290px line. Only such a row:
+   every row widened by its first cell put a polling place's or a transfer
+   station's long first line over its hours and ran 105 town pages sideways
+   at 700px (the review of 7 November 2026). Not on a phone, where the row
+   is one column; and a browser without :has() keeps the 290px. */
+@media (min-width:38.8125em){
+  .offrow:has(> .offwho > .mchip){
+    grid-template-columns:minmax(min(18.125rem,100%),max-content) minmax(0,1fr)}
 }
 .officials .note{font-family:var(--serif);font-size:var(--t-ui);line-height:1.6;
   color:var(--ink-2);margin:0 0 var(--sp-5);max-width:var(--measure)}
@@ -7418,7 +7513,12 @@ border-right:1.5px solid var(--ink-2);transform:rotate(45deg);margin:0 .8em 0 .5
 .rtop{grid-area:top;display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4) var(--sp-6);flex-wrap:wrap}
 .rh1{font:600 var(--t-title)/1.12 var(--serif);margin:0;color:var(--ink);letter-spacing:-.01em;text-wrap:balance}
 .rh1 .ryear{font-weight:400;font-size:.6em;color:var(--ink-2);letter-spacing:0;white-space:nowrap}
-.rtop > .chip{margin-left:auto;flex:0 0 auto;max-width:18rem}
+/* A LONG STATUS WRAPS IN ITS 18rem (the walk of dry run 4, 7 November
+   2026): nowrap in a capped box ran "Passed both chambers, not ratified by
+   the voters" 87px out of its chip and the page 16px sideways at 1280 (on
+   live, "... went to the voters in November 2026", 128px). Below 45em every
+   chip already wraps. */
+.rtop > .chip{margin-left:auto;flex:0 0 auto;max-width:18rem;white-space:normal}
 /* A person's own page: the party's bar down the left of the name. */
 .rhead[class*="rh-p"] .rh1{padding-left:var(--sp-5);border-left:5px solid var(--pc,var(--edge))}
 .rhead.rh-pR{--pc:var(--rep)}.rhead.rh-pD{--pc:var(--dem)}.rhead.rh-pI,.rhead.rh-pL{--pc:var(--ind)}
@@ -7927,10 +8027,17 @@ letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
 .rs-dfn{scroll-margin-top:5rem}
 .rs-dfn:target{background:linear-gradient(var(--pine-soft),var(--pine-soft)) left top/3px 100% no-repeat;
   padding-left:.875rem}
-.rs-dpop{max-width:min(26rem,calc(100vw - 2rem))}
+/* The box holds a link to the definition and, where it is cut, "Show more"
+   (the person, 7 November 2026): never taller than the screen, its words
+   scrolling inside it once the whole definition is open. */
+.rs-dpop{max-width:min(26rem,calc(100vw - 2rem));max-height:min(30rem,calc(100vh - 2rem));overflow-y:auto}
 .rs-dpcite{display:block;font-weight:600;margin-bottom:.25rem}
+.rs-dpcite a{color:var(--pine)}
 .rs-dptext{display:block}
-.rs-dphint{display:block;margin-top:.375rem;color:var(--ink-2)}
+.rs-dpp{display:block}
+.rs-dpp + .rs-dpp{margin-top:.375rem}
+.rs-dpmore{display:inline-block;margin-top:.25rem;padding:.25rem 0;background:none;border:0;cursor:pointer;
+  font:600 var(--t-sm)/1.5 var(--sans);color:var(--pine);text-decoration:underline;text-underline-offset:.2em}
 .rs-gone,.rs-yr,.rs-st,.rs-note{color:var(--ink-2);font-size:var(--t-sm)}
 .rs-source{font:400 var(--t-sm)/1.55 var(--sans);color:var(--ink-2);margin:.5rem 0 0}
 .rs-repealed{font:400 var(--t-sm)/1.5 var(--sans);color:var(--ink-2);margin:.375rem 0;
@@ -7944,6 +8051,18 @@ letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
   padding:.25rem 0}
 .rs-fold[open]{align-self:stretch;background:var(--surface);border:1px solid var(--rule);
   border-radius:var(--r-in);padding:.25rem .875rem .625rem}
+/* ONE FOLD, ITS COUNTS IN ITS LINE (the person, 7 November 2026): "History
+   and citations", then what it holds, quieter; open, its lists one under
+   another, each under its own heading. */
+.rs-fcount{color:var(--ink-2);font-weight:400}
+.rs-fpart + .rs-fpart{margin-top:.625rem;padding-top:.5rem;border-top:1px solid var(--rule)}
+.rs-fold .rs-fh{font:600 var(--t-sm)/1.45 var(--sans);color:var(--ink);margin:.375rem 0 .25rem;
+  letter-spacing:0;text-transform:none}
+/* "Show all N" under its own list (build_rsa in_place): it opens the rest of
+   the list above it, and reads "Show fewer" after. */
+.rs-all{display:inline-block;margin-top:.375rem;padding:.25rem 0;background:none;border:0;cursor:pointer;
+  font:500 var(--t-sm)/1.45 var(--sans);color:var(--pine)}
+.rs-all:hover{text-decoration:underline;text-underline-offset:.2em}
 .rs-note{margin:.25rem 0 .5rem}
 .rs-list,.rs-refs,.rs-hist{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.375rem .5rem}
 .rs-list li,.rs-refs li{border:1px solid var(--rule-2);border-radius:999px;padding:.125rem .625rem;
@@ -7951,7 +8070,7 @@ letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
 .rs-list a,.rs-refs a,.rs-hist a{color:var(--pine);font-weight:600}
 .rs-hist{display:block}
 .rs-hist li{padding:.25rem 0;border-bottom:1px solid var(--rule)}
-.rs-hist li:last-child{border-bottom:0}
+.rs-hist li:last-child,.rs-hist li:has(+ li[hidden]){border-bottom:0}
 .rs-hist .rs-yr{display:inline-block;min-width:3rem;font-variant-numeric:tabular-nums;color:var(--ink);
   font-weight:600}
 /* The pending tag: the one thing on a section that is about now. */
@@ -8400,6 +8519,13 @@ padding:var(--sp-6) var(--sp-6);margin:0;background:var(--surface);max-width:548
    name in the same file for a tinted chip and a solid block. */:where(body.pg) .seg-R{background:var(--rep)}:where(body.pg) .seg-D{background:var(--dem)}
 :where(body.pg) .seg-I{background:var(--ind)}:where(body.pg) .seg-L{background:var(--ind)}
 :where(body.pg) .seg-V{background:var(--rule-2)}
+/* The members-elect's totals (officials_tabs.elect_totals): a winner of more
+   than one party's nomination, or of none printed, in the neutral chip's
+   grey; a seat whose result is not final hatched, as the seat chart's legend
+   draws a vacant seat. */
+:where(body.pg) .seg-X{background:var(--ink-2)}
+:where(body.pg) .seg-NF{background:repeating-linear-gradient(45deg,var(--rule-2),
+var(--rule-2) 3px,var(--surface) 3px,var(--surface) 6px);box-shadow:inset 0 0 0 1px var(--rule-2)}
 :where(body.pg) .plegend{display:flex;flex-wrap:wrap;gap:var(--sp-5);margin-top:var(--sp-4);font-size:var(--t-ui);color:var(--ink-2)}
 :where(body.pg) .pdot{display:inline-block;width:9px;height:9px;border-radius:var(--r-in);margin-right:var(--sp-2)}
 :where(body.pg) .compbox{margin:0 0 var(--sp-6)}
@@ -8477,11 +8603,49 @@ font-size:var(--t-ui);font-weight:600;cursor:pointer;list-style:none;min-height:
 transition:transform .12s}
 :where(body.pg) .cgrp[open] > summary .caret{transform:rotate(90deg)}
 :where(body.pg) .cgrp .grid{padding:0 0 var(--sp-5)}
-/* The composition charts sit after the roster now. A reader who types a name
-   should get the answer, not 359px of party bars between the box and the
-   result. */:where(body.pg) .comp-wrap{margin:var(--sp-10) 0 0;padding-top:var(--sp-7);border-top:1px solid var(--rule-2)}
+/* The composition charts sat after the roster when the finder's box was on
+   the same page: a reader who types a name should get the answer, not 359px
+   of party bars between the box and the result. The box is My Town's now,
+   and the charts are at the head of the Legislators tab (.comp-top). */:where(body.pg) .comp-wrap{margin:var(--sp-10) 0 0;padding-top:var(--sp-7);border-top:1px solid var(--rule-2)}
 :where(body.pg) .comp-wrap > h2{font-size:var(--t-part);font-weight:600;letter-spacing:.05em;
 text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-5);font-family:var(--serif)}
+/* AT THE TOP NOW, ON BOTH TABS (the owner's walk of 7 November 2026, C):
+   who holds the seats under the presiding officers, and who won them under
+   the Members-Elect tab's sentence, each over its lists -- no rule above,
+   and the lists' strip below. On a phone a chamber is one short line
+   (.compshort), not a bar, its legend and the thresholds under it. */
+:where(body.pg) .comp-wrap.comp-top{margin:0;padding-top:0;border-top:0}
+:where(body.pg) .compshort{display:none;margin:0 0 var(--sp-2);font-size:var(--t-ui);
+line-height:1.5;color:var(--ink-2)}
+:where(body.pg) .compshort b{font-weight:600;color:var(--ink);margin-right:var(--sp-2)}
+:where(body.pg) .compshort .csb{white-space:nowrap}
+@media (max-width:38.75em){
+  :where(body.pg) .comp-top > .compshort{display:block}
+  :where(body.pg) .comp-top > .comp{display:none}
+}
+/* The Members-Elect tab's county: its results not final counted in the
+   summary and named under its members. */
+:where(body.pg) .cgrp .ccnf{font-weight:400;font-size:var(--t-sm);color:var(--ink-2)}
+/* A member-elect's chip says more than a member's -- its title and its kind
+   ("Rep.-elect ... (R - Belk 4) New") -- and ran out of the roster's 250px
+   cell, and past the page's edge from 768px up: the cells are wider here, and
+   a chip wraps inside its own, between the name and its tag. */
+:where(body.pg) .grid.elroll{grid-template-columns:repeat(auto-fill,minmax(min(100%,18.75rem),1fr))}
+:where(body.pg) .elroll .mem{min-width:0}
+:where(body.pg) .elroll .mchip{max-width:100%;white-space:normal}
+/* AND ITS PARTS WRAP, NOT SQUEEZE (the review of 8 November 2026): the chip
+   is a row of the name (a link, or bare text for the 168 with no page), the
+   tag and the word, the last two kept whole, so in a narrow cell -- the
+   Senate's list beside its districts, a party's column at 600px, a phone --
+   an unlinked name was pressed into a column one word wide ("Rep. / electo/a
+   / Tom / Ahlborn- / Hsu") and a word ran out past the chip's border and the
+   page's edge. Here a part that does not fit goes to the next line inside the
+   chip: the word under the name, or the tag and the word under a name with no
+   page. */
+:where(body.pg) .elroll .mchip,:where(body.pg) .elwho .ellist .mchip{flex-wrap:wrap;row-gap:var(--sp-2)}
+:where(body.pg) .cgrp > .elnf{margin:0 0 var(--sp-5)}
+:where(body.pg) .roster .elnf{margin:0 0 var(--sp-5)}
+:where(body.pg) .seatrow .elnf{margin:0}
 :where(body.pg) .wct{margin-left:auto;font-size:var(--t-sm);color:var(--ink-2)}
 :where(body.pg) .wards{display:flex;flex-wrap:wrap;gap:var(--sp-3);margin-bottom:var(--sp-3)}
 :where(body.pg) .wbtn{border:1px solid var(--edge);border-radius:var(--r-out);padding:var(--sp-2) var(--sp-5);font-size:var(--t-ui);
@@ -8976,6 +9140,11 @@ background:var(--pine);border-color:var(--pine)}
 :where(body.pg) .rtabs [role=tab]:focus-visible{outline:2px solid var(--ink);outline-offset:-4px}
 :where(body.pg) .rtabs [role=tab][aria-selected=true]:focus-visible{outline-color:var(--on-pine)}
 :where(body.pg) .rpane[hidden]{display:none}
+/* A strip is written hidden and shown by its script (SEATING_JS), as the
+   town pages' strip is: without the script every view is on the page under
+   its own heading, and three buttons that do nothing are not (the review of
+   8 November 2026). */
+:where(body.pg) .rtabs[hidden]{display:none}
 
 /* The way out of Latest activity. Five rows and then the bill search, which
    sorts by most recent action and can carry the rest. */

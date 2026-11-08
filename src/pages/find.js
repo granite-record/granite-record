@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.49
+// GRANITE_VERSION: 2026-09-16.52
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -173,7 +173,7 @@ const FBILLKIND=new Set(["HB","SB","CACR","HCR","SCR","HJR","SJR","HR","SR",
    and the shape alone was the whole test, so all 223 district labels the
    sitting members carry were offered as "open this bill number in the bill
    search", drawn ABOVE the three representatives who actually sit for Hills
-   29. Return takes the first answer, so a reader who typed their own district
+   29. Return took the first answer, so a reader who typed their own district
    and pressed it landed on "No bills match in the 2025-2026 term." The same
    went for a ward: "Ward 3" read as bill WARD 3.
    The letters are what tell them apart, and the letters are in the data. Not
@@ -216,7 +216,8 @@ function findBill(q){
    number in the searchbar will pull up the bill number from this term that
    matches like the legislators do when you type their name rather than first
    taking you to the general page"). The bill of this term with the number
-   typed is the first row, so Return opens its page, and the numbers that
+   typed is the first row, one click to its page -- Return opens /search,
+   which lists the number in every term, since 8 November 2026 -- and the numbers that
    start with it follow as the reader types -- "HB 14" offers HB 14, then
    HB 140 to HB 149 and on -- the way a name is offered from its first
    letters. It reads the current term's index, which a number used to cost
@@ -745,9 +746,10 @@ function findRequestsLoad(){
    would with ?term=all. A bill number is unique only within a term, so
    there the ties between terms go to the newer term -- app.js's sortRows
    breaks them the same way -- which puts this term's answer ahead of
-   1995's.
+   1995's. Words are a term at a time, the newest first (8 November 2026),
+   as sortRows orders All Terms by best match.
    Among bills that match equally well, a bill still moving whose title has
-   the search comes first, and after the newer term the most of the title
+   the search comes first, and then the most of the title
    that is the search (16 October 2026): the matcher's own titleShare() and
    statusCat(), in sortRows' order, so that "housing" opens here on the
    bills /bills opens on. A matcher from before them, still in a reader's
@@ -806,8 +808,12 @@ function findBills(q,limit,allTerms){
   const newer=(x,y)=>{const a=String(x[2].term||""),b=String(y[2].term||"");
     return a<b?1:a>b?-1:0;};
   const num=(x,y)=>x[1][0]-y[1][0]||x[1][1]-y[1][1];
+  // Across every term, a term at a time, the newest first, and inside it
+  // the best match's order: app.js's sortRows on All Terms (Alice, 8
+  // November 2026), so that this is the list /bills?term=all draws under
+  // its terms' headings. In one term the term decides nothing.
   hit.sort(ids?(x,y)=>num(x,y)||newer(x,y)
-    :(x,y)=>x[3]-y[3]||y[0]-x[0]||y[5]-x[5]||newer(x,y)||y[4]-x[4]||num(x,y));
+    :(x,y)=>newer(x,y)||x[3]-y[3]||y[0]-x[0]||y[5]-x[5]||y[4]-x[4]||num(x,y));
   const top=hit.slice(0,limit==null?3:limit).map(h=>h[2]);
   // Why each row shown is listed, where its title does not have the word.
   const why=new Map();
@@ -1015,12 +1021,21 @@ function findDraw(q,ids){
   // and anything whose name only starts with it or only mentions it. So
   // "Litchfield" still leads with the town and Rep. Litchfield, while "guns"
   // leads with the bills and Gunski follows, and "bail" leads with the bail
-  // bills and Rep. Bailey follows. Return takes the first row, so for a
-  // subject word it opens the bill search on it.
+  // bills and Rep. Bailey follows.
   // A Law row is the answer to the number typed, and leads (findLawRow).
-  const named=rows.filter(r=>r[0]==="law"||(!_fgone(r)&&_fwhole(r,s)));
-  const list=named.map(row).join("")+bills
-    +rows.filter(r=>!named.includes(r)).map(row).join("");
+  // THE GUIDES AND THE LEARN PAGES AFTER THE BILLS (Alice, 8 November
+  // 2026). A guide's declared words are a whole word of it (_fnamed), so
+  // "minimum wage" led with the guide to your rights at work above the seven
+  // bills on it. A guide or a Learn page found by a whole word now comes
+  // straight after the bills, where there are any, and leads where there are
+  // none ("renew my license"); the members, committees, towns and subjects
+  // keep their place above the bills.
+  const howto=r=>r[0]==="guide"||r[0]==="learn";
+  const whole=r=>!_fgone(r)&&_fwhole(r,s);
+  const named=rows.filter(r=>r[0]==="law"||(!howto(r)&&whole(r)));
+  const after=rows.filter(r=>howto(r)&&whole(r));
+  const list=named.map(row).join("")+bills+after.map(row).join("")
+    +rows.filter(r=>!named.includes(r)&&!after.includes(r)).map(row).join("");
   // "No matching results." -- the person's words -- only when nothing here
   // and no bill matches; "Did you mean" only when no bill does either
   // ("voting" was offered "zoning" over 141 bills). Its guesses are a name
@@ -1171,10 +1186,13 @@ function findMount(){
   });
   box.addEventListener("keydown",e=>{
     if(e.key==="Escape"){shut();btn.focus();}
-    // Return takes the first answer, which is what a reader who typed a name
-    // and looked at the list is about to click -- and, for a word no name
-    // starts with, the bill search on that word (see findDraw).
-    if(e.key==="Enter"){const a=panel.querySelector(".findout a");if(a){e.preventDefault();location.href=a.href;}}
+    // RETURN OPENS EVERY RESULT (Alice, 8 November 2026): /search on what
+    // was typed, a bill number too, which /search lists in every term. It
+    // took the first row, and the first row for "minimum wage" was a guide.
+    // A row is opened by clicking it, or by Tab to it and Return there,
+    // which is the link's own; the panel has no row chosen by the arrows.
+    if(e.key==="Enter"){const q=box.value.trim();
+      if(q){e.preventDefault();location.href="/search?q="+_fenc(q);}}
   });
   // A WAY OUT THAT IS NOT THE SCRIM. On a phone the sheet covers the page and
   // the only way back was to tap the dimmed strip above it or press Escape --
@@ -1387,6 +1405,19 @@ function ytMark(p){
     +"font:600 .75rem/1.5 var(--sans);letter-spacing:.02em;text-transform:none;"
     +"text-decoration:none;background:var(--pine-soft);color:var(--pine);vertical-align:.08em}"
     +".ytpanel a::after,.yt a::after{content:none !important}"
+    // AMONG THE MEMBERS-ELECT, ONLY ONE RE-ELECTED TO THEIR OWN SEAT (the
+    // owner, 7 November 2026): "Charles Foote (R) Your rep" among Derry's
+    // winners is right; "Jim Creighton (R) Your rep" under Antrim's Senate
+    // seat was not, for he holds Hillsborough 30, not district 8. The item
+    // components.electRace marks "elown" keeps the tag; no other link does.
+    // Keyed on the winners' own list, which elect_race draws wherever they
+    // are -- a town page's block, the map's panel and the Officials page's
+    // Members-Elect tab, which has no .elect round it (the review of 7
+    // November 2026). And the tab's lists by name and by county, which hold
+    // the same chips in a party's column or a county's grid (.elroll), the
+    // same way (8 November 2026).
+    +".ellist > li:not(.elown) a::after{content:none !important}"
+    +".elroll > :not(.elown) a::after{content:none !important}"
     // On a town page the chip sits in a narrow cell beside the contact
     // column, and the tag ran out of the chip into it: it goes under the name.
     +(p.m||[]).map(s=>sel(s,"::after").split(",").map(x=>".offwho "+x).join(",")).join(",")

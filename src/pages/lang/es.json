@@ -6,6 +6,11 @@
  ],
  "offered": false,
  "strings": {
+  "bills.requests_note": {
+   "en": "<b>Requests, not bills yet.</b> Each is a member&rsquo;s request to have a bill drafted: a title and a sponsor, nothing more, until it is filed as a numbered {year} bill. Some are withdrawn first.",
+   "es": "<b>Solicitudes, todavía no proyectos de ley.</b> Cada una es la solicitud de un miembro para que se redacte un proyecto de ley: un título y un patrocinador, nada más, hasta que se presenta como un proyecto de ley numerado de {year}. Algunas se retiran antes.",
+   "state": "draft"
+  },
   "cal.coming": {
    "en": "Coming Up",
    "es": "Próximamente",
@@ -412,6 +417,16 @@
    "es": "— {n} escaños",
    "state": "draft"
   },
+  "comp.n_vacant": {
+   "en": "{n} vacant",
+   "es": "{n} vacantes",
+   "state": "draft"
+  },
+  "comp.n_vacant_one": {
+   "en": "{n} vacant",
+   "es": "{n} vacante",
+   "state": "draft"
+  },
   "comp.note": {
    "en": "A bill passes with a majority of the members voting. Passing a constitutional amendment takes three fifths of the members in office: {three} of the {sitting} on the current roster. A veto override needs {two}.",
    "es": "Un proyecto de ley se aprueba con la mayoría de los miembros que votan. Aprobar una enmienda constitucional requiere tres quintos de los miembros en funciones: {three} de los {sitting} de la lista actual. Anular un veto requiere {two}.",
@@ -442,9 +457,89 @@
    "es": "{n} escaños vacantes de la Cámara en {d} distritos",
    "state": "draft"
   },
+  "elect.all": {
+   "en": "All {n} members-elect, by surname, each chamber on its own.",
+   "es": "Los {n} miembros electos, por apellido, cada cámara por separado.",
+   "state": "draft"
+  },
+  "elect.all_one": {
+   "en": "{n} member-elect, by surname.",
+   "es": "{n} miembro electo, por apellido.",
+   "state": "draft"
+  },
+  "elect.arrange": {
+   "en": "How to arrange the members-elect",
+   "es": "Cómo ordenar a los miembros electos",
+   "state": "draft"
+  },
+  "elect.by_district": {
+   "en": "By district",
+   "es": "Por distrito",
+   "state": "draft"
+  },
   "elect.elected": {
    "en": "Elected {day}",
-   "es": "Elegidos el {day}",
+   "es": "Elección del {day}",
+   "state": "draft"
+  },
+  "elect.kind.former": {
+   "en": "Returning",
+   "es": "Regresa",
+   "state": "draft"
+  },
+  "elect.kind.moved": {
+   "en": "New seat",
+   "es": "Nuevo escaño",
+   "state": "draft"
+  },
+  "elect.kind.new": {
+   "en": "New",
+   "es": "Nuevo/a",
+   "state": "draft"
+  },
+  "elect.kind.own": {
+   "en": "Re-elected",
+   "es": "Reelegido/a",
+   "state": "draft"
+  },
+  "elect.n_none": {
+   "en": "{n} with no one on file",
+   "es": "{n} sin nadie registrado",
+   "state": "draft"
+  },
+  "elect.n_not_final": {
+   "en": "{n} not final",
+   "es": "{n} por definir",
+   "state": "draft"
+  },
+  "elect.nf_in": {
+   "en": "in {where}",
+   "es": "en {where}",
+   "state": "draft"
+  },
+  "elect.nf_named": {
+   "en": "By county and By district name them.",
+   "es": "Se indican en Por condado y Por distrito.",
+   "state": "draft"
+  },
+  "elect.nf_one": {
+   "en": "for {n} seat",
+   "es": "para {n} escaño",
+   "state": "draft"
+  },
+  "elect.nf_seats": {
+   "en": "for {n} seats in {d} districts",
+   "es": "para {n} escaños en {d} distritos",
+   "state": "draft"
+  },
+  "elect.nf_seats_one": {
+   "en": "for {n} seats in one district",
+   "es": "para {n} escaños en un distrito",
+   "state": "draft"
+  },
+  "elect.nf_short": {
+   "en": "Not final",
+   "es": "Por definir",
    "state": "draft"
   },
   "elect.none": {
@@ -457,14 +552,34 @@
    "es": "No hay miembro electo registrado para {n} escaño.",
    "state": "draft"
   },
+  "elect.none_short": {
+   "en": "No one on file",
+   "es": "Nadie registrado",
+   "state": "draft"
+  },
   "elect.not_final": {
    "en": "Result not final",
    "es": "Resultado no definitivo",
    "state": "draft"
   },
+  "elect.party_more": {
+   "en": "More than one party",
+   "es": "Más de un partido",
+   "state": "draft"
+  },
   "elect.recount": {
    "en": "&mdash; a recount was requested",
    "es": "&mdash; se pidió un recuento",
+   "state": "draft"
+  },
+  "elect.recounts": {
+   "en": "&mdash; a recount was requested in each",
+   "es": "&mdash; se pidió un recuento en cada uno",
+   "state": "draft"
+  },
+  "elect.senate_by_district": {
+   "en": "The Senate is listed by district.",
+   "es": "El Senado aparece por distrito.",
    "state": "draft"
   },
   "elect.serving": {
@@ -474,7 +589,32 @@
   },
   "elect.takes": {
    "en": "Takes office {day}.",
-   "es": "Asume el cargo el {day}.",
+   "es": "Toma de posesión: {day}.",
+   "state": "draft"
+  },
+  "elect.title_rep": {
+   "en": "Rep.-elect",
+   "es": "Rep. electo/a",
+   "state": "draft"
+  },
+  "elect.title_sen": {
+   "en": "Sen.-elect",
+   "es": "Sen. electo/a",
+   "state": "draft"
+  },
+  "elect.who_won": {
+   "en": "Who won the seats",
+   "es": "Quién ganó los escaños",
+   "state": "draft"
+  },
+  "elect.won": {
+   "en": "{won} of {seats} seats elected",
+   "es": "{won} de {seats} escaños elegidos",
+   "state": "draft"
+  },
+  "elect.won_nf": {
+   "en": "{won} of {seats} seats elected, {nf} not final",
+   "es": "{won} de {seats} escaños elegidos, {nf} por definir",
    "state": "draft"
   },
   "find.all_terms": {
@@ -22481,6 +22621,11 @@
    "es": "{n} escaños",
    "state": "draft"
   },
+  "map.statewide": {
+   "en": "Statewide",
+   "es": "En todo el estado",
+   "state": "draft"
+  },
   "map.sum": {
    "en": "State House {base}; State Senate {s}; Executive Council {c}; US House {g}.",
    "es": "Cámara de Representantes estatal: {base}; Senado estatal: {s}; Consejo Ejecutivo: {c}; Cámara de Representantes de EE. UU.: {g}.",
@@ -22504,6 +22649,16 @@
   "map.tag_senate": {
    "en": "Senate District {n}",
    "es": "Distrito {n} del Senado",
+   "state": "draft"
+  },
+  "map.tot_base": {
+   "en": "<b>House:</b> {list}",
+   "es": "<b>Cámara:</b> {list}",
+   "state": "draft"
+  },
+  "map.tot_senate": {
+   "en": "<b>Senate:</b> {list}",
+   "es": "<b>Senado:</b> {list}",
    "state": "draft"
   },
   "map.towns_note": {
@@ -22700,6 +22855,26 @@
   "of.tab.town": {
    "en": "My Town",
    "es": "Mi municipio",
+   "state": "draft"
+  },
+  "of.tab_short.counties": {
+   "en": "County",
+   "es": "Condados",
+   "state": "draft"
+  },
+  "of.tab_short.executive": {
+   "en": "Executive",
+   "es": "Ejecutivo",
+   "state": "draft"
+  },
+  "of.tab_short.federal": {
+   "en": "Federal",
+   "es": "Federal",
+   "state": "draft"
+  },
+  "of.tab_short.judicial": {
+   "en": "Judicial",
+   "es": "Judicial",
    "state": "draft"
   },
   "of.title": {
@@ -23140,11 +23315,6 @@
   "off.presiding": {
    "en": "Presiding Officers",
    "es": "Presidencia de las cámaras",
-   "state": "draft"
-  },
-  "off.presiding_why": {
-   "en": "The Speaker presides over the House, and the Deputy Speaker sometimes in the Speaker&rsquo;s place; the Senate President presides over the Senate.",
-   "es": "El presidente de la Cámara (Speaker) preside la Cámara de Representantes, y el vicepresidente a veces lo hace en su lugar; el presidente del Senado preside el Senado.",
    "state": "draft"
   },
   "off.read_on": {

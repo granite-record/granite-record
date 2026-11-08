@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.13
+// GRANITE_VERSION: 2026-10-09.14
 /* THE DISTRICT MAP (map v1), as a module a page mounts:
 
      <link rel="stylesheet" href="/map.css">
@@ -18,8 +18,9 @@
      town    a town to choose and zoom to; pick: a district of `layer`
      frame, dim, ward   a town page's map: framed on the town, the rest
              veiled, its own ward named first
-     flo     every floterial framed; controls, legend, note, panel, list,
-             zoom: false leaves that part out
+     flo     every floterial framed; controls, legend, note, totals, panel,
+             list, zoom: false leaves that part out (totals: the chamber's
+             seats statewide, by party, under the legend; totals() below)
      prompt  the panel's words before anything is chosen
      data    the file's address, "/district_map.json"
    API (returned at once; api.ready resolves when the data has drawn):
@@ -447,6 +448,41 @@ function countWords(ms){
   const c={};ms.forEach(m=>{c[m.p]=(c[m.p]||0)+1;});
   return Object.keys(c).sort((a,b)=>"RDI".indexOf(a)-"RDI".indexOf(b)).map(p=>NOUN[p]?NOUN[p][c[p]===1?0:1](c[p]):`${c[p]} ${p}${c[p]===1?"":"s"}`).join(", ");
 }
+/* THE CHAMBER, STATEWIDE (the owner, 7 November 2026: "on the map, a short
+   list of the party totals for the chamber layer shown (Senate or House):
+   Democrats, Republicans, Independents, statewide"). PURE, so preflight runs
+   it in node. Counted from `who`, the sitting members the districts are
+   coloured by, over every district of the chamber: the State House is its
+   base districts and its floterials, and who_sits puts each member in one
+   of them, so a floterial's members are counted once, under the floterial,
+   and never again under the districts below it. A seat nobody holds is
+   counted apart, as vacant. {seats, held, vacant, parties: [[letter, n]],
+   Republican, then Democratic, then Independent, the legend's order, then
+   any other letter} for the two chambers; null for every other layer: the
+   Executive Council and the US House are not the General Court's chambers,
+   and their five and two districts are each read off the map at a glance. */
+const CHAMBER={base:["base","float"],senate:["senate"]};
+function totals(M,lk){
+  const ks=CHAMBER[lk];if(!ks)return null;
+  const c={};let seats=0,held=0,vacant=0;
+  ks.forEach(k=>Object.keys(M.T.layers[k].f).forEach(fid=>{
+    const ms=sitting(M,k,fid),n=seatsOf(M,k,fid);
+    seats+=n;held+=ms.length;vacant+=Math.max(0,n-ms.length);
+    ms.forEach(m=>{const p=letterOf(m.p);c[p]=(c[p]||0)+1;});}));
+  const at=p=>{const i="RDI".indexOf(p);return i<0?3:i;};
+  return {seats,held,vacant,parties:Object.keys(c).sort((a,b)=>at(a)-at(b)||a.localeCompare(b)).map(p=>[p,c[p]])};
+}
+/* The line under the legend: "Statewide House: 212 Republicans · 169
+   Democrats · 1 Independent · 18 vacant", each count kept whole on a narrow
+   screen; "" for a layer that is not a chamber, and the line is not drawn. */
+function totalsLine(t,lk){
+  if(!t)return "";
+  const its=t.parties.map(([p,n])=>NOUN[p]?NOUN[p][n===1?0:1](n):`${n} ${esc(p)}${n===1?"":"s"}`);
+  if(t.vacant)its.push(t.vacant===1?tr("map.n_vacant_one","{n} vacant",{n:1}):tr("map.n_vacant","{n} vacant",{n:t.vacant}));
+  const list=its.map((s,i)=>`<span class="gmti">${s}${i<its.length-1?"&nbsp;&middot;":""}</span>`).join(" ");
+  return `<span class="gmtoth">${tr("map.statewide","Statewide")}</span> `+
+    (lk==="senate"?tr("map.tot_senate","<b>Senate:</b> {list}",{list}):tr("map.tot_base","<b>House:</b> {list}",{list}));
+}
 /* One person, as the site's chip draws them (.mchip, app.css): the party
    and seat kept as one unit; a councillor or a representative in Congress
    links to their own site, in a new tab (D20). */
@@ -474,7 +510,7 @@ function el(tag,attrs){const e=document.createElementNS(NS,tag);for(const a in a
 
 function mount(root,opts){
   opts=Object.assign({layer:"base",layers:null,labels:DEFAULT_LABELS,flo:false,controls:true,panel:true,list:true,
-    legend:true,note:true,zoom:true,frame:null,dim:false,ward:null,town:null,pick:null,data:"/district_map.json",
+    legend:true,note:true,totals:true,zoom:true,frame:null,dim:false,ward:null,town:null,pick:null,data:"/district_map.json",
     prompt:tr("map.prompt","Choose a district on the map, or type a town in the box above.")},opts||{});
   const layersShown=LAYERS.filter(([v])=>!opts.layers||opts.layers.includes(v));
   if(!layersShown.some(([v])=>v===opts.layer))opts.layer=layersShown[0][0];
@@ -493,7 +529,7 @@ function mount(root,opts){
       <div class="gmrow gmlabrow"><span class="gmlabhead" id="${id}lab" aria-hidden="true">${tr("map.labels","Labels")}</span>${seg("lb",tr("map.labels_on","Labels on the map"),LABELS,opts.labels)}</div>
     </div>`:"")+
     `<div class="gmstage">`+
-    (opts.legend?`<div class="gmkey"><div class="gmleg" role="list" aria-label="${tr("map.legend","What the colors mean")}"></div>${opts.note?`<p class="gmnote gmexplain"></p>`:""}</div>`:"")+
+    (opts.legend?`<div class="gmkey"><div class="gmleg" role="list" aria-label="${tr("map.legend","What the colors mean")}"></div>${opts.totals?`<p class="gmtot"></p>`:""}${opts.note?`<p class="gmnote gmexplain"></p>`:""}</div>`:"")+
     `<div class="gmbox">
       <div class="gmwrap" tabindex="0" role="group" aria-label="${tr("map.keys","The map. Arrow keys move it; plus and minus zoom in and out.")}"><svg class="gmsvg" role="img" aria-label="${tr("map.of_nh","Map of New Hampshire")}"></svg></div>
       ${opts.zoom?`<div class="gmzoom"><button type="button" class="zo" aria-label="${tr("map.zoom_out","Zoom out")}">&minus;</button><button type="button" class="zi" aria-label="${tr("map.zoom_in","Zoom in")}">+</button><button type="button" class="zf" title="${tr("map.zoom_fit","Zoom to fit")}"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M1 5.5V1h4.5M10.5 1H15v4.5M15 10.5V15h-4.5M5.5 15H1v-4.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`:""}
@@ -625,6 +661,9 @@ function mount(root,opts){
   function legend(){
     const box=root.querySelector(".gmleg"),ex=root.querySelector(".gmexplain");if(!box||!M)return;
     const say=h=>{if(ex)ex.innerHTML=h;};
+    // the chamber's seats statewide, on State House and State Senate alone;
+    // empty, and so not drawn (map.css), on every other layer
+    const tot=root.querySelector(".gmtot");if(tot)tot.innerHTML=totalsLine(totals(M,layer),layer);
     if(!TINTED[layer]){
       box.innerHTML="";
       say(layer==="county"
@@ -924,7 +963,7 @@ function mount(root,opts){
   return api;
 }
 
-const GRMap={mount,load,model,layout,numbersLayout,namesLayout,inFeature,fbox,LABELS,DEFAULT_LABELS,LAYERS,SIZE,WEIGHT,GAP};
+const GRMap={mount,load,model,layout,numbersLayout,namesLayout,inFeature,fbox,totals,totalsLine,LABELS,DEFAULT_LABELS,LAYERS,SIZE,WEIGHT,GAP};
 if(typeof window!=="undefined")window.GRMap=GRMap;
 if(typeof module!=="undefined"&&module.exports)module.exports=GRMap;
 })();

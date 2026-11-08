@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.27
+# GRANITE_VERSION: 2026-09-04.28
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -288,8 +288,10 @@ def elect_body(p, doc, reqs, req_meta, places, today):
     if reqs:
         label = (req_meta or {}).get("label") or "Bill Requests"
         out.append(f"<h2>{E(label)}</h2>"
-                   "<p><b>These are requests, not bills yet.</b> A request has a title and a "
-                   "prime sponsor until it is drafted and filed as a numbered bill; some are "
+                   # Alice's two sentences, as the bill search says them.
+                   "<p><b>Requests, not bills yet.</b> Each is a member&rsquo;s request to have "
+                   "a bill drafted: a title and a sponsor, nothing more, until it is filed as a "
+                   f"numbered {E(str((req_meta or {}).get('year') or ''))} bill. Some are "
                    "withdrawn first.</p><ul>" + "".join(
                        f"<li>{E(r.get('n'))}: {E(r.get('title'))} ({E(r.get('body_label') or '')})"
                        f" &mdash; {E(r.get('status') or '')}</li>" for r in reqs) + "</ul>"

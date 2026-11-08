@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.799
+# GRANITE_VERSION: 2026-09-04.802
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19840,8 +19840,10 @@ def _class_collisions():
         # line, written by components.js and components.py alike (elect_now,
         # elect_race, elect_block, elect_line) and held to one answer by
         # _components_agree -- a town page draws in Python what the My Town
-        # card and the map's panel draw in the browser
-        "elect", "elhead", "elwhere", "ellist", "elnf", "elnone", "elnow", "elline",
+        # card and the map's panel draw in the browser; and "elown", the item
+        # of a member re-elected to their own seat, the one a saved town's
+        # "Your rep" may tag (find.js, ytMark; the owner, 7 November 2026)
+        "elect", "elhead", "elwhere", "ellist", "elnf", "elnone", "elnow", "elline", "elown",
         # THE BILL SEARCH'S BOX AND FILTERS, drawn by bills.html and app.js
         # for /bills and by build_rsa for the Laws page's search, which the
         # person asked to work as the bill search does (24 October 2026): the
@@ -21105,8 +21107,14 @@ def _find_bills(BP):
         "and a link to them on All terms")
     assert re.search(rf"{n['firearms']} of them in\s+the 2025\u20132026 term", html), (
         "/search?q=firearms does not say how many of them are this term's")
-    assert "HB 101 (2025)" in html and "HB 101 (2023)" in html, (
-        "/search lists bills of two terms without the year that tells them apart")
+    # Every term's bills, each with its year, a term at a time, newest first
+    # (Alice, 8 November 2026: /search's list is /bills on All Terms's); the
+    # number in every term is "SB 5" below.
+    years = [int(y) for y in re.findall(r'<span class="fname">[^<]*\((\d{4})\)</span>', html)]
+    starts = [y if y % 2 else y - 1 for y in years]
+    assert "HB 101 (2025)" in html and years and starts == sorted(starts, reverse=True), (
+        "/search lists bills of every term without the year that tells them apart, or not a "
+        f"term at a time: {years}")
     ab = s["abbas"]["html"]
     assert 0 <= ab.find("<h2>Senators") < ab.find("<h2>Bills"), (
         "/search?q=abbas puts the bills above the senator it names")
@@ -21685,7 +21693,7 @@ def _requests_banner(BP):
         f"/bills opened on {B['term']!r} reads {B['summary']!r}: it should open on 2025-2026 "
         f"with the 2 standing requests of 3 (1 withdrawn) offered")
     tk = B.get("taken") or {}
-    assert tk.get("term") == "2027-requests" and "These are requests, not bills yet." in tk.get("summary", ""), (
+    assert tk.get("term") == "2027-requests" and "Requests, not bills yet." in tk.get("summary", ""), (
         f"taking the banner leaves /bills on {tk.get('term')!r}: it should open the requests")
     for name, run in (("the requests' list", R), ("All Terms", A)):
         assert "bill requests filed for" not in run["summary"], (
@@ -22163,8 +22171,18 @@ def _best_match_words(BP):
                            "table does not account for")
                 continue
             tier = {k: i for i, (_, ks) in enumerate(kinds) for k in ks}
+            # EVERY TERM'S LIST RUNS A TERM AT A TIME, newest first (Alice, 8
+            # November 2026; _search_polish), so there the word is held above
+            # the longer word within each term, and the terms in their order.
+            if scope is None:
+                starts = [y if y % 2 else y - 1 for y in (int(k.rsplit("/", 1)[1]) for k in order)]
+                if starts != sorted(starts, reverse=True):
+                    bad.append(f"{where} does not run a term at a time, newest first, for {q!r}: {order}")
+            one = (lambda a, b: True) if scope is not None else (
+                lambda a, b: (lambda x, y: (x if x % 2 else x - 1) == (y if y % 2 else y - 1))(
+                    int(a.rsplit("/", 1)[1]), int(b.rsplit("/", 1)[1])))
             up = [(a, b) for i, a in enumerate(order) for b in order[i + 1:]
-                  if tier[a] > tier[b]]
+                  if tier[a] > tier[b] and one(a, b)]
             if up:
                 a, b = up[0]
                 bad.append(f"{where} lists {a} ({kinds[tier[a]][0]}) above {b} "
@@ -23287,7 +23305,10 @@ def _find_guides(G, civics, BP):
     find.json its task and the plain words guides.WORDS declares
     (guides.search_words); find.js reads them as part of the guide's name
     (_fnamed), so a reader typing "renew my license" or "testify" meets the
-    guide first, and /search lists the guides first among the groups. Here the
+    guide first among the names (findMatch). Since 8 November 2026 the panel
+    and /search draw the guides straight after the bills (Alice: "minimum
+    wage" led with a guide above its seven bills), which _search_polish holds;
+    /search's group of them is drawn with the bills. Here the
     cases of tests/search_cases.json's "find" run through find.js over rows
     made the same way, with a member, a town, a subject, the Learn pages and
     a bill beside them, and a probe guide that declares a bill number's words,
@@ -23354,13 +23375,450 @@ def _find_guides(G, civics, BP):
                 bad.append(f"{c['q']!r}: the bill is not the panel's first answer above a guide with its words")
     assert not bad, "; ".join(bad)
     js = BP.SEARCH_JS
-    assert js.index('{t:"How-To Guides",') < js.index('{t:"Senators",'), "/search does not list the guides first"
+    assert '{t:"How-To Guides",' in js and 'const GUIDES=GROUPS.find(g=>g.t==="How-To Guides");' in js, (
+        "/search has no group of the guides, drawn with the bills")
     assert '{t:"Learn",' in js and '"Learn","Pages on This Site"]' in js, "/search does not list the Learn pages"
     assert "const named=!findBill(s)&&rows.some(" in js, "/search can put a guide above a bill number's bills"
     bi = Path("src/pages/build_indexes.py").read_text(encoding="utf-8")
     assert 'G.search_words(p.stem) if kind == "guide"' in bi, "find.json no longer carries a guide's task words"
     return "ok", (f"{len(cases)} searches: guides found by their task and plain words, labelled Guide, "
                   "above the Learn pages, and under a bill whose number was typed")
+
+
+# _search_polish's two runs. The first is app.js as /bills runs it, with
+# find.js beside it as bills.html loads it, so /search's bill list
+# (findBills) is asked with the bill search's own matcher; the second is
+# find.js and /search's script on a page without app.js.
+_SEARCH_POLISH_APP = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+const replaced = [];
+history.replaceState = (st, t, u) => { replaced.push(String(u)); };
+// A media query that keeps what listens to it, as a browser's does.
+globalThis.matchMedia = (q) => ({ media: q, matches: false, heard: [],
+  addEventListener(t, f) { this.heard.push([t, f]); } });
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({render, sortRows, matches, filtersFromAddress, addressList, fitPickers, sel, PHONE_ROW,"
+  + " setIdx:(a)=>{IDX=a;}, setMeta:(m)=>{META=m;}, setTerm:(t)=>{term=t;}, setQuery:(q)=>{query=q;},"
+  + " setSort:(x)=>{sortBy=x;sortChosen=true;}, unsort:()=>{sortChosen=false;sortBy='num';},"
+  + " getSort:()=>[sortBy,sortChosen], setShown:(n)=>{SHOWN=n;}})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const go = JSON.parse(fs.readFileSync("./go.json", "utf8"));
+const norm = x => String(x || "").toLowerCase().replace(/-/g, " ");
+const rows = go.bills.map(b => Object.assign(b, {hayT: norm([b.id, b.n, b.title].join(" ")),
+  hayC: norm((b.committees || []).join(" | "))}));
+s.setIdx(rows);
+s.setMeta(go.meta);
+const out = {};
+const html = () => document.querySelector("#results").innerHTML;
+const cards = h => [...h.matchAll(/<article class="card[^"]*" data-id="([^"]+)"[\s\S]*?bill\/(\d{4})\//g)].map(m => m[2] + "/" + m[1]);
+const heads = h => [...h.matchAll(/<h2 class="grp">([\s\S]*?)<\/h2>/g)].map(m => m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+try {
+  // Every term's bills by best match, and each term alone.
+  s.unsort(); s.setTerm("all"); s.setQuery(go.q); s.render();
+  out.all = {sort: s.getSort(), cards: cards(html()), heads: heads(html())};
+  out.alone = {};
+  for (const t of go.meta.terms) { s.unsort(); s.setTerm(t); s.render(); out.alone[t] = cards(html()); }
+  // No term's heading in one term, nor on All Terms by any other order.
+  s.unsort(); s.setTerm(go.meta.terms[0]); s.render(); out.oneTermHeads = heads(html());
+  s.setSort("num"); s.setTerm("all"); s.render(); out.numHeads = heads(html());
+  // One card drawn of the first term's two: its heading still counts both.
+  s.unsort(); s.setTerm("all"); s.setShown(1); s.render(true);
+  out.one = {cards: cards(html()), heads: heads(html())};
+  s.setShown(25);
+  // A chosen sponsor's headings, and no term's.
+  s.sel.sponsor.add(go.sponsor); s.unsort(); s.render();
+  out.sponsor = heads(html()); s.sel.sponsor.clear();
+  // The order each list starts in, and one the reader chose.
+  const deflt = (t, q) => { s.unsort(); s.setTerm(t); s.setQuery(q); s.render(); return s.getSort(); };
+  out.defaults = {all_none: deflt("all", ""), all_words: deflt("all", go.q), all_number: deflt("all", "HB 1"),
+                  term_none: deflt(go.meta.terms[0], ""), term_words: deflt(go.meta.terms[0], go.q)};
+  s.setSort("status"); s.setTerm("all"); s.setQuery(""); s.render(); out.defaults.chosen = s.getSort();
+  // The two ways in time, over the dated bills and over all of them.
+  const ids = (x, list) => { s.setSort(x); return s.sortRows(list).map(b => b.term + "/" + b.id); };
+  const once = rows.filter(b => b.last_action && rows.filter(x => x.last_action === b.last_action).length === 1);
+  out.recent = ids("recent", once); out.oldest = ids("oldest", once);
+  out.recentAll = ids("recent", rows); out.oldestAll = ids("oldest", rows);
+  // ?sort=oldest read from an address, and written into one.
+  s.unsort(); s.setTerm("all"); s.setQuery("");
+  s.filtersFromAddress(new URLSearchParams("sort=oldest&term=all"));
+  out.read = s.getSort(); replaced.length = 0; s.addressList(); out.written = replaced.slice(-1)[0] || "";
+  // The requests' note.
+  s.unsort(); s.setMeta(Object.assign({}, go.meta, {requests: go.requests})); s.setTerm(go.requests.term);
+  s.setQuery(""); s.render(); out.note = document.querySelector("#summary").innerHTML;
+  s.setMeta(go.meta);
+  // /search's list of every term's bills, asked of find.js beside app.js.
+  vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), {filename: "find.js"});
+  const F = vm.runInThisContext("({FBILLS, FALL, findBills, _fbillApi})");
+  F.FBILLS.api = F._fbillApi(); F.FALL.rows = rows; F.FALL.terms = go.meta.terms.slice();
+  const A = F.findBills(go.q, 40, true);
+  out.search = A && A.state === "ready" ? A.top.map(b => b.term + "/" + b.id) : A;
+  s.unsort(); s.setTerm("all"); s.setQuery(go.q); s.render();
+  out.listed = s.sortRows(rows.filter(b => s.matches(b))).map(b => b.term + "/" + b.id);
+  // The pickers' words on a phone: each option with data-short swapped for a
+  // new option with those words, the value kept, and back on a wide screen.
+  const opt = (value, text, short) => {
+    const o = {value, textContent: text, attrs: short ? {"data-short": short} : {},
+      getAttribute(k) { return Object.prototype.hasOwnProperty.call(this.attrs, k) ? this.attrs[k] : null; },
+      setAttribute(k, v) { this.attrs[k] = String(v); },
+      cloneNode() { const n = opt(this.value, this.textContent); n.attrs = Object.assign({}, this.attrs); return n; }};
+    return o;
+  };
+  const year = document.querySelector("#year"), sort = document.querySelector("#sort");
+  year.options = [opt("all", "All Terms"), opt("2027-requests", "2027 Bill Requests", "2027 Requests"),
+                  opt("2025-2026", "2025–2026 Term", "2025–2026")];
+  sort.options = [opt("best", "Best match"), opt("recent", "Most recent action", "Recent action"),
+                  opt("oldest", "Oldest action")];
+  // Replaced, the chosen option takes the choice with it, as in Chrome.
+  for (const x of [year, sort]) x.replaceChild = function (n, o) {
+    if (o.value === this.value) this.value = this.options[0].value;
+    this.options[this.options.indexOf(o)] = n; };
+  year.value = "2025-2026"; sort.value = "recent";
+  // The row as bills.html writes it: the picker and its label, then the
+  // box's label and the box.
+  const row = {kids: []}, part = (name, tag) => {
+    const e = name === "year" ? year : name === "qbox" ? document.querySelector(".searchrow .qbox") : {};
+    e.name = name; if (tag) e.tagName = tag; e._parent = row;
+    Object.defineProperty(e, "previousElementSibling", {configurable: true,
+      get() { const i = row.kids.indexOf(e); return i > 0 ? row.kids[i - 1] : null; }});
+    Object.defineProperty(e, "nextSibling", {configurable: true,
+      get() { return row.kids[row.kids.indexOf(e) + 1] || null; }});
+    e.compareDocumentPosition = (o) => row.kids.indexOf(o) > row.kids.indexOf(e) ? 4 : 2;
+    return e; };
+  row.kids = [part("yearLabel", "LABEL"), part("year", "SELECT"), part("qLabel", "LABEL"), part("qbox", "DIV")];
+  row.insertBefore = (n, ref) => { row.kids.splice(row.kids.indexOf(n), 1);
+    row.kids.splice(ref ? row.kids.indexOf(ref) : row.kids.length, 0, n); };
+  for (const k of row.kids) if (k.name !== "year" && k.name !== "qbox") k.parentNode = row;
+  const before = year.options[2];
+  s.PHONE_ROW.matches = true; s.fitPickers();
+  out.phone = {year: year.options.map(o => o.textContent), sort: sort.options.map(o => o.textContent),
+               replaced: year.options[2] !== before, values: [year.value, sort.value],
+               order: row.kids.map(k => k.name)};
+  s.PHONE_ROW.matches = false; s.fitPickers();
+  out.wide = {year: year.options.map(o => o.textContent), sort: sort.options.map(o => o.textContent),
+              values: [year.value, sort.value], order: row.kids.map(k => k.name)};
+  out.listens = s.PHONE_ROW.heard.some(([t, f]) => t === "change" && f === s.fitPickers);
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + String(e.stack).split("\n")[1]; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+_SEARCH_POLISH_FIND = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+globalThis.chip = (t, cls) => `<span class="${cls}">${t}</span>`;
+// components.js's, which every page loads ahead of find.js.
+globalThis.termWords = (t) => String(t || "").replace(/^(\d{4})-(\d{4})$/, "$1–$2");
+const ticks = async (n) => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+// The panel's box, kept: find.js asks the panel for it once and listens on it.
+const made = [], ce = document.createElement.bind(document);
+document.createElement = (t) => { const e = ce(t), kept = {};
+  e.querySelector = (q) => (kept[q] ||= ce("input")); made.push(e); return e; };
+const byId = document.getElementById.bind(document);
+let asked = 0;
+document.getElementById = (id) => id === "findbtn" && !asked++ ? null : byId(id);
+let ready = null;
+document.addEventListener = (t, f) => { if (t === "DOMContentLoaded") ready = f; };
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, findDraw})");
+const go = JSON.parse(fs.readFileSync("./go.json", "utf8"));
+F.FIND.rows = go.rows;
+const order = (h) => (h.match(/<a class="fbills"|<a href="[^"]*"/g) || []).map(a =>
+  a.startsWith('<a class="fbills"') ? "BILLS" : a.slice(9, -1));
+(async () => {
+  const out = { panel: {}, enter: {}, search: {} };
+  const panelOut = document.getElementById("findout");
+  for (const q of go.queries) { F.findDraw(q); out.panel[q] = order(panelOut.innerHTML); }
+  // Return in the header's box.
+  const panel = made.find(e => e.id === "findpanel");
+  const box = panel && panel.querySelector("#findq");
+  for (const q of go.enter) {
+    location.href = "(unchanged)"; box.value = q; let stopped = false;
+    for (const f of (box._on.keydown || []))
+      f({ key: "Enter", target: box, preventDefault() { stopped = true; }, stopPropagation() {} });
+    out.enter[q] = [location.href, stopped];
+  }
+  // /search's groups, in the order the page draws them.
+  vm.runInThisContext(fs.readFileSync("./search.js", "utf8"), { filename: "search.js" });
+  location.search = "?q=" + encodeURIComponent(go.queries[0]);
+  ready(); await ticks(30);
+  const rbox = document.getElementById("resq"), resout = document.getElementById("resout");
+  for (const q of go.queries) {
+    rbox.value = q; rbox.fire("input"); await ticks(30);
+    out.search[q] = [...resout.innerHTML.matchAll(/<h2>([^<]*)/g)].map(m => m[1].trim());
+  }
+  // Where no bill matches, counted: a matcher that finds none, over every term.
+  const G = vm.runInThisContext("({FBILLS, FALL})");
+  G.FBILLS.api = {billNumbers: () => null, queryGroups: (q) => [{word: q}], readShort: (g) => g,
+    matchScore: () => 0, looseness: () => 0, titleShare: () => 0, statusCat: () => "",
+    billKey: () => [0, 0], whyListed: () => null};
+  G.FBILLS.rows = []; G.FBILLS.file = []; G.FBILLS.term = go.term;
+  // This term counted at none while the rest are still being counted...
+  G.FALL.rows = null; G.FALL.failed = false; G.FALL.terms = [go.term]; G.FALL.loading = new Promise(() => {});
+  rbox.value = go.none; rbox.fire("input"); await ticks(30);
+  out.counting = [...resout.innerHTML.matchAll(/<h2>([^<]*)/g)].map(m => m[1].trim());
+  // ...and every term counted at none.
+  G.FALL.rows = [];
+  F.findDraw(go.none); out.panelNone = order(panelOut.innerHTML);
+  rbox.value = go.none; rbox.fire("input"); await ticks(30);
+  out.none = [...resout.innerHTML.matchAll(/<h2>([^<]*)/g)].map(m => m[1].trim());
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+def _css_media_blocks(css):
+    """[(condition, body)] of every @media block in a stylesheet without its
+    comments, the body brace-matched; and the text outside them all."""
+    blocks, outside, i = [], [], 0
+    for m in re.finditer(r"@media([^{]*)\{", css):
+        if m.start() < i:
+            continue
+        depth, j = 1, m.end()
+        while depth and j < len(css):
+            depth += {"{": 1, "}": -1}.get(css[j], 0)
+            j += 1
+        outside.append(css[i:m.start()])
+        blocks.append((m.group(1).strip(), css[m.end():j - 1]))
+        i = j
+    outside.append(css[i:])
+    return blocks, "".join(outside)
+
+
+@check("frontend", "the bill search on All Terms runs a term at a time under the term's heading by "
+       "best match, and opens on the newest action with no words; Oldest action is Most recent "
+       "action reversed; the guides follow the bills in the header's panel and on /search; "
+       "Return opens /search; the requests' note is Alice's; and a phone puts the box first",
+       needs=("build_pages",))
+def _search_polish(BP):
+    """Alice's answers of 8 November 2026, five changes and one more:
+
+    1. With words and All Terms on Best match, a heading per term, newest
+       first, each counted over the whole result as a Status heading is; inside
+       a term, the best match's order (sortRows). With no words on All Terms,
+       the newest action first; a bill number keeps number order; an order
+       the reader chose is kept. /search's list of every term's bills
+       (find.js, findBills) is the same list, in the same order.
+    2. The guides and the Learn pages after the bills in the header's panel,
+       and the How-To Guides straight after the Bills on /search: "minimum
+       wage" led with the guide to rights at work above its seven bills.
+    3. Return in the header's box opens /search on what was typed, a bill's
+       number too, and not the panel's first row.
+    4. On a phone the box first, then the term picker and the Sort in equal
+       halves, the count on one line and what the search read under it; the
+       pickers' shorter words there (fitPickers); a desktop unchanged.
+    5. The requests' note shorter, in Alice's words, with its Spanish a draft.
+    And "Oldest action" beside "Most recent action" (the same date, reversed,
+    the same tie by number), read from and written into the address.
+
+    Run in node over three terms of bills in which an older term's bill
+    matches better than a newer one's, so that a best match by the old
+    tie-break would run the terms together; and over a subject, a guide, a
+    Learn page and a member found only by the start of a word."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", "node is not installed"
+    terms = ["2025-2026", "2023-2024", "2021-2022"]
+
+    def bill(bid, term, title, last, sponsor="Ann Lee", status="Killed", chip="Died"):
+        return {"id": bid, "n": re.sub(r"^([A-Z]+)", r"\1 ", bid), "title": title, "kind": "done",
+                "status": status, "chip": chip, "committees": [], "committee": "", "topic": "",
+                "sponsor": sponsor, "term": term, "year": int(term[:4]), "passage": "",
+                "votedays": [], "nrc": 0, "last_action": last}
+    bills = [bill("HB1", terms[0], "relative to flying a kite at the beach", "2026-03-04"),
+             bill("SB3", terms[0], "relative to kite flying", "2025-05-06", sponsor="Bo Ray"),
+             bill("HB2", terms[0], "relative to licensing barbers", "2026-01-20"),
+             bill("HB4", terms[1], "kite flying", "2024-04-02"),
+             bill("HB5", terms[1], "relative to the wage board", "2023-03-08"),
+             bill("HB6", terms[2], "kite flying", "2022-01-14"),
+             bill("HB7", terms[2], "relative to fishing", "2021-06-09"),
+             bill("HB8", terms[2], "relative to dams", ""),
+             # Two of one day, which both orders list by number.
+             bill("HB10", terms[1], "relative to tunnels", "2023-05-05"),
+             bill("HB9", terms[1], "relative to bridges", "2023-05-05")]
+    app_fx = {"bills": bills, "q": "kite flying", "sponsor": "Ann Lee",
+              "meta": {"terms": terms, "committee_codes": {}, "topics": []},
+              "requests": {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027, "n": 1}}
+    rows = [["topic", "Minimum Wage", "Bills on this subject", "/bills?topic=Minimum+Wage", ""],
+            ["guide", "Your Rights at Work: Getting Paid", "Pay, breaks and overtime.",
+             "/guides/rights-at-work", "Get paid · minimum wage · overtime"],
+            ["learn", "The Minimum Wage, Explained", "How the state sets it.", "/learn/minimum-wage", ""],
+            ["legislator", "Rep. Ann Overtimer (D - Straf 1)", "House · Straf 1 · D",
+             "/legislator/ann-overtimer", "Strafford"],
+            # Found by its line alone, not its name, as the County Officials
+            # page is for "register my car".
+            ["page", "County Officials", "Officials who get paid by the county", "/officials#county", ""]]
+    find_fx = {"rows": rows, "queries": ["minimum wage", "overtime"],
+               "enter": ["minimum wage", "HB 1034", "   "], "none": "get paid", "term": terms[0]}
+    m = re.search(r"<script>(.*?)</script>", BP.SEARCH_JS, re.S)
+    assert m, "build_pages.SEARCH_JS carries no <script>"
+    root = Path(tempfile.mkdtemp(prefix="gr-polish-"))
+    try:
+        files = {"stub.js": Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+                 "page.js": _with_components(Path("src/pages/app.js").read_text(encoding="utf-8")),
+                 "find.js": Path("src/pages/find.js").read_text(encoding="utf-8"),
+                 "search.js": m.group(1), "app.js": _SEARCH_POLISH_APP,
+                 "panel.js": _SEARCH_POLISH_FIND}
+        for name, text in files.items():
+            (root / name).write_text(text, encoding="utf-8")
+        (root / "go.json").write_text(json.dumps(app_fx), encoding="utf-8")
+        r = _run([node, "app.js"], cwd=root, capture_output=True, text=True, timeout=90)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+        (root / "go.json").write_text(json.dumps(find_fx), encoding="utf-8")
+        r = _run([node, "panel.js"], cwd=root, capture_output=True, text=True, timeout=90)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), "node panel.js: " + said[-300:]
+        fnd = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert "threw" not in got, f"the bill search threw {got['threw']}"
+    bad = []
+    # 1. A term at a time, newest first, each in its own order, headed and counted.
+    a = got["all"]
+    seen = [c.split("/")[0] for c in a["cards"]]
+    years = [t[:4] for t in terms]
+    runs = [y for i, y in enumerate(seen) if not i or seen[i - 1] != y]
+    if a["sort"] != ["best", False] or runs != years or len(runs) != len(set(runs)):
+        bad.append(f"All Terms by best match does not run a term at a time, newest first: "
+                   f"{a['sort']} {a['cards']}")
+    for t in terms:
+        mine = [c for c in a["cards"] if c.startswith(t[:4] + "/") or c.startswith(str(int(t[:4]) + 1) + "/")]
+        if mine != got["alone"][t]:
+            bad.append(f"inside {t} All Terms lists {mine}, where the term alone lists {got['alone'][t]}")
+    want = ["2025–2026 Term 2 bills", "2023–2024 Term 1 bill", "2021–2022 Term 1 bill"]
+    if a["heads"] != want:
+        bad.append(f"All Terms by best match is headed {a['heads']}, not {want}")
+    if got["one"]["heads"] != want[:1] or len(got["one"]["cards"]) != 1:
+        bad.append(f"with one card drawn, the term's heading is {got['one']['heads']}: it is "
+                   "counted over what is drawn, not the whole result")
+    if any("Term" in h for h in got["sponsor"]) or not any("Prime sponsored" in h for h in got["sponsor"]):
+        bad.append(f"under a chosen sponsor the headings are {got['sponsor']}")
+    if got["search"] != got["listed"]:
+        bad.append(f"/search's list of every term's bills runs {got['search']}, where /bills on "
+                   f"All Terms runs {got['listed']}")
+    d = got["defaults"]
+    if d != {"all_none": ["recent", False], "all_words": ["best", False], "all_number": ["num", False],
+             "term_none": ["num", False], "term_words": ["best", False], "chosen": ["status", True]}:
+        bad.append(f"the order a list opens in: {d}")
+    # And Oldest action.
+    if got["oldest"] != got["recent"][::-1] or len(got["recent"]) < 7:
+        bad.append(f"Oldest action is not Most recent action reversed: {got['recent']} / {got['oldest']}")
+    if got["recentAll"][-1] != "2021-2022/HB8" or got["oldestAll"][-1] != "2021-2022/HB8":
+        bad.append("a bill with no action recorded is not last in both orders: "
+                   f"{got['recentAll'][-1]} / {got['oldestAll'][-1]}")
+    tie = ["2023-2024/HB9", "2023-2024/HB10"]
+    if any([k for k in got[o] if k in tie] != tie for o in ("recentAll", "oldestAll")):
+        bad.append(f"two bills of one day are not listed by number in both orders: "
+                   f"{got['recentAll']} / {got['oldestAll']}")
+    if got["oneTermHeads"] or got["numHeads"]:
+        bad.append(f"a term's heading stands in one term ({got['oneTermHeads']}) or on All Terms "
+                   f"by number ({got['numHeads']})")
+    if got["read"] != ["oldest", True] or "sort=oldest" not in got["written"]:
+        bad.append(f"?sort=oldest is read as {got['read']} and written as {got['written']!r}")
+    html_ = Path("src/pages/bills.html").read_text(encoding="utf-8")
+    opts = re.findall(r'<option value="(\w+)"[^>]*>([^<]*)</option>',
+                      html_[html_.index('<select id="sort">'):html_.index("</select>", html_.index('<select id="sort">'))])
+    if opts != [("best", "Best match"), ("num", "Bill number"), ("recent", "Most recent action"),
+                ("oldest", "Oldest action"), ("status", "Status")]:
+        bad.append(f"the Sort offers {opts}")
+    # 2 and 3. The panel, /search and Return.
+    p = fnd["panel"]["minimum wage"]
+    at = {k: (p.index(k) if k in p else -1) for k in
+          ("/bills?topic=Minimum+Wage", "BILLS", "/guides/rights-at-work", "/learn/minimum-wage")}
+    if not 0 <= at["/bills?topic=Minimum+Wage"] < at["BILLS"] < at["/guides/rights-at-work"] < at["/learn/minimum-wage"]:
+        bad.append(f"the panel for 'minimum wage' runs {p}: the subject, the bills, the guide, the Learn page")
+    p = fnd["panel"]["overtime"]
+    if not (p and p[0] == "BILLS" and p.index("/guides/rights-at-work") < p.index("/legislator/ann-overtimer")):
+        bad.append(f"the panel for 'overtime' runs {p}: the bills, then the guide, then a member found "
+                   "by the start of a word")
+    sg = fnd["search"]
+    if not (sg["minimum wage"][:3] == ["Subjects", "Bills", "How-To Guides"] and "Learn" in sg["minimum wage"]):
+        bad.append(f"/search for 'minimum wage' runs {sg['minimum wage']}")
+    if sg["overtime"][:3] != ["Bills", "How-To Guides", "Representatives"]:
+        bad.append(f"/search for 'overtime' runs {sg['overtime']}: the bills first, the guides "
+                   "straight after them")
+    if fnd["panelNone"] != ["/guides/rights-at-work", "/officials#county"] \
+            or fnd["none"] != ["How-To Guides", "Officials", "Bills"] \
+            or fnd["counting"] != ["How-To Guides", "Officials", "Bills"]:
+        bad.append(f"where no bill matches 'get paid', the panel runs {fnd['panelNone']} and /search "
+                   f"{fnd['none']}, and {fnd['counting']} while the earlier terms are counted: the "
+                   "guide is to lead, and the box saying there is no bill to follow what matches")
+    twice = {q: [h for h in p if p.count(h) > 1] for q, p in
+             list(fnd["panel"].items()) + [("get paid", fnd["panelNone"])]}
+    if any(twice.values()):
+        bad.append(f"the panel draws a row twice: {twice}")
+    # /search's draw() hides none of the page's own names: a const "box" in
+    # it hid the search box, and the redraw each load makes, draw(box.value),
+    # drew the page empty once the bills had come (8 November 2026). The
+    # loads here never come, so it is read off the script.
+    sj = m.group(1)
+    top = set(re.findall(r"^(?:const|let) (\w+)=", sj, re.M))
+    body = sj[sj.index("function draw(q){"):sj.index("\nfunction tell(")]
+    hid = sorted(n for n in top if re.search(rf"\b(?:const|let) {n}=", body))
+    if not {"box", "out", "lead"} <= top or hid:
+        bad.append(f"/search's draw() declares a name of the page's own again: {hid}")
+    e = fnd["enter"]
+    if e != {"minimum wage": ["/search?q=minimum%20wage", True], "HB 1034": ["/search?q=HB%201034", True],
+             "   ": ["(unchanged)", False]}:
+        bad.append(f"Return in the header's box: {e}")
+    # 5. The note, and its Spanish a draft.
+    note = ("<b>Requests, not bills yet.</b> Each is a member&rsquo;s request to have a bill drafted: "
+            "a title and a sponsor, nothing more, until it is filed as a numbered 2027 bill. Some "
+            "are withdrawn first.")
+    if got["note"] != note:
+        bad.append(f"the requests' note reads {got['note']!r}")
+    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"].get(
+        "bills.requests_note") or {}
+    if es.get("state") != "draft" or "{year}" not in es.get("es", ""):
+        bad.append(f"the note's Spanish is not a draft with its year: {es}")
+    # 4. A phone: the pickers' words, then the row itself.
+    ph, wd = got["phone"], got["wide"]
+    if ph["year"] != ["All Terms", "2027 Requests", "2025–2026"] \
+            or ph["sort"] != ["Best match", "Recent action", "Oldest action"] \
+            or not ph["replaced"] or ph["values"] != ["2025-2026", "recent"]:
+        bad.append(f"a phone's pickers read {ph}: their shorter words, each a new option, the value kept")
+    if wd["year"][1:] != ["2027 Bill Requests", "2025–2026 Term"] or wd["sort"][1] != "Most recent action" \
+            or wd["values"] != ["2025-2026", "recent"]:
+        bad.append(f"a wide screen's pickers read {wd}")
+    if ph["order"] != ["qLabel", "qbox", "yearLabel", "year"] \
+            or wd["order"] != ["yearLabel", "year", "qLabel", "qbox"]:
+        bad.append(f"the term picker is met in the page as {ph['order']} on a phone and "
+                   f"{wd['order']} on a wide screen: after the box there, before it here")
+    if not got["listens"]:
+        bad.append("the pickers are not fitted again when the screen changes width (a phone turned)")
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    if 'data-short="${termDash(t)}">${termDash(t)} Term</option>' not in app \
+            or ' data-short="${esc(reqYear())} Requests"' not in app or ".join(\"\");\n   fitPickers();" not in app:
+        bad.append("the term picker's options carry no shorter words, or are not fitted when drawn")
+    if 'data-short="Recent action">Most recent action</option>' not in html_:
+        bad.append("the Sort's Most recent action carries no shorter words")
+    css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"), flags=re.S)
+    blocks, outside = _css_media_blocks(css)
+    phone = "".join(b for c, b in blocks if re.fullmatch(r"\(\s*max-width:\s*45em\s*\)", c))
+    rules = {sel_.strip(): body.replace(" ", "") for sel_, body in re.findall(r"([^{}]+)\{([^{}]*)\}", phone)}
+    need = {".searchrow .in": ["display:flex", "flex-wrap:wrap", "padding-left:var(--sp-5)",
+                               "padding-right:var(--sp-5)"],
+            ".searchrow #year": ["padding:0var(--sp-2)"],
+            ".searchrow .qline,.searchrow .qhint": ["display:contents"],
+            ".searchrow .qbox": ["order:1", "flex:10100%"],
+            ".searchrow #year,.searchrow #sort": ["order:2", "flex:11calc(50%-var(--sp-4)/2)"],
+            ".searchrow #count": ["order:3", "flex:10100%", "max-width:none"],
+            ".searchrow #synhint": ["order:4", "flex:10100%"]}
+    for sel_, decls in need.items():
+        body = rules.get(sel_)
+        if body is None or not all(d in body for d in decls):
+            bad.append(f"a phone's search row has no {sel_}{{{';'.join(decls)}}}: {body}")
+    if re.search(r"\.searchrow\s+(?:\.qline|\.qhint|\.qbox|#year|#sort|#count|#synhint)\b", outside):
+        bad.append("a rule of the phone's search row reaches a desktop")
+    assert not bad, "; ".join(bad)
+    return "ok", ("All Terms by best match a term at a time under counted headings, the same list "
+                  "as /search's; no words on All Terms opens on the newest action; Oldest action "
+                  "reversed; guides after the bills in the panel and on /search; Return opens "
+                  "/search; the note in Alice's words; a phone's row box-first with fitted pickers")
 
 
 # The site search over find.json as build_indexes writes it (25 October 2026):
@@ -25436,6 +25894,148 @@ def _css_decls(body):
         else:
             cur.append(c)
     return out
+
+
+@check("frontend", "a fiscal note's table on a phone is one row per line with its years beneath: "
+       "short headings, nothing wider than its box, the same table to a screen reader, and "
+       "the desktop table as it was")
+def _fiscal_note_on_a_phone():
+    """The person, 7 November 2026, of HB 1034 of 2026's fiscal note at 375px:
+    the table was 357px in a 288px box, FY 2029 off the edge, FY 2028 cut to
+    "$C", the box scrolling sideways, "FY / 2026" and "Funding / Source"
+    wrapped. Her layout, phones only: each row's name on its own line, its
+    figures in a compact row beneath under short headings (FY26), a row that
+    spans the years its value once, captions wrapping.
+
+    Held from both ends. THE MARKUP, drawn by app.js's fiscalTable in node
+    from a made-up note: every figure carries its short heading (data-y) and
+    its row the class that decides how many share a line -- "fns" for six
+    characters or fewer, "fnm" for up to forty, "fnl" past that, "fnspan" for
+    a spanning row, which keeps its colspan and no heading -- the table, its
+    groups, rows, heads and cells their roles, so a row drawn as a flex line
+    stays a table to a screen reader; a raw note draws no table. THE
+    STYLESHEET: inside @media (max-width:45em) alone, the wrapper does not
+    scroll, the table and caption are blocks, the column heads are hidden
+    the way the Data page's are (in the accessibility tree, not on screen),
+    each body row wraps, the name takes a line of its own, "fns" figures share
+    one, "fnm" at most two, "fnl" and a span one each, and the short heading
+    is drawn with alternative text "" so it is not read twice; and outside it
+    the desktop rules still scroll the wrapper and give the table its 22em."""
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
+    css = Path("src/pages/app.css")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and css.exists() and node):
+        return "skip", "app.js, app.css, dom_stub.js or node is not here"
+    note = {"lead": "", "tables": [
+        {"caption": "Estimated Political Subdivision Impact",
+         "years": ["FY 2026", "FY 2027", "FY 2028", "FY 2029"],
+         "rows": [{"label": "Revenue", "values": ["$0", "$5,000", "$0", "$0"], "span": False},
+                  {"label": "Revenue Fund", "values": ["General Fund"], "span": True},
+                  {"label": "Expenditures*", "values": ["$0", "Indeterminable Increase",
+                                                        "$15,000,000", "$0"], "span": False},
+                  {"label": "Appropriations*", "values": ["$0", "x" * 41, "$0", "$0"],
+                   "span": False}],
+         "footnote": "*Expenditure = Cost of bill"},
+        {"caption": "", "raw": ["The Office of Legislative Budget Assistant states this bill has no fiscal impact."]}]}
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "note.json").write_text(json.dumps(note), encoding="utf-8")
+        (root / "go.js").write_text("""
+require("./stub.js");
+const fs = require("fs");
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({fiscalTable})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+process.stdout.write("\\n@@" + JSON.stringify(s.fiscalTable(JSON.parse(fs.readFileSync("./note.json", "utf8")))));
+""", encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not draw a fiscal note under node: " + (r.stderr or r.stdout or "")[-300:])
+        page = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    bad = []
+    flat = re.sub(r"\s+", " ", page)
+    if flat.count('<table class="fn" role="table">') != 1:
+        bad.append("the note's one table is not drawn once as table.fn with role=\"table\"")
+    rows = re.findall(r'<tr role="row" class="([^"]*)"><th scope="row" role="rowheader">([^<]*)</th>(.*?)</tr>', flat)
+    want = {"Revenue": "fns", "Revenue Fund": "fnspan", "Expenditures*": "fnm", "Appropriations*": "fnl"}
+    if {lab: cls for cls, lab, _ in rows} != want:
+        bad.append(f"the rows' classes are {[(lab, cls) for cls, lab, _ in rows]}, not {want}")
+    for cls, lab, cells in rows:
+        heads = re.findall(r'<td role="cell" data-y="([^"]*)">', cells)
+        if cls == "fnspan":
+            if heads or '<td colspan="4" role="cell">' not in cells:
+                bad.append(f"the spanning row {lab!r} does not keep its colspan, or carries a year heading")
+        elif heads != ["FY26", "FY27", "FY28", "FY29"]:
+            bad.append(f"{lab!r}'s figures carry the headings {heads}, not FY26 to FY29")
+    if flat.count('role="columnheader"') != 5 or flat.count('role="rowgroup"') != 2:
+        bad.append("the column heads or the row groups lost their roles")
+    if '<div class="fnraw">' not in flat or flat.count("<table") != 1:
+        bad.append("a raw note is not drawn as its plain lines")
+
+    # Spacing is no part of a rule: "a, b" is "a,b", and "(max-width: 45em)"
+    # the phone's width as much as "(max-width:45em)" is.
+    rules = [(ctx, re.sub(r"\s*,\s*", ",", sel), body, ln) for ctx, sel, body, ln
+             in _css_rules(css.read_text(encoding="utf-8"))]
+    on_phone = lambda ctx: any(re.sub(r"\s+", "", c) == "@media(max-width:45em)" for c in ctx)
+    phone_only = re.compile(r"\.fn(?:s|m|l|span)\b|\[data-y\]")
+    phone = {sel: dict(_css_decls(body)) for ctx, sel, body, _ in rules
+             if on_phone(ctx) and ("table.fn" in sel or ".fnwrap" in sel)}
+    desk = {sel: dict(_css_decls(body)) for ctx, sel, body, _ in rules
+            if not ctx and ("table.fn" in sel or ".fnwrap" in sel)}
+    # What only a phone may do: a rule of the reflow's own classes anywhere
+    # else, a table.fn rule inside another width's at-rule, or the desktop's
+    # table.fn rules laying it out as anything but a table.
+    stray = sorted({sel for ctx, sel, body, _ in rules
+                    if not on_phone(ctx) and phone_only.search(sel)}
+                   | {sel for ctx, sel, body, _ in rules
+                      if ctx and not on_phone(ctx) and "table.fn" in sel
+                      and not any(c.startswith("@media print") or "forced-colors" in c for c in ctx)}
+                   | {sel for sel, d in desk.items()
+                      if {"display", "flex", "flex-wrap", "flex-basis", "content"} & set(d)})
+
+    def has(rules_, sel, prop, test):
+        v = rules_.get(sel, {}).get(prop)
+        return v is not None and test(v)
+    need = [
+        (".fnwrap", "overflow-x", lambda v: v == "visible", "the wrapper still scrolls sideways"),
+        ("table.fn", "display", lambda v: v == "block", "the table is not a block"),
+        ("table.fn", "min-width", lambda v: v == "0", "the table keeps a minimum width"),
+        ("table.fn caption", "display", lambda v: v == "block", "the caption does not wrap as a block"),
+        ("table.fn thead", "clip", lambda v: "rect(0 0 0 0)" in v.replace(",", " "),
+         "the column heads are not hidden the Data page's way"),
+        ("table.fn tbody tr", "flex-wrap", lambda v: v == "wrap", "a row does not wrap its figures"),
+        ("table.fn tbody th", "flex", lambda v: v.split()[-1] == "100%", "the row's name does not take a line"),
+        ("table.fn td", "flex", lambda v: v.split()[-1] in ("0", "0%"), "\"fns\" figures do not share a line"),
+        ("table.fn td", "max-width", lambda v: v == "100%",
+         "a figure can run past its row (a flex item never shrinks below its longest word without it)"),
+        ("table.fn tbody tr.fnm td", "flex-basis", lambda v: v == "40%", "\"fnm\" figures are not two to a line"),
+        ("table.fn tbody tr.fnl td,table.fn td[colspan]", "flex-basis", lambda v: v == "100%",
+         "\"fnl\" figures and a span are not one to a line"),
+    ]
+    for sel, prop, test, why in need:
+        if not has(phone, sel, prop, test):
+            bad.append(f"phone: {why} ({sel} {{{prop}: {phone.get(sel, {}).get(prop)}}})")
+    before = phone.get("table.fn td[data-y]::before", {})
+    contents = [v for k, v in _css_decls(next((body for ctx, sel, body, _ in rules
+                                               if sel == "table.fn td[data-y]::before"), ""))
+                if k == "content"]
+    if contents != ['attr(data-y)', 'attr(data-y) / ""'] or before.get("display") != "block":
+        bad.append(f"phone: the short heading is not drawn above its figure with alternative text \"\" "
+                   f"(content {contents})")
+    if not (has(desk, ".fnwrap", "overflow-x", lambda v: v == "auto")
+            and has(desk, "table.fn", "min-width", lambda v: v == "22em")):
+        bad.append("desktop: the wrapper no longer scrolls or the table lost its 22em: the desktop "
+                   "table is not as it was")
+    if stray:
+        bad.append(f"the phone's fiscal-table layout reaches past its 45em block: {stray}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("fiscalTable gives each figure its short heading and each row its class, keeps "
+                  "a span's colspan and every role; app.css reflows it within 45em alone and the "
+                  "desktop table keeps its scroller and 22em")
 
 
 def _css_palette(text):
@@ -42714,34 +43314,41 @@ def _def_table(RSA, passages):
 
 
 # The page's script in a page made by hand: a definition, a word that links to
-# it, and a paragraph elsewhere; node drives it by keyboard, by touch and by
-# mouse, on a clock it holds.
+# it, a long definition and a word that links to that, and a paragraph
+# elsewhere; node drives it by keyboard, by touch and by mouse, on a clock it
+# holds, and presses the box's own link and button.
 _DEFS_NODE = r"""
 let now = 1000, timers = [];
 const tick = ms => { now += ms; timers.forEach(t => { if (t.f && t.at <= now) { const f = t.f; t.f = null; f(); } }); };
 const on = {}, ids = {};
 function match(x, sel) {
-  return sel.split(",").some(s => { s = s.trim(); if (s === "p") return x.tagName === "p";
+  return sel.split(",").some(s => { s = s.trim(); if (/^\w+$/.test(s)) return x.tagName === s;
     const m = /^(\w+)?\.([\w-]+)$/.exec(s);
     return m && (!m[1] || x.tagName === m[1]) && (" " + (x.className || "") + " ").includes(" " + m[2] + " "); });
 }
 function node(tag, attrs, parent) {
   const n = {tagName: tag, attrs: Object.assign({}, attrs || {}), children: [], parentNode: null, style: {},
-    hidden: false, _text: "", className: (attrs || {}).class || "",
+    hidden: false, _text: "", className: (attrs || {}).class || "", listeners: {},
     getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
     setAttribute(k, v) { this.attrs[k] = String(v); if (k === "id") ids[v] = this; },
     removeAttribute(k) { delete this.attrs[k]; },
-    appendChild(c) { if (c.parentNode) c.parentNode.children = c.parentNode.children.filter(x => x !== c);
+    appendChild(c) { if (c.parentNode) c.parentNode.removeChild(c);
       c.parentNode = this; this.children.push(c); return c; },
-    addEventListener() {},
+    insertBefore(c, ref) { if (c.parentNode) c.parentNode.removeChild(c); c.parentNode = this;
+      const i = ref ? this.children.indexOf(ref) : -1;
+      if (i < 0) this.children.push(c); else this.children.splice(i, 0, c); return c; },
+    removeChild(c) { this.children = this.children.filter(x => x !== c); c.parentNode = null; return c; },
+    get nextSibling() { const k = this.parentNode ? this.parentNode.children : []; return k[k.indexOf(this) + 1] || null; },
+    addEventListener(t, f) { (this.listeners[t] = this.listeners[t] || []).push(f); },
     contains(x) { while (x) { if (x === this) return true; x = x.parentNode; } return false; },
     closest(sel) { let x = this; while (x) { if (match(x, sel)) return x; x = x.parentNode; } return null; },
+    querySelector(sel) { return this.querySelectorAll(sel)[0] || null; },
     querySelectorAll(sel) { const out = []; const walk = y => y.children.forEach(c => { if (match(c, sel)) out.push(c); walk(c); });
       walk(this); return out; },
     getBoundingClientRect() { return this.rect || {left: 0, right: 0, top: 0, bottom: 0}; },
     focus() { const was = doc.activeElement; doc.activeElement = this; if (was !== this) fire("focusin", {target: this}); }};
   Object.defineProperty(n, "textContent", {get() { return n._text + n.children.map(c => c.textContent).join(""); },
-    set(v) { n._text = String(v); n.children = []; }});
+    set(v) { n._text = String(v); n.children.forEach(c => { c.parentNode = null; }); n.children = []; }});
   Object.defineProperty(n, "id", {get() { return n.attrs.id; }, set(v) { n.setAttribute("id", v); }});
   if (n.attrs.id) ids[n.attrs.id] = n;
   if (parent) parent.appendChild(n);
@@ -42750,36 +43357,84 @@ function node(tag, attrs, parent) {
 const doc = {activeElement: null, documentElement: {clientWidth: 1200}, getElementById: k => ids[k] || null,
   createElement: t => node(t), addEventListener(t, f) { (on[t] = on[t] || []).push(f); }};
 function fire(t, ev) { let no = false; (on[t] || []).forEach(f => f(Object.assign({preventDefault() { no = true; }}, ev))); return no; }
+// A press: the element's own listeners, then the document's, as a click bubbles.
+function press(x) { (x.listeners.click || []).forEach(f => f({target: x})); return fire("click", {target: x}); }
 const art = node("div", {class: "rs-art"}); art.rect = {left: 100, right: 800, top: 0, bottom: 5000};
 const dfn = node("div", {class: "rs-dfn", id: "s1_III", "data-cite": "RSA 153:1, III", "data-for": "this chapter"}, art);
 node("p", {}, dfn)._text = DEFINITION;
+const long = node("div", {class: "rs-dfn", id: "s1_IX", "data-cite": "RSA 153:1, IX", "data-for": "this chapter"}, art);
+LONG.forEach(t => { node("p", {}, long)._text = t; });
 const para = node("p", {}, art);
 const word = node("a", {class: "rs-tm", href: "/laws/153#s1_III"}, para); word._text = "dwelling units";
 word.rect = {left: 300, right: 400, top: 200, bottom: 220};
+const para2 = node("p", {}, art);
+const word2 = node("a", {class: "rs-tm", href: "/laws/153#s1_IX"}, para2); word2._text = "residential";
 const elsewhere = node("p", {}, art);
 doc.activeElement = elsewhere;
-global.document = doc; global.window = {};
+global.document = doc; global.window = {innerHeight: 900};
 global.setTimeout = (f, ms) => timers.push({at: now + ms, f});
 global.clearTimeout = i => { if (i && timers[i - 1]) timers[i - 1].f = null; };
 global.Date = {now: () => now};
 new Function(SCRIPT)();
 const box = () => ids["rs-dpop"], out = {};
+const link = () => box().querySelector("a"), more = () => box().querySelector("button");
 fire("keydown", {key: "Tab"}); word.focus();
 out.focus = !!box() && !box().hidden; out.says = box() && box().textContent;
 out.described = word.getAttribute("aria-describedby"); out.role = box() && box().getAttribute("role");
+out.link = link() && [link().href, link().textContent]; out.short_has_more = !!more();
+out.in_text = box().parentNode === para && para.children.indexOf(box()) === para.children.indexOf(word) + 1;
+// Tab from the word into the box's link: it stays open, and Escape there
+// closes it and gives the word the keyboard without opening it again.
+const into = link() || more() || elsewhere;
+fire("focusout", {target: word, relatedTarget: into}); doc.activeElement = into;
+fire("focusin", {target: into}); tick(300); out.tab_in_stays = into !== elsewhere && !box().hidden;
 fire("keydown", {key: "Escape"});
 out.escape = box().hidden && doc.activeElement === word && !word.getAttribute("aria-describedby");
+// Its link goes to the definition, and the box closes behind it.
+doc.activeElement = elsewhere; word.focus();
+out.link_follows = !!link() && !press(link()) && box().hidden;
+// A long one: cut, with Show more, which opens all of it, a paragraph a line.
+doc.activeElement = elsewhere; word2.focus();
+out.cut = box().querySelector(".rs-dptext").textContent;
+out.more = !!more() && more().textContent === "Show more" && more().getAttribute("aria-expanded") === "false";
+if (more()) press(more());
+out.whole = box().querySelector(".rs-dptext").children.map(c => c.textContent);
+out.more_open = !!more() && !box().hidden && more().textContent === "Show less" && more().getAttribute("aria-expanded") === "true";
+if (more()) press(more());
+out.less = !!more() && box().querySelector(".rs-dptext").textContent === out.cut && more().textContent === "Show more";
+fire("keydown", {key: "Escape"});
 doc.activeElement = elsewhere;
 fire("pointerdown", {pointerType: "touch", target: word});
 out.tap_stays = fire("click", {target: word}); out.tap_opens = !box().hidden;
+out.tap_link = !!link();
 tick(1500); fire("pointerdown", {pointerType: "touch", target: word});
 out.second_tap_goes = !fire("click", {target: word});
 fire("pointerdown", {pointerType: "touch", target: elsewhere}); fire("click", {target: elsewhere});
 out.press_elsewhere = box().hidden;
 fire("pointerover", {pointerType: "mouse", target: word}); tick(200); out.hover_waits = box().hidden;
 tick(400); out.hover_opens = !box().hidden;
+fire("pointerout", {pointerType: "mouse", target: word, relatedTarget: box()}); tick(300);
+out.onto_box_stays = !box().hidden;
 fire("pointerout", {pointerType: "mouse", target: word, relatedTarget: elsewhere}); tick(300);
-out.leave_closes = box().hidden; out.in_text = box().parentNode === art;
+out.leave_closes = box().hidden;
+// Escape with the keyboard elsewhere: the box closes, the keyboard stays.
+fire("pointerover", {pointerType: "mouse", target: word}); tick(600);
+fire("keydown", {key: "Escape"}); out.escape_elsewhere = box().hidden && doc.activeElement === elsewhere;
+// A press inside the box that sends the keyboard nowhere keeps it open.
+word2.focus(); fire("pointerdown", {pointerType: "mouse", target: box().querySelector(".rs-dptext")});
+fire("focusout", {target: word2, relatedTarget: null}); tick(300); out.press_inside_stays = !box().hidden;
+fire("keydown", {key: "Escape"}); doc.activeElement = elsewhere;
+// THE SIDE IS KEPT. Low on a screen 900 high, a short box opens under the
+// word; Show more, now 500 high, keeps it there, no taller than the room.
+word2.rect = {left: 300, right: 400, top: 600, bottom: 620}; box().rect = null;
+word2.focus(); out.short_below = box().style.top;
+box().rect = {left: 300, right: 700, top: 0, bottom: 500}; if (more()) press(more());
+out.more_below = [box().style.top, box().style.maxHeight];
+fire("keydown", {key: "Escape"}); doc.activeElement = elsewhere;
+// Near the bottom, a box 500 high opens over the word, and Show less keeps it there.
+word2.rect = {left: 300, right: 400, top: 800, bottom: 820};
+word2.focus(); out.opens_above = [box().style.top, box().style.maxHeight];
+if (more()) press(more()); out.more_above = box().style.top;
 console.log(JSON.stringify(out));
 """
 
@@ -42804,7 +43459,16 @@ def _rsa_defined_terms(B, RSA, S):
     version it is, so it is the second definition that withholds it; and a
     term is not marked inside its own definition. Then the page: the word a
     quiet link to the definition's own paragraphs, which carry its citation
-    and scope once; and its script, by keyboard, by touch and by mouse."""
+    and scope once; and its script, by keyboard, by touch and by mouse.
+
+    And the person, 7 November 2026: "you need to be able to click to where
+    that definition is as a link ... Maybe a show more option as well". The
+    box's citation is a link to the definition (the word's own address), it
+    closes behind it; a definition over 400 characters is cut, with Show
+    more opening all of it, a paragraph a line, and Show less after; the box
+    sits straight after the word, so Tab goes into it and it stays, Escape
+    there gives the word the keyboard without opening it again, and the
+    pointer can cross onto it."""
     t = _def_table(RSA, _DEF_PASSAGES)
     d = t.defined()
 
@@ -42867,7 +43531,12 @@ def _rsa_defined_terms(B, RSA, S):
         return "ok", "five cases on real passages and the page; node is not here for the script"
     script = B.DEFS_JS[len("<script>"):-len("</script>")]
     definition = RSA.paragraphs(t.sections["153:1"].text)[at["III"]]
-    prog = (f"const SCRIPT = {json.dumps(script)};\nconst DEFINITION = {json.dumps(definition)};\n" + _DEFS_NODE)
+    # A long definition, three paragraphs, the first opening with its numbers.
+    long = ["IX. \"Residential\" means " + "a use of property as a home or as rooms let for living in, " * 9 + "and nothing else.",
+            "(a) It includes a house, an apartment, a manufactured housing unit and a room let by the week.",
+            "(b) It does not include a hotel room let by the night."]
+    prog = (f"const SCRIPT = {json.dumps(script)};\nconst DEFINITION = {json.dumps(definition)};\n"
+            f"const LONG = {json.dumps(long)};\n" + _DEFS_NODE)
     r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
     assert r.returncode == 0, "the page's definitions script stopped: " + (r.stderr or "").strip()[-300:]
     out = json.loads(r.stdout.strip().splitlines()[-1])
@@ -42875,12 +43544,164 @@ def _rsa_defined_terms(B, RSA, S):
                            "providing complete and independent living facilities for one or more persons "
                            "including permanent provisions for living, sleeping, eating, cooking, and sanitation."), \
         f"the box does not give the definition and where it is from: {out['says']!r}"
-    wrong = [k for k in ("focus", "escape", "tap_stays", "tap_opens", "second_tap_goes", "press_elsewhere",
-                         "hover_waits", "hover_opens", "leave_closes", "in_text") if not out[k]]
-    assert not wrong and out["described"] == "rs-dpop" and out["role"] == "tooltip", \
+    # WHERE IT IS, AND ALL OF IT (the person, 7 November 2026): the citation a
+    # link to the definition, the word's own address; a long one cut, with
+    # Show more opening all of it, a paragraph a line, and Show less after.
+    assert out["link"] == ["/laws/153#s1_III", "RSA 153:1, III"] and not out["short_has_more"], \
+        f"the box's citation is not a link to the definition, or a short one offers Show more: {out}"
+    first = long[0].split(". ", 1)[1]
+    whole = [first] + long[1:]
+    assert out["cut"].endswith("…") and len(out["cut"]) <= 401 and first.startswith(out["cut"][:-1]) \
+        and out["more"] and out["whole"] == whole and out["more_open"] and out["less"], (
+        f"a long definition is not cut with Show more, or Show more does not open all of it, a "
+        f"paragraph a line, and close it again: {out}")
+    wrong = [k for k in ("focus", "in_text", "tab_in_stays", "escape", "link_follows", "tap_stays",
+                         "tap_opens", "tap_link", "second_tap_goes", "press_elsewhere", "hover_waits",
+                         "hover_opens", "onto_box_stays", "leave_closes", "escape_elsewhere",
+                         "press_inside_stays") if not out[k]]
+    # The word at 600-620 of a screen 900 high: under it, 626, and Show more's
+    # 500 kept there in the 266 left; at 800-820, 500 high goes over it, 294,
+    # and stays there when Show less is pressed (the box's height in node is
+    # the one set, so its top does not move).
+    place = {"short_below": out.get("short_below"), "more_below": out.get("more_below"),
+             "opens_above": out.get("opens_above"), "more_above": out.get("more_above")}
+    assert place == {"short_below": "626px", "more_below": ["626px", "266px"],
+                     "opens_above": ["294px", ""], "more_above": "294px"}, \
+        f"the box does not open where there is room, or jumps sides when Show more is pressed: {place}"
+    assert not wrong and out["described"] == "rs-dpcite rs-dptext" and out["role"] is None, \
         f"the definition box fails by keyboard, touch or mouse: {wrong}, {out}"
     return "ok", ("153:5 marked from 153:1 and 153:28 from 153:27, not 153:2 or 540-C:1; 541-A:14-a's 'files' "
-                  "withheld for two definitions; no term in its own; the box by keyboard, tap and mouse")
+                  "withheld for two definitions; no term in its own; the box by keyboard, tap and mouse, "
+                  "its link to the definition and Show more for a long one")
+
+
+# The chapter page's script on lists made by hand: a fold holding a list of
+# ten, and a list of eight; node presses "Show all" and closes the fold.
+_FOLD_NODE = r"""
+const on = {}, uls = [];
+function node(tag, parent) {
+  const n = {tagName: tag, children: [], parentNode: null, hidden: false, attrs: {}, listeners: {}, open: true,
+    _text: "", className: "",
+    getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
+    setAttribute(k, v) { this.attrs[k] = String(v); },
+    appendChild(c) { c.parentNode = this; this.children.push(c); return c; },
+    insertBefore(c, ref) { c.parentNode = this; const i = ref ? this.children.indexOf(ref) : -1;
+      if (i < 0) this.children.push(c); else this.children.splice(i, 0, c); return c; },
+    get nextSibling() { const k = this.parentNode ? this.parentNode.children : []; return k[k.indexOf(this) + 1] || null; },
+    addEventListener(t, f) { (this.listeners[t] = this.listeners[t] || []).push(f); },
+    closest(sel) { let x = this; while (x) { if (x.tagName === sel) return x; x = x.parentNode; } return null; },
+    querySelector(sel) { return this.children.find(c => c.tagName === sel) || null; },
+    focus() { doc.activeElement = this; }};
+  Object.defineProperty(n, "textContent", {get() { return n._text; }, set(v) { n._text = String(v); }});
+  if (parent) parent.appendChild(n);
+  return n;
+}
+const doc = {activeElement: null, createElement: t => node(t),
+  querySelectorAll: sel => sel === "ul[data-fold]" ? uls.filter(u => u.getAttribute("data-fold")) : [],
+  querySelector: () => null, addEventListener() {}};
+global.document = doc; global.window = {};
+function list(parent, n, fold) { const u = node("ul", parent); if (fold) u.setAttribute("data-fold", fold);
+  for (let i = 0; i < n; i++) { const li = node("li", u); node("a", li)._text = "RSA " + i; } uls.push(u); return u; }
+const d = node("details"); const part = node("div", d);
+const ten = list(part, 10, "8"), eight = list(node("div"), 8, "8"); node("p", part);
+new Function(SCRIPT)();
+const btn = ten.nextSibling, out = {};
+const shown = u => u.children.filter(li => !li.hidden).length;
+const press = () => (btn.listeners.click || []).forEach(f => f({target: btn}));
+out.after_list = !!btn && btn.tagName === "button" && btn.parentNode === part && part.children.indexOf(btn) === 1;
+out.folded = [shown(ten), btn.textContent, btn.getAttribute("aria-expanded")];
+press(); out.opened = [shown(ten), btn.textContent, btn.getAttribute("aria-expanded"),
+                       doc.activeElement === ten.children[8].children[0]];
+press(); out.closed = [shown(ten), btn.textContent];
+press(); d.open = false; (d.listeners.toggle || []).forEach(f => f({})); out.with_fold = [shown(ten), btn.textContent];
+out.eight = [shown(eight), eight.nextSibling === null];
+const late = list(node("div"), 9, "8"), only = {querySelectorAll: () => [late]};
+window.rsFold(only); window.rsFold(only);
+out.later = [shown(late), late.parentNode.children.filter(c => c.tagName === "button").length];
+console.log(JSON.stringify(out));
+"""
+
+
+@check("build", "a statute section's history and citations are one fold, its counts in its line, and "
+       "\"Show all\" opens the rest of its own list where it is and closes with the fold",
+       needs=("build_rsa", "rsa", "shell"))
+def _rsa_section_fold(B, RSA, S):
+    """The person, 7 November 2026: "I'd like a more compact navigation of the
+    how it has changed, other bills that proposed changes, cites, and cited
+    by sections all compacted into one dropdown before you expand it", and
+    "The show all 12 for the cited by is also formatted strangely since it
+    doesn't move with the dropdown it just expands another section under."
+
+    On the definitions check's own chapter, given a history of ten laws, a
+    citation and eleven sections citing it: the section has one fold, "History
+    and citations" with "10 changes · cites 1 · cited by 11" in its line,
+    holding each list under a heading one level below the section's, the
+    history drawn whole with data-fold, and no Show all of the old kind
+    (rs-more) anywhere on the page; fold_counts says one in the singular
+    and leaves out what is not there. Then the chapter's script in node: the
+    button straight after its list, "Show all 10" showing eight, pressed
+    showing all ten and taking the keyboard to the first it showed, "Show
+    fewer" folding it again, closing the fold folding it too; and a list of
+    eight given no button."""
+    assert B.fold_counts([("hist", 1), ("other", 1), ("cites", 1), ("cited", 1)]) == \
+        "1 change · 1 other bill · cites 1 · cited by 1", "fold_counts does not say one in the singular"
+    assert B.fold_counts([("hist", 3), ("other", 0), ("cites", 4), ("cited", 12)]) == \
+        "3 changes · cites 4 · cited by 12", "fold_counts says a list that is not there"
+    t = _def_table(RSA, _DEF_PASSAGES)
+    data = {"enacted": {"153:5": [[str(1990 + i), f"{10 + i}:1", ""] for i in range(10)]},
+            "statute": dict({"153:5": ["153:1"], "153:2": ["153:5"], "153:10-a": ["153:5"]},
+                         **{f"99:{i}": ["153:5"] for i in range(1, 10)})}
+    root = Path(tempfile.mkdtemp(prefix="gr-rsafold-"))
+    try:
+        page = B.chapter_page(S.template(Path("site")), t, data, B.Bills(root, "2025-2026"), "153",
+                              "https://graniterecord.org")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    s5 = page[page.index('id="s5"'):]
+    s5 = s5[:s5.index("</section>")]
+    lv = int(re.search(r'<h(\d) class="rs-h">', s5).group(1))
+    bad = []
+    folds = s5.count('<details class="rs-fold">')
+    if folds != 1:
+        bad.append(f"153:5 has {folds} folds, not one")
+    if ('<summary><span class="rs-fname">History and citations</span> <span class="rs-fcount">'
+            "10 changes · cites 1 · cited by 11</span></summary>") not in s5:
+        bad.append("the fold's line is not \"History and citations\" with its counts")
+    heads = re.findall(r'<div class="rs-fpart"><h(\d) class="rs-fh">([^<]+)</h\d>', s5)
+    if heads != [(str(lv + 1), "How it has changed"), (str(lv + 1), "Cites"), (str(lv + 1), "Cited by")]:
+        bad.append(f"the fold's lists are not headed one level under the section's h{lv}: {heads}")
+    if not re.search(r'<ul class="rs-hist" data-fold="8">(?:<li>.*?</li>){10}</ul>', s5):
+        bad.append("the history of ten is not drawn whole with data-fold=\"8\"")
+    if not re.search(r'<h\d class="rs-fh">Cited by</h\d><ul class="rs-refs" data-fold="8">(?:<li>.*?</li>){11}</ul>', s5):
+        bad.append("Cited by's eleven are not drawn whole with data-fold=\"8\"")
+    if "rs-more" in page or "<summary>Show all" in page:
+        bad.append("the page still draws a Show all of its own beside a list")
+    # A history row says the act's section, so eleven rows of one act are
+    # not eleven rows alike (RSA 100-A:1's, 142:4 to 142:28 of 2025).
+    if "Laws of 1990, chapter 10, section 1</li>" not in s5:
+        bad.append("a history row does not say the act's section")
+    # The Laws page's reader puts a section in after the page has loaded,
+    # and folds its lists as the chapter's page does.
+    read = B.LANDING_JS[B.LANDING_JS.find("read.innerHTML='<p class=\"lw-rcrumb\">"):]
+    if not ("window.rsFold=fold" in B.CHAPTER_JS and B.CHAPTER_JS in page
+            and 0 <= read.find("window.rsFold(read)") < read.find("read.scrollTop=0")):
+        bad.append("the Laws page's reader does not fold the lists of the section it puts in")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if node:
+        script = B.CHAPTER_JS[len("<script>"):-len("</script>")]
+        r = _node_file(node, f"const SCRIPT = {json.dumps(script)};\n" + _FOLD_NODE,
+                       capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, "the chapter page's script stopped: " + (r.stderr or "").strip()[-300:]
+        out = json.loads(r.stdout.strip().splitlines()[-1])
+        want = {"after_list": True, "folded": [8, "Show all 10", "false"],
+                "opened": [10, "Show fewer", "true", True], "closed": [8, "Show all 10"],
+                "with_fold": [8, "Show all 10"], "eight": [8, True], "later": [8, 1]}
+        if out != want:
+            bad.append(f"Show all does not open and close in place: {out}, not {want}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("one fold, \"History and citations\" with its counts, its lists headed under the section; "
+                  + ("Show all opens and closes in place, and with the fold" if node else
+                     "node is not here for the script"))
 
 
 @check("build", "a docket line in plain words says what the record says, in the approved vote words, "
@@ -57255,7 +58076,13 @@ def _sort_beside_count():
     And what the search read (#synhint) is not a line of its own whatever
     the room: from 1024px up "also matching: education, student, teacher,
     classroom" fits after the count, and as a line of its own it pushed the
-    list down 28px at the first synonym typed (the review of 8 October)."""
+    list down 28px at the first synonym typed (the review of 8 October).
+    ON A PHONE, since 8 November 2026 (Alice): the box first, the term
+    picker and the Sort beside each other in equal halves, the count on a
+    line of its own and what the search read under it -- one wrapping row
+    in which .qline and .qhint lay out nothing, held by _search_polish. What
+    is held here still holds there: the two take one width, nothing gives
+    either a width of its own, and the Sort comes before the count."""
     html = Path("src/pages/bills.html").read_text(encoding="utf-8")
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     bad = []
@@ -73685,10 +74512,15 @@ def _spanish_officials(i18n, BP, OT, seating):
     main = es[es.index("<main"):es.index("</main>")]
     if f"<h1>{strings['of.title']['es']}</h1>" not in main:
         bad.append("its <h1> is not the catalog's of.title")
-    for key in ("of.tab.town", "of.tab.legislators", "of.tab.executive", "of.tab.judicial",
-                "of.tab.counties", "of.tab.federal"):
-        if not re.search(r'role="tab"[^>]*>' + re.escape(strings[key]["es"]), main):
+    # Four tabs say their short names, and their panels the whole ones (the
+    # owner, 7 November 2026; _officials_tabs_fit_and_retire).
+    for key in ("of.tab.town", "of.tab.legislators", "of.tab_short.executive",
+                "of.tab_short.judicial", "of.tab_short.counties", "of.tab_short.federal"):
+        if not re.search(r'role="tab"[^>]*>' + re.escape(strings[key]["es"]) + r"[ <]", main):
             bad.append(f"no tab labelled {strings[key]['es']!r} ({key})")
+    for key in ("of.tab.executive", "of.tab.judicial", "of.tab.counties", "of.tab.federal"):
+        if f'<h2 class="twnph">{strings[key]["es"]}</h2>' not in main:
+            bad.append(f"no panel headed {strings[key]['es']!r} ({key})")
     if '<span lang="en">' in main:
         bad.append("a tab says something in English: " + main[main.index('<span lang="en">'):][:80])
     own = re.findall(r'href="([^"]*officials[^"]*)"', main)
@@ -82780,13 +83612,20 @@ def _legislators_page_tabs():
     page = (site / "officials.html").read_text(encoding="utf-8")
     strips = re.findall(r'<div class="twntabs oftabs" role="tablist"[^>]*>(.*?)</div>', page, re.S)
     assert len(strips) == 1, f"the Officials page has {len(strips)} tab strips"
-    assert re.search(r'<div class="twntabs oftabs" role="tablist" aria-label="Officials" hidden>',
-                     page), "the strip is not written hidden for the script to show"
+    assert re.search(r'<div class="twntabs oftabs" role="tablist" aria-label="Officials" '
+                     r'data-retired="legislators" hidden>', page), (
+        "the strip is not written hidden for the script to show, naming Legislators as the tab "
+        "a retired tab's address opens")
     tabs = re.findall(r'role="tab" id="tab-([a-z-]+)" data-pane="([a-z-]+)"[^>]*>([^<]+)', strips[0])
     want = [("my-town", "My Town"), ("legislators", "Legislators"),
             ("federal", "Federal Delegation"), ("executive", "Executive Branch"),
             ("judicial", "Judicial Branch"), ("counties", "County Officials")]
-    assert [(t, n.strip()) for t, p, n in tabs if t == p] == want, f"the strip's tabs are {tabs}"
+    # SEVEN TABS ON ONE LINE (the owner, 7 November 2026): the tab says the
+    # short name and its panel's heading the whole one (_officials_tabs_fit).
+    on_tab = dict(want, federal="Federal", executive="Executive", judicial="Judicial",
+                  counties="County")
+    assert [(t, n.strip()) for t, p, n in tabs if t == p] == [(t, on_tab[t]) for t, _n in want], (
+        f"the strip's tabs are {tabs}")
     panes = {}
     starts = [(page.index(f'<div class="twnpane" id="{pid}" role="tabpanel" '
                           f'aria-labelledby="tab-{pid}">'), pid) for pid, _n in want]
@@ -82802,8 +83641,8 @@ def _legislators_page_tabs():
     assert towns.index('id="lmatch"') < towns.index('id="ofmap"'), (
         "My Town does not hold the map under the finder")
     assert 'id="roster"' in legs and 'id="lq"' not in legs, "the Legislators panel does not hold the roster"
-    if 'class="comp-wrap"' in page:
-        assert 'class="comp-wrap"' in legs, "who holds the seats is outside the Legislators panel"
+    if 'class="comp-wrap' in page:
+        assert 'class="comp-wrap comp-top"' in legs, "who holds the seats is outside the Legislators panel"
     # The other tabs' offices are officials.json's people, each the one
     # person chip (the department heads and the judges are
     # _officials_heads_and_judges's).
@@ -82985,8 +83824,8 @@ def _executive_branch_renamed():
     page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
     assert "Statewide Officials" not in page and 'id="statewide"' not in page \
         and 'data-pane="statewide"' not in page, "the page still names Statewide Officials"
-    assert re.search(r'role="tab" id="tab-executive" data-pane="executive"[^>]*>Executive Branch',
-                     page), "no Executive Branch tab at #executive"
+    assert re.search(r'role="tab" id="tab-executive" data-pane="executive"[^>]*>Executive'
+                     r'(?: <span class="ofn">| ?</button>)', page), "no Executive tab at #executive"
     start = page.index('<div class="twnpane" id="executive" role="tabpanel"')
     pane = page[start:page.index('<div class="twnpane"', start + 1)]
     line = OT.CHOSEN_BY_LEGISLATURE
@@ -83135,7 +83974,7 @@ def _officials_heads_and_judges():
             f"Justice {r['name']} of the Superior Court is not on the Judicial Branch tab")
     assert f'href="{_html.escape(cc["judges_url"])}"' in jud, (
         "the Circuit Court's line does not link to the court's own list of judges")
-    for pid, name in (("executive", "Executive Branch"), ("judicial", "Judicial Branch")):
+    for pid, name in (("executive", "Executive"), ("judicial", "Judicial")):
         n = OT.count(off, pid)
         assert re.search(rf'id="tab-{pid}"[^>]*>{name} <span class="ofn">\({n:,}\)</span>', page), (
             f"the {name} tab does not count its {n}")
@@ -85875,7 +86714,7 @@ def _member_requests():
     p = has["prime"]
     assert 'data-id="LSR20270002"' in p and 'data-id="LSR20270007"' in p \
         and 'LSR20270009' not in p, f"the member's requests are not theirs alone: {p[-400:]!r}"
-    assert "These are requests, not bills yet." in p and "2 filed for 2027, 1 of them withdrawn" in p, (
+    assert "Requests, not bills yet." in p and "numbered 2027 bill" in p and "2 filed for 2027, 1 of them withdrawn" in p, (
         f"the requests' one line is not there: {p[:400]!r}")
     assert "only its prime sponsor" in has["co"] and "not voted on" in has["votes"], (
         "the co-sponsored or Votes tab does not say why a request term has nothing there")
@@ -110045,7 +110884,8 @@ def _requests_year_their_own(build_lsrs):
     stuck = [s for s in ('"for 2027"', "the 2027 bills", '"2027-requests"') if s in app] + \
             [s for s in ("2027-requests.json", '"the 2027 bill requests"') if s in plan]
     assert not stuck, f"a requests' year written in by hand: {stuck}"
-    assert "for ${reqYear()}" in app and "${esc(reqYear())} bills" in app, \
+    assert "for ${reqYear()}" in app and "a numbered {year} bill." in app \
+        and '{year:esc(reqYear())});' in app, \
         "app.js no longer takes the requests' year from meta.json"
     return "ok", ("2028's requests listed as 2028's, alone, the 2027 file gone and its request "
                   "counted; app.js and build_all name no year of their own")
@@ -114645,6 +115485,331 @@ process.stdout.write(JSON.stringify(out));
                   + ("" if node else " (node absent: script not run)"))
 
 
+@check("frontend", "who holds the seats is at the head of the Legislators tab, under the presiding "
+                   "officers and over the roster, and on a phone one short line a chamber, in "
+                   "English and in Spanish")
+def _seat_totals_at_top():
+    """The owner's walk of 7 November 2026, C: "Who holds the seats" moves
+    from the bottom of the Legislators tab to the top, under the presiding
+    officers, and on a phone each chamber is one short line -- "Senate 16 R
+    &middot; 8 D", "House 212 R &middot; 169 D &middot; 1 I &middot; 18
+    vacant" -- not the tall block of bars, legends and thresholds.
+
+    Read off the fixture's built page in both languages: the block once,
+    between the presiding officers and the roster; a short line for each
+    chamber its bar draws, saying the bar's own counts in its order, each
+    party's letter for the eye and its name for a screen reader, and the
+    vacant seats last; and app.css showing the lines, and not the bars, at a
+    phone's width, and the bars, and not the lines, wider. (The Members-Elect
+    tab's are _elect_tab_like_legislators's.)
+
+    THE PRESIDING OFFICERS FIRST. The fixture has no officers.json, so its
+    page draws no Presiding Officers and the page alone cannot say the block
+    is under them (the review of 8 November 2026): where it draws none, the
+    order is read off the Legislators panel as officials_html writes it --
+    the presiding officers, then the block, then the roster."""
+    import html as _h
+    shared, _base, _ran, _days = _fixture_site_shared()
+    bad = []
+    src = Path("src/pages/build_pages.py").read_text(encoding="utf-8")
+    panel = re.search(r'\("legislators", say\(lang, "of\.tab\.legislators", "Legislators"\), len\(legs\),'
+                      r'(.*?)\n\s*\("federal",', src, re.S)
+    order = [panel.group(1).find(x) if panel else -1
+             for x in ("OT.presiding(", '<div class="comp-wrap comp-top">', "roster_section(")]
+    if -1 in order or order != sorted(order):
+        bad.append(f"officials_html does not write the Legislators panel as the presiding officers, "
+                   f"then who holds the seats, then the roster (at {order})")
+    for lang, rel, words in (("en", "officials.html", ("Senate", "House", "vacant")),
+                             ("es", "es/officials.html", ("Senado", "Cámara", "vacante"))):
+        page = (shared / "site" / rel).read_text(encoding="utf-8")
+        i = page.find('<div class="twnpane" id="legislators"')
+        j = page.find('<div class="twnpane"', i + 1)
+        pane = page[i:j if j > 0 else len(page)]
+        top, roster = pane.find('<div class="comp-wrap comp-top">'), pane.find('<section class="roster"')
+        pres = pane.find('<section class="ofpres"')
+        if i < 0 or not 0 <= top < roster or pres > top or pane.count('class="comp-wrap') != 1:
+            bad.append(f"{rel}: who holds the seats is not once, under the presiding officers and "
+                       f"over the roster (at {top}, the roster at {roster}, the officers at {pres})")
+            continue
+        wrap = pane[top:roster]
+        bars = re.findall(r'<div class="comp"><div class="compline"><b>([^<]+)</b>.*?'
+                          r'<div class="plegend">(.*?)</div>', wrap, re.S)
+        lines = re.findall(r'<p class="compshort"><b>([^<]+)</b> (.*?)</p>', wrap)
+        if not bars or [b for b, _l in bars] != [c for c, _t in lines] or \
+                [b for b, _l in bars] != list(words[:2]):
+            bad.append(f"{rel}: the bars are for {[b for b, _l in bars]} and the short lines for "
+                       f"{[c for c, _t in lines]}")
+            continue
+        for (ch, legend), (_c, text) in zip(bars, lines):
+            seen = [(c, n) for c, n in re.findall(r'<span class="pdot seg-([A-Z?]+)"></span>[^<]*<b>(\d+)</b>',
+                                                  legend)]
+            said = re.findall(r'(\d+) <span aria-hidden="true">([^<]+)</span><span class="sr">[^<]+</span>',
+                              text)
+            vac = [(c, n) for c, n in seen if c == "V"]
+            if [(c, n) for c, n in seen if c != "V"] != [(c, n) for n, c in said]:
+                bad.append(f"{rel}: the {ch} line says {said}, its bar {seen}")
+            # Each count whole (.csb), the vacant seats the last of them.
+            counts = [_h.unescape(re.sub(r"<[^>]+>", "", c))
+                      for c in re.findall(r'<span class="csb">((?:[^<]|<span[^>]*>[^<]*</span>)*)</span>', text)]
+            gone = [m.group(1) for c in counts for m in [re.fullmatch(r"(\d+) " + words[2] + r"s?", c)] if m]
+            if [n for _c, n in vac] != gone or len(counts) != len(seen) or (
+                    vac and not re.fullmatch(r"\d+ " + words[2] + r"s?", counts[-1])):
+                bad.append(f"{rel}: the {ch} line's counts are {counts}, its bar's {seen}")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    if not re.search(r":where\(body\.pg\) \.compshort\{display:none;", css) or not re.search(
+            r"@media \(max-width:38\.75em\)\{\s*:where\(body\.pg\) \.comp-top > \.compshort\{display:block\}"
+            r"\s*:where\(body\.pg\) \.comp-top > \.comp\{display:none\}\s*\}", css):
+        bad.append("app.css does not show the short lines, and not the bars, at a phone's width only")
+    assert not bad, "\n  ".join(bad)
+    return "ok", ("in both languages, once, under the presiding officers and over the roster; a "
+                  "line for each chamber in its bar's counts, for a phone's width alone")
+
+
+@check("frontend", "the Legislators tab's Presiding Officers are their chips alone, with no "
+                   "sentence under them, in English and in Spanish", needs=("officials_tabs",))
+def _presiding_chips_alone(OT):
+    """The owner's walk of 7 November 2026: the sentence under the Presiding
+    Officers -- "The Speaker presides over the House, and the Deputy Speaker
+    sometimes in the Speaker's place; the Senate President presides over the
+    Senate." -- goes, in both languages. Each chip's role says the office.
+    Drawn for a Speaker and a Senate President serving on the day: the
+    section holds its heading and the chips, and nothing else; its catalog
+    entry is gone with it."""
+    legs = [{"id": "35", "name": "Carson, Sharon", "chamber": "S", "party": "R",
+             "slug": "sharon-carson-sd-14", "display_full": "Sen. Sharon Carson (R - SD14)"},
+            {"id": "9", "name": "Packard, Sherman", "chamber": "H", "party": "R",
+             "slug": "sherman-packard-rock-16", "display_full": "Rep. Sherman Packard (R - Rock 16)"}]
+    officers = [{"office": "President of the Senate", "id": "35", "b": "S", "from": "2024-12-04"},
+                {"office": "Speaker of the House", "id": "9", "b": "H", "from": "2024-12-04"}]
+    bad = []
+    for lang in ("en", "es"):
+        html = OT.presiding(officers, legs, "2026-11-08", lang)
+        body = re.fullmatch(r'<section class="ofpres" aria-labelledby="of-presiding"><h3 '
+                            r'id="of-presiding">[^<]+</h3><div class="ofchips">(.*)</div></section>',
+                            html, re.S)
+        if not body or body.group(1).count('class="mchip') != 2:
+            bad.append(f"in {lang}, the Presiding Officers are {html[:300]!r}: their heading and "
+                       "two chips, and nothing under them")
+        if re.search(r"\bpresides?\b", re.sub(r"<[^>]+>", "", html), re.I):
+            bad.append(f"in {lang}, a sentence about who presides is back beside the chips")
+    cat = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    if "off.presiding_why" in cat:
+        bad.append("es.json still carries off.presiding_why, the sentence that went")
+    assert not bad, "\n  ".join(bad)
+    return "ok", "the Speaker and the Senate President as chips, with no sentence under them, in both languages"
+
+
+@check("build", "the Officials page's seven tabs say their short names, in both languages, over "
+                "panels headed in full; and from the day a tab retires, an address naming it "
+                "opens Legislators", needs=("build_town_pages",))
+def _officials_tabs_fit_and_retire(B):
+    """The owner, 7 November 2026, on the walk of dry run 4.
+
+    SEVEN TABS ON ONE LINE. With Members-Elect the strip needed 1,282px of
+    its 1,132 at 1280 and 1440, and the new tab showed only its "M" behind
+    the edge, in English and in Spanish. The tabs say "Federal", "Executive",
+    "Judicial" and "County" -- "Federal", "Ejecutivo", "Judicial" and
+    "Condados", the plural, as the tab is the ten counties' -- with their
+    counts, which measured 1,016px and about 979px on dry run 6 with the web
+    fonts; the panels keep "Federal Delegation" and the
+    rest as their headings, which a screen reader walking the headings and a
+    page read without the script still get. Each Spanish word is a draft.
+
+    A RETIRED TAB'S ADDRESS. From 2 December the Members-Elect tab hides
+    itself, by the build or by the reader's own date, and
+    /officials#members-elect opened six tabs with none chosen and nothing
+    under them. The strip names Legislators as the tab such an address opens
+    (data-retired), and TABS_JS opens it and writes it into the address; an
+    address naming something inside the retired panel does the same; the day
+    before, the tab opens as it always has; a strip naming no such tab opens
+    its first one still shown; with no address the page opens My Town as
+    before; and the arrow keys and End pass over a retired tab."""
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    bad = []
+    full = {"federal": "Federal Delegation", "executive": "Executive Branch",
+            "judicial": "Judicial Branch", "counties": "County Officials"}
+    cat = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    short = {"en": {"federal": "Federal", "executive": "Executive", "judicial": "Judicial",
+                    "counties": "County"},
+             "es": {"federal": "Federal", "executive": "Ejecutivo", "judicial": "Judicial",
+                    "counties": "Condados"}}
+    for pid, en in short["en"].items():
+        e = cat.get(f"of.tab_short.{pid}") or {}
+        if (e.get("en"), e.get("es"), e.get("state")) != (en, short["es"][pid], "draft"):
+            bad.append(f"es.json's of.tab_short.{pid} is {e}, not {en!r} and "
+                       f"{short['es'][pid]!r} as a draft")
+    for key, es in (("elect.elected", "Elección del {day}"), ("elect.takes", "Toma de posesión: {day}.")):
+        e = cat.get(key) or {}
+        if e.get("es") != es or e.get("state") != "draft":
+            bad.append(f"es.json's {key} is {e}: the owner's words, a draft, read {es!r}, in "
+                       "number with one member-elect and with many")
+    for lang, rel in (("en", "officials.html"), ("es", "es/officials.html")):
+        f = site / rel
+        if not f.exists():
+            if lang == "en":
+                bad.append("the fixture built no officials.html")
+            continue
+        page = f.read_text(encoding="utf-8")
+        strip = re.search(r'<div class="twntabs oftabs" role="tablist" aria-label="[^"]+" '
+                          r'data-retired="legislators" hidden>(.*?)</div>', page, re.S)
+        if not strip:
+            bad.append(f"{rel}'s strip names no data-retired tab, or is not written hidden")
+            continue
+        for pid, word in short[lang].items():
+            got = re.search(rf'id="tab-{pid}"[^>]*>([^<]*)', strip.group(1))
+            if not got or got.group(1).strip() != word:
+                bad.append(f"{rel}'s {pid} tab says {got and got.group(1)!r}, not {word!r}")
+            head = re.search(rf'<div class="twnpane" id="{pid}"[^>]*><h2 class="twnph">([^<]*)</h2>',
+                             page)
+            want = full[pid] if lang == "en" else (cat.get(f"of.tab.{pid}") or {}).get("es")
+            if not head or head.group(1) != want:
+                bad.append(f"{rel}'s {pid} panel is headed {head and head.group(1)!r}, not "
+                           f"{want!r}: the panel keeps the whole name")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not bad, "\n  ".join(bad)
+        return "skip", "the labels and the strip's attribute hold; node is not installed to run TABS_JS"
+    script = re.search(r"<script>\n(.*?)</script>", B.TABS_JS, re.S).group(1)
+    harness = """
+function node2(){
+  const e = el(); e.attrs = {};
+  e.setAttribute = function(k, v){ this.attrs[k] = String(v); };
+  e.getAttribute = function(k){ return k in this.attrs ? this.attrs[k] : null; };
+  e.focus = function(){ document.activeElement = this; };
+  return e;
+}
+let [day, hsh, built, retired] = process.argv.slice(2);
+const RealDate = Date;
+globalThis.Date = class extends RealDate {
+  constructor(...a){ if (a.length) super(...a); else super(day + "T12:00:00"); } };
+const tabEls = ["my-town", "legislators", "members-elect"].map(p => {
+  const t = node2(); t.dataset.pane = p; return t; });
+tabEls[2].attrs["data-until"] = "2026-12-02";
+if (built === "built") tabEls[2].hidden = true;
+const panes = {};
+tabEls.forEach(t => { const p = node2(); p.id = t.dataset.pane; panes[p.id] = p;
+  p.closest = s => s === ".twnpane" ? p : null; });
+const bar = node2(); bar.hidden = true;
+if (retired !== "none") bar.attrs["data-retired"] = "legislators";
+bar.querySelectorAll = () => tabEls;
+bar.scrollWidth = 300; bar.clientWidth = 300; bar.scrollLeft = 0;
+// The strip 100px above the window, where the browser's own jump to an
+// address leaves it.
+bar.getBoundingClientRect = () => ({left: 0, right: 300, top: -100});
+tabEls.forEach((t, i) => { t.getBoundingClientRect = () => ({left: i * 100, right: i * 100 + 90}); });
+bar.querySelector = () => tabEls.find(t => t.attrs["aria-selected"] === "true") || null;
+document.querySelector = s => s === ".twntabs" ? bar : null;
+const sec = node2(); sec.closest = s => s === ".twnpane" ? panes["members-elect"] : null;
+let landed = 0; sec.scrollIntoView = () => { landed++; };
+document.getElementById = id => panes[id] || (id === "elect-s-8" ? sec : null);
+const wrote = []; history.replaceState = (a, b, u) => wrote.push(u); history.pushState = () => {};
+const on = {}; globalThis.addEventListener = (t, f) => (on[t] = on[t] || []).push(f);
+const scrolled = []; globalThis.scrollTo = (x, y) => scrolled.push(y); globalThis.scrollY = 1000;
+Object.defineProperty(globalThis, "performance", {configurable: true,
+  value: {getEntriesByType: () => [{type: "navigate"}]}});
+document.fonts = {ready: {then: () => {}}};
+location.hash = hsh; location.pathname = "/officials"; location.search = "";
+const shown = () => Object.keys(panes).filter(p => !panes[p].hidden);
+const out = {};
+%s
+out.load = shown(); out.wrote = wrote.slice();
+(on.load || []).forEach(f => f()); out.landed = landed; out.lifted = scrolled.slice();
+const key = k => { bar.fire("keydown", {key: k, preventDefault(){}});
+  return [shown()[0], tabEls.indexOf(document.activeElement)]; };
+document.activeElement = tabEls[0]; out.end = key("End");
+document.activeElement = tabEls[0]; out.left = key("ArrowLeft");
+location.hash = "#members-elect"; (on.hashchange || []).forEach(f => f());
+out.change = shown(); out.wrote2 = wrote.slice();
+// A page left open past midnight with the tab focused: at the reader's 2
+// December the keys go from the tab it hands over to.
+day = "2026-12-02"; document.activeElement = tabEls[2]; out.midnight = key("ArrowLeft");
+process.stdout.write(JSON.stringify(out));
+""" % script
+    stub = Path("tests/dom_stub.js").read_text(encoding="utf-8")
+    after = ["/officials#legislators"]
+    cases = [
+        # (day, hash, built hidden, data-retired) -> shown, written, End, ArrowLeft, hashchange
+        (("2026-12-01", "#members-elect", "", ""),
+         (["members-elect"], [], ["members-elect", 2], ["members-elect", 2], ["members-elect"])),
+        (("2026-12-02", "#members-elect", "", ""),
+         (["legislators"], after, ["legislators", 1], ["legislators", 1], ["legislators"])),
+        (("2026-12-02", "", "", ""),
+         (["my-town"], [], ["legislators", 1], ["legislators", 1], ["legislators"])),
+        (("2026-12-02", "#elect-s-8", "", ""),
+         (["legislators"], after, ["legislators", 1], ["legislators", 1], ["legislators"])),
+        (("2026-12-01", "#members-elect", "built", ""),
+         (["legislators"], after, ["legislators", 1], ["legislators", 1], ["legislators"])),
+        (("2026-12-02", "#members-elect", "", "none"),
+         (["my-town"], ["/officials#my-town"], ["legislators", 1], ["legislators", 1],
+          ["my-town"])),
+        (("2026-12-02", "#legislators", "", ""),
+         (["legislators"], [], ["legislators", 1], ["legislators", 1], ["legislators"]))]
+    for args, (load, wrote, end, left, change) in cases:
+        r = subprocess.run([node, "-e", stub + "\n" + harness, "x", *args],
+                           capture_output=True, encoding="utf-8", timeout=60)
+        if r.returncode:
+            bad.append("the tab script would not run: " + r.stderr[-300:])
+            break
+        got = json.loads(r.stdout)
+        where = f"on {args[0]}, arriving at {args[1] or 'no address'!r}" + (
+            ", the tab built hidden" if args[2] else "") + (
+            ", the strip naming no tab for it" if args[3] else "")
+        if got["load"] != load or got["wrote"] != wrote:
+            bad.append(f"{where} shows {got['load']} and writes {got['wrote']}, not {load} "
+                       f"and {wrote}")
+        if got["landed"]:
+            bad.append(f"{where} brought the page to something inside a retired panel")
+        # Sent from a retired tab, the reader is shown the strip once the page
+        # has loaded, with what they were given chosen; anyone else is not moved.
+        sent = bool(args[1]) and wrote and wrote[0] != "/officials" + args[1]
+        lift = [892] if sent else []
+        if got["lifted"] != lift:
+            bad.append(f"{where}, the page was scrolled to {got['lifted']} by load, not {lift}: "
+                       "a reader sent from a retired tab is shown the strip, and nobody else is "
+                       "moved")
+        if got["end"] != end or got["left"] != left:
+            bad.append(f"{where}, End and ArrowLeft from My Town gave {got['end']} and "
+                       f"{got['left']}, not {end} and {left}: the keys pass over a retired tab")
+        if got["change"] != change:
+            bad.append(f"{where}, a link to #members-elect then shows {got['change']}, not {change}")
+        # From Legislators, ArrowLeft is My Town; from My Town, where a strip
+        # naming no tab hands over, it goes round to Legislators.
+        night = ["legislators", 1] if args[3] == "none" else ["my-town", 0]
+        if got["midnight"] != night:
+            bad.append(f"{where}, ArrowLeft on the tab once it has retired gave {got['midnight']}, "
+                       f"not {night}: the keys go from the tab it hands over to")
+    # FROM THE BUILD OF 2 DECEMBER the tab is not drawn at all, and its
+    # address, or a heading inside it, named nothing: OFFICIALS_HASH_JS sends
+    # it to #legislators before TABS_JS reads it, while nothing has that id.
+    import build_pages as BP
+    alias = re.search(r"<script>(.*?)</script>", BP.OFFICIALS_HASH_JS, re.S).group(1)
+    probe = ("var L={},loc={pathname:'/officials',search:'',hash:process.argv[2]};"
+             "var ids=process.argv[3]?process.argv[3].split(','):[];"
+             "global.location=loc;global.document={getElementById:function(i){"
+             "return ids.indexOf(i)>=0?{}:null;}};global.history={replaceState:function(s,t,u){"
+             "var i=u.indexOf('#');loc.hash=i<0?'':u.slice(i);}};"
+             "global.addEventListener=function(n,f){(L[n]=L[n]||[]).push(f);};"
+             + alias + ";process.stdout.write(loc.hash);")
+    for hsh, ids, want in (("#members-elect", "", "#legislators"),
+                           ("#of-elect-house", "", "#legislators"),
+                           ("#of-elect-senate", "", "#legislators"),
+                           ("#members-elect", "members-elect", "#members-elect"),
+                           ("#of-elect-house", "members-elect,of-elect-house", "#of-elect-house"),
+                           ("#elect-nothing", "", "#elect-nothing"),
+                           ("#statewide", "", "#executive")):
+        r = subprocess.run([node, "-e", probe, "x", hsh, ids], capture_output=True,
+                           encoding="utf-8", timeout=60)
+        if r.returncode or r.stdout != want:
+            bad.append(f"/officials{hsh} with {ids or 'nothing'} on the page becomes "
+                       f"{r.stdout or r.stderr[-200:]!r}, not {want!r}")
+    assert not bad, "\n  ".join(bad)
+    return "ok", ("Federal, Executive, Judicial and County -- Federal, Ejecutivo, Judicial and "
+                  "Condados -- over panels headed in full; from 2 December #members-elect, or a "
+                  f"section in it, opens Legislators and says so in the address ({len(cases)} "
+                  "cases in node)")
+
+
 @check("build", "a town page's State House and Senate cards say how many of a district's seats "
                 "are vacant, in the map's word, and never that no member is matched",
        needs=("build_town_pages",))
@@ -115295,6 +116460,414 @@ def _elect_links():
     return "ok", ("Nelson and Altschiller to their own pages, Vose to his as the one former "
                   "member of his name and county; John Smith unlinked and named to the person "
                   "until the person's file names 900002; the new people unlinked")
+
+
+@check("build", "members-elect: \"Your rep\" tags only a member re-elected to the seat they hold "
+                "-- the file's own, the item both renderers mark elown, and find.js's rule that "
+                "turns the tag off on every other link in a block",
+       needs=("build_members_elect",))
+def _elect_own_seat(BME):
+    """The owner, 7 November 2026, on the walk of dry run 4: with a town saved
+    in the header, find.js's ytMark tags every link to one of its members'
+    pages "Your rep" or "Your senator", and a members-elect block is links
+    to pages. Derry's Rockingham 13 tagged Charles Foote alone of its eight
+    winners, which is right; Antrim's State Senate district 8 tagged Jim
+    Creighton "Your rep", a representative of Hillsborough 30 elected to the
+    Senate, which is not. Her rule: keep the tag on a member re-elected to
+    their own seat; take it off where the person is elected to another
+    seat, and off anyone not now holding that seat; the same on the
+    Members-Elect tab and the map, which draw the same block.
+
+    On the fixture's election, `own` is on Jodi Nelson (Rockingham 13) and
+    Debra Altschiller (Senate 24) alone, each re-elected to the seat they
+    hold, and not on a sitting member the person's file takes to be the
+    winner of another seat, nor on a former member or anyone new. Both
+    renderers mark such a winner's item elown, and only where it is linked
+    (tests/components_cases.json, held to one answer by _components_agree).
+    And ytMark turns the tag off on every link in a block but an elown
+    item's, after the rules that set it."""
+    absent = _elect_absent()
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    root = Path(tempfile.mkdtemp(prefix="gr-elect-own-"))
+    try:
+        site = _elect_fixture(root)
+        # A sitting member of another seat, Hillsborough 30, added to this
+        # copy of the fixture's roster, whom the person's file says won
+        # Rockingham 32: elected to another seat, as Creighton was.
+        lp = site / "legislators.json"
+        sitting = json.loads(lp.read_text(encoding="utf-8"))
+        other = _elect_rep("990017", "Creighton", "James", "Hillsborough", 30)
+        lp.write_text(json.dumps(sitting + [other]), encoding="utf-8")
+        assert BME.seat_of(other) == "H|Hillsborough|30"
+        hand = {"2026-11-03": {"recount_deadline": _ELECT_DEADLINE,
+                               "matches": {"H|Rockingham|32": {"Pat Newell": str(other["id"])}}}}
+        code, out, doc = _elect_run(root, _ELECT_IN, hand=hand)
+        assert code == 0 and doc, f"the step wrote no file on {_ELECT_IN}: {out[-300:]}"
+        own = sorted((k, e["n"]) for k, r in doc["races"].items() for e in r["elected"]
+                     if "own" in e)
+        assert own == [("H|Rockingham|13", "Jodi Nelson"), ("S|24", "Debra Altschiller")], (
+            f"'own' is on {own}: it is for a sitting member re-elected to the seat they hold, "
+            "and only them")
+        moved = [e for e in doc["races"]["H|Rockingham|32"]["elected"] if e["n"] == "Pat Newell"]
+        assert moved and moved[0]["k"] == "sitting" and moved[0].get("id") == str(other["id"]) \
+            and "own" not in moved[0], (
+            f"a sitting member elected to another seat is drawn as {moved}: linked, and not own")
+        assert all(e.get("own") is True for r in doc["races"].values() for e in r["elected"]
+                   if "own" in e), "'own' is written as something other than true"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    import components as C
+    foote = {"n": "Charles Foote", "p": "R", "k": "sitting", "id": "10691",
+             "s": "charles-foote-rock-13", "own": True}
+    creighton = {"n": "Jim Creighton", "p": "R", "k": "sitting", "id": "9917",
+                 "s": "james-creighton-hills-30"}
+    html = C.elect_race({"seats": 2, "elected": [foote, creighton]})
+    assert re.findall(r'<li class="elown"><span class="mchip p-R" translate="no"><a href="'
+                      r'legislator/([a-z0-9-]+)\.html"', html) == ["charles-foote-rock-13"] \
+        and html.count("elown") == 1, f"the block marks {html!r}: only Foote's item is elown"
+    assert "elown" not in C.elect_race({"seats": 1, "elected": [dict(foote, s="")]}), (
+        "an item with no link is marked elown")
+    fj = Path("src/pages/find.js").read_text(encoding="utf-8")
+    mark = re.search(r"function ytMark\(p\)\{(.*?)\n\}", fj, re.S)
+    off = '".ellist > li:not(.elown) a::after{content:none !important}"'
+    # The Members-Elect tab's lists by name and by county (the owner's walk
+    # of 7 November 2026): the same chips, in a party's column or a county's
+    # grid, the list .elroll and its items li or div.
+    off_roll = '".elroll > :not(.elown) a::after{content:none !important}"'
+    assert mark and off in mark.group(1) and off_roll in mark.group(1), (
+        "ytMark does not turn the tag off on the members-elect lists' other links")
+    # The rules reach every place the winners are drawn: each link sits in an
+    # item of a list they key on -- elect_race's own, round each race's chips
+    # on the town page's block and the map's panel, and the Officials tab's
+    # three views, which have no .elect round them (the review of 7 November
+    # 2026) -- and the item is elown for Foote, re-elected to his own seat,
+    # and for nobody else, in every view.
+    import officials_tabs as OT
+    elect = {"election": "2026-11-03", "takes_office": "2026-12-02", "races": {
+        "S|8": {"seats": 1, "not_final": 0, "held": 0, "elected": [creighton]},
+        "H|Rockingham|13": {"seats": 2, "not_final": 0, "held": 0, "elected": [foote]}}}
+    for where, page, n in (("the Officials tab", OT.members_elect(elect, "2026-11-20"), 6),
+                           ("a town page's block", C.elect_block(
+                               [["", elect["races"]["S|8"]], ["", elect["races"]["H|Rockingham|13"]]],
+                               "2026-11-03", "2026-12-02", "2026-11-20"), 2)):
+        marks = _elect_marks(page)
+        outside = [s for s, lst, _o in marks if lst is None]
+        if len(marks) != n or outside:
+            raise AssertionError(f"on {where}, {len(outside)} of {len(marks)} winners' links (of {n} "
+                                 f"drawn) are outside a list ytMark's rules reach: {outside}")
+        wrong = [(s, lst, o) for s, lst, o in marks if o != (s == foote["s"])]
+        if wrong:
+            raise AssertionError(f"on {where}, an item is elown where it should not be, or not "
+                                 f"where it should: {wrong}")
+    body = mark.group(1)
+    for rule in (off, off_roll):
+        assert body.index(rule) > body.index('tr("yt.your_rep","Your rep")') \
+            and body.index(rule) > body.index('tr("yt.your_senator","Your senator")'), (
+            "ytMark's rule taking the tag off comes before the rules that set it")
+    return "ok", ("own on Nelson and Altschiller alone, not on a sitting member elected to "
+                  "another seat; the renderers mark only a linked own winner elown, in a town "
+                  "page's block and in each of the Officials tab's three views; ytMark takes the "
+                  "tag off every other link in a block or a list")
+
+
+def _elect_marks(page):
+    """Each member's link in `page`, as (slug, the list it is in, whether its
+    item is elown): the list the link's nearest ancestor of class ellist or
+    elroll, and the item that list's child the link is inside -- the two
+    things ytMark's rules key on. The list is None for a link in neither."""
+    from html.parser import HTMLParser
+    out = []
+
+    class Walk(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.stack = []
+
+        def handle_starttag(self, tag, attrs):
+            a = dict(attrs)
+            href = str(a.get("href") or "")
+            if tag == "a" and href.startswith("legislator/"):
+                cls = [set(str(c or "").split()) for _t, c in self.stack]
+                at = next((i for i in range(len(cls) - 1, -1, -1) if cls[i] & {"ellist", "elroll"}),
+                          None)
+                slug = href[len("legislator/"):].removesuffix(".html")
+                out.append((slug, None, None) if at is None or at + 1 >= len(cls) else
+                           (slug, " ".join(sorted(cls[at] & {"ellist", "elroll"})),
+                            "elown" in cls[at + 1]))
+            if tag not in ("br", "hr", "img", "input", "link", "meta", "wbr"):
+                self.stack.append((tag, a.get("class")))
+
+        def handle_endtag(self, tag):
+            for i in range(len(self.stack) - 1, -1, -1):
+                if self.stack[i][0] == tag:
+                    del self.stack[i:]
+                    break
+    Walk().feed(page)
+    return out
+
+
+def _elect_tab_case():
+    """A members-elect file with one of each thing the Members-Elect tab has
+    to say, and the members the file links to (the owner's walk of 7
+    November 2026): a sitting senator re-elected to her seat whose roster
+    surname is two words (Perkins Kwoka, after Lane, as the roster lists
+    her), a sitting representative elected to the Senate (Creighton, New
+    seat), a former member returning, the new, a winner of two nominations,
+    a winner with no party printed, a "Jr." (Lawrence, after Kline), a race
+    with two seats not final on a recount, a seat with nobody on file, and a
+    county of two districts whose lower one's member sorts last by name
+    (Young, Rockingham 6, before Foote and Trow of 13 by county)."""
+    rep = lambda n, p, **k: {"n": n, "p": p, "k": "new", **k}  # noqa: E731
+    elect = {"election": "2026-11-03", "takes_office": "2026-12-02",
+             "sources": ["https://www.sos.nh.gov/x"], "races": {
+                 "S|8": {"seats": 1, "not_final": 0, "held": 0, "elected": [
+                     {"n": "Jim Creighton", "p": "R", "k": "sitting", "id": "9917",
+                      "s": "james-creighton-hills-30"}]},
+                 "S|9": {"seats": 1, "not_final": 0, "held": 0, "elected": [rep("Rachel Lane", "D")]},
+                 "S|11": {"seats": 1, "not_final": 0, "held": 0, "elected": [
+                     {"n": "Shannon E. Chandley", "p": "D", "k": "former", "id": "2002",
+                      "s": "shannon-chandley-sd-11"}]},
+                 "S|21": {"seats": 1, "not_final": 0, "held": 0, "elected": [
+                     {"n": "Rebecca Perkins Kwoka", "p": "D", "k": "sitting", "id": "1001",
+                      "s": "rebecca-perkins-kwoka-sd-21", "own": True}]},
+                 "H|Belknap|6": {"seats": 4, "not_final": 0, "held": 0, "elected": [
+                     rep("Pat Both", "R/D"), rep("Lee Nobody", ""),
+                     rep("William Lawrence, Jr.", "D"), rep("Karen Kline", "D")]},
+                 "H|Coos|1": {"seats": 2, "not_final": 0, "held": 0, "elected": [rep("Ann Burt", "R")]},
+                 "H|Rockingham|6": {"seats": 1, "not_final": 0, "held": 0, "elected": [rep("Zoe Young", "D")]},
+                 "H|Rockingham|13": {"seats": 4, "not_final": 2, "held": 0, "recount": True,
+                                     "elected": [rep("Kristine Trow", "D"),
+                                                 {"n": "Charles Foote", "p": "R", "k": "sitting",
+                                                  "id": "10691", "s": "charles-foote-rock-13",
+                                                  "own": True}]}}}
+    people = [{"id": "1001", "name": "Perkins Kwoka, Rebecca"}, {"id": "9917", "name": "Creighton, James"},
+              {"id": "10691", "name": "Foote, Charles"}, {"id": "2002", "name": "Chandley, Shannon"}]
+    return elect, people
+
+
+@check("frontend", "the Members-Elect tab lists its people as the Legislators tab lists its "
+                   "members -- by last name, by county and by district, each the person chip "
+                   "with its title, district and kind -- under the seats each party won, in "
+                   "English and in Spanish", needs=("officials_tabs",))
+def _elect_tab_like_legislators(OT):
+    """The owner's walk of 7 November 2026, B, and C for this tab.
+
+    THE CHIP. Each member-elect is the Legislators tab's chip with a title
+    and a district: "Rep.-elect Kristine Trow (D - Rock 13)", "Sen.-elect Jim
+    Creighton (R - SD8)" (the owner chose "Rep.-elect / Sen.-elect"), and a
+    small word for who they are, from the file's k and own: Re-elected (a
+    sitting member, to the seat they hold), Returning (a former member), New,
+    and New seat for a sitting member elected to another seat. Linked only
+    where the file links them; the cross-nominated on the neutral chip with
+    both letters, and no letter where none was printed; no contact detail.
+
+    THE THREE VIEWS, as the Legislators tab's: by last name, each chamber
+    apart under its count and a column for each party, largest first, A to
+    Z by surname -- the roster's own surname for a member the file links, so
+    Perkins Kwoka is under P, and a suffix aside, so Lawrence, Jr. is under
+    L; by county, each county shut until asked, its results not final
+    counted in its summary and named inside it, and the Senate by district;
+    and by district, each race whole, which is where "Result not final -- a
+    recount was requested" stands in its district. The view by name, which
+    lists people, says how many seats are not final and where they are named.
+    The chambers' headings in the first view carry the addresses the tab's
+    chambers had, #of-elect-senate and #of-elect-house.
+
+    THE SEATS AT THE TOP: each chamber's members-elect by party, the
+    cross-nominated by their letters, the seats not final and the seats with
+    nobody on file apart -- a bar, and one short line for a phone.
+
+    And the strip's script (build_pages.SEATING_JS) wires this tab's strip
+    as it does the roster's, each showing its own panes and no other's, run
+    in node where it is installed; each strip is written hidden and shown by
+    the script, so a page read without it has its views under their headings
+    and no buttons that do nothing.
+
+    THE REVIEW OF 8 NOVEMBER 2026 added to the case a county of two
+    districts (the order by county is by district first), the views' first
+    headings (each an h2, so By district's chambers are not heard as parts
+    of "Who won the seats"), and the Spanish sweep's reach: any case, and
+    what a screen reader or a hover says (aria-label, title)."""
+    import html as _h
+    import shutil as _sh
+    elect, people = _elect_tab_case()
+    bad = []
+    page = OT.members_elect(elect, "2026-11-20", "en", people)
+    plain = lambda s: re.sub(r"\s+", " ", _h.unescape(re.sub(r"<[^>]+>", " ", s))).strip()  # noqa: E731
+    want = {  # who -> (the chip's class, linked, tag, kind)
+        "Rep.-elect Kristine Trow": ("p-D", None, "D - Rock 13", "New"),
+        "Rep.-elect Charles Foote": ("p-R", "charles-foote-rock-13", "R - Rock 13", "Re-elected"),
+        "Sen.-elect Jim Creighton": ("p-R", "james-creighton-hills-30", "R - SD8", "New seat"),
+        "Sen.-elect Shannon E. Chandley": ("p-D", "shannon-chandley-sd-11", "D - SD11", "Returning"),
+        "Sen.-elect Rebecca Perkins Kwoka": ("p-D", "rebecca-perkins-kwoka-sd-21", "D - SD21",
+                                             "Re-elected"),
+        "Rep.-elect Pat Both": ("p-X", None, "R/D - Belk 6", "New"),
+        "Rep.-elect Lee Nobody": ("p-X", None, "Belk 6", "New"),
+    }
+    for who, (cls, slug, tag, kind) in want.items():
+        inner = (f'<a href="legislator/{slug}.html">{_h.escape(who)} <span class="mtag">({tag})</span></a>'
+                 if slug else f'{_h.escape(who)} <span class="mtag">({tag})</span>')
+        drawn = f'<span class="mchip {cls}" translate="no">{inner} <i translate="yes">{kind}</i></span>'
+        if page.count(drawn) != 3:
+            bad.append(f"{who} is drawn {page.count(drawn)} times as {drawn!r}: once in each view")
+    links = re.findall(r'<a href="legislator/([^"]+)\.html"', page)
+    if sorted(set(links)) != sorted(s for _c, s, _t, _k in want.values() if s) or len(links) != 12:
+        bad.append(f"the tab links {sorted(set(links))} ({len(links)}): only the four the file "
+                   "links, once in each view")
+    if re.search(r"mailto:|tel:|@", page):
+        bad.append("a contact detail is on the Members-Elect tab")
+    # Written hidden, for the strip's script to show (without it, the three
+    # views under their headings and no buttons that do nothing).
+    strip = re.search(r'<div class="rtabs" role="tablist" aria-label="([^"]+)" hidden>(.*?)</div>',
+                      page, re.S)
+    tabs = re.findall(r'id="(tab-[a-z]+)" data-pane="(pane-[a-z]+)"\s+aria-controls="\2" '
+                      r'aria-selected="(true|false)">([^<]+)<', strip.group(2) if strip else "")
+    if [(t, p, s, w) for t, p, s, w in tabs] != [
+            ("tab-elast", "pane-elast", "true", "By last name"),
+            ("tab-ecounty", "pane-ecounty", "false", "By county"),
+            ("tab-edist", "pane-edist", "false", "By district")]:
+        bad.append(f"the views' strip is {tabs}")
+    at = {p: page.find(f'<div class="rpane" id="{p}" role="tabpanel" aria-labelledby="tab-{p[5:]}">')
+          for p in ("pane-elast", "pane-ecounty", "pane-edist")}
+    if -1 in at.values() or sorted(at.values()) != list(at.values()):
+        bad.append(f"the three panes are not there in order: {at}")
+        return "fail", "; ".join(bad)
+    last, county, dist = (page[at["pane-elast"]:at["pane-ecounty"]],
+                          page[at["pane-ecounty"]:at["pane-edist"]], page[at["pane-edist"]:])
+    # Each view opens at the level of the tab's own headings, so a reader
+    # moving by heading in any one of them meets its chambers as the tab's
+    # parts, not as parts of "Who won the seats" (the review of 8 November).
+    firsts = [(re.search(r"<h([1-6])\b", v) or [None, None])[1] for v in (last, county, dist)]
+    if firsts != ["2", "2", "2"] or re.findall(r'<h(\d) class="ofsech"', dist) != ["2", "2"] \
+            or '<h3 class="elcounty">' not in dist or "<h4" in page:
+        bad.append(f"the views' first headings are h{firsts}, and By district's chambers are "
+                   f"h{re.findall(r'<h(\d) class=.ofsech.', dist)}, its counties not h3 under them")
+    # The chips' parts wrap inside the chip in these lists, and a strip
+    # written hidden stays hidden until its script shows it (app.css).
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    if ":where(body.pg) .elroll .mchip,:where(body.pg) .elwho .ellist .mchip{flex-wrap:wrap" not in css \
+            or ":where(body.pg) .rtabs[hidden]{display:none}" not in css:
+        bad.append("app.css does not let a member-elect's chip wrap its parts, or does not keep a "
+                   "hidden strip hidden")
+    # By last name.
+    cols = re.findall(r'<section class="pcol"><h3>([^<]+)</h3><ol class="seatlist rlist elroll">(.*?)</ol>',
+                      last, re.S)
+    got = [(_h.unescape(h), re.findall(r'translate="no">(?:<a [^>]+>)?(?:Rep|Sen)\.-elect ([^<]+?) <', b))
+           for h, b in cols]
+    if got != [("Democrats — 3", ["Shannon E. Chandley", "Rachel Lane", "Rebecca Perkins Kwoka"]),
+               ("Republican — 1", ["Jim Creighton"]),
+               ("Democrats — 4", ["Karen Kline", "William Lawrence, Jr.", "Kristine Trow", "Zoe Young"]),
+               ("Republicans — 2", ["Ann Burt", "Charles Foote"]),
+               ("More than one party — 1", ["Pat Both"]),
+               ("Party not on file — 1", ["Lee Nobody"])]:
+        bad.append(f"by last name, the columns are {got}")
+    if not (re.search(r'<h2 id="of-elect-senate">Senate &mdash; 4</h2>', last)
+            and re.search(r'<h2 id="of-elect-house">House &mdash; 8</h2><p class="elnf"><b>Result not '
+                          r'final</b> for 2 seats in one district &mdash; a recount was requested\. '
+                          r'By county and By district name them\.</p>', last)):
+        bad.append("by last name, the chambers are not headed with their counts and the "
+                   "addresses #of-elect-senate and #of-elect-house, or the House does not say its "
+                   "seats not final")
+    # By county.
+    if not re.search(r"<h2>Senate &mdash; 4</h2><p class=\"src\">The Senate is listed by district\."
+                     r"</p><ol class=\"seatlist senate elroll\">", county) or [
+            plain(x) for x in re.findall(r'<span class="sseat">([^<]+)</span>', county)] != [
+            "District 8", "District 9", "District 11", "District 21"]:
+        bad.append("by county, the Senate is not listed by district")
+    sums = [(c, n, plain(f)) for c, n, f in re.findall(
+        r'<details class="cgrp"><summary><span>([^<]+)</span><span class="ccount">(\d+)</span>'
+        r'((?:<span class="ccnf">[^<]+</span>)?)<span class="caret">', county)]
+    if sums != [("Belknap", "4", ""), ("Coos", "1", ""), ("Rockingham", "3", "2 not final")]:
+        bad.append(f"by county, the House's counties are {sums}")
+    # By district and then by name: Young (6) before Foote and Trow (13).
+    rock = county[county.find("<span>Rockingham</span>"):]
+    if not re.search(r'</div><p class="elnf"><b>Result not final</b> in District 13 \(2 seats\) '
+                     r'&mdash; a recount was requested</p></details>', rock) or re.findall(
+            r'(?:Rep|Sen)\.-elect ([^<]+?) <', rock) != ["Zoe Young", "Charles Foote", "Kristine Trow"]:
+        bad.append("by county, Rockingham does not list Young (6), then Foote and Trow (13), and "
+                   "name District 13's two seats not final")
+    # By district: each race whole, its seats not final and empty said there.
+    if 'id="of-eld-senate"' not in dist or 'id="of-eld-house"' not in dist:
+        bad.append("by district, the chambers' sections are not there")
+    r13 = dist[dist.find("Rockingham County"):]
+    if not re.search(r'District 13 <small>4 seats</small></span><div class="elwho"><ul class="ellist">'
+                     r'.*?</ul><p class="elnf"><b>Result not final</b> &mdash; a recount was '
+                     r'requested</p></div>', r13, re.S):
+        bad.append("by district, Rockingham 13 does not say its result is not final, with its recount")
+    if "No member-elect on file for 1 seat." not in dist[dist.find("Coos County"):]:
+        bad.append("by district, Coos 1 does not say its seat with nobody on file")
+    # The seats at the top.
+    top = page[:page.find('<section class="roster')]
+    if not top.startswith('<div class="elpane" data-elect') or top.find('<p class="ofwhy">') > top.find(
+            '<div class="comp-wrap comp-top"><h2>Who won the seats</h2>') or "comp-top" not in top:
+        bad.append("the seats each party won are not between the tab's sentence and its lists")
+    short = [plain(re.sub(r'<span class="sr">[^<]*</span>', "", s))
+             for s in re.findall(r'<p class="compshort">(.*?)</p>', top)]
+    if short != ["Senate 3 D · 1 R",
+                 "House 4 D · 2 R · 1 R/D · 1 party not on file · 2 not final · 1 with no one on file"]:
+        bad.append(f"the phone's lines are {short}")
+    if re.findall(r'<p class="compshort">.*?</p>', top) and not re.search(
+            r'3 <span aria-hidden="true">D</span><span class="sr">Democrats</span>', top):
+        bad.append("a phone line's party letter does not carry the party's name for a screen reader")
+    house = top[top.rfind('<div class="comp">'):]
+    segs = re.findall(r'<span class="pseg (seg-[A-Z]+)" style="width:([\d.]+)%" title="([^"]+)"', house)
+    if [(c, round(float(w)), _h.unescape(t)) for c, w, t in segs] != [
+            ("seg-D", 36, "Democrats: 4"), ("seg-R", 18, "Republicans: 2"), ("seg-X", 9, "R/D: 1"),
+            ("seg-X", 9, "Party not on file: 1"), ("seg-NF", 18, "Not final: 2"),
+            ("seg-V", 9, "No one on file: 1")] or \
+            "8 of 11 seats elected, 2 not final" not in house:
+        bad.append(f"the House's bar is {segs}")
+    # In Spanish, none of the tab's own words in English, in any case, in its
+    # text or in what it says only to a screen reader or on hover (aria-label,
+    # title).
+    es_page = OT.members_elect(elect, "2026-11-20", "es", people)
+    es = plain(es_page) + " " + " ".join(_h.unescape(v) for v in re.findall(
+        r'\b(?:title|aria-label)="([^"]*)"', es_page))
+    for word in ("Rep.-elect", "Sen.-elect", "Re-elected", "Returning", "New seat", "New",
+                 "By last name", "By county", "By district", "Who won the seats", "not final",
+                 "seats elected", "More than one party", "no one on file", "listed by district",
+                 "name them", "members-elect", "Democrats", "Republicans", "District",
+                 "Party not on file", "How to arrange"):
+        if re.search(r"(?<![\w.-])" + re.escape(word) + r"(?![\w-])", es, re.I):
+            bad.append(f"the Spanish tab says {word!r}")
+    # The strip's script, on two strips at once.
+    node = _sh.which("node")
+    if node:
+        import build_pages as BP
+        js = re.search(r"<script>(.*)</script>", BP.SEATING_JS, re.S).group(1)
+        harness = r"""
+var panes={},bars=[];
+function el(id){return panes[id]||(panes[id]={id:id,hidden:false});}
+function bar(ids){var tabs=ids.map(function(p){var h={};return {dataset:{pane:p},attrs:{},
+  setAttribute:function(k,v){this.attrs[k]=v;},addEventListener:function(k,f){h[k]=f;},
+  click:function(){h.click();},focus:function(){document.activeElement=this;}};});
+  var b={tabs:tabs,hidden:true,querySelectorAll:function(){return tabs;},addEventListener:function(){}};
+  bars.push(b);ids.forEach(el);return b;}
+var document={activeElement:null,getElementById:function(id){return panes[id]||null;},
+  querySelector:function(){return null;},querySelectorAll:function(s){return s===".rtabs"?bars:[];}};
+var addEventListener=function(){};
+var roster=bar(["pane-last","pane-county","pane-seat"]),
+    elect=bar(["pane-elast","pane-ecounty","pane-edist"]);
+""" + js + r"""
+function shown(){return Object.keys(panes).filter(function(k){return !panes[k].hidden;}).sort().join(",");}
+var a=shown(); elect.tabs[1].click(); var b=shown(); roster.tabs[2].click(); var c=shown();
+console.log(JSON.stringify([a,b,c,bars.map(function(x){return x.hidden;}).join(",")]));
+"""
+        import subprocess as _sp
+        out = _sp.run([node, "-e", harness], capture_output=True, text=True, timeout=60)
+        if out.returncode != 0 or (out.stdout.strip() or "[]")[:1] != "[" or json.loads(
+                out.stdout) != ["pane-elast,pane-last", "pane-ecounty,pane-last",
+                                "pane-ecounty,pane-seat", "false,false"]:
+            bad.append(f"the strips' script, on the roster's and the members-elect's: "
+                       f"{(out.stdout or out.stderr).strip()[:300]}")
+    assert not bad, "\n  ".join(bad)
+    return "ok", ("each member-elect the chip with title, district and kind, linked as the file "
+                  "links them; by last name in party columns, by county with what is not final, "
+                  "by district whole; the seats by party at the top and in a line for a phone; "
+                  "Spanish throughout"
+                  + ("; both strips switch their own panes" if node else
+                     " (node absent: the strips' script not run)"))
 
 
 @check("build", "members-elect: what the rule cannot be certain of goes to the person, never "
@@ -116675,7 +118248,10 @@ def _elect_pages_link_own():
     tab and the My Town card -- goes to the page of the member the file
     names, that page's GR_MEMBER the file's id, and every member the file
     links is linked somewhere; Pat Newell, new and cross-nominated, is drawn
-    on the neutral chip with both letters and never as a link; and the one
+    on the neutral chip with both letters and never as a link -- on the
+    Members-Elect tab as the Legislators tab's chip, "Rep.-elect Pat Newell
+    (R/D - Rock 32) New", in each of its three views (the owner's walk of 7
+    November 2026); and the one
     line -- "Elected November 3, 2026, for Rockingham district 6. Takes
     office December 2, 2026." -- is on the own page of Jodi Nelson, Debra
     Altschiller, Michael Vose and the John Smith the person's file names
@@ -116719,14 +118295,22 @@ def _elect_pages_link_own():
                 elif member_of(slug) != want[slug][0]:
                     bad.append(f"{rel} links a member-elect to {slug}, the page of "
                                f"{member_of(slug)}, not {want[slug][0]}")
-        if re.search(r"<a\b[^>]*>Pat Newell", text):
+        if re.search(r"<a\b[^>]*>(?:(?:Rep|Sen)\.-elect )?Pat Newell", text):
             bad.append(f"{rel} links Pat Newell, a new person")
     if set(want) - linked:
         bad.append(f"never linked: {sorted(set(want) - linked)}")
     newell = ('<span class="mchip p-X" translate="no">Pat Newell <span class="mtag">(R/D)</span></span>')
-    for rel in ("officials.html", "town/brentwood.html", "town/danville.html", "town/fremont.html"):
+    for rel in ("town/brentwood.html", "town/danville.html", "town/fremont.html"):
         if newell not in sources[rel]:
             bad.append(f"{rel} does not draw Pat Newell on the neutral chip with both letters")
+    # The Members-Elect tab draws the Legislators tab's chip, with a title, the
+    # district and the kind (the owner's walk of 7 November 2026), in each of
+    # its three views.
+    tab = re.findall(r'<span class="mchip p-X" translate="no">Rep\.-elect Pat Newell <span class="mtag">'
+                     r'\(R/D - Rock \d+\)</span> <i translate="yes">New</i></span>', sources["officials.html"])
+    if len(tab) != 3:
+        bad.append(f"officials.html draws Pat Newell {len(tab)} times on the neutral chip with both "
+                   "letters, his district and New, not once in each of the tab's three views")
     words = {"H|Rockingham|13": "Rockingham district 13", "H|Rockingham|6": "Rockingham district 6",
              "S|24": "Senate District 24"}
     lines = {}
@@ -117342,6 +118926,339 @@ def _map_legend_words():
     assert not bad, "; ".join(bad)
     return "ok", ("the legend alone on State House and State Senate; the floterial sentence and "
                   "frame only while ticked; four kinds two by two on a phone")
+
+
+# THE CHAMBER STATEWIDE UNDER THE LEGEND (the owner, 7 November 2026: "on the
+# map, a short list of the party totals for the chamber layer shown (Senate or
+# House): Democrats, Republicans, Independents, statewide"). map.js mounted in
+# node, as _map_legend_words mounts it, on each *.map.json here: its pure
+# totals() and totalsLine() for every layer, and the line mount() draws under
+# the legend as the layer switch goes State House, State Senate, Council, US
+# House and back, in English and with the Spanish words a Spanish page carries
+# (WORDS, from the catalog). And the markup: the line inside the legend's box,
+# after the legend, and not there at all for a page that asks for none.
+_MAP_TOTALS_JS = r"""
+require("./stub.js");
+globalThis.CSS = { escape: s => String(s) };
+document.createElementNS = (ns, t) => document.createElement(t);
+const fs = require("fs");
+const G = require("./map.js");
+const WORDS = JSON.parse(fs.readFileSync("./words.json", "utf8"));
+function held() {
+  const e = document.createElement("div"), q = {};
+  e.querySelector = sel => (q[sel] = q[sel] || held());
+  e.style.setProperty = () => {};
+  return e;
+}
+(async () => {
+  const out = {};
+  for (const name of fs.readdirSync(".").filter(f => f.endsWith(".map.json")).sort()) {
+    const T = JSON.parse(fs.readFileSync("./" + name, "utf8"));
+    globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => T });
+    const M = G.model(T), one = out[name] = { totals: {}, lines: {} };
+    for (const lk of ["base", "senate", "exec", "cong", "county", "towns"]) {
+      const t = G.totals(M, lk);
+      one.totals[lk] = t; one.lines[lk] = G.totalsLine(t, lk);
+    }
+    for (const lang of ["en", "es"]) {
+      globalThis.GR_WORDS = lang === "es" ? WORDS : {};
+      const root = held();
+      const api = G.mount(root, { labels: "none", zoom: false, layers: ["base", "senate", "exec", "cong"],
+                                  data: "/" + name + "?" + lang });
+      if (lang === "en") one.markup = root.innerHTML;
+      await api.ready;
+      const tot = root.querySelector(".gmtot"), drawn = [["base", tot.innerHTML]];
+      for (const lk of ["senate", "exec", "cong", "base", "senate"]) {
+        api.setLayer(lk); drawn.push([lk, tot.innerHTML]);
+      }
+      one["drawn_" + lang] = drawn;
+    }
+    globalThis.GR_WORDS = {};
+    const none = held();
+    G.mount(none, { labels: "none", zoom: false, totals: false, data: "/" + name + "?none" });
+    one.markupNone = none.innerHTML;
+  }
+  process.stdout.write("\n@@" + JSON.stringify(out));
+})().catch(e => { console.error(String(e && e.stack || e)); process.exit(1); });
+"""
+
+
+def _map_totals_run(maps):
+    """{name: {"totals": {layer: totals() or None}, "lines": {layer: html},
+    "drawn_en"/"drawn_es": [[layer, the line drawn]], "markup",
+    "markupNone"}}: map.js in node on each of `maps` ({name: the map's data
+    as a dict}). None without node."""
+    import i18n
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), "node is not on PATH on the nightly"
+        return None
+    js = Path("src/pages/map.js").read_text(encoding="utf-8")
+    # the Spanish a Spanish page carries for map.js's words (i18n.words_js)
+    words = {k: i18n.lookup("es", k, en) for k, en in i18n.tr_calls(js)}
+    root = Path(tempfile.mkdtemp(prefix="gr-maptotals-"))
+    try:
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "map.js").write_text(_with_components(js), encoding="utf-8")
+        (root / "words.json").write_text(json.dumps({k: v for k, v in words.items() if v is not None}),
+                                         encoding="utf-8")
+        for name, data in maps.items():
+            (root / f"{name}.map.json").write_text(json.dumps(data), encoding="utf-8")
+        (root / "go.js").write_text(_MAP_TOTALS_JS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, encoding="utf-8",
+                 timeout=180)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "map.js would not count the chambers in node: " + (r.stderr or r.stdout or "")[-300:])
+        return {k[:-len(".map.json")]: v for k, v in json.loads(r.stdout.rsplit("@@", 1)[1]).items()}
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def _map_totals_text(html):
+    """The line as a reader reads it: no tags, entities read, spaces single."""
+    import html as _h
+    return re.sub(r"\s+", " ", _h.unescape(re.sub(r"<[^>]+>", "", html or ""))).strip()
+
+
+def _seats_held(page):
+    """{"H"/"S": {"seats", "held", "vacant", "parties": {code: n}}}: what the
+    Legislators tab's "Who holds the seats" draws (build_pages.static_bar),
+    read off the English Officials page -- off its Legislators panel alone,
+    for the Members-Elect tab draws its "Who won the seats" in the same bars
+    between an election and Organization Day."""
+    i = page.find('<div class="twnpane" id="legislators"')
+    if i >= 0:
+        j = page.find('<div class="twnpane"', i + 1)
+        page = page[i:j if j > 0 else len(page)]
+    out = {}
+    for name, filled, legend in re.findall(
+            r'<div class="comp"><div class="compline"><b>(House|Senate)</b>'
+            r'<span class="statemeta">([^<]*)</span></div><div class="pbar2">.*?</div>'
+            r'<div class="plegend">(.*?)</div>', page, re.S):
+        m = re.match(r"(\d+) of (\d+) seats filled(?:, (\d+) vacant)?$", filled)
+        assert m, f"the {name}'s line is {filled!r}"
+        got = dict((c, int(n)) for c, n in re.findall(
+            r'<span class="pdot seg-([^"]+)"></span>[^<]*<b>(\d+)</b>', legend))
+        vac = got.pop("V", 0)
+        assert vac == int(m.group(3) or 0), f"the {name}'s vacant seats are said two ways"
+        out[name[0]] = {"seats": int(m.group(2)), "held": int(m.group(1)), "vacant": vac,
+                        "parties": got}
+    return out
+
+
+@check("frontend", "the district map says the chamber shown statewide under its legend -- the "
+                   "State House's and the State Senate's seats by party and the vacant ones, "
+                   "counted from the sitting members it colours the districts by, a floterial's "
+                   "once -- following the layer switch, in English and Spanish, nothing on the "
+                   "Council and US House, and the Legislators tab's \"Who holds the seats\" "
+                   "the same numbers")
+def _map_party_totals():
+    """The owner, 7 November 2026: "IF IT FITS: on the map, a short list of
+    the party totals for the chamber layer shown (Senate or House):
+    Democrats, Republicans, Independents, statewide."
+
+    map.js in node (_map_totals_run) on three maps built here:
+      - from the tracked files (_map_data) with a roster of real seats: in
+        the State House a Republican and a Democrat in Hillsborough 21, an
+        Independent in Strafford 7, two Democrats in the floterial
+        Hillsborough 40 and one in Merrimack 10; in the Senate a Republican
+        in 16 and Democrats in 9 and 21. totals() is the roster counted here
+        by chamber and party, each member once -- the floterial's two not
+        again under the wards below it -- over the seats the district files
+        give, a seat nobody holds vacant;
+      - the same map with every seat filled but one: "1 vacant", and no
+        vacant seats said where there are none;
+      - the fixture's built site/district_map.json, whose numbers must be
+        those its Officials page's Legislators tab draws under "Who holds
+        the seats" (build_pages.static_bar, from home.json's composition).
+    Held of each: the line mounted under the legend is totalsLine(totals())
+    for State House and State Senate, and empty for the Council and the US
+    House, on the way there and back; it reads "Statewide House: 1
+    Republican · 3 Democrats · ..." in the legend's order, each count in its
+    own unbreakable span, and in Spanish the catalog's words with none of
+    the English left; it is written inside the legend's box after the legend,
+    and not at all for a mount that asks for no totals. And map.css draws
+    an empty line not at all and keeps each count whole."""
+    import i18n
+    css = Path("src/pages/map.css").read_text(encoding="utf-8")
+    assert re.search(r"\.gm \.gmtot:empty\{display:none\}", css), \
+        "map.css draws the empty totals line (.gmtot:empty) on the Council and US House"
+    assert re.search(r"\.gm \.gmtot \.gmti\{white-space:nowrap\}", css), \
+        "map.css lets a phone break a count (.gmti) in two"
+
+    def rep(name, county, d, party, chamber="H"):
+        return {"name": name, "chamber": chamber, "county": county, "district": str(d),
+                "party": party, "slug": name.lower().replace(" ", "-"),
+                "display_full": f"Rep. {name} ({party[0]} - x)", "sort": name}
+    roster = [rep("Ann Ray", "Hillsborough", 21, "Republican"),
+              rep("Bo Dee", "Hillsborough", 21, "Democrat"),
+              rep("Cy Indy", "Strafford", 7, "Independent"),
+              rep("Di Flo", "Hillsborough", 40, "Democrat"),
+              rep("Ed Flo", "Hillsborough", 40, "Democrat"),
+              rep("Jo Mer", "Merrimack", 10, "Democrat"),
+              rep("Fay Sen", "Hillsborough", 16, "Republican", chamber="S"),
+              rep("Gus Sen", "Hillsborough", 9, "Democrat", chamber="S"),
+              rep("Hal Sen", "Hillsborough", 21, "Democrat", chamber="S")]
+    data = _map_data(roster)
+    if data is None:
+        return "skip", "the geometry, the district files or the officials file is not here"
+    flo = set(data["layers"]["float"]["f"])
+    assert "HI40" in flo and "HI21" not in flo, "Hillsborough 40 is no longer the floterial here"
+    import build_district_map as BDM
+
+    # The roster counted here, each member once, against the district files' seats.
+    def expect(members, seats_by):
+        held = Counter()
+        for m in members:
+            held[m["code"]] += 1
+        parties = Counter(m["party"][0] for m in members)
+        return {"seats": sum(seats_by.values()), "held": len(members),
+                "vacant": sum(max(0, n - held[c]) for c, n in seats_by.items()),
+                "parties": [[p, parties[p]] for p in "RDI" if parties[p]]}
+    house = [{"code": f"{BDM.CODE[m['county']]}{m['district']}", "party": m["party"]}
+             for m in roster if m["chamber"] == "H"]
+    senate = [{"code": m["district"], "party": m["party"]} for m in roster if m["chamber"] == "S"]
+    want = {"roster": {"base": expect(house, data["seats"]),
+                       "senate": expect(senate, {f: 1 for f in data["layers"]["senate"]["f"]})}}
+    # Every seat filled but one State House seat.
+    full = json.loads(json.dumps(data))
+    full["who"] = {k: v for k, v in full["who"].items() if k.startswith(("exec|", "cong|"))}
+    short = sorted(data["seats"])[0]
+    for code, n in data["seats"].items():
+        lk = "float" if code in flo else "base"
+        full["who"][f"{lk}|{code}"] = [{"n": f"R{code}{i}", "p": "R", "s": ""}
+                                       for i in range(n - (code == short))]
+    for f in data["layers"]["senate"]["f"]:
+        full["who"][f"senate|{f}"] = [{"n": f"D{f}", "p": "D", "s": ""}]
+    want["full"] = {"base": {"seats": sum(data["seats"].values()), "held": sum(data["seats"].values()) - 1,
+                             "vacant": 1, "parties": [["R", sum(data["seats"].values()) - 1]]},
+                    "senate": {"seats": 24, "held": 24, "vacant": 0, "parties": [["D", 24]]}}
+    maps = {"roster": data, "full": full}
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    fix_map, fix_page = site / "district_map.json", site / "officials.html"
+    assert fix_map.is_file() and fix_page.is_file(), \
+        "the fixture's build wrote no district_map.json or officials.html"
+    maps["fixture"] = json.loads(fix_map.read_text(encoding="utf-8"))
+    got = _map_totals_run(maps)
+    if got is None:
+        return "skip", "node is not installed (map.css read: the empty line hidden, counts whole)"
+
+    bad = []
+    for name, by in want.items():
+        for lk, t in by.items():
+            if got[name]["totals"][lk] != t:
+                bad.append(f"{name} {lk}: totals() is {got[name]['totals'][lk]}, not {t}")
+    # The fixture's map against its own Legislators tab.
+    tab = _seats_held(fix_page.read_text(encoding="utf-8"))
+    if set(tab) != {"H", "S"}:
+        bad.append(f"the fixture's Officials page draws \"Who holds the seats\" for {sorted(tab)}")
+    for ch, lk in (("H", "base"), ("S", "senate")):
+        t, s = got["fixture"]["totals"][lk], tab.get(ch)
+        if s and (not t or {**t, "parties": dict(t["parties"])} != s):
+            bad.append(f"fixture {lk}: the map counts {t}, the Legislators tab draws {s}")
+
+    def words(t, lk, lang):
+        """The line totalsLine draws, as text, in `lang`, from the catalog."""
+        say = (lambda k, en, **v: i18n.say("es", k, en, **v)) if lang == "es" else \
+            (lambda k, en, **v: i18n.fill(en, v))
+        noun = {"R": ("map.r_one", "{n} Republican", "map.r_many", "{n} Republicans"),
+                "D": ("map.d_one", "{n} Democrat", "map.d_many", "{n} Democrats"),
+                "I": ("map.i_one", "{n} Independent", "map.i_many", "{n} Independents")}
+        # a letter but R, D and I as map.js's countWords says it: "2 Ls"
+        its = [(say(*noun[p][:2], n=n) if n == 1 else say(*noun[p][2:], n=n)) if p in noun
+               else f"{n} {p}" + ("" if n == 1 else "s") for p, n in t["parties"]]
+        if t["vacant"]:
+            its.append(say("map.n_vacant_one", "{n} vacant", n=1) if t["vacant"] == 1
+                       else say("map.n_vacant", "{n} vacant", n=t["vacant"]))
+        head = say("map.statewide", "Statewide")
+        body = (say("map.tot_senate", "<b>Senate:</b> {list}", list=" · ".join(its)) if lk == "senate"
+                else say("map.tot_base", "<b>House:</b> {list}", list=" · ".join(its)))
+        return _map_totals_text(head + " " + body)
+
+    english = ("Statewide", "House", "Senate", "Republican", "Democrat", "Independent", "vacant")
+    for name, one in got.items():
+        for lk in ("exec", "cong", "county", "towns"):
+            if one["totals"][lk] is not None or one["lines"][lk] != "":
+                bad.append(f"{name}: the {lk} layer has a total {one['totals'][lk]} {one['lines'][lk]!r}")
+        for lk in ("base", "senate"):
+            t, line = one["totals"][lk], one["lines"][lk]
+            if not t:
+                bad.append(f"{name}: no totals for {lk}")
+                continue
+            n = len(t["parties"]) + (1 if t["vacant"] else 0)
+            if len(re.findall(r'<span class="gmti">', line)) != n:
+                bad.append(f"{name} {lk}: the {n} counts are not each a whole span: {line[:160]!r}")
+            if _map_totals_text(line) != words(t, lk, "en"):
+                bad.append(f"{name} {lk}: the line reads {_map_totals_text(line)!r}, "
+                           f"not {words(t, lk, 'en')!r}")
+        for lang in ("en", "es"):
+            seq = one["drawn_" + lang]
+            for lk, html_ in seq:
+                t = one["totals"][lk]
+                said = _map_totals_text(html_)
+                if lk in ("exec", "cong"):
+                    if html_:
+                        bad.append(f"{name} {lang}: on {lk} the map says {said!r}")
+                    continue
+                if said != words(t, lk, lang):
+                    bad.append(f"{name} {lang}: on {lk} after {[x for x, _ in seq]} the map says "
+                               f"{said!r}, not {words(t, lk, lang)!r}")
+                if lang == "es" and any(re.search(r"\b" + w + r"\b", said) for w in english):
+                    bad.append(f"{name}: the Spanish line says English: {said!r}")
+        if not re.search(r'<div class="gmkey"><div class="gmleg"[^>]*></div><p class="gmtot"></p>',
+                         one["markup"]):
+            bad.append(f"{name}: mount() writes no totals line straight after the legend")
+        if "gmtot" in one["markupNone"]:
+            bad.append(f"{name}: a mount asking for no totals still writes their line")
+    assert not bad, "; ".join(bad[:6])
+    f = got["fixture"]["totals"]
+    return "ok", (f"\"{_map_totals_text(got['roster']['lines']['base'])}\" and "
+                  f"\"{_map_totals_text(got['roster']['lines']['senate'])}\" for the roster, a "
+                  f"floterial's two once; \"1 vacant\" and none said; Spanish whole; nothing on "
+                  f"the Council and US House; the fixture's {f['base']['held']} of "
+                  f"{f['base']['seats']} and {f['senate']['held']} of {f['senate']['seats']} the "
+                  "Legislators tab's own")
+
+
+def _map_totals_against(site):
+    """("ok"|"skip", what was found) for `site`, a built site's folder: the
+    totals map.js draws under the map's legend from its district_map.json,
+    against home.json's composition, which the Legislators tab draws as "Who
+    holds the seats" (build_pages.static_bar). Raises where they differ."""
+    dm, home = site / "district_map.json", site / "home.json"
+    if not (dm.is_file() and home.is_file()):
+        return "skip", f"{dm.as_posix()} and {home.as_posix()} are not both here"
+    comp = json.loads(home.read_text(encoding="utf-8")).get("composition") or {}
+    assert comp.get("H") and comp.get("S"), "home.json carries no composition for the two chambers"
+    got = _map_totals_run({"night": json.loads(dm.read_text(encoding="utf-8"))})
+    if got is None:
+        return "skip", "node is not installed"
+    bad, said = [], []
+    for ch, lk in (("H", "base"), ("S", "senate")):
+        t, c = got["night"]["totals"][lk], comp[ch]
+        tab = {"seats": c["seats"], "held": c["sitting"], "vacant": c["vacant"],
+               "parties": {p["code"]: p["n"] for p in c["parties"]}}
+        if not t or {**t, "parties": dict(t["parties"])} != tab:
+            bad.append(f"{c['chamber']}: the map counts {t}, the Legislators tab draws {tab}")
+        said.append(_map_totals_text(got["night"]["lines"][lk]))
+    assert not bad, ("the map's statewide line and \"Who holds the seats\" disagree: "
+                     + "; ".join(bad))
+    return "ok", "; ".join(said)
+
+
+@check("data", "the district map's statewide line for the State House and the State Senate is "
+               "the night's \"Who holds the seats\", seat for seat and party for party")
+def _map_totals_published():
+    """The owner's ask of 7 November 2026, held on the night's own files: the
+    map counts each chamber from site/district_map.json's sitting members
+    (map.js, totals), the Legislators tab from site/legislators.json through
+    home.json's composition (build_site_v2.build_composition), two roads
+    from one roster. They must say the same seats, the same members by party
+    and the same vacant seats; a member the map places in no district of its
+    own -- a county it has no code for -- shows here as a difference."""
+    return _map_totals_against(Path("site"))
 
 
 @check("frontend", "the district map's labels never overlap, in any of its three modes (the "
