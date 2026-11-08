@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.796
+# GRANITE_VERSION: 2026-09-04.797
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -29955,6 +29955,11 @@ def _elect_provisional():
         page = (site / "legislator" / "jane-doe-rock-13.html").read_text(encoding="utf-8")
         assert n == 2 and '<meta name="robots" content="noindex,follow">' in page, (
             "a provisional page is written without noindex")
+        # Seen with script on: app.css hides a .static-rec under html.js
+        # unless it is .shown, and the page was drawn blank so (the
+        # screenshots of 8 November 2026).
+        assert '<div class="static-rec shown" id="elect-rec">' in page, (
+            "a provisional page's record is hidden once script runs")
         assert "Took office December 2, 2026." in page and "LSR 2027-0010" in page \
             and "LSR 2027-0011" not in page and "GR_MEMBER" not in page, (
             "a provisional page after Organization Day does not say they took office, list their "

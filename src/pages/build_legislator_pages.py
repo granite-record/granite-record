@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.26
+# GRANITE_VERSION: 2026-09-04.27
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -266,7 +266,10 @@ def elect_body(p, doc, reqs, req_meta, places, today):
     regular page."""
     took = today >= doc["takes_office"]
     party = f" ({E(p['party'])})" if p.get("party") else ""
-    out = ['<div class="static-rec" id="static-rec">',
+    # The plain record's look, shown with script too ("shown"; app.css hides
+    # a .static-rec under html.js otherwise), and its own id: this page is
+    # GR_STATIC, and "static-rec" is the fallback plainRecord rewrites.
+    out = ['<div class="static-rec shown" id="elect-rec">',
            f"<h1>{E(p['name'])}{party}</h1>",
            # From the day they take office they are members, not members-elect.
            f"<p>{'Member' if took else 'Member-elect'} of the "
