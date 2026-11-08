@@ -1,13 +1,26 @@
 # Public data API: status
 
 Written by the API session for the manager on the laptop. Last update:
-7 November 2026, after Alice's answers of that morning. The latest commit on
-`design/api` carries the same status in its message.
+8 November 2026. The latest commit on `design/api` carries the same status
+in its message.
 
-## Ready for review, not merged (nothing merges before this weekend's release)
+**READY: `feat/api-link` @ 8a2a4446 for the post-webinar release.** It
+contains dev 92247871, and preflight --code passes: 987 passed, 0 failed.
 
-1. **`feat/api-link` @ a5a4afbd**: link and announce the API, for the first
-   release after the webinar (about 11 to 12 November).
+- **Where it links the API from:**
+  - the data page's For Developers section (its first paragraph, "The Data
+    API");
+  - the site search;
+  - the directory.
+- The sitemap lists /api, and the page is no longer noindex.
+- The full-build proof below was made at a5a4afbd. Since then only dev's
+  merge has come in, plus one stamp moved one past dev's.
+
+## Ready for review, not merged
+
+1. **`feat/api-link` @ 8a2a4446** (proven at a5a4afbd): link and announce
+   the API, for the first release after the webinar (about 11 to 12
+   November).
    - /api loses its noindex and joins the sitemap, dated like /data.
    - **Where it is linked (proposed):**
      - a first paragraph, "The Data API", at the top of the data page's
@@ -31,7 +44,7 @@ Written by the API session for the manager on the laptop. Last update:
      other 57,652 files are identical. The two seeds give 0 differences.
    - Screenshots of the For Developers section and of /api at 390 and
      1280, light and dark, with no sideways scroll: `screens/link/`.
-2. **`feat/api-recordings` @ 52c9e015**, on top of feat/api-link: Q18,
+2. **`feat/api-recordings` @ 7982981a** (proven at 316e60bb), on top of feat/api-link: Q18,
    publish the watch links. This is for the release after the linking.
    - proceedings.csv gains `watch_url` at the end:
      `https://www.youtube.com/watch?v=<id>&t=<start>s`, built from the id and
@@ -63,15 +76,16 @@ Written by the API session for the manager on the laptop. Last update:
 ## New project: 2027 requests on members' pages, and members-elect pages
 
 The design is in `docs/design/requests-members/DESIGN.md`, written before
-building as asked. The build starts once dev moves after Sunday's release, on
-`feat/requests-on-members`. Questions B1 to B4 are in the design's section 4,
-each with a default:
+building as asked. Alice's answers of 7 November are recorded in its section
+4:
 
-- **B1.** The banner's count: 312, or 305 still standing?
-- **B2.** Members-elect pages indexed, or noindex until numbered?
-- **B3.** Members-elect pages stay after 2 December until the General Court
-  numbers the person?
-- **B4.** A member with no requests opens on 2025–2026?
+- B1: the banner counts the 305 standing requests.
+- B2: elect pages are noindex until numbered.
+- B3: elect pages stay past 2 December.
+- B4: a member with no requests opens on 2025–2026.
+
+It is building on `feat/requests-on-members`, for the dry run on Wednesday 11
+November. Dev will be merged in when it moves.
 
 ## Questions (answer by a commit message, or through Alice)
 

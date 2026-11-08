@@ -190,19 +190,20 @@ them; requestOffer uses it (app.js:2518-2526).
 - The numbered night: the same address gives the regular page, and a
   different address without a recorded 301 stops the build.
 
-## 4. Questions for Alice (the manager brings them)
+## 4. Alice's answers (7 November 2026, late evening, relayed by the laptop manager)
 
-- **B1.** Banner count: 312 (every request filed, the default) or 305 (still
-  standing)?
-- **B2.** Elect pages in the sitemap and indexed (default), or noindex until
-  numbered?
-- **B3.** Elect pages stay after 2 December until the General Court numbers
-  the person (default, so no address breaks), rather than retiring with the
-  members-elect blocks?
-- **B4.** A sitting member with no requests: open on 2025–2026 (default, the
-  manager's suggestion).
+These replace the defaults above where they differ.
 
-## 5. Order of work, once dev moves on Sunday
+- **B1.** The banner counts the standing requests only:
+  "**305 bill requests filed for 2027** — see them" (n − withdrawn). The
+  withdrawn stay listed in the requests term, marked withdrawn.
+- **B2.** Elect pages are **noindex**, and stay out of the sitemap, until the
+  General Court numbers the person and the page becomes their regular one.
+- **B3.** Elect pages stay past 2 December until the person is numbered,
+  saying they took office on December 2.
+- **B4.** A sitting member with no requests opens on 2025–2026.
+
+## 5. Order of work, for the post-webinar dry run (Wednesday 11 November)
 
 1. Banner (app.js, one test in preflight's bill search harness).
 2. Requests on sitting members (build_lsrs `by_slug`, app.js member page).
