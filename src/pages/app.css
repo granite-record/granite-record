@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.354 */
+/* GRANITE_VERSION: 2026-09-07.355 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -2217,8 +2217,12 @@ padding:var(--sp-2) var(--sp-5);font-size:var(--t-ui);line-height:1.35;color:var
 /* THE SORT FIRST, THEN THE COUNT (bills.html, 8 October 2026). Flush with
    the term picker above it, which is why the row has no side margin of its
    own, and held at the top of the row: when the count wraps to a second or
-   third line on a phone, it is the count that grows downward, not the Sort
-   that moves. The count's own line is centred on the Sort beside it. */
+   third line, it is the count that grows downward, not the Sort that moves.
+   The count's own line is centred on the Sort beside it. ABOVE A PHONE'S
+   WIDTH, since 8 November 2026: under 45em the box comes first, the term
+   picker and the Sort share a line, and the count has one of its own (THE
+   BILL SEARCH ON A PHONE, below), so what is said here of the count beside
+   the Sort is said of a tablet and a desktop. */
 .qhint{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-3) 0 0;display:flex;align-items:flex-start;
 gap:var(--sp-3) var(--sp-6);flex-wrap:wrap;max-width:840px}
 /* The count beside the Sort: never wider than the room the Sort leaves of
@@ -3621,12 +3625,43 @@ text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
   /* The term selector and the search box share a flex row, and at 375px the
      selector was squeezed to 68px -- "2025-2026 term" showing as "2025".
      Wrapping gives each a row of its own, which there is now room for since
-     the filters below them collapse on a phone. The selector keeps the width
-     it shares with the Sort (--pickw, above) rather than taking the whole
-     row, so the two stand one above the other at one width on a phone too,
-     with the count beside the Sort; the box takes the whole row. */
+     the filters below them collapse on a phone; the box takes the whole row.
+     (The Laws page's box is drawn with these too.) */
   .qline{flex-wrap:wrap}
   .qline .qbox{flex:1 0 100%}
+  /* THE BILL SEARCH ON A PHONE, THE BOX FIRST (Alice, 8 November 2026):
+     the search box at full width; under it the term picker and the Sort
+     side by side, in equal halves; then the count on one line of its own,
+     "91 of 33,717 bills across all terms", and what the search read under
+     it. The term picker stood alone at half the row above the box, and the
+     count wrapped to three lines beside the Sort. The two rows the page is
+     written in (.qline, .qhint) give their controls to one wrapping row
+     here, in that order. A record's page writes its .qhint hidden, which
+     .qhint's own display has always overridden (shell.BILL_ROW); what is in
+     it there is hidden or empty, and here it is no box of its own either,
+     where as a box it would stand empty above the search box.
+     The keyboard and a screen reader meet them in that order too: app.js's
+     fitPickers moves the term picker after the box in the page here, and
+     back before it on a wider screen, where it stands to the box's left.
+     Each half starts from half the row less half the gap -- not from 0,
+     which counts each select's own padding, and the picker's is 8px more
+     than the Sort's -- and is never narrower than its words, so where both
+     do not fit (320px, or the reader's text set large) the second takes a
+     line of its own rather than cutting off its words; fitPickers gives
+     them their shorter words here, and the picker's words start as the
+     Sort's do, 4px in, side by side.
+     THE ROW'S EDGES ARE THE PAGE'S, 12px in, as the header, the filters'
+     button and the bills below are: at 24px a term's count, "364 of 2,243
+     bills in the 2025-2026 term", 328px in Chrome, took two lines in the
+     327px a 375px phone left it, and the 312px of a 360px one. */
+  .searchrow .in{display:flex;flex-wrap:wrap;gap:var(--sp-4);padding-left:var(--sp-5);
+    padding-right:var(--sp-5)}
+  .searchrow .qline,.searchrow .qhint{display:contents}
+  .searchrow .qbox{order:1;flex:1 0 100%}
+  .searchrow #year,.searchrow #sort{order:2;flex:1 1 calc(50% - var(--sp-4) / 2)}
+  .searchrow #year{padding:0 var(--sp-2)}
+  .searchrow #count{order:3;flex:1 0 100%;max-width:none}
+  .searchrow #synhint{order:4;flex:1 0 100%}
   /* The last filter group's rule and the block's own rule sat together. */
   .facets .fgroup:last-child{border-bottom:0}
   /* And the count's room beside the Sort, at this row's narrower gap. */

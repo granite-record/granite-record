@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.11
+# GRANITE_VERSION: 2026-10-23.12
 """
 The site's translations: what is translated, what has gone stale, and the
 proofreader's sheet out and back. src/pages/i18n.py says how a translation
@@ -90,7 +90,8 @@ AREAS = {"nav": "the header", "page": "the header", "theme": "Settings", "set": 
          "roster": "the Officials page's Legislators tab: the roster",
          "party": "the Officials page's Legislators tab: a party's name",
          "seat": "the Officials page's Legislators tab: the House seating chart",
-         "sc": "the Officials page's Legislators tab: the line under the seating chart"}
+         "sc": "the Officials page's Legislators tab: the line under the seating chart",
+         "bills": "the bill search: the note above next session's bill requests"}
 
 
 def area(key):
