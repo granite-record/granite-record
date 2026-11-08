@@ -4,7 +4,60 @@ Kept on the session's own branch, `dev-ioxv9i`, for the laptop manager, who read
 `git fetch`. Cloud sessions cannot message it. This page is replaced, not appended to, and each
 branch's latest commit message says its own status. Times are Eastern.
 
-## As of Saturday 7 November 2026, about 10 p.m.
+## As of Sunday 8 November 2026, about 3 a.m.
+
+Received your message with Alice's walk of dry run 7 (2663f3e0, dev aa4d8582).
+**`fix/members-elect-walk` 75c026f6 is READY with all six items**, off aa4d8582, well before
+9 a.m. It is not merged. That commit says STATUS READY; the code tip is c1cf71d7, and 75c026f6
+adds the README and shots.
+
+`docs/design/members-elect-walk/README.md` has the detail and 79 real-data shots of dry run 7.
+They are before and after, at 1280 and 390, light and dark, with Spanish, at 375 where the
+walk saw the chip wrap, and at 1024.
+
+| Item | What the branch does |
+|---|---|
+| 1. Two views | **By last name** and **By county**; By district is gone. The 19 seats not final are said in two places: a fold under Who won the seats ("19 seats not final, in 16 districts"), which names them, and By county's line ("Result not final in District 6 — a recount was requested"). `#pane-edist` and `#tab-edist` open By county; `#of-eld-senate` and `#of-eld-house` are By county's headings. |
+| 2. Tab order | My Town · Legislators (406) · Members-Elect (405) · Federal · Executive · Judicial · County. |
+| 3. The chip | The Legislators tab's chip, with "Rep.-elect" kept and the word outside it. The lists are in columns of at least 544px, two at 1280, so a chip and its word fit on one line. At 1280 all 405 chips are on one line (dry run 7: 83), with the word beside every chip from 980 to 1440px. At 390, 378 of 405 (dry run 7: 67). |
+| 4. The words | RETURNING 230 (206 re-elected to their seat, 24 former); NEW DISTRICT 5; NEW CHAMBER 2 (Creighton, Telerski); NEW 168. A member the rows cannot place gets no word rather than a guess; there are none on dry run 7. The README says what NEW rests on: linked to nobody, against rosters that start in 1999. Spanish drafts: Reelegido/a, Nuevo distrito, Nueva cámara, Nuevo/a. |
+| 5. The Senate by county | The Legislators tab's rule, each district under its senator's roster county. Both tabs show the same eight counties with the same counts. |
+| 6. A chart on a phone | Each chamber's bar, 10px high, is drawn above its one line in both blocks. The desktop is unchanged. |
+
+**For Alice to say (none blocks the dry run):**
+- **The ring** was mocked at 375 and does not read clearly better, so the bar is built. Both
+  are in the README's shots.
+- **The walk's example of item 4** reads NEW DISTRICT under item 4's own rules, not RETURNING.
+  That member-elect sits for one House district and was elected in another. RETURNING there
+  would need RETURNING to cover a move within a chamber.
+- **The Members-Elect House line on a phone is still two lines** at 390 and below. The options
+  are as before.
+- **13 chips take two lines at 390** where the Legislators chip takes one. The cause is the
+  Secretary of State's longer names ("Mary Ngwanda Georges") and "-elect". The roster's names
+  would bring it to 7.
+- **On a desktop the lists have two columns** where Legislators has three, so the words fit.
+  The page is shorter for it.
+
+**Checks:**
+- **Review:** four reviewers, each finding then put to a skeptic on the real data. Six of eleven
+  findings were confirmed, and all six are fixed:
+  - most words were under their chips on a desktop;
+  - "Regresa" told 206 sitting members they were coming back;
+  - a reload after picking a view reopened the view the address named;
+  - three gaps in the checks.
+- **Mutation:** 23 of 24 mutants turn a check red. The one left is a list row as a block, which
+  draws the same.
+- **`preflight --code`** on c1cf71d7, the code tip: 995 passed, 0 failed, 9 skipped.
+- **Stamps:** four files, each one past aa4d8582; `inventory.py` is clean.
+- **Sideways scroll:** none from this branch, 320–1280px in both languages. The Spanish
+  Presiding Officers case (320–350 and 490–510px) is on dry run 7 too, and is the 11 November
+  item.
+
+**Next:**
+- The walk list for the next dry run, when you send its address.
+- For 11 November, the two pre-existing sideways scrolls, with their verified fixes.
+
+## Earlier, Saturday 7 November, about 10 p.m.
 
 Received your message with Alice's walk items A to D for Sunday's one dry run. **All four are
 READY**, well before 9 a.m. They build on `fix/members-elect-polish` 068ed8b0 and are stacked so
