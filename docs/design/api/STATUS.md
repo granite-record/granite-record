@@ -152,6 +152,73 @@ The detail below is unchanged from e9bb088b.
 provisional page. The Members-Elect tab it would name is removed on 2
 December, and the page outlives it.
 
+## A page for each bill request
+
+**READY for review: `feat/request-pages` @ bc7875dc** (8 November), on top
+of feat/requests-on-members 3f58ea9e, for the 11 November batch.
+Preflight --code: 1,000 passed, 0 failed.
+
+- **Address:** /request/2027-0001, as a bill's is /bill/2026/hb1034. Old
+  ?term=2027-requests addresses keep working.
+- **The page:**
+  - Shows the number, title, the prime sponsor's chip, the kind (for
+    example "House bill request"), the status, and Alice's two sentences.
+    It links to all the requests.
+  - noindex, and not in the sitemap.
+- **Withdrawn:** the page stays and says "Withdrawn".
+- **Introduced as a bill:**
+  - The request has no page; its address answers with a 301 to the bill's
+    page, written into the night's _redirects from the same list.
+  - A page an earlier night wrote is taken away, so no address is ever
+    both a page and a redirect. preflight holds this.
+- **Filing complete:**
+  - The rest forward to their prime sponsor's page, or to the requests'
+    list where the sponsor is unmatched.
+  - The trigger is a date per session in build_lsrs.FILING_COMPLETE, which
+    a person enters. It is empty now, so nothing retires.
+- **Links:** the request cards (the bill search and members' pages), the
+  header search's request row and /search all link to the page.
+- **New Hampshire's specifics** (the number's shape, where requests come
+  from) stay in build_lsrs, the source's reader. The page writer reads only
+  each row's "address" and "moved_to", and preflight holds that.
+- **Counts:**
+  - 302 request pages on this build's data (about 331 live).
+  - The deploy is 58,130 files of the 100,000 Cloudflare allows; a session
+    of about 1,100 requests would keep it under 60,000.
+  - _redirects has 616 static rules of 2,000. A moved request takes one
+    rule, not three (the review's catch), so roughly 1,380 can move before
+    the limit.
+- **Proof:**
+  - A full build of bc7875dc dated 8 November, under two seeds: 0
+    differences in 58,129 files. The pre-merge commit's pair was identical
+    too.
+  - Screenshots of a request page and the requests' list, at 390 and 1280,
+    light and dark, with no sideways scroll:
+    `docs/design/requests-members/screens-request/`.
+- **One review:**
+  - Fixed: one redirect a request (three would have passed Cloudflare's
+    2,000-rule limit this winter and stopped the nightly), and "Withdrawn"
+    without the claim "before it became a bill".
+  - Not a problem in practice: the forward uses the request's year, which
+    in the data equals the bill's filing year.
+
+**Questions for Alice:**
+
+- **QR1, the source gives no dates.** The request list carries no filed or
+  withdrawn date, so the page states neither. They can appear the day the
+  source carries them.
+- **QR2, next autumn's rollover.** When 2028's requests replace 2027's, the
+  2027 forwards drop out of _redirects, and shared 2027 request links would
+  stop working. Keeping them all would take about 1,100 more rules a
+  session, and two sessions would pass the 2,000 limit. The lasting fix is
+  a small forwarding page (a meta refresh and a canonical link) for each
+  moved request instead of a 301 rule.
+  - Default: decide before September 2027; nothing breaks until then.
+- **QR3, when filing is complete.** Who enters the date, and is it the
+  General Court's filing deadline (18 November for 2027) or later, when
+  the list stops changing?
+  - Default: the person enters it when the list has stopped changing.
+
 ## Questions (answer by a commit message, or through Alice)
 
 - **Q-A, the CC0 line and the timings.** The approved rights line names
