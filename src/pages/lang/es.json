@@ -23162,11 +23162,6 @@
    "es": "Presidencia de las cámaras",
    "state": "draft"
   },
-  "off.presiding_why": {
-   "en": "The Speaker presides over the House, and the Deputy Speaker sometimes in the Speaker&rsquo;s place; the Senate President presides over the Senate.",
-   "es": "El presidente de la Cámara (Speaker) preside la Cámara de Representantes, y el vicepresidente a veces lo hace en su lugar; el presidente del Senado preside el Senado.",
-   "state": "draft"
-  },
   "off.read_on": {
    "en": "; read {day}",
    "es": "; leído el {day}",

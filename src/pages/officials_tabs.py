@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.9
+# GRANITE_VERSION: 2026-10-10.10
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -727,14 +727,14 @@ def presiding(officers, legs, today, lang="en"):
     if not rows:
         return ""
     rows.sort()
+    # THE CHIPS ALONE (the owner's walk of 7 November 2026): the sentence
+    # under them -- "The Speaker presides over the House, and the Deputy
+    # Speaker sometimes in the Speaker's place; the Senate President presides
+    # over the Senate." -- said what each chip's own role already says.
     return ('<section class="ofpres" aria-labelledby="of-presiding">'
             '<h3 id="of-presiding">' + I.say(lang, "off.presiding", "Presiding Officers")
             + '</h3><div class="ofchips">' + "".join(c for _i, c in rows) + "</div>"
-            '<p class="ofwhy">'
-            + I.say(lang, "off.presiding_why", "The Speaker presides over the House, and the "
-                    "Deputy Speaker sometimes in the Speaker&rsquo;s place; the Senate President "
-                    "presides over the Senate.")
-            + "</p></section>")
+            "</section>")
 
 
 def members_elect(elect, today, lang="en"):

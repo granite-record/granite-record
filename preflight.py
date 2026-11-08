@@ -114301,6 +114301,40 @@ process.stdout.write(JSON.stringify(out));
                   + ("" if node else " (node absent: script not run)"))
 
 
+@check("frontend", "the Legislators tab's Presiding Officers are their chips alone, with no "
+                   "sentence under them, in English and in Spanish", needs=("officials_tabs",))
+def _presiding_chips_alone(OT):
+    """The owner's walk of 7 November 2026: the sentence under the Presiding
+    Officers -- "The Speaker presides over the House, and the Deputy Speaker
+    sometimes in the Speaker's place; the Senate President presides over the
+    Senate." -- goes, in both languages. Each chip's role says the office.
+    Drawn for a Speaker and a Senate President serving on the day: the
+    section holds its heading and the chips, and nothing else; its catalog
+    entry is gone with it."""
+    legs = [{"id": "35", "name": "Carson, Sharon", "chamber": "S", "party": "R",
+             "slug": "sharon-carson-sd-14", "display_full": "Sen. Sharon Carson (R - SD14)"},
+            {"id": "9", "name": "Packard, Sherman", "chamber": "H", "party": "R",
+             "slug": "sherman-packard-rock-16", "display_full": "Rep. Sherman Packard (R - Rock 16)"}]
+    officers = [{"office": "President of the Senate", "id": "35", "b": "S", "from": "2024-12-04"},
+                {"office": "Speaker of the House", "id": "9", "b": "H", "from": "2024-12-04"}]
+    bad = []
+    for lang in ("en", "es"):
+        html = OT.presiding(officers, legs, "2026-11-08", lang)
+        body = re.fullmatch(r'<section class="ofpres" aria-labelledby="of-presiding"><h3 '
+                            r'id="of-presiding">[^<]+</h3><div class="ofchips">(.*)</div></section>',
+                            html, re.S)
+        if not body or body.group(1).count('class="mchip') != 2:
+            bad.append(f"in {lang}, the Presiding Officers are {html[:300]!r}: their heading and "
+                       "two chips, and nothing under them")
+        if re.search(r"\bpresides?\b", re.sub(r"<[^>]+>", "", html), re.I):
+            bad.append(f"in {lang}, a sentence about who presides is back beside the chips")
+    cat = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    if "off.presiding_why" in cat:
+        bad.append("es.json still carries off.presiding_why, the sentence that went")
+    assert not bad, "\n  ".join(bad)
+    return "ok", "the Speaker and the Senate President as chips, with no sentence under them, in both languages"
+
+
 @check("build", "the Officials page's seven tabs say their short names, in both languages, over "
                 "panels headed in full; and from the day a tab retires, an address naming it "
                 "opens Legislators", needs=("build_town_pages",))
