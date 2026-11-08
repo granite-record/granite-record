@@ -84,8 +84,62 @@ building as asked. Alice's answers of 7 November are recorded in its section
 - B3: elect pages stay past 2 December.
 - B4: a member with no requests opens on 2025–2026.
 
-It is building on `feat/requests-on-members`, for the dry run on Wednesday 11
-November. Dev will be merged in when it moves.
+**READY for review: `feat/requests-on-members` @ e9bb088b**, for the dry run
+on Wednesday 11 November. It contains dev 92247871, which is still dev's tip.
+Preflight --code: 990 passed, 0 failed.
+
+- **Bill search:** "300 bill requests filed for 2027 — see them" on
+  2025–2026. On the live kit it will count n − withdrawn; this build's kit
+  holds 302 requests, 2 of them withdrawn. The banner is gone once 2027–2028
+  is published.
+- **Members' pages:**
+  - "2027 Bill Requests" is a term in the member's own picker. 92 members
+    have requests in this build's kit.
+  - A member opens on their requests; one with none opens on 2025–2026.
+  - From 2027–2028 on, its bills come first.
+- **New members-elect:** 168 provisional pages. Each shows:
+  - name and party;
+  - chamber and district, with its towns linked;
+  - "Elected November 3, 2026. Takes office December 2, 2026."
+    ("Member of" and "Took office" from that day);
+  - their requests where certain;
+  - the source.
+
+  The pages are noindex, left out of the sitemap, and have no id and no
+  contact details. The Officials tab, the town pages, the My Town card and
+  the district map link a new person to their page.
+- **2 December and after:**
+  - The pages stay up.
+  - The night the roster carries the person, their regular page takes the
+    same address.
+  - If the roster gives them another address, the old one answers with a
+    301 automatically. That is written by build_pages from
+    elect_pages.json's "moved" for as long as the 2026 results are the
+    newest. A person can make it permanent in moved_addresses.json.
+- **Proof:** a full build dated 8 November, two seeds, 0 differences in
+  57,827 files. Against dev, only these change:
+  - legislators/*.json: each gains its "slug";
+  - the town pages, officials.html and es/officials.html: the new links;
+  - members_elect.json, places.json and district_map.json: "e" links only.
+    places.json was proven byte-identical to dev's once the new links are
+    taken out;
+  - meta.json: "by_slug";
+  - app.js, components.js, data.html: the stamp count;
+  - the 168 new pages.
+
+  legislators.json and former.json are unchanged.
+- **Review:** an adversarial review found 9 problems, now fixed. The worst
+  was that no member file carried a slug, so on real data no member was
+  offered their requests; its test had added one by hand. The screenshots
+  then caught the provisional pages drawn blank with script on, and that is
+  fixed too.
+- **Screenshots** at 390 and 1280, light and dark, with no sideways scroll:
+  `docs/design/requests-members/screens/`. They show the banner, a member
+  on their requests (David Watters) and a provisional page (Kurt Webber).
+
+**One difference from the design.** There is no breadcrumb on the
+provisional page. The Members-Elect tab it would name is removed on 2
+December, and the page outlives it.
 
 ## Questions (answer by a commit message, or through Alice)
 
