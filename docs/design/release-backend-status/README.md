@@ -14,7 +14,7 @@ that one merge carries all four:
 |---|---|---|---|
 | A. The Presiding Officers' sentence gone | `fix/presiding-line` fb7d3e01 | on its own | 990 passed, 0 failed |
 | B and C. Members-Elect like Legislators; the seats at the top | `feat/members-elect-tab` 25890848 | carries A | 992 passed, 0 failed |
-| D. The map's party totals for the chamber shown | `feat/map-party-totals` 5acac99d | carries A, B and C | D alone (88107c77): 991 passed, 0 failed; the stacked tip's run is in progress, and its result and STATUS commit follow on this board |
+| D. The map's party totals for the chamber shown | `feat/map-party-totals` 9740b12a | carries A, B and C | 993 passed, 0 failed (on 5acac99d; 9740b12a adds a README note only) |
 
 **To take all four, merge `feat/map-party-totals`.** If D is not wanted, `feat/members-elect-tab`
 is A to C, and if only A is wanted, `fix/presiding-line`. Each branch has its own README under
