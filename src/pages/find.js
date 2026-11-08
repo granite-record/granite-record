@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.49
+// GRANITE_VERSION: 2026-09-16.50
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1392,8 +1392,11 @@ function ytMark(p){
     // Keyed on the winners' own list, which elect_race draws wherever they
     // are -- a town page's block, the map's panel and the Officials page's
     // Members-Elect tab, which has no .elect round it (the review of 7
-    // November 2026).
+    // November 2026). And the tab's lists by name and by county, which hold
+    // the same chips in a party's column or a county's grid (.elroll), the
+    // same way (8 November 2026).
     +".ellist > li:not(.elown) a::after{content:none !important}"
+    +".elroll > :not(.elown) a::after{content:none !important}"
     // On a town page the chip sits in a narrow cell beside the contact
     // column, and the tag ran out of the chip into it: it goes under the name.
     +(p.m||[]).map(s=>sel(s,"::after").split(",").map(x=>".offwho "+x).join(",")).join(",")

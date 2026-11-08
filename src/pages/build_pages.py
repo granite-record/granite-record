@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.263
+# GRANITE_VERSION: 2026-09-04.264
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2442,10 +2442,12 @@ SEATING_JS = """
    so a reader with no JavaScript gets the whole roster rather than one pane
    and two empty boxes. The first thing this does is hide two of them -- and
    that is also why losing this block is quiet: every pane simply stays open,
-   the tabs still look like tabs, and clicking one changes nothing. */
-(function(){
-  var bar=document.querySelector(".rtabs");
-  if(!bar)return;
+   the tabs still look like tabs, and clicking one changes nothing.
+
+   EVERY STRIP OF THEM (the owner's walk of 7 November 2026): the
+   Members-Elect tab lists its people the same three ways, under a strip of
+   its own, and each strip shows and hides its own panes. */
+[].forEach.call(document.querySelectorAll(".rtabs"),function(bar){
   var tabs=[].slice.call(bar.querySelectorAll("[role=tab]"));
   if(!tabs.length)return;
   function show(id){
@@ -2473,7 +2475,7 @@ SEATING_JS = """
     tabs[j].focus(); show(tabs[j].dataset.pane);
   });
   show(tabs[0].dataset.pane);
-})();
+});
 </script>
 """
 
@@ -4593,6 +4595,25 @@ def main():
                 f'</div><div class="pbar2">{segs}</div>'
                 f'<div class="plegend">{legend}</div>{note}</div>')
 
+    def short_bar(ch, lang="en"):
+        """One chamber's seats in one short line, which is all a phone shows
+        of them (the owner's walk of 7 November 2026, C): "Senate 16 R
+        &middot; 8 D", "House 212 R &middot; 169 D &middot; 1 I &middot; 18
+        vacant" -- a party's letter for the eye and its name for a screen
+        reader, from the same counts as static_bar's."""
+        x = C.get(ch)
+        if not x:
+            return ""
+        bits = [f'{pp["n"]} <span aria-hidden="true">{esc(pp["code"])}</span>'
+                f'<span class="sr">{esc(party_word(pp["name"], lang, plural=pp["n"] != 1))}</span>'
+                for pp in x.get("parties", [])]
+        if x.get("vacant"):
+            bits.append(say(lang, "comp.n_vacant_one", "{n} vacant", n=x["vacant"])
+                        if x["vacant"] == 1 else say(lang, "comp.n_vacant", "{n} vacant", n=x["vacant"]))
+        chamber = {"House": say(lang, "comp.house", "House"),
+                   "Senate": say(lang, "comp.senate", "Senate")}.get(x["chamber"], x["chamber"])
+        return f'<p class="compshort"><b>{esc(chamber)}</b> ' + " &middot; ".join(bits) + "</p>"
+
     def vacancies_box(lang="en"):
         if not C.get("vacancies"):
             return ""
@@ -4934,11 +4955,18 @@ def main():
 <div class="ofmapbox" id="ofmap"></div>
 <noscript><p class="note">{say(lang, "of.map_noscript", "The map needs JavaScript. Every town&rsquo;s districts\nare on its own page, listed in <a href=\"/directory/towns.html\">every town and\nward</a>.")}</p></noscript>
 </section>"""),
+            # WHO HOLDS THE SEATS AT THE TOP (the owner's walk of 7 November
+            # 2026, C): under the presiding officers and over the roster, as
+            # the Members-Elect tab's totals are over its lists; on a phone,
+            # one short line a chamber (short_bar) in place of the bars, the
+            # thresholds under them and their legends.
             ("legislators", say(lang, "of.tab.legislators", "Legislators"), len(legs),
-             OT.presiding(officers, legs, today, lang) + roster_section(legs, lang)
-             + (('<div class="comp-wrap"><h2>' + say(lang, "of.who_holds", "Who holds the seats")
-                 + "</h2>" + static_bar("S", lang) + static_bar("H", lang) + vacancies_box(lang)
-                 + "</div>") if C else "")),
+             OT.presiding(officers, legs, today, lang)
+             + (('<div class="comp-wrap comp-top"><h2>' + say(lang, "of.who_holds", "Who holds the seats")
+                 + "</h2>" + short_bar("S", lang) + short_bar("H", lang)
+                 + static_bar("S", lang) + static_bar("H", lang) + vacancies_box(lang)
+                 + "</div>") if C else "")
+             + roster_section(legs, lang)),
             ("federal", say(lang, "of.tab.federal", "Federal Delegation"),
              OT.count(off, "federal"), OT.federal(off, lang)),
             ("executive", say(lang, "of.tab.executive", "Executive Branch"),
@@ -4951,7 +4979,7 @@ def main():
             # "Members-Elect (N)", N the winners the file names: a race not
             # final counts none, and a tab of none says no number, as any tab.
             ("members-elect", say(lang, "of.tab.elect", "Members-Elect"), OT.elect_count(elect),
-             OT.members_elect(elect, today, lang)),
+             OT.members_elect(elect, today, lang, [*legs, *gone])),
         ]
         of_panes = [p for p in of_panes if p[3]]
         # SEVEN TABS ON ONE LINE (the owner, 7 November 2026): with
