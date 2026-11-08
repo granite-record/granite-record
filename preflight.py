@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.799
+# GRANITE_VERSION: 2026-09-04.800
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -42344,7 +42344,7 @@ def _rsa_pages(B, RSA, S):
     assert "Pending: 1 bill" in sec and 'href="/bill/2025/hb100"' in sec, "the moving bill is not tagged"
     assert 'href="/laws/91-a#s5"' in sec, "a citation the table holds is not linked to its anchor"
     assert "91-A:99" in sec and 'href="/laws/91-a#s99"' not in sec, "a section the table lacks was linked"
-    hist = sec[sec.index('class="rs-hist"'):]
+    hist = sec[sec.index("How it has changed"):]
     assert hist.index("2019") < hist.index("1967") and 'href="/bill/2019/hb286"' in hist, \
         "the history is not newest first with its bill"
     assert "Access to Governmental Records and Meetings" in page, "the chapter's name is not in title case"
@@ -42937,16 +42937,17 @@ def _rsa_section_fold(B, RSA, S):
     heads = re.findall(r'<div class="rs-fpart"><h(\d) class="rs-fh">([^<]+)</h\d>', s5)
     if heads != [(str(lv + 1), "How it has changed"), (str(lv + 1), "Cites"), (str(lv + 1), "Cited by")]:
         bad.append(f"the fold's lists are not headed one level under the section's h{lv}: {heads}")
-    if not re.search(r'<ul class="rs-hist" data-fold="8">(?:<li>.*?</li>){10}</ul>', s5):
+    if not re.search(r'How it has changed</h\d><p class="rs-note">[^<]*</p>'
+                     r'<ul class="rs-list" data-fold="8">(?:<li[^>]*>.*?</li>){10}</ul>', s5):
         bad.append("the history of ten is not drawn whole with data-fold=\"8\"")
     if not re.search(r'<h\d class="rs-fh">Cited by</h\d><ul class="rs-refs" data-fold="8">(?:<li>.*?</li>){11}</ul>', s5):
         bad.append("Cited by's eleven are not drawn whole with data-fold=\"8\"")
     if "rs-more" in page or "<summary>Show all" in page:
         bad.append("the page still draws a Show all of its own beside a list")
-    # A history row says the act's section, so eleven rows of one act are
-    # not eleven rows alike (RSA 100-A:1's, 142:4 to 142:28 of 2025).
-    if "Laws of 1990, chapter 10, section 1</li>" not in s5:
-        bad.append("a history row does not say the act's section")
+    # The act's own words, its section with them, stay in its pill
+    # (_rsa_history_pills holds the pills).
+    if 'title="Laws of 1990, chapter 10, section 1"' not in s5:
+        bad.append("a history pill does not keep the act's words")
     # The Laws page's reader puts a section in after the page has loaded,
     # and folds its lists as the chapter's page does.
     read = B.LANDING_JS[B.LANDING_JS.find("read.innerHTML='<p class=\"lw-rcrumb\">"):]
@@ -42969,6 +42970,77 @@ def _rsa_section_fold(B, RSA, S):
     return "ok", ("one fold, \"History and citations\" with its counts, its lists headed under the section; "
                   + ("Show all opens and closes in place, and with the fold" if node else
                      "node is not here for the script"))
+
+
+@check("build", "a section's history is drawn as pills, one for each act, newest first: the bill "
+       "linked with the law's year, or the year and chapter where there is no bill, the law's own "
+       "words kept for a screen reader and a pointer, and the fold counting the pills",
+       needs=("build_rsa", "rsa", "shell"))
+def _rsa_history_pills(B, RSA, S):
+    """Alice, 8 November 2026, on dry run 7 from her phone: the History and
+    citations fold "looks a lot better", but How it has changed should be
+    pills, as the other three lists are -- "Knowing the session chapter law
+    info is usually just visual noise and the pills are significantly
+    cleaner and more compact." Each act is one pill, in the shape of Other
+    bills that proposed changes: the bill linked with the law's year, "HB
+    1604-FN 2022"; where the record has no bill, the year and chapter, "1985
+    ch. 302". The rows of one act are one pill -- RSA 100-A:1 had eleven of
+    2025 chapter 142, eleven sections of HB 282-FN -- and the fold's count is
+    of the pills. "Laws of 2022, chapter 269, section 2" leaves what is seen
+    and stays in the pill's name for a screen reader, and as its title.
+    Held on the definitions check's chapter, with a history of an act of
+    three sections with its bill, two acts of one year with none, an act of
+    an earlier term's bill, and a law the note cites by its chapter alone."""
+    t = _def_table(RSA, _DEF_PASSAGES)
+    hist = [["1913", "145:18", ""], ["1937", "107:14", ""], ["1937", "133:75", ""],
+            ["1994", "54:1", "1993-1994/HB1157"],
+            ["2025", "142:4", "2025-2026/HB282"], ["2025", "142:27", "2025-2026/HB282"],
+            ["2025", "142:9", "2025-2026/HB282"], ["2026", "12", ""]]
+    data = {"enacted": {"153:5": hist}, "statute": {}}
+    root = Path(tempfile.mkdtemp(prefix="gr-rsapills-"))
+    try:
+        (root / "idx").mkdir()
+        for term, row in (("2025-2026", {"id": "HB282", "n": "HB 282-FN", "year": 2025}),
+                          ("1993-1994", {"id": "HB1157", "n": "HB 1157", "year": 1994})):
+            (root / "idx" / f"{term}.json").write_text(json.dumps([dict(row, title="x", kind="law",
+                                                       chip="Became Law", term=term)]), encoding="utf-8")
+        bills = B.Bills(root, "2025-2026")
+        page = B.chapter_page(S.template(Path("site")), t, data, bills, "153", "https://graniterecord.org")
+        pills = B.history_pills(list(reversed(hist)), bills)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    s5 = page[page.index('id="s5"'):]
+    s5 = s5[:s5.index("</section>")]
+    bad = []
+    no_bill = lambda y, ch, says: (f'<li title="{says}"><span aria-hidden="true">{y} ch. {ch}</span>'
+                                   f'<span class="sr">{says}</span></li>')
+    a_bill = lambda href, n, y, says: (f'<li title="{says}"><a href="{href}">{n}<span class="sr">, {says}'
+                                       f'</span></a> <span class="rs-yr">{y}</span></li>')
+    want = [no_bill("2026", "12", "Laws of 2026, chapter 12"),
+            a_bill("/bill/2025/hb282", "HB 282-FN", "2025", "Laws of 2025, chapter 142, sections 4, 9 and 27"),
+            a_bill("/bill/1994/hb1157", "HB 1157", "1994", "Laws of 1994, chapter 54, section 1"),
+            no_bill("1937", "133", "Laws of 1937, chapter 133, section 75"),
+            no_bill("1937", "107", "Laws of 1937, chapter 107, section 14"),
+            no_bill("1913", "145", "Laws of 1913, chapter 145, section 18")]
+    if pills != want:
+        bad.append(f"history_pills draws {pills}, not one pill an act, newest first: {want}")
+    part = re.search(r'<h\d class="rs-fh">How it has changed</h\d><p class="rs-note">From the section'
+                     r"(?:&#x27;|')s source note, newest first\.</p>(<ul[^>]*>.*?</ul>)", s5)
+    ul = part.group(1) if part else ""
+    if ul != '<ul class="rs-list">' + "".join(want) + "</ul>":
+        bad.append(f"How it has changed is not the pills in a list of pills, under its note: {ul[:200]!r}")
+    seen = re.sub(r"<[^>]+>", " ", re.sub(r'<span class="sr">.*?</span>', "", ul))
+    if "Laws of" in seen or "chapter" in seen:
+        bad.append(f"a law's words are on a pill where they are seen: {seen.strip()[:200]!r}")
+    if '<span class="rs-fcount">6 changes</span>' not in s5:
+        bad.append("the fold does not count the pills, six acts of eight rows")
+    if "rs-hist" in Path("src/pages/app.css").read_text(encoding="utf-8") \
+            or "rs-hist" in Path("src/pages/build_rsa.py").read_text(encoding="utf-8"):
+        bad.append("the history's rows (rs-hist) are still styled or drawn")
+    assert not bad, "; ".join(bad)
+    return "ok", ("six acts of eight rows are six pills, newest first, a bill's with its law's year "
+                  "and a law's with no bill as its year and chapter, the law's words in each pill's "
+                  "name and title, and the fold counting six")
 
 
 @check("build", "a docket line in plain words says what the record says, in the approved vote words, "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.25
+# GRANITE_VERSION: 2026-10-11.26
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -867,6 +867,55 @@ def in_place(items, cls="rs-list"):
     return f'<ul class="{cls}"{fold}>{"".join(items)}</ul>'
 
 
+def _sec_key(s):
+    return [int(p) if p.isdigit() else p for p in re.split(r"(\d+)", str(s))]
+
+
+def act_words(year, chapter, secs):
+    """An act as its law is cited: "Laws of 2022, chapter 269, section 2";
+    "sections 4, 9 and 27" where one act changed a section in several of its
+    own; the chapter alone where the source note names no section."""
+    secs = sorted(set(secs), key=_sec_key)
+    tail = ("" if not secs else f", section {secs[0]}" if len(secs) == 1
+            else ", sections " + ", ".join(secs[:-1]) + f" and {secs[-1]}")
+    return f"Laws of {year}, chapter {chapter}{tail}"
+
+
+def history_pills(hist, bills):
+    """A section's history as pills, one for each act, newest first (Alice,
+    8 November 2026, on dry run 7: "Knowing the session chapter law info is
+    usually just visual noise and the pills are significantly cleaner and
+    more compact"). `hist` is the source note's rows newest first, (year,
+    "chapter:section", bill key or ""). An act is its year and chapter, so
+    RSA 100-A:1's eleven rows of 2025 chapter 142 -- eleven sections of HB
+    282-FN, from 4 to 27, which until 7 November read as eleven rows alike
+    -- are one pill. A pill is drawn as Other bills that proposed changes
+    draws one: the bill, linked, and the law's year, "HB 1604-FN 2022"; with
+    no bill on record (before 1989, mostly), the year and the chapter, "1985
+    ch. 302", unlinked, since the record has no address for a session law.
+    The law's own words leave what is seen and stay in the pill: in its name
+    for a screen reader, and as its title for a pointer."""
+    acts = {}
+    for y, law, b in hist:
+        lch, _, lsec = str(law).partition(":")
+        a = acts.setdefault((str(y), lch), {"bill": "", "secs": []})
+        if lsec:
+            a["secs"].append(lsec)
+        if b and not a["bill"]:
+            a["bill"] = b
+    out = []
+    for (y, lch), a in acts.items():
+        says = act_words(y, lch, a["secs"])
+        if a["bill"]:
+            b = a["bill"]
+            out.append(f'<li title="{E(says)}"><a href="{E(bills.url(b))}">{E(bills.label(b))}'
+                       f'<span class="sr">, {E(says)}</span></a> <span class="rs-yr">{E(y)}</span></li>')
+        else:
+            out.append(f'<li title="{E(says)}"><span aria-hidden="true">{E(y)} ch. {E(lch)}</span>'
+                       f'<span class="sr">{E(says)}</span></li>')
+    return out
+
+
 # ONE FOLD FOR A SECTION'S HISTORY AND CITATIONS (the person, 7 November 2026:
 # "I'd like a more compact navigation of the how it has changed, other bills
 # that proposed changes, cites, and cited by sections all compacted into one
@@ -1200,19 +1249,9 @@ def chapter_page(tmpl, table, data, bills, ch, base):
                  and k not in passed_k]
         rows = []                                # (key, heading, note, list, count)
         if hist:
-            items = []
-            for y, law, b in hist:
-                bl = (f' &middot; <a href="{E(bills.url(b))}">{E(bills.label(b))}</a>' if b else "")
-                # THE ACT'S SECTION TOO (the review of 7 November 2026): RSA
-                # 100-A:1's history read "Laws of 2025, chapter 142 · HB
-                # 282-FN" eleven times over, 142:4 to 142:28, one row each, and
-                # its fold counted them as eleven changes no reader could tell
-                # apart. The source note gives the section; the row says it.
-                lch, _, lsec = str(law).partition(":")
-                items.append(f'<li><span class="rs-yr">{E(y)}</span> Laws of {E(y)}, chapter '
-                             f'{E(lch)}' + (f", section {E(lsec)}" if lsec else "") + f"{bl}</li>")
+            items = history_pills(hist, bills)
             rows.append(("hist", "How it has changed", "From the section's source note, newest first.",
-                         in_place(items, "rs-hist"), len(items)))
+                         in_place(items), len(items)))
         if other:
             other.sort(key=lambda k: (k.split("/")[0], bill_order(k)[1], -bill_order(k)[2]), reverse=True)
             rows.append(("other", "Other bills that proposed changes", "Bills whose own text says they "

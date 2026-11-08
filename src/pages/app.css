@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.354 */
+/* GRANITE_VERSION: 2026-09-07.355 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -8029,15 +8029,12 @@ letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
   font:500 var(--t-sm)/1.45 var(--sans);color:var(--pine)}
 .rs-all:hover{text-decoration:underline;text-underline-offset:.2em}
 .rs-note{margin:.25rem 0 .5rem}
-.rs-list,.rs-refs,.rs-hist{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.375rem .5rem}
+/* A section's history is pills too since 8 November 2026 (build_rsa's
+   history_pills), so every list in the fold is drawn alike. */
+.rs-list,.rs-refs{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.375rem .5rem}
 .rs-list li,.rs-refs li{border:1px solid var(--rule-2);border-radius:999px;padding:.125rem .625rem;
   background:var(--surface)}
-.rs-list a,.rs-refs a,.rs-hist a{color:var(--pine);font-weight:600}
-.rs-hist{display:block}
-.rs-hist li{padding:.25rem 0;border-bottom:1px solid var(--rule)}
-.rs-hist li:last-child,.rs-hist li:has(+ li[hidden]){border-bottom:0}
-.rs-hist .rs-yr{display:inline-block;min-width:3rem;font-variant-numeric:tabular-nums;color:var(--ink);
-  font-weight:600}
+.rs-list a,.rs-refs a{color:var(--pine);font-weight:600}
 /* The pending tag: the one thing on a section that is about now. */
 .rs-tag{margin:0 0 .625rem}
 .rs-tag > summary{display:inline-flex;align-items:center;gap:.375rem;cursor:pointer;
