@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.806
+# GRANITE_VERSION: 2026-09-04.807
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -116458,7 +116458,7 @@ def _elect_tab_case():
     surname is two words (Perkins Kwoka, after Lane, as the roster lists
     her), a sitting representative elected to the Senate (Creighton, NEW
     CHAMBER), a former representative elected to the Senate (Lane, NEW
-    CHAMBER), a former senator returning (Chandley, RETURNING), a sitting
+    CHAMBER), a former senator returning (Chandley, INCUMBENT), a sitting
     representative elected to another House district (Burt, NEW DISTRICT),
     the new, a winner of two nominations, a winner with no party printed, a
     "Jr." (Lawrence, after Kline), a race with two seats not final on a
@@ -116517,12 +116517,12 @@ def _elect_tab_like_legislators(OT):
     """The owner's walks of 7 and 8 November 2026, for this tab.
 
     THE CHIP. Each member-elect is the Legislators tab's chip, the one
-    component, with a title and a district: "Rep.-elect Kristine Trow (D -
-    Rock 13)", "Sen.-elect Jim Creighton (R - SD8)" (the owner chose
-    "Rep.-elect / Sen.-elect"). Linked only where the file links them; the
+    component, with a title and a district: "Rep. “Elect” Kristine Trow (D -
+    Rock 13)", "Sen. “Elect” Jim Creighton (R - SD8)" (the owner, walk of dry
+    run 8: the quotation marks inside the chip). Linked only where the file links them; the
     cross-nominated on the neutral chip with both letters, and no letter
     where none was printed; no contact detail. Beside it and outside it,
-    one word for who they are (the walk of 8 November): RETURNING (sitting,
+    one word for who they are (the walk of 8 November): INCUMBENT (sitting,
     in the seat they hold; or former, in the chamber they last sat in), NEW
     DISTRICT (sitting, another district of the same chamber), NEW CHAMBER
     (sitting or former, the other chamber), NEW.
@@ -116561,16 +116561,16 @@ def _elect_tab_like_legislators(OT):
     page = OT.members_elect(elect, "2026-11-20", "en", people)
     plain = lambda s: re.sub(r"\s+", " ", _h.unescape(re.sub(r"<[^>]+>", " ", s))).strip()  # noqa: E731
     want = {  # who -> (the chip's class, linked, tag, word)
-        "Rep.-elect Kristine Trow": ("p-D", None, "D - Rock 13", "New"),
-        "Rep.-elect Charles Foote": ("p-R", "charles-foote-rock-13", "R - Rock 13", "Returning"),
-        "Sen.-elect Jim Creighton": ("p-R", "james-creighton-hills-30", "R - SD8", "New chamber"),
-        "Sen.-elect Rachel Lane": ("p-D", "rachel-lane-hills-1", "D - SD9", "New chamber"),
-        "Sen.-elect Shannon E. Chandley": ("p-D", "shannon-chandley-sd-11", "D - SD11", "Returning"),
-        "Sen.-elect Rebecca Perkins Kwoka": ("p-D", "rebecca-perkins-kwoka-sd-21", "D - SD21",
-                                             "Returning"),
-        "Rep.-elect Ann Burt": ("p-R", "ann-burt-coos-3", "R - Coos 1", "New district"),
-        "Rep.-elect Pat Both": ("p-X", None, "R/D - Belk 6", "New"),
-        "Rep.-elect Lee Nobody": ("p-X", None, "Belk 6", "New"),
+        "Rep. “Elect” Kristine Trow": ("p-D", None, "D - Rock 13", "New"),
+        "Rep. “Elect” Charles Foote": ("p-R", "charles-foote-rock-13", "R - Rock 13", "Incumbent"),
+        "Sen. “Elect” Jim Creighton": ("p-R", "james-creighton-hills-30", "R - SD8", "New chamber"),
+        "Sen. “Elect” Rachel Lane": ("p-D", "rachel-lane-hills-1", "D - SD9", "New chamber"),
+        "Sen. “Elect” Shannon E. Chandley": ("p-D", "shannon-chandley-sd-11", "D - SD11", "Incumbent"),
+        "Sen. “Elect” Rebecca Perkins Kwoka": ("p-D", "rebecca-perkins-kwoka-sd-21", "D - SD21",
+                                             "Incumbent"),
+        "Rep. “Elect” Ann Burt": ("p-R", "ann-burt-coos-3", "R - Coos 1", "New district"),
+        "Rep. “Elect” Pat Both": ("p-X", None, "R/D - Belk 6", "New"),
+        "Rep. “Elect” Lee Nobody": ("p-X", None, "Belk 6", "New"),
     }
     for who, (cls, slug, tag, kind) in want.items():
         inner = (f'<a href="legislator/{slug}.html">{_h.escape(who)} <span class="mtag">({tag})</span></a>'
@@ -116632,9 +116632,9 @@ def _elect_tab_like_legislators(OT):
         bad.append("app.css does not let a member-elect's chip wrap its parts, draw the word "
                    "beside it in columns wide enough for both, or keep a hidden strip hidden")
     # By last name.
-    cols = re.findall(r'<section class="pcol"><h3>([^<]+)</h3><ol class="seatlist rlist elroll">(.*?)</ol>',
+    cols = re.findall(r'<section class="pcol"><h3>([^<]+)</h3>(?:<p class="note">[^<]*</p>)?<ol class="seatlist rlist elroll">(.*?)</ol>',
                       last, re.S)
-    got = [(_h.unescape(h), re.findall(r'translate="no">(?:<a [^>]+>)?(?:Rep|Sen)\.-elect ([^<]+?) <', b))
+    got = [(_h.unescape(h), re.findall(r'translate="no">(?:<a [^>]+>)?(?:Rep|Sen)\. “Elect” ([^<]+?) <', b))
            for h, b in cols]
     if got != [("Democrats — 3", ["Shannon E. Chandley", "Rachel Lane", "Rebecca Perkins Kwoka"]),
                ("Republican — 1", ["Jim Creighton"]),
@@ -116658,7 +116658,7 @@ def _elect_tab_like_legislators(OT):
                    "addresses #of-eld-senate and #of-eld-house")
     summary = (r'<details class="cgrp"><summary><span>([^<]+)</span><span class="ccount">(\d+)</span>'
                r'((?:<span class="ccnf">[^<]+</span>)?)<span class="caret">')
-    senate_by = [(c, n, plain(f), re.findall(r'Sen\.-elect ([^<]+?) <', g)) for (c, n, f), g in zip(
+    senate_by = [(c, n, plain(f), re.findall(r'Sen\. “Elect” ([^<]+?) <', g)) for (c, n, f), g in zip(
         re.findall(summary, sen), re.split(r'<details class="cgrp">', sen)[1:])]
     if senate_by != [("Hillsborough", "1", "", ["Shannon E. Chandley"]),
                      ("Rockingham", "1", "", ["Rebecca Perkins Kwoka"]),
@@ -116674,7 +116674,7 @@ def _elect_tab_like_legislators(OT):
     rock = house_by[house_by.find("<span>Rockingham</span>"):]
     if not re.search(r'</div><p class="elnf"><b>Result not final</b> in District 13 \(2 seats\) '
                      r'&mdash; a recount was requested</p></details>', rock) or re.findall(
-            r'(?:Rep|Sen)\.-elect ([^<]+?) <', rock) != ["Zoe Young", "Charles Foote", "Kristine Trow"]:
+            r'(?:Rep|Sen)\. “Elect” ([^<]+?) <', rock) != ["Zoe Young", "Charles Foote", "Kristine Trow"]:
         bad.append("by county, Rockingham does not list Young (6), then Foote and Trow (13), and "
                    "name District 13's two seats not final")
     # The seats at the top, and under them the seats not final, listed: the
@@ -116702,6 +116702,14 @@ def _elect_tab_like_legislators(OT):
     if re.findall(r'<p class="compshort">.*?</p>', top) and not re.search(
             r'3 <span aria-hidden="true">D</span><span class="sr">Democrats</span>', top):
         bad.append("a phone line's party letter does not carry the party's name for a screen reader")
+    # The kinds counted, a line a chamber, from the chips' own classification
+    # (the walk of dry run 8), and the sentence under "More than one party".
+    kinds = [plain(k) for k in re.findall(r"<p class=\"elkinds\">(.*?)</p>", top)]
+    if kinds != ["Senate 2 incumbent · 2 new chamber", "House 1 incumbent · 1 new district · 6 new"] \
+            or "returning" in page.lower():
+        bad.append(f"the kinds counted under Who won the seats are {kinds}, or the word returning is drawn")
+    if "party labels, as the Secretary of State’s results print them" not in plain(last):
+        bad.append("the cross-nominated group does not say why it is one")
     house = top[top.rfind('<div class="comp">'):top.find('<details class="vac elnfl">')]
     segs = re.findall(r'<span class="pseg (seg-[A-Z]+)" style="width:([\d.]+)%" title="([^"]+)"', house)
     if [(c, round(float(w)), _h.unescape(t)) for c, w, t in segs] != [
@@ -116716,7 +116724,7 @@ def _elect_tab_like_legislators(OT):
     es_page = OT.members_elect(elect, "2026-11-20", "es", people)
     es = plain(es_page) + " " + " ".join(_h.unescape(v) for v in re.findall(
         r'\b(?:title|aria-label)="([^"]*)"', es_page))
-    for word in ("Rep.-elect", "Sen.-elect", "Returning", "New district", "New chamber", "New",
+    for word in ("“Elect”", "Incumbent", "New district", "New chamber", "New",
                  "By last name", "By county", "Who won the seats", "not final", "seats elected",
                  "More than one party", "no one on file", "lists them", "members-elect",
                  "Democrats", "Republicans", "District", "Party not on file", "Not on file",
@@ -118160,7 +118168,7 @@ def _elect_pages_link_own():
     names, that page's GR_MEMBER the file's id, and every member the file
     links is linked somewhere; Pat Newell, new and cross-nominated, is drawn
     on the neutral chip with both letters and never as a link -- on the
-    Members-Elect tab as the Legislators tab's chip, "Rep.-elect Pat Newell
+    Members-Elect tab as the Legislators tab's chip, "Rep. “Elect” Pat Newell
     (R/D - Rock 32)", with NEW beside it, in each of its two views (the
     owner's walks of 7 and 8 November 2026); and the one
     line -- "Elected November 3, 2026, for Rockingham district 6. Takes
@@ -118206,7 +118214,7 @@ def _elect_pages_link_own():
                 elif member_of(slug) != want[slug][0]:
                     bad.append(f"{rel} links a member-elect to {slug}, the page of "
                                f"{member_of(slug)}, not {want[slug][0]}")
-        if re.search(r"<a\b[^>]*>(?:(?:Rep|Sen)\.-elect )?Pat Newell", text):
+        if re.search(r"<a\b[^>]*>(?:(?:Rep|Sen)\. “Elect” )?Pat Newell", text):
             bad.append(f"{rel} links Pat Newell, a new person")
     if set(want) - linked:
         bad.append(f"never linked: {sorted(set(want) - linked)}")
@@ -118217,7 +118225,7 @@ def _elect_pages_link_own():
     # The Members-Elect tab draws the Legislators tab's chip, with a title and
     # the district, and the word beside it (the owner's walks of 7 and 8
     # November 2026), in each of its two views.
-    tab = re.findall(r'<span class="mchip p-X" translate="no">Rep\.-elect Pat Newell <span class="mtag">'
+    tab = re.findall(r'<span class="mchip p-X" translate="no">Rep\. “Elect” Pat Newell <span class="mtag">'
                      r'\(R/D - Rock \d+\)</span></span> <span class="elkind" translate="yes">New</span>',
                      sources["officials.html"])
     if len(tab) != 2:
