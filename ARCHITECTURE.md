@@ -1143,7 +1143,9 @@ in a head, with a family's class to colour it. Its words are in Title Case,
 a record's capitals through `title_words`, which keeps the record's own
 abbreviations (`chips.json`'s `capitals`: HB 143, not Hb 143). `preflight` fails a chip written
 by hand and a rule that gives one a corner, an edge, a case or a size of its
-own.
+own. `chips.json`'s `by_status` colours a status whose kind would colour it
+wrongly: a CACR the voters did not ratify keeps the kind its passage is read
+by and is drawn as Died is.
 
 **On a phone a control is 44px**, in one block placed after the rules it has
 to outrank; a person's chip is its link to the edges. The line above a Learn
@@ -1737,8 +1739,11 @@ optional laptop file in the kit until the person sends it).
   `_related_judged` holds the rules to it). `build_site_v2.add_related` runs
   after the bill loop, once every bill's number and status is known, and
   puts `related` into each bill's own record; `app.js` draws it as the
-  Related tab (`data-t` 7, `/related`), each row the sentence
-  `related_bills.sentence` writes, the same function the bench reads.
+  History tab (`data-t` 7; it was labelled Related until 8 November 2026 and
+  its address is still `/related`), each row the sentence
+  `related_bills.sentence` writes, the same function the bench reads. Every
+  bill has the tab, with or without related rows, and an amendment's row is
+  chipped by what became of the amendment.
 - **`src/pages/build_rsa.py`** writes `/laws`, a page a chapter
   (`/laws/91-a#s4`), and the landing page's search files
   (`site/laws/chapters.json`, `headings.json`, `words.json`). The landing is
@@ -1822,7 +1827,8 @@ Representative and State Senate results in this project's shape, keyed as
 `site/districts.json` keys a race (`H|Rockingham|13`, `S|24`); its docstring
 gives the shape, and `tests/election_fixture.json` is a made-up one -- and the
 person's `corrections/members_elect.json`, which settles names, marks a race
-not final and holds a winner off the pages.
+not final, holds a winner off the pages and, under `party`, gives the party a
+cross-nominated winner filed under (the results print both nominations).
 
 Four rules, the person's. The file is written only while the build's day is
 after the election and before Organization Day (`proceedings.organization_day`)
@@ -1858,7 +1864,11 @@ components, `elect_now`, `elect_race`, `elect_block` and `elect_line`, in
 tab and its Senate card, with "Serving now" over the sitting members; in
 `places.json`, as `elect` (the races) and `e` on each place (its own race
 keys), which `find.js` draws in the My Town card; as the Officials page's
-sixth tab, Members-Elect, the Senate and then the House by county; as one
+Members-Elect tab, laid out as the Legislators tab is (the Senate and then
+the House, by last name or by county), each member-elect the person chip with
+one word beside it -- Incumbent (re-elected to the seat they hold), New
+district, New chamber or New, from the file's `k` and `own` -- and each
+chamber's totals at the top; as one
 line on the page of each member the file links, which `app.js` draws from
 `GR_ELECT` only for that member; and in the district map's panel, from
 `district_map.json`'s `elect`, the fill still the sitting members'. With no

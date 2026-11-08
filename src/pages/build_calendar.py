@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.50
+# GRANITE_VERSION: 2026-09-18.51
 """
 The General Court's week, one page per week.
 
@@ -36,7 +36,8 @@ can send to somebody, and the whole thing works with no script at all.
 
 A CALENDAR ON TOP OF THE WEEKS (24 September 2026). The person asked for the
 General Court's schedule done properly: a month down the left with the week
-and the day marked, List, Week and Day views of the day chosen, a preview on
+and the day marked, List and Week views of the day chosen (the Day view went on
+8 November 2026; an address asking for it reads as the list), a preview on
 hover and filters that combine. That is a script, and it does not repeat the
 mistake above, because what went wrong there was a second renderer and a page
 that needed script to show anything. Neither is true here. Every week is still
@@ -99,7 +100,8 @@ cards whole in its cells; the List view keeps every weekday too, one the
 filters emptied saying what they hid; a week is named by the days it shows,
 "The Week of February 16–20, 2026"; and the pager says "Previous Week", "This Week" and
 "Next Week", each with the week it leads to, as the person asked the same
-day, and the Day view's "Previous Day" and "Next Day". A Saturday or Sunday
+day (the Day view and its "Previous Day" and "Next Day" went on 8 November
+2026). A Saturday or Sunday
 is shown wherever one holds a meeting -- a column, a day in the list, the end
 of the week's name -- and never hidden in silence. None has since the
 calendar's first week: proceedings.csv has eleven weekend days, 1999-2015,

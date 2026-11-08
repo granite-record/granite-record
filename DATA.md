@@ -97,10 +97,12 @@ of which only the outcome is published. It holds the election's day
 State Representative and State Senator race on the district table under
 "races", keyed "H|<County>|<district>" and "S|<district>": its "seats"; the
 members-elect in "elected", each with their name first name first ("n"), their
-party's letters ("p", both of them where a candidate won two nominations,
-"R/D", and none where none was printed) and whether they sit now, sat before
+party's letters ("p", the party they filed under where the person has said
+so, else both of them where a candidate won two nominations, "R/D", and none
+where none was printed) and whether they sit now, sat before
 or are new ("k") -- with the id ("id") and page ("s", /legislator/<s>) of the
-sitting or former member they are only where that match is certain; how many
+sitting or former member they are only where that match is certain, and
+"own" true on a sitting member re-elected to the seat they hold; how many
 seats are "not_final", which is every seat until the recount deadline has
 passed; "recount", where a recount was asked for; and how many are "held"
 back. It holds no vote counts, no contact details and no reason the person
