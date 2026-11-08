@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.264
+# GRANITE_VERSION: 2026-09-04.265
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -409,11 +409,16 @@ def moved_requests(site):
         rows = json.loads((Path(site) / "idx" / f"{req['term']}.json").read_text(encoding="utf-8"))
     except (OSError, ValueError, KeyError, TypeError, AttributeError):
         return ""
+    # ONE RULE A REQUEST (the review of 8 November 2026): Cloudflare Pages
+    # allows 2,000 static rules, 616 are in use, and a session files over a
+    # thousand requests, most of them introduced by January -- three
+    # spellings each, as a member's moved page has, would pass the limit
+    # this winter and stop the nightly. The address as it is shared is the
+    # one without .html; Pages sends the .html spelling there itself.
     out = []
     for r in rows if isinstance(rows, list) else []:
         if r.get("address") and r.get("moved_to"):
-            old, new = f"/{r['address']}", f"/{r['moved_to']}"
-            out += [f"{old} {new} 301\n", f"{old}.html {new} 301\n", f"{old}/ {new} 301\n"]
+            out.append(f"/{r['address']} /{r['moved_to']} 301\n")
     return "".join(sorted(out))
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.1
+# GRANITE_VERSION: 2026-11-08.2
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -71,8 +71,10 @@ def sponsors(site):
 def body(r, req, who):
     """One request's page: what a request has, and nothing it has not."""
     chip = pchip(who) if who else E(r.get("sponsor_label") or r.get("sponsor") or "")
-    state = ("Withdrawn before it became a bill." if r.get("withdrawn")
-             else E(r.get("status") or ""))
+    # "Withdrawn", as the source says it and no more: the list does not say
+    # when, nor tell a withdrawal from a request that became a bill the bill
+    # data has not caught up with (build_lsrs; the review of 8 November).
+    state = "Withdrawn" if r.get("withdrawn") else E(r.get("status") or "")
     return ('<div class="static-rec shown" id="request-rec">'
             f'<p class="sx-name">{E(req.get("label") or "Bill Request")}</p>'
             f"<h1>{E(r.get('n') or '')}</h1>"

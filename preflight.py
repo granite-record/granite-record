@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.798
+# GRANITE_VERSION: 2026-09-04.799
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -29892,10 +29892,14 @@ def _request_pages():
             "a request's page is not noindex, shown with script on, explained, or its sponsor's "
             "chip linked")
         wd = (site / "request" / "2027-0002.html").read_text(encoding="utf-8")
-        assert "Withdrawn before it became a bill." in wd, "a withdrawn request's page does not say so"
+        assert "<b>Status:</b> Withdrawn<" in wd, "a withdrawn request's page does not say so"
         red = BPG.moved_requests(site)
         assert "/request/2027-0003 /bill/2027/hb45 301\n" in red and "2027-0001" not in red, (
             f"the 301s for the requests read {red!r}")
+        # ONE RULE A REQUEST: Cloudflare's 2,000 static rules would not hold
+        # three spellings for a session's thousand-odd requests (the review
+        # of 8 November 2026).
+        assert red.count("\n") == 1, f"a moved request takes {red.count(chr(10))} rules: {red!r}"
         # Every address is a page or a 301, never both.
         both = [p for p in pages if f"/request/{p[:-5]} " in red]
         assert not both, f"a page and a 301 at one address: {both}"
