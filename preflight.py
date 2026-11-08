@@ -114747,12 +114747,23 @@ def _seat_totals_at_top():
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     phone = re.search(r"@media \(max-width:38\.75em\)\{(\s*:where\(body\.pg\) \.comp-top \.comp[^@]*?)\n\}", css)
     rules = phone.group(1) if phone else ""
+
+    def _phone_hides_bar(rules):
+        """True where the phone's rules hide the bar or its block (none,
+        hidden, or no height), or give the bar no height of its own."""
+        hides = lambda d: re.search(  # noqa: E731
+            r"display:\s*none|visibility:\s*hidden|(?<![-\w])(?:max-)?height:\s*0(?![.\d])", d)
+        gone = [s.strip() for sel, d in re.findall(r"([^{}]+)\{([^}]*)\}", rules) if hides(d)
+                for s in sel.split(",")
+                if re.search(r"(?:\.pbar2|\.comp-top(?: >)? \.comp|\.comp-top)$", s.strip())]
+        return bool(gone) or not re.search(
+            r":where\(body\.pg\) \.comp-top \.comp > \.pbar2\{height:[1-9]", rules)
     if not re.search(r":where\(body\.pg\) \.compshort\{display:none;", css) or not phone or not all(
             x in rules for x in (
                 ":where(body.pg) .comp-top .comp > .compline,:where(body.pg) .comp-top .comp > .plegend,",
                 ":where(body.pg) .comp-top .comp > p:not(.compshort){display:none}",
                 ":where(body.pg) .comp-top .comp > .compshort{display:block")) or \
-            re.search(r"\.pbar2\{[^}]*display:none", rules):
+            re.search(r"\.pbar2\{[^}]*display:none", rules) or _phone_hides_bar(rules):
         bad.append("app.css does not show, at a phone's width only, each chamber's bar over its short "
                    "line, without the count of seats, the legend and the thresholds")
     assert not bad, "\n  ".join(bad)
@@ -115002,7 +115013,10 @@ process.stdout.write(JSON.stringify(out));
                            ("#tab-edist", "members-elect,pane-ecounty", "#pane-ecounty"),
                            ("#of-eld-house", "members-elect,of-eld-house", "#of-eld-house"),
                            ("#pane-edist", "", "#legislators"),
-                           ("#of-eld-senate", "", "#legislators")):
+                           ("#of-eld-senate", "", "#legislators"),
+                           ("#of-eld-house", "", "#legislators"),
+                           ("#pane-elast", "", "#legislators"),
+                           ("#pane-ecounty", "", "#legislators")):
         r = subprocess.run([node, "-e", probe, "x", hsh, ids], capture_output=True,
                            encoding="utf-8", timeout=60)
         if r.returncode or r.stdout != want:
@@ -115989,7 +116003,7 @@ def _elect_tab_like_legislators(OT):
             or ":where(body.pg) .rtabs[hidden]{display:none}" not in css \
             or not re.search(r":where\(body\.pg\) \.elkind\{[^}]*text-transform:uppercase", css) \
             or not all(re.search(r":where\(body\.pg\) " + re.escape(sel) + r"\{grid-template-columns:"
-                                 r"repeat\(auto-(?:fit|fill),minmax\(min\(100%,30rem\),1fr\)\)\}", css)
+                                 r"repeat\(auto-(?:fit|fill),minmax\(min\(100%,34rem\),1fr\)\)\}", css)
                        for sel in (".elroster .partycols", ".grid.elroll")):
         bad.append("app.css does not let a member-elect's chip wrap its parts, draw the word "
                    "beside it in columns wide enough for both, or keep a hidden strip hidden")
@@ -116103,7 +116117,8 @@ function bar(ids){var tabs=ids.map(function(p){var h={};return {dataset:{pane:p}
 var heads={"of-eld-house":{pane:"pane-ecounty",scrollIntoView:function(){scrolled="of-eld-house";}}};
 var document={activeElement:null,getElementById:function(id){return panes[id]||heads[id]||null;},
   querySelector:function(){return null;},querySelectorAll:function(s){return s===".rtabs"?bars:[];}};
-var location={hash:""" + json.dumps(hash_) + r"""};
+var location={hash:""" + json.dumps(hash_) + r""",pathname:"/officials",search:""},replaced=[];
+var history={replaceState:function(s,t,u){replaced.push(u);location.hash=u.slice(u.indexOf("#"));}};
 var addEventListener=function(k,f){(listeners[k]=listeners[k]||[]).push(f);};
 var roster=bar(["pane-last","pane-county","pane-seat"]),elect=bar(["pane-elast","pane-ecounty"]);
 """ + js + r"""
@@ -116111,16 +116126,23 @@ function shown(){return Object.keys(panes).filter(function(k){return !panes[k].h
 var a=shown(); elect.tabs[1].click(); var b=shown(); roster.tabs[2].click(); var c=shown();
 elect.tabs[0].click(); location.hash="#of-eld-house";
 (listeners.hashchange||[]).forEach(function(f){f();}); var d=shown();
-console.log(JSON.stringify([a,b,c,d,String(scrolled),bars.map(function(x){return x.hidden;}).join(",")]));
+console.log(JSON.stringify([a,b,c,d,String(scrolled),bars.map(function(x){return x.hidden;}).join(","),
+  replaced.join(" ")]));
 """
         import subprocess as _sp
         for hash_, want_ in (("", ["pane-elast,pane-last", "pane-ecounty,pane-last",
                                    "pane-ecounty,pane-seat", "pane-ecounty,pane-seat",
-                                   "of-eld-house", "false,false"]),
-                             # an old By district address, at arrival, opens By county
+                                   "of-eld-house", "false,false", ""]),
+                             # an old By district address, at arrival, opens By county; By
+                             # last name picked then names itself, so a reload opens it
                              ("#of-eld-house", ["pane-ecounty,pane-last", "pane-ecounty,pane-last",
                                                 "pane-ecounty,pane-seat", "pane-ecounty,pane-seat",
-                                                "of-eld-house", "false,false"])):
+                                                "of-eld-house", "false,false", "/officials#pane-elast"]),
+                             # #pane-edist and #tab-edist become the view's own id: the view
+                             # itself, not a heading in it
+                             ("#pane-ecounty", ["pane-ecounty,pane-last", "pane-ecounty,pane-last",
+                                                "pane-ecounty,pane-seat", "pane-ecounty,pane-seat",
+                                                "of-eld-house", "false,false", "/officials#pane-elast"])):
             out = _sp.run([node, "-e", harness(hash_)], capture_output=True, text=True, timeout=60)
             if out.returncode != 0 or (out.stdout.strip() or "[]")[:1] != "[" or json.loads(
                     out.stdout) != want_:

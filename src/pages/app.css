@@ -8600,13 +8600,16 @@ line-height:1.5;color:var(--ink-2)}
    ... (R - Belk 4)") and its word beside it -- and ran out of the roster's
    250px cell, and past the page's edge from 768px up: the cells are wider
    here, and a chip wraps inside its own, between the name and its tag. */
-:where(body.pg) .grid.elroll{grid-template-columns:repeat(auto-fill,minmax(min(100%,30rem),1fr))}
+:where(body.pg) .grid.elroll{grid-template-columns:repeat(auto-fill,minmax(min(100%,34rem),1fr))}
 /* AND ROOM FOR THE WORD BESIDE IT (the walk of 8 November 2026). In the
    Legislators tab's 364px columns a member-elect's chip and its word did
    not fit on one line, so on a desktop 322 of the 405 words went under
-   their chips, and from 900 to 1024px most chips wrapped. Two columns of
-   at least 480px, or one, fit both on one line; a phone is as before. */
-:where(body.pg) .elroster .partycols{grid-template-columns:repeat(auto-fit,minmax(min(100%,30rem),1fr))}
+   their chips, and from 900 to 1024px most chips wrapped. The widest row
+   on dry run 7 is 487px in English and 521px in Spanish: two columns of at
+   least 544px, or one, fit every chip and its word on one line from 980 to
+   1440px in both; the two columns hold from about 1230px. A phone is as
+   before. */
+:where(body.pg) .elroster .partycols{grid-template-columns:repeat(auto-fit,minmax(min(100%,34rem),1fr))}
 :where(body.pg) .elroll .mem{min-width:0}
 :where(body.pg) .elroll .mchip{max-width:100%;white-space:normal}
 /* AND ITS PARTS WRAP, NOT SQUEEZE (the review of 8 November 2026): a chip

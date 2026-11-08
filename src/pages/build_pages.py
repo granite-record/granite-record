@@ -2469,7 +2469,7 @@ SEATING_JS = """
     });
   }
   tabs.forEach(function(t){
-    t.addEventListener("click",function(){show(t.dataset.pane);});
+    t.addEventListener("click",function(){pick(t.dataset.pane);});
   });
   // Left and right move between tabs, which is what a tablist promises the
   // moment it says role="tab".
@@ -2481,7 +2481,7 @@ SEATING_JS = """
     else if(e.key==="ArrowLeft")j=(i-1+tabs.length)%tabs.length;
     else return;
     e.preventDefault();
-    tabs[j].focus(); show(tabs[j].dataset.pane);
+    tabs[j].focus(); pick(tabs[j].dataset.pane);
   });
   // The view holding what the address names, and that element; or null.
   function named(){
@@ -2493,6 +2493,16 @@ SEATING_JS = """
       if(p&&p.contains(el))return {pane:tabs[i].dataset.pane,el:el};
     }
     return null;
+  }
+  // A view the reader picks. Where the address names something in another
+  // of these views, it names this one now (no new history entry), so a
+  // reload or Back opens the view picked and not the one the address named
+  // (the review of 8 November 2026); any other address is left as it is.
+  function pick(id){
+    var a=named();
+    show(id);
+    if(a&&a.pane!==id&&history.replaceState)
+      history.replaceState(null,"",location.pathname+location.search+"#"+id);
   }
   var at=named();
   show(at?at.pane:tabs[0].dataset.pane);
