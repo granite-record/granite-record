@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.277
+// GRANITE_VERSION: 2026-09-07.278
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -8086,10 +8086,15 @@ const anOpen=new Set();
 // committee, a term, the rail's marks -- and is not the end of selecting
 // text, is a press on its title: the title button that opens and shuts it,
 // which stays the keyboard's way to do the same.
+// ONLY A CONTROL INSIDE THE HEAD stops it (the owner's walk of dry run 8,
+// 8 November 2026). On a member's or a committee's page the cards sit in a
+// tab panel with tabindex="0", and the test for a control looked past the
+// head to it, so every press there but the title's did nothing.
 function cardBackground(e){
   const h=e.target.closest&&e.target.closest(".card:not(.focus):not(.lsr) .chead");
-  if(!h||e.button>0||e.target.closest("a,button,input,select,textarea,label,summary,details,[data-term],[tabindex]"))
-    return null;
+  if(!h||e.button>0)return null;
+  const ctl=e.target.closest("a,button,input,select,textarea,label,summary,details,[data-term],[tabindex]");
+  if(ctl&&h.contains(ctl))return null;
   const s=window.getSelection&&window.getSelection();
   if(s&&String(s).length)return null;
   return h.querySelector(":scope > button.ctitle");
