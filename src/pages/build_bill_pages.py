@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.78
+# GRANITE_VERSION: 2026-09-04.79
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -577,7 +577,7 @@ def main():
         "written by hand. A recording's start time is either the moment the chair "
         "or clerk opened the item, or is marked approximate; the site does not "
         "quote the captions.",
-        "- A bill's Related tab lists bills and amendments found by comparing their "
+        "- A bill's History tab lists bills and amendments found by comparing their "
         "text: a bill only where most of its language is shared, an amendment only "
         "where the docket records what became of it. A match can be missed.",
         "- A law's text is the General Court's statute table as of the date its page "

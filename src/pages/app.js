@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.282
+// GRANITE_VERSION: 2026-09-07.283
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2632,7 +2632,9 @@ function whyLine(b){
   const q=query.trim();
   if(!q||billNumbers(q)||b.lsr)return "";
   const y=whyListed(b,groupsFor(q));
-  return y?`<div class="cwhy">Listed for &mdash; ${esc(y)}</div>`:"";
+  // "FOUND IN THE BILL'S TEXT" (the review of the release, 8 November 2026):
+  // "Listed for — in the bill's text" read as if a word were missing.
+  return y?`<div class="cwhy">${/^in /.test(y)?"Found":"Listed for &mdash;"} ${esc(y)}</div>`:"";
 }
 // The search's own words, in order, in the title, is the strongest sign
 // there is: matchScore() counts it, for this page, the header and /search.

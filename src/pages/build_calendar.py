@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.51
+# GRANITE_VERSION: 2026-09-18.52
 """
 The General Court's week, one page per week.
 
@@ -906,7 +906,7 @@ WEEK_JS = r"""
     return '<li class="wke'+(isKD(e)?" wkkd":"")+'" data-date="'+esc(e.date)+'" data-cmte="'+esc(e.cmte)+'">'
       +(go?'<a class="wkgo" href="'+go[1]+'">'+inner+'</a>'
           :'<button type="button" class="wkgo" data-open="'+esc(e.date+"|"+e.cmte)+'">'+inner
-            +'<span class="sr">: open it in the Day view</span></button>')+'</li>';
+            +'<span class="sr">: open it in the list</span></button>')+'</li>';
   }
   // What a column says where it shows nothing: that nothing is on, or what
   // the filters hid.
@@ -1246,7 +1246,11 @@ WEEK_JS = r"""
     }else if(/\/calendar\/\d{4}-W\d\d/.test(location.pathname)){
       SEL=opening(pathWeek()); AUTO=true;
     }else{
-      SEL=inRange(TODAY)?TODAY:opening(HERE); AUTO=true;
+      // FROM SATURDAY, NEXT WEEK, as the home page's Coming up already does
+      // (D13): on a weekend the calendar opened on the week just ended (the
+      // review of the release, 8 November 2026).
+      var wd=weekday(TODAY), START=wd>=5?addDays(TODAY,7-wd):TODAY;
+      SEL=inRange(START)?START:inRange(TODAY)?TODAY:opening(HERE); AUTO=true;
     }
     VIEWM=month(SEL); FOCUS=SEL;
     return q?"query":h?"hash":"";
