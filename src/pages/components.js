@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.24
+// GRANITE_VERSION: 2026-10-09.25
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -501,7 +501,8 @@ function electRace(race,lang){
   const r=race||{}, won=r.elected||[];
   const chips=won.map(e=>{
     const p=String(e.p||"");
-    return "<li>"+pchip({party_code:p.length===1?p:"X",
+    const own=!!(e.own&&e.id&&e.s);
+    return (own?'<li class="elown">':"<li>")+pchip({party_code:p.length===1?p:"X",
       display_full:p?`${e.n||""} (${p})`:(e.n||""),
       slug:e.id&&e.s?e.s:""})+"</li>";
   });

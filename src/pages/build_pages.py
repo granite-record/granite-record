@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.262
+# GRANITE_VERSION: 2026-09-04.264
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2442,12 +2442,17 @@ SEATING_JS = """
    so a reader with no JavaScript gets the whole roster rather than one pane
    and two empty boxes. The first thing this does is hide two of them -- and
    that is also why losing this block is quiet: every pane simply stays open,
-   the tabs still look like tabs, and clicking one changes nothing. */
-(function(){
-  var bar=document.querySelector(".rtabs");
-  if(!bar)return;
+   the tabs still look like tabs, and clicking one changes nothing.
+
+   EVERY STRIP OF THEM (the owner's walk of 7 November 2026): the
+   Members-Elect tab lists its people the same three ways, under a strip of
+   its own, and each strip shows and hides its own panes. */
+[].forEach.call(document.querySelectorAll(".rtabs"),function(bar){
   var tabs=[].slice.call(bar.querySelectorAll("[role=tab]"));
   if(!tabs.length)return;
+  // Written hidden: shown here, so a page without this script has no strip
+  // of buttons that do nothing over its views.
+  bar.hidden=false;
   function show(id){
     tabs.forEach(function(t){
       var on=t.dataset.pane===id;
@@ -2473,7 +2478,7 @@ SEATING_JS = """
     tabs[j].focus(); show(tabs[j].dataset.pane);
   });
   show(tabs[0].dataset.pane);
-})();
+});
 </script>
 """
 
@@ -2932,8 +2937,17 @@ window.addEventListener("popstate",()=>{
 OFFICIALS_HASH_JS = """<script>
 (function(){
   var OLD={"#towns":"#my-town","#statewide":"#executive"};
+  // THE MEMBERS-ELECT, ONCE THEY ARE GONE (the owner, 7 November 2026): from
+  // the build of 2 December the tab and its panel are not drawn at all, and
+  // /officials#members-elect -- or a heading inside it -- named nothing and
+  // opened My Town with the dead address. While nothing on the page has that
+  // id, it is Legislators, which the tab said "lists who holds each seat".
+  // Between the reader's midnight and that build, the tab is still drawn,
+  // retired, and TABS_JS opens Legislators for it.
+  var GONE={"#members-elect":1,"#of-elect-senate":1,"#of-elect-house":1};
   function alias(){
     var to=OLD[location.hash];
+    if(!to&&GONE[location.hash]&&!document.getElementById(location.hash.slice(1)))to="#legislators";
     if(to&&history.replaceState)
       history.replaceState(null,"",location.pathname+location.search+to);
   }
@@ -4584,6 +4598,28 @@ def main():
                 f'</div><div class="pbar2">{segs}</div>'
                 f'<div class="plegend">{legend}</div>{note}</div>')
 
+    def short_bar(ch, lang="en"):
+        """One chamber's seats in one short line, which is all a phone shows
+        of them (the owner's walk of 7 November 2026, C): "Senate 16 R
+        &middot; 8 D", "House 212 R &middot; 169 D &middot; 1 I &middot; 18
+        vacant" -- a party's letter for the eye and its name for a screen
+        reader, from the same counts as static_bar's."""
+        x = C.get(ch)
+        if not x:
+            return ""
+        bits = [f'{pp["n"]} <span aria-hidden="true">{esc(pp["code"])}</span>'
+                f'<span class="sr">{esc(party_word(pp["name"], lang, plural=pp["n"] != 1))}</span>'
+                for pp in x.get("parties", [])]
+        if x.get("vacant"):
+            bits.append(say(lang, "comp.n_vacant_one", "{n} vacant", n=x["vacant"])
+                        if x["vacant"] == 1 else say(lang, "comp.n_vacant", "{n} vacant", n=x["vacant"]))
+        chamber = {"House": say(lang, "comp.house", "House"),
+                   "Senate": say(lang, "comp.senate", "Senate")}.get(x["chamber"], x["chamber"])
+        # Each count whole on its line (.csb): a line too long for the phone
+        # breaks between two of them, never inside one.
+        return (f'<p class="compshort"><b>{esc(chamber)}</b> '
+                + " &middot; ".join(f'<span class="csb">{b}</span>' for b in bits) + "</p>")
+
     def vacancies_box(lang="en"):
         if not C.get("vacancies"):
             return ""
@@ -4758,7 +4794,7 @@ def main():
                       say(lang, "roster.filled", "{seated} of the 400 seats are filled.",
                           seated=seated))
         return f"""<section class="roster" id="roster">
-<div class="rtabs" role="tablist" aria-label="{say(lang, "roster.arrange", "How to arrange the roster")}">
+<div class="rtabs" role="tablist" aria-label="{say(lang, "roster.arrange", "How to arrange the roster")}" hidden>
   <button type="button" role="tab" id="tab-last" data-pane="pane-last"
     aria-controls="pane-last" aria-selected="true">{say(lang, "roster.by_last", "By last name")}</button>
   <button type="button" role="tab" id="tab-county" data-pane="pane-county"
@@ -4925,11 +4961,18 @@ def main():
 <div class="ofmapbox" id="ofmap"></div>
 <noscript><p class="note">{say(lang, "of.map_noscript", "The map needs JavaScript. Every town&rsquo;s districts\nare on its own page, listed in <a href=\"/directory/towns.html\">every town and\nward</a>.")}</p></noscript>
 </section>"""),
+            # WHO HOLDS THE SEATS AT THE TOP (the owner's walk of 7 November
+            # 2026, C): under the presiding officers and over the roster, as
+            # the Members-Elect tab's totals are over its lists; on a phone,
+            # one short line a chamber (short_bar) in place of the bars, the
+            # thresholds under them and their legends.
             ("legislators", say(lang, "of.tab.legislators", "Legislators"), len(legs),
-             OT.presiding(officers, legs, today, lang) + roster_section(legs, lang)
-             + (('<div class="comp-wrap"><h2>' + say(lang, "of.who_holds", "Who holds the seats")
-                 + "</h2>" + static_bar("S", lang) + static_bar("H", lang) + vacancies_box(lang)
-                 + "</div>") if C else "")),
+             OT.presiding(officers, legs, today, lang)
+             + (('<div class="comp-wrap comp-top"><h2>' + say(lang, "of.who_holds", "Who holds the seats")
+                 + "</h2>" + short_bar("S", lang) + short_bar("H", lang)
+                 + static_bar("S", lang) + static_bar("H", lang) + vacancies_box(lang)
+                 + "</div>") if C else "")
+             + roster_section(legs, lang)),
             ("federal", say(lang, "of.tab.federal", "Federal Delegation"),
              OT.count(off, "federal"), OT.federal(off, lang)),
             ("executive", say(lang, "of.tab.executive", "Executive Branch"),
@@ -4942,13 +4985,26 @@ def main():
             # "Members-Elect (N)", N the winners the file names: a race not
             # final counts none, and a tab of none says no number, as any tab.
             ("members-elect", say(lang, "of.tab.elect", "Members-Elect"), OT.elect_count(elect),
-             OT.members_elect(elect, today, lang)),
+             OT.members_elect(elect, today, lang, [*legs, *gone])),
         ]
         of_panes = [p for p in of_panes if p[3]]
+        # SEVEN TABS ON ONE LINE (the owner, 7 November 2026): with
+        # Members-Elect the strip needed 1,282px of its 1,132 at 1280 and at
+        # 1440, and the new tab showed only its "M" behind the edge, in both
+        # languages. The tab says the short name -- "Federal (4)", "County
+        # (80)" -- and its panel's heading the whole one, which a screen
+        # reader walking the headings and a page read without the script
+        # still get. Measured on dry run 6 with the web fonts: 1,016px in
+        # English and 971 in Spanish, of 1,132.
+        short = {"federal": say(lang, "of.tab_short.federal", "Federal"),
+                 "executive": say(lang, "of.tab_short.executive", "Executive"),
+                 "judicial": say(lang, "of.tab_short.judicial", "Judicial"),
+                 "counties": say(lang, "of.tab_short.counties", "County")}
         of_tabs = "".join(
             f'<button type="button" role="tab" id="tab-{pid}" data-pane="{pid}" '
             f'aria-controls="{pid}" aria-selected="{"true" if i == 0 else "false"}" '
-            f'tabindex="{0 if i == 0 else -1}"{elect_attrs if pid == "members-elect" else ""}>{name}'
+            f'tabindex="{0 if i == 0 else -1}"{elect_attrs if pid == "members-elect" else ""}>'
+            f'{short.get(pid, name)}'
             + (f' <span class="ofn">({n:,})</span>' if n else "") + "</button>"
             for i, (pid, name, n, _h) in enumerate(of_panes))
         of_body = "".join(
@@ -4958,7 +5014,7 @@ def main():
             for pid, name, _n, inner in of_panes)
         leg_body = f"""<h1>{say(lang, "of.title", "Officials")}</h1>
 <p class="lead">{say(lang, "of.lead", "Everyone who represents your town, from your select board to\nCongress; the {n} sitting members of the New Hampshire House and\nSenate; and the state&rsquo;s other officials.", n=len(legs))}</p>
-{chrome.lang_note(lang)}<div class="twntabs oftabs" role="tablist" aria-label="{say(lang, "of.title", "Officials")}" hidden>{of_tabs}</div>
+{chrome.lang_note(lang)}<div class="twntabs oftabs" role="tablist" aria-label="{say(lang, "of.title", "Officials")}" data-retired="legislators" hidden>{of_tabs}</div>
 {of_body}
 {OFFICIALS_HASH_JS}{TOWN_TABS_JS}{OFFICIALS_MAP_JS}"""
         return shell(say(lang, "of.page_title", "Officials | Granite Record"), "officials.html",
