@@ -412,6 +412,16 @@
    "es": "— {n} escaños",
    "state": "draft"
   },
+  "comp.n_vacant": {
+   "en": "{n} vacant",
+   "es": "{n} vacantes",
+   "state": "draft"
+  },
+  "comp.n_vacant_one": {
+   "en": "{n} vacant",
+   "es": "{n} vacante",
+   "state": "draft"
+  },
   "comp.note": {
    "en": "A bill passes with a majority of the members voting. Passing a constitutional amendment takes three fifths of the members in office: {three} of the {sitting} on the current roster. A veto override needs {two}.",
    "es": "Un proyecto de ley se aprueba con la mayoría de los miembros que votan. Aprobar una enmienda constitucional requiere tres quintos de los miembros en funciones: {three} de los {sitting} de la lista actual. Anular un veto requiere {two}.",
@@ -442,9 +452,89 @@
    "es": "{n} escaños vacantes de la Cámara en {d} distritos",
    "state": "draft"
   },
+  "elect.all": {
+   "en": "All {n} members-elect, by surname, each chamber on its own.",
+   "es": "Los {n} miembros electos, por apellido, cada cámara por separado.",
+   "state": "draft"
+  },
+  "elect.all_one": {
+   "en": "{n} member-elect, by surname.",
+   "es": "{n} miembro electo, por apellido.",
+   "state": "draft"
+  },
+  "elect.arrange": {
+   "en": "How to arrange the members-elect",
+   "es": "Cómo ordenar a los miembros electos",
+   "state": "draft"
+  },
+  "elect.by_district": {
+   "en": "By district",
+   "es": "Por distrito",
+   "state": "draft"
+  },
   "elect.elected": {
    "en": "Elected {day}",
    "es": "Elección del {day}",
+   "state": "draft"
+  },
+  "elect.kind.former": {
+   "en": "Returning",
+   "es": "Regresa",
+   "state": "draft"
+  },
+  "elect.kind.moved": {
+   "en": "New seat",
+   "es": "Nuevo escaño",
+   "state": "draft"
+  },
+  "elect.kind.new": {
+   "en": "New",
+   "es": "Nuevo/a",
+   "state": "draft"
+  },
+  "elect.kind.own": {
+   "en": "Re-elected",
+   "es": "Reelegido/a",
+   "state": "draft"
+  },
+  "elect.n_none": {
+   "en": "{n} with no one on file",
+   "es": "{n} sin nadie registrado",
+   "state": "draft"
+  },
+  "elect.n_not_final": {
+   "en": "{n} not final",
+   "es": "{n} por definir",
+   "state": "draft"
+  },
+  "elect.nf_in": {
+   "en": "in {where}",
+   "es": "en {where}",
+   "state": "draft"
+  },
+  "elect.nf_named": {
+   "en": "By county and By district name them.",
+   "es": "Se indican en Por condado y Por distrito.",
+   "state": "draft"
+  },
+  "elect.nf_one": {
+   "en": "for {n} seat",
+   "es": "para {n} escaño",
+   "state": "draft"
+  },
+  "elect.nf_seats": {
+   "en": "for {n} seats in {d} districts",
+   "es": "para {n} escaños en {d} distritos",
+   "state": "draft"
+  },
+  "elect.nf_seats_one": {
+   "en": "for {n} seats in one district",
+   "es": "para {n} escaños en un distrito",
+   "state": "draft"
+  },
+  "elect.nf_short": {
+   "en": "Not final",
+   "es": "Por definir",
    "state": "draft"
   },
   "elect.none": {
@@ -457,14 +547,34 @@
    "es": "No hay miembro electo registrado para {n} escaño.",
    "state": "draft"
   },
+  "elect.none_short": {
+   "en": "No one on file",
+   "es": "Nadie registrado",
+   "state": "draft"
+  },
   "elect.not_final": {
    "en": "Result not final",
    "es": "Resultado no definitivo",
    "state": "draft"
   },
+  "elect.party_more": {
+   "en": "More than one party",
+   "es": "Más de un partido",
+   "state": "draft"
+  },
   "elect.recount": {
    "en": "&mdash; a recount was requested",
    "es": "&mdash; se pidió un recuento",
+   "state": "draft"
+  },
+  "elect.recounts": {
+   "en": "&mdash; a recount was requested in each",
+   "es": "&mdash; se pidió un recuento en cada uno",
+   "state": "draft"
+  },
+  "elect.senate_by_district": {
+   "en": "The Senate is listed by district.",
+   "es": "El Senado aparece por distrito.",
    "state": "draft"
   },
   "elect.serving": {
@@ -475,6 +585,31 @@
   "elect.takes": {
    "en": "Takes office {day}.",
    "es": "Toma de posesión: {day}.",
+   "state": "draft"
+  },
+  "elect.title_rep": {
+   "en": "Rep.-elect",
+   "es": "Rep. electo/a",
+   "state": "draft"
+  },
+  "elect.title_sen": {
+   "en": "Sen.-elect",
+   "es": "Sen. electo/a",
+   "state": "draft"
+  },
+  "elect.who_won": {
+   "en": "Who won the seats",
+   "es": "Quién ganó los escaños",
+   "state": "draft"
+  },
+  "elect.won": {
+   "en": "{won} of {seats} seats elected",
+   "es": "{won} de {seats} escaños elegidos",
+   "state": "draft"
+  },
+  "elect.won_nf": {
+   "en": "{won} of {seats} seats elected, {nf} not final",
+   "es": "{won} de {seats} escaños elegidos, {nf} por definir",
    "state": "draft"
   },
   "find.all_terms": {
