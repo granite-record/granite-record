@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.354 */
+/* GRANITE_VERSION: 2026-09-07.355 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -8577,40 +8577,40 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-5);font-family:v
 /* AT THE TOP NOW, ON BOTH TABS (the owner's walk of 7 November 2026, C):
    who holds the seats under the presiding officers, and who won them under
    the Members-Elect tab's sentence, each over its lists -- no rule above,
-   and the lists' strip below. On a phone a chamber is one short line
-   (.compshort), not a bar, its legend and the thresholds under it. */
+   and the lists' strip below. On a phone a chamber is its bar, thinner,
+   over one short line (.compshort, the block's last part), not the line
+   with its count of seats, the legend and the thresholds -- a chart on a
+   phone as well (the walk of 8 November 2026). */
 :where(body.pg) .comp-wrap.comp-top{margin:0;padding-top:0;border-top:0}
 :where(body.pg) .compshort{display:none;margin:0 0 var(--sp-2);font-size:var(--t-ui);
 line-height:1.5;color:var(--ink-2)}
 :where(body.pg) .compshort b{font-weight:600;color:var(--ink);margin-right:var(--sp-2)}
 :where(body.pg) .compshort .csb{white-space:nowrap}
 @media (max-width:38.75em){
-  :where(body.pg) .comp-top > .compshort{display:block}
-  :where(body.pg) .comp-top > .comp{display:none}
+  :where(body.pg) .comp-top .comp{margin:0 0 var(--sp-5)}
+  :where(body.pg) .comp-top .comp > .compline,:where(body.pg) .comp-top .comp > .plegend,
+  :where(body.pg) .comp-top .comp > p:not(.compshort){display:none}
+  :where(body.pg) .comp-top .comp > .pbar2{height:10px;margin:0 0 var(--sp-3)}
+  :where(body.pg) .comp-top .comp > .compshort{display:block;margin:0}
 }
 /* The Members-Elect tab's county: its results not final counted in the
    summary and named under its members. */
 :where(body.pg) .cgrp .ccnf{font-weight:400;font-size:var(--t-sm);color:var(--ink-2)}
-/* A member-elect's chip says more than a member's -- its title and its kind
-   ("Rep.-elect ... (R - Belk 4) New") -- and ran out of the roster's 250px
-   cell, and past the page's edge from 768px up: the cells are wider here, and
-   a chip wraps inside its own, between the name and its tag. */
+/* A member-elect's chip says more than a member's -- its title ("Rep.-elect
+   ... (R - Belk 4)") and its word beside it -- and ran out of the roster's
+   250px cell, and past the page's edge from 768px up: the cells are wider
+   here, and a chip wraps inside its own, between the name and its tag. */
 :where(body.pg) .grid.elroll{grid-template-columns:repeat(auto-fill,minmax(min(100%,18.75rem),1fr))}
 :where(body.pg) .elroll .mem{min-width:0}
 :where(body.pg) .elroll .mchip{max-width:100%;white-space:normal}
-/* AND ITS PARTS WRAP, NOT SQUEEZE (the review of 8 November 2026): the chip
-   is a row of the name (a link, or bare text for the 168 with no page), the
-   tag and the word, the last two kept whole, so in a narrow cell -- the
-   Senate's list beside its districts, a party's column at 600px, a phone --
-   an unlinked name was pressed into a column one word wide ("Rep. / electo/a
-   / Tom / Ahlborn- / Hsu") and a word ran out past the chip's border and the
-   page's edge. Here a part that does not fit goes to the next line inside the
-   chip: the word under the name, or the tag and the word under a name with no
-   page. */
-:where(body.pg) .elroll .mchip,:where(body.pg) .elwho .ellist .mchip{flex-wrap:wrap;row-gap:var(--sp-2)}
+/* AND ITS PARTS WRAP, NOT SQUEEZE (the review of 8 November 2026): a chip
+   with no page is the bare name and its tag, the tag kept whole, so in a
+   narrow cell the name was pressed into a column one word wide ("Rep. /
+   electo/a / Tom / Ahlborn- / Hsu"). Here the tag goes to the next line
+   inside the chip when it does not fit. */
+:where(body.pg) .elroll .mchip{flex-wrap:wrap;row-gap:var(--sp-2)}
 :where(body.pg) .cgrp > .elnf{margin:0 0 var(--sp-5)}
 :where(body.pg) .roster .elnf{margin:0 0 var(--sp-5)}
-:where(body.pg) .seatrow .elnf{margin:0}
 :where(body.pg) .wct{margin-left:auto;font-size:var(--t-sm);color:var(--ink-2)}
 :where(body.pg) .wards{display:flex;flex-wrap:wrap;gap:var(--sp-3);margin-bottom:var(--sp-3)}
 :where(body.pg) .wbtn{border:1px solid var(--edge);border-radius:var(--r-out);padding:var(--sp-2) var(--sp-5);font-size:var(--t-ui);
@@ -9512,25 +9512,18 @@ column-gap:var(--sp-9);font-size:var(--t-ui);line-height:1.6}
 :where(body.pg) .ofsub{font:600 var(--t-ui)/1.35 var(--sans);color:var(--ink);
 margin:var(--sp-6) 0 var(--sp-2)}
 :where(body.pg) .ofline{font-size:var(--t-ui);line-height:1.55;margin:0;max-width:51rem}
-/* THE MEMBERS-ELECT TAB (16 October 2026; officials_tabs.members_elect): the
-   Senate, then the House under each county's name, a district a row -- its
-   number and seats beside who it elected on a desktop, over them on a
-   phone -- each race as a town page draws it (.elect's inner parts). */
-:where(body.pg) .elrows{list-style:none;margin:0 0 var(--sp-6);padding:0}
-:where(body.pg) .elrow{display:grid;grid-template-columns:minmax(7.5rem,10rem) minmax(0,1fr);
-gap:var(--sp-2) var(--sp-5);padding:var(--sp-3) 0;border-bottom:1px solid var(--rule)}
-:where(body.pg) .elseat{font-weight:600;color:var(--ink)}
-:where(body.pg) .elseat small{display:block;font-weight:400;font-size:var(--t-sm);color:var(--ink-2)}
-:where(body.pg) .elwho{min-width:0}
-:where(body.pg) .elwho .ellist + p,:where(body.pg) .elwho .elnf + .elnone{margin-top:var(--sp-2)}
-:where(body.pg) .elwho p{margin:0}
-:where(body.pg) .elcounty{font:600 var(--t-ui)/1.35 var(--sans);color:var(--ink);
-margin:var(--sp-6) 0 var(--sp-2)}
-:where(body.pg) .elcounty:first-child{margin-top:0}
-@media (max-width:30em){
-  :where(body.pg) .elrow{grid-template-columns:minmax(0,1fr)}
-  :where(body.pg) .elseat small{display:inline;margin-left:var(--sp-2)}
-}
+/* THE MEMBERS-ELECT TAB (16 October 2026; officials_tabs.members_elect).
+   Its view by district, a district a row, went on the walk of 8 November
+   2026, and its rules with it. Each member-elect is the Legislators tab's
+   chip with its word beside it, outside it (.elkind, drawn as a chip's role
+   is): the chip keeps the line the Legislators tab's has, and on a narrow
+   row the word goes under it rather than into it. */
+:where(body.pg) .elroll > .mem,:where(body.pg) .elroll > li{display:flex;flex-wrap:wrap;
+align-items:baseline;column-gap:var(--sp-3);row-gap:0}
+:where(body.pg) .elkind{display:inline-block;font-style:normal;font-size:var(--t-label);
+font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--pine);
+border:1px solid var(--pine);border-radius:2px;padding:2px 5px;white-space:nowrap;
+margin:0 0 var(--sp-3)}
 /* THE HOME PAGE'S ONE BOX (D13): find.js's rows in a dropdown under the
    box, over the cards, as the header's panel is a dropdown under the bar.
    The rows are the panel's own (.findout, in the shared region); this is

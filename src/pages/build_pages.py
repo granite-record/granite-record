@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.264
+# GRANITE_VERSION: 2026-09-04.265
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2445,8 +2445,14 @@ SEATING_JS = """
    the tabs still look like tabs, and clicking one changes nothing.
 
    EVERY STRIP OF THEM (the owner's walk of 7 November 2026): the
-   Members-Elect tab lists its people the same three ways, under a strip of
-   its own, and each strip shows and hides its own panes. */
+   Members-Elect tab lists its people under a strip of its own, and each
+   strip shows and hides its own panes.
+
+   AND THE VIEW AN ADDRESS NAMES (the walk of 8 November 2026): an address
+   naming a heading inside a view -- /officials#of-eld-house, which By
+   district's House heading had and By county's has now -- opens that view,
+   on arriving and on a hash change, so the tab strip's script lands on a
+   heading that is shown, not on one hidden in another view. */
 [].forEach.call(document.querySelectorAll(".rtabs"),function(bar){
   var tabs=[].slice.call(bar.querySelectorAll("[role=tab]"));
   if(!tabs.length)return;
@@ -2477,7 +2483,26 @@ SEATING_JS = """
     e.preventDefault();
     tabs[j].focus(); show(tabs[j].dataset.pane);
   });
-  show(tabs[0].dataset.pane);
+  // The view holding what the address names, and that element; or null.
+  function named(){
+    var h;
+    try{h=decodeURIComponent(location.hash.slice(1));}catch(e){h="";}
+    var el=h&&document.getElementById(h);
+    for(var i=0;el&&i<tabs.length;i++){
+      var p=document.getElementById(tabs[i].dataset.pane);
+      if(p&&p.contains(el))return {pane:tabs[i].dataset.pane,el:el};
+    }
+    return null;
+  }
+  var at=named();
+  show(at?at.pane:tabs[0].dataset.pane);
+  addEventListener("hashchange",function(){
+    var a=named();
+    if(!a)return;
+    var hid=document.getElementById(a.pane).hidden;
+    show(a.pane);
+    if(hid&&a.el.scrollIntoView)a.el.scrollIntoView();
+  });
 });
 </script>
 """
@@ -2944,10 +2969,15 @@ OFFICIALS_HASH_JS = """<script>
   // id, it is Legislators, which the tab said "lists who holds each seat".
   // Between the reader's midnight and that build, the tab is still drawn,
   // retired, and TABS_JS opens Legislators for it.
-  var GONE={"#members-elect":1,"#of-elect-senate":1,"#of-elect-house":1};
+  // BY DISTRICT HAS GONE (the walk of 8 November 2026): its view's own
+  // address opens By county, where its chambers' headings (#of-eld-house)
+  // are now.
+  OLD["#pane-edist"]=OLD["#tab-edist"]="#pane-ecounty";
+  var GONE={"#members-elect":1,"#of-elect-senate":1,"#of-elect-house":1,
+    "#of-eld-senate":1,"#of-eld-house":1,"#pane-elast":1,"#pane-ecounty":1};
   function alias(){
-    var to=OLD[location.hash];
-    if(!to&&GONE[location.hash]&&!document.getElementById(location.hash.slice(1)))to="#legislators";
+    var to=OLD[location.hash],t=to||location.hash;
+    if(GONE[t]&&!document.getElementById(t.slice(1)))to="#legislators";
     if(to&&history.replaceState)
       history.replaceState(null,"",location.pathname+location.search+to);
   }
@@ -4593,10 +4623,14 @@ def main():
                   if x.get("vacant") else
                   say(lang, "comp.filled", "{sitting} of {seats} seats filled",
                       sitting=x["sitting"], seats=x["seats"]))
+        # The chamber's one short line closes the block, under the bar: a
+        # phone draws the bar and the line, a wider screen the bar, its line
+        # and legend and the thresholds (the walk of 8 November 2026: a
+        # chart on a phone as well).
         return (f'<div class="comp"><div class="compline"><b>{esc(chamber)}</b>'
                 f'<span class="statemeta">{filled}</span>'
                 f'</div><div class="pbar2">{segs}</div>'
-                f'<div class="plegend">{legend}</div>{note}</div>')
+                f'<div class="plegend">{legend}</div>{note}{short_bar(ch, lang)}</div>')
 
     def short_bar(ch, lang="en"):
         """One chamber's seats in one short line, which is all a phone shows
@@ -4964,15 +4998,20 @@ def main():
             # WHO HOLDS THE SEATS AT THE TOP (the owner's walk of 7 November
             # 2026, C): under the presiding officers and over the roster, as
             # the Members-Elect tab's totals are over its lists; on a phone,
-            # one short line a chamber (short_bar) in place of the bars, the
-            # thresholds under them and their legends.
+            # each chamber's bar and its one short line (short_bar), without
+            # the legend and the thresholds (the walk of 8 November 2026).
             ("legislators", say(lang, "of.tab.legislators", "Legislators"), len(legs),
              OT.presiding(officers, legs, today, lang)
              + (('<div class="comp-wrap comp-top"><h2>' + say(lang, "of.who_holds", "Who holds the seats")
-                 + "</h2>" + short_bar("S", lang) + short_bar("H", lang)
-                 + static_bar("S", lang) + static_bar("H", lang) + vacancies_box(lang)
+                 + "</h2>" + static_bar("S", lang) + static_bar("H", lang) + vacancies_box(lang)
                  + "</div>") if C else "")
              + roster_section(legs, lang)),
+            # MEMBERS-ELECT BESIDE LEGISLATORS (the owner's walk of 8 November
+            # 2026), the two lists of who sits now and who sits next.
+            # "Members-Elect (N)", N the winners the file names: a race not
+            # final counts none, and a tab of none says no number, as any tab.
+            ("members-elect", say(lang, "of.tab.elect", "Members-Elect"), OT.elect_count(elect),
+             OT.members_elect(elect, today, lang, [*legs, *gone])),
             ("federal", say(lang, "of.tab.federal", "Federal Delegation"),
              OT.count(off, "federal"), OT.federal(off, lang)),
             ("executive", say(lang, "of.tab.executive", "Executive Branch"),
@@ -4982,10 +5021,6 @@ def main():
             # #counties, not #county: the roster's By county button is tab-county.
             ("counties", say(lang, "of.tab.counties", "County Officials"),
              OT.count(off, "county"), OT.county(off, legs, None, lang)),
-            # "Members-Elect (N)", N the winners the file names: a race not
-            # final counts none, and a tab of none says no number, as any tab.
-            ("members-elect", say(lang, "of.tab.elect", "Members-Elect"), OT.elect_count(elect),
-             OT.members_elect(elect, today, lang, [*legs, *gone])),
         ]
         of_panes = [p for p in of_panes if p[3]]
         # SEVEN TABS ON ONE LINE (the owner, 7 November 2026): with
