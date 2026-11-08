@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.266
+# GRANITE_VERSION: 2026-09-04.267
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -3529,8 +3529,13 @@ def did_html(did, bill, lang="en"):
         out = chip(say(lang, "home.retained", "Retained"), f"cstat {kinds['active']}")
     else:
         return ""
-    if did.get("yeas") is not None and did.get("nays") is not None:
-        out += f' <span class="latvote">{did["yeas"]}–{did["nays"]}</span>'
+    # THE VOTE INSIDE THE CHIP (the owner's walk of dry run 8, 8 November
+    # 2026): "Does Not Recommend Future Legislation (18–3)", as a bill's
+    # Reports tab now draws it. The tally is a span of its own so it never
+    # breaks at its dash.
+    if did.get("yeas") is not None and did.get("nays") is not None and out.endswith("</span>"):
+        out = (out[:-len("</span>")]
+               + f' <span class="latvote">({did["yeas"]}–{did["nays"]})</span></span>')
     if did.get("dated"):
         out += (' <span class="latdated">'
                 + say(lang, "home.dated", "dated {date}",
