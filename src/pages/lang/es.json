@@ -14959,9 +14959,9 @@
    "es": "Cómo leer las abreviaturas",
    "state": "draft"
   },
-  "guide.using-this-site.related-where-there-is-any-bills": {
-   "en": "<b>Related</b>, where there is any &mdash; bills and amendments that share most of its language: the same text filed in another year, or carried into another bill or an amendment to one, with what became of it. Found by comparing the texts, so a match can be missed.",
-   "es": "<b>Related</b> (relacionados), cuando los hay &mdash; proyectos de ley y enmiendas que comparten la mayor parte de su texto: el mismo texto presentado en otro año, o trasladado a otro proyecto o a una enmienda de otro, con lo que pasó con él. Se encuentran comparando los textos, así que puede escaparse alguna coincidencia.",
+  "guide.using-this-site.history-where-there-is-any-bills": {
+   "en": "<b>History</b>, where there is any &mdash; bills and amendments that share most of its language: the same text filed in another year, or carried into another bill or an amendment to one, with what became of it. Found by comparing the texts, so a match can be missed.",
+   "es": "<b>History</b> (historial), cuando lo hay &mdash; proyectos de ley y enmiendas que comparten la mayor parte de su texto: el mismo texto presentado en otro año, o trasladado a otro proyecto o a una enmienda de otro, con lo que pasó con él. Se encuentran comparando los textos, así que puede escaparse alguna coincidencia.",
    "state": "draft"
   },
   "guide.using-this-site.reports": {

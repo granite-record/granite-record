@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.17
+# GRANITE_VERSION: 2026-09-12.18
 """
 What readers reported, compiled for a person and for the session that triages.
 
@@ -147,17 +147,18 @@ TRANSLATION = "translation"
 # The tabs the pages render, and nothing else: a tab is a label, and a
 # free-text tab was 24 letters of a reader's own words outside the quotation.
 TABS = ("", "Summary", "Bill Text", "Votes", "Hearings", "Reports", "Sponsors",
-        "Documents", "Related", "Prime sponsored", "Co-sponsored", "Bills", "Meetings",
+        "Documents", "History", "Prime sponsored", "Co-sponsored", "Bills", "Meetings",
         "Videos")
 # A TAB'S OLD NAME, AND ITS NAME NOW (8 October 2026): functions/api/report.js
 # RENAMED_TABS. A bill's Hearings tab was Videos and a committee's Meetings tab
 # was Sessions, and a report stored before the Function learnt the new name
 # carries the old one. It is read, and shown, under the name the tab has.
-RENAMED_TABS = {"Videos": "Hearings", "Sessions": "Meetings"}
+RENAMED_TABS = {"Videos": "Hearings", "Sessions": "Meetings", "Related": "History"}
 # WHOSE OLD NAME EACH IS (report.js RENAMED_KIND, the walk of 31 October
 # 2026): a committee's and a study committee's Videos tab is its own, and
-# stays Videos.
-RENAMED_KIND = {"Videos": "bill", "Sessions": "committee"}
+# stays Videos. A bill's Related tab is History since the owner's walk of dry
+# run 8 (8 November 2026).
+RENAMED_KIND = {"Videos": "bill", "Sessions": "committee", "Related": "bill"}
 
 
 def renamed_tab(r):

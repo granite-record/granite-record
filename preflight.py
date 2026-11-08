@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.805
+# GRANITE_VERSION: 2026-09-04.806
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -45699,6 +45699,10 @@ def _related_tab(B, RB):
         (0, "2025-2026/HB2", "Its language was offered as amendment 2025-1247h to {b}; the House rejected it, 72-300."),
         (1, "2023-2024/SB479", "Filed before as {b}, with the same text.")], said
     assert got[0]["n"] == "HB 377-FN" and got[0]["c"] == "Became Law" and got[2]["y"] == 2024, got
+    # An amendment's row carries what the History tab needs to say it again
+    # beside the same bill's text row (the owner's walk of dry run 8).
+    assert (got[1]["m"], got[1]["f"], got[1]["fb"], got[1]["fv"]) == ("2025-1247h", "failed", "H", "72-300"), got[1]
+    assert "m" not in got[0] and "m" not in got[2], got
     assert not RB.shown({"kind": "amendment", "band": "line", "fate": "recommended"}), \
         "an amendment no vote is on record for would be shown"
     app = Path("src/pages/app.js").read_text(encoding="utf-8")
@@ -92264,7 +92268,11 @@ def _report_agree(CR):
     # every report sent from a member's Co-sponsored tab.
     fn_tabs = set(re.findall(r'"([^"]*)"', re.search(r"const TABS = new Set\(\[(.*?)\]\)", js, re.S).group(1)))
     box_tabs = set(re.findall(r'"([^"]*)"', re.search(r"const REPORT_TABS=new Set\(\[(.*?)\]\)", app, re.S).group(1)))
-    assert fn_tabs == set(CR.TABS) == box_tabs | {""}, (sorted(fn_tabs), sorted(CR.TABS), sorted(box_tabs))
+    # THE BILL'S HISTORY TAB (the owner's walk of dry run 8, 8 November 2026):
+    # "Related" is kept in the box's list for a page loaded before the
+    # rename, which sends it; the Function stores it as "History".
+    old_names = {"Related"}
+    assert fn_tabs == set(CR.TABS) == (box_tabs - old_names) | {""}, (sorted(fn_tabs), sorted(CR.TABS), sorted(box_tabs))
     rendered = set(re.findall(r'\["(Prime sponsored|Co-sponsored|Votes|Bills|Sessions|Meetings|Videos)"',
                               app))
     # A STUDY COMMITTEE'S STRIP is drawn by its builder, not app.js, and its
@@ -92289,8 +92297,8 @@ def _report_agree(CR):
     # three lists kept "Sessions" beside it, so a report from a page loaded
     # before the rename was stored, and compiled, under a tab no page has. A
     # tab's old name belongs in RENAMED_TABS, which stores it as the new one.
-    assert box_tabs <= rendered, (f"the report list names a tab no page draws: "
-                                  f"{sorted(box_tabs - rendered)}; a renamed tab's old name "
+    assert box_tabs - old_names <= rendered, (f"the report list names a tab no page draws: "
+                                  f"{sorted(box_tabs - old_names - rendered)}; a renamed tab's old name "
                                   "goes in report.js RENAMED_TABS")
     # A TAB'S OLD NAME (report.js RENAMED_TABS): a page loaded before a rename
     # still sends it, and a report stored under it stays readable, under the
@@ -92309,6 +92317,11 @@ def _report_agree(CR):
     assert all(new in fn_tabs for new in fn_renamed.values()), fn_renamed
     assert "Videos" in rendered and "Videos" in box_tabs, (
         "a committee's Videos tab is not among the tabs a report names")
+    # THE BILL'S HISTORY TAB (the owner's walk of dry run 8): a page loaded
+    # before the rename sends "Related", which the Function stores as History.
+    assert (fn_renamed.get("Related") == "History" and fn_kind.get("Related") == "bill"
+            and "Related" in box_tabs and "Related" not in fn_tabs), \
+        "a page loaded before the History rename would send a tab the Function drops"
     stored = {"id": 7, "at": "2026-09-30T12:00:00.000Z", "record": "bill:2026/HB100",
               "kind": "bill", "url": "/bill/2026/hb100", "tab": "Videos", "field": "hearing",
               "note": "The hearing was on the 3rd.", "build": "", "hidden": 0}

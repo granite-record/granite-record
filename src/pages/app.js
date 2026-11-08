@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.278
+// GRANITE_VERSION: 2026-09-07.279
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4282,6 +4282,10 @@ const RECCOLOUR=[[/\b(?:WITHOUT|NO)\s+RECOMM?ENDATION\b/i,""],
                  [/OUGHT\s+TO\s+PASS/i,"s-law"]];
 const recColour=r=>{const m=RECCOLOUR.find(([re])=>re.test(r||""));
   return m?m[1]:"";};
+// A committee's recommendation as a chip, with its vote in brackets where the
+// record carries one (the owner's walk of dry run 8, 8 November 2026). The
+// tally is held whole so that a phone does not break it after the dash.
+const recChip=(rec,vote)=>tallyWhole(chip(titleWords(rec)+(vote?` (${vote})`:""),`cstat ${recColour(rec)}`));
 // Who signed in for and against the bill at a hearing.
 //
 // Counts only, deliberately. The General Court's sign-in sheet carries a name,
@@ -5174,8 +5178,8 @@ function renderSummary(b,d,rsa){
   if(kept)S.push(section("About This Record",kept,"about-record"));
   // ON THE SUMMARY, ONE SENTENCE AT MOST, and only for the strongest fact
   // (RELATED_BILLS.md §6): where its language went, else where it was filed
-  // before or after. The rest are on the Related tab.
-  const rel=Array.isArray(d.related)?d.related:[];
+  // before or after. The rest are on the History tab.
+  const rel=relatedMerge(Array.isArray(d.related)?d.related:[]);
   const top=rel.find(e=>e.g===0)||rel.find(e=>e.g===1);
   if(top)S.push(section("Related Bills",`<p class="story">${relatedSaid(b,top)}</p>`
     +(rel.length>1?`<p class="src"><a href="bill/${esc(b.year)}/${esc(String(b.id).toLowerCase())}/related">All ${rel.length} related bills and amendments</a></p>`:""),"related"));
@@ -6062,13 +6066,21 @@ function renderReports(b,d,rsa){
     // Where one report was filed, neither number belongs to anybody else, so
     // the whole tally sits with it -- 19-0, or 18-1.
     const tally=(r.reports||[]).map(x=>x).find(x=>x.vote_yeas!=null);
+    // THE VOTE INSIDE THE CHIP (the owner's walk of dry run 8, 8 November
+    // 2026): "Recommended for Future Legislation (10–4)". A report with a
+    // recommendation carries its count in the chip; one without keeps the
+    // count beside the label, as before.
+    const voteOf=e=>{
+      if(e.vote_yeas==null&&!tally)return "";
+      const y=e.vote_yeas!=null?e.vote_yeas:tally.vote_yeas;
+      const nn=e.vote_nays!=null?e.vote_nays:tally.vote_nays;
+      return divided?String(e.side==="Minority"?nn:y):`${y}–${nn}`;
+    };
     const committeeTally=e=>{
       if(e.vote_yeas==null&&!tally)return "";
       const y=e.vote_yeas!=null?e.vote_yeas:tally.vote_yeas;
       const nn=e.vote_nays!=null?e.vote_nays:tally.vote_nays;
-      const full=`Committee vote ${y}–${nn}`;
-      return `<span class="cvote" title="${full}">${
-        divided?(e.side==="Minority"?nn:y):`${y}–${nn}`}</span>`;
+      return `<span class="cvote" title="Committee vote ${y}–${nn}">${voteOf(e)}</span>`;
     };
     const cmte=((r.reports||[])[0]||{}).committee||"";
     const blocks=(r.reports||[]).map(e=>{
@@ -6076,8 +6088,8 @@ function renderReports(b,d,rsa){
       return `<div class="repblock">
         <div class="repline">
           <span class="secsub">${esc(e.side)}</span>
-          ${committeeTally(e)}
-          ${rec?chip(titleWords(rec),`cstat ${recColour(rec)}`):""}</div>
+          ${rec?"":committeeTally(e)}
+          ${rec?recChip(rec,voteOf(e)):""}</div>
         <p class="repby">${esc(e.author)}</p>
         ${e.amendment?`<p class="note" style="margin:0 0 7px">Amendment ${
           esc(e.amendment)}.</p>`:""}
@@ -6105,7 +6117,7 @@ function renderReports(b,d,rsa){
   // a House report printed in a calendar not read in yet, or a Senate report
   // the database does not carry.
   const docket=(d.docket_reports||[]).map(r=>{
-    const vote=r.vote_yeas!=null&&r.vote_nays!=null
+    const vote=r.vote_yeas!=null&&r.vote_nays!=null&&!r.recommendation
       ? `<span class="cvote" title="Committee vote ${r.vote_yeas}–${r.vote_nays}"
           >${r.vote_yeas}–${r.vote_nays}</span>` : "";
     // The same three-part heading the written reports use -- who, by what vote,
@@ -6117,7 +6129,7 @@ function renderReports(b,d,rsa){
     return between(r.date)+rep(head(r,r.committee,r.body==="S"?"Senate":"House"),
       `<div class="repline">
         <span class="secsub">${esc(r.side||"Committee")}</span>${vote}
-        ${r.recommendation?chip(titleWords(r.recommendation),`cstat ${recColour(r.recommendation)}`):""}</div>
+        ${r.recommendation?recChip(r.recommendation,r.vote_yeas!=null&&r.vote_nays!=null?`${r.vote_yeas}–${r.vote_nays}`:""):""}</div>
       ${amd}
       <p class="note" style="margin:var(--sp-5) 0 0">${r.body!=="S"&&termStartOf(d)&&termStartOf(d)<1997
         ? "The written report for this one is not on the site: the General Court’s online calendars, which print the reports, begin in 1997. This is what the docket records of it."
@@ -6887,9 +6899,11 @@ function renderDetail(b,d){
   // RELATED, ONLY WHERE THERE IS SOMETHING TO SHOW (RELATED_BILLS.md §6):
   // build_site_v2.add_related writes d.related only for a bill with a
   // relation the judged sample let through. data-t 7, after the six.
-  const rel=Array.isArray(d.related)?d.related:[];
+  // THE TAB IS LABELLED HISTORY (the owner's walk of dry run 8, 8 November
+  // 2026); its address stays /related. Each bill is counted once.
+  const rel=relatedMerge(Array.isArray(d.related)?d.related:[]);
   const relTab=rel.length
-    ? `<button class="tab" role="tab" id="tab_${b.id}_7" aria-controls="pane_${b.id}_7" aria-selected="false" data-t="7">Related${rel.length?tabN(rel.length):""}</button>`
+    ? `<button class="tab" role="tab" id="tab_${b.id}_7" aria-controls="pane_${b.id}_7" aria-selected="false" data-t="7">History${rel.length?tabN(rel.length):""}</button>`
     : "";
   const relPane=rel.length
     ? `<div class="pane" role="tabpanel" id="pane_${b.id}_7" aria-labelledby="tab_${b.id}_7"
@@ -6956,13 +6970,45 @@ function relatedSaid(b,e){
   const name=`<a href="${esc(href)}">${esc(e.n)}</a>${other?` (${esc(String(e.o).slice(0,9)).replace("-","&ndash;")})`:""}`;
   return esc(e.s).replace("{b}",name);
 }
-function renderRelated(b,rel){
+// EACH BILL ONCE (the owner's walk of dry run 8, 8 November 2026): a bill
+// whose text was filed again and whose amendment carried the same language
+// stood in two sections. The row for the same text stays where it is and each
+// amendment's fact follows it as a second sentence; with no such row, the
+// first row stays and the rest follow it. build_site_v2.related_entries gives
+// an amendment's row m (its number), f (the docket's fate), fb and fv (the
+// chamber and the vote).
+function amendmentSaid(e){
+  const house={H:"House",S:"Senate"}[e.fb]||"chamber";
+  const vote=e.fv?`, ${e.fv}`:"";
+  const how={adopted:`, which the ${house} adopted${vote},`,failed:`, which the ${house} rejected${vote},`,
+    withdrawn:", which was withdrawn,"}[e.f]||"";
+  return `Amendment ${e.m}${how} carried its language into it.`;
+}
+function relatedMerge(rel){
+  const at=new Map(),out=[];
+  for(const e of rel){
+    if(!at.has(e.o)){at.set(e.o,out.length);out.push(Object.assign({},e));continue;}
+    const i=at.get(e.o),p=out[i];
+    if(e.m){
+      // An amendment's row joins the row already standing for the bill.
+      (p.more=p.more||[]).push(amendmentSaid(e));
+    }else if(p.m){
+      // The standing row is an amendment's and this one is not: this leads.
+      const q=Object.assign({},e,{more:[amendmentSaid(p)].concat(p.more||[])});
+      out[i]=q;
+    }
+  }
+  return out;
+}
+function renderRelated(b,relRows){
+  const rel=relatedMerge(relRows);
   const groups=[[],[],[]];
   for(const e of rel)(groups[e.g]||groups[2]).push(e);
+  // The outcome in the colour the bill cards give that word (chipCls).
   const row=e=>{
-    const said=relatedSaid(b,e);
+    const said=relatedSaid(b,e)+(e.more||[]).map(m=>" "+esc(m)).join("");
     return `<li class="rl-row"><p class="rl-s">${said}</p>`
-      +`<p class="rl-t">${esc(e.t)}${e.c?` <span class="rl-st">${esc(e.c)}</span>`:""}</p></li>`;
+      +`<p class="rl-t">${esc(e.t)}${e.c?` ${chip(e.c,`cstat ${chipCls({chip:e.c})}`)}`:""}</p></li>`;
   };
   return groups.map((g,i)=>g.length
     ?`<section class="rl-g"><h2 class="sech">${RELATED_HEADS[i]}</h2><ul class="rl-list">${g.map(row).join("")}</ul></section>`:"").join("")
@@ -7007,7 +7053,7 @@ const REPORT_TO="contact@graniterecord.org";
 // 2026): a tab of its own since the Videos section, and missing here, so a
 // report from it named no tab. report.js renames "Videos" only on a bill.
 const REPORT_TABS=new Set(["Summary","Bill Text","Votes","Hearings","Reports","Sponsors",
-  "Documents","Related","Prime sponsored","Co-sponsored","Bills","Meetings","Videos"]);
+  "Documents","Related","History","Prime sponsored","Co-sponsored","Bills","Meetings","Videos"]);
 let reportBuild=null;       // site/build.json's "finished", fetched once, on first open
 
 function reportBox(kind,ref){

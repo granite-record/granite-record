@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-12.15
+// GRANITE_VERSION: 2026-09-12.16
 /*
  * POST /api/report -- a reader says something on a page is wrong.
  *
@@ -57,19 +57,22 @@ export const FIELDS = new Set(["date", "status", "sponsor", "vote", "hearing",
 // The tabs the pages render. compile_reports.TABS is the same list, and
 // preflight holds the two together.
 export const TABS = new Set(["", "Summary", "Bill Text", "Votes", "Hearings", "Reports",
-  "Sponsors", "Documents", "Related", "Prime sponsored", "Co-sponsored", "Bills", "Meetings",
+  "Sponsors", "Documents", "History", "Prime sponsored", "Co-sponsored", "Bills", "Meetings",
   "Videos"]);
 // A TAB'S OLD NAME, AND ITS NAME NOW (8 October 2026). A bill's Hearings tab
 // was Videos, and a committee's Meetings tab was Sessions (the person's words,
 // D19), and a page loaded before either was renamed still sends the old name;
 // it is stored under the name the tab has. compile_reports.RENAMED_TABS is the
 // same map, for the reports already stored under the old one.
-export const RENAMED_TABS = new Map([["Videos", "Hearings"], ["Sessions", "Meetings"]]);
+export const RENAMED_TABS = new Map([["Videos", "Hearings"], ["Sessions", "Meetings"],
+  ["Related", "History"]]);
 // WHOSE OLD NAME EACH IS (the walk of 31 October 2026). A committee's and a
 // study committee's Videos tab is a tab of its own, so "Videos" is read as
 // Hearings on a bill's record only, and "Sessions" as Meetings on a
-// committee's. compile_reports.RENAMED_KIND is the same map.
-export const RENAMED_KIND = new Map([["Videos", "bill"], ["Sessions", "committee"]]);
+// committee's. A bill's Related tab is History since the owner's walk of dry
+// run 8 (8 November 2026). compile_reports.RENAMED_KIND is the same map.
+export const RENAMED_KIND = new Map([["Videos", "bill"], ["Sessions", "committee"],
+  ["Related", "bill"]]);
 
 // What a page can be, and the one shape its record takes. Measured from the
 // built site on 12 September: bills 2026/HB100, members by numeric id,

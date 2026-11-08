@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.250
+# GRANITE_VERSION: 2026-09-05.251
 """
 Generate the faceted site from real General Court data.
 
@@ -11235,9 +11235,15 @@ def related_entries(term, bid, rows, by_key):
               "direction": r.get("direction", ""), "fate": r.get("fate", ""),
               "fate_vote": r.get("fate_vote", ""), "fate_body": r.get("fate_body", "")}
         x = by_key[o]
-        out.append({"g": g, "o": o, "n": x.get("n") or o.split("/")[1], "t": x.get("title") or "",
-                    "y": x.get("year"), "c": x.get("chip") or "", "s": RB.sentence(it, lambda _k: "{b}"),
-                    "_share": float(r.get("share") or 0)})
+        e = {"g": g, "o": o, "n": x.get("n") or o.split("/")[1], "t": x.get("title") or "",
+             "y": x.get("year"), "c": x.get("chip") or "", "s": RB.sentence(it, lambda _k: "{b}"),
+             "_share": float(r.get("share") or 0)}
+        if kind == "amendment":
+            # What the History tab needs to say an amendment in a second
+            # sentence where the same bill is also listed for its text
+            # (the owner's walk of dry run 8, 8 November 2026).
+            e.update({"m": it["amendment"], "f": it["fate"], "fb": it["fate_body"], "fv": it["fate_vote"]})
+        out.append(e)
     out.sort(key=lambda e: (e["g"], -e["_share"], e["o"]))
     for e in out:
         del e["_share"]
