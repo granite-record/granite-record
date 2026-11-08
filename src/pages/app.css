@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.353 */
+/* GRANITE_VERSION: 2026-09-07.354 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -7992,10 +7992,17 @@ letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
 .rs-dfn{scroll-margin-top:5rem}
 .rs-dfn:target{background:linear-gradient(var(--pine-soft),var(--pine-soft)) left top/3px 100% no-repeat;
   padding-left:.875rem}
-.rs-dpop{max-width:min(26rem,calc(100vw - 2rem))}
+/* The box holds a link to the definition and, where it is cut, "Show more"
+   (the person, 7 November 2026): never taller than the screen, its words
+   scrolling inside it once the whole definition is open. */
+.rs-dpop{max-width:min(26rem,calc(100vw - 2rem));max-height:min(30rem,calc(100vh - 2rem));overflow-y:auto}
 .rs-dpcite{display:block;font-weight:600;margin-bottom:.25rem}
+.rs-dpcite a{color:var(--pine)}
 .rs-dptext{display:block}
-.rs-dphint{display:block;margin-top:.375rem;color:var(--ink-2)}
+.rs-dpp{display:block}
+.rs-dpp + .rs-dpp{margin-top:.375rem}
+.rs-dpmore{display:inline-block;margin-top:.25rem;padding:.25rem 0;background:none;border:0;cursor:pointer;
+  font:600 var(--t-sm)/1.5 var(--sans);color:var(--pine);text-decoration:underline;text-underline-offset:.2em}
 .rs-gone,.rs-yr,.rs-st,.rs-note{color:var(--ink-2);font-size:var(--t-sm)}
 .rs-source{font:400 var(--t-sm)/1.55 var(--sans);color:var(--ink-2);margin:.5rem 0 0}
 .rs-repealed{font:400 var(--t-sm)/1.5 var(--sans);color:var(--ink-2);margin:.375rem 0;
@@ -8009,6 +8016,18 @@ letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
   padding:.25rem 0}
 .rs-fold[open]{align-self:stretch;background:var(--surface);border:1px solid var(--rule);
   border-radius:var(--r-in);padding:.25rem .875rem .625rem}
+/* ONE FOLD, ITS COUNTS IN ITS LINE (the person, 7 November 2026): "History
+   and citations", then what it holds, quieter; open, its lists one under
+   another, each under its own heading. */
+.rs-fcount{color:var(--ink-2);font-weight:400}
+.rs-fpart + .rs-fpart{margin-top:.625rem;padding-top:.5rem;border-top:1px solid var(--rule)}
+.rs-fold .rs-fh{font:600 var(--t-sm)/1.45 var(--sans);color:var(--ink);margin:.375rem 0 .25rem;
+  letter-spacing:0;text-transform:none}
+/* "Show all N" under its own list (build_rsa in_place): it opens the rest of
+   the list above it, and reads "Show fewer" after. */
+.rs-all{display:inline-block;margin-top:.375rem;padding:.25rem 0;background:none;border:0;cursor:pointer;
+  font:500 var(--t-sm)/1.45 var(--sans);color:var(--pine)}
+.rs-all:hover{text-decoration:underline;text-underline-offset:.2em}
 .rs-note{margin:.25rem 0 .5rem}
 .rs-list,.rs-refs,.rs-hist{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.375rem .5rem}
 .rs-list li,.rs-refs li{border:1px solid var(--rule-2);border-radius:999px;padding:.125rem .625rem;
@@ -8016,7 +8035,7 @@ letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
 .rs-list a,.rs-refs a,.rs-hist a{color:var(--pine);font-weight:600}
 .rs-hist{display:block}
 .rs-hist li{padding:.25rem 0;border-bottom:1px solid var(--rule)}
-.rs-hist li:last-child{border-bottom:0}
+.rs-hist li:last-child,.rs-hist li:has(+ li[hidden]){border-bottom:0}
 .rs-hist .rs-yr{display:inline-block;min-width:3rem;font-variant-numeric:tabular-nums;color:var(--ink);
   font-weight:600}
 /* The pending tag: the one thing on a section that is about now. */

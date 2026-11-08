@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.798
+# GRANITE_VERSION: 2026-09-04.799
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -42581,34 +42581,41 @@ def _def_table(RSA, passages):
 
 
 # The page's script in a page made by hand: a definition, a word that links to
-# it, and a paragraph elsewhere; node drives it by keyboard, by touch and by
-# mouse, on a clock it holds.
+# it, a long definition and a word that links to that, and a paragraph
+# elsewhere; node drives it by keyboard, by touch and by mouse, on a clock it
+# holds, and presses the box's own link and button.
 _DEFS_NODE = r"""
 let now = 1000, timers = [];
 const tick = ms => { now += ms; timers.forEach(t => { if (t.f && t.at <= now) { const f = t.f; t.f = null; f(); } }); };
 const on = {}, ids = {};
 function match(x, sel) {
-  return sel.split(",").some(s => { s = s.trim(); if (s === "p") return x.tagName === "p";
+  return sel.split(",").some(s => { s = s.trim(); if (/^\w+$/.test(s)) return x.tagName === s;
     const m = /^(\w+)?\.([\w-]+)$/.exec(s);
     return m && (!m[1] || x.tagName === m[1]) && (" " + (x.className || "") + " ").includes(" " + m[2] + " "); });
 }
 function node(tag, attrs, parent) {
   const n = {tagName: tag, attrs: Object.assign({}, attrs || {}), children: [], parentNode: null, style: {},
-    hidden: false, _text: "", className: (attrs || {}).class || "",
+    hidden: false, _text: "", className: (attrs || {}).class || "", listeners: {},
     getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
     setAttribute(k, v) { this.attrs[k] = String(v); if (k === "id") ids[v] = this; },
     removeAttribute(k) { delete this.attrs[k]; },
-    appendChild(c) { if (c.parentNode) c.parentNode.children = c.parentNode.children.filter(x => x !== c);
+    appendChild(c) { if (c.parentNode) c.parentNode.removeChild(c);
       c.parentNode = this; this.children.push(c); return c; },
-    addEventListener() {},
+    insertBefore(c, ref) { if (c.parentNode) c.parentNode.removeChild(c); c.parentNode = this;
+      const i = ref ? this.children.indexOf(ref) : -1;
+      if (i < 0) this.children.push(c); else this.children.splice(i, 0, c); return c; },
+    removeChild(c) { this.children = this.children.filter(x => x !== c); c.parentNode = null; return c; },
+    get nextSibling() { const k = this.parentNode ? this.parentNode.children : []; return k[k.indexOf(this) + 1] || null; },
+    addEventListener(t, f) { (this.listeners[t] = this.listeners[t] || []).push(f); },
     contains(x) { while (x) { if (x === this) return true; x = x.parentNode; } return false; },
     closest(sel) { let x = this; while (x) { if (match(x, sel)) return x; x = x.parentNode; } return null; },
+    querySelector(sel) { return this.querySelectorAll(sel)[0] || null; },
     querySelectorAll(sel) { const out = []; const walk = y => y.children.forEach(c => { if (match(c, sel)) out.push(c); walk(c); });
       walk(this); return out; },
     getBoundingClientRect() { return this.rect || {left: 0, right: 0, top: 0, bottom: 0}; },
     focus() { const was = doc.activeElement; doc.activeElement = this; if (was !== this) fire("focusin", {target: this}); }};
   Object.defineProperty(n, "textContent", {get() { return n._text + n.children.map(c => c.textContent).join(""); },
-    set(v) { n._text = String(v); n.children = []; }});
+    set(v) { n._text = String(v); n.children.forEach(c => { c.parentNode = null; }); n.children = []; }});
   Object.defineProperty(n, "id", {get() { return n.attrs.id; }, set(v) { n.setAttribute("id", v); }});
   if (n.attrs.id) ids[n.attrs.id] = n;
   if (parent) parent.appendChild(n);
@@ -42617,36 +42624,84 @@ function node(tag, attrs, parent) {
 const doc = {activeElement: null, documentElement: {clientWidth: 1200}, getElementById: k => ids[k] || null,
   createElement: t => node(t), addEventListener(t, f) { (on[t] = on[t] || []).push(f); }};
 function fire(t, ev) { let no = false; (on[t] || []).forEach(f => f(Object.assign({preventDefault() { no = true; }}, ev))); return no; }
+// A press: the element's own listeners, then the document's, as a click bubbles.
+function press(x) { (x.listeners.click || []).forEach(f => f({target: x})); return fire("click", {target: x}); }
 const art = node("div", {class: "rs-art"}); art.rect = {left: 100, right: 800, top: 0, bottom: 5000};
 const dfn = node("div", {class: "rs-dfn", id: "s1_III", "data-cite": "RSA 153:1, III", "data-for": "this chapter"}, art);
 node("p", {}, dfn)._text = DEFINITION;
+const long = node("div", {class: "rs-dfn", id: "s1_IX", "data-cite": "RSA 153:1, IX", "data-for": "this chapter"}, art);
+LONG.forEach(t => { node("p", {}, long)._text = t; });
 const para = node("p", {}, art);
 const word = node("a", {class: "rs-tm", href: "/laws/153#s1_III"}, para); word._text = "dwelling units";
 word.rect = {left: 300, right: 400, top: 200, bottom: 220};
+const para2 = node("p", {}, art);
+const word2 = node("a", {class: "rs-tm", href: "/laws/153#s1_IX"}, para2); word2._text = "residential";
 const elsewhere = node("p", {}, art);
 doc.activeElement = elsewhere;
-global.document = doc; global.window = {};
+global.document = doc; global.window = {innerHeight: 900};
 global.setTimeout = (f, ms) => timers.push({at: now + ms, f});
 global.clearTimeout = i => { if (i && timers[i - 1]) timers[i - 1].f = null; };
 global.Date = {now: () => now};
 new Function(SCRIPT)();
 const box = () => ids["rs-dpop"], out = {};
+const link = () => box().querySelector("a"), more = () => box().querySelector("button");
 fire("keydown", {key: "Tab"}); word.focus();
 out.focus = !!box() && !box().hidden; out.says = box() && box().textContent;
 out.described = word.getAttribute("aria-describedby"); out.role = box() && box().getAttribute("role");
+out.link = link() && [link().href, link().textContent]; out.short_has_more = !!more();
+out.in_text = box().parentNode === para && para.children.indexOf(box()) === para.children.indexOf(word) + 1;
+// Tab from the word into the box's link: it stays open, and Escape there
+// closes it and gives the word the keyboard without opening it again.
+const into = link() || more() || elsewhere;
+fire("focusout", {target: word, relatedTarget: into}); doc.activeElement = into;
+fire("focusin", {target: into}); tick(300); out.tab_in_stays = into !== elsewhere && !box().hidden;
 fire("keydown", {key: "Escape"});
 out.escape = box().hidden && doc.activeElement === word && !word.getAttribute("aria-describedby");
+// Its link goes to the definition, and the box closes behind it.
+doc.activeElement = elsewhere; word.focus();
+out.link_follows = !!link() && !press(link()) && box().hidden;
+// A long one: cut, with Show more, which opens all of it, a paragraph a line.
+doc.activeElement = elsewhere; word2.focus();
+out.cut = box().querySelector(".rs-dptext").textContent;
+out.more = !!more() && more().textContent === "Show more" && more().getAttribute("aria-expanded") === "false";
+if (more()) press(more());
+out.whole = box().querySelector(".rs-dptext").children.map(c => c.textContent);
+out.more_open = !!more() && !box().hidden && more().textContent === "Show less" && more().getAttribute("aria-expanded") === "true";
+if (more()) press(more());
+out.less = !!more() && box().querySelector(".rs-dptext").textContent === out.cut && more().textContent === "Show more";
+fire("keydown", {key: "Escape"});
 doc.activeElement = elsewhere;
 fire("pointerdown", {pointerType: "touch", target: word});
 out.tap_stays = fire("click", {target: word}); out.tap_opens = !box().hidden;
+out.tap_link = !!link();
 tick(1500); fire("pointerdown", {pointerType: "touch", target: word});
 out.second_tap_goes = !fire("click", {target: word});
 fire("pointerdown", {pointerType: "touch", target: elsewhere}); fire("click", {target: elsewhere});
 out.press_elsewhere = box().hidden;
 fire("pointerover", {pointerType: "mouse", target: word}); tick(200); out.hover_waits = box().hidden;
 tick(400); out.hover_opens = !box().hidden;
+fire("pointerout", {pointerType: "mouse", target: word, relatedTarget: box()}); tick(300);
+out.onto_box_stays = !box().hidden;
 fire("pointerout", {pointerType: "mouse", target: word, relatedTarget: elsewhere}); tick(300);
-out.leave_closes = box().hidden; out.in_text = box().parentNode === art;
+out.leave_closes = box().hidden;
+// Escape with the keyboard elsewhere: the box closes, the keyboard stays.
+fire("pointerover", {pointerType: "mouse", target: word}); tick(600);
+fire("keydown", {key: "Escape"}); out.escape_elsewhere = box().hidden && doc.activeElement === elsewhere;
+// A press inside the box that sends the keyboard nowhere keeps it open.
+word2.focus(); fire("pointerdown", {pointerType: "mouse", target: box().querySelector(".rs-dptext")});
+fire("focusout", {target: word2, relatedTarget: null}); tick(300); out.press_inside_stays = !box().hidden;
+fire("keydown", {key: "Escape"}); doc.activeElement = elsewhere;
+// THE SIDE IS KEPT. Low on a screen 900 high, a short box opens under the
+// word; Show more, now 500 high, keeps it there, no taller than the room.
+word2.rect = {left: 300, right: 400, top: 600, bottom: 620}; box().rect = null;
+word2.focus(); out.short_below = box().style.top;
+box().rect = {left: 300, right: 700, top: 0, bottom: 500}; if (more()) press(more());
+out.more_below = [box().style.top, box().style.maxHeight];
+fire("keydown", {key: "Escape"}); doc.activeElement = elsewhere;
+// Near the bottom, a box 500 high opens over the word, and Show less keeps it there.
+word2.rect = {left: 300, right: 400, top: 800, bottom: 820};
+word2.focus(); out.opens_above = [box().style.top, box().style.maxHeight];
+if (more()) press(more()); out.more_above = box().style.top;
 console.log(JSON.stringify(out));
 """
 
@@ -42671,7 +42726,16 @@ def _rsa_defined_terms(B, RSA, S):
     version it is, so it is the second definition that withholds it; and a
     term is not marked inside its own definition. Then the page: the word a
     quiet link to the definition's own paragraphs, which carry its citation
-    and scope once; and its script, by keyboard, by touch and by mouse."""
+    and scope once; and its script, by keyboard, by touch and by mouse.
+
+    And the person, 7 November 2026: "you need to be able to click to where
+    that definition is as a link ... Maybe a show more option as well". The
+    box's citation is a link to the definition (the word's own address), it
+    closes behind it; a definition over 400 characters is cut, with Show
+    more opening all of it, a paragraph a line, and Show less after; the box
+    sits straight after the word, so Tab goes into it and it stays, Escape
+    there gives the word the keyboard without opening it again, and the
+    pointer can cross onto it."""
     t = _def_table(RSA, _DEF_PASSAGES)
     d = t.defined()
 
@@ -42734,7 +42798,12 @@ def _rsa_defined_terms(B, RSA, S):
         return "ok", "five cases on real passages and the page; node is not here for the script"
     script = B.DEFS_JS[len("<script>"):-len("</script>")]
     definition = RSA.paragraphs(t.sections["153:1"].text)[at["III"]]
-    prog = (f"const SCRIPT = {json.dumps(script)};\nconst DEFINITION = {json.dumps(definition)};\n" + _DEFS_NODE)
+    # A long definition, three paragraphs, the first opening with its numbers.
+    long = ["IX. \"Residential\" means " + "a use of property as a home or as rooms let for living in, " * 9 + "and nothing else.",
+            "(a) It includes a house, an apartment, a manufactured housing unit and a room let by the week.",
+            "(b) It does not include a hotel room let by the night."]
+    prog = (f"const SCRIPT = {json.dumps(script)};\nconst DEFINITION = {json.dumps(definition)};\n"
+            f"const LONG = {json.dumps(long)};\n" + _DEFS_NODE)
     r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
     assert r.returncode == 0, "the page's definitions script stopped: " + (r.stderr or "").strip()[-300:]
     out = json.loads(r.stdout.strip().splitlines()[-1])
@@ -42742,12 +42811,164 @@ def _rsa_defined_terms(B, RSA, S):
                            "providing complete and independent living facilities for one or more persons "
                            "including permanent provisions for living, sleeping, eating, cooking, and sanitation."), \
         f"the box does not give the definition and where it is from: {out['says']!r}"
-    wrong = [k for k in ("focus", "escape", "tap_stays", "tap_opens", "second_tap_goes", "press_elsewhere",
-                         "hover_waits", "hover_opens", "leave_closes", "in_text") if not out[k]]
-    assert not wrong and out["described"] == "rs-dpop" and out["role"] == "tooltip", \
+    # WHERE IT IS, AND ALL OF IT (the person, 7 November 2026): the citation a
+    # link to the definition, the word's own address; a long one cut, with
+    # Show more opening all of it, a paragraph a line, and Show less after.
+    assert out["link"] == ["/laws/153#s1_III", "RSA 153:1, III"] and not out["short_has_more"], \
+        f"the box's citation is not a link to the definition, or a short one offers Show more: {out}"
+    first = long[0].split(". ", 1)[1]
+    whole = [first] + long[1:]
+    assert out["cut"].endswith("…") and len(out["cut"]) <= 401 and first.startswith(out["cut"][:-1]) \
+        and out["more"] and out["whole"] == whole and out["more_open"] and out["less"], (
+        f"a long definition is not cut with Show more, or Show more does not open all of it, a "
+        f"paragraph a line, and close it again: {out}")
+    wrong = [k for k in ("focus", "in_text", "tab_in_stays", "escape", "link_follows", "tap_stays",
+                         "tap_opens", "tap_link", "second_tap_goes", "press_elsewhere", "hover_waits",
+                         "hover_opens", "onto_box_stays", "leave_closes", "escape_elsewhere",
+                         "press_inside_stays") if not out[k]]
+    # The word at 600-620 of a screen 900 high: under it, 626, and Show more's
+    # 500 kept there in the 266 left; at 800-820, 500 high goes over it, 294,
+    # and stays there when Show less is pressed (the box's height in node is
+    # the one set, so its top does not move).
+    place = {"short_below": out.get("short_below"), "more_below": out.get("more_below"),
+             "opens_above": out.get("opens_above"), "more_above": out.get("more_above")}
+    assert place == {"short_below": "626px", "more_below": ["626px", "266px"],
+                     "opens_above": ["294px", ""], "more_above": "294px"}, \
+        f"the box does not open where there is room, or jumps sides when Show more is pressed: {place}"
+    assert not wrong and out["described"] == "rs-dpcite rs-dptext" and out["role"] is None, \
         f"the definition box fails by keyboard, touch or mouse: {wrong}, {out}"
     return "ok", ("153:5 marked from 153:1 and 153:28 from 153:27, not 153:2 or 540-C:1; 541-A:14-a's 'files' "
-                  "withheld for two definitions; no term in its own; the box by keyboard, tap and mouse")
+                  "withheld for two definitions; no term in its own; the box by keyboard, tap and mouse, "
+                  "its link to the definition and Show more for a long one")
+
+
+# The chapter page's script on lists made by hand: a fold holding a list of
+# ten, and a list of eight; node presses "Show all" and closes the fold.
+_FOLD_NODE = r"""
+const on = {}, uls = [];
+function node(tag, parent) {
+  const n = {tagName: tag, children: [], parentNode: null, hidden: false, attrs: {}, listeners: {}, open: true,
+    _text: "", className: "",
+    getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
+    setAttribute(k, v) { this.attrs[k] = String(v); },
+    appendChild(c) { c.parentNode = this; this.children.push(c); return c; },
+    insertBefore(c, ref) { c.parentNode = this; const i = ref ? this.children.indexOf(ref) : -1;
+      if (i < 0) this.children.push(c); else this.children.splice(i, 0, c); return c; },
+    get nextSibling() { const k = this.parentNode ? this.parentNode.children : []; return k[k.indexOf(this) + 1] || null; },
+    addEventListener(t, f) { (this.listeners[t] = this.listeners[t] || []).push(f); },
+    closest(sel) { let x = this; while (x) { if (x.tagName === sel) return x; x = x.parentNode; } return null; },
+    querySelector(sel) { return this.children.find(c => c.tagName === sel) || null; },
+    focus() { doc.activeElement = this; }};
+  Object.defineProperty(n, "textContent", {get() { return n._text; }, set(v) { n._text = String(v); }});
+  if (parent) parent.appendChild(n);
+  return n;
+}
+const doc = {activeElement: null, createElement: t => node(t),
+  querySelectorAll: sel => sel === "ul[data-fold]" ? uls.filter(u => u.getAttribute("data-fold")) : [],
+  querySelector: () => null, addEventListener() {}};
+global.document = doc; global.window = {};
+function list(parent, n, fold) { const u = node("ul", parent); if (fold) u.setAttribute("data-fold", fold);
+  for (let i = 0; i < n; i++) { const li = node("li", u); node("a", li)._text = "RSA " + i; } uls.push(u); return u; }
+const d = node("details"); const part = node("div", d);
+const ten = list(part, 10, "8"), eight = list(node("div"), 8, "8"); node("p", part);
+new Function(SCRIPT)();
+const btn = ten.nextSibling, out = {};
+const shown = u => u.children.filter(li => !li.hidden).length;
+const press = () => (btn.listeners.click || []).forEach(f => f({target: btn}));
+out.after_list = !!btn && btn.tagName === "button" && btn.parentNode === part && part.children.indexOf(btn) === 1;
+out.folded = [shown(ten), btn.textContent, btn.getAttribute("aria-expanded")];
+press(); out.opened = [shown(ten), btn.textContent, btn.getAttribute("aria-expanded"),
+                       doc.activeElement === ten.children[8].children[0]];
+press(); out.closed = [shown(ten), btn.textContent];
+press(); d.open = false; (d.listeners.toggle || []).forEach(f => f({})); out.with_fold = [shown(ten), btn.textContent];
+out.eight = [shown(eight), eight.nextSibling === null];
+const late = list(node("div"), 9, "8"), only = {querySelectorAll: () => [late]};
+window.rsFold(only); window.rsFold(only);
+out.later = [shown(late), late.parentNode.children.filter(c => c.tagName === "button").length];
+console.log(JSON.stringify(out));
+"""
+
+
+@check("build", "a statute section's history and citations are one fold, its counts in its line, and "
+       "\"Show all\" opens the rest of its own list where it is and closes with the fold",
+       needs=("build_rsa", "rsa", "shell"))
+def _rsa_section_fold(B, RSA, S):
+    """The person, 7 November 2026: "I'd like a more compact navigation of the
+    how it has changed, other bills that proposed changes, cites, and cited
+    by sections all compacted into one dropdown before you expand it", and
+    "The show all 12 for the cited by is also formatted strangely since it
+    doesn't move with the dropdown it just expands another section under."
+
+    On the definitions check's own chapter, given a history of ten laws, a
+    citation and eleven sections citing it: the section has one fold, "History
+    and citations" with "10 changes · cites 1 · cited by 11" in its line,
+    holding each list under a heading one level below the section's, the
+    history drawn whole with data-fold, and no Show all of the old kind
+    (rs-more) anywhere on the page; fold_counts says one in the singular
+    and leaves out what is not there. Then the chapter's script in node: the
+    button straight after its list, "Show all 10" showing eight, pressed
+    showing all ten and taking the keyboard to the first it showed, "Show
+    fewer" folding it again, closing the fold folding it too; and a list of
+    eight given no button."""
+    assert B.fold_counts([("hist", 1), ("other", 1), ("cites", 1), ("cited", 1)]) == \
+        "1 change · 1 other bill · cites 1 · cited by 1", "fold_counts does not say one in the singular"
+    assert B.fold_counts([("hist", 3), ("other", 0), ("cites", 4), ("cited", 12)]) == \
+        "3 changes · cites 4 · cited by 12", "fold_counts says a list that is not there"
+    t = _def_table(RSA, _DEF_PASSAGES)
+    data = {"enacted": {"153:5": [[str(1990 + i), f"{10 + i}:1", ""] for i in range(10)]},
+            "statute": dict({"153:5": ["153:1"], "153:2": ["153:5"], "153:10-a": ["153:5"]},
+                         **{f"99:{i}": ["153:5"] for i in range(1, 10)})}
+    root = Path(tempfile.mkdtemp(prefix="gr-rsafold-"))
+    try:
+        page = B.chapter_page(S.template(Path("site")), t, data, B.Bills(root, "2025-2026"), "153",
+                              "https://graniterecord.org")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    s5 = page[page.index('id="s5"'):]
+    s5 = s5[:s5.index("</section>")]
+    lv = int(re.search(r'<h(\d) class="rs-h">', s5).group(1))
+    bad = []
+    folds = s5.count('<details class="rs-fold">')
+    if folds != 1:
+        bad.append(f"153:5 has {folds} folds, not one")
+    if ('<summary><span class="rs-fname">History and citations</span> <span class="rs-fcount">'
+            "10 changes · cites 1 · cited by 11</span></summary>") not in s5:
+        bad.append("the fold's line is not \"History and citations\" with its counts")
+    heads = re.findall(r'<div class="rs-fpart"><h(\d) class="rs-fh">([^<]+)</h\d>', s5)
+    if heads != [(str(lv + 1), "How it has changed"), (str(lv + 1), "Cites"), (str(lv + 1), "Cited by")]:
+        bad.append(f"the fold's lists are not headed one level under the section's h{lv}: {heads}")
+    if not re.search(r'<ul class="rs-hist" data-fold="8">(?:<li>.*?</li>){10}</ul>', s5):
+        bad.append("the history of ten is not drawn whole with data-fold=\"8\"")
+    if not re.search(r'<h\d class="rs-fh">Cited by</h\d><ul class="rs-refs" data-fold="8">(?:<li>.*?</li>){11}</ul>', s5):
+        bad.append("Cited by's eleven are not drawn whole with data-fold=\"8\"")
+    if "rs-more" in page or "<summary>Show all" in page:
+        bad.append("the page still draws a Show all of its own beside a list")
+    # A history row says the act's section, so eleven rows of one act are
+    # not eleven rows alike (RSA 100-A:1's, 142:4 to 142:28 of 2025).
+    if "Laws of 1990, chapter 10, section 1</li>" not in s5:
+        bad.append("a history row does not say the act's section")
+    # The Laws page's reader puts a section in after the page has loaded,
+    # and folds its lists as the chapter's page does.
+    read = B.LANDING_JS[B.LANDING_JS.find("read.innerHTML='<p class=\"lw-rcrumb\">"):]
+    if not ("window.rsFold=fold" in B.CHAPTER_JS and B.CHAPTER_JS in page
+            and 0 <= read.find("window.rsFold(read)") < read.find("read.scrollTop=0")):
+        bad.append("the Laws page's reader does not fold the lists of the section it puts in")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if node:
+        script = B.CHAPTER_JS[len("<script>"):-len("</script>")]
+        r = _node_file(node, f"const SCRIPT = {json.dumps(script)};\n" + _FOLD_NODE,
+                       capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, "the chapter page's script stopped: " + (r.stderr or "").strip()[-300:]
+        out = json.loads(r.stdout.strip().splitlines()[-1])
+        want = {"after_list": True, "folded": [8, "Show all 10", "false"],
+                "opened": [10, "Show fewer", "true", True], "closed": [8, "Show all 10"],
+                "with_fold": [8, "Show all 10"], "eight": [8, True], "later": [8, 1]}
+        if out != want:
+            bad.append(f"Show all does not open and close in place: {out}, not {want}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("one fold, \"History and citations\" with its counts, its lists headed under the section; "
+                  + ("Show all opens and closes in place, and with the fold" if node else
+                     "node is not here for the script"))
 
 
 @check("build", "a docket line in plain words says what the record says, in the approved vote words, "
