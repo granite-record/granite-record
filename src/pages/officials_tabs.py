@@ -1075,27 +1075,31 @@ def members_elect(elect, today, lang="en", people=None):
                             f"{sum(len(won(rows)) for rows in house.values())}</h2>"
                             + "".join(counties))
     # BY DISTRICT: the tab as it was, each race whole -- its seats, its
-    # winners, a result not final and a seat with nobody on file.
+    # winners, a result not final and a seat with nobody on file. Its
+    # chambers are headings of the level the other two views' are (h2), and
+    # its counties under them (h3), so a reader moving by heading in this
+    # view does not hear them as parts of "Who won the seats" (the review of
+    # 8 November 2026); the classes draw them as they were.
     seat_parts = []
     if senate:
         seat_parts.append('<section class="ofsec" aria-labelledby="of-eld-senate">'
-                          '<h3 class="ofsech" id="of-eld-senate">'
-                          + I.say(lang, "off.state_senate", "State Senate") + '</h3>'
+                          '<h2 class="ofsech" id="of-eld-senate">'
+                          + I.say(lang, "off.state_senate", "State Senate") + '</h2>'
                           '<div class="ofsecb"><ul class="elrows">'
                           + "".join(row(d, k, r) for k, d, r in senate) + "</ul></div></section>")
     if house:
         seat_parts.append('<section class="ofsec" aria-labelledby="of-eld-house">'
-                          '<h3 class="ofsech" id="of-eld-house">'
-                          + I.say(lang, "off.state_house", "State House") + '</h3><div class="ofsecb">'
-                          + "".join('<h4 class="elcounty">'
+                          '<h2 class="ofsech" id="of-eld-house">'
+                          + I.say(lang, "off.state_house", "State House") + '</h2><div class="ofsecb">'
+                          + "".join('<h3 class="elcounty">'
                                     + I.say(lang, "off.county_name", "{name} County", name=E(c))
-                                    + '</h4><ul class="elrows">'
+                                    + '</h3><ul class="elrows">'
                                     + "".join(row(d, k, r) for k, d, r in rows) + "</ul>"
                                     for c, rows in house.items())
                           + "</div></section>")
     n = elect_count(elect)
     views = f"""<section class="roster elroster">
-<div class="rtabs" role="tablist" aria-label="{I.say(lang, "elect.arrange", "How to arrange the members-elect")}">
+<div class="rtabs" role="tablist" aria-label="{I.say(lang, "elect.arrange", "How to arrange the members-elect")}" hidden>
   <button type="button" role="tab" id="tab-elast" data-pane="pane-elast"
     aria-controls="pane-elast" aria-selected="true">{I.say(lang, "roster.by_last", "By last name")}</button>
   <button type="button" role="tab" id="tab-ecounty" data-pane="pane-ecounty"
