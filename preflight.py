@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.794
+# GRANITE_VERSION: 2026-09-04.795
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -29833,6 +29833,110 @@ def _api_counts_say_units(AP):
     return "ok", ("the manifest's 8 files, the database's 3 tables, 2,192 people, 3,999 bills and "
                   "33,783 rows each say their unit, under Count; /api's table is a list up to 58em, "
                   f"its {len(twin)} rules the phone block's twins, and the data page's is not")
+
+
+@check("build", "a new member-elect gets a provisional page, noindex and with no id, at the roster's "
+                "own address, and nobody else does; their requests are theirs only where certain")
+def _elect_provisional():
+    """Alice, 7 November 2026: pages for new members-elect now, "with just
+    their name and district", no member id until the General Court assigns
+    one, noindex until then (B2), kept past Organization Day (B3). The design
+    is docs/design/requests-members/DESIGN.md, 3. What build_members_elect
+    decides about each winner is its own and held by its own checks, so it is
+    stood in for here by races of each kind."""
+    import tempfile
+    import build_elect_pages as EP
+    import build_members_elect as BME
+    import build_legislator_pages as LP
+    import build_lsrs as L
+    races = {
+        "H|Rockingham|13": {"seats": 2, "elected": [
+            {"n": "Jane Doe", "p": "D", "k": "new"},
+            {"n": "Jodi Nelson", "p": "R", "k": "sitting", "id": "377001", "s": "jodi-nelson-rock-13"}]},
+        "S|24": {"seats": 1, "elected": [{"n": "Pat Moore", "p": "R", "k": "new"}]},
+        "H|Belknap|2": {"seats": 1, "elected": [{"n": "Lee Park", "p": "R", "k": "new"}]},
+    }
+    sitting = [{"id": "377001", "name": "Nelson, Jodi", "chamber": "H", "county": "Rockingham",
+                "district": "13", "slug": "jodi-nelson-rock-13"},
+               # Somebody already at the address Pat Moore's page would take.
+               {"id": "377009", "name": "Moore, Patricia", "chamber": "S", "district": "24",
+                "slug": "pat-moore-sd-24"}]
+    districts = {"Hampton": {"0": {"house": [{"county": "Rockingham", "district": 13, "seats": 2}],
+                                   "senate": 24}},
+                 "Gilford": {"0": {"house": [{"county": "Belknap", "district": 2, "seats": 1}],
+                                   "senate": 7}}}
+    real = BME.members_elect
+    BME.members_elect = lambda *a, **k: (races, {})
+    try:
+        got, said, need = EP.pages({}, sitting, [], districts, {}, "2026-11-08", {})
+        slugs = [p["slug"] for p in got]
+        assert slugs == ["lee-park-belk-2", "jane-doe-rock-13"], (
+            f"provisional pages for {slugs}: one for each new person, none for a sitting member, "
+            "and none at a member's address")
+        assert not any("id" in p for p in got), "a provisional page carries an id"
+        assert any("pat-moore-sd-24" in s for s in said), f"the address clash is not said: {said}"
+        assert got[1]["towns"] == ["Hampton"], f"Jane Doe's towns read {got[1]['towns']}"
+        # Numbered at the same address: no provisional page, nothing to record.
+        numbered = sitting + [{"id": "377100", "name": "Doe, Jane", "chamber": "H",
+                               "county": "Rockingham", "district": "13", "slug": "jane-doe-rock-13"}]
+        got2, _, need2 = EP.pages({}, numbered, [], districts, {}, "2026-12-10", {})
+        assert "jane-doe-rock-13" not in [p["slug"] for p in got2] and not need2, (
+            "a member-elect the roster now carries at the same address still has a provisional page")
+        # Numbered at another address: a 301 first, or the build stops.
+        moved = sitting + [{"id": "377100", "name": "Doe, Jane", "chamber": "H",
+                            "county": "Rockingham", "district": "13", "slug": "jane-q-doe-rock-13"}]
+        _, _, need3 = EP.pages({}, moved, [], districts, {}, "2026-12-10", {})
+        _, _, need4 = EP.pages({}, moved, [], districts, {}, "2026-12-10",
+                               {"/legislator/jane-doe-rock-13": "377100"})
+        assert need3 and "jane-doe-rock-13" in need3[0] and not need4, (
+            "a provisional address the roster does not keep is not held to a recorded 301")
+    finally:
+        BME.members_elect = real
+
+    with tempfile.TemporaryDirectory() as d:
+        site = Path(d)
+        (site / "legislator").mkdir()
+        (site / "idx").mkdir()
+        doc = {"election": "2026-11-03", "takes_office": "2026-12-02", "sources": [],
+               "pages": got}
+        (site / "elect_pages.json").write_text(json.dumps(doc), encoding="utf-8")
+        (site / "legislators.json").write_text(json.dumps(sitting), encoding="utf-8")
+        (site / "meta.json").write_text(json.dumps({"requests": {
+            "term": "2027-requests", "label": "2027 Bill Requests"}}), encoding="utf-8")
+        # Requests matched by name only where certain: Jane Doe's House bill
+        # is hers, a Senate request of the same name is not, nor Lee Park's
+        # constitutional amendment, which either chamber may file.
+        who = L.roster(site)
+        rows, _ = L.rows_from([
+            {"lsr": "2027-0010", "title": "relative to tides.", "sponsor": "Jane Doe", "body": "HB"},
+            {"lsr": "2027-0011", "title": "relative to dunes.", "sponsor": "Jane Doe", "body": "SB"},
+            {"lsr": "2027-0012", "title": "relative to lakes.", "sponsor": "Lee Park", "body": "CACR"},
+            {"lsr": "2027-0013", "title": "relative to roads.", "sponsor": "Jodi Nelson", "body": "HB"}],
+            who, year=2027)
+        by = {r["n"]: r["sponsor_slug"] for r in rows}
+        assert by == {"LSR 2027-0010": "jane-doe-rock-13", "LSR 2027-0011": "",
+                      "LSR 2027-0012": "", "LSR 2027-0013": "jodi-nelson-rock-13"}, (
+            f"the requests are matched {by}")
+        (site / "idx" / "2027-requests.json").write_text(json.dumps(rows), encoding="utf-8")
+        # The template every page is drawn from, as the build has it in site/.
+        (site / "bills.html").write_text(Path("src/pages/bills.html").read_text(encoding="utf-8"),
+                                         encoding="utf-8")
+        import shell
+        try:
+            n = LP.write_elect_pages(site, site / "legislator", shell.template(site), "https://x",
+                                     {"jodi-nelson-rock-13"}, {}, "2026-12-03")
+        except Exception as e:
+            raise AssertionError(f"write_elect_pages: {type(e).__name__}: {e}")
+        page = (site / "legislator" / "jane-doe-rock-13.html").read_text(encoding="utf-8")
+        assert n == 2 and '<meta name="robots" content="noindex,follow">' in page, (
+            "a provisional page is written without noindex")
+        assert "Took office December 2, 2026." in page and "LSR 2027-0010" in page \
+            and "LSR 2027-0011" not in page and "GR_MEMBER" not in page, (
+            "a provisional page after Organization Day does not say they took office, list their "
+            "own request alone, or keeps a member id")
+    return "ok", ("new people alone get a page, at the roster's address, never at a member's; "
+                  "numbered at the same address the page gives way, at another only with a 301; "
+                  "noindex, no id, their requests matched by name and chamber")
 
 
 @check("build", "the data API's schema.json describes every column it publishes, with the types "

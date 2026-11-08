@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.84
+# GRANITE_VERSION: 2026-09-05.85
 """
 Run the whole pipeline in the right order.
 
@@ -823,6 +823,19 @@ def plan(a):
         # It runs every night, with or without results: outside the weeks
         # between the election and Organization Day it removes the file and
         # says why, so a file is never left to outlive its day.
+        # THE NEW MEMBERS-ELECT'S PROVISIONAL PAGES' LIST (Alice, 7 November
+        # 2026), before the members-elect step, which links a new person's
+        # chip to their page, and before build_lsrs, which matches their
+        # requests by name. Every night, inside the members-elect window and
+        # after it: the pages stay until the General Court numbers the person.
+        Step("provisional pages for new members-elect",
+             ["build_elect_pages.py", "--site", "site"],
+             needs=["site/legislators.json", "site/former.json", "site/districts.json"],
+             produces=["site/elect_pages.json"],
+             note="each new member-elect's name, party, district and towns, from the "
+                  "results and the owner's matches; no id until the General Court "
+                  "assigns one, and kept apart from the roster"),
+
         Step("members-elect, until they take office",
              ["build_members_elect.py", "--site", "site"],
              needs=["site/meta.json", "site/legislators.json", "site/former.json",

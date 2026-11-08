@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.6
+# GRANITE_VERSION: 2026-09-18.7
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -141,7 +141,31 @@ def roster(site):
         # the other's.
         out[key] = None if key in out else (m.get("display") or m.get("name"),
                                             m.get("slug"))
+    # AND THE NEW MEMBERS-ELECT, WHO HAVE A PROVISIONAL PAGE (Alice, 7 November
+    # 2026; build_elect_pages.py): matched "by name only where certain" -- the
+    # same folded name, the request's chamber theirs (the third field, which
+    # rows_from holds a request to), and nobody else of the name, sitting,
+    # former or elect. Anything less stays unlinked, as before.
+    ep = site / "elect_pages.json"
+    if ep.exists():
+        fj = site / "former.json"
+        gone = set()
+        for m in (json.loads(fj.read_text(encoding="utf-8")) if fj.exists() else []):
+            last, _, first = str(m.get("name") or "").partition(",")
+            gone.add(_fold(f"{first} {last}"))
+        for p in json.loads(ep.read_text(encoding="utf-8")).get("pages") or []:
+            key = _fold(p.get("name"))
+            party = f" ({p['party']})" if p.get("party") else ""
+            out[key] = None if (key in out or key in gone) else (
+                f"{p.get('name')}{party}", p.get("slug"), p.get("chamber"))
     return out
+
+
+def chamber_of(body):
+    """H or S for a request's kind (HB, SR, HCR ...); None for a
+    constitutional amendment request, which either chamber may file."""
+    b = str(body or "").upper()
+    return None if b.startswith("CA") else (b[:1] if b[:1] in ("H", "S") else None)
 
 
 LSR_NO = re.compile(r"^(\d{4})-(\d+)$")
@@ -190,6 +214,9 @@ def rows_from(lsrs, who, became=None, year=None):
         body = str(r.get("body") or "").upper()
         name = str(r.get("sponsor") or "").strip()
         hit = who.get(_fold(name))
+        # A member-elect's match holds only for a request of their chamber.
+        if hit and len(hit) > 2 and chamber_of(body) != hit[2]:
+            hit = None
         if name and not hit:
             unmatched.append(name)
         rows.append({

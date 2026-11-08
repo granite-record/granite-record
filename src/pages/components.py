@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.21
+# GRANITE_VERSION: 2026-10-09.22
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -845,7 +845,10 @@ def elect_race(race, lang="en"):
         chips.append("<li>" + pchip({
             "party_code": p if len(p) == 1 else "X",
             "display_full": f'{e.get("n") or ""} ({p})' if p else (e.get("n") or ""),
-            "slug": e.get("s") if e.get("id") and e.get("s") else ""}) + "</li>")
+            # A new person's provisional page ("e", build_elect_pages.py)
+            # where they have one; never another member's record.
+            "slug": e.get("s") if e.get("id") and e.get("s")
+                    else (e.get("e") if e.get("k") == "new" else "") or ""}) + "</li>")
     left = (r.get("seats") or 0) - len(won) - (r.get("not_final") or 0)
     return (('<ul class="ellist">' + "".join(chips) + "</ul>" if chips else "")
             + ('<p class="elnf"><b>' + i18n.say(lang, "elect.not_final", "Result not final") + "</b>"

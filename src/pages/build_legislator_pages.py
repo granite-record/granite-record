@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.24
+# GRANITE_VERSION: 2026-09-04.25
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -245,6 +245,99 @@ def towns_linked(towns, pages):
     return {t: pages[town_slug(t, "0")] for t in towns if town_slug(t, "0") in pages}
 
 
+CHAMBER_WORDS = {"H": "New Hampshire House of Representatives", "S": "New Hampshire Senate"}
+# Not indexed until the General Court numbers the person and the page is
+# their regular one (Alice, B2, 7 November 2026).
+ELECT_ROBOTS = '<meta name="robots" content="noindex,follow">'
+
+
+def elect_district(p):
+    """'Sullivan 7' for the House, 'Senate District 2' for the Senate."""
+    return (f"Senate District {p['district']}" if p.get("chamber") == "S"
+            else f"{p.get('county')} {p.get('district')}")
+
+
+def elect_body(p, doc, reqs, req_meta, places, today):
+    """A new member-elect's provisional page (build_elect_pages.py): the name
+    as the ballot prints it, party, district and towns, when they were
+    elected and take office, and their requests for the next session. No
+    contact detail, no votes, no seat and no committees: none is published
+    for them until the General Court numbers them, when this becomes their
+    regular page."""
+    took = today >= doc["takes_office"]
+    party = f" ({E(p['party'])})" if p.get("party") else ""
+    out = ['<div class="static-rec" id="static-rec">',
+           f"<h1>{E(p['name'])}{party}</h1>",
+           f"<p>Member-elect of the {CHAMBER_WORDS.get(p.get('chamber'), 'General Court')}, "
+           f"{E(elect_district(p))}.</p>",
+           f"<p>Elected {E(S.date_words(doc['election'], 'full'))}. "
+           + (f"Took office {E(S.date_words(doc['takes_office'], 'full'))}."
+              if took else f"Takes office {E(S.date_words(doc['takes_office'], 'full'))}.")
+           + "</p>"]
+    towns = p.get("towns") or []
+    if towns:
+        out.append('<ul class="sx-facts"><li><b>Represents:</b> ' + ", ".join(
+            f'<a href="{E(places[t])}">{E(t)}</a>' if t in places else E(t) for t in towns)
+            + "</li></ul>")
+    out.append("<p>Their seat, committees and record are added here as the General Court "
+               "publishes them.</p>")
+    if reqs:
+        label = (req_meta or {}).get("label") or "Bill Requests"
+        out.append(f"<h2>{E(label)}</h2>"
+                   "<p><b>These are requests, not bills yet.</b> A request has a title and a "
+                   "prime sponsor until it is drafted and filed as a numbered bill; some are "
+                   "withdrawn first.</p><ul>" + "".join(
+                       f"<li>{E(r.get('n'))}: {E(r.get('title'))} ({E(r.get('body_label') or '')})"
+                       f" &mdash; {E(r.get('status') or '')}</li>" for r in reqs) + "</ul>"
+                   + (f'<p><a href="/bills?term={E(req_meta["term"])}">Every {E(label)}</a></p>'
+                      if (req_meta or {}).get("term") else ""))
+    srcs = doc.get("sources") or []
+    out.append("<h2>Sources</h2><ul><li>The election results: the New Hampshire Secretary of "
+               "State" + "".join(f', <a href="{E(u)}" rel="noopener">{E(u)}</a>' for u in srcs[:1])
+               + "</li></ul></div>")
+    return "".join(out)
+
+
+def write_elect_pages(site, out, t, base, written_slugs, pages_of_towns, today):
+    """Each new member-elect's provisional page, from site/elect_pages.json:
+    noindex and out of the sitemap until numbered (B2). A slug a member's page
+    was written at this run is not overwritten. Returns how many."""
+    f = site / "elect_pages.json"
+    if not f.is_file():
+        return 0
+    doc = json.loads(f.read_text(encoding="utf-8"))
+    meta = json.loads((site / "meta.json").read_text(encoding="utf-8")) \
+        if (site / "meta.json").is_file() else {}
+    req_meta = meta.get("requests") or {}
+    rows = []
+    if req_meta.get("term") and (site / "idx" / f"{req_meta['term']}.json").is_file():
+        rows = json.loads((site / "idx" / f"{req_meta['term']}.json").read_text(encoding="utf-8"))
+    n = 0
+    for p in doc.get("pages") or []:
+        slug = p["slug"]
+        if slug in written_slugs:
+            continue
+        path = f"/legislator/{slug}.html"
+        reqs = [r for r in rows if r.get("sponsor_slug") == slug]
+        places = towns_linked(p.get("towns") or [], pages_of_towns)
+        who = f"{p['name']}" + (f" ({p['party']})" if p.get("party") else "")
+        page = S.page(t, path=path, base=base, title=f"{who}, member-elect | Granite Record",
+                      og_title=f"{who}, member-elect", og_image="og-legislator.png",
+                      og_alt="Granite Record: legislators and their voting records",
+                      description=(f"{p['name']}, elected to the {CHAMBER_WORDS.get(p.get('chamber'), 'General Court')} "
+                                   f"for {elect_district(p)} on {S.date_words(doc['election'], 'full')}."),
+                      globals={"GR_STATIC": True}, noscript="",
+                      skip_label="Skip to this member-elect", nav_current="officials.html",
+                      sr_title="")
+        page = page.replace('<div id="results"></div>',
+                            f'<div id="results">{elect_body(p, doc, reqs, req_meta, places, today)}</div>', 1)
+        page = page.replace('<link rel="canonical"', ELECT_ROBOTS + '\n<link rel="canonical"', 1)
+        assert ELECT_ROBOTS in page, f"{path}: the template has no canonical link to put noindex before"
+        (out / f"{slug}.html").write_text(S.clean_links(page), encoding="utf-8")
+        n += 1
+    return n
+
+
 def static_record(m, rec, elected="", places=None):
     """THE MEMBER'S RECORD IN THE PAGE ITSELF, for a reader with no
     JavaScript (the SEO review of 12 October 2026; shell.page's static).
@@ -426,6 +519,14 @@ def main():
     assert written or not legs, (
         "no legislator page was written, and legislators.json holds "
         f"{len(legs)}. That is a run that failed, not a roster that emptied.")
+    # THE NEW MEMBERS-ELECT'S PROVISIONAL PAGES (build_elect_pages.py), after
+    # every member's: noindex and left out of `urls`, so not in the sitemap,
+    # until the person is numbered (Alice, B2).
+    n_elect = write_elect_pages(site, out, t, a.base,
+                                {(m.get("slug") or person_slug(m)) for m in [*legs, *former]},
+                                pages, today)
+    if n_elect:
+        print(f"  {n_elect} provisional pages for new members-elect (noindex, not in the sitemap)")
     # SILENCE IS NOT SUCCESS: a members-elect file that links members to
     # pages, and pages none of which took the line, is a mismatch to see.
     if elected:
