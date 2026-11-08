@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.279
+// GRANITE_VERSION: 2026-09-07.280
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -6902,12 +6902,14 @@ function renderDetail(b,d){
   // THE TAB IS LABELLED HISTORY (the owner's walk of dry run 8, 8 November
   // 2026); its address stays /related. Each bill is counted once.
   const rel=relatedMerge(Array.isArray(d.related)?d.related:[]);
-  const relTab=rel.length
+  // EVERY BILL HAS A HISTORY TAB (the owner's walk of dry run 9, 8 November
+  // 2026): with no related rows it says so and lists the laws it would change.
+  const relTab=true
     ? `<button class="tab" role="tab" id="tab_${b.id}_7" aria-controls="pane_${b.id}_7" aria-selected="false" data-t="7">History${rel.length?tabN(rel.length):""}</button>`
     : "";
-  const relPane=rel.length
+  const relPane=true
     ? `<div class="pane" role="tabpanel" id="pane_${b.id}_7" aria-labelledby="tab_${b.id}_7"
-        tabindex="0" data-t="7" hidden>${renderRelated(b,rel)}</div>`
+        tabindex="0" data-t="7" hidden>${renderRelated(b,rel,d)}</div>`
     : "";
 
   return `<div class="tabs" role="tablist">
@@ -6982,8 +6984,16 @@ function amendmentSaid(e){
   const vote=e.fv?`, ${e.fv}`:"";
   const how={adopted:`, which the ${house} adopted${vote},`,failed:`, which the ${house} rejected${vote},`,
     withdrawn:", which was withdrawn,"}[e.f]||"";
-  return `Amendment ${e.m}${how} carried its language into it.`;
+  return {s:`Amendment ${e.m}${how} carried its language into it.`,f:e.f||""};
 }
+// WHAT BECAME OF THE AMENDMENT, NOT OF THE BILL IT WENT INTO (the owner's walk
+// of dry run 9, 8 November 2026): a rejected amendment to a bill that became law
+// read as if the language had. The chip is the amendment's fate, in the cards'
+// passing, failing and neutral colours; the other bill's own outcome follows
+// only where the amendment was adopted.
+const AMD_CHIP={adopted:["Amendment Adopted","s-law"],failed:["Amendment Rejected","s-done"],
+  withdrawn:["Amendment Withdrawn","s-study"]};
+const amdChip=f=>AMD_CHIP[f]?chip(AMD_CHIP[f][0],`cstat ${AMD_CHIP[f][1]}`):"";
 function relatedMerge(rel){
   const at=new Map(),out=[];
   for(const e of rel){
@@ -7000,21 +7010,34 @@ function relatedMerge(rel){
   }
   return out;
 }
-function renderRelated(b,relRows){
+function renderRelated(b,relRows,d){
   const rel=relatedMerge(relRows);
   const groups=[[],[],[]];
   for(const e of rel)(groups[e.g]||groups[2]).push(e);
   // The outcome in the colour the bill cards give that word (chipCls).
   const row=e=>{
-    const said=relatedSaid(b,e)+(e.more||[]).map(m=>" "+esc(m)).join("");
+    // A folded amendment's sentence carries its own fate chip, so the row's
+    // chip stays the other bill's status; an amendment's row leads with the
+    // amendment's chip and adds the bill's only if one was adopted.
+    const said=relatedSaid(b,e)+(e.more||[]).map(m=>" "+esc(m.s)+" "+amdChip(m.f)).join("");
+    const bill=e.c?chip(e.c,`cstat ${chipCls({chip:e.c})}`):"";
+    let chips=bill;
+    if(e.m){
+      const adopted=e.f==="adopted"||(e.more||[]).some(m=>m.f==="adopted");
+      chips=amdChip(e.f)+(adopted&&bill?" "+bill:"");
+    }
     return `<li class="rl-row"><p class="rl-s">${said}</p>`
-      +`<p class="rl-t">${esc(e.t)}${e.c?` ${chip(e.c,`cstat ${chipCls({chip:e.c})}`)}`:""}</p></li>`;
+      +`<p class="rl-t">${esc(e.t)}${chips?" "+chips:""}</p></li>`;
   };
   return groups.map((g,i)=>g.length
     ?`<section class="rl-g"><h2 class="sech">${RELATED_HEADS[i]}</h2><ul class="rl-list">${g.map(row).join("")}</ul></section>`:"").join("")
+    +(rel.length?"":`<p class="story">No other bill was found sharing most of this bill&rsquo;s language.</p>`)
     +`<p class="src">Found by comparing the text of bills and their amendments. A bill is listed
       only where most of its language is shared, and an amendment only where the docket
-      records what became of it; a match can be missed.</p>`;
+      records what became of it; a match can be missed.</p>`
+    // The chapters it would change, linked to the laws' pages, where each
+    // section's bill history is shown (the owner's walk of dry run 9).
+    +(rsaChapters(d||{}).length?rsaLines(Object.assign({},d,{changed:[]})):"");
 }
 
 // ======================================================= report a problem ==
