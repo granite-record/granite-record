@@ -472,24 +472,19 @@
    "es": "Cómo ordenar a los miembros electos",
    "state": "draft"
   },
-  "elect.by_district": {
-   "en": "By district",
-   "es": "Por distrito",
-   "state": "draft"
-  },
   "elect.elected": {
    "en": "Elected {day}",
    "es": "Elección del {day}",
    "state": "draft"
   },
-  "elect.kind.former": {
-   "en": "Returning",
-   "es": "Regresa",
+  "elect.kind.chamber": {
+   "en": "New chamber",
+   "es": "Nueva cámara",
    "state": "draft"
   },
-  "elect.kind.moved": {
-   "en": "New seat",
-   "es": "Nuevo escaño",
+  "elect.kind.district": {
+   "en": "New district",
+   "es": "Nuevo distrito",
    "state": "draft"
   },
   "elect.kind.new": {
@@ -497,8 +492,8 @@
    "es": "Nuevo/a",
    "state": "draft"
   },
-  "elect.kind.own": {
-   "en": "Re-elected",
+  "elect.kind.returning": {
+   "en": "Returning",
    "es": "Reelegido/a",
    "state": "draft"
   },
@@ -517,9 +512,24 @@
    "es": "en {where}",
    "state": "draft"
   },
+  "elect.nf_list": {
+   "en": "{n} seats not final, in {d} districts",
+   "es": "{n} escaños por definir, en {d} distritos",
+   "state": "draft"
+  },
+  "elect.nf_list_one": {
+   "en": "{n} seat not final",
+   "es": "{n} escaño por definir",
+   "state": "draft"
+  },
+  "elect.nf_list_one_d": {
+   "en": "{n} seats not final, in one district",
+   "es": "{n} escaños por definir, en un distrito",
+   "state": "draft"
+  },
   "elect.nf_named": {
-   "en": "By county and By district name them.",
-   "es": "Se indican en Por condado y Por distrito.",
+   "en": "Who won the seats lists them, and By county.",
+   "es": "Se enumeran en Quién ganó los escaños y en Por condado.",
    "state": "draft"
   },
   "elect.nf_one": {
@@ -572,14 +582,19 @@
    "es": "&mdash; se pidió un recuento",
    "state": "draft"
   },
+  "elect.recount_each": {
+   "en": "A recount was requested in each.",
+   "es": "Se pidió un recuento en cada uno.",
+   "state": "draft"
+  },
+  "elect.recount_one": {
+   "en": "A recount was requested.",
+   "es": "Se pidió un recuento.",
+   "state": "draft"
+  },
   "elect.recounts": {
    "en": "&mdash; a recount was requested in each",
    "es": "&mdash; se pidió un recuento en cada uno",
-   "state": "draft"
-  },
-  "elect.senate_by_district": {
-   "en": "The Senate is listed by district.",
-   "es": "El Senado aparece por distrito.",
    "state": "draft"
   },
   "elect.serving": {
@@ -23342,11 +23357,6 @@
    "es": "Se mantiene a mano, leído de la lista de funcionarios de los condados de la Secretaría de Estado para 2025&ndash;2026, con fecha del {day}",
    "state": "draft"
   },
-  "off.seat_one": {
-   "en": "{n} seat",
-   "es": "{n} escaño",
-   "state": "draft"
-  },
   "off.seats": {
    "en": "{n} seats",
    "es": "{n} escaños",
@@ -23370,16 +23380,6 @@
   "off.src_and": {
    "en": "{src}, and {told}",
    "es": "{src}, y {told}",
-   "state": "draft"
-  },
-  "off.state_house": {
-   "en": "State House",
-   "es": "Cámara de Representantes estatal",
-   "state": "draft"
-  },
-  "off.state_senate": {
-   "en": "State Senate",
-   "es": "Senado estatal",
    "state": "draft"
   },
   "off.superior": {

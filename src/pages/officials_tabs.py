@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.11
+# GRANITE_VERSION: 2026-10-10.12
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -61,7 +61,7 @@ import re
 import build_date
 import i18n as I
 
-from components import date_words, elect_race, pchip, until_attrs
+from components import date_words, pchip, until_attrs
 from build_town_pages import tel, maillink, weblink
 from build_members_elect import KEY_RE, race_order, read_officials
 
@@ -737,21 +737,33 @@ def presiding(officers, legs, today, lang="en"):
             "</section>")
 
 
-# THE MEMBERS-ELECT TAB LIKE THE LEGISLATORS TAB (the owner's walk of 7
-# November 2026, B). Each member-elect is the Legislators tab's chip with a
-# title and a district -- "Rep.-elect Kristine Trow (D - Rock 13)", "Sen.-elect
-# David Rochefort (R - SD1)", the owner's choice of "Rep.-elect" -- and one
-# small word for who they are: Re-elected (a sitting member, to the seat they
-# hold: the file's `own`), Returning (a former member), New (nobody the
-# roster or the former members name), and New seat for a sitting member
-# elected to another seat, which none of those three says truly: Jim
-# Creighton holds Hillsborough 30 and was elected to the Senate's district 8,
-# so he is not re-elected to it and has not been away to return.
+# THE MEMBERS-ELECT TAB LIKE THE LEGISLATORS TAB (the owner's walks of 7
+# and 8 November 2026). Each member-elect is the Legislators tab's own chip,
+# with a title and a district -- "Rep.-elect Kristine Trow (D - Rock 13)",
+# "Sen.-elect David Rochefort (R - SD1)", the owner's choice of "Rep.-elect"
+# -- and beside it, outside it, one word for who they are (the walk of dry
+# run 7, through the laptop manager):
+#
+#   RETURNING     a sitting member re-elected to the seat they hold (the
+#                 file's `own`), or a former member back in the chamber they
+#                 last served in
+#   NEW DISTRICT  a sitting member elected to another district of the same
+#                 chamber
+#   NEW CHAMBER   a sitting or former member elected to the other chamber:
+#                 Jim Creighton holds Hillsborough 30 and was elected to the
+#                 Senate's district 8
+#   NEW           nobody the roster or the former members name
+#
+# The chamber a member sits or last sat in is their roster or former.json
+# row's; a former member's row says the chamber they last served in and not
+# each term's, so one last in the other chamber reads NEW CHAMBER even if
+# they once served in this one (none on dry run 7). A member the file links
+# but whose row is not in `people` gets no word rather than a guessed one.
 def kind_words(kind, lang="en"):
-    """The chip's word for an elect_kind(), in `lang`; "" for none."""
-    return {"own": I.say(lang, "elect.kind.own", "Re-elected"),
-            "moved": I.say(lang, "elect.kind.moved", "New seat"),
-            "former": I.say(lang, "elect.kind.former", "Returning"),
+    """The word for an elect_kind(), in `lang`; "" for none."""
+    return {"returning": I.say(lang, "elect.kind.returning", "Returning"),
+            "district": I.say(lang, "elect.kind.district", "New district"),
+            "chamber": I.say(lang, "elect.kind.chamber", "New chamber"),
             "new": I.say(lang, "elect.kind.new", "New")}.get(kind, "")
 
 
@@ -762,21 +774,42 @@ NAME_SUFFIX = re.compile(r",?\s+(?:Jr|Sr|II|III|IV)\.?$", re.I)
 PARTY_OF = {"R": "Republican", "D": "Democrat", "I": "Independent", "L": "Libertarian"}
 
 
-def elect_kind(e):
+def elect_kind(e, key, by_id=None):
     """Which of kind_words' words a member-elect carries, from the file's
-    `k` and `own`; "" for a kind the file has no word for."""
+    `k` and `own` and, for a member it links, the chamber of their row in
+    `by_id` (the roster's for a sitting member, former.json's for a former
+    one) against the race's; "" where the file or the rows cannot say."""
     k = e.get("k")
-    if k == "sitting":
-        return "own" if e.get("own") else "moved"
-    return k if k in ("former", "new") else ""
+    if k == "new":
+        return "new"
+    if k not in ("sitting", "former"):
+        return ""
+    row = (by_id or {}).get(str(e.get("id") or ""))
+    sat = str((row or {}).get("chamber") or "")[:1].upper()
+    if sat not in ("H", "S"):
+        return ""
+    if sat != ("S" if KEY_RE.match(key).group(3) else "H"):
+        return "chamber"
+    if k == "former" or e.get("own"):
+        return "returning"
+    return "district"
+
+
+def elect_word(e, key, by_id=None, lang="en"):
+    """The word beside a member-elect's chip, as its own label outside the
+    chip (the walk of 8 November 2026: inside it, the chip wrapped to two
+    lines where the Legislators tab's is one); "" for none."""
+    w = kind_words(elect_kind(e, key, by_id), lang)
+    return f' <span class="elkind" translate="yes">{E(w)}</span>' if w else ""
 
 
 def elect_chip(e, key, lang="en"):
-    """One member-elect as the site's person chip: the title, the name, and
-    the party and district in the chip's tag, the cross-nominated on the
-    neutral chip with both letters and no letter where none was printed (as
-    components.elect_race draws them), linked only where the file links
-    them, and the kind as the chip's role. No contact detail."""
+    """One member-elect as the site's person chip, the Legislators tab's: the
+    title, the name, and the party and district in the chip's tag, the
+    cross-nominated on the neutral chip with both letters and no letter
+    where none was printed (as components.elect_race draws them), linked
+    only where the file links them. No contact detail; the word for who
+    they are is elect_word's, beside it."""
     from build_site_v2 import district_tag
     m = KEY_RE.match(key)
     p = str(e.get("p") or "")
@@ -788,8 +821,7 @@ def elect_chip(e, key, lang="en"):
     tag = " - ".join(x for x in (p, where) if x)
     return pchip({"party_code": p if len(p) == 1 else "X",
                   "display_full": f'{title} {e.get("n") or ""}' + (f" ({tag})" if tag else ""),
-                  "slug": e.get("s") if e.get("id") and e.get("s") else "",
-                  "role": kind_words(elect_kind(e), lang)})
+                  "slug": e.get("s") if e.get("id") and e.get("s") else ""})
 
 
 def elect_party(e):
@@ -864,16 +896,53 @@ def elect_totals(races, lang="en"):
             return f'{n} <span aria-hidden="true">{E(p)}</span><span class="sr">{E(w)}</span>'
         # Each count whole on its line, as build_pages.short_bar's: on a
         # narrow phone the House's can take two lines, breaking between counts.
+        # The line is the block's last part, under the bar: a phone shows the
+        # bar and the line, a wider screen the bar, its line and its legend
+        # (the walk of 8 November 2026: a chart on a phone as well).
         short = " &middot; ".join(f'<span class="csb">{bit(p, n, w)}</span>' for p, n, w, _c in groups)
-        out.append((f'<p class="compshort"><b>{E(name)}</b> {short}</p>',
-                    f'<div class="comp"><div class="compline"><b>{E(name)}</b>'
-                    f'<span class="statemeta">{said}</span></div><div class="pbar2">{segs}</div>'
-                    f'<div class="plegend">{legend}</div></div>'))
+        out.append(f'<div class="comp"><div class="compline"><b>{E(name)}</b>'
+                   f'<span class="statemeta">{said}</span></div><div class="pbar2">{segs}</div>'
+                   f'<div class="plegend">{legend}</div>'
+                   f'<p class="compshort"><b>{E(name)}</b> {short}</p></div>')
     if not out:
         return ""
     return ('<div class="comp-wrap comp-top"><h2>'
             + I.say(lang, "elect.who_won", "Who won the seats") + "</h2>"
-            + "".join(s for s, _f in out) + "".join(f for _s, f in out) + "</div>")
+            + "".join(out) + elect_nf_list(races, lang) + "</div>")
+
+
+def elect_nf_list(races, lang="en"):
+    """THE SEATS NOT FINAL, LISTED, under "Who won the seats" (the walk of 8
+    November 2026: By district went, and "Result not final -- a recount was
+    requested" had to stay where a reader of either view finds it): a fold
+    like the vacancies' on the Legislators tab, "19 seats not final, in 16
+    districts", opening on each district, the Senate's first. "" where every
+    result is final."""
+    nf = [(k, races[k]) for k in sorted(races, key=race_order) if races[k].get("not_final")]
+    if not nf:
+        return ""
+    n, d = sum(r["not_final"] for _k, r in nf), len(nf)
+    head = (I.say(lang, "elect.nf_list_one", "{n} seat not final", n=n) if n == 1 else
+            I.say(lang, "elect.nf_list_one_d", "{n} seats not final, in one district", n=n) if d == 1 else
+            I.say(lang, "elect.nf_list", "{n} seats not final, in {d} districts", n=n, d=d))
+    every = all(r.get("recount") for _k, r in nf)
+    why = ("" if not every else
+           I.say(lang, "elect.recount_one", "A recount was requested.") if d == 1 else
+           I.say(lang, "elect.recount_each", "A recount was requested in each."))
+
+    def where(k, r):
+        m = KEY_RE.match(k)
+        name = (I.say(lang, "map.tag_senate", "Senate District {n}", n=E(m.group(3))) if m.group(3) else
+                I.say(lang, "comp.county_district", "{county} District {district}",
+                      county=E(m.group(1)), district=E(m.group(2))))
+        return ('<div class="mem">' + name
+                + (" " + I.say(lang, "comp.n_seats", "— {n} seats", n=r["not_final"])
+                   if r["not_final"] > 1 else "")
+                + (" " + I.say(lang, "elect.recount", "&mdash; a recount was requested")
+                   if r.get("recount") and not every else "") + "</div>")
+    return ('<details class="vac elnfl"><summary>' + head + "</summary>"
+            + (f'<p class="note" style="margin-top:8px">{why}</p>' if why else "")
+            + '<div class="grid">' + "".join(where(k, r) for k, r in nf) + "</div></details>")
 
 
 def elect_sortname(e, by_id):
@@ -919,7 +988,7 @@ def elect_nf_count(rows, lang="en"):
     """A chamber's results not final, counted, for the view by name, which
     lists people and so cannot show a seat with nobody in it: "Result not
     final for 19 seats in 16 districts -- a recount was requested in each.
-    By county and By district name them." "" where all are final."""
+    Who won the seats lists them, and By county." "" where all are final."""
     nf = [(d, r) for d, r in rows if r.get("not_final")]
     if not nf:
         return ""
@@ -929,25 +998,27 @@ def elect_nf_count(rows, lang="en"):
              I.say(lang, "elect.nf_seats", "for {n} seats in {d} districts", n=n, d=d))
     return ('<p class="elnf"><b>' + I.say(lang, "elect.not_final", "Result not final") + "</b> "
             + count + _recount(nf, lang) + ". "
-            + I.say(lang, "elect.nf_named", "By county and By district name them.") + "</p>")
+            + I.say(lang, "elect.nf_named", "Who won the seats lists them, and By county.") + "</p>")
 
 
 def members_elect(elect, today, lang="en", people=None):
     """THE MEMBERS-ELECT TAB (the person's decisions of 16 October 2026):
     who November's election sent to the General Court, for the weeks before
     they sit -- the approved sentence; then each chamber's seats by party
-    (elect_totals); then the members-elect three ways, as the Legislators
-    tab lists its members (the owner's walk of 7 November 2026): by last
-    name, in a column for each party; by county, the Senate by district,
-    for a Senate race in the file names no county; and by district, each
-    race as components.elect_race draws it on a town page, which is where a
-    result not final is said in full. Drawn from site/members_elect.json
-    (`elect`, from build_members_elect.for_pages) and never beside the
-    roster, which stays on the Legislators tab as who holds each seat; so
-    no "Serving now" here. `people`, the sitting and former members, gives
-    a linked member's surname for the order and nothing that is drawn. No
-    contact detail: a member-elect holds no office yet. "" where there is no
-    file, and the tab is then not drawn at all.
+    and the seats not final, listed (elect_totals); then the members-elect
+    two ways, as the Legislators tab lists its members (the owner's walks of
+    7 and 8 November 2026): by last name, in a column for each party; and by
+    county, both chambers, each county's results not final named in it. A
+    view by district, each race whole, went on the walk of 8 November as
+    the other two's double. Drawn from site/members_elect.json (`elect`,
+    from build_members_elect.for_pages) and never beside the roster, which
+    stays on the Legislators tab as who holds each seat; so no "Serving
+    now" here. `people`, the sitting and former members, gives a linked
+    member's surname for the order, the chamber they sit or sat in for
+    their word, and the county the Legislators tab lists each Senate
+    district under; nothing of theirs is drawn. No contact detail: a
+    member-elect holds no office yet. "" where there is no file, and the
+    tab is then not drawn at all.
 
     The whole tab carries data-elect and retires on the day they take
     office, the panel's own content as well as the panel: the tab strip's
@@ -981,30 +1052,14 @@ def members_elect(elect, today, lang="en", people=None):
             house.setdefault(m.group(1), []).append((k, m.group(2), races[k]))
     by_id = {str(p.get("id")): p for p in people or [] if p.get("id")}
 
-    def item(tag, cls, e, k, lead=""):
-        """One member-elect in a list, its item "elown" where a saved town's
-        "Your rep" may mark it, as components.elect_race's (find.js, ytMark)."""
+    def item(tag, cls, e, k):
+        """One member-elect in a list: the chip, then the word beside it; the
+        item "elown" where a saved town's "Your rep" may mark it, as
+        components.elect_race's (find.js, ytMark)."""
         own = bool(e.get("own") and e.get("id") and e.get("s"))
         names = " ".join(c for c in (cls, "elown" if own else "") if c)
-        return ((f'<{tag} class="{names}">' if names else f"<{tag}>") + lead + elect_chip(e, k, lang)
-                + f"</{tag}>")
-
-    def row(n, k, r):
-        """A race in the view by district: its number and seats, then its
-        winners in the chips of the other two views, then what
-        components.elect_race says of the rest -- "Result not final" and a
-        seat with nobody on file -- in its own words, from the race with its
-        winners taken out and their seats with them."""
-        seats = r.get("seats") or 0
-        won_ = r.get("elected") or []
-        rest = elect_race({**r, "elected": [], "seats": seats - len(won_)}, lang)
-        return ('<li class="elrow"><span class="elseat">'
-                + I.say(lang, "off.district", "District {d}", d=E(n)) + " <small>"
-                + (I.say(lang, "off.seat_one", "{n} seat", n=seats) if seats == 1 else
-                   I.say(lang, "off.seats", "{n} seats", n=seats))
-                + '</small></span><div class="elwho">'
-                + ('<ul class="ellist">' + "".join(item("li", "", e, k) for e in won_) + "</ul>"
-                   if won_ else "") + rest + "</div></li>")
+        return ((f'<{tag} class="{names}">' if names else f"<{tag}>") + elect_chip(e, k, lang)
+                + elect_word(e, k, by_id, lang) + f"</{tag}>")
 
     def won(rows):
         return [(k, e) for k, _d, r in rows for e in r.get("elected") or []]
@@ -1033,70 +1088,51 @@ def members_elect(elect, today, lang="en", people=None):
                 + elect_nf_count([(d, r) for _k, d, r in rows], lang)
                 + ('<div class="partycols">' + "".join(cols) + "</div>" if cols else ""))
 
-    def district(d):
-        return '<span class="sseat">' + I.say(lang, "off.district", "District {d}", d=E(d)) + "</span>"
-
-    by_last = ((by_name(senate, sen_name, "of-elect-senate") if senate else "")
+    by_last =((by_name(senate, sen_name, "of-elect-senate") if senate else "")
                + (by_name([x for rows in house.values() for x in rows], house_name, "of-elect-house")
                   if house else ""))
-    # BY COUNTY: the House as the Legislators tab's By county lists it, each
-    # county shut until asked for, its members by district and then by name,
-    # its results not final said in the summary and named inside it. The
-    # Senate by district, for the file's Senate race names a district and no
-    # county.
-    county_parts = []
-    if senate:
-        rows = []
-        for k, d, r in senate:
-            rows += [item("li", "seatrow", e, k, district(d)) for e in r.get("elected") or []]
-            if r.get("not_final"):
-                rows.append('<li class="seatrow">' + district(d) + '<span class="elnf"><b>'
-                            + I.say(lang, "elect.not_final", "Result not final") + "</b>"
-                            + _recount([(d, r)], lang) + "</span></li>")
-        county_parts.append(f"<h2>{sen_name} &mdash; {len(won(senate))}</h2>"
-                            '<p class="src">' + I.say(lang, "elect.senate_by_district",
-                                                      "The Senate is listed by district.") + "</p>"
-                            '<ol class="seatlist senate elroll">' + "".join(rows) + "</ol>")
-    if house:
-        counties = []
-        for c, rows in house.items():
+    # BY COUNTY, BOTH CHAMBERS, as the Legislators tab's By county lists its
+    # members (build_pages' roster(), the walk of 8 November 2026): each
+    # county shut until asked for, the counties A to Z, the members by
+    # district and then by name, a county's results not final counted in its
+    # summary and named inside it. A House race names its county. A Senate
+    # race names a district and no county, and a district crosses county
+    # lines, so its members-elect are under the county the Legislators tab
+    # lists that district under -- the roster's county for the senator who
+    # holds it now -- and under "Not on file", as there, where nobody does.
+    # The chambers' headings carry the addresses By district's had
+    # (/officials#of-eld-house), which land here now that it has gone.
+    sd_county = {str(p.get("district") or ""): p.get("county") for p in people or []
+                 if str(p.get("chamber") or "")[:1] == "S" and not p.get("former") and p.get("county")}
+    not_on_file = I.say(lang, "lf.not_on_file", "Not on file")
+
+    def by_county(groups, heading, hid):
+        """[(county, [(key, district, race)])] -> the chamber's counties."""
+        parts = []
+        for c, rows in sorted(groups.items(), key=lambda cr: (cr[0] == "", cr[0])):
             ms = sorted(((d, k, e) for k, d, r in rows for e in r.get("elected") or []),
                         key=lambda x: (int(x[0]), elect_sortname(x[2], by_id)))
             nf = sum(r.get("not_final") or 0 for _k, _d, r in rows)
-            counties.append(
-                f'<details class="cgrp"><summary><span>{E(c)}</span>'
+            parts.append(
+                f'<details class="cgrp"><summary><span>{E(c or not_on_file)}</span>'
                 f'<span class="ccount">{len(ms)}</span>'
                 + ('<span class="ccnf">' + I.say(lang, "elect.n_not_final", "{n} not final", n=nf)
                    + "</span>" if nf else "")
                 + '<span class="caret">&#9656;</span></summary><div class="grid elroll">'
                 + "".join(item("div", "mem", e, k) for _d, k, e in ms) + "</div>"
                 + elect_not_final([(d, r) for _k, d, r in rows], lang) + "</details>")
-        county_parts.append(f"<h2>{house_name} &mdash; "
-                            f"{sum(len(won(rows)) for rows in house.values())}</h2>"
-                            + "".join(counties))
-    # BY DISTRICT: the tab as it was, each race whole -- its seats, its
-    # winners, a result not final and a seat with nobody on file. Its
-    # chambers are headings of the level the other two views' are (h2), and
-    # its counties under them (h3), so a reader moving by heading in this
-    # view does not hear them as parts of "Who won the seats" (the review of
-    # 8 November 2026); the classes draw them as they were.
-    seat_parts = []
+        n_ = sum(len(won(rows)) for rows in groups.values())
+        return f'<h2 id="{hid}">{heading} &mdash; {n_}</h2>' + "".join(parts)
+
+    county_parts = []
     if senate:
-        seat_parts.append('<section class="ofsec" aria-labelledby="of-eld-senate">'
-                          '<h2 class="ofsech" id="of-eld-senate">'
-                          + I.say(lang, "off.state_senate", "State Senate") + '</h2>'
-                          '<div class="ofsecb"><ul class="elrows">'
-                          + "".join(row(d, k, r) for k, d, r in senate) + "</ul></div></section>")
+        sen_groups = {}
+        for k, d, r in senate:
+            # A district nobody holds goes last, under "Not on file".
+            sen_groups.setdefault(sd_county.get(d) or "", []).append((k, d, r))
+        county_parts.append(by_county(sen_groups, sen_name, "of-eld-senate"))
     if house:
-        seat_parts.append('<section class="ofsec" aria-labelledby="of-eld-house">'
-                          '<h2 class="ofsech" id="of-eld-house">'
-                          + I.say(lang, "off.state_house", "State House") + '</h2><div class="ofsecb">'
-                          + "".join('<h3 class="elcounty">'
-                                    + I.say(lang, "off.county_name", "{name} County", name=E(c))
-                                    + '</h3><ul class="elrows">'
-                                    + "".join(row(d, k, r) for k, d, r in rows) + "</ul>"
-                                    for c, rows in house.items())
-                          + "</div></section>")
+        county_parts.append(by_county(house, house_name, "of-eld-house"))
     n = elect_count(elect)
     views = f"""<section class="roster elroster">
 <div class="rtabs" role="tablist" aria-label="{I.say(lang, "elect.arrange", "How to arrange the members-elect")}" hidden>
@@ -1104,8 +1140,6 @@ def members_elect(elect, today, lang="en", people=None):
     aria-controls="pane-elast" aria-selected="true">{I.say(lang, "roster.by_last", "By last name")}</button>
   <button type="button" role="tab" id="tab-ecounty" data-pane="pane-ecounty"
     aria-controls="pane-ecounty" aria-selected="false">{I.say(lang, "roster.by_county", "By county")}</button>
-  <button type="button" role="tab" id="tab-edist" data-pane="pane-edist"
-    aria-controls="pane-edist" aria-selected="false">{I.say(lang, "elect.by_district", "By district")}</button>
 </div>
 <div class="rpane" id="pane-elast" role="tabpanel" aria-labelledby="tab-elast">
 <p class="src">{(I.say(lang, "elect.all_one", "{n} member-elect, by surname.", n=n) if n == 1 else
@@ -1115,9 +1149,6 @@ def members_elect(elect, today, lang="en", people=None):
 </div>
 <div class="rpane" id="pane-ecounty" role="tabpanel" aria-labelledby="tab-ecounty">
 {"".join(county_parts)}
-</div>
-<div class="rpane" id="pane-edist" role="tabpanel" aria-labelledby="tab-edist">
-{"".join(seat_parts)}
 </div>
 </section>"""
     return (f'<div class="elpane" data-elect{until_attrs(takes, today)}>' + intro
