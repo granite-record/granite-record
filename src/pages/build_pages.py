@@ -4612,7 +4612,10 @@ def main():
                         if x["vacant"] == 1 else say(lang, "comp.n_vacant", "{n} vacant", n=x["vacant"]))
         chamber = {"House": say(lang, "comp.house", "House"),
                    "Senate": say(lang, "comp.senate", "Senate")}.get(x["chamber"], x["chamber"])
-        return f'<p class="compshort"><b>{esc(chamber)}</b> ' + " &middot; ".join(bits) + "</p>"
+        # Each count whole on its line (.csb): a line too long for the phone
+        # breaks between two of them, never inside one.
+        return (f'<p class="compshort"><b>{esc(chamber)}</b> '
+                + " &middot; ".join(f'<span class="csb">{b}</span>' for b in bits) + "</p>")
 
     def vacancies_box(lang="en"):
         if not C.get("vacancies"):

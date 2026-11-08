@@ -114350,10 +114350,13 @@ def _seat_totals_at_top():
             vac = [(c, n) for c, n in seen if c == "V"]
             if [(c, n) for c, n in seen if c != "V"] != [(c, n) for n, c in said]:
                 bad.append(f"{rel}: the {ch} line says {said}, its bar {seen}")
-            gone = re.findall(r"(\d+) " + words[2] + r"s?\b", _h.unescape(re.sub(r"<[^>]+>", "", text)))
-            if [n for _c, n in vac] != gone or (vac and not text.rstrip().endswith(
-                    re.findall(r"\d+ " + words[2] + r"s?", text)[-1])):
-                bad.append(f"{rel}: the {ch} line's vacant seats are {gone}, its bar's {vac}")
+            # Each count whole (.csb), the vacant seats the last of them.
+            counts = [_h.unescape(re.sub(r"<[^>]+>", "", c))
+                      for c in re.findall(r'<span class="csb">((?:[^<]|<span[^>]*>[^<]*</span>)*)</span>', text)]
+            gone = [m.group(1) for c in counts for m in [re.fullmatch(r"(\d+) " + words[2] + r"s?", c)] if m]
+            if [n for _c, n in vac] != gone or len(counts) != len(seen) or (
+                    vac and not re.fullmatch(r"\d+ " + words[2] + r"s?", counts[-1])):
+                bad.append(f"{rel}: the {ch} line's counts are {counts}, its bar's {seen}")
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     if not re.search(r":where\(body\.pg\) \.compshort\{display:none;", css) or not re.search(
             r"@media \(max-width:38\.75em\)\{\s*:where\(body\.pg\) \.comp-top > \.compshort\{display:block\}"
@@ -117012,7 +117015,10 @@ def _elect_pages_link_own():
     tab and the My Town card -- goes to the page of the member the file
     names, that page's GR_MEMBER the file's id, and every member the file
     links is linked somewhere; Pat Newell, new and cross-nominated, is drawn
-    on the neutral chip with both letters and never as a link; and the one
+    on the neutral chip with both letters and never as a link -- on the
+    Members-Elect tab as the Legislators tab's chip, "Rep.-elect Pat Newell
+    (R/D - Rock 32) New", in each of its three views (the owner's walk of 7
+    November 2026); and the one
     line -- "Elected November 3, 2026, for Rockingham district 6. Takes
     office December 2, 2026." -- is on the own page of Jodi Nelson, Debra
     Altschiller, Michael Vose and the John Smith the person's file names
@@ -117056,14 +117062,22 @@ def _elect_pages_link_own():
                 elif member_of(slug) != want[slug][0]:
                     bad.append(f"{rel} links a member-elect to {slug}, the page of "
                                f"{member_of(slug)}, not {want[slug][0]}")
-        if re.search(r"<a\b[^>]*>Pat Newell", text):
+        if re.search(r"<a\b[^>]*>(?:(?:Rep|Sen)\.-elect )?Pat Newell", text):
             bad.append(f"{rel} links Pat Newell, a new person")
     if set(want) - linked:
         bad.append(f"never linked: {sorted(set(want) - linked)}")
     newell = ('<span class="mchip p-X" translate="no">Pat Newell <span class="mtag">(R/D)</span></span>')
-    for rel in ("officials.html", "town/brentwood.html", "town/danville.html", "town/fremont.html"):
+    for rel in ("town/brentwood.html", "town/danville.html", "town/fremont.html"):
         if newell not in sources[rel]:
             bad.append(f"{rel} does not draw Pat Newell on the neutral chip with both letters")
+    # The Members-Elect tab draws the Legislators tab's chip, with a title, the
+    # district and the kind (the owner's walk of 7 November 2026), in each of
+    # its three views.
+    tab = re.findall(r'<span class="mchip p-X" translate="no">Rep\.-elect Pat Newell <span class="mtag">'
+                     r'\(R/D - Rock \d+\)</span> <i translate="yes">New</i></span>', sources["officials.html"])
+    if len(tab) != 3:
+        bad.append(f"officials.html draws Pat Newell {len(tab)} times on the neutral chip with both "
+                   "letters, his district and New, not once in each of the tab's three views")
     words = {"H|Rockingham|13": "Rockingham district 13", "H|Rockingham|6": "Rockingham district 6",
              "S|24": "Senate District 24"}
     lines = {}

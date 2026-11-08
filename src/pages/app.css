@@ -8518,6 +8518,7 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-5);font-family:v
 :where(body.pg) .compshort{display:none;margin:0 0 var(--sp-2);font-size:var(--t-ui);
 line-height:1.5;color:var(--ink-2)}
 :where(body.pg) .compshort b{font-weight:600;color:var(--ink);margin-right:var(--sp-2)}
+:where(body.pg) .compshort .csb{white-space:nowrap}
 @media (max-width:38.75em){
   :where(body.pg) .comp-top > .compshort{display:block}
   :where(body.pg) .comp-top > .comp{display:none}
@@ -8525,6 +8526,13 @@ line-height:1.5;color:var(--ink-2)}
 /* The Members-Elect tab's county: its results not final counted in the
    summary and named under its members. */
 :where(body.pg) .cgrp .ccnf{font-weight:400;font-size:var(--t-sm);color:var(--ink-2)}
+/* A member-elect's chip says more than a member's -- its title and its kind
+   ("Rep.-elect ... (R - Belk 4) New") -- and ran out of the roster's 250px
+   cell, and past the page's edge from 768px up: the cells are wider here, and
+   a chip wraps inside its own, between the name and its tag. */
+:where(body.pg) .grid.elroll{grid-template-columns:repeat(auto-fill,minmax(min(100%,18.75rem),1fr))}
+:where(body.pg) .elroll .mem{min-width:0}
+:where(body.pg) .elroll .mchip{max-width:100%;white-space:normal}
 :where(body.pg) .cgrp > .elnf{margin:0 0 var(--sp-5)}
 :where(body.pg) .roster .elnf{margin:0 0 var(--sp-5)}
 :where(body.pg) .seatrow .elnf{margin:0}

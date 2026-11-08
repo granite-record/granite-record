@@ -862,7 +862,9 @@ def elect_totals(races, lang="en"):
             if len(p) > 1:
                 return f"{n} {E(p)}"
             return f'{n} <span aria-hidden="true">{E(p)}</span><span class="sr">{E(w)}</span>'
-        short = " &middot; ".join(bit(p, n, w) for p, n, w, _c in groups)
+        # Each count whole on its line, as build_pages.short_bar's: on a
+        # narrow phone the House's can take two lines, breaking between counts.
+        short = " &middot; ".join(f'<span class="csb">{bit(p, n, w)}</span>' for p, n, w, _c in groups)
         out.append((f'<p class="compshort"><b>{E(name)}</b> {short}</p>',
                     f'<div class="comp"><div class="compline"><b>{E(name)}</b>'
                     f'<span class="statemeta">{said}</span></div><div class="pbar2">{segs}</div>'

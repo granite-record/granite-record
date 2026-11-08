@@ -504,7 +504,7 @@
   },
   "elect.n_not_final": {
    "en": "{n} not final",
-   "es": "{n} sin resultado definitivo",
+   "es": "{n} por definir",
    "state": "draft"
   },
   "elect.nf_in": {
@@ -534,7 +534,7 @@
   },
   "elect.nf_short": {
    "en": "Not final",
-   "es": "Sin resultado definitivo",
+   "es": "Por definir",
    "state": "draft"
   },
   "elect.none": {
@@ -609,7 +609,7 @@
   },
   "elect.won_nf": {
    "en": "{won} of {seats} seats elected, {nf} not final",
-   "es": "{won} de {seats} escaños elegidos, {nf} sin resultado definitivo",
+   "es": "{won} de {seats} escaños elegidos, {nf} por definir",
    "state": "draft"
   },
   "find.all_terms": {
