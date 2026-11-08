@@ -117791,7 +117791,13 @@ def _map_totals_text(html):
 def _seats_held(page):
     """{"H"/"S": {"seats", "held", "vacant", "parties": {code: n}}}: what the
     Legislators tab's "Who holds the seats" draws (build_pages.static_bar),
-    read off the English Officials page."""
+    read off the English Officials page -- off its Legislators panel alone,
+    for the Members-Elect tab draws its "Who won the seats" in the same bars
+    between an election and Organization Day."""
+    i = page.find('<div class="twnpane" id="legislators"')
+    if i >= 0:
+        j = page.find('<div class="twnpane"', i + 1)
+        page = page[i:j if j > 0 else len(page)]
     out = {}
     for name, filled, legend in re.findall(
             r'<div class="comp"><div class="compline"><b>(House|Senate)</b>'
