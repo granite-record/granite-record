@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.24
+# GRANITE_VERSION: 2026-10-11.25
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -36,10 +36,11 @@ A CHAPTER PAGE, top to bottom (RSA_PAGE.md §5):
    passed or still moving would change it, its text with every citation the
    table holds linked to its own anchor and the first use of each defined
    term that applies to it marked (rsa.Defined, the person's ask of 24
-   October 2026), its source note, and four folds -- How it has changed
-   (the source note's laws, newest first, each the bill it was), Also
-   proposed by (every other bill whose own instructions name the section,
-   failed ones included), Cites, Cited by.
+   October 2026), its source note, and one fold, History and citations
+   (the person, 7 November 2026), holding four lists -- How it has changed
+   (the source note's laws, newest first, each the bill it was), Other
+   bills that proposed changes (every other bill whose own instructions
+   name the section, failed ones included), Cites, Cited by.
 4. A repealed section is one muted line, its anchor kept, so an old bill's
    link still lands on something true.
 
@@ -841,7 +842,9 @@ class Bills:
 
 
 def folded(items, cls="rs-list"):
-    """A list of <li>, the first SHOWN open and the rest behind Show all."""
+    """A list of <li>, the first SHOWN open and the rest behind Show all.
+    The Guides' In the Record lists (build_civics), whose script reads the
+    rest's .rs-more; a chapter page's lists are in_place's."""
     if not items:
         return ""
     head = "".join(items[:SHOWN])
@@ -849,6 +852,37 @@ def folded(items, cls="rs-list"):
     more = (f'<details class="rs-more"><summary>Show all {len(items)}</summary>'
             f'<ul class="{cls}">{"".join(rest)}</ul></details>') if rest else ""
     return f'<ul class="{cls}">{head}</ul>{more}'
+
+
+def in_place(items, cls="rs-list"):
+    """A list of <li> drawn whole: CHAPTER_JS shows the first SHOWN and puts
+    "Show all N" under the list, which opens the rest of that same list where
+    it is and closes with the fold around it (the person, 7 November 2026:
+    "The show all 12 for the cited by is also formatted strangely since it
+    doesn't move with the dropdown it just expands another section under").
+    With no script, every item is there."""
+    if not items:
+        return ""
+    fold = f' data-fold="{SHOWN}"' if len(items) > SHOWN else ""
+    return f'<ul class="{cls}"{fold}>{"".join(items)}</ul>'
+
+
+# ONE FOLD FOR A SECTION'S HISTORY AND CITATIONS (the person, 7 November 2026:
+# "I'd like a more compact navigation of the how it has changed, other bills
+# that proposed changes, cites, and cited by sections all compacted into one
+# dropdown before you expand it"). Its line says what is in it, a count each,
+# in this order: "3 changes · 2 other bills · cites 4 · cited by 12" -- "other
+# bills", the list's own words, since "proposals" read as counting the
+# changes too (the review of 7 November 2026).
+FOLD_NAME = "History and citations"
+FOLD_COUNTS = {"hist": ("{n} change", "{n} changes"), "other": ("{n} other bill", "{n} other bills"),
+               "cites": ("cites {n}", "cites {n}"), "cited": ("cited by {n}", "cited by {n}")}
+
+
+def fold_counts(rows):
+    """The fold's line of counts, from its rows' (key, n): "3 changes · 2
+    other bills · cites 4 · cited by 12", a list with nothing left out."""
+    return " · ".join(FOLD_COUNTS[k][n != 1].format(n=f"{n:,}") for k, n in rows if n)
 
 
 # ------------------------------------------------------------------ text
@@ -1135,7 +1169,7 @@ def chapter_page(tmpl, table, data, bills, ch, base):
                    + "".join(bills.passed_item(k, data, ch, path) for k in unread) + "</ul>"
                    if unread else "")
                 + ('<h2>Bills now before the General Court that would change this chapter</h2>'
-                   + folded([bills.chip(k) for k in pending_ch]) if pending_ch else "")
+                   + in_place([bills.chip(k) for k in pending_ch]) if pending_ch else "")
                 + "</section>")
     toc_items = []
     body = []
@@ -1164,28 +1198,35 @@ def chapter_page(tmpl, table, data, bills, ch, base):
         in_hist = {b for _y, _law, b in hist if b}
         other = [k for k in proposed.get(a, []) if not bills.pending(k) and k not in in_hist
                  and k not in passed_k]
-        rows = []
+        rows = []                                # (key, heading, note, list, count)
         if hist:
             items = []
             for y, law, b in hist:
                 bl = (f' &middot; <a href="{E(bills.url(b))}">{E(bills.label(b))}</a>' if b else "")
+                # THE ACT'S SECTION TOO (the review of 7 November 2026): RSA
+                # 100-A:1's history read "Laws of 2025, chapter 142 · HB
+                # 282-FN" eleven times over, 142:4 to 142:28, one row each, and
+                # its fold counted them as eleven changes no reader could tell
+                # apart. The source note gives the section; the row says it.
+                lch, _, lsec = str(law).partition(":")
                 items.append(f'<li><span class="rs-yr">{E(y)}</span> Laws of {E(y)}, chapter '
-                             f'{E(law.split(":")[0])}{bl}</li>')
-            rows.append(("How it has changed", "From the section's source note, newest first.",
-                         folded(items, "rs-hist")))
+                             f'{E(lch)}' + (f", section {E(lsec)}" if lsec else "") + f"{bl}</li>")
+            rows.append(("hist", "How it has changed", "From the section's source note, newest first.",
+                         in_place(items, "rs-hist"), len(items)))
         if other:
             other.sort(key=lambda k: (k.split("/")[0], bill_order(k)[1], -bill_order(k)[2]), reverse=True)
-            rows.append(("Other bills that proposed changes", "Bills whose own text says they "
+            rows.append(("other", "Other bills that proposed changes", "Bills whose own text says they "
                          "change this section, and that are not in its history above.",
-                         folded([bills.chip(k, always_year=True) for k in other])))
+                         in_place([bills.chip(k, always_year=True) for k in other]), len(other)))
         out_c = data.get("statute", {}).get(a, [])
         if out_c:
-            rows.append(("Cites", "", folded([f'<li><a href="{E(href(t))}">RSA {E(t)}</a></li>'
-                                              for t in out_c], "rs-refs")))
+            rows.append(("cites", "Cites", "", in_place([f'<li><a href="{E(href(t))}">RSA {E(t)}</a></li>'
+                                                         for t in out_c], "rs-refs"), len(out_c)))
         if cited_by.get(a):
-            rows.append(("Cited by", "", folded([f'<li><a href="{E(href(t))}">RSA {E(t)}</a></li>'
-                                                 for t in sorted(cited_by[a], key=rsa.addr_key)],
-                                                "rs-refs")))
+            rows.append(("cited", "Cited by", "",
+                         in_place([f'<li><a href="{E(href(t))}">RSA {E(t)}</a></li>'
+                                   for t in sorted(cited_by[a], key=rsa.addr_key)], "rs-refs"),
+                         len(cited_by[a])))
         tag = ""
         if pend_k or passed_k:
             # One law passed and nothing else: the tag says the day its change
@@ -1200,16 +1241,22 @@ def chapter_page(tmpl, table, data, bills, ch, base):
             tag = (f'<details class="rs-tag"><summary>{E(tag_says)}</summary>'
                    + ('<ul class="rs-plist">' + "".join(bills.passed_item(k, data, addr=a) for k in passed_k)
                       + "</ul>" if passed_k else "")
-                   + (folded([bills.chip(k) for k in pend_k]) if pend_k else "") + "</details>")
-        folds = "".join(
-            f'<details class="rs-fold"><summary>{E(h)}</summary>'
-            + (f'<p class="rs-note">{E(n)}</p>' if n else "") + f"{c}</details>"
-            for h, n, c in rows)
+                   + (in_place([bills.chip(k) for k in pend_k]) if pend_k else "") + "</details>")
         # ONE LEVEL UNDER WHAT HEADS IT (the cohesion audit of 30 October
         # 2026, I-1): an h3 under a part's h2, and an h2 straight under the
         # title, where a chapter has no parts -- most of them -- and went from
-        # h1 to h3. The look is .rs-h's at either level.
+        # h1 to h3. The look is .rs-h's at either level. The fold's lists are
+        # headed one level under that.
         lv = 3 if sub else 2
+        folds = ""
+        if rows:
+            folds = (f'<details class="rs-fold"><summary><span class="rs-fname">{E(FOLD_NAME)}</span> '
+                     f'<span class="rs-fcount">{E(fold_counts([(k, n) for k, _h, _n, _c, n in rows]))}</span>'
+                     "</summary>"
+                     + "".join(f'<div class="rs-fpart"><h{lv + 1} class="rs-fh">{E(h)}</h{lv + 1}>'
+                               + (f'<p class="rs-note">{E(n)}</p>' if n else "") + f"{c}</div>"
+                               for _k, h, n, c, _count in rows)
+                     + "</details>")
         body.append(
             f'<section class="rs-sec" id="{E(anchor)}"><h{lv} class="rs-h"><a href="{E(path)}#{E(anchor)}">'
             f'{E(a)}</a> {E(s.heading)}</h{lv}>{tag}'
@@ -1235,6 +1282,29 @@ def chapter_page(tmpl, table, data, bills, ch, base):
 
 
 CHAPTER_JS = """<script>
+(function(){
+  // "SHOW ALL N" OPENS THE REST OF ITS OWN LIST (in_place; the person, 7
+  // November 2026). A list longer than its data-fold shows that many, with
+  // the button under it; pressed, the rest of the same list opens where it
+  // is, the button follows it as "Show fewer", and the keyboard goes to the
+  // first item it showed. Closing the fold around it folds it again. The
+  // Laws page's reader puts a chapter's section into itself after the page
+  // has loaded, and asks rsFold of what it put there (LANDING_JS).
+  function fold(root){
+    [].forEach.call(root.querySelectorAll("ul[data-fold]"),function(ul){
+      var n=+ul.getAttribute("data-fold"),li=ul.children;
+      if(!(n>0)||li.length<=n||ul.getAttribute("data-folded"))return;ul.setAttribute("data-folded","1");
+      var b=document.createElement("button");b.type="button";b.className="rs-all";
+      function set(open){for(var i=n;i<li.length;i++)li[i].hidden=!open;
+        b.textContent=open?"Show fewer":"Show all "+li.length;b.setAttribute("aria-expanded",open?"true":"false");}
+      b.addEventListener("click",function(){var open=b.getAttribute("aria-expanded")!=="true";set(open);
+        var a=open&&li[n].querySelector("a");if(a)a.focus();});
+      set(false);ul.parentNode.insertBefore(b,ul.nextSibling);
+      var d=ul.parentNode.closest&&ul.parentNode.closest("details");
+      if(d)d.addEventListener("toggle",function(){if(!d.open)set(false);});
+    });}
+  window.rsFold=fold;fold(document);
+})();
 (function(){
   // The sidebar's sections: the one being read marked as the page scrolls
   // past it. ON A PHONE (the person, 11 October 2026: "The index is not
@@ -1274,48 +1344,99 @@ CHAPTER_JS = """<script>
 # 400 characters of them, and the box says which section defines the word
 # and for what: "Defined for this chapter in RSA 153:1, III". One box serves
 # every word, inside the chapter's text, so it scrolls with it.
+#
+# WHERE IT IS, AND ALL OF IT (the person, 7 November 2026: "you need to be
+# able to click to where that definition is as a link since many definitions
+# are long and may not show all of it in the tooltip block. Maybe a show more
+# option as well"). The citation in the box is a link to the definition's own
+# paragraphs -- the word's own address, so it would serve a definition on
+# another chapter's page as well as this one -- and a definition cut at 400
+# characters has "Show more", which opens the whole of it in the box, a
+# paragraph a line, and "Show less" after. So the box holds a link and a
+# button, and is no tooltip: it sits in the text straight after the word, so
+# Tab goes from the word into it and on out of it to the text's next link,
+# and the word is described by its citation and words alone. It stays on the
+# screen: across it, under the word, or over it where there is more room
+# above, and no taller than the screen, its words scrolling inside it.
 DEFS_JS = r"""<script>
 (function(){
-  var pop=null,cur=null,wait=0,shut=0,opened=0,touch=false,HOLD=500;
+  var pop=null,cur=null,wait=0,shut=0,opened=0,touch=false,quiet=false,side="",pressedIn=false,HOLD=500,CUT=400;
   function target(a){var h=a.getAttribute("href")||"",i=h.indexOf("#");return i<0?null:document.getElementById(h.slice(i+1));}
-  function words(w){
-    var t=[].map.call(w.querySelectorAll("p"),function(p){return p.textContent;}).join(" ")
-      .replace(/^\s*(?:(?:[IVXLC]+(?:-[a-z]+)?|\d+|[A-H])\.\s*|\([0-9A-Za-z-]+\)\s*)+/,"");
-    return t.length>420?t.slice(0,t.lastIndexOf(" ",400))+"…":t;}
+  // The definition's paragraphs, the first without the numbers it opens with.
+  function paras(w){
+    var ps=[].map.call(w.querySelectorAll("p"),function(p){return p.textContent;});
+    if(ps.length)ps[0]=ps[0].replace(/^\s*(?:(?:[IVXLC]+(?:-[a-z]+)?|\d+|[A-H])\.\s*|\([0-9A-Za-z-]+\)\s*)+/,"");
+    return ps;}
   function hide(){if(!cur)return;pop.hidden=true;cur.removeAttribute("aria-describedby");cur=null;}
-  function line(cls,text){var s=document.createElement("span");s.className=cls;s.textContent=text;return s;}
+  function el(tag,cls,text){var s=document.createElement(tag);if(cls)s.className=cls;if(text!=null)s.textContent=text;return s;}
+  // The words: cut at CUT characters, or whole, a paragraph a line.
+  function fill(t,ps,whole){
+    t.textContent="";var all=ps.join(" ");
+    if(!whole){t.appendChild(el("span","rs-dpp",all.length>CUT+20?all.slice(0,all.lastIndexOf(" ",CUT))+"…":all));return;}
+    ps.forEach(function(p){t.appendChild(el("span","rs-dpp",p));});}
+  // keep: the side the box opened on, kept when Show more or Show less
+  // changes its height, so it never jumps out from under the pointer or the
+  // finger that pressed the button (the review of 7 November 2026).
+  function place(a,keep){
+    var host=pop.offsetParent||a.closest(".rs-art");if(!host)return;
+    var r=a.getBoundingClientRect(),b=host.getBoundingClientRect(),vw=document.documentElement.clientWidth,
+        vh=window.innerHeight||document.documentElement.clientHeight||0;
+    pop.style.maxHeight="";pop.style.left="0px";pop.style.top="0px";
+    var p=pop.getBoundingClientRect(),h=p.bottom-p.top;
+    // Under the word where it fits; over it where it fits there instead, or
+    // where it fits on neither side and there is more room above; no
+    // taller than the room on its side, its words scrolling inside it.
+    var below=r.bottom+6,roomBelow=vh-8-below,roomAbove=r.top-6-8;
+    if(!keep||!side)side=(vh&&h>roomBelow&&(h<=roomAbove||roomAbove>roomBelow))?"above":"below";
+    var room=side==="above"?roomAbove:roomBelow;
+    if(vh&&h>room){h=Math.max(room,96);pop.style.maxHeight=h+"px";}
+    var y=side==="above"?r.top-6-h:below;
+    var x=r.left;
+    if(x+(p.right-p.left)>vw-8)x=vw-8-(p.right-p.left);
+    if(x<8)x=8;
+    pop.style.left=Math.round(x-b.left)+"px";pop.style.top=Math.round(y-b.top)+"px";}
   function show(a){
-    var w=target(a),box=a.closest(".rs-art");if(!w||!box)return;
-    clearTimeout(shut);if(cur&&cur!==a)hide();
-    if(!pop){pop=document.createElement("div");pop.className="termpop rs-dpop";pop.id="rs-dpop";
-      pop.setAttribute("role","tooltip");
+    var w=target(a);if(!w||!a.closest(".rs-art"))return;
+    clearTimeout(shut);
+    if(cur===a&&pop&&!pop.hidden)return;
+    if(cur)hide();
+    if(!pop){pop=el("span","termpop rs-dpop");pop.id="rs-dpop";
       pop.addEventListener("pointerenter",function(){clearTimeout(shut);});
       pop.addEventListener("pointerleave",function(e){if(e.pointerType==="mouse")shut=setTimeout(hide,250);});}
-    if(pop.parentNode!==box)box.appendChild(pop);
-    var f=w.getAttribute("data-for");
+    // Out of the text before its words are read, which can hold it.
+    if(pop.parentNode)pop.parentNode.removeChild(pop);
+    var ps=paras(w),f=w.getAttribute("data-for"),cite=w.getAttribute("data-cite")||"the definition";
     pop.textContent="";
-    pop.appendChild(line("rs-dpcite",(f?"Defined for "+f+" in ":"Defined in ")+w.getAttribute("data-cite")));
-    pop.appendChild(line("rs-dptext",words(w)));
-    if(touch)pop.appendChild(line("rs-dphint","Tap the word again to go to the definition."));
-    pop.style.left="0";pop.hidden=false;cur=a;opened=Date.now();a.setAttribute("aria-describedby","rs-dpop");
-    // Under the word, kept on the screen.
-    var r=a.getBoundingClientRect(),b=box.getBoundingClientRect(),vw=document.documentElement.clientWidth;
-    var x=r.left-b.left;pop.style.top=Math.round(r.bottom-b.top+6)+"px";pop.style.left=Math.round(x)+"px";
-    var p=pop.getBoundingClientRect();
-    if(p.right>vw-8)x-=p.right-(vw-8);
-    if(b.left+x<8)x=8-b.left;
-    pop.style.left=Math.round(x)+"px";
+    var c=el("span","rs-dpcite",(f?"Defined for "+f+" in ":"Defined in "));c.id="rs-dpcite";
+    var go=el("a","",cite);go.href=a.getAttribute("href");c.appendChild(go);pop.appendChild(c);
+    var t=el("span","rs-dptext");t.id="rs-dptext";pop.appendChild(t);fill(t,ps,false);
+    if(ps.join(" ").length>CUT+20){
+      var m=el("button","rs-dpmore","Show more");m.type="button";m.setAttribute("aria-expanded","false");
+      m.setAttribute("aria-controls","rs-dptext");
+      m.addEventListener("click",function(){var whole=m.getAttribute("aria-expanded")!=="true";
+        fill(t,ps,whole);m.textContent=whole?"Show less":"Show more";m.setAttribute("aria-expanded",whole?"true":"false");
+        place(a,true);});
+      pop.appendChild(m);}
+    a.parentNode.insertBefore(pop,a.nextSibling);
+    pop.hidden=false;cur=a;opened=Date.now();a.setAttribute("aria-describedby","rs-dpcite rs-dptext");
+    side="";place(a);
   }
   function term(e){return e.target.closest&&e.target.closest("a.rs-tm");}
-  document.addEventListener("pointerdown",function(e){touch=e.pointerType!=="mouse";},true);
-  document.addEventListener("keydown",function(e){touch=false;
-    if(e.key==="Escape"&&cur){var a=cur;hide();a.focus();}});
+  function inPop(x){return !!(pop&&x&&pop.contains(x));}
+  document.addEventListener("pointerdown",function(e){touch=e.pointerType!=="mouse";pressedIn=inPop(e.target);},true);
+  // Escape closes the box, and gives the word the keyboard only where the
+  // keyboard was on it or in the box: not from a search box elsewhere.
+  document.addEventListener("keydown",function(e){touch=false;pressedIn=false;
+    if(e.key==="Escape"&&cur){var a=cur,back=document.activeElement===a||inPop(document.activeElement);hide();
+      if(back){quiet=true;a.focus();quiet=false;}}});
   document.addEventListener("click",function(e){
     var a=term(e);
     // A tap opens the box; the next tap on the same word follows its link.
     if(a&&touch&&target(a)&&(cur!==a||Date.now()-opened<700)){e.preventDefault();show(a);return;}
-    // A click goes to the definition, which the page marks (rs-dfn:target).
-    if(cur&&(a===cur||!(e.target.closest&&e.target.closest(".rs-dpop"))))hide();
+    // The box's own link goes to the definition, and the box closes behind it.
+    if(cur&&inPop(e.target)&&e.target.closest("a")){hide();return;}
+    // A click on the word goes to the definition, which the page marks (rs-dfn:target).
+    if(cur&&(a===cur||!inPop(e.target)))hide();
   });
   document.addEventListener("pointerover",function(e){
     var a=term(e);if(!a||e.pointerType!=="mouse")return;
@@ -1323,16 +1444,22 @@ DEFS_JS = r"""<script>
     if(cur!==a)wait=setTimeout(function(){show(a);},HOLD);
   });
   document.addEventListener("pointerout",function(e){
-    var a=term(e);if(!a||e.pointerType!=="mouse"||(e.relatedTarget&&a.contains(e.relatedTarget)))return;
+    var a=term(e);if(!a||e.pointerType!=="mouse"||(e.relatedTarget&&(a.contains(e.relatedTarget)||inPop(e.relatedTarget))))return;
     clearTimeout(wait);
     if(cur===a&&document.activeElement!==a)shut=setTimeout(hide,250);
   });
   document.addEventListener("focusin",function(e){
     var a=term(e);
-    if(a)show(a);else if(cur&&!(e.target.closest&&e.target.closest(".rs-dpop")))hide();
+    if(a){if(!quiet)show(a);}else if(cur&&!inPop(e.target))hide();
   });
+  // Focus leaving the word or the box closes it, unless it went into the box
+  // or back to the word, or a press inside the box sent it nowhere -- a click
+  // on its words, to select them, after pressing Show more.
   document.addEventListener("focusout",function(e){
-    if(cur&&e.target===cur&&!(e.relatedTarget&&pop.contains(e.relatedTarget)))shut=setTimeout(hide,250);
+    if(!cur||!(e.target===cur||inPop(e.target)))return;
+    var to=e.relatedTarget;
+    if(to?(inPop(to)||to===cur):pressedIn)return;
+    shut=setTimeout(hide,250);
   });
 })();
 </script>"""
@@ -1372,6 +1499,8 @@ LANDING_JS = """<script>
       read.innerHTML='<p class="lw-rcrumb">'+esc(crumb)+' &rsaquo; '+esc(name)+'</p>'
         +(sec?sec.outerHTML:'<p>This section could not be opened here.</p>')
         +'<p class="lw-own"><a href="'+link(a)+'">Open RSA '+esc(a)+' on its chapter&rsquo;s page</a></p>';
+      // Its lists folded as its chapter's page folds them (CHAPTER_JS, rsFold).
+      if(window.rsFold)window.rsFold(read);
       read.scrollTop=0;
       var r=read.getBoundingClientRect();if(r.top<0)read.scrollIntoView({block:"start"});
     });
