@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.277
+// GRANITE_VERSION: 2026-09-07.278
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -7786,7 +7786,11 @@ function lsrCardHtml(b,cls){
   if(can)followOk();
   return `<article class="card lsr${cls?" "+esc(cls):""}" data-id="${esc(b.id)}">
       <div class="chead">
-        <div class="crow"><span class="cnum">${esc(b.n)}</span>
+        <div class="crow"><span class="cnum">${b.address
+          // ITS OWN PAGE, or where it went (Alice, 8 November 2026): the
+          // address build_lsrs gives it, or the bill's page it became. An
+          // anchor inside the number, not a.cnum, which opens a bill in place.
+          ?`<a href="${esc(b.moved_to||b.address)}">${esc(b.n)}</a>`:esc(b.n)}</span>
         ${chip(chipOf(b),`cstat ${chipCls(b)}`,"m")}</div>
         <div class="ctitle">${esc(b.title)}</div>
         <div class="cmeta">${b.sponsor_slug

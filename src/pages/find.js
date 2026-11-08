@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.48
+// GRANITE_VERSION: 2026-09-16.49
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -892,7 +892,10 @@ function findRequestRow(b,term,q){
   let t=String(b.title||"");
   const cut=t.length>160;
   if(cut)t=t.slice(0,157).replace(/\s+\S*$/,"");
-  return `<a href="/bills?q=${_fenc(b.n||b.id)}&amp;term=${_fenc(term)}">
+  // The request's own page where it has one (Alice, 8 November 2026), or the
+  // bill's page it became; the bill search opened on it where it has neither.
+  const to=b.moved_to||b.address;
+  return `<a href="${to?"/"+_fesc(to):`/bills?q=${_fenc(b.n||b.id)}&amp;term=${_fenc(term)}`}">
     <span class="fl1"><span class="fname">${_fesc(b.n||b.id)}</span>
     ${chip(tr("find.kind.request","Bill Request"),"fkind")}</span>
     ${t?`<span class="fwhat">${_fmark(t,q)}${cut?"&hellip;":""}</span>`:""}</a>`;

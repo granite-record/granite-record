@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.797
+# GRANITE_VERSION: 2026-09-04.798
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19748,6 +19748,10 @@ def _class_collisions():
     was already the third name in this docstring's first line.
     """
     SHARED = {
+        # The requests' explanation, one box: the bill search's requests term
+        # (app.js) and each request's own page (build_request_pages, 8
+        # November 2026), in the same words.
+        "lsrnote",
         # Your town's slot: a builder writes the empty box where an example
         # from the reader's own town belongs, and find.js fills it (the My
         # Town card, 14 October 2026).
@@ -29834,6 +29838,89 @@ def _api_counts_say_units(AP):
     return "ok", ("the manifest's 8 files, the database's 3 tables, 2,192 people, 3,999 bills and "
                   "33,783 rows each say their unit, under Count; /api's table is a list up to 58em, "
                   f"its {len(twin)} rules the phone block's twins, and the data page's is not")
+
+
+@check("build", "each bill request has a page of its own, noindex, until it is a bill or filing is "
+                "complete, and from then its address forwards; never a page and a 301 at once")
+def _request_pages():
+    """Alice, 8 November 2026: a page for each request of the session the
+    site lists, to share; noindex, out of the sitemap; once a request is a
+    bill its address forwards to the bill's page, and once filing is
+    complete the rest forward to their prime sponsor's; a withdrawn one
+    keeps its page. And New Hampshire's specifics stay in the source's
+    reader (build_lsrs), not in the page writer."""
+    import tempfile
+    import build_lsrs as L
+    import build_pages as BPG
+    import build_request_pages as RP
+    lsrs = [{"lsr": "2027-0001", "session": 2027, "body": "HB", "title": "relative to tides.",
+             "sponsor": "Jodi Nelson", "withdrawn": False},
+            {"lsr": "2027-0002", "session": 2027, "body": "SB", "title": "relative to dunes.",
+             "sponsor": "Pat Moore", "withdrawn": True},
+            {"lsr": "2027-0003", "session": 2027, "body": "HB", "title": "relative to roads.",
+             "sponsor": "Jodi Nelson", "withdrawn": False}]
+    who = {"jodinelson": ("Rep. Jodi Nelson (R - Rock 13)", "jodi-nelson-rock-13")}
+    rows, _ = L.rows_from(lsrs, who, {"2027-0003": "HB 45"}, 2027)
+    by = {r["n"]: r for r in rows}
+    assert by["LSR 2027-0001"]["address"] == "request/2027-0001" \
+        and "moved_to" not in by["LSR 2027-0001"], by["LSR 2027-0001"]
+    assert by["LSR 2027-0003"]["moved_to"] == "bill/2027/hb45", (
+        f"a request introduced as HB 45 moves to {by['LSR 2027-0003'].get('moved_to')}")
+    with tempfile.TemporaryDirectory() as d:
+        site = Path(d)
+        (site / "idx").mkdir()
+        (site / "request").mkdir()
+        # A page an earlier night wrote for the request now a bill.
+        (site / "request" / "2027-0003.html").write_text("old", encoding="utf-8")
+        (site / "bills.html").write_text(Path("src/pages/bills.html").read_text(encoding="utf-8"),
+                                         encoding="utf-8")
+        (site / "legislators.json").write_text(json.dumps([
+            {"slug": "jodi-nelson-rock-13", "party": "R",
+             "display_full": "Rep. Jodi Nelson (R - Rock 13)"}]), encoding="utf-8")
+        req = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027}
+        (site / "meta.json").write_text(json.dumps({"requests": req}), encoding="utf-8")
+        (site / "idx" / "2027-requests.json").write_text(json.dumps(rows), encoding="utf-8")
+        n, gone, moved = RP.write(site, "https://x")
+        pages = sorted(p.name for p in (site / "request").glob("*.html"))
+        assert pages == ["2027-0001.html", "2027-0002.html"] and gone == 1 and moved == 1, (
+            f"request pages {pages}, {gone} taken away: one for each still a request, the withdrawn "
+            "one kept, and the one now a bill taken away")
+        page = (site / "request" / "2027-0001.html").read_text(encoding="utf-8")
+        assert '<meta name="robots" content="noindex,follow">' in page \
+            and 'class="static-rec shown"' in page and "Requests, not bills yet." in page \
+            and "numbered 2027 bill" in page and 'href="legislator/jodi-nelson-rock-13"' in page, (
+            "a request's page is not noindex, shown with script on, explained, or its sponsor's "
+            "chip linked")
+        wd = (site / "request" / "2027-0002.html").read_text(encoding="utf-8")
+        assert "Withdrawn before it became a bill." in wd, "a withdrawn request's page does not say so"
+        red = BPG.moved_requests(site)
+        assert "/request/2027-0003 /bill/2027/hb45 301\n" in red and "2027-0001" not in red, (
+            f"the 301s for the requests read {red!r}")
+        # Every address is a page or a 301, never both.
+        both = [p for p in pages if f"/request/{p[:-5]} " in red]
+        assert not both, f"a page and a 301 at one address: {both}"
+    # Filing complete: the rest forward to their sponsor; a withdrawn one stays.
+    old = dict(L.FILING_COMPLETE)
+    try:
+        L.FILING_COMPLETE[2027] = "2026-11-20"
+        rs, _ = L.rows_from(lsrs, who, {}, 2027)
+        assert L.retire(rs, 2027, "2026-11-19") == 0, "requests retired before filing is complete"
+        assert L.retire(rs, 2027, "2026-11-20") == 2 \
+            and rs[0]["moved_to"] == "legislator/jodi-nelson-rock-13" and "moved_to" not in rs[1], (
+            f"once filing is complete the requests move to {[r.get('moved_to') for r in rs]}")
+    finally:
+        L.FILING_COMPLETE.clear()
+        L.FILING_COMPLETE.update(old)
+    # The links, and New Hampshire kept out of the page writer.
+    assert "const to=b.moved_to||b.address;" in Path("src/pages/find.js").read_text(encoding="utf-8") \
+        and '?`<a href="${esc(b.moved_to||b.address)}">' in Path("src/pages/app.js").read_text(encoding="utf-8"), (
+        "the header search's request row or the request card does not link the request's page")
+    src = Path("src/pages/build_request_pages.py").read_text(encoding="utf-8")
+    assert not re.search(r"LSR|gc\.nh\.gov|\\d\{4\}-\\d", src), (
+        "build_request_pages knows how a state numbers its requests or where they come from")
+    return "ok", ("pages for the requests still requests, the withdrawn kept, the one now a bill "
+                  "taken away and forwarded; filing complete forwards the rest to their sponsor; "
+                  "no address is both")
 
 
 @check("build", "a new member-elect gets a provisional page, noindex and with no id, at the roster's "

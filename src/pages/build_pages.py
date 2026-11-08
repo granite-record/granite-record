@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.263
+# GRANITE_VERSION: 2026-09-04.264
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -398,13 +398,32 @@ def moved_elect(site):
     return "".join(out)
 
 
+def moved_requests(site):
+    """The 301s from a bill request's page to where it now is (Alice, 8
+    November 2026): a bill's page once it is introduced, its prime sponsor's
+    once filing is complete -- each row of the requests' list with a
+    "moved_to" (build_lsrs.py). build_request_pages writes no page at these
+    addresses, so none is both a page and a redirect."""
+    try:
+        req = json.loads((Path(site) / "meta.json").read_text(encoding="utf-8")).get("requests") or {}
+        rows = json.loads((Path(site) / "idx" / f"{req['term']}.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return ""
+    out = []
+    for r in rows if isinstance(rows, list) else []:
+        if r.get("address") and r.get("moved_to"):
+            old, new = f"/{r['address']}", f"/{r['moved_to']}"
+            out += [f"{old} {new} 301\n", f"{old}.html {new} 301\n", f"{old}/ {new} 301\n"]
+    return "".join(sorted(out))
+
+
 def redirects_file(site):
     """_redirects as written: the head, every static rule -- the moved
     members' (moved_members), the members-elect's (moved_elect) and
     REDIRECTS_STATIC -- and then the dynamic tab rewrites (STATIC RULES
     FIRST)."""
-    return (REDIRECTS_HEAD + moved_members(site) + moved_elect(site) + REDIRECTS_STATIC
-            + REDIRECTS_DYNAMIC)
+    return (REDIRECTS_HEAD + moved_members(site) + moved_elect(site) + moved_requests(site)
+            + REDIRECTS_STATIC + REDIRECTS_DYNAMIC)
 
 
 # THE REPOSITORY, NAMED ONCE: chrome.REPO, which the footer links too.
