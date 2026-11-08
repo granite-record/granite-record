@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.360 */
+/* GRANITE_VERSION: 2026-09-07.361 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -8819,6 +8819,9 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
 vertical-align:top;margin-right:var(--sp-2)}
 :where(body.pg) .latvote,:where(body.pg) .latdated{font-size:var(--t-sm);color:var(--ink-2);
 font-variant-numeric:tabular-nums;white-space:nowrap}
+/* Inside the chip since the owner's walk of dry run 8: the chip's own size
+   and colour, and still never broken at its dash. */
+:where(body.pg) .latdid .chip .latvote{font-size:inherit;color:inherit}
 :where(body.pg) .latmore{margin:var(--sp-3) 0 0;font-size:var(--t-sm);color:var(--ink-2)}
 /* THE ORDER ON ONE COLUMN, which is the person's, from 20 September:
    the hero, the bill search and its cards, then find your legislators, the
@@ -8909,6 +8912,17 @@ font-variant-numeric:tabular-nums;white-space:nowrap}
   :where(body.pg) .hv-panels #recent,
   :where(body.pg) .hv-sections #recent{border-top:0;padding-top:0}
   :where(body.pg) .hv-panels .hside > div + div:not(.fresh){margin-top:var(--sp-8)}
+  /* THE RIGHT COLUMN AS TWO SHEETS (the owner's walk of dry run 8,
+     8 November 2026: Coming up and Latest activity "sort of blend
+     together"). The column is no sheet; Coming up and Latest activity are
+     one each, a gap between them, as they already are on one column. */
+  :where(body.pg) .hv-panels .hright{background:none;border:0;border-radius:0;padding:0}
+  :where(body.pg) .hv-panels .hright > #upcoming,
+  :where(body.pg) .hv-panels .hright > #recent{background:var(--surface);border:1px solid var(--rule-2);
+    border-radius:var(--r-out);padding:var(--sp-7) var(--sp-7) var(--sp-8)}
+  :where(body.pg) .hv-panels .hright > div + div:not(.fresh){margin-top:var(--sp-6)}
+  :where(body.pg) .hv-panels .hright > #upcoming > .cal{margin-top:0}
+  :where(body.pg) .hv-panels .hright h2{margin-top:0}
   :where(body.pg) .hv-rules .hmid{position:relative;align-self:stretch}
   :where(body.pg) .hv-rules .hmid::before,
   :where(body.pg) .hv-rules .hmid::after{content:"";position:absolute;top:0;bottom:0;width:1px;

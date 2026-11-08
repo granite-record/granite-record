@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.808
+# GRANITE_VERSION: 2026-09-04.809
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -86725,7 +86725,9 @@ def _latest_activity_meetings(BP, LA, i18n):
                  '<div class="calday" data-d="2026-10-23"><h3 class="caldate"><span>Fri, Oct 23'
                  '</span><span class="cdrel">yesterday</span></h3>',
                  '<p class="latkinds">Executive Session</p>',
-                 '<span class="latdid">' + C.vote_chip("override_first", False, "HB396"),
+                 # The vote inside the chip (the owner's walk of dry run 8).
+                 '<span class="latdid">' + C.vote_chip("override_first", False, "HB396")[:-7]
+                 + ' <span class="latvote">(202–107)</span></span>',
                  "dated Oct 22"):
         assert want in en, f"Latest activity does not draw {want!r}"
     assert en.count('<div class="calday" data-d="2026-10-15">') == 1 and re.search(
@@ -86733,7 +86735,8 @@ def _latest_activity_meetings(BP, LA, i18n):
         r'<details class="calmeet latm".*?<details class="calmeet latm"', en, re.S), (
         "two meetings of one day are not two cards under the one day")
     assert "latwhen" not in en and "latlist" not in en, "the old Latest activity is drawn"
-    assert C.chip(C.title_words(C.WORDBOOK["study_report"]["said"]["not"]), "cstat s-done") in en, (
+    assert (C.chip(C.title_words(C.WORDBOOK["study_report"]["said"]["not"]), "cstat s-done")[:-7]
+            + ' <span class="latvote">(18–3)</span></span>') in en, (
         "HB 1710's report is not drawn in study_report.json's words, in the colour of a killing")
     hrefs = {lang: re.findall(r'href="([^"]+)"', t) for lang, t in html.items()}
     assert hrefs["es"] == hrefs["en"], "Spanish Latest activity holds other meetings, bills or links"
