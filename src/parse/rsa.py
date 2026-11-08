@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.2
+# GRANITE_VERSION: 2026-10-11.3
 """
 The statutes (RSA): the General Court's table read once, and one reader of
 statute citations for everything that needs them.
@@ -602,6 +602,8 @@ class Defined:
         self.keys = [{f.lower() for t in d.terms for f in forms(t)} for d in self.defs]
         self.exact = self._cases()
         self._rx = {}
+        self.classes = self._read_classes()
+        self._pointed = None
 
     # ---- reading the definitions
 
@@ -856,6 +858,182 @@ class Defined:
                         ex.add(tm.lower())
             exact.append(ex)
         return exact
+
+    # ---- the classes of crime, and a definition another chapter points at
+
+    # CLASSES OF CRIME AND DEFINITIONS POINTED AT (the owner's walk of dry
+    # run 9, 8 November 2026: "designated caregiver" in RSA 318-B:26 had no
+    # pop-up though RSA 126-X:1, VI defines it; "class B felony" and its kin
+    # had none anywhere). Both were hidden by one rule, that a definition is
+    # marked only in its own chapter. RSA 625:9 classifies every offense "whether
+    # defined within this code or by any other statute", so its classes are
+    # marked in every chapter, and a section that says "as defined in RSA
+    # 126-X:1" marks the terms that section defines, in that paragraph.
+    # A chapter's own definition of the same word still wins.
+    CLASS_PARAS = (("felony", r"A felony is\b"), ("misdemeanor", r"Misdemeanors are either\b"),
+                   ("class A felony", r"Class A felonies are\b"), ("class B felony", r"Class B felonies are\b"),
+                   ("class A misdemeanor", r"A class A misdemeanor is\b"),
+                   ("class B misdemeanor", r"A class B misdemeanor is\b"), ("violation", r"A violation is\b"))
+    CLASS_ADDR = "625:9"
+    JOIN = re.compile(r"(?:[\s,;]|\b(?:and|or|as|that|term|terms|is|are|which|the|a|an|any|of|be|it|also|"
+                      r"such|those|these|each|every|all|defined|used|in|under|by|pursuant|to|this|chapter|section)\b)*", re.I)
+    # "Violation" is the class only where a section says an act IS one: "shall
+    # be guilty of a violation", "is a violation". "A violation of this
+    # section" is the ordinary word and is not marked.
+    VIOLATION = re.compile(r"(?:guilty\s+of|\b(?:is|be|are|constitutes?|deemed|commits?|punishable\s+as|"
+                           r"classified\s+as))\s+(?:a|an)\s+(violation)(?![\w-])"
+                           r"(?!\s+(?:of|by|under|against|in|to|as)\b)", re.I)
+
+    def _read_classes(self):
+        s = self.table.sections.get(self.CLASS_ADDR)
+        if not s:
+            return []
+        paras = paragraphs(s.text)
+        out = outline(paras)
+        sec = self.CLASS_ADDR.split(":", 1)[1]
+        got = []
+        for term, start in self.CLASS_PARAS:
+            for i, p in enumerate(paras):
+                if re.match(start, p[out[i][1]:]):
+                    label = para_label(out[i][0])
+                    slug = re.sub(r"[()]+", "_", label).strip("_") or "def"
+                    got.append(Definition((term,), s.addr, i, i, i, para_cite(s.addr, label),
+                                          f"s{sec}_{slug}", "", {}, set(), False))
+                    break
+        return got
+
+    def _skip_spans(self, p, quoted):
+        return list(quoted) + [(c.start, c.end) for c in cites(p)]
+
+    def _fits(self, d, p, m, key):
+        """Whether a match of d's term in paragraph p is a use of it, by the
+        rules marks() holds a mark to."""
+        if d.thing and AS_VERB.search(p, max(0, m.start() - 30), m.start()):
+            return False
+        if " " not in key:
+            nxt = NEXT_WORD.match(p, m.end())
+            if nxt and f"{key} {nxt.group(1).lower()}" in self.phrases:
+                return False
+        return True
+
+    def extra_marks(self, addr, local):
+        """({paragraph: [(start, end, Definition)]}) for a section: the first
+        use of each class of crime in it, and the first use in a paragraph of
+        a term defined in the section it points at ("as defined in RSA
+        126-X:1"), neither where `local` ({paragraph: [(start, end, ...)]},
+        the section's own marks) or a quotation or a citation already holds
+        the words, and not a word the section's own chapter defines."""
+        sec = self.table.sections[addr]
+        paras = paragraphs(sec.text)
+        quoted = quoted_spans(paras)
+        mine = {k for i in self.at.get(addr, []) + self.near.get(addr, []) for k in self.keys[i]}
+        out = {}
+
+        def free(li, st, en):
+            return not any(st < b and a < en for a, b, *_ in local.get(li, []) + out.get(li, []))
+
+        if self.classes:
+            alts = {}
+            for d in self.classes:
+                for f in forms(d.terms[0]):
+                    if d.terms[0] != "violation" and f.lower() not in mine:
+                        alts[f.lower()] = d
+            rx = re.compile(r"(?<![\w-])(?i:" + "|".join(r"\s+".join(map(re.escape, f.split()))
+                            for f in sorted(alts, key=lambda f: (-len(f), f))) + r")(?![\w-])")
+            vio = next((d for d in self.classes if d.terms[0] == "violation"), None)
+            used = set()
+            for li, p in enumerate(paras):
+                skip = self._skip_spans(p, quoted[li])
+                hits = [(m.start(), m.end(), alts[re.sub(r"\s+", " ", m.group(0)).lower()], m)
+                        for m in rx.finditer(p)]
+                if vio and "violation" not in mine:
+                    hits += [(m.start(1), m.end(1), vio, m) for m in self.VIOLATION.finditer(p)]
+                for st, en, d, m in sorted(hits, key=lambda h: h[:2]):
+                    key = p[st:en].lower()
+                    if id(d) in used or any(a < en and st < b for a, b in skip) \
+                            or not free(li, st, en):
+                        continue
+                    if addr == self.CLASS_ADDR and d.para <= li <= d.last:
+                        continue
+                    if not self._fits(d, p, m, key):
+                        continue
+                    used.add(id(d))
+                    out.setdefault(li, []).append((st, en, d))
+        for li, wins in self._points().get(addr, {}).items():
+            p = paras[li]
+            skip = self._skip_spans(p, quoted[li])
+            seen = set()
+            for lo, hi, ds in wins:
+                who = collections.defaultdict(list)
+                pairs = set()
+                for i in ds:
+                    for t in self.defs[i].terms:
+                        for f in forms(t):
+                            who[f.lower()].append(i)
+                            pairs.add((f, f.lower() in self.exact[i] or t.lower() in self.exact[i]))
+                cand = []
+                for m in self._regex(frozenset(pairs)).finditer(p, lo, hi):
+                    key = re.sub(r"\s+", " ", m.group(0)).lower()
+                    got = who.get(key, [])
+                    if len(got) != 1 or key in mine:
+                        continue
+                    if any(a < m.end() and m.start() < b for a, b in skip) \
+                            or not free(li, m.start(), m.end()) or not self._fits(self.defs[got[0]], p, m, key):
+                        continue
+                    cand.append((m.start(), m.end(), got[0]))
+                # Only the words that stand straight before the pointer, the
+                # terms it explains: nothing but joining words, or another of
+                # them, may come between a term and "as defined in".
+                for st, en, i in cand:
+                    rest = p[en:hi]
+                    for st2, en2, _i2 in cand:
+                        rest = rest.replace(p[st2:en2], " ") if st2 >= en else rest
+                    if i not in seen and self.JOIN.fullmatch(rest):
+                        seen.add(i)
+                        out.setdefault(li, []).append((st, en, self.defs[i]))
+        return {li: sorted(v) for li, v in out.items()}
+
+    def _points(self):
+        """{section: {paragraph: [(from, to, [definition indexes])]}} for each paragraph that says a
+        term is defined in a section of another chapter: "as defined in RSA
+        126-X:1", or "RSA 126-X:1, VI" for one paragraph of it."""
+        if self._pointed is None:
+            by = collections.defaultdict(list)
+            for i, d in enumerate(self.defs):
+                by[d.addr].append(i)
+                by[d.addr.split(":")[0]].append(i)
+            pre = re.compile(r"\bdefined\s+(?:in|by|under|pursuant\s+to)\s+$", re.I)
+            got = {}
+            for s in self.table.sections.values():
+                if s.repealed or "defined" not in s.text:
+                    continue
+                for li, p in enumerate(paragraphs(s.text)):
+                    if "defined" not in p:
+                        continue
+                    for c in cites(p):
+                        if c.how != "rsa" or c.chapter == s.chapter or not pre.search(p[max(0, c.start - 40):c.start]):
+                            continue
+                        ds = by.get(addr_of(c), [])
+                        if c.para:
+                            at = f"RSA {addr_of(c)}, {c.para}"
+                            ds = [i for i in ds if self.defs[i].cite == at or self.defs[i].cite.startswith(at + "(")]
+                        # The words it explains: this clause, a few before the pointer.
+                        lo = max(max(p.rfind(x, 0, c.start) for x in ".;:") + 1, c.start - 120)
+                        if ds:
+                            got.setdefault(s.addr, {}).setdefault(li, []).append((lo, c.start, ds))
+            self._pointed = got
+        return self._pointed
+
+    def pointed_defs(self):
+        """The Definitions behind pointed_at()."""
+        want = self.pointed_at()
+        return [d for d in self.defs if (d.addr, d.para) in want]
+
+    def pointed_at(self):
+        """{(section, paragraph)} of every definition some section of another
+        chapter points at: each one's own page holds it, so a link to it lands."""
+        return {(self.defs[i].addr, self.defs[i].para) for secs in self._points().values()
+                for wins in secs.values() for _lo, _hi, ds in wins for i in ds}
 
     # ---- marking a section
 

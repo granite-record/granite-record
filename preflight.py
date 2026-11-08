@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.809
+# GRANITE_VERSION: 2026-09-04.810
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43023,6 +43023,7 @@ def _def_table(RSA, passages):
     text in "EntireRSA"'s <codesect>, a paragraph to a <br>."""
     names = {"153": "STATE BOARD OF FIRE CONTROL", "540-C": "SEASONAL RENTAL UNITS",
              "541-A": "ADMINISTRATIVE PROCEDURE ACT"}
+    names = type("N", (dict,), {"__missing__": lambda self, k: "A CHAPTER"})(names)
     rows = []
     for n, (addr, heading, heads, paras) in enumerate(passages):
         ch = addr.split(":")[0]
@@ -43034,6 +43035,130 @@ def _def_table(RSA, passages):
                      "EntireRSA": "<codesect> <br> " + " <br> ".join(paras) + "</codesect>",
                      "titleNumber": "12", "url": f"XII\\{ch}\\{addr.replace(':', '-')}.htm"})
     return RSA.Table(rows)
+
+
+# THE WORDS OF THE STATUTES, as RSA 126-X:1, 318-B:26, 625:9 and 270:101 print
+# them, and a clause of 214:17 (the owner's walk of dry run 9, 8 November
+# 2026).
+_ELSEWHERE_PASSAGES = (
+    ("126-X:1", "Definitions.", (), (
+        "In this chapter:",
+        'VI. "Designated caregiver" means an individual who:',
+        "(a) Is at least 21 years of age;",
+        "(b) Has agreed to assist with one or more (not to exceed 5) qualifying patient's therapeutic use of "
+        "cannabis, except if the qualifying patient and designated caregiver each live greater than 50 miles "
+        "from the nearest alternative treatment center, in which case the designated caregiver may assist with "
+        "the therapeutic use of cannabis for up to 9 qualifying patients;",
+        "(c) Has never been convicted of a felony or any felony drug-related offense; and",
+        "(d) Possesses a valid registry identification card issued pursuant to RSA 126-X:4.",
+        'X. "Qualifying patient" means a resident of New Hampshire who has been diagnosed by a provider as '
+        "having a qualifying medical condition and who possesses a valid registry identification card issued "
+        "pursuant to RSA 126-X:4.")),
+    ("318-B:26", "Penalties.", (), (
+        "IX-a. A qualifying patient or designated caregiver as defined in RSA 126-X:1 who sells cannabis to a "
+        "person who is not a qualifying patient or a designated caregiver shall be guilty of a class B felony "
+        "and shall be sentenced to a maximum term of imprisonment of not more than 7 years, a fine of not "
+        "more than $300,000, or both.",)),
+    ("625:9", "Classification of Crimes.", (), (
+        "II. Every offense is either a felony, misdemeanor or violation.",
+        "III. A felony is murder or a crime so designated by statute within or outside this code or a crime "
+        "defined by statute outside of this code where the maximum penalty provided is imprisonment in excess "
+        "of one year; provided, however, that a crime defined by statute outside of this code is a felony when "
+        "committed by a corporation or an unincorporated association if the maximum fine therein provided is "
+        "more than $200.",
+        "(a) Felonies other than murder are either class A felonies or class B felonies when committed by an "
+        "individual. Felonies committed by a corporation or an unincorporated association are unclassified.",
+        "(1) Class A felonies are crimes so designated by statute within or outside this code and any crime "
+        "defined by statute outside of this code for which the maximum penalty, exclusive of fine, is "
+        "imprisonment in excess of 7 years.",
+        "(2) Class B felonies are crimes so designated by statute within or outside this code and any crime "
+        "defined outside of this code for which the maximum penalty, exclusive of fine, is imprisonment in "
+        "excess of one year but not in excess of 7 years.",
+        "IV. Misdemeanors are either class A misdemeanors or class B misdemeanors when committed by an "
+        "individual. Misdemeanors committed by a corporation or an unincorporated association are "
+        "unclassified.",
+        "(a) A class A misdemeanor is any crime so designated by statute within or outside this code and any "
+        "crime defined outside of this code for which the maximum penalty, exclusive of fine, is "
+        "imprisonment not in excess of one year.",
+        "(b) A class B misdemeanor is any crime so designated by statute within or outside this code and any "
+        "crime defined outside of this code for which the maximum penalty does not include any term of "
+        "imprisonment or any fine in excess of the maximum provided for a class B misdemeanor in RSA 651:2, "
+        "IV(a).",
+        "V. A violation is an offense so designated by statute within or outside this code and, except as "
+        "provided in this paragraph, any offense defined outside of this code for which there is no other "
+        "penalty provided other than a fine or fine and forfeiture or other civil penalty. In the case of a "
+        "corporation or an unincorporated association, offenses defined outside of this code are violations "
+        "if the amount of any such fine provided does not exceed $50.")),
+    ("270:101", "Penalties.", (), (
+        "Any person who violates this section shall be guilty of a violation.",)),
+    ("214:17", "Penalties.", (), (
+        "Failure to comply shall be a violation of the provisions of this chapter.",)),
+)
+
+
+@check("build", "a term a section says is defined in another chapter, and each class of crime RSA 625:9 "
+       "defines, has a pop-up wherever it is used, with the statute's own words and its citation",
+       needs=("build_rsa", "rsa", "shell"))
+def _rsa_defined_elsewhere(B, RSA, S):
+    """The owner's walk of dry run 9, 8 November 2026: "designated caregiver"
+    in RSA 318-B:26 had no pop-up though RSA 126-X:1, VI defines it, in a
+    lead-in and four lettered parts; and "class B felony" had none anywhere.
+    A definition was marked only in its own chapter. Now a section that says
+    "as defined in RSA 126-X:1" marks the terms it defines, in that sentence,
+    and 625:9's classes are marked wherever they are used, the whole phrase
+    ("class B felony", not "felony"); "violation" only where a section says
+    an act is one. Each pop-up holds the definition's own paragraphs, and its
+    citation names the paragraph."""
+    t = _def_table(RSA, _ELSEWHERE_PASSAGES)
+    d = t.defined()
+
+    def got(addr):
+        paras = RSA.paragraphs(t.sections[addr].text)
+        e = d.extra_marks(addr, d.marks(addr)[0])
+        return {(li, paras[li][st:en].lower(), x.cite) for li, ms in e.items() for st, en, x in ms}
+
+    m = got("318-B:26")
+    assert (0, "qualifying patient", "RSA 126-X:1, X") in m and (0, "designated caregiver", "RSA 126-X:1, VI") in m, \
+        f"RSA 318-B:26 does not mark the terms it says RSA 126-X:1 defines: {sorted(m)}"
+    assert (0, "class b felony", "RSA 625:9, III(a)(2)") in m and not any(w == "felony" for _l, w, _c in m), \
+        f"'class B felony' is not marked as a whole phrase with its own paragraph: {sorted(m)}"
+    c126 = got("126-X:1")
+    assert (4, "felony", "RSA 625:9, III") in c126, f"'felony' in 126-X:1, VI(c) is not marked: {sorted(c126)}"
+    p625 = got("625:9")
+    for want in ((0, "felony", "RSA 625:9, III"), (0, "misdemeanor", "RSA 625:9, IV"),
+                 (2, "class a felonies", "RSA 625:9, III(a)(1)"), (2, "class b felonies", "RSA 625:9, III(a)(2)"),
+                 (5, "class a misdemeanors", "RSA 625:9, IV(a)"), (5, "class b misdemeanors", "RSA 625:9, IV(b)")):
+        assert want in p625, f"RSA 625:9's own use of its classes lacks {want}: {sorted(p625)}"
+    assert not any(c == "RSA 625:9, V" for _l, _w, c in p625), \
+        "'violation' is marked in RSA 625:9, II, which names it with no 'a'"
+    assert any(w == "violation" and c == "RSA 625:9, V" for _l, w, c in got("270:101")), \
+        "'guilty of a violation' (RSA 270:101) is not marked as the class of offense"
+    assert not got("214:17"), \
+        f"'a violation of the provisions of this chapter' is marked as the class: {sorted(got('214:17'))}"
+    root = Path(tempfile.mkdtemp(prefix="gr-rsaaway-"))
+    try:
+        bills = B.Bills(root, "2025-2026")
+        page = B.chapter_page(S.template(Path("site")), t, {}, bills, "318-B", "https://graniterecord.org")
+        crimes = B.chapter_page(S.template(Path("site")), t, {}, bills, "625", "https://graniterecord.org")
+        home = B.chapter_page(S.template(Path("site")), t, {}, bills, "126-X", "https://graniterecord.org")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert ('<a class="rs-tm" href="/laws/126-x#s1_VI" data-def="away_126_X_1_s1_VI">designated caregiver</a>' in page
+            and '<a class="rs-tm" href="/laws/625#s9_III_a_2" data-def="away_625_9_s9_III_a_2">class B felony</a>'
+            in page), "318-B's page does not link the terms to their definitions in other chapters"
+    held = page[page.index('id="away_126_X_1_s1_VI"'):]
+    held = held[:held.index("</div>")]
+    assert 'data-cite="RSA 126-X:1, VI"' in held and 'data-href="/laws/126-x#s1_VI"' in held and " hidden>" in held \
+        and all(w in held for w in ("<p>VI. &quot;Designated caregiver&quot; means an individual who:</p>",
+                                    "<p>(a) Is at least 21 years of age;</p>", "<p>(c) Has never been convicted",
+                                    "<p>(d) Possesses a valid registry identification card issued pursuant to "
+                                    "RSA 126-X:4.</p>")), \
+        f"the held definition of 'designated caregiver' is not the statute's lead-in and its lettered parts: {held[:300]}"
+    assert B.DEFS_JS in page, "a page that marks a term has no pop-up script"
+    for anchor in ('id="s9_III_a_2"', 'id="s9_IV_b"', 'id="s9_V"'):
+        assert anchor in crimes, f"RSA 625's page does not anchor {anchor} for the pages that link to it"
+    assert 'id="s1_VI"' in home, "126-X's page does not anchor the definition other chapters link to"
+    return "ok", "318-B:26's two terms, the classes of crime, 'violation' only as a class, and the page that holds them"
 
 
 # The page's script in a page made by hand: a definition, a word that links to
@@ -43172,6 +43297,18 @@ fire("keydown", {key: "Escape"}); doc.activeElement = elsewhere;
 word2.rect = {left: 300, right: 400, top: 800, bottom: 820};
 word2.focus(); out.opens_above = [box().style.top, box().style.maxHeight];
 if (more()) press(more()); out.more_above = box().style.top;
+// A definition another chapter holds, hidden, under data-def (the owner's walk
+// of dry run 9, 8 November 2026); the word's href is deliberately an id this
+// page has, and its box's citation goes to the other chapter.
+fire("keydown", {key: "Escape"}); doc.activeElement = elsewhere;
+const away = node("div", {class: "rs-dfn rs-away", id: "away_126", "data-cite": "RSA 126-X:1, VI",
+  "data-for": "chapter 126-X", "data-href": "/laws/126-x#s1_VI"}, art); away.hidden = true;
+node("p", {}, away)._text = 'VI. "Designated caregiver" means an individual who:';
+node("p", {}, away)._text = "(a) Is at least 21 years of age;";
+const para3 = node("p", {}, art);
+const word3 = node("a", {class: "rs-tm", href: "/laws/126-x#s1_III", "data-def": "away_126"}, para3);
+word3._text = "designated caregiver"; word3.rect = {left: 300, right: 400, top: 200, bottom: 220};
+word3.focus(); out.away = [box().textContent, link().href];
 console.log(JSON.stringify(out));
 """
 
@@ -43292,6 +43429,9 @@ def _rsa_defined_terms(B, RSA, S):
         and out["more"] and out["whole"] == whole and out["more_open"] and out["less"], (
         f"a long definition is not cut with Show more, or Show more does not open all of it, a "
         f"paragraph a line, and close it again: {out}")
+    assert out["away"] == ['Defined for chapter 126-X in RSA 126-X:1, VI"Designated caregiver" means an individual '
+                           "who: (a) Is at least 21 years of age;", "/laws/126-x#s1_VI"], \
+        f"a definition held for another chapter's page does not open from data-def, or does not link there: {out['away']}"
     wrong = [k for k in ("focus", "in_text", "tab_in_stays", "escape", "link_follows", "tap_stays",
                          "tap_opens", "tap_link", "pinned_stays", "second_tap_closes", "reopens",
                          "pinned_escape", "space_opens", "space_pins", "space_closes",

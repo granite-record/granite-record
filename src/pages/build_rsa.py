@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.27
+# GRANITE_VERSION: 2026-10-11.28
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -955,9 +955,12 @@ def linked_text(table, text, own, terms=None, wraps=None):
             gone = kind == "section" and table.sections[target].repealed
             spans.append((st, en, f'<a href="{E(href(target))}">',
                           "</a>" + (' <span class="rs-gone">(repealed)</span>' if gone else "")))
-        for st, en, to in (terms or {}).get(li, []):
+        for st, en, to, *ref in (terms or {}).get(li, []):
             if not any(st < b and a < en for a, b, _o, _c in spans):
-                spans.append((st, en, f'<a class="rs-tm" href="{E(to)}">', "</a>"))
+                # A definition in another chapter is held on this page, hidden,
+                # and named here for the script (data-def).
+                spans.append((st, en, f'<a class="rs-tm" href="{E(to)}"'
+                              + (f' data-def="{E(ref[0])}"' if ref and ref[0] else "") + ">", "</a>"))
         pieces, pos = [], 0
         for st, en, opening, closing in sorted(spans):
             pieces.append(E(para[pos:st]))
@@ -989,25 +992,60 @@ SCOPE_WORDS = {"chapter": "this chapter", "subdivision": "this subdivision", "se
 
 
 def defined_terms(table, ch, path):
-    """({section: {paragraph: [(start, end, href)]}}, {section: wraps}) for a
-    chapter's page: each section's marks (rsa.Defined.marks) and the
-    definitions they point at, which are always on the same page, since a
-    definition is never marked outside its own chapter."""
+    """({section: {paragraph: [(start, end, href, id of its held copy)]}},
+    {section: wraps}, {id: the definition held for them}) for a chapter's
+    page: each section's marks (rsa.Defined.marks) and the definitions they
+    point at, which are on the same page; except a class of crime (RSA
+    625:9) or a term a section points at in another chapter ("as defined in
+    RSA 126-X:1"), whose words are held, hidden, on the page that uses them
+    and whose link goes to their own (the owner's walk of dry run 9,
+    8 November 2026)."""
     d = table.defined()
-    marks, wraps = {}, collections.defaultdict(dict)
+    marks, wraps, held = {}, collections.defaultdict(dict), {}
     for a in table.chapters[ch]["sections"]:
         if table.sections[a].repealed:
             continue
         got, _withheld = d.marks(a)
-        if not got:
+        extra = d.extra_marks(a, got)
+        if not got and not extra:
             continue
-        marks[a] = {li: [(st, en, f"{path}#{d.defs[i].anchor}") for st, en, i in ms]
+        marks[a] = {li: [(st, en, f"{path}#{d.defs[i].anchor}", "") for st, en, i in ms]
                     for li, ms in got.items()}
         for ms in got.values():
             for _st, _en, i in ms:
                 x = d.defs[i]
                 wraps[x.addr][x.para] = (x.shown, x.anchor, x.cite, SCOPE_WORDS.get(x.scope, ""))
-    return marks, wraps
+        for li, ms in extra.items():
+            for st, en, x in ms:
+                there = x.addr.split(":")[0]
+                if there == ch:
+                    marks[a].setdefault(li, []).append((st, en, f"{path}#{x.anchor}", ""))
+                else:
+                    ref = "away_" + re.sub(r"\W", "_", f"{x.addr}_{x.anchor}")
+                    held[ref] = x
+                    marks[a].setdefault(li, []).append((st, en, f"{chapter_path(there)}#{x.anchor}", ref))
+    # The definitions other pages link to are anchored on their own page
+    # whether or not it marks them.
+    for x in d.classes + d.pointed_defs():
+        if x.addr.split(":")[0] == ch:
+            wraps[x.addr].setdefault(x.para, (x.shown, x.anchor, x.cite, SCOPE_WORDS.get(x.scope, "")))
+    return marks, wraps, held
+
+
+def held_definitions(table, held):
+    """The definitions another chapter's page holds for its uses, hidden, as
+    the script reads them: the statute's own paragraphs, the citation, and
+    the page they are at."""
+    out = []
+    for ref, x in sorted(held.items()):
+        paras = rsa.paragraphs(table.sections[x.addr].text)[x.para:x.shown + 1]
+        ch = x.addr.split(":")[0]
+        scope = {"chapter": f"chapter {ch}", "section": f"section {x.addr}"}.get(x.scope, "")
+        out.append(f'<div class="rs-dfn rs-away" id="{E(ref)}" data-cite="{E(x.cite)}"'
+                   + (f' data-for="{E(scope)}"' if scope else "")
+                   + f' data-href="{E(chapter_path(ch))}#{E(x.anchor)}" hidden>'
+                   + "".join(f"<p>{E(q)}</p>" for q in paras) + "</div>")
+    return "".join(out)
 
 
 # ------------------------------------------------------------------ indexes
@@ -1216,7 +1254,7 @@ def chapter_page(tmpl, table, data, bills, ch, base):
     toc_items = []
     body = []
     sub = None
-    terms, wraps = defined_terms(table, ch, path)
+    terms, wraps, held = defined_terms(table, ch, path)
     for a in secs:
         s = table.sections[a]
         if s.sub and s.sub != sub:
@@ -1307,7 +1345,7 @@ def chapter_page(tmpl, table, data, bills, ch, base):
                f'section{"s" if len(toc_items) != 1 else ""}</span>'
                f'<span class="rs-now" aria-hidden="true"></span></summary>'
                f'<ol>{"".join(toc_items)}</ol></details></nav>')
-    art = f'<div class="rs-art">{pend}{"".join(body)}</div>'
+    art = f'<div class="rs-art">{pend}{"".join(body)}{held_definitions(table, held)}</div>'
     return p.replace('<div id="results"></div>',
                      f'<div id="results"><div class="l-page rs-page">{head}'
                      f'<div class="rs-chap{" rs-notoc" if not toc else ""}">{toc}{art}</div></div>'
@@ -1395,7 +1433,9 @@ CHAPTER_JS = """<script>
 DEFS_JS = r"""<script>
 (function(){
   var pop=null,cur=null,wait=0,shut=0,opened=0,touch=false,quiet=false,side="",pressedIn=false,pinned=false,HOLD=500,CUT=400;
-  function target(a){var h=a.getAttribute("href")||"",i=h.indexOf("#");return i<0?null:document.getElementById(h.slice(i+1));}
+  // A definition in another chapter is held on this page under data-def.
+  function target(a){var d=a.getAttribute("data-def");if(d)return document.getElementById(d);
+    var h=a.getAttribute("href")||"",i=h.indexOf("#");return i<0?null:document.getElementById(h.slice(i+1));}
   // The definition's paragraphs, the first without the numbers it opens with.
   function paras(w){
     var ps=[].map.call(w.querySelectorAll("p"),function(p){return p.textContent;});
@@ -1442,7 +1482,7 @@ DEFS_JS = r"""<script>
     var ps=paras(w),f=w.getAttribute("data-for"),cite=w.getAttribute("data-cite")||"the definition";
     pop.textContent="";
     var c=el("span","rs-dpcite",(f?"Defined for "+f+" in ":"Defined in "));c.id="rs-dpcite";
-    var go=el("a","",cite);go.href=a.getAttribute("href");c.appendChild(go);pop.appendChild(c);
+    var go=el("a","",cite);go.href=w.getAttribute("data-href")||a.getAttribute("href");c.appendChild(go);pop.appendChild(c);
     var t=el("span","rs-dptext");t.id="rs-dptext";pop.appendChild(t);fill(t,ps,false);
     if(ps.join(" ").length>CUT+20){
       var m=el("button","rs-dpmore","Show more");m.type="button";m.setAttribute("aria-expanded","false");
