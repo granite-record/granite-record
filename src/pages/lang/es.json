@@ -22481,6 +22481,11 @@
    "es": "{n} escaños",
    "state": "draft"
   },
+  "map.statewide": {
+   "en": "Statewide",
+   "es": "En todo el estado",
+   "state": "draft"
+  },
   "map.sum": {
    "en": "State House {base}; State Senate {s}; Executive Council {c}; US House {g}.",
    "es": "Cámara de Representantes estatal: {base}; Senado estatal: {s}; Consejo Ejecutivo: {c}; Cámara de Representantes de EE. UU.: {g}.",
@@ -22504,6 +22509,16 @@
   "map.tag_senate": {
    "en": "Senate District {n}",
    "es": "Distrito {n} del Senado",
+   "state": "draft"
+  },
+  "map.tot_base": {
+   "en": "<b>House:</b> {list}",
+   "es": "<b>Cámara:</b> {list}",
+   "state": "draft"
+  },
+  "map.tot_senate": {
+   "en": "<b>Senate:</b> {list}",
+   "es": "<b>Senado:</b> {list}",
    "state": "draft"
   },
   "map.towns_note": {

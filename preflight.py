@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.794
+# GRANITE_VERSION: 2026-09-04.795
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -117342,6 +117342,333 @@ def _map_legend_words():
     assert not bad, "; ".join(bad)
     return "ok", ("the legend alone on State House and State Senate; the floterial sentence and "
                   "frame only while ticked; four kinds two by two on a phone")
+
+
+# THE CHAMBER STATEWIDE UNDER THE LEGEND (the owner, 7 November 2026: "on the
+# map, a short list of the party totals for the chamber layer shown (Senate or
+# House): Democrats, Republicans, Independents, statewide"). map.js mounted in
+# node, as _map_legend_words mounts it, on each *.map.json here: its pure
+# totals() and totalsLine() for every layer, and the line mount() draws under
+# the legend as the layer switch goes State House, State Senate, Council, US
+# House and back, in English and with the Spanish words a Spanish page carries
+# (WORDS, from the catalog). And the markup: the line inside the legend's box,
+# after the legend, and not there at all for a page that asks for none.
+_MAP_TOTALS_JS = r"""
+require("./stub.js");
+globalThis.CSS = { escape: s => String(s) };
+document.createElementNS = (ns, t) => document.createElement(t);
+const fs = require("fs");
+const G = require("./map.js");
+const WORDS = JSON.parse(fs.readFileSync("./words.json", "utf8"));
+function held() {
+  const e = document.createElement("div"), q = {};
+  e.querySelector = sel => (q[sel] = q[sel] || held());
+  e.style.setProperty = () => {};
+  return e;
+}
+(async () => {
+  const out = {};
+  for (const name of fs.readdirSync(".").filter(f => f.endsWith(".map.json")).sort()) {
+    const T = JSON.parse(fs.readFileSync("./" + name, "utf8"));
+    globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => T });
+    const M = G.model(T), one = out[name] = { totals: {}, lines: {} };
+    for (const lk of ["base", "senate", "exec", "cong", "county", "towns"]) {
+      const t = G.totals(M, lk);
+      one.totals[lk] = t; one.lines[lk] = G.totalsLine(t, lk);
+    }
+    for (const lang of ["en", "es"]) {
+      globalThis.GR_WORDS = lang === "es" ? WORDS : {};
+      const root = held();
+      const api = G.mount(root, { labels: "none", zoom: false, layers: ["base", "senate", "exec", "cong"],
+                                  data: "/" + name + "?" + lang });
+      if (lang === "en") one.markup = root.innerHTML;
+      await api.ready;
+      const tot = root.querySelector(".gmtot"), drawn = [["base", tot.innerHTML]];
+      for (const lk of ["senate", "exec", "cong", "base", "senate"]) {
+        api.setLayer(lk); drawn.push([lk, tot.innerHTML]);
+      }
+      one["drawn_" + lang] = drawn;
+    }
+    globalThis.GR_WORDS = {};
+    const none = held();
+    G.mount(none, { labels: "none", zoom: false, totals: false, data: "/" + name + "?none" });
+    one.markupNone = none.innerHTML;
+  }
+  process.stdout.write("\n@@" + JSON.stringify(out));
+})().catch(e => { console.error(String(e && e.stack || e)); process.exit(1); });
+"""
+
+
+def _map_totals_run(maps):
+    """{name: {"totals": {layer: totals() or None}, "lines": {layer: html},
+    "drawn_en"/"drawn_es": [[layer, the line drawn]], "markup",
+    "markupNone"}}: map.js in node on each of `maps` ({name: the map's data
+    as a dict}). None without node."""
+    import i18n
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), "node is not on PATH on the nightly"
+        return None
+    js = Path("src/pages/map.js").read_text(encoding="utf-8")
+    # the Spanish a Spanish page carries for map.js's words (i18n.words_js)
+    words = {k: i18n.lookup("es", k, en) for k, en in i18n.tr_calls(js)}
+    root = Path(tempfile.mkdtemp(prefix="gr-maptotals-"))
+    try:
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "map.js").write_text(_with_components(js), encoding="utf-8")
+        (root / "words.json").write_text(json.dumps({k: v for k, v in words.items() if v is not None}),
+                                         encoding="utf-8")
+        for name, data in maps.items():
+            (root / f"{name}.map.json").write_text(json.dumps(data), encoding="utf-8")
+        (root / "go.js").write_text(_MAP_TOTALS_JS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, encoding="utf-8",
+                 timeout=180)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "map.js would not count the chambers in node: " + (r.stderr or r.stdout or "")[-300:])
+        return {k[:-len(".map.json")]: v for k, v in json.loads(r.stdout.rsplit("@@", 1)[1]).items()}
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def _map_totals_text(html):
+    """The line as a reader reads it: no tags, entities read, spaces single."""
+    import html as _h
+    return re.sub(r"\s+", " ", _h.unescape(re.sub(r"<[^>]+>", "", html or ""))).strip()
+
+
+def _seats_held(page):
+    """{"H"/"S": {"seats", "held", "vacant", "parties": {code: n}}}: what the
+    Legislators tab's "Who holds the seats" draws (build_pages.static_bar),
+    read off the English Officials page."""
+    out = {}
+    for name, filled, legend in re.findall(
+            r'<div class="comp"><div class="compline"><b>(House|Senate)</b>'
+            r'<span class="statemeta">([^<]*)</span></div><div class="pbar2">.*?</div>'
+            r'<div class="plegend">(.*?)</div>', page, re.S):
+        m = re.match(r"(\d+) of (\d+) seats filled(?:, (\d+) vacant)?$", filled)
+        assert m, f"the {name}'s line is {filled!r}"
+        got = dict((c, int(n)) for c, n in re.findall(
+            r'<span class="pdot seg-([^"]+)"></span>[^<]*<b>(\d+)</b>', legend))
+        vac = got.pop("V", 0)
+        assert vac == int(m.group(3) or 0), f"the {name}'s vacant seats are said two ways"
+        out[name[0]] = {"seats": int(m.group(2)), "held": int(m.group(1)), "vacant": vac,
+                        "parties": got}
+    return out
+
+
+@check("frontend", "the district map says the chamber shown statewide under its legend -- the "
+                   "State House's and the State Senate's seats by party and the vacant ones, "
+                   "counted from the sitting members it colours the districts by, a floterial's "
+                   "once -- following the layer switch, in English and Spanish, nothing on the "
+                   "Council and US House, and the Legislators tab's \"Who holds the seats\" "
+                   "the same numbers")
+def _map_party_totals():
+    """The owner, 7 November 2026: "IF IT FITS: on the map, a short list of
+    the party totals for the chamber layer shown (Senate or House):
+    Democrats, Republicans, Independents, statewide."
+
+    map.js in node (_map_totals_run) on three maps built here:
+      - from the tracked files (_map_data) with a roster of real seats: in
+        the State House a Republican and a Democrat in Hillsborough 21, an
+        Independent in Strafford 7, two Democrats in the floterial
+        Hillsborough 40 and one in Merrimack 10; in the Senate a Republican
+        in 16 and Democrats in 9 and 21. totals() is the roster counted here
+        by chamber and party, each member once -- the floterial's two not
+        again under the wards below it -- over the seats the district files
+        give, a seat nobody holds vacant;
+      - the same map with every seat filled but one: "1 vacant", and no
+        vacant seats said where there are none;
+      - the fixture's built site/district_map.json, whose numbers must be
+        those its Officials page's Legislators tab draws under "Who holds
+        the seats" (build_pages.static_bar, from home.json's composition).
+    Held of each: the line mounted under the legend is totalsLine(totals())
+    for State House and State Senate, and empty for the Council and the US
+    House, on the way there and back; it reads "Statewide House: 1
+    Republican · 3 Democrats · ..." in the legend's order, each count in its
+    own unbreakable span, and in Spanish the catalog's words with none of
+    the English left; it is written inside the legend's box after the legend,
+    and not at all for a mount that asks for no totals. And map.css draws
+    an empty line not at all and keeps each count whole."""
+    import i18n
+    css = Path("src/pages/map.css").read_text(encoding="utf-8")
+    assert re.search(r"\.gm \.gmtot:empty\{display:none\}", css), \
+        "map.css draws the empty totals line (.gmtot:empty) on the Council and US House"
+    assert re.search(r"\.gm \.gmtot \.gmti\{white-space:nowrap\}", css), \
+        "map.css lets a phone break a count (.gmti) in two"
+
+    def rep(name, county, d, party, chamber="H"):
+        return {"name": name, "chamber": chamber, "county": county, "district": str(d),
+                "party": party, "slug": name.lower().replace(" ", "-"),
+                "display_full": f"Rep. {name} ({party[0]} - x)", "sort": name}
+    roster = [rep("Ann Ray", "Hillsborough", 21, "Republican"),
+              rep("Bo Dee", "Hillsborough", 21, "Democrat"),
+              rep("Cy Indy", "Strafford", 7, "Independent"),
+              rep("Di Flo", "Hillsborough", 40, "Democrat"),
+              rep("Ed Flo", "Hillsborough", 40, "Democrat"),
+              rep("Jo Mer", "Merrimack", 10, "Democrat"),
+              rep("Fay Sen", "Hillsborough", 16, "Republican", chamber="S"),
+              rep("Gus Sen", "Hillsborough", 9, "Democrat", chamber="S"),
+              rep("Hal Sen", "Hillsborough", 21, "Democrat", chamber="S")]
+    data = _map_data(roster)
+    if data is None:
+        return "skip", "the geometry, the district files or the officials file is not here"
+    flo = set(data["layers"]["float"]["f"])
+    assert "HI40" in flo and "HI21" not in flo, "Hillsborough 40 is no longer the floterial here"
+    import build_district_map as BDM
+
+    # The roster counted here, each member once, against the district files' seats.
+    def expect(members, seats_by):
+        held = Counter()
+        for m in members:
+            held[m["code"]] += 1
+        parties = Counter(m["party"][0] for m in members)
+        return {"seats": sum(seats_by.values()), "held": len(members),
+                "vacant": sum(max(0, n - held[c]) for c, n in seats_by.items()),
+                "parties": [[p, parties[p]] for p in "RDI" if parties[p]]}
+    house = [{"code": f"{BDM.CODE[m['county']]}{m['district']}", "party": m["party"]}
+             for m in roster if m["chamber"] == "H"]
+    senate = [{"code": m["district"], "party": m["party"]} for m in roster if m["chamber"] == "S"]
+    want = {"roster": {"base": expect(house, data["seats"]),
+                       "senate": expect(senate, {f: 1 for f in data["layers"]["senate"]["f"]})}}
+    # Every seat filled but one State House seat.
+    full = json.loads(json.dumps(data))
+    full["who"] = {k: v for k, v in full["who"].items() if k.startswith(("exec|", "cong|"))}
+    short = sorted(data["seats"])[0]
+    for code, n in data["seats"].items():
+        lk = "float" if code in flo else "base"
+        full["who"][f"{lk}|{code}"] = [{"n": f"R{code}{i}", "p": "R", "s": ""}
+                                       for i in range(n - (code == short))]
+    for f in data["layers"]["senate"]["f"]:
+        full["who"][f"senate|{f}"] = [{"n": f"D{f}", "p": "D", "s": ""}]
+    want["full"] = {"base": {"seats": sum(data["seats"].values()), "held": sum(data["seats"].values()) - 1,
+                             "vacant": 1, "parties": [["R", sum(data["seats"].values()) - 1]]},
+                    "senate": {"seats": 24, "held": 24, "vacant": 0, "parties": [["D", 24]]}}
+    maps = {"roster": data, "full": full}
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    fix_map, fix_page = site / "district_map.json", site / "officials.html"
+    assert fix_map.is_file() and fix_page.is_file(), \
+        "the fixture's build wrote no district_map.json or officials.html"
+    maps["fixture"] = json.loads(fix_map.read_text(encoding="utf-8"))
+    got = _map_totals_run(maps)
+    if got is None:
+        return "skip", "node is not installed (map.css read: the empty line hidden, counts whole)"
+
+    bad = []
+    for name, by in want.items():
+        for lk, t in by.items():
+            if got[name]["totals"][lk] != t:
+                bad.append(f"{name} {lk}: totals() is {got[name]['totals'][lk]}, not {t}")
+    # The fixture's map against its own Legislators tab.
+    tab = _seats_held(fix_page.read_text(encoding="utf-8"))
+    if set(tab) != {"H", "S"}:
+        bad.append(f"the fixture's Officials page draws \"Who holds the seats\" for {sorted(tab)}")
+    for ch, lk in (("H", "base"), ("S", "senate")):
+        t, s = got["fixture"]["totals"][lk], tab.get(ch)
+        if s and (not t or {**t, "parties": dict(t["parties"])} != s):
+            bad.append(f"fixture {lk}: the map counts {t}, the Legislators tab draws {s}")
+
+    def words(t, lk, lang):
+        """The line totalsLine draws, as text, in `lang`, from the catalog."""
+        say = (lambda k, en, **v: i18n.say("es", k, en, **v)) if lang == "es" else \
+            (lambda k, en, **v: i18n.fill(en, v))
+        noun = {"R": ("map.r_one", "{n} Republican", "map.r_many", "{n} Republicans"),
+                "D": ("map.d_one", "{n} Democrat", "map.d_many", "{n} Democrats"),
+                "I": ("map.i_one", "{n} Independent", "map.i_many", "{n} Independents")}
+        # a letter but R, D and I as map.js's countWords says it: "2 Ls"
+        its = [(say(*noun[p][:2], n=n) if n == 1 else say(*noun[p][2:], n=n)) if p in noun
+               else f"{n} {p}" + ("" if n == 1 else "s") for p, n in t["parties"]]
+        if t["vacant"]:
+            its.append(say("map.n_vacant_one", "{n} vacant", n=1) if t["vacant"] == 1
+                       else say("map.n_vacant", "{n} vacant", n=t["vacant"]))
+        head = say("map.statewide", "Statewide")
+        body = (say("map.tot_senate", "<b>Senate:</b> {list}", list=" · ".join(its)) if lk == "senate"
+                else say("map.tot_base", "<b>House:</b> {list}", list=" · ".join(its)))
+        return _map_totals_text(head + " " + body)
+
+    english = ("Statewide", "House", "Senate", "Republican", "Democrat", "Independent", "vacant")
+    for name, one in got.items():
+        for lk in ("exec", "cong", "county", "towns"):
+            if one["totals"][lk] is not None or one["lines"][lk] != "":
+                bad.append(f"{name}: the {lk} layer has a total {one['totals'][lk]} {one['lines'][lk]!r}")
+        for lk in ("base", "senate"):
+            t, line = one["totals"][lk], one["lines"][lk]
+            if not t:
+                bad.append(f"{name}: no totals for {lk}")
+                continue
+            n = len(t["parties"]) + (1 if t["vacant"] else 0)
+            if len(re.findall(r'<span class="gmti">', line)) != n:
+                bad.append(f"{name} {lk}: the {n} counts are not each a whole span: {line[:160]!r}")
+            if _map_totals_text(line) != words(t, lk, "en"):
+                bad.append(f"{name} {lk}: the line reads {_map_totals_text(line)!r}, "
+                           f"not {words(t, lk, 'en')!r}")
+        for lang in ("en", "es"):
+            seq = one["drawn_" + lang]
+            for lk, html_ in seq:
+                t = one["totals"][lk]
+                said = _map_totals_text(html_)
+                if lk in ("exec", "cong"):
+                    if html_:
+                        bad.append(f"{name} {lang}: on {lk} the map says {said!r}")
+                    continue
+                if said != words(t, lk, lang):
+                    bad.append(f"{name} {lang}: on {lk} after {[x for x, _ in seq]} the map says "
+                               f"{said!r}, not {words(t, lk, lang)!r}")
+                if lang == "es" and any(re.search(r"\b" + w + r"\b", said) for w in english):
+                    bad.append(f"{name}: the Spanish line says English: {said!r}")
+        if not re.search(r'<div class="gmkey"><div class="gmleg"[^>]*></div><p class="gmtot"></p>',
+                         one["markup"]):
+            bad.append(f"{name}: mount() writes no totals line straight after the legend")
+        if "gmtot" in one["markupNone"]:
+            bad.append(f"{name}: a mount asking for no totals still writes their line")
+    assert not bad, "; ".join(bad[:6])
+    f = got["fixture"]["totals"]
+    return "ok", (f"\"{_map_totals_text(got['roster']['lines']['base'])}\" and "
+                  f"\"{_map_totals_text(got['roster']['lines']['senate'])}\" for the roster, a "
+                  f"floterial's two once; \"1 vacant\" and none said; Spanish whole; nothing on "
+                  f"the Council and US House; the fixture's {f['base']['held']} of "
+                  f"{f['base']['seats']} and {f['senate']['held']} of {f['senate']['seats']} the "
+                  "Legislators tab's own")
+
+
+def _map_totals_against(site):
+    """("ok"|"skip", what was found) for `site`, a built site's folder: the
+    totals map.js draws under the map's legend from its district_map.json,
+    against home.json's composition, which the Legislators tab draws as "Who
+    holds the seats" (build_pages.static_bar). Raises where they differ."""
+    dm, home = site / "district_map.json", site / "home.json"
+    if not (dm.is_file() and home.is_file()):
+        return "skip", f"{dm.as_posix()} and {home.as_posix()} are not both here"
+    comp = json.loads(home.read_text(encoding="utf-8")).get("composition") or {}
+    assert comp.get("H") and comp.get("S"), "home.json carries no composition for the two chambers"
+    got = _map_totals_run({"night": json.loads(dm.read_text(encoding="utf-8"))})
+    if got is None:
+        return "skip", "node is not installed"
+    bad, said = [], []
+    for ch, lk in (("H", "base"), ("S", "senate")):
+        t, c = got["night"]["totals"][lk], comp[ch]
+        tab = {"seats": c["seats"], "held": c["sitting"], "vacant": c["vacant"],
+               "parties": {p["code"]: p["n"] for p in c["parties"]}}
+        if not t or {**t, "parties": dict(t["parties"])} != tab:
+            bad.append(f"{c['chamber']}: the map counts {t}, the Legislators tab draws {tab}")
+        said.append(_map_totals_text(got["night"]["lines"][lk]))
+    assert not bad, ("the map's statewide line and \"Who holds the seats\" disagree: "
+                     + "; ".join(bad))
+    return "ok", "; ".join(said)
+
+
+@check("data", "the district map's statewide line for the State House and the State Senate is "
+               "the night's \"Who holds the seats\", seat for seat and party for party")
+def _map_totals_published():
+    """The owner's ask of 7 November 2026, held on the night's own files: the
+    map counts each chamber from site/district_map.json's sitting members
+    (map.js, totals), the Legislators tab from site/legislators.json through
+    home.json's composition (build_site_v2.build_composition), two roads
+    from one roster. They must say the same seats, the same members by party
+    and the same vacant seats; a member the map places in no district of its
+    own -- a county it has no code for -- shows here as a difference."""
+    return _map_totals_against(Path("site"))
 
 
 @check("frontend", "the district map's labels never overlap, in any of its three modes (the "

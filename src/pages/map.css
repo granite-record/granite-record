@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-10-09.5 */
+/* GRANITE_VERSION: 2026-10-09.6 */
 /* THE DISTRICT MAP (map v1): the stylesheet map.js draws against. A page that
    mounts the map links /map.css and /map.js and nothing else; every rule here
    is under .gm, the class mount() gives its element, so nothing here reaches
@@ -77,6 +77,18 @@
 .gm .sw.vac{background:repeating-linear-gradient(-45deg,var(--surface) 0 4px,var(--edge) 4px 5px)}
 .gm .sw.frame{background:var(--surface);border:3px dashed var(--rep);box-shadow:inset 0 0 0 2px var(--surface)}
 .gm .sw.frame.p-D{border-color:var(--dem)}
+/* THE CHAMBER STATEWIDE, under the legend (the owner, 7 November 2026):
+   who holds the State House's or the State Senate's seats, by party, with
+   the vacant seats apart (map.js, totals). One line where it fits, its head
+   in the controls' small capitals; each count kept whole, so a phone breaks
+   the line between counts and never inside one. Empty on the other layers,
+   and then not drawn. */
+.gm .gmtot{font-size:var(--gm-sm);line-height:1.5;color:var(--ink);margin:-.125rem 0 .625rem}
+.gm .gmtot:empty{display:none}
+.gm .gmtot .gmtoth{font-size:var(--gm-label);font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-2);margin-right:.25rem}
+.gm .gmtot b{font-weight:600}
+.gm .gmtot .gmti{white-space:nowrap}
 .gm .gmnote{font-size:var(--gm-sm);color:var(--ink-2);line-height:1.5;margin:0;max-width:52rem}
 .gm .gmnote b{color:var(--ink);font-weight:600}
 
