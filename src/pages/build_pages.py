@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.263
+# GRANITE_VERSION: 2026-09-04.266
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2460,12 +2460,17 @@ SEATING_JS = """
    so a reader with no JavaScript gets the whole roster rather than one pane
    and two empty boxes. The first thing this does is hide two of them -- and
    that is also why losing this block is quiet: every pane simply stays open,
-   the tabs still look like tabs, and clicking one changes nothing. */
-(function(){
-  var bar=document.querySelector(".rtabs");
-  if(!bar)return;
+   the tabs still look like tabs, and clicking one changes nothing.
+
+   EVERY STRIP OF THEM (the owner's walk of 7 November 2026): the
+   Members-Elect tab lists its people the same three ways, under a strip of
+   its own, and each strip shows and hides its own panes. */
+[].forEach.call(document.querySelectorAll(".rtabs"),function(bar){
   var tabs=[].slice.call(bar.querySelectorAll("[role=tab]"));
   if(!tabs.length)return;
+  // Written hidden: shown here, so a page without this script has no strip
+  // of buttons that do nothing over its views.
+  bar.hidden=false;
   function show(id){
     tabs.forEach(function(t){
       var on=t.dataset.pane===id;
@@ -2491,7 +2496,7 @@ SEATING_JS = """
     tabs[j].focus(); show(tabs[j].dataset.pane);
   });
   show(tabs[0].dataset.pane);
-})();
+});
 </script>
 """
 
@@ -2634,16 +2639,17 @@ if(!box||!out)return;
 // which is where the chamber is; a row that says neither falls to the last
 // bucket rather than being dropped.
 const GROUPS=[
-  // THE GUIDES FIRST, AND LEARN WITH THIS SITE'S PAGES (17 October 2026: "the
-  // how to guides should be incorporated into the search in some fashion").
-  // A guide is found by its task and its plain words (find.js, _fnamed), so
-  // when it is found it is what the reader came to do; the Learn pages, which
-  // this page listed nowhere before, go with the site's other pages, after
-  // the bills.
+  // THE GUIDES STRAIGHT AFTER THE BILLS, AND LEARN WITH THIS SITE'S PAGES
+  // (17 October 2026: "the how to guides should be incorporated into the
+  // search in some fashion"). A guide is found by its task and its plain
+  // words (find.js, _fnamed). It led the page until 8 November 2026, when
+  // Alice put it after the bills, as the header's panel puts it: "minimum
+  // wage" opened on the guide to your rights at work above the seven bills
+  // on it. The Learn pages, which this page listed nowhere before, go with
+  // the site's other pages, after the bills.
   // A STATUTE ASKED FOR BY ITS NUMBER, FIRST (the audit of 25 October 2026,
   // M3): find.js's one Law row, "RSA 91-A" (findLawRow).
   {t:"Laws",                w:["law","laws"],k:r=>r[0]==="law"},
-  {t:"How-To Guides",       w:["how-to guide","how-to guides"],k:r=>r[0]==="guide"},
   {t:"Senators",            w:["senator","senators"],k:r=>r[0]==="legislator"&&/^Senate/.test(r[2])},
   {t:"Representatives",     w:["representative","representatives"],k:r=>r[0]==="legislator"},
   // A committee that no longer sits goes with the people who have left, below
@@ -2656,6 +2662,8 @@ const GROUPS=[
   // was typed (the audit of 25 October 2026, M3): "my senator" is the page,
   // "ayotte" its Executive Branch, "shaheen" its Federal Delegation.
   {t:"Officials",           w:["officials page","officials pages"],k:r=>r[0]==="page"&&/^[/]?officials([#?]|$)/.test(r[3])},
+  // Drawn with the bills, straight after them, wherever they go (draw).
+  {t:"How-To Guides",       w:["how-to guide","how-to guides"],k:r=>r[0]==="guide"},
   // Their own group, after the bills (AFTER): find.js, _fstudy (18 October 2026).
   {t:"Statutory and Study Committees",w:["statutory or study committee","statutory and study committees"],k:r=>r[0]==="statutory"||r[0]==="study"},
   {t:"Former Senators",     w:["former senator","former senators"],k:r=>r[0]==="former"&&/^Senate/.test(r[2])},
@@ -2842,8 +2850,12 @@ function draw(q){
   // have left. "bail" leads with the bail bills; "bailey" with Rep. Bailey.
   // A BILL NUMBER LEADS WITH THE BILLS, whatever else has its words (17
   // October 2026): a guide found by its own words is never put above a bill
-  // whose number was typed.
-  const named=!findBill(s)&&rows.some(r=>r[0]==="law"||(r[0]!=="former"&&_fwhole(r,s)));
+  // whose number was typed. A GUIDE OR A LEARN PAGE PUTS NOTHING ABOVE THE
+  // BILLS (8 November 2026): their place is beside the bills (withBills,
+  // below), so their words are no reason for the members and towns that
+  // only begin with the words typed to go first.
+  const named=!findBill(s)&&rows.some(r=>r[0]==="law"
+    ||(r[0]!=="former"&&r[0]!=="guide"&&r[0]!=="learn"&&_fwhole(r,s)));
   const left=rows.slice(),counts=[];
   // The bills' part of the line a screen reader hears, where the page puts
   // their group.
@@ -2851,20 +2863,44 @@ function draw(q){
     if(nB)counts.push(nB===1?"1 bill":`${nB.toLocaleString()} bills`);
     if(nR)counts.push(nR===1?"1 bill request":`${nR.toLocaleString()} bill requests`);
   };
-  let html=named?"":bills(s,B,C,counting,R,mem),placed=!named;
-  if(placed)billsSaid();
+  const section=(g,mine)=>{
+    counts.push(`${mine.length} ${g.w[mine.length===1?0:1]}`);
+    return `<section class="resgrp"><h2>${esc(g.t)}
+      <span class="resn">${mine.length}</span></h2>
+      <div class="findout resout">${mine.map(r=>row(r,s)).join("")}</div></section>`;
+  };
+  // THE GUIDES STRAIGHT AFTER THE BILLS, wherever the bills go (Alice, 8
+  // November 2026, as the header's panel has them): taken out of the
+  // groups' turn and drawn with the bills, so a member found only by the
+  // start of a word, who follows the bills, does not come between.
+  // WHERE NO BILL MATCHES, THE GUIDES TAKE THE BILLS' PLACE, as the panel
+  // draws them with its count at none, and the box saying there is none
+  // waits its turn after what does match, as it did before (the review of 8
+  // November 2026): "renew my license" put its guide under that box, and
+  // "register my car" the box above the County Officials page. Known once
+  // the bills are counted at none -- this term's, which come first, while
+  // the rest are counted -- so the guide does not stand under the box for
+  // the seconds every term takes and then jump above it; a bill an earlier
+  // term turns up takes its place above the guide.
+  const GUIDES=GROUPS.find(g=>g.t==="How-To Guides");
+  const guides=left.filter(GUIDES.k);
+  for(const r of guides)left.splice(left.indexOf(r),1);
+  const none=nB===0&&!nR&&guides.length>0;
+  const theGuides=()=>guides.length?section(GUIDES,guides):"";
+  let html="",placed=false,boxed=false;
+  const billsBox=()=>{boxed=true;const h=bills(s,B,C,counting,R,mem);billsSaid();return h;};
+  const atBills=()=>{placed=true;return none?theGuides():billsBox()+theGuides();};
+  if(!named)html+=atBills();
   for(const g of GROUPS){
     const mine=[];
     for(let i=left.length-1;i>=0;i--)
       if(g.k(left[i]))mine.unshift(left.splice(i,1)[0]);
     if(!mine.length)continue;
-    if(!placed&&AFTER.has(g.t)){html+=bills(s,B,C,counting,R,mem);placed=true;billsSaid();}
-    counts.push(`${mine.length} ${g.w[mine.length===1?0:1]}`);
-    html+=`<section class="resgrp"><h2>${esc(g.t)}
-      <span class="resn">${mine.length}</span></h2>
-      <div class="findout resout">${mine.map(r=>row(r,s)).join("")}</div></section>`;
+    if(AFTER.has(g.t)){if(!placed)html+=atBills();if(!boxed)html+=billsBox();}
+    html+=section(g,mine);
   }
-  if(!placed){html+=bills(s,B,C,counting,R,mem);billsSaid();}
+  if(!placed)html+=atBills();
+  if(!boxed)html+=billsBox();
   let offered=[],offering=false;
   // Only when something close exists, and only when no bill matched either
   // ("voting" was offered "zoning" over 141 bills). find.js's findOffers
@@ -2950,8 +2986,17 @@ window.addEventListener("popstate",()=>{
 OFFICIALS_HASH_JS = """<script>
 (function(){
   var OLD={"#towns":"#my-town","#statewide":"#executive"};
+  // THE MEMBERS-ELECT, ONCE THEY ARE GONE (the owner, 7 November 2026): from
+  // the build of 2 December the tab and its panel are not drawn at all, and
+  // /officials#members-elect -- or a heading inside it -- named nothing and
+  // opened My Town with the dead address. While nothing on the page has that
+  // id, it is Legislators, which the tab said "lists who holds each seat".
+  // Between the reader's midnight and that build, the tab is still drawn,
+  // retired, and TABS_JS opens Legislators for it.
+  var GONE={"#members-elect":1,"#of-elect-senate":1,"#of-elect-house":1};
   function alias(){
     var to=OLD[location.hash];
+    if(!to&&GONE[location.hash]&&!document.getElementById(location.hash.slice(1)))to="#legislators";
     if(to&&history.replaceState)
       history.replaceState(null,"",location.pathname+location.search+to);
   }
@@ -4081,12 +4126,14 @@ document.addEventListener("click",e=>{
 // find.js is deferred, so it is asked for when a reader types, not now.
 // GO IS SEARCH HERE (the webinar's phone check, 16 October 2026; the person
 // approved it). This box has a Search button, and Return or a phone's Go key
-// took the first row instead, as the header's finder does: "housing" opened
-// the House Housing committee where the reader wanted the housing bills. So
-// Return does what the button does -- every result (/search), and with
-// nothing typed the bill search, as it always did -- except for a bill
-// number, which opens the bill as in the header (find.js's findBill: the
-// person's rule of 12 October). A row is still one tap away.
+// took the first row instead, as the header's finder then did: "housing"
+// opened the House Housing committee where the reader wanted the housing
+// bills. So Return does what the button does -- every result (/search), and
+// with nothing typed the bill search, as it always did -- except for a bill
+// number, which opens the bill (find.js's findBill: the person's rule of 12
+// October). A row is still one tap away. The header's box opens /search
+// for a bill number too since 8 November 2026 (Alice's word was for the
+// header's box; this one is left as it was until she says).
 const HQ={out:"hqout",box:"hq",clear:"",say:"hqsay"};
 const hq=document.getElementById("hq"),hqout=document.getElementById("hqout");
 // ABOVE THE KEYBOARD. On a phone this box stands most of the way down the
@@ -4602,6 +4649,28 @@ def main():
                 f'</div><div class="pbar2">{segs}</div>'
                 f'<div class="plegend">{legend}</div>{note}</div>')
 
+    def short_bar(ch, lang="en"):
+        """One chamber's seats in one short line, which is all a phone shows
+        of them (the owner's walk of 7 November 2026, C): "Senate 16 R
+        &middot; 8 D", "House 212 R &middot; 169 D &middot; 1 I &middot; 18
+        vacant" -- a party's letter for the eye and its name for a screen
+        reader, from the same counts as static_bar's."""
+        x = C.get(ch)
+        if not x:
+            return ""
+        bits = [f'{pp["n"]} <span aria-hidden="true">{esc(pp["code"])}</span>'
+                f'<span class="sr">{esc(party_word(pp["name"], lang, plural=pp["n"] != 1))}</span>'
+                for pp in x.get("parties", [])]
+        if x.get("vacant"):
+            bits.append(say(lang, "comp.n_vacant_one", "{n} vacant", n=x["vacant"])
+                        if x["vacant"] == 1 else say(lang, "comp.n_vacant", "{n} vacant", n=x["vacant"]))
+        chamber = {"House": say(lang, "comp.house", "House"),
+                   "Senate": say(lang, "comp.senate", "Senate")}.get(x["chamber"], x["chamber"])
+        # Each count whole on its line (.csb): a line too long for the phone
+        # breaks between two of them, never inside one.
+        return (f'<p class="compshort"><b>{esc(chamber)}</b> '
+                + " &middot; ".join(f'<span class="csb">{b}</span>' for b in bits) + "</p>")
+
     def vacancies_box(lang="en"):
         if not C.get("vacancies"):
             return ""
@@ -4776,7 +4845,7 @@ def main():
                       say(lang, "roster.filled", "{seated} of the 400 seats are filled.",
                           seated=seated))
         return f"""<section class="roster" id="roster">
-<div class="rtabs" role="tablist" aria-label="{say(lang, "roster.arrange", "How to arrange the roster")}">
+<div class="rtabs" role="tablist" aria-label="{say(lang, "roster.arrange", "How to arrange the roster")}" hidden>
   <button type="button" role="tab" id="tab-last" data-pane="pane-last"
     aria-controls="pane-last" aria-selected="true">{say(lang, "roster.by_last", "By last name")}</button>
   <button type="button" role="tab" id="tab-county" data-pane="pane-county"
@@ -4943,11 +5012,18 @@ def main():
 <div class="ofmapbox" id="ofmap"></div>
 <noscript><p class="note">{say(lang, "of.map_noscript", "The map needs JavaScript. Every town&rsquo;s districts\nare on its own page, listed in <a href=\"/directory/towns.html\">every town and\nward</a>.")}</p></noscript>
 </section>"""),
+            # WHO HOLDS THE SEATS AT THE TOP (the owner's walk of 7 November
+            # 2026, C): under the presiding officers and over the roster, as
+            # the Members-Elect tab's totals are over its lists; on a phone,
+            # one short line a chamber (short_bar) in place of the bars, the
+            # thresholds under them and their legends.
             ("legislators", say(lang, "of.tab.legislators", "Legislators"), len(legs),
-             OT.presiding(officers, legs, today, lang) + roster_section(legs, lang)
-             + (('<div class="comp-wrap"><h2>' + say(lang, "of.who_holds", "Who holds the seats")
-                 + "</h2>" + static_bar("S", lang) + static_bar("H", lang) + vacancies_box(lang)
-                 + "</div>") if C else "")),
+             OT.presiding(officers, legs, today, lang)
+             + (('<div class="comp-wrap comp-top"><h2>' + say(lang, "of.who_holds", "Who holds the seats")
+                 + "</h2>" + short_bar("S", lang) + short_bar("H", lang)
+                 + static_bar("S", lang) + static_bar("H", lang) + vacancies_box(lang)
+                 + "</div>") if C else "")
+             + roster_section(legs, lang)),
             ("federal", say(lang, "of.tab.federal", "Federal Delegation"),
              OT.count(off, "federal"), OT.federal(off, lang)),
             ("executive", say(lang, "of.tab.executive", "Executive Branch"),
@@ -4960,13 +5036,26 @@ def main():
             # "Members-Elect (N)", N the winners the file names: a race not
             # final counts none, and a tab of none says no number, as any tab.
             ("members-elect", say(lang, "of.tab.elect", "Members-Elect"), OT.elect_count(elect),
-             OT.members_elect(elect, today, lang)),
+             OT.members_elect(elect, today, lang, [*legs, *gone])),
         ]
         of_panes = [p for p in of_panes if p[3]]
+        # SEVEN TABS ON ONE LINE (the owner, 7 November 2026): with
+        # Members-Elect the strip needed 1,282px of its 1,132 at 1280 and at
+        # 1440, and the new tab showed only its "M" behind the edge, in both
+        # languages. The tab says the short name -- "Federal (4)", "County
+        # (80)" -- and its panel's heading the whole one, which a screen
+        # reader walking the headings and a page read without the script
+        # still get. Measured on dry run 6 with the web fonts: 1,016px in
+        # English and 971 in Spanish, of 1,132.
+        short = {"federal": say(lang, "of.tab_short.federal", "Federal"),
+                 "executive": say(lang, "of.tab_short.executive", "Executive"),
+                 "judicial": say(lang, "of.tab_short.judicial", "Judicial"),
+                 "counties": say(lang, "of.tab_short.counties", "County")}
         of_tabs = "".join(
             f'<button type="button" role="tab" id="tab-{pid}" data-pane="{pid}" '
             f'aria-controls="{pid}" aria-selected="{"true" if i == 0 else "false"}" '
-            f'tabindex="{0 if i == 0 else -1}"{elect_attrs if pid == "members-elect" else ""}>{name}'
+            f'tabindex="{0 if i == 0 else -1}"{elect_attrs if pid == "members-elect" else ""}>'
+            f'{short.get(pid, name)}'
             + (f' <span class="ofn">({n:,})</span>' if n else "") + "</button>"
             for i, (pid, name, n, _h) in enumerate(of_panes))
         of_body = "".join(
@@ -4976,7 +5065,7 @@ def main():
             for pid, name, _n, inner in of_panes)
         leg_body = f"""<h1>{say(lang, "of.title", "Officials")}</h1>
 <p class="lead">{say(lang, "of.lead", "Everyone who represents your town, from your select board to\nCongress; the {n} sitting members of the New Hampshire House and\nSenate; and the state&rsquo;s other officials.", n=len(legs))}</p>
-{chrome.lang_note(lang)}<div class="twntabs oftabs" role="tablist" aria-label="{say(lang, "of.title", "Officials")}" hidden>{of_tabs}</div>
+{chrome.lang_note(lang)}<div class="twntabs oftabs" role="tablist" aria-label="{say(lang, "of.title", "Officials")}" data-retired="legislators" hidden>{of_tabs}</div>
 {of_body}
 {OFFICIALS_HASH_JS}{TOWN_TABS_JS}{OFFICIALS_MAP_JS}"""
         return shell(say(lang, "of.page_title", "Officials | Granite Record"), "officials.html",

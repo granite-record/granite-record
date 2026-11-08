@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.22
+# GRANITE_VERSION: 2026-10-09.23
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -835,14 +835,21 @@ def elect_race(race, lang="en"):
     "Result not final" where seats are, which is every race until the
     recount deadline has passed and so the normal state of the first days;
     then the seats with nobody on file, held ones among them. A race with
-    no seats to speak of draws nothing."""
+    no seats to speak of draws nothing.
+
+    A member re-elected to the seat they hold is the item "elown" (the
+    file's `own`): the one chip in a block a saved town's "Your rep" or
+    "Your senator" may mark (find.js, ytMark; the owner, 7 November 2026).
+    Anyone else's link in a block -- a sitting member elected to another
+    seat, a former member returning -- is left unmarked."""
     import i18n
     r = race or {}
     won = r.get("elected") or []
     chips = []
     for e in won:
         p = str(e.get("p") or "")
-        chips.append("<li>" + pchip({
+        own = bool(e.get("own") and e.get("id") and e.get("s"))
+        chips.append(('<li class="elown">' if own else "<li>") + pchip({
             "party_code": p if len(p) == 1 else "X",
             "display_full": f'{e.get("n") or ""} ({p})' if p else (e.get("n") or ""),
             # A new person's provisional page ("e", build_elect_pages.py)
