@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.74
+# GRANITE_VERSION: 2026-09-08.75
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -2112,7 +2112,11 @@ them assume you already know all of this."""
 # register of probate is "still elected", the five officers sentence stands,
 # and the paragraph's last sentence is probate_vote's "did not reach the two
 # thirds it needed". Nothing in the words changes.
-REGISTER_OF_PROBATE_REVIEWED = "2026-11-05"
+#
+# Read again 7 November 2026, the day the count went into
+# corrections/ballot_results.json at the owner's word: the same figures, from
+# the same spreadsheet; still nothing in the words changes.
+REGISTER_OF_PROBATE_REVIEWED = "2026-11-07"
 
 BODY_COUNTY = """
 <h2>Ten Counties</h2>
