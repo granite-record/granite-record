@@ -938,15 +938,16 @@
           }
         },
         "sheriff": {
-          "name": "Christopher Connelly",
+          "name": "Brian J. Newcomb",
           "office": "Sheriff",
-          "domicile": "Mont Vernon",
+          "domicile": "",
           "phone": "",
           "email": "",
-          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 4 (the Secretary of State's COUNTY ROSTER 2025-2026)",
-          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
-          "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "source": "the owner, 7 November 2026; and Hillsborough County's Sheriff's Office page, read in a browser on 7 November 2026, which names him High Sheriff and \"the 30th Sheriff of Hillsborough County\"",
+          "source_url": "https://hcnh.org/Departments/Sheriffs-Office-Main",
+          "as_of": "2026-11-07",
+          "read": "2026-11-07",
+          "note": "Selected by the Hillsborough County delegation to fill the vacancy left by the resignation of Sheriff Christopher Connelly (Mont Vernon; the Secretary of State's COUNTY ROSTER 2025-2026, page 4), and took office on March 5, 2025 (the owner). His town is not given, so it is left empty. Entered at the owner's word, 7 November 2026."
         },
         "county_attorney": {
           "name": "John J. Coughlin",
@@ -1204,18 +1205,19 @@
         "official_url": "",
         "commissioners": {
           "1": {
-            "name": "Joe Pitre",
+            "name": "Leslie Feliciano",
             "office": "County Commissioner, District 1",
             "district": "1",
             "party": "R",
             "party_as_printed": "REP",
-            "domicile": "Farmington",
+            "domicile": "Rochester",
             "phone": "",
             "email": "",
-            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 7 (the Secretary of State's COUNTY ROSTER 2025-2026)",
-            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
-            "as_of": "2024-12-05",
-            "read": "2026-10-09"
+            "source": "sources/county-strafford-officials/2026-11-06.pdf (Strafford County's 2025-2026 list of its elected officials, registry row county-strafford-officials; sha256 9621053c46656b9afd12973e265c89f74a3ba014407cb6192c94bab70103f5d9), and the commissioners' office page read the same day (sources/county-strafford/2026-11-06.txt): each names her Vice Chair, with George Maglaras and Sean Leavitt",
+            "source_url": "https://straffordcounty.gov/images/UploadedFiles/Commisioners/Delegation_Documents/2025-2026%20Strafford%20County%20Officials.pdf",
+            "as_of": "2026-11-06",
+            "read": "2026-11-06",
+            "note": "In Joe Pitre's place (R, Farmington; the Secretary of State's COUNTY ROSTER 2025-2026, page 7), after a resignation between elections. Neither county source gives her district or the day she took the seat: District 1 is the seat Pitre held, the holders of Districts 2 and 3 being unchanged. Added at the owner's word, 7 November 2026."
           },
           "2": {
             "name": "George Maglaras",

@@ -184,12 +184,11 @@
                      "source": "https://ballotpedia.org/List_of_New_Hampshire_ballot_measures", "read": "2026-10-05"},
      "match": "The results page names it CACR 6. Title: 'relating to the retirement age for judges. Providing that the mandatory judicial retirement age shall be increased from 70 to 75.' Its text: 'general election to be held in November, 2024'. Docket_2023-2024.txt line 156: 'Ought to Pass, RC 22Y-1N, MA, by Necessary 3/5; OT3rdg; 03/30/2023 SJ 12', the second chamber's passage."},
     {"term": "2025-2026", "bill": "CACR13", "election": "2026-11-03",
-     "label": "Eliminate Office of Register of Probate Amendment",
-     "described": "Eliminate the office of the register of probate",
-     "yes": null, "no": null,
-     "source": "https://ballotpedia.org/List_of_New_Hampshire_ballot_measures",
-     "cite": "List of New Hampshire ballot measures", "read": "2026-10-05",
-     "note": "Still to come, and so still Ballotpedia's: the Secretary of State lists the 2026 questions in a PDF linked from sos.nh.gov/2026-election-details that has not been read for this file. Once the count is in, this row takes the Secretary of State's figures, source and listing like the others.",
+     "label": "Question No. 1",
+     "yes": 365359, "no": 198791,
+     "source": "https://www.sos.nh.gov/2026-general-election-results",
+     "cite": "2026 general election results, sos.nh.gov", "read": "2026-11-07",
+     "note": "The Secretary of State's summary spreadsheet (records/sources/2026-ge-constitutional-question-summary.xlsx) gives the yes and no counts by county and in total; it prints no count of blank or overvoted ballots.",
      "match": "Title: 'relating to registers of probate. Providing that the office of register of probate and all references to such office be eliminated.' Its text: 'general election to be held in November, 2026'. Docket.txt: 'Ought to Pass, RC 23Y-1N, MA, by Necessary 3/5; OT3rdg; 03/26/2026  SJ 7', the second chamber's passage. The vote is to come."}
   ]
 }

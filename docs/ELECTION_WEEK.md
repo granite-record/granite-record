@@ -122,17 +122,22 @@ saved the files from (the Officials tab cites it).
 
 ## When the Secretary of State has posted every results file
 
-Wait for all eleven: the ten county House spreadsheets and the Senate one. The
-reader refuses a partial set ("no 2026 House results saved ... for ..."), and
-nothing shows until it reads them all. If they come late, the site says
-nothing about members-elect until then, which is true.
+Wait for all eleven: the ten county House spreadsheets and the Senate, which
+counts as one whether it comes whole or in parts. The reader refuses a partial
+set ("no 2026 House results saved ... for ...", "no saved 2026 State Senate
+file holds district(s) ..."), and nothing shows until it reads them all. If
+they come late, the site says nothing about members-elect until then, which
+is true.
 
 1. **Save each in a browser**, byte for byte, under the Secretary of State's
    own name, into `records/sources/`. The reader knows
-   `2026-ge-house-<county>[_N].xls` or `.xlsx` and
-   `2026-ge-state-senate-district-1-24[_N].xls` or `.xlsx`, as in 2024. If
-   the 2026 names differ, stop: the pattern is code (`HOUSE_FILE`,
-   `SENATE_FILE` in `src/parse/parse_sos_results.py`).
+   `2026-ge-house-<county>[_N].xls` or `.xlsx`, and the Senate whole, as in
+   2024 (`2026-ge-state-senate-district-1-24[_N].xls` or `.xlsx`), or in
+   parts named for their districts, as the Secretary of State published 2026's
+   (`2026-ge-state-senate-1.xlsx` to `-9`, then `-10-11`, `-12-13`, `-14-16`,
+   `-17-18`, `-19-21` and `-22-24`, each with its own `_N`). The parts must
+   hold every district once. If the names differ again, stop: the pattern is
+   code (`HOUSE_FILE`, `SENATE_FILE` in `src/parse/parse_sos_results.py`).
 2. **Read them**, on a laptop with a built `site/` (for `site/districts.json`):
 
    ```
