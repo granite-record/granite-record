@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.281
+// GRANITE_VERSION: 2026-09-07.282
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -80,7 +80,10 @@ const CHIPCLASS=WORDBOOK.chips.chip;
 const CHIPORDER=Object.keys(CHIPCLASS);
 // A request's row has no chip, and its status is its word.
 const chipOf=b=>(b&&(b.chip||b.status))||"";
-const chipCls=b=>CHIPCLASS[chipOf(b)]||KIND[b.kind]||"";
+// A status its kind would colour wrongly (chips.json's by_status): a CACR
+// the voters did not ratify is "adopted" by kind and drawn as Died.
+const BY_STATUS=WORDBOOK.chips.by_status||{};
+const chipCls=b=>CHIPCLASS[chipOf(b)]||BY_STATUS[(b&&b.status)||""]||KIND[b.kind]||"";
 // The six first, in their order, then the rest as words.
 const chipCmp=(a,b)=>{const x=CHIPORDER.indexOf(a),y=CHIPORDER.indexOf(b);
   return (x<0?CHIPORDER.length:x)-(y<0?CHIPORDER.length:y)

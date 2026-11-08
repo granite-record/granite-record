@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.252
+# GRANITE_VERSION: 2026-09-05.253
 """
 Generate the faceted site from real General Court data.
 
@@ -8910,11 +8910,7 @@ def bill_index_row(bid, b, year, term, cmte, cmtes, disp, prime,
         # Whether the General Court filed it there or this site did.
         # The facet mixes the two and a reader is entitled to know which.
         "topic_by": b.get("subject_source", ""),
-        # NOT RATIFIED IS DRAWN AS DONE (the owner's walk of dry run 9, 8
-        # November 2026): the chip's colour comes from "kind", and "adopted"
-        # left CACR 13's "not ratified by the voters" green. Only the kind the
-        # pages colour by; the passage and the chip's word keep disp.kind.
-        "kind": "done" if disp.status == NOT_RATIFIED else disp.kind, "status": disp.status,
+        "kind": disp.kind, "status": disp.status,
         # The word the card and the Status filter show (chip_word). The
         # status beside it keeps how the bill ended.
         "chip": chip_word(disp.kind, disp.status, live),
