@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-10-09.3 */
+/* GRANITE_VERSION: 2026-10-09.4 */
 /* A BILL'S PRINT SHEET (print.js), loaded the first time the sheet opens.
 
    ON A SCREEN the sheet covers the page: the sheet as it prints on the left,
@@ -45,7 +45,7 @@ font:400 var(--t-ui)/1.4 var(--sans);color:var(--ink);cursor:pointer}
 .ps-opt input{accent-color:var(--pine);width:1.125rem;height:1.125rem;margin:var(--sp-1) 0 0;flex:0 0 auto}
 .ps-optsub{padding-left:var(--sp-9)}
 .ps-hint{display:block;font-size:var(--t-sm);color:var(--ink-2);margin-top:var(--sp-1)}
-.ps-opt.is-off,.ps-textfs.is-off .ps-opt{color:var(--ink-2);cursor:default}
+.ps-opt.is-off,.ps-textfs.is-off .ps-vers .ps-opt{color:var(--ink-2);cursor:default}
 .ps-btns{display:flex;flex-wrap:wrap;gap:var(--sp-4);margin-top:var(--sp-7)}
 /* The site's quiet button, as Cite this page and Follow are drawn: a word in
    a thin outline, the accent on hover (the person, 10 October 2026). */
@@ -57,7 +57,6 @@ border:1px solid var(--rule-2);cursor:pointer}
 .ps-btn:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
 .ps-live{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:var(--sp-4) 0 0}
 .ps-live:empty{display:none}
-.ps-keep{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:var(--sp-5) 0 0}
 /* how many pages the sheet prints, with the settings as they stand (print.js countPages) */
 .ps-count{font:600 var(--t-ui)/1.4 var(--sans);color:var(--ink);margin:var(--sp-6) 0 0;
 padding-top:var(--sp-4);border-top:1px solid var(--rule)}
@@ -229,6 +228,13 @@ padding:var(--sp-2) 0;border-bottom:1px solid var(--sheet-rule);font:600 var(--t
    in alike, since a break rule acts only where there are pages or columns. */
 .ps-table tr,.ps-how tr,.ps-facts tr,.ps-amds li,.ps-docs li,.ps-qr,.ps-legend{break-inside:avoid}
 .ps-mast{break-after:avoid}
+/* The bill's text starts a page of its own, and each further text another
+   (the owner's walk of dry run 8, 8 November 2026). */
+.ps-sec[data-sec="text"]{break-before:page}
+.ps-ver + .ps-ver{break-before:page}
+.ps-ver:first-child .ps-h4{margin-top:0}
+/* A party's line in the Votes table: one to a line, both chambers. */
+.ps-party{padding-left:var(--sp-4)}
 /* A table's head goes with its first row: paper carried HB 1449's Votes,
    head and all, to the next page, where a column left the head behind. */
 .ps-table thead{break-after:avoid}
@@ -239,6 +245,8 @@ padding:var(--sp-2) 0;border-bottom:1px solid var(--sheet-rule);font:600 var(--t
 .ps-measurer{position:absolute;left:-300vw;top:0;border:0;visibility:hidden;pointer-events:none}
 .ps-measure body{background:var(--sheet)}
 .ps-measure .ps-paper{width:auto;padding:0;border:0;box-shadow:none}
+/* In the counting frame's columns a page break is a column break. */
+.ps-measure .ps-sec[data-sec="text"],.ps-measure .ps-ver + .ps-ver{break-before:column}
 .ps-pages{column-gap:0;column-fill:auto;overflow:visible}
 .ps-end{height:0}
 @media print{

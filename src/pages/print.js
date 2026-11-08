@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.10
+// GRANITE_VERSION: 2026-10-09.12
 /* A BILL'S PRINT SHEET. A reference sheet of one bill's record for paper,
    composed in the reader's browser from the record the page already holds,
    beside a short menu of settings, and printed with the browser's own dialog
@@ -509,16 +509,22 @@ function pageWords(){
 // pages the sheet comes to (countPages, below), and every page's foot says
 // its number of them all. Which text, once ticked, is remembered.
 const KEY="gr-print";
-const SECS=["summary","votes","reports","text","docs"];
+// The Documents option was taken off the sheet (the owner's walk of dry run 8,
+// 8 November 2026): a "docs" key an old browser kept is never read.
+const SECS=["summary","votes","reports","text"];
+// Which texts print: any of these, each in turn (the owner's walk of dry run 8,
+// 8 November 2026). A saved single choice, a string, is read as a list of one.
+const TEXTS=["marked","clean","amendments","introduced"];
+const textList=x=>[].concat(x==null?[]:x).filter(c=>TEXTS.includes(c));
 function defaults(){
-  return {sec:{summary:1,votes:1,reports:1,text:0,docs:1},names:0,qr:1,text:"marked"};
+  return {sec:{summary:1,votes:1,reports:1,text:0},names:0,qr:1,text:["marked"]};
 }
 function loadSettings(){
   const st=defaults();
   try{
     const s=JSON.parse(localStorage.getItem(KEY)||"null");
     if(s&&s.sec){SECS.forEach(k=>{if(k in s.sec&&k!=="text")st.sec[k]=s.sec[k]?1:0;});
-      st.names=s.names?1:0;st.qr=s.qr===0?0:1;if(typeof s.text==="string")st.text=s.text;}
+      st.names=s.names?1:0;st.qr=s.qr===0?0:1;if(textList(s.text).length)st.text=textList(s.text);}
   }catch(_){}
   return st;
 }
@@ -561,19 +567,25 @@ function has(d,ctx){
     names:(d.rollcalls||[]).some(r=>(r.members||[]).length),
     reports:!!((d.reports||[]).length||(d.docket_reports||[]).length),
     text:hasIndex(d)||body||ownAmd,
-    docs:!!(d.documents||[]).length,
     marked:vs.length>1||(hasIndex(d)&&!ix),
     clean:vs.length>0||body||(hasIndex(d)&&!ix),
     amendments:ownAmd,
     introduced:vs.length>1||(hasIndex(d)&&!ix),
   };
 }
-// The text choice the sheet will draw: the reader's where the record has it,
-// and otherwise the first the record has, in the menu's order.
-function textChoice(d,ctx,st){
-  const h=has(d,ctx);
-  return [st.text,"marked","clean","amendments","introduced"].find(c=>h[c])||"";
+// The texts the sheet will draw: the reader's where the record has them, in
+// the menu's order, and otherwise the first the record has.
+function textChoices(d,ctx,st){
+  const h=has(d,ctx), want=textList(st.text);
+  const got=TEXTS.filter(c=>want.includes(c)&&h[c]);
+  const first=TEXTS.find(c=>h[c]);
+  return got.length?got:first?[first]:[];
 }
+// A text's name, in the menu and as the heading over it on the sheet.
+const textName=(c,law)=>({
+  marked:`${law?"As it became law":"The latest text"}, with each amendment&rsquo;s changes marked and numbered`,
+  clean:`${law?"As it became law":"The latest text"}, clean`,
+  amendments:"Each amendment&rsquo;s own text",introduced:"As introduced"})[c]||"";
 
 // The files the sheet's text needs that are not here yet: the versions'
 // blocks for the marked, clean and introduced texts, the amendments' own
@@ -582,12 +594,11 @@ function needs(d,ctx,st){
   const ix=(ctx.versions||{}).ix;
   if(!st.sec.text||!ix||!has(d,ctx).text)return [];
   const have=(ctx.versions||{}).files||{}, vs=ix.versions||[];
-  const choice=textChoice(d,ctx,st);
   const u=v=>v&&(v.blocks_url||v.text_url);
-  const want=choice==="marked"?vs.map(u):choice==="clean"?[u(vs[vs.length-1])]
+  const want=[].concat(...textChoices(d,ctx,st).map(choice=>choice==="marked"?vs.map(u):choice==="clean"?[u(vs[vs.length-1])]
     :choice==="introduced"?[u(vs[0])]
-    :choice==="amendments"?(ix.amendments||[]).map(a=>a.text_url):[];
-  return want.filter(x=>x&&!(x in have));
+    :choice==="amendments"?(ix.amendments||[]).map(a=>a.text_url):[]));
+  return [...new Set(want)].filter(x=>x&&!(x in have));
 }
 
 // ================================================================ THE SHEET
@@ -681,7 +692,7 @@ function story(d,W){
     v.text.map(p=>`<p>${esc(p)}</p>`).join("")}<p class="ps-sm">${esc(v.governor||"")}${
     v.date?`, ${esc(dateWords(v.date))}`:""}${(v.source||{}).name?`. Printed in ${esc(v.source.name)}`:""}${
     (v.source||{}).url?`, <span class="ps-addr">${esc(plain(v.source.url))}</span>`:""}.</p></div>`:"";
-  return parts||notes||veto?sec("summary","The Story",notes+parts+veto):"";
+  return parts||notes||veto?sec("summary","Summary",notes+parts+veto):"";
 }
 
 function votes(d,st,W){
@@ -695,8 +706,8 @@ function votes(d,st,W){
     // the record's codes stay Yea and Nay; the words a reader sees do not.
     const parties=Object.entries(rc.tally||{}).map(([p,t])=>{
       const off=Object.entries(t).filter(([k])=>k!=="Yea"&&k!=="Nay").reduce((x,[,c])=>x+c,0);
-      return `<span class="ps-nw"><b>${esc(p)}</b> ${esc(t.Yea||0)} Yes, ${esc(t.Nay||0)} No${
-        off?`, ${esc(off)} did not vote`:""}</span>`;}).join("; ");
+      return `<span class="ps-sub ps-party"><b>${esc(p)}</b> ${esc(t.Yea||0)} Yes, ${esc(t.Nay||0)} No${
+        off?`, ${esc(off)} did not vote`:""}</span>`;}).join("");
     // THE APPROVED VOTE WORDS, components.js's (vote_head, vote_chip): the
     // motion's own name with its plain gloss, and what the vote did, in
     // words, the chip's words without its box. A record built before the
@@ -705,7 +716,7 @@ function votes(d,st,W){
       esc(W.body[rc.body]||rc.body)}</span></td><td><b class="ps-q">${voteHead(rc.mk,rc.question,rc.mf)}</b>${
       rc.mrec?`<span class="ps-sub">In the record: ${esc(rc.mrec)}</span>`:""}${
       sub.map(x=>`<span class="ps-sub">${x}</span>`).join("")}${
-      parties?`<span class="ps-sub">By party: ${parties}</span>`:""}${
+      parties?`<span class="ps-sub">By party:</span>${parties}`:""}${
       rc.threshold_note?`<span class="ps-sub">${esc(rc.threshold_note)}</span>`:""}${
       rc.outcome_conflict?`<span class="ps-sub">${esc(rc.outcome_conflict)}</span>`:""}</td><td>${
       esc(W.how[vk]||vk)}${rc.yeas!=null&&rc.nays!=null?`, ${tally(rc.yeas,rc.nays)}`:""}</td><td><span class="ps-word">${
@@ -754,11 +765,6 @@ function reports(d,W){
     esc(r.side||"Committee")}</b>${r.vote_yeas!=null&&r.vote_nays!=null?`, ${tally(r.vote_yeas,r.vote_nays)}`:""}${
     r.amendment?`, amendment ${esc(r.amendment)}`:""}. As the docket records it; its written report is not on this site.</p></div>`).join("");
   return written||docket?sec("reports","Committee Reports",written+docket):"";
-}
-
-function docs(d){
-  return (d.documents||[]).length?sec("docs","Documents",`<ul class="ps-docs">${
-    d.documents.map(x=>`<li><b>${esc(x.label)}</b><span class="ps-addr">${esc(plain(x.url))}</span></li>`).join("")}</ul>`):"";
 }
 
 // ------------------------------------------------------------------ the text
@@ -854,7 +860,7 @@ function amendmentList(d,B,W){
 function text(d,ctx,st,W){
   const h=has(d,ctx);
   if(!h.text)return "";
-  const choice=textChoice(d,ctx,st), v=ctx.versions||{}, ix=v.ix, files=v.files||{};
+  const choices=textChoices(d,ctx,st), v=ctx.versions||{}, ix=v.ix, files=v.files||{};
   const vs=(ix&&ix.versions)||[];
   const wait=`<p class="ps-sm">Loading the bill&rsquo;s text&hellip;</p>`;
   const got=x=>x&&files[x.blocks_url||x.text_url];
@@ -862,14 +868,16 @@ function text(d,ctx,st,W){
   // while one is on its way, and a note where one could not be had.
   const state=xs=>{
     const fs=xs.map(x=>files[x]), bad=fs.find(x=>x&&x.error);
-    return bad?`<p class="ps-sm">Part of the bill&rsquo;s text could not be loaded (${esc(bad.error)}). The Documents list gives the General Court&rsquo;s own.</p>`
+    return bad?`<p class="ps-sm">Part of the bill&rsquo;s text could not be loaded (${esc(bad.error)}).</p>`
       :fs.some(x=>x===undefined)?wait:"";
   };
   const urls=xs=>xs.map(x=>x&&(x.blocks_url||x.text_url)).filter(Boolean);
   const law=!!d.chapter;
+  if(hasIndex(d)&&!ix)return sec("text","The Bill&rsquo;s Text",
+    v.error?`<p class="ps-sm">The versions of this bill could not be loaded (${esc(v.error)}).</p>`:wait);
+  const one=choice=>{
   let body="";
-  if(hasIndex(d)&&!ix)body=v.error?`<p class="ps-sm">The versions of this bill could not be loaded (${esc(v.error)}).</p>`:wait;
-  else if(choice==="marked"){
+  if(choice==="marked"){
     const B=state(urls(vs))||blamed(d,ctx);
     const still=typeof B!=="string"&&!Object.values(B.by).some(c=>c[0]||c[1]);
     body=typeof B==="string"?B:still?`<p class="ps-sm">${law?"The text as it became law":"The latest text"} (${
@@ -897,7 +905,13 @@ ${amendmentList(d,B,W)}
         a.date?`, ${esc(dateWords(a.date))}`:""}${a.adopted===true?", adopted":a.adopted===false?", not adopted":""}</h4><p class="ps-flat">${esc(a.text)}</p>`).join("");
     body=`<p class="ps-sm">Each amendment&rsquo;s own text, as the General Court published it. Text in [brackets] is being removed.</p>${own}`;
   }
-  return sec("text","The Bill&rsquo;s Text",body);
+  return body;
+  };
+  // EACH CHOSEN TEXT IN TURN, HEADED WITH ITS NAME, the first on a new page
+  // and every other on one of its own (the owner's walk of dry run 8,
+  // 8 November 2026): print.css breaks before .ps-ver and the text section.
+  return sec("text","The Bill&rsquo;s Text",choices.map(c=>`<div class="ps-ver"><h4 class="ps-h4">${
+    textName(c,law)}</h4>${one(c)}</div>`).join(""));
 }
 
 // The sheet, as it prints: the sections the settings ask for, in order. `ctx`
@@ -910,7 +924,33 @@ function sheet(d,b,ctx,st){
   return `<div class="ps-sheet">${masthead(d,b,ctx,st,W)}${glance(d,b,ctx,W)}${
     on("summary")?analysis(d):""}${how(d,W)}${on("summary")?story(d,W):""}${
     on("votes")?votes(d,st,W):""}${on("reports")?reports(d,W):""}${
-    on("text")?text(d,ctx,st,W):""}${on("docs")?docs(d):""}</div>`;
+    on("text")?text(d,ctx,st,W):""}</div>`;
+}
+
+// HOW MANY PAGES THE TEXT ADDS, about (the owner's walk of dry run 8,
+// 8 November 2026). A text prints in .ps-text at 14px (--t-sm) on a line of
+// 1.6, a serif whose average letter is about half its size wide, in a text
+// box of pageBox(PAPER): that is about 100 letters a line and 41 lines a page.
+// Short lines, indents and the gaps between paragraphs fill about three
+// quarters of that. So a page holds about 3,000 letters; it is a measured
+// guess from the stylesheet, not a count, and the menu says "about". Each
+// text starts a page of its own, so each is rounded up alone.
+const TEXT_PX=14, TEXT_LEAD=1.6, TEXT_AVG=0.5, TEXT_FILL=0.75;
+function charsPerPage(){
+  const {w,h}=pageBox(PAPER);
+  return Math.round(Math.floor(w/(TEXT_PX*TEXT_AVG))*Math.floor(h/(TEXT_PX*TEXT_LEAD))*TEXT_FILL);
+}
+function textNote(d,ctx,st){
+  const ix=(ctx.versions||{}).ix, vs=(ix&&ix.versions)||[];
+  const last=vs[vs.length-1]||{}, bt=d.billtext||{};
+  const own=(bt.chars||String(bt.body||"").length);
+  const of={
+    marked:last.chars||own, clean:last.chars||own, introduced:(vs[0]||{}).chars||own,
+    amendments:ix&&(ix.amendments||[]).length?ix.amendments.reduce((n,a)=>n+(a.chars||0),0)
+      :(d.amendments||[]).reduce((n,a)=>n+String(a.text||"").length,0)};
+  const cpp=charsPerPage();
+  const n=textChoices(d,ctx,st).reduce((t,c)=>t+Math.max(1,Math.ceil((of[c]||0)/cpp)),0);
+  return `Adds about ${n} additional page${n===1?"":"s"}`;
 }
 
 // The settings: what the sheet holds, and which text. Only what this record
@@ -920,34 +960,34 @@ function menu(d,b,ctx,st){
   const box=(k,label,on,hint,cls)=>`<label class="ps-opt${cls?" "+cls:""}"><input type="checkbox" ${k}${
     on?" checked":""}><span>${label}${hint?`<span class="ps-hint">${hint}</span>`:""}</span></label>`;
   const nRc=(d.rollcalls||[]).filter(r=>(r.members||[]).length).length;
-  const radio=(v,label)=>h[v]?`<label class="ps-opt"><input type="radio" name="ps-text" value="${v}"${
-    textChoice(d,ctx,st)===v?" checked":""}><span>${label}</span></label>`:"";
+  const picked=textChoices(d,ctx,st);
+  const pick=v=>h[v]?`<label class="ps-opt"><input type="checkbox" name="ps-text" value="${v}"${
+    picked.includes(v)?" checked":""}><span>${textName(v,law)}</span></label>`:"";
   return `<form class="ps-form" novalidate>
 <h3 class="ps-mh" id="ps-mh">Print This Bill</h3>
 <p class="ps-mlead">A reference sheet of ${esc(num)}&rsquo;s record, for paper. It reads in black and white: nothing on it is said by color alone.</p>
 <fieldset class="ps-fs"><legend>What the sheet holds</legend>
 <p class="ps-always">Always: the bill&rsquo;s number, title and status, At a Glance${
   ((d.journey||{}).steps||[]).length?", and How It Got Here":""}.</p>
-${h.summary?box('data-sec="summary"',"The analysis and the story",st.sec.summary):""}
+${h.summary?box('data-sec="summary"',"Summary",st.sec.summary):""}
 ${h.votes?box('data-sec="votes"',"Votes",st.sec.votes):""}
 ${h.names?box('data-opt="names"',"Each member&rsquo;s vote on a roll call",st.names,
-  `About a page for each House roll call: this bill has ${nRc===1?"one":nRc}.`,"ps-optsub"):""}
+  `Adds ${nRc} additional page${nRc===1?"":"s"}`,"ps-optsub"):""}
 ${h.reports?box('data-sec="reports"',"Committee reports",st.sec.reports):""}
-${h.text?box('data-sec="text"',"Include the bill&rsquo;s text",st.sec.text,
-  "Off unless you tick it. Ticked, the whole text prints, however long."):""}
-${h.docs?box('data-sec="docs"',"Documents, with their addresses",st.sec.docs):""}
 ${box('data-opt="qr"',"A QR code to this bill&rsquo;s page",st.qr)}
 </fieldset>
 ${h.text?`<fieldset class="ps-fs ps-textfs"><legend>The bill&rsquo;s text</legend>
-${radio("marked",`${law?"As it became law":"The latest text"}, with each amendment&rsquo;s changes marked and numbered`)}
-${radio("clean",`${law?"As it became law":"The latest text"}, clean`)}
-${radio("amendments","Each amendment&rsquo;s own text")}
-${radio("introduced","As introduced")}
-</fieldset>`:`<p class="ps-mlead">The record holds no text of this bill: the Documents list gives the General Court&rsquo;s own.</p>`}
+${box('data-sec="text"',"Include the bill&rsquo;s text",st.sec.text,textNote(d,ctx,st))}
+<div class="ps-vers">
+${pick("marked")}
+${pick("clean")}
+${pick("amendments")}
+${pick("introduced")}
+</div>
+</fieldset>`:`<p class="ps-mlead">The record holds no text of this bill.</p>`}
 <p class="ps-count" aria-live="polite">Counting the pages&hellip;</p>
 <div class="ps-btns"><button type="button" class="ps-btn" data-ps="print">Print</button><button type="button" class="ps-btn" data-ps="close">Back to the bill</button></div>
 <p class="ps-live" role="status" aria-live="polite"></p>
-<p class="ps-keep">Your choices are kept in this browser only, for the next bill you print.</p>
 </form>`;
 }
 
@@ -1062,7 +1102,7 @@ function open(d,b,opts){
   layer.setAttribute("aria-labelledby","ps-h");
   layer.innerHTML=`<div class="ps-wrap"><header class="ps-head"><h2 class="ps-h" id="ps-h" tabindex="-1">Print ${
     esc(numberOf(d,b))} <span class="ps-yr">(${esc(d.year)})</span></h2>
-<p class="ps-lead">The sheet as it prints, beside its settings. Nothing is printed until you press Print; your browser&rsquo;s own dialog then sends it to paper or to a PDF.</p></header>
+<p class="ps-lead">Print or download the bill report as a PDF and select which information you&rsquo;d like to include.</p></header>
 <div class="ps-layout"><article class="ps-paper" aria-label="The print sheet for ${esc(numberOf(d,b))} (${esc(d.year)}), as it prints"></article>
 <aside class="ps-menu" aria-labelledby="ps-mh"></aside></div></div>`;
   const paper=layer.querySelector(".ps-paper"), side=layer.querySelector(".ps-menu");
@@ -1114,7 +1154,12 @@ function open(d,b,opts){
     if(nm){nm.checked=!!st.names;nm.disabled=!st.sec.votes;}
     if(row)row.classList.toggle("is-off",!st.sec.votes);
     const textOn=!!st.sec.text;
-    f.querySelectorAll('input[name="ps-text"]').forEach(r=>{r.checked=r.value===textChoice(d,ctx,st);r.disabled=!textOn;});
+    const picked=textChoices(d,ctx,st);
+    f.querySelectorAll('input[name="ps-text"]').forEach(r=>{r.checked=picked.includes(r.value);r.disabled=!textOn;});
+    const note=f.querySelector('input[data-sec="text"]');
+    const row2=note&&note.closest(".ps-opt");
+    const hint=row2&&row2.querySelector(".ps-hint");
+    if(hint)hint.textContent=textNote(d,ctx,st);
     const tf=f.querySelector(".ps-textfs");if(tf)tf.classList.toggle("is-off",!textOn);
   };
   side.innerHTML=menu(d,b,ctx,st);
@@ -1126,7 +1171,11 @@ function open(d,b,opts){
     }
     else if(t.getAttribute("data-opt")==="names")st.names=t.checked?1:0;
     else if(t.getAttribute("data-opt")==="qr")st.qr=t.checked?1:0;
-    else if(t.name==="ps-text")st.text=t.value;
+    else if(t.name==="ps-text"){
+      // At least one text stays chosen: the last cannot be unticked.
+      const on=[...side.querySelectorAll('input[name="ps-text"]')].filter(i=>i.checked).map(i=>i.value);
+      st.text=on.length?on:textChoices(d,ctx,st);
+    }
     saveSettings({sec:st.sec,names:st.names,qr:st.qr,text:st.text});
     sync();draw();
   });

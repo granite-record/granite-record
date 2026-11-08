@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.804
+# GRANITE_VERSION: 2026-09-04.805
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -72847,11 +72847,10 @@ def _icons_named():
 # The sheet's sections, in the order they print. Nothing else is a section:
 # the rail's table and the hearings and session days were taken out by the
 # person on 9 October 2026.
-_PRINT_SECTIONS = ["At a Glance", "Official Legislative Analysis", "How It Got Here", "The Story",
-                   "Votes", "Committee Reports", "The Bill’s Text", "Documents"]
-_PRINT_OPTION = {"summary": ["Official Legislative Analysis", "The Story"], "votes": ["Votes"],
-                 "reports": ["Committee Reports"], "text": ["The Bill’s Text"],
-                 "docs": ["Documents"]}
+_PRINT_SECTIONS = ["At a Glance", "Official Legislative Analysis", "How It Got Here", "Summary",
+                   "Votes", "Committee Reports", "The Bill’s Text"]
+_PRINT_OPTION = {"summary": ["Official Legislative Analysis", "Summary"], "votes": ["Votes"],
+                 "reports": ["Committee Reports"], "text": ["The Bill’s Text"]}
 
 _PRINT_GO = r"""
 require("./stub.js");
@@ -72872,7 +72871,7 @@ for (const [name, c] of Object.entries(C.cases)) {
     menu: G.menu(c.d, c.b, ctx, G.defaults()), has: G.has(c.d, ctx), off: {}, choice: {},
     sponsors: (c.d.sponsors || []).length,
     members: (c.d.rollcalls || []).reduce((n, rc) => n + (rc.members || []).length, 0)};
-  for (const k of ["summary", "votes", "reports", "text", "docs"]) {
+  for (const k of ["summary", "votes", "reports", "text"]) {
     const s = all(); s.sec[k] = 0; r.off[k] = G.sheet(c.d, c.b, ctx, s); }
   { const s = all(); s.qr = 0; r.noqr = G.sheet(c.d, c.b, ctx, s); }
   { const s = all(); s.names = 0; r.nonames = G.sheet(c.d, c.b, ctx, s); }
@@ -72897,7 +72896,6 @@ const law = C.cases.law;
 const strip = {
   votes: d => { d.rollcalls = []; delete d.ballot; },
   reports: d => { d.reports = []; d.docket_reports = []; },
-  docs: d => { d.documents = []; },
   summary: d => { d.billtext.analysis = ""; d.stages = []; d.narrative = ""; d.notes = []; d.veto_message = null; },
   how: d => { d.journey.steps = []; },
   text: d => { d.nver = 1; d.namd = 0; d.amendments = []; d.billtext.body = ""; },
@@ -73066,7 +73064,7 @@ def _print_sheet():
             bad.append(f"{name}'s menu does not offer 'Include the bill's text', unticked")
         if '<p class="ps-count"' not in c["menu"]:
             bad.append(f"{name}'s menu has no line for how many pages the sheet prints")
-    if tx["dflt"] or tx["remembered"] or tx["choice"] != "clean":
+    if tx["dflt"] or tx["remembered"] or tx["choice"] != ["clean"]:
         bad.append(f"the text is ticked by default ({tx['dflt']}) or its tick is remembered "
                    f"({tx['remembered']}), or which text is not ({tx['choice']!r})")
     huge = tx["huge"].split('<div class="ps-text">', 1)
