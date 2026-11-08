@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.279
+// GRANITE_VERSION: 2026-09-07.280
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -10452,11 +10452,28 @@ function vwPaneKept(el){
 }
 
 // ------------------------------------------------------------------ boot ---
+// THE LIST KEEPS ITS HEIGHT THROUGH A REDRAW. A redraw replaces the list's
+// contents in one go, and for the length of the replacement the page can be
+// shorter than the window, so the footer shows for a frame and the scroll
+// place is clamped: the footer flash when a card is opened (the owner's walk
+// of dry run 9, 8 November 2026). The height it had is held as a minimum
+// until the next frame has painted, then let go, so a list that really is
+// shorter shrinks a frame later.
+function holdHeight(el){
+  if(!el||!el.offsetHeight)return;
+  el.style.minHeight=el.offsetHeight+"px";
+  const free=()=>{el.style.minHeight="";};
+  if(typeof requestAnimationFrame==="function")
+    requestAnimationFrame(()=>requestAnimationFrame(free));
+  else setTimeout(free,50);
+}
+
 function renderPage(){
   if(!PAGE)return;
   const el=$("#results");
   if(!el)return;
   const held=focusKey();
+  holdHeight(el);
   parkActions();
   const kept=vwPaneKept(el);
   if(kept){
@@ -11057,6 +11074,15 @@ function render(more){
   const isFb=b=>b.id===focused&&(!fy||String(b.year)===fy);
   const fb=focused?(rows.find(isFb)||IDX.find(isFb)):null;
   document.querySelector(".shell").classList.toggle("focused",!!fb);
+  // NO SORT ON A BILL'S OWN PAGE (the owner's walk of dry run 9, 8 November
+  // 2026): Sort orders a list, and one bill is not a list. The search box
+  // and the term picker stay; the list brings Sort back.
+  {const so=$("#sort");
+   if(so&&so.hidden!==!!fb){
+     so.hidden=!!fb;
+     const lab=so.previousElementSibling;
+     if(lab&&lab.tagName==="LABEL")lab.hidden=!!fb;
+   }}
   const shown=fb?[fb]:rows.slice(0,SHOWN);
   // WHAT AN LSR IS, in front of the list rather than behind a link, because
   // nobody who has not worked in the building knows the word. Asked for on 18
@@ -11104,6 +11130,7 @@ function render(more){
   // back in history only where back IS the search (backIsSearch), so the
   // list returns as it was left; everywhere else this is an ordinary link.
   parkActions(!fb);
+  holdHeight($("#results"));
   const spHead=(b,gi,arr)=>!fb&&bySponsor&&(gi===0||primeChosen(arr[gi-1])!==primeChosen(b))
     ?`<h2 class="grp">${primeChosen(b)?"Prime sponsored":"Co-sponsored"}
        <span>${(primeChosen(b)?spN:rows.length-spN).toLocaleString()}</span></h2>`:"";
