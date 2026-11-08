@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.49
+# GRANITE_VERSION: 2026-09-18.50
 """
 The General Court's week, one page per week.
 
@@ -617,7 +617,10 @@ WEEK_JS = r"""
   // The grid's dots in the order of the boxes, a day's key date first, as
   // its card is first in the day.
   var BAR_ORDER=["date","hearing","exec","meet","conf","floor","study","other"];
-  var VIEWS=["list","week","day"];
+  // NO DAY VIEW (the owner's walk of dry run 9, 8 November 2026): the list
+  // at that day says the same. An address asking for it reads as the list.
+  var VIEWS=["list","week"];
+  function viewOf(v){ return v==="day"?"list":VIEWS.indexOf(v)>=0?v:null; }
   // A CARD'S OPENING TAG, NEVER WRITTEN WHOLE HERE. The checks count cards,
   // links and the empty day's sentence in a built page's text, and this
   // script is in that text; spelling the tag out would count as a card.
@@ -993,7 +996,7 @@ WEEK_JS = r"""
     var k=String(p.get("week")||"").toUpperCase(), d=p.get("day")||"";
     if(isWeek(k)){ s.week=k; any=true; }
     if(isDay(d)){ s.d=d; any=true; }
-    if(VIEWS.indexOf(p.get("view"))>=0){ s.v=p.get("view"); any=true; }
+    if(viewOf(p.get("view"))){ s.v=viewOf(p.get("view")); any=true; }
     if(p.has("kinds")){
       s.cats=uniq(String(p.get("kinds")).split(",").filter(function(x){ return CATS.indexOf(x)>=0; }));
       any=true;
@@ -1033,7 +1036,7 @@ WEEK_JS = r"""
     function list(k,ok){ return String(p.get(k)||"").split(",").filter(function(x){ return ok.indexOf(x)>=0; }); }
     var d=p.get("d")||"";
     if(isDay(d)){ s.d=d; any=true; }
-    if(VIEWS.indexOf(p.get("v"))>=0){ s.v=p.get("v"); any=true; }
+    if(viewOf(p.get("v"))){ s.v=viewOf(p.get("v")); any=true; }
     if(p.has("who")||p.has("what")){
       var who=p.has("who")?list("who",OLD_WHO):null, what=p.has("what")?list("what",OLD_WHAT):OLD_WHAT;
       s.cats=OLD_WHAT.filter(function(c){ return what.indexOf(c)>=0 && (!who||who.indexOf("standing")>=0); });
@@ -1567,16 +1570,16 @@ WEEK_JS = r"""
     view.setAttribute("data-view",S.v);
     all(view,".calmeet").forEach(function(m){
       var o=OPEN[S.v][cardKey(m)];
-      // THE DAY VIEW IS EVERY ENTRY IN FULL, so its cards open; the list and
-      // the week are for scanning, so theirs stay shut until opened.
-      m.open=o===undefined?S.v==="day":o;
+      // EVERY MEETING STARTS SHUT (the owner's walk of dry run 9, 8 November
+      // 2026); a reader's own opening is kept.
+      m.open=o===undefined?false:o;
       addToCalendar(m);
     });
     // A key date's card opens as a meeting's does; it is not offered for a
     // reader's own calendar, being no sitting with a time.
     all(view,".calkd").forEach(function(m){
       var o=OPEN[S.v][cardKey(m)];
-      m.open=o===undefined?S.v==="day":o;
+      m.open=o===undefined?false:o;
     });
     all(view,".calday[data-d]").forEach(function(el){
       var d=el.getAttribute("data-d"), r=el.querySelector(".cdrel");
@@ -2062,13 +2065,11 @@ WEEK_JS = r"""
     var b=e.target.closest&&e.target.closest("button");
     if(!b||!view.contains(b)) return;
     if(b.classList.contains("wkday")){
-      S.v="day"; syncControls(); select(b.getAttribute("data-d"),"view");
-      var hd=view.querySelector(".caldate");
-      if(hd){ hd.tabIndex=-1; hd.focus(); }
+      S.v="list"; syncControls(); select(b.getAttribute("data-d"),"view");
     }else if(b.hasAttribute("data-open")){
       // A week's entry with no page to lead to: its day, with it in full.
       var ck=b.getAttribute("data-open");
-      S.v="day"; syncControls(); select(ck.split("|")[0],"view");
+      S.v="list"; OPEN.list[ck]=true; syncControls(); select(ck.split("|")[0],"view");
       all(view,".calmeet,.calkd").some(function(m){
         if(cardKey(m)!==ck) return false;
         var sm=m.querySelector("summary"); if(sm) sm.focus();
@@ -2639,7 +2640,6 @@ BAR_HTML = ('<div class="calbar" id="calbar" hidden>'
             '<div class="calviews" role="group" aria-label="Show the schedule as">'
             '<button type="button" data-view="list" aria-pressed="true">List</button>'
             '<button type="button" data-view="week" aria-pressed="false">Week</button>'
-            '<button type="button" data-view="day" aria-pressed="false">Day</button>'
             '</div>'
             '<p class="wkcount" id="wkcount" role="status" aria-live="polite"></p>'
             # The study committee meetings the count says are hidden, shown
@@ -2838,7 +2838,10 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              + BAR_HTML
              + cats_html()
              + f'<div class="calview" id="calview">{body}</div>'
-             f'<nav class="wknav wkfoot" aria-label="Other weeks">{"".join(nav)}</nav>'
+             # ONE SET OF ARROWS, AT THE TOP, AND A RULE UNDER THE LIST (the
+             # owner's walk of dry run 9, 8 November 2026), so the schedule
+             # and the Calendars & Journals below it read as two things.
+             '<hr class="calend">'
              # BELOW THE SCHEDULE AND ITS ARROWS, inside the schedule's column:
              # as wide as the schedule on a desktop, the last block of the page
              # on a phone. The script redraws #calview and the arrows and
