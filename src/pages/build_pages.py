@@ -2450,6 +2450,9 @@ SEATING_JS = """
 [].forEach.call(document.querySelectorAll(".rtabs"),function(bar){
   var tabs=[].slice.call(bar.querySelectorAll("[role=tab]"));
   if(!tabs.length)return;
+  // Written hidden: shown here, so a page without this script has no strip
+  // of buttons that do nothing over its views.
+  bar.hidden=false;
   function show(id){
     tabs.forEach(function(t){
       var on=t.dataset.pane===id;
@@ -4791,7 +4794,7 @@ def main():
                       say(lang, "roster.filled", "{seated} of the 400 seats are filled.",
                           seated=seated))
         return f"""<section class="roster" id="roster">
-<div class="rtabs" role="tablist" aria-label="{say(lang, "roster.arrange", "How to arrange the roster")}">
+<div class="rtabs" role="tablist" aria-label="{say(lang, "roster.arrange", "How to arrange the roster")}" hidden>
   <button type="button" role="tab" id="tab-last" data-pane="pane-last"
     aria-controls="pane-last" aria-selected="true">{say(lang, "roster.by_last", "By last name")}</button>
   <button type="button" role="tab" id="tab-county" data-pane="pane-county"

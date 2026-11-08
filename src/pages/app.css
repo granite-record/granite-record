@@ -8533,6 +8533,16 @@ line-height:1.5;color:var(--ink-2)}
 :where(body.pg) .grid.elroll{grid-template-columns:repeat(auto-fill,minmax(min(100%,18.75rem),1fr))}
 :where(body.pg) .elroll .mem{min-width:0}
 :where(body.pg) .elroll .mchip{max-width:100%;white-space:normal}
+/* AND ITS PARTS WRAP, NOT SQUEEZE (the review of 8 November 2026): the chip
+   is a row of the name (a link, or bare text for the 168 with no page), the
+   tag and the word, the last two kept whole, so in a narrow cell -- the
+   Senate's list beside its districts, a party's column at 600px, a phone --
+   an unlinked name was pressed into a column one word wide ("Rep. / electo/a
+   / Tom / Ahlborn- / Hsu") and a word ran out past the chip's border and the
+   page's edge. Here a part that does not fit goes to the next line inside the
+   chip: the word under the name, or the tag and the word under a name with no
+   page. */
+:where(body.pg) .elroll .mchip,:where(body.pg) .elwho .ellist .mchip{flex-wrap:wrap;row-gap:var(--sp-2)}
 :where(body.pg) .cgrp > .elnf{margin:0 0 var(--sp-5)}
 :where(body.pg) .roster .elnf{margin:0 0 var(--sp-5)}
 :where(body.pg) .seatrow .elnf{margin:0}
@@ -9030,6 +9040,11 @@ background:var(--pine);border-color:var(--pine)}
 :where(body.pg) .rtabs [role=tab]:focus-visible{outline:2px solid var(--ink);outline-offset:-4px}
 :where(body.pg) .rtabs [role=tab][aria-selected=true]:focus-visible{outline-color:var(--on-pine)}
 :where(body.pg) .rpane[hidden]{display:none}
+/* A strip is written hidden and shown by its script (SEATING_JS), as the
+   town pages' strip is: without the script every view is on the page under
+   its own heading, and three buttons that do nothing are not (the review of
+   8 November 2026). */
+:where(body.pg) .rtabs[hidden]{display:none}
 
 /* The way out of Latest activity. Five rows and then the bill search, which
    sorts by most recent action and can carry the rest. */
