@@ -115945,6 +115945,14 @@ def _elect_tab_like_legislators(OT):
             bad.append(f"{who} is drawn {page.count(drawn)} times as {drawn!r}: once in each view")
     if "<i " in page:
         bad.append("a word is drawn inside a member-elect's chip")
+    # Where the rows cannot say who someone is -- a sitting or former member
+    # with no row, or none for their id, or a kind the file does not use --
+    # no word: the walk asked to say so rather than guess.
+    rows_by_id = {str(p["id"]): p for p in people}
+    for e in ({"k": "sitting", "id": "4040"}, {"k": "former", "id": "4040"}, {"k": "sitting"},
+              {"k": "returning", "id": "1001"}):
+        if OT.elect_kind(e, "H|Coos|1", rows_by_id) or OT.elect_word(e, "H|Coos|1", rows_by_id):
+            bad.append(f"a member-elect the rows cannot place gets a word: {e}")
     links = re.findall(r'<a href="legislator/([^"]+)\.html"', page)
     if sorted(set(links)) != sorted(s for _c, s, _t, _k in want.values() if s) or len(links) != 12:
         bad.append(f"the tab links {sorted(set(links))} ({len(links)}): only the six the file "
@@ -115979,9 +115987,12 @@ def _elect_tab_like_legislators(OT):
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     if ":where(body.pg) .elroll .mchip{flex-wrap:wrap" not in css \
             or ":where(body.pg) .rtabs[hidden]{display:none}" not in css \
-            or not re.search(r":where\(body\.pg\) \.elkind\{[^}]*text-transform:uppercase", css):
+            or not re.search(r":where\(body\.pg\) \.elkind\{[^}]*text-transform:uppercase", css) \
+            or not all(re.search(r":where\(body\.pg\) " + re.escape(sel) + r"\{grid-template-columns:"
+                                 r"repeat\(auto-(?:fit|fill),minmax\(min\(100%,30rem\),1fr\)\)\}", css)
+                       for sel in (".elroster .partycols", ".grid.elroll")):
         bad.append("app.css does not let a member-elect's chip wrap its parts, draw the word "
-                   "beside it, or keep a hidden strip hidden")
+                   "beside it in columns wide enough for both, or keep a hidden strip hidden")
     # By last name.
     cols = re.findall(r'<section class="pcol"><h3>([^<]+)</h3><ol class="seatlist rlist elroll">(.*?)</ol>',
                       last, re.S)
