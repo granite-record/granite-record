@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.807
+# GRANITE_VERSION: 2026-09-04.808
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -45706,7 +45706,7 @@ def _related_tab(B, RB):
     assert not RB.shown({"kind": "amendment", "band": "line", "fate": "recommended"}), \
         "an amendment no vote is on record for would be shown"
     app = Path("src/pages/app.js").read_text(encoding="utf-8")
-    assert "function renderRelated(b,rel)" in app and 'replace("{b}",name)' in app and 'related:"7"' in app, \
+    assert "function renderRelated(b,relRows)" in app and 'replace("{b}",name)' in app and 'related:"7"' in app, \
         "the page does not draw the Related tab from d.related"
     return "ok", ("SB 184: rejected amendment, HB 377 once, SB 479 filed before; below the line, "
                   "no fate, itself and an unknown bill left out")
