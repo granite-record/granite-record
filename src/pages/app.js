@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.275
+// GRANITE_VERSION: 2026-09-07.276
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2662,6 +2662,19 @@ const termPhrase=()=>term===ALL_TERMS?"across all terms"
   :`in the ${termDash(term)} term`;
 const termNoun=()=>(META.requests&&term===META.requests.term)
   ?"bill requests":"bills";
+// The requests still standing: meta's n less the withdrawn (Alice, B1, 7
+// November 2026).
+const standingRequests=()=>META.requests
+  ?Math.max((+META.requests.n||0)-(+META.requests.withdrawn||0),0):0;
+// THE BANNER'S WINDOW: on the newest term, while the requests' session is
+// still ahead of it, and while any request stands. 2027's requests are
+// offered from 2025-2026, and not from 2027-2028 once that is the newest
+// term -- the site is then on the session they were for.
+const requestsAhead=()=>{
+  const terms=META.terms||[];
+  return !!(META.requests&&terms.length&&term===terms[0]
+    &&+reqYear()>+String(terms[0]).slice(0,4)&&standingRequests()>0);
+};
 // A bill number is unique within a two-year term and not beyond it, so
 // every address for one carries its filing year: the static page has done
 // so from the start, and the detail file and this view do now.
@@ -8238,7 +8251,7 @@ function termControl(){
   if(ts.length<2)return "";
   return `<div class="bfilt pterm"><label>Term
     <select data-pf="term">${ts.map(x=>
-      `<option value="${esc(x)}"${x===t?" selected":""}>${esc(termDash(x))}</option>`
+      `<option value="${esc(x)}"${x===t?" selected":""}>${esc(termLabel(x))}</option>`
     ).join("")}</select></label></div>`;
 }
 
@@ -8431,7 +8444,30 @@ const memberBills=(m,prime)=>(m.sponsored||[])
   .filter(b=>!pageTerm()||b.term===pageTerm())
   .map(idxRow);
 
+// NEXT SESSION'S REQUESTS ON A MEMBER'S PAGE (Alice, 7 November 2026): until
+// the bills are introduced in January, a member's requests are that term's
+// "bills", as build_lsrs matched them (sponsor_slug, one sitting member of the
+// name). A request names only its prime sponsor, so the co-sponsored tab has
+// nothing to list.
+const isReqTerm=t=>!!(META.requests&&t&&t===META.requests.term);
+const termLabel=t=>isReqTerm(t)?(META.requests.label||`${reqYear()} Bill Requests`):termDash(t);
+const memberRequests=m=>IDX.filter(b=>b.lsr&&isReqTerm(b.term)&&m.slug&&b.sponsor_slug===m.slug);
+function renderMemberRequests(m,prime){
+  if(!prime)return `<p class="src">A request names only its prime sponsor, so none is
+    co-sponsored.</p>`;
+  const rows=memberRequests(m);
+  if(!rows.length)return `<p class="src">No bill requests for ${esc(reqYear())}.</p>`;
+  const left=rows.filter(b=>b.withdrawn).length;
+  return `<p class="src lsrnote"><b>These are requests, not bills yet.</b> Before a bill
+    exists, a member asks the Office of Legislative Services to draft one, and it is given a
+    request number. ${rows.length.toLocaleString()} filed for ${esc(reqYear())}${
+    left?`, ${left.toLocaleString()} of them withdrawn`:""}; each becomes a numbered bill when it
+    is drafted and filed.</p>
+    <div class="cards" id="pbills">${rows.map(b=>lsrCardHtml(b,"")).join("")}</div>`;
+}
+
 function renderMemberBills(m, prime){
+  if(isReqTerm(pageTerm()))return renderMemberRequests(m,prime);
   // A member's own bills name no prime sponsor on their cards: it is the
   // member whose page this is, as the approved prototype draws them (10
   // October 2026). A co-sponsored bill's card names its prime sponsor.
@@ -8584,6 +8620,8 @@ const billFold=s=>String(s||"").toUpperCase().replace(/(?:-(?:FN|A|LOCAL|L))+\s*
   .replace(/[^A-Z0-9]/g,"");
 
 function renderMemberVotes(m){
+  if(isReqTerm(pageTerm()))return `<p class="src">No votes: a request is not voted on until
+    it is a bill.</p>`;
   const v=memberVotes(m);
   const t=pageTerm();
   if(!v.length)return `<p class="src">No recorded roll call votes in the
@@ -8832,6 +8870,8 @@ function renderMemberHead(m){
 // and how is said in a fold under the figures. A term with no roll call on
 // record (before 1999) says so where the attendance would be.
 function termGlance(m,t){
+  // A term of requests has no days, roll calls or bills passed to show.
+  if(isReqTerm(t))return "";
   const f=(m.term_figures||{})[t]||null, a=(m.attendance||{})[t]||null;
   if(!f&&!a)return attendanceBlock(m.attendance,t);
   const num=n=>Number(n||0).toLocaleString();
@@ -10588,6 +10628,12 @@ function recordTerms(kind,d){
     // no bill and so no bill year, otherwise had no term at all, and a page
     // with no term drew its attendance as a note with no figures in it.
     (d.votes||[]).forEach(v=>{const x=termOfYear(voteYear(v));if(x)t.add(x);});
+    // Next session's requests, where build_lsrs matched any to this member
+    // (meta.requests.by_slug). The requests' term sorts first, so a member with
+    // requests opens on them (published counts the requests term); one with
+    // none opens on their newest term, as before (Alice, B4).
+    const R=META.requests;
+    if(R&&R.term&&d.slug&&(R.by_slug||{})[d.slug])t.add(R.term);
   }else{
     Object.keys(d.bills||{}).forEach(x=>x&&t.add(x));
     (d.sessions||[]).forEach(s=>s.term&&t.add(s.term));
@@ -10941,6 +10987,17 @@ function render(more){
       up the rest of its record. Some are withdrawn first and never become
       anything. These will be replaced by the ${esc(reqYear())} bills themselves as they are
       filed.`;
+  }else if(!fb&&!(ids&&ids.length>1)&&requestsAhead()){
+    // NEXT SESSION'S REQUESTS, OFFERED FROM THE TERM THE SEARCH OPENS ON
+    // (Alice, 7 November 2026): the search stays on the newest term, and this
+    // says how many requests stand for the next session and opens them. The
+    // count is the standing ones (B1): meta's n less the withdrawn, who stay
+    // listed in the requests themselves. Gone by itself the night the
+    // requests' own session becomes the newest term (requestsAhead).
+    const R=META.requests;
+    $("#summary").className="count lsrnote";
+    $("#summary").innerHTML=`<b>${standingRequests().toLocaleString()} bill requests filed for
+      ${esc(reqYear())}</b> &mdash; <button class="link" data-term="${esc(R.term)}">see them</button>`;
   }else{
     $("#summary").textContent=fb?"":(ids&&ids.length>1
       ?`Showing ${rows.length} of the ${ids.length} bills you listed.`:"");

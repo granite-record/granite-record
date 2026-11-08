@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.5
+# GRANITE_VERSION: 2026-09-18.6
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -261,8 +261,16 @@ def main():
     assert mj.exists(), ("meta.json is not written yet -- this step runs after "
                          "build_site_v2.py, which writes it")
     meta = json.loads(mj.read_text(encoding="utf-8"))
+    # by_slug: each matched sponsor's slug and how many requests are theirs,
+    # so a member's page knows to offer the requests term, and opens on it,
+    # without asking for the list first (Alice, 7 November 2026).
+    by_slug = {}
+    for r in rows:
+        if r["sponsor_slug"]:
+            by_slug[r["sponsor_slug"]] = by_slug.get(r["sponsor_slug"], 0) + 1
     meta["requests"] = {"term": term, "label": label, "year": year, "n": len(rows),
-                        "withdrawn": sum(1 for r in rows if r["withdrawn"])}
+                        "withdrawn": sum(1 for r in rows if r["withdrawn"]),
+                        "by_slug": dict(sorted(by_slug.items()))}
     mj.write_text(json.dumps(meta), encoding="utf-8")
 
     by = {}

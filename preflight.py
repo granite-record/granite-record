@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.793
+# GRANITE_VERSION: 2026-09-04.794
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -21308,8 +21308,10 @@ def _find_more_fixture():
         request("0002", "establishing a temporary moratorium on data centers."),
         request("0003", "relative to school bus inspections."),
         request("0091", "relative to the siting of data centers.")]
+    # n counts every request on the list, withdrawn too; the banner on the
+    # newest term counts the standing ones, n less withdrawn (_requests_banner).
     fx["/meta.json"]["requests"] = {"term": "2027-requests", "label": "2027 Bill Requests",
-                                    "year": 2027, "n": 3}
+                                    "year": 2027, "n": 3, "withdrawn": 1}
     # NAMES WITH AN APOSTROPHE, as the record spells them, with a straight one
     # (_search_reads_typed): a member, a former senator, two places, and a
     # bill each about the places, filed by the two of them.
@@ -21451,7 +21453,23 @@ const cards = (html) => [...html.matchAll(/<article class="card[^"]*" data-id="(
   for (let i = 0; i < 400 && box.disabled !== false; i++) await ticks(1);
   if (box.disabled !== false) { console.log("app.js never finished loading the fixture"); process.exit(1); }
   const settle = () => ticks(30);
-  const out = {term: scope.getTerm(), q: {}};
+  const out = {term: scope.getTerm(), q: {},
+               summary: document.querySelector("#summary").innerHTML};
+  if (MODE === "banner") {
+    // The banner's own button, as the page draws it, clicked.
+    const m = /<button class="link" data-term="([^"]+)">/.exec(out.summary);
+    if (m) {
+      const target = {tagName: "BUTTON", dataset: {term: m[1]},
+                      closest: (sel) => sel.split(",").some(s => /^(?:button)?(?:\.link)?\[data-term\]$/.test(s.trim()))
+                        ? target : null};
+      for (const f of DOCON.click || [])
+        try { f({target, detail: 1, button: 0, preventDefault() {}, stopPropagation() {}}); } catch (e) {}
+      await settle();
+      out.taken = {term: scope.getTerm(), summary: document.querySelector("#summary").innerHTML};
+    }
+    console.log(JSON.stringify(out));
+    return;
+  }
   for (const s of Q.app) {
     box.value = s; box.fire("input"); await settle();
     const html = document.querySelector("#results").innerHTML;
@@ -21639,6 +21657,40 @@ def _find_requests(BP):
     return "ok", ("'data centers' and 'LSR 2027-0002' counted on /search's one line as /bills "
                   "lists them on the requests' list; /bills offers that list for three forms of "
                   "a request's number, and taking it lists the request")
+
+
+@check("frontend", "the bill search opens on the newest term with a line counting next session's "
+       "standing bill requests that opens them, and nowhere else", needs=("build_pages",))
+def _requests_banner(BP):
+    """Alice, 7 November 2026: the bill search keeps opening on 2025-2026,
+    with "<n> bill requests filed for 2027 -- see them" on top, n being the
+    standing requests (meta's n less the withdrawn, B1), the year the
+    requests' own; taking it opens the requests. Not on the requests' list
+    itself, nor on All Terms; and it goes by itself when the requests'
+    session becomes the newest term (app.js, requestsAhead)."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
+    if not all(f.exists() for f in need):
+        return "skip", "app.js, find.js or dom_stub.js not in this directory"
+    B, R, A = _find_more_run(BP, ("app", "banner"), ("app", "req"), ("app", "all"))
+    want = ('<b>2 bill requests filed for\n      2027</b> &mdash; '
+            '<button class="link" data-term="2027-requests">see them</button>')
+    assert B["term"] == "2025-2026" and want in B["summary"], (
+        f"/bills opened on {B['term']!r} reads {B['summary']!r}: it should open on 2025-2026 "
+        f"with the 2 standing requests of 3 (1 withdrawn) offered")
+    tk = B.get("taken") or {}
+    assert tk.get("term") == "2027-requests" and "These are requests, not bills yet." in tk.get("summary", ""), (
+        f"taking the banner leaves /bills on {tk.get('term')!r}: it should open the requests")
+    for name, run in (("the requests' list", R), ("All Terms", A)):
+        assert "bill requests filed for" not in run["summary"], (
+            f"/bills on {name} shows the requests banner: {run['summary'][:200]!r}")
+    src = Path("src/pages/app.js").read_text(encoding="utf-8")
+    assert "+reqYear()>+String(terms[0]).slice(0,4)" in src, (
+        "app.js no longer holds the banner to a session ahead of the newest term: on "
+        "2027-2028 it would offer 2027's requests from the term they belong to")
+    return "ok", ("on 2025-2026, '2 bill requests filed for 2027' (3 less 1 withdrawn) opens the "
+                  "requests; not on the requests' list or All Terms")
 
 
 @check("frontend", "the search reads what people type: a curly apostrophe or none in a name, a law "
@@ -78642,7 +78694,10 @@ def _terms_with_a_dash(C):
         bad.append("components.term_words does not write a term with a dash, and leave the rest")
     app = Path("src/pages/app.js").read_text(encoding="utf-8")
     for need in ('${termDash(t)} Term</option>', ':`in the ${termDash(term)} term`',
-                 '${esc(termDash(x))}</option>', 'function termDash(t){ return termWords(t||""); }'):
+                 # A member's picker names the requests' term by its label
+                 # and every other term by termDash (_member_requests).
+                 '${esc(termLabel(x))}</option>', '`${reqYear()} Bill Requests`):termDash(t)',
+                 'function termDash(t){ return termWords(t||""); }'):
         if need not in app:
             bad.append(f"app.js no longer writes {need!r}")
     site = _fixture_site_shared()[0] / "site"
@@ -85525,6 +85580,64 @@ def _term_line_with_picker():
     assert line in two and '<select data-pf="term">' in two, (
         "a member of two terms lost the picker or the line beside it")
     return "ok", "the line beside the picker, and neither on a page of one term"
+
+
+@check("frontend", "a member's page offers their bill requests for the next session as a term, opens "
+       "on it when they have any and on their newest term when they have none")
+def _member_requests():
+    """Alice, 7 November 2026: a member's page opens its term picker on the
+    new term and lists their requests as its bills until the bills are
+    introduced -- number, title, House or Senate, filed or withdrawn -- with
+    one line on what a request is; a member with none opens on 2025-2026
+    (B4). build_lsrs names who has requests in meta.requests.by_slug; the
+    page lists the requests whose sponsor_slug is theirs."""
+    req = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027, "n": 3,
+           "withdrawn": 1, "by_slug": {"jodi-nelson": 2}}
+    meta = {"terms": ["2025-2026", "2023-2024"], "requests": req}
+
+    def lsr(num, title, slug, withdrawn=False):
+        return {"id": f"LSR2027{num}", "n": f"LSR 2027-{num}", "year": 2027, "title": title,
+                "sponsor": "x", "sponsor_label": "x", "sponsor_slug": slug, "body": "HB",
+                "body_label": "House bill", "committee": "", "committees": [], "topic": "",
+                "kind": "", "status": "Withdrawn" if withdrawn else "Filed as a request",
+                "withdrawn": withdrawn, "term": "2027-requests", "lsr": True,
+                "votedays": [], "last_action": ""}
+    idx = [lsr("0002", "relative to data centers.", "jodi-nelson"),
+           lsr("0007", "relative to school buses.", "jodi-nelson", True),
+           lsr("0009", "relative to ferries.", "someone-else")]
+
+    def member(slug):
+        return {"id": "905", "slug": slug, "name": "Nelson, Jodi", "chamber": "H", "district": "2",
+                "county": "Rockingham", "display_full": "Rep. Jodi Nelson (R - Rock 2)",
+                "towns": [], "sponsored": [{"id": "HB1", "term": "2025-2026", "prime": True}],
+                "votes": [], "term_figures": {}, "attendance": {}}
+    js = ("scope.setMeta(" + json.dumps(meta) + "), scope.setIdx(" + json.dumps(idx) + "), "
+          "['jodi-nelson', 'pat-none'].map(s => { const m = " + json.dumps(member("x"))
+          + "; m.slug = s; const terms = scope.recordTerms('member', m); "
+          "scope.setPage({kind: 'member', data: m, terms, term: terms[0]}); "
+          "return {terms, prime: scope.renderMemberBills(m, true), co: scope.renderMemberBills(m, false), "
+          "votes: scope.renderMemberVotes(m), picker: scope.termControl()}; })")
+    got = _app_js(js, names=("recordTerms", "renderMemberBills", "renderMemberVotes", "termControl",
+                             "setPage: x => (PAGE = x)", "setMeta: x => (META = x)",
+                             "setIdx: x => (IDX = x)"))
+    if got is None:
+        return "skip", "node, app.js or the stub is not here"
+    has, none = got
+    assert has["terms"][0] == "2027-requests" and "2025-2026" in has["terms"], (
+        f"a member with requests is offered {has['terms']}: the requests term first")
+    assert '<option value="2027-requests" selected>2027 Bill Requests</option>' in has["picker"], (
+        f"the picker does not name the requests term by its label: {has['picker'][:300]!r}")
+    p = has["prime"]
+    assert 'data-id="LSR20270002"' in p and 'data-id="LSR20270007"' in p \
+        and 'LSR20270009' not in p, f"the member's requests are not theirs alone: {p[-400:]!r}"
+    assert "These are requests, not bills yet." in p and "2 filed for 2027, 1 of them withdrawn" in p, (
+        f"the requests' one line is not there: {p[:400]!r}")
+    assert "only its prime sponsor" in has["co"] and "not voted on" in has["votes"], (
+        "the co-sponsored or Votes tab does not say why a request term has nothing there")
+    assert none["terms"][0] == "2025-2026" and "2027-requests" not in none["terms"], (
+        f"a member with no requests is offered {none['terms']}: it should open on 2025-2026 (B4)")
+    return "ok", ("a member with requests opens on '2027 Bill Requests' and lists their two, one "
+                  "withdrawn, with the line on what a request is; one with none opens on 2025-2026")
 
 
 @check("frontend", "Latest activity on the home page links each bill to its own page",
