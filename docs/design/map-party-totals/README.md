@@ -1,7 +1,16 @@
 # Map party totals: the chamber shown, statewide, under the map's legend
 
-The branch is `feat/map-party-totals`. It sits on `fix/presiding-line` 28a4fae1, which is on
-`fix/members-elect-polish` 068ed8b0, which is on dev 92247871 (dry run 6).
+The branch is `feat/map-party-totals`. Its own work is 88107c77, which sits on
+`fix/presiding-line` 28a4fae1. That is on `fix/members-elect-polish` 068ed8b0, which is on
+dev 92247871 (dry run 6).
+
+**Stacked for Sunday (8 November 2026).** Items B and C (`feat/members-elect-tab`, with A) are
+merged in. One merge of this branch therefore takes A, B, C and D.
+
+- `preflight.py` is .797. Each of the three branches had raised it from .794.
+- `_seats_held`, this branch's reader of "Who holds the seats", now reads the Legislators
+  panel only. With B, the Members-Elect tab draws its "Who won the seats" in the same bars.
+- `preflight --code` on the stacked tip: 993 passed, 0 failed, 9 skipped.
 
 Alice asked for it on 7 November 2026, through the laptop manager: "IF IT FITS: on the map, a
 short list of the party totals for the chamber layer shown (Senate or House): Democrats,
