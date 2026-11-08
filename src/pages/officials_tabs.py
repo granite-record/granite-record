@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.12
+# GRANITE_VERSION: 2026-10-10.13
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -741,10 +741,11 @@ def presiding(officers, legs, today, lang="en"):
 # and 8 November 2026). Each member-elect is the Legislators tab's own chip,
 # with a title and a district -- "Rep.-elect Kristine Trow (D - Rock 13)",
 # "Sen.-elect David Rochefort (R - SD1)", the owner's choice of "Rep.-elect"
-# -- and beside it, outside it, one word for who they are (the walk of dry
+# (since the walk of dry run 8, 8 November 2026, "Rep. “Elect” Kristine Trow",
+# the quotation marks inside the chip) -- and beside it, outside it, one word for who they are (the walk of dry
 # run 7, through the laptop manager):
 #
-#   RETURNING     a sitting member re-elected to the seat they hold (the
+#   INCUMBENT     a sitting member re-elected to the seat they hold (the
 #                 file's `own`), or a former member back in the chamber they
 #                 last served in
 #   NEW DISTRICT  a sitting member elected to another district of the same
@@ -761,7 +762,8 @@ def presiding(officers, legs, today, lang="en"):
 # but whose row is not in `people` gets no word rather than a guessed one.
 def kind_words(kind, lang="en"):
     """The word for an elect_kind(), in `lang`; "" for none."""
-    return {"returning": I.say(lang, "elect.kind.returning", "Returning"),
+    # INCUMBENT, not RETURNING, from the owner's walk of dry run 8, 8 November 2026.
+    return {"returning": I.say(lang, "elect.kind.incumbent", "Incumbent"),
             "district": I.say(lang, "elect.kind.district", "New district"),
             "chamber": I.say(lang, "elect.kind.chamber", "New chamber"),
             "new": I.say(lang, "elect.kind.new", "New")}.get(kind, "")
@@ -814,9 +816,9 @@ def elect_chip(e, key, lang="en"):
     m = KEY_RE.match(key)
     p = str(e.get("p") or "")
     if m.group(3):
-        title, where = I.say(lang, "elect.title_sen", "Sen.-elect"), district_tag("S", m.group(3))
+        title, where = I.say(lang, "elect.title_sen", "Sen. “Elect”"), district_tag("S", m.group(3))
     else:
-        title = I.say(lang, "elect.title_rep", "Rep.-elect")
+        title = I.say(lang, "elect.title_rep", "Rep. “Elect”")
         where = district_tag("H", m.group(2), county=m.group(1))
     tag = " - ".join(x for x in (p, where) if x)
     return pchip({"party_code": p if len(p) == 1 else "X",
@@ -841,7 +843,23 @@ def elect_party_words(code, n, lang="en"):
                       plural=n != 1)
 
 
-def elect_totals(races, lang="en"):
+def elect_kind_line(won_keys, by_id, lang="en"):
+    """THE KINDS, COUNTED (the owner's walk of dry run 8, 8 November 2026): one
+    chamber's members-elect by the word each chip carries, from elect_kind
+    itself and so never a second classification -- "250 incumbent &middot; 30
+    new district &middot; 4 new chamber &middot; 100 new". `won_keys` is
+    [(member-elect, race key)]; a member the rows cannot place has no word
+    and is not counted; "" where none has one."""
+    n = {}
+    for e, k in won_keys:
+        kind = elect_kind(e, k, by_id)
+        if kind:
+            n[kind] = n.get(kind, 0) + 1
+    return " &middot; ".join(f"{n[kind]} {E(kind_words(kind, lang)).lower()}"
+                             for kind in ("returning", "district", "chamber", "new") if n.get(kind))
+
+
+def elect_totals(races, lang="en", by_id=None):
     """THE SEATS AT THE TOP (the owner's walk of 7 November 2026, C): the
     Legislators tab's "Who holds the seats", for the members-elect -- each
     chamber's members-elect by party, the cross-nominated apart and a
@@ -906,9 +924,17 @@ def elect_totals(races, lang="en"):
                    f'<p class="compshort"><b>{E(name)}</b> {short}</p></div>')
     if not out:
         return ""
+    # The kinds, one line a chamber, under the bars (the walk of dry run 8).
+    kinds = ""
+    for sen in (True, False):
+        line = elect_kind_line([(e, k) for k, r in races.items() if bool(KEY_RE.match(k).group(3)) == sen
+                                for e in r.get("elected") or []], by_id, lang)
+        if line:
+            name = I.say(lang, "comp.senate", "Senate") if sen else I.say(lang, "comp.house", "House")
+            kinds += f'<p class="elkinds"><b>{E(name)}</b> {line}</p>'
     return ('<div class="comp-wrap comp-top"><h2>'
             + I.say(lang, "elect.who_won", "Who won the seats") + "</h2>"
-            + "".join(out) + elect_nf_list(races, lang) + "</div>")
+            + "".join(out) + kinds + elect_nf_list(races, lang) + "</div>")
 
 
 def elect_nf_list(races, lang="en"):
@@ -1081,8 +1107,15 @@ def members_elect(elect, today, lang="en", people=None):
         for code, pm in sorted(groups.items(),
                                key=lambda kv: (-len(kv[1]), {"+": 1, "": 2}.get(kv[0], 0), kv[0])):
             pm.sort(key=lambda ke: (elect_sortname(ke[1], by_id), race_order(ke[0])))
+            # Why a group is "More than one party" (the owner's walk of dry run 8,
+            # 8 November 2026), said as the results print it.
+            why = ('<p class="note">' + I.say(
+                lang, "elect.party_more_why", "They were on the ballot with two party labels, "
+                "as the Secretary of State&rsquo;s results print them; the site will show the "
+                "party the General Court records for them once it does.") + "</p>"
+                   if code == "+" else "")
             cols.append(f'<section class="pcol"><h3>{E(elect_party_words(code, len(pm), lang))} '
-                        f'&mdash; {len(pm)}</h3><ol class="seatlist rlist elroll">'
+                        f'&mdash; {len(pm)}</h3>{why}<ol class="seatlist rlist elroll">'
                         + "".join(item("li", "seatrow", e, k) for k, e in pm) + "</ol></section>")
         return (f'<h2 id="{hid}">{heading} &mdash; {len(ms)}</h2>'
                 + elect_nf_count([(d, r) for _k, d, r in rows], lang)
@@ -1152,7 +1185,7 @@ def members_elect(elect, today, lang="en", people=None):
 </div>
 </section>"""
     return (f'<div class="elpane" data-elect{until_attrs(takes, today)}>' + intro
-            + elect_totals(races, lang) + views + "</div>")
+            + elect_totals(races, lang, by_id) + views + "</div>")
 
 
 def elect_count(elect):

@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.357 */
+/* GRANITE_VERSION: 2026-09-07.358 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -9565,6 +9565,12 @@ align-items:baseline;column-gap:var(--sp-3);row-gap:0}
 font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--pine);
 border:1px solid var(--pine);border-radius:2px;padding:2px 5px;white-space:nowrap;
 margin:0 0 var(--sp-3)}
+/* THE KINDS COUNTED, one line a chamber under the bars, and the sentence under
+   the cross-nominated group's heading (the owner's walk of dry run 8, 8
+   November 2026). */
+:where(body.pg) .elkinds{font-size:var(--t-ui);line-height:1.5;margin:0 0 var(--sp-2)}
+:where(body.pg) .elkinds b{font-weight:600;color:var(--ink);margin-right:var(--sp-2)}
+:where(body.pg) .pcol > p.note{font-size:var(--t-sm);color:var(--ink-2);margin:0 0 var(--sp-3);max-width:34rem}
 /* THE HOME PAGE'S ONE BOX (D13): find.js's rows in a dropdown under the
    box, over the cards, as the header's panel is a dropdown under the bar.
    The rows are the panel's own (.findout, in the shared region); this is

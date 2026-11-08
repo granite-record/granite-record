@@ -487,14 +487,14 @@
    "es": "Nuevo distrito",
    "state": "draft"
   },
+  "elect.kind.incumbent": {
+   "en": "Incumbent",
+   "es": "Titular",
+   "state": "draft"
+  },
   "elect.kind.new": {
    "en": "New",
    "es": "Nuevo/a",
-   "state": "draft"
-  },
-  "elect.kind.returning": {
-   "en": "Returning",
-   "es": "Reelegido/a",
    "state": "draft"
   },
   "elect.n_none": {
@@ -577,6 +577,11 @@
    "es": "Más de un partido",
    "state": "draft"
   },
+  "elect.party_more_why": {
+   "en": "They were on the ballot with two party labels, as the Secretary of State&rsquo;s results print them; the site will show the party the General Court records for them once it does.",
+   "es": "Figuraron en la boleta con dos etiquetas de partido, tal como las imprimen los resultados del Secretario de Estado; el sitio mostrará el partido que registre la Legislatura cuando lo haga.",
+   "state": "draft"
+  },
   "elect.recount": {
    "en": "&mdash; a recount was requested",
    "es": "&mdash; se pidió un recuento",
@@ -608,13 +613,13 @@
    "state": "draft"
   },
   "elect.title_rep": {
-   "en": "Rep.-elect",
-   "es": "Rep. electo/a",
+   "en": "Rep. “Elect”",
+   "es": "Rep. “Electo/a”",
    "state": "draft"
   },
   "elect.title_sen": {
-   "en": "Sen.-elect",
-   "es": "Sen. electo/a",
+   "en": "Sen. “Elect”",
+   "es": "Sen. “Electo/a”",
    "state": "draft"
   },
   "elect.who_won": {
@@ -697,11 +702,6 @@
    "es": "Proyecto de ley",
    "state": "draft"
   },
-  "find.kind.request": {
-   "en": "Bill Request",
-   "es": "Solicitud de proyecto de ley",
-   "state": "draft"
-  },
   "find.kind.committee": {
    "en": "Committee",
    "es": "Comité",
@@ -741,6 +741,11 @@
   "find.kind.page": {
    "en": "Page",
    "es": "Página",
+   "state": "draft"
+  },
+  "find.kind.request": {
+   "en": "Bill Request",
+   "es": "Solicitud de proyecto de ley",
    "state": "draft"
   },
   "find.kind.statutory": {
