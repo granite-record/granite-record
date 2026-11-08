@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.61
+# GRANITE_VERSION: 2026-09-19.62
 """
 A page for every day the House sat.
 
@@ -2576,6 +2576,7 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
             "id": bill, "href": href or "", "n": num, "year": year,
             "word": C.card_word(chip_w, row.get("passage")) if chip_w else "",
             "cls": (C.WORDBOOK["chips"]["chip"].get(chip_w)
+                    or C.WORDBOOK["chips"].get("by_status", {}).get(row.get("status") or "")
                     or C.WORDBOOK["chips"]["kind"].get(row.get("kind") or "", "")),
             "title": titles.get((term_, bill)) or row.get("title") or "",
             "byline": C.bill_byline(sponsor, row.get("committees") or [], topic, term_, codes),
