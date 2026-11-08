@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.362 */
+/* GRANITE_VERSION: 2026-09-07.364 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -5792,7 +5792,8 @@ color:var(--pine);text-decoration:none;text-align:left}
 text-decoration-thickness:1px;text-underline-offset:3px}
 .wkpd{font-size:var(--t-sm);font-weight:400;color:var(--ink-2)}
 .wknav a:hover .wkpw,.wknav a.wkhere:hover,.calstep button:hover .wkpw{color:var(--ink)}
-.wkfoot{margin-bottom:var(--sp-9)}
+/* A rule under the schedule, before Calendars and Journals (the owner's walk of dry run 9, 8 November 2026). */
+.calend{border:0;border-top:2px solid var(--rule);margin:var(--sp-9) 0 var(--sp-7)}
 @media (max-width:30em){
   .wknav,.calstep{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"p n" "m m"}
 }

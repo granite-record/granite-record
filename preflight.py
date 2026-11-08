@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.811
+# GRANITE_VERSION: 2026-09-04.813
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -54181,7 +54181,7 @@ def _calendar_documents():
             assert t.count('<section class="cdocs" id="cdocs"') == 1 and block in t, (
                 f"{f} does not carry the section once, as written")
             main_ = t[t.index('<div class="calmain">'):]
-            assert main_.index('class="wknav wkfoot"') < main_.index('<section class="cdocs"') \
+            assert main_.index('class="calend"') < main_.index('<section class="cdocs"') \
                 < main_.index('id="calpeek"'), f"{f}: the section is not under the schedule's arrows"
             # NO SUMMARY AND NO LINK DOWN UNDER THE WEEK'S NAME (the person, 7
             # October 2026, F11): the PDFs are the last block of the column.
@@ -68525,7 +68525,7 @@ def _pager_labels():
                 '<a class="wkhere" href="/calendar">This Week</a>'
                 '<a class="wknext" href="/calendar/2026-W13"><span class="wkpw">Next Week &rsaquo;</span>'
                 '<span class="wkpd">Mar 23–27, 2026</span></a>')
-        assert navs == [want, want], f"the week of 16 March's pagers read {navs}"
+        assert navs == [want] and t.count('<hr class="calend">') == 1, f"the week of 16 March's pager (one, at the top) or the rule under the list: {navs}"
         assert "<h1>The Week of March 16–20, 2026</h1>" in t and \
             "<title>The Week of March 16–20, 2026 | Granite Record</title>" in t, (
             "the week's heading or title is not The Week of March 16–20, 2026")
@@ -68765,7 +68765,7 @@ def _calendar_study_committees():
             go.write_text("globalThis.document={getElementById:function(){return null;}};\n"
                           + _with_components(BC.WEEK_JS) + r"""
 const C=globalThis.GRCAL, t=require("fs").readFileSync(process.argv[2],"utf8");
-const view=t.slice(t.indexOf('<div class="calview"'),t.indexOf('<nav class="wknav wkfoot"'));
+const view=t.slice(t.indexOf('<div class="calview"'),t.indexOf('<hr class="calend"'));
 const cards=(view.match(new RegExp('<details class="cal'+'meet"[\\s\\S]*?</details>','g'))||[]).map(C.parseCard);
 const on=Object.assign(C.defaults(),{cats:C.CATS.slice()});
 process.stdout.write(C.countLine(C.tally(cards,on),"this week")+" | "
@@ -68853,7 +68853,7 @@ def _calendar_study_hidden_once():
                 BC.week_page(site, "https://graniterecord.org", k, weeks, order, i,
                              {}, {}, {}, [], _dt.date(2026, 10, 12), set(), study=True)
         t = (site / "calendar.html").read_text(encoding="utf-8")
-        view = t[t.index('<div class="calview" id="calview">'):t.index('<nav class="wknav wkfoot"')]
+        view = t[t.index('<div class="calview" id="calview">'):t.index('<hr class="calend"')]
         cards = re.findall(r'<details class="calmeet"[^>]*>.*?</details>', view, re.S)
         aging = [c for c in cards if "State Commission on Aging" in c]
         vets = [c for c in cards if "Veterans Home Study" in c]
@@ -68904,7 +68904,7 @@ def _calendar_study_hidden_once():
             go.write_text("globalThis.document={getElementById:function(){return null;}};\n"
                           + _with_components(BC.WEEK_JS) + r"""
 const C=globalThis.GRCAL, t=require("fs").readFileSync(process.argv[2],"utf8");
-const view=t.slice(t.indexOf('<div class="calview"'),t.indexOf('<nav class="wknav wkfoot"'));
+const view=t.slice(t.indexOf('<div class="calview"'),t.indexOf('<hr class="calend"'));
 const cards=(view.match(new RegExp('<details class="cal'+'meet"[\\s\\S]*?</details>','g'))||[]).map(C.parseCard);
 const st=cards.filter(c=>c.who==="study");
 process.stdout.write(JSON.stringify({day:C.emptyWords(st.slice(0,1),C.defaults()),
@@ -69883,7 +69883,7 @@ def _calendar_chambers():
 
         def cards(page):
             t = (site / page).read_text(encoding="utf-8")
-            t = t[t.index('<div class="calview" id="calview">'):t.index('<nav class="wknav wkfoot"')]
+            t = t[t.index('<div class="calview" id="calview">'):t.index('<hr class="calend"')]
             out = {}
             for m in re.finditer(r'<details class="calmeet"([^>]*)>(.*?)</details>', t, re.S):
                 a = dict(re.findall(r' data-([a-z]+)="([^"]*)"', m.group(1)))
@@ -76596,13 +76596,13 @@ def _calendar_page_shape():
         assert '<p class="calhint" id="pickhint" hidden>' in t, (
             "the committees chosen by name do not say they are still shown in the kinds ticked")
         views = re.findall(r'<button type="button" data-view="([a-z]+)" aria-pressed="([a-z]+)">', t)
-        assert views == [("list", "true"), ("week", "false"), ("day", "false")], (
+        assert views == [("list", "true"), ("week", "false")], (
             f"the view switch is {views}")
         assert 'id="wkcount" role="status" aria-live="polite"' in t, "the count is not announced politely"
         assert '<table class="cmgrid" id="cmgrid" role="grid" aria-labelledby="cmtitle">' in t, (
             "the month is not a grid labelled by its month")
         # The week, whole, in the page.
-        body = t[t.index('<div class="calview" id="calview">'):t.index('<nav class="wknav wkfoot"')]
+        body = t[t.index('<div class="calview" id="calview">'):t.index('<hr class="calend"')]
         cards = re.findall(r'<details class="calmeet"[^>]*>', body)
         assert len(cards) == 7, f"the week of 9 March lists {len(cards)} cards, not 7"
         # The language the week's hyphens:auto needs to hyphenate a committee's
@@ -76656,7 +76656,7 @@ def _calendar_page_shape():
         for k in order:
             page = (site / "calendar" / f"{k}.html") if k != "2026-W11" else (site / "calendar.html")
             pt = page.read_text(encoding="utf-8")
-            pv = pt[pt.index('<div class="calview" id="calview">'):pt.index('<nav class="wknav wkfoot"')]
+            pv = pt[pt.index('<div class="calview" id="calview">'):pt.index('<hr class="calend"')]
             mon = BC.datetime.date.fromisocalendar(2026, int(k[6:]), 1)
             dates = [(mon + BC.datetime.timedelta(days=i)).isoformat() for i in range(7)]
             from_files = [c for x in dates
@@ -77010,7 +77010,7 @@ ok(C.readHash("#d=2026-03-10&what=hearing").cats.join()==="hearing,floor,date"
    "an old address's who and what do not come across as the boxes that answer them");
 ok(C.readHash("#results")===null, "the skip link's #results reads as a state");
 const bad=C.readHash("#d=2026-02-30&v=day");
-ok(bad && bad.d===undefined && bad.v==="day" && C.readHash("#d=2026-02-30")===null
+ok(bad && bad.d===undefined && bad.v==="list" && C.readHash("#d=2026-02-30")===null
    && C.readHash("#d=2026-13-01")===null && C.readHash("#d=2028-02-29").d==="2028-02-29",
    "a day the calendar does not have is read out of the address: "+JSON.stringify(bad));
 // ---- dates and keys ----
@@ -77431,12 +77431,12 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(W.addr()==="/calendar?week=2026-W12" && D.activeElement===arrow(".calhead .wknav","wknext"),
      "The week after dropped focus, or left the calendar's address: "+W.addr()+" "+D.activeElement.tagName+"."+D.activeElement.className);
   ok(W.sel()==="2026-03-18", "The week after did not open the week on its first sitting: "+W.sel());
-  arrow(".wkfoot","wkhere").focus(); arrow(".wkfoot","wkhere").click(); await W.step();
-  ok(W.sel()==="2026-03-11" && W.addr()==="/calendar?week=2026-W11" && !arrow(".wkfoot","wkhere")
+  arrow(".calhead .wknav","wkhere").focus(); arrow(".calhead .wknav","wkhere").click(); await W.step();
+  ok(W.sel()==="2026-03-11" && W.addr()==="/calendar?week=2026-W11" && !arrow(".calhead .wknav","wkhere")
      && D.activeElement===Q(".calhead h1") && Q(".calhead h1").getAttribute("tabindex")==="-1",
      "This week, which is gone on this week, dropped focus: it is on "+D.activeElement.tagName+"."+D.activeElement.className+" at "+W.addr());
-  arrow(".wkfoot","wknext").focus(); arrow(".wkfoot","wknext").click(); await W.step();
-  ok(D.activeElement===arrow(".wkfoot","wknext"), "the foot's The week after dropped focus");
+  arrow(".calhead .wknav","wknext").focus(); arrow(".calhead .wknav","wknext").click(); await W.step();
+  ok(D.activeElement===arrow(".calhead .wknav","wknext"), "the head's The week after dropped focus");
   arrow(".calhead .wknav","wkprev").focus(); arrow(".calhead .wknav","wkprev").click(); await W.step();
   ok(W.sel()==="2026-03-11" && D.activeElement===arrow(".calhead .wknav","wkprev"), "The week before dropped focus");
   // ---- the week, the day ----
@@ -77463,22 +77463,13 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   const conf=QA(".wke",$("calview")).find(e=>/conference/.test(Q(".wkc",e).textContent));
   ok(conf && Q(".wkgo",conf).tagName==="BUTTON", "the conference's entry is not a button into its day");
   if(conf){ Q(".wkgo",conf).click(); await W.settle(); }
-  ok(W.view("day").getAttribute("aria-pressed")==="true" && W.sel()==="2026-03-11" && D.activeElement.tagName==="SUMMARY"
-     && /conference/.test(D.activeElement.textContent), "the conference's entry did not open it in the Day view: "
+  // NO DAY VIEW (the owner's walk of dry run 9, 8 November 2026): the entry
+  // opens the list at its day, that meeting open and focused, the rest shut.
+  ok(!W.view("day") && W.view("list").getAttribute("aria-pressed")==="true" && W.sel()==="2026-03-11"
+     && D.activeElement.tagName==="SUMMARY" && /conference/.test(D.activeElement.textContent)
+     && QA(".calmeet",$("calview")).filter(m=>m.open).length===1, "the conference's entry did not open it in the list: "
      +W.addr()+" "+D.activeElement.tagName);
-  W.view("day").click(); await W.settle();
-  ok(QA(".calday",$("calview")).length===1 && W.keys().join()==="2026-03-11|Committee of conference on HB 3,2026-03-11|House Session Day"
-     && QA(".calmeet",$("calview")).every(m=>m.open), "the Day view is not 11 March's two entries, open: "+W.keys());
-  ok($("wkcount").textContent==="2 meetings on Wednesday, March 11.", "the day's count: "+$("wkcount").textContent);
-  ok(W.addr()==="/calendar?week=2026-W11&view=day", "the Day view's address: "+W.addr());
-  // PREVIOUS DAY AND NEXT DAY, under the day, each with the day it leads to.
-  const steps=()=>QA(".calstep button",$("calview")).map(b=>b.getAttribute("data-to")+" "+b.textContent).join(" | ");
-  ok(steps()==="2026-03-10 ‹ Previous DayTuesday, March 10 | 2026-03-12 Next Day ›Thursday, March 12", "the Day view's pager: "+steps());
-  Q('.calstep [data-step="1"]',$("calview")).click(); await W.settle();
-  ok(W.sel()==="2026-03-12" && W.addr()==="/calendar?week=2026-W11&day=2026-03-12&view=day", "Next Day: "+W.sel()+" "+W.addr());
-  Q('.calstep [data-step="-1"]',$("calview")).click(); await W.settle();
-  ok(W.sel()==="2026-03-11" && W.addr()==="/calendar?week=2026-W11&view=day", "Previous Day: "+W.sel()+" "+W.addr());
-  W.view("list").click(); await W.settle();
+  ok(!/view=day/.test(W.addr()), "the list's address still says the Day view: "+W.addr());
   // ---- the boxes ----
   // SHOW THEM ticks Study Committee as a reader's tick does (18 October 2026).
   $("calshowst").click(); await W.settle();
@@ -77501,7 +77492,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   // never "matches the filters", which no reader had set; the month's cell
   // says it to a screen reader; and the day's own Show them shows them, as
   // the week line's does (the R2 polish batch, 30 October 2026).
-  W.view("day").click(); await W.settle();
+  W.view("list").click(); await W.settle();
   Q('td[data-d="2026-03-13"]',$("cmgrid")).click(); await W.step();
   const d13=Q('.calday[data-d="2026-03-13"]',$("calview")), e13=d13&&Q(".calempty",d13);
   ok(W.sel()==="2026-03-13" && e13 && /^Study committee meetings only\. Show them/.test(e13.textContent)
@@ -77512,7 +77503,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
      "the month's cell of a study committees' day: "+(n13&&n13.textContent));
   if(e13&&Q(".calshowday",e13)){ Q(".calshowday",e13).click(); await W.settle(); }
   ok(W.box("study").checked && W.store.get("gr.calendar.showstudy")==="1"
-     && W.keys().some(k=>/2026-03-13\|Commission on Aging/.test(k)) && QA(".calmeet",$("calview")).length===1,
+     && W.keys().some(k=>/2026-03-13\|Commission on Aging/.test(k)),
      "a day's Show them does not tick the box and draw the day's study committee: "+W.keys());
   ok(D.activeElement && D.activeElement.tagName==="SUMMARY" && /Commission on Aging/.test(D.activeElement.textContent),
      "a day's Show them leaves the focus off the meeting it shows: "+(D.activeElement&&D.activeElement.tagName));
@@ -77685,12 +77676,6 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(R3.sel()==="2026-03-11" && R3.addr()===W2.addr(), "a reload after a filter opened "+R3.sel()+" at "+R3.addr());
   await W2.tick("hearing",true); await W2.tick("exec",true);
   ok(W2.sel()==="2026-03-10", "the mark did not come back with the boxes: "+W2.sel());
-  W2.view("day").click(); await W2.settle();
-  await W2.tick("hearing",false); await W2.tick("exec",false);
-  ok(W2.sel()==="2026-03-10" && W2.addr()==="/calendar?week=2026-W11&day=2026-03-10&view=day&kinds=work,conf,floor,date",
-     "a filter moved the day the Day view was reading, or the address lost it: "+W2.sel()+" at "+W2.addr());
-  const R4=reload(W2,{today:[2026,3,18]}); await R4.run();
-  ok(R4.sel()==="2026-03-10" && R4.addr()===W2.addr(), "a reload of the Day view after a filter opened "+R4.sel()+" at "+R4.addr());
   // ---- a phone: the month folds to the week, and only the fold's own button is remembered ----
   const W4=world("calendar.html","/calendar",{narrow:true});
   await W4.run();
@@ -77709,7 +77694,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   // ---- a key on an arrow keeps the arrow in view; a click shows the day ----
   // The head's arrows near the top of a long page, the foot's far down it,
   // and the day chosen between them.
-  const L=(el)=>el.matches(".calhead .wknav a")?150:el.matches(".wkfoot a")?3000
+  const L=(el)=>el.matches(".calhead .wknav a")?150:el.matches(".calend")?3000
     :el.matches(".calday.calsel")?1400:undefined;
   const W5=world("calendar.html","/calendar",{layout:L});
   await W5.run();
@@ -77719,10 +77704,10 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(W5.addr()==="/calendar?week=2026-W12" && W5.doc.activeElement===W5.Q(".calhead .wknav a.wknext")
      && seen5(W5.doc.activeElement),
      "Enter on the head's The week after scrolled it off the screen: top "+W5.doc.activeElement.getBoundingClientRect().top);
-  await press(W5.Q(".wkfoot a.wkprev"));
-  ok(W5.addr()==="/calendar?week=2026-W11" && W5.doc.activeElement===W5.Q(".wkfoot a.wkprev")
+  await press(W5.Q(".calhead .wknav a.wkprev"));
+  ok(W5.addr()==="/calendar?week=2026-W11" && W5.doc.activeElement===W5.Q(".calhead .wknav a.wkprev")
      && seen5(W5.doc.activeElement),
-     "Enter on the foot's The week before scrolled it off the screen: top "+W5.doc.activeElement.getBoundingClientRect().top);
+     "Enter on the head's The week before scrolled it off the screen: top "+W5.doc.activeElement.getBoundingClientRect().top);
   const nx5=W5.Q(".calhead .wknav a.wknext"); nx5.focus(); nx5.click(); await W5.step();
   ok(W5.Q(".calday.calsel",W5.$("calview")).getBoundingClientRect().top===0,
      "a click on The week after no longer brings the day chosen into view");
@@ -77749,21 +77734,18 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(said6 && said6.textContent==="The week of March 16–20, 2026 could not be loaded here. Open it on its own page."
      && link6 && link6.getAttribute("href")==="/calendar/2026-W12",
      "the panel of a week that did not load says "+(said6&&said6.textContent));
-  W6.view("day").click(); await W6.settle();
-  const day6=W6.Q("p.calempty",W6.$("calview"));
-  ok(day6 && day6.textContent==="Monday, March 16 could not be loaded here. Open its week on its own page.",
-     "the Day view of a week that did not load says "+(day6&&day6.textContent));
   // ---- an address sent to somebody: a week, a day, a view and a box ----
   const W3=world("calendar.html","/calendar",{search:"?week=2026-W10&day=2026-03-03&view=day&kinds=hearing"});
   await W3.run();
-  ok(W3.sel()==="2026-03-03" && W3.view("day").getAttribute("aria-pressed")==="true" && W3.ticked()==="hearing"
+  ok(W3.sel()==="2026-03-03" && !W3.view("day") && W3.view("list").getAttribute("aria-pressed")==="true" && W3.ticked()==="hearing"
      && W3.keys().join()==="2026-03-03|House Commerce" && W3.Q(".calhead h1").textContent==="The Week of March 2–6, 2026",
      "a shared address does not open on its week, day, view and box: "+W3.sel()+" "+W3.keys());
-  ok(W3.addr()==="/calendar?week=2026-W10&day=2026-03-03&view=day&kinds=hearing" && W3.G.history.length===1,
-     "a shared address was rewritten: "+W3.addr());
+  // An address that asked for the Day view lands on the list at that day.
+  ok(W3.addr()==="/calendar?week=2026-W10&day=2026-03-03&kinds=hearing" && W3.G.history.length===1,
+     "a shared address that asked for the Day view did not land on the list: "+W3.addr());
   // The shell wrote the skip link for /calendar, which from here is another
   // page: it follows the address.
-  ok(W3.Q("a.skip").getAttribute("href")==="/calendar?week=2026-W10&day=2026-03-03&view=day&kinds=hearing#results",
+  ok(W3.Q("a.skip").getAttribute("href").replace("&view=day","")==="/calendar?week=2026-W10&day=2026-03-03&kinds=hearing#results",
      "the skip link of a shared address leaves it: "+W3.Q("a.skip").getAttribute("href"));
   // A fragment that is not a state -- the skip link's, reloaded -- is kept.
   const W3b=world("calendar.html","/calendar",{search:"?week=2026-W12",hash:"#results"});
@@ -77798,9 +77780,9 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   // into the query in place, as one entry of history.
   const W8=world("calendar/2026-W10.html","/calendar/2026-W10",{hash:"#d=2026-03-03&v=day&what=hearing"});
   await W8.run();
-  ok(W8.sel()==="2026-03-03" && W8.view("day").getAttribute("aria-pressed")==="true" && W8.ticked()==="hearing,floor,date"
+  ok(W8.sel()==="2026-03-03" && W8.view("list").getAttribute("aria-pressed")==="true" && W8.ticked()==="hearing,floor,date"
      && W8.keys().join()==="2026-03-03|House Commerce", "an old address does not open on its day, view and filter: "+W8.ticked()+" "+W8.keys());
-  ok(W8.addr()==="/calendar?week=2026-W10&view=day&kinds=hearing,floor,date" && W8.G.history.length===1,
+  ok(W8.addr()==="/calendar?week=2026-W10&kinds=hearing,floor,date" && W8.G.history.length===1,
      "an old address is not written into the query: "+W8.addr());
   // On the tab, naming another week and who was meeting.
   const W9=world("calendar.html","/calendar",{hash:"#d=2026-03-18&v=week&who=standing,floor"});
