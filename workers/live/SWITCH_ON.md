@@ -32,7 +32,7 @@ first row of *Turning it all off* at the end.
 
 | | |
 |---|---|
-| Do | After the courtesy note to the General Court's IT office: `npx.cmd wrangler r2 object put graniterecord-live/control.json --file workers/live/control/sql-test.json --remote` |
+| Do | (No courtesy note is needed: the IT office already approved reading PublicSQL during session days, the owner said on 9 November 2026.) `npx.cmd wrangler r2 object put graniterecord-live/control.json --file workers/live/control/sql-test.json --remote` |
 | Then | Read `test/2026-03-11.json` and `test/2026-08-19.json` and run `node tests/live/compare_test.mjs` on each (README, *The November test*). It says go or no-go. |
 | Undo | `npx.cmd wrangler r2 object put graniterecord-live/control.json --file workers/live/control/sql-off.json --remote` (back to shadow at the next run, within 2 minutes). Put it back when the test is done, go or not. |
 | Whose word | **owner's** |

@@ -177,8 +177,9 @@ npx wrangler r2 object get graniterecord-live/streams/2026-11-16.json --file str
 
 ## The November test (`sql-test`)
 
-The one gate before any sitting (DESIGN.md 2.7), on the person's word and
-after the courtesy note to the General Court's IT office. With `sql-test.json`
+The one gate before any sitting (DESIGN.md 2.7), on the person's word. No
+courtesy note is needed: the IT office already approved reading PublicSQL
+during session days (the owner, 9 November 2026: "We were already approved to fetch from the SQL database during session days." The IT office's own words: "Votes update immediately to the website and to PublicSQL. No problem hitting PublicSQL during a session as it doesn't touch the website."). With `sql-test.json`
 in place, the first run between 10:00 and 16:00 on each weekday makes one
 connection to the General Court's public SQL database, and nothing else in
 the Worker reads it:
