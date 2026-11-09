@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.283
+// GRANITE_VERSION: 2026-09-07.284
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -5181,13 +5181,8 @@ function renderSummary(b,d,rsa){
   if(ending&&!ended)S.push(section("How It Ended",ending,"ending"));
   const kept=archivedNote(d);
   if(kept)S.push(section("About This Record",kept,"about-record"));
-  // ON THE SUMMARY, ONE SENTENCE AT MOST, and only for the strongest fact
-  // (RELATED_BILLS.md §6): where its language went, else where it was filed
-  // before or after. The rest are on the History tab.
-  const rel=relatedMerge(Array.isArray(d.related)?d.related:[]);
-  const top=rel.find(e=>e.g===0)||rel.find(e=>e.g===1);
-  if(top)S.push(section("Related Bills",`<p class="story">${relatedSaid(b,top)}</p>`
-    +(rel.length>1?`<p class="src"><a href="bill/${esc(b.year)}/${esc(String(b.id).toLowerCase())}/related">All ${rel.length} related bills and amendments</a></p>`:""),"related"));
+  // NO RELATED BILLS ON THE SUMMARY (Alice, 9 November 2026): it repeated the
+  // History tab, which every bill has now. relatedSaid stays for that tab.
   if((d.events||[]).length)S.push(section("The Docket",`<details class="docket"><summary><span class="caret"></span>Show the docket&rsquo;s ${
       d.events.filter(e=>!e.cancelled).length} lines</summary>
       <p class="note">Every action the General Court recorded, in its own words
