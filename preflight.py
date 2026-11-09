@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.819
+# GRANITE_VERSION: 2026-09-04.820
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -37960,7 +37960,15 @@ def _chain():
         # chamber's list, and to its week only where the calendar wrote that
         # week; and the home page hands its script only days that have a page.
         sess = root / "site" / "session"
-        on_disk = {b: sorted(p.stem for p in (sess / b).glob("*.html")) for b in ("H", "S")}
+        # Dated pages only, and not a morning page (build_live_session's
+        # is_morning, its marker in the page's head): a sitting still to come
+        # is in no list. NOT YET EXERCISED: the chain has no live step until
+        # workers/live/PATCHES.md 5 is applied, so no morning page reaches it;
+        # _live_session holds the step on its own.
+        import build_live_session as _BLS
+        on_disk = {b: sorted(p.stem for p in (sess / b).glob("*.html")
+                             if re.fullmatch(r"\d{4}-\d\d-\d\d", p.stem) and not _BLS.is_morning(p))
+                   for b in ("H", "S")}
         assert all(on_disk.values()), f"the chain built no sitting pages for a chamber: {on_disk}"
         listed = json.loads((sess / "days.json").read_text(encoding="utf-8"))
         assert {b: listed.get(b) for b in ("H", "S")} == on_disk, (
@@ -91290,7 +91298,10 @@ def _live_sql(live_gen, dayfiles_from_db, fetch_past_db, refusal):
 # The live Worker's suite, and how many tests it had when this was written: a
 # count that falls means a file stopped loading or a test was lost.
 LIVE_TESTS = "tests/live/index.js"
-LIVE_TESTS_AT_LEAST = 201
+# (On 30 October 2026 the retired /session/<B>/today page's eight tests went
+# with it, and the morning page's came in; 216 with the committee player's,
+# 218 with In short's, 220 with the reviews' of 6 November.)
+LIVE_TESTS_AT_LEAST = 220
 # The person's ready-made switches (workers/live/control/), each as the Worker
 # must read it; and the values control.json may hold (store.js CONTROL_VALUES).
 LIVE_CONTROL = {"all-off.json": {"youtube": "off", "sql": "off"},
@@ -91303,6 +91314,253 @@ LIVE_CONTROL_VALUES = {"youtube": ("on", "off"), "sql": ("off", "test", "on")}
 # follower's database, which is another Worker's.
 LIVE_NEVER = re.compile(r"gc\.nh\.gov|gencourt|graniterecord-follow|FOLLOW_DB", re.I)
 LOOPBACK = ("127.0.0.1", "::1", "localhost")
+
+
+@check("build", "the night's session.votes files: each dated session-day page's roll calls in the shape "
+       "the live votes file keeps (schema/session.votes.json), the record's ballots aligned to its "
+       "members, a file going with its page, and the morning page noindex, with no day file",
+       needs=("build_live_session",))
+def _live_session(BLS):
+    """The session days' side of the live layer (design sections 4.2 to 4.4),
+    on a site of three dated pages written here: build_live_session's checker
+    judges every shared case as tests/live/schema_cases.json says (the node
+    checker runs the same cases); every day file holds to the schema; a
+    roll call's ballots are the record's, member by member; a date whose page
+    is gone loses its file and a term file is untouched; a vote the shape has
+    no character for stops the step; and the morning page is written for the
+    build's day only, never over the record's page, noindex, with no day
+    file, and gone the next day."""
+    import tempfile
+    shape = BLS.schema()
+    cases = json.loads(Path("tests/live/schema_cases.json").read_text(encoding="utf-8"))["cases"]
+    wrong = []
+    for c in cases:
+        try:
+            BLS.check(c["doc"], shape)
+            ok = True
+        except BLS.Invalid:
+            ok = False
+        if ok != c["valid"]:
+            wrong.append(c["name"])
+    assert len(cases) >= 30 and not wrong, f"the schema checker judges these against the cases file: {wrong}"
+    with tempfile.TemporaryDirectory() as tmp:
+        site = Path(tmp)
+        for d in ("session/H", "session/S", "data", "idx"):
+            (site / d).mkdir(parents=True)
+        for f in ("session/H/2026-03-11.html", "session/H/2026-03-12.html", "session/S/2026-03-12.html"):
+            (site / f).write_text("<p>x</p>", encoding="utf-8")
+        (site / "session/H/2025-2026.json").write_text('{"term": "kept"}', encoding="utf-8")
+        (site / "session/H/2026-01-01.json").write_text("{}", encoding="utf-8")   # its page is gone
+        (site / "data/rollcalls.csv").write_text(
+            "roll_call,term,year,body,number,date,bill,question,question_plain,yeas,nays,not_voting,passed,"
+            "procedural,threshold_needed,threshold_rule,outcome_source\n"
+            "2026-H-41,2025-2026,2026,H,41,2026-03-11,HB 1376-FN,Ought to Pass,,2,0,1,1,0,,,\n"
+            "2026-H-42,2025-2026,2026,H,42,2026-03-11,SUSPRULE,Suspend the Rules,,2,0,1,1,1,,,\n"
+            "2026-H-40,2025-2026,2026,H,40,2026-03-11,,Shall Member Continue,,1,1,1,0,0,2,,\n"
+            "2026-H-50,2025-2026,2026,H,50,2026-03-13,HB2,Table,,1,1,1,0,0,,,\n"
+            "2026-S-9,2025-2026,2026,S,9,2026-03-12,SB12,Ought to Pass,,1,0,0,1,0,,,\n", encoding="utf-8")
+        (site / "data/votes-2025-2026.csv").write_text(
+            "roll_call,term,date,bill,question,member_id,member,party,chamber,vote\n"
+            "2026-H-41,2025-2026,2026-03-11,HB1376,x,960,\"A, B\",R,House,Yea\n"
+            "2026-H-41,2025-2026,2026-03-11,HB1376,x,11463,\"C, D\",D,House,Yea\n"
+            "2026-H-41,2025-2026,2026-03-11,HB1376,x,200,\"E, F\",D,House,Not Voting/Excused\n"
+            "2026-H-40,2025-2026,2026-03-11,,x,960,\"A, B\",R,House,Nay\n"
+            "2026-H-42,2025-2026,2026-03-11,SUSPRULE,x,960,\"A, B\",R,House,Yea\n"
+            "2026-H-42,2025-2026,2026-03-11,SUSPRULE,x,11463,\"C, D\",D,House,Yea\n"
+            "2026-H-40,2025-2026,2026-03-11,,x,11463,\"C, D\",D,House,Yea\n"
+            "2026-S-9,2025-2026,2026-03-12,SB12,x,7,\"G, H\",R,Senate,Yea\n", encoding="utf-8")
+        (site / "meta.json").write_text('{"terms": ["2025-2026"]}', encoding="utf-8")
+        (site / "idx/2025-2026.json").write_text(
+            '[{"id": "HB1376", "year": 2026}, {"id": "HB2", "year": 2025}]', encoding="utf-8")
+        docs = BLS.day_files(site)
+        wrote, gone = BLS.write_day_files(site, docs)
+        assert (wrote, gone) == (3, ["H/2026-01-01.json"]), (wrote, gone)
+        assert (site / "session/H/2025-2026.json").read_text(encoding="utf-8") == '{"term": "kept"}', \
+            "the session-day step's term file was written over"
+        h = json.loads((site / "session/H/2026-03-11.json").read_text(encoding="utf-8"))
+        BLS.check(h, shape)
+        assert h["provisional"] is False and h["status"]["state"] == "record"
+        assert h["members"] == {"H": ["200", "960", "11463"], "S": []}, h["members"]
+        assert [r["id"] for r in h["rollcalls"]] == ["2026-H-40", "2026-H-41", "2026-H-42"], "in the record's order"
+        r40, r41, r42 = h["rollcalls"]
+        assert (r42["bill"], r42["bill_as_recorded"]) == (None, "SUSPRULE"), \
+            f"a procedural vote names no bill, and keeps its words: {r42['bill']!r}"
+        assert (r41["ballots"], r41["ballots_complete"], r41["bill"], r41["bill_as_recorded"], r41["passed"]) == \
+            ("EYY", True, "2025-2026/HB1376", "HB 1376-FN", True), r41
+        assert (r40["ballots"], r40["ballots_complete"], r40["bill"], r40["passed"], r40["threshold_needed"]) == \
+            (".NY", True, None, False, 2), r40
+        assert r41["taken"] is None and r41["docket"] is None, "the record vouches for no clock or docket line here"
+        assert json.loads((site / "session/H/2026-03-12.json").read_text(encoding="utf-8"))["rollcalls"] == [], \
+            "a sitting with no roll call has its file, empty"
+        s = json.loads((site / "session/S/2026-03-12.json").read_text(encoding="utf-8"))
+        assert [r["id"] for r in s["rollcalls"]] == ["2026-S-9"] and s["members"]["S"] == ["7"]
+        assert not (site / "session/H/2026-03-13.json").exists(), "a roll call's day with no page has no file"
+        # A broken document is refused before anything is written.
+        bad = {k: dict(v, api=2) for k, v in docs.items()}
+        try:
+            BLS.write_day_files(site, bad, shape)
+            raise AssertionError("a document breaking the schema was written")
+        except SystemExit as e:
+            assert "does not hold to schema/session.votes.json" in str(e), e
+        # A vote the shape has no character for stops the step, by name.
+        votes = site / "data/votes-2025-2026.csv"
+        votes.write_text(votes.read_text(encoding="utf-8").replace("House,Nay", "House,Paired"), encoding="utf-8")
+        try:
+            BLS.day_files(site)
+            raise AssertionError("an unknown vote word was written as a ballot")
+        except SystemExit as e:
+            assert "'Paired'" in str(e), e
+        # Silence is not success: dated pages and no roll-call file to read.
+        for gone_file in ("data/rollcalls.csv", "data/votes-2025-2026.csv"):
+            kept = (site / gone_file).read_bytes()
+            (site / gone_file).unlink()
+            r = _run([sys.executable, str(Path(_paths.locate("build_live_session.py"))), "--site", str(site),
+                      "--today", "2026-03-12"], capture_output=True, text=True, timeout=120)
+            (site / gone_file).write_bytes(kept)
+            assert r.returncode != 0 and "no data/" in (r.stderr + r.stdout), \
+                f"without {gone_file} the step exited {r.returncode}: {(r.stderr or r.stdout).strip()[-300:]}"
+        votes.write_text(votes.read_text(encoding="utf-8").replace("House,Paired", "House,Nay"), encoding="utf-8")
+        # The morning page: the dated address on the morning of a sitting.
+        D = __import__("datetime").date
+        rows = [{"date": "2026-03-13", "body": "H", "kind": "floor debate", "bill": "HB2", "term": "2025-2026"},
+                {"date": "2026-03-13", "body": "H", "kind": "public hearing", "bill": "HB9", "term": "2025-2026"},
+                {"date": "2026-03-13", "body": "H", "kind": "floor debate", "bill": "hb1376", "term": "2025-2026"},
+                {"date": "2026-03-13", "body": "H", "kind": "floor debate", "bill": "HB2", "term": "2025-2026"},
+                {"date": "2026-03-13", "body": "S", "kind": "floor debate", "bill": "SB12", "term": "2025-2026"},
+                {"date": "2026-03-16", "body": "H", "kind": "floor debate", "bill": "HB3", "term": "2025-2026"}]
+        assert BLS.agenda("H", D(2026, 3, 13), rows) == [("2025-2026", "HB2"), ("2025-2026", "HB1376")], \
+            "the floor's bills, in the calendar's order, each once, and no hearing"
+        assert BLS.write_morning(site, "https://x.org", "H", D(2026, 3, 12), rows) is None and \
+            (site / "session/H/2026-03-12.html").read_text(encoding="utf-8") == "<p>x</p>", \
+            "a morning page was written over the record's page"
+        (site / "session/H/today.html").write_text("old", encoding="utf-8")
+        (site / "session/H/2026-03-13.json").write_text("{}", encoding="utf-8")   # an old file on the date
+        # The Calendar, which runs before this step, leaves the floor card's
+        # link to the build's day hidden (build_pages.cal_days); the step
+        # shows it once it has written the page, and only that day's.
+        import build_pages as BP
+        import html as _h
+        floor = BP.Meet("2026-03-13", "H", "House Floor", "")
+        slot = {floor: [{"bill": "HB2", "time": "10:00", "what": "floor debate",
+                         "venue": "Representatives Hall", "body": "H"}]}
+
+        def card(sessions, morning):
+            return BP.cal_days({floor.date: [floor]}, slot, {}, {}, {}, lambda d: (d, ""), _h.escape,
+                               sessions=sessions, morning=morning)[0]
+        waiting = card(set(), "2026-03-13")
+        assert 'data-morning="H/2026-03-13" hidden><a data-href="session/H/2026-03-13">' in waiting \
+            and ' href="session/H/2026-03-13' not in waiting \
+            and "did that day" not in waiting, "the Calendar does not leave the morning page's link waiting"
+        assert "data-morning" not in card(set(), "2026-03-12") and "session/H/2026-03-13" not in \
+            card(set(), "2026-03-12"), "a sitting of another day with no page was given a link"
+        assert "did that day" in card({("H", "2026-03-13")}, "2026-03-13") and "data-morning" not in \
+            card({("H", "2026-03-13")}, "2026-03-13"), "a sitting with its record page lost its own link"
+        other = waiting.replace("2026-03-13", "2026-03-20")
+        (site / "calendar/data").mkdir(parents=True)
+        (site / "calendar.html").write_text(waiting + other, encoding="utf-8")
+        (site / "calendar/data/2026-03.json").write_text(json.dumps({"days": {"2026-03-13": waiting}}),
+                                                        encoding="utf-8")
+        seen = {}
+        BLS.write(site, "https://x.org", D(2026, 3, 13), seen, rows)
+        cal = (site / "calendar.html").read_text(encoding="utf-8")
+        assert 'data-morning="H/2026-03-13"><a href="session/H/2026-03-13">' in cal \
+            and 'data-morning="H/2026-03-20" hidden><a data-href=' in cal, \
+            "the morning page's Calendar link was not shown, or another day's was"
+        assert json.loads((site / "calendar/data/2026-03.json").read_text(encoding="utf-8"))["days"][
+            "2026-03-13"].count('data-morning="H/2026-03-13"><a href=') == 1, "the month's data still hides the link"
+        assert sorted(seen["calendar"]) == ["calendar.html", "calendar/data/2026-03.json"], seen["calendar"]
+        assert sorted(seen["mornings"]) == ["H/2026-03-13.html", "S/2026-03-13.html"], seen["mornings"]
+        assert not (site / "session/H/today.html").exists(), "the retired today page was kept"
+        page = (site / "session/H/2026-03-13.html").read_text(encoding="utf-8")
+        head = page.encode()[:BLS.HEAD_BYTES]
+        assert BLS.MORNING.encode() in head and BLS.is_morning(site / "session/H/2026-03-13.html") \
+            and not BLS.is_morning(site / "session/H/2026-03-12.html"), "the marker is not in the head"
+        assert '<meta name="robots" content="noindex">' in page \
+            and '<script src="/live.js" defer>' in page and 'data-day="2026-03-13" data-body="H"' in page \
+            and 'id="live-day-status" class="lv-status" aria-live="polite"' in page
+        assert [m for m in re.findall(r'class="lv-rcs" data-bill="(\w+)"', page)] == ["HB2", "HB1376"], \
+            "each bill's card has a place for its votes, in the calendar's order"
+        assert "Votes as they are read. Who spoke and the debate come with the House Journal, which can " \
+               "take months." in page and "scheduled to sit on Friday, March 13, with 2 bills" in page
+        assert "today" not in re.sub(r"<script.*?</script>", "", page.split('id="results"', 1)[1], flags=re.S), \
+            "the page says today, which a page left up a day longer would say of the wrong day"
+        assert "cstat" not in page, "last night's status chip beside the day's votes"
+        # In short's words and the motions twin reach the page; the pending
+        # line is the manager's wording, with the motion in votes.json's words.
+        assert 'id="live-words"' in page and '"roll_call":"roll call"' in page \
+            and '["ought to pass","pass it"]' in page, "In short's words are not in the page"
+        assert page.index('<script src="/motions.js" defer>') < page.index('<script src="/live.js" defer>'), \
+            "motions.js must load before live.js"
+        pend = BLS.pending_html({"recommendation": "Ought to Pass", "yeas": 12, "nays": 8}, "HB2", "H")
+        assert pend == ('<p class="lv-pending">Pending: Ought to Pass '
+                        '(<span data-term="OTP">OTP</span>, Pass the bill). A special order, a motion '
+                        'to table or a motion to indefinitely postpone can change what the House votes on '
+                        'first.</p>'), pend
+        assert BLS.pending_html(None, "HB2", "H") == "" and BLS.pending_html({}, "HB2", "S") == "", \
+            "a pending line with no recommendation"
+        assert BLS.S.E(BLS.ROLL_CALLS_ONLY) in page, "the page does not say that only roll calls are read during the day"
+        # A report the chamber has already acted on is no pending motion: a
+        # bill passed in January and back in March for a concurrence.
+        import build_session_pages as BSP
+        import committee_acts as CA
+        evs = [{"date": "2026-01-10", "type": "report", "body": "H", "cancelled": False, "side": "",
+                "committee": "House Commerce", "recommendation": "Ought to Pass", "amendment": "",
+                "report_date": "01/10/2026", "yeas": "12", "nays": "8", "raw": "Committee Report: OTP 01/10/2026"},
+               {"date": "2026-01-20", "type": "floor", "body": "H", "cancelled": False, "motion": "MA",
+                "action": "Ought to Pass", "vote_kind": "VV", "raw": "Ought to Pass: MA VV 01/20/2026"}]
+        assert BSP.recommendation_on(CA.acts(evs), "H", "2026-03-12", BLS.floor_items(evs, "H")) is None, \
+            "a report the House acted on in January is the pending motion in March"
+        assert BSP.recommendation_on(CA.acts(evs[:1]), "H", "2026-03-12", BLS.floor_items(evs[:1], "H")), \
+            "a report not yet acted on is no pending motion"
+        assert BLS.floor_items(evs, "S") == [], "the other chamber's floor vote was read as this one's"
+        assert "lv-none" not in page, "the no-bills line on a day with bills"
+        assert '"2025-2026":{"2025":["HB2"],"2026":["HB1376"]}' in page, "the bills' own years"
+        assert not (site / "session/H/2026-03-13.json").exists(), \
+            "a morning page has a record day file: a sitting still to come would read as one with no roll call"
+        # A run for an earlier day leaves a later day's morning page.
+        BLS.write(site, "https://x.org", D(2026, 3, 11), {}, rows)
+        assert BLS.is_morning(site / "session/H/2026-03-13.html"), "a later day's morning page went"
+        # The next day: the morning page of an earlier day goes; a floor day
+        # with no bills listed yet (Organization Day) still has its page.
+        (site / "live").mkdir(exist_ok=True)
+        (site / "live/schedule.json").write_text(json.dumps(
+            {"days": {"2026-03-17": [{"kind": "floor", "chamber": "S"}]}}), encoding="utf-8")
+        seen = {}
+        BLS.write(site, "https://x.org", D(2026, 3, 17), seen, rows)
+        assert seen["mornings"] == ["S/2026-03-17.html"] and \
+            not (site / "session/H/2026-03-13.html").exists() and \
+            not (site / "session/S/2026-03-13.html").exists(), "an earlier day's morning page was kept"
+        assert (site / "session/H/2026-03-12.html").exists(), "the record's page went with the morning pages"
+        org = (site / "session/S/2026-03-17.html").read_text(encoding="utf-8")
+        assert "The Senate is scheduled to sit on Tuesday, March 17." in org and 'id="lv-none"' in org, \
+            "a sitting with no bills listed says so"
+        # Without /live's schedule the step stops, by name.
+        (site / "live/schedule.json").unlink()
+        r = _run([sys.executable, str(Path(_paths.locate("build_live_session.py"))), "--site", str(site),
+                  "--today", "2026-03-17"], capture_output=True, text=True, timeout=120)
+        assert r.returncode != 0 and "no live/schedule.json" in (r.stderr + r.stdout), \
+            f"without live/schedule.json the step exited {r.returncode}: {(r.stderr or r.stdout).strip()[-300:]}"
+    # New Hampshire's day, by the rule: a stated day; then the clock on each
+    # side of the changes of 2026 (8 March 07:00 UTC, 1 November 06:00 UTC).
+    import build_live as BL
+    import build_date
+    saved = build_date.utcnow, build_date.stated
+    try:
+        build_date.stated = lambda: None
+        for at, want in (("2026-03-08T06:59:00", "2026-03-08"), ("2026-03-08T04:59:00", "2026-03-07"),
+                         ("2026-03-09T03:59:00", "2026-03-08"), ("2026-03-09T04:00:00", "2026-03-09"),
+                         ("2026-11-01T05:59:00", "2026-11-01"), ("2026-11-02T04:59:00", "2026-11-01"),
+                         ("2026-11-02T05:00:00", "2026-11-02"), ("2026-07-01T03:59:00", "2026-06-30")):
+            build_date.utcnow = lambda at=at: __import__("datetime").datetime.fromisoformat(at + "+00:00")
+            got = BL.nh_today().isoformat()
+            assert got == want, f"at {at} UTC New Hampshire's day is {want}, and nh_today says {got}"
+    finally:
+        build_date.utcnow, build_date.stated = saved
+    src = Path(_paths.locate("build_live_session.py")).read_text(encoding="utf-8")
+    assert "sitemap" not in src.split('"""', 2)[2], "the morning pages must be in no sitemap"
+    return "ok", (f"{len(cases)} shared cases judged alike; three day files on a fixture site, "
+                  "ballots the record's, a file gone with its page, the morning page noindex and "
+                  "file-less, in the calendar's order, and gone the next day")
 
 
 @check("build", "a committee page's live hook: outside app.js's root, carrying the Worker's own window "
@@ -91433,6 +91691,134 @@ def _live_bill_number(RP):
     return "ok", f"{len(fields):,} bill fields read alike, {none} of them naming no bill"
 
 
+@check("build", "/live's two links, the home page's line and the header search's row, are written by /live's "
+       "own step, once however often it runs, and only while build_live.LINKED (the owner's switch) is on",
+       needs=("build_live", "shell"))
+def _live_links(BL, S):
+    """PATCHES.md 2 and 3 by the release session's plan (5 November 2026):
+    build_pages and build_indexes run before /live exists, so build_pages
+    leaves the home page a slot and /live's step fills it and puts its own
+    row in find.json (shell.find_merge). LINKED off takes both out again,
+    which is how the owner unlinks /live (SWITCH_ON.md)."""
+    import tempfile
+    import datetime as _dt
+    import build_pages as BP
+    src = Path(_paths.locate("build_pages.py")).read_text(encoding="utf-8")
+    assert BL.HOME_SLOT in src, "build_pages no longer leaves the home page's Live Now slot as build_live fills it"
+    day = _dt.date(2026, 3, 12)
+    sched = {"days": {"2026-03-12": [{"id": "a"}, {"id": "b"}], "2026-03-13": []}}
+    with tempfile.TemporaryDirectory() as tmp:
+        site = Path(tmp)
+        home = f"<main><div id=\"session\"></div>\n{BL.HOME_SLOT}\n</main>"
+        (site / "index.html").write_text(home, encoding="utf-8")
+        live = S.canon(BL.PAGE)                       # "live", as the site's other links are written
+        rows = [["page", "Bills", "x", S.canon("bills.html"), ""], ["page", "Live Now", "old", live, ""]]
+        (site / "find.json").write_text(json.dumps(rows), encoding="utf-8")
+        saved = BL.LINKED
+        try:
+            BL.LINKED = True
+            for _ in range(2):
+                BL.link_home(site, sched, day)
+                S.find_merge(site, ["page", "Live Now", "now", S.canon(BL.PAGE), BL.FIND_WORDS], S.canon(BL.PAGE))
+            page = (site / "index.html").read_text(encoding="utf-8")
+            assert page.count('class="lv-home"') == 1 and 'data-day="2026-03-12"' in page \
+                and f'<a href="{live}">Live Now</a><span class="lv-count"> — 2 meetings today</span>' in page, page
+            found = json.loads((site / "find.json").read_text(encoding="utf-8"))
+            assert [r[3] for r in found].count(live) == 1 and found[0] == rows[0] \
+                and found[-1][2] == "now", f"find.json after two runs: {found}"
+            assert "—" not in BL.home_line(sched, _dt.date(2026, 3, 13)), "a day with no meetings has a count"
+            BL.LINKED = False
+            BL.link_home(site, sched, day)
+            S.find_merge(site, None, S.canon(BL.PAGE))
+            assert (site / "index.html").read_text(encoding="utf-8") == home, "LINKED off left the home line"
+            assert json.loads((site / "find.json").read_text(encoding="utf-8")) == rows[:1], \
+                "LINKED off left /live's row in find.json"
+        finally:
+            BL.LINKED = saved
+    assert BL.HOME_SLOT not in BP.home_body("es", False, "", "", "", ""), \
+        "the Spanish home has the English-only Live Now slot"
+    assert BL.HOME_SLOT in BP.home_body("en", False, "", "", "", ""), "the English home has no Live Now slot"
+    return "ok", ("home line and search row filled once in two runs, taken out with LINKED off; LINKED is "
+                  + ("on" if BL.LINKED else "off"))
+
+
+@check("build", "the live session page's In short says a vote as the session page does: motions.js reads "
+       "every roll call's question on disk as motions.py does, and live.js's voteSaid gives "
+       "build_session_pages.vote_said's sentence, passed, failed, not known and short of two thirds",
+       needs=("build_session_pages", "build_live_session", "rollcall_parser"))
+def _in_short_twin(BSP, BLS, RP):
+    """The owner, 30 October 2026: the live day's In short is a finished
+    day's, from the same code and the same words. motions.js is motions.py
+    line for line, and live.js's voteSaid is vote_said for what a live roll
+    call carries; this runs both over the questions the General Court's
+    roll-call files hold (RollCallSummary's question, the field the Worker
+    reads) and fails on any key or sentence that differs. What the day
+    cannot know -- the bill's history, a passage left pending -- is not in
+    either side's input: the history is empty and nothing is left pending."""
+    import types
+    import components as C
+    root = Path(".")
+    seen, cases = set(), []
+    for f in sorted((root / "records/rollcalls").glob("RollCallSummary*.txt")):
+        for line in f.read_text(encoding="utf-8-sig", errors="replace").splitlines():
+            q = line.split("|")
+            if len(q) < 13 or q[1].strip() not in ("H", "S"):
+                continue
+            k = (q[11].strip(), RP.bill_number(q[4]) or "", q[1].strip())
+            if k not in seen:
+                seen.add(k)
+    # Forms no roll-call file holds that a docket line does, so each branch of
+    # vote_said is held: an enrolled bill amendment, and a Senate mover before
+    # a motion no row of the vote words names (narrative.split_mover).
+    for words in ("Enrolled Bill Amendment 2026-1234e", "Sen. Abbas Moved Retain",
+                  "Sen. Abbas Moved Without Recommendation", "Floor Amendment 2026-0531h (Rep. Rice)"):
+        seen.add((words, "SB12", "S"))
+    for words, bill, body in sorted(seen):
+        for carried, yeas, nays, need in ((True, 200, 150, None), (False, 150, 200, None), (None, 180, 170, None),
+                                          (False, 220, 150, -(-370 * 2 // 3)), (False, 220, 150, None),
+                                          (None, None, None, None)):
+            cases.append({"words": words, "bill": bill, "body": body, "carried": carried,
+                          "yeas": yeas, "nays": nays, "need": need})
+    assert len(seen) >= 500, f"only {len(seen)} questions read off records/rollcalls/: the corpus is not there"
+    # Each vote as the night's record gives it to vote_said: a vote on the
+    # Governor's veto is a veto (session_days sets it.veto from its docket
+    # row), and a motion votes.json says needs two thirds carries two thirds
+    # of those voting as its threshold (vote_passage), which the live file
+    # never carries and live.js supplies the same way.
+    motions = C.WORDBOOK["votes"]["motions"]
+    want = []
+    for c in cases:
+        it = types.SimpleNamespace(action=c["words"], carried=c["carried"], kind="RC", yeas=c["yeas"],
+                                   nays=c["nays"], counted=c["yeas"] is not None and c["nays"] is not None,
+                                   wo=False, veto=False, fifths=False, need=c["need"], raw="")
+        k = BSP.motion_chip(it, c["bill"], c["body"])[1]
+        mk = k.get("mk") or ""
+        it.veto = mk.startswith("override")
+        if it.need is None and it.counted and re.search(r"\btwo thirds\b", (motions.get(mk) or {}).get("gloss") or ""):
+            it.need = -(-(it.yeas + it.nays) * 2 // 3)
+        want.append([mk, BSP.vote_said(it, c["bill"], c["body"])])
+    node = shutil.which("node")
+    assert node, "node is not on PATH, and live.js's In short is the thing held here"
+    feed = {"wordbook": C.WORDBOOK, "words": BLS.live_words(),
+            "cases": [{"body": c["body"], "r": {"question": c["words"],
+                                                "bill": f"t/{c['bill']}" if c["bill"] else None,
+                                                "passed": c["carried"], "yeas": c["yeas"], "nays": c["nays"],
+                                                "threshold_needed": c["need"]}} for c in cases]}
+    r = _run([node, str(root / "tests/live/in_short_twin.mjs")], input=json.dumps(feed),
+             capture_output=True, text=True, timeout=300)
+    assert r.returncode == 0, f"node could not run In short: {(r.stderr or r.stdout).strip()[-400:]}"
+    got = json.loads(r.stdout)
+    keys = [f"{c['words']!r} on {c['bill'] or 'no bill'}: motions.js {g[0]!r}, motions.py {w[0]!r}"
+            for c, g, w in zip(cases, got, want) if g[0] != w[0]]
+    said = [f"{c['words']!r} ({c['carried']}): live.js {g[1]!r}, the session page {w[1]!r}"
+            for c, g, w in zip(cases, got, want) if g[1] != w[1]]
+    assert not keys, f"{len(keys)} motions read apart: " + "; ".join(keys[:4])
+    assert not said, f"{len(said)} votes said apart: " + "; ".join(said[:4])
+    quoted = sum(1 for w in want if "“" in w[1])
+    return "ok", (f"{len(seen):,} questions, {len(cases):,} votes said alike by live.js and the session "
+                  f"page ({quoted:,} in the clerk's own words, quoted)")
+
+
 @check("build", "the live Worker's own tests pass, every one: node --test runs tests/live/index.js, "
        "which imports every test file in tests/live/")
 def _live_tests():
@@ -91470,6 +91856,7 @@ def _live_tests():
             "tests/live/store.test.js", "tests/live/tds.test.js", "tests/live/youtube.test.js",
             "tests/live/fake_r2.js", "tests/live/fake_youtube.js", "tests/live/fake_tds.js",
             "tests/live/world.js", "tests/live/compare_test.mjs", "tests/live/wire.test.js",
+            "tests/live/schema.js", "tests/live/schema.test.js",
             "tests/live/committee.test.js",
             "tests/live/from_records.js", "workers/live/votes.js", "workers/live/merge.js",
             "tests/live/votes.test.js", "tests/live/replay.test.js", "tests/live/functions.test.js",

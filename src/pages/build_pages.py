@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.271
+# GRANITE_VERSION: 2026-09-04.272
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1165,7 +1165,7 @@ def meeting_who(cmte, rows):
 
 
 def cal_days(days, meets, titles, years, code, when, esc, level=3,
-             sessions=None, docs=None, lang="en", events=None, kd_full=True):
+             sessions=None, docs=None, lang="en", events=None, kd_full=True, morning=""):
     """The day blocks and their meeting cards, for any set of days.
 
     Split out of calendar_html on 18 September so the calendar PAGE draws the
@@ -1414,7 +1414,14 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # them decides, rather than this guessing from the name.
             floor = {"house floor": "H",
                      "senate floor": "S"}.get(key.name.strip().lower())
+            # THE MORNING PAGE (live/session, 6 November 2026): on the build's
+            # own day a sitting with no page yet gets one after this step,
+            # from build_live_session, which shows the link this leaves
+            # hidden once it has written the page. Any other day stays as it
+            # was: no page, no link.
+            waits = None
             if floor and sessions is not None and (floor, _d) not in sessions:
+                waits = floor if morning and _d == morning else None
                 floor = None
             elif floor and sessions is None:
                 floor = None
@@ -1459,6 +1466,17 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                        if floor == "H" else say(lang, "cal.senate_did", "What the Senate did that day"))
                 html.append('<p class="calmore">'
                             f'<a href="session/{floor}/{esc(_d)}.html">{did}</a></p>')
+            elif waits:
+                # Hidden until build_live_session writes the page: "did" is
+                # not yet so, and the words say only that its votes are read.
+                # The address as served (shell.canon), so the week page,
+                # which clean_links rewrites, and the month's data file,
+                # which it does not, carry the same card. data-href, not
+                # href, until the page exists: a build without the live
+                # step leaves no link to a page that was never written.
+                html.append(f'<p class="calmore" data-morning="{waits}/{esc(_d)}" hidden>'
+                            f'<a data-href="session/{waits}/{esc(_d)}">The '
+                            f'{"House" if waits == "H" else "Senate"}\'s votes, as they are read</a></p>')
             elif cc:
                 html.append('<p class="calmore">'
                             f'<a href="committee/{esc(cc)}.html#day-{esc(_d)}">'
@@ -3991,6 +4009,7 @@ def home_body(lang, has_lockup, static_state, static_up, static_recent, static_s
 </div>
 <section class="hside hleft" aria-label="{esc(say(lang, "home.left", "Where the General Court is, and its latest session days"))}">
 <div id="state">{static_state}</div>
+{'<p class="lv-home" hidden data-day=""></p>' if lang == "en" else ""}
 <div id="session">{static_sessions}</div>
 </section>
 <!-- WHAT IS COMING UP OVER WHAT HAS JUST HAPPENED (the owner, 24 October

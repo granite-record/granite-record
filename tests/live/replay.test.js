@@ -15,6 +15,7 @@ import { BALLOT_CHAR } from "../../workers/live/live.gen.js";
 import { BUDGET } from "../../workers/live/votes.js";
 import { nhToUtc } from "../../workers/live/test_mode.js";
 import { MIN, T, world } from "./world.js";
+import { check } from "./schema.js";
 
 const LAG = 30_000;
 const ON = { youtube: "on", sql: "on" };
@@ -71,6 +72,7 @@ test("replay, 11 March 2026, the House: every roll call within two runs, every b
                 start: T("2026-03-11T12:58:46Z"), end: T("2026-03-12T00:49:01Z") }],
     docket: [["H", "HB1376", "2026-03-11T09:32:51", "12", "OTPA: MA RC 171-143 03/11/2026 HJ 8 P. 20"]] });
   const file = w.r2.read(`votes/${day}.json`);
+  check(file);                                       // schema/session.votes.json
   const record = recordDay("2026", day, "H");
   assert.equal(record.length, 56);
   assert.equal(file.rollcalls.filter(r => r.body === "H").length, 56);
@@ -105,6 +107,7 @@ test("replay, 12 March 2020, the House with no stream: the heartbeat finds the s
   const day = "2020-03-12";
   const { w, reads } = await replay({ start: "2020-03-12T11:00:00Z", to: "2020-03-13T05:00:00Z" });   // to 01:00
   const file = w.r2.read(`votes/${day}.json`);
+  check(file);                                       // schema/session.votes.json
   const record = recordDay("2020", day, "H");
   assert.equal(record.length, 49);
   assert.ok(reads[0].t === T("2020-03-12T13:30:00Z"), "the heartbeat's first read, 09:30 EDT");
@@ -134,6 +137,7 @@ test("replay, 29-30 January 2026, the Senate: every roll call reaches the sittin
     docket: [["S", "HB751", "2026-01-19T10:00:00", "4", "Floor Amendment # 2026-0187s, AA, RC 16Y-8N; 01/29/2026"],
              ["S", "HB751", "2026-01-19T10:00:00", "5", "Ought to Pass with Amendment, RC 16Y-8N, MA; 01/29/2026"]] });
   const file = w.r2.read(`votes/${day}.json`);
+  check(file);                                       // schema/session.votes.json
   const record = recordDay("2026", day, "S");
   assert.ok(record.length >= 10);
   for (const f of record) {

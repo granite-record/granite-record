@@ -25175,6 +25175,16 @@
    "es": "Votaciones nominales del Senado del {day}",
    "state": "draft"
   },
+  "votes.in_record": {
+   "en": "In the record:",
+   "es": "En el registro:",
+   "state": "draft"
+  },
+  "votes.in_short": {
+   "en": "In short",
+   "es": "En resumen",
+   "state": "draft"
+  },
   "votes.login": {
    "en": "Votes last read at {time}; the database has refused the published login since.",
    "es": "Votaciones leídas por última vez a las {time}; desde entonces la base de datos ha rechazado el acceso publicado.",
@@ -25193,6 +25203,11 @@
   "votes.no_outcome": {
    "en": "outcome not yet in the docket",
    "es": "resultado aún no anotado en el registro de trámites",
+   "state": "draft"
+  },
+  "votes.no_roll_call": {
+   "en": "No roll call on this bill was read today. The night's record will say what happened to it.",
+   "es": "Hoy no se leyó ninguna votación nominal sobre este proyecto. El registro de la noche dirá qué pasó con él.",
    "state": "draft"
   },
   "votes.none_day": {
@@ -25220,9 +25235,29 @@
    "es": "Este sitio desactivó las votaciones en vivo a las {time}.",
    "state": "draft"
   },
+  "votes.off_calendar": {
+   "en": "Voted on today; not on the day's calendar.",
+   "es": "Votado hoy; no figura en el calendario del día.",
+   "state": "draft"
+  },
+  "votes.on_roll_call": {
+   "en": "on a roll call",
+   "es": "en votación nominal",
+   "state": "draft"
+  },
   "votes.outcome": {
    "en": "{outcome}, clerk's docket",
    "es": "{outcome}, según el registro de trámites",
+   "state": "draft"
+  },
+  "votes.overlay_head": {
+   "en": "Read during the day",
+   "es": "Leído durante el día",
+   "state": "draft"
+  },
+  "votes.overlay_why": {
+   "en": "These roll calls were read from the General Court's database and are not in the night's record yet. The record replaces them.",
+   "es": "Estas votaciones nominales se leyeron de la base de datos de la Legislatura y aún no están en el registro de la noche. El registro las reemplaza.",
    "state": "draft"
   },
   "votes.provisional": {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.52
+# GRANITE_VERSION: 2026-09-18.53
 """
 The General Court's week, one page per week.
 
@@ -2801,7 +2801,7 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
     # and stay h3.
     body = study_hidden(days, meets, lambda one: BP.cal_days(
         one, meets, titles, years, code, lambda d: day_words(d, today), S.E,
-        level=2, sessions=sessions, docs=docs, events=events)[0])
+        level=2, sessions=sessions, docs=docs, events=events, morning=today.isoformat())[0])
 
     nav = pager_html(key, weeks, order, at, today)
     here = week_key(today)
@@ -3040,7 +3040,8 @@ def month_files(site, weeks, order, titles, years, code, today,
             # quiet Saturday says it is quiet, in the words the week page uses.
             html, _m = BP.cal_days({iso: in_order(day)}, day, titles, years, code,
                                    lambda dd: day_words(dd, today), S.E, level=2,
-                                   sessions=sessions, docs=docs, events=events)
+                                   sessions=sessions, docs=docs, events=events,
+                                   morning=today.isoformat())
             days[iso] = html
             cards += len(day)
             if k in weeks and k not in wk:
