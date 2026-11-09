@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.828
+# GRANITE_VERSION: 2026-09-04.829
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -128536,6 +128536,154 @@ def _slowest_reaches_the_job_log(NI):
         NI.WATCH["step"] = saved[3]
     return "ok", ("a preflight step's slowest line, and that alone, reaches GitHub's log; once "
                   "from a failed one; never from another step, nor in another shape")
+
+
+# ---------------------------------------------------------------- resolution sponsors
+#
+# 173 resolutions had no sponsor (9 November 2026). 95 are the chamber's own business and the
+# General Court names none; the rest are memorials and honoring resolutions, and the House
+# Journal that prints each says who offered it -- in nearly every case "the House of
+# Representatives", which names nobody, and in two ("Offered by: Representatives Gene Chandler,
+# Stephen Shurtleff and Speaker Terie Norelli", HR 9 of 2013; "Reps. Flanagan and Shurtleff
+# offered the following:", HR 14 of 2015) a person.
+
+_RS_JOURNAL = """\
+HOUSE RESOLUTION NO. 9
+
+Honoring the victims and heroes of the Boston Marathon Tragedy
+WHEREAS, the House shares the sorrow of the tragedy at this year's Boston Marathon; and
+RESOLVED, by the New Hampshire House of Representatives, in Regular Session convened:
+That the House does hereby honor all the victims.
+Offered by: Representatives Gene Chandler, Stephen Shurtleff and Speaker Terie Norelli
+
+Rep. Shurtleff moved Ought to Pass and requested a roll call; sufficiently seconded.
+
+                         HOUSE RESOLUTION NO. 14
+
+Reps. Flanagan and Shurtleff offered the following:
+WHEREAS, the House learned with great sorrow of the tragic shooting in Charleston, South Carolina; and
+RESOLVED, that the House stands with the community of Charleston.
+Offered and adopted unanimously by the New Hampshire House of Representatives.
+
+                         HOUSE RESOLUTION NO. 6
+
+                  Memorializing State Representative Andre Martel of Manchester
+WHEREAS, we have learned with profound sorrow of the death of our friend and colleague; and
+RESOLVED, by the House of Representatives, Andre A. Martel be granted the highest praise.
+Offered by the House of Representatives and adopted unanimously.
+
+                         RESOLUTION
+
+Reps. Hinch and Shurtleff offered the following: RESOLVED, that the House inform the Senate.
+Motion adopted.
+
+                         HOUSE RESOLUTION NO. 7
+
+                  Memorializing State Representative Someone Else of Elsewhere
+WHEREAS, we have learned of the death of our colleague; and
+RESOLVED, that expressions of sympathy be extended to his family.
+Offered and adopted unanimously by the House of Representatives.
+
+Reps. Hinch and Shurtleff offered the following: RESOLVED, that the House adjourn.
+Offered by the Speaker
+"""
+
+
+@check("build", "a resolution's sponsor is the person the journal names, and a body names nobody",
+       needs=("build_data", "text_sponsors", "build_all"))
+def _resolution_sponsors(BD, TS, BA):
+    """resolution_sponsors.py reads who offered a resolution off the House Journal. Three
+    shapes name a person (a footer "Offered by: Representatives ...", a line "Reps. X and Y
+    offered the following:" under the heading); "Offered by the House of Representatives" and
+    "Offered and adopted unanimously by the House" name a body and give nothing; a later
+    motion of the sitting ("Reps. Hinch and Shurtleff offered the following: RESOLVED, ...")
+    and a footer that belongs to another item are not the resolution's. build_data then gives
+    the sponsors to a bill that has none, never to a housekeeping resolution, never over a
+    sponsor another source named, and never to a bill whose title is not the journal's."""
+    import contextlib
+    import io
+    RS = imp("resolution_sponsors")
+    assert RS is not None, ("src/parse/resolution_sponsors.py is not there: 173 resolutions have no "
+                            "sponsor, and the House Journal names one for the ones it names")
+    plan = BA.plan(type("A", (), {"key": None, "session": "2026", "base": "https://graniterecord.org",
+                                  "archive": "nh-archive"})())
+    steps = [s.args[0] for s in plan]
+    assert "resolution_sponsors.py" in steps, "build_all has no resolution_sponsors.py step"
+    assert steps.index("resolution_sponsors.py") < steps.index("build_data.py"), (
+        "the resolution sponsors are read after build_data, which takes them")
+    assert next(s for s in plan if s.args[0] == "resolution_sponsors.py").kit_required, (
+        "the step may be skipped on the nightly's machine, where the sponsors would go with no word")
+    root = Path(tempfile.mkdtemp())
+    try:
+        jd = root / "journals" / "2013"
+        jd.mkdir(parents=True)
+        (jd / "HJ041.txt").write_text(_RS_JOURNAL, encoding="utf-8")
+        got = {(b["number"]): b for b in RS.blocks(jd / "HJ041.txt", "H")}
+        assert got[9]["names"] == ["Gene Chandler", "Stephen Shurtleff", "Terie Norelli"], got[9]["names"]
+        assert got[14]["names"] == ["Flanagan", "Shurtleff"], got[14]["names"]
+        assert got[6]["names"] == [] and got[6]["via"] == "offered by", (
+            "'Offered by the House of Representatives' was read as a person: " + repr(got[6]))
+        assert got[7]["names"] == [] and "Speaker" not in got[7]["line"], (
+            "a footer from another item of the sitting was taken as HR 7's: " + repr(got[7]))
+        assert RS.read(root / "journals", root / "absent") == {"2013-2014": {
+            "HR9": got_rec(RS, got[9], jd / "HJ041.txt"),
+            "HR14": got_rec(RS, got[14], jd / "HJ041.txt")}}, "read() keyed the wrong resolutions"
+        out = root / "resolution_sponsors.json"
+        with contextlib.redirect_stdout(io.StringIO()):
+            assert RS.main.__module__
+        out.write_text(json.dumps(RS.read(root / "journals", root / "absent")), encoding="utf-8")
+        votes = [{"year": "2013", "body": "H", "member_id": str(i), "name": n, "label": "",
+                  "party": p}
+                 for i, n, p in ((1, "Chandler, Gene", "R"), (2, "Shurtleff, Steve", "D"),
+                                 (3, "Norelli, Terie", "D"), (4, "Flanagan, Jack", "R"))]
+        votes += [dict(v, year="2015") for v in votes]
+        bills = {"2013-2014": {"HR9": {"title": "Honoring the victims and heroes of the Boston Marathon "
+                                                "Tragedy."},
+                               "HR14": {"title": "Honoring the victims of Charleston, South Carolina."},
+                               "HR6": {"title": "Memorializing State Representative Andre Martel."}},
+                 "2015-2016": {"HR14": {"title": "Honoring the victims of Charleston, South Carolina."}}}
+        sp = {}
+        with contextlib.redirect_stdout(io.StringIO()):
+            filled = BD.add_resolution_sponsors(sp, bills, out, TS.Sat(votes), {}, {}, "2025-2026",
+                                                "2025-2026")
+        assert filled[0] == 2 and set(sp["2013-2014"]) == {"HR9", "HR14"}, (
+            "the sponsors of HR 9 and HR 14 were not filled: " + repr(filled))
+        # 2013's HR 14 prints no title and opens on Charleston: the bill's own title says so.
+        assert [r["name"] for r in sp["2013-2014"]["HR9"]] == [
+            "Gene Chandler", "Steve Shurtleff", "Terie Norelli"], sp["2013-2014"]["HR9"]
+        assert all(r["prime_inferred"] and r["source"] == "House Journal"
+                   for r in sp["2013-2014"]["HR9"])
+        # Never over a sponsor another source named, nor onto a housekeeping resolution,
+        # nor onto a bill the journal's title does not describe.
+        sp2 = {"2013-2014": {"HR9": [{"name": "Someone Else"}]}}
+        bills["2013-2014"]["HR14"] = {"title": "Adopting the rules of the 2014 session."}
+        with contextlib.redirect_stdout(io.StringIO()):
+            BD.add_resolution_sponsors(sp2, bills, out, TS.Sat(votes), {}, {}, "2025-2026", "2025-2026")
+        assert sp2["2013-2014"]["HR9"] == [{"name": "Someone Else"}], "overwrote another source's sponsor"
+        assert "HR14" not in sp2["2013-2014"], "a housekeeping resolution took a sponsor"
+        bills["2013-2014"]["HR14"] = {"title": "Honoring the New Hampshire National Guard."}
+        sp3 = {}
+        with contextlib.redirect_stdout(io.StringIO()):
+            BD.add_resolution_sponsors(sp3, bills, out, TS.Sat(votes), {}, {}, "2025-2026", "2025-2026")
+        assert "HR14" not in sp3.get("2013-2014", {}), "a bill the journal does not describe took a sponsor"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    # Where the journals are on this disk, the two the House Journal names are found in them.
+    if not Path("journals/2013").is_dir() or not Path("journals/2015").is_dir():
+        return "ok", "the fixture journals; the real ones are not on this disk"
+    res = RS.read(Path("journals"), Path("journals_senate"))
+    assert res["2013-2014"]["HR9"]["sponsors"] == ["Gene Chandler", "Stephen Shurtleff", "Terie Norelli"], (
+        "HR 9 of 2013 no longer reads from the House Journal")
+    assert res["2015-2016"]["HR14"]["sponsors"] == ["Flanagan", "Shurtleff"], (
+        "HR 14 of 2015 no longer reads from the House Journal")
+    assert not res["2017-2018"].get("HR6"), "a memorial offered by the House took a person"
+    return "ok", "fixture journals and the real ones"
+
+
+def got_rec(RS, b, path):
+    """The record read() makes of a block."""
+    return {"sponsors": b["names"], "journal": RS.journal_label(path, "H"), "title": b["title"],
+            "line": b["line"], "number": b["number"], "opening": b["opening"], "chamber": "H"}
 
 
 if __name__ == "__main__":

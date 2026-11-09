@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.88
+# GRANITE_VERSION: 2026-09-05.89
 """
 Run the whole pipeline in the right order.
 
@@ -335,6 +335,20 @@ def plan(a):
              kit_required=True,
              note="the House Journal's introduction lists and its withdrawals, "
                   "2025 on, for bills the session files do not carry"),
+
+        # The sponsors of memorial and honoring resolutions, where the House
+        # Journal prints who offered one ("Offered by: Representatives ...").
+        # Most print "Offered by the House of Representatives" and give
+        # nothing. BEFORE build_data, which takes the file for a resolution
+        # that has no sponsor from any other source. Not in git and not in the
+        # kit, so the nightly's machine makes it from the journals the kit
+        # brings, as it does journal_bills.json, and stops without them.
+        Step("resolutions' sponsors, from the journals",
+             ["resolution_sponsors.py"],
+             needs=["journals"], produces=["resolution_sponsors.json"],
+             kit_required=True,
+             note="the House Journal's own 'offered by' line on a memorial or "
+                  "honoring resolution that names a member; a body names nobody"),
 
         # A FINISHED TERM, FROM ITS FROZEN INPUTS (5 October 2026). Once the
         # General Court's files turn to the next term they hold none of the

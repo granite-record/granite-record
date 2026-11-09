@@ -79,6 +79,8 @@ archive_text.json
 amendments.json
 # The bills the House withdrew, read off its journals by journal_bills.py.
 journal_bills.json
+# The sponsors of resolutions, read off the journals by resolution_sponsors.py.
+resolution_sponsors.json
 # What the Journals say each vote on no bill was about, read by
 # journal_motions.py on every build from the Journals and rollcalls.json.
 /journal_motions.json
