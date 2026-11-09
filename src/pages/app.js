@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.285
+// GRANITE_VERSION: 2026-09-07.286
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2721,12 +2721,31 @@ function facetVals(b,k){
   if(k==="status")return [statusCat(b)];
   if(k==="type")return [typeOf(b)];
   if(k==="committee")return b.committees||(b.committee?[b.committee]:[]);
-  // A SPONSOR IS THE PRIME SPONSOR OR A CO-SPONSOR (the person, 12 October
-  // 2026). build_site_v2 writes the co-sponsors' names as `cosp`, spelled as
-  // the prime sponsor's is; render() puts a chosen sponsor's own bills first.
-  if(k==="sponsor")return b.cosp?[b.sponsor,...b.cosp]:[b.sponsor];
+  // A SPONSOR IS THE PRIME SPONSOR, AND A CO-SPONSOR ONLY WHERE THE READER
+  // TICKS "Include co-sponsored bills" (Alice, 8 November 2026: "by default it
+  // should only be prime sponsored bills"). It had been either, always (the
+  // person, 12 October 2026). build_site_v2 writes the co-sponsors' names as
+  // `cosp`, spelled as the prime sponsor's is; render() puts a chosen
+  // sponsor's own bills first.
+  if(k==="sponsor")return withCosp&&b.cosp?[b.sponsor,...b.cosp]:[b.sponsor];
+  if(k==="party")return [partyOfSponsor(b)];
   return [b[k]];
 }
+// THE PRIME SPONSOR'S PARTY (Alice, 8 November 2026: "filter by the prime
+// sponsor's party"), as the record has it for the bill's own term: the row's
+// `sponsor_party` is the party the roster gives that person for that term
+// (build_site_v2), not the one they hold today. The party's name as the
+// roll calls' legend says it (PARTY_NAME), and "Party not on file" where the
+// bill names no sponsor or the record gives the sponsor none. Every bill is
+// in exactly one of them, so the options add up to the list.
+const partyOfSponsor=b=>PARTY_NAME[String(b.sponsor_party||"").toUpperCase().slice(0,1)||"X"]||"Other party";
+// Republicans, then Democrats, then any other by name, then not on file.
+const partyCmp=(a,b)=>{const r=v=>v===PARTY_NAME.R?0:v===PARTY_NAME.D?1:v===PARTY_NAME.X?3:2;
+  return r(a)-r(b)||String(a).localeCompare(String(b));};
+// Each with its party's colour, as the roll calls' legend keys a party (a
+// swatch), where a person's chip would be a name a translator must not touch.
+const partyShow=v=>{const code=Object.keys(PARTY_NAME).find(k=>PARTY_NAME[k]===v)||"X";
+  return `<span class="sw" style="background:${PARTY_COLOR[code]}"></span><span>${esc(v)}</span>`;};
 // Whether the bill's PRIME sponsor is one the Sponsor filter has chosen.
 const primeChosen=b=>sel.sponsor.has(b.sponsor);
 
@@ -2800,7 +2819,7 @@ function sortRows(rows){
   return rows.slice().sort(by);
 }
 const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),status:new Set(),
-           type:new Set(),voteday:new Set(),rsa:new Set()};
+           type:new Set(),voteday:new Set(),rsa:new Set(),party:new Set()};
 // THE STATUTE FILTER (the person, 11 October 2026: the RSA search replaces the
 // floor vote day filter). A bill's index row carries `rsa`, the chapters and
 // sections its own text says it changes (rsa.py), each section's chapter with
@@ -2841,7 +2860,8 @@ function filtersFromAddress(params){
    // (addressList): a committee, a prime sponsor, a floor vote day, each as
    // the facet names it. Ticked as given; one this term has none of is
    // offered at none, as a status is.
-   for(const k of ["committee","sponsor","voteday"])
+   withCosp=params.get("cosp")==="1";
+   for(const k of ["committee","sponsor","voteday","party"])
      for(const w of params.getAll(k)){const v=String(w||"").trim();if(v)sel[k].add(v);}
    {const r=rsaNorm(params.get("rsa")||"");if(r){sel.rsa.add(r);rsaText=r;}}
    const psort=params.get("sort");
@@ -2931,6 +2951,7 @@ const wideEnough=typeof matchMedia==="function"
 // folded with the rest, one tap away.
 const openGroups=new Set(["status"]);
 let sponsorFilter="";
+let withCosp=false;
 const openCards=new Set(),openTab={},detail={},segSel={},fullOpen=new Set();
 // The bills whose How it got here the reader opened past its first six lines.
 const jOpen=new Set();
@@ -3441,7 +3462,7 @@ function matches(b,ignore){
   if(ids)return ids.includes(b.id.toUpperCase())&&inTermOf(b);
 
   if(!inTermOf(b))return false;
-  for(const k of["committee","topic","sponsor","status","type"])
+  for(const k of["committee","topic","sponsor","status","type","party"])
     if(k!==ignore&&sel[k].size&&!facetVals(b,k).some(v=>sel[k].has(v)))return false;
   if(ignore!=="voteday"&&sel.voteday.size&&!(b.votedays||[]).some(d=>sel.voteday.has(d)))return false;
   if(ignore!=="rsa"&&sel.rsa.size&&![...sel.rsa].some(a=>rsaHas(b,a)))return false;
@@ -3487,7 +3508,8 @@ function fgroup(key,label,vals,counts,searchable,paint,show){
     const shown=found.vals;
     inner=`${[...chosen].map(v=>`<span class="pill">${esc(v)}<button data-unpick="${esc(v)}">×</button></span>`).join("")
       ?`<div class="chosen">${[...chosen].map(v=>`<span class="pill">${esc(v)}<button data-unpick="${esc(v)}">×</button></span>`).join("")}</div>`:""}
-      <input class="sbox" id="sbox" aria-label="Find a sponsor by name" placeholder="Type a name…" value="${esc(sponsorFilter)}" autocomplete="off">`
+      <input class="sbox" id="sbox" aria-label="Find a sponsor by name" placeholder="Type a name…" value="${esc(sponsorFilter)}" autocomplete="off">
+      <label class="fcosp"><input type="checkbox" id="cosp" ${withCosp?"checked":""}><span>Include co-sponsored bills</span></label>`
       +(shown.map((v,i)=>`<label class="fopt ${!counts[v]?'off':''}${i===found.rule?' fzero':''}"><input type="checkbox" data-f="${key}"
         value="${esc(v)}" ${chosen.has(v)?"checked":""}><span>${esc(v)}</span>
         <span class="c">${(counts[v]||0).toLocaleString()}</span></label>`).join("")
@@ -3888,6 +3910,11 @@ function renderFacets(){
   h+=fgroup("committee","Committee",present("committee"),cnt("committee","committee"));
   h+=fgroup("topic","Topic",present("topic"),cnt("topic","topic"));
   h+=fgroup("sponsor","Sponsor",present("sponsor"),cnt("sponsor","sponsor"),true);
+  // THE PRIME SPONSOR'S PARTY, under the Sponsor box it narrows: a short list
+  // shown whole, in the legislators' chip shape and colour (.mchip), where a
+  // party chosen in another term stays, at none, so it can be unticked.
+  h+=fgroup("party","Prime Sponsor’s Party",[...new Set([...present("party"),...sel.party])].sort(partyCmp),
+    cnt("party","party"),false,null,partyShow);
   // THE STATUTE, where the Floor Vote Day filter was (the person, 11 October
   // 2026): Laws Changed (RSA) since 26 October, a box that offers the laws
   // these bills change by number or by name (rsaGroup), and the law itself
@@ -9762,6 +9789,29 @@ function cmteVideoRows(c){
    is its number and title. Where the docket ties none, that, once and
    plainly (review, 3); and the way to the meeting on the Meetings tab, where
    the committee had one that day. */
+// WHAT THE COMMITTEE DID TO A BILL AT THE MEETING A RECORDING IS OF (the
+// owner, 8 November 2026): the chip of what it voted that day and the vote as
+// counted, beside the bill's moments. Only a vote the docket dates to this
+// meeting (outcome "voted", committee_acts.at_meeting), never one of another
+// day; a hearing, or a bill the committee did not vote that day, has none.
+// The chip is a bill's Reports tab's (recChip), with the tally in it as the
+// home page's Latest activity carries it.
+function actChip(a){
+  const t=tallyOf(a);
+  if(a.act==="report")return a.recommendation?recChip(a.recommendation,t):"";
+  if(a.act==="study report"){
+    // As the home page's chip says it: the report's own words, the head where
+    // its row states none of the three.
+    const word=Object.prototype.hasOwnProperty.call(STUDY_SAID,a.said||"")&&STUDY_SAID[a.said]||WORDBOOK.study_report.head;
+    return tallyWhole(chip(titleWords(word)+(t?` (${t})`:""),
+      `cstat ${KIND[a.said==="rec"?"law":a.said==="not"?"done":""]||""}`.trim()));
+  }
+  return chip("Retained",`cstat ${KIND.active||""}`.trim());
+}
+function meetingOutcomeChips(day,bill){
+  const o=((day&&day.outcomes)||[]).find(x=>String(x.bill)===String(bill));
+  return o&&o.outcome==="voted"?(o.votes||[]).map(actChip).filter(Boolean).join(" "):"";
+}
 function cmteVideoDetail(c,r,items,day,chips){
   const pid=meetingPid({date:r.date},r.id);
   const rooms=[...new Set(items.map(i=>i.venue||"").filter(Boolean))];
@@ -9787,8 +9837,10 @@ function cmteVideoDetail(c,r,items,day,chips){
       const mine=items.filter(i=>String(i.bill)===b), it=mine[0];
       const href=it.year?`bill/${esc(it.year)}/${esc(b.toLowerCase())}.html`:esc(billHref(b));
       const jumps=jumpButtons(mine,()=>pid);
+      const did=meetingOutcomeChips(day,b);
       return `<li${k>=VW_BILLS?' class="vwrest"':""}><a class="vwbn" href="${href}">${esc(it.n||b)}</a>${
         jumps?`<span class="mjumps">${jumps}</span>`:""}${
+        did?`<span class="vwout">${did}</span>`:""}${
         it.title?`<span class="vwbt">${esc(it.title)}</span>`:""}</li>`;}).join("")}</ol>${
       order.length>VW_BILLS?`<button type="button" class="discl pgmore vwall" data-vwall="bills" aria-controls="vwbills">Show all ${
         order.length.toLocaleString()} bills</button>`:""}`);
@@ -11362,8 +11414,9 @@ function addressList(){
   if(was.get("q"))p.set("q",was.get("q"));
   const terms=(META&&META.terms)||[];
   if(term&&term!==terms[0])p.set("term",term);
-  for(const k of ["status","type","topic","committee","sponsor","voteday","rsa"])
+  for(const k of ["status","type","topic","committee","sponsor","party","voteday","rsa"])
     for(const v of sel[k])p.append(k,v);
+  if(withCosp)p.set("cosp","1");
   if(sortChosen&&sortBy)p.set("sort",sortBy);
   const s=p.toString(),want=location.pathname+(s?"?"+s:"");
   // The entry's words follow the list's at every drawing, so Back to it,
@@ -11855,10 +11908,11 @@ document.addEventListener("click",e=>{
     if(e.detail===0)$("#q").focus();
     return;}
   // The Laws Changed box's words go with its filter: they named it.
-  if(e.target.id==="clear"){Object.values(sel).forEach(s=>s.clear());rsaText="";RSA_OFF.open=false;render();return;}
+  if(e.target.id==="clear"){Object.values(sel).forEach(s=>s.clear());withCosp=false;rsaText="";RSA_OFF.open=false;render();return;}
 });
 document.addEventListener("change",e=>{
   if(PAGE)return;                       // the facet checkboxes are not drawn there
+  if(e.target.id==="cosp"){withCosp=!!e.target.checked;render();return;}
   const f=e.target.dataset.f;if(!f)return;
   e.target.checked?sel[f].add(e.target.value):sel[f].delete(e.target.value);render();});
 // A law offered under the Laws Changed box, pressed, or its Clear (rsaGroup):

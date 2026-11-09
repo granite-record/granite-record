@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.365 */
+/* GRANITE_VERSION: 2026-09-07.366 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -2287,6 +2287,9 @@ overflow-y:auto;overflow-x:hidden}
 .shell.nofacets .ftoggle,.shell.focused .ftoggle{display:none}
 .fopt{display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-1) 0;font-size:var(--t-ui);cursor:pointer}
 .fopt input{accent-color:var(--pine);margin:0;flex:0 0 auto}
+/* The Sponsor filter's "Include co-sponsored bills" box, drawn as a filter option. */
+.fcosp{display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-1) 0;margin-top:var(--sp-3);font-size:var(--t-ui);cursor:pointer}
+.fcosp input{accent-color:var(--pine);margin:0;flex:0 0 auto}
 .fopt .c{margin-left:auto;font-size:var(--t-sm);color:var(--ink-2)}
 /* A Status filter's chip wraps in the 250px column rather than run out of
    it: "Passed both chambers, goes to the voters in November 2026" was cut
@@ -7251,6 +7254,8 @@ align-items:baseline;padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
 .vwbn{grid-column:1;font-weight:600;white-space:nowrap}
 .vwbt{grid-column:2;font-size:var(--t-sm);line-height:1.45;color:var(--ink-2)}
 .vwbills .mjumps{grid-column:2;display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);align-items:center;margin-left:0}
+/* What was voted that day, a chip as the Meetings tab and the bill's Reports tab draw it. */
+.vwout{grid-column:2;display:flex;flex-wrap:wrap;gap:var(--sp-2);align-items:center}
 .vwlinks{margin:var(--sp-4) 0 0}
 /* A link a finger taps is 24px tall here too (WCAG 2.5.8): the player bar's
    ".pbar > a" rule never reaches the caption's "On YouTube", which sits in a
@@ -7460,6 +7465,8 @@ color:var(--ink-2);margin:var(--sp-6) 0 var(--sp-3)}
 .mjump{display:inline-flex;flex-wrap:nowrap;align-items:center;gap:var(--sp-3);max-width:100%}
 .mjumps .jump{display:inline-flex;align-items:center;gap:var(--sp-2);background:var(--surface)}
 .mjumps .jump .icon{width:.75rem;height:.75rem}
+.mjumps .mdid{display:inline-flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
+.mjumps .mdid .chip .latvote{font-size:inherit;color:inherit;white-space:nowrap;font-variant-numeric:tabular-nums}
 .mjumps .approx{font-style:normal;font-size:var(--t-sm);color:var(--ink-2)}
 .cline .mact{margin:var(--sp-2) 0 0}
 .mmark{display:inline-flex;vertical-align:-.1em;margin-right:var(--sp-2);font-weight:700}
