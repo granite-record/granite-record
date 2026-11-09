@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.63
+# GRANITE_VERSION: 2026-09-10.64
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -87,7 +87,7 @@ def write(out, name, columns, rows, what):
 SPARSE = ["sponsor", "committee", "topic", "passage"]
 
 
-def coverage(out):
+def coverage(out, none_on_record=None):
     """How much of each sparse column is actually there, per term.
 
     A CSV with an empty column reads as a bug unless something says
@@ -105,17 +105,48 @@ def coverage(out):
     if not path.exists():
         return []
     per, totals = {}, {}
+    none = unreferred_bills() if none_on_record is None else none_on_record
     with path.open(encoding="utf-8", newline="") as fh:
         for r in _csv.DictReader(fh):
             term = r.get("term") or ""
             totals[term] = totals.get(term, 0) + 1
-            row = per.setdefault(term, dict.fromkeys(SPARSE, 0))
+            row = per.setdefault(term, dict.fromkeys(SPARSE + ["committee_none"], 0))
             for c in SPARSE:
                 if (r.get(c) or "").strip():
                     row[c] += 1
+            # A blank committee is a gap only where the record does not show
+            # the bill never had one.
+            if not (r.get("committee") or "").strip() and never_referred(r, none):
+                row["committee_none"] += 1
     return [{"term": term, "bills": totals[term],
-             **{c: per[term][c] for c in SPARSE}}
+             **{c: per[term][c] for c in SPARSE},
+             "committee_none": per[term]["committee_none"]}
             for term in sorted(totals) if term]
+
+
+# A status that says the bill was never introduced, so never referred, whatever
+# the docket's "To Be Introduced ... and Referred to X" row says of its plan.
+NEVER_INTRODUCED = ("not introduced", "withdrawn", "refused introduction")
+
+
+def unreferred_bills():
+    """{(term, bill)} the dockets show were never sent to a committee; set()
+    where the dockets are not on this disk (a fixture build, a fork)."""
+    try:
+        import referrals
+        return referrals.unreferred()
+    except Exception as e:                          # no docket is not a failure
+        print(f"  committee coverage: no docket read ({e}); "
+              f"no blank committee is counted as none on record")
+        return set()
+
+
+def never_referred(row, none):
+    """Whether a blank-committee row of bills.csv is a bill the record shows
+    never had a committee: never introduced, or its docket names no referral."""
+    status = (row.get("status") or "").strip().lower()
+    return status.startswith(NEVER_INTRODUCED) or \
+        ((row.get("term") or "", (row.get("bill") or "").upper()) in none)
 
 
 def bills(out, site):
@@ -918,7 +949,7 @@ def data_page(site, out, tables, base, cov=()):
     cov_rows = "".join(
         f'''<tr><th scope="row">{E(C.term_words(c["term"]))}</th><td class="n">{c["bills"]:,}</td>
         <td>{_pct(c["sponsor"], c["bills"])}</td>
-        <td>{_pct(c["committee"], c["bills"])}</td>
+        <td>{_pct(c["committee"] + c.get("committee_none", 0), c["bills"])}</td>
         <td>{_pct(c["topic"], c["bills"])}</td>
         <td>{_pct(c["passage"], c["bills"])}</td></tr>''' for c in cov)
 
@@ -1049,7 +1080,10 @@ def data_page(site, out, tables, base, cov=()):
       from the record, and the table below counts how far that reaches in
       each term. An empty cell has one of three reasons. The record may leave
       it empty: a rules or memorial resolution names no sponsor, and a
-      resolution that neither chamber referred has no committee. The
+      resolution that neither chamber referred has no committee, and the
+      Committee column counts such a bill, and one that was never
+      introduced, as covered, where its docket shows it was never sent to
+      one (<code>committee_none</code> in the manifest says how many). The
       document that would fill it may not be here, or may be here in a
       version that does not name it &mdash; mostly the text of older
       resolutions and petitions, which is where sponsors before 2023 are
@@ -1603,6 +1637,11 @@ def main():
                 "that this site does not read yet; the data page gives "
                 "examples of each.",
         "columns": SPARSE, "by_term": cov,
+        "committee_none": "Bills with no committee whose record shows they "
+                          "never had one (a resolution never referred, a "
+                          "bill never introduced); each term's count is "
+                          "beside it, and the data page's Committee figure "
+                          "adds it to the committee count.",
     }
     (out / "manifest.json").write_text(
         json.dumps(manifest, indent=1), encoding="utf-8")
