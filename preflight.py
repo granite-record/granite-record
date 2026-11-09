@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.829
+# GRANITE_VERSION: 2026-09-04.830
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -126645,6 +126645,30 @@ def _coverage_committee_none(BE):
     assert row["bills"] == 4 and row["committee"] == 1, row
     assert row["committee_none"] == 2, row            # HR5 by its docket, HB9 never introduced
     return "ok", "committee_none counts HR5 and a never-introduced bill, not HB8"
+
+
+@check("code", "the coverage table counts a resolution the chamber itself offered as having its sponsor",
+       needs=("build_exports",))
+def _coverage_sponsor_body(BE):
+    """Alice, 9 November 2026: "Offered by the House of Representatives" names
+    the body as the sponsor, so the Sponsor column counts it covered."""
+    import tempfile
+    out = Path(tempfile.mkdtemp())
+    (out / "bills.csv").write_text(
+        "term,year,bill,title,sponsor,committee,topic,status,outcome,passage\n"
+        "2021-2022,2021,HR7,t,,,x,Adopted by the House,adopted,H\n"
+        "2021-2022,2021,HR8,t,,,x,Adopted by the House,adopted,H\n"
+        "2021-2022,2021,HB9,t,a,House Education,x,Killed,done,H\n",
+        encoding="utf-8")
+    row = BE.coverage(out, none_on_record=set(), by_chamber={("2021-2022", "HR7")})[0]
+    assert row["sponsor"] == 1 and row["sponsor_body"] == 1, row
+    page = Path("src/pages/build_exports.py").read_text(encoding="utf-8")
+    assert 'c["sponsor"] + c.get("sponsor_body", 0)' in page, (
+        "the data page's Sponsor figure does not add the resolutions the chamber offered")
+    rs = Path("src/parse/resolution_sponsors.py").read_text(encoding="utf-8")
+    assert 'BODY.match(b["who"]' in rs and "resolution_bodies.json" in rs, (
+        "resolution_sponsors.py no longer writes the resolutions the chamber offered")
+    return "ok", "HR7, offered by the House, counts as covered; HR8, naming nobody, does not"
 
 
 @check("code", "the topic model answers the labelled term's bills the General Court gave no "
