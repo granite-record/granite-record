@@ -46082,12 +46082,14 @@ def _sponsor_prime_first():
     filter shows the prime sponsored bills by the selected rep first and then
     the bills they cosponsor". build_site_v2 writes each bill's co-sponsors
     as `cosp`, by the name the filter groups on; app.js matches a sponsor on
-    either and puts primeChosen bills first, under two headings."""
+    either and puts primeChosen bills first, under two headings. Since Alice's
+    8 November 2026 it matches the prime sponsor alone unless "Include
+    co-sponsored bills" is ticked (withCosp)."""
     src = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
     assert 'row["cosp"] = _cosp' in src and "person_name(s_.get(\"name\")" in src, \
         "the index rows no longer carry their co-sponsors"
     app = Path("src/pages/app.js").read_text(encoding="utf-8")
-    assert 'if(k==="sponsor")return b.cosp?[b.sponsor,...b.cosp]:[b.sponsor];' in app, \
+    assert 'if(k==="sponsor")return withCosp&&b.cosp?[b.sponsor,...b.cosp]:[b.sponsor];' in app, \
         "the Sponsor filter matches the prime sponsor alone"
     assert "rows=rows.filter(primeChosen).concat(rows.filter(b=>!primeChosen(b)))" in app \
         and '"Prime sponsored":"Co-sponsored"' in app, "a chosen sponsor's own bills are not listed first"
@@ -86596,6 +86598,181 @@ process.stdout.write("\n@@" + JSON.stringify(out));
                   "Meetings tab's own buttons, title -- in the order the recording reaches them, the numbers "
                   "in a column as wide as the longest and on their lines' first baseline; a recording "
                   "with no moment says so; the caption's and the links' under the player 24px tall")
+
+
+@check("frontend", "a recording's bills on a committee's Videos tab say what the committee did to each at THAT "
+                   "meeting -- the chip and the vote as counted -- and nothing where it voted nothing there")
+def _videos_say_the_vote():
+    """The owner, 8 November 2026 (walking a test build): beside each bill's
+    moment on a committee's Videos tab, the vote and its outcome, in the
+    site's chip and the counted tally, "Inexpedient to Legislate (18–0)",
+    from the record for THAT meeting. The meeting's `outcomes` (committee_acts.
+    outcome) already hold it as "voted" with `votes`; a bill heard and not
+    voted that day, or voted on another day (outcome "no vote" with `voted`),
+    gets nothing extra, and never the other day's vote."""
+    item = lambda bill, kind, start: {
+        "bill": bill, "n": bill[:2] + " " + bill[2:], "title": f"the title of {bill}", "year": 2026,
+        "term": "2025-2026", "kind": kind, "video_id": "VID1", "start": start, "state": "stated",
+        "time": "10:00", "venue": "LOB 302"}
+    items = [item("SB459", "executive session", 100), item("SB414", "executive session", 900),
+             item("SB500", "public hearing", 1500), item("SB600", "executive session", 2000)]
+    act = lambda rec, code, y, n: {"act": "report", "committee": "Judiciary", "date": "2026-04-08",
+                                   "dated": "vote", "recommendation": rec, "code": code, "yeas": y, "nays": n,
+                                   "meeting": "2026-04-08"}
+    outcomes = [
+        {"bill": "SB459", "kinds": ["executive session"], "outcome": "voted",
+         "votes": [act("Inexpedient to Legislate", "ITL", 18, 0)]},
+        {"bill": "SB414", "kinds": ["executive session"], "outcome": "voted",
+         "votes": [act("Ought to Pass with Amendment", "OTPA", 10, 8)]},
+        {"bill": "SB500", "kinds": ["public hearing"], "outcome": "heard"},
+        {"bill": "SB600", "kinds": ["executive session"], "outcome": "no vote",
+         "voted": {"act": "report", "date": "2026-05-01"}}]
+    cmte = {"code": "H10", "name": "Judiciary", "chamber": "H", "bills": {"2025-2026": []},
+            "sessions": [{"date": "2026-04-08", "term": "2025-2026", "video_id": "VID1", "items": items,
+                          "outcomes": outcomes}],
+            "recordings": [{"id": "VID1", "date": "2026-04-08", "term": "2025-2026"}]}
+    harness = _HEARD_PRELUDE + r"""
+load("renderPage, recordTerms, setPage: (p) => { PAGE = p; }, setTab: (t) => { PAGE_TAB = t; },"
+  + " setUp: (u) => { UPCOMING = u; }");
+const fx = JSON.parse(fs.readFileSync("./fx.json", "utf8"));
+const results = document.querySelector("#results");
+const out = {};
+try {
+  s.setUp([]);
+  const terms = s.recordTerms("committee", fx);
+  s.setPage({kind: "committee", data: fx, terms, term: terms[0], status: "", vfilter: "", vshow: 0, bshow: 0,
+    mshow: 0, vid: "VID1", mopen: {}});
+  s.setTab(2); s.renderPage(); out.html = results.innerHTML;
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").slice(0, 300); }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+    got = _node_app(harness, {"fx.json": json.dumps(cmte)})
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert "threw" not in got, "the Videos tab would not draw: " + got["threw"]
+    html = re.sub(r"[ \t\r\n]+", " ", got["html"])
+    html = html[html.index('class="vwbills"'):]
+    line = lambda n: re.search(r'<li[^>]*><a class="vwbn"[^>]*>' + n + r'</a>(.*?)</li>', html).group(1)
+    text = lambda h: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", h)).strip()
+    one, two = line("SB 459"), line("SB 414")
+    assert 'class="vwout"' in one and "Inexpedient to Legislate" in text(one) and "(18–0)" in text(one), (
+        f"SB 459's line does not say what the committee voted at the meeting, and by how many: {text(one)!r}")
+    assert "Ought to Pass with Amendment" in text(two) and "(10–8)" in text(two) and \
+        'class="chip cstat s-law"' in two.replace("chip-m ", "").replace("chip-s ", ""), (
+            f"SB 414's line does not say its vote in the recommendation's chip: {text(two)!r}")
+    for n in ("SB 500", "SB 600"):
+        assert "vwout" not in line(n), (
+            f"{n}, which the committee did not vote at this meeting, shows a vote (a hearing takes none, and "
+            f"another day's vote is not this meeting's): {text(line(n))!r}")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    assert re.search(r"\n\.vwout\{grid-column:2;", css), "app.css: the vote beside a bill's moments has no rule"
+    return "ok", "a voted bill's line carries the chip and counted tally; a hearing's or another day's vote shows none"
+
+
+@check("frontend", "a session day's moment for a bill carries what the chamber did to it that day, as the "
+                   "vote's chip with the counted tally, and nothing where the day recorded no outcome")
+def _session_moment_says_the_vote():
+    """The owner, 8 November 2026: on a session day's page the moment of each
+    bill in the floor recording says, beside the time, what happened to it:
+    the chip and "(202–169)", the shape the home page's Latest activity
+    gives a report (build_pages.did_html). From the day's own votes only
+    (build_session_pages.did_chip, the same `deciding` the day's index reads);
+    a voice vote has a chip and no tally."""
+    import types
+    sys.path.insert(0, str(Path("src/pages").resolve()))
+    import build_session_pages as BS
+    vote = lambda action, carried, y, n: types.SimpleNamespace(
+        action=action, carried=carried, yeas=y, nays=n, counted=y is not None)
+    chip_ = BS.did_chip([vote("Inexpedient to Legislate", True, 202, 169)], "HB1", "H")
+    assert "Motion Passed: Bill Killed" in chip_ and '<span class="latvote">(202–169)</span>' in chip_, (
+        f"a counted floor vote is not said with its tally: {chip_!r}")
+    failed = BS.did_chip([vote("Ought to Pass", False, 150, 190)], "HB1", "H")
+    assert "Motion Failed" in failed and "(150–190)" in failed, f"a failed vote is not said: {failed!r}"
+    voice = BS.did_chip([vote("Ought to Pass", True, None, None)], "HB1", "H")
+    assert "Motion Passed" in voice and "latvote" not in voice, f"a voice vote carries a tally: {voice!r}"
+    assert BS.did_chip([], "HB1", "H") == "", "a day with no vote says something"
+    m = BS.moment_html({"v": "abc", "from": 65, "end": 90, "s": "floor_precise"}, "2026-02-12",
+                       lambda x: x, chip_)
+    assert m.index('class="jump"') < m.index('class="mdid"') and "(202–169)" in m, (
+        "the day's moment does not carry the outcome beside its time")
+    assert 'class="mdid"' not in BS.moment_html({"v": "abc", "from": 65}, "2026-02-12", lambda x: x), (
+        "a moment with no outcome draws an empty one")
+    return "ok", "a day's moment carries the vote's chip and counted tally, none for a voice vote or a day without one"
+
+
+@check("frontend", "the bill search can be filtered by the prime sponsor's party, as recorded for the bill's "
+                   "term, and the options add up to the list")
+def _search_party_filter():
+    """The owner, 8 November 2026: a Sponsor filter by party (Republican,
+    Democrat, other as the record has them). The index row's `sponsor_party`
+    is the party the roster gives the sponsor for the bill's own term
+    (build_site_v2); app.js's `party` facet (partyOfSponsor) puts every bill
+    under exactly one name -- "Party not on file" for a bill naming no
+    sponsor -- so the counts add up, and a ticked party keeps only its
+    bills."""
+    rows = [{"id": f"HB{i}", "term": "2025-2026", "sponsor": f"P{i}", "sponsor_party": p}
+            for i, p in enumerate("RRRDDI", 1)] + [{"id": "HB9", "term": "2025-2026", "sponsor": ""},
+                                                    {"id": "HB10", "term": "2025-2026", "sponsor": "Q",
+                                                     "sponsor_party": "L"}]
+    harness = _HEARD_PRELUDE + r"""
+load("setIdx: (r) => { IDX = r; }, matches, sel, facetVals, partyOfSponsor");
+const rows = JSON.parse(fs.readFileSync("./rows.json", "utf8"));
+const out = {};
+try {
+  s.setIdx(rows);
+  out.of = rows.map(b => s.partyOfSponsor(b));
+  const n = () => rows.filter(b => s.matches(b)).map(b => b.id);
+  out.all = n().length;
+  s.sel.party.add("Democrat"); out.dem = n();
+  s.sel.party.add("Republican"); out.demrep = n().length;
+  s.sel.party.clear(); s.sel.party.add("Party not on file"); out.none = n();
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").slice(0, 300); }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+    got = _node_app(harness, {"rows.json": json.dumps(rows)})
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert "threw" not in got, "the party filter would not run: " + got["threw"]
+    assert got["of"] == ["Republican"] * 3 + ["Democrat"] * 2 + ["Independent", "Party not on file", "Libertarian"], (
+        f"a bill is not under its sponsor's party as recorded: {got['of']}")
+    assert got["all"] == 8 and got["dem"] == ["HB4", "HB5"] and got["demrep"] == 5 and got["none"] == ["HB9"], (
+        f"a ticked party does not keep exactly its bills: {got}")
+    src = Path("src/pages/app.js").read_text(encoding="utf-8")
+    assert 'fgroup("party",' in src and '"party"]' in src, "the filter is not offered, or not kept in the address"
+    return "ok", "bills fall under their sponsor's party as recorded, and a ticked party keeps exactly its bills"
+
+
+@check("frontend", "the Sponsor filter matches only the bills a person PRIME sponsored unless the reader "
+                   "ticks \"Include co-sponsored bills\", which is off by default")
+def _sponsor_filter_prime_only():
+    """Alice, 8 November 2026: "Sorting by sponsor in the filter should allow
+    you to check off whether to include co-sponsorships, by default it should
+    only be prime sponsored bills." It had matched the prime sponsor or any
+    co-sponsor, always (facetVals: [b.sponsor, ...b.cosp])."""
+    rows = [{"id": "HB1", "term": "2025-2026", "sponsor": "Ann Lee", "cosp": ["Bo Ray"]},
+            {"id": "HB2", "term": "2025-2026", "sponsor": "Bo Ray", "cosp": ["Ann Lee"]},
+            {"id": "HB3", "term": "2025-2026", "sponsor": "Cy Fox"}]
+    harness = _HEARD_PRELUDE + r"""
+load("setIdx: (r) => { IDX = r; }, matches, sel, setCosp: (v) => { withCosp = v; }");
+const rows = JSON.parse(fs.readFileSync("./rows.json", "utf8"));
+const out = {};
+try {
+  s.setIdx(rows);
+  const n = () => rows.filter(b => s.matches(b)).map(b => b.id);
+  s.sel.sponsor.add("Ann Lee"); out.off = n();
+  s.setCosp(true); out.on = n();
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").slice(0, 300); }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+    got = _node_app(harness, {"rows.json": json.dumps(rows)})
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert "threw" not in got, "the Sponsor filter would not run: " + got["threw"]
+    assert got["off"] == ["HB1"] and got["on"] == ["HB1", "HB2"], (
+        f"a sponsor chosen keeps not exactly their prime bills (off) and prime plus co-sponsored (ticked): {got}")
+    src = Path("src/pages/app.js").read_text(encoding="utf-8")
+    assert 'id="cosp"' in src and "Include co-sponsored bills" in src, "the Sponsor filter has no co-sponsor checkbox"
+    return "ok", "a chosen sponsor keeps their prime bills; co-sponsored ones only when ticked"
 
 
 @check("frontend", "the committees index says its counts of bills and sessions are every "
