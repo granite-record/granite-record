@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { hashToken } from "../../workers/follow/address.js";
 import { digestEmail } from "../../workers/follow/mail.js";
 import { due, nhClock, run } from "../../workers/follow/sender.js";
-import { leaks, loadFixtures, makeWorld, SITE, tokensIn } from "./fakes.js";
+import { leaks, loadFixtures, makeWorld, SITE, tokensIn, tomlVars } from "./fakes.js";
 import { handlers, view } from "./flows.js";
 import { followKeys, insertSubscriber } from "./rows.js";
 
@@ -894,6 +894,51 @@ test("each run pings Healthchecks: plainly when well, /fail with codes and count
     assert.ok(!w.net.pings.some(p => p.body.includes(s.address.split("@")[0])), "no address in a ping");
     assert.equal(await ping(w.env, { problems: [] }), false, "no secret, no ping");
   } finally { w.close(); }
+});
+
+// THE PREVIEW SENDER TELLS NOBODY (sender.js, 7 November 2026). preflight's
+// _follow_preview_tells_nobody runs these two by name, on wrangler.toml's
+// own vars for each deployment.
+async function noonWithoutTonight(vars) {
+  const { ping } = await import("../../workers/follow/sender.js");
+  const w = makeWorld();
+  try {
+    siteAsOf(w, "2026-10-10");
+    await subscribe(w, "reader.noon", ["committee:H90"], { cursor: "2026-10-10" });
+    const env = { ...w.env, ...vars, SITE_ORIGIN: SITE, SEND_GAP_MS: "0",
+                  HEALTHCHECK_URL: "https://hc-ping.com/abc-123" };
+    w.now = new Date("2026-10-11T16:00:00Z");    // noon in New Hampshire, no file for the 11th
+    const out = await run(env, w.now);
+    const pinged = await ping(env, out);
+    const failed = await ping(env, { ...out, problems: ["site-follow"] });
+    return { out, pinged, failed, pings: [...w.net.pings], logs: [...w.logs.lines] };
+  } finally { w.close(); }
+}
+
+test("the preview sender raises no tonight problem and pings nobody, even with the secret set", async () => {
+  const { isPreviewSender } = await import("../../workers/follow/sender.js");
+  const vars = tomlVars("env.preview.vars");
+  assert.ok(isPreviewSender(vars), "wrangler.toml's preview is not a preview sender");
+  const r = await noonWithoutTonight(vars);
+  assert.ok(r.logs.includes("follow sender.tonight-missing-sending-anyway 1"), "it still sends at noon");
+  assert.deepEqual(r.out.problems, [], "the preview raised a problem");
+  assert.equal(r.pinged, false);
+  assert.equal(r.failed, false, "a problem of another kind pinged too");
+  assert.deepEqual(r.pings, [], "the preview pinged Healthchecks");
+  assert.ok(r.logs.includes("follow sender.healthcheck-ignored-on-preview"),
+    "the log does not say the secret is there to delete");
+});
+
+test("the production sender still raises tonight at noon and pings its /fail", async () => {
+  const { isPreviewSender } = await import("../../workers/follow/sender.js");
+  const vars = tomlVars("vars");
+  assert.ok(!isPreviewSender(vars), "wrangler.toml's production is a preview sender");
+  const r = await noonWithoutTonight(vars);
+  assert.deepEqual(r.out.problems, ["tonight"]);
+  assert.equal(r.pings.length, 2);
+  assert.equal(r.pings[0].url, "/abc-123/fail");
+  assert.match(r.pings[0].body, /problem: tonight/);
+  assert.ok(!r.logs.includes("follow sender.healthcheck-ignored-on-preview"));
 });
 
 test("a study report under its bill is not said again under a law the bill changes", () => {

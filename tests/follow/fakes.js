@@ -6,11 +6,28 @@
 // Every key, secret and token is made at run time from random bytes and
 // lives only in memory. Every address is invented, on example.com.
 
+import { readFileSync } from "node:fs";
 import { FakeD1 } from "./fake_d1.js";
 import { loadFixtures } from "./fixtures.js";
 
 export { FIXTURES, loadFixtures } from "./fixtures.js";
 export const SITE = "https://graniterecord.org";
+
+// One section's plain `KEY = "value"` lines of workers/follow/wrangler.toml:
+// what Cloudflare hands the sender as env, for the section named ("vars" is
+// production's, "env.preview.vars" the preview's).
+const SENDER_TOML = readFileSync(new URL("../../workers/follow/wrangler.toml", import.meta.url), "utf8");
+export function tomlVars(section) {
+  const out = {};
+  let inside = false;
+  for (const line of SENDER_TOML.split(/\r?\n/)) {
+    const head = /^\s*\[\[?\s*([^\]]+?)\s*\]\]?\s*(#.*)?$/.exec(line);
+    if (head) { inside = head[1] === section; continue; }
+    const m = inside && /^\s*([A-Z_][A-Z0-9_]*)\s*=\s*"([^"]*)"\s*(#.*)?$/.exec(line);
+    if (m) out[m[1]] = m[2];
+  }
+  return out;
+}
 
 const b64 = bytes => Buffer.from(bytes).toString("base64");
 const random = n => crypto.getRandomValues(new Uint8Array(n));

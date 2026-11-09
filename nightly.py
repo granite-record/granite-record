@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.80
+# GRANITE_VERSION: 2026-09-04.81
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -128,8 +128,8 @@ night itself does is here, and what differs on that machine is behind --runner:
                       the docket standing still longer than its season ever
                       has, a database piece not taken, the laptop's share or
                       its caption runs behind, the inbox silent -- a warning
-                      each, and a line of the warnings' alert (WHEN THE
-                      RECORD STOPS MOVING)
+                      each, and a line of the verdict's standing warnings
+                      (WHEN THE RECORD STOPS MOVING)
   the gates           against archive/census.json, the last good build's
                       counts, which cloud.py carries in R2's state/, because
                       site/ starts empty. No census is no baseline, and that
@@ -3421,9 +3421,9 @@ def captions_line(rec):
 # over all of it. None of these stops or holds the site, so none reached
 # anyone. Each is a line now: in the verdict ("not_moving", [kind, sentence]
 # each), on the run's page as a warning of a kind that never holds the night
-# (KIND_NOT_MOVING), and in the warnings' own alert (warns_of, WARN_FILE, the
-# workflow's HEALTHCHECKS_WARN_URL), saying what stopped, since when, and what
-# usually starts it again. A signal that cannot be worked out is said in the
+# (KIND_NOT_MOVING), and in the verdict's standing warnings (warns_of; no
+# longer emailed since 7 November 2026, ONLY A NIGHT WAITING FOR APPROVAL IS
+# EMAILED), saying what stopped, since when, and what usually starts it again. A signal that cannot be worked out is said in the
 # log and stops nothing (not_moving).
 KIND_NOT_MOVING = "the record not moving: "
 
@@ -4883,7 +4883,7 @@ def built_alert(b):
 
 
 def built_warn_alert(b):
-    """The warnings' alert for the checks of tonight's build against the
+    """The standing warning for the checks of tonight's build against the
     record, the reminders among them, which warn and never hold; "" for
     none."""
     if not isinstance(b, dict) or not b.get("ran") or not b.get("warn"):
@@ -5532,8 +5532,12 @@ class Night:
             # --close to put back if a later step of the job fails.
             carried = v.get(NEWEST_FIT)
             v[FIT_CARRIED] = carried if isinstance(carried, dict) else None
+            # `waits`: whether it waits for a person, in held_for_approval's
+            # words, for the nights after it that send nothing to production
+            # (approval_alerts).
             v[NEWEST_FIT] = {"run_id": str(v.get("run_id") or ""), "day": self.day,
-                             "started": v.get("started"), "fingerprint": v.get("fingerprint")}
+                             "started": v.get("started"), "fingerprint": v.get("fingerprint"),
+                             "waits": held_for_approval(v)}
         write_json(self.path, v)
         say(f"\nverdict: {'CLEAN' if v['clean'] else 'NOT CLEAN'} -> {self.path.as_posix()}")
         if self.a.dry_run:
@@ -5774,27 +5778,42 @@ def upload_and_check(a, site, target, base):
 # so from the day one fired -- the Register of Probate's on 2 December 2026 at
 # the latest -- the night's check would have stayed down every night, and a
 # refusal, a failed night or a held one after it would have sent no new
-# email: Healthchecks writes on the change. They are WARN_FILE's now
-# (warns_of), which the workflow sends to a check of their own,
-# HEALTHCHECKS_WARN_URL, and nowhere at all where that secret is not set:
-# they stay on the run's page and in the verdict, for the morning triage. So
-# the night's check goes down only for what stops or holds the site.
+# email: Healthchecks writes on the change. They went to WARN_FILE then
+# (warns_of), which the workflow sent to a check of their own,
+# HEALTHCHECKS_WARN_URL; they stay on the run's page and in the verdict, for
+# the morning triage, and since 7 November that is all (ONLY A NIGHT WAITING
+# FOR APPROVAL IS EMAILED, below). So the night's check goes down only for
+# what stops or holds the site.
 #
 # A NIGHT WAITING FOR APPROVAL IS THE WARNINGS' (the person, 22 October 2026:
 # "move the approval alerts to the warnings check"). Every release waits for
 # approval by design, and its /fail on the night's check read as a failure
-# at 11:02 that morning. So held_for_approval's line is warns_of's: the
-# person is still told, by the warnings' check, and a "down" from the
+# at 11:02 that morning. So held_for_approval's line went to the warnings'
+# check (approval_alerts, since 7 November): the person is still told, and a
+# "down" from the
 # night's check always means something broke. A failed check of the built
 # site, which holds the night for a reason that is a fault, stays here.
 #
 # What has stopped moving under a night that publishes (WHEN THE RECORD STOPS
-# MOVING, 18 October 2026) is WARN_FILE's as well: the record standing still,
+# MOVING, 18 October 2026) was WARN_FILE's as well: the record standing still,
 # a database piece not taken, the laptop's share or its caption runs behind,
 # the captions inbox silent. Each stands until something moves, and none
 # stops or holds the site.
+#
+# ONLY A NIGHT WAITING FOR APPROVAL IS EMAILED (the person, 7 November 2026:
+# Healthchecks writes only when something needs them). The warnings' check
+# had a /fail for every standing warning, so a failed check of the built
+# site against the record that published all the same, or a captions inbox
+# gone quiet, emailed "down" as a held night did. Now --close writes
+# APPROVAL_FILE (the file WARN_FILE was) with held_for_approval's line alone
+# -- a night the gate sends to production-review -- and the workflow pings
+# HEALTHCHECKS_WARN_URL /fail with it, and plainly on the next night that is
+# not held. The person renames that check "Night waiting for your approval";
+# its secret keeps its name. Every other warning stands where it stood
+# before it was ever emailed: in the verdict (standing_warnings, warnings)
+# and on the run's page, for the morning triage.
 ALERT_FILE = Path("logs/alert.txt")
-WARN_FILE = Path("logs/alert-warn.txt")
+APPROVAL_FILE = Path("logs/alert-approval.txt")
 
 
 def held_for_approval(v):
@@ -5813,14 +5832,37 @@ def held_for_approval(v):
 
 
 def warns_of(v):
-    """What warns and stands until a person acts, for the warnings' own check
-    (WARN_FILE): the checks of tonight's build against the record that
-    failed, the reminders among them; and each part of the record that has
-    stopped moving (WHEN THE RECORD STOPS MOVING), the laptop's record of its
-    caption runs missing or old among them. [] for none."""
+    """What warns and stands until a person acts, kept in the verdict
+    (standing_warnings) for the morning triage: a night waiting for
+    approval; the checks of tonight's build against the record that failed,
+    the reminders among them; and each part of the record that has stopped
+    moving (WHEN THE RECORD STOPS MOVING), the laptop's record of its caption
+    runs missing or old among them. [] for none. Only the first is emailed
+    (approval_alerts, whose words it is)."""
     said = built_warn_alert(v.get("built_checks"))
-    held = held_for_approval(v)
-    return ([held] if held else []) + ([said] if said else []) + [s for _kind, s in not_moving_of(v)]
+    return approval_alerts(v) + ([said] if said else []) + [s for _kind, s in not_moving_of(v)]
+
+
+def approval_alerts(v):
+    """What the approval check is told (APPROVAL_FILE, ONLY A NIGHT WAITING
+    FOR APPROVAL IS EMAILED): held_for_approval's line, and nothing else
+    that warns. [] for a night not held, which pings it plainly.
+
+    ONLY TONIGHT'S, WHERE TONIGHT CAN BE APPROVED (the review of 7 November
+    2026). A night whose job failed has no publish job, and a night that built
+    nothing fit for production sends nothing there; either way the night
+    production-review may hold is the newest one fit for production
+    (NEWEST_FIT), which --close has put back for a failed job. Tonight's own
+    line is said only where tonight is that night. Otherwise that night's
+    state stands: still waiting where it waited, so a failed night does not
+    clear a hold it cannot replace, and plain where it did not, so a failed
+    night is not said to wait."""
+    fit = v.get(NEWEST_FIT) if isinstance(v.get(NEWEST_FIT), dict) else None
+    if fit is not None and str(fit.get("run_id") or "") == str(v.get("run_id") or ""):
+        held = held_for_approval(v)
+        return [held] if held else []
+    waits = str((fit or {}).get("waits") or "")
+    return [waits] if waits else []
 
 
 def alerts_of(v):
@@ -5828,8 +5870,8 @@ def alerts_of(v):
     check (ALERT_FILE), whether or not the night was clean: a refusal from
     the General Court on file, a hold on the SQL host, a check of tonight's
     build that holds the night (BUILT_CHECKS), and a night that was not
-    clean, in that order. [] for none. A failed check against the record,
-    and a night waiting for approval, are warns_of's."""
+    clean, in that order. [] for none. A failed check against the record
+    is warns_of's, and a night waiting for approval approval_alerts'."""
     out = []
     if refusal.MARK.exists():
         d = load_json(refusal.MARK)
@@ -5931,9 +5973,11 @@ def close_verdict(a):
             v[NEWEST_FIT] = carried if isinstance(carried, dict) else None
     v["closed"] = datetime.now().isoformat(timespec="seconds")
     if not a.weekly and not a.dry_run:
-        v["alerts"], v["warn_alerts"] = alerts_of(v), warns_of(v)
+        v["alerts"], v["approval_alerts"] = alerts_of(v), approval_alerts(v)
+        # Kept, not emailed (ONLY A NIGHT WAITING FOR APPROVAL IS EMAILED).
+        v["standing_warnings"] = warns_of(v)
         # Not `path`, which is the verdict's own and is written below.
-        for alert, said in ((ALERT_FILE, v["alerts"]), (WARN_FILE, v["warn_alerts"])):
+        for alert, said in ((ALERT_FILE, v["alerts"]), (APPROVAL_FILE, v["approval_alerts"])):
             alert.parent.mkdir(parents=True, exist_ok=True)
             alert.write_text("".join(x + "\n" for x in said), encoding="utf-8")
     write_json(path, v)

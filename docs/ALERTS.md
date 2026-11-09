@@ -2,7 +2,7 @@
 
 Every alert reaches you as an email from **Healthchecks**. Each Healthchecks check emails when it goes
 **down** and again when it comes back **up**, not every night in between. So a problem that lasts three
-nights is one email, and the "up" email is the sign it has cleared (nightly.py:5763-5766,
+nights is one email, and the "up" email is the sign it has cleared (nightly.py:5767-5770,
 ARCHITECTURE.md:274-276). A check goes down in one of two ways:
 
 - **With a body:** the system sent `/fail` with a sentence saying why. The sentences are quoted below.
@@ -19,7 +19,7 @@ the second block happened (CLAUDE.md, "Before assuming nothing is running").
 | Check | Pinged by | When it is down, it usually needs you? |
 |---|---|---|
 | Granite Record nightly | the nightly, every night | Sometimes: read the body |
-| night warnings | the nightly, every night | Rarely: things to look at, not emergencies |
+| Night waiting for your approval | the nightly, every night | **Yes:** a night waits for you to approve it |
 | graniterecord.org published | the publish job | Yes, if it says a night is waiting for approval |
 | follow sender | the email sender, every hour | Rarely |
 | graniterecord-live | the live Worker, every 2 minutes (coming with the live layer) | Rarely |
@@ -31,27 +31,38 @@ the second block happened (CLAUDE.md, "Before assuming nothing is running").
 
 Each night it is sent `/start` when the night begins, and when the night ends either a plain ping or `/fail`
 with the alert as the body (nightly.yml:267-286, 568-596). The body is one or more of the sentences below
-(`alerts_of`, nightly.py:5826-5852).
+(`alerts_of`, nightly.py:5868-5894).
 
 | Email says | Means | Needs you? | What to do | Fixes itself? |
 |---|---|---|---|---|
 | *(down, no body)* | No night reached its end: it did not start, or it started very late. | Look once. | Open GitHub → Actions → nightly. The night-timer Worker starts it at 08:17 UTC, and GitHub's own schedule is the fallback (workers/night-timer/index.js:1-30, 78-79). | Yes, when a night finishes. |
-| "A refusal from the General Court has been on file since {time}. Every fetch waits until a person clears it: python3 netcheck.py says what kind it was, then python3 src/ops/cloud.py clear-refusal." (nightly.py:5837-5839) | The General Court's server refused a request. Nothing asks them again until you say so. | **Yes.** | On the laptop: `python3 netcheck.py`, and read its table, not its last line (docs/proposals/OWNER_STEPS.md:20@feat/outage-recovery). Then `python3 src/ops/cloud.py clear-refusal`, and `python3 refusal.py --clear` if the laptop holds a copy. netcheck itself asks the General Court, so run it once and never beside another fetch. | No. |
-| "The General Court's database is on hold: …" (nightly.py:5846) | The database could not be reached. The sentence says until when nothing asks it (src/fetch/gc_db/probe_db.py:162-171). | No, unless it says the login was refused. | If it says "until the credentials in probe_db.py are changed", the published password has changed: ask for the code to be updated. | Yes, at the time it names. |
+| "A refusal from the General Court has been on file since {time}. Every fetch waits until a person clears it: python3 netcheck.py says what kind it was, then python3 src/ops/cloud.py clear-refusal." (nightly.py:5879-5881) | The General Court's server refused a request. Nothing asks them again until you say so. | **Yes.** | On the laptop: `python3 netcheck.py`, and read its table, not its last line (docs/proposals/OWNER_STEPS.md:20@feat/outage-recovery). Then `python3 src/ops/cloud.py clear-refusal`, and `python3 refusal.py --clear` if the laptop holds a copy. netcheck itself asks the General Court, so run it once and never beside another fetch. | No. |
+| "The General Court's database is on hold: …" (nightly.py:5888) | The database could not be reached. The sentence says until when nothing asks it (src/fetch/gc_db/probe_db.py:162-171). | No, unless it says the login was refused. | If it says "until the credentials in probe_db.py are changed", the published password has changed: ask for the code to be updated. | Yes, at the time it names. |
 | "Checks of tonight's built site failed -- held for approval: {names}." or "The checks of tonight's build did not run, so the night waits for approval." (nightly.py:4872-4882) | Tonight's site was built, but a check of it failed, so it was not published on its own. | **Yes.** | Have the named checks read, then approve or leave the night (see *graniterecord.org published*). | No. |
-| "The night was not clean: …" (nightly.py:5850-5851) | Something in the night went wrong. The rest of the sentence says what, e.g. "The build failed." (`plain_why`, nightly.py:2357-2399). | Read it. | Nothing unless it repeats on a second night. A refusal named here is the row above. | Yes, the next clean night. |
+| "The night was not clean: …" (nightly.py:5892-5893) | Something in the night went wrong. The rest of the sentence says what, e.g. "The build failed." (`plain_why`, nightly.py:2357-2399). | Read it. | Nothing unless it repeats on a second night. A refusal named here is the row above. | Yes, the next clean night. |
 | The weekly job failed (weekly.yml:214-237) | Sunday's committee-roster run failed. It publishes nothing. | No. | Nothing. | Yes, the next good night pings up. |
 
-## night warnings (`HEALTHCHECKS_WARN_URL`)
+## Night waiting for your approval (`HEALTHCHECKS_WARN_URL`)
 
-While any warning stands, this check gets `/fail` with the warnings as the body. When none stands, it gets a
-plain ping (nightly.yml:597-617; `warns_of`, nightly.py:5815-5823). These are things to look at, not
-emergencies: the site is still published.
+Called "night warnings" until 7 November 2026, when it stopped carrying every warning: now it is told one
+thing (`approval_alerts`, nightly.py). While a night waits for your approval -- the gate sent its publish to
+`production-review` -- this check gets `/fail` with the sentence below as the body. The next night that does
+not wait gets a plain ping, and the check comes back up. A night that fails, or builds nothing fit for
+production, changes nothing: the check stays as the last night fit for production left it.
 
 | Email says | Means | Needs you? | What to do | Fixes itself? |
 |---|---|---|---|---|
-| "The night waits for approval, so the live site is not updated until a person approves it: {why}. Approve the newest night waiting in production-review; an older one's site is kept only three days." (nightly.py:5810-5812) | A built night is held for you (ARCHITECTURE.md:168-171). | **Yes, within three days.** | On GitHub, approve the newest night waiting in the `production-review` environment. | No. |
-| "Checks of tonight's built site against the record failed -- published all the same: {names}." (nightly.py:4891-4892) | It was published, but something disagrees with the record. | No hurry. | Have the named checks read. | Yes, when they pass. |
+| "The night waits for approval, so the live site is not updated until a person approves it: {why}. Approve the newest night waiting in production-review; an older one's site is kept only three days." (`held_for_approval`, nightly.py) | A built night is held for you (ARCHITECTURE.md:168-171). | **Yes, within three days.** | On GitHub, approve the newest night waiting in the `production-review` environment. | No. |
+
+## Not emailed: the warnings the morning triage reads
+
+These were the night warnings check's until 7 November 2026. They are things to look at, not emergencies:
+the site is still published. Each stays on the run's page and in the verdict (`standing_warnings` and
+`warnings`; `warns_of`, nightly.py), where the morning triage reads them, and none sends an email.
+
+| The verdict says | Means | Needs you? | What to do | Fixes itself? |
+|---|---|---|---|---|
+| "Checks of tonight's built site against the record failed -- published all the same: {names}." (`built_warn_alert`, nightly.py) | It was published, but something disagrees with the record. | No hurry. | Have the named checks read. | Yes, when they pass. |
 | **The captions inbox.** "Nothing has arrived in the captions inbox since {date} ({n} days), and {n} recordings finished more than 3 days ago wait for their start times … The laptop's evening run (livestreams.py --to-inbox, from Task Scheduler at 7:30 pm) sends them, and they arrive again once that run is on, logged in and answered by YouTube." (nightly.py:3856-3864) | The laptop has not sent caption results for 3 days or more, so recent recordings show approximate start times. | **Yes, today's case.** | Have the laptop on and logged in at 7:30 pm, so Task Scheduler's evening run happens. `logs/captions-inbox.log` on the laptop says what it last did. | Yes, once results arrive. |
 | **The laptop's caption run, 48 hours.** "The laptop's last caption run on record is of {time} UTC, {n} hours ago: its evening run (livestreams.py --to-inbox, from Task Scheduler at 7:30 pm) has not reported for two evenings or more. It runs again when the laptop is on and logged in at 7:30 pm; logs/captions-inbox.log there says what it last did." (nightly.py:3881-3886; 48 hours is `LAPTOP_RUN_STALE_HOURS`, :3544) | Same cause as the row above, seen from the laptop's side. If no record came down at all, it says "No record of the laptop's caption runs came down tonight …" (:3872-3877). | **Yes, today's case.** | As above. | Yes, after the next evening run. |
 | "The General Court's record has not moved for {n} days: …" (nightly.py:3647-3659) | Their Docket has no new lines for longer than any season since 2015. | Usually not. | If the sentence says their export stopped refreshing, that is "the General Court's IT office's to start again". | Yes, when it moves. |
@@ -73,13 +84,15 @@ Pinged only when production has been deployed (nightly.yml:742-757).
 ## follow sender (`HEALTHCHECK_URL` on the follow Worker)
 
 It runs every hour on the hour (workers/follow/wrangler.toml:40-46). It sends email to readers from 8:00 to
-20:00 New Hampshire time (workers/follow/sender.js:60-61). Every run pings: a plain ping when the run did its
-work, or `/fail` with `problem: {code}: {text}` lines (sender.js:573-582). It never emails you itself.
+20:00 New Hampshire time (workers/follow/sender.js:62-63). Every run pings: a plain ping when the run did its
+work, or `/fail` with `problem: {code}: {text}` lines (sender.js:599-618). It never emails you itself.
+Only the production sender pings this check: the preview sender never does, even with the secret set
+(7 November 2026; workers/follow/README.md, *Healthchecks is production's alone*).
 
-| Code | Text (sender.js:107-115) | Needs you? | Fixes itself? |
+| Code | Text (sender.js:109-117) | Needs you? | Fixes itself? |
 |---|---|---|---|
 | *(down, no body)* | The Worker stopped running: "Healthchecks writes when the pings stop" (sender.js:42-43). | Look once. | No. |
-| `tonight` | "tonight's changes file was still missing at noon" | **No: today's late-night case.** Before noon the sender waits each hour; at noon it sends what earlier nights had, and the late night's news goes out the next morning (sender.js:31-32, 396-408). | Yes. Once nobody else is due that day, the next run pings up (sender.js:358-364). If the night itself failed, *Granite Record nightly* says so. |
+| `tonight` | "tonight's changes file was still missing at noon" (production's alone: the preview sender, whose dry-run site has a night's file only on a morning a dry run deployed, never raises it and never pings, sender.js THE PREVIEW SENDER TELLS NOBODY, 7 November 2026) | **No: today's late-night case.** Before noon the sender waits each hour; at noon it sends what earlier nights had, and the late night's news goes out the next morning (sender.js:31-32, 418-436). | Yes. Once nobody else is due that day, the next run pings up (sender.js:380-386). If the night itself failed, *Granite Record nightly* says so. |
 | `site-follow` | "the site's follow pages do not answer, so nothing was sent" | Look if it repeats. | Usually. |
 | `current` | "the site's current.json is missing or unreadable" | Look if it repeats. | Usually, after the next publish. |
 | `config` | "the sender's configuration is missing" | **Yes:** a setting of the Worker is missing. | No. |

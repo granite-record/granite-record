@@ -277,10 +277,16 @@ is also why a warning that stands is kept off this check (18 October 2026): a
 failed check of the built site against the record, a reminder that fails
 on a date until a person acts, and since 22 October a night the gate holds
 for approval (with the gate's reasons, which GitHub otherwise tells only the
-reviewer; `held_for_approval()`), go to `logs/alert-warn.txt` (`WARN_FILE`, from
-`warns_of()`) and to a check of their own, `HEALTHCHECKS_WARN_URL` -- `/fail`
-with the file as the body while one stands, a plain ping when none does --
-and with no such secret they stay on the run's page and in the verdict.
+reviewer; `held_for_approval()`), went to a check of their own,
+`HEALTHCHECKS_WARN_URL`. Since 7 November 2026 that check is told one thing,
+a night the gate sends to `production-review` (`logs/alert-approval.txt`,
+`APPROVAL_FILE`, from `approval_alerts()`) -- `/fail` with the file as the
+body while one waits, a plain ping on the next night that does not; a night
+whose job failed, or that built nothing fit for production, says the state of
+the newest night that did (`newest_fit`'s `waits`) -- and the
+person renames it "Night waiting for your approval". Every other warning
+stays on the run's page and in the verdict (`standing_warnings`, from
+`warns_of()`) for the morning triage, and emails nobody.
 Before, a reminder firing on 2 December would have held the night's check
 down, and no failure after it would have sent a new email. The publish check
 (`HEALTHCHECKS_PUBLISH_URL`) is pinged only once production has been
@@ -296,9 +302,10 @@ refuses GitHub's machines, and an alert that never clears hides every other.
 
 **When the record stops moving** (18 October 2026). A night can build and
 publish on time over a record that has stopped, and the footer's "Data
-rebuilt" date stays fresh over it. So the warnings' check also hears, one
-sentence each saying what stopped, since when and what usually starts it
-again, and the verdict keeps them as `not_moving` beside a warning of a kind
+rebuilt" date stays fresh over it. So the verdict's standing warnings carry
+one sentence each saying what stopped, since when and what usually starts it
+again (emailed by the warnings' check until 7 November 2026, and since then
+by nothing), and the verdict keeps them as `not_moving` beside a warning of a kind
 the gate never holds for: the newest line of the installed `Docket.txt` older
 than any night of its season on record (7 days from 10 January to 30 June, 42
 from 1 July to 9 January, measured on the export's dockets of 2015 to 2026,

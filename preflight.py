@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.818
+# GRANITE_VERSION: 2026-09-04.819
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -90694,7 +90694,10 @@ def _follow_test_send():
     test send and without one, and holds every email, log line and table to
     be the same; run() names nothing of the test path (testifyAhead, which
     makes a bill with a hearing ahead say "open" on any day, is the test's
-    alone); and the test path's SQL is SELECTs only.
+    alone); and the test path's SQL is SELECTs only. One read of TEST_SEND is
+    no part of the test path and is allowed in run(): isPreviewSender, once,
+    which keeps the preview from raising `tonight` (7 November 2026;
+    _follow_preview_tells_nobody holds it, and that it is called once).
 
     NO ADDRESS OUT. The test path logs through note() with fixed codes only,
     and the privacy case reads every log line and answer of a test send for
@@ -90781,6 +90784,91 @@ def _follow_test_send():
         + ", ".join(repr(c) for c in cases if c not in passed) + ": " + out.strip()[-400:])
     return "ok", ("production's sender has no address and no TEST_SEND; the preview's has both and "
                   f"no token in the file; run() names nothing of the test path; {len(cases)} cases pass")
+
+
+@check("build", "the preview email sender raises no tonight problem and never pings Healthchecks, "
+       "even with the secret set; the README gives HEALTHCHECK_URL to production alone")
+def _follow_preview_tells_nobody():
+    """The person, 7 November 2026: Healthchecks emails only when something
+    needs them. The preview sender (`--env preview`) reads the dry-run site,
+    which has a night's changes file only on a morning a dry run deployed,
+    so at noon on most days it raised `tonight` and its /fail emailed "down",
+    and the next hour's ping "up": five times in November. It had the same
+    HEALTHCHECK_URL as production because the README's secrets table said
+    to add every sender secret with --env preview.
+
+    Held from three sides. THE RULE: sender.js's isPreviewSender is
+    TEST_SEND = "on", which wrangler.toml's [env.preview.vars] sets and its
+    production [vars] do not (_follow_test_send holds that too); run()
+    pushes `tonight` only behind it, and ping() asks it before it reads the
+    secret's address or fetches. THE WORDS: the README's secrets table gives
+    HEALTHCHECK_URL to production alone, and no command in the folder puts
+    it on the preview; wrangler.toml sets no HEALTHCHECK_URL, a secret. THE
+    BEHAVIOUR: tests/follow/sender.test.js's two cases, on wrangler.toml's
+    own vars -- the preview at noon with no night and the secret set raises
+    nothing and pings nothing, and production still raises `tonight` and
+    pings /fail."""
+    folder = Path("workers/follow")
+    toml_path, js_path, readme = folder / "wrangler.toml", folder / "sender.js", folder / "README.md"
+    if not (toml_path.is_file() and js_path.is_file() and readme.is_file()):
+        return "skip", "no workers/follow here"
+    import tomllib
+    conf = tomllib.loads(toml_path.read_text(encoding="utf-8"))
+    preview = conf.get("env", {}).get("preview", {})
+    assert preview.get("vars", {}).get("TEST_SEND") == "on" and "TEST_SEND" not in conf.get("vars", {}), (
+        "workers/follow/wrangler.toml: the preview sender is known by TEST_SEND = \"on\" in "
+        "[env.preview.vars], and production's [vars] must not set it")
+    raw_toml = toml_path.read_text(encoding="utf-8")
+    assert not re.search(r"(?m)^\s*HEALTHCHECK_URL\s*=", raw_toml), \
+        "workers/follow/wrangler.toml sets HEALTHCHECK_URL: a secret goes in with wrangler secret put"
+
+    js = js_path.read_text(encoding="utf-8")
+    rule = _js_block(js, "export function isPreviewSender(env) {", "\n}\n")
+    assert re.search(r'return env\?\.TEST_SEND === "on";', rule), \
+        "sender.js's isPreviewSender is no longer TEST_SEND = \"on\""
+    run_src = _js_block(js, "export async function run(", "\n}\n")
+    pushes = re.findall(r"^.*out\.problems\.push\(\"tonight\"\).*$", js, re.M)
+    assert len(pushes) == 1 and "if (!isPreviewSender(env)) out.problems.push(\"tonight\")" in pushes[0] \
+        and pushes[0].strip() in run_src, (
+        f"sender.js raises `tonight` other than once, in run(), behind isPreviewSender: {pushes}")
+    # The one read of TEST_SEND run() may make (_follow_test_send): nothing
+    # else in a real run may differ on the preview.
+    assert run_src.count("isPreviewSender(") == 1, \
+        "sender.js's run() asks isPreviewSender other than once, for `tonight`"
+    ping_src = _js_block(js, "export async function ping(env, out) {", "\n}\n")
+    asks, fetches = ping_src.find("if (isPreviewSender(env)) {"), ping_src.find("fetch(")
+    assert 0 <= asks < fetches and ping_src.find("return false;", asks) < fetches, \
+        "sender.js's ping() does not return before any fetch for the preview sender"
+
+    text = readme.read_text(encoding="utf-8")
+    rows = [ln for ln in text.splitlines() if re.match(r"^\s*\|\s*`HEALTHCHECK_URL`", ln)]
+    cells = [c.strip() for c in rows[0].strip().strip("|").split("|")] if len(rows) == 1 else []
+    assert len(cells) == 3 and cells[1] == "no" and cells[2].startswith("production's only"), (
+        f"workers/follow/README.md's secrets table must give HEALTHCHECK_URL to the sender as "
+        f"\"production's only\": {rows}")
+    onto_preview = [ln.strip() for p in sorted(folder.rglob("*")) if p.is_file() and
+                    p.suffix in (".md", ".toml", ".js", ".sql")
+                    for ln in p.read_text(encoding="utf-8", errors="replace").splitlines()
+                    if re.search(r"secret\s+put\s+HEALTHCHECK_URL\b.*--env\s+preview", ln)]
+    assert not onto_preview, f"workers/follow/ says to put HEALTHCHECK_URL on the preview: {onto_preview}"
+
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (node and Path("tests/follow/index.js").is_file()):
+        return "skip", "node or tests/follow/ is not here; sender.js, the README and wrangler.toml hold"
+    cases = ("the preview sender raises no tonight problem and pings nobody, even with the secret set",
+             "the production sender still raises tonight at noon and pings its /fail")
+    r = _run([node, "--disable-warning=ExperimentalWarning", "--test", "--test-reporter=tap",
+              "--test-name-pattern=" + "|".join(cases), "tests/follow/index.js"],
+             capture_output=True, text=True, timeout=300)
+    out = r.stdout + r.stderr
+    passed = [c for c in cases
+              if re.search(rf"^ok \d+ - [^\n]*{re.escape(c)}(?![^\n]*# SKIP)", out, re.M)]
+    assert r.returncode == 0 and len(passed) == len(cases), (
+        "tests/follow/ no longer passes the preview sender's cases "
+        + ", ".join(repr(c) for c in cases if c not in passed) + ": " + out.strip()[-400:])
+    return "ok", ("the preview sender (TEST_SEND on) raises no tonight and pings nobody; production "
+                  "still does; the README gives HEALTHCHECK_URL to production alone; "
+                  f"{len(cases)} cases pass")
 
 
 # THE PLANS' LIMITS, AS CLOUDFLARE AND RESEND PUBLISH THEM (read 25 October
@@ -95970,6 +96058,9 @@ def _nightly_dry_run_apart(NI, CL):
         code, _ = g.night("--runner", "--no-fetch", run_id="502")   # waits for approval
         v = g.verdict()
         assert code == 0 and v["publishable"] and v[NI.NEWEST_FIT]["run_id"] == "502", v
+        # ... and says whether it waits, in held_for_approval's words, for
+        # the nights after it that send nothing to production (approval_alerts).
+        assert v[NI.NEWEST_FIT].get("waits") == NI.held_for_approval(v), v[NI.NEWEST_FIT]
         assert g.output.get("publishable") == "true", \
             ("a real night fit for production did not tell the workflow so", g.output)
         night_v, census = NI.VERDICT.read_bytes(), NI.CENSUS.read_bytes()
@@ -104637,8 +104728,9 @@ WORKFLOW_DIR = Path(".github/workflows")
 WORKFLOW_SECRETS = {"R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET",
                     "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "YOUTUBE_API_KEY",
                     "HEALTHCHECKS_URL", "HEALTHCHECKS_PUBLISH_URL",
-                    # The warnings' own check (18 October 2026, nightly.WARN_FILE):
-                    # optional, and the person's to create.
+                    # The approval check (18 October 2026; a held night alone since
+                    # 7 November, nightly.APPROVAL_FILE): optional, and the person's
+                    # to create.
                     "HEALTHCHECKS_WARN_URL"}
 
 
@@ -124215,8 +124307,9 @@ def _built_checks_night(NI):
     after check_site and before the gate, and reads the file it writes; and
     what a failure does -- on a dry run, not clean; a check of the site
     itself, a reason for the gate to wait; one against the record, a warning
-    of a kind that never holds; each, an alert on its own check (the night's,
-    and since 18 October 2026 the warnings', _alarm_stays_able_to_ring)."""
+    of a kind that never holds; the first, an alert on the night's check, and
+    the second kept in the verdict, which the warnings' check was told from
+    18 October to 7 November 2026 (_alarm_stays_able_to_ring)."""
     import inspect
     by_fn = {c["fn"].__name__: c for c in CHECKS}
     for name, group in ([(n, "code") for n in BUILT_CODE] + [(n, "data") for n in NOT_ON_THE_NIGHT]
@@ -124270,8 +124363,8 @@ def _built_checks_night(NI):
 
 
 @check("files", "a standing warning never jams the alarm: a failed night, a refusal or a failed check "
-       "of the built site reaches the night's check whatever warns, and a warning -- a night waiting for "
-       "approval among them -- goes to a check of its own",
+       "of the built site reaches the night's check whatever warns; a night waiting for approval, and "
+       "nothing else that warns, reaches the approval check; every other warning stays in the verdict",
        needs=("nightly",))
 def _alarm_stays_able_to_ring(NI):
     """private/UNATTENDED_AUDIT_2026-10-18.md, sections 4.3.5 and 4.1.
@@ -124284,16 +124377,36 @@ def _alarm_stays_able_to_ring(NI):
     nothing for a refusal, a failed night or a held one after it. And a night
     the gate held for approval was told to nobody but GitHub's reviewer.
 
+    ONLY A NIGHT WAITING FOR APPROVAL IS EMAILED (the person, 7 November
+    2026): the warnings' check had a /fail for every standing warning, a
+    failed check against the record that published all the same among them.
+    Now HEALTHCHECKS_WARN_URL's check, renamed "Night waiting for your
+    approval", is told a held night alone (nightly.approval_alerts,
+    APPROVAL_FILE), and every other warning stays in the verdict
+    (standing_warnings) and on the run's page.
+
     Held here, on verdicts made up for it in a folder with no refusal and no
-    hold on file: a clean night whose only failures are against the record
-    gives the night's check nothing and the warnings' check its line; the
-    same with a night not clean, or held, gives the night's check that and
-    still keeps the warning off it; a held night says it waits and why, once
-    even when a failed check of the site is the reason, and only where the
+    hold on file: a clean night whose only failures are against the record,
+    and with a part of the record stopped beside them, gives the night's
+    check nothing and the approval check nothing, and keeps both as standing
+    warnings; the same with a night not clean gives the night's check that
+    and still keeps the warning off it; a held night gives the approval check
+    one line, that it waits and why, even when a failed check of the site is
+    the reason, and nothing of the warnings beside it -- and only where the
     gate routes the publish job, the night is fit for production and it is
-    no New term run; --close writes both files; and the workflow's ending
-    step reads ALERT_FILE for the night's check and WARN_FILE for
-    HEALTHCHECKS_WARN_URL's, and pings that one /fail with nothing else."""
+    no New term run; --close writes both files, and the approval file from
+    approval_alerts alone; and the workflow's ending step reads ALERT_FILE
+    for the night's check and APPROVAL_FILE for HEALTHCHECKS_WARN_URL's, and
+    pings that one /fail with nothing else.
+
+    AND ONLY WHERE TONIGHT CAN BE APPROVED (the review of 7 November 2026).
+    A night that is not the newest fit for production -- its job failed, so
+    --close put the older record back, or it built nothing fit -- says that
+    night's state, not its own: a held night whose job failed is not said to
+    wait, and a failed night does not clear an older night still waiting.
+    Held on made-up verdicts and on --close run on a held night whose kit-up
+    failed; and the ending step leaves the check alone where the state did
+    not go back to R2, which happens after --close."""
     import inspect
     here = Path(".").resolve()
     tmp = Path(tempfile.mkdtemp(prefix="gr-alarm-"))
@@ -124304,38 +124417,63 @@ def _alarm_stays_able_to_ring(NI):
         os.environ[NI.GATE_ENV] = NI.GATE_ON
         warned = {"ran": True, "hold": [], "warn": ["_probate_after_the_vote"]}
         both = {"ran": True, "hold": ["_rail"], "warn": ["_probate_after_the_vote"]}
+        still = [NI.KIND_NOT_MOVING + "the General Court's docket", "the docket has stood still"]
         clean = {"clean": True, "publishable": True, "review": {"needed": False, "why": []},
-                 "asked": {"new_term": False}, "built_checks": warned}
+                 "asked": {"new_term": False}, "built_checks": warned, "not_moving": [still],
+                 "run_id": "9001", NI.NEWEST_FIT: {"run_id": "9001"}}
         if NI.alerts_of(clean):
             bad.append(f"a clean night with a reminder alone alerts the night's check: {NI.alerts_of(clean)}")
-        if len(NI.warns_of(clean)) != 1 or "_probate_after_the_vote" not in NI.warns_of(clean)[0]:
-            bad.append(f"the reminder is not the warnings' line: {NI.warns_of(clean)}")
+        if NI.approval_alerts(clean):
+            bad.append(f"a night not held tells the approval check {NI.approval_alerts(clean)}")
+        standing = NI.warns_of(clean)
+        if len(standing) != 2 or "_probate_after_the_vote" not in standing[0] or standing[1] != still[1]:
+            bad.append(f"the reminder and the record standing still are not the standing warnings: {standing}")
         dirty = dict(clean, clean=False, not_clean=["the build: failed"])
         got = NI.alerts_of(dirty)
         if not any(x.startswith("The night was not clean") for x in got) or \
                 any("_probate_after_the_vote" in x for x in got):
             bad.append(f"a night not clean, with a reminder standing, alerts as {got}")
-        # A night waiting for approval is the warnings' line, not the night's
-        # (the person, 22 October 2026): a release waits by design.
+        # A night waiting for approval is the approval check's line, not the
+        # night's (the person, 22 October 2026): a release waits by design.
         held = dict(clean, review={"needed": True, "why": ["a new kind of warning: x"]})
-        got, warns = NI.alerts_of(held), NI.warns_of(held)
-        if got or not warns or "waits for approval" not in warns[0] or \
-                "a new kind of warning: x" not in warns[0]:
-            bad.append(f"a night the gate holds alerts as {got}, warns as {warns}")
+        got, told = NI.alerts_of(held), NI.approval_alerts(held)
+        if got or len(told) != 1 or "waits for approval" not in told[0] or \
+                "a new kind of warning: x" not in told[0] or \
+                any(w in told[0] for w in ("_probate_after_the_vote", still[1])):
+            bad.append(f"a night the gate holds alerts as {got}, tells the approval check {told}")
+        if NI.warns_of(held)[:1] != told:
+            bad.append(f"a held night is not the first standing warning: {NI.warns_of(held)}")
+        # Not the newest night fit for production: that night's state, not
+        # tonight's. Held tonight, but its job failed and the older record
+        # is back; and built nothing fit, with an older night still waiting.
+        older = {"run_id": "9000", "waits": "The night of 9000 waits for approval."}
+        for what, v, want in (
+                ("a held night whose job failed", dict(held, **{NI.NEWEST_FIT: dict(older, waits="")}), []),
+                ("a held night whose job failed, after a night that waits",
+                 dict(held, **{NI.NEWEST_FIT: older}), [older["waits"]]),
+                ("a night not fit, after a night that waits",
+                 dict(clean, publishable=False, **{NI.NEWEST_FIT: older}), [older["waits"]]),
+                ("a night not fit, after a night that did not wait",
+                 dict(clean, publishable=False, **{NI.NEWEST_FIT: dict(older, waits="")}), []),
+                ("a night with no record of a night fit for production", dict(held, **{NI.NEWEST_FIT: None}), [])):
+            if NI.approval_alerts(v) != want:
+                bad.append(f"{what} tells the approval check {NI.approval_alerts(v)}, not {want}")
         # ... while a failed check of the built site, which holds it for a
         # fault, stays the night's.
         held_check = dict(clean, built_checks=both,
                           review={"needed": True, "why": NI.built_review(both)})
-        got, warns = NI.alerts_of(held_check), NI.warns_of(held_check)
+        got, told = NI.alerts_of(held_check), NI.approval_alerts(held_check)
         if len(got) != 1 or "_rail" not in got[0] or "_probate_after_the_vote" in got[0] or \
-                not any("waits for approval" in w for w in warns):
-            bad.append(f"a night held for a failed check of the site alerts as {got}, warns as {warns}")
+                len(told) != 1 or "waits for approval" not in told[0] or \
+                "_probate_after_the_vote" in told[0]:
+            bad.append(f"a night held for a failed check of the site alerts as {got}, tells the "
+                       f"approval check {told}")
         for what, v in (("the New term run", dict(held, asked={"new_term": True})),
                         ("a night not fit for production", dict(held, publishable=False))):
-            if NI.held_for_approval(v):
+            if NI.held_for_approval(v) or NI.approval_alerts(v):
                 bad.append(f"{what} is said to wait for approval")
         os.environ[NI.GATE_ENV] = NI.GATE_SHADOW
-        if NI.held_for_approval(held):
+        if NI.held_for_approval(held) or NI.approval_alerts(held):
             bad.append("in shadow, where every night waits, a held night alerts")
         unrun = dict(clean, built_checks={"ran": False}, review={"needed": True, "why": ["x"]})
         os.environ[NI.GATE_ENV] = NI.GATE_ON
@@ -124349,8 +124487,12 @@ def _alarm_stays_able_to_ring(NI):
             os.environ[NI.GATE_ENV] = saved
         shutil.rmtree(tmp, ignore_errors=True)
     src = inspect.getsource(NI.close_verdict)
-    if "(ALERT_FILE, v[\"alerts\"]), (WARN_FILE, v[\"warn_alerts\"])" not in src:
-        bad.append("--close does not write both ALERT_FILE and WARN_FILE")
+    if "(ALERT_FILE, v[\"alerts\"]), (APPROVAL_FILE, v[\"approval_alerts\"])" not in src or \
+            "v[\"approval_alerts\"] = alerts_of(v), approval_alerts(v)" not in src:
+        bad.append("--close does not write ALERT_FILE, and APPROVAL_FILE from approval_alerts alone")
+    told = inspect.getsource(NI.approval_alerts)
+    if re.findall(r"\b(warns_of|built_warn_alert|not_moving_of|built_alert|alerts_of)\(", told):
+        bad.append("approval_alerts tells the approval check something other than a held night")
     # And writes them, and the verdict where it belongs: --close, run on a
     # night that never started, in a folder of its own.
     tmp = Path(tempfile.mkdtemp(prefix="gr-alarm-close-"))
@@ -124368,11 +124510,43 @@ def _alarm_stays_able_to_ring(NI):
             except SystemExit:
                 pass
         v = NI.load_json(NI.VERDICT) or {}
-        if v.get("run_id") != "7001" or not v.get("alerts") or v.get("warn_alerts") != []:
+        if v.get("run_id") != "7001" or not v.get("alerts") or v.get("approval_alerts") != [] or \
+                v.get("standing_warnings") != []:
             bad.append(f"--close on a night that never started left the verdict {v}")
         if not NI.ALERT_FILE.read_text(encoding="utf-8").strip() or \
-                NI.WARN_FILE.read_text(encoding="utf-8") != "":
-            bad.append("--close did not write the night's alert and an empty warnings' file")
+                NI.APPROVAL_FILE.read_text(encoding="utf-8") != "":
+            bad.append("--close did not write the night's alert and an empty approval file")
+        # A held night, fit for production, whose kit-up then failed: --close
+        # puts the older record back, and the approval file says its state.
+        saved_gate = os.environ.get(NI.GATE_ENV)
+        os.environ[NI.GATE_ENV] = NI.GATE_ON
+        try:
+            for carried_waits in ("", "The night of 7000 waits for approval."):
+                os.environ["GITHUB_RUN_ID"] = "7002"
+                NI.write_json(NI.VERDICT, {
+                    "run_id": "7002", "clean": True, "built": True, "publishable": True,
+                    "asked": {"new_term": False},
+                    "review": {"needed": True, "why": ["a new kind of warning: x"]},
+                    NI.NEWEST_FIT: {"run_id": "7002", "waits": "tonight waits"},
+                    NI.FIT_CARRIED: {"run_id": "7000", "waits": carried_waits}})
+                sys.argv = ["nightly.py", "--runner", "--close", "--outcome", "kit-up=failure"]
+                with contextlib.redirect_stdout(io.StringIO()):
+                    try:
+                        NI.main()
+                    except SystemExit:
+                        pass
+                v = NI.load_json(NI.VERDICT) or {}
+                got = NI.APPROVAL_FILE.read_text(encoding="utf-8")
+                want = carried_waits + "\n" if carried_waits else ""
+                if got != want or (v.get(NI.NEWEST_FIT) or {}).get("run_id") != "7000":
+                    bad.append(f"--close on a held night whose kit-up failed wrote {got!r} to the "
+                               f"approval file, not {want!r}, with {v.get(NI.NEWEST_FIT)} as the "
+                               "newest fit")
+        finally:
+            if saved_gate is None:
+                os.environ.pop(NI.GATE_ENV, None)
+            else:
+                os.environ[NI.GATE_ENV] = saved_gate
     finally:
         os.chdir(here)
         sys.argv = saved_argv
@@ -124387,21 +124561,32 @@ def _alarm_stays_able_to_ring(NI):
         ends = [st for jl in jobs.values() for st in _wf_steps(_wf_code(jl))
                 if any("Tell Healthchecks how the night ended" in ln for ln in st[:1])]
         body = "\n".join(ends[0]) if len(ends) == 1 else ""
-        alert, warn = f"'{NI.ALERT_FILE.as_posix()}'", f"'{NI.WARN_FILE.as_posix()}'"
+        alert, approval = f"'{NI.ALERT_FILE.as_posix()}'", f"'{NI.APPROVAL_FILE.as_posix()}'"
+        logs = sorted(set(re.findall(r"'(logs/[^']+)'", body)))
+        state_up = [st for jl in jobs.values() for st in _wf_steps(_wf_code(jl))
+                    if any("Send the state files back to R2" in ln for ln in st[:1])]
+        left = body.find("$env:STATE_UP -eq 'failure'")
+        if len(state_up) != 1 or not any(ln.strip() == "id: stateup" for ln in state_up[0]) or \
+                "STATE_UP: ${{ steps.stateup.outcome }}" not in body or \
+                not 0 <= left < body.find("elseif (Test-Path $approval)"):
+            bad.append("the ending step does not leave the approval check alone where the state did "
+                       "not go back to R2 (the state's step, id stateup, runs after --close)")
         if not body:
             bad.append("nightly.yml has no one step telling Healthchecks how the night ended")
-        elif not ("secrets.HEALTHCHECKS_WARN_URL" in body and f"$warn = {warn}" in body
+        elif not ("secrets.HEALTHCHECKS_WARN_URL" in body and f"$approval = {approval}" in body
                   and f"$alert = {alert}" in body and '"$env:HC_WARN_URL/fail"' in body
-                  and '--data-binary "@$warn" "$env:HC_WARN_URL/fail"' in body
-                  and '--data-binary "@$warn" "$env:HC_URL' not in body
-                  and '--data-binary "@$alert" "$env:HC_WARN_URL' not in body):
-            bad.append("the ending step does not send WARN_FILE to HEALTHCHECKS_WARN_URL alone and "
-                       "ALERT_FILE to the night's check alone")
+                  and '--data-binary "@$approval" "$env:HC_WARN_URL/fail"' in body
+                  and '--data-binary "@$approval" "$env:HC_URL' not in body
+                  and '--data-binary "@$alert" "$env:HC_WARN_URL' not in body
+                  and logs == sorted({NI.ALERT_FILE.as_posix(), NI.APPROVAL_FILE.as_posix()})):
+            bad.append("the ending step does not send APPROVAL_FILE to HEALTHCHECKS_WARN_URL alone and "
+                       f"ALERT_FILE to the night's check alone, and read no other file (it reads {logs})")
     assert not bad, "; ".join(bad)
-    return "ok", ("a reminder alone leaves the night's check up and goes to the warnings' check; a "
-                  "night not clean alerts the night's check beside it, once, with its reasons, "
-                  "and a night held tells the warnings' check; shadow, a New term run and a night not for production say no hold; "
-                  "the workflow sends each file to its own check")
+    return "ok", ("a reminder and the record standing still leave both checks up and stand in the "
+                  "verdict; a night not clean alerts the night's check beside them, once, with its "
+                  "reasons; a night held tells the approval check that alone; shadow, a New term run "
+                  "and a night not for production say no hold; a night that cannot be approved keeps "
+                  "the newest fit night's state; the workflow sends each file to its own check")
 
 
 # =================================================== code: the record stopping ==
@@ -124414,8 +124599,8 @@ def _alarm_stays_able_to_ring(NI):
 # database piece not taken night after night, the laptop's share behind the
 # record, the captions inbox silent, the laptop's own record of its caption
 # runs missing or old and its refusal beside GitHub's -- and the wiring that
-# puts each in the verdict, on the run's page and in the warnings' alert, and
-# never in the gate or the night's own alert.
+# puts each in the verdict and on the run's page, and never in the gate, the
+# night's own alert or, since 7 November 2026, any email at all.
 #
 # NOT THE STEP'S OWN (18 October 2026, the review). On GitHub's machine the
 # night runs preflight with its own environment, GITHUB_OUTPUT and
@@ -124845,15 +125030,16 @@ def _record_laptop_runs(NI, CL):
                   "one warns, last evening's does not")
 
 
-@check("files", "what has stopped moving is in the verdict, on the run's page and in the warnings' "
-       "alert, never in the gate or the night's own alert, and one signal failing stops none",
+@check("files", "what has stopped moving is in the verdict and on the run's page, never in the gate, "
+       "the night's own alert or the approval check's, and one signal failing stops none",
        needs=("nightly",))
 def _record_not_moving_wired(NI):
     """WHEN THE RECORD STOPS MOVING, end to end. A night finished in a folder
     of its own, whose docket is 97 days still and which found no record of
     the laptop's runs: its verdict carries both in "not_moving", its
-    warnings and their kinds; warns_of gives both, alerts_of neither, and
-    the gate holds for neither. A night that did not fetch is not told the
+    warnings and their kinds; warns_of gives both, alerts_of and
+    approval_alerts neither (since 7 November 2026 nothing but a night
+    waiting for approval is emailed), and the gate holds for neither. A night that did not fetch is not told the
     laptop's record is missing. And a signal whose code raises is said in
     the log, while the others still come."""
     import contextlib
@@ -124890,6 +125076,7 @@ def _record_not_moving_wired(NI):
         assert all(f"- warning: {s}" in page for s in said), page[-600:]
         assert NI.warns_of(v)[-2:] == said, NI.warns_of(v)
         assert not any(s in x for x in NI.alerts_of(v) for s in said), NI.alerts_of(v)
+        assert not any(s in x for x in NI.approval_alerts(v) for s in said), NI.approval_alerts(v)
         assert not NI.warning_reasons(NI.not_moving_of(v), served=[], recent=()), \
             "what stopped moving holds the night as a new kind of warning"
         quiet = NI.not_moving(v, "2027-01-20", None, None, fetched=False)
@@ -124913,7 +125100,7 @@ def _record_not_moving_wired(NI):
                 os.environ[k] = val
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("a still docket and a missing laptop record reach the verdict, the page and the "
-                  "warnings' alert, and neither the night's alert nor the gate; a night that did "
+                  "standing warnings, and neither the night's alert, the approval check nor the gate; a night that did "
                   "not fetch is not told of the record; a signal that raises stops no other")
 
 

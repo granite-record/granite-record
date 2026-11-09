@@ -255,14 +255,17 @@ on its own:
    | `FOLLOW_LOOKUP_KEY` (32 random bytes, base64) | yes | no |
    | `TURNSTILE_SECRET` | yes | no |
    | `RESEND_WEBHOOK_SECRET` | yes | no |
-   | `HEALTHCHECK_URL` (a Healthchecks check of its own, hourly period) | no | yes |
+   | `HEALTHCHECK_URL` (a Healthchecks check of its own, hourly period) | no | production's only (below) |
    | `TEST_SEND_TOKEN` (the test send's, below) | no | the preview's only |
 
    On the Pages project: `npx wrangler pages secret put <NAME> --project-name
    graniterecord` (and the same for preview; check `--help` on the day for
    how the version installed names it). On the sender: `npx wrangler secret
-   put <NAME> --config workers/follow/wrangler.toml` (add `--env preview`).
-   Both read the value from standard input when it is piped.
+   put <NAME> --config workers/follow/wrangler.toml` for production, with
+   `--env preview` added for the preview, each only where the table's Sender
+   column gives it: `HEALTHCHECK_URL` on production alone (*Healthchecks is
+   production's alone*, below), `TEST_SEND_TOKEN` on the preview alone. Both
+   read the value from standard input when it is piped.
 
    **The two keys** are made by a command, so that nobody types or reads one,
    and they do not go through the clipboard: any program running at that
@@ -416,6 +419,42 @@ delete the secret, and `/test-send` is a 404 again:
 
     npx.cmd wrangler secret delete TEST_SEND_TOKEN --config workers/follow/wrangler.toml --env preview
 
+## Healthchecks is production's alone
+
+Only the production sender pings `HEALTHCHECK_URL` (the person, 7 November
+2026). The preview sender reads the dry-run site, which has a night's
+changes file only on a morning a dry run deployed, and holds the person's
+test follows; so at noon on most days it raised `tonight`, its `/fail`
+emailed "down", and the next hour's plain ping "up" -- five times in
+November, for a site nobody is sent from. It had the secret because this
+table once said to add every sender secret with `--env preview`. The
+preview's secret was deleted on 7 November 2026 (Cloudflare's deployment
+log: "Deleted Secret binding HEALTHCHECK_URL").
+
+Now the code holds it too (`sender.js`, THE PREVIEW SENDER TELLS NOBODY):
+a sender with `TEST_SEND = "on"`, which only `[env.preview.vars]` sets,
+never raises `tonight` and never pings, even with the secret set. Where one
+is set, each run logs `follow sender.healthcheck-ignored-on-preview`, the
+sign to delete it. preflight's `_follow_preview_tells_nobody` holds the
+code, this table and `wrangler.toml` to that.
+
+**For the person, once this is on `dev`** (deploying a Worker is a
+person's, with wrangler; `npx.cmd` at the `cmd` prompt). Redeploy the
+preview sender, so the code carries the rule:
+
+    npx.cmd wrangler deploy --config workers/follow/wrangler.toml --env preview
+
+Check that the preview has no `HEALTHCHECK_URL` (the list shows names
+only), and delete it if it is there:
+
+    npx.cmd wrangler secret list --config workers/follow/wrangler.toml --env preview
+    npx.cmd wrangler secret delete HEALTHCHECK_URL --config workers/follow/wrangler.toml --env preview
+
+Production behaves as before and needs no deploy for this; the next time it
+is deployed it takes the same code:
+
+    npx.cmd wrangler deploy --config workers/follow/wrangler.toml
+
 ## What reads this database, and what must not
 
 Nothing but the Functions and the sender. Applying `schema.sql` is the one
@@ -490,7 +529,8 @@ nothing a person could read a name in:
 | `follow sender.follows-ended 2` | Follows ended because their record concluded. |
 | `follow sender.purged 3` | Unconfirmed requests deleted. |
 | `follow sender.waiting-for-tonight 40` | Tonight's changes file is not published yet; tried again next hour until noon. |
-| `follow sender.tonight-missing-sending-anyway 40` | Noon, and still no file: sent what earlier nights had. |
+| `follow sender.tonight-missing-sending-anyway 40` | Noon, and still no file: sent what earlier nights had. On production, the hour's ping is `/fail`; on the preview it is no problem. |
+| `follow sender.healthcheck-ignored-on-preview` | The preview sender has a `HEALTHCHECK_URL` secret, which it never pings: delete it (*Healthchecks is production's alone*). |
 | `follow sender.nights-missing 2` | Nights in the window with no file. |
 | `follow sender.entries-dropped-or-mended 1` | The changes files broke their format somewhere; `tests/follow/check_changes.js` says where. |
 | `follow sender.resend-refused.429 1` | Resend refused, with its status; the rest wait for the next run, and the refused go first tomorrow. |
