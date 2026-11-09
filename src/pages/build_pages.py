@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.270
+# GRANITE_VERSION: 2026-09-04.271
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -382,11 +382,53 @@ REDIRECTS_HEAD = "# Written by build_pages.py. Not an asset; Pages reads it.\n"
 REDIRECTS = REDIRECTS_HEAD + REDIRECTS_STATIC + REDIRECTS_DYNAMIC
 
 
+def moved_elect(site):
+    """The 301s from a new member-elect's provisional page to their regular
+    one, where the roster numbered them at another address
+    (build_elect_pages.py's "moved"; Alice, 7 November 2026): the same
+    spellings and tabs as moved_members."""
+    try:
+        doc = json.loads((Path(site) / "elect_pages.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    out = []
+    for old, new in sorted(((doc or {}).get("moved") or {}).items()):
+        out += [f"{old} {new} 301\n", f"{old}.html {new} 301\n", f"{old}/ {new} 301\n"]
+        out += [f"{old}/{s} {new}/{s} 301\n" for s in MEMBER_TAB_SLUGS]
+    return "".join(out)
+
+
+def moved_requests(site):
+    """The 301s from a bill request's page to where it now is (Alice, 8
+    November 2026): a bill's page once it is introduced, its prime sponsor's
+    once filing is complete -- each row of the requests' list with a
+    "moved_to" (build_lsrs.py). build_request_pages writes no page at these
+    addresses, so none is both a page and a redirect."""
+    try:
+        req = json.loads((Path(site) / "meta.json").read_text(encoding="utf-8")).get("requests") or {}
+        rows = json.loads((Path(site) / "idx" / f"{req['term']}.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return ""
+    # ONE RULE A REQUEST (the review of 8 November 2026): Cloudflare Pages
+    # allows 2,000 static rules, 616 are in use, and a session files over a
+    # thousand requests, most of them introduced by January -- three
+    # spellings each, as a member's moved page has, would pass the limit
+    # this winter and stop the nightly. The address as it is shared is the
+    # one without .html; Pages sends the .html spelling there itself.
+    out = []
+    for r in rows if isinstance(rows, list) else []:
+        if r.get("address") and r.get("moved_to"):
+            out.append(f"/{r['address']} /{r['moved_to']} 301\n")
+    return "".join(sorted(out))
+
+
 def redirects_file(site):
     """_redirects as written: the head, every static rule -- the moved
-    members' (moved_members) and REDIRECTS_STATIC -- and then the dynamic
-    tab rewrites (STATIC RULES FIRST)."""
-    return REDIRECTS_HEAD + moved_members(site) + REDIRECTS_STATIC + REDIRECTS_DYNAMIC
+    members' (moved_members), the members-elect's (moved_elect) and
+    REDIRECTS_STATIC -- and then the dynamic tab rewrites (STATIC RULES
+    FIRST)."""
+    return (REDIRECTS_HEAD + moved_members(site) + moved_elect(site) + moved_requests(site)
+            + REDIRECTS_STATIC + REDIRECTS_DYNAMIC)
 
 
 # THE REPOSITORY, NAMED ONCE: chrome.REPO, which the footer links too.

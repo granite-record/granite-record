@@ -1250,6 +1250,18 @@ def decide(a, site, hand_path):
     districts = load_json(site / "districts.json", "the district table")
     races, report = members_elect(results, sitting, former, districts, hand, today.isoformat())
     report["notes"][:0] = notes + ([hand_note] if hand_note else [])
+    # A NEW PERSON'S PROVISIONAL PAGE (Alice, 7 November 2026): "e", its slug,
+    # from build_elect_pages.py's list, so the Officials tab and the town
+    # pages link them to it. Never "id" or "s": they have no id, and those
+    # stay the roster's (the rule of 16 October).
+    ep = site / "elect_pages.json"
+    if ep.exists():
+        own = {(p.get("race"), p.get("name")): p.get("slug")
+               for p in (load_json(ep, "the new members-elect's pages") or {}).get("pages") or []}
+        for key, race in races.items():
+            for e in race.get("elected") or []:
+                if e.get("k") == "new" and own.get((key, e.get("n"))):
+                    e["e"] = own[(key, e.get("n"))]
     doc = {"election": results["election"], "takes_office": takes_office.isoformat(),
            "term": results["term"],
            "sources": [s.get("url") for s in results.get("_source") or [] if s.get("url")],

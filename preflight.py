@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.816
+# GRANITE_VERSION: 2026-09-04.817
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19748,6 +19748,10 @@ def _class_collisions():
     was already the third name in this docstring's first line.
     """
     SHARED = {
+        # The requests' explanation, one box: the bill search's requests term
+        # (app.js) and each request's own page (build_request_pages, 8
+        # November 2026), in the same words.
+        "lsrnote",
         # Your town's slot: a builder writes the empty box where an example
         # from the reader's own town belongs, and find.js fills it (the My
         # Town card, 14 October 2026).
@@ -21318,8 +21322,10 @@ def _find_more_fixture():
         request("0002", "establishing a temporary moratorium on data centers."),
         request("0003", "relative to school bus inspections."),
         request("0091", "relative to the siting of data centers.")]
+    # n counts every request on the list, withdrawn too; the banner on the
+    # newest term counts the standing ones, n less withdrawn (_requests_banner).
     fx["/meta.json"]["requests"] = {"term": "2027-requests", "label": "2027 Bill Requests",
-                                    "year": 2027, "n": 3}
+                                    "year": 2027, "n": 3, "withdrawn": 1}
     # NAMES WITH AN APOSTROPHE, as the record spells them, with a straight one
     # (_search_reads_typed): a member, a former senator, two places, and a
     # bill each about the places, filed by the two of them.
@@ -21461,7 +21467,23 @@ const cards = (html) => [...html.matchAll(/<article class="card[^"]*" data-id="(
   for (let i = 0; i < 400 && box.disabled !== false; i++) await ticks(1);
   if (box.disabled !== false) { console.log("app.js never finished loading the fixture"); process.exit(1); }
   const settle = () => ticks(30);
-  const out = {term: scope.getTerm(), q: {}};
+  const out = {term: scope.getTerm(), q: {},
+               summary: document.querySelector("#summary").innerHTML};
+  if (MODE === "banner") {
+    // The banner's own button, as the page draws it, clicked.
+    const m = /<button class="link" data-term="([^"]+)">/.exec(out.summary);
+    if (m) {
+      const target = {tagName: "BUTTON", dataset: {term: m[1]},
+                      closest: (sel) => sel.split(",").some(s => /^(?:button)?(?:\.link)?\[data-term\]$/.test(s.trim()))
+                        ? target : null};
+      for (const f of DOCON.click || [])
+        try { f({target, detail: 1, button: 0, preventDefault() {}, stopPropagation() {}}); } catch (e) {}
+      await settle();
+      out.taken = {term: scope.getTerm(), summary: document.querySelector("#summary").innerHTML};
+    }
+    console.log(JSON.stringify(out));
+    return;
+  }
   for (const s of Q.app) {
     box.value = s; box.fire("input"); await settle();
     const html = document.querySelector("#results").innerHTML;
@@ -21649,6 +21671,41 @@ def _find_requests(BP):
     return "ok", ("'data centers' and 'LSR 2027-0002' counted on /search's one line as /bills "
                   "lists them on the requests' list; /bills offers that list for three forms of "
                   "a request's number, and taking it lists the request")
+
+
+@check("frontend", "the bill search opens on the newest term with a line counting next session's "
+       "standing bill requests that opens them, and nowhere else", needs=("build_pages",))
+def _requests_banner(BP):
+    """Alice, 7 November 2026: the bill search keeps opening on 2025-2026,
+    with "<n> bill requests filed for 2027 -- see them" on top, n being the
+    standing requests (meta's n less the withdrawn, B1), the year the
+    requests' own; taking it opens the requests. Not on the requests' list
+    itself, nor on All Terms; and it goes by itself when the requests'
+    session becomes the newest term (app.js, requestsAhead)."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
+    if not all(f.exists() for f in need):
+        return "skip", "app.js, find.js or dom_stub.js not in this directory"
+    B, R, A = _find_more_run(BP, ("app", "banner"), ("app", "req"), ("app", "all"))
+    want = ('<b>2 bill requests filed for\n      2027</b> &mdash; '
+            '<button class="link" data-term="2027-requests">see them<span\n      '
+            'class="sr">: the bill requests for 2027</span></button>')
+    assert B["term"] == "2025-2026" and want in B["summary"], (
+        f"/bills opened on {B['term']!r} reads {B['summary']!r}: it should open on 2025-2026 "
+        f"with the 2 standing requests of 3 (1 withdrawn) offered")
+    tk = B.get("taken") or {}
+    assert tk.get("term") == "2027-requests" and "Requests, not bills yet." in tk.get("summary", ""), (
+        f"taking the banner leaves /bills on {tk.get('term')!r}: it should open the requests")
+    for name, run in (("the requests' list", R), ("All Terms", A)):
+        assert "bill requests filed for" not in run["summary"], (
+            f"/bills on {name} shows the requests banner: {run['summary'][:200]!r}")
+    src = Path("src/pages/app.js").read_text(encoding="utf-8")
+    assert "+reqYear()>+String(terms[0]).slice(0,4)" in src, (
+        "app.js no longer holds the banner to a session ahead of the newest term: on "
+        "2027-2028 it would offer 2027's requests from the term they belong to")
+    return "ok", ("on 2025-2026, '2 bill requests filed for 2027' (3 less 1 withdrawn) opens the "
+                  "requests; not on the requests' list or All Terms")
 
 
 @check("frontend", "the search reads what people type: a curly apostrophe or none in a name, a law "
@@ -30383,6 +30440,226 @@ def _api_counts_say_units(AP):
     return "ok", ("the manifest's 8 files, the database's 3 tables, 2,192 people, 3,999 bills and "
                   "33,783 rows each say their unit, under Count; /api's table is a list up to 58em, "
                   f"its {len(twin)} rules the phone block's twins, and the data page's is not")
+
+
+@check("build", "each bill request has a page of its own, noindex, until it is a bill or filing is "
+                "complete, and from then its address forwards; never a page and a 301 at once")
+def _request_pages():
+    """Alice, 8 November 2026: a page for each request of the session the
+    site lists, to share; noindex, out of the sitemap; once a request is a
+    bill its address forwards to the bill's page, and once filing is
+    complete the rest forward to their prime sponsor's; a withdrawn one
+    keeps its page. And New Hampshire's specifics stay in the source's
+    reader (build_lsrs), not in the page writer."""
+    import tempfile
+    import build_lsrs as L
+    import build_pages as BPG
+    import build_request_pages as RP
+    lsrs = [{"lsr": "2027-0001", "session": 2027, "body": "HB", "title": "relative to tides.",
+             "sponsor": "Jodi Nelson", "withdrawn": False},
+            {"lsr": "2027-0002", "session": 2027, "body": "SB", "title": "relative to dunes.",
+             "sponsor": "Pat Moore", "withdrawn": True},
+            {"lsr": "2027-0003", "session": 2027, "body": "HB", "title": "relative to roads.",
+             "sponsor": "Jodi Nelson", "withdrawn": False}]
+    who = {"jodinelson": ("Rep. Jodi Nelson (R - Rock 13)", "jodi-nelson-rock-13")}
+    rows, _ = L.rows_from(lsrs, who, {"2027-0003": "HB 45"}, 2027)
+    by = {r["n"]: r for r in rows}
+    assert by["LSR 2027-0001"]["address"] == "request/2027-0001" \
+        and "moved_to" not in by["LSR 2027-0001"], by["LSR 2027-0001"]
+    assert by["LSR 2027-0003"]["moved_to"] == "bill/2027/hb45", (
+        f"a request introduced as HB 45 moves to {by['LSR 2027-0003'].get('moved_to')}")
+    with tempfile.TemporaryDirectory() as d:
+        site = Path(d)
+        (site / "idx").mkdir()
+        (site / "request").mkdir()
+        # A page an earlier night wrote for the request now a bill.
+        (site / "request" / "2027-0003.html").write_text("old", encoding="utf-8")
+        (site / "bills.html").write_text(Path("src/pages/bills.html").read_text(encoding="utf-8"),
+                                         encoding="utf-8")
+        (site / "legislators.json").write_text(json.dumps([
+            {"slug": "jodi-nelson-rock-13", "party": "R",
+             "display_full": "Rep. Jodi Nelson (R - Rock 13)"}]), encoding="utf-8")
+        req = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027}
+        (site / "meta.json").write_text(json.dumps({"requests": req}), encoding="utf-8")
+        (site / "idx" / "2027-requests.json").write_text(json.dumps(rows), encoding="utf-8")
+        n, gone, moved = RP.write(site, "https://x")
+        pages = sorted(p.name for p in (site / "request").glob("*.html"))
+        assert pages == ["2027-0001.html", "2027-0002.html"] and gone == 1 and moved == 1, (
+            f"request pages {pages}, {gone} taken away: one for each still a request, the withdrawn "
+            "one kept, and the one now a bill taken away")
+        page = (site / "request" / "2027-0001.html").read_text(encoding="utf-8")
+        assert '<meta name="robots" content="noindex,follow">' in page \
+            and 'class="static-rec shown"' in page and "Requests, not bills yet." in page \
+            and "numbered 2027 bill" in page and 'href="legislator/jodi-nelson-rock-13"' in page, (
+            "a request's page is not noindex, shown with script on, explained, or its sponsor's "
+            "chip linked")
+        wd = (site / "request" / "2027-0002.html").read_text(encoding="utf-8")
+        assert "<b>Status:</b> Withdrawn<" in wd, "a withdrawn request's page does not say so"
+        red = BPG.moved_requests(site)
+        assert "/request/2027-0003 /bill/2027/hb45 301\n" in red and "2027-0001" not in red, (
+            f"the 301s for the requests read {red!r}")
+        # ONE RULE A REQUEST: Cloudflare's 2,000 static rules would not hold
+        # three spellings for a session's thousand-odd requests (the review
+        # of 8 November 2026).
+        assert red.count("\n") == 1, f"a moved request takes {red.count(chr(10))} rules: {red!r}"
+        # Every address is a page or a 301, never both.
+        both = [p for p in pages if f"/request/{p[:-5]} " in red]
+        assert not both, f"a page and a 301 at one address: {both}"
+    # Filing complete: the rest forward to their sponsor; a withdrawn one stays.
+    old = dict(L.FILING_COMPLETE)
+    try:
+        L.FILING_COMPLETE[2027] = "2026-11-20"
+        rs, _ = L.rows_from(lsrs, who, {}, 2027)
+        assert L.retire(rs, 2027, "2026-11-19") == 0, "requests retired before filing is complete"
+        assert L.retire(rs, 2027, "2026-11-20") == 2 \
+            and rs[0]["moved_to"] == "legislator/jodi-nelson-rock-13" and "moved_to" not in rs[1], (
+            f"once filing is complete the requests move to {[r.get('moved_to') for r in rs]}")
+    finally:
+        L.FILING_COMPLETE.clear()
+        L.FILING_COMPLETE.update(old)
+    # The links, and New Hampshire kept out of the page writer.
+    assert "const to=b.moved_to||b.address;" in Path("src/pages/find.js").read_text(encoding="utf-8") \
+        and '?`<a href="${esc(b.moved_to||b.address)}">' in Path("src/pages/app.js").read_text(encoding="utf-8"), (
+        "the header search's request row or the request card does not link the request's page")
+    src = Path("src/pages/build_request_pages.py").read_text(encoding="utf-8")
+    assert not re.search(r"LSR|gc\.nh\.gov|\\d\{4\}-\\d", src), (
+        "build_request_pages knows how a state numbers its requests or where they come from")
+    return "ok", ("pages for the requests still requests, the withdrawn kept, the one now a bill "
+                  "taken away and forwarded; filing complete forwards the rest to their sponsor; "
+                  "no address is both")
+
+
+@check("build", "a new member-elect gets a provisional page, noindex and with no id, at the roster's "
+                "own address, and nobody else does; their requests are theirs only where certain")
+def _elect_provisional():
+    """Alice, 7 November 2026: pages for new members-elect now, "with just
+    their name and district", no member id until the General Court assigns
+    one, noindex until then (B2), kept past Organization Day (B3). The design
+    is docs/design/requests-members/DESIGN.md, 3. What build_members_elect
+    decides about each winner is its own and held by its own checks, so it is
+    stood in for here by races of each kind."""
+    import tempfile
+    import build_elect_pages as EP
+    import build_members_elect as BME
+    import build_legislator_pages as LP
+    import build_lsrs as L
+    races = {
+        "H|Rockingham|13": {"seats": 2, "elected": [
+            {"n": "Jane Doe", "p": "D", "k": "new"},
+            {"n": "Jodi Nelson", "p": "R", "k": "sitting", "id": "377001", "s": "jodi-nelson-rock-13"}]},
+        "S|24": {"seats": 1, "elected": [{"n": "Pat Moore", "p": "R", "k": "new"}]},
+        "H|Belknap|2": {"seats": 1, "elected": [{"n": "Lee Park", "p": "R", "k": "new"}]},
+    }
+    sitting = [{"id": "377001", "name": "Nelson, Jodi", "chamber": "H", "county": "Rockingham",
+                "district": "13", "slug": "jodi-nelson-rock-13"},
+               # Somebody already at the address Pat Moore's page would take.
+               {"id": "377009", "name": "Moore, Patricia", "chamber": "S", "district": "24",
+                "slug": "pat-moore-sd-24"}]
+    districts = {"Hampton": {"0": {"house": [{"county": "Rockingham", "district": 13, "seats": 2}],
+                                   "senate": 24}},
+                 "Gilford": {"0": {"house": [{"county": "Belknap", "district": 2, "seats": 1}],
+                                   "senate": 7}}}
+    real = BME.members_elect
+    BME.members_elect = lambda *a, **k: (races, {})
+    day = "2026-12-02"
+    try:
+        got, said, moves = EP.pages({}, sitting, [], districts, {}, "2026-11-08", day, {})
+        slugs = [p["slug"] for p in got]
+        assert slugs == ["lee-park-belk-2", "jane-doe-rock-13"] and not moves, (
+            f"provisional pages for {slugs}: one for each new person, none for a sitting member, "
+            "and none at a member's address")
+        assert not any("id" in p for p in got), "a provisional page carries an id"
+        assert any("pat-moore-sd-24" in s for s in said), f"the address clash is not said: {said}"
+        assert got[1]["towns"] == ["Hampton"], f"Jane Doe's towns read {got[1]['towns']}"
+        # An old address that already answers with a 301 is taken too.
+        got_m, _, _ = EP.pages({}, sitting, [], districts, {}, "2026-11-08", day,
+                               {"/legislator/lee-park-belk-2": "377050"})
+        assert "lee-park-belk-2" not in [p["slug"] for p in got_m], (
+            "a provisional page is given an address that already answers with a 301")
+        jane = {"id": "377100", "name": "Doe, Jane", "chamber": "H", "county": "Rockingham",
+                "district": "13", "slug": "jane-doe-rock-13"}
+        # Before Organization Day nobody is numbered: a sitting member of the
+        # name and district is somebody else, whom the owner told apart (at
+        # another address; at the same one it is a clash, said above).
+        got0, _, m0 = EP.pages({}, sitting + [dict(jane, slug="jane-q-doe-rock-13")], [],
+                               districts, {}, "2026-11-20", day, {})
+        assert "jane-doe-rock-13" in [p["slug"] for p in got0] and not m0, (
+            "before Organization Day a new member-elect lost their page to a sitting namesake")
+        # Numbered at the same address: their regular page replaces it.
+        got2, _, m2 = EP.pages({}, sitting + [jane], [], districts, {}, "2026-12-10", day, {})
+        assert "jane-doe-rock-13" not in [p["slug"] for p in got2] and not m2, (
+            "a member-elect the roster now carries at the same address still has a provisional page")
+        # Numbered at another address: the provisional one answers with a 301.
+        other = dict(jane, slug="jane-q-doe-rock-13")
+        _, _, m3 = EP.pages({}, sitting + [other], [], districts, {}, "2026-12-10", day, {})
+        assert m3 == {"/legislator/jane-doe-rock-13": "/legislator/jane-q-doe-rock-13"}, m3
+        # And when the step comes to call them sitting, the owner's null match
+        # still says they were new: still followed to their new address.
+        races["H|Rockingham|13"]["elected"][0] = {"n": "Jane Doe", "p": "D", "k": "sitting",
+                                                  "id": "377100", "s": "jane-q-doe-rock-13"}
+        hand = {"matches": {"H|Rockingham|13": {"Jane Doe": None}}}
+        _, _, m4 = EP.pages({}, sitting + [other], [], districts, hand, "2026-12-10", day, {})
+        assert m4 == m3, f"a new person the step now calls sitting is not followed: {m4}"
+        races["H|Rockingham|13"]["elected"][0] = {"n": "Jane Doe", "p": "D", "k": "new"}
+    finally:
+        BME.members_elect = real
+    import build_pages as BPG
+    with tempfile.TemporaryDirectory() as d:
+        (Path(d) / "elect_pages.json").write_text(json.dumps({"moved": m3}), encoding="utf-8")
+        red = BPG.redirects_file(d)
+        assert "/legislator/jane-doe-rock-13 /legislator/jane-q-doe-rock-13 301\n" in red \
+            and red.index("jane-doe-rock-13") < red.index("/legislator/:who/"), (
+            "_redirects has no 301, ahead of the tab rewrites, for a provisional address moved")
+
+    with tempfile.TemporaryDirectory() as d:
+        site = Path(d)
+        (site / "legislator").mkdir()
+        (site / "idx").mkdir()
+        doc = {"election": "2026-11-03", "takes_office": "2026-12-02", "sources": [],
+               "pages": got}
+        (site / "elect_pages.json").write_text(json.dumps(doc), encoding="utf-8")
+        (site / "legislators.json").write_text(json.dumps(sitting), encoding="utf-8")
+        (site / "meta.json").write_text(json.dumps({"requests": {
+            "term": "2027-requests", "label": "2027 Bill Requests"}}), encoding="utf-8")
+        # Requests matched by name only where certain: Jane Doe's House bill
+        # is hers, a Senate request of the same name is not, nor Lee Park's
+        # constitutional amendment, which either chamber may file.
+        who = L.roster(site)
+        rows, _ = L.rows_from([
+            {"lsr": "2027-0010", "title": "relative to tides.", "sponsor": "Jane Doe", "body": "HB"},
+            {"lsr": "2027-0011", "title": "relative to dunes.", "sponsor": "Jane Doe", "body": "SB"},
+            {"lsr": "2027-0012", "title": "relative to lakes.", "sponsor": "Lee Park", "body": "CACR"},
+            {"lsr": "2027-0013", "title": "relative to roads.", "sponsor": "Jodi Nelson", "body": "HB"}],
+            who, year=2027)
+        by = {r["n"]: r["sponsor_slug"] for r in rows}
+        assert by == {"LSR 2027-0010": "jane-doe-rock-13", "LSR 2027-0011": "",
+                      "LSR 2027-0012": "", "LSR 2027-0013": "jodi-nelson-rock-13"}, (
+            f"the requests are matched {by}")
+        (site / "idx" / "2027-requests.json").write_text(json.dumps(rows), encoding="utf-8")
+        # The template every page is drawn from, as the build has it in site/.
+        (site / "bills.html").write_text(Path("src/pages/bills.html").read_text(encoding="utf-8"),
+                                         encoding="utf-8")
+        import shell
+        try:
+            n = LP.write_elect_pages(site, site / "legislator", shell.template(site), "https://x",
+                                     {"jodi-nelson-rock-13"}, {}, "2026-12-03")
+        except Exception as e:
+            raise AssertionError(f"write_elect_pages: {type(e).__name__}: {e}")
+        page = (site / "legislator" / "jane-doe-rock-13.html").read_text(encoding="utf-8")
+        assert n == 2 and '<meta name="robots" content="noindex,follow">' in page, (
+            "a provisional page is written without noindex")
+        # Seen with script on: app.css hides a .static-rec under html.js
+        # unless it is .shown, and the page was drawn blank so (the
+        # screenshots of 8 November 2026).
+        assert '<div class="static-rec shown" id="elect-rec">' in page, (
+            "a provisional page's record is hidden once script runs")
+        assert "Took office December 2, 2026." in page and "LSR 2027-0010" in page \
+            and "LSR 2027-0011" not in page and "GR_MEMBER" not in page, (
+            "a provisional page after Organization Day does not say they took office, list their "
+            "own request alone, or keeps a member id")
+    return "ok", ("new people alone get a page, at the roster's address, never at a member's; "
+                  "numbered at the same address the page gives way, at another only with a 301; "
+                  "noindex, no id, their requests matched by name and chamber")
 
 
 @check("build", "the data API's schema.json describes every column it publishes, with the types "
@@ -79802,7 +80079,10 @@ def _terms_with_a_dash(C):
         bad.append("components.term_words does not write a term with a dash, and leave the rest")
     app = Path("src/pages/app.js").read_text(encoding="utf-8")
     for need in ('${termDash(t)} Term</option>', ':`in the ${termDash(term)} term`',
-                 '${esc(termDash(x))}</option>', 'function termDash(t){ return termWords(t||""); }'):
+                 # A member's picker names the requests' term by its label
+                 # and every other term by termDash (_member_requests).
+                 '${esc(termLabel(x))}</option>', '`${reqYear()} Bill Requests`):termDash(t)',
+                 'function termDash(t){ return termWords(t||""); }'):
         if need not in app:
             bad.append(f"app.js no longer writes {need!r}")
     site = _fixture_site_shared()[0] / "site"
@@ -86692,6 +86972,84 @@ def _term_line_with_picker():
     assert line in two and '<select data-pf="term">' in two, (
         "a member of two terms lost the picker or the line beside it")
     return "ok", "the line beside the picker, and neither on a page of one term"
+
+
+@check("frontend", "a member's page offers their bill requests for the next session as a term, opens "
+       "on it when they have any and on their newest term when they have none")
+def _member_requests():
+    """Alice, 7 November 2026: a member's page opens its term picker on the
+    new term and lists their requests as its bills until the bills are
+    introduced -- number, title, House or Senate, filed or withdrawn -- with
+    one line on what a request is; a member with none opens on 2025-2026
+    (B4). build_lsrs names who has requests in meta.requests.by_slug; the
+    page lists the requests whose sponsor_slug is theirs."""
+    req = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027, "n": 3,
+           "withdrawn": 1, "by_slug": {"jodi-nelson": 2}}
+    meta = {"terms": ["2025-2026", "2023-2024"], "requests": req}
+
+    def lsr(num, title, slug, withdrawn=False):
+        return {"id": f"LSR2027{num}", "n": f"LSR 2027-{num}", "year": 2027, "title": title,
+                "sponsor": "x", "sponsor_label": "x", "sponsor_slug": slug, "body": "HB",
+                "body_label": "House bill", "committee": "", "committees": [], "topic": "",
+                "kind": "", "status": "Withdrawn" if withdrawn else "Filed as a request",
+                "withdrawn": withdrawn, "term": "2027-requests", "lsr": True,
+                "votedays": [], "last_action": ""}
+    idx = [lsr("0002", "relative to data centers.", "jodi-nelson"),
+           lsr("0007", "relative to school buses.", "jodi-nelson", True),
+           lsr("0009", "relative to ferries.", "someone-else")]
+
+    def member(slug):
+        return {"id": "905", "slug": slug, "name": "Nelson, Jodi", "chamber": "H", "district": "2",
+                "county": "Rockingham", "display_full": "Rep. Jodi Nelson (R - Rock 2)",
+                "towns": [], "sponsored": [{"id": "HB1", "term": "2025-2026", "prime": True}],
+                "votes": [], "term_figures": {}, "attendance": {}}
+    later = dict(meta, terms=["2027-2028", "2025-2026", "2023-2024"])
+    js = ("scope.setMeta(" + json.dumps(meta) + "), scope.setIdx(" + json.dumps(idx) + "), "
+          "(() => { const m = " + json.dumps(member("jodi-nelson")) + "; const terms = "
+          "scope.recordTerms('member', m); scope.setPage({kind: 'member', data: m, terms, "
+          "term: terms[0]}); return scope.renderMemberBills(m, true); })(), "
+          "scope.addLoaded('2027-requests'), "
+          "['jodi-nelson', 'pat-none'].map(s => { const m = " + json.dumps(member("x"))
+          + "; m.slug = s; const terms = scope.recordTerms('member', m); "
+          "scope.setPage({kind: 'member', data: m, terms, term: terms[0]}); "
+          "return {terms, prime: scope.renderMemberBills(m, true), co: scope.renderMemberBills(m, false), "
+          "votes: scope.renderMemberVotes(m), picker: scope.termControl()}; })"
+          ".concat([(() => { scope.setMeta(" + json.dumps(later) + "); const m = "
+          + json.dumps(member("jodi-nelson")) + "; m.sponsored.push({id: 'HB5', term: '2027-2028', "
+          "prime: true}); return {terms: scope.recordTerms('member', m)}; })()])")
+    got = _app_js(js, names=("recordTerms", "renderMemberBills", "renderMemberVotes", "termControl",
+                             "setPage: x => (PAGE = x)", "setMeta: x => (META = x)",
+                             "setIdx: x => (IDX = x)", "addLoaded: t => LOADED.add(t)"))
+    if got is None:
+        return "skip", "node, app.js or the stub is not here"
+    has, none, jan = got
+    # The page is drawn before the requests are fetched: it says so, not "none".
+    src = Path("src/pages/app.js").read_text(encoding="utf-8")
+    assert "Loading the bill requests" in src and "if(!LOADED.has(META.requests.term))" in src, (
+        "a member's requests term says there are none before the list has come")
+    # The member's own file, as build_site_v2 writes it, carries the slug the
+    # page finds their requests by (the review of 8 November 2026: it did
+    # not, and no member was offered a request).
+    assert '"slug": row["slug"],' in Path("src/pages/build_site_v2.py").read_text(encoding="utf-8"), (
+        "build_site_v2 writes no slug into a member's own file, which the page reads")
+    assert jan["terms"][:3] == ["2027-2028", "2027-requests", "2025-2026"], (
+        f"once 2027-2028 is published a member is offered {jan['terms']}: their bills of that "
+        "term first, then the requests")
+    assert has["terms"][0] == "2027-requests" and "2025-2026" in has["terms"], (
+        f"a member with requests is offered {has['terms']}: the requests term first")
+    assert '<option value="2027-requests" selected>2027 Bill Requests</option>' in has["picker"], (
+        f"the picker does not name the requests term by its label: {has['picker'][:300]!r}")
+    p = has["prime"]
+    assert 'data-id="LSR20270002"' in p and 'data-id="LSR20270007"' in p \
+        and 'LSR20270009' not in p, f"the member's requests are not theirs alone: {p[-400:]!r}"
+    assert "Requests, not bills yet." in p and "numbered 2027 bill" in p and "2 filed for 2027, 1 of them withdrawn" in p, (
+        f"the requests' one line is not there: {p[:400]!r}")
+    assert "only its prime sponsor" in has["co"] and "not voted on" in has["votes"], (
+        "the co-sponsored or Votes tab does not say why a request term has nothing there")
+    assert none["terms"][0] == "2025-2026" and "2027-requests" not in none["terms"], (
+        f"a member with no requests is offered {none['terms']}: it should open on 2025-2026 (B4)")
+    return "ok", ("a member with requests opens on '2027 Bill Requests' and lists their two, one "
+                  "withdrawn, with the line on what a request is; one with none opens on 2025-2026")
 
 
 @check("frontend", "Latest activity on the home page links each bill to its own page",
