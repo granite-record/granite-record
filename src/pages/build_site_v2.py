@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.260
+# GRANITE_VERSION: 2026-09-05.261
 """
 Generate the faceted site from real General Court data.
 
@@ -11146,7 +11146,7 @@ def add_related(out, index, path=None):
     bills have some."""
     p = Path(path or "related_bills.json")
     if not p.is_file():
-        print("  related bills: no related_bills.json here; no Related tab on any page")
+        print("  related bills: no related_bills.json here; no related bills on any History tab")
         return 0
     data = json.loads(p.read_text(encoding="utf-8"))
     by_key = {f"{r.get('term')}/{r.get('id')}": r for r in index}
