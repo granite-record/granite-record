@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.14
+// GRANITE_VERSION: 2026-10-09.15
 /* THE DISTRICT MAP (map v1), as a module a page mounts:
 
      <link rel="stylesheet" href="/map.css">
@@ -195,8 +195,31 @@ function featD(M,lk,fid){const k=lk+"|"+fid;if(!M.cache[k])M.cache[k]=rings(M,lk
 /* A feature's outline: only the arcs its rings use once. */
 function outlineD(M,lk,fid){const k=lk+"|out|"+fid;if(M.cache[k])return M.cache[k];
   const n={};M.T.layers[lk].f[fid].r.forEach(ring=>ring.forEach(a=>{const i=a<0?~a:a;n[i]=(n[i]||0)+1;}));
-  return M.cache[k]=Object.keys(n).filter(i=>n[i]===1).map(i=>"M"+M.ARCS[i].map(p=>p[0]+" "+p[1]).join("L")).join("");}
-function meshD(M,lk){const k=lk+"|mesh";if(!M.cache[k])M.cache[k]=M.T.layers[lk].m.map(i=>"M"+M.ARCS[i].map(p=>p[0]+" "+p[1]).join("L")).join("");return M.cache[k];}
+  return M.cache[k]=chainD(M,Object.keys(n).filter(i=>n[i]===1).map(Number));}
+function meshD(M,lk){const k=lk+"|mesh";if(!M.cache[k])M.cache[k]=chainD(M,M.T.layers[lk].m);return M.cache[k];}
+/* Arcs drawn as one path each leave a notch on the outside of every bend
+   where two meet (a butt cap has no join), and the casing under a line shows
+   through it as a white speck along the border. So arcs that meet end to end
+   are written as one chain, which the stroke's linejoin then joins. A chain
+   runs on while the point it ends on is the end of an arc not yet drawn; at a
+   meeting of three or more, the chain takes the first such arc. */
+function chainD(M,ids){
+  const at={},used={},key=p=>p[0]+" "+p[1];
+  ids.forEach(i=>{const a=M.ARCS[i];[key(a[0]),key(a[a.length-1])].forEach(q=>(at[q]=at[q]||[]).push(i));});
+  let d="";
+  ids.forEach(i=>{if(used[i])return;used[i]=1;
+    let pts=M.ARCS[i].slice();
+    for(let go=true;go;){go=false;
+      const end=key(pts[pts.length-1]),nx=(at[end]||[]).find(j=>!used[j]);
+      if(nx!==undefined){used[nx]=1;const a=M.ARCS[nx];
+        pts=pts.concat(key(a[0])===end?a.slice(1):a.slice().reverse().slice(1));go=true;}}
+    if(key(pts[0])===key(pts[pts.length-1])){
+      // a ring that encloses nothing (the source's slivers where two layers
+      // disagree by a unit or two) is not a boundary; stroked, it is a speck
+      let ar=0;for(let j=1;j<pts.length;j++)ar+=pts[j-1][0]*pts[j][1]-pts[j][0]*pts[j-1][1];
+      if(Math.abs(ar)/2<4)return;}
+    d+="M"+pts.map(q=>q[0]+" "+q[1]).join("L");});
+  return d;}
 /* the box holding two boxes; null is no box */
 const union=(a,b)=>!a?b:!b?a:[Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[2],b[2]),Math.max(a[3],b[3])];
 /* a feature's box in the map's units: [x0, y0, x1, y1] */

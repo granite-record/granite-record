@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.823
+# GRANITE_VERSION: 2026-09-04.824
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -59315,6 +59315,38 @@ def _map_zoom_fit_icon():
             bad.append(f"the retired {k} is still asked for or kept")
     assert not bad, "; ".join(bad)
     return "ok", "the four corners, titled Zoom to fit alone, in the box of - and +, in English and in Spanish"
+
+
+@check("frontend", "the district map draws its borders as chains, not one path per arc, so no bend "
+       "leaves a white notch and no empty sliver ring is stroked as a speck")
+def _map_borders_chained():
+    """The owner, 8 November 2026: white dots along some district borders on
+    the State House map. The county line (and the town and district meshes)
+    were written as one subpath per arc, 456 for the county line alone: a butt
+    cap has no join, so every bend where two arcs meet had a notch on its
+    outside, through which the white casing under the line showed, and the
+    source's zero-area sliver rings were stroked as black specks. chainD in
+    map.js writes arcs that meet end to end as one chain (and drops a ring
+    that encloses nothing); meshD and outlineD must use it. Read in map.js,
+    and chainD is run in node on arcs that meet at a bend."""
+    import subprocess
+    js = Path("src/pages/map.js").read_text(encoding="utf-8")
+    bad = []
+    for fn in ("meshD", "outlineD"):
+        m = re.search(r"function " + fn + r"\(.*?\n(?=function |/\*)", js, re.S)
+        assert m, f"map.js has no {fn}"
+        if "chainD(" not in m.group(0) or 'map(p=>p[0]+" "+p[1]).join("L")' in m.group(0):
+            bad.append(f"{fn} writes one subpath per arc, not chainD's chains")
+    m = re.search(r"function chainD\(M,ids\)\{.*?\n  return d;\}", js, re.S)
+    assert m, "map.js has no chainD"
+    prog = (m.group(0) + """
+const M={ARCS:[[[0,0],[10,0]],[[10,10],[10,0]],[[10,10],[20,10]],[[50,50],[51,51],[50,52],[50,50]]]};
+console.log(chainD(M,[0,1,2,3]));""")
+    r = subprocess.run(["node", "-e", prog], capture_output=True, text=True, timeout=60)
+    if r.returncode or r.stdout.strip() != "M0 0L10 0L10 10L20 10":
+        bad.append(f"chainD did not join arcs end to end and drop the empty ring: {r.stdout.strip()} {r.stderr[-200:]}")
+    assert not bad, "; ".join(bad)
+    return "ok", "meshD and outlineD write chains; chainD joins arcs at a bend and drops an empty ring"
 
 
 @check("frontend", "the seating chart's Zoom to fit is the four corners' icon in the box of - and +, "
