@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.289
+// GRANITE_VERSION: 2026-09-07.290
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -8962,9 +8962,9 @@ function renderMemberVotes(m){
       <select data-pf="vtopic"><option value="">Any</option>
       ${Object.keys(topics).sort().map(k=>`<option value="${esc(k)}"${
         tp===k?" selected":""}>${esc(k)} (${topics[k].toLocaleString()})</option>`).join("")}
-      </select></label>`:""}<label>Find
+      </select></label>`:""}<label>Search
       <input type="search" data-pf="vq" value="${esc(find)}" placeholder="Bill number or words"
-        aria-label="Find a bill by its number or words"></label></div>
+        aria-label="Search the votes by bill number or words"></label></div>
     <p class="src" id="vcount">${rows.length.toLocaleString()} of ${v.length.toLocaleString()}
       recorded votes in ${PAGE.vall?"every term":esc(termDash(t))}${castIn}${
       (PAGE.terms||[]).length>1?` (<button type="button" class="link" data-vall="${
