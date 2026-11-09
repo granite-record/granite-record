@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.816
+# GRANITE_VERSION: 2026-09-04.817
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -82214,6 +82214,174 @@ def _testify_amendment_link():
     return "ok", ("HB 1560-FN's 2026-0422h links to its Bill Text tab; SB 575's second amendment opened by its "
                   "number, alone, past a report naming it; by number without its year; none for a number "
                   "none carries; the bill's page, the tab's own address and the redraw read it")
+
+
+_BILL_TEXT_AMD_HARNESS = r"""
+require("./stub.js");
+const src = require("fs").readFileSync("./page.js", "utf8");
+const scope = (0, eval)(src + "; ({renderVersions, verKey, VERS, VTEXT, VMODE})");
+const b = {id: "HB9", year: 2026, term: "2025-2026"};
+const A = j => "/versions/2026/HB9.a" + j + ".txt";
+const head = (n, w) => "Rep. Ames, Ches. 13 February 3, 2026 " + n + " 05/08 " + w + " to HB 9 Amend RSA 91-A:2, II and RSA 999:1 by";
+// The index lists amendments by the day each was filed, not the docket's order.
+const ix = {
+  versions: [
+    {title: "As Introduced", date: "01/05/2026 10:00:00", text_url: "/versions/2026/HB9.0.txt"},
+    {title: "As Amended", date: "03/05/2026 10:00:00", text_url: "/versions/2026/HB9.1.txt",
+     blocks_url: "/versions/2026/HB9.1.blocks.json"}],
+  steps: [],
+  amendments: [
+    {date: "02/01/2026 10:00:00", chars: 90, text_url: A(0), num: "2026-0003s"},
+    {date: "02/02/2026 10:00:00", chars: 91, text_url: A(1), num: "2026-0002h"},
+    {date: "02/03/2026 10:00:00", chars: 92, text_url: A(2), num: "2026-0001h"},
+    {date: "02/04/2026 10:00:00", chars: 93, text_url: A(3), num: "2026-9999h"},
+    {date: "02/05/2026 10:00:00", chars: 94, text_url: A(4)}],
+  rsa: {"RSA 91-A:2": "/laws/91-a#s2"}};
+const facts = [
+  {num: "2026-0001h", kind: "Committee Amendment", adopted: true, mover: "", vote_kind: "VV", date: "2026-02-10"},
+  {num: "2026-0002h", kind: "Floor Amendment", adopted: false, mover: "Rep. Ames", vote_kind: "RC", date: "2026-02-10"},
+  {num: "2026-0003s", kind: "Amendment", adopted: null, mover: "", vote_kind: "", date: "2026-02-11"},
+  {num: "2026-0004s", kind: "Floor Amendment", adopted: true, mover: "Sen. Birdsell", vote_kind: "VV",
+   date: "2026-02-12", text: "Amend RSA 91-A:2 by"},
+  {num: "2026-0005s", kind: "Committee Amendment", adopted: null, mover: "", vote_kind: "", date: ""}];
+scope.VERS[scope.verKey(b)] = ix;
+const T = {};
+[head("2026-0003s", "Amendment"), head("2026-0002h", "Floor Amendment"), head("2026-0001h", "Amendment"),
+ head("2026-9999h", "Amendment"), "February 5, 2026 no number printed Amendment"].forEach((t, j) => { T[A(j)] = t; });
+Object.assign(scope.VTEXT, T);
+scope.VTEXT["/versions/2026/HB9.1.blocks.json"] = [
+  {k: "ln", runs: [["", "Nothing under "], ["add", "RSA 91-A:2, II"], ["cut", " and RSA 999:1"], ["", " here."]]}];
+scope.VTEXT["/versions/2026/HB9.1.txt"] = "plain RSA 91-A:2";
+const out = {};
+out.facts = scope.renderVersions(b, {nver: 2, namd: 5, amendments: facts, rsa: {}});
+out.bare = scope.renderVersions(b, {nver: 2, namd: 5, rsa: {}});
+// the text view as plain text, and the changes view as a runs excerpt
+const ix2 = Object.assign({}, ix, {steps: [{from: 0, to: 1, added: 1, removed: 0,
+  runs_url: "/versions/2026/HB9.0-1.json"}]});
+scope.VERS[scope.verKey(b)] = ix2;
+scope.VMODE[scope.verKey(b)] = "changes";
+scope.VTEXT["/versions/2026/HB9.0-1.json"] = [["=", "see RSA 91-A:2 here"], ["+", "new RSA 91-A:2"]];
+out.runs = scope.renderVersions(b, {nver: 2, namd: 5, rsa: {}});
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "the Bill Text tab sets each amendment's number, whether it carried and whether the committee "
+                   "or the floor moved it beside it, from the docket and only where the docket says, and links "
+                   "the statutes cited in a version's text and an amendment's to their law pages")
+def _bill_text_amendment_facts():
+    """The owner's walk of a test build, 8 November 2026: on a bill's Bill
+    Text tab, "for each amendment: its number, whether it was only proposed or
+    was adopted, and whether it came from the committee or from the floor",
+    and the RSA links the law pages have. The tab listed "Amendment of <day>"
+    and its length, and a version's text and an amendment's carried no link
+    (only the bill's own record was linked, in the document drawn when a bill
+    has no version history).
+
+    Held in node on a bill of three amendments and a docket-only fourth:
+      THE NUMBER: the button says "Amendment 2026-0001h" where the index
+        (build_version_links.py) gives the number; where it gives none the
+        button still says "Amendment of <day>", and nothing is attributed.
+      THE DOCKET'S WORDS: Committee and Adopted, Floor and Rejected (the
+        word renderBillText's chips use for a failed amendment), the mover,
+        the day and how it was decided; a docket line that says only
+        "Amendment" gets no origin chip and one with no outcome no outcome
+        chip; a number the docket does not name gets no chip at all.
+      THE ORDER: the docket's, with the unnamed after it.
+      THE DOCKET-ONLY ONE: listed, its facts beside it, "Its text is not on
+        file here", its text opened where the record has it.
+      THE LINKS: a citation in the full text (blocks, added and removed
+        runs, or plain), in the changes excerpt and in an amendment's text is
+        a link to /laws/<chapter>#s<section>; one the index does not name
+        stays words; and no definition pop-up is drawn (the text does not
+        say which chapter's definitions a passage is read under)."""
+    got = _node_app(_BILL_TEXT_AMD_HARNESS)
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    h = got["facts"]
+    item = lambda n: re.search(r'<li id="amendment-%s">[\s\S]*?</li>' % re.escape(n), h)
+    for n in ("2026-0001h", "2026-0002h", "2026-0003s", "2026-9999h", "2026-0004s"):
+        assert item(n), f"amendment {n} is not listed with its number: {h[-1500:]}"
+    a = item("2026-0001h").group(0)
+    assert "Amendment 2026-0001h</button>" in a and ">Committee</span>" in a and ">Adopted</span>" in a \
+        and "Feb 10, 2026 · Voice Vote" in a, f"the committee's adopted amendment: {a[:700]}"
+    f = item("2026-0002h").group(0)
+    assert ">Floor</span>" in f and ">Rejected</span>" in f and "Rep. Ames · Feb 10, 2026 · Roll Call" in f \
+        and ">Adopted<" not in f, f"the floor's rejected amendment: {f[:700]}"
+    p = item("2026-0003s").group(0)
+    assert "class=\"chip" not in p, f"a docket line that says only 'Amendment' with no outcome drew a chip: {p[:500]}"
+    u = item("2026-9999h").group(0)
+    assert "class=\"chip" not in u and "Mar" not in u, f"an amendment the docket does not name drew facts: {u[:500]}"
+    d4 = item("2026-0004s").group(0)
+    assert ">Floor</span>" in d4 and ">Adopted</span>" in d4 and "Sen. Birdsell" in d4 \
+        and "<details" in d4 and '<a href="/laws/91-a#s2" class="rsa">RSA 91-A:2</a>' in d4, \
+        f"the docket-only amendment: {d4[:700]}"
+    assert "Amendment of Feb 5, 2026</button>" in h, "an amendment with no number lost its day label"
+    order = [m.group(1) for m in re.finditer(r'<li id="amendment-([^"]+)">', h)]
+    assert order == ["2026-0001h", "2026-0002h", "2026-0003s", "2026-9999h", "2026-0004s", "2026-0005s"], (
+        f"the docket's order is not kept, the unnamed after it: {order}")
+    d5 = item("2026-0005s").group(0)
+    assert ">Committee</span>" in d5 and "Adopted" not in d5 and "Rejected" not in d5 \
+        and "Its text is not on file here" in d5, f"the docket-only amendment with no text: {d5[:500]}"
+    # THE LINKS
+    assert h.count('<a href="/laws/91-a#s2" class="rsa">RSA 91-A:2</a>') >= 6 and "/laws/999" not in h, (
+        "the statutes of the full text or of the amendments are not linked, or an unknown one is")
+    assert '<ins class="vins"><a href="/laws/91-a#s2" class="rsa">RSA 91-A:2</a>, II</ins>' in h, (
+        "a citation in an added run is not linked in the document")
+    assert "data-for=" not in h and "rs-tm" not in h, "a definition pop-up was drawn in a bill's text"
+    bare = got["bare"].split("The Amendments Themselves")[-1]
+    assert "Amendment 2026-0001h</button>" in bare and 'class="chip' not in bare, (
+        "with no docket row the tab attributed an origin or an outcome")
+    assert 'class="rsa">RSA 91-A:2</a> here' in got["runs"] and '<ins>new <a href="/laws/91-a#s2" class="rsa">RSA 91-A:2' \
+        in got["runs"], f"the changes excerpt does not link a citation: {got['runs'][600:1300]}"
+    return "ok", ("an amendment is its number with the docket's committee or floor and adopted or rejected, "
+                  "nothing where the docket says none; the statutes in its text and the versions' are links")
+
+
+@check("build", "build_version_links numbers each amendment from its own text and names every statute a "
+                "bill's texts cite, writes the same again on a second run, and build_all runs it after "
+                "build_bill_versions", needs=("build_version_links",))
+def _version_links_step(VL):
+    """The Bill Text tab's two needs from the version indexes (8 November
+    2026): an amendment's number, to find the docket's word on it, and the
+    statutes the texts cite, to link them. On a bill of two versions and
+    three amendments: the number is the first of its shape in the text as
+    printed (a committee of conference's keeps its case), none where the text
+    prints none; a citation of a statute becomes a link and a session law
+    ("RSA 2025, 141:1") does not; the index's other fields are untouched; a
+    second pass changes nothing; and the step stands after build_bill_versions
+    in build_all, which writes the files it merges into."""
+    root = Path(tempfile.mkdtemp())
+    try:
+        f = root / "versions" / "2026"
+        f.mkdir(parents=True)
+        (f / "HB9.0.txt").write_text("Amend RSA 91-A:2, II by adding", encoding="utf-8")
+        (f / "HB9.1.txt").write_text("and RSA 2025, 141:1 and RSA 999", encoding="utf-8")
+        (f / "HB9.a0.txt").write_text("March 3, 2026 2026-0695h 11/08 Amendment to HB 9", encoding="utf-8")
+        (f / "HB9.a1.txt").write_text("June 2, 2026 2026-2109-CofC 08/07 Committee of Conference Report",
+                                      encoding="utf-8")
+        (f / "HB9.a2.txt").write_text("An amendment that prints no number", encoding="utf-8")
+        old = {"bill": "HB9", "year": "2026",
+               "versions": [{"title": "A"}, {"title": "B"}],
+               "amendments": [{"date": "d", "chars": 1, "text_url": f"/versions/2026/HB9.a{j}.txt"}
+                              for j in range(3)], "steps": []}
+        new = VL.linked(old, f, "HB9")
+        nums = [a.get("num") for a in new["amendments"]]
+        assert nums == ["2026-0695h", "2026-2109-CofC", None], f"the numbers read from the texts: {nums}"
+        cites = new.get("rsa") or {}
+        assert "RSA 91-A:2" in cites and cites["RSA 91-A:2"].endswith(("#s2", "-2.htm")), f"the citations: {cites}"
+        assert not any("2025" in k for k in cites), f"a session law was linked as a statute: {cites}"
+        assert new["versions"] == old["versions"] and new["steps"] == [] and new["bill"] == "HB9", (
+            "a field this step does not own changed")
+        assert VL.linked(new, f, "HB9") == new, "a second pass changed the index"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    steps = [s for s in re.findall(r'\["(build_bill_versions\.py|build_version_links\.py)"',
+                                   Path("build_all.py").read_text(encoding="utf-8"))]
+    assert steps == ["build_bill_versions.py", "build_version_links.py"], (
+        f"build_all does not run build_version_links straight after build_bill_versions: {steps}")
+    return "ok", ("amendments numbered from their own text, statutes cited named and linked, a second run "
+                  "writes nothing, and the step follows build_bill_versions")
 
 
 @check("frontend", "Testify takes a hearing a Senate committee's report dates apart from the docket as the "
