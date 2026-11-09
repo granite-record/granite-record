@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.253
+# GRANITE_VERSION: 2026-09-05.254
 """
 Generate the faceted site from real General Court data.
 
@@ -4244,6 +4244,7 @@ def build_status(a, index, procs, floor, today, latest_by_body, upcoming):
     # in the calendars, so they are edited rather than derived; the last session
     # date and the count of scheduled hearings come from the data.
     status = {"milestones": []}
+    ms_es = {}  # milestone_es: DATE | LABEL | NOTE, matched to the English one by date
     sp = Path(a.status)
     if sp.exists():
         last_key = None
@@ -4256,7 +4257,7 @@ def build_status(a, index, procs, floor, today, latest_by_body, upcoming):
                 continue
             # An indented line continues the previous value, so a note can be
             # written as a paragraph instead of one unreadable line.
-            if raw[:1] in " \t" and last_key in ("note", "headline"):
+            if raw[:1] in " \t" and last_key in ("note", "headline", "note_es"):
                 status[last_key] = (status.get(last_key, "") + " "
                                     + line.strip()).strip()
                 continue
@@ -4272,8 +4273,16 @@ def build_status(a, index, procs, floor, today, latest_by_body, upcoming):
                         "date": parts[0],
                         "label": parts[1] if len(parts) > 1 else "",
                         "note": parts[2] if len(parts) > 2 else ""})
-            elif k in ("updated", "phase", "headline", "note", "session_over"):
+            elif k == "milestone_es":
+                parts = [x.strip() for x in v.split("|")]
+                if parts and parts[0]:
+                    ms_es[parts[0]] = {
+                        "label_es": parts[1] if len(parts) > 1 else "",
+                        "note_es": parts[2] if len(parts) > 2 else ""}
+            elif k in ("updated", "phase", "headline", "note", "note_es", "session_over"):
                 status[k] = v
+        for m in status["milestones"]:
+            m.update({x: y for x, y in ms_es.get(m["date"], {}).items() if y})
         status["milestones"].sort(key=lambda m: m["date"])
         if status.get("updated"):
             age = (build_date.today() - _date.fromisoformat(status["updated"])).days
