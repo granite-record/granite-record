@@ -14914,6 +14914,11 @@
    "es": "<b>Hearings</b> (audiencias) &mdash; cada reunión que trató el proyecto de ley, con su día, hora y sala, y la grabación cuando la hay, abierta en el momento en que se empezó a tratar el proyecto.",
    "state": "draft"
   },
+  "guide.using-this-site.history-where-there-is-any-bills": {
+   "en": "<b>History</b>, where there is any &mdash; bills and amendments that share most of its language: the same text filed in another year, or carried into another bill or an amendment to one, with what became of it. Found by comparing the texts, so a match can be missed.",
+   "es": "<b>History</b> (historial), cuando lo hay &mdash; proyectos de ley y enmiendas que comparten la mayor parte de su texto: el mismo texto presentado en otro año, o trasladado a otro proyecto o a una enmienda de otro, con lo que pasó con él. Se encuentran comparando los textos, así que puede escaparse alguna coincidencia.",
+   "state": "draft"
+  },
   "guide.using-this-site.house-calendars-and-journals": {
    "en": "House calendars and journals",
    "es": "Calendarios y diarios de la Cámara",
@@ -14962,11 +14967,6 @@
   "guide.using-this-site.reading-the-shorthand": {
    "en": "Reading the Shorthand",
    "es": "Cómo leer las abreviaturas",
-   "state": "draft"
-  },
-  "guide.using-this-site.history-where-there-is-any-bills": {
-   "en": "<b>History</b>, where there is any &mdash; bills and amendments that share most of its language: the same text filed in another year, or carried into another bill or an amendment to one, with what became of it. Found by comparing the texts, so a match can be missed.",
-   "es": "<b>History</b> (historial), cuando lo hay &mdash; proyectos de ley y enmiendas que comparten la mayor parte de su texto: el mismo texto presentado en otro año, o trasladado a otro proyecto o a una enmienda de otro, con lo que pasó con él. Se encuentran comparando los textos, así que puede escaparse alguna coincidencia.",
    "state": "draft"
   },
   "guide.using-this-site.reports": {
@@ -22770,6 +22770,41 @@
   "nav.sections": {
    "en": "Sections",
    "es": "Secciones",
+   "state": "draft"
+  },
+  "nf.bills": {
+   "en": "Search every bill",
+   "es": "Buscar entre todos los proyectos de ley",
+   "state": "draft"
+  },
+  "nf.desc": {
+   "en": "There is no page at this address.",
+   "es": "No hay ninguna página en esta dirección.",
+   "state": "draft"
+  },
+  "nf.head": {
+   "en": "Nothing is published here",
+   "es": "Aquí no hay nada publicado",
+   "state": "draft"
+  },
+  "nf.home": {
+   "en": "Home",
+   "es": "Inicio",
+   "state": "draft"
+  },
+  "nf.lead": {
+   "en": "The address may be mistyped, or there may be no page here yet. Some pages are not translated.",
+   "es": "Puede que la dirección tenga un error, o que todavía no haya una página aquí. Algunas páginas aún no están traducidas.",
+   "state": "draft"
+  },
+  "nf.lead_example": {
+   "en": "The address may be mistyped, or name a bill in a year it does not exist in: every bill since 1989 has a page of its own, for example {example}, and a bill number starts again every two years.",
+   "es": "Puede que la dirección tenga un error, o que nombre un proyecto de ley en un año en que no existe: cada proyecto de ley desde 1989 tiene su propia página, por ejemplo {example}, y el número de un proyecto de ley vuelve a empezar cada dos años.",
+   "state": "draft"
+  },
+  "nf.title": {
+   "en": "No page at this address",
+   "es": "Aquí no hay ninguna página",
    "state": "draft"
   },
   "notice.close": {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.267
+# GRANITE_VERSION: 2026-09-04.269
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1784,6 +1784,30 @@ def not_found_example(out):
     return ""
 
 
+def not_found_body_lang(example, lang):
+    """The not-found page of a page in another language (/es/404.html): the
+    site's own wording in `lang`, its links to that language's pages where it
+    has them (i18n.href: the English page where it has not). No script: the
+    English page's script reads addresses of bills, towns and laws, none of
+    which is under /es/."""
+    ex = (f'<code>{example}</code>' if example else "")
+    lead = (say(lang, "nf.lead_example", "The address may be mistyped, or name a bill in a year "
+                "it does not exist in: every bill since 1989 has a page of its own, for example "
+                "{example}, and a bill number starts again every two years.", example=ex)
+            if example else
+            say(lang, "nf.lead", "The address may be mistyped, or there may be no page "
+                "here yet. Some pages are not translated."))
+    return (f'<h1>{say(lang, "nf.head", "Nothing is published here")}</h1>\n'
+            f'<p class="lead">{lead}</p>\n'
+            f'<p><a href="{i18n.href(lang, "bills.html")}">'
+            f'{say(lang, "nf.bills", "Search every bill")}</a> &middot;\n'
+            f'<a href="{i18n.href(lang, "officials.html")}">'
+            f'{say(lang, "nav.officials", "Officials")}</a> &middot;\n'
+            f'<a href="{i18n.href(lang, "committees.html")}">'
+            f'{say(lang, "nav.committees", "Committees")}</a> &middot; '
+            f'<a href="{i18n.href(lang, "index.html")}">{say(lang, "nf.home", "Home")}</a></p>')
+
+
 def not_found_body(example):
     """NOT_FOUND with its example, or without the clause where there is none."""
     body = (NOT_FOUND.replace("[[example]]", example) if example
@@ -3352,6 +3376,16 @@ def _record(x, lang):
     return x if lang == i18n.DEFAULT or not x else f'<span lang="en">{x}</span>'
 
 
+def _kept(x, es, lang):
+    """A hand-kept line of the status box in `lang`: its Spanish twin
+    (status.txt's note_es, milestone_es) when the page is Spanish and there is
+    one -- the site's own wording, so lang="es" and no "en" mark -- else the
+    English line as the record has it (_record)."""
+    if lang != i18n.DEFAULT and es:
+        return _home_esc(es)
+    return _record(x, lang)
+
+
 def year_link(lang="en"):
     """YEAR_LINK in `lang`: the way to the legislature's year, in `lang`
     where that page is built in it (i18n.href). Absolute, because the
@@ -3421,10 +3455,10 @@ def state_box(S, lang="en", today=None, events=None):
             + "</div>"
             + (f'<p class="statehead">{_record(S["headline"], lang)}</p>'
                if S.get("headline") else "")
-            + (f'<p class="statenote">{_record(S["note"], lang)}</p>' if S.get("note") else "")
+            + (f'<p class="statenote">{_kept(S["note"], S.get("note_es"), lang)}</p>' if S.get("note") else "")
             + (f'<p class="statenote"><b>{say(lang, "state.next", "Next:")} '
-               f'{_record(ms.get("label"), lang)}</b>, '
-               f'{fd(ms.get("date"))}. {_record(ms.get("note"), lang)}</p>'
+               f'{_kept(ms.get("label"), ms.get("label_es"), lang)}</b>, '
+               f'{fd(ms.get("date")).rstrip(".")}. {_kept(ms.get("note"), ms.get("note_es"), lang)}</p>'
                if ms.get("label") else "")
             # THE STALE WARNING CARRIES ITS OWN DATE, so the page can work it
             # out again in the reader's clock: it was written when the site was
@@ -3892,6 +3926,11 @@ const fdy=d=>dateWords(d||"","medium",window.GR_LANG);
 // THE RECORD'S OWN WORDS on a page in another language are marked English
 // (i18n.py): a bill's title and the line of its history.
 const REC=window.GR_LANG&&window.GR_LANG!=="en"?' lang="en"':"";
+// A hand-kept line's Spanish twin (status.txt note_es, milestone_es), where
+// the page is Spanish and there is one: the site's own wording, so no
+// lang="en" mark.
+const ES_ON=window.GR_LANG==="es";
+const KEPT=(x,es)=>ES_ON&&es?esc(es):esc(x);
 // LATEST ACTIVITY'S DAYS, IN THE READER'S CLOCK (24 October 2026). The box is
 // the build's, and a build stands for a day or more: a day it called
 // "yesterday" is two days back by the next evening. Each day carries its date,
@@ -3971,9 +4010,9 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
         ${S.last_session?`<span class="statemeta">${tr("state.last","Last Session Day:")}
           ${fdy(S.last_session)}</span>`:""}</div>
       ${S.headline?`<p class="statehead"${REC}>${esc(S.headline)}</p>`:""}
-      ${S.note?`<p class="statenote"${REC}>${esc(S.note)}</p>`:""}
-      ${ms?`<p class="statenote"><b>${tr("state.next","Next:")} ${esc(ms.label)}</b>, ${fd(ms.date)}.
-        ${esc(ms.note||"")}</p>`:""}
+      ${S.note?`<p class="statenote"${ES_ON&&S.note_es?"":REC}>${KEPT(S.note,S.note_es)}</p>`:""}
+      ${ms?`<p class="statenote"><b>${tr("state.next","Next:")} ${KEPT(ms.label,ms.label_es)}</b>, ${fd(ms.date).replace(/[.]$/,"")}.
+        ${KEPT(ms.note||"",ms.note_es)}</p>`:""}
       ${stale?`<p class="statenote stalewarn" style="color:var(--st-veto)"
         data-updated="${esc(S.updated||"")}">${tr("state.stale","This summary was last updated {n} days ago and may be out of date.",{n:S.stale_days})}</p>`
         :(S.updated?`<p class="statemeta upd" hidden data-updated="${esc(S.updated)}"></p>`:"")}
@@ -5257,6 +5296,20 @@ the <a href="/committees">committee list</a> are all plain pages.</p></noscript>
     page404 = re.sub(r'<link rel="canonical"[^>]*>',
                      '<meta name="robots" content="noindex">', page404)
     (out / "404.html").write_text(_shell.clean_links(page404), encoding="utf-8")
+
+    # THE SPANISH 404. Cloudflare Pages answers a missing address with the
+    # nearest 404.html up its path, so /es/404.html serves every missing
+    # /es/... address and /404.html the rest; no rule in _redirects reaches
+    # either (it holds no splat over /es/). Links are absolute, as above.
+    for lang in i18n.LANGS:
+        if lang == i18n.DEFAULT:
+            continue
+        pl = shell(say(lang, "nf.title", "No page at this address") + " | Granite Record", "",
+                   not_found_body_lang(example404, lang),
+                   desc=say(lang, "nf.desc", "There is no page at this address."), lang=lang)
+        pl = re.sub(r'<link rel="canonical"[^>]*>', '<meta name="robots" content="noindex">', pl)
+        (out / lang).mkdir(parents=True, exist_ok=True)
+        (out / lang / "404.html").write_text(_shell.clean_links(pl), encoding="utf-8")
 
     print(f"wrote officials.html ({len(legs)} members), "
           f"about.html, search.html, 404.html -> {out}/  (learn.html: build_civics.py)")

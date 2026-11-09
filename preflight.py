@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.814
+# GRANITE_VERSION: 2026-09-04.815
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -54432,6 +54432,58 @@ def _state_box_trimmed(B):
             "the way to the schedule is not called the NH Legislative Schedule")
     return "ok", ("no 'Summary Updated' in either copy; the date kept hidden; a 60-day-old "
                   "summary warned; the link reads NH Legislative Schedule")
+
+
+@check("frontend", "the Spanish home's status box shows status.txt's note_es (and milestone_es) in "
+                   "Spanish, unmarked, and falls back to the English note marked lang=en",
+       needs=("build_pages", "build_site_v2"))
+def _status_note_in_spanish(BP, B):
+    """The owner, 9 November 2026: the Spanish pages stop showing English where
+    a hand-kept note is concerned. status.txt may carry `note_es:` beside
+    `note:` and `milestone_es: DATE | LABEL | NOTE` beside a milestone of the
+    same DATE; the Spanish box (and the script's copy) says them with no
+    lang="en", and a line with no twin is the English, marked, as before. The
+    real file is read by build_status, not by a copy of its parser."""
+    import types
+    root = Path(tempfile.mkdtemp(prefix="gr-note-es-"))
+    try:
+        f = root / "status.txt"
+        f.write_text("updated: 2099-01-01\nphase: out of session\n"
+                     "note: The English note.\nnote_es: La nota en espa\u00f1ol,\n  en dos l\u00edneas.\n"
+                     "milestone: 2099-02-01 | The label | The words.\n"
+                     "milestone_es: 2099-02-01 | La etiqueta | Las palabras.\n"
+                     "milestone: 2099-03-01 | Another | More words.\n", encoding="utf-8")
+        S = B.build_status(types.SimpleNamespace(status=str(f)), [], {}, {}, "2000-01-01", {}, [])
+        assert S.get("note_es") == "La nota en espa\u00f1ol, en dos l\u00edneas.", S.get("note_es")
+        ms = S["milestones"]
+        assert ms[0]["label_es"] == "La etiqueta" and ms[0]["note_es"] == "Las palabras." \
+            and "label_es" not in ms[1], ms
+        es = BP.state_box(S, "es")
+        assert '<p class="statenote">La nota en espa\u00f1ol, en dos l\u00edneas.</p>' in es \
+            and "The English note." not in es and "La etiqueta" in es and "Las palabras." in es, es[:900]
+        en = BP.state_box(S, "en")
+        assert "The English note." in en and "La nota" not in en and "La etiqueta" not in en, en[:900]
+        plain = dict(S, note_es="")
+        plain["milestones"] = [{"date": "2099-02-01", "label": "The label", "note": "The words."}]
+        fb = BP.state_box(plain, "es")
+        assert '<span lang="en">The English note.</span>' in fb and \
+            '<span lang="en">The label</span>' in fb, fb[:900]
+        for need in ("S.note_es", "ms.label_es", "ms.note_es"):
+            assert need in BP.HOME_JS, f"HOME_JS no longer reads {need}"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    nf = BP.not_found_body_lang("/bill/2025/hb1", "es")
+    assert "Nothing is published" not in nf and "<h1>Aqu\u00ed no hay nada publicado</h1>" in nf \
+        and 'href="/es/officials.html"' in nf and 'href="/es/"' in nf and "<script" not in nf, nf
+    assert "/bill/2025/hb1" in nf and "{example}" not in nf, nf
+    assert "{example}" not in BP.not_found_body_lang("", "es")
+    # A note with no Spanish twin is not a failure (the manager's review, 9
+    # November 2026): status.txt is the owner's, written in a hurry when the
+    # Court's state changes, and the English note marked lang="en" is the
+    # fallback. Only a twin that is there must be the one shown.
+    return "ok", ("note_es and milestone_es are read, shown in Spanish unmarked on /es/, and the "
+                  "English stays marked where there is no twin; the Spanish 404 body is Spanish, "
+                  "links Spanish pages and carries no script")
 
 
 # ---- THE LEGISLATURE'S YEAR (17 October 2026) ---------------------------------
