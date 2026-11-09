@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.272
+# GRANITE_VERSION: 2026-09-04.273
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -4328,8 +4328,8 @@ document.addEventListener("click",e=>{
 // with nothing typed the bill search, as it always did -- except for a bill
 // number, which opens the bill (find.js's findBill: the person's rule of 12
 // October). A row is still one tap away. The header's box opens /search
-// for a bill number too since 8 November 2026 (Alice's word was for the
-// header's box; this one is left as it was until she says).
+// for a bill number too since 8 November 2026, and this one since 9 November
+// (Alice: "Home search opens results"): Return is the Search button, always.
 const HQ={out:"hqout",box:"hq",clear:"",say:"hqsay"};
 const hq=document.getElementById("hq"),hqout=document.getElementById("hqout");
 // ABOVE THE KEYBOARD. On a phone this box stands most of the way down the
@@ -4358,9 +4358,7 @@ hq.addEventListener("keydown",e=>{
   if(e.key==="Escape"){hqout.hidden=true;return;}
   if(e.key!=="Enter")return;
   e.preventDefault();
-  const first=hqout.hidden?null:hqout.querySelector("a");
-  const bill=typeof findBill==="function"&&findBill(hq.value);
-  location.href=first&&bill?first.href:hqAddr(hq.value);
+  location.href=hqAddr(hq.value);
 });
 document.getElementById("hgo").addEventListener("click",()=>{location.href=hqAddr(hq.value);});
 // Away from the box, the dropdown closes; "Did you mean" searches again here.
