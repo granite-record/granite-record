@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.5
+# GRANITE_VERSION: 2026-09-18.8
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -141,7 +141,31 @@ def roster(site):
         # the other's.
         out[key] = None if key in out else (m.get("display") or m.get("name"),
                                             m.get("slug"))
+    # AND THE NEW MEMBERS-ELECT, WHO HAVE A PROVISIONAL PAGE (Alice, 7 November
+    # 2026; build_elect_pages.py): matched "by name only where certain" -- the
+    # same folded name, the request's chamber theirs (the third field, which
+    # rows_from holds a request to), and nobody else of the name, sitting,
+    # former or elect. Anything less stays unlinked, as before.
+    ep = site / "elect_pages.json"
+    if ep.exists():
+        fj = site / "former.json"
+        gone = set()
+        for m in (json.loads(fj.read_text(encoding="utf-8")) if fj.exists() else []):
+            last, _, first = str(m.get("name") or "").partition(",")
+            gone.add(_fold(f"{first} {last}"))
+        for p in json.loads(ep.read_text(encoding="utf-8")).get("pages") or []:
+            key = _fold(p.get("name"))
+            party = f" ({p['party']})" if p.get("party") else ""
+            out[key] = None if (key in out or key in gone) else (
+                f"{p.get('name')}{party}", p.get("slug"), p.get("chamber"))
     return out
+
+
+def chamber_of(body):
+    """H or S for a request's kind (HB, SR, HCR ...); None for a
+    constitutional amendment request, which either chamber may file."""
+    b = str(body or "").upper()
+    return None if b.startswith("CA") else (b[:1] if b[:1] in ("H", "S") else None)
 
 
 LSR_NO = re.compile(r"^(\d{4})-(\d+)$")
@@ -190,6 +214,9 @@ def rows_from(lsrs, who, became=None, year=None):
         body = str(r.get("body") or "").upper()
         name = str(r.get("sponsor") or "").strip()
         hit = who.get(_fold(name))
+        # A member-elect's match holds only for a request of their chamber.
+        if hit and len(hit) > 2 and chamber_of(body) != hit[2]:
+            hit = None
         if name and not hit:
             unmatched.append(name)
         rows.append({
@@ -215,9 +242,48 @@ def rows_from(lsrs, who, became=None, year=None):
             "last_action": "", "nrc": 0, "votedays": [],
             "lsr": True,
             **({"introduced": bill} if bill else {}),
+            # A REQUEST'S OWN PAGE (Alice, 8 November 2026): its address, from
+            # the number this source gives it -- New Hampshire's shape stays
+            # here, and the page writer reads only "address" and "moved_to".
+            "address": REQUEST_ADDRESS.format(num=num),
+            # Once it is a bill, its address forwards to the bill's page.
+            **({"moved_to": bill_address(bill, session_of(r) or year)} if bill else {}),
         })
     rows.sort(key=lambda x: x["n"])
     return rows, unmatched
+
+
+# Where a request's page is: /request/2027-0001, as a bill's is
+# /bill/2026/hb1034.
+REQUEST_ADDRESS = "request/{num}"
+
+# THE DAY FILING FOR A SESSION IS COMPLETE, by the session's year, entered by
+# a person when the General Court's list stops growing (Alice, 8 November
+# 2026: "the remaining request pages retire, each forwarding to its prime
+# sponsor's page"). Until it is entered, no request page retires.
+FILING_COMPLETE = {}
+
+
+def bill_address(bill, year):
+    """'HB 45' of 2027 -> 'bill/2027/hb45', the bill's own page."""
+    return f"bill/{year}/{str(bill).replace(' ', '').lower()}"
+
+
+def retire(rows, year, today):
+    """From the day filing is complete (FILING_COMPLETE), each request still
+    a request -- not a bill and not withdrawn -- forwards to its prime
+    sponsor's page, or to the requests' list where the sponsor has none. A
+    withdrawn request keeps its page, as a withdrawn bill does."""
+    done = FILING_COMPLETE.get(int(year)) if year else None
+    if not done or today < done:
+        return 0
+    n = 0
+    for r in rows:
+        if not r.get("moved_to") and not r.get("withdrawn"):
+            r["moved_to"] = (f"legislator/{r['sponsor_slug']}" if r.get("sponsor_slug")
+                             else f"bills?term={r['term']}")
+            n += 1
+    return n
 
 
 def main():
@@ -246,6 +312,8 @@ def main():
                           lsrs)
     rows, unmatched = rows_from(lsrs, roster(site), became, year)
     assert rows, "no request survived shaping, though the source had some"
+    import build_date
+    retired = retire(rows, year, build_date.today().isoformat())
     idx = site / "idx"
     idx.mkdir(parents=True, exist_ok=True)
     # The previous session's file, if this is the night a new session's
@@ -261,8 +329,16 @@ def main():
     assert mj.exists(), ("meta.json is not written yet -- this step runs after "
                          "build_site_v2.py, which writes it")
     meta = json.loads(mj.read_text(encoding="utf-8"))
+    # by_slug: each matched sponsor's slug and how many requests are theirs,
+    # so a member's page knows to offer the requests term, and opens on it,
+    # without asking for the list first (Alice, 7 November 2026).
+    by_slug = {}
+    for r in rows:
+        if r["sponsor_slug"]:
+            by_slug[r["sponsor_slug"]] = by_slug.get(r["sponsor_slug"], 0) + 1
     meta["requests"] = {"term": term, "label": label, "year": year, "n": len(rows),
-                        "withdrawn": sum(1 for r in rows if r["withdrawn"])}
+                        "withdrawn": sum(1 for r in rows if r["withdrawn"]),
+                        "by_slug": dict(sorted(by_slug.items()))}
     mj.write_text(json.dumps(meta), encoding="utf-8")
 
     by = {}
@@ -275,7 +351,11 @@ def main():
     print(f"  {meta['requests']['withdrawn']} withdrawn; "
           f"{sum(1 for r in rows if r['sponsor_slug'])} sponsors matched to a member")
     if became:
-        print(f"  {len(became)} introduced as bills, each marked with its bill")
+        print(f"  {len(became)} introduced as bills, each marked with its bill, its page "
+              "forwarding to the bill's")
+    if retired:
+        print(f"  filing is complete: {retired} request page(s) retired, each forwarding to "
+              "its prime sponsor's page")
     if unmatched:
         seen = sorted(set(unmatched))
         print(f"  {len(seen)} sponsor name(s) matched nobody on the roster: "

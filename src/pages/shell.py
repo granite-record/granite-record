@@ -501,6 +501,26 @@ def sitemap_merge(site, base, urls, owns, whole=True, lastmod=None, spare=()):
         sm.write_text(text.replace("</urlset>", add + "</urlset>", 1), encoding="utf-8")
     return len(add.splitlines()), dropped
 
+
+def find_merge(site, row, owns):
+    """Put one builder's row in find.json (build_indexes.find_rows' shape:
+    [kind, name, detail, address, words]), as sitemap_merge puts its
+    addresses in the sitemap: for a page a step after build_indexes writes
+    (build_live's /live), which is not on disk when build_indexes runs. Every
+    row at the address `owns` is replaced by `row`, so a second run leaves
+    one; `row` None takes them out. Nothing else in the file moves. Returns
+    whether the file changed; False where there is no find.json."""
+    f = Path(site) / "find.json"
+    if not f.exists():
+        return False
+    rows = json.loads(f.read_text(encoding="utf-8"))
+    kept = [r for r in rows if not (isinstance(r, list) and len(r) > 3 and r[3] == owns)]
+    new = kept + ([list(row)] if row else [])
+    if new == rows:
+        return False
+    f.write_text(json.dumps(new, separators=(",", ":")), encoding="utf-8")
+    return True
+
 # A search result shows roughly the first sixty characters of a title and a
 # hundred and sixty of a description. Longer is not penalised -- it is simply
 # not shown -- but a cut that lands mid-word is, because the fragment that

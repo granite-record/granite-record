@@ -98,6 +98,8 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",
 const tr=(k,en,v)=>{const g=globalThis.tr;
   return typeof g==="function"?g(k,en,v):v?String(en).replace(/\{([a-z_][a-z0-9_]*)\}/g,
     (m,n)=>Object.prototype.hasOwnProperty.call(v,n)?v[n]:m):en;};
+// The module's tr, for a mount whose own tr gives some words of its own (opts.words).
+const trBase=tr;
 const CC={BE:"Belknap",CA:"Carroll",CH:"Cheshire",CO:"Coos",GR:"Grafton",HI:"Hillsborough",ME:"Merrimack",RO:"Rockingham",ST:"Strafford",SU:"Sullivan"};
 // "2 Democrats", "1 Republican": the count and its noun together, so a
 // language whose plural is not an added "s" says its own.
@@ -509,6 +511,12 @@ let N=0;
 function el(tag,attrs){const e=document.createElementNS(NS,tag);for(const a in attrs)e.setAttribute(a,attrs[a]);return e;}
 
 function mount(root,opts){
+  // THE WORDS FOR A SEAT WITH NOBODY ON THE MAP. Officials says "vacant";
+  // the elections page says "result not final" (build_elections.py), by
+  // passing opts.words keyed as the map's own: {"map.vacant": "Result not final", ...}.
+  // A word given there is English and is not looked up for translation;
+  // every other word, and every word on every other map, is the module's.
+  const tr=(k,en,v)=>opts&&opts.words&&opts.words[k]!=null?trBase("words."+k,opts.words[k],v):trBase(k,en,v);
   opts=Object.assign({layer:"base",layers:null,labels:DEFAULT_LABELS,flo:false,controls:true,panel:true,list:true,
     legend:true,note:true,totals:true,zoom:true,frame:null,dim:false,ward:null,town:null,pick:null,data:"/district_map.json",
     prompt:tr("map.prompt","Choose a district on the map, or type a town in the box above.")},opts||{});

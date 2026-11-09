@@ -479,7 +479,11 @@ def main():
               # data.html was added to the nav and not here, so the downloads
               # page was on every header and in no sitemap -- the same shape
               # of defect as the nav tuple in build_pages.py, one level down.
-              "committees.html", "resources.html", "data.html", "about.html"):
+              "committees.html", "resources.html", "data.html", "about.html",
+              # The data API's page, linked from the data page's For
+              # Developers once announced (the owner, 7 November 2026).
+              # Dated like /data: its figures are the night's files.
+              "api.html"):
         # ALWAYS, NOT ONLY IF THE FILE IS THERE YET. committees.html, resources.html
         # and data.html are written by steps that run after this one, so a
         # build into an empty site/ -- every night on GitHub's machine --

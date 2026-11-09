@@ -1,0 +1,607 @@
+#!/usr/bin/env python3
+# GRANITE_VERSION: 2026-10-30.8
+"""
+The session days' side of the live layer (design sections 4.2 to 4.4),
+written by the night after the session-day pages:
+
+    site/session/<H|S>/<date>.json   each dated session-day page's roll calls
+                                     as the record holds them, in the
+                                     session.votes shape with provisional false
+    site/session/<H|S>/<today>.html  the morning page: on a day the chamber's
+                                     floor is on the calendar and the record
+                                     has no page for it yet, the day's dated
+                                     address, filled in by live.js as the
+                                     votes are read
+    site/schema/session.votes.json   the shape both writers keep (schema/)
+
+    python3 src/pages/build_live_session.py --site site [--today 2027-01-07]
+
+ONE SHAPE, TWO WRITERS. The Worker writes /api/live/votes/<date> during the
+day, read from the General Court's database; this writes the record's copy
+of each sitting every night, from the roll-call files the site already
+publishes (data/rollcalls.csv and data/votes-<term>.csv). A page draws both
+with one function, and where both hold a roll call's id the record's wins
+(section 4.3). Every file is checked against schema/session.votes.json
+before it is written, and the step stops on one that does not hold.
+
+A DAY'S FILE GOES WITH ITS PAGE. One is written for every dated page in
+session/<B>/ and none for a date with no page, so a sitting the session-day
+step removes (build_session_pages.prune) loses its file on the next run of
+this one. The term files beside them (2025-2026.json) are that step's and
+are not touched.
+
+A roll call is filed under its roll-call file's date, which is the date the
+database's VoteDate gives and so the date the Worker files it under. The
+record's `taken` is null: the roll-call file's clock is not in the published
+CSV, and a time this step cannot vouch for is not written. `passed` and
+`threshold_needed` are the record's own (vote_passage.py), which the live
+file never has: the Worker never works out whether a motion carried.
+
+ONE PAGE AT ONE ADDRESS (the owner, 30 October 2026). On the morning of a
+sitting, /session/<B>/<date> exists before the record has the day: the
+morning page.
+- It is written for the build's own day only, never another. It says the
+  chamber is scheduled to sit, never that it sat.
+- It draws the day's bills in the calendar's order as the session page's
+  own cards (components.bill_card), each with its committee's report, and
+  live.js fills each card's votes as they are read.
+- It is noindex, and in no list, no sitemap and no days.json.
+- The next night the session-day step writes the record's page over it.
+  Without one, the page is gone: the nightly's site starts empty, and on a
+  site kept between builds this step removes a morning page of an earlier
+  day.
+- It carries no record day file: an empty "record" of a sitting still to
+  come would say the record holds no roll call.
+- /session/<B>/today is retired, and an earlier build's copy goes.
+
+Nothing here asks the network.
+"""
+
+# The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
+import sys
+from pathlib import Path
+sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
+import _paths  # noqa: E402,F401
+
+import argparse
+import csv
+import datetime
+import json
+import re
+import shutil
+
+import build_date
+import build_live as BL
+import live_gen as LG
+import rollcall_parser as RP
+import shell as S
+
+SCHEMA = Path("schema") / "session.votes.json"
+DATE_PAGE = re.compile(r"\d{4}-\d{2}-\d{2}")
+CHAMBER_NAME = {"H": "House", "S": "Senate"}
+SOURCE = ("The night's record: the General Court's roll-call files as this site publishes them "
+          "(/data/rollcalls.csv and /data/votes-<term>.csv).")
+NOTES = {"record": "This is the night's record of the day. A page draws it with the day's live file "
+                   "(/api/live/votes/<date>), and where both hold a roll call's id this one wins.",
+         "taken": "taken is null here: the record's clock for a roll call is not in the published files."}
+
+
+# ---- the schema, checked by hand ----------------------------------------------
+class Invalid(ValueError):
+    pass
+
+
+def check(doc, schema, root=None, where="$"):
+    """Raise Invalid where `doc` breaks `schema`. The part of JSON Schema the
+    file uses (its description lists it); tests/live/schema.js is the same
+    rule in node, and both run tests/live/schema_cases.json."""
+    root = schema if root is None else root
+    if "$ref" in schema:
+        ref = schema["$ref"]
+        if not ref.startswith("#/$defs/"):
+            raise Invalid(f"{where}: unknown $ref {ref}")
+        return check(doc, root["$defs"][ref.split("/")[-1]], root, where)
+    # Compared as JSON compares: true is not 1 (Python's True == 1 is).
+    if "const" in schema and not _same(doc, schema["const"]):
+        raise Invalid(f"{where}: {doc!r} is not {schema['const']!r}")
+    if "enum" in schema and not any(_same(doc, e) for e in schema["enum"]):
+        raise Invalid(f"{where}: {doc!r} is not one of {schema['enum']}")
+    if "type" in schema:
+        types = schema["type"] if isinstance(schema["type"], list) else [schema["type"]]
+        if not any(_is(doc, t) for t in types):
+            raise Invalid(f"{where}: {type(doc).__name__} is not {'/'.join(types)}")
+    # JavaScript's $ (no m flag) is the end of the string; Python's also
+    # matches before a final newline, so "2027-01-07\n" would pass here alone.
+    if isinstance(doc, str) and "pattern" in schema and not re.search(schema["pattern"].replace("$", r"\Z"), doc):
+        raise Invalid(f"{where}: {doc!r} does not match {schema['pattern']}")
+    if _is(doc, "integer") and "minimum" in schema and doc < schema["minimum"]:
+        raise Invalid(f"{where}: {doc} is below {schema['minimum']}")
+    if isinstance(doc, dict):
+        for k in schema.get("required", ()):
+            if k not in doc:
+                raise Invalid(f"{where}: no {k}")
+        props = schema.get("properties", {})
+        extra = schema.get("additionalProperties", True)
+        for k, v in doc.items():
+            if k in props:
+                check(v, props[k], root, f"{where}.{k}")
+            elif extra is False:
+                raise Invalid(f"{where}: {k} is not a field of this shape")
+            elif isinstance(extra, dict):
+                check(v, extra, root, f"{where}.{k}")
+    if isinstance(doc, list) and "items" in schema:
+        for i, v in enumerate(doc):
+            check(v, schema["items"], root, f"{where}[{i}]")
+
+
+def _same(a, b):
+    return type(a) is type(b) and a == b if isinstance(a, bool) or isinstance(b, bool) else a == b
+
+
+def _is(v, t):
+    return {"object": isinstance(v, dict), "array": isinstance(v, list), "string": isinstance(v, str),
+            "boolean": isinstance(v, bool), "null": v is None,
+            # JSON has one number: 2.0 is an integer to JavaScript, and so here.
+            "integer": (isinstance(v, int) and not isinstance(v, bool)) or (isinstance(v, float) and v.is_integer()),
+            "number": isinstance(v, (int, float)) and not isinstance(v, bool)}[t]
+
+
+def schema():
+    return json.loads(_paths.locate(SCHEMA.as_posix()).read_text(encoding="utf-8"))
+
+
+# ---- the record's day files ---------------------------------------------------
+def _int(s):
+    s = (s or "").strip()
+    return int(s) if s.lstrip("-").isdigit() else None
+
+
+def page_dates(site, body):
+    folder = Path(site) / "session" / body
+    return {f.stem for f in folder.glob("*.html") if DATE_PAGE.fullmatch(f.stem)} if folder.is_dir() else set()
+
+
+def day_files(site, seen=None, skip=()):
+    """{(body, date): session.votes document} for every dated page but the
+    morning pages in `skip` ({(body, date)}): those are a sitting still to
+    come, and an empty "record" of it would say the record holds no roll
+    call. `seen`, a dict, gets what was read: {"rollcalls_csv": bool,
+    "votes_csvs": n}."""
+    seen = {} if seen is None else seen
+    site = Path(site)
+    want = {b: page_dates(site, b) - {d for (bb, d) in skip if bb == b} for b in "HS"}
+    rcs, order = {}, []
+    path = site / "data" / "rollcalls.csv"
+    seen["rollcalls_csv"] = path.is_file()
+    seen["votes_csvs"] = 0
+    if path.is_file():
+        with path.open(encoding="utf-8", newline="") as f:
+            for r in csv.DictReader(f):
+                body, date = r.get("body"), r.get("date") or ""
+                if body in want and date in want[body] and r.get("roll_call"):
+                    rcs[r["roll_call"]] = r
+                    order.append(r["roll_call"])
+    ballots = {k: {} for k in rcs}
+    for vf in sorted((site / "data").glob("votes-*.csv")):
+        seen["votes_csvs"] += 1
+        with vf.open(encoding="utf-8", newline="") as f:
+            for r in csv.DictReader(f):
+                got = ballots.get(r.get("roll_call"))
+                if got is None or not (r.get("member_id") or "").isdigit():
+                    continue
+                word = r.get("vote") or ""
+                if word not in LG.BALLOT_CHARS:
+                    raise SystemExit(f"{vf.name}: the vote {word!r} has no character in the session.votes "
+                                     f"shape (live_gen.BALLOT_CHARS); what it means on the page is a decision")
+                got[r["member_id"]] = LG.BALLOT_CHARS[word]
+    out = {}
+    for body in "HS":
+        for date in sorted(want[body]):
+            mine = [rcs[k] for k in order if rcs[k]["body"] == body and rcs[k]["date"] == date]
+            members = sorted({m for r in mine for m in ballots[r["roll_call"]]}, key=int)
+            rows = []
+            for r in sorted(mine, key=lambda r: _int(r.get("number")) or 0):
+                got = ballots[r["roll_call"]]
+                line = "".join(got.get(m, ".") for m in members)
+                yeas, nays = _int(r.get("yeas")) or 0, _int(r.get("nays")) or 0
+                passed = {"1": True, "0": False}.get((r.get("passed") or "").strip())
+                # The bill as the record reads the field, as the Worker's
+                # billNumber does: a procedural vote ("SUSPRULE", "RULE 1-2")
+                # names no bill, and keeps its words in bill_as_recorded.
+                bill = RP.bill_number(r.get("bill"))
+                rows.append({
+                    "id": r["roll_call"], "body": body, "seq": _int(r.get("number")),
+                    "bill": f"{r['term']}/{bill}" if bill else None,
+                    "bill_as_recorded": r.get("bill") or None, "question": r.get("question") or None,
+                    "taken": None, "saved": None, "keyed_by": None,
+                    "yeas": yeas, "nays": nays, "present": None, "absent": None,
+                    "ballots": line,
+                    # merge.js's rule: Y and N agree with the count, and
+                    # something was recorded (a 0-0 set of "." is not).
+                    "ballots_complete": bool(line) and line.count("Y") == yeas and line.count("N") == nays
+                                        and (yeas + nays > 0 or bool(line.strip("."))),
+                    "docket": None, "first_seen": None, "note": None,
+                    "passed": passed, "threshold_needed": _int(r.get("threshold_needed"))})
+            out[(body, date)] = {
+                "api": 1, "kind": "session.votes", "date": date, "provisional": False,
+                "read_at": None, "next_read_by": None,
+                "status": {"state": "record", "problem": None, "since": None},
+                "source": SOURCE,
+                "record": {"H": f"/session/H/{date}.json", "S": f"/session/S/{date}.json"},
+                "members": {"H": members if body == "H" else [], "S": members if body == "S" else []},
+                "rollcalls": rows, "tallies": [], "notes": dict(NOTES)}
+    return out
+
+
+def write_day_files(site, docs, shape=None, skip=()):
+    """Writes each document after checking it; removes a date's file whose page
+    is gone, or is a morning page in `skip` ({(body, date)}), which has none."""
+    site, shape = Path(site), shape or schema()
+    for (body, date), doc in docs.items():
+        try:
+            check(doc, shape)
+        except Invalid as e:
+            raise SystemExit(f"session/{body}/{date}.json does not hold to {SCHEMA.as_posix()}: {e}")
+    wrote = 0
+    for (body, date), doc in sorted(docs.items()):
+        f = site / "session" / body / f"{date}.json"
+        text = json.dumps(doc, ensure_ascii=False, separators=(",", ":"))
+        if not f.is_file() or f.read_text(encoding="utf-8") != text:
+            f.write_text(text, encoding="utf-8")
+        wrote += 1
+    gone = []
+    for body in "HS":
+        folder = site / "session" / body
+        if not folder.is_dir():
+            continue
+        pages = page_dates(site, body) - {d for (bb, d) in skip if bb == body}
+        for f in sorted(folder.glob("*.json")):
+            if DATE_PAGE.fullmatch(f.stem) and f.stem not in pages:
+                f.unlink()
+                gone.append(f"{body}/{f.name}")
+    return wrote, gone
+
+
+# ---- the morning page: the dated address from the morning of a sitting ----------
+# The marker sits in the page's head, so telling a morning page from the
+# record's reads the first HEAD_BYTES of a page, not all of it: the step looks
+# at every dated page each night.
+MORNING = '<meta name="gr-morning" content="1">'
+HEAD_BYTES = 65536
+TOP_LINE = ("Votes as they are read. Who spoke and the debate come with the {journal}, "
+            "which can take months.")
+JOURNAL = {"H": "House Journal", "S": "Senate Journal"}
+# What the day does not show: only roll calls are read from the database
+# during the day. A bill decided by voice, by division or on the consent
+# calendar stays "Pending" until the day is over (the reader review, 6
+# November 2026).
+ROLL_CALLS_ONLY = ("Only roll calls are read during the day. A bill decided by voice vote, by "
+                   "division or on the consent calendar comes with the night's record.")
+
+
+def is_morning(path):
+    """Whether a dated page is a morning page (this step's), not the record's."""
+    try:
+        with open(path, "rb") as f:
+            return MORNING.encode() in f.read(HEAD_BYTES)
+    except OSError:
+        return False
+
+
+def agenda(body, today, rows=None):
+    """The bills on the chamber's floor today, in the calendar's order, each
+    once: [(term, bill)]. From proceedings.csv's floor rows (build_calendar's
+    FLOOR_KINDS), the same rows the Calendar's floor card and /live read."""
+    import build_calendar as BC
+    if rows is None:
+        import proceedings
+        rows = proceedings.load()
+    iso, out = today.isoformat(), []
+    for r in rows:
+        if ((r.get("date") or "")[:10] == iso and (r.get("body") or "").strip().upper() == body
+                and (r.get("kind") or "").strip().lower() in BC.FLOOR_KINDS and r.get("bill")):
+            k = (r.get("term") or "", r["bill"].strip().upper())
+            if k not in out:
+                out.append(k)
+    return out
+
+
+def floor_items(events, body):
+    """The bill's floor votes in `body` as recommendation_on reads them,
+    [(date, vote)], from its history (narratives.json's events): so a
+    report the chamber has already acted on -- a bill passed months ago and
+    back for a concurrence -- is no pending motion (the reader review, 6
+    November 2026: passing none turned the guard off)."""
+    import types
+    import session_days
+    out = []
+    for e in events or ():
+        if e.get("type") != "floor" or e.get("cancelled") or (e.get("body") or "").strip().upper() != body:
+            continue
+        out.append(((e.get("date") or "")[:10], types.SimpleNamespace(
+            carried=session_days.CARRIED.get((e.get("motion") or "").strip().upper()),
+            consent=bool(e.get("consent")), action=(e.get("action") or "").strip())))
+    return out
+
+
+PENDING_CAN = ("A special order, a motion to table or a motion to indefinitely postpone can "
+               "change what the {chamber} votes on first.")
+
+
+def pending_html(rec, bill, body):
+    """The motion a bill not yet voted on stands on: the committee majority's
+    recommendation, in votes.json's words for the motion (components.
+    vote_head, as a vote's head on the session page), and what can change
+    what the chamber takes up first (the owner, 30 October
+    2026; the wording the manager's, 30 October 2026). Inside the bill's
+    .lv-rcs place, so the first roll call live.js draws there replaces it.
+    "" where the docket names no recommendation."""
+    import components as C
+    import motions as MO
+    words = ((rec or {}).get("recommendation") or "").strip()
+    if not words:
+        return ""
+    k = MO.classify(words, bill, body, C.WORDBOOK["votes"]["motions"])
+    head = C.vote_head(k["mk"], words, k["mf"])
+    # The motion alone: the committee and its count are the line above it
+    # (recommendation_html), and one fact is said once (the manager, 6
+    # November 2026).
+    return (f'<p class="lv-pending">Pending: {head}. '
+            f'{S.E(PENDING_CAN.format(chamber=CHAMBER_NAME[body]))}</p>')
+
+
+def morning_cards(site, body, today, bills):
+    """Each bill as the session page's card (components.bill_card, as
+    build_session_pages draws it), with the committee's report the chamber
+    acts on (its recommendation_on and recommendation_html) and an empty
+    place live.js fills with the day's roll calls."""
+    import build_session_pages as BSP
+    import committee_acts as CA
+    import components as C
+    import session_days
+    rows, codes = BSP.load_rows(site), BSP.load_codes(site)
+    titles, years = BSP.load_titles(site)
+    try:
+        data = json.loads(Path(session_days.NARRATIVES).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        data = {}
+    out = []
+    for term, bill in bills:
+        row = rows.get((term, bill)) or {}
+        year = years.get((term, bill)) or row.get("year") or ""
+        events = ((data.get(term) or {}).get(bill) or {}).get("events") or []
+        acts = CA.acts(events)
+        rec = BSP.recommendation_on(acts, body, today.isoformat(), floor_items(events, body))
+        chip_w = row.get("chip") or ""
+        topic = "" if (row.get("topic") == "Miscellaneous"
+                       and row.get("topic_by") == "granite record") else (row.get("topic") or "")
+        sponsor = ({"display_full": row.get("sponsor_label"), "slug": row.get("sponsor_slug") or "",
+                    "party": row.get("sponsor_party") or ""} if row.get("sponsor_label") else None)
+        # No status chip: it is last night's, and beside the day's votes a
+        # reader would take "Passed One Chamber" for what the day did (the
+        # reader review, 5 November 2026). The rail's stops carry their dates.
+        out.append(C.bill_card({
+            "id": bill, "href": f"bill/{year}/{bill.lower()}.html" if year else "",
+            "n": re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bill), "year": year,
+            "word": "", "cls": "",
+            "title": titles.get((term, bill)) or row.get("title") or "",
+            "byline": C.bill_byline(sponsor, row.get("committees") or [], topic, term, codes),
+            "notes": C.rail_html(row.get("rail") or [], chip_w == "Died"),
+            "line": BSP.recommendation_html(rec, body, term, codes, S.E)
+                    + f'<div class="lv-rcs" data-bill="{S.E(bill)}">{pending_html(rec, bill, body)}</div>',
+            "rail": "", "open": None}))
+    return out
+
+
+def morning_body(site, body, today, bills):
+    import build_session_pages as BSP
+    import components as C
+    import proceedings
+    name, iso = CHAMBER_NAME[body], today.isoformat()
+    day_words = S.date_words(today, "long")
+    cards = morning_cards(site, body, today, bills)
+    n = len(bills)
+    # The day by its name, not "today": a page left up by a late night is
+    # still read the next morning.
+    line = (f"The {name} is scheduled to sit on {S.date_words(today, 'day')}"
+            + (f", with {n} bill{'s' if n != 1 else ''} on its calendar." if n else "."))
+    none = ("" if cards else
+            '<p class="calempty" id="lv-none">No bills are listed for this day yet. Each bill '
+            "appears here as its first vote is read.</p>")
+    # The record page's head (build_session_pages' record_head call): the same
+    # trail, up to the chamber's session days at the day's term, and the top
+    # line as its note, where a Senate record page says its journal has no
+    # debate.
+    days = (f"{S.canon(f'session/{BSP.CHAMBER_PAGE[body]}.html')}"
+            f"?term={proceedings.vote_term(iso[:4], iso)}#day-{iso}")
+    return (f'<div class="wkpage sesspage lvday">'
+            + C.record_head({"trail": [["Committees", "committees.html"], [f"{name} Session Days", days],
+                                       ["Session Day", ""]],
+                             "title": S.E(f"The {name}, {day_words}"), "line": S.E(line), "kind": "day"})
+            + f'<p class="rnote lv-top">{S.E(TOP_LINE.format(journal=JOURNAL[body]))}</p>'
+            + f'<p class="rnote">{S.E(ROLL_CALLS_ONLY)}</p>'
+            f'<div id="live-day" data-day="{iso}" data-body="{body}">'
+            f'<p id="live-day-status" class="lv-status" aria-live="polite"></p>'
+            f'<noscript><p class="lv-status">This page fills in with the {name}\'s votes as they are '
+            f'read, which needs its script.</p></noscript></div>'
+            f'<div class="w4s"><section class="w4 wday" id="order"><div class="wside">'
+            f'<h2 class="w4h">The Day in Order</h2></div>'
+            f'<div class="w4b" id="lv-cards">{none}{"".join(cards)}</div></section>'
+            f'<section class="w4" id="nobill" hidden><h2 class="w4h">Votes on No Bill</h2>'
+            f'<div class="w4b" id="lv-nobill"></div></section></div>'
+            # The term's bills by the year each was introduced, for the link of
+            # a bill that is not on the calendar (build_live.bill_years).
+            f'<script type="application/json" id="live-bills">'
+            f'{json.dumps(BL.bill_years(site, today), separators=(",", ":")).replace("</", "<\\/")}</script>'
+            # In short's words that are narrative.py's (live_words); the rest
+            # are closing.json's, in components.js.
+            f'<script type="application/json" id="live-words">'
+            f'{json.dumps(live_words(), ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")}</script>'
+            '</div>')
+
+
+def live_words():
+    """The words live.js's In short needs that are not a words file's:
+    narrative.RECOMMENDATION in its own order (vote_said reads it by key, and
+    by the first opening a motion's words start with), and VOTE_KIND's words
+    for a roll call. Written from the tables themselves, so the page says a
+    vote as the night's session page will."""
+    import narrative as NR
+    return {"recommendation": [[k, v] for k, v in NR.RECOMMENDATION.items()],
+            "roll_call": NR.VOTE_KIND["RC"][0]}
+
+
+def write_morning(site, base, body, today, rows=None):
+    """session/<B>/<today>.html, the morning page, where the chamber's floor
+    has today on the calendar and the record has no page for the day. Never
+    for another day than the build's. Returns the path written, or None."""
+    site = Path(site)
+    out = site / "session" / body / f"{today.isoformat()}.html"
+    if out.is_file() and not is_morning(out):
+        return None                                   # the record's page: the overlay fills it
+    bills = agenda(body, today, rows)
+    if not bills and not floor_today(site, body, today):
+        if out.is_file():
+            out.unlink()                              # a morning page of a sitting no longer on the calendar
+        return None
+    name = CHAMBER_NAME[body]
+    path = f"/session/{body}/{today.isoformat()}.html"
+    html = S.page(S.template(site), path=path, base=base,
+                  title=f"The {name}, {S.date_words(today, 'full')} | Granite Record",
+                  description=f"The {name}'s votes today, as they are read, on the bills on its calendar.",
+                  og_title=f"The {name}, {S.date_words(today, 'full')}", globals={"GR_STATIC": True},
+                  noscript="", skip_label="Skip to the votes", sr_title="", og_type="website", cite=False)
+    html = html.replace('<div id="results"></div>',
+                        f'<div id="results">{morning_body(site, body, today, bills)}</div>', 1)
+    assert 'id="live-day"' in html, f"{path}: the template has no results slot"
+    html = html.replace("</head>", f'{MORNING}\n<meta name="robots" content="noindex">\n'
+                                   '<link rel="stylesheet" href="/live.css">\n</head>', 1)
+    assert MORNING.encode() in html.encode()[:HEAD_BYTES], f"{path}: the marker is not in the page's head"
+    html = html.replace("</body>", '<script src="/motions.js" defer></script>\n'
+                                   '<script src="/live.js" defer></script>\n</body>', 1)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(S.clean_links(html), encoding="utf-8")
+    return out
+
+
+def show_calendar_links(site, mornings):
+    """Show the Calendar's link to each morning page written this run.
+    build_calendar runs before this step, so on a sitting's morning it leaves
+    the floor card's link hidden, marked data-morning="<B>/<date>"
+    (build_pages.cal_days); this shows it in the files that carry that day's
+    card: calendar.html (the current week), the week's own page where it has
+    one, and the month's data file, whose card is the same HTML inside JSON.
+    A reader meets the one address everywhere. Returns the files changed."""
+    import build_calendar as BC
+    site, changed = Path(site), []
+    for p in mornings:
+        body, day = p.parent.name, p.stem
+        d = datetime.date.fromisoformat(day)
+        hid = f'data-morning="{body}/{day}" hidden><a data-href='
+        shown = f'data-morning="{body}/{day}"><a href='
+        for f in (site / "calendar.html", site / "calendar" / f"{BC.week_key(d)}.html",
+                  site / "calendar" / "data" / f"{day[:7]}.json"):
+            if not f.is_file():
+                continue
+            text = f.read_text(encoding="utf-8")
+            new = text.replace(hid, shown).replace(json.dumps(hid)[1:-1], json.dumps(shown)[1:-1])
+            if new != text:
+                f.write_text(new, encoding="utf-8")
+                changed.append(f.relative_to(site).as_posix())
+    return changed
+
+
+def floor_today(site, body, today):
+    """Whether /live's schedule has the chamber's floor today (a sitting with
+    no bills listed yet: Organization Day)."""
+    try:
+        sched = json.loads((Path(site) / "live" / "schedule.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return any(r.get("kind") == "floor" and body in (r.get("chamber") or "")
+               for r in (sched.get("days") or {}).get(today.isoformat()) or [])
+
+
+def write(site, base, today, seen=None, rows=None):
+    site = Path(site)
+    # /session/<B>/today is retired (the owner, 30 October 2026): the dated
+    # address is the one page. An earlier build's copy goes.
+    # A morning page of an earlier day goes too, as it does in the nightly's
+    # empty site: the record's page takes the address when the record has it.
+    for b in "HS":
+        old = site / "session" / b / "today.html"
+        if old.is_file():
+            old.unlink()
+        # Earlier days only: a run with an earlier --today leaves a later one.
+        for d in sorted(x for x in page_dates(site, b) if x < today.isoformat()):
+            if is_morning(site / "session" / b / f"{d}.html"):
+                (site / "session" / b / f"{d}.html").unlink()
+    if rows is None:                                       # read once for both chambers
+        import proceedings
+        rows = proceedings.load()
+    mornings = [p for b in "HS" if (p := write_morning(site, base, b, today, rows))]
+    calendar = show_calendar_links(site, mornings)
+    skip = {(p.parent.name, p.stem) for p in mornings}
+    docs = day_files(site, seen, skip=skip)
+    wrote, gone = write_day_files(site, docs, skip=skip)
+    (site / "schema").mkdir(exist_ok=True)
+    shutil.copyfile(_paths.locate(SCHEMA.as_posix()), site / SCHEMA)
+    for f in ("live.js", "live.css", "motions.js"):       # live.js and live.css as build_live copies them
+        shutil.copyfile(_paths.locate(f"src/pages/{f}"), site / f)
+    if seen is not None:
+        seen["mornings"] = [f"{p.parent.name}/{p.name}" for p in mornings]
+        seen["calendar"] = calendar
+    return wrote, gone, docs
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0].strip())
+    ap.add_argument("--site", default="site")
+    ap.add_argument("--base", default="https://graniterecord.org")
+    # dest="day", as build_live's: preflight's _build_date_stated reads any
+    # `.today` on the build's path as asking the clock.
+    ap.add_argument("--today", dest="day", help="the day to write for, YYYY-MM-DD (default: the build's)")
+    a = ap.parse_args()
+    today = datetime.date.fromisoformat(a.day) if a.day else BL.nh_today()
+    seen = {}
+    wrote, gone, docs = write(a.site, a.base, today, seen)
+    n = sum(len(d["rollcalls"]) for d in docs.values())
+    # SILENCE IS NOT SUCCESS: with the roll-call files missing, every day file
+    # would be written empty and the step exit 0.
+    if wrote:
+        missing = ([] if seen.get("rollcalls_csv") else ["data/rollcalls.csv"]) + \
+                  ([] if seen.get("votes_csvs") else ["data/votes-<term>.csv"])
+        if missing:
+            raise SystemExit(f"live session: {wrote} dated pages, and no {' or '.join(missing)} to read "
+                             f"their roll calls from (bulk downloads runs before this step)")
+        if not n:
+            raise SystemExit(f"live session: {wrote} dated pages and not one roll call filed under their dates")
+        balloted = sum(1 for d in docs.values() for r in d["rollcalls"] if r["ballots"].strip("."))
+        if not balloted:
+            raise SystemExit(f"live session: {n:,} roll calls and not one ballot read for them")
+    # Without /live's schedule a floor day with no bills listed yet
+    # (Organization Day) would get no page while /live links to it, and the
+    # step would say "no sitting" and exit 0. /live's step runs first.
+    if not (Path(a.site) / "live" / "schedule.json").is_file():
+        raise SystemExit("live session: no live/schedule.json to say which chamber sits today "
+                         "(build_live.py runs before this step)")
+    mornings = seen.get("mornings") or []
+    print(f"live session: {wrote} day files ({n:,} roll calls), {SCHEMA.as_posix()}; "
+          + (f"morning page(s) {', '.join(mornings)}" if mornings else "no sitting on the calendar today")
+          + (f"; removed {len(gone)} for pages gone: {', '.join(gone[:5])}" if gone else ""))
+    # SILENCE IS NOT SUCCESS (the build review, 6 November 2026): a morning
+    # page whose Calendar link was not shown is said, by name. It happens
+    # when the Calendar's day (build_date.today, the machine's) is not this
+    # step's (New Hampshire's), in a night started after 00:00 UTC, or when
+    # cal_days' marker changes. The page stands; only its Calendar link is
+    # missing, so the night goes on.
+    cal = seen.get("calendar") or []
+    if mornings:
+        print("  Calendar link shown in " + ", ".join(cal) if cal else
+              "  NOT SHOWN: no Calendar file held the morning page's hidden link for "
+              + ", ".join(mornings) + " (the Calendar built for another day, or its marker changed)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

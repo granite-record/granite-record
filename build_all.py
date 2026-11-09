@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.84
+# GRANITE_VERSION: 2026-09-05.87
 """
 Run the whole pipeline in the right order.
 
@@ -823,6 +823,19 @@ def plan(a):
         # It runs every night, with or without results: outside the weeks
         # between the election and Organization Day it removes the file and
         # says why, so a file is never left to outlive its day.
+        # THE NEW MEMBERS-ELECT'S PROVISIONAL PAGES' LIST (Alice, 7 November
+        # 2026), before the members-elect step, which links a new person's
+        # chip to their page, and before build_lsrs, which matches their
+        # requests by name. Every night, inside the members-elect window and
+        # after it: the pages stay until the General Court numbers the person.
+        Step("provisional pages for new members-elect",
+             ["build_elect_pages.py", "--site", "site"],
+             needs=["site/legislators.json", "site/former.json", "site/districts.json"],
+             produces=["site/elect_pages.json"],
+             note="each new member-elect's name, party, district and towns, from the "
+                  "results and the owner's matches; no id until the General Court "
+                  "assigns one, and kept apart from the roster"),
+
         Step("members-elect, until they take office",
              ["build_members_elect.py", "--site", "site"],
              needs=["site/meta.json", "site/legislators.json", "site/former.json",
@@ -894,6 +907,17 @@ def plan(a):
              needs=["site/legislators.json"],
              produces=["site/legislator"],
              note="what makes a member's voting record findable by name"),
+
+        # A PAGE FOR EACH BILL REQUEST (Alice, 8 November 2026), after the
+        # requests' list (build_lsrs), the roster and the members-elect pages
+        # the chip reads; build_pages has already written the 301s for the
+        # requests that moved, from the same list.
+        Step("a page for every bill request of the next session",
+             ["build_request_pages.py", "--site", "site", "--base", a.base],
+             needs=["site/meta.json"],
+             produces=["site/request"],
+             note="a request's own address to share; noindex, and forwarding to its bill "
+                  "once it is introduced"),
 
         Step("a page for every committee",
              ["build_committees.py", "--site", "site", "--data", "data",
@@ -976,6 +1000,20 @@ def plan(a):
                   "who sits for each district with the party it is filled "
                   "with, in one file the map draws; and map.js and map.css "
                   "beside it"),
+
+        # THE ELECTIONS PAGES (the owner's word of 7 November 2026: official
+        # results only, from the Secretary of State's files). After the
+        # district map, whose data each election's map starts from; it
+        # decides who is elected through build_members_elect.members_elect,
+        # the members-elect step's own rule, and asks no network.
+        Step("elections: each general election's official results",
+             ["build_elections.py", "--site", "site", "--base", a.base],
+             needs=["site/district_map.json", "site/districts.json",
+                    "site/legislators.json", "site/former.json"],
+             produces=["site/elections/index.html"],
+             note="one page per general election in collected/election_<year>.json: "
+                  "every State Senate and State House race with every candidate's "
+                  "votes, Elected only once final by the members-elect rule"),
 
         Step("the whole record, as lists",
              ["build_indexes.py", "--site", "site", "--base", a.base],

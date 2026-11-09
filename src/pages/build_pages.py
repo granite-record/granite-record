@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.270
+# GRANITE_VERSION: 2026-09-04.272
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -382,11 +382,53 @@ REDIRECTS_HEAD = "# Written by build_pages.py. Not an asset; Pages reads it.\n"
 REDIRECTS = REDIRECTS_HEAD + REDIRECTS_STATIC + REDIRECTS_DYNAMIC
 
 
+def moved_elect(site):
+    """The 301s from a new member-elect's provisional page to their regular
+    one, where the roster numbered them at another address
+    (build_elect_pages.py's "moved"; Alice, 7 November 2026): the same
+    spellings and tabs as moved_members."""
+    try:
+        doc = json.loads((Path(site) / "elect_pages.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    out = []
+    for old, new in sorted(((doc or {}).get("moved") or {}).items()):
+        out += [f"{old} {new} 301\n", f"{old}.html {new} 301\n", f"{old}/ {new} 301\n"]
+        out += [f"{old}/{s} {new}/{s} 301\n" for s in MEMBER_TAB_SLUGS]
+    return "".join(out)
+
+
+def moved_requests(site):
+    """The 301s from a bill request's page to where it now is (Alice, 8
+    November 2026): a bill's page once it is introduced, its prime sponsor's
+    once filing is complete -- each row of the requests' list with a
+    "moved_to" (build_lsrs.py). build_request_pages writes no page at these
+    addresses, so none is both a page and a redirect."""
+    try:
+        req = json.loads((Path(site) / "meta.json").read_text(encoding="utf-8")).get("requests") or {}
+        rows = json.loads((Path(site) / "idx" / f"{req['term']}.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return ""
+    # ONE RULE A REQUEST (the review of 8 November 2026): Cloudflare Pages
+    # allows 2,000 static rules, 616 are in use, and a session files over a
+    # thousand requests, most of them introduced by January -- three
+    # spellings each, as a member's moved page has, would pass the limit
+    # this winter and stop the nightly. The address as it is shared is the
+    # one without .html; Pages sends the .html spelling there itself.
+    out = []
+    for r in rows if isinstance(rows, list) else []:
+        if r.get("address") and r.get("moved_to"):
+            out.append(f"/{r['address']} /{r['moved_to']} 301\n")
+    return "".join(sorted(out))
+
+
 def redirects_file(site):
     """_redirects as written: the head, every static rule -- the moved
-    members' (moved_members) and REDIRECTS_STATIC -- and then the dynamic
-    tab rewrites (STATIC RULES FIRST)."""
-    return REDIRECTS_HEAD + moved_members(site) + REDIRECTS_STATIC + REDIRECTS_DYNAMIC
+    members' (moved_members), the members-elect's (moved_elect) and
+    REDIRECTS_STATIC -- and then the dynamic tab rewrites (STATIC RULES
+    FIRST)."""
+    return (REDIRECTS_HEAD + moved_members(site) + moved_elect(site) + moved_requests(site)
+            + REDIRECTS_STATIC + REDIRECTS_DYNAMIC)
 
 
 # THE REPOSITORY, NAMED ONCE: chrome.REPO, which the footer links too.
@@ -1123,7 +1165,7 @@ def meeting_who(cmte, rows):
 
 
 def cal_days(days, meets, titles, years, code, when, esc, level=3,
-             sessions=None, docs=None, lang="en", events=None, kd_full=True):
+             sessions=None, docs=None, lang="en", events=None, kd_full=True, morning=""):
     """The day blocks and their meeting cards, for any set of days.
 
     Split out of calendar_html on 18 September so the calendar PAGE draws the
@@ -1372,7 +1414,14 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # them decides, rather than this guessing from the name.
             floor = {"house floor": "H",
                      "senate floor": "S"}.get(key.name.strip().lower())
+            # THE MORNING PAGE (live/session, 6 November 2026): on the build's
+            # own day a sitting with no page yet gets one after this step,
+            # from build_live_session, which shows the link this leaves
+            # hidden once it has written the page. Any other day stays as it
+            # was: no page, no link.
+            waits = None
             if floor and sessions is not None and (floor, _d) not in sessions:
+                waits = floor if morning and _d == morning else None
                 floor = None
             elif floor and sessions is None:
                 floor = None
@@ -1417,6 +1466,17 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                        if floor == "H" else say(lang, "cal.senate_did", "What the Senate did that day"))
                 html.append('<p class="calmore">'
                             f'<a href="session/{floor}/{esc(_d)}.html">{did}</a></p>')
+            elif waits:
+                # Hidden until build_live_session writes the page: "did" is
+                # not yet so, and the words say only that its votes are read.
+                # The address as served (shell.canon), so the week page,
+                # which clean_links rewrites, and the month's data file,
+                # which it does not, carry the same card. data-href, not
+                # href, until the page exists: a build without the live
+                # step leaves no link to a page that was never written.
+                html.append(f'<p class="calmore" data-morning="{waits}/{esc(_d)}" hidden>'
+                            f'<a data-href="session/{waits}/{esc(_d)}">The '
+                            f'{"House" if waits == "H" else "Senate"}\'s votes, as they are read</a></p>')
             elif cc:
                 html.append('<p class="calmore">'
                             f'<a href="committee/{esc(cc)}.html#day-{esc(_d)}">'
@@ -3949,6 +4009,7 @@ def home_body(lang, has_lockup, static_state, static_up, static_recent, static_s
 </div>
 <section class="hside hleft" aria-label="{esc(say(lang, "home.left", "Where the General Court is, and its latest session days"))}">
 <div id="state">{static_state}</div>
+{'<p class="lv-home" hidden data-day=""></p>' if lang == "en" else ""}
 <div id="session">{static_sessions}</div>
 </section>
 <!-- WHAT IS COMING UP OVER WHAT HAS JUST HAPPENED (the owner, 24 October
