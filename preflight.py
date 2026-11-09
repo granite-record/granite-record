@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.820
+# GRANITE_VERSION: 2026-09-04.821
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -111752,6 +111752,60 @@ def _sponsor_filing(build_site_v2, member_links):
         "the bill page links " + str([s["slug"] for s in sp]))
     return "ok", ("a record with no id or an employee number filed once under the member its page links; "
                   "a same-named member who did not sit that term neither linked nor credited")
+
+
+@check("naming", "a member who resigned mid-term keeps the link on every bill they sponsored",
+       needs=("build_site_v2", "member_links"))
+def _resigned_sponsors_keep_their_link(build_site_v2, member_links):
+    """Alice, 9 November 2026: Rep. Glenn Cordelli's HB 121 linked to his page
+    and his HB 137 did not, reading "Carr 07". HB 137's sponsor came from the
+    bill status page, which names him by an employee number the sitting roster
+    no longer answers once he resigned; the name was looked for among former
+    members only for a finished term. The sitting term looks there too now,
+    under the same rule (only someone who sat in that chamber that term), and
+    a padded district reads as people say it.
+    """
+    import contextlib
+    import io
+    B, ML = build_site_v2, member_links
+    T = "2025-2026"
+    legs = {"990100": {"id": "990100", "name": "Smith, Ann", "chamber": "H", "party_code": "D",
+                       "district": "5", "county": "Rockingham", "county_abbr": "Rock"}}
+    former = {"990866": {"id": "990866", "name": "Terry, Paul", "chamber": "H", "party_code": "R",
+                         "district": "7", "county": "Carroll", "county_abbr": "Carr",
+                         "former": True}}
+    votes = {"990100": [{"year": "2025", "body": "H"}], "990866": [{"year": "2025", "body": "H"}]}
+    seats = ML.seats_held([*legs.values(), *former.values()], votes, {}, T)
+    sponsors = {T: {"HB10": [
+        {"member_id": "377085", "name": "Paul Terry", "chamber": "H", "prime": True,
+         "source": "bill status page", "county": "Carr", "district": "07"},
+        {"member_id": "990100", "name": "Smith, Ann", "chamber": "H", "prime": False}]}}
+    bills = {T: {"HB10": {"bill": "HB10", "lsr": "2025-0010", "lsr_year": "2025",
+                          "title": "relative to a fixture.", "chamber": "H",
+                          "designation": "HB 10"}}}
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-resigned-"))
+    try:
+        os.chdir(tmp)
+        out = tmp / "site"
+        out.mkdir()
+        with contextlib.redirect_stdout(io.StringIO()):
+            B.build_bills(out, bills, {}, {}, {}, sponsors, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                          legs, {B.sort_name(m["name"]): m for m in legs.values()},
+                          {B.name_key(m["name"]): m for m in legs.values()}, {},
+                          seats=seats, former=former)
+        page = json.loads((out / "bills" / "2025" / "HB10.json").read_text(encoding="utf-8"))
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    terry = page["sponsors"][0]
+    assert terry.get("slug") == B.own_slug(former["990866"]), (
+        "a member who resigned this term is unlinked on a bill the status page names "
+        f"him on: slug {terry.get('slug')!r}")
+    assert terry.get("district_label") == "Carr 7", (
+        f"the resigned member's seat reads {terry.get('district_label')!r}, not 'Carr 7'")
+    assert page["sponsors"][1].get("slug") == B.own_slug(legs["990100"]),         "the sitting co-sponsor lost her link"
+    assert B.district_tag("H", "07", "Carroll") == "Carr 7" and         B.district_tag("S", "03") == "SD3", "a padded district number is drawn as printed"
 
 
 @check("naming", "after the turn a finished term's sponsors who left at the election keep their link",

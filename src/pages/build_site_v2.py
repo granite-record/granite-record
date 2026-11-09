@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.255
+# GRANITE_VERSION: 2026-09-05.256
 """
 Generate the faceted site from real General Court data.
 
@@ -1395,6 +1395,8 @@ def name_key(raw):
 
 def district_tag(chamber, district, county=None, county_abbr=None):
     d = str(district or "").strip()
+    # The bill status page pads a district ("Carr 07"); nobody says it so.
+    d = d.lstrip("0") or d if d.isdigit() else d
     if not d:
         return ""
     if chamber == "S":
@@ -11354,7 +11356,13 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     # that term is taken.
     _left = None
     term_rosters = term_rosters or {}
-    if term_rosters:
+    # ... AND THE TERM STILL SITTING (Alice, 9 November 2026): a member who
+    # resigned mid-term holds no seat in the roster either, and the bill
+    # status page names them by an employee number the roster no longer
+    # answers. Rep. Glenn Cordelli's HB 137 read "Carr 07", unlinked, while
+    # his HB 121 (a database row) linked to his page. The same name rule
+    # holds: only someone who sat in that chamber that term is taken.
+    if term_rosters or former:
         _left = (defaultdict(list), defaultdict(list))
         for _m in (former or {}).values():
             _left[0][sort_name(_m.get("name") or "")].append(_m)
@@ -11506,7 +11514,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         sp_list = bill_sponsor_list(bid, b, year, term, current,
                                     sponsors, _people, leg_by_sort,
                                     leg_by_name, sponsored, seats,
-                                    left=_left if term in term_rosters else None,
+                                    left=_left if (term in term_rosters or term == current) else None,
                                     term_roster=term_rosters.get(term))
         prime = next((s for s in sp_list if s.get("prime")), sp_list[0] if sp_list else None)
         years.add(year)
