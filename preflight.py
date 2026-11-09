@@ -126313,6 +126313,96 @@ def _loading(began):
     return began - start if cpu - 0.5 <= began - start < 86400 else cpu
 
 
+def _docket_file(rows):
+    """A docket file of (year, lsr, bill, body, description) rows, in a scratch
+    folder, as the database's dump writes them. Returns its path."""
+    import tempfile
+    path = Path(tempfile.mkdtemp()) / "Docket_db_1991-1992.txt"
+    path.write_text("".join(
+        f"{y}|{lsr}|01/05/{y} 10:00:00 AM|{b}|{body}|{d}|01/05/{y} 10:00:00 AM\n"
+        for y, lsr, b, body, d in rows), encoding="utf-8")
+    return path
+
+
+@check("code", "a referral the clerk's line wrapped is read as one line, so a bill "
+               "introduced 'and' / 'ref to Public Works' has its committee",
+       needs=("referrals",))
+def _referral_wrapped(referrals):
+    """9 November 2026, the coverage audit: HB 785 of 1991 and SB 246 of 1993
+    had no committee, because the docket breaks "INTRODUCED AND" / "REF TO
+    PUBLIC WORKS;  HJ74" across two rows and the introduction pattern is
+    anchored to one. Six Senate referrals of 1993-1996 were missing the same
+    way (SB 173 and SB 667 among them)."""
+    path = _docket_file([
+        (1991, "1227", "HB785", "H", "REP GROSS SUSP RULES FOR INTRODUCTION, MA 2/3 VV; INTRODUCED AND"),
+        (1991, "1227", "HB785", "H", "REF TO PUBLIC WORKS;  HJ74,P1710"),
+        (1991, "1069", "SB246", "S", "SEN RUSSMAN SUSP RULES FOR INTRO, MA 2/3VV; INTRODUCED AND REF"),
+        (1991, "1069", "SB246", "S", "TO TRANSPORTATION; SJ3,P39"),
+        (1991, "1300", "HB900", "H", "INTRODUCED AND REF TO EXEC & ADMIN     HJ 13 ,P 138"),
+    ])
+    refs, _began = referrals._read_docket(str(path), "1991-1992")
+    assert refs.get(("1991-1992", "HB785")) == {"H": "Public Works"}, refs.get(("1991-1992", "HB785"))
+    assert refs.get(("1991-1992", "SB246")) == {"S": "Transportation"}, refs.get(("1991-1992", "SB246"))
+    assert ("1991-1992", "HB900") in refs        # the one-row form still reads
+    return "ok", "'INTRODUCED AND' / 'REF TO X' on two rows is one referral"
+
+
+@check("code", "a bill whose docket never sends it to a committee is 'none on record', "
+               "one that waived the referral on two rows too, and one referred is not",
+       needs=("referrals",))
+def _referral_none_on_record(referrals):
+    """9 November 2026: the data page's Committee column read 96-99% because
+    a resolution adopted the day it was introduced, and a bill passed under a
+    suspension of the rules, were counted as committees this site had failed
+    to read. The docket is the witness that they never had one."""
+    path = _docket_file([
+        (1991, "1", "HR5", "H", "INTRODUCED AND ADOPTED VV; HJ3,P32"),
+        (1991, "2", "HB6", "H", "INTRODUCED AND REF TO EDUCATION; HJ4"),
+        (1991, "3", "SCR1", "S", "Sen. Below susp. rules for intro. & no referral to comm. & notice in calendar &"),
+        (1991, "3", "SCR1", "S", "no hearing and rpt in the calendar, 2nd rdg; MA 2/3 nec.;  OTP, MA, VV"),
+        (1991, "4", "HB763", "S", "Sen. Boyce, Suspend Rules for Intro. & Without Ref. to Committee, 2/3 nec."),
+        (1991, "5", "HB7", "H", "HEARING MAR04 01:00 RM306,LOB    FOR: EDUCATION"),
+    ])
+    none = referrals.unreferred({"1991-1992": str(path)})
+    assert ("1991-1992", "HR5") in none and ("1991-1992", "SCR1") in none \
+        and ("1991-1992", "HB763") in none, none
+    assert ("1991-1992", "HB6") not in none and ("1991-1992", "HB7") not in none, none
+    return "ok", "adopted and rules-waived bills are none on record; a referred or heard bill is not"
+
+
+@check("code", "the coverage table counts a blank committee as covered only where the record "
+               "shows the bill never had one",
+       needs=("build_exports",))
+def _coverage_committee_none(BE):
+    import tempfile
+    out = Path(tempfile.mkdtemp())
+    (out / "bills.csv").write_text(
+        "term,year,bill,title,sponsor,committee,topic,status,outcome,passage\n"
+        "1991-1992,1991,HR5,t,,,x,Adopted by the House,adopted,H\n"
+        "1991-1992,1991,HB6,t,a,House Education,x,Killed,done,H\n"
+        "1991-1992,1991,HB8,t,a,,x,Killed,done,H\n"
+        "1991-1992,1991,HB9,t,a,,x,Withdrawn prior to introduction,done,\n",
+        encoding="utf-8")
+    row = BE.coverage(out, none_on_record={("1991-1992", "HR5")})[0]
+    assert row["bills"] == 4 and row["committee"] == 1, row
+    assert row["committee_none"] == 2, row            # HR5 by its docket, HB9 never introduced
+    return "ok", "committee_none counts HR5 and a never-introduced bill, not HB8"
+
+
+@check("code", "the topic model answers the labelled term's bills the General Court gave no "
+               "topic, and does not treat a retired 'Regular Meeting' as one",
+       needs=("topic_model",))
+def _topic_labelled_term_answered(TM):
+    """9 November 2026: 2025-2026's Topic column read 99% because the model
+    skipped the whole term it learns from, so nine early-withdrawn House bills
+    and thirteen housekeeping resolutions had none."""
+    import inspect
+    src = inspect.getsource(TM.apply)
+    assert "if term == LABELLED_TERM" not in src, "apply() skips the labelled term whole again"
+    assert "RETIRED" in src, "apply() takes a retired subject for a label"
+    return "ok", "apply() answers the labelled term's unlabelled bills"
+
+
 def _began_from(stat, uptime, hz, now):
     """When a process began, by the clock that reads `now`: from its
     /proc/<pid>/stat, whose 22nd field is the ticks from boot to its start

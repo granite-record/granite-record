@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.14
+# GRANITE_VERSION: 2026-09-10.15
 """The committee a bill was referred to, read out of the docket.
 
     python3 src/parse/referrals.py            # what it finds, by term, no network
@@ -121,6 +121,11 @@ INTRO = re.compile(
     r"(?:\band|&)\s+ref\w*+\.?(?:\s+\d{1,2}/\d{1,2}/\d{2,4})?"
     r"(?:\s*to\b|\s*(?-i:to)(?=[A-Z]))?\s*:?\s*"
     r"(?P<c>(?!to\s*$)\S.*)$", re.I)
+# An introduction row that stops before it names the committee: it ends in
+# "introduced and" or "introduced and ref(erred)" and the clerk's next row
+# for the bill carries the rest.
+WRAPPED_INTRO = re.compile(
+    r"\bintroduc\w*\s*(?:and|&)(?:\s+ref\w*\.?)?\s*$", re.I)
 PASSED = re.compile(
     r"^\s*passed(?:\s+with\s+am)?\s+and\s+ref(?:erred)?\.?\s+to\s+(?P<c>.+)$", re.I)
 REREF = re.compile(r"^\s*re-?ref(?:erred)?\s+to\s+(?P<c>.+)$", re.I)
@@ -710,12 +715,22 @@ def _read_docket(path, term, lsr_of=None):
     heard = set()
     seen = set()
     pending = {}    # (key, body) -> True if the vacate row ended in "to"
+    wrapped = {}    # (key, body) -> an introduction row that ends mid-referral
     for key, body, desc in _own_rows(path, term, lsr_of):
         if key not in seen:
             seen.add(key)
             body = _filed_under(key[1], body, desc)
         if body in ("H", "S"):
             began.setdefault(key, body)
+        # A referral the clerk's line wrapped: "...; INTRODUCED AND" or
+        # "...INTRODUCED AND REF" ends one row and "REF TO PUBLIC WORKS" or
+        # "TO TRANSPORTATION" opens the next (HB 785 of 1991, SB 246 of 1993).
+        # The two rows are read as the one line they were.
+        said = wrapped.pop((key, body), "")
+        if said:
+            desc = said + " " + desc.lstrip()
+        if WRAPPED_INTRO.search(desc):
+            wrapped[(key, body)] = desc
         dangling = pending.pop((key, body), None)
         if dangling is not None:
             m = None if dangling else VACATE_NEXT.match(desc)
@@ -755,6 +770,58 @@ def _read_docket(path, term, lsr_of=None):
             refs[key].setdefault(body, c)
     return refs, began
 
+
+
+# A docket row that says a bill was sent to a committee, or that one took it up.
+SENT = re.compile(r"\brefer|\bref\b|\bhearing|committee\s+report|exec(?:utive)?\s+session|subcomm", re.I)
+# A row that waives or denies a referral names one and means the opposite:
+# "Rules Suspension 2/3 nec.; For Referring, Hearing, and Committee Report",
+# "without required referral to committee", "RULES SUSPENDED-NO COMMITTEE REFERRAL".
+WAIVED = re.compile(r"susp|without|\bno\s+(?:comm\w*\s+)?ref|\bno\s+comm|not\s+refer", re.I)
+
+
+def _sends(desc):
+    """Whether one docket row sends the bill to a committee or shows one at work."""
+    if committee(desc) or vacated(desc):
+        return True
+    return not WAIVED.search(desc) and bool(SENT.search(desc))
+
+
+def unreferred(found=None):
+    """{(term, bill)} -- the bills whose own docket rows never send them to a
+    committee, nor record a hearing, a report or a session of one.
+
+    The docket is the witness that a bill had no committee, as against one
+    whose committee this site failed to read: a housekeeping resolution is
+    introduced and adopted, and a bill passed under a suspension of the rules
+    is "considered at the present time", and neither is ever referred
+    (HB 763 of 2001: "Suspend Rules for Intro. & Without Ref. to Committee").
+    The coverage table counts these as "none on record" instead of as a gap.
+    A bill with no row at all is not in the set: nothing witnesses it.
+    """
+    out = set()
+    paths = dict(found if found is not None else term_dockets())
+    try:
+        import proceedings as P
+        session = P.session_term()
+        if session not in paths and Path("Docket.txt").exists():
+            paths[session] = "Docket.txt"
+    except Exception:                               # no session: no current term
+        pass
+    for term, path in paths.items():
+        if not Path(path).exists():
+            continue
+        said = collections.defaultdict(bool)
+        waiving = None          # the bill whose last row waived a referral
+        for key, _body, desc in _own_rows(path, term):
+            # A waiver wraps onto its next row ("...susp. rules for intro. &
+            # no referral to comm. & notice in calendar &" / "no hearing and
+            # rpt in the calendar"), which is part of the same sentence.
+            wrapped = waiving == key
+            waiving = key if WAIVED.search(desc) else None
+            said[key] = said[key] or (not wrapped and _sends(desc))
+        out.update(k for k, sent in said.items() if not sent)
+    return out
 
 def read_dockets(found=None, lsr_of=None):
     """(from_dockets(), {(term, bill): "H" or "S"}) in one pass over the

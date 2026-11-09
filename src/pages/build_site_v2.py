@@ -10704,7 +10704,11 @@ def merge_guessed_topics(bills):
     n = 0
     for term, by_bill in bills.items():
         for bid, rec in by_bill.items():
-            if rec.get("subject"):
+            # A subject the site retires ("Regular Meeting") is no label: the
+            # model's answer for the bill, if there is one, replaces it.
+            if rec.get("subject") and not (
+                    rec["subject"] in TM.RETIRED
+                    and ((guessed.get(term) or {}).get(bid) or {}).get("subject")):
                 rec.setdefault("subject_source", "general court")
                 continue
             got = (guessed.get(term) or {}).get(bid)
