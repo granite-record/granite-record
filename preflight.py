@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.821
+# GRANITE_VERSION: 2026-09-04.822
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -82591,17 +82591,17 @@ def _bill_text_amendment_facts():
     for n in ("2026-0001h", "2026-0002h", "2026-0003s", "2026-9999h", "2026-0004s"):
         assert item(n), f"amendment {n} is not listed with its number: {h[-1500:]}"
     a = item("2026-0001h").group(0)
-    assert "Amendment 2026-0001h</button>" in a and ">Committee</span>" in a and ">Adopted</span>" in a \
+    assert "Committee Amendment 2026-0001h</button>" in a and ">Committee</span>" not in a and ">Adopted</span>" in a \
         and "Feb 10, 2026 · Voice Vote" in a, f"the committee's adopted amendment: {a[:700]}"
     f = item("2026-0002h").group(0)
-    assert ">Floor</span>" in f and ">Rejected</span>" in f and "Rep. Ames · Feb 10, 2026 · Roll Call" in f \
+    assert "Floor Amendment 2026-0002h</button>" in f and ">Floor</span>" not in f and ">Rejected</span>" in f and "Rep. Ames · Feb 10, 2026 · Roll Call" in f \
         and ">Adopted<" not in f, f"the floor's rejected amendment: {f[:700]}"
     p = item("2026-0003s").group(0)
-    assert "class=\"chip" not in p, f"a docket line that says only 'Amendment' with no outcome drew a chip: {p[:500]}"
+    assert "class=\"chip" not in p and ">Amendment 2026-0003s</button>" in p, f"a docket line that says only 'Amendment' with no outcome drew a chip: {p[:500]}"
     u = item("2026-9999h").group(0)
     assert "class=\"chip" not in u and "Mar" not in u, f"an amendment the docket does not name drew facts: {u[:500]}"
     d4 = item("2026-0004s").group(0)
-    assert ">Floor</span>" in d4 and ">Adopted</span>" in d4 and "Sen. Birdsell" in d4 \
+    assert "Floor Amendment 2026-0004s</span>" in d4 and ">Floor</span>" not in d4 and ">Adopted</span>" in d4 and "Sen. Birdsell" in d4 \
         and "<details" in d4 and '<a href="/laws/91-a#s2" class="rsa">RSA 91-A:2</a>' in d4, \
         f"the docket-only amendment: {d4[:700]}"
     assert "Amendment of Feb 5, 2026</button>" in h, "an amendment with no number lost its day label"
@@ -82609,7 +82609,7 @@ def _bill_text_amendment_facts():
     assert order == ["2026-0001h", "2026-0002h", "2026-0003s", "2026-9999h", "2026-0004s", "2026-0005s"], (
         f"the docket's order is not kept, the unnamed after it: {order}")
     d5 = item("2026-0005s").group(0)
-    assert ">Committee</span>" in d5 and "Adopted" not in d5 and "Rejected" not in d5 \
+    assert "Committee Amendment 2026-0005s</span>" in d5 and "Adopted" not in d5 and "Rejected" not in d5 \
         and "Its text is not on file here" in d5, f"the docket-only amendment with no text: {d5[:500]}"
     # THE LINKS
     assert h.count('<a href="/laws/91-a#s2" class="rsa">RSA 91-A:2</a>') >= 6 and "/laws/999" not in h, (
@@ -82618,7 +82618,7 @@ def _bill_text_amendment_facts():
         "a citation in an added run is not linked in the document")
     assert "data-for=" not in h and "rs-tm" not in h, "a definition pop-up was drawn in a bill's text"
     bare = got["bare"].split("The Amendments Themselves")[-1]
-    assert "Amendment 2026-0001h</button>" in bare and 'class="chip' not in bare, (
+    assert ">Amendment 2026-0001h</button>" in bare and 'class="chip' not in bare, (
         "with no docket row the tab attributed an origin or an outcome")
     assert 'class="rsa">RSA 91-A:2</a> here' in got["runs"] and '<ins>new <a href="/laws/91-a#s2" class="rsa">RSA 91-A:2' \
         in got["runs"], f"the changes excerpt does not link a citation: {got['runs'][600:1300]}"

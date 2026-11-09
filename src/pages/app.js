@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.286
+// GRANITE_VERSION: 2026-09-07.287
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -6341,8 +6341,7 @@ function renderBillText(b,d,rsa){
     const who=x.mover||x.proposed_by||"";
     const state=x.adopted===true?"adopted":x.adopted===false?"rejected":"";
     return `<div class="amd">
-      <div class="amdhead"><span class="amdn">${esc(x.num)}</span>
-        <span class="amdk">${esc(x.kind||"Amendment")}</span>
+      <div class="amdhead"><span class="amdn">${esc(`${x.kind||"Amendment"} ${x.num||""}`.trim())}</span>
         ${state?chip(state==="adopted"?"Adopted":"Rejected",
           `cstat ${state==="adopted"?"s-law":"s-done"}`):""}
         <span class="amdd">${x.date?esc(dateWords(x.date)):""}${
@@ -6609,11 +6608,13 @@ const AMD_ORIGIN={"Committee Amendment":"Committee","Floor Amendment":"Floor",
 const amdSameNo=(a,b)=>{a=String(a||"").toLowerCase();b=String(b||"").toLowerCase();
   return !!a&&!!b&&(a===b||a.endsWith("-"+b)||b.endsWith("-"+a));};
 const amdFact=(d,num)=>((d&&d.amendments)||[]).find(x=>amdSameNo(x.num,num))||null;
+// THE ORIGIN IS IN THE NAME (Alice, 9 November 2026): "Floor Amendment
+// 2025-0695h", not "Amendment 2025-0695h" beside a Floor chip. A docket line
+// that says only "Amendment", or no docket line, keeps the plain word.
+const amdName=(f,num)=>`${f&&AMD_ORIGIN[f.kind]?f.kind:"Amendment"} ${num}`;
 function amdBadges(f){
   if(!f)return "";
-  const org=AMD_ORIGIN[f.kind]||"";
-  return (org?chip(org,"btv"):"")
-    +(f.adopted===true?chip("Adopted","cstat s-law"):f.adopted===false?chip("Rejected","cstat s-done"):"");
+  return f.adopted===true?chip("Adopted","cstat s-law"):f.adopted===false?chip("Rejected","cstat s-done"):"";
 }
 // Who moved it, the day the docket took it up and how it was decided.
 function amdWhen(f){
@@ -6761,7 +6762,7 @@ function renderVersions(b,d){
     if(f)used.add(f);
     const nid=AMENDMENT_FOUND[a.text_url]||a.num||"";
     return {pos:at(f)+(f?0:j/1e4),html:`<li${nid?` id="amendment-${esc(nid)}"`:""}><button class="link"
-      data-vamd="${esc(key)}|${j}">${a.num?`Amendment ${esc(a.num)}`:`Amendment of ${esc(recordDay(a.date))}`}</button>
+      data-vamd="${esc(key)}|${j}">${a.num?esc(amdName(f,a.num)):`Amendment of ${esc(recordDay(a.date))}`}</button>
       ${amdBadges(f)}${f&&amdWhen(f)?`<span class="dim">${amdWhen(f)}</span>`:""}
       <span class="dim">${(a.chars||0).toLocaleString()} characters</span>${
       VTEXT[a.text_url]!==undefined
@@ -6769,7 +6770,7 @@ function renderVersions(b,d){
     .sort((x,y)=>x.pos-y.pos).map(x=>x.html);
   const unfiled=((d&&d.amendments)||[]).filter(f=>f&&f.num&&!used.has(f)
     &&!amds.some(a=>a.num&&amdSameNo(a.num,f.num)));
-  const orphan=f=>`<li id="amendment-${esc(f.num)}"><span class="amdn">Amendment ${esc(f.num)}</span>
+  const orphan=f=>`<li id="amendment-${esc(f.num)}"><span class="amdn">${esc(amdName(f,f.num))}</span>
       ${amdBadges(f)}${amdWhen(f)?`<span class="dim">${amdWhen(f)}</span>`:""}${
       f.text?`<details class="amdtext"><summary>Read the amendment</summary>
         <pre class="vtext">${link(esc(f.text))}</pre></details>`
