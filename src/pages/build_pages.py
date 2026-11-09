@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.269
+# GRANITE_VERSION: 2026-09-04.270
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2005,7 +2005,7 @@ def about_text(live=None):
     bullet, privacy = ABOUT_FOLLOW[_shell.follow_live() if live is None else bool(live)]
     return ABOUT.replace("__FOLLOW_BULLET__", bullet).replace("__PRIVACY__", privacy)
 
-def about_logo(has_lockup):
+def about_logo(has_lockup, lang="en"):
     """THE DRAWING ITSELF, in the section about it (the person, 10 October
     2026: "add the logo drawing to the section in the about page about the
     logo"): the lockup the home page's heading draws, as the same mask over
@@ -2014,8 +2014,84 @@ def about_logo(has_lockup):
     than an empty box, as the home page writes its name as text."""
     if not has_lockup:
         return ""
-    return ('<p class="aboutlogo" role="img" aria-label="The Granite Record logo, '
-            'drawn by Debra Caplan"></p>\n')
+    return ('<p class="aboutlogo" role="img" aria-label="'
+            + say(lang, "about.logo_label", "The Granite Record logo, drawn by Debra Caplan")
+            + '"></p>\n')
+
+
+# THE ABOUT PAGE IN ANOTHER LANGUAGE (the owner, 9 November 2026: "more of
+# the site in Spanish where feasible"). The page is translated a piece at a
+# time as a guide is (i18n.say_html), keyed about.<its first words>; the
+# artist's own words, which are hers and in English, are set apart and
+# printed as she wrote them, marked lang="en". The four figures that are
+# words rather than numbers are said in the page's language (about_figs).
+ABOUT_PAGE = "about.html"
+SEARCH_PAGE = "search.html"
+ABOUT_QUOTE = re.compile(r'<blockquote class="artist">.*?</blockquote>', re.S)
+ABOUT_QUOTE_SLOT = "<!-- artist -->"
+ABOUT_LOGO_SLOT = "<!-- logo -->"
+
+
+def _about_english(live):
+    """The page's English as it is translated: the follow lines for `live`,
+    the logo's slot emptied and the artist's quotation set apart."""
+    return ABOUT_QUOTE.sub(ABOUT_QUOTE_SLOT, about_text(live).replace("__LOGO__", ABOUT_LOGO_SLOT))
+
+
+def about_words():
+    """[(key, English, where)] of every piece of the About page, in reading
+    order, in both of its wordings of email following (about_text), once each."""
+    out, keys, used = [], {}, {}
+    for live in (True, False):
+        html_ = _about_english(live)
+        for s_, e_ in i18n.pieces(html_):
+            en = i18n.norm(html_[s_:e_])
+            if en in keys:
+                continue
+            base = f"about.{i18n.slug_words(en)}"
+            key, n = base, 2
+            while used.get(key, en) != en:
+                key, n = f"{base}-{n}", n + 1
+            used[key] = en
+            keys[en] = key
+            out.append((key, en, "about.html"))
+    return out
+
+
+def about_figs(figs, lang):
+    """about_figures' figures, with those that are words rather than a
+    number said in `lang`: the month the recordings begin and the median."""
+    if lang == i18n.DEFAULT:
+        return figs
+    out = dict(figs)
+    if "stream_start" in figs:
+        out["stream_start"] = say(lang, "about.fig.stream_start", "May 2020")
+    m = re.fullmatch(r"(\d+) (second|minute)s?", str(figs.get("median", "")))
+    if m:
+        n = int(m.group(1))
+        out["median"] = (
+            (say(lang, "about.fig.second", "1 second") if n == 1 else
+             say(lang, "about.fig.seconds", "{n} seconds", n=n)) if m.group(2) == "second" else
+            (say(lang, "about.fig.minute", "1 minute") if n == 1 else
+             say(lang, "about.fig.minutes", "{n} minutes", n=n)))
+    return out
+
+
+def about_html(lang, has_lockup, figs, live=None):
+    """The About page's body in `lang`: its words piece by piece, the
+    artist's quotation as she wrote it, the figures filled in after."""
+    english = _about_english(_shell.follow_live() if live is None else live)
+    quote = ABOUT_QUOTE.search(about_text(live)).group(0)
+    if lang == i18n.DEFAULT:
+        body = english
+    else:
+        keys = {en: key for key, en, _w in about_words()}
+        body = i18n.say_html(lang, english, keys)
+        quote = quote.replace('<blockquote class="artist">', '<blockquote class="artist" lang="en">')
+        body = body.replace("</h1>", "</h1>" + chrome.lang_note(lang), 1)
+    body = body.replace(ABOUT_QUOTE_SLOT, quote)
+    body = body.replace(ABOUT_LOGO_SLOT, about_logo(has_lockup, lang))
+    return i18n.lang_links(about_figures.fill(body, about_figs(figs, lang)), lang)
 
 
 SEATING_JS = """
@@ -2690,29 +2766,29 @@ const GROUPS=[
   // the site's other pages, after the bills.
   // A STATUTE ASKED FOR BY ITS NUMBER, FIRST (the audit of 25 October 2026,
   // M3): find.js's one Law row, "RSA 91-A" (findLawRow).
-  {t:"Laws",                w:["law","laws"],k:r=>r[0]==="law"},
-  {t:"Senators",            w:["senator","senators"],k:r=>r[0]==="legislator"&&/^Senate/.test(r[2])},
-  {t:"Representatives",     w:["representative","representatives"],k:r=>r[0]==="legislator"},
+  {t:"Laws",h:tr("sr.g.laws","Laws"),w:[tr("sr.w.laws_one","law"),tr("sr.w.laws_many","laws")],k:r=>r[0]==="law"},
+  {t:"Senators",h:tr("sr.g.senators","Senators"),w:[tr("sr.w.senators_one","senator"),tr("sr.w.senators_many","senators")],k:r=>r[0]==="legislator"&&/^Senate/.test(r[2])},
+  {t:"Representatives",h:tr("sr.g.representatives","Representatives"),w:[tr("sr.w.representatives_one","representative"),tr("sr.w.representatives_many","representatives")],k:r=>r[0]==="legislator"},
   // A committee that no longer sits goes with the people who have left, below
   // the ones that do (find.js, _fgone).
-  {t:"Committees",          w:["committee","committees"],k:r=>r[0]==="committee"&&!r[5]},
+  {t:"Committees",h:tr("sr.g.committees","Committees"),w:[tr("sr.w.committees_one","committee"),tr("sr.w.committees_many","committees")],k:r=>r[0]==="committee"&&!r[5]},
   // A city above its wards, each ward a Ward (find.json, 25 October 2026).
-  {t:"Towns and Wards",     w:["town or ward","towns and wards"],k:r=>r[0]==="town"||r[0]==="ward"},
-  {t:"Subjects",            w:["subject","subjects"],k:r=>r[0]==="topic"},
+  {t:"Towns and Wards",h:tr("sr.g.towns_and_wards","Towns and Wards"),w:[tr("sr.w.towns_and_wards_one","town or ward"),tr("sr.w.towns_and_wards_many","towns and wards")],k:r=>r[0]==="town"||r[0]==="ward"},
+  {t:"Subjects",h:tr("sr.g.subjects","Subjects"),w:[tr("sr.w.subjects_one","subject"),tr("sr.w.subjects_many","subjects")],k:r=>r[0]==="topic"},
   // THE OFFICIALS PAGE AND ITS TABS, before the bills where a name of theirs
   // was typed (the audit of 25 October 2026, M3): "my senator" is the page,
   // "ayotte" its Executive Branch, "shaheen" its Federal Delegation.
-  {t:"Officials",           w:["officials page","officials pages"],k:r=>r[0]==="page"&&/^[/]?officials([#?]|$)/.test(r[3])},
+  {t:"Officials",h:tr("sr.g.officials","Officials"),w:[tr("sr.w.officials_one","officials page"),tr("sr.w.officials_many","officials pages")],k:r=>r[0]==="page"&&/^[/]?officials([#?]|$)/.test(r[3])},
   // Drawn with the bills, straight after them, wherever they go (draw).
-  {t:"How-To Guides",       w:["how-to guide","how-to guides"],k:r=>r[0]==="guide"},
+  {t:"How-To Guides",h:tr("sr.g.how_to_guides","How-To Guides"),w:[tr("sr.w.how_to_guides_one","how-to guide"),tr("sr.w.how_to_guides_many","how-to guides")],k:r=>r[0]==="guide"},
   // Their own group, after the bills (AFTER): find.js, _fstudy (18 October 2026).
-  {t:"Statutory and Study Committees",w:["statutory or study committee","statutory and study committees"],k:r=>r[0]==="statutory"||r[0]==="study"},
-  {t:"Former Senators",     w:["former senator","former senators"],k:r=>r[0]==="former"&&/^Senate/.test(r[2])},
-  {t:"Former Representatives",w:["former representative","former representatives"],k:r=>r[0]==="former"&&/^House/.test(r[2])},
-  {t:"Former Members",      w:["former member","former members"],k:r=>r[0]==="former"},
-  {t:"Former Committees",   w:["former committee","former committees"],k:r=>r[0]==="committee"},
-  {t:"Learn",               w:["Learn page","Learn pages"],k:r=>r[0]==="learn"},
-  {t:"Pages on This Site",  w:["page on this site","pages on this site"],k:r=>r[0]==="page"}
+  {t:"Statutory and Study Committees",h:tr("sr.g.statutory_and_study_committees","Statutory and Study Committees"),w:[tr("sr.w.statutory_and_study_committees_one","statutory or study committee"),tr("sr.w.statutory_and_study_committees_many","statutory and study committees")],k:r=>r[0]==="statutory"||r[0]==="study"},
+  {t:"Former Senators",h:tr("sr.g.former_senators","Former Senators"),w:[tr("sr.w.former_senators_one","former senator"),tr("sr.w.former_senators_many","former senators")],k:r=>r[0]==="former"&&/^Senate/.test(r[2])},
+  {t:"Former Representatives",h:tr("sr.g.former_representatives","Former Representatives"),w:[tr("sr.w.former_representatives_one","former representative"),tr("sr.w.former_representatives_many","former representatives")],k:r=>r[0]==="former"&&/^House/.test(r[2])},
+  {t:"Former Members",h:tr("sr.g.former_members","Former Members"),w:[tr("sr.w.former_members_one","former member"),tr("sr.w.former_members_many","former members")],k:r=>r[0]==="former"},
+  {t:"Former Committees",h:tr("sr.g.former_committees","Former Committees"),w:[tr("sr.w.former_committees_one","former committee"),tr("sr.w.former_committees_many","former committees")],k:r=>r[0]==="committee"},
+  {t:"Learn",h:tr("sr.g.learn","Learn"),w:[tr("sr.w.learn_one","Learn page"),tr("sr.w.learn_many","Learn pages")],k:r=>r[0]==="learn"},
+  {t:"Pages on This Site",h:tr("sr.g.pages_on_this_site","Pages on This Site"),w:[tr("sr.w.pages_on_this_site_one","page on this site"),tr("sr.w.pages_on_this_site_many","pages on this site")],k:r=>r[0]==="page"}
 ];
 
 // A committee by its chamber, as the header's rows show it (find.js, findName).
@@ -2732,10 +2808,8 @@ const row=(r,q)=>`<a href="${esc(_froot(r[3]))}">
 // when it read a bill's number, title, sponsor and committee. Since 1 October
 // it does read the topic, the analysis and the text (build_search_index.py),
 // and a row found that way says so.
-const WHAT="The bill search has every term since 1989, with filters for "
-  +"committee, sponsor and what became of it.";
-const WHAT_ALL="In the bill search, with filters for committee, sponsor and "
-  +"what became of it.";
+const WHAT=tr("sr.what","The bill search has every term since 1989, with filters for committee, sponsor and what became of it.");
+const WHAT_ALL=tr("sr.what_all","In the bill search, with filters for committee, sponsor and what became of it.");
 /* EVERY TERM'S BILLS (the person, 24 September: "all terms should show up in
    the full search results"). Until then this page counted the current
    term's alone, as the header's panel does, so a reader looking for SB 412
@@ -2754,10 +2828,9 @@ const WHAT_ALL="In the bill search, with filters for committee, sponsor and "
    no term's (find.js, FREQ). R is findBills(q,0,"requests"). */
 const asked=(q,R)=>R&&R.state==="ready"&&R.n
   ?`<a class="fbills" href="/bills?q=${_fenc(q)}&amp;term=${_fenc(R.term)}">
-    <span class="fl1"><span class="fname">${R.n===1?"1 bill request"
-      :`${R.n.toLocaleString()} bill requests`} for ${esc(FREQ.year)}</span></span>
-    <span class="fwhat">Not bills yet: listed in the bill search under
-      ${esc(FREQ.label||"its bill requests")}.</span></a>`:"";
+    <span class="fl1"><span class="fname">${R.n===1?tr("sr.one_request_for","1 bill request for {year}",{year:esc(FREQ.year)})
+      :tr("sr.n_requests_for","{n} bill requests for {year}",{n:R.n.toLocaleString(),year:esc(FREQ.year)})}</span></span>
+    <span class="fwhat">${tr("sr.not_yet","Not bills yet: listed in the bill search under {label}.",{label:esc(FREQ.label||tr("sr.its_requests","its bill requests"))})}</span></a>`:"";
 /* A MEMBER'S BILLS WHERE THEIR NAME LISTS NONE (the audit of 25 October 2026,
    M3). A name finds the person and never their bills (app.js, A NAME IS NOT
    WHAT A BILL IS ABOUT), so "daryl abbas" was told "no bill in any of the
@@ -2784,30 +2857,28 @@ const memberBills=(rows,s)=>{
   return null;
 };
 const theirs=M=>`<a class="fbills" href="/bills?sponsor=${_fenc(M.name)}&amp;term=all">
-    <span class="fl1"><span class="fname">${esc(M.who)}&rsquo;s bills</span></span>
-    <span class="fwhat">Every bill they sponsored or co-sponsored, in the bill search.</span></a>`;
+    <span class="fl1"><span class="fname">${tr("sr.whose_bills","{who}&rsquo;s bills",{who:esc(M.who)})}</span></span>
+    <span class="fwhat">${tr("sr.theirs","Every bill they sponsored or co-sponsored, in the bill search.")}</span></a>`;
 const bills=(q,B,C,counting,R,mem)=>{
   const counted=B&&B.state==="ready";
   const every=counted&&B.every;
-  const what=every?WHAT_ALL:counting?"Counting the earlier terms&hellip;":WHAT;
-  const none=every?`None in any of the ${B.terms.length} terms.`
-    :counted?`None in the ${esc(termWords(B.term))} term.`:"";
+  const what=every?WHAT_ALL:counting?tr("sr.counting","Counting the earlier terms&hellip;"):WHAT;
+  const none=every?tr("sr.none_all","None in any of the {n} terms.",{n:B.terms.length})
+    :counted?tr("sr.none_term","None in the {term} term.",{term:esc(termWords(B.term))}):"";
   const now=every&&C&&C.state==="ready"&&C.n&&C.n<B.n
     ?`<a class="fbills" href="/bills?q=${_fenc(q)}">
-      <span class="fl1"><span class="fname">${C.n.toLocaleString()} of them in
-        the ${esc(termWords(C.term))} term</span></span>
-      <span class="fwhat">The current term, where the bill search starts.</span></a>`:"";
+      <span class="fl1"><span class="fname">${tr("sr.of_them","{n} of them in the {term} term",{n:C.n.toLocaleString(),term:esc(termWords(C.term))})}</span></span>
+      <span class="fwhat">${tr("sr.current_term","The current term, where the bill search starts.")}</span></a>`:"";
   const top=B&&B.top?(B.numbers?B.top:B.top.slice(0,5)):[];
   const body=(counted&&B.n
     ?findBillsAll(B,q,what)+now+top.map(b=>findBillRow(b,q,every,B.why.get(b))).join("")
     :counted&&mem?theirs(mem)
     :counted
     ?`<a href="/bills?q=${_fenc(q)}">
-      <span class="fl1"><span class="fname">Search every bill for
-        &ldquo;${esc(q)}&rdquo;</span></span>
+      <span class="fl1"><span class="fname">${tr("sr.search_every","Search every bill for &ldquo;{q}&rdquo;",{q:esc(q)})}</span></span>
       <span class="fwhat">${none} ${counting?what:WHAT}</span></a>`
     :findBillsAll(B,q,WHAT))+asked(q,R);
-  return `<section class="resgrp"><h2>Bills${counted&&B.n
+  return `<section class="resgrp"><h2>${tr("sr.g.bills","Bills")}${counted&&B.n
     ?` <span class="resn">${B.n.toLocaleString()}</span>`:""}</h2>
     <div class="findout resout">${body}</div></section>`;
 };
@@ -2821,10 +2892,8 @@ function draw(q){
   const s=(q||"").trim();
   if(!s){
     tell("");
-    head.textContent="Search the record";
-    lead.textContent="Every sitting legislator and every member who has left, "
-      +"every committee, every town and ward, every subject bills are filed "
-      +"under, and every bill since 1989.";
+    head.textContent=tr("sr.head","Search the record");
+    lead.textContent=tr("sr.lead","Every sitting legislator and every member who has left, every committee, every town and ward, every subject bills are filed under, and every bill since 1989.");
     out.innerHTML="";
     return;
   }
@@ -2855,36 +2924,35 @@ function draw(q){
   // This term's count is on the page while the others are still coming.
   const counting=!!(A&&A.state==="loading"&&B&&B.state==="ready");
   const nB=B&&B.state==="ready"?B.n:null;
-  const term=nB===null?"":B.every?`across all ${B.terms.length} terms`
-    :`in the ${termWords(B.term)} term`;
-  const noBill=nB===null?"":B.every?`no bill in any of the ${B.terms.length} terms`
-    :`no bill ${term}`;
+  const term=nB===null?"":B.every?tr("sr.across","across all {n} terms",{n:B.terms.length})
+    :tr("sr.in_term","in the {term} term",{term:termWords(B.term)});
+  const noBill=nB===null?"":B.every?tr("sr.no_bill_all","no bill in any of the {n} terms",{n:B.terms.length})
+    :tr("sr.no_bill_term","no bill in the {term} term",{term:termWords(B.term)});
   // A member found by a whole word of their name, where no bill is: the
   // bills' place is their bills (theirs), and the lead says no "no bill".
   const mem=nB===0?memberBills(rows,s):null;
   const nR=R&&R.state==="ready"?R.n:0;
-  head.innerHTML=`Results for &ldquo;${esc(s)}&rdquo;`;
+  head.innerHTML=tr("sr.results_for","Results for &ldquo;{q}&rdquo;",{q:esc(s)});
   // The answer first. "0 matches on this site, and the bills" is a sentence
   // nobody would write, and "nothing matches" above 30 bills is false.
   // PAGES, NOT "MATCHES ON THIS SITE" (17 October 2026): "4 matches on this
   // site, and 940 bills" left a reader to work out that the four are the
   // legislators, committees, towns and subjects listed below.
-  const here=rows.length===1?"One page on this site"
-    :`${rows.length} pages on this site`;
-  const some=nB===1?`One bill ${term}`:`${(nB||0).toLocaleString()} bills ${term}`;
+  const here=rows.length===1?tr("sr.one_page","One page on this site")
+    :tr("sr.n_pages","{n} pages on this site",{n:rows.length});
+  const some=nB===1?tr("sr.one_bill","One bill {where}",{where:term})
+    :tr("sr.n_bills","{n} bills {where}",{n:(nB||0).toLocaleString(),where:term});
   lead.textContent=(!rows.length
-    ?(nB?`${some} ${nB===1?"matches":"match"}. No legislator, committee, `
-        +"town or subject on this site does."
-      :nB===0&&!counting&&!nR?"Nothing on this site matches that: no legislator, "
-        +`committee, town or subject, and ${noBill}.`
-      :nB===0?`No legislator, committee, town or subject on this site matches `
-        +`that, and ${noBill}.`
-      :"No legislator, committee, town or subject on this site matches that.")
-    :nB?`${here}, and ${some.charAt(0).toLowerCase()+some.slice(1)}.`
-    :nB===0&&mem?`${here}.`
-    :nB===0?`${here}, and ${noBill}.`
-    :`${here}, and the bills.`)
-    +(counting?" Counting the earlier terms…":"");
+    ?(nB?(nB===1?tr("sr.lead.one_only","{some} matches. No legislator, committee, town or subject on this site does.",{some})
+        :tr("sr.lead.n_only","{some} match. No legislator, committee, town or subject on this site does.",{some}))
+      :nB===0&&!counting&&!nR?tr("sr.lead.nothing","Nothing on this site matches that: no legislator, committee, town or subject, and {nobill}.",{nobill:noBill})
+      :nB===0?tr("sr.lead.none_and","No legislator, committee, town or subject on this site matches that, and {nobill}.",{nobill:noBill})
+      :tr("sr.lead.none","No legislator, committee, town or subject on this site matches that."))
+    :nB?tr("sr.lead.here_bills","{here}, and {some}.",{here,some:some.charAt(0).toLowerCase()+some.slice(1)})
+    :nB===0&&mem?tr("sr.lead.here","{here}.",{here})
+    :nB===0?tr("sr.lead.here_nobill","{here}, and {nobill}.",{here,nobill:noBill})
+    :tr("sr.lead.here_the_bills","{here}, and the bills.",{here}))
+    +(counting?" "+tr("sr.counting_text","Counting the earlier terms…"):"");
   // WHERE THE BILLS GO, as in the header's panel: first unless a sitting
   // member, committee, town or subject has every word typed as a whole word
   // of its name (_fwhole), and then after those and ahead of the members who
@@ -2901,12 +2969,12 @@ function draw(q){
   // The bills' part of the line a screen reader hears, where the page puts
   // their group.
   const billsSaid=()=>{
-    if(nB)counts.push(nB===1?"1 bill":`${nB.toLocaleString()} bills`);
-    if(nR)counts.push(nR===1?"1 bill request":`${nR.toLocaleString()} bill requests`);
+    if(nB)counts.push(nB===1?tr("sr.c.one_bill","1 bill"):tr("sr.c.bills","{n} bills",{n:nB.toLocaleString()}));
+    if(nR)counts.push(nR===1?tr("sr.c.one_request","1 bill request"):tr("sr.c.requests","{n} bill requests",{n:nR.toLocaleString()}));
   };
   const section=(g,mine)=>{
     counts.push(`${mine.length} ${g.w[mine.length===1?0:1]}`);
-    return `<section class="resgrp"><h2>${esc(g.t)}
+    return `<section class="resgrp"><h2>${esc(g.h)}
       <span class="resn">${mine.length}</span></h2>
       <div class="findout resout">${mine.map(r=>row(r,s)).join("")}</div></section>`;
   };
@@ -2958,7 +3026,7 @@ function draw(q){
     offered=offer.words;offering=!!offer.wait;
     const did=offer.words.map(d=>
       `<a href="/search?q=${_fenc(d)}">${esc(d)}</a>`);
-    if(did.length)html=`<p class="note">Did you mean ${did.join(" or ")}?</p>`+html;
+    if(did.length)html=`<p class="note">${tr("find.did_you_mean","Did you mean {words}?",{words:did.join(" "+tr("find.or","or")+" ")})}</p>`+html;
   }
   out.innerHTML=html;
   // WHAT THE PAGE FOUND, SAID (the accessibility sweep of 29 October 2026,
@@ -2975,7 +3043,7 @@ function draw(q){
   const unsure=!!(law&&law.loading)||(B&&B.state==="loading")||counting
     ||(R&&R.state==="loading")||offering;
   tell(unsure?"":counts.length?counts.join(", ")+"."
-    :"No matching results."+(offered.length?` Did you mean ${offered.join(" or ")}?`:""));
+    :tr("find.none","No matching results.")+(offered.length?" "+tr("find.did_you_mean","Did you mean {words}?",{words:offered.join(" "+tr("find.or","or")+" ")}):""));
 }
 // Written only when it changes, so a redraw that finds what the last one
 // found is not said again.
@@ -2998,7 +3066,8 @@ findRows().then(()=>{
     tm=setTimeout(()=>{
       const v=box.value.trim();
       draw(v);
-      const u=v?`/search?q=${_fenc(v)}`:"/search";
+      const me=(window.GR_HREFS||{})["search.html"]||"/search";
+      const u=v?`${me}?q=${_fenc(v)}`:me;
       history.replaceState(null,"",u);
     },120);
   });
@@ -5239,44 +5308,63 @@ def main():
     # written when the site held one term, and seven of them were wrong by the
     # time it held nineteen. fill() raises rather than publishing a sentence
     # with a hole where a number was.
-    (out / "about.html").write_text(
-        shell("About | Granite Record", "about.html",
-              about_figures.fill(about_text().replace("__LOGO__", about_logo(has_lockup)),
-                                 about_figures.figures(site=out)),
-              desc="How Granite Record is built, where every fact on it comes "
-                   "from, and how to report something that is wrong."),
-        encoding="utf-8")
+    # AND IN EACH OTHER LANGUAGE IT IS IN (i18n.PAGES; the owner, 9 November
+    # 2026), at i18n.href's address, its figures counted once for both.
+    about_figs_ = about_figures.figures(site=out)
+    for lang in i18n.LANGS:
+        if not i18n.has(lang, ABOUT_PAGE):
+            continue
+        dest = (out / ABOUT_PAGE if lang == i18n.DEFAULT
+                else out / i18n.href(lang, ABOUT_PAGE).lstrip("/"))
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(
+            shell(say(lang, "about.title", "About") + " | Granite Record", ABOUT_PAGE,
+                  about_html(lang, has_lockup, about_figs_),
+                  desc=say(lang, "about.desc", "How Granite Record is built, where every fact on it "
+                           "comes from, and how to report something that is wrong."), lang=lang),
+            encoding="utf-8")
 
     # THE ALL-RESULTS PAGE. Served at /search -- Pages strips the extension --
     # and reached from the header panel's last row on every page of the site.
     # noindex, because what it holds depends entirely on a query string: there
     # is no page here for a crawler to keep, and every variant of it would be
     # a near-copy of the bill search and the roster, which ARE indexed.
-    search_body = """<h1 id="reshead">Search the record</h1>
-<p class="lead" id="reslead">Every sitting legislator and every member who has
-left, every committee, every town and ward, every subject bills are filed
-under, and every bill since 1989.</p>
-<form class="resfind" action="/search" method="get" role="search">
-  <label for="resq" class="sr">A legislator, a committee, a town, a subject or a bill</label>
+    # AND IN EACH OTHER LANGUAGE IT IS IN (i18n.PAGES; the owner, 9 November
+    # 2026): the page's own words by say(), the script's by tr() (SEARCH_JS),
+    # the rows by find.js, which was already in both. Its address is
+    # i18n.href's, so the form, the address bar and the header's "see all
+    # results" row stay in the language (window.GR_HREFS).
+    def search_html(lang):
+        me = i18n.href(lang, SEARCH_PAGE).replace(".html", "")
+        return f"""<h1 id="reshead">{say(lang, "sr.head", "Search the record")}</h1>
+<p class="lead" id="reslead">{say(lang, "sr.lead", "Every sitting legislator and every member who has left, every committee, every town and ward, every subject bills are filed under, and every bill since 1989.")}</p>
+{chrome.lang_note(lang)}<form class="resfind" action="{me}" method="get" role="search">
+  <label for="resq" class="sr">{say(lang, "sr.label", "A legislator, a committee, a town, a subject or a bill")}</label>
   <input id="resq" name="q" type="search" autocomplete="off"
-    placeholder="Name, town, committee or bill" disabled>
+    placeholder="{say(lang, "find.hint", "Name, town, committee or bill")}" disabled>
 </form>
 <p class="sr" id="ressay" role="status"></p>
 <div id="resout"></div>
-<noscript><p class="note">This page needs JavaScript to search. Without it,
-the <a href="/bills">bill search</a>, the <a href="/officials">roster</a> and
-the <a href="/committees">committee list</a> are all plain pages.</p></noscript>"""
+<noscript><p class="note">{say(lang, "sr.noscript", 'This page needs JavaScript to search. Without it, the <a href="/bills">bill search</a>, the <a href="/officials">roster</a> and the <a href="/committees">committee list</a> are all plain pages.')}</p></noscript>"""
     # WIDE, as the roster is: a list of results is a list, and in the 820px
     # column of the prose pages it ended near the middle of a 1440px window
     # with the rest of the row empty (the review of 2 October 2026).
-    search_page = shell("Search | Granite Record", "", search_body, wide=True,
-                        desc="Search Granite Record for a legislator, a "
-                             "committee, a town, a subject or a bill.",
-                        script=SEARCH_JS)
-    search_page = search_page.replace(
-        '<link rel="canonical" href="https://graniterecord.org/">',
-        '<meta name="robots" content="noindex,follow">')
-    (out / "search.html").write_text(_shell.clean_links(search_page), encoding="utf-8")
+    for lang in i18n.LANGS:
+        if not i18n.has(lang, SEARCH_PAGE):
+            continue
+        search_page = shell(say(lang, "sr.title", "Search") + " | Granite Record", SEARCH_PAGE,
+                            i18n.lang_links(search_html(lang), lang), wide=True,
+                            desc=say(lang, "sr.desc", "Search Granite Record for a legislator, a "
+                                     "committee, a town, a subject or a bill."),
+                            script=SEARCH_JS, lang=lang)
+        search_page = re.sub(r'<link rel="canonical"[^>]*>',
+                             '<meta name="robots" content="noindex,follow">', search_page, count=1)
+        # A page asked not to be indexed names no alternate to a search engine.
+        search_page = re.sub(r'<link rel="alternate" hreflang="[^"]*" href="[^"]*">', "", search_page)
+        dest = (out / SEARCH_PAGE if lang == i18n.DEFAULT
+                else out / i18n.href(lang, SEARCH_PAGE).lstrip("/"))
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(_shell.clean_links(search_page), encoding="utf-8")
 
     # THERE WAS NO 404 PAGE. Cloudflare Pages treats a project with no
     # top-level 404.html as a single-page app: every address it cannot find

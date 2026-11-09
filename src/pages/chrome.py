@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.7
+# GRANITE_VERSION: 2026-10-23.8
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -399,7 +399,7 @@ def footer_html(lang="en", alt=None):
 <div class="fcol">
 <p class="fcolhead">Granite Record</p>
 <p class="attrib">{say(lang, "foot.attrib", "Built from public records published by the <b>New Hampshire General Court</b>. Not affiliated with the General Court, and not a substitute for it &mdash; where this site and the Court&rsquo;s own record disagree, the Court is right and we want to know.")}</p>
-<p class="footby">{say(lang, "foot.by", "An independent project by Alice Wade")} &middot; <a href="about.html">{say(lang, "foot.about", "About")}</a></p>
+<p class="footby">{say(lang, "foot.by", "An independent project by Alice Wade")} &middot; <a href="{i18n.href(lang, "about.html").lstrip("/")}">{say(lang, "foot.about", "About")}</a></p>
 <p class="logocredit">{say(lang, "foot.logo", "Logo drawn by Debra Caplan, an artist in Peterborough, NH")}
 &middot; <a href="https://www.linescapesnh.com/" rel="noopener">linescapesnh.com</a></p>
 </div>
