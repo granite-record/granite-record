@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.823
+# GRANITE_VERSION: 2026-09-04.824
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -83888,11 +83888,11 @@ def _home_finder_suggests_towns():
         and "findDraw(v,HQ)" in js and 'id="hqsay"' in page, (
             "the home box does not draw with find.js's findDraw into its own ids")
     # GO IS SEARCH (16 October 2026): Return does what the box's Search button
-    # does, but for a bill number, which opens the bill as the header does.
-    assert "location.href=first&&bill?first.href:hqAddr(hq.value);" in js \
-        and 'const bill=typeof findBill==="function"&&findBill(hq.value);' in js \
-        and "location.href=first?first.href:hqAddr(hq.value);" not in js, (
-            "the home box's Return takes the first row again, where the reader asked for results")
+    # does -- and since 9 November 2026 for a bill number too, as the header's
+    # box has since the 8th (Alice: "Home search opens results").
+    assert "location.href=hqAddr(hq.value);" in js \
+        and "findBill(hq.value)" not in js and "first.href" not in js, (
+            "the home box's Return opens a row or a bill, where the reader asked for results")
     assert "if(opening)hqLift();" in js, "the home box's rows open under a phone's keyboard again"
     fj = Path("src/pages/find.js").read_text(encoding="utf-8").replace("\r\n", "\n")
     assert 'const FIND_IDS={out:"findout",box:"findq",clear:"findclear",say:"findsay"};' in fj \
