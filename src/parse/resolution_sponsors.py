@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-09.1
+# GRANITE_VERSION: 2026-11-09.2
 """
 The sponsors of a resolution, read from the House and Senate Journals that print it.
 
@@ -66,6 +66,10 @@ from collections import Counter, defaultdict
 HOUSE_ROOT = Path("journals")
 SENATE_ROOT = Path("journals_senate")
 OUT = Path("resolution_sponsors.json")
+# The resolutions a chamber itself offered ("Offered by the House of
+# Representatives"): {term: [bill]}. Alice, 9 November 2026: the body is the
+# sponsor, so the coverage table counts them as covered (build_exports).
+BODIES = Path("resolution_bodies.json")
 
 # HOUSE RESOLUTION NO. 14 / House Resolution No. 28 / MEMORIAL RESOLUTION NO. 6 / SENATE RESOLUTION
 # NO. 3, alone on its line. The number is optional: 2007 and 2008 print MEMORIAL RESOLUTION.
@@ -226,7 +230,7 @@ def printed(rec):
     return [f"{hon} {n}" for n in rec["sponsors"]]
 
 
-def read(house=HOUSE_ROOT, senate=SENATE_ROOT, stats=None):
+def read(house=HOUSE_ROOT, senate=SENATE_ROOT, stats=None, bodies=None):
     """{term: {bill: record}} for every numbered resolution whose journal line names a person.
     A resolution the journal does not number is not keyed."""
     out = defaultdict(lambda: defaultdict(list))
@@ -238,6 +242,9 @@ def read(house=HOUSE_ROOT, senate=SENATE_ROOT, stats=None):
             term = term_of(yd.name)
             for b in blocks(f, chamber):
                 seen["blocks"] += 1
+                if not b["names"] and b["number"] and b["via"] and BODY.match(b["who"] or ""):
+                    if bodies is not None:
+                        bodies[term].add(f"{chamber}R{b['number']}")
                 if not b["names"]:
                     seen["no person: " + (b["via"] or "no line")] += 1
                     continue
@@ -273,7 +280,8 @@ def main():
         print(f"FAILED, no {a.house}/ here: the House Journals are not on this machine")
         return 1
     stats = Counter()
-    res = read(Path(a.house), Path(a.senate), stats)
+    bodies = defaultdict(set)
+    res = read(Path(a.house), Path(a.senate), stats, bodies)
     for k, v in sorted(stats.items()):
         print(f"  {v:5,}  {k}")
     named = sum(len(t) for t in res.values())
@@ -286,6 +294,11 @@ def main():
         return 0
     Path(a.out).write_text(json.dumps(res, indent=1, sort_keys=True), encoding="utf-8")
     print(f"written to {a.out}")
+    # Beside it, the ones the chamber offered itself, for the coverage table.
+    bpath = Path(a.out).with_name(BODIES.name)
+    bpath.write_text(json.dumps({t: sorted(v) for t, v in sorted(bodies.items())}, indent=1),
+                     encoding="utf-8")
+    print(f"  {sum(len(v) for v in bodies.values())} offered by the chamber itself, written to {bpath}")
     return 0
 
 

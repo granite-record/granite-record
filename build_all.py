@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.89
+# GRANITE_VERSION: 2026-09-05.90
 """
 Run the whole pipeline in the right order.
 
@@ -345,7 +345,7 @@ def plan(a):
         # brings, as it does journal_bills.json, and stops without them.
         Step("resolutions' sponsors, from the journals",
              ["resolution_sponsors.py"],
-             needs=["journals"], produces=["resolution_sponsors.json"],
+             needs=["journals"], produces=["resolution_sponsors.json", "resolution_bodies.json"],
              kit_required=True,
              note="the House Journal's own 'offered by' line on a memorial or "
                   "honoring resolution that names a member; a body names nobody"),
