@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.21
+# GRANITE_VERSION: 2026-10-23.22
 """
 The site in more than one language, and how a translation stays current.
 
@@ -127,7 +127,8 @@ LEARN_PAGES = tuple(f"learn/{s}.html" for s in (
 # THE OFFICIALS PAGE (the person, 25 October 2026: "Start on the Officials
 # page and My Town in Spanish"): its own words, its tabs' and the words of
 # corrections/officials.json that the tabs say (officials_tabs.data_words).
-PAGES = {"es": ("index.html", "learn/glossary.html", "resources.html", "officials.html")
+PAGES = {"es": ("index.html", "learn/glossary.html", "resources.html", "officials.html",
+                "about.html", "search.html")
          + GUIDE_PAGES + LEARN_PAGES}
 
 _CATALOGS = {}
@@ -484,7 +485,7 @@ def words_js(lang, *scripts):
 SHARED_SCRIPTS = ("components.js", "find.js", "map.js")
 # The pages a script links to by address, whose address in a language a
 # page in it tells its scripts (page_words, window.GR_HREFS).
-SCRIPT_LINKS = ("officials.html",)
+SCRIPT_LINKS = ("officials.html", "search.html")
 
 
 def shared_words_path(lang):
@@ -659,6 +660,12 @@ def code_words(root=None):
     if any(has(c, "officials.html") for c in LANGS if c != DEFAULT):
         import officials_tabs
         for key, en, where in officials_tabs.data_words():
+            add(key, en, where)
+    # The About page's pieces (9 November 2026), as a guide's: its words are
+    # build_pages' ABOUT, not say() calls.
+    if any(has(c, "about.html") for c in LANGS if c != DEFAULT):
+        import build_pages
+        for key, en, where in build_pages.about_words():
             add(key, en, where)
     # The legislature's schedule (the Learn pages in Spanish, 25 October
     # 2026): its seasons' and steps' words are legislative_year's data.

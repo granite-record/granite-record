@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.51
+// GRANITE_VERSION: 2026-09-16.52
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -985,7 +985,7 @@ function findDraw(q,ids){
   // term, so "SB 412" led to this term's SB 412 and nowhere else, and the
   // 2000 bill a reader may have meant was a term picker away. /search lists
   // the number in every term, so it is offered under the number.
-  const every=`<a class="fall" data-every href="/search?q=${_fenc(s)}">
+  const every=`<a class="fall" data-every href="${(window.GR_HREFS||{})["search.html"]||"/search"}?q=${_fenc(s)}">
     <span class="fl1"><span class="fname">${tr("find.see_all","See all search results for {q}",{q:_fesc(s)})}</span></span>
     <span class="fwhat">${num?tr("find.every_term","this number in every term since 1989")
       :tr("find.every_match","every member, committee, town and subject that matches, and the bills of every term")
@@ -1189,7 +1189,7 @@ function findMount(){
     // A row is opened by clicking it, or by Tab to it and Return there,
     // which is the link's own; the panel has no row chosen by the arrows.
     if(e.key==="Enter"){const q=box.value.trim();
-      if(q){e.preventDefault();location.href="/search?q="+_fenc(q);}}
+      if(q){e.preventDefault();location.href=((window.GR_HREFS||{})["search.html"]||"/search")+"?q="+_fenc(q);}}
   });
   // A WAY OUT THAT IS NOT THE SCRIM. On a phone the sheet covers the page and
   // the only way back was to tap the dimmed strip above it or press Escape --

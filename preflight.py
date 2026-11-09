@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.815
+# GRANITE_VERSION: 2026-09-04.816
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20253,7 +20253,9 @@ def _find_all_results():
     if not js.exists() or not bp.exists():
         return "skip", "find.js or build_pages.py not in this directory"
     t = js.read_text(encoding="utf-8")
-    assert "/search?q=" in t, (
+    # Since 9 November 2026 /search is also in Spanish: the row's address is
+    # the page's own (window.GR_HREFS["search.html"]) and /search otherwise.
+    assert "/search?q=" in t or ('"/search"' in t and '"search.html"' in t and "?q=" in t), (
         "find.js sends its last row somewhere other than /search -- if that "
         "is deliberate, this check names the page it should point at")
     b = bp.read_text(encoding="utf-8")
@@ -24190,7 +24192,7 @@ def _find_study_committees_rank(BP):
     js = BP.SEARCH_JS
     # The group's own words for the line a screen reader hears (w:, 29
     # October 2026) may stand between its title and its test.
-    m = re.search(r'\{t:"Statutory and Study Committees",(?:w:\[[^\]]*\],)?'
+    m = re.search(r'\{t:"Statutory and Study Committees",(?:h:tr\([^)]*\),)?(?:w:\[[^\]]*\],)?'
                   r'k:r=>r\[0\]==="statutory"\|\|r\[0\]==="study"\}', js)
     assert m, "/search has no group of statutory and study committees"
     g = m.start()
@@ -88091,7 +88093,9 @@ def _footer_credit():
     said_in = {lang: re.compile(re.escape(
         f'<p class="footby">{i18n.say(lang, "foot.by", "An independent project by Alice Wade")} '
         f'&middot; <a href="about.html">{i18n.say(lang, "foot.about", "About")}</a></p>'
-    ).replace(re.escape('href="about.html"'), r'href="/?about"'))
+    ).replace(re.escape('href="about.html"'),
+              # About is in Spanish too (9 November 2026): the footer leads to it.
+              r'href="/?' + re.escape(i18n.href(lang, "about.html").lstrip("/").replace(".html", "")) + '"'))
         for lang in i18n.LANGS if lang != i18n.DEFAULT}
 
     def credit(text):

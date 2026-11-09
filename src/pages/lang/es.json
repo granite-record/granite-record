@@ -6,6 +6,236 @@
  ],
  "offered": false,
  "strings": {
+  "about.a-report-made-with-report-a": {
+   "en": "A report made with <i>Report a problem</i> holds nothing that identifies who sent it, so every one is checked against the official record in the same way, and corrected where the record bears it out. An email to <a href=\"mailto:contact@graniterecord.org\">contact@graniterecord.org</a> is handled the same way, whoever sends it.",
+   "es": "Un informe hecho con <i>Report a problem</i> (Informar de un problema) no contiene nada que identifique a quien lo envió, así que todos se comparan con el registro oficial de la misma manera y se corrigen cuando el registro lo respalda. Un correo electrónico a <a href=\"mailto:contact@graniterecord.org\">contact@graniterecord.org</a> se trata igual, sea quien sea que lo envíe.",
+   "state": "draft"
+  },
+  "about.a-term-before-the-current-one": {
+   "en": "A term before the current one is marked <i>archived</i>. Nearly every archived bill has its docket &#8212; the General Court's own line-by-line list of actions &#8212; and its sponsors, the committee it went to, its hearings and its text. Three parts of the record start later, because the General Court's copies of them that this site reads start later. The House committees' written reports start with the 1997–1998 term, the first in its online calendars, and the Senate committees' with the current term, the only one its database holds them for. Before those, the page gives each committee's recommendation as the docket records it, and the committee's vote wherever the docket gives one. Votes by name start in 1999, where its roll-call files begin; before that, the docket gives the tallies it recorded, and the printed journals name who voted which way. Recordings start in [[stream_start]], when its YouTube channels begin. Every archived bill links its own official record.",
+   "es": "Un período anterior al actual se marca como <i>archived</i> (archivado). Casi todos los proyectos de ley archivados tienen su registro de trámites &#8212; la lista de acciones, línea por línea, de la propia Legislatura &#8212; y sus patrocinadores, el comité al que fueron, sus audiencias y su texto. Tres partes del registro empiezan más tarde, porque las copias de la Legislatura que este sitio lee empiezan más tarde. Los informes escritos de los comités de la Cámara empiezan con el período 1997–1998, el primero en sus calendarios en línea, y los de los comités del Senado con el período actual, el único para el que su base de datos los tiene. Antes de eso, la página da la recomendación de cada comité tal como la anota el registro de trámites, y la votación del comité cuando el registro de trámites la da. Las votaciones por nombre empiezan en 1999, donde empiezan sus archivos de votaciones nominales; antes, el registro de trámites da los totales que anotó, y los diarios de sesiones impresos dicen quién votó en qué sentido. Las grabaciones empiezan en [[stream_start]], cuando empiezan sus canales de YouTube. Cada proyecto de ley archivado enlaza a su propio registro oficial.",
+   "state": "draft"
+  },
+  "about.about-granite-record": {
+   "en": "About Granite Record",
+   "es": "Acerca de Granite Record",
+   "state": "draft"
+  },
+  "about.bill-histories-and-hearing-schedules": {
+   "en": "Bill histories and hearing schedules come from the General Court's docket: for the current term its published data files, for 2015 to 2024 its web pages, and before that the read-only database the General Court publishes credentials for. Sponsors from 2023 on come from its sponsor file and bill status pages, and before 2023 from the sponsor line printed on each bill's own text. Vote tallies and individual member votes come from its roll call files, and for sessions those files no longer cover, from the same database. The House's committee majority and minority reports are taken from the House Calendar; the Senate's come from the database too, which is where the Senate files them. Hearing and session recordings are the General Court's own, on YouTube, linked rather than copied.",
+   "es": "Los historiales de los proyectos de ley y los calendarios de audiencias vienen del registro de trámites de la Legislatura: para el período actual, de sus archivos de datos publicados; de 2015 a 2024, de sus páginas web; y antes, de la base de datos de solo lectura cuyas credenciales publica la Legislatura. Los patrocinadores desde 2023 vienen de su archivo de patrocinadores y de las páginas del estado de los proyectos de ley, y antes de 2023, de la línea de patrocinadores impresa en el texto de cada proyecto. Los resultados de las votaciones y los votos de cada miembro vienen de sus archivos de votaciones nominales y, para las sesiones que esos archivos ya no cubren, de la misma base de datos. Los informes de mayoría y de minoría de los comités de la Cámara se toman del Calendario de la Cámara; los del Senado también vienen de la base de datos, que es donde el Senado los archiva. Las grabaciones de audiencias y sesiones son de la propia Legislatura, están en YouTube y se enlazan en lugar de copiarse.",
+   "state": "draft"
+  },
+  "about.desc": {
+   "en": "How Granite Record is built, where every fact on it comes from, and how to report something that is wrong.",
+   "es": "Cómo se elabora Granite Record, de dónde sale cada dato y cómo informar de algo que esté mal.",
+   "state": "draft"
+  },
+  "about.each-step-by-step-guide-links": {
+   "en": "Each step-by-step guide links the official page that has the final word, and says when it was last checked against it.",
+   "es": "Cada guía paso a paso enlaza la página oficial que tiene la última palabra y dice cuándo se comprobó por última vez frente a ella.",
+   "state": "draft"
+  },
+  "about.everything-here-comes-from-the-general": {
+   "en": "Everything here comes from the General Court's own records: its docket, roll calls, committee reports, journals and calendars, and the recordings on its YouTube channels. Each bill links to its official record. Most hearing timestamps are the moment the chair opened the item, checked against recordings a person timed by hand; the rest are marked <i>approximate</i>. <a href=\"data.html#how-built\">How the record is built</a>, on the Data page, explains the methods and how well they measure up.",
+   "es": "Todo lo que hay aquí viene de los registros de la propia Legislatura: su registro de trámites, votaciones nominales, informes de comités, diarios de sesiones y calendarios, y las grabaciones de sus canales de YouTube. Cada proyecto de ley enlaza a su registro oficial. La mayoría de las marcas de tiempo de las audiencias son el momento en que la presidencia abrió el punto, comprobadas con grabaciones que una persona cronometró a mano; las demás se marcan como <i>approximate</i> (aproximadas). <a href=\"data.html#how-built\">Cómo se elabora el registro</a>, en la página de datos, explica los métodos y qué tan bien miden.",
+   "state": "draft"
+  },
+  "about.fig.minute": {
+   "en": "1 minute",
+   "es": "1 minuto",
+   "state": "draft"
+  },
+  "about.fig.minutes": {
+   "en": "{n} minutes",
+   "es": "{n} minutos",
+   "state": "draft"
+  },
+  "about.fig.second": {
+   "en": "1 second",
+   "es": "1 segundo",
+   "state": "draft"
+  },
+  "about.fig.seconds": {
+   "en": "{n} seconds",
+   "es": "{n} segundos",
+   "state": "draft"
+  },
+  "about.fig.stream_start": {
+   "en": "May 2020",
+   "es": "mayo de 2020",
+   "state": "draft"
+  },
+  "about.follow-a-bill-legislator-committee-or": {
+   "en": "<a href=\"guides/using-this-site#s-following-a-bill\">Follow a bill, legislator, committee or topic</a> by feed or by email, and <a href=\"officials.html\">find your legislators and how to reach them</a>.",
+   "es": "<a href=\"guides/using-this-site#s-following-a-bill\">Siga un proyecto de ley, un legislador, un comité o un tema</a> por canal RSS o por correo electrónico, y <a href=\"officials.html\">encuentre a sus legisladores y cómo comunicarse con ellos</a>.",
+   "state": "draft"
+  },
+  "about.follow-a-bill-s-progress-and": {
+   "en": "<a href=\"guides/using-this-site#s-following-a-bill\">Follow a bill's progress</a>, and <a href=\"officials.html\">find your legislators and how to reach them</a>.",
+   "es": "<a href=\"guides/using-this-site#s-following-a-bill\">Siga el avance de un proyecto de ley</a> y <a href=\"officials.html\">encuentre a sus legisladores y cómo comunicarse con ellos</a>.",
+   "state": "draft"
+  },
+  "about.free-and-open-source": {
+   "en": "Free and Open Source",
+   "es": "Gratuito y de código abierto",
+   "state": "draft"
+  },
+  "about.granite-record-doesn-t-track-you": {
+   "en": "Granite Record doesn't track you. There are no accounts and no advertising, and nothing about what you read is tied to you. If you sign up for email updates, your address is used only to send them. It is stored encrypted, never shared or sold, and deleted at once when you unsubscribe. Reports sent through the <i>Report a problem</i> button are deleted after a week. <a href=\"data.html#privacy\">Privacy in detail</a> is on the Data page.",
+   "es": "Granite Record no lo rastrea. No hay cuentas ni publicidad, y nada de lo que usted lee queda asociado a su persona. Si se suscribe a las novedades por correo electrónico, su dirección se usa solo para enviarlas. Se guarda cifrada, nunca se comparte ni se vende, y se borra de inmediato cuando cancela la suscripción. Los informes enviados con el botón <i>Report a problem</i> (Informar de un problema) se borran después de una semana. La <a href=\"data.html#privacy\">privacidad en detalle</a> está en la página de datos.",
+   "state": "draft"
+  },
+  "about.granite-record-doesn-t-track-you-2": {
+   "en": "Granite Record doesn't track you. There are no accounts and no advertising, nothing about what you read is tied to you, and reports sent through the <i>Report a problem</i> button are deleted after a week. <a href=\"data.html#privacy\">Privacy in detail</a> is on the Data page.",
+   "es": "Granite Record no lo rastrea. No hay cuentas ni publicidad, nada de lo que usted lee queda asociado a su persona, y los informes enviados con el botón <i>Report a problem</i> (Informar de un problema) se borran después de una semana. La <a href=\"data.html#privacy\">privacidad en detalle</a> está en la página de datos.",
+   "state": "draft"
+  },
+  "about.granite-record-is-a-free-independent": {
+   "en": "Granite Record is a free, independent and searchable record of the New Hampshire General Court: what each bill does, who sponsored it, when it was heard, how it was voted on, and where in the recording it was discussed. It covers [[bills]] bills since [[since]], for anyone who follows the legislature, from a first-time testifier to the people who work in the State House.",
+   "es": "Granite Record es un registro gratuito, independiente y con función de búsqueda de la Legislatura de New Hampshire (el General Court): qué hace cada proyecto de ley, quién lo patrocinó, cuándo tuvo su audiencia, cómo se votó y en qué momento de la grabación se habló de él. Abarca [[bills]] proyectos de ley desde [[since]], para quien siga a la Legislatura, desde quien testifica por primera vez hasta quienes trabajan en el Capitolio (State House).",
+   "state": "draft"
+  },
+  "about.granite-record-is-free-to-use": {
+   "en": "Granite Record is free to use, now and always. Its code is public on <a href=\"https://github.com/granite-record/granite-record\" rel=\"noopener\">GitHub</a> under the MIT License, and the whole record can be downloaded as spreadsheets from the <a href=\"data.html\">Data page</a>.",
+   "es": "Granite Record es gratuito, ahora y siempre. Su código es público en <a href=\"https://github.com/granite-record/granite-record\" rel=\"noopener\">GitHub</a> con la licencia MIT, y todo el registro puede descargarse como hojas de cálculo en la <a href=\"data.html\">página de datos</a>.",
+   "state": "draft"
+  },
+  "about.granite-record-is-independent-of-my": {
+   "en": "Granite Record is independent of my role as a state legislator and is not affiliated with the New Hampshire General Court. For feature suggestions or corrections to a bill's record, use the <i>Report a problem</i> button on a bill's, legislator's or committee's page, or write to <a href=\"mailto:contact@graniterecord.org\">contact@graniterecord.org</a>.",
+   "es": "Granite Record es independiente de mi cargo como legislador estatal y no está afiliado a la Legislatura de New Hampshire (el General Court). Para sugerir funciones o corregir el registro de un proyecto de ley, use el botón <i>Report a problem</i> (Informar de un problema) en la página de un proyecto de ley, de un legislador o de un comité, o escriba a <a href=\"mailto:contact@graniterecord.org\">contact@graniterecord.org</a>.",
+   "state": "draft"
+  },
+  "about.granite-record-is-not-affiliated-with": {
+   "en": "Granite Record is not affiliated with the New Hampshire General Court, and it takes no position on any bill. I'm a sitting member of the House, so the site keeps to these rules.",
+   "es": "Granite Record no está afiliado a la Legislatura de New Hampshire (el General Court) y no toma posición sobre ningún proyecto de ley. Soy miembro en funciones de la Cámara, así que el sitio se atiene a estas reglas.",
+   "state": "draft"
+  },
+  "about.hearing-timestamps-are-measured-against": {
+   "en": "Hearing timestamps are measured against proceedings a person timed by watching the recording. On the ones the method places, the median is out by [[median]]. <a href=\"data.html#how-built\">How the record is built</a>, on the Data page, gives every figure.",
+   "es": "Las marcas de tiempo de las audiencias se miden frente a sesiones que una persona cronometró viendo la grabación. En las que el método ubica, la mediana se desvía en [[median]]. <a href=\"data.html#how-built\">Cómo se elabora el registro</a>, en la página de datos, da todas las cifras.",
+   "state": "draft"
+  },
+  "about.i-m-alice-wade-a-state": {
+   "en": "I'm Alice Wade, a State Representative from Dover, and Granite Record is my independent project to make state government more accessible to everyone. It started with one problem: bill hearings had no timestamps, so finding a single bill meant combing through hours of livestream footage. From there I kept gathering everything I needed to track legislation into one place, and Granite Record grew out of that.",
+   "es": "Soy Alice Wade, representante estatal de Dover, y Granite Record es mi proyecto independiente para que el gobierno estatal sea más accesible para todos. Empezó con un problema: las audiencias sobre los proyectos de ley no tenían marcas de tiempo, así que encontrar un solo proyecto significaba revisar horas de transmisión en vivo. A partir de ahí fui reuniendo en un solo lugar todo lo que necesitaba para seguir la legislación, y de eso nació Granite Record.",
+   "state": "draft"
+  },
+  "about.i-m-committed-to-keeping-it": {
+   "en": "I'm committed to keeping it free, neutral and open source, for anyone who has trouble keeping up with the state legislature. Built from the New Hampshire General Court's own digital records, it covers bills back to [[since]]. You can search for bills in plain language, prepare public testimony, research how legislation has changed over time, and get in touch with your state legislators.",
+   "es": "Me comprometo a mantenerlo gratuito, neutral y de código abierto, para quien tenga dificultad para seguir a la Legislatura estatal. Hecho a partir de los registros digitales de la propia Legislatura de New Hampshire, abarca proyectos de ley desde [[since]]. Puede buscar proyectos de ley en lenguaje sencillo, preparar su testimonio público, investigar cómo ha cambiado la legislación con el tiempo y ponerse en contacto con sus legisladores estatales.",
+   "state": "draft"
+  },
+  "about.keeping-it-accurate": {
+   "en": "Keeping It Accurate",
+   "es": "Cómo mantenemos la exactitud",
+   "state": "draft"
+  },
+  "about.logo_label": {
+   "en": "The Granite Record logo, drawn by Debra Caplan",
+   "es": "El logotipo de Granite Record, dibujado por Debra Caplan",
+   "state": "draft"
+  },
+  "about.neutrality-and-methods": {
+   "en": "Neutrality and Methods",
+   "es": "Neutralidad y métodos",
+   "state": "draft"
+  },
+  "about.nothing-on-it-is-editorialized-dates": {
+   "en": "Nothing on it is editorialized. Dates, sponsors, vote tallies, committee assignments and hearing times are taken directly from the official record. Committee reports appear as filed, in the committee's own words, and summaries of a bill's progress are generated from the record by software.",
+   "es": "Nada en él lleva opinión editorial. Las fechas, los patrocinadores, los resultados de las votaciones, las asignaciones a comités y las horas de las audiencias se toman directamente del registro oficial. Los informes de los comités aparecen tal como se presentaron, con las palabras del propio comité, y los resúmenes del avance de un proyecto de ley los genera un programa a partir del registro.",
+   "state": "draft"
+  },
+  "about.nothing-on-this-site-is-editorialized": {
+   "en": "Nothing on this site is editorialized: it presents the official record in a more searchable form. The code is public, and you can download the official record as spreadsheets from the <a href=\"data.html\">Data page</a>.",
+   "es": "Nada en este sitio lleva opinión editorial: presenta el registro oficial de una forma más fácil de buscar. El código es público, y puede descargar el registro oficial como hojas de cálculo en la <a href=\"data.html\">página de datos</a>.",
+   "state": "draft"
+  },
+  "about.on-the-learn-pages-where-a": {
+   "en": "On the Learn pages, where a concept needs an example bill, town or legislator, the site uses a less polarizing one when there is a choice. A list taken from the record, such as the hearings with the most sign-ins, is shown as the record has it.",
+   "es": "En las páginas de Aprenda, cuando un concepto necesita un proyecto de ley, un municipio o un legislador como ejemplo, el sitio usa uno menos polarizante si hay donde elegir. Una lista tomada del registro, como las audiencias con más inscripciones, se muestra tal como la tiene el registro.",
+   "state": "draft"
+  },
+  "about.open-a-hearing-s-recording-at": {
+   "en": "<a href=\"guides/using-this-site#s-what-a-timestamp-claims\">Open a hearing's recording</a> at the moment a bill was taken up.",
+   "es": "<a href=\"guides/using-this-site#s-what-a-timestamp-claims\">Abra la grabación de una audiencia</a> en el momento en que se trató un proyecto de ley.",
+   "state": "draft"
+  },
+  "about.prepare-to-testify-with-a-bill": {
+   "en": "<a href=\"guides/testifying\">Prepare to testify</a>, with a bill's hearings, reports and text in one place.",
+   "es": "<a href=\"guides/testifying\">Prepárese para testificar</a>, con las audiencias, los informes y el texto de un proyecto de ley en un solo lugar.",
+   "state": "draft"
+  },
+  "about.research-how-a-bill-or-an": {
+   "en": "<a href=\"bills.html?term=all\">Research how a bill, or an issue, has changed</a> over the years.",
+   "es": "<a href=\"bills.html?term=all\">Investigue cómo ha cambiado un proyecto de ley, o un tema,</a> a lo largo de los años.",
+   "state": "draft"
+  },
+  "about.search-for-bills-in-plain-language": {
+   "en": "<a href=\"bills.html\">Search for bills</a> in plain language, or by number, sponsor or committee.",
+   "es": "<a href=\"bills.html\">Busque proyectos de ley</a> en lenguaje sencillo, o por número, patrocinador o comité.",
+   "state": "draft"
+  },
+  "about.sources-in-detail": {
+   "en": "Sources in detail",
+   "es": "Las fuentes en detalle",
+   "state": "draft"
+  },
+  "about.special-thanks-to-the-house-clerk": {
+   "en": "Special thanks to the House Clerk's Office and the General Court's IT staff, without whom this project would not be possible.",
+   "es": "Un agradecimiento especial a la Oficina del Secretario de la Cámara y al personal de informática de la Legislatura, sin quienes este proyecto no sería posible.",
+   "state": "draft"
+  },
+  "about.the-eventual-goal-is-a-hub": {
+   "en": "The eventual goal is a hub of information about New Hampshire's state, county and municipal government, including guides to how state government is structured, with interactive diagrams written to be accessible no matter your prior experience with state government.",
+   "es": "La meta a largo plazo es un centro de información sobre el gobierno estatal, de los condados y de los municipios de New Hampshire, con guías sobre cómo está organizado el gobierno estatal y diagramas interactivos escritos para que sean accesibles sin importar su experiencia previa con el gobierno estatal.",
+   "state": "draft"
+  },
+  "about.the-granite-record-logo-was-drawn": {
+   "en": "The Granite Record logo was drawn by Debra Caplan, an artist in Peterborough, New Hampshire, and is used under license from her. More of her work is at <a href=\"https://www.linescapesnh.com/\" rel=\"noopener\">linescapesnh.com</a>. In her own words:",
+   "es": "El logotipo de Granite Record lo dibujó Debra Caplan, artista de Peterborough, New Hampshire, y se usa con licencia suya. Hay más de su obra en <a href=\"https://www.linescapesnh.com/\" rel=\"noopener\">linescapesnh.com</a>. En sus propias palabras (en inglés):",
+   "state": "draft"
+  },
+  "about.the-logo": {
+   "en": "The Logo",
+   "es": "El logotipo",
+   "state": "draft"
+  },
+  "about.the-official-record-at-gc-nh": {
+   "en": "The official record at <a href=\"https://gc.nh.gov/\" rel=\"noopener\">gc.nh.gov</a> always takes precedence over anything shown here. If something on a bill's, legislator's or committee's page doesn't match it, use the <i>Report a problem</i> button on that page: reports are read every day, checked against the official record, and corrected.",
+   "es": "El registro oficial en <a href=\"https://gc.nh.gov/\" rel=\"noopener\">gc.nh.gov</a> siempre prevalece sobre cualquier cosa que se muestre aquí. Si algo en la página de un proyecto de ley, de un legislador o de un comité no coincide con él, use el botón <i>Report a problem</i> (Informar de un problema) de esa página: los informes se leen todos los días, se comparan con el registro oficial y se corrigen.",
+   "state": "draft"
+  },
+  "about.title": {
+   "en": "About",
+   "es": "Acerca del sitio",
+   "state": "draft"
+  },
+  "about.what-you-can-do-here": {
+   "en": "What You Can Do Here",
+   "es": "Qué puede hacer aquí",
+   "state": "draft"
+  },
+  "about.where-a-hearing-shows-how-many": {
+   "en": "Where a hearing shows how many people signed in for and against a bill, those are counts and nothing else. The General Court's sign-in sheet records a name, a town and often written testimony for every person; almost all of them are members of the public rather than public figures, and this site does not republish them.",
+   "es": "Cuando una audiencia muestra cuántas personas se inscribieron a favor y en contra de un proyecto de ley, eso son cifras y nada más. La hoja de inscripción de la Legislatura registra el nombre, el municipio y, con frecuencia, el testimonio escrito de cada persona; casi todas son miembros del público y no figuras públicas, y este sitio no las republica.",
+   "state": "draft"
+  },
+  "about.where-the-information-comes-from": {
+   "en": "Where the Information Comes From",
+   "es": "De dónde sale la información",
+   "state": "draft"
+  },
+  "about.who-makes-granite-record": {
+   "en": "Who Makes Granite Record",
+   "es": "Quién hace Granite Record",
+   "state": "draft"
+  },
+  "about.your-privacy": {
+   "en": "Your Privacy",
+   "es": "Su privacidad",
+   "state": "draft"
+  },
   "bills.requests_note": {
    "en": "<b>Requests, not bills yet.</b> Each is a member&rsquo;s request to have a bill drafted: a title and a sponsor, nothing more, until it is filed as a numbered {year} bill. Some are withdrawn first.",
    "es": "<b>Solicitudes, todavía no proyectos de ley.</b> Cada una es la solicitud de un miembro para que se redacte un proyecto de ley: un título y un patrocinador, nada más, hasta que se presenta como un proyecto de ley numerado de {year}. Algunas se retiran antes.",
@@ -24002,6 +24232,451 @@
   "set.title": {
    "en": "Settings",
    "es": "Ajustes",
+   "state": "draft"
+  },
+  "sr.across": {
+   "en": "across all {n} terms",
+   "es": "en los {n} períodos",
+   "state": "draft"
+  },
+  "sr.c.bills": {
+   "en": "{n} bills",
+   "es": "{n} proyectos de ley",
+   "state": "draft"
+  },
+  "sr.c.one_bill": {
+   "en": "1 bill",
+   "es": "1 proyecto de ley",
+   "state": "draft"
+  },
+  "sr.c.one_request": {
+   "en": "1 bill request",
+   "es": "1 solicitud de proyecto de ley",
+   "state": "draft"
+  },
+  "sr.c.requests": {
+   "en": "{n} bill requests",
+   "es": "{n} solicitudes de proyecto de ley",
+   "state": "draft"
+  },
+  "sr.counting": {
+   "en": "Counting the earlier terms&hellip;",
+   "es": "Contando los períodos anteriores&hellip;",
+   "state": "draft"
+  },
+  "sr.counting_text": {
+   "en": "Counting the earlier terms…",
+   "es": "Contando los períodos anteriores…",
+   "state": "draft"
+  },
+  "sr.current_term": {
+   "en": "The current term, where the bill search starts.",
+   "es": "El período actual, con el que empieza la búsqueda de proyectos de ley.",
+   "state": "draft"
+  },
+  "sr.desc": {
+   "en": "Search Granite Record for a legislator, a committee, a town, a subject or a bill.",
+   "es": "Busque en Granite Record un legislador, un comité, un municipio, un tema o un proyecto de ley.",
+   "state": "draft"
+  },
+  "sr.g.bills": {
+   "en": "Bills",
+   "es": "Proyectos de ley",
+   "state": "draft"
+  },
+  "sr.g.committees": {
+   "en": "Committees",
+   "es": "Comités",
+   "state": "draft"
+  },
+  "sr.g.former_committees": {
+   "en": "Former Committees",
+   "es": "Antiguos comités",
+   "state": "draft"
+  },
+  "sr.g.former_members": {
+   "en": "Former Members",
+   "es": "Exmiembros",
+   "state": "draft"
+  },
+  "sr.g.former_representatives": {
+   "en": "Former Representatives",
+   "es": "Exrepresentantes",
+   "state": "draft"
+  },
+  "sr.g.former_senators": {
+   "en": "Former Senators",
+   "es": "Exsenadores",
+   "state": "draft"
+  },
+  "sr.g.how_to_guides": {
+   "en": "How-To Guides",
+   "es": "Guías prácticas",
+   "state": "draft"
+  },
+  "sr.g.laws": {
+   "en": "Laws",
+   "es": "Leyes",
+   "state": "draft"
+  },
+  "sr.g.learn": {
+   "en": "Learn",
+   "es": "Aprenda",
+   "state": "draft"
+  },
+  "sr.g.officials": {
+   "en": "Officials",
+   "es": "Funcionarios",
+   "state": "draft"
+  },
+  "sr.g.pages_on_this_site": {
+   "en": "Pages on This Site",
+   "es": "Páginas de este sitio",
+   "state": "draft"
+  },
+  "sr.g.representatives": {
+   "en": "Representatives",
+   "es": "Representantes",
+   "state": "draft"
+  },
+  "sr.g.senators": {
+   "en": "Senators",
+   "es": "Senadores",
+   "state": "draft"
+  },
+  "sr.g.statutory_and_study_committees": {
+   "en": "Statutory and Study Committees",
+   "es": "Comités estatutarios y de estudio",
+   "state": "draft"
+  },
+  "sr.g.subjects": {
+   "en": "Subjects",
+   "es": "Temas",
+   "state": "draft"
+  },
+  "sr.g.towns_and_wards": {
+   "en": "Towns and Wards",
+   "es": "Municipios y barrios electorales",
+   "state": "draft"
+  },
+  "sr.head": {
+   "en": "Search the record",
+   "es": "Buscar en el registro",
+   "state": "draft"
+  },
+  "sr.in_term": {
+   "en": "in the {term} term",
+   "es": "en el período {term}",
+   "state": "draft"
+  },
+  "sr.its_requests": {
+   "en": "its bill requests",
+   "es": "sus solicitudes de proyecto de ley",
+   "state": "draft"
+  },
+  "sr.label": {
+   "en": "A legislator, a committee, a town, a subject or a bill",
+   "es": "Un legislador, un comité, un municipio, un tema o un proyecto de ley",
+   "state": "draft"
+  },
+  "sr.lead": {
+   "en": "Every sitting legislator and every member who has left, every committee, every town and ward, every subject bills are filed under, and every bill since 1989.",
+   "es": "Todos los legisladores en funciones y todos los miembros que ya se fueron, todos los comités, todos los municipios y barrios electorales, todos los temas bajo los que se presentan proyectos de ley y todos los proyectos de ley desde 1989.",
+   "state": "draft"
+  },
+  "sr.lead.here": {
+   "en": "{here}.",
+   "es": "{here}.",
+   "state": "draft"
+  },
+  "sr.lead.here_bills": {
+   "en": "{here}, and {some}.",
+   "es": "{here}, y {some}.",
+   "state": "draft"
+  },
+  "sr.lead.here_nobill": {
+   "en": "{here}, and {nobill}.",
+   "es": "{here}, y {nobill}.",
+   "state": "draft"
+  },
+  "sr.lead.here_the_bills": {
+   "en": "{here}, and the bills.",
+   "es": "{here}, y los proyectos de ley.",
+   "state": "draft"
+  },
+  "sr.lead.n_only": {
+   "en": "{some} match. No legislator, committee, town or subject on this site does.",
+   "es": "{some} coinciden. Ningún legislador, comité, municipio ni tema de este sitio coincide.",
+   "state": "draft"
+  },
+  "sr.lead.none": {
+   "en": "No legislator, committee, town or subject on this site matches that.",
+   "es": "Ningún legislador, comité, municipio ni tema de este sitio coincide.",
+   "state": "draft"
+  },
+  "sr.lead.none_and": {
+   "en": "No legislator, committee, town or subject on this site matches that, and {nobill}.",
+   "es": "Ningún legislador, comité, municipio ni tema de este sitio coincide, y {nobill}.",
+   "state": "draft"
+  },
+  "sr.lead.nothing": {
+   "en": "Nothing on this site matches that: no legislator, committee, town or subject, and {nobill}.",
+   "es": "Nada en este sitio coincide: ningún legislador, comité, municipio ni tema, y {nobill}.",
+   "state": "draft"
+  },
+  "sr.lead.one_only": {
+   "en": "{some} matches. No legislator, committee, town or subject on this site does.",
+   "es": "{some} coincide. Ningún legislador, comité, municipio ni tema de este sitio coincide.",
+   "state": "draft"
+  },
+  "sr.n_bills": {
+   "en": "{n} bills {where}",
+   "es": "{n} proyectos de ley {where}",
+   "state": "draft"
+  },
+  "sr.n_pages": {
+   "en": "{n} pages on this site",
+   "es": "{n} páginas de este sitio",
+   "state": "draft"
+  },
+  "sr.n_requests_for": {
+   "en": "{n} bill requests for {year}",
+   "es": "{n} solicitudes de proyecto de ley para {year}",
+   "state": "draft"
+  },
+  "sr.no_bill_all": {
+   "en": "no bill in any of the {n} terms",
+   "es": "ningún proyecto de ley en ninguno de los {n} períodos",
+   "state": "draft"
+  },
+  "sr.no_bill_term": {
+   "en": "no bill in the {term} term",
+   "es": "ningún proyecto de ley en el período {term}",
+   "state": "draft"
+  },
+  "sr.none_all": {
+   "en": "None in any of the {n} terms.",
+   "es": "Ninguno en ninguno de los {n} períodos.",
+   "state": "draft"
+  },
+  "sr.none_term": {
+   "en": "None in the {term} term.",
+   "es": "Ninguno en el período {term}.",
+   "state": "draft"
+  },
+  "sr.noscript": {
+   "en": "This page needs JavaScript to search. Without it, the <a href=\"/bills\">bill search</a>, the <a href=\"/officials\">roster</a> and the <a href=\"/committees\">committee list</a> are all plain pages.",
+   "es": "Esta página necesita JavaScript para buscar. Sin él, la <a href=\"/bills\">búsqueda de proyectos de ley</a>, la <a href=\"/officials\">lista de funcionarios</a> y la <a href=\"/committees\">lista de comités</a> son páginas sencillas.",
+   "state": "draft"
+  },
+  "sr.not_yet": {
+   "en": "Not bills yet: listed in the bill search under {label}.",
+   "es": "Todavía no son proyectos de ley: aparecen en la búsqueda de proyectos de ley, en {label}.",
+   "state": "draft"
+  },
+  "sr.of_them": {
+   "en": "{n} of them in the {term} term",
+   "es": "{n} de ellos en el período {term}",
+   "state": "draft"
+  },
+  "sr.one_bill": {
+   "en": "One bill {where}",
+   "es": "Un proyecto de ley {where}",
+   "state": "draft"
+  },
+  "sr.one_page": {
+   "en": "One page on this site",
+   "es": "Una página de este sitio",
+   "state": "draft"
+  },
+  "sr.one_request_for": {
+   "en": "1 bill request for {year}",
+   "es": "1 solicitud de proyecto de ley para {year}",
+   "state": "draft"
+  },
+  "sr.results_for": {
+   "en": "Results for &ldquo;{q}&rdquo;",
+   "es": "Resultados para &ldquo;{q}&rdquo;",
+   "state": "draft"
+  },
+  "sr.search_every": {
+   "en": "Search every bill for &ldquo;{q}&rdquo;",
+   "es": "Buscar &ldquo;{q}&rdquo; en todos los proyectos de ley",
+   "state": "draft"
+  },
+  "sr.theirs": {
+   "en": "Every bill they sponsored or co-sponsored, in the bill search.",
+   "es": "Todos los proyectos de ley que patrocinó o copatrocinó, en la búsqueda de proyectos de ley.",
+   "state": "draft"
+  },
+  "sr.title": {
+   "en": "Search",
+   "es": "Buscar",
+   "state": "draft"
+  },
+  "sr.w.committees_many": {
+   "en": "committees",
+   "es": "comités",
+   "state": "draft"
+  },
+  "sr.w.committees_one": {
+   "en": "committee",
+   "es": "comité",
+   "state": "draft"
+  },
+  "sr.w.former_committees_many": {
+   "en": "former committees",
+   "es": "antiguos comités",
+   "state": "draft"
+  },
+  "sr.w.former_committees_one": {
+   "en": "former committee",
+   "es": "antiguo comité",
+   "state": "draft"
+  },
+  "sr.w.former_members_many": {
+   "en": "former members",
+   "es": "exmiembros",
+   "state": "draft"
+  },
+  "sr.w.former_members_one": {
+   "en": "former member",
+   "es": "exmiembro",
+   "state": "draft"
+  },
+  "sr.w.former_representatives_many": {
+   "en": "former representatives",
+   "es": "exrepresentantes",
+   "state": "draft"
+  },
+  "sr.w.former_representatives_one": {
+   "en": "former representative",
+   "es": "exrepresentante",
+   "state": "draft"
+  },
+  "sr.w.former_senators_many": {
+   "en": "former senators",
+   "es": "exsenadores",
+   "state": "draft"
+  },
+  "sr.w.former_senators_one": {
+   "en": "former senator",
+   "es": "exsenador",
+   "state": "draft"
+  },
+  "sr.w.how_to_guides_many": {
+   "en": "how-to guides",
+   "es": "guías prácticas",
+   "state": "draft"
+  },
+  "sr.w.how_to_guides_one": {
+   "en": "how-to guide",
+   "es": "guía práctica",
+   "state": "draft"
+  },
+  "sr.w.laws_many": {
+   "en": "laws",
+   "es": "leyes",
+   "state": "draft"
+  },
+  "sr.w.laws_one": {
+   "en": "law",
+   "es": "ley",
+   "state": "draft"
+  },
+  "sr.w.learn_many": {
+   "en": "Learn pages",
+   "es": "páginas de Aprenda",
+   "state": "draft"
+  },
+  "sr.w.learn_one": {
+   "en": "Learn page",
+   "es": "página de Aprenda",
+   "state": "draft"
+  },
+  "sr.w.officials_many": {
+   "en": "officials pages",
+   "es": "páginas de Funcionarios",
+   "state": "draft"
+  },
+  "sr.w.officials_one": {
+   "en": "officials page",
+   "es": "página de Funcionarios",
+   "state": "draft"
+  },
+  "sr.w.pages_on_this_site_many": {
+   "en": "pages on this site",
+   "es": "páginas de este sitio",
+   "state": "draft"
+  },
+  "sr.w.pages_on_this_site_one": {
+   "en": "page on this site",
+   "es": "página de este sitio",
+   "state": "draft"
+  },
+  "sr.w.representatives_many": {
+   "en": "representatives",
+   "es": "representantes",
+   "state": "draft"
+  },
+  "sr.w.representatives_one": {
+   "en": "representative",
+   "es": "representante",
+   "state": "draft"
+  },
+  "sr.w.senators_many": {
+   "en": "senators",
+   "es": "senadores",
+   "state": "draft"
+  },
+  "sr.w.senators_one": {
+   "en": "senator",
+   "es": "senador",
+   "state": "draft"
+  },
+  "sr.w.statutory_and_study_committees_many": {
+   "en": "statutory and study committees",
+   "es": "comités estatutarios y de estudio",
+   "state": "draft"
+  },
+  "sr.w.statutory_and_study_committees_one": {
+   "en": "statutory or study committee",
+   "es": "comité estatutario o de estudio",
+   "state": "draft"
+  },
+  "sr.w.subjects_many": {
+   "en": "subjects",
+   "es": "temas",
+   "state": "draft"
+  },
+  "sr.w.subjects_one": {
+   "en": "subject",
+   "es": "tema",
+   "state": "draft"
+  },
+  "sr.w.towns_and_wards_many": {
+   "en": "towns and wards",
+   "es": "municipios y barrios electorales",
+   "state": "draft"
+  },
+  "sr.w.towns_and_wards_one": {
+   "en": "town or ward",
+   "es": "municipio o barrio electoral",
+   "state": "draft"
+  },
+  "sr.what": {
+   "en": "The bill search has every term since 1989, with filters for committee, sponsor and what became of it.",
+   "es": "La búsqueda de proyectos de ley tiene todos los períodos desde 1989, con filtros por comité, patrocinador y lo que pasó con cada uno.",
+   "state": "draft"
+  },
+  "sr.what_all": {
+   "en": "In the bill search, with filters for committee, sponsor and what became of it.",
+   "es": "En la búsqueda de proyectos de ley, con filtros por comité, patrocinador y lo que pasó con cada uno.",
+   "state": "draft"
+  },
+  "sr.whose_bills": {
+   "en": "{who}&rsquo;s bills",
+   "es": "Proyectos de ley de {who}",
    "state": "draft"
   },
   "state.between": {
