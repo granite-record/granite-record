@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.12
+# GRANITE_VERSION: 2026-10-23.13
 """
 The site's translations: what is translated, what has gone stale, and the
 proofreader's sheet out and back. src/pages/i18n.py says how a translation
@@ -54,7 +54,7 @@ AREAS = {"nav": "the header", "page": "the header", "theme": "Settings", "set": 
          "notice": "an English page, to a reader who chose Spanish",
          "lang": "every Spanish page, under its title: what stays in English, and why",
          "home": "the home page", "card": "the home page's cards",
-         "web": "the home page's webinar box", "state": "the home page's status box",
+         "web": "the home page's webinar box", "nf": "the Spanish 404 page (/es/404.html)", "state": "the home page's status box",
          "fresh": "the home page, under Coming up: a warning that the data is stale",
          "sess": "the home page's Recent Session Days: the floor sessions' players",
          "gloss": "the Glossary page, and the pop-up on a term", "cal": "Coming up (the week's meetings)",
