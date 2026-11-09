@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.258
+# GRANITE_VERSION: 2026-09-05.259
 """
 Generate the faceted site from real General Court data.
 
@@ -8619,6 +8619,18 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
                 district=_s.get("district") or _t.get("district"),
                 county=_s.get("county") or _t.get("county"),
                 county_abbr=None if _s.get("district") else _t.get("county_abbr"))
+        elif ((_s.get("chamber") or "")[:1].upper() in ("H", "S")
+              and (_t.get("chamber") or "")[:1].upper() in ("H", "S")
+              and (_s.get("chamber") or "")[:1].upper() != (_t.get("chamber") or "")[:1].upper()
+              and _s.get("district")):
+            # THE SEAT THE RECORD PRINTS, WHERE THE MEMBER HAS SINCE MOVED
+            # CHAMBER (9 November 2026): a bill filed as Rep. for Grafton 1 reads
+            # so, linked to the page the member has now as a senator.
+            _lab = member_labels(
+                _s.get("name"),
+                chamber=_s.get("chamber"),
+                party=_s.get("party") or _t.get("party_code"),
+                district=_s.get("district"), county=_s.get("county"))
         else:
             _lab = member_labels(
                 _s.get("name"),
@@ -11165,7 +11177,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 votes_by_bill, vetoes=None, notes=None, coverage=None,
                 chapters=None, seats=None, session_over="", former=None,
                 links=None, hearing_reports=None, ballots=None, term_rosters=None,
-                rc_cards=None, moments=None):
+                rc_cards=None, moments=None, numbers=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -11214,6 +11226,17 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     for _sit, _earlier in (links or {}).items():
         for _old in _earlier:
             _people.setdefault(str(_old), legs.get(_sit) or (former or {}).get(_sit) or {})
+    # AN EMPLOYEE NUMBER IS ITS PERSON (9 November 2026). The bill status page
+    # names a sponsor by the employee number of the seat they then held, and a
+    # member who has since moved chamber holds another: Sen. David Rochefort's
+    # 2025 House bills, filed as Rep. for Grafton 1, name 409162, which the
+    # register (generated/person_numbers.json) gives to the person member_links
+    # already joins to the senator. `numbers` is that register, {employee
+    # number: person}; a number is taken only where its person is one the site
+    # has a page for, and never over an id the site already answers.
+    for _n, _p in (numbers or {}).items():
+        if _n not in _people and _people.get(_p):
+            _people[_n] = _people[_p]
     # And, for a term whose own roster is frozen and not the sitting one
     # (main says which), the members who left by name: bill_sponsor_list
     # says why. Every one of a name, in order, since only the one who sat
@@ -12660,6 +12683,9 @@ def main():
                                former=former, links=links,
                                hearing_reports=hearing_reports,
                                term_rosters=term_rosters,
+                               numbers={str(_n): str(_q.get("person") or "")
+                                        for _q in ((register or {}).get("people") or [])
+                                        for _n in (_q.get("numbers") or [])},
                                session_over=session_over(a.status),
                                coverage=archive_coverage(
                                    bills, narratives, sponsors, reports,

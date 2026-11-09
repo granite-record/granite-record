@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.825
+# GRANITE_VERSION: 2026-09-04.826
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -111920,6 +111920,54 @@ def _sponsor_filing(build_site_v2, member_links):
         "the bill page links " + str([s["slug"] for s in sp]))
     return "ok", ("a record with no id or an employee number filed once under the member its page links; "
                   "a same-named member who did not sit that term neither linked nor credited")
+
+
+@check("naming", "a bill filed under a member's earlier number links their page and keeps the seat it prints",
+       needs=("build_site_v2",))
+def _sponsor_numbers_join_their_person(build_site_v2):
+    """9 November 2026: Sen. David Rochefort's 2025 House bills, filed as Rep.
+    for Grafton 1, name the employee number of that seat (409162), which the
+    sitting roster does not answer; the register (person_numbers.json) gives it
+    to the person the site already joins to the senator. build_bills now reads
+    the register's numbers, and a row whose chamber is not the member's now
+    keeps the seat the record prints, linked to the page they have.
+    """
+    import contextlib
+    import io
+    B = build_site_v2
+    T = "2025-2026"
+    sen = {"id": "11458", "name": "Doe, Dana", "chamber": "S", "party_code": "R",
+           "district": "1", "county": "", "county_abbr": ""}
+    legs = {"11458": sen}
+    sponsors = {T: {"HB10": [
+        {"member_id": "409162", "name": "Dana Doe", "chamber": "H", "prime": True,
+         "source": "bill status page", "party": "R", "county": "Graf", "district": "01"}]}}
+    bills = {T: {"HB10": {"bill": "HB10", "lsr": "2025-0010", "lsr_year": "2025",
+                          "title": "relative to a fixture.", "chamber": "H",
+                          "designation": "HB 10"}}}
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-numbers-"))
+    got = []
+    try:
+        os.chdir(tmp)
+        for numbers in ({"409162": "10614"}, None):
+            out = tmp / ("site" + str(len(got)))
+            out.mkdir()
+            with contextlib.redirect_stdout(io.StringIO()):
+                B.build_bills(out, bills, {}, {}, {}, sponsors, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                              legs, {B.sort_name(sen["name"]): sen}, {B.name_key(sen["name"]): sen},
+                              {}, seats={"11458": [("2025-2026", "S")]}, former={}, links={"11458": ["10614"]},
+                              numbers=numbers)
+            page = json.loads((out / "bills" / "2025" / "HB10.json").read_text(encoding="utf-8"))
+            got.append((page["sponsors"][0].get("display_full"), page["sponsors"][0].get("slug")))
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert got[0] == ("Rep. Dana Doe (R - Graf 1)", B.own_slug(sen)), (
+        f"a bill filed under a member's earlier House number reads {got[0]}")
+    assert not got[1][1], "with no register the number linked anyway (the fixture is stale)"
+    return "ok", ("a bill status page's employee number is its person through the register: "
+                  "linked to their page, at the seat it prints")
 
 
 @check("naming", "a member who resigned mid-term keeps the link on every bill they sponsored",
