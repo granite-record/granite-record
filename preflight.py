@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.813
+# GRANITE_VERSION: 2026-09-04.814
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -23411,7 +23411,7 @@ try {
   const year = document.querySelector("#year"), sort = document.querySelector("#sort");
   year.options = [opt("all", "All Terms"), opt("2027-requests", "2027 Bill Requests", "2027 Requests"),
                   opt("2025-2026", "2025–2026 Term", "2025–2026")];
-  sort.options = [opt("best", "Best match"), opt("recent", "Most recent action", "Recent action"),
+  sort.options = [opt("best", "Best match"), opt("recent", "Newest action"),
                   opt("oldest", "Oldest action")];
   // Replaced, the chosen option takes the choice with it, as in Chrome.
   for (const x of [year, sort]) x.replaceChild = function (n, o) {
@@ -23665,7 +23665,7 @@ def _search_polish(BP):
     html_ = Path("src/pages/bills.html").read_text(encoding="utf-8")
     opts = re.findall(r'<option value="(\w+)"[^>]*>([^<]*)</option>',
                       html_[html_.index('<select id="sort">'):html_.index("</select>", html_.index('<select id="sort">'))])
-    if opts != [("best", "Best match"), ("num", "Bill number"), ("recent", "Most recent action"),
+    if opts != [("best", "Best match"), ("num", "Bill number"), ("recent", "Newest action"),
                 ("oldest", "Oldest action"), ("status", "Status")]:
         bad.append(f"the Sort offers {opts}")
     # 2 and 3. The panel, /search and Return.
@@ -23721,10 +23721,10 @@ def _search_polish(BP):
     # 4. A phone: the pickers' words, then the row itself.
     ph, wd = got["phone"], got["wide"]
     if ph["year"] != ["All Terms", "2027 Requests", "2025–2026"] \
-            or ph["sort"] != ["Best match", "Recent action", "Oldest action"] \
+            or ph["sort"] != ["Best match", "Newest action", "Oldest action"] \
             or not ph["replaced"] or ph["values"] != ["2025-2026", "recent"]:
         bad.append(f"a phone's pickers read {ph}: their shorter words, each a new option, the value kept")
-    if wd["year"][1:] != ["2027 Bill Requests", "2025–2026 Term"] or wd["sort"][1] != "Most recent action" \
+    if wd["year"][1:] != ["2027 Bill Requests", "2025–2026 Term"] or wd["sort"][1] != "Newest action" \
             or wd["values"] != ["2025-2026", "recent"]:
         bad.append(f"a wide screen's pickers read {wd}")
     if ph["order"] != ["qLabel", "qbox", "yearLabel", "year"] \
@@ -23737,8 +23737,8 @@ def _search_polish(BP):
     if 'data-short="${termDash(t)}">${termDash(t)} Term</option>' not in app \
             or ' data-short="${esc(reqYear())} Requests"' not in app or ".join(\"\");\n   fitPickers();" not in app:
         bad.append("the term picker's options carry no shorter words, or are not fitted when drawn")
-    if 'data-short="Recent action">Most recent action</option>' not in html_:
-        bad.append("the Sort's Most recent action carries no shorter words")
+    if '<option value="recent">Newest action</option>' not in html_:
+        bad.append("the Sort does not offer Newest action (Alice, 9 November 2026: beside Oldest action)")
     css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"), flags=re.S)
     blocks, outside = _css_media_blocks(css)
     phone = "".join(b for c, b in blocks if re.fullmatch(r"\(\s*max-width:\s*45em\s*\)", c))
