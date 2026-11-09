@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.821
+# GRANITE_VERSION: 2026-09-04.822
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -111806,6 +111806,8 @@ def _resigned_sponsors_keep_their_link(build_site_v2, member_links):
         f"the resigned member's seat reads {terry.get('district_label')!r}, not 'Carr 7'")
     assert page["sponsors"][1].get("slug") == B.own_slug(legs["990100"]),         "the sitting co-sponsor lost her link"
     assert B.district_tag("H", "07", "Carroll") == "Carr 7" and         B.district_tag("S", "03") == "SD3", "a padded district number is drawn as printed"
+    return "ok", ("a member who resigned this term is linked on a bill the status page names "
+                  "them on, at their seat as people say it (Carr 7)")
 
 
 @check("naming", "after the turn a finished term's sponsors who left at the election keep their link",
