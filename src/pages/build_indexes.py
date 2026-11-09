@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.26
+# GRANITE_VERSION: 2026-09-13.27
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -648,6 +648,8 @@ def find_index(site, legs, towns):
             ("Senate Session Days", "session/senate.html", "Every day the whole Senate sat, term by term", ""),
             ("Resources", "resources.html", "How New Hampshire's government works", ""),
             ("The data, as tables", "data.html", "Every table as CSV", ""),
+            ("The Data API", "api.html", "The whole record as files a program can read",
+             "api · developers · json · database · sqlite · bulk download"),
             ("The whole record, as lists", "directory.html", "Plain lists of every page", ""),
             ("About this site", "about.html", "How it is made, and by whom", "")):
         rows.append(["page", name, what, S.canon(path), words])
@@ -705,7 +707,8 @@ def main():
             f'<li><a href="{S.canon("session/house.html")}">House Session Days</a> and '
             f'<a href="{S.canon("session/senate.html")}">Senate Session Days</a></li>',
             f'<li><a href="{S.canon("resources.html")}">Resources</a></li>',
-            f'<li><a href="{S.canon("data.html")}">The data, as tables</a></li></ul>']
+            f'<li><a href="{S.canon("data.html")}">The data, as tables</a></li>',
+            f'<li><a href="{S.canon("api.html")}">The Data API</a></li></ul>']
     if n_days:
         import build_session_pages as BSP
         # The Senate and the House under their own names, the Senate first,
