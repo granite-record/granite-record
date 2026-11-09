@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.828
+# GRANITE_VERSION: 2026-09-04.829
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -73304,7 +73304,9 @@ def _icons_named():
                      for href, _label, g in CH.NAV_TABS]
               for lang in i18n.LANGS if lang != i18n.DEFAULT}
     for where, html in sources.items():
-        lang_m = re.match(r'<!DOCTYPE html><html lang="([a-z]+)"', html)
+        # Wherever <html> stands: the Calendar's pages are the record pages' frame, which
+        # opens with a comment before it (9 November 2026).
+        lang_m = re.search(r'<html lang="([a-z]+)"', html[:600])
         lang = lang_m.group(1) if lang_m else i18n.DEFAULT
         if 'class="icon"' not in html:
             continue
@@ -75023,11 +75025,14 @@ def _one_language_note(chrome, i18n):
             "búsqueda encuentra los temas por sus palabras en inglés (housing, no vivienda)."),
         "lang.why_links": ("Official state pages the site links to are in English.",
                            "Las páginas oficiales del estado a las que enlaza el sitio están en inglés."),
+        # Without "the calendar" since 9 November 2026, when the Calendar was
+        # built in Spanish: a page that says a page is not translated when it is
+        # says what is not so.
         "lang.why_not_yet": (
-            'Not translated yet: the pages for bills, legislators, committees, the calendar and the '
+            'Not translated yet: the pages for bills, legislators, committees and the '
             'laws, and any page marked "in English" where it is listed.',
-            'Todavía sin traducir: las páginas de proyectos de ley, legisladores, comités, el '
-            'calendario y las leyes, y cualquier página marcada "en inglés" donde aparece en una '
+            'Todavía sin traducir: las páginas de proyectos de ley, legisladores, comités y las '
+            'leyes, y cualquier página marcada "en inglés" donde aparece en una '
             'lista.')}
 
     import html as _h
@@ -75099,7 +75104,10 @@ def _spanish_learn(i18n, G, BC, chrome, civics):
     strings = i18n.catalog("es")["strings"]
     slugs = G.learn_translated("es")
     learn = BC.learn_topics(civics.TOPICS)
-    named = [p for p in i18n.PAGES["es"] if p.startswith("learn/") and p != BC.GLOSSARY_PAGE]
+    # Not By the Numbers either (9 November 2026): it is not one of civics.TOPICS,
+    # and _numbers_in_spanish holds it.
+    named = [p for p in i18n.PAGES["es"] if p.startswith("learn/")
+             and p not in (BC.GLOSSARY_PAGE, "learn/by-the-numbers.html")]
     unknown = sorted(p for p in named if not G.learn_topic(p[len("learn/"):-len(".html")]))
     assert not unknown, f"i18n.PAGES names Learn pages there are none of: {unknown}"
     bad, misses = [], set(i18n.MISSES)
@@ -88071,6 +88079,386 @@ def _rail_law_stop_dated(build_site_v2):
                   "7 January 2026, when it was killed, on the card and the page alike")
 
 
+# THE CALENDAR AND LEARN'S BY THE NUMBERS IN SPANISH (9 November 2026, the
+# person's "more of the site in Spanish where feasible"). The Calendar's week
+# pages, their month files and their script's words, and the page of statistics,
+# are built in the language beside the English ones; what is held here is that
+# they are, that nothing the site wrote is left in English among them, that the
+# English pages gained only the way to the Spanish ones, and that the script
+# that makes a page a calendar says its dates, counts and sentences in Spanish.
+# The record's own words stay English (i18n.py) and are marked.
+
+def _visible_text(page, keep_en=False):
+    """The words of a page's <main>, without scripts, styles and -- unless
+    keep_en -- whatever is marked lang="en"."""
+    m = re.search(r"<main.*?</main>", page, re.S)
+    t = m.group(0) if m else page
+    t = re.sub(r"<(script|style|template)\b.*?</\1>", " ", t, flags=re.S)
+    if not keep_en:
+        t = re.sub(r'<(\w+)\b[^>]*\blang="en"[^>]*>.*?</\1>', " ", t, flags=re.S)
+    return " ".join(__import__("html").unescape(re.sub(r"<[^>]+>", " ", t)).split())
+
+
+@check("frontend", "the Calendar is built in Spanish beside the English, week by week, and English gains only the way to it",
+       needs=("build_calendar", "calendar_documents", "i18n"))
+def _calendar_in_spanish(BC, CD, i18n):
+    """/es/calendar and every week's page under /es/calendar/, with a month
+    file of its own (es/calendar/data/), the frame, controls and sentences in
+    Spanish and the cards as build_pages.cal_days draws them in it; the
+    footer's language list and <html>'s data-alt lead each version to the
+    other, and the header's Calendar tab leads Spanish pages to the Spanish
+    Calendar. Nothing the site wrote is left in English on the Spanish page
+    outside what is marked lang="en"; the English pages differ from before
+    only by data-alt-es and the footer's link to the Spanish version."""
+    if not i18n.has("es", "calendar.html"):
+        raise AssertionError("i18n.PAGES has no Spanish Calendar")
+    shared, base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    if not (site / "calendar.html").exists():
+        return "skip", "the fixture has no Calendar"
+    en_weeks = sorted(p.name for p in (site / "calendar").glob("2*.html"))
+    es_weeks = sorted(p.name for p in (site / "es" / "calendar").glob("2*.html"))
+    assert en_weeks and en_weeks == es_weeks, (
+        f"English has {len(en_weeks)} week pages and Spanish {len(es_weeks)}: "
+        f"{sorted(set(en_weeks) ^ set(es_weeks))[:5]}")
+    assert (site / "es" / "calendar.html").exists(), "the Spanish Calendar's own page is missing"
+    en_m = sorted(p.name for p in (site / "calendar" / "data").glob("2*.json"))
+    es_m = sorted(p.name for p in (site / "es" / "calendar" / "data").glob("2*.json"))
+    assert en_m and en_m == es_m, f"month files: English {len(en_m)}, Spanish {len(es_m)}"
+    es = (site / "es" / "calendar.html").read_text(encoding="utf-8")
+    en = (site / "calendar.html").read_text(encoding="utf-8")
+    assert '<html lang="es"' in es and 'data-alt-en="/calendar"' in es, (
+        "the Spanish Calendar does not name its English version on <html>")
+    assert 'data-alt-es="/es/calendar"' in en and \
+        'lang="es" data-href="/es/calendar"' in en, (
+            "the English Calendar does not lead to the Spanish one: <html>'s data-alt-es and "
+            "the footer's language list")
+    assert 'lang="en" data-href="/calendar"' in es, (
+        "the Spanish Calendar's footer does not lead back to the English one")
+    assert 'window.GR_LANG="es"' in es and "calp.prev_week" in es, (
+        "the Spanish Calendar carries no words for its script (i18n.page_words)")
+    # THE HEADER'S TAB. A Spanish page's Calendar tab leads to the Spanish one.
+    home = (site / "es" / "index.html").read_text(encoding="utf-8")
+    assert 'href="/es/calendar.html"' in home or 'href="/es/calendar"' in home, (
+        "the header on a Spanish page still leads to the English Calendar")
+    assert 'class="calmore calall"><a href="es/calendar"' in home, (
+        "Coming up's 'See the full calendar' on the Spanish home page leads to the English Calendar")
+    # THE ENGLISH PAGES GAINED NOTHING BUT THE WAY TO THE SPANISH ONES: a
+    # week's page with that way taken out is the week's page as it was, which
+    # is what build_calendar.week_page writes when `alts` is empty.
+    # Names of the Calendar's own words that must not stand on a Spanish page
+    # outside lang="en": every "calp." word of the code, in English.
+    words, _p = i18n.code_words()
+    english = [w["en"] for k, w in words.items() if k.startswith("calp.")
+               and len(w["en"].split()) >= 3 and "{" not in w["en"] and "&" not in w["en"]]
+    seen = _visible_text(es)
+    left = [w for w in english if w in seen]
+    assert not left, f"the Spanish Calendar says in English: {left[:4]}"
+    for lead in ("Skip to the schedule", "Filter the calendar", "Previous Week", "Both chambers",
+                 "Study committee meetings only"):
+        assert lead not in seen, f"the Spanish Calendar's {lead!r} is in English"
+    assert "La semana del" in seen and "lunes" in seen and "viernes" in seen, (
+        "the Spanish Calendar's heading and days are not in Spanish")
+    # The week's own days, in Spanish: "lunes, 16 de febrero".
+    d = BC.datetime.date(2026, 2, 16)
+    assert BC.day_words(d.isoformat(), BC.datetime.date(2026, 1, 1), "es") == (
+        "lunes, 16 de febrero", ""), BC.day_words(d.isoformat(), BC.datetime.date(2026, 1, 1), "es")
+    assert BC.day_words("2026-02-11", BC.datetime.date(2026, 2, 10), "es")[1] == "mañana"
+    assert BC.span_words(d, d + BC.datetime.timedelta(days=4), lang="es") == "16–20 de febrero de 2026"
+    # Each Spanish month file is the English one's, its cards in Spanish.
+    one = en_m[len(en_m) // 2]
+    je = json.loads((site / "calendar" / "data" / one).read_text(encoding="utf-8"))
+    js = json.loads((site / "es" / "calendar" / "data" / one).read_text(encoding="utf-8"))
+    assert list(je["days"]) == list(js["days"]) and list(je["weeks"]) == list(js["weeks"]), (
+        f"{one}: the Spanish month holds other days or weeks than the English")
+    assert any(v["label"] != js["weeks"][k]["label"] for k, v in je["weeks"].items()), (
+        f"{one}: the Spanish month names its weeks as the English does")
+    # The English script and picker are the English ones, to the byte; the
+    # Spanish are the English with each pair put over it, once.
+    assert BC.week_js("en") is BC.WEEK_JS and CD.picker_js("en") is CD.PICKER_JS, (
+        "the English Calendar's scripts are not WEEK_JS and PICKER_JS as written")
+    assert BC.week_js("es") != BC.WEEK_JS and "tr(\"calp.prev_week\"" in BC.week_js("es")
+    assert CD.picker_js("es") != CD.PICKER_JS and 'tr("calp.cd_open"' in CD.picker_js("es")
+    return "ok", (f"{len(es_weeks)} week pages and {len(es_m)} month files in Spanish, each the "
+                  "English's counterpart, its words Spanish and the record's marked; English leads to it")
+
+
+# components.js first, as the page loads it and with no window, as every
+# harness here loads it; then the page's language and words, as the head
+# carries them, and the script.
+_CAL_ES_BEFORE = "globalThis.document={getElementById:function(){return null;}};\n"
+_CAL_ES_AFTER = 'globalThis.window=globalThis; globalThis.GR_LANG="es";\n'
+
+_CAL_ES_CHECK = r"""
+const C=globalThis.GRCAL, fs=require("fs"), fails=[];
+const ok=(c,m)=>{ if(!c) fails.push(m); };
+const eq=(a,b,m)=>{ if(a!==b) fails.push(m+": "+JSON.stringify(a)+" is not "+JSON.stringify(b)); };
+eq(C.dayWords("2026-02-16"),"lunes, 16 de febrero","a day");
+eq(C.weekLabel("2026-W08"),"16–20 de febrero de 2026","a week");
+eq(C.weekLabel("2026-W08","medium"),"16–20 feb. 2026","a week, short");
+eq(C.relWord("2026-02-17","2026-02-16"),"mañana","tomorrow");
+eq(C.relWord("2026-02-16","2026-02-16"),"hoy","today");
+eq(C.relWord("2026-02-19","2026-02-16"),"en 3 días","in days");
+const T=(total,shown,seen,study)=>({total:total,shown:shown,seen:seen,study:study});
+const wk=tr("calp.where_week","this week");
+eq(C.countLine(T(5,5,5,0),wk),"5 reuniones esta semana.","a count");
+eq(C.countLine(T(1,1,1,0),wk),"1 reunión esta semana.","one meeting");
+eq(C.countLine(T(0,0,0,0),wk),"No hay reuniones esta semana.","no meetings");
+eq(C.countLine(T(5,3,3,0),wk),"3 de 5 reuniones se muestran.","some shown");
+eq(C.countLine(T(4,0,0,0),wk),"Ninguna de las 4 reuniones esta semana coincide.","none match");
+eq(C.countLine(T(5,3,3,2),wk),"3 de 5 reuniones se muestran. 2 reuniones de comités de estudio están ocultas.","study hidden");
+eq(C.countLine(T(3,0,0,3),wk),"3 reuniones de comités de estudio están ocultas.","study alone");
+eq(C.emptyWords([],C.defaults()),"No hay reuniones","an empty day");
+const cards=JSON.parse(fs.readFileSync(process.argv[2],"utf8")), en=JSON.parse(fs.readFileSync(process.argv[3],"utf8"));
+const names=(j)=>[].concat(...Object.keys(j.days).map(d=>C.parseDay(j.days[d]).cards.map(e=>e.name))).sort();
+const a=names(cards), b=names(en);
+ok(a.length>0 && a.length===b.length,"a month's cards parse the same in Spanish: "+a.length+" and "+b.length);
+// A session day and a conference are named in the page's words; a committee's name is the record's.
+const said=(n)=>/^(Día de sesión|Comité de conferencia)/.test(n), wrote=(n)=>/^(House Session Day|Senate Session Day|Committee of conference)/.test(n);
+const ra=a.filter(n=>!said(n)), rb=b.filter(n=>!wrote(n));
+ok(ra.length===rb.length && ra.every((n,i)=>n===rb[i]),"a committee's name is not read as the record has it in Spanish too: "+JSON.stringify(ra.filter((n,i)=>n!==rb[i]).slice(0,3)));
+const grid=C.gridHtml({view:"2026-03",sel:"2026-03-09",focus:"2026-03-09",today:"2026-03-09",first:"2026-01-05",last:"2026-12-31",days:{},f:C.defaults()});
+ok(/aria-hidden="true">Lu<\/span><span class="sr">lunes<\/span>/.test(grid),"the grid's head is Lu, lunes...");
+ok(/sábado/.test(grid)&&/domingo/.test(grid),"the grid names Saturday and Sunday");
+const cell=C.cellHtml("2026-03-09",{first:"2026-01-05",last:"2026-12-31",days:{},f:C.defaults(),view:"2026-03",today:"2026-03-09",sel:"2026-03-09",focus:"2026-03-09"});
+ok(/lunes, 9 de marzo de 2026, cargando/.test(cell),"a day's name for a screen reader: "+cell.slice(-160));
+console.log(fails.length?fails.join("\n"):"OK");
+"""
+
+
+@check("frontend", "the Calendar's script says its dates, counts and sentences in Spanish, and reads a Spanish card as it reads an English one",
+       needs=("build_calendar", "i18n"))
+def _calendar_script_in_spanish(BC, i18n):
+    """WEEK_JS in node with the page's language set to Spanish and the words
+    the page would carry (i18n.words_js over week_js("es")): a day, a week and
+    a count in Spanish; a card drawn by cal_days in Spanish -- its committee's
+    name marked lang="en" -- is read as the English card is; and the grid names
+    its days in Spanish. The English script is held by the checks above it."""
+    node = _cal_node()
+    if not node:
+        return "skip", "node is not on PATH"
+    if not Path("src/pages/bills.html").exists():
+        return "skip", "bills.html is not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-calspanish-"))
+    try:
+        site, weeks, order, _u, _m = _cal_fixture(root)
+        import datetime as _dt
+        import contextlib
+        import io
+        today = _dt.date(*CAL_TODAY)
+        with contextlib.redirect_stdout(io.StringIO()):
+            BC.month_files(site, weeks, order, {}, {}, {}, today, lang="es")
+        js = BC.week_js("es")
+        words = i18n.words_js("es", js)
+        prog = root / "es.js"
+        prog.write_text(_CAL_ES_BEFORE + _components_js() + "\n" + _CAL_ES_AFTER + words + "\n" + js
+                        + _CAL_ES_CHECK, encoding="utf-8")
+        r = _run([node, str(prog), str(site / "es" / "calendar" / "data" / "2026-03.json"),
+                  str(site / "calendar" / "data" / "2026-03.json")],
+                 capture_output=True, text=True, encoding="utf-8", timeout=120)
+        out = ((r.stdout or "") + (r.stderr or "")).strip()
+        assert r.returncode == 0 and out.endswith("OK"), out[-1800:]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", "a day, a week, six counts and the grid said in Spanish; a Spanish card parsed as the English one"
+
+
+@check("frontend", "By the Numbers is built in Spanish: every section, its address kept, the record's words marked English",
+       needs=("learn_numbers", "build_civics", "i18n"))
+def _numbers_in_spanish(learn_numbers, build_civics, i18n):
+    """/es/learn/by-the-numbers holds the English page's sections under the
+    addresses the English page gives them, each heading and sentence in
+    Spanish and every figure the English page's own; a committee's name is
+    marked lang="en" as the record has it. The Spanish page is drawn from the
+    same code as the English (learn_numbers.body's lang), so a figure cannot
+    differ."""
+    if not i18n.has("es", "learn/by-the-numbers.html"):
+        raise AssertionError("i18n.PAGES has no Spanish By the Numbers")
+    shared, base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    en_p, es_p = site / "learn" / "by-the-numbers.html", site / "es" / "learn" / "by-the-numbers.html"
+    if not en_p.exists():
+        return "skip", "the fixture has no By the Numbers"
+    assert es_p.exists(), "the Spanish By the Numbers is not written"
+    en, es = en_p.read_text(encoding="utf-8"), es_p.read_text(encoding="utf-8")
+    ids = lambda t: re.findall(r'<section class="l-sec" id="([^"]+)"', t)
+    assert ids(en) == ids(es) and ids(en), (
+        f"the sections' addresses differ: {ids(en)} against {ids(es)}")
+    assert '<html lang="es"' in es and 'data-alt-en="/learn/by-the-numbers"' in es
+    assert 'data-alt-es="/es/learn/by-the-numbers"' in en and \
+        'lang="es" data-href="/es/learn/by-the-numbers"' in en, (
+            "the English page does not lead to the Spanish one")
+    seen = _visible_text(es)
+    for head in learn_numbers.HEADINGS:
+        if head in ("The Hearings with the Most Sign-Ins", "Constitutional Amendments Sent to the Voters"):
+            continue
+        assert head not in seen, f"the Spanish By the Numbers has {head!r} in English"
+    for word in ("Bills filed", "Became Law", "Interim Study", "How These Are Counted",
+                 "Hover over a term", "Filed per representative"):
+        assert word not in seen, f"the Spanish By the Numbers says {word!r} in English"
+    # The same figures: every number of a table's cells is the English page's.
+    cells = lambda t: re.findall(r'<td class="l-num">([^<]*)</td>', t)
+    assert cells(en) == cells(es), "a figure of the Spanish By the Numbers is not the English page's"
+    assert 'lang="en"' in es and 'House Commerce' in es and "House Commerce</span>" in es, (
+        "a committee's name on the Spanish page is not marked as the record's English")
+    return "ok", (f"{len(ids(es))} sections at the English addresses, {len(cells(es))} figures the "
+                  "English page's, the record's words marked")
+
+
+@check("frontend", "every section of By the Numbers renders in Spanish, from figures that make them all, with no English heading left",
+       needs=("learn_numbers", "site_read", "i18n"))
+def _numbers_spanish_sections(learn_numbers, SR, i18n):
+    """The fixture holds none of the files four of the page's sections need
+    (testimony, member votes, the voters' counts), so a Spanish page built from
+    it never draws them. This gives learn_numbers.body the figures the others
+    work out -- a stand-in for each, in the shapes their functions return --
+    and draws the whole page in both languages: fourteen sections each, the
+    same sections, none of English's headings or table heads left among
+    Spanish's, and English's body the same whether `lang` is given or not."""
+    from collections import Counter
+    t1, t2 = "2023-2024", "2025-2026"
+    idx = [{"term": t1, "id": "HB1", "year": 2023, "chip": "Became Law"},
+           {"term": t2, "id": "HB2", "year": 2025, "chip": "Died"}]
+    hear = {t2: [{"bill": "HB2", "year": "2025", "date": "2025-02-10", "total": 50, "support": 40,
+                  "oppose": 9, "neutral": 1, "committee": "House Judiciary", "on": "an amendment",
+                  "title": "relative to pears."},
+                 {"bill": "HB3", "year": "2026", "date": "2026-02-11", "total": 30, "support": 10,
+                  "oppose": 20, "neutral": 0, "committee": "", "on": "a non-germane amendment",
+                  "title": "relative to figs."}]}
+    ballot = {"rows": [
+        {"bill": "CACR1", "term": t1, "election": "2024-11-05", "yes": 700, "no": 300,
+         "source": "https://www.sos.nh.gov/x", "cite": "SOS 2024"},
+        {"bill": "CACR3", "term": t2, "election": "2999-11-05", "yes": None, "no": None},
+        {"bill": "CACR4", "term": t2, "election": "2025-11-05", "yes": None, "no": None}]}
+    mem = {"outcomes": learn_numbers.outcomes, "per_member": learn_numbers.per_member,
+           "referrals": learn_numbers.referrals, "signins": learn_numbers.signins,
+           "overturned": learn_numbers.overturned, "consent": learn_numbers.consent,
+           "committee_rates": learn_numbers.committee_rates, "passage": learn_numbers.passage,
+           "vetoes": learn_numbers.vetoes, "attendance": learn_numbers.attendance,
+           "_need": learn_numbers._need, "needs_more_than_majority": learn_numbers.needs_more_than_majority}
+    saved = (SR.bill_index_or_stop, SR.figures_term)
+    L = learn_numbers
+    narr = {t2: {"HB2": {"events": [{"type": "floor", "date": "2025-03-01", "vote_kind": "RC"},
+                                    {"type": "floor", "date": "2026-03-02", "vote_kind": "VV"}]}}}
+    tmp = Path(tempfile.mkdtemp(prefix="gr-numsstub-"))
+    try:
+        (tmp / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
+        (tmp / "rollcalls.json").write_text(json.dumps({t2: {"HB2": [
+            {"yeas": 200, "nays": 190, "body": "H", "question": "Ought to Pass",
+             "date": "2026-03-04", "year": 2026, "procedural": False}]}}), encoding="utf-8")
+        SR.bill_index_or_stop = lambda *a, **k: idx
+        SR.figures_term = lambda i: t2
+        L._need = lambda path, what: (hear if "testimony" in str(path) else {}
+                                      if "member_votes" in str(path) else ballot if "ballot" in str(path)
+                                      else {})
+        L.outcomes = lambda i: {t1: {"filed": 10, "Became Law": 4, "Died": 3, "Interim Study": 2, "other": 1},
+                                t2: {"filed": 20, "Became Law": 6, "Died": 9, "Interim Study": 2, "other": 3}}
+        L.per_member = lambda i: {t1: {"H": [800, 300], "S": [90, 40]}, t2: {"H": [700, 250], "S": [80, 30]}}
+        L.referrals = lambda i, n, t: {"House Commerce": (5, 2), "Senate Education": (3, 0)}
+        L.signins = lambda *a, **k: hear
+        L.overturned = lambda n: ({"H": (30, 3, 1), "S": (0, 0, 0)}, [("HB2", "H", "PASS", "KILL")])
+        L.consent = lambda n, r, t: ({"House Commerce": (12, 10), "Senate Education": (15, 4)},
+                                     {"H": Counter(kept=10, regular=3, removed=2), "S": Counter(kept=4, regular=1)})
+        L.committee_rates = lambda i, n, t: ({"House Commerce": (12, 6, 4), "Senate Education": (15, 7, 5)},
+                                             {"H": (12, 6, 4), "S": (15, 7, 5)})
+        L.passage = lambda i, n: {t1: {"passed": 10, "amended": 4, "conference": 1,
+                                       "dist": Counter({0: 5, 1: 3, 2: 1, 3: 1})},
+                                  t2: {"passed": 20, "amended": 12, "conference": 3,
+                                       "dist": Counter({0: 8, 1: 6, 2: 3, 4: 3})}}
+        L.vetoes = lambda rows: (30, 5, 3, 1, 1)
+        L.attendance = lambda v: {(t1, "H"): (30, 0.91), (t2, "S"): (25, 0.9)}
+        L.needs_more_than_majority = lambda b, r: False
+        en = L.body(tmp, tmp, strict=False)
+        en2 = L.body(tmp, tmp, strict=False, lang="en")
+        es = L.body(tmp, tmp, strict=False, lang="es")
+    finally:
+        SR.bill_index_or_stop, SR.figures_term = saved
+        for k, v in mem.items():
+            setattr(L, k, v)
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert en == en2, "By the Numbers in English differs when its language is stated"
+    h2 = lambda t: re.findall(r"<h2>(.*?)</h2>", t)
+    assert len(h2(en)) == len(L.HEADINGS) == len(h2(es)), (
+        f"{len(h2(en))} sections in English, {len(h2(es))} in Spanish, {len(L.HEADINGS)} named")
+    assert not set(h2(en)) & set(h2(es)), f"a heading is in English on the Spanish page: {set(h2(en)) & set(h2(es))}"
+    seen = _visible_text(es)
+    for word in ("Term", "Bills filed", "Became Law", "Reached the governor", "Yes share",
+                 "Ratified", "were adopted", "went to the voters", "Hover over", "sign-ins",
+                 "Interim Study", "Passed both chambers"):
+        assert not re.search(rf"\b{re.escape(word)}\b", seen), f"the Spanish page says {word!r}"
+    assert 'lang="en">House Commerce<' in es and 'lang="en">relative to' in es, (
+        "the record's words (a committee, a title) are not marked as English")
+    return "ok", f"{len(h2(es))} sections in both languages from stand-in figures; English the same with its language stated"
+
+
+@check("frontend", "the Calendars & Journals section and its pickers say their words in Spanish and leave the documents' names as the General Court printed them",
+       needs=("calendar_documents", "i18n"))
+def _calendar_documents_in_spanish(CD, i18n):
+    """block_html(lang="es") for a queue of four documents, one in each of the
+    four sets: the heading, the labels, the button and the sentence in
+    Spanish, the kinds of document in Spanish (Calendario de la Cámara), each
+    document's own name marked lang="en"; English's section is what it was
+    with no language stated. picker_js("es") run in node says a document's
+    count, its button's name and its choice in Spanish, as the English says
+    them in English."""
+    import csv
+    import datetime as _dt
+    node = _cal_node()
+    root = Path(tempfile.mkdtemp(prefix="gr-cdspanish-"))
+    try:
+        H = "https://gc.nh.gov/house/calendars_journals/viewer.aspx?fileName="
+        SN = "https://gc.nh.gov/senate/calendars_journals/viewer.aspx?fileName="
+        rows = [("H", "calendar", "2026", "HC 32.pdf", H + "calendars%5C2026%5CHC%2032.pdf",
+                 r"calendars\2026\HC032.pdf", "held", "0", "", ""),
+                ("H", "journal", "2026", "HJ 16 August 19, 2026.pdf",
+                 H + "journals%5C2026%5CHJ%2016%20August%2019%2C%202026.pdf",
+                 r"journals\2026\HJ 16 August 19, 2026.pdf", "held", "0", "", ""),
+                ("S", "calendar", "2026", "SC 29.pdf", SN + "Calendars%5C2026%5CSC%2029.pdf",
+                 r"calendars_senate\2026\SC029.pdf", "held", "0", "", ""),
+                ("S", "journal", "2026", "SJ 15.pdf", SN + "Journals%5C2026%5CSJ%2015.pdf",
+                 r"journals_senate\2026\SJ 15.pdf", "held", "0", "", "")]
+        q = root / "queue.csv"
+        with q.open("w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(["chamber", "kind", "year", "name", "url", "path", "state", "attempts",
+                        "error", "bytes", "fetched"])
+            for r in rows:
+                w.writerow(list(r[:9]) + ["1", r[9]])
+        docs, left = CD.read(q, root=root, today=_dt.date(2026, 10, 1))
+        assert len(docs) == 4, f"{len(docs)} documents read, not 4"
+        en = CD.block_html(docs, left)
+        assert en == CD.block_html(docs, left, lang="en"), "English's section changed with its language stated"
+        es = CD.block_html(docs, left, lang="es")
+        for want in ("Calendarios y diarios de sesiones", "Abrir el PDF", "Calendario de la Cámara",
+                     "Diario del Senado", "Calendario o diario", "Los más recientes de esta lista",
+                     'lang="en">HC 32', "(en inglés)"):
+            assert want in es, f"the Spanish section lacks {want!r}"
+        seen = _visible_text("<main>" + es + "</main>")
+        for lead in ("Open the PDF", "Calendar or journal", "The newest listed here", "Document", "House Calendar"):
+            assert not re.search(rf"\b{re.escape(lead)}\b", seen), f"the Spanish section says {lead!r}"
+        if not node:
+            return "ok", "the Spanish section holds its words (node is not here for the picker's script)"
+        import i18n as _i
+        js = CD.picker_js("es")
+        ix = json.dumps(CD.index(docs), ensure_ascii=False)
+        prog = root / "picker.js"
+        prog.write_text(
+            "globalThis.document=undefined;\n" + _components_js() + "\n"
+            'globalThis.window=globalThis; globalThis.GR_LANG="es";\n' + _i.words_js("es", js) + "\n"
+            + js + "\nconst ix=" + ix + ";\nconst s=GRDOCS.state(ix,'hc','2026',0);\n"
+            "const want={chosen:'Calendario de la Cámara, HC 32',"
+            "name:'Abrir el PDF: Calendario de la Cámara, HC 32, en el sitio de la Legislatura',"
+            "count:'1 Calendario de la Cámara de 2026.'};\n"
+            "const bad=Object.keys(want).filter(k=>s[k]!==want[k]).map(k=>k+': '+JSON.stringify(s[k]));\n"
+            "console.log(bad.length?bad.join('\\n'):'OK');\n", encoding="utf-8")
+        r = _run([node, str(prog)], capture_output=True, text=True, encoding="utf-8", timeout=60)
+        out = ((r.stdout or "") + (r.stderr or "")).strip()
+        assert r.returncode == 0 and out.endswith("OK"), out[-900:]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", "the section, the kinds of document and the picker's script in Spanish; the documents' names marked English"
+
+
 @check("frontend", "On the record carries no Introduced row and no LSR row")
 def _on_the_record_rows():
     """"Remove the LSR number and the Introduced date from On the record" (the
@@ -88843,7 +89231,7 @@ def _footer_credit():
         for lang in i18n.LANGS if lang != i18n.DEFAULT}
 
     def credit(text):
-        m = re.match(r'<!DOCTYPE html><html lang="([a-z]+)"', text)
+        m = re.search(r'<html lang="([a-z]+)"', text[:600])
         return said_in.get(m.group(1) if m else "en", said)
     lacking = [p.relative_to(shared / "site").as_posix() for p in with_footer
                for text in [p.read_text(encoding="utf-8", errors="replace")]

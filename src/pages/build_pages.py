@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.273
+# GRANITE_VERSION: 2026-09-04.274
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -544,6 +544,10 @@ def kind_word(k, lang="en"):
     class): MEET_KIND's, in `lang` (i18n.say_word, keyed by the English, so
     words/meeting_kinds.json changing a word asks for its translation)."""
     word, kcls = MEET_KIND.get((k or "").strip().lower(), (kind_title(k), ""))
+    # The docket's own "cancelled" is not in the table of kinds, and the
+    # Calendar's script knows the chip by this word (build_calendar.WEEK_ES).
+    if lang != i18n.DEFAULT and word == "Cancelled":
+        return say(lang, "calp.cancelled", "Cancelled"), kcls
     return i18n.say_word(lang, "kind", word), kcls
 
 
@@ -1018,8 +1022,11 @@ def calendar_html(out, today=None, rows=None, lang="en", events=None):
     # plain 'See the full calendar' link instead of the count of next week's
     # meetings"). It said how many meetings next week held and linked that
     # week's page; from Saturday next week is the rail itself.
-    more = ('<p class="calmore calall"><a href="calendar.html">'
-            + say(lang, "cal.full", "See the full calendar") + '</a></p>')
+    # In another language the full calendar is that language's page (9
+    # November 2026), from the root as the footer's About link is.
+    more = ('<p class="calmore calall"><a href="'
+            + ("calendar.html" if lang == i18n.DEFAULT else i18n.href(lang, "calendar.html").lstrip("/"))
+            + '">' + say(lang, "cal.full", "See the full calendar") + '</a></p>')
 
     if not dates:
         # THE REST OF THE WEEK IS EMPTY every weekend in session and every

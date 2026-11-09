@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.53
+# GRANITE_VERSION: 2026-09-18.54
 """
 The General Court's week, one page per week.
 
@@ -127,10 +127,13 @@ import bill_order as BO
 import build_date
 import build_pages as BP
 import calendar_documents as CD
+import chrome
+import i18n
 import key_dates as KD
 import proceedings
 import shell as S
 import structured as LD
+from i18n import say
 
 # From 2025: the current term and the one before it. Everything earlier is in
 # the record and reachable through a bill or a committee, but nobody pages a
@@ -2122,20 +2125,34 @@ def monday(d):
     return d - datetime.timedelta(days=d.isoweekday() - 1)
 
 
-def span_words(a, b, form="full"):
+def span_words(a, b, form="full", lang="en"):
     """September 21–25, 2026, or September 29 – October 3, 2026: shell's
     date_span, month first (D6, 8 October 2026); "Sep 21–25, 2026" in the
-    form "medium", which the pager says under Previous Week and Next Week."""
-    return S.date_span(a, b, form)
+    form "medium", which the pager says under Previous Week and Next Week.
+    In Spanish, day first: "21–25 de septiembre de 2026"."""
+    return S.date_span(a, b, form, lang)
 
 
-def href_for(key, today):
+# THE CALENDAR IN SPANISH (9 November 2026). Each week is written twice: at
+# /calendar/<week> in English and at /es/calendar/<week> in Spanish, the
+# frame, the controls, the words around the cards and the script's words
+# (week_js) in the page's language, the cards drawn by build_pages.cal_days
+# in it too. What the General Court wrote -- a committee's name, a bill's
+# number, a venue, a document's name -- stays as it printed it, marked
+# lang="en" (i18n.py, the first kind of words). English is as it was.
+def lang_prefix(lang):
+    """"" for English, "/es" for Spanish: where a language's pages are."""
+    return "" if lang == i18n.DEFAULT else f"/{lang}"
+
+
+def href_for(key, today, lang="en"):
     """Where a week lives. The current one is the tab's own page.
 
     From the site root, with its slash: shell.page joins this to the domain for
     the page's canonical link and citation, and without it they read
     "https://graniterecord.orgcalendar" on every week until 24 September."""
-    return "/calendar.html" if key == week_key(today) else f"/calendar/{key}.html"
+    return lang_prefix(lang) + ("/calendar.html" if key == week_key(today)
+                                else f"/calendar/{key}.html")
 
 
 def collect(site, study_rows=()):
@@ -2423,20 +2440,22 @@ def sitting_pages(site):
     return out
 
 
-def day_words(d, today):
+def day_words(d, today, lang="en"):
     """("Monday, September 21", "in 3 days") -- a day's heading and how far off
     it is from `today`. The page's script writes the second part again in the
-    reader's own clock; this is what a reader without script is given."""
+    reader's own clock; this is what a reader without script is given.
+    In Spanish: ("lunes, 21 de septiembre", "en 3 días")."""
     x = datetime.date.fromisoformat(d)
     off = (x - today).days
     # <= 14, as HOME_JS has it: `< 14` left a day exactly a fortnight off
     # with no label at all until the script wrote one.
-    rel = ("today" if off == 0 else "tomorrow" if off == 1
-           else f"in {off} days" if 0 < off <= 14 else "")
-    return S.date_words(x, "day"), rel
+    rel = (say(lang, "cal.today", "today") if off == 0
+           else say(lang, "cal.tomorrow", "tomorrow") if off == 1
+           else say(lang, "cal.in_days", "in {n} days", n=off) if 0 < off <= 14 else "")
+    return S.date_words(x, "day", lang), rel
 
 
-def week_facts(key, weeks, today, events=None):
+def week_facts(key, weeks, today, events=None, lang="en"):
     """What a week's page says about the week: its span, the days it lists,
     its cards and the lead sentence that counts them.
 
@@ -2469,7 +2488,8 @@ def week_facts(key, weeks, today, events=None):
     # the Saturday or Sunday where one holds a meeting. WEEK_JS's weekLabel
     # says the same from a key alone.
     end = datetime.date.fromisoformat(shown[-1])
-    label, short = span_words(first, end), span_words(first, end, "medium")
+    label = span_words(first, end, lang=lang)
+    short = span_words(first, end, "medium", lang)
     meets, days = {}, OrderedDict()
     for date in shown:
         for k, rows in (days_raw.get(date) or {}).items():
@@ -2496,19 +2516,22 @@ def week_facts(key, weeks, today, events=None):
     if n:
         lead = ""
     elif off:
-        lead = ("The one meeting set for this week was cancelled."
+        lead = (say(lang, "calp.cancelled_one", "The one meeting set for this week was cancelled.")
                 if off == 1 else
-                f"All {off} meetings set for this week were cancelled.")
+                say(lang, "calp.cancelled_all", "All {n} meetings set for this week were cancelled.",
+                    n=off))
     else:
         # In the tense of the week: a week that is over has nothing on the
         # record, and one still to come has nothing scheduled yet -- "yet",
         # because the study committees are read from a dated copy.
         # MOSTLY (the survey of 7 October 2026): both chambers sat until veto
         # day, 19 August, in 2026, and into the autumn in most years.
-        lead = (("No meetings are on the record for this week. " if last < today
-                 else "No meetings are scheduled yet for this week. ")
-                + "The General Court sits mostly from January to June, and committees "
-                "meet on bills from the fall filing period onward.")
+        lead = ((say(lang, "calp.none_past", "No meetings are on the record for this week.")
+                 if last < today
+                 else say(lang, "calp.none_yet", "No meetings are scheduled yet for this week."))
+                + " "
+                + say(lang, "calp.sits", "The General Court sits mostly from January to June, and "
+                      "committees meet on bills from the fall filing period onward."))
     return {"first": first, "last": last, "label": label, "short": short, "days": days,
             "meets": meets, "n": n, "lead": lead}
 
@@ -2552,7 +2575,17 @@ CATEGORIES = (("hearing", "k-hearing", True),
               ("date", "k-date", True))
 
 
-def cats_html():
+def legend_word(word, lang="en"):
+    """One of build_pages.MEET_LEGEND's names in `lang`: the kinds' own words
+    (words/meeting_kinds.json, said as the chips say them), and the seventh's."""
+    if lang == i18n.DEFAULT:
+        return word
+    if word == "Important Dates":
+        return say(lang, "calp.important_dates", "Important Dates")
+    return i18n.say_word(lang, "kind", word)
+
+
+def cats_html(lang="en"):
     """The row of boxes, hidden until the script shows it, and the key a
     reader without script is given in its place, which the script hides.
 
@@ -2560,7 +2593,7 @@ def cats_html():
     .calcat): the drawing is the key, the checkbox the filter. The key is
     the same seven names and colours, so the page reads the same either way.
     """
-    names = dict(BP.MEET_LEGEND)
+    names = {c: legend_word(w, lang) for c, w in BP.MEET_LEGEND}
     assert [c for _v, c, _on in CATEGORIES] == [c for c, _w in BP.MEET_LEGEND], (
         "the Calendar's boxes and build_pages.MEET_LEGEND name the kinds differently")
     boxes = "".join(f'<label class="calcat {c}"><input type="checkbox" name="cat" '
@@ -2568,15 +2601,15 @@ def cats_html():
                     f'<span class="cbx" aria-hidden="true"></span>{S.E(names[c])}</label>'
                     for v, c, on in CATEGORIES)
     return ('<fieldset class="calcats" id="calcats" hidden>'
-            '<legend class="sr">Kinds of meeting to show</legend>'
+            f'<legend class="sr">{say(lang, "calp.kinds_legend", "Kinds of meeting to show")}</legend>'
             f'<div class="calcatrow">{boxes}</div></fieldset>'
-            '<ul class="calkey" aria-label="What the colors mean">'
-            + "".join(f'<li><i class="{c}" aria-hidden="true"></i>{S.E(w)}</li>'
+            f'<ul class="calkey" aria-label="{say(lang, "calp.colors", "What the colors mean")}">'
+            + "".join(f'<li><i class="{c}" aria-hidden="true"></i>{S.E(legend_word(w, lang))}</li>'
                       for c, w in BP.MEET_LEGEND)
             + "</ul>")
 
 
-def side_html():
+def side_html(lang="en"):
     """The month grid's frame and the detailed filters, down the left.
 
     The grid's days are the script's to draw -- which of them is today, and
@@ -2589,29 +2622,33 @@ def side_html():
     would be thirty ticks for it. Study committees are no chamber's, and a
     committee of conference is both chambers'.
     """
-    find = ('<label class="wkfind" for="wkfind">Bill or committee'
-            '<input type="search" id="wkfind" autocomplete="off" '
-            'placeholder="Bill number or committee"></label>')
-    chamber = ('<fieldset class="calfs"><legend>Chamber</legend><div class="wkchips">'
-               '<button type="button" data-body="" aria-pressed="true">Both chambers</button>'
-               '<button type="button" data-body="H" aria-pressed="false">House</button>'
-               '<button type="button" data-body="S" aria-pressed="false">Senate</button>'
+    find = ('<label class="wkfind" for="wkfind">' + say(lang, "calp.find_label", "Bill or committee")
+            + '<input type="search" id="wkfind" autocomplete="off" placeholder="'
+            + say(lang, "calp.find_ph", "Bill number or committee") + '"></label>')
+    chamber = ('<fieldset class="calfs"><legend>' + say(lang, "calp.chamber", "Chamber")
+               + '</legend><div class="wkchips">'
+               '<button type="button" data-body="" aria-pressed="true">'
+               + say(lang, "calp.both_chambers", "Both chambers") + '</button>'
+               '<button type="button" data-body="H" aria-pressed="false">'
+               + say(lang, "calp.house", "House") + '</button>'
+               '<button type="button" data-body="S" aria-pressed="false">'
+               + say(lang, "calp.senate", "Senate") + '</button>'
                '</div></fieldset>')
     # Committees chosen by name show only those committees, in the kinds
     # ticked in the row of boxes -- which a reader choosing here cannot see
     # from the side on a desktop, so it is said while any are chosen.
-    pick = ('<fieldset class="calfs cpick"><legend>Only these committees</legend>'
-            '<div class="cpchosen" id="cpchosen"></div>'
-            '<p class="calhint" id="pickhint" hidden>Only the committees chosen '
-            'here are shown, in the kinds of meeting ticked above the schedule. '
-            'A study committee chosen here is shown either way.</p>'
-            '<label class="wkfind" for="cpfind">Find a committee'
-            '<input type="search" id="cpfind" autocomplete="off" '
-            'placeholder="Name of a committee" aria-controls="cplist"></label>'
+    pick = ('<fieldset class="calfs cpick"><legend>' + say(lang, "calp.only_these", "Only these committees")
+            + '</legend><div class="cpchosen" id="cpchosen"></div>'
+            '<p class="calhint" id="pickhint" hidden>'
+            + say(lang, "calp.pick_hint", "Only the committees chosen here are shown, in the kinds of "
+                  "meeting ticked above the schedule. A study committee chosen here is shown either way.")
+            + '</p><label class="wkfind" for="cpfind">' + say(lang, "calp.find_cmte", "Find a committee")
+            + '<input type="search" id="cpfind" autocomplete="off" placeholder="'
+            + say(lang, "calp.cmte_ph", "Name of a committee") + '" aria-controls="cplist"></label>'
             '<button type="button" class="cpall" id="cpall" aria-expanded="false" '
-            'aria-controls="cplist">Browse every committee</button>'
-            '<div class="cplist" id="cplist" role="group" '
-            'aria-label="Committees to show" hidden></div>'
+            'aria-controls="cplist">' + say(lang, "calp.browse", "Browse every committee") + '</button>'
+            '<div class="cplist" id="cplist" role="group" aria-label="'
+            + say(lang, "calp.cmtes_label", "Committees to show") + '" hidden></div>'
             '<p class="calhint" id="cpstat" role="status" aria-live="polite"></p>'
             '</fieldset>')
     return ('<div class="calside" id="calside" hidden>'
@@ -2619,22 +2656,25 @@ def side_html():
             # run of tab stops to cross by keyboard. A button, because it only
             # exists with the script, and a fragment link on a page carrying
             # <base href="/"> would go to the home page.
-            '<button type="button" class="calskip" id="calskip">Skip to the schedule</button>'
+            '<button type="button" class="calskip" id="calskip">'
+            + say(lang, "calp.skip", "Skip to the schedule") + '</button>'
             '<section class="calmonth" aria-labelledby="cmtitle">'
             '<div class="cmhead"><h2 class="cmtitle" id="cmtitle" aria-live="polite"></h2>'
-            '<button type="button" class="cmbtn" id="cmprev" '
-            'aria-label="The month before">&lsaquo;</button>'
-            '<button type="button" class="cmbtn" id="cmnext" '
-            'aria-label="The month after">&rsaquo;</button>'
-            '<button type="button" class="cmbtn cmnowb" id="cmnow">Today</button></div>'
+            '<button type="button" class="cmbtn" id="cmprev" aria-label="'
+            + say(lang, "calp.month_before", "The month before") + '">&lsaquo;</button>'
+            '<button type="button" class="cmbtn" id="cmnext" aria-label="'
+            + say(lang, "calp.month_after", "The month after") + '">&rsaquo;</button>'
+            '<button type="button" class="cmbtn cmnowb" id="cmnow">'
+            + say(lang, "calp.today", "Today") + '</button></div>'
             '<table class="cmgrid" id="cmgrid" role="grid" aria-labelledby="cmtitle"></table>'
             '<button type="button" class="calfold" id="cmfold" aria-expanded="true" '
-            'aria-controls="cmgrid">Show only this week</button>'
+            'aria-controls="cmgrid">' + say(lang, "calp.only_week", "Show only this week") + '</button>'
             '</section>'
             '<section class="calfilt" aria-labelledby="wkfhead">'
-            '<div class="cfhead"><h2 id="wkfhead">Filter the calendar</h2>'
-            '<button type="button" class="calfold" id="cffold" aria-expanded="true" '
-            'aria-controls="wkfilter">Hide the filters</button></div>'
+            '<div class="cfhead"><h2 id="wkfhead">' + say(lang, "calp.filter", "Filter the calendar")
+            + '</h2><button type="button" class="calfold" id="cffold" aria-expanded="true" '
+            'aria-controls="wkfilter">' + say(lang, "calp.hide_filters", "Hide the filters")
+            + '</button></div>'
             '<form class="wkfilter" id="wkfilter" role="search" aria-labelledby="wkfhead">'
             + find + chamber + pick
             + '</form></section></div>')
@@ -2642,23 +2682,34 @@ def side_html():
 
 # The view switch, the count and the one control that undoes every filter,
 # together above the schedule they act on.
-BAR_HTML = ('<div class="calbar" id="calbar" hidden>'
-            '<div class="calviews" role="group" aria-label="Show the schedule as">'
-            '<button type="button" data-view="list" aria-pressed="true">List</button>'
-            '<button type="button" data-view="week" aria-pressed="false">Week</button>'
+def bar_html(lang="en"):
+    """The view switch, the count and the reset, in `lang` (BAR_HTML is
+    the English)."""
+    return ('<div class="calbar" id="calbar" hidden>'
+            '<div class="calviews" role="group" aria-label="'
+            + say(lang, "calp.show_as", "Show the schedule as") + '">'
+            '<button type="button" data-view="list" aria-pressed="true">'
+            + say(lang, "calp.list", "List") + '</button>'
+            '<button type="button" data-view="week" aria-pressed="false">'
+            + say(lang, "calp.week", "Week") + '</button>'
             '</div>'
             '<p class="wkcount" id="wkcount" role="status" aria-live="polite"></p>'
             # The study committee meetings the count says are hidden, shown
             # (18 October 2026): WEEK_JS's drawCount shows it while they are.
-            '<button type="button" class="calshowst" id="calshowst" hidden>Show them'
-            '<span class="sr"> (the study committee meetings)</span></button>'
+            '<button type="button" class="calshowst" id="calshowst" hidden>'
+            + say(lang, "calp.show_them", "Show them")
+            + '<span class="sr"> ' + say(lang, "calp.the_study", "(the study committee meetings)")
+            + '</span></button>'
             # "Show everything" while the defaults were everything; they are
             # everything but the study committees now, so it says what it does.
             '<button type="button" class="calreset" id="calreset" hidden>'
-            'Reset filters</button></div>')
+            + say(lang, "calp.reset", "Reset filters") + '</button></div>')
 
 
-def pager_html(key, weeks, order, at, today):
+BAR_HTML = bar_html()
+
+
+def pager_html(key, weeks, order, at, today, lang="en"):
     """[link]: the week's pager, as WEEK_JS's navHtml draws it again.
 
     IN TITLE CASE, AND EACH SAYING WHERE IT LEADS (the person, 9 October
@@ -2671,18 +2722,19 @@ def pager_html(key, weeks, order, at, today):
     script, which writes the same links with a data-step between the two,
     must not be counted with them."""
     def short(k):
-        return S.E(week_facts(k, weeks, today)["short"])
+        return S.E(week_facts(k, weeks, today, lang=lang)["short"])
     nav = []
     if at > 0:
-        nav.append(f'<a class="wkprev" href="{S.canon(href_for(order[at - 1], today))}">'
-                   f'<span class="wkpw">&lsaquo; Previous Week</span>'
+        nav.append(f'<a class="wkprev" href="{S.canon(href_for(order[at - 1], today, lang))}">'
+                   f'<span class="wkpw">&lsaquo; {say(lang, "calp.prev_week", "Previous Week")}</span>'
                    f'<span class="wkpd">{short(order[at - 1])}</span></a>')
     here = week_key(today)
     if key != here and here in order:
-        nav.append(f'<a class="wkhere" href="{S.canon("/calendar.html")}">This Week</a>')
+        nav.append(f'<a class="wkhere" href="{S.canon(lang_prefix(lang) + "/calendar.html")}">'
+                   f'{say(lang, "calp.this_week", "This Week")}</a>')
     if at < len(order) - 1:
-        nav.append(f'<a class="wknext" href="{S.canon(href_for(order[at + 1], today))}">'
-                   f'<span class="wkpw">Next Week &rsaquo;</span>'
+        nav.append(f'<a class="wknext" href="{S.canon(href_for(order[at + 1], today, lang))}">'
+                   f'<span class="wkpw">{say(lang, "calp.next_week", "Next Week")} &rsaquo;</span>'
                    f'<span class="wkpd">{short(order[at + 1])}</span></a>')
     return nav
 
@@ -2735,11 +2787,17 @@ WEEK_ROBOTS = '<meta name="robots" content="noindex,follow">'
 # box -- "Study committee meetings only. Show them", the script's words
 # (emptyHtml; the R2 polish batch, 30 October 2026, where it said "No
 # meetings shown.").
-STUDY_ONLY = ('<p class="calempty calstonly">Study committee meetings only. '
-              '<label for="calst">Show them</label></p>')
+def study_only(lang="en"):
+    """STUDY_ONLY in `lang`."""
+    return ('<p class="calempty calstonly">'
+            + say(lang, "calp.study_only", "Study committee meetings only.")
+            + ' <label for="calst">' + say(lang, "calp.show_them", "Show them") + '</label></p>')
 
 
-def study_hidden(days, meets, draw):
+STUDY_ONLY = study_only()
+
+
+def study_hidden(days, meets, draw, lang="en"):
     """The week's schedule as its page carries it: each day `draw({date:
     keys})` makes it, a day of study committees alone with STUDY_ONLY after
     its cards, and the box and the line that shows them first, where the
@@ -2752,30 +2810,40 @@ def study_hidden(days, meets, draw):
         off += sum(1 for k in study if BP.is_cancelled(meets[k]))
         if keys and len(study) == len(keys):
             assert html.endswith("</div>"), f"{date}: a day's block no longer ends its div"
-            html = html[:-len("</div>")] + STUDY_ONLY + "</div>"
+            html = html[:-len("</div>")] + study_only(lang) + "</div>"
         parts.append(html)
     if not (live or off):
         return "".join(parts)
     # Counted as the script's line counts them: a cancelled meeting is not
     # a meeting, unless it is all the week holds.
-    n, what = (live, "") if live else (off, "cancelled ")
-    them = (f"1 {what}study committee meeting" if n == 1
-            else f"{n} {what}study committee meetings")
-    verb = "is" if n == 1 else "are"
+    # The sentence whole, one key for each, so a language puts the verb where it goes.
+    if live:
+        hid = (say(lang, "calp.st_hidden_one", "1 study committee meeting is hidden.") if live == 1
+               else say(lang, "calp.st_hidden", "{n} study committee meetings are hidden.", n=live))
+        shown = (say(lang, "calp.st_shown_one", "1 study committee meeting is shown.") if live == 1
+                 else say(lang, "calp.st_shown", "{n} study committee meetings are shown.", n=live))
+    else:
+        hid = (say(lang, "calp.stc_hidden_one", "1 cancelled study committee meeting is hidden.")
+               if off == 1 else say(lang, "calp.stc_hidden",
+                                    "{n} cancelled study committee meetings are hidden.", n=off))
+        shown = (say(lang, "calp.stc_shown_one", "1 cancelled study committee meeting is shown.")
+                 if off == 1 else say(lang, "calp.stc_shown",
+                                      "{n} cancelled study committee meetings are shown.", n=off))
     # Named by the week line's label alone: each study day's <label for="calst">
     # joined its name, "Show them" six times over (the review of 30 October 2026).
     line = ('<input type="checkbox" class="calst" id="calst" aria-labelledby="calstl">'
             '<p class="calstline">'
-            f'<span class="cs-off">{them} {verb} hidden.</span>'
-            f'<span class="cs-on">{them} {verb} shown.</span> '
-            '<label for="calst" id="calstl"><span class="cs-off">Show them</span>'
-            '<span class="cs-on">Hide them</span></label></p>')
+            f'<span class="cs-off">{hid}</span>'
+            f'<span class="cs-on">{shown}</span> '
+            '<label for="calst" id="calstl"><span class="cs-off">'
+            + say(lang, "calp.show_them", "Show them") + '</span>'
+            '<span class="cs-on">' + say(lang, "calp.hide_them", "Hide them") + '</span></label></p>')
     return line + "".join(parts)
 
 
 def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
               today, sessions=frozenset(), study=False, docs=None, picker="",
-              events=None):
+              events=None, lang="en"):
     """Write one week's page. `study` is whether the calendar holds the study
     and statutory committees' meetings from the database copy; the page's
     description claims them only then.
@@ -2792,28 +2860,37 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
     copy it read, every run (main), so it is not silent about it.
 
     `events` is key_date_days()'s: each key date is a card on its day, before
-    the day's meetings, under the Important Dates box (24 October 2026; Key Dates until that evening)."""
-    w = week_facts(key, weeks, today, events)
+    the day's meetings, under the Important Dates box (24 October 2026; Key Dates until that evening).
+
+    `lang` is the page's language (the Calendar in Spanish, 9 November 2026):
+    "es" writes the same week at /es/calendar/<week>, its frame, words and
+    cards in Spanish, its script week_js("es"). `picker` is then the
+    section in Spanish too. Only English's pages are counted and listed."""
+    w = week_facts(key, weeks, today, events, lang)
     label, lead, days, meets, n = w["label"], w["lead"], w["days"], w["meets"], w["n"]
+    pre = lang_prefix(lang)
 
     # level=2: the h1 of this page is the week itself, so a day is the
     # section under it. On the home page the days sit under "Coming up"
     # and stay h3.
     body = study_hidden(days, meets, lambda one: BP.cal_days(
-        one, meets, titles, years, code, lambda d: day_words(d, today), S.E,
-        level=2, sessions=sessions, docs=docs, events=events, morning=today.isoformat())[0])
+        one, meets, titles, years, code, lambda d: day_words(d, today, lang), S.E,
+        level=2, sessions=sessions, docs=docs, lang=lang, events=events,
+        morning=today.isoformat())[0], lang)
 
-    nav = pager_html(key, weeks, order, at, today)
+    nav = pager_html(key, weeks, order, at, today, lang)
     here = week_key(today)
 
-    path = href_for(key, today)
+    path = href_for(key, today, lang)
     # THE CURRENT WEEK IS WRITTEN AT BOTH ITS ADDRESSES. /calendar is the tab,
     # and /calendar/2026-W39 is the address somebody was sent last week as
     # "next week". Leaving the dated file to the build that wrote it then was
     # how it went stale: its "week before" link pointed back at /calendar,
     # which was the same week. The copy is rewritten on every build and names
     # /calendar as the page it copies, so there is one page to index.
-    copies = [path] + ([f"/calendar/{key}.html"] if path == "/calendar.html" else [])
+    copies = [path] + ([f"{pre}/calendar/{key}.html"] if path == f"{pre}/calendar.html" else [])
+    heading = say(lang, "calp.week_of", "The Week of {label}", label=S.E(label))
+    scripts = (week_js(lang),) + ((CD.picker_js(lang),) if picker else ())
     # THE PAGE IS THE WEEK AS A LIST, AND THE SCRIPT MAKES IT A CALENDAR.
     # Without script this reads exactly as it did: the week's heading, its
     # lead, the arrows, the key to the colours and every day in order. With
@@ -2828,21 +2905,27 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              f'<div class="wkpage calapp" id="calapp" data-week="{key}" '
              f'data-here="{here}" data-first="{order[0]}" data-last="{order[-1]}">'
              '<div class="calhead">'
-             f'<h1>The Week of {S.E(label)}</h1>'
-             f'<p class="src">{lead}</p>'
+             f'<h1>{heading}</h1>'
+             + (chrome.lang_note(lang) if lang != i18n.DEFAULT else "")
+             + f'<p class="src">{lead}</p>'
              # CITE THIS PAGE UNDER THE LINE, as a guide's is (the audit of 25
              # October 2026, S9), not alone above the week's name, where
              # shell.page sets it. Named and addressed as page() would; the
              # script renames it with the week (rename, in WEEK_JS).
-             + S.cite_block(path, f"The Week of {label}", base, S.BUILT)
+             # (English only: a citation is MLA's, APA's, Chicago's and
+             # BibTeX's own English form, and a page cited in one of them is
+             # cited from its English page.)
+             + (S.cite_block(path, f"The Week of {label}", base, S.BUILT)
+                if lang == i18n.DEFAULT else "")
              # NO LINK DOWN TO THE CALENDARS & JOURNALS (F11): the section is
              # the last block of the schedule's column, where a reader finds it.
-             + f'<nav class="wknav" aria-label="Other weeks">{"".join(nav)}</nav>'
+             + f'<nav class="wknav" aria-label="{say(lang, "calp.other_weeks", "Other weeks")}">'
+             f'{"".join(nav)}</nav>'
              '</div>'
-             + side_html()
+             + side_html(lang)
              + '<div class="calmain">'
-             + BAR_HTML
-             + cats_html()
+             + (BAR_HTML if lang == i18n.DEFAULT else bar_html(lang))
+             + cats_html(lang)
              + f'<div class="calview" id="calview">{body}</div>'
              # ONE SET OF ARROWS, AT THE TOP, AND A RULE UNDER THE LIST (the
              # owner's walk of dry run 9, 8 November 2026), so the schedule
@@ -2862,30 +2945,54 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              # script on this site lives -- shell.page takes no script -- and
              # without its comment lines, which stay here for the reader of
              # the source rather than travelling with 103 pages.
-             f"<script>{lean_js(WEEK_JS)}</script>"
+             f"<script>{lean_js(scripts[0])}</script>"
              # A SCRIPT OF ITS OWN, after the Calendar's: neither reads the
              # other, and a fault in one leaves the other running.
-             + (f"<script>{lean_js(CD.PICKER_JS)}</script>" if picker else ""))
+             + (f"<script>{lean_js(scripts[1])}</script>" if picker else ""))
+    named = say(lang, "calp.week_of", "The Week of {label}", label=label)
     for f in copies:
-        html = S.page(S.template(site), path=f, canonical=path, base=base,
-                      title=f"The Week of {label} | Granite Record",
+        # THIS PAGE IN THE OTHER LANGUAGES, for the footer's language list and
+        # <html>'s data-alt (shell.page): the same week at the same kind of
+        # address, English's without a prefix. Every language the Calendar is
+        # built in (i18n.PAGES) is named, so English's pages lead to Spanish's.
+        bare = f[len(pre):]
+        alts = {c: S.canon(lang_prefix(c) + bare) for c in i18n.LANGS
+                if c != lang and i18n.has(c, "calendar.html")}
+        # Hreflang when every version is offered to everyone (build_pages.shell
+        # does the same), and Spanish's pages unindexed until then.
+        listed = alts and all(i18n.offered(c) for c in (lang, *alts))
+        alternate = ""
+        if listed:
+            alternate = "".join(f'<link rel="alternate" hreflang="{c}" href="{base}{a}">'
+                                for c, a in {lang: S.canon(f), **alts}.items())
+            alternate += (f'<link rel="alternate" hreflang="x-default" href="{base}'
+                          f'{alts.get(i18n.DEFAULT, S.canon(f))}">')
+        if lang != i18n.DEFAULT and not i18n.offered(lang) and f == f"{pre}/calendar.html":
+            alternate += '<meta name="robots" content="noindex">'
+        html = S.page(S.template(site, lang, scripts, alts), path=f, canonical=path, base=base,
+                      title=f"{named} | Granite Record",
                       # WHAT THE PAGE HOLDS, and no more: it said "Every
                       # hearing..." while it held bill business only.
-                      description=("Hearings, work sessions, executive sessions, "
-                                   "floor sessions"
-                                   + (" and study and statutory committee meetings"
-                                      if study else "")
-                                   + f" of the New Hampshire General Court, {label}."),
-                      og_title=f"The Week of {label}",
+                      description=(say(lang, "calp.desc_study", "Hearings, work sessions, executive "
+                                       "sessions, floor sessions and study and statutory committee "
+                                       "meetings of the New Hampshire General Court, {label}.",
+                                       label=label)
+                                   if study else
+                                   say(lang, "calp.desc", "Hearings, work sessions, executive "
+                                       "sessions, floor sessions of the New Hampshire General Court, "
+                                       "{label}.", label=label)),
+                      og_title=named, alternate=alternate,
                       globals={"GR_STATIC": True}, noscript="",
-                      skip_label="Skip to the week", sr_title="", og_type="website",
-                      nav_current="calendar.html", cite=False,
-                      jsonld=LD.listing(f"The Week of {label}",
-                                        f"The General Court's business, {label}.",
+                      skip_label=say(lang, "calp.skip_week", "Skip to the week"), sr_title="",
+                      og_type="website", nav_current="calendar.html", cite=False,
+                      lang=lang, alts=alts,
+                      jsonld=LD.listing(named, say(lang, "calp.ld_desc",
+                                                   "The General Court's business, {label}.",
+                                                   label=label),
                                         base, S.canon(path)))
         html = html.replace('<div id="results"></div>', block, 1)
         assert '<div class="wkpage calapp"' in html, f"{f}: the template has no results slot"
-        if f != "/calendar.html":
+        if f != f"{pre}/calendar.html":
             html = html.replace('<link rel="canonical"', WEEK_ROBOTS + '\n<link rel="canonical"', 1)
             assert WEEK_ROBOTS in html, f"{f}: the page has no canonical link to put WEEK_ROBOTS beside"
         out = site / f.lstrip("/")
@@ -2996,6 +3103,270 @@ def lean_js(js):
                      if ln.strip() and not ln.lstrip().startswith("//"))
 
 
+# THE CALENDAR'S SCRIPT IN ANOTHER LANGUAGE (9 November 2026). WEEK_JS is the
+# English script and stays so to the byte: a Spanish page carries week_js("es"),
+# which is WEEK_JS with the pairs of WEEK_ES put over it, each (the text of
+# WEEK_JS, what replaces it), applied once, and a pair that does not find its
+# text exactly once stops the build -- so an English edit to a line the Spanish
+# rests on is found at once, not by a reader. The words are tr() calls, which
+# i18n.page_words gives the page's own for (lang/es.json, the "calp." keys);
+# one with no current translation says its English. The dates and clock times
+# are components.js's, asked for in the page's language (dw, ds, clk). WHAT THE
+# GENERAL COURT WROTE -- a committee's name, a bill's number -- is not in
+# these: it is in the cards, which build_pages.cal_days drew in the language.
+WEEK_ES = [
+    # the page's language, and where its pages are
+    (r"""  var G=typeof window!=="undefined"?window:globalThis;
+""", r"""  var G=typeof window!=="undefined"?window:globalThis;
+  var LANG=G.GR_LANG||"en", ES=LANG==="es", P=ES?"/"+LANG:"";
+  function dw(s,f){ return dateWords(s,f,LANG); }
+  function ds(a,b,f){ return dateSpan(a,b,f,LANG); }
+  function clk(t){ return clock(t,LANG); }
+  function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+"""),
+    (r"""  var DAYNAME=DW_DAYS, MONTH=DW_MONTHS;""",
+     r"""  var DAYNAME=ES?DW_ES.days:DW_DAYS, MONTH=ES?DW_ES.months.map(cap):DW_MONTHS;"""),
+    (r"""  function monthWords(m){ return MONTH[+m.slice(5,7)-1]+" "+m.slice(0,4); }""",
+     r"""  function monthWords(m){ return MONTH[+m.slice(5,7)-1]+(ES?" de ":" ")+m.slice(0,4); }"""),
+    (r"""    return off===0?"today":off===1?"tomorrow":(off>0&&off<=14)?"in "+off+" days":"";""",
+     r"""    return off===0?tr("cal.today","today"):off===1?tr("cal.tomorrow","tomorrow")
+      :(off>0&&off<=14)?tr("cal.in_days","in {n} days",{n:off}):"";"""),
+    (r"""  function plural(n,w){ return n+" "+w+(n===1?"":"s"); }""",
+     r"""  function plural(n,w){
+    if(!ES) return n+" "+w+(n===1?"":"s");
+    return w==="bill"?(n===1?tr("cal.one_bill","1 bill"):tr("cal.n_bills","{n} bills",{n:n}))
+      :w==="meeting"?(n===1?tr("calp.one_meeting","1 meeting"):tr("calp.n_meetings","{n} meetings",{n:n}))
+      :(n===1?tr("calp.one_committee","1 committee"):tr("calp.n_committees","{n} committees",{n:n}));
+  }
+  // The counts that name study committees, said whole, as the page's own are.
+  function stHid(n){
+    return n===1?tr("calp.st_hidden_one","1 study committee meeting is hidden.")
+      :tr("calp.st_hidden","{n} study committee meetings are hidden.",{n:n});
+  }"""),
+    # the card's name span carries lang="en" on a page in another language
+    (r"""name=/<span class="calcmte">([^<]*)<\/span>/.exec(html);""",
+     r"""name=/<span class="calcmte"(?: lang="en")?>([^<]*)<\/span>/.exec(html);"""),
+    # the language control leads to the screen the reader is on, as the address says it
+    (r"""    if(s) s.setAttribute("href",location.pathname+location.search+"#results");
+  }""", r"""    if(s) s.setAttribute("href",location.pathname+location.search+"#results");
+    var en=(location.pathname.replace(/^\/es(?=\/|$)/,"")||"/")+location.search, lo=document.querySelector('#footlang option[value="en"]');
+    document.documentElement.setAttribute("data-alt-en",en);
+    if(lo) lo.setAttribute("data-href",en);
+  }"""),
+    # the cards' word for a cancelled meeting
+    (r"""if(!(e.cancelled&&w==="Cancelled")) said.push(w); return ""; });""",
+     r"""if(!(e.cancelled&&w===tr("calp.cancelled","Cancelled"))) said.push(w); return ""; });"""),
+    (r"""+(e.cancelled?'<span class="wkn">Cancelled</span>':n?""",
+     r"""+(e.cancelled?'<span class="wkn">'+tr("calp.cancelled","Cancelled")+'</span>':n?"""),
+    (r"""+'<span class="sr">: open it in the list</span></button>')+'</li>';""",
+     r"""+'<span class="sr">: '+tr("calp.open_list","open it in the list")+'</span></button>')+'</li>';"""),
+    # what an emptied day says
+    (r"""    if(!cards.length) return "No meetings";
+    if(studyOnly(cards,f)) return "Study committee meetings only.";
+    return (cards.length===1?"1 meeting is":cards.length+" meetings are")+" hidden by the filters.";""",
+     r"""    if(!cards.length) return tr("calp.no_meetings","No meetings");
+    if(studyOnly(cards,f)) return tr("calp.study_only","Study committee meetings only.");
+    return cards.length===1?tr("calp.hid_one","1 meeting is hidden by the filters.")
+      :tr("calp.hid_many","{n} meetings are hidden by the filters.",{n:cards.length});"""),
+    (r"""      ? ' <button type="button" class="calshowday">Show them'
+        +'<span class="sr"> (the study committee meetings)</span></button>' : "");""",
+     r"""      ? ' <button type="button" class="calshowday">'+tr("calp.show_them","Show them")
+        +'<span class="sr"> '+tr("calp.the_study","(the study committee meetings)")+'</span></button>' : "");"""),
+    # the count line
+    (r"""      return (t.study===1 ? "1 study committee meeting is" : t.study+" study committee meetings are")
+        +" hidden.";
+    if(t.shown===t.total)
+      line=(t.total?plural(t.total,"meeting"):"No meetings")+" "+where+".";
+    else if(!t.seen)
+      line=t.total===1 ? "The one meeting "+where+" does not match."
+                       : "None of the "+t.total+" meetings "+where+" match.";
+    else
+      line=t.shown+" of "+plural(t.total,"meeting")+" shown"
+        +(where==="this week"?"":" "+where)+".";""",
+     r"""      return stHid(t.study);
+    if(t.shown===t.total)
+      line=t.total?tr("calp.count_where","{count} {where}.",{count:plural(t.total,"meeting"),where:where})
+        :tr("calp.none_where","No meetings {where}.",{where:where});
+    else if(!t.seen)
+      line=t.total===1 ? tr("calp.one_nomatch","The one meeting {where} does not match.",{where:where})
+                       : tr("calp.all_nomatch","None of the {n} meetings {where} match.",{n:t.total,where:where});
+    else
+      line=where===tr("calp.where_week","this week")
+        ?tr("calp.shown_of","{shown} of {count} shown.",{shown:t.shown,count:plural(t.total,"meeting")})
+        :tr("calp.shown_of_where","{shown} of {count} shown {where}.",
+            {shown:t.shown,count:plural(t.total,"meeting"),where:where});"""),
+    (r"""      line+=" "+(t.study===1 ? "1 study committee meeting is"
+                             : t.study+" study committee meetings are")
+        +" hidden.";""",
+     r"""      line+=" "+stHid(t.study);"""),
+    # the grid
+    (r"""    if(!on){ cls.push("cmoff"); name+=", not on the calendar"; }
+    else if(!day) name+=", loading";""",
+     r"""    if(!on){ cls.push("cmoff"); name+=", "+tr("calp.not_on","not on the calendar"); }
+    else if(!day) name+=", "+tr("calp.loading_s","loading");"""),
+    (r"""      name+=", "+(live?plural(live,"meeting"):!hidden?"no meetings"
+        :studyOnly(meetings(day.cards),c.f)?"study committee meetings only":"no meetings shown");
+      if(vis.length>live) name+=", "+(vis.length-live)+" cancelled";""",
+     r"""      name+=", "+(live?plural(live,"meeting"):!hidden?tr("calp.no_mtgs_s","no meetings")
+        :studyOnly(meetings(day.cards),c.f)?tr("calp.study_only_s","study committee meetings only")
+        :tr("calp.none_shown_s","no meetings shown"));
+      if(vis.length>live) name+=", "+tr("calp.n_cancelled","{n} cancelled",{n:vis.length-live});"""),
+    (r"""        return '<th scope="col"><span aria-hidden="true">'+n.slice(0,2)""",
+     r"""        return '<th scope="col"><span aria-hidden="true">'+(ES?cap(n.slice(0,2)):n.slice(0,2))"""),
+    # the preview
+    (r"""    if(!day) return h+'<p class="pkmore">Loading&hellip;</p>';""",
+     r"""    if(!day) return h+'<p class="pkmore">'+tr("calp.loading","Loading")+'&hellip;</p>';"""),
+    (r"""        : day.cards.length ? "Nothing on this day matches the filters." : "Nothing is scheduled.")+'</p>';""",
+     r"""        : day.cards.length ? tr("calp.day_nomatch","Nothing on this day matches the filters.")
+        : tr("calp.nothing","Nothing is scheduled."))+'</p>';"""),
+    (r"""(e.cancelled?' <em>cancelled</em>':"")+'</span></li>';""",
+     r"""(e.cancelled?' <em>'+tr("calp.cancelled_l","cancelled")+'</em>':"")+'</span></li>';"""),
+    (r"""    if(vis.length>cap) h+='<p class="pkmore">and '+(vis.length-cap)+' more</p>';""",
+     r"""    if(vis.length>cap) h+='<p class="pkmore">'+tr("calp.and_more","and {n} more",{n:vis.length-cap})+'</p>';"""),
+    # where the pages are
+    (r"""  function hrefFor(k){ return k===HERE?"/calendar":"/calendar/"+k; }""",
+     r"""  function hrefFor(k){ return k===HERE?P+"/calendar":P+"/calendar/"+k; }"""),
+    (r"""  var TAB=/\.html$/.test(location.pathname)?"/calendar.html":"/calendar";""",
+     r"""  var TAB=/\.html$/.test(location.pathname)?P+"/calendar.html":P+"/calendar";"""),
+    (r"""    fetch("/calendar/data/"+m+".json").then(function(r){""",
+     r"""    fetch(P+"/calendar/data/"+m+".json").then(function(r){"""),
+    (r"""      ORIGIN=CANON.indexOf("/calendar")>0?CANON.slice(0,CANON.indexOf("/calendar")):location.origin;""",
+     r"""      ORIGIN=CANON.indexOf(P+"/calendar")>0?CANON.slice(0,CANON.indexOf(P+"/calendar")):location.origin;"""),
+    # the heading and the title
+    (r"""WEEKS[PAGEWEEK]={label:h1.textContent.replace(/^The Week of /,""), lead:lead?lead.textContent:""};""",
+     r"""WEEKS[PAGEWEEK]={label:h1.textContent.slice(tr("calp.week_of","The Week of {label}",{label:""}).length),
+                   lead:lead?lead.textContent:""};"""),
+    (r"""    h1.textContent="The Week of "+label;
+    if(lead) lead.textContent=broken()?"The meetings of this week could not be loaded here."
+                                      :w?w.lead:"";
+    document.title="The Week of "+label+" | Granite Record";""",
+     r"""    h1.textContent=tr("calp.week_of","The Week of {label}",{label:label});
+    if(lead) lead.textContent=broken()?tr("calp.week_cant","The meetings of this week could not be loaded here.")
+                                      :w?w.lead:"";
+    document.title=tr("calp.week_of","The Week of {label}",{label:label})+" | Granite Record";"""),
+    # the pager
+    (r"""<span class="wkpw">&lsaquo; Previous Week</span>'""",
+     r"""<span class="wkpw">&lsaquo; '+tr("calp.prev_week","Previous Week")+'</span>'"""),
+    (r"""data-today="" href="'+hrefFor(tk)+'">This Week</a>';""",
+     r"""data-today="" href="'+hrefFor(tk)+'">'+tr("calp.this_week","This Week")+'</a>';"""),
+    (r"""<span class="wkpw">Next Week &rsaquo;</span>'""",
+     r"""<span class="wkpw">'+tr("calp.next_week","Next Week")+' &rsaquo;</span>'"""),
+    # the count above the schedule
+    (r"""    var t=broken()?"The meetings could not be loaded."
+      :!tl?""
+      :countLine(tl, S.v==="day"?"on "+dayWords(SEL):"this week");""",
+     r"""    var t=broken()?tr("calp.cant","The meetings could not be loaded.")
+      :!tl?""
+      :countLine(tl, S.v==="day"?tr("calp.where_day","on {day}",{day:dayWords(SEL)})
+                  :tr("calp.where_week","this week"));"""),
+    (r"""      || '<p class="calempty">Nothing this week matches the filters.</p>';""",
+     r"""      || '<p class="calempty">'+tr("calp.week_nomatch","Nothing this week matches the filters.")+'</p>';"""),
+    # the Day view, which no control leads to now and whose words are said all the same
+    (r"""    var step='<nav class="calstep" aria-label="Other days">'""",
+     r"""    var step='<nav class="calstep" aria-label="'+tr("calp.other_days","Other days")+'">'"""),
+    (r"""+'<span class="wkpw">&lsaquo; Previous Day</span>""",
+     r"""+'<span class="wkpw">&lsaquo; '+tr("calp.prev_day","Previous Day")+'</span>"""),
+    (r"""+'<span class="wkpw">Next Day &rsaquo;</span>""",
+     r"""+'<span class="wkpw">'+tr("calp.next_day","Next Day")+' &rsaquo;</span>"""),
+    # the week at a glance
+    (r"""          +' aria-label="'+DAYNAME[weekday(d)]+' '+dw(d,"short")+(d===TODAY?", today":"")+': open this day">'""",
+     r"""          +' aria-label="'+DAYNAME[weekday(d)]+' '+dw(d,"short")+(d===TODAY?", "+tr("cal.today","today"):"")
+          +': '+tr("calp.open_day","open this day")+'">'"""),
+    (r"""+(d===TODAY?" · Today":"")+'</span>'""",
+     r"""+(d===TODAY?" · "+tr("calp.today","Today"):"")+'</span>'"""),
+    # a week that did not come
+    (r"""        ? '<p class="calempty">'+(S.v==="day"?esc(dayWords(SEL)):"The week of "
+            +esc(WEEKS[k]?WEEKS[k].label:weekLabel(k)))
+          +' could not be loaded here. <a href="'+hrefFor(k)+'">Open '
+          +(S.v==="day"?"its week":"it")+' on its own page</a>.</p>'
+        : '<p class="calempty">Loading the week&hellip;</p>';""",
+     r"""        ? '<p class="calempty">'+(S.v==="day"?esc(dayWords(SEL))+" "+tr("calp.day_fail","could not be loaded here.")
+            :tr("calp.week_fail","The week of {label} could not be loaded here.",
+                {label:esc(WEEKS[k]?WEEKS[k].label:weekLabel(k))}))
+          +' <a href="'+hrefFor(k)+'">'
+          +(S.v==="day"?tr("calp.open_week","Open its week on its own page"):tr("calp.open_page","Open it on its own page"))
+          +'</a>.</p>'
+        : '<p class="calempty">'+tr("calp.loading_week","Loading the week")+'&hellip;</p>';"""),
+    # the controls
+    (r"""        +'<span class="sr">: stop showing only this committee</span><span aria-hidden="true"> &times;</span></button>';""",
+     r"""        +'<span class="sr">: '+tr("calp.stop_only","stop showing only this committee")
+        +'</span><span aria-hidden="true"> &times;</span></button>';"""),
+    (r"""    ffold.textContent=(side.classList.contains("ffolded")?"Show the filters":"Hide the filters")
+      +(n?" ("+n+" on)":"");""",
+     r"""    ffold.textContent=(side.classList.contains("ffolded")?tr("calp.show_filters","Show the filters")
+      :tr("calp.hide_filters","Hide the filters"))+(n?" ("+tr("calp.n_on","{n} on",{n:n})+")":"");"""),
+    (r"""  var CHAMBER={"H":"House","S":"Senate","H S":"House and Senate"};
+  var GROUP={standing:"Standing committees and committees of conference",study:"Study and statutory committees",
+             floor:"Session days"};""",
+     r"""  var CHAMBER={"H":"House","S":"Senate","H S":"House and Senate"};
+  var CHAMBER_L={"H":tr("calp.house","House"),"S":tr("calp.senate","Senate"),
+                 "H S":tr("calp.house_senate","House and Senate")};
+  // The three names the site wrote itself, in the page's language; a committee's own is the record's.
+  function nl(n){
+    return !ES?"":n==="House Session Day"?tr("cal.house_day","House Session Day")
+      :n==="Senate Session Day"?tr("cal.senate_day","Senate Session Day")
+      :n==="Committee of conference"?tr("cal.conference","Committee of conference"):"";
+  }
+  var GROUP={standing:tr("calp.grp_standing","Standing committees and committees of conference"),
+             study:tr("calp.grp_study","Study and statutory committees"),
+             floor:tr("calp.grp_floor","Session days")};"""),
+    (r"""cplist.innerHTML='<p class="calhint">Loading the committees&hellip;</p>'; return; }""",
+     r"""cplist.innerHTML='<p class="calhint">'+tr("calp.loading_cmtes","Loading the committees")+'&hellip;</p>'; return; }"""),
+    (r"""      return g+'<label class="calchk cpopt"><input type="checkbox" value="'+esc(c[0])+'"'
+        +(S.picks.indexOf(c[0])>=0?" checked":"")+'><span>'+esc(c[0])
+        +(ch&&!said?' <span class="cpwho">'+ch+'</span>':"")+'</span></label>';
+    }).join("")||'<p class="calhint">No committee on the calendar has that in its name.</p>';
+    cpstat.textContent=q?plural(rows.length,"committee")+" match.":"";""",
+     r"""      return g+'<label class="calchk cpopt"><input type="checkbox" value="'+esc(c[0])+'"'
+        +(S.picks.indexOf(c[0])>=0?" checked":"")+'><span'+(ES&&!nl(c[0])?' lang="en"':"")+'>'+esc(nl(c[0])||c[0])
+        +(ch&&!said?' <span class="cpwho">'+CHAMBER_L[c[2]]+'</span>':"")+'</span></label>';
+    }).join("")||'<p class="calhint">'+tr("calp.no_cmte","No committee on the calendar has that in its name.")+'</p>';
+    cpstat.textContent=q?tr("calp.cmtes_match","{count} match.",{count:plural(rows.length,"committee")}):"";"""),
+    (r"""      cplist.innerHTML='<p class="calhint">The list of committees could not be loaded.</p>';""",
+     r"""      cplist.innerHTML='<p class="calhint">'+tr("calp.cmtes_fail","The list of committees could not be loaded.")+'</p>';"""),
+    (r"""    mfold.textContent=on?"Show the whole month":"Show only this week";""",
+     r"""    mfold.textContent=on?tr("calp.whole_month","Show the whole month"):tr("calp.only_week","Show only this week");"""),
+    (r"""    cpall.textContent=open?"Hide the list":"Browse every committee";""",
+     r"""    cpall.textContent=open?tr("calp.hide_list","Hide the list"):tr("calp.browse","Browse every committee");"""),
+    # a committee's chip carries its name, which is the record's
+    (r"""return '<button type="button" class="cpchip" data-name="'+esc(n)+'">'+esc(n)""",
+     r"""return '<button type="button" class="cpchip" data-name="'+esc(n)+'">'+(ES&&!nl(n)?'<span lang="en">'+esc(n)+'</span>':esc(nl(n)||n))"""),
+    # a meeting added to the reader's own calendar
+    (r"""    var cmte=(m.querySelector(".calcmte")||{}).textContent||"A meeting";""",
+     r"""    var cmte=(m.querySelector(".calcmte")||{}).textContent||tr("calp.a_meeting","A meeting");"""),
+    (r"""    var note="New Hampshire General Court. "+(kinds||"Meeting")+
+      (bills.length? ". Bills: "+bills.join(", ") : "")+
+      (last && last!==time ? ". Items are scheduled from "+said(time)+" to "+said(last) : "")+
+      ". The General Court does not publish an end time, so this entry is "+
+      "one hour long. Source: graniterecord.org";""",
+     r"""    var note=tr("calp.ics_head","New Hampshire General Court. {what}",{what:kinds||tr("calp.ics_meeting","Meeting")})+
+      (bills.length? tr("calp.ics_bills",". Bills: {list}",{list:bills.join(", ")}) : "")+
+      (last && last!==time ? tr("calp.ics_items",". Items are scheduled from {from} to {to}",{from:said(time),to:said(last)}) : "")+
+      tr("calp.ics_end",". The General Court does not publish an end time, so this entry is one hour long. Source: graniterecord.org");"""),
+    (r"""    var titled=kinds.replace(/\w\S*/g,function(w){""",
+     r"""    var titled=ES?kinds:kinds.replace(/\w\S*/g,function(w){"""),
+    (r"""    p.innerHTML='<span>Add to calendar</span>'+""",
+     r"""    p.innerHTML='<span>'+tr("calp.add_cal","Add to calendar")+'</span>'+"""),
+    (r"""'<a class="calics" href="#">Download</a>';""",
+     r"""'<a class="calics" href="#">'+tr("calp.download","Download")+'</a>';"""),
+]
+
+
+def week_js(lang="en"):
+    """WEEK_JS for a page in `lang`: itself, to the byte, for English."""
+    if lang == i18n.DEFAULT:
+        return WEEK_JS
+    # The dates, the clock and the committee chip words are components.js's, asked for in the page's language.
+    js = re.sub(r"\bdateWords\(", "dw(", WEEK_JS)
+    js = re.sub(r"\bdateSpan\(", "ds(", js)
+    js = re.sub(r"\bclock\(", "clk(", js)
+    for old, new in WEEK_ES:
+        assert js.count(old) == 1, (f"WEEK_JS no longer holds, exactly once, the text its Spanish "
+                                    f"rests on: {old[:70]!r} ({js.count(old)} times)")
+        js = js.replace(old, new)
+    return js
+
+
 # ---- the month files ----------------------------------------------------------
 #
 # WHAT THE SCRIPT READS WHEN A READER LEAVES THE WEEK THE PAGE HOLDS. One file
@@ -3015,14 +3386,19 @@ DATA_DIR = ("calendar", "data")
 
 
 def month_files(site, weeks, order, titles, years, code, today,
-                sessions=frozenset(), docs=None, events=None):
+                sessions=frozenset(), docs=None, events=None, lang="en"):
     """Write calendar/data/<YYYY-MM>.json for every month the weeks in `order`
     touch, and calendar/data/committees.json; take out any other .json there.
     `events` is key_date_days()'s: a day's key dates are in its HTML, as the
     week page draws them.
 
+    In Spanish (`lang`, 9 November 2026) the months are written to
+    es/calendar/data/, their cards, labels and leads in Spanish, which the
+    Spanish page's script fetches (week_js); the committees' list is English's
+    alone, the committees' names being the record's own.
+
     Returns (months written, cards written)."""
-    out = Path(site).joinpath(*DATA_DIR)
+    out = Path(site).joinpath(*lang_prefix(lang).strip("/").split("/"), *DATA_DIR)
     out.mkdir(parents=True, exist_ok=True)
     first = datetime.date.fromisocalendar(int(order[0][:4]), int(order[0][6:]), 1)
     last = datetime.date.fromisocalendar(int(order[-1][:4]), int(order[-1][6:]), 7)
@@ -3039,14 +3415,14 @@ def month_files(site, weeks, order, titles, years, code, today,
             # EVERY DAY, WEEKENDS AND EMPTY ONES INCLUDED: the Day view of a
             # quiet Saturday says it is quiet, in the words the week page uses.
             html, _m = BP.cal_days({iso: in_order(day)}, day, titles, years, code,
-                                   lambda dd: day_words(dd, today), S.E, level=2,
-                                   sessions=sessions, docs=docs, events=events,
+                                   lambda dd: day_words(dd, today, lang), S.E, level=2,
+                                   sessions=sessions, docs=docs, lang=lang, events=events,
                                    morning=today.isoformat())
             days[iso] = html
             cards += len(day)
             if k in weeks and k not in wk:
                 if k not in facts:
-                    f = week_facts(k, weeks, today, events)
+                    f = week_facts(k, weeks, today, events, lang)
                     # The pager's short name for it too, which Previous Week
                     # and Next Week say under them (WEEK_JS's shortOf).
                     facts[k] = {"label": f["label"], "lead": f["lead"], "short": f["short"]}
@@ -3056,6 +3432,12 @@ def month_files(site, weeks, order, titles, years, code, today,
                                            ensure_ascii=False, separators=(",", ":")),
                                 encoding="utf-8")
         wrote.add(name)
+
+    if lang != i18n.DEFAULT:
+        for f in out.glob("*.json"):
+            if f.name not in wrote:
+                f.unlink()
+        return len(months), cards
 
     # EVERY COMMITTEE ON THE CALENDAR, for the picker: its name as the cards
     # print it, whose it is, and its chamber or chambers. Read once, and only
@@ -3170,6 +3552,16 @@ def main():
                            titles, years, code, urls, today, sits,
                            study=bool(study_rows), docs=docs, picker=picker,
                            events=events)
+    # THE SAME WEEKS IN EVERY OTHER LANGUAGE THE CALENDAR HAS (i18n.PAGES):
+    # each at its own address under /<code>/, with that language's section of
+    # Calendars & Journals, their files and months below. Not counted again.
+    langs = [c for c in i18n.LANGS if c != i18n.DEFAULT and i18n.has(c, "calendar.html")]
+    for lang in langs:
+        picker_l = CD.block_html(cdocs, cd_out, lang=lang)
+        for i, key in enumerate(order):
+            week_page(site, base, key, weeks, order, i, titles, years, code, [], today, sits,
+                      study=bool(study_rows), docs=docs, picker=picker_l, events=events,
+                      lang=lang)
     size = documents_files(site, base, cdocs, cd_out, urls)
     if size:
         print(f"  calendar/documents.json ({size:,} bytes) and calendar/documents.html, "
@@ -3181,6 +3573,13 @@ def main():
     n_months, n_cards = month_files(site, weeks, order, titles, years, code,
                                     today, sits, docs, events)
     assert n_months, "no month files were written; the calendar's grid would be empty"
+    for lang in langs:
+        n_l, _c = month_files(site, weeks, order, titles, years, code, today, sits, docs, events,
+                              lang=lang)
+        # SILENCE IS NOT SUCCESS: a language's weeks with no months is a grid that shows nothing.
+        assert n_l == n_months, (f"{lang}: {n_l} month files for {n_months} in English; the "
+                                 "grid of its weeks would be empty")
+        print(f"  {lang}: {len(order)} week pages under /{lang}/calendar and {n_l} month files")
     print(f"  {n_months} month files -> calendar/data/ ({n_cards:,} cards, "
           "the same ones the week pages draw), and committees.json for the picker")
 

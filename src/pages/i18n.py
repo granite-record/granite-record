@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.22
+# GRANITE_VERSION: 2026-10-23.23
 """
 The site in more than one language, and how a translation stays current.
 
@@ -127,8 +127,12 @@ LEARN_PAGES = tuple(f"learn/{s}.html" for s in (
 # THE OFFICIALS PAGE (the person, 25 October 2026: "Start on the Officials
 # page and My Town in Spanish"): its own words, its tabs' and the words of
 # corrections/officials.json that the tabs say (officials_tabs.data_words).
+# THE CALENDAR AND LEARN'S BY THE NUMBERS (9 November 2026): /es/calendar and
+# its week pages (/es/calendar/2026-W38, which the Calendar's own links and
+# script reach by address and which are not listed here), and
+# /es/learn/by-the-numbers, whose words are learn_numbers.py's say() calls.
 PAGES = {"es": ("index.html", "learn/glossary.html", "resources.html", "officials.html",
-                "about.html", "search.html")
+                "about.html", "search.html", "calendar.html", "learn/by-the-numbers.html")
          + GUIDE_PAGES + LEARN_PAGES}
 
 _CATALOGS = {}
