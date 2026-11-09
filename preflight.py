@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.824
+# GRANITE_VERSION: 2026-09-04.825
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -59342,7 +59342,8 @@ def _map_borders_chained():
     prog = (m.group(0) + """
 const M={ARCS:[[[0,0],[10,0]],[[10,10],[10,0]],[[10,10],[20,10]],[[50,50],[51,51],[50,52],[50,50]]]};
 console.log(chainD(M,[0,1,2,3]));""")
-    r = subprocess.run(["node", "-e", prog], capture_output=True, text=True, timeout=60)
+    r = subprocess.run(["node", "-e", prog], capture_output=True, text=True,
+                       encoding="utf-8", errors="replace", timeout=60)
     if r.returncode or r.stdout.strip() != "M0 0L10 0L10 10L20 10":
         bad.append(f"chainD did not join arcs end to end and drop the empty ring: {r.stdout.strip()} {r.stderr[-200:]}")
     assert not bad, "; ".join(bad)
