@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.288
+// GRANITE_VERSION: 2026-09-07.289
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2538,10 +2538,14 @@ const CUTNOTE="Only the first twelve words of a search are read";
    silence there would read as "nothing in the text". */
 const TEXT={};
 let TEXTGEN=0,TEXTDRAW=0;
-function wantText(){
-  const q=query.trim();
-  if(!q||billNumbers(q))return;
-  const terms=term===ALL_TERMS?((META&&META.terms)||[]):[term];
+// A member's Votes tab asks for the same files for the terms its search spans
+// (`terms`) and draws itself again with `redraw`: the one loader, not a copy.
+function wantText(terms,redraw){
+  if(!terms){
+    const q=query.trim();
+    if(!q||billNumbers(q))return;
+    terms=term===ALL_TERMS?((META&&META.terms)||[]):[term];
+  }
   for(const t of terms){
     if(!t||TEXT[t])continue;
     TEXT[t]="loading";
@@ -2559,15 +2563,15 @@ function wantText(){
         // a second and a half, so a connection that stalls still shows what
         // it has.
         clearTimeout(TEXTDRAW);
-        TEXTDRAW=setTimeout(()=>{if(query.trim())render();},
-          textState()==="loading"?1500:40);
+        TEXTDRAW=setTimeout(redraw||(()=>{if(query.trim())render();}),
+          textState(terms)==="loading"?1500:40);
       });
   }
 }
 // "loading" while any term being searched is still on its way, "failed" if
 // one could not be had, "ready" otherwise.
-function textState(){
-  const terms=term===ALL_TERMS?((META&&META.terms)||[]):[term];
+function textState(terms){
+  terms=terms||(term===ALL_TERMS?((META&&META.terms)||[]):[term]);
   const st=terms.map(t=>TEXT[t]);
   return st.includes("loading")?"loading":st.includes("failed")?"failed":"ready";
 }
@@ -3451,6 +3455,10 @@ function billNumbers(q){
   return NUMBERS=ids.every(i=>/^[A-Z]{2,5}\d+$/.test(i))?ids:null;
 }
 // BILLMATCH:END
+// A bill against a search read into groups: every group must match, and any
+// of its alternatives will do. /bills (matches, below) and a member's Votes
+// tab (voteSearch) both ask it, so the two cannot come to disagree.
+const matchesGroups=(b,gs)=>gs.every(g=>groupWeight(b,g)>0);
 function matches(b,ignore){
   // A bill number is unique WITHIN a term, so a number search ignores the
   // sidebar filters -- they can only hide the answer. It stays inside the
@@ -3472,7 +3480,7 @@ function matches(b,ignore){
   const rq=/^\s*rsa\b/i.test(q)&&hasRsa()?rsaOfQuery(q):"";
   if(rq)return rsaHas(b,rq);
   // Every group must match, and any of its alternatives will do.
-  return groupsFor(q).every(g=>groupWeight(b,g)>0);
+  return matchesGroups(b,groupsFor(q));
 }
 
 // `paint`, where given, draws each value as a chip of that class, the one
@@ -8703,9 +8711,60 @@ const voteChamber=x=>String(x.k||"").split("-")[1]||"";
 const voteIso=x=>{
   const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(x.d||""));
   return m?`${m[3]}-${m[1].padStart(2,"0")}-${m[2].padStart(2,"0")}`:"";};
+// The term shown, or every term where the reader has asked for them all
+// (PAGE.vall; "?term=all" in the address, as /bills names it).
 const memberVotes=m=>(m.votes||[]).filter(x=>{
   const y=voteYear(x);
-  return !pageTerm()||!y||termOfYear(y)===pageTerm();});
+  return PAGE.vall||!pageTerm()||!y||termOfYear(y)===pageTerm();});
+
+// THE VOTES TAB'S SEARCH IS THE BILL SEARCH (the person, 7 November 2026: "a
+// bill number or words, with the bill search's own matching"). This tab had a
+// matcher of its own, a substring test over the title and the question, which
+// found "housing" in a title and missed what /bills lists for it: the
+// synonyms, the bills whose analysis or text say it, a bill number's exact
+// form. Now a vote is asked of billNumbers, queryGroups, readShort and
+// matchesGroups -- the functions /bills, the header and /search ask -- over
+// the bill the vote was on, with the bills' text (sidx) fetched by the same
+// loader. A vote on no bill is asked about the words the Journal gives it.
+const voteNorm=s=>String(s||"").toLowerCase().replace(/-/g," ");
+let VG_KEY=null,VG=[];
+function voteGroups(q,rows){
+  const key=[q,rows.length,TEXTGEN].join("\u0001");
+  if(key!==VG_KEY){VG_KEY=key;VG=readShort(queryGroups(q),rows);}
+  return VG;
+}
+// The row a vote is matched as: the bill's index row where this page holds
+// it, else what the vote itself says. Null where there is nothing to ask.
+function voteSubject(r){
+  if(r.b&&r.b.hayT)return r.b;
+  const t=r.x.y?termOfYear(r.x.y):termOfYear(voteYear(r.x));
+  const title=r.b?r.b.title:[r.rc&&r.rc.w,r.rc&&r.rc.q,r.x.q].filter(Boolean).join(" ");
+  const id=String(r.x.b||"").toUpperCase();
+  return {id,n:id,title,term:t,hayT:voteNorm([id,id,title].join(" ")),hayC:""};
+}
+// The address keeps the search: "?q=housing&topic=Health&term=all", beside
+// whatever else it carries, so a link reproduces what is on the screen.
+function voteAddress(){
+  if(!PAGE||PAGE.kind!=="member")return;
+  try{
+    const u=new URLSearchParams(location.search);
+    const set=(k,v)=>{if(v)u.set(k,v);else u.delete(k);};
+    set("q",String(PAGE.vq||"").trim());
+    set("topic",PAGE.vtopic||"");
+    set("term",PAGE.vall?"all":"");
+    const qs=u.toString();
+    // Only where it changes: a term chosen on a page whose address names
+    // nothing of this must not rewrite the address (a recording's hash).
+    if(qs!==location.search.replace(/^\?/,""))
+      history.replaceState(history.state,"",location.pathname+(qs?"?"+qs:"")+location.hash);
+  }catch(_){}
+}
+function voteAddressRead(){
+  const u=new URLSearchParams(location.search);
+  PAGE.vq=u.get("q")||"";
+  PAGE.vtopic=u.get("topic")||"";
+  PAGE.vall=u.get("term")==="all";
+}
 
 // WHAT THE VOTE DECIDED, not only how they voted. This tab listed 1,081 rows
 // of "HB2026 / Veto Override / Yea" on one member's page: the record's own
@@ -8852,16 +8911,36 @@ function renderMemberVotes(m){
             b:(x.b&&x.y)?idxRow({id:x.b,year:x.y,term:termOfYear(x.y)}):null};
   });
 
-  // The three filters: the member's vote, the side it was on, and words or a
-  // bill number, matched against the number, the title and the question.
-  const q=(PAGE.vfilter||"").toLowerCase(), sd=PAGE.vside||"";
-  const find=String(PAGE.vq||"").trim(), fold=billFold(find), low=find.toLowerCase();
-  // A number alone is that number of any kind of bill: "282" finds HB 282.
-  const bare=/^\d+$/.test(fold);
-  const hit=r=>!find||(fold&&(bare?billFold(r.x.b).replace(/^[A-Z]+/,""):billFold(r.x.b))===fold)
-    ||[r.b&&r.b.title,r.x.q,r.rc&&r.rc.q,r.rc&&r.rc.w].some(s=>String(s||"").toLowerCase().includes(low));
+  // The filters: the member's vote, the side it was on, the bill's topic (the
+  // bill search's own list) and words or a bill number (voteSubject, above).
+  const q=(PAGE.vfilter||"").toLowerCase(), sd=PAGE.vside||"", tp=PAGE.vtopic||"";
+  const find=String(PAGE.vq||"").trim();
+  const scope=[...new Set(all.map(r=>r.x.y?termOfYear(r.x.y):termOfYear(voteYear(r.x))).filter(Boolean))];
+  // Each term's bills, and for a search in words their text, are fetched the
+  // first time they are wanted; the page is drawn again as they arrive.
+  const unread=scope.filter(x=>published(x)&&!LOADED.has(x));
+  if(unread.length){
+    const key=unread.join(",");
+    if(PAGE.vasked!==key){PAGE.vasked=key;
+      Promise.all(unread.map(ensureTerm)).then(renderPage,renderPage);}
+  }
+  const ids=find?billNumbers(find):null;
+  let gs=null;
+  if(find&&!ids){
+    gs=voteGroups(find,IDX.filter(b=>scope.includes(b.term)));
+    wantText(scope,renderPage);
+  }
+  const reading=!!find&&!ids&&(unread.length||textState(scope)==="loading");
+  const hit=r=>{
+    if(!find)return true;
+    if(ids)return !!r.x.b&&ids.includes(String(r.x.b).toUpperCase());
+    return matchesGroups(voteSubject(r),gs);};
   const rows=all.filter(r=>(!q||String(r.x.v||"").toLowerCase()===q)
-    &&(!sd||(r.side!==null&&(sd==="won")===r.side))&&hit(r));
+    &&(!sd||(r.side!==null&&(sd==="won")===r.side))
+    &&(!tp||(r.b&&r.b.topic===tp))&&hit(r));
+  const topics={};
+  all.forEach(r=>{if(r.b&&r.b.topic)topics[r.b.topic]=(topics[r.b.topic]||0)+1;});
+  if(tp&&!topics[tp])topics[tp]=0;
   const tally={};
   v.forEach(x=>{tally[x.v]=(tally[x.v]||0)+1;});
   const sided=all.filter(r=>r.side!==null), won=sided.filter(r=>r.side).length;
@@ -8879,11 +8958,18 @@ function renderMemberVotes(m){
         <option value="won"${sd==="won"?" selected":""}>Prevailing side (${won.toLocaleString()})</option>
         <option value="lost"${sd==="lost"?" selected":""}>Losing side (${
           (sided.length-won).toLocaleString()})</option>
+      </select></label>`:""}${Object.keys(topics).length?`<label>Topic
+      <select data-pf="vtopic"><option value="">Any</option>
+      ${Object.keys(topics).sort().map(k=>`<option value="${esc(k)}"${
+        tp===k?" selected":""}>${esc(k)} (${topics[k].toLocaleString()})</option>`).join("")}
       </select></label>`:""}<label>Find
-      <input type="search" data-pf="vq" value="${esc(find)}" placeholder="Bill number or title words"
+      <input type="search" data-pf="vq" value="${esc(find)}" placeholder="Bill number or words"
         aria-label="Find a bill by its number or words"></label></div>
-    <p class="src">${rows.length.toLocaleString()} of ${v.length.toLocaleString()}
-      recorded votes in ${esc(termDash(t))}${castIn}, newest first: every roll call this member is
+    <p class="src" id="vcount">${rows.length.toLocaleString()} of ${v.length.toLocaleString()}
+      recorded votes in ${PAGE.vall?"every term":esc(termDash(t))}${castIn}${
+      (PAGE.terms||[]).length>1?` (<button type="button" class="link" data-vall="${
+        PAGE.vall?"0":"1"}">${PAGE.vall?`only ${esc(termDash(t))}`:"search every term"}</button>)`:""}${
+      reading?`. Reading the bills&hellip;`:""}, newest first: every roll call this member is
       recorded in, what it was on, and what it decided. The prevailing side is a yes on a
       motion that carried or a no on one that failed; it describes the vote, not the
       member, and nothing here is rated or scored.</p>
@@ -8891,7 +8977,12 @@ function renderMemberVotes(m){
       the outcomes and the prevailing side are missing from the rows below.
       The votes themselves are the member's own record and are unaffected.
       <code>${esc(RCX_ERR)}</code></p>`:""}
-    <table class="votes vfull"><thead><tr><th>Date</th>
+    ${rows.length?"":`<p class="note" role="status">No recorded vote matches${
+      find?` &ldquo;${esc(find)}&rdquo;`:""}${tp?` under the topic ${esc(tp)}`:""} among
+      ${PAGE.vall?"every term\u2019s":"this term\u2019s"} ${v.length.toLocaleString()} votes${
+      reading?" yet":""}. <button type="button" class="link" data-vclear="1">Clear the
+      search and filters</button>.</p>`}
+    <table class="votes vfull"${rows.length?"":" hidden"}><thead><tr><th>Date</th>
       <th>The bill and the question</th><th>Their vote</th><th>Result</th>
       </tr></thead><tbody>${shown.map((r,i)=>voteRow(r)+voteRing(r,i)).join("")}
       </tbody></table>
@@ -10703,6 +10794,15 @@ document.addEventListener("click",e=>{
   // on a docket puts it on the first line it reveals: the button is drawn
   // again a page further down, and focus left on nothing sent the next Tab
   // press to the top of the member's page (the review of 2 October 2026).
+  // Every term, or back to the one shown; and the search and filters cleared.
+  const va=e.target.closest("[data-vall]");
+  if(va&&PAGE){PAGE.vall=va.dataset.vall==="1";PAGE.vshow=0;voteAddress();
+    renderPage();return;}
+  const vc=e.target.closest("[data-vclear]");
+  if(vc&&PAGE){PAGE.vq="";PAGE.vtopic="";PAGE.vfilter="";PAGE.vside="";PAGE.vshow=0;
+    voteAddress();renderPage();
+    const b=document.querySelector('input[data-pf="vq"]');if(b)b.focus({preventScroll:true});
+    return;}
   const vm=e.target.closest("[data-vmore]");
   if(vm){
     const from=PAGE.vshow||VOTES_SHOWN;
@@ -10770,7 +10870,10 @@ document.addEventListener("change",e=>{
     if(PAGE.kind==="committee"&&/^#v-/.test(location.hash))tabAddress(slugOf(COMMITTEE_TABS,PAGE_TAB));}
   // A narrower filter over a list already expanded to 800 rows left the
   // reader at the bottom of a list of 40.
-  if(f==="vfilter"||f==="vside"||f==="vq"||f==="term")PAGE.vshow=0;
+  if(f==="vfilter"||f==="vside"||f==="vq"||f==="vtopic"||f==="term")PAGE.vshow=0;
+  // Choosing a term is choosing the one term.
+  if(f==="term")PAGE.vall=false;
+  if(f==="vq"||f==="vtopic"||f==="term")voteAddress();
   // And a committee's lists start again at twenty, under the new choice.
   if(f==="status"||f==="term")PAGE.bshow=0;
   if(f==="msort"||f==="term")PAGE.mshow=0;
@@ -11101,7 +11204,8 @@ function landingTab(){
 }
 function openPage(kind,ref){
   PAGE={kind,data:null,terms:[],term:"",status:"",vfilter:"",vid:"",
-        vside:"",vq:"",vopen:{},vshow:0,bshow:0,mshow:0};
+        vside:"",vq:"",vtopic:"",vall:false,vopen:{},vshow:0,bshow:0,mshow:0};
+  if(kind==="member")voteAddressRead();
   // A member's page has three tabs and a committee's two. Carried over, a
   // member's Votes tab (2) opened a committee on a tab it does not have, and
   // the page drew nothing under the strip.
@@ -12104,7 +12208,7 @@ let VQDRAW=null;
 document.addEventListener("input",e=>{
   if(PAGE&&e.target.dataset&&e.target.dataset.pf==="vq"){
     const v=e.target.value;clearTimeout(VQDRAW);
-    VQDRAW=setTimeout(()=>{if(!PAGE||PAGE.vq===v)return;PAGE.vq=v;PAGE.vshow=0;renderPage();
+    VQDRAW=setTimeout(()=>{if(!PAGE||PAGE.vq===v)return;PAGE.vq=v;PAGE.vshow=0;voteAddress();renderPage();
       const b=document.querySelector('input[data-pf="vq"]');
       if(b){b.focus({preventScroll:true});const n=b.value.length;b.setSelectionRange(n,n);}},250);
     return;}

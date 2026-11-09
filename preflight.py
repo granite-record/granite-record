@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.831
+# GRANITE_VERSION: 2026-09-04.832
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -57656,7 +57656,7 @@ globalThis.fetch = async () => ({ok: true, status: 200, json: async () => ({H: [
   text: async () => "{}"});
 let s;
 try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
-  + "; ({renderMemberVotes, renderVotes, donut, fullRecord, fullOpen,"
+  + "; ({renderMemberVotes, renderVotes, donut, fullRecord, fullOpen, IDX, LOADED,"
   + "   setRCX: v => { RCX = v; }, setPage: p => { PAGE = p; },"
   + "   setMeta: m => { META = Object.assign(META || {}, m); }})"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
@@ -57665,6 +57665,10 @@ const out = {find: {}};
 try {
   s.setRCX({});
   s.setMeta({terms: ["2025-2026"]});
+  // The bills' index as the site writes it, a bill's own page title in `n`.
+  s.IDX.length = 0; s.LOADED.add("2025-2026");
+  fx.rows.forEach(r => { r.hayT = [r.id, r.n, r.title].join(" ").toLowerCase().replace(/-/g, " ");
+                         r.hayC = ""; s.IDX.push(r); });
   for (const q of fx.finds) {
     s.setPage({kind: "member", terms: ["2025-2026"], term: "2025-2026", data: fx.member,
                vfilter: "", vside: "", vq: q, vopen: {}, vshow: 0});
@@ -57711,8 +57715,18 @@ def _votes_words_and_keys():
     member = {"party_code": "D", "service": [{"b": "H"}],
               "votes": [vote(1, "HB282"), vote(2, "SB282"), vote(3, "HB2820"), vote(4, "HB28"),
                         vote(5, "HB1282", "Local option")]}
-    finds = {"HB 282-FN": 1, "hb 282-fn-a-local": 1, "HB 282-L": 1, "HB 282": 1, "SB282": 1,
-             "282": 2, "28": 1, "HB 28": 1, "local": 1, "HB 999-FN": 0}
+    # Matched as the bill search matches (the owner, 7 November 2026), over the index's rows.
+    finds = {"HB 282-FN": 1, "HB 282": 1, "SB282": 1,
+             # A bare number is a word to the bill search, as it is on /bills: SB 282, HB 282
+             # and the HB 2820 whose number it begins (the owner, 7 November 2026).
+             "282": 3, "HB 28": 1, "local": 1,
+             "HB 999-FN": 0}
+    rows = [{"id": b, "n": n, "title": t, "term": "2025-2026", "year": 2026}
+            for b, n, t in (("HB282", "HB 282-FN", "relative to a thing"),
+                            ("SB282", "SB 282", "relative to another"),
+                            ("HB2820", "HB 2820", "relative to a third"),
+                            ("HB28", "HB 28", "relative to a fourth"),
+                            ("HB1282", "HB 1282-L", "the local option program"))]
     m = lambda i, p, v: {"n": f"Rep. M{i} ({p})", "s": f"m{i}", "p": p, "v": v}
     card = {"yeas": 3, "nays": 4, "passed": False, "body": "H", "date": "2026-03-01",
             "tally": {"R": {"Yea": 2, "Nay": 1}, "D": {"Nay": 3}, "I": {"Yea": 1}},
@@ -57725,7 +57739,8 @@ def _votes_words_and_keys():
                {"question": "Ought to Pass", "date": "2026-03-03", "body": "S", "vote_kind": "DV",
                 "passed": False}]
     got = _node_app(_VOTES_WORDS_HARNESS, {"fx.json": json.dumps(
-        {"member": member, "finds": list(finds), "card": card, "unnamed": unnamed})})
+        {"member": member, "finds": list(finds), "card": card, "unnamed": unnamed,
+         "rows": rows})})
     if got is None:
         return "skip", "app.js, dom_stub.js or node is not here"
     assert "threw" not in got, f"the Votes tabs threw {got['threw']}"
@@ -57753,6 +57768,133 @@ def _votes_words_and_keys():
     assert not bad, "; ".join(bad[:6])
     return "ok", (f"{len(finds)} searches find what they name, suffix or none; four legend rows "
                   "keyed by party; Yes and No in the full record; one line on three unnamed votes")
+
+
+# A member's Votes tab, searched as the bill search is (the owner, 7 November
+# 2026), in node: the bills' index set by hand, then each way of asking.
+_VOTES_SEARCH_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+globalThis.fetch = async () => ({ok: false, status: 404, text: async () => "", json: async () => null});
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({renderMemberVotes, voteAddress, voteAddressRead, matches, IDX, LOADED,"
+  + "   setRCX: v => { RCX = v; }, setPage: p => { PAGE = p; }, getPage: () => PAGE,"
+  + "   setQuery: q => { query = q; }, setTerm: t => { term = t; },"
+  + "   setMeta: m => { META = Object.assign(META || {}, m); }})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const fx = JSON.parse(fs.readFileSync("./fx.json", "utf8"));
+const norm = x => String(x || "").toLowerCase().replace(/-/g, " ");
+s.IDX.length = 0;
+fx.rows.forEach(r => { r.hayT = norm([r.id, r.n, r.title].join(" ")); r.hayC = ""; s.IDX.push(r); });
+s.setRCX({});
+s.setMeta({terms: ["2025-2026", "2023-2024"]});
+["2025-2026", "2023-2024"].forEach(t => s.LOADED.add(t));
+const out = {}, fake = {u: null};
+globalThis.history = {state: null, pushState() {}, replaceState(a, b, u) { fake.u = u; globalThis.location.search = (u.split("?")[1] ? "?" + u.split("?")[1] : ""); }};
+const page = extra => s.setPage(Object.assign({kind: "member", terms: ["2025-2026", "2023-2024"],
+  term: "2025-2026", data: fx.member, vfilter: "", vside: "", vq: "", vtopic: "", vall: false,
+  vopen: {}, vshow: 0}, extra));
+const bills = h => [...new Set([...h.matchAll(/bill\/(\d{4})\/([a-z]+\d+)\.html/g)].map(m => m[2].toUpperCase()))].sort();
+try {
+  for (const [k, extra] of Object.entries(fx.cases)) {
+    page(extra); const h = s.renderMemberVotes(fx.member);
+    out[k] = {bills: bills(h), rows: (h.match(/<td class="d"/g) || []).length,
+              count: (/id="vcount">\s*([\d,]+ of [\d,]+)/.exec(h) || [])[1] || "",
+              empty: /No recorded vote matches/.test(h), clear: /data-vclear/.test(h),
+              scope: /data-vall=/.test(h)};
+  }
+  // What /bills lists for the same words, from the same functions.
+  s.setTerm("2025-2026"); s.setQuery("marijuana");
+  out.billsList = s.IDX.filter(b => s.matches(b)).map(b => b.id).sort();
+  // The address.
+  page({vq: "housing", vtopic: "Housing", vall: true}); s.voteAddress(); out.addr = fake.u;
+  page({}); s.voteAddress(); out.addrBare = fake.u;
+  globalThis.location.search = "?q=rent%20a&topic=Education%20-%20General&term=all";
+  page({}); s.voteAddressRead(); const p = s.getPage();
+  out.read = [p.vq, p.vtopic, p.vall];
+  globalThis.location.search = "";
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").split("\n")[1]; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "a member's Votes tab is searched by the bill search's own matcher (a number, "
+                   "words and their synonyms), filtered by the bill search's topics, combined with "
+                   "the other filters, scoped to the term or every term, kept in the address, and "
+                   "says plainly when nothing matches")
+def _member_votes_search():
+    """The owner, 7 November 2026: "a search box: a bill number or words
+    ('marijuana', 'affordable housing') ... with the bill search's own
+    matching, never a second matcher" and "a topic filter using the site's
+    existing broad topic categories", on a legislator's Votes tab; the term
+    shown, "every term" one click away; the address keeps the search.
+
+    It fails if the tab matches by a test of its own (it must list exactly
+    the bills /bills lists for the same words -- a vote on a bill the title
+    of which says "cannabis" is found by "marijuana" because the bill search's
+    synonyms say so); if "HB 1" finds HB 10 or misses HB 1; if the topic
+    filter, the vote and side filters and the words do not narrow together; if
+    the term shown is not the scope until every term is asked for; if the
+    address does not carry ?q=, ?topic= and ?term=all both ways; or if an
+    empty result is not said in words with a way to clear it."""
+    vote = lambda n, b, y, v="Yea": {"k": f"{y}-H-{n}", "d": f"3/{n}/{y}", "b": b, "y": str(y),
+                                     "q": "Ought to Pass", "v": v}
+    rows = [{"id": b, "n": re.sub(r"^([A-Z]+)", r"\1 ", b), "title": t, "term": term_,
+             "year": int(term_[:4]), "topic": tp}
+            for b, t, term_, tp in (
+                ("HB1", "relative to the legalization of cannabis", "2025-2026", "Crimes"),
+                ("HB10", "relative to affordable housing", "2025-2026", "Housing"),
+                ("HB11", "relative to housing vouchers", "2025-2026", "Housing"),
+                ("SB4", "relative to school lunches", "2025-2026", "Education"),
+                ("HB1", "relative to the state budget", "2023-2024", "State Government"),
+                ("HB77", "relative to affordable housing zoning", "2023-2024", "Housing"))]
+    member = {"party_code": "D", "service": [{"b": "H"}],
+              "votes": [vote(1, "HB1", 2025), vote(2, "HB10", 2025, "Nay"), vote(3, "HB11", 2025),
+                        vote(4, "SB4", 2025), vote(5, "HB1", 2023), vote(6, "HB77", 2023)]}
+    cases = {"all": {}, "number": {"vq": "HB 1"}, "synonym": {"vq": "marijuana"},
+             "words": {"vq": "affordable housing"}, "topic": {"vtopic": "Housing"},
+             "both": {"vtopic": "Housing", "vq": "vouchers"},
+             "vote": {"vtopic": "Housing", "vfilter": "nay"},
+             "none": {"vq": "zzzzqqq"}, "nonetopic": {"vtopic": "Education", "vq": "housing"},
+             "everyone": {"vall": True}, "everynumber": {"vall": True, "vq": "HB 1"},
+             "everywords": {"vall": True, "vq": "affordable housing"},
+             "everytopic": {"vall": True, "vtopic": "Housing"}}
+    got = _node_app(_VOTES_SEARCH_HARNESS, {"fx.json": json.dumps(
+        {"member": member, "rows": rows, "cases": cases})})
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"the Votes tab threw {got['threw']}"
+    want = {"all": ["HB1", "HB10", "HB11", "SB4"], "number": ["HB1"], "synonym": ["HB1"],
+            "words": ["HB10"], "topic": ["HB10", "HB11"], "both": ["HB11"], "vote": ["HB10"],
+            "none": [], "nonetopic": [],
+            "everyone": ["HB1", "HB10", "HB11", "HB77", "SB4"], "everynumber": ["HB1"],
+            "everywords": ["HB10", "HB77"], "everytopic": ["HB10", "HB11", "HB77"]}
+    rows_n = {"all": 4, "number": 1, "synonym": 1, "words": 1, "topic": 2, "both": 1, "vote": 1,
+              "none": 0, "nonetopic": 0, "everyone": 6, "everynumber": 2, "everywords": 2,
+              "everytopic": 3}
+    for k, w in want.items():
+        assert got[k]["bills"] == w and got[k]["rows"] == rows_n[k], (
+            f"{k}: {got[k]['bills']} / {got[k]['rows']} rows, not {w} / {rows_n[k]}")
+    assert got["number"]["count"] == "1 of 4" and got["everyone"]["count"] == "6 of 6", (
+        f"the count line is not 'n of m': {got['number']['count']}, {got['everyone']['count']}")
+    assert got["synonym"]["bills"] == [b for b in got["billsList"] if b == "HB1"] \
+        and got["billsList"] == ["HB1"], (
+        "the tab does not list the bills /bills lists for the same words: "
+        f"{got['synonym']['bills']} against {got['billsList']}")
+    assert got["none"]["empty"] and got["none"]["clear"] and got["nonetopic"]["empty"] \
+        and not got["all"]["empty"], "an empty result is not said in words, with a way to clear it"
+    assert got["all"]["scope"], "a member of two terms has no way to ask for every term"
+    assert got["addr"] and "q=housing" in got["addr"] and "topic=Housing" in got["addr"] \
+        and "term=all" in got["addr"], f"the address does not keep the search: {got['addr']}"
+    assert got["addrBare"] and "?" not in got["addrBare"], (
+        f"a search cleared still leaves its address: {got['addrBare']}")
+    assert got["read"] == ["rent a", "Education - General", True], (
+        f"the address is not read back into the search: {got['read']}")
+    return "ok", ("a number, a synonym and words found by the bill search's own matcher, a topic "
+                  "and the vote filter narrowing with them, the term or every term, the address "
+                  "kept and read back, and an empty result said plainly")
+
 
 
 # A member's Votes tab with a vote on no bill the Journal describes (rc.w),
