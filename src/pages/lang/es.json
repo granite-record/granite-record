@@ -536,6 +536,691 @@
    "es": "ayer",
    "state": "draft"
   },
+  "calp.a_meeting": {
+   "en": "A meeting",
+   "es": "Una reunión",
+   "state": "draft"
+  },
+  "calp.add_cal": {
+   "en": "Add to calendar",
+   "es": "Agregar al calendario",
+   "state": "draft"
+  },
+  "calp.all_nomatch": {
+   "en": "None of the {n} meetings {where} match.",
+   "es": "Ninguna de las {n} reuniones {where} coincide.",
+   "state": "draft"
+  },
+  "calp.and_more": {
+   "en": "and {n} more",
+   "es": "y {n} más",
+   "state": "draft"
+  },
+  "calp.both_chambers": {
+   "en": "Both chambers",
+   "es": "Ambas cámaras",
+   "state": "draft"
+  },
+  "calp.browse": {
+   "en": "Browse every committee",
+   "es": "Ver todos los comités",
+   "state": "draft"
+  },
+  "calp.cancelled": {
+   "en": "Cancelled",
+   "es": "Cancelada",
+   "state": "draft"
+  },
+  "calp.cancelled_all": {
+   "en": "All {n} meetings set for this week were cancelled.",
+   "es": "Las {n} reuniones programadas para esta semana fueron canceladas.",
+   "state": "draft"
+  },
+  "calp.cancelled_l": {
+   "en": "cancelled",
+   "es": "cancelada",
+   "state": "draft"
+  },
+  "calp.cancelled_one": {
+   "en": "The one meeting set for this week was cancelled.",
+   "es": "La única reunión programada para esta semana fue cancelada.",
+   "state": "draft"
+  },
+  "calp.cant": {
+   "en": "The meetings could not be loaded.",
+   "es": "No se pudieron cargar las reuniones.",
+   "state": "draft"
+  },
+  "calp.cd_count": {
+   "en": "{n} {what} for {year}",
+   "es": "{n} {what} de {year}",
+   "state": "draft"
+  },
+  "calp.cd_doc": {
+   "en": "Document",
+   "es": "Documento",
+   "state": "draft"
+  },
+  "calp.cd_fail": {
+   "en": "The list of documents could not be loaded here. Every year is linked below.",
+   "es": "No se pudo cargar la lista de documentos. Más abajo hay un enlace a cada año.",
+   "state": "draft"
+  },
+  "calp.cd_hc_many": {
+   "en": "House Calendars",
+   "es": "Calendarios de la Cámara",
+   "state": "draft"
+  },
+  "calp.cd_hc_one": {
+   "en": "House Calendar",
+   "es": "Calendario de la Cámara",
+   "state": "draft"
+  },
+  "calp.cd_head": {
+   "en": "Calendars &amp; Journals",
+   "es": "Calendarios y diarios de sesiones",
+   "state": "draft"
+  },
+  "calp.cd_hj_many": {
+   "en": "House Journals",
+   "es": "Diarios de la Cámara",
+   "state": "draft"
+  },
+  "calp.cd_hj_one": {
+   "en": "House Journal",
+   "es": "Diario de la Cámara",
+   "state": "draft"
+  },
+  "calp.cd_left": {
+   "en": "{n} documents the General Court lists are not linked here.",
+   "es": "{n} documentos que la Legislatura incluye en su lista no están enlazados aquí.",
+   "state": "draft"
+  },
+  "calp.cd_left_one": {
+   "en": "1 document the General Court lists is not linked here.",
+   "es": "1 documento que la Legislatura incluye en su lista no está enlazado aquí.",
+   "state": "draft"
+  },
+  "calp.cd_list": {
+   "en": "Every calendar and journal, as a list",
+   "es": "Todos los calendarios y diarios, en una lista",
+   "state": "draft"
+  },
+  "calp.cd_loading": {
+   "en": "Loading the list of documents.",
+   "es": "Cargando la lista de documentos.",
+   "state": "draft"
+  },
+  "calp.cd_newest": {
+   "en": "The newest listed here",
+   "es": "Los más recientes de esta lista",
+   "state": "draft"
+  },
+  "calp.cd_open": {
+   "en": "Open the PDF",
+   "es": "Abrir el PDF",
+   "state": "draft"
+  },
+  "calp.cd_open_named": {
+   "en": "Open the PDF: {name}, at the General Court",
+   "es": "Abrir el PDF: {name}, en el sitio de la Legislatura",
+   "state": "draft"
+  },
+  "calp.cd_runs": {
+   "en": "; the list runs {from} to {to}.",
+   "es": "; la lista abarca de {from} a {to}.",
+   "state": "draft"
+  },
+  "calp.cd_sc_many": {
+   "en": "Senate Calendars",
+   "es": "Calendarios del Senado",
+   "state": "draft"
+  },
+  "calp.cd_sc_one": {
+   "en": "Senate Calendar",
+   "es": "Calendario del Senado",
+   "state": "draft"
+  },
+  "calp.cd_set": {
+   "en": "Calendar or journal",
+   "es": "Calendario o diario",
+   "state": "draft"
+  },
+  "calp.cd_sj_many": {
+   "en": "Senate Journals",
+   "es": "Diarios del Senado",
+   "state": "draft"
+  },
+  "calp.cd_sj_one": {
+   "en": "Senate Journal",
+   "es": "Diario del Senado",
+   "state": "draft"
+  },
+  "calp.cd_src": {
+   "en": "The calendar is what each chamber publishes ahead of time: hearings, committee reports and what the next session will take up. The journal is the record of a session day. These open the General Court&rsquo;s own files.",
+   "es": "El calendario es lo que cada cámara publica con anticipación: las audiencias, los informes de los comités y lo que tratará la próxima sesión. El diario es el registro de un día de sesión. Estos enlaces abren los archivos de la propia Legislatura.",
+   "state": "draft"
+  },
+  "calp.cd_year": {
+   "en": "Year",
+   "es": "Año",
+   "state": "draft"
+  },
+  "calp.cd_years": {
+   "en": "Every year, as a list",
+   "es": "Cada año, en una lista",
+   "state": "draft"
+  },
+  "calp.chamber": {
+   "en": "Chamber",
+   "es": "Cámara",
+   "state": "draft"
+  },
+  "calp.cmte_ph": {
+   "en": "Name of a committee",
+   "es": "Nombre de un comité",
+   "state": "draft"
+  },
+  "calp.cmtes_fail": {
+   "en": "The list of committees could not be loaded.",
+   "es": "No se pudo cargar la lista de comités.",
+   "state": "draft"
+  },
+  "calp.cmtes_label": {
+   "en": "Committees to show",
+   "es": "Comités para mostrar",
+   "state": "draft"
+  },
+  "calp.cmtes_match": {
+   "en": "{count} match.",
+   "es": "Resultados: {count}.",
+   "state": "draft"
+  },
+  "calp.colors": {
+   "en": "What the colors mean",
+   "es": "Qué significan los colores",
+   "state": "draft"
+  },
+  "calp.count_where": {
+   "en": "{count} {where}.",
+   "es": "{count} {where}.",
+   "state": "draft"
+  },
+  "calp.day_fail": {
+   "en": "could not be loaded here.",
+   "es": "no se pudo cargar aquí.",
+   "state": "draft"
+  },
+  "calp.day_nomatch": {
+   "en": "Nothing on this day matches the filters.",
+   "es": "Nada de este día coincide con los filtros.",
+   "state": "draft"
+  },
+  "calp.desc": {
+   "en": "Hearings, work sessions, executive sessions, floor sessions of the New Hampshire General Court, {label}.",
+   "es": "Audiencias, sesiones de trabajo, sesiones ejecutivas y sesiones plenarias de la Legislatura de New Hampshire, {label}.",
+   "state": "draft"
+  },
+  "calp.desc_study": {
+   "en": "Hearings, work sessions, executive sessions, floor sessions and study and statutory committee meetings of the New Hampshire General Court, {label}.",
+   "es": "Audiencias, sesiones de trabajo, sesiones ejecutivas, sesiones plenarias y reuniones de comités de estudio y estatutarios de la Legislatura de New Hampshire, {label}.",
+   "state": "draft"
+  },
+  "calp.download": {
+   "en": "Download",
+   "es": "Descargar",
+   "state": "draft"
+  },
+  "calp.filter": {
+   "en": "Filter the calendar",
+   "es": "Filtrar el calendario",
+   "state": "draft"
+  },
+  "calp.find_cmte": {
+   "en": "Find a committee",
+   "es": "Buscar un comité",
+   "state": "draft"
+  },
+  "calp.find_label": {
+   "en": "Bill or committee",
+   "es": "Proyecto de ley o comité",
+   "state": "draft"
+  },
+  "calp.find_ph": {
+   "en": "Bill number or committee",
+   "es": "Número de proyecto de ley o comité",
+   "state": "draft"
+  },
+  "calp.grp_floor": {
+   "en": "Session days",
+   "es": "Días de sesión",
+   "state": "draft"
+  },
+  "calp.grp_standing": {
+   "en": "Standing committees and committees of conference",
+   "es": "Comités permanentes y comités de conferencia",
+   "state": "draft"
+  },
+  "calp.grp_study": {
+   "en": "Study and statutory committees",
+   "es": "Comités de estudio y estatutarios",
+   "state": "draft"
+  },
+  "calp.hid_many": {
+   "en": "{n} meetings are hidden by the filters.",
+   "es": "{n} reuniones están ocultas por los filtros.",
+   "state": "draft"
+  },
+  "calp.hid_one": {
+   "en": "1 meeting is hidden by the filters.",
+   "es": "1 reunión está oculta por los filtros.",
+   "state": "draft"
+  },
+  "calp.hide_filters": {
+   "en": "Hide the filters",
+   "es": "Ocultar los filtros",
+   "state": "draft"
+  },
+  "calp.hide_list": {
+   "en": "Hide the list",
+   "es": "Ocultar la lista",
+   "state": "draft"
+  },
+  "calp.hide_them": {
+   "en": "Hide them",
+   "es": "Ocultarlas",
+   "state": "draft"
+  },
+  "calp.house": {
+   "en": "House",
+   "es": "Cámara",
+   "state": "draft"
+  },
+  "calp.house_senate": {
+   "en": "House and Senate",
+   "es": "Cámara y Senado",
+   "state": "draft"
+  },
+  "calp.ics_bills": {
+   "en": ". Bills: {list}",
+   "es": ". Proyectos de ley: {list}",
+   "state": "draft"
+  },
+  "calp.ics_end": {
+   "en": ". The General Court does not publish an end time, so this entry is one hour long. Source: graniterecord.org",
+   "es": ". La Legislatura no publica una hora de finalización, por lo que esta entrada dura una hora. Fuente: graniterecord.org",
+   "state": "draft"
+  },
+  "calp.ics_head": {
+   "en": "New Hampshire General Court. {what}",
+   "es": "Legislatura de New Hampshire (General Court). {what}",
+   "state": "draft"
+  },
+  "calp.ics_items": {
+   "en": ". Items are scheduled from {from} to {to}",
+   "es": ". Los asuntos están programados de {from} a {to}",
+   "state": "draft"
+  },
+  "calp.ics_meeting": {
+   "en": "Meeting",
+   "es": "Reunión",
+   "state": "draft"
+  },
+  "calp.important_dates": {
+   "en": "Important Dates",
+   "es": "Fechas importantes",
+   "state": "draft"
+  },
+  "calp.kinds_legend": {
+   "en": "Kinds of meeting to show",
+   "es": "Tipos de reunión que se muestran",
+   "state": "draft"
+  },
+  "calp.ld_desc": {
+   "en": "The General Court's business, {label}.",
+   "es": "Los asuntos de la Legislatura, {label}.",
+   "state": "draft"
+  },
+  "calp.list": {
+   "en": "List",
+   "es": "Lista",
+   "state": "draft"
+  },
+  "calp.loading": {
+   "en": "Loading",
+   "es": "Cargando",
+   "state": "draft"
+  },
+  "calp.loading_cmtes": {
+   "en": "Loading the committees",
+   "es": "Cargando los comités",
+   "state": "draft"
+  },
+  "calp.loading_s": {
+   "en": "loading",
+   "es": "cargando",
+   "state": "draft"
+  },
+  "calp.loading_week": {
+   "en": "Loading the week",
+   "es": "Cargando la semana",
+   "state": "draft"
+  },
+  "calp.month_after": {
+   "en": "The month after",
+   "es": "El mes siguiente",
+   "state": "draft"
+  },
+  "calp.month_before": {
+   "en": "The month before",
+   "es": "El mes anterior",
+   "state": "draft"
+  },
+  "calp.n_cancelled": {
+   "en": "{n} cancelled",
+   "es": "{n} canceladas",
+   "state": "draft"
+  },
+  "calp.n_committees": {
+   "en": "{n} committees",
+   "es": "{n} comités",
+   "state": "draft"
+  },
+  "calp.n_meetings": {
+   "en": "{n} meetings",
+   "es": "{n} reuniones",
+   "state": "draft"
+  },
+  "calp.n_on": {
+   "en": "{n} on",
+   "es": "{n} activos",
+   "state": "draft"
+  },
+  "calp.next_day": {
+   "en": "Next Day",
+   "es": "Día siguiente",
+   "state": "draft"
+  },
+  "calp.next_week": {
+   "en": "Next Week",
+   "es": "Semana siguiente",
+   "state": "draft"
+  },
+  "calp.no_cmte": {
+   "en": "No committee on the calendar has that in its name.",
+   "es": "Ningún comité del calendario tiene eso en su nombre.",
+   "state": "draft"
+  },
+  "calp.no_meetings": {
+   "en": "No meetings",
+   "es": "No hay reuniones",
+   "state": "draft"
+  },
+  "calp.no_mtgs_s": {
+   "en": "no meetings",
+   "es": "no hay reuniones",
+   "state": "draft"
+  },
+  "calp.none_past": {
+   "en": "No meetings are on the record for this week.",
+   "es": "No hay reuniones registradas para esta semana.",
+   "state": "draft"
+  },
+  "calp.none_shown_s": {
+   "en": "no meetings shown",
+   "es": "no se muestran reuniones",
+   "state": "draft"
+  },
+  "calp.none_where": {
+   "en": "No meetings {where}.",
+   "es": "No hay reuniones {where}.",
+   "state": "draft"
+  },
+  "calp.none_yet": {
+   "en": "No meetings are scheduled yet for this week.",
+   "es": "Todavía no hay reuniones programadas para esta semana.",
+   "state": "draft"
+  },
+  "calp.not_on": {
+   "en": "not on the calendar",
+   "es": "fuera del calendario",
+   "state": "draft"
+  },
+  "calp.nothing": {
+   "en": "Nothing is scheduled.",
+   "es": "No hay nada programado.",
+   "state": "draft"
+  },
+  "calp.one_committee": {
+   "en": "1 committee",
+   "es": "1 comité",
+   "state": "draft"
+  },
+  "calp.one_meeting": {
+   "en": "1 meeting",
+   "es": "1 reunión",
+   "state": "draft"
+  },
+  "calp.one_nomatch": {
+   "en": "The one meeting {where} does not match.",
+   "es": "La única reunión {where} no coincide.",
+   "state": "draft"
+  },
+  "calp.only_these": {
+   "en": "Only these committees",
+   "es": "Solo estos comités",
+   "state": "draft"
+  },
+  "calp.only_week": {
+   "en": "Show only this week",
+   "es": "Mostrar solo esta semana",
+   "state": "draft"
+  },
+  "calp.open_day": {
+   "en": "open this day",
+   "es": "abrir este día",
+   "state": "draft"
+  },
+  "calp.open_list": {
+   "en": "open it in the list",
+   "es": "abrirla en la lista",
+   "state": "draft"
+  },
+  "calp.open_page": {
+   "en": "Open it on its own page",
+   "es": "Abrirla en su propia página",
+   "state": "draft"
+  },
+  "calp.open_week": {
+   "en": "Open its week on its own page",
+   "es": "Abrir su semana en su propia página",
+   "state": "draft"
+  },
+  "calp.other_days": {
+   "en": "Other days",
+   "es": "Otros días",
+   "state": "draft"
+  },
+  "calp.other_weeks": {
+   "en": "Other weeks",
+   "es": "Otras semanas",
+   "state": "draft"
+  },
+  "calp.pick_hint": {
+   "en": "Only the committees chosen here are shown, in the kinds of meeting ticked above the schedule. A study committee chosen here is shown either way.",
+   "es": "Solo se muestran los comités elegidos aquí, en los tipos de reunión marcados sobre el horario. Un comité de estudio elegido aquí se muestra de todos modos.",
+   "state": "draft"
+  },
+  "calp.prev_day": {
+   "en": "Previous Day",
+   "es": "Día anterior",
+   "state": "draft"
+  },
+  "calp.prev_week": {
+   "en": "Previous Week",
+   "es": "Semana anterior",
+   "state": "draft"
+  },
+  "calp.reset": {
+   "en": "Reset filters",
+   "es": "Restablecer filtros",
+   "state": "draft"
+  },
+  "calp.senate": {
+   "en": "Senate",
+   "es": "Senado",
+   "state": "draft"
+  },
+  "calp.show_as": {
+   "en": "Show the schedule as",
+   "es": "Mostrar el horario como",
+   "state": "draft"
+  },
+  "calp.show_filters": {
+   "en": "Show the filters",
+   "es": "Mostrar los filtros",
+   "state": "draft"
+  },
+  "calp.show_them": {
+   "en": "Show them",
+   "es": "Mostrarlas",
+   "state": "draft"
+  },
+  "calp.shown_of": {
+   "en": "{shown} of {count} shown.",
+   "es": "{shown} de {count} se muestran.",
+   "state": "draft"
+  },
+  "calp.shown_of_where": {
+   "en": "{shown} of {count} shown {where}.",
+   "es": "{shown} de {count} se muestran {where}.",
+   "state": "draft"
+  },
+  "calp.sits": {
+   "en": "The General Court sits mostly from January to June, and committees meet on bills from the fall filing period onward.",
+   "es": "La Legislatura sesiona sobre todo de enero a junio, y los comités se reúnen para tratar proyectos de ley desde el período de presentación del otoño en adelante.",
+   "state": "draft"
+  },
+  "calp.skip": {
+   "en": "Skip to the schedule",
+   "es": "Ir al horario",
+   "state": "draft"
+  },
+  "calp.skip_week": {
+   "en": "Skip to the week",
+   "es": "Ir a la semana",
+   "state": "draft"
+  },
+  "calp.st_hidden": {
+   "en": "{n} study committee meetings are hidden.",
+   "es": "{n} reuniones de comités de estudio están ocultas.",
+   "state": "draft"
+  },
+  "calp.st_hidden_one": {
+   "en": "1 study committee meeting is hidden.",
+   "es": "1 reunión de un comité de estudio está oculta.",
+   "state": "draft"
+  },
+  "calp.st_shown": {
+   "en": "{n} study committee meetings are shown.",
+   "es": "{n} reuniones de comités de estudio se muestran.",
+   "state": "draft"
+  },
+  "calp.st_shown_one": {
+   "en": "1 study committee meeting is shown.",
+   "es": "1 reunión de un comité de estudio se muestra.",
+   "state": "draft"
+  },
+  "calp.stc_hidden": {
+   "en": "{n} cancelled study committee meetings are hidden.",
+   "es": "{n} reuniones canceladas de comités de estudio están ocultas.",
+   "state": "draft"
+  },
+  "calp.stc_hidden_one": {
+   "en": "1 cancelled study committee meeting is hidden.",
+   "es": "1 reunión cancelada de un comité de estudio está oculta.",
+   "state": "draft"
+  },
+  "calp.stc_shown": {
+   "en": "{n} cancelled study committee meetings are shown.",
+   "es": "{n} reuniones canceladas de comités de estudio se muestran.",
+   "state": "draft"
+  },
+  "calp.stc_shown_one": {
+   "en": "1 cancelled study committee meeting is shown.",
+   "es": "1 reunión cancelada de un comité de estudio se muestra.",
+   "state": "draft"
+  },
+  "calp.stop_only": {
+   "en": "stop showing only this committee",
+   "es": "dejar de mostrar solo este comité",
+   "state": "draft"
+  },
+  "calp.study_only": {
+   "en": "Study committee meetings only.",
+   "es": "Solo reuniones de comités de estudio.",
+   "state": "draft"
+  },
+  "calp.study_only_s": {
+   "en": "study committee meetings only",
+   "es": "solo reuniones de comités de estudio",
+   "state": "draft"
+  },
+  "calp.the_study": {
+   "en": "(the study committee meetings)",
+   "es": "(las reuniones de comités de estudio)",
+   "state": "draft"
+  },
+  "calp.this_week": {
+   "en": "This Week",
+   "es": "Esta semana",
+   "state": "draft"
+  },
+  "calp.today": {
+   "en": "Today",
+   "es": "Hoy",
+   "state": "draft"
+  },
+  "calp.week": {
+   "en": "Week",
+   "es": "Semana",
+   "state": "draft"
+  },
+  "calp.week_cant": {
+   "en": "The meetings of this week could not be loaded here.",
+   "es": "No se pudieron cargar aquí las reuniones de esta semana.",
+   "state": "draft"
+  },
+  "calp.week_fail": {
+   "en": "The week of {label} could not be loaded here.",
+   "es": "No se pudo cargar aquí la semana del {label}.",
+   "state": "draft"
+  },
+  "calp.week_nomatch": {
+   "en": "Nothing this week matches the filters.",
+   "es": "Nada de esta semana coincide con los filtros.",
+   "state": "draft"
+  },
+  "calp.week_of": {
+   "en": "The Week of {label}",
+   "es": "La semana del {label}",
+   "state": "draft"
+  },
+  "calp.where_day": {
+   "en": "on {day}",
+   "es": "el {day}",
+   "state": "draft"
+  },
+  "calp.where_week": {
+   "en": "this week",
+   "es": "esta semana",
+   "state": "draft"
+  },
+  "calp.whole_month": {
+   "en": "Show the whole month",
+   "es": "Mostrar todo el mes",
+   "state": "draft"
+  },
   "card.bills": {
    "en": "Browse Bills",
    "es": "Ver proyectos de ley",
@@ -17592,8 +18277,8 @@
    "state": "draft"
   },
   "lang.why_not_yet": {
-   "en": "Not translated yet: the pages for bills, legislators, committees, the calendar and the laws, and any page marked &ldquo;in English&rdquo; where it is listed.",
-   "es": "Todavía sin traducir: las páginas de proyectos de ley, legisladores, comités, el calendario y las leyes, y cualquier página marcada &ldquo;en inglés&rdquo; donde aparece en una lista.",
+   "en": "Not translated yet: the pages for bills, legislators, committees and the laws, and any page marked &ldquo;in English&rdquo; where it is listed.",
+   "es": "Todavía sin traducir: las páginas de proyectos de ley, legisladores, comités y las leyes, y cualquier página marcada &ldquo;en inglés&rdquo; donde aparece en una lista.",
    "state": "draft"
   },
   "lang.why_record": {
@@ -23050,6 +23735,671 @@
   "notice.text": {
    "en": "This page is not yet in Spanish.",
    "es": "Esta página todavía no está en español.",
+   "state": "draft"
+  },
+  "nums.all_terms": {
+   "en": "All terms",
+   "es": "Todos los períodos",
+   "state": "draft"
+  },
+  "nums.bar_title": {
+   "en": "{term}: {n} of {f} bills became law ({v}%)",
+   "es": "{term}: {n} de {f} proyectos de ley pasaron a ser ley ({v}%)",
+   "state": "draft"
+  },
+  "nums.c_amend": {
+   "en": "Amendment",
+   "es": "Enmienda",
+   "state": "draft"
+  },
+  "nums.c_amended": {
+   "en": "Amended",
+   "es": "Con enmiendas",
+   "state": "draft"
+  },
+  "nums.c_bill": {
+   "en": "Bill",
+   "es": "Proyecto de ley",
+   "state": "draft"
+  },
+  "nums.c_bills": {
+   "en": "Bills",
+   "es": "Proyectos de ley",
+   "state": "draft"
+  },
+  "nums.c_both": {
+   "en": "Passed both chambers",
+   "es": "Aprobados por ambas cámaras",
+   "state": "draft"
+  },
+  "nums.c_chamber": {
+   "en": "Chamber",
+   "es": "Cámara",
+   "state": "draft"
+  },
+  "nums.c_cmte": {
+   "en": "Committee",
+   "es": "Comité",
+   "state": "draft"
+  },
+  "nums.c_conf": {
+   "en": "To a committee of conference",
+   "es": "Pasaron a un comité de conferencia",
+   "state": "draft"
+  },
+  "nums.c_date": {
+   "en": "Date",
+   "es": "Fecha",
+   "state": "draft"
+  },
+  "nums.c_decided": {
+   "en": "Recommendations decided on the floor",
+   "es": "Recomendaciones decididas en el pleno",
+   "state": "draft"
+  },
+  "nums.c_died": {
+   "en": "Died",
+   "es": "Murió",
+   "state": "draft"
+  },
+  "nums.c_div": {
+   "en": "Division",
+   "es": "Por división",
+   "state": "draft"
+  },
+  "nums.c_election": {
+   "en": "Election",
+   "es": "Elección",
+   "state": "draft"
+  },
+  "nums.c_f_rep": {
+   "en": "Filed per representative",
+   "es": "Presentados por representante",
+   "state": "draft"
+  },
+  "nums.c_f_sen": {
+   "en": "Filed per senator",
+   "es": "Presentados por senador",
+   "state": "draft"
+  },
+  "nums.c_filed": {
+   "en": "Bills filed",
+   "es": "Proyectos presentados",
+   "state": "draft"
+  },
+  "nums.c_first": {
+   "en": "First referral",
+   "es": "Primera remisión",
+   "state": "draft"
+  },
+  "nums.c_floor": {
+   "en": "Floor decisions",
+   "es": "Decisiones en el pleno",
+   "state": "draft"
+  },
+  "nums.c_four": {
+   "en": "Four or more",
+   "es": "Cuatro o más",
+   "state": "draft"
+  },
+  "nums.c_h_att": {
+   "en": "House attendance",
+   "es": "Asistencia en la Cámara",
+   "state": "draft"
+  },
+  "nums.c_h_days": {
+   "en": "House roll-call days",
+   "es": "Días con votación nominal en la Cámara",
+   "state": "draft"
+  },
+  "nums.c_hearing": {
+   "en": "Hearing and committee",
+   "es": "Audiencia y comité",
+   "state": "draft"
+  },
+  "nums.c_intro": {
+   "en": "As introduced",
+   "es": "Tal como se presentaron",
+   "state": "draft"
+  },
+  "nums.c_kept": {
+   "en": "On consent and kept there",
+   "es": "En el calendario de consenso y se quedaron allí",
+   "state": "draft"
+  },
+  "nums.c_l_rep": {
+   "en": "Became law per representative",
+   "es": "Pasaron a ser ley por representante",
+   "state": "draft"
+  },
+  "nums.c_l_sen": {
+   "en": "Became law per senator",
+   "es": "Pasaron a ser ley por senador",
+   "state": "draft"
+  },
+  "nums.c_law": {
+   "en": "Became Law",
+   "es": "Pasó a ser ley",
+   "state": "draft"
+  },
+  "nums.c_law_l": {
+   "en": "Became law",
+   "es": "Pasó a ser ley",
+   "state": "draft"
+  },
+  "nums.c_no": {
+   "en": "No",
+   "es": "No",
+   "state": "draft"
+  },
+  "nums.c_none": {
+   "en": "None",
+   "es": "Ninguna",
+   "state": "draft"
+  },
+  "nums.c_one": {
+   "en": "One",
+   "es": "Una",
+   "state": "draft"
+  },
+  "nums.c_other": {
+   "en": "Other",
+   "es": "Otro",
+   "state": "draft"
+  },
+  "nums.c_otherwise": {
+   "en": "Decided otherwise",
+   "es": "Decididas en otro sentido",
+   "state": "draft"
+  },
+  "nums.c_over": {
+   "en": "Overridden",
+   "es": "Anulado",
+   "state": "draft"
+  },
+  "nums.c_positions": {
+   "en": "Positions",
+   "es": "Posiciones",
+   "state": "draft"
+  },
+  "nums.c_question": {
+   "en": "Question",
+   "es": "Asunto votado",
+   "state": "draft"
+  },
+  "nums.c_rc": {
+   "en": "Roll call",
+   "es": "Votación nominal",
+   "state": "draft"
+  },
+  "nums.c_reached": {
+   "en": "Reached the governor",
+   "es": "Llegaron al gobernador",
+   "state": "draft"
+  },
+  "nums.c_reported": {
+   "en": "Bills reported on",
+   "es": "Proyectos sobre los que informó",
+   "state": "draft"
+  },
+  "nums.c_reports": {
+   "en": "Reports",
+   "es": "Informes",
+   "state": "draft"
+  },
+  "nums.c_result": {
+   "en": "Result",
+   "es": "Resultado",
+   "state": "draft"
+  },
+  "nums.c_reversed": {
+   "en": "Passage and kill reversed",
+   "es": "Aprobación y rechazo invertidos",
+   "state": "draft"
+  },
+  "nums.c_s_att": {
+   "en": "Senate attendance",
+   "es": "Asistencia en el Senado",
+   "state": "draft"
+  },
+  "nums.c_s_days": {
+   "en": "Senate roll-call days",
+   "es": "Días con votación nominal en el Senado",
+   "state": "draft"
+  },
+  "nums.c_sent": {
+   "en": "Sent on from another committee",
+   "es": "Remitidos desde otro comité",
+   "state": "draft"
+  },
+  "nums.c_share": {
+   "en": "Share",
+   "es": "Proporción",
+   "state": "draft"
+  },
+  "nums.c_signed": {
+   "en": "Signed in",
+   "es": "Inscripciones",
+   "state": "draft"
+  },
+  "nums.c_source": {
+   "en": "Source",
+   "es": "Fuente",
+   "state": "draft"
+  },
+  "nums.c_stood": {
+   "en": "Veto stood",
+   "es": "Veto mantenido",
+   "state": "draft"
+  },
+  "nums.c_study": {
+   "en": "Interim Study",
+   "es": "Estudio interino",
+   "state": "draft"
+  },
+  "nums.c_term": {
+   "en": "Term",
+   "es": "Período",
+   "state": "draft"
+  },
+  "nums.c_terms": {
+   "en": "Terms",
+   "es": "Períodos",
+   "state": "draft"
+  },
+  "nums.c_three": {
+   "en": "Three",
+   "es": "Tres",
+   "state": "draft"
+  },
+  "nums.c_title": {
+   "en": "Title as heard",
+   "es": "Título al momento de la audiencia",
+   "state": "draft"
+  },
+  "nums.c_two": {
+   "en": "Two",
+   "es": "Dos",
+   "state": "draft"
+  },
+  "nums.c_vetoed": {
+   "en": "Vetoed",
+   "es": "Vetados",
+   "state": "draft"
+  },
+  "nums.c_voice": {
+   "en": "Voice",
+   "es": "A viva voz",
+   "state": "draft"
+  },
+  "nums.c_year": {
+   "en": "Year",
+   "es": "Año",
+   "state": "draft"
+  },
+  "nums.c_yes": {
+   "en": "Yes",
+   "es": "Sí",
+   "state": "draft"
+  },
+  "nums.c_yes_share": {
+   "en": "Yes share",
+   "es": "Proporción de Sí",
+   "state": "draft"
+  },
+  "nums.c_yn": {
+   "en": "Yeas&ndash;nays",
+   "es": "Sí&ndash;No",
+   "state": "draft"
+  },
+  "nums.case": {
+   "en": "{bill} &mdash; {chamber}: committee {rec}, floor {floor}",
+   "es": "{bill} &mdash; {chamber}: comité, {rec}; pleno, {floor}",
+   "state": "draft"
+  },
+  "nums.cc_h_head": {
+   "en": "House Committees",
+   "es": "Comités de la Cámara",
+   "state": "draft"
+  },
+  "nums.cc_h_line": {
+   "en": "{pct} of the House&rsquo;s {n} committee recommendations were adopted on its consent calendar; {off} were taken off it.",
+   "es": "{pct} de las {n} recomendaciones de los comités de la Cámara se adoptaron en su calendario de consenso; {off} se retiraron de él.",
+   "state": "draft"
+  },
+  "nums.cc_s_head": {
+   "en": "Senate Committees",
+   "es": "Comités del Senado",
+   "state": "draft"
+  },
+  "nums.cc_s_line": {
+   "en": "{pct} of the Senate&rsquo;s {n} committee recommendations were adopted on its consent calendar; {off} were taken off it.",
+   "es": "{pct} de las {n} recomendaciones de los comités del Senado se adoptaron en su calendario de consenso; {off} se retiraron de él.",
+   "state": "draft"
+  },
+  "nums.chart_h": {
+   "en": "Became Law, as a Share of the Bills Filed",
+   "es": "Pasó a ser ley, como proporción de los proyectos presentados",
+   "state": "draft"
+  },
+  "nums.chart_hov": {
+   "en": "Hover over a term to see its value.",
+   "es": "Pase el cursor sobre un período para ver su valor.",
+   "state": "draft"
+  },
+  "nums.chart_p": {
+   "en": "The figures are the table&rsquo;s, its Became Law column.",
+   "es": "Las cifras son las de la tabla, de su columna Pasó a ser ley.",
+   "state": "draft"
+  },
+  "nums.chart_said": {
+   "en": "Bar chart: the share of the bills filed in each term that became law, from {a}% in {ta} to {b}% in {tb}; the highest {c}% in {tc}, the lowest {d}% in {td}. The figures are in the table below.",
+   "es": "Gráfico de barras: la proporción de los proyectos de ley presentados en cada período que pasaron a ser ley, de {a}% en {ta} a {b}% en {tb}; la más alta, {c}% en {tc}, y la más baja, {d}% en {td}. Las cifras están en la tabla de abajo.",
+   "state": "draft"
+  },
+  "nums.chart_tap": {
+   "en": "Each term&rsquo;s value is at the end of its bar.",
+   "es": "El valor de cada período está al final de su barra.",
+   "state": "draft"
+  },
+  "nums.count_many": {
+   "en": "Yes and No are the statewide count printed where the Source column says: {list}.",
+   "es": "Sí y No son el recuento estatal publicado donde indica la columna Fuente: {list}.",
+   "state": "draft"
+  },
+  "nums.count_one": {
+   "en": "Yes and No are {whose} statewide count, printed where the Source column says.",
+   "es": "Sí y No son el recuento estatal {whose}, publicado donde indica la columna Fuente.",
+   "state": "draft"
+  },
+  "nums.fold_refs": {
+   "en": "{term}: {first} first referrals and {sent} sent on",
+   "es": "{term}: {first} primeras remisiones y {sent} remitidos desde otro comité",
+   "state": "draft"
+  },
+  "nums.goes": {
+   "en": "{bill} of {term} goes to the voters on {day}.",
+   "es": "{bill} de {term} se someterá a los votantes el {day}.",
+   "state": "draft"
+  },
+  "nums.h_amended": {
+   "en": "Passed as Introduced, or Amended",
+   "es": "Aprobados tal como se presentaron, o con enmiendas",
+   "state": "draft"
+  },
+  "nums.h_attend": {
+   "en": "Attendance on Roll-Call Days",
+   "es": "Asistencia en los días de votación nominal",
+   "state": "draft"
+  },
+  "nums.h_cacr": {
+   "en": "Constitutional Amendments Sent to the Voters",
+   "es": "Enmiendas constitucionales sometidas a los votantes",
+   "state": "draft"
+  },
+  "nums.h_closest": {
+   "en": "The Closest Votes of {term}",
+   "es": "Las votaciones más reñidas de {term}",
+   "state": "draft"
+  },
+  "nums.h_consent": {
+   "en": "Consent Calendars, by Committee",
+   "es": "Calendarios de consenso, por comité",
+   "state": "draft"
+  },
+  "nums.h_filed": {
+   "en": "Bills Filed, and How They Ended",
+   "es": "Proyectos presentados y cómo terminaron",
+   "state": "draft"
+  },
+  "nums.h_how": {
+   "en": "How These Are Counted",
+   "es": "Cómo se cuentan estas cifras",
+   "state": "draft"
+  },
+  "nums.h_member": {
+   "en": "Bills Filed and Passed per Member",
+   "es": "Proyectos presentados y aprobados por miembro",
+   "state": "draft"
+  },
+  "nums.h_overrule": {
+   "en": "How Often the Full Chamber Overrules Its Committee",
+   "es": "Con qué frecuencia el pleno rechaza la recomendación de su comité",
+   "state": "draft"
+  },
+  "nums.h_rates": {
+   "en": "Each Committee's Passage Rate",
+   "es": "Tasa de aprobación de cada comité",
+   "state": "draft"
+  },
+  "nums.h_refs": {
+   "en": "The Bills Each Committee Received",
+   "es": "Los proyectos de ley que recibió cada comité",
+   "state": "draft"
+  },
+  "nums.h_signins": {
+   "en": "The Hearings with the Most Sign-Ins",
+   "es": "Las audiencias con más inscripciones",
+   "state": "draft"
+  },
+  "nums.h_takes": {
+   "en": "How Many Amendments a Bill Takes Before It Passes",
+   "es": "Cuántas enmiendas recibe un proyecto antes de aprobarse",
+   "state": "draft"
+  },
+  "nums.h_vetoes": {
+   "en": "Vetoes",
+   "es": "Vetos",
+   "state": "draft"
+  },
+  "nums.h_votes": {
+   "en": "How the Votes Were Taken",
+   "es": "Cómo se tomaron las votaciones",
+   "state": "draft"
+  },
+  "nums.hear_on": {
+   "en": ", on {what}",
+   "es": ", sobre {what}",
+   "state": "draft"
+  },
+  "nums.house": {
+   "en": "House",
+   "es": "Cámara",
+   "state": "draft"
+  },
+  "nums.lead": {
+   "en": "Statistics counted from the New Hampshire General Court's own record: how bills end, committees' workloads and passage rates, amendments, hearings, attendance, vetoes, the closest votes and the amendments sent to the voters.",
+   "es": "Estadísticas contadas a partir del registro oficial de la Legislatura de New Hampshire: cómo terminan los proyectos de ley, la carga de trabajo y la tasa de aprobación de los comités, las enmiendas, las audiencias, la asistencia, los vetos, las votaciones más reñidas y las enmiendas sometidas a los votantes.",
+   "state": "draft"
+  },
+  "nums.n_neutral": {
+   "en": "{n}&nbsp;neutral",
+   "es": "{n}&nbsp;neutrales",
+   "state": "draft"
+  },
+  "nums.n_oppose": {
+   "en": "{n}&nbsp;oppose",
+   "es": "{n}&nbsp;en contra",
+   "state": "draft"
+  },
+  "nums.n_support": {
+   "en": "{n}&nbsp;support",
+   "es": "{n}&nbsp;a favor",
+   "state": "draft"
+  },
+  "nums.name_for": {
+   "en": "{name} for {k}",
+   "es": "{name} para {k}",
+   "state": "draft"
+  },
+  "nums.not_ratified": {
+   "en": "Not Ratified",
+   "es": "No ratificada",
+   "state": "draft"
+  },
+  "nums.on_amendment": {
+   "en": "an amendment",
+   "es": "una enmienda",
+   "state": "draft"
+  },
+  "nums.on_nongermane": {
+   "en": "a non-germane amendment",
+   "es": "una enmienda no pertinente",
+   "state": "draft"
+  },
+  "nums.p_amended": {
+   "en": "Every House and Senate bill that passed both chambers in the same text and so went to the governor. Amended: either chamber adopted an amendment to it first, or a committee of conference settled the two chambers' versions; the Enrolled Bills Committee's technical corrections after passage are not counted as amendments.",
+   "es": "Todo proyecto de ley de la Cámara y del Senado que fue aprobado por ambas cámaras con el mismo texto y por eso pasó al gobernador. Con enmiendas: una de las cámaras adoptó antes una enmienda, o un comité de conferencia resolvió las diferencias entre las versiones de las dos cámaras; las correcciones técnicas que hace el Comité de Versiones Finales (<span lang=\"en\">Enrolled Bills Committee</span>) después de la aprobación no cuentan como enmiendas.",
+   "state": "draft"
+  },
+  "nums.p_attend": {
+   "en": "For each day a chamber took at least one roll call, the share of its members in office who were there for at least one of that day's roll calls &mdash; voting, presiding, or declaring a conflict of interest &mdash; averaged over the days. Members' ballots are on record from 1999, and a day with only voice or division votes records no one by name, so it cannot be counted.",
+   "es": "Para cada día en que una cámara tomó al menos una votación nominal: la proporción de sus miembros en funciones que estuvieron presentes en al menos una de las votaciones nominales de ese día &mdash;votando, presidiendo o declarando un conflicto de intereses&mdash;, promediada a lo largo de los días. Los votos de cada miembro constan desde 1999, y un día con solo votaciones a viva voz o por división no registra a nadie por nombre, por lo que no se puede contar.",
+   "state": "draft"
+  },
+  "nums.p_cacr": {
+   "en": "A constitutional amendment that passes both chambers by three fifths goes to the voters at the next general election, and is ratified only with two thirds of the votes cast on it (Part Second, Article 100); a blank ballot is not a vote cast on it.",
+   "es": "Una enmienda constitucional aprobada por tres quintos de cada cámara se somete a los votantes en la siguiente elección general, y se ratifica solo con dos tercios de los votos emitidos sobre ella (Parte Segunda, Artículo 100); una boleta en blanco no cuenta como voto emitido sobre ella.",
+   "state": "draft"
+  },
+  "nums.p_closest": {
+   "en": "The ten roll calls on bills decided by the fewest votes, procedural motions and votes that needed more than a majority left out.",
+   "es": "Las diez votaciones nominales sobre proyectos de ley decididas por la menor cantidad de votos, sin contar las mociones de procedimiento ni las votaciones que requerían más que una mayoría.",
+   "state": "draft"
+  },
+  "nums.p_consent": {
+   "en": "A committee sends a report to the consent calendar by its own vote, and in both chambers that vote must be unanimous, though the recommendation itself may have been carried on a divided one. The whole calendar is adopted in one vote without debate, and what it adopts is each committee's recommendation, to pass the bill, to kill it, or to send it to interim study, unless the bill is first taken off &mdash; since January 2023 at the request of ten members in the House, and since April 2026 of two in the Senate. For each committee of {term} with ten reports or more: the share that went on the consent calendar and stayed there &mdash; a measure of how often the committee agreed with itself. A report counts to the committee that made it, so a bill sent on to Finance or Ways and Means counts in both, and a report the docket prints twice counts once.",
+   "es": "Un comité envía un informe al calendario de consenso por voto propio, y en ambas cámaras ese voto debe ser unánime, aunque la recomendación misma haya sido aprobada por votación dividida. Todo el calendario se adopta en una sola votación y sin debate, y lo que adopta es la recomendación de cada comité: aprobar el proyecto, rechazarlo o enviarlo a estudio interino, a menos que antes se retire el proyecto del calendario &mdash;desde enero de 2023, a solicitud de diez miembros en la Cámara y, desde abril de 2026, de dos en el Senado&mdash;. Para cada comité de {term} con diez informes o más: la proporción que pasó al calendario de consenso y se quedó allí, una medida de cuántas veces el comité estuvo de acuerdo consigo mismo. Un informe cuenta para el comité que lo hizo, de modo que un proyecto remitido a <span lang=\"en\">Finance</span> o a <span lang=\"en\">Ways and Means</span> cuenta en ambos, y un informe que el registro imprime dos veces cuenta una vez.",
+   "state": "draft"
+  },
+  "nums.p_consent2": {
+   "en": "In {term}, <b>{kept} of {total}</b> committee recommendations ({pct}) were adopted on the consent calendar, and <b>{regular}</b> went to the regular calendar, {removed} of them after being taken off consent.",
+   "es": "En {term}, <b>{kept} de {total}</b> recomendaciones de comités ({pct}) se adoptaron en el calendario de consenso, y <b>{regular}</b> pasaron al calendario ordinario, {removed} de ellas después de ser retiradas del consenso.",
+   "state": "draft"
+  },
+  "nums.p_filed": {
+   "en": "Every House and Senate bill given a number in each term, not counting constitutional amendments or resolutions, by the word its card on this site shows. Died covers a bill killed on the floor, left on the table, vetoed with the veto standing, lost between the two chambers, or still pending when its term ended; Other is a bill withdrawn, never introduced, or still before the legislature.",
+   "es": "Todo proyecto de ley de la Cámara y del Senado al que se asignó un número en cada período, sin contar las enmiendas constitucionales ni las resoluciones, según la palabra que muestra su tarjeta en este sitio. &ldquo;Murió&rdquo; abarca un proyecto rechazado en el pleno, dejado sobre la mesa, vetado con el veto vigente, perdido entre las dos cámaras o aún pendiente al terminar su período; &ldquo;Otro&rdquo; es un proyecto retirado, nunca presentado o que sigue ante la Legislatura.",
+   "state": "draft"
+  },
+  "nums.p_how": {
+   "en": "Every number on this page is counted from the General Court's own record when the site is built, not typed in. Each section says what it counts and over what period. Where the record on this site cannot answer something, the section says so rather than estimating.",
+   "es": "Todas las cifras de esta página se cuentan a partir del registro oficial de la Legislatura (General Court) cuando se construye el sitio; no se escriben a mano. Cada sección dice qué cuenta y en qué período. Donde el registro de este sitio no puede responder algo, la sección lo dice en lugar de estimarlo.",
+   "state": "draft"
+  },
+  "nums.p_member": {
+   "en": "The House and Senate bills whose prime sponsor sat in each chamber, divided by its seats: 400 in the House, 24 in the Senate. Passed means the bill became law.",
+   "es": "Los proyectos de ley de la Cámara y del Senado cuyo patrocinador principal ocupaba un escaño en cada cámara, divididos entre sus escaños: 400 en la Cámara y 24 en el Senado. Aquí, &ldquo;aprobado&rdquo; significa que el proyecto pasó a ser ley.",
+   "state": "draft"
+  },
+  "nums.p_overrule": {
+   "en": "In the {term} term, a committee's recommendation was followed by the chamber far more often than not. Counted here: each bill's committee report in each chamber, against the first motion adopted on that chamber's floor that decided the bill there &mdash; ought to pass, inexpedient to legislate or indefinite postponement, or interim study.",
+   "es": "En el período {term}, el pleno siguió la recomendación de su comité con mucha más frecuencia de la que no la siguió. Se cuenta aquí: el informe de comité de cada proyecto en cada cámara, frente a la primera moción adoptada en el pleno de esa cámara que decidió el proyecto allí &mdash;aprobarlo, &ldquo;inoportuno legislar&rdquo; (<span lang=\"en\">inexpedient to legislate</span>) o posposición indefinida, o estudio interino&mdash;.",
+   "state": "draft"
+  },
+  "nums.p_rates": {
+   "en": "Of the House and Senate bills a committee reported on in {term}, whatever it recommended, the share that passed both chambers and the share that became law. A bill two committees of a chamber reported on counts in both; committees with ten bills or more. A Senate committee's House bills had already passed the House, and the other way round, so compare committees within a chamber rather than across.",
+   "es": "De los proyectos de ley de la Cámara y del Senado sobre los que informó un comité en {term}, sin importar lo que recomendó: la proporción que fue aprobada por ambas cámaras y la proporción que pasó a ser ley. Un proyecto sobre el que informaron dos comités de una cámara cuenta en ambos; se incluyen los comités con diez proyectos o más. Los proyectos de la Cámara que llegan a un comité del Senado ya habían sido aprobados por la Cámara, y viceversa, así que conviene comparar los comités dentro de una misma cámara y no entre cámaras.",
+   "state": "draft"
+  },
+  "nums.p_rates2": {
+   "en": "In {term}, {lines}.",
+   "es": "En {term}, {lines}.",
+   "state": "draft"
+  },
+  "nums.p_refs": {
+   "en": "For each committee of the last ten terms: how many bills its chamber sent it first, as each bill's page names its committee, and how many it received after another committee of the same chamber had them &mdash; most often Finance or Ways and Means, for a bill that spends or raises money. Every numbered measure counts, resolutions included.",
+   "es": "Para cada comité de los últimos diez períodos: cuántos proyectos le remitió primero su cámara, según el comité que nombra la página de cada proyecto, y cuántos recibió después de que otro comité de la misma cámara los tuviera &mdash;con más frecuencia <span lang=\"en\">Finance</span> o <span lang=\"en\">Ways and Means</span>, en un proyecto que gasta o recauda dinero&mdash;. Cuenta toda medida numerada, incluidas las resoluciones.",
+   "state": "draft"
+  },
+  "nums.p_signins": {
+   "en": "Anyone may use the House's online form to say they support or oppose a bill, or are neutral on it, at its committee hearing. These are the twenty hearings with the most of those sign-ins in the {term} term: one bill on one House committee date, with the title it had when it was heard. A sign-in is a position registered, not a vote and not a person counted: one person may sign in on many bills, nobody is sampled, and an organized appeal can bring thousands. The busiest hearings were seldom closely divided: {lop} of these {n} drew nine in ten sign-ins or more on one side, and {against} drew more against the bill than for it. So the tables show where turnout was largest, not where opinion was split, and not what the committee decided. Senate hearings are not on this form.",
+   "es": "Cualquier persona puede usar el formulario en línea de la Cámara para decir que apoya un proyecto de ley, que se opone o que es neutral, en la audiencia de su comité. Estas son las veinte audiencias con más de esas inscripciones en el período {term}: un proyecto en la fecha de un comité de la Cámara, con el título que tenía cuando se lo escuchó. Una inscripción es una posición registrada, no un voto ni una persona contada: una misma persona puede inscribirse en muchos proyectos, nadie es una muestra, y una campaña organizada puede traer miles. Las audiencias más concurridas rara vez estuvieron muy divididas: {lop} de estas {n} recibieron nueve de cada diez inscripciones o más de un mismo lado, y {against} recibieron más en contra del proyecto que a favor. Así que las tablas muestran dónde hubo más participación, no dónde se dividió la opinión, ni lo que decidió el comité. Las audiencias del Senado no usan este formulario.",
+   "state": "draft"
+  },
+  "nums.p_takes": {
+   "en": "The same bills, by the number of amendments the two chambers adopted to each before it went to the governor: an amendment withdrawn or defeated after its adoption does not count, nor does a committee of conference's report. From 2007 every adoption the docket records carries the amendment's number. Before 1999 it rarely does, and each amendment a line names counts once, so three or more is the figure there to read with care.",
+   "es": "Los mismos proyectos, según el número de enmiendas que adoptaron las dos cámaras a cada uno antes de que pasara al gobernador: una enmienda retirada o rechazada después de adoptarse no cuenta, ni tampoco el informe de un comité de conferencia. Desde 2007, cada adopción que registra el expediente lleva el número de la enmienda. Antes de 1999 rara vez lo lleva, y cada enmienda que nombra una línea cuenta una vez, así que la cifra de tres o más debe leerse con cuidado.",
+   "state": "draft"
+  },
+  "nums.p_vetoes": {
+   "en": "Of the bills and joint resolutions that reached the governor in each of the last ten terms, how many were vetoed, and what became of the veto. A bill that became law without a signature reached the governor and was not vetoed. A veto stood when the override failed or no override vote came before the session ended.",
+   "es": "De los proyectos de ley y resoluciones conjuntas que llegaron al gobernador en cada uno de los últimos diez períodos: cuántos fueron vetados y qué pasó con el veto. Un proyecto que pasó a ser ley sin firma llegó al gobernador y no fue vetado. Un veto se mantuvo cuando la anulación fracasó o cuando no hubo votación para anularlo antes de que terminara la sesión.",
+   "state": "draft"
+  },
+  "nums.p_votes": {
+   "en": "Every recorded floor decision, by year and by how it was decided: a roll call records each member by name, a division records the count, and a voice vote records only which side sounded louder.",
+   "es": "Cada decisión registrada en el pleno, por año y según cómo se decidió: una votación nominal registra a cada miembro por su nombre, una votación por división registra el conteo, y una votación a viva voz registra solo qué lado sonó más fuerte.",
+   "state": "draft"
+  },
+  "nums.r_kill": {
+   "en": "kill",
+   "es": "rechazar",
+   "state": "draft"
+  },
+  "nums.r_pass": {
+   "en": "pass",
+   "es": "aprobar",
+   "state": "draft"
+  },
+  "nums.r_study": {
+   "en": "interim study",
+   "es": "estudio interino",
+   "state": "draft"
+  },
+  "nums.rat_of": {
+   "en": "{rat} of the {n} below were ratified.",
+   "es": "{rat} de las {n} enmiendas de la tabla fueron ratificadas.",
+   "state": "draft"
+  },
+  "nums.ratified": {
+   "en": "Ratified",
+   "es": "Ratificada",
+   "state": "draft"
+  },
+  "nums.senate": {
+   "en": "Senate",
+   "es": "Senado",
+   "state": "draft"
+  },
+  "nums.the_bills": {
+   "en": "The {n} bills",
+   "es": "Los {n} proyectos",
+   "state": "draft"
+  },
+  "nums.tot_h": {
+   "en": "of the {n} bills a House committee reported on, {pct} passed both chambers",
+   "es": "de los {n} proyectos de ley sobre los que informó un comité de la Cámara, el {pct} fue aprobado por ambas cámaras",
+   "state": "draft"
+  },
+  "nums.tot_s": {
+   "en": "of the {n} bills a Senate committee reported on, {pct} passed both chambers",
+   "es": "de los {n} proyectos de ley sobre los que informó un comité del Senado, el {pct} fue aprobado por ambas cámaras",
+   "state": "draft"
+  },
+  "nums.waiting": {
+   "en": "{n} vetoes of {term} are still to be voted on, and counted as vetoed only.",
+   "es": "{n} vetos de {term} aún esperan votación, y se cuentan solo como vetados.",
+   "state": "draft"
+  },
+  "nums.waiting_one": {
+   "en": "1 veto of {term} is still to be voted on, and counted as vetoed only.",
+   "es": "1 veto de {term} aún espera votación, y se cuenta solo como vetado.",
+   "state": "draft"
+  },
+  "nums.went": {
+   "en": "{bill} of {term} went to the voters on {day}, and their count is not on this site yet.",
+   "es": "{bill} de {term} se sometió a los votantes el {day}, y su recuento todavía no está en este sitio.",
+   "state": "draft"
+  },
+  "nums.whose_other": {
+   "en": "{name}'s",
+   "es": "de {name}",
+   "state": "draft"
+  },
+  "nums.whose_sos": {
+   "en": "the Secretary of State's",
+   "es": "de la Secretaría de Estado",
    "state": "draft"
   },
   "of.desc": {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.10
+# GRANITE_VERSION: 2026-10-01.11
 """
 The General Court's calendars and journals, as the PDFs the General Court
 serves: the list the Calendar page's picker reads.
@@ -99,6 +99,7 @@ from collections import Counter, OrderedDict, defaultdict, namedtuple
 
 import build_date
 import shell
+from i18n import say
 
 QUEUE = Path("archive") / "queue.csv"
 
@@ -480,15 +481,17 @@ def address(ix, chamber, doc):
     return tail if tail.startswith("https://") else ix["base"].get(chamber, "") + tail
 
 
-def left_out_line(left_out):
+def left_out_line(left_out, lang="en"):
     """The one plain line that says what is not linked, or "". It says what
     this page does, and nothing of the General Court's server: the note at
     the top of this file says why."""
     n = len(left_out)
     if not n:
         return ""
-    return (f"{n:,} document{'' if n == 1 else 's'} the General Court lists "
-            f"{'is' if n == 1 else 'are'} not linked here.")
+    return (say(lang, "calp.cd_left_one", "1 document the General Court lists is not linked here.")
+            if n == 1 else
+            say(lang, "calp.cd_left", "{n} documents the General Court lists are not linked here.",
+                n=f"{n:,}"))
 
 
 def left_out_why(left_out):
@@ -579,10 +582,35 @@ def sources(docs):
 # SAME TAB, as the cards' own links to these PDFs open (build_pages.cal_days),
 # so there is one behaviour on the page.
 
-def block_html(docs, left_out, esc=html.escape):
+def set_name(sid, many, lang="en"):
+    """A set's name for the picker (many) or for a link (one), in `lang`: the
+    kind of document, which the General Court's own files are of. The
+    documents' own names ("HC 32") stay as they are printed."""
+    if lang == "en":
+        return MANY[sid] if many else ONE[sid]
+    return {("hc", True): say(lang, "calp.cd_hc_many", "House Calendars"),
+            ("hc", False): say(lang, "calp.cd_hc_one", "House Calendar"),
+            ("hj", True): say(lang, "calp.cd_hj_many", "House Journals"),
+            ("hj", False): say(lang, "calp.cd_hj_one", "House Journal"),
+            ("sc", True): say(lang, "calp.cd_sc_many", "Senate Calendars"),
+            ("sc", False): say(lang, "calp.cd_sc_one", "Senate Calendar"),
+            ("sj", True): say(lang, "calp.cd_sj_many", "Senate Journals"),
+            ("sj", False): say(lang, "calp.cd_sj_one", "Senate Journal")}[(sid, many)]
+
+
+def block_html(docs, left_out, esc=html.escape, lang="en"):
     """The section, or "" where there is nothing to link: the same on every
-    week's page, because a reader may be on any of them."""
+    week's page, because a reader may be on any of them.
+
+    In another language (the Calendar in Spanish, 9 November 2026) the
+    section's words and the kinds of document are that language's; a
+    document's own name, which the General Court printed, is marked as
+    English. English is as it was."""
     sets = by_set(docs)
+    # A document's name, as the General Court printed it: set apart in
+    # another language, so a screen reader says it in English.
+    doc_name = (lambda s: s) if lang == "en" else (lambda s: f'<span lang="en">{s}</span>')
+    opt_en = "" if lang == "en" else " lang=\"en\""
     if not docs:
         return ""
     list_href = _canon(LIST_PATH)
@@ -592,13 +620,13 @@ def block_html(docs, left_out, esc=html.escape):
     d0 = years0[y0][0]
 
     latest = "".join(
-        f'<li><span class="cdset">{esc(ONE[sid])}</span> '
+        f'<li><span class="cdset">{esc(set_name(sid, False, lang))}</span> '
         f'<a class="out" href="{esc(ds[0].url)}" target="_blank" rel="noopener">'
-        f'{esc(ds[0].label)} (PDF)</a></li>'
+        f'{doc_name(esc(ds[0].label))} (PDF)</a></li>'
         for sid, years in sets.items() if years
         for ds in [next(iter(years.values()))])
     years_nav = "".join(
-        f'<li><span class="cdset" id="cdy-{sid}">{esc(MANY[sid])}</span>'
+        f'<li><span class="cdset" id="cdy-{sid}">{esc(set_name(sid, True, lang))}</span>'
         f'<ul aria-labelledby="cdy-{sid}">'
         + "".join(f'<li><a href="{list_href}#{sid}-{y}">{y}</a></li>' for y in years)
         + "</ul></li>"
@@ -618,14 +646,16 @@ def block_html(docs, left_out, esc=html.escape):
     # THE FORM HAS NO NAME OF ITS OWN. Named by the heading, as the section
     # is, it was a second landmark with the section's name.
     pick = ('<form class="cdpick" id="cdpick" hidden>'
-            '<div class="cdf"><label for="cdset">Calendar or journal</label>'
-            f'<select id="cdset"><option value="{first}" selected>{esc(MANY[first])}</option>'
+            '<div class="cdf"><label for="cdset">'
+            + say(lang, "calp.cd_set", "Calendar or journal") + '</label>'
+            f'<select id="cdset"><option value="{first}" selected>'
+            f'{esc(set_name(first, True, lang))}</option>'
             '</select></div>'
-            '<div class="cdf"><label for="cdyear">Year</label>'
+            '<div class="cdf"><label for="cdyear">' + say(lang, "calp.cd_year", "Year") + '</label>'
             f'<select id="cdyear"><option value="{y0}" selected>{y0}</option>'
             '</select></div>'
-            '<div class="cdf"><label for="cddoc">Document</label>'
-            f'<select id="cddoc"><option value="0" selected>{esc(d0.label)}</option>'
+            '<div class="cdf"><label for="cddoc">' + say(lang, "calp.cd_doc", "Document") + '</label>'
+            f'<select id="cddoc"><option value="0" selected{opt_en}>{esc(d0.label)}</option>'
             '</select></div>'
             # THE DOCUMENT CHOSEN, IN FULL, at every width. A closed picker
             # cuts a long name off, and not only on a phone: the document
@@ -635,38 +665,91 @@ def block_html(docs, left_out, esc=html.escape):
             # the page. Measured in Chrome on 1 October with the picker's
             # own font, about 167 of the 4,320 names are wider than it has
             # room for at 1024px, and about 15 at its widest.
-            f'<p class="cdnow" id="cdnow">{esc(chosen_name(ONE[first], d0.label))}</p>'
+            f'<p class="cdnow" id="cdnow">{esc(chosen_name(set_name(first, False, lang), d0.label))}</p>'
             # A NEW TAB, MARKED AS GOING OUT (the person, 7 October 2026,
             # F12), as every link to a calendar or journal is: the reader
             # keeps the Calendar where they left it.
             f'<a class="cdopen out" id="cdopen" href="{esc(d0.url)}" '
             'target="_blank" rel="noopener" '
-            f'aria-label="{esc(open_name(ONE[first], d0.label))}">Open the PDF</a>'
+            f'aria-label="{esc(open_name(set_name(first, False, lang), d0.label, lang))}">'
+            + say(lang, "calp.cd_open", "Open the PDF") + '</a>'
             '</form>'
             # Outside the form, so it can still speak when the list will not
             # load and the form is taken away again.
             '<p class="calhint" id="cdstat" role="status" aria-live="polite"></p>')
-    out = left_out_line(left_out)
+    out = left_out_line(left_out, lang)
     return (f'<section class="cdocs" id="{ANCHOR}" aria-labelledby="cdhead">'
-            '<h2 id="cdhead">Calendars &amp; Journals</h2>'
+            '<h2 id="cdhead">' + say(lang, "calp.cd_head", "Calendars &amp; Journals") + '</h2>'
             + pick
             # "LISTED HERE", because the list is as old as the queue. On
             # 1 October this headed House Calendar 32 of 4 September as "the
             # newest of each", and the example the person gave when asking
             # for the pickers was No 35 of 25 September. Each is shown with
             # its date, and the list page says how far the list reaches.
-            + '<h3 class="cdsub" id="cdnew">The newest listed here</h3>'
+            + '<h3 class="cdsub" id="cdnew">' + say(lang, "calp.cd_newest", "The newest listed here")
+            + '</h3>'
             f'<ul class="cdlatest" aria-labelledby="cdnew">{latest}</ul>'
             '<nav class="cdyears" id="cdyears" aria-labelledby="cdby">'
-            '<h3 class="cdsub" id="cdby">Every year, as a list</h3>'
+            '<h3 class="cdsub" id="cdby">' + say(lang, "calp.cd_years", "Every year, as a list")
+            + '</h3>'
             f'<ul class="cdsets">{years_nav}</ul></nav>'
-            f'<p class="cdall"><a href="{list_href}">Every calendar and journal, as a list</a></p>'
-            '<p class="src">The calendar is what each chamber publishes ahead of time: '
-            'hearings, committee reports and what the next session will take up. The '
-            'journal is the record of a session day. These open the General Court&rsquo;s '
-            'own files.</p>'
+            f'<p class="cdall"><a href="{list_href}">'
+            + say(lang, "calp.cd_list", "Every calendar and journal, as a list") + '</a>'
+            # The list's own page is English (i18n.PAGES), and says so.
+            + ('' if lang == "en" else ' <span class="r-en">('
+               + say(lang, "guides.in_english", "in English") + ')</span>') + '</p>'
+            '<p class="src">' + say(lang, "calp.cd_src", "The calendar is what each chamber "
+            "publishes ahead of time: hearings, committee reports and what the next session will "
+            "take up. The journal is the record of a session day. These open the General "
+            "Court&rsquo;s own files.") + '</p>'
             + (f'<p class="cdleft">{esc(out)}</p>' if out else "")
             + '</section>')
+
+
+# THE PICKER'S SCRIPT IN ANOTHER LANGUAGE (the Calendar in Spanish, 9 November
+# 2026): PICKER_JS as it was, with the pairs below put over it by picker_js(),
+# so the English page's script is the English script to the byte. Each pair is
+# (the text of PICKER_JS, what replaces it); a pair that does not apply once
+# stops the build. The words are tr() calls: the page carries the language's
+# own (i18n.page_words), and a word that has none is said in English.
+PICKER_ES = [
+    (r"""  function setOf(ix,id){""", r"""  var LANG=G.GR_LANG||"en", ES=LANG==="es";
+  // A set's kind of document in the page's language; its documents' own names are the General Court's.
+  function nm(s,many){
+    if(!ES) return many?s.name:s.one;
+    return s.id==="hc"?(many?tr("calp.cd_hc_many","House Calendars"):tr("calp.cd_hc_one","House Calendar"))
+      :s.id==="hj"?(many?tr("calp.cd_hj_many","House Journals"):tr("calp.cd_hj_one","House Journal"))
+      :s.id==="sc"?(many?tr("calp.cd_sc_many","Senate Calendars"):tr("calp.cd_sc_one","Senate Calendar"))
+      :s.id==="sj"?(many?tr("calp.cd_sj_many","Senate Journals"):tr("calp.cd_sj_one","Senate Journal"))
+      :(many?s.name:s.one);
+  }
+  function setOf(ix,id){"""),
+    (r"""            chosen:doc?set.one+", "+doc[0]:"",
+            name:doc?"Open the PDF: "+set.one+", "+doc[0]+", at the General Court":"Open the PDF",
+            count:n+" "+(n===1?set.one:set.name)+" for "+y+
+                  (ys.length>1?"; the list runs "+ys[ys.length-1]+" to "+ys[0]+".":".")};""",
+     r"""            chosen:doc?nm(set,false)+", "+doc[0]:"",
+            name:doc?tr("calp.cd_open_named","Open the PDF: {name}, at the General Court",
+                        {name:nm(set,false)+", "+doc[0]}):tr("calp.cd_open","Open the PDF"),
+            count:tr("calp.cd_count","{n} {what} for {year}",{n:n,what:nm(set,n!==1),year:y})+
+                  (ys.length>1?tr("calp.cd_runs","; the list runs {from} to {to}.",
+                                  {from:ys[ys.length-1],to:ys[0]}):".")};"""),
+    (r"""s.sets.map(function(x){ return x.name; })""", r"""s.sets.map(function(x){ return nm(x,true); })"""),
+    (r"""say("The list of documents could not be loaded here. Every year is linked below.")""",
+     r"""say(tr("calp.cd_fail","The list of documents could not be loaded here. Every year is linked below."))"""),
+    (r"""say("Loading the list of documents.")""", r"""say(tr("calp.cd_loading","Loading the list of documents."))"""),
+]
+
+
+def picker_js(lang="en"):
+    """PICKER_JS for a page in `lang`: itself for English."""
+    if lang == "en":
+        return PICKER_JS
+    js = PICKER_JS
+    for old, new in PICKER_ES:
+        assert js.count(old) == 1, f"PICKER_JS no longer holds, once: {old[:60]!r}"
+        js = js.replace(old, new)
+    return js
 
 
 def chosen_name(one, label):
@@ -674,9 +757,10 @@ def chosen_name(one, label):
     return f"{one}, {label}"
 
 
-def open_name(one, label):
+def open_name(one, label, lang="en"):
     """The button's accessible name, which begins with the words it shows."""
-    return f"Open the PDF: {chosen_name(one, label)}, at the General Court"
+    return say(lang, "calp.cd_open_named", "Open the PDF: {name}, at the General Court",
+               name=chosen_name(one, label))
 
 
 def _canon(path):

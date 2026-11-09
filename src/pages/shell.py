@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.37
+# GRANITE_VERSION: 2026-09-07.38
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -116,13 +116,18 @@ BINDS = ('id="q"', 'id="qgo"', 'id="year"', 'id="sort"',
          'id="facets"', 'id="results"', 'id="count"')
 
 
-def template(site=Path("site")):
+def template(site=Path("site"), lang="en", scripts=(), alt=None):
     """bills.html with its frame filled in (chrome.fill), checked for
     everything the substitutions rely on: the one in src/pages/, or failing
-    that the copy in the site folder."""
+    that the copy in the site folder.
+
+    IN ANOTHER LANGUAGE (the Calendar, 9 November 2026): the frame is that
+    language's (chrome.fill), its head carrying the words `scripts` ask tr()
+    for, and its footer's language list leading to this page's versions in
+    `alt`, {code: address}. English, with no `alt`, is as it always was."""
     for p in (Path("src/pages/bills.html"), Path(site) / "bills.html"):
         if p.exists():
-            t = chrome.fill(p.read_text(encoding="utf-8"), "bills.html")
+            t = chrome.fill(p.read_text(encoding="utf-8"), "bills.html", lang, scripts, alt)
             break
     else:
         raise SystemExit(
@@ -653,7 +658,7 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
          sr_title=None, nav_current="", jsonld=None,
          data_json=None, data_url=None, og_type="article", og_image=None,
          og_alt=None, cite=True, cite_title=None, canonical=None,
-         static=""):
+         static="", lang="en", alts=None):
     """One record's page: the template, told which record it is.
 
     sr_title replaces the template's own visually-hidden <h1>. bills.html
@@ -668,10 +673,23 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
     calendar writes the current week at /calendar and again at its dated
     address, so a link to that week sent last week still opens. The copy's
     canonical link, og:url and citation name the original; its skip link
-    stays on the page it is on."""
+    stays on the page it is on.
+
+    `lang` is the page's language and `alts` {code: address} its versions in
+    the others (the Calendar, 9 November 2026): <html> names the language and
+    each other version (data-alt-<code>, which the language control reads),
+    the nav's current tab is the one at that language's address, and the
+    frame was filled for it by template(). English, with no `alts`, is as
+    it always was."""
     here = address(base, path)
     if canonical:
         here = address(base, canonical)
+    if lang != "en" or alts:
+        t = t.replace('<html lang="en">', f'<html lang="{lang}"' + "".join(
+            f' data-alt-{c}="{E(a)}"' for c, a in (alts or {}).items()) + ">", 1)
+    if nav_current and lang != "en":
+        import i18n
+        nav_current = i18n.href(lang, nav_current).lstrip("/")
     if nav_current:
         # The template is bills.html, so its nav marks Bills as the current
         # page and every page built from it inherits that -- the committees

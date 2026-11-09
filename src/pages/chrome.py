@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.8
+# GRANITE_VERSION: 2026-10-23.9
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -353,7 +353,7 @@ def lang_note(lang):
                "vivienda)."),
            say(lang, "lang.why_links", "Official state pages the site links to are in English."),
            say(lang, "lang.why_not_yet", "Not translated yet: the pages for bills, legislators, "
-               "committees, the calendar and the laws, and any page marked &ldquo;in "
+               "committees and the laws, and any page marked &ldquo;in "
                "English&rdquo; where it is listed.")]
     return ('<div class="langnote"><p>'
             + say(lang, "lang.note", "This page is in Spanish. Some parts stay in English on "
@@ -504,15 +504,22 @@ def scripts(lang="en"):
     return f"{FIND_JS}\n{THEMER_JS}"
 
 
-def fill(t, page=""):
+def fill(t, page="", lang="en", page_scripts=(), alt=None):
     """`t` with its <!-- CHROME:... --> slots filled for `page`. A slot that
     is missing raises: a template that has lost one would be a site with no
     header, or no footer, on 34,000 pages, and nothing else would say so. A
     template with none left is returned as it came, so filling twice is
-    harmless."""
+    harmless.
+
+    IN ANOTHER LANGUAGE (the Calendar, 9 November 2026): the head, header and
+    footer are `lang`'s, `page_scripts` the text of the page's own scripts (whose
+    tr() words the head carries) and `alt` {code: address} the page's
+    versions in the other languages, which the footer's language list leads
+    to."""
     if not any(f"<!-- CHROME:{s} -->" in t for s in SLOTS):
         return t
-    parts = {"head": head(page), "nav": nav(page), "footer": footer(), "scripts": scripts()}
+    parts = {"head": head(page, lang, page_scripts), "nav": nav(page, lang=lang),
+             "footer": footer(lang, alt), "scripts": scripts()}
     for s in SLOTS:
         slot = f"<!-- CHROME:{s} -->"
         assert t.count(slot) == 1, (
