@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.259
+# GRANITE_VERSION: 2026-09-05.260
 """
 Generate the faceted site from real General Court data.
 
@@ -11235,8 +11235,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     # number: person}; a number is taken only where its person is one the site
     # has a page for, and never over an id the site already answers.
     for _n, _p in (numbers or {}).items():
-        if _n not in _people and _people.get(_p):
-            _people[_n] = _people[_p]
+        if _people.get(_p):
+            _people.setdefault(_n, _people[_p])
     # And, for a term whose own roster is frozen and not the sitting one
     # (main says which), the members who left by name: bill_sponsor_list
     # says why. Every one of a name, in order, since only the one who sat
