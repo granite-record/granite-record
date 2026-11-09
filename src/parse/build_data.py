@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.60
+# GRANITE_VERSION: 2026-09-04.61
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -331,6 +331,55 @@ def _pick_committee(stored, first, known, in_use=()):
 
 JOURNAL_BILLS = "journal_bills.json"
 JOURNAL_SOURCE = "House Journal"
+RESOLUTION_SPONSORS = "resolution_sponsors.json"
+
+
+def add_resolution_sponsors(sp_by_term, by_term, path, sat, legs, term_legs, sess, current):
+    """Sponsors for memorial and honoring resolutions that the General Court's tables name
+    none for, from resolution_sponsors.py's reading of the House Journal.
+
+    ONLY WHERE THE BILL HAS NONE FROM ANOTHER SOURCE, ONLY FOR A HOUSE RESOLUTION THE JOURNAL'S
+    OWN TITLE (OR, WHERE IT PRINTS NONE, ITS OPENING TEXT) AGREES WITH THE BILL'S, and never for
+    the housekeeping resolutions the chamber moves as business of the session. Most memorials
+    print "Offered by the House of Representatives", which names nobody and is read as nothing.
+    Returns (bills filled, names placed on a member, names printed)."""
+    import resolution_sponsors as RS
+    p = Path(path)
+    if not p.exists():
+        print(f"  {p}: NOT HERE; no resolution takes a sponsor from the House Journal "
+              "(run python3 src/parse/resolution_sponsors.py)")
+        return 0, 0, 0
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except ValueError as e:
+        print(f"  {p} WILL NOT PARSE ({e}); no resolution takes a sponsor from it")
+        return 0, 0, 0
+    filled = placed = total = 0
+    refused = []
+    for term, byb in sorted(data.items()):
+        if term not in by_term:
+            continue
+        for bill, rec in sorted(byb.items()):
+            b = by_term[term].get(bill)
+            if not b or rec.get("chamber") != "H" or (sp_by_term.get(term) or {}).get(bill):
+                continue
+            if RS.housekeeping(b.get("title")):
+                continue
+            if not RS.agrees(rec, b.get("title")):
+                refused.append(f"{bill} {term}")
+                continue
+            rows = journal_sponsor_rows(RS.printed(rec), term, sat,
+                                        term_legs if term == sess else legs, current)
+            if rows:
+                sp_by_term.setdefault(term, {})[bill] = rows
+                filled += 1
+                total += len(rows)
+                placed += sum(1 for r in rows if r.get("member_id"))
+    print(f"  sponsors.json: {filled} resolution(s) took their sponsors from the House Journal's "
+          f"own line, {placed} of {total} names placed on a member"
+          + (f"; {len(refused)} refused, the journal's title is not the bill's: {', '.join(refused)}"
+             if refused else ""))
+    return filled, placed, total
 
 
 def add_journal_bills(by_term, path=JOURNAL_BILLS, skip=()):
@@ -3105,6 +3154,11 @@ def main():
                     _jr += sum(1 for r in _rows if r.get("member_id"))
         print(f"  sponsors.json: {_jn} bill(s) took their sponsors from "
               f"the House Journal, {_jr} of {_jt} names placed on a member")
+    # Memorial and honoring resolutions whose journal line names who offered them.
+    if (d / RESOLUTION_SPONSORS).exists() or by_term:
+        import text_sponsors as TS
+        add_resolution_sponsors(sp_by_term, by_term, d / RESOLUTION_SPONSORS,
+                                TS.Sat(member_votes), legs, term_legs, sess, current_term)
     # A finished term's sponsors are its own build's, every list as it was.
     for _t, (_fb, _fs) in finished.items():
         sp_by_term[_t] = _fs
