@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.87
+# GRANITE_VERSION: 2026-09-05.88
 """
 Run the whole pipeline in the right order.
 
@@ -715,6 +715,15 @@ def plan(a):
                   "tells each bill's record how many versions it has -- "
                   "without which the page would draw a Versions tab on all "
                   "2,234 bills and put a 404 behind the 1,085 that have one"),
+
+        Step("each amendment's number and each statute a bill's texts cite, into the version indexes",
+             ["build_version_links.py", "--site", "site"],
+             needs=["data/bill_versions.json"],
+             note="asks nobody anything -- it reads the texts the step above "
+                  "wrote and merges two fields into each index. A step of its "
+                  "own because build_bill_versions keeps what it compared "
+                  "under a hash of its code, which a line added there would "
+                  "have thrown away"),
 
         Step("the Senate's hearing reports: who testified and what they said",
              ["senate_hearing_reports.py"],

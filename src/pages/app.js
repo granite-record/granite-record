@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.285
+// GRANITE_VERSION: 2026-09-07.286
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -6549,7 +6549,7 @@ const VRULE=/^[\s\-─_.=]+$/;
 const vblkClass=(bl,t)=>`vblk vblk-${esc(bl.k||"ln")}${
   VRULE.test(t)&&t.replace(/\s/g,"").length>=8?" vrule":""}`;
 
-function vmarked(bs,ms){
+function vmarked(bs,ms,link=x=>x){
   const by={};
   ms.forEach(m=>{(by[m[0]]=by[m[0]]||[]).push(m);});
   const out=[];let skipped=0;
@@ -6570,13 +6570,13 @@ function vmarked(bs,ms){
     let at=0,html="";
     mine.forEach(m=>{
       const s=m[1],e=m[2],op=m[3];
-      if(s>=at)html+=esc(t.slice(at,s));
-      if(op==="-"){html+=`<del class="vdel">${esc(m[4]||"")}</del>`;
+      if(s>=at)html+=link(esc(t.slice(at,s)));
+      if(op==="-"){html+=`<del class="vdel">${link(esc(m[4]||""))}</del>`;
         at=Math.max(at,s);}
-      else{html+=`<ins class="vins">${esc(t.slice(s,e))}</ins>`;
+      else{html+=`<ins class="vins">${link(esc(t.slice(s,e)))}</ins>`;
         at=Math.max(at,e);}
     });
-    html+=esc(t.slice(at));
+    html+=link(esc(t.slice(at)));
     out.push(`<p class="${vblkClass(bl,t)}">${html}</p>`);
   });
   gap();
@@ -6593,6 +6593,33 @@ function recordDay(s){
   return m?dateWords(`${m[3]}-${m[1].padStart(2,"0")}-${m[2].padStart(2,"0")}`)
     :String(s||"").split(" ")[0];
 }
+// WHAT THE DOCKET SAYS OF AN AMENDMENT, set beside it on the Bill Text tab (the
+// owner's walk of 8 November 2026: "its number, whether it was only proposed or
+// adopted, and whether it came from the committee or from the floor"). The
+// record's amendment rows (build_site_v2.bill_amendments) carry it: `kind` is
+// the docket line's own word -- Committee Amendment, Floor Amendment, Minority
+// Amendment, Enrolled Bill Amendment, or plain Amendment where the line says
+// no more -- and `adopted` is true or false only where the line's motion says
+// the amendment carried or failed. Where it says neither the row says nothing,
+// and a plain "Amendment" gives no origin chip: nothing is guessed. The words
+// are the ones renderBillText's amendments already use, in its chips.
+const AMD_ORIGIN={"Committee Amendment":"Committee","Floor Amendment":"Floor",
+  "Minority Amendment":"Minority","Enrolled Bill Amendment":"Enrolled Bill"};
+// "2025-0695h" and "0695h" are one number, as amendmentOwn's matching has it.
+const amdSameNo=(a,b)=>{a=String(a||"").toLowerCase();b=String(b||"").toLowerCase();
+  return !!a&&!!b&&(a===b||a.endsWith("-"+b)||b.endsWith("-"+a));};
+const amdFact=(d,num)=>((d&&d.amendments)||[]).find(x=>amdSameNo(x.num,num))||null;
+function amdBadges(f){
+  if(!f)return "";
+  const org=AMD_ORIGIN[f.kind]||"";
+  return (org?chip(org,"btv"):"")
+    +(f.adopted===true?chip("Adopted","cstat s-law"):f.adopted===false?chip("Rejected","cstat s-done"):"");
+}
+// Who moved it, the day the docket took it up and how it was decided.
+function amdWhen(f){
+  return [f.mover||f.proposed_by||"",f.date?dateWords(f.date):"",AVK[f.vote_kind]||""]
+    .filter(Boolean).map(esc).join(" · ");
+}
 function renderVersions(b,d){
   const key=verKey(b), ix=VERS[key];
   // Nothing to load, so nothing to say about loading it. The bill's own text
@@ -6604,6 +6631,14 @@ function renderVersions(b,d){
   if(ix._error)return `<p class="note">The versions of this bill could not be
     loaded. ${esc(ix._error)}</p>`;
   const vs=ix.versions||[], amds=ix.amendments||[];
+  // A STATUTE CITED IN A VERSION'S TEXT OR AN AMENDMENT'S LINKS TO ITS LAW'S
+  // PAGE, as it does in the bill's own record (makeRsa): the bill's map and
+  // the index's, which names every citation in every text of the bill
+  // (build_version_links.py). Links alone: a defined term gets no pop-up
+  // here, because which chapter's definitions apply to a passage is stated
+  // only in the "Amend RSA ..." clause above it, and a pop-up on the wrong
+  // chapter's definition would be a false statement of the law.
+  const link=makeRsa({rsa:Object.assign({},(d&&d.rsa)||{},ix.rsa||{})});
   // THE CURRENT VERSION BY DEFAULT, which is the last one the record has.
   if(VPICK[key]===undefined)VPICK[key]=vs.length?vs.length-1:0;
   const mode=VMODE[key]||VMODE_FIRST;
@@ -6667,15 +6702,15 @@ function renderVersions(b,d){
     // nothing -- and a version too old to have one still has its runs.
     const onDoc=mk&&mk.length&&Array.isArray(doc)&&doc.length;
     body=sf===undefined?`<p class="spin">Loading what changed…</p>`
-      :onDoc?vmarked(doc,mk)
+      :onDoc?vmarked(doc,mk,link)
       // Still waiting on the document, but the excerpt is already here: draw
       // it rather than a spinner, because it answers the question and the
       // better view can replace it when it arrives.
       :Array.isArray(rs)?`<div class="vdiff">${rs.map(([op,txt])=>
           op==="~"?`<span class="vskip">${esc(txt)} words unchanged</span>`
-          :op==="+"?`<ins>${esc(txt)}</ins>`
-          :op==="-"?`<del>${esc(txt)}</del>`
-          :`<span>${esc(txt)}</span>`).join("")}</div>`
+          :op==="+"?`<ins>${link(esc(txt))}</ins>`
+          :op==="-"?`<del>${link(esc(txt))}</del>`
+          :`<span>${link(esc(txt))}</span>`).join("")}</div>`
       :`<p class="note">That comparison could not be loaded.</p>`;
   }else{
     // THE BILL AS THE COURT SET IT, with the Court's own marking of what it
@@ -6696,10 +6731,10 @@ function renderVersions(b,d){
     body=got===undefined?`<p class="spin">Loading the text…</p>`
       :isBlocks?`<div class="vdoc" tabindex="0" role="region" aria-label="Bill text">${got.map(bl=>
           `<p class="${vblkClass(bl,(bl.runs||[]).map(r=>r[1]).join(""))}">${(bl.runs||[]).map(
-            ([role,t])=>role==="add"?`<ins class="vins">${esc(t)}</ins>`
-              :role==="cut"?`<del class="vdel">${esc(t)}</del>`
-              :esc(t)).join("")}</p>`).join("")}</div>`
-      :typeof got==="string"?`<pre class="vtext">${esc(got)}</pre>`
+            ([role,t])=>role==="add"?`<ins class="vins">${link(esc(t))}</ins>`
+              :role==="cut"?`<del class="vdel">${link(esc(t))}</del>`
+              :link(esc(t))).join("")}</p>`).join("")}</div>`
+      :typeof got==="string"?`<pre class="vtext">${link(esc(got))}</pre>`
       // An empty array is a blocks file that parsed to nothing, which is a
       // different failure from a fetch that did not arrive and says so.
       :Array.isArray(got)?`<p class="note">The text of this version is on
@@ -6707,16 +6742,44 @@ function renderVersions(b,d){
       :`<p class="note">That text could not be loaded.</p>`;
   }
 
-  const amdblock=amds.length?`<h2 class="sech">The Amendments Themselves</h2>
-    <p class="note">Each amendment as the General Court published it; these are
-    not versions of the bill.</p>
-    <ul class="vamds">${amds.map((a,j)=>`<li${AMENDMENT_FOUND[a.text_url]
-      ?` id="amendment-${esc(AMENDMENT_FOUND[a.text_url])}"`:""}><button class="link"
-      data-vamd="${esc(key)}|${j}">Amendment of ${esc(recordDay(a.date))}</button>
+  // EACH AMENDMENT BY ITS NUMBER, with what the docket records of it: whether
+  // it carried or failed, and whether the committee or a member from the floor
+  // moved it (amdBadges). The number is the index's (build_version_links.py,
+  // read from the amendment's own text), and the docket's row is found by it;
+  // an amendment the index has no number for keeps "Amendment of <day>" and
+  // no badge, since which docket line it is would be a guess. An amendment the
+  // docket moved and the index holds no text for is listed after them, with
+  // its facts and a plain statement that its text is not on file.
+  const used=new Set();
+  // IN THE ORDER THE DOCKET TOOK THEM UP where it names them (the record's
+  // rows are in that order, and a committee's amendment is considered before a
+  // floor amendment), the rest after, as the index lists them -- by the day
+  // each was filed, which is not that order.
+  const at=f=>f?(d.amendments||[]).indexOf(f):1e6;
+  const rows=amds.map((a,j)=>{
+    const f=a.num?amdFact(d,a.num):null;
+    if(f)used.add(f);
+    const nid=AMENDMENT_FOUND[a.text_url]||a.num||"";
+    return {pos:at(f)+(f?0:j/1e4),html:`<li${nid?` id="amendment-${esc(nid)}"`:""}><button class="link"
+      data-vamd="${esc(key)}|${j}">${a.num?`Amendment ${esc(a.num)}`:`Amendment of ${esc(recordDay(a.date))}`}</button>
+      ${amdBadges(f)}${f&&amdWhen(f)?`<span class="dim">${amdWhen(f)}</span>`:""}
       <span class="dim">${(a.chars||0).toLocaleString()} characters</span>${
       VTEXT[a.text_url]!==undefined
-        ? `<pre class="vtext">${esc(String(VTEXT[a.text_url]))}</pre>` : ""}</li>`
-      ).join("")}</ul>`:"";
+        ? `<pre class="vtext">${link(esc(String(VTEXT[a.text_url])))}</pre>` : ""}</li>`};})
+    .sort((x,y)=>x.pos-y.pos).map(x=>x.html);
+  const unfiled=((d&&d.amendments)||[]).filter(f=>f&&f.num&&!used.has(f)
+    &&!amds.some(a=>a.num&&amdSameNo(a.num,f.num)));
+  const orphan=f=>`<li id="amendment-${esc(f.num)}"><span class="amdn">Amendment ${esc(f.num)}</span>
+      ${amdBadges(f)}${amdWhen(f)?`<span class="dim">${amdWhen(f)}</span>`:""}${
+      f.text?`<details class="amdtext"><summary>Read the amendment</summary>
+        <pre class="vtext">${link(esc(f.text))}</pre></details>`
+       :`<p class="note">Its text is not on file here.</p>`}</li>`;
+  const amdblock=(amds.length||unfiled.length)?`<h2 class="sech">The Amendments Themselves</h2>
+    <p class="note">Each amendment as the General Court published it; these are
+    not versions of the bill. Whether it carried and whether the committee or
+    the floor moved it are the docket&rsquo;s words, and are left out where the
+    docket does not say.</p>
+    <ul class="vamds">${rows.join("")}${unfiled.map(orphan).join("")}</ul>`:"";
 
   return picker+toggle+body+amdblock;
 }
@@ -6815,7 +6878,10 @@ async function seekAmendment(key){
   const w=AMENDMENT_WANT, ix=VERS[key];
   if(!w||w.key!==key||!ix||ix._error)return;
   AMENDMENT_WANT=null;
-  for(const a of ix.amendments||[]){
+  // The index names each amendment's number (build_version_links.py), so the
+  // one asked for is fetched alone; an index that does not is read in turn.
+  const named=(ix.amendments||[]).filter(a=>a.num&&amdSameNo(a.num,w.num));
+  for(const a of (named.length?named:(ix.amendments||[]))){
     let t=VTEXT[a.text_url];
     if(typeof t!=="string"){
       try{

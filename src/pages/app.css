@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.365 */
+/* GRANITE_VERSION: 2026-09-07.366 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -6586,6 +6586,8 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
 .vamds{list-style:none;padding:0;margin:var(--sp-4) 0 0}
 .vamds li{margin:0 0 var(--sp-4)}
 .vamds .dim{color:var(--ink-2);font-size:var(--t-sm);margin-left:var(--sp-3)}
+/* An amendment's origin and outcome chips, on the line with its number. */
+.vamds .chip{margin-left:var(--sp-3);vertical-align:baseline}
 
 /* A MEMBER'S VOTES, WITH WHAT EACH ONE DECIDED. The middle column carries the
    bill, its title and the question in plain English stacked on top of each
