@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.68
+# GRANITE_VERSION: 2026-10-11.69
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -3341,11 +3341,15 @@ MOTORCYCLE = guide(
           "45 days.</p>",
           actions=[("Motorcycle endorsement (DMV)", DMV_MOTO), ("Make an appointment", DMV_APPT),
                    ("Application (DSMV 450)", DMV_APP)], law=["RSA 263:32"]),
+     # The DMV's page (the claim below) says the motorcycle must be "registered and
+     # inspected"; the statute table holds RSA 266:1 repealed from January 31, 2026
+     # (2025, 141:253), so the step says nothing about inspection until the two
+     # agree, as New to New Hampshire does (the owner, 9 November 2026).
      step("Pass the road test, or take rider training",
           "<p>To get the license or endorsement itself, you pass a vision test and a driving test "
           "on a motorcycle, which the DMV calls the skills test. It gives the test by appointment, "
-          "in the season when conditions are safe. You bring your own motorcycle, registered and "
-          "inspected, and you may ride it there only on a valid learner&rsquo;s permit. A "
+          "in the season when conditions are safe. You bring your own motorcycle, registered, "
+          "and you may ride it there only on a valid learner&rsquo;s permit. A "
           "3-wheeled motorcycle has its own, separate test. If you already have a driver&rsquo;s "
           "license, what you get is an endorsement on it; if you do not, a motorcycle "
           "license.</p>"
