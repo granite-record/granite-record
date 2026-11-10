@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.292
+// GRANITE_VERSION: 2026-09-07.293
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3211,9 +3211,11 @@ if(window.GR_STATIC){
   // and reportBox reads REPORT_TO and REPORT_FIELDS, declared further down
   // (a ReferenceError here, found by the screenshots of 30 October 2026).
   if(window.GR_REPORT){
+    // A TOWN'S PAGE ("town:concord-ward-4", the owner, 10 November 2026) has
+    // the Report box alone: it writes no Share, and none was asked for.
     const rec=String(window.GR_REPORT),at=rec.indexOf(":");
     if(at>0)setTimeout(()=>mountReport(rec.slice(0,at),rec.slice(at+1),
-      !document.querySelector("#pageacts [data-share]")),0);
+      rec.slice(0,at)!=="town"&&!document.querySelector("#pageacts [data-share]")),0);
   }
 }else need("meta.json")
  .then(m=>{

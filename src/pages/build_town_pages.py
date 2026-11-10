@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.46
+# GRANITE_VERSION: 2026-09-09.47
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -1462,7 +1462,10 @@ def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None):
                title=S.title_of(f"Who represents {label}, NH"),
                og_title=og_title,
                og_image="og-town.png", og_alt="Granite Record: who represents your town",
-               description=desc, globals={"GR_STATIC": True},
+               description=desc,
+               # The record a Report a problem sent from here names
+               # (functions/api/report.js: town:<slug>, from /town/<slug>).
+               globals={"GR_STATIC": True, "GR_REPORT": f"town:{slug(town, ward)}"},
                noscript="", skip_label="Skip to the page", sr_title="",
                nav_current="officials.html", cite=False)
     return p.replace('<div id="results"></div>',

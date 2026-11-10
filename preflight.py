@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.837
+# GRANITE_VERSION: 2026-09-04.838
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20200,6 +20200,39 @@ def _cite_up_and_copied():
     return "ok", (f"above the heading with {len(forms)} Copy buttons; "
                   f"dates read {want[8]!r} in shell.py and app.js alike, French browser "
                   "or not; the clipboard copies, or the form is selected and it says so")
+
+
+@check("build", "a town or a ward page names its own record for Report a problem, and the Function and "
+       "the compiler both take it from that page's address and no other",
+       needs=("build_town_pages", "compile_reports"))
+def _town_report(B, CR):
+    """The owner, 10 November 2026: "Add report a problem to town pages". A
+    town page (a ward's too) carries window.GR_REPORT = "town:<slug>", which
+    app.js mounts as the Report box alone, no Share; report.js takes the
+    record from /town/<slug> and compile_reports reads it back to the same
+    address. (functions/api/report.js is run on it in _report_function, and
+    on every built town page in _report_pages.)"""
+    import shell as S
+    if not Path("src/pages/bills.html").exists():
+        return "skip", "bills.html is not here"
+    dist = {"house": [{"county": "Grafton", "district": "11"}], "senate": "5"}
+    for town, ward, wards, slug in (("Lyme", "0", {"0": {}}, "lyme"),
+                                    ("Concord", "4", {"1": {}, "4": {}}, "concord-ward-4")):
+        page = B.build(town, ward, wards, dist, [], {}, "https://x.test", S.template())
+        assert f'window.GR_REPORT="town:{slug}";' in page, f"{town}'s page does not name its record town:{slug}"
+        assert f'href="https://x.test/town/{slug}"' in page, f"{town}'s page is not at /town/{slug}"
+        rec = f"town:{slug}"
+        assert CR.RECORD.match(rec) and CR.PATH.match(f"/town/{slug}"), f"the compiler refuses {rec}"
+        assert CR.page_of(rec, {}) == f"/town/{slug}", f"the compiler finds {rec}'s page at {CR.page_of(rec, {})}"
+        stored = {"id": 5, "at": "2026-11-10T12:00:00.000Z", "record": rec, "kind": "town",
+                  "url": f"/town/{slug}", "tab": "", "field": "other",
+                  "note": "The clerk's hours are wrong.", "build": "", "hidden": 0}
+        assert CR.well_formed(stored), f"a stored report from {rec} is set aside as malformed"
+        assert CR.producer(rec, "other") == "build_town_pages.py", "the producer of a town's page is not named"
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    assert 'rec.slice(0,at)!=="town"&&!document.querySelector("#pageacts [data-share]")' in app, (
+        "app.js no longer mounts a town's Report box without a Share beside it")
+    return "ok", "town:lyme and town:concord-ward-4 named by their pages, kept and compiled from /town/<slug>"
 
 
 @check("build", "Cite this page sits under a town's line, as a guide's does, not alone above the "
@@ -91506,6 +91539,16 @@ for (const [rec, url] of [["session:H/2010-03-11", "/session/H/2010-03-12"],
     ["study:H05", "/committee/H05"], ["committee:ss1451", "/committee/ss1451"],
     ["study:ss1451", "/legislator/jane-doe-hills-12"], ["session:H/2010-03-11", "/legislator/x"]])
   ok(`${rec} from ${url} is refused`, validate({ ...good, record: rec, url, tab: "" }) === null);
+// A town or a ward (the owner, 10 November 2026), from its own address only,
+// naming no tab.
+const town = { ...good, record: "town:concord-ward-4", url: "/town/concord-ward-4", tab: "" };
+ok("a ward's page is accepted", validate(town) !== null);
+ok("a town's page is accepted", validate({ ...town, record: "town:lyme", url: "/town/lyme" }) !== null);
+for (const [rec, url, tab] of [["town:lyme", "/town/hanover", ""], ["town:lyme", "/town/lyme/", ""],
+    ["town:lyme", "/town/lyme.html", ""], ["town:Lyme", "/town/Lyme", ""], ["town:lyme-", "/town/lyme-", ""],
+    ["town:lyme", "/committee/lyme", ""], ["town:lyme", "/legislator/lyme", ""],
+    ["town:lyme", "/town/lyme", "Votes"], ["town:", "/town/", ""], ["committee:lyme", "/town/lyme", ""]])
+  ok(`${rec} from ${url} (tab ${tab || "none"}) is refused`, validate({ ...good, record: rec, url, tab }) === null);
 // A report that passed every rule and could not be kept answers 503, so the box
 // offers the reader the email address (24 September 2026). It answered 204, and
 // the reader was thanked for a report that existed only in the Function's log.
@@ -94511,14 +94554,17 @@ def _report_pages_kept(site, fn, node):
     built site and a report.js in two different folders."""
     pages, sent, boxless = [], Counter(), 0
     for folder, glob_name, kind in (("legislator", "GR_MEMBER", "member"),
-                                    ("committee", "GR_COMMITTEE", "committee")):
+                                    ("committee", "GR_COMMITTEE", "committee"),
+                                    ("town", "GR_REPORT", "town")):
         for f in sorted((Path(site) / folder).glob("*.html")):
             m = re.search(rf'window\.{glob_name}="([^"]*)"',
                           f.read_text(encoding="utf-8", errors="replace"))
             if not m:
                 boxless += 1          # no global, so app.js mounts no box
                 continue
-            pages.append([f"/{folder}/{f.stem}", f"{kind}:{m.group(1)}", str(f.resolve())])
+            # A town's global is the whole record, "town:<slug>" (10 November 2026).
+            rec = m.group(1) if kind == "town" else f"{kind}:{m.group(1)}"
+            pages.append([f"/{folder}/{f.stem}", rec, str(f.resolve())])
             sent[kind] += 1
     # And from every page built in another language, a mistake in its
     # translation (24 October 2026), as components.js's box sends one.
@@ -94564,10 +94610,12 @@ def _report_pages():
     sent, bad, boxless = _report_pages_kept(site, fn, node)
     total = sum(sent.values())
     assert sent.get("member"), "no legislator page carries GR_MEMBER, so none has a report box"
+    assert not (site / "town").is_dir() or sent.get("town"), (
+        "no town page carries GR_REPORT, so none has a report box")
     assert not bad, (f"{len(bad)} of {total:,} pages send a report the Function drops while "
                      f"thanking the reader: " + ", ".join(bad[:6]))
-    return "ok", (f"{sent.get('member', 0):,} legislator, {sent.get('committee', 0):,} committee "
-                  f"and {sent.get('translation', 0):,} Spanish pages each sent one report, and every "
+    return "ok", (f"{sent.get('member', 0):,} legislator, {sent.get('committee', 0):,} committee, "
+                  f"{sent.get('town', 0):,} town and {sent.get('translation', 0):,} Spanish pages each sent one report, and every "
                   "one was kept"
                   + (f"; {boxless} pages carry no box" if boxless else ""))
 
