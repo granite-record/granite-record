@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.833
+# GRANITE_VERSION: 2026-09-04.834
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -94209,6 +94209,10 @@ def _report_agree(CR):
         rendered |= set(re.findall(r'\("\w+", "([^"]+)", "\w+"\)', st.group(1)))
     rendered |= {t for t in ("Summary", "Bill Text", "Votes", "Videos", "Reports", "Sponsors", "Documents")
                  if re.search(rf">{t}(\$\{{|<)", app)}
+    # A member's Elections tab (10 November 2026) is drawn through tr(), so
+    # the label is read from that call.
+    if re.search(r'tr\("race\.tab","Elections"\)', app):
+        rendered.add("Elections")
     # READ OFF THE BUTTONS, NOT OFF A LIST OF NAMES (8 October 2026). The
     # names above were the tabs as they stood on 12 September; when the bill's
     # third tab became Hearings the list still said Videos, found no Videos
@@ -118253,6 +118257,260 @@ def _elections_page(BE, BME):
                       "the bars adding up, Grafton 9's total said")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+# A MEMBER'S ELECTIONS TAB (the owner's design of 10 November 2026; src/pages/
+# build_member_elections.py). A small made-up roster and two made-up elections,
+# so that every rule is held without a built site.
+
+def _mel_member(mid, last, first, chamber, county, district, kind="sitting", terms=None):
+    """A roster row in the shape build_site_v2 writes legislators.json and
+    former.json, as much of it as the matching reads."""
+    abbr = county[:4]
+    row = {"id": mid, "name": f"{last}, {first}", "chamber": chamber, "county": county,
+           "county_abbr": abbr, "district": district, "party": "R", "slug": f"{first}-{last}".lower(),
+           "display_full": f"Rep. {first} {last} (R - {abbr} {district})"}
+    if kind == "former":
+        row.update({"former": True, "served": {"first": "1/4/2023", "last": "11/6/2024",
+                                               "terms": terms or ["2023-2024"]}})
+    return row
+
+
+def _mel_world():
+    """(sitting, former, districts, results 2024, results 2026) of the made-up
+    court: Rockingham 1 to 4 (3 with two seats) and Senate 5 and 6."""
+    def dist(h, sen):
+        return {"0": {"house": [{"county": "Rockingham", "district": h[0], "floterial": False,
+                                 "seats": h[1]}], "senate": sen}}
+    districts = {"Alpha": dist((1, 1), 5), "Beta": dist((2, 1), 5), "Gamma": dist((3, 2), 6),
+                 "Delta": dist((4, 1), 6)}
+    sitting = [_mel_member("1001", "Hart", "Ann", "H", "Rockingham", "1"),
+               _mel_member("1002", "Moss", "Dee", "H", "Rockingham", "2"),
+               _mel_member("1003", "Ives", "Fay", "H", "Rockingham", "3"),
+               _mel_member("1004", "Beck", "Ida", "S", "Rockingham", "5"),
+               _mel_member("1005", "None", "Zed", "H", "Rockingham", "4"),
+               _mel_member("1006", "Kay", "Joe", "S", "Rockingham", "6"),
+               _mel_member("1007", "Pike", "Nan", "H", "Rockingham", "4")]
+    former = [_mel_member("2001", "Lowe", "Bob", "H", "Rockingham", "1", "former"),
+              _mel_member("2002", "Ford", "Ed", "H", "Rockingham", "2", "former", ["2025-2026"]),
+              _mel_member("2003", "Young", "Carl", "H", "Rockingham", "4", "former"),
+              _mel_member("2004", "Old", "Olly", "H", "Rockingham", "1", "former", ["2001-2002"])]
+
+    def cand(name, votes, elected, party="r", wi=False):
+        return {"name": name, "party": party, "votes": votes, "write_in": wi, "elected": elected}
+
+    def race(seats, towns, cands, scatter=0, **more):
+        return {"seats": seats, "floterial": False, "towns": towns, "candidates": cands,
+                "scatter": scatter, **more}
+    r24 = {"election": "2024-11-05", "term": "2025-2026", "races": {
+        "H|Rockingham|1": race(1, ["Alpha"], [cand("Ann Hart", 2000, True), cand("Bob Lowe", 1500, False),
+                                              cand("Carl Young", 100, False), cand("Olly Old", 50, False)], 10),
+        "H|Rockingham|3": race(2, ["Gamma"], [cand("Fay Ives", 3000, True), cand("Ida Beck", 2900, True),
+                                              cand("Hal Orr", 800, False)]),
+        "H|Rockingham|4": race(1, ["Delta"], [cand("Nan Pike", 700, True), cand("Quin Zane", 650, False)],
+                               recounted=True)}}
+    r26 = {"election": "2026-11-03", "term": "2027-2028", "races": {
+        "H|Rockingham|2": race(1, ["Beta"], [cand("Dee Moss", 3000, True), cand("Ed Ford", 2900, False)]),
+        "S|5": race(1, ["Alpha", "Beta"], [cand("Ida Beck", 9000, True), cand("Rob Cole", 8000, False)]),
+        "S|6": race(1, ["Gamma", "Delta"], [cand("Joe Kay", 5000, None), cand("Kim Lu", 5000, None)])}}
+    return sitting, former, districts, r24, r26
+
+
+@check("build", "a member's Elections tab: a win by the elections page's own matching, a loss only on "
+       "the same name and a seat held the term before or after, every other candidate left off and "
+       "listed, a race not final or tied said so, the owner's matches settling either way, one row "
+       "to an election, no tab for a member with no race, and both chambers on one tab",
+       needs=("build_member_elections", "build_members_elect", "build_elections"))
+def _member_elections_rows(BMEL, BME, BE):
+    sitting, former, districts, r24, r26 = _mel_world()
+    roster = BMEL.Roster(sitting, former, ["2025-2026", "2023-2024"])
+    got = {}
+    reports = []
+    for res, today, hand in (
+            (r24, "2026-11-10", {"matches": {"H|Rockingham|3": {"Ida Beck": "1004"}}, "not_final": {},
+                                 "held": {}, "party": {}, "recount_deadline": "2024-11-13"}),
+            (r26, "2026-11-10", {"matches": {}, "not_final": {"H|Rockingham|2": {"recount": True}},
+                                 "held": {}, "party": {}, "recount_deadline": "2026-11-06"})):
+        races_me, _rep = BME.members_elect(res, sitting, former, districts, hand, today)
+        people = BME.People(sitting, former, BME.ballot_of(res))
+        rows, rep = BMEL.election_rows(res["election"], res, races_me, hand, roster, people)
+        for mid, rs in rows.items():
+            got.setdefault(mid, []).extend(rs)
+        reports += rep
+    def one(mid, day):
+        return next(r for r in got[mid] if r["d"] == day)
+    # A win: the elections page's matching; the share of every vote cast, scatter in it.
+    a = one("1001", "2024-11-05")
+    assert (a["r"], a["v"], a["pl"], a["of"], a["sh"], a["a"], a["k"]) == (
+        "won", 2000, 1, 4, 54.6, BE.race_id("H|Rockingham|1"), "H|Rockingham|1"), f"a win: {a}"
+    # A loss matched with certainty: the same name, the seat held in 2023-2024.
+    b = one("2001", "2024-11-05")
+    assert (b["r"], b["pl"], b["sh"]) == ("lost", 2, 41.0), f"a certain loss: {b}"
+    # A loss left off, and why: another district, and a seat held too long ago.
+    assert "2003" not in got and "2004" not in got, "a loss with no certain match was shown"
+    why = {(d, n): (near, w) for d, k, n, near, w in reports}
+    assert "Rockingham 4" in why[("2024-11-05", "Carl Young")][1] and "2003" in why[("2024-11-05", "Carl Young")][0], (
+        f"the report does not say Carl Young has another seat: {why.get(('2024-11-05', 'Carl Young'))}")
+    assert "2001-2002" in why[("2024-11-05", "Olly Old")][1], "the report does not say Olly Old's seat is too old"
+    assert ("2024-11-05", "Hal Orr") not in why and ("2024-11-05", "Quin Zane") not in why, (
+        "a candidate nobody could be was listed for the owner")
+    # A race of two seats gives no share; the owner's match for Ida Beck's House race shows it.
+    f = one("1003", "2024-11-05")
+    assert (f["r"], f["pl"], f["of"], "sh" in f) == ("won", 1, 3, False), f"a two-seat race: {f}"
+    i24 = one("1004", "2024-11-05")
+    assert i24["k"] == "H|Rockingham|3" and i24["r"] == "won", f"the owner's match was not taken: {i24}"
+    # A senator with a House race: both chambers on one tab, newest first once sorted.
+    i26 = one("1004", "2026-11-03")
+    assert i26["k"] == "S|5" and i26["r"] == "won", f"the senator's Senate race: {i26}"
+    srt = BMEL.sort_rows(got["1004"])
+    assert [r["k"] for r in srt] == ["S|5", "H|Rockingham|3"], f"the order: {[r['k'] for r in srt]}"
+    # Not final, with a recount asked for: the member, the loser the rule is certain of, both open.
+    d = one("1002", "2026-11-03")
+    e = one("2002", "2026-11-03")
+    assert (d["r"], d.get("rq"), e["r"], e.get("rq")) == ("open", 1, "open", 1), f"not final: {d} {e}"
+    # A recounted race says so.
+    p = one("1007", "2024-11-05")
+    assert p["r"] == "won" and p.get("rc") == 1, f"a recounted race: {p}"
+    # A tie: the member is shown, as tied.
+    k = one("1006", "2026-11-03")
+    assert k["r"] == "tie", f"a tie: {k}"
+    # A member with no race on file has no row, so no tab; the others have a row each election.
+    assert "1005" not in got, "a member with no race got a row"
+    for mid, rs in got.items():
+        assert len({r["d"] for r in rs}) == len(rs), f"{mid} has two rows in one election"
+    # The owner's null keeps a certain loss off; her id shows an uncertain one.
+    hand = {"matches": {"H|Rockingham|1": {"Bob Lowe": None, "Carl Young": "2003"}}, "not_final": {},
+            "held": {}, "party": {}, "recount_deadline": "2024-11-13"}
+    races_me, _rep = BME.members_elect(r24, sitting, former, districts, hand, "2026-11-10")
+    rows, _rep2 = BMEL.election_rows("2024-11-05", r24, races_me, hand, roster,
+                                     BME.People(sitting, former, BME.ballot_of(r24)))
+    assert "2001" not in rows and rows["2003"][0]["r"] == "lost", (
+        "the owner's matches did not settle a loss either way")
+    # A held winner is on no row and takes no share from the rest.
+    hand = {"matches": {}, "not_final": {}, "held": {"H|Rockingham|1": {"Ann Hart": "private"}},
+            "party": {}, "recount_deadline": "2024-11-13"}
+    races_me, _rep = BME.members_elect(r24, sitting, former, districts, hand, "2026-11-10")
+    rows, _rep2 = BMEL.election_rows("2024-11-05", r24, races_me, hand, roster,
+                                     BME.People(sitting, former, BME.ballot_of(r24)))
+    assert "1001" not in rows and all("sh" not in r and "pl" not in r for r in rows["2001"]), (
+        "a race with a held winner gave a share or a place")
+    return "ok", (f"{sum(len(v) for v in got.values())} rows for {len(got)} members: a win, a certain "
+                  "loss, two left off and listed, not final, a recount, a tie, both chambers, no "
+                  "tab for a member with no race")
+
+
+@check("build", "a member's Elections tab is drawn in the member's own file from the built elections "
+       "page: each row's link is a real race on a built elections page, only a member with a row has "
+       "the key, and a rerun leaves nothing stale",
+       needs=("build_member_elections", "build_members_elect", "build_elections"))
+def _member_elections_built(BMEL, BME, BE):
+    if _elect_absent():
+        return "skip", "not here: " + ", ".join(_elect_absent())
+    root = Path(tempfile.mkdtemp(prefix="mel_"))
+    try:
+        site = _elect_fixture(root)
+        if not (site / "district_map.json").exists() or not (site / "legislators").is_dir():
+            return "skip", "the fixture's build wrote no district_map.json or legislators/"
+        (root / "corrections").mkdir(exist_ok=True)
+        (root / "corrections" / "members_elect.json").write_text(json.dumps(_ELECT_HAND), encoding="utf-8")
+        # The three former members the fixture adds have no file of their own.
+        for m in _ELECT_FORMER:
+            (site / "legislators" / f"{m['id']}.json").write_text(json.dumps({"id": m["id"]}), encoding="utf-8")
+        env = {"GRANITE_BUILD_DATE": _ELECT_IN}
+        for script in ("build_elections.py", "build_member_elections.py"):
+            r = _run([sys.executable, _paths.script(script), "--site", "site"] + (
+                ["--report", "reports/elections_uncertain.md"] if script == "build_member_elections.py" else []),
+                cwd=root, capture_output=True, text=True, timeout=300, env=env)
+            assert r.returncode == 0, f"{script} failed: {(r.stderr or r.stdout)[-600:]}"
+        page = (site / "elections" / "2026-11-03-general.html").read_text(encoding="utf-8")
+        ids = set(re.findall(r'<article class="er-race" id="([^"]+)"', page))
+        withkey = {}
+        for f in (site / "legislators").glob("*.json"):
+            doc = json.loads(f.read_text(encoding="utf-8"))
+            if doc.get("elections"):
+                withkey[f.stem] = doc["elections"]
+        assert withkey, "no member's file has an elections list on the fixture"
+        for mid, rows in withkey.items():
+            assert [r["d"] for r in rows] == sorted((r["d"] for r in rows), reverse=True), (
+                f"{mid}: not newest first")
+            for r in rows:
+                assert r["a"] in ids and r["a"] == BE.race_id(r["k"]), (
+                    f"{mid}: {r['a']} is no race card on the built {r['d']} page")
+                assert (site / "elections" / f"{r['d']}-general.html").exists(), (
+                    f"{mid}: {r['d']} has no built elections page")
+        # Jodi Nelson sat for Rockingham 13 and was re-elected; the fixture's own sitting member.
+        won = {mid for mid, rows in withkey.items() if any(r["r"] == "won" for r in rows)}
+        assert won, "no member won a race on the fixture"
+        written = (root / "reports" / "elections_uncertain.md")
+        assert written.exists(), "the owner's list of uncertain races was not written"
+        # A rerun is the same; and with no results there is no key anywhere.
+        before = {f.stem: f.read_bytes() for f in (site / "legislators").glob("*.json")}
+        r = _run([sys.executable, _paths.script("build_member_elections.py"), "--site", "site"],
+                 cwd=root, capture_output=True, text=True, timeout=300, env=env)
+        assert r.returncode == 0 and before == {f.stem: f.read_bytes() for f in (site / "legislators").glob("*.json")}, (
+            "a rerun changed the members' files")
+        (root / "collected" / "election_2026.json").unlink()
+        r = _run([sys.executable, _paths.script("build_member_elections.py"), "--site", "site"],
+                 cwd=root, capture_output=True, text=True, timeout=300, env=env)
+        assert r.returncode == 0, f"with no results: {(r.stderr or r.stdout)[-400:]}"
+        assert not any("elections" in json.loads(f.read_text(encoding="utf-8"))
+                       for f in (site / "legislators").glob("*.json")), (
+            "a member's file kept an elections list after the results were gone")
+        return "ok", (f"{len(withkey)} members' files on the fixture, every link a race card on the "
+                      "built page, newest first, a rerun the same, none left once the results go")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("frontend", "a member's Elections tab is drawn by app.js: each row linked to its race on the "
+       "elections page with its result, votes and share, a Spanish label, the tab only for a member "
+       "with a row, and its address in the lists that serve it",
+       needs=("build_pages",))
+def _member_elections_tab(BP):
+    names = ("renderMemberElections", "memberElectionTab", "MEMBER_TABS")
+    member = {"elections": [
+        {"d": "2026-11-03", "k": "S|5", "a": "r-s-5", "r": "open", "v": 9000, "s": 1, "pl": 1, "of": 2,
+         "sh": 52.9, "rq": 1},
+        {"d": "2024-11-05", "k": "H|Rockingham|3", "a": "r-h-rockingham-3", "r": "won", "v": 3000,
+         "s": 2, "fl": 1, "rc": 1, "pl": 2, "of": 3},
+        {"d": "2024-11-05", "k": "H|Rockingham|1", "a": "r-h-rockingham-1", "r": "lost", "v": 1500,
+         "s": 1, "pl": 2, "of": 4, "sh": 41.0}]}
+    html = _app_js("scope.renderMemberElections(" + json.dumps(member) + ")", names=names)
+    if html is None:
+        return "skip", "node, app.js or the stub is not here"
+    for want in ('href="/elections/2026-11-03-general#r-s-5"',
+                 'href="/elections/2024-11-05-general#r-h-rockingham-3"',
+                 "Result not final, 1st of 2", "a recount was requested", "Elected, 2nd of 3",
+                 "Not elected, 2nd of 4", "Recounted", "9,000", "(52.9%)", "(41.0%)",
+                 "Senate, District 5", "House, Rockingham 3", "floterial",
+                 'href="/elections/2024-11-05-general">2024 general election',
+                 "Secretary of State"):
+        assert want in html, f"the Elections tab does not say {want!r}"
+    assert html.count('<td class="d"') == 3 and "(%)" not in html and "narrow" not in html.lower() \
+        and "safe" not in html.lower(), "the tab's rows, or a word it should not say"
+    tab = _app_js("[scope.memberElectionTab(" + json.dumps(member) + "), scope.memberElectionTab({}), "
+                  "scope.renderMemberElections({})]", names=names)
+    assert tab[0] == ["Elections", 3] and tab[1] is None and tab[2] == "", (
+        f"the tab appears for a member with no race, or not for one with: {tab}")
+    # The tab's address, in the lists that serve it, and the label in Spanish.
+    assert "elections" in BP.MEMBER_TAB_SLUGS and "/legislator/:who/elections /legislator/:who 200" in BP.REDIRECTS_DYNAMIC, (
+        "/legislator/<who>/elections is not served by the member's page")
+    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    assert es["race.tab"]["es"] == "Elecciones" and es["race.tab"]["en"] == "Elections", "no Spanish label"
+    return "ok", "three rows linked, the words the elections page uses, no tab without a race, the address served, Elecciones"
+
+
+@check("build", "an elections tab is a tab a report may name, in the box, the Function and the compiler",
+       needs=("compile_reports",))
+def _member_elections_report_tab(CR):
+    js = Path("functions/api/report.js")
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    if not js.exists():
+        return "skip", "no functions/api/report.js here"
+    fn = re.search(r"const TABS = new Set\(\[(.*?)\]\)", js.read_text(encoding="utf-8"), re.S).group(1)
+    assert '"Elections"' in fn and "Elections" in CR.TABS and '"Elections"' in app, (
+        "report.js, compile_reports.py and app.js do not all accept an Elections tab")
+    return "ok", "Elections is in the three tab lists"
 
 
 @check("build", "election week's helper drafts from what the steps print, proposes only what the "

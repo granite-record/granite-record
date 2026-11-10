@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.19
+# GRANITE_VERSION: 2026-09-12.20
 """
 What readers reported, compiled for a person and for the session that triages.
 
@@ -148,7 +148,7 @@ TRANSLATION = "translation"
 # free-text tab was 24 letters of a reader's own words outside the quotation.
 TABS = ("", "Summary", "Bill Text", "Votes", "Hearings", "Reports", "Sponsors",
         "Documents", "History", "Prime sponsored", "Co-sponsored", "Bills", "Meetings",
-        "Videos")
+        "Videos", "Elections")
 # A TAB'S OLD NAME, AND ITS NAME NOW (8 October 2026): functions/api/report.js
 # RENAMED_TABS. A bill's Hearings tab was Videos and a committee's Meetings tab
 # was Sessions, and a report stored before the Function learnt the new name
