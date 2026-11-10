@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.844
+# GRANITE_VERSION: 2026-09-04.845
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -8237,7 +8237,7 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
 
     def card(k):
         h = got[k]
-        h = h[h.find('<section class="rc ballot">'):]
+        h = h[h.find('<section class="rc ballot"'):]
         return re.sub(r"\s+", " ", _html.unescape(re.sub(r"<[^>]+>", " ", h))).replace(" ,", ",")
 
     for k, want, other in (
@@ -33712,7 +33712,7 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
         shutil.rmtree(root, ignore_errors=True)
 
     def voters(html):
-        i = html.find('<section class="rc ballot">')
+        i = html.find('<section class="rc ballot"')
         return html[i:] if i >= 0 else ""
 
     def flat(html):
@@ -33720,7 +33720,7 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
 
     lost, won = voters(got["lost"]), voters(got["won"])
     assert lost and won, "a CACR's Votes tab draws no card for the voters"
-    assert got["lost"].find('<section class="rc">') < got["lost"].find('class="rc ballot"'), (
+    assert got["lost"].find('<section class="rc"') < got["lost"].find('class="rc ballot"'), (
         "the voters' card is drawn ahead of the chambers' votes")
     assert "class=\"rc ballot\"" not in got["none"], "a bill with no ballot row drew a voters' card"
     for html, word, cls, pct, other, how in (
@@ -34260,6 +34260,75 @@ def _law_line_dated(B):
         f"the line's words are not Chapter 140, in effect: {html!a}")
     assert re.search(r'<span\s+class="jd">Jul 1, 2025</span>', html), f"the day is not in the date column: {html!a}"
     return "ok", "a single-day law's line says Chapter N, in effect with its day in the date column; parts and stages unchanged"
+
+
+_SUMMARY_VOTES = {
+    "b": {"id": "HB1", "year": "2025", "term": "2025-2026"},
+    "d": {
+        "rollcalls": [
+            {"date": "2025-03-12", "body": "H", "yeas": 231, "nays": 99, "question": "Ought to Pass", "vote_kind": "RC",
+             "passed": True, "members": [], "tally": {}},
+            {"date": "2025-03-12", "body": "H", "yeas": 231, "nays": 99, "question": "Ought to Pass again",
+             "vote_kind": "RC", "passed": True, "members": [], "tally": {}},
+            {"date": "2025-04-10", "body": "S", "yeas": 16, "nays": 8, "question": "Ought to Pass", "vote_kind": "RC",
+             "passed": True, "members": [], "tally": {}},
+            {"date": "2025-05-01", "body": "H", "yeas": 198, "nays": 167, "question": "Concur", "vote_kind": "DV",
+             "passed": True, "members": [], "tally": {}},
+        ],
+        "journey": {"steps": [
+            {"date": "2025-04-10", "body": "S", "mark": "p", "act": "passed", "text": "Passed on a roll call, 16–8"},
+            {"date": "2025-05-01", "body": "H", "mark": "p", "act": "concurred", "text": "Concurred on a division vote, 198–167"},
+            {"date": "2025-05-02", "body": "H", "mark": "p", "act": "passed", "text": "Passed, 198–167"},
+            {"date": "2025-04-10", "body": "H", "mark": "p", "act": "passed", "text": "Passed, 16–8"},
+            {"date": "2025-03-12", "body": "H", "mark": "p", "act": "passed", "text": "Passed, 231–99"},
+        ]},
+        "stages": [{"label": "On the House Floor", "text":
+                    "On May 1, 2025 the House concurred 198–167 on a division vote. On April 10, 2025 the House "
+                    "passed it 16–8. On April 10, 2025 the Senate voted 16–8 to pass it on a roll call."}],
+    },
+}
+
+
+@check("frontend", "a vote tally in the Summary links to its card on the Votes tab, by date, chamber and counts")
+def _summary_votes_linked():
+    """The owner, 10 November 2026: a tally like 198-167 in the Summary opens
+    the Votes tab at that vote. A tally is linked only where one card has its
+    date, its chamber and its counts (voteLinks); the same counts on another
+    day or in the other chamber stay text, and so do two cards that fit. Each
+    card has the anchor the link names."""
+    html = _app_js(
+        "(() => { const S = " + json.dumps(_SUMMARY_VOTES) + "; return {summary: scope.renderSummary(S.b, S.d, null),"
+        " votes: scope.renderVotes(S.b, S.d), anchors: scope.voteAnchors(S.d)}; })()",
+        names=("renderSummary", "renderVotes", "voteAnchors"))
+    if html is None:
+        return "skip", "node or app.js is not here"
+    got, sm = html, html["summary"]
+    assert got["anchors"] == ["vote-2025-03-12-H-231-99", "vote-2025-03-12-H-231-99-2", "vote-2025-04-10-S-16-8",
+                              "vote-2025-05-01-H-198-167"], f"the cards' anchors: {got['anchors']}"
+    for a in got["anchors"]:
+        assert f'id="{a}"' in got["votes"], f"the Votes tab has no card with id {a}"
+    links = re.findall(r'<a class="vtl" href="([^"]+)" data-vote="([^"]+)">(?:<span class="tally">)?([^<]+)', sm)
+    said = [(h, t) for h, _v, t in links]
+    # Journey: the Senate's 16-8 of 10 April, and the House's 198-167 of 1 May.
+    assert ("bill/2025/hb1/votes#vote-2025-04-10-S-16-8", "16–8") in said, f"a row's tally is not linked: {said}"
+    assert ("bill/2025/hb1/votes#vote-2025-05-01-H-198-167", "198–167") in said, f"a division's tally is not linked: {said}"
+    # The same counts on 2 May, in the other chamber on 10 April, and on 12 March
+    # (two cards fit) stay text.
+    assert sm.count('class="vtl"') == 4, f"{sm.count('class=\"vtl\"')} tallies linked, not the 2 rows and 2 story ones: {said}"
+    assert "Passed, <span class=\"tally\">198–167</span>" in sm and "Passed, <span class=\"tally\">231–99</span>" in sm, (
+        "a tally no single card fits was changed")
+    # The story: its sentence's date and first chamber.
+    story = sm[sm.index('<p class="story">'):]
+    assert story.count('class="vtl"') == 2, "the story links other than its two tallies"
+    assert re.search(r'concurred <a class="vtl" href="[^"]*#vote-2025-05-01-H-198-167"', story), "a story tally is not linked"
+    assert re.search(r'the Senate voted <a class="vtl" href="[^"]*#vote-2025-04-10-S-16-8"', story), "a Senate story tally is not linked"
+    assert "the House passed it 16–8" in story, "the House's 16-8 of 10 April, which no card has, was linked"
+    # The address /bill/<year>/<bill>/votes#vote-... stays this bill's page, opens
+    # the Votes tab and brings the card up, on load, on a click and on a hash change.
+    src = Path("src/pages/app.js").read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert src.count("VOTE_HASH.test(said)") >= 3 and "jumpToVote();\n};" in src \
+        and "a[data-vote]" in src, "a vote's address does not open the Votes tab at its card"
+    return "ok", "tallies link to their cards by date, chamber and counts, none where no single card fits"
 
 
 @check("frontend", "a tally in How it got here stays on one line, never broken after its dash")

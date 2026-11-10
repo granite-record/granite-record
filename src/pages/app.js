@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.295
+// GRANITE_VERSION: 2026-09-07.296
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3374,7 +3374,7 @@ if(window.GR_STATIC){
    // /bill/2026/hb1560/text#amendment-2026-0422h (AMENDMENT_HASH, below) --
    // is still that bill's page (26 October 2026).
    const said=decodeURIComponent(location.hash.slice(1));
-   const h=said&&!(window.GR_BILL&&AMENDMENT_HASH.test(said))?said:(window.GR_BILL||"");
+   const h=said&&!(window.GR_BILL&&(AMENDMENT_HASH.test(said)||VOTE_HASH.test(said)))?said:(window.GR_BILL||"");
    const hm=/^(?:(\d{4})\/)?([A-Z]{2,5}\d+)$/i.exec(h);
    if(hm){
      const id=hm[2].toUpperCase(),hy=hm[1]||"";
@@ -3391,6 +3391,8 @@ if(window.GR_STATIC){
        if(t){openTab[id]=t;
          if(t==="6"&&row){amendmentAsked(row,said);needVersions(row);}
          TAB_JUMP=id;}
+     // A link to one vote opens the Votes tab, and its card is brought up.
+     if(window.GR_BILL&&VOTE_HASH.test(said)){openTab[id]="1";VOTE_JUMP=said;}
      }
      openBill(id);
    }
@@ -4679,6 +4681,71 @@ function storyPeople(html,d){
     +")(?![\\w])","g");
   return html.replace(rx,m=>personLink({display_full:by[m].label,slug:by[m].slug}));
 }
+// THE VOTE CARDS' ANCHORS, AND A TALLY AS A LINK TO ITS CARD (the owner, 10
+// November 2026: "when a bill summary cites a vote like 198-167, it should
+// link to the votes tab so you can click it to view that particular vote in
+// detail"). Each card of the Votes tab has an id, "vote-<date>-<chamber>-
+// <yeas>-<nays>" ("vote-2025-03-12-H-231-99"; a second card of the same four
+// takes "-2"; the voters' own "vote-ballot"), and a tally in the Summary that
+// names a vote of this bill by DATE, CHAMBER AND COUNTS links to
+// /bill/<year>/<bill>/votes#<id>. Never by the count alone, and never where
+// two cards fit: the tally stays plain text. A How It Got Here row has its
+// own date and chamber; a story sentence is read for the one date and the
+// first chamber it names. Only a tally written with an en dash, as the build
+// writes them, so a date or an amendment number ("2025-0386h") is never one.
+const VOTE_HASH=/^vote-[\w-]+$/;
+function voteAnchors(d){
+  const seen={};
+  return (d.rollcalls||[]).map(rc=>{
+    const base=`vote-${rc.date||""}-${rc.body||""}-${rc.yeas==null?"x":rc.yeas}-${rc.nays==null?"x":rc.nays}`;
+    seen[base]=(seen[base]||0)+1;
+    return seen[base]>1?`${base}-${seen[base]}`:base;
+  });
+}
+const TALLY_RX=/(\d+(?:,\d{3})*)–(\d+(?:,\d{3})*)/g;
+function voteLinks(html,b,d,ctx){
+  const rcs=(d&&d.rollcalls)||[],bal=d&&d.ballot&&!d.ballot.pending?d.ballot:null;
+  if((!rcs.length&&!bal)||!b||!b.year||html.indexOf("–")<0)return html;
+  const A=voteAnchors(d),num=s=>+String(s).replace(/,/g,"");
+  const href=id=>`bill/${esc(b.year)}/${esc(String(b.id).toLowerCase())}/votes#${id}`;
+  const find=(y,n,date,body)=>{
+    if(body==="V")return bal&&bal.yes===y&&bal.no===n?"vote-ballot":"";
+    const hit=(yy,nn)=>{const m=[];rcs.forEach((rc,i)=>{
+      if(rc.body===body&&rc.date===date&&rc.yeas===yy&&rc.nays===nn)m.push(A[i]);});return m;};
+    let m=hit(y,n);
+    if(!m.length)m=hit(n,y);
+    return m.length===1?m[0]:"";
+  };
+  // The tallies outside any tag or link, linked where `pick` names a card.
+  const link=(h,pick)=>{
+    let inA=0;
+    return h.split(/(<[^>]*>)/).map(p=>{
+      if(p.charAt(0)==="<"){
+        if(/^<a\b/i.test(p))inA++;else if(/^<\/a\s*>/i.test(p))inA=Math.max(0,inA-1);
+        return p;}
+      if(inA)return p;
+      return p.replace(TALLY_RX,(m,y,n)=>{
+        const id=pick(num(y),num(n));
+        return id?`<a class="vtl" href="${href(id)}" data-vote="${id}">${m}</a>`:m;});
+    }).join("");
+  };
+  if(ctx)return link(html,(y,n)=>find(y,n,ctx.date,ctx.body));
+  // A story: one sentence at a time, split where a sentence ends and not at
+  // "Sen. Abbas" or "Rep. Smith".
+  const MON="(January|February|March|April|May|June|July|August|September|October|November|December)";
+  return html.split(/(?<!\b(?:Sen|Rep|Mr|Mrs|Ms|Dr|St|No|Hon))(?<=[.!?])\s+(?=[A-Z“"])/).map(sn=>{
+    if(sn.indexOf("–")<0)return sn;
+    const plain=sn.replace(/<[^>]*>/g,"");
+    const days=new Set();
+    plain.replace(new RegExp(MON+" (\\d{1,2}), (\\d{4})","g"),(m,mo,dd,yy)=>{
+      days.add(`${yy}-${String(["January","February","March","April","May","June","July","August",
+        "September","October","November","December"].indexOf(mo)+1).padStart(2,"0")}-${String(+dd).padStart(2,"0")}`);return m;});
+    const ch=/\b(House|Senate)\b/.exec(plain);
+    if(days.size!==1||!ch)return sn;
+    const date=[...days][0],body=ch[1]==="House"?"H":"S";
+    return link(sn,(y,n)=>find(y,n,date,body));
+  }).join(" ");
+}
 function journeyList(b,d){
   const st=((d.journey||{}).steps)||[];
   if(!st.length)return "";
@@ -4688,9 +4755,15 @@ function journeyList(b,d){
   // HB 1 with seven steps).
   const cut=st.length>=JOURNEY_SHOWN+2&&!jOpen.has(k);
   const hide=i=>cut&&i>=2&&i<st.length-(JOURNEY_SHOWN-2);
+  const said=s=>{
+    // A row's words: a vote's tally linked to its card, by the row's own date
+    // and chamber.
+    const h=voteLinks(jText(s),b,d,{date:s.date||"",body:s.body});
+    return tallyWhole(h);
+  };
   const line=(s,i)=>`<li class="j-${esc(JCLASS[s.mark]||s.mark)}${s.rec!==undefined?` jrec-${esc(s.rec||"without")}`:""}"${hide(i)?" hidden":""}><span class="jg"
     aria-hidden="true">${JMARK[s.mark]||""}</span><span class="jb">${
-    esc(JBODY[s.body]||s.body)}</span><span class="jt">${tallyWhole(jText(s))}</span><span
+    esc(JBODY[s.body]||s.body)}</span><span class="jt">${said(s)}</span><span
     class="jd">${s.date?esc(dateWords(s.date)):""}</span></li>`;
   const rows=st.map(line);
   if(cut)rows.splice(st.length-(JOURNEY_SHOWN-2),0,
@@ -5238,8 +5311,8 @@ function renderSummary(b,d,rsa){
     const here=!!ending&&st.label==="How It Ended";
     if(here)ended=true;
     S.push(section(st.label||"The Story",
-    `<p class="story">${storyPeople(esc(st.text),d)}</p>${(st.notes||[]).map(n=>`<p class="note">${esc(n)}</p>`).join("")}${here?ending:""}`));});
-  else if(d.narrative)S.push(section("The Story",`<p class="story">${storyPeople(esc(d.narrative),d)}</p>`));
+    `<p class="story">${voteLinks(storyPeople(esc(st.text),d),b,d)}</p>${(st.notes||[]).map(n=>`<p class="note">${esc(n)}</p>`).join("")}${here?ending:""}`));});
+  else if(d.narrative)S.push(section("The Story",`<p class="story">${voteLinks(storyPeople(esc(d.narrative),d),b,d)}</p>`));
   if(ending&&!ended)S.push(section("How It Ended",ending,"ending"));
   const kept=archivedNote(d);
   if(kept)S.push(section("About This Record",kept,"about-record"));
@@ -5346,6 +5419,7 @@ function renderVotes(b,d){
   // no longer drawn here. build_site_v2.vote_note_for and narrative.py are
   // untouched, so nothing downstream of them changes and the sentence is one
   // line away if it is wanted back.
+  const VOTE_IDS=voteAnchors(d);
   return ((d.rollcalls||[]).length?d.rollcalls.map((rc,i)=>{
     const vk=rc.vote_kind||"RC";
     let body;
@@ -5371,7 +5445,7 @@ function renderVotes(b,d){
     // a record built before it has none and its question stands as the head.
     // The record's own words go on a small line under the head where they
     // differ from it by more than case and an amendment number (rc.mrec).
-    return `<section class="rc">
+    return `<section class="rc" id="${VOTE_IDS[i]}">
       <div class="rchead"><h2 class="rcq">${voteHead(rc.mk,rc.question,rc.mf)}${
         rc.amendment?` <span class="ramd">${esc(rc.amendment)}</span>`:""}</h2>
       <span class="rcd">${sittingLink(rc.body==="H"?"H":"S",rc.date,dateWords(rc.date),b.id)} · ${
@@ -5476,7 +5550,7 @@ function ballotCard(d){
   // An election to come, and one past whose count is not in the file yet
   // (v.over, build_site_v2.ballot_card): the status says "went to the voters"
   // the day after, and so does this.
-  if(v.pending)return `<section class="rc ballot">${head("")}
+  if(v.pending)return `<section class="rc ballot" id="vote-ballot">${head("")}
     <p class="bout">${v.over
       ?`The vote was on ${esc(dateWords(v.date))}; its count is not recorded here yet.`
       :`The vote is on ${esc(dateWords(v.date))}.`}</p>
@@ -5487,7 +5561,7 @@ function ballotCard(d){
   const y=v.yes,n=v.no,tot=y+n,won=!!v.ratified;
   const word=won?"Ratified":"Not ratified";
   const how=3*y===2*tot?"exactly":won?"more than":"short of";
-  return `<section class="rc ballot">${head(chip(won?"Ratified":"Not Ratified",`rcres ${won?"pass":"fail"}`))}
+  return `<section class="rc ballot" id="vote-ballot">${head(chip(won?"Ratified":"Not Ratified",`rcres ${won?"pass":"fail"}`))}
     <p class="bout">${word}: ${share(y,tot)} voted yes, ${how} the two thirds it needed.</p>
     <p class="note">This was the statewide public vote, at the general election. An
       amendment to the constitution needs two thirds of the votes cast on it: the
@@ -6969,6 +7043,11 @@ window.addEventListener("hashchange",()=>{
   let said="";
   try{said=decodeURIComponent(location.hash.slice(1));}catch(_){return;}
   const gm=/^(\d{4})\/([A-Z]{2,5}\d+)$/i.exec(String(window.GR_BILL));
+  if(gm&&VOTE_HASH.test(said)){
+    const vr=IDX.find(x=>x.id===gm[2].toUpperCase()&&String(x.year)===gm[1]);
+    if(vr){openTab[vr.id]="1";VOTE_JUMP=said;repaint();}
+    return;
+  }
   const row=gm&&AMENDMENT_HASH.test(said)
     ?IDX.find(x=>x.id===gm[2].toUpperCase()&&String(x.year)===gm[1]):null;
   if(!row)return;
@@ -7838,6 +7917,7 @@ const repaint=()=>{
   if(PAGE)renderPage();else if(SESSV)drawSessionVotes();else render();
   jumpToTab();
   jumpToAmendment();
+  jumpToVote();
 };
 
 // A BILL'S ADDRESS THAT NAMES A TAB OPENS AT IT (the webinar pass of 23
@@ -7847,6 +7927,21 @@ const repaint=()=>{
 // tab strip is brought into view if it starts below the top six tenths of the
 // window; a reader already scrolling is never moved again.
 let TAB_JUMP=null;
+// A vote's card, brought into view once it is drawn (voteLinks): below the tab
+// strip a bill's page holds at the top, and marked while it is the one asked for.
+let VOTE_JUMP=null;
+function jumpToVote(){
+  if(!VOTE_JUMP)return;
+  const el=document.getElementById(VOTE_JUMP);
+  const pane=el&&el.closest(".pane");
+  if(!el||!pane||pane.hidden)return;
+  VOTE_JUMP=null;
+  document.querySelectorAll(".rc.rcsel").forEach(x=>x.classList.remove("rcsel"));
+  el.classList.add("rcsel");
+  const card=el.closest(".card"), strip=card&&card.querySelector(".tabs");
+  const held=strip&&getComputedStyle(strip).position==="sticky"?strip.getBoundingClientRect().height:0;
+  window.scrollTo(0,Math.max(0,el.getBoundingClientRect().top+window.scrollY-held-16));
+}
 function jumpToTab(){
   if(!TAB_JUMP||!detail[dkey(TAB_JUMP)])return;
   const card=[...document.querySelectorAll(".card[data-id]")].find(c=>c.dataset.id===TAB_JUMP);
@@ -12028,6 +12123,18 @@ document.addEventListener("click",e=>{
     if(term===ALL_TERMS){const own=head.closest(".card").querySelector("a.cnum");
       if(own){location.href=own.href;return;}}
     if(openCards.has(id)){openCards.delete(id);render();}else openBill(id);return;}
+  // A tally in the Summary: the Votes tab, at that vote's card, where the bill is open.
+  const vl=e.target.closest("a[data-vote]");
+  if(vl&&e.button===0&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey){
+    const vc=vl.closest(".card[data-id]");
+    if(vc){
+      e.preventDefault();
+      const cid=vc.dataset.id;
+      openTab[cid]="1";
+      if(focused===cid)tabAddress("votes");
+      try{history.replaceState(history.state,"",location.pathname+location.search+"#"+vl.dataset.vote);}catch(_){}
+      VOTE_JUMP=vl.dataset.vote;
+      render();jumpToVote();return;}}
   // A card's own tab: a chamber's page has tabs of its own (chamberStrip).
   const tab=e.target.closest(".card .tab");
   if(tab){
