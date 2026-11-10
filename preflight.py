@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.845
+# GRANITE_VERSION: 2026-09-04.846
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -34329,6 +34329,39 @@ def _summary_votes_linked():
     assert src.count("VOTE_HASH.test(said)") >= 3 and "jumpToVote();\n};" in src \
         and "a[data-vote]" in src, "a vote's address does not open the Votes tab at its card"
     return "ok", "tallies link to their cards by date, chamber and counts, none where no single card fits"
+
+
+@check("frontend", "the Summary's How It Got Here and story mark the glossary's terms for their popovers, "
+                   "once, and never inside a link")
+def _summary_glossary_marked():
+    """The owner, 10 November 2026: "the summary does not appear to have
+    tooltips for things like roll call or voice vote". glossPass marks the
+    first use of each term the glossary holds (a data-term span, which
+    components.js turns into the popover), across How It Got Here and then the
+    story, never inside a link and never a second time."""
+    d = dict(_SUMMARY_VOTES["d"])
+    d["journey"] = {"steps": [
+        {"date": "2025-04-10", "body": "S", "mark": "p", "act": "passed", "text": "Passed on a voice vote"},
+        {"date": "2025-05-01", "body": "H", "mark": "x", "act": "killed", "text": "Killed on a roll call, 16–8"},
+        {"date": "2025-05-02", "body": "H", "mark": "p", "act": "passed", "text": "Ought to Pass on a voice vote"},
+        {"date": "2025-05-03", "body": "H", "mark": "p", "act": "passed", "text": "Sent to interim study"},
+    ]}
+    d["stages"] = [{"label": "On the House Floor", "text":
+                    "On April 10, 2025 the House voted on a roll call 16–8, then killed it on a voice vote. "
+                    "It was Inexpedient to Legislate and the consent calendar took it up."}]
+    html = _app_js("(() => { const S = " + json.dumps({"b": _SUMMARY_VOTES["b"], "d": d})
+                   + "; return scope.renderSummary(S.b, S.d, null); })()", names=("renderSummary",))
+    if html is None:
+        return "skip", "node or app.js is not here"
+    marks = re.findall(r'<span data-term="([^"]+)">([^<]*)</span>', html)
+    keys = [k for k, _w in marks]
+    assert len(keys) == len(set(keys)), f"a term is marked twice: {keys}"
+    for k in ("VV", "RC", "OTP", "IS", "ITL", "CC"):
+        assert k in keys, f"{k} is not marked in the Summary: {keys}"
+    # The first use is the one marked: the journey's voice vote, not the story's.
+    assert html.index('data-term="VV"') < html.index('class="story"'), "the voice vote marked is not the first"
+    assert not re.search(r'<a [^>]*>[^<]*<span data-term', html), "a term is marked inside a link"
+    return "ok", "roll call, voice vote, interim study and the rest marked at their first use, none twice, none in a link"
 
 
 @check("frontend", "a tally in How it got here stays on one line, never broken after its dash")

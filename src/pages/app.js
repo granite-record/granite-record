@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.296
+// GRANITE_VERSION: 2026-09-07.297
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4746,7 +4746,49 @@ function voteLinks(html,b,d,ctx){
     return link(sn,(y,n)=>find(y,n,date,body));
   }).join(" ");
 }
-function journeyList(b,d){
+// THE GLOSSARY'S TERMS IN THE SUMMARY'S WORDS (the owner, 10 November 2026:
+// "the summary does not appear to have tooltips for things like roll call or
+// voice vote"). The first use on the page of each term the glossary holds is
+// marked, as termMark does, for the popover components.js draws on it; never
+// inside a link (a tally's, a person's, a bill's), and a term only once across
+// the Summary's How It Got Here and its story. `seen` is one pass's.
+const GLOSS_WORDS=[
+  ["ought to pass with amendment","OTPA"],["ought to pass","OTP"],["inexpedient to legislate","ITL"],
+  ["interim study","IS"],["voice vote","VV"],["division vote","DV"],["roll call","RC"],
+  ["consent calendar","CC"],["regular calendar","RC-calendar"],["committee of conference","Committee of conference"],
+  ["ordered to a third reading","OT3rdg"],["laid on the table","Laid on the table"],
+  ["indefinitely postponed","Indefinitely postponed"],["floor amendment","Floor amendment"],
+  ["minority report","Minority report"],["re-referred","Rerefer"],["public hearing","Public hearing"],
+  ["executive session","Executive session"],["work session","Work session"],["prime sponsor","Prime sponsor"],
+  ["second committee","Second committee"],["special order","Special order"],["fiscal note","FN"],
+  ["carried over","Carried over"],["floterial","Floterial district"],["chaptered","Chaptered"],
+  ["tabled","Tabled"],["veto","Veto"],["override","Override"],["enrolled","Enrolled"],
+  ["reconsidered","Reconsider"],["concur","Concur"]];
+function glossPass(){
+  const seen=new Set();
+  const G=(typeof WORDBOOK!=="undefined"&&WORDBOOK.glossary)||{};
+  const words=GLOSS_WORDS.filter(w=>Object.prototype.hasOwnProperty.call(G,w[1]));
+  if(!words.length)return h=>h;
+  const key={};words.forEach(w=>{key[w[0]]=w[1];});
+  const rx=new RegExp("\\b("+words.map(w=>w[0].replace(/[.*+?^${}()|[\]\\]/g,"\\$&"))
+    .sort((a,c)=>c.length-a.length).join("|")+")\\b","gi");
+  return html=>{
+    let skip=0;
+    return String(html).split(/(<[^>]*>)/).map(p=>{
+      if(p.charAt(0)==="<"){
+        if(/^<(a|button)\b/i.test(p)||/^<span\b[^>]*data-term=/i.test(p))skip++;
+        else if(/^<\/(a|button|span)\s*>/i.test(p)&&skip)skip--;
+        return p;}
+      if(skip)return p;
+      return p.replace(rx,m=>{
+        const k=key[m.toLowerCase()];
+        if(!k||seen.has(k))return m;
+        seen.add(k);
+        return `<span data-term="${k}">${m}</span>`;});
+    }).join("");
+  };
+}
+function journeyList(b,d,gl){
   const st=((d.journey||{}).steps)||[];
   if(!st.length)return "";
   const k=dkey(b.id);
@@ -4757,9 +4799,9 @@ function journeyList(b,d){
   const hide=i=>cut&&i>=2&&i<st.length-(JOURNEY_SHOWN-2);
   const said=s=>{
     // A row's words: a vote's tally linked to its card, by the row's own date
-    // and chamber.
+    // and chamber, and a term marked for its popover.
     const h=voteLinks(jText(s),b,d,{date:s.date||"",body:s.body});
-    return tallyWhole(h);
+    return tallyWhole(gl?gl(h):h);
   };
   const line=(s,i)=>`<li class="j-${esc(JCLASS[s.mark]||s.mark)}${s.rec!==undefined?` jrec-${esc(s.rec||"without")}`:""}"${hide(i)?" hidden":""}><span class="jg"
     aria-hidden="true">${JMARK[s.mark]||""}</span><span class="jb">${
@@ -5296,7 +5338,8 @@ function renderSummary(b,d,rsa){
   if(an)S.push(section("Official Legislative Analysis",
     `<div class="anbox" data-an="1"><div class="antext" translate="no">${rsa?rsa(esc(an)):esc(an)}</div></div>
      <p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`,"analysis"));
-  const jl=journeyList(b,d);
+  const gl=glossPass();
+  const jl=journeyList(b,d,gl);
   if(jl)S.push(section("How It Got Here",jl+(an?"":`<p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`),"journey"));
   else if(!an&&(d.docket_url||rsaChapters(d).length||(d.constitution||[]).length))
     S.push(section("Source",`<p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`,"source"));
@@ -5311,8 +5354,8 @@ function renderSummary(b,d,rsa){
     const here=!!ending&&st.label==="How It Ended";
     if(here)ended=true;
     S.push(section(st.label||"The Story",
-    `<p class="story">${voteLinks(storyPeople(esc(st.text),d),b,d)}</p>${(st.notes||[]).map(n=>`<p class="note">${esc(n)}</p>`).join("")}${here?ending:""}`));});
-  else if(d.narrative)S.push(section("The Story",`<p class="story">${voteLinks(storyPeople(esc(d.narrative),d),b,d)}</p>`));
+    `<p class="story">${gl(voteLinks(storyPeople(esc(st.text),d),b,d))}</p>${(st.notes||[]).map(n=>`<p class="note">${esc(n)}</p>`).join("")}${here?ending:""}`));});
+  else if(d.narrative)S.push(section("The Story",`<p class="story">${gl(voteLinks(storyPeople(esc(d.narrative),d),b,d))}</p>`));
   if(ending&&!ended)S.push(section("How It Ended",ending,"ending"));
   const kept=archivedNote(d);
   if(kept)S.push(section("About This Record",kept,"about-record"));
