@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.370 */
+/* GRANITE_VERSION: 2026-09-07.371 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -4780,8 +4780,8 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
    .racts rules, summary::after) pointing at the button instead. */
 .pcite:not(.racts .pcite) > summary::after{content:"";flex:0 0 auto;width:.75rem;height:.75rem;
   margin-left:var(--sp-2);background:var(--ink-2);transition:transform .15s;
-  -webkit-mask:var(--pc-chev) center/contain no-repeat;mask:var(--pc-chev) center/contain no-repeat;
-  --pc-chev:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.25%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M9 5.5l6.5 6.5L9 18.5%22/%3E%3C/svg%3E")}
+  -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;
+  --l-chev:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.25%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M9 5.5l6.5 6.5L9 18.5%22/%3E%3C/svg%3E")}
 .pcite:not(.racts .pcite)[open] > summary::after{transform:rotate(90deg)}
 @media (prefers-reduced-motion:reduce){.pcite > summary::after{transition:none}}
 @media (forced-colors:active){.pcite:not(.racts .pcite) > summary::after{forced-color-adjust:none;background:CanvasText}}

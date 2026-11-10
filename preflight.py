@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.840
+# GRANITE_VERSION: 2026-09-04.841
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -71825,7 +71825,7 @@ def _cite_triangle():
                  ".racts :is(.pcite,.follow,.testify,.report) > summary::after{"):
         assert rule in css, f"app.css lacks {rule}"
     i = css.index(".pcite:not(.racts .pcite) > summary::after{")
-    assert "mask:var(--pc-chev)" in css[i:i + 600] and "M9 5.5l6.5 6.5L9 18.5" in css[i:i + 900], (
+    assert "mask:var(--l-chev)" in css[i:i + 600] and "M9 5.5l6.5 6.5L9 18.5" in css[i:i + 900], (
         "Cite's triangle is not the chevron the Learn folds use")
     return "ok", "the chevron after Cite this page off record pages, down when open; the nub kept on them"
 

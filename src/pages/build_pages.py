@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.276
+# GRANITE_VERSION: 2026-09-04.277
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2958,7 +2958,7 @@ const bills=(q,B,C,counting,R,mem)=>{
 // Groups a reader reaches for after the bills: members who have left, and
 // this site's own pages.
 const AFTER=new Set(["Statutory and Study Committees","Former Senators","Former Representatives",
-  "Former Members","Learn","Pages on This Site","Law Chapters"]);
+  "Law Chapters","Former Members","Learn","Pages on This Site"]);
 let waiting=false,waitingAll=false,waitingWords=false,waitingLaw=false,waitingReq=false;
 
 function draw(q){
