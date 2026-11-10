@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.850
+# GRANITE_VERSION: 2026-09-04.851
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31415,12 +31415,12 @@ var fixtures = [
          "Hearings (2)",
          // A start and an end, and nothing else. Both stations here start at a
          // boundary the chair announced, so neither carries the one word that
-         // marks an inference.
+         // marks an inference. The Hearings tab is one player and a playlist
+         // (10 November 2026): the first recording's moments are under the
+         // player, and the second is a row of the playlist, drawn when chosen.
          "00:02:30 starts",
          "00:15:00 ends",
-         "00:25:00 starts",
-         "00:40:00 ends",
-         "00:02:30–00:15:00"],
+         'data-vwpick="h1"'],
    // THE VERSION PANE IS ONLY DRAWN WHEN THE CARD IS OPEN, so these belong in
    // wantFocused and not in want. Asserting them in both is how this first
    // failed: the collapsed card renders 13,898 characters of perfectly good
@@ -76745,7 +76745,7 @@ def _weak_marker_approximate(B):
         assert st["start"] == 1200.0 and st["start_stated"] is stated, (
             f"a floor start found by {how!r} is drawn start_stated={st.get('start_stated')}")
     app = _paths.locate("src/pages/app.js").read_text(encoding="utf-8")
-    for need, why in (('s.start_stated ? "" : " approximate"', "the bill page's player"),
+    for need, why in (('h.approx=!s.start_stated', "the bill page's player"),
                       # "approximate", one word, on a floor card too since
                       # 25 October 2026 (S2), where it said "about where the
                       # clerk takes it up".
@@ -83273,8 +83273,8 @@ def _testify_amendment_link():
             f"own page turned a tab or opened an amendment: {got[name]}"
     app = Path("src/pages/app.js").read_text(encoding="utf-8")
     for need, what in (
-            ('const h=said&&!(window.GR_BILL&&AMENDMENT_HASH.test(said))?said:(window.GR_BILL||"");',
-             "a bill's own page whose fragment is an amendment's is still that bill's"),
+            ('const h=said&&!(window.GR_BILL&&(AMENDMENT_HASH.test(said)||VOTE_HASH.test(said)))?said:(window.GR_BILL||"");',
+             "a bill's own page whose fragment is an amendment's (or a vote's) is still that bill's"),
             ("if(t===\"6\"&&row){amendmentAsked(row,said);needVersions(row);}",
              "the Bill Text tab's address asks for the amendment its fragment names"),
             ("  jumpToTab();\n  jumpToAmendment();\n", "a redraw brings the amendment into view"),

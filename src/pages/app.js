@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.300
+// GRANITE_VERSION: 2026-09-07.301
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -5983,7 +5983,11 @@ function hearingView(b,d,rec){
       kinds:kindChips([s.what]),line:[hearingWhere(s)],
       playText:h.from>0?`Play from ${hms(h.from)}`:"Play the recording",
       detail:()=>hearingDetail(b,d,s,h,pid)};});
-  const path=location.pathname.replace(/\/+$/,"");
+  // A row's address is the bill's Hearings tab where the page is a bill's;
+  // anywhere else (the search list, with the bill open) it is where the reader is.
+  const here=location.pathname.replace(/\/+$/,"");
+  const path=/^\/bill\/\d{4}\/[a-z0-9]+(?:\/[a-z]+)?$/i.test(here)
+    ?`${here.replace(/\/(?:hearings|videos)$/,"")}/hearings`:here;
   return videoView({who:b.n||b.id,key,rows,chosen:HEAR_CHOSEN[key]||rows[0].id,
     heading:`${rows.length.toLocaleString()} recording${rows.length===1?"":"s"}, in the order of the bill’s story`,
     href:()=>path,pid:r=>r.pid,onChoose:id=>{HEAR_CHOSEN[key]=id;},
