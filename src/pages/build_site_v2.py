@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.264
+# GRANITE_VERSION: 2026-09-05.265
 """
 Generate the faceted site from real General Court data.
 
@@ -11254,6 +11254,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     """
     unnamed = set()
     sponsored = defaultdict(list)
+    # Each recording's length, from the video indexes the committees' Videos
+    # tabs read (proceedings.video_facts), for a bill's Hearings tab.
+    video_facts = P.video_facts()
 
     index, years = [], set()
     status_pages = load("bill_status.json", {})
@@ -11769,6 +11772,12 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         stations += [station_for_floor(f, bid, marks)
                      for f in fold_conference_notices(floor.get((term, bid), []))]
         stations.sort(key=lambda x: (x["when"], x.get("time") or ""))
+        # How long its recording runs, where the video index says: the Hearings
+        # tab's playlist gives it beside each recording, as a committee's does.
+        for _st in stations:
+            _secs = (video_facts.get(_st.get("video_id") or "") or {}).get("seconds")
+            if _secs:
+                _st["seconds"] = int(_secs)
         # EACH FLOOR STATION'S MOMENT, for the session day's card of this bill
         # (`moments`, write_floor_record): the very time this bill's own
         # Hearings tab opens its player at and the vote it ends on, so the two

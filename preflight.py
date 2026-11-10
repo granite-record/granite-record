@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.847
+# GRANITE_VERSION: 2026-09-04.848
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -18864,12 +18864,12 @@ def _bills_html():
         # five minutes for an estimate, which put the reader in the middle of
         # the previous bill and then made the page explain a time that was not
         # the bill's. Two seconds is enough not to clip the first syllable.
-        "player opens at the mark": "const LEAD = 2",
+        "player opens at the mark": "h.from=Math.max(Math.floor(s.start-2),0)",
         # One word, and only where the placement is an inference rather than
         # something the chair said. The tolerance, which of two dates was being
         # shown, and "about where it ends" were methodology in the way.
-        "an inferred start says so": 's.start_stated ? "" : " approximate"',
-        "consent bills get no timestamp": 's.state==="consent"',
+        "an inferred start says so": "h.approx=!s.start_stated",
+        "consent bills get no timestamp": 'st==="consent"',
         "member sort key": "(a.s||a.n||\"\")",
         # A jump button pressed before the player exists must build the
         # player AT that time. Clicking the stub instead builds it at the
@@ -31907,7 +31907,8 @@ def _states_covered():
     emitted |= set(re.findall(r'state,\s*start\s*=\s*"(\w+)"', src))
     assert emitted, "no station states found in build_site_v2.py"
 
-    drawn = set(re.findall(r's\.state\s*===\s*"(\w+)"', page))
+    # hearingPlace (the recorded states' one chain, on `st`) and hearingCard.
+    drawn = set(re.findall(r'(?:s\.state|\bst)\s*===\s*"(\w+)"', page))
     assert drawn, "no state tests found in bills.html"
 
     # novideo and prestream mean there is nothing to play; the page handles
@@ -31918,7 +31919,7 @@ def _states_covered():
 
     # One chain. A second `if (s.state===...)` after the first restarts the
     # else-ladder and lets a later catch-all overwrite an earlier match.
-    opens = [m.start() for m in re.finditer(r'(?<!else )if\s*\(s\.state\s*===', page)]
+    opens = [m.start() for m in re.finditer(r'(?<!else )if\s*\(st\s*===', page)]
     assert len(opens) <= 1, (f"{len(opens)} separate if-chains test s.state; a "
                              "station matching an earlier chain is overwritten "
                              "by the catch-all in a later one")
@@ -32179,8 +32180,10 @@ def _conference_folded(build_site_v2):
         "build_bills no longer draws its floor stations through fold_conference_notices")
     # THE PAGE. HB 485's one conference is drawn once, timed, and never as
     # "No recording matched".
+    # (The view opens on the bill's first recording, so the conference is
+    # drawn alone here: its detail is under the player only while chosen.)
     html_ = _app_js("scope.renderHearings({id:'HB485', n:'HB 485'}, {stations:"
-                    + json.dumps(drawn["HB485"]) + "})")
+                    + json.dumps([s for s in drawn["HB485"] if s["what"] == C]) + "})")
     if html_ is not None:
         assert "No recording matched" not in html_, (
             "HB 485's page still says no recording matched its conference of 16 June 2025")
@@ -32351,28 +32354,29 @@ def _station_not_named(build_site_v2, segment_markers):
         # recording cards are: where Play starts and the time set, over "bill
         # not named in the captions" -- said once. A paragraph under the note
         # said it again ("The recording's captions never name this bill ...").
-        for want in ('<span class="tolnote">bill not named in the captions</span>',
-                     "Play from 00:05:00 · scheduled 10:00", 'data-embed="VIDX|300|'):
+        # Since 10 November 2026 (the owner) the Hearings tab is a committee's
+        # Videos tab for one bill: one player, the sitting's day and time in
+        # the line under it, and the note once, under the player.
+        for want in ('<p class="vwnone">Bill not named in the captions.</p>',
+                     "Play from 00:05:00", "Feb 3, 2026 at 10:00", 'data-embed="VIDX|300|'):
             assert want in named, f"the not-named sitting does not say {want!r}"
         for k, h in (("the not-named sitting", named),
                      ("a not-named sitting of a state app.js does not know", fallback)):
             said = re.sub(r"<[^>]+>", " ", h)
             assert len(re.findall(r"not named|never name", said)) == 1 \
-                and 'class="note"' not in h and h.count('class="pstub"') == 1 \
-                and '<span class="tolnote">bill not named in the captions</span>' in h, (
-                    f"{k} says its bill is not named other than once, under its one button: "
+                and 'class="note"' not in h and h.count('class="pstub"') == 1, (
+                    f"{k} says its bill is not named other than once, under its one player: "
                     + said[:400])
-        assert "Play from the start · scheduled 10:00" in fallback, (
+        assert 'data-embed="VIDX|0|' in fallback, (
             "a not-named sitting of a state app.js does not know is not offered from the start")
         assert "ongoing work" not in named and "not identified" not in named, (
             "the not-named sitting still says the matching is unfinished")
         # One button since 25 October 2026 (S2): "Play from 00:05:00 ·
         # scheduled 10:00 AM (exact moment not found)".
-        assert "(exact moment not found)" in other and "not named" not in other, (
+        assert "Exact moment not found." in other and "not named" not in other, (
             "a sitting whose bill is named lost the words for an opening not found")
     return "ok", ("marked only where its recording never names it and no start is drawn; one "
-                  "button, \"Play from 00:05:00 · scheduled 10:00 AM\", over \"bill not named in "
-                  "the captions\", said once")
+                  "player, \"Play from 00:05:00\", over \"Bill not named in the captions.\", said once")
 
 
 @check("frontend", "a bill's recording cards say each thing once: two recordings in one line, "
@@ -32466,9 +32470,11 @@ def _recording_cards_once(build_site_v2):
     words = len(re.sub(r"<[^>]+>", " ", box.group(1)).split()) if box else 0
     if not 0 < words <= 20:
         bad.append(f"two: {words} words")
-    # The clock's no-break space is a space here (\s above).
-    need("start", "Play from the start · scheduled 10:00 AM (exact moment not found)")
-    need("later", "Play from 00:16:28 · scheduled 9:35 AM (exact moment not found)")
+    # The clock's no-break space is a space here (\s above). One player, the
+    # sitting's day and time in the line under it, and the unfound moment said
+    # once (the Hearings tab as a committee's Videos tab, 10 November 2026).
+    need("start", "Play the recording", "Mar 12, 2025 at 10:00 AM", "Exact moment not found.")
+    need("later", "Play from 00:16:28", "Mar 12, 2025 at 9:35 AM", "Exact moment not found.")
     for k in ("start", "later", "day"):
         never(k, "not identified", "Not yet matched", "automatic pass")
         if 'class="tolnote"' in page[k] or 'class="note"' in page[k]:
@@ -32476,17 +32482,17 @@ def _recording_cards_once(build_site_v2):
     if 'data-embed="73sLapY1jRw|0|' not in page["start"] or \
             'data-embed="FL8-GWBu5wk|988|' not in page["later"]:
         bad.append("an unfound moment's Play no longer opens where it did")
-    need("vote", "Play from 05:13:45", "vote at 05:23:18", "Open on YouTube",
+    need("vote", "Play from 05:13:45", "05:23:18 vote at", "On YouTube",
          "Motion: Ought to Pass with Amendment (OTPA, Pass the bill with changes)")
     never("vote", "window opens", "timed to the second", "Motions: OTPA", "approximate",
           "where the clerk takes it up")
     if 'data-embed="itJRViVSJqk|18825|' not in page["vote"]:
         bad.append("the floor card's Play no longer opens at the clerk's opening")
-    need("weak", "Play from 05:13:45", "vote at 05:23:18", "approximate")
-    need("chair", "Play from 00:24:37", "ends at 00:30:57",
+    need("weak", "Play from 05:13:45", "05:23:18 vote at", "approximate")
+    need("chair", "Play from 00:24:37", "00:30:57 ends at",
          "Motion: Ought to Pass with Amendment (OTPA, Pass the bill with changes) 2026-1396s")
     never("chair", "no roll call on this one", "approximate")
-    need("day", "Play from the start (exact moment not found)")
+    need("day", "Play the recording", "Exact moment not found.")
     never("day", "moment not identified", "nothing to point at")
     assert not bad, "; ".join(bad[:6])
     return "ok", ("HB 131 of 2026's cards: two recordings in one line, an unfound moment in one "
@@ -32666,7 +32672,7 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
     assert "<h3>" not in prose and 'class="hrpara"' in prose and \
         "does not make clear who said which part" in prose, (
         "a report kept as text was drawn as speakers, or without saying why")
-    assert tab.index('class="player"') < tab.index('class="hrep"'), (
+    assert tab.index('class="player vwplay"') < tab.index('class="hrep"'), (
         "the report is not under the hearing's recording")
     # "The recording above is the hearing itself" is true only where there
     # is one; fifteen reported hearings have none.
@@ -34399,6 +34405,93 @@ def _history_same_number(B):
         "a row lacks its term, its title or its outcome chip")
     assert "in other terms" not in html["no"], "a bill with no same-number list has the heading"
     return "ok", "HB 1 lists its other terms from 1993-1994, newest first, linked, with title and chip; HB 7 and bills with no note none"
+
+
+@check("frontend", "a bill's Hearings tab is a committee's Videos tab for one bill: one player, a playlist of "
+                   "its recordings, the chosen sitting's counts, vote and moments under it, and a plain entry "
+                   "for a sitting with none")
+def _hearings_one_player():
+    """The owner, 10 November 2026: "changing the ways bills are formatted to
+    be more similar to how the committee videos tab is formatted ... we'd only
+    have one player and the format would be cleaner", keeping "displays of
+    testimony numbers and outcome in chips". renderHearings draws videoView,
+    the Videos tab's own: ONE player, the bill's recordings as its playlist in
+    the order of the bill's story (a row each: its day, its kind's chip, where,
+    its length), and under the player for the one chosen when and where, the
+    sign-in counts and the committee's outcome as chips, the floor's roll call
+    with its count, the bill's moments with "approximate" where inferred. A
+    sitting with no recording to play keeps a card of its own. The committee's
+    own list puts a bill's moments and its outcome chip on one line."""
+    st = [
+        {"when": "2025-03-12", "time": "10:00", "what": "public hearing", "committee": "Judiciary", "body": "H",
+         "venue": "LOB 206", "video_id": "VIDA", "state": "located", "start": 600.0, "end": 1500.0,
+         "start_stated": False, "seconds": 7380,
+         "testimony": {"total": 60, "support": 58, "oppose": 2, "neutral": 0, "dated": True}},
+        {"when": "2025-03-19", "time": "13:00", "what": "executive session", "committee": "Judiciary", "body": "H",
+         "venue": "LOB 206", "video_id": "VIDA", "state": "stated", "start": 120.0, "end": None,
+         "start_stated": True, "seconds": 7380},
+        {"when": "2025-04-09", "what": "floor debate", "committee": "House", "body": "H", "video_id": "VIDB",
+         "state": "floor_precise", "debate_start": 3000.0, "debate_end": 3600.0, "window_start": 2400.0,
+         "start_stated": True, "motions": ["OTP"], "tallies": ["190-149"], "mks": [{"mk": "otp"}], "seconds": 20000},
+        {"when": "2019-01-08", "what": "public hearing", "committee": "Judiciary", "body": "H",
+         "video_id": "", "state": "prestream",
+         "testimony": {"total": 5, "support": 3, "oppose": 2, "neutral": 0, "dated": True}},
+    ]
+    d = {"stations": st,
+         "rollcalls": [{"date": "2025-04-09", "body": "H", "yeas": 190, "nays": 149, "passed": True, "mk": "otp",
+                        "question": "Ought to Pass"}],
+         "reports": [{"date": "2025-03-19", "body": "H", "dated": "signed", "majority_recommendation": "Ought to Pass",
+                      "reports": [{"side": "Majority", "vote_yeas": 12, "vote_nays": 2}]}]}
+    day = {"outcomes": [{"bill": "HB1", "outcome": "voted",
+                         "votes": [{"act": "report", "recommendation": "Ought to Pass", "yeas": 10, "nays": 2}]}]}
+    items = [{"bill": "HB1", "n": "HB 1", "title": "a title", "start": 150, "state": "stated", "kind": "executive session",
+              "video_id": "VIDA", "year": "2025"}]
+    cmte = {"code": "H1", "name": "Judiciary", "chamber": "H"}
+    html = _app_js(
+        "(() => { const D = " + json.dumps({"d": d, "day": day, "items": items, "cmte": cmte}) + ";"
+        " const b = {id: 'HB1', n: 'HB 1', year: '2025'};"
+        " const first = scope.renderHearings(b, D.d);"
+        " scope.HEAR_CHOSEN['bill|' + scope.dkey('HB1')] = 'h1';"
+        " const exec = scope.renderHearings(b, D.d);"
+        " scope.HEAR_CHOSEN['bill|' + scope.dkey('HB1')] = 'h2';"
+        " const floor = scope.renderHearings(b, D.d);"
+        " const line = scope.cmteVideoDetail(D.cmte, {date: '2026-02-03', id: 'VIDA'}, D.items, D.day, '');"
+        " return {first, exec, floor, line}; })()",
+        names=("renderHearings", "HEAR_CHOSEN", "dkey", "cmteVideoDetail"))
+    if html is None:
+        return "skip", "node or app.js is not here"
+    first, ex, floor, line = (re.sub(r"\s+", " ", html[k]) for k in ("first", "exec", "floor", "line"))
+    assert first.count('class="pstub"') == 1 and first.count("data-player=") == 1, (
+        "the tab has more than one player")
+    assert first.count('class="vwrow"') == 3 and first.count('aria-current="true"') == 1 and \
+        'data-vwpick="h0" aria-current="true"' in first, "the playlist is not the three recordings, the first chosen"
+    assert first.index("Public Hearing") < first.index("Executive Session") < first.index("Session Day"), (
+        "the playlist is not in the order of the bill's story, each with its kind's chip")
+    assert "2 h 3 min" in first and "House Judiciary" in first, "a row lacks its length or its committee"
+    head = first[first.index('class="vwdetin"'):first.index('class="vwside"')]
+    for want in ("58 support", "2 oppose", "60 signed in", "Mar 12, 2025 at 10:00 AM", "Legislative Office Building 206",
+                 'data-seek="h0_VIDA|600"', 'data-seek="h0_VIDA|1500"', "00:10:00 starts", "00:25:00 ends",
+                 "approximate"):
+        assert want in head, f"the first sitting's detail lacks {want!r}: {head[:300]}"
+    assert 'data-embed="VIDA|598|h0_VIDA"' in first and "watch?v=VIDA&t=598s" in first, (
+        "the player and its YouTube link do not open at the bill's moment")
+    # What was voted: the committee's report of the day, then the floor's roll call, chip and count.
+    xd = ex[ex.index('class="vwdetin"'):ex.index('class="vwside"')]
+    assert "Executive Session" in xd and "Ought to Pass (12–2)" in re.sub(r"<[^>]+>", "", xd) and 'data-embed="VIDA|118|h1_VIDA"' in ex and \
+        "approximate" not in xd, f"the executive session's detail is not its report chip with its count: {xd[:400]}"
+    fl = floor[floor.index('class="vwdetin"'):floor.index('class="vwside"')]
+    assert "Session Day" in fl and "190–149" in fl and "rcres pass" in fl and \
+        'data-embed="VIDB|3000|h2_VIDB"' in floor and "00:50:00 starts" in fl and "01:00:00 vote at" in fl, (
+            f"the floor sitting's detail is not its vote, count and moments: {fl[:400]}")
+    # The plain entry: the sitting before the channels, with its sign-ins.
+    assert 'class="hplain"' in first and 'class="stn pend"' in first and "Jan 8, 2019" in first and \
+        "5 signed in" in first and "No recording to play" in first, "a sitting with no recording lost its entry"
+    # The committee's list: the number, its moments and its chip on one line, the title under them.
+    assert re.search(r'<a class="vwbn"[^>]*>HB 1</a><span class="vwmom"><span class="mjumps">.*?</span>'
+                     r'<span class="vwout">.*?cstat.*?</span></span><span class="vwbt">a title</span>', line), (
+        f"the committee's bill line is not number, moments and chip on one line, then the title: {line[:400]}")
+    return "ok", ("one player and a playlist of the bill's recordings; the sittings' counts, votes and moments "
+                  "under it; a sitting with no recording its own entry; the committee's moments and chip on one line")
 
 
 @check("frontend", "a tally in How it got here stays on one line, never broken after its dash")
@@ -86429,7 +86522,8 @@ process.stdout.write("\n@@" + JSON.stringify(out));
             "way to that meeting: " + re.sub(r"<[^>]+>", " ", dv)[:300])
     # THE MOMENTS ARE THE MEETINGS TAB'S OWN BUTTONS, byte for byte.
     det = flat["vid1"][flat["vid1"].index('class="vwdetin"'):]
-    vj = re.search(r'<span class="mjumps">(.*?)</span><span class="vwbt">', det).group(1)
+    vj = re.search(r'<span class="vwmom"><span class="mjumps">(.*?)</span>(?:<span class="vwout">.*?</span>)?</span>'
+                   r'<span class="vwbt">', det).group(1)
     day = flat["meetings"][flat["meetings"].index('id="day-2026-02-03"'):]
     mj = re.search(r'<span class="mjumps">(.*?)</span></div>', day).group(1)
     assert vj == mj and "approximate" in vj and "|150" in vj, (
@@ -87184,7 +87278,8 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     # A line a bill: the number, then its moments, then its title; in the order
     # the recording reaches them, a bill with no moment after; each once.
     lines = re.findall(r'<li(?: class="vwrest")?><a class="vwbn" href="[^"]*">([^<]*)</a>'
-                       r'(?:<span class="mjumps">(.*?)</span>)?<span class="vwbt">([^<]*)</span></li>', one)
+                       r'(?:<span class="vwmom">(?:<span class="mjumps">(.*?)</span>)?(?:<span class="vwout">.*?</span>)?</span>)?'
+                       r'<span class="vwbt">([^<]*)</span></li>', one)
     assert [(n, t) for n, _j, t in lines] == [("HB 1001", "the title of HB1001"), ("HB 1442", "the title of HB1442"),
                                              ("HB 675-FN-A-LOCAL", "the title of HB675"),
                                              ("HB 1203", "the title of HB1203")] and one.count('class="vwbn"') == 4, (
@@ -87211,8 +87306,9 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     at = css.find(".vwbills li{display:flex")
     phone = _braced(css[css.rfind("@media (max-width:45em){", 0, at):], "@media (max-width:45em){") if at >= 0 else ""
     assert re.search(r"\n\.vwbn\{grid-column:1;", css) and re.search(r"\n\.vwbt\{grid-column:2;", css) and \
-        "display:flex;flex-wrap:wrap" in phone and ".vwbills .mjumps{display:contents}" in phone and \
-        ".vwbt{flex:1 1 100%}" in phone, (
+        "display:flex;flex-wrap:wrap" in phone and ".vwbills .mjumps,.vwbills .vwmom{display:contents}" in phone and \
+        ".vwbt{flex:1 1 100%}" in phone and \
+        re.search(r"\n\.vwbills \.vwmom\{grid-column:2;display:flex;flex-wrap:wrap", css), (
             "app.css: a bill's moments are not beside its number with its title under them, on a wide screen "
             "or a phone")
     # THE NUMBERS' COLUMN IS THE LONGEST NUMBER'S, THE SAME DOWN THE LIST

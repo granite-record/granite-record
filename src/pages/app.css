@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.373 */
+/* GRANITE_VERSION: 2026-09-07.374 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -7308,6 +7308,19 @@ align-items:baseline;padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
 /* What was voted that day, a chip as the Meetings tab and the bill's Reports tab draw it. */
 .vwout{grid-column:2;display:flex;flex-wrap:wrap;gap:var(--sp-2);align-items:center}
 .vwlinks{margin:var(--sp-4) 0 0}
+/* A bill's moments and what was voted there share one line (app.js,
+   cmteVideoDetail): the number, then these, the title under them. The chip
+   had wrapped onto a line of its own at the right of the moment's button. */
+.vwbills .vwmom{grid-column:2;display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);align-items:center}
+.vwbills .vwmom .mjumps,.vwbills .vwmom .vwout{display:contents}
+/* A bill's Hearings tab (app.js, hearingDetail), under its one player: when
+   and where above, then who signed in and what was voted as chips, then the
+   bill's moments in the recording. */
+.vwsign,.vwres,.vwmoms{margin:0 0 var(--sp-3);display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);align-items:center}
+.vwsign .tnote{margin:0}
+.vwtally{font-size:var(--t-ui);color:var(--ink-2)}
+/* The sittings with no recording to play, under the view: the old cards. */
+.hplain{margin-top:var(--sp-6)}
 /* A link a finger taps is 24px tall here too (WCAG 2.5.8): the player bar's
    ".pbar > a" rule never reaches the caption's "On YouTube", which sits in a
    line of text, nor the links under the player, and both were 19px (the
@@ -7409,7 +7422,7 @@ color:var(--ink-2);white-space:nowrap;overflow:hidden}
 @media (max-width:45em){
   .vwbills{display:block}
   .vwbills li{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3)}
-  .vwbills .mjumps{display:contents}
+  .vwbills .mjumps,.vwbills .vwmom{display:contents}
   .vwbt{flex:1 1 100%}
 }
 @media screen and (min-width:60em){

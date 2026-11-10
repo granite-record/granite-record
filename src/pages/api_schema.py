@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.6
+# GRANITE_VERSION: 2026-10-30.7
 """
 What every file of the data API holds, field by field: /data/schema.json.
 
@@ -215,6 +215,7 @@ STATION_FIELDS = {
     "body": ("string", "H or S.", B),
     "venue": ("string", "The room, as the record writes it.", B),
     "video_id": ("string", "The recording's YouTube id; empty where none was matched.", B),
+    "seconds": ("integer", "How long its recording runs, in seconds, where the video index says.", P),
     "start": ("number", "Seconds into the recording where this site places the bill's start; null where it places none.", B),
     "end": ("number", "Seconds into the recording where it places the end; null where it places none.", B),
     "state": ("string", "How the start was placed, or why there is none: stated, floor_stated, floor_precise, floor_dated, located, approximate, whole_video, consent, candidates (several recordings, none chosen), novideo, prestream (before the chamber streamed).", B),
