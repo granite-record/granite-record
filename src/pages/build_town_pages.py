@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.47
+# GRANITE_VERSION: 2026-09-09.48
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -1412,16 +1412,21 @@ def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None):
     # THE DISTRICT MAP (Polish 3: "The map also goes on the town pages"),
     # second, after the people who represent the place, as the approved
     # drawing has it (proto/town-dover-ward-1.html).
-    # ONE WORD A TAB (the audit of 25 October 2026): on a phone "How to Vote"
-    # stood in three lines a word each and "Town Services" was cut at the
-    # edge. The page's title names the town, so Officials and Services say
-    # it for a town and a city alike; the strip is one line and scrolls
-    # (app.css, .twntabs).
+    # THE STRIP IS ONE LINE AND SCROLLS (app.css, .twntabs): on a phone "How
+    # to Vote" stood in three lines a word each and "Town Services" was cut
+    # at the edge (the audit of 25 October 2026). The page's title names the
+    # town, so Officials and Services say it for a town and a city alike; the
+    # owner asked for the Vote tab to read How to Vote on 10 November 2026,
+    # and each tab's label is on one line, whatever its length.
     panels = [("representatives", "Representatives",
                representatives_sections(dist, legs, off, elect)),
               ("map", "Map", map_section(town, ward, dist)),
               ("officials", "Officials", officials),
-              ("vote", "Vote", vote_sections(town, loc, town_off)),
+              # HOW TO VOTE, THE TAB'S NAME (the owner, 10 November 2026: "On
+              # town pages, Vote tab title becomes How to Vote"). The label
+              # only: its id, and so its address (/town/lyme#vote), is a
+              # published address and stays.
+              ("vote", "How to Vote", vote_sections(town, loc, town_off)),
               # THE SERVICES TAB (24 October 2026): services_sections, where
               # its files are loaded; without them the office is the
               # Officials tab's card already, and the tab is not drawn.

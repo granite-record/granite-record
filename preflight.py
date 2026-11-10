@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.838
+# GRANITE_VERSION: 2026-09-04.839
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -117335,7 +117335,7 @@ def _town_tabs(B, BP):
     # The District Map is every place's second tab (Polish 3): every town and
     # ward is on the map.
     LABELS = {"representatives": "Representatives", "map": "Map", "officials": "Officials",
-              "vote": "Vote", "services": "Services"}
+              "vote": "How to Vote", "services": "Services"}
     want = {"Lyme": ["representatives", "map", "officials", "vote"],
             "Bean's Grant": ["representatives", "map", "vote"],
             "Nowhere": ["representatives", "map"]}
@@ -117353,8 +117353,9 @@ def _town_tabs(B, BP):
         ids = [t[0] for t in tabs]
         if ids != want[town]:
             bad.append(f"{town}: tabs {ids}, not {want[town]}")
-        # ONE WORD A TAB (the audit of 25 October 2026: "How / to / Vote" on
-        # a phone): the page names the town, so a city's are these too.
+        # The labels (the owner, 10 November 2026: the Vote tab reads "How to
+        # Vote", its id and address still "vote"); the page names the town,
+        # so a city's are these too, each on one line (.twntabs scrolls).
         names = re.findall(r'role="tab" id="tab-(\w+)"[^>]*>([^<]*)</button>', bars[0])
         if any(LABELS[t] != n for t, n in names):
             bad.append(f"{town}: the tabs read {[n for _t, n in names]}, not "
