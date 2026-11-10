@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.263
+# GRANITE_VERSION: 2026-09-05.264
 """
 Generate the faceted site from real General Court data.
 
@@ -11185,6 +11185,51 @@ def add_related(out, index, path=None):
     return n_bills
 
 
+def same_number_rows(notes, index):
+    """{(term, bid): [{term, y, id, n, t, c}, ...]}: for a bill number corrections/
+    bill_notes.json gives a standing meaning (HB 1 is the budget), the same
+    number in each OTHER term the note is true of, newest first, each with its
+    year, number, title and outcome chip. Only the terms the note holds for
+    (bill_note's `from` and `until`): the HB 1 of 1989-1990 is another bill that
+    shares the number. Bills the note does not name get nothing."""
+    rows = {}
+    for r in index:
+        n = bill_note(notes, r.get("term"), r.get("id"))
+        if n:
+            rows.setdefault(r.get("id"), []).append(r)
+    out = {}
+    for bid, mine in rows.items():
+        for r in mine:
+            others = sorted((x for x in mine if x["term"] != r["term"]),
+                            key=lambda x: x["term"], reverse=True)
+            if others:
+                out[(r["term"], bid)] = [
+                    {"term": x["term"], "y": x.get("year"), "id": bid, "n": x.get("n") or bid,
+                     "t": x.get("title") or "", "c": x.get("chip") or ""} for x in others]
+    return out
+
+
+def add_same_number(out, index, notes):
+    """Puts each standing-note bill's same-number list into its own JSON, as
+    `same_number`, for the History tab's "HB 1 in other terms". Returns how many
+    bills have one."""
+    by = same_number_rows(notes, index)
+    n_bills = 0
+    for r in index:
+        rows = by.get((r.get("term"), r.get("id")))
+        if not rows:
+            continue
+        f = out / "bills" / str(r.get("year")) / f"{r.get('id')}.json"
+        if not f.is_file():
+            continue
+        rec = json.loads(f.read_text(encoding="utf-8"))
+        rec["same_number"] = rows
+        f.write_text(json.dumps(rec), encoding="utf-8")
+        n_bills += 1
+    print(f"  same number in other terms: {n_bills:,} bills' History tabs")
+    return n_bills
+
+
 def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 bill_texts, amend_texts, testimony, testimony_db, procs, floor, segs,
                 marks, sources, legs, leg_by_sort, leg_by_name,
@@ -12709,6 +12754,7 @@ def main():
                                ballots=load_ballots(BALLOTS, bills),
                                rc_cards=rc_cards, moments=floor_moments)
     add_related(out, index)
+    add_same_number(out, index, notes)
     # NO index.json (retired 5 October 2026). It was every row below in one
     # file, read by six build steps and by no page: 23.7 MB on 2 October,
     # 90.5% of the 25 MiB Cloudflare Pages takes in one file, and a term's

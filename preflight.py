@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.846
+# GRANITE_VERSION: 2026-09-04.847
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -34362,6 +34362,43 @@ def _summary_glossary_marked():
     assert html.index('data-term="VV"') < html.index('class="story"'), "the voice vote marked is not the first"
     assert not re.search(r'<a [^>]*>[^<]*<span data-term', html), "a term is marked inside a link"
     return "ok", "roll call, voice vote, interim study and the rest marked at their first use, none twice, none in a link"
+
+
+@check("frontend", "the History tab of a bill number with a standing note lists the same number in the other "
+                   "terms it holds for, newest first, and no other bill's History tab changes",
+       needs=("build_site_v2",))
+def _history_same_number(B):
+    """The owner, 10 November 2026: "the history tab should match prior bills
+    for standard ones like HB1, HB2". corrections/bill_notes.json says which
+    numbers have a standing meaning and from which term (HB 1 is the budget from
+    1993-1994; the HB 1 of 1989-1990 is another bill). same_number_rows gives
+    such a bill the same number in its other terms, newest first, never in a
+    term before `from`; any other bill nothing. renderRelated draws it under
+    "HB 1 in other terms", each row linked to its term's bill with its title and
+    outcome chip."""
+    notes = {"every_term": {"HB1": {"from": "1993-1994", "label": "The state budget", "note": "x"}}}
+    index = [{"term": t, "year": t[:4], "id": b, "n": b[:2] + " " + b[2:], "title": f"title {t}", "chip": "Became Law"}
+             for t in ("1989-1990", "1993-1994", "2023-2024", "2025-2026") for b in ("HB1", "HB7")]
+    rows = B.same_number_rows(notes, index)
+    assert set(rows) == {("1993-1994", "HB1"), ("2023-2024", "HB1"), ("2025-2026", "HB1")}, (
+        f"the standing-note bills are not exactly the HB 1s from 1993: {sorted(rows)}")
+    assert [r["term"] for r in rows[("2025-2026", "HB1")]] == ["2023-2024", "1993-1994"], (
+        "the other terms are not newest first, or one before the note's `from` is listed")
+    assert all(r["id"] == "HB1" for rs in rows.values() for r in rs) and ("2025-2026", "HB7") not in rows
+    mine = {"id": "HB1", "n": "HB 1", "year": "2025"}
+    d = {"same_number": rows[("2025-2026", "HB1")]}
+    html = _app_js("(() => { const D = " + json.dumps({"b": mine, "d": d, "e": {}}) + "; return {"
+                   "yes: scope.renderRelated(D.b, [], D.d), no: scope.renderRelated(D.b, [], D.e)}; })()",
+                   names=("renderRelated",))
+    if html is None:
+        return "skip", "node or app.js is not here"
+    yes = html["yes"]
+    assert "HB 1 in other terms" in yes, f"the heading is missing: {yes[:300]!a}"
+    assert yes.index('href="bill/2023/hb1"') < yes.index('href="bill/1993/hb1"'), "the rows are not newest first"
+    assert "HB 1 of 2023–2024" in yes and "title 2023-2024" in yes and "Became Law" in yes, (
+        "a row lacks its term, its title or its outcome chip")
+    assert "in other terms" not in html["no"], "a bill with no same-number list has the heading"
+    return "ok", "HB 1 lists its other terms from 1993-1994, newest first, linked, with title and chip; HB 7 and bills with no note none"
 
 
 @check("frontend", "a tally in How it got here stays on one line, never broken after its dash")

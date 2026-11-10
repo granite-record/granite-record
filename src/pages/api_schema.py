@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.5
+# GRANITE_VERSION: 2026-10-30.6
 """
 What every file of the data API holds, field by field: /data/schema.json.
 
@@ -201,6 +201,7 @@ BILL_FIELDS = {
     "archived": ("object", "For a bill of a finished term: which parts of its record this site has collected.", P),
     "session_over": ("string", "Why nothing follows, on a bill of the sitting term that ran out of days.", P),
     "bill_note": ("object", "A note written by this site on what a recurring bill number means.", P),
+    "same_number": ("array", "For a bill number with such a note, the same number in each other term the note is true of: year, number, title and outcome.", P),
     "changed": ("object", "What the bill's text changes, as the page draws it.", P),
 }
 

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.297
+// GRANITE_VERSION: 2026-09-07.298
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -7261,6 +7261,23 @@ function relatedMerge(rel){
   }
   return out;
 }
+// THE SAME NUMBER IN OTHER TERMS (the owner, 10 November 2026: "the history
+// tab should match prior bills for standard ones like HB1, HB2, HB25"). For a
+// number corrections/bill_notes.json gives a standing meaning, the build
+// (build_site_v2.add_same_number) writes d.same_number: the same number in each
+// other term the note is true of, newest first. Each row links to that term's
+// bill, with its title and its outcome chip as the History tab's other rows.
+function sameNumber(b,d){
+  const rows=(d&&d.same_number)||[];
+  if(!rows.length)return "";
+  const num=esc(b.n||b.id);
+  return `<section class="rl-g sn"><h2 class="sech">${num} in other terms</h2><ul class="rl-list">${
+    rows.map(r=>{
+      const term=esc(String(r.term||"").replace("-","\u2013"));
+      const c=r.c?" "+chip(r.c,`cstat ${chipCls({chip:r.c})}`):"";
+      return `<li class="rl-row"><p class="rl-s"><a href="bill/${esc(r.y)}/${esc(String(r.id||b.id).toLowerCase())}">${
+        esc(r.n||b.id)} of ${term}</a></p><p class="rl-t">${esc(r.t||"")}${c}</p></li>`;}).join("")}</ul></section>`;
+}
 function renderRelated(b,relRows,d){
   const rel=relatedMerge(relRows);
   const groups=[[],[],[]];
@@ -7280,7 +7297,7 @@ function renderRelated(b,relRows,d){
     return `<li class="rl-row"><p class="rl-s">${said}</p>`
       +`<p class="rl-t">${esc(e.t)}${chips?" "+chips:""}</p></li>`;
   };
-  return groups.map((g,i)=>g.length
+  return sameNumber(b,d)+groups.map((g,i)=>g.length
     ?`<section class="rl-g"><h2 class="sech">${RELATED_HEADS[i]}</h2><ul class="rl-list">${g.map(row).join("")}</ul></section>`:"").join("")
     +(rel.length?"":`<p class="story">No other bill was found sharing most of this bill&rsquo;s language.</p>`)
     +`<p class="src">Found by comparing the text of bills and their amendments. A bill is listed
