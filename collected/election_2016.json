@@ -1,0 +1,875 @@
+{
+ "_about": [
+   "What the Secretary of State's results files say of the State Representative and State Senate races, read by src/parse/parse_sos_results.py from the files named in _source and held to the district table (none, for the districts of 2012: see _notes). Nothing in it is this project's decision but the winners, which the files do not mark: the candidates with the most votes, as many as the race has seats; a tie for the last seat is null.",
+   "Write the file again by running the reader, never by hand: --check says where the saved files and this disagree."
+ ],
+ "_notes": [
+   "The districts of 2016 are the 2012 districts, and no table of them is on this machine, so no race here is held to a district table: each is what its file lists, its towns as the file spells them, its seats from its header, and whether it floats from its towns.",
+   "Not on file: Strafford County's State Representative results (the Secretary of State's site no longer serves the file), so the races of that county are not here and are filled from no other source.",
+   "Not on file: the State Senate results (the Secretary of State's site no longer serves the files), so no State Senate race is here and none is filled from another source.",
+   "2016-ge-house-belknap.xls, sheet 'belknap rep', row 42: the header prints 'Raymond,', read as the candidate 'Raymond', whose party the file leaves out",
+   "2016-ge-house-hillsborough.xls, sheet 'hillsborough rep', row 4: the header prints 'Scattter', read as Scatter",
+   "2016-ge-house-hillsborough.xls, sheet 'hillsborough rep', row 40: the header prints 'Renfrew-Hebert', read as the candidate 'Renfrew-Hebert', whose party the file leaves out",
+   "2016-ge-house-hillsborough.xls, sheet 'hillsborough rep', row 53: the header prints 'Scattter', read as Scatter",
+   "2016-ge-house-hillsborough.xls, sheet 'hillsborough rep', row 238: the file's footnote '*corrections submitted by clerk' belongs to the place it stars; its figures are those the file prints",
+   "2016-ge-house-merrimack.xls, sheet 'merrimack rep', row 16: the header prints 'Distict No. 3 (2)', read as 'District No. 3 (2)': the first word is one letter off District",
+   "2016-ge-house-merrimack.xls, sheet 'merrimack rep', row 54: the header prints 'Moffett, H. d', read as Moffett, H., d",
+   "2016-ge-house-merrimack.xls, sheet 'merrimack rep', row 99: the write-ins nobody named add up to 5 by the towns and the file's Totals say 1; the towns' sum is read",
+   "2016-ge-house-rockingham.xls, sheet 'rrockrep', row 63: a count with no town, in no candidate's column ([4]); not read",
+   "2016-ge-house-belknap.xls: 3 blank cell(s) in a Scatter column, which this layout leaves blank for none, read as none",
+   "2016-ge-house-carroll.xls: 2 blank cell(s) in a Scatter column, which this layout leaves blank for none, read as none",
+   "2016-ge-house-cheshire.xls: 1 blank cell(s) in a Scatter column, which this layout leaves blank for none, read as none",
+   "2016-ge-house-hillsborough.xls: 4 blank cell(s) in a Scatter column, which this layout leaves blank for none, read as none",
+   "2016-ge-house-merrimack.xls: 6 blank cell(s) in a Scatter column, which this layout leaves blank for none, read as none"
+ ],
+ "_not_on_file": {"counties": ["Strafford"], "senate": true},
+ "_source": [
+  {"file": "records/sources/2016-ge-house-belknap.xls", "url": "https://www.sos.nh.gov/elections/2016-election-results/2016-general-election-results", "saved": "2026-11-10", "sha256": "e9d7226a875a3efc6b229c54075e37960fe06c35b6f9ed1cc0d5b81517699971", "file_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/2016-ge-house-belknap.xls"},
+  {"file": "records/sources/2016-ge-house-carroll.xls", "url": "https://www.sos.nh.gov/elections/2016-election-results/2016-general-election-results", "saved": "2026-11-10", "sha256": "0c37b160fa817f0ec6990971e108aef66dff0fa093db852d90637a0d1877e2c8", "file_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/2016-ge-house-carroll.xls"},
+  {"file": "records/sources/2016-ge-house-cheshire.xls", "url": "https://www.sos.nh.gov/elections/2016-election-results/2016-general-election-results", "saved": "2026-11-10", "sha256": "d181f00edb07a84730f097a886cf77cf5bc2e2f9d1d07f630fdc979120893501", "file_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/2016-ge-house-cheshire.xls"},
+  {"file": "records/sources/2016-ge-house-coos.xlsx", "url": "https://www.sos.nh.gov/elections/2016-election-results/2016-general-election-results", "saved": "2026-11-10", "sha256": "85c5faa50b2731caeb8ecd31144514d28bcc513ad50c9335d28f15b99211c8e3", "file_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/2016-ge-house-coos.xlsx"},
+  {"file": "records/sources/2016-ge-house-grafton.xls", "url": "https://www.sos.nh.gov/elections/2016-election-results/2016-general-election-results", "saved": "2026-11-10", "sha256": "f33ee1eb776c64b807dbf4bf973f44b990f1552474be43d6dd07da05eb8b3262", "file_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/2016-ge-house-grafton.xls"},
+  {"file": "records/sources/2016-ge-house-hillsborough.xls", "url": "https://www.sos.nh.gov/elections/2016-election-results/2016-general-election-results", "saved": "2026-11-10", "sha256": "58ad31d12c2d4e90cf32f6b2659ae7ee35d88aef7a48b008c39bbfbc4af1bba8", "file_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/2016-ge-house-hillsborough.xls"},
+  {"file": "records/sources/2016-ge-house-merrimack.xls", "url": "https://www.sos.nh.gov/elections/2016-election-results/2016-general-election-results", "saved": "2026-11-10", "sha256": "99d7308896f8c84ba4287ad3502904bd86843133eaaee1ecd3c90ebc3d8ed31a", "file_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/2016-ge-house-merrimack.xls"},
+  {"file": "records/sources/2016-ge-house-rockingham.xls", "url": "https://www.sos.nh.gov/elections/2016-election-results/2016-general-election-results", "saved": "2026-11-10", "sha256": "e57dd3703ba2b287173a53f3f8276d5df687a5d5a9a17ab501d8cae054bc30ff", "file_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/2016-ge-house-rockingham.xls"},
+  {"file": "records/sources/2016-ge-house-sullivan.xls", "url": "https://www.sos.nh.gov/elections/2016-election-results/2016-general-election-results", "saved": "2026-11-10", "sha256": "5b9939d4aa89e2271f1a16854127332edeb83f336277fe8b999efb66aa22e981", "file_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/2016-ge-house-sullivan.xls"}
+ ],
+ "election": "2016-11-08",
+ "term": "2017-2018",
+ "races": {
+  "H|Belknap|1": {"seats": 1, "floterial": false, "towns": ["Center Harbor", "New Hampton"], "scatter": 4, "candidates": [
+    {"name": "Fraser", "party": "r", "votes": 1055, "write_in": false, "elected": true},
+    {"name": "Gulick", "party": "d", "votes": 936, "write_in": false, "elected": false}]},
+  "H|Belknap|2": {"seats": 4, "floterial": false, "towns": ["Gilford", "Meredith"], "scatter": 13, "candidates": [
+    {"name": "Abear", "party": "r", "votes": 4185, "write_in": false, "elected": true},
+    {"name": "Aldrich", "party": "r", "votes": 4340, "write_in": false, "elected": true},
+    {"name": "Silber", "party": "r", "votes": 3933, "write_in": false, "elected": true},
+    {"name": "Vadney", "party": "r", "votes": 4057, "write_in": false, "elected": true},
+    {"name": "Andersen", "party": "d", "votes": 2817, "write_in": false, "elected": false},
+    {"name": "DiMartino", "party": "d", "votes": 3803, "write_in": false, "elected": false},
+    {"name": "Frost", "party": "d", "votes": 3140, "write_in": false, "elected": false},
+    {"name": "Piquado", "party": "d", "votes": 3143, "write_in": false, "elected": false}]},
+  "H|Belknap|3": {"seats": 4, "floterial": false, "towns": ["Laconia Wd 1", "Laconia Wd 2", "Laconia Wd 3", "Laconia Wd 4", "Laconia Wd 5", "Laconia Wd 6"], "scatter": 6, "candidates": [
+    {"name": "Flanders", "party": "r", "votes": 3804, "write_in": false, "elected": true},
+    {"name": "McCoole", "party": "r", "votes": 2947, "write_in": false, "elected": false},
+    {"name": "Spanos", "party": "r", "votes": 3504, "write_in": false, "elected": true},
+    {"name": "Tilton", "party": "r", "votes": 3651, "write_in": false, "elected": true},
+    {"name": "Dawson", "party": "d", "votes": 2707, "write_in": false, "elected": false},
+    {"name": "Huot", "party": "d", "votes": 3226, "write_in": false, "elected": true},
+    {"name": "Merry", "party": "d", "votes": 2892, "write_in": false, "elected": false},
+    {"name": "St. Clair", "party": "d", "votes": 3050, "write_in": false, "elected": false}]},
+  "H|Belknap|4": {"seats": 2, "floterial": false, "towns": ["Sanbornton", "Tilton"], "scatter": 18, "recounted": true, "candidates": [
+    {"name": "Fields", "party": "r", "votes": 1837, "write_in": false, "elected": true},
+    {"name": "Lang \u0001", "party": "r", "votes": 1530, "write_in": false, "elected": true},
+    {"name": "Burke", "party": "d", "votes": 1238, "write_in": false, "elected": false},
+    {"name": "Raymond", "party": "", "votes": 1513, "write_in": false, "elected": false}]},
+  "H|Belknap|5": {"seats": 2, "floterial": false, "towns": ["Alton", "Gilmanton"], "scatter": 2, "candidates": [
+    {"name": "Maloney", "party": "r", "votes": 3287, "write_in": false, "elected": true},
+    {"name": "Varney", "party": "r", "votes": 3073, "write_in": false, "elected": true},
+    {"name": "Abbott", "party": "d", "votes": 1785, "write_in": false, "elected": false},
+    {"name": "Brown", "party": "d", "votes": 1456, "write_in": false, "elected": false}]},
+  "H|Belknap|6": {"seats": 2, "floterial": false, "towns": ["Belmont"], "scatter": null, "candidates": [
+    {"name": "Plumer", "party": "r", "votes": 1707, "write_in": false, "elected": true},
+    {"name": "Sylvia", "party": "r", "votes": 1852, "write_in": false, "elected": true},
+    {"name": "Condodometraky", "party": "d", "votes": 887, "write_in": false, "elected": false},
+    {"name": "Lacey", "party": "d", "votes": 1254, "write_in": false, "elected": false}]},
+  "H|Belknap|7": {"seats": 1, "floterial": false, "towns": ["Barnstead"], "scatter": null, "candidates": [
+    {"name": "Comtois", "party": "r", "votes": 1471, "write_in": false, "elected": true},
+    {"name": "Marriott", "party": "d", "votes": 979, "write_in": false, "elected": false}]},
+  "H|Belknap|8": {"seats": 1, "floterial": true, "towns": ["Alton", "Barnstead", "Gilmanton"], "scatter": 6, "candidates": [
+    {"name": "Howard \u0001", "party": "r", "votes": 4831, "write_in": false, "elected": true},
+    {"name": "Henry", "party": "d", "votes": 2726, "write_in": false, "elected": false}]},
+  "H|Belknap|9": {"seats": 1, "floterial": true, "towns": ["Belmont", "Laconia Wd 1", "Laconia Wd 2", "Laconia Wd 3", "Laconia Wd 4", "Laconia Wd 5", "Laconia Wd 6"], "scatter": 5, "candidates": [
+    {"name": "Fisher", "party": "r", "votes": 5700, "write_in": false, "elected": true},
+    {"name": "Arsenault", "party": "d", "votes": 5000, "write_in": false, "elected": false}]},
+  "H|Carroll|1": {"seats": 1, "floterial": false, "towns": ["Bartlett", "Hart's Location", "Jackson"], "scatter": 3, "candidates": [
+    {"name": "Chandler", "party": "r", "votes": 1360, "write_in": false, "elected": true},
+    {"name": "Corbett", "party": "d", "votes": 1221, "write_in": false, "elected": false}]},
+  "H|Carroll|2": {"seats": 3, "floterial": false, "towns": ["Chatham", "Conway", "Eaton", "Hale's Location"], "scatter": 8, "candidates": [
+    {"name": "Umberger", "party": "r", "votes": 2507, "write_in": false, "elected": true},
+    {"name": "Cuccio", "party": "r", "votes": 1970, "write_in": false, "elected": false},
+    {"name": "McCarthy", "party": "r", "votes": 2372, "write_in": false, "elected": true},
+    {"name": "White", "party": "d", "votes": 2275, "write_in": false, "elected": false},
+    {"name": "Buco", "party": "d", "votes": 2508, "write_in": false, "elected": true},
+    {"name": "Carney", "party": "d", "votes": 2011, "write_in": false, "elected": false}]},
+  "H|Carroll|3": {"seats": 2, "floterial": false, "towns": ["Albany", "Freedom", "Madison", "Tamworth"], "scatter": 6, "candidates": [
+    {"name": "McConkey", "party": "r", "votes": 2217, "write_in": false, "elected": true},
+    {"name": "Knirk", "party": "d", "votes": 1852, "write_in": false, "elected": true},
+    {"name": "Ticehurst", "party": "d", "votes": 1831, "write_in": false, "elected": false}]},
+  "H|Carroll|4": {"seats": 2, "floterial": false, "towns": ["Moultonborough", "Sandwich", "Tuftonboro"], "scatter": 2, "candidates": [
+    {"name": "Crawford", "party": "r", "votes": 2985, "write_in": false, "elected": true},
+    {"name": "Cordelli", "party": "r", "votes": 3029, "write_in": false, "elected": true},
+    {"name": "Punturieri", "party": "d", "votes": 1777, "write_in": false, "elected": false},
+    {"name": "Chehames", "party": "d", "votes": 1886, "write_in": false, "elected": false}]},
+  "H|Carroll|5": {"seats": 3, "floterial": false, "towns": ["Brookfield", "Effingham", "Ossipee", "Wakefield"], "scatter": 4, "candidates": [
+    {"name": "Nelson", "party": "r", "votes": 2902, "write_in": false, "elected": true},
+    {"name": "Avellani", "party": "r", "votes": 2938, "write_in": false, "elected": true},
+    {"name": "Comeau", "party": "r", "votes": 2753, "write_in": false, "elected": true},
+    {"name": "Turner", "party": "d", "votes": 1515, "write_in": false, "elected": false},
+    {"name": "Hall", "party": "d", "votes": 1601, "write_in": false, "elected": false},
+    {"name": "Swanick", "party": "d", "votes": 1722, "write_in": false, "elected": false}]},
+  "H|Carroll|6": {"seats": 2, "floterial": false, "towns": ["Wolfeboro"], "scatter": 3, "candidates": [
+    {"name": "Parker", "party": "r", "votes": 2231, "write_in": false, "elected": true},
+    {"name": "Schmidt", "party": "r", "votes": 1960, "write_in": false, "elected": true},
+    {"name": "Goodwin", "party": "d", "votes": 1488, "write_in": false, "elected": false},
+    {"name": "Seibel", "party": "d", "votes": 1667, "write_in": false, "elected": false}]},
+  "H|Carroll|7": {"seats": 1, "floterial": true, "towns": ["Albany", "Bartlett", "Chatham", "Conway", "Eaton", "Freedom", "Hale's Location", "Hart's Location", "Jackson", "Madison", "Tamworth"], "scatter": 5, "candidates": [
+    {"name": "Tregenza", "party": "r", "votes": 4055, "write_in": false, "elected": false},
+    {"name": "Butler", "party": "d", "votes": 5497, "write_in": false, "elected": true},
+    {"name": "Skelton", "party": "ind", "votes": 2497, "write_in": false, "elected": false}]},
+  "H|Carroll|8": {"seats": 1, "floterial": true, "towns": ["Brookfield", "Effingham", "Moultonborough", "Ossipee", "Sandwich", "Tuftonboro", "Wakefield"], "scatter": 28, "candidates": [
+    {"name": "Marsh", "party": "r", "votes": 8145, "write_in": false, "elected": true}]},
+  "H|Cheshire|1": {"seats": 4, "floterial": false, "towns": ["Chesterfield", "Hinsdale", "Walpole", "Westmoreland"], "scatter": 9, "candidates": [
+    {"name": "Boaz", "party": "r", "votes": 2210, "write_in": false, "elected": false},
+    {"name": "Hodgkins \u0001", "party": "r", "votes": 2301, "write_in": false, "elected": false},
+    {"name": "Levlocke", "party": "r", "votes": 2381, "write_in": false, "elected": false},
+    {"name": "Smith", "party": "r", "votes": 2615, "write_in": false, "elected": false},
+    {"name": "Abbott", "party": "d", "votes": 3853, "write_in": false, "elected": true},
+    {"name": "Berch", "party": "d", "votes": 3594, "write_in": false, "elected": true},
+    {"name": "Harvey", "party": "d", "votes": 3574, "write_in": false, "elected": true},
+    {"name": "Weber", "party": "d", "votes": 3513, "write_in": false, "elected": true}]},
+  "H|Cheshire|2": {"seats": 1, "floterial": false, "towns": ["Alstead", "Marlow", "Surry"], "scatter": 1, "candidates": [
+    {"name": "Cartwright", "party": "r", "votes": 913, "write_in": false, "elected": false},
+    {"name": "Mann", "party": "d", "votes": 984, "write_in": false, "elected": true}]},
+  "H|Cheshire|3": {"seats": 1, "floterial": false, "towns": ["Gilsum", "Nelson", "Stoddard", "Sullivan"], "scatter": null, "candidates": [
+    {"name": "D'Arcy", "party": "r", "votes": 821, "write_in": false, "elected": false},
+    {"name": "Eaton", "party": "d", "votes": 1113, "write_in": false, "elected": true}]},
+  "H|Cheshire|4": {"seats": 1, "floterial": false, "towns": ["Keene Ward 1"], "scatter": 19, "candidates": [
+    {"name": "Stallcop", "party": "d", "votes": 1567, "write_in": false, "elected": true}]},
+  "H|Cheshire|5": {"seats": 1, "floterial": false, "towns": ["Keene Ward 2"], "scatter": 16, "candidates": [
+    {"name": "Bordenet", "party": "d", "votes": 1787, "write_in": false, "elected": true}]},
+  "H|Cheshire|6": {"seats": 1, "floterial": false, "towns": ["Keene Ward 3"], "scatter": 3, "candidates": [
+    {"name": "Meader", "party": "d", "votes": 1630, "write_in": false, "elected": true}]},
+  "H|Cheshire|7": {"seats": 1, "floterial": false, "towns": ["Keene Ward 4"], "scatter": 22, "candidates": [
+    {"name": "Johnsen", "party": "d", "votes": 1742, "write_in": false, "elected": true}]},
+  "H|Cheshire|8": {"seats": 1, "floterial": false, "towns": ["Keene Ward 5"], "scatter": 17, "candidates": [
+    {"name": "Fenton", "party": "d", "votes": 2100, "write_in": false, "elected": true}]},
+  "H|Cheshire|9": {"seats": 2, "floterial": false, "towns": ["Dublin", "Harrisville", "Jaffrey", "Roxbury"], "scatter": 1, "candidates": [
+    {"name": "Mazerall", "party": "r", "votes": 1699, "write_in": false, "elected": false},
+    {"name": "Creekmore", "party": "r", "votes": 1699, "write_in": false, "elected": false},
+    {"name": "Ley", "party": "d", "votes": 2199, "write_in": false, "elected": true},
+    {"name": "Ames", "party": "d", "votes": 2424, "write_in": false, "elected": true}]},
+  "H|Cheshire|10": {"seats": 1, "floterial": false, "towns": ["Marlborough", "Troy"], "scatter": 2, "candidates": [
+    {"name": "Bryans", "party": "r", "votes": 827, "write_in": false, "elected": false},
+    {"name": "Shepardson", "party": "d", "votes": 1231, "write_in": false, "elected": true}]},
+  "H|Cheshire|11": {"seats": 2, "floterial": false, "towns": ["Fitzwilliam", "Rindge"], "scatter": 12, "candidates": [
+    {"name": "Hunt", "party": "r", "votes": 2755, "write_in": false, "elected": true},
+    {"name": "O'Day", "party": "r", "votes": 2376, "write_in": false, "elected": true},
+    {"name": "Pat Martin", "party": "", "votes": 446, "write_in": true, "elected": false},
+    {"name": "Susan Emerson", "party": "", "votes": 40, "write_in": true, "elected": false}]},
+  "H|Cheshire|12": {"seats": 2, "floterial": false, "towns": ["Richmond", "Swanzey"], "scatter": 4, "candidates": [
+    {"name": "Sainsbury", "party": "r", "votes": 1859, "write_in": false, "elected": false},
+    {"name": "McConnell", "party": "r", "votes": 2099, "write_in": false, "elected": true},
+    {"name": "Picanco", "party": "d", "votes": 1516, "write_in": false, "elected": false},
+    {"name": "Faulkner", "party": "d", "votes": 1969, "write_in": false, "elected": true}]},
+  "H|Cheshire|13": {"seats": 1, "floterial": false, "towns": ["Winchester"], "scatter": 1, "candidates": [
+    {"name": "Nutting", "party": "r", "votes": 655, "write_in": false, "elected": false},
+    {"name": "Parkhurst", "party": "d", "votes": 1012, "write_in": false, "elected": true}]},
+  "H|Cheshire|14": {"seats": 1, "floterial": true, "towns": ["Dublin", "Fitzwilliam", "Harrisville", "Jaffrey", "Rindge", "Roxbury"], "scatter": 16, "candidates": [
+    {"name": "Sterling \u0001", "party": "r", "votes": 4983, "write_in": false, "elected": true},
+    {"name": "Lamois", "party": "d", "votes": 3741, "write_in": false, "elected": false}]},
+  "H|Cheshire|15": {"seats": 1, "floterial": true, "towns": ["Marlborough", "Richmond", "Swanzey", "Troy", "Winchester"], "scatter": 9, "candidates": [
+    {"name": "Malone", "party": "r", "votes": 3501, "write_in": false, "elected": false},
+    {"name": "Tatro", "party": "d", "votes": 4267, "write_in": false, "elected": true}]},
+  "H|Cheshire|16": {"seats": 2, "floterial": true, "towns": ["Keene Ward 1", "Keene Ward 2", "Keene Ward 3", "Keene Ward 4", "Keene Ward 5"], "scatter": 26, "candidates": [
+    {"name": "Reed", "party": "r", "votes": 3476, "write_in": false, "elected": false},
+    {"name": "Bagley", "party": "r", "votes": 3032, "write_in": false, "elected": false},
+    {"name": "Pearson", "party": "d", "votes": 6666, "write_in": false, "elected": true},
+    {"name": "Burridge", "party": "d", "votes": 6258, "write_in": false, "elected": true}]},
+  "H|Coos|1": {"seats": 2, "floterial": false, "towns": ["Atkinson & Gilmanton Ac Gt", "Cambridge", "Clarksville", "Colebrook", "Columbia", "Dix's Grant", "Dixville", "Errol", "Erving's Location", "Millsfield", "Odell", "Pittsburg", "Second College Grant", "Stewartstown", "Stratford", "Wentworth's Location"], "scatter": 12, "candidates": [
+    {"name": "Judd", "party": "r", "votes": 1373, "write_in": false, "elected": true},
+    {"name": "Fothergill", "party": "r", "votes": 1801, "write_in": false, "elected": true},
+    {"name": "Schoenly", "party": "d", "votes": 723, "write_in": false, "elected": false}]},
+  "H|Coos|2": {"seats": 1, "floterial": false, "towns": ["Dummer", "Milan", "Northumberland", "Stark"], "scatter": 22, "candidates": [
+    {"name": "Moynihan", "party": "d", "votes": 1409, "write_in": false, "elected": true}]},
+  "H|Coos|3": {"seats": 3, "floterial": false, "towns": ["Berlin"], "scatter": 18, "candidates": [
+    {"name": "Thomas", "party": "d", "votes": 2430, "write_in": false, "elected": true},
+    {"name": "Laflamme", "party": "d", "votes": 2479, "write_in": false, "elected": true},
+    {"name": "Theberge", "party": "d", "votes": 2604, "write_in": false, "elected": true}]},
+  "H|Coos|4": {"seats": 1, "floterial": false, "towns": ["Dalton", "Kilkenny", "Lancaster"], "scatter": 11, "candidates": [
+    {"name": "Richardson", "party": "r", "votes": 1229, "write_in": false, "elected": true},
+    {"name": "Fountain", "party": "d", "votes": 777, "write_in": false, "elected": false}]},
+  "H|Coos|5": {"seats": 1, "floterial": false, "towns": ["Carroll", "Jefferson", "Randolph", "Whitefield"], "scatter": 6, "candidates": [
+    {"name": "Balog", "party": "r", "votes": 972, "write_in": false, "elected": false},
+    {"name": "Tucker", "party": "d", "votes": 1423, "write_in": false, "elected": true}]},
+  "H|Coos|6": {"seats": 1, "floterial": false, "towns": ["Bean's Grant", "Bean's Purchase", "Chandler's Purchase", "Crawford's Purchase", "Cutt's Grant", "Gorham", "Green's Grant", "Hadley's Purchase", "Low and Burbank's Gt.", "Martin's Location", "Pinkham's Grant", "Sargent's Purchase", "Shelburne", "Success", "Thomp and Mes's Pur"], "scatter": 25, "candidates": [
+    {"name": "Hatch", "party": "d", "votes": 1287, "write_in": false, "elected": true}]},
+  "H|Coos|7": {"seats": 1, "floterial": true, "towns": ["Carroll", "Dalton", "Dummer", "Jefferson", "Kilkenny", "Lancaster", "Milan", "Northumberland", "Randolph", "Stark", "Whitefield"], "scatter": 39, "candidates": [
+    {"name": "Merner", "party": "r", "votes": 3527, "write_in": false, "elected": true},
+    {"name": "Grant", "party": "d", "votes": 2692, "write_in": false, "elected": false}]},
+  "H|Grafton|1": {"seats": 2, "floterial": false, "towns": ["Bethlehem", "Littleton"], "scatter": 4, "candidates": [
+    {"name": "Hennessey", "party": "r", "votes": 2103, "write_in": false, "elected": true},
+    {"name": "Gilman", "party": "r", "votes": 1938, "write_in": false, "elected": false},
+    {"name": "Massimilla", "party": "d", "votes": 2070, "write_in": false, "elected": true},
+    {"name": "Dotski", "party": "d", "votes": 1286, "write_in": false, "elected": false}]},
+  "H|Grafton|2": {"seats": 1, "floterial": false, "towns": ["Franconia", "Lisbon", "Lyman", "Monroe", "Sugar Hill"], "scatter": 5, "candidates": [
+    {"name": "Boutin", "party": "r", "votes": 1355, "write_in": false, "elected": true},
+    {"name": "Moore", "party": "d", "votes": 1203, "write_in": false, "elected": false}]},
+  "H|Grafton|3": {"seats": 1, "floterial": false, "towns": ["Bath", "Benton", "Easton", "Landaff", "Orford", "Piermont", "Warren"], "scatter": 2, "candidates": [
+    {"name": "Schwaegler", "party": "r", "votes": 1394, "write_in": false, "elected": true},
+    {"name": "Ford", "party": "d", "votes": 1278, "write_in": false, "elected": false}]},
+  "H|Grafton|4": {"seats": 1, "floterial": false, "towns": ["Haverhill"], "scatter": 17, "candidates": [
+    {"name": "Ladd", "party": "r", "votes": 1692, "write_in": false, "elected": true}]},
+  "H|Grafton|5": {"seats": 1, "floterial": false, "towns": ["Lincoln", "Livermore", "Waterville Valley", "Woodstock"], "scatter": 6, "candidates": [
+    {"name": "Ham", "party": "r", "votes": 1107, "write_in": false, "elected": true},
+    {"name": "Barry", "party": "d", "votes": 687, "write_in": false, "elected": false}]},
+  "H|Grafton|6": {"seats": 1, "floterial": false, "towns": ["Ellsworth", "Groton", "Orange", "Rumney", "Thornton"], "scatter": null, "candidates": [
+    {"name": "Bartlett", "party": "r", "votes": 1293, "write_in": false, "elected": false},
+    {"name": "Maes", "party": "d", "votes": 1448, "write_in": false, "elected": true}]},
+  "H|Grafton|7": {"seats": 1, "floterial": false, "towns": ["Campton"], "scatter": 2, "candidates": [
+    {"name": "Johnson", "party": "r", "votes": 966, "write_in": false, "elected": true},
+    {"name": "Osborne", "party": "d", "votes": 858, "write_in": false, "elected": false}]},
+  "H|Grafton|8": {"seats": 3, "floterial": false, "towns": ["Hebron", "Holderness", "Plymouth"], "scatter": 12, "candidates": [
+    {"name": "Nash", "party": "r", "votes": 1921, "write_in": false, "elected": false},
+    {"name": "Durham", "party": "r", "votes": 1740, "write_in": false, "elected": false},
+    {"name": "Bullek", "party": "r", "votes": 2018, "write_in": false, "elected": false},
+    {"name": "Smith", "party": "d", "votes": 2681, "write_in": false, "elected": true},
+    {"name": "Bennett", "party": "d", "votes": 2242, "write_in": false, "elected": true},
+    {"name": "Rand", "party": "d", "votes": 2729, "write_in": false, "elected": true}]},
+  "H|Grafton|9": {"seats": 2, "floterial": false, "towns": ["Alexandria", "Ashland", "Bridgewater", "Bristol", "Grafton"], "scatter": 1, "candidates": [
+    {"name": "Shackett", "party": "r", "votes": 2470, "write_in": false, "elected": true},
+    {"name": "Hull", "party": "r", "votes": 2097, "write_in": false, "elected": true},
+    {"name": "Frothingham", "party": "d", "votes": 1638, "write_in": false, "elected": false},
+    {"name": "Adjutant", "party": "d", "votes": 1913, "write_in": false, "elected": false}]},
+  "H|Grafton|10": {"seats": 1, "floterial": false, "towns": ["Enfield"], "scatter": 2, "candidates": [
+    {"name": "Lorrey", "party": "r", "votes": 945, "write_in": false, "elected": false},
+    {"name": "Dontonville", "party": "d", "votes": 1461, "write_in": false, "elected": true}]},
+  "H|Grafton|11": {"seats": 1, "floterial": false, "towns": ["Canaan", "Dorchester", "Wentworth"], "scatter": 26, "candidates": [
+    {"name": "Josephson", "party": "d", "votes": 1614, "write_in": false, "elected": true}]},
+  "H|Grafton|12": {"seats": 4, "floterial": false, "towns": ["Hanover", "Lyme"], "scatter": 126, "candidates": [
+    {"name": "Campion", "party": "d", "votes": 6261, "write_in": false, "elected": true},
+    {"name": "Higgins", "party": "d", "votes": 6273, "write_in": false, "elected": true},
+    {"name": "Mulligan", "party": "d", "votes": 6209, "write_in": false, "elected": true},
+    {"name": "Nordgren", "party": "d", "votes": 6144, "write_in": false, "elected": true}]},
+  "H|Grafton|13": {"seats": 4, "floterial": false, "towns": ["Lebanon Ward 1", "Lebanon Ward 2", "Lebanon Ward 3"], "scatter": 14, "candidates": [
+    {"name": "Balog", "party": "r", "votes": 2353, "write_in": false, "elected": false},
+    {"name": "Abel", "party": "d", "votes": 4167, "write_in": false, "elected": true},
+    {"name": "Almy", "party": "d", "votes": 4589, "write_in": false, "elected": true},
+    {"name": "Sykes", "party": "d", "votes": 4380, "write_in": false, "elected": true},
+    {"name": "White", "party": "d", "votes": 4306, "write_in": false, "elected": true}]},
+  "H|Grafton|14": {"seats": 1, "floterial": true, "towns": ["Bethlehem", "Franconia", "Lisbon", "Littleton", "Lyman", "Monroe", "Sugar Hill"], "scatter": 21, "candidates": [
+    {"name": "Bailey", "party": "r", "votes": 4812, "write_in": false, "elected": true}]},
+  "H|Grafton|15": {"seats": 1, "floterial": true, "towns": ["Bath", "Benton", "Easton", "Haverhill", "Landaff", "Orford", "Piermont", "Warren"], "scatter": 3, "candidates": [
+    {"name": "Binford", "party": "r", "votes": 2572, "write_in": false, "elected": true},
+    {"name": "Booth", "party": "d", "votes": 2004, "write_in": false, "elected": false}]},
+  "H|Grafton|16": {"seats": 1, "floterial": true, "towns": ["Canaan", "Dorchester", "Ellsworth", "Groton", "Orange", "Rumney", "Thornton", "Wentworth"], "scatter": 1, "candidates": [
+    {"name": "Brown", "party": "r", "votes": 2670, "write_in": false, "elected": true},
+    {"name": "Friedrich", "party": "d", "votes": 2483, "write_in": false, "elected": false}]},
+  "H|Grafton|17": {"seats": 1, "floterial": true, "towns": ["Alexandria", "Ashland", "Bridgewater", "Bristol", "Enfield", "Grafton"], "scatter": 7, "candidates": [
+    {"name": "Darrow", "party": "r", "votes": 3650, "write_in": false, "elected": true},
+    {"name": "Mulholland", "party": "d", "votes": 3369, "write_in": false, "elected": false}]},
+  "H|Hillsborough|1": {"seats": 2, "floterial": false, "towns": ["Antrim", "Hillsborough", "Windsor"], "scatter": 5, "candidates": [
+    {"name": "Levesque", "party": "r", "votes": 1926, "write_in": false, "elected": false},
+    {"name": "Fedolfi", "party": "r", "votes": 2127, "write_in": false, "elected": true},
+    {"name": "Shattuck", "party": "d", "votes": 1735, "write_in": false, "elected": false},
+    {"name": "Porter", "party": "d", "votes": 2036, "write_in": false, "elected": true}]},
+  "H|Hillsborough|2": {"seats": 3, "floterial": false, "towns": ["Deering", "Weare"], "scatter": null, "candidates": [
+    {"name": "Kurk", "party": "r", "votes": 2737, "write_in": false, "elected": true},
+    {"name": "Donovan", "party": "r", "votes": 2534, "write_in": false, "elected": true},
+    {"name": "Hopper", "party": "r", "votes": 2660, "write_in": false, "elected": true},
+    {"name": "Rocklin-Weare", "party": "d", "votes": 1696, "write_in": false, "elected": false},
+    {"name": "Dokton", "party": "d", "votes": 1439, "write_in": false, "elected": false},
+    {"name": "Gill", "party": "d", "votes": 1845, "write_in": false, "elected": false},
+    {"name": "Wilber", "party": "lib", "votes": 960, "write_in": false, "elected": false}]},
+  "H|Hillsborough|3": {"seats": 1, "floterial": false, "towns": ["Bennington", "Greenfield", "Hancock"], "scatter": 29, "candidates": [
+    {"name": "Manley \u0001", "party": "d", "votes": 1851, "write_in": false, "elected": true}]},
+  "H|Hillsborough|4": {"seats": 2, "floterial": false, "towns": ["Francestown", "Greenville", "Lyndeborough", "Wilton"], "scatter": 1, "candidates": [
+    {"name": "Schwanke", "party": "r", "votes": 2156, "write_in": false, "elected": false},
+    {"name": "Hastings", "party": "r", "votes": 2269, "write_in": false, "elected": false},
+    {"name": "Williams", "party": "d", "votes": 2319, "write_in": false, "elected": true},
+    {"name": "Roberts", "party": "d", "votes": 2339, "write_in": false, "elected": true}]},
+  "H|Hillsborough|5": {"seats": 2, "floterial": false, "towns": ["Mont Vernon", "New Boston"], "scatter": 7, "candidates": [
+    {"name": "Griffin", "party": "r", "votes": 2343, "write_in": false, "elected": true},
+    {"name": "Dickey", "party": "r", "votes": 2293, "write_in": false, "elected": true},
+    {"name": "Woodbury", "party": "d", "votes": 2192, "write_in": false, "elected": false},
+    {"name": "Golomb", "party": "d", "votes": 1700, "write_in": false, "elected": false}]},
+  "H|Hillsborough|6": {"seats": 5, "floterial": false, "towns": ["Goffstown"], "scatter": 18, "candidates": [
+    {"name": "Griffin", "party": "r", "votes": 4676, "write_in": false, "elected": true},
+    {"name": "Pierce", "party": "r", "votes": 4530, "write_in": false, "elected": true},
+    {"name": "Rouillard", "party": "r", "votes": 4222, "write_in": false, "elected": true},
+    {"name": "Zaricki", "party": "r", "votes": 4061, "write_in": false, "elected": true},
+    {"name": "Christie", "party": "r", "votes": 4124, "write_in": false, "elected": true},
+    {"name": "Lanza", "party": "d", "votes": 3325, "write_in": false, "elected": false},
+    {"name": "MacGregor", "party": "d", "votes": 3149, "write_in": false, "elected": false},
+    {"name": "Mackenzie", "party": "d", "votes": 3270, "write_in": false, "elected": false},
+    {"name": "Renfrew-Hebert", "party": "", "votes": 2985, "write_in": false, "elected": false}]},
+  "H|Hillsborough|7": {"seats": 6, "floterial": false, "towns": ["Bedford"], "scatter": 66, "candidates": [
+    {"name": "Gould", "party": "r", "votes": 7426, "write_in": false, "elected": true},
+    {"name": "Graham", "party": "r", "votes": 6554, "write_in": false, "elected": true},
+    {"name": "Murphy", "party": "r", "votes": 6585, "write_in": false, "elected": true},
+    {"name": "Wolf", "party": "r", "votes": 7345, "write_in": false, "elected": true},
+    {"name": "Danielson", "party": "r", "votes": 6590, "write_in": false, "elected": true},
+    {"name": "Fromuth", "party": "r", "votes": 6211, "write_in": false, "elected": true},
+    {"name": "Kanamine", "party": "d", "votes": 4466, "write_in": false, "elected": false},
+    {"name": "Hanauer", "party": "d", "votes": 4457, "write_in": false, "elected": false}]},
+  "H|Hillsborough|8": {"seats": 2, "floterial": false, "towns": ["Manchester Ward 1"], "scatter": 17, "candidates": [
+    {"name": "Warden", "party": "r", "votes": 1712, "write_in": false, "elected": false},
+    {"name": "Lachance", "party": "r", "votes": 2131, "write_in": false, "elected": false},
+    {"name": "Sullivan", "party": "d", "votes": 2546, "write_in": false, "elected": true},
+    {"name": "Goley", "party": "d", "votes": 2615, "write_in": false, "elected": true}]},
+  "H|Hillsborough|9": {"seats": 2, "floterial": false, "towns": ["Manchester Ward 2"], "scatter": 7, "candidates": [
+    {"name": "Whitfield", "party": "r", "votes": 1595, "write_in": false, "elected": false},
+    {"name": "Hutchinson", "party": "r", "votes": 1853, "write_in": false, "elected": false},
+    {"name": "O'Neil", "party": "d", "votes": 2091, "write_in": false, "elected": true},
+    {"name": "DiSilvestro", "party": "d", "votes": 2154, "write_in": false, "elected": true}]},
+  "H|Hillsborough|10": {"seats": 2, "floterial": false, "towns": ["Manchester Ward 3"], "scatter": 6, "candidates": [
+    {"name": "Yaakov", "party": "r", "votes": 678, "write_in": false, "elected": false},
+    {"name": "Heck", "party": "r", "votes": 935, "write_in": false, "elected": false},
+    {"name": "Long", "party": "d", "votes": 1643, "write_in": false, "elected": true},
+    {"name": "Jeudy", "party": "d", "votes": 1458, "write_in": false, "elected": true}]},
+  "H|Hillsborough|11": {"seats": 2, "floterial": false, "towns": ["Manchester Ward 4"], "scatter": 12, "candidates": [
+    {"name": "Mattingly", "party": "r", "votes": 1068, "write_in": false, "elected": false},
+    {"name": "Ghose", "party": "r", "votes": 836, "write_in": false, "elected": false},
+    {"name": "Walsh", "party": "d", "votes": 1542, "write_in": false, "elected": true},
+    {"name": "Edwards", "party": "d", "votes": 1882, "write_in": false, "elected": true}]},
+  "H|Hillsborough|12": {"seats": 2, "floterial": false, "towns": ["Manchester Ward 5"], "scatter": 8, "recounted": true, "candidates": [
+    {"name": "Freeman", "party": "r", "votes": 1128, "write_in": false, "elected": true},
+    {"name": "Gregoire", "party": "d", "votes": 1122, "write_in": false, "elected": false},
+    {"name": "Bouldin", "party": "d", "votes": 1341, "write_in": false, "elected": true}]},
+  "H|Hillsborough|13": {"seats": 2, "floterial": false, "towns": ["Manchester Ward 6"], "scatter": 7, "candidates": [
+    {"name": "McConville", "party": "r", "votes": 1898, "write_in": false, "elected": false},
+    {"name": "Gagne", "party": "r", "votes": 2363, "write_in": false, "elected": true},
+    {"name": "O'Leary", "party": "d", "votes": 2145, "write_in": false, "elected": true},
+    {"name": "Monzon", "party": "d", "votes": 1493, "write_in": false, "elected": false}]},
+  "H|Hillsborough|14": {"seats": 2, "floterial": false, "towns": ["Manchester Ward 7"], "scatter": 2, "candidates": [
+    {"name": "Reif", "party": "r", "votes": 1132, "write_in": false, "elected": false},
+    {"name": "Cole", "party": "r", "votes": 1400, "write_in": false, "elected": false},
+    {"name": "Heath", "party": "d", "votes": 1692, "write_in": false, "elected": true},
+    {"name": "Freitas", "party": "d", "votes": 1820, "write_in": false, "elected": true}]},
+  "H|Hillsborough|15": {"seats": 2, "floterial": false, "towns": ["Manchester Ward 8"], "scatter": 19, "candidates": [
+    {"name": "Vaillancourt", "party": "r", "votes": 2044, "write_in": false, "elected": true},
+    {"name": "McLean", "party": "r", "votes": 1934, "write_in": false, "elected": false},
+    {"name": "Katsiantonis", "party": "d", "votes": 2204, "write_in": false, "elected": true},
+    {"name": "Curran", "party": "d", "votes": 1656, "write_in": false, "elected": false}]},
+  "H|Hillsborough|16": {"seats": 2, "floterial": false, "towns": ["Manchester Ward 9"], "scatter": 10, "candidates": [
+    {"name": "Sullivan", "party": "r", "votes": 1973, "write_in": false, "elected": true},
+    {"name": "Shaw", "party": "d", "votes": 1927, "write_in": false, "elected": true},
+    {"name": "McCloskey", "party": "d", "votes": 1543, "write_in": false, "elected": false}]},
+  "H|Hillsborough|17": {"seats": 2, "floterial": false, "towns": ["Manchester Ward 10"], "scatter": 11, "candidates": [
+    {"name": "Simmons", "party": "r", "votes": 1509, "write_in": false, "elected": false},
+    {"name": "Garthwaite", "party": "r", "votes": 1487, "write_in": false, "elected": false},
+    {"name": "Smith", "party": "d", "votes": 1568, "write_in": false, "elected": true},
+    {"name": "Mackenzie", "party": "d", "votes": 1765, "write_in": false, "elected": true}]},
+  "H|Hillsborough|18": {"seats": 2, "floterial": false, "towns": ["Manchester Ward 11"], "scatter": 11, "candidates": [
+    {"name": "Gamache", "party": "r", "votes": 1206, "write_in": false, "elected": false},
+    {"name": "Evarts", "party": "r", "votes": 999, "write_in": false, "elected": false},
+    {"name": "Forest", "party": "d", "votes": 1269, "write_in": false, "elected": true},
+    {"name": "Cornell", "party": "d", "votes": 1597, "write_in": false, "elected": true}]},
+  "H|Hillsborough|19": {"seats": 2, "floterial": false, "towns": ["Manchester Ward 12"], "scatter": 5, "recounted": true, "candidates": [
+    {"name": "Marston", "party": "r", "votes": 1663, "write_in": false, "elected": false},
+    {"name": "Gardner", "party": "r", "votes": 1581, "write_in": false, "elected": false},
+    {"name": "Elber", "party": "d", "votes": 1669, "write_in": false, "elected": true},
+    {"name": "Backus", "party": "d", "votes": 1969, "write_in": false, "elected": true}]},
+  "H|Hillsborough|20": {"seats": 2, "floterial": false, "towns": ["Litchfield"], "scatter": null, "candidates": [
+    {"name": "Lascelles", "party": "r", "votes": 2720, "write_in": false, "elected": true},
+    {"name": "Byron", "party": "r", "votes": 2719, "write_in": false, "elected": true},
+    {"name": "Westervelt", "party": "d", "votes": 1105, "write_in": false, "elected": false},
+    {"name": "Ledoux", "party": "d", "votes": 1620, "write_in": false, "elected": false}]},
+  "H|Hillsborough|21": {"seats": 8, "floterial": false, "towns": ["Merrimack"], "scatter": 20, "candidates": [
+    {"name": "Moore", "party": "r", "votes": 6193, "write_in": false, "elected": true},
+    {"name": "Notter", "party": "r", "votes": 7117, "write_in": false, "elected": true},
+    {"name": "Pellegrino", "party": "r", "votes": 7050, "write_in": false, "elected": true},
+    {"name": "Barry", "party": "r", "votes": 6600, "write_in": false, "elected": true},
+    {"name": "Christensen", "party": "r", "votes": 7256, "write_in": false, "elected": true},
+    {"name": "Hinch", "party": "r", "votes": 7009, "write_in": false, "elected": true},
+    {"name": "Hynes", "party": "r", "votes": 6710, "write_in": false, "elected": true},
+    {"name": "L'Heureux", "party": "r", "votes": 7647, "write_in": false, "elected": true},
+    {"name": "Rotast", "party": "d", "votes": 4805, "write_in": false, "elected": false},
+    {"name": "Rothman", "party": "d", "votes": 4668, "write_in": false, "elected": false},
+    {"name": "Weisberg", "party": "d", "votes": 4283, "write_in": false, "elected": false},
+    {"name": "Grady", "party": "d", "votes": 5553, "write_in": false, "elected": false},
+    {"name": "Kojak", "party": "d", "votes": 5199, "write_in": false, "elected": false},
+    {"name": "Mower", "party": "d", "votes": 4976, "write_in": false, "elected": false},
+    {"name": "Nozell", "party": "d", "votes": 4288, "write_in": false, "elected": false}]},
+  "H|Hillsborough|22": {"seats": 3, "floterial": false, "towns": ["Amherst"], "scatter": null, "candidates": [
+    {"name": "Panasiti", "party": "r", "votes": 3557, "write_in": false, "elected": true},
+    {"name": "Hansen", "party": "r", "votes": 3416, "write_in": false, "elected": true},
+    {"name": "Jensen", "party": "r", "votes": 3295, "write_in": false, "elected": false},
+    {"name": "Radhakrishnan", "party": "d", "votes": 2636, "write_in": false, "elected": false},
+    {"name": "Chandley", "party": "d", "votes": 3541, "write_in": false, "elected": true},
+    {"name": "Gerzon", "party": "d", "votes": 2328, "write_in": false, "elected": false}]},
+  "H|Hillsborough|23": {"seats": 4, "floterial": false, "towns": ["Milford"], "scatter": 95, "candidates": [
+    {"name": "Biggie", "party": "r", "votes": 3448, "write_in": false, "elected": true},
+    {"name": "Burns", "party": "r", "votes": 3733, "write_in": false, "elected": true},
+    {"name": "Halstead", "party": "r", "votes": 3453, "write_in": false, "elected": true},
+    {"name": "Thornton", "party": "r", "votes": 3219, "write_in": false, "elected": false},
+    {"name": "deMichael", "party": "d", "votes": 2975, "write_in": false, "elected": false},
+    {"name": "Emmick", "party": "d", "votes": 2841, "write_in": false, "elected": false},
+    {"name": "Martin", "party": "d", "votes": 3489, "write_in": false, "elected": true},
+    {"name": "Salmon", "party": "d", "votes": 2864, "write_in": false, "elected": false}]},
+  "H|Hillsborough|24": {"seats": 2, "floterial": false, "towns": ["Peterborough"], "scatter": 21, "candidates": [
+    {"name": "Carpenter", "party": "r", "votes": 1419, "write_in": false, "elected": false},
+    {"name": "Vann", "party": "d", "votes": 2105, "write_in": false, "elected": true},
+    {"name": "Leishman", "party": "d", "votes": 2288, "write_in": false, "elected": true}]},
+  "H|Hillsborough|25": {"seats": 2, "floterial": false, "towns": ["New Ipswich", "Sharon", "Temple"], "scatter": 7, "candidates": [
+    {"name": "Somero", "party": "r", "votes": 2205, "write_in": false, "elected": true},
+    {"name": "Moore", "party": "r", "votes": 2054, "write_in": false, "elected": true},
+    {"name": "Beaudoin", "party": "d", "votes": 1437, "write_in": false, "elected": false},
+    {"name": "Lynch", "party": "d", "votes": 1192, "write_in": false, "elected": false}]},
+  "H|Hillsborough|26": {"seats": 2, "floterial": false, "towns": ["Brookline", "Mason"], "scatter": 4, "recounted": true, "candidates": [
+    {"name": "Lewicke", "party": "r", "votes": 1940, "write_in": false, "elected": true},
+    {"name": "Carr", "party": "r", "votes": 1890, "write_in": false, "elected": true},
+    {"name": "Taylor", "party": "d", "votes": 1484, "write_in": false, "elected": false},
+    {"name": "Levesque", "party": "d", "votes": 1845, "write_in": false, "elected": false}]},
+  "H|Hillsborough|27": {"seats": 2, "floterial": false, "towns": ["Hollis"], "scatter": 5, "candidates": [
+    {"name": "Gargasz", "party": "r", "votes": 2651, "write_in": false, "elected": true},
+    {"name": "Belanger", "party": "r", "votes": 2964, "write_in": false, "elected": true},
+    {"name": "Sweed", "party": "d", "votes": 1531, "write_in": false, "elected": false},
+    {"name": "Harris", "party": "d", "votes": 1807, "write_in": false, "elected": false}]},
+  "H|Hillsborough|28": {"seats": 3, "floterial": false, "towns": ["Nashua Ward 1"], "scatter": 14, "recounted": true, "candidates": [
+    {"name": "Seidel", "party": "r", "votes": 2482, "write_in": false, "elected": true},
+    {"name": "Eastman", "party": "r", "votes": 2342, "write_in": false, "elected": false},
+    {"name": "Ferreira", "party": "r", "votes": 2420, "write_in": false, "elected": true},
+    {"name": "Swersky", "party": "d", "votes": 2305, "write_in": false, "elected": false},
+    {"name": "Gale", "party": "d", "votes": 2414, "write_in": false, "elected": false},
+    {"name": "Schmidt", "party": "d", "votes": 2451, "write_in": false, "elected": true}]},
+  "H|Hillsborough|29": {"seats": 3, "floterial": false, "towns": ["Nashua Ward 2"], "scatter": 15, "candidates": [
+    {"name": "McCarthy", "party": "r", "votes": 2098, "write_in": false, "elected": true},
+    {"name": "Balboni", "party": "r", "votes": 1680, "write_in": false, "elected": false},
+    {"name": "Coupe", "party": "r", "votes": 1566, "write_in": false, "elected": false},
+    {"name": "Timmons", "party": "d", "votes": 1955, "write_in": false, "elected": false},
+    {"name": "Harvey", "party": "d", "votes": 2256, "write_in": false, "elected": true},
+    {"name": "Newman", "party": "d", "votes": 2127, "write_in": false, "elected": true}]},
+  "H|Hillsborough|30": {"seats": 3, "floterial": false, "towns": ["Nashua Ward 3"], "scatter": 18, "candidates": [
+    {"name": "Zelanes", "party": "r", "votes": 1506, "write_in": false, "elected": false},
+    {"name": "Hohensee", "party": "r", "votes": 1528, "write_in": false, "elected": false},
+    {"name": "Scontsas", "party": "r", "votes": 1859, "write_in": false, "elected": false},
+    {"name": "Rosenwald", "party": "d", "votes": 2287, "write_in": false, "elected": true},
+    {"name": "Klee", "party": "d", "votes": 1926, "write_in": false, "elected": true},
+    {"name": "MacKay", "party": "d", "votes": 2021, "write_in": false, "elected": true}]},
+  "H|Hillsborough|31": {"seats": 3, "floterial": false, "towns": ["Nashua Ward 4"], "scatter": 19, "candidates": [
+    {"name": "Brandolini", "party": "r", "votes": 1059, "write_in": false, "elected": false},
+    {"name": "Keane", "party": "d", "votes": 1523, "write_in": false, "elected": true},
+    {"name": "Ayala", "party": "d", "votes": 1739, "write_in": false, "elected": true},
+    {"name": "Cote", "party": "d", "votes": 1563, "write_in": false, "elected": true}]},
+  "H|Hillsborough|32": {"seats": 3, "floterial": false, "towns": ["Nashua Ward 5"], "scatter": 9, "recounted": true, "candidates": [
+    {"name": "Negron", "party": "r", "votes": 2346, "write_in": false, "elected": true},
+    {"name": "LeBrun", "party": "r", "votes": 2462, "write_in": false, "elected": true},
+    {"name": "Murotake", "party": "r", "votes": 2360, "write_in": false, "elected": true},
+    {"name": "Labrecque", "party": "d", "votes": 2286, "write_in": false, "elected": false},
+    {"name": "Hermansen", "party": "d", "votes": 1928, "write_in": false, "elected": false},
+    {"name": "Kelley", "party": "d", "votes": 2312, "write_in": false, "elected": false}]},
+  "H|Hillsborough|33": {"seats": 3, "floterial": false, "towns": ["Nashua Ward 6"], "scatter": 8, "candidates": [
+    {"name": "Scully", "party": "r", "votes": 1855, "write_in": false, "elected": true},
+    {"name": "King", "party": "d", "votes": 1666, "write_in": false, "elected": true},
+    {"name": "Booras", "party": "d", "votes": 1539, "write_in": false, "elected": false},
+    {"name": "Gidge", "party": "d", "votes": 1842, "write_in": false, "elected": true}]},
+  "H|Hillsborough|34": {"seats": 3, "floterial": false, "towns": ["Nashua Ward 7"], "scatter": 22, "candidates": [
+    {"name": "Whalen", "party": "r", "votes": 1542, "write_in": false, "elected": false},
+    {"name": "Hogan", "party": "r", "votes": 1460, "write_in": false, "elected": false},
+    {"name": "Twombly", "party": "r", "votes": 1603, "write_in": false, "elected": true},
+    {"name": "Sofikitis", "party": "d", "votes": 1751, "write_in": false, "elected": true},
+    {"name": "Arias", "party": "d", "votes": 1542, "write_in": false, "elected": false},
+    {"name": "Nutting", "party": "d", "votes": 1788, "write_in": false, "elected": true}]},
+  "H|Hillsborough|35": {"seats": 3, "floterial": false, "towns": ["Nashua Ward 8"], "scatter": 11, "candidates": [
+    {"name": "Stebbins", "party": "r", "votes": 1884, "write_in": false, "elected": false},
+    {"name": "Rioux", "party": "r", "votes": 1766, "write_in": false, "elected": false},
+    {"name": "Ross", "party": "r", "votes": 1811, "write_in": false, "elected": false},
+    {"name": "Mangipudi", "party": "d", "votes": 2420, "write_in": false, "elected": true},
+    {"name": "Cleaver", "party": "d", "votes": 2165, "write_in": false, "elected": true},
+    {"name": "Lisle", "party": "d", "votes": 2017, "write_in": false, "elected": true}]},
+  "H|Hillsborough|36": {"seats": 3, "floterial": false, "towns": ["Nashua Ward 9"], "scatter": 27, "recounted": true, "candidates": [
+    {"name": "Ohm", "party": "r", "votes": 2247, "write_in": false, "elected": true},
+    {"name": "Brown", "party": "r", "votes": 1989, "write_in": false, "elected": false},
+    {"name": "O'Brien \u0001", "party": "d", "votes": 2496, "write_in": false, "elected": true},
+    {"name": "Harriott-Gathright", "party": "d", "votes": 2132, "write_in": false, "elected": false},
+    {"name": "Jack", "party": "d", "votes": 2184, "write_in": false, "elected": true}]},
+  "H|Hillsborough|37": {"seats": 11, "floterial": false, "towns": ["Hudson", "Pelham"], "scatter": 130, "candidates": [
+    {"name": "Hellwig", "party": "r", "votes": 7953, "write_in": false, "elected": true},
+    {"name": "Jasper", "party": "r", "votes": 9405, "write_in": false, "elected": true},
+    {"name": "Ober, L.", "party": "r", "votes": 10192, "write_in": false, "elected": true},
+    {"name": "Ober, R.", "party": "r", "votes": 9262, "write_in": false, "elected": true},
+    {"name": "Prout", "party": "r", "votes": 7723, "write_in": false, "elected": true},
+    {"name": "Renzullo", "party": "r", "votes": 7923, "write_in": false, "elected": true},
+    {"name": "Rice", "party": "r", "votes": 9540, "write_in": false, "elected": true},
+    {"name": "Schleien", "party": "r", "votes": 7187, "write_in": false, "elected": true},
+    {"name": "Smith", "party": "r", "votes": 8302, "write_in": false, "elected": true},
+    {"name": "Ulery", "party": "r", "votes": 7981, "write_in": false, "elected": true},
+    {"name": "Dyer", "party": "r", "votes": 7736, "write_in": false, "elected": true},
+    {"name": "Hallisey", "party": "d", "votes": 5391, "write_in": false, "elected": false},
+    {"name": "Kennedy", "party": "d", "votes": 6780, "write_in": false, "elected": false},
+    {"name": "Lynde", "party": "d", "votes": 6220, "write_in": false, "elected": false},
+    {"name": "Messner", "party": "d", "votes": 6342, "write_in": false, "elected": false},
+    {"name": "Moriarty", "party": "d", "votes": 5892, "write_in": false, "elected": false},
+    {"name": "Schneiderman", "party": "d", "votes": 4847, "write_in": false, "elected": false},
+    {"name": "Urrutia", "party": "d", "votes": 5033, "write_in": false, "elected": false},
+    {"name": "Blue", "party": "d", "votes": 5974, "write_in": false, "elected": false},
+    {"name": "Fairbanks", "party": "d", "votes": 5217, "write_in": false, "elected": false}]},
+  "H|Hillsborough|38": {"seats": 2, "floterial": true, "towns": ["Antrim", "Bennington", "Francestown", "Greenfield", "Greenville", "Hancock", "Hillsborough", "Lyndeborough", "Wilton", "Windsor"], "scatter": 10, "candidates": [
+    {"name": "Valera", "party": "r", "votes": 5415, "write_in": false, "elected": true},
+    {"name": "Kofalt", "party": "r", "votes": 5414, "write_in": false, "elected": false},
+    {"name": "Peco", "party": "d", "votes": 4898, "write_in": false, "elected": false},
+    {"name": "McNamara", "party": "d", "votes": 5595, "write_in": false, "elected": true}]},
+  "H|Hillsborough|39": {"seats": 1, "floterial": true, "towns": ["Deering", "Goffstown", "Weare"], "scatter": 4, "candidates": [
+    {"name": "Burt", "party": "r", "votes": 8543, "write_in": false, "elected": true},
+    {"name": "Ashworth", "party": "d", "votes": 5726, "write_in": false, "elected": false}]},
+  "H|Hillsborough|40": {"seats": 1, "floterial": true, "towns": ["Hollis", "Milford", "Mont Vernon", "New Boston"], "scatter": 43, "candidates": [
+    {"name": "Ammon", "party": "r", "votes": 8984, "write_in": false, "elected": true},
+    {"name": "McGhee", "party": "d", "votes": 7841, "write_in": false, "elected": false}]},
+  "H|Hillsborough|41": {"seats": 1, "floterial": true, "towns": ["Amherst", "Bedford"], "scatter": 5, "candidates": [
+    {"name": "Sanborn", "party": "r", "votes": 11984, "write_in": false, "elected": true},
+    {"name": "Shonle", "party": "d", "votes": 7036, "write_in": false, "elected": false}]},
+  "H|Hillsborough|42": {"seats": 2, "floterial": true, "towns": ["Manchester Ward 1", "Manchester Ward 2", "Manchester Ward 3"], "scatter": 26, "candidates": [
+    {"name": "Pugh", "party": "r", "votes": 3905, "write_in": false, "elected": false},
+    {"name": "Harris", "party": "r", "votes": 4850, "write_in": false, "elected": false},
+    {"name": "Snow", "party": "d", "votes": 6000, "write_in": false, "elected": true},
+    {"name": "Martineau", "party": "d", "votes": 5922, "write_in": false, "elected": true}]},
+  "H|Hillsborough|43": {"seats": 3, "floterial": true, "towns": ["Manchester Ward 4", "Manchester Ward 5", "Manchester Ward 6", "Manchester Ward 7"], "scatter": 34, "candidates": [
+    {"name": "Stevens", "party": "r", "votes": 4168, "write_in": false, "elected": false},
+    {"name": "Langdon", "party": "r", "votes": 5049, "write_in": false, "elected": false},
+    {"name": "Souza", "party": "r", "votes": 5594, "write_in": false, "elected": true},
+    {"name": "Herbert", "party": "d", "votes": 6541, "write_in": false, "elected": true},
+    {"name": "Baroody", "party": "d", "votes": 5770, "write_in": false, "elected": true},
+    {"name": "Garand", "party": "d", "votes": 4785, "write_in": false, "elected": false}]},
+  "H|Hillsborough|44": {"seats": 2, "floterial": true, "towns": ["Litchfield", "Manchester Ward 8", "Manchester Ward 9"], "scatter": 27, "candidates": [
+    {"name": "Proulx", "party": "r", "votes": 6553, "write_in": false, "elected": true},
+    {"name": "Martel", "party": "r", "votes": 5781, "write_in": false, "elected": true},
+    {"name": "Morin", "party": "d", "votes": 5020, "write_in": false, "elected": false},
+    {"name": "Haworth", "party": "d", "votes": 4068, "write_in": false, "elected": false}]},
+  "H|Hillsborough|45": {"seats": 2, "floterial": true, "towns": ["Manchester Ward 10", "Manchester Ward 11", "Manchester Ward 12"], "scatter": 29, "candidates": [
+    {"name": "Morris", "party": "r", "votes": 3838, "write_in": false, "elected": false},
+    {"name": "Gonzalez", "party": "r", "votes": 4361, "write_in": false, "elected": false},
+    {"name": "Van Houten", "party": "d", "votes": 4672, "write_in": false, "elected": true},
+    {"name": "Beaulieu", "party": "d", "votes": 5119, "write_in": false, "elected": true}]},
+  "H|Merrimack|1": {"seats": 1, "floterial": false, "towns": ["Andover", "Danbury", "Salisbury"], "scatter": 2, "candidates": [
+    {"name": "Copp", "party": "r", "votes": 1453, "write_in": false, "elected": true},
+    {"name": "Broshek", "party": "d", "votes": 1296, "write_in": false, "elected": false}]},
+  "H|Merrimack|2": {"seats": 2, "floterial": false, "towns": ["Franklin Ward 1", "Franklin Ward 2", "Hill"], "scatter": 4, "candidates": [
+    {"name": "Testerman", "party": "r", "votes": 1377, "write_in": false, "elected": true},
+    {"name": "Horn", "party": "r", "votes": 1315, "write_in": false, "elected": true},
+    {"name": "Burns", "party": "d", "votes": 1195, "write_in": false, "elected": false},
+    {"name": "Bowley", "party": "d", "votes": 854, "write_in": false, "elected": false}]},
+  "H|Merrimack|3": {"seats": 2, "floterial": false, "towns": ["Franklin Ward 3", "Northfield"], "scatter": 5, "recounted": true, "candidates": [
+    {"name": "Smith", "party": "r", "votes": 1503, "write_in": false, "elected": true},
+    {"name": "Hill", "party": "r", "votes": 1837, "write_in": false, "elected": true},
+    {"name": "Wheeler", "party": "d", "votes": 1490, "write_in": false, "elected": false},
+    {"name": "Longley", "party": "d", "votes": 1344, "write_in": false, "elected": false}]},
+  "H|Merrimack|4": {"seats": 1, "floterial": false, "towns": ["Sutton", "Wilmot"], "scatter": 4, "candidates": [
+    {"name": "Long", "party": "r", "votes": 1047, "write_in": false, "elected": true},
+    {"name": "Schamberg", "party": "d", "votes": 967, "write_in": false, "elected": false}]},
+  "H|Merrimack|5": {"seats": 2, "floterial": false, "towns": ["New London", "Newbury"], "scatter": 15, "candidates": [
+    {"name": "Wolf", "party": "r", "votes": 2498, "write_in": false, "elected": true},
+    {"name": "Ebel", "party": "d/r", "votes": 3488, "write_in": false, "elected": true},
+    {"name": "Leary", "party": "d", "votes": 1985, "write_in": false, "elected": false}]},
+  "H|Merrimack|6": {"seats": 2, "floterial": false, "towns": ["Bradford", "Henniker"], "scatter": 8, "recounted": true, "candidates": [
+    {"name": "Lindsley", "party": "r", "votes": 1548, "write_in": false, "elected": false},
+    {"name": "Dunne \u0001", "party": "r", "votes": 1393, "write_in": false, "elected": false},
+    {"name": "Woolpert", "party": "d", "votes": 1643, "write_in": false, "elected": true},
+    {"name": "Rodd", "party": "d", "votes": 1807, "write_in": false, "elected": true}]},
+  "H|Merrimack|7": {"seats": 1, "floterial": false, "towns": ["Warner", "Webster"], "scatter": 0, "candidates": [
+    {"name": "Mendola", "party": "r", "votes": 1295, "write_in": false, "elected": false},
+    {"name": "Carson", "party": "d", "votes": 1483, "write_in": false, "elected": true}]},
+  "H|Merrimack|8": {"seats": 1, "floterial": false, "towns": ["Boscawen"], "scatter": 11, "candidates": [
+    {"name": "Forsythe", "party": "r", "votes": 822, "write_in": false, "elected": false},
+    {"name": "Alicia", "party": "d", "votes": 873, "write_in": false, "elected": true}]},
+  "H|Merrimack|9": {"seats": 2, "floterial": false, "towns": ["Canterbury", "Loudon"], "scatter": 3, "candidates": [
+    {"name": "Moffett, M.", "party": "r", "votes": 2422, "write_in": false, "elected": true},
+    {"name": "Saunderson", "party": "d", "votes": 2002, "write_in": false, "elected": false},
+    {"name": "Moffett, H.", "party": "d", "votes": 2130, "write_in": false, "elected": true}]},
+  "H|Merrimack|10": {"seats": 3, "floterial": false, "towns": ["Concord Ward 5", "Hopkinton"], "scatter": 17, "candidates": [
+    {"name": "French VI", "party": "r", "votes": 2168, "write_in": false, "elected": false},
+    {"name": "Diamond", "party": "r", "votes": 2047, "write_in": false, "elected": false},
+    {"name": "Wallner", "party": "d", "votes": 3718, "write_in": false, "elected": true},
+    {"name": "Luneau", "party": "d", "votes": 3781, "write_in": false, "elected": true},
+    {"name": "Myler", "party": "d", "votes": 3504, "write_in": false, "elected": true}]},
+  "H|Merrimack|11": {"seats": 1, "floterial": false, "towns": ["Concord Ward 1"], "scatter": 7, "candidates": [
+    {"name": "Miller", "party": "r", "votes": 942, "write_in": false, "elected": false},
+    {"name": "Shurtleff", "party": "d", "votes": 1315, "write_in": false, "elected": true}]},
+  "H|Merrimack|12": {"seats": 1, "floterial": false, "towns": ["Concord Ward 2"], "scatter": 12, "candidates": [
+    {"name": "Henle", "party": "d", "votes": 1410, "write_in": false, "elected": true}]},
+  "H|Merrimack|13": {"seats": 1, "floterial": false, "towns": ["Concord Ward 3"], "scatter": 10, "candidates": [
+    {"name": "Richards", "party": "d", "votes": 1070, "write_in": false, "elected": true}]},
+  "H|Merrimack|14": {"seats": 1, "floterial": false, "towns": ["Concord Ward 4"], "scatter": 19, "candidates": [
+    {"name": "MacKay", "party": "d", "votes": 1522, "write_in": false, "elected": true}]},
+  "H|Merrimack|15": {"seats": 1, "floterial": false, "towns": ["Concord Ward 6"], "scatter": 12, "candidates": [
+    {"name": "Kenison", "party": "d", "votes": 1341, "write_in": false, "elected": true}]},
+  "H|Merrimack|16": {"seats": 1, "floterial": false, "towns": ["Concord Ward 7"], "scatter": 10, "candidates": [
+    {"name": "Bertrand", "party": "r", "votes": 796, "write_in": false, "elected": false},
+    {"name": "Soucy", "party": "d", "votes": 1572, "write_in": false, "elected": true}]},
+  "H|Merrimack|17": {"seats": 1, "floterial": false, "towns": ["Concord Ward 8"], "scatter": 0, "candidates": [
+    {"name": "Patten", "party": "d", "votes": 1326, "write_in": false, "elected": true}]},
+  "H|Merrimack|18": {"seats": 1, "floterial": false, "towns": ["Concord Ward 9"], "scatter": 6, "candidates": [
+    {"name": "Feeley", "party": "r", "votes": 761, "write_in": false, "elected": false},
+    {"name": "deTreville", "party": "d", "votes": 957, "write_in": false, "elected": true}]},
+  "H|Merrimack|19": {"seats": 1, "floterial": false, "towns": ["Concord Ward 10"], "scatter": 2, "candidates": [
+    {"name": "Alexander \u0001", "party": "r", "votes": 1274, "write_in": false, "elected": false},
+    {"name": "Bartlett", "party": "d", "votes": 1409, "write_in": false, "elected": true}]},
+  "H|Merrimack|20": {"seats": 3, "floterial": false, "towns": ["Chichester", "Pembroke"], "scatter": 12, "candidates": [
+    {"name": "Tapp", "party": "r", "votes": 2248, "write_in": false, "elected": false},
+    {"name": "Richardson", "party": "r", "votes": 2259, "write_in": false, "elected": false},
+    {"name": "Seaworth", "party": "r", "votes": 2390, "write_in": false, "elected": true},
+    {"name": "Schuett", "party": "d", "votes": 2419, "write_in": false, "elected": true},
+    {"name": "Doherty", "party": "d", "votes": 2297, "write_in": false, "elected": true},
+    {"name": "Hall", "party": "d", "votes": 2229, "write_in": false, "elected": false}]},
+  "H|Merrimack|21": {"seats": 2, "floterial": false, "towns": ["Epsom", "Pittsfield"], "scatter": 5, "candidates": [
+    {"name": "Klose", "party": "r", "votes": 2154, "write_in": false, "elected": true},
+    {"name": "Brewster", "party": "r", "votes": 2178, "write_in": false, "elected": true},
+    {"name": "Frambach", "party": "d", "votes": 1577, "write_in": false, "elected": false},
+    {"name": "Beaudoin \u0001", "party": "d", "votes": 1339, "write_in": false, "elected": false}]},
+  "H|Merrimack|22": {"seats": 1, "floterial": false, "towns": ["Allenstown"], "scatter": 2, "candidates": [
+    {"name": "McDonald", "party": "r", "votes": 994, "write_in": false, "elected": false},
+    {"name": "Turcotte", "party": "d", "votes": 1085, "write_in": false, "elected": true}]},
+  "H|Merrimack|23": {"seats": 3, "floterial": false, "towns": ["Bow", "Dunbarton"], "scatter": 12, "recounted": true, "candidates": [
+    {"name": "Martin", "party": "r", "votes": 2993, "write_in": false, "elected": false},
+    {"name": "Hoell", "party": "r", "votes": 2999, "write_in": false, "elected": true},
+    {"name": "Kuch", "party": "r", "votes": 3203, "write_in": false, "elected": true},
+    {"name": "Walz", "party": "d", "votes": 3156, "write_in": false, "elected": true},
+    {"name": "D'Ovidio", "party": "d", "votes": 2682, "write_in": false, "elected": false},
+    {"name": "Kaminski", "party": "d", "votes": 2813, "write_in": false, "elected": false}]},
+  "H|Merrimack|24": {"seats": 4, "floterial": false, "towns": ["Hooksett"], "scatter": null, "candidates": [
+    {"name": "Kotowski", "party": "r", "votes": 3779, "write_in": false, "elected": true},
+    {"name": "Leavitt", "party": "r", "votes": 3739, "write_in": false, "elected": true},
+    {"name": "Marple", "party": "r", "votes": 3232, "write_in": false, "elected": true},
+    {"name": "Walsh", "party": "r", "votes": 3876, "write_in": false, "elected": true},
+    {"name": "Thibeault", "party": "d", "votes": 2774, "write_in": false, "elected": false},
+    {"name": "Gurung", "party": "d", "votes": 2383, "write_in": false, "elected": false},
+    {"name": "Rothenberg", "party": "d", "votes": 2778, "write_in": false, "elected": false}]},
+  "H|Merrimack|25": {"seats": 1, "floterial": true, "towns": ["Andover", "Danbury", "Salisbury", "Warner", "Webster"], "scatter": 6, "candidates": [
+    {"name": "Wells", "party": "r", "votes": 2799, "write_in": false, "elected": true},
+    {"name": "Karrick", "party": "d", "votes": 2654, "write_in": false, "elected": false}]},
+  "H|Merrimack|26": {"seats": 1, "floterial": true, "towns": ["Boscawen", "Canterbury", "Franklin Ward 3", "Loudon", "Northfield"], "scatter": 9, "candidates": [
+    {"name": "Pearl", "party": "r", "votes": 5263, "write_in": false, "elected": true},
+    {"name": "Carey", "party": "d", "votes": 4452, "write_in": false, "elected": false}]},
+  "H|Merrimack|27": {"seats": 2, "floterial": true, "towns": ["Concord Ward 1", "Concord Ward 2", "Concord Ward 3", "Concord Ward 4", "Concord Ward 6", "Concord Ward 7"], "scatter": 53, "candidates": [
+    {"name": "Rice", "party": "d", "votes": 6408, "write_in": false, "elected": true},
+    {"name": "Gile", "party": "d", "votes": 7698, "write_in": false, "elected": true}]},
+  "H|Merrimack|28": {"seats": 1, "floterial": true, "towns": ["Concord Ward 10", "Concord Ward 8", "Concord Ward 9"], "scatter": 2, "candidates": [
+    {"name": "Georgevits", "party": "r", "votes": 2980, "write_in": false, "elected": false},
+    {"name": "Rogers", "party": "d", "votes": 3382, "write_in": false, "elected": true}]},
+  "H|Merrimack|29": {"seats": 1, "floterial": true, "towns": ["Allenstown", "Epsom", "Pittsfield"], "scatter": 3, "candidates": [
+    {"name": "McGuire", "party": "r", "votes": 3864, "write_in": false, "elected": true},
+    {"name": "Coolidge", "party": "d", "votes": 2348, "write_in": false, "elected": false}]},
+  "H|Rockingham|1": {"seats": 1, "floterial": false, "towns": ["Northwood"], "scatter": null, "candidates": [
+    {"name": "Stone", "party": "r", "votes": 1277, "write_in": false, "elected": true},
+    {"name": "Smith", "party": "d", "votes": 1174, "write_in": false, "elected": false}]},
+  "H|Rockingham|2": {"seats": 3, "floterial": false, "towns": ["Candia", "Deerfield", "Nottingham"], "scatter": null, "candidates": [
+    {"name": "Verville", "party": "r", "votes": 3432, "write_in": false, "elected": true},
+    {"name": "Nasser", "party": "r", "votes": 3593, "write_in": false, "elected": true},
+    {"name": "Spillane", "party": "r", "votes": 3735, "write_in": false, "elected": true},
+    {"name": "St. Martin", "party": "d", "votes": 2684, "write_in": false, "elected": false},
+    {"name": "Golomb", "party": "d", "votes": 2599, "write_in": false, "elected": false},
+    {"name": "Roundy", "party": "d", "votes": 2159, "write_in": false, "elected": false},
+    {"name": "Dill", "party": "ind", "votes": 1310, "write_in": false, "elected": false}]},
+  "H|Rockingham|3": {"seats": 3, "floterial": false, "towns": ["Raymond"], "scatter": null, "candidates": [
+    {"name": "Matthews", "party": "r", "votes": 2458, "write_in": false, "elected": true},
+    {"name": "Costable", "party": "r", "votes": 2624, "write_in": false, "elected": true},
+    {"name": "Hoelizel", "party": "r", "votes": 2547, "write_in": false, "elected": true},
+    {"name": "Rousseau", "party": "d", "votes": 1853, "write_in": false, "elected": false},
+    {"name": "Ouellett", "party": "d", "votes": 1602, "write_in": false, "elected": false}]},
+  "H|Rockingham|4": {"seats": 5, "floterial": false, "towns": ["Auburn", "Chester", "Sandown"], "scatter": null, "candidates": [
+    {"name": "Hagan", "party": "r", "votes": 5245, "write_in": false, "elected": true},
+    {"name": "Osborne", "party": "r", "votes": 5153, "write_in": false, "elected": true},
+    {"name": "Polewarczyk", "party": "r", "votes": 4554, "write_in": false, "elected": true},
+    {"name": "True", "party": "r", "votes": 5465, "write_in": false, "elected": true},
+    {"name": "Edwards", "party": "r", "votes": 5179, "write_in": false, "elected": true},
+    {"name": "DePalma", "party": "d", "votes": 2681, "write_in": false, "elected": false},
+    {"name": "D'Angelo", "party": "d", "votes": 2888, "write_in": false, "elected": false},
+    {"name": "Lister", "party": "d", "votes": 3016, "write_in": false, "elected": false},
+    {"name": "Wood", "party": "d", "votes": 2903, "write_in": false, "elected": false}]},
+  "H|Rockingham|5": {"seats": 7, "floterial": false, "towns": ["Londonderry"], "scatter": null, "candidates": [
+    {"name": "Packard", "party": "r", "votes": 6357, "write_in": false, "elected": true},
+    {"name": "Rimol", "party": "r", "votes": 6367, "write_in": false, "elected": true},
+    {"name": "Thomas", "party": "r", "votes": 5978, "write_in": false, "elected": true},
+    {"name": "Baldasaro", "party": "r", "votes": 6558, "write_in": false, "elected": true},
+    {"name": "Bove", "party": "r", "votes": 6295, "write_in": false, "elected": true},
+    {"name": "Lundgren", "party": "r", "votes": 6964, "write_in": false, "elected": true},
+    {"name": "McKinney", "party": "r", "votes": 6701, "write_in": false, "elected": true},
+    {"name": "Skudlarek, R.", "party": "d", "votes": 4495, "write_in": false, "elected": false},
+    {"name": "Vermillion", "party": "d", "votes": 4254, "write_in": false, "elected": false},
+    {"name": "Warner", "party": "d", "votes": 4910, "write_in": false, "elected": false},
+    {"name": "Hynes", "party": "d", "votes": 4367, "write_in": false, "elected": false},
+    {"name": "Combes", "party": "d", "votes": 4770, "write_in": false, "elected": false},
+    {"name": "Rego", "party": "d", "votes": 3874, "write_in": false, "elected": false},
+    {"name": "Skudlarek, P.", "party": "d", "votes": 3902, "write_in": false, "elected": false}]},
+  "H|Rockingham|6": {"seats": 10, "floterial": false, "towns": ["Derry"], "scatter": null, "recounted": true, "candidates": [
+    {"name": "Katsakiores", "party": "r", "votes": 7658, "write_in": false, "elected": true},
+    {"name": "Milz", "party": "r", "votes": 6334, "write_in": false, "elected": true},
+    {"name": "O'Connor", "party": "r", "votes": 7172, "write_in": false, "elected": true},
+    {"name": "Sapareto", "party": "r", "votes": 6458, "write_in": false, "elected": true},
+    {"name": "Tripp", "party": "r", "votes": 6357, "write_in": false, "elected": true},
+    {"name": "Webb", "party": "r", "votes": 7018, "write_in": false, "elected": true},
+    {"name": "Willis", "party": "r", "votes": 7245, "write_in": false, "elected": true},
+    {"name": "Chirichiello", "party": "r", "votes": 6884, "write_in": false, "elected": true},
+    {"name": "Dowling", "party": "r", "votes": 7069, "write_in": false, "elected": true},
+    {"name": "Fesh", "party": "r", "votes": 5941, "write_in": false, "elected": true},
+    {"name": "Cuenca", "party": "d", "votes": 5429, "write_in": false, "elected": false},
+    {"name": "Eisner", "party": "d", "votes": 5900, "write_in": false, "elected": false},
+    {"name": "Jones", "party": "d", "votes": 5264, "write_in": false, "elected": false},
+    {"name": "Till", "party": "d", "votes": 5646, "write_in": false, "elected": false},
+    {"name": "Cooper III", "party": "d", "votes": 4860, "write_in": false, "elected": false}]},
+  "H|Rockingham|7": {"seats": 4, "floterial": false, "towns": ["Windham"], "scatter": null, "candidates": [
+    {"name": "Bates", "party": "r", "votes": 4563, "write_in": false, "elected": true},
+    {"name": "Griffin", "party": "r", "votes": 5698, "write_in": false, "elected": true},
+    {"name": "Kolodziej", "party": "r", "votes": 4515, "write_in": false, "elected": true},
+    {"name": "McMahon", "party": "r", "votes": 5142, "write_in": false, "elected": true},
+    {"name": "Rosa", "party": "d", "votes": 2849, "write_in": false, "elected": false},
+    {"name": "Azibert", "party": "d", "votes": 2627, "write_in": false, "elected": false}]},
+  "H|Rockingham|8": {"seats": 9, "floterial": false, "towns": ["Salem"], "scatter": null, "candidates": [
+    {"name": "Belanger", "party": "r", "votes": 7528, "write_in": false, "elected": true},
+    {"name": "Doucette", "party": "r", "votes": 7041, "write_in": false, "elected": true},
+    {"name": "Elliott", "party": "r", "votes": 7110, "write_in": false, "elected": true},
+    {"name": "Gay", "party": "r", "votes": 7034, "write_in": false, "elected": true},
+    {"name": "Janigian", "party": "r", "votes": 6338, "write_in": false, "elected": true},
+    {"name": "Manning", "party": "r", "votes": 6640, "write_in": false, "elected": true},
+    {"name": "Sytek", "party": "r", "votes": 7260, "write_in": false, "elected": true},
+    {"name": "Azarian", "party": "r", "votes": 7373, "write_in": false, "elected": true},
+    {"name": "Barnes III", "party": "r", "votes": 6594, "write_in": false, "elected": true},
+    {"name": "Carpenito", "party": "d", "votes": 5179, "write_in": false, "elected": false},
+    {"name": "Iannalfo", "party": "d", "votes": 4534, "write_in": false, "elected": false},
+    {"name": "Lewis", "party": "d", "votes": 4598, "write_in": false, "elected": false},
+    {"name": "Wright", "party": "d", "votes": 5040, "write_in": false, "elected": false},
+    {"name": "Abercrombie", "party": "d", "votes": 4000, "write_in": false, "elected": false},
+    {"name": "Billingham", "party": "d", "votes": 4659, "write_in": false, "elected": false}]},
+  "H|Rockingham|9": {"seats": 2, "floterial": false, "towns": ["Epping"], "scatter": null, "candidates": [
+    {"name": "Vose", "party": "r", "votes": 1856, "write_in": false, "elected": true},
+    {"name": "Morrison", "party": "r", "votes": 2003, "write_in": false, "elected": true},
+    {"name": "Tillman", "party": "d", "votes": 1262, "write_in": false, "elected": false},
+    {"name": "Portalla", "party": "d", "votes": 1492, "write_in": false, "elected": false}]},
+  "H|Rockingham|10": {"seats": 1, "floterial": false, "towns": ["Fremont"], "scatter": null, "candidates": [
+    {"name": "Itse", "party": "r", "votes": 1531, "write_in": false, "elected": true},
+    {"name": "Augevich", "party": "d", "votes": 1063, "write_in": false, "elected": false}]},
+  "H|Rockingham|11": {"seats": 1, "floterial": false, "towns": ["Brentwood"], "scatter": null, "candidates": [
+    {"name": "Cook", "party": "r", "votes": 1223, "write_in": false, "elected": true},
+    {"name": "Wilson", "party": "d", "votes": 1142, "write_in": false, "elected": false}]},
+  "H|Rockingham|12": {"seats": 1, "floterial": false, "towns": ["Danville"], "scatter": null, "candidates": [
+    {"name": "Woitkun", "party": "r", "votes": 1556, "write_in": false, "elected": true},
+    {"name": "Guilmette", "party": "d", "votes": 823, "write_in": false, "elected": false}]},
+  "H|Rockingham|13": {"seats": 4, "floterial": false, "towns": ["Hampstead", "Kingston"], "scatter": null, "candidates": [
+    {"name": "Green", "party": "r", "votes": 4191, "write_in": false, "elected": true},
+    {"name": "Guthrie", "party": "r", "votes": 4752, "write_in": false, "elected": true},
+    {"name": "Welch", "party": "r", "votes": 4499, "write_in": false, "elected": true},
+    {"name": "Weyler", "party": "r", "votes": 4227, "write_in": false, "elected": true},
+    {"name": "Baitz", "party": "d", "votes": 2221, "write_in": false, "elected": false},
+    {"name": "Croteau", "party": "d", "votes": 2997, "write_in": false, "elected": false},
+    {"name": "Davis", "party": "d", "votes": 2285, "write_in": false, "elected": false},
+    {"name": "Fronterotta", "party": "d", "votes": 2478, "write_in": false, "elected": false}]},
+  "H|Rockingham|14": {"seats": 4, "floterial": false, "towns": ["Atkinson", "Plaistow"], "scatter": null, "candidates": [
+    {"name": "DeSimone", "party": "r", "votes": 4632, "write_in": false, "elected": true},
+    {"name": "Friel", "party": "r", "votes": 3992, "write_in": false, "elected": true},
+    {"name": "Majori", "party": "r", "votes": 4535, "write_in": false, "elected": true},
+    {"name": "Torosian", "party": "r", "votes": 4631, "write_in": false, "elected": true},
+    {"name": "Hamblem", "party": "d", "votes": 2240, "write_in": false, "elected": false},
+    {"name": "Cacciotti", "party": "d", "votes": 2225, "write_in": false, "elected": false},
+    {"name": "Galloway", "party": "d", "votes": 3030, "write_in": false, "elected": false}]},
+  "H|Rockingham|15": {"seats": 1, "floterial": false, "towns": ["Newton"], "scatter": null, "candidates": [
+    {"name": "Allen", "party": "r", "votes": 1441, "write_in": false, "elected": true},
+    {"name": "Michaels", "party": "d", "votes": 1085, "write_in": false, "elected": false}]},
+  "H|Rockingham|16": {"seats": 1, "floterial": false, "towns": ["East Kingston", "Kensington", "South Hampton"], "scatter": null, "candidates": [
+    {"name": "Nigrello", "party": "r", "votes": 1940, "write_in": false, "elected": true},
+    {"name": "Carpenter", "party": "d", "votes": 1363, "write_in": false, "elected": false}]},
+  "H|Rockingham|17": {"seats": 3, "floterial": false, "towns": ["Newfields", "Newmarket"], "scatter": null, "candidates": [
+    {"name": "Thornhill", "party": "r", "votes": 2343, "write_in": false, "elected": false},
+    {"name": "Davenport", "party": "r", "votes": 2135, "write_in": false, "elected": false},
+    {"name": "Scanlon", "party": "r", "votes": 1889, "write_in": false, "elected": false},
+    {"name": "Read", "party": "d", "votes": 3127, "write_in": false, "elected": true},
+    {"name": "Cahill", "party": "d", "votes": 3160, "write_in": false, "elected": true},
+    {"name": "DiLorenzo", "party": "d", "votes": 2862, "write_in": false, "elected": true}]},
+  "H|Rockingham|18": {"seats": 4, "floterial": false, "towns": ["Exeter"], "scatter": null, "candidates": [
+    {"name": "Goeman", "party": "r", "votes": 2992, "write_in": false, "elected": false},
+    {"name": "DeMartino", "party": "r", "votes": 3568, "write_in": false, "elected": false},
+    {"name": "Berrien", "party": "d", "votes": 4540, "write_in": false, "elected": true},
+    {"name": "Farnham", "party": "d", "votes": 4452, "write_in": false, "elected": true},
+    {"name": "Francese", "party": "d", "votes": 4262, "write_in": false, "elected": true},
+    {"name": "Gilman", "party": "d", "votes": 4707, "write_in": false, "elected": true}]},
+  "H|Rockingham|19": {"seats": 2, "floterial": false, "towns": ["Stratham"], "scatter": null, "candidates": [
+    {"name": "Ward", "party": "r", "votes": 2092, "write_in": false, "elected": false},
+    {"name": "Abrami", "party": "r", "votes": 2653, "write_in": false, "elected": true},
+    {"name": "Altschiller", "party": "d", "votes": 2213, "write_in": false, "elected": true}]},
+  "H|Rockingham|20": {"seats": 3, "floterial": false, "towns": ["Hampton Falls", "Seabrook"], "scatter": null, "candidates": [
+    {"name": "Khan", "party": "r", "votes": 2829, "write_in": false, "elected": true},
+    {"name": "Chase", "party": "r", "votes": 2470, "write_in": false, "elected": true},
+    {"name": "Janvrin", "party": "r", "votes": 2408, "write_in": false, "elected": true},
+    {"name": "Preston", "party": "d", "votes": 2331, "write_in": false, "elected": false}]},
+  "H|Rockingham|21": {"seats": 4, "floterial": false, "towns": ["Hampton"], "scatter": null, "candidates": [
+    {"name": "Bean", "party": "r", "votes": 4427, "write_in": false, "elected": true},
+    {"name": "Emerick", "party": "r", "votes": 4170, "write_in": false, "elected": true},
+    {"name": "Hurst", "party": "r", "votes": 3766, "write_in": false, "elected": false},
+    {"name": "Sheffert", "party": "r", "votes": 3773, "write_in": false, "elected": false},
+    {"name": "Bunce", "party": "d", "votes": 3709, "write_in": false, "elected": false},
+    {"name": "Cushing", "party": "d", "votes": 4256, "write_in": false, "elected": true},
+    {"name": "Desrosiers", "party": "d", "votes": 3837, "write_in": false, "elected": false},
+    {"name": "Edgar", "party": "d", "votes": 4186, "write_in": false, "elected": true}]},
+  "H|Rockingham|22": {"seats": 1, "floterial": false, "towns": ["North Hampton"], "scatter": null, "candidates": [
+    {"name": "Marsh", "party": "r", "votes": 1691, "write_in": false, "elected": true},
+    {"name": "Day", "party": "d", "votes": 1270, "write_in": false, "elected": false}]},
+  "H|Rockingham|23": {"seats": 1, "floterial": false, "towns": ["Greenland", "Newington"], "scatter": null, "candidates": [
+    {"name": "Page", "party": "r", "votes": 1463, "write_in": false, "elected": false},
+    {"name": "Malloy", "party": "d", "votes": 1548, "write_in": false, "elected": true}]},
+  "H|Rockingham|24": {"seats": 2, "floterial": false, "towns": ["New Castle", "Rye"], "scatter": null, "candidates": [
+    {"name": "Stevens", "party": "r", "votes": 2093, "write_in": false, "elected": false},
+    {"name": "Erlebacher", "party": "r", "votes": 1920, "write_in": false, "elected": false},
+    {"name": "Murray", "party": "d", "votes": 2181, "write_in": false, "elected": true},
+    {"name": "Messmer", "party": "d", "votes": 2249, "write_in": false, "elected": true}]},
+  "H|Rockingham|25": {"seats": 1, "floterial": false, "towns": ["Portsmouth Ward 1"], "scatter": null, "candidates": [
+    {"name": "Pantelakos", "party": "d", "votes": 1986, "write_in": false, "elected": true}]},
+  "H|Rockingham|26": {"seats": 1, "floterial": false, "towns": ["Portsmouth Ward 2"], "scatter": null, "candidates": [
+    {"name": "McBeath", "party": "d", "votes": 2296, "write_in": false, "elected": true}]},
+  "H|Rockingham|27": {"seats": 1, "floterial": false, "towns": ["Portsmouth Ward 3"], "scatter": null, "candidates": [
+    {"name": "Somssich", "party": "d", "votes": 1582, "write_in": false, "elected": true}]},
+  "H|Rockingham|28": {"seats": 1, "floterial": false, "towns": ["Portsmouth Ward 4"], "scatter": null, "candidates": [
+    {"name": "Ward", "party": "d", "votes": 1485, "write_in": false, "elected": true}]},
+  "H|Rockingham|29": {"seats": 1, "floterial": false, "towns": ["Portsmouth Ward 5"], "scatter": null, "candidates": [
+    {"name": "Gordon", "party": "d", "votes": 1841, "write_in": false, "elected": true}]},
+  "H|Rockingham|30": {"seats": 1, "floterial": true, "towns": ["Portsmouth Ward 1", "Portsmouth Ward 2", "Portsmouth Ward 4", "Portsmouth Ward 5"], "scatter": null, "candidates": [
+    {"name": "Vyvyan", "party": "r", "votes": 3135, "write_in": false, "elected": false},
+    {"name": "Cali-Pitts", "party": "d", "votes": 6565, "write_in": false, "elected": true}]},
+  "H|Rockingham|31": {"seats": 1, "floterial": true, "towns": ["Greenland", "Newington", "North Hampton", "Portsmouth Ward 3"], "scatter": null, "candidates": [
+    {"name": "Robertson", "party": "r", "votes": 3925, "write_in": false, "elected": false},
+    {"name": "Le", "party": "d", "votes": 4090, "write_in": false, "elected": true}]},
+  "H|Rockingham|32": {"seats": 1, "floterial": true, "towns": ["Candia", "Deerfield", "Northwood", "Nottingham"], "scatter": null, "candidates": [
+    {"name": "Dean-Bailey", "party": "r", "votes": 6388, "write_in": false, "elected": true},
+    {"name": "Rafter", "party": "d", "votes": 3915, "write_in": false, "elected": false}]},
+  "H|Rockingham|33": {"seats": 1, "floterial": true, "towns": ["Brentwood", "Danville", "Fremont"], "scatter": null, "candidates": [
+    {"name": "Wallace", "party": "r", "votes": 4311, "write_in": false, "elected": true},
+    {"name": "McConnell", "party": "d", "votes": 2866, "write_in": false, "elected": false}]},
+  "H|Rockingham|34": {"seats": 1, "floterial": true, "towns": ["Atkinson", "Hampstead", "Kingston", "Plaistow"], "scatter": null, "candidates": [
+    {"name": "Pearson", "party": "r", "votes": 9567, "write_in": false, "elected": true},
+    {"name": "Cheney", "party": "i/d", "votes": 6675, "write_in": false, "elected": false}]},
+  "H|Rockingham|35": {"seats": 1, "floterial": true, "towns": ["East Kingston", "Kensington", "Newton", "South Hampton"], "scatter": null, "candidates": [
+    {"name": "Gordon", "party": "r", "votes": 3413, "write_in": false, "elected": true},
+    {"name": "Hall", "party": "d", "votes": 2313, "write_in": false, "elected": false}]},
+  "H|Rockingham|36": {"seats": 1, "floterial": true, "towns": ["Exeter", "Newfields", "Newmarket", "Stratham"], "scatter": null, "candidates": [
+    {"name": "Poutre", "party": "r", "votes": 7316, "write_in": false, "elected": false},
+    {"name": "Lovejoy", "party": "d", "votes": 11733, "write_in": false, "elected": true}]},
+  "H|Rockingham|37": {"seats": 1, "floterial": true, "towns": ["Hampton", "Hampton Falls", "Seabrook"], "scatter": null, "candidates": [
+    {"name": "Tilton", "party": "r", "votes": 8307, "write_in": false, "elected": true},
+    {"name": "Andrews-Ahearn", "party": "d", "votes": 6425, "write_in": false, "elected": false}]},
+  "H|Sullivan|1": {"seats": 2, "floterial": false, "towns": ["Cornish", "Grantham", "Plainfield", "Springfield"], "scatter": 5, "candidates": [
+    {"name": "Greenhalge", "party": "r", "votes": 1723, "write_in": false, "elected": false},
+    {"name": "Gilchrest", "party": "r", "votes": 1994, "write_in": false, "elected": false},
+    {"name": "Schmidt", "party": "d", "votes": 2731, "write_in": false, "elected": true},
+    {"name": "Oxenham", "party": "d", "votes": 2703, "write_in": false, "elected": true}]},
+  "H|Sullivan|2": {"seats": 1, "floterial": false, "towns": ["Croydon", "Sunapee"], "scatter": 3, "candidates": [
+    {"name": "Underwood", "party": "r", "votes": 1144, "write_in": false, "elected": false},
+    {"name": "Gottling", "party": "d", "votes": 1304, "write_in": false, "elected": true}]},
+  "H|Sullivan|3": {"seats": 1, "floterial": false, "towns": ["Claremont Ward 1"], "scatter": 3, "candidates": [
+    {"name": "Gauthier", "party": "r", "votes": 758, "write_in": false, "elected": true},
+    {"name": "Zito", "party": "d", "votes": 660, "write_in": false, "elected": false}]},
+  "H|Sullivan|4": {"seats": 1, "floterial": false, "towns": ["Claremont Ward 2"], "scatter": null, "candidates": [
+    {"name": "O'Connor", "party": "r", "votes": 1065, "write_in": false, "elected": true},
+    {"name": "Converse", "party": "d", "votes": 958, "write_in": false, "elected": false}]},
+  "H|Sullivan|5": {"seats": 1, "floterial": false, "towns": ["Claremont Ward 3"], "scatter": 2, "candidates": [
+    {"name": "Numme", "party": "r", "votes": 709, "write_in": false, "elected": false},
+    {"name": "Gagnon", "party": "d", "votes": 1037, "write_in": false, "elected": true}]},
+  "H|Sullivan|6": {"seats": 2, "floterial": false, "towns": ["Newport", "Unity"], "scatter": 1, "candidates": [
+    {"name": "Schroeter", "party": "r", "votes": 1285, "write_in": false, "elected": false},
+    {"name": "Rollins", "party": "r", "votes": 2427, "write_in": false, "elected": true},
+    {"name": "Irwin", "party": "d", "votes": 1446, "write_in": false, "elected": true},
+    {"name": "Lunn", "party": "d", "votes": 859, "write_in": false, "elected": false}]},
+  "H|Sullivan|7": {"seats": 1, "floterial": false, "towns": ["Acworth", "Goshen", "Langdon", "Lempster", "Washington"], "scatter": 1, "candidates": [
+    {"name": "Grenier", "party": "r", "votes": 1602, "write_in": false, "elected": true},
+    {"name": "Bell", "party": "d", "votes": 931, "write_in": false, "elected": false}]},
+  "H|Sullivan|8": {"seats": 1, "floterial": false, "towns": ["Charlestown"], "scatter": null, "candidates": [
+    {"name": "Laware", "party": "r", "votes": 1291, "write_in": false, "elected": true},
+    {"name": "Yakovleff", "party": "d", "votes": 951, "write_in": false, "elected": false}]},
+  "H|Sullivan|9": {"seats": 1, "floterial": true, "towns": ["Cornish", "Croydon", "Grantham", "Newport", "Plainfield", "Springfield", "Sunapee", "Unity"], "scatter": 5, "candidates": [
+    {"name": "Bowers", "party": "r", "votes": 5087, "write_in": false, "elected": false},
+    {"name": "Tanner", "party": "d", "votes": 5749, "write_in": false, "elected": true}]},
+  "H|Sullivan|10": {"seats": 1, "floterial": true, "towns": ["Claremont Ward 1", "Claremont Ward 2", "Claremont Ward 3"], "scatter": 10, "candidates": [
+    {"name": "Stapleton", "party": "r", "votes": 2252, "write_in": false, "elected": false},
+    {"name": "Cloutier", "party": "d", "votes": 3023, "write_in": false, "elected": true}]},
+  "H|Sullivan|11": {"seats": 1, "floterial": true, "towns": ["Acworth", "Charlestown", "Goshen", "Langdon", "Lempster", "Washington"], "scatter": 1, "candidates": [
+    {"name": "Smith", "party": "r", "votes": 2856, "write_in": false, "elected": true},
+    {"name": "Tuthill", "party": "d", "votes": 1869, "write_in": false, "elected": false}]}
+ }
+}
