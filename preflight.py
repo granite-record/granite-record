@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.842
+# GRANITE_VERSION: 2026-09-04.843
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -35531,6 +35531,12 @@ const many = {journey: {steps: Array.from({length: 9}, (_, i) =>
   ({date: "2025-03-0" + (i + 1), body: i % 2 ? "S" : "H", act: "passed", mark: "p",
     text: "Line " + i}))}};
 out.many = scope.journeyList({id: "HB2"}, many);
+// The fold only where it hides two rows or more: 6 and 7 steps draw whole.
+const some = n => ({journey: {steps: Array.from({length: n}, (_, i) =>
+  ({date: "2025-03-0" + (i + 1), body: "H", act: "passed", mark: "p", text: "Line " + i}))}});
+out.six = scope.journeyList({id: "HB3"}, some(6));
+out.seven = scope.journeyList({id: "HB4"}, some(7));
+out.eight = scope.journeyList({id: "HB5"}, some(8));
 scope.jOpen.add(scope.dkey("HB2"));
 out.manyOpen = scope.journeyList({id: "HB2"}, many);
 process.stdout.write("\\n@@" + JSON.stringify(out));
@@ -35664,6 +35670,14 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
         [f"Line {i}" for i in range(9)] and "data-jmore" not in opened \
         and " hidden" not in opened, (
             f"opened, the nine decisions are not all there in order: {opened[:200]!a}")
+    # A fold that hides one row saves nothing (it is a row itself): seven steps
+    # draw all seven, eight fold two behind "Show 2 more".
+    for n in ("six", "seven"):
+        assert "data-jmore" not in got[n] and " hidden" not in got[n], (
+            f"{n} steps are folded, and the fold hides at most one row: {got[n][:160]!a}")
+    assert got["seven"].count("<li") == 7, "seven steps are not seven rows"
+    assert "Show 2 more" in got["eight"] and got["eight"].count(" hidden") == 2, (
+        "eight steps do not fold exactly two rows behind Show 2 more")
     return "ok", ("HB 57, HB 68 and CACR 13: one dated rail on their own view and on the "
                   "list card, closed and opened, a day and no words under each stop, the "
                   "bare rail only for a row without stops, "

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.294
+// GRANITE_VERSION: 2026-09-07.295
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4683,7 +4683,10 @@ function journeyList(b,d){
   const st=((d.journey||{}).steps)||[];
   if(!st.length)return "";
   const k=dkey(b.id);
-  const cut=st.length>JOURNEY_SHOWN&&!jOpen.has(k);
+  // Folded only where it hides two rows or more: the fold is a row of its
+  // own, so hiding one row for it saved nothing (the owner, 10 November 2026,
+  // HB 1 with seven steps).
+  const cut=st.length>=JOURNEY_SHOWN+2&&!jOpen.has(k);
   const hide=i=>cut&&i>=2&&i<st.length-(JOURNEY_SHOWN-2);
   const line=(s,i)=>`<li class="j-${esc(JCLASS[s.mark]||s.mark)}${s.rec!==undefined?` jrec-${esc(s.rec||"without")}`:""}"${hide(i)?" hidden":""}><span class="jg"
     aria-hidden="true">${JMARK[s.mark]||""}</span><span class="jb">${
