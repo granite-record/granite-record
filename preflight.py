@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.839
+# GRANITE_VERSION: 2026-09-04.840
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20200,6 +20200,57 @@ def _cite_up_and_copied():
     return "ok", (f"above the heading with {len(forms)} Copy buttons; "
                   f"dates read {want[8]!r} in shell.py and app.js alike, French browser "
                   "or not; the clipboard copies, or the form is selected and it says so")
+
+
+@check("build", "a town page's Officials tab is two columns: the elected on the left, and on the right the "
+       "offices, the clerk and the staff and administrative positions, in that order",
+       needs=("build_town_pages",))
+def _town_officials_columns(B):
+    """The owner, 10 November 2026: "City offices go to the top right of the
+    officials tab on town pages with clerk below it, elected officials on the
+    left, town staff and administrative positions on the right." NHDOT's rows
+    carry a position and no word for elected or not, so the rule is the one
+    the tab already drew: the select board and the mayor and council, the
+    bodies that govern, are the elected and go left; every other row of the
+    directory is staff or administration and goes right, under the offices'
+    own card (where to write, how to reach them) and the Secretary of State's
+    clerk. One column on a phone, in the same order from the top: the elected,
+    the offices, the clerk, the staff (the tab's grid is app.css's .twncols)."""
+    import shell as S
+    if not Path("src/pages/bills.html").exists():
+        return "skip", "bills.html is not here"
+    off = {"_offices": {"lyme": {"officials": [
+               {"position": "Board of Selectman", "name": "Ben Kilham", "phone": "", "email": ""},
+               {"position": "Town Administrator", "name": "Dina Cutting", "phone": "", "email": ""},
+               {"position": "Road Agent", "name": "Roy Agent", "phone": "", "email": ""}],
+           "website": "www.lymenh.gov", "mailing": "PO Box 126, Lyme, NH 03768"}},
+           "_local": {"lyme": {"clerk": "Emily Shepard", "phone": "603-795-2535"}}}
+    dist = {"house": [{"county": "Grafton", "district": "12"}], "senate": "5"}
+    page = B.build("Lyme", "0", {"0": {}}, dist, [], off, "https://x.test", S.template())
+    pane = page[page.index('id="officials" role="tabpanel"'):]
+    pane = pane[:pane.index('id="vote" role="tabpanel"')]
+    cols = re.findall(r'<div class="twncol">(.*?)</div>(?=<div class="twncol">|</div></div></div>)', pane, re.S)
+    assert 'class="twncols twnwide"' in pane and len(cols) == 2, (
+        f"the Officials tab is not two columns: {len(cols)} found")
+    heads = [re.findall(r'<h3 class="twnh">(.*?)</h3>', c) for c in cols]
+    assert heads == [["Select board"],
+                     ["Town offices", "Town clerk", "Staff and administrative positions"]], (
+        f"the columns hold {heads}, not the select board on the left and the offices, the clerk "
+        "and the staff on the right")
+    assert "Roy Agent" in cols[1] and "Dina Cutting" in cols[1] and "Ben Kilham" in cols[0] \
+        and "Ben Kilham" not in cols[1], "a position is in the wrong column"
+    assert "PO Box 126" in cols[1].split("Town clerk")[0], "the offices' card does not lead the right column"
+    # The tab in the page's own order is the phone's: elected, offices, clerk, staff.
+    order = [pane.index(x) for x in ("Select board", "Town offices", "Town clerk", "Staff and administrative")]
+    assert order == sorted(order), f"the cards are not in the order the phone shows them: {order}"
+    css = " ".join(Path("src/pages/app.css").read_text(encoding="utf-8").split())
+    assert ".twncols{display:grid;grid-template-columns:minmax(0,1fr)" in css and (
+        "@media (min-width:68.75em){ .twncols{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}" in css), (
+        "app.css does not lay the columns side by side on a wide screen and stack them below it")
+    # With cards in one column only, the tab is as it was: two abreast, no wrapper.
+    only = B.in_columns([B.card("Town clerk", "<p>x</p>", side="r")])
+    assert 'twncols' not in only[0] and 'twn-r' in only[0], "one column's cards are wrapped"
+    return "ok", "select board left; offices, clerk and staff right; one column, in that order, below 1100px"
 
 
 @check("build", "a town or a ward page names its own record for Report a problem, and the Function and "

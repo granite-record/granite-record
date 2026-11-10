@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.48
+# GRANITE_VERSION: 2026-09-09.49
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -503,12 +503,30 @@ def dot_row(pos, o, officials):
     return off_row(person(o.get("name")), how, E(pos))
 
 
-def card(title, inner, wide=False):
+def card(title, inner, wide=False, side=""):
     """One section of a tab: a heading that outranks what it heads, and the
     rows under it, in a card of its own so that where one section ends and
-    the next begins is a line on the page rather than a guess."""
-    return (f'<section class="twnsec{" twnwide" if wide else ""}">'
+    the next begins is a line on the page rather than a guess. `side` ("l"
+    or "r") is the column of the Officials tab it goes in (in_columns)."""
+    return (f'<section class="twnsec{" twnwide" if wide else ""}'
+            f'{" twn-" + side if side else ""}">'
             f'<h3 class="twnh">{title}</h3>{inner}</section>')
+
+
+def in_columns(cards):
+    """The Officials tab's cards in two columns: the elected on the left, the
+    offices, the clerk and the staff on the right (the owner, 10 November
+    2026). One wide item of the tab's grid holding two stacks, the left one
+    first, so a phone, where they are one column, reads the elected, then the
+    offices, the clerk and the staff. A tab with cards in one column only is
+    left as it was, two abreast."""
+    left = [c for c in cards if ' twn-l"' in c[:80]]
+    right = [c for c in cards if ' twn-r"' in c[:80]]
+    if not left or not right or len(left) + len(right) != len(cards):
+        return cards
+    return ['<div class="twncols twnwide">'
+            f'<div class="twncol">{"".join(left)}</div>'
+            f'<div class="twncol">{"".join(right)}</div></div>']
 
 
 def note(text):
@@ -625,7 +643,7 @@ def officials_sections(town, key, town_off, site_on_page=None, board=None,
                      for m in body.get("members")
                      if m.get("source_url")
                      and m["source_url"] != body.get("source_url")]
-        return card(title + listed_label(body), (
+        return card(title + listed_label(body), side="l", inner=(
             '<ul class="offlist">' + "".join(rows) + "</ul>"
             + note(f"As {E(town)}'s website listed the {what} when this site "
                    f"read it on {E(long_date(body.get('read_on')))}"
@@ -645,7 +663,7 @@ def officials_sections(town, key, town_off, site_on_page=None, board=None,
     elif dot_board:
         # "Before the 2026 town elections": every town chose a selectman at
         # its 2026 meeting, and every board chose its chair again after it.
-        out.append(card("Select board", (
+        out.append(card("Select board", side="l", inner=(
             '<ul class="offlist">'
             + "".join(dot_row(p, o, officials) for p, o in dot_board)
             + "</ul>"
@@ -666,28 +684,39 @@ def officials_sections(town, key, town_off, site_on_page=None, board=None,
                                 "board of aldermen" if body == "aldermen"
                                 else "council", council=True))
         else:
-            out.append(card(title, (
+            out.append(card(title, side="l", inner=(
                 '<ul class="offlist">'
                 + "".join(dot_row(p, o, officials) for p, o in council)
                 + "</ul>" + note(f"From {NHDOT}. " + since("council")))))
+    # ---- THE RIGHT COLUMN (the owner, 10 November 2026): the offices at the
+    # top, the clerk below them, then the staff and the administrative
+    # positions. NHDOT's rows say a position and not whether it is elected, so
+    # the rule is the one the tab already drew: the bodies that govern -- the
+    # select board, the mayor and council -- are the elected, on the left
+    # (side "l", in_columns), and every other row of the directory is a
+    # position on the right.
+    # ---- the town offices: where to write and how to reach them ----------
+    if offices_row:
+        # Under the card's own "Town offices" heading, so the row says what it
+        # is instead: where to write, and how else to reach them.
+        mailing = mailing_line(town_off.get("mailing"))
+        out.append(card("City offices" if city else "Town offices", side="r", inner=(
+            '<ul class="offlist">'
+            + off_row(E(mailing or town), how,
+                      "Mailing address" if mailing else "Contact")
+            + "</ul>"
+            + note(f"From {NHDOT}." + ("" if others else " " + since("offices"))))))
     # ---- the clerk ---------------------------------------------------------
     if loc.get("clerk"):
-        out.append(card("City clerk" if city else "Town clerk", (
+        out.append(card("City clerk" if city else "Town clerk", side="r", inner=(
             '<ul class="offlist">' + clerk_row(loc, seat="") + "</ul>"
             + note("From the Secretary of State's list of town and city "
                    "clerks."))))
-    # ---- the town offices, and everyone else NHDOT lists ------------------
-    if others or offices_row:
-        rows = []
-        if offices_row:
-            # Under the card's own "Town offices" heading, so the row says
-            # what it is instead: where to write, and how else to reach them.
-            mailing = mailing_line(town_off.get("mailing"))
-            rows.append(off_row(E(mailing or town), how,
-                                "Mailing address" if mailing else "Contact"))
-        rows += [dot_row(p, o, officials) for p, o in others]
-        out.append(card("City offices" if city else "Town offices", (
-            '<ul class="offlist">' + "".join(rows) + "</ul>"
+    # ---- everyone else NHDOT lists: the staff and administrative positions
+    if others:
+        out.append(card("Staff and administrative positions", side="r", inner=(
+            '<ul class="offlist">'
+            + "".join(dot_row(p, o, officials) for p, o in others) + "</ul>"
             + note(f"From {NHDOT}. " + since("offices")))))
     return out
 
@@ -1403,12 +1432,12 @@ def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None):
     # governs.
     board = (off.get("_boards") or {}).get(slug(town, "0"))
     council = (off.get("_councils") or {}).get(slug(town, "0"))
-    officials = officials_sections(
+    officials = in_columns(officials_sections(
         town, slug(town, "0"), town_off,
         # The same test the Vote tab's "Town website" row is drawn by.
         site_on_page=bool(weblink(town_off.get("website"))
                           or weblink(loc.get("website"))),
-        board=board, loc=loc, council=council)
+        board=board, loc=loc, council=council))
     # THE DISTRICT MAP (Polish 3: "The map also goes on the town pages"),
     # second, after the people who represent the place, as the approved
     # drawing has it (proto/town-dover-ward-1.html).

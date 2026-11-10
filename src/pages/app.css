@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.369 */
+/* GRANITE_VERSION: 2026-09-07.370 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -4474,6 +4474,15 @@ margin-top:var(--sp-1)}
 @media (min-width:68.75em){
   .twngrid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   .twnwide{grid-column:1 / -1}
+}
+/* THE OFFICIALS TAB'S TWO COLUMNS (the owner, 10 November 2026): the elected on
+   the left, and on the right the town or city offices, the clerk and the
+   staff and administrative positions, each stack its own height. One column
+   below 1100px, the elected first (build_town_pages.in_columns). */
+.twncols{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-6);align-items:start}
+.twncol{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-6);align-content:start;min-width:0}
+@media (min-width:68.75em){
+  .twncols{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 }
 .twnsec{min-width:0;background:var(--surface);border:1px solid var(--rule-2);
   border-radius:var(--r-out);padding:var(--sp-6) var(--sp-7);overflow-wrap:anywhere}
