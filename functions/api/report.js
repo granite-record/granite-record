@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-12.16
+// GRANITE_VERSION: 2026-09-12.17
 /*
  * POST /api/report -- a reader says something on a page is wrong.
  *
@@ -85,7 +85,9 @@ export const RENAMED_KIND = new Map([["Videos", "bill"], ["Sessions", "committee
 // translation inaccuracy."). Its record is "translation:" and the page's own
 // address, which names its language -- /es/, /es/guides/how-to-vote -- at
 // most three words deep, in the lower case and hyphens a page's address is
-// written in. Its field is TRANSLATION and no other kind's is; it has no
+// written in, or a calendar week's own name, /es/calendar/2026-W45 (the
+// dry run of 10 November 2026 found every Spanish week page's reports
+// dropped, the W being a capital). Its field is TRANSLATION and no other kind's is; it has no
 // tab; and onRequest keeps it only where the page there is one the site
 // built in that language (translatedPage). A new language is a new prefix
 // here and in compile_reports.py, and preflight sends a report from every
@@ -96,8 +98,8 @@ export const RENAMED_KIND = new Map([["Videos", "bill"], ["Sessions", "committee
 // its chamber and date, "session:H/2010-03-11", from /session/H/2010-03-11; a
 // study committee's is its page's own name, "study:ss1451", from
 // /committee/ss1451. Each is accepted only from its own address.
-const RECORD = /^(bill:\d{4}\/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3}(?:-\d{4})?|session:[HS]\/\d{4}-\d{2}-\d{2}|study:ss\d{1,6}|translation:\/es\/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*){0,2})?)$/;
-const PATH = /^\/(bill\/\d{4}\/[a-z]{2,6}\d{1,4}|legislator\/[a-z0-9-]{1,80}|committee\/[A-Za-z]\d{2,3}(?:-\d{4})?|session\/[HS]\/\d{4}-\d{2}-\d{2}|committee\/ss\d{1,6}|es\/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*){0,2})?)$/;
+const RECORD = /^(bill:\d{4}\/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3}(?:-\d{4})?|session:[HS]\/\d{4}-\d{2}-\d{2}|study:ss\d{1,6}|translation:\/es\/(?:(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})(?:\/(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})){0,2})?)$/;
+const PATH = /^\/(bill\/\d{4}\/[a-z]{2,6}\d{1,4}|legislator\/[a-z0-9-]{1,80}|committee\/[A-Za-z]\d{2,3}(?:-\d{4})?|session\/[HS]\/\d{4}-\d{2}-\d{2}|committee\/ss\d{1,6}|es\/(?:(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})(?:\/(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})){0,2})?)$/;
 export const TRANSLATION = "translation";
 const BUILD = /^[0-9T:.+\-Z]{0,40}$/;
 // A legislator's address is the slug build_site_v2.member_slug writes: the

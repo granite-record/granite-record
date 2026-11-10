@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.832
+# GRANITE_VERSION: 2026-09-04.833
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -91373,8 +91373,11 @@ const tr = { record: "translation:/es/guides/how-to-vote", url: "/es/guides/how-
   field: "translation", build: "", elapsed: 9000, note: "\u00abVote\u00bb should read \u00abVotar\u00bb." };
 ok("a translation report passes", validate(tr) && validate(tr).kind === "translation");
 ok("the Spanish home page's passes", validate({ ...tr, record: "translation:/es/", url: "/es/" }) !== null);
+ok("a Spanish calendar week's passes", validate({ ...tr, record: "translation:/es/calendar/2026-W45",
+   url: "/es/calendar/2026-W45" }) !== null);
 for (const [rec, url] of [["translation:/es/guides/how-to-vote", "/es/guides/real-id"],
-    ["translation:/es/Guides/x", "/es/Guides/x"], ["translation:/es/a/b/c/d", "/es/a/b/c/d"],
+    ["translation:/es/Guides/x", "/es/Guides/x"], ["translation:/es/calendar/2026-W4", "/es/calendar/2026-W4"],
+    ["translation:/es/calendar/W45", "/es/calendar/W45"],["translation:/es/a/b/c/d", "/es/a/b/c/d"],
     ["translation:/fr/x", "/fr/x"], ["translation:/es/../x", "/es/../x"], ["translation:/es", "/es"],
     ["translation:/es/x-", "/es/x-"], ["translation:/es/x.html", "/es/x.html"],
     ["translation:es/x", "es/x"], ["translation:/es/x", "/bill/2026/hb1"], ["translation:/bill/2026/hb1", "/bill/2026/hb1"]])
