@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.849
+# GRANITE_VERSION: 2026-09-04.850
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -34334,6 +34334,8 @@ def _summary_votes_linked():
     src = Path("src/pages/app.js").read_text(encoding="utf-8").replace("\r\n", "\n")
     assert src.count("VOTE_HASH.test(said)") >= 3 and "jumpToVote();\n};" in src \
         and "a[data-vote]" in src, "a vote's address does not open the Votes tab at its card"
+    assert "a.vtl{white-space:nowrap}" in Path("src/pages/app.css").read_text(encoding="utf-8"), (
+        "app.css lets a tally link break across two lines")
     return "ok", "tallies link to their cards by date, chamber and counts, none where no single card fits"
 
 
@@ -34430,7 +34432,7 @@ def _hearings_one_player():
         {"when": "2025-03-19", "time": "13:00", "what": "executive session", "committee": "Judiciary", "body": "H",
          "venue": "LOB 206", "video_id": "VIDA", "state": "stated", "start": 120.0, "end": None,
          "start_stated": True, "seconds": 7380},
-        {"when": "2025-04-09", "what": "floor debate", "committee": "House", "body": "H", "video_id": "VIDB",
+        {"when": "2025-04-09", "what": "floor debate", "committee": "House", "video_id": "VIDB",
          "state": "floor_precise", "debate_start": 3000.0, "debate_end": 3600.0, "window_start": 2400.0,
          "start_stated": True, "motions": ["OTP"], "tallies": ["190-149"], "mks": [{"mk": "otp"}], "seconds": 20000},
         {"when": "2019-01-08", "what": "public hearing", "committee": "Judiciary", "body": "H",
@@ -34490,6 +34492,10 @@ def _hearings_one_player():
     assert re.search(r'<a class="vwbn"[^>]*>HB 1</a><span class="vwmom"><span class="mjumps">.*?</span>'
                      r'<span class="vwout">.*?cstat.*?</span></span><span class="vwbt">a title</span>', line), (
         f"the committee's bill line is not number, moments and chip on one line, then the title: {line[:400]}")
+    # A chip's own rule (.cstat, .rcres) pushes it to the right edge; beside the moments it must not.
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    assert ".vwbills .vwmom .chip,.vwres .chip{margin-left:0}" in css, (
+        "app.css lets the outcome chip go to the right edge, away from the moments")
     return "ok", ("one player and a playlist of the bill's recordings; the sittings' counts, votes and moments "
                   "under it; a sitting with no recording its own entry; the committee's moments and chip on one line")
 

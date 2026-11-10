@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.299
+// GRANITE_VERSION: 2026-09-07.300
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -5924,7 +5924,13 @@ function hearingPlace(s){
 function hearingOutcome(b,d,s){
   const out=[];
   if(/^floor/.test(s.state||"")||/floor/i.test(s.what||"")){
-    (d.rollcalls||[]).filter(rc=>rc.date===s.when&&rc.body===s.body&&rc.passed!=null).forEach(rc=>{
+    // A floor sitting names its chamber as its "committee" (station_for_floor).
+    const ch=s.body||{House:"H",Senate:"S"}[s.committee]||"";
+    // Only the motions this sitting is drawn for (its mks), where it names any:
+    // the day's other votes on the bill are the Votes tab's.
+    const want=(s.mks||[]).map(k=>k&&k.mk).filter(Boolean);
+    (d.rollcalls||[]).filter(rc=>rc.date===s.when&&rc.body===ch&&rc.passed!=null
+      &&(!want.length||want.indexOf(rc.mk)>=0)).forEach(rc=>{
       const t=tallyOf(rc);
       out.push(voteChip(rc.mk||"",rc.passed,b.id,rc.mf)+(t?` <span class="vwtally">${tallyWhole(t)}</span>`:""));});
   }else{
