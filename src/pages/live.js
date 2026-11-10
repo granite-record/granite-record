@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.19
+// GRANITE_VERSION: 2026-10-30.20
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -230,7 +230,7 @@ L.votesSentence = function (file, now, body, http, day) {
 
 // A roll call's bill's own page, or null. A bill's page is under the year
 // it was introduced, not the year it is voted on: a 2025 bill carried over
-// and voted in 2026 is /bill/2025/hb1.html. `bills` is the night's
+// and voted in 2026 is /bill/2025/hb1. `bills` is the night's
 // {term: {year: [id]}} (build_live.bill_years), read from the term's own
 // index; a bill it does not hold gets no link, since a wrong link is worse
 // than none.
@@ -244,7 +244,7 @@ L.billHref = function (r, bills) {
   if (!id || !years) return null;
   for (var y in years) {
     if (Object.prototype.hasOwnProperty.call(years, y) && (years[y] || []).indexOf(id) >= 0) {
-      return "/bill/" + y + "/" + id.toLowerCase() + ".html";
+      return "/bill/" + y + "/" + id.toLowerCase();
     }
   }
   return null;

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.834
+# GRANITE_VERSION: 2026-09-04.835
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -27042,7 +27042,7 @@ def _audit_minor(BSP, seating, BP):
         def slug(self, body, name):
             return "x" if name == "Hunt" else ""
     row = BSP.members_row("H", ["Hunt", "Roy", "Muns"], _M(), lambda s: s)
-    if row != ('<span class="swho1"><span class="mchip p-R" translate="no"><a href="legislator/x.html">'
+    if row != ('<span class="swho1"><span class="mchip p-R" translate="no"><a href="legislator/x">'
                'Rep. Pat Hunt <span class="mtag">(R - Hills 1)</span></a></span></span> '
                '<span class="swho1"><span>Rep. Roy</span>,</span> '
                '<span class="swho1"><span>Rep. Muns</span></span>'):
@@ -31048,7 +31048,7 @@ if (/class="cnum" href=/.test(focusHtml)) {
   console.log("ARROW: the focused view still draws the card's number as a link. It "
               + "points at the standalone page for the same bill, which from a reader's "
               + "seat is the page they are already on"); process.exit(1); }
-if (!/<a class="cnum" href="bill[/]2026[/]hb1442[.]html" translate="no">HB 1442/.test(listHtml)) {
+if (!/<a class="cnum" href="bill[/]2026[/]hb1442" translate="no">HB 1442/.test(listHtml)) {
   console.log("ARROW: the search list drew no link to a standalone page");
   process.exit(1); }
 // The tooltip promised "no JavaScript" until the standalone page became this
@@ -34786,7 +34786,7 @@ def _rail_endings(N, B):
     if sum(s["act"] == "died" for s in c["SB131"]["steps"]) != 1:
         bad.append("SB 131 of 2025 has a second line of its death beside the rule's")
     link = (c["HB1179"]["steps"][-1].get("link") or {})
-    if link != {"text": "HB 154 of 1997", "href": "bill/1997/hb154.html"}:
+    if link != {"text": "HB 154 of 1997", "href": "bill/1997/hb154"}:
         bad.append(f"HB 1179 of 1996's report names {link!a}")
     # THE HISTORY: the death's sentence where it is not told, and none where
     # it is (HB 96's row is narrative.py's own "died").
@@ -34842,7 +34842,7 @@ def _rail_endings(N, B):
             bad.append(f"HB 561's report is not the \"~\"'s line: {got['HB561']['how'][-500:]!a}")
         if not line("HB1179", "ifuture", r'<svg class="arrow"[^>]*><path [^>]*/></svg>',
                     re.escape(reported["rec"]) + r' in 1997, <span class="tally">17–0</span>; filed again '
-                    r'as <a class="bmention" href="bill/1997/hb154.html" translate="no">HB 154 of 1997</a>'):
+                    r'as <a class="bmention" href="bill/1997/hb154" translate="no">HB 154 of 1997</a>'):
             bad.append(f"HB 1179 of 1996's report does not link HB 154 of 1997: "
                        f"{got['HB1179']['how'][-500:]!a}")
         said = (re.search(r'aria-label="([^"]*)"', got["SB570"]["card"]) or [None, ""])[1]
@@ -38512,6 +38512,128 @@ def _served(site, path, rules):
                 r.startswith(":") or r == s for r, s in zip(rule, segs)):
             return True
     return False
+
+
+# THE ADDRESS A LINK NAMES IS THE ONE THE HOST SERVES (Search Console, 7
+# November 2026: 25,718 pages indexed, 18,786 discovered and not, 6,896 "page
+# with redirect"). shell.clean_links turns the .html out of every href a
+# builder writes as HTML; the links a script draws -- app.js, components.js,
+# find.js, map.js, live.js, the home page's and the Officials page's inline
+# scripts, and the HTML the calendar's month files carry -- are outside it
+# ("never inside a <script>") and were 6,896 redirects a crawler followed.
+# The rules the .html in code may still be: a regex that reads an address, the
+# local-server fallback (fetch(url+".html"), r:fetch(...)), the key a script looks a page up
+# by (GR_HREFS["search.html"]), the calendar's own TAB, a property called html.
+_CLEAN_JS = ("app.js", "components.js", "find.js", "map.js", "live.js")
+_HTML_IN_CODE = re.compile(r'(?<!\\)(?<=[\w$})\]])\.html(?=["\'`#?\\])')
+_HTML_OK = re.compile(r'GR_HREFS|\.test\(|\.replace\(/|[^\w]TAB=|r:fetch\(|url\+"\.html"|"\.html"')
+_HREF_IN_DATA = re.compile(r'(?:href|data-href)=\\?"([^"\\]*)')
+_COMMENTS = re.compile(r"/\*.*?\*/|(?:(?<=\s)|^)//[^\n]*", re.S | re.M)
+
+
+def _html_in_script(text):
+    """[line] of a script's code where an address with .html is built."""
+    out = []
+    for line in _COMMENTS.sub("", text).splitlines():
+        if _HTML_IN_CODE.search(line) and not _HTML_OK.search(line):
+            out.append(line.strip()[:140])
+    return out
+
+
+@check("build", "no link, in a page or in an address a script builds, names a .html page or an "
+       "address _redirects redirects")
+def _addresses_clean():
+    """Every internal link at the address the host serves, in the HTML as
+    written and in what the scripts draw.
+
+    Builds the fixture site (the run's one build) and holds four things:
+      1. every href, src and data-href in every built page, outside script
+         and style bodies, resolved as a browser does, is not a path
+         _redirects answers with a 301, does not end in .html, and does not
+         end in a slash where the page is a file (/calendar/ for calendar.html);
+      2. the same of every href inside the HTML the month files of the
+         calendar carry (site/calendar/data/*.json);
+      3. app.js, components.js, find.js, map.js and live.js build no address
+         ending in .html (the allowed shapes are _HTML_OK's);
+      4. nor do the scripts inside the built pages, which are the Python
+         builders' own: the home page's, the Officials page's.
+    A .html in a GR_HREFS key, a regex or a fallback fetch is not a link.
+    """
+    from urllib.parse import urldefrag, urljoin
+    if [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]:
+        return "skip", "the builders are not here to build the fixture's site"
+    here = Path(".").resolve()
+    site = _fixture_site_shared()[0] / "site"
+    moved = {}
+    red = site / "_redirects"
+    for line in (red.read_text(encoding="utf-8").splitlines() if red.exists() else []):
+        p = line.split()
+        if len(p) == 3 and p[2] == "301":
+            moved["/" + p[0].strip("/")] = p[1]
+
+    def wrong(path):
+        """Why `path` is not a canonical address, or ''."""
+        q = path.split("?")[0]
+        if q != "/" and q.rstrip("/") in moved or q in moved:
+            return f"_redirects sends it to {moved.get(q) or moved.get(q.rstrip('/'))}"
+        if q.endswith(".html") and q != "/404.html":
+            return "ends in .html, which the host redirects"
+        if q != "/" and q.endswith("/") and (site / (q.strip("/") + ".html")).is_file():
+            return "ends in a slash, which the host redirects"
+        return ""
+
+    bad, n = Counter(), 0
+    where = {}
+
+    def note(rel, raw, why):
+        bad[(why, raw)] += 1
+        where.setdefault((why, raw), rel)
+
+    pages = sorted(site.rglob("*.html"))
+    assert pages, "the fixture chain wrote no pages to check"
+    scripts = []
+    for page in pages:
+        rel = page.relative_to(site).as_posix()
+        full = page.read_text(encoding="utf-8", errors="replace")
+        scripts += [(rel, s) for s in re.findall(r"(?is)<script(?![^>]*\btype=\"application/json\")[^>]*>(.*?)</script>", full)]
+        text = INLINE_BODY.sub(r"\1", full)
+        m = BASE_HREF.search(text)
+        at = urljoin("https://x/" + rel, m.group(1) if m else "")
+        for raw in re.findall(r'(?:href|src|data-href)\s*=\s*"([^"]*)"', text, re.I):
+            raw = raw.strip()
+            if not raw or OFFSITE.match(raw):
+                continue
+            target = urldefrag(urljoin(at, raw))[0]
+            if not target.startswith("https://x/"):
+                continue
+            n += 1
+            why = wrong(target[len("https://x"):])
+            if why:
+                note(rel, raw, why)
+    for f in sorted((site / "calendar" / "data").glob("*.json")) if (site / "calendar" / "data").is_dir() else []:
+        for raw in _HREF_IN_DATA.findall(f.read_text(encoding="utf-8", errors="replace")):
+            if raw and not OFFSITE.match(raw):
+                n += 1
+                why = wrong("/" + raw.lstrip("/"))
+                if why:
+                    note(f.relative_to(site).as_posix(), raw, why)
+    assert not bad, (
+        f"{sum(bad.values())} links to {len(bad)} addresses the host does not serve as written: "
+        + "; ".join(f"{k[1]!r} on {where[k]} ({k[0]})" for k, _ in bad.most_common(6)))
+
+    built = []
+    for name in _CLEAN_JS:
+        src = here / "src" / "pages" / name
+        if src.exists():
+            built += [(name, l) for l in _html_in_script(src.read_text(encoding="utf-8"))]
+    for rel, body in scripts:
+        built += [(rel, l) for l in _html_in_script(body)]
+    assert not built, (
+        f"{len(built)} places a script builds an address ending in .html, which the host "
+        "redirects: " + "; ".join(f"{w}: {l}" for w, l in built[:5]))
+    return "ok", (f"{n:,} links in {len(pages)} fixture pages and the calendar's month files, "
+                  f"none redirected or ending in .html; {len(_CLEAN_JS)} scripts and "
+                  f"{len(scripts)} inline scripts build no .html address")
 
 
 @check("build", "every internal link the builders write resolves to a file")
@@ -44980,7 +45102,7 @@ def _guide_search_words(BC, G):
     assert r.returncode == 0, f"the guide search's script failed in node: {r.stderr[-400:]}"
     got = json.loads(r.stdout.strip().splitlines()[-1])
     wrong = [f"{q!r} suggests {h or 'nothing'} first, not {want}" for q, want, h in got
-             if f"guides/{want}." not in h]
+             if not h.split("?")[0].split("#")[0].endswith(f"guides/{want}")]
     assert not wrong, "the guide search misses a reader's words: " + "; ".join(wrong)
     return "ok", f"{len(asks)} everyday asks, each answered first by its guide"
 
@@ -53188,23 +53310,23 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
         out = json.loads((root / "out.json").read_text(encoding="utf-8"))
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    assert out["old"] == ('<a href="committee/H26.html">House Corrections and '
+    assert out["old"] == ('<a href="committee/H26">House Corrections and '
                           'Criminal Justice</a>'), out["old"]
-    assert "committee/S33.html" in out["s33"] and "committee/S50.html" in out["s50"] \
-        and "committee/S50.html" in out["none"], (out["s33"], out["s50"], out["none"])
-    assert "committee/S22.html" in out["reb"] and "S45" not in out["reb"], (
+    assert "committee/S33" in out["s33"] and "committee/S50" in out["s50"] \
+        and "committee/S50" in out["none"], (out["s33"], out["s50"], out["none"])
+    assert "committee/S22" in out["reb"] and "S45" not in out["reb"], (
         "2005's Rules and Enrolled Bills does not link to S22, the code its page "
         "files it under: " + out["reb"])
-    assert out["wr"] == ('<a href="committee/S20.html">Senate Wildlife and '
+    assert out["wr"] == ('<a href="committee/S20">Senate Wildlife and '
                          'Recreation</a>'), out["wr"]
-    assert out["dre"] == ('<a href="committee/S03-1989.html">Senate Development, '
+    assert out["dre"] == ('<a href="committee/S03-1989">Senate Development, '
                           'Recreation and Environment</a>'), (
         "1989's Development, Recreation and Environment does not link to its own "
         "page: " + out["dre"])
-    assert "committee/S09.html" in out["ia92"] and "committee/S09.html" in out["ia12"], (
+    assert "committee/S09" in out["ia92"] and "committee/S09" in out["ia12"], (
         "the Senate's Internal Affairs does not link across its gaps to S09: "
         + out["ia92"] + " / " + out["ia12"])
-    assert "committee/S33.html" in out["card"] and "committee/H33.html" in out["card"] \
+    assert "committee/S33" in out["card"] and "committee/H33" in out["card"] \
         and "S50" not in out["card"], "a card does not link by its own term: " + out["card"]
     head = re.sub(r"\s+", " ", out["head"])
     assert "<b>Corrections and Criminal Justice</b> (1993 to 1996)" in head, (
@@ -53215,12 +53337,12 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
     s89, s03 = (re.sub(r"\s+", " ", out[k]) for k in ("s03_1989", "s03"))
     assert ("The General Court files this committee under the code <b>S03</b> in its own "
             "records, and later gave the same number to the Senate Committee on "
-            '<a href="committee/S03.html">Appropriations</a> (1993 to 1994). The two are '
+            '<a href="committee/S03">Appropriations</a> (1993 to 1994). The two are '
             "different committees" in s89), (
         "Development, Recreation and Environment's page does not say it shares S03 with "
         "Appropriations: " + s89[:600])
     assert ("also file an earlier committee under the code <b>S03</b>: the Senate Committee "
-            'on <a href="committee/S03-1989.html">Development, Recreation and Environment'
+            'on <a href="committee/S03-1989">Development, Recreation and Environment'
             "</a> (1989 to 1990). The two are different committees" in s03), (
         "Appropriations' page does not name the earlier committee under S03: " + s03[:600])
     return "ok", (f"{len(CN.CODES)} older names placed on {len(last)} pages of the General "
@@ -54817,7 +54939,7 @@ def _year_page_from_home(legislative_year, civics, build_pages):
     assert LY.SLUG in [t["slug"] for t in civics.TOPICS], (
         f"civics.TOPICS has no {LY.SLUG}: the page is not one of the Learn topics")
     assert BP.YEAR_LINK in BP.HOME_JS, "HOME_JS's copy of the status box does not carry YEAR_LINK"
-    assert f'href="{LY.HREF}"' in BP.YEAR_LINK, f"YEAR_LINK does not link {LY.HREF}"
+    assert f'href="{__import__("shell").canon(LY.HREF)}"' in BP.YEAR_LINK, f"YEAR_LINK does not link {__import__("shell").canon(LY.HREF)}"
     root = Path(tempfile.mkdtemp(prefix="gr-year-home-"))
     try:
         _base, _ran = _fixture_site_whole(root)
@@ -54872,7 +54994,7 @@ def _year_link_in_lang():
     for lang in i18n.LANGS:
         if lang == i18n.DEFAULT:
             continue
-        want = i18n.href(lang, LY.HREF)
+        want = __import__("shell").canon(i18n.href(lang, LY.HREF))
         assert f'href="{want}"' in BP.year_link(lang), (
             f"the {lang} status box does not link {want}: {BP.year_link(lang)!a}")
         assert want.startswith(f"/{lang}/") == i18n.has(lang, LY.HREF), want
@@ -57796,7 +57918,7 @@ globalThis.history = {state: null, pushState() {}, replaceState(a, b, u) { fake.
 const page = extra => s.setPage(Object.assign({kind: "member", terms: ["2025-2026", "2023-2024"],
   term: "2025-2026", data: fx.member, vfilter: "", vside: "", vq: "", vtopic: "", vall: false,
   vopen: {}, vshow: 0}, extra));
-const bills = h => [...new Set([...h.matchAll(/bill\/(\d{4})\/([a-z]+\d+)\.html/g)].map(m => m[2].toUpperCase()))].sort();
+const bills = h => [...new Set([...h.matchAll(/bill\/(\d{4})\/([a-z]+\d+)(?:\.html)?(?=[\"#?])/g)].map(m => m[2].toUpperCase()))].sort();
 try {
   for (const [k, extra] of Object.entries(fx.cases)) {
     page(extra); const h = s.renderMemberVotes(fx.member);
@@ -59163,7 +59285,7 @@ def _seat_callout(BP, SEAT):
         if t["hidden"] or t["below"] or px(t["top"]) != 1300 - GAP - H - 1000 \
                 or abs(px(t["left"]) - (188.5 - 12 - W / 2)) > .5 or px(t["arrow"]) != 100:
             bad.append(f"a tapped seat's callout is not above it with its arrow at the seat's middle: {t}")
-        if t["name"] != "Rep. mid" or t["href"] != "/legislator/mid.html" \
+        if t["name"] != "Rep. mid" or t["href"] != "/legislator/mid" \
                 or t["what"] != "Republican · Hillsborough 14" or t["seat"] != "Seat 2-096":
             bad.append(f"the callout does not say the member, the party and district, and the seat: {t}")
         if t["note"] != "Rep. mid, Republican, Hillsborough 14, seat 2-096":
@@ -72274,7 +72396,7 @@ def _record_not_translated():
         "src/pages/components.js": ['class="cnum" href="${esc(c.href)}" translate="no">',
                                     'class="ctitle" translate="no">', 'class="brtitle" translate="no">',
                                     'class="bmention" href="${esc(href)}" translate="no">',
-                                    'class="psent" href="legislator/${esc(slug)}.html" translate="no">',
+                                    'class="psent" href="legislator/${esc(slug)}" translate="no">',
                                     '<span class="mchip p-${esc(code)}" translate="no">',
                                     '<i translate="yes">'],
         "src/pages/components.py": ['class="ctitle" translate="no">', 'class="brtitle" translate="no">',
@@ -74507,8 +74629,11 @@ def _live_in_the_build():
         and plan.index("build_calendar.py") < plan.index("build_live.py"), (
             f"build_all does not run build_live.py after build_calendar.py: {plan}")
     live = Path(_paths.locate("build_live.py")).read_text(encoding="utf-8")
-    assert re.search(r'^\s*S\.sitemap_merge\(site, base, \[[^\]]*S\.canon\(ADDRESS\)\], "/live"\)', live, re.M), (
-        "build_live does not list /live in the sitemap, and check_site would refuse the page")
+    assert re.search(r'^\s*S\.sitemap_merge\(site, base, \[[^\]]*S\.canon\(ADDRESS\)\][^\n]*, "/live"\)', live, re.M), (
+        "build_live does not list /live in the sitemap once LINKED is on, and check_site would refuse the page")
+    assert "if not LINKED:" in live and "noindex" in live and "if LINKED else []" in live, (
+        "build_live's /live is not noindex and unlisted while LINKED is off (the owner, "
+        "10 November 2026)")
     call = re.compile(r"^[^#\n]*\blive_hook\.place\(", re.M)
     lacking = [f for f in ("build_committees.py", "build_study_committees.py")
                if not call.search(Path(_paths.locate(f)).read_text(encoding="utf-8"))]
@@ -81979,7 +82104,7 @@ def _testify_from_the_search():
     if got is None:
         return "skip", "node, app.js or dom_stub.js is not here"
     said = " ".join(re.sub(r"<[^>]+>", " ", got["html"]).split())
-    assert got["asked"] and got["asked"][0].endswith(".html"), (
+    assert got["asked"] and got["asked"][0].endswith("/bill/2025/hb104"), (
         f"focusActions did not ask for the bill's own page: {got['asked']}")
     assert got["count"] == 1, f"a bill opened from the search has {got['count']} Testify buttons in its row"
     assert got["kids"] == ["pcite", "followbox", "testifyin tliverow", "reportbox"], (
@@ -84505,7 +84630,7 @@ def _town_finder_words(BP):
         f"the town finder lists {towns(t['dover'])} for 'dover', {towns(t['ham'])} for 'ham' and "
         f"{towns(t['hampton'])} for 'hampton': a town is matched from the start of a word")
     opened = got["town"]["opened"]
-    assert all(f'href="town/concord-ward-{w}.html"' in opened for w in (1, 2, 3)) \
+    assert all(f'href="town/concord-ward-{w}"' in opened for w in (1, 2, 3)) \
         and "town/concord-ward-" not in got["none"]["typed"]["concord"], (
         "/officials?town=Concord does not arrive with Concord's wards open, or a city typed "
         f"opens them unasked: {opened[:300]!r}")
@@ -84692,7 +84817,7 @@ def _officials_heads_and_judges():
     # plain where the build has no such page.
     tied = [r for r in named if r.get("member")]
     for r in tied:
-        chip = f'<span class="mchip p-X" translate="no"><a href="legislator/{_html.escape(r["member"])}.html">'
+        chip = f'<span class="mchip p-X" translate="no"><a href="legislator/{_html.escape(r["member"])}">'
         assert chip in OT.executive(off, lambda s: True), f"{r['name']} is not their member chip"
         assert chip not in OT.executive(off, lambda s: False), (
             f"{r['name']} is linked to a member page the build does not have")
@@ -86778,7 +86903,7 @@ process.stdout.write("\n@@" + JSON.stringify(out));
             "app.css: a bill's number is in a fixed column, or one as wide as its own line's, where a long "
             "number runs under its moments or the moments do not start on one line; or a number is not on "
             "its line's first baseline")
-    assert '<a class="vwbn" href="bill/2026/hb675.html">HB 675-FN-A-LOCAL</a>' in one, (
+    assert '<a class="vwbn" href="bill/2026/hb675">HB 675-FN-A-LOCAL</a>' in one, (
         "a long number is not drawn whole in the description")
     # A LINK IN THE PLAYER'S CAPTION OR UNDER IT IS 24px TALL (the review of
     # 30 October 2026; WCAG 2.5.8): "On YouTube" in the caption and the links
@@ -87491,7 +87616,7 @@ def _member_signposts(BLP):
     # step before it says Former Legislators, so "Former Representative"
     # there said "former" twice. The heading keeps "Former Representative".
     for h, office in ((left, "Representative"), (left_s, "Senator")):
-        assert trail(h) == ('<li><a href="officials.html">Officials</a></li><li><a href="directory/'
+        assert trail(h) == ('<li><a href="officials">Officials</a></li><li><a href="directory/'
                             'former-legislators">Former Legislators</a></li><li aria-current="page">'
                             f'{office}</li>'), trail(h)
     assert '<h1 class="rh1">Former Representative Michael Gunski</h1>' in left, (
@@ -89120,7 +89245,7 @@ def _story_people(B):
                    + ")", names=("storyPeople",))
     if html is None:
         return "ok", "story_people ties two of three names; node is not here for the page"
-    assert html.count('class="psent"') == 2 and 'href="legislator/jane-smith-rock-13.html"' in html \
+    assert html.count('class="psent"') == 2 and 'href="legislator/jane-smith-rock-13"' in html \
         and "Rep. Lee spoke." in html, html
     return "ok", "Rep. Jane Smith and Sen. Bradley linked; Rep. Lee, two members, left as words"
 
@@ -118550,7 +118675,7 @@ def _elect_own_seat(BME):
                  "s": "james-creighton-hills-30"}
     html = C.elect_race({"seats": 2, "elected": [foote, creighton]})
     assert re.findall(r'<li class="elown"><span class="mchip p-R" translate="no"><a href="'
-                      r'legislator/([a-z0-9-]+)\.html"', html) == ["charles-foote-rock-13"] \
+                      r'legislator/([a-z0-9-]+)"', html) == ["charles-foote-rock-13"] \
         and html.count("elown") == 1, f"the block marks {html!r}: only Foote's item is elown"
     assert "elown" not in C.elect_race({"seats": 1, "elected": [dict(foote, s="")]}), (
         "an item with no link is marked elown")
@@ -118756,7 +118881,7 @@ def _elect_tab_like_legislators(OT):
         "Rep. “Elect” Lee Nobody": ("p-X", None, "Belk 6", "New"),
     }
     for who, (cls, slug, tag, kind) in want.items():
-        inner = (f'<a href="legislator/{slug}.html">{_h.escape(who)} <span class="mtag">({tag})</span></a>'
+        inner = (f'<a href="legislator/{slug}">{_h.escape(who)} <span class="mtag">({tag})</span></a>'
                  if slug else f'{_h.escape(who)} <span class="mtag">({tag})</span>')
         # The chip is the Legislators tab's, nothing inside it but the name
         # and tag; the word is beside it, outside it.
@@ -118774,7 +118899,7 @@ def _elect_tab_like_legislators(OT):
               {"k": "returning", "id": "1001"}):
         if OT.elect_kind(e, "H|Coos|1", rows_by_id) or OT.elect_word(e, "H|Coos|1", rows_by_id):
             bad.append(f"a member-elect the rows cannot place gets a word: {e}")
-    links = re.findall(r'<a href="legislator/([^"]+)\.html"', page)
+    links = re.findall(r'<a href="legislator/([^"]+)"', page)
     if sorted(set(links)) != sorted(s for _c, s, _t, _k in want.values() if s) or len(links) != 12:
         bad.append(f"the tab links {sorted(set(links))} ({len(links)}): only the six the file "
                    "links, once in each view")

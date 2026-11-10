@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.291
+// GRANITE_VERSION: 2026-09-07.292
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4640,9 +4640,9 @@ const JCLASS={s:"istudy",t:"ontable",f:"ifuture"};
 // build_site_v2.law_in_stages); `text` keeps every part for the Laws pages.
 function jText(s){
   const t=esc(s.shown||s.text||""), l=s.link;
-  if(!l||!l.text||!l.href||!/^bill\/\d{4}\/[a-z0-9]+\.html$/.test(l.href))return t;
+  if(!l||!l.text||!l.href||!/^bill\/\d{4}\/[a-z0-9]+(?:\.html)?$/.test(l.href))return t;
   const at=t.indexOf(esc(l.text));
-  return at<0?t:t.slice(0,at)+billMention(l.text,l.href)+t.slice(at+esc(l.text).length);
+  return at<0?t:t.slice(0,at)+billMention(l.text,l.href.replace(/\.html$/,""))+t.slice(at+esc(l.text).length);
 }
 const JBODY={H:"House",S:"Senate",G:"Governor",L:"Law",V:"Voters"};
 const JOURNEY_SHOWN=6;
@@ -7083,7 +7083,7 @@ const RELATED_HEADS=["Where Its Language Went","Filed Before and After","This Te
 function relatedSaid(b,e){
   const id=String(e.o).split("/")[1]||"";
   const other=String(e.o).slice(0,9)!==String(b.term||"");
-  const href=`bill/${e.y}/${id.toLowerCase()}.html`;
+  const href=`bill/${e.y}/${id.toLowerCase()}`;
   const name=`<a href="${esc(href)}">${esc(e.n)}</a>${other?` (${esc(String(e.o).slice(0,9)).replace("-","&ndash;")})`:""}`;
   return esc(e.s).replace("{b}",name);
 }
@@ -7279,7 +7279,7 @@ function focusActions(id){
   if(!y||document.getElementById("pageacts")||typeof fetch!=="function"||typeof DOMParser==="undefined")return;
   focusActs=k;
   const path=`bill/${y}/${String(id).toLowerCase()}`;
-  fetch(`${BASE}${path}.html`).then(r=>r.ok?r.text():Promise.reject(r.status)).then(html=>{
+  fetch(`${BASE}${path}`).then(r=>r.ok?r:fetch(`${BASE}${path}.html`)).then(r=>r.ok?r.text():Promise.reject(r.status)).then(html=>{
     if(focusActs!==k||focused!==id||document.getElementById("pageacts"))return;
     const doc=new DOMParser().parseFromString(html,"text/html");
     const acts=doc.getElementById("pageacts");
@@ -7995,7 +7995,7 @@ function lsrCardHtml(b,cls){
         ${chip(chipOf(b),`cstat ${chipCls(b)}`,"m")}</div>
         <div class="ctitle">${esc(b.title)}</div>
         <div class="cmeta">${b.sponsor_slug
-          ?`<a href="legislator/${esc(b.sponsor_slug)}.html">${esc(who)}</a>`
+          ?`<a href="legislator/${esc(b.sponsor_slug)}">${esc(who)}</a>`
           :esc(who)}${b.body_label?` &middot; ${esc(b.body_label)}`:""}</div>
       </div>${can?`
       <div class="followbox lsrfollow" data-fkey="lsr:${esc(num)}"><details class="follow">
@@ -8183,7 +8183,7 @@ function cardHtml(b,focus,line,cls){
   // article stays, since the tabs and their panes are found inside it.
   if(focus)return `<article class="card focus rec" data-id="${esc(b.id)}">${billHead(b,d)}`
     +`<div class="cbody">${body}</div></article>`;
-  return billCard({id:b.id,href:`bill/${y}/${String(b.id).toLowerCase()}.html`,n:b.n,year:y,
+  return billCard({id:b.id,href:`bill/${y}/${String(b.id).toLowerCase()}`,n:b.n,year:y,
     word:cardWord(chipOf(b),b.passage),cls:chipCls(b),title:b.title,
     byline:billByline(b._self?null:cardSponsor(b),b.committees||[b.committee],cardTopic(b),b.term,
       META.committee_codes),
@@ -9042,7 +9042,7 @@ function voteRow(r){
       esc(CHAMBER_SHORT[r.ch]||r.ch)}</span>`:""}</td>
     <td class="b" data-l="On">${x.b&&x.y
       // A MENTION, components.bill_mention: the number as the link.
-      ? billMention((b&&b.n)||x.b,`bill/${String(x.y)}/${String(x.b).toLowerCase()}.html`)
+      ? billMention((b&&b.n)||x.b,`bill/${String(x.y)}/${String(x.b).toLowerCase()}`)
       // A procedural vote -- a call of the roll, a rules suspension -- is
       // recorded against no bill. It used to render an empty cell wrapped in
       // a link to /bill//.html. WHAT IT WAS ABOUT, where the Journal says
@@ -9136,7 +9136,7 @@ function renderMemberHead(m){
   // before it already says Former Legislators, and "Officials › Former
   // Legislators › Former Representative" said "former" twice. The heading
   // under the trail still says "Former Representative ...".
-  const head=recordHead({trail:[["Officials","officials.html"],
+  const head=recordHead({trail:[["Officials","officials"],
       ...(former?[["Former Legislators","directory/former-legislators"]]:[]),
       [m.chamber==="S"?"Senator":"Representative",""]],
     title:esc(fullTitle(named)),line,facts,rail:"",actions:"",kind:`member rh-p${code||"X"}`});
@@ -9259,7 +9259,7 @@ function sameCode(c){
   if(!s.code||!others.length)return "";
   const word=c.chamber==="S"?"Senate":"House";
   const them=xs=>joinList(xs.map(o=>`the ${word} Committee on <a href="committee/${
-    esc(o.page)}.html">${esc(o.name)}</a> (${esc(o.years||"")})`),"and");
+    esc(o.page)}">${esc(o.name)}</a> (${esc(o.years||"")})`),"and");
   const num=`<b>${esc(s.code)}</b>`;
   const later=others.filter(o=>o.when==="later"),
         earlier=others.filter(o=>o.when==="earlier");
@@ -9993,7 +9993,7 @@ function cmteVideoDetail(c,r,items,day,chips){
     // screen and on paper.
     out.push(`<ol class="vwbills" id="vwbills">${order.map((b,k)=>{
       const mine=items.filter(i=>String(i.bill)===b), it=mine[0];
-      const href=it.year?`bill/${esc(it.year)}/${esc(b.toLowerCase())}.html`:esc(billHref(b));
+      const href=it.year?`bill/${esc(it.year)}/${esc(b.toLowerCase())}`:esc(billHref(b));
       const jumps=jumpButtons(mine,()=>pid);
       const did=meetingOutcomeChips(day,b);
       return `<li${k>=VW_BILLS?' class="vwrest"':""}><a class="vwbn" href="${href}">${esc(it.n||b)}</a>${
@@ -10593,7 +10593,7 @@ function calendarBlock(rows,heading){
 // rest of this file uses, so a calendar link and a card link agree.
 function billHref(id){
   const y=(typeof yearOf==="function"&&yearOf(id))||null;
-  return y?`bill/${y}/${String(id).toLowerCase()}.html`
+  return y?`bill/${y}/${String(id).toLowerCase()}`
           :`${BASE}bills#${encodeURIComponent(id)}`;
 }
 
@@ -10663,7 +10663,7 @@ function renderCommitteeHead(c){
     (c.names||[]).length?`Named ${c.names.map(n=>`<b>${esc(n.name)}</b> (${esc(n.years||"")})`)
       .join(" and ")} on this record&rsquo;s earlier bills and meetings, which the General
       Court&rsquo;s own records file under this committee.`:"",next].filter(Boolean);
-  return recordHead({trail:[["Committees","committees.html"],[`${ch} Committee`,""]],
+  return recordHead({trail:[["Committees","committees"],[`${ch} Committee`,""]],
       title:esc(c.name||""),line,facts,rail:"",actions:"",kind:"committee cmtehead"})
     +notes.map(n=>`<p class="src fill rnote">${n}</p>`).join("")+sameCode(c);
 }

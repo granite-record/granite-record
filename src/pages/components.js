@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.26
+// GRANITE_VERSION: 2026-10-09.27
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -154,7 +154,7 @@ function cmteLink(name,term,codes){
   const v=(codes||{})[name];
   const code=typeof v==="string"?v
     :v?((term&&Object.prototype.hasOwnProperty.call(v,term))?v[term]:v[""]):"";
-  return code?`<a href="committee/${esc(code)}.html">${esc(name)}</a>`:esc(name);
+  return code?`<a href="committee/${esc(code)}">${esc(name)}</a>`:esc(name);
 }
 
 // A committee's whole name for a sentence: components.py's cmte_title.
@@ -191,7 +191,7 @@ const pchip=m=>{
   // A NAME IS NOT TRANSLATED (23 October 2026): a browser's translation
   // leaves the chip's name and seat alone and translates its role.
   return `<span class="mchip p-${esc(code)}" translate="no">${
-    m.slug?`<a href="legislator/${esc(m.slug)}.html">${who}</a>`:who}${
+    m.slug?`<a href="legislator/${esc(m.slug)}">${who}</a>`:who}${
     role?` <i translate="yes">${esc(role)}</i>`:""}</span>`;};
 
 // ONE CHIP, IN TWO SIZES (the component plan's step 3, approved 9 October
@@ -413,7 +413,7 @@ function railHtml(stops,died){
 // A person in a running sentence: components.person_link.
 function personLink(m){
   const full=String(m.display_full||m.label||m.name||""), slug=m.slug||"";
-  return slug?`<a class="psent" href="legislator/${esc(slug)}.html" translate="no">${esc(full)}</a>`:esc(full);
+  return slug?`<a class="psent" href="legislator/${esc(slug)}" translate="no">${esc(full)}</a>`:esc(full);
 }
 
 // A term marked for its popover: components.term_mark.

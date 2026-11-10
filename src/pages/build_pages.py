@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.274
+# GRANITE_VERSION: 2026-09-04.275
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -318,7 +318,10 @@ MOVED =(("/learn", "/resources"), ("/learn.html", "/resources"),
          # Sen. John Barnes Jr.'s page, named from "Barnes, Jr., John" as
          # "Jr. Barnes John" until build_site_v2.person_name put the suffix
          # last (12 October 2026).
-         ("/legislator/jr-barnes-john-sd-17", "/legislator/john-barnes-jr-sd-17"))
+         # In both spellings: the .html one answered 404 (Search Console, 7
+         # November 2026), which every other mover here already covers.
+         *((f"/legislator/jr-barnes-john-sd-17{x}", "/legislator/john-barnes-jr-sd-17")
+           for x in ("", ".html")))
 def moved_members(site):
     """The 301s from the page of a member's earlier chamber to the one page
     they have now (build_site_v2.former_movers, 30 October 2026): Shannon
@@ -2283,7 +2286,7 @@ SEATING_JS = """
     if(!c){pop.hidden=true;popFor=null;return;}
     if(popFor!==c){
       popFor=c;
-      popA.href=DATA("legislator/"+c.getAttribute("data-slug")+".html");
+      popA.href=DATA("legislator/"+c.getAttribute("data-slug"));
       popA.textContent=c.getAttribute("data-name");
       // The name, then "Republican \u00b7 Belknap 6", then the seat on a
       // line of its own, its number the licence plate's.
@@ -3285,9 +3288,9 @@ function townRow(t){
       data-town="${esc(t.town)}"><b>${esc(t.town)}</b>
       <span class="wct">${tr("lf.wards","{n} wards",{n:t.wards.length})}</span></button>`
       + (picked===t.town ? `<div class="wards">` + t.wards.map(w=>
-          `<a class="wbtn" href="town/${esc(t.slug)}-ward-${esc(w)}.html"
+          `<a class="wbtn" href="town/${esc(t.slug)}-ward-${esc(w)}"
             >${tr("lf.ward","Ward {w}",{w:esc(w)})}</a>`).join("") + `</div>` : "");
-  return `<a class="lmrow" href="town/${esc(t.slug)}.html"
+  return `<a class="lmrow" href="town/${esc(t.slug)}"
     ><b>${esc(t.town)}</b></a>`;
 }
 
@@ -3315,7 +3318,7 @@ function render(){
   if(mem.length){
     parts.push('<p class="lmhead">'+tr("lf.members","Members")+'</p>');
     parts.push(mem.slice(0,SHOW).map(([,m])=>
-      `<a class="lmrow" href="legislator/${esc(m.slug)}.html">`
+      `<a class="lmrow" href="legislator/${esc(m.slug)}">`
       +`<b>${esc(m.display)}</b>`
       +chip(m.p,"pt-"+m.p)
       +`<span class="lmwhere">${esc(m.where)}</span>`
@@ -3391,7 +3394,7 @@ function roster(){
         // person asked for on 19 September; this view kept its own name, pill
         // and district until 24 September. display_full carries all three.
         +ms.map(m=>`<div class="mem"><span class="mchip p-${esc(m.p)}" translate="no">`
-          +`<a href="legislator/${esc(m.slug)}.html">${esc(m.full)}</a></span></div>`).join("")
+          +`<a href="legislator/${esc(m.slug)}">${esc(m.full)}</a></span></div>`).join("")
         +`</div></details>`;
     }).join("");
   }).join("");
@@ -3468,7 +3471,7 @@ Promise.all([fetch(DATA("districts.json")).then(r=>r.json()).catch(()=>({})),
 # written once here for both of its renderers -- the box main() builds and
 # HOME_JS's copy -- so that the two cannot say different things; the address
 # and the link's words are legislative_year's, the page's own.
-YEAR_LINK = (f'<p class="statenote stateyear"><a href="{_year.HREF}">'
+YEAR_LINK = (f'<p class="statenote stateyear"><a href="{_shell.canon(_year.HREF)}">'
              + _html.escape(_year.HOME_LINK).replace("&#x27;", "&rsquo;")
              + '</a></p>')    # the words alone (the person, 22 October 2026)
 
@@ -3529,7 +3532,7 @@ def year_link(lang="en"):
     opened the English page."""
     if lang == i18n.DEFAULT:
         return YEAR_LINK
-    return (f'<p class="statenote stateyear"><a href="{i18n.href(lang, _year.HREF)}">'
+    return (f'<p class="statenote stateyear"><a href="{_shell.canon(i18n.href(lang, _year.HREF))}">'
             + say(lang, "home.year_link", "NH Legislative Schedule") + '</a></p>')
 
 
@@ -4282,7 +4285,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   document.getElementById("notable").innerHTML=
     `${cl.length?`<h2>Closest floor votes</h2><table><tbody>${cl.map(v=>
       `<tr><td style="width:86px"><b>${v.y}\u2013${v.nn}</b></td>
-       <td><a href="bills.html#${esc(v.bill)}">${esc(v.n)}</a>
+       <td><a href="bills#${esc(v.bill)}">${esc(v.n)}</a>
        <span style="color:var(--ink-2)">${esc(v.q||"")}, ${fd(v.date)}</span><br>
        <span class="actw">${esc(v.title)}</span></td></tr>`).join("")}
        </tbody></table>`:""}
@@ -4293,10 +4296,10 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
        is a different thing from a 201\u2013199 on the floor. This counts the
        record, not what people read here. The site counts page views \u2014
        how many, and which pages \u2014 and nothing more; see
-       <a href="about.html">About</a>.</p>
+       <a href="about">About</a>.</p>
        <table><tbody>${co.map(b=>
        `<tr><td style="width:86px">${b.nrc} votes</td>
-        <td><a href="bills.html#${esc(b.id)}">${esc(b.n)}</a>
+        <td><a href="bills#${esc(b.id)}">${esc(b.n)}</a>
         <span style="color:var(--ink-2)">${esc(b.title)}</span></td></tr>`).join("")}
        </tbody></table>`:""}`;
 
@@ -5215,7 +5218,7 @@ def main():
 <h3 id="of-map">{say(lang, "of.map", "The Map")}</h3>
 <p class="src fill">{say(lang, "of.map_how", "Choose a district to see who represents it. Zoom in for\na city&rsquo;s wards.")}</p>
 <div class="ofmapbox" id="ofmap"></div>
-<noscript><p class="note">{say(lang, "of.map_noscript", "The map needs JavaScript. Every town&rsquo;s districts\nare on its own page, listed in <a href=\"/directory/towns.html\">every town and\nward</a>.")}</p></noscript>
+<noscript><p class="note">{say(lang, "of.map_noscript", "The map needs JavaScript. Every town&rsquo;s districts\nare on its own page, listed in <a href=\"/directory/towns\">every town and\nward</a>.")}</p></noscript>
 </section>"""),
             # WHO HOLDS THE SEATS AT THE TOP (the owner's walk of 7 November
             # 2026, C): under the presiding officers and over the roster, as

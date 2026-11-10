@@ -152,7 +152,7 @@ test("a chamber's roll calls, newest first, with the docket's outcome named as t
   const h = L.votesItems(f, "H", { "2027-2028": { 2027: ["HB2", "HB3"] } });
   assert.equal(h.length, 2);
   assert.match(h[0], /data-id="2027-H-15".*outcome not yet in the docket.*names follow/);
-  assert.match(h[1], /href="\/bill\/2027\/hb2\.html".*Motion Adopted, clerk's docket.*names: in/);
+  assert.match(h[1], /href="\/bill\/2027\/hb2".*Motion Adopted, clerk's docket.*names: in/);
   assert.match(L.votesItems(f, "S")[0], new RegExp(`saved at 9:12${NBSP}AM`));
 });
 
@@ -163,11 +163,11 @@ test("a roll call's bill links to the page of the year it was introduced, throug
   const rc = (b, term) => ({ id: "2026-H-3", body: "H", seq: 3, bill: `${term || "2025-2026"}/${b}`, bill_as_recorded: b,
     question: "OTP", taken: "2026-01-08T15:00:00Z", yeas: 1, nays: 0, ballots_complete: true, docket: null, note: null });
   // Voted in 2026, introduced in 2025: the 2025 page, never /bill/2026/hb1.
-  assert.equal(L.billHref(rc("HB1"), bills), "/bill/2025/hb1.html");
-  assert.equal(L.billHref(rc("HB 1"), bills), "/bill/2025/hb1.html");
-  assert.equal(L.billHref(rc("CACR13"), bills), "/bill/2026/cacr13.html");
+  assert.equal(L.billHref(rc("HB1"), bills), "/bill/2025/hb1");
+  assert.equal(L.billHref(rc("HB 1"), bills), "/bill/2025/hb1");
+  assert.equal(L.billHref(rc("CACR13"), bills), "/bill/2026/cacr13");
   const li = L.votesItems({ rollcalls: [rc("HB1")] }, "H", bills)[0];
-  assert.match(li, /href="\/bill\/2025\/hb1\.html"/);
+  assert.match(li, /href="\/bill\/2025\/hb1"/);
   assert.doesNotMatch(li, /\/bill\/2026\//);
   // Not in the index, another term's, or no index at all: the number, unlinked.
   for (const [r, b] of [[rc("HB9999"), bills], [rc("HB1", "2027-2028"), bills], [rc("HB1"), undefined], [rc("HB1"), {}]]) {
@@ -183,7 +183,7 @@ test("a roll call's bill links to the page of the year it was introduced, throug
   // A procedural vote: the words as typed, no bill, no link.
   assert.equal(L.billHref({ ...rc("SUSPRULE"), bill: null }, bills), null);
   // The link follows the record's reading of the field, not its words.
-  assert.equal(L.billHref({ ...rc("HB 1-FN"), bill: "2025-2026/HB1" }, bills), "/bill/2025/hb1.html");
+  assert.equal(L.billHref({ ...rc("HB 1-FN"), bill: "2025-2026/HB1" }, bills), "/bill/2025/hb1");
 });
 
 // ---- the votes file's rings, union and session card ----------------------------
@@ -343,7 +343,7 @@ test("Live Now's session card: the chamber's list, its sentence, provisional, an
   const now = T("2027-01-07T16:44:00Z");
   const h = L.sessionCard(f, "H", now, 200, { "2027-2028": { 2027: ["HB2"] } });
   assert.match(h, /<h2 class="lv-name">House roll calls today<\/h2>/);
-  assert.match(h, /href="\/bill\/2027\/hb2\.html"/);
+  assert.match(h, /href="\/bill\/2027\/hb2"/);
   assert.match(h, /Read from the General Court's database at 11:43/);
   assert.match(h, /Provisional: the night's record replaces this tomorrow morning; excusals settle days later\./);
   assert.match(h, /href="\/session\/H\/2027-01-07">The House today</);
@@ -721,7 +721,7 @@ test("the morning page fills each card's place, adds a card for a bill off the c
     assert.match(hb2.innerHTML, /data-rc="2027-H-14".*186&ndash;169/);
     const added = els["lv-cards"].children;
     assert.equal(added.length, 1, "one card added: HB 40, voted on and not on the calendar");
-    assert.match(added[0].innerHTML, /data-id="HB40".*href="\/bill\/2027\/hb40\.html".*HB 40/);
+    assert.match(added[0].innerHTML, /data-id="HB40".*href="\/bill\/2027\/hb40".*HB 40/);
     assert.match(added[0].innerHTML, /class="lv-offcal">Voted on today; not on the day's calendar\.</,
                  "an added card says why it is there");
     assert.match(added[0].querySelector(".lv-rcs").innerHTML, /data-rc="2027-H-15".*outcome not yet in the docket/);

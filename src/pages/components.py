@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.23
+# GRANITE_VERSION: 2026-10-09.24
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -257,7 +257,7 @@ def cmte_link(name, term, codes):
     v = (codes or {}).get(name)
     code = v if isinstance(v, str) else (
         (v[term] if term and term in v else v.get("")) if v else "")
-    return f'<a href="committee/{esc(code)}.html">{esc(name)}</a>' if code else esc(name)
+    return f'<a href="committee/{esc(code)}">{esc(name)}</a>' if code else esc(name)
 
 
 def cmte_title(name, chamber=""):
@@ -300,7 +300,7 @@ def pchip(m):
     role = m.get("role") if (m.get("role") and m.get("role") != "Member") else (
         "Prime" if m.get("prime") else "")
     slug = m.get("slug") or ""
-    inner = (f'<a href="legislator/{esc(slug)}.html">{who}</a>' if slug else who)
+    inner = (f'<a href="legislator/{esc(slug)}">{who}</a>' if slug else who)
     # A NAME IS NOT TRANSLATED (23 October 2026): a browser's translation
     # leaves the chip's name and seat alone and translates its role.
     return (f'<span class="mchip p-{esc(code)}" translate="no">{inner}'
@@ -645,7 +645,7 @@ def person_link(m):
     record gives. Text where there is no page to link to."""
     full = str(m.get("display_full") or m.get("label") or m.get("name") or "")
     slug = m.get("slug") or ""
-    return (f'<a class="psent" href="legislator/{esc(slug)}.html" translate="no">{esc(full)}</a>'
+    return (f'<a class="psent" href="legislator/{esc(slug)}" translate="no">{esc(full)}</a>'
             if slug else esc(full))
 
 

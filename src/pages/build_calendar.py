@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.54
+# GRANITE_VERSION: 2026-09-18.55
 """
 The General Court's week, one page per week.
 
@@ -3418,7 +3418,7 @@ def month_files(site, weeks, order, titles, years, code, today,
                                    lambda dd: day_words(dd, today, lang), S.E, level=2,
                                    sessions=sessions, docs=docs, lang=lang, events=events,
                                    morning=today.isoformat())
-            days[iso] = html
+            days[iso] = S.clean_links(html)
             cards += len(day)
             if k in weeks and k not in wk:
                 if k not in facts:

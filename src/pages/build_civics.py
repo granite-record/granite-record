@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.91
+# GRANITE_VERSION: 2026-09-08.92
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1885,7 +1885,7 @@ def guides_tab(lang, published=(), articles=()):
             words += [t["does"], t["head"], t["line"]]
         if g is not None and "title" in g:
             words += [g["title"], g.get("blurb", "")]
-        data.append({"h": href(slug).replace("&amp;", "&"), "t": bare(head), "l": bare(line),
+        data.append({"h": S.canon(href(slug).replace("&amp;", "&")), "t": bare(head), "l": bare(line),
                      "k": bare(" ".join(words))})
     strings = {
         "one": html.unescape(I.say(lang, "guides.find_one", "1 guide matches")),

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.261
+# GRANITE_VERSION: 2026-09-05.262
 """
 Generate the faceted site from real General Court data.
 
@@ -8027,7 +8027,7 @@ def study_ending(narr, steps, rail, term, sittings, lsrs=None):
             name = re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", nb["id"]) + f" of {nb['year']}"
             line["text"] += (f"; the clerk noted, with a question mark, that it was filed "
                              f"again as {name}" if nb["queried"] else f"; filed again as {name}")
-            line["link"] = {"text": name, "href": f"bill/{nb['year']}/{nb['id'].lower()}.html"}
+            line["link"] = {"text": name, "href": f"bill/{nb['year']}/{nb['id'].lower()}"}
         out.append(line)
     out.sort(key=lambda s: s.get("date") or "9999")
     return out
