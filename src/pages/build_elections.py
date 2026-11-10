@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.3
+# GRANITE_VERSION: 2026-11-07.4
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -354,8 +354,9 @@ def closest(races, decided_races, path, hand, n=8):
 
 def deadline_line(hand, report, election, settled=False):
     d = hand.get("recount_deadline")
-    if settled:
+    if settled and not d:
         # An election before the latest on file: long settled, final by rule.
+        # (Where the owner entered its deadline, that is said as it always was.)
         return ("This election is long past: its results are shown as final, and a race whose "
                 "count is a recount&rsquo;s says so.")
     if not d:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.10
+# GRANITE_VERSION: 2026-10-16.11
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -1059,10 +1059,11 @@ def members_elect(results, sitting, former, districts, hand, today, settled=Fals
     given for an election up to HISTORY_UNTIL, whose House candidates the
     results print as surnames."""
     on_file, clash = races_for(results, districts)
-    election_year = int(str(results.get("election") or "0000")[:4])
-    term = term_after(election_year)
+    day = str(results.get("election") or "")[:4]
+    election_year = int(day) if day.isdigit() else 0
+    term = term_after(election_year) if election_year else None
     people = People(sitting, former, ballot_of(results),
-                    history if election_year <= HISTORY_UNTIL else None, term)
+                    history if 0 < election_year <= HISTORY_UNTIL else None, term)
     pending = "" if settled else recount_open(today, hand.get("recount_deadline"),
                                               results.get("election"))
     report = {"unlinked": [], "new": [], "short": [], "notes": list(clash), "pending": pending}
