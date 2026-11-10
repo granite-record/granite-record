@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.833
+# GRANITE_VERSION: 2026-09-04.834
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -57778,7 +57778,8 @@ const fs = require("fs");
 globalThis.fetch = async () => ({ok: false, status: 404, text: async () => "", json: async () => null});
 let s;
 try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
-  + "; ({renderMemberVotes, voteAddress, voteAddressRead, matches, IDX, LOADED,"
+  + "; ({renderMemberVotes, voteAddress, voteAddressRead, matches, IDX, LOADED, landingTerm,"
+  + "   setTab: n => { PAGE_TAB = n; },"
   + "   setRCX: v => { RCX = v; }, setPage: p => { PAGE = p; }, getPage: () => PAGE,"
   + "   setQuery: q => { query = q; }, setTerm: t => { term = t; },"
   + "   setMeta: m => { META = Object.assign(META || {}, m); }})"); }
@@ -57814,6 +57815,18 @@ try {
   page({}); s.voteAddressRead(); const p = s.getPage();
   out.read = [p.vq, p.vtopic, p.vall];
   globalThis.location.search = "";
+  // A member-elect: the requests term first. The Votes tab's address opens on
+  // the newest term with votes, every term still answers there, and the
+  // requests term alone says no votes (dry run 16, 10 November 2026).
+  s.setMeta({requests: {term: "2027-2028", year: 2027}});
+  const ts = ["2027-2028", "2025-2026", "2023-2024"];
+  s.setTab(2); out.landVotes = s.landingTerm("member", ts);
+  s.setTab(0); out.landBills = s.landingTerm("member", ts);
+  page({terms: ts, term: "2027-2028", vall: true});
+  out.reqAll = (s.renderMemberVotes(fx.member).match(/<td class="d"/g) || []).length;
+  page({terms: ts, term: "2027-2028"});
+  out.reqNone = /No votes: a request/.test(s.renderMemberVotes(fx.member));
+  s.setMeta({requests: null});
 } catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").split("\n")[1]; }
 process.stdout.write("\n@@" + JSON.stringify(out));
 """
@@ -57891,9 +57904,16 @@ def _member_votes_search():
         f"a search cleared still leaves its address: {got['addrBare']}")
     assert got["read"] == ["rent a", "Education - General", True], (
         f"the address is not read back into the search: {got['read']}")
+    assert got["landVotes"] == "2025-2026" and got["landBills"] == "2027-2028", (
+        "a member-elect's Votes address does not open on the newest term with votes, or the "
+        f"page itself no longer opens on the requests: {got['landVotes']}, {got['landBills']}")
+    assert got["reqAll"] == 6 and got["reqNone"], (
+        f"on the requests term, every term lists {got['reqAll']} of 6 votes, or the term alone "
+        "does not say a request is not voted on")
     return "ok", ("a number, a synonym and words found by the bill search's own matcher, a topic "
                   "and the vote filter narrowing with them, the term or every term, the address "
-                  "kept and read back, and an empty result said plainly")
+                  "kept and read back, and an empty result said plainly; a member-elect's Votes "
+                  "address opens on the newest term with votes")
 
 
 

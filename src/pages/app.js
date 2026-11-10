@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.290
+// GRANITE_VERSION: 2026-09-07.291
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -8884,7 +8884,7 @@ const billFold=s=>String(s||"").toUpperCase().replace(/(?:-(?:FN|A|LOCAL|L))+\s*
   .replace(/[^A-Z0-9]/g,"");
 
 function renderMemberVotes(m){
-  if(isReqTerm(pageTerm()))return `<p class="src">No votes: a request is not voted on until
+  if(isReqTerm(pageTerm())&&!PAGE.vall)return `<p class="src">No votes: a request is not voted on until
     it is a bill.</p>`;
   const v=memberVotes(m);
   const t=pageTerm();
@@ -8968,7 +8968,7 @@ function renderMemberVotes(m){
     <p class="src" id="vcount">${rows.length.toLocaleString()} of ${v.length.toLocaleString()}
       recorded votes in ${PAGE.vall?"every term":esc(termDash(t))}${castIn}${
       (PAGE.terms||[]).length>1?` (<button type="button" class="link" data-vall="${
-        PAGE.vall?"0":"1"}">${PAGE.vall?`only ${esc(termDash(t))}`:"search every term"}</button>)`:""}${
+        PAGE.vall?"0":"1"}">${PAGE.vall?`show only ${esc(termDash(t))}`:"search every term"}</button>)`:""}${
       reading?`. Reading the bills&hellip;`:""}, newest first: every roll call this member is
       recorded in, what it was on, and what it decided. The prevailing side is a yes on a
       motion that carried or a no on one that failed; it describes the vote, not the
@@ -11202,6 +11202,16 @@ function landingTab(){
   PAGE_TAB=COMMITTEE_TABS.videos;
   tabAddress("videos",true);
 }
+// The term a record's page opens on: the newest the site publishes. A
+// member-elect's newest is the requests term, which has no votes, so their
+// Votes tab's own address (a shared ?q= or ?term=all link) opens on the
+// newest term that has them (dry run 16, 10 November 2026).
+function landingTerm(kind,terms){
+  const t=terms.find(published)||terms[0]||"";
+  if(kind==="member"&&PAGE_TAB===MEMBER_TABS.votes&&isReqTerm(t))
+    return terms.find(x=>!isReqTerm(x)&&published(x))||t;
+  return t;
+}
 function openPage(kind,ref){
   PAGE={kind,data:null,terms:[],term:"",status:"",vfilter:"",vid:"",
         vside:"",vq:"",vtopic:"",vall:false,vopen:{},vshow:0,bshow:0,mshow:0};
@@ -11234,7 +11244,7 @@ function openPage(kind,ref){
     // still to come opened on it, an empty "No bills were referred to this
     // committee in the 2027–2028 term", over the term it has a record of.
     // The new term stays in the Term control, its meeting under it.
-    PAGE.term=PAGE.terms.find(published)||PAGE.terms[0]||"";
+    PAGE.term=landingTerm(kind,PAGE.terms);
     if(PAGE.term)term=PAGE.term;
     landingTab();
     renderPage();
