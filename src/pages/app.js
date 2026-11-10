@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.293
+// GRANITE_VERSION: 2026-09-07.294
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2426,7 +2426,7 @@ function takeOffer(o){
   }
   if(focused)unfocus(0);
   query=o.rest;$("#q").value=o.rest;clearTimeout(QDRAW);addressSearch(o.rest);
-  sel[o.key].add(o.v);openGroups.add(o.key);
+  sel[o.key].add(o.v);openGroups.add(o.key==="party"?"sponsor":o.key);
   render();
 }
 let OFFERS={key:null,html:""};
@@ -2867,6 +2867,8 @@ function filtersFromAddress(params){
    withCosp=params.get("cosp")==="1";
    for(const k of ["committee","sponsor","voteday","party"])
      for(const w of params.getAll(k)){const v=String(w||"").trim();if(v)sel[k].add(v);}
+   // The party is a choice inside the Sponsor group: it opens with it.
+   if(sel.party.size)openGroups.add("sponsor");
    {const r=rsaNorm(params.get("rsa")||"");if(r){sel.rsa.add(r);rsaText=r;}}
    const psort=params.get("sort");
    if(psort&&["best","num","recent","oldest","status"].includes(psort)){
@@ -3509,7 +3511,9 @@ function zerosLast(key,vals,counts){
   const some=vals.filter(v=>counts[v]),none=vals.filter(v=>!counts[v]);
   return {vals:some.concat(none),rule:some.length&&none.length?some.length:-1};
 }
-function fgroup(key,label,vals,counts,searchable,paint,show){
+// `extra` is a second choice drawn inside this group after its own options
+// (the Sponsor group's prime-sponsor party), `extraN` how many of it are ticked.
+function fgroup(key,label,vals,counts,searchable,paint,show,extra,extraN){
   const chosen=sel[key],open=openGroups.has(key);
   let inner="";
   if(searchable){
@@ -3519,7 +3523,7 @@ function fgroup(key,label,vals,counts,searchable,paint,show){
     inner=`${[...chosen].map(v=>`<span class="pill">${esc(v)}<button data-unpick="${esc(v)}">×</button></span>`).join("")
       ?`<div class="chosen">${[...chosen].map(v=>`<span class="pill">${esc(v)}<button data-unpick="${esc(v)}">×</button></span>`).join("")}</div>`:""}
       <input class="sbox" id="sbox" aria-label="Find a sponsor by name" placeholder="Type a name…" value="${esc(sponsorFilter)}" autocomplete="off">
-      <label class="fcosp"><input type="checkbox" id="cosp" ${withCosp?"checked":""}><span>Include co-sponsored bills</span></label>`
+      <label class="fcosp"><input type="checkbox" id="cosp" ${withCosp?"checked":""}><span>Include co-sponsored bills</span></label>${extra||""}`
       +(shown.map((v,i)=>`<label class="fopt ${!counts[v]?'off':''}${i===found.rule?' fzero':''}"><input type="checkbox" data-f="${key}"
         value="${esc(v)}" ${chosen.has(v)?"checked":""}><span>${esc(v)}</span>
         <span class="c">${(counts[v]||0).toLocaleString()}</span></label>`).join("")
@@ -3538,7 +3542,7 @@ function fgroup(key,label,vals,counts,searchable,paint,show){
   // with nothing to say the list went on.
   const whole=key==="status"||key==="type";
   return `<div class="fgroup ${open?'open':''}"><button class="fhead" data-g="${key}"
-    aria-expanded="${open}"><span>${label}</span>${chosen.size?`<span class="badge">${chosen.size}</span>`:""}
+    aria-expanded="${open}"><span>${label}</span>${chosen.size+(extraN||0)?`<span class="badge">${chosen.size+(extraN||0)}</span>`:""}
     <span class="chev">▸</span></button><div class="fbody${whole?" whole":""}" ${open?"":"hidden"}>${inner}</div></div>`;
 }
 
@@ -3919,12 +3923,17 @@ function renderFacets(){
       TYPE_NAME[v]?`<span>${esc(TYPE_NAME[v])}</span>`:""}</span>`);
   h+=fgroup("committee","Committee",present("committee"),cnt("committee","committee"));
   h+=fgroup("topic","Topic",present("topic"),cnt("topic","topic"));
-  h+=fgroup("sponsor","Sponsor",present("sponsor"),cnt("sponsor","sponsor"),true);
-  // THE PRIME SPONSOR'S PARTY, under the Sponsor box it narrows: a short list
-  // shown whole, in the legislators' chip shape and colour (.mchip), where a
-  // party chosen in another term stays, at none, so it can be unticked.
-  h+=fgroup("party","Prime Sponsor’s Party",[...new Set([...present("party"),...sel.party])].sort(partyCmp),
-    cnt("party","party"),false,null,partyShow);
+  // THE PRIME SPONSOR'S PARTY is a choice inside the Sponsor group it narrows
+  // (the owner, 10 November 2026), below the name box and the co-sponsorship
+  // box: a short list shown whole, in the legislators' chip shape and colour
+  // (.mchip), where a party chosen in another term stays, at none, so it can
+  // be unticked.
+  const pc=cnt("party","party");
+  const pOpts=[...new Set([...present("party"),...sel.party])].sort(partyCmp);
+  const partyHtml=`<div class="fsub"><div class="fsubh">Prime sponsor’s party</div>${
+    pOpts.map(v=>`<label class="fopt ${!pc[v]&&!sel.party.has(v)?'off':''}"><input type="checkbox" data-f="party" value="${esc(v)}" ${sel.party.has(v)?"checked":""}>
+      <span>${partyShow(v)}</span><span class="c">${(pc[v]||0).toLocaleString()}</span></label>`).join("")}</div>`;
+  h+=fgroup("sponsor","Sponsor",present("sponsor"),cnt("sponsor","sponsor"),true,null,null,partyHtml,sel.party.size);
   // THE STATUTE, where the Floor Vote Day filter was (the person, 11 October
   // 2026): Laws Changed (RSA) since 26 October, a box that offers the laws
   // these bills change by number or by name (rsaGroup), and the law itself

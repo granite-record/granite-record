@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.841
+# GRANITE_VERSION: 2026-09-04.842
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -87216,7 +87216,26 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     assert got["all"] == 8 and got["dem"] == ["HB4", "HB5"] and got["demrep"] == 5 and got["none"] == ["HB9"], (
         f"a ticked party does not keep exactly its bills: {got}")
     src = Path("src/pages/app.js").read_text(encoding="utf-8")
-    assert 'fgroup("party",' in src and '"party"]' in src, "the filter is not offered, or not kept in the address"
+    assert 'fgroup("party",' not in src and 'data-f="party"' in src and '"party"]' in src, (
+        "the party is not a choice inside the Sponsor group, or not kept in the address")
+    # The Sponsor group draws the party choice inside itself, after its
+    # co-sponsorship box, and its badge counts a party ticked.
+    h2 = _HEARD_PRELUDE + r"""
+load("fgroup, sel, openGroups");
+const out = {};
+try {
+  s.sel.party.add("Democrat");
+  const extra = '<div class="fsub" id="x">PARTYBOX</div>';
+  out.html = s.fgroup("sponsor", "Sponsor", ["Ann"], {Ann: 1}, true, null, null, extra, s.sel.party.size);
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+    g2 = _node_app(h2, {})
+    assert g2 is not None and "threw" not in g2, f"the Sponsor group would not draw: {g2}"
+    html = g2["html"]
+    assert html.index('id="cosp"') < html.index("PARTYBOX") < html.index("</div></div>"), (
+        "the party choice is not inside the Sponsor group after its co-sponsorship box")
+    assert '<span class="badge">1</span>' in html, "the Sponsor badge does not count a ticked party"
     return "ok", "bills fall under their sponsor's party as recorded, and a ticked party keeps exactly its bills"
 
 
