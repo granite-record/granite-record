@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.374 */
+/* GRANITE_VERSION: 2026-09-07.375 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -4084,6 +4084,11 @@ border-radius:var(--r-in);color:var(--ink);font-weight:600;line-height:1.6}
    says "Link copied" where the address was copied rather than shared. */
 #reportbox{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-4) var(--sp-5);margin-top:var(--sp-5)}
 #reportbox > .report[open]{flex:1 1 100%}
+/* IN A PAGE'S ROW OF ACTIONS (shell.py's .pageacts: Cite, and Report a problem
+   mounted beside it, as on a town's page) the box sits level with the other
+   buttons: its 20px of margin above had put Report a problem lower than Cite
+   this page (the owner, 10 November 2026). */
+.pageacts > #reportbox{margin-top:0}
 .sharestate{font-size:var(--t-sm);color:var(--ink-2);overflow-wrap:anywhere;min-width:0}
 .followpane,.citebody,.testifypane{position:absolute;right:0;top:calc(100% + 6px);z-index:20;
   width:min(36rem,calc(100vw - 28px));padding:var(--sp-5) var(--sp-5);border:1px solid var(--rule-2);

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.848
+# GRANITE_VERSION: 2026-09-04.849
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -34492,6 +34492,29 @@ def _hearings_one_player():
         f"the committee's bill line is not number, moments and chip on one line, then the title: {line[:400]}")
     return "ok", ("one player and a playlist of the bill's recordings; the sittings' counts, votes and moments "
                   "under it; a sitting with no recording its own entry; the committee's moments and chip on one line")
+
+
+@check("frontend", "Cite this page and Report a problem sit level in a page's row of actions: the report box "
+                   "takes no margin above it there")
+def _actions_level():
+    """The owner, 10 November 2026: on a town's page Report a problem stood
+    12px lower than Cite this page. Both are in #pageacts (shell.py's row),
+    the report box in #reportbox (app.js mountReport), whose own rule gives
+    it margin-top to stand clear of the record it follows; in the row that
+    margin is what pushed it down. A page's row keeps none, as a bill page's
+    (.racts #reportbox is display:contents). Measured in a browser: both
+    buttons' tops the same, at 1280 and at 390."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    rules = _css_rules(css)
+    base = [b for ctx, sel, b, _l in rules if not ctx and sel == "#reportbox"]
+    assert base and "margin-top" in "".join(base), "#reportbox no longer stands clear of the record below it"
+    level = [b for ctx, sel, b, _l in rules if not ctx and sel == ".pageacts > #reportbox"]
+    assert level and ("margin-top", "0") in _css_decls(level[0]), (
+        "app.css does not take the report box's margin off in a page's row of actions (.pageacts > #reportbox)")
+    # After the box's own rule, or the margin wins by coming last.
+    assert css.index(".pageacts > #reportbox{") > css.index("#reportbox{display:flex"), (
+        "the row's rule comes before the report box's own")
+    return "ok", "the report box has no margin above it in a page's row of actions, so it is level with Cite"
 
 
 @check("frontend", "a tally in How it got here stays on one line, never broken after its dash")
