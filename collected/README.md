@@ -47,7 +47,14 @@ How old each of the town files is, and when each is due to be read again, is
   becoming the address `/members_elect.json` names, and `--check` says
   whether the two still agree.
   `election_2024.json` is the first, and the matching rule's test set
-  (`src/parse/score_members_elect.py`).
+  (`src/parse/score_members_elect.py`). 2016, 2018, 2020 and 2022 were added on
+  10 November 2026 from the same office's older files (`--registry` names each
+  file's address and day, `--partial` lets a county or the Senate have no
+  file): their House files print a surname for a candidate; 2022 is held to
+  the district table, 2016-2020 (the 2012 districts, whose table is on no disk
+  here) to none, saying so in `_notes`; 2016 has no Strafford House file and
+  no State Senate, listed in `_not_on_file` and filled from nowhere. Every
+  election before the latest on file is final by rule.
 - `nh_streets.json` -- every New Hampshire street that carries house
   numbers, by town and ZIP code, with its numbers' ranges: the list the Your
   town panel's address box suggests from (the person, 24 October 2026).

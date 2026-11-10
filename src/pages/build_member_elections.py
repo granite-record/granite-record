@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-10.1
+# GRANITE_VERSION: 2026-11-10.2
 """
 Each member's Elections tab: the general elections on file in which the member
 is recorded, newest first (the owner's design of 10 November 2026,
@@ -42,6 +42,20 @@ THE MATCHING (the owner's approval of 10 November 2026):
   one, and a winner it does not draw has no link to take. A winner it DOES
   draw and cannot link is left alone: that is its refusal, and a name match
   here must not override it.
+
+  THE SEAT IN EACH TERM (10 November 2026). "The seat the member held" is the
+  seat they printed on a bill of that term (text_sponsors.json, through
+  build_members_elect.seat_history), with the roster's one seat for the term it
+  belongs to, so that a former member of 2016 is matched to the seat they held
+  in 2017-2018. A seat of a term on the 2012 districts is no evidence for an
+  election held on the 2022 ones (build_members_elect.on_this_map).
+
+  THE 2016-2022 HOUSE FILES PRINT A SURNAME ONLY, so "the same name" cannot be
+  asked of them. A loss there is shown only on the weaker match this module
+  says so about: the surname, the very seat held in the term before or after,
+  the party where both give one, and no other candidate of the surname in the
+  race (Roster.surname_match). A win there is linked by the elections page's own
+  matching, which for these years is the seat held (by_history).
 
   Never a looser string match. A candidate who could be a member and is not
   certain is not shown; the report names the race, the printed name, the likely
@@ -87,8 +101,14 @@ class Roster:
     """The sitting and former members, read for the one question: who is this
     printed name in this race. `terms` is the site's terms, newest first."""
 
-    def __init__(self, sitting, former, terms):
+    def __init__(self, sitting, former, terms, history=None):
         self.members, self.by_name = {}, defaultdict(list)
+        # {(term, seat)} each member held: the roster's one seat for the term it
+        # is the seat of, and every seat the member printed on a bill of a term
+        # (BME.seat_history), which is how a former member of an older term, and a
+        # sitting member's earlier seats, are matched to the seat they held then.
+        seats = (history or {}).get("seats") or {}
+        self.surnames = defaultdict(list)
         newest = terms[0] if terms else None
         for kind, rows in (("sitting", sitting), ("former", former)):
             for m in rows or []:
@@ -99,17 +119,72 @@ class Roster:
                      "term": held_in, "label": m.get("display_full") or m.get("name") or ""}
                 if not p["id"] or p["id"] in self.members:
                     continue
+                p["held"] = {(t, k) for t, ks in (seats.get(p["id"]) or {}).items() for k in ks}
+                for other in m.get("member_ids") or []:
+                    p["held"] |= {(t, k) for t, ks in (seats.get(str(other)) or {}).items()
+                                  for k in ks}
+                if p["seat"] and p["term"]:
+                    p["held"].add((p["term"], p["seat"]))
+                p["readings"], p["sfx"] = BME.readings(p["name"])
+                p["party"] = str(m.get("party") or "")[:1].upper()
                 self.members[p["id"]] = p
                 self.by_name[nfc_fold(p["name"])].append(p)
+                for sur in {x for x, _f in p["readings"]}:
+                    self.surnames[sur].append(p)
 
-    def certain(self, name, key, election):
+    def surname_match(self, name, key, window, race, party):
+        """([members], why not) for a candidate the results print as a surname
+        (a House race of 2016-2022, race["surnames"]). The weaker kind of match,
+        said so in the report: the surname, the very seat held in the term
+        before or after the election, the party the candidate filed under
+        where both give one, and no other candidate of the surname in the race.
+        One member only is a match."""
+        rd, sfx = BME.surname_readings(name)
+        if len(str(name).split()) > 1:
+            rd = rd + BME.readings(name)[0]
+        held = [p for p in self.members.values() if any((t, key) in p["held"] for t in window)]
+        fits = BME.by_name(held, [(s, f) for s, f in rd], sfx)
+        letters = {x for x in str(party or "").upper().replace("/", "")}
+        fits = [p for p in fits if not p["party"] or not letters or p["party"] in letters]
+        sur = {s for s, _f in rd}
+        twins = [c for c in (race or {}).get("candidates") or []
+                 if c["name"] != name and sur & {s for s, _f in BME.surname_readings(c["name"])[0]}]
+        if twins and fits:
+            return [], "another candidate of that surname is in the race"
+        if len(fits) == 1:
+            return fits, ""
+        if len(fits) > 1:
+            return [], "more than one member of that surname held the seat"
+        return [], ""
+
+    def surname_near(self, name, key):
+        """The members who share a surname-only candidate's surname and have
+        sat in the race's county (or, for the Senate, any), as labels with ids,
+        for the report; never a link."""
+        rd, _sfx = BME.surname_readings(name)
+        m = BME.KEY_RE.match(key)
+        county = m.group(1) if m else None
+        found = []
+        for sur in {s for s, _f in rd}:
+            for p in self.surnames.get(sur, []):
+                if county and not any(k.startswith(f"H|{county}|") for _t, k in p["held"]) \
+                        and p["seat"] and not p["seat"].startswith(f"H|{county}|"):
+                    continue
+                found.append(f"{p['label']} [{p['id']}]")
+        return ", ".join(sorted(set(found)))
+
+    def certain(self, name, key, election, race=None, party=""):
         """([members], why not): the members a printed name in race `key` is,
         by the strict rule. One member only is a match."""
         year = int(election[:4])
         after = BME.term_after(year)
-        window = {BME.term_before(after), after}
+        # The term before is on the old districts for the election of 2022: no
+        # evidence of a seat in the new map (BME.on_this_map).
+        window = {t for t in (BME.term_before(after), after) if BME.on_this_map(t, year)}
+        if (race or {}).get("surnames"):
+            return self.surname_match(name, key, window, race, party)
         same = self.by_name.get(nfc_fold(name), [])
-        fits = [p for p in same if p["seat"] == key and p["term"] in window]
+        fits = [p for p in same if any((t, key) in p["held"] for t in window)]
         if len(fits) == 1:
             return fits, ""
         if len(fits) > 1:
@@ -118,11 +193,12 @@ class Roster:
             return [], ""
         why = []
         for p in same:
-            if p["seat"] != key:
+            if key not in {k for _t, k in p["held"]}:
                 why.append(f"{p['label']} [{p['id']}] has {BME.race_words(p['seat']) if p['seat'] else 'no seat'} "
                            f"on record, not {BME.race_words(key)}")
             else:
-                why.append(f"{p['label']} [{p['id']}] held {BME.race_words(key)} in {p['term'] or 'a term not on record'}, "
+                terms = sorted(t for t, k in p["held"] if k == key)
+                why.append(f"{p['label']} [{p['id']}] held {BME.race_words(key)} in {', '.join(terms) or 'a term not on record'}, "
                            f"not the term before or after {election[:4]}")
         return [], "; ".join(why)
 
@@ -175,11 +251,12 @@ def election_rows(election, results, races_me, hand, roster, people):
                                    f"the hand file names {v}, who is no sitting or former member"))
                     continue
             if member is None:
-                got, why = roster.certain(c["name"], key, election)
+                got, why = roster.certain(c["name"], key, election, race, c.get("party"))
                 if got:
                     member = got[0]
                 else:
-                    near = near_members(c["name"], key, people)
+                    near = (roster.surname_near(c["name"], key) if race.get("surnames")
+                            else near_members(c["name"], key, people))
                     if near or why:
                         report.append((election, key, c["name"], near,
                                        why or "no member of exactly that name; the name fits "
@@ -227,7 +304,7 @@ def sort_rows(rows):
     return sorted(rows, key=lambda r: (r["d"], r["k"].startswith("S|")), reverse=True)
 
 
-def build(site, collected, hand_path, today):
+def build(site, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT):
     """(rows by member id, report lines, elections) for the site folder."""
     site = Path(site)
     sitting = BME.load_json(site / "legislators.json", "the sitting roster")
@@ -235,11 +312,13 @@ def build(site, collected, hand_path, today):
     districts = BME.load_json(site / "districts.json", "the district table")
     meta = BME.load_json(site / "meta.json", "the site's meta.json, which names its terms")
     terms = meta.get("terms") if isinstance(meta, dict) else None
-    roster = Roster(sitting, former, terms if isinstance(terms, list) else [])
+    history = BME.load_history(sponsors)
+    roster = Roster(sitting, former, terms if isinstance(terms, list) else [], history)
     items = BE.elections_on_file(collected)
     by_member, report = defaultdict(list), []
     for election, _p, results in items:
-        races_me, _rep, hand = BE.decided(results, sitting, former, districts, hand_path, today)
+        races_me, _rep, hand = BE.decided(results, sitting, former, districts, hand_path, today,
+                                          BE.settled_in(items, election), history)
         people = BME.People(sitting, former, BME.ballot_of(results))
         got, rep = election_rows(election, results, races_me, hand, roster, people)
         for mid, rows in got.items():
@@ -320,10 +399,12 @@ def main():
     ap.add_argument("--collected", default="collected")
     ap.add_argument("--hand", default=str(BME.HAND_DEFAULT))
     ap.add_argument("--report", default=str(REPORT_DEFAULT))
+    ap.add_argument("--sponsors", default=str(BME.SPONSORS_DEFAULT),
+                    help="text_sponsors.json, which holds the seat each member printed each term")
     a = ap.parse_args()
     today = build_date.today().isoformat()
     try:
-        by_member, report, elections = build(a.site, a.collected, Path(a.hand), today)
+        by_member, report, elections = build(a.site, a.collected, Path(a.hand), today, a.sponsors)
     except BME.Refused as e:
         print(f"REFUSED: {e}", file=sys.stderr)
         return 1

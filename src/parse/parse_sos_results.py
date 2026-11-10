@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.5
+# GRANITE_VERSION: 2026-10-17.6
 """
 The Secretary of State's count of one general election's State Representative
 and State Senate races, read into collected/election_<year>.json.
@@ -122,7 +122,7 @@ SENATE_DISTRICTS = 24
 LEGACY_UNTIL = 2022
 # The first general election held on the districts of site/districts.json, the
 # only district table on this machine: New Hampshire redistricted for 2022.
-TABLE_SINCE = 2022
+TABLE_SINCE = BME.DISTRICTS_SINCE
 
 # EVERY SPELLING OF A DISTRICT'S HEADER THE 2024 FILES USE (17 October
 # 2026), and no other: "District No. 5 (4)", "District No 17 (2)", "District
@@ -452,7 +452,7 @@ def entities(row, start, where, legacy=False):
         name = m.group("name").strip()
         if legacy:
             # "Joseph, Jr., d" is the surname Joseph and a Jr.: no comma in a name.
-            name = LEGACY_SUFFIX.sub(r" ", name)
+            name = LEGACY_SUFFIX.sub(lambda m: " " + m.group(1), name)
         out.append({"name": name, "party": party, "write_in": False,
                     "col": c, "recount": None, **({"typo": flagged} if flagged else {})})
     if not any("name" in e for e in out):
@@ -1386,6 +1386,8 @@ def read_all(root, year, districts, saved=None, url=None, partial=False, registr
                           "candidates": rec["candidates"], "scatter": rec["scatter"]}
             if rec["recounted"]:
                 races[key]["recounted"] = True
+            if legacy and key.startswith("H|"):
+                races[key]["surnames"] = True
             notes.extend(rec.get("notes") or [])
             return
         if key not in on_file:
@@ -1421,6 +1423,10 @@ def read_all(root, year, districts, saved=None, url=None, partial=False, registr
                 "candidates": rec["candidates"], "scatter": rec["scatter"]}
         if rec["recounted"]:
             race["recounted"] = True
+        # The House files of 2016-2022 print a surname for each candidate: the
+        # race says so, and members_elect matches them by the seat held.
+        if legacy and key.startswith("H|"):
+            race["surnames"] = True
         # WHERE THE FILE COUNTS NO SCATTERED WRITE-INS, THAT IS SAID (17
         # October 2026): elect() could not hold them to the last seat, and
         # silence is not success. In 2024, Hillsborough 12's one town prints

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.9
+# GRANITE_VERSION: 2026-10-16.10
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -194,6 +194,17 @@ PARTICLES = {"van", "von", "de", "del", "della", "der", "di", "da", "du", "des",
              "le", "st", "ste", "saint", "mac", "mc", "o", "ten", "ter", "dos", "das"}
 
 NEW = "no sitting or former member of that name"
+
+# THE EARLIER ELECTIONS (10 November 2026). site/districts.json is the table of
+# the districts New Hampshire redistricted to for the election of 2022, and is
+# the only table on disk: an election before it was held on the 2012 districts,
+# whose table is on no disk here, so its races are what its own results file
+# lists (races_in_results). HISTORY_UNTIL is the last election whose results
+# print a surname for a House candidate (the 2016-2022 files); those, and only
+# those, are matched to a member by the seat they held that term (see
+# seat_history and by_history).
+DISTRICTS_SINCE = 2022
+HISTORY_UNTIL = 2022
 
 
 class Refused(Exception):
@@ -421,6 +432,40 @@ def races_on_file(districts):
     return out, clash
 
 
+def races_in_results(results):
+    """The races of an election with no district table, from its own results
+    file, shaped as races_on_file: seats and towns as the file gave them,
+    whether it floats as the reader read it from the towns, and the county of
+    a House race (a Senate district's counties are not in the file)."""
+    out = {}
+    for key, r in (results.get("races") or {}).items():
+        m = KEY_RE.match(str(key))
+        if not m:
+            continue
+        out[key] = {"seats": r.get("seats"), "floterial": bool(r.get("floterial")),
+                    "towns": list(r.get("towns") or []),
+                    "counties": {m.group(1)} if m.group(1) else set()}
+    return out
+
+
+def on_this_map(term, election_year):
+    """Whether `term` was sat on the districts the election of `election_year`
+    was held on. New Hampshire redistricted for 2022: a seat printed as
+    "Hillsborough 5" for 2021-2022 or before is not the district that is
+    Hillsborough 5 in the election of 2022 and after, so a seat held in one is
+    no evidence of a seat in the other."""
+    return (int(str(term)[:4]) > DISTRICTS_SINCE) == (int(election_year) >= DISTRICTS_SINCE)
+
+
+def races_for(results, districts):
+    """(races, clash): the races of the election `results` is of, from the
+    district table where the election was held on its districts (DISTRICTS_SINCE
+    and after), from the results file's own races before."""
+    if int(str(results.get("election") or "0000")[:4]) < DISTRICTS_SINCE:
+        return races_in_results(results), []
+    return races_on_file(districts)
+
+
 def race_order(key):
     """The Senate first by number, then the House by county and number."""
     m = KEY_RE.match(key)
@@ -596,13 +641,157 @@ def seat_of(m):
     return None
 
 
+def seat_history(sponsors):
+    """{member id: {term: [race key, ...]}}: the seats each member printed as
+    their own on the bills of each term, from text_sponsors.json
+    ({term: {bill: [{"member_id", "chamber", "county", "district", ...}]}}),
+    which carries the seat a sponsor held in the term the bill was filed. The
+    roster holds one seat per member, the last; this is the seat each term,
+    and a member who sponsored nothing in a term has none for it. A member
+    whose seat is printed two ways in one term has both."""
+    out = defaultdict(lambda: defaultdict(set))
+    for term, bills in (sponsors or {}).items():
+        for rows in (bills or {}).values():
+            for sp in rows or []:
+                mid = str(sp.get("member_id") or "")
+                d = number(sp.get("district"))
+                ch = str(sp.get("chamber") or "")[:1].upper()
+                if not mid or d is None:
+                    continue
+                if ch == "S":
+                    out[mid][term].add(f"S|{d}")
+                elif ch == "H" and sp.get("county"):
+                    out[mid][term].add(f"H|{full_county(sp['county'])}|{d}")
+    return {m: {t: sorted(ks) for t, ks in terms.items()} for m, terms in out.items()}
+
+
+SPONSORS_DEFAULT = Path("text_sponsors.json")
+PAST_SPONSORS_DEFAULT = Path("past_sponsors.json")
+CAREERS_DEFAULT = Path("generated") / "careers.json"
+
+
+def served_terms(past, careers):
+    """{member id: [term, ...]}: the terms each member has a recorded roll-call
+    vote in, from generated/careers.json (a person's terms, under every
+    employee number they have held) joined to the member by the bill
+    sponsors file (past_sponsors.json), which gives a sponsor's member id and
+    employee number together. A member the two do not join has none."""
+    terms_of = {}
+    for rec in (careers or {}).values():
+        for e in rec.get("employee_nos") or []:
+            terms_of[str(e)] = set(rec.get("terms") or [])
+    out = defaultdict(set)
+    for bills in (past or {}).values():
+        for row in (bills or {}).values():
+            for sp in (row or {}).get("sponsors") or []:
+                mid, emp = str(sp.get("member_id") or ""), str(sp.get("employee") or "")
+                if mid and emp in terms_of:
+                    out[mid] |= terms_of[emp]
+    return {m: sorted(t) for m, t in out.items()}
+
+
+def load_history(path=SPONSORS_DEFAULT, past=PAST_SPONSORS_DEFAULT, careers=CAREERS_DEFAULT):
+    """{"seats": seat_history, "served": served_terms} from the bill sponsors
+    file at `path`, or None where it is not on disk (an election before 2024
+    then links no surname-only winner, and the callers say so). `served` is
+    empty where past_sponsors.json or careers.json is not on disk, which turns
+    off the second rule of by_history. Refused where a file will not read."""
+    def read(q):
+        q = Path(q)
+        if not q.is_file():
+            return None
+        try:
+            return json.loads(q.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            raise Refused(f"{q.as_posix()} will not read as JSON: {e}")
+    sponsors = read(path)
+    if sponsors is None:
+        return None
+    return {"seats": seat_history(sponsors), "served": served_terms(read(past), read(careers))}
+
+
+def surname_readings(raw):
+    """([(surname, first name or initial), ...], suffixes) of a name the
+    results print as a surname, "Ploszaj", "Joseph Jr." or "Moffett, H.": the
+    whole of it is the surname unless a comma gives a first name or initial
+    after it. (readings() would take "St. Clair" for a Clair named St.)"""
+    s = re.sub(r'"([^"]+)"', r"(\1)", fold(raw))
+    sfx = frozenset(m.lower() for m in SUFFIX.findall(s))
+    s = SUFFIX.sub("", s)
+    s = re.sub(r"\s*,(?:\s*,)+", ",", s)
+    s = " ".join(s.split()).strip(" ,")
+    if "," in s:
+        last, first = split_name(s)
+        return ([(surname(last), first)] if surname(last) else []), sfx
+    return ([(surname(s), "")] if surname(s) else []), sfx
+
+
+def by_history(key, name, people, surnames):
+    """(the member, "") where exactly one member of the seat `key` that the
+    election's term gives answers to `name` -- the same surname, and a first
+    name or initial that fits where the results print one -- or (None, why not),
+    or (None, "") where nobody held the seat under that name, which leaves it
+    to the other rules. THE SEAT IS THE EVIDENCE the surname-only files lack:
+    a candidate printed as a surname alone is a member only by having held the
+    very seat the election was for, under that surname, and not by the surname
+    alone.
+
+    TWO RULES, the first and then the second. 1. A member who printed the seat
+    on a bill of the term the election elects: they sat in it. 2. Where nobody
+    did (a member who sponsored nothing that term has no seat for it), the
+    members who printed the seat in the term before and have a recorded
+    roll-call vote in the term the election elects (careers.json): the member
+    re-elected to it. A member who retired, and a relative of the same name
+    elected, has no vote in the later term, so is not taken."""
+    rd, sfx = surname_readings(name) if surnames else readings(name)
+    if surnames and len(str(name).split()) > 1:
+        # Two shared a surname in the race ("Amanda Bouldin"), so the file gave
+        # a first name too; or the surname is of two words ("St. Clair").
+        rd = rd + readings(name)[0]
+    fits = []
+    for held in (people.holding.get(key, []), [p for p in people.before.get(key, [])
+                                               if people.term in people.served.get(p["id"], ())]):
+        fits = by_name(held, rd, sfx)
+        if fits:
+            break
+    if len(fits) == 1:
+        return fits[0], ""
+    if len(fits) > 1:
+        return None, (f"{len(fits)} members held {race_words(key)} under that name: "
+                      + ", ".join(who(p) for p in fits))
+    return None, ""
+
+
+def by_name(held, rd, sfx):
+    """The members of `held` who answer to the readings `rd` of a name, by
+    surname and first name or initial, and a suffix that agrees."""
+    fits = []
+    for p in held:
+        for s, f in rd:
+            for ps, pf in p["readings"]:
+                if ps != s:
+                    continue
+                if not f:
+                    ok = True
+                elif re.fullmatch(r"[a-z]\.?", f.lower()):
+                    ok = any(x.startswith(f.lower()[0]) for x in first_names(pf))
+                else:
+                    ok = first_equal(f, pf) or seat_first(f, pf)
+                if ok and suffixes_agree(p["sfx"], sfx) and p not in fits:
+                    fits.append(p)
+    return fits
+
+
 class People:
     """The sitting and former members, read for matching: by seat and by
     surname, each row with its name's readings; and the election's ballot,
     every candidate of every race, winning or not, by surname (ballot_of)."""
 
-    def __init__(self, sitting, former, ballot=()):
+    def __init__(self, sitting, former, ballot=(), history=None, term=None):
         self.by_id, self.by_seat = {}, defaultdict(list)
+        # {race key: [members who held it in `term`]}, from seat_history.
+        self.holding, self.before = defaultdict(list), defaultdict(list)
+        self.term, self.served = term, {}
         self.by_sur = {"sitting": defaultdict(list), "former": defaultdict(list)}
         # The ballot is read for one rule, moved(): a sitting member who ran
         # for another seat links only where no other candidate answers to
@@ -618,12 +807,42 @@ class People:
                 rd, sfx = readings(m.get("name"))
                 p = {"kind": kind, "id": str(m.get("id")), "slug": m.get("slug") or "",
                      "readings": rd, "sfx": sfx, "county": full_county(m.get("county")),
-                     "seat": seat_of(m), "label": m.get("display_full") or m.get("name") or ""}
+                     "seat": seat_of(m), "label": m.get("display_full") or m.get("name") or "",
+                     "last_term": ((m.get("served") or {}).get("terms") or [None])[-1]}
                 self.by_id.setdefault(p["id"], p)
+                # A sitting member's earlier numbers (a House number kept after a
+                # move to the Senate) are the same person's.
+                for other in m.get("member_ids") or []:
+                    self.by_id.setdefault(str(other), p)
                 for sur in {s for s, _f in rd}:
                     self.by_sur[kind][sur].append(p)
                 if kind == "sitting" and p["seat"]:
                     self.by_seat[p["seat"]].append(p)
+        before = term_before(term) if term and on_this_map(term_before(term),
+                                                           int(term[:4]) - 1) else None
+        # A former member's one seat on the roster is the seat of the last term
+        # they served: it is a seat held in that term, whether or not they
+        # sponsored a bill in it (a member who resigned in the first months).
+        for p in self.by_id.values():
+            last = p.get("last_term")
+            if p["kind"] == "former" and p["seat"] and last == term \
+                    and p not in self.holding[p["seat"]]:
+                self.holding[p["seat"]].append(p)
+        for mid, terms in ((history or {}).get("seats") or {}).items():
+            p = self.by_id.get(str(mid))
+            for k in (terms or {}).get(term, []):
+                if p and p not in self.holding[k]:
+                    self.holding[k].append(p)
+            for k in (terms or {}).get(before, []):
+                if p and p not in self.before[k]:
+                    self.before[k].append(p)
+        # A member's service under every number they have held, by their own id.
+        self.served = defaultdict(set)
+        for mid, t in ((history or {}).get("served") or {}).items():
+            p = self.by_id.get(str(mid))
+            if p:
+                self.served[p["id"]] |= set(t)
+        self.history = history is not None
 
     def named(self, kind, rd):
         """The sitting or former members a name read as `rd` might be, by
@@ -656,7 +875,7 @@ def who(p):
     return f"{p['label']} [{p['id']}]"
 
 
-def auto_link(key, name, people, races):
+def auto_link(key, name, people, races, surnames=False):
     """(the member a winner is, "") on a certain match, or (None, why not).
 
     1. Sitting, same seat: the same surname and the same first name, or a
@@ -683,6 +902,14 @@ def auto_link(key, name, people, races):
     person. Where the rule refuses, the test that refuses is the loose one,
     same_first: what might be somebody else is enough to send a name to the
     person."""
+    if people.history:
+        # An election before 2024: the seat the member held that term (by_history).
+        p, why = by_history(key, name, people, surnames)
+        if p or why:
+            return p, why
+        if surnames:
+            return None, ("a surname the results print alone, and no member of it held "
+                          f"{race_words(key)} that term")
     rd, sfx = readings(name)
     if not rd:
         return None, "no surname could be read from the name"
@@ -817,13 +1044,27 @@ def recount_open(today, deadline, election):
     return ""
 
 
-def members_elect(results, sitting, former, districts, hand, today):
+def members_elect(results, sitting, former, districts, hand, today, settled=False,
+                  history=None):
     """(races, report): what site/members_elect.json says of each race, and
     what the person is to read, on the build's day `today`. Pure: nothing is
-    read or written here."""
-    on_file, clash = races_on_file(districts)
-    people = People(sitting, former, ballot_of(results))
-    pending = recount_open(today, hand.get("recount_deadline"), results.get("election"))
+    read or written here.
+
+    `settled` is an election from an earlier term than the latest on file
+    (the owner's word of 10 November 2026: long settled). Its races are final
+    by rule, as though its recount deadline had passed: a race the results
+    mark recounted still says so ("recounted"), and the hand file's not_final
+    and held marks still apply. The latest election is judged as ever, by the
+    hand file's recount_deadline (rule 4). `history` is seat_history's answer,
+    given for an election up to HISTORY_UNTIL, whose House candidates the
+    results print as surnames."""
+    on_file, clash = races_for(results, districts)
+    election_year = int(str(results.get("election") or "0000")[:4])
+    term = term_after(election_year)
+    people = People(sitting, former, ballot_of(results),
+                    history if election_year <= HISTORY_UNTIL else None, term)
+    pending = "" if settled else recount_open(today, hand.get("recount_deadline"),
+                                              results.get("election"))
     report = {"unlinked": [], "new": [], "short": [], "notes": list(clash), "pending": pending}
     races_in = results.get("races") or {}
     for key in sorted(set(races_in) - set(on_file), key=race_order):
@@ -902,7 +1143,7 @@ def members_elect(results, sitting, former, districts, hand, today):
                                            f"{filed[c['name']]}, which the results do not print "
                                            f"for them ({entry['p'] or 'none'})")
                 entry["p"] = filed[c["name"]]
-            rule, why = auto_link(key, c["name"], people, on_file)
+            rule, why = auto_link(key, c["name"], people, on_file, bool(r.get("surnames")))
             if c["name"] in named:
                 v = named[c["name"]]
                 p = people.by_id.get(str(v)) if v is not None else None

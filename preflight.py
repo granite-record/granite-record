@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.835
+# GRANITE_VERSION: 2026-09-04.836
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -118397,6 +118397,204 @@ def _member_elections_rows(BMEL, BME, BE):
     return "ok", (f"{sum(len(v) for v in got.values())} rows for {len(got)} members: a win, a certain "
                   "loss, two left off and listed, not final, a recount, a tie, both chambers, no "
                   "tab for a member with no race")
+
+
+# THE ELECTIONS BEFORE 2024 (10 November 2026; branch dec/results-2016-2022). The
+# Secretary of State's files for 2016-2022 print a surname for a House
+# candidate, "Scatter" for the write-ins nobody named, no day, a Recount row
+# or a BLC column for a recount; 2016 has no Strafford House file and no State
+# Senate; and the 2012 districts' table is on no disk, so 2016-2020 are held
+# to none. These checks hold that on made-up files, which need no saved ones.
+
+def _legacy_book(path, rows):
+    import openpyxl
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    for r in rows:
+        ws.append(r)
+    wb.save(path)
+
+
+@check("build", "the results reader reads the 2016-2022 layout (a surname for a candidate, Scatter, a "
+                "Recount row, a named w-in, a mistyped District, a results page with a cell holding two "
+                "rows), holds an election with no district table to none and says so, and lists a county "
+                "and the Senate that are not on file instead of filling them",
+       needs=("parse_sos_results",))
+def _elect_older_layout(PSR):
+    try:
+        import openpyxl  # noqa: F401
+    except ImportError:
+        return "skip", "openpyxl is not installed"
+    root = Path(tempfile.mkdtemp(prefix="gr-sos-old-"))
+    try:
+        d = root / PSR.SOURCES
+        d.mkdir(parents=True)
+        title = ["State of New Hampshire - 2018 General Election"]
+        _legacy_book(d / "2018-ge-house-belknap.xlsx", [
+            title, ["State Representatives - BELKNAP County"], [],
+            ["District No. 1 (1)", "Gray, r", "Hale ,d", "Scatter"],
+            ["Alpha", 100, 90, 1], ["Beta", 50, 70, None], ["TOTALS", 150, 160, 1], [],
+            ["Distict No. 2 (1)", "Cole, r", "Dunn, d", "Scatter"],
+            ["Gamma", 300, 301, 2], ["Recount", 303, 301]])
+        _legacy_book(d / "2018-ge-house-carroll.xlsx", [
+            title, ["State Representative - CARROLL County"], [],
+            ["District No. 1 (1)", "Eve, r", "Fox w-in", "Scatter"], ["Delta", 10, 3, 0]])
+        try:
+            PSR.read_all(root, 2018, None)
+            raise AssertionError("a year with eight counties not on file was read without partial")
+        except PSR.Refused as e:
+            assert "no 2018 House results" in str(e), f"refused, but not for the counties: {e}"
+        doc = PSR.read_all(root, 2018, None, partial=True)
+        races = doc["races"]
+        assert sorted(races) == ["H|Belknap|1", "H|Belknap|2", "H|Carroll|1"], f"races: {sorted(races)}"
+        b1, b2, c1 = races["H|Belknap|1"], races["H|Belknap|2"], races["H|Carroll|1"]
+        assert b1["surnames"] and b1["seats"] == 1 and b1["towns"] == ["Alpha", "Beta"], f"belknap 1: {b1}"
+        assert [(c["name"], c["votes"], c["elected"]) for c in b1["candidates"]] == [
+            ("Gray", 150, False), ("Hale", 160, True)], f"belknap 1's count: {b1['candidates']}"
+        assert b1["scatter"] == 1, f"a blank Scatter cell was not read as none: {b1['scatter']}"
+        assert b2.get("recounted") and [(c["name"], c["votes"], c["elected"]) for c in b2["candidates"]] == [
+            ("Cole", 303, True), ("Dunn", 301, False)], f"the Recount row was not the count: {b2}"
+        assert any("one letter off District" in n for n in doc["_notes"]), "the mistyped District was not said"
+        fox = next(c for c in c1["candidates"] if c["name"] == "Fox")
+        assert fox["write_in"] and fox["votes"] == 3 and fox["party"] == "", f"a named w-in: {fox}"
+        assert doc["_notes"][0].startswith("The districts of 2018 are the 2012 districts"), (
+            "an election held to no district table did not say so first")
+        assert doc["_not_on_file"] == {"counties": [c.title() for c in PSR.COUNTIES
+                                                    if c not in ("belknap", "carroll")],
+                                       "senate": True}, f"not on file: {doc['_not_on_file']}"
+        assert any(n.startswith("Not on file: the State Senate") for n in doc["_notes"]), (
+            "the missing Senate was not in the notes")
+        # The text goes round again as the committed file does.
+        assert json.loads(PSR.dumps(doc))["_not_on_file"] == doc["_not_on_file"], "dumps dropped what is not on file"
+        # A results page whose cell holds two rows is two rows (2018 Strafford).
+        html = root / "page.html"
+        html.write_text("<table><tr><td><p>TOTALS</p><p>District No. 19 (1)FL</p></td>"
+                        "<td><p>2,215</p><p>Coleman, r</p></td><td><p>&nbsp;</p></td></tr>"
+                        "<tr><td colspan=3><p>State of New Hampshire - 2018 General Election</p></td></tr></table>"
+                        "<table><tr><td><p>State of New Hampshire - 2018 General Election</p></td></tr>"
+                        "<tr><td><p>Dover</p></td><td><p>1,000</p></td></tr></table>", encoding="utf-8")
+        got = PSR.html_sheets(html)
+        assert got[0][1][:2] == [["TOTALS", 2215, None], ["District No. 19 (1)FL", "Coleman, r", None]], (
+            f"a fused cell was not split: {got[0][1][:2]}")
+        assert got[1][1] == [["Dover", 1000]], f"the second table's repeated title was kept: {got[1][1]}"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("surnames, Scatter, a Recount row, a w-in and a mistyped District read; no table said; "
+                  "eight counties and the Senate listed as not on file; a fused page cell split")
+
+
+@check("build", "an election before the latest on file is final by rule, a recount in its results still "
+                "saying so, a tie still not final and the owner's marks still holding; the latest "
+                "election is judged as ever, by the recount deadline",
+       needs=("build_members_elect", "build_elections"))
+def _elect_settled_rule(BME, BE):
+    def race(seats, cands, **more):
+        return {"seats": seats, "floterial": False, "towns": ["Alpha"], "scatter": 0, "surnames": True,
+                "candidates": [{"name": n, "party": "r", "votes": v, "write_in": False, "elected": e}
+                               for n, v, e in cands], **more}
+    res = {"election": "2018-11-06", "term": "2019-2020", "races": {
+        "H|Belknap|1": race(1, [("Gray", 150, True), ("Hale", 100, False)]),
+        "H|Belknap|2": race(1, [("Cole", 303, True), ("Dunn", 301, False)], recounted=True),
+        "H|Belknap|3": race(1, [("Ives", 10, None), ("Jay", 10, None)]),
+        "H|Belknap|4": race(1, [("Kay", 9, True), ("Lee", 5, False)])}}
+    empty = {"matches": {}, "not_final": {"H|Belknap|4": {"recount": True}}, "held": {}, "party": {},
+             "recount_deadline": None}
+    nf = lambda races: {k: (len(v["elected"]), v["not_final"], v.get("recount")) for k, v in races.items()}
+    open_, _r = BME.members_elect(res, [], [], None, empty, "2026-11-10")
+    assert nf(open_) == {"H|Belknap|1": (0, 1, None), "H|Belknap|2": (1, 0, None),
+                         "H|Belknap|3": (0, 1, None), "H|Belknap|4": (0, 1, True)}, (
+        f"with no deadline and not settled, only the recounted race is final: {nf(open_)}")
+    shut, rep = BME.members_elect(res, [], [], None, empty, "2026-11-10", settled=True)
+    assert nf(shut) == {"H|Belknap|1": (1, 0, None), "H|Belknap|2": (1, 0, None),
+                        "H|Belknap|3": (0, 1, None), "H|Belknap|4": (0, 1, True)}, (
+        f"settled: every race final but the tie and the owner's mark: {nf(shut)}")
+    assert rep["pending"] == "" and open_ and BME.recount_open("2026-11-10", None, "2018-11-06"), (
+        "settled still says a recount deadline is pending")
+    assert BE.settled_in([("2018-11-06", 0, 0), ("2020-11-03", 0, 0)], "2018-11-06") and \
+        not BE.settled_in([("2018-11-06", 0, 0), ("2020-11-03", 0, 0)], "2020-11-03"), (
+        "settled_in is not 'before the latest on file'")
+    assert BE.mapped("2022-11-08") and BE.mapped("2026-11-03") and not BE.mapped("2020-11-03"), (
+        "an election held on the 2012 districts was given a map")
+    assert BME.on_this_map("2021-2022", 2020) and not BME.on_this_map("2021-2022", 2022) and \
+        BME.on_this_map("2023-2024", 2022) and BME.on_this_map("2023-2024", 2024), (
+        "a seat in a term on the old districts counted for an election on the new")
+    # The page of such an election: no map, what is not on file said, no deadline spoken of.
+    res["_not_on_file"] = {"counties": ["Strafford"], "senate": True}
+    body = BE.page_body("2018-11-06", res, shut, rep, empty, Path("site"), [], True)
+    assert "ermap" not in body and "There is no map here" not in body and "no map here" in body, (
+        "an election on the 2012 districts was drawn a map, or not told why it has none")
+    assert "Strafford County" in body and "the State Senate results" in body and \
+        "some not on file" in body, "what is not on file is not said on the page"
+    assert "long past" in body and "Result not final" in body and "No deadline" not in body, (
+        "the settled election's page speaks of a recount deadline, or hides its tie")
+    assert "State Senate</h4>" not in body and "Senate</button>" not in body, "a Senate tab with no races"
+    return "ok", ("settled: a race final unless tied or held by the owner; unsettled: only a recounted "
+                  "race; no map for 2012's districts, what is not on file said; no seat carried "
+                  "across 2022")
+
+
+@check("build", "a winner printed as a surname is linked by the seat held in the term the election elected "
+                "(or, where nobody printed it, the term before and a vote in the term after), a loss only "
+                "by the surname, the seat, the party and no twin in the race, never across the 2022 "
+                "redistricting",
+       needs=("build_member_elections", "build_members_elect"))
+def _member_elections_surnames(BMEL, BME):
+    sponsors = {
+        "2021-2022": {"HB1": [{"member_id": "3001", "chamber": "H", "county": "Rockingham", "district": "1"},
+                              {"member_id": "3002", "chamber": "H", "county": "Rockingham", "district": "2"}]},
+        "2019-2020": {"HB9": [{"member_id": "3003", "chamber": "H", "county": "Rockingham", "district": "1"},
+                              {"member_id": "3005", "chamber": "H", "county": "Rockingham", "district": "2"},
+                              {"member_id": "3007", "chamber": "H", "county": "Rockingham", "district": "5"},
+                              {"member_id": "3008", "chamber": "H", "county": "Rockingham", "district": "4"}]}}
+    hist = BME.seat_history(sponsors)
+    assert hist["3001"] == {"2021-2022": ["H|Rockingham|1"]}, f"seat_history: {hist['3001']}"
+    history = {"seats": hist, "served": {"3008": ["2021-2022"]}}
+    former = [_mel_member("3001", "Hart", "Ann", "H", "Rockingham", "1", "former", ["2021-2022"]),
+              _mel_member("3002", "Moss", "Dee", "H", "Rockingham", "2", "former", ["2021-2022"]),
+              _mel_member("3003", "Lowe", "Bob", "H", "Rockingham", "1", "former", ["2019-2020"]),
+              _mel_member("3005", "Pike", "Nan", "H", "Rockingham", "2", "former", ["2019-2020"]),
+              _mel_member("3007", "Kay", "Joe", "H", "Rockingham", "5", "former", ["2019-2020"]),
+              _mel_member("3008", "Ward", "Sam", "H", "Rockingham", "4", "former", ["2021-2022"])]
+    def race(cands):
+        return {"seats": 1, "floterial": False, "towns": ["Alpha"], "scatter": 0, "surnames": True,
+                "candidates": [{"name": n, "party": p, "votes": v, "write_in": False, "elected": e}
+                               for n, p, v, e in cands]}
+    res = {"election": "2020-11-03", "term": "2021-2022", "races": {
+        "H|Rockingham|1": race([("Hart", "r", 500, True), ("Lowe", "d", 400, False)]),
+        "H|Rockingham|2": race([("Moss", "r", 500, True), ("Pike", "r", 400, False)]),
+        "H|Rockingham|4": race([("Ward", "r", 500, True), ("Zed", "d", 400, False)])}}
+    hand = {"matches": {}, "not_final": {}, "held": {}, "party": {}, "recount_deadline": None}
+    races, _rep = BME.members_elect(res, [], former, None, hand, "2026-11-10", True, history)
+    ids = {k: [e.get("id") for e in v["elected"]] for k, v in races.items()}
+    assert ids == {"H|Rockingham|1": ["3001"], "H|Rockingham|2": ["3002"], "H|Rockingham|4": ["3008"]}, (
+        f"the winners were not linked by the seat held: {ids}")
+    # A winner with no history, and a member whose last term is another, is not linked by surname alone.
+    far = [_mel_member("3001", "Hart", "Ann", "H", "Rockingham", "1", "former", ["2019-2020"])]
+    races, _rep = BME.members_elect(res, [], far, None, hand, "2026-11-10", True,
+                                    {"seats": {}, "served": {}})
+    assert all(not e.get("id") for v in races.values() for e in v["elected"]), (
+        "a surname alone linked a winner to a member who held no such seat")
+    roster = BMEL.Roster([], former, ["2025-2026"], history)
+    people = BME.People([], former, BME.ballot_of(res))
+    races, _rep = BME.members_elect(res, [], former, None, hand, "2026-11-10", True, history)
+    rows, rep = BMEL.election_rows("2020-11-03", res, races, hand, roster, people)
+    assert rows["3001"][0]["r"] == "won" and rows["3005"][0]["r"] == "lost", (
+        f"Pike held Rockingham 2 the term before and filed under the party: {rows.get('3005')}")
+    assert "3003" not in rows, "Lowe, a Democrat, was matched to Bob Lowe, a Republican"
+    assert "3007" not in rows, "a member of another seat was matched by surname"
+    # The twin in the race: a second candidate of the surname leaves the loss to the owner.
+    res["races"]["H|Rockingham|2"]["candidates"].append(
+        {"name": "Pike Jr.", "party": "r", "votes": 5, "write_in": False, "elected": False})
+    rows, rep = BMEL.election_rows("2020-11-03", res, races, hand, roster, people)
+    assert "3005" not in rows, "a loss was matched with a second candidate of the surname in the race"
+    # 2022: the term before was on the old districts, so its seat is no evidence.
+    res22 = {"election": "2022-11-08", "term": "2023-2024", "races": {
+        "H|Rockingham|5": race([("Moss", "r", 500, True), ("Kay", "r", 400, False)])}}
+    races22, _rep = BME.members_elect(res22, [], former, None, hand, "2026-11-10", True, history)
+    rows, rep = BMEL.election_rows("2022-11-08", res22, races22, hand, roster, people)
+    assert "3007" not in rows, "a seat held on the 2012 districts was matched to a race of 2022's"
+    return "ok", ("winners linked by the seat held, a loss by surname, seat and party, a twin, a missing "
+                  "history and the 2022 redistricting each leaving it to the owner")
 
 
 @check("build", "a member's Elections tab is drawn in the member's own file from the built elections "
