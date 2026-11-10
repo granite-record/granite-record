@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.27
+// GRANITE_VERSION: 2026-10-09.28
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -607,6 +607,18 @@ function electLine(key,election,takesOffice,today){
     // Kept on the screen: moved left by however far it runs past the right.
     var r=p.getBoundingClientRect(), w=document.documentElement.clientWidth;
     if(r.right>w-8)p.style.left=Math.round(Math.min(0,w-8-r.right))+"px";
+    point(b,p);
+  }
+  // THE POINTER ON THE BOX (the owner, 10 November 2026: "so they point at
+  // the word they're defining"): app.css draws a triangle on the box's top
+  // edge at --arrow, the word's middle measured from the box's left, kept
+  // inside the box's corners. Read after the box is moved, so a box shifted
+  // to stay on the screen still points at its word.
+  function point(b,p){
+    var w=b.getBoundingClientRect(), r=p.getBoundingClientRect();
+    var x=(w.left+w.right)/2-r.left, max=(r.right-r.left)-14;
+    if(max<14)max=14;
+    p.style.setProperty&&p.style.setProperty("--arrow",Math.round(Math.max(14,Math.min(max,x)))+"px");
   }
   document.addEventListener("click",function(e){
     var b=e.target.closest&&e.target.closest(".termbtn");

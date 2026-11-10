@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.368 */
+/* GRANITE_VERSION: 2026-09-07.369 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -1695,6 +1695,30 @@ white-space:normal;letter-spacing:0;text-transform:none}
 .termpop[hidden]{display:none}
 .termpop b{font-weight:600}
 @media (forced-colors:active){.termpop{border-color:CanvasText}}
+/* A POINTER ON THE BOX, AT THE WORD (the owner, 10 November 2026: "add the
+   triangle indicator ... to all tooltips so they point at the word they're
+   defining"). The box's own edge and ground as two triangles, one over the
+   other, as the seat callout's (.seatpop) are: on the top edge, pointing up,
+   where the box stands under its word; on the bottom edge, pointing down,
+   with .above, where the law pages' box stands over it. --arrow is the
+   word's middle from the box's left, set by the script after the box has
+   been moved to stay on the screen. */
+.termpop:not(.seatpop)::before,.termpop:not(.seatpop)::after{content:"";position:absolute;
+  left:var(--arrow,var(--sp-6));width:0;height:0;border:7px solid transparent;transform:translateX(-50%);
+  pointer-events:none}
+.termpop:not(.seatpop)::before{bottom:100%;border-bottom-color:var(--rule-2)}
+.termpop:not(.seatpop)::after{bottom:calc(100% - 1px);border-bottom-color:var(--surface)}
+.termpop.above:not(.seatpop)::before{bottom:auto;top:100%;border-bottom-color:transparent;
+  border-top-color:var(--rule-2)}
+.termpop.above:not(.seatpop)::after{bottom:auto;top:calc(100% - 1px);border-bottom-color:transparent;
+  border-top-color:var(--surface)}
+@media (forced-colors:active){
+  .termpop:not(.seatpop)::before,.termpop:not(.seatpop)::after{forced-color-adjust:none}
+  .termpop:not(.seatpop)::before{border-bottom-color:CanvasText}
+  .termpop:not(.seatpop)::after{border-bottom-color:Canvas}
+  .termpop.above:not(.seatpop)::before{border-bottom-color:transparent;border-top-color:CanvasText}
+  .termpop.above:not(.seatpop)::after{border-bottom-color:transparent;border-top-color:Canvas}
+}
 /* A bill named in running words: the number, underlined, the year quiet. */
 .bmention{white-space:nowrap}
 .bmention .byr{color:var(--ink-2)}
@@ -4740,6 +4764,18 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
 .l-head .pageacts > details > summary:hover{background:var(--wash)}
 .l-head .pageacts > details[open] > summary{border-color:var(--ink)}
 .l-head .pageacts .citebody{left:0;right:auto}
+/* CITE THIS PAGE HAS THE DISCLOSURE TRIANGLE (the owner, 10 November 2026:
+   "Add triangle indicator to cite page button"): the chevron "On this page"
+   and the Learn folds carry, after the words, turned a quarter to point down
+   while it is open. Not on a record page, where the pane has its nub (the
+   .racts rules, summary::after) pointing at the button instead. */
+.pcite:not(.racts .pcite) > summary::after{content:"";flex:0 0 auto;width:.75rem;height:.75rem;
+  margin-left:var(--sp-2);background:var(--ink-2);transition:transform .15s;
+  -webkit-mask:var(--pc-chev) center/contain no-repeat;mask:var(--pc-chev) center/contain no-repeat;
+  --pc-chev:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.25%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M9 5.5l6.5 6.5L9 18.5%22/%3E%3C/svg%3E")}
+.pcite:not(.racts .pcite)[open] > summary::after{transform:rotate(90deg)}
+@media (prefers-reduced-motion:reduce){.pcite > summary::after{transition:none}}
+@media (forced-colors:active){.pcite:not(.racts .pcite) > summary::after{forced-color-adjust:none;background:CanvasText}}
 /* The same row under a town's line and under the Calendar's headings (the
    audit of 25 October 2026, S9), where it stood alone over the heading. */
 :is(.officials,.calhead,.cdpage) > .pageacts{justify-content:flex-start;margin:0 0 var(--sp-7)}
@@ -8050,7 +8086,12 @@ letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
 /* The box holds a link to the definition and, where it is cut, "Show more"
    (the person, 7 November 2026): never taller than the screen, its words
    scrolling inside it once the whole definition is open. */
-.rs-dpop{max-width:min(26rem,calc(100vw - 2rem));max-height:min(30rem,calc(100vh - 2rem));overflow-y:auto}
+/* The box does not scroll itself, or its pointer would be cut off at its
+   edge: its words do, in .rs-dpin, which gives way when the script caps the
+   box's height. */
+.rs-dpop{max-width:min(26rem,calc(100vw - 2rem));max-height:min(30rem,calc(100vh - 2rem));
+  display:flex;flex-direction:column}
+.rs-dpin{display:block;min-height:0;overflow-y:auto}
 .rs-dpcite{display:block;font-weight:600;margin-bottom:.25rem}
 .rs-dpcite a{color:var(--pine)}
 .rs-dptext{display:block}

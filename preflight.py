@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.836
+# GRANITE_VERSION: 2026-09-04.837
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43603,7 +43603,8 @@ function match(x, sel) {
     return m && (!m[1] || x.tagName === m[1]) && (" " + (x.className || "") + " ").includes(" " + m[2] + " "); });
 }
 function node(tag, attrs, parent) {
-  const n = {tagName: tag, attrs: Object.assign({}, attrs || {}), children: [], parentNode: null, style: {},
+  const n = {tagName: tag, attrs: Object.assign({}, attrs || {}), children: [], parentNode: null,
+    style: {setProperty(k, v) { this[k] = v; }},
     hidden: false, _text: "", className: (attrs || {}).class || "", listeners: {},
     getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
     setAttribute(k, v) { this.attrs[k] = String(v); if (k === "id") ids[v] = this; },
@@ -43737,6 +43738,17 @@ const para3 = node("p", {}, art);
 const word3 = node("a", {class: "rs-tm", href: "/laws/126-x#s1_III", "data-def": "away_126"}, para3);
 word3._text = "designated caregiver"; word3.rect = {left: 300, right: 400, top: 200, bottom: 220};
 word3.focus(); out.away = [box().textContent, link().href];
+// THE POINTER (the owner, 10 November 2026): the box under its word points up
+// at the word's middle from the box's left; over it, class "above"; and a
+// box moved to stay on the screen points at the word still.
+fire("keydown", {key: "Escape"}); doc.activeElement = elsewhere;
+word3.focus(); out.point_below = [box().className, box().style["--arrow"]];
+fire("keydown", {key: "Escape"}); doc.activeElement = elsewhere;
+word3.rect = {left: 300, right: 400, top: 800, bottom: 820}; box().rect = {left: 300, right: 700, top: 0, bottom: 500};
+word3.focus(); out.point_above = [box().className, box().style["--arrow"]];
+fire("keydown", {key: "Escape"}); doc.activeElement = elsewhere;
+word3.rect = {left: 1000, right: 1100, top: 200, bottom: 220};
+word3.focus(); out.point_shifted = [box().style.left, box().style["--arrow"]];
 console.log(JSON.stringify(out));
 """
 
@@ -43877,6 +43889,20 @@ def _rsa_defined_terms(B, RSA, S):
         f"the box does not open where there is room, or jumps sides when Show more is pressed: {place}"
     assert not wrong and out["described"] == "rs-dpcite rs-dptext" and out["role"] is None, \
         f"the definition box fails by keyboard, touch or mouse: {wrong}, {out}"
+    # The pointer: word 300-400 under a box at 300 points at 50; over it, the
+    # box is marked above; the word at 1000-1100 shifts the box to 792 (692
+    # from its host) and the pointer to 258, the word's middle still.
+    assert out["point_below"] == ["termpop rs-dpop", "50px"] \
+        and out["point_above"] == ["termpop rs-dpop above", "50px"] \
+        and out["point_shifted"] == ["692px", "258px"], (
+        f"the definition box's pointer is not at its word: "
+        f"{[out.get(k) for k in ('point_below', 'point_above', 'point_shifted')]}")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    for rule in (".termpop:not(.seatpop)::before", ".termpop.above:not(.seatpop)::after",
+                 ".rs-dpin{display:block;min-height:0;overflow-y:auto}"):
+        assert rule in css, f"app.css lacks {rule}: the definition boxes would have no pointer, or cut it off"
+    assert '"--arrow"' in Path("src/pages/components.js").read_text(encoding="utf-8"), \
+        "components.js's term popovers do not set their pointer's place"
     return "ok", ("153:5 marked from 153:1 and 153:28 from 153:27, not 153:2 or 540-C:1; 541-A:14-a's 'files' "
                   "withheld for two definitions; no term in its own; the box by keyboard, tap and mouse, "
                   "its link to the definition and Show more for a long one")
@@ -71685,7 +71711,9 @@ def _term_popovers():
                       ('"focusin"', "keyboard focus does not open it"),
                       ("HOLD=500", "a hover is not held about half a second"),
                       ('closest("[hidden]")', "the first of a term may be one in a hidden tab"),
-                      ("MutationObserver", "a page drawn again keeps no popover")):
+                      ("MutationObserver", "a page drawn again keeps no popover"),
+                      ('setProperty("--arrow"', "its pointer is not set at its word (10 November 2026)"),
+                      ("point(b,p);", "it is not pointed after it is moved onto the screen")):
         assert need in beh, f"the term popovers: {why} ({need} is not in the behaviour)"
     glossary = set(C.WORDBOOK["glossary"])
     keys = {m["abbr"] for m in C.WORDBOOK["votes"]["motions"].values() if m.get("abbr")}
@@ -71697,6 +71725,25 @@ def _term_popovers():
         assert rule in css, f"app.css does not draw {rule}"
     return "ok", (f"the behaviour is one IIFE between its markers; {len(keys)} marked terms, "
                   "each a glossary entry; the popover drawn in app.css")
+
+
+@check("frontend", "Cite this page carries the disclosure triangle where its pane has no pointer, "
+       "turned down while open, and the record pages keep their pointer")
+def _cite_triangle():
+    """The owner, 10 November 2026: "Add triangle indicator to cite page
+    button". The chevron "On this page" and the Learn folds use, after the
+    words, a quarter turn when open; a record page's Cite button has the
+    pane's nub (.racts, summary::after) instead, and the two would share
+    one pseudo-element, so the chevron is not drawn there."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    for rule in (".pcite:not(.racts .pcite) > summary::after{",
+                 ".pcite:not(.racts .pcite)[open] > summary::after{transform:rotate(90deg)}",
+                 ".racts :is(.pcite,.follow,.testify,.report) > summary::after{"):
+        assert rule in css, f"app.css lacks {rule}"
+    i = css.index(".pcite:not(.racts .pcite) > summary::after{")
+    assert "mask:var(--pc-chev)" in css[i:i + 600] and "M9 5.5l6.5 6.5L9 18.5" in css[i:i + 900], (
+        "Cite's triangle is not the chevron the Learn folds use")
+    return "ok", "the chevron after Cite this page off record pages, down when open; the nub kept on them"
 
 
 # Every form of a vote's question the 2025-2026 record carries, and a sample of the older
