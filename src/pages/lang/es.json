@@ -5,6 +5,21 @@
   "'offered' is the person's switch. While it is false the Spanish pages are built and published at /es/ but unlisted: not linked, not indexed, and no browser is sent there by its language. A reader who opens /es/ is shown the language control from then on, in that browser, so the person and the proofreader can try all of it first."
  ],
  "offered": false,
+ "sr.g.law_chapters": {
+  "en": "Law Chapters",
+  "es": "Capítulos de la ley",
+  "state": "draft"
+ },
+ "sr.w.law_chapters_many": {
+  "en": "law chapters",
+  "es": "capítulos de la ley",
+  "state": "draft"
+ },
+ "sr.w.law_chapters_one": {
+  "en": "law chapter",
+  "es": "capítulo de la ley",
+  "state": "draft"
+ },
  "strings": {
   "about.a-report-made-with-report-a": {
    "en": "A report made with <i>Report a problem</i> holds nothing that identifies who sent it, so every one is checked against the official record in the same way, and corrected where the record bears it out. An email to <a href=\"mailto:contact@graniterecord.org\">contact@graniterecord.org</a> is handled the same way, whoever sends it.",

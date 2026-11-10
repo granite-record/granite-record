@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.275
+# GRANITE_VERSION: 2026-09-04.276
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2836,7 +2836,7 @@ const GROUPS=[
   // the site's other pages, after the bills.
   // A STATUTE ASKED FOR BY ITS NUMBER, FIRST (the audit of 25 October 2026,
   // M3): find.js's one Law row, "RSA 91-A" (findLawRow).
-  {t:"Laws",h:tr("sr.g.laws","Laws"),w:[tr("sr.w.laws_one","law"),tr("sr.w.laws_many","laws")],k:r=>r[0]==="law"},
+  {t:"Laws",h:tr("sr.g.laws","Laws"),w:[tr("sr.w.laws_one","law"),tr("sr.w.laws_many","laws")],k:r=>r[0]==="law"&&!findLawIsTitle(r)},
   {t:"Senators",h:tr("sr.g.senators","Senators"),w:[tr("sr.w.senators_one","senator"),tr("sr.w.senators_many","senators")],k:r=>r[0]==="legislator"&&/^Senate/.test(r[2])},
   {t:"Representatives",h:tr("sr.g.representatives","Representatives"),w:[tr("sr.w.representatives_one","representative"),tr("sr.w.representatives_many","representatives")],k:r=>r[0]==="legislator"},
   // A committee that no longer sits goes with the people who have left, below
@@ -2858,6 +2858,9 @@ const GROUPS=[
   {t:"Former Members",h:tr("sr.g.former_members","Former Members"),w:[tr("sr.w.former_members_one","former member"),tr("sr.w.former_members_many","former members")],k:r=>r[0]==="former"},
   {t:"Former Committees",h:tr("sr.g.former_committees","Former Committees"),w:[tr("sr.w.former_committees_one","former committee"),tr("sr.w.former_committees_many","former committees")],k:r=>r[0]==="committee"},
   {t:"Learn",h:tr("sr.g.learn","Learn"),w:[tr("sr.w.learn_one","Learn page"),tr("sr.w.learn_many","Learn pages")],k:r=>r[0]==="learn"},
+  // A CHAPTER FOUND BY ITS TITLE, after the guides and the Learn pages (the
+  // owner, 10 November 2026; find.js, findLawTitles).
+  {t:"Law Chapters",h:tr("sr.g.law_chapters","Law Chapters"),w:[tr("sr.w.law_chapters_one","law chapter"),tr("sr.w.law_chapters_many","law chapters")],k:findLawIsTitle},
   {t:"Pages on This Site",h:tr("sr.g.pages_on_this_site","Pages on This Site"),w:[tr("sr.w.pages_on_this_site_one","page on this site"),tr("sr.w.pages_on_this_site_many","pages on this site")],k:r=>r[0]==="page"}
 ];
 
@@ -2955,7 +2958,7 @@ const bills=(q,B,C,counting,R,mem)=>{
 // Groups a reader reaches for after the bills: members who have left, and
 // this site's own pages.
 const AFTER=new Set(["Statutory and Study Committees","Former Senators","Former Representatives",
-  "Former Members","Learn","Pages on This Site"]);
+  "Former Members","Learn","Pages on This Site","Law Chapters"]);
 let waiting=false,waitingAll=false,waitingWords=false,waitingLaw=false,waitingReq=false;
 
 function draw(q){
@@ -2970,7 +2973,7 @@ function draw(q){
   const rows=findMatch(s,Infinity);
   // A statute's number: the Laws pages' list of chapters, then drawn again.
   const law=findLawRow(s);
-  if(law&&law.loading&&!waitingLaw){
+  if((law&&law.loading||findLawsWanted(s))&&!waitingLaw){
     waitingLaw=true;
     findLawsLoad().then(()=>draw(box.value));
   }
@@ -3033,7 +3036,7 @@ function draw(q){
   // BILLS (8 November 2026): their place is beside the bills (withBills,
   // below), so their words are no reason for the members and towns that
   // only begin with the words typed to go first.
-  const named=!findBill(s)&&rows.some(r=>r[0]==="law"
+  const named=!findBill(s)&&rows.some(r=>(r[0]==="law"&&!findLawIsTitle(r))
     ||(r[0]!=="former"&&r[0]!=="guide"&&r[0]!=="learn"&&_fwhole(r,s)));
   const left=rows.slice(),counts=[];
   // The bills' part of the line a screen reader hears, where the page puts

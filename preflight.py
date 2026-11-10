@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.835
+# GRANITE_VERSION: 2026-09-04.836
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -21365,9 +21365,11 @@ _FIND_MORE_QUERIES = {
               "O’Connor", "oconnor", "Lou D’Allesandro", "Hart’s Location",
               "Wentworths Location", "Wentworth's Loc.", "Chandlers Purchase", "O Neil",
               "Candice O Neil", "Hart s Location", "RSA 91-A:4 IV", "91-A:4, IV", "rsa 91-a:4(iv)",
-              "LSR 2027-0002", "2027-0002", "2026-0002"],
+              "LSR 2027-0002", "2027-0002", "2026-0002",
+              # A chapter found by its title (the owner, 10 November 2026).
+              "governmental records", "dog licensing", "tenants"],
     "search": ["RSA 91-A", "data centers", "LSR 2027-0002", "firearms", "xyzzy",
-               "O’Connor", "RSA 91-A:4 IV"],
+               "O’Connor", "RSA 91-A:4 IV", "tenants"],
     # /bills: a request's number three ways, a year that is not the
     # requests', a statute, nothing, and words a request has; and what people
     # type (_search_reads_typed).
@@ -21424,7 +21426,7 @@ if (MODE.startsWith("slowlaw:")) {
   }
   const res = {panel: {}, first: {}, search: {}, all: {}, req: {}};
   draw("firearms"); await F.findBillsLoad(); await ticks(10);
-  res.idle = ASKED.filter(p => p.startsWith("/laws/") || p.includes("requests"));
+  res.idle = ASKED.filter(p => p.includes("requests"));
   for (const s of Q.panel) {
     draw(s); await F.findLawsLoad(); await ticks(10);
     res.panel[s] = draw(s); res.first[s] = F.findMatch(s, 50)[0] || null;
@@ -21532,7 +21534,7 @@ def _find_laws(BP):
     if not all(f.exists() for f in need):
         return "skip", "app.js, find.js or dom_stub.js not in this directory"
     P, AA = _find_more_run(BP, ("panel", ""), ("app", "all"))
-    assert not P["idle"], f"a search that names no statute fetched {P['idle']}"
+    assert not P["idle"], f"a search that names no request fetched {P['idle']}"
     bad = []
     want = {"RSA 91-A": ("RSA 91-A", "/laws/91-a"), "rsa 91-a:4": ("RSA 91-A:4", "/laws/91-a#s4"),
             "91-A": ("RSA 91-A", "/laws/91-a"), "91-A:4": ("RSA 91-A:4", "/laws/91-a#s4"),
@@ -21554,6 +21556,23 @@ def _find_laws(BP):
     if P["askedPanel"].count("/laws/chapters.json") != 1:
         bad.append(f"laws/chapters.json was asked for {P['askedPanel'].count('/laws/chapters.json')} "
                    "times, not once")
+    # A chapter found by its title (the owner, 10 November 2026): a Law row,
+    # flagged "title", after everything else, and /search's "Law Chapters"
+    # group after the bills and the guides, never the "Laws" group a number leads.
+    for q, ch, name in (("governmental records", "91-A", "Access to Governmental Records and Meetings"),
+                        ("dog licensing", "404", "Dog Licensing"),
+                        ("tenants", "540", "Actions Against Tenants")):
+        row = [r for r in (P["first"].get(q) and [P["first"][q]] or []) if r][0:1]
+        r = row[0] if row else []
+        href = "/laws/" + ch.lower() + ("/" if ch == "404" else "")
+        if r[:5] != ["law", "RSA " + ch, name, href, "title"]:
+            bad.append(f"{q!r}: the first row is {r[:5]}, not the title row for RSA {ch}")
+        h = P["panel"].get(q, "")
+        if f'href="{href}"' not in h or ">Law<" not in h:
+            bad.append(f"{q!r}: the panel does not offer RSA {ch} by its title: {h[:200]!r}")
+    s = P["search"]["tenants"]["html"]
+    if "<h2>Law Chapters" not in s or "<h2>Laws" in s or 'href="/laws/540"' not in s:
+        bad.append(f"/search?q=tenants lacks a Law Chapters group with RSA 540: {s[:300]!r}")
     assert not bad, "; ".join(bad[:4])
     # The bills that change it: one this term, two in all; the panel's and
     # /search's counts are /bills' (on All terms, /search's address).

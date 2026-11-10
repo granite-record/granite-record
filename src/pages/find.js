@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.52
+// GRANITE_VERSION: 2026-09-16.53
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -284,6 +284,44 @@ function findLawRow(q){
     "/laws/"+slug+(FLAW_FOLDERS.includes(slug)?"/":"")+(L.sec?"#s"+L.sec:""),""];
 }
 
+/* A CHAPTER FOUND BY ITS TITLE (the owner, 10 November 2026: "Add RSA chapter
+   numbers and titles to the general search"). Once the Laws pages' list is
+   here, the words typed are looked for in each chapter's title and its
+   popular names, and a chapter that has them all is a Law row, "RSA 91-A"
+   with its title as the line, flagged "title" in r[4] so the callers put it
+   after the guides rather than first: a number typed leads (findLawRow), a
+   title is only found. Repealed chapters are left out, and no more than
+   FLAW_TITLE_MAX are given. The list is fetched on the first search with a
+   word of three letters in it (findLawsWanted), and once. */
+const FLAW_TITLE_MAX=20;
+function findLawsWanted(q){
+  return !FLAWS.ch&&!FLAWS.failed&&(!!findLaw(q)||/[a-z]{3}/i.test(String(q||"")));
+}
+const FLAWH=new Map();
+function findLawTitles(q){
+  if(!FLAWS.ch||findLaw(q))return [];
+  const s=_ftitled(_fapos(String(q||"").trim().toLowerCase()));
+  if(!s)return [];
+  const words=s.split(/\s+/), out=[];
+  for(const ch of Object.keys(FLAWS.ch)){
+    const c=FLAWS.ch[ch];
+    if(!Array.isArray(c)||c[3])continue;
+    let hay=FLAWH.get(ch);
+    if(hay===undefined){
+      hay=_fboth(`${c[0]} ${(c[4]||[]).join(" ")}`.toLowerCase());
+      FLAWH.set(ch,hay);
+    }
+    if(!words.every(w=>_fhas(hay,w)))continue;
+    const slug=ch.toLowerCase();
+    out.push([_fbare(String(c[0])).toLowerCase().indexOf(s)<0?1:0,String(c[0]).length,
+      ["law",`RSA ${ch}`,String(c[0]||""),
+       "/laws/"+slug+(FLAW_FOLDERS.includes(slug)?"/":""),"title"]]);
+  }
+  out.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  return out.slice(0,FLAW_TITLE_MAX).map(x=>x[2]);
+}
+const findLawIsTitle=r=>!!r&&r[0]==="law"&&r[4]==="title";
+
 // A former member's row is named "Former Rep. Suzanne Vail", and the word
 // Former is ours, not part of her name. Ranking against the whole string
 // would put all 1,785 of them at the top the moment somebody typed "for",
@@ -468,7 +506,9 @@ function findMatch(q,limit){
     hit.push([_fpart(r,s),learn,rank,gone,gone?-(r[5]||0):0,name.length,r]);
   }
   hit.sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2]-b[2]||a[3]-b[3]||a[4]-b[4]||a[5]-b[5]);
-  return lead.concat(hit.slice(0,(limit||8)-lead.length).map(x=>x[6]));
+  const found=lead.concat(hit.slice(0,(limit||8)-lead.length).map(x=>x[6]));
+  // Chapters found by their title come last, after the guides (findLawTitles).
+  return found.concat(findLawTitles(q).slice(0,Math.max(0,(limit||8)-found.length)));
 }
 
 /* DID YOU MEAN. Only when nothing at all was found, because that is the only
@@ -971,7 +1011,7 @@ function findDraw(q,ids){
   // A statute's number: the Laws pages' list of chapters, once, and the
   // panel drawn again with its row when it is here (findLawRow).
   const law=findLawRow(s);
-  if(law&&law.loading&&!FLAWS.redraw){
+  if((law&&law.loading||findLawsWanted(s))&&!FLAWS.redraw){
     FLAWS.redraw=true;
     findLawsLoad().then(()=>{
       const box=document.getElementById(ids.box);
@@ -1032,7 +1072,7 @@ function findDraw(q,ids){
   // keep their place above the bills.
   const howto=r=>r[0]==="guide"||r[0]==="learn";
   const whole=r=>!_fgone(r)&&_fwhole(r,s);
-  const named=rows.filter(r=>r[0]==="law"||(!howto(r)&&whole(r)));
+  const named=rows.filter(r=>(r[0]==="law"&&!findLawIsTitle(r))||(!howto(r)&&!findLawIsTitle(r)&&whole(r)));
   const after=rows.filter(r=>howto(r)&&whole(r));
   const list=named.map(row).join("")+bills+after.map(row).join("")
     +rows.filter(r=>!named.includes(r)&&!after.includes(r)).map(row).join("");
