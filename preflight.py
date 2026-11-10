@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.834
+# GRANITE_VERSION: 2026-09-04.835
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -127941,6 +127941,9 @@ NOT_INPUT_NAMERS = {
     "state_sources.py": "archive/cloud/sources-down.json, its record of what this machine "
                         "last took of the state documents; no build step runs it, and "
                         "nothing a page is made of",
+    "build_member_elections.py": "reports/elections_uncertain.md, the list it writes for the "
+                                 "owner of candidates it could not match to a member with "
+                                 "certainty; nothing reads it, and nothing a page is made of",
     "livestreams.py": "logs/youtube-<day>.log, yt-dlp's warnings, which its asks write "
                       "(--since-state, before the build) and nothing reads; nothing a page "
                       "is made of",
