@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.843
+# GRANITE_VERSION: 2026-09-04.844
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -34231,6 +34231,35 @@ def _phone_card_compact():
         drew = "the year on each of three dated stops"
     return "ok", (f"under 37.5em: {', '.join(f'{tok} {px}px' for tok, px in _PHONE_CARD.values())}"
                   f" in rem, the title in the serif; {drew}")
+
+
+@check("frontend", "the Law line of How it got here has its day in the date column, like every other line",
+       needs=("build_site_v2",))
+def _law_line_dated(B):
+    """The owner, 10 November 2026: HB 1's Law line read "Chapter 140, in
+    effect Jul 1, 2025" with its date column empty. The build gives a
+    single-day law's step its date and the words "Chapter 140, in effect"
+    (law_line_dated); `text` keeps the day for the Laws pages, a law in parts
+    or stages keeps no day, and app.js draws the date column from `date`."""
+    day = "2025-07-01"
+    one = B.law_line_dated({"act": "law", "date": "", "effective": day, "short": "Chapter 140",
+                            "text": "Chapter 140, in effect Jul 1, 2025"})
+    assert one["date"] == day and one["shown"] == "Chapter 140, in effect", f"a law line is not dated: {one}"
+    assert one["text"] == "Chapter 140, in effect Jul 1, 2025", "the Laws pages' own text changed"
+    parts = B.law_line_dated({"act": "law", "date": "", "effective": "", "short": "Chapter 142",
+                              "text": "Chapter 142, in effect in parts: ..."})
+    assert parts["date"] == "" and "shown" not in parts, "a law in parts was given a day"
+    staged = B.law_line_dated({"act": "law", "date": "", "effective": "", "short": "Chapter 142",
+                               "shown": "Chapter 142, in effect in stages", "text": "..."})
+    assert staged["date"] == "" and staged["shown"] == "Chapter 142, in effect in stages", "a staged law changed"
+    html = _app_js("scope.journeyList({id: 'HB1'}, {journey: {steps: [" + json.dumps(one) + "]}})",
+                   names=("journeyList",))
+    if html is None:
+        return "skip", "node or app.js is not here"
+    assert '<span class="jt">Chapter 140, in effect</span>' in html, (
+        f"the line's words are not Chapter 140, in effect: {html!a}")
+    assert re.search(r'<span\s+class="jd">Jul 1, 2025</span>', html), f"the day is not in the date column: {html!a}"
+    return "ok", "a single-day law's line says Chapter N, in effect with its day in the date column; parts and stages unchanged"
 
 
 @check("frontend", "a tally in How it got here stays on one line, never broken after its dash")

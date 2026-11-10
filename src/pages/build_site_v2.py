@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.262
+# GRANITE_VERSION: 2026-09-05.263
 """
 Generate the faceted site from real General Court data.
 
@@ -5365,6 +5365,20 @@ def law_in_stages(chapter, parts):
         return ""
     return (f"Chapter {chapter}, in effect in stages from "
             f"{_j_prose_date(min(days).isoformat())} to {_j_prose_date(max(days).isoformat())}")
+
+
+def law_line_dated(step):
+    """THE LAW LINE'S DAY IS IN THE DATE COLUMN, as every other line's is (the
+    owner, 10 November 2026: "in effect Jul 1, 2025" sat in the words of HB 1's
+    line with its date empty). `shown` says "Chapter 140, in effect" beside
+    it; `text` keeps the day in its words, for the Laws pages. A law in parts
+    or stages has no one day and stays as it was. Called before the step's
+    `short` and `effective` are dropped from the stored journey."""
+    if (step.get("act") == "law" and step.get("effective") and not step.get("date")
+            and not step.get("shown") and step.get("short")):
+        step["date"] = step["effective"]
+        step["shown"] = f"{step['short']}, in effect"
+    return step
 
 
 def _j_prose_date(iso, year=True):
@@ -11574,6 +11588,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         if why and term == current:
             j_current.append(f"{bid}: {why}")
         for s_ in jsteps:
+            law_line_dated(s_)
             s_.pop("short", None)
             # The Law stop has taken its day (law_day); the line keeps its words.
             s_.pop("effective", None)
