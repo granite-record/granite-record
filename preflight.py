@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.866
+# GRANITE_VERSION: 2026-09-04.867
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -123161,6 +123161,42 @@ def _map_labels_never_overlap():
     return "ok", (f"{out['layouts']:,} layouts, none overlapping; Manchester's wards numbered "
                   f"after {out['manchester'].get('660 numbers')} presses and named after "
                   f"{out['manchester'].get('660 names')} at 1366")
+
+
+@check("frontend", "the district map keeps the state's outline on every layer, through any number "
+                   "of switches between State House and State Senate")
+def _map_keeps_the_outline():
+    """tests/test_map_outline.js loads map.js in node on the real geometry and
+    switches layers fifty times in turn. The owner, 11 November 2026: the map
+    outline disappeared on the switch from State House to State Senate -- the
+    outline was the county lines, drawn on two layers only. Held: every layer
+    gets the heavy line (casing and line) with a path, the same state edge on
+    every layer but the two that draw the county lines, and none is lost on a
+    later switch.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    js, harness = Path("src/pages/map.js"), Path("tests/test_map_outline.js")
+    if not (js.exists() and harness.exists()):
+        return "skip", "map.js or tests/test_map_outline.js is not in this directory"
+    data = _map_data()
+    if data is None:
+        return "skip", "the geometry, the district files or the officials file is not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-mapoutline-"))
+    try:
+        (root / "district_map.json").write_text(json.dumps(data), encoding="utf-8")
+        r = _run(["node", str(harness.resolve()), str(js.resolve()), str(root / "district_map.json")],
+                 cwd=root, capture_output=True, text=True, timeout=120)
+        said = (r.stdout or "").strip().splitlines()
+        assert r.returncode == 0 and said, (
+            "the outline check did not run: " + ((r.stderr or r.stdout or "").strip()[-300:]))
+        out = json.loads(said[-1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert out["switches"] >= 50 and len(out["layers"]) >= 2, "the check switched too few layers"
+    assert not out["missing"], "a layer draws no state outline:\n    " + "\n    ".join(out["missing"][:8])
+    assert not out["drifted"], "a layer's outline is not the state's:\n    " + "\n    ".join(out["drifted"][:8])
+    return "ok", f"{len(out['layers'])} layers, {out['switches']} switches, the state's outline on each"
 
 
 @check("build", "every district on the map is filled from the record's party, and a vacant "
