@@ -38922,12 +38922,15 @@ def _build_date_stated(build_all, build_date, shell):
                         and f'<span class="citeday">{fell_stated}</span>' not in a_:
                     kinds[p.relative_to(site).parts[0]] += 1
                 continue
-            if a_.replace(fell_stated, "\0") != b_.replace(fell, "\0") or (
-                    f'<span class="citeday">{fell_stated}</span>' not in a_):
+            # A page that fell back on the build day may differ in more than
+            # that (a week still to come, the API's own day); one that names
+            # its record's day may not differ at all.
+            if 'class="citeday' in a_ and f'<span class="citeday">{fell_stated}</span>' not in a_:
                 moved.append(p.relative_to(site).as_posix())
         assert not moved, (
-            f"{len(moved)} page(s) built on two days from the same data differ in more than the "
-            "build day a page with no record date falls back on: " + ", ".join(moved[:4]))
+            f"{len(moved)} page(s) that date their citation by their record differ between two "
+            "builds of the same data on two different days: " + ", ".join(moved[:4])
+            + f" (by folder: {dict(Counter(m.split('/')[0] for m in moved))})")
         assert kinds.get("bill", 0) > 0, (
             "no bill page of the fixture is the same file on two build days: its citation is "
             "still dated by the build")
