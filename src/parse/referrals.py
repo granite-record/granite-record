@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.15
+# GRANITE_VERSION: 2026-09-10.16
 """The committee a bill was referred to, read out of the docket.
 
     python3 src/parse/referrals.py            # what it finds, by term, no network
@@ -807,7 +807,7 @@ def unreferred(found=None):
         if session not in paths and Path("Docket.txt").exists():
             paths[session] = "Docket.txt"
     except Exception:                               # no session: no current term
-        pass
+        pass    # right to swallow: with no session there is only the saved terms
     for term, path in paths.items():
         if not Path(path).exists():
             continue

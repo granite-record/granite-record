@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.4
+# GRANITE_VERSION: 2026-10-09.5
 """
 A change to the browser's files, put into the site the last full build made.
 
@@ -103,7 +103,7 @@ def facts():
         import build_exports
         out["repo"] = build_exports.repo_facts()
     except Exception:                                           # noqa: BLE001
-        pass
+        pass    # the None is the answer: the caller refuses on a fact that was there before
     try:
         import build_search_index as SI
         app = Path("src/pages/app.js")

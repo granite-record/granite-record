@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.265
+# GRANITE_VERSION: 2026-09-05.266
 """
 Generate the faceted site from real General Court data.
 
@@ -74,13 +74,25 @@ STATUS_ORDER = ["law", "veto", "done", "active"]
 
 
 def load(p, default):
+    """A JSON input, or `default` where the file is not there at all.
+
+    A file that IS there and cannot be read -- cut off mid-array, a permission
+    error, MemoryError on the 245 MB narratives.json -- stops the build and
+    names the file. It used to return `default` for every failure, and a site
+    was built with no journeys or no votes while the shape guards after the
+    call, which skip an empty value, passed (bug hunt of 11 November 2026,
+    finding 1)."""
     p = Path(p)
-    if not p.exists():
-        return default
     try:
-        return json.loads(p.read_text(encoding="utf-8"))
-    except Exception:
+        text = p.read_text(encoding="utf-8")
+    except FileNotFoundError:
         return default
+    except (OSError, MemoryError) as e:
+        sys.exit(f"{p} could not be read: {e!r}")
+    try:
+        return json.loads(text)
+    except (ValueError, MemoryError, RecursionError) as e:
+        sys.exit(f"{p} is not readable JSON (truncated or corrupt?): {e!r}")
 
 
 

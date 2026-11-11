@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.61
+# GRANITE_VERSION: 2026-09-04.62
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -272,6 +272,9 @@ def date_ballot_seats(member_votes, legs, path="text_sponsors.json"):
 # already records it, rather than in a field labelled committee.
 _PLACEHOLDERS = {"committeeofconference", "nocommitteeassignment",
                  "specialcommittee", "committee", "thecommittee"}
+
+
+_CN_WARNED = False
 
 
 def _placeholder(name):
@@ -743,8 +746,13 @@ def _code_committee(code, year, committees):
         for _ch, lo, hi, name, c in CN.CODES:
             if c == code and lo <= y <= hi:
                 return name
-    except Exception:                               # a table that will not read
-        pass
+    except Exception as e:                          # a table that will not read
+        global _CN_WARNED
+        if not _CN_WARNED:                          # once, not once per bill
+            _CN_WARNED = True
+            print(f"  WARNING committee_names table unreadable, committee names "
+                  f"fall back to the docket's ({type(e).__name__}: {e})",
+                  file=sys.stderr)
     name = (committees.get(code) or {}).get("name", "")
     return "" if _placeholder(name) else name
 
