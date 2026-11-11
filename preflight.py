@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.860
+# GRANITE_VERSION: 2026-09-04.861
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44242,15 +44242,19 @@ def _rsa_spelled_out_terms(B, RSA, S):
         ("153:7", "Works.", (), (
             "Works administered through the department of transportation, division of public works, "
             "are reported by the board of fire control.",
+            "The department of administrative services keeps a copy.",
             "A bare department files a form with the board.")),
     ))
     got, _w = t.defined().marks("153:7")
     p = RSA.paragraphs(t.sections["153:7"].text)
     words = [(li, p[li][st:en]) for li, v in sorted(got.items()) for st, en, _i in v]
     assert (0, "department") not in words,         f"'department of transportation' is marked where the text spells out its definition: {words}"
-    assert (1, "department") in words, "the bare 'department' of the next paragraph is not marked in its place"
+    assert (1, "department") not in words, \
+        f"'department of administrative services' is marked with the department of transportation's definition: {words}"
+    assert (2, "department") in words, "the bare 'department' after them is not marked in its place"
     assert (0, "board") in words, "'board' ('and the commissioner' follows the meaning) is not marked"
-    return "ok", "the spelled-out use skipped, the bare one marked in its place, a longer meaning not read as a short one"
+    return "ok", ("the spelled-out use and another department skipped, the bare one marked in its place, "
+                  "a longer meaning not read as a short one")
 
 
 @check("build", "a statute page marks a defined term where the definition's own words apply it, and only "

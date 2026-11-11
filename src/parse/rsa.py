@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.4
+# GRANITE_VERSION: 2026-10-11.5
 """
 The statutes (RSA): the General Court's table read once, and one reader of
 statute citations for everything that needs them.
@@ -1113,7 +1113,7 @@ class Defined:
                             not any(t.lower() in self.exact[i] or any(c.isupper() for c in t[1:])
                                     for t in written):
                         continue
-                if self._spelled_out(i, p, m.start()):
+                if self._spelled_out(i, p, m.start()) or self._names_another(i, p, m.start(), m.end()):
                     continue
                 used.add(i)
                 out.setdefault(li, []).append((m.start(), m.end(), i))
@@ -1154,6 +1154,24 @@ class Defined:
     def _spelled_out(self, i, p, at):
         y = self._meaning(i)
         return bool(y) and re.match(re.escape(y).replace(r"\ ", r"\s+") + r"(?![\w-])", p[at:], re.I) is not None
+
+    # ANOTHER ONE OF ITS KIND (11 November 2026): where the definition reads
+    # '"Department" means the department of transportation', the use "the
+    # department of administrative services" names a different department, and
+    # a box saying "Department" means the department of transportation under it
+    # is wrong. A use followed by "of" whose next word is not the meaning's next
+    # word is left unmarked, and the next use is marked in its place. "Board of
+    # fire control" under "the board of fire control and the commissioner" agrees
+    # on its next word and stays marked.
+    OF_NEXT = re.compile(r"\s+of\s+(?:the\s+)?([\w'-]+)", re.I)
+
+    def _names_another(self, i, p, st, en):
+        y, w = self._meaning(i), re.sub(r"\s+", " ", p[st:en]).lower()
+        if not y.startswith(w + " of "):
+            return False
+        use = self.OF_NEXT.match(p, en)
+        mean = self.OF_NEXT.match(" " + y[len(w):])
+        return bool(use and mean) and use.group(1).lower() != mean.group(1).lower()
 
     def report(self, chapters=None):
         """The counts a person checks this by: definition sections read,
