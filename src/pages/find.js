@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.55
+// GRANITE_VERSION: 2026-09-16.56
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -669,7 +669,9 @@ function _fbillApi(){
             knownWord:typeof knownWord==="function"?knownWord:null,
             matchScore:typeof matchScore==="function"?matchScore:null,
             titleShare:typeof titleShare==="function"?titleShare:null,
-            statusCat:typeof statusCat==="function"?statusCat:null};
+            statusCat:typeof statusCat==="function"?statusCat:null,
+            requestNumber:typeof requestNumber==="function"?requestNumber:null,
+            setRequestYear:typeof setRequestYear==="function"?setRequestYear:null};
   return window.GR_BILLMATCH||null;
 }
 const _fdata=f=>new URL(f,location.origin+"/").href;
@@ -705,6 +707,9 @@ function findBillsLoad(){
     FBILLS.file=_fprep(rows);
     FBILLS.rows=FBILLS.file.filter(b=>!b.term||b.term===FBILLS.term);
     FBILLS.api=api;
+    // The matcher reads "2027-0002" and "LSR 27-0002" as a request's number
+    // only for the requests' own year (app.js, requestNumber).
+    if(api.setRequestYear)api.setRequestYear(FBILLS.requests?(FBILLS.requests.year||String(FBILLS.requests.term||"").slice(0,4)):"");
     return _ftext(FBILLS.term).then(()=>true);
   }).catch(()=>{FBILLS.failed=true;return false;});
   return FBILLS.loading;
@@ -932,6 +937,15 @@ function findBillRow(b,q,dated,why){
 // A bill request's number, as /bills reads one (app.js's requests offer):
 // "LSR" and the number, or the year, a dash and the number.
 const FLSR=/^\s*(?:lsr\s*\d{4}\s*-?\s*\d{1,4}|\d{4}\s*-\s*\d{1,4})\s*$/i;
+// Whether what was typed is a request's number: "2027-0002", "LSR 2027-0002",
+// "LSR 27-0002", "27-0002" (the matcher's requestNumber, 11 November 2026),
+// or, until the matcher is here, the older shapes above. A bare "0002" is
+// not one here: next to a bill's number it is ambiguous, and it is read only
+// on /bills' own list of requests.
+function findIsRequest(s){
+  const A=FBILLS.api;
+  return A&&A.requestNumber?!!A.requestNumber(s,false):FLSR.test(s);
+}
 // A request's row, drawn as a bill's: its number, its kind, its title. It
 // opens the bill search on it, in the requests' list (`term`).
 function findRequestRow(b,term,q){
@@ -940,11 +954,16 @@ function findRequestRow(b,term,q){
   if(cut)t=t.slice(0,157).replace(/\s+\S*$/,"");
   // The request's own page where it has one (Alice, 8 November 2026), or the
   // bill's page it became; the bill search opened on it where it has neither.
-  const to=b.moved_to||b.address;
-  return `<a href="${to?"/"+_fesc(to):`/bills?q=${_fenc(b.n||b.id)}&amp;term=${_fenc(term)}`}">
+  // Every request has its page (/request/2027-0002); its number is the
+  // address where an older index names none.
+  const to=b.moved_to||b.address||"request/"+String(b.n||b.id).replace(/^LSR\s*/i,"");
+  // Its sponsor beside the title, as a card on /bills has it.
+  const who=String(b.sponsor_label||b.sponsor||"");
+  return `<a href="/${_fesc(to)}">
     <span class="fl1"><span class="fname">${_fesc(b.n||b.id)}</span>
     ${chip(tr("find.kind.request","Bill Request"),"fkind")}</span>
-    ${t?`<span class="fwhat">${_fmark(t,q)}${cut?"&hellip;":""}</span>`:""}</a>`;
+    ${t?`<span class="fwhat">${_fmark(t,q)}${cut?"&hellip;":""}</span>`:""}
+    ${who?`<span class="fwhy">${tr("find.request_by","Requested by {who}",{who:_fesc(who)})}</span>`:""}</a>`;
 }
 
 // "1989 to 2026", from the terms newest first.
@@ -1092,7 +1111,7 @@ function findDraw(q,ids){
   // read for a search of that shape, and the one with the number leads the
   // panel as a bill's own row does, opening the bill search on it in the
   // requests' list, since a request has no page of its own yet.
-  const R=!num&&FLSR.test(s)?findBills(s,3,"requests"):null;
+  const R=!num&&findIsRequest(s)?findBills(s,3,"requests"):null;
   if(R&&R.state==="loading"&&!FREQ.redraw){
     FREQ.redraw=true;
     findRequestsLoad().then(()=>{

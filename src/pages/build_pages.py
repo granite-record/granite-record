@@ -2716,7 +2716,8 @@ BILLMATCH_BEGIN, BILLMATCH_END = "// BILLMATCH:BEGIN", "// BILLMATCH:END"
 BILLMATCH_EXPORTS = ("queryGroups", "groupWeight", "billNumbers", "billKey",
                      "looseness", "indexAdd", "readShort", "whyListed",
                      "spelling", "wordsAdd", "knownWord", "matchScore",
-                     "titleShare", "statusCat")
+                     "titleShare", "statusCat", "requestNumber",
+                     "setRequestYear")
 
 
 def bill_matcher_js(app_js):
@@ -3005,6 +3006,18 @@ function draw(q){
   // bills' place is their bills (theirs), and the lead says no "no bill".
   const mem=nB===0?memberBills(rows,s):null;
   const nR=R&&R.state==="ready"?R.n:0;
+  // A REQUEST'S NUMBER LEADS WITH THE REQUEST (the owner, 11 November 2026:
+  // "2027-0002" was told nothing matched, with the request on one line far
+  // below): its own row, number, title and sponsor, linking to its page,
+  // above everything else. Requests are not bills, so they are a group of
+  // their own and never in the bills' count.
+  const RQ=findIsRequest(s)?findBills(s,5,"requests"):null;
+  const reqRows=RQ&&RQ.state==="ready"?RQ.top:[];
+  const reqWait=!!(RQ&&RQ.state==="loading");
+  const reqSection=reqRows.length
+    ?`<section class="resgrp"><h2>${tr("sr.g.requests","Bill Requests")}
+      <span class="resn">${reqRows.length}</span></h2>
+      <div class="findout resout">${reqRows.map(b=>findRequestRow(b,RQ.term,s)).join("")}</div></section>`:"";
   head.innerHTML=tr("sr.results_for","Results for &ldquo;{q}&rdquo;",{q:esc(s)});
   // The answer first. "0 matches on this site, and the bills" is a sentence
   // nobody would write, and "nothing matches" above 30 bills is false.
@@ -3015,7 +3028,11 @@ function draw(q){
     :tr("sr.n_pages","{n} pages on this site",{n:rows.length});
   const some=nB===1?tr("sr.one_bill","One bill {where}",{where:term})
     :tr("sr.n_bills","{n} bills {where}",{n:(nB||0).toLocaleString(),where:term});
-  lead.textContent=(!rows.length
+  lead.textContent=reqRows.length&&!rows.length&&!nB
+    ?(reqRows.length===1?tr("sr.lead.request_one","A bill request for {year}. It is not a bill yet.",{year:FREQ.year})
+      :tr("sr.lead.request_n","{n} bill requests for {year}. They are not bills yet.",{n:reqRows.length,year:FREQ.year}))
+    :reqWait&&!rows.length&&!nB?tr("sr.lead.request_wait","Looking for that bill request…")
+    :(!rows.length
     ?(nB?(nB===1?tr("sr.lead.one_only","{some} matches. No legislator, committee, town or subject on this site does.",{some})
         :tr("sr.lead.n_only","{some} match. No legislator, committee, town or subject on this site does.",{some}))
       :nB===0&&!counting&&!nR?tr("sr.lead.nothing","Nothing on this site matches that: no legislator, committee, town or subject, and {nobill}.",{nobill:noBill})
@@ -3043,7 +3060,7 @@ function draw(q){
   // their group.
   const billsSaid=()=>{
     if(nB)counts.push(nB===1?tr("sr.c.one_bill","1 bill"):tr("sr.c.bills","{n} bills",{n:nB.toLocaleString()}));
-    if(nR)counts.push(nR===1?tr("sr.c.one_request","1 bill request"):tr("sr.c.requests","{n} bill requests",{n:nR.toLocaleString()}));
+    if(nR&&!reqRows.length)counts.push(nR===1?tr("sr.c.one_request","1 bill request"):tr("sr.c.requests","{n} bill requests",{n:nR.toLocaleString()}));
   };
   const section=(g,mine)=>{
     counts.push(`${mine.length} ${g.w[mine.length===1?0:1]}`);
@@ -3070,8 +3087,10 @@ function draw(q){
   const none=nB===0&&!nR&&guides.length>0;
   const theGuides=()=>guides.length?section(GUIDES,guides):"";
   let html="",placed=false,boxed=false;
-  const billsBox=()=>{boxed=true;const h=bills(s,B,C,counting,R,mem);billsSaid();return h;};
+  if(reqRows.length)counts.push(reqRows.length===1?tr("sr.c.one_request","1 bill request"):tr("sr.c.requests","{n} bill requests",{n:reqRows.length.toLocaleString()}));
+  const billsBox=()=>{boxed=true;const h=bills(s,B,C,counting,reqRows.length?null:R,mem);billsSaid();return h;};
   const atBills=()=>{placed=true;return none?theGuides():billsBox()+theGuides();};
+  html+=reqSection;
   if(!named)html+=atBills();
   for(const g of GROUPS){
     const mine=[];

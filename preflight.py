@@ -21459,16 +21459,26 @@ _FIND_MORE_QUERIES = {
               "Wentworths Location", "Wentworth's Loc.", "Chandlers Purchase", "O Neil",
               "Candice O Neil", "Hart s Location", "RSA 91-A:4 IV", "91-A:4, IV", "rsa 91-a:4(iv)",
               "LSR 2027-0002", "2027-0002", "2026-0002",
+              # A request's number every way it is typed (11 November 2026),
+              # and a bare "0002", which is read on /bills' requests alone.
+              "LSR 27-0002", "27-0002", "LSR2027-0002", "lsr 2027 0002", "0002", "27-2",
               # A chapter found by its title (the owner, 10 November 2026).
               "governmental records", "dog licensing", "tenants"],
     "search": ["RSA 91-A", "data centers", "LSR 2027-0002", "firearms", "xyzzy",
-               "O’Connor", "RSA 91-A:4 IV", "tenants"],
+               "O’Connor", "RSA 91-A:4 IV", "tenants", "2027-0002", "27-0002", "0002"],
     # /bills: a request's number three ways, a year that is not the
     # requests', a statute, nothing, and words a request has; and what people
     # type (_search_reads_typed).
-    "app": ["LSR 2027-0002", "2027-0002", "LSR20270002", "2026-0002", "RSA 91-A",
+    "app": ["LSR 2026-0002", "2026-0002", "RSA 91-A",
             "xyzzy", "data centers", "RSA 91-A:4 IV", "RSA 91-A:4, IV", "oconnor",
-            "Hart’s Location"]}
+            "Hart’s Location", "0002"],
+    # A request's number typed on the current term (11 November 2026): /bills
+    # moves to the requests' list and lists the one request. In one page, so
+    # the first moves it and the rest are read there; "0002" bare, which is a
+    # request only on that list, last.
+    "lsr": ["LSR 2027-0002", "2027-0002", "LSR20270002", "LSR 27-0002", "27-0002",
+            "LSR2027-0002", "lsr 2027 0002", "LSR 0002", "2027-0091", "0002", "2", "91", "2027",
+            "2027-0099"]}
 
 # The header's panel and /search, as _FIND_BILLS_PANEL runs them.
 _FIND_MORE_PANEL = r"""
@@ -21551,6 +21561,7 @@ require("./stub.js");
 """ + _FIND_BILLS_FETCH + r"""
 if (MODE === "all") location.search = "?term=all";
 if (MODE === "req") location.search = "?term=2027-requests";
+const APPQ = MODE === "lsr" ? Q.lsr : MODE === "req" ? Q.app.concat(["LSR 2027-0002"]) : Q.app;
 const box = document.querySelector("#q"); box.disabled = true;
 const DOCON = {};
 document.addEventListener = (t, f) => { (DOCON[t] = DOCON[t] || []).push(f); };
@@ -21579,15 +21590,15 @@ const cards = (html) => [...html.matchAll(/<article class="card[^"]*" data-id="(
     console.log(JSON.stringify(out));
     return;
   }
-  for (const s of Q.app) {
+  for (const s of APPQ) {
     box.value = s; box.fire("input"); await settle();
     const html = document.querySelector("#results").innerHTML;
     out.q[s] = {count: document.querySelector("#count").textContent, html, ids: cards(html)};
   }
   // The offer taken: its button, clicked, opens the requests on the search typed.
-  const offer = /data-term="([^"]+)"/.exec(out.q[Q.app[0]].html);
+  const offer = /data-term="([^"]+)"/.exec(out.q[APPQ[0]].html);
   if (offer && MODE === "") {
-    box.value = Q.app[0]; box.fire("input"); await settle();
+    box.value = APPQ[0]; box.fire("input"); await settle();
     // The button as requestOffer draws it, button.link[data-term]: closest()
     // answers each selector such a button matches, and no other.
     const target = {tagName: "BUTTON", dataset: {term: offer[1]},
@@ -21744,7 +21755,7 @@ def _find_requests(BP):
     need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
     if not all(f.exists() for f in need):
         return "skip", "app.js, find.js or dom_stub.js not in this directory"
-    P, A, R = _find_more_run(BP, ("panel", ""), ("app", ""), ("app", "req"))
+    P, A, R, L = _find_more_run(BP, ("panel", ""), ("app", ""), ("app", "req"), ("app", "lsr"))
     s = P["search"]
     line = ('<a class="fbills" href="/bills?q=data%20centers&amp;term=2027-requests">')
     assert P["req"]["data centers"] == 2 and line in s["data centers"]["html"] \
@@ -21753,13 +21764,26 @@ def _find_requests(BP):
         f"/search?q=data centers does not say that 2 requests for 2027 match, linked to their "
         f"list: {P['req']['data centers']} {s['data centers']['lead']!r} "
         f"{s['data centers']['html'][-500:]!r}")
-    assert P["req"]["LSR 2027-0002"] == 1 and "1 bill request for 2027" in s["LSR 2027-0002"]["html"], (
+    assert P["req"]["LSR 2027-0002"] == 1, (
         f"/search?q=LSR 2027-0002 counts {P['req']['LSR 2027-0002']} requests")
     for q in ("firearms", "xyzzy"):
-        assert "bill request" not in s[q]["html"] and P["req"][q] == 0, (
+        assert "bill request" not in s[q]["html"].lower() and P["req"][q] == 0, (
             f"/search?q={q} says something about requests, which none match")
-    assert "<h2>Bill requests" not in "".join(v["html"] for v in s.values()), (
-        "/search draws the requests as a group of their own")
+    assert "<h2>Bill Requests" not in "".join(v["html"] for q, v in s.items()
+                                              if q not in ("LSR 2027-0002", "2027-0002", "27-0002")), (
+        "/search draws the requests as a group for a search that is no request's number")
+    # A REQUEST'S NUMBER LEADS /search with the request (11 November 2026):
+    # its own row to /request/<number>, with its title and sponsor, above
+    # everything, and never "nothing matches" over it.
+    for q in ("LSR 2027-0002", "2027-0002", "27-0002"):
+        h, lead = s[q]["html"], s[q]["lead"]
+        if not h.lstrip().startswith('<section class="resgrp"><h2>Bill Requests') \
+                or '<a href="/request/2027-0002">' not in h[:400] \
+                or "establishing a temporary moratorium on data centers" not in h[:900] \
+                or "Requested by Rep. Jodi Nelson (R)" not in h[:900] or "No " in lead \
+                or "Nothing" in lead or "1 bill request." not in s[q]["say"]:
+            raise AssertionError(f"/search?q={q} does not lead with the request: "
+                                 f"{lead!r} {s[q]['say']!r} {h[:500]!r}")
     # /bills on the requests' list counts what /search said.
     assert R["term"] == "2027-requests" \
         and sorted(R["q"]["data centers"]["ids"]) == ["LSR20270002", "LSR20270091"] \
@@ -21767,22 +21791,45 @@ def _find_requests(BP):
         f"/bills on the 2027 requests lists {R['q']['data centers']['ids']} for 'data centers' and "
         f"{R['q']['LSR 2027-0002']['ids']} for 'LSR 2027-0002'")
     bad = []
-    for q in ("LSR 2027-0002", "2027-0002", "LSR20270002"):
-        h = A["q"][q]["html"]
-        if A["q"][q]["ids"] or '<button class="link" data-term="2027-requests">2027 Bill Requests</button>' not in h:
-            bad.append(f"/bills does not offer the 2027 Bill Requests for {q!r}: {h[-300:]!r}")
-    for q in ("2026-0002", "xyzzy", "RSA 91-A"):
-        if 'data-term="2027-requests"' in A["q"][q]["html"]:
-            bad.append(f"/bills offers the requests for {q!r}, which is no request's number")
+    # A request's number typed on the current term moves /bills to the
+    # requests' list and lists the request, whichever way it is written (11
+    # November 2026); a bare "0002" does so only once on that list; a number
+    # of another year, or no request's, is none and is not moved.
+    assert L["term"] == "2025-2026", f"the fixture's /bills opens on {L['term']!r}"
+    for q in ("LSR 2027-0002", "2027-0002", "LSR20270002", "LSR 27-0002", "27-0002",
+              "LSR2027-0002", "lsr 2027 0002", "LSR 0002"):
+        if L["q"][q]["ids"] != ["LSR20270002"]:
+            bad.append(f"/bills lists {L['q'][q]['ids']} for {q!r}, not LSR 2027-0002")
+    if L["q"]["2027-0091"]["ids"] != ["LSR20270091"]:
+        bad.append(f"/bills lists {L['q']['2027-0091']['ids']} for '2027-0091'")
+    if L["q"]["0002"]["ids"] != ["LSR20270002"]:
+        bad.append(f"/bills lists {L['q']['0002']['ids']} for a bare '0002' on the requests' list")
+    # A bare short number on that list is a request too, "2" and "91" (the
+    # owner, 11 November 2026); the year alone, "2027", is a word.
+    if L["q"]["2"]["ids"] != ["LSR20270002"] or L["q"]["91"]["ids"] != ["LSR20270091"]:
+        bad.append(f"/bills lists {L['q']['2']['ids']} for '2' and {L['q']['91']['ids']} for '91' "
+                   "on the requests' list")
+    if (L["q"]["2027"]["ids"] or [None])[0] == "LSR20272027":
+        bad.append("/bills reads the year '2027' as a request's number")
+    if L["q"]["2027-0099"]["ids"] or "No bills match" not in L["q"]["2027-0099"]["html"]:
+        bad.append("/bills does not say no request has the number 2027-0099")
+    # The current term: the offer for what is not read as a request's number,
+    # a year that is not the requests', and a bare number is none.
+    h = A["q"]["LSR 2026-0002"]["html"]
+    if A["q"]["LSR 2026-0002"]["ids"] or '<button class="link" data-term="2027-requests">2027 Bill Requests</button>' not in h:
+        bad.append(f"/bills does not offer the 2027 Bill Requests for 'LSR 2026-0002': {h[-300:]!r}")
+    for q in ("2026-0002", "xyzzy", "RSA 91-A", "0002"):
+        if 'data-term="2027-requests"' in A["q"][q]["html"] or "LSR20270002" in A["q"][q]["ids"]:
+            bad.append(f"/bills offers or lists the requests for {q!r}, which is no request's number here")
     assert not bad, "; ".join(bad)
     tk = A.get("taken") or {}
-    assert tk.get("term") == "2027-requests" and tk.get("q") == "LSR 2027-0002" \
-        and tk.get("ids") == ["LSR20270002"], (
-        f"taking the offer leaves /bills on {tk.get('term')!r} with {tk.get('q')!r}, listing "
-        f"{tk.get('ids')}: it should open the requests on the search typed, and list LSR 2027-0002")
-    return "ok", ("'data centers' and 'LSR 2027-0002' counted on /search's one line as /bills "
-                  "lists them on the requests' list; /bills offers that list for three forms of "
-                  "a request's number, and taking it lists the request")
+    assert tk.get("term") == "2027-requests" and tk.get("q") == "LSR 2026-0002", (
+        f"taking the offer leaves /bills on {tk.get('term')!r} with {tk.get('q')!r}: "
+        "it should open the requests on the search typed")
+    return "ok", ("'data centers' counted on /search's one line as /bills lists them on the "
+                  "requests' list; a request's number (2027-0002, LSR 2027-0002, LSR 27-0002, "
+                  "27-0002) leads /search with its row and moves /bills to the requests' list, "
+                  "where a bare 0002 is read too; the offer stays for what is no request's number")
 
 
 @check("frontend", "the bill search opens on the newest term with a line counting next session's "
@@ -21881,13 +21928,20 @@ def _search_reads_typed(BP):
         bad.append(f"/bills lists {A['q']['Hart’s Location']['ids']} for 'Hart’s Location'")
     # A request's number: its row leads the header's list, opening the bill
     # search on it among the requests; a number no request has is offered none.
-    row = '<a href="/bills?q=LSR%202027-0002&amp;term=2027-requests">'
-    for q in ("LSR 2027-0002", "2027-0002"):
+    # Its row opens the request's own page, /request/2027-0002 (11 November
+    # 2026), in every way the number is typed; a bare "0002", a year that is
+    # not the requests' and a number too short for a two-digit year are none.
+    row = '<a href="/request/2027-0002">'
+    for q in ("LSR 2027-0002", "2027-0002", "LSR 27-0002", "27-0002", "LSR2027-0002",
+              "lsr 2027 0002"):
         h = P["panel"][q]
-        if not h.lstrip().startswith(row) or ">Bill Request<" not in h:
+        if not h.lstrip().startswith(row) or ">Bill Request<" not in h \
+                or "Requested by Rep. Jodi Nelson (R)" not in h \
+                or "data centers" not in h or "No matching" in h:
             bad.append(f"the header does not lead with LSR 2027-0002 for {q!r}: {h[:200]!r}")
-    if "term=2027-requests" in P["panel"]["2026-0002"]:
-        bad.append("the header offers a request for 2026-0002, which no request has")
+    for q in ("2026-0002", "0002", "27-2"):
+        if "/request/" in P["panel"][q]:
+            bad.append(f"the header offers a request for {q!r}, which is no request's number")
     assert not bad, "; ".join(bad[:4])
     return "ok", ("O’Connor, oconnor, O Neil, Lou D’Allesandro, Hart’s Location, Hart s Location, "
                   "Wentworths Location and Chandlers Purchase find the record's names, its "
@@ -30630,7 +30684,7 @@ def _request_pages():
         L.FILING_COMPLETE.clear()
         L.FILING_COMPLETE.update(old)
     # The links, and New Hampshire kept out of the page writer.
-    assert "const to=b.moved_to||b.address;" in Path("src/pages/find.js").read_text(encoding="utf-8") \
+    assert 'const to=b.moved_to||b.address||"request/"' in Path("src/pages/find.js").read_text(encoding="utf-8") \
         and '?`<a href="${esc(b.moved_to||b.address)}">' in Path("src/pages/app.js").read_text(encoding="utf-8"), (
         "the header search's request row or the request card does not link the request's page")
     src = Path("src/pages/build_request_pages.py").read_text(encoding="utf-8")

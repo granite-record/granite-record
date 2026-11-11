@@ -1748,6 +1748,11 @@
    "es": "o",
    "state": "draft"
   },
+  "find.request_by": {
+   "en": "Requested by {who}",
+   "es": "Solicitado por {who}",
+   "state": "draft"
+  },
   "find.search_bills": {
    "en": "Search the bills for {q}",
    "es": "Buscar {q} en los proyectos de ley",
@@ -25794,6 +25799,11 @@
    "es": "Representantes",
    "state": "draft"
   },
+  "sr.g.requests": {
+   "en": "Bill Requests",
+   "es": "Solicitudes de proyecto de ley",
+   "state": "draft"
+  },
   "sr.g.senators": {
    "en": "Senators",
    "es": "Senadores",
@@ -25882,6 +25892,21 @@
   "sr.lead.one_only": {
    "en": "{some} matches. No legislator, committee, town or subject on this site does.",
    "es": "{some} coincide. Ningún legislador, comité, municipio ni tema de este sitio coincide.",
+   "state": "draft"
+  },
+  "sr.lead.request_n": {
+   "en": "{n} bill requests for {year}. They are not bills yet.",
+   "es": "{n} solicitudes de proyecto de ley para {year}. Todavía no son proyectos de ley.",
+   "state": "draft"
+  },
+  "sr.lead.request_one": {
+   "en": "A bill request for {year}. It is not a bill yet.",
+   "es": "Una solicitud de proyecto de ley para {year}. Todavía no es un proyecto de ley.",
+   "state": "draft"
+  },
+  "sr.lead.request_wait": {
+   "en": "Looking for that bill request…",
+   "es": "Buscando esa solicitud de proyecto de ley…",
    "state": "draft"
   },
   "sr.n_bills": {
