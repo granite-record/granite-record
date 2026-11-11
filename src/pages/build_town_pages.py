@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.49
+# GRANITE_VERSION: 2026-09-09.50
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -66,6 +66,7 @@ import urllib.parse
 import build_date
 import components as C
 import shell as S
+import state_settings as ST
 # Who November's election sent, for the weeks before they sit: the one
 # reader of site/members_elect.json, beside its one writer (16 October 2026).
 # And the one reader of corrections/officials.json, which puts each office's
@@ -1559,9 +1560,7 @@ def place_record(town, ward, wards, dist, legs, loc, elect=None):
 
 # The map's code for a county (build_district_map.CODE): a State House
 # district is "ST14", Strafford 14.
-MAP_COUNTY = {"Belknap": "BE", "Carroll": "CA", "Cheshire": "CH", "Coos": "CO",
-              "Grafton": "GR", "Hillsborough": "HI", "Merrimack": "ME",
-              "Rockingham": "RO", "Strafford": "ST", "Sullivan": "SU"}
+MAP_COUNTY = ST.COUNTY_CODE
 
 
 def map_section(town, ward, dist):

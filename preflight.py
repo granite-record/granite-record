@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.863
+# GRANITE_VERSION: 2026-09-04.864
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -131215,6 +131215,37 @@ def _bug_hunt_already_serves_whole_site():
     assert not NI.serves_this_build("f0", "f1", sha, sha, "t1", "t1"), "changed data was 'already served'"
     assert not NI.serves_this_build("f1", "f1", "b" * 40, sha, "t1", "t1"), "changed code was 'already served'"
     return "ok", "the same pages are the same build; a changed calendar page publishes"
+
+
+@check("files", "the state settings file loads with every key, and no second literal county list stands outside it")
+def _state_settings_one_place():
+    """src/lib/state_settings.json holds the facts about the state that a fork edits
+    (its "_about" key says what a fork still changes besides). Two things hold it to
+    its job: every key the loader names is there, and no code file keeps its own
+    list of the ten counties -- the survey found ten copies, each a place a fork
+    would have missed. A list is two county names quoted close together, or two
+    joined as an alternation; this file and the tests that name counties to check
+    something else are not the code."""
+    import state_settings as ST
+    for key, subs in ST.REQUIRED.items():
+        assert key in ST.SETTINGS, f"state_settings.json has no {key!r}"
+        for sub in subs:
+            assert sub in ST.SETTINGS[key], f"state_settings.json has no {key!r}/{sub!r}"
+    assert len(ST.COUNTIES) == len(set(ST.COUNTIES)) and ST.COUNTIES, "the county list is empty or repeats a county"
+    for k in ("county_abbreviations", "county_codes"):
+        assert set(ST.SETTINGS[k]) == set(ST.COUNTIES), f"{k} does not name exactly the counties"
+    assert set(ST.BILL_PREFIXES["house"]).isdisjoint(ST.BILL_PREFIXES["senate"]), "a bill prefix is in both chambers"
+    pair = re.compile(r"""["']belknap["'][^\n]{0,30}["']carroll|belknap\|carroll""", re.I)
+    seen = []
+    for p in _paths.code_files("*.py"):
+        if p.name in ("state_settings.py", "preflight.py"):
+            continue
+        t = p.read_text(encoding="utf-8", errors="replace")
+        for m in pair.finditer(t):
+            seen.append(f"{p.relative_to(_paths.ROOT)}:{t.count(chr(10), 0, m.start()) + 1}")
+    assert not seen, ("a county list stands outside src/lib/state_settings.json; read ST.COUNTIES, "
+                      "ST.COUNTY_ABBR or ST.COUNTY_CODE instead: " + ", ".join(seen))
+    return "ok", f"{len(ST.COUNTIES)} counties and every key present; no second list in the code"
 
 
 def got_rec(RS, b, path):

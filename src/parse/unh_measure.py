@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.11
+# GRANITE_VERSION: 2026-09-18.12
 """
 Score what can be read out of a scanned journal. Touches no network.
 
@@ -116,6 +116,8 @@ import argparse
 import glob
 import re
 from collections import Counter
+
+import state_settings as ST
 
 # The Internet Archive's own flattened text layer, which is the thing being
 # judged. --ocr points this at another rendering of the same volume -- in
@@ -328,8 +330,7 @@ def rollcalls_senate(text):
     return [(int(m.group(3)), int(m.group(4)), m.group(1), m.group(2))
             for m in SENATE_RC.finditer(text)]
 
-COUNTIES = {"BELKNAP", "CARROLL", "CHESHIRE", "COOS", "GRAFTON", "HILLSBOROUGH",
-            "MERRIMACK", "ROCKINGHAM", "STRAFFORD", "SULLIVAN"}
+COUNTIES = set(ST.COUNTIES_UPPER)
 
 
 def is_list_line(line):

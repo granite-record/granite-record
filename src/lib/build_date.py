@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-02.2
+# GRANITE_VERSION: 2026-10-02.3
 """
 The day a build says it was made, asked for in one place.
 
@@ -49,6 +49,8 @@ reader's own date in a citation where it can.
 import datetime
 import os
 
+from state_settings import TIMEZONE
+
 ENV = "GRANITE_BUILD_DATE"
 
 
@@ -83,7 +85,7 @@ def today():
         return when.date()
     try:
         import zoneinfo
-        return datetime.datetime.now(zoneinfo.ZoneInfo("America/New_York")).date()
+        return datetime.datetime.now(zoneinfo.ZoneInfo(TIMEZONE)).date()
     except Exception:
         return datetime.date.today()
 
