@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.380 */
+/* GRANITE_VERSION: 2026-09-07.381 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -5377,7 +5377,7 @@ th[aria-sort=descending] .l-sort-i{
 .l-folds.is-wide{max-width:none}
 .l-sk{margin:.5rem 0 .75rem}
 .l-skwrap{overflow-x:auto;padding:.25rem 0 .5rem;-webkit-overflow-scrolling:touch}
-.l-skwrap > svg{display:block;width:100%;min-width:44rem;height:auto;font:400 .875rem/1 var(--sans)}
+.l-skwrap > svg{display:block;width:100%;min-width:54rem;height:auto;font:400 .875rem/1 var(--sans)}
 .sk .sk-r{stroke:var(--surface);stroke-width:1.5;fill-opacity:.45}
 .sk .sk-r.n{fill:var(--ink-2);fill-opacity:.16}
 .sk .sk-n{fill:var(--ink-2)}

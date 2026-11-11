@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.27
+# GRANITE_VERSION: 2026-09-14.28
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -1159,21 +1159,10 @@ def flow_leaves(tree):
     return [x for k in tree["kids"] for x in flow_leaves(k)]
 
 
-def _wrap(text, width=17):
-    lines, cur = [], ""
-    for word in text.split():
-        if cur and len(cur) + 1 + len(word) > width:
-            lines.append(cur)
-            cur = word
-        else:
-            cur = f"{cur} {word}".strip()
-    return lines + [cur]
-
-
 # The geometry, in the figure's own units: a bill is K tall, a leaf at least
 # LEAF_MIN and at least PITCH apart so that its label never meets the next,
 # five columns of nodes a COL apart.
-SK_K, SK_LEAF_MIN, SK_PITCH, SK_NODE_W, SK_COL, SK_W = 0.14, 2.5, 17, 10, 180, 1090
+SK_K, SK_LEAF_MIN, SK_PITCH, SK_NODE_W, SK_COL, SK_W, SK_BAND = 0.14, 2.5, 20, 10, 146, 864, 28
 
 
 def sankey_svg(tree, said, lang="en"):
@@ -1185,6 +1174,12 @@ def sankey_svg(tree, said, lang="en"):
     own words, so colour is never the only way to read it."""
     cursor = [0.0]
 
+    # A node that has nodes after it is named in a band of its own, above its
+    # bar and clear of every flow: each takes SK_BAND of height before its
+    # first end node, so two nodes that begin together (a branch and its
+    # first branch) are named one above the other, a column apart. An end
+    # node is named beside its bar, and ends are SK_PITCH apart, so no two
+    # names meet.
     def place(n, depth):
         n["depth"] = depth
         if not n["kids"]:
@@ -1192,12 +1187,12 @@ def sankey_svg(tree, said, lang="en"):
             n["y"] = cursor[0]
             cursor[0] += max(n["h"] + 6, SK_PITCH)
             return
+        n["ly"] = cursor[0]
+        cursor[0] += SK_BAND
         for k in n["kids"]:
             place(k, depth + 1)
         n["y"] = n["kids"][0]["y"]
         n["h"] = sum(k["h"] for k in n["kids"])
-        if depth <= 1:
-            cursor[0] += 10
     place(tree, 0)
     height = cursor[0] + 6
     nodes, ribbons, labels = [], [], []
@@ -1212,12 +1207,8 @@ def sankey_svg(tree, said, lang="en"):
                      f'y="{n["y"]:.1f}" width="{SK_NODE_W}" height="{n["h"]:.1f}"/></g>')
         lx = x + SK_NODE_W + 6
         if n["kids"]:
-            lines = _wrap(n["label"])
-            ty = n["y"] + 9
-            body = "".join(f'<tspan x="{lx}" dy="{0 if i == 0 else 13}">{E(t)}</tspan>'
-                           for i, t in enumerate(lines))
-            labels.append(f'<text x="{lx}" y="{ty:.1f}">{body}<tspan class="sk-v" x="{lx}" dy="13">'
-                          f'{n["n"]:,}</tspan></text>')
+            labels.append(f'<text x="{x}" y="{n["ly"] + 15:.1f}">{E(n["label"])} '
+                          f'<tspan class="sk-v">{n["n"]:,}</tspan></text>')
             cur = n["y"]
             for k in n["kids"]:
                 x1 = 4 + k["depth"] * SK_COL
