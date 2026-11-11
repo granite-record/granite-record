@@ -3949,8 +3949,11 @@ function renderFacets(){
     cnt("type","type"),false,null,
     v=>`<span class="tname"><b class="tcode">${esc(v)}</b>${
       TYPE_NAME[v]?`<span>${esc(TYPE_NAME[v])}</span>`:""}</span>`);
-  h+=fgroup("committee","Committee",present("committee"),cnt("committee","committee"));
-  h+=fgroup("topic","Topic",present("topic"),cnt("topic","topic"));
+  // A committee or topic ticked in another term stays on offer, at none, so
+  // it can be unticked on its own where it lists nothing.
+  h+=fgroup("committee","Committee",[...new Set([...present("committee"),...sel.committee])].sort(),
+    cnt("committee","committee"));
+  h+=fgroup("topic","Topic",[...new Set([...present("topic"),...sel.topic])].sort(),cnt("topic","topic"));
   // THE PRIME SPONSOR'S PARTY is a choice inside the Sponsor group it narrows
   // (the owner, 10 November 2026), below the name box and the co-sponsorship
   // box: a short list shown whole, in the legislators' chip shape and colour
@@ -11444,6 +11447,22 @@ function openPage(kind,ref){
 const PAGE_SIZE = 25;
 let SHOWN = PAGE_SIZE;
 
+// A TOPIC LEFT ON WHERE THE LIST HAS NONE (the webinar, 11 November 2026: a
+// topic chosen on a past term hid every one of the 2027 bill requests, which
+// carry no topics yet, and could be removed only with "clear all"). Taking a
+// list whose bills say no topic at all, the filter is dropped, and the count
+// line says so for as long as that list is the one on screen.
+let TOPIC_NOTE=null;
+function dropEmptyTopics(){
+  if(!sel.topic.size||focused)return;
+  const rows=IDX.filter(inTermOf);
+  if(!rows.length||rows.some(b=>b.topic))return;
+  TOPIC_NOTE={term,n:sel.topic.size};
+  sel.topic.clear();
+}
+const topicNote=()=>TOPIC_NOTE&&TOPIC_NOTE.term===term&&!sel.topic.size
+  ?` (the topic filter was removed: these ${termNoun()} have no topics yet)`:"";
+
 function render(more){
   // Any change to the result set starts again at the first page. Every
   // existing caller passes nothing, so only the observer extends.
@@ -11474,6 +11493,7 @@ function render(more){
     if(sortBy!==want){sortBy=want;const so=$("#sort");if(so)so.value=want;}
   }
   wantText();
+  dropEmptyTopics();
   let rows=sortRows(IDX.filter(b=>matches(b)));
   // A CHOSEN SPONSOR'S OWN BILLS FIRST, then the bills they co-sponsored,
   // each part in the order chosen (the person, 12 October 2026).
@@ -11520,7 +11540,8 @@ function render(more){
     :`${inTerm.toLocaleString()} ${inTerm===1?termNoun().replace(/s$/,""):termNoun()} ${
       termPhrase()}`;
   const ce=$("#count");
-  if(ce.textContent!==said)ce.textContent=said;
+  const said2=said?said+topicNote():said;
+  if(ce.textContent!==said2)ce.textContent=said2;
   // Same number, different term: say so instead of an empty page.
   const elsewhere=ids0&&!rows.length
     ? IDX.filter(b=>ids0.includes(b.id.toUpperCase())&&b.term&&b.term!==term)

@@ -130423,6 +130423,51 @@ def _search_opens_on_requests_after_the_election():
     return "ok", "opens on the requests from 4 November 2026, not before, and not once 2027-2028 is published"
 
 
+@check("frontend", "a topic left on is dropped where the list has no topics, said in the count line, and "
+       "any one filter can be removed on its own")
+def _topic_dropped_on_the_requests():
+    """The webinar, 11 November 2026: a topic chosen on a past term hid every 2027 bill request (they
+    carry no topic yet), and only "clear all" removed it. dropEmptyTopics takes the filter off where
+    the term's rows say no topic at all, topicNote says so after the count, and a topic (or committee)
+    ticked where the list has none stays on offer in its group, at none, to be unticked on its own."""
+    got = _app_js("""(() => {
+  scope.setState("2025-2026", {terms: ["2025-2026"], requests: {term: "2027-requests", year: 2027, n: 2,
+    withdrawn: 0, label: "2027 Bill Requests"}},
+    [{id: "HB1", term: "2025-2026", topic: "Housing"}, {id: "HB2", term: "2025-2026", topic: "Taxes"},
+     {id: "LSR 2027-0001", lsr: true, term: "2027-requests"}, {id: "LSR 2027-0002", lsr: true, term: "2027-requests"}]);
+  const out = {};
+  scope.sel.topic.add("Housing"); scope.sel.committee.add("Finance");
+  scope.dropEmptyTopics();
+  out.kept = [...scope.sel.topic]; out.keptNote = scope.topicNote();
+  scope.setState("2027-requests");
+  scope.dropEmptyTopics();
+  out.dropped = [...scope.sel.topic]; out.note = scope.topicNote();
+  out.committee = [...scope.sel.committee];
+  scope.setState("2025-2026");
+  out.back = scope.topicNote();
+  // a topic ticked where none is offered (an old address) is listed, at none
+  scope.setState("2027-requests");
+  scope.sel.topic.add("Housing"); scope.sel.committee.add("Finance");
+  scope.renderFacets();
+  out.facets = document.querySelector("#facets").innerHTML;
+  return out;
+})()""", names=("dropEmptyTopics", "topicNote", "sel", "renderFacets",
+                "setState: (t, m, rows) => { term = t; if (m) META = m; if (rows) IDX = rows; }"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert got["kept"] == ["Housing"] and got["keptNote"] == "", (
+        f"a topic is kept on a term whose bills have topics: {got['kept']} {got['keptNote']!r}")
+    assert got["dropped"] == [] and "the topic filter was removed" in got["note"] \
+        and "bill requests have no topics yet" in got["note"], (
+        f"a topic is dropped where the list has none, and the count says so: {got['dropped']} {got['note']!r}")
+    assert got["committee"] == ["Finance"], f"only the topic is dropped: {got['committee']}"
+    assert got["back"] == "", f"the note stays with the list it was said of: {got['back']!r}"
+    for what in ("Housing", "Finance"):
+        assert re.search(r'data-f="[a-z]+"\s+value="%s" checked' % what, got["facets"]), (
+            f"{what}, ticked where the list has none, is not offered to be unticked on its own")
+    return "ok", "dropped on the requests, said in the count, and a stray topic or committee can be unticked"
+
+
 def got_rec(RS, b, path):
     """The record read() makes of a block."""
     return {"sponsors": b["names"], "journal": RS.journal_label(path, "H"), "title": b["title"],
