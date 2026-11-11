@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.13
+# GRANITE_VERSION: 2026-09-04.14
 """
 Report what is actually on disk, and which scripts are out of date.
 
@@ -110,7 +110,7 @@ def _stamp(text):
 # and the folders that never hold one (the data, the built site, the
 # worktrees). The stamp is read from the first 800 bytes, as bump() does.
 STAMPED = (".py", ".js", ".css", ".html", ".bat", ".sql", ".toml")
-NOT_CODE = ("work/", "site/", "legislation/", "archive/", "db/", "node_modules/",
+NOT_CODE = ("work/", "site/", "legislation/", "archive/", "db/",
             ".git/", ".claude/worktrees/", ".build_cache/")
 FULL_STAMP = re.compile(r"GRANITE_VERSION:[ \t]*(\d{4}-\d{2}-\d{2}\.\d+)\b")
 
@@ -132,7 +132,8 @@ def _candidates(root):
     names = _git_names(root)
     if names is None:
         names = [p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file()]
-    return [n for n in names if n.endswith(STAMPED) and not n.startswith(NOT_CODE)]
+    return [n for n in names if n.endswith(STAMPED) and not n.startswith(NOT_CODE)
+            and "node_modules" not in n.split("/")]
 
 
 def _key(root, rel):
