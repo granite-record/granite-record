@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.277
+# GRANITE_VERSION: 2026-09-04.278
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -271,7 +271,7 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
 # one because it has been published and indexed.
 BILL_TAB_SLUGS = ("text", "votes", "hearings", "videos", "reports",
                   "sponsors", "documents", "related")
-MEMBER_TAB_SLUGS = ("cosponsored", "votes")
+MEMBER_TAB_SLUGS = ("cosponsored", "votes", "elections")
 # A committee's Videos tab (26 October 2026); its rule serves a study or
 # statutory committee's /committee/ss<id>/videos too, which opens that page
 # on its Videos tab, and /committee/ss<id>/sessions on its Meetings tab.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.90
+# GRANITE_VERSION: 2026-09-05.91
 """
 Run the whole pipeline in the right order.
 
@@ -1037,6 +1037,20 @@ def plan(a):
              note="one page per general election in collected/election_<year>.json: "
                   "every State Senate and State House race with every candidate's "
                   "votes, Elected only once final by the members-elect rule"),
+
+        # EACH MEMBER'S ELECTIONS TAB (the owner's design of 10 November
+        # 2026). After the elections step, whose winners and race cards it
+        # links to, and after the members' own files (build_site_v2) it adds
+        # one list to; before anything that reads them as they are shipped.
+        Step("elections on each member's page",
+             ["build_member_elections.py", "--site", "site"],
+             needs=["site/elections/index.html", "site/legislators.json",
+                    "site/former.json", "site/districts.json", "site/legislators"],
+             produces=["site/legislators"],
+             note="the general elections each member is recorded in, from the "
+                  "elections step's own winners and, for a loss, only an exact name "
+                  "and a seat held the term before or after; the rest are listed in "
+                  "reports/elections_uncertain.md for the owner"),
 
         Step("the whole record, as lists",
              ["build_indexes.py", "--site", "site", "--base", a.base],

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.301
+// GRANITE_VERSION: 2026-09-07.302
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2977,7 +2977,7 @@ const jOpen=new Set();
 // label is not a reason to break it.
 const BILL_TABS={text:"6",votes:"1",hearings:"2",videos:"2",
                  reports:"3",sponsors:"4",documents:"5",related:"7"};
-const MEMBER_TABS={cosponsored:1,votes:2};
+const MEMBER_TABS={cosponsored:1,votes:2,elections:3};
 // A committee's Videos tab (the owner, 26 October 2026) is "videos", a slug
 // a bill's page keeps for its Hearings tab too: TAB_PATH tells a bill's
 // address from a committee's, so the two never meet.
@@ -7230,7 +7230,8 @@ const REPORT_TO="contact@graniterecord.org";
 // 2026): a tab of its own since the Videos section, and missing here, so a
 // report from it named no tab. report.js renames "Videos" only on a bill.
 const REPORT_TABS=new Set(["Summary","Bill Text","Votes","Hearings","Reports","Sponsors",
-  "Documents","Related","History","Prime sponsored","Co-sponsored","Bills","Meetings","Videos"]);
+  "Documents","Related","History","Prime sponsored","Co-sponsored","Bills","Meetings","Videos",
+  "Elections"]);
 let reportBuild=null;       // site/build.json's "finished", fetched once, on first open
 
 function reportBox(kind,ref){
@@ -9252,12 +9253,80 @@ function termGlance(m,t){
   </section>`;
 }
 
+// ------------------------------------------------ THE ELECTIONS TAB ---
+// The general elections on file in which this member is recorded, newest
+// first (build_member_elections.py; the owner's design of 10 November 2026).
+// m.elections is the list the builder wrote, one row for each election, and
+// is absent for a member with no race on file, who has no tab. Official
+// figures only: the Secretary of State's counts, in the words the elections
+// page uses, each row linked to its race's card there. No margin is named and
+// nothing is rated.
+function electionOrd(n){
+  if(window.GR_LANG==="es")return n+".º";
+  const t=n%100, s=(t>=11&&t<=13)?"th":({1:"st",2:"nd",3:"rd"})[n%10]||"th";
+  return n+s;
+}
+function electionRace(r){
+  const k=String(r.k||"").split("|"), senate=k[0]==="S";
+  const where=senate?tr("race.district","District {n}",{n:esc(k[1])})
+    :esc(k[1])+" "+esc(k[2]);
+  const seats=r.s===1?tr("race.seat_one","{n} seat",{n:1}):tr("race.seat_many","{n} seats",{n:r.s});
+  return `${esc(senate?tr("race.senate","Senate"):tr("race.house","House"))}, ${where}`
+    +` <span class="dim">(${seats}${r.fl?", "+esc(tr("race.floterial","floterial")):""})</span>`;
+}
+// The elections page's own words for a result, each asked for in full so the
+// translation can be read from the source.
+function electionResult(r){
+  const word=r.r==="won"?tr("race.won","Elected"):r.r==="lost"?tr("race.lost","Not elected")
+    :r.r==="tie"?tr("race.tie","Tied for the last seat")
+    :tr("elect.not_final","Result not final");
+  const place=r.pl&&r.of?", "+esc(tr("race.place","{ord} of {n}",
+    {ord:electionOrd(r.pl),n:r.of})):"";
+  return esc(word)+place
+    +(r.r==="open"&&r.rq?" "+tr("elect.recount","&mdash; a recount was requested"):"")
+    +(r.rc?` <span class="dim">${esc(tr("race.recounted","Recounted"))}</span>`:"");
+}
+function electionRow(r){
+  const href=`/elections/${esc(r.d)}-general#${esc(r.a)}`;
+  const share=r.sh!=null?` <span class="dim">(${esc(r.sh.toFixed(1))}%)</span>`:"";
+  return `<tr>
+    <td class="d" data-l="${esc(tr("race.col_election","Election"))}"><a href="${href}">${
+      esc(dateWords(r.d))}</a></td>
+    <td class="b" data-l="${esc(tr("race.col_race","Race"))}">${electionRace(r)}</td>
+    <td class="v" data-l="${esc(tr("race.col_result","Result"))}">${electionResult(r)}</td>
+    <td class="o" data-l="${esc(tr("race.col_votes","Votes"))}">${esc(r.v.toLocaleString())}${share}</td></tr>`;
+}
+// The strip's entry, or null: a member with no race on file has no tab,
+// rather than an empty one.
+function memberElectionTab(m){
+  const n=(m.elections||[]).length;
+  return n?[tr("race.tab","Elections"),n]:null;
+}
+function renderMemberElections(m){
+  const rows=m.elections||[];
+  if(!rows.length)return "";
+  const days=[...new Set(rows.map(r=>r.d))];
+  const src=days.map(d=>`<a href="/elections/${esc(d)}-general">${esc(
+    tr("race.year","{year} general election",{year:d.slice(0,4)}))}</a>`).join(", ");
+  return `<p class="src">${tr("race.intro","The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. A share is of every vote cast in the race, write-ins included; a race for more than one seat gives none, because a voter could choose several.")}</p>
+    <table class="votes vfull"><thead><tr><th>${esc(tr("race.col_election","Election"))}</th>
+      <th>${esc(tr("race.col_race","Race"))}</th><th>${esc(tr("race.col_result","Result"))}</th>
+      <th>${esc(tr("race.col_votes","Votes"))}</th></tr></thead>
+      <tbody>${rows.map(electionRow).join("")}</tbody></table>
+    <p class="src">${tr("race.omitted","A race this member lost appears only where the name and the district match the record exactly; any other is left off.")}
+      ${tr("race.source","Source: the New Hampshire Secretary of State&rsquo;s official results, shown on the elections pages: {years}. Each row links to its race there.",{years:src})}</p>`;
+}
+
 function renderMember(m){
+  const election=memberElectionTab(m);
+  // An address for a tab this member has none of lands on their first.
+  if(PAGE_TAB===MEMBER_TABS.elections&&!election){PAGE_TAB=0;tabAddress("");}
   const tabs=[["Prime sponsored",memberBills(m,true).length],
               ["Co-sponsored",memberBills(m,false).length],
               ["Votes",memberVotes(m).length]];
+  if(election)tabs.push(election);
   const body=[()=>renderMemberBills(m,true),()=>renderMemberBills(m,false),
-              ()=>renderMemberVotes(m)][PAGE_TAB]||(()=>"");
+              ()=>renderMemberVotes(m),()=>renderMemberElections(m)][PAGE_TAB]||(()=>"");
   // The term under the head, because it governs the figures and every tab,
   // and the figures above the tabs, because they are about the member rather
   // than about any one tab. The line saying so is said only beside the

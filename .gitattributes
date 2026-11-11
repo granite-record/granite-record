@@ -26,3 +26,6 @@
 *.md    text
 *.svg   text
 *.csv   text
+
+# A saved results page is bytes too: its sha256 is held to the committed file.
+records/sources/*.html -text

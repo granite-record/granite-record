@@ -25177,6 +25177,106 @@
    "es": "Republicanos",
    "state": "draft"
   },
+  "race.col_election": {
+   "en": "Election",
+   "es": "Elección",
+   "state": "draft"
+  },
+  "race.col_race": {
+   "en": "Race",
+   "es": "Contienda",
+   "state": "draft"
+  },
+  "race.col_result": {
+   "en": "Result",
+   "es": "Resultado",
+   "state": "draft"
+  },
+  "race.col_votes": {
+   "en": "Votes",
+   "es": "Votos",
+   "state": "draft"
+  },
+  "race.district": {
+   "en": "District {n}",
+   "es": "Distrito {n}",
+   "state": "draft"
+  },
+  "race.floterial": {
+   "en": "floterial",
+   "es": "flotante",
+   "state": "draft"
+  },
+  "race.house": {
+   "en": "House",
+   "es": "Cámara de Representantes",
+   "state": "draft"
+  },
+  "race.intro": {
+   "en": "The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. A share is of every vote cast in the race, write-ins included; a race for more than one seat gives none, because a voter could choose several.",
+   "es": "Las elecciones generales registradas en las que figura este miembro, de la más reciente a la más antigua, según el recuento de la Secretaría de Estado. El porcentaje es sobre todos los votos emitidos en la contienda, incluidos los de candidatos escritos a mano; una contienda por más de un escaño no da porcentaje, porque cada votante podía elegir varios.",
+   "state": "draft"
+  },
+  "race.lost": {
+   "en": "Not elected",
+   "es": "No elegido/a",
+   "state": "draft"
+  },
+  "race.omitted": {
+   "en": "A race this member lost appears only where the name and the district match the record exactly; any other is left off.",
+   "es": "Una contienda que este miembro perdió aparece solo cuando el nombre y el distrito coinciden exactamente con el registro; las demás se omiten.",
+   "state": "draft"
+  },
+  "race.place": {
+   "en": "{ord} of {n}",
+   "es": "{ord} de {n}",
+   "state": "draft"
+  },
+  "race.recounted": {
+   "en": "Recounted",
+   "es": "Recontado",
+   "state": "draft"
+  },
+  "race.seat_many": {
+   "en": "{n} seats",
+   "es": "{n} escaños",
+   "state": "draft"
+  },
+  "race.seat_one": {
+   "en": "{n} seat",
+   "es": "{n} escaño",
+   "state": "draft"
+  },
+  "race.senate": {
+   "en": "Senate",
+   "es": "Senado",
+   "state": "draft"
+  },
+  "race.source": {
+   "en": "Source: the New Hampshire Secretary of State&rsquo;s official results, shown on the elections pages: {years}. Each row links to its race there.",
+   "es": "Fuente: los resultados oficiales de la Secretaría de Estado de New Hampshire, que se muestran en las páginas de elecciones: {years}. Cada fila enlaza con su contienda allí.",
+   "state": "draft"
+  },
+  "race.tab": {
+   "en": "Elections",
+   "es": "Elecciones",
+   "state": "draft"
+  },
+  "race.tie": {
+   "en": "Tied for the last seat",
+   "es": "Empate por el último escaño",
+   "state": "draft"
+  },
+  "race.won": {
+   "en": "Elected",
+   "es": "Elegido/a",
+   "state": "draft"
+  },
+  "race.year": {
+   "en": "{year} general election",
+   "es": "elecciones generales de {year}",
+   "state": "draft"
+  },
   "rec.inexpedient_to_legislate": {
    "en": "Inexpedient to Legislate",
    "es": "Inoportuno legislar",
