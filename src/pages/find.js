@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.54
+// GRANITE_VERSION: 2026-09-16.55
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -975,7 +975,11 @@ function findBillsAll(B,q,what){
     :ready?tr("find.in_term","In the {term} term.",{term:_fesc(typeof termWords==="function"?termWords(B.term):B.term)})
     :B&&B.state==="loading"?tr("find.counting","Counting this term&rsquo;s bills&hellip;"):"";
   const line=[where,what||(where?"":tr("find.in_search","In the bill search."))].filter(Boolean).join(" ");
-  return `<a class="fbills" href="/bills?q=${_fenc(q)}${every?"&amp;term=all":""}">
+  // THE TERM IT COUNTED, NAMED (11 November 2026): after an election /bills
+  // opens on the next session's requests, so a bare /bills?q= would open a
+  // list other than the one this row counted.
+  const counted=!every&&ready&&B.term?`&amp;term=${_fenc(B.term)}`:"";
+  return `<a class="fbills" href="/bills?q=${_fenc(q)}${every?"&amp;term=all":counted}">
     <span class="fl1"><span class="fname">${name}</span></span>
     <span class="fwhat">${line}</span></a>`;
 }

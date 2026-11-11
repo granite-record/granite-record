@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.855
+# GRANITE_VERSION: 2026-09-04.856
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20984,7 +20984,8 @@ def _find_bills(BP):
     bad = []
     for q in ("firearms", "guns", "voting", "property tax"):
         h = pan[q]
-        if first(h) != f"/bills?q={q.replace(' ', '%20')}":
+        if first(h).split("&amp;term=")[0] != f"/bills?q={q.replace(' ', '%20')}" \
+                or "&amp;term=" not in first(h):
             bad.append(f"{q!r} leads with {first(h)!r}, not the bills "
                        f"(Return opens the first row)")
         if not re.search(rf"{n[q]:,} bills? found for &ldquo;"
@@ -21008,7 +21009,7 @@ def _find_bills(BP):
     # A name goes above the bills only on a whole word (24 September): "bail"
     # leads with the bail bills and Rep. Bailey follows; "bailey" leads with
     # him.
-    if first(pan["bail"]) != "/bills?q=bail" or \
+    if first(pan["bail"]).split("&amp;term=")[0] != "/bills?q=bail" or \
             "/legislator/glenn-bailey-straf-2" not in pan["bail"]:
         bad.append("'bail' does not lead with the bail bills, with Rep. Bailey "
                    f"after them (it leads with {first(pan['bail'])!r})")
