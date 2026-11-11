@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.21
+# GRANITE_VERSION: 2026-09-05.23
 """
 Write STATE.md from what is actually on disk.
 
@@ -11,7 +11,7 @@ fetch. STATUS.md has been rewritten by hand four times this week and was wrong
 within hours each time, because a person has to notice that a number changed
 and then remember to edit a file about it.
 
-So the numbers are not written by hand any more. This reads versions.json,
+So the numbers are not written by hand any more. This reads the files' stamps (inventory.registry),
 proceedings.csv, candidate_segments.json, review/ground_truth.csv, the data files and
 the site, and reports what it finds. Run it at the start of a session and the
 state section is current by construction.
@@ -57,6 +57,7 @@ import os
 import re
 import subprocess
 import child
+import inventory
 import site_read
 from datetime import datetime, timedelta, timezone
 
@@ -273,10 +274,9 @@ def rows(p):
 
 
 def section_files(out):
-    v = jload("versions.json", {}).get("files", {})
-    out.append(f"## Files\n\n{n(len(v))} scripts, listed in `versions.json`.\n")
-    # By bare name wherever it sits, as inventory.py finds it: since the folder
-    # move most of what versions.json lists is under src/, not at the root.
+    v = inventory.registry()
+    out.append(f"## Files\n\n{n(len(v))} files carry a version stamp (read off the files).\n")
+    # By bare name wherever it sits, as inventory.py finds it.
     missing = [f for f in v if not _paths.locate(f).exists()]
     if missing:
         out.append(f"**{len(missing)} listed but not present:** "

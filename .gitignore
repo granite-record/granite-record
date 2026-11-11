@@ -159,7 +159,10 @@ check.txt
 # root tidy, so it is spelled out here rather than left to a pattern.
 !review/ground_truth.csv
 !corrections/status/officials.txt
-!versions.json
+
+# versions.json is generated from the files' own stamps (inventory.py --write);
+# it is never committed, so parallel branches cannot conflict over it.
+/versions.json
 
 # records/rollcalls/ is tracked, and the bulk downloads above are not, for the reason
 # given there: those change on every fetch. A past session's roll calls do not.

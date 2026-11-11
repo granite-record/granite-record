@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.862
+# GRANITE_VERSION: 2026-09-04.863
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -920,14 +920,10 @@ def _pieces_are_the_whole():
 
 
 
-@check("files", "every listed script parses")
-def _parse_all():
-    vp = Path("versions.json")
-    if not vp.exists():
-        return "skip", "no versions.json here"
+@check("files", "every stamped script parses", needs=("inventory",))
+def _parse_all(inventory):
     _pieces_are_the_whole()
-    names = [n for n in json.loads(vp.read_text(encoding="utf-8"))["files"]
-             if n.endswith(".py")]
+    names = [n for n in inventory.registry() if n.endswith(".py")]
     bad = []
     for n in names:
         p = _paths.locate(n)
@@ -30041,22 +30037,22 @@ def _stale(inventory):
     return "ok", f"STALE lists {len(inventory.STALE)}, none of them read"
 
 
-@check("files", "inventory --bump raises a file's stamp and its versions.json entry together, "
-                "keeps the date and the line endings, and --bump-changed bumps a file once",
+@check("files", "inventory --bump raises a file's stamp, keeps the date and the line endings, "
+                "--bump-changed bumps a file once, and the registry follows the files",
        needs=("inventory",))
 def _inventory_bump(inventory):
     """The two edits every change to a stamped file needs, made by one command
     (src/ops/inventory.py --bump, 23 October 2026). In a scratch git repository:
-    a CRLF file is bumped with its endings kept; the date stays; versions.json
-    moves with it; and --bump-changed, run twice on the same change, bumps once."""
+    a CRLF file is bumped with its endings kept; the date stays; the registry,
+    read off the files, moves with it (versions.json is no longer edited, 11
+    November 2026); and --bump-changed, run twice on the same change, bumps
+    once."""
     import subprocess
     d = Path(tempfile.mkdtemp())
     try:
         def git(*a):
             subprocess.run(["git", "-C", str(d), *a], check=True, capture_output=True)
         git("init", "-q")
-        (d / "versions.json").write_text('{\n  "files": {\n    "a.py": "2026-01-02.3"\n  }\n}\n',
-                                         encoding="utf-8")
         (d / "a.py").write_bytes(b"#!/usr/bin/env python3\r\n# GRANITE_VERSION: 2026-01-02.3\r\nx = 1\r\n")
         git("add", "-A")
         git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "t")
@@ -30066,22 +30062,28 @@ def _inventory_bump(inventory):
         inventory.bump(todo, d)
         raw = (d / "a.py").read_bytes()
         assert b"GRANITE_VERSION: 2026-01-02.4\r\n" in raw and b"\n" not in raw.replace(b"\r\n", b""), raw
-        assert json.loads((d / "versions.json").read_text())["files"]["a.py"] == "2026-01-02.4"
+        assert inventory.registry(d) == {"a.py": "2026-01-02.4"}, inventory.registry(d)
         assert inventory.changed_since(d, "HEAD")[0] == [], "a bumped file was offered again"
+        # A stamp taken down is seen against the base; a raised one is not.
+        assert inventory.backwards(d, "HEAD") == [], "a raised stamp was called backwards"
+        (d / "a.py").write_bytes((d / "a.py").read_bytes().replace(b".4", b".2"))
+        assert inventory.backwards(d, "HEAD") == ["a.py"], "a stamp gone backwards was missed"
+        inventory.bump(["a.py"], d)
+        inventory.bump(["a.py"], d)
         # A file new since the base keeps its first stamp, however often it runs.
         (d / "b.py").write_bytes(b"#!/usr/bin/env python3\n# GRANITE_VERSION: 2026-10-23.1\n")
         assert inventory.changed_since(d, "HEAD")[0] == [], "a new file's first stamp was bumped"
-        # An entry versions.json keys by its path, as it does tests/test_markers.py.
-        (d / "tests").mkdir()
-        (d / "tests" / "t.py").write_bytes(b"# GRANITE_VERSION: 2026-02-03.5\n")
-        (d / "versions.json").write_text(
-            '{\n  "files": {\n    "a.py": "2026-01-02.4",\n    "tests/t.py": "2026-02-03.5"\n  }\n}\n',
-            encoding="utf-8")
-        inventory.bump(["tests/t.py"], d)
-        assert json.loads((d / "versions.json").read_text())["files"]["tests/t.py"] == "2026-02-03.6", (
-            "an entry versions.json keys by its path was left behind")
-        return "ok", ("2026-01-02.3 -> .4 in the file and versions.json, CRLF kept, once only; "
-                      "a new file keeps its first stamp; an entry keyed by its path moves too")
+        # A file outside the code folders is keyed by its path; versions.json is
+        # the registry written out, and what it holds is what the files say.
+        (d / "docs").mkdir()
+        (d / "docs" / "t.js").write_bytes(b"// GRANITE_VERSION: 2026-02-03.5\n")
+        inventory.bump(["docs/t.js"], d)
+        want = {"a.py": "2026-01-02.4", "b.py": "2026-10-23.1", "docs/t.js": "2026-02-03.6"}
+        got = inventory.write_registry(d)
+        assert got == want and json.loads((d / "versions.json").read_text())["files"] == want, got
+        return "ok", ("2026-01-02.3 -> .4 in the file alone, CRLF kept, once only; a new file keeps "
+                      "its first stamp; a stamp gone backwards is seen; the registry and the "
+                      "versions.json written from it follow the files")
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
@@ -30118,9 +30120,22 @@ def _expected_failures_settle():
                      if marked else ""))
 
 
-@check("files", "every file's own stamp matches versions.json")
-def _stamps():
-    """The stamp is what inventory.py compares, so a stale one is a lie.
+@check("files", "the registry of stamps is the files' own; a changed file's stamp is raised, "
+                "none went backwards, and versions.json is not tracked", needs=("inventory",))
+def _stamps(inventory):
+    """The stamp in the file is the only place a version is kept; the registry
+    (inventory.registry) is read off the files, and versions.json, if a person
+    wrote one out, is ignored by git (11 November 2026). What this holds:
+
+      the registry equals an independent read of every tracked file's stamp,
+      and a stamp that is malformed or too far down to be read is named;
+      a file changed since HEAD has a stamp that moved, and none moved back
+      (the half-applied edit this check was written for);
+      versions.json is not a tracked file, which is what made it a merge
+      conflict for every parallel branch.
+
+    Before, the list was kept by hand beside the files, and it caught three
+    silently half-applied edits.
 
     Six files shipped with the right code and last week's stamp, because the
     bump was `t.replace(old, new)` with no assertion: str.replace returns the
@@ -30131,43 +30146,58 @@ def _stamps():
     code was current, and the only visible symptom was a re-download that
     changed nothing.
     """
-    vp = Path("versions.json")
-    if not vp.exists():
-        return "skip", "no versions.json here"
-    want = json.loads(vp.read_text(encoding="utf-8")).get("files", {})
-    bad, unstamped, seen = [], [], 0
-    for name, ver in want.items():
-        f = _paths.locate(name)
-        if not f.exists():
-            continue
-        seen += 1
-        m = re.search(r"GRANITE_VERSION:\s*([0-9.\-]+)",
-                      f.read_text(encoding="utf-8", errors="replace"))
-        if not m:
-            unstamped.append(name)
-        elif m.group(1) != ver:
-            bad.append(f"{name} is stamped {m.group(1)}, listed as {ver}")
-    assert not bad, "; ".join(bad[:4]) + (f" (+{len(bad) - 4} more)" if len(bad) > 4 else "")
-    assert not unstamped, "no stamp line in: " + ", ".join(unstamped[:5])
+    from datetime import datetime
+    reg = inventory.registry()
+    listed = {}
+    for k, v in reg.items():
+        listed[_paths.locate(k).resolve()] = v
+    assert len(listed) == len(reg), "two registry names are one file"
     # AND EVERY STAMPED FILE IS LISTED. bill_order.py was written on 24
     # September with its own stamp and no line here, so this check -- which
     # reads the manifest's list -- never looked at it, and its first edit went
     # out unbumped.
-    r = _run(["git", "ls-files", "*.py", "*.js", "*.css", "*.html", "*.bat"],
+    r = _run(["git", "ls-files", "*.py", "*.js", "*.css", "*.html", "*.bat", "*.sql", "*.toml"],
              capture_output=True, text=True)
-    # versions.json lists a script by its bare name wherever it sits, and git
-    # by its path: src/parse/narrative.py is the line "narrative.py".
-    listed = {_paths.locate(n).resolve() for n in want}
-    unlisted = []
-    for name in (r.stdout or "").split():
-        if name in want or Path(name).resolve() in listed:
+    tracked = (r.stdout or "").split()
+    if not tracked:
+        return "skip", "no git history here"
+    bad, scanned = [], {}
+    for name in tracked:
+        if not inventory.is_code_path(name) or not Path(name).exists():
             continue
-        head = Path(name).read_text(encoding="utf-8", errors="replace")[:3000] \
-            if Path(name).exists() else ""
-        if re.search(r"GRANITE_VERSION:\s*[0-9]", head):
-            unlisted.append(name)
-    assert not unlisted, "stamped but not in versions.json: " + ", ".join(unlisted[:6])
-    return "ok", f"{seen} files agree with the manifest, and no stamped file is left out of it"
+        raw = Path(name).read_bytes()
+        if not re.search(r"GRANITE_VERSION:\s*[0-9]", raw[:3000].decode("utf-8", "replace")):
+            continue
+        m = inventory.FULL_STAMP.search(raw[:800].decode("utf-8", "replace"))
+        if not m:
+            bad.append(f"{name}: a stamp that is not YYYY-MM-DD.N, or past the first 800 bytes")
+            continue
+        try:
+            datetime.strptime(m.group(1).split(".")[0], "%Y-%m-%d")
+        except ValueError:
+            bad.append(f"{name}: {m.group(1)} is not a date")
+        scanned[Path(name).resolve()] = m.group(1)
+    assert not bad, "; ".join(bad[:4])
+    assert scanned == listed, (
+        "the registry and the files disagree: "
+        + "; ".join(f"{p.name} {scanned.get(p)} vs {listed.get(p)}"
+                    for p in sorted(set(scanned) | set(listed))
+                    if scanned.get(p) != listed.get(p))[:300])
+    # Against git: a changed file whose stamp did not move, or moved back.
+    unmoved, back = [], []
+    try:
+        unmoved = inventory.changed_since(_paths.ROOT, "HEAD")[0]
+        back = inventory.backwards(_paths.ROOT, "HEAD")
+    except Exception:                                           # noqa: BLE001
+        pass
+    assert not unmoved, ("changed since HEAD with the stamp unmoved (run src/ops/inventory.py "
+                         "--bump-changed): " + ", ".join(unmoved[:6]))
+    assert not back, "stamp lower than at HEAD: " + ", ".join(back[:6])
+    t = _run(["git", "ls-files", "versions.json"], capture_output=True, text=True)
+    assert not (t.stdout or "").strip(), (
+        "versions.json is tracked again: it is generated (inventory.py --write) and git ignores it, "
+        "so that two branches never conflict over it")
+    return "ok", f"{len(scanned)} stamped files; the registry is theirs, and none changed unraised"
 
 
 @check("files", "no generator writes a file a person made by hand")
@@ -64597,8 +64627,8 @@ def _handoff_reads_this_run(H):
 
 
 @check("files", "handoff.py finds a listed script wherever it sits, as inventory.py does",
-       needs=("handoff",))
-def _handoff_finds_moved_scripts(H):
+       needs=("handoff", "inventory"))
+def _handoff_finds_moved_scripts(H, inventory):
     """handoff.py looked for each file versions.json lists at the root, by its
     bare name, and the folder move put most of them under src/. For a week
     after stage 6 STATE.md said "190 listed but not present" and listed only
@@ -64606,7 +64636,7 @@ def _handoff_finds_moved_scripts(H):
     before it, found every one through _paths.locate. So the two are held to
     one answer: the files handoff says are missing are the ones locate cannot
     find."""
-    listed = json.loads((_paths.ROOT / "versions.json").read_text(encoding="utf-8")).get("files", {})
+    listed = inventory.registry()
     gone = sorted(f for f in listed if not _paths.locate(f).exists())
     here, out = os.getcwd(), []
     try:
