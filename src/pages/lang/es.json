@@ -26675,6 +26675,36 @@
    "es": "Seminario web",
    "state": "draft"
   },
+  "web.rec.english": {
+   "en": " (in English)",
+   "es": " (en inglés)",
+   "state": "draft"
+  },
+  "web.rec.head": {
+   "en": "Watch the launch webinar",
+   "es": "Vea el seminario web de lanzamiento",
+   "state": "draft"
+  },
+  "web.rec.label": {
+   "en": "Webinar recording",
+   "es": "Grabación del seminario web",
+   "state": "draft"
+  },
+  "web.rec.play": {
+   "en": "Play the recording of the launch webinar",
+   "es": "Reproducir la grabación del seminario web de lanzamiento",
+   "state": "draft"
+  },
+  "web.rec.title": {
+   "en": "Recording of the Granite Record launch webinar, November 10, 2026",
+   "es": "Grabación del seminario web de lanzamiento de Granite Record, 10 de noviembre de 2026",
+   "state": "draft"
+  },
+  "web.rec.what": {
+   "en": "How Granite Record works, and how to use it to keep up with Concord this session, with Alice Wade. Recorded November 10, 2026.",
+   "es": "Cómo funciona Granite Record y cómo usarlo para seguir lo que pasa en Concord esta sesión, con Alice Wade. Grabado el 10 de noviembre de 2026.",
+   "state": "draft"
+  },
   "web.what": {
    "en": "How Granite Record works, and how to use it to keep up with Concord this session. Hosted by Alice Wade. All are welcome to join, ask questions and say which features they would like most.",
    "es": "Cómo funciona Granite Record y cómo usarlo para seguir lo que pasa en Concord esta sesión. Lo presenta Alice Wade. Todos son bienvenidos a participar, hacer preguntas y decir qué funciones les gustaría más.",
