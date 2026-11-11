@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.26
+# GRANITE_VERSION: 2026-09-14.27
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -902,7 +902,7 @@ def scatter_chart(points, title, said, xlabel, ylabel, lang="en", note=""):
     three lowest rates are named; every point has a title with its figures."""
     if not points:
         return ""
-    w, h, left, right, top, bot = 520, 300, 44, 12, 10, 40
+    w, h, left, right, top, bot = 540, 300, 62, 12, 10, 40
     xmax = max(p[2] for p in points)
     xmax = (int(xmax // 50) + 1) * 50 if xmax > 100 else (int(xmax // 10) + 1) * 10
     sx = lambda v: left + (w - left - right) * v / xmax
@@ -916,7 +916,7 @@ def scatter_chart(points, title, said, xlabel, ylabel, lang="en", note=""):
         out.append(f'<line class="ax" x1="{sx(v):.1f}" x2="{sx(v):.1f}" y1="{top}" y2="{h - bot}"/>'
                    f'<text x="{sx(v):.1f}" y="{h - bot + 14}" text-anchor="middle">{v}</text>')
     out.append(f'<text x="{(left + w - right) / 2:.0f}" y="{h - 6}" text-anchor="middle">{xlabel}</text>'
-               f'<text transform="translate(11,{(top + h - bot) / 2:.0f}) rotate(-90)" text-anchor="middle">{ylabel}</text>')
+               f'<text transform="translate(13,{(top + h - bot) / 2:.0f}) rotate(-90)" text-anchor="middle">{ylabel}</text>')
     ranked = sorted(points, key=lambda p: (p[3], p[0]))
     named = {p[0] for p in ranked[:3] + ranked[-3:]}
     last = {}
@@ -1173,7 +1173,7 @@ def _wrap(text, width=17):
 # The geometry, in the figure's own units: a bill is K tall, a leaf at least
 # LEAF_MIN and at least PITCH apart so that its label never meets the next,
 # five columns of nodes a COL apart.
-SK_K, SK_LEAF_MIN, SK_PITCH, SK_NODE_W, SK_COL, SK_W = 0.14, 2.5, 17, 10, 180, 990
+SK_K, SK_LEAF_MIN, SK_PITCH, SK_NODE_W, SK_COL, SK_W = 0.14, 2.5, 17, 10, 180, 1090
 
 
 def sankey_svg(tree, said, lang="en"):

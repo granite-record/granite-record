@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.379 */
+/* GRANITE_VERSION: 2026-09-07.380 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -5377,7 +5377,7 @@ th[aria-sort=descending] .l-sort-i{
 .l-folds.is-wide{max-width:none}
 .l-sk{margin:.5rem 0 .75rem}
 .l-skwrap{overflow-x:auto;padding:.25rem 0 .5rem;-webkit-overflow-scrolling:touch}
-.l-skwrap > svg{display:block;width:100%;min-width:44rem;height:auto;font:400 12px/1 var(--sans)}
+.l-skwrap > svg{display:block;width:100%;min-width:44rem;height:auto;font:400 .875rem/1 var(--sans)}
 .sk .sk-r{stroke:var(--surface);stroke-width:1.5;fill-opacity:.45}
 .sk .sk-r.n{fill:var(--ink-2);fill-opacity:.16}
 .sk .sk-n{fill:var(--ink-2)}
@@ -5396,6 +5396,7 @@ th[aria-sort=descending] .l-sort-i{
 .l-ch figcaption{font:600 var(--t-ui)/1.35 var(--sans);color:var(--ink);margin:0 0 .5rem}
 .l-ch > p{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:.25rem 0 0}
 .l-ch .l-barkey{margin:0 0 .5rem}
+.l-ch .l-skwrap > svg{max-width:36rem}
 .ch .ax{stroke:var(--rule);stroke-width:1}
 .ch .sk-ink{fill:var(--ink-2)} .ch .sk-pine{fill:var(--pine)} .ch .sk-rest{fill:var(--rule-2)}
 .ch .ch-h{fill:var(--ink-2)}

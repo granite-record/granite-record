@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.866
+# GRANITE_VERSION: 2026-09-04.867
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -88613,7 +88613,7 @@ def _bills_filed_counts(civics, learn_numbers):
     assert not bare, (f"{len(bare)} of the pages' counts of [[bills]], every measure of the "
                       "term, still call them bills alone")
     for said in ("filed <b>[[bills]] bills and resolutions</b>",
-                 "Of the [[bills]] bills and resolutions filed in the [[term]] term"):
+                 "Of the [[ends_bills]] House and Senate bills filed in the [[term]] term"):
         assert said in flat, f"civics no longer says \"{said}\""
     src = re.sub(r'"\s*\n\s*"', "", inspect.getsource(learn_numbers.body))
     assert ("Every House and Senate bill given a number in each term, not counting "
