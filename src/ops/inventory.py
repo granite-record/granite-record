@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.12
+# GRANITE_VERSION: 2026-09-04.13
 """
 Report what is actually on disk, and which scripts are out of date.
 
@@ -45,7 +45,8 @@ import _paths  # noqa: E402,F401
 import argparse
 import json
 import re
-from datetime import datetime
+import time
+from datetime import timedelta
 
 # Every script carries a version stamp on its second line:
 #
@@ -87,7 +88,9 @@ def size(n):
 
 
 def age(p):
-    d = datetime.now() - datetime.fromtimestamp(p.stat().st_mtime)
+    # time.time(), not datetime.now(): build_exports reads registry() from here, and
+    # only build_date.py asks the clock for a build.
+    d = timedelta(seconds=max(0, time.time() - p.stat().st_mtime))
     if d.days > 0:
         return f"{d.days}d ago"
     h = d.seconds // 3600
