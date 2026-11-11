@@ -276,6 +276,41 @@ test("one Save: untick, add a bill and a law by typing, a legislator and a topic
   } finally { w.close(); }
 });
 
+test("a bill request is added by typing its number, as 2027-0002 or LSR 2027-0002 (11 November 2026)", async () => {
+  const w = makeWorld();
+  try {
+    // Two requests tonight that are still requests; a drafted one has left the list.
+    const cur = w.net.site.get("/changes/current.json");
+    for (const n of ["2027-0002", "2027-0013"])
+      cur.followable[`lsr:${n}`] = { label: `LSR ${n}`, title: "relative to an invented request",
+        now: "Filed as a request", url: `/bills?term=2027-requests&q=LSR%20${n}` };
+    const s = await join(w, "reader.requests", "bill", "2026/HB9901");
+    const page = (await view(w, s.manage)).body;
+    assert.match(page, /<label for="add_lsr">Add a bill request<\/label> <input id="add_lsr" name="add_lsr" placeholder="2027-0002"/,
+      "the Bill requests group has its own add box");
+    const keep = [["listed", "bill:2026/HB9901"], ["keep", "bill:2026/HB9901"]];
+    const id = w.d1.rows("subscribers")[0].id;
+    let r = await saveForm(w, s.manage, [...keep, ["add_lsr", "2027-0002"]]);
+    assert.match(r.headers.location, /n=saved$/);
+    r = await saveForm(w, s.manage, [...keep, ["add_lsr", " lsr 2027-13 "]]);   // spaces, case, a short number
+    assert.match(r.headers.location, /n=saved$/);
+    assert.deepEqual(await followKeys(w.d1, w.env), [`${id} bill:2026/HB9901`, `${id} lsr:2027-0002`,
+      `${id} lsr:2027-0013`]);
+    assert.match((await view(w, s.manage)).body, /name="keep" value="lsr:2027-0002" checked/,
+      "a followed request is listed in its group, to be unticked there");
+    // Not on tonight's list (drafted into a bill, or never a request), not a number, a bill's own number.
+    r = await saveForm(w, s.manage, [["listed", "lsr:2027-0002"], ["keep", "lsr:2027-0002"],
+      ["add_lsr", "2027-0999"]]);
+    assert.match(r.headers.location, /n=notfound$/);
+    for (const bad of ["HB 9901", "LSR", "2027", "2027-0002-1"]) {
+      r = await saveForm(w, s.manage, [["listed", "lsr:2027-0002"], ["keep", "lsr:2027-0002"], ["add_lsr", bad]]);
+      assert.match(r.headers.location, /n=notfound$/, bad);
+    }
+    assert.equal((await followKeys(w.d1, w.env)).length, 3, "refused adds added nothing");
+    assert.deepEqual(leaks(w), []);
+  } finally { w.close(); }
+});
+
 test("what cannot be followed tonight is not added, and the page says so", async () => {
   const w = makeWorld();
   try {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.853
+# GRANITE_VERSION: 2026-09-04.855
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20517,6 +20517,14 @@ const Q = JSON.parse(fs.readFileSync("./queries.json", "utf8"));
 const ASKED = [];
 const MODE = process.argv[2] || "";
 const FAIL_IDX = MODE === "fail";
+// THE DAY IS HELD, BEFORE THE ELECTION (11 November 2026): /bills opens on the
+// bill requests from the day after the election (app.js requestsFirst), and
+// these checks are of the search as it opens on the current term, in any year
+// they run. The rule has its own check.
+{ const RealDate = Date, held = RealDate.UTC(2026, 5, 15, 16);
+  globalThis.Date = class extends RealDate {
+    constructor(...a) { super(...(a.length ? a : [held])); }
+    static now() { return held; } }; }
 globalThis.fetch = async (u) => {
   const p = new URL(u).pathname; ASKED.push(p);
   // The term before this one never arrives ("slowold") or is not there
@@ -130378,6 +130386,94 @@ def _resolution_sponsors(BD, TS, BA):
         "HR 14 of 2015 no longer reads from the House Journal")
     assert not res["2017-2018"].get("HR6"), "a memorial offered by the House took a person"
     return "ok", "fixture journals and the real ones"
+
+
+@check("frontend", "the bill search opens on the 2027 bill requests from the day after the election, and "
+       "only until the new term's bills are published")
+def _search_opens_on_requests_after_the_election():
+    """The owner, 11 November 2026: /bills opens on the bill requests (meta.json's requests) from
+    the day after the general election -- the Tuesday after the first Monday in November of the year
+    before the requests' own -- and before it on the current term as always. The rule is app.js's
+    requestsFirst, by Concord's day (nhDay); it ends of itself when meta.json's newest term is the
+    requests' own session. An address that names a term still wins (wantedTerm), and the address a
+    list writes leaves out the term it opens on (defaultTerm), so Back and a pasted link agree."""
+    got = _app_js("""(() => {
+  const R = {term: "2027-requests", label: "2027 Bill Requests", year: 2027, n: 302, withdrawn: 4};
+  const M = (over = {}) => Object.assign({terms: ["2025-2026", "2023-2024"], requests: R}, over);
+  const at = (iso, m = M()) => ({first: scope.requestsFirst(m, new Date(iso)),
+                                 want: scope.wantedTerm(m, new Date(iso)),
+                                 dflt: scope.defaultTerm(m, new Date(iso))});
+  return {
+    electionDays: [2026, 2027, 2028, 2030, 2032].map(y => scope.electionDayOf(y)),
+    eve: at("2026-11-03T04:00:00Z"),            // 11 p.m. on 2 November in Concord
+    day: at("2026-11-03T20:00:00Z"),            // election day itself
+    after: at("2026-11-04T06:00:00Z"),          // 1 a.m. on the 4th in Concord
+    june: at("2027-06-15T16:00:00Z"),
+    published: at("2026-12-10T16:00:00Z", M({terms: ["2027-2028", "2025-2026"]})),
+    noneStand: at("2026-12-10T16:00:00Z", M({requests: Object.assign({}, R, {n: 4})})),
+    noRequests: at("2026-12-10T16:00:00Z", {terms: ["2025-2026"]}),
+  };
+})()""", names=("requestsFirst", "wantedTerm", "defaultTerm", "electionDayOf", "nhDay"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert got["electionDays"] == ["2026-11-03", "2027-11-02", "2028-11-07", "2030-11-05", "2032-11-02"], (
+        f"the Tuesday after the first Monday in November is read as {got['electionDays']}")
+    for k in ("eve", "day"):
+        assert not got[k]["first"] and got[k]["want"] == got[k]["dflt"] == "2025-2026", (
+            f"{k}: before the day after the election the search opens on {got[k]}")
+    for k in ("after", "june"):
+        assert got[k]["first"] and got[k]["want"] == got[k]["dflt"] == "2027-requests", (
+            f"{k}: from the day after the election the search opens on {got[k]}")
+    assert not got["published"]["first"] and got["published"]["want"] == "2027-2028", (
+        f"once the new term is published the search opens on it: {got['published']}")
+    assert got["noneStand"]["want"] == "2025-2026" and got["noRequests"]["want"] == "2025-2026", (
+        f"with no request standing the search opens on the term: {got['noneStand']} {got['noRequests']}")
+    return "ok", "opens on the requests from 4 November 2026, not before, and not once 2027-2028 is published"
+
+
+@check("frontend", "a topic left on is dropped where the list has no topics, said in the count line, and "
+       "any one filter can be removed on its own")
+def _topic_dropped_on_the_requests():
+    """The webinar, 11 November 2026: a topic chosen on a past term hid every 2027 bill request (they
+    carry no topic yet), and only "clear all" removed it. dropEmptyTopics takes the filter off where
+    the term's rows say no topic at all, topicNote says so after the count, and a topic (or committee)
+    ticked where the list has none stays on offer in its group, at none, to be unticked on its own."""
+    got = _app_js("""(() => {
+  scope.setState("2025-2026", {terms: ["2025-2026"], requests: {term: "2027-requests", year: 2027, n: 2,
+    withdrawn: 0, label: "2027 Bill Requests"}},
+    [{id: "HB1", term: "2025-2026", topic: "Housing"}, {id: "HB2", term: "2025-2026", topic: "Taxes"},
+     {id: "LSR 2027-0001", lsr: true, term: "2027-requests"}, {id: "LSR 2027-0002", lsr: true, term: "2027-requests"}]);
+  const out = {};
+  scope.sel.topic.add("Housing"); scope.sel.committee.add("Finance");
+  scope.dropEmptyTopics();
+  out.kept = [...scope.sel.topic]; out.keptNote = scope.topicNote();
+  scope.setState("2027-requests");
+  scope.dropEmptyTopics();
+  out.dropped = [...scope.sel.topic]; out.note = scope.topicNote();
+  out.committee = [...scope.sel.committee];
+  scope.setState("2025-2026");
+  out.back = scope.topicNote();
+  // a topic ticked where none is offered (an old address) is listed, at none
+  scope.setState("2027-requests");
+  scope.sel.topic.add("Housing"); scope.sel.committee.add("Finance");
+  scope.renderFacets();
+  out.facets = document.querySelector("#facets").innerHTML;
+  return out;
+})()""", names=("dropEmptyTopics", "topicNote", "sel", "renderFacets",
+                "setState: (t, m, rows) => { term = t; if (m) META = m; if (rows) IDX = rows; }"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert got["kept"] == ["Housing"] and got["keptNote"] == "", (
+        f"a topic is kept on a term whose bills have topics: {got['kept']} {got['keptNote']!r}")
+    assert got["dropped"] == [] and "the topic filter was removed" in got["note"] \
+        and "bill requests have no topics yet" in got["note"], (
+        f"a topic is dropped where the list has none, and the count says so: {got['dropped']} {got['note']!r}")
+    assert got["committee"] == ["Finance"], f"only the topic is dropped: {got['committee']}"
+    assert got["back"] == "", f"the note stays with the list it was said of: {got['back']!r}"
+    for what in ("Housing", "Finance"):
+        assert re.search(r'data-f="[a-z]+"\s+value="%s" checked' % what, got["facets"]), (
+            f"{what}, ticked where the list has none, is not offered to be unticked on its own")
+    return "ok", "dropped on the requests, said in the count, and a stray topic or committee can be unticked"
 
 
 def got_rec(RS, b, path):

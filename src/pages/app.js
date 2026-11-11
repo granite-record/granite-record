@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.302
+// GRANITE_VERSION: 2026-09-07.303
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2221,7 +2221,7 @@ function sponsorHint(q,rows){
 // the term kept, the search left out, since the name typed lists nothing.
 function sponsorHref(name){
   const p=new URLSearchParams(),terms=(META&&META.terms)||[];
-  if(term&&term!==terms[0])p.set("term",term);
+  if(term&&term!==defaultTerm(META))p.set("term",term);
   p.append("sponsor",name);
   return `${BASE}bills?${p.toString()}`;
 }
@@ -3115,7 +3115,7 @@ if(/^\/(?:bill|legislator|committee)\/.+\.html$/.test(location.pathname)){
 // /bill/2026/hb1442 -- so a 1995 bill loads the 1995 index and not the
 // current one. Anything else starts at the newest, which is what the picker
 // opens on.
-function wantedTerm(m){
+function wantedTerm(m,now=new Date()){
   const terms=(m.terms&&m.terms.length)?m.terms:[];
   const mm=location.pathname.match(/^\/bill\/(\d{4})\//);
   if(mm){
@@ -3131,8 +3131,34 @@ function wantedTerm(m){
     const want=new URLSearchParams(location.search).get("term");
     if(want===ALL_TERMS||terms.includes(want)
        ||(m.requests&&want===m.requests.term))return want;
+    if(!want&&requestsFirst(m,now))return m.requests.term;
   }
   return terms[0]||"";
+}
+// THE SEARCH OPENS ON NEXT SESSION'S BILL REQUESTS AFTER THE ELECTION (the
+// owner, 11 November 2026): from the day after the general election -- the
+// Tuesday after the first Monday in November of the year before the
+// requests' own -- until the new term's bills are published, when the
+// newest term in meta.json is the requests' own session and the rule stops
+// by itself, with no date to keep. Before the election the search opens on
+// the current term as it always has. The day is Concord's (nhDay), as a
+// deadline's is; the build's day is in what meta.json lists (its terms, the
+// requests and how many stand). An address that names a term is read first.
+function electionDayOf(y){
+  const dow=new Date(Date.UTC(y,10,1)).getUTCDay();
+  return `${y}-11-${String(2+(8-dow)%7).padStart(2,"0")}`;
+}
+// The term the search opens on with no address to say: what the address
+// leaves out when the term is this one (addressList, sponsorHref).
+function defaultTerm(m,now=new Date()){
+  return requestsFirst(m,now)?m.requests.term:((m&&m.terms)||[])[0]||"";
+}
+function requestsFirst(m,now=new Date()){
+  const R=m&&m.requests, terms=(m&&m.terms)||[];
+  if(!R||!R.term||!terms.length||!((+R.n||0)-(+R.withdrawn||0)>0))return false;
+  const ry=+(R.year||String(R.term).slice(0,4));
+  if(!(ry>+String(terms[0]).slice(0,4)))return false;
+  return nhDay(now)>electionDayOf(ry-1);
 }
 // A term already in IDX is never fetched again. All terms is every one of
 // them, which is what the picker's own "All Terms" fetches.
@@ -3923,8 +3949,11 @@ function renderFacets(){
     cnt("type","type"),false,null,
     v=>`<span class="tname"><b class="tcode">${esc(v)}</b>${
       TYPE_NAME[v]?`<span>${esc(TYPE_NAME[v])}</span>`:""}</span>`);
-  h+=fgroup("committee","Committee",present("committee"),cnt("committee","committee"));
-  h+=fgroup("topic","Topic",present("topic"),cnt("topic","topic"));
+  // A committee or topic ticked in another term stays on offer, at none, so
+  // it can be unticked on its own where it lists nothing.
+  h+=fgroup("committee","Committee",[...new Set([...present("committee"),...sel.committee])].sort(),
+    cnt("committee","committee"));
+  h+=fgroup("topic","Topic",[...new Set([...present("topic"),...sel.topic])].sort(),cnt("topic","topic"));
   // THE PRIME SPONSOR'S PARTY is a choice inside the Sponsor group it narrows
   // (the owner, 10 November 2026), below the name box and the co-sponsorship
   // box: a short list shown whole, in the legislators' chip shape and colour
@@ -11418,6 +11447,22 @@ function openPage(kind,ref){
 const PAGE_SIZE = 25;
 let SHOWN = PAGE_SIZE;
 
+// A TOPIC LEFT ON WHERE THE LIST HAS NONE (the webinar, 11 November 2026: a
+// topic chosen on a past term hid every one of the 2027 bill requests, which
+// carry no topics yet, and could be removed only with "clear all"). Taking a
+// list whose bills say no topic at all, the filter is dropped, and the count
+// line says so for as long as that list is the one on screen.
+let TOPIC_NOTE=null;
+function dropEmptyTopics(){
+  if(!sel.topic.size||focused)return;
+  const rows=IDX.filter(inTermOf);
+  if(!rows.length||rows.some(b=>b.topic))return;
+  TOPIC_NOTE={term,n:sel.topic.size};
+  sel.topic.clear();
+}
+const topicNote=()=>TOPIC_NOTE&&TOPIC_NOTE.term===term&&!sel.topic.size
+  ?` (the topic filter was removed: these ${termNoun()} have no topics yet)`:"";
+
 function render(more){
   // Any change to the result set starts again at the first page. Every
   // existing caller passes nothing, so only the observer extends.
@@ -11448,6 +11493,7 @@ function render(more){
     if(sortBy!==want){sortBy=want;const so=$("#sort");if(so)so.value=want;}
   }
   wantText();
+  dropEmptyTopics();
   let rows=sortRows(IDX.filter(b=>matches(b)));
   // A CHOSEN SPONSOR'S OWN BILLS FIRST, then the bills they co-sponsored,
   // each part in the order chosen (the person, 12 October 2026).
@@ -11494,7 +11540,8 @@ function render(more){
     :`${inTerm.toLocaleString()} ${inTerm===1?termNoun().replace(/s$/,""):termNoun()} ${
       termPhrase()}`;
   const ce=$("#count");
-  if(ce.textContent!==said)ce.textContent=said;
+  const said2=said?said+topicNote():said;
+  if(ce.textContent!==said2)ce.textContent=said2;
   // Same number, different term: say so instead of an empty page.
   const elsewhere=ids0&&!rows.length
     ? IDX.filter(b=>ids0.includes(b.id.toUpperCase())&&b.term&&b.term!==term)
@@ -11730,7 +11777,7 @@ function addressList(){
   const was=new URLSearchParams(location.search),p=new URLSearchParams();
   if(was.get("q"))p.set("q",was.get("q"));
   const terms=(META&&META.terms)||[];
-  if(term&&term!==terms[0])p.set("term",term);
+  if(term&&term!==defaultTerm(META))p.set("term",term);
   for(const k of ["status","type","topic","committee","sponsor","party","voteday","rsa"])
     for(const v of sel[k])p.append(k,v);
   if(withCosp)p.set("cosp","1");

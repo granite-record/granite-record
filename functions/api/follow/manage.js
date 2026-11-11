@@ -19,8 +19,8 @@
  *                           confirmation email"; pause "for a set period or
  *                           until you turn them back on"). Fields: listed (every
  *                           record the page showed a box for) and keep (the boxes
- *                           ticked); add_bill, add_law (typed: "HB 1442",
- *                           "RSA 91-A") and add (every legislator and
+ *                           ticked); add_bill, add_law, add_lsr (typed: "HB 1442",
+ *                           "RSA 91-A", "2027-0002" or "LSR 2027-0002") and add (every legislator and
  *                           committee ticked in the lists); frequency, detail, and
  *                           pause = none | until (with pause_until) | forever.
  *                           Only what tonight's current.json lists can be
@@ -58,7 +58,7 @@ const NOTICES = {
     "and save.",
   saved: "Saved.",
   removed: "Removed.",
-  notfound: "Saved, but something you asked to add is not a bill, law, legislator or committee " +
+  notfound: "Saved, but something you asked to add is not a bill, bill request, law, legislator or committee " +
     "that can be followed this term, so it was left out.",
   full: `Saved, but one address can follow at most ${MAX_FOLLOWS} bills, laws, legislators, ` +
     "committees and topics in all, so not everything you asked to add was added.",
@@ -191,6 +191,9 @@ function render(origin, t, sub, follows, current, notice, today) {
     if (kind === "bill")
       add = `<p class="add"><label for="add_bill">Add a bill</label> <input id="add_bill" name="add_bill" ` +
         `placeholder="HB 1442" maxlength="20" autocomplete="off"></p>`;
+    if (kind === "lsr")
+      add = `<p class="add"><label for="add_lsr">Add a bill request</label> <input id="add_lsr" name="add_lsr" ` +
+        `placeholder="2027-0002" maxlength="20" autocomplete="off"></p>`;
     if (kind === "law")
       add = `<p class="add"><label for="add_law">Add a law</label> <input id="add_law" name="add_law" ` +
         `placeholder="RSA 91-A" maxlength="20" autocomplete="off"></p>`;
@@ -323,7 +326,10 @@ function picker(kind, current, followed) {
 </details>`;
 }
 
-// What a typed bill or law means, from tonight's list: "HB 1442" is the
+// What a typed bill, bill request or law means, from tonight's list: a request
+// is "2027-0002" or "LSR 2027-0002" (a short number is padded to four digits),
+// and only while it is still a request: one drafted into a bill leaves the list,
+// and its bill is added by its number. "HB 1442" is the
 // sitting term's HB 1442 (its newest filing year, where both have one), and
 // "RSA 91-a" or "91-A" is the chapter. null for anything that is not listed.
 export function typedKey(kind, raw, current) {
@@ -331,6 +337,12 @@ export function typedKey(kind, raw, current) {
   if (!s || !current) return null;
   if (kind === "law") {
     const k = `law:${s.replace(/:.*$/, "")}`;
+    return current.followable.has(k) ? k : null;
+  }
+  if (kind === "lsr") {
+    const r = /^(\d{4})-(\d{1,5})$/.exec(s.replace(/^LSR/, ""));
+    if (!r) return null;
+    const k = `lsr:${r[1]}-${r[2].padStart(4, "0")}`;
     return current.followable.has(k) ? k : null;
   }
   const m = /^([A-Z]{2,6})0*(\d{1,4})$/.exec(s);
@@ -348,7 +360,7 @@ async function save(env, db, sub, form, current, now) {
   const keep = new Set(form.getAll("keep").filter(k => listed.has(k)));
   let notice = "saved";
   const adds = [];
-  for (const [kind, field] of [["bill", "add_bill"], ["law", "add_law"]]) {
+  for (const [kind, field] of [["bill", "add_bill"], ["lsr", "add_lsr"], ["law", "add_law"]]) {
     const raw = (form.get(field) || "").trim();
     if (!raw) continue;
     const k = typedKey(kind, raw, current);

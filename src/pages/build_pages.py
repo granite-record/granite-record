@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.279
+# GRANITE_VERSION: 2026-09-04.280
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -3373,6 +3373,12 @@ function render(){
 
 /* The roster: every member, by chamber and then by county, each county shut
    until it is asked for. */
+// The name, then the party and district as one unit app.css keeps whole, so
+// a chip that wraps in its cell does so before "(D - Straf 17)", never in it.
+function chipName(full){
+  const s=String(full||""), i=s.lastIndexOf(" (");
+  return i>0&&s.endsWith(")")?`${esc(s.slice(0,i))} <span class="mtag">${esc(s.slice(i+1))}</span>`:esc(s);
+}
 function roster(){
   const by={};
   MEM.forEach(m=>{const ch=m.chamber==="S"?"Senate":"House";
@@ -3397,7 +3403,7 @@ function roster(){
         // person asked for on 19 September; this view kept its own name, pill
         // and district until 24 September. display_full carries all three.
         +ms.map(m=>`<div class="mem"><span class="mchip p-${esc(m.p)}" translate="no">`
-          +`<a href="legislator/${esc(m.slug)}">${esc(m.full)}</a></span></div>`).join("")
+          +`<a href="legislator/${esc(m.slug)}">${chipName(m.full)}</a></span></div>`).join("")
         +`</div></details>`;
     }).join("");
   }).join("");
