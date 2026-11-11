@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.302
+// GRANITE_VERSION: 2026-09-07.303
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3226,6 +3226,7 @@ if(window.GR_STATIC){
    return ensureTerm(first).then(()=>[IDX,m]);})
  .then(([i,m])=>{
    IDX=i;META=m;
+   setRequestYear(META.requests?reqYear():"");
    // The haystack is built in ensureTerm, once per term as it arrives.
    const terms=META.terms&&META.terms.length?META.terms
      :[...new Set(IDX.map(b=>b.term).filter(Boolean))].sort().reverse();
@@ -3450,13 +3451,44 @@ function numberForm(p){
   // but perhaps the last.
   return s.replace(/^((?:[a-z]\s*\.\s*){1,4}[a-z]\s*\.?\s*)(?=\d)/i,m=>m.replace(/[\s.]/g,""));
 }
-let NUMBERS_OF=null,NUMBERS=null;
+/* A BILL REQUEST'S NUMBER AS PEOPLE WRITE IT (the owner, 11 November 2026:
+   "you also can't search for LSR by number"). A request is "LSR 2027-0002"
+   and its id is LSR20270002; people type "2027-0002", "LSR 2027-0002",
+   "LSR2027-0002", "LSR 27-0002" and "27-0002". Read as that id, the way a
+   bill's number is read as its. The year is the requests' own once it is
+   known (setRequestYear): "2026-0002" is no request of this site's, and
+   "2026-0002" in the search box is nothing else either. A two-digit year
+   takes a four-digit number after it ("27-0002"; "12-5" is not one). "LSR
+   0002" is the requests' year and that number. A bare "0002" is a request
+   only where the list is the requests' (`bare`, which /bills sets by the
+   list on screen): anywhere else it is a number like any other. */
+let REQ_YEAR="",REQ_BARE=false;
+function setRequestYear(y){REQ_YEAR=String(y||"");NUMBERS_OF=null;}
+function requestNumber(p,bare){
+  const s=String(p).trim();
+  const id=(y,n)=>{
+    if(y.length===2)y="20"+y;
+    if(REQ_YEAR&&y!==REQ_YEAR)return null;
+    return "LSR"+y+String(n).padStart(4,"0");
+  };
+  let m=/^lsr\s*\.?\s*(\d{4})\s*[-–—\s]\s*(\d{1,4})$/i.exec(s)
+     ||/^lsr\s*(\d{2})\s*[-–—\s]\s*(\d{4})$/i.exec(s)
+     ||/^(\d{4})\s*[-–—]\s*(\d{1,4})$/.exec(s)
+     ||/^(\d{2})\s*[-–—]\s*(\d{4})$/.exec(s)
+     ||/^lsr\s*(\d{4})(\d{4})$/i.exec(s);
+  if(m)return id(m[1],m[2]);
+  m=/^lsr\s*\.?\s*(\d{1,4})$/i.exec(s);
+  if(m&&REQ_YEAR&&m[1]!==REQ_YEAR)return id(REQ_YEAR,m[1]);
+  if(bare&&REQ_YEAR&&/^0\d{3}$/.test(s))return id(REQ_YEAR,s);
+  return null;
+}
+let NUMBERS_OF=null,NUMBERS=null,NUMBERS_BARE=false;
 function billNumbers(q){
-  if(q===NUMBERS_OF)return NUMBERS;
-  NUMBERS_OF=q;
+  if(q===NUMBERS_OF&&NUMBERS_BARE===REQ_BARE)return NUMBERS;
+  NUMBERS_OF=q;NUMBERS_BARE=REQ_BARE;
   const parts=q.split(",").map(s=>s.trim()).filter(Boolean);
   if(!parts.length)return NUMBERS=null;
-  const ids=parts.map(p=>numberForm(p).replace(/\s+/g,"").toUpperCase()
+  const ids=parts.map(p=>requestNumber(p,REQ_BARE)||numberForm(p).replace(/\s+/g,"").toUpperCase()
                          .replace(/^([A-Z]{2,5})0+(?=\d)/,"$1"));
   return NUMBERS=ids.every(i=>/^[A-Z]{2,5}\d+$/.test(i))?ids:null;
 }
@@ -11422,6 +11454,22 @@ function render(more){
   // Any change to the result set starts again at the first page. Every
   // existing caller passes nothing, so only the observer extends.
   if(!more)SHOWN=PAGE_SIZE;
+  // A BILL REQUEST'S NUMBER OPENS THE REQUESTS' LIST (the owner, 11 November
+  // 2026): a request is no term's (inTermOf), so on any term a search for
+  // "2027-0002" listed nothing and offered the list in a sentence under
+  // "No bills match". The term is switched to the requests' instead, and the
+  // list shows the one request. (A bill's number found in another term is
+  // not switched to: that is a different bill.) A bare "0002" is read as a
+  // request only on the requests' list itself.
+  {const R=META&&META.requests;
+   REQ_BARE=!!(R&&term===R.term);
+   if(R&&R.term&&term!==R.term&&!focused&&!PAGE&&!window.GR_STATIC
+      &&query.trim()&&String((billNumbers(query)||[])[0]||"").startsWith("LSR")){
+     term=R.term;const ys=$("#year");if(ys)ys.value=term;
+     forgetCardState();REQ_BARE=true;
+     ensureTerm(term).then(render);
+     return;
+   }}
   // A list still waiting for its term's bills says so, and nothing else: no
   // list of the bills that happen to be here (WAITING).
   if(WAITING&&!focused&&!PAGE){
