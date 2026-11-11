@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.4
+# GRANITE_VERSION: 2026-11-07.5
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -680,6 +680,11 @@ def build(site, base, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT
         shutil.rmtree(dest)
     new.rename(dest)
     S.sitemap_merge(site, base, urls, "/elections/")
+    gaps = BME.history_gaps(sponsors, BME.PAST_SPONSORS_DEFAULT, BME.CAREERS_DEFAULT)
+    if gaps:
+        n = sum(1 for e, races in made if year_of(e) <= BME.HISTORY_UNTIL
+                for r in races.values() for w in r["elected"] if not w.get("id"))
+        warn.append(BME.gap_line(gaps, n, "winner(s)").replace("WARNING ", "", 1))
     return made, warn
 
 

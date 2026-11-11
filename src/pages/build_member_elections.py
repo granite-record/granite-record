@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-10.2
+# GRANITE_VERSION: 2026-11-10.3
 """
 Each member's Elections tab: the general elections on file in which the member
 is recorded, newest first (the owner's design of 10 November 2026,
@@ -408,6 +408,13 @@ def main():
     except BME.Refused as e:
         print(f"REFUSED: {e}", file=sys.stderr)
         return 1
+    # Said loudly, not skipped: the older elections are linked by the seat held.
+    gaps = BME.history_gaps(a.sponsors, BME.PAST_SPONSORS_DEFAULT, BME.CAREERS_DEFAULT)
+    if gaps:
+        n = sum(len(r["candidates"]) for _e, _p, doc in BE.elections_on_file(a.collected)
+                if int(doc["election"][:4]) <= BME.HISTORY_UNTIL
+                for r in doc["races"].values() if r.get("surnames"))
+        print("member elections: " + BME.gap_line(gaps, n, "candidate(s)"), file=sys.stderr)
     if not elections:
         # No results on file: no tab anywhere, and none left from an earlier run.
         write_member_files(a.site, {})

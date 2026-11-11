@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.11
+# GRANITE_VERSION: 2026-10-16.12
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -688,6 +688,35 @@ def served_terms(past, careers):
                 if mid and emp in terms_of:
                     out[mid] |= terms_of[emp]
     return {m: sorted(t) for m, t in out.items()}
+
+
+def history_gaps(path=SPONSORS_DEFAULT, past=PAST_SPONSORS_DEFAULT, careers=CAREERS_DEFAULT):
+    """["<file> is missing" or "<file> is empty", ...]: which of the three inputs
+    of the seat history (bill sponsors, past sponsors, careers) are not there.
+    SILENCE IS NOT SUCCESS: without them the 2016-2022 winners and losses are
+    linked by nothing, and the pages would still build."""
+    out = []
+    for q in (path, past, careers):
+        q = Path(q)
+        if not q.is_file():
+            out.append(f"{q.as_posix()} is missing")
+            continue
+        try:
+            empty = not json.loads(q.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            empty = True
+        if empty:
+            out.append(f"{q.as_posix()} is empty")
+    return out
+
+
+def gap_line(gaps, n, what):
+    """The loud line for missing inputs: which files, and how many `what` could
+    not be linked for want of them; "" where none is missing."""
+    if not gaps:
+        return ""
+    return (f"WARNING {'; '.join(gaps)}: {n} {what} of the elections up to {HISTORY_UNTIL} "
+            "could not be linked to a member by the seat held")
 
 
 def load_history(path=SPONSORS_DEFAULT, past=PAST_SPONSORS_DEFAULT, careers=CAREERS_DEFAULT):

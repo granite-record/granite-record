@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.836
+# GRANITE_VERSION: 2026-09-04.837
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -118595,6 +118595,31 @@ def _member_elections_surnames(BMEL, BME):
     assert "3007" not in rows, "a seat held on the 2012 districts was matched to a race of 2022's"
     return "ok", ("winners linked by the seat held, a loss by surname, seat and party, a twin, a missing "
                   "history and the 2022 redistricting each leaving it to the owner")
+
+
+@check("build", "the elections steps say so loudly when the seat history's inputs (text_sponsors.json, "
+                "past_sponsors.json, generated/careers.json) are missing or empty, naming each file and "
+                "the rows they could not link, and say nothing when all are there",
+       needs=("build_members_elect",))
+def _elect_history_gaps(BME):
+    root = Path(tempfile.mkdtemp(prefix="gr-hist-"))
+    try:
+        paths = [root / "text_sponsors.json", root / "past_sponsors.json", root / "careers.json"]
+        gaps = BME.history_gaps(*paths)
+        assert len(gaps) == 3 and all("is missing" in g for g in gaps), f"missing files not named: {gaps}"
+        line = BME.gap_line(gaps, 7, "winner(s)")
+        assert line.startswith("WARNING") and "text_sponsors.json is missing" in line and \
+            "careers.json is missing" in line and " 7 winner(s)" in line, f"the line: {line}"
+        for p in paths:
+            p.write_text("{}", encoding="utf-8")
+        assert all("is empty" in g for g in BME.history_gaps(*paths)), "empty files passed quietly"
+        for p in paths:
+            p.write_text('{"a": 1}', encoding="utf-8")
+        assert BME.history_gaps(*paths) == [] and BME.gap_line([], 3, "winner(s)") == "", (
+            "files that are there were reported")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", "missing and empty inputs named with the count unlinked; present ones silent"
 
 
 @check("build", "a member's Elections tab is drawn in the member's own file from the built elections "
