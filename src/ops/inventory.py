@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.14
+# GRANITE_VERSION: 2026-09-04.15
 """
 Report what is actually on disk, and which scripts are out of date.
 
@@ -110,8 +110,19 @@ def _stamp(text):
 # and the folders that never hold one (the data, the built site, the
 # worktrees). The stamp is read from the first 800 bytes, as bump() does.
 STAMPED = (".py", ".js", ".css", ".html", ".bat", ".sql", ".toml")
-NOT_CODE = ("work/", "site/", "legislation/", "archive/", "db/",
-            ".git/", ".claude/worktrees/", ".build_cache/")
+NOT_CODE = ("work", "site", "legislation", "archive", "db", ".git", ".build_cache",
+            "node_modules")
+
+
+def is_code_path(rel):
+    """True where `rel` (a path from the root, with slashes) may hold a stamped
+    file: not under a folder of data, the built site, a worktree or a cache.
+    Names without a trailing slash, since build_inputs reads a string that
+    starts with a folder it leaves out as that folder being read."""
+    parts = rel.split("/")
+    return (rel.endswith(STAMPED) and parts[0] not in NOT_CODE
+            and not (parts[0] == ".claude" and parts[1:2] == ["worktrees"])
+            and "node_modules" not in parts)
 FULL_STAMP = re.compile(r"GRANITE_VERSION:[ \t]*(\d{4}-\d{2}-\d{2}\.\d+)\b")
 
 
@@ -132,8 +143,7 @@ def _candidates(root):
     names = _git_names(root)
     if names is None:
         names = [p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file()]
-    return [n for n in names if n.endswith(STAMPED) and not n.startswith(NOT_CODE)
-            and "node_modules" not in n.split("/")]
+    return [n for n in names if is_code_path(n)]
 
 
 def _key(root, rel):

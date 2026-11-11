@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.854
+# GRANITE_VERSION: 2026-09-04.855
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -29967,7 +29967,7 @@ def _stamps(inventory):
         return "skip", "no git history here"
     bad, scanned = [], {}
     for name in tracked:
-        if name.startswith(inventory.NOT_CODE) or not Path(name).exists():
+        if not inventory.is_code_path(name) or not Path(name).exists():
             continue
         raw = Path(name).read_bytes()
         if not re.search(r"GRANITE_VERSION:\s*[0-9]", raw[:3000].decode("utf-8", "replace")):
