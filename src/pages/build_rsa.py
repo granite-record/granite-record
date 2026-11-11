@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.29
+# GRANITE_VERSION: 2026-10-11.30
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -1432,7 +1432,8 @@ CHAPTER_JS = """<script>
 # above, and no taller than the screen, its words scrolling inside it.
 DEFS_JS = r"""<script>
 (function(){
-  var pop=null,cur=null,wait=0,shut=0,opened=0,touch=false,quiet=false,side="",pressedIn=false,pinned=false,HOLD=500,CUT=400;
+  var pop=null,cur=null,wait=0,shut=0,opened=0,touch=false,quiet=false,side="",pressedIn=false,pinned=false,HOLD=500,CUT=400,
+      HOME=".rs-art,.lw-read";  // a chapter's text, or the /laws preview of a section's
   // A definition in another chapter is held on this page under data-def.
   function target(a){var d=a.getAttribute("data-def");if(d)return document.getElementById(d);
     var h=a.getAttribute("href")||"",i=h.indexOf("#");return i<0?null:document.getElementById(h.slice(i+1));}
@@ -1452,7 +1453,7 @@ DEFS_JS = r"""<script>
   // changes its height, so it never jumps out from under the pointer or the
   // finger that pressed the button (the review of 7 November 2026).
   function place(a,keep){
-    var host=pop.offsetParent||a.closest(".rs-art");if(!host)return;
+    var host=pop.offsetParent||a.closest(HOME);if(!host)return;
     var r=a.getBoundingClientRect(),b=host.getBoundingClientRect(),vw=document.documentElement.clientWidth,
         vh=window.innerHeight||document.documentElement.clientHeight||0;
     pop.style.maxHeight="";pop.style.left="0px";pop.style.top="0px";
@@ -1475,9 +1476,10 @@ DEFS_JS = r"""<script>
     var bw=p.right-p.left,ax=(fr.left+fr.right)/2-x;
     pop.className="termpop rs-dpop"+(side==="above"?" above":"");
     pop.style.setProperty&&pop.style.setProperty("--arrow",Math.round(Math.max(14,Math.min(Math.max(14,bw-14),ax)))+"px");
-    pop.style.left=Math.round(x-b.left)+"px";pop.style.top=Math.round(y-b.top)+"px";}
+    // A host that scrolls (the /laws preview) carries the box with its text.
+    pop.style.left=Math.round(x-b.left+(host.scrollLeft||0))+"px";pop.style.top=Math.round(y-b.top+(host.scrollTop||0))+"px";}
   function show(a){
-    var w=target(a);if(!w||!a.closest(".rs-art"))return;
+    var w=target(a);if(!w||!a.closest(HOME))return;
     clearTimeout(shut);
     if(cur===a&&pop&&!pop.hidden)return;
     if(cur)hide();
@@ -1589,6 +1591,19 @@ LANDING_JS = """<script>
       read.innerHTML='<p class="lw-rcrumb">'+esc(crumb)+' &rsaquo; '+esc(name)+'</p>'
         +(sec?sec.outerHTML:'<p>This section could not be opened here.</p>')
         +'<p class="lw-own"><a href="'+link(a)+'">Open RSA '+esc(a)+' on its chapter&rsquo;s page</a></p>';
+      // A defined word opens its definition in place, as on the chapter's
+      // page (DEFS_JS): the definitions the section's words point at, which
+      // that page holds and this section does not, are copied in, hidden.
+      if(sec&&doc){var held=document.createElement("div");held.hidden=true;
+        [].forEach.call(read.querySelectorAll("a.rs-tm"),function(w){
+          var id=w.getAttribute("data-def");
+          if(!id){var h=w.getAttribute("href")||"",i=h.indexOf("#");id=i<0?"":h.slice(i+1);}
+          if(!id||read.querySelector('[id="'+id+'"]'))return;
+          var d=doc.getElementById(id);if(!d)return;
+          var c=document.importNode(d,true);c.hidden=true;
+          if(!c.getAttribute("data-href"))c.setAttribute("data-href",w.getAttribute("href"));
+          held.appendChild(c);});
+        if(held.firstChild)read.appendChild(held);}
       // Its lists folded as its chapter's page folds them (CHAPTER_JS, rsFold).
       if(window.rsFold)window.rsFold(read);
       read.scrollTop=0;
@@ -2017,7 +2032,7 @@ def landing_page(tmpl, table, data, base, topics, pending, con=None):
         assert art.count(lead + search) == 1, "the statutes' panel no longer opens with its lead and the search"
         art = art.replace(lead + search, search + lead, 1)
     return p.replace('<div id="results"></div>',
-                     f'<div id="results"><div class="l-page rs-page rs-landing">{head}{art}</div>{LANDING_JS}</div>', 1)
+                     f'<div id="results"><div class="l-page rs-page rs-landing">{head}{art}</div>{DEFS_JS}{LANDING_JS}</div>', 1)
 
 
 def main():

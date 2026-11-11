@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.856
+# GRANITE_VERSION: 2026-09-04.857
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44200,8 +44200,57 @@ word3.focus(); out.point_above = [box().className, box().style["--arrow"]];
 fire("keydown", {key: "Escape"}); doc.activeElement = elsewhere;
 word3.rect = {left: 1000, right: 1100, top: 200, bottom: 220};
 word3.focus(); out.point_shifted = [box().style.left, box().style["--arrow"]];
+// THE /laws PREVIEW (the owner, 11 November 2026: a click on a defined word
+// there "takes you to the full page link"): the pane is .lw-read, not .rs-art,
+// holding a section and, hidden, the definitions its words point at, copied
+// from the chapter's page. A press opens the box in place, does not navigate,
+// and the box's link and Show more work.
+fire("keydown", {key: "Escape"}); doc.activeElement = elsewhere;
+const pane = node("aside", {class: "lw-read"}); pane.rect = {left: 600, right: 1100, top: 0, bottom: 3000};
+const held = node("div", {}, pane); held.hidden = true;
+const pdef = node("div", {class: "rs-dfn", id: "s1_IX", "data-cite": "RSA 153:1, IX", "data-for": "this chapter",
+  "data-href": "/laws/153#s1_IX"}, held); pdef.hidden = true;
+LONG.forEach(t => { node("p", {}, pdef)._text = t; });
+const ppara = node("p", {}, pane);
+const pword = node("a", {class: "rs-tm", href: "/laws/153#s1_IX"}, ppara); pword._text = "residential";
+pword.rect = {left: 700, right: 800, top: 200, bottom: 220};
+fire("pointerdown", {pointerType: "mouse", target: pword});
+out.pane_no_nav = fire("click", {target: pword});
+out.pane_opens = !!box() && !box().hidden && box().parentNode === ppara;
+out.pane_link = !!link() && link().href === "/laws/153#s1_IX" && link().textContent === "RSA 153:1, IX";
+out.pane_more = !!more() && (press(more()), box().querySelector(".rs-dptext").children.length === 3);
+fire("click", {target: ppara}); out.pane_closes = box().hidden;
 console.log(JSON.stringify(out));
 """
+
+
+@check("build", "a defined word is not marked where the text already spells out its definition ('department of "
+       "transportation' under '\"Department\" means the department of transportation'), and is marked "
+       "everywhere else", needs=("build_rsa", "rsa", "shell"))
+def _rsa_spelled_out_terms(B, RSA, S):
+    """The owner, 11 November 2026: RSA 228:1, VII's "department of
+    transportation" opened a box saying "Department" means the department of
+    transportation. Skipped only where the definition is '"X" means Y' (Y
+    all it says) and the words at the use are Y; a bare "department", or one
+    followed by other words, is marked, and a definition with more than Y in
+    it ("... and ...") is never read as Y."""
+    t = _def_table(RSA, (
+        ("153:1", "Definitions.", (), (
+            "In this chapter:",
+            'IV. "Department" means the department of transportation.',
+            'VI. "Board" means the board of fire control and the commissioner.')),
+        ("153:7", "Works.", (), (
+            "Works administered through the department of transportation, division of public works, "
+            "are reported by the board of fire control.",
+            "A bare department files a form with the board.")),
+    ))
+    got, _w = t.defined().marks("153:7")
+    p = RSA.paragraphs(t.sections["153:7"].text)
+    words = [(li, p[li][st:en]) for li, v in sorted(got.items()) for st, en, _i in v]
+    assert (0, "department") not in words,         f"'department of transportation' is marked where the text spells out its definition: {words}"
+    assert (1, "department") in words, "the bare 'department' of the next paragraph is not marked in its place"
+    assert (0, "board") in words, "'board' ('and the commissioner' follows the meaning) is not marked"
+    return "ok", "the spelled-out use skipped, the bare one marked in its place, a longer meaning not read as a short one"
 
 
 @check("build", "a statute page marks a defined term where the definition's own words apply it, and only "
@@ -44323,6 +44372,11 @@ def _rsa_defined_terms(B, RSA, S):
     assert out["away"] == ['Defined for chapter 126-X in RSA 126-X:1, VI"Designated caregiver" means an individual '
                            "who: (a) Is at least 21 years of age;", "/laws/126-x#s1_VI"], \
         f"a definition held for another chapter's page does not open from data-def, or does not link there: {out['away']}"
+    assert out.get("pane_no_nav") and out.get("pane_opens") and out.get("pane_link") and out.get("pane_more")         and out.get("pane_closes"), (
+        f"a click on a defined word in the Laws page's preview does not open its box in place, or navigates: {out}")
+    reader = B.LANDING_JS[B.LANDING_JS.find("read.innerHTML='<p class=\"lw-rcrumb\">"):]
+    assert 'querySelectorAll("a.rs-tm")' in reader and "importNode" in reader and "doc.getElementById(id)" in reader,         "the Laws page's reader does not bring in the definitions its section's defined words point at"
+    assert "</div>{DEFS_JS}{LANDING_JS}" in Path("src/pages/build_rsa.py").read_text(encoding="utf-8"),         "the Laws page does not carry the definitions script beside its own"
     wrong = [k for k in ("focus", "in_text", "tab_in_stays", "escape", "link_follows", "tap_stays",
                          "tap_opens", "tap_link", "pinned_stays", "second_tap_closes", "reopens",
                          "pinned_escape", "space_opens", "space_pins", "space_closes",
