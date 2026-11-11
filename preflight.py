@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.863
+# GRANITE_VERSION: 2026-09-04.864
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -45739,6 +45739,35 @@ def _cacr_articles(PC, CT, BSV, BBP):
          [("reenact_part", 1, "", "/laws#part1")]),
         ("I. That the following new article of part I of the constitution after article 2-b:", []),
         ("I. That article 140 of the second part of the constitution be amended to read as follows:", []),
+        # The forms the 1989-2024 resolutions use, each a sentence from the data (11 November 2026): CACR 41 of
+        # 2005-06 (Part Second Article 11, ratified 7 November 2006) was one of 57 that named no article.
+        ("I. That the second part of the constitution be amended by replacing article 11 with the following: [Art.] 11.",
+         [("amend", 2, "11", "/laws#part2-art11")]),
+        ("I. That the first part of the constitution be amended by replacing the first 2 sentences of article 11 "
+         "with the following 2 sentences:", [("amend", 1, "11", "/laws#part1-art11")]),
+        ("I. That part first, article 28-a of the constitution be amended to read as follows: [Art.] 28-a",
+         [("amend", 1, "28-a", "/laws#part1-art28-a")]),
+        ("I. That article 15, part second of the constitution, relative to the compensation of the legislature, "
+         "be repealed. II. That the above amendment", [("repeal", 2, "15", "/laws#part2-art15")]),
+        ("I. That article 6 of the first part of the constitution and article 83 of the second part of the "
+         "constitution be amended to read as follows:",
+         [("amend", 1, "6", "/laws#part1-art6"), ("amend", 2, "83", "/laws#part2-art83")]),
+        ("I. That part II, article 73-a of the constitution be repealed and reenacted in order to clarify that",
+         [("amend", 2, "73-a", "/laws#part2-art73-a")]),
+        ("I. That article 78 of the second part of the constitution, relative to judges and sheriffs disqualified "
+         "by age, is repealed. II. That the above", [("repeal", 2, "78", "/laws#part2-art78")]),
+        ("I. That article 9 of the second part of the constitution read as follows: [Art.] 9.",
+         [("amend", 2, "9", "/laws#part2-art9")]),
+        ("I. That part second of the constitution be amended by inserting after article 1 the following new "
+         "article: [Art.] 1-a [Initiative Petitions.]", [("insert_after", 2, "1", "/laws#part2-art1")]),
+        ("I. That the second part of the constitution be amended by inserting after article 5-B the following "
+         "new article: [Art.] 5-c [Income Tax Prohibited.]", [("insert_after", 2, "5-b", "/laws#part2-art5-b")]),
+        # "that" in lower case is the question put to the voters, which repeats the clause; it adds nothing
+        ("IV. That the wording of the question shall be: Are you in favor of amending the constitution so that "
+         "article 4 of the second part of the constitution reads as follows and that article 72-a of the second part "
+         "of the constitution, printed below, be repealed.", []),
+        # a bare "article N" with no part named is not a clause, nor is a new article's number
+        ("II. That article 11 be amended to read as follows:", []),
         ("Are you in favor of amending article 78 of the second part of the constitution", []),
     )
     for text, want in cases:
