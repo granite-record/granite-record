@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.8
+# GRANITE_VERSION: 2026-09-18.9
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -199,6 +199,30 @@ def became_bills(bills, lsrs):
     return {f"{y}-{n:04d}": b for (y, n), b in have.items()}
 
 
+def route(body):
+    """The stops a request's bill will pass once it is introduced, in order,
+    for its page's rail (Alice, 11 November 2026: the page is a bill's with
+    the parts that do not exist yet left quiet): the chamber it starts in,
+    then the other, the Governor and Law; a resolution of one chamber has
+    that chamber and whether it is adopted; a concurrent resolution has two
+    chambers and no Governor; a constitutional amendment goes to the voters,
+    and its kind does not say which chamber it starts in, so none is named.
+    These are build_site_v2.journey_rail's own routes, by the kind the
+    request names."""
+    b = str(body or "").upper()
+    first = {"H": "House", "S": "Senate"}.get(b[:1])
+    other = {"House": "Senate", "Senate": "House"}.get(first)
+    if b.startswith("CA"):
+        return ["Voters"]
+    if not first:
+        return []
+    if b in ("HR", "SR"):
+        return [first, "Adopted"]
+    if b in ("HCR", "SCR"):
+        return [first, other]
+    return [first, other, "Governor", "Law"]
+
+
 def rows_from(lsrs, who, became=None, year=None):
     """The rows of idx/<year>-requests.json and the sponsor names that matched
     nobody. `year` is the session they are listed under (newest_session)."""
@@ -219,6 +243,17 @@ def rows_from(lsrs, who, became=None, year=None):
             hit = None
         if name and not hit:
             unmatched.append(name)
+        # The co-sponsors, matched as the prime sponsor is (a name that
+        # matches nobody is kept as the source gives it), for the request's
+        # own page; a request with none carries no key.
+        co = []
+        for c in r.get("cosponsors") or []:
+            c = str(c or "").strip()
+            h = who.get(_fold(c))
+            if h and len(h) > 2 and chamber_of(body) != h[2]:
+                h = None
+            if c:
+                co.append({"label": h[0] if h else c, "slug": h[1] if h else ""})
         rows.append({
             "id": "LSR" + num.replace("-", ""),
             "n": "LSR " + num,
@@ -227,6 +262,7 @@ def rows_from(lsrs, who, became=None, year=None):
             "sponsor": name,
             "sponsor_label": hit[0] if hit else name,
             "sponsor_slug": hit[1] if hit else "",
+            **({"cosponsors": co} if co else {}),
             "body": body,
             "body_label": BODY.get(body, body),
             "committee": "", "committees": [], "topic": "", "topic_by": "",

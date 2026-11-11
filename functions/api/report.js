@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-12.18
+// GRANITE_VERSION: 2026-09-12.19
 /*
  * POST /api/report -- a reader says something on a page is wrong.
  *
@@ -104,8 +104,8 @@ export const RENAMED_KIND = new Map([["Videos", "bill"], ["Sessions", "committee
 // from /town/concord-ward-4: the slug build_town_pages.slug writes, lower
 // case and hyphens. Accepted only from its own address, and with no tab (the
 // page's tabs are not the bills' and a report names none).
-const RECORD = /^(bill:\d{4}\/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3}(?:-\d{4})?|session:[HS]\/\d{4}-\d{2}-\d{2}|study:ss\d{1,6}|town:[a-z0-9]+(?:-[a-z0-9]+)*|translation:\/es\/(?:(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})(?:\/(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})){0,2})?)$/;
-const PATH = /^\/(bill\/\d{4}\/[a-z]{2,6}\d{1,4}|legislator\/[a-z0-9-]{1,80}|committee\/[A-Za-z]\d{2,3}(?:-\d{4})?|session\/[HS]\/\d{4}-\d{2}-\d{2}|committee\/ss\d{1,6}|town\/[a-z0-9]+(?:-[a-z0-9]+)*|es\/(?:(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})(?:\/(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})){0,2})?)$/;
+const RECORD = /^(bill:\d{4}\/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3}(?:-\d{4})?|session:[HS]\/\d{4}-\d{2}-\d{2}|study:ss\d{1,6}|town:[a-z0-9]+(?:-[a-z0-9]+)*|request:\d{4}-\d{4,5}|translation:\/es\/(?:(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})(?:\/(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})){0,2})?)$/;
+const PATH = /^\/(bill\/\d{4}\/[a-z]{2,6}\d{1,4}|legislator\/[a-z0-9-]{1,80}|committee\/[A-Za-z]\d{2,3}(?:-\d{4})?|session\/[HS]\/\d{4}-\d{2}-\d{2}|committee\/ss\d{1,6}|town\/[a-z0-9]+(?:-[a-z0-9]+)*|request\/\d{4}-\d{4,5}|es\/(?:(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})(?:\/(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})){0,2})?)$/;
 export const TRANSLATION = "translation";
 const BUILD = /^[0-9T:.+\-Z]{0,40}$/;
 // A legislator's address is the slug build_site_v2.member_slug writes: the
@@ -183,6 +183,8 @@ export function validate(body) {
     if (url !== `/session/${ref}`) return null;
   } else if (kind === "town") {
     if (url !== `/town/${ref}` || tab !== "") return null;
+  } else if (kind === "request") {
+    if (url !== `/request/${ref}`) return null;
   } else if (!MEMBER_PAGE.test(url)) {
     return null;                     // and onRequest checks the page is that member's
   }

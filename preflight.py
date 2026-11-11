@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.866
+# GRANITE_VERSION: 2026-09-04.867
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -30836,12 +30836,42 @@ def _request_pages():
             "one kept, and the one now a bill taken away")
         page = (site / "request" / "2027-0001.html").read_text(encoding="utf-8")
         assert '<meta name="robots" content="noindex,follow">' in page \
-            and 'class="static-rec shown"' in page and "Requests, not bills yet." in page \
+            and "Requests, not bills yet." in page \
             and "numbered 2027 bill" in page and 'href="legislator/jodi-nelson-rock-13"' in page, (
-            "a request's page is not noindex, shown with script on, explained, or its sponsor's "
-            "chip linked")
+            "a request's page is not noindex, explained, or its sponsor's chip linked")
+        # THE BILL PAGE'S FRAME (Alice, 11 November 2026: "so that information
+        # fills in more naturally rather than reformatting the whole layout"):
+        # the record head with the trail Bills > the requests > the number, the
+        # number and the status chip, the field grid, the action column with
+        # Cite, Share and Report and no Testify or Print, the rail starting at
+        # Requested and then every stop a bill passes, the Summary tab alone;
+        # Follow's key and the report's record named for the scripts.
+        frame = ('<header class="rhead rh-bill">', '<nav class="rtrail"', '>2027 Bill Requests</a>',
+                 '<li aria-current="page">LSR 2027-0001</li>', 'chip chip-m cstat',
+                 'Filed as a request</span>', '<dl class="rfacts">', "<dt>Prime Sponsor</dt>",
+                 "<dt>Kind</dt>", '<div class="racts"><div class="pageacts" id="pageacts"><details class="pcite"', "data-share",
+                 '<i>Requested</i>', "<i>Introduced</i>", "<i>House</i>", "<i>Senate</i>",
+                 "<i>Governor</i>", "<i>Law</i>", 'id="sstab-summary"', 'class="pane sspane"',
+                 'window.GR_FOLLOW="lsr:2027-0001";', 'window.GR_REPORT="request:2027-0001";',
+                 'window.GR_REQUEST="2027-0001";')
+        gone_ = [x for x in frame if x not in page]
+        assert not gone_, f"a request's page lacks the bill page's frame: {gone_}"
+        assert page.index("<i>Requested</i>") < page.index("<i>Introduced</i>") \
+            < page.index("<i>House</i>") < page.index("<i>Senate</i>") \
+            < page.index("<i>Governor</i>") < page.index("<i>Law</i>"), "the rail's stops are out of order"
+        for no in ("Testify", "data-print", 'role="tab" id="sstab-votes"', "Committee</dt>"):
+            assert no not in page, f"a request's page carries {no!r}, which a request has not"
+        assert page.count('role="tab"') == 1, "a request's page has more than one tab"
         wd = (site / "request" / "2027-0002.html").read_text(encoding="utf-8")
-        assert "<b>Status:</b> Withdrawn<" in wd, "a withdrawn request's page does not say so"
+        assert "<b>Status:</b> Withdrawn<" in wd and ">Withdrawn</span>" in wd \
+            and "window.GR_FOLLOW" not in wd, (
+            "a withdrawn request's page does not say so, or offers Follow")
+        assert "<i>Senate</i>" in wd and wd.index("<i>Senate</i>") < wd.index("<i>House</i>"), (
+            "a Senate request's rail does not start in the Senate")
+        # Its route, by kind (build_lsrs.route).
+        assert L.route("HR") == ["House", "Adopted"] and L.route("SCR") == ["Senate", "House"] \
+            and L.route("CACR") == ["Voters"] and L.route("SB")[-2:] == ["Governor", "Law"], (
+            "build_lsrs.route's stops are not a bill's route")
         red = BPG.moved_requests(site)
         assert "/request/2027-0003 /bill/2027/hb45 301\n" in red and "2027-0001" not in red, (
             f"the 301s for the requests read {red!r}")
@@ -92525,6 +92555,12 @@ for (const [rec, url] of [["session:H/2010-03-11", "/session/H/2010-03-12"],
     ["study:H05", "/committee/H05"], ["committee:ss1451", "/committee/ss1451"],
     ["study:ss1451", "/legislator/jane-doe-hills-12"], ["session:H/2010-03-11", "/legislator/x"]])
   ok(`${rec} from ${url} is refused`, validate({ ...good, record: rec, url, tab: "" }) === null);
+// A bill request (11 November 2026), from its own address only, on its one tab.
+const rq = { ...good, record: "request:2027-0012", url: "/request/2027-0012", tab: "Summary" };
+ok("a request's page is accepted", validate(rq) !== null);
+for (const [rec, url] of [["request:2027-0012", "/request/2027-0013"], ["request:2027-0012", "/bill/2027/hb12"],
+    ["request:2027-12", "/request/2027-12"], ["bill:2027/HB12", "/request/2027-0012"]])
+  ok(`${rec} from ${url} is refused`, validate({ ...rq, record: rec, url }) === null);
 // A town or a ward (the owner, 10 November 2026), from its own address only,
 // naming no tab.
 const town = { ...good, record: "town:concord-ward-4", url: "/town/concord-ward-4", tab: "" };
