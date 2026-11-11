@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.266
+# GRANITE_VERSION: 2026-09-05.267
 """
 Generate the faceted site from real General Court data.
 
@@ -1263,6 +1263,30 @@ def name_key(raw):
     w = [x for x in re.sub(r"[^\w' -]", " ", s, flags=re.UNICODE).lower().split()
          if x]
     return (w[0], w[-1]) if len(w) >= 2 else None
+
+
+def roster_name_keys(members):
+    """(by sort_name, by name_key, clashes) for the sitting members.
+
+    A name two members share (a father and a son in one chamber) would have
+    gone to whichever came first in legislators.json, with setdefault, and
+    linked a sponsor named by that alone to the wrong person (bug hunt of
+    November 2026, #10). A key two members share is now left out of both
+    maps, so the sponsor keeps a bare name, and is returned as
+    [(which key, the key, [the members])] for the build to say aloud;
+    preflight fails on one in data/legislators.json."""
+    by_sort, by_name, seen = {}, {}, {}
+    for m in members:
+        for how, book, k in (("sort name", by_sort, sort_name(m.get("name") or "")),
+                             ("first and last word", by_name, name_key(m.get("name") or ""))):
+            if how == "first and last word" and not k:
+                continue
+            seen.setdefault((how, k), []).append(m)
+            book.setdefault(k, m)
+    clashes = [(how, k, ms) for (how, k), ms in seen.items() if len(ms) > 1]
+    for how, k, ms in clashes:
+        (by_sort if how == "sort name" else by_name).pop(k, None)
+    return by_sort, by_name, clashes
 
 
 def district_tag(chamber, district, county=None, county_abbr=None):
@@ -12386,12 +12410,11 @@ def main():
     # never on a member id, because there are three id spaces in these files
     # and a sponsor's is not necessarily the roster's. A sponsor who matches
     # nobody keeps a bare name rather than borrowing somebody else's party.
-    leg_by_sort, leg_by_name = {}, {}
-    for _m in legs.values():
-        leg_by_sort.setdefault(sort_name(_m.get("name") or ""), _m)
-        _k = name_key(_m.get("name") or "")
-        if _k:
-            leg_by_name.setdefault(_k, _m)
+    leg_by_sort, leg_by_name, _roster_clash = roster_name_keys(legs.values())
+    for _how, _k, _ms in _roster_clash:
+        print(f"  WARNING: two sitting members share the {_how} {_k!r} "
+              f"({', '.join(str(x.get('id')) for x in _ms)}); a sponsor named by it alone "
+              "is left unlinked rather than given to the first")
 
     # Members who left mid-term are already named upstream: resolve_members.py
     # writes former_members.json to the project root, build_data.py reads it
