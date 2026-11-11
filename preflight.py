@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.853
+# GRANITE_VERSION: 2026-09-04.854
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -130378,6 +130378,49 @@ def _resolution_sponsors(BD, TS, BA):
         "HR 14 of 2015 no longer reads from the House Journal")
     assert not res["2017-2018"].get("HR6"), "a memorial offered by the House took a person"
     return "ok", "fixture journals and the real ones"
+
+
+@check("frontend", "the bill search opens on the 2027 bill requests from the day after the election, and "
+       "only until the new term's bills are published")
+def _search_opens_on_requests_after_the_election():
+    """The owner, 11 November 2026: /bills opens on the bill requests (meta.json's requests) from
+    the day after the general election -- the Tuesday after the first Monday in November of the year
+    before the requests' own -- and before it on the current term as always. The rule is app.js's
+    requestsFirst, by Concord's day (nhDay); it ends of itself when meta.json's newest term is the
+    requests' own session. An address that names a term still wins (wantedTerm), and the address a
+    list writes leaves out the term it opens on (defaultTerm), so Back and a pasted link agree."""
+    got = _app_js("""(() => {
+  const R = {term: "2027-requests", label: "2027 Bill Requests", year: 2027, n: 302, withdrawn: 4};
+  const M = (over = {}) => Object.assign({terms: ["2025-2026", "2023-2024"], requests: R}, over);
+  const at = (iso, m = M()) => ({first: scope.requestsFirst(m, new Date(iso)),
+                                 want: scope.wantedTerm(m, new Date(iso)),
+                                 dflt: scope.defaultTerm(m, new Date(iso))});
+  return {
+    electionDays: [2026, 2027, 2028, 2030, 2032].map(y => scope.electionDayOf(y)),
+    eve: at("2026-11-03T04:00:00Z"),            // 11 p.m. on 2 November in Concord
+    day: at("2026-11-03T20:00:00Z"),            // election day itself
+    after: at("2026-11-04T06:00:00Z"),          // 1 a.m. on the 4th in Concord
+    june: at("2027-06-15T16:00:00Z"),
+    published: at("2026-12-10T16:00:00Z", M({terms: ["2027-2028", "2025-2026"]})),
+    noneStand: at("2026-12-10T16:00:00Z", M({requests: Object.assign({}, R, {n: 4})})),
+    noRequests: at("2026-12-10T16:00:00Z", {terms: ["2025-2026"]}),
+  };
+})()""", names=("requestsFirst", "wantedTerm", "defaultTerm", "electionDayOf", "nhDay"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert got["electionDays"] == ["2026-11-03", "2027-11-02", "2028-11-07", "2030-11-05", "2032-11-02"], (
+        f"the Tuesday after the first Monday in November is read as {got['electionDays']}")
+    for k in ("eve", "day"):
+        assert not got[k]["first"] and got[k]["want"] == got[k]["dflt"] == "2025-2026", (
+            f"{k}: before the day after the election the search opens on {got[k]}")
+    for k in ("after", "june"):
+        assert got[k]["first"] and got[k]["want"] == got[k]["dflt"] == "2027-requests", (
+            f"{k}: from the day after the election the search opens on {got[k]}")
+    assert not got["published"]["first"] and got["published"]["want"] == "2027-2028", (
+        f"once the new term is published the search opens on it: {got['published']}")
+    assert got["noneStand"]["want"] == "2025-2026" and got["noRequests"]["want"] == "2025-2026", (
+        f"with no request standing the search opens on the term: {got['noneStand']} {got['noRequests']}")
+    return "ok", "opens on the requests from 4 November 2026, not before, and not once 2027-2028 is published"
 
 
 def got_rec(RS, b, path):
