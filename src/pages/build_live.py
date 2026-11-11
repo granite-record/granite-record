@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.11
+# GRANITE_VERSION: 2026-10-30.12
 """
 Live Now's page and its schedule (the live layer's design, sections 1.2 and
 1.4), written by the night beside the Calendar and from the Calendar's own
@@ -34,6 +34,8 @@ import sys
 from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
+
+from terms import term_of_year as term_of  # noqa: E402,F401
 
 import argparse
 import csv
@@ -179,10 +181,6 @@ def schedule(site, today, weeks=None, history=None):
             nxt = {"date": iso, "name": rows[0]["name"]}
     return {"built": today.isoformat(), "tz": "America/New_York", "days": days, "next": nxt,
             "bills": bill_years(site, today)}
-
-
-def term_of(year):
-    return f"{year}-{year + 1}" if year % 2 else f"{year - 1}-{year}"
 
 
 def bill_years(site, today):

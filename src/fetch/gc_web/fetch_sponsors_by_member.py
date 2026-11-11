@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.6
+# GRANITE_VERSION: 2026-09-10.7
 """Who sponsored what, asked one legislator at a time instead of one bill at a time.
 
     python3 src/fetch/gc_web/fetch_sponsors_by_member.py --plan        # no network at all
@@ -101,6 +101,8 @@ import sys
 from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
+
+from terms import term_of_year as term_of  # noqa: E402,F401
 
 import argparse
 import gzip
@@ -442,11 +444,6 @@ def surname(name):
         parts = n.split()
         n = parts[-1] if parts else ""
     return re.sub(r"[^a-z]", "", SUFFIX.sub("", n).lower())
-
-
-def term_of(year):
-    y = int(year)
-    return f"{y - 1}-{y}" if y % 2 == 0 else f"{y}-{y + 1}"
 
 
 def score(people):
