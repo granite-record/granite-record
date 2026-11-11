@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-02.1
+# GRANITE_VERSION: 2026-10-02.2
 """
 The day a build says it was made, asked for in one place.
 
@@ -71,9 +71,21 @@ def stated():
 
 
 def today():
-    """The build's day: datetime.date.today(), unless one is stated."""
+    """The build's day, unless one is stated: the day in New Hampshire.
+
+    A runner keeps UTC, and the weekly's 04:17 UTC start is still Sunday night
+    in Concord, so datetime.date.today() there is a day ahead of the State
+    House. Where the zone database is not installed (the laptop's Python on
+    Windows, whose clock is Concord's already) the machine's own day stands.
+    """
     when = stated()
-    return when.date() if when else datetime.date.today()
+    if when:
+        return when.date()
+    try:
+        import zoneinfo
+        return datetime.datetime.now(zoneinfo.ZoneInfo("America/New_York")).date()
+    except Exception:
+        return datetime.date.today()
 
 
 def now():

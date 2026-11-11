@@ -5287,7 +5287,8 @@ J_EFF_SEVERAL = re.compile(
 J_EFF_MORE = re.compile(r"^\s*(?:\*|[IVX]{1,4}\.|part\s+[IVX]+\b|(?:the\s+)?remainder\b|"
                         r"effective\b|eff\b|sec(?:tion)?s?\b)", re.I)
 J_DAY = re.compile(r"(?<![\d/])(\d{1,2})\s*/\s*(\d{1,2})\s*/\s*(\d{4}|\d{2})(?![\d/])")
-J_MONTH_DAY = re.compile(r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+"
+J_MONTH_DAY = re.compile(r"\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|"
+                         r"Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\b\.?\s+"
                          r"(\d{1,2}),?\s+(\d{4})\b", re.I)
 # The day a clause states at its end: "Adopted and read a 3rd time MA VV
 # 01/05/22". Not a sitting the chamber met "in recess of", and not a date in

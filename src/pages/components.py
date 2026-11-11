@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.24
+# GRANITE_VERSION: 2026-10-09.25
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -237,7 +237,7 @@ def clock(t, lang="en"):
     wraps the line. components.js's clock() is the same function in the
     browser. Anything that is not a time is given back as it came.
     """
-    m = re.match(r"^(\d{1,2}):(\d\d)", t or "")
+    m = re.fullmatch(r"(\d{1,2}):(\d\d)(?::\d\d)?", (t or "").strip())
     if not m or int(m.group(1)) > 23:
         return t or ""
     h = int(m.group(1))

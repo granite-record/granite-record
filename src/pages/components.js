@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.28
+// GRANITE_VERSION: 2026-10-09.29
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -132,7 +132,7 @@ function dateSpan(a,b,form,lang){
 // no-break space keeps AM or PM with its time; anything that is not a time
 // comes back as it was.
 function clock(t,lang){
-  const m=/^(\d{1,2}):(\d\d)/.exec(String(t||""));
+  const m=/^(\d{1,2}):(\d\d)(?::\d\d)?$/.exec(String(t||"").trim());
   if(!m||+m[1]>23)return String(t||"");
   const h=+m[1];
   if(lang==="es")return (h%12||12)+":"+m[2]+"\u00a0"+(h<12?"a.":"p.")+"\u00a0m.";

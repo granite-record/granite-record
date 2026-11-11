@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.81
+# GRANITE_VERSION: 2026-09-04.82
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -4593,14 +4593,19 @@ def live_fingerprint(base, timeout=180):
             meta = _meta_of(body) if body else {}
             names = fingerprinted(meta)[1:]
     SERVED["whole"] = True
-    SERVED["commit"] = served_commit(base, timeout)
+    record = served_record(base, timeout)
+    SERVED["commit"] = commit_in(record)
+    # Production's tree hash (TREE_KEY), of the whole site where the
+    # fingerprint is of five kinds of file. Present in SERVED even where it is
+    # None, which says "read, and not there": a build published before the
+    # hash existed.
+    SERVED["tree"] = tree_in(record)
     return h.hexdigest()[:16]
 
 
-def served_commit(base, timeout=60):
-    """The commit `base`'s build.json names, or None: where it cannot be read,
-    is not JSON (a web page wearing its name), or names no commit -- a build
-    published before 6 October 2026, or from the laptop."""
+def served_record(base, timeout=60):
+    """The dict `base`'s build.json holds, or None: where it cannot be read or
+    is not JSON (a web page wearing its name)."""
     req = urllib.request.Request(f"{base.rstrip('/')}/{BUILD_RECORD}", headers={
         "User-Agent": "granite-record-selfcheck/1.0", "Cache-Control": "no-cache"})
     try:
@@ -4608,8 +4613,24 @@ def served_commit(base, timeout=60):
             d = json.loads(r.read(BUILD_RECORD_MOST))
     except Exception:                   # noqa: BLE001 -- unreadable is "not known"
         return None
-    c = d.get("commit") if isinstance(d, dict) else None
+    return d if isinstance(d, dict) else None
+
+
+def commit_in(record):
+    c = record.get("commit") if isinstance(record, dict) else None
     return c if isinstance(c, str) and COMMIT.fullmatch(c) else None
+
+
+def tree_in(record):
+    t = record.get(TREE_KEY) if isinstance(record, dict) else None
+    return t if isinstance(t, str) and TREE.fullmatch(t) else None
+
+
+def served_commit(base, timeout=60):
+    """The commit `base`'s build.json names, or None: where it cannot be read,
+    is not JSON (a web page wearing its name), or names no commit -- a build
+    published before 6 October 2026, or from the laptop."""
+    return commit_in(served_record(base, timeout))
 
 
 def review_line(v, dry_run):
@@ -5007,6 +5028,99 @@ def stamp_commit(site, sha):
     return True
 
 
+# THE WHOLE SITE, NOT FIVE KINDS OF FILE (the bug hunt of 11 November 2026, #2).
+# The fingerprint above is of meta.json, the bill lists, home.json and
+# legislators.json, so a night whose only change was a hearing posted a month
+# ahead, a committee's members, a session day or an election page read as
+# "already serves this build: there is nothing to publish" and published
+# nothing. TREE_KEY is a hash over every file the build wrote, each by its
+# path and the sha256 of its bytes, written into build.json (which carries the
+# time and is left out) and read back from production beside its commit.
+#
+# NOT HASHED AS THEY ARE: the build's own day, which is printed on every page
+# (38,013 of 54,975 files between two September builds), is replaced by a
+# placeholder in text files before they are hashed; and the files that carry a
+# time of day or are the build's own account of itself -- TREE_LEFT_OUT, and
+# every feed, which is a bill's history already hashed in the bill lists --
+# are not in it. A residue this misses makes a night publish when it need not,
+# which is the safe way to be wrong; a production that has no hash (a build
+# from before this) is published over once.
+TREE_KEY = "tree"
+TREE = re.compile(r"[0-9a-f]{16}")
+TREE_LEFT_OUT = {"build.json", "changes/current.json", "data/manifest.json",
+                 "calendar/documents.json"}
+TREE_LEFT_OUT_UNDER = ("feed/",)
+TREE_DAY = b"\x00BUILD-DAY\x00"
+
+
+def tree_day_forms(days):
+    """The strings the build's day is written as: ISO, and the citation forms
+    the page prints (shell.cite_day, cite_day_full), for each day given."""
+    forms = set()
+    for day in days:
+        try:
+            d = date.fromisoformat(str(day)[:10])
+        except ValueError:
+            continue
+        forms.add(d.isoformat())
+        try:
+            import shell
+            short = shell.cite_day(d)
+            forms.update((short, shell.cite_day_full(short)))
+        except Exception:               # noqa: BLE001 -- the ISO form alone still works
+            pass
+    return sorted(forms, key=len, reverse=True)
+
+
+def tree_hash(site, days):
+    """Sixteen hex of every file in `site`, by path and content with the build
+    day taken out of the text (TREE_KEY), or None where there is no file."""
+    site = Path(site)
+    forms = [f.encode("utf-8") for f in tree_day_forms(days)]
+    h, n = hashlib.sha256(), 0
+    for p in sorted(site.rglob("*")):
+        if not p.is_file():
+            continue
+        rel = p.relative_to(site).as_posix()
+        if rel in TREE_LEFT_OUT or rel.startswith(TREE_LEFT_OUT_UNDER):
+            continue
+        body = p.read_bytes()
+        if b"\x00" not in body[:4096]:  # text, not an image or a font
+            for f in forms:
+                body = body.replace(f, TREE_DAY)
+        h.update(rel.encode("utf-8") + b"\x00" + hashlib.sha256(body).digest())
+        n += 1
+    return h.hexdigest()[:16] if n else None
+
+
+def stamp_tree(site, days):
+    """tree_hash into site/build.json beside the commit; the hash, or None
+    where it could not be written (then production's copy names none and the
+    next night publishes over it)."""
+    p = Path(site) / BUILD_RECORD
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+        t = tree_hash(site, days)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(d, dict) or not t:
+        return None
+    d[TREE_KEY] = t
+    p.write_text(json.dumps(d, indent=2), encoding="utf-8")
+    return t
+
+
+def serves_this_build(live, fp, live_commit, sha, live_tree, tree, tree_read=True):
+    """Whether production already serves tonight's build: the same data
+    (fingerprint), the same code (commit; one production does not name leaves
+    the fingerprint to answer), and the same pages (tree) -- where tonight has
+    a hash and the read of production's build.json was made, a production that
+    names none or another is not the same."""
+    if not (live == fp and live_commit in (None, sha)):
+        return False
+    return not (tree and tree_read and live_tree != tree)
+
+
 def site_manifest(site, out):
     """Every file in site/ with its sha256 and size, sorted: the file-for-file
     comparison CLOUD_MOVE.md asks of the first dry runs, and the record of what
@@ -5149,6 +5263,7 @@ class Night:
         else:
             say(f"\n  {site.as_posix()}/{BUILD_RECORD} names no commit (no full commit id "
                 "tonight, or no build.json): a later night will not know this build's code")
+        v[TREE_KEY] = stamp_tree(site, {self.day, str(v.get("started", ""))[:10]})
         blocking = []
         if before is None:
             v["gates"] = "no baseline"
@@ -5202,8 +5317,13 @@ class Night:
         # data, read as "nothing to publish": Polish 1's release run, f0d378c
         # live and 13c674b built. A commit production does not name (None)
         # leaves the fingerprint to answer alone, as it did before.
-        already = live == fp and v["live_commit"] in (None, v["sha"])
         served = dict(SERVED)
+        # ... and the same PAGES (TREE_KEY): the fingerprint is of five kinds
+        # of file, and a night that changed only a calendar week, a committee
+        # or an election page was "already served".
+        v["live_tree"] = served.get("tree")
+        already = serves_this_build(live, fp, v["live_commit"], v["sha"], v["live_tree"],
+                                    v.get(TREE_KEY), "tree" in served)
         SERVED.clear()
         # ... and which build that is, by its fingerprint, for the kinds of
         # warning it carried (WARNING KINDS): None where they are not known.

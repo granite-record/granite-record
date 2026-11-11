@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.305
+// GRANITE_VERSION: 2026-09-07.306
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -5061,8 +5061,11 @@ function nhDay(now){
   return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
 }
 function sittingTerm(now){
-  const day=nhDay(now), y=+day.slice(0,4), m=+day.slice(5,7);
-  const first=y%2?y:(m===12?y+1:y-1);
+  const day=nhDay(now), y=+day.slice(0,4), m=+day.slice(5,7), d=+day.slice(8,10);
+  // The new term begins on Organization Day, the first Wednesday of December
+  // (proceedings.organization_day), not on 1 December.
+  const org=1+(3-new Date(Date.UTC(y,11,1)).getUTCDay()+7)%7;
+  const first=y%2?y:((m===12&&d>=org)?y+1:y-1);
   return `${first}-${first+1}`;
 }
 // WHAT TO CHOOSE ON THE FORM (the person, 22 October 2026, asking the emails
