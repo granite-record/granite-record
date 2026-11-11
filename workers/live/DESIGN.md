@@ -601,7 +601,7 @@ The person then puts `on.json` on 1 December, so that Organization Day (2 Decemb
 
 **No-go:** the votes half needs §2.8, which is the owner's separate decision.
 
-**A courtesy note to the IT office before Day 1** (B's Q6; default yes) states the pattern (§10, default 3) and that it comes from Cloudflare's addresses rather than GitHub's.
+**A courtesy note to the IT office before Day 1** (B's Q6; default yes) states the pattern (§10, default 3) and that it comes from Cloudflare's addresses rather than GitHub's. *Not needed:* the owner, 9 November 2026: "We were already approved to fetch from the SQL database during session days." The IT office's own words: "Votes update immediately to the website and to PublicSQL. No problem hitting PublicSQL during a session as it doesn't touch the website.".
 
 ### 2.8 The fallback if the gate says no (named, not built)
 
@@ -1122,7 +1122,7 @@ These are small branches off `dev`, each landing something that runs (simple rev
 
 1. **Votes public from the first session day,** provisional, with both times on each card. The live votes file goes in API v1 as beta, and the streams file never.
 2. **The night's window:** the Worker stays out of it except for a chamber whose session stream is live. In that case it and the night may query PublicSQL at once, on the IT office's word.
-3. **A courtesy note to the IT office** before the November test: one connection every 2 minutes while a chamber sits, about 450 statements on a typical sitting day and at most 1,200, SELECT only, from Cloudflare's addresses.
+3. *Settled, not needed (the owner, 9 November 2026: the IT office already approved reading PublicSQL during session days).* **A courtesy note to the IT office** before the November test: one connection every 2 minutes while a chamber sits, about 450 statements on a typical sitting day and at most 1,200, SELECT only, from Cloudflare's addresses.
 4. **Previews read the production bucket,** behind the read-only facade (§6.4). The alternative is a preview bucket the person copies into.
 5. **The laptop:** a courtesy rule in `watchers/README.md`: no whole-table `fetch_*_db` pull on weekdays 09:00–18:00 from January to June. It is not enforced. The alternative, extending `refusal.window_check` to those hours, would stop the laptop's database pulls by day for half the year.
 6. **A no-go in November** brings §2.8 back as its own decision, with its three secrets.
