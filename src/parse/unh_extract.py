@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.6
+# GRANITE_VERSION: 2026-09-19.7
 """
 Turn repaired journal text into rows: one per member, per vote. No network.
 
@@ -91,15 +91,24 @@ MEMBER_COLS = ["member_id", "source", "body", "name", "surname", "given",
                "votes", "first_year", "last_year"]
 
 
-def term_of(year, month):
+def term_of(year, month, day=None):
     """The biennium a sitting belongs to.
 
     December rolls forward: the House organises in the December before its
     first session, so 4 December 1996 is the opening day of 1997-1998 and not
-    the tail of 1995-1996.
+    the tail of 1995-1996. The roll is from Organization Day, the first
+    Wednesday of December (proceedings.organization_day), so where the day is
+    known a December sitting before it stays in the old term; with only a
+    year and a month the whole month rolls, which is approximate for the
+    first days of it.
     """
     if month == 12:
-        year += 1
+        if day is None:
+            year += 1
+        else:
+            first_wed = 1 + (2 - datetime(year, 12, 1).weekday()) % 7
+            if year % 2 == 1 or day >= first_wed:
+                year += 1
     start = year if year % 2 else year - 1
     return f"{start}-{start + 1}"
 
@@ -371,7 +380,8 @@ def extract(identifier, numbers, seen):
                     # is what the source column is there to say.
                     shown = f"{surname.title()}, {given.title()}".rstrip(", ")
                 out.append({
-                    "term": term_of(year, month) if year else "",
+                    "term": (term_of(year, month, when[1].day)
+                             if year else ""),
                     "year": year or "", "body": body,
                     "journal": day[1] if day else "",
                     "date": when[1].date().isoformat() if when else "",

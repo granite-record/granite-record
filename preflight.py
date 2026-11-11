@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.857
+# GRANITE_VERSION: 2026-09-04.858
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -130583,6 +130583,193 @@ def _topic_dropped_on_the_requests():
         assert re.search(r'data-f="[a-z]+"\s+value="%s" checked' % what, got["facets"]), (
             f"{what}, ticked where the list has none, is not offered to be unticked on its own")
     return "ok", "dropped on the requests, said in the count, and a stray topic or committee can be unticked"
+
+
+@check("build", "the bug hunt of 11 November 2026: the sitting term rolls on Organization Day in the browser "
+       "and in unh_extract, a report is filed by the day it is dated, and a month word is a whole month")
+def _bug_hunt_terms_and_dates():
+    """#3 sittingTerm said 2027-2028 on 1 December 2026 and the Python rule says 2025-2026 until the
+    first Wednesday (2 December). #4 unh_extract.term_of rolled all of December. #5 fetch_reports_db
+    filed a report by its year alone (term_of) where term_on knows Organization Day. #6 J_MONTH_DAY
+    read "Decision 3, 2021" as December 3."""
+    import datetime as dt
+    import proceedings as P
+    import unh_extract as U
+    import build_site_v2 as B
+    for y, m, d, want in ((2008, 12, 1, "2007-2008"), (2008, 12, 2, "2007-2008"),
+                          (2008, 12, 3, "2009-2010"), (2026, 12, 1, "2025-2026"),
+                          (2026, 12, 2, "2027-2028"), (1996, 12, 4, "1997-1998"),
+                          (2007, 12, 1, "2007-2008")):
+        got = U.term_of(y, m, d)
+        assert got == want and got == P.term_on(f"{y}-{m:02d}-{d:02d}"), (
+            f"unh_extract.term_of({y}, {m}, {d}) is {got}, Organization Day's rule says {want}")
+    assert U.term_of(2008, 12) == "2009-2010", "a sitting known only to its month still rolls in December"
+    src = Path("src/fetch/gc_db/fetch_reports_db.py").read_text(encoding="utf-8")
+    assert "P.term_on(rec[" in src and "P.term_of(rec[" not in src, (
+        "fetch_reports_db files a report by its year alone, not by the day it is dated")
+    for text, want in (("Decision 3, 2021", None), ("Mayor 4, 2020", None), ("Marginal 12, 2019", None),
+                       ("Octopus 5, 2019", None), ("Dec. 3, 2021", "Dec"), ("Sept 4, 2020", "Sept"),
+                       ("March 5, 2019", "March"), ("adopted Jan 9, 2021", "Jan"), ("May 4, 2020", "May")):
+        m = B.J_MONTH_DAY.search(text)
+        assert (m.group(1) if m else None) == want, f"J_MONTH_DAY read {text!r} as {m and m.group(0)!r}"
+    assert B._j_stated_day("Decision 3, 2021") == "", "a docket line's day was read out of the word Decision"
+    assert B._j_stated_day("Referred Dec 3, 2021") == "2021-12-03", "a month, a day and a year no longer read"
+    days = []
+    d = dt.date(2024, 11, 20)
+    while d <= dt.date(2024, 12, 10):
+        days.append(d)
+        d += dt.timedelta(days=1)
+    d = dt.date(2026, 11, 20)
+    while d <= dt.date(2026, 12, 10):
+        days.append(d)
+        d += dt.timedelta(days=1)
+    js = json.dumps([f"{x.isoformat()}T17:00:00Z" for x in days])
+    got = _app_js("%s.map(s => scope.sittingTerm(new Date(s)))" % js, names=("sittingTerm",))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here (the Python rule was held)"
+    for x, g in zip(days, got):
+        assert g == P.term_on(x.isoformat()), (
+            f"app.js sittingTerm says {g} on {x}, the build's rule says {P.term_on(x.isoformat())}")
+    return "ok", "1 December 2026 is still 2025-2026 everywhere, Organization Day opens 2027-2028"
+
+
+@check("build", "a time of day is read as 24 hours or given back as it came, and the build's day is New "
+       "Hampshire's")
+def _bug_hunt_clock_and_today():
+    """#8 components.clock read "1:05 PM" as 1:05 AM and "12:30 AM" as 12:30 PM, in components.py and
+    components.js. #9 build_date.today() was the runner's UTC day, a day ahead of Concord on the
+    weekly's Sunday night."""
+    import components as C
+    for t, lang, want in (("13:30", "en", "1:30 PM"), ("00:05", "en", "12:05 AM"),
+                          ("13:30:00", "en", "1:30 PM"), ("1:05 PM", "en", "1:05 PM"),
+                          ("12:30 AM", "en", "12:30 AM"), ("9:00-10:00", "en", "9:00-10:00"),
+                          ("13:30", "es", "1:30 p. m."), ("25:00", "en", "25:00"), ("", "en", "")):
+        assert C.clock(t, lang) == want, f"components.clock({t!r}, {lang!r}) is {C.clock(t, lang)!r}"
+    got = _app_js(json.dumps([["13:30", "en"], ["1:05 PM", "en"], ["12:30 AM", "en"], ["13:30", "es"]])
+                  + ".map(a => scope.clock(a[0], a[1]))", names=("clock",))
+    if got is not None:
+        assert got == ["1:30 PM", "1:05 PM", "12:30 AM", "1:30 p. m."], (
+            f"components.js clock reads a time differently from components.py: {got}")
+    src = Path("src/lib/build_date.py").read_text(encoding="utf-8")
+    assert "America/New_York" in src, "build_date.today() is the machine's own day, not New Hampshire's"
+    import build_date
+    saved = os.environ.pop(build_date.ENV, None)
+    try:
+        assert isinstance(build_date.today(), __import__("datetime").date), "build_date.today() did not answer a date"
+        os.environ[build_date.ENV] = "2026-10-02"
+        assert str(build_date.today()) == "2026-10-02", "a stated day no longer wins"
+    finally:
+        os.environ.pop(build_date.ENV, None)
+        if saved is not None:
+            os.environ[build_date.ENV] = saved
+    return "ok", "12-hour strings come back as they came; the day is Concord's"
+
+
+@check("build", "rendered_sweep.drive ends node and Chrome before it removes the profile, whatever stopped it")
+def _bug_hunt_sweep_drive_ends_its_children():
+    """#7 an exception or a stray stdout line skipped proc.wait() and the finally removed the profile
+    Chrome held while node and Chrome ran on. A fake process stands in; nothing is launched."""
+    import rendered_sweep as RS
+    log = {}
+
+    class Fake:
+        pid = 0
+        returncode = None
+
+        def __init__(self, cmd, **kw):
+            job = json.loads(Path(cmd[-1]).read_text(encoding="utf-8"))
+            log["tmp"] = Path(cmd[-1]).parent
+            log["profile_was_there"] = log["tmp"].exists()
+            self.stdout = self._lines()
+
+        def _lines(self):
+            yield "a stray line that is not JSON\n"
+            yield json.dumps({"browser": "x"}) + "\n"
+            raise RuntimeError("the reader died")
+
+        def poll(self):
+            return None if not log.get("killed") else -9
+
+        def kill(self):
+            log["killed"] = True
+            log["tmp_at_kill"] = log["tmp"].exists()
+
+        def wait(self, timeout=None):
+            log["waited"] = timeout
+            return 0
+
+    saved = (RS.subprocess.Popen, RS.subprocess.run, RS._paths.locate)
+    RS.subprocess.Popen = Fake
+    RS.subprocess.run = lambda *a, **k: log.setdefault("taskkill", a[0])
+    RS._paths.locate = lambda name: Path(name)
+    try:
+        try:
+            RS.drive("chrome", "http://x.invalid", [], None, 0, progress=False)
+        except RuntimeError as e:
+            assert "reader died" in str(e)
+        else:
+            raise AssertionError("the reader's failure was swallowed")
+    finally:
+        RS.subprocess.Popen, RS.subprocess.run, RS._paths.locate = saved
+    assert log.get("killed"), "node was left running when the sweep stopped"
+    assert log.get("tmp_at_kill"), "the profile was removed before node and Chrome were stopped"
+    assert not log["tmp"].exists(), "the sweep's folder was left behind"
+    return "ok", "an exception ends the child first, then removes the profile"
+
+
+@check("night", "production already serves a build only where its pages are the same, not only the five kinds "
+       "of file the fingerprint holds")
+def _bug_hunt_already_serves_whole_site():
+    """#2 (11 November 2026): fingerprint() hashes meta.json, the bill lists, home.json and
+    legislators.json, so a night that changed only a calendar week, a committee or an election page
+    read "already serves this build" and published nothing. TREE_KEY is a hash of every page, with
+    the build's own day taken out, and the decision asks for it as well."""
+    import nightly as NI
+    sha = "a" * 40
+    root = Path(tempfile.mkdtemp())
+    try:
+        def build(name, day, cal="Hearing on 2026-09-02", extra=None):
+            s = root / name
+            (s / "calendar").mkdir(parents=True)
+            (s / "bill").mkdir()
+            (s / "feed").mkdir()
+            (s / "bill" / "hb1.html").write_text(f"<p>HB 1</p>Accessed {day}.", encoding="utf-8")
+            d = __import__("datetime").date.fromisoformat(day)
+            import shell
+            (s / "bill" / "hb2.html").write_text(
+                f"Retrieved {shell.cite_day_full(shell.cite_day(d))}; {shell.cite_day(d)}", encoding="utf-8")
+            (s / "calendar" / "2026-W36.html").write_text(cal, encoding="utf-8")
+            (s / "feed" / "all.xml").write_text(f"<lastBuildDate>{day}T03:17:00Z</lastBuildDate>", encoding="utf-8")
+            (s / "build.json").write_text(json.dumps({"finished": day + "T03:30:00"}), encoding="utf-8")
+            (s / "logo.png").write_bytes(b"\x89PNG\x00\x00fixed")
+            for rel, body in (extra or {}).items():
+                (s / rel).write_text(body, encoding="utf-8")
+            return s
+        a = NI.tree_hash(build("a", "2026-11-10"), {"2026-11-10"})
+        b = NI.tree_hash(build("b", "2026-11-11"), {"2026-11-11"})
+        c = NI.tree_hash(build("c", "2026-11-11", cal="Hearing on 2026-09-02 and on 2026-09-09"),
+                         {"2026-11-11"})
+        e = NI.tree_hash(build("e", "2026-11-11", extra={"calendar/committee.html": "a committee"}),
+                         {"2026-11-11"})
+        assert a and a == b, "the build's own day changed the hash, so no night would ever be the same"
+        assert c != b, "a hearing added to a calendar week did not change the whole-site hash"
+        assert e != b, "a page added under calendar/ did not change the whole-site hash"
+        assert NI.stamp_tree(root / "none", {"2026-11-11"}) is None, "a tree was stamped where there is no build.json"
+        t = NI.stamp_tree(root / "c", {"2026-11-11"})
+        assert t == c and json.loads((root / "c" / "build.json").read_text())[NI.TREE_KEY] == t
+        assert NI.tree_hash(root / "c", {"2026-11-11"}) == c, "stamping build.json changed the hash"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    same = ("f1", "f1", sha, sha)
+    assert NI.serves_this_build(*same, "t1", "t1"), "an identical build was published again"
+    assert not NI.serves_this_build(*same, "t0", "t1"), (
+        "a night that changed only pages the fingerprint does not hold was 'already served'")
+    assert not NI.serves_this_build(*same, None, "t1"), "a production with no tree hash was taken as the same"
+    assert NI.serves_this_build(*same, None, "t1", tree_read=False), "a mocked read of production was not left to the fingerprint"
+    assert NI.serves_this_build(*same, "t1", None), "a night with no tree of its own no longer falls back to the fingerprint"
+    assert not NI.serves_this_build("f0", "f1", sha, sha, "t1", "t1"), "changed data was 'already served'"
+    assert not NI.serves_this_build("f1", "f1", "b" * 40, sha, "t1", "t1"), "changed code was 'already served'"
+    return "ok", "the same pages are the same build; a changed calendar page publishes"
 
 
 def got_rec(RS, b, path):

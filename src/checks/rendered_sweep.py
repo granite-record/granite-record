@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-08.8
+# GRANITE_VERSION: 2026-10-08.9
 """
 The rendered sweep: a built site measured as a reader's browser draws it.
 
@@ -316,6 +316,7 @@ def plan_runs(pages, widths, modes):
 def drive(chrome, base, runs, shots, shot_cap, progress=True):
     """(browser, [run]): every run measured by sweep_browser.js."""
     tmp = Path(tempfile.mkdtemp(prefix="gr-sweep-"))
+    proc = None
     try:
         job = tmp / "runs.json"
         job.write_text(json.dumps({"chrome": chrome, "profile": str(tmp / "profile"),
@@ -329,17 +330,31 @@ def drive(chrome, base, runs, shots, shot_cap, progress=True):
             line = line.strip()
             if not line:
                 continue
-            rec = json.loads(line)
+            try:
+                rec = json.loads(line)
+            except ValueError:      # a stray line on stdout is not a result
+                continue
             if "browser" in rec:
                 browser = rec
             else:
                 got.append(rec)
-        proc.wait()
+        proc.wait(timeout=60)
         if proc.returncode != 0 and not got:
             raise SystemExit(f"sweep_browser.js stopped ({proc.returncode}) before any page was "
                              "measured; its own words are above")
         return browser, got
     finally:
+        # Node and Chrome end before the profile Chrome holds is removed, on
+        # every way out: an exception, an interrupt or a wait that timed out.
+        if proc is not None and proc.poll() is None:
+            if os.name == "nt":      # node's child, Chrome, goes with it
+                subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            proc.kill()
+            try:
+                proc.wait(timeout=30)
+            except Exception:
+                pass
         shutil.rmtree(tmp, ignore_errors=True)
 
 

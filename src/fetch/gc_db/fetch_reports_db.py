@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.6
+# GRANITE_VERSION: 2026-09-06.7
 """
 Senate committee reports, with their reasoning, from the General Court's
 own database.
@@ -271,7 +271,7 @@ def main():
             # {term: {bill: [reports]}}: a bill number is unique within a term
             # and not across terms, and this file holds more than one as soon
             # as an archived term is read in.
-            byb = out.setdefault(P.term_of(rec["date"]), {})
+            byb = out.setdefault(P.term_on(rec["date"]), {})
             byb.setdefault(rec["bill"], []).append(rec)
     tmp.cleanup()
 
