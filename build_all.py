@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.91
+# GRANITE_VERSION: 2026-09-05.92
 """
 Run the whole pipeline in the right order.
 
@@ -228,12 +228,17 @@ class building:
 class Step:
     def __init__(self, name, args, needs=(), produces=(), network=False,
                  optional=False, note="", superseded=False, captions=False,
-                 kit_required=False, again=False):
+                 kit_required=False, again=False, sometimes=()):
         self.name, self.args = name, args
         # A SECOND RUN OF A SCRIPT THAT HAS ALREADY RUN, there to pick up what
         # the network steps between the two brought down. Where none of them
         # ran it has nothing to pick up, and it is not run (second_run_idle).
         self.again = again
+        # OUTPUTS THAT HONESTLY MAY NOT BE THERE after a good run (output_problems):
+        # a page set the step removes where there is nothing to show, such as
+        # the members-elect outside the weeks between an election and
+        # Organization Day. Named one by one so the rest are still held.
+        self.sometimes = {str(Path(p)) for p in sometimes}
         # A STEP THE NIGHTLY MAY NOT SKIP. Where the build is the kit's
         # (kit_build), a missing input fails this step and stops the build,
         # as a missing carried output does, rather than skipping it: the
@@ -854,7 +859,7 @@ def plan(a):
         Step("provisional pages for new members-elect",
              ["build_elect_pages.py", "--site", "site"],
              needs=["site/legislators.json", "site/former.json", "site/districts.json"],
-             produces=["site/elect_pages.json"],
+             produces=["site/elect_pages.json"], sometimes=["site/elect_pages.json"],
              note="each new member-elect's name, party, district and towns, from the "
                   "results and the owner's matches; no id until the General Court "
                   "assigns one, and kept apart from the roster"),
@@ -863,7 +868,7 @@ def plan(a):
              ["build_members_elect.py", "--site", "site"],
              needs=["site/meta.json", "site/legislators.json", "site/former.json",
                     "site/districts.json"],
-             produces=["site/members_elect.json"],
+             produces=["site/members_elect.json"], sometimes=["site/members_elect.json"],
              note="who November's election sent to the General Court, from the "
                   "Secretary of State's results in collected/election_<year>.json, "
                   "each linked to a page only where the match is certain; written "
@@ -938,7 +943,7 @@ def plan(a):
         Step("a page for every bill request of the next session",
              ["build_request_pages.py", "--site", "site", "--base", a.base],
              needs=["site/meta.json"],
-             produces=["site/request"],
+             produces=["site/request"], sometimes=["site/request"],
              note="a request's own address to share; noindex, and forwarding to its bill "
                   "once it is introduced"),
 
@@ -1033,7 +1038,7 @@ def plan(a):
              ["build_elections.py", "--site", "site", "--base", a.base],
              needs=["site/district_map.json", "site/districts.json",
                     "site/legislators.json", "site/former.json"],
-             produces=["site/elections/index.html"],
+             produces=["site/elections/index.html"], sometimes=["site/elections/index.html"],
              note="one page per general election in collected/election_<year>.json: "
                   "every State Senate and State House race with every candidate's "
                   "votes, Elected only once final by the members-elect rule"),
@@ -1381,6 +1386,64 @@ def record_build(before, a, commit, dirty):
         facts, site=Path("site"), commit=commit, dirty=dirty)
 
 
+# A STEP THAT EXITS ZERO HAVING MADE NOTHING. Five separate times a build
+# finished green and published less than it should (CLAUDE.md, "Silence is not
+# success"). Every step declares what it produces=, and until this a declared
+# output was only ever used to order the plan. After a step that exits zero:
+#   - a declared output that is missing, a file of zero bytes, or a folder with
+#     no file in it FAILS the step (a skipped optional step: a warning);
+#   - one that is "{}", "[]" or "null", or has shrunk to under half of what it
+#     was before the step (of at least SHRUNK_FROM bytes, or files for a folder),
+#     is WARNED of in the log and in site/build.json -- a rebuilt file may
+#     honestly be small, and a person decides, so it does not stop a night.
+SHRUNK_FROM = 2048
+SHRUNK_FILES = 20
+
+
+def _measure(p):
+    """(size in bytes, or file count for a folder; None where it is not there)"""
+    p = Path(p)
+    if p.is_dir():
+        return sum(1 for f in p.rglob("*") if f.is_file())
+    if p.is_file():
+        return p.stat().st_size
+    return None
+
+
+def _before_outputs(step):
+    return {str(p): _measure(p) for p in step.produces}
+
+
+def output_problems(step, before):
+    """(failures, warnings), each a list of sentences, for a step that exited
+    zero. `before` is what _before_outputs saw ahead of it."""
+    bad, warn = [], []
+    for p in step.produces:
+        now, was = _measure(p), before.get(str(p))
+        if now in (None, 0) and str(p) in step.sometimes:
+            continue
+        if now is None:
+            bad.append(f"{p} was not made")
+        elif now == 0:
+            bad.append(f"{p} is " + ("a folder with no file in it" if Path(p).is_dir()
+                                      else "empty (0 bytes)"))
+        else:
+            if Path(p).is_file() and now < 64:
+                try:
+                    txt = Path(p).read_text(encoding="utf-8", errors="replace").strip()
+                except OSError:
+                    txt = "x"
+                if txt in ("", "{}", "[]", "null"):
+                    warn.append(f"{p} holds only {txt or 'nothing'!r}")
+            floor = SHRUNK_FILES if Path(p).is_dir() else SHRUNK_FROM
+            if was is not None and was >= floor and now < was / 2:
+                unit = "files" if Path(p).is_dir() else "bytes"
+                warn.append(f"{p} shrank from {was:,} to {now:,} {unit}")
+    if step.optional and bad:
+        warn, bad = bad + warn, []
+    return bad, warn
+
+
 def _run_steps(steps, a):
     # A STATED DAY IS SAID, AND RECORDED. build_date.py lets a build be given
     # the day to say it was made on, so that two builds can be compared file
@@ -1417,6 +1480,7 @@ def _run_steps(steps, a):
         print(f"[{i}/{len(steps)}] {s.name}", flush=True)
         st = time.time()
         started.add(i - 1)
+        outputs_before = _before_outputs(s)
         # THE STEP'S SCRIPT IS FOUND BY ITS BARE NAME (_paths.script), in
         # whichever code folder holds it, so the plan's names -- and the
         # dry-run's -- stay the same when a file moves under src/. One that
@@ -1428,12 +1492,25 @@ def _run_steps(steps, a):
         else:
             r = child.run(cmd, capture_output=True, text=True)
         secs = round(time.time() - st, 1)
+        bad, warn = output_problems(s, outputs_before) if r.returncode == 0 else ([], [])
+        if bad:
+            why = "exited 0 but " + "; ".join(bad)
+            print(f"      FAILED after {secs}s: {why}")
+            results.append({"step": s.name, "status": "failed", "seconds": secs,
+                            "error": why})
+            failed = s.name
+            if not a.keep_going:
+                break
+            continue
         if r.returncode == 0:
             tail = [l for l in r.stdout.strip().splitlines() if l.strip()][-3:]
             for l in tail:
                 print(f"      {l}")
             print(f"      done in {secs}s")
-            results.append({"step": s.name, "status": "ok", "seconds": secs})
+            for w in warn:
+                print(f"      WARNING {w}")
+            results.append({"step": s.name, "status": "ok", "seconds": secs,
+                            **({"warnings": warn} if warn else {})})
         else:
             print(f"      FAILED after {secs}s")
             print("      " + (r.stderr.strip().splitlines() or ["no error text"])[-1])
@@ -1465,6 +1542,10 @@ def _run_steps(steps, a):
     sk = sum(1 for r in results if r["status"] == "skipped")
     fl = sum(1 for r in results if r["status"] == "failed")
     print(f"{ok} ran, {sk} skipped, {fl} failed, {total}s total")
+    warned = [r for r in results if r.get("warnings")]
+    if warned:
+        print(f"{len(warned)} step(s) finished with a warning about their output: "
+              + ", ".join(r["step"] for r in warned))
     if failed:
         print(f"\nStopped at: {failed}")
         print("Fix that and rerun. Steps before it are cached or idempotent, so a "

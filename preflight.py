@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.856
+# GRANITE_VERSION: 2026-09-04.857
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -63869,6 +63869,102 @@ def _second_pass_only_after_network(BA):
     return "ok", ("skipped on a --local plan and wherever no network step started since the "
                   f"first pass; run after any that did; {len(between)} network steps sit between "
                   "the passes and nothing else")
+
+
+@check("pipeline", "build_all fails a step that exits zero having made nothing, and warns of one "
+       "that made almost nothing", needs=("build_all",))
+def _step_that_makes_nothing_fails(BA):
+    """CLAUDE.md, "Silence is not success": a step that can produce nothing and
+    still exit zero needs a guard that says so. A step's declared produces= was
+    only ever used to order the plan; _run_steps now looks at it afterwards.
+    On a temporary tree, with the child process stubbed to exit 0 as a broken
+    step does:
+
+      - an output never made, a file of zero bytes, a folder with no file in
+        it: the step FAILS, in site/build.json and in the words printed;
+      - an output of "{}", or one that shrank to under half of what it was:
+        the step is ok and carries a warning, which is printed and recorded;
+      - an output named in sometimes= (a page set removed on purpose) may be
+        absent, and an optional step's missing output is a warning only;
+      - a step that made what it declared is recorded as it always was, with
+        no warnings key; and the real plan's declared outputs are all
+        measurable by the same code (none is a bare name that cannot exist).
+    """
+    import contextlib
+    import io
+    import types
+    A = type("A", (), {"key": None, "session": "2026", "base": "https://graniterecord.org",
+                       "archive": "nh-archive", "keep_going": True, "allow_prune": False})
+    S = BA.Step
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-empty-step-"))
+    saved = BA.child, BA._paths
+    acts = {}
+
+    def run(cmd, **kw):
+        acts.get(cmd[1], lambda: None)()
+        return types.SimpleNamespace(returncode=0, stdout="ok\n", stderr="")
+
+    def build(step):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            try:
+                BA._run_steps([step], A())
+            except SystemExit:
+                pass
+        rec = json.loads(Path("site/build.json").read_text(encoding="utf-8"))["steps"][0]
+        return rec, out.getvalue()
+    try:
+        os.chdir(tmp)
+        Path("site").mkdir()
+        BA._paths = types.SimpleNamespace(script=lambda name, root=None: name)
+        BA.child = types.SimpleNamespace(run=run)
+
+        # never made
+        rec, out = build(S("none", ["w.py"], produces=["site/out.json"]))
+        assert rec["status"] == "failed" and "was not made" in rec["error"] \
+            and "FAILED" in out, ("a step that made no file passed", rec)
+        # zero bytes
+        acts["w.py"] = lambda: Path("site/out.json").write_text("", encoding="utf-8")
+        rec, _ = build(S("zero", ["w.py"], produces=["site/out.json"]))
+        assert rec["status"] == "failed" and "empty (0 bytes)" in rec["error"], rec
+        # a folder with nothing in it
+        acts["w.py"] = lambda: Path("site/pages").mkdir(exist_ok=True)
+        rec, _ = build(S("dir", ["w.py"], produces=["site/pages"]))
+        assert rec["status"] == "failed" and "no file in it" in rec["error"], rec
+        # one file in the folder is something
+        acts["w.py"] = lambda: (Path("site/pages/a.html").write_text("<p>x</p>", encoding="utf-8"))
+        rec, _ = build(S("dir1", ["w.py"], produces=["site/pages"]))
+        assert rec["status"] == "ok" and "warnings" not in rec, rec
+        # made and fine
+        acts["w.py"] = lambda: Path("site/out.json").write_text('{"a": [1]}' * 20, encoding="utf-8")
+        rec, _ = build(S("fine", ["w.py"], produces=["site/out.json"]))
+        assert rec["status"] == "ok" and "warnings" not in rec, rec
+        # an empty document, and a collapse
+        acts["w.py"] = lambda: Path("site/out.json").write_text("{}", encoding="utf-8")
+        rec, out = build(S("braces", ["w.py"], produces=["site/out.json"]))
+        assert rec["status"] == "ok" and rec.get("warnings") and "WARNING" in out, (rec, out)
+        Path("site/out.json").write_text("x" * 5000, encoding="utf-8")
+        acts["w.py"] = lambda: Path("site/out.json").write_text("x" * 100, encoding="utf-8")
+        rec, _ = build(S("shrunk", ["w.py"], produces=["site/out.json"]))
+        assert rec["status"] == "ok" and "shrank" in " ".join(rec.get("warnings", [])), rec
+        # allowed to be absent, and optional
+        acts["w.py"] = lambda: Path("site/gone.json").unlink(missing_ok=True)
+        rec, _ = build(S("some", ["w.py"], produces=["site/gone.json"], sometimes=["site/gone.json"]))
+        assert rec["status"] == "ok" and "warnings" not in rec, rec
+        rec, _ = build(S("opt", ["w.py"], produces=["site/gone.json"], optional=True))
+        assert rec["status"] == "ok" and rec.get("warnings"), rec
+    finally:
+        os.chdir(here)
+        BA.child, BA._paths = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    plan = BA.plan(A())
+    declared = {str(p) for s in plan for p in s.produces}
+    named = {p for s in plan for p in s.sometimes}
+    assert named <= declared, f"sometimes= names an output the step does not declare: {named - declared}"
+    return "ok", (f"a step that exits 0 with no output, an empty file or an empty folder fails; "
+                  f"'{{}}' and a halving warn; {len(declared)} declared outputs across {len(plan)} "
+                  f"steps, {len(named)} allowed to be absent")
 
 
 @check("files", "handoff.py reports a preflight run only when it was a run of this code: the "
