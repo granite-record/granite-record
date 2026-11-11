@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.13
+# GRANITE_VERSION: 2026-10-10.14
 """
 The House and the Senate as committees of the whole: a card at the top of
 each column of /committees, and a page for each chamber's session days.
@@ -238,7 +238,8 @@ def page_head(c, path, base):
               f"in {E(C.term_words(c['latest']))}"],
              ["On Record", f"{plural(len(c['dates']), 'session day')}",
               f"since {c['dates'][0][:4]}"]]
-    cite = S.cite_block(path, f"{CHAMBER[body]} Session Days | Granite Record", base, S.BUILT)
+    cite = S.cite_block(path, f"{CHAMBER[body]} Session Days | Granite Record", base,
+                       S.cited(*c["dates"]))
     assert cite.endswith("</div>"), "the citation block no longer ends its row"
     return (C.record_head({"trail": [["Committees", "committees.html"], [CHAMBER[body], ""]],
                            "title": f"{CHAMBER[body]} Session Days", "line": line,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.63
+# GRANITE_VERSION: 2026-09-19.64
 """
 A page for every day the House sat.
 
@@ -3911,7 +3911,7 @@ def day_head(day, narrative, rec, jurl, label, path, base):
     dn = len(narrative.get("debates") or [])
     if dn:
         facts.append(["Debates Printed", f"{dn:,}", "in the permanent journal"])
-    cite = S.cite_block(path, f"{label} | Granite Record", base, S.BUILT)
+    cite = S.cite_block(path, f"{label} | Granite Record", base, S.cited(str(day.date)))
     assert cite.endswith("</div>"), "the citation block no longer ends its row"
     note = ""
     if body == "S":

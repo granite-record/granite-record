@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.70
+# GRANITE_VERSION: 2026-09-07.71
 """
 A page's worth of data for every committee.
 
@@ -1373,6 +1373,10 @@ def main():
             og_title=f"{name}{when} — New Hampshire {chamber_word}",
             og_image="og-committee.png", og_alt="Granite Record: committees and hearings",
             description=desc,
+            # The citation's date: its latest meeting that has been held
+            # (a day booked ahead is not one), the day its record last moved.
+            changed=max((str(s.get("date") or "")[:10] for s in sessions
+                         if not s.get("ahead")), default=None),
             # The committee's feed, named in its head the way a bill's and a
             # member's are, so the Follow control finds it there. Taken out
             # again below for a committee found to be archived, which is

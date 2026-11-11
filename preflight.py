@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.863
+# GRANITE_VERSION: 2026-09-04.864
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20271,6 +20271,24 @@ def _cite_up_and_copied():
     today = S.cite_day(_dt.date.today())
     assert f'<span class="citeday">{today}</span>' in block, (
         f"the fallback date is not the build day in the one form ({today})")
+    # A page that names the day its record last changed is dated by it, never
+    # by a day still to come, and the build day where it names none (the
+    # owner, 11 November 2026): the date a reader without JavaScript sees
+    # moves only when the record does.
+    assert S.cited("2026-03-04") == "4 Mar. 2026" and S.cited("2026-03-04T09:00:00") == "4 Mar. 2026", (
+        "shell.cited does not give the record's own day in cite_day's form")
+    assert S.cited("2025-01-02", "2026-03-04", "2024-05-06") == "4 Mar. 2026", (
+        "shell.cited does not take the latest of the days it is given")
+    late_day = (_dt.date.today() + _dt.timedelta(days=3)).isoformat()
+    assert S.cited(late_day) == today and S.cited("2026-03-04", late_day) == "4 Mar. 2026", (
+        "shell.cited gave a day later than the build's, or let one hide an earlier real day")
+    assert S.cited() == S.cited(None) == S.cited("", "not a day") == today, (
+        "shell.cited does not fall back on the build day where the record names none")
+    dated = S.page(S.template(), path="/bill/2026/hb1.html", base="https://graniterecord.org",
+                   title="HB 1 (2026): relative to the state budget. | Granite Record",
+                   description="A bill.", changed="2026-03-04")
+    assert '<span class="citeday">4 Mar. 2026</span>' in dated and         f'<span class="citeday">{today}</span>' not in dated, (
+        "shell.page(changed=...) does not date the citation by the record's day")
     # APA and Chicago in their own form, "October 30, 2026" (the cohesion audit, B-5).
     full = S.cite_day_full(today)
     for k, lead in (("apa", "Retrieved "), ("chicago", "Accessed ")):
@@ -39152,6 +39170,37 @@ def _build_date_stated(build_all, build_date, shell):
         assert said, "no page of the fixture cites the stated day as the day it was read"
         assert not late, (f"{len(late)} page(s) built with {day} stated still cite today, "
                           f"{shell.cite_day(today)}: {', '.join(late[:4])}")
+        # A RECORD PAGE'S CITATION DATE IS ITS RECORD'S, NOT THE BUILD'S (the
+        # owner, 11 November 2026): built on two different days from the same
+        # data, a page that names the day its record last changed is the same
+        # file, so a night with no change uploads none of them. The pages that
+        # name no such day fall back on the build day and may differ, and by
+        # that date alone.
+        plain_site = _fixture_site_shared()[0] / "site"
+        moved, kinds = [], Counter()
+        fell, fell_stated = shell.cite_day(today), shell.cite_day(day)
+        for p in sorted(site.rglob("*.html")):
+            q = plain_site / p.relative_to(site)
+            if not q.is_file():
+                continue
+            a_, b_ = (x.read_text(encoding="utf-8", errors="replace") for x in (p, q))
+            if a_ == b_:
+                if 'class="citeday' in a_ and f'<span class="citeday">{fell}</span>' not in a_ \
+                        and f'<span class="citeday">{fell_stated}</span>' not in a_:
+                    kinds[p.relative_to(site).parts[0]] += 1
+                continue
+            # A page that fell back on the build day may differ in more than
+            # that (a week still to come, the API's own day); one that names
+            # its record's day may not differ at all.
+            if 'class="citeday' in a_ and f'<span class="citeday">{fell_stated}</span>' not in a_:
+                moved.append(p.relative_to(site).as_posix())
+        assert not moved, (
+            f"{len(moved)} page(s) that date their citation by their record differ between two "
+            "builds of the same data on two different days: " + ", ".join(moved[:4])
+            + f" (by folder: {dict(Counter(m.split('/')[0] for m in moved))})")
+        assert kinds.get("bill", 0) > 0, (
+            "no bill page of the fixture is the same file on two build days: its citation is "
+            "still dated by the build")
         home = json.loads((site / "home.json").read_text(encoding="utf-8"))
         assert home.get("generated") == day.isoformat(), (
             f"home.json is dated {home.get('generated')}, not the stated {day}")
@@ -39181,10 +39230,11 @@ def _build_date_stated(build_all, build_date, shell):
         shutil.rmtree(root, ignore_errors=True)
     # And by the clock, where none is stated: the fixture the other checks read.
     plain, _base, _ran, built_on = _fixture_site_shared()
-    page = next((plain / "site" / "bill").rglob("*.html")).read_text(encoding="utf-8",
-                                                                     errors="replace")
-    assert any(f'<span class="citeday">{shell.cite_day(d)}</span>' in page for d in built_on), (
-        "with no day stated, a bill page does not cite the day it was built")
+    cited_days = {m.group(1) for q in (plain / "site").rglob("*.html")
+                  for m in re.finditer(r'<span class="citeday">([^<]*)</span>',
+                                       q.read_text(encoding="utf-8", errors="replace"))}
+    assert any(shell.cite_day(d) in cited_days for d in built_on), (
+        "with no day stated, no page that has no record date of its own cites the day it was built")
     src = Path(build_all.__file__).read_text(encoding="utf-8")
     assert "build_date.stated()" in src and '"date_stated"' in src, (
         "build_all.py no longer says, or records in build.json, that its day was stated")
