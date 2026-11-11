@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.857
+# GRANITE_VERSION: 2026-09-04.858
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -63965,6 +63965,59 @@ def _step_that_makes_nothing_fails(BA):
     return "ok", (f"a step that exits 0 with no output, an empty file or an empty folder fails; "
                   f"'{{}}' and a halving warn; {len(declared)} declared outputs across {len(plan)} "
                   f"steps, {len(named)} allowed to be absent")
+
+
+@check("build", "the site build's load() stops on a JSON input that is there and cannot be read, "
+       "and _redirects' movers do the same", needs=("build_site_v2", "build_pages"))
+def _load_stops_on_corrupt_input(B2, BP):
+    """Bug hunt of 11 November 2026, findings 1 and 11. load() returned its
+    default for every failure, so a narratives.json cut off mid-array (or a
+    MemoryError reading it) built a site with no journeys and nothing said.
+    Only a file that is not there is empty; a file that is there and is not
+    JSON stops the build, naming the file. The same for the moved-member and
+    moved-request 301s in build_pages, which dropped them from _redirects."""
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-load-"))
+    try:
+        os.chdir(tmp)
+        good = tmp / "good.json"
+        good.write_text('{"a": 1}', encoding="utf-8")
+        assert B2.load(good, {}) == {"a": 1}, "load() no longer reads a good file"
+        assert B2.load(tmp / "absent.json", {"d": 1}) == {"d": 1}, "an absent file is the default"
+        for name, text in (("cut.json", '{"HB1": [{"x": 1}, {"y"'), ("empty.json", ""),
+                           ("junk.json", "not json")):
+            p = tmp / name
+            p.write_text(text, encoding="utf-8")
+            try:
+                got = B2.load(p, {})
+            except SystemExit as e:
+                assert name in str(e), f"the message does not name {name}: {e}"
+            else:
+                raise AssertionError(f"load({name}) returned {got!r} instead of stopping the build")
+        site = tmp / "site"
+        site.mkdir()
+        assert BP.moved_members(site) == "", "no former.json is no moved members"
+        (site / "former.json").write_text('[{"slug": "x", "moved_fr', encoding="utf-8")
+        try:
+            BP.moved_members(site)
+        except SystemExit as e:
+            assert "former.json" in str(e), e
+        else:
+            raise AssertionError("an unreadable former.json dropped the moved members' 301s silently")
+        (site / "meta.json").write_text('{"requests": {"term": "2027"}}', encoding="utf-8")
+        assert BP.moved_requests(site) == "", "no index file is no moved requests"
+        (site / "idx").mkdir()
+        (site / "idx" / "2027.json").write_text("[{", encoding="utf-8")
+        try:
+            BP.moved_requests(site)
+        except SystemExit:
+            pass
+        else:
+            raise AssertionError("an unreadable requests index dropped their 301s silently")
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", "a cut-off, empty or junk input stops load(); only an absent file is the default"
 
 
 @check("files", "handoff.py reports a preflight run only when it was a run of this code: the "

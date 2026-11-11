@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.280
+# GRANITE_VERSION: 2026-09-04.281
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -330,8 +330,13 @@ def moved_members(site):
     which addresses each took in; in both spellings, as MOVED's are."""
     try:
         rows = json.loads((Path(site) / "former.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return ""
+    except FileNotFoundError:
+        return ""       # no former.json: no moved members yet
+    except (OSError, ValueError) as e:
+        # Returning "" here rewrote _redirects without the moved members' 301s
+        # and said nothing (bug hunt of 11 November 2026, finding 11).
+        sys.exit(f"{Path(site) / 'former.json'} could not be read, and _redirects "
+                 f"would lose the moved members' 301s: {e!r}")
     out = []
     for r in rows if isinstance(rows, list) else []:
         new = f"/legislator/{r.get('slug')}" if r.get("slug") else ""
@@ -410,8 +415,11 @@ def moved_requests(site):
     try:
         req = json.loads((Path(site) / "meta.json").read_text(encoding="utf-8")).get("requests") or {}
         rows = json.loads((Path(site) / "idx" / f"{req['term']}.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError, KeyError, TypeError, AttributeError):
-        return ""
+    except (FileNotFoundError, KeyError, TypeError, AttributeError):
+        return ""       # no requests window, or none listed yet
+    except (OSError, ValueError) as e:
+        sys.exit(f"the requests' meta.json or index in {site} could not be read, and "
+                 f"_redirects would lose their 301s: {e!r}")
     # ONE RULE A REQUEST (the review of 8 November 2026): Cloudflare Pages
     # allows 2,000 static rules, 616 are in use, and a session files over a
     # thousand requests, most of them introduced by January -- three
