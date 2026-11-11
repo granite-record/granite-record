@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.864
+# GRANITE_VERSION: 2026-09-04.865
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -131096,7 +131096,10 @@ def _bug_hunt_clock_and_today():
         assert got == ["1:30 PM", "1:05 PM", "12:30 AM", "1:30 p. m."], (
             f"components.js clock reads a time differently from components.py: {got}")
     src = Path("src/lib/build_date.py").read_text(encoding="utf-8")
-    assert "America/New_York" in src, "build_date.today() is the machine's own day, not New Hampshire's"
+    import state_settings
+    assert "America/New_York" in src or ("ZoneInfo(TIMEZONE)" in src
+                                         and state_settings.TIMEZONE == "America/New_York"), (
+        "build_date.today() is the machine's own day, not New Hampshire's")
     import build_date
     saved = os.environ.pop(build_date.ENV, None)
     try:

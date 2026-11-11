@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-11.1
+# GRANITE_VERSION: 2026-11-11.2
 """
-The state's facts, read from state_settings.json beside this file.
+The state's facts, read from src/lib/state_settings.json.
 
     import state_settings as ST
     ST.COUNTIES          # ("Belknap", "Carroll", ...), in the order the file lists them
@@ -17,9 +17,10 @@ holds only the facts that were repeated, or that a fork would change first.
 preflight loads it, checks every key, and fails on a second literal county list.
 """
 import json
-from pathlib import Path
 
-_FILE = Path(__file__).with_name("state_settings.json")
+import _paths
+
+_FILE = _paths.ROOT / "src" / "lib" / "state_settings.json"
 SETTINGS = json.loads(_FILE.read_text(encoding="utf-8"))
 
 REQUIRED = {
