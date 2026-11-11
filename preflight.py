@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.854
+# GRANITE_VERSION: 2026-09-04.855
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20517,6 +20517,14 @@ const Q = JSON.parse(fs.readFileSync("./queries.json", "utf8"));
 const ASKED = [];
 const MODE = process.argv[2] || "";
 const FAIL_IDX = MODE === "fail";
+// THE DAY IS HELD, BEFORE THE ELECTION (11 November 2026): /bills opens on the
+// bill requests from the day after the election (app.js requestsFirst), and
+// these checks are of the search as it opens on the current term, in any year
+// they run. The rule has its own check.
+{ const RealDate = Date, held = RealDate.UTC(2026, 5, 15, 16);
+  globalThis.Date = class extends RealDate {
+    constructor(...a) { super(...(a.length ? a : [held])); }
+    static now() { return held; } }; }
 globalThis.fetch = async (u) => {
   const p = new URL(u).pathname; ASKED.push(p);
   // The term before this one never arrives ("slowold") or is not there
