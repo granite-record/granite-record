@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.16
+// GRANITE_VERSION: 2026-10-09.17
 /* THE DISTRICT MAP (map v1), as a module a page mounts:
 
      <link rel="stylesheet" href="/map.css">
@@ -196,6 +196,20 @@ function featD(M,lk,fid){const k=lk+"|"+fid;if(!M.cache[k])M.cache[k]=rings(M,lk
 function outlineD(M,lk,fid){const k=lk+"|out|"+fid;if(M.cache[k])return M.cache[k];
   const n={};M.T.layers[lk].f[fid].r.forEach(ring=>ring.forEach(a=>{const i=a<0?~a:a;n[i]=(n[i]||0)+1;}));
   return M.cache[k]=chainD(M,Object.keys(n).filter(i=>n[i]===1).map(Number));}
+/* The state's own outline: the arcs the counties use once, which are the
+   edge of the state itself. The county mesh draws it on the State House and
+   the towns; every other layer's mesh is its interior lines only, so
+   without this the State Senate drew no outline at all. */
+function stateD(M){const k="state|out";if(M.cache[k])return M.cache[k];
+  const n={};Object.keys(M.T.layers.county.f).forEach(fid=>M.T.layers.county.f[fid].r.forEach(ring=>ring.forEach(a=>{const i=a<0?~a:a;n[i]=(n[i]||0)+1;})));
+  return M.cache[k]=chainD(M,Object.keys(n).filter(i=>n[i]===1).map(Number));}
+/* The heavy lines over a layer's fills, as [class, d] pairs, casing first:
+   the county lines on the State House and the towns (they include the
+   state's edge), the state's edge alone on every other layer. Every layer
+   has the state's outline, whichever was shown before it. */
+function edgeLines(M,lk){
+  const co=lk==="base"||lk==="towns",d=co?meshD(M,"county"):stateD(M),s=co?"":" sline";
+  return [["ctyc"+s,d],["cty"+s,d]];}
 function meshD(M,lk){const k=lk+"|mesh";if(!M.cache[k])M.cache[k]=chainD(M,M.T.layers[lk].m);return M.cache[k];}
 /* Arcs drawn as one path each leave a notch on the outside of every bend
    where two meet (a butt cap has no join), and the casing under a line shows
@@ -660,7 +674,7 @@ function mount(root,opts){
     // like the town lines (on State House they are its own lines already)
     if(lk!=="base")svg.appendChild(el("path",{class:"under wardl",d:meshD(M,"base"),"clip-path":`url(#${id}cities)`}));
     svg.appendChild(el("path",{class:"mesh",d:meshD(M,lk)}));
-    if(lk==="base"||lk==="towns"){svg.appendChild(el("path",{class:"ctyc",d:meshD(M,"county")}));svg.appendChild(el("path",{class:"cty",d:meshD(M,"county")}));}
+    edgeLines(M,lk).forEach(([cls,d])=>svg.appendChild(el("path",{class:cls,d})));
     const flog=el("g",{class:"flog"});
     if(lk==="base"&&floOn())Object.keys(M.T.layers.float.f).forEach(f=>flog.appendChild(frameGroup(f)));
     svg.appendChild(flog);
@@ -994,7 +1008,7 @@ function mount(root,opts){
   return api;
 }
 
-const GRMap={mount,load,model,layout,numbersLayout,namesLayout,inFeature,fbox,totals,totalsLine,LABELS,DEFAULT_LABELS,LAYERS,SIZE,WEIGHT,GAP};
+const GRMap={mount,load,model,layout,numbersLayout,namesLayout,inFeature,fbox,edgeLines,stateD,totals,totalsLine,LABELS,DEFAULT_LABELS,LAYERS,SIZE,WEIGHT,GAP};
 if(typeof window!=="undefined")window.GRMap=GRMap;
 if(typeof module!=="undefined"&&module.exports)module.exports=GRMap;
 })();
