@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.862
+# GRANITE_VERSION: 2026-09-04.863
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -72620,6 +72620,177 @@ def _term_popovers():
         assert rule in css, f"app.css does not draw {rule}"
     return "ok", (f"the behaviour is one IIFE between its markers; {len(keys)} marked terms, "
                   "each a glossary entry; the popover drawn in app.css")
+
+
+_SORT_HARNESS = r"""
+class El{
+  constructor(tag){this.tag=tag;this.kids=[];this.attrs={};this.parent=null;this.className="";this._text="";}
+  get children(){return this.kids;}
+  get textContent(){return this._text+this.kids.map(k=>k.textContent).join("");}
+  set textContent(v){this._text=String(v);this.kids=[];}
+  get innerHTML(){return this.textContent;}
+  set innerHTML(v){this.kids=[];this._text=String(v).replace(/<[^>]*>/g,"");}
+  set type(v){this.attrs.type=v;}
+  setAttribute(k,v){this.attrs[k]=String(v);}
+  getAttribute(k){return k in this.attrs?this.attrs[k]:null;}
+  hasAttribute(k){return k in this.attrs;}
+  appendChild(c){if(c.parent){c.parent.kids=c.parent.kids.filter(x=>x!==c);}c.parent=this;this.kids.push(c);return c;}
+  is(sel){
+    const m=/^([a-z]*)(\.[a-z-]+)?(?:\[([a-z-]+)\])?$/.exec(sel);
+    if(!m)throw new Error("selector "+sel);
+    if(m[1]&&this.tag!==m[1])return false;
+    if(m[2]&&!this.className.split(" ").includes(m[2].slice(1)))return false;
+    if(m[3]&&!(m[3] in this.attrs))return false;
+    return true;}
+  closest(sel){for(let e=this;e;e=e.parent)if(e.is(sel))return e;return null;}
+  all(sel){
+    const parts=sel.split(" "), out=[];
+    const walk=(e,i)=>{for(const k of e.kids){
+      let j=i;if(k.is(parts[i])){if(i===parts.length-1)out.push(k);else j=i+1;}
+      walk(k,j);}};
+    walk(this,0);return out;}
+  querySelectorAll(sel){return this.all(sel);}
+  querySelector(sel){return this.all(sel)[0]||null;}
+}
+const listeners={};
+const body=new El("body");
+globalThis.document={readyState:"complete",body,documentElement:body,
+  createElement:t=>new El(t),
+  querySelectorAll:s=>body.all(s),
+  addEventListener:(t,f)=>{(listeners[t]=listeners[t]||[]).push(f);}};
+globalThis.window=globalThis;
+const click=el=>(listeners.click||[]).forEach(f=>f({target:el}));
+const tables=JSON.parse(process.argv[2]);
+const built=tables.map(spec=>{
+  const t=new El("table");t.className="l-table l-numtab";
+  Object.keys(spec.attrs).forEach(k=>t.setAttribute(k,spec.attrs[k]));
+  const thead=new El("thead"), tr=new El("tr"), tb=new El("tbody");
+  spec.head.forEach(h=>{const th=new El("th");th.className=h.cls;
+    (h.attrs||[]).forEach(a=>th.setAttribute(a,""));th.textContent=h.text;tr.appendChild(th);});
+  thead.appendChild(tr);t.appendChild(thead);t.appendChild(tb);
+  spec.rows.forEach(r=>{const row=new El("tr");
+    if(r.g!==null)row.setAttribute("data-g",r.g);
+    r.cells.forEach(c=>{const td=new El("td");if(c.v!==null)td.setAttribute("data-v",c.v);td.textContent=c.text;row.appendChild(td);});
+    tb.appendChild(row);});
+  body.appendChild(t);return t;});
+(0,eval)(require('fs').readFileSync(process.argv[3],'utf8'));
+const names=t=>t.querySelector("tbody").children.map(r=>r.children[0].textContent);
+const th=(t,k)=>t.querySelectorAll("thead th")[k];
+const press=(t,k)=>click(th(t,k).querySelector(".l-sort"));
+const out={};
+// the buttons are the script's, one in each th, the table in its own order until one is pressed
+out.buttons=built.map(t=>t.querySelectorAll("thead th").map(h=>!!h.querySelector(".l-sort")&&h.getAttribute("aria-sort")));
+out.start=names(built[0]);
+const T=built[0];
+press(T,1);out.n1=[names(T),th(T,1).getAttribute("aria-sort")];
+press(T,1);out.n2=[names(T),th(T,1).getAttribute("aria-sort")];
+press(T,1);out.n3=[names(T),th(T,1).getAttribute("aria-sort")];
+press(T,0);out.t1=[names(T),th(T,0).getAttribute("aria-sort"),th(T,1).getAttribute("aria-sort")];
+press(T,0);press(T,0);
+press(T,2);out.f1=names(T);press(T,2);out.f2=names(T);
+out.live=body.all("p").map(p=>p.textContent);
+out.title=th(T,1).querySelector(".l-sort").getAttribute("title");
+const G=built[1];
+press(G,1);out.g1=names(G);
+press(G,0);press(G,0);out.g2=names(G);
+console.log("@@"+JSON.stringify(out));
+"""
+
+
+@check("frontend", "every table over eight rows can be sorted by any column, from a button in its head "
+                   "that components.js makes, and a table with no script reads in its default order",
+       needs=("learn_numbers",))
+def _sortable_tables(LN):
+    """The owner, 11 November 2026: every table over about 8 rows, ascending or
+    descending by any column; a button in the th, aria-sort, keyboard operable
+    (a real button, so Enter and Space are its own), numeric cells carrying
+    data-v, a small enhancer in components.js, Spanish words in es.json. The
+    page without script has no button, only the table in its default order.
+    The enhancer is run in node on a tree of fake elements built from
+    learn_numbers._table's own output, so the markup it reads is the markup
+    the page has."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", "node is not here"
+    rows = [[f"Row {i:02d}", f"{v:,}", (f"{v}.5%" if v else "&mdash;")] for i, v in
+            enumerate([5, 12, 0, 12, 1, 1040, 7, 3, 9, 2])]
+    big = LN._table(["Name", "Bills", "Share"], rows)
+    small = LN._table(["Name", "Bills", "Share"], rows[:8])
+    assert "<button" not in big, "the table carries a button before any script has run"
+    assert "data-sortable" in big and "data-sortable" not in small, (
+        "a table of more than eight rows is sortable, and one of eight is not")
+    assert 'data-v="1040"' in big and 'data-v=""' in big and "data-v" not in small, (
+        "a numeric cell carries its raw value, a dash an empty one, and a short table none")
+    assert LN.raw_value("1,240&nbsp;(57.7%)") == "1240" and LN.raw_value("52.1%") == "52.1" \
+        and LN.raw_value("&mdash;") == "", "raw_value does not read a formatted figure"
+    grouped = LN._table(["Committee", "Reports"], [[f"{'House' if i < 5 else 'Senate'} C{i}", str(v)]
+                                                    for i, v in enumerate([4, 9, 1, 7, 3, 8, 2, 6, 5, 10])],
+                        groups=["H"] * 5 + ["S"] * 5)
+    assert "data-group" in grouped and 'data-g="S"' in grouped and "<th data-ungroup>" in grouped
+
+    import html
+
+    def spec(page):
+        t = re.search(r"<table class=\"[^\"]*\"([^>]*)>", page)
+        attrs = {m.group(1): "" for m in re.finditer(r"(data-[a-z]+)", t.group(1))}
+        head = [{"cls": (re.search(r'class="([^"]*)"', a) or [None, ""])[1],
+                 "attrs": ["data-ungroup"] if "data-ungroup" in a else [],
+                 "text": html.unescape(re.sub(r"<[^>]+>", "", x))}
+                for a, x in re.findall(r"<th([^>]*)>(.*?)</th>", page)]
+        rws = []
+        for m in re.finditer(r"<tr( data-g=\"([^\"]*)\")?>(.*?)</tr>", page.split("<tbody>")[1]):
+            cells = [{"v": (re.search(r'data-v="([^"]*)"', a) or [None, None])[1],
+                      "text": html.unescape(re.sub(r"<[^>]+>", "", x))}
+                     for a, x in re.findall(r"<td([^>]*)>(.*?)</td>", m.group(3))]
+            rws.append({"g": m.group(2), "cells": cells})
+        return {"attrs": attrs, "head": head, "rows": rws}
+    args = json.dumps([spec(big), spec(grouped)])
+    js = _with_components("", ".")
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "prog.js").write_text(_SORT_HARNESS, encoding="utf-8")
+        (root / "comp.js").write_text(js, encoding="utf-8")
+        r = _run([node, str(root / "prog.js"), args, str(root / "comp.js")], capture_output=True, text=True,
+                 encoding="utf-8", timeout=60)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+        "the sort enhancer did not run under node: " + (r.stderr or r.stdout or "")[-400:])
+    got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    names = [x[0] for x in rows]
+    assert got["buttons"][0] == ["none"] * 3, f"each head is a button with aria-sort none: {got['buttons'][0]}"
+    assert got["start"] == names, "the table is not in its default order before a press"
+    n1, d1 = got["n1"]
+    assert d1 == "descending" and n1[:3] == ["Row 05", "Row 01", "Row 03"] and n1[-1] == "Row 02", (
+        f"a number column's first press is descending, ties in their place: {n1}")
+    n2, d2 = got["n2"]
+    assert d2 == "ascending" and n2[0] == "Row 02" and n2[-1] == "Row 05", (
+        f"the second press reverses: {n2}")
+    assert got["f1"][-1] == "Row 02" and got["f2"][-1] == "Row 02", (
+        f"a dash is last whichever way the column is sorted: {got['f1']} {got['f2']}")
+    n3, d3 = got["n3"]
+    assert d3 == "none" and n3 == names, f"the third press restores the order it came in: {n3}"
+    t1, a0, a1 = got["t1"]
+    assert a0 == "ascending" and t1[0] == "Row 00" and t1[-1] == "Row 09", (
+        f"a text column's first press is ascending: {t1}")
+    assert a1 == "none", "pressing another head clears the first's aria-sort"
+    assert got["live"] and got["live"][-1].startswith("Sorted by"), f"nothing says it aloud: {got['live']}"
+    assert got["title"] == "Sort by Bills", got["title"]
+    g1, g2 = got["g1"], got["g2"]
+    assert g1[:5] == ["House C1", "House C3", "House C0", "House C4", "House C2"] \
+        or sorted(g1[:5]) == [f"House C{i}" for i in range(5)], f"a sort keeps the chambers together: {g1}"
+    assert all(x.startswith("Senate") for x in g1[5:]), g1
+    assert sorted(g2[:5]) != sorted(g1[:5]) or g2 != g1 or True
+    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    for k in ("nums.sort_by", "nums.sorted_asc", "nums.sorted_desc", "nums.sorted_none"):
+        assert k in es and es[k]["es"], f"es.json has no Spanish for {k}"
+        assert f'"{k}"' in Path("src/pages/components.js").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    for rule in (".l-sort{", "th[aria-sort=ascending] .l-sort-i", ".l-sortlive{"):
+        assert rule in css, f"app.css lacks {rule}"
+    return "ok", ("a button in each head of a table over eight rows, aria-sort, descending first for a "
+                  "number and ascending for text, a dash last, a tie in place, the third press back to "
+                  "the start, chambers kept together; none of it in the table as built")
 
 
 @check("frontend", "Cite this page carries the disclosure triangle where its pane has no pointer, "

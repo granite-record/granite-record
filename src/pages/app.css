@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.377 */
+/* GRANITE_VERSION: 2026-09-07.378 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -5348,6 +5348,27 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .l-numtab td:first-child{font-weight:500}
 .l-numtab tbody tr:hover > *{background:var(--wash)}
 .l-numtab .cstat{white-space:nowrap}
+/* A sortable column's head (components.js, SORTABLE TABLES): a button inside
+   the th, in the th's own type, with a small chevron by mask that says the
+   direction (up for ascending, down for descending) beside aria-sort, never
+   by colour alone; a quiet double chevron where the column is not the sort. */
+.l-sort{font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;background:none;border:0;padding:0;
+  margin:0;cursor:pointer;text-align:inherit;display:inline-flex;align-items:baseline;gap:.3125rem;max-width:100%}
+.l-sort:hover{color:var(--pine)}
+.l-sort:focus-visible{outline:2px solid var(--pine);outline-offset:2px;border-radius:2px}
+.l-num .l-sort{flex-direction:row-reverse}
+.l-sort-i{flex:0 0 auto;width:.5rem;height:.75rem;align-self:center;background:currentColor;opacity:.4;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 8 12%22%3E%3Cpath d=%22M4 0L8 4.5H0zM4 12L0 7.5H8z%22/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 8 12%22%3E%3Cpath d=%22M4 0L8 4.5H0zM4 12L0 7.5H8z%22/%3E%3C/svg%3E") center/contain no-repeat}
+th[aria-sort=ascending] .l-sort-i,th[aria-sort=descending] .l-sort-i{opacity:1;color:var(--pine)}
+th[aria-sort=ascending] .l-sort-i{
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 8 12%22%3E%3Cpath d=%22M4 3L8 9H0z%22/%3E%3C/svg%3E");
+  mask-image:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 8 12%22%3E%3Cpath d=%22M4 3L8 9H0z%22/%3E%3C/svg%3E")}
+th[aria-sort=descending] .l-sort-i{
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 8 12%22%3E%3Cpath d=%22M4 9L0 3H8z%22/%3E%3C/svg%3E");
+  mask-image:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 8 12%22%3E%3Cpath d=%22M4 9L0 3H8z%22/%3E%3C/svg%3E")}
+.l-sortlive{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+@media (forced-colors:active){.l-sort-i{forced-color-adjust:none;background:CanvasText;opacity:1}}
 .l-folds{max-width:var(--l-meas);margin:.75rem 0 1rem}
 .l-fold{border:1px solid var(--rule-2);border-radius:var(--r-in);background:var(--surface);margin:.5rem 0}
 .l-fold > summary{list-style:none;display:flex;align-items:center;gap:.625rem;min-height:2.75rem;padding:.25rem .875rem;

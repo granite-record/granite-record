@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.23
+# GRANITE_VERSION: 2026-09-14.24
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -91,7 +91,31 @@ def _np(n, d):
 _NUMCELL = re.compile(r"^[\d,.]+(?:&nbsp;\([\d.]+%\))?%?$|^&mdash;$|^\d+&ndash;\d+$")
 
 
-def _table(head, rows, cls="numtab"):
+# A table of more rows than this can be sorted by any column (the owner,
+# 11 November 2026: "over about 8 rows"); a short one is read whole.
+SORTABLE_OVER = 8
+_NUM = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
+
+
+def raw_value(cell):
+    """The number a cell stands for, as text: "1,240 (57.7%)" is 1240 and
+    "52.1%" is 52.1, a dash or nothing is "" (a blank sorts last whichever
+    way a column is sorted). What `data-v` carries, so the enhancer in
+    components.js never parses a formatted figure."""
+    text = html.unescape(re.sub(r"<[^>]+>", " ", str(cell))).strip()
+    m = _NUM.search(text)
+    return m.group(0).replace(",", "") if m else ""
+
+
+def _table(head, rows, cls="numtab", sortable=None, groups=None):
+    """The table, its rows each a list of cells. A cell is the HTML it prints,
+    or (html, value) where its sort value is not what it prints (a date's
+    ISO form, a margin). With more than SORTABLE_OVER rows -- or sortable=True
+    -- the table says it can be sorted (data-sortable) and every numeric cell
+    carries its raw value (data-v); components.js adds the buttons, so a
+    reader with no script sees the table as it is, in its default order.
+    `groups` names each row's group (a chamber): a sort keeps the groups
+    together unless the column's head is the first's."""
     # The first column is a term, a year, a bill or a chamber, and app.css
     # keeps it on one line ("1989-1990" broke at its dash); a committee's
     # name is the exception, and wraps. In another language the head's first
@@ -99,17 +123,32 @@ def _table(head, rows, cls="numtab"):
     # words they print in English (_COMMITTEE_HEADS).
     if head and head[0] in _COMMITTEE_HEADS:
         cls += " names"
-    num = [k > 0 and any(str(r[k]).strip() for r in rows if k < len(r))
-           and all(_NUMCELL.match(str(r[k]).strip()) for r in rows
+    if sortable is None:
+        sortable = len(rows) > SORTABLE_OVER
+    shown = [[c[0] if isinstance(c, tuple) else c for c in r] for r in rows]
+    num = [k > 0 and any(str(r[k]).strip() for r in shown if k < len(r))
+           and all(_NUMCELL.match(str(r[k]).strip()) for r in shown
                    if k < len(r) and str(r[k]).strip())
            for k in range(len(head))]
 
     def td(k, c):
-        return f'<td class="l-num">{c}</td>' if k < len(num) and num[k] else f"<td>{c}</td>"
-    return (f'<div class="l-tablewrap l-numwrap"><table class="l-table l-numtab {cls}"><thead><tr>'
-            + "".join(f'<th class="l-num">{h}</th>' if num[k] else f"<th>{h}</th>"
-                      for k, h in enumerate(head)) + "</tr></thead><tbody>"
-            + "".join("<tr>" + "".join(td(k, c) for k, c in enumerate(r)) + "</tr>" for r in rows)
+        v = ""
+        if isinstance(c, tuple):
+            c, v = c
+            v = f' data-v="{E(v)}"'
+        elif sortable and k < len(num) and num[k]:
+            v = f' data-v="{raw_value(c)}"'
+        return f'<td class="l-num"{v}>{c}</td>' if k < len(num) and num[k] else f"<td{v}>{c}</td>"
+
+    def th(k, h):
+        extra = " data-ungroup" if groups and k == 0 else ""
+        return f'<th class="l-num"{extra}>{h}</th>' if num[k] else f"<th{extra}>{h}</th>"
+    flags = (" data-sortable" if sortable else "") + (" data-group" if sortable and groups else "")
+    return (f'<div class="l-tablewrap l-numwrap"><table class="l-table l-numtab {cls}"{flags}><thead><tr>'
+            + "".join(th(k, h) for k, h in enumerate(head)) + "</tr></thead><tbody>"
+            + "".join((f'<tr data-g="{E(groups[i])}">' if sortable and groups else "<tr>")
+                      + "".join(td(k, c) for k, c in enumerate(r)) + "</tr>"
+                      for i, r in enumerate(rows))
             + "</tbody></table></div>")
 
 

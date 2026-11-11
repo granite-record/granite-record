@@ -24367,6 +24367,26 @@
    "es": "Senado",
    "state": "draft"
   },
+  "nums.sort_by": {
+   "en": "Sort by {col}",
+   "es": "Ordenar por {col}",
+   "state": "draft"
+  },
+  "nums.sorted_asc": {
+   "en": "Sorted by {col}, ascending",
+   "es": "Ordenado por {col}, de menor a mayor",
+   "state": "draft"
+  },
+  "nums.sorted_desc": {
+   "en": "Sorted by {col}, descending",
+   "es": "Ordenado por {col}, de mayor a menor",
+   "state": "draft"
+  },
+  "nums.sorted_none": {
+   "en": "Back to the order it came in",
+   "es": "De vuelta al orden original",
+   "state": "draft"
+  },
   "nums.the_bills": {
    "en": "The {n} bills",
    "es": "Los {n} proyectos",
