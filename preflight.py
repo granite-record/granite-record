@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.863
+# GRANITE_VERSION: 2026-09-04.864
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -36751,7 +36751,7 @@ def _fixture_videos(root):
 # whichever code folder holds it, flat: in the fixture's folder every one is
 # found by its bare name, as in the repository.
 PROCEEDINGS_MODULES = ("_paths.py", "build_proceedings.py", "proceedings.py",
-                       "committee_names.py", "referrals.py", "names.py")
+                       "committee_names.py", "referrals.py", "names.py", "terms.py")
 
 
 @check("files", "no child process is read in an unnamed encoding")
@@ -131215,6 +131215,76 @@ def _bug_hunt_already_serves_whole_site():
     assert not NI.serves_this_build("f0", "f1", sha, sha, "t1", "t1"), "changed data was 'already served'"
     assert not NI.serves_this_build("f1", "f1", "b" * 40, sha, "t1", "t1"), "changed code was 'already served'"
     return "ok", "the same pages are the same build; a changed calendar page publishes"
+
+
+@check("build", "the term rules, the escapes and the sitting roster's name keys each have one home, and a "
+       "copy of one is a failure")
+def _shared_helpers_one_home():
+    """The foundation survey of November 2026 found term_of written twelve times and esc six. The term
+    rules are src/lib/terms.py (by year: term_of_year) and proceedings.term_on (by date, Organization
+    Day the next term's); the exact escape is src/lib/htmlesc.py. A definition of term_of, term_of_year,
+    esc or _home_esc outside src/lib, or the by-year arithmetic written out into a term string again,
+    fails and names the file (ALLOWED says why each other one is a different rule). Then the rules are
+    held to each other over 1985-2030, and a name two sitting members share is left out of the
+    roster's keys (bug hunt #10) and fails on data/legislators.json."""
+    import ast
+    import datetime as dt
+    import proceedings as P
+    import terms as T
+    import htmlesc as HE
+    import build_site_v2 as B
+    ALLOWED = {
+        "src/parse/unh_extract.py": "knows a month without a day, said in its docstring",
+        "src/parse/rsa.py": "the quoted term of an RSA, not a term of years",
+        "src/parse/score_members_elect.py": "a ballot's day, through proceedings.vote_term",
+        "src/parse/officers.py": "a day, through proceedings.vote_term",
+        "src/pages/legislative_year.py": "a date, through proceedings.term_on",
+        "nightly.py": "the workflow-command escape, not HTML",
+    }
+    # these read the odd year as a number, never as a term string
+    START_YEAR = {"src/parse/member_links.py", "src/parse/narrative.py"}
+    names = {"term_of", "term_of_year", "esc", "_home_esc"}
+    odd = re.compile(r"\b(\w+) if \1 % 2 else \1 - 1\b")
+    stray = []
+    for f in sorted(list(Path("src").rglob("*.py")) + [Path("nightly.py")]):
+        posix = f.as_posix()
+        if f.parent.as_posix() == "src/lib":
+            continue
+        txt = f.read_text(encoding="utf-8", errors="replace")
+        if posix not in ALLOWED:
+            for node in ast.walk(_parsed(f)):
+                if isinstance(node, ast.FunctionDef) and node.name in names:
+                    stray.append(f"{posix}:{node.lineno} defines {node.name}")
+            lines = txt.splitlines()
+            for i, line in enumerate(lines):
+                if odd.search(line) and posix not in START_YEAR \
+                        and re.search(r'\+ 1\}"|\}-\{', " ".join(lines[i:i + 3])):
+                    stray.append(f"{posix}:{i + 1} writes the by-year term rule out again")
+    assert not stray, ("a helper that has one home was written again: " + "; ".join(stray)
+                       + ". Import terms.term_of_year or htmlesc.esc (src/lib/terms.py says which rule is which).")
+    for y in range(1985, 2031):
+        assert T.term_of_year(y) == T.term_of_year(str(y)) == P.term_of(f"{y}-06-15") == P.term_on(f"{y}-06-15")
+        assert P.term_on(f"{y}-01-01") == T.term_of_year(y)
+        if y % 2 == 0:
+            org = P.organization_day(y)
+            assert P.term_on((org - dt.timedelta(days=1)).isoformat()) == T.term_of_year(y)
+            assert P.term_on(org.isoformat()) == T.term_of_year(y + 1)
+    assert HE.esc(None) == "" and HE.esc(0) == "0" and HE.esc_blank(0) == "" \
+        and HE.esc("a&b<c>\"'") == "a&amp;b&lt;c&gt;&quot;'"
+    ms = [{"id": "1", "name": "Smith, John"}, {"id": "2", "name": "Jones, Ann"},
+          {"id": "3", "name": "Smith, John"}]
+    a, b, clash = B.roster_name_keys(ms)
+    assert "smith, john" not in a and ("john", "smith") not in b and "jones, ann" in a \
+        and len(clash) == 2, "a name two members share must not go to the first of them"
+    f = Path("data/legislators.json")
+    if not f.exists():
+        return "ok", "one home each for the term rules and the escapes; the roster keys held on a pair (no data/legislators.json here)"
+    legs = json.loads(f.read_text(encoding="utf-8"))
+    legs = list(legs.values()) if isinstance(legs, dict) else legs
+    _, _, clash = B.roster_name_keys(legs)
+    assert not clash, ("two sitting members share a name key, so a sponsor named by it alone is left "
+                       "unlinked: " + "; ".join(f"{h} {k!r}: {[m.get('id') for m in ms]}" for h, k, ms in clash))
+    return "ok", f"one home each for the term rules and the escapes; {len(legs)} sitting members, no name key shared"
 
 
 def got_rec(RS, b, path):
