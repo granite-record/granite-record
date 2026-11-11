@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.22
+# GRANITE_VERSION: 2026-09-05.23
 """
 Write STATE.md from what is actually on disk.
 
@@ -275,10 +275,7 @@ def rows(p):
 
 def section_files(out):
     v = inventory.registry()
-    out.append(f"## Files
-
-{n(len(v))} files carry a version stamp (read off the files).
-")
+    out.append(f"## Files\n\n{n(len(v))} files carry a version stamp (read off the files).\n")
     # By bare name wherever it sits, as inventory.py finds it.
     missing = [f for f in v if not _paths.locate(f).exists()]
     if missing:
