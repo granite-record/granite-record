@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.25
+# GRANITE_VERSION: 2026-09-14.26
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -107,7 +107,7 @@ def raw_value(cell):
     return m.group(0).replace(",", "") if m else ""
 
 
-def _table(head, rows, cls="numtab", sortable=None, groups=None):
+def _table(head, rows, cls="numtab", sortable=None, groups=None, numcols=()):
     """The table, its rows each a list of cells. A cell is the HTML it prints,
     or (html, value) where its sort value is not what it prints (a date's
     ISO form, a margin). With more than SORTABLE_OVER rows -- or sortable=True
@@ -126,9 +126,9 @@ def _table(head, rows, cls="numtab", sortable=None, groups=None):
     if sortable is None:
         sortable = len(rows) > SORTABLE_OVER
     shown = [[c[0] if isinstance(c, tuple) else c for c in r] for r in rows]
-    num = [k > 0 and any(str(r[k]).strip() for r in shown if k < len(r))
+    num = [k in numcols or (k > 0 and any(str(r[k]).strip() for r in shown if k < len(r))
            and all(_NUMCELL.match(str(r[k]).strip()) for r in shown
-                   if k < len(r) and str(r[k]).strip())
+                   if k < len(r) and str(r[k]).strip()))
            for k in range(len(head))]
 
     def td(k, c):
@@ -137,7 +137,7 @@ def _table(head, rows, cls="numtab", sortable=None, groups=None):
             c, v = c
             v = f' data-v="{E(v)}"'
         elif sortable and k < len(num) and num[k]:
-            v = f' data-v="{raw_value(c)}"'
+            v = f' data-v="{raw_value(re.sub(r"<svg.*?</svg>", "", str(c)))}"'
         return f'<td class="l-num"{v}>{c}</td>' if k < len(num) and num[k] else f"<td{v}>{c}</td>"
 
     def th(k, h):
@@ -166,59 +166,33 @@ def wide(table):
     return f"<!--wide-->{table}<!--/wide-->"
 
 
-def law_chart(oc, terms, lang="en"):
-    """BECAME LAW, AS A SHARE OF THE BILLS FILED, by term: a bar chart of the
-    first table's own column, over it (the approved prototype, 9 October
-    2026). One series, so no legend: the title names it, a bar's value shows
-    at its end for the first and last terms and the highest and lowest, and
-    on a pointer for the rest, and the table under it is its accessible view
-    -- the chart itself is one image to a screen reader, which is told the
-    range in words. The scale runs to the next ten past the highest share and
-    ten more, so every value's label fits after its bar, on a phone too."""
-    data = [(t, oc[t]["filed"], oc[t]["Became Law"]) for t in terms if oc.get(t) and oc[t]["filed"]]
+def ends_chart(oc, terms, lang="en"):
+    """HOW EACH TERM'S BILLS ENDED, as shares of the bills filed: a 100%
+    stacked bar a term (Became Law, Interim Study, Died, Other), over the
+    table of the same counts. Replaces the single bar of Became Law's share
+    (11 November 2026): the job is the split, in four classes, over many
+    terms. The Became Law share is at the end of each bar."""
+    data = [(t, oc[t]) for t in terms if oc.get(t) and oc[t]["filed"]]
     if not data:
         return ""
-    pct = [(t, f, n, 100 * n / f) for t, f, n in data]
-    hi = max(pct, key=lambda r: r[3])
-    lo = min(pct, key=lambda r: r[3])
-    top = min(100, 10 * (int(hi[3]) // 10) + 20)
-    named = {pct[0][0], pct[-1][0], hi[0], lo[0]}
-
-    def bar(t, f, n, v):
-        w = v / top * 100
-        return (f'<li class="{"is-lab" if t in named else ""}" title="'
-                + say(lang, "nums.bar_title", "{term}: {n} of {f} bills became law ({v}%)",
-                      term=_t(t), n=f"{n:,}", f=f"{f:,}", v=f"{v:.1f}")
-                + f'"><span class="l-bl">{_t(t)}</span>'
-                f'<span class="l-bt"><span class="l-bf" style="width:{w:.2f}%"></span>'
-                f'<span class="l-bv" style="left:{w:.2f}%">{v:.1f}%</span></span></li>')
-    ticks = "".join(f'<i class="t{x}" style="left:{x / top * 100:.4f}%">{x}%</i>'
-                    for x in range(0, top + 1, 10))
-    said = say(lang, "nums.chart_said",
-               "Bar chart: the share of the bills filed in each term that became law, from "
-               "{a}% in {ta} to {b}% in {tb}; the highest {c}% in {tc}, the lowest {d}% in {td}. "
-               "The figures are in the table below.",
-               a=f"{pct[0][3]:.1f}", ta=components.term_words(pct[0][0]),
-               b=f"{pct[-1][3]:.1f}", tb=components.term_words(pct[-1][0]),
-               c=f"{hi[3]:.1f}", tc=components.term_words(hi[0]),
-               d=f"{lo[3]:.1f}", td=components.term_words(lo[0]))
-    return (f'<figure class="l-chart" role="img" aria-label="{E(said)}">'
-            '<h3 aria-hidden="true">'
-            + say(lang, "nums.chart_h", "Became Law, as a Share of the Bills Filed") + '</h3>'
-            # ON A SCREEN WITH NO POINTER TO HOVER (the cohesion audit of 30
-            # October 2026, P-6: "no hover on a phone"), every bar's value is
-            # at its end, and the line says that instead (app.css, .l-hov).
-            '<p aria-hidden="true">'
-            + say(lang, "nums.chart_p", "The figures are the table&rsquo;s, its Became Law column.")
-            + ' <span class="l-hov">'
-            + say(lang, "nums.chart_hov", "Hover over a term to see its value.")
-            + '</span><span class="l-tap">'
-            + say(lang, "nums.chart_tap", "Each term&rsquo;s value is at the end of its bar.")
-            + '</span></p>'
-            f'<ol class="l-bars" aria-hidden="true" style="--l-grid:{1000 / top:.4f}%">'
-            f'{"".join(bar(*r) for r in pct)}</ol>'
-            f'<div class="l-axis" aria-hidden="true"><span>{_t(pct[-1][0])}</span>'
-            f'<span class="l-ticks">{ticks}</span></div></figure>')
+    pct = [(t, 100 * c["Became Law"] / c["filed"]) for t, c in data]
+    hi, lo = max(pct, key=lambda r: r[1]), min(pct, key=lambda r: r[1])
+    said = say(lang, "nums.ch_ends_said",
+               "Stacked bar chart: how the bills of each term ended, as shares of the bills filed. The "
+               "share that became law ran from {a}% in {ta} to {b}% in {tb}; the highest was {c}% in "
+               "{tc}, the lowest {d}% in {td}. The rest were sent to interim study, died or ended some "
+               "other way. The figures are in the table below.",
+               a=f"{pct[0][1]:.1f}", ta=components.term_words(pct[0][0]),
+               b=f"{pct[-1][1]:.1f}", tb=components.term_words(pct[-1][0]),
+               c=f"{hi[1]:.1f}", tc=components.term_words(hi[0]),
+               d=f"{lo[1]:.1f}", td=components.term_words(lo[0]))
+    rows = [(_t(t), [c["Became Law"], c["Interim Study"], c["Died"], c["other"]]) for t, c in data]
+    parts = [("law", say(lang, "nums.c_law", "Became Law")), ("study", say(lang, "nums.c_study", "Interim Study")),
+             ("done", say(lang, "nums.c_died", "Died")), ("rest", say(lang, "nums.c_other", "Other"))]
+    return stack100_chart(rows, parts, say(lang, "nums.ch_ends_h", "How Each Term&rsquo;s Bills Ended"),
+                          said, lang, 0,
+                          say(lang, "nums.ch_ends_p", "The figure at the end of each bar is the share that became "
+                              "law; the table below has every count."))
 
 
 def _t(term):
@@ -471,6 +445,29 @@ def committee_record(idx, narr_all, term):
         rec[name] = {"first": f, "sent": snt, "reported": n, "passed": p, "law": law,
                      "reports": rn, "kept": rk}
     return rec, ctot, per_ch
+
+
+def committee_chart(rec, term, lang="en"):
+    """Each committee of ten reports or more as a point, over its term's
+    table: how many bills it reported on against the share that passed both
+    chambers. House and Senate are two shapes in neutral tones."""
+    pts = [(n, "H" if n.startswith("House") else "S", v["reported"], 100 * v["passed"] / v["reported"])
+           for n, v in rec.items() if v["reported"] >= MIN_REPORTS]
+    if not pts:
+        return ""
+    ranked = sorted(pts, key=lambda p: (p[3], p[0]))
+    said = say(lang, "nums.ch_cmte_said",
+               "Scatter chart of the {n} committees of {term} with ten reports or more: the bills each "
+               "reported on, from {lo} to {hi}, against the share that passed both chambers, from "
+               "{plo}% for {nlo} to {phi}% for {nhi}. The figures are in the table below.",
+               n=len(pts), term=components.term_words(term), lo=min(p[2] for p in pts),
+               hi=max(p[2] for p in pts), plo=f"{ranked[0][3]:.1f}", phi=f"{ranked[-1][3]:.1f}",
+               nlo=re.sub(r"<[^>]+>", "", ranked[0][0]), nhi=re.sub(r"<[^>]+>", "", ranked[-1][0]))
+    return scatter_chart(pts, say(lang, "nums.ch_cmte_h", "Bills Reported On, and the Share That Passed"),
+                         said, say(lang, "nums.ch_cmte_x", "bills reported on"),
+                         say(lang, "nums.c_both", "Passed both chambers"), lang,
+                         say(lang, "nums.ch_cmte_p", "The three highest and three lowest rates are named; "
+                             "compare within a chamber."))
 
 
 def committee_rows(rec, lang="en"):
@@ -832,6 +829,198 @@ def vetoes(rows):
     vetoed = stood + over + live
     reached = st["Signed into law"] + st["Became law unsigned"] + vetoed
     return reached, vetoed, stood, over, live
+
+
+# ---------------------------------------------------------------------------
+# THE OTHER CHARTS (the owner, 11 November 2026, after the flow diagram): each
+# a static inline SVG made at build time with no library, over the table it
+# is drawn from, which is its accessible twin -- the figure itself is one
+# image to a screen reader, which is told the range in words. One axis each,
+# never two; direct labels only on the figures a reader looks for; and the
+# two chambers are neutral tones and two shapes (a filled circle, an open
+# diamond), never the parties' colours, which mean a party everywhere else.
+# ---------------------------------------------------------------------------
+
+def _chart(title, said, svg, legend=(), note=""):
+    """A chart's figure: title, the SVG (scrolling sideways on a phone rather
+    than shrinking past reading), its key, and a line saying the table
+    beneath it holds the figures. legend: [(swatch class, words)]."""
+    key = "".join(f'<li><span class="l-sw {c}" aria-hidden="true"></span><span>{w}</span></li>'
+                  for c, w in legend)
+    return (f'<figure class="l-fig l-ch"><figcaption>{title}</figcaption>'
+            + (f'<ul class="l-barkey">{key}</ul>' if key else "")
+            + f'<div class="l-skwrap">{svg}</div>' + (f"<p>{note}</p>" if note else "") + "</figure>")
+
+
+def _svg(w, h, said, body):
+    return (f'<svg class="sk ch" viewBox="0 0 {w} {h}" role="img" aria-label="{E(said)}" '
+            f'xmlns="http://www.w3.org/2000/svg" style="min-width:26rem"><g>{body}</g></svg>')
+
+
+def stack100_chart(rows, parts, title, said, lang="en", label_part=0, note=""):
+    """100% stacked horizontal bars, one per row: rows [(label, [n per part])],
+    parts [(class, words)]. The share of the part `label_part` is printed at
+    the end of each bar (the one figure a reader compares down the rows); a
+    bar's title holds all of them. A 2px surface gap between segments."""
+    lw, bw, rh, bh = 76, 360, 20, 12
+    out, y = [], 4
+    for label, ns in rows:
+        tot = sum(ns)
+        out.append(f'<text x="{lw - 8}" y="{y + 10}" text-anchor="end">{label}</text>')
+        x = lw
+        tip = "; ".join(f"{w} {n:,}" for (_c, w), n in zip(parts, ns))
+        out.append(f"<g><title>{E(label)}: {E(tip)}</title>")
+        for (cls, _w), n in zip(parts, ns):
+            if tot and n:
+                seg = bw * n / tot
+                out.append(f'<rect class="sk-{cls}" x="{x:.1f}" y="{y}" width="{max(seg - 1.5, 1):.1f}" height="{bh}"/>')
+                x += seg
+        out.append("</g>")
+        if tot:
+            out.append(f'<text class="sk-v" x="{lw + bw + 8}" y="{y + 10}">{100 * ns[label_part] / tot:.1f}%</text>')
+        y += rh
+    svg = _svg(lw + bw + 56, y + 4, said, "".join(out))
+    return _chart(title, said, svg, [(f"c-{c}", w) for c, w in parts], note)
+
+
+def chamber_marker(ch, x, y, r=4.5):
+    """The chamber's mark: House a filled circle, Senate an open diamond, in
+    neutral tones. Never a party colour."""
+    if ch == "H":
+        return f'<circle class="ch-h" cx="{x:.1f}" cy="{y:.1f}" r="{r}"/>'
+    return (f'<path class="ch-s" d="M{x:.1f},{y - r - 1:.1f}L{x + r + 1:.1f},{y:.1f}L{x:.1f},{y + r + 1:.1f}'
+            f'L{x - r - 1:.1f},{y:.1f}Z"/>')
+
+
+def chamber_legend(lang="en"):
+    return [("c-h is-circle", _chamber("H", lang)), ("c-s is-diamond", _chamber("S", lang))]
+
+
+def scatter_chart(points, title, said, xlabel, ylabel, lang="en", note=""):
+    """Committees as points: x the bills reported on, y the share that passed
+    both chambers; points [(name, chamber, x, y)]. The three highest and the
+    three lowest rates are named; every point has a title with its figures."""
+    if not points:
+        return ""
+    w, h, left, right, top, bot = 520, 300, 44, 12, 10, 40
+    xmax = max(p[2] for p in points)
+    xmax = (int(xmax // 50) + 1) * 50 if xmax > 100 else (int(xmax // 10) + 1) * 10
+    sx = lambda v: left + (w - left - right) * v / xmax
+    sy = lambda v: top + (h - top - bot) * (1 - v / 100)
+    out = []
+    for v in range(0, 101, 25):
+        out.append(f'<line class="ax" x1="{left}" x2="{w - right}" y1="{sy(v):.1f}" y2="{sy(v):.1f}"/>'
+                   f'<text x="{left - 6}" y="{sy(v) + 4:.1f}" text-anchor="end">{v}%</text>')
+    step = max(10, int(xmax // 5 // 10 * 10)) if xmax > 50 else 10
+    for v in range(0, int(xmax) + 1, step):
+        out.append(f'<line class="ax" x1="{sx(v):.1f}" x2="{sx(v):.1f}" y1="{top}" y2="{h - bot}"/>'
+                   f'<text x="{sx(v):.1f}" y="{h - bot + 14}" text-anchor="middle">{v}</text>')
+    out.append(f'<text x="{(left + w - right) / 2:.0f}" y="{h - 6}" text-anchor="middle">{xlabel}</text>'
+               f'<text transform="translate(11,{(top + h - bot) / 2:.0f}) rotate(-90)" text-anchor="middle">{ylabel}</text>')
+    ranked = sorted(points, key=lambda p: (p[3], p[0]))
+    named = {p[0] for p in ranked[:3] + ranked[-3:]}
+    last = {}
+    for name, ch, xv, yv in sorted(points, key=lambda p: p[3]):
+        out.append(f"<g><title>{E(name)}: {xv:,} bills reported on, {yv:.1f}% passed both chambers</title>"
+                   + chamber_marker(ch, sx(xv), sy(yv)) + "</g>")
+    for name, ch, xv, yv in sorted((p for p in points if p[0] in named), key=lambda p: -p[3]):
+        short = re.sub(r"^(House|Senate) ", "", name)
+        ty = sy(yv) + 4
+        while any(abs(ty - v) < 12 for v in last.values()):
+            ty += 12
+        last[name] = ty
+        anchor, tx = ("end", sx(xv) - 9) if sx(xv) > w * 0.62 else ("start", sx(xv) + 9)
+        out.append(f'<text x="{tx:.1f}" y="{ty:.1f}" text-anchor="{anchor}">{E(short)}</text>')
+    svg = _svg(w, h, said, "".join(out))
+    return _chart(title, said, svg, chamber_legend(lang), note)
+
+
+def dot_chart(rows, title, said, lang="en", note=""):
+    """Attendance by term, a dot a chamber on one axis: rows
+    [(label, house %, senate %)] (None where a chamber has none). The axis
+    starts where the lowest figure leaves room, and says so."""
+    vals = [v for _l, *vs in rows for v in vs if v is not None]
+    if not vals:
+        return ""
+    lo = max(0, int(min(vals) // 5) * 5 - 5)
+    lw, bw, rh = 76, 380, 19
+    sx = lambda v: lw + bw * (v - lo) / (100 - lo)
+    out = []
+    for v in range(lo, 101, 5):
+        out.append(f'<line class="ax" x1="{sx(v):.1f}" x2="{sx(v):.1f}" y1="2" y2="{len(rows) * rh + 4}"/>'
+                   f'<text x="{sx(v):.1f}" y="{len(rows) * rh + 18}" text-anchor="middle">{v}%</text>')
+    for i, (label, h, s) in enumerate(rows):
+        y = 4 + i * rh + 9
+        out.append(f'<text x="{lw - 8}" y="{y + 4}" text-anchor="end">{label}</text>')
+        for ch, v in (("H", h), ("S", s)):
+            if v is not None:
+                out.append(f"<g><title>{E(label)}, {E(_chamber(ch, lang))}: {v:.1f}%</title>"
+                           + chamber_marker(ch, sx(v), y, 4) + "</g>")
+    svg = _svg(lw + bw + 24, len(rows) * rh + 28, said, "".join(out))
+    return _chart(title, said, svg, chamber_legend(lang), note)
+
+
+def lines_chart(panels, title, said, lang="en", note=""):
+    """Small multiples: one panel a chamber, each its own scale (never one
+    axis shared by 400 members and 24), two lines a panel. panels
+    [(name, [terms], [(series name, class, [values])])]."""
+    pw, ph, left, top, bot = 262, 150, 36, 14, 22
+    out = []
+    for p, (name, terms, series) in enumerate(panels):
+        x0 = p * (pw + 24)
+        hi = max((v for _n, _c, vs in series for v in vs if v is not None), default=1) or 1
+        nice = 10 ** len(str(int(hi))) / 10 if hi >= 1 else 1
+        top_v = (int(hi / nice) + 1) * nice if hi >= 1 else 1
+        sx = lambda i: x0 + left + (pw - left - 8) * i / max(len(terms) - 1, 1)
+        sy = lambda v: top + (ph - top - bot) * (1 - v / top_v)
+        out.append(f'<text x="{x0 + left}" y="9" class="sk-v">{E(name)}</text>')
+        for k in range(0, 3):
+            v = top_v * k / 2
+            out.append(f'<line class="ax" x1="{x0 + left}" x2="{x0 + pw - 8}" y1="{sy(v):.1f}" y2="{sy(v):.1f}"/>'
+                       f'<text x="{x0 + left - 5}" y="{sy(v) + 4:.1f}" text-anchor="end">{v:g}</text>')
+        for i in (0, len(terms) - 1):
+            out.append(f'<text x="{sx(i):.1f}" y="{ph - 6}" text-anchor="{"start" if i == 0 else "end"}">'
+                       f'{terms[i][:4]}</text>')
+        for sname, cls, vs in series:
+            pts = [(sx(i), sy(v)) for i, v in enumerate(vs) if v is not None]
+            if len(pts) > 1:
+                out.append(f'<polyline class="ln ln-{cls}" points="{" ".join(f"{a:.1f},{b:.1f}" for a, b in pts)}"/>')
+            for i, v in enumerate(vs):
+                if v is not None:
+                    out.append(f'<circle class="ln-dot ln-{cls}" cx="{sx(i):.1f}" cy="{sy(v):.1f}" r="2.2">'
+                               f"<title>{E(name)}, {E(sname)}, {E(terms[i])}: {v:g}</title></circle>")
+    svg = _svg(2 * pw + 24, ph + 4, said, "".join(out))
+    return _chart(title, said, svg, [("c-ink", say(lang, "nums.ch_filed", "filed per member")),
+                                     ("c-pine", say(lang, "nums.ch_law", "became law per member"))], note)
+
+
+def positions_bar(support, oppose, neutral, lang="en"):
+    """A hearing's sign-ins as one thin bar in its cell: support, oppose and
+    neutral on the one scale of that hearing's total, in three neutral
+    tones, each also its own number in the words beside it."""
+    tot = support + oppose + neutral
+    if not tot:
+        return ""
+    x, segs = 0.0, []
+    for cls, n, w in (("ink", support, "support"), ("rest", oppose, "oppose"), ("pine", neutral, "neutral")):
+        if n:
+            segs.append(f'<rect class="pos-{cls}" x="{x:.1f}" y="0" width="{max(100 * n / tot - 1, 1):.1f}" height="6"/>')
+            x += 100 * n / tot
+    return ('<svg class="pos" viewBox="0 0 100 6" role="img" aria-label="'
+            + E(say(lang, "nums.pos_said", "{s} support, {o} oppose, {n} neutral",
+                    s=f"{support:,}", o=f"{oppose:,}", n=f"{neutral:,}")) + '" '
+            'xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">' + "".join(segs) + "</svg>")
+
+
+def yes_bar(share, lang="en"):
+    """A ballot question's yes share as a bar with the two-thirds line it
+    needed (Part Second, Article 100) drawn across it."""
+    return ('<svg class="pos yes" viewBox="0 0 100 10" role="img" aria-label="'
+            + E(say(lang, "nums.yes_said", "{p}% yes; two thirds needed", p=f"{share:.1f}"))
+            + '" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">'
+            f'<rect class="pos-rest" x="0" y="2" width="100" height="6"/>'
+            f'<rect class="pos-ink" x="0" y="2" width="{share:.1f}" height="6"/>'
+            '<line class="pos-rule" x1="66.7" x2="66.7" y1="0" y2="10"/></svg>')
 
 
 # ---------------------------------------------------------------------------
@@ -1234,7 +1423,7 @@ def body(site=Path("site"), root=Path("."), strict=True, lang="en"):
                      "in the diagram, on its page and in the table beneath it. Died is split into "
                      "what ended each bill, in the record's own words.") + "</p>"
                + wide('<div class="l-folds is-wide">' + "".join(folds) + "</div>")
-               + law_chart(oc, terms, lang)
+               + ends_chart(oc, terms, lang)
                + _table([say(lang, "nums.c_term", "Term"), say(lang, "nums.c_filed", "Bills filed"),
                          say(lang, "nums.c_law", "Became Law"), say(lang, "nums.c_died", "Died"),
                          say(lang, "nums.c_study", "Interim Study"), say(lang, "nums.c_other", "Other")],
@@ -1264,11 +1453,31 @@ def body(site=Path("site"), root=Path("."), strict=True, lang="en"):
             continue
         prows.append([_t(t), f"{h[0] / SEATS['H']:.2f}", f"{h[1] / SEATS['H']:.2f}",
                       f"{s[0] / SEATS['S']:.1f}", f"{s[1] / SEATS['S']:.1f}"])
+    pm_terms = [t for t in terms if pm[t]["H"][0] or pm[t]["S"][0]]
+    member_chart = ""
+    if len(pm_terms) > 1:
+        panel = lambda ch, seats, dig: (_chamber(ch, lang), pm_terms, [
+            (say(lang, "nums.ch_filed", "filed per member"), "ink",
+             [round(pm[t][ch][0] / seats, dig) for t in pm_terms]),
+            (say(lang, "nums.ch_law", "became law per member"), "pine",
+             [round(pm[t][ch][1] / seats, dig) for t in pm_terms])])
+        member_chart = lines_chart(
+            [panel("H", SEATS["H"], 2), panel("S", SEATS["S"], 1)],
+            say(lang, "nums.ch_member_h", "Bills per Member, Over the Terms"),
+            say(lang, "nums.ch_member_said",
+                "Two line charts, one for each chamber because their scales differ: the House bills "
+                "filed per representative ran from {hl} to {hh} and the Senate's per senator from {sl} "
+                "to {sh}. The figures are in the table below.",
+                hl=f"{min(pm[t]['H'][0] for t in pm_terms) / SEATS['H']:.2f}",
+                hh=f"{max(pm[t]['H'][0] for t in pm_terms) / SEATS['H']:.2f}",
+                sl=f"{min(pm[t]['S'][0] for t in pm_terms) / SEATS['S']:.1f}",
+                sh=f"{max(pm[t]['S'][0] for t in pm_terms) / SEATS['S']:.1f}"),
+            lang, say(lang, "nums.ch_member_p", "Each chamber has its own scale: 400 representatives and 24 senators."))
     out.append("<h2>" + say(lang, "nums.h_member", "Bills Filed and Passed per Member")
                + "</h2><p>" + say(lang, "nums.p_member", "The House and Senate bills whose "
                                   "prime sponsor sat in each chamber, divided by its seats: 400 in the House, 24 "
                                   "in the Senate. Passed means the bill became law.") + "</p>"
-               + _table([say(lang, "nums.c_term", "Term"),
+               + member_chart + _table([say(lang, "nums.c_term", "Term"),
                          say(lang, "nums.c_f_rep", "Filed per representative"),
                          say(lang, "nums.c_l_rep", "Became law per representative"),
                          say(lang, "nums.c_f_sen", "Filed per senator"),
@@ -1323,7 +1532,7 @@ def body(site=Path("site"), root=Path("."), strict=True, lang="en"):
         blocks.append(f"<details class=\"l-fold\"{' open' if t == current else ''}><summary>"
                       + say(lang, "nums.fold_refs", "{term}: {first} first referrals and {sent} sent on",
                             term=_t(t), first=f"{first_n:,}", sent=f"{sent_n:,}") + "</summary>"
-                      + lines
+                      + lines + committee_chart(rec, t, lang)
                       + _table([say(lang, "nums.c_cmte", "Committee"),
                                 say(lang, "nums.c_first", "First referral"),
                                 say(lang, "nums.c_sent", "Sent on from another committee"),
@@ -1392,7 +1601,8 @@ def body(site=Path("site"), root=Path("."), strict=True, lang="en"):
                       say(lang, "nums.n_support", "{n}&nbsp;support", n=f"{h['support']:,}") + "<br>"
                       + say(lang, "nums.n_oppose", "{n}&nbsp;oppose", n=f"{h['oppose']:,}")
                       + ("<br>" + say(lang, "nums.n_neutral", "{n}&nbsp;neutral", n=f"{h['neutral']:,}")
-                         if h["neutral"] else "")]
+                         if h["neutral"] else "")
+                      + positions_bar(h["support"], h["oppose"], h["neutral"], lang)]
                      for h in si[t]]
             tables.append(wide(f"<h3>{_t(t)}</h3>" + _table(
                 [say(lang, "nums.c_bill", "Bill"), say(lang, "nums.c_title", "Title as heard"),
@@ -1467,6 +1677,19 @@ def body(site=Path("site"), root=Path("."), strict=True, lang="en"):
         parows.append([_t(t) + ("&nbsp;*" if t < "1999" else ""), f"{n:,}", _np(p["amended"], n),
                        _np(p["conference"], n)] + [_pct(d[k], n) for k in range(3)]
                       + [_pct(sum(d[k] for k in range(3, 7)), n)])
+    passed_chart = ""
+    if len(parows) > 1:
+        rowsd = [(_t(t), [pa[t]["amended"], pa[t]["passed"] - pa[t]["amended"]]) for t in terms
+                 if pa.get(t) and pa[t]["passed"]]
+        passed_chart = stack100_chart(
+            rowsd, [("ink", say(lang, "nums.c_amended", "Amended")),
+                    ("rest", say(lang, "nums.c_intro", "As introduced"))],
+            say(lang, "nums.ch_pass_h", "Passed Amended, and Passed as Introduced"),
+            say(lang, "nums.ch_pass_said",
+                "Stacked bar chart: of the bills that passed both chambers in each term, the share "
+                "amended on the way and the share passed as introduced. The figures are in the table "
+                "below."), lang, 0,
+            say(lang, "nums.ch_pass_p", "The figure at the end of each bar is the share amended."))
     out.append("<h2>" + say(lang, "nums.h_passed", "What Passed, and How It Changed on the Way") + "</h2><p>"
                + say(lang, "nums.p_passed",
                      "Every House and Senate bill that passed both chambers in the same text and so "
@@ -1484,6 +1707,7 @@ def body(site=Path("site"), root=Path("."), strict=True, lang="en"):
                                "chambers were amended or went to conference, and {none} took no "
                                "amendment at all.", terms=len(parows), pct=_pct(all_amended, all_n),
                                n=f"{all_n:,}", none=_pct(all_d[0], all_n)) + "</p>") if all_n else "")
+               + passed_chart
                + wide(_table([say(lang, "nums.c_term", "Term"), say(lang, "nums.c_both", "Passed both chambers"),
                               say(lang, "nums.c_amended", "Amended"),
                               say(lang, "nums.c_conf", "To a committee of conference"),
@@ -1510,6 +1734,17 @@ def body(site=Path("site"), root=Path("."), strict=True, lang="en"):
         c = kinds[y]
         n = sum(c.values())
         krows.append([y, f"{n:,}", _pct(c["RC"], n), _pct(c["DV"], n), _pct(c["VV"], n)])
+    votes_chart = ""
+    if len(krows) > 1:
+        votes_chart = stack100_chart(
+            [(y, [kinds[y]["RC"], kinds[y]["DV"], kinds[y]["VV"]]) for y in sorted(kinds)],
+            [("pine", say(lang, "nums.c_rc", "Roll call")), ("ink", say(lang, "nums.c_div", "Division")),
+             ("rest", say(lang, "nums.c_voice", "Voice"))],
+            say(lang, "nums.ch_votes_h", "How Floor Decisions Were Taken, by Year"),
+            say(lang, "nums.ch_votes_said",
+                "Stacked bar chart: for each year, the share of recorded floor decisions taken by roll "
+                "call, by division and by voice vote. The figures are in the table below."), lang, 0,
+            say(lang, "nums.ch_votes_p", "The figure at the end of each bar is the share by roll call."))
     out.append("<h2>" + say(lang, "nums.h_votes", "How the Votes Were Taken") + "</h2><p>"
                + say(lang, "nums.p_votes",
                      "Every recorded floor decision, by year and by "
@@ -1563,6 +1798,15 @@ def body(site=Path("site"), root=Path("."), strict=True, lang="en"):
                          "conflict of interest &mdash; averaged over the days. Members' ballots are on "
                          "record from 1999, and a day with only voice or division votes records no one "
                          "by name, so it cannot be counted.") + "</p>"
+                   + dot_chart([(_t(t), 100 * att[(t, "H")][1] if att.get((t, "H")) else None,
+                                 100 * att[(t, "S")][1] if att.get((t, "S")) else None)
+                                for t in terms if att.get((t, "H")) or att.get((t, "S"))],
+                               say(lang, "nums.ch_att_h", "Attendance by Term, House and Senate"),
+                               say(lang, "nums.ch_att_said",
+                                   "Dot plot: for each term, the average share of each chamber present on "
+                                   "its roll-call days. The figures are in the table below."), lang,
+                               say(lang, "nums.ch_att_p", "The scale starts above zero, at the lowest "
+                                   "attendance shown, so the dots can be told apart."))
                    + _table([say(lang, "nums.c_term", "Term"),
                              say(lang, "nums.c_h_days", "House roll-call days"),
                              say(lang, "nums.c_h_att", "House attendance"),
@@ -1582,7 +1826,8 @@ def body(site=Path("site"), root=Path("."), strict=True, lang="en"):
         for r in shown:
             y, n = r["yes"], r["no"]
             brows.append([f'{_bill_link(r["term"], r["bill"])}<br>{_t(r["term"])}', _day(r["election"], lang),
-                          f"{y:,}", f"{n:,}", _pct(y, y + n),
+                          f"{y:,}", f"{n:,}",
+                          (f"{_pct(y, y + n)}{yes_bar(100 * y / (y + n), lang)}", f"{100 * y / (y + n):.1f}"),
                           # the result in the status chip's colours: law's
                           # green, a death's red (chips.json's classes)
                           # THE ONE CHIP (Polish 1's step 3), in Title Case as
@@ -1630,5 +1875,5 @@ def body(site=Path("site"), root=Path("."), strict=True, lang="en"):
                                   say(lang, "nums.c_yes", "Yes"), say(lang, "nums.c_no", "No"),
                                   say(lang, "nums.c_yes_share", "Yes share"),
                                   say(lang, "nums.c_result", "Result"), say(lang, "nums.c_source", "Source")],
-                                 brows)))
+                                 brows, numcols=(4,))))
     return "".join(out)

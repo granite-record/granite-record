@@ -23702,11 +23702,6 @@
    "es": "Esta página todavía no está en español.",
    "state": "draft"
   },
-  "nums.bar_title": {
-   "en": "{term}: {n} of {f} bills became law ({v}%)",
-   "es": "{term}: {n} de {f} proyectos de ley pasaron a ser ley ({v}%)",
-   "state": "draft"
-  },
   "nums.c_amend": {
    "en": "Amendment",
    "es": "Enmienda",
@@ -23815,6 +23810,11 @@
   "nums.c_hearing": {
    "en": "Hearing and committee",
    "es": "Audiencia y comité",
+   "state": "draft"
+  },
+  "nums.c_intro": {
+   "en": "As introduced",
+   "es": "Tal como se presentaron",
    "state": "draft"
   },
   "nums.c_l_rep": {
@@ -24012,29 +24012,109 @@
    "es": "{pct} de las {n} recomendaciones de los comités del Senado se adoptaron en su calendario de consenso; {off} se retiraron de él.",
    "state": "draft"
   },
-  "nums.chart_h": {
-   "en": "Became Law, as a Share of the Bills Filed",
-   "es": "Pasó a ser ley, como proporción de los proyectos presentados",
+  "nums.ch_att_h": {
+   "en": "Attendance by Term, House and Senate",
+   "es": "Asistencia por período, Cámara y Senado",
    "state": "draft"
   },
-  "nums.chart_hov": {
-   "en": "Hover over a term to see its value.",
-   "es": "Pase el cursor sobre un período para ver su valor.",
+  "nums.ch_att_p": {
+   "en": "The scale starts above zero, at the lowest attendance shown, so the dots can be told apart.",
+   "es": "La escala empieza por encima de cero, en la asistencia más baja que se muestra, para poder distinguir los puntos.",
    "state": "draft"
   },
-  "nums.chart_p": {
-   "en": "The figures are the table&rsquo;s, its Became Law column.",
-   "es": "Las cifras son las de la tabla, de su columna Pasó a ser ley.",
+  "nums.ch_att_said": {
+   "en": "Dot plot: for each term, the average share of each chamber present on its roll-call days. The figures are in the table below.",
+   "es": "Gráfico de puntos: para cada período, la proporción media de cada cámara presente en sus días de votación nominal. Las cifras están en la tabla de abajo.",
    "state": "draft"
   },
-  "nums.chart_said": {
-   "en": "Bar chart: the share of the bills filed in each term that became law, from {a}% in {ta} to {b}% in {tb}; the highest {c}% in {tc}, the lowest {d}% in {td}. The figures are in the table below.",
-   "es": "Gráfico de barras: la proporción de los proyectos de ley presentados en cada período que pasaron a ser ley, de {a}% en {ta} a {b}% en {tb}; la más alta, {c}% en {tc}, y la más baja, {d}% en {td}. Las cifras están en la tabla de abajo.",
+  "nums.ch_cmte_h": {
+   "en": "Bills Reported On, and the Share That Passed",
+   "es": "Proyectos sobre los que se informó y proporción que fue aprobada",
    "state": "draft"
   },
-  "nums.chart_tap": {
-   "en": "Each term&rsquo;s value is at the end of its bar.",
-   "es": "El valor de cada período está al final de su barra.",
+  "nums.ch_cmte_p": {
+   "en": "The three highest and three lowest rates are named; compare within a chamber.",
+   "es": "Se nombran las tres tasas más altas y las tres más bajas; compare dentro de una misma cámara.",
+   "state": "draft"
+  },
+  "nums.ch_cmte_said": {
+   "en": "Scatter chart of the {n} committees of {term} with ten reports or more: the bills each reported on, from {lo} to {hi}, against the share that passed both chambers, from {plo}% for {nlo} to {phi}% for {nhi}. The figures are in the table below.",
+   "es": "Gráfico de dispersión de los {n} comités de {term} con diez informes o más: los proyectos sobre los que cada uno informó, de {lo} a {hi}, frente a la proporción aprobada por ambas cámaras, de {plo}% para {nlo} a {phi}% para {nhi}. Las cifras están en la tabla de abajo.",
+   "state": "draft"
+  },
+  "nums.ch_cmte_x": {
+   "en": "bills reported on",
+   "es": "proyectos sobre los que se informó",
+   "state": "draft"
+  },
+  "nums.ch_ends_h": {
+   "en": "How Each Term&rsquo;s Bills Ended",
+   "es": "Cómo terminaron los proyectos de cada período",
+   "state": "draft"
+  },
+  "nums.ch_ends_p": {
+   "en": "The figure at the end of each bar is the share that became law; the table below has every count.",
+   "es": "La cifra al final de cada barra es la proporción que pasó a ser ley; la tabla de abajo tiene todas las cifras.",
+   "state": "draft"
+  },
+  "nums.ch_ends_said": {
+   "en": "Stacked bar chart: how the bills of each term ended, as shares of the bills filed. The share that became law ran from {a}% in {ta} to {b}% in {tb}; the highest was {c}% in {tc}, the lowest {d}% in {td}. The rest were sent to interim study, died or ended some other way. The figures are in the table below.",
+   "es": "Gráfico de barras apiladas: cómo terminaron los proyectos de cada período, como proporción de los presentados. La proporción que pasó a ser ley fue de {a}% en {ta} a {b}% en {tb}; la más alta, {c}% en {tc}, y la más baja, {d}% en {td}. El resto se envió a estudio interino, murió o terminó de otra manera. Las cifras están en la tabla de abajo.",
+   "state": "draft"
+  },
+  "nums.ch_filed": {
+   "en": "filed per member",
+   "es": "presentados por miembro",
+   "state": "draft"
+  },
+  "nums.ch_law": {
+   "en": "became law per member",
+   "es": "que pasaron a ser ley por miembro",
+   "state": "draft"
+  },
+  "nums.ch_member_h": {
+   "en": "Bills per Member, Over the Terms",
+   "es": "Proyectos por miembro, a lo largo de los períodos",
+   "state": "draft"
+  },
+  "nums.ch_member_p": {
+   "en": "Each chamber has its own scale: 400 representatives and 24 senators.",
+   "es": "Cada cámara tiene su propia escala: 400 representantes y 24 senadores.",
+   "state": "draft"
+  },
+  "nums.ch_member_said": {
+   "en": "Two line charts, one for each chamber because their scales differ: the House bills filed per representative ran from {hl} to {hh} and the Senate's per senator from {sl} to {sh}. The figures are in the table below.",
+   "es": "Dos gráficos de líneas, uno por cada cámara porque sus escalas difieren: los proyectos de la Cámara presentados por representante fueron de {hl} a {hh} y los del Senado por senador, de {sl} a {sh}. Las cifras están en la tabla de abajo.",
+   "state": "draft"
+  },
+  "nums.ch_pass_h": {
+   "en": "Passed Amended, and Passed as Introduced",
+   "es": "Aprobados con enmiendas y aprobados tal como se presentaron",
+   "state": "draft"
+  },
+  "nums.ch_pass_p": {
+   "en": "The figure at the end of each bar is the share amended.",
+   "es": "La cifra al final de cada barra es la proporción enmendada.",
+   "state": "draft"
+  },
+  "nums.ch_pass_said": {
+   "en": "Stacked bar chart: of the bills that passed both chambers in each term, the share amended on the way and the share passed as introduced. The figures are in the table below.",
+   "es": "Gráfico de barras apiladas: de los proyectos aprobados por ambas cámaras en cada período, la proporción enmendada en el camino y la aprobada tal como se presentó. Las cifras están en la tabla de abajo.",
+   "state": "draft"
+  },
+  "nums.ch_votes_h": {
+   "en": "How Floor Decisions Were Taken, by Year",
+   "es": "Cómo se tomaron las decisiones en el pleno, por año",
+   "state": "draft"
+  },
+  "nums.ch_votes_p": {
+   "en": "The figure at the end of each bar is the share by roll call.",
+   "es": "La cifra al final de cada barra es la proporción por votación nominal.",
+   "state": "draft"
+  },
+  "nums.ch_votes_said": {
+   "en": "Stacked bar chart: for each year, the share of recorded floor decisions taken by roll call, by division and by voice vote. The figures are in the table below.",
+   "es": "Gráfico de barras apiladas: para cada año, la proporción de las decisiones registradas en el pleno tomadas por votación nominal, por división y por voz. Las cifras están en la tabla de abajo.",
    "state": "draft"
   },
   "nums.count_many": {
@@ -24250,6 +24330,11 @@
   "nums.p_votes": {
    "en": "Every recorded floor decision, by year and by how it was decided: a roll call records each member by name, a division records the count, and a voice vote records only which side sounded louder.",
    "es": "Cada decisión registrada en el pleno, por año y según cómo se decidió: una votación nominal registra a cada miembro por su nombre, una votación por división registra el conteo, y una votación a viva voz registra solo qué lado sonó más fuerte.",
+   "state": "draft"
+  },
+  "nums.pos_said": {
+   "en": "{s} support, {o} oppose, {n} neutral",
+   "es": "{s} a favor, {o} en contra, {n} neutrales",
    "state": "draft"
   },
   "nums.r_kill": {
@@ -24475,6 +24560,11 @@
   "nums.whose_sos": {
    "en": "the Secretary of State's",
    "es": "de la Secretaría de Estado",
+   "state": "draft"
+  },
+  "nums.yes_said": {
+   "en": "{p}% yes; two thirds needed",
+   "es": "{p}% sí; se necesitan dos tercios",
    "state": "draft"
   },
   "of.desc": {

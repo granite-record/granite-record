@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.864
+# GRANITE_VERSION: 2026-09-04.865
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -115451,30 +115451,45 @@ def _recheck_order(RS, G):
                   "unread or unregistered each said so; an empty folder refused")
 
 
-@check("frontend", "By the Numbers' chart shows every value where nothing can hover, and says so",
+@check("frontend", "By the Numbers' charts are drawn from the tables' own numbers, say their range in words, "
+                   "and colour the two chambers in neutral tones and two shapes, never a party's",
        needs=("learn_numbers",))
-def _chart_values_without_hover(LN):
-    """The cohesion audit of 30 October 2026, P-6: the chart said "Hover over
-    a term to see its value", and a phone has no hover. On a screen that
-    cannot hover, every bar's value is shown and the line over the chart
-    says where the values are; with a pointer, the four named values and
-    the hover line, as before."""
-    terms = [f"{y}-{y + 1}" for y in range(2017, 2027, 2)]
-    html_ = LN.law_chart({t: {"filed": 100, "Became Law": 20 + 3 * i} for i, t in enumerate(terms)}, terms)
-    bad = []
-    if '<span class="l-hov">Hover over a term to see its value.</span>' not in html_ \
-            or '<span class="l-tap">' not in html_:
-        bad.append("the line over the chart does not say both, one for each kind of screen")
-    css = re.sub(r"\s+", "", Path("src/pages/app.css").read_text(encoding="utf-8"))
-    m = re.search(r"@media\(hover:none\)\{(.*?)\}\}", css)
-    rules = m.group(1) if m else ""
-    for want in (".l-hov{display:none", ".l-tap{display:inline", ".l-barsli.l-bv{visibility:visible"):
-        if want not in rules:
-            bad.append(f"with no hover, app.css lacks {want}")
-    if ".l-tap{display:none}" not in css:
-        bad.append("with a pointer, the no-hover line shows too")
-    assert not bad, "; ".join(bad)
-    return "ok", "every value shown and said so with no hover; the hover line with a pointer"
+def _numbers_charts(LN):
+    """The owner, 11 November 2026: the charts are static inline SVG made at
+    build time, each over the table it is drawn from; House and Senate are
+    neutral tones plus shape and never the parties' colours (--rep, --dem,
+    --ind mean a party everywhere else on the site). The stacked bar prints,
+    at the end of each bar, the share the table's own counts give."""
+    import inspect
+    oc = {t: {"filed": 100, "Became Law": 20 + 3 * i, "Interim Study": 10, "Died": 60 - 3 * i, "other": 10}
+          for i, t in enumerate(("2019-2020", "2021-2022", "2023-2024"))}
+    html_ = LN.ends_chart(oc, list(oc))
+    assert re.findall(r'class="sk-v"[^>]*>([\d.]+)%', html_) == ["20.0", "23.0", "26.0"], (
+        "the bar's printed shares are not the table's counts")
+    assert 'role="img"' in html_ and "from 20.0% in 2019" in html_ and "<table" not in html_, (
+        "a chart says its range in words and leaves its figures to the table beneath it")
+    assert html_.count("<rect") >= 12, "a bar is drawn in four segments a term"
+    pts = [("House A", "H", 40, 55.0), ("Senate B", "S", 15, 30.0), ("House C", "H", 90, 10.0)]
+    sc = LN.scatter_chart(pts, "t", "said", "x", "y")
+    assert sc.count('class="ch-h"') == 2 and sc.count('class="ch-s"') == 1, "House circles, Senate diamonds"
+    assert "House A: 40 bills reported on, 55.0% passed" in sc, "a point's title holds its figures"
+    dots = LN.dot_chart([("2019", 88.0, 95.0), ("2021", 90.0, None)], "t", "said")
+    assert dots.count('class="ch-h"') == 2 and dots.count('class="ch-s"') == 1, "a dot a chamber, none where there is none"
+    src = inspect.getsource(LN.scatter_chart) + inspect.getsource(LN.dot_chart) + \
+        inspect.getsource(LN.chamber_marker) + inspect.getsource(LN.lines_chart)
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    chamber_css = "".join(re.findall(r"[^{}]*(?:\.ch-h|\.ch-s|\.c-h|\.c-s)\b[^{}]*\{[^}]*\}", css))
+    assert chamber_css, "app.css does not draw the chamber marks"
+    for bad in ("--rep", "--dem", "--ind"):
+        assert bad not in src and bad not in chamber_css, f"a chamber is drawn in a party colour ({bad})"
+    for need in (".ch .ch-h{", ".ch .ch-s{", ".l-sw.is-diamond"):
+        assert need in css, f"app.css lacks {need}"
+    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    for k in ("nums.ch_ends_said", "nums.ch_cmte_said", "nums.ch_att_said", "nums.pos_said", "nums.yes_said"):
+        assert k in es, f"es.json lacks {k}"
+    assert 'viewBox="0 0 100 10"' in LN.yes_bar(70.0) and 'x1="66.7"' in LN.yes_bar(70.0), (
+        "the ballot's bar carries the two-thirds line")
+    return "ok", "a bar's shares are the table's, ranges said in words, chambers neutral in shape and tone"
 
 
 @check("data", "every RSA section the Learn pages cite is in force, and says what they quote")
