@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.861
+# GRANITE_VERSION: 2026-09-04.862
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -777,15 +777,147 @@ def _parsed_warned(path):
     key = (str(p.resolve()), st.st_size, st.st_mtime_ns)
     if key not in _PARSED:
         import warnings
-        with warnings.catch_warnings(record=True) as seen:
-            warnings.simplefilter("always")
-            tree = ast.parse(p.read_text(encoding="utf-8", errors="replace"))
-        for w in seen:
-            if not issubclass(w.category, SyntaxWarning):
-                warnings.warn_explicit(w.message, w.category, w.filename, w.lineno)
-        _PARSED[key] = (tree, [(w.lineno, str(w.message)) for w in seen
-                               if issubclass(w.category, SyntaxWarning)])
+        tree, seen = _parse_in_pieces(p.read_text(encoding="utf-8", errors="replace"))
+        for line, message, category, name in seen:
+            if not issubclass(category, SyntaxWarning):
+                warnings.warn_explicit(message, category, name, line)
+        _PARSED[key] = (tree, [(line, str(message)) for line, message, category, _n in seen
+                               if issubclass(category, SyntaxWarning)])
     return _PARSED[key]
+
+
+# A BIG SCRIPT IS PARSED IN PIECES (11 November 2026). CPython's parser takes
+# time that grows with the square of a file's size, not with its size: on this
+# project's 3.14, 0.7 MB takes 0.5 s, 2.9 MB takes 9 s and 5.7 MB takes 34 s,
+# and this file is 8 MB, so one ast.parse of it was a hundred seconds and
+# _parse_all's 83 of the code checks' 896. Cut into pieces of about 2,500 lines
+# and parsed piece by piece it takes a few seconds. The pieces are cut only
+# where a top-level statement can begin (a line in column 0 that opens with
+# "@check(", "def " or "class ", after a blank line); the pieces' bodies are
+# joined, with their line numbers moved to where each stood, into the Module
+# ast.parse would give -- held by _pieces_are_the_whole, which _parse_all runs.
+# A cut that lands where it cannot (in a string or a bracket) leaves a piece
+# that does not parse, and is made again at the next place a statement may
+# begin; a file that will not parse is parsed whole, and says what is wrong
+# with it as before.
+_PIECE_LINES = 2500
+_PIECE_FROM = 200_000
+_PIECE_OPENS = ("@check(", "def ", "class ")
+
+
+def _piece_cuts(lines):
+    """Line indexes where a top-level statement may begin, for a cut: a line
+    in column 0 that opens with _PIECE_OPENS, after a blank one."""
+    return [i for i in range(1, len(lines))
+            if lines[i].startswith(_PIECE_OPENS) and not lines[i - 1].strip()]
+
+
+def _parse_whole(text):
+    """(ast.parse(text), the parse's warnings as (line, message, category,
+    file name))."""
+    import warnings
+    with warnings.catch_warnings(record=True) as got:
+        warnings.simplefilter("always")
+        tree = ast.parse(text)
+    return tree, [(w.lineno, w.message, w.category, w.filename) for w in got]
+
+
+def _parse_in_pieces(text, every=_PIECE_LINES, floor=_PIECE_FROM):
+    """(the Module ast.parse(text) gives, its warnings as _parse_whole gives
+    them), by pieces where the text is long enough to be worth cutting. A
+    piece that will not parse is cut again at the next place a statement may
+    begin, which takes the cut out of a string or a bracket it had landed in;
+    one that runs to the end of the file and will not parse is the file's own
+    error, and is raised as the whole parse raises it."""
+    if len(text) < floor:
+        return _parse_whole(text)
+    lines = text.split("\n")
+    cuts = _piece_cuts(lines)
+    body, seen, start, at = [], [], 0, 0
+    while start < len(lines):
+        while at < len(cuts) and cuts[at] < start + every:
+            at += 1
+        while True:
+            stop = cuts[at] if at < len(cuts) else len(lines)
+            try:
+                part, said = _parse_whole("\n".join(lines[start:stop]) + "\n")
+                break
+            except SyntaxError:
+                if stop == len(lines):
+                    return _parse_whole(text)
+                at += 1
+        ast.increment_lineno(part, start)
+        body += part.body
+        seen += [(line + start, m, c, n) for line, m, c, n in said]
+        start = stop
+    return ast.Module(body=body, type_ignores=[]), seen
+
+
+_PIECES_SAMPLE = '''import os
+
+
+@check('a')
+def one():
+    return 1
+
+
+BIG = """text
+
+def inside_a_string():
+    pass
+
+@check('b')
+"""
+
+
+@check('c')
+def two(x):
+    return x + 1
+
+
+class K:
+    def m(self):
+        return '\\d+'
+
+
+@check('d')
+@other
+def three():
+    pass
+'''
+
+
+def _pieces_are_the_whole():
+    """_parse_in_pieces gives what one ast.parse gives (above it says why it
+    is there): the same tree, every attribute and line number, and the same
+    warnings at the same lines, on a source cut every few lines and on a real
+    script cut every few hundred; a cut that would land in a string is made
+    again further on; and a syntax error is raised as ever."""
+    src = _PIECES_SAMPLE
+    texts = [src, src * 7, "x = 1\n\n\ndef f():\n    return 2\n"]
+    real = _paths.locate("build_pages.py")
+    if real.exists():
+        texts.append(real.read_text(encoding="utf-8", errors="replace"))
+    for text in texts:
+        for every in (1, 4, 300):
+            whole, said = _parse_whole(text)
+            tree, got = _parse_in_pieces(text, every=every, floor=0)
+            assert ast.dump(tree, include_attributes=True) == ast.dump(whole, include_attributes=True), (
+                f"a script parsed in pieces (every {every} lines) is not the tree one parse gives")
+            assert [(l, str(m), c) for l, m, c, _n in got] == [(l, str(m), c) for l, m, c, _n in said], (
+                f"a script parsed in pieces (every {every} lines) warns otherwise than one parse does")
+    assert any("\\d" in str(m) for _l, m, _c, _n in _parse_whole(src)[1]), (
+        "the sample's invalid escape gave no warning, so the warnings above held nothing")
+    assert len(_piece_cuts((src * 7).split("\n"))) > 3, "the sample is not cut into pieces"
+    try:
+        _parse_in_pieces(src + "def broken(:\n", every=4, floor=0)
+    except SyntaxError:
+        pass
+    else:
+        raise AssertionError("a syntax error in a script parsed in pieces was not raised")
+    return len(texts)
+
+
 
 
 @check("files", "every listed script parses")
@@ -793,6 +925,7 @@ def _parse_all():
     vp = Path("versions.json")
     if not vp.exists():
         return "skip", "no versions.json here"
+    _pieces_are_the_whole()
     names = [n for n in json.loads(vp.read_text(encoding="utf-8"))["files"]
              if n.endswith(".py")]
     bad = []
@@ -37009,6 +37142,15 @@ def _built_site(here, root, brand=True, env=None):
     env is laid over the builders' environment, for the check that states
     the build's date.
     """
+    base, steps = _built_site_prepare(here, root, brand)
+    return base, _built_site_run(root, steps, env)
+
+
+def _built_site_prepare(here, root, brand=True):
+    """The fixture project in `root`, and (the base address, the builders to
+    run over it as (script, arguments, what it makes)): _built_site's first
+    half, which a run does before any check so that the builders can go on
+    beside the checks (_start_early_builds)."""
     _site_fixture(root)
     (root / "site").mkdir(exist_ok=True)
     shutil.copy2(here / "src/pages/bills.html", root / "site" / "bills.html")
@@ -37175,12 +37317,19 @@ def _built_site(here, root, brand=True, env=None):
         ("build_exports.py", ["--site", "site", "--base", base],
          "site/data/manifest.json"),
     ]
+    return base, steps
+
+
+def _built_site_run(root, steps, env=None, run=None):
+    """_built_site's second half: the builders over the fixture, in order.
+    Returns how many ran. `run` is the function that starts them (_run)."""
+    run = run or _run
     ran = 0
     for script, args, produces in steps:
         if not _paths.locate(script).exists():
             continue
-        r = _run([sys.executable, _paths.script(script), *args],
-                 cwd=root, capture_output=True, text=True, timeout=180, env=env)
+        r = run([sys.executable, _paths.script(script), *args],
+                cwd=root, capture_output=True, text=True, timeout=180, env=env)
         if r.returncode != 0:
             tail = (r.stderr or r.stdout).strip().splitlines()
             raise AssertionError(f"{script}: " + (tail[-1][:120] if tail else "?"))
@@ -37189,7 +37338,7 @@ def _built_site(here, root, brand=True, env=None):
     # SILENCE IS NOT SUCCESS. A chain that ran no builder at all would have
     # satisfied every assertion above by never reaching one.
     assert ran == len(steps), f"only {ran} of {len(steps)} builders were there to run"
-    return base, ran
+    return ran
 
 
 # ONE BUILD OF THE FIXTURE A RUN, FOR THE CHECKS THAT READ IT AS IT IS BUILT (2
@@ -37260,6 +37409,9 @@ def _fixture_site_shared():
     a check holds what it reads to either."""
     def build():
         from datetime import date
+        early = _early_build("shared")
+        if early is not None:
+            return early[0], early[1], early[2], early[3]
         shared = _shared_root("gr-fixture-site-")
         started = date.today()
         base, ran = _built_site(Path(".").resolve(), shared)
@@ -37274,6 +37426,91 @@ def _fixture_site_whole(root):
     shared, base, ran, _days = _fixture_site_shared()
     shutil.copytree(shared, root, dirs_exist_ok=True)
     return base, ran
+
+# THREE FIXTURE SITES ARE BUILT BESIDE THE CHECKS, NOT IN THEIR WAY (11
+# November 2026). A full run builds the fixture site three times, each a
+# chain of twenty builders and each by a different check for a reason of its
+# own: with its logo and icons (_fixture_site_shared, which most checks read),
+# with none, as a clone builds it (_links_resolve), and with a day stated
+# (_build_date_stated). They share nothing, so the second and third were built
+# by their checks in sequence with the first -- about a minute of the code
+# checks' fifteen. main() now prepares all three before the first check runs
+# (the fixture's files, a second or two each) and starts their builders in
+# threads: the builders are child processes, so the threads only wait. The
+# check that wants a site takes the finished one: _fixture_site_shared its
+# own, the others a copy of theirs in the folder they made, as every check that
+# reads the shared one does. What a check sees is what it saw: the same fixture
+# built the same way by the same builders; one that fails fails the check that
+# asks for it, in the builder's own words. A run that selects part of the
+# suite (--changed, --built, --data) starts none, and a site no check asks for
+# is built and deleted unread. Each child is started with the environment as
+# main() began it, and by the real child.run: a check that sets a variable or
+# stands a stub in for run() for a moment, as several do, cannot reach a build
+# that is going on beside it.
+_EARLY = {}
+
+
+def _start_early_builds():
+    """Prepare the fixture sites above and start their builders; _EARLY holds
+    each as (where it stands, base address, environment it is built with, the
+    day it was started, its builders' future)."""
+    import concurrent.futures
+    from datetime import date, timedelta
+    build_date = imp("build_date")
+    here = Path(".").resolve()
+    if build_date is None or [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]:
+        return
+    real_run = child.run
+    env = dict(os.environ)
+    day = date.today() - timedelta(days=2)
+    stated = {build_date.ENV: day.isoformat()}
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=3, thread_name_prefix="fixture")
+    for what, brand, made_with in (("shared", True, env), ("nobrand", False, env),
+                                   ("stated", True, stated)):
+        root = _shared_root(f"gr-early-{what}-")
+        try:
+            base, steps = _built_site_prepare(here, root, brand)
+        except Exception:                                       # noqa: BLE001
+            continue        # the check that asks builds its own, and says why
+        _EARLY[what] = (root, base, made_with, date.today(),
+                        pool.submit(_built_site_run, root, steps, made_with, real_run))
+    pool.shutdown(wait=False)
+
+
+def _early_build(what, made_with=None):
+    """(where it stands, base address, how many builders ran, the days it was
+    built on) of the early build of `what`, waited for, or None where none was
+    started, it was taken already, or it was built with another environment
+    than `made_with`. A build that failed raises what its builders raised."""
+    from datetime import date
+    got = _EARLY.get(what)
+    if got is None or (made_with is not None and got[2] != made_with):
+        return None
+    del _EARLY[what]
+    root, base, _env, started, future = got
+    ran = future.result()
+    return root, base, ran, sorted({started, date.today()})
+
+
+def _built_nobrand(here, root):
+    """_built_site(here, root, brand=False)'s base address, from the early
+    build where there is one: the built project is copied into `root`."""
+    got = _early_build("nobrand")
+    if got is None:
+        return _built_site(here, root, brand=False)[0]
+    shutil.copytree(got[0], root, dirs_exist_ok=True)
+    return got[1]
+
+
+def _built_stated(here, root, stated):
+    """_built_site(here, root, env=stated), from the early build where there is
+    one made with that environment."""
+    got = _early_build("stated", stated)
+    if got is None:
+        return _built_site(here, root, env=stated)[0]
+    shutil.copytree(got[0], root, dirs_exist_ok=True)
+    return got[1]
+
 
 
 @check("frontend", "every published guide is reached from the home page, in the site search and in the sitemap, its sitemap date and HowTo data dated by the newest read of its sources, and the state in its title")
@@ -38874,7 +39111,7 @@ def _build_date_stated(build_all, build_date, shell):
     root = Path(tempfile.mkdtemp(prefix="gr-stated-"))
     try:
         stated = {build_date.ENV: day.isoformat()}
-        _built_site(here, root, env=stated)
+        _built_stated(here, root, stated)
         site = root / "site"
         said, late = 0, []
         for p in sorted(site.rglob("*.html")):
@@ -39152,7 +39389,7 @@ def _links_resolve():
         return "skip", "not here: " + ", ".join(absent)
     root = Path(tempfile.mkdtemp())
     try:
-        base, _steps = _built_site(here, root, brand=False)
+        base = _built_nobrand(here, root)
         import build_pages as BP
         site = root / "site"
         rules = _redirect_rules(site)
@@ -112701,12 +112938,35 @@ def _bill_versions_early(BV, BB):
     assert len(want) == 3 and any(r[1] for r in want.values()), \
         "the fixture's pairs have no marks to compare"
     assert BV.compare_early(per) == {}, "a short pair was sent to the pool at the real mark"
-    was = BV.BIG_PAIR
+    # THE POOL IS STARTED IN A PROCESS OF ITS OWN (11 November 2026). Windows
+    # starts a pool's workers by importing the starting process's main
+    # script, which here was this file -- eight megabytes, compiled and run
+    # again by every worker, a hundred seconds of the code checks. As
+    # build_bill_versions.py starts it, the main script is that small one, so
+    # this starts it as that does: a few lines that call compare_early with
+    # BIG_PAIR lowered and hand its answer back.
+    import pickle
+    tmp = Path(tempfile.mkdtemp(prefix="gr-early-"))
     try:
-        BV.BIG_PAIR = 1
-        early = BV.compare_early(per)
+        (tmp / "pool.py").write_text(
+            "import pickle, sys\n"
+            "if __name__ == '__main__':\n"
+            "    sys.path.insert(0, sys.argv[1])\n"
+            "    import build_bill_versions as BV\n"
+            "    BV.BIG_PAIR = 1\n"
+            "    per = pickle.load(open(sys.argv[2], 'rb'))\n"
+            "    pickle.dump(BV.compare_early(per), open(sys.argv[3], 'wb'))\n", encoding="utf-8")
+        with open(tmp / "per.pickle", "wb") as f:
+            pickle.dump(per, f)
+        r = _run([sys.executable, str(tmp / "pool.py"),
+                  str(_paths.locate("build_bill_versions.py").parent), str(tmp / "per.pickle"),
+                  str(tmp / "early.pickle")], capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0, ("compare_early with the mark lowered failed: "
+                                   + ((r.stderr or r.stdout).strip().splitlines() or ["?"])[-1][:200])
+        with open(tmp / "early.pickle", "rb") as f:
+            early = pickle.load(f)
     finally:
-        BV.BIG_PAIR = was
+        shutil.rmtree(tmp, ignore_errors=True)
     src = _paths.locate("build_bill_versions.py").read_text(encoding="utf-8")
     assert "early.pop((bill, year, i), None)" in src and "were not met by the" in src, \
         "main() no longer takes the early pairs where it meets them, or no longer refuses a left one"
@@ -128700,6 +128960,8 @@ def main():
         # suite, and handoff.py reads a record as a run of all of it.
         handoff = None
 
+    if chosen is None and not a.built and not a.data:
+        _start_early_builds()
     results, group, built, took = [], None, [], []
     for c in _in_order(CHECKS):
         if a.code and c["group"] == "data":
