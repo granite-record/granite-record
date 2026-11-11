@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-11.1
+# GRANITE_VERSION: 2026-11-11.2
 """
 An article's "History and citations" fold on the Laws page's Constitution tab.
 
@@ -112,7 +112,8 @@ def _item(bills, term, bill, text, ballot=None, lang=I.DEFAULT):
     st = fate(bills.row(k), ballot, lang)
     return (f'<li><a href="{E(bills.url(k))}" title="{E((bills.row(k) or {}).get("title") or "")}">'
             f'{E(bills.label(k))}</a> <span class="rs-yr">{E(term)}</span>'
-            + (f' <span class="rs-st">{E(st)}</span>' if st else "") + text + "</li>")
+            + (f' <span class="rs-st">&middot; {E(st)}{E("; " + text) if text else ""}</span>' if st else "")
+            + "</li>")
 
 
 def verb_note(verb, lang=I.DEFAULT):
@@ -143,7 +144,7 @@ def lists(part, key, cc, bills, ballots, rsa_href, lang=I.DEFAULT):
     for term, bill, verb in _order(got.get("proposed", [])):
         b = ballots.get((term, bill))
         says = verb_note(verb, lang)
-        item = _item(bills, term, bill, f' <span class="rs-note">{E(says)}</span>' if says else "", b, lang)
+        item = _item(bills, term, bill, says, b, lang)
         if b and b.get("yes") is not None and ratified(b["yes"], b["no"]) and verb != "insert_after":
             won.append(item)
         else:
