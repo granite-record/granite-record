@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.16
+# GRANITE_VERSION: 2026-10-23.17
 """
 The site's translations: what is translated, what has gone stale, and the
 proofreader's sheet out and back. src/pages/i18n.py says how a translation
@@ -50,7 +50,7 @@ COLUMNS = ("key", "on the site", "english", "translation", "state", "note", "cor
 
 # Where on the site a key's words are, by the key's first part: what the
 # proofreader is told, in place of the file and line the code says it at.
-AREAS = {"nav": "the header", "page": "the header", "theme": "Settings", "set": "Settings",
+AREAS = {"constitution": "the Laws page's Constitution tab, under each article", "nav": "the header", "page": "the header", "theme": "Settings", "set": "Settings",
          "notice": "an English page, to a reader who chose Spanish",
          "lang": "every Spanish page, under its title: what stays in English, and why",
          "home": "the home page", "card": "the home page's cards",

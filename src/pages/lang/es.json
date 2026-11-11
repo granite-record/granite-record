@@ -1372,6 +1372,121 @@
    "es": "{n} escaños vacantes de la Cámara en {d} distritos",
    "state": "draft"
   },
+  "constitution.hist.changed": {
+   "en": "How it has changed",
+   "es": "Cómo ha cambiado",
+   "state": "draft"
+  },
+  "constitution.hist.changed_note": {
+   "en": "Amendments the voters ratified, newest first.",
+   "es": "Enmiendas que los votantes ratificaron, las más recientes primero.",
+   "state": "draft"
+  },
+  "constitution.hist.cited": {
+   "en": "Cited by",
+   "es": "Citado por",
+   "state": "draft"
+  },
+  "constitution.hist.cited_note": {
+   "en": "Bills and statutes that name this article and its part.",
+   "es": "Proyectos de ley y leyes que nombran este artículo y su parte.",
+   "state": "draft"
+  },
+  "constitution.hist.count_pending": {
+   "en": "Passed both chambers; on the ballot {day}, count not yet recorded",
+   "es": "Aprobada por ambas cámaras; en la boleta el {day}, el conteo aún no está registrado",
+   "state": "draft"
+  },
+  "constitution.hist.failed": {
+   "en": "Failed the three-fifths vote in the {chamber}{vote} ({when})",
+   "es": "No alcanzó los tres quintos en la Cámara: {chamber}{vote} ({when})",
+   "state": "draft"
+  },
+  "constitution.hist.failed_bare": {
+   "en": "Failed the three-fifths vote",
+   "es": "No alcanzó los tres quintos",
+   "state": "draft"
+  },
+  "constitution.hist.itl": {
+   "en": "Inexpedient to legislate ({at})",
+   "es": "Inconveniente legislar ({at})",
+   "state": "draft"
+  },
+  "constitution.hist.itl_bare": {
+   "en": "Inexpedient to legislate",
+   "es": "Inconveniente legislar",
+   "state": "draft"
+  },
+  "constitution.hist.name": {
+   "en": "History and citations",
+   "es": "Historial y citas",
+   "state": "draft"
+  },
+  "constitution.hist.not_ratified": {
+   "en": "Passed both chambers; not ratified by the voters, {day}: {yes} yes, {no} no",
+   "es": "Aprobada por ambas cámaras; no ratificada por los votantes, {day}: {yes} a favor, {no} en contra",
+   "state": "draft"
+  },
+  "constitution.hist.one_chamber": {
+   "en": "Passed one chamber and died",
+   "es": "Aprobada por una cámara y murió",
+   "state": "draft"
+  },
+  "constitution.hist.other": {
+   "en": "Other proposed amendments",
+   "es": "Otras enmiendas propuestas",
+   "state": "draft"
+  },
+  "constitution.hist.other_note": {
+   "en": "Every other constitutional amendment aimed at this article, with what became of it.",
+   "es": "Todas las demás enmiendas constitucionales dirigidas a este artículo, con lo que fue de cada una.",
+   "state": "draft"
+  },
+  "constitution.hist.postponed": {
+   "en": "Indefinitely postponed",
+   "es": "Pospuesta indefinidamente",
+   "state": "draft"
+  },
+  "constitution.hist.ratified": {
+   "en": "Ratified by the voters, {day}: {yes} yes, {no} no",
+   "es": "Ratificada por los votantes, {day}: {yes} a favor, {no} en contra",
+   "state": "draft"
+  },
+  "constitution.hist.session_end": {
+   "en": "Died when the session ended",
+   "es": "Murió al terminar la sesión",
+   "state": "draft"
+  },
+  "constitution.hist.study": {
+   "en": "Sent to interim study",
+   "es": "Enviada a estudio provisional",
+   "state": "draft"
+  },
+  "constitution.hist.table": {
+   "en": "Laid on the table and died there",
+   "es": "Dejada sobre la mesa y murió allí",
+   "state": "draft"
+  },
+  "constitution.hist.to_voters": {
+   "en": "Passed both chambers; sent to the voters",
+   "es": "Aprobada por ambas cámaras; enviada a los votantes",
+   "state": "draft"
+  },
+  "constitution.hist.verb_after": {
+   "en": "proposed a new article after it",
+   "es": "propuso un artículo nuevo después de éste",
+   "state": "draft"
+  },
+  "constitution.hist.verb_new": {
+   "en": "proposed this article as new",
+   "es": "propuso este artículo como nuevo",
+   "state": "draft"
+  },
+  "constitution.hist.verb_repeal": {
+   "en": "proposed to repeal it",
+   "es": "propuso derogarlo",
+   "state": "draft"
+  },
   "elect.all": {
    "en": "All {n} members-elect, by surname, each chamber on its own.",
    "es": "Los {n} miembros electos, por apellido, cada cámara por separado.",

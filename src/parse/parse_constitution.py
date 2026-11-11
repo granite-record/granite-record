@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.2
+# GRANITE_VERSION: 2026-10-17.3
 """
 New Hampshire's Constitution, read into collected/constitution.json from the
 pages nh.gov publishes it on.
@@ -424,6 +424,46 @@ def cacr_targets(body, con):
         found.append((m.start(), "reenact_part", _WHICH[m.group(1).lower()], "", ""))
     for _, verb, part, key, new in sorted(found, key=lambda x: x[0]):
         add(verb, part, key, new)
+    return out
+
+
+# WHAT A TEXT CITES (11 November 2026): the articles of the Constitution a bill or
+# a statute names, as a reader writes them -- "Part I, Article 12", "Part 2,
+# Article 14", "Pt. II, Art. 28", "Part First, Articles 2 and 3", "Article 11 of
+# Part First", "articles 41, 72-a and 73-a of the second part". Every form is a
+# sentence of one of the 32,086 bills that are not CACRs. Only a part AND an
+# article the Constitution as read holds count: a bare "article 11" (67 bills)
+# is ambiguous between the Parts and is not counted, and "N.H. Constitution,
+# without signature" names no article at all.
+_N = r"\d{1,3}(?:-[a-z])?"
+_LIST = _N + r"(?:(?:,\s*(?:and\s+)?|\s+and\s+)" + _N + r")*"
+_PW = r"(?:first|second|ii?|[12])"
+CITE_PART_FIRST = re.compile(
+    r"\b(?:Part|Pt\b\.?)\s+(" + _PW + r")\b,?\s*(?:Articles?|Art\b\.?)\s*(" + _LIST + r")\b", re.I)
+CITE_ART_FIRST = re.compile(
+    r"\bArticles?\s+(" + _LIST + r")\s*,?\s*(?:of|in)\s+(?:the\s+)?(?:(first|second)\s+part|part\s+("
+    + _PW + r"))\b", re.I)
+_CITE_PART = {"first": 1, "i": 1, "1": 1, "second": 2, "ii": 2, "2": 2}
+
+
+def cited_articles(text, con):
+    """[(part, article key)] in the order a text first cites them: only an
+    article the Constitution as read holds, each once."""
+    have = {(p, a["key"]) for p, a in articles(con)}
+    if not text or not have:
+        return []
+    found = []
+    for m in CITE_PART_FIRST.finditer(text):
+        for k in re.findall(_N, m.group(2)):
+            found.append((m.start(), _CITE_PART[m.group(1).lower()], k.lower()))
+    for m in CITE_ART_FIRST.finditer(text):
+        part = _CITE_PART[(m.group(2) or m.group(3)).lower()]
+        for k in re.findall(_N, m.group(1)):
+            found.append((m.start(), part, k.lower()))
+    out = []
+    for _, part, k in sorted(found, key=lambda x: x[0]):
+        if (part, k) in have and (part, k) not in out:
+            out.append((part, k))
     return out
 
 

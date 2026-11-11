@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.30
+# GRANITE_VERSION: 2026-10-11.31
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -70,6 +70,7 @@ import unicodedata
 
 import build_date
 import components as C
+import constitution_history as CH
 import constitution_tab as CT
 import parse_constitution as PC
 import rsa
@@ -1869,7 +1870,7 @@ def as_of(latest, today=None):
     return f"Includes changes through {E(y)}{later}.{taken}"
 
 
-def landing_page(tmpl, table, data, base, topics, pending, con=None):
+def landing_page(tmpl, table, data, base, topics, pending, con=None, hist=None):
     """THE LAWS AS THE BILL SEARCH IS LAID OUT (the person, 11 October 2026):
     filters at the side, the directory of titles and chapters in the middle
     -- each title saying which chapters it holds before it is opened, as the
@@ -2025,7 +2026,7 @@ def landing_page(tmpl, table, data, base, topics, pending, con=None):
     if con:
         # The constitution's sidebar is a chapter page's, so the chapter
         # page's script marks the article being read in it.
-        art = CT.tabbed(art, rsa_lead, con) + CHAPTER_JS
+        art = CT.tabbed(art, rsa_lead, con, hist) + CHAPTER_JS
         # The search first in its panel, above the panel's lead: at the top,
         # as the bill search's is (the person, 24 October 2026).
         lead = f'<p class="l-lead">{rsa_lead}</p>'
@@ -2033,6 +2034,24 @@ def landing_page(tmpl, table, data, base, topics, pending, con=None):
         art = art.replace(lead + search, search + lead, 1)
     return p.replace('<div id="results"></div>',
                      f'<div id="results"><div class="l-page rs-page rs-landing">{head}{art}</div>{DEFS_JS}{LANDING_JS}</div>', 1)
+
+
+def constitution_history(bills):
+    """What the Constitution tab's History and citations folds read, as
+    constitution_history.fold takes it: (constitution_citations.json, the
+    bill index, {(term, bill): the CACR's row of corrections/ballot_results.json}
+    -- read, never written -- and the address of a statute section); None
+    where constitution_citations.json is not on this disk."""
+    p = Path("constitution_citations.json")
+    if not p.is_file():
+        return None
+    rows = {}
+    try:
+        rows = {(r["term"], r["bill"]): r for r in json.loads(
+            Path("corrections/ballot_results.json").read_text(encoding="utf-8")).get("rows", [])}
+    except (OSError, ValueError, KeyError):
+        pass
+    return json.loads(p.read_text(encoding="utf-8")), bills, rows, href
 
 
 def main():
@@ -2078,7 +2097,8 @@ def main():
     if not a.only and stale.is_file():
         stale.unlink()
     topics, pending = chapter_topics(data, bills), chapter_pending(data, bills)
-    (site / "laws.html").write_text(S.clean_links(landing_page(tmpl, table, data, a.base, topics, pending)), encoding="utf-8")
+    (site / "laws.html").write_text(S.clean_links(landing_page(tmpl, table, data, a.base, topics, pending,
+                                                      hist=constitution_history(bills))), encoding="utf-8")
     chapters, headings, words = build_indexes(table, data, topics, pending)
     for name, obj in (("chapters.json", chapters), ("headings.json", headings), ("words.json", words)):
         (out / name).write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")),
@@ -2097,6 +2117,13 @@ def main():
     con = PC.load()
     print("build_rsa: " + (f"the Constitution tab, {sum(con['counts'].values())} articles"
                            if con else f"NO Constitution tab: {PC.OUT.name} is not on this disk"))
+    if con:
+        hist = constitution_history(bills)
+        n_folds = sum(1 for p in con["parts"] for d in p["divisions"] for x in d["articles"]
+                      if CH.lists(p["part"], x["key"], hist[0], bills, hist[2], hist[3])) if hist else 0
+        print(f"build_rsa: {n_folds} articles carry a History and citations fold" if n_folds
+              else "build_rsa: NO article carries a History and citations fold: constitution_citations.json "
+                   "is not on this disk or lists nothing")
     if not a.only:
         S.sitemap_merge(site, a.base, [a.base + "/laws"] + [a.base + chapter_path(c) for c in chs],
                         owns="/laws")
