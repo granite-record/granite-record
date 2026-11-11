@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.868
+# GRANITE_VERSION: 2026-09-04.869
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -74696,7 +74696,7 @@ def _icons_named():
                            f"drawing: {[(h, w.strip()) for h, _s, w in got]}")
     # Follow, Report a problem and Share are mounted outside anything the
     # drawing records; _share_beside_report holds those three the same way.
-    wanted = {"bill", "person", "committee", "book", "calendar", "cite", "search"}
+    wanted = {"bill", "person", "gavel", "book", "calendar", "cite", "search"}
     missing = sorted(n for n in wanted if not seen[n])
     if missing:
         bad.append("no fixture page draws " + ", ".join(missing))
@@ -129048,6 +129048,80 @@ def _began_from(stat, uptime, hz, now):
     second."""
     ticks = int(stat.rsplit(")", 1)[1].split()[19])
     return now - (float(uptime.split()[0]) - ticks / hz)
+
+
+@check("frontend", "the home page's left column is two cards as the right is, the Committees tab is a gavel, "
+                   "and the Laws preview holds a definition's box inside it")
+def _visual_fixes_of_11_november():
+    """The owner's three fixes of 11 November 2026, each held to its contract.
+
+    1. The home page's left column was one sheet with the status box flush
+       against the Recent Session Days heading. It is two cards, the status
+       and Recent Session Days, drawn as the right column's two (Coming up
+       and Latest activity): the same surface, edge, radius and padding, the
+       sheet around the column gone, and a gap between them.
+    2. The Committees tab's drawing is the gavel, one of components.ICONS,
+       drawn as its neighbours are (the one ICON_PAINT).
+    3. The Laws page's preview is held at the top as tall as the screen
+       allows, never scrolls sideways, and DEFS_JS bounds a definition's box
+       by the panel it opens in: its width, its words wrapping, its top and
+       bottom (which is what lets it open above near the panel's bottom)."""
+    import build_pages as BP
+    import build_rsa as B
+    import chrome as CH
+    import components as C
+    for lang in ("en", "es"):
+        body = BP.home_body(lang, False, "", "", "", "")
+        left = re.search(r'<section class="hside hleft".*?</section>', body, re.S)
+        assert left and 'id="state"' in left.group(0) and 'id="session"' in left.group(0), (
+            f"the {lang} home page's left column no longer holds the status and Recent Session Days "
+            f"as #state and #session")
+        right = re.search(r'<section class="hside hright".*?</section>', body, re.S)
+        assert right and 'id="upcoming"' in right.group(0) and 'id="recent"' in right.group(0), (
+            f"the {lang} home page's right column no longer holds #upcoming and #recent")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    laid = [(tuple(re.sub(r"\s+", "", a) for a in at), {" ".join(x.split()) for x in sel.split(",")},
+             {k: " ".join(v.split()) for k, v in _css_decls(body)}) for at, sel, body, _n in _css_rules(css)]
+    wide = ("@media(min-width:73.75em)",)
+    P = ":where(body.pg) "
+
+    def said(sel):
+        out = {}
+        for at, sels, decls in laid:
+            if at == wide and P + sel in sels:
+                out.update(decls)
+        return out
+    card = {k: said(".hv-panels .hright > #upcoming").get(k) for k in
+            ("background", "border", "border-radius", "padding")}
+    assert all(card.values()), f"the right column's cards are not drawn as cards in app.css: {card}"
+    for sel in (".hv-panels .hleft > #state", ".hv-panels .hleft > #session"):
+        got = {k: said(sel).get(k) for k in card}
+        assert got == card, (f"the left column's {sel.rsplit('#', 1)[1]} is not the card the right "
+                             f"column's are: {got} against {card}")
+    assert said(".hv-panels .hleft").get("border") == "0" and said(".hv-panels .hleft").get("background") == "none", (
+        "the left column is still one sheet around its blocks")
+    assert said(".hv-panels .hleft > #state ~ #session").get("margin-top") == "var(--sp-6)", (
+        "the status card and the Recent Session Days card have no gap between them")
+    nav = {href: g for href, _label, g in CH.NAV_TABS}
+    assert nav.get("committees.html") == "gavel" and "gavel" in C.ICONS, (
+        f"the Committees tab's drawing is {nav.get('committees.html')!r}, not the gavel")
+    assert C.icon("gavel").startswith('<svg class="icon" viewBox="0 0 24 24"') and C.ICON_PAINT in C.icon("gavel"), (
+        "the gavel is not drawn as the other icons are")
+    assert "gavel:" in Path("src/pages/components.js").read_text(encoding="utf-8"), (
+        "components.js has no gavel, so a page drawn in the browser would lack the Committees drawing")
+    read = {}
+    for at, sels, decls in laid:
+        if not at and ".lw-read" in sels:
+            read.update(decls)
+    assert read.get("position") == "sticky" and read.get("overflow-x") == "hidden" \
+        and read.get("height") == "calc(100vh - 32px)", (
+        f"the Laws preview is not held at the top, as tall as the screen allows, with no sideways scroll: {read}")
+    place = B.DEFS_JS[B.DEFS_JS.find("function place("):B.DEFS_JS.find("function show(")]
+    assert "overflowX" in place and "pop.style.maxWidth" in place and "host.clientWidth" in place \
+        and "bot-below" in place and "r.top-6-top" in place, (
+        "DEFS_JS does not bound a definition's box by the panel it opens in, its width and its top and bottom")
+    return "ok", ("the left column's two cards are the right's; the Committees tab is the gavel; the Laws "
+                  "preview is as tall as the screen and its definition box is held inside it")
 
 
 def main():
