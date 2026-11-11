@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.305
+// GRANITE_VERSION: 2026-09-07.306
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -12764,9 +12764,10 @@ function drawSessionVotes(only){
 })();
 
 
-// THE READER'S OWN DATE IN A CITATION, not the build's. shell.py writes the
-// build date into every .citeday so a page read without JavaScript still gives
-// a true date for the page rather than "Accessed ." -- and a reader who has
+// THE READER'S OWN DATE IN A CITATION, not the page's. shell.py writes into
+// every .citeday the day the page's record last changed (the build day where
+// it has none), so a page read without JavaScript still gives a true date for
+// the page rather than "Accessed ." -- and a reader who has
 // JavaScript gets the day they actually read it, which is what every one of
 // those four formats means by "accessed".
 //

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-02.1
+# GRANITE_VERSION: 2026-10-02.2
 """
 The day a build says it was made, asked for in one place.
 
@@ -11,7 +11,8 @@ The day a build says it was made, asked for in one place.
 WHY THIS EXISTS
 
 The day the site was built is written into every page: it is the date a
-citation falls back on for a reader without JavaScript (shell.BUILT). The
+citation falls back on for a reader without JavaScript where the page
+has no day its record last changed (shell.BUILT, shell.cited). The
 sitemap dates every address with it, every feed carries it as lastBuildDate,
 the bulk downloads' manifest says when it was generated -- and a dozen
 builders ask what today is to decide what is still to come: this week's

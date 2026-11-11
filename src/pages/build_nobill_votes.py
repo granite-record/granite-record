@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.7
+# GRANITE_VERSION: 2026-10-23.8
 """
 A page a term of the votes not on a bill: what each was about, how it went,
 and the session day it was taken on.
@@ -258,7 +258,8 @@ def page_body(term, rows, terms, path, base):
         (f'<b>{E(C.term_words(t))}</b>' if t == term else f'<a href="{E(href(t))}">{E(C.term_words(t))}</a>')
         for t in sorted(terms, reverse=True))
     shown = sum(1 for x in rows if x["shown"])
-    cite = S.cite_block(path, f"Votes Not on a Bill, {C.term_words(term)} | Granite Record", base, S.BUILT)
+    cite = S.cite_block(path, f"Votes Not on a Bill, {C.term_words(term)} | Granite Record", base,
+                       S.cited(*(str(x.get("date") or "") for x in rows)))
     head = C.record_head({
         "trail": [["Committees", "committees.html"], ["Votes Not on a Bill", ""]],
         "title": f"Votes Not on a Bill, {E(C.term_words(term))}",
