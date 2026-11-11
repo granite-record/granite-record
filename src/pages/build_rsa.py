@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.28
+# GRANITE_VERSION: 2026-10-11.29
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -1468,6 +1468,13 @@ DEFS_JS = r"""<script>
     var x=r.left;
     if(x+(p.right-p.left)>vw-8)x=vw-8-(p.right-p.left);
     if(x<8)x=8;
+    // The pointer: on the edge facing the word, at the word's middle (the
+    // line of it the box is nearest) whatever the box was moved by, kept
+    // clear of the box's corners.
+    var fs=a.getClientRects?a.getClientRects():[],fr=fs.length?fs[side==="above"?0:fs.length-1]:r;
+    var bw=p.right-p.left,ax=(fr.left+fr.right)/2-x;
+    pop.className="termpop rs-dpop"+(side==="above"?" above":"");
+    pop.style.setProperty&&pop.style.setProperty("--arrow",Math.round(Math.max(14,Math.min(Math.max(14,bw-14),ax)))+"px");
     pop.style.left=Math.round(x-b.left)+"px";pop.style.top=Math.round(y-b.top)+"px";}
   function show(a){
     var w=target(a);if(!w||!a.closest(".rs-art"))return;
@@ -1481,16 +1488,17 @@ DEFS_JS = r"""<script>
     if(pop.parentNode)pop.parentNode.removeChild(pop);
     var ps=paras(w),f=w.getAttribute("data-for"),cite=w.getAttribute("data-cite")||"the definition";
     pop.textContent="";
+    var inn=el("span","rs-dpin");pop.appendChild(inn);
     var c=el("span","rs-dpcite",(f?"Defined for "+f+" in ":"Defined in "));c.id="rs-dpcite";
-    var go=el("a","",cite);go.href=w.getAttribute("data-href")||a.getAttribute("href");c.appendChild(go);pop.appendChild(c);
-    var t=el("span","rs-dptext");t.id="rs-dptext";pop.appendChild(t);fill(t,ps,false);
+    var go=el("a","",cite);go.href=w.getAttribute("data-href")||a.getAttribute("href");c.appendChild(go);inn.appendChild(c);
+    var t=el("span","rs-dptext");t.id="rs-dptext";inn.appendChild(t);fill(t,ps,false);
     if(ps.join(" ").length>CUT+20){
       var m=el("button","rs-dpmore","Show more");m.type="button";m.setAttribute("aria-expanded","false");
       m.setAttribute("aria-controls","rs-dptext");
       m.addEventListener("click",function(){var whole=m.getAttribute("aria-expanded")!=="true";
         fill(t,ps,whole);m.textContent=whole?"Show less":"Show more";m.setAttribute("aria-expanded",whole?"true":"false");
         place(a,true);});
-      pop.appendChild(m);}
+      inn.appendChild(m);}
     a.parentNode.insertBefore(pop,a.nextSibling);
     pop.hidden=false;cur=a;opened=Date.now();a.setAttribute("aria-describedby","rs-dpcite rs-dptext");
     side="";place(a);

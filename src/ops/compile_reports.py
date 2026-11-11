@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.19
+# GRANITE_VERSION: 2026-09-12.20
 """
 What readers reported, compiled for a person and for the session that triages.
 
@@ -141,8 +141,8 @@ FIELDS = ("date", "status", "sponsor", "vote", "hearing", "committee", "text",
 # And a page in another language whose translation a reader reports (the
 # owner, 24 October 2026): "translation:" and the page's own address, with
 # TRANSLATION as its field and no other kind's (report.js says the same).
-RECORD = re.compile(r"^(bill:\d{4}/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3}(?:-\d{4})?|session:[HS]/\d{4}-\d{2}-\d{2}|study:ss\d{1,6}|translation:/es/(?:(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})(?:/(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})){0,2})?)$")
-PATH = re.compile(r"^/(bill/\d{4}/[a-z]{2,6}\d{1,4}|legislator/[a-z0-9-]{1,80}|committee/[A-Za-z]\d{2,3}(?:-\d{4})?|session/[HS]/\d{4}-\d{2}-\d{2}|committee/ss\d{1,6}|es/(?:(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})(?:/(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})){0,2})?)$")
+RECORD = re.compile(r"^(bill:\d{4}/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3}(?:-\d{4})?|session:[HS]/\d{4}-\d{2}-\d{2}|study:ss\d{1,6}|town:[a-z0-9]+(?:-[a-z0-9]+)*|translation:/es/(?:(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})(?:/(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})){0,2})?)$")
+PATH = re.compile(r"^/(bill/\d{4}/[a-z]{2,6}\d{1,4}|legislator/[a-z0-9-]{1,80}|committee/[A-Za-z]\d{2,3}(?:-\d{4})?|session/[HS]/\d{4}-\d{2}-\d{2}|committee/ss\d{1,6}|town/[a-z0-9]+(?:-[a-z0-9]+)*|es/(?:(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})(?:/(?:[a-z0-9]+(?:-[a-z0-9]+)*|\d{4}-W\d{2})){0,2})?)$")
 TRANSLATION = "translation"
 # The tabs the pages render, and nothing else: a tab is a label, and a
 # free-text tab was 24 letters of a reader's own words outside the quotation.
@@ -517,6 +517,8 @@ def page_of(record, members, pages=frozenset()):
         return f"/committee/{ref}"
     if kind == "session":
         return f"/session/{ref}"
+    if kind == "town":
+        return f"/town/{ref}"
     return members.get(ref)
 
 
@@ -760,6 +762,8 @@ def producer(record, field):
         return "build_study_committees.py"
     if kind == "session":
         return "build_session_pages.py (session_days.py, journal_days.py)"
+    if kind == "town":
+        return "build_town_pages.py"
     current = ref.split("/")[0] in current_years()
     return PRODUCERS[field][0 if current else 1]
 

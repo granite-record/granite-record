@@ -23322,8 +23322,8 @@
    "state": "draft"
   },
   "map.failed": {
-   "en": "The map could not be loaded. Every town's districts are on its own page, listed in <a href=\"/directory/towns.html\">every town and ward</a>.",
-   "es": "No se pudo cargar el mapa. Los distritos de cada municipio están en su propia página, en la lista de <a href=\"/directory/towns.html\">todos los municipios y barrios electorales</a>.",
+   "en": "The map could not be loaded. Every town's districts are on its own page, listed in <a href=\"/directory/towns\">every town and ward</a>.",
+   "es": "No se pudo cargar el mapa. Los distritos de cada municipio están en su propia página, en la lista de <a href=\"/directory/towns\">todos los municipios y barrios electorales</a>.",
    "state": "draft"
   },
   "map.flo_legend": {
@@ -24448,8 +24448,8 @@
    "state": "draft"
   },
   "of.map_noscript": {
-   "en": "The map needs JavaScript. Every town&rsquo;s districts\nare on its own page, listed in <a href=\"/directory/towns.html\">every town and\nward</a>.",
-   "es": "El mapa necesita JavaScript. Los distritos de cada municipio están en su propia página, en la lista de <a href=\"/directory/towns.html\">todos los municipios y barrios electorales</a>.",
+   "en": "The map needs JavaScript. Every town&rsquo;s districts\nare on its own page, listed in <a href=\"/directory/towns\">every town and\nward</a>.",
+   "es": "El mapa necesita JavaScript. Los distritos de cada municipio están en su propia página, en la lista de <a href=\"/directory/towns\">todos los municipios y barrios electorales</a>.",
    "state": "draft"
   },
   "of.page_title": {
@@ -25664,6 +25664,11 @@
    "es": "Guías prácticas",
    "state": "draft"
   },
+  "sr.g.law_chapters": {
+   "en": "Law Chapters",
+   "es": "Capítulos de la ley",
+   "state": "draft"
+  },
   "sr.g.laws": {
    "en": "Laws",
    "es": "Leyes",
@@ -25922,6 +25927,16 @@
   "sr.w.how_to_guides_one": {
    "en": "how-to guide",
    "es": "guía práctica",
+   "state": "draft"
+  },
+  "sr.w.law_chapters_many": {
+   "en": "law chapters",
+   "es": "capítulos de la ley",
+   "state": "draft"
+  },
+  "sr.w.law_chapters_one": {
+   "en": "law chapter",
+   "es": "capítulo de la ley",
    "state": "draft"
   },
   "sr.w.laws_many": {

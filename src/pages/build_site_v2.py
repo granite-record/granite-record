@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.261
+# GRANITE_VERSION: 2026-09-05.265
 """
 Generate the faceted site from real General Court data.
 
@@ -5367,6 +5367,20 @@ def law_in_stages(chapter, parts):
             f"{_j_prose_date(min(days).isoformat())} to {_j_prose_date(max(days).isoformat())}")
 
 
+def law_line_dated(step):
+    """THE LAW LINE'S DAY IS IN THE DATE COLUMN, as every other line's is (the
+    owner, 10 November 2026: "in effect Jul 1, 2025" sat in the words of HB 1's
+    line with its date empty). `shown` says "Chapter 140, in effect" beside
+    it; `text` keeps the day in its words, for the Laws pages. A law in parts
+    or stages has no one day and stays as it was. Called before the step's
+    `short` and `effective` are dropped from the stored journey."""
+    if (step.get("act") == "law" and step.get("effective") and not step.get("date")
+            and not step.get("shown") and step.get("short")):
+        step["date"] = step["effective"]
+        step["shown"] = f"{step['short']}, in effect"
+    return step
+
+
 def _j_prose_date(iso, year=True):
     """"2026-01-11" -> "Jan 11, 2026", or "Jan 11" without the year:
     shell.date_words, month first like every date the site writes."""
@@ -8027,7 +8041,7 @@ def study_ending(narr, steps, rail, term, sittings, lsrs=None):
             name = re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", nb["id"]) + f" of {nb['year']}"
             line["text"] += (f"; the clerk noted, with a question mark, that it was filed "
                              f"again as {name}" if nb["queried"] else f"; filed again as {name}")
-            line["link"] = {"text": name, "href": f"bill/{nb['year']}/{nb['id'].lower()}.html"}
+            line["link"] = {"text": name, "href": f"bill/{nb['year']}/{nb['id'].lower()}"}
         out.append(line)
     out.sort(key=lambda s: s.get("date") or "9999")
     return out
@@ -11171,6 +11185,51 @@ def add_related(out, index, path=None):
     return n_bills
 
 
+def same_number_rows(notes, index):
+    """{(term, bid): [{term, y, id, n, t, c}, ...]}: for a bill number corrections/
+    bill_notes.json gives a standing meaning (HB 1 is the budget), the same
+    number in each OTHER term the note is true of, newest first, each with its
+    year, number, title and outcome chip. Only the terms the note holds for
+    (bill_note's `from` and `until`): the HB 1 of 1989-1990 is another bill that
+    shares the number. Bills the note does not name get nothing."""
+    rows = {}
+    for r in index:
+        n = bill_note(notes, r.get("term"), r.get("id"))
+        if n:
+            rows.setdefault(r.get("id"), []).append(r)
+    out = {}
+    for bid, mine in rows.items():
+        for r in mine:
+            others = sorted((x for x in mine if x["term"] != r["term"]),
+                            key=lambda x: x["term"], reverse=True)
+            if others:
+                out[(r["term"], bid)] = [
+                    {"term": x["term"], "y": x.get("year"), "id": bid, "n": x.get("n") or bid,
+                     "t": x.get("title") or "", "c": x.get("chip") or ""} for x in others]
+    return out
+
+
+def add_same_number(out, index, notes):
+    """Puts each standing-note bill's same-number list into its own JSON, as
+    `same_number`, for the History tab's "HB 1 in other terms". Returns how many
+    bills have one."""
+    by = same_number_rows(notes, index)
+    n_bills = 0
+    for r in index:
+        rows = by.get((r.get("term"), r.get("id")))
+        if not rows:
+            continue
+        f = out / "bills" / str(r.get("year")) / f"{r.get('id')}.json"
+        if not f.is_file():
+            continue
+        rec = json.loads(f.read_text(encoding="utf-8"))
+        rec["same_number"] = rows
+        f.write_text(json.dumps(rec), encoding="utf-8")
+        n_bills += 1
+    print(f"  same number in other terms: {n_bills:,} bills' History tabs")
+    return n_bills
+
+
 def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 bill_texts, amend_texts, testimony, testimony_db, procs, floor, segs,
                 marks, sources, legs, leg_by_sort, leg_by_name,
@@ -11195,6 +11254,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     """
     unnamed = set()
     sponsored = defaultdict(list)
+    # Each recording's length, from the video indexes the committees' Videos
+    # tabs read (proceedings.video_facts), for a bill's Hearings tab.
+    video_facts = P.video_facts()
 
     index, years = [], set()
     status_pages = load("bill_status.json", {})
@@ -11574,6 +11636,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         if why and term == current:
             j_current.append(f"{bid}: {why}")
         for s_ in jsteps:
+            law_line_dated(s_)
             s_.pop("short", None)
             # The Law stop has taken its day (law_day); the line keeps its words.
             s_.pop("effective", None)
@@ -11709,6 +11772,12 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         stations += [station_for_floor(f, bid, marks)
                      for f in fold_conference_notices(floor.get((term, bid), []))]
         stations.sort(key=lambda x: (x["when"], x.get("time") or ""))
+        # How long its recording runs, where the video index says: the Hearings
+        # tab's playlist gives it beside each recording, as a committee's does.
+        for _st in stations:
+            _secs = (video_facts.get(_st.get("video_id") or "") or {}).get("seconds")
+            if _secs:
+                _st["seconds"] = int(_secs)
         # EACH FLOOR STATION'S MOMENT, for the session day's card of this bill
         # (`moments`, write_floor_record): the very time this bill's own
         # Hearings tab opens its player at and the vote it ends on, so the two
@@ -12694,6 +12763,7 @@ def main():
                                ballots=load_ballots(BALLOTS, bills),
                                rc_cards=rc_cards, moments=floor_moments)
     add_related(out, index)
+    add_same_number(out, index, notes)
     # NO index.json (retired 5 October 2026). It was every row below in one
     # file, read by six build steps and by no page: 23.7 MB on 2 October,
     # 90.5% of the 25 MiB Cloudflare Pages takes in one file, and a term's

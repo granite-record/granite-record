@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.274
+# GRANITE_VERSION: 2026-09-04.277
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -318,7 +318,10 @@ MOVED =(("/learn", "/resources"), ("/learn.html", "/resources"),
          # Sen. John Barnes Jr.'s page, named from "Barnes, Jr., John" as
          # "Jr. Barnes John" until build_site_v2.person_name put the suffix
          # last (12 October 2026).
-         ("/legislator/jr-barnes-john-sd-17", "/legislator/john-barnes-jr-sd-17"))
+         # In both spellings: the .html one answered 404 (Search Console, 7
+         # November 2026), which every other mover here already covers.
+         *((f"/legislator/jr-barnes-john-sd-17{x}", "/legislator/john-barnes-jr-sd-17")
+           for x in ("", ".html")))
 def moved_members(site):
     """The 301s from the page of a member's earlier chamber to the one page
     they have now (build_site_v2.former_movers, 30 October 2026): Shannon
@@ -2283,7 +2286,7 @@ SEATING_JS = """
     if(!c){pop.hidden=true;popFor=null;return;}
     if(popFor!==c){
       popFor=c;
-      popA.href=DATA("legislator/"+c.getAttribute("data-slug")+".html");
+      popA.href=DATA("legislator/"+c.getAttribute("data-slug"));
       popA.textContent=c.getAttribute("data-name");
       // The name, then "Republican \u00b7 Belknap 6", then the seat on a
       // line of its own, its number the licence plate's.
@@ -2833,7 +2836,7 @@ const GROUPS=[
   // the site's other pages, after the bills.
   // A STATUTE ASKED FOR BY ITS NUMBER, FIRST (the audit of 25 October 2026,
   // M3): find.js's one Law row, "RSA 91-A" (findLawRow).
-  {t:"Laws",h:tr("sr.g.laws","Laws"),w:[tr("sr.w.laws_one","law"),tr("sr.w.laws_many","laws")],k:r=>r[0]==="law"},
+  {t:"Laws",h:tr("sr.g.laws","Laws"),w:[tr("sr.w.laws_one","law"),tr("sr.w.laws_many","laws")],k:r=>r[0]==="law"&&!findLawIsTitle(r)},
   {t:"Senators",h:tr("sr.g.senators","Senators"),w:[tr("sr.w.senators_one","senator"),tr("sr.w.senators_many","senators")],k:r=>r[0]==="legislator"&&/^Senate/.test(r[2])},
   {t:"Representatives",h:tr("sr.g.representatives","Representatives"),w:[tr("sr.w.representatives_one","representative"),tr("sr.w.representatives_many","representatives")],k:r=>r[0]==="legislator"},
   // A committee that no longer sits goes with the people who have left, below
@@ -2855,6 +2858,9 @@ const GROUPS=[
   {t:"Former Members",h:tr("sr.g.former_members","Former Members"),w:[tr("sr.w.former_members_one","former member"),tr("sr.w.former_members_many","former members")],k:r=>r[0]==="former"},
   {t:"Former Committees",h:tr("sr.g.former_committees","Former Committees"),w:[tr("sr.w.former_committees_one","former committee"),tr("sr.w.former_committees_many","former committees")],k:r=>r[0]==="committee"},
   {t:"Learn",h:tr("sr.g.learn","Learn"),w:[tr("sr.w.learn_one","Learn page"),tr("sr.w.learn_many","Learn pages")],k:r=>r[0]==="learn"},
+  // A CHAPTER FOUND BY ITS TITLE, after the guides and the Learn pages (the
+  // owner, 10 November 2026; find.js, findLawTitles).
+  {t:"Law Chapters",h:tr("sr.g.law_chapters","Law Chapters"),w:[tr("sr.w.law_chapters_one","law chapter"),tr("sr.w.law_chapters_many","law chapters")],k:findLawIsTitle},
   {t:"Pages on This Site",h:tr("sr.g.pages_on_this_site","Pages on This Site"),w:[tr("sr.w.pages_on_this_site_one","page on this site"),tr("sr.w.pages_on_this_site_many","pages on this site")],k:r=>r[0]==="page"}
 ];
 
@@ -2952,7 +2958,7 @@ const bills=(q,B,C,counting,R,mem)=>{
 // Groups a reader reaches for after the bills: members who have left, and
 // this site's own pages.
 const AFTER=new Set(["Statutory and Study Committees","Former Senators","Former Representatives",
-  "Former Members","Learn","Pages on This Site"]);
+  "Law Chapters","Former Members","Learn","Pages on This Site"]);
 let waiting=false,waitingAll=false,waitingWords=false,waitingLaw=false,waitingReq=false;
 
 function draw(q){
@@ -2967,7 +2973,7 @@ function draw(q){
   const rows=findMatch(s,Infinity);
   // A statute's number: the Laws pages' list of chapters, then drawn again.
   const law=findLawRow(s);
-  if(law&&law.loading&&!waitingLaw){
+  if((law&&law.loading||findLawsWanted(s))&&!waitingLaw){
     waitingLaw=true;
     findLawsLoad().then(()=>draw(box.value));
   }
@@ -3030,7 +3036,7 @@ function draw(q){
   // BILLS (8 November 2026): their place is beside the bills (withBills,
   // below), so their words are no reason for the members and towns that
   // only begin with the words typed to go first.
-  const named=!findBill(s)&&rows.some(r=>r[0]==="law"
+  const named=!findBill(s)&&rows.some(r=>(r[0]==="law"&&!findLawIsTitle(r))
     ||(r[0]!=="former"&&r[0]!=="guide"&&r[0]!=="learn"&&_fwhole(r,s)));
   const left=rows.slice(),counts=[];
   // The bills' part of the line a screen reader hears, where the page puts
@@ -3285,9 +3291,9 @@ function townRow(t){
       data-town="${esc(t.town)}"><b>${esc(t.town)}</b>
       <span class="wct">${tr("lf.wards","{n} wards",{n:t.wards.length})}</span></button>`
       + (picked===t.town ? `<div class="wards">` + t.wards.map(w=>
-          `<a class="wbtn" href="town/${esc(t.slug)}-ward-${esc(w)}.html"
+          `<a class="wbtn" href="town/${esc(t.slug)}-ward-${esc(w)}"
             >${tr("lf.ward","Ward {w}",{w:esc(w)})}</a>`).join("") + `</div>` : "");
-  return `<a class="lmrow" href="town/${esc(t.slug)}.html"
+  return `<a class="lmrow" href="town/${esc(t.slug)}"
     ><b>${esc(t.town)}</b></a>`;
 }
 
@@ -3315,7 +3321,7 @@ function render(){
   if(mem.length){
     parts.push('<p class="lmhead">'+tr("lf.members","Members")+'</p>');
     parts.push(mem.slice(0,SHOW).map(([,m])=>
-      `<a class="lmrow" href="legislator/${esc(m.slug)}.html">`
+      `<a class="lmrow" href="legislator/${esc(m.slug)}">`
       +`<b>${esc(m.display)}</b>`
       +chip(m.p,"pt-"+m.p)
       +`<span class="lmwhere">${esc(m.where)}</span>`
@@ -3391,7 +3397,7 @@ function roster(){
         // person asked for on 19 September; this view kept its own name, pill
         // and district until 24 September. display_full carries all three.
         +ms.map(m=>`<div class="mem"><span class="mchip p-${esc(m.p)}" translate="no">`
-          +`<a href="legislator/${esc(m.slug)}.html">${esc(m.full)}</a></span></div>`).join("")
+          +`<a href="legislator/${esc(m.slug)}">${esc(m.full)}</a></span></div>`).join("")
         +`</div></details>`;
     }).join("");
   }).join("");
@@ -3468,7 +3474,7 @@ Promise.all([fetch(DATA("districts.json")).then(r=>r.json()).catch(()=>({})),
 # written once here for both of its renderers -- the box main() builds and
 # HOME_JS's copy -- so that the two cannot say different things; the address
 # and the link's words are legislative_year's, the page's own.
-YEAR_LINK = (f'<p class="statenote stateyear"><a href="{_year.HREF}">'
+YEAR_LINK = (f'<p class="statenote stateyear"><a href="{_shell.canon(_year.HREF)}">'
              + _html.escape(_year.HOME_LINK).replace("&#x27;", "&rsquo;")
              + '</a></p>')    # the words alone (the person, 22 October 2026)
 
@@ -3529,7 +3535,7 @@ def year_link(lang="en"):
     opened the English page."""
     if lang == i18n.DEFAULT:
         return YEAR_LINK
-    return (f'<p class="statenote stateyear"><a href="{i18n.href(lang, _year.HREF)}">'
+    return (f'<p class="statenote stateyear"><a href="{_shell.canon(i18n.href(lang, _year.HREF))}">'
             + say(lang, "home.year_link", "NH Legislative Schedule") + '</a></p>')
 
 
@@ -4282,7 +4288,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   document.getElementById("notable").innerHTML=
     `${cl.length?`<h2>Closest floor votes</h2><table><tbody>${cl.map(v=>
       `<tr><td style="width:86px"><b>${v.y}\u2013${v.nn}</b></td>
-       <td><a href="bills.html#${esc(v.bill)}">${esc(v.n)}</a>
+       <td><a href="bills#${esc(v.bill)}">${esc(v.n)}</a>
        <span style="color:var(--ink-2)">${esc(v.q||"")}, ${fd(v.date)}</span><br>
        <span class="actw">${esc(v.title)}</span></td></tr>`).join("")}
        </tbody></table>`:""}
@@ -4293,10 +4299,10 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
        is a different thing from a 201\u2013199 on the floor. This counts the
        record, not what people read here. The site counts page views \u2014
        how many, and which pages \u2014 and nothing more; see
-       <a href="about.html">About</a>.</p>
+       <a href="about">About</a>.</p>
        <table><tbody>${co.map(b=>
        `<tr><td style="width:86px">${b.nrc} votes</td>
-        <td><a href="bills.html#${esc(b.id)}">${esc(b.n)}</a>
+        <td><a href="bills#${esc(b.id)}">${esc(b.n)}</a>
         <span style="color:var(--ink-2)">${esc(b.title)}</span></td></tr>`).join("")}
        </tbody></table>`:""}`;
 
@@ -5215,7 +5221,7 @@ def main():
 <h3 id="of-map">{say(lang, "of.map", "The Map")}</h3>
 <p class="src fill">{say(lang, "of.map_how", "Choose a district to see who represents it. Zoom in for\na city&rsquo;s wards.")}</p>
 <div class="ofmapbox" id="ofmap"></div>
-<noscript><p class="note">{say(lang, "of.map_noscript", "The map needs JavaScript. Every town&rsquo;s districts\nare on its own page, listed in <a href=\"/directory/towns.html\">every town and\nward</a>.")}</p></noscript>
+<noscript><p class="note">{say(lang, "of.map_noscript", "The map needs JavaScript. Every town&rsquo;s districts\nare on its own page, listed in <a href=\"/directory/towns\">every town and\nward</a>.")}</p></noscript>
 </section>"""),
             # WHO HOLDS THE SEATS AT THE TOP (the owner's walk of 7 November
             # 2026, C): under the presiding officers and over the roster, as

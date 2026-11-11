@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.15
+// GRANITE_VERSION: 2026-10-09.16
 /* THE DISTRICT MAP (map v1), as a module a page mounts:
 
      <link rel="stylesheet" href="/map.css">
@@ -516,15 +516,15 @@ function chip(m){
   if(m.u)return `<span class="mchip p-${p}" translate="no"><a class="gmout" href="${esc(m.u)}" target="_blank" rel="noopener">${esc(m.n)} <span class="mtag">(${p})</span><span class="gmvh" translate="yes"> ${tr("map.new_tab","(opens in a new tab)")}</span></a></span>`;
   const full=String(m.n||""),tag=full.match(/^(.*\S)\s+(\([^()]*\))$/);
   const who=tag?`${esc(tag[1])} <span class="mtag">${esc(tag[2])}</span>`:esc(full);
-  return `<span class="mchip p-${p}" translate="no">${m.s?`<a href="/legislator/${esc(m.s)}.html">${who}</a>`:who}</span>`;
+  return `<span class="mchip p-${p}" translate="no">${m.s?`<a href="/legislator/${esc(m.s)}">${who}</a>`:who}</span>`;
 }
 /* "Dover (Ward 1, Ward 2, Ward 3)" once, rather than the city ten times,
    each ward its own link with its capital (the person, 10 October 2026) */
 function wardsText(list){
   const by={};list.forEach(([t,w])=>(by[t]=by[t]||[]).push(w));
   return Object.entries(by).map(([t,ws])=>{
-    if(ws.length===1&&ws[0]==="0")return `<a href="/town/${slugOf(t)}.html">${esc(t)}</a>`;
-    return `${esc(t)} (`+ws.sort((a,b)=>a-b).map(w=>`<a href="/town/${slugOf(t,w)}.html">${tr("map.ward","Ward {n}",{n:esc(w)})}</a>`).join(", ")+")";
+    if(ws.length===1&&ws[0]==="0")return `<a href="/town/${slugOf(t)}">${esc(t)}</a>`;
+    return `${esc(t)} (`+ws.sort((a,b)=>a-b).map(w=>`<a href="/town/${slugOf(t,w)}">${tr("map.ward","Ward {n}",{n:esc(w)})}</a>`).join(", ")+")";
   }).join("; ");
 }
 
@@ -602,7 +602,7 @@ function mount(root,opts){
     root.dataset.ready="1";
     return api;}).catch(e=>{
       const box=root.querySelector(".gmbox");
-      if(box)box.insertAdjacentHTML("afterbegin",`<p class="gmfail">${tr("map.failed","The map could not be loaded. Every town's districts are on its own page, listed in <a href=\"/directory/towns.html\">every town and ward</a>.")}</p>`);
+      if(box)box.insertAdjacentHTML("afterbegin",`<p class="gmfail">${tr("map.failed","The map could not be loaded. Every town's districts are on its own page, listed in <a href=\"/directory/towns\">every town and ward</a>.")}</p>`);
       throw e;});
 
   /* what a page may keep in its address, or remember */
@@ -785,7 +785,7 @@ function mount(root,opts){
         ?tr("map.sum_flo","State House {base}, and floterial {flo}; State Senate {s}; Executive Council {c}; US House {g}.",
             {base:esc(label("base",b)),flo:esc(label("float",f)),s:esc(s),c:esc(c),g:esc(g)})
         :tr("map.sum","State House {base}; State Senate {s}; Executive Council {c}; US House {g}.",
-            {base:esc(label("base",b)),s:esc(s),c:esc(c),g:esc(g)})} <a href="/town/${slugOf(t,w)}.html">${tr("map.who_reps","Who represents {place}",{place})}</a></p>`;}).join("");
+            {base:esc(label("base",b)),s:esc(s),c:esc(c),g:esc(g)})} <a href="/town/${slugOf(t,w)}">${tr("map.who_reps","Who represents {place}",{place})}</a></p>`;}).join("");
   }
   /* Choose a town: the district holding it in this layer is chosen, the town
      outlined and named first, and the map zoomed to it. Switching layers

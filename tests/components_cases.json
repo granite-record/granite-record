@@ -110,16 +110,16 @@
   ],
   "cmte_link": [
     {"args": ["House Education", "2025-2026", {"House Education": "H05"}],
-     "want": "<a href=\"committee/H05.html\">House Education</a>"},
+     "want": "<a href=\"committee/H05\">House Education</a>"},
     {"args": ["Senate Election Law and Internal Affairs", "2007-2008",
               {"Senate Election Law and Internal Affairs": {"": "S50", "2007-2008": "S33"}}],
-     "want": "<a href=\"committee/S33.html\">Senate Election Law and Internal Affairs</a>"},
+     "want": "<a href=\"committee/S33\">Senate Election Law and Internal Affairs</a>"},
     {"args": ["Senate Election Law and Internal Affairs", "2017-2018",
               {"Senate Election Law and Internal Affairs": {"": "S50", "2007-2008": "S33"}}],
-     "want": "<a href=\"committee/S50.html\">Senate Election Law and Internal Affairs</a>"},
+     "want": "<a href=\"committee/S50\">Senate Election Law and Internal Affairs</a>"},
     {"args": ["Senate Election Law and Internal Affairs", null,
               {"Senate Election Law and Internal Affairs": {"": "S50", "2007-2008": "S33"}}],
-     "want": "<a href=\"committee/S50.html\">Senate Election Law and Internal Affairs</a>"},
+     "want": "<a href=\"committee/S50\">Senate Election Law and Internal Affairs</a>"},
     {"args": ["House Fish and Game", "2025-2026", {"House Fish and Game": {"": "", "2007-2008": "H08"}}],
      "want": "House Fish and Game"},
     {"args": ["No Committee Assignment", "2025-2026", {"House Education": "H05"}],
@@ -131,14 +131,14 @@
   "pchip": [
     {"args": [{"name": "Vail, Suzanne", "display_full": "Rep. Suzanne Vail (D - Hills 6)",
                "party": "Democrat", "slug": "suzanne-vail-hills-6"}],
-     "want": "<span class=\"mchip p-D\" translate=\"no\"><a href=\"legislator/suzanne-vail-hills-6.html\">Rep. Suzanne Vail <span class=\"mtag\">(D - Hills 6)</span></a></span>"},
+     "want": "<span class=\"mchip p-D\" translate=\"no\"><a href=\"legislator/suzanne-vail-hills-6\">Rep. Suzanne Vail <span class=\"mtag\">(D - Hills 6)</span></a></span>"},
     {"args": [{"name": "Abbas, Daryl", "display_full": "Sen. Daryl Abbas (R - SD22)",
                "party_code": "R", "slug": "daryl-abbas-sd22"}]},
     {"args": [{"name": "A", "display_full": "Rep. A", "party": "R", "slug": "a"}]},
     {"args": [{"name": "A", "display_full": "Rep. A", "party": "Republican", "slug": "a"}]},
     {"args": [{"name": "B", "display_full": "Rep. B", "party": "D", "slug": "b", "role": "Chair"}]},
     {"args": [{"name": "C", "display_full": "Rep. C", "party": "D", "slug": "c", "prime": true}],
-     "want": "<span class=\"mchip p-D\" translate=\"no\"><a href=\"legislator/c.html\">Rep. C</a> <i translate=\"yes\">Prime</i></span>"},
+     "want": "<span class=\"mchip p-D\" translate=\"no\"><a href=\"legislator/c\">Rep. C</a> <i translate=\"yes\">Prime</i></span>"},
     {"args": [{"name": "D", "display_full": "Rep. D", "party": "D", "slug": "d", "role": "Member"}]},
     {"args": [{"name": "E", "display_full": "Rep. E"}],
      "want": "<span class=\"mchip p-X\" translate=\"no\">Rep. E</span>"},
@@ -232,12 +232,12 @@
     {"args": [null, null], "want": ""}
   ],
   "bill_mention": [
-    {"args": ["HB 652-FN", "bill/2026/hb652.html", ""], "want": "<a class=\"bmention\" href=\"bill/2026/hb652.html\" translate=\"no\">HB 652-FN</a>"},
-    {"args": ["HB 1681", "bill/2026/hb1681.html", 2026], "want": "<a class=\"bmention\" href=\"bill/2026/hb1681.html\" translate=\"no\">HB 1681 <span class=\"byr\">(2026)</span></a>"}
+    {"args": ["HB 652-FN", "bill/2026/hb652", ""], "want": "<a class=\"bmention\" href=\"bill/2026/hb652\" translate=\"no\">HB 652-FN</a>"},
+    {"args": ["HB 1681", "bill/2026/hb1681", 2026], "want": "<a class=\"bmention\" href=\"bill/2026/hb1681\" translate=\"no\">HB 1681 <span class=\"byr\">(2026)</span></a>"}
   ],
   "bill_row": [
-    {"args": [{"n": "HB 1371", "year": 2026, "href": "bill/2026/hb1371.html", "title": "prohibiting application fees", "word": "Died", "cls": "s-done", "line": "Killed on the consent calendar"}]},
-    {"args": [{"n": "HB 1371", "href": "bill/2026/hb1371.html", "title": "a & b"}]},
+    {"args": [{"n": "HB 1371", "year": 2026, "href": "bill/2026/hb1371", "title": "prohibiting application fees", "word": "Died", "cls": "s-done", "line": "Killed on the consent calendar"}]},
+    {"args": [{"n": "HB 1371", "href": "bill/2026/hb1371", "title": "a & b"}]},
     {"args": [{"n": "HB 9", "href": "x", "title": "t", "word": "Died"}]}
   ],
   "bill_byline": [
@@ -245,7 +245,7 @@
     {"args": [null, null, "", "", null], "want": ""}
   ],
   "bill_card": [
-    {"args": [{"id": "HB1681", "href": "bill/2026/hb1681.html", "n": "HB 1681", "year": 2026, "word": "Became Law", "cls": "s-law", "title": "relative to tiny houses", "byline": "b", "notes": "<p>why</p>", "line": "l", "rail": "<span>r</span>", "open": false, "body": "", "card": "focus"}]},
+    {"args": [{"id": "HB1681", "href": "bill/2026/hb1681", "n": "HB 1681", "year": 2026, "word": "Became Law", "cls": "s-law", "title": "relative to tiny houses", "byline": "b", "notes": "<p>why</p>", "line": "l", "rail": "<span>r</span>", "open": false, "body": "", "card": "focus"}]},
     {"args": [{"id": "HB1", "href": "h", "n": "HB 1", "year": 2026, "word": "Died", "title": "t", "open": true, "body": "<p>tabs</p>"}]},
     {"args": [{"id": "HB2", "href": "h", "n": "HB 2", "title": "t <i>"}]},
     {"args": [{"id": "HB3", "href": "", "n": "HB 3", "year": 1999, "title": "t"}]}
@@ -264,7 +264,7 @@
     {"args": [null, false], "want": ""}
   ],
   "person_link": [
-    {"args": [{"display_full": "Rep. Alice Wade (D - Straf 15)", "slug": "alice-wade-straf-15"}], "want": "<a class=\"psent\" href=\"legislator/alice-wade-straf-15.html\" translate=\"no\">Rep. Alice Wade (D - Straf 15)</a>"},
+    {"args": [{"display_full": "Rep. Alice Wade (D - Straf 15)", "slug": "alice-wade-straf-15"}], "want": "<a class=\"psent\" href=\"legislator/alice-wade-straf-15\" translate=\"no\">Rep. Alice Wade (D - Straf 15)</a>"},
     {"args": [{"label": "Rep. Alexander Jr."}], "want": "Rep. Alexander Jr."},
     {"args": [{"name": "Smith & Co"}], "want": "Smith &amp; Co"},
     {"args": [{}], "want": ""}
@@ -348,12 +348,12 @@
      "want": "<p class=\"elnf\"><b>Result not final</b> &mdash; a recount was requested</p>"},
     {"args": [{"seats": 2, "elected": [{"n": "Jodi Nelson", "p": "R", "k": "sitting", "id": "377001",
                                         "s": "jodi-nelson-rock-13"}], "not_final": 0, "held": 0}],
-     "want": "<ul class=\"ellist\"><li><span class=\"mchip p-R\" translate=\"no\"><a href=\"legislator/jodi-nelson-rock-13.html\">Jodi Nelson <span class=\"mtag\">(R)</span></a></span></li></ul><p class=\"elnone\">No member-elect on file for 1 seat.</p>"},
+     "want": "<ul class=\"ellist\"><li><span class=\"mchip p-R\" translate=\"no\"><a href=\"legislator/jodi-nelson-rock-13\">Jodi Nelson <span class=\"mtag\">(R)</span></a></span></li></ul><p class=\"elnone\">No member-elect on file for 1 seat.</p>"},
     {"args": [{"seats": 2, "elected": [{"n": "Charles Foote", "p": "R", "k": "sitting", "id": "10691",
                                         "s": "charles-foote-rock-13", "own": true},
                                        {"n": "Jim Creighton", "p": "R", "k": "sitting", "id": "9917",
                                         "s": "james-creighton-hills-30"}], "not_final": 0, "held": 0}],
-     "want": "<ul class=\"ellist\"><li class=\"elown\"><span class=\"mchip p-R\" translate=\"no\"><a href=\"legislator/charles-foote-rock-13.html\">Charles Foote <span class=\"mtag\">(R)</span></a></span></li><li><span class=\"mchip p-R\" translate=\"no\"><a href=\"legislator/james-creighton-hills-30.html\">Jim Creighton <span class=\"mtag\">(R)</span></a></span></li></ul>"},
+     "want": "<ul class=\"ellist\"><li class=\"elown\"><span class=\"mchip p-R\" translate=\"no\"><a href=\"legislator/charles-foote-rock-13\">Charles Foote <span class=\"mtag\">(R)</span></a></span></li><li><span class=\"mchip p-R\" translate=\"no\"><a href=\"legislator/james-creighton-hills-30\">Jim Creighton <span class=\"mtag\">(R)</span></a></span></li></ul>"},
     {"args": [{"seats": 1, "elected": [{"n": "Lee Nolink", "p": "D", "k": "sitting", "own": true}],
                "not_final": 0, "held": 0}],
      "want": "<ul class=\"ellist\"><li><span class=\"mchip p-D\" translate=\"no\">Lee Nolink <span class=\"mtag\">(D)</span></span></li></ul>"},
@@ -363,7 +363,7 @@
      "want": "<ul class=\"ellist\"><li><span class=\"mchip p-X\" translate=\"no\">Sam Wright</span></li></ul>"},
     {"args": [{"seats": 1, "elected": [{"n": "Kurt Webber", "p": "D", "k": "new", "e": "kurt-webber-sd-2"}],
                "not_final": 0, "held": 0}],
-     "want": "<ul class=\"ellist\"><li><span class=\"mchip p-D\" translate=\"no\"><a href=\"legislator/kurt-webber-sd-2.html\">Kurt Webber <span class=\"mtag\">(D)</span></a></span></li></ul>"},
+     "want": "<ul class=\"ellist\"><li><span class=\"mchip p-D\" translate=\"no\"><a href=\"legislator/kurt-webber-sd-2\">Kurt Webber <span class=\"mtag\">(D)</span></a></span></li></ul>"},
     {"args": [{"seats": 1, "elected": [{"n": "Dana Ricard", "p": "D", "k": "sitting", "id": "377002",
                                         "e": "dana-ricard-sd-9"}], "not_final": 0, "held": 0}],
      "want": "<ul class=\"ellist\"><li><span class=\"mchip p-D\" translate=\"no\">Dana Ricard <span class=\"mtag\">(D)</span></span></li></ul>"},

@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.368 */
+/* GRANITE_VERSION: 2026-09-07.376 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -1695,6 +1695,30 @@ white-space:normal;letter-spacing:0;text-transform:none}
 .termpop[hidden]{display:none}
 .termpop b{font-weight:600}
 @media (forced-colors:active){.termpop{border-color:CanvasText}}
+/* A POINTER ON THE BOX, AT THE WORD (the owner, 10 November 2026: "add the
+   triangle indicator ... to all tooltips so they point at the word they're
+   defining"). The box's own edge and ground as two triangles, one over the
+   other, as the seat callout's (.seatpop) are: on the top edge, pointing up,
+   where the box stands under its word; on the bottom edge, pointing down,
+   with .above, where the law pages' box stands over it. --arrow is the
+   word's middle from the box's left, set by the script after the box has
+   been moved to stay on the screen. */
+.termpop:not(.seatpop)::before,.termpop:not(.seatpop)::after{content:"";position:absolute;
+  left:var(--arrow,var(--sp-6));width:0;height:0;border:7px solid transparent;transform:translateX(-50%);
+  pointer-events:none}
+.termpop:not(.seatpop)::before{bottom:100%;border-bottom-color:var(--rule-2)}
+.termpop:not(.seatpop)::after{bottom:calc(100% - 1px);border-bottom-color:var(--surface)}
+.termpop.above:not(.seatpop)::before{bottom:auto;top:100%;border-bottom-color:transparent;
+  border-top-color:var(--rule-2)}
+.termpop.above:not(.seatpop)::after{bottom:auto;top:calc(100% - 1px);border-bottom-color:transparent;
+  border-top-color:var(--surface)}
+@media (forced-colors:active){
+  .termpop:not(.seatpop)::before,.termpop:not(.seatpop)::after{forced-color-adjust:none}
+  .termpop:not(.seatpop)::before{border-bottom-color:CanvasText}
+  .termpop:not(.seatpop)::after{border-bottom-color:Canvas}
+  .termpop.above:not(.seatpop)::before{border-bottom-color:transparent;border-top-color:CanvasText}
+  .termpop.above:not(.seatpop)::after{border-bottom-color:transparent;border-top-color:Canvas}
+}
 /* A bill named in running words: the number, underlined, the year quiet. */
 .bmention{white-space:nowrap}
 .bmention .byr{color:var(--ink-2)}
@@ -2290,6 +2314,14 @@ overflow-y:auto;overflow-x:hidden}
 /* The Sponsor filter's "Include co-sponsored bills" box, drawn as a filter option. */
 .fcosp{display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-1) 0;margin-top:var(--sp-3);font-size:var(--t-ui);cursor:pointer}
 .fcosp input{accent-color:var(--pine);margin:0;flex:0 0 auto}
+/* A second choice inside a filter group (the Sponsor group's prime-sponsor party). */
+/* A vote asked for by its link in the Summary, on the Votes tab. */
+.rc.rcsel{outline:2px solid var(--pine);outline-offset:3px}
+/* A tally that is a link stays whole on a line, as a How It Got Here tally is
+   (.jl .tally): "201-" over "150" was a link broken in two on a phone. */
+a.vtl{white-space:nowrap}
+.fsub{margin:var(--sp-3) 0 var(--sp-4);padding:var(--sp-3) 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.fsubh{font:600 var(--t-ui)/1.35 var(--sans);color:var(--ink);margin-bottom:var(--sp-1)}
 .fopt .c{margin-left:auto;font-size:var(--t-sm);color:var(--ink-2)}
 /* A Status filter's chip wraps in the 250px column rather than run out of
    it: "Passed both chambers, goes to the voters in November 2026" was cut
@@ -4055,6 +4087,11 @@ border-radius:var(--r-in);color:var(--ink);font-weight:600;line-height:1.6}
    says "Link copied" where the address was copied rather than shared. */
 #reportbox{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-4) var(--sp-5);margin-top:var(--sp-5)}
 #reportbox > .report[open]{flex:1 1 100%}
+/* IN A PAGE'S ROW OF ACTIONS (shell.py's .pageacts: Cite, and Report a problem
+   mounted beside it, as on a town's page) the box sits level with the other
+   buttons: its 20px of margin above had put Report a problem lower than Cite
+   this page (the owner, 10 November 2026). */
+.pageacts > #reportbox{margin-top:0}
 .sharestate{font-size:var(--t-sm);color:var(--ink-2);overflow-wrap:anywhere;min-width:0}
 .followpane,.citebody,.testifypane{position:absolute;right:0;top:calc(100% + 6px);z-index:20;
   width:min(36rem,calc(100vw - 28px));padding:var(--sp-5) var(--sp-5);border:1px solid var(--rule-2);
@@ -4451,6 +4488,15 @@ margin-top:var(--sp-1)}
   .twngrid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   .twnwide{grid-column:1 / -1}
 }
+/* THE OFFICIALS TAB'S TWO COLUMNS (the owner, 10 November 2026): the elected on
+   the left, and on the right the town or city offices, the clerk and the
+   staff and administrative positions, each stack its own height. One column
+   below 1100px, the elected first (build_town_pages.in_columns). */
+.twncols{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-6);align-items:start}
+.twncol{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-6);align-content:start;min-width:0}
+@media (min-width:68.75em){
+  .twncols{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+}
 .twnsec{min-width:0;background:var(--surface);border:1px solid var(--rule-2);
   border-radius:var(--r-out);padding:var(--sp-6) var(--sp-7);overflow-wrap:anywhere}
 @media (max-width:30em){.twnsec{padding:var(--sp-5)}}
@@ -4740,6 +4786,18 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
 .l-head .pageacts > details > summary:hover{background:var(--wash)}
 .l-head .pageacts > details[open] > summary{border-color:var(--ink)}
 .l-head .pageacts .citebody{left:0;right:auto}
+/* CITE THIS PAGE HAS THE DISCLOSURE TRIANGLE (the owner, 10 November 2026:
+   "Add triangle indicator to cite page button"): the chevron "On this page"
+   and the Learn folds carry, after the words, turned a quarter to point down
+   while it is open. Not on a record page, where the pane has its nub (the
+   .racts rules, summary::after) pointing at the button instead. */
+.pcite:not(.racts .pcite) > summary::after{content:"";flex:0 0 auto;width:.75rem;height:.75rem;
+  margin-left:var(--sp-2);background:var(--ink-2);transition:transform .15s;
+  -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;
+  --l-chev:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.25%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M9 5.5l6.5 6.5L9 18.5%22/%3E%3C/svg%3E")}
+.pcite:not(.racts .pcite)[open] > summary::after{transform:rotate(90deg)}
+@media (prefers-reduced-motion:reduce){.pcite > summary::after{transition:none}}
+@media (forced-colors:active){.pcite:not(.racts .pcite) > summary::after{forced-color-adjust:none;background:CanvasText}}
 /* The same row under a town's line and under the Calendar's headings (the
    audit of 25 October 2026, S9), where it stood alone over the heading. */
 :is(.officials,.calhead,.cdpage) > .pageacts{justify-content:flex-start;margin:0 0 var(--sp-7)}
@@ -7258,6 +7316,23 @@ align-items:baseline;padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
 /* What was voted that day, a chip as the Meetings tab and the bill's Reports tab draw it. */
 .vwout{grid-column:2;display:flex;flex-wrap:wrap;gap:var(--sp-2);align-items:center}
 .vwlinks{margin:var(--sp-4) 0 0}
+/* A bill's moments and what was voted there share one line (app.js,
+   cmteVideoDetail): the number, then these, the title under them. The chip
+   had wrapped onto a line of its own at the right of the moment's button. */
+.vwbills .vwmom{grid-column:2;display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);align-items:center}
+.vwbills .vwmom .mjumps,.vwbills .vwmom .vwout{display:contents}
+/* The chips keep to the line beside the moments: a chip's own rule (.cstat,
+   .rcres) pushes it to the right edge, away from them and, on a phone, onto
+   a line of its own. */
+.vwbills .vwmom .chip,.vwres .chip{margin-left:0}
+/* A bill's Hearings tab (app.js, hearingDetail), under its one player: when
+   and where above, then who signed in and what was voted as chips, then the
+   bill's moments in the recording. */
+.vwsign,.vwres,.vwmoms{margin:0 0 var(--sp-3);display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);align-items:center}
+.vwsign .tnote{margin:0}
+.vwtally{font-size:var(--t-ui);color:var(--ink-2)}
+/* The sittings with no recording to play, under the view: the old cards. */
+.hplain{margin-top:var(--sp-6)}
 /* A link a finger taps is 24px tall here too (WCAG 2.5.8): the player bar's
    ".pbar > a" rule never reaches the caption's "On YouTube", which sits in a
    line of text, nor the links under the player, and both were 19px (the
@@ -7359,7 +7434,7 @@ color:var(--ink-2);white-space:nowrap;overflow:hidden}
 @media (max-width:45em){
   .vwbills{display:block}
   .vwbills li{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3)}
-  .vwbills .mjumps{display:contents}
+  .vwbills .mjumps,.vwbills .vwmom{display:contents}
   .vwbt{flex:1 1 100%}
 }
 @media screen and (min-width:60em){
@@ -8050,7 +8125,12 @@ letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
 /* The box holds a link to the definition and, where it is cut, "Show more"
    (the person, 7 November 2026): never taller than the screen, its words
    scrolling inside it once the whole definition is open. */
-.rs-dpop{max-width:min(26rem,calc(100vw - 2rem));max-height:min(30rem,calc(100vh - 2rem));overflow-y:auto}
+/* The box does not scroll itself, or its pointer would be cut off at its
+   edge: its words do, in .rs-dpin, which gives way when the script caps the
+   box's height. */
+.rs-dpop{max-width:min(26rem,calc(100vw - 2rem));max-height:min(30rem,calc(100vh - 2rem));
+  display:flex;flex-direction:column}
+.rs-dpin{display:block;min-height:0;overflow-y:auto}
 .rs-dpcite{display:block;font-weight:600;margin-bottom:.25rem}
 .rs-dpcite a{color:var(--pine)}
 .rs-dptext{display:block}

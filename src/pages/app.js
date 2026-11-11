@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.291
+// GRANITE_VERSION: 2026-09-07.301
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2426,7 +2426,7 @@ function takeOffer(o){
   }
   if(focused)unfocus(0);
   query=o.rest;$("#q").value=o.rest;clearTimeout(QDRAW);addressSearch(o.rest);
-  sel[o.key].add(o.v);openGroups.add(o.key);
+  sel[o.key].add(o.v);openGroups.add(o.key==="party"?"sponsor":o.key);
   render();
 }
 let OFFERS={key:null,html:""};
@@ -2867,6 +2867,8 @@ function filtersFromAddress(params){
    withCosp=params.get("cosp")==="1";
    for(const k of ["committee","sponsor","voteday","party"])
      for(const w of params.getAll(k)){const v=String(w||"").trim();if(v)sel[k].add(v);}
+   // The party is a choice inside the Sponsor group: it opens with it.
+   if(sel.party.size)openGroups.add("sponsor");
    {const r=rsaNorm(params.get("rsa")||"");if(r){sel.rsa.add(r);rsaText=r;}}
    const psort=params.get("sort");
    if(psort&&["best","num","recent","oldest","status"].includes(psort)){
@@ -3211,9 +3213,11 @@ if(window.GR_STATIC){
   // and reportBox reads REPORT_TO and REPORT_FIELDS, declared further down
   // (a ReferenceError here, found by the screenshots of 30 October 2026).
   if(window.GR_REPORT){
+    // A TOWN'S PAGE ("town:concord-ward-4", the owner, 10 November 2026) has
+    // the Report box alone: it writes no Share, and none was asked for.
     const rec=String(window.GR_REPORT),at=rec.indexOf(":");
     if(at>0)setTimeout(()=>mountReport(rec.slice(0,at),rec.slice(at+1),
-      !document.querySelector("#pageacts [data-share]")),0);
+      rec.slice(0,at)!=="town"&&!document.querySelector("#pageacts [data-share]")),0);
   }
 }else need("meta.json")
  .then(m=>{
@@ -3370,7 +3374,7 @@ if(window.GR_STATIC){
    // /bill/2026/hb1560/text#amendment-2026-0422h (AMENDMENT_HASH, below) --
    // is still that bill's page (26 October 2026).
    const said=decodeURIComponent(location.hash.slice(1));
-   const h=said&&!(window.GR_BILL&&AMENDMENT_HASH.test(said))?said:(window.GR_BILL||"");
+   const h=said&&!(window.GR_BILL&&(AMENDMENT_HASH.test(said)||VOTE_HASH.test(said)))?said:(window.GR_BILL||"");
    const hm=/^(?:(\d{4})\/)?([A-Z]{2,5}\d+)$/i.exec(h);
    if(hm){
      const id=hm[2].toUpperCase(),hy=hm[1]||"";
@@ -3387,6 +3391,8 @@ if(window.GR_STATIC){
        if(t){openTab[id]=t;
          if(t==="6"&&row){amendmentAsked(row,said);needVersions(row);}
          TAB_JUMP=id;}
+     // A link to one vote opens the Votes tab, and its card is brought up.
+     if(window.GR_BILL&&VOTE_HASH.test(said)){openTab[id]="1";VOTE_JUMP=said;}
      }
      openBill(id);
    }
@@ -3507,7 +3513,9 @@ function zerosLast(key,vals,counts){
   const some=vals.filter(v=>counts[v]),none=vals.filter(v=>!counts[v]);
   return {vals:some.concat(none),rule:some.length&&none.length?some.length:-1};
 }
-function fgroup(key,label,vals,counts,searchable,paint,show){
+// `extra` is a second choice drawn inside this group after its own options
+// (the Sponsor group's prime-sponsor party), `extraN` how many of it are ticked.
+function fgroup(key,label,vals,counts,searchable,paint,show,extra,extraN){
   const chosen=sel[key],open=openGroups.has(key);
   let inner="";
   if(searchable){
@@ -3517,7 +3525,7 @@ function fgroup(key,label,vals,counts,searchable,paint,show){
     inner=`${[...chosen].map(v=>`<span class="pill">${esc(v)}<button data-unpick="${esc(v)}">×</button></span>`).join("")
       ?`<div class="chosen">${[...chosen].map(v=>`<span class="pill">${esc(v)}<button data-unpick="${esc(v)}">×</button></span>`).join("")}</div>`:""}
       <input class="sbox" id="sbox" aria-label="Find a sponsor by name" placeholder="Type a name…" value="${esc(sponsorFilter)}" autocomplete="off">
-      <label class="fcosp"><input type="checkbox" id="cosp" ${withCosp?"checked":""}><span>Include co-sponsored bills</span></label>`
+      <label class="fcosp"><input type="checkbox" id="cosp" ${withCosp?"checked":""}><span>Include co-sponsored bills</span></label>${extra||""}`
       +(shown.map((v,i)=>`<label class="fopt ${!counts[v]?'off':''}${i===found.rule?' fzero':''}"><input type="checkbox" data-f="${key}"
         value="${esc(v)}" ${chosen.has(v)?"checked":""}><span>${esc(v)}</span>
         <span class="c">${(counts[v]||0).toLocaleString()}</span></label>`).join("")
@@ -3536,7 +3544,7 @@ function fgroup(key,label,vals,counts,searchable,paint,show){
   // with nothing to say the list went on.
   const whole=key==="status"||key==="type";
   return `<div class="fgroup ${open?'open':''}"><button class="fhead" data-g="${key}"
-    aria-expanded="${open}"><span>${label}</span>${chosen.size?`<span class="badge">${chosen.size}</span>`:""}
+    aria-expanded="${open}"><span>${label}</span>${chosen.size+(extraN||0)?`<span class="badge">${chosen.size+(extraN||0)}</span>`:""}
     <span class="chev">▸</span></button><div class="fbody${whole?" whole":""}" ${open?"":"hidden"}>${inner}</div></div>`;
 }
 
@@ -3917,12 +3925,17 @@ function renderFacets(){
       TYPE_NAME[v]?`<span>${esc(TYPE_NAME[v])}</span>`:""}</span>`);
   h+=fgroup("committee","Committee",present("committee"),cnt("committee","committee"));
   h+=fgroup("topic","Topic",present("topic"),cnt("topic","topic"));
-  h+=fgroup("sponsor","Sponsor",present("sponsor"),cnt("sponsor","sponsor"),true);
-  // THE PRIME SPONSOR'S PARTY, under the Sponsor box it narrows: a short list
-  // shown whole, in the legislators' chip shape and colour (.mchip), where a
-  // party chosen in another term stays, at none, so it can be unticked.
-  h+=fgroup("party","Prime Sponsor’s Party",[...new Set([...present("party"),...sel.party])].sort(partyCmp),
-    cnt("party","party"),false,null,partyShow);
+  // THE PRIME SPONSOR'S PARTY is a choice inside the Sponsor group it narrows
+  // (the owner, 10 November 2026), below the name box and the co-sponsorship
+  // box: a short list shown whole, in the legislators' chip shape and colour
+  // (.mchip), where a party chosen in another term stays, at none, so it can
+  // be unticked.
+  const pc=cnt("party","party");
+  const pOpts=[...new Set([...present("party"),...sel.party])].sort(partyCmp);
+  const partyHtml=`<div class="fsub"><div class="fsubh">Prime sponsor’s party</div>${
+    pOpts.map(v=>`<label class="fopt ${!pc[v]&&!sel.party.has(v)?'off':''}"><input type="checkbox" data-f="party" value="${esc(v)}" ${sel.party.has(v)?"checked":""}>
+      <span>${partyShow(v)}</span><span class="c">${(pc[v]||0).toLocaleString()}</span></label>`).join("")}</div>`;
+  h+=fgroup("sponsor","Sponsor",present("sponsor"),cnt("sponsor","sponsor"),true,null,null,partyHtml,sel.party.size);
   // THE STATUTE, where the Floor Vote Day filter was (the person, 11 October
   // 2026): Laws Changed (RSA) since 26 October, a box that offers the laws
   // these bills change by number or by name (rsaGroup), and the law itself
@@ -4640,9 +4653,9 @@ const JCLASS={s:"istudy",t:"ontable",f:"ifuture"};
 // build_site_v2.law_in_stages); `text` keeps every part for the Laws pages.
 function jText(s){
   const t=esc(s.shown||s.text||""), l=s.link;
-  if(!l||!l.text||!l.href||!/^bill\/\d{4}\/[a-z0-9]+\.html$/.test(l.href))return t;
+  if(!l||!l.text||!l.href||!/^bill\/\d{4}\/[a-z0-9]+(?:\.html)?$/.test(l.href))return t;
   const at=t.indexOf(esc(l.text));
-  return at<0?t:t.slice(0,at)+billMention(l.text,l.href)+t.slice(at+esc(l.text).length);
+  return at<0?t:t.slice(0,at)+billMention(l.text,l.href.replace(/\.html$/,""))+t.slice(at+esc(l.text).length);
 }
 const JBODY={H:"House",S:"Senate",G:"Governor",L:"Law",V:"Voters"};
 const JOURNEY_SHOWN=6;
@@ -4668,15 +4681,131 @@ function storyPeople(html,d){
     +")(?![\\w])","g");
   return html.replace(rx,m=>personLink({display_full:by[m].label,slug:by[m].slug}));
 }
-function journeyList(b,d){
+// THE VOTE CARDS' ANCHORS, AND A TALLY AS A LINK TO ITS CARD (the owner, 10
+// November 2026: "when a bill summary cites a vote like 198-167, it should
+// link to the votes tab so you can click it to view that particular vote in
+// detail"). Each card of the Votes tab has an id, "vote-<date>-<chamber>-
+// <yeas>-<nays>" ("vote-2025-03-12-H-231-99"; a second card of the same four
+// takes "-2"; the voters' own "vote-ballot"), and a tally in the Summary that
+// names a vote of this bill by DATE, CHAMBER AND COUNTS links to
+// /bill/<year>/<bill>/votes#<id>. Never by the count alone, and never where
+// two cards fit: the tally stays plain text. A How It Got Here row has its
+// own date and chamber; a story sentence is read for the one date and the
+// first chamber it names. Only a tally written with an en dash, as the build
+// writes them, so a date or an amendment number ("2025-0386h") is never one.
+const VOTE_HASH=/^vote-[\w-]+$/;
+function voteAnchors(d){
+  const seen={};
+  return (d.rollcalls||[]).map(rc=>{
+    const base=`vote-${rc.date||""}-${rc.body||""}-${rc.yeas==null?"x":rc.yeas}-${rc.nays==null?"x":rc.nays}`;
+    seen[base]=(seen[base]||0)+1;
+    return seen[base]>1?`${base}-${seen[base]}`:base;
+  });
+}
+const TALLY_RX=/(\d+(?:,\d{3})*)–(\d+(?:,\d{3})*)/g;
+function voteLinks(html,b,d,ctx){
+  const rcs=(d&&d.rollcalls)||[],bal=d&&d.ballot&&!d.ballot.pending?d.ballot:null;
+  if((!rcs.length&&!bal)||!b||!b.year||html.indexOf("–")<0)return html;
+  const A=voteAnchors(d),num=s=>+String(s).replace(/,/g,"");
+  const href=id=>`bill/${esc(b.year)}/${esc(String(b.id).toLowerCase())}/votes#${id}`;
+  const find=(y,n,date,body)=>{
+    if(body==="V")return bal&&bal.yes===y&&bal.no===n?"vote-ballot":"";
+    const hit=(yy,nn)=>{const m=[];rcs.forEach((rc,i)=>{
+      if(rc.body===body&&rc.date===date&&rc.yeas===yy&&rc.nays===nn)m.push(A[i]);});return m;};
+    let m=hit(y,n);
+    if(!m.length)m=hit(n,y);
+    return m.length===1?m[0]:"";
+  };
+  // The tallies outside any tag or link, linked where `pick` names a card.
+  const link=(h,pick)=>{
+    let inA=0;
+    return h.split(/(<[^>]*>)/).map(p=>{
+      if(p.charAt(0)==="<"){
+        if(/^<a\b/i.test(p))inA++;else if(/^<\/a\s*>/i.test(p))inA=Math.max(0,inA-1);
+        return p;}
+      if(inA)return p;
+      return p.replace(TALLY_RX,(m,y,n)=>{
+        const id=pick(num(y),num(n));
+        return id?`<a class="vtl" href="${href(id)}" data-vote="${id}">${m}</a>`:m;});
+    }).join("");
+  };
+  if(ctx)return link(html,(y,n)=>find(y,n,ctx.date,ctx.body));
+  // A story: one sentence at a time, split where a sentence ends and not at
+  // "Sen. Abbas" or "Rep. Smith".
+  const MON="(January|February|March|April|May|June|July|August|September|October|November|December)";
+  return html.split(/(?<!\b(?:Sen|Rep|Mr|Mrs|Ms|Dr|St|No|Hon))(?<=[.!?])\s+(?=[A-Z“"])/).map(sn=>{
+    if(sn.indexOf("–")<0)return sn;
+    const plain=sn.replace(/<[^>]*>/g,"");
+    const days=new Set();
+    plain.replace(new RegExp(MON+" (\\d{1,2}), (\\d{4})","g"),(m,mo,dd,yy)=>{
+      days.add(`${yy}-${String(["January","February","March","April","May","June","July","August",
+        "September","October","November","December"].indexOf(mo)+1).padStart(2,"0")}-${String(+dd).padStart(2,"0")}`);return m;});
+    const ch=/\b(House|Senate)\b/.exec(plain);
+    if(days.size!==1||!ch)return sn;
+    const date=[...days][0],body=ch[1]==="House"?"H":"S";
+    return link(sn,(y,n)=>find(y,n,date,body));
+  }).join(" ");
+}
+// THE GLOSSARY'S TERMS IN THE SUMMARY'S WORDS (the owner, 10 November 2026:
+// "the summary does not appear to have tooltips for things like roll call or
+// voice vote"). The first use on the page of each term the glossary holds is
+// marked, as termMark does, for the popover components.js draws on it; never
+// inside a link (a tally's, a person's, a bill's), and a term only once across
+// the Summary's How It Got Here and its story. `seen` is one pass's.
+const GLOSS_WORDS=[
+  ["ought to pass with amendment","OTPA"],["ought to pass","OTP"],["inexpedient to legislate","ITL"],
+  ["interim study","IS"],["voice vote","VV"],["division vote","DV"],["roll call","RC"],
+  ["consent calendar","CC"],["regular calendar","RC-calendar"],["committee of conference","Committee of conference"],
+  ["ordered to a third reading","OT3rdg"],["laid on the table","Laid on the table"],
+  ["indefinitely postponed","Indefinitely postponed"],["floor amendment","Floor amendment"],
+  ["minority report","Minority report"],["re-referred","Rerefer"],["public hearing","Public hearing"],
+  ["executive session","Executive session"],["work session","Work session"],["prime sponsor","Prime sponsor"],
+  ["second committee","Second committee"],["special order","Special order"],["fiscal note","FN"],
+  ["carried over","Carried over"],["floterial","Floterial district"],["chaptered","Chaptered"],
+  ["tabled","Tabled"],["veto","Veto"],["override","Override"],["enrolled","Enrolled"],
+  ["reconsidered","Reconsider"],["concur","Concur"]];
+function glossPass(){
+  const seen=new Set();
+  const G=(typeof WORDBOOK!=="undefined"&&WORDBOOK.glossary)||{};
+  const words=GLOSS_WORDS.filter(w=>Object.prototype.hasOwnProperty.call(G,w[1]));
+  if(!words.length)return h=>h;
+  const key={};words.forEach(w=>{key[w[0]]=w[1];});
+  const rx=new RegExp("\\b("+words.map(w=>w[0].replace(/[.*+?^${}()|[\]\\]/g,"\\$&"))
+    .sort((a,c)=>c.length-a.length).join("|")+")\\b","gi");
+  return html=>{
+    let skip=0;
+    return String(html).split(/(<[^>]*>)/).map(p=>{
+      if(p.charAt(0)==="<"){
+        if(/^<(a|button)\b/i.test(p)||/^<span\b[^>]*data-term=/i.test(p))skip++;
+        else if(/^<\/(a|button|span)\s*>/i.test(p)&&skip)skip--;
+        return p;}
+      if(skip)return p;
+      return p.replace(rx,m=>{
+        const k=key[m.toLowerCase()];
+        if(!k||seen.has(k))return m;
+        seen.add(k);
+        return `<span data-term="${k}">${m}</span>`;});
+    }).join("");
+  };
+}
+function journeyList(b,d,gl){
   const st=((d.journey||{}).steps)||[];
   if(!st.length)return "";
   const k=dkey(b.id);
-  const cut=st.length>JOURNEY_SHOWN&&!jOpen.has(k);
+  // Folded only where it hides two rows or more: the fold is a row of its
+  // own, so hiding one row for it saved nothing (the owner, 10 November 2026,
+  // HB 1 with seven steps).
+  const cut=st.length>=JOURNEY_SHOWN+2&&!jOpen.has(k);
   const hide=i=>cut&&i>=2&&i<st.length-(JOURNEY_SHOWN-2);
+  const said=s=>{
+    // A row's words: a vote's tally linked to its card, by the row's own date
+    // and chamber, and a term marked for its popover.
+    const h=voteLinks(jText(s),b,d,{date:s.date||"",body:s.body});
+    return tallyWhole(gl?gl(h):h);
+  };
   const line=(s,i)=>`<li class="j-${esc(JCLASS[s.mark]||s.mark)}${s.rec!==undefined?` jrec-${esc(s.rec||"without")}`:""}"${hide(i)?" hidden":""}><span class="jg"
     aria-hidden="true">${JMARK[s.mark]||""}</span><span class="jb">${
-    esc(JBODY[s.body]||s.body)}</span><span class="jt">${tallyWhole(jText(s))}</span><span
+    esc(JBODY[s.body]||s.body)}</span><span class="jt">${said(s)}</span><span
     class="jd">${s.date?esc(dateWords(s.date)):""}</span></li>`;
   const rows=st.map(line);
   if(cut)rows.splice(st.length-(JOURNEY_SHOWN-2),0,
@@ -5209,7 +5338,8 @@ function renderSummary(b,d,rsa){
   if(an)S.push(section("Official Legislative Analysis",
     `<div class="anbox" data-an="1"><div class="antext" translate="no">${rsa?rsa(esc(an)):esc(an)}</div></div>
      <p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`,"analysis"));
-  const jl=journeyList(b,d);
+  const gl=glossPass();
+  const jl=journeyList(b,d,gl);
   if(jl)S.push(section("How It Got Here",jl+(an?"":`<p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`),"journey"));
   else if(!an&&(d.docket_url||rsaChapters(d).length||(d.constitution||[]).length))
     S.push(section("Source",`<p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`,"source"));
@@ -5224,8 +5354,8 @@ function renderSummary(b,d,rsa){
     const here=!!ending&&st.label==="How It Ended";
     if(here)ended=true;
     S.push(section(st.label||"The Story",
-    `<p class="story">${storyPeople(esc(st.text),d)}</p>${(st.notes||[]).map(n=>`<p class="note">${esc(n)}</p>`).join("")}${here?ending:""}`));});
-  else if(d.narrative)S.push(section("The Story",`<p class="story">${storyPeople(esc(d.narrative),d)}</p>`));
+    `<p class="story">${gl(voteLinks(storyPeople(esc(st.text),d),b,d))}</p>${(st.notes||[]).map(n=>`<p class="note">${esc(n)}</p>`).join("")}${here?ending:""}`));});
+  else if(d.narrative)S.push(section("The Story",`<p class="story">${gl(voteLinks(storyPeople(esc(d.narrative),d),b,d))}</p>`));
   if(ending&&!ended)S.push(section("How It Ended",ending,"ending"));
   const kept=archivedNote(d);
   if(kept)S.push(section("About This Record",kept,"about-record"));
@@ -5332,6 +5462,7 @@ function renderVotes(b,d){
   // no longer drawn here. build_site_v2.vote_note_for and narrative.py are
   // untouched, so nothing downstream of them changes and the sentence is one
   // line away if it is wanted back.
+  const VOTE_IDS=voteAnchors(d);
   return ((d.rollcalls||[]).length?d.rollcalls.map((rc,i)=>{
     const vk=rc.vote_kind||"RC";
     let body;
@@ -5357,7 +5488,7 @@ function renderVotes(b,d){
     // a record built before it has none and its question stands as the head.
     // The record's own words go on a small line under the head where they
     // differ from it by more than case and an amendment number (rc.mrec).
-    return `<section class="rc">
+    return `<section class="rc" id="${VOTE_IDS[i]}">
       <div class="rchead"><h2 class="rcq">${voteHead(rc.mk,rc.question,rc.mf)}${
         rc.amendment?` <span class="ramd">${esc(rc.amendment)}</span>`:""}</h2>
       <span class="rcd">${sittingLink(rc.body==="H"?"H":"S",rc.date,dateWords(rc.date),b.id)} · ${
@@ -5462,7 +5593,7 @@ function ballotCard(d){
   // An election to come, and one past whose count is not in the file yet
   // (v.over, build_site_v2.ballot_card): the status says "went to the voters"
   // the day after, and so does this.
-  if(v.pending)return `<section class="rc ballot">${head("")}
+  if(v.pending)return `<section class="rc ballot" id="vote-ballot">${head("")}
     <p class="bout">${v.over
       ?`The vote was on ${esc(dateWords(v.date))}; its count is not recorded here yet.`
       :`The vote is on ${esc(dateWords(v.date))}.`}</p>
@@ -5473,7 +5604,7 @@ function ballotCard(d){
   const y=v.yes,n=v.no,tot=y+n,won=!!v.ratified;
   const word=won?"Ratified":"Not ratified";
   const how=3*y===2*tot?"exactly":won?"more than":"short of";
-  return `<section class="rc ballot">${head(chip(won?"Ratified":"Not Ratified",`rcres ${won?"pass":"fail"}`))}
+  return `<section class="rc ballot" id="vote-ballot">${head(chip(won?"Ratified":"Not Ratified",`rcres ${won?"pass":"fail"}`))}
     <p class="bout">${word}: ${share(y,tot)} voted yes, ${how} the two thirds it needed.</p>
     <p class="note">This was the statewide public vote, at the general election. An
       amendment to the constitution needs two thirds of the votes cast on it: the
@@ -5511,12 +5642,15 @@ const CHWORD={H:"House",S:"Senate"};
 // The kind through kindTitle, which keeps a small word after the first small
 // (the cohesion audit's P-5, 30 October 2026): capitalising every word made a
 // 1995 hearing "Committee Of Conference".
-function stationTitle(b,s){
-  const kind=s.what?kindTitle(s.what):"";
+// A floor row's "committee" is already the chamber, so it is not repeated.
+function hearingWhere(s){
   const cmte=(s.committee||"").trim();
   const ch=CHWORD[s.body]||"";
-  // A floor row's "committee" is already the chamber, so it is not repeated.
-  const where=(!cmte||cmte===ch)?ch:(ch?`${ch} ${cmte}`:cmte);
+  return (!cmte||cmte===ch)?ch:(ch?`${ch} ${cmte}`:cmte);
+}
+function stationTitle(b,s){
+  const kind=s.what?kindTitle(s.what):"";
+  const where=hearingWhere(s);
   return [b.n||b.id, [where,kind].filter(Boolean).join(" ")]
     .filter(Boolean).join(" - ");
 }
@@ -5699,310 +5833,193 @@ function motionsLine(s){
           <span style="color:var(--ink-2)">${said.length===1?"Motion":"Motions"}: ${
             said.join(" · ")}</span></div>`:"";
 }
+// A SITTING WITH NO RECORDING TO PLAY, drawn as a card of its own: the day, the
+// place, the sign-in counts and the committee's hearing report. A sitting the
+// docket notes and the page does not draw, a Senate hearing dated by its
+// committee's report, several recordings of the day with none chosen, and
+// everything before the chambers streamed. The sittings with a recording are
+// the view's (hearingView).
+function hearingCard(b,s){
+  let inner="";
+  // A RECORDING OF THAT DAY EXISTS AND WHICH ONE THIS IS WAS NOT ESTABLISHED:
+  // the day and the committee are known and the tape is not (317 proceedings,
+  // 236 of them House Finance, whose divisions stream apart). Offered in the
+  // order the matcher found them; nothing ranks them. One sentence (the
+  // owner, 25 October 2026, S2).
+  if(s.state==="candidates"&&(s.candidate_ids||[]).length){
+    const ids=s.candidate_ids;
+    const links=ids.map((v,i)=>`<a href="https://www.youtube.com/watch?v=${
+      esc(v)}" target="_blank" rel="noopener">Recording ${i+1}</a>`).join(" · ");
+    const n=["","One","Two","Three","Four","Five"][ids.length]||ids.length;
+    inner=`<div class="vbox"><p>${n} recordings that day; the record doesn&rsquo;t
+      say which covers this bill: ${links}</p></div>`;
+  }
+  // A HEARING DATED BY THE SENATE COMMITTEE'S OWN REPORT, where the docket has
+  // no Senate hearing of the bill that day (build_site_v2.report_station),
+  // said as the person decided on 24 September.
+  else if(s.dated_by==="report")inner=`<div class="vbox"><p><b>Dated by the
+    committee&rsquo;s own report.</b> The docket records no Senate hearing of
+    this bill on this day${(s.docket_heard||[]).length?`; it records one on
+    ${s.docket_heard.map(x=>esc(dateWords(x,"full"))).join(" and ")}`:""}. This is the date the Senate
+    committee&rsquo;s hearing report gives, and the report is below as the
+    Senate filed it. No recording is linked to it.</p></div>`;
+  // Before the channels the tab's own note says so once (renderHearings).
+  else if(s.state==="prestream")inner="";
+  else inner=`<div class="vbox"><p>No recording matched to this proceeding.</p></div>`;
+  return `<div class="stn pend">
+    <div class="w">${esc(dateWords(s.when))}${s.time?" at "+esc(clock(s.time)):""}${s.venue?" · "+esc(roomWords(s.venue)):""}</div>
+    <div class="t">${esc(stationTitle(b,s))}</div>${
+      signins(s.testimony)}${inner}${(s.reports||[]).map(r=>
+        hearingReport(r,false)).join("")}</div>`;
+}
+
+// WHERE THE VIEW OPENS A SITTING'S RECORDING, and what to say of the moment
+// (the states are build_site_v2.station_for_proceeding's and station_for_floor's).
+// `from` is where the player starts, `start` and `end` the bill's own moments
+// where there are any, `approx` whether the start is an inference, `note` what
+// to say where the moment was not found.
+function hearingPlace(s){
+  const h={from:0,start:null,end:null,endWord:"ends",approx:false,note:"",said:""};
+  const st=s.state;
+  if(st==="located"||st==="stated"){
+    // Open essentially AT the mark: a boundary is timed to the caption line
+    // the words begin in, so two seconds clips no syllable.
+    h.from=Math.max(Math.floor(s.start-2),0);
+    h.start=s.start;
+    h.end=s.end&&s.end>s.start?s.end:null;
+    h.approx=!s.start_stated;
+  }else if(st==="approximate"){
+    // Hearings run late and never early: a few minutes before the time it
+    // was set for, as a place to start scrubbing and not a claim.
+    h.from=Math.max(secs(s.predicted)-300,0);
+    h.note=s.not_named?NOT_NAMED:"exact moment not found";
+  }else if(st==="whole_video"){
+    h.note="The recording covers this bill only.";
+  }else if(st==="consent"){
+    // Named nowhere in the recording, so it went through on the consent
+    // calendar: what the calendar adopts is the committee's report, whatever
+    // it recommends ("decided", not "passed", 3 October 2026).
+    h.said=`Decided on the consent calendar, without separate debate, so there is no moment in the
+      recording for it. The recording is the whole session.`;
+  }else if(st==="floor_precise"||st==="floor_stated"){
+    // A roll call closes the item, so its time is the END of the debate; the
+    // player opens where the chair took it up, else ten minutes before.
+    const ws=s.window_start!=null?Math.max(Math.floor(s.window_start),0):null;
+    h.from=s.debate_start!=null?Math.max(Math.floor(s.debate_start),0):Math.max(ws,Math.floor(s.debate_end)-600);
+    h.start=s.debate_start!=null?s.debate_start:null;
+    h.end=s.debate_end;
+    h.endWord=st==="floor_precise"?"vote at":"ends at";
+    h.approx=floorApprox(s);
+  }else if(st==="floor_dated"){
+    h.from=s.debate_start!=null?Math.max(Math.floor(s.debate_start),0):0;
+    h.start=s.debate_start!=null?s.debate_start:null;
+    h.approx=floorApprox(s);
+    if(s.debate_start==null)h.note="exact moment not found";
+  }else h.note=s.not_named?NOT_NAMED:"exact moment not found";
+  return h;
+}
+// What was voted at a sitting: a floor sitting's roll calls of its day and
+// chamber (the Votes tab's chip, with its count), a committee's report dated
+// to its day (the Reports tab's chip, with its count).
+function hearingOutcome(b,d,s){
+  const out=[];
+  if(/^floor/.test(s.state||"")||/floor/i.test(s.what||"")){
+    // A floor sitting names its chamber as its "committee" (station_for_floor).
+    const ch=s.body||{House:"H",Senate:"S"}[s.committee]||"";
+    // Only the motions this sitting is drawn for (its mks), where it names any:
+    // the day's other votes on the bill are the Votes tab's.
+    const want=(s.mks||[]).map(k=>k&&k.mk).filter(Boolean);
+    (d.rollcalls||[]).filter(rc=>rc.date===s.when&&rc.body===ch&&rc.passed!=null
+      &&(!want.length||want.indexOf(rc.mk)>=0)).forEach(rc=>{
+      const t=tallyOf(rc);
+      out.push(voteChip(rc.mk||"",rc.passed,b.id,rc.mf)+(t?` <span class="vwtally">${tallyWhole(t)}</span>`:""));});
+  }else{
+    (d.reports||[]).filter(r=>r.date===s.when&&r.dated!=="printed"&&(!r.body||!s.body||r.body===s.body)).forEach(r=>{
+      const rec=r.majority_recommendation, x=(r.reports||[]).find(e=>e.vote_yeas!=null);
+      if(rec)out.push(recChip(rec,x?`${x.vote_yeas}–${x.vote_nays}`:""));});
+  }
+  return out.join(" ");
+}
+// One moment as the button that moves the player there (the Meetings tab's
+// .mjump, jumpButtons' markup), with "approximate" where it is inferred.
+const hearingMoment=(pid,t,word,approx)=>`<span class="mjump"><button type="button" class="jump" data-seek="${
+  esc(pid)}|${Math.max(0,Math.floor(t))}" aria-label="Play from ${hms(t)}, where it ${esc(word)}">${icon("play")}${
+  hms(t)} ${esc(word)}</button>${approx?`<i class="approx">approximate</i>`:""}</span>`;
+// What is under the player for the sitting chosen: when and where, who signed
+// in, what was voted, the bill's moments, and the committee's hearing report.
+function hearingDetail(b,d,s,h,pid){
+  const when=[dateWords(s.when)+(s.time?" at "+clock(s.time):""),s.venue?roomWords(s.venue):""].filter(Boolean);
+  const out=[`<p class="vwkinds"><span class="vwchips">${kindChips([s.what])}</span> ${esc(when.join(" · "))}</p>`];
+  const sg=signins(s.testimony);
+  if(sg)out.push(`<p class="vwsign">${sg}</p>`);
+  const oc=hearingOutcome(b,d,s);
+  if(oc)out.push(`<p class="vwres">${oc}</p>`);
+  const moments=(h.start!=null?hearingMoment(pid,h.start,"starts",h.approx):"")
+    +(h.end!=null?hearingMoment(pid,h.end,h.endWord,h.start==null&&h.approx):"");
+  if(moments)out.push(`<p class="vwmoms">${moments}</p>`);
+  if(h.note)out.push(`<p class="vwnone">${esc(h.note[0].toUpperCase()+h.note.slice(1))}${/\.$/.test(h.note)?"":"."}</p>`);
+  if(h.said)out.push(`<p class="vwnone">${h.said}</p>`);
+  if(s.state==="whole_video"&&s.title)out.push(`<p class="vwnone">${esc(s.title)}</p>`);
+  out.push(motionsLine(s));
+  out.push((s.reports||[]).map(r=>hearingReport(r,true)).join(""));
+  return out.join("");
+}
+// THE TAB IS A COMMITTEE'S VIDEOS TAB, FOR ONE BILL (the owner, 10 November
+// 2026: "changing the ways bills are formatted to be more similar to how the
+// committee videos tab is formatted ... we'd only have one player and the
+// format would be cleaner"). videoView draws it: one player at the top, the
+// bill's recordings as its playlist beside it (below it on a phone), in the
+// order of the bill's story -- the docket's: a hearing, its executive
+// session, the floor -- and under the player, for the one chosen, what the
+// bill's own sittings showed one at a time (hearingDetail). Choosing a row
+// loads its recording in the player at the bill's moment.
+const HEAR_CHOSEN={};
+function hearingView(b,d,rec){
+  const key=`bill|${dkey(b.id)}`;
+  const rows=rec.map(([s,si])=>{
+    const h=hearingPlace(s), pid=`h${si}_${String(s.video_id).replace(/[^\w-]/g,"")}`;
+    return {id:`h${si}`,video:s.video_id,pid,date:s.when,seconds:s.seconds,from:h.from,
+      who:hearingWhere(s)||b.n||b.id,what:stationTitle(b,s),
+      kinds:kindChips([s.what]),line:[hearingWhere(s)],
+      playText:h.from>0?`Play from ${hms(h.from)}`:"Play the recording",
+      detail:()=>hearingDetail(b,d,s,h,pid)};});
+  // A row's address is the bill's Hearings tab where the page is a bill's;
+  // anywhere else (the search list, with the bill open) it is where the reader is.
+  const here=location.pathname.replace(/\/+$/,"");
+  const path=/^\/bill\/\d{4}\/[a-z0-9]+(?:\/[a-z]+)?$/i.test(here)
+    ?`${here.replace(/\/(?:hearings|videos)$/,"")}/hearings`:here;
+  return videoView({who:b.n||b.id,key,rows,chosen:HEAR_CHOSEN[key]||rows[0].id,
+    heading:`${rows.length.toLocaleString()} recording${rows.length===1?"":"s"}, in the order of the bill’s story`,
+    href:()=>path,pid:r=>r.pid,onChoose:id=>{HEAR_CHOSEN[key]=id;},
+    source:"The recordings are the General Court&rsquo;s own, from its House and Senate YouTube channels."});
+}
 function renderHearings(b,d){
-  // si, because the pid was built from the video and the timestamp, so two
-  // proceedings on the same recording resolving to the same second shared one
-  // -- and the seek handler resolves a pid with querySelector, which returns
-  // the first match. Pressing a timestamp under the second player moved the
-  // first. 238 stations.
-  //
   // WHERE THIS SITE'S RECORDINGS BEGIN, ONCE (the audit of 25 October 2026,
-  // S4), at the top of the tab, where it was a box on every sitting before
-  // then. Not where recording began: the House Calendars of 2013-2019
-  // announce hearings streamed live, and none of those is on either YouTube
-  // channel, so "no recording exists" and "not livestreamed before 2020" are
-  // both claims the record contradicts. The month is
-  // about_figures.STREAM_START_WORDS, and preflight holds the two together.
-  const pre=(d.stations||[]).some(s=>s.state==="prestream")
-    ?`<p class="note">${STREAM_BEGIN_SAID}</p>`:"";
-  return (d.stations||[]).length?pre+d.stations.map((s,si)=>{
-    let inner;
-    // Whether this station ends up pointing at a moment. It was a list of
-    // state strings kept in a second place, which is how "stated" came to be
-    // marked pending while an estimate was marked done.
-    let placed=false;
-    // WHAT THE PLAYER IS CALLED, once it replaces Play: this sitting, by its
-    // own heading and day. Every frame was titled "Hearing recording", so a
-    // bill with fourteen sittings had fourteen frames a screen reader could
-    // not tell apart (the audit of 2 October 2026, M18).
-    const rec=` data-title="${esc(recTitle(stationTitle(b,s),s.when))}"`;
-    // A recording we have is a recording the reader can watch, whether or not
-    // we can say where in it the bill is. Pinning down start times is ongoing
-    // work; sending somebody to YouTube in the meantime is a worse answer than
-    // handing them the tape and saying so.
-    // `note` is the one word or phrase under the button, or "" for none: a
-    // card says each thing once (the audit of 25 October 2026, S2), so what
-    // Play already says is not said again beside it.
-    const player=(from,stub,note)=>{
-      const pid=`${esc(s.video_id)}_${si}_${Math.max(0,Math.floor(from))}`;
-      return `<div class="player" data-player="${pid}">
-        <button type="button" class="pstub"${rec}
-          data-embed="${esc(s.video_id)}|${Math.max(0,Math.floor(from))}|${pid}"
-          ><span>${icon("play")}</span><span>${stub}</span></button>
-        <div class="pbar">
-          <a href="https://www.youtube.com/watch?v=${esc(s.video_id)}&t=${
-             Math.max(0,Math.floor(from))}s"
-             target="_blank" rel="noopener">Open on YouTube</a>${
-          note?`
-          <span class="tolnote">${note}</span>`:""}</div></div>`;};
-    // WHERE NO MOMENT WAS FOUND, ONE BUTTON (S2): where Play starts, the
-    // time the meeting was set for if there is one, and that the bill's own
-    // moment was not found -- said once, where it used to be said in the
-    // button, again under it and a third time in a note.
-    const playFrom=from=>`${from>0?`Play from ${hms(from)}`:"Play from the start"}${
-      s.time?` · scheduled ${esc(clock(s.time))}`:""}`;
-    const unfound=from=>`${playFrom(from)} (exact moment not found)`;
-    // "stated" is "located" with the boundary in the chair's own words. It
-    // was its own state string and matched no branch here, so the best data
-    // this site has -- 3,829 proceedings, a median of one second -- fell
-    // through to "the moment was not identified". The branch below already
-    // reads start_stated and words itself accordingly; it only ever needed to
-    // be reached.
-    if(s.state==="located"||s.state==="stated"){
-      // Open essentially AT the mark. The old lead was five minutes for an
-      // estimate and 45 seconds for a quotation, on the reasoning that
-      // arriving early costs only scrubbing -- but it made the commonest case
-      // land the reader in the middle of the previous bill, and the page then
-      // had to explain a time that was not the bill's. A boundary is timed to
-      // the caption line the words begin in, so two seconds is enough not to
-      // clip the first syllable and little enough to be inaudible.
-      const LEAD = 2;
-      const from = Math.max(Math.floor(s.start - LEAD), 0);
-      // One word, and only when the placement is an inference rather than
-      // something the chair said. Everything else the page used to print about
-      // provenance -- the tolerance, which of the two dates it was showing,
-      // "about where it ends" -- was methodology in the reader's way. What
-      // matters is that clicking lands on the bill.
-      const approx = s.start_stated ? "" : " approximate";
-      // end_stated is no longer read here: a stated close and an inferred
-      // one are both just the end now, and the page does not rank them.
-      const hasend = s.end && s.end > s.start;
-      placed = true;
-      const pid = `${esc(s.video_id)}_${si}_${Math.floor(s.start)}`;
-      // Guard on the seconds, not on the rounded string: "0 min" is truthy, so
-      // a twenty-second segment printed "about 0 min".
-      const span = hasend ? s.end - s.start : 0;
-      const mins = Math.round(span / 60);
-      const dur = mins >= 1 ? `${mins} min` : (span > 0 ? `${Math.round(span)} sec` : "");
-      const range = hasend ? `${hms(s.start)}\u2013${hms(s.end)}` : `from ${hms(s.start)}`;
-      inner=`<div class="player" data-player="${pid}">
-        <button type="button" class="pstub"${rec} data-embed="${esc(s.video_id)}|${from}|${pid}">
-          <span>${icon("play")}</span><span>Play ${esc(s.what)} on this bill — ${range}${
-            dur?`, about ${dur}`:""}</span></button>
-        <div class="pbar">
-          <button class="jump" data-seek="${pid}|${Math.floor(s.start)}">${hms(s.start)} starts</button>
-          ${hasend?`<button class="jump"
-            data-seek="${pid}|${Math.floor(s.end)}">${hms(s.end)} ends</button>`:""}
-          <a href="https://www.youtube.com/watch?v=${esc(s.video_id)}&t=${from}s"
-             target="_blank" rel="noopener">Open on YouTube</a>
-          ${approx?`<span class="tolnote">approximate</span>`:""}
-        </div></div>`;
-    }
-    else if(s.state==="approximate"){
-      // Open a few minutes before the scheduled time, since hearings run late
-      // and never early. It is a place to start scrubbing, not a claim.
-      const from=Math.max(secs(s.predicted)-300,0);
-      // NOT NAMED ON THE RECORDING (17 October 2026, the wording the person
-      // approved). Where the recording's captions never name the bill, no
-      // moment can be marked, and "not done" promised work that cannot come.
-      // ONE BUTTON WITH ITS NOTE (the owner, 26 October 2026), as the other
-      // recording cards are: "Play from 00:05:00 \u00b7 scheduled 10:00 AM" over
-      // "bill not named in the captions". The note under the button said it,
-      // and a paragraph under that said it again.
-      if(s.not_named)inner=player(from,playFrom(from),NOT_NAMED);
-      // "Play from the start · scheduled 10:00 AM (exact moment not found)":
-      // the owner's words of 25 October 2026 (S2). It was "start time not
-      // identified yet" in the button and again under it, a note saying it a
-      // third time, and an automatic pass's suggestion the page itself said
-      // was not good enough to publish.
-      else inner=player(from,unfound(from),"");
-    }
-    // else if, not if. Opening a second chain here meant every station that
-    // matched the FIRST chain -- located, stated, approximate -- fell through
-    // this one to the "s.video_id" catch-all below, which overwrote the inner
-    // that had just been built correctly. 5,453 stations carried a real
-    // timestamp the page then threw away.
-    else if(s.state==="whole_video"){
-      // The recording covers exactly this bill, so it plays from the start and
-      // there is nothing to estimate.
-      placed=true;
-      const pid=`${esc(s.video_id)}_${si}_w`;
-      inner=`<div class="player" data-player="${pid}">
-        <button type="button" class="pstub"${rec} data-embed="${esc(s.video_id)}|0|${pid}">
-          <span>${icon("play")}</span><span>Play the whole recording &mdash; it covers this
-          bill only</span></button>
-        <div class="pbar">
-          <a href="https://www.youtube.com/watch?v=${esc(s.video_id)}"
-             target="_blank" rel="noopener">Open on YouTube</a></div>
-        ${s.title?`<div class="pbar" style="border-top:none">
-          <span style="color:var(--ink-2)">${esc(s.title)}</span></div>`:""}</div>`;
-    }
-    else if(s.state==="consent"){
-      // Named nowhere in the recording, so it went through on the consent
-      // calendar. There is no moment to point at, and saying "this bill was
-      // taken up that day" over a link to nine hours of other business would
-      // be worse than saying nothing.
-      //
-      // "DECIDED", NOT "PASSED" (3 October 2026): what the consent calendar
-      // adopts is the committee's report, whatever it recommends, and 605 of
-      // the 2,067 stations drawn this way carried a report to kill the bill
-      // or study it.
-      inner=`<p class="note">Passed on the consent calendar, without separate
-        debate, so there is no moment in the recording for it.
-        <a href="https://www.youtube.com/watch?v=${esc(s.video_id)}"
-           target="_blank" rel="noopener">The whole session</a>.</p>`;
-    }
-    // A RECORDING OF THAT DAY EXISTS AND WHICH ONE THIS IS WAS NOT
-    // ESTABLISHED. Not the claim "approximate" makes: that one knows the tape
-    // and not the minute, this one knows the day and the committee and not
-    // the tape. 317 proceedings of 100,556, across 64 committee-days and 269
-    // bills -- 236 of them Finance, whose divisions stream separately and
-    // which the docket does not tell apart, and 81 whose scheduled minute
-    // fell inside more than one stream.
-    //
-    // Until this branch they fell to the final else and read "No recording
-    // matched to this proceeding." over a sitting that was filmed and whose
-    // recordings are in this site's own index. The wording here is the same
-    // honesty as "estimated within +-5 min" one level up: it says what is
-    // not known, names what is, and does not resolve the uncertainty by
-    // picking. The site must not choose one of these, so nothing below ranks
-    // them or calls any of them likelier -- they are offered in the order
-    // the matcher found them.
-    //
-    // Numbered rather than titled: proceedings.csv carries the ids, which are
-    // addressable; the manifest's `candidates` column carries the titles and
-    // they are for a person reading the manifest.
-    else if(s.state==="candidates"&&(s.candidate_ids||[]).length){
-      const ids=s.candidate_ids;
-      const links=ids.map((v,i)=>`<a href="https://www.youtube.com/watch?v=${
-        esc(v)}" target="_blank" rel="noopener">Recording ${i+1}</a>`
-        ).join(" · ");
-      // Spelled, because the sentence is prose and "there are 3 recordings"
-      // beside "there are two recordings" reads as two voices. Two and
-      // three are the only counts there are -- 213 and 104 of the 317 -- and
-      // the digit is there for a fourth that has never happened. There is no
-      // one-recording case at all: build_manifest writes this column only
-      // where more than one recording of the committee exists that day, and
-      // a lone recording is simply matched.
-      //
-      // ONE SENTENCE (the owner's words, 25 October 2026, S2): "Two
-      // recordings that day; the record doesn't say which covers this bill:
-      // Recording 1 · Recording 2". It was 108 words saying the same thing
-      // three ways, and why the record cannot say -- divisions that stream
-      // separately, a time inside two streams -- is this comment's, above.
-      const n=["","One","Two","Three","Four","Five"][ids.length]||ids.length;
-      inner=`<div class="vbox"><p>${n} recordings that day; the record doesn&rsquo;t
-        say which covers this bill: ${links}</p></div>`;
-    }
-    else if(s.state==="floor_precise"||s.state==="floor_stated"){
-      // A roll call closes the item, so its timestamp is the END of the
-      // debate, good to a few seconds. The window opens at the PREVIOUS bill's
-      // last vote, and everything in between is other bills -- on one real
-      // session that gap is 37 minutes. Landing the reader there means 37
-      // minutes of the wrong debate before the right one starts.
-      //
-      // So the player opens shortly before the vote, which is certainly this
-      // bill. Ten minutes covers all but the longest floor debates, and it
-      // never runs back past the window. (The window was offered as a jump
-      // of its own until 25 October 2026, S2.)
-      // Where the clerk actually opened it, if that was found. The window is
-      // the previous bill's roll call and can be half an hour of other
-      // business earlier, so it is only a fallback -- and ten minutes before
-      // the vote is a worse fallback still, just a less wrong one.
-      // floor_stated has a start the clerk read (the committee report) and an
-      // end the chair said (the result), and no roll call at all. Everything
-      // below is the same except what the end is called: "vote at" is the
-      // roll call's clock, and a caption line the chair spoke is where the
-      // item "ends at", not a vote's time.
-      placed=true;
-      const voted=s.state==="floor_precise";
-      // Guard on the field, not the coerced value. `||0` turned a missing
-      // window into a button reading "00:00:00 window opens" that seeked to
-      // the gavel-in -- the absence of data printed as a timestamp. A
-      // window_start of exactly 0 is real for the first roll call of a
-      // session, so the test has to be against null, not against zero.
-      const ws=s.window_start!=null?Math.max(Math.floor(s.window_start),0):null;
-      // One number, shown and used. The header said debate_start while the
-      // player seeked to debate_start-15 and the jump buttons showed two other
-      // values again -- four numbers for one moment, and a reader has no way
-      // to tell which is the claim.
-      const from=s.debate_start!=null
-        ? Math.max(Math.floor(s.debate_start),0)
-        : Math.max(ws,Math.floor(s.debate_end)-600);
-      const pid=`${esc(s.video_id)}_${si}_f${Math.floor(s.debate_end)}`;
-      // "Play from 05:13:45 · vote at 05:23:18 · Open on YouTube" (the
-      // owner, 25 October 2026, S2): where Play starts, the vote, and the
-      // recording on YouTube, with "approximate" where the opening is not one
-      // the clerk was heard to read (floorApprox). The window's own jump went,
-      // and "timed to the second" with it: the vote's time is the claim, and
-      // the page shows it plainly as every stated time is shown. The motions
-      // in the Votes tab's words (motionsLine).
-      inner=`<div class="player" data-player="${pid}">
-        <button type="button" class="pstub"${rec} data-embed="${esc(s.video_id)}|${from}|${pid}">
-          <span>${icon("play")}</span><span>Play from ${hms(from)}</span></button>
-        <div class="pbar">
-          <button class="jump" data-seek="${pid}|${Math.floor(s.debate_end)}">${
-            voted?"vote at":"ends at"} ${hms(s.debate_end)}</button>
-          <a href="https://www.youtube.com/watch?v=${esc(s.video_id)}&t=${from}s"
-             target="_blank" rel="noopener">Open on YouTube</a>${
-          floorApprox(s)?`
-          <span class="tolnote">approximate</span>`:""}</div>${motionsLine(s)}</div>`;
-    }
-    // A voice or division vote leaves no roll call to time the end, but the
-    // clerk still opened the item and segment_markers still heard it. 393 of
-    // these carried debate_start and were being told they had no moment. Its
-    // own arm rather than the branch above, which dereferences debate_end in
-    // three places and would print "ends at 00:00:00".
-    // Said once (S2): where Play starts, and "approximate" where a weak
-    // marker found it (build_site_v2.weak_marker). It said where the clerk
-    // takes it up in the button and again under it, and a note said a third
-    // time that there is no end to point at.
-    else if(s.state==="floor_dated"&&s.debate_start!=null){
-      placed=true;
-      const from=Math.max(Math.floor(s.debate_start),0);
-      inner=player(from,`Play from ${hms(from)}`,floorApprox(s)?"approximate":"");
-    }
-    else if(s.state==="floor_dated")inner=player(0,unfound(0),"");
-    // A HEARING DATED BY THE SENATE COMMITTEE'S OWN REPORT, where the docket
-    // has no Senate hearing of the bill that day (report_station, in
-    // build_site_v2). Shown, as the person decided on 24 September, and saying
-    // where the date comes from: the report's date and the docket's are both
-    // the General Court's, and this site does not say which one is right.
-    else if(s.dated_by==="report")inner=`<div class="vbox"><p><b>Dated by the
-      committee&rsquo;s own report.</b> The docket records no Senate hearing of
-      this bill on this day${(s.docket_heard||[]).length?`; it records one on
-      ${s.docket_heard.map(x=>esc(dateWords(x,"full"))).join(" and ")}`:""}. This is the date the Senate
-      committee&rsquo;s hearing report gives, and the report is below as the
-      Senate filed it. No recording is linked to it.</p></div>`;
-    // Before the channels: the tab's own note says so once, above (`pre`),
-    // and the sitting draws no box of its own.
-    else if(s.state==="prestream")inner="";
-    // Defensive: if a proceeding carries a video id but an unrecognised state,
-    // still offer the recording. Saying "no recording" when one is right there
-    // is the worst possible failure -- it hides working data and looks like the
-    // site has less than it does.
-    else if(s.video_id&&s.not_named)inner=player(0,playFrom(0),NOT_NAMED);
-    else if(s.video_id)inner=player(0,unfound(0),"");
-    else inner=`<div class="vbox"><p>No recording matched to this proceeding.</p></div>`;
-    // Was a second list of state strings, which never gained "stated" or
-    // "floor_stated" -- so the site's best-evidenced proceedings wore the
-    // pending dot while an unlocated estimate wore the finished one. It now
-    // follows the branch that actually ran.
-    return `<div class="stn ${placed?"done":"pend"}">
-      <div class="w">${esc(dateWords(s.when))}${s.time?" at "+esc(clock(s.time)):""}${s.venue?" · "+esc(roomWords(s.venue)):""}</div>
-      <div class="t">${esc(stationTitle(b,s))}</div>${
-        signins(s.testimony)}${inner}${(s.reports||[]).map(r=>
-          hearingReport(r,inner.includes('class="player"'))).join("")}</div>`;}).join("")
-    // A MEETING THE DOCKET NOTICED AND THE PAGE DOES NOT DRAW. HB 273 of
-    // 2017's history says "The docket schedules a public hearing for January
-    // 10, 2017", of a bill the House did not introduce, and this tab said
-    // there were no scheduled proceedings on file. The notice is a line of
-    // the docket (e.notice), with its reason beside it.
-    :((d.events||[]).some(e=>e.notice)
-      ? `<p class="note">The docket gave notice of a meeting on this bill, and
-         none is drawn here. The history on the Summary tab says why, and the
-         docket there lists the notice.</p>`
-      : `<p class="note">No hearing or meeting is on record for this bill.</p>`);
+  // S4), at the top of the tab. Not where recording began: the House
+  // Calendars of 2013-2019 announce hearings streamed live, and none of those
+  // is on either YouTube channel, so "no recording exists" and "not
+  // livestreamed before 2020" are both claims the record contradicts. The
+  // month is about_figures.STREAM_START_WORDS, and preflight holds the two
+  // together.
+  const all=d.stations||[];
+  const pre=all.some(s=>s.state==="prestream")?`<p class="note">${STREAM_BEGIN_SAID}</p>`:"";
+  const rec=all.map((s,si)=>[s,si]).filter(x=>x[0].video_id);
+  const plain=all.filter(s=>!s.video_id);
+  if(all.length){
+    return pre+(rec.length?hearingView(b,d,rec):"")
+      +(plain.length?`<div class="hplain">${rec.length?`<h3 class="vwh">No recording to play</h3>`:""}${
+        plain.map(s=>hearingCard(b,s)).join("")}</div>`:"");
+  }
+  // A MEETING THE DOCKET NOTICED AND THE PAGE DOES NOT DRAW. HB 273 of 2017's
+  // history says "The docket schedules a public hearing for January 10,
+  // 2017", of a bill the House did not introduce, and this tab said there
+  // were no scheduled proceedings on file. The notice is a line of the docket
+  // (e.notice), with its reason beside it.
+  return (d.events||[]).some(e=>e.notice)
+    ? `<p class="note">The docket gave notice of a meeting on this bill, and
+       none is drawn here. The history on the Summary tab says why, and the
+       docket there lists the notice.</p>`
+    : `<p class="note">No hearing or meeting is on record for this bill.</p>`;
 }
 
 // Each calendar entry carries the majority's recommendation and, when the
@@ -6955,6 +6972,11 @@ window.addEventListener("hashchange",()=>{
   let said="";
   try{said=decodeURIComponent(location.hash.slice(1));}catch(_){return;}
   const gm=/^(\d{4})\/([A-Z]{2,5}\d+)$/i.exec(String(window.GR_BILL));
+  if(gm&&VOTE_HASH.test(said)){
+    const vr=IDX.find(x=>x.id===gm[2].toUpperCase()&&String(x.year)===gm[1]);
+    if(vr){openTab[vr.id]="1";VOTE_JUMP=said;repaint();}
+    return;
+  }
   const row=gm&&AMENDMENT_HASH.test(said)
     ?IDX.find(x=>x.id===gm[2].toUpperCase()&&String(x.year)===gm[1]):null;
   if(!row)return;
@@ -7083,7 +7105,7 @@ const RELATED_HEADS=["Where Its Language Went","Filed Before and After","This Te
 function relatedSaid(b,e){
   const id=String(e.o).split("/")[1]||"";
   const other=String(e.o).slice(0,9)!==String(b.term||"");
-  const href=`bill/${e.y}/${id.toLowerCase()}.html`;
+  const href=`bill/${e.y}/${id.toLowerCase()}`;
   const name=`<a href="${esc(href)}">${esc(e.n)}</a>${other?` (${esc(String(e.o).slice(0,9)).replace("-","&ndash;")})`:""}`;
   return esc(e.s).replace("{b}",name);
 }
@@ -7125,6 +7147,23 @@ function relatedMerge(rel){
   }
   return out;
 }
+// THE SAME NUMBER IN OTHER TERMS (the owner, 10 November 2026: "the history
+// tab should match prior bills for standard ones like HB1, HB2, HB25"). For a
+// number corrections/bill_notes.json gives a standing meaning, the build
+// (build_site_v2.add_same_number) writes d.same_number: the same number in each
+// other term the note is true of, newest first. Each row links to that term's
+// bill, with its title and its outcome chip as the History tab's other rows.
+function sameNumber(b,d){
+  const rows=(d&&d.same_number)||[];
+  if(!rows.length)return "";
+  const num=esc(b.n||b.id);
+  return `<section class="rl-g sn"><h2 class="sech">${num} in other terms</h2><ul class="rl-list">${
+    rows.map(r=>{
+      const term=esc(String(r.term||"").replace("-","\u2013"));
+      const c=r.c?" "+chip(r.c,`cstat ${chipCls({chip:r.c})}`):"";
+      return `<li class="rl-row"><p class="rl-s"><a href="bill/${esc(r.y)}/${esc(String(r.id||b.id).toLowerCase())}">${
+        esc(r.n||b.id)} of ${term}</a></p><p class="rl-t">${esc(r.t||"")}${c}</p></li>`;}).join("")}</ul></section>`;
+}
 function renderRelated(b,relRows,d){
   const rel=relatedMerge(relRows);
   const groups=[[],[],[]];
@@ -7144,7 +7183,7 @@ function renderRelated(b,relRows,d){
     return `<li class="rl-row"><p class="rl-s">${said}</p>`
       +`<p class="rl-t">${esc(e.t)}${chips?" "+chips:""}</p></li>`;
   };
-  return groups.map((g,i)=>g.length
+  return sameNumber(b,d)+groups.map((g,i)=>g.length
     ?`<section class="rl-g"><h2 class="sech">${RELATED_HEADS[i]}</h2><ul class="rl-list">${g.map(row).join("")}</ul></section>`:"").join("")
     +(rel.length?"":`<p class="story">No other bill was found sharing most of this bill&rsquo;s language.</p>`)
     +`<p class="src">Found by comparing the text of bills and their amendments. A bill is listed
@@ -7279,7 +7318,7 @@ function focusActions(id){
   if(!y||document.getElementById("pageacts")||typeof fetch!=="function"||typeof DOMParser==="undefined")return;
   focusActs=k;
   const path=`bill/${y}/${String(id).toLowerCase()}`;
-  fetch(`${BASE}${path}.html`).then(r=>r.ok?r.text():Promise.reject(r.status)).then(html=>{
+  fetch(`${BASE}${path}`).then(r=>r.ok?r:fetch(`${BASE}${path}.html`)).then(r=>r.ok?r.text():Promise.reject(r.status)).then(html=>{
     if(focusActs!==k||focused!==id||document.getElementById("pageacts"))return;
     const doc=new DOMParser().parseFromString(html,"text/html");
     const acts=doc.getElementById("pageacts");
@@ -7824,6 +7863,7 @@ const repaint=()=>{
   if(PAGE)renderPage();else if(SESSV)drawSessionVotes();else render();
   jumpToTab();
   jumpToAmendment();
+  jumpToVote();
 };
 
 // A BILL'S ADDRESS THAT NAMES A TAB OPENS AT IT (the webinar pass of 23
@@ -7833,6 +7873,21 @@ const repaint=()=>{
 // tab strip is brought into view if it starts below the top six tenths of the
 // window; a reader already scrolling is never moved again.
 let TAB_JUMP=null;
+// A vote's card, brought into view once it is drawn (voteLinks): below the tab
+// strip a bill's page holds at the top, and marked while it is the one asked for.
+let VOTE_JUMP=null;
+function jumpToVote(){
+  if(!VOTE_JUMP)return;
+  const el=document.getElementById(VOTE_JUMP);
+  const pane=el&&el.closest(".pane");
+  if(!el||!pane||pane.hidden)return;
+  VOTE_JUMP=null;
+  document.querySelectorAll(".rc.rcsel").forEach(x=>x.classList.remove("rcsel"));
+  el.classList.add("rcsel");
+  const card=el.closest(".card"), strip=card&&card.querySelector(".tabs");
+  const held=strip&&getComputedStyle(strip).position==="sticky"?strip.getBoundingClientRect().height:0;
+  window.scrollTo(0,Math.max(0,el.getBoundingClientRect().top+window.scrollY-held-16));
+}
 function jumpToTab(){
   if(!TAB_JUMP||!detail[dkey(TAB_JUMP)])return;
   const card=[...document.querySelectorAll(".card[data-id]")].find(c=>c.dataset.id===TAB_JUMP);
@@ -7995,7 +8050,7 @@ function lsrCardHtml(b,cls){
         ${chip(chipOf(b),`cstat ${chipCls(b)}`,"m")}</div>
         <div class="ctitle">${esc(b.title)}</div>
         <div class="cmeta">${b.sponsor_slug
-          ?`<a href="legislator/${esc(b.sponsor_slug)}.html">${esc(who)}</a>`
+          ?`<a href="legislator/${esc(b.sponsor_slug)}">${esc(who)}</a>`
           :esc(who)}${b.body_label?` &middot; ${esc(b.body_label)}`:""}</div>
       </div>${can?`
       <div class="followbox lsrfollow" data-fkey="lsr:${esc(num)}"><details class="follow">
@@ -8183,7 +8238,7 @@ function cardHtml(b,focus,line,cls){
   // article stays, since the tabs and their panes are found inside it.
   if(focus)return `<article class="card focus rec" data-id="${esc(b.id)}">${billHead(b,d)}`
     +`<div class="cbody">${body}</div></article>`;
-  return billCard({id:b.id,href:`bill/${y}/${String(b.id).toLowerCase()}.html`,n:b.n,year:y,
+  return billCard({id:b.id,href:`bill/${y}/${String(b.id).toLowerCase()}`,n:b.n,year:y,
     word:cardWord(chipOf(b),b.passage),cls:chipCls(b),title:b.title,
     byline:billByline(b._self?null:cardSponsor(b),b.committees||[b.committee],cardTopic(b),b.term,
       META.committee_codes),
@@ -9042,7 +9097,7 @@ function voteRow(r){
       esc(CHAMBER_SHORT[r.ch]||r.ch)}</span>`:""}</td>
     <td class="b" data-l="On">${x.b&&x.y
       // A MENTION, components.bill_mention: the number as the link.
-      ? billMention((b&&b.n)||x.b,`bill/${String(x.y)}/${String(x.b).toLowerCase()}.html`)
+      ? billMention((b&&b.n)||x.b,`bill/${String(x.y)}/${String(x.b).toLowerCase()}`)
       // A procedural vote -- a call of the roll, a rules suspension -- is
       // recorded against no bill. It used to render an empty cell wrapped in
       // a link to /bill//.html. WHAT IT WAS ABOUT, where the Journal says
@@ -9136,7 +9191,7 @@ function renderMemberHead(m){
   // before it already says Former Legislators, and "Officials › Former
   // Legislators › Former Representative" said "former" twice. The heading
   // under the trail still says "Former Representative ...".
-  const head=recordHead({trail:[["Officials","officials.html"],
+  const head=recordHead({trail:[["Officials","officials"],
       ...(former?[["Former Legislators","directory/former-legislators"]]:[]),
       [m.chamber==="S"?"Senator":"Representative",""]],
     title:esc(fullTitle(named)),line,facts,rail:"",actions:"",kind:`member rh-p${code||"X"}`});
@@ -9259,7 +9314,7 @@ function sameCode(c){
   if(!s.code||!others.length)return "";
   const word=c.chamber==="S"?"Senate":"House";
   const them=xs=>joinList(xs.map(o=>`the ${word} Committee on <a href="committee/${
-    esc(o.page)}.html">${esc(o.name)}</a> (${esc(o.years||"")})`),"and");
+    esc(o.page)}">${esc(o.name)}</a> (${esc(o.years||"")})`),"and");
   const num=`<b>${esc(s.code)}</b>`;
   const later=others.filter(o=>o.when==="later"),
         earlier=others.filter(o=>o.when==="earlier");
@@ -9611,6 +9666,7 @@ function renderCommitteeSessions(c){
 const VW_BILLS=6;
 // The view on this page, for choosing a row in it: one a page.
 let VVIEW=null;
+const VVIEWS={};
 // "1 h 49 min", "36 min": a recording's length to the nearest minute, and
 // never under one.
 function vwLength(s){
@@ -9628,15 +9684,19 @@ function vwLength(s){
 const vwJoin=parts=>parts.filter(Boolean).map((p,i)=>i?`<span class="sr">,</span> <span class="vwi"><span aria-hidden="true">&middot;&nbsp;</span>${p}</span>`:p).join("");
 // When it began and how long it ran, each only where the index says it.
 const vwWhen=r=>[r.began?clock(r.began):"",r.seconds?vwLength(r.seconds):""].filter(Boolean);
+// A row may carry its own `video` (the YouTube id where its own id is a row's),
+// `who`, `what`, `from` (the second the player opens at) and `playText`: a
+// bill's sittings share recordings and each opens at its own moment.
 function vwPlayer(o,r){
-  const pid=o.pid(r), day=dateWords(r.date), what=o.what||o.who;
+  const pid=o.pid(r), day=dateWords(r.date), who=r.who||o.who, what=r.what||o.what||who;
+  const vid=r.video||r.id, from=Math.max(0,Math.floor(r.from||0));
   // A date, a time, a length or "On YouTube" is not broken across two lines
   // (.vwcap .vwi): at 390px the link broke between its two words.
-  const cap=vwJoin([`<b>${esc(o.who)}</b>`,...[day,...vwWhen(r)].map(esc),
-    `<a href="https://www.youtube.com/watch?v=${esc(r.id)}" target="_blank" rel="noopener">On YouTube</a>`]);
+  const cap=vwJoin([`<b>${esc(who)}</b>`,...[day,...vwWhen(r)].map(esc),
+    `<a href="https://www.youtube.com/watch?v=${esc(vid)}${from?`&t=${from}s`:""}" target="_blank" rel="noopener">On YouTube</a>`]);
   return `<div class="player vwplay" data-player="${esc(pid)}"><button type="button" class="pstub"`
     +` data-title="${esc(recTitle(what,r.date))}" aria-label="${esc(`Play the recording of ${what}, ${day}`)}"`
-    +` data-embed="${esc(r.id)}|0|${esc(pid)}"><span>${icon("play")}</span><span>Play the recording</span></button>`
+    +` data-embed="${esc(vid)}|${from}|${esc(pid)}"><span>${icon("play")}</span><span>${esc(r.playText||"Play the recording")}</span></button>`
     +`<div class="pbar vwcap"><p>${cap}</p></div></div>`;
 }
 const vwDetail=r=>typeof r.detail==="function"?r.detail():String(r.detail||"");
@@ -9669,6 +9729,7 @@ function videoView(o){
   const on=rows.find(r=>r.id===o.chosen)||rows[0];
   o.chosen=on.id;
   VVIEW=o;
+  if(o.key)VVIEWS[o.key]=o;
   // THE SKIP LINK COMES STRAIGHT AFTER THE PLAYER AND ITS CAPTION, before
   // what the recording covers: after it, as it stood, a keyboard passed House
   // Commerce's 37 bills and their moments -- 63 stops -- to reach the link
@@ -9723,7 +9784,7 @@ function vwListShow(a){
    player, as YouTube opens a recording's description; once something plays,
    the list stays where it is, the keyboard on the row, to choose again. */
 function vwChoose(a){
-  const box=a.closest(".vw"), o=VVIEW;
+  const box=a.closest(".vw"), o=(box&&box.dataset&&VVIEWS[box.dataset.vwkey])||VVIEW;
   const r=o&&box&&o.rows.find(x=>x.id===a.dataset.vwpick);
   if(!r)return;
   const playing=!!box.querySelector(".vwplay iframe");
@@ -9993,12 +10054,15 @@ function cmteVideoDetail(c,r,items,day,chips){
     // screen and on paper.
     out.push(`<ol class="vwbills" id="vwbills">${order.map((b,k)=>{
       const mine=items.filter(i=>String(i.bill)===b), it=mine[0];
-      const href=it.year?`bill/${esc(it.year)}/${esc(b.toLowerCase())}.html`:esc(billHref(b));
+      const href=it.year?`bill/${esc(it.year)}/${esc(b.toLowerCase())}`:esc(billHref(b));
       const jumps=jumpButtons(mine,()=>pid);
       const did=meetingOutcomeChips(day,b);
+      // The number, its moments and its outcome chip on ONE line (.vwmom),
+      // the title under them: the chip had wrapped onto a line of its own at
+      // the right (the owner, 10 November 2026).
+      const mom=(jumps?`<span class="mjumps">${jumps}</span>`:"")+(did?`<span class="vwout">${did}</span>`:"");
       return `<li${k>=VW_BILLS?' class="vwrest"':""}><a class="vwbn" href="${href}">${esc(it.n||b)}</a>${
-        jumps?`<span class="mjumps">${jumps}</span>`:""}${
-        did?`<span class="vwout">${did}</span>`:""}${
+        mom?`<span class="vwmom">${mom}</span>`:""}${
         it.title?`<span class="vwbt">${esc(it.title)}</span>`:""}</li>`;}).join("")}</ol>${
       order.length>VW_BILLS?`<button type="button" class="discl pgmore vwall" data-vwall="bills" aria-controls="vwbills">Show all ${
         order.length.toLocaleString()} bills</button>`:""}`);
@@ -10593,7 +10657,7 @@ function calendarBlock(rows,heading){
 // rest of this file uses, so a calendar link and a card link agree.
 function billHref(id){
   const y=(typeof yearOf==="function"&&yearOf(id))||null;
-  return y?`bill/${y}/${String(id).toLowerCase()}.html`
+  return y?`bill/${y}/${String(id).toLowerCase()}`
           :`${BASE}bills#${encodeURIComponent(id)}`;
 }
 
@@ -10663,7 +10727,7 @@ function renderCommitteeHead(c){
     (c.names||[]).length?`Named ${c.names.map(n=>`<b>${esc(n.name)}</b> (${esc(n.years||"")})`)
       .join(" and ")} on this record&rsquo;s earlier bills and meetings, which the General
       Court&rsquo;s own records file under this committee.`:"",next].filter(Boolean);
-  return recordHead({trail:[["Committees","committees.html"],[`${ch} Committee`,""]],
+  return recordHead({trail:[["Committees","committees"],[`${ch} Committee`,""]],
       title:esc(c.name||""),line,facts,rail:"",actions:"",kind:"committee cmtehead"})
     +notes.map(n=>`<p class="src fill rnote">${n}</p>`).join("")+sameCode(c);
 }
@@ -11489,6 +11553,9 @@ function render(more){
   if(fb){focusActions(fb.id);placeActions();mountTestify(fb,detail[dkey(fb.id)]);}
   else{dropFocusActions();addressList();}
   showSelectedTab($("#results"));
+  // A bill's Hearings tab holds a view with one player (hearingView): its
+  // band is measured for the phone, where the player stays at the top.
+  vwStick();
   if(facetsShut())facetBadge();else renderFacets();
   refocus(held);
   if(window.scrollY!==_y)window.scrollTo(0,_y);
@@ -12014,6 +12081,18 @@ document.addEventListener("click",e=>{
     if(term===ALL_TERMS){const own=head.closest(".card").querySelector("a.cnum");
       if(own){location.href=own.href;return;}}
     if(openCards.has(id)){openCards.delete(id);render();}else openBill(id);return;}
+  // A tally in the Summary: the Votes tab, at that vote's card, where the bill is open.
+  const vl=e.target.closest("a[data-vote]");
+  if(vl&&e.button===0&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey){
+    const vc=vl.closest(".card[data-id]");
+    if(vc){
+      e.preventDefault();
+      const cid=vc.dataset.id;
+      openTab[cid]="1";
+      if(focused===cid)tabAddress("votes");
+      try{history.replaceState(history.state,"",location.pathname+location.search+"#"+vl.dataset.vote);}catch(_){}
+      VOTE_JUMP=vl.dataset.vote;
+      render();jumpToVote();return;}}
   // A card's own tab: a chamber's page has tabs of its own (chamberStrip).
   const tab=e.target.closest(".card .tab");
   if(tab){
