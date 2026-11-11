@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.376 */
+/* GRANITE_VERSION: 2026-09-07.377 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -8518,6 +8518,15 @@ border-radius:var(--r-out);padding:var(--sp-6) var(--sp-6);margin-bottom:var(--s
 :where(body.pg) .chip[class*=" pt-"]{margin:0 var(--sp-2) var(--sp-2) 0}
 :where(body.pg) .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:var(--sp-1) var(--sp-7)}
 :where(body.pg) .mem{padding:var(--sp-2) 0;font-size:var(--t-ui)}
+/* A CHIP NEVER LEAVES ITS CELL (the webinar, 11 November 2026: "Rep. Jessica
+   LaMontagne (D - Straf 17)" ran into the next column of the county lists,
+   and so did "Your rep" beside a chip). The cell may shrink below its
+   content, the chip wraps its text at the spaces as a phone's does, and the
+   party-and-district tag stays whole; the "Your rep" tag wraps under the
+   name with it and is never itself broken. */
+:where(body.pg) .grid > .mem{min-width:0}
+:where(body.pg) .grid .mem .mchip{white-space:normal;flex-wrap:wrap;row-gap:0}
+:where(body.pg) .grid .mem .mchip > a{overflow-wrap:anywhere}
 /* The district beside a name in the roster. It was an inline style on all
    406 rows. */:where(body.pg) .mdist{color:var(--ink-2);font-size:var(--t-sm)}
 :where(body.pg) .count{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-4) 0}

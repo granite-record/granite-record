@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.53
+// GRANITE_VERSION: 2026-09-16.54
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1441,7 +1441,7 @@ function ytMark(p){
   if(rep.length)css+=rep.map(s=>sel(s,"::after")).join(",")+'{content:'+JSON.stringify(tr("yt.your_rep","Your rep"))+'}';
   if(sen.length)css+=sen.map(s=>sel(s,"::after")).join(",")+'{content:'+JSON.stringify(tr("yt.your_senator","Your senator"))+'}';
   if(css)css+=(p.m||[]).map(s=>sel(s,"::after")).join(",")
-    +"{display:inline-block;margin-left:.375rem;padding:0 .375rem;border-radius:999px;"
+    +"{display:inline-block;margin-left:.375rem;padding:0 .375rem;border-radius:999px;white-space:nowrap;"
     +"font:600 .75rem/1.5 var(--sans);letter-spacing:.02em;text-transform:none;"
     +"text-decoration:none;background:var(--pine-soft);color:var(--pine);vertical-align:.08em}"
     +".ytpanel a::after,.yt a::after{content:none !important}"
