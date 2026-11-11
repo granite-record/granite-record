@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.854
+# GRANITE_VERSION: 2026-09-04.855
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -30667,7 +30667,7 @@ def _request_pages():
         L.FILING_COMPLETE.clear()
         L.FILING_COMPLETE.update(old)
     # The links, and New Hampshire kept out of the page writer.
-    assert "const to=b.moved_to||b.address;" in Path("src/pages/find.js").read_text(encoding="utf-8") \
+    assert 'const to=b.moved_to||b.address||"request/"' in Path("src/pages/find.js").read_text(encoding="utf-8") \
         and '?`<a href="${esc(b.moved_to||b.address)}">' in Path("src/pages/app.js").read_text(encoding="utf-8"), (
         "the header search's request row or the request card does not link the request's page")
     src = Path("src/pages/build_request_pages.py").read_text(encoding="utf-8")
