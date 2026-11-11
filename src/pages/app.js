@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.303
+// GRANITE_VERSION: 2026-09-07.304
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3479,7 +3479,10 @@ function requestNumber(p,bare){
   if(m)return id(m[1],m[2]);
   m=/^lsr\s*\.?\s*(\d{1,4})$/i.exec(s);
   if(m&&REQ_YEAR&&m[1]!==REQ_YEAR)return id(REQ_YEAR,m[1]);
-  if(bare&&REQ_YEAR&&/^0\d{3}$/.test(s))return id(REQ_YEAR,s);
+  // On the requests' list a bare number of one to four digits is a request:
+  // "12", "012" and "0012" are LSR 2027-0012 (the owner, 11 November 2026).
+  // The year itself, "2027", stays a word.
+  if(bare&&REQ_YEAR&&/^\d{1,4}$/.test(s)&&s!==REQ_YEAR)return id(REQ_YEAR,s);
   return null;
 }
 let NUMBERS_OF=null,NUMBERS=null,NUMBERS_BARE=false;

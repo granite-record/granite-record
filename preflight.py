@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.855
+# GRANITE_VERSION: 2026-09-04.856
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -21468,7 +21468,8 @@ _FIND_MORE_QUERIES = {
     # the first moves it and the rest are read there; "0002" bare, which is a
     # request only on that list, last.
     "lsr": ["LSR 2027-0002", "2027-0002", "LSR20270002", "LSR 27-0002", "27-0002",
-            "LSR2027-0002", "lsr 2027 0002", "LSR 0002", "2027-0091", "0002", "2027-0099"]}
+            "LSR2027-0002", "lsr 2027 0002", "LSR 0002", "2027-0091", "0002", "2", "91", "2027",
+            "2027-0099"]}
 
 # The header's panel and /search, as _FIND_BILLS_PANEL runs them.
 _FIND_MORE_PANEL = r"""
@@ -21794,6 +21795,13 @@ def _find_requests(BP):
         bad.append(f"/bills lists {L['q']['2027-0091']['ids']} for '2027-0091'")
     if L["q"]["0002"]["ids"] != ["LSR20270002"]:
         bad.append(f"/bills lists {L['q']['0002']['ids']} for a bare '0002' on the requests' list")
+    # A bare short number on that list is a request too, "2" and "91" (the
+    # owner, 11 November 2026); the year alone, "2027", is a word.
+    if L["q"]["2"]["ids"] != ["LSR20270002"] or L["q"]["91"]["ids"] != ["LSR20270091"]:
+        bad.append(f"/bills lists {L['q']['2']['ids']} for '2' and {L['q']['91']['ids']} for '91' "
+                   "on the requests' list")
+    if (L["q"]["2027"]["ids"] or [None])[0] == "LSR20272027":
+        bad.append("/bills reads the year '2027' as a request's number")
     if L["q"]["2027-0099"]["ids"] or "No bills match" not in L["q"]["2027-0099"]["html"]:
         bad.append("/bills does not say no request has the number 2027-0099")
     # The current term: the offer for what is not read as a request's number,
