@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.11
+# GRANITE_VERSION: 2026-09-04.12
 """
 Report what is actually on disk, and which scripts are out of date.
 
@@ -8,6 +8,7 @@ Report what is actually on disk, and which scripts are out of date.
     python3 src/ops/inventory.py --bump src/pages/app.js preflight.py
     python3 src/ops/inventory.py --bump-changed          # every file changed since HEAD
     python3 src/ops/inventory.py --bump-changed origin/dev
+    python3 src/ops/inventory.py --write      # versions.json, from the files' stamps
 
 Two questions this answers that are otherwise guesswork.
 
@@ -15,23 +16,24 @@ WHAT IS HERE. Directory sizes, file counts, and when each data file was last
 written. Enough to see at a glance that a fetch produced nothing, or that a
 build ran before the file it depends on.
 
-AM I RUNNING THE CURRENT SCRIPT. There are no version numbers in these files,
-so instead each is checked for a few lines that only the current version has --
-a fix, a renamed variable, a new argument. A script missing them is an older
-copy that was never replaced, which has already caused several confusing hours:
-a bug reported as unfixed because the fix was sitting in the downloads folder.
+AM I RUNNING THE CURRENT SCRIPT. Every script carries a stamp, and the stamp
+in the file is the only place a version is kept: registry() reads the stamps
+off the files, and the list of what each should be is never edited by hand.
+versions.json, where there is one, is that list written out by --write -- a
+local copy that git ignores, so no two branches can conflict over it.
 
-Nothing here writes or changes anything, except --bump and --bump-changed.
+Nothing here writes or changes anything, except --bump, --bump-changed and
+--write.
 
-BUMPING A STAMP. Every edit to a stamped file is two more edits: the stamp's
-.N in the file and its entry in versions.json (CLAUDE.md, "Version stamps"),
-and forgetting one is the most common way a change here fails preflight.
---bump FILE... makes both for each file named. --bump-changed [BASE] makes
-them for every stamped file that differs from BASE (HEAD unless named) and
-still carries BASE's stamp -- so it is safe to run again before a commit, and
-on a branch of several commits `--bump-changed origin/dev` bumps each changed
-file once. The date stays: it is when the file was created. A changed file
-with no stamp is listed, not stamped.
+BUMPING A STAMP. Every edit to a stamped file needs its stamp's .N raised
+(CLAUDE.md, "Version stamps"); forgetting is the most common way a change
+here fails preflight. --bump FILE... raises the stamp of each file named.
+--bump-changed [BASE] raises it for every stamped file that differs from BASE
+(HEAD unless named) and still carries BASE's stamp -- so it is safe to run
+again before a commit, and on a branch of several commits
+`--bump-changed origin/dev` bumps each changed file once. The date stays: it
+is when the file was created. A changed file with no stamp is listed, not
+stamped.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -49,9 +51,9 @@ from datetime import datetime
 #
 #     # GRANITE_VERSION: 2026-09-04.2
 #
-# versions.json says which version each file should be. Comparing the two
-# answers "am I running the copy you gave me" exactly, rather than by looking
-# for lines a newer version happens to contain. That guesswork was fragile in
+# registry() reads them off the files. Against git it answers "was this file
+# changed without its stamp being raised" exactly, rather than by looking for
+# lines a newer version happens to contain. That guesswork was fragile in
 # both directions: it missed real staleness when a fix did not add a
 # distinctive line, and it cried wolf when I chose a marker badly.
 
@@ -101,13 +103,106 @@ def _stamp(text):
     return (m.group(2), int(m.group(3))) if m else None
 
 
+# What registry() looks at: the files of a repository that may carry a stamp,
+# and the folders that never hold one (the data, the built site, the
+# worktrees). The stamp is read from the first 800 bytes, as bump() does.
+STAMPED = (".py", ".js", ".css", ".html", ".bat", ".sql", ".toml")
+NOT_CODE = ("work/", "site/", "legislation/", "archive/", "db/", "node_modules/",
+            ".git/", ".claude/worktrees/", ".build_cache/")
+FULL_STAMP = re.compile(r"GRANITE_VERSION:[ \t]*(\d{4}-\d{2}-\d{2}\.\d+)\b")
+
+
+def _git_names(root):
+    """Tracked and untracked-but-not-ignored paths under `root`, or None
+    where it is no git repository (a fixture, a bare copy)."""
+    import subprocess
+    try:
+        r = subprocess.run(["git", "-C", str(root), "ls-files", "-z", "--cached",
+                            "--others", "--exclude-standard"],
+                           capture_output=True, check=True)
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return sorted(x for x in r.stdout.decode("utf-8", "replace").split("\0") if x)
+
+
+def _candidates(root):
+    names = _git_names(root)
+    if names is None:
+        names = [p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file()]
+    return [n for n in names if n.endswith(STAMPED) and not n.startswith(NOT_CODE)]
+
+
+def _key(root, rel):
+    """How the registry names a file: by its bare name where _paths finds it
+    by that name, else by its path from the root (functions/api/report.js)."""
+    bare = rel.rsplit("/", 1)[-1]
+    try:
+        if _paths.locate(bare, root=root).resolve() == (root / rel).resolve():
+            return bare
+    except LookupError:
+        pass
+    return rel
+
+
+def registry(root=None):
+    """{name: "YYYY-MM-DD.N"} for every stamped file under `root`, read off
+    the files themselves. The one list of what each file's version is."""
+    root = Path(root).resolve() if root is not None else _paths.ROOT
+    out = {}
+    for rel in _candidates(root):
+        try:
+            head = (root / rel).read_bytes()[:800].decode("utf-8", "replace")
+        except OSError:
+            continue
+        m = FULL_STAMP.search(head)
+        if m:
+            out[_key(root, rel)] = m.group(1)
+    return dict(sorted(out.items()))
+
+
+def write_registry(root=None):
+    """Write registry() to versions.json under `root`, for a tool that wants
+    a file. Git ignores it, so it is never a thing two branches change."""
+    root = Path(root).resolve() if root is not None else _paths.ROOT
+    reg = registry(root)
+    (root / "versions.json").write_text(
+        json.dumps({"files": reg}, indent=2) + "\n", encoding="utf-8")
+    return reg
+
+
+def backwards(root, base="HEAD"):
+    """The files whose stamp now is behind the stamp they had at `base`: an
+    edit that took a stamp down, or a merge that kept the older one."""
+    import subprocess
+    out = []
+    try:
+        moved = set(subprocess.run(["git", "-C", str(root), "diff", "--name-only", base],
+                                   capture_output=True, text=True, check=True,
+                                   encoding="utf-8").stdout.split("\n"))
+    except (OSError, subprocess.CalledProcessError):
+        return out
+    for rel in sorted(set(_candidates(root)) & moved):
+        try:
+            now = _stamp((root / rel).read_bytes().decode("utf-8"))
+            r = subprocess.run(["git", "-C", str(root), "show", f"{base}:{rel}"],
+                               capture_output=True)
+        except (OSError, UnicodeDecodeError):
+            continue
+        if r.returncode:
+            continue
+        try:
+            then = _stamp(r.stdout.decode("utf-8"))
+        except UnicodeDecodeError:
+            continue
+        if now and then and (now[0], now[1]) < (then[0], then[1]):
+            out.append(rel)
+    return out
+
+
 def bump(paths, root):
-    """Raise each file's stamp by one and its versions.json entry with it.
-    Returns [(path, old, new)] and the paths that carry no stamp. Bytes are
-    kept as they are -- line endings included, on Windows too."""
-    vp = root / "versions.json"
-    vtext = vp.read_bytes().decode("utf-8")
-    listed = json.loads(vtext).get("files", {})
+    """Raise each file's stamp by one. Returns [(path, old, new)] and the
+    paths that carry no stamp. Bytes are kept as they are -- line endings
+    included, on Windows too."""
     done, bare = [], []
     for f in paths:
         p = Path(f) if Path(f).is_absolute() else root / f
@@ -119,22 +214,7 @@ def bump(paths, root):
         old = f"{m.group(2)}.{m.group(3)}"
         new = f"{m.group(2)}.{int(m.group(3)) + 1}"
         p.write_bytes((raw[:m.start()] + m.group(1) + new + raw[m.end():]).encode("utf-8"))
-        # versions.json names most files by their name and some by their path
-        # from the root ("tests/test_markers.py"): the path first, which is
-        # the one a name shared by two files cannot mistake (the timestamp
-        # study found tests/ entries left behind, 23 October 2026).
-        try:
-            rel = p.resolve().relative_to(Path(root).resolve()).as_posix()
-        except ValueError:
-            rel = ""
-        key = rel if rel in listed else p.name if p.name in listed else None
-        if key:
-            want = f'"{key}": "{listed[key]}"'
-            if want in vtext:
-                vtext = vtext.replace(want, f'"{key}": "{new}"', 1)
-                listed[key] = new
         done.append((str(f), old, new))
-    vp.write_bytes(vtext.encode("utf-8"))
     return done, bare
 
 
@@ -150,7 +230,7 @@ def changed_since(root, base):
     names = set(git("diff", "--name-only", base).split("\n"))
     names |= set(git("ls-files", "--others", "--exclude-standard").split("\n"))
     todo, bare = [], []
-    for n in sorted(x for x in names if x and x != "versions.json"):
+    for n in sorted(x for x in names if x):
         p = root / n
         if not p.is_file():
             continue
@@ -181,12 +261,18 @@ def main():
     ap.add_argument("--dir", default=".")
     ap.add_argument("--full", action="store_true")
     ap.add_argument("--bump", nargs="+", metavar="FILE",
-                    help="raise each file's stamp and its versions.json entry by one")
+                    help="raise each file's stamp by one")
+    ap.add_argument("--write", action="store_true",
+                    help="write versions.json from the files' stamps (git ignores it)")
     ap.add_argument("--bump-changed", nargs="?", const="HEAD", metavar="BASE",
                     help="--bump every stamped file changed since BASE (HEAD) that still "
                          "carries BASE's stamp")
     a = ap.parse_args()
     root = Path(a.dir).resolve()
+    if a.write:
+        reg = write_registry(root)
+        print(f"  versions.json: {len(reg)} stamped files, read off the files")
+        return
     if a.bump or a.bump_changed:
         bare = []
         files = a.bump or []
@@ -233,58 +319,23 @@ def main():
         print(f"\n  not present: {', '.join(missing)}")
 
     # ---- script versions ---------------------------------------------------
+    # The stamps are read off the files (registry); a file changed since HEAD
+    # with its stamp unmoved is the one thing left to say.
     print("\nSCRIPTS")
-    expected = {}
-    vp = root / "versions.json"
-    if vp.exists():
-        expected = json.loads(vp.read_text(encoding="utf-8")).get("files", {})
-        print(f"  (versions.json lists {len(expected)} files)\n")
-    else:
-        print("  versions.json not found - versions are listed but not checked.")
-        print("  Download it alongside the scripts to get the comparison.\n")
-
-    # Every script wherever it sits: the root's and src/'s by their bare names,
-    # as versions.json lists them, so a script moved under src/ is still found
-    # and one nobody listed is still noticed (_paths.SCRIPT_DIRS). The
-    # browser's files are found by their bare names too, in src/pages/ and
-    # tests/ (_paths.BROWSER).
-    old, absent, unstamped = [], [], []
+    reg = registry(root)
+    print(f"  ({len(reg)} stamped files)\n")
     scripts = {p.name for p in _paths.code_files("*.py", root=root, dirs=_paths.SCRIPT_DIRS)}
-    for name in sorted(set(expected) | scripts | {"bills.html"}):
+    unstamped = sorted(n for n in scripts if n not in reg)
+    for name in sorted(reg):
         f = _paths.locate(name, root=root)
-        if not f.exists():
-            # A page that is not among the code: site/ holds the built copy,
-            # which is all a machine given only the built site has.
-            alt = root / "site" / name if name.endswith(".html") else None
-            if alt and alt.exists():
-                f = alt
-            else:
-                if name in expected:
-                    absent.append(name)
-                continue
-        txt = f.read_text(encoding="utf-8", errors="replace")
-        m = re.search(r"GRANITE_VERSION:\s*(\S+?)\s*(?:-->|\*/|$)", txt, re.M)
-        got = m.group(1) if m else None
-        want = expected.get(name)
-        if got is None:
-            # If versions.json expects this file, an unstamped copy predates
-            # stamping entirely -- which makes it old, not merely unlabelled.
-            if want:
-                old.append((name, "unstamped", want))
-                print(f"  {name:<28} OUT OF DATE  no stamp   want {want}")
-            else:
-                unstamped.append(name)
-                print(f"  {name:<28} no version stamp     {age(f)}")
-        elif want and got != want:
-            old.append((name, got, want))
-            print(f"  {name:<28} OUT OF DATE  have {got}  want {want}")
-        else:
-            print(f"  {name:<28} {got:<20} {age(f)}")
-
-    if absent:
-        print(f"\n  listed but not present: {', '.join(absent)}")
+        print(f"  {name:<28} {reg[name]:<20} {age(f) if f.exists() else ''}")
     if unstamped:
         print(f"\n  no stamp yet: {', '.join(unstamped)}")
+    old = []
+    try:
+        old = changed_since(root, "HEAD")[0]
+    except Exception:
+        pass
 
     # ---- files that should be gone -----------------------------------------
     leftover = [n for n in STALE if (root / n).exists()]
@@ -296,15 +347,12 @@ def main():
     # ---- verdict -----------------------------------------------------------
     print("\n" + "=" * 68)
     if old:
-        print(f"{len(old)} file(s) are older copies. Re-download these:")
-        for n, got, want in old:
-            print(f"  {n:<28} {got}  ->  {want}")
-        print("\nAn old copy is the usual reason a fix appears not to have")
-        print("worked: the change exists, just not in the file being run.")
-    elif expected:
-        print("Every file matches the version it should be.")
+        print(f"{len(old)} file(s) changed since HEAD with the stamp unmoved:")
+        for n in old:
+            print(f"  {n}")
+        print("\nRun: python3 src/ops/inventory.py --bump-changed")
     else:
-        print("No versions.json, so nothing was compared.")
+        print("Every file changed since HEAD carries a raised stamp.")
     print("=" * 68)
 
 

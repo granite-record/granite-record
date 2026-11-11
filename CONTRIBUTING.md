@@ -151,11 +151,13 @@ site on a fixture. It is the test suite. Trust it over anything written in
 prose, including this file.
 
 **Bump the version stamp in the same edit.** Every script carries
-`# GRANITE_VERSION: YYYY-MM-DD.N` and `versions.json` lists what each should
-be; `preflight` fails when they disagree. Increment the `.N` and leave the date
+`# GRANITE_VERSION: YYYY-MM-DD.N`; the stamp in the file is the only place a
+version is kept (`versions.json` is generated from the stamps, ignored by git
+and never edited). `preflight` fails when a changed file's stamp has not been
+raised. Increment the `.N` and leave the date
 alone — it is when the file was created, not last modified. This is the single
-most common way a change here fails its own checks, so one command makes both
-edits: `python3 src/ops/inventory.py --bump-changed` bumps every stamped file
+most common way a change here fails its own checks, so one command makes
+the edit: `python3 src/ops/inventory.py --bump-changed` bumps every stamped file
 changed since the last commit (or since a base you name, such as `origin/dev`,
 for a branch of several commits), once, and is safe to run again.
 
@@ -452,7 +454,7 @@ Preflight fails if any page writes the frame by hand.
 2. Its addresses go in the sitemap through `shell.sitemap_merge(site, base,
    urls, owns="/your-folder")`, so an address it stops writing is dropped.
 3. A `Step` in `build_all.plan()` after the steps it reads (the build step
-   recipe above), and a stamp and a `versions.json` entry for the new file.
+   recipe above), and a stamp for the new file.
 4. If it is a new section, a row of `chrome.NAV_TABS`.
 5. `python3 src/checks/check_site.py` on a build: the deploy allows 100,000
    files and it warns at 90,000, so a page per record is a decision.

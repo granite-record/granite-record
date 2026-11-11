@@ -111,8 +111,7 @@ session's first commands -- or the person chose it. Everything else goes here:
   and it belongs to none of them.
 
 Copy the bootstrap from any runnable script, give the file a name no other
-code file has, and give it a version stamp and a line in `versions.json` under
-its bare name, as the root's scripts have. A new folder under `src/` goes on
+code file has, and give it a version stamp, as the root's scripts have. A new folder under `src/` goes on
 `_paths.SRC_DIRS` in the same commit: `CODE_DIRS`, which puts it on the
 import path, and `SCRIPT_DIRS`, which the guards that read every script
 read, are made from it.

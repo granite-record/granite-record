@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.65
+# GRANITE_VERSION: 2026-09-10.66
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -627,8 +627,8 @@ def repo_facts():
     root = _paths.ROOT
     out = {}
     try:
-        out["stamped"] = len(json.loads(
-            (root / "versions.json").read_text(encoding="utf-8"))["files"])
+        import inventory
+        out["stamped"] = len(inventory.registry(root))
     except Exception:
         pass
     try:

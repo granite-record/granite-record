@@ -1710,8 +1710,7 @@ Two things read it:
   the site that build made, through `build_pages.front_end` -- the function
   the build's own step calls -- and only while nothing else in the record has
   moved. `bills.html` is the template of every page and is refused.
-  `versions.json` and
-  `preflight.py` are read by the build only for data.html's two counts, and
+  `preflight.py` is read by the build only for data.html's two counts, and
   app.js also for the search's tables (`front_end.facts`): where one of
   those moved, the step that makes it runs again;
 - `src/checks/site_manifest.py`, which keeps a build's sha256 manifest under
