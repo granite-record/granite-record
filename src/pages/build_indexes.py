@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.27
+# GRANITE_VERSION: 2026-09-13.28
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -73,14 +73,15 @@ def kind_of(bid):
     return (m.group(1), int(m.group(2))) if m else (bid, 0)
 
 
-def write(site, base, path, title, description, heading, lead, body, urls, nav="directory.html"):
+def write(site, base, path, title, description, heading, lead, body, urls, nav="directory.html",
+          changed=None):
     html = S.page(S.template(site), path=path, base=base, title=title, description=description,
                   og_title=heading, globals={"GR_STATIC": True}, noscript="",
                   skip_label="Skip to the list", sr_title="", og_type="website",
                   # The template marks Bills as the page you are on. A list of bills
                   # is under Bills and a list of legislators under Legislators; the
                   # hub and the towns are under neither, and name themselves.
-                  nav_current=nav,
+                  nav_current=nav, changed=changed,
                   jsonld=LD.listing(heading, description, base, S.canon(path)))
     html = html.replace('<div id="results"></div>',
                         f'<div id="results"><div class="clist dirlist"><h1>{S.E(heading)}</h1>'
@@ -163,7 +164,10 @@ def bills_page(site, base, term, rows, urls, label=""):
           "term, by number, with each one's title and where it ended.",
           f"Every bill of {S.term_words(term)}",
           f"{len(rows):,} bills and resolutions, by number. {jump}",
-          "".join(body), urls, nav="bills.html")
+          # The list says where each ended, so it is as new as the newest
+          # action on any of them.
+          "".join(body), urls, nav="bills.html",
+          changed=max((str(r.get("last_action") or "")[:10] for r in rows), default=None))
     return len(rows)
 
 

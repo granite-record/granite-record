@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.5
+# GRANITE_VERSION: 2026-10-09.6
 """
 A change to the browser's files, put into the site the last full build made.
 
@@ -35,8 +35,8 @@ that moved is one of these:
                       without its comments; a change to a words file is not
                       one of these, since components.py draws the built pages
                       with the same words
-  versions.json,     read by the build only for data.html's two counts
-  preflight.py        (build_exports.repo_facts): where a count moved, the
+  preflight.py       read by the build only for data.html's two counts
+                      (build_exports.repo_facts): where a count moved, the
                       bulk-downloads step runs again as the build runs it;
                       where none did, the change is nothing to the site
 
@@ -79,7 +79,7 @@ TEMPLATE_WHY = ("the template every record page is built from (shell.template): 
                 "change to it reaches every page of the site, which only the page steps "
                 "of a full build rebuild")
 # The files the build reads only in part, for data.html's two counts.
-FACT_SOURCES = ("versions.json", "preflight.py")
+FACT_SOURCES = ("preflight.py",)
 # Which build step makes what a fact is read for: run again, as the build
 # runs it, when the fact moved.
 RERUN = {"search_tables": ("build_search_index.py", "site/sidx/, from app.js's search tables"),
@@ -281,7 +281,7 @@ def main():
     ap.add_argument("--dry-run", action="store_true",
                     help="say what would be written, or why it will not be, and write nothing")
     ap.add_argument("--facts", action="store_true",
-                    help="print what the build reads of versions.json, preflight.py and "
+                    help="print what the build reads of preflight.py and "
                          "app.js's search tables, as JSON (build_all.py records it)")
     a = ap.parse_args()
     if a.facts:

@@ -253,8 +253,7 @@ A bill page and a search result cannot disagree about a bill, because they are
 the same code reading the same JSON.
 
 **Every script carries a version stamp** (`# GRANITE_VERSION: YYYY-MM-DD.N`)
-and `versions.json` says what each should be. `preflight` fails when they
-disagree, which has caught several half-applied edits.
+and `preflight` fails when a changed file's stamp has not been raised, which has caught several half-applied edits.
 
 `ARCHITECTURE.md` has the reasoning behind all of this, and the parts that are
 not sound.
@@ -371,7 +370,7 @@ refusal there is a different problem.
   and call `render()` and `renderDetail()`, and run `tests/test_markers.py`.
   Add a check whenever something breaks in a way a check could have caught —
   that is how most of the current ones got there.
-- **Bump the `# GRANITE_VERSION:` stamp and `versions.json` in the same edit.**
+- **Bump the `# GRANITE_VERSION:` stamp in the same edit.**
   Increment the `.N`; leave the date alone. This is the most common way a first
   change fails.
 - **Some files are a person's, and no generator writes them.** They are in

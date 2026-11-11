@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.30
+# GRANITE_VERSION: 2026-10-11.31
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -1234,7 +1234,7 @@ def chapter_page(tmpl, table, data, bills, ch, base):
     head = (f'<header class="l-head"><p class="rs-crumb"><a href="/laws">Laws</a> &rsaquo; '
             f'<a href="/laws#t-{E(info["title_no"])}">{E(crumb)}</a></p>'
             f'<p class="rs-kick">RSA {E(ch)}</p><h1>{E(title)}</h1>{gone}'
-            f'<p class="l-lead">{lead}</p>' + S.cite_block(path, title, base, S.BUILT) + "</header>")
+            f'<p class="l-lead">{lead}</p>' + S.cite_block(path, title, base, S.cited(TABLE_TAKEN_DAY)) + "</header>")
     pend = ""
     if pending_ch or passed_ch:
         # A law whose record states no effective date that can be read is
@@ -1834,6 +1834,9 @@ LANDING_JS = """<script>
 # the weekly refreshes (nightly.STATUTE_VIEWS). Set by main(); "" where the
 # manifest does not say, and then the pages say nothing of it.
 TABLE_TAKEN = ""
+# The same day as an ISO date, for the citation (shell.cited): the day the
+# statute table the pages show was read from the General Court's database.
+TABLE_TAKEN_DAY = ""
 
 
 def taken_on(db):
@@ -1844,6 +1847,15 @@ def taken_on(db):
     except (OSError, ValueError, KeyError, TypeError):
         return ""
     return C.date_words(d, "full")
+
+
+def taken_day(db):
+    """taken_on's day as ISO, or ""."""
+    try:
+        got = json.loads((Path(db) / "_manifest.json").read_text(encoding="utf-8"))["NH_RSA"]["fetched"]
+        return datetime.date.fromisoformat(str(got)[:10]).isoformat()
+    except (OSError, ValueError, KeyError, TypeError):
+        return ""
 
 
 def as_of(latest, today=None):
@@ -1910,7 +1922,7 @@ def landing_page(tmpl, table, data, base, topics, pending, con=None):
     head_lead = ("The state Constitution, and the statutes the General Court passes under it, the "
                  "Revised Statutes Annotated (RSA)." if con else rsa_lead)
     head = (f'<header class="l-head"><h1>{E(title)}</h1><p class="l-lead">{head_lead}</p>'
-            + S.cite_block(path, title, base, S.BUILT) + "</header>")
+            + S.cite_block(path, title, base, S.cited(TABLE_TAKEN_DAY)) + "</header>")
     groups = collections.OrderedDict()
     for ch in sorted(table.chapters, key=rsa.chap_key):
         info = table.chapters[ch]
@@ -2047,8 +2059,9 @@ def main():
     a = ap.parse_args()
     site = Path(a.site)
     table = rsa.load(Path(a.db) / "NH_RSA.psv", Path(a.db) / "_columns.json") if a.db else rsa.load()
-    global TABLE_TAKEN
+    global TABLE_TAKEN, TABLE_TAKEN_DAY
     TABLE_TAKEN = taken_on(a.db or rsa.TABLE.parent)
+    TABLE_TAKEN_DAY = taken_day(a.db or rsa.TABLE.parent)
     cit = Path("rsa_citations.json")
     if table is None or not cit.is_file():
         print("build_rsa: no statute table or rsa_citations.json here; no statute pages written")

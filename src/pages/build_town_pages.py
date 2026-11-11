@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.49
+# GRANITE_VERSION: 2026-09-09.50
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -396,6 +396,30 @@ OFFICER = re.compile(r"\s*(?:,\s*(?:(?:vice[\s-]?)?chair(?:man|woman|person)?|"
                      r"secretary|clerk)|"
                      r"\((?:secretary|clerk|(?:vice[\s-]?)?chair)\))\s*$", re.I)
 COUNCIL_ROW = re.compile(r"council|alder", re.I)
+
+
+READ_KEYS = ("read_on", "read_at", "as_of", "on")
+
+
+def latest_read(*parts):
+    """The latest day any source this page shows was read, out of the town's
+    own data (each source records the day it was read as read_on, or as
+    read_at, as_of or on), or None: the day its record last changed, for the
+    citation's date (shell.cited). Looked for at any depth, in the dicts and
+    lists given; only an ISO day counts."""
+    best = ""
+    todo = [p for p in parts if p]
+    while todo:
+        x = todo.pop()
+        if isinstance(x, dict):
+            for k, v in x.items():
+                if k in READ_KEYS and isinstance(v, str) and re.match(r"\d{4}-\d\d-\d\d", v):
+                    best = max(best, v[:10])
+                elif isinstance(v, (dict, list)):
+                    todo.append(v)
+        elif isinstance(x, list):
+            todo += [v for v in x if isinstance(v, (dict, list))]
+    return best or None
 
 
 def long_date(stamp):
@@ -1483,7 +1507,11 @@ def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None):
     body = [f'<h1 class="offtitle">{E(label)}</h1>',
             ward_picker(town, ward, wards),
             answer_line(dist),
-            S.cite_block(path, og_title, base, S.BUILT),
+            S.cite_block(path, og_title, base, S.cited(latest_read(
+                loc, town_off, board, council,
+                (off.get("_halls") or {}).get(slug(town, "0")),
+                (off.get("_libraries") or {}).get(slug(town, "0")),
+                (off.get("_stations") or {}).get(slug(town, "0"))))),
             tabbed(label, panels),
             '<p class="srcs">Sources: NH General Court and Secretary of State</p>']
 
