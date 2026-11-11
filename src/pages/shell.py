@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.39
+# GRANITE_VERSION: 2026-09-07.40
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -795,7 +795,9 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
     g = globals or {}
     if g.get("GR_STATIC") or g.get("GR_STANDALONE"):
         out = out.replace(NEEDS["shell"], '<div class="shell nofacets">', 1)
-        if not g.get("GR_BILL"):
+        # A request's own page keeps the box as a bill's does (GR_REQUEST, 11
+        # November 2026: it is the bill's page until it is a bill).
+        if not (g.get("GR_BILL") or g.get("GR_REQUEST")):
             out = out.replace(NEEDS["searchrow"], NEEDS["searchrow"][:-1] + " hidden>", 1)
         else:
             for k, down in BILL_ROW.items():
