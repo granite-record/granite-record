@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.852
+# GRANITE_VERSION: 2026-09-04.853
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -80095,6 +80095,28 @@ console.log(fails.length?fails.join("\n"):"10 March's town meeting day and Novem
 """
 
 
+@check("frontend", "once the webinar is over, its box on the home page is the recording, played only "
+       "when Play is pressed", needs=("build_pages",))
+def _webinar_recording(BP):
+    """The owner, 11 November 2026: "Add the link to the webinar youtube video
+    as an embedded player on the homepage". Before WEBINAR_UNTIL the box
+    registers; from it, the recording, by the session recordings' Play: a
+    button with the video's id, nothing from YouTube until it is pressed, and
+    HOME_JS's handler answering it there too. In Spanish it says English."""
+    before = BP.home_webinar(today="2026-11-10")
+    after = BP.home_webinar(today=BP.WEBINAR_UNTIL)
+    es = BP.home_webinar(today=BP.WEBINAR_UNTIL, lang="es")
+    assert "zoom.us" in before and "wbrec" not in before, "the registration is gone before the day"
+    assert "wbrec" in after and f'data-embed="{BP.WEBINAR_VIDEO}"' in after and "zoom.us" not in after, (
+        "from the day after the webinar the box is not its recording")
+    assert "youtube" not in after.lower() and "<iframe" not in after, (
+        "the recording asks YouTube for something before Play is pressed")
+    assert "wbrec [data-embed]" in BP.HOME_JS, "HOME_JS does not open the recording's Play"
+    assert "(en inglés)" in es, "the Spanish home page does not say the recording is in English"
+    return "ok", ("registration until 11 November, then the recording under the search, played "
+                  "only on Play, in English and Spanish")
+
+
 @check("frontend", "the webinar stands under the home page's search, in both languages and at every width",
        needs=("build_pages",))
 def _webinar_under_search(BP):
@@ -84564,7 +84586,7 @@ def _home_says_each_once(BP, chrome):
         and js.count("youtube") == 1 and "ytimg" not in js, (
             "HOME_JS draws into #session, or asks YouTube for more than the player")
     hand = re.search(r'document\.addEventListener\("click",e=>\{\s*const st=e\.target\.closest&&'
-                     r'e\.target\.closest\("#session \[data-embed\]"\);.*?\n\}\);', js, re.S)
+                     r'e\.target\.closest\("#session \[data-embed\], \.wbrec \[data-embed\]"\);.*?\n\}\);', js, re.S)
     assert hand, "HOME_JS has no handler that turns Recent Session Days' Play into its player"
     # The footer keeps the day the data was rebuilt, on every page.
     assert 'getElementById("built")' in chrome.FOOT_JS and "Data rebuilt" in chrome.FOOT_JS, (
@@ -84614,7 +84636,7 @@ def _home_says_each_once(BP, chrome):
         "parentNode:{querySelector:q=>q==='iframe'?frame:null}};"
         "document.activeElement=had?st:{};"
         "heard.forEach(([t,f])=>t==='click'&&f({target:{closest:q=>"
-        "inside&&q==='#session [data-embed]'?st:null}}));"
+        "inside&&q==='#session [data-embed], .wbrec [data-embed]'?st:null}}));"
         "return {html:st.outerHTML||null,focus:n};};"
         "process.stdout.write(JSON.stringify({had:press(true,true),not:press(false,true),"
         "away:press(true,false)}));")

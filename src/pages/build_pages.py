@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.278
+# GRANITE_VERSION: 2026-09-04.279
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -3489,12 +3489,33 @@ WEBINAR_UNTIL = "2026-11-11"
 WEBINAR_URL = "https://zoom.us/meeting/register/SoxLZ-b5TnWYcGPfmVaZDA#/registration"
 
 
+# THE RECORDING, ONCE IT IS OVER (the owner, 11 November 2026: "Add the link
+# to the webinar youtube video as an embedded player on the homepage"). The
+# same place under the search, the same box, and the player the home page's
+# session recordings use: nothing is asked of YouTube until Play is pressed.
+WEBINAR_VIDEO = "BMPOb0BFdYw"
+
+
+def home_webinar_recording(lang="en"):
+    """The webinar's recording, in the box the registration had."""
+    esc = _html.escape
+    title = say(lang, "web.rec.title", "Recording of the Granite Record launch webinar, November 10, 2026")
+    note = "" if lang == "en" else say(lang, "web.rec.english", " (in English)")
+    return (f'<aside class="webinar wbrec" aria-label="{esc(say(lang, "web.rec.label", "Webinar recording"))}">'
+            f'<p class="wbwhen">{say(lang, "web.rec.head", "Watch the launch webinar")}{note}</p>'
+            f'<p class="wbwhat">{say(lang, "web.rec.what", "How Granite Record works, and how to use it to keep up with Concord this session, with Alice Wade. Recorded November 10, 2026.")}</p>'
+            f'<div class="player"><button type="button" class="pstub" data-embed="{esc(WEBINAR_VIDEO, quote=True)}" '
+            f'data-title="{esc(title, quote=True)}" aria-label="{esc(say(lang, "web.rec.play", "Play the recording of the launch webinar"), quote=True)}">'
+            f'<span>{icon("play")}</span><span>{say(lang, "sess.play", "Play the recording")}</span></button></div>'
+            '</aside>')
+
+
 def home_webinar(today=None, lang="en"):
-    """The webinar's box for the home page, or "" once it is over. In
-    another language it says the webinar is held in English."""
+    """The webinar's box for the home page: its registration until it is
+    over, then its recording. In another language it says it is in English."""
     today = today or build_date.today().isoformat()
     if str(today)[:10] >= WEBINAR_UNTIL:
-        return ""
+        return home_webinar_recording(lang)
     return (f'<aside class="webinar" aria-label="{_html.escape(say(lang, "web.label", "Webinar"))}"'
             f'{until_attrs(WEBINAR_UNTIL, today)}>'
             f'<p class="wbwhen">{say(lang, "web.when", "Free webinar &middot; Tuesday, November 10, 6:30&nbsp;PM")}</p>'
@@ -4320,7 +4341,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
 // next Tab press started from the top of the page (the audit of 2 October
 // 2026, S1). app.js does the same on a bill.
 document.addEventListener("click",e=>{
-  const st=e.target.closest&&e.target.closest("#session [data-embed]");
+  const st=e.target.closest&&e.target.closest("#session [data-embed], .wbrec [data-embed]");
   if(!st)return;
   const box=st.parentNode, had=document.activeElement===st;
   st.outerHTML=`<iframe allow="autoplay" allowfullscreen
