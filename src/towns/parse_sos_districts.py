@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.5
+# GRANITE_VERSION: 2026-09-20.6
 """
 The Secretary of State's own district table, and what it says about ours.
 
@@ -107,6 +107,7 @@ import json
 import re
 
 import parse_districts
+import state_settings as ST
 
 # The repository root, wherever this file sits (_paths.py): the data it
 # reads is the root's.
@@ -119,9 +120,7 @@ SOURCE_URL = ("https://www.sos.nh.gov/sites/g/files/ehbemt561/files/"
               "inline-documents/sonh/towns-and-wards-as-districted-for-"
               "election-purposes-2022-remediated.pdf")
 
-COUNTIES = {"Belknap", "Carroll", "Cheshire", "Coos", "Grafton",
-            "Hillsborough", "Merrimack", "Rockingham", "Strafford",
-            "Sullivan"}
+COUNTIES = set(ST.COUNTIES)
 
 # The page furniture, and the one section heading -- "Unincorporated Places",
 # which is not a place and would otherwise be offered to the wrapped-name rule.

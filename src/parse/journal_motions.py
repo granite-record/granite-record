@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.10
+# GRANITE_VERSION: 2026-10-23.11
 """
 What the Journals say a vote on no bill was about.
 
@@ -168,6 +168,7 @@ from collections import Counter, defaultdict
 from datetime import date
 
 import rollcall_outcomes as RO
+import state_settings as ST
 
 OUT = Path("journal_motions.json")
 # Both kept in the repository, so found through it wherever this runs.
@@ -349,8 +350,7 @@ DAY_HEADER = re.compile(r"^[ \t]*HOUSE\s+JOURNAL\s+N[Oo]\.?\s*\d*", re.M)
 # A heading: a line in capitals, alone. Not a county of a roll call's list,
 # not the tally, not a running head.
 HEAD = re.compile(r"^[ \t]*(?P<h>[A-Z][A-Z0-9' ’.,&()/:#-]{4,}[A-Z0-9.)])[ \t]*$", re.M)
-COUNTIES = re.compile(r"^(?:BELKNAP|CARROLL|CHESHIRE|COOS|GRAFTON|HILLSBOROUGH|MERRIMACK|"
-                      r"ROCKINGHAM|STRAFFORD|SULLIVAN)$")
+COUNTIES = re.compile(r"^(?:" + "|".join(ST.COUNTIES_UPPER) + r")$")
 NOT_A_HEAD = re.compile(r"YEAS|NAYS|HOUSE\s*RECORD|SENATE\s*JOURNAL|HOUSE\s+JOURNAL|"
                         r"^RESOLVED|^(?:HB|SB|HR|SR|CACR|HCR|SCR|HJR)\s*\d")
 # Headings of the day's business that are not a question's: what falls under
