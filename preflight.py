@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.863
+# GRANITE_VERSION: 2026-09-04.864
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28262,8 +28262,6 @@ def _learn_sitting_term(SR, build_civics, learn_numbers):
                  'r.get("status") == "Vetoed" and r.get("term") == still_sitting',
                  'r.get("status") == "Vetoed" and r.get("term") != still_sitting'):
         assert said in src, f"record_figures no longer reads the sitting term: {said!r}"
-    assert '("2007-" + (terms[-1][5:] if terms else "")' in inspect.getsource(learn_numbers.body), \
-        "learn_numbers labels its last era by the described term, not the newest it counts"
     return "ok", ("2027-2028 sits while 2025-2026 is described; the filmed run passes over it and "
                   "names 2021-2022; the vetoes waiting are the sitting term's")
 
@@ -28474,6 +28472,178 @@ def _numbers_committee_rates(learn_numbers):
     return "ok", "Finance's second report credited to Finance; the chamber counts each bill once"
 
 
+@check("frontend", "numbers: the one committees table holds every committee the three tables it "
+                   "replaced held, and states a rate or a consent share only from ten bills or reports",
+       needs=("learn_numbers",))
+def _numbers_committee_table(learn_numbers):
+    """The owner, 11 November 2026: Referrals, Consent Calendars and Passage
+    Rate are one table. Its rows are the union of the committees the three
+    read (so a merge cannot drop one), House first, each chamber by rate; a
+    rate or share from fewer than ten is a dash; every term of the last ten
+    carries its consent share, not the newest alone."""
+    L = learn_numbers
+    saved = (L.referrals, L.committee_rates, L.consent)
+    try:
+        L.referrals = lambda i, n, t: {"House A": (5, 1), "Senate B": (2, 0), "House Only Sent": (0, 3)}
+        L.committee_rates = lambda i, n, t: ({"House A": (12, 6, 3), "House Rate Only": (11, 11, 11),
+                                              "Senate B": (4, 2, 1)},
+                                             {"H": (20, 10, 5), "S": (4, 2, 1)})
+        L.consent = lambda n, r, t: ({"House A": (20, 5), "Senate Consent Only": (30, 15), "Senate B": (4, 4)},
+                                     {"H": __import__("collections").Counter(kept=5),
+                                      "S": __import__("collections").Counter(kept=19)})
+        rec, _tot, _per = L.committee_record([], {}, "2025-2026")
+        rows, groups = L.committee_rows(rec)
+    finally:
+        L.referrals, L.committee_rates, L.consent = saved
+    want = {"House A", "Senate B", "House Only Sent", "House Rate Only", "Senate Consent Only"}
+    assert set(rec) == want, f"the merged rows are {sorted(rec)}, not the union {sorted(want)}"
+    names = [re.sub(r"<[^>]+>", "", r[0]) for r in rows]
+    assert names[:3] == ["House Rate Only", "House A", "House Only Sent"] and \
+        all(n.startswith("Senate") for n in names[3:]), f"House first, by rate: {names}"
+    assert groups == ["H"] * 3 + ["S"] * 2, groups
+    a = rows[names.index("House A")]
+    assert a[1:] == ["5", "1", "12", "6", "3", "50.0%", "25.0%"], f"House A: {a}"
+    b = rows[names.index("Senate B")]
+    assert b[6] == b[7] == "&mdash;", f"a rate or share from fewer than ten is a dash: {b}"
+    assert "Each Committee's Record" in L.HEADINGS and not any(
+        h in L.HEADINGS for h in ("The Bills Each Committee Received", "Consent Calendars, by Committee",
+                                  "Each Committee's Passage Rate")), "the three old sections are still named"
+    import inspect
+    src = inspect.getsource(L.body)
+    assert "for t in reversed(recent):\n        rec, ctot, per_ch = committee_record(" in src, (
+        "the consent share is worked out for each of the last ten terms")
+    return "ok", "five committees from three sources in one table, House first by rate, dashes under ten"
+
+
+def _flow_rows(term="2025-2026"):
+    """Index rows covering every way a bill can end, as flows() reads them."""
+    spec = [("HB1", "Hpppp", "Signed into law"), ("HB2", "Hx--x", "Killed"),
+            ("HB3", "Sx--x", "Referred for interim study"), ("HB4", "Hpx-x", "Died on the table"),
+            ("SB5", "Spp-x", "Died: the chambers did not agree on a version"),
+            ("HB6", "Hppxx", "Vetoed, override failed"), ("HB7", "Hppxp", "Veto overridden, became law"),
+            ("HB8", "Hh--h", "In committee"), ("HB9", "", "Killed"), ("SB10", "Sp---", "Withdrawn"),
+            ("HB11", "Hpppp", "Became law unsigned"), ("HB12", "Hx--x", "Killed"),
+            ("SB13", "Spx-x", "Referred for interim study"), ("HB14", "Hx--x", "Indefinitely postponed"),
+            ("HR1", "Hpppp", "Adopted by the House"), ("CACR2", "Hx--x", "Killed")]
+    rows = [{"term": term, "id": i, "passage": p, "status": s, "carried": i in ("HB1", "HB2")}
+            for i, p, s in spec]
+    rows.append({"term": "2023-2024", "id": "HB1", "passage": "Hx--x", "status": "Killed"})
+    return rows
+
+
+@check("frontend", "numbers: every House and Senate bill of a term is in exactly one end node of the "
+                   "flow diagram, and each node is the sum of what leaves it",
+       needs=("learn_numbers",))
+def _numbers_flows(learn_numbers):
+    """The owner, 11 November 2026: the Sankey is drawn from the one field the
+    bill rail reads (the index row's `passage`), on the 2,139 basis (House
+    and Senate bills; resolutions and constitutional amendments out), and its
+    end nodes sum to the bills filed. A bill with no readable passage is
+    counted as unclassified, never dropped; one still moving is its own end
+    node. This counts a fixture whose answer is known, then holds every term
+    of the built site, where there is one, to the same sums."""
+    L = learn_numbers
+    f = L.flows(_flow_rows(), "2025-2026")
+    assert f["filed"] == 14 and f["resolutions"] == 2, (f["filed"], f["resolutions"])
+    assert f["unclassified"] == 1 and f["moving"] == 1, (f["unclassified"], f["moving"])
+    assert dict(f["first"]) == {"killed": 2, "study": 1, "postponed": 1}, dict(f["first"])
+    assert dict(f["second"]) == {"tabled": 1, "study": 1, "withdrawn": 1}, dict(f["second"])
+    assert dict(f["nogov"]) == {"noversion": 1}, dict(f["nogov"])
+    assert f["cleared_first"] == 8 and f["passed_both"] == 5 and f["reached"] == 4, f
+    assert dict(f["gov"]) == {"law": 3, "veto": 1}, dict(f["gov"])
+    assert f["carried"] == 2
+
+    def check_tree(n, where):
+        if not n["kids"]:
+            return
+        total = sum(k["n"] for k in n["kids"])
+        assert total == n["n"], f"{where}: {n['label']} is {n['n']} and what leaves it {total}"
+        for k in n["kids"]:
+            check_tree(k, where)
+
+    def leaf_sum(n):
+        return n["n"] if not n["kids"] else sum(leaf_sum(k) for k in n["kids"])
+
+    def all_terms(idx, label):
+        terms = sorted({r["term"] for r in idx if r.get("term")})
+        for t in terms:
+            fl = L.flows(idx, t)
+            tree = L.flow_tree(fl)
+            assert tree["n"] == fl["filed"] and leaf_sum(tree) == fl["filed"], (
+                f"{label} {t}: the end nodes sum to {leaf_sum(tree)} of {fl['filed']} bills filed")
+            check_tree(tree, f"{label} {t}")
+            assert fl["reached"] == fl["gov"]["law"] + fl["gov"]["veto"] + fl["gov"]["other"], (
+                f"{label} {t}: reached the governor is not law plus veto stood")
+            ref = sum(1 for r in idx if r.get("term") == t and L.BILL.match(r.get("id") or ""))
+            assert fl["filed"] == ref
+        return len(terms)
+    n = all_terms(_flow_rows(), "fixture")
+    import site_read
+    try:
+        real = site_read.bill_index("site")
+    except Exception:
+        real = None
+    if real:
+        n = all_terms(real, "the site")
+        bad = [t for t in sorted({r["term"] for r in real}) if
+               L.flows(real, t)["unclassified"] > 8]
+        assert not bad, f"more than a handful of bills have no passage in {bad}: not a rounding"
+    return "ok", f"{n} terms: end nodes sum to the bills filed, resolutions out, none dropped"
+
+
+@check("frontend", "numbers: the flow diagram, its table and its sentence print the same numbers, "
+                   "and in Spanish say them in Spanish",
+       needs=("learn_numbers", "i18n"))
+def _numbers_flow_agree(learn_numbers, i18n):
+    L = learn_numbers
+    f = L.flows(_flow_rows(), "2025-2026")
+    tree = L.flow_tree(f)
+    leaves = L.flow_leaves(tree)
+    fig = L.flow_figure(f)
+    svg = re.search(r"<svg.*?</svg>", fig, re.S).group(0)
+    titled = re.findall(r"<title>(.*?): ([\d,]+) bills", svg)
+    twin = re.findall(r'<span class="l-ind"[^>]*>(.*?)</span></td><td class="l-num">([\d,]+)</td>', fig)
+    walk = []
+
+    def nodes(n):
+        walk.append((n["label"], n["n"]))
+        for k in n["kids"]:
+            nodes(k)
+    nodes(tree)
+    want = [(a, f"{b:,}") for a, b in walk]
+    assert [(a, b) for a, b in titled] == want, f"the diagram's nodes are not the tree's: {titled} / {want}"
+    assert [(a, b) for a, b in twin] == want, f"the table's rows are not the tree's: {twin}"
+    # the label of each end node, with its count, is in the drawing too
+    for key, n in leaves:
+        label = L.END_WORDS[key][0]
+        assert re.search(rf"{re.escape(label)} <tspan class=\"sk-v\">{n:,}</tspan>", svg), (
+            f"the diagram does not print {label} {n}")
+    sentence = L.flow_sentence(f)
+    for num in (f["filed"], sum(f["first"].values()), sum(f["second"].values()),
+                f["reached"], f["gov"]["law"], f["gov"]["veto"], f["carried"], f["resolutions"]):
+        assert f"{num:,}" in sentence, f"the sentence omits {num}"
+    assert tree["n"] == f["filed"] and f"{f['filed']:,} House and Senate bills" in sentence
+    # in Spanish: every node, the sentence and the table's heads are the catalogue's, none English
+    es = L.flow_figure(f, "es") + L.flow_sentence(f, "es")
+    for key, _n in leaves + [("first", 0), ("second", 0), ("nogov", 0), ("reached", 0)]:
+        words = L.END_WORDS[key][0] if key in L.END_WORDS else {
+            "first": "Stopped in the first chamber", "second": "Stopped in the second chamber",
+            "nogov": "Never reached the governor", "reached": "Reached the governor"}[key]
+        assert words not in es, f"the Spanish diagram says {words!r} in English"
+    for en in ("The same figures as a table", "Where it stood", "Not counted here"):
+        assert en not in es, f"the Spanish diagram says {en!r} in English"
+    assert "House and Senate bills" not in es
+    # the paragraph on How a Bill Becomes a Law reads this count, on the same basis
+    civ = Path("src/pages/civics.py").read_text(encoding="utf-8")
+    assert "[[ends_bills]] House and Senate bills" in civ and "[[ends_resolutions]]" in civ and \
+        "bills and resolutions filed in the [[term]] term" not in civ, (
+            "How Most Bills End is not on the 2,139 basis with its one line on the resolutions")
+    bc = Path("src/pages/build_civics.py").read_text(encoding="utf-8")
+    assert "learn_numbers.flows(idx, term)" in bc and "learn_numbers.flow_figure(fl)" in bc and \
+        "learn_numbers.flow_figure(fl, lang)" in bc, "build_civics does not draw the diagram from flows()"
+    return "ok", f"{len(walk)} nodes the same in the drawing, the table and the sentence; Spanish in Spanish"
+
+
 @check("frontend", "numbers: amended means an amendment adopted, not an enrolled-bill correction",
        needs=("learn_numbers",))
 def _numbers_amended(learn_numbers):
@@ -28680,14 +28850,14 @@ def _numbers_removed(learn_numbers):
         missing = sorted(Path(f).name for f, _what in learn_numbers.MISSING)
     for gone in ("without the governor's signature</h2>", "<th>Awaiting</th>", "Still to come"):
         assert gone not in page, f"the page of numbers still carries {gone!r}"
-    assert "<h2>Vetoes</h2>" in page and "Bills Filed, and How They Ended" in page, (
+    assert "From the Governor's Desk</h3>" in page and "Bills Filed, and How They Ended" in page, (
         "the fixture page lost a section it should keep")
     want = ["ballot_results.json", "member_votes.json", "narratives.json", "testimony_db.json"]
     assert missing == want, f"the inputs said to be missing: {missing}, want {want}"
     for h in ("The Hearings with the Most Sign-Ins", "Attendance on Roll-Call Days",
               "Constitutional Amendments Sent to the Voters"):
         assert h not in page, f"{h!r} was drawn with its input missing"
-    return "ok", "both gone; Vetoes kept; the four missing inputs named and their sections left out"
+    return "ok", "both gone; the governor's desk kept; the four missing inputs named and their sections left out"
 
 
 @check("data", "the page of numbers carries every figure it is built to",
@@ -89760,7 +89930,7 @@ def _numbers_in_spanish(learn_numbers, build_civics, i18n):
                  "Hover over a term", "Filed per representative"):
         assert word not in seen, f"the Spanish By the Numbers says {word!r} in English"
     # The same figures: every number of a table's cells is the English page's.
-    cells = lambda t: re.findall(r'<td class="l-num">([^<]*)</td>', t)
+    cells = lambda t: re.findall(r'<td class="l-num"[^>]*>([^<]*)</td>', t)
     assert cells(en) == cells(es), "a figure of the Spanish By the Numbers is not the English page's"
     assert 'lang="en"' in es and 'House Commerce' in es and "House Commerce</span>" in es, (
         "a committee's name on the Spanish page is not marked as the record's English")

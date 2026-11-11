@@ -19701,46 +19701,6 @@
    "es": "La encontrará con dos nombres. Las leyes dicen convención; los legisladores, el personal del condado y los documentos del presupuesto del condado suelen decir <b>delegación</b> (delegation). Son el mismo órgano, y la propia ley usa ambas palabras en una sola oración: RSA 24:9-a encarga al presidente de la delegación del condado fijar la hora y el lugar de la primera reunión de la convención del condado.",
    "state": "draft"
   },
-  "learn.ends.caption": {
-   "en": "The {n} bills and resolutions of the {term} term",
-   "es": "Los {n} proyectos de ley y resoluciones del período {term}",
-   "state": "draft"
-  },
-  "learn.ends.killed": {
-   "en": "killed (ITL)",
-   "es": "rechazados (ITL)",
-   "state": "draft"
-  },
-  "learn.ends.label": {
-   "en": "How the {n} bills and resolutions of the {term} term ended",
-   "es": "Cómo terminaron los {n} proyectos de ley y resoluciones del período {term}",
-   "state": "draft"
-  },
-  "learn.ends.rest": {
-   "en": "every other outcome",
-   "es": "todos los demás resultados",
-   "state": "draft"
-  },
-  "learn.ends.session": {
-   "en": "died when the session ended",
-   "es": "murieron al terminar la sesión",
-   "state": "draft"
-  },
-  "learn.ends.signed": {
-   "en": "signed into law",
-   "es": "firmados y convertidos en ley",
-   "state": "draft"
-  },
-  "learn.ends.study": {
-   "en": "sent for interim study",
-   "es": "enviados a estudio interino",
-   "state": "draft"
-  },
-  "learn.ends.table": {
-   "en": "died on the table",
-   "es": "murieron tras quedar sobre la mesa",
-   "state": "draft"
-  },
   "learn.general-court.a-term-is-two-years": {
    "en": "A Term Is Two Years",
    "es": "Un período dura dos años",
@@ -20506,11 +20466,6 @@
    "es": "Práctica observada, según quien edita el sitio, octubre de 2026",
    "state": "draft"
   },
-  "learn.how-a-bill-becomes-law.of-the-bills-and-resolutions-filed": {
-   "en": "Of the [[bills]] bills and resolutions filed in the [[term]] term, <b>[[killed]] were killed</b> on a motion of Inexpedient to Legislate, written <b><abbr data-term=\"ITL\">ITL</abbr></b>, and <b>[[signed]] were signed into law</b>. Among the rest, [[study]] were sent for interim study (the committee studies the subject after the session, and the bill goes no further), [[tabled]] died on the table (set aside by a vote and never taken up again), and [[session_end]] died when the session ended without a final vote. Dying is the ordinary outcome, not a failure of the bill or its sponsor.",
-   "es": "De los [[bills]] proyectos de ley y resoluciones presentados en el período [[term]], <b>[[killed]] fueron rechazados</b> mediante una moción de Inexpedient to Legislate (inoportuno legislar), escrita <b><abbr data-term=\"ITL\">ITL</abbr></b>, y <b>[[signed]] fueron firmados como ley</b>. Entre los demás, [[study]] se enviaron a estudio interino (el comité estudia el tema después de la sesión, y el proyecto de ley no avanza más), [[tabled]] murieron sobre la mesa (apartados mediante una votación y nunca retomados), y [[session_end]] murieron al terminar la sesión sin una votación final. Morir es el resultado ordinario, no un fracaso del proyecto de ley ni de su patrocinador.",
-   "state": "draft"
-  },
   "learn.how-a-bill-becomes-law.of-the-bills-that-became-law": {
    "en": "Of the [[law]] bills that became law in the [[term]] term, [[law_no_rollcall]] did so without a roll call on the floor of either chamber.",
    "es": "De los [[law]] proyectos de ley que se convirtieron en ley en el período [[term]], [[law_no_rollcall]] lo hicieron sin una votación nominal en el pleno de ninguna de las dos cámaras.",
@@ -20519,6 +20474,11 @@
   "learn.how-a-bill-becomes-law.of-the-bills-with-a-narrative": {
    "en": "Of the [[narrated]] bills with a narrative in the [[term]] term, <b>[[both_chambers]] reached both chambers</b> and <b>[[conference]] went to a committee of conference</b>. [[law]] became law: [[signed]] signed, [[unsigned]] without a signature, and [[overridden]] over a veto.",
    "es": "De los [[narrated]] proyectos de ley con un relato en el período [[term]], <b>[[both_chambers]] llegaron a ambas cámaras</b> y <b>[[conference]] fueron a un comité de conferencia</b>. [[law]] se convirtieron en ley: [[signed]] firmados, [[unsigned]] sin firma y [[overridden]] por encima de un veto.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.of-the-house-and-senate-bills": {
+   "en": "Of the [[ends_bills]] House and Senate bills filed in the [[term]] term, <b>[[ends_killed]] were killed</b> on a motion of Inexpedient to Legislate, written <b><abbr data-term=\"ITL\">ITL</abbr></b>, and <b>[[ends_signed]] were signed into law</b>. Among the rest, [[ends_study]] were sent for interim study (the committee studies the subject after the session, and the bill goes no further), [[ends_tabled]] died on the table (set aside by a vote and never taken up again), and [[ends_session]] died when the session ended without a final vote. Dying is the ordinary outcome, not a failure of the bill or its sponsor. Not counted here: the [[ends_resolutions]] resolutions and constitutional amendments of the term.",
+   "es": "De los [[ends_bills]] proyectos de ley de la Cámara y del Senado presentados en el período [[term]], <b>[[ends_killed]] fueron rechazados</b> mediante una moción de Inexpedient to Legislate (inoportuno legislar), escrita <b><abbr data-term=\"ITL\">ITL</abbr></b>, y <b>[[ends_signed]] fueron firmados como ley</b>. Entre los demás, [[ends_study]] se enviaron a estudio interino (el comité estudia el tema después de la sesión, y el proyecto de ley no avanza más), [[ends_tabled]] murieron sobre la mesa (apartados mediante una votación y nunca retomados), y [[ends_session]] murieron al terminar la sesión sin una votación final. Morir es el resultado ordinario, no un fracaso del proyecto de ley ni de su patrocinador. No se cuentan aquí las [[ends_resolutions]] resoluciones y enmiendas constitucionales del período.",
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.override": {
@@ -23742,11 +23702,6 @@
    "es": "Esta página todavía no está en español.",
    "state": "draft"
   },
-  "nums.all_terms": {
-   "en": "All terms",
-   "es": "Todos los períodos",
-   "state": "draft"
-  },
   "nums.bar_title": {
    "en": "{term}: {n} of {f} bills became law ({v}%)",
    "es": "{term}: {n} de {f} proyectos de ley pasaron a ser ley ({v}%)",
@@ -23790,6 +23745,11 @@
   "nums.c_conf": {
    "en": "To a committee of conference",
    "es": "Pasaron a un comité de conferencia",
+   "state": "draft"
+  },
+  "nums.c_cshare": {
+   "en": "Consent share",
+   "es": "Proporción en el calendario de consenso",
    "state": "draft"
   },
   "nums.c_date": {
@@ -23842,11 +23802,6 @@
    "es": "Decisiones en el pleno",
    "state": "draft"
   },
-  "nums.c_four": {
-   "en": "Four or more",
-   "es": "Cuatro o más",
-   "state": "draft"
-  },
   "nums.c_h_att": {
    "en": "House attendance",
    "es": "Asistencia en la Cámara",
@@ -23860,16 +23815,6 @@
   "nums.c_hearing": {
    "en": "Hearing and committee",
    "es": "Audiencia y comité",
-   "state": "draft"
-  },
-  "nums.c_intro": {
-   "en": "As introduced",
-   "es": "Tal como se presentaron",
-   "state": "draft"
-  },
-  "nums.c_kept": {
-   "en": "On consent and kept there",
-   "es": "En el calendario de consenso y se quedaron allí",
    "state": "draft"
   },
   "nums.c_l_rep": {
@@ -23932,6 +23877,11 @@
    "es": "Asunto votado",
    "state": "draft"
   },
+  "nums.c_rate": {
+   "en": "Passage rate",
+   "es": "Tasa de aprobación",
+   "state": "draft"
+  },
   "nums.c_rc": {
    "en": "Roll call",
    "es": "Votación nominal",
@@ -23945,11 +23895,6 @@
   "nums.c_reported": {
    "en": "Bills reported on",
    "es": "Proyectos sobre los que informó",
-   "state": "draft"
-  },
-  "nums.c_reports": {
-   "en": "Reports",
-   "es": "Informes",
    "state": "draft"
   },
   "nums.c_result": {
@@ -24007,14 +23952,9 @@
    "es": "Período",
    "state": "draft"
   },
-  "nums.c_terms": {
-   "en": "Terms",
-   "es": "Períodos",
-   "state": "draft"
-  },
-  "nums.c_three": {
-   "en": "Three",
-   "es": "Tres",
+  "nums.c_threeplus": {
+   "en": "Three or more",
+   "es": "Tres o más",
    "state": "draft"
   },
   "nums.c_title": {
@@ -24062,19 +24002,9 @@
    "es": "{bill} &mdash; {chamber}: comité, {rec}; pleno, {floor}",
    "state": "draft"
   },
-  "nums.cc_h_head": {
-   "en": "House Committees",
-   "es": "Comités de la Cámara",
-   "state": "draft"
-  },
   "nums.cc_h_line": {
    "en": "{pct} of the House&rsquo;s {n} committee recommendations were adopted on its consent calendar; {off} were taken off it.",
    "es": "{pct} de las {n} recomendaciones de los comités de la Cámara se adoptaron en su calendario de consenso; {off} se retiraron de él.",
-   "state": "draft"
-  },
-  "nums.cc_s_head": {
-   "en": "Senate Committees",
-   "es": "Comités del Senado",
    "state": "draft"
   },
   "nums.cc_s_line": {
@@ -24127,11 +24057,6 @@
    "es": "{bill} de {term} se someterá a los votantes el {day}.",
    "state": "draft"
   },
-  "nums.h_amended": {
-   "en": "Passed as Introduced, or Amended",
-   "es": "Aprobados tal como se presentaron, o con enmiendas",
-   "state": "draft"
-  },
   "nums.h_attend": {
    "en": "Attendance on Roll-Call Days",
    "es": "Asistencia en los días de votación nominal",
@@ -24147,14 +24072,19 @@
    "es": "Las votaciones más reñidas de {term}",
    "state": "draft"
   },
-  "nums.h_consent": {
-   "en": "Consent Calendars, by Committee",
-   "es": "Calendarios de consenso, por comité",
+  "nums.h_cmte": {
+   "en": "Each Committee's Record",
+   "es": "El historial de cada comité",
    "state": "draft"
   },
   "nums.h_filed": {
    "en": "Bills Filed, and How They Ended",
    "es": "Proyectos presentados y cómo terminaron",
+   "state": "draft"
+  },
+  "nums.h_gov": {
+   "en": "From the Governor's Desk",
+   "es": "Desde el escritorio del gobernador",
    "state": "draft"
   },
   "nums.h_how": {
@@ -24172,29 +24102,14 @@
    "es": "Con qué frecuencia el pleno rechaza la recomendación de su comité",
    "state": "draft"
   },
-  "nums.h_rates": {
-   "en": "Each Committee's Passage Rate",
-   "es": "Tasa de aprobación de cada comité",
-   "state": "draft"
-  },
-  "nums.h_refs": {
-   "en": "The Bills Each Committee Received",
-   "es": "Los proyectos de ley que recibió cada comité",
+  "nums.h_passed": {
+   "en": "What Passed, and How It Changed on the Way",
+   "es": "Lo que se aprobó y cuánto cambió en el camino",
    "state": "draft"
   },
   "nums.h_signins": {
    "en": "The Hearings with the Most Sign-Ins",
    "es": "Las audiencias con más inscripciones",
-   "state": "draft"
-  },
-  "nums.h_takes": {
-   "en": "How Many Amendments a Bill Takes Before It Passes",
-   "es": "Cuántas enmiendas recibe un proyecto antes de aprobarse",
-   "state": "draft"
-  },
-  "nums.h_vetoes": {
-   "en": "Vetoes",
-   "es": "Vetos",
    "state": "draft"
   },
   "nums.h_votes": {
@@ -24252,11 +24167,6 @@
    "es": "una enmienda no pertinente",
    "state": "draft"
   },
-  "nums.p_amended": {
-   "en": "Every House and Senate bill that passed both chambers in the same text and so went to the governor. Amended: either chamber adopted an amendment to it first, or a committee of conference settled the two chambers' versions; the Enrolled Bills Committee's technical corrections after passage are not counted as amendments.",
-   "es": "Todo proyecto de ley de la Cámara y del Senado que fue aprobado por ambas cámaras con el mismo texto y por eso pasó al gobernador. Con enmiendas: una de las cámaras adoptó antes una enmienda, o un comité de conferencia resolvió las diferencias entre las versiones de las dos cámaras; las correcciones técnicas que hace el Comité de Versiones Finales (<span lang=\"en\">Enrolled Bills Committee</span>) después de la aprobación no cuentan como enmiendas.",
-   "state": "draft"
-  },
   "nums.p_attend": {
    "en": "For each day a chamber took at least one roll call, the share of its members in office who were there for at least one of that day's roll calls &mdash; voting, presiding, or declaring a conflict of interest &mdash; averaged over the days. Members' ballots are on record from 1999, and a day with only voice or division votes records no one by name, so it cannot be counted.",
    "es": "Para cada día en que una cámara tomó al menos una votación nominal: la proporción de sus miembros en funciones que estuvieron presentes en al menos una de las votaciones nominales de ese día &mdash;votando, presidiendo o declarando un conflicto de intereses&mdash;, promediada a lo largo de los días. Los votos de cada miembro constan desde 1999, y un día con solo votaciones a viva voz o por división no registra a nadie por nombre, por lo que no se puede contar.",
@@ -24272,9 +24182,14 @@
    "es": "Las diez votaciones nominales sobre proyectos de ley decididas por la menor cantidad de votos, sin contar las mociones de procedimiento ni las votaciones que requerían más que una mayoría.",
    "state": "draft"
   },
-  "nums.p_consent": {
-   "en": "A committee sends a report to the consent calendar by its own vote, and in both chambers that vote must be unanimous, though the recommendation itself may have been carried on a divided one. The whole calendar is adopted in one vote without debate, and what it adopts is each committee's recommendation, to pass the bill, to kill it, or to send it to interim study, unless the bill is first taken off &mdash; since January 2023 at the request of ten members in the House, and since April 2026 of two in the Senate. For each committee of {term} with ten reports or more: the share that went on the consent calendar and stayed there &mdash; a measure of how often the committee agreed with itself. A report counts to the committee that made it, so a bill sent on to Finance or Ways and Means counts in both, and a report the docket prints twice counts once.",
-   "es": "Un comité envía un informe al calendario de consenso por voto propio, y en ambas cámaras ese voto debe ser unánime, aunque la recomendación misma haya sido aprobada por votación dividida. Todo el calendario se adopta en una sola votación y sin debate, y lo que adopta es la recomendación de cada comité: aprobar el proyecto, rechazarlo o enviarlo a estudio interino, a menos que antes se retire el proyecto del calendario &mdash;desde enero de 2023, a solicitud de diez miembros en la Cámara y, desde abril de 2026, de dos en el Senado&mdash;. Para cada comité de {term} con diez informes o más: la proporción que pasó al calendario de consenso y se quedó allí, una medida de cuántas veces el comité estuvo de acuerdo consigo mismo. Un informe cuenta para el comité que lo hizo, de modo que un proyecto remitido a <span lang=\"en\">Finance</span> o a <span lang=\"en\">Ways and Means</span> cuenta en ambos, y un informe que el registro imprime dos veces cuenta una vez.",
+  "nums.p_cmte": {
+   "en": "For each committee of the last ten terms: how many bills its chamber sent it first, as each bill's page names its committee, and how many it received after another committee of the same chamber had them &mdash; most often Finance or Ways and Means, for a bill that spends or raises money. Every numbered measure counts in those two columns, resolutions included. The rest count House and Senate bills: those the committee made a majority report on, whatever it recommended, how many of them passed both chambers and how many became law, and, for a committee with ten reports or more, the passage rate and the share of its reports that went on the consent calendar and stayed there. A bill two committees of a chamber reported on counts in both.",
+   "es": "Para cada comité de los últimos diez períodos: cuántos proyectos le remitió primero su cámara, según el comité que nombra la página de cada proyecto, y cuántos recibió después de que otro comité de la misma cámara los tuviera &mdash;con más frecuencia Finance o Ways and Means, en un proyecto que gasta o recauda dinero&mdash;. En esas dos columnas cuenta toda medida numerada, las resoluciones incluidas. Las demás cuentan proyectos de ley de la Cámara y del Senado: aquellos sobre los que el comité emitió un informe de mayoría, fuera cual fuera su recomendación, cuántos fueron aprobados por ambas cámaras y cuántos pasaron a ser ley y, en un comité con diez informes o más, la tasa de aprobación y la proporción de sus informes que pasaron al calendario de consenso y se quedaron allí. Un proyecto sobre el que informaron dos comités de una cámara cuenta en ambos.",
+   "state": "draft"
+  },
+  "nums.p_cmte2": {
+   "en": "A committee sends a report to the consent calendar by its own vote, and in both chambers that vote must be unanimous, though the recommendation itself may have been carried on a divided one. The whole calendar is adopted in one vote without debate, and what it adopts is each committee's recommendation, to pass the bill, to kill it, or to send it to interim study, unless the bill is first taken off &mdash; since January 2023 at the request of ten members in the House, and since April 2026 of two in the Senate. A Senate committee's House bills had already passed the House, and the other way round, so compare committees within a chamber rather than across: the table sorts within each chamber, and the Committee heading sorts across both.",
+   "es": "Un comité envía un informe al calendario de consenso por voto propio, y en ambas cámaras ese voto debe ser unánime, aunque la recomendación misma haya sido aprobada por votación dividida. Todo el calendario se adopta en una sola votación y sin debate, y lo que adopta es la recomendación de cada comité: aprobar el proyecto, rechazarlo o enviarlo a estudio interino, a menos que antes se retire el proyecto &mdash;desde enero de 2023 a petición de diez miembros en la Cámara y desde abril de 2026 de dos en el Senado&mdash;. Los proyectos de la Cámara que llegan a un comité del Senado ya habían sido aprobados por la Cámara, y al revés, así que compare los comités dentro de una cámara y no entre ellas: la tabla se ordena dentro de cada cámara, y el encabezado Comité la ordena entre las dos.",
    "state": "draft"
   },
   "nums.p_consent2": {
@@ -24285,6 +24200,11 @@
   "nums.p_filed": {
    "en": "Every House and Senate bill given a number in each term, not counting constitutional amendments or resolutions, by the word its card on this site shows. Died covers a bill killed on the floor, left on the table, vetoed with the veto standing, lost between the two chambers, or still pending when its term ended; Other is a bill withdrawn, never introduced, or still before the legislature.",
    "es": "Todo proyecto de ley de la Cámara y del Senado al que se asignó un número en cada período, sin contar las enmiendas constitucionales ni las resoluciones, según la palabra que muestra su tarjeta en este sitio. &ldquo;Murió&rdquo; abarca un proyecto rechazado en el pleno, dejado sobre la mesa, vetado con el veto vigente, perdido entre las dos cámaras o aún pendiente al terminar su período; &ldquo;Otro&rdquo; es un proyecto retirado, nunca presentado o que sigue ante la Legislatura.",
+   "state": "draft"
+  },
+  "nums.p_filed_sk": {
+   "en": "The diagrams show where each of the last ten terms' bills stopped, from the same record the passage rail on a bill's page reads, so a bill is in one place in the diagram, on its page and in the table beneath it. Died is split into what ended each bill, in the record's own words.",
+   "es": "Los diagramas muestran dónde se detuvieron los proyectos de cada uno de los últimos diez períodos, a partir del mismo registro que lee el recorrido de aprobación de la página de un proyecto, de modo que un proyecto está en un solo lugar en el diagrama, en su página y en la tabla de abajo. Murió se divide en lo que puso fin a cada proyecto, con las palabras del propio registro.",
    "state": "draft"
   },
   "nums.p_how": {
@@ -24302,9 +24222,14 @@
    "es": "En el período {term}, el pleno siguió la recomendación de su comité con mucha más frecuencia de la que no la siguió. Se cuenta aquí: el informe de comité de cada proyecto en cada cámara, frente a la primera moción adoptada en el pleno de esa cámara que decidió el proyecto allí &mdash;aprobarlo, &ldquo;inoportuno legislar&rdquo; (<span lang=\"en\">inexpedient to legislate</span>) o posposición indefinida, o estudio interino&mdash;.",
    "state": "draft"
   },
-  "nums.p_rates": {
-   "en": "Of the House and Senate bills a committee reported on in {term}, whatever it recommended, the share that passed both chambers and the share that became law. A bill two committees of a chamber reported on counts in both; committees with ten bills or more. A Senate committee's House bills had already passed the House, and the other way round, so compare committees within a chamber rather than across.",
-   "es": "De los proyectos de ley de la Cámara y del Senado sobre los que informó un comité en {term}, sin importar lo que recomendó: la proporción que fue aprobada por ambas cámaras y la proporción que pasó a ser ley. Un proyecto sobre el que informaron dos comités de una cámara cuenta en ambos; se incluyen los comités con diez proyectos o más. Los proyectos de la Cámara que llegan a un comité del Senado ya habían sido aprobados por la Cámara, y viceversa, así que conviene comparar los comités dentro de una misma cámara y no entre cámaras.",
+  "nums.p_passed": {
+   "en": "Every House and Senate bill that passed both chambers in the same text and so went to the governor, by term. Amended: either chamber adopted an amendment to it first, or a committee of conference settled the two chambers' versions; the Enrolled Bills Committee's technical corrections after passage are not counted as amendments. The four columns on the right are the number of amendments the two chambers adopted to each bill before it went to the governor: an amendment withdrawn or defeated after its adoption does not count, nor does a committee of conference's report. From 2007 every adoption the docket records carries the amendment's number. Before 1999 it rarely does, and each amendment a line names counts once, so the terms marked * are the figures to read with care.",
+   "es": "Todo proyecto de ley de la Cámara y del Senado que fue aprobado por ambas cámaras con el mismo texto y por eso pasó al gobernador, por período. Con enmiendas: una de las cámaras adoptó antes una enmienda, o un comité de conferencia concilió las versiones de las dos cámaras; las correcciones técnicas del comité de proyectos enrolados después de la aprobación no cuentan como enmiendas. Las cuatro columnas de la derecha son el número de enmiendas que las dos cámaras adoptaron a cada proyecto antes de que pasara al gobernador: una enmienda retirada o rechazada después de adoptarse no cuenta, ni tampoco el informe de un comité de conferencia. Desde 2007 cada adopción que anota el registro de trámites lleva el número de la enmienda. Antes de 1999 rara vez lo lleva, y cada enmienda que nombra una línea cuenta una vez, así que los períodos marcados con * son las cifras que hay que leer con cuidado.",
+   "state": "draft"
+  },
+  "nums.p_passed2": {
+   "en": "Across all {terms} terms, {pct} of the {n} bills that passed both chambers were amended or went to conference, and {none} took no amendment at all.",
+   "es": "En los {terms} períodos, {pct} de los {n} proyectos aprobados por ambas cámaras fueron enmendados o pasaron a conferencia, y {none} no recibió ninguna enmienda.",
    "state": "draft"
   },
   "nums.p_rates2": {
@@ -24312,19 +24237,9 @@
    "es": "En {term}, {lines}.",
    "state": "draft"
   },
-  "nums.p_refs": {
-   "en": "For each committee of the last ten terms: how many bills its chamber sent it first, as each bill's page names its committee, and how many it received after another committee of the same chamber had them &mdash; most often Finance or Ways and Means, for a bill that spends or raises money. Every numbered measure counts, resolutions included.",
-   "es": "Para cada comité de los últimos diez períodos: cuántos proyectos le remitió primero su cámara, según el comité que nombra la página de cada proyecto, y cuántos recibió después de que otro comité de la misma cámara los tuviera &mdash;con más frecuencia <span lang=\"en\">Finance</span> o <span lang=\"en\">Ways and Means</span>, en un proyecto que gasta o recauda dinero&mdash;. Cuenta toda medida numerada, incluidas las resoluciones.",
-   "state": "draft"
-  },
   "nums.p_signins": {
    "en": "Anyone may use the House's online form to say they support or oppose a bill, or are neutral on it, at its committee hearing. These are the twenty hearings with the most of those sign-ins in the {term} term: one bill on one House committee date, with the title it had when it was heard. A sign-in is a position registered, not a vote and not a person counted: one person may sign in on many bills, nobody is sampled, and an organized appeal can bring thousands. The busiest hearings were seldom closely divided: {lop} of these {n} drew nine in ten sign-ins or more on one side, and {against} drew more against the bill than for it. So the tables show where turnout was largest, not where opinion was split, and not what the committee decided. Senate hearings are not on this form.",
    "es": "Cualquier persona puede usar el formulario en línea de la Cámara para decir que apoya un proyecto de ley, que se opone o que es neutral, en la audiencia de su comité. Estas son las veinte audiencias con más de esas inscripciones en el período {term}: un proyecto en la fecha de un comité de la Cámara, con el título que tenía cuando se lo escuchó. Una inscripción es una posición registrada, no un voto ni una persona contada: una misma persona puede inscribirse en muchos proyectos, nadie es una muestra, y una campaña organizada puede traer miles. Las audiencias más concurridas rara vez estuvieron muy divididas: {lop} de estas {n} recibieron nueve de cada diez inscripciones o más de un mismo lado, y {against} recibieron más en contra del proyecto que a favor. Así que las tablas muestran dónde hubo más participación, no dónde se dividió la opinión, ni lo que decidió el comité. Las audiencias del Senado no usan este formulario.",
-   "state": "draft"
-  },
-  "nums.p_takes": {
-   "en": "The same bills, by the number of amendments the two chambers adopted to each before it went to the governor: an amendment withdrawn or defeated after its adoption does not count, nor does a committee of conference's report. From 2007 every adoption the docket records carries the amendment's number. Before 1999 it rarely does, and each amendment a line names counts once, so three or more is the figure there to read with care.",
-   "es": "Los mismos proyectos, según el número de enmiendas que adoptaron las dos cámaras a cada uno antes de que pasara al gobernador: una enmienda retirada o rechazada después de adoptarse no cuenta, ni tampoco el informe de un comité de conferencia. Desde 2007, cada adopción que registra el expediente lleva el número de la enmienda. Antes de 1999 rara vez lo lleva, y cada enmienda que nombra una línea cuenta una vez, así que la cifra de tres o más debe leerse con cuidado.",
    "state": "draft"
   },
   "nums.p_vetoes": {
@@ -24365,6 +24280,141 @@
   "nums.senate": {
    "en": "Senate",
    "es": "Senado",
+   "state": "draft"
+  },
+  "nums.sk_cleared_first": {
+   "en": "Cleared the first chamber",
+   "es": "Superaron la primera cámara",
+   "state": "draft"
+  },
+  "nums.sk_conferees": {
+   "en": "conferees could not agree",
+   "es": "los conferenciantes no llegaron a un acuerdo",
+   "state": "draft"
+  },
+  "nums.sk_filed": {
+   "en": "Bills filed",
+   "es": "Proyectos presentados",
+   "state": "draft"
+  },
+  "nums.sk_first": {
+   "en": "Stopped in the first chamber",
+   "es": "Se detuvieron en la primera cámara",
+   "state": "draft"
+  },
+  "nums.sk_fold": {
+   "en": "{term}: {filed} bills, {law} became law",
+   "es": "{term}: {filed} proyectos, {law} pasaron a ser ley",
+   "state": "draft"
+  },
+  "nums.sk_killed": {
+   "en": "killed (ITL)",
+   "es": "rechazados (ITL)",
+   "state": "draft"
+  },
+  "nums.sk_law": {
+   "en": "became law",
+   "es": "pasaron a ser ley",
+   "state": "draft"
+  },
+  "nums.sk_moving": {
+   "en": "still moving",
+   "es": "aún en trámite",
+   "state": "draft"
+  },
+  "nums.sk_nogov": {
+   "en": "Never reached the governor",
+   "es": "Nunca llegaron al gobernador",
+   "state": "draft"
+  },
+  "nums.sk_noversion": {
+   "en": "chambers did not agree on a version",
+   "es": "las cámaras no acordaron una versión",
+   "state": "draft"
+  },
+  "nums.sk_other": {
+   "en": "other endings",
+   "es": "otros desenlaces",
+   "state": "draft"
+  },
+  "nums.sk_p": {
+   "en": "Of the {filed} House and Senate bills of {term}, {s1} stopped in the first chamber and {s2} in the second. {nog} passed both chambers and never reached the governor, and {g} reached the governor: {law} became law and {veto} were vetoed with the veto standing. {carried} of the {filed} were carried over from the first year to the second, which changes when a bill ended and not how. Not counted here: the {res} resolutions and constitutional amendments of the term.",
+   "es": "De los {filed} proyectos de ley de la Cámara y del Senado de {term}, {s1} se detuvieron en la primera cámara y {s2} en la segunda. {nog} fueron aprobados por ambas cámaras y nunca llegaron al gobernador, y {g} llegaron al gobernador: {law} pasaron a ser ley y {veto} fueron vetados y el veto se mantuvo. {carried} de los {filed} pasaron del primer año al segundo, lo que cambia cuándo terminó un proyecto y no cómo. No se cuentan aquí las {res} resoluciones y enmiendas constitucionales del período.",
+   "state": "draft"
+  },
+  "nums.sk_passed_both": {
+   "en": "Cleared the second chamber",
+   "es": "Superaron la segunda cámara",
+   "state": "draft"
+  },
+  "nums.sk_postponed": {
+   "en": "indefinitely postponed",
+   "es": "aplazados indefinidamente",
+   "state": "draft"
+  },
+  "nums.sk_reached": {
+   "en": "Reached the governor",
+   "es": "Llegaron al gobernador",
+   "state": "draft"
+  },
+  "nums.sk_rejected": {
+   "en": "conference report rejected",
+   "es": "informe de conferencia rechazado",
+   "state": "draft"
+  },
+  "nums.sk_said": {
+   "en": "Flow diagram of the {filed} House and Senate bills of the {term} term: {s1} stopped in the first chamber, {s2} in the second, {nog} cleared both chambers and never reached the governor, and {g} reached the governor, {law} of which became law. The figures are in the table below.",
+   "es": "Diagrama de flujo de los {filed} proyectos de ley de la Cámara y del Senado del período {term}: {s1} se detuvieron en la primera cámara, {s2} en la segunda, {nog} superaron ambas cámaras y nunca llegaron al gobernador, y {g} llegaron al gobernador, de los cuales {law} pasaron a ser ley. Las cifras están en la tabla de abajo.",
+   "state": "draft"
+  },
+  "nums.sk_second": {
+   "en": "Stopped in the second chamber",
+   "es": "Se detuvieron en la segunda cámara",
+   "state": "draft"
+  },
+  "nums.sk_session": {
+   "en": "died when the session ended",
+   "es": "murieron al terminar la sesión",
+   "state": "draft"
+  },
+  "nums.sk_stage": {
+   "en": "Where it stood",
+   "es": "Dónde quedó",
+   "state": "draft"
+  },
+  "nums.sk_study": {
+   "en": "sent to interim study",
+   "es": "enviados a estudio interino",
+   "state": "draft"
+  },
+  "nums.sk_table": {
+   "en": "The same figures as a table",
+   "es": "Las mismas cifras en una tabla",
+   "state": "draft"
+  },
+  "nums.sk_tabled": {
+   "en": "died on the table",
+   "es": "murieron sobre la mesa",
+   "state": "draft"
+  },
+  "nums.sk_title": {
+   "en": "{name}: {n} bills ({pct}% of the {total})",
+   "es": "{name}: {n} proyectos ({pct}% de los {total})",
+   "state": "draft"
+  },
+  "nums.sk_unclassified": {
+   "en": "not classified",
+   "es": "sin clasificar",
+   "state": "draft"
+  },
+  "nums.sk_veto": {
+   "en": "veto stood",
+   "es": "veto mantenido",
+   "state": "draft"
+  },
+  "nums.sk_withdrawn": {
+   "en": "withdrawn or not introduced",
+   "es": "retirados o no presentados",
    "state": "draft"
   },
   "nums.sort_by": {

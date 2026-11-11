@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.378 */
+/* GRANITE_VERSION: 2026-09-07.379 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -5367,6 +5367,55 @@ th[aria-sort=ascending] .l-sort-i{
 th[aria-sort=descending] .l-sort-i{
   -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 8 12%22%3E%3Cpath d=%22M4 9L0 3H8z%22/%3E%3C/svg%3E");
   mask-image:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 8 12%22%3E%3Cpath d=%22M4 9L0 3H8z%22/%3E%3C/svg%3E")}
+/* THE FLOW DIAGRAM (learn_numbers.sankey_svg): static SVG in the status
+   chips' own tokens, so it follows the light and dark themes with the rest.
+   Ribbons are the destination's colour at less than half strength with a
+   surface-coloured edge for the gap between them; a node is its colour at
+   full strength; labels are ink with a surface halo, never the series
+   colour. On a phone it scrolls sideways rather than shrinking past
+   reading, and its table is in the fold under it. */
+.l-folds.is-wide{max-width:none}
+.l-sk{margin:.5rem 0 .75rem}
+.l-skwrap{overflow-x:auto;padding:.25rem 0 .5rem;-webkit-overflow-scrolling:touch}
+.l-skwrap > svg{display:block;width:100%;min-width:44rem;height:auto;font:400 12px/1 var(--sans)}
+.sk .sk-r{stroke:var(--surface);stroke-width:1.5;fill-opacity:.45}
+.sk .sk-r.n{fill:var(--ink-2);fill-opacity:.16}
+.sk .sk-n{fill:var(--ink-2)}
+.sk .sk-law{fill:var(--st-law)} .sk .sk-done{fill:var(--st-done)} .sk .sk-study{fill:var(--st-study)}
+.sk .sk-table{fill:var(--st-table)} .sk .sk-veto{fill:var(--st-veto)} .sk .sk-active{fill:var(--st-active)}
+.sk .sk-rest{fill:var(--rule-2)}
+.sk text{fill:var(--ink);paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round}
+.sk .sk-v{font-weight:600;font-variant-numeric:tabular-nums}
+.sk .sk-n.sk-rest,.sk .sk-r.sk-rest{fill:var(--ink-2);fill-opacity:.55}
+/* THE OTHER CHARTS (learn_numbers._chart and its callers). Neutral tones for
+   the two chambers and two shapes, a filled circle and an open diamond:
+   never --rep, --dem or --ind, which mean a party here and nowhere else
+   (preflight holds this). Gridlines are hairlines; the text is ink with the
+   figure's halo; a bar's segments are 1.5px apart. */
+.l-ch{max-width:none;margin:.75rem 0 1rem}
+.l-ch figcaption{font:600 var(--t-ui)/1.35 var(--sans);color:var(--ink);margin:0 0 .5rem}
+.l-ch > p{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:.25rem 0 0}
+.l-ch .l-barkey{margin:0 0 .5rem}
+.ch .ax{stroke:var(--rule);stroke-width:1}
+.ch .sk-ink{fill:var(--ink-2)} .ch .sk-pine{fill:var(--pine)} .ch .sk-rest{fill:var(--rule-2)}
+.ch .ch-h{fill:var(--ink-2)}
+.ch .ch-s{fill:var(--surface);stroke:var(--ink-2);stroke-width:1.6}
+.ch .ln{fill:none;stroke-width:1.8}
+.ch .ln-ink{stroke:var(--ink-2)} .ch .ln-pine{stroke:var(--pine)}
+.ch .ln-dot{stroke:var(--surface);stroke-width:1}
+.ch .ln-dot.ln-ink{fill:var(--ink-2)} .ch .ln-dot.ln-pine{fill:var(--pine)}
+.c-ink{background:var(--ink-2)} .c-pine{background:var(--pine)} .c-done{background:var(--st-done)}
+.c-h{background:var(--ink-2)}
+.c-s{background:var(--surface);box-shadow:inset 0 0 0 1.6px var(--ink-2)}
+.l-sw.is-circle{border-radius:50%}
+.l-sw.is-diamond{transform:rotate(45deg) scale(.72);border-radius:1px}
+.pos{display:block;width:100%;max-width:6.5rem;height:.4375rem;margin-top:.3125rem}
+.pos.yes{height:.75rem}
+.pos-ink{fill:var(--ink-2)} .pos-rest{fill:var(--rule-2)} .pos-pine{fill:var(--pine)}
+.pos-rule{stroke:var(--ink);stroke-width:1.4}
+.l-ind{display:inline-block;padding-left:calc(var(--d,0) * 1.125rem)}
+.l-twin td:first-child{font-weight:400}
+@media (forced-colors:active){.sk .sk-n,.sk .sk-r{forced-color-adjust:none;fill:CanvasText}.sk text{fill:CanvasText;stroke:Canvas}}
 .l-sortlive{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 @media (forced-colors:active){.l-sort-i{forced-color-adjust:none;background:CanvasText;opacity:1}}
 .l-folds{max-width:var(--l-meas);margin:.75rem 0 1rem}
