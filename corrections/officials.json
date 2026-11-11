@@ -66,7 +66,7 @@
     "member 373332; his page is Hillsborough 37, Hudson's district). His chip is",
     "neutral, as a commissioner's role is."
   ],
-  "_checked": "2026-09-09",
+  "_checked": "2026-11-10",
   "governor": {
     "office": "Governor of New Hampshire",
     "scope": "statewide",
@@ -94,7 +94,17 @@
         "name": "Joseph D. Kenney",
         "party": "R",
         "phone": "",
-        "official_url": "https://www.council.nh.gov/district-1"
+        "official_url": "https://www.council.nh.gov/district-1",
+        "elect": {
+          "name": "Luz Bay",
+          "party": "D",
+          "phone": "",
+          "official_url": "https://www.council.nh.gov/district-1",
+          "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+          "takes_office": "2027-01-06",
+          "source": "records/sources/2026-ge-executive-council-1.xlsx (the Secretary of State's 2026 general election results)",
+          "read": "2026-11-10"
+        }
       },
       "2": {
         "name": "Karen Liot Hill",
@@ -106,19 +116,49 @@
         "name": "Janet Stevens",
         "party": "R",
         "phone": "",
-        "official_url": "https://www.council.nh.gov/district-3"
+        "official_url": "https://www.council.nh.gov/district-3",
+        "elect": {
+          "name": "Lisa Kennedy Sheldon",
+          "party": "D",
+          "phone": "",
+          "official_url": "https://www.council.nh.gov/district-3",
+          "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+          "takes_office": "2027-01-06",
+          "source": "records/sources/2026-ge-executive-council-3.xlsx (the Secretary of State's 2026 general election results)",
+          "read": "2026-11-10"
+        }
       },
       "4": {
         "name": "John Stephen",
         "party": "R",
         "phone": "",
-        "official_url": "https://www.council.nh.gov/district-4"
+        "official_url": "https://www.council.nh.gov/district-4",
+        "elect": {
+          "name": "Jim O'Connell",
+          "party": "D",
+          "phone": "",
+          "official_url": "https://www.council.nh.gov/district-4",
+          "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+          "takes_office": "2027-01-06",
+          "source": "records/sources/2026-ge-executive-council-4.xlsx (the Secretary of State's 2026 general election results)",
+          "read": "2026-11-10"
+        }
       },
       "5": {
         "name": "David K. Wheeler",
         "party": "R",
         "phone": "",
-        "official_url": "https://www.council.nh.gov/district-5"
+        "official_url": "https://www.council.nh.gov/district-5",
+        "elect": {
+          "name": "Melanie Levesque",
+          "party": "D",
+          "phone": "",
+          "official_url": "https://www.council.nh.gov/district-5",
+          "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+          "takes_office": "2027-01-06",
+          "source": "records/sources/2026-ge-executive-council-5.xlsx (the Secretary of State's 2026 general election results)",
+          "read": "2026-11-10"
+        }
       }
     }
   },
@@ -137,7 +177,17 @@
         "phone": "(603) 285-4300",
         "phone_dc": "(202) 225-5456",
         "official_url": "https://pappas.house.gov",
-        "source": "https://pappas.house.gov states NH-01"
+        "source": "https://pappas.house.gov states NH-01",
+        "elect": {
+          "name": "Stefany Shaheen",
+          "party": "D",
+          "phone": "",
+          "official_url": "https://www.house.gov/representatives",
+          "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+          "takes_office": "2027-01-03",
+          "source": "records/sources/2026-ge-congressional-district-1.xlsx (the Secretary of State's 2026 general election results)",
+          "read": "2026-11-10"
+        }
       },
       "2": {
         "name": "Maggie Goodlander",
@@ -163,7 +213,17 @@
         "party": "D",
         "phone": "(603) 647-7500",
         "phone_dc": "(202) 224-2841",
-        "official_url": "https://shaheen.senate.gov"
+        "official_url": "https://shaheen.senate.gov",
+        "elect": {
+          "name": "Chris Pappas",
+          "party": "D",
+          "phone": "",
+          "official_url": "https://www.senate.gov/states/NH/intro.htm",
+          "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+          "takes_office": "2027-01-03",
+          "source": "records/sources/2026-ge-us-senator-summary.xlsx (the Secretary of State's 2026 general election results)",
+          "read": "2026-11-10"
+        }
       },
       {
         "name": "Maggie Hassan",
@@ -453,7 +513,17 @@
           "source": "records/sources/sos-county-roster-2025-2026.pdf, page 1 (the Secretary of State's COUNTY ROSTER 2025-2026)",
           "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
           "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "read": "2026-10-09",
+          "elect": {
+            "name": "Travis J. O'Hara",
+            "office": "County Treasurer",
+            "phone": "",
+            "email": "",
+            "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+            "takes_office": "2027-01-06",
+            "source": "records/sources/2026-ge-county-offices-belknap.xlsx (the Secretary of State's 2026 general election results)",
+            "read": "2026-11-10"
+          }
         },
         "register_of_deeds": {
           "name": "Laura Lapointe",
@@ -475,7 +545,17 @@
           "source": "records/sources/sos-county-roster-2025-2026.pdf, page 1 (the Secretary of State's COUNTY ROSTER 2025-2026)",
           "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
           "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "read": "2026-10-09",
+          "elect": {
+            "name": "Krystie Sullivan",
+            "office": "Register of Probate",
+            "phone": "",
+            "email": "",
+            "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+            "takes_office": "2027-01-06",
+            "source": "records/sources/2026-ge-county-offices-belknap.xlsx (the Secretary of State's 2026 general election results)",
+            "read": "2026-11-10"
+          }
         }
       },
       "Carroll": {
@@ -494,7 +574,20 @@
             "source": "records/sources/sos-county-roster-2025-2026.pdf, page 2 (the Secretary of State's COUNTY ROSTER 2025-2026)",
             "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
             "as_of": "2024-12-05",
-            "read": "2026-10-09"
+            "read": "2026-10-09",
+            "elect": {
+              "name": "Gene G. Chandler",
+              "office": "County Commissioner, District 1",
+              "district": "1",
+              "party": "R",
+              "party_as_printed": "REP",
+              "phone": "",
+              "email": "",
+              "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+              "takes_office": "2027-01-06",
+              "source": "records/sources/2026-ge-county-offices-carroll.xlsx (the Secretary of State's 2026 general election results)",
+              "read": "2026-11-10"
+            }
           },
           "2": {
             "name": "Charles M. McGee",
@@ -508,7 +601,20 @@
             "source": "records/sources/sos-county-roster-2025-2026.pdf, page 2 (the Secretary of State's COUNTY ROSTER 2025-2026)",
             "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
             "as_of": "2024-12-05",
-            "read": "2026-10-09"
+            "read": "2026-10-09",
+            "elect": {
+              "name": "Tom Randell",
+              "office": "County Commissioner, District 2",
+              "district": "2",
+              "party": "D",
+              "party_as_printed": "DEM",
+              "phone": "",
+              "email": "",
+              "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+              "takes_office": "2027-01-06",
+              "source": "records/sources/2026-ge-county-offices-carroll.xlsx (the Secretary of State's 2026 general election results)",
+              "read": "2026-11-10"
+            }
           },
           "3": {
             "name": "Harold B. Parker",
@@ -522,7 +628,20 @@
             "source": "records/sources/sos-county-roster-2025-2026.pdf, page 2 (the Secretary of State's COUNTY ROSTER 2025-2026)",
             "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
             "as_of": "2024-12-05",
-            "read": "2026-10-09"
+            "read": "2026-10-09",
+            "elect": {
+              "name": "Michael Parton",
+              "office": "County Commissioner, District 3",
+              "district": "3",
+              "party": "D",
+              "party_as_printed": "DEM",
+              "phone": "",
+              "email": "",
+              "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+              "takes_office": "2027-01-06",
+              "source": "records/sources/2026-ge-county-offices-carroll.xlsx (the Secretary of State's 2026 general election results)",
+              "read": "2026-11-10"
+            }
           }
         },
         "sheriff": {
@@ -578,7 +697,17 @@
           "source": "records/sources/sos-county-roster-2025-2026.pdf, page 2 (the Secretary of State's COUNTY ROSTER 2025-2026)",
           "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
           "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "read": "2026-10-09",
+          "elect": {
+            "name": "Steve Woodcock",
+            "office": "Register of Probate",
+            "phone": "",
+            "email": "",
+            "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+            "takes_office": "2027-01-06",
+            "source": "records/sources/2026-ge-county-offices-carroll.xlsx (the Secretary of State's 2026 general election results)",
+            "read": "2026-11-10"
+          }
         }
       },
       "Cheshire": {
@@ -597,7 +726,20 @@
             "source": "records/sources/sos-county-roster-2025-2026.pdf, page 3 (the Secretary of State's COUNTY ROSTER 2025-2026)",
             "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
             "as_of": "2024-12-05",
-            "read": "2026-10-09"
+            "read": "2026-10-09",
+            "elect": {
+              "name": "Benjamin Tilton",
+              "office": "County Commissioner, District 1",
+              "district": "1",
+              "party": "D",
+              "party_as_printed": "DEM",
+              "phone": "",
+              "email": "",
+              "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+              "takes_office": "2027-01-06",
+              "source": "records/sources/2026-ge-county-offices-cheshire.xlsx (the Secretary of State's 2026 general election results)",
+              "read": "2026-11-10"
+            }
           },
           "2": {
             "name": "Terry M. Clark",
@@ -700,7 +842,20 @@
             "source": "records/sources/sos-county-roster-2025-2026.pdf, page 3 (the Secretary of State's COUNTY ROSTER 2025-2026)",
             "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
             "as_of": "2024-12-05",
-            "read": "2026-10-09"
+            "read": "2026-10-09",
+            "elect": {
+              "name": "Eamon Kelley",
+              "office": "County Commissioner, District 1",
+              "district": "1",
+              "party": "D",
+              "party_as_printed": "DEM",
+              "phone": "",
+              "email": "",
+              "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+              "takes_office": "2027-01-06",
+              "source": "records/sources/2026-ge-county-offices-coos.xlsx (the Secretary of State's 2026 general election results)",
+              "read": "2026-11-10"
+            }
           },
           "2": {
             "name": "Thomas M. Brady",
@@ -803,7 +958,20 @@
             "source": "records/sources/sos-county-roster-2025-2026.pdf, page 4 (the Secretary of State's COUNTY ROSTER 2025-2026)",
             "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
             "as_of": "2024-12-05",
-            "read": "2026-10-09"
+            "read": "2026-10-09",
+            "elect": {
+              "name": "George Sykes",
+              "office": "County Commissioner, District 1",
+              "district": "1",
+              "party": "D",
+              "party_as_printed": "DEM",
+              "phone": "",
+              "email": "",
+              "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+              "takes_office": "2027-01-06",
+              "source": "records/sources/2026-ge-county-offices-grafton.xlsx (the Secretary of State's 2026 general election results)",
+              "read": "2026-11-10"
+            }
           },
           "2": {
             "name": "Martha Stroup McLeod",
@@ -876,7 +1044,17 @@
           "source": "records/sources/sos-county-roster-2025-2026.pdf, page 4 (the Secretary of State's COUNTY ROSTER 2025-2026)",
           "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
           "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "read": "2026-10-09",
+          "elect": {
+            "name": "Brie Choate",
+            "office": "Register of Deeds",
+            "phone": "",
+            "email": "",
+            "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+            "takes_office": "2027-01-06",
+            "source": "records/sources/2026-ge-county-offices-grafton.xlsx (the Secretary of State's 2026 general election results)",
+            "read": "2026-11-10"
+          }
         },
         "register_of_probate": {
           "name": "Charles Townsend",
@@ -887,7 +1065,17 @@
           "source": "records/sources/sos-county-roster-2025-2026.pdf, page 4 (the Secretary of State's COUNTY ROSTER 2025-2026)",
           "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
           "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "read": "2026-10-09",
+          "elect": {
+            "name": "Sharon Modjeska",
+            "office": "Register of Probate",
+            "phone": "",
+            "email": "",
+            "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+            "takes_office": "2027-01-06",
+            "source": "records/sources/2026-ge-county-offices-grafton.xlsx (the Secretary of State's 2026 general election results)",
+            "read": "2026-11-10"
+          }
         }
       },
       "Hillsborough": {
@@ -906,7 +1094,20 @@
             "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
             "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
             "as_of": "2024-12-05",
-            "read": "2026-10-09"
+            "read": "2026-10-09",
+            "elect": {
+              "name": "Pierre A. Cetoute",
+              "office": "County Commissioner, District 1",
+              "district": "1",
+              "party": "D",
+              "party_as_printed": "DEM",
+              "phone": "",
+              "email": "",
+              "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+              "takes_office": "2027-01-06",
+              "source": "records/sources/2026-ge-county-offices-hillsborough.xlsx (the Secretary of State's 2026 general election results)",
+              "read": "2026-11-10"
+            }
           },
           "2": {
             "name": "Michael Soucy",
@@ -920,7 +1121,20 @@
             "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
             "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
             "as_of": "2024-12-05",
-            "read": "2026-10-09"
+            "read": "2026-10-09",
+            "elect": {
+              "name": "Sherry Dutzy",
+              "office": "County Commissioner, District 2",
+              "district": "2",
+              "party": "D",
+              "party_as_printed": "DEM",
+              "phone": "",
+              "email": "",
+              "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+              "takes_office": "2027-01-06",
+              "source": "records/sources/2026-ge-county-offices-hillsborough.xlsx (the Secretary of State's 2026 general election results)",
+              "read": "2026-11-10"
+            }
           },
           "3": {
             "name": "Robert H. Rowe",
@@ -934,7 +1148,20 @@
             "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
             "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
             "as_of": "2024-12-05",
-            "read": "2026-10-09"
+            "read": "2026-10-09",
+            "elect": {
+              "name": "Julie Radhakrishnan",
+              "office": "County Commissioner, District 3",
+              "district": "3",
+              "party": "D",
+              "party_as_printed": "DEM",
+              "phone": "",
+              "email": "",
+              "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+              "takes_office": "2027-01-06",
+              "source": "records/sources/2026-ge-county-offices-hillsborough.xlsx (the Secretary of State's 2026 general election results)",
+              "read": "2026-11-10"
+            }
           }
         },
         "sheriff": {
@@ -958,7 +1185,17 @@
           "source": "records/sources/sos-county-roster-2025-2026.pdf, page 4 (the Secretary of State's COUNTY ROSTER 2025-2026)",
           "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
           "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "read": "2026-10-09",
+          "elect": {
+            "name": "Travis Bennett",
+            "office": "County Attorney",
+            "phone": "",
+            "email": "",
+            "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+            "takes_office": "2027-01-06",
+            "source": "records/sources/2026-ge-county-offices-hillsborough.xlsx (the Secretary of State's 2026 general election results)",
+            "read": "2026-11-10"
+          }
         },
         "treasurer": {
           "name": "David G. Fredette",
@@ -969,7 +1206,17 @@
           "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
           "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
           "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "read": "2026-10-09",
+          "elect": {
+            "name": "Beverly Cotton",
+            "office": "County Treasurer",
+            "phone": "",
+            "email": "",
+            "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+            "takes_office": "2027-01-06",
+            "source": "records/sources/2026-ge-county-offices-hillsborough.xlsx (the Secretary of State's 2026 general election results)",
+            "read": "2026-11-10"
+          }
         },
         "register_of_deeds": {
           "name": "Dennis Hogan",
@@ -980,7 +1227,17 @@
           "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
           "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
           "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "read": "2026-10-09",
+          "elect": {
+            "name": "Mary Ann Crowell",
+            "office": "Register of Deeds",
+            "phone": "",
+            "email": "",
+            "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+            "takes_office": "2027-01-06",
+            "source": "records/sources/2026-ge-county-offices-hillsborough.xlsx (the Secretary of State's 2026 general election results)",
+            "read": "2026-11-10"
+          }
         },
         "register_of_probate": {
           "name": "Christopher Maidment",
@@ -991,7 +1248,17 @@
           "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
           "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
           "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "read": "2026-10-09",
+          "elect": {
+            "name": "June Trisciani",
+            "office": "Register of Probate",
+            "phone": "",
+            "email": "",
+            "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+            "takes_office": "2027-01-06",
+            "source": "records/sources/2026-ge-county-offices-hillsborough.xlsx (the Secretary of State's 2026 general election results)",
+            "read": "2026-11-10"
+          }
         }
       },
       "Merrimack": {
@@ -1024,7 +1291,20 @@
             "source": "records/sources/sos-county-roster-2025-2026.pdf, page 6 (the Secretary of State's COUNTY ROSTER 2025-2026)",
             "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
             "as_of": "2024-12-05",
-            "read": "2026-10-09"
+            "read": "2026-10-09",
+            "elect": {
+              "name": "Vincent S. Ribas",
+              "office": "County Commissioner, District 2",
+              "district": "2",
+              "party": "D",
+              "party_as_printed": "DEM",
+              "phone": "",
+              "email": "",
+              "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+              "takes_office": "2027-01-06",
+              "source": "records/sources/2026-ge-county-offices-merrimack.xlsx (the Secretary of State's 2026 general election results)",
+              "read": "2026-11-10"
+            }
           },
           "3": {
             "name": "David Lovlien, Jr.",
@@ -1050,7 +1330,17 @@
           "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
           "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
           "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "read": "2026-10-09",
+          "elect": {
+            "name": "Peter Shephard",
+            "office": "Sheriff",
+            "phone": "",
+            "email": "",
+            "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+            "takes_office": "2027-01-06",
+            "source": "records/sources/2026-ge-county-offices-merrimack.xlsx (the Secretary of State's 2026 general election results)",
+            "read": "2026-11-10"
+          }
         },
         "county_attorney": {
           "name": "Paul Halvorsen",
@@ -1061,7 +1351,17 @@
           "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
           "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
           "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "read": "2026-10-09",
+          "elect": {
+            "name": "Meg Hagaman",
+            "office": "County Attorney",
+            "phone": "",
+            "email": "",
+            "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+            "takes_office": "2027-01-06",
+            "source": "records/sources/2026-ge-county-offices-merrimack.xlsx (the Secretary of State's 2026 general election results)",
+            "read": "2026-11-10"
+          }
         },
         "treasurer": {
           "name": "Mary R. Heath",
@@ -1072,7 +1372,17 @@
           "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
           "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
           "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "read": "2026-10-09",
+          "elect": {
+            "name": "Kathleen Donnelly",
+            "office": "County Treasurer",
+            "phone": "",
+            "email": "",
+            "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+            "takes_office": "2027-01-06",
+            "source": "records/sources/2026-ge-county-offices-merrimack.xlsx (the Secretary of State's 2026 general election results)",
+            "read": "2026-11-10"
+          }
         },
         "register_of_deeds": {
           "name": "Samantha Morse",
@@ -1083,7 +1393,17 @@
           "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
           "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
           "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "read": "2026-10-09",
+          "elect": {
+            "name": "Erica S. Davis",
+            "office": "Register of Deeds",
+            "phone": "",
+            "email": "",
+            "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+            "takes_office": "2027-01-06",
+            "source": "records/sources/2026-ge-county-offices-merrimack.xlsx (the Secretary of State's 2026 general election results)",
+            "read": "2026-11-10"
+          }
         },
         "register_of_probate": {
           "name": "Jane Bradstreet",
@@ -1175,7 +1495,17 @@
           "source": "records/sources/sos-county-roster-2025-2026.pdf, page 6 (the Secretary of State's COUNTY ROSTER 2025-2026)",
           "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
           "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "read": "2026-10-09",
+          "elect": {
+            "name": "Kevin Coyle",
+            "office": "County Treasurer",
+            "phone": "",
+            "email": "",
+            "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+            "takes_office": "2027-01-06",
+            "source": "records/sources/2026-ge-county-offices-rockingham.xlsx (the Secretary of State's 2026 general election results)",
+            "read": "2026-11-10"
+          }
         },
         "register_of_deeds": {
           "name": "Cathy Stacey",
@@ -1197,7 +1527,17 @@
           "source": "records/sources/sos-county-roster-2025-2026.pdf, page 6 (the Secretary of State's COUNTY ROSTER 2025-2026)",
           "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
           "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "read": "2026-10-09",
+          "elect": {
+            "name": "Douglas Marino",
+            "office": "Register of Probate",
+            "phone": "",
+            "email": "",
+            "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+            "takes_office": "2027-01-06",
+            "source": "records/sources/2026-ge-county-offices-rockingham.xlsx (the Secretary of State's 2026 general election results)",
+            "read": "2026-11-10"
+          }
         }
       },
       "Strafford": {
@@ -1217,7 +1557,20 @@
             "source_url": "https://straffordcounty.gov/images/UploadedFiles/Commisioners/Delegation_Documents/2025-2026%20Strafford%20County%20Officials.pdf",
             "as_of": "2026-11-06",
             "read": "2026-11-06",
-            "note": "In Joe Pitre's place (R, Farmington; the Secretary of State's COUNTY ROSTER 2025-2026, page 7), after a resignation between elections. Neither county source gives her district or the day she took the seat: District 1 is the seat Pitre held, the holders of Districts 2 and 3 being unchanged. Added at the owner's word, 7 November 2026."
+            "note": "In Joe Pitre's place (R, Farmington; the Secretary of State's COUNTY ROSTER 2025-2026, page 7), after a resignation between elections. Neither county source gives her district or the day she took the seat: District 1 is the seat Pitre held, the holders of Districts 2 and 3 being unchanged. Added at the owner's word, 7 November 2026.",
+            "elect": {
+              "name": "John Frank Scruton",
+              "office": "County Commissioner, District 1",
+              "district": "1",
+              "party": "D",
+              "party_as_printed": "DEM",
+              "phone": "",
+              "email": "",
+              "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+              "takes_office": "2027-01-06",
+              "source": "records/sources/2026-ge-county-offices-strafford.xlsx (the Secretary of State's 2026 general election results)",
+              "read": "2026-11-10"
+            }
           },
           "2": {
             "name": "George Maglaras",
@@ -1245,7 +1598,20 @@
             "source": "records/sources/sos-county-roster-2025-2026.pdf, page 7 (the Secretary of State's COUNTY ROSTER 2025-2026)",
             "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
             "as_of": "2024-12-05",
-            "read": "2026-10-09"
+            "read": "2026-10-09",
+            "elect": {
+              "name": "Heath Howard",
+              "office": "County Commissioner, District 3",
+              "district": "3",
+              "party": "D",
+              "party_as_printed": "DEM",
+              "phone": "",
+              "email": "",
+              "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+              "takes_office": "2027-01-06",
+              "source": "records/sources/2026-ge-county-offices-strafford.xlsx (the Secretary of State's 2026 general election results)",
+              "read": "2026-11-10"
+            }
           }
         },
         "sheriff": {
@@ -1320,7 +1686,20 @@
             "source": "records/sources/sos-county-roster-2025-2026.pdf, page 8 (the Secretary of State's COUNTY ROSTER 2025-2026)",
             "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
             "as_of": "2024-12-05",
-            "read": "2026-10-09"
+            "read": "2026-10-09",
+            "elect": {
+              "name": "Benjamin Nelson",
+              "office": "County Commissioner, District 1",
+              "district": "1",
+              "party": "D",
+              "party_as_printed": "DEM",
+              "phone": "",
+              "email": "",
+              "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+              "takes_office": "2027-01-06",
+              "source": "records/sources/2026-ge-county-offices-sullivan.xlsx (the Secretary of State's 2026 general election results)",
+              "read": "2026-11-10"
+            }
           },
           "2": {
             "name": "Bennie Nelson",
@@ -1334,7 +1713,20 @@
             "source": "records/sources/sos-county-roster-2025-2026.pdf, page 8 (the Secretary of State's COUNTY ROSTER 2025-2026)",
             "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
             "as_of": "2024-12-05",
-            "read": "2026-10-09"
+            "read": "2026-10-09",
+            "elect": {
+              "name": "Jim Bednar",
+              "office": "County Commissioner, District 2",
+              "district": "2",
+              "party": "D",
+              "party_as_printed": "DEM",
+              "phone": "",
+              "email": "",
+              "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+              "takes_office": "2027-01-06",
+              "source": "records/sources/2026-ge-county-offices-sullivan.xlsx (the Secretary of State's 2026 general election results)",
+              "read": "2026-11-10"
+            }
           },
           "3": {
             "name": "George Hebert",
@@ -1360,7 +1752,17 @@
           "source": "records/sources/sos-county-roster-2025-2026.pdf, page 7 (the Secretary of State's COUNTY ROSTER 2025-2026)",
           "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
           "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "read": "2026-10-09",
+          "elect": {
+            "name": "James Ethan Yazinski",
+            "office": "Sheriff",
+            "phone": "",
+            "email": "",
+            "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+            "takes_office": "2027-01-06",
+            "source": "records/sources/2026-ge-county-offices-sullivan.xlsx (the Secretary of State's 2026 general election results)",
+            "read": "2026-11-10"
+          }
         },
         "county_attorney": {
           "name": "Christine Hilliard",
@@ -1404,7 +1806,17 @@
           "source": "records/sources/sos-county-roster-2025-2026.pdf, page 8 (the Secretary of State's COUNTY ROSTER 2025-2026)",
           "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
           "as_of": "2024-12-05",
-          "read": "2026-10-09"
+          "read": "2026-10-09",
+          "elect": {
+            "name": "Loren David Howard",
+            "office": "Register of Probate",
+            "phone": "",
+            "email": "",
+            "source_url": "https://www.sos.nh.gov/2026-general-election-results",
+            "takes_office": "2027-01-06",
+            "source": "records/sources/2026-ge-county-offices-sullivan.xlsx (the Secretary of State's 2026 general election results)",
+            "read": "2026-11-10"
+          }
         }
       }
     }
