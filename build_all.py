@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.92
+# GRANITE_VERSION: 2026-09-05.93
 """
 Run the whole pipeline in the right order.
 
@@ -1172,6 +1172,18 @@ def plan(a):
                   "tables and the feeds. It runs in the pipeline rather than "
                   "by hand because an export nobody rebuilds is worse than "
                   "no export: it looks current and is not"),
+
+        # THE LIVE NOW REHEARSAL: ON THE BRANCH live/rehearsal ONLY, which
+        # never merges into dev, so a dry run of the branch builds it and the
+        # night never does (the laptop manager, 8 November 2026). Last, after
+        # the bulk downloads, whose data/rollcalls.csv gives the docket's
+        # outcomes, and after /live and the session pages it draws with.
+        Step("Live Now rehearsed: each state on past sittings, for review on the preview",
+             ["build_live_rehearsal.py", "--site", "site", "--base", a.base],
+             needs=["site/data/manifest.json", "site/live.html"],
+             produces=["site/live/rehearse/index.html"],
+             note="noindex, unlisted pages at /live/rehearse/, each a state of Live Now at a past "
+                  "moment, read from the record in git; never on main"),
     ]
 
 

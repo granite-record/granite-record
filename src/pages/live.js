@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.20
+// GRANITE_VERSION: 2026-10-30.21
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -1101,12 +1101,32 @@ L.onePlayer = function (doc) {
 
 if (typeof module === "object" && module.exports) module.exports = L;
 else root.GRLive = L;
+// THE REHEARSAL (live/rehearsal only, which never merges): a page that
+// build_live_rehearsal.py writes sets window.GR_REHEARSE = {now, files}, and
+// the page then runs at that moment on files of the record: each address the
+// page would ask (/api/live/streams, /api/live/votes/<date>) is the file the
+// rehearsal names for it, and any other is a 404, so a rehearsal page asks
+// the live API nothing. No other page sets it.
+L.rehearsal = function (R) {
+  if (!R || !R.now) return undefined;
+  var at = Date.parse(R.now);
+  return {
+    now: function () { return at; },
+    fetch: function (url, init) {
+      var f = R.files && R.files[String(url).split("?")[0]];
+      if (!f) return Promise.resolve({ status: 404, ok: false, headers: { get: function () { return null; } },
+                                       json: function () { return Promise.resolve(null); } });
+      return root.fetch(f, init);
+    }
+  };
+};
 if (root && root.document && root.document.getElementById) {
-  if (root.document.getElementById("live-now-streams")) L.start(root.document);
-  if (root.document.getElementById("live-day")) L.startDay(root.document);
-  if (root.document.getElementById("live-votes")) L.startOverlay(root.document);
+  var rehearse = L.rehearsal(root.GR_REHEARSE);
+  if (root.document.getElementById("live-now-streams")) L.start(root.document, rehearse);
+  if (root.document.getElementById("live-day")) L.startDay(root.document, rehearse);
+  if (root.document.getElementById("live-votes")) L.startOverlay(root.document, rehearse);
   if (root.document.getElementById("live-now")) {
-    L.startCommittee(root.document);
+    L.startCommittee(root.document, rehearse);
     L.onePlayer(root.document);
   }
 }

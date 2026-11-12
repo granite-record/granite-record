@@ -765,6 +765,21 @@ test("the morning page polls only on its own day, and a finished day is asked no
   } finally { p.stop(); }
 });
 
+test("the rehearsal (live/rehearsal only): a page's GR_REHEARSE fixes the moment, maps each address to its file, and asks the live API nothing else", async () => {
+  assert.equal(L.rehearsal(undefined), undefined, "a page without it runs as it would");
+  assert.equal(L.rehearsal({ files: {} }), undefined, "no moment, no rehearsal");
+  const asked = [];
+  const c2 = load({ fetch: async (url, init) => { asked.push(url); return { status: 200, ok: true, url }; } });
+  const R = c2.GRLive.rehearsal({ now: "2026-08-19T15:50:00Z",
+    files: { "/api/live/streams": "/live/rehearse/files/c/streams.json" } });
+  assert.equal(R.now(), Date.parse("2026-08-19T15:50:00Z"));
+  await R.fetch("/api/live/streams?x=1", {});
+  assert.deepEqual(asked, ["/live/rehearse/files/c/streams.json"], "the address's file, its query ignored");
+  const r = await R.fetch("/api/live/votes/2026-08-20", {});
+  assert.equal(r.status, 404, "an address the rehearsal names no file for is a 404");
+  assert.equal(asked.length, 1, "and is never asked of the server");
+});
+
 test("live.js starts the morning page by itself where the page has #live-day, and asks nothing on a page without one", async () => {
   for (const [ids, want] of [[true, ["/api/live/votes/2027-01-07"]], [false, []]]) {
     const pg = dayPage();
