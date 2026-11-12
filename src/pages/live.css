@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-10-30.9 */
+/* GRANITE_VERSION: 2026-10-30.10 */
 /* LIVE NOW'S OWN RULES (/live, src/pages/live.js). Only .lv* classes, drawn in
    the site's tokens (app.css), so both themes work and nothing here reaches
    another page. The player and its stub are the site's own (.player, .pstub);
@@ -10,6 +10,11 @@
 /* The morning page: a card added for a bill voted on and not on the calendar
    says so, in the status line's quiet voice. */
 .lv-offcal{font-size:var(--t-ui);color:var(--ink-2);margin:0 0 var(--sp-3)}
+/* The morning page's "Votes on No Bill" is hidden until a vote on no bill is
+   read; app.css's .w4{display:grid} outweighs the browser's [hidden], so the
+   empty heading showed at desktop width (found in the rehearsal, 12 November
+   2026). */
+.lvday .w4[hidden]{display:none}
 /* A bill not yet voted on: the motion it stands on, until its first vote. */
 .lv-pending{font-size:var(--t-ui);color:var(--ink);margin:var(--sp-3) 0 0;max-width:46rem}
 .lv-streams{display:grid;gap:var(--sp-5)}
