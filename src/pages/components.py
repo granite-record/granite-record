@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.30
+# GRANITE_VERSION: 2026-10-09.31
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -68,8 +68,14 @@ if not WORDBOOK:
                       "pages say: the chips, the kinds of meeting, the votes, the glossary")
 
 
-# esc: components.js's esc, exactly (src/lib/htmlesc.py says why it is not shell.E).
-from htmlesc import esc  # noqa: E402,F401
+import htmlesc  # noqa: E402
+
+
+def esc(s):
+    """components.js's esc, exactly: the one in src/lib/htmlesc.py (which says
+    why it is not shell.E). Kept as a name here because the Python/browser
+    parity check looks for every components.js helper in this module."""
+    return htmlesc.esc(s)
 
 
 # DATEWORDS:START

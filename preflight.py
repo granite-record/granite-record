@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.872
+# GRANITE_VERSION: 2026-09-04.873
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -131536,6 +131536,7 @@ def _shared_helpers_one_home():
         "src/parse/officers.py": "a day, through proceedings.vote_term",
         "src/pages/legislative_year.py": "a date, through proceedings.term_on",
         "nightly.py": "the workflow-command escape, not HTML",
+        "src/pages/components.py": "esc is a one-line call of htmlesc.esc, named for the parity check",
     }
     # these read the odd year as a number, never as a term string
     START_YEAR = {"src/parse/member_links.py", "src/parse/narrative.py"}
