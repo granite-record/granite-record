@@ -1,0 +1,320 @@
+{
+ "2016": {
+  "checks": {
+   "a candidate's towns sum to the race's total": {
+    "held": 655,
+    "disagree": 0
+   },
+   "a column's towns sum to the file's Totals": {
+    "held": 455,
+    "disagree": 1
+   },
+   "a race's places are its towns": {
+    "held": 179,
+    "disagree": 0
+   },
+   "every candidate in the rows is in the race": {
+    "held": 179,
+    "disagree": 0
+   },
+   "every race has rows": {
+    "held": 1,
+    "disagree": 0
+   },
+   "every row carries a count and its source": {
+    "held": 2002,
+    "disagree": 0
+   },
+   "row ids are unique": {
+    "held": 2002,
+    "disagree": 0
+   },
+   "the scattered write-ins sum to the race's": {
+    "held": 132,
+    "disagree": 0
+   }
+  },
+  "disagreements": [
+   {
+    "check": "a column's towns sum to the file's Totals",
+    "what": "H|Merrimack|21 scatter (write_ins_scattered, first): the towns add up to 5, the file's Totals say 1",
+    "where": "2016-ge-house-merrimack.xls, sheet 'merrimack rep', row 99"
+   }
+  ],
+  "kinds": {
+   "candidate": 1614,
+   "write_in_named": 4,
+   "write_ins_scattered": 384
+  },
+  "town_rows": 2002,
+  "printed_totals": 455
+ },
+ "2018": {
+  "checks": {
+   "a candidate's towns sum to the race's total": {
+    "held": 804,
+    "disagree": 0
+   },
+   "a column's towns sum to the file's Totals": {
+    "held": 556,
+    "disagree": 3
+   },
+   "a race's places are its towns": {
+    "held": 228,
+    "disagree": 0
+   },
+   "every candidate in the rows is in the race": {
+    "held": 228,
+    "disagree": 0
+   },
+   "every race has rows": {
+    "held": 1,
+    "disagree": 0
+   },
+   "every row carries a count and its source": {
+    "held": 3189,
+    "disagree": 0
+   },
+   "row ids are unique": {
+    "held": 3189,
+    "disagree": 0
+   },
+   "the scattered write-ins sum to the race's": {
+    "held": 190,
+    "disagree": 0
+   }
+  },
+  "disagreements": [
+   {
+    "check": "a column's towns sum to the file's Totals",
+    "what": "H|Coos|7 Merner (candidate, first): the towns add up to 2,672, the file's Totals say 1,950",
+    "where": "2018-ge-house-coos.xls, sheet 'coos', row 78"
+   },
+   {
+    "check": "a column's towns sum to the file's Totals",
+    "what": "H|Coos|7 Fountain (candidate, first): the towns add up to 2,347, the file's Totals say 1,728",
+    "where": "2018-ge-house-coos.xls, sheet 'coos', row 78"
+   },
+   {
+    "check": "a column's towns sum to the file's Totals",
+    "what": "H|Coos|7 scatter (write_ins_scattered, first): the towns add up to 10, the file's Totals say 7",
+    "where": "2018-ge-house-coos.xls, sheet 'coos', row 78"
+   }
+  ],
+  "kinds": {
+   "candidate": 2548,
+   "write_in_named": 60,
+   "write_ins_scattered": 581
+  },
+  "town_rows": 3189,
+  "printed_totals": 558
+ },
+ "2020": {
+  "checks": {
+   "a candidate's towns sum to the race's total": {
+    "held": 831,
+    "disagree": 0
+   },
+   "a column's towns sum to the file's Totals": {
+    "held": 611,
+    "disagree": 1
+   },
+   "a race's places are its towns": {
+    "held": 228,
+    "disagree": 0
+   },
+   "every candidate in the rows is in the race": {
+    "held": 228,
+    "disagree": 0
+   },
+   "every race has rows": {
+    "held": 1,
+    "disagree": 0
+   },
+   "every row carries a count and its source": {
+    "held": 3363,
+    "disagree": 0
+   },
+   "row ids are unique": {
+    "held": 3363,
+    "disagree": 0
+   },
+   "the scattered write-ins sum to the race's": {
+    "held": 226,
+    "disagree": 0
+   }
+  },
+  "disagreements": [
+   {
+    "check": "a column's towns sum to the file's Totals",
+    "what": "H|Strafford|18 scatter (write_ins_scattered, first): the towns add up to 11, the file's Totals say 10",
+    "where": "2020-ge-house-strafford.xls, sheet 'strafford', row 91"
+   }
+  ],
+  "kinds": {
+   "candidate": 2526,
+   "write_in_named": 3,
+   "write_ins_scattered": 834
+  },
+  "town_rows": 3363,
+  "printed_totals": 611
+ },
+ "2022": {
+  "checks": {
+   "a candidate's towns sum to the race's total": {
+    "held": 821,
+    "disagree": 0
+   },
+   "a column's towns sum to the file's Totals": {
+    "held": 583,
+    "disagree": 1
+   },
+   "a race's places are its towns": {
+    "held": 227,
+    "disagree": 0
+   },
+   "a race's places are the district table's": {
+    "held": 227,
+    "disagree": 0
+   },
+   "every candidate in the rows is in the race": {
+    "held": 227,
+    "disagree": 0
+   },
+   "every race has rows": {
+    "held": 1,
+    "disagree": 0
+   },
+   "every row carries a count and its source": {
+    "held": 3381,
+    "disagree": 0
+   },
+   "row ids are unique": {
+    "held": 3381,
+    "disagree": 0
+   },
+   "the scattered write-ins sum to the race's": {
+    "held": 196,
+    "disagree": 0
+   }
+  },
+  "disagreements": [
+   {
+    "check": "a column's towns sum to the file's Totals",
+    "what": "H|Rockingham|32 scatter (write_ins_scattered, first): the towns add up to 5, the file's Totals say 3",
+    "where": "2022-ge-house-rockingham_7.xls, sheet 'rrockrep', row 115"
+   }
+  ],
+  "kinds": {
+   "candidate": 2656,
+   "write_in_named": 3,
+   "write_ins_scattered": 722
+  },
+  "town_rows": 3381,
+  "printed_totals": 583
+ },
+ "2024": {
+  "checks": {
+   "a candidate's towns sum to the race's total": {
+    "held": 779,
+    "disagree": 0
+   },
+   "a column's towns sum to the file's Totals": {
+    "held": 817,
+    "disagree": 0
+   },
+   "a race's places are its towns": {
+    "held": 227,
+    "disagree": 0
+   },
+   "a race's places are the district table's": {
+    "held": 227,
+    "disagree": 0
+   },
+   "every candidate in the rows is in the race": {
+    "held": 227,
+    "disagree": 0
+   },
+   "every race has rows": {
+    "held": 1,
+    "disagree": 0
+   },
+   "every row carries a count and its source": {
+    "held": 4811,
+    "disagree": 0
+   },
+   "row ids are unique": {
+    "held": 4811,
+    "disagree": 0
+   },
+   "the scattered write-ins sum to the race's": {
+    "held": 226,
+    "disagree": 0
+   }
+  },
+  "disagreements": [],
+  "kinds": {
+   "candidate": 2358,
+   "overvotes": 810,
+   "undervotes": 821,
+   "write_in_named": 1,
+   "write_ins_scattered": 821
+  },
+  "town_rows": 4811,
+  "printed_totals": 817
+ },
+ "2026": {
+  "checks": {
+   "a candidate's towns sum to the race's total": {
+    "held": 760,
+    "disagree": 0
+   },
+   "a column's towns sum to the file's Totals": {
+    "held": 529,
+    "disagree": 1
+   },
+   "a race's places are its towns": {
+    "held": 227,
+    "disagree": 0
+   },
+   "a race's places are the district table's": {
+    "held": 227,
+    "disagree": 0
+   },
+   "every candidate in the rows is in the race": {
+    "held": 227,
+    "disagree": 0
+   },
+   "every race has rows": {
+    "held": 1,
+    "disagree": 0
+   },
+   "every row carries a count and its source": {
+    "held": 3070,
+    "disagree": 0
+   },
+   "row ids are unique": {
+    "held": 3070,
+    "disagree": 0
+   },
+   "the scattered write-ins sum to the race's": {
+    "held": 226,
+    "disagree": 0
+   }
+  },
+  "disagreements": [
+   {
+    "check": "a column's towns sum to the file's Totals",
+    "what": "H|Grafton|9 Ella V. Barrett (candidate, first): the towns add up to 1,240, the file's Totals say 1,152",
+    "where": "2026-ge-house-grafton.xlsx, sheet 'rgrafrep', row 50"
+   }
+  ],
+  "kinds": {
+   "candidate": 2283,
+   "write_in_named": 5,
+   "write_ins_scattered": 782
+  },
+  "town_rows": 3070,
+  "printed_totals": 529
+ }
+}

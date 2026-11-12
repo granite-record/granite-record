@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.7
+# GRANITE_VERSION: 2026-10-17.8
 """
 The Secretary of State's count of one general election's State Representative
 and State Senate races, read into collected/election_<year>.json.
@@ -98,6 +98,7 @@ from collections import Counter, defaultdict
 from html.parser import HTMLParser
 
 import build_members_elect as BME
+import election_town_rows as ETR
 import state_settings as ST
 
 SOURCES = Path("records") / "sources"
@@ -511,6 +512,11 @@ class Block:
         # {candidate: the Totals row's figure} where a candidate's towns do not
         # add up to it in the 2016-2022 layout (see read, and district).
         self.disputed = {}
+        # (entity index, 0 or 1, the Totals row's figure, its where) of every
+        # column a Totals row printed a figure for: kept, with the town rows,
+        # so that the two can be tied out again from what is written
+        # (election_town_rows.tie_out).
+        self.printed = []
         # (entity, 0 for the count or 1 for its recount) that a Totals row held.
         self.held = set()
         # (path, sheet name) of the file the block is read from, for its
@@ -635,6 +641,7 @@ class Block:
                 self.blank_scatter = kept
                 if said is None:
                     continue
+                self.printed.append((i, k, said, where))
                 # AN EMPTY CELL THE TOTALS ACCOUNT FOR IS NOUGHT (17 October
                 # 2026). Senate 3's Madison prints no write-ins in 2024 and
                 # the district's Totals say 19, which the other towns make
@@ -767,6 +774,8 @@ def district(blocks, seats, where):
     if len(again) > 1:
         raise Refused(f"{where}: more than one block of recount figures")
 
+    trows, printed = [], []
+
     def counts(group):
         # `nought`: the towns whose empty cell of a count a Totals row
         # accounted for, which is then nought where no block prints it.
@@ -775,6 +784,11 @@ def district(blocks, seats, where):
         single = None
         for b in group:
             got = b.read(single)
+            # THE TOWN ROWS ARE KEPT (12 November 2026): every town's and
+            # ward's count of every column, with the row it was read from.
+            # Nothing below reads them back; the race totals are the sums
+            # this function makes, and the Totals rows' figures go with them.
+            keep_rows(b, got, single, trows, printed)
             if towns is None:
                 towns = list(got)
                 single = towns[0] if len(towns) == 1 else None
@@ -815,6 +829,8 @@ def district(blocks, seats, where):
 
     towns, cands, scatter, recounted = counts(first)
     if again:
+        for r in trows + printed:
+            r["in_race_count"] = False
         t2, c2, s2, _ = counts(again)
         if set(t2) != set(towns) or {c["name"] for c in c2} != {c["name"] for c in cands}:
             raise Refused(f"{again[0].where}: the recount's towns or candidates are not the "
@@ -837,7 +853,65 @@ def district(blocks, seats, where):
     return {"towns": towns, "candidates": shown,
             "scatter": scatter, "recounted": recounted,
             "blank_scatter": sum(b.blank_scatter for b in blocks),
-            "notes": [n for b in blocks for n in b.notes]}
+            "notes": [n for b in blocks for n in b.notes],
+            "town_rows": trows, "printed_totals": printed}
+
+
+ROW_N = re.compile(r"^(?P<file>.+?), sheet (?P<q>['\"])(?P<sheet>.*)(?P=q), row (?P<row>\d+)$")
+
+
+def keep_rows(b, got, single, trows, printed):
+    """Append to `trows` a record for every count `got` (Block.read's answer
+    for block `b`) holds, and to `printed` one for every figure the block's
+    Totals row printed. A count is `in_race_count` where the race's own
+    figure is made of it: the recount's where the column has one, the first
+    count's otherwise; the figures a recount replaced are kept, marked not.
+    `single` is the district's one town, for a row that names none."""
+    recount_block = b.recount_figures
+    header = int(ROW_N.match(b.where).group("row"))
+
+    def entity(e):
+        if "meta" in e:
+            return {"under": "undervotes", "over": "overvotes",
+                    "scatter": "write_ins_scattered"}[e["meta"]], e["meta"], ""
+        return ("write_in_named" if e["write_in"] else "candidate"), e["name"], e["party"]
+    place = {}
+    for town, _row, where in b.rows:
+        place[town if town is not None else single] = where
+    for i, e in enumerate(b.ents):
+        kind, name, party = entity(e)
+        for town, v in got.items():
+            for k in (0, 1):
+                if k == 1 and e["recount"] is None:
+                    continue
+                n = v[i][k]
+                if n is None:
+                    continue
+                where = place[town]
+                if k == 1 and b.recount_row is not None:
+                    where = b.recount_row[1]
+                m = ROW_N.match(where)
+                trows.append({
+                    "place": town, "candidate": name, "party": party, "row_kind": kind,
+                    "votes": n, "block": "recount_figures" if recount_block else "count",
+                    "count_kind": "recount" if (k == 1 or recount_block) else "first",
+                    "in_race_count": (k == 1) if e["recount"] is not None else True,
+                    "blc": e.get("blc") is not None,
+                    "header_row": header,
+                    "source_file": m.group("file"), "source_sheet": m.group("sheet"),
+                    "source_row": int(m.group("row"))})
+    for i, k, said, where in b.printed:
+        e = b.ents[i]
+        kind, name, party = entity(e)
+        m = ROW_N.match(where)
+        printed.append({
+            "candidate": name, "party": party, "row_kind": kind, "printed_total": said,
+            "block": "recount_figures" if recount_block else "count",
+            "count_kind": "recount" if (k == 1 or recount_block) else "first",
+            "in_race_count": (k == 1) if e["recount"] is not None else True,
+            "blc": e.get("blc") is not None, "header_row": header,
+            "source_file": m.group("file"), "source_sheet": m.group("sheet"),
+            "source_row": int(m.group("row"))})
 
 
 def elect(cands, seats, where, scatter=None):
@@ -1379,8 +1453,14 @@ def read_all(root, year, districts, saved=None, url=None, partial=False, registr
                      "longer serves the files), so no State Senate race is here and none is filled "
                      "from another source.")
 
+    kept = []
+
     def settle(key, rec, seats, flo, where):
         blanks[where.split(",")[0]] += rec.get("blank_scatter") or 0
+        # The race's town rows and printed Totals, with the place's spelling in
+        # the district table where the year has one (`spelt`, filled below).
+        spelt = {}
+        kept.append((key, rec, spelt))
         if not held:
             races[key] = {"seats": seats, "floterial": False, "towns": sorted(rec["towns"]),
                           "candidates": rec["candidates"], "scatter": rec["scatter"]}
@@ -1399,6 +1479,8 @@ def read_all(root, year, districts, saved=None, url=None, partial=False, registr
         for town in rec["towns"]:
             p = places.get(place_key(town))
             (towns if p else unknown).append(p or town)
+            if p:
+                spelt[town] = p
         # ONE MISSPELT PLACE IS READ, AND FLAGGED, WHERE IT CAN BE NOTHING ELSE
         # (17 October 2026). The 2024 Rockingham file names district 10's
         # towns "Newfield" and Newmarket; the table's are Newfields and
@@ -1411,6 +1493,7 @@ def read_all(root, year, districts, saved=None, url=None, partial=False, registr
             notes.append(f"{where}: the file names {unknown[0]!r}, read as {left[0]}, the one "
                          f"place of {key} it names no other way")
             towns.append(left[0])
+            spelt[unknown[0]] = left[0]
         elif unknown:
             raise Refused(f"{where}: {', '.join(map(repr, unknown))} "
                           + ("is no place" if len(unknown) == 1 else "are no places")
@@ -1508,6 +1591,11 @@ def read_all(root, year, districts, saved=None, url=None, partial=False, registr
             "races": {k: races[k] for k in sorted(races, key=BME.race_order)}}
     if notes:
         doc["_notes"] = notes
+    # The town rows and the printed Totals travel beside the document, not in
+    # it: dumps() writes the keys it knows, so collected/election_<year>.json
+    # is what it was, and election_town_rows writes these into their own files.
+    doc["_town_rows"] = [(k, rec["town_rows"], rec["printed_totals"], spelt)
+                         for k, rec, spelt in kept]
     if files["missing"] or files["senate_missing"]:
         # What the Secretary of State's site no longer serves, said where the
         # pages can say it: the counties with no House file, and the Senate.
@@ -1644,6 +1732,15 @@ def main():
     except Refused as e:
         print(f"REFUSED: {e}", file=sys.stderr)
         return 1
+    # THE TOWN ROWS (12 November 2026): the tidy tables, and the tie-out of
+    # them, which election_town_rows holds; the results file is not touched.
+    rows, totals = ETR.tables(doc, BME.general_election(a.year))
+    result = ETR.tie_out(rows, totals, doc["races"],
+                         BME.races_on_file(districts)[0] if districts is not None else None)
+    result = dict(result, town_rows=len(rows), printed_totals=len(totals))
+    texts = {ETR.town_path(a.year, out.parent.parent): ETR.to_csv(rows, ETR.TOWN_COLUMNS),
+             ETR.totals_path(a.year, out.parent.parent): ETR.to_csv(totals, ETR.TOTAL_COLUMNS)}
+    tie_path = out.parent / ETR.TIEOUT.name
     if a.check:
         try:
             committed = json.loads(out.read_text(encoding="utf-8"))
@@ -1651,6 +1748,17 @@ def main():
             print(f"REFUSED: {out.as_posix()} will not read: {e}", file=sys.stderr)
             return 1
         diff = differences(doc, committed)
+        for path, text in texts.items():
+            # A checkout on Windows may turn \n into \r\n; the rows are the same.
+            if not path.is_file() or path.read_text(encoding="utf-8") != text:
+                diff.append(f"{path.as_posix()}: not what the saved files say")
+        try:
+            tied = json.loads(tie_path.read_text(encoding="utf-8")).get(str(a.year))
+        except (OSError, ValueError):
+            tied = None
+        if tied != result:
+            diff.append(f"{tie_path.as_posix()}: the tie-out of {a.year} is not what the saved "
+                        "files give")
         if diff:
             print(f"{out.as_posix()} is not what the saved files say ({len(diff)}):",
                   file=sys.stderr)
@@ -1658,9 +1766,25 @@ def main():
                 print(f"  {d}", file=sys.stderr)
             return 1
         print(f"{out.as_posix()} is what the saved files say. " + summary(doc))
+        print("  " + ETR.summary(a.year, rows, totals, result))
         return 0
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(dumps(doc), encoding="utf-8")
+    for path, text in texts.items():
+        with open(path, "w", encoding="utf-8", newline="") as f:
+            f.write(text)
+    # One file for every year, and a writer of it merges: a year run alone
+    # leaves the others as they were.
+    try:
+        tied = json.loads(tie_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        tied = {}
+    tied[str(a.year)] = result
+    tie_path.write_text(json.dumps(dict(sorted(tied.items())), ensure_ascii=False, indent=1)
+                        + "\n", encoding="utf-8")
+    print("  " + ETR.summary(a.year, rows, totals, result))
+    for d in result["disagreements"]:
+        print(f"  DISAGREES ({d['check']}): {d['what']} [{d['where']}]")
     for n in doc.get("_notes") or []:
         print(f"FLAGGED: {n}")
     print(f"wrote {out.as_posix()}: " + summary(doc))
