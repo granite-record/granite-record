@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.33
+// GRANITE_VERSION: 2026-10-09.34
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -242,7 +242,6 @@ var ICONS={
     '<path d="M9 11.75h6.5M9 15h6.5M9 18.25h4"/>',
   person:'<circle cx="12" cy="7.75" r="3.75"/>'+
     '<path d="M4.5 20.75c.9-4.25 3.8-6.5 7.5-6.5s6.6 2.25 7.5 6.5"/>',
-  committee:'<circle cx="6.25" cy="8.25" r="2.25"/><circle cx="12" cy="6.5" r="2.25"/><circle cx="17.75" cy="8.25" r="2.25"/><path d="M2.75 13.25h18.5"/><path d="M5.25 13.25v7.5M18.75 13.25v7.5"/>',
   book:'<path d="M12 6.75C9.6 5 6.6 4.6 3.25 5.25v13.5c3.35-.65 6.35-.25 8.75 1.5 '+
     '2.4-1.75 5.4-2.15 8.75-1.5V5.25C17.4 4.6 14.4 5 12 6.75z"/><path d="M12 6.75v13.5"/>',
   calendar:'<rect x="3.5" y="4.75" width="17" height="16" rx="1.5"/>'+
@@ -263,7 +262,6 @@ var ICONS={
   share:'<path d="M12 15V3.25"/><path d="M7.75 7.5 12 3.25l4.25 4.25"/>'+
     '<path d="M8.75 10.75h-3v10h12.5v-10h-3"/>',
   search:'<circle cx="10.5" cy="10.5" r="6.25"/><path d="M15.25 15.25l5 5"/>',
-  close:'<path d="M6 6l12 12M18 6L6 18"/>',
   play:'<path fill="currentColor" stroke="none" d="M8 5.5v13l10.5-6.5z"/>',
   globe:'<circle cx="12" cy="12" r="8.75"/><path d="M3.25 12h17.5"/>'+
     '<path d="M12 3.25c2.4 2.4 3.6 5.3 3.6 8.75s-1.2 6.35-3.6 8.75c-2.4-2.4-3.6-5.3-3.6-8.75'+

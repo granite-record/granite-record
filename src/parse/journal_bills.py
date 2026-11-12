@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-30.9
+# GRANITE_VERSION: 2026-09-30.10
 """
 The bills the House withdrew, read from the House Journal itself.
 
@@ -1070,32 +1070,6 @@ def introduction_resolutions(root=ROOT, years=()):
                             "numbered": {k: sorted(v) for k, v in numbered.items()},
                             "words": words})
     return out
-
-
-def resolution_reading(resolutions, bid):
-    """What the resolutions say of one measure, or None where they say nothing.
-
-    {"introduced": True, ...} with the resolution that names its number;
-    {"introduced": False, ...} where none names it and one steps over it --
-    names numbers of its kind on both sides of it in one list, as "31 through
-    86, 88 through 133" steps over 87. A number past the end of every list is
-    not stepped over, and nothing is said of it."""
-    m = re.match(r"^([A-Z]+)(\d+)$", bid or "")
-    if not m:
-        return None
-    kind, n = m.group(1), int(m.group(2))
-
-    def cite(r, introduced):
-        return {"introduced": introduced, "date": r["date"], "journal": r["journal"],
-                "numbered": r["words"].get(kind, ""), "file": r["file"], "line": r["line"]}
-    for r in resolutions:
-        if any(a <= n <= b for a, b in r["numbered"].get(kind, ())):
-            return cite(r, True)
-    for r in resolutions:
-        rs = r["numbered"].get(kind, [])
-        if any(b < n < c for (_a, b), (c, _d) in zip(rs, rs[1:])):
-            return cite(r, False)
-    return None
 
 
 # ------------------------------------------------------------------ --check --

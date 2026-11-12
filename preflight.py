@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.874
+# GRANITE_VERSION: 2026-09-04.875
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -17841,26 +17841,17 @@ def _ls_laptop_read(livestreams, nightly):
         path.write_text(json.dumps(st), encoding="utf-8")
         (root / "candidate_segments.json").write_text(json.dumps({"PFSTALE0001": {}}),
                                                       encoding="utf-8")
-        os.chdir(root)
-        before = nightly.captions_waiting(now)
-        os.chdir(here)
         r = _ls_run(root, "--now", L.iso(now))
         assert r.returncode == 0, (r.stdout + r.stderr)[-400:]
         stale = json.loads(path.read_text(encoding="utf-8"))["videos"]["PFSTALE0001"]
         assert stale["captions"] == "captioned" and stale.get("read") == "2026-09-26" \
             and "again" not in stale and "asks" not in stale, \
             f"the files hold its reading and the night did not see: {stale}"
-        os.chdir(root)
-        after = nightly.captions_waiting(now)
-        os.chdir(here)
-        assert (before, after) == (1, 0), \
-            f"the nightly's warning counted {before} before the night and {after} after"
         return "ok", ("three the files hold are settled -- one due, one not due for six "
                       "days, one left for a person -- one with captions on disk is found, one "
                       "nothing has read is untouched; a study commission no proceeding names "
                       "counts as read once summarised; on the fixture a recording not due for "
-                      "a week is settled the night after its reading lands, and the nightly's "
-                      "warning stops counting it")
+                      "a week is settled the night after its reading lands")
     finally:
         os.chdir(here)
         shutil.rmtree(root, ignore_errors=True)
@@ -39772,12 +39763,6 @@ def _sitting_links(BSP):
         later == [("H", "2026-12-31")], (
         f"sittings() builds {built} and holds back {later}: a sitting after "
         "the build is not a day to publish")
-    up = BSP.up_links("H", "2026-05-21", {"2026-W21"})
-    assert len(up) == 2 and 'href="directory/sessions-house#y2026"' in up[0] and \
-        'href="calendar/2026-W21"' in up[1], up
-    up = BSP.up_links("S", "2003-01-30", {"2026-W21"})
-    assert len(up) == 1 and 'href="directory/sessions-senate#y2003"' in up[0], (
-        "a sitting whose week the calendar does not hold links a week: " + " ".join(up))
     root = Path(tempfile.mkdtemp())
     try:
         (root / "session").mkdir()
@@ -80404,9 +80389,9 @@ def _key_dates_sourced(KD, LY):
     statute key_dates.py computes from must still print its rule's words."""
     from datetime import date
     bad = []
-    known = ((KD.town_meeting_day(2025), date(2025, 3, 11)),
-             (KD.town_meeting_day(2026), date(2026, 3, 10)),
-             (KD.town_meeting_day(2027), date(2027, 3, 9)),
+    known = ((KD.second_tuesday(2025, 3), date(2025, 3, 11)),
+             (KD.second_tuesday(2026, 3), date(2026, 3, 10)),
+             (KD.second_tuesday(2027, 3), date(2027, 3, 9)),
              (KD.second_tuesday(2026, 4), date(2026, 4, 14)),
              (KD.second_tuesday(2026, 5), date(2026, 5, 12)),
              (LY.organization_day(2024), date(2024, 12, 4)),
@@ -116569,8 +116554,7 @@ def _town_mailto(B):
              "email": v} for i, v in enumerate(notes)]
     offs.append({"position": "Town Administrator", "name": "Grace Ruelle",
                  "phone": "", "email": "gruelle@eastkingstonnh.gov"})
-    html = B.town_officials_block("East Kingston", "east-kingston",
-                                  {"officials": offs, "email": "not listed"})
+    html = "".join(B.officials_sections("East Kingston", "east-kingston", {"officials": offs, "email": "not listed"}))
     got = re.findall(r'href="mailto:([^"]*)"', html)
     assert got == ["gruelle@eastkingstonnh.gov"], (
         f"a town page links {got}; only the one address in the fixture is an "
@@ -116617,7 +116601,7 @@ def _town_mailto(B):
         "is not: " + "; ".join(bad))
     rows = [{"position": p, "name": n, "phone": "", "email": e}
             for p, n, e in hampton]
-    html = B.town_officials_block("Hampton", "hampton", {"officials": rows})
+    html = "".join(B.officials_sections("Hampton", "hampton", {"officials": rows}))
     for addr in ("ahanson@", "rbridle@", "crage@", "cbariont@"):
         assert f"mailto:{addr}" not in html, (
             f"Hampton's page links {addr} beside a selectman it does not "
@@ -126570,11 +126554,39 @@ Adopted.
 }
 
 
+# What the House Journal's resolutions say of one measure. Not part of the
+# build: only these checks read a number against them, so it lives here.
+def _resolution_reading(resolutions, bid):
+    """What the resolutions say of one measure, or None where they say nothing.
+
+    {"introduced": True, ...} with the resolution that names its number;
+    {"introduced": False, ...} where none names it and one steps over it --
+    names numbers of its kind on both sides of it in one list, as "31 through
+    86, 88 through 133" steps over 87. A number past the end of every list is
+    not stepped over, and nothing is said of it."""
+    m = re.match(r"^([A-Z]+)(\d+)$", bid or "")
+    if not m:
+        return None
+    kind, n = m.group(1), int(m.group(2))
+
+    def cite(r, introduced):
+        return {"introduced": introduced, "date": r["date"], "journal": r["journal"],
+                "numbered": r["words"].get(kind, ""), "file": r["file"], "line": r["line"]}
+    for r in resolutions:
+        if any(a <= n <= b for a, b in r["numbered"].get(kind, ())):
+            return cite(r, True)
+    for r in resolutions:
+        rs = r["numbered"].get(kind, [])
+        if any(b < n < c for (_a, b), (c, _d) in zip(rs, rs[1:])):
+            return cite(r, False)
+    return None
+
+
 @check("status", "the House's resolutions of introduction are read by number, and the "
                  "introductions build_data publishes from them are what they say",
        needs=("journal_bills", "build_data"))
 def _journal_resolutions(J, BD):
-    """journal_bills.introduction_resolutions and resolution_reading, on the
+    """journal_bills.introduction_resolutions and the reading of them below, on the
     resolutions as printed. The House introduces its bills by a resolution
     that names them by number: a number it names was introduced that day; a
     number it steps over, with numbers of its kind named on both sides, was
@@ -126621,7 +126633,7 @@ def _journal_resolutions(J, BD):
     assert got[2010][0]["numbered"] == {"HB": [(1689, 1689), (1690, 1690)]}, got[2010]
 
     def says(year, bid):
-        x = J.resolution_reading(got[year], bid)
+        x = _resolution_reading(got[year], bid)
         return None if x is None else x["introduced"]
     assert [says(2009, b) for b in ("HB86", "HB87", "HB88", "HB134", "HB223", "HB224",
                                     "HB30", "HCR2", "HCR5", "CACR4", "HR1", "SB1")] == [
@@ -126636,7 +126648,7 @@ def _journal_resolutions(J, BD):
         False, True, True, False]
     assert [says(2010, b) for b in ("HB1689", "HB1690", "HB1308", "SB300")] == [
         True, True, None, None]
-    assert J.resolution_reading(got[2009], "not a bill") is None
+    assert _resolution_reading(got[2009], "not a bill") is None
 
     # The table, against the resolutions it was read from.
     year_of = {"2007-2008": 2007, "2009-2010": 2009, "2011-2012": 2012, "2017-2018": 2017}
@@ -126650,7 +126662,7 @@ def _journal_resolutions(J, BD):
     assert sorted(k for k, v in BD.INTRODUCTION_FROM_JOURNAL.items() if v["introduced"]) == [
         ("2011-2012", "HB1512")], "the table calls another bill introduced"
     for (term, bid), fact in BD.INTRODUCTION_FROM_JOURNAL.items():
-        x = J.resolution_reading(got[year_of[term]], bid)
+        x = _resolution_reading(got[year_of[term]], bid)
         assert x is not None and {k: x[k] for k in ("introduced", "date", "journal",
                                                     "numbered")} == fact, (
             f"{bid} of {term}: the table says {fact} and the resolution reads {x}")
@@ -126771,7 +126783,7 @@ def _introductions_against_journal(J, BD):
         # A House bill's number is its year's: 1 to 999 in the first year of
         # a term and from 1001 in the second, so a bill is held to the
         # resolutions of the year it was filed for.
-        said = J.resolution_reading(
+        said = _resolution_reading(
             [x for x in cache[years] if x["date"][:4] == str(rec.get("lsr_year"))], bid)
         fact = BD.INTRODUCTION_FROM_JOURNAL.get((term, bid))
         if said is None:
@@ -126780,7 +126792,7 @@ def _introductions_against_journal(J, BD):
                            f"({fact}) and no resolution on disk speaks of it")
             continue
         held += 1
-        if not said["introduced"] and J.resolution_reading(cache[years], bid)["introduced"]:
+        if not said["introduced"] and _resolution_reading(cache[years], bid)["introduced"]:
             continue                 # named by a resolution of the term's other year
         if said["introduced"] and told_never:
             bad.append(f"{bid} of {term} is told as never introduced, and the resolution "

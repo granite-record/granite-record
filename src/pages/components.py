@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.31
+# GRANITE_VERSION: 2026-10-09.32
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -401,7 +401,6 @@ ICONS = {
              '<path d="M9 11.75h6.5M9 15h6.5M9 18.25h4"/>'),
     "person": ('<circle cx="12" cy="7.75" r="3.75"/>'
                '<path d="M4.5 20.75c.9-4.25 3.8-6.5 7.5-6.5s6.6 2.25 7.5 6.5"/>'),
-    "committee": '<circle cx="6.25" cy="8.25" r="2.25"/><circle cx="12" cy="6.5" r="2.25"/><circle cx="17.75" cy="8.25" r="2.25"/><path d="M2.75 13.25h18.5"/><path d="M5.25 13.25v7.5M18.75 13.25v7.5"/>',
     "book": ('<path d="M12 6.75C9.6 5 6.6 4.6 3.25 5.25v13.5c3.35-.65 6.35-.25 8.75 1.5 '
              '2.4-1.75 5.4-2.15 8.75-1.5V5.25C17.4 4.6 14.4 5 12 6.75z"/><path d="M12 6.75v13.5"/>'),
     "calendar": ('<rect x="3.5" y="4.75" width="17" height="16" rx="1.5"/>'
@@ -424,7 +423,6 @@ ICONS = {
               '<path d="M8.75 10.75h-3v10h12.5v-10h-3"/>'),
     # the controls that already carried a drawing or a character of their own
     "search": '<circle cx="10.5" cy="10.5" r="6.25"/><path d="M15.25 15.25l5 5"/>',
-    "close": '<path d="M6 6l12 12M18 6L6 18"/>',
     "play": '<path fill="currentColor" stroke="none" d="M8 5.5v13l10.5-6.5z"/>',
     # the footer's language choice (24 October 2026)
     "globe": ('<circle cx="12" cy="12" r="8.75"/><path d="M3.25 12h17.5"/>'

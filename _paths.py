@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-06.5
+# GRANITE_VERSION: 2026-10-06.6
 """
 Where the code lives, so that every script and module is found by its bare name.
 

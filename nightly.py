@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.83
+# GRANITE_VERSION: 2026-09-04.84
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -3303,12 +3303,6 @@ def count_lines(path):
         for chunk in iter(lambda: fh.read(1 << 20), b""):
             n += chunk.count(b"\n")
     return n
-
-
-def captions_waiting(now=None):
-    """How many finished recordings, CAPTION_WAIT_DAYS to CAPTION_WAIT_MOST
-    days old, have no reading yet, by the livestream state."""
-    return len(_captions_late(load_json(LIVE_STATE), now))
 
 
 def _captions_late(st, now=None):

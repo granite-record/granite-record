@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.51
+# GRANITE_VERSION: 2026-09-09.52
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -744,13 +744,6 @@ def officials_sections(town, key, town_off, site_on_page=None, board=None,
             + "".join(dot_row(p, o, officials) for p, o in others) + "</ul>"
             + note(f"From {NHDOT}. " + since("offices")))))
     return out
-
-
-def town_officials_block(town, key, town_off, site_on_page=None, board=None,
-                         loc=None, council=None):
-    """The Officials tab's cards as one string: see officials_sections."""
-    return "".join(officials_sections(town, key, town_off, site_on_page,
-                                      board, loc, council))
 
 
 # ---- THE TOWN SERVICES TAB --------------------------------------------------
