@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.282
+# GRANITE_VERSION: 2026-09-04.283
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -431,6 +431,11 @@ def moved_requests(site):
     for r in rows if isinstance(rows, list) else []:
         if r.get("address") and r.get("moved_to"):
             out.append(f"/{r['address']} /{r['moved_to']} 301\n")
+    # A withdrawn request of a member not returning is dropped from the list
+    # (build_lsrs.drop_unreturned): its address, if a page was ever published,
+    # forwards to the requests' list.
+    for addr in req.get("dropped") or []:
+        out.append(f"/{addr} /bills?term={req['term']} 301\n")
     return "".join(sorted(out))
 
 

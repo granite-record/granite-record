@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.886
+# GRANITE_VERSION: 2026-09-04.887
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31351,6 +31351,94 @@ def _request_pages():
     return "ok", ("pages for the requests still requests, the withdrawn kept, the one now a bill "
                   "taken away and forwarded; filing complete forwards the rest to their sponsor; "
                   "no address is both")
+
+
+@check("build", "a withdrawn request of a member who is not returning is dropped and its address forwards; "
+                "decided by the member's slug, never the name; a request still on the list is kept")
+def _requests_not_returning():
+    """Alice, 12 November 2026: requests of members who lost reelection are
+    removed, not labelled withdrawn. build_lsrs.not_returning reads the
+    election's winners by slug; drop_unreturned drops only a request that left
+    the list; build_pages.moved_requests forwards its address."""
+    import inspect
+    import tempfile
+    import build_lsrs as L
+    import build_pages as BPG
+    import build_request_pages as RP
+    mem = lambda slug, ch, county, dist: {"slug": slug, "chamber": ch, "county": county,
+                                          "district": dist}
+    with tempfile.TemporaryDirectory() as d:
+        site = Path(d)
+        (site / "idx").mkdir()
+        (site / "request").mkdir()
+        (site / "bills.html").write_text(Path("src/pages/bills.html").read_text(encoding="utf-8"),
+                                         encoding="utf-8")
+        (site / "legislators.json").write_text(json.dumps([
+            mem("ann-lost-rock-1", "H", "Rockingham", "1"),
+            mem("bo-stays-rock-2", "H", "Rockingham", "2"),
+            mem("cy-open-rock-3", "H", "Rockingham", "3"),
+            mem("di-gone-sd-4", "S", "Merrimack", "4"),
+            mem("ed-norace-rock-9", "H", "Rockingham", "9")]), encoding="utf-8")
+        # Ann Lost's name is on a winner of her district, with no slug of hers:
+        # a name match would keep her, the slug rule does not.
+        (site / "members_elect.json").write_text(json.dumps({"races": {
+            "H|Rockingham|1": {"seats": 1, "not_final": 0, "held": 0, "elected": [
+                {"n": "Ann Lost", "p": "R", "k": "new"}]},
+            "H|Rockingham|2": {"seats": 1, "not_final": 0, "held": 0, "elected": [
+                {"n": "Bo Stays", "k": "sitting", "s": "bo-stays-rock-2"}]},
+            "H|Rockingham|3": {"seats": 1, "not_final": 1, "held": 0, "elected": []},
+            "S|4": {"seats": 1, "not_final": 0, "held": 0, "elected": [
+                {"n": "Di Other", "k": "new"}]}}}), encoding="utf-8")
+        gone, undecided = L.not_returning(site)
+        assert sorted(gone) == ["ann-lost-rock-1", "di-gone-sd-4"], gone
+        assert sorted(undecided) == ["cy-open-rock-3", "ed-norace-rock-9"], undecided
+        lsrs = [{"lsr": "2027-0001", "session": 2027, "body": "HB", "title": "a.",
+                 "sponsor": "Ann Lost", "withdrawn": True},
+                {"lsr": "2027-0002", "session": 2027, "body": "SB", "title": "b.",
+                 "sponsor": "Di Gone", "withdrawn": True},
+                {"lsr": "2027-0003", "session": 2027, "body": "HB", "title": "c.",
+                 "sponsor": "Bo Stays", "withdrawn": True},
+                {"lsr": "2027-0004", "session": 2027, "body": "HB", "title": "d.",
+                 "sponsor": "Ann Lost", "withdrawn": False},
+                {"lsr": "2027-0005", "session": 2027, "body": "HB", "title": "e.",
+                 "sponsor": "Cy Open", "withdrawn": True},
+                {"lsr": "2027-0006", "session": 2027, "body": "HB", "title": "f.",
+                 "sponsor": "Nobody Known", "withdrawn": True}]
+        who = {"annlost": ("Rep. Ann Lost (R)", "ann-lost-rock-1"),
+               "digone": ("Sen. Di Gone (R)", "di-gone-sd-4"),
+               "bostays": ("Rep. Bo Stays (D)", "bo-stays-rock-2"),
+               "cyopen": ("Rep. Cy Open (D)", "cy-open-rock-3")}
+        rows, _ = L.rows_from(lsrs, who, {}, 2027)
+        kept, dropped = L.drop_unreturned(rows, gone)
+        assert [r["n"] for r in dropped] == ["LSR 2027-0001", "LSR 2027-0002"], (
+            "a withdrawn request of a member not returning is not dropped, or another is")
+        assert [r["n"] for r in kept] == ["LSR 2027-0003", "LSR 2027-0004", "LSR 2027-0005",
+                                          "LSR 2027-0006"], (
+            "kept: a returning member's withdrawn, a not-returning member's standing, a withdrawn "
+            "one whose race is undecided, a withdrawn one whose sponsor has no slug")
+        assert [r["withdrawn"] for r in kept] == [True, False, True, True]
+        req = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027,
+               "dropped": sorted(r["address"] for r in dropped)}
+        (site / "meta.json").write_text(json.dumps({"requests": req}), encoding="utf-8")
+        (site / "idx" / "2027-requests.json").write_text(json.dumps(kept), encoding="utf-8")
+        (site / "legislators.json").write_text("[]", encoding="utf-8")
+        # A page an earlier night wrote for a dropped request goes; its address forwards.
+        (site / "request" / "2027-0001.html").write_text("old", encoding="utf-8")
+        RP.write(site, "https://x")
+        pages = sorted(p.name for p in (site / "request").glob("*.html"))
+        assert pages == ["2027-0003.html", "2027-0004.html", "2027-0005.html", "2027-0006.html"], pages
+        red = BPG.moved_requests(site)
+        assert red == ("/request/2027-0001 /bills?term=2027-requests 301\n"
+                       "/request/2027-0002 /bills?term=2027-requests 301\n"), red
+    # No file of results: nobody is dropped.
+    with tempfile.TemporaryDirectory() as d:
+        assert L.not_returning(Path(d)) == ({}, {})
+    src = inspect.getsource(L.not_returning) + inspect.getsource(L.drop_unreturned)
+    code = re.sub(r'""".*?"""', "", src, flags=re.S)
+    assert "_fold" not in code and "name" not in code and '"n"' not in code, (
+        "the not-returning rule reads a name")
+    return "ok", ("dropped by slug and forwarded; a returning member's withdrawn, a standing request, "
+                  "an undecided race and an unidentified sponsor all kept")
 
 
 @check("build", "a new member-elect gets a provisional page, noindex and with no id, at the roster's "
