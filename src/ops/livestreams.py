@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.18
+# GRANITE_VERSION: 2026-09-25.19
 """
 New livestreams, every night: the recordings the House and Senate channels
 finished since the last run, indexed and captioned, and read into the start
@@ -19,6 +19,13 @@ times the site publishes -- by the night alone, with no laptop in the loop.
                                                    state says waits, and puts each
                                                    caption file in the bucket's inbox
                                                    (THE CAPTIONS INBOX); writes no state
+    python3 src/ops/livestreams.py --canary [--captions-from DIR]
+                                                   on the laptop, weekly: one recording
+                                                   captioned in October asked for into a
+                                                   scratch folder and checked; one line
+                                                   to logs/captions-canary.log, and no
+                                                   state, inbox or bucket touched
+                                                   (THE CAPTIONS CANARY)
     python3 src/ops/livestreams.py --since-state --inbox DIR
                                                    the nightly step, taking waiting
                                                    recordings' captions from the inbox
@@ -1209,8 +1216,9 @@ def fetch_captions(vid, work=WORK, source=None, timeout=300, tracks=None,
     return outcome, why
 
 
-def ask_track(vid, track, work=WORK, source=None, timeout=300):
-    """One ask: one track of one recording. (outcome, why)."""
+def ask_track(vid, track, work=WORK, source=None, timeout=300, log=True):
+    """One ask: one track of one recording. (outcome, why). `log` False keeps
+    the day's yt-dlp log untouched (the canary's ask)."""
     args = ytdlp_args(track)
     d = Path(work) / vid
     existed = d.exists()
@@ -1247,7 +1255,7 @@ def ask_track(vid, track, work=WORK, source=None, timeout=300):
         import segment_markers
         readable = bool(segment_markers.read_words(d))
     outcome, why = classify(rc, said, f.name if f else None, vtt, readable)
-    if live:
+    if live and log:
         log_answer(vid, track, outcome, warned, said)
     if outcome != "captioned":
         # Only what this attempt left: the folder held no captions when it
@@ -2505,6 +2513,193 @@ def to_inbox(a):
     return code
 
 
+# ------------------------------------------------------- the canary --
+
+# THE CAPTIONS CANARY (11 November 2026, the person's approval: "a weekly
+# captions canary plus a heartbeat on the laptop task"). The evening run asks
+# YouTube for nothing when nothing waits, so a break in yt-dlp, node, the
+# challenge solver or YouTube's own page is invisible until the next real
+# recording, and 9 days passed in October without one. Once a week the laptop
+# asks for ONE recording that was captioned in October, into a scratch folder
+# that is deleted after, and checks what came back. It writes one line to
+# logs/captions-canary.log and nothing else: not the night's state, not
+# archive/, not the inbox or the bucket, not the laptop's refusal record, and
+# it asks no bucket anything. What it proves is the route: asked the way the
+# evening run asks (ask_track), a file arrives, it parses (segment_markers'
+# own reader) and it has the size and shape it had in October.
+CANARY_VIDEO = "tFh6nyiGjOs"        # House Finance, 23 October 2026
+# What its captions.en.json3 held when it was read on 25 October: words by
+# segment_markers.read_words, where the last one falls, and the file's size.
+CANARY_REFERENCE = {"words": 3910, "last_s": 1969.5, "size": 470273}
+CANARY_WORDS_TOLERANCE = 0.15      # YouTube re-runs its recognition now and then
+CANARY_SPAN_TOLERANCE_S = 90.0
+CANARY_LOG = Path("logs/captions-canary.log")
+# The verdict words, one to a line: "<time> CANARY <word> -- <said>".
+CANARY_OK = "ok"
+CANARY_FAIL = "FAIL"
+CANARY_SKIP = "skipped"            # not a pass: the canary did not run its ask
+
+
+def canary_check(got_words, got_last, reference=None):
+    """"" when what came back has the shape the October file had, else what
+    differs, in a clause. Words within CANARY_WORDS_TOLERANCE of the October
+    count and the last word within CANARY_SPAN_TOLERANCE_S of where it fell."""
+    ref = reference or CANARY_REFERENCE
+    bad = []
+    if abs(got_words - ref["words"]) > ref["words"] * CANARY_WORDS_TOLERANCE:
+        bad.append(f"{got_words:,} words where October's file held {ref['words']:,}")
+    if abs(got_last - ref["last_s"]) > CANARY_SPAN_TOLERANCE_S:
+        bad.append(f"it ends at {got_last:.0f}s where October's ended at {ref['last_s']:.0f}s")
+    return "; ".join(bad)
+
+
+def canary_line(now, word, said):
+    return f"{iso(now)} CANARY {word} -- {said}"
+
+
+def canary_write(a, line):
+    path = Path(a.canary_log) if a.canary_log else CANARY_LOG
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write(line + "\n")
+    print(line)
+
+
+def canary(a):
+    """--canary: ask for CANARY_VIDEO's captions into a scratch folder, judge
+    them, write the verdict line. Exit 0 for ok, 1 for anything else (the
+    refusal hold and a skipped run included, so Task Scheduler shows a week
+    that proved nothing). Never touches the state, the inbox, the bucket or
+    the laptop's refusal record; honours that hold, because asking while
+    YouTube has refused this machine would only lengthen it."""
+    if a.origin == "runner":
+        raise Broken("--canary is the laptop's: GitHub's machine is the one YouTube refuses")
+    import tempfile
+    now = utcnow(a.now)
+    refusals = Refusals(load_laptop_refusals(), "laptop")
+    if refusals.held(now):
+        r = refusals.record()
+        canary_write(a, canary_line(
+            now, CANARY_SKIP, f"YouTube refused this machine at {r.get('at')} and nothing is "
+            f"asked of it until {r.get('until_iso')}; this week proved nothing"))
+        return 1
+    if not yt_dlp_here(a):
+        canary_write(a, canary_line(now, CANARY_FAIL, "yt-dlp is not installed here"))
+        return 1
+    kit = {}
+    if not a.captions_from:
+        kit = setup()
+        print(f"  asking with {setup_said(kit)}")
+        for what in ("node", SOLVER):
+            if not kit.get(what):
+                canary_write(a, canary_line(now, CANARY_FAIL, f"{what} is missing here "
+                                            f"({setup_said(kit)})"))
+                return 1
+    scratch = Path(tempfile.mkdtemp(prefix="gr-canary-"))
+    try:
+        outcome, why = ask_track(CANARY_VIDEO, CAPTION_TRACKS[0], work=scratch,
+                                 source=a.captions_from, log=False)
+        if outcome != "captioned":
+            said = {"refused": "YouTube refused the ask",
+                    "none-yet": "YouTube answered that it has no captions for it",
+                    "gone": "YouTube says the video is gone",
+                    "not-aired": "YouTube says the video has not aired"}.get(
+                        outcome, "the ask failed") + f" ({why})"
+            canary_write(a, canary_line(now, CANARY_FAIL, said))
+            return 1
+        import segment_markers
+        f = scratch / CANARY_VIDEO / CAPTION_FILES[0]
+        words = segment_markers.read_words(scratch / CANARY_VIDEO)
+        if not words:
+            canary_write(a, canary_line(now, CANARY_FAIL, "a caption file arrived and "
+                                        "segment_markers' reader finds no words in it"))
+            return 1
+        size = f.stat().st_size if f.exists() else 0
+        differs = canary_check(len(words), words[-1][0])
+        same = ""
+        stored = caption_file(CANARY_VIDEO)
+        if stored and f.exists():
+            same = ("identical to the stored copy" if
+                    hashlib.sha256(f.read_bytes()).hexdigest()
+                    == hashlib.sha256(stored.read_bytes()).hexdigest()
+                    else "differs from the stored copy in its bytes")
+        if differs:
+            canary_write(a, canary_line(now, CANARY_FAIL, differs))
+            return 1
+        canary_write(a, canary_line(
+            now, CANARY_OK, f"{CANARY_VIDEO}: {len(words):,} words to {words[-1][0]:.0f}s, "
+            f"{size:,} bytes" + (f", {same}" if same else "")
+            + (f"; {setup_said(kit)}" if kit else "")))
+        return 0
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+
+
+# --------------------------------------------------------- heartbeat --
+
+# THE HEARTBEAT (11 November 2026). When the laptop's job finishes it may ping
+# a URL -- a Healthchecks.io check the person makes -- so that a laptop that is
+# off, a changed Windows password or a crashed script is told to her without a
+# night in the loop. The address is a secret and is never in the repository:
+# the environment variable below, or "heartbeat_url" in secrets.json. With
+# neither, nothing is sent and nothing is said. A failed ping is said once and
+# never changes the run's exit status.
+HEARTBEAT_ENV = "GRANITE_HEARTBEAT_URL"
+
+
+def heartbeat_url():
+    """The address to ping, or "" where there is none (the usual case)."""
+    u = str(os.environ.get(HEARTBEAT_ENV) or "").strip()
+    if not u:
+        try:
+            import keys
+            u = str(json.loads(keys.PATH.read_text(encoding="utf-8")).get("heartbeat_url") or "").strip()
+        except (OSError, ValueError, ImportError, AttributeError):
+            u = ""
+    return u if re.match(r"https://[^\s]+$", u) else ""
+
+
+def _ping(url, body):
+    req = urllib.request.Request(url, data=body.encode("utf-8"), method="POST")
+    with urllib.request.urlopen(req, timeout=15) as r:
+        r.read(64)
+
+
+def heartbeat(ok, said=""):
+    """Ping the heartbeat address, /fail appended when the run did not
+    succeed; True when a ping was sent. No address, no ping. Never raises, and
+    never prints the address (it is a secret)."""
+    url = heartbeat_url()
+    if not url:
+        return False
+    if not ok:
+        url = url.rstrip("/") + "/fail"
+    try:
+        _ping(url, str(said)[:500])
+        return True
+    except Exception as e:                                      # noqa: BLE001
+        print(f"  (the heartbeat was not sent: {type(e).__name__})")
+        return False
+
+
+def to_inbox_locked(a):
+    with lock():
+        return to_inbox(a)
+
+
+def with_heartbeat(a, run):
+    """run(a), then the heartbeat: its exit status is the run's, whatever the
+    ping does. A Broken run is reported and exits 1, as main does."""
+    try:
+        code = run(a)
+    except Broken as e:
+        print(f"\nLIVESTREAMS: broken -- {e}")
+        code = 1
+    heartbeat(code == 0, "livestreams " + ("--canary" if a.canary else "--to-inbox")
+              + f" exit {code}")
+    return code
+
+
 def write_summary():
     """The caption summary, refreshed from work/ where the caption_span that
     writes one is here; otherwise said, so nobody takes a missing summary for
@@ -2968,6 +3163,10 @@ def main(argv=None):
                       help="on the laptop, from Task Scheduler: ask YouTube for what the "
                            "night's state in the bucket lists as waiting, and put each "
                            "caption file in the bucket's captions inbox; writes no state")
+    mode.add_argument("--canary", action="store_true",
+                      help="on the laptop, weekly: ask YouTube for one recording captioned "
+                           "in October into a scratch folder, check it, and write one line "
+                           "to logs/captions-canary.log; no state, inbox or bucket")
     mode.add_argument("--markers", action="store_true",
                       help="build_all's step: segment_markers over this step's "
                            "recordings only, scored before it is kept")
@@ -3007,6 +3206,9 @@ def main(argv=None):
                          "and write nothing")
     ap.add_argument("--local-bucket", metavar="FOLDER",
                     help="--to-inbox: a folder stands in for the bucket (tests)")
+    ap.add_argument("--canary-log", metavar="FILE", default=None,
+                    help="--canary: the log the verdict line is appended to "
+                         f"(default {CANARY_LOG.as_posix()}; tests)")
     ap.add_argument("--now", help="the time to act as of, for tests")
     ap.add_argument("--origin", choices=["runner", "laptop"],
                     help="which machine this is; GITHUB_ACTIONS decides by default")
@@ -3021,6 +3223,8 @@ def main(argv=None):
         ap.error("--inbox is the night's, with --since-state")
     if (a.dry_run or a.local_bucket) and not a.to_inbox:
         ap.error("--dry-run and --local-bucket go with --to-inbox")
+    if a.canary_log and not a.canary:
+        ap.error("--canary-log goes with --canary")
     try:
         if a.status:
             return status(a)
@@ -3030,6 +3234,11 @@ def main(argv=None):
         if a.to_inbox and a.dry_run:
             # A dry run writes nothing, not even the lock.
             return to_inbox(a)
+        if a.canary:
+            # No lock either: it touches nothing the night or the evening run keeps.
+            return with_heartbeat(a, canary)
+        if a.to_inbox and not a.local_bucket:
+            return with_heartbeat(a, to_inbox_locked)
         with lock():
             if a.markers:
                 return markers(a)

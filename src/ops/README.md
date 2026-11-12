@@ -85,3 +85,29 @@ the inbox for three days while recordings wait. The record also names each
 waiting recording the laptop has closed with no captions published, and the
 night records it so -- the schedule's approximate start kept -- and warns of
 it no more (29 October 2026; `livestreams.py`, WHAT THE LAPTOP CLOSED).
+
+## The captions canary, the silences and the heartbeat (12 November 2026)
+
+The evening job asks YouTube for nothing when nothing waits, so a drift in
+yt-dlp, node, the solver or YouTube went unseen until the next recording
+(`reports/faster-updates-and-live-2026-11.md`, section 5). Three additions,
+approved on 11 November, none of which touches the night's state, the inbox
+or the bucket:
+
+- `python3 -X utf8 src\ops\livestreams.py --canary`, weekly on the laptop:
+  asks for the captions of one recording captioned in October
+  (`CANARY_VIDEO`) into a scratch folder, checks they read and have October's
+  shape (`CANARY_REFERENCE`), deletes them, and appends one line to
+  `logs\captions-canary.log`: `<time> CANARY ok|FAIL|skipped -- <what>`.
+  Exit 0 only for ok. It honours the laptop's refusal hold (a `skipped` week
+  is not a pass) and never writes it.
+- `python3 src/ops/captions_watch.py`, read-only, for the morning triage on the
+  laptop: warns when the evening job has not written a line for 2 days, when
+  the canary has not passed for 8, and, in the night's verdict too
+  (`nightly.recordings_waiting_long`), when a finished recording has waited
+  for captions or been read with no timestamp on the record for more than 3
+  nights. Warnings, never failures.
+- A heartbeat: with `GRANITE_HEARTBEAT_URL` in the environment, or
+  `heartbeat_url` in `secrets.json`, `--to-inbox` and `--canary` ping that
+  address when they finish, `/fail` appended when the run did not exit 0.
+  Neither set, nothing is sent. The address is never committed.
