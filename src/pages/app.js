@@ -3496,7 +3496,8 @@ function numberForm(p){
    known (setRequestYear): "2026-0002" is no request of this site's, and
    "2026-0002" in the search box is nothing else either. A two-digit year
    takes a four-digit number after it ("27-0002"; "12-5" is not one). "LSR
-   0002" is the requests' year and that number. A bare "0002" is a request
+   0002" is the requests' year and that number. A term's name ("2027-2028",
+   "2027-28") is no request. A bare "0002" is a request
    only where the list is the requests' (`bare`, which /bills sets by the
    list on screen): anywhere else it is a number like any other. */
 let REQ_YEAR="",REQ_BARE=false;
@@ -3504,6 +3505,8 @@ function setRequestYear(y){REQ_YEAR=String(y||"");NUMBERS_OF=null;}
 function requestNumber(p,bare){
   const s=String(p).trim();
   const id=(y,n)=>{
+    // "2027-2028" and "2027-28" are the next term's name, not a request.
+    if(y.length===4&&(+n===+y+1||(n.length===2&&+n===(+y+1)%100)))return null;
     if(y.length===2)y="20"+y;
     if(REQ_YEAR&&y!==REQ_YEAR)return null;
     return "LSR"+y+String(n).padStart(4,"0");

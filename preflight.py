@@ -21635,7 +21635,7 @@ _FIND_MORE_QUERIES = {
     # request only on that list, last.
     "lsr": ["LSR 2027-0002", "2027-0002", "LSR20270002", "LSR 27-0002", "27-0002",
             "LSR2027-0002", "lsr 2027 0002", "LSR 0002", "2027-0091", "0002", "2", "91", "2027",
-            "2027-0099"]}
+            "2027-0099", "2027-2028", "2027-28"]}
 
 # The header's panel and /search, as _FIND_BILLS_PANEL runs them.
 _FIND_MORE_PANEL = r"""
@@ -21968,6 +21968,10 @@ def _find_requests(BP):
                    "on the requests' list")
     if (L["q"]["2027"]["ids"] or [None])[0] == "LSR20272027":
         bad.append("/bills reads the year '2027' as a request's number")
+    # A term's name is no request's number ("2027-2028" is LSR 2027-2028, "2027-28" request 28).
+    for q in ("2027-2028", "2027-28"):
+        if {"LSR20272028", "LSR20270028"} & set(L["q"][q]["ids"]) or 'data-term="2027-requests"' in L["q"][q]["html"]:
+            bad.append(f"/bills reads the term {q!r} as a bill request")
     if L["q"]["2027-0099"]["ids"] or "No bills match" not in L["q"]["2027-0099"]["html"]:
         bad.append("/bills does not say no request has the number 2027-0099")
     # The current term: the offer for what is not read as a request's number,
