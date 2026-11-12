@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.382 */
+/* GRANITE_VERSION: 2026-09-07.384 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -9789,6 +9789,16 @@ margin:0 0 var(--sp-3)}
    November 2026). */
 :where(body.pg) .elkinds{font-size:var(--t-ui);line-height:1.5;margin:0 0 var(--sp-2)}
 :where(body.pg) .elkinds b{font-weight:600;color:var(--ink);margin-right:var(--sp-2)}
+/* THE SEARCH AND THE FILTERS over the members-elect (the owner, 12 November
+   2026): the site's .bfilt row, written hidden and shown by its script. What
+   a search or a filter leaves out is .elout, never the hidden attribute,
+   which the lists' own display rules would override. */
+:where(body.pg) .elfilter{margin:var(--sp-6) 0 var(--sp-5)}
+:where(body.pg) .elfilter[hidden]{display:none}
+:where(body.pg) .elfilter .count{flex:1 0 100%;margin:0;min-height:1.5em}
+:where(body.pg) .elfilter > label:first-child{flex:1 1 16rem}
+:where(body.pg) .elfilter input[type=search]{width:100%}
+:where(body.pg) .elout{display:none!important}
 :where(body.pg) .pcol > p.note{font-size:var(--t-sm);color:var(--ink-2);margin:0 0 var(--sp-3);max-width:34rem}
 /* THE HOME PAGE'S ONE BOX (D13): find.js's rows in a dropdown under the
    box, over the cards, as the header's panel is a dropdown under the bar.

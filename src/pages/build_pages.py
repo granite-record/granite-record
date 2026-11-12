@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.283
+# GRANITE_VERSION: 2026-09-04.284
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -5248,6 +5248,14 @@ def main():
     # copy does, the year round (build_town_pages.map_section says why).
     from build_members_elect import for_pages as members_elect
     elect = members_elect(out)
+    # The towns of each race, for the search on the Members-Elect tab: a reader
+    # looking for the town's members-elect types the town. From the district
+    # table the build wrote (districts.json), as build_members_elect reads it.
+    elect_towns = {}
+    if elect and (out / "districts.json").is_file():
+        from build_members_elect import races_on_file
+        elect_towns = {k: v["towns"] for k, v in
+                       races_on_file(json.loads((out / "districts.json").read_text(encoding="utf-8")))[0].items()}
     elect_attrs = (f" data-elect{until_attrs(elect['takes_office'], today)}"
                    if elect else "")
     # THE OLD ADDRESS GOES. /legislators is a 301 to /officials (decision
@@ -5295,7 +5303,7 @@ def main():
             # "Members-Elect (N)", N the winners the file names: a race not
             # final counts none, and a tab of none says no number, as any tab.
             ("members-elect", say(lang, "of.tab.elect", "Members-Elect"), OT.elect_count(elect),
-             OT.members_elect(elect, today, lang, [*legs, *gone])),
+             OT.members_elect(elect, today, lang, [*legs, *gone], elect_towns)),
             ("federal", say(lang, "of.tab.federal", "Federal Delegation"),
              OT.count(off, "federal"), OT.federal(off, lang)),
             ("executive", say(lang, "of.tab.executive", "Executive Branch"),
