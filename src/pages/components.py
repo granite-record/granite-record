@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.29
+# GRANITE_VERSION: 2026-10-09.31
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -68,18 +68,14 @@ if not WORDBOOK:
                       "pages say: the chips, the kinds of meeting, the votes, the glossary")
 
 
-def esc(s):
-    """components.js's esc, exactly: ampersand, the angles and the double quote.
+import htmlesc  # noqa: E402
 
-    NOT shell.E, which is html.escape and also turns an apostrophe into
-    &#x27;. The two render identically, so the difference is invisible on the
-    page and would be invisible in a diff of the two chips as well -- which is
-    how a check that was meant to hold them together would come to be relaxed
-    until it held nothing. The components escape for themselves so the
-    comparison can stay byte for byte.
-    """
-    return (str("" if s is None else s).replace("&", "&amp;")
-            .replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;"))
+
+def esc(s):
+    """components.js's esc, exactly: the one in src/lib/htmlesc.py (which says
+    why it is not shell.E). Kept as a name here because the Python/browser
+    parity check looks for every components.js helper in this module."""
+    return htmlesc.esc(s)
 
 
 # DATEWORDS:START

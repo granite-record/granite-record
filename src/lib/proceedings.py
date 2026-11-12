@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.18
+# GRANITE_VERSION: 2026-09-05.19
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -69,6 +69,8 @@ import os
 import re
 from collections import defaultdict
 from pathlib import Path
+
+from terms import term_of_year
 
 # The live table, or the candidate GRANITE_PROCEEDINGS names (see above).
 PATH = Path(os.environ.get("GRANITE_PROCEEDINGS") or "proceedings.csv")
@@ -190,8 +192,7 @@ def term_of(date_str):
         y = int(str(date_str)[:4])
     except (TypeError, ValueError):
         return ""
-    start = y if y % 2 else y - 1
-    return f"{start}-{start + 1}"
+    return term_of_year(y)
 
 
 # ORGANIZATION DAY BELONGS TO THE NEXT TERM (6 October 2026). The General

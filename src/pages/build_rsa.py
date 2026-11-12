@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.32
+# GRANITE_VERSION: 2026-10-11.33
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -58,6 +58,8 @@ import sys
 from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
+
+from terms import term_of_year  # noqa: E402,F401
 
 import argparse
 import collections
@@ -187,12 +189,6 @@ def href(addr):
     """The site's own address for a statute address: /laws/91-a#s4, /laws/91-a."""
     ch, _, sec = addr.partition(":")
     return chapter_path(ch) + (f"#{sec_anchor(addr)}" if sec else "")
-
-
-def term_of_year(y):
-    y = int(y)
-    a = y if y % 2 else y - 1
-    return f"{a}-{a + 1}"
 
 
 def term_before(term):

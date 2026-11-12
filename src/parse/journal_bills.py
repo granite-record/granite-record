@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-30.8
+# GRANITE_VERSION: 2026-09-30.9
 """
 The bills the House withdrew, read from the House Journal itself.
 
@@ -113,6 +113,8 @@ from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
 
+from terms import term_of_year as term_of  # noqa: E402,F401
+
 import argparse
 import json
 import re
@@ -195,12 +197,6 @@ RECOMMENDS = re.compile(r"\b(?:OUGHT\s+TO\s+PASS|INEXPEDIENT\s+TO|INTERIM\s+STUD
 REMOVED_BY = re.compile(r"\bremoved\s+by\b", re.I)
 BILL_IN_TEXT = re.compile(r"\b(HB|HCR|HJR|HR|CACR)\s*(\d+)\b")
 FILE_NUMBER = re.compile(r"^HJ\s*0*(\d+)\b", re.I)
-
-
-def term_of(year):
-    y = int(year)
-    t = y if y % 2 else y - 1
-    return f"{t}-{t + 1}"
 
 
 def bill_id(kind, num):
