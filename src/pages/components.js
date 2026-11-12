@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.34
+// GRANITE_VERSION: 2026-10-09.35
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -833,6 +833,96 @@ function electLine(key,election,takesOffice,today){
   document.addEventListener("keydown",function(e){if(e.key==="Escape")shut();});
   document.addEventListener("selectionchange",function(){
     if(pill)pill.hidden=!picked()||!!(box&&!box.hidden);
+  });
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",arm);else arm();
+})();
+// SORTABLE TABLES (the owner, 11 November 2026: "every table over about 8 rows
+// sortable ascending/descending by any column"). learn_numbers._table marks
+// a table data-sortable and writes each numeric cell's raw value in data-v
+// (a date's ISO form, a margin, where that is what a column sorts by); a
+// reader with no script has the table in its default order, so the buttons
+// are made here, inside each th, so none is dead. A first press sorts a text
+// column ascending and a number column descending, a second reverses, a
+// third restores the order the table came in; a blank or a dash is last
+// whichever way; a tie keeps its place. aria-sort on the th says which, and a
+// polite line says it aloud. A table marked data-group keeps its rows' groups
+// (data-g, a chamber) together, except under a th marked data-ungroup.
+// BEHAVIOUR, NOT A HELPER: an IIFE, which declares no name of its own.
+(function(){
+  if(typeof document==="undefined"||!document.querySelectorAll||!document.addEventListener)return;
+  var live=null;
+  function say(col,dir){
+    if(!live){
+      live=document.createElement("p");
+      live.className="l-sortlive";
+      live.setAttribute("role","status");
+      live.setAttribute("aria-live","polite");
+      (document.body||document.documentElement).appendChild(live);
+    }
+    live.textContent=dir==="none"?tr("nums.sorted_none","Back to the order it came in"):
+      dir==="ascending"?tr("nums.sorted_asc","Sorted by {col}, ascending",{col:col}):
+      tr("nums.sorted_desc","Sorted by {col}, descending",{col:col});
+  }
+  function arm(){
+    var ts=document.querySelectorAll("table[data-sortable]");
+    for(var i=0;i<ts.length;i++){
+      var t=ts[i];
+      if(t.getAttribute("data-armed"))continue;
+      t.setAttribute("data-armed","1");
+      var body=t.querySelector("tbody"), hs=t.querySelectorAll("thead th");
+      if(!body)continue;
+      for(var r=0;r<body.children.length;r++)body.children[r].setAttribute("data-o",String(r));
+      for(var k=0;k<hs.length;k++){
+        var h=hs[k], name=(h.textContent||"").trim(), b=document.createElement("button");
+        b.type="button";
+        b.className="l-sort";
+        b.setAttribute("title",tr("nums.sort_by","Sort by {col}",{col:name}));
+        b.innerHTML=h.innerHTML+'<span class="l-sort-i" aria-hidden="true"></span>';
+        h.innerHTML="";
+        h.appendChild(b);
+        h.setAttribute("aria-sort","none");
+        h.setAttribute("data-name",name);
+      }
+    }
+  }
+  function cellValue(row,k,num){
+    var c=row.children[k], v=c.getAttribute("data-v");
+    if(v===null||v===undefined)v=(c.textContent||"").trim();
+    if(v===""||v==="—"||v==="-")return null;
+    if(!num)return v;
+    var n=parseFloat(v);
+    return isNaN(n)?null:n;
+  }
+  function sortBy(b){
+    var th=b.closest("th"), t=th&&th.closest("table");
+    if(!t)return;
+    var hs=t.querySelectorAll("thead th"), k=-1, body=t.querySelector("tbody");
+    for(var i=0;i<hs.length;i++)if(hs[i]===th)k=i;
+    if(k<0||!body)return;
+    var num=(th.className||"").indexOf("l-num")>=0, first=num?"descending":"ascending",
+      cur=th.getAttribute("aria-sort")||"none",
+      next=cur==="none"?first:cur===first?(first==="descending"?"ascending":"descending"):"none";
+    for(var j=0;j<hs.length;j++)hs[j].setAttribute("aria-sort","none");
+    th.setAttribute("aria-sort",next);
+    var rows=[].slice.call(body.children), grouped=t.hasAttribute("data-group")&&!th.hasAttribute("data-ungroup"),
+      order={}, o=function(r){return parseInt(r.getAttribute("data-o"),10);};
+    if(grouped)rows.slice().sort(function(a,c){return o(a)-o(c);}).forEach(function(r){
+      var g=r.getAttribute("data-g");if(!(g in order))order[g]=Object.keys(order).length;});
+    var sign=next==="descending"?-1:1;
+    rows.sort(function(a,c){
+      if(grouped){var d=order[a.getAttribute("data-g")]-order[c.getAttribute("data-g")];if(d)return d;}
+      if(next==="none")return o(a)-o(c);
+      var x=cellValue(a,k,num), y=cellValue(c,k,num);
+      if(x===null||y===null){if(x===y)return o(a)-o(c);return x===null?1:-1;}
+      var d2=num?x-y:String(x).localeCompare(String(y),"en",{numeric:true,sensitivity:"base"});
+      return d2?sign*d2:o(a)-o(c);
+    });
+    for(var m=0;m<rows.length;m++)body.appendChild(rows[m]);
+    say(th.getAttribute("data-name")||"",next);
+  }
+  document.addEventListener("click",function(e){
+    var b=e.target&&e.target.closest&&e.target.closest(".l-sort");
+    if(b)sortBy(b);
   });
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",arm);else arm();
 })();

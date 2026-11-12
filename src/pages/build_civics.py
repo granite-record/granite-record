@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.93
+# GRANITE_VERSION: 2026-09-08.94
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -847,18 +847,19 @@ def record_figures(site, root=Path(".")):
     # rest say how each is drawn). Counted here so that no figure carries a
     # number typed beside the sentence that states it.
     shown = figures["term"]
-    rest = (len(cur) - status["Killed"] - status["Signed into law"]
-            - status["Referred for interim study"] - status["Died on the table"]
-            - status["Died when the session ended"])
-    figures["fig_ends"] = civics.bar(
-        f"The {len(cur):,} bills and resolutions of the {shown} term",
-        f"How the {len(cur):,} bills and resolutions of the {C.term_words(term)} term ended",
-        [(status["Killed"], "c-died", "killed (ITL)"),
-         (status["Signed into law"], "c-law", "signed into law"),
-         (status["Referred for interim study"], "c-study", "sent for interim study"),
-         (status["Died on the table"], "c-table", "died on the table"),
-         (status["Died when the session ended"], "c-end", "died when the session ended"),
-         (rest, "c-rest", "every other outcome", False)])
+    # HOW THE TERM'S BILLS ENDED, ON THE BILL BASIS (the owner, 11 November
+    # 2026): the House and Senate bills of By the Numbers (2,139 of 2025-2026),
+    # not "bills and resolutions" (2,243), with the resolutions named once;
+    # each figure of the paragraph, and the diagram, read from the one count
+    # learn_numbers.flows makes.
+    fl = learn_numbers.flows(idx, term)
+    bst = Counter(r.get("status") for r in cur if learn_numbers.BILL.match(r.get("id") or ""))
+    figures.update({"ends_bills": fl["filed"], "ends_resolutions": fl["resolutions"],
+                    "ends_killed": bst["Killed"], "ends_signed": bst["Signed into law"],
+                    "ends_study": bst["Referred for interim study"],
+                    "ends_tabled": bst["Died on the table"],
+                    "ends_session": bst["Died when the session ended"]})
+    figures["fig_ends"] = civics.wide(learn_numbers.flow_figure(fl))
     no_rc = figures["all_no_rollcall"]
     figures["fig_rollcalls"] = civics.bar(
         f"The {figures['all_bills']:,} bills in this record",
@@ -899,19 +900,7 @@ def record_figures(site, root=Path(".")):
             "cacr_hurdle": _cacr_hurdle_lang(idx, every_narr, term, lang),
             "cacr_lead": _cacr_lang(cacrs, every_narr.get(term, {}), term, lang)[0],
             "cacr_table": _cacr_lang(cacrs, every_narr.get(term, {}), term, lang)[1],
-            "fig_ends": civics.bar(
-                I.say(lang, "learn.ends.caption", "The {n} bills and resolutions of the {term} term",
-                    n=n_(len(cur)), term=shown),
-                I.say(lang, "learn.ends.label", "How the {n} bills and resolutions of the {term} term ended",
-                    n=n_(len(cur)), term=C.term_words(term)),
-                [(status["Killed"], "c-died", I.say(lang, "learn.ends.killed", "killed (ITL)")),
-                 (status["Signed into law"], "c-law", I.say(lang, "learn.ends.signed", "signed into law")),
-                 (status["Referred for interim study"], "c-study",
-                  I.say(lang, "learn.ends.study", "sent for interim study")),
-                 (status["Died on the table"], "c-table", I.say(lang, "learn.ends.table", "died on the table")),
-                 (status["Died when the session ended"], "c-end",
-                  I.say(lang, "learn.ends.session", "died when the session ended")),
-                 (rest, "c-rest", I.say(lang, "learn.ends.rest", "every other outcome"), False)]),
+            "fig_ends": civics.wide(learn_numbers.flow_figure(fl, lang)),
             "fig_rollcalls": civics.bar(
                 I.say(lang, "learn.rc.caption", "The {n} bills in this record", n=n_(f["all_bills"])),
                 I.say(lang, "learn.rc.label", "Bills with and without a recorded roll call"),

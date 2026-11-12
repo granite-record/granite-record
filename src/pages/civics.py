@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.76
+# GRANITE_VERSION: 2026-09-08.77
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1524,14 +1524,15 @@ at each, and
 Council</a> for the last stage.</p>
 
 <h2>How Most Bills End</h2>
-<p>Of the [[bills]] bills and resolutions filed in the [[term]] term,
-<b>[[killed]] were killed</b> on a motion of Inexpedient to Legislate, written <b><abbr data-term="ITL">ITL</abbr></b>, and
-<b>[[signed]] were signed into law</b>. Among the rest, [[study]] were sent
+<p>Of the [[ends_bills]] House and Senate bills filed in the [[term]] term,
+<b>[[ends_killed]] were killed</b> on a motion of Inexpedient to Legislate, written <b><abbr data-term="ITL">ITL</abbr></b>, and
+<b>[[ends_signed]] were signed into law</b>. Among the rest, [[ends_study]] were sent
 for interim study (the committee studies the subject after the session, and
-the bill goes no further), [[tabled]] died on the table (set aside by a vote
-and never taken up again), and [[session_end]] died when the session ended
+the bill goes no further), [[ends_tabled]] died on the table (set aside by a vote
+and never taken up again), and [[ends_session]] died when the session ended
 without a final vote. Dying is the ordinary outcome, not a
-failure of the bill or its sponsor.</p>
+failure of the bill or its sponsor. Not counted here: the [[ends_resolutions]]
+resolutions and constitutional amendments of the term.</p>
 [[fig_ends]]
 
 <h2>How a Chamber Votes, and What Is Recorded</h2>

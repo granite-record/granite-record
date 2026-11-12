@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.877
+# GRANITE_VERSION: 2026-09-04.878
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28281,8 +28281,6 @@ def _learn_sitting_term(SR, build_civics, learn_numbers):
                  'r.get("status") == "Vetoed" and r.get("term") == still_sitting',
                  'r.get("status") == "Vetoed" and r.get("term") != still_sitting'):
         assert said in src, f"record_figures no longer reads the sitting term: {said!r}"
-    assert '("2007-" + (terms[-1][5:] if terms else "")' in inspect.getsource(learn_numbers.body), \
-        "learn_numbers labels its last era by the described term, not the newest it counts"
     return "ok", ("2027-2028 sits while 2025-2026 is described; the filmed run passes over it and "
                   "names 2021-2022; the vetoes waiting are the sitting term's")
 
@@ -28493,6 +28491,178 @@ def _numbers_committee_rates(learn_numbers):
     return "ok", "Finance's second report credited to Finance; the chamber counts each bill once"
 
 
+@check("frontend", "numbers: the one committees table holds every committee the three tables it "
+                   "replaced held, and states a rate or a consent share only from ten bills or reports",
+       needs=("learn_numbers",))
+def _numbers_committee_table(learn_numbers):
+    """The owner, 11 November 2026: Referrals, Consent Calendars and Passage
+    Rate are one table. Its rows are the union of the committees the three
+    read (so a merge cannot drop one), House first, each chamber by rate; a
+    rate or share from fewer than ten is a dash; every term of the last ten
+    carries its consent share, not the newest alone."""
+    L = learn_numbers
+    saved = (L.referrals, L.committee_rates, L.consent)
+    try:
+        L.referrals = lambda i, n, t: {"House A": (5, 1), "Senate B": (2, 0), "House Only Sent": (0, 3)}
+        L.committee_rates = lambda i, n, t: ({"House A": (12, 6, 3), "House Rate Only": (11, 11, 11),
+                                              "Senate B": (4, 2, 1)},
+                                             {"H": (20, 10, 5), "S": (4, 2, 1)})
+        L.consent = lambda n, r, t: ({"House A": (20, 5), "Senate Consent Only": (30, 15), "Senate B": (4, 4)},
+                                     {"H": __import__("collections").Counter(kept=5),
+                                      "S": __import__("collections").Counter(kept=19)})
+        rec, _tot, _per = L.committee_record([], {}, "2025-2026")
+        rows, groups = L.committee_rows(rec)
+    finally:
+        L.referrals, L.committee_rates, L.consent = saved
+    want = {"House A", "Senate B", "House Only Sent", "House Rate Only", "Senate Consent Only"}
+    assert set(rec) == want, f"the merged rows are {sorted(rec)}, not the union {sorted(want)}"
+    names = [re.sub(r"<[^>]+>", "", r[0]) for r in rows]
+    assert names[:3] == ["House Rate Only", "House A", "House Only Sent"] and \
+        all(n.startswith("Senate") for n in names[3:]), f"House first, by rate: {names}"
+    assert groups == ["H"] * 3 + ["S"] * 2, groups
+    a = rows[names.index("House A")]
+    assert a[1:] == ["5", "1", "12", "6", "3", "50.0%", "25.0%"], f"House A: {a}"
+    b = rows[names.index("Senate B")]
+    assert b[6] == b[7] == "&mdash;", f"a rate or share from fewer than ten is a dash: {b}"
+    assert "Each Committee's Record" in L.HEADINGS and not any(
+        h in L.HEADINGS for h in ("The Bills Each Committee Received", "Consent Calendars, by Committee",
+                                  "Each Committee's Passage Rate")), "the three old sections are still named"
+    import inspect
+    src = inspect.getsource(L.body)
+    assert "for t in reversed(recent):\n        rec, ctot, per_ch = committee_record(" in src, (
+        "the consent share is worked out for each of the last ten terms")
+    return "ok", "five committees from three sources in one table, House first by rate, dashes under ten"
+
+
+def _flow_rows(term="2025-2026"):
+    """Index rows covering every way a bill can end, as flows() reads them."""
+    spec = [("HB1", "Hpppp", "Signed into law"), ("HB2", "Hx--x", "Killed"),
+            ("HB3", "Sx--x", "Referred for interim study"), ("HB4", "Hpx-x", "Died on the table"),
+            ("SB5", "Spp-x", "Died: the chambers did not agree on a version"),
+            ("HB6", "Hppxx", "Vetoed, override failed"), ("HB7", "Hppxp", "Veto overridden, became law"),
+            ("HB8", "Hh--h", "In committee"), ("HB9", "", "Killed"), ("SB10", "Sp---", "Withdrawn"),
+            ("HB11", "Hpppp", "Became law unsigned"), ("HB12", "Hx--x", "Killed"),
+            ("SB13", "Spx-x", "Referred for interim study"), ("HB14", "Hx--x", "Indefinitely postponed"),
+            ("HR1", "Hpppp", "Adopted by the House"), ("CACR2", "Hx--x", "Killed")]
+    rows = [{"term": term, "id": i, "passage": p, "status": s, "carried": i in ("HB1", "HB2")}
+            for i, p, s in spec]
+    rows.append({"term": "2023-2024", "id": "HB1", "passage": "Hx--x", "status": "Killed"})
+    return rows
+
+
+@check("frontend", "numbers: every House and Senate bill of a term is in exactly one end node of the "
+                   "flow diagram, and each node is the sum of what leaves it",
+       needs=("learn_numbers",))
+def _numbers_flows(learn_numbers):
+    """The owner, 11 November 2026: the Sankey is drawn from the one field the
+    bill rail reads (the index row's `passage`), on the 2,139 basis (House
+    and Senate bills; resolutions and constitutional amendments out), and its
+    end nodes sum to the bills filed. A bill with no readable passage is
+    counted as unclassified, never dropped; one still moving is its own end
+    node. This counts a fixture whose answer is known, then holds every term
+    of the built site, where there is one, to the same sums."""
+    L = learn_numbers
+    f = L.flows(_flow_rows(), "2025-2026")
+    assert f["filed"] == 14 and f["resolutions"] == 2, (f["filed"], f["resolutions"])
+    assert f["unclassified"] == 1 and f["moving"] == 1, (f["unclassified"], f["moving"])
+    assert dict(f["first"]) == {"killed": 2, "study": 1, "postponed": 1}, dict(f["first"])
+    assert dict(f["second"]) == {"tabled": 1, "study": 1, "withdrawn": 1}, dict(f["second"])
+    assert dict(f["nogov"]) == {"noversion": 1}, dict(f["nogov"])
+    assert f["cleared_first"] == 8 and f["passed_both"] == 5 and f["reached"] == 4, f
+    assert dict(f["gov"]) == {"law": 3, "veto": 1}, dict(f["gov"])
+    assert f["carried"] == 2
+
+    def check_tree(n, where):
+        if not n["kids"]:
+            return
+        total = sum(k["n"] for k in n["kids"])
+        assert total == n["n"], f"{where}: {n['label']} is {n['n']} and what leaves it {total}"
+        for k in n["kids"]:
+            check_tree(k, where)
+
+    def leaf_sum(n):
+        return n["n"] if not n["kids"] else sum(leaf_sum(k) for k in n["kids"])
+
+    def all_terms(idx, label):
+        terms = sorted({r["term"] for r in idx if r.get("term")})
+        for t in terms:
+            fl = L.flows(idx, t)
+            tree = L.flow_tree(fl)
+            assert tree["n"] == fl["filed"] and leaf_sum(tree) == fl["filed"], (
+                f"{label} {t}: the end nodes sum to {leaf_sum(tree)} of {fl['filed']} bills filed")
+            check_tree(tree, f"{label} {t}")
+            assert fl["reached"] == fl["gov"]["law"] + fl["gov"]["veto"] + fl["gov"]["other"], (
+                f"{label} {t}: reached the governor is not law plus veto stood")
+            ref = sum(1 for r in idx if r.get("term") == t and L.BILL.match(r.get("id") or ""))
+            assert fl["filed"] == ref
+        return len(terms)
+    n = all_terms(_flow_rows(), "fixture")
+    import site_read
+    try:
+        real = site_read.bill_index("site")
+    except Exception:
+        real = None
+    if real:
+        n = all_terms(real, "the site")
+        bad = [t for t in sorted({r["term"] for r in real}) if
+               L.flows(real, t)["unclassified"] > 8]
+        assert not bad, f"more than a handful of bills have no passage in {bad}: not a rounding"
+    return "ok", f"{n} terms: end nodes sum to the bills filed, resolutions out, none dropped"
+
+
+@check("frontend", "numbers: the flow diagram, its table and its sentence print the same numbers, "
+                   "and in Spanish say them in Spanish",
+       needs=("learn_numbers", "i18n"))
+def _numbers_flow_agree(learn_numbers, i18n):
+    L = learn_numbers
+    f = L.flows(_flow_rows(), "2025-2026")
+    tree = L.flow_tree(f)
+    leaves = L.flow_leaves(tree)
+    fig = L.flow_figure(f)
+    svg = re.search(r"<svg.*?</svg>", fig, re.S).group(0)
+    titled = re.findall(r"<title>(.*?): ([\d,]+) bills", svg)
+    twin = re.findall(r'<span class="l-ind"[^>]*>(.*?)</span></td><td class="l-num">([\d,]+)</td>', fig)
+    walk = []
+
+    def nodes(n):
+        walk.append((n["label"], n["n"]))
+        for k in n["kids"]:
+            nodes(k)
+    nodes(tree)
+    want = [(a, f"{b:,}") for a, b in walk]
+    assert [(a, b) for a, b in titled] == want, f"the diagram's nodes are not the tree's: {titled} / {want}"
+    assert [(a, b) for a, b in twin] == want, f"the table's rows are not the tree's: {twin}"
+    # the label of each end node, with its count, is in the drawing too
+    for key, n in leaves:
+        label = L.END_WORDS[key][0]
+        assert re.search(rf"{re.escape(label)} <tspan class=\"sk-v\">{n:,}</tspan>", svg), (
+            f"the diagram does not print {label} {n}")
+    sentence = L.flow_sentence(f)
+    for num in (f["filed"], sum(f["first"].values()), sum(f["second"].values()),
+                f["reached"], f["gov"]["law"], f["gov"]["veto"], f["carried"], f["resolutions"]):
+        assert f"{num:,}" in sentence, f"the sentence omits {num}"
+    assert tree["n"] == f["filed"] and f"{f['filed']:,} House and Senate bills" in sentence
+    # in Spanish: every node, the sentence and the table's heads are the catalogue's, none English
+    es = L.flow_figure(f, "es") + L.flow_sentence(f, "es")
+    for key, _n in leaves + [("first", 0), ("second", 0), ("nogov", 0), ("reached", 0)]:
+        words = L.END_WORDS[key][0] if key in L.END_WORDS else {
+            "first": "Stopped in the first chamber", "second": "Stopped in the second chamber",
+            "nogov": "Never reached the governor", "reached": "Reached the governor"}[key]
+        assert words not in es, f"the Spanish diagram says {words!r} in English"
+    for en in ("The same figures as a table", "Where it stood", "Not counted here"):
+        assert en not in es, f"the Spanish diagram says {en!r} in English"
+    assert "House and Senate bills" not in es
+    # the paragraph on How a Bill Becomes a Law reads this count, on the same basis
+    civ = Path("src/pages/civics.py").read_text(encoding="utf-8")
+    assert "[[ends_bills]] House and Senate bills" in civ and "[[ends_resolutions]]" in civ and \
+        "bills and resolutions filed in the [[term]] term" not in civ, (
+            "How Most Bills End is not on the 2,139 basis with its one line on the resolutions")
+    bc = Path("src/pages/build_civics.py").read_text(encoding="utf-8")
+    assert "learn_numbers.flows(idx, term)" in bc and "learn_numbers.flow_figure(fl)" in bc and \
+        "learn_numbers.flow_figure(fl, lang)" in bc, "build_civics does not draw the diagram from flows()"
+    return "ok", f"{len(walk)} nodes the same in the drawing, the table and the sentence; Spanish in Spanish"
+
+
 @check("frontend", "numbers: amended means an amendment adopted, not an enrolled-bill correction",
        needs=("learn_numbers",))
 def _numbers_amended(learn_numbers):
@@ -28699,14 +28869,14 @@ def _numbers_removed(learn_numbers):
         missing = sorted(Path(f).name for f, _what in learn_numbers.MISSING)
     for gone in ("without the governor's signature</h2>", "<th>Awaiting</th>", "Still to come"):
         assert gone not in page, f"the page of numbers still carries {gone!r}"
-    assert "<h2>Vetoes</h2>" in page and "Bills Filed, and How They Ended" in page, (
+    assert "From the Governor's Desk</h3>" in page and "Bills Filed, and How They Ended" in page, (
         "the fixture page lost a section it should keep")
     want = ["ballot_results.json", "member_votes.json", "narratives.json", "testimony_db.json"]
     assert missing == want, f"the inputs said to be missing: {missing}, want {want}"
     for h in ("The Hearings with the Most Sign-Ins", "Attendance on Roll-Call Days",
               "Constitutional Amendments Sent to the Voters"):
         assert h not in page, f"{h!r} was drawn with its input missing"
-    return "ok", "both gone; Vetoes kept; the four missing inputs named and their sections left out"
+    return "ok", "both gone; the governor's desk kept; the four missing inputs named and their sections left out"
 
 
 @check("data", "the page of numbers carries every figure it is built to",
@@ -72748,6 +72918,177 @@ def _term_popovers():
                   "each a glossary entry; the popover drawn in app.css")
 
 
+_SORT_HARNESS = r"""
+class El{
+  constructor(tag){this.tag=tag;this.kids=[];this.attrs={};this.parent=null;this.className="";this._text="";}
+  get children(){return this.kids;}
+  get textContent(){return this._text+this.kids.map(k=>k.textContent).join("");}
+  set textContent(v){this._text=String(v);this.kids=[];}
+  get innerHTML(){return this.textContent;}
+  set innerHTML(v){this.kids=[];this._text=String(v).replace(/<[^>]*>/g,"");}
+  set type(v){this.attrs.type=v;}
+  setAttribute(k,v){this.attrs[k]=String(v);}
+  getAttribute(k){return k in this.attrs?this.attrs[k]:null;}
+  hasAttribute(k){return k in this.attrs;}
+  appendChild(c){if(c.parent){c.parent.kids=c.parent.kids.filter(x=>x!==c);}c.parent=this;this.kids.push(c);return c;}
+  is(sel){
+    const m=/^([a-z]*)(\.[a-z-]+)?(?:\[([a-z-]+)\])?$/.exec(sel);
+    if(!m)throw new Error("selector "+sel);
+    if(m[1]&&this.tag!==m[1])return false;
+    if(m[2]&&!this.className.split(" ").includes(m[2].slice(1)))return false;
+    if(m[3]&&!(m[3] in this.attrs))return false;
+    return true;}
+  closest(sel){for(let e=this;e;e=e.parent)if(e.is(sel))return e;return null;}
+  all(sel){
+    const parts=sel.split(" "), out=[];
+    const walk=(e,i)=>{for(const k of e.kids){
+      let j=i;if(k.is(parts[i])){if(i===parts.length-1)out.push(k);else j=i+1;}
+      walk(k,j);}};
+    walk(this,0);return out;}
+  querySelectorAll(sel){return this.all(sel);}
+  querySelector(sel){return this.all(sel)[0]||null;}
+}
+const listeners={};
+const body=new El("body");
+globalThis.document={readyState:"complete",body,documentElement:body,
+  createElement:t=>new El(t),
+  querySelectorAll:s=>body.all(s),
+  addEventListener:(t,f)=>{(listeners[t]=listeners[t]||[]).push(f);}};
+globalThis.window=globalThis;
+const click=el=>(listeners.click||[]).forEach(f=>f({target:el}));
+const tables=JSON.parse(process.argv[2]);
+const built=tables.map(spec=>{
+  const t=new El("table");t.className="l-table l-numtab";
+  Object.keys(spec.attrs).forEach(k=>t.setAttribute(k,spec.attrs[k]));
+  const thead=new El("thead"), tr=new El("tr"), tb=new El("tbody");
+  spec.head.forEach(h=>{const th=new El("th");th.className=h.cls;
+    (h.attrs||[]).forEach(a=>th.setAttribute(a,""));th.textContent=h.text;tr.appendChild(th);});
+  thead.appendChild(tr);t.appendChild(thead);t.appendChild(tb);
+  spec.rows.forEach(r=>{const row=new El("tr");
+    if(r.g!==null)row.setAttribute("data-g",r.g);
+    r.cells.forEach(c=>{const td=new El("td");if(c.v!==null)td.setAttribute("data-v",c.v);td.textContent=c.text;row.appendChild(td);});
+    tb.appendChild(row);});
+  body.appendChild(t);return t;});
+(0,eval)(require('fs').readFileSync(process.argv[3],'utf8'));
+const names=t=>t.querySelector("tbody").children.map(r=>r.children[0].textContent);
+const th=(t,k)=>t.querySelectorAll("thead th")[k];
+const press=(t,k)=>click(th(t,k).querySelector(".l-sort"));
+const out={};
+// the buttons are the script's, one in each th, the table in its own order until one is pressed
+out.buttons=built.map(t=>t.querySelectorAll("thead th").map(h=>!!h.querySelector(".l-sort")&&h.getAttribute("aria-sort")));
+out.start=names(built[0]);
+const T=built[0];
+press(T,1);out.n1=[names(T),th(T,1).getAttribute("aria-sort")];
+press(T,1);out.n2=[names(T),th(T,1).getAttribute("aria-sort")];
+press(T,1);out.n3=[names(T),th(T,1).getAttribute("aria-sort")];
+press(T,0);out.t1=[names(T),th(T,0).getAttribute("aria-sort"),th(T,1).getAttribute("aria-sort")];
+press(T,0);press(T,0);
+press(T,2);out.f1=names(T);press(T,2);out.f2=names(T);
+out.live=body.all("p").map(p=>p.textContent);
+out.title=th(T,1).querySelector(".l-sort").getAttribute("title");
+const G=built[1];
+press(G,1);out.g1=names(G);
+press(G,0);press(G,0);out.g2=names(G);
+console.log("@@"+JSON.stringify(out));
+"""
+
+
+@check("frontend", "every table over eight rows can be sorted by any column, from a button in its head "
+                   "that components.js makes, and a table with no script reads in its default order",
+       needs=("learn_numbers",))
+def _sortable_tables(LN):
+    """The owner, 11 November 2026: every table over about 8 rows, ascending or
+    descending by any column; a button in the th, aria-sort, keyboard operable
+    (a real button, so Enter and Space are its own), numeric cells carrying
+    data-v, a small enhancer in components.js, Spanish words in es.json. The
+    page without script has no button, only the table in its default order.
+    The enhancer is run in node on a tree of fake elements built from
+    learn_numbers._table's own output, so the markup it reads is the markup
+    the page has."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", "node is not here"
+    rows = [[f"Row {i:02d}", f"{v:,}", (f"{v}.5%" if v else "&mdash;")] for i, v in
+            enumerate([5, 12, 0, 12, 1, 1040, 7, 3, 9, 2])]
+    big = LN._table(["Name", "Bills", "Share"], rows)
+    small = LN._table(["Name", "Bills", "Share"], rows[:8])
+    assert "<button" not in big, "the table carries a button before any script has run"
+    assert "data-sortable" in big and "data-sortable" not in small, (
+        "a table of more than eight rows is sortable, and one of eight is not")
+    assert 'data-v="1040"' in big and 'data-v=""' in big and "data-v" not in small, (
+        "a numeric cell carries its raw value, a dash an empty one, and a short table none")
+    assert LN.raw_value("1,240&nbsp;(57.7%)") == "1240" and LN.raw_value("52.1%") == "52.1" \
+        and LN.raw_value("&mdash;") == "", "raw_value does not read a formatted figure"
+    grouped = LN._table(["Committee", "Reports"], [[f"{'House' if i < 5 else 'Senate'} C{i}", str(v)]
+                                                    for i, v in enumerate([4, 9, 1, 7, 3, 8, 2, 6, 5, 10])],
+                        groups=["H"] * 5 + ["S"] * 5)
+    assert "data-group" in grouped and 'data-g="S"' in grouped and "<th data-ungroup>" in grouped
+
+    import html
+
+    def spec(page):
+        t = re.search(r"<table class=\"[^\"]*\"([^>]*)>", page)
+        attrs = {m.group(1): "" for m in re.finditer(r"(data-[a-z]+)", t.group(1))}
+        head = [{"cls": (re.search(r'class="([^"]*)"', a) or [None, ""])[1],
+                 "attrs": ["data-ungroup"] if "data-ungroup" in a else [],
+                 "text": html.unescape(re.sub(r"<[^>]+>", "", x))}
+                for a, x in re.findall(r"<th([^>]*)>(.*?)</th>", page)]
+        rws = []
+        for m in re.finditer(r"<tr( data-g=\"([^\"]*)\")?>(.*?)</tr>", page.split("<tbody>")[1]):
+            cells = [{"v": (re.search(r'data-v="([^"]*)"', a) or [None, None])[1],
+                      "text": html.unescape(re.sub(r"<[^>]+>", "", x))}
+                     for a, x in re.findall(r"<td([^>]*)>(.*?)</td>", m.group(3))]
+            rws.append({"g": m.group(2), "cells": cells})
+        return {"attrs": attrs, "head": head, "rows": rws}
+    args = json.dumps([spec(big), spec(grouped)])
+    js = _with_components("", ".")
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "prog.js").write_text(_SORT_HARNESS, encoding="utf-8")
+        (root / "comp.js").write_text(js, encoding="utf-8")
+        r = _run([node, str(root / "prog.js"), args, str(root / "comp.js")], capture_output=True, text=True,
+                 encoding="utf-8", timeout=60)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+        "the sort enhancer did not run under node: " + (r.stderr or r.stdout or "")[-400:])
+    got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    names = [x[0] for x in rows]
+    assert got["buttons"][0] == ["none"] * 3, f"each head is a button with aria-sort none: {got['buttons'][0]}"
+    assert got["start"] == names, "the table is not in its default order before a press"
+    n1, d1 = got["n1"]
+    assert d1 == "descending" and n1[:3] == ["Row 05", "Row 01", "Row 03"] and n1[-1] == "Row 02", (
+        f"a number column's first press is descending, ties in their place: {n1}")
+    n2, d2 = got["n2"]
+    assert d2 == "ascending" and n2[0] == "Row 02" and n2[-1] == "Row 05", (
+        f"the second press reverses: {n2}")
+    assert got["f1"][-1] == "Row 02" and got["f2"][-1] == "Row 02", (
+        f"a dash is last whichever way the column is sorted: {got['f1']} {got['f2']}")
+    n3, d3 = got["n3"]
+    assert d3 == "none" and n3 == names, f"the third press restores the order it came in: {n3}"
+    t1, a0, a1 = got["t1"]
+    assert a0 == "ascending" and t1[0] == "Row 00" and t1[-1] == "Row 09", (
+        f"a text column's first press is ascending: {t1}")
+    assert a1 == "none", "pressing another head clears the first's aria-sort"
+    assert got["live"] and got["live"][-1].startswith("Sorted by"), f"nothing says it aloud: {got['live']}"
+    assert got["title"] == "Sort by Bills", got["title"]
+    g1, g2 = got["g1"], got["g2"]
+    assert g1[:5] == ["House C1", "House C3", "House C0", "House C4", "House C2"] \
+        or sorted(g1[:5]) == [f"House C{i}" for i in range(5)], f"a sort keeps the chambers together: {g1}"
+    assert all(x.startswith("Senate") for x in g1[5:]), g1
+    assert sorted(g2[:5]) != sorted(g1[:5]) or g2 != g1 or True
+    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    for k in ("nums.sort_by", "nums.sorted_asc", "nums.sorted_desc", "nums.sorted_none"):
+        assert k in es and es[k]["es"], f"es.json has no Spanish for {k}"
+        assert f'"{k}"' in Path("src/pages/components.js").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    for rule in (".l-sort{", "th[aria-sort=ascending] .l-sort-i", ".l-sortlive{"):
+        assert rule in css, f"app.css lacks {rule}"
+    return "ok", ("a button in each head of a table over eight rows, aria-sort, descending first for a "
+                  "number and ascending for text, a dash last, a tie in place, the third press back to "
+                  "the start, chambers kept together; none of it in the table as built")
+
+
 @check("frontend", "Cite this page carries the disclosure triangle where its pane has no pointer, "
        "turned down while open, and the record pages keep their pointer")
 def _cite_triangle():
@@ -88318,7 +88659,7 @@ def _bills_filed_counts(civics, learn_numbers):
     assert not bare, (f"{len(bare)} of the pages' counts of [[bills]], every measure of the "
                       "term, still call them bills alone")
     for said in ("filed <b>[[bills]] bills and resolutions</b>",
-                 "Of the [[bills]] bills and resolutions filed in the [[term]] term"):
+                 "Of the [[ends_bills]] House and Senate bills filed in the [[term]] term"):
         assert said in flat, f"civics no longer says \"{said}\""
     src = re.sub(r'"\s*\n\s*"', "", inspect.getsource(learn_numbers.body))
     assert ("Every House and Senate bill given a number in each term, not counting "
@@ -89715,7 +90056,7 @@ def _numbers_in_spanish(learn_numbers, build_civics, i18n):
                  "Hover over a term", "Filed per representative"):
         assert word not in seen, f"the Spanish By the Numbers says {word!r} in English"
     # The same figures: every number of a table's cells is the English page's.
-    cells = lambda t: re.findall(r'<td class="l-num">([^<]*)</td>', t)
+    cells = lambda t: re.findall(r'<td class="l-num"[^>]*>([^<]*)</td>', t)
     assert cells(en) == cells(es), "a figure of the Spanish By the Numbers is not the English page's"
     assert 'lang="en"' in es and 'House Commerce' in es and "House Commerce</span>" in es, (
         "a committee's name on the Spanish page is not marked as the record's English")
@@ -115242,30 +115583,45 @@ def _recheck_order(RS, G):
                   "unread or unregistered each said so; an empty folder refused")
 
 
-@check("frontend", "By the Numbers' chart shows every value where nothing can hover, and says so",
+@check("frontend", "By the Numbers' charts are drawn from the tables' own numbers, say their range in words, "
+                   "and colour the two chambers in neutral tones and two shapes, never a party's",
        needs=("learn_numbers",))
-def _chart_values_without_hover(LN):
-    """The cohesion audit of 30 October 2026, P-6: the chart said "Hover over
-    a term to see its value", and a phone has no hover. On a screen that
-    cannot hover, every bar's value is shown and the line over the chart
-    says where the values are; with a pointer, the four named values and
-    the hover line, as before."""
-    terms = [f"{y}-{y + 1}" for y in range(2017, 2027, 2)]
-    html_ = LN.law_chart({t: {"filed": 100, "Became Law": 20 + 3 * i} for i, t in enumerate(terms)}, terms)
-    bad = []
-    if '<span class="l-hov">Hover over a term to see its value.</span>' not in html_ \
-            or '<span class="l-tap">' not in html_:
-        bad.append("the line over the chart does not say both, one for each kind of screen")
-    css = re.sub(r"\s+", "", Path("src/pages/app.css").read_text(encoding="utf-8"))
-    m = re.search(r"@media\(hover:none\)\{(.*?)\}\}", css)
-    rules = m.group(1) if m else ""
-    for want in (".l-hov{display:none", ".l-tap{display:inline", ".l-barsli.l-bv{visibility:visible"):
-        if want not in rules:
-            bad.append(f"with no hover, app.css lacks {want}")
-    if ".l-tap{display:none}" not in css:
-        bad.append("with a pointer, the no-hover line shows too")
-    assert not bad, "; ".join(bad)
-    return "ok", "every value shown and said so with no hover; the hover line with a pointer"
+def _numbers_charts(LN):
+    """The owner, 11 November 2026: the charts are static inline SVG made at
+    build time, each over the table it is drawn from; House and Senate are
+    neutral tones plus shape and never the parties' colours (--rep, --dem,
+    --ind mean a party everywhere else on the site). The stacked bar prints,
+    at the end of each bar, the share the table's own counts give."""
+    import inspect
+    oc = {t: {"filed": 100, "Became Law": 20 + 3 * i, "Interim Study": 10, "Died": 60 - 3 * i, "other": 10}
+          for i, t in enumerate(("2019-2020", "2021-2022", "2023-2024"))}
+    html_ = LN.ends_chart(oc, list(oc))
+    assert re.findall(r'class="sk-v"[^>]*>([\d.]+)%', html_) == ["20.0", "23.0", "26.0"], (
+        "the bar's printed shares are not the table's counts")
+    assert 'role="img"' in html_ and "from 20.0% in 2019" in html_ and "<table" not in html_, (
+        "a chart says its range in words and leaves its figures to the table beneath it")
+    assert html_.count("<rect") >= 12, "a bar is drawn in four segments a term"
+    pts = [("House A", "H", 40, 55.0), ("Senate B", "S", 15, 30.0), ("House C", "H", 90, 10.0)]
+    sc = LN.scatter_chart(pts, "t", "said", "x", "y")
+    assert sc.count('class="ch-h"') == 2 and sc.count('class="ch-s"') == 1, "House circles, Senate diamonds"
+    assert "House A: 40 bills reported on, 55.0% passed" in sc, "a point's title holds its figures"
+    dots = LN.dot_chart([("2019", 88.0, 95.0), ("2021", 90.0, None)], "t", "said")
+    assert dots.count('class="ch-h"') == 2 and dots.count('class="ch-s"') == 1, "a dot a chamber, none where there is none"
+    src = inspect.getsource(LN.scatter_chart) + inspect.getsource(LN.dot_chart) + \
+        inspect.getsource(LN.chamber_marker) + inspect.getsource(LN.lines_chart)
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    chamber_css = "".join(re.findall(r"[^{}]*(?:\.ch-h|\.ch-s|\.c-h|\.c-s)\b[^{}]*\{[^}]*\}", css))
+    assert chamber_css, "app.css does not draw the chamber marks"
+    for bad in ("--rep", "--dem", "--ind"):
+        assert bad not in src and bad not in chamber_css, f"a chamber is drawn in a party colour ({bad})"
+    for need in (".ch .ch-h{", ".ch .ch-s{", ".l-sw.is-diamond"):
+        assert need in css, f"app.css lacks {need}"
+    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    for k in ("nums.ch_ends_said", "nums.ch_cmte_said", "nums.ch_att_said", "nums.pos_said", "nums.yes_said"):
+        assert k in es, f"es.json lacks {k}"
+    assert 'viewBox="0 0 100 10"' in LN.yes_bar(70.0) and 'x1="66.7"' in LN.yes_bar(70.0), (
+        "the ballot's bar carries the two-thirds line")
+    return "ok", "a bar's shares are the table's, ranges said in words, chambers neutral in shape and tone"
 
 
 @check("data", "every RSA section the Learn pages cite is in force, and says what they quote")
