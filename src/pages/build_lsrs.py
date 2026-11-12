@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.9
+# GRANITE_VERSION: 2026-09-18.10
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -322,6 +322,62 @@ def retire(rows, year, today):
     return n
 
 
+def not_returning(site):
+    """({slug: why}, {slug: why not decided}) for the sitting members, from
+    the 2026 election's results (site/members_elect.json, build_members_elect).
+
+    Alice, 12 November 2026: "Bills that were requested by members before the
+    election but the members lost reelection can be removed without being
+    labeled as withdrawn." After an election the General Court drops the
+    requests of members who are not coming back, and the list alone cannot
+    say why a request left it.
+
+    BY IDENTITY, NEVER BY NAME. A sitting member is not returning when their
+    own race is decided (nothing not_final, nothing held) and their slug is
+    not among the slugs of that election's winners (each elected entry of a
+    sitting member carries "s"). Lost, retired, or ran for another office:
+    the file does not say which and the rule does not need it. A name check
+    flags 169 standing requests falsely (nicknames, spellings), so none is
+    made here. A member whose race is not decided, or is in no race the file
+    lists, is not decided: the second dict, and their requests are left as
+    they are."""
+    ep, lp = site / "members_elect.json", site / "legislators.json"
+    if not (ep.exists() and lp.exists()):
+        return {}, {}
+    races = (json.loads(ep.read_text(encoding="utf-8")).get("races")) or {}
+    won = {e.get("s") for r in races.values() for e in r.get("elected") or []
+           if e.get("s")}
+    gone, open_ = {}, {}
+    for m in json.loads(lp.read_text(encoding="utf-8")):
+        slug = m.get("slug")
+        if not slug or slug in won:
+            continue
+        key = (f"H|{m.get('county')}|{m.get('district')}" if m.get("chamber") == "H"
+               else f"S|{m.get('district')}")
+        race = races.get(key)
+        if race is None:
+            open_[slug] = f"no race {key} in members_elect.json"
+        elif race.get("not_final") or race.get("held"):
+            open_[slug] = f"race {key} is not final"
+        else:
+            gone[slug] = f"not among the winners of {key}"
+    return gone, open_
+
+
+def drop_unreturned(rows, gone):
+    """(kept rows, the rows dropped): a request that left the General Court's
+    list (withdrawn, and not a bill) whose prime sponsor, identified by slug,
+    is not returning is dropped -- no page, not counted, forwarded to the
+    requests' list by build_pages.moved_requests. A request still on the
+    list is never dropped, whatever its sponsor, and a withdrawn request of a
+    returning member, or of a sponsor with no slug, is left as it is."""
+    kept, dropped = [], []
+    for r in rows:
+        slug = r.get("sponsor_slug")
+        (dropped if r.get("withdrawn") and slug and slug in gone else kept).append(r)
+    return kept, dropped
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
@@ -348,6 +404,9 @@ def main():
                           lsrs)
     rows, unmatched = rows_from(lsrs, roster(site), became, year)
     assert rows, "no request survived shaping, though the source had some"
+    gone, undecided = not_returning(site)
+    rows, dropped = drop_unreturned(rows, gone)
+    assert rows, "every request was dropped as a not-returning member's"
     import build_date
     retired = retire(rows, year, build_date.today().isoformat())
     idx = site / "idx"
@@ -374,6 +433,7 @@ def main():
             by_slug[r["sponsor_slug"]] = by_slug.get(r["sponsor_slug"], 0) + 1
     meta["requests"] = {"term": term, "label": label, "year": year, "n": len(rows),
                         "withdrawn": sum(1 for r in rows if r["withdrawn"]),
+                        "dropped": sorted(r["address"] for r in dropped),
                         "by_slug": dict(sorted(by_slug.items()))}
     mj.write_text(json.dumps(meta), encoding="utf-8")
 
@@ -386,6 +446,14 @@ def main():
         print(f"  {older} request(s) of an earlier session left out: bills or withdrawn by now")
     print(f"  {meta['requests']['withdrawn']} withdrawn; "
           f"{sum(1 for r in rows if r['sponsor_slug'])} sponsors matched to a member")
+    if dropped:
+        print(f"  {len(dropped)} withdrawn request(s) of members not returning dropped, "
+              "forwarding to the list: " + ", ".join(r["n"] for r in dropped))
+    stuck = [r["n"] for r in rows if r["withdrawn"] and not r["sponsor_slug"]]
+    stuck += [r["n"] for r in rows if r["withdrawn"] and r["sponsor_slug"] in undecided]
+    if stuck:
+        print(f"  {len(stuck)} withdrawn request(s) kept, the sponsor not identified or "
+              "their race not decided: " + ", ".join(stuck))
     if became:
         print(f"  {len(became)} introduced as bills, each marked with its bill, its page "
               "forwarding to the bill's")
