@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.882
+# GRANITE_VERSION: 2026-09-04.883
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31300,8 +31300,8 @@ def _request_pages():
         assert [g[2] for g in got] == ["Requested", "Filed", "Introduced"], (
             f"a request's rail draws {[g[2] for g in got]}, not Requested, Filed, Introduced")
         assert [g[0] for g in got] == ["p", "o", "o"], f"a request's rail is reached as {[g[0] for g in got]}"
-        assert [g[0] for g in stops_of(wd)] == ["x", "o", "o"] and "\u2715" in stops_of(wd)[0][1], (
-            "a withdrawn request's rail does not end at a cross on Requested")
+        assert [g[0] for g in stops_of(wd)] == ["p", "x", "o"] and "\u2715" in stops_of(wd)[1][1], (
+            "a withdrawn request's rail does not show Requested reached and the cross on Filed")
         assert [g[0] for g in stops_of(RP.rail_of({**by["LSR 2027-0001"], "filed": "2026-12-01"}))] \
             == ["p", "p", "o"], "a filed request's rail does not reach Filed"
         slot = 296 / 3  # the rail of a 320px phone, three stops
