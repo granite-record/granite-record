@@ -49,6 +49,7 @@ import build_date
 import build_pages as BP
 import live_gen as LG
 import shell as S
+import state_settings as ST
 
 AHEAD = 4                  # weekdays after today
 # LINKED IS THE OWNER'S SWITCH (workers/live/SWITCH_ON.md, step 5): whether the
@@ -179,7 +180,7 @@ def schedule(site, today, weeks=None, history=None):
         days[iso] = rows
         if nxt is None and d > today and rows:
             nxt = {"date": iso, "name": rows[0]["name"]}
-    return {"built": today.isoformat(), "tz": "America/New_York", "days": days, "next": nxt,
+    return {"built": today.isoformat(), "tz": ST.TIMEZONE, "days": days, "next": nxt,
             "bills": bill_years(site, today)}
 
 

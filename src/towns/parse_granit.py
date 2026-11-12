@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.5
+# GRANITE_VERSION: 2026-09-20.6
 """
 NH GRANIT's district geometry, and whether it carries the districts we publish.
 
@@ -89,6 +89,7 @@ import struct
 import zipfile
 
 import parse_districts
+import state_settings as ST
 
 # The repository root, wherever this file sits (_paths.py): the data it
 # reads is the root's.
@@ -111,9 +112,7 @@ LAYERS = {
     "NHPolitDists.zip": ("d-nhpolitdists", "WARD", 324),
 }
 
-COUNTY = {"BE": "Belknap", "CA": "Carroll", "CH": "Cheshire", "CO": "Coos",
-          "GR": "Grafton", "HI": "Hillsborough", "ME": "Merrimack",
-          "RO": "Rockingham", "ST": "Strafford", "SU": "Sullivan"}
+COUNTY = ST.COUNTY_BY_CODE
 
 LICENCE = ("Access Constraints: None; Use Constraints: Not for legal use. "
            "Permissive enough to publish a map. The site must not present "

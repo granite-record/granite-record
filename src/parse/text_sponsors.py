@@ -89,6 +89,7 @@ import unicodedata
 from collections import Counter, defaultdict
 
 from member_links import COUNTIES, SHORT, seat as label_seat
+import state_settings as ST
 
 PAGES = Path("legislation")
 CURRENT_TEXT = Path("bill_text")      # 2025-2026 from billText.aspx; read by --score only
@@ -98,9 +99,7 @@ BILLS = Path("data/bills.json")
 OUT = Path("text_sponsors.json")
 SOURCE = "bill text"
 
-ABBR = {"Belknap": "Belk", "Carroll": "Carr", "Cheshire": "Ches", "Coos": "Coos",
-        "Grafton": "Graf", "Hillsborough": "Hills", "Merrimack": "Merr",
-        "Rockingham": "Rock", "Strafford": "Straf", "Sullivan": "Sull"}
+ABBR = ST.COUNTY_ABBR
 SUFFIXES = {"jr", "sr", "ii", "iii", "iv"}
 
 HONORIFIC = re.compile(r"^(Rep|Sen)s?\b\.?\s*", re.I)

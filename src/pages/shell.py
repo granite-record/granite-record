@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.38
+# GRANITE_VERSION: 2026-09-07.40
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -28,6 +28,7 @@ nav, the footer and the head's shared lines go, and template() fills them
 is framed by the same code as the five pages build_pages.py writes.
 """
 
+import datetime
 import html
 import json
 import re
@@ -189,9 +190,41 @@ def cite_day_full(short):
 
 # The day the site was built, as the fallback date in a citation. A file on
 # a CDN cannot know when it is read; app.js puts the reader's own date in
-# where it can, and this is what a reader without JavaScript is given.
+# where it can; a reader without JavaScript is given the day the page's record
+# last changed (cited() below), and this day only where it has none.
 # build_date.today() is the clock, unless a day is stated to compare builds.
 BUILT = cite_day(build_date.today())
+
+
+def cited(*days):
+    """The date a record page's citation falls back on, for a reader without
+    JavaScript: the day its record last changed, in cite_day's form.
+
+    `days` are ISO days (or dates, or longer ISO stamps) out of the page's own
+    data; the latest of them that is not after the build day is the answer.
+    None of them is a day the build can stand behind -- no argument, an empty
+    one, one that is not a date, only days still ahead -- and the page falls
+    back on the build day, BUILT, as every page did. A day later than the
+    build's is never shown: it would be a claim about a day not yet come.
+    A page whose record did not change keeps its date from one night to the
+    next, so its file is byte-identical and the CDN is not asked to take it
+    again; one whose record moved is the only one that differs.
+    """
+    today = build_date.today()
+    best = None
+    for d in days:
+        if hasattr(d, "date") and callable(d.date):
+            d = d.date()
+        elif isinstance(d, str):
+            try:
+                d = datetime.date.fromisoformat(d.strip()[:10])
+            except ValueError:
+                continue
+        if not isinstance(d, datetime.date):
+            continue
+        if d <= today and (best is None or d > best):
+            best = d
+    return cite_day(best) if best else BUILT
 
 # The punctuation a name can end on: full stops, spaces and closing double
 # quotes, in whatever order the source typed them. Not an apostrophe: 1994's
@@ -296,11 +329,14 @@ def cite_block(path, title, base, built=""):
     the opposite would be a disservice dressed up as a convenience.
 
     THE DATE IS THE DAY THE PAGE WAS READ, which a file on a CDN cannot know.
-    app.js fills every .citeday with the reader's own date; the build date is
-    written in as the fallback so a reader without JavaScript gets something
-    true about the page rather than "Accessed ." -- and the note says which
-    date it is, so neither reader is misled. Both are written by cite_day, in
-    one form whatever the reader's language.
+    app.js fills every .citeday with the reader's own date. What is written
+    in is the fallback for a reader without JavaScript: the day the page's
+    record last changed (cited(), from the record's own dates), and the
+    build day only where a page has no such day -- so a night with no change
+    leaves the file as it was and the CDN has nothing to take again (the
+    owner, 11 November 2026). The note says which date it is, so neither
+    reader is misled. Both are written by cite_day, in one form whatever the
+    reader's language. `built` is that day, already in cite_day's form.
 
     UP BY THE TITLE, WITH A COPY BUTTON (the person, 24 September). It sat
     between the record and the footer, below everything a reader scrolls
@@ -658,8 +694,12 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
          sr_title=None, nav_current="", jsonld=None,
          data_json=None, data_url=None, og_type="article", og_image=None,
          og_alt=None, cite=True, cite_title=None, canonical=None,
-         static="", lang="en", alts=None):
+         static="", lang="en", alts=None, changed=None):
     """One record's page: the template, told which record it is.
+
+    `changed` is the day the record last changed (an ISO day), which the
+    citation gives a reader without JavaScript (cited()); None is the build
+    day.
 
     sr_title replaces the template's own visually-hidden <h1>. bills.html
     carries "New Hampshire bills" because that is what bills.html is, and
@@ -755,7 +795,9 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
     g = globals or {}
     if g.get("GR_STATIC") or g.get("GR_STANDALONE"):
         out = out.replace(NEEDS["shell"], '<div class="shell nofacets">', 1)
-        if not g.get("GR_BILL"):
+        # A request's own page keeps the box as a bill's does (GR_REQUEST, 11
+        # November 2026: it is the bill's page until it is a bill).
+        if not (g.get("GR_BILL") or g.get("GR_REQUEST")):
             out = out.replace(NEEDS["searchrow"], NEEDS["searchrow"][:-1] + " hidden>", 1)
         else:
             for k, down in BILL_ROW.items():
@@ -824,7 +866,7 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
         assert slot in out, "the template has no results slot for the citation to sit above"
         out = out.replace(slot, cite_block(canonical or path,
                                            cite_title or og_title or title,
-                                           base, BUILT) + slot, 1)
+                                           base, cited(changed)) + slot, 1)
 
     # THE RECORD AS PLAIN HTML (the SEO review of 12 October 2026), above
     # the slot app.js draws into and after the citation, for a reader that

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.92
+# GRANITE_VERSION: 2026-09-08.93
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -2413,7 +2413,7 @@ def guide_page(tmpl, g, base, record, draft_why=""):
     items = otp_items(secs, S.canon(path), step_parts(g))
     otp = ('<details class="l-otp"><summary>On this page</summary>'
            f'<nav class="l-otpb" aria-label="On this page"><ol>{items}</ol></nav></details>')
-    acts = S.cite_block(path, g["title"], base, S.BUILT)
+    acts = S.cite_block(path, g["title"], base, S.cited(last))
     row = '<div class="pageacts" id="pageacts">'
     assert acts.startswith(row), "shell.cite_block no longer opens with the row"
     acts = row + otp + acts[len(row):]

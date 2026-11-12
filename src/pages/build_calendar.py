@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.55
+# GRANITE_VERSION: 2026-09-18.56
 """
 The General Court's week, one page per week.
 
@@ -2915,7 +2915,12 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              # (English only: a citation is MLA's, APA's, Chicago's and
              # BibTeX's own English form, and a page cited in one of them is
              # cited from its English page.)
-             + (S.cite_block(path, f"The Week of {label}", base, S.BUILT)
+             + (S.cite_block(path, f"The Week of {label}", base,
+                          # The week's last day: a week that is over is dated by
+                          # itself, and the week that is not is the build day's
+                          # (shell.cited never gives a day still to come).
+                          S.cited(datetime.date.fromisocalendar(
+                              int(key[:4]), int(key[6:]), 7)))
                 if lang == i18n.DEFAULT else "")
              # NO LINK DOWN TO THE CALENDARS & JOURNALS (F11): the section is
              # the last block of the schedule's column, where a reader finds it.
@@ -3088,7 +3093,7 @@ def documents_files(site, base, cdocs, left_out, urls):
     html = html.replace('<div id="results"></div>',
                         '<div id="results"><div class="clist dirlist cdpage">'
                         f'<h1>{S.E(heading)}</h1><p class="src">{lead}</p>'
-                        f'{S.cite_block(path, heading, base, S.BUILT)}{body}</div></div>'
+                        f'{S.cite_block(path, heading, base, S.cited(*(str(d.date or '') for d in cdocs)))}{body}</div></div>'
                         f"<script>{lean_js(CD.LIST_JS)}</script>", 1)
     assert '<div class="clist dirlist cdpage">' in html, f"{path}: the template has no results slot"
     list_f.write_text(S.clean_links(html), encoding="utf-8")

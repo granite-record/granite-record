@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.864
+# GRANITE_VERSION: 2026-09-04.872
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20271,6 +20271,24 @@ def _cite_up_and_copied():
     today = S.cite_day(_dt.date.today())
     assert f'<span class="citeday">{today}</span>' in block, (
         f"the fallback date is not the build day in the one form ({today})")
+    # A page that names the day its record last changed is dated by it, never
+    # by a day still to come, and the build day where it names none (the
+    # owner, 11 November 2026): the date a reader without JavaScript sees
+    # moves only when the record does.
+    assert S.cited("2026-03-04") == "4 Mar. 2026" and S.cited("2026-03-04T09:00:00") == "4 Mar. 2026", (
+        "shell.cited does not give the record's own day in cite_day's form")
+    assert S.cited("2025-01-02", "2026-03-04", "2024-05-06") == "4 Mar. 2026", (
+        "shell.cited does not take the latest of the days it is given")
+    late_day = (_dt.date.today() + _dt.timedelta(days=3)).isoformat()
+    assert S.cited(late_day) == today and S.cited("2026-03-04", late_day) == "4 Mar. 2026", (
+        "shell.cited gave a day later than the build's, or let one hide an earlier real day")
+    assert S.cited() == S.cited(None) == S.cited("", "not a day") == today, (
+        "shell.cited does not fall back on the build day where the record names none")
+    dated = S.page(S.template(), path="/bill/2026/hb1.html", base="https://graniterecord.org",
+                   title="HB 1 (2026): relative to the state budget. | Granite Record",
+                   description="A bill.", changed="2026-03-04")
+    assert '<span class="citeday">4 Mar. 2026</span>' in dated and         f'<span class="citeday">{today}</span>' not in dated, (
+        "shell.page(changed=...) does not date the citation by the record's day")
     # APA and Chicago in their own form, "October 30, 2026" (the cohesion audit, B-5).
     full = S.cite_day_full(today)
     for k, lead in (("apa", "Retrieved "), ("chicago", "Accessed ")):
@@ -30818,12 +30836,42 @@ def _request_pages():
             "one kept, and the one now a bill taken away")
         page = (site / "request" / "2027-0001.html").read_text(encoding="utf-8")
         assert '<meta name="robots" content="noindex,follow">' in page \
-            and 'class="static-rec shown"' in page and "Requests, not bills yet." in page \
+            and "Requests, not bills yet." in page \
             and "numbered 2027 bill" in page and 'href="legislator/jodi-nelson-rock-13"' in page, (
-            "a request's page is not noindex, shown with script on, explained, or its sponsor's "
-            "chip linked")
+            "a request's page is not noindex, explained, or its sponsor's chip linked")
+        # THE BILL PAGE'S FRAME (Alice, 11 November 2026: "so that information
+        # fills in more naturally rather than reformatting the whole layout"):
+        # the record head with the trail Bills > the requests > the number, the
+        # number and the status chip, the field grid, the action column with
+        # Cite, Share and Report and no Testify or Print, the rail starting at
+        # Requested and then every stop a bill passes, the Summary tab alone;
+        # Follow's key and the report's record named for the scripts.
+        frame = ('<header class="rhead rh-bill">', '<nav class="rtrail"', '>2027 Bill Requests</a>',
+                 '<li aria-current="page">LSR 2027-0001</li>', 'chip chip-m cstat',
+                 'Filed as a request</span>', '<dl class="rfacts">', "<dt>Prime Sponsor</dt>",
+                 "<dt>Kind</dt>", '<div class="racts"><div class="pageacts" id="pageacts"><details class="pcite"', "data-share",
+                 '<i>Requested</i>', "<i>Introduced</i>", "<i>House</i>", "<i>Senate</i>",
+                 "<i>Governor</i>", "<i>Law</i>", 'id="sstab-summary"', 'class="pane sspane"',
+                 'window.GR_FOLLOW="lsr:2027-0001";', 'window.GR_REPORT="request:2027-0001";',
+                 'window.GR_REQUEST="2027-0001";')
+        gone_ = [x for x in frame if x not in page]
+        assert not gone_, f"a request's page lacks the bill page's frame: {gone_}"
+        assert page.index("<i>Requested</i>") < page.index("<i>Introduced</i>") \
+            < page.index("<i>House</i>") < page.index("<i>Senate</i>") \
+            < page.index("<i>Governor</i>") < page.index("<i>Law</i>"), "the rail's stops are out of order"
+        for no in ("Testify", "data-print", 'role="tab" id="sstab-votes"', "Committee</dt>"):
+            assert no not in page, f"a request's page carries {no!r}, which a request has not"
+        assert page.count('role="tab"') == 1, "a request's page has more than one tab"
         wd = (site / "request" / "2027-0002.html").read_text(encoding="utf-8")
-        assert "<b>Status:</b> Withdrawn<" in wd, "a withdrawn request's page does not say so"
+        assert "<b>Status:</b> Withdrawn<" in wd and ">Withdrawn</span>" in wd \
+            and "window.GR_FOLLOW" not in wd, (
+            "a withdrawn request's page does not say so, or offers Follow")
+        assert "<i>Senate</i>" in wd and wd.index("<i>Senate</i>") < wd.index("<i>House</i>"), (
+            "a Senate request's rail does not start in the Senate")
+        # Its route, by kind (build_lsrs.route).
+        assert L.route("HR") == ["House", "Adopted"] and L.route("SCR") == ["Senate", "House"] \
+            and L.route("CACR") == ["Voters"] and L.route("SB")[-2:] == ["Governor", "Law"], (
+            "build_lsrs.route's stops are not a bill's route")
         red = BPG.moved_requests(site)
         assert "/request/2027-0003 /bill/2027/hb45 301\n" in red and "2027-0001" not in red, (
             f"the 301s for the requests read {red!r}")
@@ -39152,6 +39200,37 @@ def _build_date_stated(build_all, build_date, shell):
         assert said, "no page of the fixture cites the stated day as the day it was read"
         assert not late, (f"{len(late)} page(s) built with {day} stated still cite today, "
                           f"{shell.cite_day(today)}: {', '.join(late[:4])}")
+        # A RECORD PAGE'S CITATION DATE IS ITS RECORD'S, NOT THE BUILD'S (the
+        # owner, 11 November 2026): built on two different days from the same
+        # data, a page that names the day its record last changed is the same
+        # file, so a night with no change uploads none of them. The pages that
+        # name no such day fall back on the build day and may differ, and by
+        # that date alone.
+        plain_site = _fixture_site_shared()[0] / "site"
+        moved, kinds = [], Counter()
+        fell, fell_stated = shell.cite_day(today), shell.cite_day(day)
+        for p in sorted(site.rglob("*.html")):
+            q = plain_site / p.relative_to(site)
+            if not q.is_file():
+                continue
+            a_, b_ = (x.read_text(encoding="utf-8", errors="replace") for x in (p, q))
+            if a_ == b_:
+                if 'class="citeday' in a_ and f'<span class="citeday">{fell}</span>' not in a_ \
+                        and f'<span class="citeday">{fell_stated}</span>' not in a_:
+                    kinds[p.relative_to(site).parts[0]] += 1
+                continue
+            # A page that fell back on the build day may differ in more than
+            # that (a week still to come, the API's own day); one that names
+            # its record's day may not differ at all.
+            if 'class="citeday' in a_ and f'<span class="citeday">{fell_stated}</span>' not in a_:
+                moved.append(p.relative_to(site).as_posix())
+        assert not moved, (
+            f"{len(moved)} page(s) that date their citation by their record differ between two "
+            "builds of the same data on two different days: " + ", ".join(moved[:4])
+            + f" (by folder: {dict(Counter(m.split('/')[0] for m in moved))})")
+        assert kinds.get("bill", 0) > 0, (
+            "no bill page of the fixture is the same file on two build days: its citation is "
+            "still dated by the build")
         home = json.loads((site / "home.json").read_text(encoding="utf-8"))
         assert home.get("generated") == day.isoformat(), (
             f"home.json is dated {home.get('generated')}, not the stated {day}")
@@ -39181,10 +39260,11 @@ def _build_date_stated(build_all, build_date, shell):
         shutil.rmtree(root, ignore_errors=True)
     # And by the clock, where none is stated: the fixture the other checks read.
     plain, _base, _ran, built_on = _fixture_site_shared()
-    page = next((plain / "site" / "bill").rglob("*.html")).read_text(encoding="utf-8",
-                                                                     errors="replace")
-    assert any(f'<span class="citeday">{shell.cite_day(d)}</span>' in page for d in built_on), (
-        "with no day stated, a bill page does not cite the day it was built")
+    cited_days = {m.group(1) for q in (plain / "site").rglob("*.html")
+                  for m in re.finditer(r'<span class="citeday">([^<]*)</span>',
+                                       q.read_text(encoding="utf-8", errors="replace"))}
+    assert any(shell.cite_day(d) in cited_days for d in built_on), (
+        "with no day stated, no page that has no record date of its own cites the day it was built")
     src = Path(build_all.__file__).read_text(encoding="utf-8")
     assert "build_date.stated()" in src and '"date_stated"' in src, (
         "build_all.py no longer says, or records in build.json, that its day was stated")
@@ -74616,7 +74696,7 @@ def _icons_named():
                            f"drawing: {[(h, w.strip()) for h, _s, w in got]}")
     # Follow, Report a problem and Share are mounted outside anything the
     # drawing records; _share_beside_report holds those three the same way.
-    wanted = {"bill", "person", "committee", "book", "calendar", "cite", "search"}
+    wanted = {"bill", "person", "gavel", "book", "calendar", "cite", "search"}
     missing = sorted(n for n in wanted if not seen[n])
     if missing:
         bad.append("no fixture page draws " + ", ".join(missing))
@@ -92475,6 +92555,12 @@ for (const [rec, url] of [["session:H/2010-03-11", "/session/H/2010-03-12"],
     ["study:H05", "/committee/H05"], ["committee:ss1451", "/committee/ss1451"],
     ["study:ss1451", "/legislator/jane-doe-hills-12"], ["session:H/2010-03-11", "/legislator/x"]])
   ok(`${rec} from ${url} is refused`, validate({ ...good, record: rec, url, tab: "" }) === null);
+// A bill request (11 November 2026), from its own address only, on its one tab.
+const rq = { ...good, record: "request:2027-0012", url: "/request/2027-0012", tab: "Summary" };
+ok("a request's page is accepted", validate(rq) !== null);
+for (const [rec, url] of [["request:2027-0012", "/request/2027-0013"], ["request:2027-0012", "/bill/2027/hb12"],
+    ["request:2027-12", "/request/2027-12"], ["bill:2027/HB12", "/request/2027-0012"]])
+  ok(`${rec} from ${url} is refused`, validate({ ...rq, record: rec, url }) === null);
 // A town or a ward (the owner, 10 November 2026), from its own address only,
 // naming no tab.
 const town = { ...good, record: "town:concord-ward-4", url: "/town/concord-ward-4", tab: "" };
@@ -121333,6 +121419,103 @@ def _elect_step_order(build_all):
 # (_elect_widened), and it links 310, still none wrong: 114 left, 7 of them
 # the record knew.
 
+@check("build", "the ballot questions: every card's rule is its kind's, the county files sum to the "
+                "totals shown, 2022's Question No. 2 and 2026's are the Secretary of State's counts, "
+                "no card says a school district adopted or failed anything, and the flip numbers are "
+                "the least number of voters",
+       needs=("build_elections", "parse_sos_questions"))
+def _ballot_questions(BE, PSQ):
+    """The ballot-question cards (stage 0 of the elections work, 11 November
+    2026). Held to collected/ballot_questions.json and
+    corrections/ballot_results.json, both tracked; where the spreadsheets are
+    on disk, the file is read again from them."""
+    qp, bp = Path("collected/ballot_questions.json"), Path("corrections/ballot_results.json")
+    if not qp.exists() or not bp.exists():
+        return "skip", "not here: collected/ballot_questions.json or corrections/ballot_results.json"
+    doc = json.loads(qp.read_text(encoding="utf-8"))
+    els = doc["elections"]
+    # the committed file is what the saved spreadsheets say, where they are here
+    if all((Path("records/sources") / s["file"]).exists() for s in doc["_source"]):
+        r = _run([sys.executable, _paths.script("parse_sos_questions.py"), "--check"],
+                 capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, f"parse_sos_questions --check: {(r.stdout or '') + (r.stderr or '')}"
+    # every county adds up to the statewide figure, except the one the page says disagrees
+    for day, qs in els.items():
+        for q in qs:
+            yes = sum(v[0] for v in q["counties"].values())
+            no = sum(v[1] for v in q["counties"].values())
+            assert len(q["counties"]) == 10, f"{day} {q['label']}: {len(q['counties'])} counties"
+            if q.get("county_sum"):
+                assert q["county_sum"] == [yes, no], f"{day} {q['label']}: county_sum is not the counties'"
+                assert [yes, no] != [q["yes"], q["no"]]
+            else:
+                assert (yes, no) == (q["yes"], q["no"]), (
+                    f"{day} {q['label']}: the counties add up to {yes}, {no}, the total says "
+                    f"{q['yes']}, {q['no']}")
+    q22 = {q["number"]: q for q in els["2022-11-08"]}
+    assert (q22[2]["yes"], q22[2]["no"], q22[2]["kind"]) == (178339, 347838, "convention"), q22[2]
+    q26 = {q["number"]: q for q in els["2026-11-03"]}
+    assert (q26[2]["yes"], q26[2]["no"], q26[2]["kind"], q26[2].get("measure")) == (
+        356374, 249144, "local_cap", "HB 1300"), q26[2]
+    assert q26[2]["counties"]["Belknap"] == [18946, 10690] and q26[2]["counties"]["Sullivan"] == [10575, 7912]
+    # the CACR rows the corrections file holds agree with the spreadsheets, but for the one
+    # place the Secretary of State's own files disagree (2026, read from its summary)
+    rows = json.loads(bp.read_text(encoding="utf-8"))["rows"]
+    for day, qs in els.items():
+        for q in qs:
+            if q["kind"] != "cacr":
+                continue
+            mine = [r for r in rows if r["election"] == day and r["label"] == q["label"]]
+            assert len(mine) == 1 and (mine[0]["yes"], mine[0]["no"]) == (q["yes"], q["no"]), (
+                f"{day} {q['label']}: corrections/ballot_results.json and the spreadsheet differ")
+    # the rule on each card comes from its kind
+    banned = re.compile(r"\b(adopted|failed|passed|ratified|rejected|approved)\b", re.I)
+    for day in els:
+        cards = BE.question_cards(day, bp, qp)
+        assert len(cards) == len(els[day]), f"{day}: {len(cards)} cards for {len(els[day])} questions"
+        for c in cards:
+            html_ = BE.ballot_block([c], Path("nowhere"), {})
+            text = re.sub(r"<[^>]+>", " ", html_)
+            rule = BE.question_rule(c)
+            if c["kind"] == "cacr":
+                assert "two thirds" in rule and "Article 100)" in rule, rule
+                assert "3/5" not in text and "majority" not in re.sub(r"\s+", " ", rule)
+                assert "Ratified" in text or "Not ratified" in text
+            elif c["kind"] == "convention":
+                assert "majority of the qualified voters" in rule and "Article 100(b)" in rule, rule
+                assert "two thirds" not in text and "3/5" not in text, text
+                assert "Approved" in text or "Not approved" in text
+            else:
+                assert "3/5 majority of the voters voting in the municipalities and wards" in rule, rule
+                assert "RSA 32:5-i" in rule and "two thirds" not in text, text
+                assert not banned.search(text.replace("approve the question", "")), (
+                    f"a local tax cap card names an outcome: {banned.search(text).group(0)}")
+                assert "decides nothing" in text and "voter would have" not in text \
+                    and "voters would have" not in text, text
+            if c["kind"] != "local_cap":
+                assert "would have had to vote the other way" in text, text
+    # the least number of voters that changes the result, by counting
+    two = BE.two_thirds
+    maj = lambda y, n: y > n
+    for y, n in [(0, 5), (5, 0), (7, 3), (2, 1), (3, 3), (4, 2), (9, 4), (13, 7), (30, 61), (66, 33), (67, 33), (10, 11)]:
+        want = 0
+        while two(y, n) == two(*((y - want, n + want) if two(y, n) else (y + want, n - want))):
+            want += 1
+            if want > y + n:
+                break
+        assert BE.flip_two_thirds(y, n) == want, (y, n, BE.flip_two_thirds(y, n), want)
+        want = 0
+        while maj(y, n) == maj(*((y - want, n + want) if maj(y, n) else (y + want, n - want))):
+            want += 1
+            if want > y + n:
+                break
+        assert BE.flip_majority(y, n) == want, (y, n, BE.flip_majority(y, n), want)
+    assert (BE.flip_two_thirds(329157, 194291), BE.flip_two_thirds(365359, 198791),
+            BE.flip_two_thirds(452307, 237221), BE.flip_majority(178339, 347838)) == (
+        19809, 10741, 7379, 84750)
+    return "ok", ("ballot questions: " + ", ".join(f"{d}: {len(q)}" for d, q in els.items()))
+
+
 @check("build", "members-elect: the results reader refuses a write-in winner the file does not "
                 "name, and reads a county's later upload in place of the earlier",
        needs=("parse_sos_results",))
@@ -123111,6 +123294,42 @@ def _map_labels_never_overlap():
     return "ok", (f"{out['layouts']:,} layouts, none overlapping; Manchester's wards numbered "
                   f"after {out['manchester'].get('660 numbers')} presses and named after "
                   f"{out['manchester'].get('660 names')} at 1366")
+
+
+@check("frontend", "the district map keeps the state's outline on every layer, through any number "
+                   "of switches between State House and State Senate")
+def _map_keeps_the_outline():
+    """tests/test_map_outline.js loads map.js in node on the real geometry and
+    switches layers fifty times in turn. The owner, 11 November 2026: the map
+    outline disappeared on the switch from State House to State Senate -- the
+    outline was the county lines, drawn on two layers only. Held: every layer
+    gets the heavy line (casing and line) with a path, the same state edge on
+    every layer but the two that draw the county lines, and none is lost on a
+    later switch.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    js, harness = Path("src/pages/map.js"), Path("tests/test_map_outline.js")
+    if not (js.exists() and harness.exists()):
+        return "skip", "map.js or tests/test_map_outline.js is not in this directory"
+    data = _map_data()
+    if data is None:
+        return "skip", "the geometry, the district files or the officials file is not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-mapoutline-"))
+    try:
+        (root / "district_map.json").write_text(json.dumps(data), encoding="utf-8")
+        r = _run(["node", str(harness.resolve()), str(js.resolve()), str(root / "district_map.json")],
+                 cwd=root, capture_output=True, text=True, timeout=120)
+        said = (r.stdout or "").strip().splitlines()
+        assert r.returncode == 0 and said, (
+            "the outline check did not run: " + ((r.stderr or r.stdout or "").strip()[-300:]))
+        out = json.loads(said[-1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert out["switches"] >= 50 and len(out["layers"]) >= 2, "the check switched too few layers"
+    assert not out["missing"], "a layer draws no state outline:\n    " + "\n    ".join(out["missing"][:8])
+    assert not out["drifted"], "a layer's outline is not the state's:\n    " + "\n    ".join(out["drifted"][:8])
+    return "ok", f"{len(out['layers'])} layers, {out['switches']} switches, the state's outline on each"
 
 
 @check("build", "every district on the map is filled from the record's party, and a vacant "
@@ -128928,6 +129147,80 @@ def _began_from(stat, uptime, hz, now):
     return now - (float(uptime.split()[0]) - ticks / hz)
 
 
+@check("frontend", "the home page's left column is two cards as the right is, the Committees tab is a gavel, "
+                   "and the Laws preview holds a definition's box inside it")
+def _visual_fixes_of_11_november():
+    """The owner's three fixes of 11 November 2026, each held to its contract.
+
+    1. The home page's left column was one sheet with the status box flush
+       against the Recent Session Days heading. It is two cards, the status
+       and Recent Session Days, drawn as the right column's two (Coming up
+       and Latest activity): the same surface, edge, radius and padding, the
+       sheet around the column gone, and a gap between them.
+    2. The Committees tab's drawing is the gavel, one of components.ICONS,
+       drawn as its neighbours are (the one ICON_PAINT).
+    3. The Laws page's preview is held at the top as tall as the screen
+       allows, never scrolls sideways, and DEFS_JS bounds a definition's box
+       by the panel it opens in: its width, its words wrapping, its top and
+       bottom (which is what lets it open above near the panel's bottom)."""
+    import build_pages as BP
+    import build_rsa as B
+    import chrome as CH
+    import components as C
+    for lang in ("en", "es"):
+        body = BP.home_body(lang, False, "", "", "", "")
+        left = re.search(r'<section class="hside hleft".*?</section>', body, re.S)
+        assert left and 'id="state"' in left.group(0) and 'id="session"' in left.group(0), (
+            f"the {lang} home page's left column no longer holds the status and Recent Session Days "
+            f"as #state and #session")
+        right = re.search(r'<section class="hside hright".*?</section>', body, re.S)
+        assert right and 'id="upcoming"' in right.group(0) and 'id="recent"' in right.group(0), (
+            f"the {lang} home page's right column no longer holds #upcoming and #recent")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    laid = [(tuple(re.sub(r"\s+", "", a) for a in at), {" ".join(x.split()) for x in sel.split(",")},
+             {k: " ".join(v.split()) for k, v in _css_decls(body)}) for at, sel, body, _n in _css_rules(css)]
+    wide = ("@media(min-width:73.75em)",)
+    P = ":where(body.pg) "
+
+    def said(sel):
+        out = {}
+        for at, sels, decls in laid:
+            if at == wide and P + sel in sels:
+                out.update(decls)
+        return out
+    card = {k: said(".hv-panels .hright > #upcoming").get(k) for k in
+            ("background", "border", "border-radius", "padding")}
+    assert all(card.values()), f"the right column's cards are not drawn as cards in app.css: {card}"
+    for sel in (".hv-panels .hleft > #state", ".hv-panels .hleft > #session"):
+        got = {k: said(sel).get(k) for k in card}
+        assert got == card, (f"the left column's {sel.rsplit('#', 1)[1]} is not the card the right "
+                             f"column's are: {got} against {card}")
+    assert said(".hv-panels .hleft").get("border") == "0" and said(".hv-panels .hleft").get("background") == "none", (
+        "the left column is still one sheet around its blocks")
+    assert said(".hv-panels .hleft > #state ~ #session").get("margin-top") == "var(--sp-6)", (
+        "the status card and the Recent Session Days card have no gap between them")
+    nav = {href: g for href, _label, g in CH.NAV_TABS}
+    assert nav.get("committees.html") == "gavel" and "gavel" in C.ICONS, (
+        f"the Committees tab's drawing is {nav.get('committees.html')!r}, not the gavel")
+    assert C.icon("gavel").startswith('<svg class="icon" viewBox="0 0 24 24"') and C.ICON_PAINT in C.icon("gavel"), (
+        "the gavel is not drawn as the other icons are")
+    assert "gavel:" in Path("src/pages/components.js").read_text(encoding="utf-8"), (
+        "components.js has no gavel, so a page drawn in the browser would lack the Committees drawing")
+    read = {}
+    for at, sels, decls in laid:
+        if not at and ".lw-read" in sels:
+            read.update(decls)
+    assert read.get("position") == "sticky" and read.get("overflow-x") == "hidden" \
+        and read.get("height") == "calc(100vh - 32px)", (
+        f"the Laws preview is not held at the top, as tall as the screen allows, with no sideways scroll: {read}")
+    place = B.DEFS_JS[B.DEFS_JS.find("function place("):B.DEFS_JS.find("function show(")]
+    assert "overflowX" in place and "pop.style.maxWidth" in place and "host.clientWidth" in place \
+        and "bot-below" in place and "r.top-6-top" in place, (
+        "DEFS_JS does not bound a definition's box by the panel it opens in, its width and its top and bottom")
+    return "ok", ("the left column's two cards are the right's; the Committees tab is the gavel; the Laws "
+                  "preview is as tall as the screen and its definition box is held inside it")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--code", action="store_true", help="skip the data checks")
@@ -131096,7 +131389,10 @@ def _bug_hunt_clock_and_today():
         assert got == ["1:30 PM", "1:05 PM", "12:30 AM", "1:30 p. m."], (
             f"components.js clock reads a time differently from components.py: {got}")
     src = Path("src/lib/build_date.py").read_text(encoding="utf-8")
-    assert "America/New_York" in src, "build_date.today() is the machine's own day, not New Hampshire's"
+    import state_settings
+    assert "America/New_York" in src or ("ZoneInfo(TIMEZONE)" in src
+                                         and state_settings.TIMEZONE == "America/New_York"), (
+        "build_date.today() is the machine's own day, not New Hampshire's")
     import build_date
     saved = os.environ.pop(build_date.ENV, None)
     try:
@@ -131285,6 +131581,35 @@ def _shared_helpers_one_home():
     assert not clash, ("two sitting members share a name key, so a sponsor named by it alone is left "
                        "unlinked: " + "; ".join(f"{h} {k!r}: {[m.get('id') for m in ms]}" for h, k, ms in clash))
     return "ok", f"one home each for the term rules and the escapes; {len(legs)} sitting members, no name key shared"
+@check("files", "the state settings file loads with every key, and no second literal county list stands outside it")
+def _state_settings_one_place():
+    """src/lib/state_settings.json holds the facts about the state that a fork edits
+    (its "_about" key says what a fork still changes besides). Two things hold it to
+    its job: every key the loader names is there, and no code file keeps its own
+    list of the ten counties -- the survey found ten copies, each a place a fork
+    would have missed. A list is two county names quoted close together, or two
+    joined as an alternation; this file and the tests that name counties to check
+    something else are not the code."""
+    import state_settings as ST
+    for key, subs in ST.REQUIRED.items():
+        assert key in ST.SETTINGS, f"state_settings.json has no {key!r}"
+        for sub in subs:
+            assert sub in ST.SETTINGS[key], f"state_settings.json has no {key!r}/{sub!r}"
+    assert len(ST.COUNTIES) == len(set(ST.COUNTIES)) and ST.COUNTIES, "the county list is empty or repeats a county"
+    for k in ("county_abbreviations", "county_codes"):
+        assert set(ST.SETTINGS[k]) == set(ST.COUNTIES), f"{k} does not name exactly the counties"
+    assert set(ST.BILL_PREFIXES["house"]).isdisjoint(ST.BILL_PREFIXES["senate"]), "a bill prefix is in both chambers"
+    pair = re.compile(r"""["']belknap["'][^\n]{0,30}["']carroll|belknap\|carroll""", re.I)
+    seen = []
+    for p in _paths.code_files("*.py"):
+        if p.name in ("state_settings.py", "preflight.py"):
+            continue
+        t = p.read_text(encoding="utf-8", errors="replace")
+        for m in pair.finditer(t):
+            seen.append(f"{p.relative_to(_paths.ROOT)}:{t.count(chr(10), 0, m.start()) + 1}")
+    assert not seen, ("a county list stands outside src/lib/state_settings.json; read ST.COUNTIES, "
+                      "ST.COUNTY_ABBR or ST.COUNTY_CODE instead: " + ", ".join(seen))
+    return "ok", f"{len(ST.COUNTIES)} counties and every key present; no second list in the code"
 
 
 def got_rec(RS, b, path):
