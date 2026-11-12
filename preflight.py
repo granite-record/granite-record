@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.883
+# GRANITE_VERSION: 2026-09-04.884
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -116371,7 +116371,7 @@ def _language_sweep_words(civics, C):
             ("build_pages.py", pages, "rows.length} matches on this site", "pages on this site"),
             ("Learn", learn, "following an executive", "in an executive"),
             ("Learn", learn, "cover several towns or wards", "laid over two or more"),
-            ("Learn", learn, "without dividing it by party", "did not split cleanly"),
+            ("Learn", learn, "without dividing it by party", "each had a close roll call"),
             ("Learn", learn, "<b>Sponsors</b>, and <b>Documents</b>", "<b>Documents</b> &mdash;"),
             ("Learn", learn, "Filed as an LSR", "Legislative Service Request, or LSR"),
             ("Learn", learn, "legislative branch is made up", "is called the <b>General Court</b>"),
@@ -130127,6 +130127,202 @@ def _visual_fixes_of_11_november():
         "DEFS_JS does not bound a definition's box by the panel it opens in, its width and its top and bottom")
     return "ok", ("the left column's two cards are the right's; the Committees tab is the gavel; the Laws "
                   "preview is as tall as the screen and its definition box is held inside it")
+
+
+# The votes data stage (build_votes.py, 12 November 2026).
+
+_BANNED_VOTES = [re.compile("party" + r"[- ]" + "line", re.I),
+                 re.compile("other way from most of " + "their party", re.I)]
+
+
+def _votes_brute_flip(y, n, need):
+    """Voters who would have had to switch for the outcome to change, found by
+    switching them one at a time: need None is a majority (a tie is not one),
+    "2/3" two thirds of those voting, a number the yeas a question needed."""
+    tot = y + n
+
+    def out(yy):
+        if need is None:
+            return yy > tot - yy
+        if need == "2/3":
+            return 3 * yy >= 2 * tot
+        return yy >= need
+    base, k = out(y), 0
+    while k <= tot:
+        k += 1
+        if (y - k >= 0 and out(y - k) != base) or (y + k <= tot and out(y + k) != base):
+            return k
+    return None
+
+
+@check("code", "votes data: the number of voters who would have had to switch is the elections' rule against the "
+       "roll call's own threshold, a close vote is 5 or fewer, and an unknown threshold is no flip", needs=("build_votes",))
+def _votes_flips(BV):
+    seen = 0
+    for tot in range(1, 31):
+        for y in range(tot + 1):
+            n = tot - y
+            cases = [({}, None), ({"threshold_needed": -(-2 * tot // 3),
+                                   "threshold_rule": f"two thirds of the {tot} members voting"}, "2/3")]
+            for need in {max(1, (3 * tot + 4) // 5), tot // 2 + 2}:
+                cases.append(({"threshold_needed": need,
+                               "threshold_rule": f"three fifths of the {tot} members in office"}, need))
+            for extra, bneed in cases:
+                need = extra.get("threshold_needed")
+                if bneed is None:
+                    carried = y > n
+                elif bneed == "2/3":
+                    carried = 3 * y >= 2 * tot
+                else:
+                    carried = y >= need
+                r = dict(extra, yeas=y, nays=n, passed=carried)
+                got, want = BV.flips(r), _votes_brute_flip(y, n, bneed)
+                assert got == want, f"{y}-{n} {extra}: flips {got}, a recount by switching one at a time {want}"
+                seen += 1
+    # A tie is not a majority: one switch carries it, and one undoes a one-vote win.
+    assert BV.flips({"yeas": 5, "nays": 5, "passed": False}) == 1
+    assert BV.flips({"yeas": 6, "nays": 5, "passed": True}) == 1
+    # Unknown: the Journal says it needed more and not how many; an outcome the count does not give.
+    assert BV.flips({"yeas": 91, "nays": 82, "passed": False, "threshold_unknown": True}) is None
+    assert BV.flips({"yeas": 12, "nays": 10, "passed": False}) is None
+    assert BV.flips({"yeas": 12, "nays": 12, "passed": True}) is None
+    assert BV.flips({"yeas": 0, "nays": 0, "passed": True}) is None
+    # The rule is the elections' own, not a second copy.
+    BE = BV.BE
+    assert BV.flips({"yeas": 40, "nays": 20, "passed": True, "threshold_needed": 40,
+                     "threshold_rule": "two thirds of the 60 members voting"}) == BE.flip_two_thirds(40, 20)
+    assert BV.flips({"yeas": 7, "nays": 5, "passed": True}) == BE.flip_majority(7, 5)
+
+    def close(y, n, body="H"):
+        return BV.row_of({"year": "2026", "body": body, "number": 1, "date": "2026-01-01", "yeas": y,
+                          "nays": n, "passed": y > n, "question": "Ought to Pass"}, "HB1", {}).get("cl")
+    assert close(15, 6) and not close(16, 5) and close(8, 8), (
+        "a House vote is close at 5 or fewer voters from changing the outcome")
+    assert BV.CLOSE_HOUSE == 5 and BV.CLOSE_SENATE == 2
+    assert close(14, 10, "S") and not close(15, 9, "S") and close(12, 12, "S"), (
+        "a Senate vote is close at 2 or fewer voters from changing the outcome")
+    return "ok", f"{seen:,} tallies under a majority, two thirds and three fifths agree with a recount by switching voters"
+
+
+def _votes_fixture():
+    def rc(num, body, y, n, **kw):
+        r = {"year": "2026", "body": body, "number": num, "date": f"2026-02-{num:02d}", "bill": "HB1",
+             "question": "Ought to Pass", "question_plain": "pass the bill", "yeas": y, "nays": n,
+             "passed": y > n, "excused": 1, "not_excused": 0, "presiding": 0, "no_vote_recorded": 0}
+        r.update(kw)
+        return r
+    rolls = {"2025-2026": {"HB1": [rc(1, "H", 3, 1), rc(2, "H", 2, 2, passed=False),
+                                   rc(3, "S", 2, 1, yeas_stated=3, nays_stated=1)],
+                           "_procedural": [rc(4, "H", 3, 0, bill=None, procedural=True, question="Suspend the Rules")]},
+             "2023-2024": {"SB2": [dict(rc(1, "S", 2, 0, bill="SB2"), year="2024", date="2024-03-01")]}}
+
+    def v(mid, code, num, body="H", year="2026", party="R"):
+        return {"member_id": mid, "party": party, "year": year, "body": body, "vote_number": str(num), "vote": code}
+    Y, N, E = "Yea", "Nay", "Not Voting/Excused"
+    ballots = [v("10", Y, 1), v("11", Y, 1, party="D"), v("12", Y, 1), v("13", N, 1, party="D"), v("14", E, 1),
+               v("10", Y, 2), v("11", N, 2, party="D"), v("12", Y, 2), v("13", N, 2, party="D"), v("14", E, 2),
+               v("20", Y, 3, "S"), v("21", Y, 3, "S"), v("22", N, 3, "S"), v("23", E, 3, "S"),
+               v("10", Y, 4), v("11", Y, 4, party="D"), v("12", Y, 4), v("14", E, 4),
+               v("20", Y, 1, "S", "2024"), v("21", Y, 1, "S", "2024"), v("22", E, 1, "S", "2024")]
+    return rolls, ballots
+
+
+@check("code", "votes data: a file a term, the counted tally tied to its ballots, the stated one carried, a vote on "
+       "no bill Procedural, no word of a party's position", needs=("build_votes",))
+def _votes_files(BV):
+    rolls, ballots = _votes_fixture()
+    with tempfile.TemporaryDirectory() as td:
+        rows, enc, rep = BV.build(rolls, iter(ballots), td)
+        assert sorted(rep["files"]) == ["2023-2024.json", "2025-2026.json", "ballots-2023-2024.json",
+                                        "ballots-2025-2026.json"], rep["files"]
+        t = json.loads((Path(td) / "votes" / "2025-2026.json").read_text(encoding="utf-8"))["rolls"]
+        by = {x["id"]: x for x in t}
+        assert [x["id"] for x in t] == ["2026-H-1", "2026-H-2", "2026-S-3", "2026-H-4"], [x["id"] for x in t]
+        b = json.loads((Path(td) / "votes" / "ballots-2025-2026.json").read_text(encoding="utf-8"))["chambers"]
+        assert b["H"]["m"] == ["10", "11", "12", "13", "14"] and b["H"]["r"]["2026-H-1"] == "YYYNE", b["H"]
+        assert b["H"]["r"]["2026-H-4"] == "YYY.E" and b["S"]["r"]["2026-S-3"] == "YYNE", b
+        for x in t:                                                  # every counted tally is its ballots'
+            s = b[x["c"]]["r"][x["id"]]
+            assert (s.count("Y"), s.count("N")) == (x["y"], x["n"]), x
+        assert by["2026-S-3"]["ys"] == 3 and by["2026-S-3"]["ns"] == 1 and by["2026-S-3"]["y"] == 2, by["2026-S-3"]
+        assert "ys" not in by["2026-H-1"]
+        assert by["2026-H-4"]["k"] == "Procedural" and by["2026-H-4"]["b"] == "" \
+            and by["2026-H-1"]["k"] == "Committee report"
+        assert by["2026-H-2"]["f"] == 1 and by["2026-H-2"]["cl"] == 1 \
+            and by["2026-H-1"]["pc"] == [1, 1, 2, 0], (by["2026-H-2"], by["2026-H-1"])
+        assert json.loads((Path(td) / "votes" / "2023-2024.json").read_text(
+            encoding="utf-8"))["rolls"][0]["id"] == "2024-S-1"
+        text = "".join(p.read_text(encoding="utf-8") for p in (Path(td) / "votes").glob("*.json"))
+        for rx in _BANNED_VOTES:
+            assert not rx.search(text), f"a built votes file says {rx.pattern}"
+        # A stale term is removed.
+        (Path(td) / "votes" / "1999-2000.json").write_text("{}", encoding="utf-8")
+        BV.build(rolls, iter(ballots), td)
+        assert not (Path(td) / "votes" / "1999-2000.json").exists()
+        # A ballot twice, a word with no letter, and a tally the ballots do not give all stop the build.
+        for bad, why in (([*ballots, ballots[0]], "two ballots"),
+                         ([dict(ballots[0], vote="Maybe"), *ballots[1:]], "no letter"),
+                         (ballots[1:], "do not count")):
+            try:
+                BV.build(rolls, iter(bad), td)
+            except (ValueError, SystemExit) as e:
+                assert why in str(e), (why, str(e))
+            else:
+                raise AssertionError(f"a build with {why} went through")
+        # The streamed reader gives what json.load gives, across chunk boundaries.
+        p = Path(td) / "mv.json"
+        p.write_text(json.dumps(ballots), encoding="utf-8")
+        assert list(BV.stream_array(p, chunk=7)) == ballots and list(BV.stream_array(p)) == ballots
+        p.write_text("[]", encoding="utf-8")
+        assert list(BV.stream_array(p)) == []
+    src = Path("src/pages/build_votes.py").read_text(encoding="utf-8")
+    for rx in _BANNED_VOTES:
+        assert not rx.search(src), f"build_votes.py carries {rx.pattern}"
+    return "ok", "files by term, tallies tied, stated tallies carried, procedural named, no party's position"
+
+
+@check("data", "votes data: every roll call has a row, every counted tally ties to its ballots, the 14 stated "
+       "tallies are carried, and the close votes are the ones a recount by switching voters gives",
+       needs=("build_votes",))
+def _votes_data(BV):
+    rp, mp = Path("rollcalls.json"), Path("data/member_votes.json")
+    if not rp.exists() or not mp.exists():
+        return "skip", "rollcalls.json or data/member_votes.json is not here"
+    import gzip
+    rolls = json.loads(rp.read_text(encoding="utf-8"))
+    with tempfile.TemporaryDirectory() as td:
+        rows, enc, rep = BV.build(rolls, BV.stream_array(mp), td)
+        every = [r for t in rolls.values() for rcs in t.values() for r in rcs]
+        got = [x for rs in rows.values() for x in rs]
+        assert len(got) == len(every) and len({x["id"] for x in got}) == len(got), (
+            f"{len(got):,} rows for {len(every):,} roll calls")
+        stated = sorted(x["id"] for x in got if "ys" in x)
+        assert stated == sorted(f'{r["year"]}-{r["body"]}-{r["number"]}' for r in every if "yeas_stated" in r), stated
+        assert len(stated) == 14, (f"{len(stated)} roll calls where the clerk's tally differs from the ballots, "
+                                   "against the 14 known")
+        assert not rep["unmatched"], f"{rep['unmatched']:,} ballots on a roll call with no row"
+        unknown = [x["id"] for x in got if x.get("fu")]
+        assert len(unknown) <= 5, f"{len(unknown)} roll calls with an unknown threshold: {unknown}"
+        assert all("f" not in x and "cl" not in x for x in got if x.get("fu"))
+        rule_of = {f'{r["year"]}-{r["body"]}-{r["number"]}': (r.get("threshold_rule") or "") for r in every}
+        for x in got:
+            if "f" not in x:
+                continue
+            k = _votes_brute_flip(x["y"], x["n"], "2/3" if rule_of[x["id"]].startswith("two thirds")
+                                  else x.get("nd"))
+            assert k == x["f"] and bool(x.get("cl")) == (k <= BV.CLOSE[x["c"]]), (x["id"], x["f"], k)
+        files = list((Path(td) / "votes").glob("*.json"))
+        size = sum(p.stat().st_size for p in files)
+        gz = sum(len(gzip.compress(p.read_bytes())) for p in files)
+        assert len(files) == 2 * len(rows), f"{len(files)} files for {len(rows)} terms"
+        assert size < 6 * 1024 * 1024 and gz < 1024 * 1024, (
+            f"the votes files are {size / 1024:,.0f} KB, {gz / 1024:,.0f} KB gzipped, against the design's "
+            "2 MB of rows and 2.3 million ballot characters")
+        text = "".join(p.read_text(encoding="utf-8") for p in files)
+        for rx in _BANNED_VOTES:
+            assert not rx.search(text), f"a built votes file says {rx.pattern}"
+    return "ok", (f"{len(got):,} roll calls in {len(rows)} terms, {len(files)} files, {size / 1024:,.0f} KB "
+                  f"({gz / 1024:,.0f} KB gzipped)")
 
 
 def main():
