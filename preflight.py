@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.863
+# GRANITE_VERSION: 2026-09-04.864
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -131221,6 +131221,40 @@ def got_rec(RS, b, path):
     """The record read() makes of a block."""
     return {"sponsors": b["names"], "journal": RS.journal_label(path, "H"), "title": b["title"],
             "line": b["line"], "number": b["number"], "opening": b["opening"], "chamber": "H"}
+
+
+@check("build", "nightly.py: a step that outlives its timeout is killed and fails the night naming it; the lock is made exclusively")
+def _bug_hunt_nightly_timeout_and_lock():
+    """#13 run() waited for ever on a child and the lock was exists() then write_text. A real child is
+    started with a two-second timeout and killed; the lock is taken twice and the second is refused."""
+    import nightly as NI
+    import time
+    assert 1800 <= NI.STEP_TIMEOUT, "a step's timeout is under 30 minutes, which a real step outlasts"
+    root = Path(tempfile.mkdtemp(prefix="gr-nightly-lock-"))
+    saved = (NI.STEP_TIMEOUT, NI._paths.script, len(NI.LOG))
+    try:
+        lock = root / ".nightly.lock"
+        assert NI.take_lock(lock, "first"), "a free lock was not taken"
+        assert not NI.take_lock(lock, "second"), "two starts both took the lock"
+        assert lock.read_text(encoding="utf-8") == "first", "the second start wrote over the first's lock"
+        old = time.time() - 7 * 3600
+        os.utime(lock, (old, old))
+        assert NI.take_lock(lock, "third"), "a lock a crash left 7 hours ago was not taken over"
+        NI.STEP_TIMEOUT = 2
+        NI._paths.script = lambda name: name
+        t0 = time.time()
+        code = NI.run(["-c", "import time; time.sleep(120)"], "the sleeping step")
+        assert code == NI.TIMED_OUT, f"a step past its timeout exited {code}, not {NI.TIMED_OUT}"
+        assert time.time() - t0 < 60, "the step was not killed at its timeout"
+        assert any("TIMED OUT" in ln and "the sleeping step" in ln for ln in NI.LOG), "the log does not name the step"
+        NI.STEP_TIMEOUT = saved[0]
+        assert NI.run(["-c", "pass"], "a quick step") == 0, "a step inside its timeout no longer passes"
+    finally:
+        NI.STEP_TIMEOUT, NI._paths.script = saved[0], saved[1]
+        shutil.rmtree(root, ignore_errors=True)
+    text = Path("nightly.py").read_text(encoding="utf-8")
+    assert "lock.write_text" not in text, "a nightly lock is written without O_EXCL again"
+    return "ok", "a step is killed at its timeout and the night names it; two starts cannot both take the lock"
 
 
 if __name__ == "__main__":
