@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.875
+# GRANITE_VERSION: 2026-09-04.876
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -30855,15 +30855,34 @@ def _request_pages():
                  '<li aria-current="page">LSR 2027-0001</li>', 'chip chip-m cstat',
                  'Filed as a request</span>', '<dl class="rfacts">', "<dt>Prime Sponsor</dt>",
                  "<dt>Kind</dt>", '<div class="racts"><div class="pageacts" id="pageacts"><details class="pcite"', "data-share",
-                 '<i>Requested</i>', "<i>Introduced</i>", "<i>House</i>", "<i>Senate</i>",
-                 "<i>Governor</i>", "<i>Law</i>", 'id="sstab-summary"', 'class="pane sspane"',
+                 '<i>Requested</i>', "<i>Filed</i>", "<i>Introduced</i>", 'id="sstab-summary"', 'class="pane sspane"',
                  'window.GR_FOLLOW="lsr:2027-0001";', 'window.GR_REPORT="request:2027-0001";',
                  'window.GR_REQUEST="2027-0001";')
         gone_ = [x for x in frame if x not in page]
         assert not gone_, f"a request's page lacks the bill page's frame: {gone_}"
-        assert page.index("<i>Requested</i>") < page.index("<i>Introduced</i>") \
-            < page.index("<i>House</i>") < page.index("<i>Senate</i>") \
-            < page.index("<i>Governor</i>") < page.index("<i>Law</i>"), "the rail's stops are out of order"
+        # A REQUEST'S RAIL IS THREE STOPS (Alice, 12 November 2026: a bill's six
+        # ran into one another on a phone): Requested, Filed, Introduced, in
+        # that order and nothing a bill passes after; the label text fits a
+        # third of the narrowest phone's rail in the wider face
+        # (_RAIL_FACE); withdrawn is a cross; Filed is reached only where the
+        # row says the text is public.
+        def stops_of(html):
+            rail = re.search(r'<span class="rail dated".*?</span></span>(?=\s*<|$)', html, re.S)
+            assert rail, "a request's page has no rail"
+            return re.findall(r'<span class="stop s-(\w+)"><b>(.*?)</b><i>(.*?)</i>', rail.group(0), re.S)
+        wd = (site / "request" / "2027-0002.html").read_text(encoding="utf-8")
+        got = stops_of(page)
+        assert [g[2] for g in got] == ["Requested", "Filed", "Introduced"], (
+            f"a request's rail draws {[g[2] for g in got]}, not Requested, Filed, Introduced")
+        assert [g[0] for g in got] == ["p", "o", "o"], f"a request's rail is reached as {[g[0] for g in got]}"
+        assert [g[0] for g in stops_of(wd)] == ["x", "o", "o"] and "\u2715" in stops_of(wd)[0][1], (
+            "a withdrawn request's rail does not end at a cross on Requested")
+        assert [g[0] for g in stops_of(RP.rail_of({**by["LSR 2027-0001"], "filed": "2026-12-01"}))] \
+            == ["p", "p", "o"], "a filed request's rail does not reach Filed"
+        slot = 296 / 3  # the rail of a 320px phone, three stops
+        wide = max(sum(_RAIL_FACE.get(c, 1000) for c in w) * 14 / 1000 for w in ("Requested", "Filed", "Introduced"))
+        assert wide + 2 * 4 <= slot, (
+            f"a request's widest stop name is {wide:.0f}px in a {slot:.0f}px slot on a 320px phone")
         for no in ("Testify", "data-print", 'role="tab" id="sstab-votes"', "Committee</dt>"):
             assert no not in page, f"a request's page carries {no!r}, which a request has not"
         assert page.count('role="tab"') == 1, "a request's page has more than one tab"
@@ -30871,8 +30890,6 @@ def _request_pages():
         assert "<b>Status:</b> Withdrawn<" in wd and ">Withdrawn</span>" in wd \
             and "window.GR_FOLLOW" not in wd, (
             "a withdrawn request's page does not say so, or offers Follow")
-        assert "<i>Senate</i>" in wd and wd.index("<i>Senate</i>") < wd.index("<i>House</i>"), (
-            "a Senate request's rail does not start in the Senate")
         # Its route, by kind (build_lsrs.route).
         assert L.route("HR") == ["House", "Adopted"] and L.route("SCR") == ["Senate", "House"] \
             and L.route("CACR") == ["Voters"] and L.route("SB")[-2:] == ["Governor", "Law"], (
