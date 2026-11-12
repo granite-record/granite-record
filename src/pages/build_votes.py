@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.2
+# GRANITE_VERSION: 2026-11-12.3
 """
 Every roll call since 1999, a file a term, for the votes search to read.
 
@@ -38,8 +38,9 @@ Republican yeas, nays], plain figures and nothing said of them); w (what a
 vote on no bill was about, in the Journal's words, vote_passage); nb (1 where
 no member's ballot is on file for it).
 
-A CLOSE VOTE (the owner, 12 November 2026): 5 or fewer voters who would have
-had to switch to change the outcome. `f` is that number, worked out with the
+A CLOSE VOTE (the owner, 12 November 2026): 5 or fewer voters in the House,
+2 or fewer in the Senate (CLOSE_HOUSE, CLOSE_SENATE), who would have had to
+switch to change the outcome. `f` is that number, worked out with the
 rule the elections' ballot cards use (build_elections.flip_majority and
 flip_two_thirds: a voter who changes sides moves one vote and leaves the
 total where it was) against the roll call's own threshold: a majority where
@@ -47,7 +48,7 @@ the record names none (a tie is not a majority), two thirds of those voting
 where the record says so, and a fixed number of yeas where it says three
 fifths of the members in office (the denominator is the members, not the
 voters, so a switch leaves the number to reach where it was). `cl` is 1
-where f is 5 or less. WHERE THE THRESHOLD IS UNKNOWN there is no f and no cl,
+where f is within the chamber's bar. WHERE THE THRESHOLD IS UNKNOWN there is no f and no cl,
 and `fu` is 1: the Journal says a question needed more than a majority and
 not how many, or the record's outcome is not one its own count allows and no
 threshold explains it. A vote is never marked close on a guess.
@@ -85,7 +86,12 @@ import vote_passage as VP
 from components import WORDBOOK
 
 FOLDER = "votes"
-CLOSE = 5                       # voters who would have had to switch (the owner, 12 November 2026)
+# A CLOSE VOTE, PER CHAMBER (the owner, 12 November 2026): this many voters or
+# fewer who would have had to switch to change the outcome. The Senate has 24
+# members, so the House's 5 would call a 17-7 vote close there; its bar is 2.
+CLOSE_HOUSE = 5
+CLOSE_SENATE = 2
+CLOSE = {"H": CLOSE_HOUSE, "S": CLOSE_SENATE}
 LEGEND = {"Y": "Yea", "N": "Nay", "E": "Not voting, excused", "X": "Not voting, not excused",
           "P": "Presiding", "R": "No vote recorded", ".": "Not on this roll call"}
 CODE = {"Yea": "Y", "Nay": "N", "Not Voting/Excused": "E", "Not Voting/Not Excused": "X",
@@ -199,7 +205,7 @@ def row_of(r, bid, motions):
         row["fu"] = 1
     else:
         row["f"] = f
-        if f <= CLOSE:
+        if f <= CLOSE.get(row["c"], CLOSE_HOUSE):
             row["cl"] = 1
     if r.get("threshold_needed"):
         row["nd"] = r["threshold_needed"]

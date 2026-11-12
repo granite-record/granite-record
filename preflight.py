@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.876
+# GRANITE_VERSION: 2026-09-04.878
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -115489,7 +115489,7 @@ def _language_sweep_words(civics, C):
             ("build_pages.py", pages, "rows.length} matches on this site", "pages on this site"),
             ("Learn", learn, "following an executive", "in an executive"),
             ("Learn", learn, "cover several towns or wards", "laid over two or more"),
-            ("Learn", learn, "without dividing it by party", "did not split cleanly"),
+            ("Learn", learn, "without dividing it by party", "each had a close roll call"),
             ("Learn", learn, "<b>Sponsors</b>, and <b>Documents</b>", "<b>Documents</b> &mdash;"),
             ("Learn", learn, "Filed as an LSR", "Legislative Service Request, or LSR"),
             ("Learn", learn, "legislative branch is made up", "is called the <b>General Court</b>"),
@@ -129311,11 +129311,14 @@ def _votes_flips(BV):
                      "threshold_rule": "two thirds of the 60 members voting"}) == BE.flip_two_thirds(40, 20)
     assert BV.flips({"yeas": 7, "nays": 5, "passed": True}) == BE.flip_majority(7, 5)
 
-    def close(y, n):
-        return BV.row_of({"year": "2026", "body": "H", "number": 1, "date": "2026-01-01", "yeas": y,
+    def close(y, n, body="H"):
+        return BV.row_of({"year": "2026", "body": body, "number": 1, "date": "2026-01-01", "yeas": y,
                           "nays": n, "passed": y > n, "question": "Ought to Pass"}, "HB1", {}).get("cl")
     assert close(15, 6) and not close(16, 5) and close(8, 8), (
-        "a close vote is 5 or fewer voters from changing the outcome")
+        "a House vote is close at 5 or fewer voters from changing the outcome")
+    assert BV.CLOSE_HOUSE == 5 and BV.CLOSE_SENATE == 2
+    assert close(14, 10, "S") and not close(15, 9, "S") and close(12, 12, "S"), (
+        "a Senate vote is close at 2 or fewer voters from changing the outcome")
     return "ok", f"{seen:,} tallies under a majority, two thirds and three fifths agree with a recount by switching voters"
 
 
@@ -129425,7 +129428,7 @@ def _votes_data(BV):
                 continue
             k = _votes_brute_flip(x["y"], x["n"], "2/3" if rule_of[x["id"]].startswith("two thirds")
                                   else x.get("nd"))
-            assert k == x["f"] and bool(x.get("cl")) == (k <= 5), (x["id"], x["f"], k)
+            assert k == x["f"] and bool(x.get("cl")) == (k <= BV.CLOSE[x["c"]]), (x["id"], x["f"], k)
         files = list((Path(td) / "votes").glob("*.json"))
         size = sum(p.stat().st_size for p in files)
         gz = sum(len(gzip.compress(p.read_bytes())) for p in files)

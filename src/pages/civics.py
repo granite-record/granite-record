@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.76
+# GRANITE_VERSION: 2026-09-08.77
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1552,10 +1552,8 @@ voice vote or division and no record of names was made.</p>
 [[fig_rollcalls]]
 
 <h2>Two Bills, Followed All the Way</h2>
-<p>Both went through both chambers, and on each the closest roll call in the
-House did not split cleanly along party lines: a majority of Republicans voted
-one way and a majority of Democrats the other, but a substantial minority of
-each party voted against its own side.</p>
+<p>Both went through both chambers, and each had a close roll call in the
+House, set out below: 193 to 179 on HB 1002 and 172 to 180 on HB 1215.</p>
 
 <h3>HB 1002 (2024): What a Public Record May Cost</h3>
 <p>A town or agency answering a
