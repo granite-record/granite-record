@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.4
+# GRANITE_VERSION: 2026-11-08.5
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -94,9 +94,11 @@ def rail_of(r):
     """A request's own rail, three stops (Alice, 12 November 2026, from a phone
     screenshot where the bill's six stops ran into one another: "a separate
     rail for the requests with Requested, Filed meaning the text is publicly
-    available, and Introduced"): Requested, reached while the request exists
-    (a cross where it was withdrawn); Filed, reached once the bill's text is
-    public; Introduced, which a request reaches by becoming a numbered bill,
+    available, and Introduced"): Requested, always reached -- a withdrawn
+    request was still requested (the owner, the same morning: "Request being
+    withdrawn should still show request as green but filed as red"); Filed,
+    reached once the bill's text is public, and the cross where the request
+    was withdrawn instead; Introduced, which a request reaches by becoming a numbered bill,
     when its address forwards to the bill's page and the bill's own rail
     takes over -- so it is never reached here. Same rail_html, same look. No
     day is shown: the list gives none.
@@ -107,15 +109,15 @@ def rail_of(r):
     So the stop reads the row's "filed" -- true, or the day the text became
     public ("YYYY-MM-DD"), which build_lsrs.rows_from carries over from the
     source row once the source gives it -- and is drawn not reached until
-    then. A withdrawn request never reaches it."""
+    then. A withdrawn request ends there, at the cross."""
     gone = bool(r.get("withdrawn"))
     filed = r.get("filed") and not gone
     day = r["filed"] if filed and isinstance(r["filed"], str) and r["filed"][:1].isdigit() else ""
     stops = [
-        {"stop": "Requested", "mark": "x" if gone else "p", "date": "", "short": "",
-         "say": "Withdrawn" if gone else "Filed as a request"},
-        {"stop": "Filed", "mark": "p" if filed else "-", "date": day, "short": "",
-         "say": "Text public" if filed else ""},
+        {"stop": "Requested", "mark": "p", "date": "", "short": "",
+         "say": "Requested" if gone else "Filed as a request"},
+        {"stop": "Filed", "mark": "x" if gone else ("p" if filed else "-"), "date": day, "short": "",
+         "say": "Withdrawn" if gone else ("Text public" if filed else "")},
         {"stop": "Introduced", "mark": "-", "date": "", "short": "", "say": ""}]
     return C.rail_html(stops)
 
