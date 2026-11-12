@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.309
+// GRANITE_VERSION: 2026-09-07.310
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2957,6 +2957,7 @@ const wideEnough=typeof matchMedia==="function"
 // folded with the rest, one tap away.
 const openGroups=new Set(["status"]);
 let sponsorFilter="";
+let topicFilter="";
 let withCosp=false;
 const openCards=new Set(),openTab={},detail={},segSel={},fullOpen=new Set();
 // The bills whose How it got here the reader opened past its first six lines.
@@ -3594,17 +3595,30 @@ function fgroup(key,label,vals,counts,searchable,paint,show,extra,extraN){
   const chosen=sel[key],open=openGroups.has(key);
   let inner="";
   if(searchable){
-    const f=sponsorFilter.toLowerCase();
-    const found=zerosLast(key,f?vals.filter(v=>v.toLowerCase().includes(f)).slice(0,15):[],counts);
+    // THE TOPIC FILTER IS THE SPONSOR FILTER'S BOX (12 November 2026, the
+    // topics plan, stage 1): the same box, the same typing and the same
+    // zeros-last order, narrowing the topic names by what is typed (anywhere
+    // in the name, any case). With nothing typed the whole list is shown, as
+    // before, not the sponsor list's empty start; a ticked topic stays in the
+    // list whatever is typed, so it can be unticked where it is. No synonyms:
+    // CONCEPTS maps a public word to bill wording, not to a topic's name.
+    const isTopic=key==="topic";
+    const f=(isTopic?topicFilter:sponsorFilter).toLowerCase();
+    const pick=isTopic
+      ?vals.filter(v=>!f||chosen.has(v)||v.toLowerCase().includes(f))
+      :(f?vals.filter(v=>v.toLowerCase().includes(f)).slice(0,15):[]);
+    const found=zerosLast(key,pick,counts);
     const shown=found.vals;
-    inner=`${[...chosen].map(v=>`<span class="pill">${esc(v)}<button data-unpick="${esc(v)}">×</button></span>`).join("")
-      ?`<div class="chosen">${[...chosen].map(v=>`<span class="pill">${esc(v)}<button data-unpick="${esc(v)}">×</button></span>`).join("")}</div>`:""}
-      <input class="sbox" id="sbox" aria-label="Find a sponsor by name" placeholder="Type a name…" value="${esc(sponsorFilter)}" autocomplete="off">
-      <label class="fcosp"><input type="checkbox" id="cosp" ${withCosp?"checked":""}><span>Include co-sponsored bills</span></label>${extra||""}`
-      +(shown.map((v,i)=>`<label class="fopt ${!counts[v]?'off':''}${i===found.rule?' fzero':''}"><input type="checkbox" data-f="${key}"
+    const pills=isTopic?"":[...chosen].map(v=>`<span class="pill">${esc(v)}<button data-unpick="${esc(v)}">×</button></span>`).join("");
+    const box=isTopic
+      ?`<input class="sbox" id="tbox" aria-label="Find a topic by name" placeholder="Type a topic…" value="${esc(topicFilter)}" autocomplete="off">`
+      :`<input class="sbox" id="sbox" aria-label="Find a sponsor by name" placeholder="Type a name…" value="${esc(sponsorFilter)}" autocomplete="off">
+      <label class="fcosp"><input type="checkbox" id="cosp" ${withCosp?"checked":""}><span>Include co-sponsored bills</span></label>${extra||""}`;
+    inner=`${pills?`<div class="chosen">${pills}</div>`:""}${box}`
+      +(shown.map((v,i)=>`<label class="fopt ${!counts[v]&&!(isTopic&&chosen.has(v))?'off':''}${i===found.rule?' fzero':''}"><input type="checkbox" data-f="${key}"
         value="${esc(v)}" ${chosen.has(v)?"checked":""}><span>${esc(v)}</span>
         <span class="c">${(counts[v]||0).toLocaleString()}</span></label>`).join("")
-        ||(sponsorFilter?`<p class="fnone">No match</p>`:""));
+        ||((isTopic?topicFilter:sponsorFilter)?`<p class="fnone">No match</p>`:""));
   }else{
     const order=zerosLast(key,vals,counts);
     inner=order.vals.map((v,i)=>`<label class="fopt ${!counts[v]&&!chosen.has(v)?'off':''}${i===order.rule?' fzero':''}">
@@ -4002,7 +4016,7 @@ function renderFacets(){
   // it can be unticked on its own where it lists nothing.
   h+=fgroup("committee","Committee",[...new Set([...present("committee"),...sel.committee])].sort(),
     cnt("committee","committee"));
-  h+=fgroup("topic","Topic",[...new Set([...present("topic"),...sel.topic])].sort(),cnt("topic","topic"));
+  h+=fgroup("topic","Topic",[...new Set([...present("topic"),...sel.topic])].sort(),cnt("topic","topic"),true);
   // THE PRIME SPONSOR'S PARTY is a choice inside the Sponsor group it narrows
   // (the owner, 10 November 2026), below the name box and the co-sponsorship
   // box: a short list shown whole, in the legislators' chip shape and colour
@@ -12486,8 +12500,11 @@ document.addEventListener("input",e=>{
       const b=document.querySelector('input[data-pf="vq"]');
       if(b){b.focus({preventScroll:true});const n=b.value.length;b.setSelectionRange(n,n);}},250);
     return;}
-  if(e.target.id==="sbox"){sponsorFilter=e.target.value;renderFacets();
-    const b=document.getElementById("sbox");if(b){b.focus();b.setSelectionRange(b.value.length,b.value.length);}}});
+  if(e.target.id==="sbox"||e.target.id==="tbox"){
+    const id=e.target.id;
+    if(id==="sbox")sponsorFilter=e.target.value;else topicFilter=e.target.value;
+    renderFacets();
+    const b=document.getElementById(id);if(b){b.focus();b.setSelectionRange(b.value.length,b.value.length);}}});
 // AN OFFERED SEARCH, TAKEN, IS THE ONE THE ADDRESS NAMES. A reader who
 // arrived at /bills?q=vacine%20exemption and took "vaccine exemption (12)"
 // was shown the twelve bills under an address that still named the

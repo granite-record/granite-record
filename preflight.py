@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.875
+# GRANITE_VERSION: 2026-09-04.876
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -131347,6 +131347,44 @@ def _topic_dropped_on_the_requests():
         assert re.search(r'data-f="[a-z]+"\s+value="%s" checked' % what, got["facets"]), (
             f"{what}, ticked where the list has none, is not offered to be unticked on its own")
     return "ok", "dropped on the requests, said in the count, and a stray topic or committee can be unticked"
+
+
+@check("frontend", "the Topic filter has the Sponsor filter's search box: typing narrows the topic names (any case, "
+       "anywhere in the name), counts stay right, a ticked topic stays listed")
+def _topic_filter_search_box():
+    """Stage 1 of the topics plan (12 November 2026). fgroup's searchable branch draws the Topic group's
+    #tbox as it draws the Sponsor group's #sbox. Nothing typed lists every topic as before; "ealth" lists
+    the two topics with it in the name, with their counts; a ticked topic stays in the list whatever is
+    typed; a word no topic has says No match; the Sponsor box is still its own."""
+    got = _app_js("""(() => {
+  scope.setState("2025-2026", {terms: ["2025-2026"], committee_codes: {}, topics: ["Health", "Housing", "Mental Health", "Taxes"]},
+    [{id: "HB1", term: "2025-2026", topic: "Health", sponsor: "A"}, {id: "HB2", term: "2025-2026", topic: "Health", sponsor: "A"},
+     {id: "HB3", term: "2025-2026", topic: "Mental Health", sponsor: "B"}, {id: "HB4", term: "2025-2026", topic: "Housing", sponsor: "B"},
+     {id: "HB5", term: "2025-2026", topic: "Taxes", sponsor: "B"}]);
+  const out = {};
+  const draw = () => { scope.renderFacets(); return document.querySelector("#facets").innerHTML; };
+  out.all = draw();
+  scope.setTopic("EALTH"); out.typed = draw();
+  scope.sel.topic.add("Taxes"); out.ticked = draw();
+  scope.sel.topic.clear();
+  scope.setTopic("zzz"); out.none = draw();
+  return out;
+})()""", names=("renderFacets", "sel", "setState: (t, m, rows) => { term = t; if (m) META = m; if (rows) IDX = rows; }",
+                "setTopic: (v) => { topicFilter = v; }"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    topics = lambda h: re.findall(r'data-f="topic"\s+value="([^"]*)"', h)
+    assert '<input class="sbox" id="tbox"' in got["all"] and 'id="sbox"' in got["all"], (
+        "the Topic group has no search box beside the Sponsor group's")
+    assert topics(got["all"]) == ["Health", "Housing", "Mental Health", "Taxes"], (
+        f"with nothing typed the Topic list is whole: {topics(got['all'])}")
+    assert topics(got["typed"]) == ["Health", "Mental Health"], (
+        f"'EALTH' (any case, anywhere in the name) lists {topics(got['typed'])}")
+    assert re.search(r'value="Health".*?<span class="c">2</span>', got["typed"], re.S), "a topic's count is lost while typing"
+    assert topics(got["ticked"]) == ["Health", "Mental Health", "Taxes"], (
+        f"a ticked topic leaves the list when it does not match: {topics(got['ticked'])}")
+    assert topics(got["none"]) == [] and "No match" in got["none"], "a word no topic has is not said to match nothing"
+    return "ok", "the box narrows the topics, counts hold, a ticked topic stays"
 
 
 @check("build", "the bug hunt of 11 November 2026: the sitting term rolls on Organization Day in the browser "
