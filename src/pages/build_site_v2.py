@@ -1270,7 +1270,7 @@ def roster_name_keys(members):
     November 2026, #10). A key two members share is now left out of both
     maps, so the sponsor keeps a bare name, and is returned as
     [(which key, the key, [the members])] for the build to say aloud;
-    preflight fails on one in data/legislators.json."""
+    preflight warns, naming both, on one in data/legislators.json."""
     by_sort, by_name, seen = {}, {}, {}
     for m in members:
         for how, book, k in (("sort name", by_sort, sort_name(m.get("name") or "")),
@@ -12409,7 +12409,7 @@ def main():
     leg_by_sort, leg_by_name, _roster_clash = roster_name_keys(legs.values())
     for _how, _k, _ms in _roster_clash:
         print(f"  WARNING: two sitting members share the {_how} {_k!r} "
-              f"({', '.join(str(x.get('id')) for x in _ms)}); a sponsor named by it alone "
+              f"({' and '.join(str(x.get('name')) + ' ' + str(x.get('id')) for x in _ms)}); a sponsor named by it alone "
               "is left unlinked rather than given to the first")
 
     # Members who left mid-term are already named upstream: resolve_members.py

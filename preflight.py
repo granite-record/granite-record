@@ -131593,9 +131593,17 @@ def _shared_helpers_one_home():
     legs = json.loads(f.read_text(encoding="utf-8"))
     legs = list(legs.values()) if isinstance(legs, dict) else legs
     _, _, clash = B.roster_name_keys(legs)
-    assert not clash, ("two sitting members share a name key, so a sponsor named by it alone is left "
-                       "unlinked: " + "; ".join(f"{h} {k!r}: {[m.get('id') for m in ms]}" for h, k, ms in clash))
+    # A namesake in the official roster is a source quirk: it warns, naming both
+    # members, and never fails (the build leaves the sponsor unlinked and says so).
+    shared = "; ".join(f"{h} {k!r}: " + " and ".join(f"{m.get('name')} ({m.get('id')})" for m in ms)
+                       for h, k, ms in clash)
+    if clash:
+        print(f"  WARNING: two sitting members share a name key, so a sponsor named by it alone "
+              f"is left unlinked: {shared}")
+        return "ok", f"WARNING: {len(clash)} name key(s) shared by sitting members, left unlinked: {shared}"
     return "ok", f"one home each for the term rules and the escapes; {len(legs)} sitting members, no name key shared"
+
+
 @check("files", "the state settings file loads with every key, and no second literal county list stands outside it")
 def _state_settings_one_place():
     """src/lib/state_settings.json holds the facts about the state that a fork edits
