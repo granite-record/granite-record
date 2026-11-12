@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.32
+// GRANITE_VERSION: 2026-10-09.33
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -284,7 +284,7 @@ var ICONS={
   signpost:'<path d="M12 3.25v17.5M8.75 20.75h6.5"/><path d="M12 4.75h6.75l2 2.25-2 2.25H12"/><path d="M12 11.5H5.25l-2 2.25 2 2.25H12"/>',
   grid:'<rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/>',
   // The outdoors: fishing, hunting and boating (25 October 2026).
-  tree:'<path d="M12 3.25 8.75 7.75h2L6.75 12.75H9L4.75 18h14.5L15 12.75h2.25L13.25 7.75h2z"/><path d="M10.5 18v2.75M13.5 18v2.75"/>',
+  tree:'<path d="M12 3.25 8.75 7.75h2L6.75 12.75H9L4.75 18h14.5L15 12.75h2.25L13.25 7.75h2z"/><path d="M10.5 18v2.75h3V18"/>',
   // Insurance: car, renters, homeowners and health (26 October 2026).
   shield:'<path d="M12 3.25 4.75 6v5.5c0 4.5 3 8 7.25 9.25 4.25-1.25 7.25-4.75 7.25-9.25V6z"/><path d="m9 12 2.25 2.25 3.75-4"/>'
 };
