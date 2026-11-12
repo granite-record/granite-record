@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.2
+# GRANITE_VERSION: 2026-11-12.3
 """
 When the captions route has been silent for too long. Read-only: it reads
 files that are already on this disk and writes nothing, asks nobody anything.
@@ -111,7 +111,7 @@ def canary_silent(log_text, now):
              " (python3 -X utf8 src\\ops\\livestreams.py --canary)" + newest)]
 
 
-def waiting_long(st, placed, now):
+def waiting_long(st, placed, now, waiting_too=True):
     """[sentence] from the livestream state `st` ({"videos": {id: entry}}):
     finished recordings more than WAIT_NIGHTS days and at most WAIT_MOST_DAYS
     days old that
@@ -122,6 +122,10 @@ def waiting_long(st, placed, now):
         `placed`, the set of its video_ids, or None where that file is not on
         this machine, which leaves this second part out rather than call every
         recording unplaced.
+
+    `waiting_too` False leaves the first half out: the night already warns of
+    those (nightly.KIND_CAPTIONS_WAIT), and a second kind for the same
+    recordings would be news to the gate.
 
     Never fails a night: a sentence per kind, naming up to three titles."""
     if not isinstance(st, dict) or not isinstance(st.get("videos"), dict):
@@ -138,6 +142,8 @@ def waiting_long(st, placed, now):
             continue
         title = str(v.get("title") or vid)
         if v.get("captions") in CAPTIONS_WAITING:
+            if not waiting_too:
+                continue
             waiting.append((ended, title))
         elif v.get("captions") == "captioned" and placed is not None and vid not in placed:
             unplaced.append((ended, title))

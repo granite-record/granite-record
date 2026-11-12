@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.85
+# GRANITE_VERSION: 2026-09-04.86
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -3946,15 +3946,14 @@ def laptop_run_said(laptop, now):
 
 
 def recordings_waiting_long(st, now):
-    """[(kind, sentence)]: finished recordings that have waited for captions,
-    or were read and have no timestamp on the record, for more than three
+    """[(kind, sentence)]: finished recordings that were read and have no timestamp on the record, for more than three
     nights (captions_watch.waiting_long). Read-only, and a warning of the
     kind that never holds a night; proceedings.csv is read where it is on
     this machine and its half left out where it is not."""
     import captions_watch
     placed = captions_watch.placed_ids("proceedings.csv")
-    return [(KIND_NOT_MOVING + "recordings waiting on captions or timestamps", said)
-            for said in captions_watch.waiting_long(st, placed, now)]
+    return [(KIND_NOT_MOVING + "recordings read with no timestamp on the record", said)
+            for said in captions_watch.waiting_long(st, placed, now, waiting_too=False)]
 
 
 def not_moving(v, day, st, laptop, now=None, fetched=True):
@@ -3977,7 +3976,7 @@ def not_moving(v, day, st, laptop, now=None, fetched=True):
                        ("the captions inbox", lambda: inbox_silent(st, laptop, now)),
                        ("the laptop's caption runs",
                         lambda: laptop_run_said(laptop, now) if fetched else []),
-                       ("recordings waiting on captions or timestamps",
+                       ("recordings read with no timestamp on the record",
                         lambda: recordings_waiting_long(st, now))):
         try:
             out += said()

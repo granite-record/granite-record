@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.887
+# GRANITE_VERSION: 2026-09-04.888
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -18271,10 +18271,10 @@ def _captions_silences(W, N, L):
         os.chdir(base)
         (base / "proceedings.csv").write_text("video_id\nP1\n", encoding="utf-8")
         got = N.recordings_waiting_long(st, now)
-        assert len(got) == 2 and all(k.startswith(N.KIND_NOT_MOVING) for k, _s in got), got
+        assert len(got) == 1 and all(k.startswith(N.KIND_NOT_MOVING) for k, _s in got) and             "Unplaced committee" in got[0][1], "the night's half is the unplaced one; the waiting one is KIND_CAPTIONS_WAIT's"
         v = {}
         said = N.not_moving(v, "2026-11-12", st, {"at": stamp(0.1)}, now=now, fetched=False)
-        assert len([x for x in said if "waiting on captions or timestamps" in x[0]]) == 2, said
+        assert len([x for x in said if "read with no timestamp on the record" in x[0]]) == 1, said
         assert N.warning_reasons(said, None, ()) == [], "a silence held a night"
         # the command: read-only, exit 0 though it warns
         (base / "logs").mkdir()

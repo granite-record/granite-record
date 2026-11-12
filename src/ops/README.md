@@ -104,9 +104,10 @@ or the bucket:
 - `python3 src/ops/captions_watch.py`, read-only, for the morning triage on the
   laptop: warns when the evening job has not written a line for 2 days, when
   the canary has not passed for 8, and, in the night's verdict too
-  (`nightly.recordings_waiting_long`), when a finished recording has waited
-  for captions or been read with no timestamp on the record for more than 3
-  nights. Warnings, never failures.
+  (`nightly.recordings_waiting_long`, for the read-but-unplaced half only; the
+  night's own captions-wait warning already covers the waiting half), when a
+  finished recording has waited for captions or been read with no timestamp on
+  the record for more than 3 nights. Warnings, never failures.
 - A heartbeat: with `GRANITE_HEARTBEAT_URL` in the environment, or
   `heartbeat_url` in `secrets.json`, `--to-inbox` and `--canary` ping that
   address when they finish, `/fail` appended when the run did not exit 0.
