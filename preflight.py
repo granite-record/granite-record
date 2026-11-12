@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.880
+# GRANITE_VERSION: 2026-09-04.881
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -18035,6 +18035,261 @@ def _inbox_files(bucket):
     bucket = Path(bucket)
     return {p.relative_to(bucket).as_posix(): p.read_bytes()
             for p in bucket.rglob("*") if p.is_file()} if bucket.exists() else {}
+
+
+def _canary_source(root, n=3910, last=1969.5, video=None):
+    """A saved answer for the canary: root/<video>/captions.en.json3 with `n`
+    words, the last at `last` seconds, in YouTube's json3 shape."""
+    video = video or "tFh6nyiGjOs"
+    d = Path(root) / video
+    d.mkdir(parents=True, exist_ok=True)
+    events = [{"tStartMs": int(i * last * 1000 / max(n - 1, 1)), "dDurationMs": 100,
+               "segs": [{"utf8": f"word{i}"}]} for i in range(n)]
+    (d / "captions.en.json3").write_text(json.dumps({"events": events}), encoding="utf-8")
+    return d
+
+
+def _tree_names(root):
+    return sorted(p.relative_to(root).as_posix() for p in Path(root).rglob("*"))
+
+
+@check("livestreams", "the captions canary writes one line to its own log and nothing else: no state, "
+       "no archive/, no inbox, no bucket, no refusal record, no scratch left behind; a refusal, a "
+       "missing file, a shape that is not October's and a held refusal each end it with a "
+       "verdict that is not ok", needs=("livestreams",))
+def _canary_no_publish(L):
+    """THE CAPTIONS CANARY (11 November 2026): the weekly proof that the laptop's
+    route still brings back captions that read, with no recording waiting. It
+    must change nothing the night or the evening run keeps. Run in an empty
+    working folder from saved answers (--captions-from, the stand-in for
+    YouTube): the folder holds the log it was told to write and nothing else,
+    and the temporary scratch folder is gone. The source of canary() names
+    none of the writers of state, the inbox or the bucket."""
+    import contextlib
+    import inspect
+    import io
+    src = inspect.getsource(L.canary)
+    for banned in ("make_bucket", "FolderBucket", "inbox_add", "inbox_report", "inbox_listing",
+                   "save_state", "load_state", "STATE", "LAPTOP_RUN", "LAPTOP_REFUSAL",
+                   "refusals.note", "write_summary", "MARKERS", "lock("):
+        assert banned not in src, f"canary() names {banned}: it must touch none of the night's files"
+    assert "log=False" in src, "the canary's ask must leave the day's yt-dlp log alone"
+    here = os.getcwd()
+    base = Path(tempfile.mkdtemp())
+    before_scratch = set(Path(tempfile.gettempdir()).glob("gr-canary-*"))
+    work = base / "cwd"
+    work.mkdir()
+    log = base / "logs-out" / "captions-canary.log"
+    answers = base / "answers"
+
+    def run(at="2026-11-12T10:00:00Z", *extra):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = L.main(["--canary", "--captions-from", str(answers), "--origin", "laptop",
+                           "--canary-log", str(log), "--now", at, *extra])
+        return code, out.getvalue()
+    try:
+        os.chdir(work)
+        os.environ.pop("GITHUB_ACTIONS", None)
+        os.environ.pop(L.HEARTBEAT_ENV, None)
+        # ok: the October shape
+        _canary_source(answers)
+        code, said = run()
+        assert code == 0, (code, said)
+        lines = log.read_text(encoding="utf-8").splitlines()
+        assert len(lines) == 1 and " CANARY ok " in lines[0] and lines[0].startswith(
+            "2026-11-12T10:00:00Z"), lines
+        assert _tree_names(work) == [], f"the canary left files in the working folder: {_tree_names(work)}"
+        assert not (set(Path(tempfile.gettempdir()).glob("gr-canary-*")) - before_scratch), \
+            "the canary's scratch folder was left behind"
+        # not October's shape: a few words
+        shutil.rmtree(answers)
+        _canary_source(answers, n=500, last=300.0)
+        code, said = run("2026-11-12T10:05:00Z")
+        assert code == 1 and "FAIL" in log.read_text(encoding="utf-8").splitlines()[-1], said
+        # YouTube's refusal, as yt-dlp words it
+        shutil.rmtree(answers)
+        (answers / L.CANARY_VIDEO).mkdir(parents=True)
+        (answers / L.CANARY_VIDEO / "ERROR.txt").write_text(
+            "ERROR: Unable to download video subtitles for 'en': HTTP Error 429: Too Many "
+            "Requests", encoding="utf-8")
+        code, said = run("2026-11-12T10:10:00Z")
+        last = log.read_text(encoding="utf-8").splitlines()[-1]
+        assert code == 1 and " CANARY FAIL " in last and "refused" in last, last
+        # no captions at all (the folder holds nothing)
+        shutil.rmtree(answers)
+        (answers / L.CANARY_VIDEO).mkdir(parents=True)
+        code, said = run("2026-11-12T10:15:00Z")
+        assert code == 1 and " CANARY FAIL " in log.read_text(encoding="utf-8").splitlines()[-1]
+        assert _tree_names(work) == [], f"a failed canary left files behind: {_tree_names(work)}"
+        # a refusal held against this machine: not asked, and not a pass
+        (work / "archive").mkdir()
+        (work / "archive" / "youtube.refused.json").write_text(json.dumps(
+            {"laptop": {"at": "2026-11-12T09:00:00Z", "until": 1e12, "until_iso":
+                        "2030-01-01T00:00:00Z", "count": 1, "why": "x"}}), encoding="utf-8")
+        before = _tree_names(work)
+        asked = []
+        real = L.ask_track
+        L.ask_track = lambda *a_, **k: asked.append(a_) or ("captioned", "")
+        try:
+            code, said = run("2026-11-12T10:20:00Z")
+        finally:
+            L.ask_track = real
+        assert code == 1 and not asked and " CANARY skipped " in log.read_text(
+            encoding="utf-8").splitlines()[-1], (code, asked)
+        assert _tree_names(work) == before, "a skipped canary wrote into the working folder"
+        assert (work / "archive" / "youtube.refused.json").read_text(encoding="utf-8").count(
+            "count") == 1
+        # the runner's machine is not the canary's: refused, and nothing written
+        n = len(log.read_text(encoding="utf-8").splitlines())
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = L.main(["--canary", "--origin", "runner", "--canary-log", str(log)])
+        assert code == 1 and len(log.read_text(encoding="utf-8").splitlines()) == n
+    finally:
+        os.chdir(here)
+        shutil.rmtree(base, ignore_errors=True)
+    return "ok", ("an October-shaped answer passes; a short file, a refusal, an empty answer and a "
+                  "held refusal each give a verdict that is not ok; the working folder is empty "
+                  "after all of them and no scratch is left")
+
+
+@check("livestreams", "the heartbeat is optional: with no address nothing is sent and nothing said, "
+       "with one it is pinged once (and /fail on a failed run), a bad address or a failing ping "
+       "changes no exit status, and no address is written in the repository", needs=("livestreams",))
+def _heartbeat_optional(L):
+    import contextlib
+    import io
+    sent = []
+    real_ping, real_url = L._ping, L.heartbeat_url
+    here = os.getcwd()
+    base = Path(tempfile.mkdtemp())
+    saved = os.environ.pop(L.HEARTBEAT_ENV, None)
+    try:
+        os.chdir(base)
+        L._ping = lambda url, body: sent.append(url)
+        # nothing set: no ping, no output
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            assert L.heartbeat(True, "x") is False and L.heartbeat(False, "x") is False
+        assert not sent and out.getvalue() == "", (sent, out.getvalue())
+        # an address that is not https is none
+        os.environ[L.HEARTBEAT_ENV] = "http://hc-ping.invalid/abc"
+        assert L.heartbeat_url() == "" and L.heartbeat(True) is False and not sent
+        os.environ[L.HEARTBEAT_ENV] = "https://hc-ping.invalid/abc"
+        assert L.heartbeat(True, "ok") is True and sent == ["https://hc-ping.invalid/abc"], sent
+        assert L.heartbeat(False, "bad") is True and sent[-1] == "https://hc-ping.invalid/abc/fail", sent
+        # a ping that fails is said once, without the address, and raises nothing
+        def broken(url, body):
+            raise OSError("down")
+        L._ping = broken
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            assert L.heartbeat(True) is False
+        assert "hc-ping" not in out.getvalue() and "OSError" in out.getvalue(), out.getvalue()
+        # the run's own status is the run's, whatever the ping did
+        a = argparse.Namespace(canary=True)
+        with contextlib.redirect_stdout(io.StringIO()):
+            assert L.with_heartbeat(a, lambda _a: 0) == 0
+            assert L.with_heartbeat(a, lambda _a: 1) == 1
+            assert L.with_heartbeat(a, lambda _a: (_ for _ in ()).throw(L.Broken("x"))) == 1
+        # no ping and no error when nothing is set, for a whole run
+        os.environ.pop(L.HEARTBEAT_ENV)
+        sent.clear()
+        L._ping = lambda url, body: sent.append(url)
+        with contextlib.redirect_stdout(io.StringIO()):
+            assert L.with_heartbeat(a, lambda _a: 0) == 0
+        assert not sent, sent
+    finally:
+        L._ping, L.heartbeat_url = real_ping, real_url
+        os.chdir(here)
+        if saved is not None:
+            os.environ[L.HEARTBEAT_ENV] = saved
+        else:
+            os.environ.pop(L.HEARTBEAT_ENV, None)
+        shutil.rmtree(base, ignore_errors=True)
+    # no address in anything tracked: the example file names the key and holds no URL
+    ex = json.loads((_paths.ROOT / "secrets.example.json").read_text(encoding="utf-8"))
+    assert not re.search(r"https?://\S*(hc-ping|healthchecks)", json.dumps(ex)), ex
+    for rel in ("src/ops/livestreams.py", "src/ops/captions_watch.py"):
+        text = (_paths.ROOT / rel).read_text(encoding="utf-8")
+        assert not re.search(r"hc-ping\.com/[0-9a-f-]{8,}", text), f"{rel} carries a ping address"
+    return "ok", "no address, no ping; one address, one ping, /fail on failure; a failing ping changes no status"
+
+
+@check("livestreams", "the silences are warnings with their thresholds: the laptop's job after 2 days, "
+       "the canary after 8 days of no pass, a recording after 3 nights waiting or read with no "
+       "timestamp; none fails, and the night's verdict carries the recording one", needs=("captions_watch", "nightly", "livestreams"))
+def _captions_silences(W, N, L):
+    import contextlib
+    import io
+    from datetime import datetime, timedelta, timezone
+    now = datetime(2026, 11, 12, 12, 0, tzinfo=timezone.utc)
+    assert (W.JOB_SILENT_DAYS, W.CANARY_SILENT_DAYS, W.WAIT_NIGHTS) == (2, 8, 3)
+    assert tuple(W.CAPTIONS_WAITING) == tuple(N.CAPTIONS_WAITING), "captions_watch's waiting set drifted"
+    assert W.WAIT_MOST_DAYS == N.CAPTION_WAIT_MOST and W.WAIT_NIGHTS == N.CAPTION_WAIT_DAYS
+
+    def stamp(days):
+        return (now - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    # the job: exactly two days is on time, a little more is not, no log is said
+    assert W.job_silent(stamp(2.0) + ": 0 recording(s) wait", now) == []
+    assert len(W.job_silent(stamp(2.1) + ": 0 recording(s) wait", now)) == 1
+    assert len(W.job_silent("", now)) == 1
+    assert W.job_silent(stamp(5) + ": a\n" + stamp(0.5) + ": b", now) == [], "the newest line decides"
+    # the canary: only an ok line is a pass
+    ok = lambda d: f"{stamp(d)} CANARY ok -- x"
+    assert W.canary_silent(ok(8.0), now) == []
+    assert len(W.canary_silent(ok(8.1), now)) == 1
+    assert len(W.canary_silent("", now)) == 1 and "ever" in W.canary_silent("", now)[0]
+    for bad in ("FAIL -- refused", "skipped -- held"):
+        s = W.canary_silent(f"{stamp(1)} CANARY {bad}", now)
+        assert len(s) == 1 and bad in s[0], s
+    assert W.canary_silent(ok(3) + f"\n{stamp(1)} CANARY FAIL -- y", now) == [], \
+        "a pass inside eight days stands though a later week failed (the failure is the next run's news)"
+
+    # a recording: waiting or read and unplaced, after three days, within thirty
+    def vid(days, captions, title="T", **kw):
+        return dict({"status": "finished", "captions": captions, "title": title,
+                     "ended": stamp(days)}, **kw)
+    st = {"videos": {
+        "W3": vid(3.0, "waiting"), "W4": vid(3.1, "deferred", "Late one"),
+        "OLD": vid(31, "waiting"), "LIVE": {"status": "live", "captions": "waiting",
+                                              "ended": stamp(9)},
+        "AD": vid(9, "waiting", adopted=True),
+        "U1": vid(9, "captioned", "Unplaced committee"), "P1": vid(9, "captioned", "Placed"),
+        "U0": vid(2.9, "captioned", "Too new")}}
+    got = W.waiting_long(st, {"P1"}, now)
+    assert len(got) == 2, got
+    assert "1 recording finished more than 3 nights ago still waits" in got[0] and "Late one" in got[0], got
+    assert "Unplaced committee" in got[1] and "Placed" not in got[1].replace("Unplaced", "") and \
+        "Too new" not in got[1], got
+    assert len(W.waiting_long(st, None, now)) == 1, "no proceedings.csv leaves the unplaced half out"
+    assert W.waiting_long({}, set(), now) == [] and W.waiting_long(None, set(), now) == []
+    # and the night carries it, as a warning of the kind that never holds
+    here = os.getcwd()
+    base = Path(tempfile.mkdtemp())
+    try:
+        os.chdir(base)
+        (base / "proceedings.csv").write_text("video_id\nP1\n", encoding="utf-8")
+        got = N.recordings_waiting_long(st, now)
+        assert len(got) == 2 and all(k.startswith(N.KIND_NOT_MOVING) for k, _s in got), got
+        v = {}
+        said = N.not_moving(v, "2026-11-12", st, {"at": stamp(0.1)}, now=now, fetched=False)
+        assert len([x for x in said if "waiting on captions or timestamps" in x[0]]) == 2, said
+        assert N.warning_reasons(said, None, ()) == [], "a silence held a night"
+        # the command: read-only, exit 0 though it warns
+        (base / "logs").mkdir()
+        (base / "archive").mkdir()
+        (base / "archive" / "livestreams.json").write_text(json.dumps(st), encoding="utf-8")
+        before = _tree_names(base)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            assert W.main(["--root", str(base), "--now", now.isoformat()]) == 0
+        assert out.getvalue().count("WARNING:") == 4, out.getvalue()
+        assert _tree_names(base) == before, "captions_watch wrote something"
+    finally:
+        os.chdir(here)
+        shutil.rmtree(base, ignore_errors=True)
+    return "ok", "job 2 days, canary 8 days, recording 3 nights; warnings only; the night carries the last"
 
 
 @check("livestreams", "the captions inbox, the laptop's side: it asks YouTube only for what the "
