@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.4
+# GRANITE_VERSION: 2026-10-11.5
 """
 Related bills: which bills and amendments share their proposed language.
 
@@ -64,6 +64,8 @@ import sys
 from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
+
+from terms import term_of_year  # noqa: E402,F401
 
 import argparse
 import collections
@@ -197,12 +199,6 @@ def sentence(it, label):
         return f"Amendment {num} to {on}, offered later, carries language this bill had; {fate}."
     return f"Amendment {num} to {on} carries language this bill has; {fate}."
 
-
-
-def term_of_year(y):
-    y = int(y)
-    a = y if y % 2 else y - 1
-    return f"{a}-{a + 1}"
 
 
 def bill_body(text):

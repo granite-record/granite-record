@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.5
+# GRANITE_VERSION: 2026-09-13.6
 """
 Which sitting members voted under an earlier number in the other chamber.
 
@@ -63,19 +63,13 @@ import sys
 from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
+import state_settings as ST
 
 import json
 import re
 from collections import Counter, defaultdict
 
-COUNTIES = {
-    "belknap": "Belknap", "belk": "Belknap", "carroll": "Carroll", "carr": "Carroll",
-    "cheshire": "Cheshire", "ches": "Cheshire", "coos": "Coos", "grafton": "Grafton",
-    "graf": "Grafton", "hillsborough": "Hillsborough", "hills": "Hillsborough",
-    "merrimack": "Merrimack", "merr": "Merrimack", "rockingham": "Rockingham",
-    "rock": "Rockingham", "strafford": "Strafford", "straf": "Strafford",
-    "sullivan": "Sullivan", "sull": "Sullivan",
-}
+COUNTIES = dict(ST.COUNTY_LOOKUP)
 
 # Short forms that are not a prefix of the name. A prefix (Pat, Patrick; Tim,
 # Timothy) is accepted without being listed.

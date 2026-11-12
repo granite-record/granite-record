@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.13
+# GRANITE_VERSION: 2026-09-04.14
 """
 Daily snapshot of the NH General Court bulk data files.
 
@@ -85,6 +85,8 @@ from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
 
+from terms import term_of_year as term_of  # noqa: E402,F401
+
 import argparse
 import gzip
 import hashlib
@@ -161,13 +163,6 @@ def years_in(data, name):
             if len(y) == 4 and y.isdigit():
                 out.add(y)
     return out
-
-
-def term_of(year):
-    """'2027' -> '2027-2028': a term begins in the odd year."""
-    y = int(year)
-    start = y if y % 2 else y - 1
-    return f"{start}-{start + 1}"
 
 
 def newest_term(files):

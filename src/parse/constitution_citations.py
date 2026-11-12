@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-11.1
+# GRANITE_VERSION: 2026-11-11.2
 """
 Which bills proposed to change each article of the Constitution, and which bills
 and statutes cite it.
@@ -7,7 +7,7 @@ and statutes cite it.
     python3 src/parse/constitution_citations.py            # writes constitution_citations.json
     python3 src/parse/constitution_citations.py --dry-run  # counts, writes nothing
 
-Asks nobody: it reads archive_text.json and bill_text.json (every CACR and every
+Asks nobody: it reads the archived bill texts and the current term's bill texts (every CACR and every
 other bill), db/NH_RSA.psv (every statute section) and collected/constitution.json.
 Standard library only. Written beside rsa_citations.json and whole every time (a
 writer of a derived file run on a subset destroys the rest).

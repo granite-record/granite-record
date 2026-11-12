@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.11
+# GRANITE_VERSION: 2026-10-30.13
 """
 Live Now's page and its schedule (the live layer's design, sections 1.2 and
 1.4), written by the night beside the Calendar and from the Calendar's own
@@ -35,6 +35,8 @@ from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
 
+from terms import term_of_year as term_of  # noqa: E402,F401
+
 import argparse
 import csv
 import datetime
@@ -47,6 +49,7 @@ import build_date
 import build_pages as BP
 import live_gen as LG
 import shell as S
+import state_settings as ST
 
 AHEAD = 4                  # weekdays after today
 # LINKED IS THE OWNER'S SWITCH (workers/live/SWITCH_ON.md, step 5): whether the
@@ -177,12 +180,8 @@ def schedule(site, today, weeks=None, history=None):
         days[iso] = rows
         if nxt is None and d > today and rows:
             nxt = {"date": iso, "name": rows[0]["name"]}
-    return {"built": today.isoformat(), "tz": "America/New_York", "days": days, "next": nxt,
+    return {"built": today.isoformat(), "tz": ST.TIMEZONE, "days": days, "next": nxt,
             "bills": bill_years(site, today)}
-
-
-def term_of(year):
-    return f"{year}-{year + 1}" if year % 2 else f"{year - 1}-{year}"
 
 
 def bill_years(site, today):

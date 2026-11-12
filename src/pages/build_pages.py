@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.281
+# GRANITE_VERSION: 2026-09-04.282
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -41,6 +41,7 @@ import shell as _shell
 from i18n import say
 from components import WORDBOOK, chip, clock, date_span, icon, pchip, until_attrs
 import components as _components
+from htmlesc import esc_blank
 # A committee's recommendation in the committee page's words (REC_WORDS), for
 # Latest Activity.
 import committee_acts as CA
@@ -3557,11 +3558,9 @@ def home_webinar(today=None, lang="en"):
             f'{say(lang, "web.go", "Register on Zoom")}</a></aside>')
 
 
-def _home_esc(x):
-    """The home page's escape: components.js's esc, the ampersand, the angles
-    and the double quote."""
-    return (str(x or "").replace("&", "&amp;").replace("<", "&lt;")
-            .replace(">", "&gt;").replace('"', "&quot;"))
+# The home page's escape: components.js's esc, the ampersand, the angles and the
+# double quote (src/lib/htmlesc.py).
+_home_esc = esc_blank
 
 
 def _record(x, lang):
@@ -4834,9 +4833,7 @@ def main():
     c = H.get("counts", {})
     k = c.get("by_kind", {})
 
-    def esc(x):
-        return (str(x or "").replace("&", "&amp;").replace("<", "&lt;")
-                .replace(">", "&gt;").replace('"', "&quot;"))
+    esc = _home_esc
 
     def fd(d):
         """"Aug 19", the form HOME_JS's fd() writes: shell.date_words."""

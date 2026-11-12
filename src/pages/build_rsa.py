@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.31
+# GRANITE_VERSION: 2026-10-11.34
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -58,6 +58,8 @@ import sys
 from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
+
+from terms import term_of_year  # noqa: E402,F401
 
 import argparse
 import collections
@@ -188,12 +190,6 @@ def href(addr):
     """The site's own address for a statute address: /laws/91-a#s4, /laws/91-a."""
     ch, _, sec = addr.partition(":")
     return chapter_path(ch) + (f"#{sec_anchor(addr)}" if sec else "")
-
-
-def term_of_year(y):
-    y = int(y)
-    a = y if y % 2 else y - 1
-    return f"{a}-{a + 1}"
 
 
 def term_before(term):
@@ -1235,7 +1231,7 @@ def chapter_page(tmpl, table, data, bills, ch, base):
     head = (f'<header class="l-head"><p class="rs-crumb"><a href="/laws">Laws</a> &rsaquo; '
             f'<a href="/laws#t-{E(info["title_no"])}">{E(crumb)}</a></p>'
             f'<p class="rs-kick">RSA {E(ch)}</p><h1>{E(title)}</h1>{gone}'
-            f'<p class="l-lead">{lead}</p>' + S.cite_block(path, title, base, S.BUILT) + "</header>")
+            f'<p class="l-lead">{lead}</p>' + S.cite_block(path, title, base, S.cited(TABLE_TAKEN_DAY)) + "</header>")
     pend = ""
     if pending_ch or passed_ch:
         # A law whose record states no effective date that can be read is
@@ -1457,19 +1453,28 @@ DEFS_JS = r"""<script>
     var host=pop.offsetParent||a.closest(HOME);if(!host)return;
     var r=a.getBoundingClientRect(),b=host.getBoundingClientRect(),vw=document.documentElement.clientWidth,
         vh=window.innerHeight||document.documentElement.clientHeight||0;
+    // A host that scrolls (the /laws preview) is the box's whole world: it
+    // opens inside that panel, never wider than it and never past its top or
+    // bottom, its words wrapping; a chapter's page is bounded by the screen.
+    var lo=8,hi=vw-8,top=8,bot=vh-8,cl=host.clientLeft||0,ct=host.clientTop||0;
+    if(window.getComputedStyle&&getComputedStyle(host).overflowX!=="visible"){
+      lo=Math.max(lo,b.left+cl+8);hi=Math.min(hi,b.left+cl+host.clientWidth-8);
+      top=Math.max(top,b.top+ct+8);bot=Math.min(bot,b.top+ct+host.clientHeight-8);
+      pop.style.maxWidth=Math.max(160,hi-lo)+"px";}
+    else pop.style.maxWidth="";
     pop.style.maxHeight="";pop.style.left="0px";pop.style.top="0px";
     var p=pop.getBoundingClientRect(),h=p.bottom-p.top;
     // Under the word where it fits; over it where it fits there instead, or
     // where it fits on neither side and there is more room above; no
     // taller than the room on its side, its words scrolling inside it.
-    var below=r.bottom+6,roomBelow=vh-8-below,roomAbove=r.top-6-8;
+    var below=r.bottom+6,roomBelow=bot-below,roomAbove=r.top-6-top;
     if(!keep||!side)side=(vh&&h>roomBelow&&(h<=roomAbove||roomAbove>roomBelow))?"above":"below";
     var room=side==="above"?roomAbove:roomBelow;
     if(vh&&h>room){h=Math.max(room,96);pop.style.maxHeight=h+"px";}
     var y=side==="above"?r.top-6-h:below;
     var x=r.left;
-    if(x+(p.right-p.left)>vw-8)x=vw-8-(p.right-p.left);
-    if(x<8)x=8;
+    if(x+(p.right-p.left)>hi)x=hi-(p.right-p.left);
+    if(x<lo)x=lo;
     // The pointer: on the edge facing the word, at the word's middle (the
     // line of it the box is nearest) whatever the box was moved by, kept
     // clear of the box's corners.
@@ -1478,7 +1483,7 @@ DEFS_JS = r"""<script>
     pop.className="termpop rs-dpop"+(side==="above"?" above":"");
     pop.style.setProperty&&pop.style.setProperty("--arrow",Math.round(Math.max(14,Math.min(Math.max(14,bw-14),ax)))+"px");
     // A host that scrolls (the /laws preview) carries the box with its text.
-    pop.style.left=Math.round(x-b.left+(host.scrollLeft||0))+"px";pop.style.top=Math.round(y-b.top+(host.scrollTop||0))+"px";}
+    pop.style.left=Math.round(x-b.left-cl+(host.scrollLeft||0))+"px";pop.style.top=Math.round(y-b.top-ct+(host.scrollTop||0))+"px";}
   function show(a){
     var w=target(a);if(!w||!a.closest(HOME))return;
     clearTimeout(shut);
@@ -1835,6 +1840,9 @@ LANDING_JS = """<script>
 # the weekly refreshes (nightly.STATUTE_VIEWS). Set by main(); "" where the
 # manifest does not say, and then the pages say nothing of it.
 TABLE_TAKEN = ""
+# The same day as an ISO date, for the citation (shell.cited): the day the
+# statute table the pages show was read from the General Court's database.
+TABLE_TAKEN_DAY = ""
 
 
 def taken_on(db):
@@ -1845,6 +1853,15 @@ def taken_on(db):
     except (OSError, ValueError, KeyError, TypeError):
         return ""
     return C.date_words(d, "full")
+
+
+def taken_day(db):
+    """taken_on's day as ISO, or ""."""
+    try:
+        got = json.loads((Path(db) / "_manifest.json").read_text(encoding="utf-8"))["NH_RSA"]["fetched"]
+        return datetime.date.fromisoformat(str(got)[:10]).isoformat()
+    except (OSError, ValueError, KeyError, TypeError):
+        return ""
 
 
 def as_of(latest, today=None):
@@ -1911,7 +1928,7 @@ def landing_page(tmpl, table, data, base, topics, pending, con=None, hist=None):
     head_lead = ("The state Constitution, and the statutes the General Court passes under it, the "
                  "Revised Statutes Annotated (RSA)." if con else rsa_lead)
     head = (f'<header class="l-head"><h1>{E(title)}</h1><p class="l-lead">{head_lead}</p>'
-            + S.cite_block(path, title, base, S.BUILT) + "</header>")
+            + S.cite_block(path, title, base, S.cited(TABLE_TAKEN_DAY)) + "</header>")
     groups = collections.OrderedDict()
     for ch in sorted(table.chapters, key=rsa.chap_key):
         info = table.chapters[ch]
@@ -2066,8 +2083,9 @@ def main():
     a = ap.parse_args()
     site = Path(a.site)
     table = rsa.load(Path(a.db) / "NH_RSA.psv", Path(a.db) / "_columns.json") if a.db else rsa.load()
-    global TABLE_TAKEN
+    global TABLE_TAKEN, TABLE_TAKEN_DAY
     TABLE_TAKEN = taken_on(a.db or rsa.TABLE.parent)
+    TABLE_TAKEN_DAY = taken_day(a.db or rsa.TABLE.parent)
     cit = Path("rsa_citations.json")
     if table is None or not cit.is_file():
         print("build_rsa: no statute table or rsa_citations.json here; no statute pages written")

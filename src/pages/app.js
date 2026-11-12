@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.306
+// GRANITE_VERSION: 2026-09-07.309
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3222,8 +3222,11 @@ function ensureTerm(t){
 // GR_STANDALONE is on bill pages too, and there the next bill is a
 // plausible next thought rather than a change of subject.
 if(window.GR_STATIC||window.GR_STANDALONE){
-  if(!window.GR_BILL)hideBillSearch();
+  if(!window.GR_BILL&&!window.GR_REQUEST)hideBillSearch();
   staticChromeDown();
+  // A REQUEST'S OWN PAGE KEEPS THE BOX AS A BILL'S DOES (11 November 2026),
+  // and it works the same way: submitSearch takes the words to /bills.
+  if(window.GR_REQUEST){const q=$("#q"),go=$("#qgo");if(q)q.disabled=false;if(go)go.disabled=false;}
 }
 // A law's page can be followed by email (build_rsa's GR_LAW), and only by
 // email: the box is drawn only where the sign-up answers, so the live site
@@ -3231,6 +3234,14 @@ if(window.GR_STATIC||window.GR_STANDALONE){
 if(window.GR_STATIC){
   if(window.GR_LAW)followUp()
     .then(ok=>{if(ok)mountFollow("law","",String(window.GR_LAW));}).catch(()=>{});
+  // A BILL REQUEST'S OWN PAGE (build_request_pages, 11 November 2026) is
+  // followed as its card in the list is (lsrCardHtml): by email alone, the
+  // key "lsr:2027-0012", drawn only where the sign-up answers, in the head's
+  // action column after Cite. The page names it only for a request that can
+  // be followed -- not a withdrawn one -- as GR_FOLLOW, "lsr:2027-0012".
+  if(window.GR_FOLLOW)followUp()
+    .then(ok=>{if(ok){const k=String(window.GR_FOLLOW),i=k.indexOf(":");
+      mountFollow(k.slice(0,i),"",k.slice(i+1));}}).catch(()=>{});
   // REPORT A PROBLEM ON A SESSION DAY AND A STUDY COMMITTEE (the cohesion
   // audit of 30 October 2026, I-8): the page names its record (GR_REPORT,
   // "session:H/2010-03-11", "study:ss1451") and the box goes after the Share
@@ -3485,7 +3496,8 @@ function numberForm(p){
    known (setRequestYear): "2026-0002" is no request of this site's, and
    "2026-0002" in the search box is nothing else either. A two-digit year
    takes a four-digit number after it ("27-0002"; "12-5" is not one). "LSR
-   0002" is the requests' year and that number. A bare "0002" is a request
+   0002" is the requests' year and that number. A term's name ("2027-2028",
+   "2027-28") is no request. A bare "0002" is a request
    only where the list is the requests' (`bare`, which /bills sets by the
    list on screen): anywhere else it is a number like any other. */
 let REQ_YEAR="",REQ_BARE=false;
@@ -3493,6 +3505,8 @@ function setRequestYear(y){REQ_YEAR=String(y||"");NUMBERS_OF=null;}
 function requestNumber(p,bare){
   const s=String(p).trim();
   const id=(y,n)=>{
+    // "2027-2028" and "2027-28" are the next term's name, not a request.
+    if(y.length===4&&(+n===+y+1||(n.length===2&&+n===(+y+1)%100)))return null;
     if(y.length===2)y="20"+y;
     if(REQ_YEAR&&y!==REQ_YEAR)return null;
     return "LSR"+y+String(n).padStart(4,"0");
@@ -7512,7 +7526,8 @@ function mountFollow(kind,feed,ref){
   // A LAW HAS NO FEED (11 October 2026): its Follow is email alone, and is
   // drawn only once the email box can work there (followMail).
   if(!kind||!res||document.getElementById("followbox"))return;
-  if(kind!=="law"&&!(feed||link))return;
+  // A REQUEST HAS NONE EITHER (its feed starts with its bill).
+  if(kind!=="law"&&kind!=="lsr"&&!(feed||link))return;
   const href=feed||(link&&link.getAttribute("href"))||"";
   const div=document.createElement("div");
   div.id="followbox";
@@ -12767,9 +12782,10 @@ function drawSessionVotes(only){
 })();
 
 
-// THE READER'S OWN DATE IN A CITATION, not the build's. shell.py writes the
-// build date into every .citeday so a page read without JavaScript still gives
-// a true date for the page rather than "Accessed ." -- and a reader who has
+// THE READER'S OWN DATE IN A CITATION, not the page's. shell.py writes into
+// every .citeday the day the page's record last changed (the build day where
+// it has none), so a page read without JavaScript still gives a true date for
+// the page rather than "Accessed ." -- and a reader who has
 // JavaScript gets the day they actually read it, which is what every one of
 // those four formats means by "accessed".
 //
@@ -12792,6 +12808,10 @@ function citeDayFull(d){
   var now=new Date(), s=citeDay(now), full=citeDayFull(now);
   for(var i=0;i<els.length;i++)
     els[i].textContent=els[i].classList&&els[i].classList.contains("citefull")?full:s;
+  // The note under the Cite box says which date is written in; with the
+  // reader's own it says that instead.
+  var rd=document.querySelectorAll(".citeread");
+  for(var k=0;k<rd.length;k++)rd[k].textContent="The date below is the day you read this page.";
   // The Copy buttons are written hidden, so a page read without JavaScript
   // offers none that does nothing; here they work, so here they show.
   var bs=document.querySelectorAll("[data-citecopy]");

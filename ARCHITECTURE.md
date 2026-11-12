@@ -1682,10 +1682,14 @@ the day it was signed.
 
 A change that is meant to leave the site alone is proved by building it before
 and after and comparing a sha256 of every file. The day a build is made is in
-every page -- it is the date a citation falls back on for a reader without
-JavaScript -- and in the sitemap, the feeds, `home.json` and the downloads'
-manifest, and a dozen builders ask what today is to decide what is still to
-come. So two builds made on different days differ in every page.
+the pages that have no record day of their own (requests and lists with no
+actions, about 586 files) -- it is the date a citation falls back on for a
+reader without JavaScript; every other page falls back on the day its record
+last changed (`shell.cited`) -- and in the sitemap, the feeds, `home.json` and
+the downloads' manifest, and a dozen builders ask what today is to decide what
+is still to come. So two builds made on different days differ in those pages
+and in the ones whose record moved, not in every page. The nightly's tree hash
+(`tree_hash`/`serves_this_build` in `nightly.py`) relies on this.
 
 `GRANITE_BUILD_DATE=2026-10-02` states the day instead, or
 `2026-10-02T01:22:13` the moment, for every builder: `build_date.py` is the

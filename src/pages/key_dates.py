@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-24.4
+# GRANITE_VERSION: 2026-10-24.5
 """
 The key dates: the elections, town meeting day, and the legislature's own
 landmarks and deadlines, each with where it comes from. The home page's
@@ -135,11 +135,6 @@ def second_tuesday(year, month):
     sets for the state primary in September."""
     first = date(int(year), int(month), 1)
     return first + timedelta(days=(1 - first.weekday()) % 7 + 7)
-
-
-def town_meeting_day(year):
-    """The second Tuesday of March (RSA 39:1; RSA 669:1, I)."""
-    return second_tuesday(year, 3)
 
 
 def state_primary(year):

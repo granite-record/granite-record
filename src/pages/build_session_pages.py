@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.63
+# GRANITE_VERSION: 2026-09-19.65
 """
 A page for every day the House sat.
 
@@ -2839,20 +2839,6 @@ def pager(body, date, prev_, next_, weeks):
     return nav
 
 
-def up_links(body, date, weeks):
-    """The links above a sitting, in the order the line above its heading
-    gives them: the chamber's list, at the sitting's year, and its week on
-    the Calendar where the calendar has that week."""
-    y = int(date[:4])
-    wk = week_of(date)
-    out = [f'<a href="{S.canon(DAYS_LIST[body])}#y{y}">'
-           f"Every {CHAMBER[body]} session day</a>"]
-    if wk in weeks:
-        out.append(f'<a href="{S.canon(f"calendar/{wk}.html")}">'
-                   "That week on the Calendar</a>")
-    return out
-
-
 def write_days_index(site, body, dates, rollcalls=None):
     """site/session/days.json: {"H": [dates], "S": [dates], "rc": {"H":
     {roll call: date}, "S": {...}}}, this chamber's list and roll calls
@@ -3911,7 +3897,7 @@ def day_head(day, narrative, rec, jurl, label, path, base):
     dn = len(narrative.get("debates") or [])
     if dn:
         facts.append(["Debates Printed", f"{dn:,}", "in the permanent journal"])
-    cite = S.cite_block(path, f"{label} | Granite Record", base, S.BUILT)
+    cite = S.cite_block(path, f"{label} | Granite Record", base, S.cited(str(day.date)))
     assert cite.endswith("</div>"), "the citation block no longer ends its row"
     note = ""
     if body == "S":

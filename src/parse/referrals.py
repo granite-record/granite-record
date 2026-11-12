@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.16
+# GRANITE_VERSION: 2026-09-10.17
 """The committee a bill was referred to, read out of the docket.
 
     python3 src/parse/referrals.py            # what it finds, by term, no network
@@ -71,6 +71,8 @@ import sys
 from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
+
+from terms import term_of_year as _term  # noqa: E402,F401
 
 import argparse
 import collections
@@ -548,13 +550,6 @@ def from_docket(path=SRC, lo=1989, hi=2015):
             if c:
                 out[key].setdefault(body, c)
     return out
-
-
-def _term(year):
-    """"2023" or "2024" -> "2023-2024": the two-year term a session year is in."""
-    y = int(year)
-    s = y if y % 2 else y - 1
-    return f"{s}-{s + 1}"
 
 
 def term_dockets():

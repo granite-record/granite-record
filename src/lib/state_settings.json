@@ -1,0 +1,35 @@
+{
+  "_about": "The facts about one state that this code would otherwise carry in many places. A fork for another state edits this file; src/lib/state_settings.py reads it, and nothing else should repeat a fact that is here (preflight fails on a second county list). WHAT A FORK STILL CHANGES, beyond this file: (1) the General Court's page addresses, field labels and file formats in src/fetch/ and src/parse/, which are written against gc.nh.gov and its database; (2) the term arithmetic (term_of in src/lib/proceedings.py and a dozen copies of 'an odd year starts a term') and the Organization Day rule, which are computed in code and only described here; (3) the bill-kind lists, which three modules keep in their own orders (src/fetch/gc_web/fetch_legislation.py, src/pages/bill_order.py, src/parse/journal_bills.py); (4) the time zone as written in JavaScript (src/pages/app.js, live.js, workers/); (5) 'New Hampshire', 'General Court', 'RSA' and 'NH' in page text, the guides and the Learn pages, and the Spanish drafts; (6) district numbering, the county-and-district labels (Hills 22) and the 400 and 24 seat counts quoted in prose; (7) the Secretary of State, county and town sources under src/towns/ and src/ops/state_sources.py; (8) the logo, the domain in wrangler.toml and the email follow Workers.",
+  "state": {"name": "New Hampshire", "abbreviation": "NH"},
+  "site": {"name": "Granite Record", "domain": "graniterecord.org"},
+  "legislature": {
+    "name": "General Court",
+    "chambers": {
+      "house": {"name": "House of Representatives", "seats": 400, "member_title": "Representative"},
+      "senate": {"name": "Senate", "seats": 24, "member_title": "Senator"}
+    }
+  },
+  "counties": ["Belknap", "Carroll", "Cheshire", "Coos", "Grafton", "Hillsborough",
+               "Merrimack", "Rockingham", "Strafford", "Sullivan"],
+  "county_abbreviations": {"Belknap": "Belk", "Carroll": "Carr", "Cheshire": "Ches", "Coos": "Coos",
+                           "Grafton": "Graf", "Hillsborough": "Hills", "Merrimack": "Merr",
+                           "Rockingham": "Rock", "Strafford": "Straf", "Sullivan": "Sull"},
+  "county_codes": {"Belknap": "BE", "Carroll": "CA", "Cheshire": "CH", "Coos": "CO",
+                   "Grafton": "GR", "Hillsborough": "HI", "Merrimack": "ME",
+                   "Rockingham": "RO", "Strafford": "ST", "Sullivan": "SU"},
+  "timezone": "America/New_York",
+  "term": {
+    "length_years": 2,
+    "first_year_parity": "odd",
+    "organization_day": {"month": 12, "weekday": "Wednesday", "ordinal": 1},
+    "note": "The rule is computed in code; these are its parameters for a reader and a fork."
+  },
+  "bill_prefixes": {
+    "house": ["HB", "HR", "HCR", "HJR", "CACR"],
+    "senate": ["SB", "SR", "SCR", "SJR"]
+  },
+  "source_hosts": {
+    "legislature": "gc.nh.gov",
+    "secretary_of_state": "app.sos.nh.gov"
+  }
+}

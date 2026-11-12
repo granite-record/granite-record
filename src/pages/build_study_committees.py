@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-18.9
+# GRANITE_VERSION: 2026-10-18.10
 """
 A page for every statutory and study committee the General Court lists as
 active, at /committee/ss<CommitteeID>.
@@ -958,7 +958,7 @@ def page_body(c, ctx, today, path):
                  "legislator&rsquo;s.")
     elif not (by["S"] or by["H"]) and c["seats"]:
         line += " No legislator holds a seat on it on the record."
-    cite = S.cite_block(path, f"{c['name']} | Granite Record", ctx["base"], S.BUILT)
+    cite = S.cite_block(path, f"{c['name']} | Granite Record", ctx["base"], S.cited(*held))
     assert cite.endswith("</div>"), "the citation block no longer ends its row"
     head = C.record_head({
         "trail": [["Committees", "committees.html#statstud"], [CLASS_WORD[c["class"]], ""]],

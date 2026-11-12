@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.49
+# GRANITE_VERSION: 2026-09-09.52
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -66,6 +66,7 @@ import urllib.parse
 import build_date
 import components as C
 import shell as S
+import state_settings as ST
 # Who November's election sent, for the weeks before they sit: the one
 # reader of site/members_elect.json, beside its one writer (16 October 2026).
 # And the one reader of corrections/officials.json, which puts each office's
@@ -398,6 +399,30 @@ OFFICER = re.compile(r"\s*(?:,\s*(?:(?:vice[\s-]?)?chair(?:man|woman|person)?|"
 COUNCIL_ROW = re.compile(r"council|alder", re.I)
 
 
+READ_KEYS = ("read_on", "read_at", "as_of", "on")
+
+
+def latest_read(*parts):
+    """The latest day any source this page shows was read, out of the town's
+    own data (each source records the day it was read as read_on, or as
+    read_at, as_of or on), or None: the day its record last changed, for the
+    citation's date (shell.cited). Looked for at any depth, in the dicts and
+    lists given; only an ISO day counts."""
+    best = ""
+    todo = [p for p in parts if p]
+    while todo:
+        x = todo.pop()
+        if isinstance(x, dict):
+            for k, v in x.items():
+                if k in READ_KEYS and isinstance(v, str) and re.match(r"\d{4}-\d\d-\d\d", v):
+                    best = max(best, v[:10])
+                elif isinstance(v, (dict, list)):
+                    todo.append(v)
+        elif isinstance(x, list):
+            todo += [v for v in x if isinstance(v, (dict, list))]
+    return best or None
+
+
 def long_date(stamp):
     """"2026-09-20T22:22:15-0400" as "September 20, 2026": shell.date_words."""
     if not re.match(r"\d{4}-\d\d-\d\d", stamp or ""):
@@ -719,13 +744,6 @@ def officials_sections(town, key, town_off, site_on_page=None, board=None,
             + "".join(dot_row(p, o, officials) for p, o in others) + "</ul>"
             + note(f"From {NHDOT}. " + since("offices")))))
     return out
-
-
-def town_officials_block(town, key, town_off, site_on_page=None, board=None,
-                         loc=None, council=None):
-    """The Officials tab's cards as one string: see officials_sections."""
-    return "".join(officials_sections(town, key, town_off, site_on_page,
-                                      board, loc, council))
 
 
 # ---- THE TOWN SERVICES TAB --------------------------------------------------
@@ -1483,7 +1501,11 @@ def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None):
     body = [f'<h1 class="offtitle">{E(label)}</h1>',
             ward_picker(town, ward, wards),
             answer_line(dist),
-            S.cite_block(path, og_title, base, S.BUILT),
+            S.cite_block(path, og_title, base, S.cited(latest_read(
+                loc, town_off, board, council,
+                (off.get("_halls") or {}).get(slug(town, "0")),
+                (off.get("_libraries") or {}).get(slug(town, "0")),
+                (off.get("_stations") or {}).get(slug(town, "0"))))),
             tabbed(label, panels),
             '<p class="srcs">Sources: NH General Court and Secretary of State</p>']
 
@@ -1559,9 +1581,7 @@ def place_record(town, ward, wards, dist, legs, loc, elect=None):
 
 # The map's code for a county (build_district_map.CODE): a State House
 # district is "ST14", Strafford 14.
-MAP_COUNTY = {"Belknap": "BE", "Carroll": "CA", "Cheshire": "CH", "Coos": "CO",
-              "Grafton": "GR", "Hillsborough": "HI", "Merrimack": "ME",
-              "Rockingham": "RO", "Strafford": "ST", "Sullivan": "SU"}
+MAP_COUNTY = ST.COUNTY_CODE
 
 
 def map_section(town, ward, dist):
