@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.884
+# GRANITE_VERSION: 2026-09-04.885
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -122735,6 +122735,110 @@ def _elect_2024_read_again(PSR):
              if sum(c["elected"] is True for c in r["candidates"]) != r["seats"]]
     assert not short, f"races whose winners are not their seats: {short[:6]}"
     return "ok", PSR.summary(doc) + f" {len(doc.get('_notes') or [])} flagged in _notes."
+
+
+@check("build", "election town rows: the tie-out holds a column to the file's Totals, a race to its "
+                "candidates' towns and its places to its towns, and the tables read back as written",
+       needs=("election_town_rows",))
+def _town_rows_tie_out_logic(ETR):
+    """The tie-out is the check on the readers, so it is held to the cases it
+    exists for: a consistent pair of tables passes, and each of a Totals row
+    that disagrees with its towns, a race total that is not its towns' sum
+    and a place the race does not name is reported, with its file and row.
+    The tables are written to text and read back without a change."""
+    def row(place, cand, votes, kind="candidate", at=5):
+        cid = f"k.{cand}"
+        return {"row_id": f"{cid}@{place}.first", "contest_id": "k", "candidate_id": cid,
+                "count_kind": "first", "block_header_row": 4, "district_key": "H|X|1",
+                "place": place, "place_district_table": place, "candidate": cand, "party": "d",
+                "row_kind": kind, "in_race_count": True, "votes": votes, "source_file": "f.xls",
+                "source_row": at, "source_sha256": "0" * 64}
+    rows = [row("A", "Ann", 10), row("B", "Ann", 5, at=6),
+            row("A", "scatter", 1, "write_ins_scattered"),
+            row("B", "scatter", 2, "write_ins_scattered", 6)]
+    totals = [{"contest_id": "k", "candidate_id": "k.Ann", "count_kind": "first",
+               "block_header_row": 4, "district_key": "H|X|1", "candidate": "Ann",
+               "row_kind": "candidate", "blc_adjusted": False, "printed_total": 15,
+               "source_file": "f.xls", "source_sheet": "s", "source_row": 7}]
+    races = {"H|X|1": {"seats": 1, "towns": ["A", "B"], "scatter": 3,
+                       "candidates": [{"name": "Ann", "party": "d", "votes": 15}]}}
+    table = {"H|X|1": {"seats": 1, "towns": ["A", "B"]}}
+    ok = ETR.tie_out(rows, totals, races, table)
+    assert not ok["disagreements"], ok["disagreements"]
+    assert ok["checks"]["a column's towns sum to the file's Totals"]["held"] == 1, ok["checks"]
+    bad = ETR.tie_out(rows, [dict(totals[0], printed_total=14)], races, None)
+    assert [d["check"] for d in bad["disagreements"]] == [
+        "a column's towns sum to the file's Totals"], bad["disagreements"]
+    assert "row 7" in bad["disagreements"][0]["where"], bad["disagreements"]
+    moved = ETR.tie_out(rows, totals, {"H|X|1": dict(races["H|X|1"], towns=["A"], candidates=[
+        {"name": "Ann", "party": "d", "votes": 16}])}, table)
+    assert {d["check"] for d in moved["disagreements"]} == {
+        "a candidate's towns sum to the race's total", "a race's places are its towns"}, (
+        moved["disagreements"])
+    off = ETR.tie_out(rows, totals, races, {"H|X|1": {"seats": 1, "towns": ["A", "C"]}})
+    assert [d["check"] for d in off["disagreements"]] == [
+        "a race's places are the district table's"], off["disagreements"]
+    back = ETR.from_csv(ETR.to_csv(rows, ["row_id", "in_race_count", "votes", "source_row"]))
+    assert [r["votes"] for r in back] == [10, 5, 1, 2] and back[0]["in_race_count"] is True
+    assert ETR.slug("Wendy Chase") == "wendy-chase" and ETR.slug("Kathy DesRoches") == "kathy-desroches"
+    return "ok", "a Totals row, a race total and a place that disagree are each reported with their row"
+
+
+@check("data", "election town rows: collected/election_town_rows_<year>.csv is what the saved "
+               "files say, and collected/election_tieout.json is what they tie out to -- every "
+               "disagreement the files have with themselves recorded, none corrected",
+       needs=("parse_sos_results", "election_town_rows"))
+def _town_rows_read_again(PSR, ETR):
+    """Stage 1 of the elections plan (12 November 2026): the Secretary of
+    State's town and ward rows, kept beside the race totals. Two halves. The
+    committed tables, tied out against the committed results files and the
+    printed Totals, give what collected/election_tieout.json records -- so a
+    table edited by hand, or a disagreement that appears or goes, is a change
+    to read, not a silent one. And where the saved files are on disk (and the
+    district table, for 2022 on), reading them again writes the same tables."""
+    years = (2016, 2018, 2020, 2022, 2024, 2026)
+    recorded = json.loads(ETR.TIEOUT.read_text(encoding="utf-8"))
+    table = Path("site/districts.json")
+    districts = json.loads(table.read_text(encoding="utf-8")) if table.is_file() else None
+    held_to_table = "a race's places are the district table's"
+    lines, again = [], []
+    for y in years:
+        paths = (ETR.town_path(y), ETR.totals_path(y), Path(f"collected/election_{y}.json"))
+        gone = [p.as_posix() for p in paths if not p.is_file()]
+        assert not gone, f"not committed: {', '.join(gone)}"
+        rows = ETR.from_csv(paths[0].read_text(encoding="utf-8"))
+        totals = ETR.from_csv(paths[1].read_text(encoding="utf-8"))
+        races = json.loads(paths[2].read_text(encoding="utf-8"))["races"]
+        now = ETR.tie_out(rows, totals, races, None)
+        want = recorded.get(str(y))
+        assert want is not None, f"collected/election_tieout.json says nothing of {y}"
+        now["checks"].pop(held_to_table, None)
+        said = {k: v for k, v in want["checks"].items() if k != held_to_table}
+        assert (now["checks"], now["disagreements"], now["kinds"]) == (
+            said, want["disagreements"], want["kinds"]), (
+            f"{y}: the committed tables tie out to something other than "
+            "collected/election_tieout.json records")
+        assert (len(rows), len(totals)) == (want["town_rows"], want["printed_totals"]), y
+        assert not want["checks"].get(held_to_table, {}).get("disagree"), (
+            f"{y}: a race whose places are not the district table's")
+        lines.append(f"{y}: {len(rows):,} rows, {len(want['disagreements'])} disagreement(s)")
+        if sorted(Path("records/sources").glob(f"{y}-*")) and (
+                y < PSR.TABLE_SINCE or districts is not None):
+            try:
+                doc = PSR.read_all(".", y, districts if y >= PSR.TABLE_SINCE else None,
+                                   partial=True)
+            except PSR.Unreadable as e:
+                return "skip", str(e)
+            r2, t2 = ETR.tables(doc, PSR.BME.general_election(y))
+            assert ETR.to_csv(r2, ETR.TOWN_COLUMNS) == paths[0].read_text(encoding="utf-8"), (
+                f"{y}: collected/{paths[0].name} is not what the saved files say")
+            assert ETR.to_csv(t2, ETR.TOTAL_COLUMNS) == paths[1].read_text(encoding="utf-8"), (
+                f"{y}: collected/{paths[1].name} is not what the saved files say")
+            again.append(y)
+    return "ok", ("; ".join(lines) + ("; read again from the saved files: "
+                                      + ", ".join(map(str, again)) if again else
+                                      "; the saved files or the district table are not here, so "
+                                      "only the committed tables were tied out"))
 
 
 @check("data", "members-elect: on the 2024 election, as of its own day, the matching rule links "
