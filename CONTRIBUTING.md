@@ -253,6 +253,22 @@ Three tools for the time between those proofs, none of which replaces one.
   not be what a build makes. Where app.js's search tables or data.html's
   counts moved it runs the one step that makes them, as the build does. It is
   for looking at a change; `publish` builds in full.
+- **A change to the browser's files, on GitHub, in minutes: the quick
+  preview.** `.github/workflows/preview.yml` (Actions -> preview -> Run
+  workflow; "ref" is the branch or commit) takes the last night's built site
+  out of the private bucket, puts your `app.css`, `app.js`, `components.js`,
+  `find.js`, `print.js` and `print.css` into it with the function the build
+  calls (`src/ops/quick_preview.py`, `build_pages.front_end`), runs
+  `check_site.py` and `preflight.py --built`, and deploys to
+  `quick.graniterecord.pages.dev` -- never the night's `nightly` address, a
+  dry run's, or production. A dry run is 36 to 56 minutes; this is meant to
+  be under ten (an estimate until the first run). It refuses, naming each
+  file, when anything but those files differs between the commit the night was
+  built from and yours: so cut the branch for front-end work from `main`, and
+  leave scripts, data, `bills.html`, `chrome.py` and words files to a dry run.
+  It starts from the Actions tab only once the workflow is on `main`, and from
+  a branch the `preview` environment accepts. Its page says it is a preview
+  over the night of a stated day and not a build to publish from.
 - **The checks a change can reach.** `python3 preflight.py --changed` runs
   the always-run guards (version stamps, control bytes, credentials and
   addresses, the refusal and hand-made-file guards and the rest, named in

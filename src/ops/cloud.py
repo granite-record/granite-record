@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.28
+# GRANITE_VERSION: 2026-09-25.29
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -20,6 +20,8 @@ The nightly's kit and the laptop's backup, in the project's private R2 bucket.
     python3 src/ops/cloud.py site-up --run ID          the night's built site, as one archive,
                                                        with that night's own verdict
     python3 src/ops/cloud.py site-down --run ID        ... and back, for the publish job
+    python3 src/ops/cloud.py site-down --latest        ... the newest night fit for production
+                                                       (the quick preview's baseline; read only)
     python3 src/ops/cloud.py backup [--dry-run] [--with-site]
                                                        everything git does not hold
     python3 src/ops/cloud.py pull [--dry-run] [--day YYYY-MM-DD] [--changes-only]
@@ -2470,10 +2472,43 @@ def cmd_site_up(a, root):
         f"{human(size)} to {key}")
 
 
+def latest_night(bucket):
+    """The run id of the newest night whose site is in the bucket whole (the
+    archive and its site.json) and whose own verdict says it was fit for
+    production: the baseline of the quick preview (src/ops/quick_preview.py).
+    Newest is the highest run id (GitHub's ids only grow). A night kept from
+    production, or one whose site.json will not read, is passed over, and the
+    one before it is looked at. Failed where the bucket holds none, which the
+    lifecycle rule makes true three days after the last real night."""
+    have = {}
+    for k in bucket.list("nights/"):
+        parts = k.split("/")
+        if len(parts) == 3 and parts[1].isdigit() and parts[2] in ("site.tar.gz", "site.json"):
+            have.setdefault(parts[1], set()).add(parts[2])
+    runs = sorted((r for r, v in have.items() if len(v) == 2), key=int, reverse=True)
+    for run in runs:
+        raw = bucket.get_bytes(_night_keys(run)[1])
+        try:
+            v = json.loads((raw or b"").decode("utf-8")).get("verdict")
+        except (ValueError, UnicodeDecodeError, AttributeError):
+            continue
+        if isinstance(v, dict) and str(v.get("run_id") or "") == run and v.get("publishable") \
+                and not (v.get("asked") or {}).get("dry_run"):
+            return run
+    raise Failed(f"{bucket.describe()} holds no night's site fit for production under nights/ "
+                 f"({len(runs)} whole archive(s) looked at): the lifecycle rule deletes them "
+                 "three days on, and a dry run sends none")
+
+
 def cmd_site_down(a, root):
     import tarfile
-    key, meta_key = _night_keys(a.run)
     bucket = open_bucket(a)
+    if getattr(a, "latest", False):
+        if a.run:
+            raise Failed("--latest and --run together: name the night, or take the newest")
+        a.run = latest_night(bucket)
+        say(f"site-down: the newest night fit for production is run {a.run}")
+    key, meta_key = _night_keys(a.run)
     raw = bucket.get_bytes(meta_key)
     if raw is None:
         raise Failed(f"{bucket.describe()} has no {meta_key}: no site was sent for "
@@ -4143,6 +4178,9 @@ def main(argv=None):
                     help=f"transfers at once (default {WORKERS}; kit-down {DOWN_WORKERS})")
     ap.add_argument("--run", help="site-up, site-down, kit-release: the night's run id "
                                   "(GitHub's run id), which names nights/<run>/")
+    ap.add_argument("--latest", action="store_true",
+                    help="site-down: the newest night whose site was fit for production, "
+                         "instead of --run")
     ap.add_argument("--dry-night", action="store_true",
                     help="kit-up, state-up: a dry run's night -- only what it fetched, its "
                          "logs apart and a refusal, a hold and its own verdict go back; "

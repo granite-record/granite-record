@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.6
+# GRANITE_VERSION: 2026-10-09.7
 """
 A change to the browser's files, put into the site the last full build made.
 
@@ -104,16 +104,23 @@ def facts():
         out["repo"] = build_exports.repo_facts()
     except Exception:                                           # noqa: BLE001
         pass    # the None is the answer: the caller refuses on a fact that was there before
+    app = Path("src/pages/app.js")
+    if app.exists():
+        out["search_tables"] = search_tables_digest(app.read_text(encoding="utf-8"))
+    return out
+
+
+def search_tables_digest(text):
+    """A digest of the search's tables (SYN, CONCEPTS, STOP) in app.js's
+    text, or None where they cannot be read. Of a text and not of the file,
+    so that the quick preview (src/ops/quick_preview.py) can ask it of the
+    app.js a commit held as well as of the one on disk."""
     try:
         import build_search_index as SI
-        app = Path("src/pages/app.js")
-        if app.exists():
-            tables = SI.table_terms(app.read_text(encoding="utf-8"))
-            out["search_tables"] = hashlib.sha256(
-                json.dumps(tables, sort_keys=True).encode("utf-8")).hexdigest()
+        tables = SI.table_terms(text)
+        return hashlib.sha256(json.dumps(tables, sort_keys=True).encode("utf-8")).hexdigest()
     except (Exception, SystemExit):                             # noqa: BLE001
-        pass
-    return out
+        return None
 
 
 def _preflight_path():

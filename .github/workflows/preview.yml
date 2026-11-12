@@ -1,0 +1,138 @@
+# The quick preview: a change to the browser's files, seen in minutes.
+#
+# A dry run of nightly is 36 to 56 minutes. This takes the last night's built
+# site out of the private bucket, puts the checkout's app.css, app.js,
+# components.js, find.js, print.js and print.css into it with the function
+# the full build itself calls (build_pages.front_end), runs the checks of a
+# built site, and deploys it to its own address, quick.graniterecord.pages.dev.
+# Six to nine minutes (reports/faster-updates-and-live-2026-11.md, section 2;
+# an estimate until the first run, which prints the real figures). The owner
+# approved it on 11 November 2026. src/ops/quick_preview.py is the whole of
+# it and says what it may apply and what it refuses.
+#
+# WHAT IT IS NOT. Not the night, and not a dry run: it fetches nothing, asks
+# the General Court nothing, writes no verdict, census, gate record or kit,
+# and holds the bucket's read keys for one step. Its address is its own: not
+# the night's (where a night waiting for approval is approved from), not a dry
+# run's, and never production. The page it serves says it is a front-end
+# preview over the night of a stated day and is not a build to publish from.
+#
+# WHEN IT REFUSES. If anything but the browser's files differs between the
+# commit the archived night was built from and the commit run here -- a
+# script, a data file, a template, a words file -- the plan step stops the
+# run red and names each file and why. The full dry run is then the way to see
+# the change. Work on the browser's files alone, on a branch cut from main,
+# is what this is for.
+#
+# TO RUN IT. Actions -> preview -> "Run workflow", "Use workflow from" a branch
+# the "preview" environment accepts (dev or main, as for a dry run), and
+# "ref" the branch or commit to preview (blank: the branch chosen). A workflow
+# started by hand must exist on the default branch to be listed in the
+# Actions tab, so this one cannot be started until it has been merged to main.
+#
+# DRY_RUN is true for every step whatever the branch: cloud.py reads it and
+# would treat anything it were asked to write as a dry night's, though nothing
+# here asks it to write.
+
+name: preview
+run-name: >-
+  preview ${{ inputs.ref || github.ref_name }} (front end only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch, tag or commit to preview (blank: the branch this run was started from)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+# Its own group: never gc-night, which the night and the weekly job wait in,
+# and a newer preview replaces an older one still running.
+concurrency:
+  group: quick-preview
+  cancel-in-progress: true
+
+env:
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: utf-8
+  WRANGLER_SEND_METRICS: "false"
+  DRY_RUN: "true"
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  preview:
+    name: quick preview
+    runs-on: windows-2022
+    timeout-minutes: 40
+    environment:
+      name: preview
+      url: https://quick.graniterecord.pages.dev
+    steps:
+      - name: Check out the ref
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set the clock to New Hampshire's
+        run: |
+          tzutil /s "Eastern Standard Time"
+          exit $LASTEXITCODE
+
+      - name: Python 3.14
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Node 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: "24"
+
+      - name: The Python packages
+        run: |
+          python -m pip install --disable-pip-version-check --no-input -r requirements.txt
+          exit $LASTEXITCODE
+
+      # Read only: site-down lists nights/, reads the newest night's site.json
+      # and its archive, and writes nothing to the bucket. The bucket's
+      # lifecycle rule keeps a night three days.
+      - name: Bring down the last night fit for production
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python src/ops/cloud.py site-down --latest
+          exit $LASTEXITCODE
+
+      - name: What differs from that night, and may it be applied
+        run: |
+          python src/ops/quick_preview.py plan
+          exit $LASTEXITCODE
+
+      - name: Put the browser's files into the site
+        run: |
+          python src/ops/quick_preview.py apply
+          exit $LASTEXITCODE
+
+      - name: The checks of a built site
+        run: |
+          python src/ops/quick_preview.py check
+          exit $LASTEXITCODE
+
+      - name: Deploy to the quick preview address
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          python src/ops/quick_preview.py deploy
+          exit $LASTEXITCODE
