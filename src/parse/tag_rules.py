@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.2
+# GRANITE_VERSION: 2026-11-12.3
 """The tag rule engine: which tags a bill carries, and the evidence for each.
 
     python3 src/parse/tag_rules.py --bill 2023-2024 HB1596   # explain one bill
@@ -53,6 +53,17 @@ A tag that equals the bill's assigned topic (same_as_topic) is dropped and
 said to be, not attached twice. Nothing here caps the number of tags; a bill
 over `GUIDE_TAGS` (5) is for the caller to report.
 
+SYNONYMS (12 Nov 2026). The words a reader types live with the registry, one
+source: every tag's name and asks lead to that tag, and the file's own
+"synonyms" table ({"school choice": "tag:school-funding", "religion":
+"topic:Discrimination"}) leads a word that is no tag's name to the tag that
+holds its bills or to the closest topic. synonym_table() builds the one table;
+validate() fails a word that leads to no tag or topic, or to two places. App.js's
+CONCEPTS still maps a word to bill WORDING; the search reads this table at the
+stage that shows tags. A tag under MIN_BILLS (20) at the title and analysis
+tiers is a synonym, not a tag, unless its entry says keep_small and why: a
+reference, not a rule, and tag_counts.py lists the tags under it.
+
 Deterministic, standard library, no global state: the same registry and the
 same bills give the same answer under any PYTHONHASHSEED.
 """
@@ -73,6 +84,21 @@ ROOT = _paths.ROOT
 REGISTRY = Path("corrections") / "tags.json"
 FIXTURE = Path("tests") / "tags_fixture.json"
 GUIDE_TAGS = 5
+# A REFERENCE, NOT A RULE (the owner, 12 Nov 2026): a tag wants a decent number of bills.
+# Under this many at the title and analysis tiers across all terms, a tag is a search
+# synonym that leads to a topic or another tag, unless its entry says keep_small and why.
+MIN_BILLS = 20
+# The site's topics as of 12 November 2026; site/meta.json's "topics" wins where it is on disk.
+SITE_TOPICS = (
+    "Agriculture", "Animals", "Banking and Finance", "Business and Industry", "Children", "Civil Actions",
+    "Constitutional Amendments", "Counties", "Courts and Procedure", "Crimes, Criminal Procedure and Corrections",
+    "Discrimination", "Domestic Relations", "Education - Finance", "Education - General", "Elections", "Employment",
+    "Energy and Utilities", "Environment - Administration", "Environment - Conservation",
+    "Federal and International Relations", "Fish & Game", "Gambling", "Housing", "Insurance", "Legislature",
+    "Liquor and Beer", "Memorials", "Military & Veterans' Affairs", "Miscellaneous", "Motor Vehicles", "Municipalities",
+    "Occupational Regulation", "Police", "Property - Real and Personal", "Public and Mental Health", "Retirement",
+    "Right to Know", "State Government", "Study Committees and Commissions", "Taxes - Local", "Taxes - State",
+    "Transportation and Highways", "Welfare/Medicare/Medicaid", "Zoning and Planning")
 TIERS = ("T", "A", "R")
 
 # Words that argue rather than name. A tag's NAME may not carry one unless the
@@ -207,11 +233,62 @@ def load_registry(path=None):
     return dict(d.get("tags", d)), source
 
 
+def read_doc(path=None):
+    """The registry file as written: {"tags": ..., "synonyms": ...}, whichever shape it has."""
+    p, source = registry_path(path)
+    d = json.loads(p.read_text(encoding="utf-8"))
+    if "registry" in d and "tags" not in d:
+        reg = d["registry"]
+        return {"tags": reg.get("tags", reg), "synonyms": d.get("synonyms", {})}
+    return d
+
+
+def known_topics(root=None):
+    """The topic names a synonym may lead to: site/meta.json's where it is on disk, else SITE_TOPICS."""
+    p = Path(root or ROOT) / "site" / "meta.json"
+    try:
+        t = json.loads(p.read_text(encoding="utf-8")).get("topics")
+        if t:
+            return list(t)
+    except (OSError, ValueError):
+        pass
+    return list(SITE_TOPICS)
+
+
+def norm_word(w):
+    """A search word as the table keys it: lower case, hyphens and runs of space as one space."""
+    return " ".join(re.sub(r"[-\u2010\u2011]", " ", str(w).lower().replace("\u2019", "'")).split())
+
+
+def synonym_table(reg, synonyms=None):
+    """({word: target}, [conflicts]): what a reader may type, and where it leads. A target is
+    "tag:ID" or "topic:Name". Every tag's name and asks lead to that tag; `synonyms` (the file's
+    own table) leads to a tag that holds the bills or, where no tag is kept, to the closest
+    topic. A word that would lead to two places is a conflict, not a choice made here."""
+    table, bad = {}, []
+
+    def add(word, target, where):
+        w = norm_word(word)
+        if not w:
+            return
+        if w in table and table[w] != target:
+            bad.append(f"{w!r} leads to {table[w]} and to {target} ({where})")
+        else:
+            table.setdefault(w, target)
+    for tid, e in reg.items():
+        add(e.get("name", ""), f"tag:{tid}", tid)
+        for a in e.get("asks", []):
+            add(a, f"tag:{tid}", tid)
+    for w, target in (synonyms or {}).items():
+        add(w, target, "synonyms")
+    return table, bad
+
+
 def compile_registry(reg):
     return {tid: Rule(tid, e) for tid, e in reg.items() if isinstance(e, dict) and "rule" in e}
 
 
-def validate(reg):
+def validate(reg, topics=None, synonyms=None):
     """Problems with a registry, as a list of sentences (empty: none)."""
     bad = []
     seen = set()
@@ -250,12 +327,26 @@ def validate(reg):
                 compile_phrase(p)
             except re.error as ex:
                 bad.append(f"{tid}: chapters_with_words phrase {p!r} does not compile: {ex}")
+        if topics is not None:
+            for t in e.get("same_as_topic", []):
+                if t not in topics:
+                    bad.append(f"{tid}: same_as_topic {t!r} is no topic of the site")
         pair = e.get("pair")
         if pair is not None and not (isinstance(pair, list) and len(pair) == 2
                                      and all(re.fullmatch(r"\d{4}-\d{4}/[A-Z]+\d+", x) for x in pair)):
             bad.append(f"{tid}: a pair is two keys like 2023-2024/HB1596")
         if e.get("neutrality_hard") and not pair:
             bad.append(f"{tid}: neutrality is hard for this tag and it has no opposite-aim pair")
+    table, conflicts = synonym_table(reg, synonyms)
+    bad += conflicts
+    for w, target in (synonyms or {}).items():
+        kind, _, name = str(target).partition(":")
+        if kind == "tag" and name not in reg:
+            bad.append(f"synonym {w!r} leads to the tag {name!r}, which the registry does not have")
+        elif kind == "topic" and topics is not None and name not in topics:
+            bad.append(f"synonym {w!r} leads to the topic {name!r}, which the site does not have")
+        elif kind not in ("tag", "topic"):
+            bad.append(f"synonym {w!r} leads nowhere: a target is tag:ID or topic:Name, not {target!r}")
     return bad
 
 
@@ -361,9 +452,10 @@ def main():
     ap.add_argument("--root", help="where data/bills.json and the text files are (default: the repository)")
     a = ap.parse_args()
     reg, source = load_registry(a.registry)
-    print(f"registry: {len(reg)} tags, from {source}")
+    syn = read_doc(a.registry).get("synonyms", {})
+    print(f"registry: {len(reg)} tags, from {source}; {len(syn)} synonyms")
     if a.check or not a.bill:
-        bad = validate(reg)
+        bad = validate(reg, known_topics(a.root), syn)
         for b in bad:
             print("  " + b)
         print("registry ok" if not bad else f"{len(bad)} problem(s)")

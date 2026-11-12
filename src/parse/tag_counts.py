@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.2
+# GRANITE_VERSION: 2026-11-12.3
 """Counts and samples for the tag registry, so the design's numbers can be redone.
 
     python3 src/parse/tag_counts.py --root D:/nh --registry reports/tags.draft.json --out D:/nh/reports
@@ -68,7 +68,7 @@ def is_none(topic):
 def count(rules, bills, reg):
     """The counts of a run, and every bill's result keyed term/bill."""
     results = TR.tag_all(rules, bills)
-    by_tag = {tid: {"name": reg[tid].get("name"), "title": 0, "any": 0, "best": {"T": 0, "A": 0, "R": 0},
+    by_tag = {tid: {"name": reg[tid].get("name"), "title": 0, "any": 0, "ta": 0, "best": {"T": 0, "A": 0, "R": 0},
                     "gained_a_topic": 0, "dropped_for_topic": 0, "by_term": {}}
               for tid in rules}
     per_bill = collections.Counter()
@@ -85,6 +85,8 @@ def count(rules, bills, reg):
         for tid, v in r["tags"].items():
             row = by_tag[tid]
             row["any"] += 1
+            if "T" in v["fired"] or "A" in v["fired"]:
+                row["ta"] += 1
             row["best"][v["tier"]] += 1
             t = row["by_term"].setdefault(b["term"], {"T": 0, "any": 0})
             t["any"] += 1
@@ -96,7 +98,11 @@ def count(rules, bills, reg):
         for tid in r["dropped"]:
             by_tag[tid]["dropped_for_topic"] += 1
     over.sort(key=lambda x: (-x["n"], x["bill"]))
+    under = [{"id": tid, "name": r["name"], "title_and_analysis": r["ta"], "any": r["any"],
+              "keep_small": reg[tid].get("keep_small") or ""}
+             for tid, r in by_tag.items() if r["ta"] < TR.MIN_BILLS]
     return results, {
+        "threshold_bills_title_and_analysis": TR.MIN_BILLS, "tags_under_threshold": under,
         "bills": len(bills), "bills_title_tier": title_bills, "bills_any_tier": any_bills,
         "bills_over_guide": len(over), "guide": TR.GUIDE_TAGS,
         "bills_with_no_topic_that_gain_a_tag": sum(
@@ -229,6 +235,9 @@ def draw(reg, rules, bills, results, texts):
 
 def markdown(c, source):
     lines = [f"# Tag counts ({source})", "",
+             f"Under {c['threshold_bills_title_and_analysis']} bills at the title and analysis tiers (a reference, "
+             "not a rule): " + (", ".join(f"{u['id']} {u['title_and_analysis']}" + (" (kept: " + u["keep_small"] + ")" if u["keep_small"] else "")
+                                           for u in c["tags_under_threshold"]) or "none"), "",
              f"{c['bills']:,} bills. Title tier: {c['bills_title_tier']:,}; any tier: {c['bills_any_tier']:,}; "
              f"over the guide of {c['guide']} tags: {c['bills_over_guide']:,}; "
              f"bills with no topic that gain a tag: {c['bills_with_no_topic_that_gain_a_tag']:,}.", "",
@@ -252,8 +261,11 @@ def main():
     ap.add_argument("--no-samples", action="store_true")
     a = ap.parse_args()
     reg, source = TR.load_registry(a.registry)
-    bad = TR.validate(reg)
-    print(f"registry: {len(reg)} tags from {source}; {len(bad)} problem(s) of form")
+    syn = TR.read_doc(a.registry).get("synonyms", {})
+    bad = TR.validate(reg, TR.known_topics(a.root), syn)
+    for b in bad:
+        print("  " + b)
+    print(f"registry: {len(reg)} tags, {len(syn)} synonyms, from {source}; {len(bad)} problem(s)")
     rules = TR.compile_registry(reg)
     bills = TR.load_bills(a.root)
     if not bills:
@@ -264,6 +276,9 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     (out / "tags_counts.json").write_text(json.dumps(c, indent=1), encoding="utf-8")
     (out / "tags_counts.md").write_text(markdown(c, source), encoding="utf-8")
+    table, _conf = TR.synonym_table(reg, syn)
+    (out / "tags_synonyms.json").write_text(json.dumps(dict(sorted(table.items())), indent=1, ensure_ascii=False),
+                                            encoding="utf-8")
     print(f"{c['bills']:,} bills: {c['bills_title_tier']:,} tagged by title, {c['bills_any_tier']:,} by any tier, "
           f"{c['bills_over_guide']:,} over {c['guide']} tags")
     if not a.no_samples:
