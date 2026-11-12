@@ -79,6 +79,9 @@ archive_text.json
 amendments.json
 # The bills the House withdrew, read off its journals by journal_bills.py.
 journal_bills.json
+# The sponsors of resolutions, read off the journals by resolution_sponsors.py.
+resolution_sponsors.json
+resolution_bodies.json
 # What the Journals say each vote on no bill was about, read by
 # journal_motions.py on every build from the Journals and rollcalls.json.
 /journal_motions.json
@@ -156,7 +159,10 @@ check.txt
 # root tidy, so it is spelled out here rather than left to a pattern.
 !review/ground_truth.csv
 !corrections/status/officials.txt
-!versions.json
+
+# versions.json is generated from the files' own stamps (inventory.py --write);
+# it is never committed, so parallel branches cannot conflict over it.
+/versions.json
 
 # records/rollcalls/ is tracked, and the bulk downloads above are not, for the reason
 # given there: those change on every fetch. A past session's roll calls do not.

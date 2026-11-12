@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.7
+# GRANITE_VERSION: 2026-09-10.8
 """The party of everyone who voted before 2017, from one roll call a chamber a year.
 
     python3 src/fetch/gc_web/fetch_rollcall_parties.py --plan     # which votes, no network
@@ -73,6 +73,7 @@ import urllib.request
 
 import past_members
 import refusal
+import state_settings as ST
 
 URL = ("https://gc.nh.gov/bill_status/legacy/bs2016/Roll_calls/"
        "billstatus_rcdetails.aspx?sy={year}&vs={vs}&lb={body}")
@@ -92,10 +93,7 @@ ERROR_PAGE = re.compile(
 # County as the page spells it, against the abbreviation every other file on
 # this disk uses. Read off the pages rather than invented: the page writes
 # "Hillsborough" where past_members.json writes "Hills".
-COUNTY = {"belknap": "Belk", "carroll": "Carr", "cheshire": "Ches",
-          "coos": "Coos", "grafton": "Graf", "hillsborough": "Hills",
-          "merrimack": "Merr", "rockingham": "Rock", "strafford": "Straf",
-          "sullivan": "Sull"}
+COUNTY = ST.COUNTY_ABBR_LOWER
 
 
 def flat(s):

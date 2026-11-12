@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 Check alignment across every video processed, without needing hand-marked times.
 
@@ -177,8 +177,10 @@ def main():
         if d.is_dir() and f.exists():
             try:
                 base[d.name] = json.loads(f.read_text(encoding="utf-8"))
-            except Exception:
-                pass
+            except Exception as e:                              # noqa: BLE001
+                print(f"  WARNING {f} unreadable, so {d.name} is left out of the "
+                      f"before/after comparison ({type(e).__name__}: {e})",
+                      file=sys.stderr)
     if base:
         after = {k: v for k, v in segs.items() if k in base}
         b4, af = structural(base), structural(after)

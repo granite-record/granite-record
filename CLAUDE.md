@@ -299,15 +299,17 @@ tracked, and `preflight` fails if one is.
 
 ## Version stamps
 
-Every script carries `# GRANITE_VERSION: YYYY-MM-DD.N`, and `versions.json`
-lists what each should be. `preflight` fails when they disagree — this has
-caught three silently half-applied edits.
+Every script carries `# GRANITE_VERSION: YYYY-MM-DD.N`, and that stamp, in
+the file, is the only place a version is kept. `versions.json` is generated
+from the stamps (`python3 src/ops/inventory.py --write`), git ignores it, and
+nobody edits it. `preflight` reads the stamps off the files and fails when a
+file changed since `HEAD` has not had its stamp raised, when a stamp went
+backwards, or when `versions.json` is tracked again.
 
-**When you change a file, bump its stamp and update `versions.json` in the same
-edit.** The date is when the file was *created*, not last modified:
+**When you change a file, bump its stamp in the file.** The date is when the file was *created*, not last modified:
 `preflight.py` at `2026-09-04.190` had been edited a hundred and ninety times
 since 4 September. Increment the `.N`; leave the date alone.
-`python3 src/ops/inventory.py --bump-changed` does both edits for every file
+`python3 src/ops/inventory.py --bump-changed` does it for every file
 changed since the last commit, and is safe to run again; `--bump FILE...`
 names them. `python3 src/ops/inventory.py` prints the current stamp of every
 file; take one from there and do not copy one into prose. A stamp quoted in a document goes stale, and then

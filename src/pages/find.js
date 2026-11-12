@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.52
+// GRANITE_VERSION: 2026-09-16.56
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -284,6 +284,44 @@ function findLawRow(q){
     "/laws/"+slug+(FLAW_FOLDERS.includes(slug)?"/":"")+(L.sec?"#s"+L.sec:""),""];
 }
 
+/* A CHAPTER FOUND BY ITS TITLE (the owner, 10 November 2026: "Add RSA chapter
+   numbers and titles to the general search"). Once the Laws pages' list is
+   here, the words typed are looked for in each chapter's title and its
+   popular names, and a chapter that has them all is a Law row, "RSA 91-A"
+   with its title as the line, flagged "title" in r[4] so the callers put it
+   after the guides rather than first: a number typed leads (findLawRow), a
+   title is only found. Repealed chapters are left out, and no more than
+   FLAW_TITLE_MAX are given. The list is fetched on the first search with a
+   word of three letters in it (findLawsWanted), and once. */
+const FLAW_TITLE_MAX=20;
+function findLawsWanted(q){
+  return !FLAWS.ch&&!FLAWS.failed&&(!!findLaw(q)||/[a-z]{3}/i.test(String(q||"")));
+}
+const FLAWH=new Map();
+function findLawTitles(q){
+  if(!FLAWS.ch||findLaw(q))return [];
+  const s=_ftitled(_fapos(String(q||"").trim().toLowerCase()));
+  if(!s)return [];
+  const words=s.split(/\s+/), out=[];
+  for(const ch of Object.keys(FLAWS.ch)){
+    const c=FLAWS.ch[ch];
+    if(!Array.isArray(c)||c[3])continue;
+    let hay=FLAWH.get(ch);
+    if(hay===undefined){
+      hay=_fboth(`${c[0]} ${(c[4]||[]).join(" ")}`.toLowerCase());
+      FLAWH.set(ch,hay);
+    }
+    if(!words.every(w=>_fhas(hay,w)))continue;
+    const slug=ch.toLowerCase();
+    out.push([_fbare(String(c[0])).toLowerCase().indexOf(s)<0?1:0,String(c[0]).length,
+      ["law",`RSA ${ch}`,String(c[0]||""),
+       "/laws/"+slug+(FLAW_FOLDERS.includes(slug)?"/":""),"title"]]);
+  }
+  out.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  return out.slice(0,FLAW_TITLE_MAX).map(x=>x[2]);
+}
+const findLawIsTitle=r=>!!r&&r[0]==="law"&&r[4]==="title";
+
 // A former member's row is named "Former Rep. Suzanne Vail", and the word
 // Former is ours, not part of her name. Ranking against the whole string
 // would put all 1,785 of them at the top the moment somebody typed "for",
@@ -468,7 +506,9 @@ function findMatch(q,limit){
     hit.push([_fpart(r,s),learn,rank,gone,gone?-(r[5]||0):0,name.length,r]);
   }
   hit.sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2]-b[2]||a[3]-b[3]||a[4]-b[4]||a[5]-b[5]);
-  return lead.concat(hit.slice(0,(limit||8)-lead.length).map(x=>x[6]));
+  const found=lead.concat(hit.slice(0,(limit||8)-lead.length).map(x=>x[6]));
+  // Chapters found by their title come last, after the guides (findLawTitles).
+  return found.concat(findLawTitles(q).slice(0,Math.max(0,(limit||8)-found.length)));
 }
 
 /* DID YOU MEAN. Only when nothing at all was found, because that is the only
@@ -629,7 +669,9 @@ function _fbillApi(){
             knownWord:typeof knownWord==="function"?knownWord:null,
             matchScore:typeof matchScore==="function"?matchScore:null,
             titleShare:typeof titleShare==="function"?titleShare:null,
-            statusCat:typeof statusCat==="function"?statusCat:null};
+            statusCat:typeof statusCat==="function"?statusCat:null,
+            requestNumber:typeof requestNumber==="function"?requestNumber:null,
+            setRequestYear:typeof setRequestYear==="function"?setRequestYear:null};
   return window.GR_BILLMATCH||null;
 }
 const _fdata=f=>new URL(f,location.origin+"/").href;
@@ -665,6 +707,9 @@ function findBillsLoad(){
     FBILLS.file=_fprep(rows);
     FBILLS.rows=FBILLS.file.filter(b=>!b.term||b.term===FBILLS.term);
     FBILLS.api=api;
+    // The matcher reads "2027-0002" and "LSR 27-0002" as a request's number
+    // only for the requests' own year (app.js, requestNumber).
+    if(api.setRequestYear)api.setRequestYear(FBILLS.requests?(FBILLS.requests.year||String(FBILLS.requests.term||"").slice(0,4)):"");
     return _ftext(FBILLS.term).then(()=>true);
   }).catch(()=>{FBILLS.failed=true;return false;});
   return FBILLS.loading;
@@ -892,6 +937,15 @@ function findBillRow(b,q,dated,why){
 // A bill request's number, as /bills reads one (app.js's requests offer):
 // "LSR" and the number, or the year, a dash and the number.
 const FLSR=/^\s*(?:lsr\s*\d{4}\s*-?\s*\d{1,4}|\d{4}\s*-\s*\d{1,4})\s*$/i;
+// Whether what was typed is a request's number: "2027-0002", "LSR 2027-0002",
+// "LSR 27-0002", "27-0002" (the matcher's requestNumber, 11 November 2026),
+// or, until the matcher is here, the older shapes above. A bare "0002" is
+// not one here: next to a bill's number it is ambiguous, and it is read only
+// on /bills' own list of requests.
+function findIsRequest(s){
+  const A=FBILLS.api;
+  return A&&A.requestNumber?!!A.requestNumber(s,false):FLSR.test(s);
+}
 // A request's row, drawn as a bill's: its number, its kind, its title. It
 // opens the bill search on it, in the requests' list (`term`).
 function findRequestRow(b,term,q){
@@ -900,11 +954,16 @@ function findRequestRow(b,term,q){
   if(cut)t=t.slice(0,157).replace(/\s+\S*$/,"");
   // The request's own page where it has one (Alice, 8 November 2026), or the
   // bill's page it became; the bill search opened on it where it has neither.
-  const to=b.moved_to||b.address;
-  return `<a href="${to?"/"+_fesc(to):`/bills?q=${_fenc(b.n||b.id)}&amp;term=${_fenc(term)}`}">
+  // Every request has its page (/request/2027-0002); its number is the
+  // address where an older index names none.
+  const to=b.moved_to||b.address||"request/"+String(b.n||b.id).replace(/^LSR\s*/i,"");
+  // Its sponsor beside the title, as a card on /bills has it.
+  const who=String(b.sponsor_label||b.sponsor||"");
+  return `<a href="/${_fesc(to)}">
     <span class="fl1"><span class="fname">${_fesc(b.n||b.id)}</span>
     ${chip(tr("find.kind.request","Bill Request"),"fkind")}</span>
-    ${t?`<span class="fwhat">${_fmark(t,q)}${cut?"&hellip;":""}</span>`:""}</a>`;
+    ${t?`<span class="fwhat">${_fmark(t,q)}${cut?"&hellip;":""}</span>`:""}
+    ${who?`<span class="fwhy">${tr("find.request_by","Requested by {who}",{who:_fesc(who)})}</span>`:""}</a>`;
 }
 
 // "1989 to 2026", from the terms newest first.
@@ -935,7 +994,11 @@ function findBillsAll(B,q,what){
     :ready?tr("find.in_term","In the {term} term.",{term:_fesc(typeof termWords==="function"?termWords(B.term):B.term)})
     :B&&B.state==="loading"?tr("find.counting","Counting this term&rsquo;s bills&hellip;"):"";
   const line=[where,what||(where?"":tr("find.in_search","In the bill search."))].filter(Boolean).join(" ");
-  return `<a class="fbills" href="/bills?q=${_fenc(q)}${every?"&amp;term=all":""}">
+  // THE TERM IT COUNTED, NAMED (11 November 2026): after an election /bills
+  // opens on the next session's requests, so a bare /bills?q= would open a
+  // list other than the one this row counted.
+  const counted=!every&&ready&&B.term?`&amp;term=${_fenc(B.term)}`:"";
+  return `<a class="fbills" href="/bills?q=${_fenc(q)}${every?"&amp;term=all":counted}">
     <span class="fl1"><span class="fname">${name}</span></span>
     <span class="fwhat">${line}</span></a>`;
 }
@@ -971,7 +1034,7 @@ function findDraw(q,ids){
   // A statute's number: the Laws pages' list of chapters, once, and the
   // panel drawn again with its row when it is here (findLawRow).
   const law=findLawRow(s);
-  if(law&&law.loading&&!FLAWS.redraw){
+  if((law&&law.loading||findLawsWanted(s))&&!FLAWS.redraw){
     FLAWS.redraw=true;
     findLawsLoad().then(()=>{
       const box=document.getElementById(ids.box);
@@ -1032,7 +1095,7 @@ function findDraw(q,ids){
   // keep their place above the bills.
   const howto=r=>r[0]==="guide"||r[0]==="learn";
   const whole=r=>!_fgone(r)&&_fwhole(r,s);
-  const named=rows.filter(r=>r[0]==="law"||(!howto(r)&&whole(r)));
+  const named=rows.filter(r=>(r[0]==="law"&&!findLawIsTitle(r))||(!howto(r)&&!findLawIsTitle(r)&&whole(r)));
   const after=rows.filter(r=>howto(r)&&whole(r));
   const list=named.map(row).join("")+bills+after.map(row).join("")
     +rows.filter(r=>!named.includes(r)&&!after.includes(r)).map(row).join("");
@@ -1048,7 +1111,7 @@ function findDraw(q,ids){
   // read for a search of that shape, and the one with the number leads the
   // panel as a bill's own row does, opening the bill search on it in the
   // requests' list, since a request has no page of its own yet.
-  const R=!num&&FLSR.test(s)?findBills(s,3,"requests"):null;
+  const R=!num&&findIsRequest(s)?findBills(s,3,"requests"):null;
   if(R&&R.state==="loading"&&!FREQ.redraw){
     FREQ.redraw=true;
     findRequestsLoad().then(()=>{
@@ -1401,7 +1464,7 @@ function ytMark(p){
   if(rep.length)css+=rep.map(s=>sel(s,"::after")).join(",")+'{content:'+JSON.stringify(tr("yt.your_rep","Your rep"))+'}';
   if(sen.length)css+=sen.map(s=>sel(s,"::after")).join(",")+'{content:'+JSON.stringify(tr("yt.your_senator","Your senator"))+'}';
   if(css)css+=(p.m||[]).map(s=>sel(s,"::after")).join(",")
-    +"{display:inline-block;margin-left:.375rem;padding:0 .375rem;border-radius:999px;"
+    +"{display:inline-block;margin-left:.375rem;padding:0 .375rem;border-radius:999px;white-space:nowrap;"
     +"font:600 .75rem/1.5 var(--sans);letter-spacing:.02em;text-transform:none;"
     +"text-decoration:none;background:var(--pine-soft);color:var(--pine);vertical-align:.08em}"
     +".ytpanel a::after,.yt a::after{content:none !important}"

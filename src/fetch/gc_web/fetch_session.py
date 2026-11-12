@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 Fetch a whole past session from the legacy docket pages.
 
@@ -30,6 +30,8 @@ import sys
 from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
+
+from terms import term_of_year  # noqa: E402
 
 import argparse
 import json
@@ -228,8 +230,7 @@ def main():
         probe(a.year, a.probe_lsr, a.timeout)
         return
 
-    yr = int(a.year)
-    session = a.session or f"{yr if yr % 2 else yr - 1}-{yr + 1 if yr % 2 else yr}"
+    session = a.session or term_of_year(a.year)
     root = Path(a.archive) / session
     pages = root / "pages" / a.year
     pages.mkdir(parents=True, exist_ok=True)

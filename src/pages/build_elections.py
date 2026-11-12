@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.2
+# GRANITE_VERSION: 2026-11-07.6
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -21,8 +21,15 @@ corrections/members_elect.json, read and never written; the site data's
 site/legislators.json, site/former.json and site/districts.json;
 site/district_map.json, which build_district_map.py writes before this runs;
 and, for a ballot question, corrections/ballot_results.json (read, never
-written) and site/idx/<term>.json for the bill's own page. Nothing here asks
-the network.
+written: the constitutional amendments), collected/ballot_questions.json
+(the other questions, read from the Secretary of State's spreadsheets by
+src/parse/parse_sos_questions.py: 2022's convention question and 2026's
+school district local tax cap) and site/idx/<term>.json for the bill's own
+page. Each question's card prints its own rule, from its kind, and the
+number of voters who would have had to vote the other way where the
+statewide count decides it; a question the statewide count does not decide
+(the local tax cap, decided by each school district and administrative unit)
+states no outcome. Nothing here asks the network.
 
 ONE RULE FOR WHO IS ELECTED. Whether a seat's result is final, who won it
 and whom to link are decided by build_members_elect.members_elect, the
@@ -70,6 +77,12 @@ E = C.esc
 OUT_DIR = "elections"
 INDEX = "/elections/"
 BALLOTS = Path("corrections") / "ballot_results.json"
+QUESTIONS = Path("collected") / "ballot_questions.json"
+# The Secretary of State's results page for each year's general election, the
+# addresses corrections/ballot_results.json already cites for the same files.
+SOS_PAGES = {2022: "https://www.sos.nh.gov/elections/2022-election-results/2022-general-election-results",
+             2024: "https://www.sos.nh.gov/2024-general-election-results",
+             2026: "https://www.sos.nh.gov/2026-general-election-results"}
 COUNTY_CODE = BDM.CODE
 # The reader's own words for a printed total that leaves out a town
 # (parse_sos_results.py): "...: the file's Totals cell is =SUM(B47:B48), which
@@ -120,12 +133,29 @@ def elections_on_file(collected):
     return sorted(out, key=lambda x: x[0], reverse=True)
 
 
-def decided(results, sitting, former, districts, hand_path, today):
+def decided(results, sitting, former, districts, hand_path, today, settled=False, history=None):
     """members_elect's answer for this election: {race key: {seats, elected,
-    not_final, held, recount?}}, and its report. The one rule (above)."""
+    not_final, held, recount?}}, and its report. The one rule (above).
+    `settled` is an election before the latest on file (see settled_in);
+    `history` is the seats each member held each term (BME.load_history)."""
     hand, _note = BME.read_hand(hand_path, results["election"])
-    races, report = BME.members_elect(results, sitting, former, districts, hand, today)
+    races, report = BME.members_elect(results, sitting, former, districts, hand, today,
+                                      settled, history)
     return races, report, hand
+
+
+def settled_in(items, election):
+    """Whether `election` is one of those before the latest on file: long
+    settled (the owner, 10 November 2026), so its races are final by rule, a
+    recount the results mark still saying so. The latest is judged as ever."""
+    return election < max(e for e, _p, _r in items)
+
+
+def mapped(election):
+    """Whether the district map can draw this election: only the elections
+    held on the districts the map's boundaries are (2022 on). An earlier
+    one was held on the 2012 districts, which no boundary here draws."""
+    return year_of(election) >= BME.DISTRICTS_SINCE
 
 
 def same_name(name):
@@ -171,6 +201,37 @@ def ballot_rows(election, path=BALLOTS):
     count = lambda v: isinstance(v, int) and not isinstance(v, bool) and v >= 0
     return [r for r in rows or [] if isinstance(r, dict) and r.get("election") == election
             and count(r.get("yes")) and count(r.get("no")) and r["yes"] + r["no"] > 0]
+
+
+def question_number(label):
+    m = re.search(r"(\d+)\s*$", str(label or ""))
+    return int(m.group(1)) if m else 99
+
+
+def question_cards(election, path=BALLOTS, questions=QUESTIONS):
+    """Every question on an election's ballot, one dict each, in the order
+    of the ballot: a constitutional amendment from corrections/ballot_results.json
+    (kind "cacr", its row as it stands), and every other kind from
+    collected/ballot_questions.json, which src/parse/parse_sos_questions.py
+    reads from the Secretary of State's spreadsheets. A CACR's count is the
+    corrections file's, never the spreadsheets'; the spreadsheets' own figure
+    is kept beside it only to say where the Secretary of State's files
+    disagree (the 2026 county files against its statewide summary)."""
+    try:
+        doc = json.loads(Path(questions).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        doc = {}
+    mine = (doc.get("elections") or {}).get(election) or []
+    cards = [dict(r, kind="cacr") for r in ballot_rows(election, path)]
+    for r in cards:
+        for q in mine:
+            if q.get("kind") == "cacr" and q.get("label") == r.get("label") and q.get("county_sum"):
+                r["county_sum"] = q["county_sum"]
+    for q in mine:
+        if q.get("kind") != "cacr" and q.get("yes", 0) + q.get("no", 0) > 0:
+            cards.append(dict(q, source=SOS_PAGES.get(year_of(election), ""),
+                              cite=f"{year_of(election)} general election results, sos.nh.gov"))
+    return sorted(cards, key=lambda c: question_number(c.get("label")))
 
 
 def bill_href(site, term, bill):
@@ -288,14 +349,16 @@ def seat_tally(keys, decided_races):
     return t
 
 
-def chamber_block(name, t):
+def chamber_block(name, t, partial=""):
     """A chamber's seats by party. Its seats are members_elect's, the same
     races the parts are counted from, so the parts always add up to it. The
     majority line is drawn only once every seat's result is final: before
     then a party crossing it would say more than the count does."""
     seats = t["R"] + t["D"] + t["other"] + t["open"] + t["none"]
     maj = seats // 2 + 1
-    final = not t["open"] and not t["none"]
+    # A chamber with a county missing has no majority to draw: the seats on file
+    # are not the chamber.
+    final = not t["open"] and not t["none"] and not partial
     parts = [(t["R"], "er-R", "Republican"), (t["D"], "er-D", "Democratic"),
              (t["other"], "er-X", "other or cross-nominated"),
              (t["open"], "er-open", "result not final"), (t["none"], "er-none", "no winner shown")]
@@ -307,8 +370,9 @@ def chamber_block(name, t):
            f'<p class="er-majw">The line is the majority, {maj:,} seats.</p>' if final else
            f'<div class="l-barb" aria-hidden="true">{segs}</div>')
     return (f'<section class="er-ch"><h4>{E(name)}</h4>'
-            f'<p class="er-meta">{seats:,} seats; {maj:,} make a majority.</p>'
-            f'<figure class="l-fig l-bar" role="img" aria-label="{E(name)}: {E(label)}">'
+            + (f'<p class="er-meta">{seats:,} seats on file; {E(partial)}</p>' if partial else
+               f'<p class="er-meta">{seats:,} seats; {maj:,} make a majority.</p>')
+            + f'<figure class="l-fig l-bar" role="img" aria-label="{E(name)}: {E(label)}">'
             + bar + f'<ul class="l-barkey">{key}</ul></figure></section>')
 
 
@@ -332,8 +396,13 @@ def closest(races, decided_races, path, hand, n=8):
     return '<ol class="er-close">' + "".join(out) + "</ol>"
 
 
-def deadline_line(hand, report, election):
+def deadline_line(hand, report, election, settled=False):
     d = hand.get("recount_deadline")
+    if settled and not d:
+        # An election before the latest on file: long settled, final by rule.
+        # (Where the owner entered its deadline, that is said as it always was.)
+        return ("This election is long past: its results are shown as final, and a race whose "
+                "count is a recount&rsquo;s says so.")
     if not d:
         return ("No deadline for asking for a recount is entered for this election, so every result "
                 "reads &ldquo;Result not final&rdquo; except a race whose recount has been counted.")
@@ -343,30 +412,144 @@ def deadline_line(hand, report, election):
     return f"The deadline to ask for a recount was {E(C.date_words(d, 'full'))}."
 
 
+def flip_two_thirds(yes, no):
+    """How many voters changing their vote would have changed whether two
+    thirds voted yes. A voter who moves from one side to the other moves one
+    vote and leaves the total where it was, so for a question that fell short
+    it is the yes votes short of two thirds of the total, rounded up, and for
+    one that reached it the yes votes above two thirds, rounded down, and one
+    more."""
+    t = yes + no
+    return (3 * yes - 2 * t) // 3 + 1 if 3 * yes >= 2 * t else -((3 * yes - 2 * t) // 3)
+
+
+def flip_majority(yes, no):
+    """The same for a majority, where a tie is not a majority: a voter who
+    changes sides moves the gap by two, so a question that carried is undone
+    when half the gap, rounded up, have changed sides (a tie is enough), and
+    one that did not carry is carried by half the gap, rounded down, and one
+    more."""
+    gap = abs(yes - no)
+    return (gap + 1) // 2 if yes > no else gap // 2 + 1
+
+
+def two_thirds(yes, no):
+    return yes + no > 0 and 3 * yes >= 2 * (yes + no)
+
+
+def question_title(c):
+    name = E(c.get("label") or "")
+    if c["kind"] == "cacr":
+        return f'{name} ({E(re.sub(r"^CACR", "CACR ", c.get("bill") or ""))})'
+    if c["kind"] == "convention":
+        return name + " " + i18n.say("en", "elect.q.convention_t", "(the convention question)")
+    return name + " " + i18n.say("en", "elect.q.cap_t", "(school district local tax cap, {bill})",
+                                 bill=E(c.get("measure") or "HB 1300"))
+
+
+def question_rule(c):
+    """The rule the question is decided by, in its source's words: the one
+    place a card's rule comes from."""
+    if c["kind"] == "cacr":
+        return i18n.say("en", "elect.q.cacr_rule", "An amendment needs two thirds of the votes cast on it "
+                        "(Part Second, Article 100).")
+    if c["kind"] == "convention":
+        return i18n.say("en", "elect.q.conv_rule",
+                        "If a majority of the qualified voters voting on the question approves it, "
+                        "delegates are chosen (Part Second, Article 100(b)).")
+    return i18n.say("en", "elect.q.cap_rule",
+                    "A school district&rsquo;s local tax cap, and a school administrative unit&rsquo;s "
+                    "fixed cap, is binding if a &ldquo;3/5 majority of the voters voting in the "
+                    "municipalities and wards&rdquo; it serves approve the question (RSA 32:5-i, "
+                    "VI(a) and (b), added by HB 1300, chapter 324 of 2026).")
+
+
+def question_decision(c):
+    """(the decision, the flip sentence) of a question the statewide count
+    decides; for the local tax cap, which it does not, (the sentence saying so, "")."""
+    yes, no = c["yes"], c["no"]
+    if c["kind"] == "local_cap":
+        return (i18n.say("en", "elect.q.cap_out",
+                         "The statewide total decides nothing, because each school district and each "
+                         "school administrative unit counts only the towns and wards it serves. Which "
+                         "of them reached three fifths is not shown yet: no table of which town or "
+                         "ward is in which school district is on hand."), "")
+    if c["kind"] == "cacr":
+        ok, n = two_thirds(yes, no), flip_two_thirds(yes, no)
+        head = (i18n.say("en", "elect.q.ratified", "Ratified") if ok
+                else i18n.say("en", "elect.q.not_ratified", "Not ratified"))
+    else:
+        ok, n = yes > no, flip_majority(yes, no)
+        head = (i18n.say("en", "elect.q.approved", "Approved") if ok
+                else i18n.say("en", "elect.q.not_approved", "Not approved"))
+    flip = (i18n.say("en", "elect.q.flip_one", "The gap between yes and no is {gap}. {n} voter would have had to vote the "
+                     "other way to change the result.", gap=f"{abs(yes - no):,}", n=f"{n:,}") if n == 1 else
+            i18n.say("en", "elect.q.flip", "The gap between yes and no is {gap}. {n} voters would have had to vote the "
+                     "other way to change the result.", gap=f"{abs(yes - no):,}", n=f"{n:,}"))
+    return head, flip
+
+
+def county_table(c):
+    rows = "".join(
+        f'<tr><th scope="row" class="is-text">{E(name)}</th><td class="l-num">{y:,}</td>'
+        f'<td class="l-num">{n:,}</td><td class="l-num">{100 * y / (y + n):.1f}%</td></tr>'
+        for name, (y, n) in (c.get("counties") or {}).items() if y + n > 0)
+    if not rows:
+        return ""
+    return ('<div class="l-tablewrap"><table class="l-table"><caption>'
+            + i18n.say("en", "elect.q.county_cap", "By county") + '</caption><thead><tr><th scope="col">'
+            + i18n.say("en", "elect.q.county", "County") + '</th><th scope="col" class="l-num">'
+            + i18n.say("en", "elect.q.yes", "Yes") + '</th><th scope="col" class="l-num">'
+            + i18n.say("en", "elect.q.no", "No") + '</th><th scope="col" class="l-num">'
+            + i18n.say("en", "elect.q.yes_share", "Yes share") + f"</th></tr></thead><tbody>{rows}</tbody>"
+            "</table></div>")
+
+
+def county_disagreement(r):
+    """Where the Secretary of State's ten county files do not add up to its
+    statewide summary, said once with both figures: the card shows the
+    summary's, the count the corrections file holds."""
+    cy, cn = r["county_sum"]
+    same = two_thirds(r["yes"], r["no"]) == two_thirds(cy, cn)
+    return i18n.say("en", "elect.q.disagree",
+                    "The ten county files add up to {cy} yes and {cn} no; the statewide summary, shown "
+                    "above, has {y} yes and {n} no. {same}", cy=f"{cy:,}", cn=f"{cn:,}",
+                    y=f"{r['yes']:,}", n=f"{r['no']:,}",
+                    same=(i18n.say("en", "elect.q.same", "The result is the same on either count.") if same
+                          else i18n.say("en", "elect.q.differ", "The result is not the same on both counts.")))
+
+
 def ballot_block(rows, site, results):
-    import build_site_v2 as B2
     out = []
     for r in rows:
         yes, no = r["yes"], r["no"]
         tot = yes + no
         if tot <= 0:
             continue
-        ok = B2.ratified(yes, no)
-        href = bill_href(site, r.get("term") or "", r.get("bill") or "")
-        name = f'{E(r.get("label") or "")} ({E(re.sub(r"^CACR", "CACR ", r.get("bill") or ""))})'
+        href = bill_href(site, r.get("term") or "", r.get("bill") or "") if r["kind"] == "cacr" else ""
+        head, flip = question_decision(r)
+        cap = r["kind"] == "local_cap"
+        top = max(yes, no)
         out.append(
             '<article class="er-race">'
-            + f'<h3>{name}</h3>'
+            + f'<h3>{question_title(r)}</h3>'
             + (f'<p class="er-meta"><a href="{E(href)}">The amendment&rsquo;s page</a></p>' if href else "")
+            + ('<p class="er-foot">' + i18n.say("en", "elect.q.statewide",
+                                                "Statewide total:") + "</p>" if cap else "")
             + '<ul class="er-rows">'
             + f'<li class="er-row"><span class="er-who">Yes</span><span class="er-n">{yes:,} <span>&middot; {100 * yes / tot:.1f}%</span></span>'
-              f'<span class="er-b" aria-hidden="true"><i class="er-yes" style="width:{100 * yes / max(yes, no):.1f}%"></i></span></li>'
+              f'<span class="er-b" aria-hidden="true"><i class="er-yes" style="width:{100 * yes / top:.1f}%"></i></span></li>'
             + f'<li class="er-row"><span class="er-who">No</span><span class="er-n">{no:,} <span>&middot; {100 * no / tot:.1f}%</span></span>'
-              f'<span class="er-b" aria-hidden="true"><i class="er-no" style="width:{100 * no / max(yes, no):.1f}%"></i></span></li>'
+              f'<span class="er-b" aria-hidden="true"><i class="er-no" style="width:{100 * no / top:.1f}%"></i></span></li>'
             + "</ul>"
-            + f'<p class="er-out"><b>{"Ratified" if ok else "Not ratified"}.</b> An amendment needs two thirds of '
-              "the votes cast on it (Part Second, Article 100).</p>"
+            + f'<p class="er-foot">{question_rule(r)}</p>'
+            + (f'<p class="er-out">{head}</p>' if cap else f'<p class="er-out"><b>{head}.</b> {flip}</p>')
             + (f'<p class="er-foot">{E(r["note"])}</p>' if r.get("note") else "")
+            + (f'<p class="er-foot">{county_disagreement(r)}</p>' if r.get("county_sum") else "")
+            + (county_table(r) if r["kind"] != "cacr" else "")
+            + ('<p class="er-foot">' + i18n.say(
+                "en", "elect.q.how", "The Secretary of State&rsquo;s statewide summary does not hold this "
+                "question, so the total is the ten county files&rsquo; totals added up.") + "</p>" if cap else "")
             + f'<p class="er-foot">Source: <a href="{E(r.get("source") or "")}" rel="noopener">'
               f'{E(r.get("cite") or "the Secretary of State")}</a>.</p>'
             + "</article>")
@@ -486,7 +669,17 @@ def county_groups(keys, races, decided_races, results, tnotes, election, hand):
     return "".join(out)
 
 
-def page_body(election, results, decided_races, report, hand, site, ballots):
+def not_on_file_words(results):
+    """What the Secretary of State's site no longer serves for this election,
+    in words, or "": the counties with no House file, and the Senate."""
+    gone = results.get("_not_on_file") or {}
+    parts = [f"{c} County\u2019s State Representative results" for c in gone.get("counties") or []]
+    if gone.get("senate"):
+        parts.append("the State Senate results")
+    return " and ".join(parts)
+
+
+def page_body(election, results, decided_races, report, hand, site, ballots, settled=False):
     races = results["races"]
     path = page_path(election)
     senate = [k for k in races if k.startswith("S|")]
@@ -495,16 +688,23 @@ def page_body(election, results, decided_races, report, hand, site, ballots):
     year = year_of(election)
     st, ht = seat_tally(senate, decided_races), seat_tally(house, decided_races)
     final_all = not st["open"] and not ht["open"] and not st["none"] and not ht["none"]
+    gone = results.get("_not_on_file") or {}
+    gone_words = not_on_file_words(results)
+    house_partial = ("this chamber has no majority line because "
+                     + ", ".join(f"{c} County" for c in gone.get("counties") or [])
+                     + " is not on file") if gone.get("counties") else ""
+    drawn_map = mapped(election)
     overview = (
         '<section class="ofpart"><h3 class="er-h">Seats Won</h3><div class="er-chs">'
-        + chamber_block("State Senate", st) + chamber_block("State House", ht) + "</div>"
+        + (chamber_block("State Senate", st) if senate else "")
+        + chamber_block("State House", ht, house_partial) + "</div>"
         + '<p class="src">The winners are the candidates with the most votes, as many as a race has '
           "seats. The Secretary of State&rsquo;s files count the votes; they do not name winners.</p></section>"
-        + '<section class="ofpart"><h3 class="er-h">The Map</h3>'
-          '<p class="src fill">Each district is colored by the party of the candidates it elected; '
-          "a district that elected both parties, or a candidate both nominated, is striped. A district "
-          "with no final winner shown is hatched; choose a district to see what is still to come.</p>"
-        + map_html(election, MAP_WORDS) + "</section>"
+        + ('<section class="ofpart"><h3 class="er-h">The Map</h3>'
+           '<p class="src fill">Each district is colored by the party of the candidates it elected; '
+           "a district that elected both parties, or a candidate both nominated, is striped. A district "
+           "with no final winner shown is hatched; choose a district to see what is still to come.</p>"
+           + map_html(election, MAP_WORDS) + "</section>" if drawn_map else "")
         + '<section class="ofpart"><h3 class="er-h">Closest Races</h3>'
           '<p class="src">By how many votes the last seat was won, fewest first.</p>'
         + closest(races, decided_races, path, hand) + "</section>")
@@ -518,26 +718,41 @@ def page_body(election, results, decided_races, report, hand, site, ballots):
     find = ('<div class="er-find" id="er-find" hidden><label for="er-q">Find a town or ward</label>'
             '<input id="er-q" type="search" autocomplete="off" placeholder="A town or ward">'
             '<p class="count" id="er-found" role="status"></p></div>')
-    panels = [("overview", "Overview", overview),
-              ("senate", f'State Senate <span class="ofn">({len(senate)})</span>',
-               '<div class="er-cards">' + "".join(
-                   race_card(k, races[k], decided_races.get(k) or {}, results, tnotes, election, hand)
-                   for k in sorted(senate, key=BME.race_order)) + "</div>"),
-              ("house", f'State House <span class="ofn">({len(house)})</span>',
-               find + county_groups(house, races, decided_races, results, tnotes, election, hand))]
+    panels = [("overview", "Overview", overview)]
+    if senate:
+        panels.append(("senate", f'State Senate <span class="ofn">({len(senate)})</span>',
+                       '<div class="er-cards">' + "".join(
+                           race_card(k, races[k], decided_races.get(k) or {}, results, tnotes,
+                                     election, hand)
+                           for k in sorted(senate, key=BME.race_order)) + "</div>"))
+    panels.append(("house", f'State House <span class="ofn">({len(house)})</span>',
+                   find + county_groups(house, races, decided_races, results, tnotes, election,
+                                        hand)))
     if ballots:
         panels.append(("questions", f'Ballot Questions <span class="ofn">({len(ballots)})</span>',
                        ballot_block(ballots, site, results)))
     lead = (f"{E(C.date_words(election, 'full'))}. Every State Senate and State House race, as the "
             "Secretary of State&rsquo;s results files count it, with the votes for every candidate.")
+    if gone_words:
+        # Said, and filled from nowhere: what the Secretary of State's site no
+        # longer serves is not on this page, and nothing stands in for it.
+        lead += (f" Not on this page: {E(gone_words)}, which the Secretary of State&rsquo;s site "
+                 "no longer serves; no other source stands in for it.")
+    if any(r.get("surnames") for r in races.values()):
+        lead += (" The State Representative files of this year print each candidate&rsquo;s surname "
+                 "only, and they are shown as printed.")
+    if not drawn_map:
+        lead += (" This election was held on the 2012 districts, which the district map does not "
+                 "draw, so there is no map here.")
     return ('<div class="officials er-page">'
             f'<p class="er-crumb"><a href="officials.html">Officials</a> &rsaquo; '
             f'<a href="{OUT_DIR}/">Elections</a></p>'
             f"<h1>{year} General Election</h1>"
             f'<p class="lead">{lead}</p>'
             '<div class="er-state">'
-            + C.chip("Official results" if final_all else "Official results, not all final")
-            + f"<span>{sources_line(results)} {deadline_line(hand, report, election)}</span></div>"
+            + C.chip("Official results, some not on file" if gone_words else
+                     "Official results" if final_all else "Official results, not all final")
+            + f"<span>{sources_line(results)} {deadline_line(hand, report, election, settled)}</span></div>"
             '<p class="src er-other">The Governor, the Executive Council, Congress and the county '
             "offices are not on this page yet: their results files have not been read.</p>"
             + tabs_html(panels) + BT.TABS_JS + FIND_JS + "</div>")
@@ -569,7 +784,7 @@ def write_page(site, base, path, title, desc, body, into):
     out.write_text(S.clean_links(html), encoding="utf-8")
 
 
-def build(site, base, collected, hand_path, today):
+def build(site, base, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT):
     """Every page drawn into a folder beside site/elections/ first, and put in
     its place only once all of them are drawn: a results file the reader
     refuses, or any failure, leaves last night's pages as they were rather
@@ -586,6 +801,7 @@ def build(site, base, collected, hand_path, today):
     sitting = BME.load_json(site / "legislators.json", "the sitting roster")
     former = BME.load_json(site / "former.json", "the former members")
     districts = BME.load_json(site / "districts.json", "the district table")
+    history = BME.load_history(sponsors)
     base_map = BME.load_json(site / "district_map.json", "the district map's data")
     places = base_map["places"]
     new = site / f".{OUT_DIR}.new"
@@ -594,21 +810,24 @@ def build(site, base, collected, hand_path, today):
     new.mkdir()
     made, urls, warn = [], [], []
     for election, _p, results in items:
-        races_me, report, hand = decided(results, sitting, former, districts, hand_path, today)
-        if not hand.get("recount_deadline"):
+        settled = settled_in(items, election)
+        races_me, report, hand = decided(results, sitting, former, districts, hand_path, today,
+                                         settled, history)
+        if not hand.get("recount_deadline") and not settled:
             warn.append(f"{election}: no recount_deadline in {Path(hand_path).as_posix()}, so every "
                         "race but a recounted one reads Result not final")
-        ballots = ballot_rows(election)
-        body = page_body(election, results, races_me, report, hand, site, ballots)
+        ballots = question_cards(election, BALLOTS, Path(collected) / QUESTIONS.name)
+        body = page_body(election, results, races_me, report, hand, site, ballots, settled)
         year = year_of(election)
         path = page_path(election)
         write_page(site, base, path,
                    S.title_of(f"{year} New Hampshire General Election results"),
                    f"The official results of New Hampshire's {year} general election: every State "
                    "Senate and State House race, from the Secretary of State's files.", body, new)
-        (new / f"{election}-map.json").write_text(
-            json.dumps(map_doc(base_map, races_me, places), ensure_ascii=False, separators=(",", ":")),
-            encoding="utf-8")
+        if mapped(election):
+            (new / f"{election}-map.json").write_text(
+                json.dumps(map_doc(base_map, races_me, places), ensure_ascii=False,
+                           separators=(",", ":")), encoding="utf-8")
         made.append((election, races_me))
         urls.append(base.rstrip("/") + S.canon(path))
     write_page(site, base, INDEX, S.title_of("New Hampshire election results"),
@@ -619,6 +838,11 @@ def build(site, base, collected, hand_path, today):
         shutil.rmtree(dest)
     new.rename(dest)
     S.sitemap_merge(site, base, urls, "/elections/")
+    gaps = BME.history_gaps(sponsors, BME.PAST_SPONSORS_DEFAULT, BME.CAREERS_DEFAULT)
+    if gaps:
+        n = sum(1 for e, races in made if year_of(e) <= BME.HISTORY_UNTIL
+                for r in races.values() for w in r["elected"] if not w.get("id"))
+        warn.append(BME.gap_line(gaps, n, "winner(s)").replace("WARNING ", "", 1))
     return made, warn
 
 
@@ -629,10 +853,12 @@ def main():
     ap.add_argument("--base", default="https://graniterecord.org")
     ap.add_argument("--collected", default="collected")
     ap.add_argument("--hand", default=str(BME.HAND_DEFAULT))
+    ap.add_argument("--sponsors", default=str(BME.SPONSORS_DEFAULT),
+                    help="text_sponsors.json, which holds the seat each member printed each term")
     a = ap.parse_args()
     today = build_date.today().isoformat()
     try:
-        made, warn = build(a.site, a.base, a.collected, Path(a.hand), today)
+        made, warn = build(a.site, a.base, a.collected, Path(a.hand), today, a.sponsors)
     except BME.Refused as e:
         print(f"REFUSED: {e}", file=sys.stderr)
         return 1

@@ -12,7 +12,7 @@ sponsor, a committee) is fixed here; a right fact shown wrongly is fixed in
 | Votes | `rollcall_parser`, `rollcall_outcomes`, `member_links` |
 | People and sponsors | `past_members`, `past_sponsors`, `text_sponsors`, `build_careers`, `officers`, `build_members_elect`, `parse_sos_results`, `score_members_elect` |
 | Texts, versions and topics | `archive_text`, `bill_page`, `bill_blocks`, `build_bill_versions`, `fiscal`, `law_effect`, `topic_model`, `topics` |
-| Calendars, journals and reports | `extract_calendar_text`, `extract_amendments`, `extract_vetoes`, `journal_bills`, `journal_days`, `report_check`, `senate_hearing_reports` |
+| Calendars, journals and reports | `extract_calendar_text`, `extract_amendments`, `extract_vetoes`, `journal_bills`, `journal_days`, `resolution_sponsors`, `report_check`, `senate_hearing_reports` |
 | UNH's scanned journals (no step reads them yet) | `unh_extract`, `unh_measure`, `unh_parse`, `unh_repair`, `unh_rollcalls`, `unh_roster` |
 
 Run by: `build_all.py`'s `plan()`, every night, in its order. The rest are

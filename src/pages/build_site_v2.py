@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.255
+# GRANITE_VERSION: 2026-09-05.269
 """
 Generate the faceted site from real General Court data.
 
@@ -30,6 +30,7 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import build_date
+import state_settings as ST
 import shell as _shell
 import caption_span
 import committee_names as CN
@@ -74,13 +75,25 @@ STATUS_ORDER = ["law", "veto", "done", "active"]
 
 
 def load(p, default):
+    """A JSON input, or `default` where the file is not there at all.
+
+    A file that IS there and cannot be read -- cut off mid-array, a permission
+    error, MemoryError on the 245 MB narratives.json -- stops the build and
+    names the file. It used to return `default` for every failure, and a site
+    was built with no journeys or no votes while the shape guards after the
+    call, which skip an empty value, passed (bug hunt of 11 November 2026,
+    finding 1)."""
     p = Path(p)
-    if not p.exists():
-        return default
     try:
-        return json.loads(p.read_text(encoding="utf-8"))
-    except Exception:
+        text = p.read_text(encoding="utf-8")
+    except FileNotFoundError:
         return default
+    except (OSError, MemoryError) as e:
+        sys.exit(f"{p} could not be read: {e!r}")
+    try:
+        return json.loads(text)
+    except (ValueError, MemoryError, RecursionError) as e:
+        sys.exit(f"{p} is not readable JSON (truncated or corrupt?): {e!r}")
 
 
 
@@ -970,148 +983,8 @@ ROUTINE = re.compile(
     r")", re.I)
 
 
-# --------------------------------------------------------------------- RSA --
-# A statute cites as "RSA 91-A:4", and its page lives at
-#
-#     /rsa/html/VI/91-A/91-A-4.htm
-#             ^^ the TITLE, which the citation does not carry
-#
-# So the chapter has to be resolved to a title first. The General Court's own
-# table of contents at /rsa/html/nhtoc.htm lists every title with the chapters
-# it covers, and that is the table below, read from it on 4 September 2026.
-#
-# Chapters sort as (number, suffix), which is what makes the awkward pairs come
-# out right: chapter 361 is Title XXXIII and 361-A is XXXIII-A; 227-F ends Title
-# XIX and 227-G begins XIX-A. Comparing the pair handles both without a special
-# case. A chapter in none of the ranges -- 251 to 258 exist in no title -- is
-# not linked at all, because a citation link that 404s is worse than plain text.
-RSA_TITLES = [
-    ("I", "1", "21-V"), ("II", "22", "30-B"), ("III", "31", "53-G"),
-    ("IV", "54", "70"), ("V", "71", "90"), ("VI", "91", "103"),
-    ("VII", "104", "106-R"), ("VIII", "107", "119"), ("IX", "120", "124-A"),
-    ("X", "125", "149-R"), ("XI", "150", "152"), ("XII", "153", "174"),
-    ("XIII", "175", "180"), ("XIV", "183", "185"), ("XV", "186", "200-O"),
-    ("XVI", "201", "202-B"), ("XVII", "203", "205-D"), ("XVIII", "206", "215-D"),
-    ("XIX", "216", "227-F"), ("XIX-A", "227-G", "227-M"), ("XX", "228", "250"),
-    ("XXI", "259", "269"), ("XXII", "270", "272"), ("XXIII", "273", "283"),
-    ("XXIV", "284", "287-J"), ("XXV", "288", "288"), ("XXVI", "289", "291-A"),
-    ("XXVII", "292", "303"), ("XXVIII", "304", "305-A"), ("XXIX", "306", "308"),
-    ("XXX", "309", "332-N"), ("XXXI", "333", "359-U"), ("XXXII", "360", "360"),
-    ("XXXIII", "361", "361"), ("XXXIII-A", "361-A", "361-E"),
-    ("XXXIV", "362", "382"), ("XXXIV-A", "382-A", "382-A"),
-    ("XXXV", "383", "397-B"), ("XXXVI", "398", "399-G"), ("XXXVII", "400", "420-Q"),
-    ("XXXVIII", "421", "421-B"), ("XXXIX", "422", "424"), ("XL", "425", "439-A"),
-    ("XLI", "444", "454-C"), ("XLII", "455", "456-B"), ("XLIII", "457", "461-B"),
-    ("XLIV", "462", "465"), ("XLV", "466", "470"), ("XLVI", "471", "471-D"),
-    ("XLVII", "472", "476"), ("XLVIII", "477", "479-B"), ("XLIX", "480", "480"),
-    ("L", "481", "489-C"), ("LI", "490", "505"), ("LII", "506", "513"),
-    ("LIII", "514", "526"), ("LIV", "527", "533"), ("LV", "534", "546-C"),
-    ("LVI", "547", "567-A"), ("LVII", "568", "569"), ("LVIII", "570", "591"),
-    ("LIX", "592", "614"), ("LX", "615", "623-C"), ("LXI", "624", "624"),
-    ("LXII", "625", "651-F"), ("LXIII", "652", "671"), ("LXIV", "672", "679"),
-]
-
-# "RSA 91-A:4" / "RSA 638:26-a" / "RSA 91-A" / "RSA 91-A:2, III" -- the roman
-# numeral after a comma is a paragraph within the section, not part of the
-# address, so it is left out of the link and left in the sentence.
-# FIVE WAYS THIS SENT A READER TO THE WRONG STATUTE, all of them from a class
-# that was one character too narrow. These are LINKS, so a mis-parse does not
-# lose a citation -- it publishes a different law under the right words.
-#
-#   RSA 2025, 141:389  ->  chapter 202   a SESSION LAW, not an RSA chapter at
-#                                        all; \d{1,3} took "202" out of "2025"
-#                                        and linked RSA 202, Public Libraries
-#   RSA 126-AA:2       ->  126-A         -[A-Z] is one letter; 126-AA and
-#                                        126-A are different chapters
-#   RSA 21-I:19-ff     ->  21-I:19-f     likewise for the section suffix
-#   RSA 383-A:6-602    ->  383-A:6       a hyphenated section number, truncated
-#   RSA 293-A:10.01    ->  293-A:10      a dotted section number, truncated
-#
-# The trailing lookaheads are what make the first case give NOTHING rather than
-# something wrong: "2025" cannot end after three digits, so the whole match
-# fails and the session-law citation is left as plain words. Refusing to link
-# is the right answer where the target is not an RSA chapter.
-RSA_CITE = re.compile(
-    r"\bRSA\s+(\d{1,3}(?:-[A-Z]{1,2})?)(?![\d-])"
-    r"(?::(\d{1,4}(?:-[a-z0-9]{1,3})?(?:\.\d{1,2})?)(?!\d))?",
-    re.I)
-
-
-def _chapter_key(ch):
-    m = re.match(r"(\d+)(?:-([A-Za-z]+))?$", ch.strip())
-    return (int(m.group(1)), (m.group(2) or "").upper()) if m else None
-
-
-_STATUTES = []
-
-
-def _statutes():
-    """The statute table (rsa.py), read once a run, or None where
-    db/NH_RSA.psv is not on this disk."""
-    if not _STATUTES:
-        try:
-            import rsa
-            _STATUTES.append(rsa.load())
-        except Exception:                                        # noqa: BLE001
-            _STATUTES.append(None)
-    return _STATUTES[0]
-
-
-def rsa_url(chapter, section=None):
-    """Where a citation links: the site's own statute page where the table
-    holds it, else the General Court's, else "" (no link).
-
-    THE SITE'S OWN PAGE FIRST (RSA_PAGE.md §7; the person, 11 October 2026:
-    "the RSA pages should be linked throughout the site to the Granite
-    Record pages as an interlinked system"). Where the statute table is on
-    disk, a section it holds links to its anchor, /rsa/91-a#s4; a section it
-    does not hold -- one a bill would create, or one repealed and gone --
-    links to its chapter's page where the chapter is held; and an address
-    the table does not hold at all is left as words, because a link built
-    from the title table to gc.nh.gov for it may well 404 (RSA_PAGE.md §2:
-    20,358 of the bill texts' section citations name an address the table
-    lacks). Without the table, the General Court's page, as before."""
-    table = _statutes()
-    if table is not None:
-        ch = (chapter or "").upper()
-        kind, target = table.resolve(ch, section) if section else table.resolve(ch)
-        # The chapter's address as build_rsa writes it, RSA 404's with its
-        # slash (build_rsa.chapter_path, the sitemap audit, 16 October 2026).
-        import build_rsa
-        if kind in ("section", "range"):
-            c, _, sec = target.partition(":")
-            return build_rsa.chapter_path(c, sec)
-        if kind == "chapter" or (section and table.resolve(ch)[0] == "chapter"):
-            return build_rsa.chapter_path(ch)
-        return ""
-    key = _chapter_key(chapter)
-    if not key:
-        return ""
-    for title, lo, hi in RSA_TITLES:
-        klo, khi = _chapter_key(lo), _chapter_key(hi)
-        if klo and khi and klo <= key <= khi:
-            ch = chapter.upper()
-            if section:
-                return (f"https://gc.nh.gov/rsa/html/{title}/{ch}/"
-                        f"{ch}-{section}.htm")
-            return f"https://gc.nh.gov/rsa/html/NHTOC/NHTOC-{title}-{ch}.htm"
-    return ""
-
-
-def rsa_links(*texts):
-    """{citation as written: url} for every statute cited in these strings.
-
-    A map rather than rewritten text: the renderers escape what they print, and
-    handing them HTML to escape would show the tags. They substitute after
-    escaping, which is safe because a citation contains nothing to escape.
-    """
-    out = {}
-    for txt in texts:
-        for m in RSA_CITE.finditer(txt or ""):
-            url = rsa_url(m.group(1), m.group(2))
-            if url:
-                out[m.group(0)] = url
-    return out
+from rsa_links import (RSA_CITE, RSA_TITLES, _STATUTES, _chapter_key, _statutes,  # noqa: F401
+                       rsa_links, rsa_url)
 
 
 # WHAT A BILL AMENDS IS NOT WHAT IT MENTIONS. rsa_links finds every citation
@@ -1291,12 +1164,7 @@ def member_slug(m, lab):
 # county_abbr carries. A member drawn from the roster read "Hills 12" and
 # one drawn from here read "Hills. 6", so the punctuation tracked exactly
 # who had left office.
-COUNTY_ABBR = {
-    "belknap": "Belk", "carroll": "Carr", "cheshire": "Ches",
-    "coos": "Coos", "co\u00f6s": "Coos", "grafton": "Graf",
-    "hillsborough": "Hills", "merrimack": "Merr", "rockingham": "Rock",
-    "strafford": "Straf", "sullivan": "Sull",
-}
+COUNTY_ABBR = {**ST.COUNTY_ABBR_LOWER, "co\u00f6s": "Coos"}
 # EITHER SPELLING RESOLVES, because the sources do not agree on which they
 # store. member_party.json writes a seat already abbreviated -- 622 rows say
 # "Hills", 440 "Rock", 212 "Merr", and so on through all nine that shorten --
@@ -1393,8 +1261,34 @@ def name_key(raw):
     return (w[0], w[-1]) if len(w) >= 2 else None
 
 
+def roster_name_keys(members):
+    """(by sort_name, by name_key, clashes) for the sitting members.
+
+    A name two members share (a father and a son in one chamber) would have
+    gone to whichever came first in legislators.json, with setdefault, and
+    linked a sponsor named by that alone to the wrong person (bug hunt of
+    November 2026, #10). A key two members share is now left out of both
+    maps, so the sponsor keeps a bare name, and is returned as
+    [(which key, the key, [the members])] for the build to say aloud;
+    preflight warns, naming both, on one in data/legislators.json."""
+    by_sort, by_name, seen = {}, {}, {}
+    for m in members:
+        for how, book, k in (("sort name", by_sort, sort_name(m.get("name") or "")),
+                             ("first and last word", by_name, name_key(m.get("name") or ""))):
+            if how == "first and last word" and not k:
+                continue
+            seen.setdefault((how, k), []).append(m)
+            book.setdefault(k, m)
+    clashes = [(how, k, ms) for (how, k), ms in seen.items() if len(ms) > 1]
+    for how, k, ms in clashes:
+        (by_sort if how == "sort name" else by_name).pop(k, None)
+    return by_sort, by_name, clashes
+
+
 def district_tag(chamber, district, county=None, county_abbr=None):
     d = str(district or "").strip()
+    # The bill status page pads a district ("Carr 07"); nobody says it so.
+    d = d.lstrip("0") or d if d.isdigit() else d
     if not d:
         return ""
     if chamber == "S":
@@ -5413,7 +5307,8 @@ J_EFF_SEVERAL = re.compile(
 J_EFF_MORE = re.compile(r"^\s*(?:\*|[IVX]{1,4}\.|part\s+[IVX]+\b|(?:the\s+)?remainder\b|"
                         r"effective\b|eff\b|sec(?:tion)?s?\b)", re.I)
 J_DAY = re.compile(r"(?<![\d/])(\d{1,2})\s*/\s*(\d{1,2})\s*/\s*(\d{4}|\d{2})(?![\d/])")
-J_MONTH_DAY = re.compile(r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+"
+J_MONTH_DAY = re.compile(r"\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|"
+                         r"Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\b\.?\s+"
                          r"(\d{1,2}),?\s+(\d{4})\b", re.I)
 # The day a clause states at its end: "Adopted and read a 3rd time MA VV
 # 01/05/22". Not a sitting the chamber met "in recess of", and not a date in
@@ -5503,6 +5398,20 @@ def law_in_stages(chapter, parts):
         return ""
     return (f"Chapter {chapter}, in effect in stages from "
             f"{_j_prose_date(min(days).isoformat())} to {_j_prose_date(max(days).isoformat())}")
+
+
+def law_line_dated(step):
+    """THE LAW LINE'S DAY IS IN THE DATE COLUMN, as every other line's is (the
+    owner, 10 November 2026: "in effect Jul 1, 2025" sat in the words of HB 1's
+    line with its date empty). `shown` says "Chapter 140, in effect" beside
+    it; `text` keeps the day in its words, for the Laws pages. A law in parts
+    or stages has no one day and stays as it was. Called before the step's
+    `short` and `effective` are dropped from the stored journey."""
+    if (step.get("act") == "law" and step.get("effective") and not step.get("date")
+            and not step.get("shown") and step.get("short")):
+        step["date"] = step["effective"]
+        step["shown"] = f"{step['short']}, in effect"
+    return step
 
 
 def _j_prose_date(iso, year=True):
@@ -8165,7 +8074,7 @@ def study_ending(narr, steps, rail, term, sittings, lsrs=None):
             name = re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", nb["id"]) + f" of {nb['year']}"
             line["text"] += (f"; the clerk noted, with a question mark, that it was filed "
                              f"again as {name}" if nb["queried"] else f"; filed again as {name}")
-            line["link"] = {"text": name, "href": f"bill/{nb['year']}/{nb['id'].lower()}.html"}
+            line["link"] = {"text": name, "href": f"bill/{nb['year']}/{nb['id'].lower()}"}
         out.append(line)
     out.sort(key=lambda s: s.get("date") or "9999")
     return out
@@ -8757,6 +8666,18 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
                 district=_s.get("district") or _t.get("district"),
                 county=_s.get("county") or _t.get("county"),
                 county_abbr=None if _s.get("district") else _t.get("county_abbr"))
+        elif ((_s.get("chamber") or "")[:1].upper() in ("H", "S")
+              and (_t.get("chamber") or "")[:1].upper() in ("H", "S")
+              and (_s.get("chamber") or "")[:1].upper() != (_t.get("chamber") or "")[:1].upper()
+              and _s.get("district")):
+            # THE SEAT THE RECORD PRINTS, WHERE THE MEMBER HAS SINCE MOVED
+            # CHAMBER (9 November 2026): a bill filed as Rep. for Grafton 1 reads
+            # so, linked to the page the member has now as a senator.
+            _lab = member_labels(
+                _s.get("name"),
+                chamber=_s.get("chamber"),
+                party=_s.get("party") or _t.get("party_code"),
+                district=_s.get("district"), county=_s.get("county"))
         else:
             _lab = member_labels(
                 _s.get("name"),
@@ -10842,7 +10763,11 @@ def merge_guessed_topics(bills):
     n = 0
     for term, by_bill in bills.items():
         for bid, rec in by_bill.items():
-            if rec.get("subject"):
+            # A subject the site retires ("Regular Meeting") is no label: the
+            # model's answer for the bill, if there is one, replaces it.
+            if rec.get("subject") and not (
+                    rec["subject"] in TM.RETIRED
+                    and ((guessed.get(term) or {}).get(bid) or {}).get("subject")):
                 rec.setdefault("subject_source", "general court")
                 continue
             got = (guessed.get(term) or {}).get(bid)
@@ -11268,7 +11193,7 @@ def add_related(out, index, path=None):
     bills have some."""
     p = Path(path or "related_bills.json")
     if not p.is_file():
-        print("  related bills: no related_bills.json here; no Related tab on any page")
+        print("  related bills: no related_bills.json here; no related bills on any History tab")
         return 0
     data = json.loads(p.read_text(encoding="utf-8"))
     by_key = {f"{r.get('term')}/{r.get('id')}": r for r in index}
@@ -11293,13 +11218,58 @@ def add_related(out, index, path=None):
     return n_bills
 
 
+def same_number_rows(notes, index):
+    """{(term, bid): [{term, y, id, n, t, c}, ...]}: for a bill number corrections/
+    bill_notes.json gives a standing meaning (HB 1 is the budget), the same
+    number in each OTHER term the note is true of, newest first, each with its
+    year, number, title and outcome chip. Only the terms the note holds for
+    (bill_note's `from` and `until`): the HB 1 of 1989-1990 is another bill that
+    shares the number. Bills the note does not name get nothing."""
+    rows = {}
+    for r in index:
+        n = bill_note(notes, r.get("term"), r.get("id"))
+        if n:
+            rows.setdefault(r.get("id"), []).append(r)
+    out = {}
+    for bid, mine in rows.items():
+        for r in mine:
+            others = sorted((x for x in mine if x["term"] != r["term"]),
+                            key=lambda x: x["term"], reverse=True)
+            if others:
+                out[(r["term"], bid)] = [
+                    {"term": x["term"], "y": x.get("year"), "id": bid, "n": x.get("n") or bid,
+                     "t": x.get("title") or "", "c": x.get("chip") or ""} for x in others]
+    return out
+
+
+def add_same_number(out, index, notes):
+    """Puts each standing-note bill's same-number list into its own JSON, as
+    `same_number`, for the History tab's "HB 1 in other terms". Returns how many
+    bills have one."""
+    by = same_number_rows(notes, index)
+    n_bills = 0
+    for r in index:
+        rows = by.get((r.get("term"), r.get("id")))
+        if not rows:
+            continue
+        f = out / "bills" / str(r.get("year")) / f"{r.get('id')}.json"
+        if not f.is_file():
+            continue
+        rec = json.loads(f.read_text(encoding="utf-8"))
+        rec["same_number"] = rows
+        f.write_text(json.dumps(rec), encoding="utf-8")
+        n_bills += 1
+    print(f"  same number in other terms: {n_bills:,} bills' History tabs")
+    return n_bills
+
+
 def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 bill_texts, amend_texts, testimony, testimony_db, procs, floor, segs,
                 marks, sources, legs, leg_by_sort, leg_by_name,
                 votes_by_bill, vetoes=None, notes=None, coverage=None,
                 chapters=None, seats=None, session_over="", former=None,
                 links=None, hearing_reports=None, ballots=None, term_rosters=None,
-                rc_cards=None, moments=None):
+                rc_cards=None, moments=None, numbers=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -11317,6 +11287,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     """
     unnamed = set()
     sponsored = defaultdict(list)
+    # Each recording's length, from the video indexes the committees' Videos
+    # tabs read (proceedings.video_facts), for a bill's Hearings tab.
+    video_facts = P.video_facts()
 
     index, years = [], set()
     status_pages = load("bill_status.json", {})
@@ -11348,13 +11321,30 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     for _sit, _earlier in (links or {}).items():
         for _old in _earlier:
             _people.setdefault(str(_old), legs.get(_sit) or (former or {}).get(_sit) or {})
+    # AN EMPLOYEE NUMBER IS ITS PERSON (9 November 2026). The bill status page
+    # names a sponsor by the employee number of the seat they then held, and a
+    # member who has since moved chamber holds another: Sen. David Rochefort's
+    # 2025 House bills, filed as Rep. for Grafton 1, name 409162, which the
+    # register (generated/person_numbers.json) gives to the person member_links
+    # already joins to the senator. `numbers` is that register, {employee
+    # number: person}; a number is taken only where its person is one the site
+    # has a page for, and never over an id the site already answers.
+    for _n, _p in (numbers or {}).items():
+        if _people.get(_p):
+            _people.setdefault(_n, _people[_p])
     # And, for a term whose own roster is frozen and not the sitting one
     # (main says which), the members who left by name: bill_sponsor_list
     # says why. Every one of a name, in order, since only the one who sat
     # that term is taken.
     _left = None
     term_rosters = term_rosters or {}
-    if term_rosters:
+    # ... AND THE TERM STILL SITTING (Alice, 9 November 2026): a member who
+    # resigned mid-term holds no seat in the roster either, and the bill
+    # status page names them by an employee number the roster no longer
+    # answers. Rep. Glenn Cordelli's HB 137 read "Carr 07", unlinked, while
+    # his HB 121 (a database row) linked to his page. The same name rule
+    # holds: only someone who sat in that chamber that term is taken.
+    if term_rosters or former:
         _left = (defaultdict(list), defaultdict(list))
         for _m in (former or {}).values():
             _left[0][sort_name(_m.get("name") or "")].append(_m)
@@ -11506,7 +11496,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         sp_list = bill_sponsor_list(bid, b, year, term, current,
                                     sponsors, _people, leg_by_sort,
                                     leg_by_name, sponsored, seats,
-                                    left=_left if term in term_rosters else None,
+                                    left=_left if (term in term_rosters or term == current) else None,
                                     term_roster=term_rosters.get(term))
         prime = next((s for s in sp_list if s.get("prime")), sp_list[0] if sp_list else None)
         years.add(year)
@@ -11679,6 +11669,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         if why and term == current:
             j_current.append(f"{bid}: {why}")
         for s_ in jsteps:
+            law_line_dated(s_)
             s_.pop("short", None)
             # The Law stop has taken its day (law_day); the line keeps its words.
             s_.pop("effective", None)
@@ -11814,6 +11805,12 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         stations += [station_for_floor(f, bid, marks)
                      for f in fold_conference_notices(floor.get((term, bid), []))]
         stations.sort(key=lambda x: (x["when"], x.get("time") or ""))
+        # How long its recording runs, where the video index says: the Hearings
+        # tab's playlist gives it beside each recording, as a committee's does.
+        for _st in stations:
+            _secs = (video_facts.get(_st.get("video_id") or "") or {}).get("seconds")
+            if _secs:
+                _st["seconds"] = int(_secs)
         # EACH FLOOR STATION'S MOMENT, for the session day's card of this bill
         # (`moments`, write_floor_record): the very time this bill's own
         # Hearings tab opens its player at and the vote it ends on, so the two
@@ -12409,12 +12406,11 @@ def main():
     # never on a member id, because there are three id spaces in these files
     # and a sponsor's is not necessarily the roster's. A sponsor who matches
     # nobody keeps a bare name rather than borrowing somebody else's party.
-    leg_by_sort, leg_by_name = {}, {}
-    for _m in legs.values():
-        leg_by_sort.setdefault(sort_name(_m.get("name") or ""), _m)
-        _k = name_key(_m.get("name") or "")
-        if _k:
-            leg_by_name.setdefault(_k, _m)
+    leg_by_sort, leg_by_name, _roster_clash = roster_name_keys(legs.values())
+    for _how, _k, _ms in _roster_clash:
+        print(f"  WARNING: two sitting members share the {_how} {_k!r} "
+              f"({' and '.join(str(x.get('name')) + ' ' + str(x.get('id')) for x in _ms)}); a sponsor named by it alone "
+              "is left unlinked rather than given to the first")
 
     # Members who left mid-term are already named upstream: resolve_members.py
     # writes former_members.json to the project root, build_data.py reads it
@@ -12788,6 +12784,9 @@ def main():
                                former=former, links=links,
                                hearing_reports=hearing_reports,
                                term_rosters=term_rosters,
+                               numbers={str(_n): str(_q.get("person") or "")
+                                        for _q in ((register or {}).get("people") or [])
+                                        for _n in (_q.get("numbers") or [])},
                                session_over=session_over(a.status),
                                coverage=archive_coverage(
                                    bills, narratives, sponsors, reports,
@@ -12796,6 +12795,7 @@ def main():
                                ballots=load_ballots(BALLOTS, bills),
                                rc_cards=rc_cards, moments=floor_moments)
     add_related(out, index)
+    add_same_number(out, index, notes)
     # NO index.json (retired 5 October 2026). It was every row below in one
     # file, read by six build steps and by no page: 23.7 MB on 2 October,
     # 90.5% of the 25 MiB Cloudflare Pages takes in one file, and a term's

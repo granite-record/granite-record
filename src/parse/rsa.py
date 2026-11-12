@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.3
+# GRANITE_VERSION: 2026-10-11.5
 """
 The statutes (RSA): the General Court's table read once, and one reader of
 statute citations for everything that needs them.
@@ -1113,9 +1113,65 @@ class Defined:
                             not any(t.lower() in self.exact[i] or any(c.isupper() for c in t[1:])
                                     for t in written):
                         continue
+                if self._spelled_out(i, p, m.start()) or self._names_another(i, p, m.start(), m.end()):
+                    continue
                 used.add(i)
                 out.setdefault(li, []).append((m.start(), m.end(), i))
         return out, withheld
+
+    # A WORD THE TEXT ALREADY DEFINES AT THAT SPOT (the owner, 11 November
+    # 2026): RSA 228:1, VII's "department of transportation" is the
+    # department 228:1, IV defines as "the department of transportation"; a
+    # box saying so under it says nothing. Only where the definition reads
+    # '"X" means Y', Y the whole of what it says (it
+    # ends at the full stop or semicolon: no "and", "or", "including" or
+    # comma after it, so "the department of health and human services" is not
+    # read as "the department of health"), and the words at the use are Y itself; a bare use
+    # of the term elsewhere is marked, and the next use is marked in its place.
+    MEANS_Y = re.compile(r"\s*(?:(?:the|a|an)\s+)?([A-Za-z][\w' -]*?)\s*(?:$|[.;])", re.I)
+
+    def _meaning(self, i):
+        """Y of '"X" means Y' for definition i, lower case, or ''."""
+        if not hasattr(self, "_ys"):
+            self._ys = {}
+        if i in self._ys:
+            return self._ys[i]
+        d, y = self.defs[i], ""
+        para = paragraphs(self.table.sections[d.addr].text)[d.para]
+        want = {t.lower() for t in d.terms}
+        for st, _en, terms, _inl in defining(para):
+            if want & {t.lower() for t in terms}:
+                qs = [q for q in QUOTED.finditer(para, st) if q.end() <= _en]
+                dm = DEFINES.match(para, qs[-1].end()) if qs else None
+                if dm and re.search(r"\bmeans?\b", dm.group(0), re.I):
+                    ym = self.MEANS_Y.match(para, dm.end())
+                    if ym and len(ym.group(1).split()) <= 8:
+                        y = re.sub(r"\s+", " ", ym.group(1)).lower()
+                break
+        self._ys[i] = y
+        return y
+
+    def _spelled_out(self, i, p, at):
+        y = self._meaning(i)
+        return bool(y) and re.match(re.escape(y).replace(r"\ ", r"\s+") + r"(?![\w-])", p[at:], re.I) is not None
+
+    # ANOTHER ONE OF ITS KIND (11 November 2026): where the definition reads
+    # '"Department" means the department of transportation', the use "the
+    # department of administrative services" names a different department, and
+    # a box saying "Department" means the department of transportation under it
+    # is wrong. A use followed by "of" whose next word is not the meaning's next
+    # word is left unmarked, and the next use is marked in its place. "Board of
+    # fire control" under "the board of fire control and the commissioner" agrees
+    # on its next word and stays marked.
+    OF_NEXT = re.compile(r"\s+of\s+(?:the\s+)?([\w'-]+)", re.I)
+
+    def _names_another(self, i, p, st, en):
+        y, w = self._meaning(i), re.sub(r"\s+", " ", p[st:en]).lower()
+        if not y.startswith(w + " of "):
+            return False
+        use = self.OF_NEXT.match(p, en)
+        mean = self.OF_NEXT.match(" " + y[len(w):])
+        return bool(use and mean) and use.group(1).lower() != mean.group(1).lower()
 
     def report(self, chapters=None):
         """The counts a person checks this by: definition sections read,

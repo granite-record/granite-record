@@ -55,6 +55,9 @@ export async function answer(request, object, headers) {
 // A copy per data centre through the Cache API, for `seconds`: the bucket is
 // read at most once each while readers poll. `make()` builds the answer; a
 // 304 is worked out per request from the copy's ETag.
+// How long the copy keeps a 404, whatever the 404 tells the reader.
+export const NEGATIVE_SECONDS = 10;
+
 export async function cached(request, ctx, seconds, make) {
   const cache = globalThis.caches && globalThis.caches.default;
   // Keyed on the address without its query: ?r=1, ?r=2 ... are one copy, and
@@ -64,8 +67,17 @@ export async function cached(request, ctx, seconds, make) {
   let full = cache ? await cache.match(key) : null;
   if (!full) {
     full = await make();
-    if (cache && full.status === 200) {
-      const copy = full.clone();
+    // A 404 is kept too, but for NEGATIVE_SECONDS only: an off day's poll reads
+    // the bucket once in ten seconds, not on every poll, and a file that
+    // appears (the day's first roll call) is served within those seconds.
+    // Never a 5xx, which is not an answer.
+    if (cache && (full.status === 200 || full.status === 404)) {
+      let copy = full.clone();
+      if (full.status === 404) {
+        const h = new Headers(full.headers);
+        h.set("Cache-Control", `public, max-age=${NEGATIVE_SECONDS}`);
+        copy = new Response("Not found\n", { status: 404, headers: h });
+      }
       const put = cache.put(key, copy);
       if (ctx && ctx.waitUntil) ctx.waitUntil(put); else await put;
     }

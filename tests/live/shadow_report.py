@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.2
+# GRANITE_VERSION: 2026-10-30.3
 """
 What the live Worker saw on one day in shadow, against that day's calendar.
 Offline: it reads files the person downloaded and asks nobody anything.
@@ -45,8 +45,9 @@ import re
 from zoneinfo import ZoneInfo
 
 import live_gen
+import state_settings as ST
 
-NH = ZoneInfo("America/New_York")
+NH = ZoneInfo(ST.TIMEZONE)
 # Words that say what kind of meeting or chamber, not which committee.
 SET_ASIDE = {"committee", "house", "senate", "public", "hearing", "hearings", "executive", "session",
              "work", "full", "subcommittee", "meeting", "remote", "the", "of", "on", "and", "nh", "joint"}

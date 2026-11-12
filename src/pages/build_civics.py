@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.90
+# GRANITE_VERSION: 2026-09-08.93
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1885,7 +1885,7 @@ def guides_tab(lang, published=(), articles=()):
             words += [t["does"], t["head"], t["line"]]
         if g is not None and "title" in g:
             words += [g["title"], g.get("blurb", "")]
-        data.append({"h": href(slug).replace("&amp;", "&"), "t": bare(head), "l": bare(line),
+        data.append({"h": S.canon(href(slug).replace("&amp;", "&")), "t": bare(head), "l": bare(line),
                      "k": bare(" ".join(words))})
     strings = {
         "one": html.unescape(I.say(lang, "guides.find_one", "1 guide matches")),
@@ -2413,7 +2413,7 @@ def guide_page(tmpl, g, base, record, draft_why=""):
     items = otp_items(secs, S.canon(path), step_parts(g))
     otp = ('<details class="l-otp"><summary>On this page</summary>'
            f'<nav class="l-otpb" aria-label="On this page"><ol>{items}</ol></nav></details>')
-    acts = S.cite_block(path, g["title"], base, S.BUILT)
+    acts = S.cite_block(path, g["title"], base, S.cited(last))
     row = '<div class="pageacts" id="pageacts">'
     assert acts.startswith(row), "shell.cite_block no longer opens with the row"
     acts = row + otp + acts[len(row):]
@@ -2726,6 +2726,34 @@ def learn_page_lang(t, lang, base, figures, topics, open_=(), names=None, con=No
                    + f'<div class="l-art">{article}</div></div>{OTP_JS}',
                    desc=html.unescape(re.sub(r"<[^>]+>", "", w.t(t["blurb"], attr=True))),
                    base=base, lang=lang)
+    if "[[" in out:
+        raise SystemExit(f"{I.href(lang, page)} would publish an unfilled figure: "
+                         + out[out.index("[["):out.index("[[") + 40])
+    return out
+
+
+def numbers_page_lang(lang, base, site, english, topics):
+    """The Record in Numbers in `lang`, at i18n.href(lang, its page) (9
+    November 2026): learn_numbers.body's sections in that language, cut as
+    the English page's are and keeping its addresses (lang_sections), under
+    the title the hub's Learn tab gives it. The record's own words in it --
+    a committee's name, a bill's title, a question put to a chamber -- are as
+    the record has them, marked as English (learn_numbers._en)."""
+    import build_pages as BP
+    page = learn_href(NUMBERS_SLUG)
+    secs = lang_sections(english, learn_numbers.body(site, lang=lang), I.href(lang, page))
+    title = I.say(lang, "hub.learn.numbers_title", "The Record in Numbers")
+    lead = I.say(lang, "nums.lead", "Statistics counted from the New Hampshire General Court's own "
+                 "record: how bills end, committees' workloads and passage rates, amendments, "
+                 "hearings, attendance, vetoes, the closest votes and the amendments sent to "
+                 "the voters.")
+    head_ = (f'<header class="l-head"><h1>{E(title)}</h1><p class="l-lead">{curly(lead)}</p>'
+             + lang_note(lang) + lang_otp(secs, page, lang) + "</header>")
+    article = lang_links("".join(section(*s_) for s_ in secs) + pager_lang(None, topics, lang), lang)
+    out = BP.shell(f"{E(title)} | Granite Record", page,
+                   '<div class="l-page">' + lang_hub_bar(lang, "learn") + head_
+                   + f'<div class="l-art">{article}</div></div>{OTP_JS}',
+                   desc=lead, base=base, lang=lang)
     if "[[" in out:
         raise SystemExit(f"{I.href(lang, page)} would publish an unfilled figure: "
                          + out[out.index("[["):out.index("[[") + 40])
@@ -3182,7 +3210,8 @@ def main():
     # learn_numbers.py says what it is. It is NOT in civics.TOPICS: the topics
     # are short explanations that end by naming the next one, and this is a
     # long table of counts, so it has no Previous or Next, only All Topics.
-    nsecs = split_sections(learn_numbers.body(site), "learn/by-the-numbers.html")
+    nbody = learn_numbers.body(site)
+    nsecs = split_sections(nbody, "learn/by-the-numbers.html")
     # A SECTION LEFT OUT IS SAID. learn_numbers leaves out a figure whose input
     # is not on this disk rather than stop every build on it -- the builders'
     # fixture site holds none of them -- and names each one here, so a night
@@ -3197,6 +3226,17 @@ def main():
     page = learn_page(tmpl, slug=NUMBERS_SLUG, title=NUMBERS_TITLE,
                       lead=curly(NUMBERS_DESC), description=NUMBERS_DESC, secs=nsecs,
                       foot=pager(None, topics), base=a.base)
+    # AND IN EACH OTHER LANGUAGE IT IS IN (i18n.PAGES; 9 November 2026): the
+    # figures are the English page's own, worked out again by the same code
+    # (learn_numbers.body's lang), only the words around them in the language.
+    nmissing = list(learn_numbers.MISSING)
+    if write_lang(site, learn_href(NUMBERS_SLUG), lambda lang: numbers_page_lang(
+            lang, a.base, site, nbody, topics)):
+        page = name_versions(learn_href(NUMBERS_SLUG), page)
+        # The language's pages must have left out what the English page did.
+        assert learn_numbers.MISSING == nmissing, (
+            "By the Numbers in another language left out other sections than the English page: "
+            f"{learn_numbers.MISSING} against {nmissing}")
     (out / f"{NUMBERS_SLUG}.html").write_text(S.clean_links(page), encoding="utf-8")
     urls.append(a.base + S.canon("/" + learn_href(NUMBERS_SLUG)))
     print("  learn/by-the-numbers.html: the page of statistics")

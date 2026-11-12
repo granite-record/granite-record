@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.10
+# GRANITE_VERSION: 2026-09-16.11
 """A topic for the 29,449 bills the General Court never gave one -- second model.
 
     python3 src/parse/topic_model.py --apply              # write topics_assigned.json
@@ -1047,12 +1047,17 @@ def apply(space="A", limit_terms=None, cfg=None):
     if limit_terms:
         terms = terms[:limit_terms]
     for term in terms:
-        if term == LABELLED_TERM:
-            continue
+        # THE LABELLED TERM IS ANSWERED TOO, for the bills the General Court
+        # gave no topic -- nine House bills withdrawn early under Rule 39(e)
+        # (no LSR, so no subject code) and 13 housekeeping resolutions of
+        # 2025-2026 -- which the topics column read as missing. It was skipped
+        # whole because it is what the model learns from; answering only the
+        # bills with no label of their own takes nothing from the lesson. And
+        # "Regular Meeting", which the site retires (RETIRED), is no label.
         got = {}
         by_text = texts.get(term, {})
         for bid, rec in bills[term].items():
-            if rec.get("subject"):
+            if rec.get("subject") and rec["subject"] not in RETIRED:
                 continue
             text = by_text.get(bid, "")
             topic, conf, regime, other = answer(model, rec, text, cfg)

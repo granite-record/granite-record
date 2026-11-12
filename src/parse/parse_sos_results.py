@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.4
+# GRANITE_VERSION: 2026-10-17.7
 """
 The Secretary of State's count of one general election's State Representative
 and State Senate races, read into collected/election_<year>.json.
@@ -94,15 +94,16 @@ import hashlib
 import json
 import re
 import unicodedata
-from collections import Counter
+from collections import Counter, defaultdict
+from html.parser import HTMLParser
 
 import build_members_elect as BME
+import state_settings as ST
 
 SOURCES = Path("records") / "sources"
-COUNTIES = ("belknap", "carroll", "cheshire", "coos", "grafton", "hillsborough", "merrimack",
-            "rockingham", "strafford", "sullivan")
+COUNTIES = ST.COUNTIES_LOWER
 
-HOUSE_FILE = re.compile(r"^(\d{4})-ge-house-([a-z]+)(?:_\d+)?\.xlsx?$")
+HOUSE_FILE = re.compile(r"^(\d{4})-ge-house-([a-z]+)(?:_\d+)?\.(?:xlsx?|html)$")
 # THE SENATE, WHOLE OR IN PARTS (5 November 2026). In 2024 the Secretary of
 # State published one file, -district-1-24; in 2026 fifteen, named for the
 # districts each holds: -1 to -9, then -10-11, -12-13, -14-16, -17-18, -19-21
@@ -110,11 +111,18 @@ HOUSE_FILE = re.compile(r"^(\d{4})-ge-house-([a-z]+)(?:_\d+)?\.xlsx?$")
 # part is a recount's later upload of its own name (_N), and together the
 # parts must hold every district once (senate_parts' caller refuses a gap or
 # an overlap; senate_merged refuses a file that holds other than its name).
-SENATE_FILE = re.compile(r"^(\d{4})-ge-state-senate-(?:district-(\d+)-(\d+)|(\d+)(?:-(\d+))?)"
+SENATE_FILE = re.compile(r"^(\d{4})-(?:ge-)?state-senate-(?:district-(\d+)-(\d+)|(\d+)(?:-(\d+))?)"
                          r"(?:_\d+)?\.xlsx?$")
 # The Senate's districts, as the district table holds them (S|1 to S|24):
 # read_all refuses a table that says otherwise, so this cannot drift silently.
 SENATE_DISTRICTS = 24
+# THE 2016-2022 LAYOUT (10 November 2026): the files of these years print a
+# surname for a candidate, "Scatter" for write-ins nobody named, and no day;
+# see LEGACY_META. 2024 and 2026 print full names, undervotes and overvotes.
+LEGACY_UNTIL = 2022
+# The first general election held on the districts of site/districts.json, the
+# only district table on this machine: New Hampshire redistricted for 2022.
+TABLE_SINCE = BME.DISTRICTS_SINCE
 
 # EVERY SPELLING OF A DISTRICT'S HEADER THE 2024 FILES USE (17 October
 # 2026), and no other: "District No. 5 (4)", "District No 17 (2)", "District
@@ -130,7 +138,8 @@ REP_TITLE = re.compile(r"^state representatives?\s*-\s*([a-z]+)\s+county$", re.I
 # A CANDIDATE IS A NAME, A COMMA AND THE PARTY'S LETTERS (17 October 2026):
 # "Mark Proulx,r" has no space, and "Raymond C. Peeples Jr., r" has a comma
 # of its own before it, so the last comma is the one that counts.
-CANDIDATE = re.compile(r"^(?P<name>\S.*?)\s*,\s*(?P<party>[a-z]{1,3}(?:\s*&\s*[a-z]{1,3})*)$", re.I)
+# The 2016-2022 files also write a cross-nomination "d/r" (2018 Strafford).
+CANDIDATE = re.compile(r"^(?P<name>\S.*?)\s*,\s*(?P<party>[a-z]{1,3}(?:\s*[&/]\s*[a-z]{1,3})*)$", re.I)
 # A named write-in: "WRITE-IN   Kathy DesRoches" in 2024, the word first;
 # "Amanda Allen       WRITE-IN" (Hillsborough) and "Desiree McLaughlin
 # WRITE-IN" (Merrimack) in 2026, the word last (5 November 2026). Either way,
@@ -138,6 +147,37 @@ CANDIDATE = re.compile(r"^(?P<name>\S.*?)\s*,\s*(?P<party>[a-z]{1,3}(?:\s*&\s*[a
 WRITE_IN = re.compile(r"^(?:write[- ]?in\s+(?P<name>\S.*)|(?P<after>\S.*?)\s+write[- ]?in)$",
                       re.I)
 META = {"undervotes": "under", "overvotes": "over", "write-ins": "scatter"}
+# THE 2016-2022 FILES (10 November 2026) print the write-ins nobody named as
+# "Scatter", a named write-in as "Tofts w-in" (the surname, as they print every
+# name), and no Undervotes or Overvotes at all.
+LEGACY_META = dict(META, scatter="scatter")
+DASHES = re.compile(r"-[\s-]*")
+# A later header of a district that prints no seats, "District No. 2".
+DISTRICT_BARE = re.compile(r"^district(?:\s+no\b\.?)?\s*(\d+)$", re.I)
+LEGACY_NO_COMMA = re.compile(r"^(?P<name>[^\W\d_].*?)\s+(?P<party>[rdil])$", re.I)
+# A district header the official record misprints, each named by its file and
+# its exact text, read as the header it is, with why (a typo flags, not fails):
+# 2022 Merrimack 30 prints (21) seats for a district that elects one.
+# Rows of counts the official record leaves unnamed, each by its file and row
+# (1-based), read as what the file's other rows say they are: 2022 Rockingham
+# 1's first block names no town, its second names Northwood and Nottingham,
+# and the first block's three rows are those two towns and, the third being
+# their sum, the Totals. The column sums are held to the Totals as always.
+ROW_LABELS = {("2022-ge-house-rockingham_7.xls", 4): "Northwood",
+              ("2022-ge-house-rockingham_7.xls", 5): "Nottingham",
+              ("2022-ge-house-rockingham_7.xls", 6): "Totals"}
+ROW_LABELS_WHY = ("the district's second block names the two towns in the order of the first "
+                  "block's first two rows, and the third row adds them")
+HEADER_TYPOS = {
+    ("2022-ge-house-strafford_0.xls", "Dover Ward 16 (1)"):
+        ("District No. 16 (1)", "it stands between districts 15 and 17 and over Dover Ward 3, "
+         "which the district table gives district 16"),
+    ("2022-ge-house-merrimack_5.xls", "District No. 30 (21) FL"):
+        ("District No. 30 (1) FL", "the district table gives it one seat, and the file's rows "
+         "hold two candidates and a count for one"),
+}
+LEGACY_WRITE_IN = re.compile(r"^(?P<name>\S.*?)\s+\(?w(?:rite)?-?in\)?$", re.I)
+LEGACY_SUFFIX = re.compile(r",\s*(jr|sr|ii|iii|iv)\.?$", re.I)
 TOTALS = "totals"
 URL = re.compile(r"https://\S+")
 
@@ -182,6 +222,8 @@ def cell(v):
 def sheets(path):
     """[(sheet name, [[cell, ...], ...]), ...] of a saved file, by its kind."""
     path = Path(path)
+    if path.suffix.lower() == ".html":
+        return html_sheets(path)
     try:
         if path.suffix.lower() == ".xlsx":
             import openpyxl
@@ -208,6 +250,76 @@ def sheets(path):
                            if x.ctype == xlrd.XL_CELL_DATE else cell(x.value))
             rows.append(row)
         out.append((sh.name, rows))
+    return out
+
+
+class _Tables(HTMLParser):
+    """The rows of every <table> in a results page; a cell is its paragraphs,
+    for a cell may hold two (see html_sheets)."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.tables, self.row, self.cell = [], None, None
+        self.seen_p = self.in_p = False
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "table":
+            self.tables.append([])
+        elif tag == "tr" and self.tables:
+            self.row = []
+        elif tag in ("td", "th") and self.row is not None:
+            self.cell, self.seen_p, self.in_p = [[]], False, False
+        elif tag == "p" and self.cell is not None:
+            # The text before a cell's first paragraph is the page's own spacing.
+            self.cell = [[]] if not self.seen_p else self.cell + [[]]
+            self.seen_p = self.in_p = True
+
+    def handle_data(self, data):
+        if self.cell is not None and (self.in_p or not self.seen_p):
+            self.cell[-1].append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "p":
+            self.in_p = False
+        elif tag in ("td", "th") and self.cell is not None and self.row is not None:
+            self.row.append(["".join(p) for p in self.cell])
+            self.cell = None
+        elif tag == "tr" and self.row is not None:
+            self.tables[-1].append(self.row)
+            self.row = None
+
+
+def html_sheets(path):
+    """[(table n, rows)] of a results PAGE saved as html: the Secretary of
+    State's own page, for a file it publishes no spreadsheet of (2018
+    Strafford, whose spreadsheet and PDF both answer 404). A cell is its
+    text, a non-breaking space or nothing is empty, and "1,297" is 1297.
+
+    A ROW WHOSE CELLS HOLD TWO PARAGRAPHS IS TWO ROWS (2018 Strafford, between
+    its district 18 and 19: "TOTALS" over "District No. 19 (1)FL" in one cell,
+    "2,215" over "Coleman, r" in the next): the page fused a Totals row to the
+    header that follows it, and each paragraph is read as the row it is. The
+    title rows each table after the first repeats are dropped."""
+    parser = _Tables()
+    parser.feed(Path(path).read_text(encoding="utf-8", errors="replace"))
+    out = []
+    for i, table in enumerate(parser.tables, 1):
+        rows = []
+        for r in table:
+            width = max((len(c) for c in r), default=1)
+            for k in range(width):
+                row = []
+                for c in r:
+                    c = cell(c[k].replace("\xa0", " ")) if k < len(c) else None
+                    if isinstance(c, str) and re.fullmatch(r"\d{1,3}(?:,\d{3})+|\d+", c):
+                        c = int(c.replace(",", ""))
+                    row.append(c)
+                rows.append(row)
+        if i > 1:
+            while rows and isinstance(rows[0][0], str) and rows[0][0].startswith(
+                    ("State of New Hampshire", "State Representative")):
+                rows.pop(0)
+        out.append((f"table {i}", rows))
     return out
 
 
@@ -264,7 +376,7 @@ def place_key(s):
 
 # ---- one block: a header row and the rows under it ------------------------
 
-def entities(row, start, where):
+def entities(row, start, where, legacy=False):
     """The columns a header row names: candidates and the three counts that
     are not a candidate's, each with the column of its recount where a
     "RECOUNT" column follows it."""
@@ -272,6 +384,14 @@ def entities(row, start, where):
     for c in range(start, len(row)):
         v = row[c]
         if v is None:
+            continue
+        if legacy and isinstance(v, int) and not isinstance(v, bool) and out and "name" in out[-1]:
+            # A NUMBER WHERE "Scatter" BELONGS (2020 Hillsborough 16): the
+            # record's header prints the write-ins' count in the label's place
+            # and its row leaves the cell blank. Read as the Scatter column
+            # with that count, flagged; only for a block of one town.
+            out.append({"meta": "scatter", "col": c, "recount": None, "header_count": v,
+                        "typo": (str(v), f"the Scatter column, with {v} as its count")})
             continue
         if not isinstance(v, str):
             raise Refused(f"{where}: {v!r} in column {c + 1}, where a candidate's name belongs")
@@ -284,21 +404,57 @@ def entities(row, start, where):
                 raise Refused(f"{where}: a RECOUNT column in column {c + 1} follows no count")
             out[-1]["recount"] = c
             continue
-        if low in META:
-            out.append({"meta": META[low], "col": c, "recount": None})
+        if legacy and low == "blc":
+            # A "BLC" COLUMN AFTER A RECOUNT COLUMN (2018 Belknap 3, 2022
+            # Rockingham 6) is a later count of the same candidate, taken as the
+            # Ballot Law Commission's, and is the one read; Block.apply_blc
+            # decides, from the file's own Totals, whether its cells are whole
+            # counts or changes to the recount's, and flags it (Block.notes).
+            if not out or out[-1]["recount"] != c - 1 or out[-1].get("blc") is not None:
+                raise Refused(f"{where}: a BLC column in column {c + 1} follows no recount")
+            out[-1]["blc"] = c
             continue
-        m = WRITE_IN.match(v)
+        if low in (LEGACY_META if legacy else META):
+            out.append({"meta": (LEGACY_META if legacy else META)[low], "col": c,
+                        "recount": None})
+            continue
+        if legacy and low.isalpha() and len(low) >= 6 and edits(low, "scatter") <= 2:
+            # "Scattrer", "Scattter": a word within two letters of Scatter and
+            # no candidate (a candidate carries a party), flagged.
+            out.append({"meta": "scatter", "col": c, "recount": None,
+                        "typo": (v, "Scatter")})
+            continue
+        m = (LEGACY_WRITE_IN if legacy else WRITE_IN).match(v)
         if m:
-            out.append({"name": (m.group("name") or m.group("after")).strip(), "party": "",
+            name = m.group("name") if legacy else (m.group("name") or m.group("after"))
+            out.append({"name": name.strip(), "party": "",
                         "write_in": True, "col": c, "recount": None})
             continue
         m = CANDIDATE.match(v)
+        flagged = None
+        if not m and legacy:
+            # A comma the record leaves out ("Richardson r", 2020 Carroll): a
+            # surname and one party letter, flagged, read as "Richardson, r".
+            m = LEGACY_NO_COMMA.match(v)
+            flagged = (v, f"{m.group('name')}, {m.group('party')}") if m else None
+            if not m and re.fullmatch(r"[^\W\d_][\w'’.\-]*,?", v):
+                # A surname and no party at all (2018 Grafton 6, "Sanborn"):
+                # a candidate whose party the record leaves out, drawn with none.
+                out.append({"name": v.rstrip(","), "party": "", "write_in": False, "col": c,
+                            "recount": None,
+                            "typo": (v, f"the candidate {v.rstrip(',')!r}, whose party the file "
+                                        "leaves out")})
+                continue
         if not m:
             raise Refused(f"{where}: {v!r} in column {c + 1} is neither a candidate (\"Name, d\") "
                           "nor Undervotes, Overvotes or Write-Ins")
-        party = "/".join(p.strip().lower() for p in m.group("party").split("&"))
-        out.append({"name": m.group("name").strip(), "party": party, "write_in": False,
-                    "col": c, "recount": None})
+        party = "/".join(p.strip().lower() for p in re.split(r"[&/]", m.group("party")))
+        name = m.group("name").strip()
+        if legacy:
+            # "Joseph, Jr., d" is the surname Joseph and a Jr.: no comma in a name.
+            name = LEGACY_SUFFIX.sub(lambda m: " " + m.group(1), name)
+        out.append({"name": name, "party": party, "write_in": False,
+                    "col": c, "recount": None, **({"typo": flagged} if flagged else {})})
     if not any("name" in e for e in out):
         raise Refused(f"{where}: a header row that names no candidate")
     return out
@@ -345,14 +501,28 @@ def column_letter(col):
 class Block:
     """A header row and the rows under it, to the next header."""
 
-    def __init__(self, ents, where, recount_figures=False, source=None):
+    def __init__(self, ents, where, recount_figures=False, source=None, legacy=False):
         self.ents, self.where, self.rows, self.totals = ents, where, [], None
         self.recount_figures = recount_figures
+        # The 2016-2022 layout: "--" and a blank Scatter cell are none, counted in blank_scatter.
+        self.legacy, self.blank_scatter = legacy, 0
+        # A "Recount" row under the block's one town (read_house).
+        self.recount_row = None
+        # {candidate: the Totals row's figure} where a candidate's towns do not
+        # add up to it in the 2016-2022 layout (see read, and district).
+        self.disputed = {}
         # (entity, 0 for the count or 1 for its recount) that a Totals row held.
         self.held = set()
         # (path, sheet name) of the file the block is read from, for its
         # formulas (short_sum); and what reading it flagged, for _notes.
-        self.source, self.notes = source, []
+        self.source = source
+        self.notes = [f"{where}: the header prints {e['typo'][0]!r}, read as {e['typo'][1]}"
+                      for e in ents if e.get("typo")]
+        if any(e.get("blc") is not None for e in ents):
+            self.notes.append(f"{where}: a column headed BLC follows the Recount column; it is "
+                              "taken to be the Ballot Law Commission's count after the recount "
+                              "(the file does not say what BLC stands for), and is the count "
+                              "read here: see the note on how its cells were read")
 
     def short_sum(self, where, col, said, inside_of):
         """A note, or None. THE FILE'S TOTALS FORMULA LEAVES OUT A TOWN (5
@@ -389,8 +559,20 @@ class Block:
         return (f"{where}: the file's Totals cell is {f}, which leaves out "
                 f"{', '.join(str(t) for t in left)}; read as the towns add up")
 
-    def count(self, row, col, meta, where):
+    def count(self, row, col, meta, where, ent=None):
         v = row[col] if col < len(row) else None
+        if self.legacy and v is None and (ent or {}).get("header_count") is not None:
+            v = ent["header_count"]
+        if self.legacy:
+            # "--" (2020 Senate) and "- ---" (2020 Coos) are a place no vote came from.
+            if isinstance(v, str) and DASHES.fullmatch(v):
+                v = 0
+            elif v is None and (ent or {}).get("meta") == "scatter":
+                # Blank is not nought here: a district's other block may
+                # print it (2022 Hillsborough 27), and district() decides.
+                self.blank_scatter += 1
+            elif v is None and (ent or {}).get("write_in"):
+                v = 0
         # "N/A" WHERE A COUNT THAT IS NOT A CANDIDATE'S BELONGS IS NONE
         # PRINTED (5 November 2026): the 2026 Hillsborough file's district 12
         # (Merrimack) prints "N/A" for its scattered write-ins, which is what
@@ -409,6 +591,9 @@ class Block:
         """{town: {entity index: (count, recount)}}, each column held to the
         Totals row the file prints, where it prints one."""
         out = {}
+        if len(self.rows) > 1 and any(e.get("header_count") is not None for e in self.ents):
+            raise Refused(f"{self.where}: a count printed in a header, in a block of "
+                          f"{len(self.rows)} towns: which town's it is is not in the file")
         for town, row, where in self.rows:
             if town is None:
                 # A ROW WITH NO TOWN IS THE DISTRICT'S ONE TOWN (17 October
@@ -423,9 +608,10 @@ class Block:
                 raise Refused(f"{where}: {town} twice in one block")
             # A named write-in's cell may be empty, as a count that is not a
             # candidate's may (blank_ok); it is held to the Totals below.
-            out[town] = {i: (self.count(row, e["col"], blank_ok(e), where),
+            again = self.recount_row[0] if self.recount_row else row
+            out[town] = {i: (self.count(row, e["col"], blank_ok(e), where, e),
                              None if e["recount"] is None
-                             else self.count(row, e["recount"], blank_ok(e), where))
+                             else self.count(again, e["recount"], blank_ok(e), where, e))
                          for i, e in enumerate(self.ents)}
         if not out:
             raise Refused(f"{self.where}: a header with no rows of counts under it")
@@ -433,13 +619,20 @@ class Block:
             if len(out) > 1:
                 raise Refused(f"{self.where}: {len(out)} towns and no Totals row to hold them to")
             self.write_ins_held(out)
+            self.apply_blc(out)
             return out
         row, where = self.totals
         for i, e in enumerate(self.ents):
             for k, col in ((0, e["col"]), (1, e["recount"])):
                 if col is None:
                     continue
-                said = self.count(row, col, blank_ok(e), where)
+                # A Totals row of the 2016-2022 layout leaves the write-ins' total
+                # blank where it adds none up: nothing is said to hold them to.
+                if self.legacy and blank_ok(e) and (col >= len(row) or row[col] is None):
+                    continue
+                kept = self.blank_scatter
+                said = self.count(row, col, blank_ok(e), where, e)
+                self.blank_scatter = kept
                 if said is None:
                     continue
                 # AN EMPTY CELL THE TOTALS ACCOUNT FOR IS NOUGHT (17 October
@@ -452,12 +645,81 @@ class Block:
                     who = f"{e.get('name') or e['meta']}'s {'recount ' if k else ''}column"
                     note = self.short_sum(where, col, said,
                                           lambda t, i=i, k=k: out[t][i][k] if t in out else None)
+                    if note is None and self.legacy and e.get("meta") == "scatter":
+                        # The write-ins nobody named are never drawn and only
+                        # bound the unnamed-write-in check; a total that is
+                        # not their sum is a typo in the record: said, and the
+                        # towns' sum is the count (2022 Rockingham 32).
+                        self.notes.append(f"{where}: the write-ins nobody named add up to "
+                                          f"{got:,} by the towns and the file's Totals say "
+                                          f"{said:,}; the towns' sum is read")
+                        continue
+                    if note is None and self.legacy and e.get("name") and not e.get("write_in"):
+                        # A TOWNS' SUM THAT IS NOT THE PRINTED TOTAL (2018 Coos
+                        # 7, 2016 and after): a typo in the record, which one of
+                        # the two is the count is not in the file. The towns'
+                        # sum is read and flagged, and district() refuses the
+                        # race unless the same people win on the printed total.
+                        if (k == 1) == (e["recount"] is not None):
+                            self.disputed[e["name"]] = said
+                        self.notes.append(f"{where}: {who} adds up to {got:,} by the towns and "
+                                          f"the file's Totals say {said:,}; the towns' sum is "
+                                          "read, and the winners are the same on either figure")
+                        continue
                     if note is None:
                         raise Refused(f"{where}: {who} adds up to {got:,} and the file's Totals "
                                       f"say {said:,}")
                     self.notes.append(f"{note}: {who}, {got:,}, where the Totals say {said:,}")
         self.write_ins_held(out)
+        self.apply_blc(out)
         return out
+
+    def apply_blc(self, out):
+        """Where a candidate's column is followed by a BLC column, the count
+        read is the BLC's. Its cells are whole counts where the file's Totals
+        say so (their sum is the printed total; 2022 Rockingham 6, one town,
+        which prints no Totals: a cell of the size of the recount's) and
+        changes to the recount's where the Totals do (the recount's total
+        plus the cells is the printed total; 2018 Belknap 3, where one place
+        prints -1 and the rest are blank). Anything else is refused."""
+        for i, e in enumerate(self.ents):
+            col = e.get("blc")
+            if col is None:
+                continue
+            cells = {}
+            for town, row, where in self.rows:
+                v = row[col] if col < len(row) else None
+                if isinstance(v, str) and DASHES.fullmatch(v):
+                    v = 0
+                if v is not None and (not isinstance(v, int) or isinstance(v, bool)):
+                    raise Refused(f"{where}: {v!r} in the BLC column, where a count belongs")
+                cells[town if town is not None else self.rows[0][0]] = v
+            recount = {t: out[t][i][1] for t in out}
+            said = None
+            if self.totals is not None:
+                said = self.totals[0][col] if col < len(self.totals[0]) else None
+            full = all(v is not None for v in cells.values())
+            if said is not None:
+                if full and sum(cells.values()) == said:
+                    mode = "whole"
+                elif sum(recount.values()) + sum(v or 0 for v in cells.values()) == said:
+                    mode = "change"
+                else:
+                    raise Refused(f"{self.where}: the BLC column's Totals, {said:,}, are neither "
+                                  "its cells' sum nor the recount's total plus its cells")
+            elif len(out) == 1 and full and list(recount.values())[0] is not None and \
+                    list(cells.values())[0] * 2 >= list(recount.values())[0] > 0:
+                mode = "whole"
+            else:
+                raise Refused(f"{self.where}: a BLC column that no Totals row and no size of "
+                              "count says how to read")
+            for t in out:
+                n = (cells[t] if mode == "whole" else (recount[t] or 0) + (cells[t] or 0))
+                out[t][i] = (out[t][i][0], n)
+            self.notes.append(f"{self.where}: {e['name']}'s BLC cells are read as "
+                              + ("whole counts" if mode == "whole" else
+                                 "changes to the recount's counts, as the file's Totals say")
+                              + ", and the BLC count is the one read")
 
     def write_ins_held(self, out):
         """A NAMED WRITE-IN'S EMPTY CELL IS NOUGHT WHERE THE TOTALS ACCOUNT
@@ -544,8 +806,12 @@ def district(blocks, seats, where):
         scatter = meta.get("scatter") or {}
         for t in nought.get("scatter") or ():
             scatter.setdefault(t, 0)
+        # In the 2016-2022 layout a blank cell in a Scatter column that some
+        # place prints is none, so the sum is the places that print it.
+        flat = any(b.legacy for b in group) and "scatter" in meta
         return (towns, list(cands.values()),
-                sum(scatter.values()) if set(scatter) == set(towns) else None, recounted)
+                sum(scatter.values()) if (set(scatter) == set(towns) or flat) else None,
+                recounted)
 
     towns, cands, scatter, recounted = counts(first)
     if again:
@@ -553,9 +819,24 @@ def district(blocks, seats, where):
         if set(t2) != set(towns) or {c["name"] for c in c2} != {c["name"] for c in cands}:
             raise Refused(f"{again[0].where}: the recount's towns or candidates are not the "
                           "first count's")
-        cands, scatter, recounted = c2, s2, True
-    return {"towns": towns, "candidates": elect(cands, seats, where, scatter),
+        # A recount block that prints no write-ins (a Recount row, 2022) leaves
+        # the first count's.
+        cands, scatter, recounted = c2, (s2 if s2 is not None else scatter), True
+    shown = elect(cands, seats, where, scatter)
+    disputed = {}
+    for b in (again or first):
+        disputed.update(b.disputed)
+    if disputed:
+        # Either figure for a column the file contradicts, and the same people win.
+        alt = elect([dict(c, votes=disputed.get(c["name"], c["votes"])) for c in cands], seats,
+                    where, scatter)
+        if [(c["name"], c["elected"]) for c in shown] != [(c["name"], c["elected"]) for c in alt]:
+            raise Refused(f"{where}: a column adds up differently from the file's Totals "
+                          f"({', '.join(sorted(disputed))}), and the two figures elect different "
+                          "people")
+    return {"towns": towns, "candidates": shown,
             "scatter": scatter, "recounted": recounted,
+            "blank_scatter": sum(b.blank_scatter for b in blocks),
             "notes": [n for b in blocks for n in b.notes]}
 
 
@@ -593,10 +874,42 @@ def blank(row):
     return all(v is None for v in row)
 
 
-def read_house(path, county, election):
+def is_totals(head):
+    """Whether a row's first cell is the Totals label: "TOTALS", or with a
+    word in brackets after it ("TOTALS (tie)", 2016 Cheshire 12)."""
+    return isinstance(head, str) and bool(re.fullmatch(r"totals(?:\s*\(.*\))?", head.lower()))
+
+
+def starless(town):
+    """A town's name without the star the 2016-2022 files put on a place whose
+    count a clerk corrected ("Stratham*"; the footnote says so, footnote())."""
+    return town.rstrip("*").strip() if isinstance(town, str) else town
+
+
+def footnote(block, text, where, width):
+    """A one-cell row beginning with a star is the file's footnote to a
+    starred place: said in the block's notes, and read as nothing else."""
+    if width != 1:
+        raise Refused(f"{where}: {text!r}, a starred row that is not a footnote of one cell")
+    block.notes.append(f"{where}: the file's footnote {text!r} belongs to the place it stars; "
+                       "its figures are those the file prints")
+
+
+def read_house(path, county, election, legacy=False):
     """{district number: (seats, floterial, district record)} from one
-    county's House file."""
+    county's House file. `legacy` is the 2016-2022 layout (LEGACY_META): no
+    day in the file, a surname for a name, "Scatter" for the write-ins."""
     got = sheets(path)
+    if legacy and path.suffix.lower() == ".html":
+        # A results page: its tables are one county's rows, cut in two.
+        got = [("the page's tables", [r for _n, rs in got for r in rs])]
+    spare = []
+    if legacy and len(got) > 1 and path.suffix.lower() != ".html":
+        # A SHEET AFTER THE COUNTY'S (2020 Rockingham's "dist 2") is a
+        # scratch table of one district whose candidates are not those the
+        # county's sheet counts for it: not read, and said.
+        spare = [n for n, _r in got[1:]]
+        got = got[:1]
     if len(got) != 1:
         raise Refused(f"{path.name}: {len(got)} sheets where a county's House file has one")
     name, rows = got[0]
@@ -604,28 +917,81 @@ def read_house(path, county, election):
     def at(i):
         return f"{path.name}, sheet {name!r}, row {i + 1}"
     title = " ".join(str(c) for c in (rows[0] if rows else []) if c)
-    if str(election.year) not in title or "general election" not in title.lower():
+    # The 2016 files print no year in the title: the file's name says it then.
+    years = re.findall(r"\b(?:19|20)\d\d\b", title)
+    if "general election" not in title.lower() or (
+            years != [str(election.year)] if (years or not legacy) else False):
         raise Refused(f"{at(0)}: {title!r} is not the title of the {election.year} general "
                       "election")
-    m = REP_TITLE.match(str((rows[1] if len(rows) > 1 else [None])[0] or ""))
+    # The 2016-2022 files sometimes shift the title one column right.
+    second = next((c for c in (rows[1] if len(rows) > 1 else [])[:2 if legacy else 1] if c), "")
+    m = REP_TITLE.match(str(second))
     if not m or m.group(1).lower() != county:
         raise Refused(f"{at(1)}: {rows[1][:1] if len(rows) > 1 else []!r} is not \"State "
                       f"Representatives - {county.upper()} County\"")
-    day = as_day((rows[2] if len(rows) > 2 else [None])[0])
-    if day != election:
-        raise Refused(f"{at(2)}: the file's day is {day}, not the election of {election}")
+    if not legacy:
+        day = as_day((rows[2] if len(rows) > 2 else [None])[0])
+        if day != election:
+            raise Refused(f"{at(2)}: the file's day is {day}, not the election of {election}")
     found, cur = {}, None
-    for i in range(3, len(rows)):
+    for i in range(2 if legacy else 3, len(rows)):
         row = rows[i]
         while row and row[-1] is None:
             row = row[:-1]
         if blank(row):
             continue
         head = row[0]
+        typo = HEADER_TYPOS.get((path.name, head)) if isinstance(head, str) else None
+        if not typo and legacy and isinstance(head, str) and not DISTRICT.match(head):
+            # "Distict No. 3 (2)": the first word one letter off "District".
+            first = re.match(r"[A-Za-z]+", head)
+            if first and first.group().lower() != "district" and \
+                    edits(first.group().lower(), "district") == 1:
+                fixed = "District" + head[first.end():]
+                if DISTRICT.match(fixed):
+                    typo = (fixed, "the first word is one letter off District")
+        if not typo and legacy and isinstance(head, str):
+            # "Dover Ward 15 (1)" for "District No. 15 (1)" (2020 Strafford):
+            # a ward's name where the district's belongs, with seats after it.
+            ward = re.match(r"^[A-Za-z ]+ Ward (\d+)\s*(\(\d+\)\s*(?:FL|F)?)$", head)
+            if ward:
+                typo = (f"District No. {ward.group(1)} {ward.group(2)}",
+                        "a ward's name stands where District No. belongs, before the seats")
+        if typo:
+            head = typo[0]
+        label = ROW_LABELS.get((path.name, i + 1)) if head is None and cur is not None else None
+        if label:
+            head = label
+            cur[2][-1].notes.append(f"{at(i)}: the row names no town; it is read as {label!r}, "
+                                    f"which the file's own rows say: {ROW_LABELS_WHY}")
+        bare = DISTRICT_BARE.match(head) if legacy and isinstance(head, str) else None
+        if bare:
+            # A DISTRICT'S LATER HEADER WITH NO SEATS (2020: "District No. 2"
+            # again under "District No. 2 (4)"): the same district's next
+            # block of candidates, as a header with no label is. Alone in its
+            # row, it only titles the names row that follows. A first header
+            # that prints no seats cannot be settled without a table of the
+            # districts, which is the one thing these years lack: refused.
+            n = int(bare.group(1))
+            if n not in found:
+                raise Refused(f"{at(i)}: {head!r}, the first header of the district, prints no "
+                              "seats, and no table of the districts of this year says how many")
+            cur = found[n]
+            if len(row) == 1:
+                continue
+            head = None
         m = DISTRICT.match(head) if isinstance(head, str) else None
         if m:
             n, seats = int(m.group(1)), int(m.group(2))
             flo, again = bool(m.group(3)), bool(m.group(4))
+            # THE FULL HEADER AGAIN (2016, 2018): a district too wide for one
+            # row prints its header again, with the same seats, over the next
+            # candidates. It is the district's next block, not a second district.
+            if legacy and not again and n in found and (seats, flo) == found[n][:2]:
+                cur = found[n]
+                cur[2].append(Block(entities(row, 1, at(i), legacy), at(i), source=(path, name),
+                                    legacy=legacy))
+                continue
             if again != (n in found):
                 raise Refused(f"{at(i)}: district {n} " + ("recounted before it is counted"
                                                            if again else "twice"))
@@ -635,43 +1001,96 @@ def read_house(path, county, election):
                 raise Refused(f"{at(i)}: the recount's seats or floterial mark are not the "
                               "first count's")
             cur = found[n]
-            cur[2].append(Block(entities(row, 1, at(i)), at(i), recount_figures=again,
-                                source=(path, name)))
+            cur[2].append(Block(entities(row, 1, at(i), legacy), at(i), recount_figures=again,
+                                source=(path, name), legacy=legacy))
+            if typo:
+                cur[2][-1].notes.append(f"{at(i)}: the header prints {row[0]!r}, read as "
+                                        f"{typo[0]!r}: {typo[1]}")
             continue
         if cur is None:
             raise Refused(f"{at(i)}: {row!r} before any district's header")
-        if head is None and any(isinstance(v, str) for v in row[1:]):
+        # In the 2016-2022 layout the second header may carry a town's name in
+        # its first cell (2022 Rockingham 16, Londonderry): a row of names, not
+        # of counts, whatever its first cell says.
+        if (head is None or (legacy and isinstance(head, str) and not is_totals(head))) \
+                and any(isinstance(v, str) and not DASHES.fullmatch(v) for v in row[1:]):
             # THE COUNTS THAT ARE NOT A CANDIDATE'S KEEP THEIR COLUMNS (17
             # October 2026) under a second header that does not name them
             # again: in 2024 Rockingham 17's Windham prints its undervotes,
             # overvotes and write-ins on the row under the second header, in
             # the columns the first header named.
-            ents = entities(row, 1, at(i))
+            ents = entities(row, 1, at(i), legacy)
             taken = {c for e in ents for c in (e["col"], e["recount"]) if c is not None}
             named = {e["meta"] for e in ents if "meta" in e}
             ents += [dict(e) for e in cur[2][0].ents if "meta" in e and e["meta"] not in named
                      and not {e["col"], e["recount"]} & taken]
             cur[2].append(Block(ents, at(i), recount_figures=cur[2][-1].recount_figures,
-                                source=(path, name)))
+                                source=(path, name), legacy=legacy))
             continue
-        if isinstance(head, str) and head.lower() == TOTALS:
+        if legacy and isinstance(head, str) and head.lower() in ("recount",
+                                                                  "court ordered recount"):
+            # A ROW LABELLED "Recount" UNDER A BLOCK OF ONE TOWN (2022 Coos 5,
+            # Hillsborough 29) holds that town's recounted figures, in the
+            # columns of the candidates above it. Under more towns it would
+            # be a guess which they are, and is refused.
+            # A "Court ordered recount" row after a Recount row (2022 Hillsborough
+            # 16) is the later count, and is read; the earlier is said.
+            blk = cur[2][-1]
+            court = head.lower().startswith("court")
+            if len(blk.rows) != 1 or blk.totals is not None or (
+                    blk.recount_row is not None and not court):
+                raise Refused(f"{at(i)}: a Recount row under {len(blk.rows)} towns, or a "
+                              "second one, or after Totals")
+            if blk.recount_row is not None:
+                blk.notes.append(f"{at(i)}: a court-ordered recount, which is read in place of "
+                                 f"the recount at {blk.recount_row[1]}")
+            blk.recount_row = (row, at(i))
+            for e in blk.ents:
+                if "name" in e:
+                    e["recount"] = e["col"]
+            continue
+        if isinstance(head, str) and is_totals(head):
             if cur[2][-1].totals is not None:
                 raise Refused(f"{at(i)}: a second Totals row under one header")
             cur[2][-1].totals = (row, at(i))
             continue
+        if legacy and isinstance(head, str) and head.startswith("*"):
+            footnote(cur[2][-1], head, at(i), len(row))
+            continue
+        if legacy and head is None:
+            # A STRAY COUNT WITH NO TOWN, in no candidate's column (2020
+            # Strafford 23: a lone 6 below the Totals; 2016 Rockingham 12: a
+            # lone 4 under the one town): said, and not read. A candidate's
+            # column is never passed over; and where there are Totals they
+            # hold the district's columns to its towns.
+            cand_cols = {e["col"] for e in cur[2][-1].ents if "name" in e}
+            cand_cols |= {e["recount"] for e in cur[2][-1].ents if e.get("recount") is not None}
+            if all(v is None or c not in cand_cols for c, v in enumerate(row)):
+                cur[2][-1].notes.append(f"{at(i)}: a count with no town, in no candidate's "
+                                        f"column ({[v for v in row if v is not None]}); "
+                                        "not read")
+                continue
         if head is not None and not isinstance(head, str):
             raise Refused(f"{at(i)}: {head!r} where a town's name belongs")
         if cur[2][-1].totals is not None:
             raise Refused(f"{at(i)}: a row of counts after the Totals")
-        cur[2][-1].rows.append((head, row, at(i)))
+        cur[2][-1].rows.append((starless(head) if legacy else head, row, at(i)))
     if not found:
         raise Refused(f"{path.name}: no district in it")
+    if spare:
+        first = found[min(found)][2][0]
+        first.notes.append(f"{path.name}: the sheet(s) {', '.join(map(repr, spare))} after the "
+                           "county's are not read: a scratch table whose candidates are not those "
+                           "the county's sheet counts for the district")
     return {n: (seats, flo, district(blocks, seats, where))
             for n, (seats, flo, blocks, where) in found.items()}
 
 
-def read_senate(path, election):
-    """{district number: district record} from the Senate file."""
+def read_senate(path, election, legacy=False):
+    """{district number: district record} from the Senate file. `legacy` is
+    the 2018-2022 layout: the district's title may share its row with the
+    election's day (2018), or the header row may begin with the day (2020,
+    2022) or with nothing; the counts are read as LEGACY_META says."""
     found, cur = {}, None
     for name, rows in sheets(path):
         cur = None
@@ -682,35 +1101,66 @@ def read_senate(path, election):
             if blank(row):
                 continue
             head = row[0]
-            m = SENATE.match(head) if isinstance(head, str) else None
+            m, titled_day = None, []
+            if legacy:
+                for c in row:
+                    if isinstance(c, str) and SENATE.match(c):
+                        m = SENATE.match(c)
+                        titled_day = [d for d in row if isinstance(d, datetime.date)]
+                        break
+            elif isinstance(head, str):
+                m = SENATE.match(head)
             if m:
                 n = int(m.group(1))
                 if n in found:
                     raise Refused(f"{where}: Senate district {n} twice")
+                if titled_day and titled_day[0] != election:
+                    raise Refused(f"{where}: the title's day is {titled_day[0]}, not the "
+                                  f"election of {election}")
                 cur = found[n] = {"n": n, "where": where, "blocks": []}
                 continue
-            if isinstance(head, str) and "general election" in head.lower() and len(row) == 1:
+            if isinstance(head, str) and len(row) == 1 and (
+                    "general election" in head.lower()
+                    or (legacy and head.lower() == "state of new hampshire")):
+                continue
+            if legacy and len(row) == 2 and row[0] is None and row[1] == "State of New Hampshire":
                 continue
             if cur is None:
                 raise Refused(f"{where}: {row!r} before any district's title")
             if not cur["blocks"]:
-                day = as_day(head)
-                if day != election:
-                    raise Refused(f"{where}: the header's day is {head!r}, not the election of "
-                                  f"{election}")
-                cur["blocks"].append(Block(entities(row, 1, where), where, source=(path, name)))
+                # A later district's header row begins with nothing in the
+                # 2020 and 2022 layouts: the day was read at the first.
+                said = None
+                if not (legacy and (head is None or head == election)):
+                    day = as_day(head)
+                    # A day mistyped in the record ("11/63/20", 2020 Senate 22): its
+                    # month and year are the election's, its day is no day; said.
+                    if day is None and legacy and isinstance(head, str) and re.fullmatch(
+                            r"11/\d\d/" + str(election.year)[2:], head):
+                        said = (f"{where}: the header's day is printed {head!r}, which is no "
+                                f"day; its month and year are the election's, {election}")
+                    elif day != election:
+                        raise Refused(f"{where}: the header's day is {head!r}, not the election "
+                                      f"of {election}")
+                cur["blocks"].append(Block(entities(row, 1, where, legacy), where,
+                                           source=(path, name), legacy=legacy))
+                if said:
+                    cur["blocks"][-1].notes.append(said)
                 continue
             b = cur["blocks"][-1]
-            if isinstance(head, str) and head.lower() == TOTALS:
+            if isinstance(head, str) and is_totals(head):
                 if b.totals is not None:
                     raise Refused(f"{where}: a second Totals row")
                 b.totals = (row, where)
+                continue
+            if legacy and isinstance(head, str) and head.startswith("*"):
+                footnote(b, head, where, len(row))
                 continue
             if not isinstance(head, str):
                 raise Refused(f"{where}: {head!r} where a town's name belongs")
             if b.totals is not None:
                 raise Refused(f"{where}: a row of counts after the Totals")
-            b.rows.append((head, row, where))
+            b.rows.append((starless(head) if legacy else head, row, where))
     if not found:
         raise Refused(f"{path.name}: no Senate district in it")
     for n, d in found.items():
@@ -806,13 +1256,17 @@ def senate_merged(read):
     return out
 
 
-def source_files(root, year):
+def source_files(root, year, partial=False):
     """{"house": {county: path}, "senate": [paths, by district], "replaced":
-    [(earlier, later), ...]}: the year's saved files, each county's latest
-    once and each Senate part's latest once."""
+    [(earlier, later), ...], "missing": [county, ...], "senate_missing":
+    bool}: the year's saved files, each county's latest once and each Senate
+    part's latest once. A county or the whole Senate with no file is refused,
+    unless `partial` (2016, whose Strafford House file and State Senate files
+    the Secretary of State's site no longer serves): then it is returned, to
+    be said in the results file's notes, and filled from nowhere."""
     d = Path(root) / SOURCES
     house, senate, replaced = {}, [], []
-    for p in sorted(d.glob(f"{year}-ge-*")) if d.is_dir() else []:
+    for p in sorted(d.glob(f"{year}-*")) if d.is_dir() else []:
         m = HOUSE_FILE.match(p.name)
         if m and m.group(1) == str(year):
             if m.group(2) not in COUNTIES:
@@ -821,10 +1275,10 @@ def source_files(root, year):
         elif SENATE_FILE.match(p.name):
             senate.append(p)
     missing = [c for c in COUNTIES if c not in house]
-    if missing:
+    if missing and not partial:
         raise Refused(f"no {year} House results saved in {d.as_posix()}/ for "
                       + ", ".join(missing))
-    if not senate:
+    if not senate and not partial:
         raise Refused(f"no {year} State Senate file in {d.as_posix()}/")
     parts = senate_parts(senate)
     beyond = [p[-1].name for s, p in parts.items() if s[0] < 1 or s[0] > s[1]
@@ -839,37 +1293,63 @@ def source_files(root, year):
                       + "; ".join(p.name for s in spans for p in parts[s][-1:])
                       + " -- so which to read is not in their names; keep one way of saving the "
                       "Senate, whole or in parts")
-    if gaps:
+    if gaps and senate:
         raise Refused(f"no saved {year} State Senate file holds district(s) "
                       + ", ".join(map(str, gaps)))
-    return {"house": {c: latest(ps, f"{c}'s House results", replaced) for c, ps in house.items()},
+    return {"missing": missing, "senate_missing": not senate, "house": {c: latest(ps, f"{c}'s House results", replaced) for c, ps in house.items()},
             "senate": [latest(ps, f"the State Senate results for {span_words(s)}", replaced)
                        for s, ps in parts.items()],
             "replaced": replaced}
 
 
-def described(p, root, saved=None, url=None):
+def described(p, root, saved=None, url=None, registry=None):
     """A _source entry: the file, as a path from the project's root, the
     address of the Secretary of State's results page it was saved from
     (--url; None where not given), its sha256, and the day it was saved --
     its modification day, unless stated."""
     data = p.read_bytes()
     day = saved or datetime.date.fromtimestamp(p.stat().st_mtime).isoformat()
-    return {"file": p.relative_to(root).as_posix(), "url": url, "saved": day,
-            "sha256": hashlib.sha256(data).hexdigest()}
+    out = {"file": p.relative_to(root).as_posix(), "url": url, "saved": day,
+           "sha256": hashlib.sha256(data).hexdigest()}
+    # THE REGISTRY OF DOWNLOADS (10 November 2026) names each file's address,
+    # the results page it was on and the day it was saved, and its sha256 is
+    # held to the file's: a file that is not the one registered is refused.
+    if registry is not None:
+        entry = registry.get(out["file"])
+        if entry is None:
+            raise Refused(f"{out['file']} is in no entry of the registry of downloads")
+        if entry.get("sha256") != out["sha256"]:
+            raise Refused(f"{out['file']} is not the file the registry of downloads names: its "
+                          f"sha256 is {out['sha256']}, the registry's {entry.get('sha256')}")
+        out.update(url=entry.get("page"), saved=entry.get("saved") or day,
+                   file_url=entry.get("url"))
+    return out
 
 
 # ---- the whole election -------------------------------------------------------
 
-def read_all(root, year, districts, saved=None, url=None):
+def read_all(root, year, districts, saved=None, url=None, partial=False, registry=None):
     """The results document for `year`, from the saved files under `root`
     and the district table `districts` (site/districts.json's contents),
     each file's _source naming `url`, the results page it was saved from.
-    Refused on anything it does not recognise."""
+    Refused on anything it does not recognise.
+
+    `districts` None is a year whose districts are not the table's: New
+    Hampshire redistricted for 2022, and the table on this machine is the
+    2022 one, so 2016, 2018 and 2020 (the 2012 districts) are held to none --
+    the 2012 table is on no disk here, and one is not made up. Each race is
+    then what its file lists, its towns as the file spells them, its seats
+    from its header and its floterial from its towns, and the file says so
+    in its notes. `partial` lets a county or the Senate have no file, said in
+    the notes. `registry` is the list of where each file came from
+    (reports/sos-downloads-*.json), which gives each _source its address and
+    day and is held to the file's sha256."""
     root = Path(root).resolve()
     election = BME.general_election(year)
-    files = source_files(root, year)
-    on_file, clash = BME.races_on_file(districts)
+    legacy = year <= LEGACY_UNTIL
+    files = source_files(root, year, partial)
+    held = districts is not None
+    on_file, clash = BME.races_on_file(districts) if held else ({}, [])
     if clash:
         raise Refused("the district table names districts that are no race: "
                       + "; ".join(clash[:4]))
@@ -880,11 +1360,36 @@ def read_all(root, year, districts, saved=None, url=None):
             if places.setdefault(k, t) != t:
                 raise Refused(f"the district table names {places[k]!r} and {t!r}, which read as "
                               "one place")
-    races = {}
+    races, blanks, noscatter = {}, Counter(), defaultdict(list)
     notes = [f"{new.name} is read, and replaces {old.name}: the Secretary of State's later upload "
              "of the same results, as after a recount" for old, new in files["replaced"]]
+    if not held:
+        notes.append(f"The districts of {year} are the 2012 districts, and no table of them is on "
+                     "this machine, so no race here is held to a district table: each is what its "
+                     "file lists, its towns as the file spells them, its seats from its header, "
+                     "and whether it floats from its towns.")
+    if files["missing"]:
+        notes.append("Not on file: " + ", ".join(c.title() for c in files["missing"])
+                     + " County's State Representative results (the Secretary of State's site no "
+                     "longer serves the file), so the races of "
+                     + ("that county are" if len(files["missing"]) == 1 else "those counties are")
+                     + " not here and are filled from no other source.")
+    if files["senate_missing"]:
+        notes.append("Not on file: the State Senate results (the Secretary of State's site no "
+                     "longer serves the files), so no State Senate race is here and none is filled "
+                     "from another source.")
 
     def settle(key, rec, seats, flo, where):
+        blanks[where.split(",")[0]] += rec.get("blank_scatter") or 0
+        if not held:
+            races[key] = {"seats": seats, "floterial": False, "towns": sorted(rec["towns"]),
+                          "candidates": rec["candidates"], "scatter": rec["scatter"]}
+            if rec["recounted"]:
+                races[key]["recounted"] = True
+            if legacy and key.startswith("H|"):
+                races[key]["surnames"] = True
+            notes.extend(rec.get("notes") or [])
+            return
         if key not in on_file:
             raise Refused(f"{where}: {key} is no district in the district table")
         t = on_file[key]
@@ -918,17 +1423,24 @@ def read_all(root, year, districts, saved=None, url=None):
                 "candidates": rec["candidates"], "scatter": rec["scatter"]}
         if rec["recounted"]:
             race["recounted"] = True
+        # The House files of 2016-2022 print a surname for each candidate: the
+        # race says so, and members_elect matches them by the seat held.
+        if legacy and key.startswith("H|"):
+            race["surnames"] = True
         # WHERE THE FILE COUNTS NO SCATTERED WRITE-INS, THAT IS SAID (17
         # October 2026): elect() could not hold them to the last seat, and
         # silence is not success. In 2024, Hillsborough 12's one town prints
         # none.
         if rec["scatter"] is None:
-            notes.append(f"{where}: the file counts no scattered write-ins for every place, so "
-                         "whether a write-in it does not name won could not be checked")
+            if legacy:
+                noscatter[where.split(",")[0]].append(key)
+            else:
+                notes.append(f"{where}: the file counts no scattered write-ins for every place, "
+                             "so whether a write-in it does not name won could not be checked")
         races[key] = race
 
     for county, path in files["house"].items():
-        got = read_house(path, county, election)
+        got = read_house(path, county, election, legacy)
         for n, (seats, flo, rec) in got.items():
             settle(f"H|{county.title()}|{n}", rec, seats, flo, f"{path.name}, district {n}")
         # WHICH DISTRICTS FLOAT IS READ FROM THE FILE'S OWN TOWNS, and held to
@@ -947,20 +1459,23 @@ def read_all(root, year, districts, saved=None, url=None):
             key, where = f"H|{county.title()}|{n}", f"{path.name}, district {n}"
             inside = [towns[m] for m in towns if m != n and towns[m] <= towns[n]]
             floats = bool(inside) and set().union(*inside) == towns[n]
-            if floats != races[key]["floterial"]:
+            if not held:
+                races[key]["floterial"] = floats
+            elif floats != races[key]["floterial"]:
                 raise Refused(f"{where}: its towns make it " + ("a floterial" if floats else
                                                                 "a base district")
                               + "; the district table says otherwise")
             if flo != floats:
                 notes.append(f"{where}: the file " + ("marks it floterial" if flo else
                                                       "does not mark it floterial")
-                             + "; by its towns, and in the district table, it is "
+                             + ("; by its towns it is " if not held else
+                                "; by its towns, and in the district table, it is ")
                              + ("floterial" if floats else "a base district"))
     table_senate = sorted(int(k[2:]) for k in on_file if k.startswith("S|"))
-    if table_senate != list(range(1, SENATE_DISTRICTS + 1)):
+    if held and table_senate != list(range(1, SENATE_DISTRICTS + 1)):
         raise Refused(f"the district table names Senate districts {table_senate[:3]} ... "
                       f"{table_senate[-3:]}, not 1 to {SENATE_DISTRICTS}: SENATE_DISTRICTS is code")
-    read = [(p.name, read_senate(p, election)) for p in files["senate"]]
+    read = [(p.name, read_senate(p, election, legacy)) for p in files["senate"]]
     came = {d: name for name, got in read for d in got}
     for n, rec in senate_merged(read).items():
         settle(f"S|{n}", rec, 1, False, f"{came[n]}, district {n}")
@@ -968,12 +1483,22 @@ def read_all(root, year, districts, saved=None, url=None):
     if missing:
         raise Refused("the district table names races no file holds: " + ", ".join(missing[:8])
                       + (" ..." if len(missing) > 8 else ""))
-    sources = [described(p, root, saved, url) for p in
-               [*(files["house"][c] for c in COUNTIES), *files["senate"]]]
+    for name, keys in sorted(noscatter.items()):
+        notes.append(f"{name}: no scattered write-ins are counted in {len(keys)} race(s) "
+                     f"({', '.join(keys[:6])}{' ...' if len(keys) > 6 else ''}), so whether a "
+                     "write-in it does not name won could not be checked there")
+    for name, n in sorted(blanks.items()):
+        if n:
+            notes.append(f"{name}: {n} blank cell(s) in a Scatter column, which this layout "
+                         "leaves blank for none, read as none")
+    sources = [described(p, root, saved, url, registry) for p in
+               [*(files["house"][c] for c in COUNTIES if c in files["house"]), *files["senate"]]]
     doc = {"_about": [
                 "What the Secretary of State's results files say of the State Representative and "
                 "State Senate races, read by src/parse/parse_sos_results.py from the files named "
-                "in _source and held to the district table. Nothing in it is this project's "
+                "in _source and held to the district table"
+                + (" (none, for the districts of 2012: see _notes)" if not held else "")
+                + ". Nothing in it is this project's "
                 "decision but the winners, which the files do not mark: the candidates with the "
                 "most votes, as many as the race has seats; a tie for the last seat is null.",
                 "Write the file again by running the reader, never by hand: --check says where "
@@ -983,6 +1508,11 @@ def read_all(root, year, districts, saved=None, url=None):
             "races": {k: races[k] for k in sorted(races, key=BME.race_order)}}
     if notes:
         doc["_notes"] = notes
+    if files["missing"] or files["senate_missing"]:
+        # What the Secretary of State's site no longer serves, said where the
+        # pages can say it: the counties with no House file, and the Senate.
+        doc["_not_on_file"] = {"counties": [c.title() for c in files["missing"]],
+                               "senate": bool(files["senate_missing"])}
     return doc
 
 
@@ -995,6 +1525,8 @@ def dumps(doc):
     if doc.get("_notes"):
         out.append(' "_notes": ' + json.dumps(doc["_notes"], ensure_ascii=False, indent=2)
                    .replace("\n", "\n ") + ",")
+    if doc.get("_not_on_file"):
+        out.append(' "_not_on_file": ' + json.dumps(doc["_not_on_file"], ensure_ascii=False) + ",")
     out.append(' "_source": [')
     out.append(",\n".join("  " + json.dumps(s, ensure_ascii=False) for s in doc["_source"]))
     out.append(" ],")
@@ -1025,7 +1557,7 @@ def differences(now, committed):
         return d
     a, b = plain(now), plain(committed)
     out = []
-    for k in ("_notes", "_source", "election", "term"):
+    for k in ("_notes", "_not_on_file", "_source", "election", "term"):
         if a.get(k) != b.get(k):
             out.append(f"{k}: the files say {json.dumps(a.get(k))[:200]}, the committed file "
                        f"{json.dumps(b.get(k))[:200]}")
@@ -1072,6 +1604,13 @@ def main():
                                                   "default each file's modification day")
     ap.add_argument("--check", action="store_true", help="compare with the committed file; "
                                                          "write nothing")
+    ap.add_argument("--registry", default=None,
+                    help="the registry of downloads (JSON: file, url, page, saved, sha256 of "
+                         "each), which gives each _source its page and day and holds it to the "
+                         "file's sha256")
+    ap.add_argument("--partial", action="store_true",
+                    help="a county or the whole Senate may have no file; say so in the notes "
+                         "(2016)")
     # THE RESULTS PAGE'S ADDRESS (23 October 2026). README promises that
     # /members_elect.json carries "the address of the Secretary of State's
     # results it was read from", and the Officials tab links "the Secretary of
@@ -1089,11 +1628,19 @@ def main():
         if a.url is not None and not URL.fullmatch(a.url):
             raise Refused(f"--url {a.url!r} is not an https address")
         try:
-            districts = json.loads(Path(a.districts).read_text(encoding="utf-8"))
+            districts = (json.loads(Path(a.districts).read_text(encoding="utf-8"))
+                         if a.year >= TABLE_SINCE else None)
         except (OSError, ValueError) as e:
             raise Refused(f"the district table ({a.districts}) will not read, and every race is "
                           f"held to it: {e}")
-        doc = read_all(".", a.year, districts, a.saved, a.url)
+        registry = None
+        if a.registry:
+            try:
+                registry = {e["file"]: e for e in json.loads(Path(a.registry).read_text(
+                    encoding="utf-8"))}
+            except (OSError, ValueError, KeyError, TypeError) as e:
+                raise Refused(f"the registry of downloads ({a.registry}) will not read: {e}")
+        doc = read_all(".", a.year, districts, a.saved, a.url, a.partial, registry)
     except Refused as e:
         print(f"REFUSED: {e}", file=sys.stderr)
         return 1
@@ -1119,7 +1666,7 @@ def main():
     print(f"wrote {out.as_posix()}: " + summary(doc))
     print("  The files mark no winner: each race's winners are its top counts, as many as its "
           "seats.")
-    if not a.url:
+    if not a.url and not a.registry:
         # Silence is not success: a file with no address is a page that
         # cites the count and cannot link it.
         print("  NO --url: no _source names the results page, so members_elect.json will name "

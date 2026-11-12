@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.272
+# GRANITE_VERSION: 2026-09-04.282
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -41,6 +41,7 @@ import shell as _shell
 from i18n import say
 from components import WORDBOOK, chip, clock, date_span, icon, pchip, until_attrs
 import components as _components
+from htmlesc import esc_blank
 # A committee's recommendation in the committee page's words (REC_WORDS), for
 # Latest Activity.
 import committee_acts as CA
@@ -271,7 +272,7 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
 # one because it has been published and indexed.
 BILL_TAB_SLUGS = ("text", "votes", "hearings", "videos", "reports",
                   "sponsors", "documents", "related")
-MEMBER_TAB_SLUGS = ("cosponsored", "votes")
+MEMBER_TAB_SLUGS = ("cosponsored", "votes", "elections")
 # A committee's Videos tab (26 October 2026); its rule serves a study or
 # statutory committee's /committee/ss<id>/videos too, which opens that page
 # on its Videos tab, and /committee/ss<id>/sessions on its Meetings tab.
@@ -318,7 +319,10 @@ MOVED =(("/learn", "/resources"), ("/learn.html", "/resources"),
          # Sen. John Barnes Jr.'s page, named from "Barnes, Jr., John" as
          # "Jr. Barnes John" until build_site_v2.person_name put the suffix
          # last (12 October 2026).
-         ("/legislator/jr-barnes-john-sd-17", "/legislator/john-barnes-jr-sd-17"))
+         # In both spellings: the .html one answered 404 (Search Console, 7
+         # November 2026), which every other mover here already covers.
+         *((f"/legislator/jr-barnes-john-sd-17{x}", "/legislator/john-barnes-jr-sd-17")
+           for x in ("", ".html")))
 def moved_members(site):
     """The 301s from the page of a member's earlier chamber to the one page
     they have now (build_site_v2.former_movers, 30 October 2026): Shannon
@@ -327,8 +331,13 @@ def moved_members(site):
     which addresses each took in; in both spellings, as MOVED's are."""
     try:
         rows = json.loads((Path(site) / "former.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return ""
+    except FileNotFoundError:
+        return ""       # no former.json: no moved members yet
+    except (OSError, ValueError) as e:
+        # Returning "" here rewrote _redirects without the moved members' 301s
+        # and said nothing (bug hunt of 11 November 2026, finding 11).
+        sys.exit(f"{Path(site) / 'former.json'} could not be read, and _redirects "
+                 f"would lose the moved members' 301s: {e!r}")
     out = []
     for r in rows if isinstance(rows, list) else []:
         new = f"/legislator/{r.get('slug')}" if r.get("slug") else ""
@@ -407,8 +416,11 @@ def moved_requests(site):
     try:
         req = json.loads((Path(site) / "meta.json").read_text(encoding="utf-8")).get("requests") or {}
         rows = json.loads((Path(site) / "idx" / f"{req['term']}.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError, KeyError, TypeError, AttributeError):
-        return ""
+    except (FileNotFoundError, KeyError, TypeError, AttributeError):
+        return ""       # no requests window, or none listed yet
+    except (OSError, ValueError) as e:
+        sys.exit(f"the requests' meta.json or index in {site} could not be read, and "
+                 f"_redirects would lose their 301s: {e!r}")
     # ONE RULE A REQUEST (the review of 8 November 2026): Cloudflare Pages
     # allows 2,000 static rules, 616 are in use, and a session files over a
     # thousand requests, most of them introduced by January -- three
@@ -544,6 +556,10 @@ def kind_word(k, lang="en"):
     class): MEET_KIND's, in `lang` (i18n.say_word, keyed by the English, so
     words/meeting_kinds.json changing a word asks for its translation)."""
     word, kcls = MEET_KIND.get((k or "").strip().lower(), (kind_title(k), ""))
+    # The docket's own "cancelled" is not in the table of kinds, and the
+    # Calendar's script knows the chip by this word (build_calendar.WEEK_ES).
+    if lang != i18n.DEFAULT and word == "Cancelled":
+        return say(lang, "calp.cancelled", "Cancelled"), kcls
     return i18n.say_word(lang, "kind", word), kcls
 
 
@@ -1018,8 +1034,11 @@ def calendar_html(out, today=None, rows=None, lang="en", events=None):
     # plain 'See the full calendar' link instead of the count of next week's
     # meetings"). It said how many meetings next week held and linked that
     # week's page; from Saturday next week is the rail itself.
-    more = ('<p class="calmore calall"><a href="calendar.html">'
-            + say(lang, "cal.full", "See the full calendar") + '</a></p>')
+    # In another language the full calendar is that language's page (9
+    # November 2026), from the root as the footer's About link is.
+    more = ('<p class="calmore calall"><a href="'
+            + ("calendar.html" if lang == i18n.DEFAULT else i18n.href(lang, "calendar.html").lstrip("/"))
+            + '">' + say(lang, "cal.full", "See the full calendar") + '</a></p>')
 
     if not dates:
         # THE REST OF THE WEEK IS EMPTY every weekend in session and every
@@ -2276,7 +2295,7 @@ SEATING_JS = """
     if(!c){pop.hidden=true;popFor=null;return;}
     if(popFor!==c){
       popFor=c;
-      popA.href=DATA("legislator/"+c.getAttribute("data-slug")+".html");
+      popA.href=DATA("legislator/"+c.getAttribute("data-slug"));
       popA.textContent=c.getAttribute("data-name");
       // The name, then "Republican \u00b7 Belknap 6", then the seat on a
       // line of its own, its number the licence plate's.
@@ -2706,7 +2725,8 @@ BILLMATCH_BEGIN, BILLMATCH_END = "// BILLMATCH:BEGIN", "// BILLMATCH:END"
 BILLMATCH_EXPORTS = ("queryGroups", "groupWeight", "billNumbers", "billKey",
                      "looseness", "indexAdd", "readShort", "whyListed",
                      "spelling", "wordsAdd", "knownWord", "matchScore",
-                     "titleShare", "statusCat")
+                     "titleShare", "statusCat", "requestNumber",
+                     "setRequestYear")
 
 
 def bill_matcher_js(app_js):
@@ -2826,7 +2846,7 @@ const GROUPS=[
   // the site's other pages, after the bills.
   // A STATUTE ASKED FOR BY ITS NUMBER, FIRST (the audit of 25 October 2026,
   // M3): find.js's one Law row, "RSA 91-A" (findLawRow).
-  {t:"Laws",h:tr("sr.g.laws","Laws"),w:[tr("sr.w.laws_one","law"),tr("sr.w.laws_many","laws")],k:r=>r[0]==="law"},
+  {t:"Laws",h:tr("sr.g.laws","Laws"),w:[tr("sr.w.laws_one","law"),tr("sr.w.laws_many","laws")],k:r=>r[0]==="law"&&!findLawIsTitle(r)},
   {t:"Senators",h:tr("sr.g.senators","Senators"),w:[tr("sr.w.senators_one","senator"),tr("sr.w.senators_many","senators")],k:r=>r[0]==="legislator"&&/^Senate/.test(r[2])},
   {t:"Representatives",h:tr("sr.g.representatives","Representatives"),w:[tr("sr.w.representatives_one","representative"),tr("sr.w.representatives_many","representatives")],k:r=>r[0]==="legislator"},
   // A committee that no longer sits goes with the people who have left, below
@@ -2848,6 +2868,9 @@ const GROUPS=[
   {t:"Former Members",h:tr("sr.g.former_members","Former Members"),w:[tr("sr.w.former_members_one","former member"),tr("sr.w.former_members_many","former members")],k:r=>r[0]==="former"},
   {t:"Former Committees",h:tr("sr.g.former_committees","Former Committees"),w:[tr("sr.w.former_committees_one","former committee"),tr("sr.w.former_committees_many","former committees")],k:r=>r[0]==="committee"},
   {t:"Learn",h:tr("sr.g.learn","Learn"),w:[tr("sr.w.learn_one","Learn page"),tr("sr.w.learn_many","Learn pages")],k:r=>r[0]==="learn"},
+  // A CHAPTER FOUND BY ITS TITLE, after the guides and the Learn pages (the
+  // owner, 10 November 2026; find.js, findLawTitles).
+  {t:"Law Chapters",h:tr("sr.g.law_chapters","Law Chapters"),w:[tr("sr.w.law_chapters_one","law chapter"),tr("sr.w.law_chapters_many","law chapters")],k:findLawIsTitle},
   {t:"Pages on This Site",h:tr("sr.g.pages_on_this_site","Pages on This Site"),w:[tr("sr.w.pages_on_this_site_one","page on this site"),tr("sr.w.pages_on_this_site_many","pages on this site")],k:r=>r[0]==="page"}
 ];
 
@@ -2945,7 +2968,7 @@ const bills=(q,B,C,counting,R,mem)=>{
 // Groups a reader reaches for after the bills: members who have left, and
 // this site's own pages.
 const AFTER=new Set(["Statutory and Study Committees","Former Senators","Former Representatives",
-  "Former Members","Learn","Pages on This Site"]);
+  "Law Chapters","Former Members","Learn","Pages on This Site"]);
 let waiting=false,waitingAll=false,waitingWords=false,waitingLaw=false,waitingReq=false;
 
 function draw(q){
@@ -2960,7 +2983,7 @@ function draw(q){
   const rows=findMatch(s,Infinity);
   // A statute's number: the Laws pages' list of chapters, then drawn again.
   const law=findLawRow(s);
-  if(law&&law.loading&&!waitingLaw){
+  if((law&&law.loading||findLawsWanted(s))&&!waitingLaw){
     waitingLaw=true;
     findLawsLoad().then(()=>draw(box.value));
   }
@@ -2992,6 +3015,18 @@ function draw(q){
   // bills' place is their bills (theirs), and the lead says no "no bill".
   const mem=nB===0?memberBills(rows,s):null;
   const nR=R&&R.state==="ready"?R.n:0;
+  // A REQUEST'S NUMBER LEADS WITH THE REQUEST (the owner, 11 November 2026:
+  // "2027-0002" was told nothing matched, with the request on one line far
+  // below): its own row, number, title and sponsor, linking to its page,
+  // above everything else. Requests are not bills, so they are a group of
+  // their own and never in the bills' count.
+  const RQ=findIsRequest(s)?findBills(s,5,"requests"):null;
+  const reqRows=RQ&&RQ.state==="ready"?RQ.top:[];
+  const reqWait=!!(RQ&&RQ.state==="loading");
+  const reqSection=reqRows.length
+    ?`<section class="resgrp"><h2>${tr("sr.g.requests","Bill Requests")}
+      <span class="resn">${reqRows.length}</span></h2>
+      <div class="findout resout">${reqRows.map(b=>findRequestRow(b,RQ.term,s)).join("")}</div></section>`:"";
   head.innerHTML=tr("sr.results_for","Results for &ldquo;{q}&rdquo;",{q:esc(s)});
   // The answer first. "0 matches on this site, and the bills" is a sentence
   // nobody would write, and "nothing matches" above 30 bills is false.
@@ -3002,7 +3037,11 @@ function draw(q){
     :tr("sr.n_pages","{n} pages on this site",{n:rows.length});
   const some=nB===1?tr("sr.one_bill","One bill {where}",{where:term})
     :tr("sr.n_bills","{n} bills {where}",{n:(nB||0).toLocaleString(),where:term});
-  lead.textContent=(!rows.length
+  lead.textContent=reqRows.length&&!rows.length&&!nB
+    ?(reqRows.length===1?tr("sr.lead.request_one","A bill request for {year}. It is not a bill yet.",{year:FREQ.year})
+      :tr("sr.lead.request_n","{n} bill requests for {year}. They are not bills yet.",{n:reqRows.length,year:FREQ.year}))
+    :reqWait&&!rows.length&&!nB?tr("sr.lead.request_wait","Looking for that bill request…")
+    :(!rows.length
     ?(nB?(nB===1?tr("sr.lead.one_only","{some} matches. No legislator, committee, town or subject on this site does.",{some})
         :tr("sr.lead.n_only","{some} match. No legislator, committee, town or subject on this site does.",{some}))
       :nB===0&&!counting&&!nR?tr("sr.lead.nothing","Nothing on this site matches that: no legislator, committee, town or subject, and {nobill}.",{nobill:noBill})
@@ -3023,14 +3062,14 @@ function draw(q){
   // BILLS (8 November 2026): their place is beside the bills (withBills,
   // below), so their words are no reason for the members and towns that
   // only begin with the words typed to go first.
-  const named=!findBill(s)&&rows.some(r=>r[0]==="law"
+  const named=!findBill(s)&&rows.some(r=>(r[0]==="law"&&!findLawIsTitle(r))
     ||(r[0]!=="former"&&r[0]!=="guide"&&r[0]!=="learn"&&_fwhole(r,s)));
   const left=rows.slice(),counts=[];
   // The bills' part of the line a screen reader hears, where the page puts
   // their group.
   const billsSaid=()=>{
     if(nB)counts.push(nB===1?tr("sr.c.one_bill","1 bill"):tr("sr.c.bills","{n} bills",{n:nB.toLocaleString()}));
-    if(nR)counts.push(nR===1?tr("sr.c.one_request","1 bill request"):tr("sr.c.requests","{n} bill requests",{n:nR.toLocaleString()}));
+    if(nR&&!reqRows.length)counts.push(nR===1?tr("sr.c.one_request","1 bill request"):tr("sr.c.requests","{n} bill requests",{n:nR.toLocaleString()}));
   };
   const section=(g,mine)=>{
     counts.push(`${mine.length} ${g.w[mine.length===1?0:1]}`);
@@ -3057,8 +3096,10 @@ function draw(q){
   const none=nB===0&&!nR&&guides.length>0;
   const theGuides=()=>guides.length?section(GUIDES,guides):"";
   let html="",placed=false,boxed=false;
-  const billsBox=()=>{boxed=true;const h=bills(s,B,C,counting,R,mem);billsSaid();return h;};
+  if(reqRows.length)counts.push(reqRows.length===1?tr("sr.c.one_request","1 bill request"):tr("sr.c.requests","{n} bill requests",{n:reqRows.length.toLocaleString()}));
+  const billsBox=()=>{boxed=true;const h=bills(s,B,C,counting,reqRows.length?null:R,mem);billsSaid();return h;};
   const atBills=()=>{placed=true;return none?theGuides():billsBox()+theGuides();};
+  html+=reqSection;
   if(!named)html+=atBills();
   for(const g of GROUPS){
     const mine=[];
@@ -3278,9 +3319,9 @@ function townRow(t){
       data-town="${esc(t.town)}"><b>${esc(t.town)}</b>
       <span class="wct">${tr("lf.wards","{n} wards",{n:t.wards.length})}</span></button>`
       + (picked===t.town ? `<div class="wards">` + t.wards.map(w=>
-          `<a class="wbtn" href="town/${esc(t.slug)}-ward-${esc(w)}.html"
+          `<a class="wbtn" href="town/${esc(t.slug)}-ward-${esc(w)}"
             >${tr("lf.ward","Ward {w}",{w:esc(w)})}</a>`).join("") + `</div>` : "");
-  return `<a class="lmrow" href="town/${esc(t.slug)}.html"
+  return `<a class="lmrow" href="town/${esc(t.slug)}"
     ><b>${esc(t.town)}</b></a>`;
 }
 
@@ -3308,7 +3349,7 @@ function render(){
   if(mem.length){
     parts.push('<p class="lmhead">'+tr("lf.members","Members")+'</p>');
     parts.push(mem.slice(0,SHOW).map(([,m])=>
-      `<a class="lmrow" href="legislator/${esc(m.slug)}.html">`
+      `<a class="lmrow" href="legislator/${esc(m.slug)}">`
       +`<b>${esc(m.display)}</b>`
       +chip(m.p,"pt-"+m.p)
       +`<span class="lmwhere">${esc(m.where)}</span>`
@@ -3360,6 +3401,12 @@ function render(){
 
 /* The roster: every member, by chamber and then by county, each county shut
    until it is asked for. */
+// The name, then the party and district as one unit app.css keeps whole, so
+// a chip that wraps in its cell does so before "(D - Straf 17)", never in it.
+function chipName(full){
+  const s=String(full||""), i=s.lastIndexOf(" (");
+  return i>0&&s.endsWith(")")?`${esc(s.slice(0,i))} <span class="mtag">${esc(s.slice(i+1))}</span>`:esc(s);
+}
 function roster(){
   const by={};
   MEM.forEach(m=>{const ch=m.chamber==="S"?"Senate":"House";
@@ -3384,7 +3431,7 @@ function roster(){
         // person asked for on 19 September; this view kept its own name, pill
         // and district until 24 September. display_full carries all three.
         +ms.map(m=>`<div class="mem"><span class="mchip p-${esc(m.p)}" translate="no">`
-          +`<a href="legislator/${esc(m.slug)}.html">${esc(m.full)}</a></span></div>`).join("")
+          +`<a href="legislator/${esc(m.slug)}">${chipName(m.full)}</a></span></div>`).join("")
         +`</div></details>`;
     }).join("");
   }).join("");
@@ -3461,7 +3508,7 @@ Promise.all([fetch(DATA("districts.json")).then(r=>r.json()).catch(()=>({})),
 # written once here for both of its renderers -- the box main() builds and
 # HOME_JS's copy -- so that the two cannot say different things; the address
 # and the link's words are legislative_year's, the page's own.
-YEAR_LINK = (f'<p class="statenote stateyear"><a href="{_year.HREF}">'
+YEAR_LINK = (f'<p class="statenote stateyear"><a href="{_shell.canon(_year.HREF)}">'
              + _html.escape(_year.HOME_LINK).replace("&#x27;", "&rsquo;")
              + '</a></p>')    # the words alone (the person, 22 October 2026)
 
@@ -3476,12 +3523,33 @@ WEBINAR_UNTIL = "2026-11-11"
 WEBINAR_URL = "https://zoom.us/meeting/register/SoxLZ-b5TnWYcGPfmVaZDA#/registration"
 
 
+# THE RECORDING, ONCE IT IS OVER (the owner, 11 November 2026: "Add the link
+# to the webinar youtube video as an embedded player on the homepage"). The
+# same place under the search, the same box, and the player the home page's
+# session recordings use: nothing is asked of YouTube until Play is pressed.
+WEBINAR_VIDEO = "BMPOb0BFdYw"
+
+
+def home_webinar_recording(lang="en"):
+    """The webinar's recording, in the box the registration had."""
+    esc = _html.escape
+    title = say(lang, "web.rec.title", "Recording of the Granite Record launch webinar, November 10, 2026")
+    note = "" if lang == "en" else say(lang, "web.rec.english", " (in English)")
+    return (f'<aside class="webinar wbrec" aria-label="{esc(say(lang, "web.rec.label", "Webinar recording"))}">'
+            f'<p class="wbwhen">{say(lang, "web.rec.head", "Watch the launch webinar")}{note}</p>'
+            f'<p class="wbwhat">{say(lang, "web.rec.what", "How Granite Record works, and how to use it to keep up with Concord this session, with Alice Wade. Recorded November 10, 2026.")}</p>'
+            f'<div class="player"><button type="button" class="pstub" data-embed="{esc(WEBINAR_VIDEO, quote=True)}" '
+            f'data-title="{esc(title, quote=True)}" aria-label="{esc(say(lang, "web.rec.play", "Play the recording of the launch webinar"), quote=True)}">'
+            f'<span>{icon("play")}</span><span>{say(lang, "sess.play", "Play the recording")}</span></button></div>'
+            '</aside>')
+
+
 def home_webinar(today=None, lang="en"):
-    """The webinar's box for the home page, or "" once it is over. In
-    another language it says the webinar is held in English."""
+    """The webinar's box for the home page: its registration until it is
+    over, then its recording. In another language it says it is in English."""
     today = today or build_date.today().isoformat()
     if str(today)[:10] >= WEBINAR_UNTIL:
-        return ""
+        return home_webinar_recording(lang)
     return (f'<aside class="webinar" aria-label="{_html.escape(say(lang, "web.label", "Webinar"))}"'
             f'{until_attrs(WEBINAR_UNTIL, today)}>'
             f'<p class="wbwhen">{say(lang, "web.when", "Free webinar &middot; Tuesday, November 10, 6:30&nbsp;PM")}</p>'
@@ -3490,11 +3558,9 @@ def home_webinar(today=None, lang="en"):
             f'{say(lang, "web.go", "Register on Zoom")}</a></aside>')
 
 
-def _home_esc(x):
-    """The home page's escape: components.js's esc, the ampersand, the angles
-    and the double quote."""
-    return (str(x or "").replace("&", "&amp;").replace("<", "&lt;")
-            .replace(">", "&gt;").replace('"', "&quot;"))
+# The home page's escape: components.js's esc, the ampersand, the angles and the
+# double quote (src/lib/htmlesc.py).
+_home_esc = esc_blank
 
 
 def _record(x, lang):
@@ -3522,7 +3588,7 @@ def year_link(lang="en"):
     opened the English page."""
     if lang == i18n.DEFAULT:
         return YEAR_LINK
-    return (f'<p class="statenote stateyear"><a href="{i18n.href(lang, _year.HREF)}">'
+    return (f'<p class="statenote stateyear"><a href="{_shell.canon(i18n.href(lang, _year.HREF))}">'
             + say(lang, "home.year_link", "NH Legislative Schedule") + '</a></p>')
 
 
@@ -4275,7 +4341,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   document.getElementById("notable").innerHTML=
     `${cl.length?`<h2>Closest floor votes</h2><table><tbody>${cl.map(v=>
       `<tr><td style="width:86px"><b>${v.y}\u2013${v.nn}</b></td>
-       <td><a href="bills.html#${esc(v.bill)}">${esc(v.n)}</a>
+       <td><a href="bills#${esc(v.bill)}">${esc(v.n)}</a>
        <span style="color:var(--ink-2)">${esc(v.q||"")}, ${fd(v.date)}</span><br>
        <span class="actw">${esc(v.title)}</span></td></tr>`).join("")}
        </tbody></table>`:""}
@@ -4286,10 +4352,10 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
        is a different thing from a 201\u2013199 on the floor. This counts the
        record, not what people read here. The site counts page views \u2014
        how many, and which pages \u2014 and nothing more; see
-       <a href="about.html">About</a>.</p>
+       <a href="about">About</a>.</p>
        <table><tbody>${co.map(b=>
        `<tr><td style="width:86px">${b.nrc} votes</td>
-        <td><a href="bills.html#${esc(b.id)}">${esc(b.n)}</a>
+        <td><a href="bills#${esc(b.id)}">${esc(b.n)}</a>
         <span style="color:var(--ink-2)">${esc(b.title)}</span></td></tr>`).join("")}
        </tbody></table>`:""}`;
 
@@ -4307,7 +4373,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
 // next Tab press started from the top of the page (the audit of 2 October
 // 2026, S1). app.js does the same on a bill.
 document.addEventListener("click",e=>{
-  const st=e.target.closest&&e.target.closest("#session [data-embed]");
+  const st=e.target.closest&&e.target.closest("#session [data-embed], .wbrec [data-embed]");
   if(!st)return;
   const box=st.parentNode, had=document.activeElement===st;
   st.outerHTML=`<iframe allow="autoplay" allowfullscreen
@@ -4328,8 +4394,8 @@ document.addEventListener("click",e=>{
 // with nothing typed the bill search, as it always did -- except for a bill
 // number, which opens the bill (find.js's findBill: the person's rule of 12
 // October). A row is still one tap away. The header's box opens /search
-// for a bill number too since 8 November 2026 (Alice's word was for the
-// header's box; this one is left as it was until she says).
+// for a bill number too since 8 November 2026, and this one since 9 November
+// (Alice: "Home search opens results"): Return is the Search button, always.
 const HQ={out:"hqout",box:"hq",clear:"",say:"hqsay"};
 const hq=document.getElementById("hq"),hqout=document.getElementById("hqout");
 // ABOVE THE KEYBOARD. On a phone this box stands most of the way down the
@@ -4358,9 +4424,7 @@ hq.addEventListener("keydown",e=>{
   if(e.key==="Escape"){hqout.hidden=true;return;}
   if(e.key!=="Enter")return;
   e.preventDefault();
-  const first=hqout.hidden?null:hqout.querySelector("a");
-  const bill=typeof findBill==="function"&&findBill(hq.value);
-  location.href=first&&bill?first.href:hqAddr(hq.value);
+  location.href=hqAddr(hq.value);
 });
 document.getElementById("hgo").addEventListener("click",()=>{location.href=hqAddr(hq.value);});
 // Away from the box, the dropdown closes; "Did you mean" searches again here.
@@ -4769,9 +4833,7 @@ def main():
     c = H.get("counts", {})
     k = c.get("by_kind", {})
 
-    def esc(x):
-        return (str(x or "").replace("&", "&amp;").replace("<", "&lt;")
-                .replace(">", "&gt;").replace('"', "&quot;"))
+    esc = _home_esc
 
     def fd(d):
         """"Aug 19", the form HOME_JS's fd() writes: shell.date_words."""
@@ -5210,7 +5272,7 @@ def main():
 <h3 id="of-map">{say(lang, "of.map", "The Map")}</h3>
 <p class="src fill">{say(lang, "of.map_how", "Choose a district to see who represents it. Zoom in for\na city&rsquo;s wards.")}</p>
 <div class="ofmapbox" id="ofmap"></div>
-<noscript><p class="note">{say(lang, "of.map_noscript", "The map needs JavaScript. Every town&rsquo;s districts\nare on its own page, listed in <a href=\"/directory/towns.html\">every town and\nward</a>.")}</p></noscript>
+<noscript><p class="note">{say(lang, "of.map_noscript", "The map needs JavaScript. Every town&rsquo;s districts\nare on its own page, listed in <a href=\"/directory/towns\">every town and\nward</a>.")}</p></noscript>
 </section>"""),
             # WHO HOLDS THE SEATS AT THE TOP (the owner's walk of 7 November
             # 2026, C): under the presiding officers and over the roster, as

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.22
+# GRANITE_VERSION: 2026-09-14.23
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -59,6 +59,7 @@ import committee_names as CN
 import later_referrals as LR
 import narrative
 import site_read as SR
+from i18n import say
 
 E = lambda s: html.escape(str(s if s is not None else ""), quote=True)
 
@@ -66,6 +67,11 @@ E = lambda s: html.escape(str(s if s is not None else ""), quote=True)
 def _load(p, default):
     p = Path(p)
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else default
+
+
+# The first head of the tables whose first column is a committee's name,
+# in each language it is built in (say() keys nums.c_cmte).
+_COMMITTEE_HEADS = ("Committee", "Comité")
 
 
 def _pct(n, d):
@@ -88,8 +94,10 @@ _NUMCELL = re.compile(r"^[\d,.]+(?:&nbsp;\([\d.]+%\))?%?$|^&mdash;$|^\d+&ndash;\
 def _table(head, rows, cls="numtab"):
     # The first column is a term, a year, a bill or a chamber, and app.css
     # keeps it on one line ("1989-1990" broke at its dash); a committee's
-    # name is the exception, and wraps.
-    if head and head[0] == "Committee":
+    # name is the exception, and wraps. In another language the head's first
+    # word is that language's, so the committee's tables are named by the
+    # words they print in English (_COMMITTEE_HEADS).
+    if head and head[0] in _COMMITTEE_HEADS:
         cls += " names"
     num = [k > 0 and any(str(r[k]).strip() for r in rows if k < len(r))
            and all(_NUMCELL.match(str(r[k]).strip()) for r in rows
@@ -119,7 +127,7 @@ def wide(table):
     return f"<!--wide-->{table}<!--/wide-->"
 
 
-def law_chart(oc, terms):
+def law_chart(oc, terms, lang="en"):
     """BECAME LAW, AS A SHARE OF THE BILLS FILED, by term: a bar chart of the
     first table's own column, over it (the approved prototype, 9 October
     2026). One series, so no legend: the title names it, a bar's value shows
@@ -139,25 +147,35 @@ def law_chart(oc, terms):
 
     def bar(t, f, n, v):
         w = v / top * 100
-        return (f'<li class="{"is-lab" if t in named else ""}" title="{_t(t)}: {n:,} of {f:,} '
-                f'bills became law ({v:.1f}%)"><span class="l-bl">{_t(t)}</span>'
+        return (f'<li class="{"is-lab" if t in named else ""}" title="'
+                + say(lang, "nums.bar_title", "{term}: {n} of {f} bills became law ({v}%)",
+                      term=_t(t), n=f"{n:,}", f=f"{f:,}", v=f"{v:.1f}")
+                + f'"><span class="l-bl">{_t(t)}</span>'
                 f'<span class="l-bt"><span class="l-bf" style="width:{w:.2f}%"></span>'
                 f'<span class="l-bv" style="left:{w:.2f}%">{v:.1f}%</span></span></li>')
     ticks = "".join(f'<i class="t{x}" style="left:{x / top * 100:.4f}%">{x}%</i>'
                     for x in range(0, top + 1, 10))
-    said = (f"Bar chart: the share of the bills filed in each term that became law, from "
-            f"{pct[0][3]:.1f}% in {components.term_words(pct[0][0])} to {pct[-1][3]:.1f}% in "
-            f"{components.term_words(pct[-1][0])}; the highest {hi[3]:.1f}% in {components.term_words(hi[0])}, "
-            f"the lowest {lo[3]:.1f}% in {components.term_words(lo[0])}. The figures are in "
-            "the table below.")
+    said = say(lang, "nums.chart_said",
+               "Bar chart: the share of the bills filed in each term that became law, from "
+               "{a}% in {ta} to {b}% in {tb}; the highest {c}% in {tc}, the lowest {d}% in {td}. "
+               "The figures are in the table below.",
+               a=f"{pct[0][3]:.1f}", ta=components.term_words(pct[0][0]),
+               b=f"{pct[-1][3]:.1f}", tb=components.term_words(pct[-1][0]),
+               c=f"{hi[3]:.1f}", tc=components.term_words(hi[0]),
+               d=f"{lo[3]:.1f}", td=components.term_words(lo[0]))
     return (f'<figure class="l-chart" role="img" aria-label="{E(said)}">'
-            '<h3 aria-hidden="true">Became Law, as a Share of the Bills Filed</h3>'
+            '<h3 aria-hidden="true">'
+            + say(lang, "nums.chart_h", "Became Law, as a Share of the Bills Filed") + '</h3>'
             # ON A SCREEN WITH NO POINTER TO HOVER (the cohesion audit of 30
             # October 2026, P-6: "no hover on a phone"), every bar's value is
             # at its end, and the line says that instead (app.css, .l-hov).
-            '<p aria-hidden="true">The figures are the table&rsquo;s, its Became Law column. '
-            '<span class="l-hov">Hover over a term to see its value.</span>'
-            '<span class="l-tap">Each term&rsquo;s value is at the end of its bar.</span></p>'
+            '<p aria-hidden="true">'
+            + say(lang, "nums.chart_p", "The figures are the table&rsquo;s, its Became Law column.")
+            + ' <span class="l-hov">'
+            + say(lang, "nums.chart_hov", "Hover over a term to see its value.")
+            + '</span><span class="l-tap">'
+            + say(lang, "nums.chart_tap", "Each term&rsquo;s value is at the end of its bar.")
+            + '</span></p>'
             f'<ol class="l-bars" aria-hidden="true" style="--l-grid:{1000 / top:.4f}%">'
             f'{"".join(bar(*r) for r in pct)}</ol>'
             f'<div class="l-axis" aria-hidden="true"><span>{_t(pct[-1][0])}</span>'
@@ -177,14 +195,26 @@ def _bill_link(term, bid, year=None):
     return f'<a href="bill/{E(y)}/{E(bid.lower())}">{E(shown)}</a>'
 
 
-def _day(iso):
+def _day(iso, lang="en"):
     """"2025-02-10" -> "Feb 10, 2025", held together by no-break spaces in a
-    table's cell: shell.date_words."""
+    table's cell: shell.date_words. In Spanish "10 feb. 2025"."""
     try:
         d = _date.fromisoformat(iso)
     except (TypeError, ValueError):
         return E(iso)
-    return E(shell.date_words(d)).replace(" ", "&nbsp;")
+    return E(shell.date_words(d, "medium", lang)).replace(" ", "&nbsp;")
+
+
+def _whose(row, lang="en"):
+    """Whose count a row of ballot_results.json is (ballot_source.whose), for
+    a sentence in `lang`: "the Secretary of State's" in English, "de la
+    Secretaría de Estado" in Spanish, whose sentence takes it after "count"."""
+    if lang == "en":
+        return BS.whose(row)
+    who = BS.named(row)
+    if who == "the Secretary of State":
+        return say(lang, "nums.whose_sos", "the Secretary of State's")
+    return say(lang, "nums.whose_other", "{name}'s", name=who)
 
 
 def _cat(text):
@@ -748,7 +778,27 @@ def _need(path, what):
     return None
 
 
-def body(site=Path("site"), root=Path("."), strict=True):
+def _chamber(ch, lang="en"):
+    """A chamber's name in `lang`: "House" or "Senate" in English (NAME)."""
+    return (say(lang, "nums.house", "House") if ch == "H" else
+            say(lang, "nums.senate", "Senate") if ch == "S" else "")
+
+
+def _en(x, lang="en"):
+    """Words the record wrote -- a committee's name, a bill's title, a
+    question put to a chamber -- set apart in another language, so a screen
+    reader says them in English (i18n.py, the first kind of words)."""
+    return x if lang == "en" or not x else f'<span lang="en">{x}</span>'
+
+
+def body(site=Path("site"), root=Path("."), strict=True, lang="en"):
+    """The page's sections as HTML, each under its h2. `lang` says it in
+    another language (9 November 2026: the person's "more of the site in
+    Spanish"): every sentence and heading through say(), keyed nums.*, its
+    figures worked out once and filled into the sentence, its tables' words
+    in that language and the record's own words (a committee, a title, a
+    question) as the record prints them, marked as English. English is as
+    it was, to the byte."""
     # Every bill's row, from the term files the pages read (site_read); it
     # stops where there is none rather than count nothing.
     idx = SR.bill_index_or_stop(site, "learn_numbers.py")
@@ -776,14 +826,14 @@ def body(site=Path("site"), root=Path("."), strict=True):
     # this page from a statistics page somebody typed, and it is the first
     # thing a reader should know.
     # The note opens the page under a heading of its own, as every Learn
-    # page's opening paragraph does (W4: each heading in the margin beside its
-    # prose; the heading is the approved prototype's, 9 October 2026).
-    out = ['<h2>How These Are Counted</h2>'
-           '<p>Every number on this page is counted from the '
-           'General Court\'s own record when the site is built, not typed in. '
-           'Each section says what it counts and over what period. Where the '
-           'record on this site cannot answer something, the section says so '
-           'rather than estimating.</p>']
+    # page's opening paragraph does (W4: each heading in the margin beside
+    # its prose; the heading is the approved prototype's, 9 October 2026).
+    out = ['<h2>' + say(lang, "nums.h_how", "How These Are Counted") + '</h2>'
+           '<p>' + say(lang, "nums.p_how", "Every number on this page is counted from the "
+                       "General Court's own record when the site is built, not typed in. "
+                       "Each section says what it counts and over what period. Where the "
+                       "record on this site cannot answer something, the section says so "
+                       "rather than estimating.") + '</p>']
     narr = narr_all.get(current, {})
 
     # 1. Bills filed, and how they ended.
@@ -799,14 +849,17 @@ def body(site=Path("site"), root=Path("."), strict=True):
     # NOT THE CONSTITUTIONAL AMENDMENTS OR RESOLUTIONS, AND SAID SO (the survey of
     # 7 October 2026): 2,139 for 2025-2026 here and 2,243 bills and resolutions
     # on How a bill becomes law, and neither page said what it counted.
-    out.append("<h2>Bills Filed, and How They Ended</h2><p>Every House and Senate bill "
-               "given a number in each term, not counting constitutional amendments or "
-               "resolutions, by the word its card on this site shows. "
-               "Died covers a bill killed on the floor, left on the table, vetoed with the "
-               "veto standing, lost between the two chambers, or still pending when its term "
-               "ended; Other is a bill withdrawn, never introduced, or still before the "
-               "legislature.</p>" + law_chart(oc, terms)
-               + _table(["Term", "Bills filed", "Became Law", "Died", "Interim Study", "Other"],
+    out.append("<h2>" + say(lang, "nums.h_filed", "Bills Filed, and How They Ended") + "</h2><p>"
+               + say(lang, "nums.p_filed", "Every House and Senate bill "
+                     "given a number in each term, not counting constitutional amendments or "
+                     "resolutions, by the word its card on this site shows. "
+                     "Died covers a bill killed on the floor, left on the table, vetoed with the "
+                     "veto standing, lost between the two chambers, or still pending when its term "
+                     "ended; Other is a bill withdrawn, never introduced, or still before the "
+                     "legislature.") + "</p>" + law_chart(oc, terms, lang)
+               + _table([say(lang, "nums.c_term", "Term"), say(lang, "nums.c_filed", "Bills filed"),
+                         say(lang, "nums.c_law", "Became Law"), say(lang, "nums.c_died", "Died"),
+                         say(lang, "nums.c_study", "Interim Study"), say(lang, "nums.c_other", "Other")],
                         orows))
 
     # 2. Bills filed and passed per member.
@@ -818,11 +871,15 @@ def body(site=Path("site"), root=Path("."), strict=True):
             continue
         prows.append([_t(t), f"{h[0] / SEATS['H']:.2f}", f"{h[1] / SEATS['H']:.2f}",
                       f"{s[0] / SEATS['S']:.1f}", f"{s[1] / SEATS['S']:.1f}"])
-    out.append("<h2>Bills Filed and Passed per Member</h2><p>The House and Senate bills whose "
-               "prime sponsor sat in each chamber, divided by its seats: 400 in the House, 24 "
-               "in the Senate. Passed means the bill became law.</p>"
-               + _table(["Term", "Filed per representative", "Became law per representative",
-                         "Filed per senator", "Became law per senator"], prows))
+    out.append("<h2>" + say(lang, "nums.h_member", "Bills Filed and Passed per Member")
+               + "</h2><p>" + say(lang, "nums.p_member", "The House and Senate bills whose "
+                                  "prime sponsor sat in each chamber, divided by its seats: 400 in the House, 24 "
+                                  "in the Senate. Passed means the bill became law.") + "</p>"
+               + _table([say(lang, "nums.c_term", "Term"),
+                         say(lang, "nums.c_f_rep", "Filed per representative"),
+                         say(lang, "nums.c_l_rep", "Became law per representative"),
+                         say(lang, "nums.c_f_sen", "Filed per senator"),
+                         say(lang, "nums.c_l_sen", "Became law per senator")], prows))
 
     # 3. The bills each committee received.
     blocks = []
@@ -831,18 +888,23 @@ def body(site=Path("site"), root=Path("."), strict=True):
         rrows = sorted(([E(c), f"{f:,}", f"{s:,}" if s else ""] for c, (f, s) in rf.items() if f or s),
                        key=lambda r: (not r[0].startswith("House"),
                                       -int(r[1].replace(",", "")), r[0]))
+        rrows = [[_en(r[0], lang)] + r[1:] for r in rrows]
         first_n = sum(f for f, _s in rf.values())
         sent_n = sum(s for _f, s in rf.values())
-        blocks.append(f"<details class=\"l-fold\"{' open' if t == current else ''}><summary>{_t(t)}: "
-                      f"{first_n:,} first referrals and {sent_n:,} sent on</summary>"
-                      + _table(["Committee", "First referral", "Sent on from another committee"],
+        blocks.append(f"<details class=\"l-fold\"{' open' if t == current else ''}><summary>"
+                      + say(lang, "nums.fold_refs", "{term}: {first} first referrals and {sent} sent on",
+                            term=_t(t), first=f"{first_n:,}", sent=f"{sent_n:,}") + "</summary>"
+                      + _table([say(lang, "nums.c_cmte", "Committee"),
+                                say(lang, "nums.c_first", "First referral"),
+                                say(lang, "nums.c_sent", "Sent on from another committee")],
                                rrows) + "</details>")
-    out.append("<h2>The Bills Each Committee Received</h2><p>For each committee of the last "
-               "ten terms: how many bills its chamber sent it first, as each bill's page names "
-               "its committee, and how many it received after another committee of the same "
-               "chamber had them &mdash; most often Finance or Ways and Means, for a bill that "
-               "spends or raises money. Every numbered measure counts, resolutions "
-               "included.</p>" + '<div class="l-folds">' + "".join(blocks) + "</div>")
+    out.append("<h2>" + say(lang, "nums.h_refs", "The Bills Each Committee Received")
+               + "</h2><p>" + say(lang, "nums.p_refs", "For each committee of the last "
+                                  "ten terms: how many bills its chamber sent it first, as each bill's page names "
+                                  "its committee, and how many it received after another committee of the same "
+                                  "chamber had them &mdash; most often Finance or Ways and Means, for a bill that "
+                                  "spends or raises money. Every numbered measure counts, resolutions "
+                                  "included.") + "</p>" + '<div class="l-folds">' + "".join(blocks) + "</div>")
 
     # 4. The hearings with the most sign-ins.
     tdb = _need(root / "testimony_db.json", "the hearings with the most sign-ins")
@@ -864,50 +926,76 @@ def body(site=Path("site"), root=Path("."), strict=True):
             # Five columns, the hearing's day and committee in one and the
             # three positions in one: eight ran past the Learn column's 560
             # pixels on a desktop, scrolled, and left the title 117 of them.
-            srows = [[_bill_link(t, h["bill"], h["year"]), E(h["title"]),
-                      _day(h["date"]) + (f", on {h['on']}" if h["on"] else "")
-                      + (f"<br>{E(h['committee'])}" if h["committee"] else ""),
+            def on_what(w):
+                return (say(lang, "nums.on_nongermane", "a non-germane amendment")
+                        if w == "a non-germane amendment" else
+                        say(lang, "nums.on_amendment", "an amendment"))
+            srows = [[_bill_link(t, h["bill"], h["year"]), _en(E(h["title"]), lang),
+                      _day(h["date"], lang)
+                      + (say(lang, "nums.hear_on", ", on {what}", what=on_what(h["on"]))
+                         if h["on"] else "")
+                      + (f"<br>{_en(E(h['committee']), lang)}" if h["committee"] else ""),
                       f"{h['total']:,}",
-                      f"{h['support']:,}&nbsp;support<br>{h['oppose']:,}&nbsp;oppose"
-                      + (f"<br>{h['neutral']:,}&nbsp;neutral" if h["neutral"] else "")]
+                      say(lang, "nums.n_support", "{n}&nbsp;support", n=f"{h['support']:,}") + "<br>"
+                      + say(lang, "nums.n_oppose", "{n}&nbsp;oppose", n=f"{h['oppose']:,}")
+                      + ("<br>" + say(lang, "nums.n_neutral", "{n}&nbsp;neutral", n=f"{h['neutral']:,}")
+                         if h["neutral"] else "")]
                      for h in si[t]]
             tables.append(wide(f"<h3>{_t(t)}</h3>" + _table(
-                ["Bill", "Title as heard", "Hearing and committee", "Signed in", "Positions"],
+                [say(lang, "nums.c_bill", "Bill"), say(lang, "nums.c_title", "Title as heard"),
+                 say(lang, "nums.c_hearing", "Hearing and committee"),
+                 say(lang, "nums.c_signed", "Signed in"), say(lang, "nums.c_positions", "Positions")],
                 srows)))
-        out.append("<h2>The Hearings with the Most Sign-Ins</h2><p>Anyone may use the House's "
-                   "online form to say they support or oppose a bill, or are neutral on it, at "
-                   "its committee hearing. These are the twenty hearings with the most of those "
-                   f"sign-ins in the {_t(current)} term: one "
-                   "bill on one House committee date, with the title it had when it was heard. "
-                   "A sign-in is a position registered, not a vote and not a person counted: "
-                   "one person may sign in on many bills, nobody is sampled, and an organized "
-                   "appeal can bring thousands. The busiest hearings were seldom closely "
-                   f"divided: {lop} of these {len(allh)} drew nine in ten sign-ins or more on "
-                   f"one side, and {against} drew more against the bill than for it. So the "
-                   "tables show where turnout was largest, not where opinion was split, and not "
-                   "what the committee decided. Senate hearings are not on this form.</p>"
-                   + "".join(tables))
+        out.append("<h2>" + say(lang, "nums.h_signins", "The Hearings with the Most Sign-Ins")
+                   + "</h2><p>" + say(
+                       lang, "nums.p_signins",
+                       "Anyone may use the House's "
+                       "online form to say they support or oppose a bill, or are neutral on it, at "
+                       "its committee hearing. These are the twenty hearings with the most of those "
+                       "sign-ins in the {term} term: one "
+                       "bill on one House committee date, with the title it had when it was heard. "
+                       "A sign-in is a position registered, not a vote and not a person counted: "
+                       "one person may sign in on many bills, nobody is sampled, and an organized "
+                       "appeal can bring thousands. The busiest hearings were seldom closely "
+                       "divided: {lop} of these {n} drew nine in ten sign-ins or more on "
+                       "one side, and {against} drew more against the bill than for it. So the "
+                       "tables show where turnout was largest, not where opinion was split, and not "
+                       "what the committee decided. Senate hearings are not on this form.",
+                       term=_t(current), lop=lop, n=len(allh), against=against)
+                   + "</p>" + "".join(tables))
 
     # 5. Committees overruled on the floor.
     st, cases = overturned(narr)
-    label = {"PASS": "pass", "KILL": "kill", "STUDY": "interim study"}
     rows = []
     for ch in ("H", "S"):
         d, a, s = st.get(ch, (0, 0, 0))
-        rows.append([NAME[ch], f"{d:,}", _np(a, d), _np(s, d)])
-    out.append(f"<h2>How Often the Full Chamber Overrules Its Committee</h2>"
-               f"<p>In the {_t(current)} term, a committee's recommendation "
-               "was followed by the chamber far more often than not. Counted here: each bill's "
-               "committee report in each chamber, against the first motion adopted on that "
-               "chamber's floor that decided the bill there &mdash; ought to pass, inexpedient to "
-               "legislate or indefinite postponement, or interim study.</p>"
-               + _table(["Chamber", "Recommendations decided on the floor", "Decided otherwise",
-                         "Passage and kill reversed"], rows))
+        rows.append([_chamber(ch, lang), f"{d:,}", _np(a, d), _np(s, d)])
+
+    def rec_word(r):
+        return (say(lang, "nums.r_pass", "pass") if r == "PASS" else
+                say(lang, "nums.r_kill", "kill") if r == "KILL" else
+                say(lang, "nums.r_study", "interim study"))
+    out.append("<h2>" + say(lang, "nums.h_overrule", "How Often the Full Chamber Overrules Its Committee")
+               + "</h2><p>" + say(
+                   lang, "nums.p_overrule",
+                   "In the {term} term, a committee's recommendation "
+                   "was followed by the chamber far more often than not. Counted here: each bill's "
+                   "committee report in each chamber, against the first motion adopted on that "
+                   "chamber's floor that decided the bill there &mdash; ought to pass, inexpedient to "
+                   "legislate or indefinite postponement, or interim study.", term=_t(current))
+               + "</p>"
+               + _table([say(lang, "nums.c_chamber", "Chamber"),
+                         say(lang, "nums.c_decided", "Recommendations decided on the floor"),
+                         say(lang, "nums.c_otherwise", "Decided otherwise"),
+                         say(lang, "nums.c_reversed", "Passage and kill reversed")], rows))
     if cases:
-        items = "".join(f"<li>{_bill_link(current, b)} &mdash; {NAME[c]}: committee "
-                        f"{label[r]}, floor {label[f]}</li>" for b, c, r, f in sorted(cases)[:60])
-        out.append(f'<div class="l-folds"><details class="l-fold"><summary>The {len(cases)} '
-                   f'bills</summary><ul class="l-bills">{items}</ul></details></div>')
+        items = "".join("<li>" + say(lang, "nums.case", "{bill} &mdash; {chamber}: committee {rec}, floor {floor}",
+                                     bill=_bill_link(current, b), chamber=_chamber(c, lang),
+                                     rec=rec_word(r), floor=rec_word(f)) + "</li>"
+                        for b, c, r, f in sorted(cases)[:60])
+        out.append('<div class="l-folds"><details class="l-fold"><summary>'
+                   + say(lang, "nums.the_bills", "The {n} bills", n=len(cases))
+                   + f'</summary><ul class="l-bills">{items}</ul></details></div>')
 
     # 6. Consent calendar share by committee, with the term's totals above it.
     rows_by = {r.get("id"): r for r in idx if r.get("term") == current}
@@ -920,7 +1008,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
     # own totals: the House's committees and the Senate's had been one list,
     # ranked together, where each chamber runs its calendar by its own rules.
     def ccrows(word):
-        return sorted(([E(c), f"{n:,}", f"{k:,}", _pct(k, n)] for c, (n, k) in by_c.items()
+        return sorted(([_en(E(c), lang), f"{n:,}", f"{k:,}", _pct(k, n)] for c, (n, k) in by_c.items()
                        if n >= 10 and c.startswith(word + " ")),
                       key=lambda r: -float(r[3].rstrip("%")) if r[3].endswith("%") else 0)
 
@@ -931,49 +1019,72 @@ def body(site=Path("site"), root=Path("."), strict=True):
         rows_ = ccrows(NAME[ch])
         if not tot and not rows_:
             return ""
-        return (f"<h3>{NAME[ch]} Committees</h3>"
-                f"<p>{_pct(k, tot)} of the {NAME[ch]}&rsquo;s {tot:,} committee recommendations "
-                f"were adopted on its consent calendar; {rem:,} were taken off it.</p>"
-                + (_table(["Committee", "Reports", "On consent and kept there", "Share"], rows_)
+        head, line = (
+            (say(lang, "nums.cc_h_head", "House Committees"),
+             say(lang, "nums.cc_h_line", "{pct} of the House&rsquo;s {n} committee recommendations "
+                 "were adopted on its consent calendar; {off} were taken off it.",
+                 pct=_pct(k, tot), n=f"{tot:,}", off=f"{rem:,}")) if ch == "H" else
+            (say(lang, "nums.cc_s_head", "Senate Committees"),
+             say(lang, "nums.cc_s_line", "{pct} of the Senate&rsquo;s {n} committee recommendations "
+                 "were adopted on its consent calendar; {off} were taken off it.",
+                 pct=_pct(k, tot), n=f"{tot:,}", off=f"{rem:,}")))
+        return (f"<h3>{head}</h3><p>{line}</p>"
+                + (_table([say(lang, "nums.c_cmte", "Committee"), say(lang, "nums.c_reports", "Reports"),
+                           say(lang, "nums.c_kept", "On consent and kept there"),
+                           say(lang, "nums.c_share", "Share")], rows_)
                    if rows_ else ""))
-    out.append(f"<h2>Consent Calendars, by Committee</h2><p>A committee sends a report to the "
-               "consent calendar by its own vote, and in both chambers that vote must be unanimous, "
-               "though the recommendation itself may have been carried on a divided one. The "
-               "whole calendar is adopted in one vote without debate, and what it adopts is each "
-               "committee's recommendation, to pass the bill, to kill it, or to send it to interim "
-               "study, unless the bill is first taken off &mdash; since January 2023 at the request "
-               "of ten members in the House, and since April 2026 of two in the Senate. "
-               f"For each committee of {_t(current)} with ten reports or more: the share that went "
-               "on the consent calendar and stayed there &mdash; a measure of how often the "
-               "committee agreed with itself. A report counts to the committee that made it, so a "
-               "bill sent on to Finance or Ways and Means counts in both, and a report the docket "
-               "prints twice counts once.</p>"
-               f"<p>In {_t(current)}, <b>{kept:,} of {total:,}</b> committee recommendations "
-               f"({_pct(kept, total)}) were adopted on the consent calendar, and "
-               f"<b>{regular + removed:,}</b> went to the regular calendar, {removed:,} of them "
-               "after being taken off consent.</p>"
+    out.append("<h2>" + say(lang, "nums.h_consent", "Consent Calendars, by Committee") + "</h2><p>"
+               + say(lang, "nums.p_consent",
+                     "A committee sends a report to the "
+                     "consent calendar by its own vote, and in both chambers that vote must be unanimous, "
+                     "though the recommendation itself may have been carried on a divided one. The "
+                     "whole calendar is adopted in one vote without debate, and what it adopts is each "
+                     "committee's recommendation, to pass the bill, to kill it, or to send it to interim "
+                     "study, unless the bill is first taken off &mdash; since January 2023 at the request "
+                     "of ten members in the House, and since April 2026 of two in the Senate. "
+                     "For each committee of {term} with ten reports or more: the share that went "
+                     "on the consent calendar and stayed there &mdash; a measure of how often the "
+                     "committee agreed with itself. A report counts to the committee that made it, so a "
+                     "bill sent on to Finance or Ways and Means counts in both, and a report the docket "
+                     "prints twice counts once.", term=_t(current)) + "</p>"
+               "<p>" + say(lang, "nums.p_consent2",
+                           "In {term}, <b>{kept} of {total}</b> committee recommendations "
+                           "({pct}) were adopted on the consent calendar, and "
+                           "<b>{regular}</b> went to the regular calendar, {removed} of them "
+                           "after being taken off consent.",
+                           term=_t(current), kept=f"{kept:,}", total=f"{total:,}",
+                           pct=_pct(kept, total), regular=f"{regular + removed:,}",
+                           removed=f"{removed:,}") + "</p>"
                + chamber_cc("H") + chamber_cc("S"))
 
     # 7. Each committee's passage rate.
     cr, ctot = committee_rates(idx, narr, current)
-    crrows = [[E(c), f"{n:,}", _np(p, n), _np(l, n)] for c, (n, p, l) in
+    crrows = [[_en(E(c), lang), f"{n:,}", _np(p, n), _np(l, n)] for c, (n, p, l) in
               sorted(((c, v) for c, v in cr.items() if v[0] >= 10),
                      key=lambda x: (not x[0].startswith("House"), -x[1][1] / x[1][0], x[0]))]
     # "Bills", not "House bills": a House committee's count holds the Senate
     # bills it reported on after the Senate passed them (378 of 1,942 in
     # 2025-2026), and the paragraph above says why that matters.
-    tot_line = "; ".join(f"of the {n:,} bills a {NAME[ch]} committee reported on, "
-                         f"{_pct(p, n)} passed both chambers"
-                         for ch, (n, p, _l) in ctot.items() if n)
-    out.append(f"<h2>Each Committee's Passage Rate</h2><p>Of the House and Senate bills a "
-               f"committee reported on in {_t(current)}, whatever it recommended, the share that "
-               "passed both chambers and the share that became law. A bill two committees of a "
-               "chamber reported on counts in both; committees with ten bills or more. A Senate "
-               "committee's House bills had already passed the House, and the other way round, "
-               "so compare committees within a chamber rather than across.</p>"
-               + (f"<p>In {_t(current)}, {tot_line}.</p>" if tot_line else "")
-               + _table(["Committee", "Bills reported on", "Passed both chambers", "Became law"],
-                        crrows))
+    tot_line = "; ".join(
+        (say(lang, "nums.tot_h", "of the {n} bills a House committee reported on, {pct} passed both chambers",
+             n=f"{n:,}", pct=_pct(p, n)) if ch == "H" else
+         say(lang, "nums.tot_s", "of the {n} bills a Senate committee reported on, {pct} passed both chambers",
+             n=f"{n:,}", pct=_pct(p, n)))
+        for ch, (n, p, _l) in ctot.items() if n)
+    out.append("<h2>" + say(lang, "nums.h_rates", "Each Committee's Passage Rate") + "</h2><p>"
+               + say(lang, "nums.p_rates",
+                     "Of the House and Senate bills a "
+                     "committee reported on in {term}, whatever it recommended, the share that "
+                     "passed both chambers and the share that became law. A bill two committees of a "
+                     "chamber reported on counts in both; committees with ten bills or more. A Senate "
+                     "committee's House bills had already passed the House, and the other way round, "
+                     "so compare committees within a chamber rather than across.", term=_t(current))
+               + "</p>"
+               + ("<p>" + say(lang, "nums.p_rates2", "In {term}, {lines}.", term=_t(current), lines=tot_line)
+                  + "</p>" if tot_line else "")
+               + _table([say(lang, "nums.c_cmte", "Committee"), say(lang, "nums.c_reported", "Bills reported on"),
+                         say(lang, "nums.c_both", "Passed both chambers"),
+                         say(lang, "nums.c_law_l", "Became law")], crrows))
 
     # 8 and 9. Passed as introduced, and the amendments it took.
     pa = passage(idx, narr_all)
@@ -985,20 +1096,23 @@ def body(site=Path("site"), root=Path("."), strict=True):
         n = p["passed"]
         parows.append([_t(t), f"{n:,}", _np(p["amended"], n), _np(n - p["amended"], n),
                        _np(p["conference"], n)])
-    out.append("<h2>Passed as Introduced, or Amended</h2><p>Every House and Senate bill that "
-               "passed both chambers in the same text and so went to the governor. Amended: "
-               "either chamber adopted an amendment to it first, or a committee of conference "
-               "settled the two chambers' versions; the Enrolled Bills Committee's technical "
-               "corrections after passage are not counted as amendments.</p>"
-               + _table(["Term", "Passed both chambers", "Amended", "As introduced",
-                         "To a committee of conference"], parows))
+    out.append("<h2>" + say(lang, "nums.h_amended", "Passed as Introduced, or Amended") + "</h2><p>"
+               + say(lang, "nums.p_amended",
+                     "Every House and Senate bill that "
+                     "passed both chambers in the same text and so went to the governor. Amended: "
+                     "either chamber adopted an amendment to it first, or a committee of conference "
+                     "settled the two chambers' versions; the Enrolled Bills Committee's technical "
+                     "corrections after passage are not counted as amendments.") + "</p>"
+               + _table([say(lang, "nums.c_term", "Term"), say(lang, "nums.c_both", "Passed both chambers"),
+                         say(lang, "nums.c_amended", "Amended"), say(lang, "nums.c_intro", "As introduced"),
+                         say(lang, "nums.c_conf", "To a committee of conference")], parows))
     # The last era runs to the newest term, which it counts, and not to the
     # term the figures describe, which is the one before it from the first
     # 2027 bill to the summer (18 October 2026).
     eras = [("1989-1998", lambda t: t < "1999"), ("1999-2006", lambda t: "1999" <= t < "2007"),
             ("2007-" + (terms[-1][5:] if terms else ""), lambda t: t >= "2007")]
     drows = []
-    for label_, inside in eras + [("All terms", lambda t: True)] + (
+    for label_, inside in eras + [(say(lang, "nums.all_terms", "All terms"), lambda t: True)] + (
             [(current, lambda t: t == current)] if current else []):
         dist = Counter()
         for t, p in pa.items():
@@ -1008,14 +1122,20 @@ def body(site=Path("site"), root=Path("."), strict=True):
         if n:
             drows.append([_t(label_), f"{n:,}"] + [_pct(dist[k], n) for k in range(4)]
                          + [_pct(sum(dist[k] for k in range(4, 7)), n)])
-    out.append("<h2>How Many Amendments a Bill Takes Before It Passes</h2><p>The same bills, by "
-               "the number of amendments the two chambers adopted to each before it went to the "
-               "governor: an amendment withdrawn or defeated after its adoption does not count, "
-               "nor does a committee of conference's report. From 2007 every adoption the docket "
-               "records carries the amendment's number. Before 1999 it rarely does, and each "
-               "amendment a line names counts once, so three or more is the figure there to read "
-               "with care.</p>"
-               + _table(["Terms", "Bills", "None", "One", "Two", "Three", "Four or more"], drows))
+    out.append("<h2>" + say(lang, "nums.h_takes", "How Many Amendments a Bill Takes Before It Passes")
+               + "</h2><p>" + say(
+                   lang, "nums.p_takes",
+                   "The same bills, by "
+                   "the number of amendments the two chambers adopted to each before it went to the "
+                   "governor: an amendment withdrawn or defeated after its adoption does not count, "
+                   "nor does a committee of conference's report. From 2007 every adoption the docket "
+                   "records carries the amendment's number. Before 1999 it rarely does, and each "
+                   "amendment a line names counts once, so three or more is the figure there to read "
+                   "with care.") + "</p>"
+               + _table([say(lang, "nums.c_terms", "Terms"), say(lang, "nums.c_bills", "Bills"),
+                         say(lang, "nums.c_none", "None"), say(lang, "nums.c_one", "One"),
+                         say(lang, "nums.c_two", "Two"), say(lang, "nums.c_three", "Three"),
+                         say(lang, "nums.c_four", "Four or more")], drows))
 
     # 10. How the votes were taken, by year.
     kinds = defaultdict(Counter)
@@ -1036,10 +1156,14 @@ def body(site=Path("site"), root=Path("."), strict=True):
         c = kinds[y]
         n = sum(c.values())
         krows.append([y, f"{n:,}", _pct(c["RC"], n), _pct(c["DV"], n), _pct(c["VV"], n)])
-    out.append("<h2>How the Votes Were Taken</h2><p>Every recorded floor decision, by year and by "
-               "how it was decided: a roll call records each member by name, a division records "
-               "the count, and a voice vote records only which side sounded louder.</p>"
-               + _table(["Year", "Floor decisions", "Roll call", "Division", "Voice"], krows))
+    out.append("<h2>" + say(lang, "nums.h_votes", "How the Votes Were Taken") + "</h2><p>"
+               + say(lang, "nums.p_votes",
+                     "Every recorded floor decision, by year and by "
+                     "how it was decided: a roll call records each member by name, a division records "
+                     "the count, and a voice vote records only which side sounded louder.") + "</p>"
+               + _table([say(lang, "nums.c_year", "Year"), say(lang, "nums.c_floor", "Floor decisions"),
+                         say(lang, "nums.c_rc", "Roll call"), say(lang, "nums.c_div", "Division"),
+                         say(lang, "nums.c_voice", "Voice")], krows))
 
     # 11. The closest roll calls of the current term.
     close = []
@@ -1054,13 +1178,17 @@ def body(site=Path("site"), root=Path("."), strict=True):
                 continue
             close.append((abs(y - n), bid, r))
     close.sort(key=lambda x: (x[0], x[1]))
-    crow = [[_bill_link(current, b, str(r.get("year") or "")), NAME.get(r.get("body"), ""),
-             E(r.get("question_plain") or r.get("question") or ""), f"{r['yeas']}&ndash;{r['nays']}",
-             _day(r.get("date") or "")] for _m, b, r in close[:10]]
-    out.append(f"<h2>The Closest Votes of {_t(current)}</h2><p>The ten "
-               "roll calls on bills decided by the fewest votes, procedural motions and votes "
-               "that needed more than a majority left out.</p>"
-               + _table(["Bill", "Chamber", "Question", "Yeas&ndash;nays", "Date"], crow))
+    crow = [[_bill_link(current, b, str(r.get("year") or "")), _chamber(r.get("body"), lang),
+             _en(E(r.get("question_plain") or r.get("question") or ""), lang),
+             f"{r['yeas']}&ndash;{r['nays']}", _day(r.get("date") or "", lang)]
+            for _m, b, r in close[:10]]
+    out.append("<h2>" + say(lang, "nums.h_closest", "The Closest Votes of {term}", term=_t(current))
+               + "</h2><p>" + say(lang, "nums.p_closest", "The ten "
+                                  "roll calls on bills decided by the fewest votes, procedural motions and votes "
+                                  "that needed more than a majority left out.") + "</p>"
+               + _table([say(lang, "nums.c_bill", "Bill"), say(lang, "nums.c_chamber", "Chamber"),
+                         say(lang, "nums.c_question", "Question"),
+                         say(lang, "nums.c_yn", "Yeas&ndash;nays"), say(lang, "nums.c_date", "Date")], crow))
 
     # 12. Attendance on roll-call days.
     votes = _need(root / "data" / "member_votes.json", "attendance on roll-call days")
@@ -1073,14 +1201,19 @@ def body(site=Path("site"), root=Path("."), strict=True):
                 continue
             arows.append([_t(t)] + [x for v in (h, s) for x in
                                     ((f"{v[0]:,}", f"{100 * v[1]:.1f}%") if v else ("", ""))])
-        out.append("<h2>Attendance on Roll-Call Days</h2><p>For each day a chamber took at least "
-                   "one roll call, the share of its members in office who were there for at "
-                   "least one of that day's roll calls &mdash; voting, presiding, or declaring a "
-                   "conflict of interest &mdash; averaged over the days. Members' ballots are on "
-                   "record from 1999, and a day with only voice or division votes records no one "
-                   "by name, so it cannot be counted.</p>"
-                   + _table(["Term", "House roll-call days", "House attendance",
-                             "Senate roll-call days", "Senate attendance"], arows))
+        out.append("<h2>" + say(lang, "nums.h_attend", "Attendance on Roll-Call Days") + "</h2><p>"
+                   + say(lang, "nums.p_attend",
+                         "For each day a chamber took at least "
+                         "one roll call, the share of its members in office who were there for at "
+                         "least one of that day's roll calls &mdash; voting, presiding, or declaring a "
+                         "conflict of interest &mdash; averaged over the days. Members' ballots are on "
+                         "record from 1999, and a day with only voice or division votes records no one "
+                         "by name, so it cannot be counted.") + "</p>"
+                   + _table([say(lang, "nums.c_term", "Term"),
+                             say(lang, "nums.c_h_days", "House roll-call days"),
+                             say(lang, "nums.c_h_att", "House attendance"),
+                             say(lang, "nums.c_s_days", "Senate roll-call days"),
+                             say(lang, "nums.c_s_att", "Senate attendance")], arows))
 
     # 13. Vetoes, of the bills that reached the governor.
     vrows, waiting = [], 0
@@ -1089,16 +1222,21 @@ def body(site=Path("site"), root=Path("."), strict=True):
         waiting += live
         vrows.append([_t(t), f"{reached:,}", _np(vetoed, reached), str(stood),
                       str(over)])
-    out.append("<h2>Vetoes</h2><p>Of the bills and joint resolutions that reached the governor in "
-               "each of the last ten "
-               "terms, how many were vetoed, and what became of the veto. A bill that became "
-               "law without a signature reached the governor and was not vetoed. A veto stood "
-               "when the override failed or no override vote came before the session ended."
-               + (f" {waiting} veto{'es' if waiting != 1 else ''} of {_t(current)} "
-                  f"{'are' if waiting != 1 else 'is'} still to be voted on, and counted as "
-                  "vetoed only." if waiting else "") + "</p>"
-               + _table(["Term", "Reached the governor", "Vetoed", "Veto stood", "Overridden"],
-                        vrows))
+    out.append("<h2>" + say(lang, "nums.h_vetoes", "Vetoes") + "</h2><p>"
+               + say(lang, "nums.p_vetoes",
+                     "Of the bills and joint resolutions that reached the governor in "
+                     "each of the last ten "
+                     "terms, how many were vetoed, and what became of the veto. A bill that became "
+                     "law without a signature reached the governor and was not vetoed. A veto stood "
+                     "when the override failed or no override vote came before the session ended.")
+               + (" " + (say(lang, "nums.waiting_one", "1 veto of {term} is still to be voted on, and "
+                             "counted as vetoed only.", term=_t(current)) if waiting == 1 else
+                         say(lang, "nums.waiting", "{n} vetoes of {term} are still to be voted on, and "
+                             "counted as vetoed only.", n=waiting, term=_t(current)))
+                  if waiting else "") + "</p>"
+               + _table([say(lang, "nums.c_term", "Term"), say(lang, "nums.c_reached", "Reached the governor"),
+                         say(lang, "nums.c_vetoed", "Vetoed"), say(lang, "nums.c_stood", "Veto stood"),
+                         say(lang, "nums.c_over", "Overridden")], vrows))
 
     # 14. Constitutional amendments sent to the voters.
     ballot = _need(root / "corrections" / "ballot_results.json", "the amendments sent to the voters")
@@ -1112,40 +1250,54 @@ def body(site=Path("site"), root=Path("."), strict=True):
         brows = []
         for r in shown:
             y, n = r["yes"], r["no"]
-            brows.append([f'{_bill_link(r["term"], r["bill"])}<br>{_t(r["term"])}', _day(r["election"]),
+            brows.append([f'{_bill_link(r["term"], r["bill"])}<br>{_t(r["term"])}', _day(r["election"], lang),
                           f"{y:,}", f"{n:,}", _pct(y, y + n),
                           # the result in the status chip's colours: law's
                           # green, a death's red (chips.json's classes)
                           # THE ONE CHIP (Polish 1's step 3), in Title Case as
                           # the D18 card chips say it ("Not Ratified").
-                          (components.chip("Ratified", f"cstat {CHIP['law']}") if ratified(y, n)
-                           else components.chip("Not Ratified", f"cstat {CHIP['done']}")),
-                          f'<a href="{E(r["source"])}" rel="noopener">{E(r["cite"])}</a>'])
+                          (components.chip(say(lang, "nums.ratified", "Ratified"), f"cstat {CHIP['law']}")
+                           if ratified(y, n)
+                           else components.chip(say(lang, "nums.not_ratified", "Not Ratified"),
+                                                f"cstat {CHIP['done']}")),
+                          f'<a href="{E(r["source"])}" rel="noopener">{_en(E(r["cite"]), lang)}</a>'])
         rat = sum(1 for r in shown if ratified(r["yes"], r["no"]))
         # WHOSE COUNT, FROM THE ROWS (ballot_source.py): the Secretary of
         # State for every one since 7 October 2026, and said by the rows, so
         # that a row with another source makes the sentence say so.
-        whose = Counter(BS.whose(r) for r in shown)
+        whose = Counter(_whose(r, lang) for r in shown)
         if len(whose) == 1:
-            said = (f"Yes and No are {next(iter(whose))} statewide count, printed where the "
-                    "Source column says.")
+            said = say(lang, "nums.count_one", "Yes and No are {whose} statewide count, printed where the "
+                       "Source column says.", whose=next(iter(whose)))
         else:
-            said = ("Yes and No are the statewide count printed where the Source column says: "
-                    + ", ".join(f"{name} for {k}" for name, k in whose.most_common()) + ".")
+            said = (say(lang, "nums.count_many", "Yes and No are the statewide count printed where the "
+                        "Source column says: {list}.",
+                        list=", ".join(say(lang, "nums.name_for", "{name} for {k}", name=name, k=k)
+                                       for name, k in whose.most_common())))
         # An election still to come, in the tense the build's day gives it:
         # once the day has passed and the row has no count yet, the page says
         # the count is not here rather than that the vote is ahead.
         day = build_date.today().isoformat()
         coming = "".join(
-            f" {_bill_link(r['term'], r['bill'])} of {_t(r['term'])} goes to the voters on "
-            f"{_day(r['election'])}." if r["election"] >= day else
-            f" {_bill_link(r['term'], r['bill'])} of {_t(r['term'])} went to the voters on "
-            f"{_day(r['election'])}, and their count is not on this site yet." for r in to_come)
-        out.append("<h2>Constitutional Amendments Sent to the Voters</h2><p>A constitutional "
-                   "amendment that passes both chambers by three fifths goes to the voters at the "
-                   "next general election, and is ratified only with two thirds of the votes cast "
-                   "on it (Part Second, Article 100); a blank ballot is not a vote cast on it. "
-                   + said + f" {rat} of the {len(shown)} below were ratified." + coming + "</p>"
-                   + wide(_table(["Amendment", "Election", "Yes", "No", "Yes share", "Result",
-                                  "Source"], brows)))
+            " " + say(lang, "nums.goes", "{bill} of {term} goes to the voters on {day}.",
+                      bill=_bill_link(r['term'], r['bill']), term=_t(r['term']),
+                      day=_day(r['election'], lang)) if r["election"] >= day else
+            " " + say(lang, "nums.went", "{bill} of {term} went to the voters on {day}, and their "
+                      "count is not on this site yet.",
+                      bill=_bill_link(r['term'], r['bill']), term=_t(r['term']),
+                      day=_day(r['election'], lang)) for r in to_come)
+        out.append("<h2>" + say(lang, "nums.h_cacr", "Constitutional Amendments Sent to the Voters")
+                   + "</h2><p>" + say(
+                       lang, "nums.p_cacr",
+                       "A constitutional "
+                       "amendment that passes both chambers by three fifths goes to the voters at the "
+                       "next general election, and is ratified only with two thirds of the votes cast "
+                       "on it (Part Second, Article 100); a blank ballot is not a vote cast on it.")
+                   + " " + said + " " + say(lang, "nums.rat_of", "{rat} of the {n} below were ratified.",
+                                            rat=rat, n=len(shown)) + coming + "</p>"
+                   + wide(_table([say(lang, "nums.c_amend", "Amendment"), say(lang, "nums.c_election", "Election"),
+                                  say(lang, "nums.c_yes", "Yes"), say(lang, "nums.c_no", "No"),
+                                  say(lang, "nums.c_yes_share", "Yes share"),
+                                  say(lang, "nums.c_result", "Result"), say(lang, "nums.c_source", "Source")],
+                                 brows)))
     return "".join(out)

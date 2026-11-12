@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.24
+# GRANITE_VERSION: 2026-09-09.25
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -558,8 +558,10 @@ def sample_hearings():
     for chamber in ("H", "S"):
         try:
             rows += CM.load(chamber)
-        except Exception:                                   # noqa: BLE001
-            pass
+        except Exception as e:                              # noqa: BLE001
+            print(f"  WARNING calendar_meetings.load({chamber!r}) failed, so no "
+                  f"{chamber} hearings in this sample ({type(e).__name__}: {e})",
+                  file=sys.stderr)
     out = []
     for r in rows if isinstance(rows, list) else []:
         if not r.get("bill"):

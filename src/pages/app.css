@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.365 */
+/* GRANITE_VERSION: 2026-09-07.379 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -1695,6 +1695,30 @@ white-space:normal;letter-spacing:0;text-transform:none}
 .termpop[hidden]{display:none}
 .termpop b{font-weight:600}
 @media (forced-colors:active){.termpop{border-color:CanvasText}}
+/* A POINTER ON THE BOX, AT THE WORD (the owner, 10 November 2026: "add the
+   triangle indicator ... to all tooltips so they point at the word they're
+   defining"). The box's own edge and ground as two triangles, one over the
+   other, as the seat callout's (.seatpop) are: on the top edge, pointing up,
+   where the box stands under its word; on the bottom edge, pointing down,
+   with .above, where the law pages' box stands over it. --arrow is the
+   word's middle from the box's left, set by the script after the box has
+   been moved to stay on the screen. */
+.termpop:not(.seatpop)::before,.termpop:not(.seatpop)::after{content:"";position:absolute;
+  left:var(--arrow,var(--sp-6));width:0;height:0;border:7px solid transparent;transform:translateX(-50%);
+  pointer-events:none}
+.termpop:not(.seatpop)::before{bottom:100%;border-bottom-color:var(--rule-2)}
+.termpop:not(.seatpop)::after{bottom:calc(100% - 1px);border-bottom-color:var(--surface)}
+.termpop.above:not(.seatpop)::before{bottom:auto;top:100%;border-bottom-color:transparent;
+  border-top-color:var(--rule-2)}
+.termpop.above:not(.seatpop)::after{bottom:auto;top:calc(100% - 1px);border-bottom-color:transparent;
+  border-top-color:var(--surface)}
+@media (forced-colors:active){
+  .termpop:not(.seatpop)::before,.termpop:not(.seatpop)::after{forced-color-adjust:none}
+  .termpop:not(.seatpop)::before{border-bottom-color:CanvasText}
+  .termpop:not(.seatpop)::after{border-bottom-color:Canvas}
+  .termpop.above:not(.seatpop)::before{border-bottom-color:transparent;border-top-color:CanvasText}
+  .termpop.above:not(.seatpop)::after{border-bottom-color:transparent;border-top-color:Canvas}
+}
 /* A bill named in running words: the number, underlined, the year quiet. */
 .bmention{white-space:nowrap}
 .bmention .byr{color:var(--ink-2)}
@@ -2287,6 +2311,17 @@ overflow-y:auto;overflow-x:hidden}
 .shell.nofacets .ftoggle,.shell.focused .ftoggle{display:none}
 .fopt{display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-1) 0;font-size:var(--t-ui);cursor:pointer}
 .fopt input{accent-color:var(--pine);margin:0;flex:0 0 auto}
+/* The Sponsor filter's "Include co-sponsored bills" box, drawn as a filter option. */
+.fcosp{display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-1) 0;margin-top:var(--sp-3);font-size:var(--t-ui);cursor:pointer}
+.fcosp input{accent-color:var(--pine);margin:0;flex:0 0 auto}
+/* A vote asked for by its link in the Summary, on the Votes tab. */
+.rc.rcsel{outline:2px solid var(--pine);outline-offset:3px}
+/* A tally that is a link stays whole on a line, as a How It Got Here tally is
+   (.jl .tally): "201-" over "150" was a link broken in two on a phone. */
+a.vtl{white-space:nowrap}
+/* A second choice inside a filter group (the Sponsor group's prime-sponsor party). */
+.fsub{margin:var(--sp-3) 0 var(--sp-4);padding:var(--sp-3) 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.fsubh{font:600 var(--t-ui)/1.35 var(--sans);color:var(--ink);margin-bottom:var(--sp-1)}
 .fopt .c{margin-left:auto;font-size:var(--t-sm);color:var(--ink-2)}
 /* A Status filter's chip wraps in the 250px column rather than run out of
    it: "Passed both chambers, goes to the voters in November 2026" was cut
@@ -3349,7 +3384,6 @@ border-radius:var(--r-in);padding:var(--sp-1) var(--sp-5);background:var(--surfa
 .anbox .src{margin-top:var(--sp-4)}
 .amdhead{display:flex;gap:var(--sp-4);align-items:baseline;flex-wrap:wrap}
 .amdn{font-weight:600;font-size:var(--t-ui);font-variant-numeric:tabular-nums}
-.amdk{font-size:var(--t-ui);color:var(--ink-2)}
 .amdd{font-size:var(--t-ui);color:var(--ink-2);margin-left:auto}
 .amdby{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-2) 0 0}
 .amdtext{margin-top:var(--sp-4)}
@@ -4053,6 +4087,11 @@ border-radius:var(--r-in);color:var(--ink);font-weight:600;line-height:1.6}
    says "Link copied" where the address was copied rather than shared. */
 #reportbox{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-4) var(--sp-5);margin-top:var(--sp-5)}
 #reportbox > .report[open]{flex:1 1 100%}
+/* IN A PAGE'S ROW OF ACTIONS (shell.py's .pageacts: Cite, and Report a problem
+   mounted beside it, as on a town's page) the box sits level with the other
+   buttons: its 20px of margin above had put Report a problem lower than Cite
+   this page (the owner, 10 November 2026). */
+.pageacts > #reportbox{margin-top:0}
 .sharestate{font-size:var(--t-sm);color:var(--ink-2);overflow-wrap:anywhere;min-width:0}
 .followpane,.citebody,.testifypane{position:absolute;right:0;top:calc(100% + 6px);z-index:20;
   width:min(36rem,calc(100vw - 28px));padding:var(--sp-5) var(--sp-5);border:1px solid var(--rule-2);
@@ -4449,6 +4488,15 @@ margin-top:var(--sp-1)}
   .twngrid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   .twnwide{grid-column:1 / -1}
 }
+/* THE OFFICIALS TAB'S TWO COLUMNS (the owner, 10 November 2026): the elected on
+   the left, and on the right the town or city offices, the clerk and the
+   staff and administrative positions, each stack its own height. One column
+   below 1100px, the elected first (build_town_pages.in_columns). */
+.twncols{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-6);align-items:start}
+.twncol{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-6);align-content:start;min-width:0}
+@media (min-width:68.75em){
+  .twncols{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+}
 .twnsec{min-width:0;background:var(--surface);border:1px solid var(--rule-2);
   border-radius:var(--r-out);padding:var(--sp-6) var(--sp-7);overflow-wrap:anywhere}
 @media (max-width:30em){.twnsec{padding:var(--sp-5)}}
@@ -4738,6 +4786,18 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
 .l-head .pageacts > details > summary:hover{background:var(--wash)}
 .l-head .pageacts > details[open] > summary{border-color:var(--ink)}
 .l-head .pageacts .citebody{left:0;right:auto}
+/* CITE THIS PAGE HAS THE DISCLOSURE TRIANGLE (the owner, 10 November 2026:
+   "Add triangle indicator to cite page button"): the chevron "On this page"
+   and the Learn folds carry, after the words, turned a quarter to point down
+   while it is open. Not on a record page, where the pane has its nub (the
+   .racts rules, summary::after) pointing at the button instead. */
+.pcite:not(.racts .pcite) > summary::after{content:"";flex:0 0 auto;width:.75rem;height:.75rem;
+  margin-left:var(--sp-2);background:var(--ink-2);transition:transform .15s;
+  -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;
+  --l-chev:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.25%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M9 5.5l6.5 6.5L9 18.5%22/%3E%3C/svg%3E")}
+.pcite:not(.racts .pcite)[open] > summary::after{transform:rotate(90deg)}
+@media (prefers-reduced-motion:reduce){.pcite > summary::after{transition:none}}
+@media (forced-colors:active){.pcite:not(.racts .pcite) > summary::after{forced-color-adjust:none;background:CanvasText}}
 /* The same row under a town's line and under the Calendar's headings (the
    audit of 25 October 2026, S9), where it stood alone over the heading. */
 :is(.officials,.calhead,.cdpage) > .pageacts{justify-content:flex-start;margin:0 0 var(--sp-7)}
@@ -6586,6 +6646,8 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
 .vamds{list-style:none;padding:0;margin:var(--sp-4) 0 0}
 .vamds li{margin:0 0 var(--sp-4)}
 .vamds .dim{color:var(--ink-2);font-size:var(--t-sm);margin-left:var(--sp-3)}
+/* An amendment's origin and outcome chips, on the line with its number. */
+.vamds .chip{margin-left:var(--sp-3);vertical-align:baseline}
 
 /* A MEMBER'S VOTES, WITH WHAT EACH ONE DECIDED. The middle column carries the
    bill, its title and the question in plain English stacked on top of each
@@ -7251,7 +7313,26 @@ align-items:baseline;padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
 .vwbn{grid-column:1;font-weight:600;white-space:nowrap}
 .vwbt{grid-column:2;font-size:var(--t-sm);line-height:1.45;color:var(--ink-2)}
 .vwbills .mjumps{grid-column:2;display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);align-items:center;margin-left:0}
+/* What was voted that day, a chip as the Meetings tab and the bill's Reports tab draw it. */
+.vwout{grid-column:2;display:flex;flex-wrap:wrap;gap:var(--sp-2);align-items:center}
 .vwlinks{margin:var(--sp-4) 0 0}
+/* A bill's moments and what was voted there share one line (app.js,
+   cmteVideoDetail): the number, then these, the title under them. The chip
+   had wrapped onto a line of its own at the right of the moment's button. */
+.vwbills .vwmom{grid-column:2;display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);align-items:center}
+.vwbills .vwmom .mjumps,.vwbills .vwmom .vwout{display:contents}
+/* The chips keep to the line beside the moments: a chip's own rule (.cstat,
+   .rcres) pushes it to the right edge, away from them and, on a phone, onto
+   a line of its own. */
+.vwbills .vwmom .chip,.vwres .chip{margin-left:0}
+/* A bill's Hearings tab (app.js, hearingDetail), under its one player: when
+   and where above, then who signed in and what was voted as chips, then the
+   bill's moments in the recording. */
+.vwsign,.vwres,.vwmoms{margin:0 0 var(--sp-3);display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);align-items:center}
+.vwsign .tnote{margin:0}
+.vwtally{font-size:var(--t-ui);color:var(--ink-2)}
+/* The sittings with no recording to play, under the view: the old cards. */
+.hplain{margin-top:var(--sp-6)}
 /* A link a finger taps is 24px tall here too (WCAG 2.5.8): the player bar's
    ".pbar > a" rule never reaches the caption's "On YouTube", which sits in a
    line of text, nor the links under the player, and both were 19px (the
@@ -7353,7 +7434,7 @@ color:var(--ink-2);white-space:nowrap;overflow:hidden}
 @media (max-width:45em){
   .vwbills{display:block}
   .vwbills li{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3)}
-  .vwbills .mjumps{display:contents}
+  .vwbills .mjumps,.vwbills .vwmom{display:contents}
   .vwbt{flex:1 1 100%}
 }
 @media screen and (min-width:60em){
@@ -7460,6 +7541,8 @@ color:var(--ink-2);margin:var(--sp-6) 0 var(--sp-3)}
 .mjump{display:inline-flex;flex-wrap:nowrap;align-items:center;gap:var(--sp-3);max-width:100%}
 .mjumps .jump{display:inline-flex;align-items:center;gap:var(--sp-2);background:var(--surface)}
 .mjumps .jump .icon{width:.75rem;height:.75rem}
+.mjumps .mdid{display:inline-flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
+.mjumps .mdid .chip .latvote{font-size:inherit;color:inherit;white-space:nowrap;font-variant-numeric:tabular-nums}
 .mjumps .approx{font-style:normal;font-size:var(--t-sm);color:var(--ink-2)}
 .cline .mact{margin:var(--sp-2) 0 0}
 .mmark{display:inline-flex;vertical-align:-.1em;margin-right:var(--sp-2);font-weight:700}
@@ -8042,7 +8125,12 @@ letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
 /* The box holds a link to the definition and, where it is cut, "Show more"
    (the person, 7 November 2026): never taller than the screen, its words
    scrolling inside it once the whole definition is open. */
-.rs-dpop{max-width:min(26rem,calc(100vw - 2rem));max-height:min(30rem,calc(100vh - 2rem));overflow-y:auto}
+/* The box does not scroll itself, or its pointer would be cut off at its
+   edge: its words do, in .rs-dpin, which gives way when the script caps the
+   box's height. */
+.rs-dpop{max-width:min(26rem,calc(100vw - 2rem));max-height:min(30rem,calc(100vh - 2rem));
+  display:flex;flex-direction:column}
+.rs-dpin{display:block;min-height:0;overflow-y:auto}
 .rs-dpcite{display:block;font-weight:600;margin-bottom:.25rem}
 .rs-dpcite a{color:var(--pine)}
 .rs-dptext{display:block}
@@ -8240,7 +8328,13 @@ body:has(.rs-page) .searchrow,.shell:has(.rs-page) > .facets,.shell:has(.rs-page
 .lw-own a{color:var(--pine)}
 
 /* The reader: the section as its chapter's page prints it. */
-.lw-read{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto;
+/* THE PANEL USES THE HEIGHT THE SCREEN HAS (the owner, 11 November 2026: it was
+   small, and a definition opened in it was cut off): held at the top as the
+   directory scrolls and as tall as the screen allows, so a long section and
+   a definition's box have room. Its box (.rs-dpop, DEFS_JS) is held inside
+   it: no wider than the panel, its words wrapping, and no sideways scroll. */
+.lw-read{position:sticky;top:16px;height:calc(100vh - 32px);max-height:calc(100vh - 32px);
+  overflow-y:auto;overflow-x:hidden;box-sizing:border-box;
   border:1px solid var(--rule-2);border-radius:var(--r-in);background:var(--surface);padding:.25rem 1.25rem 1rem}
 .lw-read .rs-sec{border-bottom:0;padding-top:.75rem}
 .lw-read .rs-h{font-size:var(--t-ui)}
@@ -8430,6 +8524,15 @@ border-radius:var(--r-out);padding:var(--sp-6) var(--sp-6);margin-bottom:var(--s
 :where(body.pg) .chip[class*=" pt-"]{margin:0 var(--sp-2) var(--sp-2) 0}
 :where(body.pg) .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:var(--sp-1) var(--sp-7)}
 :where(body.pg) .mem{padding:var(--sp-2) 0;font-size:var(--t-ui)}
+/* A CHIP NEVER LEAVES ITS CELL (the webinar, 11 November 2026: "Rep. Jessica
+   LaMontagne (D - Straf 17)" ran into the next column of the county lists,
+   and so did "Your rep" beside a chip). The cell may shrink below its
+   content, the chip wraps its text at the spaces as a phone's does, and the
+   party-and-district tag stays whole; the "Your rep" tag wraps under the
+   name with it and is never itself broken. */
+:where(body.pg) .grid > .mem{min-width:0}
+:where(body.pg) .grid .mem .mchip{white-space:normal;flex-wrap:wrap;row-gap:0}
+:where(body.pg) .grid .mem .mchip > a{overflow-wrap:anywhere}
 /* The district beside a name in the roster. It was an inline style on all
    406 rows. */:where(body.pg) .mdist{color:var(--ink-2);font-size:var(--t-sm)}
 :where(body.pg) .count{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-4) 0}
@@ -8928,6 +9031,25 @@ font-variant-numeric:tabular-nums;white-space:nowrap}
   :where(body.pg) .hv-panels .hright > div + div:not(.fresh){margin-top:var(--sp-6)}
   :where(body.pg) .hv-panels .hright > #upcoming > .cal{margin-top:0}
   :where(body.pg) .hv-panels .hright h2{margin-top:0}
+  /* THE LEFT COLUMN AS TWO SHEETS, AS THE RIGHT IS (the owner, 11 November
+     2026: the status box "sits flush against the Recent Session Days
+     heading"). The Court's status is a card of its own and Recent Session
+     Days another, the same card as Coming up and Latest activity: the surface,
+     its edge, its padding, the same gap between them, and the heading over
+     its rule. The status box keeps its colour -- the card takes the tint, the
+     box inside it only its edge -- so In Session still reads at a glance. */
+  :where(body.pg) .hv-panels .hleft{background:none;border:0;border-radius:0;padding:0}
+  :where(body.pg) .hv-panels .hleft > #state,
+  :where(body.pg) .hv-panels .hleft > #session{background:var(--surface);border:1px solid var(--rule-2);
+    border-radius:var(--r-out);padding:var(--sp-7) var(--sp-7) var(--sp-8)}
+  :where(body.pg) .hv-panels .hleft > #state:has(.statebox.live){background:var(--pine-soft)}
+  :where(body.pg) .hv-panels .hleft > #state:has(.statebox.wait){background:var(--wait-bg)}
+  :where(body.pg) .hv-panels .hleft > #state:empty,
+  :where(body.pg) .hv-panels .hleft > #session:empty{display:none}
+  :where(body.pg) .hv-panels .hleft > #state ~ #session{margin-top:var(--sp-6)}
+  :where(body.pg) .hv-panels .hleft #state .statebox{border-width:0 0 0 4px;border-radius:0;background:none;
+    padding:0 0 0 var(--sp-5);max-width:none}
+  :where(body.pg) .hv-panels .hleft h2{margin-top:0}
   :where(body.pg) .hv-rules .hmid{position:relative;align-self:stretch}
   :where(body.pg) .hv-rules .hmid::before,
   :where(body.pg) .hv-rules .hmid::after{content:"";position:absolute;top:0;bottom:0;width:1px;

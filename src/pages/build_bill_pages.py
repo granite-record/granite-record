@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.79
+# GRANITE_VERSION: 2026-09-04.80
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -290,6 +290,9 @@ def shell(t, b, d, base, raw=None, data_url=None, current_term="", modified=None
             if d.get("events") and S.still_moving(b, current_term) else "")
     return S.page(
         t, path=path, base=base,
+        # The citation's date for a reader without JavaScript is the day the
+        # record last moved (lastmod), not the build's.
+        changed=modified,
         jsonld=LD.bill(b, d, base, S.canon(path), modified=modified),
         # THE YEAR IS PART OF THE NAME. Bill numbers repeat every two
         # years, so 192 pages shared a title with another term's bill --

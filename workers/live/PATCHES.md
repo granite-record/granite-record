@@ -115,8 +115,8 @@ twice.
 
 prune() needs no change. build_live_session removes a date's JSON when
 its page is gone, and leaves the term files (2025-2026.json) alone. With
-the edit, bump build_session_pages.py's GRANITE_VERSION and versions.json
-together (`python3 src/ops/inventory.py --bump-changed`).
+the edit, bump build_session_pages.py's GRANITE_VERSION
+(`python3 src/ops/inventory.py --bump-changed`).
 
 ## 11. build_committees.py and build_study_committees.py: the live hook (section 1.6)
 
@@ -155,7 +155,7 @@ finished HTML, before it is written (src/pages/live_hook.py):
   (chamber, name) exactly as passed to place(). It feeds live_hook.longer():
   the stems of committees whose names extend this one's, which the page
   refuses (the Senate's Education never takes Education Finance's stream).
-- **Stamps.** Bump both files' stamps and versions.json.
+- **Stamps.** Bump both files' stamps.
 
 place() puts the hook directly before `<div id="results">`, outside app.js's
 root, and adds live.js and live.css. It stops (ValueError) on a page with no

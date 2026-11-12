@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.7
+# GRANITE_VERSION: 2026-10-30.8
 """
 The state documents the guides and Learn pages rest on: from the laptop, where
 a real browser can read them, to the sessions, which cannot.
@@ -110,6 +110,8 @@ import re
 from datetime import date, datetime
 from urllib.parse import urlsplit
 
+import state_settings as ST
+
 REGISTRY = "records/sources/REGISTRY.csv"
 FOLDER = "sources"
 PREFIX = "sources/"
@@ -127,8 +129,7 @@ PRINTOUTS_PREFIX = PREFIX + "printouts/"
 FIELDS = ["id", "url", "kind", "title", "publisher", "owner_page", "changes",
           "read_by", "used_by", "listed_in", "note", "jurisdiction"]
 # Whose page it is: the state's, the federal government's, or one county's.
-COUNTIES = ("Belknap", "Carroll", "Cheshire", "Coos", "Grafton", "Hillsborough",
-            "Merrimack", "Rockingham", "Strafford", "Sullivan")
+COUNTIES = ST.COUNTIES
 JURISDICTIONS = {"state", "federal", *(f"county:{c}" for c in COUNTIES)}
 KINDS = {"page", "pdf", "app", "data", "wanted"}
 READ_BY = {"browser", "owner-only", "find"}

@@ -1,0 +1,31 @@
+{
+ "_about": "The Secretary of State's count of the questions on the ballot at the 2022, 2024 and 2026 general elections, read from the spreadsheets saved in records/sources/ by src/parse/parse_sos_questions.py, which says what it reads, what 'how' means and what it refuses. Nothing here is the person's: a person runs the script and commits the file, so the diff is the review. 'kind' is the script's KINDS table, from the question's own words, not from a file. A constitutional amendment's count is also in corrections/ballot_results.json, which the pages read for it.",
+ "_source": [
+  {"file": "2022-ge-concon-questions.xls", "sha256": "3b91f5ee9b58f0e459b78acc71e1fdb9f5c63e2eb1dfd7e35cc76ab8ea2fa826"},
+  {"file": "2024-ge-constitutional-questions_3.xls", "sha256": "3fa9cb5ee32ff2d2a89394bd5e69371129b1c982de5dbf3eee650f3e9e5615e7"},
+  {"file": "2026-ge-constitutional-question-summary.xlsx", "sha256": "0057405f90f9c12ed7399efe588b4c16e72198f184a971ed02f4d17f694c224d"},
+  {"file": "2026-ge-constitutional-questions-belknap.xlsx", "sha256": "a48da0cf2b9acefbfe2367c0ecfa33b1942a25657e0afe9a6ed6c380fe3148d2"},
+  {"file": "2026-ge-constitutional-questions-carroll.xlsx", "sha256": "2e80c467936024aa7b3db06a64897049db94f1c336badcd4d288bf6fa604bd00"},
+  {"file": "2026-ge-constitutional-questions-cheshire.xlsx", "sha256": "4536d4bda792bda64de9d6abd3a47d67f7436715c7ca6dab03eea0a96c71d306"},
+  {"file": "2026-ge-constitutional-questions-coos.xlsx", "sha256": "1c53a16b29061c651de4b8ed91466065dfe74e34980b954c5aeda67016ace852"},
+  {"file": "2026-ge-constitutional-questions-grafton.xlsx", "sha256": "c4e71bed84e7f6d054ec8a86eda4cccf29a9b2f536541d25f32c2606bb034f58"},
+  {"file": "2026-ge-constitutional-questions-hillsborough.xlsx", "sha256": "e60ad785e77ae507be4e4a443fbde2cb66900f6844c9c515f7eb41cb49de41ed"},
+  {"file": "2026-ge-constitutional-questions-merrimack.xlsx", "sha256": "e9889e4f7102fca059c2e1da16f7f882813bca9c8ecf83463ed6ce42cc029d98"},
+  {"file": "2026-ge-constitutional-questions-rockingham.xlsx", "sha256": "595acfd0da5bab189ed7b8b2ec7b13aa0dd629f4752ea529630468d576e4cf7f"},
+  {"file": "2026-ge-constitutional-questions-strafford.xlsx", "sha256": "521ff397c9f127958016b9fb3217f1dbdd9538d813a73c766d742ff962dbd254"},
+  {"file": "2026-ge-constitutional-questions-sullivan.xlsx", "sha256": "ef32672bd761115af5d0e3e84042c468ac3564f4f05e0c26bde1838c51f6d296"}
+ ],
+ "elections": {
+  "2022-11-08": [
+   {"number": 1, "label": "Question No. 1", "kind": "cacr", "yes": 329157, "no": 194291, "how": "the Totals row of the Secretary of State's statewide summary", "counties": {"Belknap": [16129, 9826], "Carroll": [14388, 8430], "Cheshire": [18086, 10643], "Coos": [6576, 4185], "Grafton": [24065, 12879], "Hillsborough": [90549, 54369], "Merrimack": [36901, 22709], "Rockingham": [82005, 49533], "Strafford": [30531, 15928], "Sullivan": [9927, 5789]}},
+   {"number": 2, "label": "Question No. 2", "kind": "convention", "yes": 178339, "no": 347838, "how": "the Totals row of the Secretary of State's statewide summary", "counties": {"Belknap": [8406, 17807], "Carroll": [7632, 15172], "Cheshire": [9401, 18741], "Coos": [3664, 7211], "Grafton": [12448, 24687], "Hillsborough": [50102, 96644], "Merrimack": [20257, 39830], "Rockingham": [44110, 88384], "Strafford": [17295, 28562], "Sullivan": [5024, 10800]}}
+  ],
+  "2024-11-05": [
+   {"number": 1, "label": "Question No. 1", "kind": "cacr", "yes": 452307, "no": 237221, "how": "the Totals row of the Secretary of State's statewide summary", "counties": {"Belknap": [22529, 11943], "Carroll": [19856, 8823], "Cheshire": [24523, 13942], "Coos": [9596, 4948], "Grafton": [30706, 18687], "Hillsborough": [125902, 66481], "Merrimack": [49956, 27315], "Rockingham": [113923, 55747], "Strafford": [41917, 22909], "Sullivan": [13399, 6426]}}
+  ],
+  "2026-11-03": [
+   {"number": 1, "label": "Question No. 1", "kind": "cacr", "yes": 365359, "no": 198791, "how": "the Totals row of the Secretary of State's statewide summary", "counties": {"Belknap": [16970, 10851], "Carroll": [16815, 8263], "Cheshire": [19103, 11660], "Coos": [7127, 4404], "Grafton": [25703, 13862], "Hillsborough": [103307, 55202], "Merrimack": [40676, 23466], "Rockingham": [93379, 46130], "Strafford": [32994, 18977], "Sullivan": [10559, 6610]}, "county_sum": [366633, 199425]},
+   {"number": 2, "label": "Question No. 2", "kind": "local_cap", "yes": 356374, "no": 249144, "how": "the sum of the ten county files' TOTALS rows: the statewide summary does not hold this question", "counties": {"Belknap": [18946, 10690], "Carroll": [16699, 10056], "Cheshire": [17878, 15087], "Coos": [8205, 3962], "Grafton": [21700, 19801], "Hillsborough": [101522, 67074], "Merrimack": [39640, 29434], "Rockingham": [89328, 61595], "Strafford": [31881, 23533], "Sullivan": [10575, 7912]}, "measure": "HB 1300"}
+  ]
+ }
+}

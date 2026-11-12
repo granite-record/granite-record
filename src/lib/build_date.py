@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-02.1
+# GRANITE_VERSION: 2026-10-02.4
 """
 The day a build says it was made, asked for in one place.
 
@@ -11,7 +11,8 @@ The day a build says it was made, asked for in one place.
 WHY THIS EXISTS
 
 The day the site was built is written into every page: it is the date a
-citation falls back on for a reader without JavaScript (shell.BUILT). The
+citation falls back on for a reader without JavaScript where the page
+has no day its record last changed (shell.BUILT, shell.cited). The
 sitemap dates every address with it, every feed carries it as lastBuildDate,
 the bulk downloads' manifest says when it was generated -- and a dozen
 builders ask what today is to decide what is still to come: this week's
@@ -49,6 +50,8 @@ reader's own date in a citation where it can.
 import datetime
 import os
 
+from state_settings import TIMEZONE
+
 ENV = "GRANITE_BUILD_DATE"
 
 
@@ -71,9 +74,21 @@ def stated():
 
 
 def today():
-    """The build's day: datetime.date.today(), unless one is stated."""
+    """The build's day, unless one is stated: the day in New Hampshire.
+
+    A runner keeps UTC, and the weekly's 04:17 UTC start is still Sunday night
+    in Concord, so datetime.date.today() there is a day ahead of the State
+    House. Where the zone database is not installed (the laptop's Python on
+    Windows, whose clock is Concord's already) the machine's own day stands.
+    """
     when = stated()
-    return when.date() if when else datetime.date.today()
+    if when:
+        return when.date()
+    try:
+        import zoneinfo
+        return datetime.datetime.now(zoneinfo.ZoneInfo(TIMEZONE)).date()
+    except Exception:
+        return datetime.date.today()
 
 
 def now():

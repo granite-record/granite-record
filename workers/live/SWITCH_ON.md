@@ -13,7 +13,8 @@ first row of *Turning it all off* at the end.
 - The Worker `graniterecord-live` runs in **shadow** since 30 October: YouTube
   on, the database off (no `control.json`).
 - `/live` is built every night (`build_live.py`, a step of `build_all.py`)
-  and is in the sitemap. Nothing on the site links to it yet.
+  but is `noindex` and out of the sitemap (10 November 2026) until `LINKED = True`.
+  Nothing on the site links to it yet.
 - The Functions `/api/live/streams` and `/api/live/votes/<date>` answer 404
   until the site's Pages project binds `LIVE` (root `wrangler.toml`,
   `[[env.production.r2_buckets]]`).
@@ -32,7 +33,7 @@ first row of *Turning it all off* at the end.
 
 | | |
 |---|---|
-| Do | After the courtesy note to the General Court's IT office: `npx.cmd wrangler r2 object put graniterecord-live/control.json --file workers/live/control/sql-test.json --remote` |
+| Do | (No courtesy note is needed: the IT office already approved reading PublicSQL during session days, the owner said on 9 November 2026.) `npx.cmd wrangler r2 object put graniterecord-live/control.json --file workers/live/control/sql-test.json --remote` |
 | Then | Read `test/2026-03-11.json` and `test/2026-08-19.json` and run `node tests/live/compare_test.mjs` on each (README, *The November test*). It says go or no-go. |
 | Undo | `npx.cmd wrangler r2 object put graniterecord-live/control.json --file workers/live/control/sql-off.json --remote` (back to shadow at the next run, within 2 minutes). Put it back when the test is done, go or not. |
 | Whose word | **owner's** |
@@ -67,8 +68,8 @@ owner's word, and each is undone by reverting it.
 | The committee pages' player | `live_hook.place` in the committee builders (PATCHES.md 11) | **owner's** |
 | The live votes file's documentation, For Developers | `live_docs.PUBLIC = True` (live/docs) | **owner's** |
 
-Undo: revert the commit. The page itself stays built and in the sitemap, as
-on 11 November; only the links go.
+Undo: revert the commit. The page itself stays built; `LINKED = False` makes it `noindex` and takes it
+out of the sitemap again, and the links go.
 
 ## Turning it all off
 

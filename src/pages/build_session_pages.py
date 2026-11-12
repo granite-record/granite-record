@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.62
+# GRANITE_VERSION: 2026-09-19.65
 """
 A page for every day the House sat.
 
@@ -1430,10 +1430,11 @@ def day_players(body, date, vids, esc):
     return "".join(out)
 
 
-def moment_html(m, date, esc):
+def moment_html(m, date, esc, did=""):
     """A bill's moment in the day's recording: the time its own Hearings tab
     opens the player at, and the vote it ends on (build_site_v2.floor_moment),
-    as buttons that move the day's player for that recording."""
+    as buttons that move the day's player for that recording. `did` is what
+    the chamber did to the bill that day (did_chip), after them."""
     pid = f"s{date.replace('-', '')}_{re.sub(r'[^\w-]', '', m['v'])}"
     out = (f'<button type="button" class="jump" data-seek="{esc(pid)}|{int(m["from"])}" '
            f'aria-label="Play from {hms(m["from"])}">{C.icon("play")}{hms(m["from"])}</button>')
@@ -1441,7 +1442,27 @@ def moment_html(m, date, esc):
         word = "the vote" if m.get("s") == "floor_precise" else "ends"
         out += (f'<button type="button" class="jump" data-seek="{esc(pid)}|{int(m["end"])}">'
                 f"{hms(m['end'])} {word}</button>")
+    if did:
+        out += f'<span class="mdid">{did}</span>'
     return f'<span class="mjumps">{out}</span>'
+
+
+def did_chip(items, bill, body):
+    """WHAT THE CHAMBER DID TO THE BILL ON THIS DAY, beside its moment (the
+    owner, 8 November 2026): the chip of the vote that says what the day did
+    to it (deciding, which the day's index reads too) and the vote as
+    counted, "(202\u2013169)", the shape the home page's Latest activity
+    gives a committee's report (build_pages.did_html). Only `items`, the
+    day's own votes: never another day's. "" where the day recorded no
+    vote with an outcome (a voice vote carries no tally, so none is shown)."""
+    got = deciding(items, bill, body)
+    if got is None:
+        return ""
+    it, _k, chp = got
+    if it.counted and it.yeas is not None and it.nays is not None and chp.endswith("</span>"):
+        chp = (chp[:-len("</span>")]
+               + f' <span class="latvote">({it.yeas}\u2013{it.nays})</span></span>')
+    return chp
 
 
 def motion_chip(it, bill, body):
@@ -2483,7 +2504,7 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
         mm = [m for m in (moments.get(term_) or {}).get(bill, [])
               if m.get("d") == day.date and m.get("b") == body]
         if mm and own:
-            line.append(moment_html(mm[0], day.date, esc))
+            line.append(moment_html(mm[0], day.date, esc, did_chip(own, bill, body)))
             if mm[0]["v"] not in vids:
                 vids.append(mm[0]["v"])
         cards_here = (cards_of.get(term_) or {}).get(bill) or {}
@@ -2816,20 +2837,6 @@ def pager(body, date, prev_, next_, weeks):
                    '<span class="wkpw">Next Session Day &rsaquo;</span>'
                    f'<span class="wkpd">{S.E(words(next_))}</span></a>')
     return nav
-
-
-def up_links(body, date, weeks):
-    """The links above a sitting, in the order the line above its heading
-    gives them: the chamber's list, at the sitting's year, and its week on
-    the Calendar where the calendar has that week."""
-    y = int(date[:4])
-    wk = week_of(date)
-    out = [f'<a href="{S.canon(DAYS_LIST[body])}#y{y}">'
-           f"Every {CHAMBER[body]} session day</a>"]
-    if wk in weeks:
-        out.append(f'<a href="{S.canon(f"calendar/{wk}.html")}">'
-                   "That week on the Calendar</a>")
-    return out
 
 
 def write_days_index(site, body, dates, rollcalls=None):
@@ -3890,7 +3897,7 @@ def day_head(day, narrative, rec, jurl, label, path, base):
     dn = len(narrative.get("debates") or [])
     if dn:
         facts.append(["Debates Printed", f"{dn:,}", "in the permanent journal"])
-    cite = S.cite_block(path, f"{label} | Granite Record", base, S.BUILT)
+    cite = S.cite_block(path, f"{label} | Granite Record", base, S.cited(str(day.date)))
     assert cite.endswith("</div>"), "the citation block no longer ends its row"
     note = ""
     if body == "S":

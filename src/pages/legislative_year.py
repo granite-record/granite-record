@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.8
+# GRANITE_VERSION: 2026-10-17.9
 """
 The legislature's year: a two-year term as a timeline, with this term's dates
 where the chambers' own calendars print them, and the usual pattern where
@@ -78,6 +78,7 @@ from collections import namedtuple
 from datetime import date, timedelta
 
 import i18n as I
+import proceedings as P
 
 # THE PAGE'S ADDRESS AND NAME, in one place: civics.TOPICS gives the topic
 # this slug, and build_pages' status box links to it.
@@ -469,10 +470,7 @@ def general_election(year):
 def term_of(today):
     """The term `today` falls in, by Organization Day: "2025-2026" from
     4 December 2024 to 1 December 2026."""
-    y = today.year
-    if y % 2:
-        return f"{y}-{y + 1}"
-    return f"{y + 1}-{y + 2}" if today >= organization_day(y) else f"{y - 1}-{y}"
+    return P.term_on(today.isoformat())
 
 
 def shown_term(today):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.2
+# GRANITE_VERSION: 2026-11-08.5
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -34,7 +34,7 @@ import argparse
 import json
 
 import shell as S
-from components import pchip
+import components as C
 
 E = S.E
 # Not indexed (Alice, 8 November 2026), as the provisional members-elect pages.
@@ -68,24 +68,122 @@ def sponsors(site):
     return out
 
 
-def body(r, req, who):
-    """One request's page: what a request has, and nothing it has not."""
-    chip = pchip(who) if who else E(r.get("sponsor_label") or r.get("sponsor") or "")
-    # "Withdrawn", as the source says it and no more: the list does not say
-    # when, nor tell a withdrawal from a request that became a bill the bill
-    # data has not caught up with (build_lsrs; the review of 8 November).
-    state = "Withdrawn" if r.get("withdrawn") else E(r.get("status") or "")
-    return ('<div class="static-rec shown" id="request-rec">'
-            f'<p class="sx-name">{E(req.get("label") or "Bill Request")}</p>'
-            f"<h1>{E(r.get('n') or '')}</h1>"
-            f'<p class="sx-title">{E(r.get("title") or "")}</p>'
-            '<ul class="sx-facts">'
-            f"<li><b>Prime sponsor:</b> {chip}</li>"
-            + (f"<li><b>Kind:</b> {E(r['body_label'])}</li>" if r.get("body_label") else "")
-            + f"<li><b>Status:</b> {state}</li></ul>"
-            f'<p class="lsrnote">{explain(r.get("year") or req.get("year"))}</p>'
-            f'<p><a href="bills?term={E(req["term"])}">All {E(req.get("label") or "requests")}</a></p>'
-            "</div>")
+SHARE = ('<button type="button" class="pshare" data-share>' + C.icon("share") + "Share</button>"
+         '<span class="sharestate" role="status" aria-live="polite"></span>')
+
+
+def state_of(r):
+    """The word the page's chip and status say: "Withdrawn", as the source
+    says it and no more -- the list does not say when, nor tell a withdrawal
+    from a request that became a bill the bill data has not caught up with
+    (build_lsrs; the review of 8 November 2026) -- else the status the row
+    carries, "Filed as a request"."""
+    return "Withdrawn" if r.get("withdrawn") else (r.get("status") or "")
+
+
+def chips_of(people, who_of):
+    """The chips of the people a row names: [{"label", "slug"}, ...]."""
+    out = []
+    for c in people or []:
+        m = who_of.get(c.get("slug")) or {"display_full": c.get("label"), "slug": c.get("slug") or ""}
+        out.append(C.pchip(m))
+    return out
+
+
+def rail_of(r):
+    """A request's own rail, three stops (Alice, 12 November 2026, from a phone
+    screenshot where the bill's six stops ran into one another: "a separate
+    rail for the requests with Requested, Filed meaning the text is publicly
+    available, and Introduced"): Requested, always reached -- a withdrawn
+    request was still requested (the owner, the same morning: "Request being
+    withdrawn should still show request as green but filed as red"); Filed,
+    reached once the bill's text is public, and the cross where the request
+    was withdrawn instead; Introduced, which a request reaches by becoming a numbered bill,
+    when its address forwards to the bill's page and the bill's own rail
+    takes over -- so it is never reached here. Same rail_html, same look. No
+    day is shown: the list gives none.
+
+    WHAT SAYS "FILED". Nothing on disk yet: the request list (the list build_lsrs reads)
+    carries a number, kind, title, sponsor and a withdrawn flag, and no bill
+    of the session has been published (data/bills.json has no 2027-2028).
+    So the stop reads the row's "filed" -- true, or the day the text became
+    public ("YYYY-MM-DD"), which build_lsrs.rows_from carries over from the
+    source row once the source gives it -- and is drawn not reached until
+    then. A withdrawn request ends there, at the cross."""
+    gone = bool(r.get("withdrawn"))
+    filed = r.get("filed") and not gone
+    day = r["filed"] if filed and isinstance(r["filed"], str) and r["filed"][:1].isdigit() else ""
+    stops = [
+        {"stop": "Requested", "mark": "p", "date": "", "short": "",
+         "say": "Requested" if gone else "Filed as a request"},
+        {"stop": "Filed", "mark": "x" if gone else ("p" if filed else "-"), "date": day, "short": "",
+         "say": "Withdrawn" if gone else ("Text public" if filed else "")},
+        {"stop": "Introduced", "mark": "-", "date": "", "short": "", "say": ""}]
+    return C.rail_html(stops)
+
+
+def head(r, req, who_of, path, base):
+    """The bill page's head (components.record_head, as app.js's billHead
+    draws a bill's): the trail, the number with the status chip, the title, the
+    field grid, the rail, and the action column -- Cite this page, Share and
+    Report a problem as every record page's, and Follow, which app.js puts
+    after Cite where a request can be followed (GR_REQUEST). No Testify, no
+    Print: there is no hearing to sign in to and no record to print yet.
+    A field the request has no value for is left out, as the bill page leaves
+    its own out: no Committee until it is referred."""
+    word = state_of(r)
+    sponsor = who_of.get(r.get("sponsor_slug"))
+    name = r.get("sponsor_label") or r.get("sponsor") or ""
+    facts = []
+    if sponsor:
+        facts.append(["Prime Sponsor", C.pchip(sponsor)])
+    elif name:
+        facts.append(["Prime Sponsor", E(name)])
+    cos = chips_of(r.get("cosponsors"), who_of)
+    if cos:
+        facts.append(["Co-Sponsors" if len(cos) > 1 else "Co-Sponsor", " ".join(cos)])
+    if r.get("body_label"):
+        facts.append(["Kind", E(r["body_label"])])
+    cite = S.cite_block(path, f"{r.get('n')}: {r.get('title') or ''} | Granite Record", base,
+                        S.cited())
+    assert cite.endswith("</div>"), "the citation block no longer ends its row"
+    chips = C.WORDBOOK.get("chips", {}).get("chip", {})
+    return C.record_head({
+        "trail": [["Bills", "bills"],
+                  [req.get("label") or "Bill Requests", f"bills?term={req['term']}"],
+                  [r.get("n") or "", ""]],
+        "title": E(r.get("n") or ""),
+        "chip": C.chip(word, "cstat " + chips.get(word, ""), "m"),
+        "line": f'<span translate="no">{E(r.get("title") or "")}</span>',
+        "facts": facts, "rail": rail_of(r),
+        "actions": cite[:-len("</div>")] + SHARE + "</div>",
+        "kind": "bill"})
+
+
+def summary(r, req):
+    """The one tab, Summary: the requests' explanation, and the facts of this
+    one. The other tabs a bill has are not here until the bill is."""
+    state = state_of(r)
+    return (C.section("About Requests",
+                      f'<p class="lsrnote">{explain(r.get("year") or req.get("year"))}</p>', "about")
+            + C.section("The Request", f'<p><b>Status:</b> {E(state)}</p>', "request"))
+
+
+def tabs(path, pane):
+    """The strip and its pane, as a study committee's page has them (the
+    same script, ssTabs, and the same stylesheet): one tab, shown."""
+    return ('<div class="tabs sstabs" role="tablist" data-base="' + E(path) + '">'
+            '<button type="button" class="tab" role="tab" id="sstab-summary" '
+            'aria-controls="summary" data-sstab="" aria-selected="true">Summary</button></div>'
+            '<div class="pane sspane" role="tabpanel" id="summary" '
+            'aria-labelledby="sstab-summary" tabindex="0" data-on>'
+            f'<h2 class="ssph">Summary</h2>{pane}</div>')
+
+
+def body(r, req, who_of, path, base):
+    """One request's page: a bill's, with what a request has drawn and the
+    rest left quiet."""
+    return head(r, req, who_of, path, base) + tabs(path, summary(r, req))
 
 
 def write(site, base):
@@ -109,14 +207,24 @@ def write(site, base):
         dest.parent.mkdir(parents=True, exist_ok=True)
         out_dirs.add(dest.parent)
         title = f"{r.get('n')}: {r.get('title') or ''}".strip()
+        num = addr.rsplit("/", 1)[-1]
+        # GR_REQUEST says whose page it is, which keeps the bill search's box on it
+        # as a bill's page has it (shell.page); GR_FOLLOW names the key Follow
+        # is drawn for, only for a request that can be followed: still a
+        # request, not withdrawn (the card's own rule, app.js lsrCardHtml).
+        # GR_REPORT names the record for Report a problem, as a study
+        # committee's page does.
+        g = {"GR_STATIC": True, "GR_REQUEST": num, "GR_REPORT": f"request:{num}"}
+        if not r.get("withdrawn"):
+            g["GR_FOLLOW"] = f"lsr:{num}"
         page = S.page(t, path=path, base=base, title=f"{title} | Granite Record",
                       og_title=r.get("n") or "", og_image="og-bill.png",
                       og_alt="Granite Record: the New Hampshire General Court's bills",
                       description=f"{r.get('n')}, a request for a bill: {r.get('title') or ''}",
-                      globals={"GR_STATIC": True}, noscript="",
+                      globals=g, noscript="", cite=False,
                       skip_label="Skip to the request", nav_current="bills.html", sr_title="")
         page = page.replace('<div id="results"></div>',
-                            f'<div id="results">{body(r, req, who_of.get(r.get("sponsor_slug")))}</div>', 1)
+                            f'<div id="results">{body(r, req, who_of, path, base)}</div>', 1)
         page = page.replace('<link rel="canonical"', ROBOTS + '\n<link rel="canonical"', 1)
         assert ROBOTS in page, f"{path}: the template has no canonical link to put noindex before"
         dest.write_text(S.clean_links(page), encoding="utf-8")

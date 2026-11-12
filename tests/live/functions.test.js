@@ -150,9 +150,10 @@ test("a copy per data centre: the bucket is read once while the copy lasts, 15 s
   w.now += 15_000;                                        // 31 s on
   await w.get("/api/live/streams");
   assert.equal(reads("streams/2027-01-07.json"), 2);
-  // A 404 is not kept in the copy: the file that arrives is served at once.
+  // A 404 is kept in the copy for 10 s only: the file that arrives is served once they are up.
   await w.get("/api/live/votes/2027-01-09");
   w.r2.seed("votes/2027-01-09.json", { ...VOTES, date: "2027-01-09" });
+  w.now += 11_000;
   assert.equal((await w.get("/api/live/votes/2027-01-09")).status, 200);
 });
 
@@ -215,4 +216,23 @@ test("a query string is no way round the copy to the bucket; If-None-Match: * ma
   w.r2.hooks.get = async () => { throw new Error("R2 said 500"); };
   w.now += 60_000;
   assert.equal((await w.get("/api/live/votes/2027-01-07")).headers.get("X-Content-Type-Options"), "nosniff", "503");
+});
+
+test("a day with no file is a 404 kept ten seconds, so an off day's polls do not read the bucket each time", async () => {
+  const w = setup();
+  const reads = key => w.r2.ops.filter(([op, k]) => op === "get" && k === key).length;
+  for (let i = 0; i < 5; i++) {
+    assert.equal((await w.get("/api/live/votes/2027-01-07")).status, 404);
+    w.now += 1000;
+  }
+  assert.equal(reads("votes/2027-01-07.json"), 1);
+  w.now += 6000;
+  await w.get("/api/live/votes/2027-01-07");
+  assert.equal(reads("votes/2027-01-07.json"), 2, "read again once the ten seconds are up");
+  // A failure is never kept.
+  w.r2.hooks.get = async () => { throw new Error("R2 said 500"); };
+  w.now += 11_000;
+  assert.equal((await w.get("/api/live/votes/2027-01-07")).status, 503);
+  delete w.r2.hooks.get;
+  assert.equal((await w.get("/api/live/votes/2027-01-07")).status, 404);
 });

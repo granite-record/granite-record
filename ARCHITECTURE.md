@@ -1682,10 +1682,14 @@ the day it was signed.
 
 A change that is meant to leave the site alone is proved by building it before
 and after and comparing a sha256 of every file. The day a build is made is in
-every page -- it is the date a citation falls back on for a reader without
-JavaScript -- and in the sitemap, the feeds, `home.json` and the downloads'
-manifest, and a dozen builders ask what today is to decide what is still to
-come. So two builds made on different days differ in every page.
+the pages that have no record day of their own (requests and lists with no
+actions, about 586 files) -- it is the date a citation falls back on for a
+reader without JavaScript; every other page falls back on the day its record
+last changed (`shell.cited`) -- and in the sitemap, the feeds, `home.json` and
+the downloads' manifest, and a dozen builders ask what today is to decide what
+is still to come. So two builds made on different days differ in those pages
+and in the ones whose record moved, not in every page. The nightly's tree hash
+(`tree_hash`/`serves_this_build` in `nightly.py`) relies on this.
 
 `GRANITE_BUILD_DATE=2026-10-02` states the day instead, or
 `2026-10-02T01:22:13` the moment, for every builder: `build_date.py` is the
@@ -1710,8 +1714,7 @@ Two things read it:
   the site that build made, through `build_pages.front_end` -- the function
   the build's own step calls -- and only while nothing else in the record has
   moved. `bills.html` is the template of every page and is refused.
-  `versions.json` and
-  `preflight.py` are read by the build only for data.html's two counts, and
+  `preflight.py` is read by the build only for data.html's two counts, and
   app.js also for the search's tables (`front_end.facts`): where one of
   those moved, the step that makes it runs again;
 - `src/checks/site_manifest.py`, which keeps a build's sha256 manifest under

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.820
+# GRANITE_VERSION: 2026-09-04.878
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -777,24 +777,153 @@ def _parsed_warned(path):
     key = (str(p.resolve()), st.st_size, st.st_mtime_ns)
     if key not in _PARSED:
         import warnings
-        with warnings.catch_warnings(record=True) as seen:
-            warnings.simplefilter("always")
-            tree = ast.parse(p.read_text(encoding="utf-8", errors="replace"))
-        for w in seen:
-            if not issubclass(w.category, SyntaxWarning):
-                warnings.warn_explicit(w.message, w.category, w.filename, w.lineno)
-        _PARSED[key] = (tree, [(w.lineno, str(w.message)) for w in seen
-                               if issubclass(w.category, SyntaxWarning)])
+        tree, seen = _parse_in_pieces(p.read_text(encoding="utf-8", errors="replace"))
+        for line, message, category, name in seen:
+            if not issubclass(category, SyntaxWarning):
+                warnings.warn_explicit(message, category, name, line)
+        _PARSED[key] = (tree, [(line, str(message)) for line, message, category, _n in seen
+                               if issubclass(category, SyntaxWarning)])
     return _PARSED[key]
 
 
-@check("files", "every listed script parses")
-def _parse_all():
-    vp = Path("versions.json")
-    if not vp.exists():
-        return "skip", "no versions.json here"
-    names = [n for n in json.loads(vp.read_text(encoding="utf-8"))["files"]
-             if n.endswith(".py")]
+# A BIG SCRIPT IS PARSED IN PIECES (11 November 2026). CPython's parser takes
+# time that grows with the square of a file's size, not with its size: on this
+# project's 3.14, 0.7 MB takes 0.5 s, 2.9 MB takes 9 s and 5.7 MB takes 34 s,
+# and this file is 8 MB, so one ast.parse of it was a hundred seconds and
+# _parse_all's 83 of the code checks' 896. Cut into pieces of about 2,500 lines
+# and parsed piece by piece it takes a few seconds. The pieces are cut only
+# where a top-level statement can begin (a line in column 0 that opens with
+# "@check(", "def " or "class ", after a blank line); the pieces' bodies are
+# joined, with their line numbers moved to where each stood, into the Module
+# ast.parse would give -- held by _pieces_are_the_whole, which _parse_all runs.
+# A cut that lands where it cannot (in a string or a bracket) leaves a piece
+# that does not parse, and is made again at the next place a statement may
+# begin; a file that will not parse is parsed whole, and says what is wrong
+# with it as before.
+_PIECE_LINES = 2500
+_PIECE_FROM = 200_000
+_PIECE_OPENS = ("@check(", "def ", "class ")
+
+
+def _piece_cuts(lines):
+    """Line indexes where a top-level statement may begin, for a cut: a line
+    in column 0 that opens with _PIECE_OPENS, after a blank one."""
+    return [i for i in range(1, len(lines))
+            if lines[i].startswith(_PIECE_OPENS) and not lines[i - 1].strip()]
+
+
+def _parse_whole(text):
+    """(ast.parse(text), the parse's warnings as (line, message, category,
+    file name))."""
+    import warnings
+    with warnings.catch_warnings(record=True) as got:
+        warnings.simplefilter("always")
+        tree = ast.parse(text)
+    return tree, [(w.lineno, w.message, w.category, w.filename) for w in got]
+
+
+def _parse_in_pieces(text, every=_PIECE_LINES, floor=_PIECE_FROM):
+    """(the Module ast.parse(text) gives, its warnings as _parse_whole gives
+    them), by pieces where the text is long enough to be worth cutting. A
+    piece that will not parse is cut again at the next place a statement may
+    begin, which takes the cut out of a string or a bracket it had landed in;
+    one that runs to the end of the file and will not parse is the file's own
+    error, and is raised as the whole parse raises it."""
+    if len(text) < floor:
+        return _parse_whole(text)
+    lines = text.split("\n")
+    cuts = _piece_cuts(lines)
+    body, seen, start, at = [], [], 0, 0
+    while start < len(lines):
+        while at < len(cuts) and cuts[at] < start + every:
+            at += 1
+        while True:
+            stop = cuts[at] if at < len(cuts) else len(lines)
+            try:
+                part, said = _parse_whole("\n".join(lines[start:stop]) + "\n")
+                break
+            except SyntaxError:
+                if stop == len(lines):
+                    return _parse_whole(text)
+                at += 1
+        ast.increment_lineno(part, start)
+        body += part.body
+        seen += [(line + start, m, c, n) for line, m, c, n in said]
+        start = stop
+    return ast.Module(body=body, type_ignores=[]), seen
+
+
+_PIECES_SAMPLE = '''import os
+
+
+@check('a')
+def one():
+    return 1
+
+
+BIG = """text
+
+def inside_a_string():
+    pass
+
+@check('b')
+"""
+
+
+@check('c')
+def two(x):
+    return x + 1
+
+
+class K:
+    def m(self):
+        return '\\d+'
+
+
+@check('d')
+@other
+def three():
+    pass
+'''
+
+
+def _pieces_are_the_whole():
+    """_parse_in_pieces gives what one ast.parse gives (above it says why it
+    is there): the same tree, every attribute and line number, and the same
+    warnings at the same lines, on a source cut every few lines and on a real
+    script cut every few hundred; a cut that would land in a string is made
+    again further on; and a syntax error is raised as ever."""
+    src = _PIECES_SAMPLE
+    texts = [src, src * 7, "x = 1\n\n\ndef f():\n    return 2\n"]
+    real = _paths.locate("build_pages.py")
+    if real.exists():
+        texts.append(real.read_text(encoding="utf-8", errors="replace"))
+    for text in texts:
+        for every in (1, 4, 300):
+            whole, said = _parse_whole(text)
+            tree, got = _parse_in_pieces(text, every=every, floor=0)
+            assert ast.dump(tree, include_attributes=True) == ast.dump(whole, include_attributes=True), (
+                f"a script parsed in pieces (every {every} lines) is not the tree one parse gives")
+            assert [(l, str(m), c) for l, m, c, _n in got] == [(l, str(m), c) for l, m, c, _n in said], (
+                f"a script parsed in pieces (every {every} lines) warns otherwise than one parse does")
+    assert any("\\d" in str(m) for _l, m, _c, _n in _parse_whole(src)[1]), (
+        "the sample's invalid escape gave no warning, so the warnings above held nothing")
+    assert len(_piece_cuts((src * 7).split("\n"))) > 3, "the sample is not cut into pieces"
+    try:
+        _parse_in_pieces(src + "def broken(:\n", every=4, floor=0)
+    except SyntaxError:
+        pass
+    else:
+        raise AssertionError("a syntax error in a script parsed in pieces was not raised")
+    return len(texts)
+
+
+
+
+@check("files", "every stamped script parses", needs=("inventory",))
+def _parse_all(inventory):
+    _pieces_are_the_whole()
+    names = [n for n in inventory.registry() if n.endswith(".py")]
     bad = []
     for n in names:
         p = _paths.locate(n)
@@ -8237,7 +8366,7 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
 
     def card(k):
         h = got[k]
-        h = h[h.find('<section class="rc ballot">'):]
+        h = h[h.find('<section class="rc ballot"'):]
         return re.sub(r"\s+", " ", _html.unescape(re.sub(r"<[^>]+>", " ", h))).replace(" ,", ",")
 
     for k, want, other in (
@@ -17712,26 +17841,17 @@ def _ls_laptop_read(livestreams, nightly):
         path.write_text(json.dumps(st), encoding="utf-8")
         (root / "candidate_segments.json").write_text(json.dumps({"PFSTALE0001": {}}),
                                                       encoding="utf-8")
-        os.chdir(root)
-        before = nightly.captions_waiting(now)
-        os.chdir(here)
         r = _ls_run(root, "--now", L.iso(now))
         assert r.returncode == 0, (r.stdout + r.stderr)[-400:]
         stale = json.loads(path.read_text(encoding="utf-8"))["videos"]["PFSTALE0001"]
         assert stale["captions"] == "captioned" and stale.get("read") == "2026-09-26" \
             and "again" not in stale and "asks" not in stale, \
             f"the files hold its reading and the night did not see: {stale}"
-        os.chdir(root)
-        after = nightly.captions_waiting(now)
-        os.chdir(here)
-        assert (before, after) == (1, 0), \
-            f"the nightly's warning counted {before} before the night and {after} after"
         return "ok", ("three the files hold are settled -- one due, one not due for six "
                       "days, one left for a person -- one with captions on disk is found, one "
                       "nothing has read is untouched; a study commission no proceeding names "
                       "counts as read once summarised; on the fixture a recording not due for "
-                      "a week is settled the night after its reading lands, and the nightly's "
-                      "warning stops counting it")
+                      "a week is settled the night after its reading lands")
     finally:
         os.chdir(here)
         shutil.rmtree(root, ignore_errors=True)
@@ -18864,12 +18984,12 @@ def _bills_html():
         # five minutes for an estimate, which put the reader in the middle of
         # the previous bill and then made the page explain a time that was not
         # the bill's. Two seconds is enough not to clip the first syllable.
-        "player opens at the mark": "const LEAD = 2",
+        "player opens at the mark": "h.from=Math.max(Math.floor(s.start-2),0)",
         # One word, and only where the placement is an inference rather than
         # something the chair said. The tolerance, which of two dates was being
         # shown, and "about where it ends" were methodology in the way.
-        "an inferred start says so": 's.start_stated ? "" : " approximate"',
-        "consent bills get no timestamp": 's.state==="consent"',
+        "an inferred start says so": "h.approx=!s.start_stated",
+        "consent bills get no timestamp": 'st==="consent"',
         "member sort key": "(a.s||a.n||\"\")",
         # A jump button pressed before the player exists must build the
         # player AT that time. Clicking the stub instead builds it at the
@@ -20042,14 +20162,15 @@ document.addEventListener = (t, f) => { (on[t] = on[t] || []).push(f); };
 const SLOTS = [{textContent: "1 January 2000"}, {textContent: "1 January 2000"},
   {textContent: "1 January 2000", classList: {contains: c => c === "citefull"}}];
 const BTNS = [{hidden: true}, {hidden: true}];
-document.querySelectorAll = s => s === ".citeday" ? SLOTS : s === "[data-citecopy]" ? BTNS : [];
+const READ = [{textContent: "The date below is the day this page's record last changed."}];
+document.querySelectorAll = s => s === ".citeday" ? SLOTS : s === "[data-citecopy]" ? BTNS : s === ".citeread" ? READ : [];
 // A browser set to French. A citation that asks the locale says so.
 Date.prototype.toLocaleDateString = () => "24 septembre 2026";
 Date.prototype.toLocaleString = () => "24/09/2026";
 let s;
 try { s = (0, eval)(fs.readFileSync("./app.js", "utf8") + ";({citeDay, citeDayFull})"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
-const out = {slots: SLOTS.map(x => x.textContent), shown: BTNS.map(b => !b.hidden),
+const out = {read: READ[0].textContent, slots: SLOTS.map(x => x.textContent), shown: BTNS.map(b => !b.hidden),
   today: s.citeDay(new Date()), todayFull: s.citeDayFull(new Date()),
   days: JSON.parse(fs.readFileSync("./dates.json", "utf8"))
     .map(([y, m, d]) => s.citeDay(new Date(y, m - 1, d))),
@@ -20142,6 +20263,31 @@ def _cite_up_and_copied():
     today = S.cite_day(_dt.date.today())
     assert f'<span class="citeday">{today}</span>' in block, (
         f"the fallback date is not the build day in the one form ({today})")
+    # A page that names the day its record last changed is dated by it, never
+    # by a day still to come, and the build day where it names none (the
+    # owner, 11 November 2026): the date a reader without JavaScript sees
+    # moves only when the record does.
+    assert S.cited("2026-03-04") == "4 Mar. 2026" and S.cited("2026-03-04T09:00:00") == "4 Mar. 2026", (
+        "shell.cited does not give the record's own day in cite_day's form")
+    assert S.cited("2025-01-02", "2026-03-04", "2024-05-06") == "4 Mar. 2026", (
+        "shell.cited does not take the latest of the days it is given")
+    late_day = (_dt.date.today() + _dt.timedelta(days=3)).isoformat()
+    assert S.cited(late_day) == today and S.cited("2026-03-04", late_day) == "4 Mar. 2026", (
+        "shell.cited gave a day later than the build's, or let one hide an earlier real day")
+    assert S.cited() == S.cited(None) == S.cited("", "not a day") == today, (
+        "shell.cited does not fall back on the build day where the record names none")
+    dated = S.page(S.template(), path="/bill/2026/hb1.html", base="https://graniterecord.org",
+                   title="HB 1 (2026): relative to the state budget. | Granite Record",
+                   description="A bill.", changed="2026-03-04")
+    assert '<span class="citeday">4 Mar. 2026</span>' in dated and         f'<span class="citeday">{today}</span>' not in dated, (
+        "shell.page(changed=...) does not date the citation by the record's day")
+    # The note says the no-JavaScript truth in a span app.js replaces; it must
+    # not claim the page was read on the date written in.
+    assert 'class="citenote"' in block and "day the page was read" not in block and         '<span class="citeread">The date below is the day this page&rsquo;s record last changed.</span>' in block, (
+        "the Cite note does not say, in a .citeread span, that the written date is the record's last change")
+    gblock = S.GUIDE_CITE
+    assert '<span class="citeread">The date below is the day this guide&rsquo;s sources were last read.</span>' in gblock         and "day the page was read" not in gblock, (
+        "the guide's Cite note does not say its written date is the day its sources were last read")
     # APA and Chicago in their own form, "October 30, 2026" (the cohesion audit, B-5).
     full = S.cite_day_full(today)
     for k, lead in (("apa", "Retrieved "), ("chicago", "Accessed ")):
@@ -20177,6 +20323,8 @@ def _cite_up_and_copied():
         got = json.loads(said.splitlines()[-1])
     finally:
         shutil.rmtree(root, ignore_errors=True)
+    assert got["read"] == "The date below is the day you read this page.", (
+        f"app.js does not put the reader's own sentence in the note's .citeread: {got['read']!r}")
     assert got["days"] == want, (
         "app.js and shell.py write a citation's date differently: "
         + "; ".join(f"{a} / {b}" for a, b in zip(got["days"], want) if a != b))
@@ -20200,6 +20348,90 @@ def _cite_up_and_copied():
     return "ok", (f"above the heading with {len(forms)} Copy buttons; "
                   f"dates read {want[8]!r} in shell.py and app.js alike, French browser "
                   "or not; the clipboard copies, or the form is selected and it says so")
+
+
+@check("build", "a town page's Officials tab is two columns: the elected on the left, and on the right the "
+       "offices, the clerk and the staff and administrative positions, in that order",
+       needs=("build_town_pages",))
+def _town_officials_columns(B):
+    """The owner, 10 November 2026: "City offices go to the top right of the
+    officials tab on town pages with clerk below it, elected officials on the
+    left, town staff and administrative positions on the right." NHDOT's rows
+    carry a position and no word for elected or not, so the rule is the one
+    the tab already drew: the select board and the mayor and council, the
+    bodies that govern, are the elected and go left; every other row of the
+    directory is staff or administration and goes right, under the offices'
+    own card (where to write, how to reach them) and the Secretary of State's
+    clerk. One column on a phone, in the same order from the top: the elected,
+    the offices, the clerk, the staff (the tab's grid is app.css's .twncols)."""
+    import shell as S
+    if not Path("src/pages/bills.html").exists():
+        return "skip", "bills.html is not here"
+    off = {"_offices": {"lyme": {"officials": [
+               {"position": "Board of Selectman", "name": "Ben Kilham", "phone": "", "email": ""},
+               {"position": "Town Administrator", "name": "Dina Cutting", "phone": "", "email": ""},
+               {"position": "Road Agent", "name": "Roy Agent", "phone": "", "email": ""}],
+           "website": "www.lymenh.gov", "mailing": "PO Box 126, Lyme, NH 03768"}},
+           "_local": {"lyme": {"clerk": "Emily Shepard", "phone": "603-795-2535"}}}
+    dist = {"house": [{"county": "Grafton", "district": "12"}], "senate": "5"}
+    page = B.build("Lyme", "0", {"0": {}}, dist, [], off, "https://x.test", S.template())
+    pane = page[page.index('id="officials" role="tabpanel"'):]
+    pane = pane[:pane.index('id="vote" role="tabpanel"')]
+    cols = re.findall(r'<div class="twncol">(.*?)</div>(?=<div class="twncol">|</div></div></div>)', pane, re.S)
+    assert 'class="twncols twnwide"' in pane and len(cols) == 2, (
+        f"the Officials tab is not two columns: {len(cols)} found")
+    heads = [re.findall(r'<h3 class="twnh">(.*?)</h3>', c) for c in cols]
+    assert heads == [["Select board"],
+                     ["Town offices", "Town clerk", "Staff and administrative positions"]], (
+        f"the columns hold {heads}, not the select board on the left and the offices, the clerk "
+        "and the staff on the right")
+    assert "Roy Agent" in cols[1] and "Dina Cutting" in cols[1] and "Ben Kilham" in cols[0] \
+        and "Ben Kilham" not in cols[1], "a position is in the wrong column"
+    assert "PO Box 126" in cols[1].split("Town clerk")[0], "the offices' card does not lead the right column"
+    # The tab in the page's own order is the phone's: elected, offices, clerk, staff.
+    order = [pane.index(x) for x in ("Select board", "Town offices", "Town clerk", "Staff and administrative")]
+    assert order == sorted(order), f"the cards are not in the order the phone shows them: {order}"
+    css = " ".join(Path("src/pages/app.css").read_text(encoding="utf-8").split())
+    assert ".twncols{display:grid;grid-template-columns:minmax(0,1fr)" in css and (
+        "@media (min-width:68.75em){ .twncols{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}" in css), (
+        "app.css does not lay the columns side by side on a wide screen and stack them below it")
+    # With cards in one column only, the tab is as it was: two abreast, no wrapper.
+    only = B.in_columns([B.card("Town clerk", "<p>x</p>", side="r")])
+    assert 'twncols' not in only[0] and 'twn-r' in only[0], "one column's cards are wrapped"
+    return "ok", "select board left; offices, clerk and staff right; one column, in that order, below 1100px"
+
+
+@check("build", "a town or a ward page names its own record for Report a problem, and the Function and "
+       "the compiler both take it from that page's address and no other",
+       needs=("build_town_pages", "compile_reports"))
+def _town_report(B, CR):
+    """The owner, 10 November 2026: "Add report a problem to town pages". A
+    town page (a ward's too) carries window.GR_REPORT = "town:<slug>", which
+    app.js mounts as the Report box alone, no Share; report.js takes the
+    record from /town/<slug> and compile_reports reads it back to the same
+    address. (functions/api/report.js is run on it in _report_function, and
+    on every built town page in _report_pages.)"""
+    import shell as S
+    if not Path("src/pages/bills.html").exists():
+        return "skip", "bills.html is not here"
+    dist = {"house": [{"county": "Grafton", "district": "11"}], "senate": "5"}
+    for town, ward, wards, slug in (("Lyme", "0", {"0": {}}, "lyme"),
+                                    ("Concord", "4", {"1": {}, "4": {}}, "concord-ward-4")):
+        page = B.build(town, ward, wards, dist, [], {}, "https://x.test", S.template())
+        assert f'window.GR_REPORT="town:{slug}";' in page, f"{town}'s page does not name its record town:{slug}"
+        assert f'href="https://x.test/town/{slug}"' in page, f"{town}'s page is not at /town/{slug}"
+        rec = f"town:{slug}"
+        assert CR.RECORD.match(rec) and CR.PATH.match(f"/town/{slug}"), f"the compiler refuses {rec}"
+        assert CR.page_of(rec, {}) == f"/town/{slug}", f"the compiler finds {rec}'s page at {CR.page_of(rec, {})}"
+        stored = {"id": 5, "at": "2026-11-10T12:00:00.000Z", "record": rec, "kind": "town",
+                  "url": f"/town/{slug}", "tab": "", "field": "other",
+                  "note": "The clerk's hours are wrong.", "build": "", "hidden": 0}
+        assert CR.well_formed(stored), f"a stored report from {rec} is set aside as malformed"
+        assert CR.producer(rec, "other") == "build_town_pages.py", "the producer of a town's page is not named"
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    assert 'rec.slice(0,at)!=="town"&&!document.querySelector("#pageacts [data-share]")' in app, (
+        "app.js no longer mounts a town's Report box without a Share beside it")
+    return "ok", "town:lyme and town:concord-ward-4 named by their pages, kept and compiled from /town/<slug>"
 
 
 @check("build", "Cite this page sits under a town's line, as a guide's does, not alone above the "
@@ -20433,6 +20665,14 @@ const Q = JSON.parse(fs.readFileSync("./queries.json", "utf8"));
 const ASKED = [];
 const MODE = process.argv[2] || "";
 const FAIL_IDX = MODE === "fail";
+// THE DAY IS HELD, BEFORE THE ELECTION (11 November 2026): /bills opens on the
+// bill requests from the day after the election (app.js requestsFirst), and
+// these checks are of the search as it opens on the current term, in any year
+// they run. The rule has its own check.
+{ const RealDate = Date, held = RealDate.UTC(2026, 5, 15, 16);
+  globalThis.Date = class extends RealDate {
+    constructor(...a) { super(...(a.length ? a : [held])); }
+    static now() { return held; } }; }
 globalThis.fetch = async (u) => {
   const p = new URL(u).pathname; ASKED.push(p);
   // The term before this one never arrives ("slowold") or is not there
@@ -20892,7 +21132,8 @@ def _find_bills(BP):
     bad = []
     for q in ("firearms", "guns", "voting", "property tax"):
         h = pan[q]
-        if first(h) != f"/bills?q={q.replace(' ', '%20')}":
+        if first(h).split("&amp;term=")[0] != f"/bills?q={q.replace(' ', '%20')}" \
+                or "&amp;term=" not in first(h):
             bad.append(f"{q!r} leads with {first(h)!r}, not the bills "
                        f"(Return opens the first row)")
         if not re.search(rf"{n[q]:,} bills? found for &ldquo;"
@@ -20916,7 +21157,7 @@ def _find_bills(BP):
     # A name goes above the bills only on a whole word (24 September): "bail"
     # leads with the bail bills and Rep. Bailey follows; "bailey" leads with
     # him.
-    if first(pan["bail"]) != "/bills?q=bail" or \
+    if first(pan["bail"]).split("&amp;term=")[0] != "/bills?q=bail" or \
             "/legislator/glenn-bailey-straf-2" not in pan["bail"]:
         bad.append("'bail' does not lead with the bail bills, with Rep. Bailey "
                    f"after them (it leads with {first(pan['bail'])!r})")
@@ -21365,15 +21606,27 @@ _FIND_MORE_QUERIES = {
               "O’Connor", "oconnor", "Lou D’Allesandro", "Hart’s Location",
               "Wentworths Location", "Wentworth's Loc.", "Chandlers Purchase", "O Neil",
               "Candice O Neil", "Hart s Location", "RSA 91-A:4 IV", "91-A:4, IV", "rsa 91-a:4(iv)",
-              "LSR 2027-0002", "2027-0002", "2026-0002"],
+              "LSR 2027-0002", "2027-0002", "2026-0002",
+              # A request's number every way it is typed (11 November 2026),
+              # and a bare "0002", which is read on /bills' requests alone.
+              "LSR 27-0002", "27-0002", "LSR2027-0002", "lsr 2027 0002", "0002", "27-2",
+              # A chapter found by its title (the owner, 10 November 2026).
+              "governmental records", "dog licensing", "tenants"],
     "search": ["RSA 91-A", "data centers", "LSR 2027-0002", "firearms", "xyzzy",
-               "O’Connor", "RSA 91-A:4 IV"],
+               "O’Connor", "RSA 91-A:4 IV", "tenants", "2027-0002", "27-0002", "0002"],
     # /bills: a request's number three ways, a year that is not the
     # requests', a statute, nothing, and words a request has; and what people
     # type (_search_reads_typed).
-    "app": ["LSR 2027-0002", "2027-0002", "LSR20270002", "2026-0002", "RSA 91-A",
+    "app": ["LSR 2026-0002", "2026-0002", "RSA 91-A",
             "xyzzy", "data centers", "RSA 91-A:4 IV", "RSA 91-A:4, IV", "oconnor",
-            "Hart’s Location"]}
+            "Hart’s Location", "0002"],
+    # A request's number typed on the current term (11 November 2026): /bills
+    # moves to the requests' list and lists the one request. In one page, so
+    # the first moves it and the rest are read there; "0002" bare, which is a
+    # request only on that list, last.
+    "lsr": ["LSR 2027-0002", "2027-0002", "LSR20270002", "LSR 27-0002", "27-0002",
+            "LSR2027-0002", "lsr 2027 0002", "LSR 0002", "2027-0091", "0002", "2", "91", "2027",
+            "2027-0099", "2027-2028", "2027-28"]}
 
 # The header's panel and /search, as _FIND_BILLS_PANEL runs them.
 _FIND_MORE_PANEL = r"""
@@ -21424,7 +21677,7 @@ if (MODE.startsWith("slowlaw:")) {
   }
   const res = {panel: {}, first: {}, search: {}, all: {}, req: {}};
   draw("firearms"); await F.findBillsLoad(); await ticks(10);
-  res.idle = ASKED.filter(p => p.startsWith("/laws/") || p.includes("requests"));
+  res.idle = ASKED.filter(p => p.includes("requests"));
   for (const s of Q.panel) {
     draw(s); await F.findLawsLoad(); await ticks(10);
     res.panel[s] = draw(s); res.first[s] = F.findMatch(s, 50)[0] || null;
@@ -21456,6 +21709,7 @@ require("./stub.js");
 """ + _FIND_BILLS_FETCH + r"""
 if (MODE === "all") location.search = "?term=all";
 if (MODE === "req") location.search = "?term=2027-requests";
+const APPQ = MODE === "lsr" ? Q.lsr : MODE === "req" ? Q.app.concat(["LSR 2027-0002"]) : Q.app;
 const box = document.querySelector("#q"); box.disabled = true;
 const DOCON = {};
 document.addEventListener = (t, f) => { (DOCON[t] = DOCON[t] || []).push(f); };
@@ -21484,15 +21738,15 @@ const cards = (html) => [...html.matchAll(/<article class="card[^"]*" data-id="(
     console.log(JSON.stringify(out));
     return;
   }
-  for (const s of Q.app) {
+  for (const s of APPQ) {
     box.value = s; box.fire("input"); await settle();
     const html = document.querySelector("#results").innerHTML;
     out.q[s] = {count: document.querySelector("#count").textContent, html, ids: cards(html)};
   }
   // The offer taken: its button, clicked, opens the requests on the search typed.
-  const offer = /data-term="([^"]+)"/.exec(out.q[Q.app[0]].html);
+  const offer = /data-term="([^"]+)"/.exec(out.q[APPQ[0]].html);
   if (offer && MODE === "") {
-    box.value = Q.app[0]; box.fire("input"); await settle();
+    box.value = APPQ[0]; box.fire("input"); await settle();
     // The button as requestOffer draws it, button.link[data-term]: closest()
     // answers each selector such a button matches, and no other.
     const target = {tagName: "BUTTON", dataset: {term: offer[1]},
@@ -21532,7 +21786,7 @@ def _find_laws(BP):
     if not all(f.exists() for f in need):
         return "skip", "app.js, find.js or dom_stub.js not in this directory"
     P, AA = _find_more_run(BP, ("panel", ""), ("app", "all"))
-    assert not P["idle"], f"a search that names no statute fetched {P['idle']}"
+    assert not P["idle"], f"a search that names no request fetched {P['idle']}"
     bad = []
     want = {"RSA 91-A": ("RSA 91-A", "/laws/91-a"), "rsa 91-a:4": ("RSA 91-A:4", "/laws/91-a#s4"),
             "91-A": ("RSA 91-A", "/laws/91-a"), "91-A:4": ("RSA 91-A:4", "/laws/91-a#s4"),
@@ -21554,6 +21808,23 @@ def _find_laws(BP):
     if P["askedPanel"].count("/laws/chapters.json") != 1:
         bad.append(f"laws/chapters.json was asked for {P['askedPanel'].count('/laws/chapters.json')} "
                    "times, not once")
+    # A chapter found by its title (the owner, 10 November 2026): a Law row,
+    # flagged "title", after everything else, and /search's "Law Chapters"
+    # group after the bills and the guides, never the "Laws" group a number leads.
+    for q, ch, name in (("governmental records", "91-A", "Access to Governmental Records and Meetings"),
+                        ("dog licensing", "404", "Dog Licensing"),
+                        ("tenants", "540", "Actions Against Tenants")):
+        row = [r for r in (P["first"].get(q) and [P["first"][q]] or []) if r][0:1]
+        r = row[0] if row else []
+        href = "/laws/" + ch.lower() + ("/" if ch == "404" else "")
+        if r[:5] != ["law", "RSA " + ch, name, href, "title"]:
+            bad.append(f"{q!r}: the first row is {r[:5]}, not the title row for RSA {ch}")
+        h = P["panel"].get(q, "")
+        if f'href="{href}"' not in h or ">Law<" not in h:
+            bad.append(f"{q!r}: the panel does not offer RSA {ch} by its title: {h[:200]!r}")
+    s = P["search"]["tenants"]["html"]
+    if "<h2>Law Chapters" not in s or "<h2>Laws" in s or 'href="/laws/540"' not in s:
+        bad.append(f"/search?q=tenants lacks a Law Chapters group with RSA 540: {s[:300]!r}")
     assert not bad, "; ".join(bad[:4])
     # The bills that change it: one this term, two in all; the panel's and
     # /search's counts are /bills' (on All terms, /search's address).
@@ -21632,7 +21903,7 @@ def _find_requests(BP):
     need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
     if not all(f.exists() for f in need):
         return "skip", "app.js, find.js or dom_stub.js not in this directory"
-    P, A, R = _find_more_run(BP, ("panel", ""), ("app", ""), ("app", "req"))
+    P, A, R, L = _find_more_run(BP, ("panel", ""), ("app", ""), ("app", "req"), ("app", "lsr"))
     s = P["search"]
     line = ('<a class="fbills" href="/bills?q=data%20centers&amp;term=2027-requests">')
     assert P["req"]["data centers"] == 2 and line in s["data centers"]["html"] \
@@ -21641,13 +21912,26 @@ def _find_requests(BP):
         f"/search?q=data centers does not say that 2 requests for 2027 match, linked to their "
         f"list: {P['req']['data centers']} {s['data centers']['lead']!r} "
         f"{s['data centers']['html'][-500:]!r}")
-    assert P["req"]["LSR 2027-0002"] == 1 and "1 bill request for 2027" in s["LSR 2027-0002"]["html"], (
+    assert P["req"]["LSR 2027-0002"] == 1, (
         f"/search?q=LSR 2027-0002 counts {P['req']['LSR 2027-0002']} requests")
     for q in ("firearms", "xyzzy"):
-        assert "bill request" not in s[q]["html"] and P["req"][q] == 0, (
+        assert "bill request" not in s[q]["html"].lower() and P["req"][q] == 0, (
             f"/search?q={q} says something about requests, which none match")
-    assert "<h2>Bill requests" not in "".join(v["html"] for v in s.values()), (
-        "/search draws the requests as a group of their own")
+    assert "<h2>Bill Requests" not in "".join(v["html"] for q, v in s.items()
+                                              if q not in ("LSR 2027-0002", "2027-0002", "27-0002")), (
+        "/search draws the requests as a group for a search that is no request's number")
+    # A REQUEST'S NUMBER LEADS /search with the request (11 November 2026):
+    # its own row to /request/<number>, with its title and sponsor, above
+    # everything, and never "nothing matches" over it.
+    for q in ("LSR 2027-0002", "2027-0002", "27-0002"):
+        h, lead = s[q]["html"], s[q]["lead"]
+        if not h.lstrip().startswith('<section class="resgrp"><h2>Bill Requests') \
+                or '<a href="/request/2027-0002">' not in h[:400] \
+                or "establishing a temporary moratorium on data centers" not in h[:900] \
+                or "Requested by Rep. Jodi Nelson (R)" not in h[:900] or "No " in lead \
+                or "Nothing" in lead or "1 bill request." not in s[q]["say"]:
+            raise AssertionError(f"/search?q={q} does not lead with the request: "
+                                 f"{lead!r} {s[q]['say']!r} {h[:500]!r}")
     # /bills on the requests' list counts what /search said.
     assert R["term"] == "2027-requests" \
         and sorted(R["q"]["data centers"]["ids"]) == ["LSR20270002", "LSR20270091"] \
@@ -21655,22 +21939,49 @@ def _find_requests(BP):
         f"/bills on the 2027 requests lists {R['q']['data centers']['ids']} for 'data centers' and "
         f"{R['q']['LSR 2027-0002']['ids']} for 'LSR 2027-0002'")
     bad = []
-    for q in ("LSR 2027-0002", "2027-0002", "LSR20270002"):
-        h = A["q"][q]["html"]
-        if A["q"][q]["ids"] or '<button class="link" data-term="2027-requests">2027 Bill Requests</button>' not in h:
-            bad.append(f"/bills does not offer the 2027 Bill Requests for {q!r}: {h[-300:]!r}")
-    for q in ("2026-0002", "xyzzy", "RSA 91-A"):
-        if 'data-term="2027-requests"' in A["q"][q]["html"]:
-            bad.append(f"/bills offers the requests for {q!r}, which is no request's number")
+    # A request's number typed on the current term moves /bills to the
+    # requests' list and lists the request, whichever way it is written (11
+    # November 2026); a bare "0002" does so only once on that list; a number
+    # of another year, or no request's, is none and is not moved.
+    assert L["term"] == "2025-2026", f"the fixture's /bills opens on {L['term']!r}"
+    for q in ("LSR 2027-0002", "2027-0002", "LSR20270002", "LSR 27-0002", "27-0002",
+              "LSR2027-0002", "lsr 2027 0002", "LSR 0002"):
+        if L["q"][q]["ids"] != ["LSR20270002"]:
+            bad.append(f"/bills lists {L['q'][q]['ids']} for {q!r}, not LSR 2027-0002")
+    if L["q"]["2027-0091"]["ids"] != ["LSR20270091"]:
+        bad.append(f"/bills lists {L['q']['2027-0091']['ids']} for '2027-0091'")
+    if L["q"]["0002"]["ids"] != ["LSR20270002"]:
+        bad.append(f"/bills lists {L['q']['0002']['ids']} for a bare '0002' on the requests' list")
+    # A bare short number on that list is a request too, "2" and "91" (the
+    # owner, 11 November 2026); the year alone, "2027", is a word.
+    if L["q"]["2"]["ids"] != ["LSR20270002"] or L["q"]["91"]["ids"] != ["LSR20270091"]:
+        bad.append(f"/bills lists {L['q']['2']['ids']} for '2' and {L['q']['91']['ids']} for '91' "
+                   "on the requests' list")
+    if (L["q"]["2027"]["ids"] or [None])[0] == "LSR20272027":
+        bad.append("/bills reads the year '2027' as a request's number")
+    # A term's name is no request's number ("2027-2028" is LSR 2027-2028, "2027-28" request 28).
+    for q in ("2027-2028", "2027-28"):
+        if {"LSR20272028", "LSR20270028"} & set(L["q"][q]["ids"]) or 'data-term="2027-requests"' in L["q"][q]["html"]:
+            bad.append(f"/bills reads the term {q!r} as a bill request")
+    if L["q"]["2027-0099"]["ids"] or "No bills match" not in L["q"]["2027-0099"]["html"]:
+        bad.append("/bills does not say no request has the number 2027-0099")
+    # The current term: the offer for what is not read as a request's number,
+    # a year that is not the requests', and a bare number is none.
+    h = A["q"]["LSR 2026-0002"]["html"]
+    if A["q"]["LSR 2026-0002"]["ids"] or '<button class="link" data-term="2027-requests">2027 Bill Requests</button>' not in h:
+        bad.append(f"/bills does not offer the 2027 Bill Requests for 'LSR 2026-0002': {h[-300:]!r}")
+    for q in ("2026-0002", "xyzzy", "RSA 91-A", "0002"):
+        if 'data-term="2027-requests"' in A["q"][q]["html"] or "LSR20270002" in A["q"][q]["ids"]:
+            bad.append(f"/bills offers or lists the requests for {q!r}, which is no request's number here")
     assert not bad, "; ".join(bad)
     tk = A.get("taken") or {}
-    assert tk.get("term") == "2027-requests" and tk.get("q") == "LSR 2027-0002" \
-        and tk.get("ids") == ["LSR20270002"], (
-        f"taking the offer leaves /bills on {tk.get('term')!r} with {tk.get('q')!r}, listing "
-        f"{tk.get('ids')}: it should open the requests on the search typed, and list LSR 2027-0002")
-    return "ok", ("'data centers' and 'LSR 2027-0002' counted on /search's one line as /bills "
-                  "lists them on the requests' list; /bills offers that list for three forms of "
-                  "a request's number, and taking it lists the request")
+    assert tk.get("term") == "2027-requests" and tk.get("q") == "LSR 2026-0002", (
+        f"taking the offer leaves /bills on {tk.get('term')!r} with {tk.get('q')!r}: "
+        "it should open the requests on the search typed")
+    return "ok", ("'data centers' counted on /search's one line as /bills lists them on the "
+                  "requests' list; a request's number (2027-0002, LSR 2027-0002, LSR 27-0002, "
+                  "27-0002) leads /search with its row and moves /bills to the requests' list, "
+                  "where a bare 0002 is read too; the offer stays for what is no request's number")
 
 
 @check("frontend", "the bill search opens on the newest term with a line counting next session's "
@@ -21769,13 +22080,20 @@ def _search_reads_typed(BP):
         bad.append(f"/bills lists {A['q']['Hart’s Location']['ids']} for 'Hart’s Location'")
     # A request's number: its row leads the header's list, opening the bill
     # search on it among the requests; a number no request has is offered none.
-    row = '<a href="/bills?q=LSR%202027-0002&amp;term=2027-requests">'
-    for q in ("LSR 2027-0002", "2027-0002"):
+    # Its row opens the request's own page, /request/2027-0002 (11 November
+    # 2026), in every way the number is typed; a bare "0002", a year that is
+    # not the requests' and a number too short for a two-digit year are none.
+    row = '<a href="/request/2027-0002">'
+    for q in ("LSR 2027-0002", "2027-0002", "LSR 27-0002", "27-0002", "LSR2027-0002",
+              "lsr 2027 0002"):
         h = P["panel"][q]
-        if not h.lstrip().startswith(row) or ">Bill Request<" not in h:
+        if not h.lstrip().startswith(row) or ">Bill Request<" not in h \
+                or "Requested by Rep. Jodi Nelson (R)" not in h \
+                or "data centers" not in h or "No matching" in h:
             bad.append(f"the header does not lead with LSR 2027-0002 for {q!r}: {h[:200]!r}")
-    if "term=2027-requests" in P["panel"]["2026-0002"]:
-        bad.append("the header offers a request for 2026-0002, which no request has")
+    for q in ("2026-0002", "0002", "27-2"):
+        if "/request/" in P["panel"][q]:
+            bad.append(f"the header offers a request for {q!r}, which is no request's number")
     assert not bad, "; ".join(bad[:4])
     return "ok", ("O’Connor, oconnor, O Neil, Lou D’Allesandro, Hart’s Location, Hart s Location, "
                   "Wentworths Location and Chandlers Purchase find the record's names, its "
@@ -27042,7 +27360,7 @@ def _audit_minor(BSP, seating, BP):
         def slug(self, body, name):
             return "x" if name == "Hunt" else ""
     row = BSP.members_row("H", ["Hunt", "Roy", "Muns"], _M(), lambda s: s)
-    if row != ('<span class="swho1"><span class="mchip p-R" translate="no"><a href="legislator/x.html">'
+    if row != ('<span class="swho1"><span class="mchip p-R" translate="no"><a href="legislator/x">'
                'Rep. Pat Hunt <span class="mtag">(R - Hills 1)</span></a></span></span> '
                '<span class="swho1"><span>Rep. Roy</span>,</span> '
                '<span class="swho1"><span>Rep. Muns</span></span>'):
@@ -29742,22 +30060,22 @@ def _stale(inventory):
     return "ok", f"STALE lists {len(inventory.STALE)}, none of them read"
 
 
-@check("files", "inventory --bump raises a file's stamp and its versions.json entry together, "
-                "keeps the date and the line endings, and --bump-changed bumps a file once",
+@check("files", "inventory --bump raises a file's stamp, keeps the date and the line endings, "
+                "--bump-changed bumps a file once, and the registry follows the files",
        needs=("inventory",))
 def _inventory_bump(inventory):
     """The two edits every change to a stamped file needs, made by one command
     (src/ops/inventory.py --bump, 23 October 2026). In a scratch git repository:
-    a CRLF file is bumped with its endings kept; the date stays; versions.json
-    moves with it; and --bump-changed, run twice on the same change, bumps once."""
+    a CRLF file is bumped with its endings kept; the date stays; the registry,
+    read off the files, moves with it (versions.json is no longer edited, 11
+    November 2026); and --bump-changed, run twice on the same change, bumps
+    once."""
     import subprocess
     d = Path(tempfile.mkdtemp())
     try:
         def git(*a):
             subprocess.run(["git", "-C", str(d), *a], check=True, capture_output=True)
         git("init", "-q")
-        (d / "versions.json").write_text('{\n  "files": {\n    "a.py": "2026-01-02.3"\n  }\n}\n',
-                                         encoding="utf-8")
         (d / "a.py").write_bytes(b"#!/usr/bin/env python3\r\n# GRANITE_VERSION: 2026-01-02.3\r\nx = 1\r\n")
         git("add", "-A")
         git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "t")
@@ -29767,22 +30085,28 @@ def _inventory_bump(inventory):
         inventory.bump(todo, d)
         raw = (d / "a.py").read_bytes()
         assert b"GRANITE_VERSION: 2026-01-02.4\r\n" in raw and b"\n" not in raw.replace(b"\r\n", b""), raw
-        assert json.loads((d / "versions.json").read_text())["files"]["a.py"] == "2026-01-02.4"
+        assert inventory.registry(d) == {"a.py": "2026-01-02.4"}, inventory.registry(d)
         assert inventory.changed_since(d, "HEAD")[0] == [], "a bumped file was offered again"
+        # A stamp taken down is seen against the base; a raised one is not.
+        assert inventory.backwards(d, "HEAD") == [], "a raised stamp was called backwards"
+        (d / "a.py").write_bytes((d / "a.py").read_bytes().replace(b".4", b".2"))
+        assert inventory.backwards(d, "HEAD") == ["a.py"], "a stamp gone backwards was missed"
+        inventory.bump(["a.py"], d)
+        inventory.bump(["a.py"], d)
         # A file new since the base keeps its first stamp, however often it runs.
         (d / "b.py").write_bytes(b"#!/usr/bin/env python3\n# GRANITE_VERSION: 2026-10-23.1\n")
         assert inventory.changed_since(d, "HEAD")[0] == [], "a new file's first stamp was bumped"
-        # An entry versions.json keys by its path, as it does tests/test_markers.py.
-        (d / "tests").mkdir()
-        (d / "tests" / "t.py").write_bytes(b"# GRANITE_VERSION: 2026-02-03.5\n")
-        (d / "versions.json").write_text(
-            '{\n  "files": {\n    "a.py": "2026-01-02.4",\n    "tests/t.py": "2026-02-03.5"\n  }\n}\n',
-            encoding="utf-8")
-        inventory.bump(["tests/t.py"], d)
-        assert json.loads((d / "versions.json").read_text())["files"]["tests/t.py"] == "2026-02-03.6", (
-            "an entry versions.json keys by its path was left behind")
-        return "ok", ("2026-01-02.3 -> .4 in the file and versions.json, CRLF kept, once only; "
-                      "a new file keeps its first stamp; an entry keyed by its path moves too")
+        # A file outside the code folders is keyed by its path; versions.json is
+        # the registry written out, and what it holds is what the files say.
+        (d / "docs").mkdir()
+        (d / "docs" / "t.js").write_bytes(b"// GRANITE_VERSION: 2026-02-03.5\n")
+        inventory.bump(["docs/t.js"], d)
+        want = {"a.py": "2026-01-02.4", "b.py": "2026-10-23.1", "docs/t.js": "2026-02-03.6"}
+        got = inventory.write_registry(d)
+        assert got == want and json.loads((d / "versions.json").read_text())["files"] == want, got
+        return "ok", ("2026-01-02.3 -> .4 in the file alone, CRLF kept, once only; a new file keeps "
+                      "its first stamp; a stamp gone backwards is seen; the registry and the "
+                      "versions.json written from it follow the files")
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
@@ -29819,9 +30143,22 @@ def _expected_failures_settle():
                      if marked else ""))
 
 
-@check("files", "every file's own stamp matches versions.json")
-def _stamps():
-    """The stamp is what inventory.py compares, so a stale one is a lie.
+@check("files", "the registry of stamps is the files' own; a changed file's stamp is raised, "
+                "none went backwards, and versions.json is not tracked", needs=("inventory",))
+def _stamps(inventory):
+    """The stamp in the file is the only place a version is kept; the registry
+    (inventory.registry) is read off the files, and versions.json, if a person
+    wrote one out, is ignored by git (11 November 2026). What this holds:
+
+      the registry equals an independent read of every tracked file's stamp,
+      and a stamp that is malformed or too far down to be read is named;
+      a file changed since HEAD has a stamp that moved, and none moved back
+      (the half-applied edit this check was written for);
+      versions.json is not a tracked file, which is what made it a merge
+      conflict for every parallel branch.
+
+    Before, the list was kept by hand beside the files, and it caught three
+    silently half-applied edits.
 
     Six files shipped with the right code and last week's stamp, because the
     bump was `t.replace(old, new)` with no assertion: str.replace returns the
@@ -29832,43 +30169,58 @@ def _stamps():
     code was current, and the only visible symptom was a re-download that
     changed nothing.
     """
-    vp = Path("versions.json")
-    if not vp.exists():
-        return "skip", "no versions.json here"
-    want = json.loads(vp.read_text(encoding="utf-8")).get("files", {})
-    bad, unstamped, seen = [], [], 0
-    for name, ver in want.items():
-        f = _paths.locate(name)
-        if not f.exists():
-            continue
-        seen += 1
-        m = re.search(r"GRANITE_VERSION:\s*([0-9.\-]+)",
-                      f.read_text(encoding="utf-8", errors="replace"))
-        if not m:
-            unstamped.append(name)
-        elif m.group(1) != ver:
-            bad.append(f"{name} is stamped {m.group(1)}, listed as {ver}")
-    assert not bad, "; ".join(bad[:4]) + (f" (+{len(bad) - 4} more)" if len(bad) > 4 else "")
-    assert not unstamped, "no stamp line in: " + ", ".join(unstamped[:5])
+    from datetime import datetime
+    reg = inventory.registry()
+    listed = {}
+    for k, v in reg.items():
+        listed[_paths.locate(k).resolve()] = v
+    assert len(listed) == len(reg), "two registry names are one file"
     # AND EVERY STAMPED FILE IS LISTED. bill_order.py was written on 24
     # September with its own stamp and no line here, so this check -- which
     # reads the manifest's list -- never looked at it, and its first edit went
     # out unbumped.
-    r = _run(["git", "ls-files", "*.py", "*.js", "*.css", "*.html", "*.bat"],
+    r = _run(["git", "ls-files", "*.py", "*.js", "*.css", "*.html", "*.bat", "*.sql", "*.toml"],
              capture_output=True, text=True)
-    # versions.json lists a script by its bare name wherever it sits, and git
-    # by its path: src/parse/narrative.py is the line "narrative.py".
-    listed = {_paths.locate(n).resolve() for n in want}
-    unlisted = []
-    for name in (r.stdout or "").split():
-        if name in want or Path(name).resolve() in listed:
+    tracked = (r.stdout or "").split()
+    if not tracked:
+        return "skip", "no git history here"
+    bad, scanned = [], {}
+    for name in tracked:
+        if not inventory.is_code_path(name) or not Path(name).exists():
             continue
-        head = Path(name).read_text(encoding="utf-8", errors="replace")[:3000] \
-            if Path(name).exists() else ""
-        if re.search(r"GRANITE_VERSION:\s*[0-9]", head):
-            unlisted.append(name)
-    assert not unlisted, "stamped but not in versions.json: " + ", ".join(unlisted[:6])
-    return "ok", f"{seen} files agree with the manifest, and no stamped file is left out of it"
+        raw = Path(name).read_bytes()
+        if not re.search(r"GRANITE_VERSION:\s*[0-9]", raw[:3000].decode("utf-8", "replace")):
+            continue
+        m = inventory.FULL_STAMP.search(raw[:800].decode("utf-8", "replace"))
+        if not m:
+            bad.append(f"{name}: a stamp that is not YYYY-MM-DD.N, or past the first 800 bytes")
+            continue
+        try:
+            datetime.strptime(m.group(1).split(".")[0], "%Y-%m-%d")
+        except ValueError:
+            bad.append(f"{name}: {m.group(1)} is not a date")
+        scanned[Path(name).resolve()] = m.group(1)
+    assert not bad, "; ".join(bad[:4])
+    assert scanned == listed, (
+        "the registry and the files disagree: "
+        + "; ".join(f"{p.name} {scanned.get(p)} vs {listed.get(p)}"
+                    for p in sorted(set(scanned) | set(listed))
+                    if scanned.get(p) != listed.get(p))[:300])
+    # Against git: a changed file whose stamp did not move, or moved back.
+    unmoved, back = [], []
+    try:
+        unmoved = inventory.changed_since(_paths.ROOT, "HEAD")[0]
+        back = inventory.backwards(_paths.ROOT, "HEAD")
+    except Exception:                                           # noqa: BLE001
+        pass
+    assert not unmoved, ("changed since HEAD with the stamp unmoved (run src/ops/inventory.py "
+                         "--bump-changed): " + ", ".join(unmoved[:6]))
+    assert not back, "stamp lower than at HEAD: " + ", ".join(back[:6])
+    t = _run(["git", "ls-files", "versions.json"], capture_output=True, text=True)
+    assert not (t.stdout or "").strip(), (
+        "versions.json is tracked again: it is generated (inventory.py --write) and git ignores it, "
+        "so that two branches never conflict over it")
+    return "ok", f"{len(scanned)} stamped files; the registry is theirs, and none changed unraised"
 
 
 @check("files", "no generator writes a file a person made by hand")
@@ -30489,12 +30841,59 @@ def _request_pages():
             "one kept, and the one now a bill taken away")
         page = (site / "request" / "2027-0001.html").read_text(encoding="utf-8")
         assert '<meta name="robots" content="noindex,follow">' in page \
-            and 'class="static-rec shown"' in page and "Requests, not bills yet." in page \
+            and "Requests, not bills yet." in page \
             and "numbered 2027 bill" in page and 'href="legislator/jodi-nelson-rock-13"' in page, (
-            "a request's page is not noindex, shown with script on, explained, or its sponsor's "
-            "chip linked")
+            "a request's page is not noindex, explained, or its sponsor's chip linked")
+        # THE BILL PAGE'S FRAME (Alice, 11 November 2026: "so that information
+        # fills in more naturally rather than reformatting the whole layout"):
+        # the record head with the trail Bills > the requests > the number, the
+        # number and the status chip, the field grid, the action column with
+        # Cite, Share and Report and no Testify or Print, the rail starting at
+        # Requested and then every stop a bill passes, the Summary tab alone;
+        # Follow's key and the report's record named for the scripts.
+        frame = ('<header class="rhead rh-bill">', '<nav class="rtrail"', '>2027 Bill Requests</a>',
+                 '<li aria-current="page">LSR 2027-0001</li>', 'chip chip-m cstat',
+                 'Filed as a request</span>', '<dl class="rfacts">', "<dt>Prime Sponsor</dt>",
+                 "<dt>Kind</dt>", '<div class="racts"><div class="pageacts" id="pageacts"><details class="pcite"', "data-share",
+                 '<i>Requested</i>', "<i>Filed</i>", "<i>Introduced</i>", 'id="sstab-summary"', 'class="pane sspane"',
+                 'window.GR_FOLLOW="lsr:2027-0001";', 'window.GR_REPORT="request:2027-0001";',
+                 'window.GR_REQUEST="2027-0001";')
+        gone_ = [x for x in frame if x not in page]
+        assert not gone_, f"a request's page lacks the bill page's frame: {gone_}"
+        # A REQUEST'S RAIL IS THREE STOPS (Alice, 12 November 2026: a bill's six
+        # ran into one another on a phone): Requested, Filed, Introduced, in
+        # that order and nothing a bill passes after; the label text fits a
+        # third of the narrowest phone's rail in the wider face
+        # (_RAIL_FACE); withdrawn is a cross; Filed is reached only where the
+        # row says the text is public.
+        def stops_of(html):
+            rail = re.search(r'<span class="rail dated".*?</span></span>(?=\s*<|$)', html, re.S)
+            assert rail, "a request's page has no rail"
+            return re.findall(r'<span class="stop s-(\w+)"><b>(.*?)</b><i>(.*?)</i>', rail.group(0), re.S)
         wd = (site / "request" / "2027-0002.html").read_text(encoding="utf-8")
-        assert "<b>Status:</b> Withdrawn<" in wd, "a withdrawn request's page does not say so"
+        got = stops_of(page)
+        assert [g[2] for g in got] == ["Requested", "Filed", "Introduced"], (
+            f"a request's rail draws {[g[2] for g in got]}, not Requested, Filed, Introduced")
+        assert [g[0] for g in got] == ["p", "o", "o"], f"a request's rail is reached as {[g[0] for g in got]}"
+        assert [g[0] for g in stops_of(wd)] == ["p", "x", "o"] and "\u2715" in stops_of(wd)[1][1], (
+            "a withdrawn request's rail does not show Requested reached and the cross on Filed")
+        assert [g[0] for g in stops_of(RP.rail_of({**by["LSR 2027-0001"], "filed": "2026-12-01"}))] \
+            == ["p", "p", "o"], "a filed request's rail does not reach Filed"
+        slot = 296 / 3  # the rail of a 320px phone, three stops
+        wide = max(sum(_RAIL_FACE.get(c, 1000) for c in w) * 14 / 1000 for w in ("Requested", "Filed", "Introduced"))
+        assert wide + 2 * 4 <= slot, (
+            f"a request's widest stop name is {wide:.0f}px in a {slot:.0f}px slot on a 320px phone")
+        for no in ("Testify", "data-print", 'role="tab" id="sstab-votes"', "Committee</dt>"):
+            assert no not in page, f"a request's page carries {no!r}, which a request has not"
+        assert page.count('role="tab"') == 1, "a request's page has more than one tab"
+        wd = (site / "request" / "2027-0002.html").read_text(encoding="utf-8")
+        assert "<b>Status:</b> Withdrawn<" in wd and ">Withdrawn</span>" in wd \
+            and "window.GR_FOLLOW" not in wd, (
+            "a withdrawn request's page does not say so, or offers Follow")
+        # Its route, by kind (build_lsrs.route).
+        assert L.route("HR") == ["House", "Adopted"] and L.route("SCR") == ["Senate", "House"] \
+            and L.route("CACR") == ["Voters"] and L.route("SB")[-2:] == ["Governor", "Law"], (
+            "build_lsrs.route's stops are not a bill's route")
         red = BPG.moved_requests(site)
         assert "/request/2027-0003 /bill/2027/hb45 301\n" in red and "2027-0001" not in red, (
             f"the 301s for the requests read {red!r}")
@@ -30518,7 +30917,7 @@ def _request_pages():
         L.FILING_COMPLETE.clear()
         L.FILING_COMPLETE.update(old)
     # The links, and New Hampshire kept out of the page writer.
-    assert "const to=b.moved_to||b.address;" in Path("src/pages/find.js").read_text(encoding="utf-8") \
+    assert 'const to=b.moved_to||b.address||"request/"' in Path("src/pages/find.js").read_text(encoding="utf-8") \
         and '?`<a href="${esc(b.moved_to||b.address)}">' in Path("src/pages/app.js").read_text(encoding="utf-8"), (
         "the header search's request row or the request card does not link the request's page")
     src = Path("src/pages/build_request_pages.py").read_text(encoding="utf-8")
@@ -31048,7 +31447,7 @@ if (/class="cnum" href=/.test(focusHtml)) {
   console.log("ARROW: the focused view still draws the card's number as a link. It "
               + "points at the standalone page for the same bill, which from a reader's "
               + "seat is the page they are already on"); process.exit(1); }
-if (!/<a class="cnum" href="bill[/]2026[/]hb1442[.]html" translate="no">HB 1442/.test(listHtml)) {
+if (!/<a class="cnum" href="bill[/]2026[/]hb1442" translate="no">HB 1442/.test(listHtml)) {
   console.log("ARROW: the search list drew no link to a standalone page");
   process.exit(1); }
 // The tooltip promised "no JavaScript" until the standalone page became this
@@ -31312,12 +31711,12 @@ var fixtures = [
          "Hearings (2)",
          // A start and an end, and nothing else. Both stations here start at a
          // boundary the chair announced, so neither carries the one word that
-         // marks an inference.
+         // marks an inference. The Hearings tab is one player and a playlist
+         // (10 November 2026): the first recording's moments are under the
+         // player, and the second is a row of the playlist, drawn when chosen.
          "00:02:30 starts",
          "00:15:00 ends",
-         "00:25:00 starts",
-         "00:40:00 ends",
-         "00:02:30–00:15:00"],
+         'data-vwpick="h1"'],
    // THE VERSION PANE IS ONLY DRAWN WHEN THE CARD IS OPEN, so these belong in
    // wantFocused and not in want. Asserting them in both is how this first
    // failed: the collapsed card renders 13,898 characters of perfectly good
@@ -31804,7 +32203,8 @@ def _states_covered():
     emitted |= set(re.findall(r'state,\s*start\s*=\s*"(\w+)"', src))
     assert emitted, "no station states found in build_site_v2.py"
 
-    drawn = set(re.findall(r's\.state\s*===\s*"(\w+)"', page))
+    # hearingPlace (the recorded states' one chain, on `st`) and hearingCard.
+    drawn = set(re.findall(r'(?:s\.state|\bst)\s*===\s*"(\w+)"', page))
     assert drawn, "no state tests found in bills.html"
 
     # novideo and prestream mean there is nothing to play; the page handles
@@ -31815,7 +32215,7 @@ def _states_covered():
 
     # One chain. A second `if (s.state===...)` after the first restarts the
     # else-ladder and lets a later catch-all overwrite an earlier match.
-    opens = [m.start() for m in re.finditer(r'(?<!else )if\s*\(s\.state\s*===', page)]
+    opens = [m.start() for m in re.finditer(r'(?<!else )if\s*\(st\s*===', page)]
     assert len(opens) <= 1, (f"{len(opens)} separate if-chains test s.state; a "
                              "station matching an earlier chain is overwritten "
                              "by the catch-all in a later one")
@@ -32076,8 +32476,10 @@ def _conference_folded(build_site_v2):
         "build_bills no longer draws its floor stations through fold_conference_notices")
     # THE PAGE. HB 485's one conference is drawn once, timed, and never as
     # "No recording matched".
+    # (The view opens on the bill's first recording, so the conference is
+    # drawn alone here: its detail is under the player only while chosen.)
     html_ = _app_js("scope.renderHearings({id:'HB485', n:'HB 485'}, {stations:"
-                    + json.dumps(drawn["HB485"]) + "})")
+                    + json.dumps([s for s in drawn["HB485"] if s["what"] == C]) + "})")
     if html_ is not None:
         assert "No recording matched" not in html_, (
             "HB 485's page still says no recording matched its conference of 16 June 2025")
@@ -32248,28 +32650,29 @@ def _station_not_named(build_site_v2, segment_markers):
         # recording cards are: where Play starts and the time set, over "bill
         # not named in the captions" -- said once. A paragraph under the note
         # said it again ("The recording's captions never name this bill ...").
-        for want in ('<span class="tolnote">bill not named in the captions</span>',
-                     "Play from 00:05:00 · scheduled 10:00", 'data-embed="VIDX|300|'):
+        # Since 10 November 2026 (the owner) the Hearings tab is a committee's
+        # Videos tab for one bill: one player, the sitting's day and time in
+        # the line under it, and the note once, under the player.
+        for want in ('<p class="vwnone">Bill not named in the captions.</p>',
+                     "Play from 00:05:00", "Feb 3, 2026 at 10:00", 'data-embed="VIDX|300|'):
             assert want in named, f"the not-named sitting does not say {want!r}"
         for k, h in (("the not-named sitting", named),
                      ("a not-named sitting of a state app.js does not know", fallback)):
             said = re.sub(r"<[^>]+>", " ", h)
             assert len(re.findall(r"not named|never name", said)) == 1 \
-                and 'class="note"' not in h and h.count('class="pstub"') == 1 \
-                and '<span class="tolnote">bill not named in the captions</span>' in h, (
-                    f"{k} says its bill is not named other than once, under its one button: "
+                and 'class="note"' not in h and h.count('class="pstub"') == 1, (
+                    f"{k} says its bill is not named other than once, under its one player: "
                     + said[:400])
-        assert "Play from the start · scheduled 10:00" in fallback, (
+        assert 'data-embed="VIDX|0|' in fallback, (
             "a not-named sitting of a state app.js does not know is not offered from the start")
         assert "ongoing work" not in named and "not identified" not in named, (
             "the not-named sitting still says the matching is unfinished")
         # One button since 25 October 2026 (S2): "Play from 00:05:00 ·
         # scheduled 10:00 AM (exact moment not found)".
-        assert "(exact moment not found)" in other and "not named" not in other, (
+        assert "Exact moment not found." in other and "not named" not in other, (
             "a sitting whose bill is named lost the words for an opening not found")
     return "ok", ("marked only where its recording never names it and no start is drawn; one "
-                  "button, \"Play from 00:05:00 · scheduled 10:00 AM\", over \"bill not named in "
-                  "the captions\", said once")
+                  "player, \"Play from 00:05:00\", over \"Bill not named in the captions.\", said once")
 
 
 @check("frontend", "a bill's recording cards say each thing once: two recordings in one line, "
@@ -32363,9 +32766,11 @@ def _recording_cards_once(build_site_v2):
     words = len(re.sub(r"<[^>]+>", " ", box.group(1)).split()) if box else 0
     if not 0 < words <= 20:
         bad.append(f"two: {words} words")
-    # The clock's no-break space is a space here (\s above).
-    need("start", "Play from the start · scheduled 10:00 AM (exact moment not found)")
-    need("later", "Play from 00:16:28 · scheduled 9:35 AM (exact moment not found)")
+    # The clock's no-break space is a space here (\s above). One player, the
+    # sitting's day and time in the line under it, and the unfound moment said
+    # once (the Hearings tab as a committee's Videos tab, 10 November 2026).
+    need("start", "Play the recording", "Mar 12, 2025 at 10:00 AM", "Exact moment not found.")
+    need("later", "Play from 00:16:28", "Mar 12, 2025 at 9:35 AM", "Exact moment not found.")
     for k in ("start", "later", "day"):
         never(k, "not identified", "Not yet matched", "automatic pass")
         if 'class="tolnote"' in page[k] or 'class="note"' in page[k]:
@@ -32373,17 +32778,17 @@ def _recording_cards_once(build_site_v2):
     if 'data-embed="73sLapY1jRw|0|' not in page["start"] or \
             'data-embed="FL8-GWBu5wk|988|' not in page["later"]:
         bad.append("an unfound moment's Play no longer opens where it did")
-    need("vote", "Play from 05:13:45", "vote at 05:23:18", "Open on YouTube",
+    need("vote", "Play from 05:13:45", "05:23:18 vote at", "On YouTube",
          "Motion: Ought to Pass with Amendment (OTPA, Pass the bill with changes)")
     never("vote", "window opens", "timed to the second", "Motions: OTPA", "approximate",
           "where the clerk takes it up")
     if 'data-embed="itJRViVSJqk|18825|' not in page["vote"]:
         bad.append("the floor card's Play no longer opens at the clerk's opening")
-    need("weak", "Play from 05:13:45", "vote at 05:23:18", "approximate")
-    need("chair", "Play from 00:24:37", "ends at 00:30:57",
+    need("weak", "Play from 05:13:45", "05:23:18 vote at", "approximate")
+    need("chair", "Play from 00:24:37", "00:30:57 ends at",
          "Motion: Ought to Pass with Amendment (OTPA, Pass the bill with changes) 2026-1396s")
     never("chair", "no roll call on this one", "approximate")
-    need("day", "Play from the start (exact moment not found)")
+    need("day", "Play the recording", "Exact moment not found.")
     never("day", "moment not identified", "nothing to point at")
     assert not bad, "; ".join(bad[:6])
     return "ok", ("HB 131 of 2026's cards: two recordings in one line, an unfound moment in one "
@@ -32563,7 +32968,7 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
     assert "<h3>" not in prose and 'class="hrpara"' in prose and \
         "does not make clear who said which part" in prose, (
         "a report kept as text was drawn as speakers, or without saying why")
-    assert tab.index('class="player"') < tab.index('class="hrep"'), (
+    assert tab.index('class="player vwplay"') < tab.index('class="hrep"'), (
         "the report is not under the hearing's recording")
     # "The recording above is the hearing itself" is true only where there
     # is one; fifteen reported hearings have none.
@@ -33609,7 +34014,7 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
         shutil.rmtree(root, ignore_errors=True)
 
     def voters(html):
-        i = html.find('<section class="rc ballot">')
+        i = html.find('<section class="rc ballot"')
         return html[i:] if i >= 0 else ""
 
     def flat(html):
@@ -33617,7 +34022,7 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
 
     lost, won = voters(got["lost"]), voters(got["won"])
     assert lost and won, "a CACR's Votes tab draws no card for the voters"
-    assert got["lost"].find('<section class="rc">') < got["lost"].find('class="rc ballot"'), (
+    assert got["lost"].find('<section class="rc"') < got["lost"].find('class="rc ballot"'), (
         "the voters' card is drawn ahead of the chambers' votes")
     assert "class=\"rc ballot\"" not in got["none"], "a bill with no ballot row drew a voters' card"
     for html, word, cls, pct, other, how in (
@@ -34128,6 +34533,290 @@ def _phone_card_compact():
         drew = "the year on each of three dated stops"
     return "ok", (f"under 37.5em: {', '.join(f'{tok} {px}px' for tok, px in _PHONE_CARD.values())}"
                   f" in rem, the title in the serif; {drew}")
+
+
+@check("frontend", "the Law line of How it got here has its day in the date column, like every other line",
+       needs=("build_site_v2",))
+def _law_line_dated(B):
+    """The owner, 10 November 2026: HB 1's Law line read "Chapter 140, in
+    effect Jul 1, 2025" with its date column empty. The build gives a
+    single-day law's step its date and the words "Chapter 140, in effect"
+    (law_line_dated); `text` keeps the day for the Laws pages, a law in parts
+    or stages keeps no day, and app.js draws the date column from `date`."""
+    day = "2025-07-01"
+    one = B.law_line_dated({"act": "law", "date": "", "effective": day, "short": "Chapter 140",
+                            "text": "Chapter 140, in effect Jul 1, 2025"})
+    assert one["date"] == day and one["shown"] == "Chapter 140, in effect", f"a law line is not dated: {one}"
+    assert one["text"] == "Chapter 140, in effect Jul 1, 2025", "the Laws pages' own text changed"
+    parts = B.law_line_dated({"act": "law", "date": "", "effective": "", "short": "Chapter 142",
+                              "text": "Chapter 142, in effect in parts: ..."})
+    assert parts["date"] == "" and "shown" not in parts, "a law in parts was given a day"
+    staged = B.law_line_dated({"act": "law", "date": "", "effective": "", "short": "Chapter 142",
+                               "shown": "Chapter 142, in effect in stages", "text": "..."})
+    assert staged["date"] == "" and staged["shown"] == "Chapter 142, in effect in stages", "a staged law changed"
+    html = _app_js("scope.journeyList({id: 'HB1'}, {journey: {steps: [" + json.dumps(one) + "]}})",
+                   names=("journeyList",))
+    if html is None:
+        return "skip", "node or app.js is not here"
+    assert '<span class="jt">Chapter 140, in effect</span>' in html, (
+        f"the line's words are not Chapter 140, in effect: {html!a}")
+    assert re.search(r'<span\s+class="jd">Jul 1, 2025</span>', html), f"the day is not in the date column: {html!a}"
+    return "ok", "a single-day law's line says Chapter N, in effect with its day in the date column; parts and stages unchanged"
+
+
+_SUMMARY_VOTES = {
+    "b": {"id": "HB1", "year": "2025", "term": "2025-2026"},
+    "d": {
+        "rollcalls": [
+            {"date": "2025-03-12", "body": "H", "yeas": 231, "nays": 99, "question": "Ought to Pass", "vote_kind": "RC",
+             "passed": True, "members": [], "tally": {}},
+            {"date": "2025-03-12", "body": "H", "yeas": 231, "nays": 99, "question": "Ought to Pass again",
+             "vote_kind": "RC", "passed": True, "members": [], "tally": {}},
+            {"date": "2025-04-10", "body": "S", "yeas": 16, "nays": 8, "question": "Ought to Pass", "vote_kind": "RC",
+             "passed": True, "members": [], "tally": {}},
+            {"date": "2025-05-01", "body": "H", "yeas": 198, "nays": 167, "question": "Concur", "vote_kind": "DV",
+             "passed": True, "members": [], "tally": {}},
+        ],
+        "journey": {"steps": [
+            {"date": "2025-04-10", "body": "S", "mark": "p", "act": "passed", "text": "Passed on a roll call, 16–8"},
+            {"date": "2025-05-01", "body": "H", "mark": "p", "act": "concurred", "text": "Concurred on a division vote, 198–167"},
+            {"date": "2025-05-02", "body": "H", "mark": "p", "act": "passed", "text": "Passed, 198–167"},
+            {"date": "2025-04-10", "body": "H", "mark": "p", "act": "passed", "text": "Passed, 16–8"},
+            {"date": "2025-03-12", "body": "H", "mark": "p", "act": "passed", "text": "Passed, 231–99"},
+        ]},
+        "stages": [{"label": "On the House Floor", "text":
+                    "On May 1, 2025 the House concurred 198–167 on a division vote. On April 10, 2025 the House "
+                    "passed it 16–8. On April 10, 2025 the Senate voted 16–8 to pass it on a roll call."}],
+    },
+}
+
+
+@check("frontend", "a vote tally in the Summary links to its card on the Votes tab, by date, chamber and counts")
+def _summary_votes_linked():
+    """The owner, 10 November 2026: a tally like 198-167 in the Summary opens
+    the Votes tab at that vote. A tally is linked only where one card has its
+    date, its chamber and its counts (voteLinks); the same counts on another
+    day or in the other chamber stay text, and so do two cards that fit. Each
+    card has the anchor the link names."""
+    html = _app_js(
+        "(() => { const S = " + json.dumps(_SUMMARY_VOTES) + "; return {summary: scope.renderSummary(S.b, S.d, null),"
+        " votes: scope.renderVotes(S.b, S.d), anchors: scope.voteAnchors(S.d)}; })()",
+        names=("renderSummary", "renderVotes", "voteAnchors"))
+    if html is None:
+        return "skip", "node or app.js is not here"
+    got, sm = html, html["summary"]
+    assert got["anchors"] == ["vote-2025-03-12-H-231-99", "vote-2025-03-12-H-231-99-2", "vote-2025-04-10-S-16-8",
+                              "vote-2025-05-01-H-198-167"], f"the cards' anchors: {got['anchors']}"
+    for a in got["anchors"]:
+        assert f'id="{a}"' in got["votes"], f"the Votes tab has no card with id {a}"
+    links = re.findall(r'<a class="vtl" href="([^"]+)" data-vote="([^"]+)">(?:<span class="tally">)?([^<]+)', sm)
+    said = [(h, t) for h, _v, t in links]
+    # Journey: the Senate's 16-8 of 10 April, and the House's 198-167 of 1 May.
+    assert ("bill/2025/hb1/votes#vote-2025-04-10-S-16-8", "16–8") in said, f"a row's tally is not linked: {said}"
+    assert ("bill/2025/hb1/votes#vote-2025-05-01-H-198-167", "198–167") in said, f"a division's tally is not linked: {said}"
+    # The same counts on 2 May, in the other chamber on 10 April, and on 12 March
+    # (two cards fit) stay text.
+    assert sm.count('class="vtl"') == 4, f"{sm.count('class=\"vtl\"')} tallies linked, not the 2 rows and 2 story ones: {said}"
+    assert "Passed, <span class=\"tally\">198–167</span>" in sm and "Passed, <span class=\"tally\">231–99</span>" in sm, (
+        "a tally no single card fits was changed")
+    # The story: its sentence's date and first chamber.
+    story = sm[sm.index('<p class="story">'):]
+    assert story.count('class="vtl"') == 2, "the story links other than its two tallies"
+    assert re.search(r'concurred <a class="vtl" href="[^"]*#vote-2025-05-01-H-198-167"', story), "a story tally is not linked"
+    assert re.search(r'the Senate voted <a class="vtl" href="[^"]*#vote-2025-04-10-S-16-8"', story), "a Senate story tally is not linked"
+    assert "the House passed it 16–8" in story, "the House's 16-8 of 10 April, which no card has, was linked"
+    # The address /bill/<year>/<bill>/votes#vote-... stays this bill's page, opens
+    # the Votes tab and brings the card up, on load, on a click and on a hash change.
+    src = Path("src/pages/app.js").read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert src.count("VOTE_HASH.test(said)") >= 3 and "jumpToVote();\n};" in src \
+        and "a[data-vote]" in src, "a vote's address does not open the Votes tab at its card"
+    assert "a.vtl{white-space:nowrap}" in Path("src/pages/app.css").read_text(encoding="utf-8"), (
+        "app.css lets a tally link break across two lines")
+    return "ok", "tallies link to their cards by date, chamber and counts, none where no single card fits"
+
+
+@check("frontend", "the Summary's How It Got Here and story mark the glossary's terms for their popovers, "
+                   "once, and never inside a link")
+def _summary_glossary_marked():
+    """The owner, 10 November 2026: "the summary does not appear to have
+    tooltips for things like roll call or voice vote". glossPass marks the
+    first use of each term the glossary holds (a data-term span, which
+    components.js turns into the popover), across How It Got Here and then the
+    story, never inside a link and never a second time."""
+    d = dict(_SUMMARY_VOTES["d"])
+    d["journey"] = {"steps": [
+        {"date": "2025-04-10", "body": "S", "mark": "p", "act": "passed", "text": "Passed on a voice vote"},
+        {"date": "2025-05-01", "body": "H", "mark": "x", "act": "killed", "text": "Killed on a roll call, 16–8"},
+        {"date": "2025-05-02", "body": "H", "mark": "p", "act": "passed", "text": "Ought to Pass on a voice vote"},
+        {"date": "2025-05-03", "body": "H", "mark": "p", "act": "passed", "text": "Sent to interim study"},
+    ]}
+    d["stages"] = [{"label": "On the House Floor", "text":
+                    "On April 10, 2025 the House voted on a roll call 16–8, then killed it on a voice vote. "
+                    "It was Inexpedient to Legislate and the consent calendar took it up."}]
+    html = _app_js("(() => { const S = " + json.dumps({"b": _SUMMARY_VOTES["b"], "d": d})
+                   + "; return scope.renderSummary(S.b, S.d, null); })()", names=("renderSummary",))
+    if html is None:
+        return "skip", "node or app.js is not here"
+    marks = re.findall(r'<span data-term="([^"]+)">([^<]*)</span>', html)
+    keys = [k for k, _w in marks]
+    assert len(keys) == len(set(keys)), f"a term is marked twice: {keys}"
+    for k in ("VV", "RC", "OTP", "IS", "ITL", "CC"):
+        assert k in keys, f"{k} is not marked in the Summary: {keys}"
+    # The first use is the one marked: the journey's voice vote, not the story's.
+    assert html.index('data-term="VV"') < html.index('class="story"'), "the voice vote marked is not the first"
+    assert not re.search(r'<a [^>]*>[^<]*<span data-term', html), "a term is marked inside a link"
+    return "ok", "roll call, voice vote, interim study and the rest marked at their first use, none twice, none in a link"
+
+
+@check("frontend", "the History tab of a bill number with a standing note lists the same number in the other "
+                   "terms it holds for, newest first, and no other bill's History tab changes",
+       needs=("build_site_v2",))
+def _history_same_number(B):
+    """The owner, 10 November 2026: "the history tab should match prior bills
+    for standard ones like HB1, HB2". corrections/bill_notes.json says which
+    numbers have a standing meaning and from which term (HB 1 is the budget from
+    1993-1994; the HB 1 of 1989-1990 is another bill). same_number_rows gives
+    such a bill the same number in its other terms, newest first, never in a
+    term before `from`; any other bill nothing. renderRelated draws it under
+    "HB 1 in other terms", each row linked to its term's bill with its title and
+    outcome chip."""
+    notes = {"every_term": {"HB1": {"from": "1993-1994", "label": "The state budget", "note": "x"}}}
+    index = [{"term": t, "year": t[:4], "id": b, "n": b[:2] + " " + b[2:], "title": f"title {t}", "chip": "Became Law"}
+             for t in ("1989-1990", "1993-1994", "2023-2024", "2025-2026") for b in ("HB1", "HB7")]
+    rows = B.same_number_rows(notes, index)
+    assert set(rows) == {("1993-1994", "HB1"), ("2023-2024", "HB1"), ("2025-2026", "HB1")}, (
+        f"the standing-note bills are not exactly the HB 1s from 1993: {sorted(rows)}")
+    assert [r["term"] for r in rows[("2025-2026", "HB1")]] == ["2023-2024", "1993-1994"], (
+        "the other terms are not newest first, or one before the note's `from` is listed")
+    assert all(r["id"] == "HB1" for rs in rows.values() for r in rs) and ("2025-2026", "HB7") not in rows
+    mine = {"id": "HB1", "n": "HB 1", "year": "2025"}
+    d = {"same_number": rows[("2025-2026", "HB1")]}
+    html = _app_js("(() => { const D = " + json.dumps({"b": mine, "d": d, "e": {}}) + "; return {"
+                   "yes: scope.renderRelated(D.b, [], D.d), no: scope.renderRelated(D.b, [], D.e)}; })()",
+                   names=("renderRelated",))
+    if html is None:
+        return "skip", "node or app.js is not here"
+    yes = html["yes"]
+    assert "HB 1 in other terms" in yes, f"the heading is missing: {yes[:300]!a}"
+    assert yes.index('href="bill/2023/hb1"') < yes.index('href="bill/1993/hb1"'), "the rows are not newest first"
+    assert "HB 1 of 2023–2024" in yes and "title 2023-2024" in yes and "Became Law" in yes, (
+        "a row lacks its term, its title or its outcome chip")
+    assert "in other terms" not in html["no"], "a bill with no same-number list has the heading"
+    return "ok", "HB 1 lists its other terms from 1993-1994, newest first, linked, with title and chip; HB 7 and bills with no note none"
+
+
+@check("frontend", "a bill's Hearings tab is a committee's Videos tab for one bill: one player, a playlist of "
+                   "its recordings, the chosen sitting's counts, vote and moments under it, and a plain entry "
+                   "for a sitting with none")
+def _hearings_one_player():
+    """The owner, 10 November 2026: "changing the ways bills are formatted to
+    be more similar to how the committee videos tab is formatted ... we'd only
+    have one player and the format would be cleaner", keeping "displays of
+    testimony numbers and outcome in chips". renderHearings draws videoView,
+    the Videos tab's own: ONE player, the bill's recordings as its playlist in
+    the order of the bill's story (a row each: its day, its kind's chip, where,
+    its length), and under the player for the one chosen when and where, the
+    sign-in counts and the committee's outcome as chips, the floor's roll call
+    with its count, the bill's moments with "approximate" where inferred. A
+    sitting with no recording to play keeps a card of its own. The committee's
+    own list puts a bill's moments and its outcome chip on one line."""
+    st = [
+        {"when": "2025-03-12", "time": "10:00", "what": "public hearing", "committee": "Judiciary", "body": "H",
+         "venue": "LOB 206", "video_id": "VIDA", "state": "located", "start": 600.0, "end": 1500.0,
+         "start_stated": False, "seconds": 7380,
+         "testimony": {"total": 60, "support": 58, "oppose": 2, "neutral": 0, "dated": True}},
+        {"when": "2025-03-19", "time": "13:00", "what": "executive session", "committee": "Judiciary", "body": "H",
+         "venue": "LOB 206", "video_id": "VIDA", "state": "stated", "start": 120.0, "end": None,
+         "start_stated": True, "seconds": 7380},
+        {"when": "2025-04-09", "what": "floor debate", "committee": "House", "video_id": "VIDB",
+         "state": "floor_precise", "debate_start": 3000.0, "debate_end": 3600.0, "window_start": 2400.0,
+         "start_stated": True, "motions": ["OTP"], "tallies": ["190-149"], "mks": [{"mk": "otp"}], "seconds": 20000},
+        {"when": "2019-01-08", "what": "public hearing", "committee": "Judiciary", "body": "H",
+         "video_id": "", "state": "prestream",
+         "testimony": {"total": 5, "support": 3, "oppose": 2, "neutral": 0, "dated": True}},
+    ]
+    d = {"stations": st,
+         "rollcalls": [{"date": "2025-04-09", "body": "H", "yeas": 190, "nays": 149, "passed": True, "mk": "otp",
+                        "question": "Ought to Pass"}],
+         "reports": [{"date": "2025-03-19", "body": "H", "dated": "signed", "majority_recommendation": "Ought to Pass",
+                      "reports": [{"side": "Majority", "vote_yeas": 12, "vote_nays": 2}]}]}
+    day = {"outcomes": [{"bill": "HB1", "outcome": "voted",
+                         "votes": [{"act": "report", "recommendation": "Ought to Pass", "yeas": 10, "nays": 2}]}]}
+    items = [{"bill": "HB1", "n": "HB 1", "title": "a title", "start": 150, "state": "stated", "kind": "executive session",
+              "video_id": "VIDA", "year": "2025"}]
+    cmte = {"code": "H1", "name": "Judiciary", "chamber": "H"}
+    html = _app_js(
+        "(() => { const D = " + json.dumps({"d": d, "day": day, "items": items, "cmte": cmte}) + ";"
+        " const b = {id: 'HB1', n: 'HB 1', year: '2025'};"
+        " const first = scope.renderHearings(b, D.d);"
+        " scope.HEAR_CHOSEN['bill|' + scope.dkey('HB1')] = 'h1';"
+        " const exec = scope.renderHearings(b, D.d);"
+        " scope.HEAR_CHOSEN['bill|' + scope.dkey('HB1')] = 'h2';"
+        " const floor = scope.renderHearings(b, D.d);"
+        " const line = scope.cmteVideoDetail(D.cmte, {date: '2026-02-03', id: 'VIDA'}, D.items, D.day, '');"
+        " return {first, exec, floor, line}; })()",
+        names=("renderHearings", "HEAR_CHOSEN", "dkey", "cmteVideoDetail"))
+    if html is None:
+        return "skip", "node or app.js is not here"
+    first, ex, floor, line = (re.sub(r"\s+", " ", html[k]) for k in ("first", "exec", "floor", "line"))
+    assert first.count('class="pstub"') == 1 and first.count("data-player=") == 1, (
+        "the tab has more than one player")
+    assert first.count('class="vwrow"') == 3 and first.count('aria-current="true"') == 1 and \
+        'data-vwpick="h0" aria-current="true"' in first, "the playlist is not the three recordings, the first chosen"
+    assert first.index("Public Hearing") < first.index("Executive Session") < first.index("Session Day"), (
+        "the playlist is not in the order of the bill's story, each with its kind's chip")
+    assert "2 h 3 min" in first and "House Judiciary" in first, "a row lacks its length or its committee"
+    head = first[first.index('class="vwdetin"'):first.index('class="vwside"')]
+    for want in ("58 support", "2 oppose", "60 signed in", "Mar 12, 2025 at 10:00 AM", "Legislative Office Building 206",
+                 'data-seek="h0_VIDA|600"', 'data-seek="h0_VIDA|1500"', "00:10:00 starts", "00:25:00 ends",
+                 "approximate"):
+        assert want in head, f"the first sitting's detail lacks {want!r}: {head[:300]}"
+    assert 'data-embed="VIDA|598|h0_VIDA"' in first and "watch?v=VIDA&t=598s" in first, (
+        "the player and its YouTube link do not open at the bill's moment")
+    # What was voted: the committee's report of the day, then the floor's roll call, chip and count.
+    xd = ex[ex.index('class="vwdetin"'):ex.index('class="vwside"')]
+    assert "Executive Session" in xd and "Ought to Pass (12–2)" in re.sub(r"<[^>]+>", "", xd) and 'data-embed="VIDA|118|h1_VIDA"' in ex and \
+        "approximate" not in xd, f"the executive session's detail is not its report chip with its count: {xd[:400]}"
+    fl = floor[floor.index('class="vwdetin"'):floor.index('class="vwside"')]
+    assert "Session Day" in fl and "190–149" in fl and "rcres pass" in fl and \
+        'data-embed="VIDB|3000|h2_VIDB"' in floor and "00:50:00 starts" in fl and "01:00:00 vote at" in fl, (
+            f"the floor sitting's detail is not its vote, count and moments: {fl[:400]}")
+    # The plain entry: the sitting before the channels, with its sign-ins.
+    assert 'class="hplain"' in first and 'class="stn pend"' in first and "Jan 8, 2019" in first and \
+        "5 signed in" in first and "No recording to play" in first, "a sitting with no recording lost its entry"
+    # The committee's list: the number, its moments and its chip on one line, the title under them.
+    assert re.search(r'<a class="vwbn"[^>]*>HB 1</a><span class="vwmom"><span class="mjumps">.*?</span>'
+                     r'<span class="vwout">.*?cstat.*?</span></span><span class="vwbt">a title</span>', line), (
+        f"the committee's bill line is not number, moments and chip on one line, then the title: {line[:400]}")
+    # A chip's own rule (.cstat, .rcres) pushes it to the right edge; beside the moments it must not.
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    assert ".vwbills .vwmom .chip,.vwres .chip{margin-left:0}" in css, (
+        "app.css lets the outcome chip go to the right edge, away from the moments")
+    return "ok", ("one player and a playlist of the bill's recordings; the sittings' counts, votes and moments "
+                  "under it; a sitting with no recording its own entry; the committee's moments and chip on one line")
+
+
+@check("frontend", "Cite this page and Report a problem sit level in a page's row of actions: the report box "
+                   "takes no margin above it there")
+def _actions_level():
+    """The owner, 10 November 2026: on a town's page Report a problem stood
+    12px lower than Cite this page. Both are in #pageacts (shell.py's row),
+    the report box in #reportbox (app.js mountReport), whose own rule gives
+    it margin-top to stand clear of the record it follows; in the row that
+    margin is what pushed it down. A page's row keeps none, as a bill page's
+    (.racts #reportbox is display:contents). Measured in a browser: both
+    buttons' tops the same, at 1280 and at 390."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    rules = _css_rules(css)
+    base = [b for ctx, sel, b, _l in rules if not ctx and sel == "#reportbox"]
+    assert base and "margin-top" in "".join(base), "#reportbox no longer stands clear of the record below it"
+    level = [b for ctx, sel, b, _l in rules if not ctx and sel == ".pageacts > #reportbox"]
+    assert level and ("margin-top", "0") in _css_decls(level[0]), (
+        "app.css does not take the report box's margin off in a page's row of actions (.pageacts > #reportbox)")
+    # After the box's own rule, or the margin wins by coming last.
+    assert css.index(".pageacts > #reportbox{") > css.index("#reportbox{display:flex"), (
+        "the row's rule comes before the report box's own")
+    return "ok", "the report box has no margin above it in a page's row of actions, so it is level with Cite"
 
 
 @check("frontend", "a tally in How it got here stays on one line, never broken after its dash")
@@ -34786,7 +35475,7 @@ def _rail_endings(N, B):
     if sum(s["act"] == "died" for s in c["SB131"]["steps"]) != 1:
         bad.append("SB 131 of 2025 has a second line of its death beside the rule's")
     link = (c["HB1179"]["steps"][-1].get("link") or {})
-    if link != {"text": "HB 154 of 1997", "href": "bill/1997/hb154.html"}:
+    if link != {"text": "HB 154 of 1997", "href": "bill/1997/hb154"}:
         bad.append(f"HB 1179 of 1996's report names {link!a}")
     # THE HISTORY: the death's sentence where it is not told, and none where
     # it is (HB 96's row is narrative.py's own "died").
@@ -34842,7 +35531,7 @@ def _rail_endings(N, B):
             bad.append(f"HB 561's report is not the \"~\"'s line: {got['HB561']['how'][-500:]!a}")
         if not line("HB1179", "ifuture", r'<svg class="arrow"[^>]*><path [^>]*/></svg>',
                     re.escape(reported["rec"]) + r' in 1997, <span class="tally">17–0</span>; filed again '
-                    r'as <a class="bmention" href="bill/1997/hb154.html" translate="no">HB 154 of 1997</a>'):
+                    r'as <a class="bmention" href="bill/1997/hb154" translate="no">HB 154 of 1997</a>'):
             bad.append(f"HB 1179 of 1996's report does not link HB 154 of 1997: "
                        f"{got['HB1179']['how'][-500:]!a}")
         said = (re.search(r'aria-label="([^"]*)"', got["SB570"]["card"]) or [None, ""])[1]
@@ -35428,6 +36117,12 @@ const many = {journey: {steps: Array.from({length: 9}, (_, i) =>
   ({date: "2025-03-0" + (i + 1), body: i % 2 ? "S" : "H", act: "passed", mark: "p",
     text: "Line " + i}))}};
 out.many = scope.journeyList({id: "HB2"}, many);
+// The fold only where it hides two rows or more: 6 and 7 steps draw whole.
+const some = n => ({journey: {steps: Array.from({length: n}, (_, i) =>
+  ({date: "2025-03-0" + (i + 1), body: "H", act: "passed", mark: "p", text: "Line " + i}))}});
+out.six = scope.journeyList({id: "HB3"}, some(6));
+out.seven = scope.journeyList({id: "HB4"}, some(7));
+out.eight = scope.journeyList({id: "HB5"}, some(8));
 scope.jOpen.add(scope.dkey("HB2"));
 out.manyOpen = scope.journeyList({id: "HB2"}, many);
 process.stdout.write("\\n@@" + JSON.stringify(out));
@@ -35561,6 +36256,14 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
         [f"Line {i}" for i in range(9)] and "data-jmore" not in opened \
         and " hidden" not in opened, (
             f"opened, the nine decisions are not all there in order: {opened[:200]!a}")
+    # A fold that hides one row saves nothing (it is a row itself): seven steps
+    # draw all seven, eight fold two behind "Show 2 more".
+    for n in ("six", "seven"):
+        assert "data-jmore" not in got[n] and " hidden" not in got[n], (
+            f"{n} steps are folded, and the fold hides at most one row: {got[n][:160]!a}")
+    assert got["seven"].count("<li") == 7, "seven steps are not seven rows"
+    assert "Show 2 more" in got["eight"] and got["eight"].count(" hidden") == 2, (
+        "eight steps do not fold exactly two rows behind Show 2 more")
     return "ok", ("HB 57, HB 68 and CACR 13: one dated rail on their own view and on the "
                   "list card, closed and opened, a day and no words under each stop, the "
                   "bare rail only for a row without stops, "
@@ -36118,7 +36821,7 @@ def _fixture_videos(root):
 # whichever code folder holds it, flat: in the fixture's folder every one is
 # found by its bare name, as in the repository.
 PROCEEDINGS_MODULES = ("_paths.py", "build_proceedings.py", "proceedings.py",
-                       "committee_names.py", "referrals.py", "names.py")
+                       "committee_names.py", "referrals.py", "names.py", "terms.py")
 
 
 @check("files", "no child process is read in an unnamed encoding")
@@ -36539,6 +37242,15 @@ def _built_site(here, root, brand=True, env=None):
     env is laid over the builders' environment, for the check that states
     the build's date.
     """
+    base, steps = _built_site_prepare(here, root, brand)
+    return base, _built_site_run(root, steps, env)
+
+
+def _built_site_prepare(here, root, brand=True):
+    """The fixture project in `root`, and (the base address, the builders to
+    run over it as (script, arguments, what it makes)): _built_site's first
+    half, which a run does before any check so that the builders can go on
+    beside the checks (_start_early_builds)."""
     _site_fixture(root)
     (root / "site").mkdir(exist_ok=True)
     shutil.copy2(here / "src/pages/bills.html", root / "site" / "bills.html")
@@ -36705,12 +37417,19 @@ def _built_site(here, root, brand=True, env=None):
         ("build_exports.py", ["--site", "site", "--base", base],
          "site/data/manifest.json"),
     ]
+    return base, steps
+
+
+def _built_site_run(root, steps, env=None, run=None):
+    """_built_site's second half: the builders over the fixture, in order.
+    Returns how many ran. `run` is the function that starts them (_run)."""
+    run = run or _run
     ran = 0
     for script, args, produces in steps:
         if not _paths.locate(script).exists():
             continue
-        r = _run([sys.executable, _paths.script(script), *args],
-                 cwd=root, capture_output=True, text=True, timeout=180, env=env)
+        r = run([sys.executable, _paths.script(script), *args],
+                cwd=root, capture_output=True, text=True, timeout=180, env=env)
         if r.returncode != 0:
             tail = (r.stderr or r.stdout).strip().splitlines()
             raise AssertionError(f"{script}: " + (tail[-1][:120] if tail else "?"))
@@ -36719,7 +37438,7 @@ def _built_site(here, root, brand=True, env=None):
     # SILENCE IS NOT SUCCESS. A chain that ran no builder at all would have
     # satisfied every assertion above by never reaching one.
     assert ran == len(steps), f"only {ran} of {len(steps)} builders were there to run"
-    return base, ran
+    return ran
 
 
 # ONE BUILD OF THE FIXTURE A RUN, FOR THE CHECKS THAT READ IT AS IT IS BUILT (2
@@ -36790,6 +37509,9 @@ def _fixture_site_shared():
     a check holds what it reads to either."""
     def build():
         from datetime import date
+        early = _early_build("shared")
+        if early is not None:
+            return early[0], early[1], early[2], early[3]
         shared = _shared_root("gr-fixture-site-")
         started = date.today()
         base, ran = _built_site(Path(".").resolve(), shared)
@@ -36804,6 +37526,91 @@ def _fixture_site_whole(root):
     shared, base, ran, _days = _fixture_site_shared()
     shutil.copytree(shared, root, dirs_exist_ok=True)
     return base, ran
+
+# THREE FIXTURE SITES ARE BUILT BESIDE THE CHECKS, NOT IN THEIR WAY (11
+# November 2026). A full run builds the fixture site three times, each a
+# chain of twenty builders and each by a different check for a reason of its
+# own: with its logo and icons (_fixture_site_shared, which most checks read),
+# with none, as a clone builds it (_links_resolve), and with a day stated
+# (_build_date_stated). They share nothing, so the second and third were built
+# by their checks in sequence with the first -- about a minute of the code
+# checks' fifteen. main() now prepares all three before the first check runs
+# (the fixture's files, a second or two each) and starts their builders in
+# threads: the builders are child processes, so the threads only wait. The
+# check that wants a site takes the finished one: _fixture_site_shared its
+# own, the others a copy of theirs in the folder they made, as every check that
+# reads the shared one does. What a check sees is what it saw: the same fixture
+# built the same way by the same builders; one that fails fails the check that
+# asks for it, in the builder's own words. A run that selects part of the
+# suite (--changed, --built, --data) starts none, and a site no check asks for
+# is built and deleted unread. Each child is started with the environment as
+# main() began it, and by the real child.run: a check that sets a variable or
+# stands a stub in for run() for a moment, as several do, cannot reach a build
+# that is going on beside it.
+_EARLY = {}
+
+
+def _start_early_builds():
+    """Prepare the fixture sites above and start their builders; _EARLY holds
+    each as (where it stands, base address, environment it is built with, the
+    day it was started, its builders' future)."""
+    import concurrent.futures
+    from datetime import date, timedelta
+    build_date = imp("build_date")
+    here = Path(".").resolve()
+    if build_date is None or [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]:
+        return
+    real_run = child.run
+    env = dict(os.environ)
+    day = date.today() - timedelta(days=2)
+    stated = {build_date.ENV: day.isoformat()}
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=3, thread_name_prefix="fixture")
+    for what, brand, made_with in (("shared", True, env), ("nobrand", False, env),
+                                   ("stated", True, stated)):
+        root = _shared_root(f"gr-early-{what}-")
+        try:
+            base, steps = _built_site_prepare(here, root, brand)
+        except Exception:                                       # noqa: BLE001
+            continue        # the check that asks builds its own, and says why
+        _EARLY[what] = (root, base, made_with, date.today(),
+                        pool.submit(_built_site_run, root, steps, made_with, real_run))
+    pool.shutdown(wait=False)
+
+
+def _early_build(what, made_with=None):
+    """(where it stands, base address, how many builders ran, the days it was
+    built on) of the early build of `what`, waited for, or None where none was
+    started, it was taken already, or it was built with another environment
+    than `made_with`. A build that failed raises what its builders raised."""
+    from datetime import date
+    got = _EARLY.get(what)
+    if got is None or (made_with is not None and got[2] != made_with):
+        return None
+    del _EARLY[what]
+    root, base, _env, started, future = got
+    ran = future.result()
+    return root, base, ran, sorted({started, date.today()})
+
+
+def _built_nobrand(here, root):
+    """_built_site(here, root, brand=False)'s base address, from the early
+    build where there is one: the built project is copied into `root`."""
+    got = _early_build("nobrand")
+    if got is None:
+        return _built_site(here, root, brand=False)[0]
+    shutil.copytree(got[0], root, dirs_exist_ok=True)
+    return got[1]
+
+
+def _built_stated(here, root, stated):
+    """_built_site(here, root, env=stated), from the early build where there is
+    one made with that environment."""
+    got = _early_build("stated", stated)
+    if got is None:
+        return _built_site(here, root, env=stated)[0]
+    shutil.copytree(got[0], root, dirs_exist_ok=True)
+    return got[1]
+
 
 
 @check("frontend", "every published guide is reached from the home page, in the site search and in the sitemap, its sitemap date and HowTo data dated by the newest read of its sources, and the state in its title")
@@ -38404,7 +39211,7 @@ def _build_date_stated(build_all, build_date, shell):
     root = Path(tempfile.mkdtemp(prefix="gr-stated-"))
     try:
         stated = {build_date.ENV: day.isoformat()}
-        _built_site(here, root, env=stated)
+        _built_stated(here, root, stated)
         site = root / "site"
         said, late = 0, []
         for p in sorted(site.rglob("*.html")):
@@ -38415,6 +39222,37 @@ def _build_date_stated(build_all, build_date, shell):
         assert said, "no page of the fixture cites the stated day as the day it was read"
         assert not late, (f"{len(late)} page(s) built with {day} stated still cite today, "
                           f"{shell.cite_day(today)}: {', '.join(late[:4])}")
+        # A RECORD PAGE'S CITATION DATE IS ITS RECORD'S, NOT THE BUILD'S (the
+        # owner, 11 November 2026): built on two different days from the same
+        # data, a page that names the day its record last changed is the same
+        # file, so a night with no change uploads none of them. The pages that
+        # name no such day fall back on the build day and may differ, and by
+        # that date alone.
+        plain_site = _fixture_site_shared()[0] / "site"
+        moved, kinds = [], Counter()
+        fell, fell_stated = shell.cite_day(today), shell.cite_day(day)
+        for p in sorted(site.rglob("*.html")):
+            q = plain_site / p.relative_to(site)
+            if not q.is_file():
+                continue
+            a_, b_ = (x.read_text(encoding="utf-8", errors="replace") for x in (p, q))
+            if a_ == b_:
+                if 'class="citeday' in a_ and f'<span class="citeday">{fell}</span>' not in a_ \
+                        and f'<span class="citeday">{fell_stated}</span>' not in a_:
+                    kinds[p.relative_to(site).parts[0]] += 1
+                continue
+            # A page that fell back on the build day may differ in more than
+            # that (a week still to come, the API's own day); one that names
+            # its record's day may not differ at all.
+            if 'class="citeday' in a_ and f'<span class="citeday">{fell_stated}</span>' not in a_:
+                moved.append(p.relative_to(site).as_posix())
+        assert not moved, (
+            f"{len(moved)} page(s) that date their citation by their record differ between two "
+            "builds of the same data on two different days: " + ", ".join(moved[:4])
+            + f" (by folder: {dict(Counter(m.split('/')[0] for m in moved))})")
+        assert kinds.get("bill", 0) > 0, (
+            "no bill page of the fixture is the same file on two build days: its citation is "
+            "still dated by the build")
         home = json.loads((site / "home.json").read_text(encoding="utf-8"))
         assert home.get("generated") == day.isoformat(), (
             f"home.json is dated {home.get('generated')}, not the stated {day}")
@@ -38444,10 +39282,11 @@ def _build_date_stated(build_all, build_date, shell):
         shutil.rmtree(root, ignore_errors=True)
     # And by the clock, where none is stated: the fixture the other checks read.
     plain, _base, _ran, built_on = _fixture_site_shared()
-    page = next((plain / "site" / "bill").rglob("*.html")).read_text(encoding="utf-8",
-                                                                     errors="replace")
-    assert any(f'<span class="citeday">{shell.cite_day(d)}</span>' in page for d in built_on), (
-        "with no day stated, a bill page does not cite the day it was built")
+    cited_days = {m.group(1) for q in (plain / "site").rglob("*.html")
+                  for m in re.finditer(r'<span class="citeday">([^<]*)</span>',
+                                       q.read_text(encoding="utf-8", errors="replace"))}
+    assert any(shell.cite_day(d) in cited_days for d in built_on), (
+        "with no day stated, no page that has no record date of its own cites the day it was built")
     src = Path(build_all.__file__).read_text(encoding="utf-8")
     assert "build_date.stated()" in src and '"date_stated"' in src, (
         "build_all.py no longer says, or records in build.json, that its day was stated")
@@ -38514,6 +39353,128 @@ def _served(site, path, rules):
     return False
 
 
+# THE ADDRESS A LINK NAMES IS THE ONE THE HOST SERVES (Search Console, 7
+# November 2026: 25,718 pages indexed, 18,786 discovered and not, 6,896 "page
+# with redirect"). shell.clean_links turns the .html out of every href a
+# builder writes as HTML; the links a script draws -- app.js, components.js,
+# find.js, map.js, live.js, the home page's and the Officials page's inline
+# scripts, and the HTML the calendar's month files carry -- are outside it
+# ("never inside a <script>") and were 6,896 redirects a crawler followed.
+# The rules the .html in code may still be: a regex that reads an address, the
+# local-server fallback (fetch(url+".html"), r:fetch(...)), the key a script looks a page up
+# by (GR_HREFS["search.html"]), the calendar's own TAB, a property called html.
+_CLEAN_JS = ("app.js", "components.js", "find.js", "map.js", "live.js")
+_HTML_IN_CODE = re.compile(r'(?<!\\)(?<=[\w$})\]])\.html(?=["\'`#?\\])')
+_HTML_OK = re.compile(r'GR_HREFS|\.test\(|\.replace\(/|[^\w]TAB=|r:fetch\(|url\+"\.html"|"\.html"')
+_HREF_IN_DATA = re.compile(r'(?:href|data-href)=\\?"([^"\\]*)')
+_COMMENTS = re.compile(r"/\*.*?\*/|(?:(?<=\s)|^)//[^\n]*", re.S | re.M)
+
+
+def _html_in_script(text):
+    """[line] of a script's code where an address with .html is built."""
+    out = []
+    for line in _COMMENTS.sub("", text).splitlines():
+        if _HTML_IN_CODE.search(line) and not _HTML_OK.search(line):
+            out.append(line.strip()[:140])
+    return out
+
+
+@check("build", "no link, in a page or in an address a script builds, names a .html page or an "
+       "address _redirects redirects")
+def _addresses_clean():
+    """Every internal link at the address the host serves, in the HTML as
+    written and in what the scripts draw.
+
+    Builds the fixture site (the run's one build) and holds four things:
+      1. every href, src and data-href in every built page, outside script
+         and style bodies, resolved as a browser does, is not a path
+         _redirects answers with a 301, does not end in .html, and does not
+         end in a slash where the page is a file (/calendar/ for calendar.html);
+      2. the same of every href inside the HTML the month files of the
+         calendar carry (site/calendar/data/*.json);
+      3. app.js, components.js, find.js, map.js and live.js build no address
+         ending in .html (the allowed shapes are _HTML_OK's);
+      4. nor do the scripts inside the built pages, which are the Python
+         builders' own: the home page's, the Officials page's.
+    A .html in a GR_HREFS key, a regex or a fallback fetch is not a link.
+    """
+    from urllib.parse import urldefrag, urljoin
+    if [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]:
+        return "skip", "the builders are not here to build the fixture's site"
+    here = Path(".").resolve()
+    site = _fixture_site_shared()[0] / "site"
+    moved = {}
+    red = site / "_redirects"
+    for line in (red.read_text(encoding="utf-8").splitlines() if red.exists() else []):
+        p = line.split()
+        if len(p) == 3 and p[2] == "301":
+            moved["/" + p[0].strip("/")] = p[1]
+
+    def wrong(path):
+        """Why `path` is not a canonical address, or ''."""
+        q = path.split("?")[0]
+        if q != "/" and q.rstrip("/") in moved or q in moved:
+            return f"_redirects sends it to {moved.get(q) or moved.get(q.rstrip('/'))}"
+        if q.endswith(".html") and q != "/404.html":
+            return "ends in .html, which the host redirects"
+        if q != "/" and q.endswith("/") and (site / (q.strip("/") + ".html")).is_file():
+            return "ends in a slash, which the host redirects"
+        return ""
+
+    bad, n = Counter(), 0
+    where = {}
+
+    def note(rel, raw, why):
+        bad[(why, raw)] += 1
+        where.setdefault((why, raw), rel)
+
+    pages = sorted(site.rglob("*.html"))
+    assert pages, "the fixture chain wrote no pages to check"
+    scripts = []
+    for page in pages:
+        rel = page.relative_to(site).as_posix()
+        full = page.read_text(encoding="utf-8", errors="replace")
+        scripts += [(rel, s) for s in re.findall(r"(?is)<script(?![^>]*\btype=\"application/json\")[^>]*>(.*?)</script>", full)]
+        text = INLINE_BODY.sub(r"\1", full)
+        m = BASE_HREF.search(text)
+        at = urljoin("https://x/" + rel, m.group(1) if m else "")
+        for raw in re.findall(r'(?:href|src|data-href)\s*=\s*"([^"]*)"', text, re.I):
+            raw = raw.strip()
+            if not raw or OFFSITE.match(raw):
+                continue
+            target = urldefrag(urljoin(at, raw))[0]
+            if not target.startswith("https://x/"):
+                continue
+            n += 1
+            why = wrong(target[len("https://x"):])
+            if why:
+                note(rel, raw, why)
+    for f in sorted((site / "calendar" / "data").glob("*.json")) if (site / "calendar" / "data").is_dir() else []:
+        for raw in _HREF_IN_DATA.findall(f.read_text(encoding="utf-8", errors="replace")):
+            if raw and not OFFSITE.match(raw):
+                n += 1
+                why = wrong("/" + raw.lstrip("/"))
+                if why:
+                    note(f.relative_to(site).as_posix(), raw, why)
+    assert not bad, (
+        f"{sum(bad.values())} links to {len(bad)} addresses the host does not serve as written: "
+        + "; ".join(f"{k[1]!r} on {where[k]} ({k[0]})" for k, _ in bad.most_common(6)))
+
+    built = []
+    for name in _CLEAN_JS:
+        src = here / "src" / "pages" / name
+        if src.exists():
+            built += [(name, l) for l in _html_in_script(src.read_text(encoding="utf-8"))]
+    for rel, body in scripts:
+        built += [(rel, l) for l in _html_in_script(body)]
+    assert not built, (
+        f"{len(built)} places a script builds an address ending in .html, which the host "
+        "redirects: " + "; ".join(f"{w}: {l}" for w, l in built[:5]))
+    return "ok", (f"{n:,} links in {len(pages)} fixture pages and the calendar's month files, "
+                  f"none redirected or ending in .html; {len(_CLEAN_JS)} scripts and "
+                  f"{len(scripts)} inline scripts build no .html address")
+
+
 @check("build", "every internal link the builders write resolves to a file")
 def _links_resolve():
     """462 ward links went out dead, because a relative href is not relative.
@@ -38560,7 +39521,7 @@ def _links_resolve():
         return "skip", "not here: " + ", ".join(absent)
     root = Path(tempfile.mkdtemp())
     try:
-        base, _steps = _built_site(here, root, brand=False)
+        base = _built_nobrand(here, root)
         import build_pages as BP
         site = root / "site"
         rules = _redirect_rules(site)
@@ -38819,12 +39780,6 @@ def _sitting_links(BSP):
         later == [("H", "2026-12-31")], (
         f"sittings() builds {built} and holds back {later}: a sitting after "
         "the build is not a day to publish")
-    up = BSP.up_links("H", "2026-05-21", {"2026-W21"})
-    assert len(up) == 2 and 'href="directory/sessions-house#y2026"' in up[0] and \
-        'href="calendar/2026-W21"' in up[1], up
-    up = BSP.up_links("S", "2003-01-30", {"2026-W21"})
-    assert len(up) == 1 and 'href="directory/sessions-senate#y2003"' in up[0], (
-        "a sitting whose week the calendar does not hold links a week: " + " ".join(up))
     root = Path(tempfile.mkdtemp())
     try:
         (root / "session").mkdir()
@@ -43462,7 +44417,8 @@ function match(x, sel) {
     return m && (!m[1] || x.tagName === m[1]) && (" " + (x.className || "") + " ").includes(" " + m[2] + " "); });
 }
 function node(tag, attrs, parent) {
-  const n = {tagName: tag, attrs: Object.assign({}, attrs || {}), children: [], parentNode: null, style: {},
+  const n = {tagName: tag, attrs: Object.assign({}, attrs || {}), children: [], parentNode: null,
+    style: {setProperty(k, v) { this[k] = v; }},
     hidden: false, _text: "", className: (attrs || {}).class || "", listeners: {},
     getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
     setAttribute(k, v) { this.attrs[k] = String(v); if (k === "id") ids[v] = this; },
@@ -43596,8 +44552,72 @@ const para3 = node("p", {}, art);
 const word3 = node("a", {class: "rs-tm", href: "/laws/126-x#s1_III", "data-def": "away_126"}, para3);
 word3._text = "designated caregiver"; word3.rect = {left: 300, right: 400, top: 200, bottom: 220};
 word3.focus(); out.away = [box().textContent, link().href];
+// THE POINTER (the owner, 10 November 2026): the box under its word points up
+// at the word's middle from the box's left; over it, class "above"; and a
+// box moved to stay on the screen points at the word still.
+fire("keydown", {key: "Escape"}); doc.activeElement = elsewhere;
+word3.focus(); out.point_below = [box().className, box().style["--arrow"]];
+fire("keydown", {key: "Escape"}); doc.activeElement = elsewhere;
+word3.rect = {left: 300, right: 400, top: 800, bottom: 820}; box().rect = {left: 300, right: 700, top: 0, bottom: 500};
+word3.focus(); out.point_above = [box().className, box().style["--arrow"]];
+fire("keydown", {key: "Escape"}); doc.activeElement = elsewhere;
+word3.rect = {left: 1000, right: 1100, top: 200, bottom: 220};
+word3.focus(); out.point_shifted = [box().style.left, box().style["--arrow"]];
+// THE /laws PREVIEW (the owner, 11 November 2026: a click on a defined word
+// there "takes you to the full page link"): the pane is .lw-read, not .rs-art,
+// holding a section and, hidden, the definitions its words point at, copied
+// from the chapter's page. A press opens the box in place, does not navigate,
+// and the box's link and Show more work.
+fire("keydown", {key: "Escape"}); doc.activeElement = elsewhere;
+const pane = node("aside", {class: "lw-read"}); pane.rect = {left: 600, right: 1100, top: 0, bottom: 3000};
+const held = node("div", {}, pane); held.hidden = true;
+const pdef = node("div", {class: "rs-dfn", id: "s1_IX", "data-cite": "RSA 153:1, IX", "data-for": "this chapter",
+  "data-href": "/laws/153#s1_IX"}, held); pdef.hidden = true;
+LONG.forEach(t => { node("p", {}, pdef)._text = t; });
+const ppara = node("p", {}, pane);
+const pword = node("a", {class: "rs-tm", href: "/laws/153#s1_IX"}, ppara); pword._text = "residential";
+pword.rect = {left: 700, right: 800, top: 200, bottom: 220};
+fire("pointerdown", {pointerType: "mouse", target: pword});
+out.pane_no_nav = fire("click", {target: pword});
+out.pane_opens = !!box() && !box().hidden && box().parentNode === ppara;
+out.pane_link = !!link() && link().href === "/laws/153#s1_IX" && link().textContent === "RSA 153:1, IX";
+out.pane_more = !!more() && (press(more()), box().querySelector(".rs-dptext").children.length === 3);
+fire("click", {target: ppara}); out.pane_closes = box().hidden;
 console.log(JSON.stringify(out));
 """
+
+
+@check("build", "a defined word is not marked where the text already spells out its definition ('department of "
+       "transportation' under '\"Department\" means the department of transportation'), and is marked "
+       "everywhere else", needs=("build_rsa", "rsa", "shell"))
+def _rsa_spelled_out_terms(B, RSA, S):
+    """The owner, 11 November 2026: RSA 228:1, VII's "department of
+    transportation" opened a box saying "Department" means the department of
+    transportation. Skipped only where the definition is '"X" means Y' (Y
+    all it says) and the words at the use are Y; a bare "department", or one
+    followed by other words, is marked, and a definition with more than Y in
+    it ("... and ...") is never read as Y."""
+    t = _def_table(RSA, (
+        ("153:1", "Definitions.", (), (
+            "In this chapter:",
+            'IV. "Department" means the department of transportation.',
+            'VI. "Board" means the board of fire control and the commissioner.')),
+        ("153:7", "Works.", (), (
+            "Works administered through the department of transportation, division of public works, "
+            "are reported by the board of fire control.",
+            "The department of administrative services keeps a copy.",
+            "A bare department files a form with the board.")),
+    ))
+    got, _w = t.defined().marks("153:7")
+    p = RSA.paragraphs(t.sections["153:7"].text)
+    words = [(li, p[li][st:en]) for li, v in sorted(got.items()) for st, en, _i in v]
+    assert (0, "department") not in words,         f"'department of transportation' is marked where the text spells out its definition: {words}"
+    assert (1, "department") not in words, \
+        f"'department of administrative services' is marked with the department of transportation's definition: {words}"
+    assert (2, "department") in words, "the bare 'department' after them is not marked in its place"
+    assert (0, "board") in words, "'board' ('and the commissioner' follows the meaning) is not marked"
+    return "ok", ("the spelled-out use and another department skipped, the bare one marked in its place, "
+                  "a longer meaning not read as a short one")
 
 
 @check("build", "a statute page marks a defined term where the definition's own words apply it, and only "
@@ -43719,6 +44739,11 @@ def _rsa_defined_terms(B, RSA, S):
     assert out["away"] == ['Defined for chapter 126-X in RSA 126-X:1, VI"Designated caregiver" means an individual '
                            "who: (a) Is at least 21 years of age;", "/laws/126-x#s1_VI"], \
         f"a definition held for another chapter's page does not open from data-def, or does not link there: {out['away']}"
+    assert out.get("pane_no_nav") and out.get("pane_opens") and out.get("pane_link") and out.get("pane_more")         and out.get("pane_closes"), (
+        f"a click on a defined word in the Laws page's preview does not open its box in place, or navigates: {out}")
+    reader = B.LANDING_JS[B.LANDING_JS.find("read.innerHTML='<p class=\"lw-rcrumb\">"):]
+    assert 'querySelectorAll("a.rs-tm")' in reader and "importNode" in reader and "doc.getElementById(id)" in reader,         "the Laws page's reader does not bring in the definitions its section's defined words point at"
+    assert "</div>{DEFS_JS}{LANDING_JS}" in Path("src/pages/build_rsa.py").read_text(encoding="utf-8"),         "the Laws page does not carry the definitions script beside its own"
     wrong = [k for k in ("focus", "in_text", "tab_in_stays", "escape", "link_follows", "tap_stays",
                          "tap_opens", "tap_link", "pinned_stays", "second_tap_closes", "reopens",
                          "pinned_escape", "space_opens", "space_pins", "space_closes",
@@ -43736,6 +44761,20 @@ def _rsa_defined_terms(B, RSA, S):
         f"the box does not open where there is room, or jumps sides when Show more is pressed: {place}"
     assert not wrong and out["described"] == "rs-dpcite rs-dptext" and out["role"] is None, \
         f"the definition box fails by keyboard, touch or mouse: {wrong}, {out}"
+    # The pointer: word 300-400 under a box at 300 points at 50; over it, the
+    # box is marked above; the word at 1000-1100 shifts the box to 792 (692
+    # from its host) and the pointer to 258, the word's middle still.
+    assert out["point_below"] == ["termpop rs-dpop", "50px"] \
+        and out["point_above"] == ["termpop rs-dpop above", "50px"] \
+        and out["point_shifted"] == ["692px", "258px"], (
+        f"the definition box's pointer is not at its word: "
+        f"{[out.get(k) for k in ('point_below', 'point_above', 'point_shifted')]}")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    for rule in (".termpop:not(.seatpop)::before", ".termpop.above:not(.seatpop)::after",
+                 ".rs-dpin{display:block;min-height:0;overflow-y:auto}"):
+        assert rule in css, f"app.css lacks {rule}: the definition boxes would have no pointer, or cut it off"
+    assert '"--arrow"' in Path("src/pages/components.js").read_text(encoding="utf-8"), \
+        "components.js's term popovers do not set their pointer's place"
     return "ok", ("153:5 marked from 153:1 and 153:28 from 153:27, not 153:2 or 540-C:1; 541-A:14-a's 'files' "
                   "withheld for two definitions; no term in its own; the box by keyboard, tap and mouse, "
                   "its link to the definition and Show more for a long one")
@@ -44980,7 +46019,7 @@ def _guide_search_words(BC, G):
     assert r.returncode == 0, f"the guide search's script failed in node: {r.stderr[-400:]}"
     got = json.loads(r.stdout.strip().splitlines()[-1])
     wrong = [f"{q!r} suggests {h or 'nothing'} first, not {want}" for q, want, h in got
-             if f"guides/{want}." not in h]
+             if not h.split("?")[0].split("#")[0].endswith(f"guides/{want}")]
     assert not wrong, "the guide search misses a reader's words: " + "; ".join(wrong)
     return "ok", f"{len(asks)} everyday asks, each answered first by its guide"
 
@@ -46082,12 +47121,14 @@ def _sponsor_prime_first():
     filter shows the prime sponsored bills by the selected rep first and then
     the bills they cosponsor". build_site_v2 writes each bill's co-sponsors
     as `cosp`, by the name the filter groups on; app.js matches a sponsor on
-    either and puts primeChosen bills first, under two headings."""
+    either and puts primeChosen bills first, under two headings. Since Alice's
+    8 November 2026 it matches the prime sponsor alone unless "Include
+    co-sponsored bills" is ticked (withCosp)."""
     src = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
     assert 'row["cosp"] = _cosp' in src and "person_name(s_.get(\"name\")" in src, \
         "the index rows no longer carry their co-sponsors"
     app = Path("src/pages/app.js").read_text(encoding="utf-8")
-    assert 'if(k==="sponsor")return b.cosp?[b.sponsor,...b.cosp]:[b.sponsor];' in app, \
+    assert 'if(k==="sponsor")return withCosp&&b.cosp?[b.sponsor,...b.cosp]:[b.sponsor];' in app, \
         "the Sponsor filter matches the prime sponsor alone"
     assert "rows=rows.filter(primeChosen).concat(rows.filter(b=>!primeChosen(b)))" in app \
         and '"Prime sponsored":"Co-sponsored"' in app, "a chosen sponsor's own bills are not listed first"
@@ -53186,23 +54227,23 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
         out = json.loads((root / "out.json").read_text(encoding="utf-8"))
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    assert out["old"] == ('<a href="committee/H26.html">House Corrections and '
+    assert out["old"] == ('<a href="committee/H26">House Corrections and '
                           'Criminal Justice</a>'), out["old"]
-    assert "committee/S33.html" in out["s33"] and "committee/S50.html" in out["s50"] \
-        and "committee/S50.html" in out["none"], (out["s33"], out["s50"], out["none"])
-    assert "committee/S22.html" in out["reb"] and "S45" not in out["reb"], (
+    assert "committee/S33" in out["s33"] and "committee/S50" in out["s50"] \
+        and "committee/S50" in out["none"], (out["s33"], out["s50"], out["none"])
+    assert "committee/S22" in out["reb"] and "S45" not in out["reb"], (
         "2005's Rules and Enrolled Bills does not link to S22, the code its page "
         "files it under: " + out["reb"])
-    assert out["wr"] == ('<a href="committee/S20.html">Senate Wildlife and '
+    assert out["wr"] == ('<a href="committee/S20">Senate Wildlife and '
                          'Recreation</a>'), out["wr"]
-    assert out["dre"] == ('<a href="committee/S03-1989.html">Senate Development, '
+    assert out["dre"] == ('<a href="committee/S03-1989">Senate Development, '
                           'Recreation and Environment</a>'), (
         "1989's Development, Recreation and Environment does not link to its own "
         "page: " + out["dre"])
-    assert "committee/S09.html" in out["ia92"] and "committee/S09.html" in out["ia12"], (
+    assert "committee/S09" in out["ia92"] and "committee/S09" in out["ia12"], (
         "the Senate's Internal Affairs does not link across its gaps to S09: "
         + out["ia92"] + " / " + out["ia12"])
-    assert "committee/S33.html" in out["card"] and "committee/H33.html" in out["card"] \
+    assert "committee/S33" in out["card"] and "committee/H33" in out["card"] \
         and "S50" not in out["card"], "a card does not link by its own term: " + out["card"]
     head = re.sub(r"\s+", " ", out["head"])
     assert "<b>Corrections and Criminal Justice</b> (1993 to 1996)" in head, (
@@ -53213,12 +54254,12 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
     s89, s03 = (re.sub(r"\s+", " ", out[k]) for k in ("s03_1989", "s03"))
     assert ("The General Court files this committee under the code <b>S03</b> in its own "
             "records, and later gave the same number to the Senate Committee on "
-            '<a href="committee/S03.html">Appropriations</a> (1993 to 1994). The two are '
+            '<a href="committee/S03">Appropriations</a> (1993 to 1994). The two are '
             "different committees" in s89), (
         "Development, Recreation and Environment's page does not say it shares S03 with "
         "Appropriations: " + s89[:600])
     assert ("also file an earlier committee under the code <b>S03</b>: the Senate Committee "
-            'on <a href="committee/S03-1989.html">Development, Recreation and Environment'
+            'on <a href="committee/S03-1989">Development, Recreation and Environment'
             "</a> (1989 to 1990). The two are different committees" in s03), (
         "Appropriations' page does not name the earlier committee under S03: " + s03[:600])
     return "ok", (f"{len(CN.CODES)} older names placed on {len(last)} pages of the General "
@@ -54815,7 +55856,7 @@ def _year_page_from_home(legislative_year, civics, build_pages):
     assert LY.SLUG in [t["slug"] for t in civics.TOPICS], (
         f"civics.TOPICS has no {LY.SLUG}: the page is not one of the Learn topics")
     assert BP.YEAR_LINK in BP.HOME_JS, "HOME_JS's copy of the status box does not carry YEAR_LINK"
-    assert f'href="{LY.HREF}"' in BP.YEAR_LINK, f"YEAR_LINK does not link {LY.HREF}"
+    assert f'href="{__import__("shell").canon(LY.HREF)}"' in BP.YEAR_LINK, f"YEAR_LINK does not link {__import__("shell").canon(LY.HREF)}"
     root = Path(tempfile.mkdtemp(prefix="gr-year-home-"))
     try:
         _base, _ran = _fixture_site_whole(root)
@@ -54870,7 +55911,7 @@ def _year_link_in_lang():
     for lang in i18n.LANGS:
         if lang == i18n.DEFAULT:
             continue
-        want = i18n.href(lang, LY.HREF)
+        want = __import__("shell").canon(i18n.href(lang, LY.HREF))
         assert f'href="{want}"' in BP.year_link(lang), (
             f"the {lang} status box does not link {want}: {BP.year_link(lang)!a}")
         assert want.startswith(f"/{lang}/") == i18n.has(lang, LY.HREF), want
@@ -57654,7 +58695,7 @@ globalThis.fetch = async () => ({ok: true, status: 200, json: async () => ({H: [
   text: async () => "{}"});
 let s;
 try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
-  + "; ({renderMemberVotes, renderVotes, donut, fullRecord, fullOpen,"
+  + "; ({renderMemberVotes, renderVotes, donut, fullRecord, fullOpen, IDX, LOADED,"
   + "   setRCX: v => { RCX = v; }, setPage: p => { PAGE = p; },"
   + "   setMeta: m => { META = Object.assign(META || {}, m); }})"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
@@ -57663,6 +58704,10 @@ const out = {find: {}};
 try {
   s.setRCX({});
   s.setMeta({terms: ["2025-2026"]});
+  // The bills' index as the site writes it, a bill's own page title in `n`.
+  s.IDX.length = 0; s.LOADED.add("2025-2026");
+  fx.rows.forEach(r => { r.hayT = [r.id, r.n, r.title].join(" ").toLowerCase().replace(/-/g, " ");
+                         r.hayC = ""; s.IDX.push(r); });
   for (const q of fx.finds) {
     s.setPage({kind: "member", terms: ["2025-2026"], term: "2025-2026", data: fx.member,
                vfilter: "", vside: "", vq: q, vopen: {}, vshow: 0});
@@ -57709,8 +58754,18 @@ def _votes_words_and_keys():
     member = {"party_code": "D", "service": [{"b": "H"}],
               "votes": [vote(1, "HB282"), vote(2, "SB282"), vote(3, "HB2820"), vote(4, "HB28"),
                         vote(5, "HB1282", "Local option")]}
-    finds = {"HB 282-FN": 1, "hb 282-fn-a-local": 1, "HB 282-L": 1, "HB 282": 1, "SB282": 1,
-             "282": 2, "28": 1, "HB 28": 1, "local": 1, "HB 999-FN": 0}
+    # Matched as the bill search matches (the owner, 7 November 2026), over the index's rows.
+    finds = {"HB 282-FN": 1, "HB 282": 1, "SB282": 1,
+             # A bare number is a word to the bill search, as it is on /bills: SB 282, HB 282
+             # and the HB 2820 whose number it begins (the owner, 7 November 2026).
+             "282": 3, "HB 28": 1, "local": 1,
+             "HB 999-FN": 0}
+    rows = [{"id": b, "n": n, "title": t, "term": "2025-2026", "year": 2026}
+            for b, n, t in (("HB282", "HB 282-FN", "relative to a thing"),
+                            ("SB282", "SB 282", "relative to another"),
+                            ("HB2820", "HB 2820", "relative to a third"),
+                            ("HB28", "HB 28", "relative to a fourth"),
+                            ("HB1282", "HB 1282-L", "the local option program"))]
     m = lambda i, p, v: {"n": f"Rep. M{i} ({p})", "s": f"m{i}", "p": p, "v": v}
     card = {"yeas": 3, "nays": 4, "passed": False, "body": "H", "date": "2026-03-01",
             "tally": {"R": {"Yea": 2, "Nay": 1}, "D": {"Nay": 3}, "I": {"Yea": 1}},
@@ -57723,7 +58778,8 @@ def _votes_words_and_keys():
                {"question": "Ought to Pass", "date": "2026-03-03", "body": "S", "vote_kind": "DV",
                 "passed": False}]
     got = _node_app(_VOTES_WORDS_HARNESS, {"fx.json": json.dumps(
-        {"member": member, "finds": list(finds), "card": card, "unnamed": unnamed})})
+        {"member": member, "finds": list(finds), "card": card, "unnamed": unnamed,
+         "rows": rows})})
     if got is None:
         return "skip", "app.js, dom_stub.js or node is not here"
     assert "threw" not in got, f"the Votes tabs threw {got['threw']}"
@@ -57751,6 +58807,153 @@ def _votes_words_and_keys():
     assert not bad, "; ".join(bad[:6])
     return "ok", (f"{len(finds)} searches find what they name, suffix or none; four legend rows "
                   "keyed by party; Yes and No in the full record; one line on three unnamed votes")
+
+
+# A member's Votes tab, searched as the bill search is (the owner, 7 November
+# 2026), in node: the bills' index set by hand, then each way of asking.
+_VOTES_SEARCH_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+globalThis.fetch = async () => ({ok: false, status: 404, text: async () => "", json: async () => null});
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({renderMemberVotes, voteAddress, voteAddressRead, matches, IDX, LOADED, landingTerm,"
+  + "   setTab: n => { PAGE_TAB = n; },"
+  + "   setRCX: v => { RCX = v; }, setPage: p => { PAGE = p; }, getPage: () => PAGE,"
+  + "   setQuery: q => { query = q; }, setTerm: t => { term = t; },"
+  + "   setMeta: m => { META = Object.assign(META || {}, m); }})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const fx = JSON.parse(fs.readFileSync("./fx.json", "utf8"));
+const norm = x => String(x || "").toLowerCase().replace(/-/g, " ");
+s.IDX.length = 0;
+fx.rows.forEach(r => { r.hayT = norm([r.id, r.n, r.title].join(" ")); r.hayC = ""; s.IDX.push(r); });
+s.setRCX({});
+s.setMeta({terms: ["2025-2026", "2023-2024"]});
+["2025-2026", "2023-2024"].forEach(t => s.LOADED.add(t));
+const out = {}, fake = {u: null};
+globalThis.history = {state: null, pushState() {}, replaceState(a, b, u) { fake.u = u; globalThis.location.search = (u.split("?")[1] ? "?" + u.split("?")[1] : ""); }};
+const page = extra => s.setPage(Object.assign({kind: "member", terms: ["2025-2026", "2023-2024"],
+  term: "2025-2026", data: fx.member, vfilter: "", vside: "", vq: "", vtopic: "", vall: false,
+  vopen: {}, vshow: 0}, extra));
+const bills = h => [...new Set([...h.matchAll(/bill\/(\d{4})\/([a-z]+\d+)(?:\.html)?(?=[\"#?])/g)].map(m => m[2].toUpperCase()))].sort();
+try {
+  for (const [k, extra] of Object.entries(fx.cases)) {
+    page(extra); const h = s.renderMemberVotes(fx.member);
+    out[k] = {bills: bills(h), rows: (h.match(/<td class="d"/g) || []).length,
+              count: (/id="vcount">\s*([\d,]+ of [\d,]+)/.exec(h) || [])[1] || "",
+              empty: /No recorded vote matches/.test(h), clear: /data-vclear/.test(h),
+              scope: /data-vall=/.test(h)};
+  }
+  // What /bills lists for the same words, from the same functions.
+  s.setTerm("2025-2026"); s.setQuery("marijuana");
+  out.billsList = s.IDX.filter(b => s.matches(b)).map(b => b.id).sort();
+  // The address.
+  page({vq: "housing", vtopic: "Housing", vall: true}); s.voteAddress(); out.addr = fake.u;
+  page({}); s.voteAddress(); out.addrBare = fake.u;
+  globalThis.location.search = "?q=rent%20a&topic=Education%20-%20General&term=all";
+  page({}); s.voteAddressRead(); const p = s.getPage();
+  out.read = [p.vq, p.vtopic, p.vall];
+  globalThis.location.search = "";
+  // A member-elect: the requests term first. The Votes tab's address opens on
+  // the newest term with votes, every term still answers there, and the
+  // requests term alone says no votes (dry run 16, 10 November 2026).
+  s.setMeta({requests: {term: "2027-2028", year: 2027}});
+  const ts = ["2027-2028", "2025-2026", "2023-2024"];
+  s.setTab(2); out.landVotes = s.landingTerm("member", ts);
+  s.setTab(0); out.landBills = s.landingTerm("member", ts);
+  page({terms: ts, term: "2027-2028", vall: true});
+  out.reqAll = (s.renderMemberVotes(fx.member).match(/<td class="d"/g) || []).length;
+  page({terms: ts, term: "2027-2028"});
+  out.reqNone = /No votes: a request/.test(s.renderMemberVotes(fx.member));
+  s.setMeta({requests: null});
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").split("\n")[1]; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "a member's Votes tab is searched by the bill search's own matcher (a number, "
+                   "words and their synonyms), filtered by the bill search's topics, combined with "
+                   "the other filters, scoped to the term or every term, kept in the address, and "
+                   "says plainly when nothing matches")
+def _member_votes_search():
+    """The owner, 7 November 2026: "a search box: a bill number or words
+    ('marijuana', 'affordable housing') ... with the bill search's own
+    matching, never a second matcher" and "a topic filter using the site's
+    existing broad topic categories", on a legislator's Votes tab; the term
+    shown, "every term" one click away; the address keeps the search.
+
+    It fails if the tab matches by a test of its own (it must list exactly
+    the bills /bills lists for the same words -- a vote on a bill the title
+    of which says "cannabis" is found by "marijuana" because the bill search's
+    synonyms say so); if "HB 1" finds HB 10 or misses HB 1; if the topic
+    filter, the vote and side filters and the words do not narrow together; if
+    the term shown is not the scope until every term is asked for; if the
+    address does not carry ?q=, ?topic= and ?term=all both ways; or if an
+    empty result is not said in words with a way to clear it."""
+    vote = lambda n, b, y, v="Yea": {"k": f"{y}-H-{n}", "d": f"3/{n}/{y}", "b": b, "y": str(y),
+                                     "q": "Ought to Pass", "v": v}
+    rows = [{"id": b, "n": re.sub(r"^([A-Z]+)", r"\1 ", b), "title": t, "term": term_,
+             "year": int(term_[:4]), "topic": tp}
+            for b, t, term_, tp in (
+                ("HB1", "relative to the legalization of cannabis", "2025-2026", "Crimes"),
+                ("HB10", "relative to affordable housing", "2025-2026", "Housing"),
+                ("HB11", "relative to housing vouchers", "2025-2026", "Housing"),
+                ("SB4", "relative to school lunches", "2025-2026", "Education"),
+                ("HB1", "relative to the state budget", "2023-2024", "State Government"),
+                ("HB77", "relative to affordable housing zoning", "2023-2024", "Housing"))]
+    member = {"party_code": "D", "service": [{"b": "H"}],
+              "votes": [vote(1, "HB1", 2025), vote(2, "HB10", 2025, "Nay"), vote(3, "HB11", 2025),
+                        vote(4, "SB4", 2025), vote(5, "HB1", 2023), vote(6, "HB77", 2023)]}
+    cases = {"all": {}, "number": {"vq": "HB 1"}, "synonym": {"vq": "marijuana"},
+             "words": {"vq": "affordable housing"}, "topic": {"vtopic": "Housing"},
+             "both": {"vtopic": "Housing", "vq": "vouchers"},
+             "vote": {"vtopic": "Housing", "vfilter": "nay"},
+             "none": {"vq": "zzzzqqq"}, "nonetopic": {"vtopic": "Education", "vq": "housing"},
+             "everyone": {"vall": True}, "everynumber": {"vall": True, "vq": "HB 1"},
+             "everywords": {"vall": True, "vq": "affordable housing"},
+             "everytopic": {"vall": True, "vtopic": "Housing"}}
+    got = _node_app(_VOTES_SEARCH_HARNESS, {"fx.json": json.dumps(
+        {"member": member, "rows": rows, "cases": cases})})
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"the Votes tab threw {got['threw']}"
+    want = {"all": ["HB1", "HB10", "HB11", "SB4"], "number": ["HB1"], "synonym": ["HB1"],
+            "words": ["HB10"], "topic": ["HB10", "HB11"], "both": ["HB11"], "vote": ["HB10"],
+            "none": [], "nonetopic": [],
+            "everyone": ["HB1", "HB10", "HB11", "HB77", "SB4"], "everynumber": ["HB1"],
+            "everywords": ["HB10", "HB77"], "everytopic": ["HB10", "HB11", "HB77"]}
+    rows_n = {"all": 4, "number": 1, "synonym": 1, "words": 1, "topic": 2, "both": 1, "vote": 1,
+              "none": 0, "nonetopic": 0, "everyone": 6, "everynumber": 2, "everywords": 2,
+              "everytopic": 3}
+    for k, w in want.items():
+        assert got[k]["bills"] == w and got[k]["rows"] == rows_n[k], (
+            f"{k}: {got[k]['bills']} / {got[k]['rows']} rows, not {w} / {rows_n[k]}")
+    assert got["number"]["count"] == "1 of 4" and got["everyone"]["count"] == "6 of 6", (
+        f"the count line is not 'n of m': {got['number']['count']}, {got['everyone']['count']}")
+    assert got["synonym"]["bills"] == [b for b in got["billsList"] if b == "HB1"] \
+        and got["billsList"] == ["HB1"], (
+        "the tab does not list the bills /bills lists for the same words: "
+        f"{got['synonym']['bills']} against {got['billsList']}")
+    assert got["none"]["empty"] and got["none"]["clear"] and got["nonetopic"]["empty"] \
+        and not got["all"]["empty"], "an empty result is not said in words, with a way to clear it"
+    assert got["all"]["scope"], "a member of two terms has no way to ask for every term"
+    assert got["addr"] and "q=housing" in got["addr"] and "topic=Housing" in got["addr"] \
+        and "term=all" in got["addr"], f"the address does not keep the search: {got['addr']}"
+    assert got["addrBare"] and "?" not in got["addrBare"], (
+        f"a search cleared still leaves its address: {got['addrBare']}")
+    assert got["read"] == ["rent a", "Education - General", True], (
+        f"the address is not read back into the search: {got['read']}")
+    assert got["landVotes"] == "2025-2026" and got["landBills"] == "2027-2028", (
+        "a member-elect's Votes address does not open on the newest term with votes, or the "
+        f"page itself no longer opens on the requests: {got['landVotes']}, {got['landBills']}")
+    assert got["reqAll"] == 6 and got["reqNone"], (
+        f"on the requests term, every term lists {got['reqAll']} of 6 votes, or the term alone "
+        "does not say a request is not voted on")
+    return "ok", ("a number, a synonym and words found by the bill search's own matcher, a topic "
+                  "and the vote filter narrowing with them, the term or every term, the address "
+                  "kept and read back, and an empty result said plainly; a member-elect's Votes "
+                  "address opens on the newest term with votes")
+
 
 
 # A member's Votes tab with a vote on no bill the Journal describes (rc.w),
@@ -58999,7 +60202,7 @@ def _seat_callout(BP, SEAT):
         if t["hidden"] or t["below"] or px(t["top"]) != 1300 - GAP - H - 1000 \
                 or abs(px(t["left"]) - (188.5 - 12 - W / 2)) > .5 or px(t["arrow"]) != 100:
             bad.append(f"a tapped seat's callout is not above it with its arrow at the seat's middle: {t}")
-        if t["name"] != "Rep. mid" or t["href"] != "/legislator/mid.html" \
+        if t["name"] != "Rep. mid" or t["href"] != "/legislator/mid" \
                 or t["what"] != "Republican · Hillsborough 14" or t["seat"] != "Seat 2-096":
             bad.append(f"the callout does not say the member, the party and district, and the seat: {t}")
         if t["note"] != "Rep. mid, Republican, Hillsborough 14, seat 2-096":
@@ -59315,6 +60518,39 @@ def _map_zoom_fit_icon():
             bad.append(f"the retired {k} is still asked for or kept")
     assert not bad, "; ".join(bad)
     return "ok", "the four corners, titled Zoom to fit alone, in the box of - and +, in English and in Spanish"
+
+
+@check("frontend", "the district map draws its borders as chains, not one path per arc, so no bend "
+       "leaves a white notch and no empty sliver ring is stroked as a speck")
+def _map_borders_chained():
+    """The owner, 8 November 2026: white dots along some district borders on
+    the State House map. The county line (and the town and district meshes)
+    were written as one subpath per arc, 456 for the county line alone: a butt
+    cap has no join, so every bend where two arcs meet had a notch on its
+    outside, through which the white casing under the line showed, and the
+    source's zero-area sliver rings were stroked as black specks. chainD in
+    map.js writes arcs that meet end to end as one chain (and drops a ring
+    that encloses nothing); meshD and outlineD must use it. Read in map.js,
+    and chainD is run in node on arcs that meet at a bend."""
+    import subprocess
+    js = Path("src/pages/map.js").read_text(encoding="utf-8")
+    bad = []
+    for fn in ("meshD", "outlineD"):
+        m = re.search(r"function " + fn + r"\(.*?\n(?=function |/\*)", js, re.S)
+        assert m, f"map.js has no {fn}"
+        if "chainD(" not in m.group(0) or 'map(p=>p[0]+" "+p[1]).join("L")' in m.group(0):
+            bad.append(f"{fn} writes one subpath per arc, not chainD's chains")
+    m = re.search(r"function chainD\(M,ids\)\{.*?\n  return d;\}", js, re.S)
+    assert m, "map.js has no chainD"
+    prog = (m.group(0) + """
+const M={ARCS:[[[0,0],[10,0]],[[10,10],[10,0]],[[10,10],[20,10]],[[50,50],[51,51],[50,52],[50,50]]]};
+console.log(chainD(M,[0,1,2,3]));""")
+    r = subprocess.run(["node", "-e", prog], capture_output=True, text=True,
+                       encoding="utf-8", errors="replace", timeout=60)
+    if r.returncode or r.stdout.strip() != "M0 0L10 0L10 10L20 10":
+        bad.append(f"chainD did not join arcs end to end and drop the empty ring: {r.stdout.strip()} {r.stderr[-200:]}")
+    assert not bad, "; ".join(bad)
+    return "ok", "meshD and outlineD write chains; chainD joins arcs at a bend and drops an empty ring"
 
 
 @check("frontend", "the seating chart's Zoom to fit is the four corners' icon in the box of - and +, "
@@ -63110,6 +64346,155 @@ def _second_pass_only_after_network(BA):
                   "the passes and nothing else")
 
 
+@check("pipeline", "build_all fails a step that exits zero having made nothing, and warns of one "
+       "that made almost nothing", needs=("build_all",))
+def _step_that_makes_nothing_fails(BA):
+    """CLAUDE.md, "Silence is not success": a step that can produce nothing and
+    still exit zero needs a guard that says so. A step's declared produces= was
+    only ever used to order the plan; _run_steps now looks at it afterwards.
+    On a temporary tree, with the child process stubbed to exit 0 as a broken
+    step does:
+
+      - an output never made, a file of zero bytes, a folder with no file in
+        it: the step FAILS, in site/build.json and in the words printed;
+      - an output of "{}", or one that shrank to under half of what it was:
+        the step is ok and carries a warning, which is printed and recorded;
+      - an output named in sometimes= (a page set removed on purpose) may be
+        absent, and an optional step's missing output is a warning only;
+      - a step that made what it declared is recorded as it always was, with
+        no warnings key; and the real plan's declared outputs are all
+        measurable by the same code (none is a bare name that cannot exist).
+    """
+    import contextlib
+    import io
+    import types
+    A = type("A", (), {"key": None, "session": "2026", "base": "https://graniterecord.org",
+                       "archive": "nh-archive", "keep_going": True, "allow_prune": False})
+    S = BA.Step
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-empty-step-"))
+    saved = BA.child, BA._paths
+    acts = {}
+
+    def run(cmd, **kw):
+        acts.get(cmd[1], lambda: None)()
+        return types.SimpleNamespace(returncode=0, stdout="ok\n", stderr="")
+
+    def build(step):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            try:
+                BA._run_steps([step], A())
+            except SystemExit:
+                pass
+        rec = json.loads(Path("site/build.json").read_text(encoding="utf-8"))["steps"][0]
+        return rec, out.getvalue()
+    try:
+        os.chdir(tmp)
+        Path("site").mkdir()
+        BA._paths = types.SimpleNamespace(script=lambda name, root=None: name)
+        BA.child = types.SimpleNamespace(run=run)
+
+        # never made
+        rec, out = build(S("none", ["w.py"], produces=["site/out.json"]))
+        assert rec["status"] == "failed" and "was not made" in rec["error"] \
+            and "FAILED" in out, ("a step that made no file passed", rec)
+        # zero bytes
+        acts["w.py"] = lambda: Path("site/out.json").write_text("", encoding="utf-8")
+        rec, _ = build(S("zero", ["w.py"], produces=["site/out.json"]))
+        assert rec["status"] == "failed" and "empty (0 bytes)" in rec["error"], rec
+        # a folder with nothing in it
+        acts["w.py"] = lambda: Path("site/pages").mkdir(exist_ok=True)
+        rec, _ = build(S("dir", ["w.py"], produces=["site/pages"]))
+        assert rec["status"] == "failed" and "no file in it" in rec["error"], rec
+        # one file in the folder is something
+        acts["w.py"] = lambda: (Path("site/pages/a.html").write_text("<p>x</p>", encoding="utf-8"))
+        rec, _ = build(S("dir1", ["w.py"], produces=["site/pages"]))
+        assert rec["status"] == "ok" and "warnings" not in rec, rec
+        # made and fine
+        acts["w.py"] = lambda: Path("site/out.json").write_text('{"a": [1]}' * 20, encoding="utf-8")
+        rec, _ = build(S("fine", ["w.py"], produces=["site/out.json"]))
+        assert rec["status"] == "ok" and "warnings" not in rec, rec
+        # an empty document, and a collapse
+        acts["w.py"] = lambda: Path("site/out.json").write_text("{}", encoding="utf-8")
+        rec, out = build(S("braces", ["w.py"], produces=["site/out.json"]))
+        assert rec["status"] == "ok" and rec.get("warnings") and "WARNING" in out, (rec, out)
+        Path("site/out.json").write_text("x" * 5000, encoding="utf-8")
+        acts["w.py"] = lambda: Path("site/out.json").write_text("x" * 100, encoding="utf-8")
+        rec, _ = build(S("shrunk", ["w.py"], produces=["site/out.json"]))
+        assert rec["status"] == "ok" and "shrank" in " ".join(rec.get("warnings", [])), rec
+        # allowed to be absent, and optional
+        acts["w.py"] = lambda: Path("site/gone.json").unlink(missing_ok=True)
+        rec, _ = build(S("some", ["w.py"], produces=["site/gone.json"], sometimes=["site/gone.json"]))
+        assert rec["status"] == "ok" and "warnings" not in rec, rec
+        rec, _ = build(S("opt", ["w.py"], produces=["site/gone.json"], optional=True))
+        assert rec["status"] == "ok" and rec.get("warnings"), rec
+    finally:
+        os.chdir(here)
+        BA.child, BA._paths = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    plan = BA.plan(A())
+    declared = {str(p) for s in plan for p in s.produces}
+    named = {p for s in plan for p in s.sometimes}
+    assert named <= declared, f"sometimes= names an output the step does not declare: {named - declared}"
+    return "ok", (f"a step that exits 0 with no output, an empty file or an empty folder fails; "
+                  f"'{{}}' and a halving warn; {len(declared)} declared outputs across {len(plan)} "
+                  f"steps, {len(named)} allowed to be absent")
+
+
+@check("build", "the site build's load() stops on a JSON input that is there and cannot be read, "
+       "and _redirects' movers do the same", needs=("build_site_v2", "build_pages"))
+def _load_stops_on_corrupt_input(B2, BP):
+    """Bug hunt of 11 November 2026, findings 1 and 11. load() returned its
+    default for every failure, so a narratives.json cut off mid-array (or a
+    MemoryError reading it) built a site with no journeys and nothing said.
+    Only a file that is not there is empty; a file that is there and is not
+    JSON stops the build, naming the file. The same for the moved-member and
+    moved-request 301s in build_pages, which dropped them from _redirects."""
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-load-"))
+    try:
+        os.chdir(tmp)
+        good = tmp / "good.json"
+        good.write_text('{"a": 1}', encoding="utf-8")
+        assert B2.load(good, {}) == {"a": 1}, "load() no longer reads a good file"
+        assert B2.load(tmp / "absent.json", {"d": 1}) == {"d": 1}, "an absent file is the default"
+        for name, text in (("cut.json", '{"HB1": [{"x": 1}, {"y"'), ("empty.json", ""),
+                           ("junk.json", "not json")):
+            p = tmp / name
+            p.write_text(text, encoding="utf-8")
+            try:
+                got = B2.load(p, {})
+            except SystemExit as e:
+                assert name in str(e), f"the message does not name {name}: {e}"
+            else:
+                raise AssertionError(f"load({name}) returned {got!r} instead of stopping the build")
+        site = tmp / "site"
+        site.mkdir()
+        assert BP.moved_members(site) == "", "no former.json is no moved members"
+        (site / "former.json").write_text('[{"slug": "x", "moved_fr', encoding="utf-8")
+        try:
+            BP.moved_members(site)
+        except SystemExit as e:
+            assert "former.json" in str(e), e
+        else:
+            raise AssertionError("an unreadable former.json dropped the moved members' 301s silently")
+        (site / "meta.json").write_text('{"requests": {"term": "2027"}}', encoding="utf-8")
+        assert BP.moved_requests(site) == "", "no index file is no moved requests"
+        (site / "idx").mkdir()
+        (site / "idx" / "2027.json").write_text("[{", encoding="utf-8")
+        try:
+            BP.moved_requests(site)
+        except SystemExit:
+            pass
+        else:
+            raise AssertionError("an unreadable requests index dropped their 301s silently")
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", "a cut-off, empty or junk input stops load(); only an absent file is the default"
+
+
 @check("files", "handoff.py reports a preflight run only when it was a run of this code: the "
        "same commit and the same working tree", needs=("handoff",))
 def _handoff_reads_this_run(H):
@@ -63338,8 +64723,8 @@ def _handoff_reads_this_run(H):
 
 
 @check("files", "handoff.py finds a listed script wherever it sits, as inventory.py does",
-       needs=("handoff",))
-def _handoff_finds_moved_scripts(H):
+       needs=("handoff", "inventory"))
+def _handoff_finds_moved_scripts(H, inventory):
     """handoff.py looked for each file versions.json lists at the root, by its
     bare name, and the folder move put most of them under src/. For a week
     after stage 6 STATE.md said "190 listed but not present" and listed only
@@ -63347,7 +64732,7 @@ def _handoff_finds_moved_scripts(H):
     before it, found every one through _paths.locate. So the two are held to
     one answer: the files handoff says are missing are the ones locate cannot
     find."""
-    listed = json.loads((_paths.ROOT / "versions.json").read_text(encoding="utf-8")).get("files", {})
+    listed = inventory.registry()
     gone = sorted(f for f in listed if not _paths.locate(f).exists())
     here, out = os.getcwd(), []
     try:
@@ -71347,7 +72732,9 @@ def _term_popovers():
                       ('"focusin"', "keyboard focus does not open it"),
                       ("HOLD=500", "a hover is not held about half a second"),
                       ('closest("[hidden]")', "the first of a term may be one in a hidden tab"),
-                      ("MutationObserver", "a page drawn again keeps no popover")):
+                      ("MutationObserver", "a page drawn again keeps no popover"),
+                      ('setProperty("--arrow"', "its pointer is not set at its word (10 November 2026)"),
+                      ("point(b,p);", "it is not pointed after it is moved onto the screen")):
         assert need in beh, f"the term popovers: {why} ({need} is not in the behaviour)"
     glossary = set(C.WORDBOOK["glossary"])
     keys = {m["abbr"] for m in C.WORDBOOK["votes"]["motions"].values() if m.get("abbr")}
@@ -71359,6 +72746,25 @@ def _term_popovers():
         assert rule in css, f"app.css does not draw {rule}"
     return "ok", (f"the behaviour is one IIFE between its markers; {len(keys)} marked terms, "
                   "each a glossary entry; the popover drawn in app.css")
+
+
+@check("frontend", "Cite this page carries the disclosure triangle where its pane has no pointer, "
+       "turned down while open, and the record pages keep their pointer")
+def _cite_triangle():
+    """The owner, 10 November 2026: "Add triangle indicator to cite page
+    button". The chevron "On this page" and the Learn folds use, after the
+    words, a quarter turn when open; a record page's Cite button has the
+    pane's nub (.racts, summary::after) instead, and the two would share
+    one pseudo-element, so the chevron is not drawn there."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    for rule in (".pcite:not(.racts .pcite) > summary::after{",
+                 ".pcite:not(.racts .pcite)[open] > summary::after{transform:rotate(90deg)}",
+                 ".racts :is(.pcite,.follow,.testify,.report) > summary::after{"):
+        assert rule in css, f"app.css lacks {rule}"
+    i = css.index(".pcite:not(.racts .pcite) > summary::after{")
+    assert "mask:var(--l-chev)" in css[i:i + 600] and "M9 5.5l6.5 6.5L9 18.5" in css[i:i + 900], (
+        "Cite's triangle is not the chevron the Learn folds use")
+    return "ok", "the chevron after Cite this page off record pages, down when open; the nub kept on them"
 
 
 # Every form of a vote's question the 2025-2026 record carries, and a sample of the older
@@ -72077,7 +73483,7 @@ def _record_not_translated():
         "src/pages/components.js": ['class="cnum" href="${esc(c.href)}" translate="no">',
                                     'class="ctitle" translate="no">', 'class="brtitle" translate="no">',
                                     'class="bmention" href="${esc(href)}" translate="no">',
-                                    'class="psent" href="legislator/${esc(slug)}.html" translate="no">',
+                                    'class="psent" href="legislator/${esc(slug)}" translate="no">',
                                     '<span class="mchip p-${esc(code)}" translate="no">',
                                     '<i translate="yes">'],
         "src/pages/components.py": ['class="ctitle" translate="no">', 'class="brtitle" translate="no">',
@@ -73269,7 +74675,9 @@ def _icons_named():
                      for href, _label, g in CH.NAV_TABS]
               for lang in i18n.LANGS if lang != i18n.DEFAULT}
     for where, html in sources.items():
-        lang_m = re.match(r'<!DOCTYPE html><html lang="([a-z]+)"', html)
+        # Wherever <html> stands: the Calendar's pages are the record pages' frame, which
+        # opens with a comment before it (9 November 2026).
+        lang_m = re.search(r'<html lang="([a-z]+)"', html[:600])
         lang = lang_m.group(1) if lang_m else i18n.DEFAULT
         if 'class="icon"' not in html:
             continue
@@ -73304,7 +74712,7 @@ def _icons_named():
                            f"drawing: {[(h, w.strip()) for h, _s, w in got]}")
     # Follow, Report a problem and Share are mounted outside anything the
     # drawing records; _share_beside_report holds those three the same way.
-    wanted = {"bill", "person", "committee", "book", "calendar", "cite", "search"}
+    wanted = {"bill", "person", "gavel", "book", "calendar", "cite", "search"}
     missing = sorted(n for n in wanted if not seen[n])
     if missing:
         bad.append("no fixture page draws " + ", ".join(missing))
@@ -74308,8 +75716,11 @@ def _live_in_the_build():
         and plan.index("build_calendar.py") < plan.index("build_live.py"), (
             f"build_all does not run build_live.py after build_calendar.py: {plan}")
     live = Path(_paths.locate("build_live.py")).read_text(encoding="utf-8")
-    assert re.search(r'^\s*S\.sitemap_merge\(site, base, \[[^\]]*S\.canon\(ADDRESS\)\], "/live"\)', live, re.M), (
-        "build_live does not list /live in the sitemap, and check_site would refuse the page")
+    assert re.search(r'^\s*S\.sitemap_merge\(site, base, \[[^\]]*S\.canon\(ADDRESS\)\][^\n]*, "/live"\)', live, re.M), (
+        "build_live does not list /live in the sitemap once LINKED is on, and check_site would refuse the page")
+    assert "if not LINKED:" in live and "noindex" in live and "if LINKED else []" in live, (
+        "build_live's /live is not noindex and unlisted while LINKED is off (the owner, "
+        "10 November 2026)")
     call = re.compile(r"^[^#\n]*\blive_hook\.place\(", re.M)
     lacking = [f for f in ("build_committees.py", "build_study_committees.py")
                if not call.search(Path(_paths.locate(f)).read_text(encoding="utf-8"))]
@@ -74988,11 +76399,14 @@ def _one_language_note(chrome, i18n):
             "búsqueda encuentra los temas por sus palabras en inglés (housing, no vivienda)."),
         "lang.why_links": ("Official state pages the site links to are in English.",
                            "Las páginas oficiales del estado a las que enlaza el sitio están en inglés."),
+        # Without "the calendar" since 9 November 2026, when the Calendar was
+        # built in Spanish: a page that says a page is not translated when it is
+        # says what is not so.
         "lang.why_not_yet": (
-            'Not translated yet: the pages for bills, legislators, committees, the calendar and the '
+            'Not translated yet: the pages for bills, legislators, committees and the '
             'laws, and any page marked "in English" where it is listed.',
-            'Todavía sin traducir: las páginas de proyectos de ley, legisladores, comités, el '
-            'calendario y las leyes, y cualquier página marcada "en inglés" donde aparece en una '
+            'Todavía sin traducir: las páginas de proyectos de ley, legisladores, comités y las '
+            'leyes, y cualquier página marcada "en inglés" donde aparece en una '
             'lista.')}
 
     import html as _h
@@ -75064,7 +76478,10 @@ def _spanish_learn(i18n, G, BC, chrome, civics):
     strings = i18n.catalog("es")["strings"]
     slugs = G.learn_translated("es")
     learn = BC.learn_topics(civics.TOPICS)
-    named = [p for p in i18n.PAGES["es"] if p.startswith("learn/") and p != BC.GLOSSARY_PAGE]
+    # Not By the Numbers either (9 November 2026): it is not one of civics.TOPICS,
+    # and _numbers_in_spanish holds it.
+    named = [p for p in i18n.PAGES["es"] if p.startswith("learn/")
+             and p not in (BC.GLOSSARY_PAGE, "learn/by-the-numbers.html")]
     unknown = sorted(p for p in named if not G.learn_topic(p[len("learn/"):-len(".html")]))
     assert not unknown, f"i18n.PAGES names Learn pages there are none of: {unknown}"
     bad, misses = [], set(i18n.MISSES)
@@ -75961,7 +77378,7 @@ def _weak_marker_approximate(B):
         assert st["start"] == 1200.0 and st["start_stated"] is stated, (
             f"a floor start found by {how!r} is drawn start_stated={st.get('start_stated')}")
     app = _paths.locate("src/pages/app.js").read_text(encoding="utf-8")
-    for need, why in (('s.start_stated ? "" : " approximate"', "the bill page's player"),
+    for need, why in (('h.approx=!s.start_stated', "the bill page's player"),
                       # "approximate", one word, on a floor card too since
                       # 25 October 2026 (S2), where it said "about where the
                       # clerk takes it up".
@@ -78989,9 +80406,9 @@ def _key_dates_sourced(KD, LY):
     statute key_dates.py computes from must still print its rule's words."""
     from datetime import date
     bad = []
-    known = ((KD.town_meeting_day(2025), date(2025, 3, 11)),
-             (KD.town_meeting_day(2026), date(2026, 3, 10)),
-             (KD.town_meeting_day(2027), date(2027, 3, 9)),
+    known = ((KD.second_tuesday(2025, 3), date(2025, 3, 11)),
+             (KD.second_tuesday(2026, 3), date(2026, 3, 10)),
+             (KD.second_tuesday(2027, 3), date(2027, 3, 9)),
              (KD.second_tuesday(2026, 4), date(2026, 4, 14)),
              (KD.second_tuesday(2026, 5), date(2026, 5, 12)),
              (LY.organization_day(2024), date(2024, 12, 4)),
@@ -79309,6 +80726,28 @@ ok(days["2026-11-03"] && /class="calempty"/.test(days["2026-11-03"].tail),
    "a day of a key date alone loses its line that no meeting is on it");
 console.log(fails.length?fails.join("\n"):"10 March's town meeting day and November's election week read as key dates, counted as no meeting\nOK");
 """
+
+
+@check("frontend", "once the webinar is over, its box on the home page is the recording, played only "
+       "when Play is pressed", needs=("build_pages",))
+def _webinar_recording(BP):
+    """The owner, 11 November 2026: "Add the link to the webinar youtube video
+    as an embedded player on the homepage". Before WEBINAR_UNTIL the box
+    registers; from it, the recording, by the session recordings' Play: a
+    button with the video's id, nothing from YouTube until it is pressed, and
+    HOME_JS's handler answering it there too. In Spanish it says English."""
+    before = BP.home_webinar(today="2026-11-10")
+    after = BP.home_webinar(today=BP.WEBINAR_UNTIL)
+    es = BP.home_webinar(today=BP.WEBINAR_UNTIL, lang="es")
+    assert "zoom.us" in before and "wbrec" not in before, "the registration is gone before the day"
+    assert "wbrec" in after and f'data-embed="{BP.WEBINAR_VIDEO}"' in after and "zoom.us" not in after, (
+        "from the day after the webinar the box is not its recording")
+    assert "youtube" not in after.lower() and "<iframe" not in after, (
+        "the recording asks YouTube for something before Play is pressed")
+    assert "wbrec [data-embed]" in BP.HOME_JS, "HOME_JS does not open the recording's Play"
+    assert "(en inglés)" in es, "the Spanish home page does not say the recording is in English"
+    return "ok", ("registration until 11 November, then the recording under the search, played "
+                  "only on Play, in English and Spanish")
 
 
 @check("frontend", "the webinar stands under the home page's search, in both languages and at every width",
@@ -81774,7 +83213,7 @@ def _testify_from_the_search():
     if got is None:
         return "skip", "node, app.js or dom_stub.js is not here"
     said = " ".join(re.sub(r"<[^>]+>", " ", got["html"]).split())
-    assert got["asked"] and got["asked"][0].endswith(".html"), (
+    assert got["asked"] and got["asked"][0].endswith("/bill/2025/hb104"), (
         f"focusActions did not ask for the bill's own page: {got['asked']}")
     assert got["count"] == 1, f"a bill opened from the search has {got['count']} Testify buttons in its row"
     assert got["kids"] == ["pcite", "followbox", "testifyin tliverow", "reportbox"], (
@@ -82489,8 +83928,8 @@ def _testify_amendment_link():
             f"own page turned a tab or opened an amendment: {got[name]}"
     app = Path("src/pages/app.js").read_text(encoding="utf-8")
     for need, what in (
-            ('const h=said&&!(window.GR_BILL&&AMENDMENT_HASH.test(said))?said:(window.GR_BILL||"");',
-             "a bill's own page whose fragment is an amendment's is still that bill's"),
+            ('const h=said&&!(window.GR_BILL&&(AMENDMENT_HASH.test(said)||VOTE_HASH.test(said)))?said:(window.GR_BILL||"");',
+             "a bill's own page whose fragment is an amendment's (or a vote's) is still that bill's"),
             ("if(t===\"6\"&&row){amendmentAsked(row,said);needVersions(row);}",
              "the Bill Text tab's address asks for the amendment its fragment names"),
             ("  jumpToTab();\n  jumpToAmendment();\n", "a redraw brings the amendment into view"),
@@ -82502,6 +83941,174 @@ def _testify_amendment_link():
     return "ok", ("HB 1560-FN's 2026-0422h links to its Bill Text tab; SB 575's second amendment opened by its "
                   "number, alone, past a report naming it; by number without its year; none for a number "
                   "none carries; the bill's page, the tab's own address and the redraw read it")
+
+
+_BILL_TEXT_AMD_HARNESS = r"""
+require("./stub.js");
+const src = require("fs").readFileSync("./page.js", "utf8");
+const scope = (0, eval)(src + "; ({renderVersions, verKey, VERS, VTEXT, VMODE})");
+const b = {id: "HB9", year: 2026, term: "2025-2026"};
+const A = j => "/versions/2026/HB9.a" + j + ".txt";
+const head = (n, w) => "Rep. Ames, Ches. 13 February 3, 2026 " + n + " 05/08 " + w + " to HB 9 Amend RSA 91-A:2, II and RSA 999:1 by";
+// The index lists amendments by the day each was filed, not the docket's order.
+const ix = {
+  versions: [
+    {title: "As Introduced", date: "01/05/2026 10:00:00", text_url: "/versions/2026/HB9.0.txt"},
+    {title: "As Amended", date: "03/05/2026 10:00:00", text_url: "/versions/2026/HB9.1.txt",
+     blocks_url: "/versions/2026/HB9.1.blocks.json"}],
+  steps: [],
+  amendments: [
+    {date: "02/01/2026 10:00:00", chars: 90, text_url: A(0), num: "2026-0003s"},
+    {date: "02/02/2026 10:00:00", chars: 91, text_url: A(1), num: "2026-0002h"},
+    {date: "02/03/2026 10:00:00", chars: 92, text_url: A(2), num: "2026-0001h"},
+    {date: "02/04/2026 10:00:00", chars: 93, text_url: A(3), num: "2026-9999h"},
+    {date: "02/05/2026 10:00:00", chars: 94, text_url: A(4)}],
+  rsa: {"RSA 91-A:2": "/laws/91-a#s2"}};
+const facts = [
+  {num: "2026-0001h", kind: "Committee Amendment", adopted: true, mover: "", vote_kind: "VV", date: "2026-02-10"},
+  {num: "2026-0002h", kind: "Floor Amendment", adopted: false, mover: "Rep. Ames", vote_kind: "RC", date: "2026-02-10"},
+  {num: "2026-0003s", kind: "Amendment", adopted: null, mover: "", vote_kind: "", date: "2026-02-11"},
+  {num: "2026-0004s", kind: "Floor Amendment", adopted: true, mover: "Sen. Birdsell", vote_kind: "VV",
+   date: "2026-02-12", text: "Amend RSA 91-A:2 by"},
+  {num: "2026-0005s", kind: "Committee Amendment", adopted: null, mover: "", vote_kind: "", date: ""}];
+scope.VERS[scope.verKey(b)] = ix;
+const T = {};
+[head("2026-0003s", "Amendment"), head("2026-0002h", "Floor Amendment"), head("2026-0001h", "Amendment"),
+ head("2026-9999h", "Amendment"), "February 5, 2026 no number printed Amendment"].forEach((t, j) => { T[A(j)] = t; });
+Object.assign(scope.VTEXT, T);
+scope.VTEXT["/versions/2026/HB9.1.blocks.json"] = [
+  {k: "ln", runs: [["", "Nothing under "], ["add", "RSA 91-A:2, II"], ["cut", " and RSA 999:1"], ["", " here."]]}];
+scope.VTEXT["/versions/2026/HB9.1.txt"] = "plain RSA 91-A:2";
+const out = {};
+out.facts = scope.renderVersions(b, {nver: 2, namd: 5, amendments: facts, rsa: {}});
+out.bare = scope.renderVersions(b, {nver: 2, namd: 5, rsa: {}});
+// the text view as plain text, and the changes view as a runs excerpt
+const ix2 = Object.assign({}, ix, {steps: [{from: 0, to: 1, added: 1, removed: 0,
+  runs_url: "/versions/2026/HB9.0-1.json"}]});
+scope.VERS[scope.verKey(b)] = ix2;
+scope.VMODE[scope.verKey(b)] = "changes";
+scope.VTEXT["/versions/2026/HB9.0-1.json"] = [["=", "see RSA 91-A:2 here"], ["+", "new RSA 91-A:2"]];
+out.runs = scope.renderVersions(b, {nver: 2, namd: 5, rsa: {}});
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "the Bill Text tab sets each amendment's number, whether it carried and whether the committee "
+                   "or the floor moved it beside it, from the docket and only where the docket says, and links "
+                   "the statutes cited in a version's text and an amendment's to their law pages")
+def _bill_text_amendment_facts():
+    """The owner's walk of a test build, 8 November 2026: on a bill's Bill
+    Text tab, "for each amendment: its number, whether it was only proposed or
+    was adopted, and whether it came from the committee or from the floor",
+    and the RSA links the law pages have. The tab listed "Amendment of <day>"
+    and its length, and a version's text and an amendment's carried no link
+    (only the bill's own record was linked, in the document drawn when a bill
+    has no version history).
+
+    Held in node on a bill of three amendments and a docket-only fourth:
+      THE NUMBER: the button says "Amendment 2026-0001h" where the index
+        (build_version_links.py) gives the number; where it gives none the
+        button still says "Amendment of <day>", and nothing is attributed.
+      THE DOCKET'S WORDS: Committee and Adopted, Floor and Rejected (the
+        word renderBillText's chips use for a failed amendment), the mover,
+        the day and how it was decided; a docket line that says only
+        "Amendment" gets no origin chip and one with no outcome no outcome
+        chip; a number the docket does not name gets no chip at all.
+      THE ORDER: the docket's, with the unnamed after it.
+      THE DOCKET-ONLY ONE: listed, its facts beside it, "Its text is not on
+        file here", its text opened where the record has it.
+      THE LINKS: a citation in the full text (blocks, added and removed
+        runs, or plain), in the changes excerpt and in an amendment's text is
+        a link to /laws/<chapter>#s<section>; one the index does not name
+        stays words; and no definition pop-up is drawn (the text does not
+        say which chapter's definitions a passage is read under)."""
+    got = _node_app(_BILL_TEXT_AMD_HARNESS)
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    h = got["facts"]
+    item = lambda n: re.search(r'<li id="amendment-%s">[\s\S]*?</li>' % re.escape(n), h)
+    for n in ("2026-0001h", "2026-0002h", "2026-0003s", "2026-9999h", "2026-0004s"):
+        assert item(n), f"amendment {n} is not listed with its number: {h[-1500:]}"
+    a = item("2026-0001h").group(0)
+    assert "Committee Amendment 2026-0001h</button>" in a and ">Committee</span>" not in a and ">Adopted</span>" in a \
+        and "Feb 10, 2026 · Voice Vote" in a, f"the committee's adopted amendment: {a[:700]}"
+    f = item("2026-0002h").group(0)
+    assert "Floor Amendment 2026-0002h</button>" in f and ">Floor</span>" not in f and ">Rejected</span>" in f and "Rep. Ames · Feb 10, 2026 · Roll Call" in f \
+        and ">Adopted<" not in f, f"the floor's rejected amendment: {f[:700]}"
+    p = item("2026-0003s").group(0)
+    assert "class=\"chip" not in p and ">Amendment 2026-0003s</button>" in p, f"a docket line that says only 'Amendment' with no outcome drew a chip: {p[:500]}"
+    u = item("2026-9999h").group(0)
+    assert "class=\"chip" not in u and "Mar" not in u, f"an amendment the docket does not name drew facts: {u[:500]}"
+    d4 = item("2026-0004s").group(0)
+    assert "Floor Amendment 2026-0004s</span>" in d4 and ">Floor</span>" not in d4 and ">Adopted</span>" in d4 and "Sen. Birdsell" in d4 \
+        and "<details" in d4 and '<a href="/laws/91-a#s2" class="rsa">RSA 91-A:2</a>' in d4, \
+        f"the docket-only amendment: {d4[:700]}"
+    assert "Amendment of Feb 5, 2026</button>" in h, "an amendment with no number lost its day label"
+    order = [m.group(1) for m in re.finditer(r'<li id="amendment-([^"]+)">', h)]
+    assert order == ["2026-0001h", "2026-0002h", "2026-0003s", "2026-9999h", "2026-0004s", "2026-0005s"], (
+        f"the docket's order is not kept, the unnamed after it: {order}")
+    d5 = item("2026-0005s").group(0)
+    assert "Committee Amendment 2026-0005s</span>" in d5 and "Adopted" not in d5 and "Rejected" not in d5 \
+        and "Its text is not on file here" in d5, f"the docket-only amendment with no text: {d5[:500]}"
+    # THE LINKS
+    assert h.count('<a href="/laws/91-a#s2" class="rsa">RSA 91-A:2</a>') >= 6 and "/laws/999" not in h, (
+        "the statutes of the full text or of the amendments are not linked, or an unknown one is")
+    assert '<ins class="vins"><a href="/laws/91-a#s2" class="rsa">RSA 91-A:2</a>, II</ins>' in h, (
+        "a citation in an added run is not linked in the document")
+    assert "data-for=" not in h and "rs-tm" not in h, "a definition pop-up was drawn in a bill's text"
+    bare = got["bare"].split("The Amendments Themselves")[-1]
+    assert ">Amendment 2026-0001h</button>" in bare and 'class="chip' not in bare, (
+        "with no docket row the tab attributed an origin or an outcome")
+    assert 'class="rsa">RSA 91-A:2</a> here' in got["runs"] and '<ins>new <a href="/laws/91-a#s2" class="rsa">RSA 91-A:2' \
+        in got["runs"], f"the changes excerpt does not link a citation: {got['runs'][600:1300]}"
+    return "ok", ("an amendment is its number with the docket's committee or floor and adopted or rejected, "
+                  "nothing where the docket says none; the statutes in its text and the versions' are links")
+
+
+@check("build", "build_version_links numbers each amendment from its own text and names every statute a "
+                "bill's texts cite, writes the same again on a second run, and build_all runs it after "
+                "build_bill_versions", needs=("build_version_links",))
+def _version_links_step(VL):
+    """The Bill Text tab's two needs from the version indexes (8 November
+    2026): an amendment's number, to find the docket's word on it, and the
+    statutes the texts cite, to link them. On a bill of two versions and
+    three amendments: the number is the first of its shape in the text as
+    printed (a committee of conference's keeps its case), none where the text
+    prints none; a citation of a statute becomes a link and a session law
+    ("RSA 2025, 141:1") does not; the index's other fields are untouched; a
+    second pass changes nothing; and the step stands after build_bill_versions
+    in build_all, which writes the files it merges into."""
+    root = Path(tempfile.mkdtemp())
+    try:
+        f = root / "versions" / "2026"
+        f.mkdir(parents=True)
+        (f / "HB9.0.txt").write_text("Amend RSA 91-A:2, II by adding", encoding="utf-8")
+        (f / "HB9.1.txt").write_text("and RSA 2025, 141:1 and RSA 999", encoding="utf-8")
+        (f / "HB9.a0.txt").write_text("March 3, 2026 2026-0695h 11/08 Amendment to HB 9", encoding="utf-8")
+        (f / "HB9.a1.txt").write_text("June 2, 2026 2026-2109-CofC 08/07 Committee of Conference Report",
+                                      encoding="utf-8")
+        (f / "HB9.a2.txt").write_text("An amendment that prints no number", encoding="utf-8")
+        old = {"bill": "HB9", "year": "2026",
+               "versions": [{"title": "A"}, {"title": "B"}],
+               "amendments": [{"date": "d", "chars": 1, "text_url": f"/versions/2026/HB9.a{j}.txt"}
+                              for j in range(3)], "steps": []}
+        new = VL.linked(old, f, "HB9")
+        nums = [a.get("num") for a in new["amendments"]]
+        assert nums == ["2026-0695h", "2026-2109-CofC", None], f"the numbers read from the texts: {nums}"
+        cites = new.get("rsa") or {}
+        assert "RSA 91-A:2" in cites and cites["RSA 91-A:2"].endswith(("#s2", "-2.htm")), f"the citations: {cites}"
+        assert not any("2025" in k for k in cites), f"a session law was linked as a statute: {cites}"
+        assert new["versions"] == old["versions"] and new["steps"] == [] and new["bill"] == "HB9", (
+            "a field this step does not own changed")
+        assert VL.linked(new, f, "HB9") == new, "a second pass changed the index"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    steps = [s for s in re.findall(r'\["(build_bill_versions\.py|build_version_links\.py)"',
+                                   Path("build_all.py").read_text(encoding="utf-8"))]
+    assert steps == ["build_bill_versions.py", "build_version_links.py"], (
+        f"build_all does not run build_version_links straight after build_bill_versions: {steps}")
+    return "ok", ("amendments numbered from their own text, statutes cited named and linked, a second run "
+                  "writes nothing, and the step follows build_bill_versions")
 
 
 @check("frontend", "Testify takes a hearing a Senate committee's report dates apart from the docket as the "
@@ -83612,7 +85219,7 @@ def _home_says_each_once(BP, chrome):
         and js.count("youtube") == 1 and "ytimg" not in js, (
             "HOME_JS draws into #session, or asks YouTube for more than the player")
     hand = re.search(r'document\.addEventListener\("click",e=>\{\s*const st=e\.target\.closest&&'
-                     r'e\.target\.closest\("#session \[data-embed\]"\);.*?\n\}\);', js, re.S)
+                     r'e\.target\.closest\("#session \[data-embed\], \.wbrec \[data-embed\]"\);.*?\n\}\);', js, re.S)
     assert hand, "HOME_JS has no handler that turns Recent Session Days' Play into its player"
     # The footer keeps the day the data was rebuilt, on every page.
     assert 'getElementById("built")' in chrome.FOOT_JS and "Data rebuilt" in chrome.FOOT_JS, (
@@ -83662,7 +85269,7 @@ def _home_says_each_once(BP, chrome):
         "parentNode:{querySelector:q=>q==='iframe'?frame:null}};"
         "document.activeElement=had?st:{};"
         "heard.forEach(([t,f])=>t==='click'&&f({target:{closest:q=>"
-        "inside&&q==='#session [data-embed]'?st:null}}));"
+        "inside&&q==='#session [data-embed], .wbrec [data-embed]'?st:null}}));"
         "return {html:st.outerHTML||null,focus:n};};"
         "process.stdout.write(JSON.stringify({had:press(true,true),not:press(false,true),"
         "away:press(true,false)}));")
@@ -83720,11 +85327,11 @@ def _home_finder_suggests_towns():
         and "findDraw(v,HQ)" in js and 'id="hqsay"' in page, (
             "the home box does not draw with find.js's findDraw into its own ids")
     # GO IS SEARCH (16 October 2026): Return does what the box's Search button
-    # does, but for a bill number, which opens the bill as the header does.
-    assert "location.href=first&&bill?first.href:hqAddr(hq.value);" in js \
-        and 'const bill=typeof findBill==="function"&&findBill(hq.value);' in js \
-        and "location.href=first?first.href:hqAddr(hq.value);" not in js, (
-            "the home box's Return takes the first row again, where the reader asked for results")
+    # does -- and since 9 November 2026 for a bill number too, as the header's
+    # box has since the 8th (Alice: "Home search opens results").
+    assert "location.href=hqAddr(hq.value);" in js \
+        and "findBill(hq.value)" not in js and "first.href" not in js, (
+            "the home box's Return opens a row or a bill, where the reader asked for results")
     assert "if(opening)hqLift();" in js, "the home box's rows open under a phone's keyboard again"
     fj = Path("src/pages/find.js").read_text(encoding="utf-8").replace("\r\n", "\n")
     assert 'const FIND_IDS={out:"findout",box:"findq",clear:"findclear",say:"findsay"};' in fj \
@@ -84132,7 +85739,7 @@ def _town_finder_words(BP):
         f"the town finder lists {towns(t['dover'])} for 'dover', {towns(t['ham'])} for 'ham' and "
         f"{towns(t['hampton'])} for 'hampton': a town is matched from the start of a word")
     opened = got["town"]["opened"]
-    assert all(f'href="town/concord-ward-{w}.html"' in opened for w in (1, 2, 3)) \
+    assert all(f'href="town/concord-ward-{w}"' in opened for w in (1, 2, 3)) \
         and "town/concord-ward-" not in got["none"]["typed"]["concord"], (
         "/officials?town=Concord does not arrive with Concord's wards open, or a city typed "
         f"opens them unasked: {opened[:300]!r}")
@@ -84319,7 +85926,7 @@ def _officials_heads_and_judges():
     # plain where the build has no such page.
     tied = [r for r in named if r.get("member")]
     for r in tied:
-        chip = f'<span class="mchip p-X" translate="no"><a href="legislator/{_html.escape(r["member"])}.html">'
+        chip = f'<span class="mchip p-X" translate="no"><a href="legislator/{_html.escape(r["member"])}">'
         assert chip in OT.executive(off, lambda s: True), f"{r['name']} is not their member chip"
         assert chip not in OT.executive(off, lambda s: False), (
             f"{r['name']} is linked to a member page the build does not have")
@@ -85599,7 +87206,8 @@ process.stdout.write("\n@@" + JSON.stringify(out));
             "way to that meeting: " + re.sub(r"<[^>]+>", " ", dv)[:300])
     # THE MOMENTS ARE THE MEETINGS TAB'S OWN BUTTONS, byte for byte.
     det = flat["vid1"][flat["vid1"].index('class="vwdetin"'):]
-    vj = re.search(r'<span class="mjumps">(.*?)</span><span class="vwbt">', det).group(1)
+    vj = re.search(r'<span class="vwmom"><span class="mjumps">(.*?)</span>(?:<span class="vwout">.*?</span>)?</span>'
+                   r'<span class="vwbt">', det).group(1)
     day = flat["meetings"][flat["meetings"].index('id="day-2026-02-03"'):]
     mj = re.search(r'<span class="mjumps">(.*?)</span></div>', day).group(1)
     assert vj == mj and "approximate" in vj and "|150" in vj, (
@@ -86354,7 +87962,8 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     # A line a bill: the number, then its moments, then its title; in the order
     # the recording reaches them, a bill with no moment after; each once.
     lines = re.findall(r'<li(?: class="vwrest")?><a class="vwbn" href="[^"]*">([^<]*)</a>'
-                       r'(?:<span class="mjumps">(.*?)</span>)?<span class="vwbt">([^<]*)</span></li>', one)
+                       r'(?:<span class="vwmom">(?:<span class="mjumps">(.*?)</span>)?(?:<span class="vwout">.*?</span>)?</span>)?'
+                       r'<span class="vwbt">([^<]*)</span></li>', one)
     assert [(n, t) for n, _j, t in lines] == [("HB 1001", "the title of HB1001"), ("HB 1442", "the title of HB1442"),
                                              ("HB 675-FN-A-LOCAL", "the title of HB675"),
                                              ("HB 1203", "the title of HB1203")] and one.count('class="vwbn"') == 4, (
@@ -86381,8 +87990,9 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     at = css.find(".vwbills li{display:flex")
     phone = _braced(css[css.rfind("@media (max-width:45em){", 0, at):], "@media (max-width:45em){") if at >= 0 else ""
     assert re.search(r"\n\.vwbn\{grid-column:1;", css) and re.search(r"\n\.vwbt\{grid-column:2;", css) and \
-        "display:flex;flex-wrap:wrap" in phone and ".vwbills .mjumps{display:contents}" in phone and \
-        ".vwbt{flex:1 1 100%}" in phone, (
+        "display:flex;flex-wrap:wrap" in phone and ".vwbills .mjumps,.vwbills .vwmom{display:contents}" in phone and \
+        ".vwbt{flex:1 1 100%}" in phone and \
+        re.search(r"\n\.vwbills \.vwmom\{grid-column:2;display:flex;flex-wrap:wrap", css), (
             "app.css: a bill's moments are not beside its number with its title under them, on a wide screen "
             "or a phone")
     # THE NUMBERS' COLUMN IS THE LONGEST NUMBER'S, THE SAME DOWN THE LIST
@@ -86405,7 +88015,7 @@ process.stdout.write("\n@@" + JSON.stringify(out));
             "app.css: a bill's number is in a fixed column, or one as wide as its own line's, where a long "
             "number runs under its moments or the moments do not start on one line; or a number is not on "
             "its line's first baseline")
-    assert '<a class="vwbn" href="bill/2026/hb675.html">HB 675-FN-A-LOCAL</a>' in one, (
+    assert '<a class="vwbn" href="bill/2026/hb675">HB 675-FN-A-LOCAL</a>' in one, (
         "a long number is not drawn whole in the description")
     # A LINK IN THE PLAYER'S CAPTION OR UNDER IT IS 24px TALL (the review of
     # 30 October 2026; WCAG 2.5.8): "On YouTube" in the caption and the links
@@ -86428,6 +88038,200 @@ process.stdout.write("\n@@" + JSON.stringify(out));
                   "Meetings tab's own buttons, title -- in the order the recording reaches them, the numbers "
                   "in a column as wide as the longest and on their lines' first baseline; a recording "
                   "with no moment says so; the caption's and the links' under the player 24px tall")
+
+
+@check("frontend", "a recording's bills on a committee's Videos tab say what the committee did to each at THAT "
+                   "meeting -- the chip and the vote as counted -- and nothing where it voted nothing there")
+def _videos_say_the_vote():
+    """The owner, 8 November 2026 (walking a test build): beside each bill's
+    moment on a committee's Videos tab, the vote and its outcome, in the
+    site's chip and the counted tally, "Inexpedient to Legislate (18–0)",
+    from the record for THAT meeting. The meeting's `outcomes` (committee_acts.
+    outcome) already hold it as "voted" with `votes`; a bill heard and not
+    voted that day, or voted on another day (outcome "no vote" with `voted`),
+    gets nothing extra, and never the other day's vote."""
+    item = lambda bill, kind, start: {
+        "bill": bill, "n": bill[:2] + " " + bill[2:], "title": f"the title of {bill}", "year": 2026,
+        "term": "2025-2026", "kind": kind, "video_id": "VID1", "start": start, "state": "stated",
+        "time": "10:00", "venue": "LOB 302"}
+    items = [item("SB459", "executive session", 100), item("SB414", "executive session", 900),
+             item("SB500", "public hearing", 1500), item("SB600", "executive session", 2000)]
+    act = lambda rec, code, y, n: {"act": "report", "committee": "Judiciary", "date": "2026-04-08",
+                                   "dated": "vote", "recommendation": rec, "code": code, "yeas": y, "nays": n,
+                                   "meeting": "2026-04-08"}
+    outcomes = [
+        {"bill": "SB459", "kinds": ["executive session"], "outcome": "voted",
+         "votes": [act("Inexpedient to Legislate", "ITL", 18, 0)]},
+        {"bill": "SB414", "kinds": ["executive session"], "outcome": "voted",
+         "votes": [act("Ought to Pass with Amendment", "OTPA", 10, 8)]},
+        {"bill": "SB500", "kinds": ["public hearing"], "outcome": "heard"},
+        {"bill": "SB600", "kinds": ["executive session"], "outcome": "no vote",
+         "voted": {"act": "report", "date": "2026-05-01"}}]
+    cmte = {"code": "H10", "name": "Judiciary", "chamber": "H", "bills": {"2025-2026": []},
+            "sessions": [{"date": "2026-04-08", "term": "2025-2026", "video_id": "VID1", "items": items,
+                          "outcomes": outcomes}],
+            "recordings": [{"id": "VID1", "date": "2026-04-08", "term": "2025-2026"}]}
+    harness = _HEARD_PRELUDE + r"""
+load("renderPage, recordTerms, setPage: (p) => { PAGE = p; }, setTab: (t) => { PAGE_TAB = t; },"
+  + " setUp: (u) => { UPCOMING = u; }");
+const fx = JSON.parse(fs.readFileSync("./fx.json", "utf8"));
+const results = document.querySelector("#results");
+const out = {};
+try {
+  s.setUp([]);
+  const terms = s.recordTerms("committee", fx);
+  s.setPage({kind: "committee", data: fx, terms, term: terms[0], status: "", vfilter: "", vshow: 0, bshow: 0,
+    mshow: 0, vid: "VID1", mopen: {}});
+  s.setTab(2); s.renderPage(); out.html = results.innerHTML;
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").slice(0, 300); }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+    got = _node_app(harness, {"fx.json": json.dumps(cmte)})
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert "threw" not in got, "the Videos tab would not draw: " + got["threw"]
+    html = re.sub(r"[ \t\r\n]+", " ", got["html"])
+    html = html[html.index('class="vwbills"'):]
+    line = lambda n: re.search(r'<li[^>]*><a class="vwbn"[^>]*>' + n + r'</a>(.*?)</li>', html).group(1)
+    text = lambda h: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", h)).strip()
+    one, two = line("SB 459"), line("SB 414")
+    assert 'class="vwout"' in one and "Inexpedient to Legislate" in text(one) and "(18–0)" in text(one), (
+        f"SB 459's line does not say what the committee voted at the meeting, and by how many: {text(one)!r}")
+    assert "Ought to Pass with Amendment" in text(two) and "(10–8)" in text(two) and \
+        'class="chip cstat s-law"' in two.replace("chip-m ", "").replace("chip-s ", ""), (
+            f"SB 414's line does not say its vote in the recommendation's chip: {text(two)!r}")
+    for n in ("SB 500", "SB 600"):
+        assert "vwout" not in line(n), (
+            f"{n}, which the committee did not vote at this meeting, shows a vote (a hearing takes none, and "
+            f"another day's vote is not this meeting's): {text(line(n))!r}")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    assert re.search(r"\n\.vwout\{grid-column:2;", css), "app.css: the vote beside a bill's moments has no rule"
+    return "ok", "a voted bill's line carries the chip and counted tally; a hearing's or another day's vote shows none"
+
+
+@check("frontend", "a session day's moment for a bill carries what the chamber did to it that day, as the "
+                   "vote's chip with the counted tally, and nothing where the day recorded no outcome")
+def _session_moment_says_the_vote():
+    """The owner, 8 November 2026: on a session day's page the moment of each
+    bill in the floor recording says, beside the time, what happened to it:
+    the chip and "(202–169)", the shape the home page's Latest activity
+    gives a report (build_pages.did_html). From the day's own votes only
+    (build_session_pages.did_chip, the same `deciding` the day's index reads);
+    a voice vote has a chip and no tally."""
+    import types
+    sys.path.insert(0, str(Path("src/pages").resolve()))
+    import build_session_pages as BS
+    vote = lambda action, carried, y, n: types.SimpleNamespace(
+        action=action, carried=carried, yeas=y, nays=n, counted=y is not None)
+    chip_ = BS.did_chip([vote("Inexpedient to Legislate", True, 202, 169)], "HB1", "H")
+    assert "Motion Passed: Bill Killed" in chip_ and '<span class="latvote">(202–169)</span>' in chip_, (
+        f"a counted floor vote is not said with its tally: {chip_!r}")
+    failed = BS.did_chip([vote("Ought to Pass", False, 150, 190)], "HB1", "H")
+    assert "Motion Failed" in failed and "(150–190)" in failed, f"a failed vote is not said: {failed!r}"
+    voice = BS.did_chip([vote("Ought to Pass", True, None, None)], "HB1", "H")
+    assert "Motion Passed" in voice and "latvote" not in voice, f"a voice vote carries a tally: {voice!r}"
+    assert BS.did_chip([], "HB1", "H") == "", "a day with no vote says something"
+    m = BS.moment_html({"v": "abc", "from": 65, "end": 90, "s": "floor_precise"}, "2026-02-12",
+                       lambda x: x, chip_)
+    assert m.index('class="jump"') < m.index('class="mdid"') and "(202–169)" in m, (
+        "the day's moment does not carry the outcome beside its time")
+    assert 'class="mdid"' not in BS.moment_html({"v": "abc", "from": 65}, "2026-02-12", lambda x: x), (
+        "a moment with no outcome draws an empty one")
+    return "ok", "a day's moment carries the vote's chip and counted tally, none for a voice vote or a day without one"
+
+
+@check("frontend", "the bill search can be filtered by the prime sponsor's party, as recorded for the bill's "
+                   "term, and the options add up to the list")
+def _search_party_filter():
+    """The owner, 8 November 2026: a Sponsor filter by party (Republican,
+    Democrat, other as the record has them). The index row's `sponsor_party`
+    is the party the roster gives the sponsor for the bill's own term
+    (build_site_v2); app.js's `party` facet (partyOfSponsor) puts every bill
+    under exactly one name -- "Party not on file" for a bill naming no
+    sponsor -- so the counts add up, and a ticked party keeps only its
+    bills."""
+    rows = [{"id": f"HB{i}", "term": "2025-2026", "sponsor": f"P{i}", "sponsor_party": p}
+            for i, p in enumerate("RRRDDI", 1)] + [{"id": "HB9", "term": "2025-2026", "sponsor": ""},
+                                                    {"id": "HB10", "term": "2025-2026", "sponsor": "Q",
+                                                     "sponsor_party": "L"}]
+    harness = _HEARD_PRELUDE + r"""
+load("setIdx: (r) => { IDX = r; }, matches, sel, facetVals, partyOfSponsor");
+const rows = JSON.parse(fs.readFileSync("./rows.json", "utf8"));
+const out = {};
+try {
+  s.setIdx(rows);
+  out.of = rows.map(b => s.partyOfSponsor(b));
+  const n = () => rows.filter(b => s.matches(b)).map(b => b.id);
+  out.all = n().length;
+  s.sel.party.add("Democrat"); out.dem = n();
+  s.sel.party.add("Republican"); out.demrep = n().length;
+  s.sel.party.clear(); s.sel.party.add("Party not on file"); out.none = n();
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").slice(0, 300); }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+    got = _node_app(harness, {"rows.json": json.dumps(rows)})
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert "threw" not in got, "the party filter would not run: " + got["threw"]
+    assert got["of"] == ["Republican"] * 3 + ["Democrat"] * 2 + ["Independent", "Party not on file", "Libertarian"], (
+        f"a bill is not under its sponsor's party as recorded: {got['of']}")
+    assert got["all"] == 8 and got["dem"] == ["HB4", "HB5"] and got["demrep"] == 5 and got["none"] == ["HB9"], (
+        f"a ticked party does not keep exactly its bills: {got}")
+    src = Path("src/pages/app.js").read_text(encoding="utf-8")
+    assert 'fgroup("party",' not in src and 'data-f="party"' in src and '"party"]' in src, (
+        "the party is not a choice inside the Sponsor group, or not kept in the address")
+    # The Sponsor group draws the party choice inside itself, after its
+    # co-sponsorship box, and its badge counts a party ticked.
+    h2 = _HEARD_PRELUDE + r"""
+load("fgroup, sel, openGroups");
+const out = {};
+try {
+  s.sel.party.add("Democrat");
+  const extra = '<div class="fsub" id="x">PARTYBOX</div>';
+  out.html = s.fgroup("sponsor", "Sponsor", ["Ann"], {Ann: 1}, true, null, null, extra, s.sel.party.size);
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+    g2 = _node_app(h2, {})
+    assert g2 is not None and "threw" not in g2, f"the Sponsor group would not draw: {g2}"
+    html = g2["html"]
+    assert html.index('id="cosp"') < html.index("PARTYBOX") < html.index("</div></div>"), (
+        "the party choice is not inside the Sponsor group after its co-sponsorship box")
+    assert '<span class="badge">1</span>' in html, "the Sponsor badge does not count a ticked party"
+    return "ok", "bills fall under their sponsor's party as recorded, and a ticked party keeps exactly its bills"
+
+
+@check("frontend", "the Sponsor filter matches only the bills a person PRIME sponsored unless the reader "
+                   "ticks \"Include co-sponsored bills\", which is off by default")
+def _sponsor_filter_prime_only():
+    """Alice, 8 November 2026: "Sorting by sponsor in the filter should allow
+    you to check off whether to include co-sponsorships, by default it should
+    only be prime sponsored bills." It had matched the prime sponsor or any
+    co-sponsor, always (facetVals: [b.sponsor, ...b.cosp])."""
+    rows = [{"id": "HB1", "term": "2025-2026", "sponsor": "Ann Lee", "cosp": ["Bo Ray"]},
+            {"id": "HB2", "term": "2025-2026", "sponsor": "Bo Ray", "cosp": ["Ann Lee"]},
+            {"id": "HB3", "term": "2025-2026", "sponsor": "Cy Fox"}]
+    harness = _HEARD_PRELUDE + r"""
+load("setIdx: (r) => { IDX = r; }, matches, sel, setCosp: (v) => { withCosp = v; }");
+const rows = JSON.parse(fs.readFileSync("./rows.json", "utf8"));
+const out = {};
+try {
+  s.setIdx(rows);
+  const n = () => rows.filter(b => s.matches(b)).map(b => b.id);
+  s.sel.sponsor.add("Ann Lee"); out.off = n();
+  s.setCosp(true); out.on = n();
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").slice(0, 300); }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+    got = _node_app(harness, {"rows.json": json.dumps(rows)})
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert "threw" not in got, "the Sponsor filter would not run: " + got["threw"]
+    assert got["off"] == ["HB1"] and got["on"] == ["HB1", "HB2"], (
+        f"a sponsor chosen keeps not exactly their prime bills (off) and prime plus co-sponsored (ticked): {got}")
+    src = Path("src/pages/app.js").read_text(encoding="utf-8")
+    assert 'id="cosp"' in src and "Include co-sponsored bills" in src, "the Sponsor filter has no co-sponsor checkbox"
+    return "ok", "a chosen sponsor keeps their prime bills; co-sponsored ones only when ticked"
 
 
 @check("frontend", "the committees index says its counts of bills and sessions are every "
@@ -86943,7 +88747,7 @@ def _member_signposts(BLP):
     # step before it says Former Legislators, so "Former Representative"
     # there said "former" twice. The heading keeps "Former Representative".
     for h, office in ((left, "Representative"), (left_s, "Senator")):
-        assert trail(h) == ('<li><a href="officials.html">Officials</a></li><li><a href="directory/'
+        assert trail(h) == ('<li><a href="officials">Officials</a></li><li><a href="directory/'
                             'former-legislators">Former Legislators</a></li><li aria-current="page">'
                             f'{office}</li>'), trail(h)
     assert '<h1 class="rh1">Former Representative Michael Gunski</h1>' in left, (
@@ -87693,6 +89497,386 @@ def _rail_law_stop_dated(build_site_v2):
                   "7 January 2026, when it was killed, on the card and the page alike")
 
 
+# THE CALENDAR AND LEARN'S BY THE NUMBERS IN SPANISH (9 November 2026, the
+# person's "more of the site in Spanish where feasible"). The Calendar's week
+# pages, their month files and their script's words, and the page of statistics,
+# are built in the language beside the English ones; what is held here is that
+# they are, that nothing the site wrote is left in English among them, that the
+# English pages gained only the way to the Spanish ones, and that the script
+# that makes a page a calendar says its dates, counts and sentences in Spanish.
+# The record's own words stay English (i18n.py) and are marked.
+
+def _visible_text(page, keep_en=False):
+    """The words of a page's <main>, without scripts, styles and -- unless
+    keep_en -- whatever is marked lang="en"."""
+    m = re.search(r"<main.*?</main>", page, re.S)
+    t = m.group(0) if m else page
+    t = re.sub(r"<(script|style|template)\b.*?</\1>", " ", t, flags=re.S)
+    if not keep_en:
+        t = re.sub(r'<(\w+)\b[^>]*\blang="en"[^>]*>.*?</\1>', " ", t, flags=re.S)
+    return " ".join(__import__("html").unescape(re.sub(r"<[^>]+>", " ", t)).split())
+
+
+@check("frontend", "the Calendar is built in Spanish beside the English, week by week, and English gains only the way to it",
+       needs=("build_calendar", "calendar_documents", "i18n"))
+def _calendar_in_spanish(BC, CD, i18n):
+    """/es/calendar and every week's page under /es/calendar/, with a month
+    file of its own (es/calendar/data/), the frame, controls and sentences in
+    Spanish and the cards as build_pages.cal_days draws them in it; the
+    footer's language list and <html>'s data-alt lead each version to the
+    other, and the header's Calendar tab leads Spanish pages to the Spanish
+    Calendar. Nothing the site wrote is left in English on the Spanish page
+    outside what is marked lang="en"; the English pages differ from before
+    only by data-alt-es and the footer's link to the Spanish version."""
+    if not i18n.has("es", "calendar.html"):
+        raise AssertionError("i18n.PAGES has no Spanish Calendar")
+    shared, base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    if not (site / "calendar.html").exists():
+        return "skip", "the fixture has no Calendar"
+    en_weeks = sorted(p.name for p in (site / "calendar").glob("2*.html"))
+    es_weeks = sorted(p.name for p in (site / "es" / "calendar").glob("2*.html"))
+    assert en_weeks and en_weeks == es_weeks, (
+        f"English has {len(en_weeks)} week pages and Spanish {len(es_weeks)}: "
+        f"{sorted(set(en_weeks) ^ set(es_weeks))[:5]}")
+    assert (site / "es" / "calendar.html").exists(), "the Spanish Calendar's own page is missing"
+    en_m = sorted(p.name for p in (site / "calendar" / "data").glob("2*.json"))
+    es_m = sorted(p.name for p in (site / "es" / "calendar" / "data").glob("2*.json"))
+    assert en_m and en_m == es_m, f"month files: English {len(en_m)}, Spanish {len(es_m)}"
+    es = (site / "es" / "calendar.html").read_text(encoding="utf-8")
+    en = (site / "calendar.html").read_text(encoding="utf-8")
+    assert '<html lang="es"' in es and 'data-alt-en="/calendar"' in es, (
+        "the Spanish Calendar does not name its English version on <html>")
+    assert 'data-alt-es="/es/calendar"' in en and \
+        'lang="es" data-href="/es/calendar"' in en, (
+            "the English Calendar does not lead to the Spanish one: <html>'s data-alt-es and "
+            "the footer's language list")
+    assert 'lang="en" data-href="/calendar"' in es, (
+        "the Spanish Calendar's footer does not lead back to the English one")
+    assert 'window.GR_LANG="es"' in es and "calp.prev_week" in es, (
+        "the Spanish Calendar carries no words for its script (i18n.page_words)")
+    # THE HEADER'S TAB. A Spanish page's Calendar tab leads to the Spanish one.
+    home = (site / "es" / "index.html").read_text(encoding="utf-8")
+    assert 'href="/es/calendar.html"' in home or 'href="/es/calendar"' in home, (
+        "the header on a Spanish page still leads to the English Calendar")
+    assert 'class="calmore calall"><a href="es/calendar"' in home, (
+        "Coming up's 'See the full calendar' on the Spanish home page leads to the English Calendar")
+    # THE ENGLISH PAGES GAINED NOTHING BUT THE WAY TO THE SPANISH ONES: a
+    # week's page with that way taken out is the week's page as it was, which
+    # is what build_calendar.week_page writes when `alts` is empty.
+    # Names of the Calendar's own words that must not stand on a Spanish page
+    # outside lang="en": every "calp." word of the code, in English.
+    words, _p = i18n.code_words()
+    english = [w["en"] for k, w in words.items() if k.startswith("calp.")
+               and len(w["en"].split()) >= 3 and "{" not in w["en"] and "&" not in w["en"]]
+    seen = _visible_text(es)
+    left = [w for w in english if w in seen]
+    assert not left, f"the Spanish Calendar says in English: {left[:4]}"
+    for lead in ("Skip to the schedule", "Filter the calendar", "Previous Week", "Both chambers",
+                 "Study committee meetings only"):
+        assert lead not in seen, f"the Spanish Calendar's {lead!r} is in English"
+    assert "La semana del" in seen and "lunes" in seen and "viernes" in seen, (
+        "the Spanish Calendar's heading and days are not in Spanish")
+    # The week's own days, in Spanish: "lunes, 16 de febrero".
+    d = BC.datetime.date(2026, 2, 16)
+    assert BC.day_words(d.isoformat(), BC.datetime.date(2026, 1, 1), "es") == (
+        "lunes, 16 de febrero", ""), BC.day_words(d.isoformat(), BC.datetime.date(2026, 1, 1), "es")
+    assert BC.day_words("2026-02-11", BC.datetime.date(2026, 2, 10), "es")[1] == "mañana"
+    assert BC.span_words(d, d + BC.datetime.timedelta(days=4), lang="es") == "16–20 de febrero de 2026"
+    # Each Spanish month file is the English one's, its cards in Spanish.
+    one = en_m[len(en_m) // 2]
+    je = json.loads((site / "calendar" / "data" / one).read_text(encoding="utf-8"))
+    js = json.loads((site / "es" / "calendar" / "data" / one).read_text(encoding="utf-8"))
+    assert list(je["days"]) == list(js["days"]) and list(je["weeks"]) == list(js["weeks"]), (
+        f"{one}: the Spanish month holds other days or weeks than the English")
+    assert any(v["label"] != js["weeks"][k]["label"] for k, v in je["weeks"].items()), (
+        f"{one}: the Spanish month names its weeks as the English does")
+    # The English script and picker are the English ones, to the byte; the
+    # Spanish are the English with each pair put over it, once.
+    assert BC.week_js("en") is BC.WEEK_JS and CD.picker_js("en") is CD.PICKER_JS, (
+        "the English Calendar's scripts are not WEEK_JS and PICKER_JS as written")
+    assert BC.week_js("es") != BC.WEEK_JS and "tr(\"calp.prev_week\"" in BC.week_js("es")
+    assert CD.picker_js("es") != CD.PICKER_JS and 'tr("calp.cd_open"' in CD.picker_js("es")
+    return "ok", (f"{len(es_weeks)} week pages and {len(es_m)} month files in Spanish, each the "
+                  "English's counterpart, its words Spanish and the record's marked; English leads to it")
+
+
+# components.js first, as the page loads it and with no window, as every
+# harness here loads it; then the page's language and words, as the head
+# carries them, and the script.
+_CAL_ES_BEFORE = "globalThis.document={getElementById:function(){return null;}};\n"
+_CAL_ES_AFTER = 'globalThis.window=globalThis; globalThis.GR_LANG="es";\n'
+
+_CAL_ES_CHECK = r"""
+const C=globalThis.GRCAL, fs=require("fs"), fails=[];
+const ok=(c,m)=>{ if(!c) fails.push(m); };
+const eq=(a,b,m)=>{ if(a!==b) fails.push(m+": "+JSON.stringify(a)+" is not "+JSON.stringify(b)); };
+eq(C.dayWords("2026-02-16"),"lunes, 16 de febrero","a day");
+eq(C.weekLabel("2026-W08"),"16–20 de febrero de 2026","a week");
+eq(C.weekLabel("2026-W08","medium"),"16–20 feb. 2026","a week, short");
+eq(C.relWord("2026-02-17","2026-02-16"),"mañana","tomorrow");
+eq(C.relWord("2026-02-16","2026-02-16"),"hoy","today");
+eq(C.relWord("2026-02-19","2026-02-16"),"en 3 días","in days");
+const T=(total,shown,seen,study)=>({total:total,shown:shown,seen:seen,study:study});
+const wk=tr("calp.where_week","this week");
+eq(C.countLine(T(5,5,5,0),wk),"5 reuniones esta semana.","a count");
+eq(C.countLine(T(1,1,1,0),wk),"1 reunión esta semana.","one meeting");
+eq(C.countLine(T(0,0,0,0),wk),"No hay reuniones esta semana.","no meetings");
+eq(C.countLine(T(5,3,3,0),wk),"3 de 5 reuniones se muestran.","some shown");
+eq(C.countLine(T(4,0,0,0),wk),"Ninguna de las 4 reuniones esta semana coincide.","none match");
+eq(C.countLine(T(5,3,3,2),wk),"3 de 5 reuniones se muestran. 2 reuniones de comités de estudio están ocultas.","study hidden");
+eq(C.countLine(T(3,0,0,3),wk),"3 reuniones de comités de estudio están ocultas.","study alone");
+eq(C.emptyWords([],C.defaults()),"No hay reuniones","an empty day");
+const cards=JSON.parse(fs.readFileSync(process.argv[2],"utf8")), en=JSON.parse(fs.readFileSync(process.argv[3],"utf8"));
+const names=(j)=>[].concat(...Object.keys(j.days).map(d=>C.parseDay(j.days[d]).cards.map(e=>e.name))).sort();
+const a=names(cards), b=names(en);
+ok(a.length>0 && a.length===b.length,"a month's cards parse the same in Spanish: "+a.length+" and "+b.length);
+// A session day and a conference are named in the page's words; a committee's name is the record's.
+const said=(n)=>/^(Día de sesión|Comité de conferencia)/.test(n), wrote=(n)=>/^(House Session Day|Senate Session Day|Committee of conference)/.test(n);
+const ra=a.filter(n=>!said(n)), rb=b.filter(n=>!wrote(n));
+ok(ra.length===rb.length && ra.every((n,i)=>n===rb[i]),"a committee's name is not read as the record has it in Spanish too: "+JSON.stringify(ra.filter((n,i)=>n!==rb[i]).slice(0,3)));
+const grid=C.gridHtml({view:"2026-03",sel:"2026-03-09",focus:"2026-03-09",today:"2026-03-09",first:"2026-01-05",last:"2026-12-31",days:{},f:C.defaults()});
+ok(/aria-hidden="true">Lu<\/span><span class="sr">lunes<\/span>/.test(grid),"the grid's head is Lu, lunes...");
+ok(/sábado/.test(grid)&&/domingo/.test(grid),"the grid names Saturday and Sunday");
+const cell=C.cellHtml("2026-03-09",{first:"2026-01-05",last:"2026-12-31",days:{},f:C.defaults(),view:"2026-03",today:"2026-03-09",sel:"2026-03-09",focus:"2026-03-09"});
+ok(/lunes, 9 de marzo de 2026, cargando/.test(cell),"a day's name for a screen reader: "+cell.slice(-160));
+console.log(fails.length?fails.join("\n"):"OK");
+"""
+
+
+@check("frontend", "the Calendar's script says its dates, counts and sentences in Spanish, and reads a Spanish card as it reads an English one",
+       needs=("build_calendar", "i18n"))
+def _calendar_script_in_spanish(BC, i18n):
+    """WEEK_JS in node with the page's language set to Spanish and the words
+    the page would carry (i18n.words_js over week_js("es")): a day, a week and
+    a count in Spanish; a card drawn by cal_days in Spanish -- its committee's
+    name marked lang="en" -- is read as the English card is; and the grid names
+    its days in Spanish. The English script is held by the checks above it."""
+    node = _cal_node()
+    if not node:
+        return "skip", "node is not on PATH"
+    if not Path("src/pages/bills.html").exists():
+        return "skip", "bills.html is not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-calspanish-"))
+    try:
+        site, weeks, order, _u, _m = _cal_fixture(root)
+        import datetime as _dt
+        import contextlib
+        import io
+        today = _dt.date(*CAL_TODAY)
+        with contextlib.redirect_stdout(io.StringIO()):
+            BC.month_files(site, weeks, order, {}, {}, {}, today, lang="es")
+        js = BC.week_js("es")
+        words = i18n.words_js("es", js)
+        prog = root / "es.js"
+        prog.write_text(_CAL_ES_BEFORE + _components_js() + "\n" + _CAL_ES_AFTER + words + "\n" + js
+                        + _CAL_ES_CHECK, encoding="utf-8")
+        r = _run([node, str(prog), str(site / "es" / "calendar" / "data" / "2026-03.json"),
+                  str(site / "calendar" / "data" / "2026-03.json")],
+                 capture_output=True, text=True, encoding="utf-8", timeout=120)
+        out = ((r.stdout or "") + (r.stderr or "")).strip()
+        assert r.returncode == 0 and out.endswith("OK"), out[-1800:]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", "a day, a week, six counts and the grid said in Spanish; a Spanish card parsed as the English one"
+
+
+@check("frontend", "By the Numbers is built in Spanish: every section, its address kept, the record's words marked English",
+       needs=("learn_numbers", "build_civics", "i18n"))
+def _numbers_in_spanish(learn_numbers, build_civics, i18n):
+    """/es/learn/by-the-numbers holds the English page's sections under the
+    addresses the English page gives them, each heading and sentence in
+    Spanish and every figure the English page's own; a committee's name is
+    marked lang="en" as the record has it. The Spanish page is drawn from the
+    same code as the English (learn_numbers.body's lang), so a figure cannot
+    differ."""
+    if not i18n.has("es", "learn/by-the-numbers.html"):
+        raise AssertionError("i18n.PAGES has no Spanish By the Numbers")
+    shared, base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    en_p, es_p = site / "learn" / "by-the-numbers.html", site / "es" / "learn" / "by-the-numbers.html"
+    if not en_p.exists():
+        return "skip", "the fixture has no By the Numbers"
+    assert es_p.exists(), "the Spanish By the Numbers is not written"
+    en, es = en_p.read_text(encoding="utf-8"), es_p.read_text(encoding="utf-8")
+    ids = lambda t: re.findall(r'<section class="l-sec" id="([^"]+)"', t)
+    assert ids(en) == ids(es) and ids(en), (
+        f"the sections' addresses differ: {ids(en)} against {ids(es)}")
+    assert '<html lang="es"' in es and 'data-alt-en="/learn/by-the-numbers"' in es
+    assert 'data-alt-es="/es/learn/by-the-numbers"' in en and \
+        'lang="es" data-href="/es/learn/by-the-numbers"' in en, (
+            "the English page does not lead to the Spanish one")
+    seen = _visible_text(es)
+    for head in learn_numbers.HEADINGS:
+        if head in ("The Hearings with the Most Sign-Ins", "Constitutional Amendments Sent to the Voters"):
+            continue
+        assert head not in seen, f"the Spanish By the Numbers has {head!r} in English"
+    for word in ("Bills filed", "Became Law", "Interim Study", "How These Are Counted",
+                 "Hover over a term", "Filed per representative"):
+        assert word not in seen, f"the Spanish By the Numbers says {word!r} in English"
+    # The same figures: every number of a table's cells is the English page's.
+    cells = lambda t: re.findall(r'<td class="l-num">([^<]*)</td>', t)
+    assert cells(en) == cells(es), "a figure of the Spanish By the Numbers is not the English page's"
+    assert 'lang="en"' in es and 'House Commerce' in es and "House Commerce</span>" in es, (
+        "a committee's name on the Spanish page is not marked as the record's English")
+    return "ok", (f"{len(ids(es))} sections at the English addresses, {len(cells(es))} figures the "
+                  "English page's, the record's words marked")
+
+
+@check("frontend", "every section of By the Numbers renders in Spanish, from figures that make them all, with no English heading left",
+       needs=("learn_numbers", "site_read", "i18n"))
+def _numbers_spanish_sections(learn_numbers, SR, i18n):
+    """The fixture holds none of the files four of the page's sections need
+    (testimony, member votes, the voters' counts), so a Spanish page built from
+    it never draws them. This gives learn_numbers.body the figures the others
+    work out -- a stand-in for each, in the shapes their functions return --
+    and draws the whole page in both languages: fourteen sections each, the
+    same sections, none of English's headings or table heads left among
+    Spanish's, and English's body the same whether `lang` is given or not."""
+    from collections import Counter
+    t1, t2 = "2023-2024", "2025-2026"
+    idx = [{"term": t1, "id": "HB1", "year": 2023, "chip": "Became Law"},
+           {"term": t2, "id": "HB2", "year": 2025, "chip": "Died"}]
+    hear = {t2: [{"bill": "HB2", "year": "2025", "date": "2025-02-10", "total": 50, "support": 40,
+                  "oppose": 9, "neutral": 1, "committee": "House Judiciary", "on": "an amendment",
+                  "title": "relative to pears."},
+                 {"bill": "HB3", "year": "2026", "date": "2026-02-11", "total": 30, "support": 10,
+                  "oppose": 20, "neutral": 0, "committee": "", "on": "a non-germane amendment",
+                  "title": "relative to figs."}]}
+    ballot = {"rows": [
+        {"bill": "CACR1", "term": t1, "election": "2024-11-05", "yes": 700, "no": 300,
+         "source": "https://www.sos.nh.gov/x", "cite": "SOS 2024"},
+        {"bill": "CACR3", "term": t2, "election": "2999-11-05", "yes": None, "no": None},
+        {"bill": "CACR4", "term": t2, "election": "2025-11-05", "yes": None, "no": None}]}
+    mem = {"outcomes": learn_numbers.outcomes, "per_member": learn_numbers.per_member,
+           "referrals": learn_numbers.referrals, "signins": learn_numbers.signins,
+           "overturned": learn_numbers.overturned, "consent": learn_numbers.consent,
+           "committee_rates": learn_numbers.committee_rates, "passage": learn_numbers.passage,
+           "vetoes": learn_numbers.vetoes, "attendance": learn_numbers.attendance,
+           "_need": learn_numbers._need, "needs_more_than_majority": learn_numbers.needs_more_than_majority}
+    saved = (SR.bill_index_or_stop, SR.figures_term)
+    L = learn_numbers
+    narr = {t2: {"HB2": {"events": [{"type": "floor", "date": "2025-03-01", "vote_kind": "RC"},
+                                    {"type": "floor", "date": "2026-03-02", "vote_kind": "VV"}]}}}
+    tmp = Path(tempfile.mkdtemp(prefix="gr-numsstub-"))
+    try:
+        (tmp / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
+        (tmp / "rollcalls.json").write_text(json.dumps({t2: {"HB2": [
+            {"yeas": 200, "nays": 190, "body": "H", "question": "Ought to Pass",
+             "date": "2026-03-04", "year": 2026, "procedural": False}]}}), encoding="utf-8")
+        SR.bill_index_or_stop = lambda *a, **k: idx
+        SR.figures_term = lambda i: t2
+        L._need = lambda path, what: (hear if "testimony" in str(path) else {}
+                                      if "member_votes" in str(path) else ballot if "ballot" in str(path)
+                                      else {})
+        L.outcomes = lambda i: {t1: {"filed": 10, "Became Law": 4, "Died": 3, "Interim Study": 2, "other": 1},
+                                t2: {"filed": 20, "Became Law": 6, "Died": 9, "Interim Study": 2, "other": 3}}
+        L.per_member = lambda i: {t1: {"H": [800, 300], "S": [90, 40]}, t2: {"H": [700, 250], "S": [80, 30]}}
+        L.referrals = lambda i, n, t: {"House Commerce": (5, 2), "Senate Education": (3, 0)}
+        L.signins = lambda *a, **k: hear
+        L.overturned = lambda n: ({"H": (30, 3, 1), "S": (0, 0, 0)}, [("HB2", "H", "PASS", "KILL")])
+        L.consent = lambda n, r, t: ({"House Commerce": (12, 10), "Senate Education": (15, 4)},
+                                     {"H": Counter(kept=10, regular=3, removed=2), "S": Counter(kept=4, regular=1)})
+        L.committee_rates = lambda i, n, t: ({"House Commerce": (12, 6, 4), "Senate Education": (15, 7, 5)},
+                                             {"H": (12, 6, 4), "S": (15, 7, 5)})
+        L.passage = lambda i, n: {t1: {"passed": 10, "amended": 4, "conference": 1,
+                                       "dist": Counter({0: 5, 1: 3, 2: 1, 3: 1})},
+                                  t2: {"passed": 20, "amended": 12, "conference": 3,
+                                       "dist": Counter({0: 8, 1: 6, 2: 3, 4: 3})}}
+        L.vetoes = lambda rows: (30, 5, 3, 1, 1)
+        L.attendance = lambda v: {(t1, "H"): (30, 0.91), (t2, "S"): (25, 0.9)}
+        L.needs_more_than_majority = lambda b, r: False
+        en = L.body(tmp, tmp, strict=False)
+        en2 = L.body(tmp, tmp, strict=False, lang="en")
+        es = L.body(tmp, tmp, strict=False, lang="es")
+    finally:
+        SR.bill_index_or_stop, SR.figures_term = saved
+        for k, v in mem.items():
+            setattr(L, k, v)
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert en == en2, "By the Numbers in English differs when its language is stated"
+    h2 = lambda t: re.findall(r"<h2>(.*?)</h2>", t)
+    assert len(h2(en)) == len(L.HEADINGS) == len(h2(es)), (
+        f"{len(h2(en))} sections in English, {len(h2(es))} in Spanish, {len(L.HEADINGS)} named")
+    assert not set(h2(en)) & set(h2(es)), f"a heading is in English on the Spanish page: {set(h2(en)) & set(h2(es))}"
+    seen = _visible_text(es)
+    for word in ("Term", "Bills filed", "Became Law", "Reached the governor", "Yes share",
+                 "Ratified", "were adopted", "went to the voters", "Hover over", "sign-ins",
+                 "Interim Study", "Passed both chambers"):
+        assert not re.search(rf"\b{re.escape(word)}\b", seen), f"the Spanish page says {word!r}"
+    assert 'lang="en">House Commerce<' in es and 'lang="en">relative to' in es, (
+        "the record's words (a committee, a title) are not marked as English")
+    return "ok", f"{len(h2(es))} sections in both languages from stand-in figures; English the same with its language stated"
+
+
+@check("frontend", "the Calendars & Journals section and its pickers say their words in Spanish and leave the documents' names as the General Court printed them",
+       needs=("calendar_documents", "i18n"))
+def _calendar_documents_in_spanish(CD, i18n):
+    """block_html(lang="es") for a queue of four documents, one in each of the
+    four sets: the heading, the labels, the button and the sentence in
+    Spanish, the kinds of document in Spanish (Calendario de la Cámara), each
+    document's own name marked lang="en"; English's section is what it was
+    with no language stated. picker_js("es") run in node says a document's
+    count, its button's name and its choice in Spanish, as the English says
+    them in English."""
+    import csv
+    import datetime as _dt
+    node = _cal_node()
+    root = Path(tempfile.mkdtemp(prefix="gr-cdspanish-"))
+    try:
+        H = "https://gc.nh.gov/house/calendars_journals/viewer.aspx?fileName="
+        SN = "https://gc.nh.gov/senate/calendars_journals/viewer.aspx?fileName="
+        rows = [("H", "calendar", "2026", "HC 32.pdf", H + "calendars%5C2026%5CHC%2032.pdf",
+                 r"calendars\2026\HC032.pdf", "held", "0", "", ""),
+                ("H", "journal", "2026", "HJ 16 August 19, 2026.pdf",
+                 H + "journals%5C2026%5CHJ%2016%20August%2019%2C%202026.pdf",
+                 r"journals\2026\HJ 16 August 19, 2026.pdf", "held", "0", "", ""),
+                ("S", "calendar", "2026", "SC 29.pdf", SN + "Calendars%5C2026%5CSC%2029.pdf",
+                 r"calendars_senate\2026\SC029.pdf", "held", "0", "", ""),
+                ("S", "journal", "2026", "SJ 15.pdf", SN + "Journals%5C2026%5CSJ%2015.pdf",
+                 r"journals_senate\2026\SJ 15.pdf", "held", "0", "", "")]
+        q = root / "queue.csv"
+        with q.open("w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(["chamber", "kind", "year", "name", "url", "path", "state", "attempts",
+                        "error", "bytes", "fetched"])
+            for r in rows:
+                w.writerow(list(r[:9]) + ["1", r[9]])
+        docs, left = CD.read(q, root=root, today=_dt.date(2026, 10, 1))
+        assert len(docs) == 4, f"{len(docs)} documents read, not 4"
+        en = CD.block_html(docs, left)
+        assert en == CD.block_html(docs, left, lang="en"), "English's section changed with its language stated"
+        es = CD.block_html(docs, left, lang="es")
+        for want in ("Calendarios y diarios de sesiones", "Abrir el PDF", "Calendario de la Cámara",
+                     "Diario del Senado", "Calendario o diario", "Los más recientes de esta lista",
+                     'lang="en">HC 32', "(en inglés)"):
+            assert want in es, f"the Spanish section lacks {want!r}"
+        seen = _visible_text("<main>" + es + "</main>")
+        for lead in ("Open the PDF", "Calendar or journal", "The newest listed here", "Document", "House Calendar"):
+            assert not re.search(rf"\b{re.escape(lead)}\b", seen), f"the Spanish section says {lead!r}"
+        if not node:
+            return "ok", "the Spanish section holds its words (node is not here for the picker's script)"
+        import i18n as _i
+        js = CD.picker_js("es")
+        ix = json.dumps(CD.index(docs), ensure_ascii=False)
+        prog = root / "picker.js"
+        prog.write_text(
+            "globalThis.document=undefined;\n" + _components_js() + "\n"
+            'globalThis.window=globalThis; globalThis.GR_LANG="es";\n' + _i.words_js("es", js) + "\n"
+            + js + "\nconst ix=" + ix + ";\nconst s=GRDOCS.state(ix,'hc','2026',0);\n"
+            "const want={chosen:'Calendario de la Cámara, HC 32',"
+            "name:'Abrir el PDF: Calendario de la Cámara, HC 32, en el sitio de la Legislatura',"
+            "count:'1 Calendario de la Cámara de 2026.'};\n"
+            "const bad=Object.keys(want).filter(k=>s[k]!==want[k]).map(k=>k+': '+JSON.stringify(s[k]));\n"
+            "console.log(bad.length?bad.join('\\n'):'OK');\n", encoding="utf-8")
+        r = _run([node, str(prog)], capture_output=True, text=True, encoding="utf-8", timeout=60)
+        out = ((r.stdout or "") + (r.stderr or "")).strip()
+        assert r.returncode == 0 and out.endswith("OK"), out[-900:]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", "the section, the kinds of document and the picker's script in Spanish; the documents' names marked English"
+
+
 @check("frontend", "On the record carries no Introduced row and no LSR row")
 def _on_the_record_rows():
     """"Remove the LSR number and the Introduced date from On the record" (the
@@ -88192,7 +90376,7 @@ def _story_people(B):
                    + ")", names=("storyPeople",))
     if html is None:
         return "ok", "story_people ties two of three names; node is not here for the page"
-    assert html.count('class="psent"') == 2 and 'href="legislator/jane-smith-rock-13.html"' in html \
+    assert html.count('class="psent"') == 2 and 'href="legislator/jane-smith-rock-13"' in html \
         and "Rep. Lee spoke." in html, html
     return "ok", "Rep. Jane Smith and Sen. Bradley linked; Rep. Lee, two members, left as words"
 
@@ -88465,7 +90649,7 @@ def _footer_credit():
         for lang in i18n.LANGS if lang != i18n.DEFAULT}
 
     def credit(text):
-        m = re.match(r'<!DOCTYPE html><html lang="([a-z]+)"', text)
+        m = re.search(r'<html lang="([a-z]+)"', text[:600])
         return said_in.get(m.group(1) if m else "en", said)
     lacking = [p.relative_to(shared / "site").as_posix() for p in with_footer
                for text in [p.read_text(encoding="utf-8", errors="replace")]
@@ -90387,6 +92571,22 @@ for (const [rec, url] of [["session:H/2010-03-11", "/session/H/2010-03-12"],
     ["study:H05", "/committee/H05"], ["committee:ss1451", "/committee/ss1451"],
     ["study:ss1451", "/legislator/jane-doe-hills-12"], ["session:H/2010-03-11", "/legislator/x"]])
   ok(`${rec} from ${url} is refused`, validate({ ...good, record: rec, url, tab: "" }) === null);
+// A bill request (11 November 2026), from its own address only, on its one tab.
+const rq = { ...good, record: "request:2027-0012", url: "/request/2027-0012", tab: "Summary" };
+ok("a request's page is accepted", validate(rq) !== null);
+for (const [rec, url] of [["request:2027-0012", "/request/2027-0013"], ["request:2027-0012", "/bill/2027/hb12"],
+    ["request:2027-12", "/request/2027-12"], ["bill:2027/HB12", "/request/2027-0012"]])
+  ok(`${rec} from ${url} is refused`, validate({ ...rq, record: rec, url }) === null);
+// A town or a ward (the owner, 10 November 2026), from its own address only,
+// naming no tab.
+const town = { ...good, record: "town:concord-ward-4", url: "/town/concord-ward-4", tab: "" };
+ok("a ward's page is accepted", validate(town) !== null);
+ok("a town's page is accepted", validate({ ...town, record: "town:lyme", url: "/town/lyme" }) !== null);
+for (const [rec, url, tab] of [["town:lyme", "/town/hanover", ""], ["town:lyme", "/town/lyme/", ""],
+    ["town:lyme", "/town/lyme.html", ""], ["town:Lyme", "/town/Lyme", ""], ["town:lyme-", "/town/lyme-", ""],
+    ["town:lyme", "/committee/lyme", ""], ["town:lyme", "/legislator/lyme", ""],
+    ["town:lyme", "/town/lyme", "Votes"], ["town:", "/town/", ""], ["committee:lyme", "/town/lyme", ""]])
+  ok(`${rec} from ${url} (tab ${tab || "none"}) is refused`, validate({ ...good, record: rec, url, tab }) === null);
 // A report that passed every rule and could not be kept answers 503, so the box
 // offers the reader the email address (24 September 2026). It answered 204, and
 // the reader was thanked for a report that existed only in the Function's log.
@@ -90465,8 +92665,11 @@ const tr = { record: "translation:/es/guides/how-to-vote", url: "/es/guides/how-
   field: "translation", build: "", elapsed: 9000, note: "\u00abVote\u00bb should read \u00abVotar\u00bb." };
 ok("a translation report passes", validate(tr) && validate(tr).kind === "translation");
 ok("the Spanish home page's passes", validate({ ...tr, record: "translation:/es/", url: "/es/" }) !== null);
+ok("a Spanish calendar week's passes", validate({ ...tr, record: "translation:/es/calendar/2026-W45",
+   url: "/es/calendar/2026-W45" }) !== null);
 for (const [rec, url] of [["translation:/es/guides/how-to-vote", "/es/guides/real-id"],
-    ["translation:/es/Guides/x", "/es/Guides/x"], ["translation:/es/a/b/c/d", "/es/a/b/c/d"],
+    ["translation:/es/Guides/x", "/es/Guides/x"], ["translation:/es/calendar/2026-W4", "/es/calendar/2026-W4"],
+    ["translation:/es/calendar/W45", "/es/calendar/W45"],["translation:/es/a/b/c/d", "/es/a/b/c/d"],
     ["translation:/fr/x", "/fr/x"], ["translation:/es/../x", "/es/../x"], ["translation:/es", "/es"],
     ["translation:/es/x-", "/es/x-"], ["translation:/es/x.html", "/es/x.html"],
     ["translation:es/x", "es/x"], ["translation:/es/x", "/bill/2026/hb1"], ["translation:/bill/2026/hb1", "/bill/2026/hb1"]])
@@ -93298,6 +95501,10 @@ def _report_agree(CR):
         rendered |= set(re.findall(r'\("\w+", "([^"]+)", "\w+"\)', st.group(1)))
     rendered |= {t for t in ("Summary", "Bill Text", "Votes", "Videos", "Reports", "Sponsors", "Documents")
                  if re.search(rf">{t}(\$\{{|<)", app)}
+    # A member's Elections tab (10 November 2026) is drawn through tr(), so
+    # the label is read from that call.
+    if re.search(r'tr\("race\.tab","Elections"\)', app):
+        rendered.add("Elections")
     # READ OFF THE BUTTONS, NOT OFF A LIST OF NAMES (8 October 2026). The
     # names above were the tabs as they stood on 12 September; when the bill's
     # third tab became Hearings the list still said Videos, found no Videos
@@ -93389,14 +95596,17 @@ def _report_pages_kept(site, fn, node):
     built site and a report.js in two different folders."""
     pages, sent, boxless = [], Counter(), 0
     for folder, glob_name, kind in (("legislator", "GR_MEMBER", "member"),
-                                    ("committee", "GR_COMMITTEE", "committee")):
+                                    ("committee", "GR_COMMITTEE", "committee"),
+                                    ("town", "GR_REPORT", "town")):
         for f in sorted((Path(site) / folder).glob("*.html")):
             m = re.search(rf'window\.{glob_name}="([^"]*)"',
                           f.read_text(encoding="utf-8", errors="replace"))
             if not m:
                 boxless += 1          # no global, so app.js mounts no box
                 continue
-            pages.append([f"/{folder}/{f.stem}", f"{kind}:{m.group(1)}", str(f.resolve())])
+            # A town's global is the whole record, "town:<slug>" (10 November 2026).
+            rec = m.group(1) if kind == "town" else f"{kind}:{m.group(1)}"
+            pages.append([f"/{folder}/{f.stem}", rec, str(f.resolve())])
             sent[kind] += 1
     # And from every page built in another language, a mistake in its
     # translation (24 October 2026), as components.js's box sends one.
@@ -93442,10 +95652,12 @@ def _report_pages():
     sent, bad, boxless = _report_pages_kept(site, fn, node)
     total = sum(sent.values())
     assert sent.get("member"), "no legislator page carries GR_MEMBER, so none has a report box"
+    assert not (site / "town").is_dir() or sent.get("town"), (
+        "no town page carries GR_REPORT, so none has a report box")
     assert not bad, (f"{len(bad)} of {total:,} pages send a report the Function drops while "
                      f"thanking the reader: " + ", ".join(bad[:6]))
-    return "ok", (f"{sent.get('member', 0):,} legislator, {sent.get('committee', 0):,} committee "
-                  f"and {sent.get('translation', 0):,} Spanish pages each sent one report, and every "
+    return "ok", (f"{sent.get('member', 0):,} legislator, {sent.get('committee', 0):,} committee, "
+                  f"{sent.get('town', 0):,} town and {sent.get('translation', 0):,} Spanish pages each sent one report, and every "
                   "one was kept"
                   + (f"; {boxless} pages carry no box" if boxless else ""))
 
@@ -110858,12 +113070,35 @@ def _bill_versions_early(BV, BB):
     assert len(want) == 3 and any(r[1] for r in want.values()), \
         "the fixture's pairs have no marks to compare"
     assert BV.compare_early(per) == {}, "a short pair was sent to the pool at the real mark"
-    was = BV.BIG_PAIR
+    # THE POOL IS STARTED IN A PROCESS OF ITS OWN (11 November 2026). Windows
+    # starts a pool's workers by importing the starting process's main
+    # script, which here was this file -- eight megabytes, compiled and run
+    # again by every worker, a hundred seconds of the code checks. As
+    # build_bill_versions.py starts it, the main script is that small one, so
+    # this starts it as that does: a few lines that call compare_early with
+    # BIG_PAIR lowered and hand its answer back.
+    import pickle
+    tmp = Path(tempfile.mkdtemp(prefix="gr-early-"))
     try:
-        BV.BIG_PAIR = 1
-        early = BV.compare_early(per)
+        (tmp / "pool.py").write_text(
+            "import pickle, sys\n"
+            "if __name__ == '__main__':\n"
+            "    sys.path.insert(0, sys.argv[1])\n"
+            "    import build_bill_versions as BV\n"
+            "    BV.BIG_PAIR = 1\n"
+            "    per = pickle.load(open(sys.argv[2], 'rb'))\n"
+            "    pickle.dump(BV.compare_early(per), open(sys.argv[3], 'wb'))\n", encoding="utf-8")
+        with open(tmp / "per.pickle", "wb") as f:
+            pickle.dump(per, f)
+        r = _run([sys.executable, str(tmp / "pool.py"),
+                  str(_paths.locate("build_bill_versions.py").parent), str(tmp / "per.pickle"),
+                  str(tmp / "early.pickle")], capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0, ("compare_early with the mark lowered failed: "
+                                   + ((r.stderr or r.stdout).strip().splitlines() or ["?"])[-1][:200])
+        with open(tmp / "early.pickle", "rb") as f:
+            early = pickle.load(f)
     finally:
-        BV.BIG_PAIR = was
+        shutil.rmtree(tmp, ignore_errors=True)
     src = _paths.locate("build_bill_versions.py").read_text(encoding="utf-8")
     assert "early.pop((bill, year, i), None)" in src and "were not met by the" in src, \
         "main() no longer takes the early pairs where it meets them, or no longer refuses a left one"
@@ -111752,6 +113987,110 @@ def _sponsor_filing(build_site_v2, member_links):
         "the bill page links " + str([s["slug"] for s in sp]))
     return "ok", ("a record with no id or an employee number filed once under the member its page links; "
                   "a same-named member who did not sit that term neither linked nor credited")
+
+
+@check("naming", "a bill filed under a member's earlier number links their page and keeps the seat it prints",
+       needs=("build_site_v2",))
+def _sponsor_numbers_join_their_person(build_site_v2):
+    """9 November 2026: Sen. David Rochefort's 2025 House bills, filed as Rep.
+    for Grafton 1, name the employee number of that seat (409162), which the
+    sitting roster does not answer; the register (person_numbers.json) gives it
+    to the person the site already joins to the senator. build_bills now reads
+    the register's numbers, and a row whose chamber is not the member's now
+    keeps the seat the record prints, linked to the page they have.
+    """
+    import contextlib
+    import io
+    B = build_site_v2
+    T = "2025-2026"
+    sen = {"id": "11458", "name": "Doe, Dana", "chamber": "S", "party_code": "R",
+           "district": "1", "county": "", "county_abbr": ""}
+    legs = {"11458": sen}
+    sponsors = {T: {"HB10": [
+        {"member_id": "409162", "name": "Dana Doe", "chamber": "H", "prime": True,
+         "source": "bill status page", "party": "R", "county": "Graf", "district": "01"}]}}
+    bills = {T: {"HB10": {"bill": "HB10", "lsr": "2025-0010", "lsr_year": "2025",
+                          "title": "relative to a fixture.", "chamber": "H",
+                          "designation": "HB 10"}}}
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-numbers-"))
+    got = []
+    try:
+        os.chdir(tmp)
+        for numbers in ({"409162": "10614"}, None):
+            out = tmp / ("site" + str(len(got)))
+            out.mkdir()
+            with contextlib.redirect_stdout(io.StringIO()):
+                B.build_bills(out, bills, {}, {}, {}, sponsors, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                              legs, {B.sort_name(sen["name"]): sen}, {B.name_key(sen["name"]): sen},
+                              {}, seats={"11458": [("2025-2026", "S")]}, former={}, links={"11458": ["10614"]},
+                              numbers=numbers)
+            page = json.loads((out / "bills" / "2025" / "HB10.json").read_text(encoding="utf-8"))
+            got.append((page["sponsors"][0].get("display_full"), page["sponsors"][0].get("slug")))
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert got[0] == ("Rep. Dana Doe (R - Graf 1)", B.own_slug(sen)), (
+        f"a bill filed under a member's earlier House number reads {got[0]}")
+    assert not got[1][1], "with no register the number linked anyway (the fixture is stale)"
+    return "ok", ("a bill status page's employee number is its person through the register: "
+                  "linked to their page, at the seat it prints")
+
+
+@check("naming", "a member who resigned mid-term keeps the link on every bill they sponsored",
+       needs=("build_site_v2", "member_links"))
+def _resigned_sponsors_keep_their_link(build_site_v2, member_links):
+    """Alice, 9 November 2026: Rep. Glenn Cordelli's HB 121 linked to his page
+    and his HB 137 did not, reading "Carr 07". HB 137's sponsor came from the
+    bill status page, which names him by an employee number the sitting roster
+    no longer answers once he resigned; the name was looked for among former
+    members only for a finished term. The sitting term looks there too now,
+    under the same rule (only someone who sat in that chamber that term), and
+    a padded district reads as people say it.
+    """
+    import contextlib
+    import io
+    B, ML = build_site_v2, member_links
+    T = "2025-2026"
+    legs = {"990100": {"id": "990100", "name": "Smith, Ann", "chamber": "H", "party_code": "D",
+                       "district": "5", "county": "Rockingham", "county_abbr": "Rock"}}
+    former = {"990866": {"id": "990866", "name": "Terry, Paul", "chamber": "H", "party_code": "R",
+                         "district": "7", "county": "Carroll", "county_abbr": "Carr",
+                         "former": True}}
+    votes = {"990100": [{"year": "2025", "body": "H"}], "990866": [{"year": "2025", "body": "H"}]}
+    seats = ML.seats_held([*legs.values(), *former.values()], votes, {}, T)
+    sponsors = {T: {"HB10": [
+        {"member_id": "377085", "name": "Paul Terry", "chamber": "H", "prime": True,
+         "source": "bill status page", "county": "Carr", "district": "07"},
+        {"member_id": "990100", "name": "Smith, Ann", "chamber": "H", "prime": False}]}}
+    bills = {T: {"HB10": {"bill": "HB10", "lsr": "2025-0010", "lsr_year": "2025",
+                          "title": "relative to a fixture.", "chamber": "H",
+                          "designation": "HB 10"}}}
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-resigned-"))
+    try:
+        os.chdir(tmp)
+        out = tmp / "site"
+        out.mkdir()
+        with contextlib.redirect_stdout(io.StringIO()):
+            B.build_bills(out, bills, {}, {}, {}, sponsors, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                          legs, {B.sort_name(m["name"]): m for m in legs.values()},
+                          {B.name_key(m["name"]): m for m in legs.values()}, {},
+                          seats=seats, former=former)
+        page = json.loads((out / "bills" / "2025" / "HB10.json").read_text(encoding="utf-8"))
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    terry = page["sponsors"][0]
+    assert terry.get("slug") == B.own_slug(former["990866"]), (
+        "a member who resigned this term is unlinked on a bill the status page names "
+        f"him on: slug {terry.get('slug')!r}")
+    assert terry.get("district_label") == "Carr 7", (
+        f"the resigned member's seat reads {terry.get('district_label')!r}, not 'Carr 7'")
+    assert page["sponsors"][1].get("slug") == B.own_slug(legs["990100"]),         "the sitting co-sponsor lost her link"
+    assert B.district_tag("H", "07", "Carroll") == "Carr 7" and         B.district_tag("S", "03") == "SD3", "a padded district number is drawn as printed"
+    return "ok", ("a member who resigned this term is linked on a bill the status page names "
+                  "them on, at their seat as people say it (Carr 7)")
 
 
 @check("naming", "after the turn a finished term's sponsors who left at the election keep their link",
@@ -114232,8 +116571,7 @@ def _town_mailto(B):
              "email": v} for i, v in enumerate(notes)]
     offs.append({"position": "Town Administrator", "name": "Grace Ruelle",
                  "phone": "", "email": "gruelle@eastkingstonnh.gov"})
-    html = B.town_officials_block("East Kingston", "east-kingston",
-                                  {"officials": offs, "email": "not listed"})
+    html = "".join(B.officials_sections("East Kingston", "east-kingston", {"officials": offs, "email": "not listed"}))
     got = re.findall(r'href="mailto:([^"]*)"', html)
     assert got == ["gruelle@eastkingstonnh.gov"], (
         f"a town page links {got}; only the one address in the fixture is an "
@@ -114280,7 +116618,7 @@ def _town_mailto(B):
         "is not: " + "; ".join(bad))
     rows = [{"position": p, "name": n, "phone": "", "email": e}
             for p, n, e in hampton]
-    html = B.town_officials_block("Hampton", "hampton", {"officials": rows})
+    html = "".join(B.officials_sections("Hampton", "hampton", {"officials": rows}))
     for addr in ("ahanson@", "rbridle@", "crage@", "cbariont@"):
         assert f"mailto:{addr}" not in html, (
             f"Hampton's page links {addr} beside a selectman it does not "
@@ -116061,7 +118399,7 @@ def _town_tabs(B, BP):
     # The District Map is every place's second tab (Polish 3): every town and
     # ward is on the map.
     LABELS = {"representatives": "Representatives", "map": "Map", "officials": "Officials",
-              "vote": "Vote", "services": "Services"}
+              "vote": "How to Vote", "services": "Services"}
     want = {"Lyme": ["representatives", "map", "officials", "vote"],
             "Bean's Grant": ["representatives", "map", "vote"],
             "Nowhere": ["representatives", "map"]}
@@ -116079,8 +118417,9 @@ def _town_tabs(B, BP):
         ids = [t[0] for t in tabs]
         if ids != want[town]:
             bad.append(f"{town}: tabs {ids}, not {want[town]}")
-        # ONE WORD A TAB (the audit of 25 October 2026: "How / to / Vote" on
-        # a phone): the page names the town, so a city's are these too.
+        # The labels (the owner, 10 November 2026: the Vote tab reads "How to
+        # Vote", its id and address still "vote"); the page names the town,
+        # so a city's are these too, each on one line (.twntabs scrolls).
         names = re.findall(r'role="tab" id="tab-(\w+)"[^>]*>([^<]*)</button>', bars[0])
         if any(LABELS[t] != n for t, n in names):
             bad.append(f"{town}: the tabs read {[n for _t, n in names]}, not "
@@ -117240,6 +119579,483 @@ def _elections_page(BE, BME):
         shutil.rmtree(root, ignore_errors=True)
 
 
+# A MEMBER'S ELECTIONS TAB (the owner's design of 10 November 2026; src/pages/
+# build_member_elections.py). A small made-up roster and two made-up elections,
+# so that every rule is held without a built site.
+
+def _mel_member(mid, last, first, chamber, county, district, kind="sitting", terms=None):
+    """A roster row in the shape build_site_v2 writes legislators.json and
+    former.json, as much of it as the matching reads."""
+    abbr = county[:4]
+    row = {"id": mid, "name": f"{last}, {first}", "chamber": chamber, "county": county,
+           "county_abbr": abbr, "district": district, "party": "R", "slug": f"{first}-{last}".lower(),
+           "display_full": f"Rep. {first} {last} (R - {abbr} {district})"}
+    if kind == "former":
+        row.update({"former": True, "served": {"first": "1/4/2023", "last": "11/6/2024",
+                                               "terms": terms or ["2023-2024"]}})
+    return row
+
+
+def _mel_world():
+    """(sitting, former, districts, results 2024, results 2026) of the made-up
+    court: Rockingham 1 to 4 (3 with two seats) and Senate 5 and 6."""
+    def dist(h, sen):
+        return {"0": {"house": [{"county": "Rockingham", "district": h[0], "floterial": False,
+                                 "seats": h[1]}], "senate": sen}}
+    districts = {"Alpha": dist((1, 1), 5), "Beta": dist((2, 1), 5), "Gamma": dist((3, 2), 6),
+                 "Delta": dist((4, 1), 6)}
+    sitting = [_mel_member("1001", "Hart", "Ann", "H", "Rockingham", "1"),
+               _mel_member("1002", "Moss", "Dee", "H", "Rockingham", "2"),
+               _mel_member("1003", "Ives", "Fay", "H", "Rockingham", "3"),
+               _mel_member("1004", "Beck", "Ida", "S", "Rockingham", "5"),
+               _mel_member("1005", "None", "Zed", "H", "Rockingham", "4"),
+               _mel_member("1006", "Kay", "Joe", "S", "Rockingham", "6"),
+               _mel_member("1007", "Pike", "Nan", "H", "Rockingham", "4")]
+    former = [_mel_member("2001", "Lowe", "Bob", "H", "Rockingham", "1", "former"),
+              _mel_member("2002", "Ford", "Ed", "H", "Rockingham", "2", "former", ["2025-2026"]),
+              _mel_member("2003", "Young", "Carl", "H", "Rockingham", "4", "former"),
+              _mel_member("2004", "Old", "Olly", "H", "Rockingham", "1", "former", ["2001-2002"])]
+
+    def cand(name, votes, elected, party="r", wi=False):
+        return {"name": name, "party": party, "votes": votes, "write_in": wi, "elected": elected}
+
+    def race(seats, towns, cands, scatter=0, **more):
+        return {"seats": seats, "floterial": False, "towns": towns, "candidates": cands,
+                "scatter": scatter, **more}
+    r24 = {"election": "2024-11-05", "term": "2025-2026", "races": {
+        "H|Rockingham|1": race(1, ["Alpha"], [cand("Ann Hart", 2000, True), cand("Bob Lowe", 1500, False),
+                                              cand("Carl Young", 100, False), cand("Olly Old", 50, False)], 10),
+        "H|Rockingham|3": race(2, ["Gamma"], [cand("Fay Ives", 3000, True), cand("Ida Beck", 2900, True),
+                                              cand("Hal Orr", 800, False)]),
+        "H|Rockingham|4": race(1, ["Delta"], [cand("Nan Pike", 700, True), cand("Quin Zane", 650, False)],
+                               recounted=True)}}
+    r26 = {"election": "2026-11-03", "term": "2027-2028", "races": {
+        "H|Rockingham|2": race(1, ["Beta"], [cand("Dee Moss", 3000, True), cand("Ed Ford", 2900, False)]),
+        "S|5": race(1, ["Alpha", "Beta"], [cand("Ida Beck", 9000, True), cand("Rob Cole", 8000, False)]),
+        "S|6": race(1, ["Gamma", "Delta"], [cand("Joe Kay", 5000, None), cand("Kim Lu", 5000, None)])}}
+    return sitting, former, districts, r24, r26
+
+
+@check("build", "a member's Elections tab: a win by the elections page's own matching, a loss only on "
+       "the same name and a seat held the term before or after, every other candidate left off and "
+       "listed, a race not final or tied said so, the owner's matches settling either way, one row "
+       "to an election, no tab for a member with no race, and both chambers on one tab",
+       needs=("build_member_elections", "build_members_elect", "build_elections"))
+def _member_elections_rows(BMEL, BME, BE):
+    sitting, former, districts, r24, r26 = _mel_world()
+    roster = BMEL.Roster(sitting, former, ["2025-2026", "2023-2024"])
+    got = {}
+    reports = []
+    for res, today, hand in (
+            (r24, "2026-11-10", {"matches": {"H|Rockingham|3": {"Ida Beck": "1004"}}, "not_final": {},
+                                 "held": {}, "party": {}, "recount_deadline": "2024-11-13"}),
+            (r26, "2026-11-10", {"matches": {}, "not_final": {"H|Rockingham|2": {"recount": True}},
+                                 "held": {}, "party": {}, "recount_deadline": "2026-11-06"})):
+        races_me, _rep = BME.members_elect(res, sitting, former, districts, hand, today)
+        people = BME.People(sitting, former, BME.ballot_of(res))
+        rows, rep = BMEL.election_rows(res["election"], res, races_me, hand, roster, people)
+        for mid, rs in rows.items():
+            got.setdefault(mid, []).extend(rs)
+        reports += rep
+    def one(mid, day):
+        return next(r for r in got[mid] if r["d"] == day)
+    # A win: the elections page's matching; the share of every vote cast, scatter in it.
+    a = one("1001", "2024-11-05")
+    assert (a["r"], a["v"], a["pl"], a["of"], a["sh"], a["a"], a["k"]) == (
+        "won", 2000, 1, 4, 54.6, BE.race_id("H|Rockingham|1"), "H|Rockingham|1"), f"a win: {a}"
+    # A loss matched with certainty: the same name, the seat held in 2023-2024.
+    b = one("2001", "2024-11-05")
+    assert (b["r"], b["pl"], b["sh"]) == ("lost", 2, 41.0), f"a certain loss: {b}"
+    # A loss left off, and why: another district, and a seat held too long ago.
+    assert "2003" not in got and "2004" not in got, "a loss with no certain match was shown"
+    why = {(d, n): (near, w) for d, k, n, near, w in reports}
+    assert "Rockingham 4" in why[("2024-11-05", "Carl Young")][1] and "2003" in why[("2024-11-05", "Carl Young")][0], (
+        f"the report does not say Carl Young has another seat: {why.get(('2024-11-05', 'Carl Young'))}")
+    assert "2001-2002" in why[("2024-11-05", "Olly Old")][1], "the report does not say Olly Old's seat is too old"
+    assert ("2024-11-05", "Hal Orr") not in why and ("2024-11-05", "Quin Zane") not in why, (
+        "a candidate nobody could be was listed for the owner")
+    # A race of two seats gives no share; the owner's match for Ida Beck's House race shows it.
+    f = one("1003", "2024-11-05")
+    assert (f["r"], f["pl"], f["of"], "sh" in f) == ("won", 1, 3, False), f"a two-seat race: {f}"
+    i24 = one("1004", "2024-11-05")
+    assert i24["k"] == "H|Rockingham|3" and i24["r"] == "won", f"the owner's match was not taken: {i24}"
+    # A senator with a House race: both chambers on one tab, newest first once sorted.
+    i26 = one("1004", "2026-11-03")
+    assert i26["k"] == "S|5" and i26["r"] == "won", f"the senator's Senate race: {i26}"
+    srt = BMEL.sort_rows(got["1004"])
+    assert [r["k"] for r in srt] == ["S|5", "H|Rockingham|3"], f"the order: {[r['k'] for r in srt]}"
+    # Not final, with a recount asked for: the member, the loser the rule is certain of, both open.
+    d = one("1002", "2026-11-03")
+    e = one("2002", "2026-11-03")
+    assert (d["r"], d.get("rq"), e["r"], e.get("rq")) == ("open", 1, "open", 1), f"not final: {d} {e}"
+    # A recounted race says so.
+    p = one("1007", "2024-11-05")
+    assert p["r"] == "won" and p.get("rc") == 1, f"a recounted race: {p}"
+    # A tie: the member is shown, as tied.
+    k = one("1006", "2026-11-03")
+    assert k["r"] == "tie", f"a tie: {k}"
+    # A member with no race on file has no row, so no tab; the others have a row each election.
+    assert "1005" not in got, "a member with no race got a row"
+    for mid, rs in got.items():
+        assert len({r["d"] for r in rs}) == len(rs), f"{mid} has two rows in one election"
+    # The owner's null keeps a certain loss off; her id shows an uncertain one.
+    hand = {"matches": {"H|Rockingham|1": {"Bob Lowe": None, "Carl Young": "2003"}}, "not_final": {},
+            "held": {}, "party": {}, "recount_deadline": "2024-11-13"}
+    races_me, _rep = BME.members_elect(r24, sitting, former, districts, hand, "2026-11-10")
+    rows, _rep2 = BMEL.election_rows("2024-11-05", r24, races_me, hand, roster,
+                                     BME.People(sitting, former, BME.ballot_of(r24)))
+    assert "2001" not in rows and rows["2003"][0]["r"] == "lost", (
+        "the owner's matches did not settle a loss either way")
+    # A held winner is on no row and takes no share from the rest.
+    hand = {"matches": {}, "not_final": {}, "held": {"H|Rockingham|1": {"Ann Hart": "private"}},
+            "party": {}, "recount_deadline": "2024-11-13"}
+    races_me, _rep = BME.members_elect(r24, sitting, former, districts, hand, "2026-11-10")
+    rows, _rep2 = BMEL.election_rows("2024-11-05", r24, races_me, hand, roster,
+                                     BME.People(sitting, former, BME.ballot_of(r24)))
+    assert "1001" not in rows and all("sh" not in r and "pl" not in r for r in rows["2001"]), (
+        "a race with a held winner gave a share or a place")
+    return "ok", (f"{sum(len(v) for v in got.values())} rows for {len(got)} members: a win, a certain "
+                  "loss, two left off and listed, not final, a recount, a tie, both chambers, no "
+                  "tab for a member with no race")
+
+
+# THE ELECTIONS BEFORE 2024 (10 November 2026; branch dec/results-2016-2022). The
+# Secretary of State's files for 2016-2022 print a surname for a House
+# candidate, "Scatter" for the write-ins nobody named, no day, a Recount row
+# or a BLC column for a recount; 2016 has no Strafford House file and no State
+# Senate; and the 2012 districts' table is on no disk, so 2016-2020 are held
+# to none. These checks hold that on made-up files, which need no saved ones.
+
+def _legacy_book(path, rows):
+    import openpyxl
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    for r in rows:
+        ws.append(r)
+    wb.save(path)
+
+
+@check("build", "the results reader reads the 2016-2022 layout (a surname for a candidate, Scatter, a "
+                "Recount row, a named w-in, a mistyped District, a results page with a cell holding two "
+                "rows), holds an election with no district table to none and says so, and lists a county "
+                "and the Senate that are not on file instead of filling them",
+       needs=("parse_sos_results",))
+def _elect_older_layout(PSR):
+    try:
+        import openpyxl  # noqa: F401
+    except ImportError:
+        return "skip", "openpyxl is not installed"
+    root = Path(tempfile.mkdtemp(prefix="gr-sos-old-"))
+    try:
+        d = root / PSR.SOURCES
+        d.mkdir(parents=True)
+        title = ["State of New Hampshire - 2018 General Election"]
+        _legacy_book(d / "2018-ge-house-belknap.xlsx", [
+            title, ["State Representatives - BELKNAP County"], [],
+            ["District No. 1 (1)", "Gray, r", "Hale ,d", "Scatter"],
+            ["Alpha", 100, 90, 1], ["Beta", 50, 70, None], ["TOTALS", 150, 160, 1], [],
+            ["Distict No. 2 (1)", "Cole, r", "Dunn, d", "Scatter"],
+            ["Gamma", 300, 301, 2], ["Recount", 303, 301]])
+        _legacy_book(d / "2018-ge-house-carroll.xlsx", [
+            title, ["State Representative - CARROLL County"], [],
+            ["District No. 1 (1)", "Eve, r", "Fox w-in", "Scatter"], ["Delta", 10, 3, 0]])
+        try:
+            PSR.read_all(root, 2018, None)
+            raise AssertionError("a year with eight counties not on file was read without partial")
+        except PSR.Refused as e:
+            assert "no 2018 House results" in str(e), f"refused, but not for the counties: {e}"
+        doc = PSR.read_all(root, 2018, None, partial=True)
+        races = doc["races"]
+        assert sorted(races) == ["H|Belknap|1", "H|Belknap|2", "H|Carroll|1"], f"races: {sorted(races)}"
+        b1, b2, c1 = races["H|Belknap|1"], races["H|Belknap|2"], races["H|Carroll|1"]
+        assert b1["surnames"] and b1["seats"] == 1 and b1["towns"] == ["Alpha", "Beta"], f"belknap 1: {b1}"
+        assert [(c["name"], c["votes"], c["elected"]) for c in b1["candidates"]] == [
+            ("Gray", 150, False), ("Hale", 160, True)], f"belknap 1's count: {b1['candidates']}"
+        assert b1["scatter"] == 1, f"a blank Scatter cell was not read as none: {b1['scatter']}"
+        assert b2.get("recounted") and [(c["name"], c["votes"], c["elected"]) for c in b2["candidates"]] == [
+            ("Cole", 303, True), ("Dunn", 301, False)], f"the Recount row was not the count: {b2}"
+        assert any("one letter off District" in n for n in doc["_notes"]), "the mistyped District was not said"
+        fox = next(c for c in c1["candidates"] if c["name"] == "Fox")
+        assert fox["write_in"] and fox["votes"] == 3 and fox["party"] == "", f"a named w-in: {fox}"
+        assert doc["_notes"][0].startswith("The districts of 2018 are the 2012 districts"), (
+            "an election held to no district table did not say so first")
+        assert doc["_not_on_file"] == {"counties": [c.title() for c in PSR.COUNTIES
+                                                    if c not in ("belknap", "carroll")],
+                                       "senate": True}, f"not on file: {doc['_not_on_file']}"
+        assert any(n.startswith("Not on file: the State Senate") for n in doc["_notes"]), (
+            "the missing Senate was not in the notes")
+        # The text goes round again as the committed file does.
+        assert json.loads(PSR.dumps(doc))["_not_on_file"] == doc["_not_on_file"], "dumps dropped what is not on file"
+        # A results page whose cell holds two rows is two rows (2018 Strafford).
+        html = root / "page.html"
+        html.write_text("<table><tr><td><p>TOTALS</p><p>District No. 19 (1)FL</p></td>"
+                        "<td><p>2,215</p><p>Coleman, r</p></td><td><p>&nbsp;</p></td></tr>"
+                        "<tr><td colspan=3><p>State of New Hampshire - 2018 General Election</p></td></tr></table>"
+                        "<table><tr><td><p>State of New Hampshire - 2018 General Election</p></td></tr>"
+                        "<tr><td><p>Dover</p></td><td><p>1,000</p></td></tr></table>", encoding="utf-8")
+        got = PSR.html_sheets(html)
+        assert got[0][1][:2] == [["TOTALS", 2215, None], ["District No. 19 (1)FL", "Coleman, r", None]], (
+            f"a fused cell was not split: {got[0][1][:2]}")
+        assert got[1][1] == [["Dover", 1000]], f"the second table's repeated title was kept: {got[1][1]}"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("surnames, Scatter, a Recount row, a w-in and a mistyped District read; no table said; "
+                  "eight counties and the Senate listed as not on file; a fused page cell split")
+
+
+@check("build", "an election before the latest on file is final by rule, a recount in its results still "
+                "saying so, a tie still not final and the owner's marks still holding; the latest "
+                "election is judged as ever, by the recount deadline",
+       needs=("build_members_elect", "build_elections"))
+def _elect_settled_rule(BME, BE):
+    def race(seats, cands, **more):
+        return {"seats": seats, "floterial": False, "towns": ["Alpha"], "scatter": 0, "surnames": True,
+                "candidates": [{"name": n, "party": "r", "votes": v, "write_in": False, "elected": e}
+                               for n, v, e in cands], **more}
+    res = {"election": "2018-11-06", "term": "2019-2020", "races": {
+        "H|Belknap|1": race(1, [("Gray", 150, True), ("Hale", 100, False)]),
+        "H|Belknap|2": race(1, [("Cole", 303, True), ("Dunn", 301, False)], recounted=True),
+        "H|Belknap|3": race(1, [("Ives", 10, None), ("Jay", 10, None)]),
+        "H|Belknap|4": race(1, [("Kay", 9, True), ("Lee", 5, False)])}}
+    empty = {"matches": {}, "not_final": {"H|Belknap|4": {"recount": True}}, "held": {}, "party": {},
+             "recount_deadline": None}
+    nf = lambda races: {k: (len(v["elected"]), v["not_final"], v.get("recount")) for k, v in races.items()}
+    open_, _r = BME.members_elect(res, [], [], None, empty, "2026-11-10")
+    assert nf(open_) == {"H|Belknap|1": (0, 1, None), "H|Belknap|2": (1, 0, None),
+                         "H|Belknap|3": (0, 1, None), "H|Belknap|4": (0, 1, True)}, (
+        f"with no deadline and not settled, only the recounted race is final: {nf(open_)}")
+    shut, rep = BME.members_elect(res, [], [], None, empty, "2026-11-10", settled=True)
+    assert nf(shut) == {"H|Belknap|1": (1, 0, None), "H|Belknap|2": (1, 0, None),
+                        "H|Belknap|3": (0, 1, None), "H|Belknap|4": (0, 1, True)}, (
+        f"settled: every race final but the tie and the owner's mark: {nf(shut)}")
+    assert rep["pending"] == "" and open_ and BME.recount_open("2026-11-10", None, "2018-11-06"), (
+        "settled still says a recount deadline is pending")
+    assert BE.settled_in([("2018-11-06", 0, 0), ("2020-11-03", 0, 0)], "2018-11-06") and \
+        not BE.settled_in([("2018-11-06", 0, 0), ("2020-11-03", 0, 0)], "2020-11-03"), (
+        "settled_in is not 'before the latest on file'")
+    assert BE.mapped("2022-11-08") and BE.mapped("2026-11-03") and not BE.mapped("2020-11-03"), (
+        "an election held on the 2012 districts was given a map")
+    assert BME.on_this_map("2021-2022", 2020) and not BME.on_this_map("2021-2022", 2022) and \
+        BME.on_this_map("2023-2024", 2022) and BME.on_this_map("2023-2024", 2024), (
+        "a seat in a term on the old districts counted for an election on the new")
+    # The page of such an election: no map, what is not on file said, no deadline spoken of.
+    res["_not_on_file"] = {"counties": ["Strafford"], "senate": True}
+    body = BE.page_body("2018-11-06", res, shut, rep, empty, Path("site"), [], True)
+    assert "ermap" not in body and "There is no map here" not in body and "no map here" in body, (
+        "an election on the 2012 districts was drawn a map, or not told why it has none")
+    assert "Strafford County" in body and "the State Senate results" in body and \
+        "some not on file" in body, "what is not on file is not said on the page"
+    assert "long past" in body and "Result not final" in body and "No deadline" not in body, (
+        "the settled election's page speaks of a recount deadline, or hides its tie")
+    assert "State Senate</h4>" not in body and "Senate</button>" not in body, "a Senate tab with no races"
+    return "ok", ("settled: a race final unless tied or held by the owner; unsettled: only a recounted "
+                  "race; no map for 2012's districts, what is not on file said; no seat carried "
+                  "across 2022")
+
+
+@check("build", "a winner printed as a surname is linked by the seat held in the term the election elected "
+                "(or, where nobody printed it, the term before and a vote in the term after), a loss only "
+                "by the surname, the seat, the party and no twin in the race, never across the 2022 "
+                "redistricting",
+       needs=("build_member_elections", "build_members_elect"))
+def _member_elections_surnames(BMEL, BME):
+    sponsors = {
+        "2021-2022": {"HB1": [{"member_id": "3001", "chamber": "H", "county": "Rockingham", "district": "1"},
+                              {"member_id": "3002", "chamber": "H", "county": "Rockingham", "district": "2"}]},
+        "2019-2020": {"HB9": [{"member_id": "3003", "chamber": "H", "county": "Rockingham", "district": "1"},
+                              {"member_id": "3005", "chamber": "H", "county": "Rockingham", "district": "2"},
+                              {"member_id": "3007", "chamber": "H", "county": "Rockingham", "district": "5"},
+                              {"member_id": "3008", "chamber": "H", "county": "Rockingham", "district": "4"}]}}
+    hist = BME.seat_history(sponsors)
+    assert hist["3001"] == {"2021-2022": ["H|Rockingham|1"]}, f"seat_history: {hist['3001']}"
+    history = {"seats": hist, "served": {"3008": ["2021-2022"]}}
+    former = [_mel_member("3001", "Hart", "Ann", "H", "Rockingham", "1", "former", ["2021-2022"]),
+              _mel_member("3002", "Moss", "Dee", "H", "Rockingham", "2", "former", ["2021-2022"]),
+              _mel_member("3003", "Lowe", "Bob", "H", "Rockingham", "1", "former", ["2019-2020"]),
+              _mel_member("3005", "Pike", "Nan", "H", "Rockingham", "2", "former", ["2019-2020"]),
+              _mel_member("3007", "Kay", "Joe", "H", "Rockingham", "5", "former", ["2019-2020"]),
+              _mel_member("3008", "Ward", "Sam", "H", "Rockingham", "4", "former", ["2021-2022"])]
+    def race(cands):
+        return {"seats": 1, "floterial": False, "towns": ["Alpha"], "scatter": 0, "surnames": True,
+                "candidates": [{"name": n, "party": p, "votes": v, "write_in": False, "elected": e}
+                               for n, p, v, e in cands]}
+    res = {"election": "2020-11-03", "term": "2021-2022", "races": {
+        "H|Rockingham|1": race([("Hart", "r", 500, True), ("Lowe", "d", 400, False)]),
+        "H|Rockingham|2": race([("Moss", "r", 500, True), ("Pike", "r", 400, False)]),
+        "H|Rockingham|4": race([("Ward", "r", 500, True), ("Zed", "d", 400, False)])}}
+    hand = {"matches": {}, "not_final": {}, "held": {}, "party": {}, "recount_deadline": None}
+    races, _rep = BME.members_elect(res, [], former, None, hand, "2026-11-10", True, history)
+    ids = {k: [e.get("id") for e in v["elected"]] for k, v in races.items()}
+    assert ids == {"H|Rockingham|1": ["3001"], "H|Rockingham|2": ["3002"], "H|Rockingham|4": ["3008"]}, (
+        f"the winners were not linked by the seat held: {ids}")
+    # A winner with no history, and a member whose last term is another, is not linked by surname alone.
+    far = [_mel_member("3001", "Hart", "Ann", "H", "Rockingham", "1", "former", ["2019-2020"])]
+    races, _rep = BME.members_elect(res, [], far, None, hand, "2026-11-10", True,
+                                    {"seats": {}, "served": {}})
+    assert all(not e.get("id") for v in races.values() for e in v["elected"]), (
+        "a surname alone linked a winner to a member who held no such seat")
+    roster = BMEL.Roster([], former, ["2025-2026"], history)
+    people = BME.People([], former, BME.ballot_of(res))
+    races, _rep = BME.members_elect(res, [], former, None, hand, "2026-11-10", True, history)
+    rows, rep = BMEL.election_rows("2020-11-03", res, races, hand, roster, people)
+    assert rows["3001"][0]["r"] == "won" and rows["3005"][0]["r"] == "lost", (
+        f"Pike held Rockingham 2 the term before and filed under the party: {rows.get('3005')}")
+    assert "3003" not in rows, "Lowe, a Democrat, was matched to Bob Lowe, a Republican"
+    assert "3007" not in rows, "a member of another seat was matched by surname"
+    # The twin in the race: a second candidate of the surname leaves the loss to the owner.
+    res["races"]["H|Rockingham|2"]["candidates"].append(
+        {"name": "Pike Jr.", "party": "r", "votes": 5, "write_in": False, "elected": False})
+    rows, rep = BMEL.election_rows("2020-11-03", res, races, hand, roster, people)
+    assert "3005" not in rows, "a loss was matched with a second candidate of the surname in the race"
+    # 2022: the term before was on the old districts, so its seat is no evidence.
+    res22 = {"election": "2022-11-08", "term": "2023-2024", "races": {
+        "H|Rockingham|5": race([("Moss", "r", 500, True), ("Kay", "r", 400, False)])}}
+    races22, _rep = BME.members_elect(res22, [], former, None, hand, "2026-11-10", True, history)
+    rows, rep = BMEL.election_rows("2022-11-08", res22, races22, hand, roster, people)
+    assert "3007" not in rows, "a seat held on the 2012 districts was matched to a race of 2022's"
+    return "ok", ("winners linked by the seat held, a loss by surname, seat and party, a twin, a missing "
+                  "history and the 2022 redistricting each leaving it to the owner")
+
+
+@check("build", "the elections steps say so loudly when the seat history's inputs (text_sponsors.json, "
+                "past_sponsors.json, generated/careers.json) are missing or empty, naming each file and "
+                "the rows they could not link, and say nothing when all are there",
+       needs=("build_members_elect",))
+def _elect_history_gaps(BME):
+    root = Path(tempfile.mkdtemp(prefix="gr-hist-"))
+    try:
+        paths = [root / "text_sponsors.json", root / "past_sponsors.json", root / "careers.json"]
+        gaps = BME.history_gaps(*paths)
+        assert len(gaps) == 3 and all("is missing" in g for g in gaps), f"missing files not named: {gaps}"
+        line = BME.gap_line(gaps, 7, "winner(s)")
+        assert line.startswith("WARNING") and "text_sponsors.json is missing" in line and \
+            "careers.json is missing" in line and " 7 winner(s)" in line, f"the line: {line}"
+        for p in paths:
+            p.write_text("{}", encoding="utf-8")
+        assert all("is empty" in g for g in BME.history_gaps(*paths)), "empty files passed quietly"
+        for p in paths:
+            p.write_text('{"a": 1}', encoding="utf-8")
+        assert BME.history_gaps(*paths) == [] and BME.gap_line([], 3, "winner(s)") == "", (
+            "files that are there were reported")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", "missing and empty inputs named with the count unlinked; present ones silent"
+
+
+@check("build", "a member's Elections tab is drawn in the member's own file from the built elections "
+       "page: each row's link is a real race on a built elections page, only a member with a row has "
+       "the key, and a rerun leaves nothing stale",
+       needs=("build_member_elections", "build_members_elect", "build_elections"))
+def _member_elections_built(BMEL, BME, BE):
+    if _elect_absent():
+        return "skip", "not here: " + ", ".join(_elect_absent())
+    root = Path(tempfile.mkdtemp(prefix="mel_"))
+    try:
+        site = _elect_fixture(root)
+        if not (site / "district_map.json").exists() or not (site / "legislators").is_dir():
+            return "skip", "the fixture's build wrote no district_map.json or legislators/"
+        (root / "corrections").mkdir(exist_ok=True)
+        (root / "corrections" / "members_elect.json").write_text(json.dumps(_ELECT_HAND), encoding="utf-8")
+        # The three former members the fixture adds have no file of their own.
+        for m in _ELECT_FORMER:
+            (site / "legislators" / f"{m['id']}.json").write_text(json.dumps({"id": m["id"]}), encoding="utf-8")
+        env = {"GRANITE_BUILD_DATE": _ELECT_IN}
+        for script in ("build_elections.py", "build_member_elections.py"):
+            r = _run([sys.executable, _paths.script(script), "--site", "site"] + (
+                ["--report", "reports/elections_uncertain.md"] if script == "build_member_elections.py" else []),
+                cwd=root, capture_output=True, text=True, timeout=300, env=env)
+            assert r.returncode == 0, f"{script} failed: {(r.stderr or r.stdout)[-600:]}"
+        page = (site / "elections" / "2026-11-03-general.html").read_text(encoding="utf-8")
+        ids = set(re.findall(r'<article class="er-race" id="([^"]+)"', page))
+        withkey = {}
+        for f in (site / "legislators").glob("*.json"):
+            doc = json.loads(f.read_text(encoding="utf-8"))
+            if doc.get("elections"):
+                withkey[f.stem] = doc["elections"]
+        assert withkey, "no member's file has an elections list on the fixture"
+        for mid, rows in withkey.items():
+            assert [r["d"] for r in rows] == sorted((r["d"] for r in rows), reverse=True), (
+                f"{mid}: not newest first")
+            for r in rows:
+                assert r["a"] in ids and r["a"] == BE.race_id(r["k"]), (
+                    f"{mid}: {r['a']} is no race card on the built {r['d']} page")
+                assert (site / "elections" / f"{r['d']}-general.html").exists(), (
+                    f"{mid}: {r['d']} has no built elections page")
+        # Jodi Nelson sat for Rockingham 13 and was re-elected; the fixture's own sitting member.
+        won = {mid for mid, rows in withkey.items() if any(r["r"] == "won" for r in rows)}
+        assert won, "no member won a race on the fixture"
+        written = (root / "reports" / "elections_uncertain.md")
+        assert written.exists(), "the owner's list of uncertain races was not written"
+        # A rerun is the same; and with no results there is no key anywhere.
+        before = {f.stem: f.read_bytes() for f in (site / "legislators").glob("*.json")}
+        r = _run([sys.executable, _paths.script("build_member_elections.py"), "--site", "site"],
+                 cwd=root, capture_output=True, text=True, timeout=300, env=env)
+        assert r.returncode == 0 and before == {f.stem: f.read_bytes() for f in (site / "legislators").glob("*.json")}, (
+            "a rerun changed the members' files")
+        (root / "collected" / "election_2026.json").unlink()
+        r = _run([sys.executable, _paths.script("build_member_elections.py"), "--site", "site"],
+                 cwd=root, capture_output=True, text=True, timeout=300, env=env)
+        assert r.returncode == 0, f"with no results: {(r.stderr or r.stdout)[-400:]}"
+        assert not any("elections" in json.loads(f.read_text(encoding="utf-8"))
+                       for f in (site / "legislators").glob("*.json")), (
+            "a member's file kept an elections list after the results were gone")
+        return "ok", (f"{len(withkey)} members' files on the fixture, every link a race card on the "
+                      "built page, newest first, a rerun the same, none left once the results go")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("frontend", "a member's Elections tab is drawn by app.js: each row linked to its race on the "
+       "elections page with its result, votes and share, a Spanish label, the tab only for a member "
+       "with a row, and its address in the lists that serve it",
+       needs=("build_pages",))
+def _member_elections_tab(BP):
+    names = ("renderMemberElections", "memberElectionTab", "MEMBER_TABS")
+    member = {"elections": [
+        {"d": "2026-11-03", "k": "S|5", "a": "r-s-5", "r": "open", "v": 9000, "s": 1, "pl": 1, "of": 2,
+         "sh": 52.9, "rq": 1},
+        {"d": "2024-11-05", "k": "H|Rockingham|3", "a": "r-h-rockingham-3", "r": "won", "v": 3000,
+         "s": 2, "fl": 1, "rc": 1, "pl": 2, "of": 3},
+        {"d": "2024-11-05", "k": "H|Rockingham|1", "a": "r-h-rockingham-1", "r": "lost", "v": 1500,
+         "s": 1, "pl": 2, "of": 4, "sh": 41.0}]}
+    html = _app_js("scope.renderMemberElections(" + json.dumps(member) + ")", names=names)
+    if html is None:
+        return "skip", "node, app.js or the stub is not here"
+    for want in ('href="/elections/2026-11-03-general#r-s-5"',
+                 'href="/elections/2024-11-05-general#r-h-rockingham-3"',
+                 "Result not final, 1st of 2", "a recount was requested", "Elected, 2nd of 3",
+                 "Not elected, 2nd of 4", "Recounted", "9,000", "(52.9%)", "(41.0%)",
+                 "Senate, District 5", "House, Rockingham 3", "floterial",
+                 'href="/elections/2024-11-05-general">2024 general election',
+                 "Secretary of State"):
+        assert want in html, f"the Elections tab does not say {want!r}"
+    assert html.count('<td class="d"') == 3 and "(%)" not in html and "narrow" not in html.lower() \
+        and "safe" not in html.lower(), "the tab's rows, or a word it should not say"
+    tab = _app_js("[scope.memberElectionTab(" + json.dumps(member) + "), scope.memberElectionTab({}), "
+                  "scope.renderMemberElections({})]", names=names)
+    assert tab[0] == ["Elections", 3] and tab[1] is None and tab[2] == "", (
+        f"the tab appears for a member with no race, or not for one with: {tab}")
+    # The tab's address, in the lists that serve it, and the label in Spanish.
+    assert "elections" in BP.MEMBER_TAB_SLUGS and "/legislator/:who/elections /legislator/:who 200" in BP.REDIRECTS_DYNAMIC, (
+        "/legislator/<who>/elections is not served by the member's page")
+    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    assert es["race.tab"]["es"] == "Elecciones" and es["race.tab"]["en"] == "Elections", "no Spanish label"
+    return "ok", "three rows linked, the words the elections page uses, no tab without a race, the address served, Elecciones"
+
+
+@check("build", "an elections tab is a tab a report may name, in the box, the Function and the compiler",
+       needs=("compile_reports",))
+def _member_elections_report_tab(CR):
+    js = Path("functions/api/report.js")
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    if not js.exists():
+        return "skip", "no functions/api/report.js here"
+    fn = re.search(r"const TABS = new Set\(\[(.*?)\]\)", js.read_text(encoding="utf-8"), re.S).group(1)
+    assert '"Elections"' in fn and "Elections" in CR.TABS and '"Elections"' in app, (
+        "report.js, compile_reports.py and app.js do not all accept an Elections tab")
+    return "ok", "Elections is in the three tab lists"
+
+
 @check("build", "election week's helper drafts from what the steps print, proposes only what the "
        "step could not be sure of, places the recount schedule's races, reads a statewide count "
        "only, waits and finishes as it should, asks nobody and writes only logs/",
@@ -117515,7 +120331,7 @@ def _elect_own_seat(BME):
                  "s": "james-creighton-hills-30"}
     html = C.elect_race({"seats": 2, "elected": [foote, creighton]})
     assert re.findall(r'<li class="elown"><span class="mchip p-R" translate="no"><a href="'
-                      r'legislator/([a-z0-9-]+)\.html"', html) == ["charles-foote-rock-13"] \
+                      r'legislator/([a-z0-9-]+)"', html) == ["charles-foote-rock-13"] \
         and html.count("elown") == 1, f"the block marks {html!r}: only Foote's item is elown"
     assert "elown" not in C.elect_race({"seats": 1, "elected": [dict(foote, s="")]}), (
         "an item with no link is marked elown")
@@ -117721,7 +120537,7 @@ def _elect_tab_like_legislators(OT):
         "Rep. “Elect” Lee Nobody": ("p-X", None, "Belk 6", "New"),
     }
     for who, (cls, slug, tag, kind) in want.items():
-        inner = (f'<a href="legislator/{slug}.html">{_h.escape(who)} <span class="mtag">({tag})</span></a>'
+        inner = (f'<a href="legislator/{slug}">{_h.escape(who)} <span class="mtag">({tag})</span></a>'
                  if slug else f'{_h.escape(who)} <span class="mtag">({tag})</span>')
         # The chip is the Legislators tab's, nothing inside it but the name
         # and tag; the word is beside it, outside it.
@@ -117739,7 +120555,7 @@ def _elect_tab_like_legislators(OT):
               {"k": "returning", "id": "1001"}):
         if OT.elect_kind(e, "H|Coos|1", rows_by_id) or OT.elect_word(e, "H|Coos|1", rows_by_id):
             bad.append(f"a member-elect the rows cannot place gets a word: {e}")
-    links = re.findall(r'<a href="legislator/([^"]+)\.html"', page)
+    links = re.findall(r'<a href="legislator/([^"]+)"', page)
     if sorted(set(links)) != sorted(s for _c, s, _t, _k in want.values() if s) or len(links) != 12:
         bad.append(f"the tab links {sorted(set(links))} ({len(links)}): only the six the file "
                    "links, once in each view")
@@ -118617,6 +121433,103 @@ def _elect_step_order(build_all):
 # same day the person widened the rule for three kinds of the 24
 # (_elect_widened), and it links 310, still none wrong: 114 left, 7 of them
 # the record knew.
+
+@check("build", "the ballot questions: every card's rule is its kind's, the county files sum to the "
+                "totals shown, 2022's Question No. 2 and 2026's are the Secretary of State's counts, "
+                "no card says a school district adopted or failed anything, and the flip numbers are "
+                "the least number of voters",
+       needs=("build_elections", "parse_sos_questions"))
+def _ballot_questions(BE, PSQ):
+    """The ballot-question cards (stage 0 of the elections work, 11 November
+    2026). Held to collected/ballot_questions.json and
+    corrections/ballot_results.json, both tracked; where the spreadsheets are
+    on disk, the file is read again from them."""
+    qp, bp = Path("collected/ballot_questions.json"), Path("corrections/ballot_results.json")
+    if not qp.exists() or not bp.exists():
+        return "skip", "not here: collected/ballot_questions.json or corrections/ballot_results.json"
+    doc = json.loads(qp.read_text(encoding="utf-8"))
+    els = doc["elections"]
+    # the committed file is what the saved spreadsheets say, where they are here
+    if all((Path("records/sources") / s["file"]).exists() for s in doc["_source"]):
+        r = _run([sys.executable, _paths.script("parse_sos_questions.py"), "--check"],
+                 capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, f"parse_sos_questions --check: {(r.stdout or '') + (r.stderr or '')}"
+    # every county adds up to the statewide figure, except the one the page says disagrees
+    for day, qs in els.items():
+        for q in qs:
+            yes = sum(v[0] for v in q["counties"].values())
+            no = sum(v[1] for v in q["counties"].values())
+            assert len(q["counties"]) == 10, f"{day} {q['label']}: {len(q['counties'])} counties"
+            if q.get("county_sum"):
+                assert q["county_sum"] == [yes, no], f"{day} {q['label']}: county_sum is not the counties'"
+                assert [yes, no] != [q["yes"], q["no"]]
+            else:
+                assert (yes, no) == (q["yes"], q["no"]), (
+                    f"{day} {q['label']}: the counties add up to {yes}, {no}, the total says "
+                    f"{q['yes']}, {q['no']}")
+    q22 = {q["number"]: q for q in els["2022-11-08"]}
+    assert (q22[2]["yes"], q22[2]["no"], q22[2]["kind"]) == (178339, 347838, "convention"), q22[2]
+    q26 = {q["number"]: q for q in els["2026-11-03"]}
+    assert (q26[2]["yes"], q26[2]["no"], q26[2]["kind"], q26[2].get("measure")) == (
+        356374, 249144, "local_cap", "HB 1300"), q26[2]
+    assert q26[2]["counties"]["Belknap"] == [18946, 10690] and q26[2]["counties"]["Sullivan"] == [10575, 7912]
+    # the CACR rows the corrections file holds agree with the spreadsheets, but for the one
+    # place the Secretary of State's own files disagree (2026, read from its summary)
+    rows = json.loads(bp.read_text(encoding="utf-8"))["rows"]
+    for day, qs in els.items():
+        for q in qs:
+            if q["kind"] != "cacr":
+                continue
+            mine = [r for r in rows if r["election"] == day and r["label"] == q["label"]]
+            assert len(mine) == 1 and (mine[0]["yes"], mine[0]["no"]) == (q["yes"], q["no"]), (
+                f"{day} {q['label']}: corrections/ballot_results.json and the spreadsheet differ")
+    # the rule on each card comes from its kind
+    banned = re.compile(r"\b(adopted|failed|passed|ratified|rejected|approved)\b", re.I)
+    for day in els:
+        cards = BE.question_cards(day, bp, qp)
+        assert len(cards) == len(els[day]), f"{day}: {len(cards)} cards for {len(els[day])} questions"
+        for c in cards:
+            html_ = BE.ballot_block([c], Path("nowhere"), {})
+            text = re.sub(r"<[^>]+>", " ", html_)
+            rule = BE.question_rule(c)
+            if c["kind"] == "cacr":
+                assert "two thirds" in rule and "Article 100)" in rule, rule
+                assert "3/5" not in text and "majority" not in re.sub(r"\s+", " ", rule)
+                assert "Ratified" in text or "Not ratified" in text
+            elif c["kind"] == "convention":
+                assert "majority of the qualified voters" in rule and "Article 100(b)" in rule, rule
+                assert "two thirds" not in text and "3/5" not in text, text
+                assert "Approved" in text or "Not approved" in text
+            else:
+                assert "3/5 majority of the voters voting in the municipalities and wards" in rule, rule
+                assert "RSA 32:5-i" in rule and "two thirds" not in text, text
+                assert not banned.search(text.replace("approve the question", "")), (
+                    f"a local tax cap card names an outcome: {banned.search(text).group(0)}")
+                assert "decides nothing" in text and "voter would have" not in text \
+                    and "voters would have" not in text, text
+            if c["kind"] != "local_cap":
+                assert "would have had to vote the other way" in text, text
+    # the least number of voters that changes the result, by counting
+    two = BE.two_thirds
+    maj = lambda y, n: y > n
+    for y, n in [(0, 5), (5, 0), (7, 3), (2, 1), (3, 3), (4, 2), (9, 4), (13, 7), (30, 61), (66, 33), (67, 33), (10, 11)]:
+        want = 0
+        while two(y, n) == two(*((y - want, n + want) if two(y, n) else (y + want, n - want))):
+            want += 1
+            if want > y + n:
+                break
+        assert BE.flip_two_thirds(y, n) == want, (y, n, BE.flip_two_thirds(y, n), want)
+        want = 0
+        while maj(y, n) == maj(*((y - want, n + want) if maj(y, n) else (y + want, n - want))):
+            want += 1
+            if want > y + n:
+                break
+        assert BE.flip_majority(y, n) == want, (y, n, BE.flip_majority(y, n), want)
+    assert (BE.flip_two_thirds(329157, 194291), BE.flip_two_thirds(365359, 198791),
+            BE.flip_two_thirds(452307, 237221), BE.flip_majority(178339, 347838)) == (
+        19809, 10741, 7379, 84750)
+    return "ok", ("ballot questions: " + ", ".join(f"{d}: {len(q)}" for d, q in els.items()))
+
 
 @check("build", "members-elect: the results reader refuses a write-in winner the file does not "
                 "name, and reads a county's later upload in place of the earlier",
@@ -120396,6 +123309,42 @@ def _map_labels_never_overlap():
     return "ok", (f"{out['layouts']:,} layouts, none overlapping; Manchester's wards numbered "
                   f"after {out['manchester'].get('660 numbers')} presses and named after "
                   f"{out['manchester'].get('660 names')} at 1366")
+
+
+@check("frontend", "the district map keeps the state's outline on every layer, through any number "
+                   "of switches between State House and State Senate")
+def _map_keeps_the_outline():
+    """tests/test_map_outline.js loads map.js in node on the real geometry and
+    switches layers fifty times in turn. The owner, 11 November 2026: the map
+    outline disappeared on the switch from State House to State Senate -- the
+    outline was the county lines, drawn on two layers only. Held: every layer
+    gets the heavy line (casing and line) with a path, the same state edge on
+    every layer but the two that draw the county lines, and none is lost on a
+    later switch.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    js, harness = Path("src/pages/map.js"), Path("tests/test_map_outline.js")
+    if not (js.exists() and harness.exists()):
+        return "skip", "map.js or tests/test_map_outline.js is not in this directory"
+    data = _map_data()
+    if data is None:
+        return "skip", "the geometry, the district files or the officials file is not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-mapoutline-"))
+    try:
+        (root / "district_map.json").write_text(json.dumps(data), encoding="utf-8")
+        r = _run(["node", str(harness.resolve()), str(js.resolve()), str(root / "district_map.json")],
+                 cwd=root, capture_output=True, text=True, timeout=120)
+        said = (r.stdout or "").strip().splitlines()
+        assert r.returncode == 0 and said, (
+            "the outline check did not run: " + ((r.stderr or r.stdout or "").strip()[-300:]))
+        out = json.loads(said[-1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert out["switches"] >= 50 and len(out["layers"]) >= 2, "the check switched too few layers"
+    assert not out["missing"], "a layer draws no state outline:\n    " + "\n    ".join(out["missing"][:8])
+    assert not out["drifted"], "a layer's outline is not the state's:\n    " + "\n    ".join(out["drifted"][:8])
+    return "ok", f"{len(out['layers'])} layers, {out['switches']} switches, the state's outline on each"
 
 
 @check("build", "every district on the map is filled from the record's party, and a vacant "
@@ -123622,11 +126571,39 @@ Adopted.
 }
 
 
+# What the House Journal's resolutions say of one measure. Not part of the
+# build: only these checks read a number against them, so it lives here.
+def _resolution_reading(resolutions, bid):
+    """What the resolutions say of one measure, or None where they say nothing.
+
+    {"introduced": True, ...} with the resolution that names its number;
+    {"introduced": False, ...} where none names it and one steps over it --
+    names numbers of its kind on both sides of it in one list, as "31 through
+    86, 88 through 133" steps over 87. A number past the end of every list is
+    not stepped over, and nothing is said of it."""
+    m = re.match(r"^([A-Z]+)(\d+)$", bid or "")
+    if not m:
+        return None
+    kind, n = m.group(1), int(m.group(2))
+
+    def cite(r, introduced):
+        return {"introduced": introduced, "date": r["date"], "journal": r["journal"],
+                "numbered": r["words"].get(kind, ""), "file": r["file"], "line": r["line"]}
+    for r in resolutions:
+        if any(a <= n <= b for a, b in r["numbered"].get(kind, ())):
+            return cite(r, True)
+    for r in resolutions:
+        rs = r["numbered"].get(kind, [])
+        if any(b < n < c for (_a, b), (c, _d) in zip(rs, rs[1:])):
+            return cite(r, False)
+    return None
+
+
 @check("status", "the House's resolutions of introduction are read by number, and the "
                  "introductions build_data publishes from them are what they say",
        needs=("journal_bills", "build_data"))
 def _journal_resolutions(J, BD):
-    """journal_bills.introduction_resolutions and resolution_reading, on the
+    """journal_bills.introduction_resolutions and the reading of them below, on the
     resolutions as printed. The House introduces its bills by a resolution
     that names them by number: a number it names was introduced that day; a
     number it steps over, with numbers of its kind named on both sides, was
@@ -123673,7 +126650,7 @@ def _journal_resolutions(J, BD):
     assert got[2010][0]["numbered"] == {"HB": [(1689, 1689), (1690, 1690)]}, got[2010]
 
     def says(year, bid):
-        x = J.resolution_reading(got[year], bid)
+        x = _resolution_reading(got[year], bid)
         return None if x is None else x["introduced"]
     assert [says(2009, b) for b in ("HB86", "HB87", "HB88", "HB134", "HB223", "HB224",
                                     "HB30", "HCR2", "HCR5", "CACR4", "HR1", "SB1")] == [
@@ -123688,7 +126665,7 @@ def _journal_resolutions(J, BD):
         False, True, True, False]
     assert [says(2010, b) for b in ("HB1689", "HB1690", "HB1308", "SB300")] == [
         True, True, None, None]
-    assert J.resolution_reading(got[2009], "not a bill") is None
+    assert _resolution_reading(got[2009], "not a bill") is None
 
     # The table, against the resolutions it was read from.
     year_of = {"2007-2008": 2007, "2009-2010": 2009, "2011-2012": 2012, "2017-2018": 2017}
@@ -123702,7 +126679,7 @@ def _journal_resolutions(J, BD):
     assert sorted(k for k, v in BD.INTRODUCTION_FROM_JOURNAL.items() if v["introduced"]) == [
         ("2011-2012", "HB1512")], "the table calls another bill introduced"
     for (term, bid), fact in BD.INTRODUCTION_FROM_JOURNAL.items():
-        x = J.resolution_reading(got[year_of[term]], bid)
+        x = _resolution_reading(got[year_of[term]], bid)
         assert x is not None and {k: x[k] for k in ("introduced", "date", "journal",
                                                     "numbered")} == fact, (
             f"{bid} of {term}: the table says {fact} and the resolution reads {x}")
@@ -123823,7 +126800,7 @@ def _introductions_against_journal(J, BD):
         # A House bill's number is its year's: 1 to 999 in the first year of
         # a term and from 1001 in the second, so a bill is held to the
         # resolutions of the year it was filed for.
-        said = J.resolution_reading(
+        said = _resolution_reading(
             [x for x in cache[years] if x["date"][:4] == str(rec.get("lsr_year"))], bid)
         fact = BD.INTRODUCTION_FROM_JOURNAL.get((term, bid))
         if said is None:
@@ -123832,7 +126809,7 @@ def _introductions_against_journal(J, BD):
                            f"({fact}) and no resolution on disk speaks of it")
             continue
         held += 1
-        if not said["introduced"] and J.resolution_reading(cache[years], bid)["introduced"]:
+        if not said["introduced"] and _resolution_reading(cache[years], bid)["introduced"]:
             continue                 # named by a resolution of the term's other year
         if said["introduced"] and told_never:
             bad.append(f"{bid} of {term} is told as never introduced, and the resolution "
@@ -126089,6 +129066,120 @@ def _loading(began):
     return began - start if cpu - 0.5 <= began - start < 86400 else cpu
 
 
+def _docket_file(rows):
+    """A docket file of (year, lsr, bill, body, description) rows, in a scratch
+    folder, as the database's dump writes them. Returns its path."""
+    import tempfile
+    path = Path(tempfile.mkdtemp()) / "Docket_db_1991-1992.txt"
+    path.write_text("".join(
+        f"{y}|{lsr}|01/05/{y} 10:00:00 AM|{b}|{body}|{d}|01/05/{y} 10:00:00 AM\n"
+        for y, lsr, b, body, d in rows), encoding="utf-8")
+    return path
+
+
+@check("code", "a referral the clerk's line wrapped is read as one line, so a bill "
+               "introduced 'and' / 'ref to Public Works' has its committee",
+       needs=("referrals",))
+def _referral_wrapped(referrals):
+    """9 November 2026, the coverage audit: HB 785 of 1991 and SB 246 of 1993
+    had no committee, because the docket breaks "INTRODUCED AND" / "REF TO
+    PUBLIC WORKS;  HJ74" across two rows and the introduction pattern is
+    anchored to one. Six Senate referrals of 1993-1996 were missing the same
+    way (SB 173 and SB 667 among them)."""
+    path = _docket_file([
+        (1991, "1227", "HB785", "H", "REP GROSS SUSP RULES FOR INTRODUCTION, MA 2/3 VV; INTRODUCED AND"),
+        (1991, "1227", "HB785", "H", "REF TO PUBLIC WORKS;  HJ74,P1710"),
+        (1991, "1069", "SB246", "S", "SEN RUSSMAN SUSP RULES FOR INTRO, MA 2/3VV; INTRODUCED AND REF"),
+        (1991, "1069", "SB246", "S", "TO TRANSPORTATION; SJ3,P39"),
+        (1991, "1300", "HB900", "H", "INTRODUCED AND REF TO EXEC & ADMIN     HJ 13 ,P 138"),
+    ])
+    refs, _began = referrals._read_docket(str(path), "1991-1992")
+    assert refs.get(("1991-1992", "HB785")) == {"H": "Public Works"}, refs.get(("1991-1992", "HB785"))
+    assert refs.get(("1991-1992", "SB246")) == {"S": "Transportation"}, refs.get(("1991-1992", "SB246"))
+    assert ("1991-1992", "HB900") in refs        # the one-row form still reads
+    return "ok", "'INTRODUCED AND' / 'REF TO X' on two rows is one referral"
+
+
+@check("code", "a bill whose docket never sends it to a committee is 'none on record', "
+               "one that waived the referral on two rows too, and one referred is not",
+       needs=("referrals",))
+def _referral_none_on_record(referrals):
+    """9 November 2026: the data page's Committee column read 96-99% because
+    a resolution adopted the day it was introduced, and a bill passed under a
+    suspension of the rules, were counted as committees this site had failed
+    to read. The docket is the witness that they never had one."""
+    path = _docket_file([
+        (1991, "1", "HR5", "H", "INTRODUCED AND ADOPTED VV; HJ3,P32"),
+        (1991, "2", "HB6", "H", "INTRODUCED AND REF TO EDUCATION; HJ4"),
+        (1991, "3", "SCR1", "S", "Sen. Below susp. rules for intro. & no referral to comm. & notice in calendar &"),
+        (1991, "3", "SCR1", "S", "no hearing and rpt in the calendar, 2nd rdg; MA 2/3 nec.;  OTP, MA, VV"),
+        (1991, "4", "HB763", "S", "Sen. Boyce, Suspend Rules for Intro. & Without Ref. to Committee, 2/3 nec."),
+        (1991, "5", "HB7", "H", "HEARING MAR04 01:00 RM306,LOB    FOR: EDUCATION"),
+    ])
+    none = referrals.unreferred({"1991-1992": str(path)})
+    assert ("1991-1992", "HR5") in none and ("1991-1992", "SCR1") in none \
+        and ("1991-1992", "HB763") in none, none
+    assert ("1991-1992", "HB6") not in none and ("1991-1992", "HB7") not in none, none
+    return "ok", "adopted and rules-waived bills are none on record; a referred or heard bill is not"
+
+
+@check("code", "the coverage table counts a blank committee as covered only where the record "
+               "shows the bill never had one",
+       needs=("build_exports",))
+def _coverage_committee_none(BE):
+    import tempfile
+    out = Path(tempfile.mkdtemp())
+    (out / "bills.csv").write_text(
+        "term,year,bill,title,sponsor,committee,topic,status,outcome,passage\n"
+        "1991-1992,1991,HR5,t,,,x,Adopted by the House,adopted,H\n"
+        "1991-1992,1991,HB6,t,a,House Education,x,Killed,done,H\n"
+        "1991-1992,1991,HB8,t,a,,x,Killed,done,H\n"
+        "1991-1992,1991,HB9,t,a,,x,Withdrawn prior to introduction,done,\n",
+        encoding="utf-8")
+    row = BE.coverage(out, none_on_record={("1991-1992", "HR5")})[0]
+    assert row["bills"] == 4 and row["committee"] == 1, row
+    assert row["committee_none"] == 2, row            # HR5 by its docket, HB9 never introduced
+    return "ok", "committee_none counts HR5 and a never-introduced bill, not HB8"
+
+
+@check("code", "the coverage table counts a resolution the chamber itself offered as having its sponsor",
+       needs=("build_exports",))
+def _coverage_sponsor_body(BE):
+    """Alice, 9 November 2026: "Offered by the House of Representatives" names
+    the body as the sponsor, so the Sponsor column counts it covered."""
+    import tempfile
+    out = Path(tempfile.mkdtemp())
+    (out / "bills.csv").write_text(
+        "term,year,bill,title,sponsor,committee,topic,status,outcome,passage\n"
+        "2021-2022,2021,HR7,t,,,x,Adopted by the House,adopted,H\n"
+        "2021-2022,2021,HR8,t,,,x,Adopted by the House,adopted,H\n"
+        "2021-2022,2021,HB9,t,a,House Education,x,Killed,done,H\n",
+        encoding="utf-8")
+    row = BE.coverage(out, none_on_record=set(), by_chamber={("2021-2022", "HR7")})[0]
+    assert row["sponsor"] == 1 and row["sponsor_body"] == 1, row
+    page = Path("src/pages/build_exports.py").read_text(encoding="utf-8")
+    assert 'c["sponsor"] + c.get("sponsor_body", 0)' in page, (
+        "the data page's Sponsor figure does not add the resolutions the chamber offered")
+    rs = Path("src/parse/resolution_sponsors.py").read_text(encoding="utf-8")
+    assert 'BODY.match(b["who"]' in rs and "resolution_bodies.json" in rs, (
+        "resolution_sponsors.py no longer writes the resolutions the chamber offered")
+    return "ok", "HR7, offered by the House, counts as covered; HR8, naming nobody, does not"
+
+
+@check("code", "the topic model answers the labelled term's bills the General Court gave no "
+               "topic, and does not treat a retired 'Regular Meeting' as one",
+       needs=("topic_model",))
+def _topic_labelled_term_answered(TM):
+    """9 November 2026: 2025-2026's Topic column read 99% because the model
+    skipped the whole term it learns from, so nine early-withdrawn House bills
+    and thirteen housekeeping resolutions had none."""
+    import inspect
+    src = inspect.getsource(TM.apply)
+    assert "if term == LABELLED_TERM" not in src, "apply() skips the labelled term whole again"
+    assert "RETIRED" in src, "apply() takes a retired subject for a label"
+    return "ok", "apply() answers the labelled term's unlabelled bills"
+
+
 def _began_from(stat, uptime, hz, now):
     """When a process began, by the clock that reads `now`: from its
     /proc/<pid>/stat, whose 22nd field is the ticks from boot to its start
@@ -126097,6 +129188,80 @@ def _began_from(stat, uptime, hz, now):
     second."""
     ticks = int(stat.rsplit(")", 1)[1].split()[19])
     return now - (float(uptime.split()[0]) - ticks / hz)
+
+
+@check("frontend", "the home page's left column is two cards as the right is, the Committees tab is a gavel, "
+                   "and the Laws preview holds a definition's box inside it")
+def _visual_fixes_of_11_november():
+    """The owner's three fixes of 11 November 2026, each held to its contract.
+
+    1. The home page's left column was one sheet with the status box flush
+       against the Recent Session Days heading. It is two cards, the status
+       and Recent Session Days, drawn as the right column's two (Coming up
+       and Latest activity): the same surface, edge, radius and padding, the
+       sheet around the column gone, and a gap between them.
+    2. The Committees tab's drawing is the gavel, one of components.ICONS,
+       drawn as its neighbours are (the one ICON_PAINT).
+    3. The Laws page's preview is held at the top as tall as the screen
+       allows, never scrolls sideways, and DEFS_JS bounds a definition's box
+       by the panel it opens in: its width, its words wrapping, its top and
+       bottom (which is what lets it open above near the panel's bottom)."""
+    import build_pages as BP
+    import build_rsa as B
+    import chrome as CH
+    import components as C
+    for lang in ("en", "es"):
+        body = BP.home_body(lang, False, "", "", "", "")
+        left = re.search(r'<section class="hside hleft".*?</section>', body, re.S)
+        assert left and 'id="state"' in left.group(0) and 'id="session"' in left.group(0), (
+            f"the {lang} home page's left column no longer holds the status and Recent Session Days "
+            f"as #state and #session")
+        right = re.search(r'<section class="hside hright".*?</section>', body, re.S)
+        assert right and 'id="upcoming"' in right.group(0) and 'id="recent"' in right.group(0), (
+            f"the {lang} home page's right column no longer holds #upcoming and #recent")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    laid = [(tuple(re.sub(r"\s+", "", a) for a in at), {" ".join(x.split()) for x in sel.split(",")},
+             {k: " ".join(v.split()) for k, v in _css_decls(body)}) for at, sel, body, _n in _css_rules(css)]
+    wide = ("@media(min-width:73.75em)",)
+    P = ":where(body.pg) "
+
+    def said(sel):
+        out = {}
+        for at, sels, decls in laid:
+            if at == wide and P + sel in sels:
+                out.update(decls)
+        return out
+    card = {k: said(".hv-panels .hright > #upcoming").get(k) for k in
+            ("background", "border", "border-radius", "padding")}
+    assert all(card.values()), f"the right column's cards are not drawn as cards in app.css: {card}"
+    for sel in (".hv-panels .hleft > #state", ".hv-panels .hleft > #session"):
+        got = {k: said(sel).get(k) for k in card}
+        assert got == card, (f"the left column's {sel.rsplit('#', 1)[1]} is not the card the right "
+                             f"column's are: {got} against {card}")
+    assert said(".hv-panels .hleft").get("border") == "0" and said(".hv-panels .hleft").get("background") == "none", (
+        "the left column is still one sheet around its blocks")
+    assert said(".hv-panels .hleft > #state ~ #session").get("margin-top") == "var(--sp-6)", (
+        "the status card and the Recent Session Days card have no gap between them")
+    nav = {href: g for href, _label, g in CH.NAV_TABS}
+    assert nav.get("committees.html") == "gavel" and "gavel" in C.ICONS, (
+        f"the Committees tab's drawing is {nav.get('committees.html')!r}, not the gavel")
+    assert C.icon("gavel").startswith('<svg class="icon" viewBox="0 0 24 24"') and C.ICON_PAINT in C.icon("gavel"), (
+        "the gavel is not drawn as the other icons are")
+    assert "gavel:" in Path("src/pages/components.js").read_text(encoding="utf-8"), (
+        "components.js has no gavel, so a page drawn in the browser would lack the Committees drawing")
+    read = {}
+    for at, sels, decls in laid:
+        if not at and ".lw-read" in sels:
+            read.update(decls)
+    assert read.get("position") == "sticky" and read.get("overflow-x") == "hidden" \
+        and read.get("height") == "calc(100vh - 32px)", (
+        f"the Laws preview is not held at the top, as tall as the screen allows, with no sideways scroll: {read}")
+    place = B.DEFS_JS[B.DEFS_JS.find("function place("):B.DEFS_JS.find("function show(")]
+    assert "overflowX" in place and "pop.style.maxWidth" in place and "host.clientWidth" in place \
+        and "bot-below" in place and "r.top-6-top" in place, (
+        "DEFS_JS does not bound a definition's box by the panel it opens in, its width and its top and bottom")
+    return "ok", ("the left column's two cards are the right's; the Committees tab is the gavel; the Laws "
+                  "preview is as tall as the screen and its definition box is held inside it")
 
 
 def main():
@@ -126161,6 +129326,8 @@ def main():
         # suite, and handoff.py reads a record as a run of all of it.
         handoff = None
 
+    if chosen is None and not a.built and not a.data:
+        _start_early_builds()
     results, group, built, took = [], None, [], []
     for c in _in_order(CHECKS):
         if a.code and c["group"] == "data":
@@ -126554,6 +129721,9 @@ NOT_INPUT_NAMERS = {
     "state_sources.py": "archive/cloud/sources-down.json, its record of what this machine "
                         "last took of the state documents; no build step runs it, and "
                         "nothing a page is made of",
+    "build_member_elections.py": "reports/elections_uncertain.md, the list it writes for the "
+                                 "owner of candidates it could not match to a member with "
+                                 "certainty; nothing reads it, and nothing a page is made of",
     "livestreams.py": "logs/youtube-<day>.log, yt-dlp's warnings, which its asks write "
                       "(--since-state, before the build) and nothing reads; nothing a page "
                       "is made of",
@@ -127964,6 +131134,612 @@ def _slowest_reaches_the_job_log(NI):
         NI.WATCH["step"] = saved[3]
     return "ok", ("a preflight step's slowest line, and that alone, reaches GitHub's log; once "
                   "from a failed one; never from another step, nor in another shape")
+
+
+# ---------------------------------------------------------------- resolution sponsors
+#
+# 173 resolutions had no sponsor (9 November 2026). 95 are the chamber's own business and the
+# General Court names none; the rest are memorials and honoring resolutions, and the House
+# Journal that prints each says who offered it -- in nearly every case "the House of
+# Representatives", which names nobody, and in two ("Offered by: Representatives Gene Chandler,
+# Stephen Shurtleff and Speaker Terie Norelli", HR 9 of 2013; "Reps. Flanagan and Shurtleff
+# offered the following:", HR 14 of 2015) a person.
+
+_RS_JOURNAL = """\
+HOUSE RESOLUTION NO. 9
+
+Honoring the victims and heroes of the Boston Marathon Tragedy
+WHEREAS, the House shares the sorrow of the tragedy at this year's Boston Marathon; and
+RESOLVED, by the New Hampshire House of Representatives, in Regular Session convened:
+That the House does hereby honor all the victims.
+Offered by: Representatives Gene Chandler, Stephen Shurtleff and Speaker Terie Norelli
+
+Rep. Shurtleff moved Ought to Pass and requested a roll call; sufficiently seconded.
+
+                         HOUSE RESOLUTION NO. 14
+
+Reps. Flanagan and Shurtleff offered the following:
+WHEREAS, the House learned with great sorrow of the tragic shooting in Charleston, South Carolina; and
+RESOLVED, that the House stands with the community of Charleston.
+Offered and adopted unanimously by the New Hampshire House of Representatives.
+
+                         HOUSE RESOLUTION NO. 6
+
+                  Memorializing State Representative Andre Martel of Manchester
+WHEREAS, we have learned with profound sorrow of the death of our friend and colleague; and
+RESOLVED, by the House of Representatives, Andre A. Martel be granted the highest praise.
+Offered by the House of Representatives and adopted unanimously.
+
+                         RESOLUTION
+
+Reps. Hinch and Shurtleff offered the following: RESOLVED, that the House inform the Senate.
+Motion adopted.
+
+                         HOUSE RESOLUTION NO. 7
+
+                  Memorializing State Representative Someone Else of Elsewhere
+WHEREAS, we have learned of the death of our colleague; and
+RESOLVED, that expressions of sympathy be extended to his family.
+Offered and adopted unanimously by the House of Representatives.
+
+Reps. Hinch and Shurtleff offered the following: RESOLVED, that the House adjourn.
+Offered by the Speaker
+"""
+
+
+@check("build", "a resolution's sponsor is the person the journal names, and a body names nobody",
+       needs=("build_data", "text_sponsors", "build_all"))
+def _resolution_sponsors(BD, TS, BA):
+    """resolution_sponsors.py reads who offered a resolution off the House Journal. Three
+    shapes name a person (a footer "Offered by: Representatives ...", a line "Reps. X and Y
+    offered the following:" under the heading); "Offered by the House of Representatives" and
+    "Offered and adopted unanimously by the House" name a body and give nothing; a later
+    motion of the sitting ("Reps. Hinch and Shurtleff offered the following: RESOLVED, ...")
+    and a footer that belongs to another item are not the resolution's. build_data then gives
+    the sponsors to a bill that has none, never to a housekeeping resolution, never over a
+    sponsor another source named, and never to a bill whose title is not the journal's."""
+    import contextlib
+    import io
+    RS = imp("resolution_sponsors")
+    assert RS is not None, ("src/parse/resolution_sponsors.py is not there: 173 resolutions have no "
+                            "sponsor, and the House Journal names one for the ones it names")
+    plan = BA.plan(type("A", (), {"key": None, "session": "2026", "base": "https://graniterecord.org",
+                                  "archive": "nh-archive"})())
+    steps = [s.args[0] for s in plan]
+    assert "resolution_sponsors.py" in steps, "build_all has no resolution_sponsors.py step"
+    assert steps.index("resolution_sponsors.py") < steps.index("build_data.py"), (
+        "the resolution sponsors are read after build_data, which takes them")
+    assert next(s for s in plan if s.args[0] == "resolution_sponsors.py").kit_required, (
+        "the step may be skipped on the nightly's machine, where the sponsors would go with no word")
+    root = Path(tempfile.mkdtemp())
+    try:
+        jd = root / "journals" / "2013"
+        jd.mkdir(parents=True)
+        (jd / "HJ041.txt").write_text(_RS_JOURNAL, encoding="utf-8")
+        got = {(b["number"]): b for b in RS.blocks(jd / "HJ041.txt", "H")}
+        assert got[9]["names"] == ["Gene Chandler", "Stephen Shurtleff", "Terie Norelli"], got[9]["names"]
+        assert got[14]["names"] == ["Flanagan", "Shurtleff"], got[14]["names"]
+        assert got[6]["names"] == [] and got[6]["via"] == "offered by", (
+            "'Offered by the House of Representatives' was read as a person: " + repr(got[6]))
+        assert got[7]["names"] == [] and "Speaker" not in got[7]["line"], (
+            "a footer from another item of the sitting was taken as HR 7's: " + repr(got[7]))
+        assert RS.read(root / "journals", root / "absent") == {"2013-2014": {
+            "HR9": got_rec(RS, got[9], jd / "HJ041.txt"),
+            "HR14": got_rec(RS, got[14], jd / "HJ041.txt")}}, "read() keyed the wrong resolutions"
+        out = root / "resolution_sponsors.json"
+        with contextlib.redirect_stdout(io.StringIO()):
+            assert RS.main.__module__
+        out.write_text(json.dumps(RS.read(root / "journals", root / "absent")), encoding="utf-8")
+        votes = [{"year": "2013", "body": "H", "member_id": str(i), "name": n, "label": "",
+                  "party": p}
+                 for i, n, p in ((1, "Chandler, Gene", "R"), (2, "Shurtleff, Steve", "D"),
+                                 (3, "Norelli, Terie", "D"), (4, "Flanagan, Jack", "R"))]
+        votes += [dict(v, year="2015") for v in votes]
+        bills = {"2013-2014": {"HR9": {"title": "Honoring the victims and heroes of the Boston Marathon "
+                                                "Tragedy."},
+                               "HR14": {"title": "Honoring the victims of Charleston, South Carolina."},
+                               "HR6": {"title": "Memorializing State Representative Andre Martel."}},
+                 "2015-2016": {"HR14": {"title": "Honoring the victims of Charleston, South Carolina."}}}
+        sp = {}
+        with contextlib.redirect_stdout(io.StringIO()):
+            filled = BD.add_resolution_sponsors(sp, bills, out, TS.Sat(votes), {}, {}, "2025-2026",
+                                                "2025-2026")
+        assert filled[0] == 2 and set(sp["2013-2014"]) == {"HR9", "HR14"}, (
+            "the sponsors of HR 9 and HR 14 were not filled: " + repr(filled))
+        # 2013's HR 14 prints no title and opens on Charleston: the bill's own title says so.
+        assert [r["name"] for r in sp["2013-2014"]["HR9"]] == [
+            "Gene Chandler", "Steve Shurtleff", "Terie Norelli"], sp["2013-2014"]["HR9"]
+        assert all(r["prime_inferred"] and r["source"] == "House Journal"
+                   for r in sp["2013-2014"]["HR9"])
+        # Never over a sponsor another source named, nor onto a housekeeping resolution,
+        # nor onto a bill the journal's title does not describe.
+        sp2 = {"2013-2014": {"HR9": [{"name": "Someone Else"}]}}
+        bills["2013-2014"]["HR14"] = {"title": "Adopting the rules of the 2014 session."}
+        with contextlib.redirect_stdout(io.StringIO()):
+            BD.add_resolution_sponsors(sp2, bills, out, TS.Sat(votes), {}, {}, "2025-2026", "2025-2026")
+        assert sp2["2013-2014"]["HR9"] == [{"name": "Someone Else"}], "overwrote another source's sponsor"
+        assert "HR14" not in sp2["2013-2014"], "a housekeeping resolution took a sponsor"
+        bills["2013-2014"]["HR14"] = {"title": "Honoring the New Hampshire National Guard."}
+        sp3 = {}
+        with contextlib.redirect_stdout(io.StringIO()):
+            BD.add_resolution_sponsors(sp3, bills, out, TS.Sat(votes), {}, {}, "2025-2026", "2025-2026")
+        assert "HR14" not in sp3.get("2013-2014", {}), "a bill the journal does not describe took a sponsor"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    # Where the journals are on this disk, the two the House Journal names are found in them.
+    if not Path("journals/2013").is_dir() or not Path("journals/2015").is_dir():
+        return "ok", "the fixture journals; the real ones are not on this disk"
+    res = RS.read(Path("journals"), Path("journals_senate"))
+    assert res["2013-2014"]["HR9"]["sponsors"] == ["Gene Chandler", "Stephen Shurtleff", "Terie Norelli"], (
+        "HR 9 of 2013 no longer reads from the House Journal")
+    assert res["2015-2016"]["HR14"]["sponsors"] == ["Flanagan", "Shurtleff"], (
+        "HR 14 of 2015 no longer reads from the House Journal")
+    assert not res["2017-2018"].get("HR6"), "a memorial offered by the House took a person"
+    return "ok", "fixture journals and the real ones"
+
+
+@check("frontend", "the bill search opens on the 2027 bill requests from the day after the election, and "
+       "only until the new term's bills are published")
+def _search_opens_on_requests_after_the_election():
+    """The owner, 11 November 2026: /bills opens on the bill requests (meta.json's requests) from
+    the day after the general election -- the Tuesday after the first Monday in November of the year
+    before the requests' own -- and before it on the current term as always. The rule is app.js's
+    requestsFirst, by Concord's day (nhDay); it ends of itself when meta.json's newest term is the
+    requests' own session. An address that names a term still wins (wantedTerm), and the address a
+    list writes leaves out the term it opens on (defaultTerm), so Back and a pasted link agree."""
+    got = _app_js("""(() => {
+  const R = {term: "2027-requests", label: "2027 Bill Requests", year: 2027, n: 302, withdrawn: 4};
+  const M = (over = {}) => Object.assign({terms: ["2025-2026", "2023-2024"], requests: R}, over);
+  const at = (iso, m = M()) => ({first: scope.requestsFirst(m, new Date(iso)),
+                                 want: scope.wantedTerm(m, new Date(iso)),
+                                 dflt: scope.defaultTerm(m, new Date(iso))});
+  return {
+    electionDays: [2026, 2027, 2028, 2030, 2032].map(y => scope.electionDayOf(y)),
+    eve: at("2026-11-03T04:00:00Z"),            // 11 p.m. on 2 November in Concord
+    day: at("2026-11-03T20:00:00Z"),            // election day itself
+    after: at("2026-11-04T06:00:00Z"),          // 1 a.m. on the 4th in Concord
+    june: at("2027-06-15T16:00:00Z"),
+    published: at("2026-12-10T16:00:00Z", M({terms: ["2027-2028", "2025-2026"]})),
+    noneStand: at("2026-12-10T16:00:00Z", M({requests: Object.assign({}, R, {n: 4})})),
+    noRequests: at("2026-12-10T16:00:00Z", {terms: ["2025-2026"]}),
+  };
+})()""", names=("requestsFirst", "wantedTerm", "defaultTerm", "electionDayOf", "nhDay"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert got["electionDays"] == ["2026-11-03", "2027-11-02", "2028-11-07", "2030-11-05", "2032-11-02"], (
+        f"the Tuesday after the first Monday in November is read as {got['electionDays']}")
+    for k in ("eve", "day"):
+        assert not got[k]["first"] and got[k]["want"] == got[k]["dflt"] == "2025-2026", (
+            f"{k}: before the day after the election the search opens on {got[k]}")
+    for k in ("after", "june"):
+        assert got[k]["first"] and got[k]["want"] == got[k]["dflt"] == "2027-requests", (
+            f"{k}: from the day after the election the search opens on {got[k]}")
+    assert not got["published"]["first"] and got["published"]["want"] == "2027-2028", (
+        f"once the new term is published the search opens on it: {got['published']}")
+    assert got["noneStand"]["want"] == "2025-2026" and got["noRequests"]["want"] == "2025-2026", (
+        f"with no request standing the search opens on the term: {got['noneStand']} {got['noRequests']}")
+    return "ok", "opens on the requests from 4 November 2026, not before, and not once 2027-2028 is published"
+
+
+@check("frontend", "a topic left on is dropped where the list has no topics, said in the count line, and "
+       "any one filter can be removed on its own")
+def _topic_dropped_on_the_requests():
+    """The webinar, 11 November 2026: a topic chosen on a past term hid every 2027 bill request (they
+    carry no topic yet), and only "clear all" removed it. dropEmptyTopics takes the filter off where
+    the term's rows say no topic at all, topicNote says so after the count, and a topic (or committee)
+    ticked where the list has none stays on offer in its group, at none, to be unticked on its own."""
+    got = _app_js("""(() => {
+  scope.setState("2025-2026", {terms: ["2025-2026"], requests: {term: "2027-requests", year: 2027, n: 2,
+    withdrawn: 0, label: "2027 Bill Requests"}},
+    [{id: "HB1", term: "2025-2026", topic: "Housing"}, {id: "HB2", term: "2025-2026", topic: "Taxes"},
+     {id: "LSR 2027-0001", lsr: true, term: "2027-requests"}, {id: "LSR 2027-0002", lsr: true, term: "2027-requests"}]);
+  const out = {};
+  scope.sel.topic.add("Housing"); scope.sel.committee.add("Finance");
+  scope.dropEmptyTopics();
+  out.kept = [...scope.sel.topic]; out.keptNote = scope.topicNote();
+  scope.setState("2027-requests");
+  scope.dropEmptyTopics();
+  out.dropped = [...scope.sel.topic]; out.note = scope.topicNote();
+  out.committee = [...scope.sel.committee];
+  scope.setState("2025-2026");
+  out.back = scope.topicNote();
+  // a topic ticked where none is offered (an old address) is listed, at none
+  scope.setState("2027-requests");
+  scope.sel.topic.add("Housing"); scope.sel.committee.add("Finance");
+  scope.renderFacets();
+  out.facets = document.querySelector("#facets").innerHTML;
+  return out;
+})()""", names=("dropEmptyTopics", "topicNote", "sel", "renderFacets",
+                "setState: (t, m, rows) => { term = t; if (m) META = m; if (rows) IDX = rows; }"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert got["kept"] == ["Housing"] and got["keptNote"] == "", (
+        f"a topic is kept on a term whose bills have topics: {got['kept']} {got['keptNote']!r}")
+    assert got["dropped"] == [] and "the topic filter was removed" in got["note"] \
+        and "bill requests have no topics yet" in got["note"], (
+        f"a topic is dropped where the list has none, and the count says so: {got['dropped']} {got['note']!r}")
+    assert got["committee"] == ["Finance"], f"only the topic is dropped: {got['committee']}"
+    assert got["back"] == "", f"the note stays with the list it was said of: {got['back']!r}"
+    for what in ("Housing", "Finance"):
+        assert re.search(r'data-f="[a-z]+"\s+value="%s" checked' % what, got["facets"]), (
+            f"{what}, ticked where the list has none, is not offered to be unticked on its own")
+    return "ok", "dropped on the requests, said in the count, and a stray topic or committee can be unticked"
+
+
+@check("frontend", "the Topic filter has the Sponsor filter's search box: typing narrows the topic names (any case, "
+       "anywhere in the name), counts stay right, a ticked topic stays listed")
+def _topic_filter_search_box():
+    """Stage 1 of the topics plan (12 November 2026). fgroup's searchable branch draws the Topic group's
+    #tbox as it draws the Sponsor group's #sbox. Nothing typed lists every topic as before; "ealth" lists
+    the two topics with it in the name, with their counts; a ticked topic stays in the list whatever is
+    typed; a word no topic has says No match; the Sponsor box is still its own."""
+    got = _app_js("""(() => {
+  scope.setState("2025-2026", {terms: ["2025-2026"], committee_codes: {}, topics: ["Health", "Housing", "Mental Health", "Taxes"]},
+    [{id: "HB1", term: "2025-2026", topic: "Health", sponsor: "A"}, {id: "HB2", term: "2025-2026", topic: "Health", sponsor: "A"},
+     {id: "HB3", term: "2025-2026", topic: "Mental Health", sponsor: "B"}, {id: "HB4", term: "2025-2026", topic: "Housing", sponsor: "B"},
+     {id: "HB5", term: "2025-2026", topic: "Taxes", sponsor: "B"}]);
+  const out = {};
+  const draw = () => { scope.renderFacets(); return document.querySelector("#facets").innerHTML; };
+  out.all = draw();
+  scope.setTopic("EALTH"); out.typed = draw();
+  scope.sel.topic.add("Taxes"); out.ticked = draw();
+  scope.sel.topic.clear();
+  scope.setTopic("zzz"); out.none = draw();
+  return out;
+})()""", names=("renderFacets", "sel", "setState: (t, m, rows) => { term = t; if (m) META = m; if (rows) IDX = rows; }",
+                "setTopic: (v) => { topicFilter = v; }"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    topics = lambda h: re.findall(r'data-f="topic"\s+value="([^"]*)"', h)
+    assert '<input class="sbox" id="tbox"' in got["all"] and 'id="sbox"' in got["all"], (
+        "the Topic group has no search box beside the Sponsor group's")
+    assert topics(got["all"]) == ["Health", "Housing", "Mental Health", "Taxes"], (
+        f"with nothing typed the Topic list is whole: {topics(got['all'])}")
+    assert topics(got["typed"]) == ["Health", "Mental Health"], (
+        f"'EALTH' (any case, anywhere in the name) lists {topics(got['typed'])}")
+    assert re.search(r'value="Health".*?<span class="c">2</span>', got["typed"], re.S), "a topic's count is lost while typing"
+    assert topics(got["ticked"]) == ["Health", "Mental Health", "Taxes"], (
+        f"a ticked topic leaves the list when it does not match: {topics(got['ticked'])}")
+    assert topics(got["none"]) == [] and "No match" in got["none"], "a word no topic has is not said to match nothing"
+    return "ok", "the box narrows the topics, counts hold, a ticked topic stays"
+
+
+@check("build", "the bug hunt of 11 November 2026: the sitting term rolls on Organization Day in the browser "
+       "and in unh_extract, a report is filed by the day it is dated, and a month word is a whole month")
+def _bug_hunt_terms_and_dates():
+    """#3 sittingTerm said 2027-2028 on 1 December 2026 and the Python rule says 2025-2026 until the
+    first Wednesday (2 December). #4 unh_extract.term_of rolled all of December. #5 fetch_reports_db
+    filed a report by its year alone (term_of) where term_on knows Organization Day. #6 J_MONTH_DAY
+    read "Decision 3, 2021" as December 3."""
+    import datetime as dt
+    import proceedings as P
+    import unh_extract as U
+    import build_site_v2 as B
+    for y, m, d, want in ((2008, 12, 1, "2007-2008"), (2008, 12, 2, "2007-2008"),
+                          (2008, 12, 3, "2009-2010"), (2026, 12, 1, "2025-2026"),
+                          (2026, 12, 2, "2027-2028"), (1996, 12, 4, "1997-1998"),
+                          (2007, 12, 1, "2007-2008")):
+        got = U.term_of(y, m, d)
+        assert got == want and got == P.term_on(f"{y}-{m:02d}-{d:02d}"), (
+            f"unh_extract.term_of({y}, {m}, {d}) is {got}, Organization Day's rule says {want}")
+    assert U.term_of(2008, 12) == "2009-2010", "a sitting known only to its month still rolls in December"
+    src = Path("src/fetch/gc_db/fetch_reports_db.py").read_text(encoding="utf-8")
+    assert "P.term_on(rec[" in src and "P.term_of(rec[" not in src, (
+        "fetch_reports_db files a report by its year alone, not by the day it is dated")
+    for text, want in (("Decision 3, 2021", None), ("Mayor 4, 2020", None), ("Marginal 12, 2019", None),
+                       ("Octopus 5, 2019", None), ("Dec. 3, 2021", "Dec"), ("Sept 4, 2020", "Sept"),
+                       ("March 5, 2019", "March"), ("adopted Jan 9, 2021", "Jan"), ("May 4, 2020", "May")):
+        m = B.J_MONTH_DAY.search(text)
+        assert (m.group(1) if m else None) == want, f"J_MONTH_DAY read {text!r} as {m and m.group(0)!r}"
+    assert B._j_stated_day("Decision 3, 2021") == "", "a docket line's day was read out of the word Decision"
+    assert B._j_stated_day("Referred Dec 3, 2021") == "2021-12-03", "a month, a day and a year no longer read"
+    days = []
+    d = dt.date(2024, 11, 20)
+    while d <= dt.date(2024, 12, 10):
+        days.append(d)
+        d += dt.timedelta(days=1)
+    d = dt.date(2026, 11, 20)
+    while d <= dt.date(2026, 12, 10):
+        days.append(d)
+        d += dt.timedelta(days=1)
+    js = json.dumps([f"{x.isoformat()}T17:00:00Z" for x in days])
+    got = _app_js("%s.map(s => scope.sittingTerm(new Date(s)))" % js, names=("sittingTerm",))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here (the Python rule was held)"
+    for x, g in zip(days, got):
+        assert g == P.term_on(x.isoformat()), (
+            f"app.js sittingTerm says {g} on {x}, the build's rule says {P.term_on(x.isoformat())}")
+    return "ok", "1 December 2026 is still 2025-2026 everywhere, Organization Day opens 2027-2028"
+
+
+@check("build", "a time of day is read as 24 hours or given back as it came, and the build's day is New "
+       "Hampshire's")
+def _bug_hunt_clock_and_today():
+    """#8 components.clock read "1:05 PM" as 1:05 AM and "12:30 AM" as 12:30 PM, in components.py and
+    components.js. #9 build_date.today() was the runner's UTC day, a day ahead of Concord on the
+    weekly's Sunday night."""
+    import components as C
+    for t, lang, want in (("13:30", "en", "1:30 PM"), ("00:05", "en", "12:05 AM"),
+                          ("13:30:00", "en", "1:30 PM"), ("1:05 PM", "en", "1:05 PM"),
+                          ("12:30 AM", "en", "12:30 AM"), ("9:00-10:00", "en", "9:00-10:00"),
+                          ("13:30", "es", "1:30 p. m."), ("25:00", "en", "25:00"), ("", "en", "")):
+        assert C.clock(t, lang) == want, f"components.clock({t!r}, {lang!r}) is {C.clock(t, lang)!r}"
+    got = _app_js(json.dumps([["13:30", "en"], ["1:05 PM", "en"], ["12:30 AM", "en"], ["13:30", "es"]])
+                  + ".map(a => scope.clock(a[0], a[1]))", names=("clock",))
+    if got is not None:
+        assert got == ["1:30 PM", "1:05 PM", "12:30 AM", "1:30 p. m."], (
+            f"components.js clock reads a time differently from components.py: {got}")
+    src = Path("src/lib/build_date.py").read_text(encoding="utf-8")
+    import state_settings
+    assert "America/New_York" in src or ("ZoneInfo(TIMEZONE)" in src
+                                         and state_settings.TIMEZONE == "America/New_York"), (
+        "build_date.today() is the machine's own day, not New Hampshire's")
+    import build_date
+    saved = os.environ.pop(build_date.ENV, None)
+    try:
+        assert isinstance(build_date.today(), __import__("datetime").date), "build_date.today() did not answer a date"
+        os.environ[build_date.ENV] = "2026-10-02"
+        assert str(build_date.today()) == "2026-10-02", "a stated day no longer wins"
+    finally:
+        os.environ.pop(build_date.ENV, None)
+        if saved is not None:
+            os.environ[build_date.ENV] = saved
+    return "ok", "12-hour strings come back as they came; the day is Concord's"
+
+
+@check("build", "rendered_sweep.drive ends node and Chrome before it removes the profile, whatever stopped it")
+def _bug_hunt_sweep_drive_ends_its_children():
+    """#7 an exception or a stray stdout line skipped proc.wait() and the finally removed the profile
+    Chrome held while node and Chrome ran on. A fake process stands in; nothing is launched."""
+    import rendered_sweep as RS
+    log = {}
+
+    class Fake:
+        pid = 0
+        returncode = None
+
+        def __init__(self, cmd, **kw):
+            job = json.loads(Path(cmd[-1]).read_text(encoding="utf-8"))
+            log["tmp"] = Path(cmd[-1]).parent
+            log["profile_was_there"] = log["tmp"].exists()
+            self.stdout = self._lines()
+
+        def _lines(self):
+            yield "a stray line that is not JSON\n"
+            yield json.dumps({"browser": "x"}) + "\n"
+            raise RuntimeError("the reader died")
+
+        def poll(self):
+            return None if not log.get("killed") else -9
+
+        def kill(self):
+            log["killed"] = True
+            log["tmp_at_kill"] = log["tmp"].exists()
+
+        def wait(self, timeout=None):
+            log["waited"] = timeout
+            return 0
+
+    saved = (RS.subprocess.Popen, RS.subprocess.run, RS._paths.locate)
+    RS.subprocess.Popen = Fake
+    RS.subprocess.run = lambda *a, **k: log.setdefault("taskkill", a[0])
+    RS._paths.locate = lambda name: Path(name)
+    try:
+        try:
+            RS.drive("chrome", "http://x.invalid", [], None, 0, progress=False)
+        except RuntimeError as e:
+            assert "reader died" in str(e)
+        else:
+            raise AssertionError("the reader's failure was swallowed")
+    finally:
+        RS.subprocess.Popen, RS.subprocess.run, RS._paths.locate = saved
+    assert log.get("killed"), "node was left running when the sweep stopped"
+    assert log.get("tmp_at_kill"), "the profile was removed before node and Chrome were stopped"
+    assert not log["tmp"].exists(), "the sweep's folder was left behind"
+    return "ok", "an exception ends the child first, then removes the profile"
+
+
+@check("night", "production already serves a build only where its pages are the same, not only the five kinds "
+       "of file the fingerprint holds")
+def _bug_hunt_already_serves_whole_site():
+    """#2 (11 November 2026): fingerprint() hashes meta.json, the bill lists, home.json and
+    legislators.json, so a night that changed only a calendar week, a committee or an election page
+    read "already serves this build" and published nothing. TREE_KEY is a hash of every page, with
+    the build's own day taken out, and the decision asks for it as well."""
+    import nightly as NI
+    sha = "a" * 40
+    root = Path(tempfile.mkdtemp())
+    try:
+        def build(name, day, cal="Hearing on 2026-09-02", extra=None):
+            s = root / name
+            (s / "calendar").mkdir(parents=True)
+            (s / "bill").mkdir()
+            (s / "feed").mkdir()
+            (s / "bill" / "hb1.html").write_text(f"<p>HB 1</p>Accessed {day}.", encoding="utf-8")
+            d = __import__("datetime").date.fromisoformat(day)
+            import shell
+            (s / "bill" / "hb2.html").write_text(
+                f"Retrieved {shell.cite_day_full(shell.cite_day(d))}; {shell.cite_day(d)}", encoding="utf-8")
+            (s / "calendar" / "2026-W36.html").write_text(cal, encoding="utf-8")
+            (s / "feed" / "all.xml").write_text(f"<lastBuildDate>{day}T03:17:00Z</lastBuildDate>", encoding="utf-8")
+            (s / "build.json").write_text(json.dumps({"finished": day + "T03:30:00"}), encoding="utf-8")
+            (s / "logo.png").write_bytes(b"\x89PNG\x00\x00fixed")
+            for rel, body in (extra or {}).items():
+                (s / rel).write_text(body, encoding="utf-8")
+            return s
+        a = NI.tree_hash(build("a", "2026-11-10"), {"2026-11-10"})
+        b = NI.tree_hash(build("b", "2026-11-11"), {"2026-11-11"})
+        c = NI.tree_hash(build("c", "2026-11-11", cal="Hearing on 2026-09-02 and on 2026-09-09"),
+                         {"2026-11-11"})
+        e = NI.tree_hash(build("e", "2026-11-11", extra={"calendar/committee.html": "a committee"}),
+                         {"2026-11-11"})
+        assert a and a == b, "the build's own day changed the hash, so no night would ever be the same"
+        assert c != b, "a hearing added to a calendar week did not change the whole-site hash"
+        assert e != b, "a page added under calendar/ did not change the whole-site hash"
+        assert NI.stamp_tree(root / "none", {"2026-11-11"}) is None, "a tree was stamped where there is no build.json"
+        t = NI.stamp_tree(root / "c", {"2026-11-11"})
+        assert t == c and json.loads((root / "c" / "build.json").read_text())[NI.TREE_KEY] == t
+        assert NI.tree_hash(root / "c", {"2026-11-11"}) == c, "stamping build.json changed the hash"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    same = ("f1", "f1", sha, sha)
+    assert NI.serves_this_build(*same, "t1", "t1"), "an identical build was published again"
+    assert not NI.serves_this_build(*same, "t0", "t1"), (
+        "a night that changed only pages the fingerprint does not hold was 'already served'")
+    assert not NI.serves_this_build(*same, None, "t1"), "a production with no tree hash was taken as the same"
+    assert NI.serves_this_build(*same, None, "t1", tree_read=False), "a mocked read of production was not left to the fingerprint"
+    assert NI.serves_this_build(*same, "t1", None), "a night with no tree of its own no longer falls back to the fingerprint"
+    assert not NI.serves_this_build("f0", "f1", sha, sha, "t1", "t1"), "changed data was 'already served'"
+    assert not NI.serves_this_build("f1", "f1", "b" * 40, sha, "t1", "t1"), "changed code was 'already served'"
+    return "ok", "the same pages are the same build; a changed calendar page publishes"
+
+
+@check("build", "the term rules, the escapes and the sitting roster's name keys each have one home, and a "
+       "copy of one is a failure")
+def _shared_helpers_one_home():
+    """The foundation survey of November 2026 found term_of written twelve times and esc six. The term
+    rules are src/lib/terms.py (by year: term_of_year) and proceedings.term_on (by date, Organization
+    Day the next term's); the exact escape is src/lib/htmlesc.py. A definition of term_of, term_of_year,
+    esc or _home_esc outside src/lib, or the by-year arithmetic written out into a term string again,
+    fails and names the file (ALLOWED says why each other one is a different rule). Then the rules are
+    held to each other over 1985-2030, and a name two sitting members share is left out of the
+    roster's keys (bug hunt #10) and fails on data/legislators.json."""
+    import ast
+    import datetime as dt
+    import proceedings as P
+    import terms as T
+    import htmlesc as HE
+    import build_site_v2 as B
+    ALLOWED = {
+        "src/parse/unh_extract.py": "knows a month without a day, said in its docstring",
+        "src/parse/rsa.py": "the quoted term of an RSA, not a term of years",
+        "src/parse/score_members_elect.py": "a ballot's day, through proceedings.vote_term",
+        "src/parse/officers.py": "a day, through proceedings.vote_term",
+        "src/pages/legislative_year.py": "a date, through proceedings.term_on",
+        "nightly.py": "the workflow-command escape, not HTML",
+        "src/pages/components.py": "esc is a one-line call of htmlesc.esc, named for the parity check",
+    }
+    # these read the odd year as a number, never as a term string
+    START_YEAR = {"src/parse/member_links.py", "src/parse/narrative.py"}
+    names = {"term_of", "term_of_year", "esc", "_home_esc"}
+    odd = re.compile(r"\b(\w+) if \1 % 2 else \1 - 1\b")
+    stray = []
+    for f in sorted(list(Path("src").rglob("*.py")) + [Path("nightly.py")]):
+        posix = f.as_posix()
+        if f.parent.as_posix() == "src/lib":
+            continue
+        txt = f.read_text(encoding="utf-8", errors="replace")
+        if posix not in ALLOWED:
+            for node in ast.walk(_parsed(f)):
+                if isinstance(node, ast.FunctionDef) and node.name in names:
+                    stray.append(f"{posix}:{node.lineno} defines {node.name}")
+            lines = txt.splitlines()
+            for i, line in enumerate(lines):
+                if odd.search(line) and posix not in START_YEAR \
+                        and re.search(r'\+ 1\}"|\}-\{', " ".join(lines[i:i + 3])):
+                    stray.append(f"{posix}:{i + 1} writes the by-year term rule out again")
+    assert not stray, ("a helper that has one home was written again: " + "; ".join(stray)
+                       + ". Import terms.term_of_year or htmlesc.esc (src/lib/terms.py says which rule is which).")
+    for y in range(1985, 2031):
+        assert T.term_of_year(y) == T.term_of_year(str(y)) == P.term_of(f"{y}-06-15") == P.term_on(f"{y}-06-15")
+        assert P.term_on(f"{y}-01-01") == T.term_of_year(y)
+        if y % 2 == 0:
+            org = P.organization_day(y)
+            assert P.term_on((org - dt.timedelta(days=1)).isoformat()) == T.term_of_year(y)
+            assert P.term_on(org.isoformat()) == T.term_of_year(y + 1)
+    assert HE.esc(None) == "" and HE.esc(0) == "0" and HE.esc_blank(0) == "" \
+        and HE.esc("a&b<c>\"'") == "a&amp;b&lt;c&gt;&quot;'"
+    ms = [{"id": "1", "name": "Smith, John"}, {"id": "2", "name": "Jones, Ann"},
+          {"id": "3", "name": "Smith, John"}]
+    a, b, clash = B.roster_name_keys(ms)
+    assert "smith, john" not in a and ("john", "smith") not in b and "jones, ann" in a \
+        and len(clash) == 2, "a name two members share must not go to the first of them"
+    f = Path("data/legislators.json")
+    if not f.exists():
+        return "ok", "one home each for the term rules and the escapes; the roster keys held on a pair (no data/legislators.json here)"
+    legs = json.loads(f.read_text(encoding="utf-8"))
+    legs = list(legs.values()) if isinstance(legs, dict) else legs
+    _, _, clash = B.roster_name_keys(legs)
+    # A namesake in the official roster is a source quirk: it warns, naming both
+    # members, and never fails (the build leaves the sponsor unlinked and says so).
+    shared = "; ".join(f"{h} {k!r}: " + " and ".join(f"{m.get('name')} ({m.get('id')})" for m in ms)
+                       for h, k, ms in clash)
+    if clash:
+        print(f"  WARNING: two sitting members share a name key, so a sponsor named by it alone "
+              f"is left unlinked: {shared}")
+        return "ok", f"WARNING: {len(clash)} name key(s) shared by sitting members, left unlinked: {shared}"
+    return "ok", f"one home each for the term rules and the escapes; {len(legs)} sitting members, no name key shared"
+
+
+@check("files", "the state settings file loads with every key, and no second literal county list stands outside it")
+def _state_settings_one_place():
+    """src/lib/state_settings.json holds the facts about the state that a fork edits
+    (its "_about" key says what a fork still changes besides). Two things hold it to
+    its job: every key the loader names is there, and no code file keeps its own
+    list of the ten counties -- the survey found ten copies, each a place a fork
+    would have missed. A list is two county names quoted close together, or two
+    joined as an alternation; this file and the tests that name counties to check
+    something else are not the code."""
+    import state_settings as ST
+    for key, subs in ST.REQUIRED.items():
+        assert key in ST.SETTINGS, f"state_settings.json has no {key!r}"
+        for sub in subs:
+            assert sub in ST.SETTINGS[key], f"state_settings.json has no {key!r}/{sub!r}"
+    assert len(ST.COUNTIES) == len(set(ST.COUNTIES)) and ST.COUNTIES, "the county list is empty or repeats a county"
+    for k in ("county_abbreviations", "county_codes"):
+        assert set(ST.SETTINGS[k]) == set(ST.COUNTIES), f"{k} does not name exactly the counties"
+    assert set(ST.BILL_PREFIXES["house"]).isdisjoint(ST.BILL_PREFIXES["senate"]), "a bill prefix is in both chambers"
+    pair = re.compile(r"""["']belknap["'][^\n]{0,30}["']carroll|belknap\|carroll""", re.I)
+    seen = []
+    for p in _paths.code_files("*.py"):
+        if p.name in ("state_settings.py", "preflight.py"):
+            continue
+        t = p.read_text(encoding="utf-8", errors="replace")
+        for m in pair.finditer(t):
+            seen.append(f"{p.relative_to(_paths.ROOT)}:{t.count(chr(10), 0, m.start()) + 1}")
+    assert not seen, ("a county list stands outside src/lib/state_settings.json; read ST.COUNTIES, "
+                      "ST.COUNTY_ABBR or ST.COUNTY_CODE instead: " + ", ".join(seen))
+    return "ok", f"{len(ST.COUNTIES)} counties and every key present; no second list in the code"
+
+
+def got_rec(RS, b, path):
+    """The record read() makes of a block."""
+    return {"sponsors": b["names"], "journal": RS.journal_label(path, "H"), "title": b["title"],
+            "line": b["line"], "number": b["number"], "opening": b["opening"], "chamber": "H"}
+
+
+@check("build", "nightly.py: a step that outlives its timeout is killed and fails the night naming it; the lock is made exclusively")
+def _bug_hunt_nightly_timeout_and_lock():
+    """#13 run() waited for ever on a child and the lock was exists() then write_text. A real child is
+    started with a two-second timeout and killed; the lock is taken twice and the second is refused."""
+    import nightly as NI
+    import time
+    assert 1800 <= NI.STEP_TIMEOUT, "a step's timeout is under 30 minutes, which a real step outlasts"
+    root = Path(tempfile.mkdtemp(prefix="gr-nightly-lock-"))
+    saved = (NI.STEP_TIMEOUT, NI._paths.script, len(NI.LOG))
+    try:
+        lock = root / ".nightly.lock"
+        assert NI.take_lock(lock, "first"), "a free lock was not taken"
+        assert not NI.take_lock(lock, "second"), "two starts both took the lock"
+        assert lock.read_text(encoding="utf-8") == "first", "the second start wrote over the first's lock"
+        old = time.time() - 7 * 3600
+        os.utime(lock, (old, old))
+        assert NI.take_lock(lock, "third"), "a lock a crash left 7 hours ago was not taken over"
+        NI.STEP_TIMEOUT = 2
+        NI._paths.script = lambda name: name
+        t0 = time.time()
+        code = NI.run(["-c", "import time; time.sleep(120)"], "the sleeping step")
+        assert code == NI.TIMED_OUT, f"a step past its timeout exited {code}, not {NI.TIMED_OUT}"
+        assert time.time() - t0 < 60, "the step was not killed at its timeout"
+        assert any("TIMED OUT" in ln and "the sleeping step" in ln for ln in NI.LOG), "the log does not name the step"
+        NI.STEP_TIMEOUT = saved[0]
+        assert NI.run(["-c", "pass"], "a quick step") == 0, "a step inside its timeout no longer passes"
+    finally:
+        NI.STEP_TIMEOUT, NI._paths.script = saved[0], saved[1]
+        shutil.rmtree(root, ignore_errors=True)
+    text = Path("nightly.py").read_text(encoding="utf-8")
+    assert "lock.write_text" not in text, "a nightly lock is written without O_EXCL again"
+    return "ok", "a step is killed at its timeout and the night names it; two starts cannot both take the lock"
 
 
 if __name__ == "__main__":

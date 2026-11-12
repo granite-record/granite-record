@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.46
+# GRANITE_VERSION: 2026-09-09.52
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -66,6 +66,7 @@ import urllib.parse
 import build_date
 import components as C
 import shell as S
+import state_settings as ST
 # Who November's election sent, for the weeks before they sit: the one
 # reader of site/members_elect.json, beside its one writer (16 October 2026).
 # And the one reader of corrections/officials.json, which puts each office's
@@ -398,6 +399,30 @@ OFFICER = re.compile(r"\s*(?:,\s*(?:(?:vice[\s-]?)?chair(?:man|woman|person)?|"
 COUNCIL_ROW = re.compile(r"council|alder", re.I)
 
 
+READ_KEYS = ("read_on", "read_at", "as_of", "on")
+
+
+def latest_read(*parts):
+    """The latest day any source this page shows was read, out of the town's
+    own data (each source records the day it was read as read_on, or as
+    read_at, as_of or on), or None: the day its record last changed, for the
+    citation's date (shell.cited). Looked for at any depth, in the dicts and
+    lists given; only an ISO day counts."""
+    best = ""
+    todo = [p for p in parts if p]
+    while todo:
+        x = todo.pop()
+        if isinstance(x, dict):
+            for k, v in x.items():
+                if k in READ_KEYS and isinstance(v, str) and re.match(r"\d{4}-\d\d-\d\d", v):
+                    best = max(best, v[:10])
+                elif isinstance(v, (dict, list)):
+                    todo.append(v)
+        elif isinstance(x, list):
+            todo += [v for v in x if isinstance(v, (dict, list))]
+    return best or None
+
+
 def long_date(stamp):
     """"2026-09-20T22:22:15-0400" as "September 20, 2026": shell.date_words."""
     if not re.match(r"\d{4}-\d\d-\d\d", stamp or ""):
@@ -503,12 +528,30 @@ def dot_row(pos, o, officials):
     return off_row(person(o.get("name")), how, E(pos))
 
 
-def card(title, inner, wide=False):
+def card(title, inner, wide=False, side=""):
     """One section of a tab: a heading that outranks what it heads, and the
     rows under it, in a card of its own so that where one section ends and
-    the next begins is a line on the page rather than a guess."""
-    return (f'<section class="twnsec{" twnwide" if wide else ""}">'
+    the next begins is a line on the page rather than a guess. `side` ("l"
+    or "r") is the column of the Officials tab it goes in (in_columns)."""
+    return (f'<section class="twnsec{" twnwide" if wide else ""}'
+            f'{" twn-" + side if side else ""}">'
             f'<h3 class="twnh">{title}</h3>{inner}</section>')
+
+
+def in_columns(cards):
+    """The Officials tab's cards in two columns: the elected on the left, the
+    offices, the clerk and the staff on the right (the owner, 10 November
+    2026). One wide item of the tab's grid holding two stacks, the left one
+    first, so a phone, where they are one column, reads the elected, then the
+    offices, the clerk and the staff. A tab with cards in one column only is
+    left as it was, two abreast."""
+    left = [c for c in cards if ' twn-l"' in c[:80]]
+    right = [c for c in cards if ' twn-r"' in c[:80]]
+    if not left or not right or len(left) + len(right) != len(cards):
+        return cards
+    return ['<div class="twncols twnwide">'
+            f'<div class="twncol">{"".join(left)}</div>'
+            f'<div class="twncol">{"".join(right)}</div></div>']
 
 
 def note(text):
@@ -625,7 +668,7 @@ def officials_sections(town, key, town_off, site_on_page=None, board=None,
                      for m in body.get("members")
                      if m.get("source_url")
                      and m["source_url"] != body.get("source_url")]
-        return card(title + listed_label(body), (
+        return card(title + listed_label(body), side="l", inner=(
             '<ul class="offlist">' + "".join(rows) + "</ul>"
             + note(f"As {E(town)}'s website listed the {what} when this site "
                    f"read it on {E(long_date(body.get('read_on')))}"
@@ -645,7 +688,7 @@ def officials_sections(town, key, town_off, site_on_page=None, board=None,
     elif dot_board:
         # "Before the 2026 town elections": every town chose a selectman at
         # its 2026 meeting, and every board chose its chair again after it.
-        out.append(card("Select board", (
+        out.append(card("Select board", side="l", inner=(
             '<ul class="offlist">'
             + "".join(dot_row(p, o, officials) for p, o in dot_board)
             + "</ul>"
@@ -666,37 +709,41 @@ def officials_sections(town, key, town_off, site_on_page=None, board=None,
                                 "board of aldermen" if body == "aldermen"
                                 else "council", council=True))
         else:
-            out.append(card(title, (
+            out.append(card(title, side="l", inner=(
                 '<ul class="offlist">'
                 + "".join(dot_row(p, o, officials) for p, o in council)
                 + "</ul>" + note(f"From {NHDOT}. " + since("council")))))
+    # ---- THE RIGHT COLUMN (the owner, 10 November 2026): the offices at the
+    # top, the clerk below them, then the staff and the administrative
+    # positions. NHDOT's rows say a position and not whether it is elected, so
+    # the rule is the one the tab already drew: the bodies that govern -- the
+    # select board, the mayor and council -- are the elected, on the left
+    # (side "l", in_columns), and every other row of the directory is a
+    # position on the right.
+    # ---- the town offices: where to write and how to reach them ----------
+    if offices_row:
+        # Under the card's own "Town offices" heading, so the row says what it
+        # is instead: where to write, and how else to reach them.
+        mailing = mailing_line(town_off.get("mailing"))
+        out.append(card("City offices" if city else "Town offices", side="r", inner=(
+            '<ul class="offlist">'
+            + off_row(E(mailing or town), how,
+                      "Mailing address" if mailing else "Contact")
+            + "</ul>"
+            + note(f"From {NHDOT}." + ("" if others else " " + since("offices"))))))
     # ---- the clerk ---------------------------------------------------------
     if loc.get("clerk"):
-        out.append(card("City clerk" if city else "Town clerk", (
+        out.append(card("City clerk" if city else "Town clerk", side="r", inner=(
             '<ul class="offlist">' + clerk_row(loc, seat="") + "</ul>"
             + note("From the Secretary of State's list of town and city "
                    "clerks."))))
-    # ---- the town offices, and everyone else NHDOT lists ------------------
-    if others or offices_row:
-        rows = []
-        if offices_row:
-            # Under the card's own "Town offices" heading, so the row says
-            # what it is instead: where to write, and how else to reach them.
-            mailing = mailing_line(town_off.get("mailing"))
-            rows.append(off_row(E(mailing or town), how,
-                                "Mailing address" if mailing else "Contact"))
-        rows += [dot_row(p, o, officials) for p, o in others]
-        out.append(card("City offices" if city else "Town offices", (
-            '<ul class="offlist">' + "".join(rows) + "</ul>"
+    # ---- everyone else NHDOT lists: the staff and administrative positions
+    if others:
+        out.append(card("Staff and administrative positions", side="r", inner=(
+            '<ul class="offlist">'
+            + "".join(dot_row(p, o, officials) for p, o in others) + "</ul>"
             + note(f"From {NHDOT}. " + since("offices")))))
     return out
-
-
-def town_officials_block(town, key, town_off, site_on_page=None, board=None,
-                         loc=None, council=None):
-    """The Officials tab's cards as one string: see officials_sections."""
-    return "".join(officials_sections(town, key, town_off, site_on_page,
-                                      board, loc, council))
 
 
 # ---- THE TOWN SERVICES TAB --------------------------------------------------
@@ -1403,25 +1450,30 @@ def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None):
     # governs.
     board = (off.get("_boards") or {}).get(slug(town, "0"))
     council = (off.get("_councils") or {}).get(slug(town, "0"))
-    officials = officials_sections(
+    officials = in_columns(officials_sections(
         town, slug(town, "0"), town_off,
         # The same test the Vote tab's "Town website" row is drawn by.
         site_on_page=bool(weblink(town_off.get("website"))
                           or weblink(loc.get("website"))),
-        board=board, loc=loc, council=council)
+        board=board, loc=loc, council=council))
     # THE DISTRICT MAP (Polish 3: "The map also goes on the town pages"),
     # second, after the people who represent the place, as the approved
     # drawing has it (proto/town-dover-ward-1.html).
-    # ONE WORD A TAB (the audit of 25 October 2026): on a phone "How to Vote"
-    # stood in three lines a word each and "Town Services" was cut at the
-    # edge. The page's title names the town, so Officials and Services say
-    # it for a town and a city alike; the strip is one line and scrolls
-    # (app.css, .twntabs).
+    # THE STRIP IS ONE LINE AND SCROLLS (app.css, .twntabs): on a phone "How
+    # to Vote" stood in three lines a word each and "Town Services" was cut
+    # at the edge (the audit of 25 October 2026). The page's title names the
+    # town, so Officials and Services say it for a town and a city alike; the
+    # owner asked for the Vote tab to read How to Vote on 10 November 2026,
+    # and each tab's label is on one line, whatever its length.
     panels = [("representatives", "Representatives",
                representatives_sections(dist, legs, off, elect)),
               ("map", "Map", map_section(town, ward, dist)),
               ("officials", "Officials", officials),
-              ("vote", "Vote", vote_sections(town, loc, town_off)),
+              # HOW TO VOTE, THE TAB'S NAME (the owner, 10 November 2026: "On
+              # town pages, Vote tab title becomes How to Vote"). The label
+              # only: its id, and so its address (/town/lyme#vote), is a
+              # published address and stays.
+              ("vote", "How to Vote", vote_sections(town, loc, town_off)),
               # THE SERVICES TAB (24 October 2026): services_sections, where
               # its files are loaded; without them the office is the
               # Officials tab's card already, and the tab is not drawn.
@@ -1449,7 +1501,11 @@ def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None):
     body = [f'<h1 class="offtitle">{E(label)}</h1>',
             ward_picker(town, ward, wards),
             answer_line(dist),
-            S.cite_block(path, og_title, base, S.BUILT),
+            S.cite_block(path, og_title, base, S.cited(latest_read(
+                loc, town_off, board, council,
+                (off.get("_halls") or {}).get(slug(town, "0")),
+                (off.get("_libraries") or {}).get(slug(town, "0")),
+                (off.get("_stations") or {}).get(slug(town, "0"))))),
             tabbed(label, panels),
             '<p class="srcs">Sources: NH General Court and Secretary of State</p>']
 
@@ -1462,7 +1518,10 @@ def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None):
                title=S.title_of(f"Who represents {label}, NH"),
                og_title=og_title,
                og_image="og-town.png", og_alt="Granite Record: who represents your town",
-               description=desc, globals={"GR_STATIC": True},
+               description=desc,
+               # The record a Report a problem sent from here names
+               # (functions/api/report.js: town:<slug>, from /town/<slug>).
+               globals={"GR_STATIC": True, "GR_REPORT": f"town:{slug(town, ward)}"},
                noscript="", skip_label="Skip to the page", sr_title="",
                nav_current="officials.html", cite=False)
     return p.replace('<div id="results"></div>',
@@ -1522,9 +1581,7 @@ def place_record(town, ward, wards, dist, legs, loc, elect=None):
 
 # The map's code for a county (build_district_map.CODE): a State House
 # district is "ST14", Strafford 14.
-MAP_COUNTY = {"Belknap": "BE", "Carroll": "CA", "Cheshire": "CH", "Coos": "CO",
-              "Grafton": "GR", "Hillsborough": "HI", "Merrimack": "ME",
-              "Rockingham": "RO", "Strafford": "ST", "Sullivan": "SU"}
+MAP_COUNTY = ST.COUNTY_CODE
 
 
 def map_section(town, ward, dist):

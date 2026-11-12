@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.17
+# GRANITE_VERSION: 2026-09-08.18
 """
 Who is hearing what, when, and in which room -- out of the calendars on disk.
 
@@ -694,7 +694,11 @@ def _lock(path, wait=60.0, stale=600.0):
         try:
             os.close(os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
             return True
-        except FileExistsError:
+        # On Windows a lock the last holder has just deleted refuses a new one
+        # for a moment with PermissionError, not FileExistsError: it is still
+        # held, so wait. Answering False there lost one run's answers when two
+        # finished together (the flaky check of 10 November 2026).
+        except (FileExistsError, PermissionError):
             try:
                 if time.time() - os.path.getmtime(path) > stale:
                     os.unlink(path)

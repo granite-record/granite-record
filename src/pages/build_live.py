@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.10
+# GRANITE_VERSION: 2026-10-30.13
 """
 Live Now's page and its schedule (the live layer's design, sections 1.2 and
 1.4), written by the night beside the Calendar and from the Calendar's own
@@ -35,6 +35,8 @@ from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
 
+from terms import term_of_year as term_of  # noqa: E402,F401
+
 import argparse
 import csv
 import datetime
@@ -47,13 +49,16 @@ import build_date
 import build_pages as BP
 import live_gen as LG
 import shell as S
+import state_settings as ST
 
 AHEAD = 4                  # weekdays after today
 # LINKED IS THE OWNER'S SWITCH (workers/live/SWITCH_ON.md, step 5): whether the
-# home page's line and the header search's row lead to /live. /live is built
-# and in the sitemap either way; this decides only whether the site points at
-# it. While False, a run takes out any line or row an earlier run put in.
+# home page's line and the header search's row lead to /live, and whether it
+# is indexable. /live is built either way; while False it is noindex and out
+# of the sitemap (10 November 2026), and a run takes out any line or row an
+# earlier run put in.
 LINKED = False
+ROBOTS = '<meta name="robots" content="noindex">'
 # The home page's slot, as build_pages.home_body leaves it (PATCHES.md 2),
 # and the whole line this fills it with, matched together so a second run
 # replaces the first's.
@@ -175,12 +180,8 @@ def schedule(site, today, weeks=None, history=None):
         days[iso] = rows
         if nxt is None and d > today and rows:
             nxt = {"date": iso, "name": rows[0]["name"]}
-    return {"built": today.isoformat(), "tz": "America/New_York", "days": days, "next": nxt,
+    return {"built": today.isoformat(), "tz": ST.TIMEZONE, "days": days, "next": nxt,
             "bills": bill_years(site, today)}
-
-
-def term_of(year):
-    return f"{year}-{year + 1}" if year % 2 else f"{year - 1}-{year}"
 
 
 def bill_years(site, today):
@@ -257,14 +258,21 @@ def write(site, base, today):
                   sr_title="", og_type="website", nav_current=ADDRESS.lstrip("/"), cite=False)
     html = html.replace('<div id="results"></div>', f'<div id="results">{page_body(sched, today)}</div>', 1)
     assert 'id="live-now-streams"' in html, f"{PAGE}: the template has no results slot"
+    # NOT EASY TO STUMBLE ON BEFORE IT IS PUBLIC (the owner, 10 November 2026):
+    # while LINKED is off the page asks not to be indexed, as the requests'
+    # pages do, and is left out of the sitemap below.
+    if not LINKED:
+        html = html.replace('<link rel="canonical"', ROBOTS + '\n<link rel="canonical"', 1)
+        assert ROBOTS in html, f"{PAGE}: the template has no canonical link to put noindex before"
     (site / PAGE).write_text(S.clean_links(styled(html)), encoding="utf-8")
     for f in ("live.js", "live.css"):
         shutil.copyfile(_paths.locate(f"src/pages/{f}"), site / f)
-    # IN THE SITEMAP, as every builder lists its own pages (the release
-    # session, applying PATCHES.md 1, 2 November 2026): /live asks to be
-    # indexed at its own address, and check_site refuses a page that does
-    # and is not listed, which would stop the night.
-    S.sitemap_merge(site, base, [base.rstrip("/") + S.canon(ADDRESS)], "/live")
+    # IN THE SITEMAP once the owner switches it on (LINKED), as every builder
+    # lists its own pages (the release session, applying PATCHES.md 1, 2
+    # November 2026): a page that asks to be indexed and is not listed stops
+    # the night in check_site. Until then it is noindex and unlisted, and the
+    # merge with no address takes out any entry an earlier run put in.
+    S.sitemap_merge(site, base, [base.rstrip("/") + S.canon(ADDRESS)] if LINKED else [], "/live")
     link_home(site, sched, today)
     # THE HEADER SEARCH'S ROW (PATCHES.md 3, by the release session's plan of
     # 5 November 2026): build_indexes writes find.json before this step, when

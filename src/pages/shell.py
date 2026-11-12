@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.37
+# GRANITE_VERSION: 2026-09-07.41
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -28,6 +28,7 @@ nav, the footer and the head's shared lines go, and template() fills them
 is framed by the same code as the five pages build_pages.py writes.
 """
 
+import datetime
 import html
 import json
 import re
@@ -116,13 +117,18 @@ BINDS = ('id="q"', 'id="qgo"', 'id="year"', 'id="sort"',
          'id="facets"', 'id="results"', 'id="count"')
 
 
-def template(site=Path("site")):
+def template(site=Path("site"), lang="en", scripts=(), alt=None):
     """bills.html with its frame filled in (chrome.fill), checked for
     everything the substitutions rely on: the one in src/pages/, or failing
-    that the copy in the site folder."""
+    that the copy in the site folder.
+
+    IN ANOTHER LANGUAGE (the Calendar, 9 November 2026): the frame is that
+    language's (chrome.fill), its head carrying the words `scripts` ask tr()
+    for, and its footer's language list leading to this page's versions in
+    `alt`, {code: address}. English, with no `alt`, is as it always was."""
     for p in (Path("src/pages/bills.html"), Path(site) / "bills.html"):
         if p.exists():
-            t = chrome.fill(p.read_text(encoding="utf-8"), "bills.html")
+            t = chrome.fill(p.read_text(encoding="utf-8"), "bills.html", lang, scripts, alt)
             break
     else:
         raise SystemExit(
@@ -184,9 +190,41 @@ def cite_day_full(short):
 
 # The day the site was built, as the fallback date in a citation. A file on
 # a CDN cannot know when it is read; app.js puts the reader's own date in
-# where it can, and this is what a reader without JavaScript is given.
+# where it can; a reader without JavaScript is given the day the page's record
+# last changed (cited() below), and this day only where it has none.
 # build_date.today() is the clock, unless a day is stated to compare builds.
 BUILT = cite_day(build_date.today())
+
+
+def cited(*days):
+    """The date a record page's citation falls back on, for a reader without
+    JavaScript: the day its record last changed, in cite_day's form.
+
+    `days` are ISO days (or dates, or longer ISO stamps) out of the page's own
+    data; the latest of them that is not after the build day is the answer.
+    None of them is a day the build can stand behind -- no argument, an empty
+    one, one that is not a date, only days still ahead -- and the page falls
+    back on the build day, BUILT, as every page did. A day later than the
+    build's is never shown: it would be a claim about a day not yet come.
+    A page whose record did not change keeps its date from one night to the
+    next, so its file is byte-identical and the CDN is not asked to take it
+    again; one whose record moved is the only one that differs.
+    """
+    today = build_date.today()
+    best = None
+    for d in days:
+        if hasattr(d, "date") and callable(d.date):
+            d = d.date()
+        elif isinstance(d, str):
+            try:
+                d = datetime.date.fromisoformat(d.strip()[:10])
+            except ValueError:
+                continue
+        if not isinstance(d, datetime.date):
+            continue
+        if d <= today and (best is None or d > best):
+            best = d
+    return cite_day(best) if best else BUILT
 
 # The punctuation a name can end on: full stops, spaces and closing double
 # quotes, in whatever order the source typed them. Not an apostrophe: 1994's
@@ -235,8 +273,9 @@ def title_stops(name):
 # Court for them.
 GUIDE_CITE = ('<p class="citenote">This guide is written by Granite Record from the '
               'official pages it links to. Where a citation allows only one source, '
-              'cite the official page for the part you rely on. The date below is the '
-              'day the page was read.</p>')
+              'cite the official page for the part you rely on. '
+              '<span class="citeread">The date below is the day this guide&rsquo;s '
+              'sources were last read.</span></p>')
 
 
 def cite_url(url, after=""):
@@ -291,11 +330,16 @@ def cite_block(path, title, base, built=""):
     the opposite would be a disservice dressed up as a convenience.
 
     THE DATE IS THE DAY THE PAGE WAS READ, which a file on a CDN cannot know.
-    app.js fills every .citeday with the reader's own date; the build date is
-    written in as the fallback so a reader without JavaScript gets something
-    true about the page rather than "Accessed ." -- and the note says which
-    date it is, so neither reader is misled. Both are written by cite_day, in
-    one form whatever the reader's language.
+    app.js fills every .citeday with the reader's own date, and replaces the
+    sentence in the note's .citeread span with "The date below is the day you
+    read this page." What is written in is the fallback for a reader without JavaScript: the day the page's
+    record last changed (cited(), from the record's own dates), and the
+    build day only where a page has no such day -- so a night with no change
+    leaves the file as it was and the CDN has nothing to take again (the
+    owner, 11 November 2026). The note says which date it is -- the record's
+    day for a page, the day its sources were last read for a guide -- so
+    neither reader is misled. Both are written by cite_day, in one form whatever the
+    reader's language. `built` is that day, already in cite_day's form.
 
     UP BY THE TITLE, WITH A COPY BUTTON (the person, 24 September). It sat
     between the record and the footer, below everything a reader scrolls
@@ -346,8 +390,9 @@ def cite_block(path, title, base, built=""):
             '<p class="citenote">Granite Record indexes the General '
             'Court&rsquo;s record; it is not that record. Where a citation '
             'allows only one source, cite the General Court &mdash; every page '
-            'here links to what it is drawn from. The date below is the day '
-            'the page was read.</p>')
+            'here links to what it is drawn from. '
+            '<span class="citeread">The date below is the day this page&rsquo;s '
+            'record last changed.</span></p>')
             + f'<dl class="citeforms">{rows}</dl>'
             # Where a copy is announced: "The MLA citation is copied", or,
             # where the browser would not copy, that it is selected instead.
@@ -653,8 +698,12 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
          sr_title=None, nav_current="", jsonld=None,
          data_json=None, data_url=None, og_type="article", og_image=None,
          og_alt=None, cite=True, cite_title=None, canonical=None,
-         static=""):
+         static="", lang="en", alts=None, changed=None):
     """One record's page: the template, told which record it is.
+
+    `changed` is the day the record last changed (an ISO day), which the
+    citation gives a reader without JavaScript (cited()); None is the build
+    day.
 
     sr_title replaces the template's own visually-hidden <h1>. bills.html
     carries "New Hampshire bills" because that is what bills.html is, and
@@ -668,10 +717,23 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
     calendar writes the current week at /calendar and again at its dated
     address, so a link to that week sent last week still opens. The copy's
     canonical link, og:url and citation name the original; its skip link
-    stays on the page it is on."""
+    stays on the page it is on.
+
+    `lang` is the page's language and `alts` {code: address} its versions in
+    the others (the Calendar, 9 November 2026): <html> names the language and
+    each other version (data-alt-<code>, which the language control reads),
+    the nav's current tab is the one at that language's address, and the
+    frame was filled for it by template(). English, with no `alts`, is as
+    it always was."""
     here = address(base, path)
     if canonical:
         here = address(base, canonical)
+    if lang != "en" or alts:
+        t = t.replace('<html lang="en">', f'<html lang="{lang}"' + "".join(
+            f' data-alt-{c}="{E(a)}"' for c, a in (alts or {}).items()) + ">", 1)
+    if nav_current and lang != "en":
+        import i18n
+        nav_current = i18n.href(lang, nav_current).lstrip("/")
     if nav_current:
         # The template is bills.html, so its nav marks Bills as the current
         # page and every page built from it inherits that -- the committees
@@ -737,7 +799,9 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
     g = globals or {}
     if g.get("GR_STATIC") or g.get("GR_STANDALONE"):
         out = out.replace(NEEDS["shell"], '<div class="shell nofacets">', 1)
-        if not g.get("GR_BILL"):
+        # A request's own page keeps the box as a bill's does (GR_REQUEST, 11
+        # November 2026: it is the bill's page until it is a bill).
+        if not (g.get("GR_BILL") or g.get("GR_REQUEST")):
             out = out.replace(NEEDS["searchrow"], NEEDS["searchrow"][:-1] + " hidden>", 1)
         else:
             for k, down in BILL_ROW.items():
@@ -806,7 +870,7 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
         assert slot in out, "the template has no results slot for the citation to sit above"
         out = out.replace(slot, cite_block(canonical or path,
                                            cite_title or og_title or title,
-                                           base, BUILT) + slot, 1)
+                                           base, cited(changed)) + slot, 1)
 
     # THE RECORD AS PLAIN HTML (the SEO review of 12 October 2026), above
     # the slot app.js draws into and after the citation, for a reader that

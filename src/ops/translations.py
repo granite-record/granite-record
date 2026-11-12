@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.14
+# GRANITE_VERSION: 2026-10-23.16
 """
 The site's translations: what is translated, what has gone stale, and the
 proofreader's sheet out and back. src/pages/i18n.py says how a translation
@@ -95,7 +95,14 @@ AREAS = {"nav": "the header", "page": "the header", "theme": "Settings", "set": 
          # 9 November 2026: the About page, piece by piece, and the all-results
          # page at /search.
          "about": "the About page",
-         "sr": "the all-results page (/search)"}
+         "sr": "the all-results page (/search)",
+         # 9 November 2026: the Calendar page and its weeks (controls, the
+         # script's words, the Calendars & Journals pickers), and Learn's By
+         # the Numbers page.
+         "calp": "the Calendar page: its controls, its script's words and the Calendars & Journals section",
+         "nums": "the Learn page By the Numbers",
+         # 10 November 2026: a member's page's Elections tab.
+         "race": "a member's page: the Elections tab"}
 
 
 def area(key):

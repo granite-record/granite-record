@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.4
+# GRANITE_VERSION: 2026-10-09.5
 """
 The district map's data, and its script and stylesheet, into the site.
 
@@ -62,6 +62,7 @@ import math
 import re
 import shutil
 
+import state_settings as ST
 import strip_js
 import town_boards
 # Who November's election sent, while there are any: the one reader of
@@ -73,9 +74,7 @@ from build_members_elect import for_pages as members_elect, read_officials
 GEOMETRY = "generated/district_geometry.json"
 SCRIPT, STYLE = "src/pages/map.js", "src/pages/map.css"
 
-CODE = {"Belknap": "BE", "Carroll": "CA", "Cheshire": "CH", "Coos": "CO",
-        "Grafton": "GR", "Hillsborough": "HI", "Merrimack": "ME",
-        "Rockingham": "RO", "Strafford": "ST", "Sullivan": "SU"}
+CODE = ST.COUNTY_CODE
 ORDER = "RDI"
 # The layers whose districts are filled with their members' party; floterials
 # are framed in theirs. Counties and towns are neutral.
