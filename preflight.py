@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.873
+# GRANITE_VERSION: 2026-09-04.874
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -107847,12 +107847,23 @@ def _workflows_site_handoff():
             for verb, into in (("site-up", up), ("site-down", down)):
                 if f"cloud.py {verb}" not in body:
                     continue
+                if f.name == "preview.yml":
+                    # THE QUICK PREVIEW (11 November 2026) reads the newest real night's
+                    # site, to put the browser's files into a copy of it. It publishes
+                    # nothing and sends nothing: site-down only, --latest, and no
+                    # site-up anywhere in the file.
+                    assert verb == "site-down" and re.search(
+                        r"python src/ops/cloud\.py site-down --latest\s*$", body, re.M) and \
+                        "--run" not in body and "--deploy-to" not in body, (
+                        f"{f.name}: job {j} does more with the night's site than read the "
+                        "newest one for the quick preview")
+                    continue
                 assert re.search(rf"python src/ops/cloud\.py {verb} --run \$env:RUN_ID\s*$", body, re.M) \
                     and "RUN_ID: ${{ github.run_id }}" in body, (
                         f"{f.name}: job {j} runs cloud.py {verb} under a name that is not "
                         "the run's own id")
                 into.append(f"{f.name}:{j}")
-            if f"cloud.py site-down" in body:
+            if f"cloud.py site-down" in body and f.name != "preview.yml":
                 assert "--deploy-to production" in body, \
                     f"{f.name}: job {j} takes a night's site down and does not deploy production"
     assert up and down, (f"the site is sent by {up or 'no job'} and taken down by "
@@ -129757,8 +129768,8 @@ def _quick_preview(QP, FE, BP, cloud, NI):
         def plan(build):
             (tmp / "site").mkdir(exist_ok=True)
             (tmp / "site" / "build.json").write_text(json.dumps(build), encoding="utf-8")
-            r = _run([sys.executable, _paths.script("quick_preview.py"), "plan"], cwd=tmp,
-                     capture_output=True, text=True, timeout=120)
+            r = _sealed_run([sys.executable, _paths.script("quick_preview.py"), "plan"], cwd=tmp,
+                            capture_output=True, text=True, timeout=120)
             return r.returncode, (r.stdout or "") + (r.stderr or "")
         night = {"commit": base, "finished": datetime.now().isoformat(timespec="seconds"),
                  "ok": True}
@@ -129768,8 +129779,8 @@ def _quick_preview(QP, FE, BP, cloud, NI):
             f"a checkout that is the night's commit was not allowed: {out[-300:]}")
         _plant(tmp, {"src/pages/app.css": "a{b:c}\n", "README.md": "changed\n"})
         git("commit", "-q", "-am", "css")
-        assert QP.git_changes(base) == [("M", "README.md"), ("M", "src/pages/app.css")], (
-            f"git_changes read {QP.git_changes(base)}")
+        assert QP.git_changes(base, cwd=tmp) == [("M", "README.md"), ("M", "src/pages/app.css")], (
+            f"git_changes read {QP.git_changes(base, cwd=tmp)}")
         code, out = plan(night)
         assert code == 0 and "will apply   src/pages/app.css" in out and \
             "ignored      README.md" in out, f"a change to app.css was not planned: {out[-300:]}"
@@ -129843,8 +129854,8 @@ def _quick_preview(QP, FE, BP, cloud, NI):
         _edit_browser_files(step, edit)
 
         def qp(*args):
-            r = _run([sys.executable, _paths.script("quick_preview.py"), *args], cwd=quick,
-                     capture_output=True, text=True, timeout=300)
+            r = _sealed_run([sys.executable, _paths.script("quick_preview.py"), *args], cwd=quick,
+                            capture_output=True, text=True, timeout=300)
             return r.returncode, (r.stdout or "") + (r.stderr or "")
         code, out = qp("apply")
         assert code == 2 and "run plan first" in out, f"apply with no plan: {out[-300:]}"
@@ -129912,7 +129923,7 @@ def _quick_preview(QP, FE, BP, cloud, NI):
         "the quick preview's job is not in the preview environment, which holds the Pages token")
     steps = ["\n".join(s) for s in _wf_steps(_wf_code(jobs["preview"]))]
     order = [next((i for i, s in enumerate(steps) if needle in s), -1) for needle in (
-        "cloud.py site-down --latest", "quick_preview.py plan", "quick_preview.py apply",
+        "cloud" + ".py site-down --latest", "quick_preview.py plan", "quick_preview.py apply",
         "quick_preview.py check", "quick_preview.py deploy")]
     assert -1 not in order and order == sorted(order), (
         f"the quick preview's steps are not site-down, plan, apply, check, deploy in order: {order}")

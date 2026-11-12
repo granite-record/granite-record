@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-11.2
+# GRANITE_VERSION: 2026-11-11.3
 """
 The quick preview: a change to the browser's files, seen in minutes on GitHub.
 
@@ -166,18 +166,18 @@ def judge(changes, tables=None):
     return sorted(apply), sorted(ignored), sorted(refused)
 
 
-def git(*args, check=True):
-    r = child.run(["git", *args], capture_output=True)
+def git(*args, check=True, cwd=None):
+    r = child.run(["git", *args], capture_output=True, cwd=cwd)
     out = r.stdout or ""
     if check and r.returncode != 0:
         raise RuntimeError(f"git {' '.join(args[:2])}: {(r.stderr or out).strip()[-200:]}")
     return out, r.returncode
 
 
-def git_changes(base, head="HEAD"):
+def git_changes(base, head="HEAD", cwd=None):
     """[(status, path)] between two commits' trees, renames taken as a removal
     and an addition, sorted by path."""
-    out, _ = git("diff", "--name-status", "--no-renames", "-z", base, head)
+    out, _ = git("diff", "--name-status", "--no-renames", "-z", base, head, cwd=cwd)
     parts = out.split("\0")
     pairs = []
     for i in range(0, len(parts) - 1, 2):
