@@ -204,9 +204,9 @@
     {"args": ["AS AMENDED – THE SENATE — OF THE DAY"], "want": "As Amended – The Senate — Of the Day"}
   ],
   "icon": [
-    {"args": ["close"],
-     "want": "<svg class=\"icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\" focusable=\"false\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6 6l12 12M18 6L6 18\" stroke-width=\"2\"/></svg>"},
-    {"args": ["bill"]}, {"args": ["person"]}, {"args": ["committee"]}, {"args": ["book"]},
+    {"args": ["bill"],
+     "want": "<svg class=\"icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\" focusable=\"false\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6.25 2.75h7.75l4.25 4.25v14.25H6.25z\"/><path d=\"M13.75 2.75v4.5h4.5\"/><path d=\"M9 11.75h6.5M9 15h6.5M9 18.25h4\"/></svg>"},
+    {"args": ["person"]}, {"args": ["book"]},
     {"args": ["calendar"]}, {"args": ["cite"]}, {"args": ["follow"]}, {"args": ["print"]},
     {"args": ["testify"]}, {"args": ["report"]}, {"args": ["share"]}, {"args": ["search"]},
     {"args": ["play"]},

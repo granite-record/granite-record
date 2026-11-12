@@ -1497,6 +1497,116 @@
    "es": "Figuraron en la boleta con dos etiquetas de partido, tal como las imprimen los resultados del Secretario de Estado; el sitio mostrará el partido que registre la Legislatura cuando lo haga.",
    "state": "draft"
   },
+  "elect.q.approved": {
+   "en": "Approved",
+   "es": "Aprobada",
+   "state": "draft"
+  },
+  "elect.q.cacr_rule": {
+   "en": "An amendment needs two thirds of the votes cast on it (Part Second, Article 100).",
+   "es": "Una enmienda necesita dos tercios de los votos emitidos sobre ella (Segunda Parte, Artículo 100).",
+   "state": "draft"
+  },
+  "elect.q.cap_out": {
+   "en": "The statewide total decides nothing, because each school district and each school administrative unit counts only the towns and wards it serves. Which of them reached three fifths is not shown yet: no table of which town or ward is in which school district is on hand.",
+   "es": "El total estatal no decide nada, porque cada distrito escolar y cada unidad administrativa escolar cuenta solo los municipios y distritos electorales de ciudad (wards) a los que sirve. Todavía no se muestra cuáles de ellos alcanzaron tres quintos: no se dispone de una tabla que diga qué municipio o distrito electoral de ciudad (ward) pertenece a cada distrito escolar.",
+   "state": "draft"
+  },
+  "elect.q.cap_rule": {
+   "en": "A school district&rsquo;s local tax cap, and a school administrative unit&rsquo;s fixed cap, is binding if a &ldquo;3/5 majority of the voters voting in the municipalities and wards&rdquo; it serves approve the question (RSA 32:5-i, VI(a) and (b), added by HB 1300, chapter 324 of 2026).",
+   "es": "El límite local de impuestos de un distrito escolar, y el límite fijo de una unidad administrativa escolar, es vinculante si «una mayoría de 3/5 de los votantes que votan en los municipios y distritos electorales de ciudad (wards)» a los que sirve aprueba la pregunta (RSA 32:5-i, VI(a) y (b), añadido por HB 1300, capítulo 324 de 2026).",
+   "state": "draft"
+  },
+  "elect.q.cap_t": {
+   "en": "(school district local tax cap, {bill})",
+   "es": "(límite local de impuestos de los distritos escolares, {bill})",
+   "state": "draft"
+  },
+  "elect.q.conv_rule": {
+   "en": "If a majority of the qualified voters voting on the question approves it, delegates are chosen (Part Second, Article 100(b)).",
+   "es": "Si una mayoría de los votantes que reúnen los requisitos y votan sobre la pregunta la aprueba, se eligen delegados (Segunda Parte, Artículo 100(b)).",
+   "state": "draft"
+  },
+  "elect.q.convention_t": {
+   "en": "(the convention question)",
+   "es": "(la pregunta sobre la convención)",
+   "state": "draft"
+  },
+  "elect.q.county": {
+   "en": "County",
+   "es": "Condado",
+   "state": "draft"
+  },
+  "elect.q.county_cap": {
+   "en": "By county",
+   "es": "Por condado",
+   "state": "draft"
+  },
+  "elect.q.differ": {
+   "en": "The result is not the same on both counts.",
+   "es": "El resultado no es el mismo con los dos recuentos.",
+   "state": "draft"
+  },
+  "elect.q.disagree": {
+   "en": "The ten county files add up to {cy} yes and {cn} no; the statewide summary, shown above, has {y} yes and {n} no. {same}",
+   "es": "Los diez archivos de condado suman {cy} sí y {cn} no; el resumen estatal, que se muestra arriba, tiene {y} sí y {n} no. {same}",
+   "state": "draft"
+  },
+  "elect.q.flip": {
+   "en": "The gap between yes and no is {gap}. {n} voters would have had to vote the other way to change the result.",
+   "es": "La diferencia entre sí y no es de {gap}. {n} votantes habrían tenido que votar al revés para cambiar el resultado.",
+   "state": "draft"
+  },
+  "elect.q.flip_one": {
+   "en": "The gap between yes and no is {gap}. {n} voter would have had to vote the other way to change the result.",
+   "es": "La diferencia entre sí y no es de {gap}. {n} votante habría tenido que votar al revés para cambiar el resultado.",
+   "state": "draft"
+  },
+  "elect.q.how": {
+   "en": "The Secretary of State&rsquo;s statewide summary does not hold this question, so the total is the ten county files&rsquo; totals added up.",
+   "es": "El resumen estatal de la Secretaría de Estado no incluye esta pregunta, así que el total es la suma de los totales de los diez archivos de condado.",
+   "state": "draft"
+  },
+  "elect.q.no": {
+   "en": "No",
+   "es": "No",
+   "state": "draft"
+  },
+  "elect.q.not_approved": {
+   "en": "Not approved",
+   "es": "No aprobada",
+   "state": "draft"
+  },
+  "elect.q.not_ratified": {
+   "en": "Not ratified",
+   "es": "No ratificada",
+   "state": "draft"
+  },
+  "elect.q.ratified": {
+   "en": "Ratified",
+   "es": "Ratificada",
+   "state": "draft"
+  },
+  "elect.q.same": {
+   "en": "The result is the same on either count.",
+   "es": "El resultado es el mismo con cualquiera de los dos recuentos.",
+   "state": "draft"
+  },
+  "elect.q.statewide": {
+   "en": "Statewide total:",
+   "es": "Total estatal:",
+   "state": "draft"
+  },
+  "elect.q.yes": {
+   "en": "Yes",
+   "es": "Sí",
+   "state": "draft"
+  },
+  "elect.q.yes_share": {
+   "en": "Yes share",
+   "es": "Porcentaje de sí",
+   "state": "draft"
+  },
   "elect.recount": {
    "en": "&mdash; a recount was requested",
    "es": "&mdash; se pidió un recuento",

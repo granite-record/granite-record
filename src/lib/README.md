@@ -6,6 +6,10 @@ Shared by every stage:
   forty modules use;
 - `freeze_term`: a finished term's frozen inputs, and also the command run
   at the term switch;
+- `terms`: the term arithmetic by year (`term_of_year`), and which of the two
+  term rules is which (the other, by date with Organization Day, is
+  `proceedings.term_on`);
+- `htmlesc`: the escapes that mirror components.js's `esc` byte for byte;
 - `site_read`: a record read back out of the built site;
 - `build_date`: the build's one clock;
 - `child`: a child process without Windows' code-page crash;

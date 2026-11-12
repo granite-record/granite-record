@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-30.7
+# GRANITE_VERSION: 2026-09-30.10
 """
 The bills the House withdrew, read from the House Journal itself.
 
@@ -113,12 +113,15 @@ from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
 
+from terms import term_of_year as term_of  # noqa: E402,F401
+
 import argparse
 import json
 import re
 from collections import Counter, defaultdict
 
 import journal_days as JD
+import state_settings as ST
 
 ROOT = Path("journals")
 OUT = Path("journal_bills.json")
@@ -194,12 +197,6 @@ RECOMMENDS = re.compile(r"\b(?:OUGHT\s+TO\s+PASS|INEXPEDIENT\s+TO|INTERIM\s+STUD
 REMOVED_BY = re.compile(r"\bremoved\s+by\b", re.I)
 BILL_IN_TEXT = re.compile(r"\b(HB|HCR|HJR|HR|CACR)\s*(\d+)\b")
 FILE_NUMBER = re.compile(r"^HJ\s*0*(\d+)\b", re.I)
-
-
-def term_of(year):
-    y = int(year)
-    t = y if y % 2 else y - 1
-    return f"{t}-{t + 1}"
 
 
 def bill_id(kind, num):
@@ -845,8 +842,7 @@ REPORT_QUESTION = re.compile(
     r"report\s+of\s+(?P<what>[A-Z][A-Za-z ]+?)\s*\.")
 # A roll call prints its members under their counties, each a heading of its
 # own; they are not where the business after the vote begins.
-COUNTIES = {"BELKNAP", "CARROLL", "CHESHIRE", "COOS", "GRAFTON", "HILLSBOROUGH",
-            "MERRIMACK", "ROCKINGHAM", "STRAFFORD", "SULLIVAN"}
+COUNTIES = set(ST.COUNTIES_UPPER)
 # What the House did with the report. Lower case, and matched with case: the
 # names of a roll call are capitalised, and no member is called "adopted".
 REPORT_CARRIED = re.compile(r"\badopted\b")
@@ -1074,32 +1070,6 @@ def introduction_resolutions(root=ROOT, years=()):
                             "numbered": {k: sorted(v) for k, v in numbered.items()},
                             "words": words})
     return out
-
-
-def resolution_reading(resolutions, bid):
-    """What the resolutions say of one measure, or None where they say nothing.
-
-    {"introduced": True, ...} with the resolution that names its number;
-    {"introduced": False, ...} where none names it and one steps over it --
-    names numbers of its kind on both sides of it in one list, as "31 through
-    86, 88 through 133" steps over 87. A number past the end of every list is
-    not stepped over, and nothing is said of it."""
-    m = re.match(r"^([A-Z]+)(\d+)$", bid or "")
-    if not m:
-        return None
-    kind, n = m.group(1), int(m.group(2))
-
-    def cite(r, introduced):
-        return {"introduced": introduced, "date": r["date"], "journal": r["journal"],
-                "numbered": r["words"].get(kind, ""), "file": r["file"], "line": r["line"]}
-    for r in resolutions:
-        if any(a <= n <= b for a, b in r["numbered"].get(kind, ())):
-            return cite(r, True)
-    for r in resolutions:
-        rs = r["numbered"].get(kind, [])
-        if any(b < n < c for (_a, b), (c, _d) in zip(rs, rs[1:])):
-            return cite(r, False)
-    return None
 
 
 # ------------------------------------------------------------------ --check --

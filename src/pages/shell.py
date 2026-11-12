@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.39
+# GRANITE_VERSION: 2026-09-07.41
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -273,8 +273,9 @@ def title_stops(name):
 # Court for them.
 GUIDE_CITE = ('<p class="citenote">This guide is written by Granite Record from the '
               'official pages it links to. Where a citation allows only one source, '
-              'cite the official page for the part you rely on. The date below is the '
-              'day the page was read.</p>')
+              'cite the official page for the part you rely on. '
+              '<span class="citeread">The date below is the day this guide&rsquo;s '
+              'sources were last read.</span></p>')
 
 
 def cite_url(url, after=""):
@@ -329,13 +330,15 @@ def cite_block(path, title, base, built=""):
     the opposite would be a disservice dressed up as a convenience.
 
     THE DATE IS THE DAY THE PAGE WAS READ, which a file on a CDN cannot know.
-    app.js fills every .citeday with the reader's own date. What is written
-    in is the fallback for a reader without JavaScript: the day the page's
+    app.js fills every .citeday with the reader's own date, and replaces the
+    sentence in the note's .citeread span with "The date below is the day you
+    read this page." What is written in is the fallback for a reader without JavaScript: the day the page's
     record last changed (cited(), from the record's own dates), and the
     build day only where a page has no such day -- so a night with no change
     leaves the file as it was and the CDN has nothing to take again (the
-    owner, 11 November 2026). The note says which date it is, so neither
-    reader is misled. Both are written by cite_day, in one form whatever the
+    owner, 11 November 2026). The note says which date it is -- the record's
+    day for a page, the day its sources were last read for a guide -- so
+    neither reader is misled. Both are written by cite_day, in one form whatever the
     reader's language. `built` is that day, already in cite_day's form.
 
     UP BY THE TITLE, WITH A COPY BUTTON (the person, 24 September). It sat
@@ -387,8 +390,9 @@ def cite_block(path, title, base, built=""):
             '<p class="citenote">Granite Record indexes the General '
             'Court&rsquo;s record; it is not that record. Where a citation '
             'allows only one source, cite the General Court &mdash; every page '
-            'here links to what it is drawn from. The date below is the day '
-            'the page was read.</p>')
+            'here links to what it is drawn from. '
+            '<span class="citeread">The date below is the day this page&rsquo;s '
+            'record last changed.</span></p>')
             + f'<dl class="citeforms">{rows}</dl>'
             # Where a copy is announced: "The MLA citation is copied", or,
             # where the browser would not copy, that it is selected instead.
@@ -795,7 +799,9 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
     g = globals or {}
     if g.get("GR_STATIC") or g.get("GR_STANDALONE"):
         out = out.replace(NEEDS["shell"], '<div class="shell nofacets">', 1)
-        if not g.get("GR_BILL"):
+        # A request's own page keeps the box as a bill's does (GR_REQUEST, 11
+        # November 2026: it is the bill's page until it is a bill).
+        if not (g.get("GR_BILL") or g.get("GR_REQUEST")):
             out = out.replace(NEEDS["searchrow"], NEEDS["searchrow"][:-1] + " hidden>", 1)
         else:
             for k, down in BILL_ROW.items():

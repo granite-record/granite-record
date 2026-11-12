@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.9
+# GRANITE_VERSION: 2026-10-23.10
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -73,7 +73,7 @@ NAV_TABS = (("bills.html", "Bills", "bill"),
             # 301 to the new addresses (build_pages.MOVED).
             ("officials.html", "Officials", "person"),
             ("calendar.html", "Calendar", "calendar"),
-            ("committees.html", "Committees", "committee"),
+            ("committees.html", "Committees", "gavel"),
             ("resources.html", "Resources", "book"))
 
 

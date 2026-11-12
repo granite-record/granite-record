@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-09.2
+# GRANITE_VERSION: 2026-11-09.3
 """
 The sponsors of a resolution, read from the House and Senate Journals that print it.
 
@@ -57,6 +57,8 @@ import sys
 from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
+
+from terms import term_of_year as term_of  # noqa: E402,F401
 
 import argparse
 import json
@@ -181,12 +183,6 @@ def journal_label(path, chamber):
     """"HJ 54 of 2015" from a file name: HJ054.txt, SJ 9.txt, "HJ 05 March 10, 2022.txt"."""
     m = re.match(r"([HS]J)\s*0*(\d+)", path.name)
     return f"{m.group(1)} {m.group(2)} of {path.parent.name}" if m else path.name
-
-
-def term_of(year):
-    y = int(year)
-    t = y if y % 2 else y - 1
-    return f"{t}-{t + 1}"
 
 
 def files(root):

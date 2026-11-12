@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-06.5
+# GRANITE_VERSION: 2026-10-06.6
 """
 Where the code lives, so that every script and module is found by its bare name.
 
@@ -67,7 +67,7 @@ for a browser that preflight runs app.js against in node, sits in tests/. A
 builder reads them at src/pages/ under the folder it runs in, as it reads the
 data, so that a fixture is built from the copies laid out in it. locate()
 finds each by its bare name, as it finds a script (BROWSER), so that
-versions.json, inventory and preflight name them as they did at the root; a
+inventory and preflight name them as they did at the root; a
 name with a folder in it is taken as written, because site/bills.html is the
 built copy and not the source.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.5
+# GRANITE_VERSION: 2026-09-09.6
 """
 One record per person, across every term they served.
 
@@ -58,6 +58,8 @@ from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
 
+from terms import term_of_year as term_of  # noqa: E402,F401
+
 import argparse
 import collections
 import json
@@ -79,11 +81,6 @@ def rows(name, cols):
             f = line.rstrip("\n").split("|")
             if len(f) >= n:
                 yield f
-
-
-def term_of(year):
-    y = int(year)
-    return f"{y if y % 2 else y - 1}-{y + 1 if y % 2 else y}"
 
 
 def main():

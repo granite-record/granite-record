@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.82
+# GRANITE_VERSION: 2026-09-04.84
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -1155,6 +1155,50 @@ DB_ASKED = ("connect", "query", "short", "error")
 
 QUIET = False             # --runner: child output to the log file only
 
+# THE LONGEST A STEP MAY RUN (11 November 2026). run() waited for ever on a
+# child; on GitHub only the job's 300 minutes stopped a hung one, and on the
+# laptop nothing did. The longest step in logs/nightly-*.log took 2,585 s
+# (43 min); three times that is 7,755 s, so 7,800 s (130 min). A step over it
+# is killed, the night says which step and fails, and the lock is released.
+STEP_TIMEOUT = 7800
+TIMED_OUT = 124           # the exit code of a step killed for it (as timeout(1))
+
+
+def kill_tree(proc):
+    """Kill the child and what it started: taskkill /T on Windows, where
+    Popen.kill leaves grandchildren running."""
+    try:
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                           capture_output=True, check=False)
+        proc.kill()
+    except OSError:
+        pass
+
+
+def take_lock(lock, text, stale=6 * 3600):
+    """Make `lock` only if it is not there (O_EXCL), so two starts in the same
+    second cannot both pass: True, or False if another run holds it. A lock
+    older than `stale` is a run that died holding it, and is taken over. On
+    Windows a lock just deleted can refuse a new one with PermissionError for
+    a moment: that is still held."""
+    lock = Path(lock)
+    for _ in range(2):
+        try:
+            fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except (FileExistsError, PermissionError):
+            try:
+                if time.time() - lock.stat().st_mtime > stale:
+                    lock.unlink()
+                    continue
+            except OSError:
+                pass
+            return False
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        return True
+    return False
+
 
 def say(msg="", echo=True):
     """Print and log a line. With --runner a step's own output is logged and not
@@ -1224,9 +1268,28 @@ def run(args, label, cwd=None):
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                        text=True, bufsize=1, cwd=cwd,
                        env={SQL_HELD_ENV: str(SQL_HELD.resolve())})
-    for ln in proc.stdout:
-        say("  " + ln.rstrip(), echo=False)
-    proc.wait()
+    import threading
+    expired = threading.Event()
+
+    def stop():
+        expired.set()
+        kill_tree(proc)
+    timer = threading.Timer(STEP_TIMEOUT, stop)
+    timer.daemon = True
+    timer.start()
+    try:
+        for ln in proc.stdout:
+            say("  " + ln.rstrip(), echo=False)
+        proc.wait()
+    finally:
+        timer.cancel()
+    if expired.is_set():
+        say(f"  TIMED OUT: step '{label}' ran {STEP_TIMEOUT}s and was killed. "
+            "The night fails here; it did not finish this step.")
+        if QUIET:
+            print(f"TIMED OUT: step '{label}' ran {STEP_TIMEOUT}s and was killed", flush=True)
+        say(f"  ({time.time() - t0:.0f}s, exit {TIMED_OUT})")
+        return TIMED_OUT
     if QUIET:
         public = slowest_said(args, LOG[mark:])
         # GitHub's log says why a step failed without anyone opening the
@@ -1516,11 +1579,13 @@ def main():
                  "GitHub's machine, with --runner")
 
     lock = Path(".nightly.lock")
-    if lock.exists() and time.time() - lock.stat().st_mtime < 6 * 3600:
-        print(f"Another nightly is already going: "
-              f"{lock.read_text(encoding='utf-8', errors='replace').strip()}")
+    if not take_lock(lock, f"{datetime.now():%Y-%m-%d %H:%M} pid {os.getpid()}"):
+        try:
+            who = lock.read_text(encoding='utf-8', errors='replace').strip()
+        except OSError:
+            who = "(its lock is being made)"
+        print(f"Another nightly is already going: {who}")
         return 1
-    lock.write_text(f"{datetime.now():%Y-%m-%d %H:%M} pid {os.getpid()}", encoding="utf-8")
 
     started = datetime.now()
     day = f"{started:%Y-%m-%d}"
@@ -3238,12 +3303,6 @@ def count_lines(path):
         for chunk in iter(lambda: fh.read(1 << 20), b""):
             n += chunk.count(b"\n")
     return n
-
-
-def captions_waiting(now=None):
-    """How many finished recordings, CAPTION_WAIT_DAYS to CAPTION_WAIT_MOST
-    days old, have no reading yet, by the livestream state."""
-    return len(_captions_late(load_json(LIVE_STATE), now))
 
 
 def _captions_late(st, now=None):
@@ -6180,7 +6239,10 @@ def weekly(a):
     shrink = NEW_TERM_SHRINK if a.new_term else SWAP_SHRINK
     code = 1
     lock = Path(".nightly.lock")
-    lock.write_text(f"{started:%Y-%m-%d %H:%M} pid {os.getpid()} (weekly)", encoding="utf-8")
+    # The weekly has always taken the lock over whatever it found (GitHub's
+    # machine starts empty); it still does, but through the same exclusive make.
+    lock.unlink(missing_ok=True)
+    take_lock(lock, f"{started:%Y-%m-%d %H:%M} pid {os.getpid()} (weekly)")
     say("=" * 74)
     say(f"Granite Record weekly  {started:%Y-%m-%d %H:%M}")
     say("=" * 74)

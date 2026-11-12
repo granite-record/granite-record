@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-22.5
+# GRANITE_VERSION: 2026-09-22.6
 """
 New Hampshire's elected county officers, out of the Secretary of State's roster.
 
@@ -60,6 +60,8 @@ import collections
 import json
 import re
 
+import state_settings as ST
+
 # The repository root, wherever this file sits (_paths.py): the data it
 # reads is the root's.
 ROOT = _paths.ROOT
@@ -71,8 +73,7 @@ SOURCE_URL = ("https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/"
 READ_ON = "2024-12-05"
 SHA256 = "8b507d159a095d71cd79e33a401a42410948df23c367676db5735a3fe6cc2f24"
 
-COUNTIES = {"BELKNAP", "CARROLL", "CHESHIRE", "COOS", "GRAFTON",
-            "HILLSBOROUGH", "MERRIMACK", "ROCKINGHAM", "STRAFFORD", "SULLIVAN"}
+COUNTIES = set(ST.COUNTIES_UPPER)
 
 # RSA 655:9, in the words the roster uses for them.
 #

@@ -38,9 +38,9 @@ of State: its results pages on sos.nh.gov from 2016, and before that the
 Department of State's Manual for the General Court, read from NHPR's scans of
 it. Ballotpedia's figures stay on each of those rows as a cross-check. They
 differ on two No counts, CACR 7 of 1992 and CACR 41 of 2006, where the file
-takes the Secretary of State's. The one amendment still to go to the voters,
-CACR 13 of 2025-2026, names Ballotpedia's list of New Hampshire ballot
-measures until its count is in. Every page that shows one of these counts
+takes the Secretary of State's. CACR 13 of 2025-2026 went to the voters
+on 3 November 2026 and was not ratified: 365,359 yes and 198,791 no, short of
+the two thirds it needed. Every page that shows one of these counts
 names whose it is from that row's own source. The counts are facts, and no
 claim is made over them; no source's page is reproduced here. Like the files
 above, no script writes it.

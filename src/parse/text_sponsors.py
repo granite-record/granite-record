@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.7
+# GRANITE_VERSION: 2026-09-14.9
 """
 Sponsors read off each bill's own text, for the bills the database names none for.
 
@@ -80,6 +80,8 @@ from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
 
+from terms import term_of_year as term_of  # noqa: E402,F401
+
 import argparse
 import json
 import re
@@ -87,6 +89,7 @@ import unicodedata
 from collections import Counter, defaultdict
 
 from member_links import COUNTIES, SHORT, seat as label_seat
+import state_settings as ST
 
 PAGES = Path("legislation")
 CURRENT_TEXT = Path("bill_text")      # 2025-2026 from billText.aspx; read by --score only
@@ -96,9 +99,7 @@ BILLS = Path("data/bills.json")
 OUT = Path("text_sponsors.json")
 SOURCE = "bill text"
 
-ABBR = {"Belknap": "Belk", "Carroll": "Carr", "Cheshire": "Ches", "Coos": "Coos",
-        "Grafton": "Graf", "Hillsborough": "Hills", "Merrimack": "Merr",
-        "Rockingham": "Rock", "Strafford": "Straf", "Sullivan": "Sull"}
+ABBR = ST.COUNTY_ABBR
 SUFFIXES = {"jr", "sr", "ii", "iii", "iv"}
 
 HONORIFIC = re.compile(r"^(Rep|Sen)s?\b\.?\s*", re.I)
@@ -198,12 +199,6 @@ def letters(s):
     "Fuller-Clark" and "Fuller Clark" are each one key."""
     s = unicodedata.normalize("NFKD", s or "")
     return re.sub(r"[^a-z]", "", "".join(ch for ch in s if not unicodedata.combining(ch)).lower())
-
-
-def term_of(year):
-    y = int(year)
-    t = y if y % 2 else y - 1
-    return f"{t}-{t + 1}"
 
 
 # ------------------------------------------------------------------ reading the line
