@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.879
+# GRANITE_VERSION: 2026-09-04.880
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -110132,6 +110132,95 @@ def _topic_title_rules(TM):
         TM.ENABLED.update(saved)
     return "ok", ("CACR first; a commemoration only below the floor; the proposals inert "
                   "while off")
+
+
+@check("build", "an archived bill takes the General Court's own subject code as its topic, through the "
+                "site's categories: a folded or retired name goes where the current term's goes, an "
+                "unnamed code is left to the model, and the current term is not touched",
+       needs=("build_site_v2", "official_topics"))
+def _official_codes_for_the_archive(B, OT):
+    """Stage 0 of reports/topics-as-tags-design-2026-11.md. Eighteen terms showed
+    the topic model's guess although the General Court's own code is on disk;
+    official_topics.adopt gives the code's name, and unify_vocabulary then does
+    to it what it does to 2025-2026's labels, so there is one mapping."""
+    subjects = {"PAR": {"name": "Parks and Recreation"}, "ELE": {"name": "Elections"},
+                "AGE": {"name": "Agency Appropriations"}, "CCP": {"name": "Crimes, Crim.Proc. & Corr."}}
+    codes = {(2001, 1): ("PAR", "HB1"), (2001, 2): ("ELE", "HB2"), (2001, 3): ("PUP", "HB3"),
+             (2001, 4): ("ELE", "HB999"), (2001, 5): ("AGE", "HB5"), (2001, 6): ("", "HB6"),
+             (2001, 7): ("CCP", "HB7"), (2025, 1): ("ELE", "HB1")}
+
+    def rec(n, title, **kw):
+        return {"title": title, "lsr_year": "2001", "lsr_num": str(n), **kw}
+    bills = {"2001-2002": {"HB1": rec(1, "relative to the state park fee"),
+                           "HB2": rec(2, "relative to voter checklists"),
+                           "HB3": rec(3, "relative to wells"),
+                           "HB4": rec(4, "relative to ballots"),
+                           "HB5": rec(5, "making an appropriation for the agency"),
+                           "HB6": rec(6, "relative to nothing in particular"),
+                           "HB7": rec(7, "relative to theft"),
+                           "HB8": rec(8, "relative to already labelled", subject="Animals")},
+             "2025-2026": {"HB1": {"title": "t", "lsr_year": "2025", "lsr_num": "1"}}}
+    before = json.dumps(bills["2025-2026"], sort_keys=True)
+    tally = OT.adopt(bills, subjects, codes=codes)
+    old = bills["2001-2002"]
+    assert old["HB1"]["subject"] == "Parks and Recreation" and old["HB1"]["subject_source"] == "general court"
+    assert not old["HB3"].get("subject"), "a code with no name on disk was guessed at"
+    assert not old["HB4"].get("subject"), "a code the database files under another bill number was taken"
+    assert not old["HB6"].get("subject"), "a bill with no code was given one"
+    assert old["HB8"]["subject"] == "Animals", "a subject already on the record was written over"
+    assert json.dumps(bills["2025-2026"], sort_keys=True) == before, "the current term was touched"
+    assert tally["filled"] == 4 and tally["a code with no name on disk"] == 1, dict(tally)
+    import contextlib
+    import io
+    with contextlib.redirect_stdout(io.StringIO()):
+        B.unify_vocabulary(bills)
+    got = {b: r.get("subject") for b, r in old.items()}
+    assert got["HB1"] == "Environment - Conservation", "Parks and Recreation was revived, not folded"
+    assert got["HB5"] == "State Government", "Agency Appropriations was revived, not folded"
+    assert got["HB7"] == "Crimes, Criminal Procedure and Corrections", got["HB7"]
+    assert got["HB2"] == "Elections" and got["HB8"] == "Animals", got
+    return "ok", "named codes fill, folds and wording apply, unnamed, mismatched and current-term bills are left alone"
+
+
+@check("data", "every official subject code on disk maps to a site category or is listed as unnamed, and "
+               "the current term's topics are what the General Court gave", needs=("build_site_v2", "official_topics"))
+def _official_codes_total(B, OT):
+    """The mapping is total over the data on disk: each code in PastLegislation
+    is named in data/subjects.json and lands in a category the site has, or is
+    one of the older codes OT.unnamed lists for the General Court to name. A new
+    code in a later dump is neither, and fails here until it is one or the
+    other."""
+    import contextlib
+    import io
+    codes = OT.read_codes()
+    if not codes or not Path("data/bills.json").exists() or not Path("data/subjects.json").exists():
+        return "skip", "no db/past dump or data/bills.json here"
+    subjects = json.loads(Path("data/subjects.json").read_text(encoding="utf-8"))
+    names = OT.names_of(subjects)
+    site = set(B.TM.new_vocabulary()) | set(B.TOPIC_WORDS.values())
+    bills = json.loads(Path("data/bills.json").read_text(encoding="utf-8"))
+    cur = max(bills)
+    unmapped, unnamed = [], set()
+    for code in {c for c, _n in codes.values() if c}:
+        if not names.get(code):
+            unnamed.add(code)
+            continue
+        for title in ("relative to something", "establishing a committee to study it",
+                      "relative to rental housing"):
+            cat = B.vocabulary_of(names[code], {"title": title}, "HB1")
+            if cat is not None and cat not in site:
+                unmapped.append((code, names[code], cat))
+    assert not unmapped, f"official codes that land in no site category: {unmapped[:5]}"
+    listed = set(OT.unnamed(bills, subjects, codes=codes))
+    carried = {OT.official_of(r, b, codes) for t, d in bills.items() if t != cur for b, r in d.items()}
+    missing = sorted((unnamed & carried) - listed)
+    assert not missing, f"codes with no name that unnamed() does not list: {missing}"
+    kept = {b: (r.get("subject"), r.get("subject_code")) for b, r in bills[cur].items()}
+    with contextlib.redirect_stdout(io.StringIO()):
+        OT.adopt(bills, subjects, codes=codes)
+    assert kept == {b: (r.get("subject"), r.get("subject_code")) for b, r in bills[cur].items()}, \
+        f"{cur}'s topics changed"
+    return "ok", f"{len(codes):,} LSRs, {len(unnamed)} unnamed codes listed, {cur} unchanged"
 
 
 @check("build", "the topic proposals the owner turned on reach the General Court's own labels "

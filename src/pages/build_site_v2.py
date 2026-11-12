@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.269
+# GRANITE_VERSION: 2026-09-05.270
 """
 Generate the faceted site from real General Court data.
 
@@ -66,6 +66,7 @@ import bill_order as BO
 import past_sponsors as PSP
 import text_sponsors as TS
 import topic_model as TM
+import official_topics as OT
 import law_effect as LE
 import unicodedata
 from collections import Counter, defaultdict, namedtuple
@@ -10802,6 +10803,30 @@ TOPIC_WORDS = {"Crimes, Crim.Proc. & Corr.": "Crimes, Criminal Procedure and Cor
                "CACR": "Constitutional Amendments"}
 
 
+def vocabulary_of(s, rec, bid=""):
+    """The site category a General Court topic name ends up under, for one
+    record: None where the name is retired, otherwise the name to show.
+
+    ONE PATH FOR EVERY TERM. unify_vocabulary applies it to every record, so
+    the 2025-2026 labels and the official codes official_topics.adopt gives the
+    archive are mapped by the same lines, and so are the table in
+    reports/topics-stage0 and its preflight check.
+
+    A retired name is None -- unless a proposal the owner has turned on
+    (TM.ENABLED) claims the bill, as Legislative Rules and Organization would
+    claim the General Court's "Regular Meeting" housekeeping resolutions. A
+    proposal reads the bill's number ("HR1": a resolution of the chamber's
+    own) as well as its title, and a record here is keyed by it rather than
+    carrying it: the review of 24 October 2026 found this term's HR 1-4 and SR 5
+    still with no topic, their "Regular Meeting" retired and the housekeeping
+    rule never asked."""
+    asked = rec if rec.get("bill") else {**rec, "bill": bid}
+    if s in TM.RETIRED and not TM.proposal_for(asked, "first"):
+        return None
+    new_s = TM.remap_gold(s, asked)
+    return TOPIC_WORDS.get(new_s, new_s)
+
+
 def unify_vocabulary(bills):
     """ONE VOCABULARY ACROSS ALL NINETEEN TERMS, applied last and to everything.
 
@@ -10832,22 +10857,11 @@ def unify_vocabulary(bills):
             s = (rec.get("subject") or "").strip()
             if not s:
                 continue
-            # A retired name is blanked -- unless a proposal the owner has
-            # turned on (TM.ENABLED) claims the bill, as Legislative Rules and
-            # Organization would claim the General Court's "Regular Meeting"
-            # housekeeping resolutions. With none on, exactly as before.
-            # A proposal reads the bill's number ("HR1": a resolution of the
-            # chamber's own) as well as its title, and a record here is keyed
-            # by it rather than carrying it: the review of 24 October 2026
-            # found this term's HR 1-4 and SR 5 still with no topic, their
-            # "Regular Meeting" retired and the housekeeping rule never asked.
-            asked = rec if rec.get("bill") else {**rec, "bill": bid}
-            if s in TM.RETIRED and not TM.proposal_for(asked, "first"):
+            new_s = vocabulary_of(s, rec, bid)
+            if new_s is None:
                 rec["subject"], rec["subject_code"] = "", ""
                 moved["retired"] += 1
                 continue
-            new_s = TM.remap_gold(s, asked)
-            new_s = TOPIC_WORDS.get(new_s, new_s)
             if new_s != s:
                 rec["subject"] = new_s
                 rec["subject_code"] = ADDED_CODES.get(new_s) or rec.get("subject_code") or ""
@@ -12355,6 +12369,14 @@ def main():
     if bills and not P.term_keyed(bills):
         sys.exit(f"{D / 'bills.json'} is keyed on bill number, not on term. "
                  "Rebuild it: python3 src/parse/build_data.py --dir . --out data")
+    # The General Court's own subject code for the archive, where the database
+    # holds one and the record has none (official_topics says how); the model
+    # then answers only for the bills left without a subject.
+    _n = OT.adopt(bills, load(D / "subjects.json", {}))
+    if _n.get("filled"):
+        print(f"  {_n['filled']:,} archived bills given the General Court's own "
+              f"subject code as their topic ({_n['a code with no name on disk']:,} "
+              "carry a code with no name on disk and keep the model's answer)")
     merge_guessed_topics(bills)
     # LAST, so it catches the General Court's labels and the model's alike.
     unify_vocabulary(bills)
