@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.92
+# GRANITE_VERSION: 2026-09-05.93
 """
 Run the whole pipeline in the right order.
 
@@ -1104,6 +1104,19 @@ def plan(a):
                   "and misc votes, each with the kind of question and a link to the "
                   "Journal's words on its day, and to the committee's report where the "
                   "vote was on one"),
+
+        # EVERY ROLL CALL SINCE 1999, A FILE A TERM (the data stage of the votes
+        # search, 12 November 2026): rows and one-character ballots, for a page
+        # that does not exist yet. Reads rollcalls.json and, one ballot at a
+        # time, data/member_votes.json; asks nobody anything.
+        Step("a file a term of every roll call, with its close-vote count and ballots",
+             ["build_votes.py", "--site", "site"],
+             needs=["rollcalls.json", "data/member_votes.json"],
+             produces=["site/votes"],
+             note="votes/<term>.json: a row a roll call, both chambers and the votes on no "
+                  "bill, with the counted tally, the stated one where it differs, and how "
+                  "many voters would have had to switch to change the outcome; "
+                  "votes/ballots-<term>.json: a letter a member for each roll call"),
 
         # THE HOUSE AND SENATE AS COMMITTEES OF THE WHOLE (the person, 9 and
         # 10 October 2026): a card at the top of each column of /committees
