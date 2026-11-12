@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.30
+// GRANITE_VERSION: 2026-10-09.33
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -242,9 +242,7 @@ var ICONS={
     '<path d="M9 11.75h6.5M9 15h6.5M9 18.25h4"/>',
   person:'<circle cx="12" cy="7.75" r="3.75"/>'+
     '<path d="M4.5 20.75c.9-4.25 3.8-6.5 7.5-6.5s6.6 2.25 7.5 6.5"/>',
-  committee:'<circle cx="6.25" cy="8.25" r="2.25"/><circle cx="12" cy="6.5" r="2.25"/>'+
-    '<circle cx="17.75" cy="8.25" r="2.25"/><path d="M2.75 13.25h18.5"/>'+
-    '<path d="M5.25 13.25v7.5M18.75 13.25v7.5"/><path d="M8.5 17h7"/>',
+  committee:'<circle cx="6.25" cy="8.25" r="2.25"/><circle cx="12" cy="6.5" r="2.25"/><circle cx="17.75" cy="8.25" r="2.25"/><path d="M2.75 13.25h18.5"/><path d="M5.25 13.25v7.5M18.75 13.25v7.5"/>',
   book:'<path d="M12 6.75C9.6 5 6.6 4.6 3.25 5.25v13.5c3.35-.65 6.35-.25 8.75 1.5 '+
     '2.4-1.75 5.4-2.15 8.75-1.5V5.25C17.4 4.6 14.4 5 12 6.75z"/><path d="M12 6.75v13.5"/>',
   calendar:'<rect x="3.5" y="4.75" width="17" height="16" rx="1.5"/>'+
@@ -261,32 +259,32 @@ var ICONS={
     '<path d="M7 14h10v6.25H7z"/>',
   testify:'<path d="M4.25 5.25h15.5v10.5H10.5l-4.5 3.75v-3.75H4.25z"/>'+
     '<path d="M8 9.25h8M8 12.25h5"/>',
-  report:'<path d="M5.5 21.25V3.5"/><path d="M5.5 4.25h12.25L15 8.75l2.75 4.5H5.5"/>',
+  report:'<path d="M6 21.25V3.5"/><path d="M6 4.25h12.5L15.5 8.75l3 4.5H6"/>',
   share:'<path d="M12 15V3.25"/><path d="M7.75 7.5 12 3.25l4.25 4.25"/>'+
     '<path d="M8.75 10.75h-3v10h12.5v-10h-3"/>',
-  search:'<circle cx="10.5" cy="10.5" r="6.25" stroke-width="2"/><path d="M15.25 15.25l5 5" stroke-width="2"/>',
-  close:'<path d="M6 6l12 12M18 6L6 18" stroke-width="2"/>',
+  search:'<circle cx="10.5" cy="10.5" r="6.25"/><path d="M15.25 15.25l5 5"/>',
+  close:'<path d="M6 6l12 12M18 6L6 18"/>',
   play:'<path fill="currentColor" stroke="none" d="M8 5.5v13l10.5-6.5z"/>',
   globe:'<circle cx="12" cy="12" r="8.75"/><path d="M3.25 12h17.5"/>'+
     '<path d="M12 3.25c2.4 2.4 3.6 5.3 3.6 8.75s-1.2 6.35-3.6 8.75c-2.4-2.4-3.6-5.3-3.6-8.75'+
     's1.2-6.35 3.6-8.75z"/>',
   // the Resources hub's topics (build_civics.badge; 24 October 2026)
-  capitol:'<path d="M3.25 20.75h17.5M4.25 13.25h15.5"/><path d="M5.75 20.75v-7.5M9.25 20.75v-7.5M14.75 20.75v-7.5M18.25 20.75v-7.5"/><path d="M6.75 13.25a5.25 5.25 0 0 1 10.5 0"/><path d="M12 8V3.25h2.5"/>',
-  ballot:'<rect x="3.75" y="11.25" width="16.5" height="9.5" rx="1"/><path d="M7.75 11.25v-7.5h8.5v7.5"/><path d="M10 7.5l1.5 1.5 3-3"/><path d="M8.5 15.75h7"/>',
-  car:'<path d="M4.75 12.25 6.4 7.6a1.5 1.5 0 0 1 1.4-1h8.4a1.5 1.5 0 0 1 1.4 1l1.65 4.65"/><rect x="3.25" y="12.25" width="17.5" height="5" rx="1.25"/><path d="M6 17.25v2.5M18 17.25v2.5"/><circle cx="7.25" cy="14.75" r=".75"/><circle cx="16.75" cy="14.75" r=".75"/>',
+  capitol:'<path d="M3.25 20.75h17.5"/><path d="M6.75 12.25 12 9.25l5.25 3z"/><path d="M8.5 12.25v8.5M12 12.25v8.5M15.5 12.25v8.5"/><path d="M3.25 20.75v-6h3.5M20.75 20.75v-6h-3.5"/><path d="M9.75 9.5V7.75a2.25 2.25 0 0 1 4.5 0V9.5"/><path d="M12 5.5V3.5"/>',
+  ballot:'<rect x="3.75" y="11.25" width="16.5" height="9.5" rx="1"/><path d="M7.75 11.25v-7.5h8.5v7.5"/><path d="M10 7.5l1.5 1.5 3-3"/>',
+  car:'<path d="M5.75 12.25 7.4 7.4a1.5 1.5 0 0 1 1.4-1h6.4a1.5 1.5 0 0 1 1.4 1l1.65 4.85"/><rect x="3.25" y="12.25" width="17.5" height="4.75" rx="1.5"/><circle cx="7" cy="14.6" r="1.25" fill="currentColor" stroke="none"/><circle cx="17" cy="14.6" r="1.25" fill="currentColor" stroke="none"/><path d="M10.5 14.6h3"/><rect x="5.25" y="17" width="3" height="3.5" rx="1"/><rect x="15.75" y="17" width="3" height="3.5" rx="1"/>',
   heart:'<path d="M12 20.25s-7.75-4.6-7.75-10.1A4.15 4.15 0 0 1 12 7.6a4.15 4.15 0 0 1 7.75 2.55c0 5.5-7.75 10.1-7.75 10.1z"/>',
   house:'<path d="M3.5 11 12 4l8.5 7"/><path d="M5.75 9.25v11.5h12.5V9.25"/><path d="M10 20.75v-5.5h4v5.5"/>',
   pin:'<path d="M12 21s-6.25-6.1-6.25-11a6.25 6.25 0 0 1 12.5 0c0 4.9-6.25 11-6.25 11z"/><circle cx="12" cy="10" r="2.25"/>',
-  columns:'<path d="M3.25 20.75h17.5M4.25 9.25h15.5L12 4z"/><path d="M6.75 9.25v11.5M10.25 9.25v11.5M13.75 9.25v11.5M17.25 9.25v11.5"/>',
-  chart:'<path d="M3.75 20.25h16.5"/><path d="M6.75 20.25v-6M11 20.25V8.75M15.25 20.25v-9M19.25 20.25V5.75"/>',
+  columns:'<path d="M3.25 20.75h17.5M4.25 9.25h15.5L12 4z"/><path d="M7.25 9.25v11.5M12 9.25v11.5M16.75 9.25v11.5"/>',
+  chart:'<path d="M3.75 20.25h16.5"/><path d="M6.75 20.25v-5.5M12 20.25V9.75M17.25 20.25V5.75"/>',
   map:'<path d="M3.75 6.25 9 4l6 2.25 5.25-2.25v13.75L15 20l-6-2.25-5.25 2.25z"/><path d="M9 4v13.75M15 6.25V20"/>',
   idcard:'<rect x="2.75" y="5.25" width="18.5" height="13.5" rx="1.5"/><circle cx="8.5" cy="11" r="2"/><path d="M5.5 15.75c.6-1.5 1.6-2.25 3-2.25s2.4.75 3 2.25"/><path d="M14 10h4.5M14 13.25h3"/>',
   gavel:'<g transform="rotate(-45 12 9)"><rect x="6.5" y="4.25" width="11" height="5.5" rx="1.4"/><path d="M9.25 4.25v5.5M14.75 4.25v5.5"/><path d="M12 9.75v10.5"/></g><path d="M3.25 20.75h8.5"/><path d="M4.5 20.75v-2.25h6v2.25"/>',
-  box:'<path d="M3.75 8.25 12 4.25l8.25 4v9.5L12 21.75l-8.25-4z"/><path d="M3.75 8.25 12 12.25l8.25-4M12 12.25v9.5"/><path d="M7.9 6.25l8.25 4"/>',
-  signpost:'<path d="M12 3.25v17.5M8.75 20.75h6.5"/><path d="M12 5.25h6.5l2 2-2 2H12"/><path d="M12 11.25H5.5l-2 2 2 2H12"/>',
+  box:'<path d="M3.75 8.25 12 4.25l8.25 4v9.5L12 21.75l-8.25-4z"/><path d="M3.75 8.25 12 12.25l8.25-4M12 12.25v9.5"/>',
+  signpost:'<path d="M12 3.25v17.5M8.75 20.75h6.5"/><path d="M12 4.75h6.75l2 2.25-2 2.25H12"/><path d="M12 11.5H5.25l-2 2.25 2 2.25H12"/>',
   grid:'<rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/>',
   // The outdoors: fishing, hunting and boating (25 October 2026).
-  tree:'<path d="M12 3.25 7 9.75h2.75L5.5 15.25h13l-4.25-5.5H17z"/><path d="M12 15.25v5.5M9.25 20.75h5.5"/>',
+  tree:'<path d="M12 3.25 8.75 7.75h2L6.75 12.75H9L4.75 18h14.5L15 12.75h2.25L13.25 7.75h2z"/><path d="M10.5 18v2.75h3V18"/>',
   // Insurance: car, renters, homeowners and health (26 October 2026).
   shield:'<path d="M12 3.25 4.75 6v5.5c0 4.5 3 8 7.25 9.25 4.25-1.25 7.25-4.75 7.25-9.25V6z"/><path d="m9 12 2.25 2.25 3.75-4"/>'
 };
