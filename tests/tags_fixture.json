@@ -1,0 +1,571 @@
+{
+ "about": "A small registry and a few bills for preflight's check of src/parse/tag_rules.py and src/checks/review.py's tag bench. Made up for the check; not a tag any page shows, and not the registry (corrections/tags.json is that, and a person's). The bills' numbers are invented.",
+ "registry": {
+  "mental-health": {
+   "name": "Mental health",
+   "group": "Health",
+   "definition": "Bills about the diagnosis, treatment and services for mental illness and emotional crisis.",
+   "asks": [
+    "mental illness"
+   ],
+   "rule": {
+    "title": [
+     "mental health",
+     "mental illness"
+    ],
+    "analysis": [
+     "mental health",
+     "mental illness"
+    ],
+    "chapters_alone": [
+     "135-C"
+    ]
+   },
+   "same_as_topic": [],
+   "pair": null,
+   "neutrality_hard": false,
+   "wave": 1,
+   "approved": null,
+   "bench": null
+  },
+  "cannabis": {
+   "name": "Cannabis (marijuana)",
+   "group": "Health",
+   "definition": "Bills about marijuana, cannabis and hemp, in whichever direction.",
+   "asks": [
+    "weed",
+    "marijuana"
+   ],
+   "rule": {
+    "title": [
+     "marijuana",
+     "cannabis",
+     "=THC",
+     "hemp"
+    ],
+    "analysis": [
+     "marijuana",
+     "cannabis",
+     "hemp"
+    ],
+    "chapters_alone": [
+     "126-X"
+    ],
+    "not": [
+     "hemp rope"
+    ]
+   },
+   "same_as_topic": [],
+   "pair": [
+    "1997-1998/HB118",
+    "1997-1998/HB1559"
+   ],
+   "neutrality_hard": true,
+   "wave": 1,
+   "approved": null,
+   "bench": null
+  },
+  "medicaid-assistance": {
+   "name": "Medicaid and public assistance",
+   "group": "Economy and housing",
+   "definition": "Bills about Medicaid, Medicare and public assistance programs.",
+   "asks": [
+    "medicaid"
+   ],
+   "rule": {
+    "title": [
+     "medicaid",
+     "public assistance"
+    ],
+    "analysis": [
+     "medicaid",
+     "public assistance"
+    ],
+    "chapters_with_words": {
+     "chapters": [
+      "167"
+     ],
+     "words": [
+      "medicaid",
+      "assistance"
+     ]
+    }
+   },
+   "same_as_topic": [
+    "Welfare/Medicare/Medicaid"
+   ],
+   "pair": null,
+   "neutrality_hard": false,
+   "wave": 1,
+   "approved": null,
+   "bench": null
+  },
+  "artificial-intelligence": {
+   "name": "Artificial intelligence and deepfakes",
+   "group": "Technology",
+   "definition": "Bills about artificial intelligence and its outputs, including deepfakes.",
+   "asks": [
+    "ai"
+   ],
+   "rule": {
+    "title": [
+     "artificial intelligence",
+     "deepfake",
+     "=AI"
+    ],
+    "analysis": [
+     "artificial intelligence",
+     "deepfake",
+     "=AI"
+    ]
+   },
+   "same_as_topic": [],
+   "pair": null,
+   "neutrality_hard": false,
+   "wave": 1,
+   "approved": null,
+   "bench": null
+  },
+  "data-centers": {
+   "name": "Data centers and large energy users",
+   "group": "Environment and energy",
+   "definition": "Bills about data centers and other very large electricity users.",
+   "asks": [
+    "data center"
+   ],
+   "rule": {
+    "title": [
+     "data center",
+     "large load"
+    ],
+    "analysis": [
+     "data center",
+     "large load"
+    ]
+   },
+   "same_as_topic": [],
+   "pair": null,
+   "neutrality_hard": false,
+   "wave": 1,
+   "approved": null,
+   "bench": null
+  },
+  "lgbtq": {
+   "name": "LGBTQ+ (sexual orientation and gender identity)",
+   "group": "Rights and justice",
+   "definition": "Bills about sexual orientation and gender identity, in either direction: marriage and civil unions, protections for or restrictions on transgender people, conversion therapy, and anti-discrimination protections on those grounds.",
+   "asks": [
+    "lgbtq",
+    "transgender"
+   ],
+   "rule": {
+    "title": [
+     "gender identity",
+     "transgender",
+     "same sex",
+     "same-sex",
+     "sexual orientation"
+    ],
+    "analysis": [
+     "gender identity",
+     "transgender",
+     "same sex",
+     "sexual orientation"
+    ]
+   },
+   "same_as_topic": [],
+   "pair": [
+    "2019-2020/HB1",
+    "2019-2020/HB2"
+   ],
+   "neutrality_hard": true,
+   "wave": 1,
+   "approved": null,
+   "bench": null,
+   "stance_ok": [
+    "anti-"
+   ]
+  },
+  "policing": {
+   "name": "Policing and law enforcement",
+   "group": "Rights and justice",
+   "definition": "Bills about police agencies and officers.",
+   "asks": [
+    "police"
+   ],
+   "rule": {
+    "title": [
+     "police",
+     "law enforcement"
+    ],
+    "analysis": [
+     "police",
+     "law enforcement"
+    ]
+   },
+   "same_as_topic": [
+    "Police"
+   ],
+   "pair": null,
+   "neutrality_hard": false,
+   "wave": 1,
+   "approved": null,
+   "bench": null
+  },
+  "courts-judges": {
+   "name": "Courts and judges",
+   "group": "Rights and justice",
+   "definition": "Bills about the court system and judges.",
+   "asks": [
+    "court"
+   ],
+   "rule": {
+    "title": [
+     "court",
+     "judge"
+    ],
+    "analysis": [
+     "court",
+     "judge"
+    ]
+   },
+   "same_as_topic": [],
+   "pair": null,
+   "neutrality_hard": false,
+   "wave": 1,
+   "approved": null,
+   "bench": null
+  },
+  "privacy-data": {
+   "name": "Privacy and personal data",
+   "group": "Rights and justice",
+   "definition": "Bills about personal information and privacy.",
+   "asks": [
+    "privacy"
+   ],
+   "rule": {
+    "title": [
+     "privacy",
+     "personal information"
+    ],
+    "analysis": [
+     "privacy",
+     "personal information"
+    ]
+   },
+   "same_as_topic": [],
+   "pair": null,
+   "neutrality_hard": false,
+   "wave": 1,
+   "approved": null,
+   "bench": null
+  },
+  "older-adults": {
+   "name": "Older adults",
+   "group": "Health",
+   "definition": "Bills about older residents.",
+   "asks": [
+    "seniors"
+   ],
+   "rule": {
+    "title": [
+     "elderly",
+     "senior"
+    ],
+    "analysis": [
+     "elderly",
+     "senior"
+    ]
+   },
+   "same_as_topic": [],
+   "pair": null,
+   "neutrality_hard": false,
+   "wave": 1,
+   "approved": null,
+   "bench": null
+  }
+ },
+ "bills": [
+  {
+   "term": "2001-2002",
+   "bill": "HB10",
+   "title": "relative to children's environmental health day.",
+   "analysis": "",
+   "chapters": [],
+   "topic": "Miscellaneous"
+  },
+  {
+   "term": "2001-2002",
+   "bill": "HB11",
+   "title": "relative to mental health services for veterans.",
+   "analysis": "This bill adds a program.",
+   "chapters": [],
+   "topic": "Public and Mental Health"
+  },
+  {
+   "term": "2001-2002",
+   "bill": "HB12",
+   "title": "relative to the state hospital.",
+   "analysis": "This bill concerns mental illness. It also changes how mental illness is reported. It is long enough to need two mentions. Padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding.",
+   "chapters": [],
+   "topic": ""
+  },
+  {
+   "term": "2001-2002",
+   "bill": "HB13",
+   "title": "relative to the state hospital.",
+   "analysis": "This bill concerns mental illness. Padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding padding.",
+   "chapters": [],
+   "topic": ""
+  },
+  {
+   "term": "2001-2002",
+   "bill": "HB14",
+   "title": "relative to the state hospital.",
+   "analysis": "This bill concerns mental illness.",
+   "chapters": [],
+   "topic": ""
+  },
+  {
+   "term": "2001-2002",
+   "bill": "HB15",
+   "title": "relative to the new hampshire hospital.",
+   "analysis": "",
+   "chapters": [
+    "135-C"
+   ],
+   "topic": ""
+  },
+  {
+   "term": "2001-2002",
+   "bill": "HB16",
+   "title": "relative to the new hampshire hospital.",
+   "analysis": "",
+   "chapters": [
+    "135-C",
+    "7",
+    "8",
+    "9"
+   ],
+   "topic": ""
+  },
+  {
+   "term": "1997-1998",
+   "bill": "HB118",
+   "title": "penalties for possession of marijuana.",
+   "analysis": "",
+   "chapters": [
+    "318-B"
+   ],
+   "topic": "Crimes, Criminal Procedure and Corrections"
+  },
+  {
+   "term": "1997-1998",
+   "bill": "HB1559",
+   "title": "legalizing possession of cannabis for medicinal purposes.",
+   "analysis": "",
+   "chapters": [],
+   "topic": "Public and Mental Health"
+  },
+  {
+   "term": "2013-2014",
+   "bill": "HB20",
+   "title": "relative to the sale of hemp rope.",
+   "analysis": "",
+   "chapters": [],
+   "topic": ""
+  },
+  {
+   "term": "2013-2014",
+   "bill": "HB21",
+   "title": "relative to hemp rope and THC content in hemp products.",
+   "analysis": "",
+   "chapters": [],
+   "topic": ""
+  },
+  {
+   "term": "2013-2014",
+   "bill": "HB22",
+   "title": "relative to the Medicaid program.",
+   "analysis": "",
+   "chapters": [],
+   "topic": "Welfare/Medicare/Medicaid"
+  },
+  {
+   "term": "2013-2014",
+   "bill": "HB23",
+   "title": "relative to the Medicaid program.",
+   "analysis": "",
+   "chapters": [],
+   "topic": "Taxes - State"
+  },
+  {
+   "term": "2013-2014",
+   "bill": "HB24",
+   "title": "relative to grants to towns.",
+   "analysis": "",
+   "chapters": [
+    "167"
+   ],
+   "topic": ""
+  },
+  {
+   "term": "2013-2014",
+   "bill": "HB25",
+   "title": "relative to grants to towns.",
+   "analysis": "This bill pays assistance to towns.",
+   "chapters": [
+    "167"
+   ],
+   "topic": ""
+  },
+  {
+   "term": "2023-2024",
+   "bill": "HB30",
+   "title": "regulating AI in political advertising.",
+   "analysis": "",
+   "chapters": [],
+   "topic": "Elections"
+  },
+  {
+   "term": "2023-2024",
+   "bill": "HB31",
+   "title": "relative to the said chairs of the air quality board.",
+   "analysis": "",
+   "chapters": [],
+   "topic": ""
+  },
+  {
+   "term": "2023-2024",
+   "bill": "HB32",
+   "title": "prohibiting construction of data centers.",
+   "analysis": "",
+   "chapters": [],
+   "topic": "Environment - Conservation"
+  },
+  {
+   "term": "2019-2020",
+   "bill": "HB1",
+   "title": "adding gender identity to the anti-discrimination statute.",
+   "analysis": "",
+   "chapters": [
+    "354-A"
+   ],
+   "topic": "Discrimination"
+  },
+  {
+   "term": "2019-2020",
+   "bill": "HB2",
+   "title": "requiring a person's sex at birth on a license, regardless of gender identity.",
+   "analysis": "",
+   "chapters": [],
+   "topic": ""
+  },
+  {
+   "term": "2019-2020",
+   "bill": "HB3",
+   "title": "relative to the issuance of marriage licenses.",
+   "analysis": "",
+   "chapters": [
+    "457"
+   ],
+   "topic": ""
+  },
+  {
+   "term": "2019-2020",
+   "bill": "HB4",
+   "title": "recognizing marriage between persons of the same sex.",
+   "analysis": "",
+   "chapters": [],
+   "topic": ""
+  },
+  {
+   "term": "2019-2020",
+   "bill": "HB5",
+   "title": "police use of facial recognition and the privacy of elderly court witnesses, a judge's personal information, data centers and a senior's AI chatbot.",
+   "analysis": "",
+   "chapters": [],
+   "topic": ""
+  },
+  {
+   "term": "2019-2020",
+   "bill": "HB6",
+   "title": "police body cameras.",
+   "analysis": "",
+   "chapters": [],
+   "topic": "Police"
+  },
+  {
+   "term": "2023-2024",
+   "bill": "HB40",
+   "title": "establishing a committee to study mental health services in schools.",
+   "analysis": "",
+   "chapters": [],
+   "topic": "Study Committees and Commissions"
+  }
+ ],
+ "expect": {
+  "2001-2002/HB10": [],
+  "2001-2002/HB11": [
+   "mental-health"
+  ],
+  "2001-2002/HB12": [
+   "mental-health"
+  ],
+  "2001-2002/HB13": [],
+  "2001-2002/HB14": [
+   "mental-health"
+  ],
+  "2001-2002/HB15": [
+   "mental-health"
+  ],
+  "2001-2002/HB16": [],
+  "1997-1998/HB118": [
+   "cannabis"
+  ],
+  "1997-1998/HB1559": [
+   "cannabis"
+  ],
+  "2013-2014/HB20": [],
+  "2013-2014/HB21": [
+   "cannabis"
+  ],
+  "2013-2014/HB22": [],
+  "2013-2014/HB23": [
+   "medicaid-assistance"
+  ],
+  "2013-2014/HB24": [],
+  "2013-2014/HB25": [
+   "medicaid-assistance"
+  ],
+  "2023-2024/HB30": [
+   "artificial-intelligence"
+  ],
+  "2023-2024/HB31": [],
+  "2023-2024/HB32": [
+   "data-centers"
+  ],
+  "2019-2020/HB1": [
+   "lgbtq"
+  ],
+  "2019-2020/HB2": [
+   "lgbtq"
+  ],
+  "2019-2020/HB3": [],
+  "2019-2020/HB4": [
+   "lgbtq"
+  ],
+  "2019-2020/HB5": [
+   "artificial-intelligence",
+   "data-centers",
+   "policing",
+   "courts-judges",
+   "privacy-data",
+   "older-adults"
+  ],
+  "2019-2020/HB6": [],
+  "2023-2024/HB40": [
+   "mental-health"
+  ]
+ }
+}

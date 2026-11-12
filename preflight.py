@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.885
+# GRANITE_VERSION: 2026-09-04.886
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -133177,6 +133177,135 @@ def _bug_hunt_nightly_timeout_and_lock():
     text = Path("nightly.py").read_text(encoding="utf-8")
     assert "lock.write_text" not in text, "a nightly lock is written without O_EXCL again"
     return "ok", "a step is killed at its timeout and the night names it; two starts cannot both take the lock"
+
+
+@check("code", "the tag engine: tiers, exclusions, the topic-redundancy drop, determinism, the opposite-aim pairs "
+               "and the bench kind, on a small fixture registry",
+       needs=("tag_rules", "tag_counts", "review"))
+def _tag_engine(TR, TC, RV):
+    """src/parse/tag_rules.py (stage 1 of reports/topics-as-tags-design-2026-11.md), on
+    tests/tags_fixture.json. Nothing here reads corrections/tags.json: the check is of the
+    engine, and a clone without that file must pass it.
+
+    Held: the registry's own form (validate); a phrase is a whole word, so "environmental
+    health" is no "mental health"; a title attaches alone, an analysis only at two mentions or
+    once where it is short, a dedicated chapter only when the bill amends three at most; an
+    exclusion blanks the phrase and leaves the rest of the text; a tag equal to the bill's topic
+    is dropped and said to be; both bills of every neutrality pair attach; the same answer under
+    two PYTHONHASHSEEDs; a bill over five tags is counted; and the bench's tag kind draws,
+    shows and reports without writing a judgment of its own."""
+    import inspect
+    fx = json.loads(Path("tests/tags_fixture.json").read_text(encoding="utf-8"))
+    reg = fx["registry"]
+    bad = TR.validate(reg)
+    assert not bad, "the fixture registry is not well formed: " + "; ".join(bad)
+    rules = TR.compile_registry(reg)
+    assert len(rules) == len(reg), "a registry entry compiled to no rule"
+    bills = {f"{b['term']}/{b['bill']}": b for b in fx["bills"]}
+    for key, want in fx["expect"].items():
+        got = list(TR.tag_bill(rules, bills[key])["tags"])
+        assert got == want, f"{key}: tags {got}, expected {want}"
+    one = lambda k, tid: TR.tag_bill(rules, bills[k])["tags"][tid]
+    assert one("2001-2002/HB11", "mental-health")["tier"] == "T", "a title phrase is not the T tier"
+    assert one("2001-2002/HB12", "mental-health")["tier"] == "A", "two mentions in an analysis are not the A tier"
+    assert one("2001-2002/HB15", "mental-health")["tier"] == "R", "a dedicated chapter alone is not the R tier"
+    assert one("2013-2014/HB25", "medicaid-assistance")["tier"] == "R", "a chapter with its word is not the R tier"
+    assert one("2001-2002/HB11", "mental-health")["why"] == "T:mental health", "the evidence is not the phrase"
+    assert len(bills["2001-2002/HB13"]["analysis"]) > 500 and len(bills["2001-2002/HB14"]["analysis"]) < 500, (
+        "the fixture's two analyses no longer straddle the 500-character line")
+    # the topic-redundancy drop is said, not silent
+    r = TR.tag_bill(rules, bills["2013-2014/HB22"])
+    assert not r["tags"] and "medicaid-assistance" in r["dropped"], "a tag equal to the bill's topic was attached"
+    r = TR.tag_bill(rules, bills["2019-2020/HB6"])
+    assert not r["tags"] and "policing" in r["dropped"], "the Police topic did not drop the policing tag"
+    # a Study Committees bill takes the tags of what the committee studies: the redundancy
+    # drop is for a topic that IS the subject, and Study Committees is none
+    st = TR.tag_bill(rules, bills["2023-2024/HB40"])
+    assert "mental-health" in st["tags"] and not st["dropped"], "a Study Committees bill lost its subject's tag"
+    assert not any("study" in t.lower() for e in reg.values() for t in e.get("same_as_topic", [])), (
+        "a tag is dropped for the Study Committees topic")
+    # whole words, a plural, a prefix, case, a chapter family
+    cp = TR.compile_phrase
+    assert not cp("mental health").search("children's environmental health day"), "environmental health matched"
+    assert cp("mental health").search("Mental-Health services"), "a hyphen and a capital broke a phrase"
+    assert cp("vaccin*").search("vaccination") and not cp("vaccin").search("vaccination"), "the open end is wrong"
+    assert cp("=AI").search("regulating AI.") and not cp("=AI").search("ai") and not cp("=AI").search("AIR"), (
+        "a case-sensitive phrase is wrong")
+    assert cp("workers' compensation").search("workers compensation"), "an optional apostrophe is not optional"
+    assert TR.chapter_matches("159*", "159-D") and TR.chapter_matches("159*", "159") and not TR.chapter_matches(
+        "159*", "1591"), "a chapter family matches wrongly"
+    # a form that argues, an unsupported pair, a phrase that does not compile
+    worse = {"x": {**reg["mental-health"], "name": "Gun reform"},
+             "y": {**reg["cannabis"], "pair": None},
+             "z": {**reg["mental-health"], "rule": {"title": ["re:("]}}}
+    found = " | ".join(TR.validate(worse))
+    assert "reform" in found and "no opposite-aim pair" in found and "does not compile" in found, found
+    allowed = TR.validate({"x": {**reg["mental-health"], "name": "Civil rights", "stance_ok": ["rights"]}})
+    assert not allowed, f"stance_ok did not allow a word: {allowed}"
+    # both bills of every pair attach
+    pairs = 0
+    for tid, e in reg.items():
+        for k in e.get("pair") or []:
+            assert tid in TR.tag_bill(rules, bills[k])["tags"], f"{tid}: {k} of its opposite-aim pair does not attach"
+            pairs += 1
+    assert pairs >= 4, "the fixture has no pairs to test"
+    # determinism: two hash seeds, one answer
+    prog = ("import sys, json; sys.path.insert(0, '.'); import _paths, tag_rules as T; "
+            "fx = json.load(open('tests/tags_fixture.json', encoding='utf-8')); "
+            "rules = T.compile_registry(fx['registry']); "
+            "print(json.dumps({'%s/%s' % (b['term'], b['bill']): T.tag_bill(rules, b) for b in fx['bills']}, sort_keys=False))")
+    outs = []
+    for seed in ("1", "977"):
+        p = _run([sys.executable, "-c", prog], env={**os.environ, "PYTHONHASHSEED": seed}, capture_output=True)
+        assert p.returncode == 0, p.stderr[-400:]
+        outs.append(p.stdout)
+    assert outs[0] == outs[1] and outs[0], "the engine's answer depends on the hash seed"
+    # a bill over five tags is counted, not capped
+    results, c = TC.count(rules, list(bills.values()), reg)
+    assert c["bills_over_guide"] == 1 and c["over_guide_examples"][0]["bill"] == "2019-2020/HB5", (
+        f"the bill over five tags was not counted: {c['over_guide_examples']}")
+    assert len(results["2019-2020/HB5"]["tags"]) == 6, "a bill's tags were capped"
+    assert c["bills_title_tier"] <= c["bills_any_tier"] <= c["bills"], "the counts do not nest"
+    # the bench: a draw, a page and a report, and not one judgment of its own
+    texts = {"2001-2002": {"HB10": "mental health. The mental health of the mental health system. Other words."}}
+    samples, ncand = TC.draw(reg, rules, list(bills.values()), results, texts)
+    mh = samples["mental-health"]
+    assert [x["bill"] for x in mh["title"]] == ["HB11", "HB40"], "the title sample is not the title-tier bills"
+    assert {x["bill"] for x in mh["other"]} == {"HB12", "HB14", "HB15"}, "the analysis/chapter sample is wrong"
+    assert [x["bill"] for x in mh["miss"]] == ["HB10"] and mh["miss"][0]["sentences"], (
+        "a bill whose text names the subject three times was not offered as a possible miss")
+    assert len(samples["cannabis"]["pair"]) == 2 and all(x["attached"] for x in samples["cannabis"]["pair"]), (
+        "the pair was not drawn attached")
+    assert samples == TC.draw(reg, rules, list(bills.values()), results, texts)[0], "the draw is not deterministic"
+    assert "tag" in RV.KINDS and set(RV.KINDS["tag"]) >= {"label", "blurb", "sample", "show", "fields", "verdicts"}
+    base = {"kind": "tag", "tag": "mental-health", "order": 0, "tag_name": "Mental health", "definition": "d.",
+            "hard": False}
+    shown = [{**base, **mh["title"][0], "sample": "title"}, {**base, **mh["miss"][0], "sample": "miss"},
+             {**base, "sample": "pair", "a": samples["cannabis"]["pair"][0], "b": samples["cannabis"]["pair"][1]}]
+    for it in shown:
+        page = RV.show_tags(it)
+        assert "Mental health" in page and "<script" not in page, "the tag page did not draw"
+    assert RV.form_html("tag", {**shown[0], "key": "tag|mental-health|title|2001-2002/HB11"}), "no form"
+    saved_load = TR.load_registry
+    TR.load_registry = lambda path=None: (reg, "fixture")
+    try:
+        assert RV.sample_tags() == [], "the bench drew samples from the fixture registry"
+    finally:
+        TR.load_registry = saved_load
+    for fn in (RV.sample_tags, RV.show_tags, TC.draw, TC.count, TR.tag_bill, TR.load_bills):
+        src = inspect.getsource(fn)
+        assert "record(" not in src and "checked.jsonl" not in src and ".write_text" not in src and "open(" not in src, (
+            f"{fn.__name__} writes something: a bench sample may only be drawn, never judged by a machine")
+    import io
+    from contextlib import redirect_stdout
+    seen = {("tag", f"tag|mental-health|title|2001-2002/HB{i}"): [{"verdict": "yes", "shown": {"hard": False}}]
+            for i in range(10)}
+    out = io.StringIO()
+    with redirect_stdout(out):
+        RV.tag_report(seen)
+    assert "mental-health" in out.getvalue() and "title 10/10" in out.getvalue(), out.getvalue()
+    return "ok", (f"{len(fx['expect'])} bills, {len(reg)} tags, {pairs} pair bills; two hash seeds agree; "
+                  f"the bench draws, shows and reports")
 
 
 if __name__ == "__main__":
