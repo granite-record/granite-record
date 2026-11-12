@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.310
+// GRANITE_VERSION: 2026-09-07.311
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2188,34 +2188,120 @@ const HINT_MOST=3;
 // readers "OConnor", for the O'Connor the record names.
 const hintWords=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"")
   .toLowerCase().replace(/['‘’]/g,"").split(/[^a-z0-9]+/).filter(Boolean);
-function sponsorHint(q,rows){
+/* WHAT A SPONSOR IS CALLED, AND WHICH ONE (12 November 2026: "in old sessions
+   searching for legislators didn't appear to work correctly or allow you to
+   search for former legislators"). The bills of 1989 to 1998 name a sponsor by
+   the surname the printed bill gave, sometimes an initial before it ("Allen",
+   "F. Riley"), with the seat beside it ("Hills 44") and no roster to look the
+   person up in: no first name, no party, no member page. Three different
+   Allens were one name, so the Sponsor filter listed one "Allen" with the
+   bills of all three, and a full name typed from memory ("frank riley") fitted
+   no word of "F. Riley". Now a sponsor with no member page and a seat is that
+   name and that seat (spKey), as the General Court's own list tells two
+   people of one surname apart, and a typed word fits an initial that starts
+   it (nameFits). A sponsor with a member page is still their name alone.
+   The seat as the record gave it for that term is what each is listed with
+   (sponsorShow), their party beside it where the record gives one. */
+const SEAT_RE=/\(([^()]*)\)\s*$/;
+function spKey(b){
+  const n=b.sponsor||"";
+  if(!n||b.sponsor_slug||b.sponsor_party)return n;
+  const m=SEAT_RE.exec(b.sponsor_label||"");
+  return m&&/\d/.test(m[1])?`${n} (${m[1]})`:n;
+}
+// The words typed against the words of one name: each is a whole word of it,
+// or the start of a longer one, or the first letter of an initial the name
+// has; at least one is a whole word (or an initial's name), so "rep" alone
+// or "a" is no one's.
+function nameFits(want,parts){
+  if(!want.some(w=>parts.includes(w)))return false;
+  return want.every(w=>parts.includes(w)
+    ||(w.length>2&&parts.some(x=>x.length>w.length&&x.startsWith(w)))
+    ||(w.length>2&&parts.some(x=>x.length===1&&w.startsWith(x))));
+}
+// What was typed, read for a name: the title said ("rep", "senator") and the
+// words that are not stop words.
+function nameWords(q){
   let title="";
   const want=[];
   for(const w of hintWords(q)){
     if(HINT_TITLE[w])title=HINT_TITLE[w];
     else if(!STOPSET.has(w))want.push(w);
   }
+  return {title,want};
+}
+// Whether the title typed agrees with the one a label begins with: a label
+// that names none (a member-elect's) agrees with any.
+const titleAgrees=(title,label)=>{
+  const t=/^(Rep\.|Sen\.)/.exec(String(label||""));
+  return !title||!t||t[1]===title;
+};
+function sponsorHint(q,rows){
+  const {title,want}=nameWords(q);
   if(!want.length)return [];
   const who=new Map();
   for(const b of rows||[]){
     for(const name of b.cosp?[b.sponsor,...b.cosp]:[b.sponsor]){
       if(!name)continue;
-      let p=who.get(name);
-      if(!p)who.set(name,p={name,n:0,label:""});
+      const key=name===b.sponsor?spKey(b):name;
+      let p=who.get(key);
+      if(!p)who.set(key,p={name:key,n:0,label:"",words:hintWords(name)});
       p.n++;
-      if(name===b.sponsor&&!p.label&&b.sponsor_label)
+      if(name===b.sponsor&&!p.label&&b.sponsor_label){
         p.label=String(b.sponsor_label).replace(/\s*\(.*$/,"");
+        // Two people of one surname are told apart by their seat.
+        if(key!==name)p.label+=` (${key.slice(name.length+2,-1)})`;
+      }
     }
   }
   const out=[];
   for(const p of who.values()){
-    const parts=hintWords(p.name);
-    if(!want.some(w=>parts.includes(w)))continue;
-    if(!want.every(w=>parts.includes(w)||(w.length>2&&parts.some(x=>x.length>w.length&&x.startsWith(w)))))continue;
-    if(title&&p.label&&!p.label.startsWith(title))continue;
+    if(!nameFits(want,p.words))continue;
+    if(!titleAgrees(title,p.label))continue;
     out.push(p);
   }
-  return out.sort((a,b)=>b.n-a.n||(a.name<b.name?-1:a.name>b.name?1:0)).slice(0,HINT_MOST);
+  // A surname the bills give a co-sponsor with no seat is not offered beside
+  // the same surname with one: it is one of them, not a third person.
+  const lone=out.filter(p=>!p.label&&out.some(q=>q.name.startsWith(p.name+" (")));
+  return out.filter(p=>!lone.includes(p))
+    .sort((a,b)=>b.n-a.n||(a.name<b.name?-1:a.name>b.name?1:0)).slice(0,HINT_MOST);
+}
+// A SPONSOR, AS THE SPONSOR FILTER LISTS THEM: the name as the term's record
+// has it, with the seat and the party they held then (the row's own label,
+// which build_site_v2 writes from the roster for that term), and on All Terms
+// the newest term's that names them. A co-sponsor, whom the record gives only
+// as a name, and a name the label does not carry, is the name alone.
+const SP_LABELS=Object.create(null);
+function noteSponsors(term,rows){
+  const m=SP_LABELS[term]||(SP_LABELS[term]=Object.create(null));
+  for(const b of rows){
+    if(!b.sponsor||!b.sponsor_label)continue;
+    const k=spKey(b);
+    if(!(k in m))m[k]=String(b.sponsor_label).replace(/^(Rep\.|Sen\.)\s*/,"");
+  }
+}
+function sponsorShow(v){
+  const ts=term===ALL_TERMS?((META&&META.terms)||[]).concat(META&&META.requests?[META.requests.term]:[])
+    :[term];
+  for(const t of ts){const l=SP_LABELS[t]&&SP_LABELS[t][v];if(l)return l;}
+  return v;
+}
+// A REQUEST'S SPONSOR IS FOUND BY NAME IN THE BOX (the owner, 12 November
+// 2026: "you can't search by legislator name"). A bill's is not: since 17
+// October a name lists no bill, and the Sponsor filter is where a person's
+// bills are found (A NAME IS NOT WHAT A BILL IS ABOUT, above). A request has a
+// title and a sponsor and nothing else, so for it the name IS the other thing
+// to search by, and is read as sponsorHint reads it: every word typed is a
+// word of the prime sponsor's name or a co-sponsor's, or the start of one
+// ("bail" is not Rep. Bailey: a single word must be a whole word of the
+// name). A request whose title has the words lists as it did, as well.
+function requestByName(b,q){
+  if(!b.lsr)return false;
+  const {title,want}=nameWords(q);
+  if(!want.length)return false;
+  if(b.sponsor&&nameFits(want,hintWords(b.sponsor))&&titleAgrees(title,b.sponsor_label))return true;
+  // A co-sponsor is given as a name alone, so a title typed cannot rule one out.
+  return (b.cosp||[]).some(c=>nameFits(want,hintWords(c)));
 }
 // The Sponsor filter for one person, as an address /bills reads (addressList):
 // the term kept, the search left out, since the name typed lists nothing.
@@ -2731,7 +2817,7 @@ function facetVals(b,k){
   // person, 12 October 2026). build_site_v2 writes the co-sponsors' names as
   // `cosp`, spelled as the prime sponsor's is; render() puts a chosen
   // sponsor's own bills first.
-  if(k==="sponsor")return withCosp&&b.cosp?[b.sponsor,...b.cosp]:[b.sponsor];
+  if(k==="sponsor")return withCosp&&b.cosp?[spKey(b),...b.cosp]:[spKey(b)];
   if(k==="party")return [partyOfSponsor(b)];
   return [b[k]];
 }
@@ -2751,7 +2837,7 @@ const partyCmp=(a,b)=>{const r=v=>v===PARTY_NAME.R?0:v===PARTY_NAME.D?1:v===PART
 const partyShow=v=>{const code=Object.keys(PARTY_NAME).find(k=>PARTY_NAME[k]===v)||"X";
   return `<span class="sw" style="background:${PARTY_COLOR[code]}"></span><span>${esc(v)}</span>`;};
 // Whether the bill's PRIME sponsor is one the Sponsor filter has chosen.
-const primeChosen=b=>sel.sponsor.has(b.sponsor);
+const primeChosen=b=>sel.sponsor.has(spKey(b));
 
 // NEWER TERM FIRST, which changes nothing in a list of one term and orders
 // the list on All terms: by number, two bills of one number (HB 1 is in
@@ -3202,6 +3288,7 @@ function ensureTerm(t){
       b.hayT=norm([b.id,b.n,b.title].join(" "));
       b.hayC=norm((b.committees||[b.committee||""]).join(" | "));
     });
+    noteSponsors(t,rows);
     IDX=IDX.concat(rows);
   },e=>{ASKING.delete(t);throw e;});
   ASKING.set(t,asked);
@@ -3561,6 +3648,8 @@ function matches(b,ignore){
   // lists the bills that change it, not the bills that print those words.
   const rq=/^\s*rsa\b/i.test(q)&&hasRsa()?rsaOfQuery(q):"";
   if(rq)return rsaHas(b,rq);
+  // A request's sponsor is found by name (requestByName); its title, as ever.
+  if(b.lsr&&requestByName(b,q))return true;
   // Every group must match, and any of its alternatives will do.
   return matchesGroups(b,groupsFor(q));
 }
@@ -3591,6 +3680,20 @@ function zerosLast(key,vals,counts){
 }
 // `extra` is a second choice drawn inside this group after its own options
 // (the Sponsor group's prime-sponsor party), `extraN` how many of it are ticked.
+// A typed name against a sponsor as the Sponsor filter lists them: the way it
+// always was (the letters anywhere in the name), and by word as a name is
+// said, which finds "Weyler, Kenneth", "rep weyler" and "kenneth w" as well
+// (12 November 2026), a former member's among them.
+function sponsorFits(v,f){
+  if(v.toLowerCase().includes(f))return true;
+  const {want}=nameWords(f);
+  if(!want.length)return false;
+  const parts=hintWords(v);
+  // One of the words must start a word of the name itself: an initial alone
+  // ("a" of "A. Merrill") is no reason to list a sponsor for "allen".
+  const real=want.filter(w=>parts.some(x=>x.length>1&&x.startsWith(w)));
+  return real.length>0&&want.every(w=>real.includes(w)||(w.length>2&&parts.some(x=>x.length===1&&w.startsWith(x))));
+}
 function fgroup(key,label,vals,counts,searchable,paint,show,extra,extraN){
   const chosen=sel[key],open=openGroups.has(key);
   let inner="";
@@ -3606,17 +3709,17 @@ function fgroup(key,label,vals,counts,searchable,paint,show,extra,extraN){
     const f=(isTopic?topicFilter:sponsorFilter).toLowerCase();
     const pick=isTopic
       ?vals.filter(v=>!f||chosen.has(v)||v.toLowerCase().includes(f))
-      :(f?vals.filter(v=>v.toLowerCase().includes(f)).slice(0,15):[]);
+      :(f?vals.filter(v=>sponsorFits(v,f)).slice(0,15):[]);
     const found=zerosLast(key,pick,counts);
     const shown=found.vals;
-    const pills=isTopic?"":[...chosen].map(v=>`<span class="pill">${esc(v)}<button data-unpick="${esc(v)}">×</button></span>`).join("");
+    const pills=isTopic?"":[...chosen].map(v=>`<span class="pill">${esc(sponsorShow(v))}<button data-unpick="${esc(v)}">×</button></span>`).join("");
     const box=isTopic
       ?`<input class="sbox" id="tbox" aria-label="Find a topic by name" placeholder="Type a topic…" value="${esc(topicFilter)}" autocomplete="off">`
       :`<input class="sbox" id="sbox" aria-label="Find a sponsor by name" placeholder="Type a name…" value="${esc(sponsorFilter)}" autocomplete="off">
-      <label class="fcosp"><input type="checkbox" id="cosp" ${withCosp?"checked":""}><span>Include co-sponsored bills</span></label>${extra||""}`;
+      <label class="fcosp"><input type="checkbox" id="cosp" ${withCosp?"checked":""}><span>${termNoun()==="bills"?"Include co-sponsored bills":"Include co-sponsored requests"}</span></label>${extra||""}`;
     inner=`${pills?`<div class="chosen">${pills}</div>`:""}${box}`
       +(shown.map((v,i)=>`<label class="fopt ${!counts[v]&&!(isTopic&&chosen.has(v))?'off':''}${i===found.rule?' fzero':''}"><input type="checkbox" data-f="${key}"
-        value="${esc(v)}" ${chosen.has(v)?"checked":""}><span>${esc(v)}</span>
+        value="${esc(v)}" ${chosen.has(v)?"checked":""}><span>${esc(isTopic?v:sponsorShow(v))}</span>
         <span class="c">${(counts[v]||0).toLocaleString()}</span></label>`).join("")
         ||((isTopic?topicFilter:sponsorFilter)?`<p class="fnone">No match</p>`:""));
   }else{
@@ -4016,7 +4119,10 @@ function renderFacets(){
   // it can be unticked on its own where it lists nothing.
   h+=fgroup("committee","Committee",[...new Set([...present("committee"),...sel.committee])].sort(),
     cnt("committee","committee"));
-  h+=fgroup("topic","Topic",[...new Set([...present("topic"),...sel.topic])].sort(),cnt("topic","topic"),true);
+  // A REQUEST'S TOPIC IS THE TITLE'S (request_topics.py), not the General
+  // Court's: said so in the group's name, until the bill is filed and the
+  // General Court's own code takes over.
+  h+=fgroup("topic",termNoun()==="bills"?"Topic":"Topic (from the title)",[...new Set([...present("topic"),...sel.topic])].sort(),cnt("topic","topic"),true);
   // THE PRIME SPONSOR'S PARTY is a choice inside the Sponsor group it narrows
   // (the owner, 10 November 2026), below the name box and the co-sponsorship
   // box: a short list shown whole, in the legislators' chip shape and colour
@@ -8148,7 +8254,10 @@ function lsrCardHtml(b,cls){
         <div class="ctitle">${esc(b.title)}</div>
         <div class="cmeta">${b.sponsor_slug
           ?`<a href="legislator/${esc(b.sponsor_slug)}">${esc(who)}</a>`
-          :esc(who)}${b.body_label?` &middot; ${esc(b.body_label)}`:""}</div>
+          :esc(who)}${b.body_label?` &middot; ${esc(b.body_label)}`:""}${
+        // THE TOPIC READ FROM THE TITLE (request_topics.py), said to be: the
+        // General Court's own comes with the bill.
+        b.topic&&b.topic_by==="title"?` &middot; <span class="rtopic">Topic (from the title): ${esc(b.topic)}</span>`:""}</div>
       </div>${can?`
       <div class="followbox lsrfollow" data-fkey="lsr:${esc(num)}"><details class="follow">
         <summary>${icon("follow")}Follow</summary>
