@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.11
+# GRANITE_VERSION: 2026-10-23.12
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -106,9 +106,11 @@ def tab_words(lang="en"):
 # script, build_town_pages.TABS_JS, which also follows a hashchange). A page
 # planned and not built is not here; it joins the day it is.
 #
-# Two are seasonal and drawn only while their page exists (row_facts): the
-# bill requests, between a session's first request and its filing deadline,
-# and the members-elect, between the election and Organization Day.
+# Four are drawn only while their page exists (row_facts): two seasonal --
+# the bill requests, between a session's first request and its filing
+# deadline, and the members-elect, between the election and Organization
+# Day -- and two a build without their data does not write: the former
+# members' list and the calendars and journals.
 ROWS = {
     "bills.html": (("search", "bills.html"),
                    ("requests", "bills.html?term={term}"),
@@ -143,13 +145,6 @@ ROWS = {
 # hub's script opens (ROW_JS) -- by an address, a link inside a panel, a
 # member-elect tab handing over to Legislators on the day it retires.
 TAB_HUBS = ("laws.html", "officials.html", "resources.html")
-
-# Not in the phone's all-sections menu: the members-elect, whose file the
-# pipeline writes after the bill pages are built, so a menu that named them
-# would name them on some pages and not others. The row on Officials' own
-# pages, all built after it, carries them.
-NOT_IN_MENU = {("officials.html", "members-elect")}
-
 
 def row_words(lang="en", year=""):
     """{(section, id): label} of ROWS in `lang`. Written out a call each, as
@@ -201,41 +196,32 @@ def use_site(site):
 
 
 def row_facts():
-    """{"requests": {"term", "year"} or None, "elect_until": the day the
-    members-elect take office, or None}: what the row's two seasonal items
-    need, judged once a run.
-
-    THE REQUESTS FROM THEIR SOURCE FIRST. build_lsrs writes them into
-    meta.json after build_site_v2 has written the bill pages, so meta.json
-    alone would give the bills' own pages a row without them and the rest of
-    Bills one with them. lsrs.json, the file build_lsrs reads (beside the
-    site folder), is there before either step runs, and build_lsrs' own
-    functions name the term from it; meta.json is the answer where it is not (a page builder run on
-    its own over a built site)."""
+    """What the row's items that come and go need, judged once a run from
+    the site folder (use_site) and the project beside it:
+      "requests": {"term", "year"} of the bill requests, or None;
+      "elect_until": the day the members-elect take office, or None;
+      "former": whether any member who left has a page to list;
+      "documents": whether there are calendars and journals to list.
+    Each is a file a step before every page builder writes (build_all:
+    build_site_v2's former.json, build_members_elect's file, build_lsrs'
+    key in meta.json) or the source a later step builds its page from (the
+    calendars' queue, which build_calendar reads), so every page of a run
+    draws the same row and menu, and none links a page the run did not
+    write -- check_site would call it broken and hold the night."""
     if _FACTS:
         return _FACTS
     from pathlib import Path
     site = Path(_SITE[0])
-    req = None
-    # Beside the site folder, where the pipeline keeps it: the project's
-    # root, whichever folder a builder was started in.
-    src = site.resolve().parent / "lsrs.json"
-    try:
-        if src.is_file():
-            import build_lsrs
-            rows = _json.loads(src.read_text(encoding="utf-8"))
-            year, _rows, _old = build_lsrs.newest_session(rows) if rows else (None, None, None)
-            if year:
-                req = {"term": build_lsrs.requests_term(year)[0], "year": str(year)}
-    except Exception:  # a source that will not read is build_lsrs' to report
-        req = None
-    if req is None and (site / "meta.json").is_file():
+    root = site.resolve().parent
+
+    def read(p, default):
         try:
-            r = _json.loads((site / "meta.json").read_text(encoding="utf-8")).get("requests")
+            return _json.loads(p.read_text(encoding="utf-8")) if p.is_file() else default
         except ValueError:
-            r = None
-        if r and r.get("term"):
-            req = {"term": r["term"], "year": str(r.get("year") or str(r["term"])[:4])}
+            return default
+    r = (read(site / "meta.json", {}) or {}).get("requests")
+    req = ({"term": r["term"], "year": str(r.get("year") or str(r["term"])[:4])}
+           if r and r.get("term") else None)
     until = None
     try:
         from build_members_elect import for_pages
@@ -243,7 +229,15 @@ def row_facts():
         until = elect["takes_office"] if elect else None
     except ImportError:
         until = None
-    _FACTS.update({"requests": req, "elect_until": until})
+    former = any(isinstance(m, dict) and m.get("slug") for m in (read(site / "former.json", []) or []))
+    docs = False
+    try:
+        import calendar_documents as CD
+        q = root / CD.QUEUE
+        docs = q.is_file() and bool(CD.read(path=q, root=root)[0])
+    except Exception:  # a queue that will not read is build_calendar's to report
+        docs = False
+    _FACTS.update({"requests": req, "elect_until": until, "former": former, "documents": docs})
     return _FACTS
 
 
@@ -269,6 +263,9 @@ def row_items(section, lang="en", facts=None):
             if not req:
                 continue
             addr = addr.format(term=req["term"])
+        if (section, iid) in (("officials.html", "former"), ("calendar.html", "journals")) \
+                and not f.get("former" if iid == "former" else "documents"):
+            continue
         if iid == "members-elect":
             if not f.get("elect_until"):
                 continue
@@ -397,8 +394,7 @@ def menu_all(page="", item=None, lang="en", facts=None):
     out = []
     for href, _label, _glyph in NAV_TABS:
         pages = "".join(f'<a href="{h}"{extra}{cur if href == page and iid == item else ""}>{label}</a>'
-                        for iid, label, h, extra in row_items(href, lang, facts)
-                        if (href, iid) not in NOT_IN_MENU)
+                        for iid, label, h, extra in row_items(href, lang, facts))
         out.append(f'<div class="nvsec"><a class="nvhead" href="{to(href)}"'
                    f'{cur if href == page and not item else ""}>{words[href]}</a>'
                    f'<div class="nvpages">{pages}</div></div>')

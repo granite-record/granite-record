@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.57
+// GRANITE_VERSION: 2026-09-16.58
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1315,7 +1315,8 @@ function menuMount(){
     nav.classList.add("open");btn.setAttribute("aria-expanded","true");
     // The first link a reader can see: on a phone the tabs are folded away
     // and the menu is every section's pages (.navall, chrome.menu_all).
-    const first=[...drop.querySelectorAll("a[href]")].find(a=>a.offsetParent!==null);
+    const all=drop.querySelectorAll?[...drop.querySelectorAll("a[href]")]:[];
+    const first=all.find(a=>a.offsetParent!==null)||drop.querySelector("a[href]");
     if(first)first.focus();
   };
   btn.addEventListener("click",()=>{

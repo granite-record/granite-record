@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.14
+# GRANITE_VERSION: 2026-10-10.15
 """
 The House and the Senate as committees of the whole: a card at the top of
 each column of /committees, and a page for each chamber's session days.
@@ -241,7 +241,7 @@ def page_head(c, path, base):
     cite = S.cite_block(path, f"{CHAMBER[body]} Session Days | Granite Record", base,
                        S.cited(*c["dates"]))
     assert cite.endswith("</div>"), "the citation block no longer ends its row"
-    return (C.record_head({"trail": [["Committees", "committees.html"], [CHAMBER[body], ""]],
+    return (C.record_head({"trail": [["Calendar", "calendar.html"], [CHAMBER[body], ""]],
                            "title": f"{CHAMBER[body]} Session Days", "line": line,
                            "facts": facts, "actions": cite[:-len("</div>")] + SHARE + "</div>",
                            "kind": "committee cmtehead chamberhead"})
@@ -400,7 +400,7 @@ def write_page(site, c, base):
                   description=desc, globals={"GR_STATIC": True}, og_type="website",
                   jsonld=LD.listing(name, desc, base, S.canon(path)),
                   noscript="", skip_label="Skip to the session days",
-                  nav_current="committees.html", sr_title="", cite=False)
+                  nav_current="calendar.html", sr_title="", cite=False)
     assert '<div id="results"></div>' in html, f"{path}: the template has no results slot"
     html = html.replace('<div id="results"></div>',
                         f'<div id="results">{page_body(c, path, base)}</div>{SCRIPT}', 1)

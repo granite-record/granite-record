@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.65
+# GRANITE_VERSION: 2026-09-19.66
 """
 A page for every day the House sat.
 
@@ -3715,7 +3715,7 @@ def chamber(a, site, base, body, days):
                       # COMMITTEES, WHERE ITS TRAIL BEGINS (the person, 10
                       # October 2026; the audit of 25 October 2026, S6): the
                       # header lit Calendar over a trail that said Committees.
-                      og_type="article", nav_current="committees.html",
+                      og_type="article", nav_current="calendar.html",
                       jsonld=LD.listing(label, lead, base, S.canon(path)), cite=False)
         payload = json.dumps(payloads, separators=(",", ":"))
         head = day_head(day, narrative, rec, jurl=jurl, label=label, path=path, base=base)
@@ -3913,7 +3913,7 @@ def day_head(day, narrative, rec, jurl, label, path, base):
     term = proceedings.vote_term(date[:4], date)
     days = f"{S.canon(f'session/{CHAMBER_PAGE[body]}.html')}?term={term}#day-{date}"
     line = S.E(line).replace(f"The {ch} ", f'The <a href="{S.E(days)}">{ch}</a> ', 1)
-    return C.record_head({"trail": [["Committees", "committees.html"], [f"{ch} Session Days", days],
+    return C.record_head({"trail": [["Calendar", "calendar.html"], [f"{ch} Session Days", days],
                                     ["Session Day", ""]],
                           "title": S.E(label), "line": line, "facts": facts,
                           "actions": cite[:-len("</div>")] + SHARE + "</div>",

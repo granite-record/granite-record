@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.8
+# GRANITE_VERSION: 2026-10-23.9
 """
 A page a term of the votes not on a bill: what each was about, how it went,
 and the session day it was taken on.
@@ -261,7 +261,7 @@ def page_body(term, rows, terms, path, base):
     cite = S.cite_block(path, f"Votes Not on a Bill, {C.term_words(term)} | Granite Record", base,
                        S.cited(*(str(x.get("date") or "") for x in rows)))
     head = C.record_head({
-        "trail": [["Committees", "committees.html"], ["Votes Not on a Bill", ""]],
+        "trail": [["Calendar", "calendar.html"], ["Votes Not on a Bill", ""]],
         "title": f"Votes Not on a Bill, {E(C.term_words(term))}",
         "line": ("Every vote the House and the Senate took in the term on a question that was on "
                  "no bill: its own rules, a ruling of the chair, a member allowed to go on "
@@ -295,7 +295,7 @@ def write(site, base, term, rows, terms):
     html = S.page(S.template(site), path=path, base=base, title=f"{name} | Granite Record",
                   og_title=name, description=desc, globals={"GR_STATIC": True},
                   og_type="website", jsonld=LD.listing(name, desc, base, S.canon(path)),
-                  noscript="", skip_label="Skip to the votes", nav_current="committees.html",
+                  noscript="", skip_label="Skip to the votes", nav_current="calendar.html",
                   sr_title="", cite=False)
     assert '<div id="results"></div>' in html, f"{path}: the template has no results slot"
     body = page_body(term, rows, terms, path, base)

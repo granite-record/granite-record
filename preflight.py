@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.879
+# GRANITE_VERSION: 2026-09-04.880
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -38903,14 +38903,15 @@ def _chain():
 
 
 @check("frontend", "the signposts agree on the built site: the header lights the section a page's "
-       "trail begins at, a session day's Committees among them; About's What You Can Do Here links "
+       "trail begins at, a session day's Calendar among them; About's What You Can Do Here links "
        "pages and sections the build writes; a member's towns link their pages; no redirect stands "
        "over a page")
 def _signposts_agree():
     """The audit of 25 October 2026, S6 ("one place for each thing"), read
     off the fixture's built site. A session day lit Calendar in the header
     while its trail said Committees (the person chose Committees on 10
-    October); About's five lines of what a reader can do here named no page
+    October; the header rows she approved on 7 November put session days
+    under Calendar, and the trail went with them); About's five lines of what a reader can do here named no page
     to do it on; a member's towns were words beside a page for each; and a
     rule of build_pages.MOVED over a page the build writes would hide one or
     the other, as /town/berlin would."""
@@ -70756,8 +70757,11 @@ def _study_committees_listed(SC):
     assert sec.startswith('<!-- statstud --><details class="sfold ssfold" id="statstud"><summary>') \
         and "<span class=\"sflab\">Statutory and Study Committees</span> <span class=\"w4n\">3</span>" in sec, (
         "the section is not one shut fold that says how many: " + sec[:200])
+    # The former committees' heading, not its words: the header's row names
+    # them too, above everything (chrome.ROWS).
+    former = '<h2 id="archived">Former committees'
     assert t.index('<div class="ctwo">') < t.index("<!-- statstud -->") and (
-        "Former committees" not in t or t.index("<!-- statstud -->") < t.index("Former committees")), (
+        former not in t or t.index("<!-- statstud -->") < t.index(former)), (
         "the fold is not under the chambers' columns, above the former committees")
     groups = re.findall(r'<section class="ssgrp" data-class="(\w+)">', sec)
     assert groups == ["statutory", "study"], f"the classes are {groups}, not statutory then study"
@@ -77628,7 +77632,7 @@ def _committees_full_sessions():
     n_days = 0
     for b in bodies:
         word = FS.CHAMBER[b]
-        col = re.search(rf"<section><h2>{word}</h2><div class=\"ccards\">(.*?)</div></section>", page, re.S)
+        col = re.search(rf"<section[^>]*><h2>{word}</h2><div class=\"ccards\">(.*?)</div></section>", page, re.S)
         assert col, f"the Committees page has no {word} column"
         first = re.search(r"<a class=\"ccard[^\"]*\" href=\"([^\"]+)\"><span class=\"cc-n\">([^<]+)</span>"
                           r"<span class=\"cc-m\">([^<]*(?:<[^a/][^>]*>[^<]*)*)</span></a>", col.group(1))
@@ -90614,12 +90618,12 @@ def _frame_written_once():
 
 
 # ---- the header's second row (the header rows, November 2026) ----------------
-# A row item whose page or heading the fixture cannot build, and why: each is
-# built on every real night, and on site/, where one is built, every row link
-# must resolve with no exceptions.
+# A row item whose heading the fixture cannot build, and why: it is built on
+# every real night, and on site/, where one is built, every row link must
+# resolve with no exceptions. (A row item whose PAGE a build may not write --
+# the former members, the calendars and journals -- is drawn only where it is
+# written: chrome.row_facts, _row_seasonal.)
 ROW_NEEDS_DATA = {
-    "directory/former-legislators": "a member who no longer sits, and the fixture has none",
-    "calendar/documents": "the chambers' printed calendars and journals, which the fixture has not",
     "committees#archived": "a former committee, and the fixture has none",
 }
 
@@ -90742,7 +90746,7 @@ def _row_links_resolve():
     tab on the hub, so the row can mark the tab the hub's script opened.
     Each of the hubs' tabs is reachable from the row too: a tab the row
     dropped would be a panel nobody could open. ROW_NEEDS_DATA names the
-    three the fixture cannot build, and why; on site/, where one is built,
+    one the fixture cannot build, and why; on site/, where one is built,
     they answer like the rest."""
     import chrome as CH
     sites = [("the fixture's site", _fixture_site_shared()[0] / "site")]
@@ -90852,31 +90856,35 @@ def _row_tab_addresses():
                   "are hidden; find.js follows the open tab")
 
 
-@check("frontend", "the row's seasonal pages: the bill requests and the members-elect appear in it "
-                   "only while their page exists, in English and Spanish")
+@check("frontend", "the row's items that come and go -- the bill requests, the members-elect, the former "
+                   "members, the calendars and journals -- are drawn only while their page is written")
 def _row_seasonal():
-    """Two of the row's items are seasonal (chrome.row_facts): the bill
-    requests, named for their year, and the members-elect, who carry the
-    day they take office (data-until) so a page read after it hides them,
-    as the hub's own tab does. Neither is drawn without its page; the
-    members-elect are kept out of the phone's all-sections menu, which the
-    bill pages draw before their file exists (chrome.NOT_IN_MENU). And
-    every row label has a Spanish draft in lang/es.json."""
+    """Four of the row's items are drawn only where the run writes their
+    page (chrome.row_facts): the bill requests, named for their year; the
+    members-elect, who carry the day they take office (data-until) so a page
+    read after it hides them, as the hub's own tab does; the former members'
+    list; and the calendars and journals. Each is judged from a file every
+    page builder runs after, so the row and the phone's menu are one on every
+    page, and none links a page the run did not write -- check_site would
+    call it broken and hold the night (the fixture, with no former member and
+    no calendars, found exactly that). And every row label has a Spanish
+    draft in lang/es.json."""
     import chrome as CH
     import i18n
-    none = {"requests": None, "elect_until": None}
-    some = {"requests": {"term": "2027-requests", "year": "2027"}, "elect_until": "2099-12-01"}
+    none = {"requests": None, "elect_until": None, "former": False, "documents": False}
+    some = {"requests": {"term": "2027-requests", "year": "2027"}, "elect_until": "2099-12-01",
+            "former": True, "documents": True}
     off, on = CH.nav("bills.html", facts=none), CH.nav("bills.html", facts=some)
-    assert "requests" not in off, "the requests' item is drawn with no requests"
-    assert '<a href="bills.html?term=2027-requests">2027 bill requests</a>' in on, (
-        "the requests' item is not '2027 bill requests' at /bills?term=2027-requests")
-    off, on = CH.nav("officials.html", facts=none), CH.nav("officials.html", facts=some)
-    assert "members-elect" not in off, "the members-elect's item is drawn with no members-elect"
-    row = re.search(r'<nav class="subnav".*?</nav>', on, re.S).group(0)
+    for href, words in (("bills.html?term=2027-requests", "2027 bill requests"),
+                        ("officials.html#members-elect", "Members-elect"),
+                        ("directory/former-legislators.html", "Former members"),
+                        ("calendar/documents.html", "Calendars and journals")):
+        assert f'href="{href}"' not in off, f"{words} is drawn with no page for it"
+        assert re.search(rf'<a href="{re.escape(href)}"[^>]*>{words}</a>', on), (
+            f"{words} is not drawn at {href} where its page is written")
+    row = re.search(r'<nav class="subnav".*?</nav>', CH.nav("officials.html", facts=some), re.S).group(0)
     assert re.search(r'href="officials.html#members-elect" data-elect data-until="2099-12-01"', row), (
         "the members-elect's item does not carry the day they take office")
-    assert "members-elect" not in on.split('<nav class="subnav"')[0], (
-        "the phone menu names the members-elect, which the bill pages cannot know of")
     es = CH.nav("bills.html", lang="es", facts=some)
     assert "Solicitudes de proyectos de ley de 2027" in es, "the Spanish row does not say the requests' year"
     keys = re.findall(r'say\(lang, "(nav\.row\.[^"]+)"', Path("src/pages/chrome.py").read_text(encoding="utf-8"))
@@ -90885,8 +90893,8 @@ def _row_seasonal():
     assert not missing, f"lang/es.json has no draft for {missing}"
     assert len(keys) == sum(len(v) for v in CH.ROWS.values()), (
         "chrome.row_words does not name every item of chrome.ROWS")
-    return "ok", (f"both seasonal items come and go with their page, and all {len(keys)} row labels "
-                  "have a Spanish draft")
+    return "ok", (f"the four come and go with their pages, in the row and the menu, and all {len(keys)} "
+                  "row labels have a Spanish draft")
 
 
 @check("frontend", "every page's footer says who makes the site and leads to About, which says it once")

@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.380 */
+/* GRANITE_VERSION: 2026-09-07.381 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -1546,10 +1546,10 @@ line-height:1.1}
   color-scheme:light}
   /* The footer's feedback button with them: it is white words on a pine
      ground, and with no ground printed it is white on white. */
-  nav.top,nav.subnav,.skip,.calskip,.searchrow,.ftoggle,.backto,.pageacts,.findpanel,
+  nav.top,.skip,.calskip,.searchrow,.ftoggle,.backto,.pageacts,.findpanel,
   .findscrim,details.report,.pshare,.sharestate,.player iframe,.fbk,
   .ytcard .ytgo,.ytpanel .ytaform button[type=submit],.followmail .followsend,
-  .followmail .followfreq,.webinar,.testify,.trrep,.trpill,.trbox{display:none !important}
+  .followmail .followfreq,.webinar,.testify,.trrep,.trpill,.trbox,nav.subnav{display:none !important}
   /* A STATUTE ON PAPER IS THE STATUTE (the polish of 12 October 2026): a
      chapter page prints its sections in one column, without the sidebar
      that lists them; the Laws landing its directory, without the filters
@@ -1820,14 +1820,16 @@ font:500 .9375rem/1.2 var(--sans);color:var(--ink-2);text-decoration:none;white-
 @media (max-width:45em){
   /* THE STRIP: the section's name, in the 12px uppercase pine of a label,
      then its pages, scrolling sideways under the bar, a fade at the right
-     edge saying there is more. The name scrolls with them. */
+     edge saying there is more. The name scrolls with them. 13px, not the
+     prototype's 12: the site's floor, which capitals may reach and nothing
+     goes under. */
   nav.subnav{position:relative}
   nav.subnav .in{padding:0 var(--sp-9) 0 var(--sp-6)}
   .sublab{display:block;flex:0 0 auto;margin-right:var(--sp-3);
-  font:600 .75rem/1.2 var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--pine)}
+  font:600 var(--t-label)/1.2 var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--pine)}
   .subrow a{padding:0 10px}
   nav.subnav::after{content:"";position:absolute;top:0;right:0;bottom:1px;width:28px;
-  background:linear-gradient(to right,rgba(255,255,255,0),var(--paper));pointer-events:none}
+  background:linear-gradient(to right,transparent,var(--paper));pointer-events:none}
   /* THE MENU: every section as a heading link, its pages under it in two
      columns of 44px rows, Settings at the end; the width of the screen, and
      it scrolls inside itself when the sections are taller than the window. */
@@ -1836,7 +1838,8 @@ font:500 .9375rem/1.2 var(--sans);color:var(--ink-2);text-decoration:none;white-
   .navdrop .navtabs{display:none}
   .navall{display:block;padding:var(--sp-2) var(--sp-6) var(--sp-4)}
   .nvsec{padding:var(--sp-4) 0 var(--sp-5);border-bottom:1px solid var(--rule)}
-  nav.top .nvhead{min-height:40px;padding:0;border:0;font-size:.8125rem;color:var(--ink-2)}
+  nav.top .nvhead{min-height:40px;padding:0;border:0;font-size:var(--t-label);
+  text-transform:uppercase;color:var(--ink-2)}
   nav.top .nvhead[aria-current]{color:var(--pine)}
   .nvpages{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 var(--sp-4)}
   nav.top .nvpages a{min-height:44px;padding:var(--sp-2) var(--sp-4);border:0;border-radius:0;
