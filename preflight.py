@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.874
+# GRANITE_VERSION: 2026-09-04.875
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -129738,7 +129738,7 @@ def _quick_preview(QP, FE, BP, cloud, NI):
         "chrome.py": [("M", "src/pages/chrome.py")],
         "a words file": [("M", "src/pages/words/home.py")],
         "a page builder": [("M", "src/pages/build_civics.py")],
-        "a script of the pipeline": [("M", "build_all.py")],
+        "a script of the pipeline": [("M", "refusal.py")],
         "preflight.py": [("M", "preflight.py")],
         "the quick preview's own tool": [("M", "src/ops/quick_preview.py")],
         "a file the Function bundles": [("M", "functions/api/report.js")],
