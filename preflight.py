@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.869
+# GRANITE_VERSION: 2026-09-04.870
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -121418,6 +121418,103 @@ def _elect_step_order(build_all):
 # same day the person widened the rule for three kinds of the 24
 # (_elect_widened), and it links 310, still none wrong: 114 left, 7 of them
 # the record knew.
+
+@check("build", "the ballot questions: every card's rule is its kind's, the county files sum to the "
+                "totals shown, 2022's Question No. 2 and 2026's are the Secretary of State's counts, "
+                "no card says a school district adopted or failed anything, and the flip numbers are "
+                "the least number of voters",
+       needs=("build_elections", "parse_sos_questions"))
+def _ballot_questions(BE, PSQ):
+    """The ballot-question cards (stage 0 of the elections work, 11 November
+    2026). Held to collected/ballot_questions.json and
+    corrections/ballot_results.json, both tracked; where the spreadsheets are
+    on disk, the file is read again from them."""
+    qp, bp = Path("collected/ballot_questions.json"), Path("corrections/ballot_results.json")
+    if not qp.exists() or not bp.exists():
+        return "skip", "not here: collected/ballot_questions.json or corrections/ballot_results.json"
+    doc = json.loads(qp.read_text(encoding="utf-8"))
+    els = doc["elections"]
+    # the committed file is what the saved spreadsheets say, where they are here
+    if all((Path("records/sources") / s["file"]).exists() for s in doc["_source"]):
+        r = _run([sys.executable, _paths.script("parse_sos_questions.py"), "--check"],
+                 capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, f"parse_sos_questions --check: {(r.stdout or '') + (r.stderr or '')}"
+    # every county adds up to the statewide figure, except the one the page says disagrees
+    for day, qs in els.items():
+        for q in qs:
+            yes = sum(v[0] for v in q["counties"].values())
+            no = sum(v[1] for v in q["counties"].values())
+            assert len(q["counties"]) == 10, f"{day} {q['label']}: {len(q['counties'])} counties"
+            if q.get("county_sum"):
+                assert q["county_sum"] == [yes, no], f"{day} {q['label']}: county_sum is not the counties'"
+                assert [yes, no] != [q["yes"], q["no"]]
+            else:
+                assert (yes, no) == (q["yes"], q["no"]), (
+                    f"{day} {q['label']}: the counties add up to {yes}, {no}, the total says "
+                    f"{q['yes']}, {q['no']}")
+    q22 = {q["number"]: q for q in els["2022-11-08"]}
+    assert (q22[2]["yes"], q22[2]["no"], q22[2]["kind"]) == (178339, 347838, "convention"), q22[2]
+    q26 = {q["number"]: q for q in els["2026-11-03"]}
+    assert (q26[2]["yes"], q26[2]["no"], q26[2]["kind"], q26[2].get("measure")) == (
+        356374, 249144, "local_cap", "HB 1300"), q26[2]
+    assert q26[2]["counties"]["Belknap"] == [18946, 10690] and q26[2]["counties"]["Sullivan"] == [10575, 7912]
+    # the CACR rows the corrections file holds agree with the spreadsheets, but for the one
+    # place the Secretary of State's own files disagree (2026, read from its summary)
+    rows = json.loads(bp.read_text(encoding="utf-8"))["rows"]
+    for day, qs in els.items():
+        for q in qs:
+            if q["kind"] != "cacr":
+                continue
+            mine = [r for r in rows if r["election"] == day and r["label"] == q["label"]]
+            assert len(mine) == 1 and (mine[0]["yes"], mine[0]["no"]) == (q["yes"], q["no"]), (
+                f"{day} {q['label']}: corrections/ballot_results.json and the spreadsheet differ")
+    # the rule on each card comes from its kind
+    banned = re.compile(r"\b(adopted|failed|passed|ratified|rejected|approved)\b", re.I)
+    for day in els:
+        cards = BE.question_cards(day, bp, qp)
+        assert len(cards) == len(els[day]), f"{day}: {len(cards)} cards for {len(els[day])} questions"
+        for c in cards:
+            html_ = BE.ballot_block([c], Path("nowhere"), {})
+            text = re.sub(r"<[^>]+>", " ", html_)
+            rule = BE.question_rule(c)
+            if c["kind"] == "cacr":
+                assert "two thirds" in rule and "Article 100)" in rule, rule
+                assert "3/5" not in text and "majority" not in re.sub(r"\s+", " ", rule)
+                assert "Ratified" in text or "Not ratified" in text
+            elif c["kind"] == "convention":
+                assert "majority of the qualified voters" in rule and "Article 100(b)" in rule, rule
+                assert "two thirds" not in text and "3/5" not in text, text
+                assert "Approved" in text or "Not approved" in text
+            else:
+                assert "3/5 majority of the voters voting in the municipalities and wards" in rule, rule
+                assert "RSA 32:5-i" in rule and "two thirds" not in text, text
+                assert not banned.search(text.replace("approve the question", "")), (
+                    f"a local tax cap card names an outcome: {banned.search(text).group(0)}")
+                assert "decides nothing" in text and "voter would have" not in text \
+                    and "voters would have" not in text, text
+            if c["kind"] != "local_cap":
+                assert "would have had to vote the other way" in text, text
+    # the least number of voters that changes the result, by counting
+    two = BE.two_thirds
+    maj = lambda y, n: y > n
+    for y, n in [(0, 5), (5, 0), (7, 3), (2, 1), (3, 3), (4, 2), (9, 4), (13, 7), (30, 61), (66, 33), (67, 33), (10, 11)]:
+        want = 0
+        while two(y, n) == two(*((y - want, n + want) if two(y, n) else (y + want, n - want))):
+            want += 1
+            if want > y + n:
+                break
+        assert BE.flip_two_thirds(y, n) == want, (y, n, BE.flip_two_thirds(y, n), want)
+        want = 0
+        while maj(y, n) == maj(*((y - want, n + want) if maj(y, n) else (y + want, n - want))):
+            want += 1
+            if want > y + n:
+                break
+        assert BE.flip_majority(y, n) == want, (y, n, BE.flip_majority(y, n), want)
+    assert (BE.flip_two_thirds(329157, 194291), BE.flip_two_thirds(365359, 198791),
+            BE.flip_two_thirds(452307, 237221), BE.flip_majority(178339, 347838)) == (
+        19809, 10741, 7379, 84750)
+    return "ok", ("ballot questions: " + ", ".join(f"{d}: {len(q)}" for d, q in els.items()))
+
 
 @check("build", "members-elect: the results reader refuses a write-in winner the file does not "
                 "name, and reads a county's later upload in place of the earlier",

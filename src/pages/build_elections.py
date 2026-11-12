@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.5
+# GRANITE_VERSION: 2026-11-07.6
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -21,8 +21,15 @@ corrections/members_elect.json, read and never written; the site data's
 site/legislators.json, site/former.json and site/districts.json;
 site/district_map.json, which build_district_map.py writes before this runs;
 and, for a ballot question, corrections/ballot_results.json (read, never
-written) and site/idx/<term>.json for the bill's own page. Nothing here asks
-the network.
+written: the constitutional amendments), collected/ballot_questions.json
+(the other questions, read from the Secretary of State's spreadsheets by
+src/parse/parse_sos_questions.py: 2022's convention question and 2026's
+school district local tax cap) and site/idx/<term>.json for the bill's own
+page. Each question's card prints its own rule, from its kind, and the
+number of voters who would have had to vote the other way where the
+statewide count decides it; a question the statewide count does not decide
+(the local tax cap, decided by each school district and administrative unit)
+states no outcome. Nothing here asks the network.
 
 ONE RULE FOR WHO IS ELECTED. Whether a seat's result is final, who won it
 and whom to link are decided by build_members_elect.members_elect, the
@@ -70,6 +77,12 @@ E = C.esc
 OUT_DIR = "elections"
 INDEX = "/elections/"
 BALLOTS = Path("corrections") / "ballot_results.json"
+QUESTIONS = Path("collected") / "ballot_questions.json"
+# The Secretary of State's results page for each year's general election, the
+# addresses corrections/ballot_results.json already cites for the same files.
+SOS_PAGES = {2022: "https://www.sos.nh.gov/elections/2022-election-results/2022-general-election-results",
+             2024: "https://www.sos.nh.gov/2024-general-election-results",
+             2026: "https://www.sos.nh.gov/2026-general-election-results"}
 COUNTY_CODE = BDM.CODE
 # The reader's own words for a printed total that leaves out a town
 # (parse_sos_results.py): "...: the file's Totals cell is =SUM(B47:B48), which
@@ -188,6 +201,37 @@ def ballot_rows(election, path=BALLOTS):
     count = lambda v: isinstance(v, int) and not isinstance(v, bool) and v >= 0
     return [r for r in rows or [] if isinstance(r, dict) and r.get("election") == election
             and count(r.get("yes")) and count(r.get("no")) and r["yes"] + r["no"] > 0]
+
+
+def question_number(label):
+    m = re.search(r"(\d+)\s*$", str(label or ""))
+    return int(m.group(1)) if m else 99
+
+
+def question_cards(election, path=BALLOTS, questions=QUESTIONS):
+    """Every question on an election's ballot, one dict each, in the order
+    of the ballot: a constitutional amendment from corrections/ballot_results.json
+    (kind "cacr", its row as it stands), and every other kind from
+    collected/ballot_questions.json, which src/parse/parse_sos_questions.py
+    reads from the Secretary of State's spreadsheets. A CACR's count is the
+    corrections file's, never the spreadsheets'; the spreadsheets' own figure
+    is kept beside it only to say where the Secretary of State's files
+    disagree (the 2026 county files against its statewide summary)."""
+    try:
+        doc = json.loads(Path(questions).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        doc = {}
+    mine = (doc.get("elections") or {}).get(election) or []
+    cards = [dict(r, kind="cacr") for r in ballot_rows(election, path)]
+    for r in cards:
+        for q in mine:
+            if q.get("kind") == "cacr" and q.get("label") == r.get("label") and q.get("county_sum"):
+                r["county_sum"] = q["county_sum"]
+    for q in mine:
+        if q.get("kind") != "cacr" and q.get("yes", 0) + q.get("no", 0) > 0:
+            cards.append(dict(q, source=SOS_PAGES.get(year_of(election), ""),
+                              cite=f"{year_of(election)} general election results, sos.nh.gov"))
+    return sorted(cards, key=lambda c: question_number(c.get("label")))
 
 
 def bill_href(site, term, bill):
@@ -368,30 +412,144 @@ def deadline_line(hand, report, election, settled=False):
     return f"The deadline to ask for a recount was {E(C.date_words(d, 'full'))}."
 
 
+def flip_two_thirds(yes, no):
+    """How many voters changing their vote would have changed whether two
+    thirds voted yes. A voter who moves from one side to the other moves one
+    vote and leaves the total where it was, so for a question that fell short
+    it is the yes votes short of two thirds of the total, rounded up, and for
+    one that reached it the yes votes above two thirds, rounded down, and one
+    more."""
+    t = yes + no
+    return (3 * yes - 2 * t) // 3 + 1 if 3 * yes >= 2 * t else -((3 * yes - 2 * t) // 3)
+
+
+def flip_majority(yes, no):
+    """The same for a majority, where a tie is not a majority: a voter who
+    changes sides moves the gap by two, so a question that carried is undone
+    when half the gap, rounded up, have changed sides (a tie is enough), and
+    one that did not carry is carried by half the gap, rounded down, and one
+    more."""
+    gap = abs(yes - no)
+    return (gap + 1) // 2 if yes > no else gap // 2 + 1
+
+
+def two_thirds(yes, no):
+    return yes + no > 0 and 3 * yes >= 2 * (yes + no)
+
+
+def question_title(c):
+    name = E(c.get("label") or "")
+    if c["kind"] == "cacr":
+        return f'{name} ({E(re.sub(r"^CACR", "CACR ", c.get("bill") or ""))})'
+    if c["kind"] == "convention":
+        return name + " " + i18n.say("en", "elect.q.convention_t", "(the convention question)")
+    return name + " " + i18n.say("en", "elect.q.cap_t", "(school district local tax cap, {bill})",
+                                 bill=E(c.get("measure") or "HB 1300"))
+
+
+def question_rule(c):
+    """The rule the question is decided by, in its source's words: the one
+    place a card's rule comes from."""
+    if c["kind"] == "cacr":
+        return i18n.say("en", "elect.q.cacr_rule", "An amendment needs two thirds of the votes cast on it "
+                        "(Part Second, Article 100).")
+    if c["kind"] == "convention":
+        return i18n.say("en", "elect.q.conv_rule",
+                        "If a majority of the qualified voters voting on the question approves it, "
+                        "delegates are chosen (Part Second, Article 100(b)).")
+    return i18n.say("en", "elect.q.cap_rule",
+                    "A school district&rsquo;s local tax cap, and a school administrative unit&rsquo;s "
+                    "fixed cap, is binding if a &ldquo;3/5 majority of the voters voting in the "
+                    "municipalities and wards&rdquo; it serves approve the question (RSA 32:5-i, "
+                    "VI(a) and (b), added by HB 1300, chapter 324 of 2026).")
+
+
+def question_decision(c):
+    """(the decision, the flip sentence) of a question the statewide count
+    decides; for the local tax cap, which it does not, (the sentence saying so, "")."""
+    yes, no = c["yes"], c["no"]
+    if c["kind"] == "local_cap":
+        return (i18n.say("en", "elect.q.cap_out",
+                         "The statewide total decides nothing, because each school district and each "
+                         "school administrative unit counts only the towns and wards it serves. Which "
+                         "of them reached three fifths is not shown yet: no table of which town or "
+                         "ward is in which school district is on hand."), "")
+    if c["kind"] == "cacr":
+        ok, n = two_thirds(yes, no), flip_two_thirds(yes, no)
+        head = (i18n.say("en", "elect.q.ratified", "Ratified") if ok
+                else i18n.say("en", "elect.q.not_ratified", "Not ratified"))
+    else:
+        ok, n = yes > no, flip_majority(yes, no)
+        head = (i18n.say("en", "elect.q.approved", "Approved") if ok
+                else i18n.say("en", "elect.q.not_approved", "Not approved"))
+    flip = (i18n.say("en", "elect.q.flip_one", "The gap between yes and no is {gap}. {n} voter would have had to vote the "
+                     "other way to change the result.", gap=f"{abs(yes - no):,}", n=f"{n:,}") if n == 1 else
+            i18n.say("en", "elect.q.flip", "The gap between yes and no is {gap}. {n} voters would have had to vote the "
+                     "other way to change the result.", gap=f"{abs(yes - no):,}", n=f"{n:,}"))
+    return head, flip
+
+
+def county_table(c):
+    rows = "".join(
+        f'<tr><th scope="row" class="is-text">{E(name)}</th><td class="l-num">{y:,}</td>'
+        f'<td class="l-num">{n:,}</td><td class="l-num">{100 * y / (y + n):.1f}%</td></tr>'
+        for name, (y, n) in (c.get("counties") or {}).items() if y + n > 0)
+    if not rows:
+        return ""
+    return ('<div class="l-tablewrap"><table class="l-table"><caption>'
+            + i18n.say("en", "elect.q.county_cap", "By county") + '</caption><thead><tr><th scope="col">'
+            + i18n.say("en", "elect.q.county", "County") + '</th><th scope="col" class="l-num">'
+            + i18n.say("en", "elect.q.yes", "Yes") + '</th><th scope="col" class="l-num">'
+            + i18n.say("en", "elect.q.no", "No") + '</th><th scope="col" class="l-num">'
+            + i18n.say("en", "elect.q.yes_share", "Yes share") + f"</th></tr></thead><tbody>{rows}</tbody>"
+            "</table></div>")
+
+
+def county_disagreement(r):
+    """Where the Secretary of State's ten county files do not add up to its
+    statewide summary, said once with both figures: the card shows the
+    summary's, the count the corrections file holds."""
+    cy, cn = r["county_sum"]
+    same = two_thirds(r["yes"], r["no"]) == two_thirds(cy, cn)
+    return i18n.say("en", "elect.q.disagree",
+                    "The ten county files add up to {cy} yes and {cn} no; the statewide summary, shown "
+                    "above, has {y} yes and {n} no. {same}", cy=f"{cy:,}", cn=f"{cn:,}",
+                    y=f"{r['yes']:,}", n=f"{r['no']:,}",
+                    same=(i18n.say("en", "elect.q.same", "The result is the same on either count.") if same
+                          else i18n.say("en", "elect.q.differ", "The result is not the same on both counts.")))
+
+
 def ballot_block(rows, site, results):
-    import build_site_v2 as B2
     out = []
     for r in rows:
         yes, no = r["yes"], r["no"]
         tot = yes + no
         if tot <= 0:
             continue
-        ok = B2.ratified(yes, no)
-        href = bill_href(site, r.get("term") or "", r.get("bill") or "")
-        name = f'{E(r.get("label") or "")} ({E(re.sub(r"^CACR", "CACR ", r.get("bill") or ""))})'
+        href = bill_href(site, r.get("term") or "", r.get("bill") or "") if r["kind"] == "cacr" else ""
+        head, flip = question_decision(r)
+        cap = r["kind"] == "local_cap"
+        top = max(yes, no)
         out.append(
             '<article class="er-race">'
-            + f'<h3>{name}</h3>'
+            + f'<h3>{question_title(r)}</h3>'
             + (f'<p class="er-meta"><a href="{E(href)}">The amendment&rsquo;s page</a></p>' if href else "")
+            + ('<p class="er-foot">' + i18n.say("en", "elect.q.statewide",
+                                                "Statewide total:") + "</p>" if cap else "")
             + '<ul class="er-rows">'
             + f'<li class="er-row"><span class="er-who">Yes</span><span class="er-n">{yes:,} <span>&middot; {100 * yes / tot:.1f}%</span></span>'
-              f'<span class="er-b" aria-hidden="true"><i class="er-yes" style="width:{100 * yes / max(yes, no):.1f}%"></i></span></li>'
+              f'<span class="er-b" aria-hidden="true"><i class="er-yes" style="width:{100 * yes / top:.1f}%"></i></span></li>'
             + f'<li class="er-row"><span class="er-who">No</span><span class="er-n">{no:,} <span>&middot; {100 * no / tot:.1f}%</span></span>'
-              f'<span class="er-b" aria-hidden="true"><i class="er-no" style="width:{100 * no / max(yes, no):.1f}%"></i></span></li>'
+              f'<span class="er-b" aria-hidden="true"><i class="er-no" style="width:{100 * no / top:.1f}%"></i></span></li>'
             + "</ul>"
-            + f'<p class="er-out"><b>{"Ratified" if ok else "Not ratified"}.</b> An amendment needs two thirds of '
-              "the votes cast on it (Part Second, Article 100).</p>"
+            + f'<p class="er-foot">{question_rule(r)}</p>'
+            + (f'<p class="er-out">{head}</p>' if cap else f'<p class="er-out"><b>{head}.</b> {flip}</p>')
             + (f'<p class="er-foot">{E(r["note"])}</p>' if r.get("note") else "")
+            + (f'<p class="er-foot">{county_disagreement(r)}</p>' if r.get("county_sum") else "")
+            + (county_table(r) if r["kind"] != "cacr" else "")
+            + ('<p class="er-foot">' + i18n.say(
+                "en", "elect.q.how", "The Secretary of State&rsquo;s statewide summary does not hold this "
+                "question, so the total is the ten county files&rsquo; totals added up.") + "</p>" if cap else "")
             + f'<p class="er-foot">Source: <a href="{E(r.get("source") or "")}" rel="noopener">'
               f'{E(r.get("cite") or "the Secretary of State")}</a>.</p>'
             + "</article>")
@@ -658,7 +816,7 @@ def build(site, base, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT
         if not hand.get("recount_deadline") and not settled:
             warn.append(f"{election}: no recount_deadline in {Path(hand_path).as_posix()}, so every "
                         "race but a recounted one reads Result not final")
-        ballots = ballot_rows(election)
+        ballots = question_cards(election, BALLOTS, Path(collected) / QUESTIONS.name)
         body = page_body(election, results, races_me, report, hand, site, ballots, settled)
         year = year_of(election)
         path = page_path(election)
