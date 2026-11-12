@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.28
+# GRANITE_VERSION: 2026-09-04.29
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -346,6 +346,18 @@ def write_elect_pages(site, out, t, base, written_slugs, pages_of_towns, today):
     return n
 
 
+def last_vote_day(rec):
+    """The ISO day of the member's latest recorded vote, from their own JSON
+    (its "d" is M/D/YYYY), or None where they have none: the day their page's
+    record last changed, for the citation's date (shell.cited)."""
+    best = ""
+    for x in (rec or {}).get("votes") or []:
+        d = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", str(x.get("d") or ""))
+        if d:
+            best = max(best, f"{d.group(3)}-{int(d.group(1)):02d}-{int(d.group(2)):02d}")
+    return best or None
+
+
 def static_record(m, rec, elected="", places=None):
     """THE MEMBER'S RECORD IN THE PAGE ITSELF, for a reader with no
     JavaScript (the SEO review of 12 October 2026; shell.page's static).
@@ -499,6 +511,7 @@ def main():
             og_title=who, og_image="og-legislator.png",
             og_alt="Granite Record: legislators and their voting records",
             description=describe(m, rec), alternate=feed,
+            changed=last_vote_day(rec),
             # Name, office, chamber, party, district. Not email or telephone:
             # structured.py says why.
             jsonld=LD.person(m, a.base, S.canon(path)),

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.266
+# GRANITE_VERSION: 2026-09-05.267
 """
 Generate the faceted site from real General Court data.
 
@@ -30,6 +30,7 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import build_date
+import state_settings as ST
 import shell as _shell
 import caption_span
 import committee_names as CN
@@ -1163,12 +1164,7 @@ def member_slug(m, lab):
 # county_abbr carries. A member drawn from the roster read "Hills 12" and
 # one drawn from here read "Hills. 6", so the punctuation tracked exactly
 # who had left office.
-COUNTY_ABBR = {
-    "belknap": "Belk", "carroll": "Carr", "cheshire": "Ches",
-    "coos": "Coos", "co\u00f6s": "Coos", "grafton": "Graf",
-    "hillsborough": "Hills", "merrimack": "Merr", "rockingham": "Rock",
-    "strafford": "Straf", "sullivan": "Sull",
-}
+COUNTY_ABBR = {**ST.COUNTY_ABBR_LOWER, "co\u00f6s": "Coos"}
 # EITHER SPELLING RESOLVES, because the sources do not agree on which they
 # store. member_party.json writes a seat already abbreviated -- 622 rows say
 # "Hills", 440 "Rock", 212 "Merr", and so on through all nine that shorten --

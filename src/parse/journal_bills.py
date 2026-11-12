@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-30.7
+# GRANITE_VERSION: 2026-09-30.8
 """
 The bills the House withdrew, read from the House Journal itself.
 
@@ -119,6 +119,7 @@ import re
 from collections import Counter, defaultdict
 
 import journal_days as JD
+import state_settings as ST
 
 ROOT = Path("journals")
 OUT = Path("journal_bills.json")
@@ -845,8 +846,7 @@ REPORT_QUESTION = re.compile(
     r"report\s+of\s+(?P<what>[A-Z][A-Za-z ]+?)\s*\.")
 # A roll call prints its members under their counties, each a heading of its
 # own; they are not where the business after the vote begins.
-COUNTIES = {"BELKNAP", "CARROLL", "CHESHIRE", "COOS", "GRAFTON", "HILLSBOROUGH",
-            "MERRIMACK", "ROCKINGHAM", "STRAFFORD", "SULLIVAN"}
+COUNTIES = set(ST.COUNTIES_UPPER)
 # What the House did with the report. Lower case, and matched with case: the
 # names of a roll call are capitalised, and no member is called "adopted".
 REPORT_CARRIED = re.compile(r"\badopted\b")

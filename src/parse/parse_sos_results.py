@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.6
+# GRANITE_VERSION: 2026-10-17.7
 """
 The Secretary of State's count of one general election's State Representative
 and State Senate races, read into collected/election_<year>.json.
@@ -98,10 +98,10 @@ from collections import Counter, defaultdict
 from html.parser import HTMLParser
 
 import build_members_elect as BME
+import state_settings as ST
 
 SOURCES = Path("records") / "sources"
-COUNTIES = ("belknap", "carroll", "cheshire", "coos", "grafton", "hillsborough", "merrimack",
-            "rockingham", "strafford", "sullivan")
+COUNTIES = ST.COUNTIES_LOWER
 
 HOUSE_FILE = re.compile(r"^(\d{4})-ge-house-([a-z]+)(?:_\d+)?\.(?:xlsx?|html)$")
 # THE SENATE, WHOLE OR IN PARTS (5 November 2026). In 2024 the Secretary of
