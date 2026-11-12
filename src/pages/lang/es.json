@@ -23797,6 +23797,126 @@
    "es": "Recursos",
    "state": "draft"
   },
+  "nav.row.bills.requests": {
+   "en": "{year} bill requests",
+   "es": "Solicitudes de proyectos de ley de {year}",
+   "state": "draft"
+  },
+  "nav.row.bills.search": {
+   "en": "Search bills",
+   "es": "Buscar proyectos de ley",
+   "state": "draft"
+  },
+  "nav.row.bills.terms": {
+   "en": "Every term",
+   "es": "Todos los períodos",
+   "state": "draft"
+  },
+  "nav.row.calendar.journals": {
+   "en": "Calendars and journals",
+   "es": "Calendarios y diarios",
+   "state": "draft"
+  },
+  "nav.row.calendar.sessions": {
+   "en": "Session days",
+   "es": "Días de sesión",
+   "state": "draft"
+  },
+  "nav.row.calendar.week": {
+   "en": "This week",
+   "es": "Esta semana",
+   "state": "draft"
+  },
+  "nav.row.committees.former": {
+   "en": "Former committees",
+   "es": "Comités anteriores",
+   "state": "draft"
+  },
+  "nav.row.committees.house": {
+   "en": "House",
+   "es": "Cámara",
+   "state": "draft"
+  },
+  "nav.row.committees.senate": {
+   "en": "Senate",
+   "es": "Senado",
+   "state": "draft"
+  },
+  "nav.row.committees.study": {
+   "en": "Study and statutory",
+   "es": "De estudio y estatutarios",
+   "state": "draft"
+  },
+  "nav.row.laws.constitution": {
+   "en": "Constitution",
+   "es": "Constitución",
+   "state": "draft"
+  },
+  "nav.row.laws.statutes": {
+   "en": "Statutes (RSA)",
+   "es": "Leyes (RSA)",
+   "state": "draft"
+  },
+  "nav.row.officials.counties": {
+   "en": "County",
+   "es": "Condados",
+   "state": "draft"
+  },
+  "nav.row.officials.executive": {
+   "en": "Executive",
+   "es": "Ejecutivo",
+   "state": "draft"
+  },
+  "nav.row.officials.federal": {
+   "en": "Federal",
+   "es": "Federal",
+   "state": "draft"
+  },
+  "nav.row.officials.former": {
+   "en": "Former members",
+   "es": "Exmiembros",
+   "state": "draft"
+  },
+  "nav.row.officials.judicial": {
+   "en": "Judicial",
+   "es": "Judicial",
+   "state": "draft"
+  },
+  "nav.row.officials.legislators": {
+   "en": "Legislators",
+   "es": "Legisladores",
+   "state": "draft"
+  },
+  "nav.row.officials.members-elect": {
+   "en": "Members-elect",
+   "es": "Miembros electos",
+   "state": "draft"
+  },
+  "nav.row.officials.my-town": {
+   "en": "My Town",
+   "es": "Mi municipio",
+   "state": "draft"
+  },
+  "nav.row.resources.data": {
+   "en": "Data and API",
+   "es": "Datos y API",
+   "state": "draft"
+  },
+  "nav.row.resources.guides": {
+   "en": "How-to guides",
+   "es": "Guías prácticas",
+   "state": "draft"
+  },
+  "nav.row.resources.learn": {
+   "en": "Learn",
+   "es": "Aprenda",
+   "state": "draft"
+  },
+  "nav.row.resources.sources": {
+   "en": "Official sources",
+   "es": "Fuentes oficiales",
+   "state": "draft"
+  },
   "nav.sections": {
    "en": "Sections",
    "es": "Secciones",

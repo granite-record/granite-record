@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.282
+# GRANITE_VERSION: 2026-09-04.283
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -4691,6 +4691,7 @@ def main():
     a = ap.parse_args()
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
+    chrome.use_site(out)
 
     # THE DRAWN FILES. brand/ holds the originals, build_brand.py derives
     # assets/, and this is the step that puts them beside the pages -- site/

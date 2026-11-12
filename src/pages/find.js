@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.56
+// GRANITE_VERSION: 2026-09-16.57
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1313,7 +1313,9 @@ function menuMount(){
   // puts focus on its first link.
   const open=()=>{
     nav.classList.add("open");btn.setAttribute("aria-expanded","true");
-    const first=drop.querySelector("a[href]");
+    // The first link a reader can see: on a phone the tabs are folded away
+    // and the menu is every section's pages (.navall, chrome.menu_all).
+    const first=[...drop.querySelectorAll("a[href]")].find(a=>a.offsetParent!==null);
     if(first)first.focus();
   };
   btn.addEventListener("click",()=>{
@@ -1341,8 +1343,68 @@ function menuMount(){
   drop.addEventListener("click",e=>{if(e.target.closest("a"))shut();});
 }
 
+/* THE ROW FOLLOWS THE PAGE (the header rows, November 2026). The header's
+   second row and the phone menu mark the page a reader is on as the build
+   wrote it; on a page whose row items are parts of the page itself, which
+   one is current is the page's to say, and changes without a load:
+   - a hub's tabs (Laws, Officials, Resources: data-pane). The hub's own
+     script opens a panel -- from an address, a link inside another panel, a
+     member-elect tab handing over to Legislators on the day it retires --
+     and the row marks the tab it opened, whatever opened it;
+   - a heading on the page (Committees: data-hash), marked while the address
+     names it;
+   - the same page with a query (the bill requests are /bills?term=...),
+     marked when the address carries it. */
+function rowMount(){
+  const norm=p=>(p||"").replace(/\.html$/,"").replace(/\/index$/,"/").replace(/(.)\/$/,"$1");
+  const here=norm(location.pathname);
+  const mine=[...document.querySelectorAll(".subrow a,.nvpages a")].filter(a=>norm(a.pathname)===here);
+  if(!mine.length)return;
+  const light=pick=>mine.forEach(a=>{
+    if(pick(a))a.setAttribute("aria-current","page");else a.removeAttribute("aria-current");
+  });
+  const bar=document.querySelector(".twntabs");
+  if(bar&&mine.some(a=>a.hasAttribute("data-pane"))){
+    const sync=()=>{
+      const t=bar.querySelector('[role="tab"][aria-selected="true"]');
+      if(t)light(a=>a.getAttribute("data-pane")===t.getAttribute("data-pane"));
+    };
+    sync();
+    new MutationObserver(sync).observe(bar,{subtree:true,attributes:true,attributeFilter:["aria-selected"]});
+    // A row item on its own hub is that hub's tab, so choosing it is
+    // pressing the tab: the panel opens and the address names it, as the
+    // tab's own click does, where following the link to the hub's bare
+    // address (its first tab, /officials) would load the page again.
+    mine.forEach(a=>{
+      const t=bar.querySelector('[role="tab"][data-pane="'+a.getAttribute("data-pane")+'"]');
+      if(t)a.addEventListener("click",e=>{
+        if(e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+        e.preventDefault();t.click();
+        // From the phone's menu, a reader may be far down the panel they
+        // were in: the one they chose starts at the top of the page.
+        const row=document.querySelector("nav.subnav");
+        if(row&&row.getBoundingClientRect().bottom<0)window.scrollTo(0,0);
+      });
+    });
+    return;
+  }
+  if(mine.some(a=>a.hasAttribute("data-hash"))){
+    const sync=()=>light(a=>a.getAttribute("data-hash")===location.hash);
+    sync();
+    addEventListener("hashchange",sync);
+    return;
+  }
+  const asked=mine.filter(a=>a.search&&a.search.length>1);
+  if(asked.length){
+    const q=new URLSearchParams(location.search);
+    const on=asked.find(a=>[...new URLSearchParams(a.search)].every(([k,v])=>q.get(k)===v));
+    if(on)light(a=>a===on);
+  }
+}
+
 findMount();
 menuMount();
+rowMount();
 
 // THE SKIP LINK TAKES THE KEYBOARD WITH IT. Its target -- #results on a record
 // page, #main on the home page, About and the search page -- is a plain

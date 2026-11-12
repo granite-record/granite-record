@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.10
+# GRANITE_VERSION: 2026-10-23.11
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -53,6 +53,7 @@ current).
 
 import html as _html
 import json as _json
+import re as _re
 
 import i18n
 from components import icon
@@ -87,6 +88,321 @@ def tab_words(lang="en"):
             "calendar.html": say(lang, "nav.calendar", "Calendar"),
             "committees.html": say(lang, "nav.committees", "Committees"),
             "resources.html": say(lang, "nav.resources", "Resources")}
+
+
+# THE SECOND ROW: EACH SECTION'S OWN PAGES (the header rows, the owner's
+# approval of the prototype, 7 November 2026). Under the six tabs, the pages
+# of the section a reader is in, sentence case, the one they are on marked
+# with the tab's own underline; on a phone a strip under the bar that names
+# the section and scrolls sideways, and in the open menu every section with
+# all its pages. One table, beside NAV_TABS, drawn by nav(), so the two
+# emitters -- shell.page()'s 34,000 record pages and build_pages.shell()'s
+# five -- carry the same row, as they carry the same tabs.
+#
+# Each entry is (id, address). The address is a page here, as NAV_TABS
+# writes one, or a hub's tab at its existing address ("officials.html
+# #legislators"): the in-page tabs of Laws, Officials and Resources are this
+# row now, and every address they answered still opens them (their own
+# script, build_town_pages.TABS_JS, which also follows a hashchange). A page
+# planned and not built is not here; it joins the day it is.
+#
+# Two are seasonal and drawn only while their page exists (row_facts): the
+# bill requests, between a session's first request and its filing deadline,
+# and the members-elect, between the election and Organization Day.
+ROWS = {
+    "bills.html": (("search", "bills.html"),
+                   ("requests", "bills.html?term={term}"),
+                   ("terms", "directory.html")),
+    "laws.html": (("statutes", "laws.html"),
+                  ("constitution", "laws.html#constitution")),
+    # The tabs Officials has today, in their order, until the owner settles
+    # the hub's row (docs/design/header-rows/README.md).
+    "officials.html": (("my-town", "officials.html"),
+                       ("legislators", "officials.html#legislators"),
+                       ("members-elect", "officials.html#members-elect"),
+                       ("federal", "officials.html#federal"),
+                       ("executive", "officials.html#executive"),
+                       ("judicial", "officials.html#judicial"),
+                       ("counties", "officials.html#counties"),
+                       ("former", "directory/former-legislators.html")),
+    "calendar.html": (("week", "calendar.html"),
+                      ("sessions", "session/house.html"),
+                      ("journals", "calendar/documents.html")),
+    "committees.html": (("house", "committees.html#house"),
+                        ("senate", "committees.html#senate"),
+                        ("study", "committees.html#statstud"),
+                        ("former", "committees.html#archived")),
+    "resources.html": (("guides", "resources.html"),
+                       ("learn", "resources.html#learn"),
+                       ("sources", "resources.html#sources"),
+                       ("data", "data.html")),
+}
+
+# The hubs whose row is their in-page tabs: each item there whose address is
+# the hub itself names a panel (data-pane), and the row follows the panel the
+# hub's script opens (ROW_JS) -- by an address, a link inside a panel, a
+# member-elect tab handing over to Legislators on the day it retires.
+TAB_HUBS = ("laws.html", "officials.html", "resources.html")
+
+# Not in the phone's all-sections menu: the members-elect, whose file the
+# pipeline writes after the bill pages are built, so a menu that named them
+# would name them on some pages and not others. The row on Officials' own
+# pages, all built after it, carries them.
+NOT_IN_MENU = {("officials.html", "members-elect")}
+
+
+def row_words(lang="en", year=""):
+    """{(section, id): label} of ROWS in `lang`. Written out a call each, as
+    tab_words is, so the catalog's checks can read every key and its English
+    from the source."""
+    return {
+        ("bills.html", "search"): say(lang, "nav.row.bills.search", "Search bills"),
+        ("bills.html", "requests"): say(lang, "nav.row.bills.requests", "{year} bill requests",
+                                        year=year),
+        ("bills.html", "terms"): say(lang, "nav.row.bills.terms", "Every term"),
+        ("laws.html", "statutes"): say(lang, "nav.row.laws.statutes", "Statutes (RSA)"),
+        ("laws.html", "constitution"): say(lang, "nav.row.laws.constitution", "Constitution"),
+        ("officials.html", "my-town"): say(lang, "nav.row.officials.my-town", "My Town"),
+        ("officials.html", "legislators"): say(lang, "nav.row.officials.legislators", "Legislators"),
+        ("officials.html", "members-elect"): say(lang, "nav.row.officials.members-elect",
+                                                 "Members-elect"),
+        ("officials.html", "federal"): say(lang, "nav.row.officials.federal", "Federal"),
+        ("officials.html", "executive"): say(lang, "nav.row.officials.executive", "Executive"),
+        ("officials.html", "judicial"): say(lang, "nav.row.officials.judicial", "Judicial"),
+        ("officials.html", "counties"): say(lang, "nav.row.officials.counties", "County"),
+        ("officials.html", "former"): say(lang, "nav.row.officials.former", "Former members"),
+        ("calendar.html", "week"): say(lang, "nav.row.calendar.week", "This week"),
+        ("calendar.html", "sessions"): say(lang, "nav.row.calendar.sessions", "Session days"),
+        ("calendar.html", "journals"): say(lang, "nav.row.calendar.journals",
+                                           "Calendars and journals"),
+        ("committees.html", "house"): say(lang, "nav.row.committees.house", "House"),
+        ("committees.html", "senate"): say(lang, "nav.row.committees.senate", "Senate"),
+        ("committees.html", "study"): say(lang, "nav.row.committees.study", "Study and statutory"),
+        ("committees.html", "former"): say(lang, "nav.row.committees.former", "Former committees"),
+        ("resources.html", "guides"): say(lang, "nav.row.resources.guides", "How-to guides"),
+        ("resources.html", "learn"): say(lang, "nav.row.resources.learn", "Learn"),
+        ("resources.html", "sources"): say(lang, "nav.row.resources.sources", "Official sources"),
+        ("resources.html", "data"): say(lang, "nav.row.resources.data", "Data and API"),
+    }
+
+
+# WHERE THE ROW'S SEASONAL PAGES ARE READ FROM: the site folder the builders
+# write (use_site), "site" unless a builder says otherwise. Read once a run.
+_SITE = ["site"]
+_FACTS = {}
+
+
+def use_site(site):
+    """The site folder the row's seasonal pages are judged against
+    (row_facts). shell.template() and build_pages call it with theirs."""
+    if str(site) != _SITE[0]:
+        _SITE[0] = str(site)
+        _FACTS.clear()
+
+
+def row_facts():
+    """{"requests": {"term", "year"} or None, "elect_until": the day the
+    members-elect take office, or None}: what the row's two seasonal items
+    need, judged once a run.
+
+    THE REQUESTS FROM THEIR SOURCE FIRST. build_lsrs writes them into
+    meta.json after build_site_v2 has written the bill pages, so meta.json
+    alone would give the bills' own pages a row without them and the rest of
+    Bills one with them. lsrs.json, the file build_lsrs reads (beside the
+    site folder), is there before either step runs, and build_lsrs' own
+    functions name the term from it; meta.json is the answer where it is not (a page builder run on
+    its own over a built site)."""
+    if _FACTS:
+        return _FACTS
+    from pathlib import Path
+    site = Path(_SITE[0])
+    req = None
+    # Beside the site folder, where the pipeline keeps it: the project's
+    # root, whichever folder a builder was started in.
+    src = site.resolve().parent / "lsrs.json"
+    try:
+        if src.is_file():
+            import build_lsrs
+            rows = _json.loads(src.read_text(encoding="utf-8"))
+            year, _rows, _old = build_lsrs.newest_session(rows) if rows else (None, None, None)
+            if year:
+                req = {"term": build_lsrs.requests_term(year)[0], "year": str(year)}
+    except Exception:  # a source that will not read is build_lsrs' to report
+        req = None
+    if req is None and (site / "meta.json").is_file():
+        try:
+            r = _json.loads((site / "meta.json").read_text(encoding="utf-8")).get("requests")
+        except ValueError:
+            r = None
+        if r and r.get("term"):
+            req = {"term": r["term"], "year": str(r.get("year") or str(r["term"])[:4])}
+    until = None
+    try:
+        from build_members_elect import for_pages
+        elect = for_pages(site)
+        until = elect["takes_office"] if elect else None
+    except ImportError:
+        until = None
+    _FACTS.update({"requests": req, "elect_until": until})
+    return _FACTS
+
+
+def _split(address):
+    """("officials.html", "#legislators"): an address's page and the rest."""
+    for i, ch in enumerate(address):
+        if ch in "?#":
+            return address[:i], address[i:]
+    return address, ""
+
+
+def row_items(section, lang="en", facts=None):
+    """[(id, label, href, extra attributes)] of `section`'s row, the
+    seasonal ones only while their page exists, every address in `lang`'s
+    page where it has one (i18n.href) and the English page where not."""
+    f = row_facts() if facts is None else facts
+    req = f.get("requests")
+    words = row_words(lang, (req or {}).get("year", ""))
+    out = []
+    for iid, addr in ROWS.get(section, ()):
+        extra = ""
+        if iid == "requests":
+            if not req:
+                continue
+            addr = addr.format(term=req["term"])
+        if iid == "members-elect":
+            if not f.get("elect_until"):
+                continue
+            from components import until_attrs
+            import build_date
+            extra = f" data-elect{until_attrs(f['elect_until'], build_date.today().isoformat())}"
+        page, rest = _split(addr)
+        href = (page if lang == i18n.DEFAULT else i18n.href(lang, page)) + rest
+        if section in TAB_HUBS and page == section:
+            extra += f' data-pane="{iid if rest else _first_pane(section)}"'
+        elif page == section and rest.startswith("#"):
+            extra += f' data-hash="{rest}"'
+        out.append((iid, words[(section, iid)], href, extra))
+    return out
+
+
+def _first_pane(section):
+    """The panel a hub opens on: its first row item's."""
+    return ROWS[section][0][0]
+
+
+def locate(path, g=None):
+    """(section, item) a page at `path` ("/legislator/x.html") belongs to,
+    by its address and, for a member, by whether they still sit (g, the
+    page's globals): ("", "") for a page in no section, and an item of ""
+    for a page in a section and none of its row's items -- the home page,
+    About, /search, the 404 page. The record pages' rule, set out in the
+    header rows' brief: a bill's page is Bills' search, a chapter of the
+    statutes Laws' Statutes, a member's page Legislators or Former members,
+    a committee's its chamber or Study and statutory, a session day Session
+    days, a week This week, a guide How-to guides, a Learn page and the
+    glossary Learn."""
+    g = g or {}
+    p = path.lstrip("/")
+    if p.startswith("es/"):
+        p = p[3:]
+    p = p[:-5] if p.endswith(".html") else p
+    p = p.rstrip("/")
+    top, _, rest = p.partition("/")
+    if p in ("", "index", "about", "search", "404"):
+        return "", ""
+    if top == "request":
+        return "bills.html", "requests"
+    if top in ("bills", "bill"):
+        return "bills.html", "search"
+    if top == "directory":
+        if not rest:
+            return "bills.html", "terms"
+        if rest.endswith("-requests"):
+            return "bills.html", "requests"
+        if rest.startswith("bills-"):
+            return "bills.html", "terms"
+        if rest == "legislators":
+            return "officials.html", "legislators"
+        if rest == "former-legislators":
+            return "officials.html", "former"
+        if rest.startswith("sessions-"):
+            return "calendar.html", "sessions"
+        return "officials.html", "my-town"  # every town and ward
+    if top == "laws":
+        return "laws.html", "statutes"
+    if top in ("officials", "legislators"):
+        return "officials.html", "my-town"
+    if top == "legislator":
+        if g.get("GR_FORMER"):
+            return "officials.html", "former"
+        return "officials.html", "legislators"
+    if top == "town":
+        # Under My Town, whose box finds them, until the owner settles where
+        # a town's page sits once My Town is a pop-up (the design note).
+        return "officials.html", "my-town"
+    if top == "calendar":
+        return "calendar.html", "journals" if rest.startswith("documents") else "week"
+    if top == "session":
+        return "calendar.html", "sessions"
+    if top in ("committees", "committee"):
+        # By the code in the address, in either case (committee/s42 is the
+        # Senate's): ss is a statutory or study committee, then H or S.
+        code = rest.lower()
+        if code.startswith("ss"):
+            return "committees.html", "study"
+        if code.startswith("s"):
+            return "committees.html", "senate"
+        if code.startswith("h"):
+            return "committees.html", "house"
+        return "committees.html", ""
+    if top == "resources":
+        return "resources.html", "guides"
+    if top == "guides":
+        return "resources.html", "guides"
+    if top == "learn":
+        return "resources.html", "learn"
+    if top in ("data", "api"):
+        return "resources.html", "data"
+    if top == "live":
+        return "calendar.html", ""
+    return "", ""
+
+
+def row(section, item=None, lang="en", facts=None):
+    """The second row: `section`'s pages, `item` marked as the one a reader
+    is on. Empty for a page in no section. A <nav> of its own, named for the
+    section, after the header's, so a screen reader's landmarks say "Bills,
+    navigation" for it; the section's name is drawn too, for the phone's
+    strip, and hidden from a screen reader there, which has the landmark's."""
+    items = row_items(section, lang, facts)
+    if not section or not items:
+        return ""
+    name = _html.escape(tab_words(lang)[section])
+    cur = ' aria-current="page"'
+    links = "".join(f'<a href="{href}"{extra}{cur if iid == item else ""}>{label}</a>'
+                    for iid, label, href, extra in items)
+    return (f'<nav class="subnav" aria-label="{name}" data-section="{section}"><div class="in">'
+            f'<span class="sublab" aria-hidden="true">{name}</span>'
+            f'<div class="subrow">{links}</div></div></nav>')
+
+
+def menu_all(page="", item=None, lang="en", facts=None):
+    """The phone's open menu: every section as a heading link, its pages
+    under it in two columns (app.css hides it from 45em, where the tabs and
+    the row do this). Folded into .navdrop beside the tabs, so the one menu
+    button opens both, and the tabs alone are hidden there."""
+    cur = ' aria-current="page"'
+    words = tab_words(lang)
+    to = (lambda h: h) if lang == i18n.DEFAULT else (lambda h: i18n.href(lang, h))
+    out = []
+    for href, _label, _glyph in NAV_TABS:
+        pages = "".join(f'<a href="{h}"{extra}{cur if href == page and iid == item else ""}>{label}</a>'
+                        for iid, label, h, extra in row_items(href, lang, facts)
+                        if (href, iid) not in NOT_IN_MENU)
+        out.append(f'<div class="nvsec"><a class="nvhead" href="{to(href)}"'
+                   f'{cur if href == page and not item else ""}>{words[href]}</a>'
+                   f'<div class="nvpages">{pages}</div></div>')
+    return '<div class="navall">' + "".join(out) + "</div>"
 
 # THE REPOSITORY, NAMED ONCE. The footer links it, and so do the Data page
 # and "How this is made" -- three places for three different readers, and one
@@ -462,9 +778,15 @@ def head(page="", lang="en", scripts=()):
                                  COMPONENTS_JS) if x)
 
 
-def nav(page="", home=False, lang="en"):
-    """The header: the wordmark, the five sections with `page` marked as the
-    one a reader is on, the theme control and the phone's menu button.
+def nav(page="", home=False, lang="en", item=None, facts=None):
+    """The header: the wordmark, the six sections with `page`'s marked as
+    the one a reader is on, the theme control and the phone's menu button;
+    then the second row, that section's own pages with `item` marked (row).
+
+    `page` is a section ("officials.html") or any page a section holds
+    ("data.html", which is Resources'); `item` is the row's id, which
+    locate() gives a record page from its address, "" for none of them and
+    None to have it worked out from `page`.
 
     THE HOME PAGE HAS NO TAB, so the brand carries the "you are here" for it
     (home=True) -- said to a screen reader, not drawn, because the chip that
@@ -472,24 +794,57 @@ def nav(page="", home=False, lang="en"):
 
     .navtabs exists so the strip wraps as one unit; .navdrop wraps the
     sections and the theme control so a phone can fold both behind one button
-    without the markup being written twice (app.css, THE HEADER TABS).
+    without the markup being written twice (app.css, THE HEADER TABS). On a
+    phone the folded panel shows .navall, every section with its pages,
+    instead of the tabs alone (menu_all).
 
     In another language the words are that language's and every link is to
     the page in it where there is one (i18n.href), the English page where
     there is not."""
     cur = ' aria-current="page"'
+    section = section_of(page)
+    if item is None and section and section != page:
+        item = locate("/" + page)[1]
+    if item is None and section and section == page and ROWS[section][0][1] == section:
+        # A section's own page is its first row item -- the search, This
+        # week, a hub's first tab -- where that item is the page itself.
+        # Committees' first is a heading on it (#house), and the page is all
+        # four of its items at once, so none is marked until an address names
+        # one (ROW_JS).
+        item = ROWS[section][0][0]
     words = tab_words(lang)
     to = (lambda h: h) if lang == i18n.DEFAULT else (lambda h: i18n.href(lang, h))
-    tabs = "\n".join(f'<a href="{to(href)}"{cur if href == page else ""}>{icon(glyph)}{words[href]}</a>'
+    tabs = "\n".join(f'<a href="{to(href)}"{cur if href == section else ""}>{icon(glyph)}{words[href]}</a>'
                      for href, _label, glyph in NAV_TABS)
     brand_cur = cur if home else ""
     sections = _html.escape(say(lang, "nav.sections", "Sections"))
     return (f'<nav class="top" aria-label="{sections}"><div class="in">\n'
             f'<a class="brand" href="{to("index.html")}"{brand_cur} translate="no">Granite Record</a>\n'
             f'<div class="navdrop" id="navdrop"><div class="navtabs">{tabs}</div>\n'
+            f'{menu_all(section, item, lang, facts)}\n'
             f'{THEMER_BTN}</div>\n'
             f'{menu_btn(lang)}\n'
-            '</div></nav>')
+            '</div></nav>' + row(section, item, lang, facts))
+
+
+def section_of(page):
+    """The section `page` is in: itself where it is a tab, else the one whose
+    row holds it, else the one locate() puts it in; "" for none."""
+    if not page:
+        return ""
+    tabs = {h for h, _l, _g in NAV_TABS}
+    if page in tabs:
+        return page
+    for sec, items in ROWS.items():
+        if any(_split(a)[0] == page for _i, a in items):
+            return sec
+    return locate("/" + page)[0]
+
+
+# THE HEADER, WHOLE: the top bar and the row after it, as nav() writes them,
+# so that a page made from a template can have its header drawn again for
+# the page it is (shell.page).
+NAV_RE = _re.compile(r'<nav class="top".*?</nav>(?:<nav class="subnav".*?</nav>)?', _re.S)
 
 
 def footer(lang="en", alt=None):

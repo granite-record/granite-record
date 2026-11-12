@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.41
+# GRANITE_VERSION: 2026-09-07.42
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -126,6 +126,7 @@ def template(site=Path("site"), lang="en", scripts=(), alt=None):
     language's (chrome.fill), its head carrying the words `scripts` ask tr()
     for, and its footer's language list leading to this page's versions in
     `alt`, {code: address}. English, with no `alt`, is as it always was."""
+    chrome.use_site(site)
     for p in (Path("src/pages/bills.html"), Path(site) / "bills.html"):
         if p.exists():
             t = chrome.fill(p.read_text(encoding="utf-8"), "bills.html", lang, scripts, alt)
@@ -695,7 +696,7 @@ def ld_script(jsonld):
 
 def page(t, *, path, title, description, base, globals=None, noscript="",
          alternate="", skip_label="Skip to the content", og_title=None,
-         sr_title=None, nav_current="", jsonld=None,
+         sr_title=None, nav_current="", nav_item=None, jsonld=None,
          data_json=None, data_url=None, og_type="article", og_image=None,
          og_alt=None, cite=True, cite_title=None, canonical=None,
          static="", lang="en", alts=None, changed=None):
@@ -731,18 +732,25 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
     if lang != "en" or alts:
         t = t.replace('<html lang="en">', f'<html lang="{lang}"' + "".join(
             f' data-alt-{c}="{E(a)}"' for c, a in (alts or {}).items()) + ">", 1)
-    if nav_current and lang != "en":
-        import i18n
-        nav_current = i18n.href(lang, nav_current).lstrip("/")
-    if nav_current:
-        # The template is bills.html, so its nav marks Bills as the current
-        # page and every page built from it inherits that -- the committees
-        # index, a member's page and these all tell a reader they are on
-        # Bills. aria-current is what a screen reader uses to say "you are
-        # here", so this is not only decoration.
-        t = t.replace(' aria-current="page"', "", 1)
-        t = t.replace(f'<a href="{nav_current}"',
-                      f'<a href="{nav_current}" aria-current="page"', 1)
+    # THE HEADER, DRAWN FOR THIS PAGE (the header rows, November 2026). The
+    # template is bills.html, so its header marks Bills and Search bills,
+    # and every page built from it inherits that; aria-current is what a
+    # screen reader uses to say "you are here", so this is not decoration.
+    # The section and the row's item come from the page's address
+    # (chrome.locate), `nav_current` naming the section for a page whose
+    # address does not, and `nav_item` the item where only the builder
+    # knows it (a member-elect's page). The whole header is drawn again,
+    # tabs, row and menu, rather than a marker moved: the row is a
+    # different row in each section.
+    section, item = chrome.locate(path, globals)
+    if nav_item is not None:
+        item = nav_item
+    if nav_current and not section:
+        section = chrome.section_of(nav_current)
+    if section or nav_current:
+        m = chrome.NAV_RE.search(t)
+        assert m, f"{path}: the template has no header for its section to be marked in"
+        t = t[:m.start()] + chrome.nav(section, lang=lang, item=item) + t[m.end():]
     if sr_title is not None:
         # An empty string REMOVES it, which is what a page with its own
         # visible <h1> wants: keeping both makes a screen reader announce the

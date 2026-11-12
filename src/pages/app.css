@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.379 */
+/* GRANITE_VERSION: 2026-09-07.380 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -1546,7 +1546,7 @@ line-height:1.1}
   color-scheme:light}
   /* The footer's feedback button with them: it is white words on a pine
      ground, and with no ground printed it is white on white. */
-  nav.top,.skip,.calskip,.searchrow,.ftoggle,.backto,.pageacts,.findpanel,
+  nav.top,nav.subnav,.skip,.calskip,.searchrow,.ftoggle,.backto,.pageacts,.findpanel,
   .findscrim,details.report,.pshare,.sharestate,.player iframe,.fbk,
   .ytcard .ytgo,.ytpanel .ytaform button[type=submit],.followmail .followsend,
   .followmail .followfreq,.webinar,.testify,.trrep,.trpill,.trbox{display:none !important}
@@ -1786,6 +1786,65 @@ overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   html[lang="es"] nav.top .navtabs a{flex:1 1 0;justify-content:center;min-height:44px;
   padding:0 var(--sp-2)}
   html[lang="es"] .setbtn{margin-left:auto}
+}
+/* THE SECOND ROW (the header rows, the owner's approval of 7 November
+   2026): the pages of the section a reader is in, under the six tabs.
+   chrome.row writes it, a <nav> of its own after nav.top's, and chrome.ROWS
+   is what it holds. Sentence case, 15px at 500, the one a reader is on in
+   ink at 600 with the tab's own 2px pine underline, so the two levels say
+   "you are here" one way. 44px targets, the page's column (1180px, 24px
+   gutter), a rule under it as under the bar, and the bar's ground: it is the
+   page's edge, not a card on it. A row too long for its width scrolls
+   sideways rather than wrapping into a second row of chrome. */
+nav.subnav{background:var(--paper);border-bottom:1px solid var(--rule)}
+nav.subnav .in{max-width:1180px;margin:0 auto;padding:0 var(--sp-8);display:flex;
+align-items:center;overflow-x:auto;scrollbar-width:none}
+nav.subnav .in::-webkit-scrollbar{display:none}
+.sublab{display:none}
+.subrow{display:flex;gap:var(--sp-1);flex:0 0 auto}
+.subrow a{display:flex;align-items:center;min-height:44px;padding:0 var(--sp-5);
+font:500 .9375rem/1.2 var(--sans);color:var(--ink-2);text-decoration:none;white-space:nowrap}
+.subrow a:hover{color:var(--ink)}
+.subrow a[aria-current]{color:var(--ink);font-weight:600;box-shadow:inset 0 -2px 0 var(--pine)}
+.subrow a:focus-visible{outline-offset:-2px}
+/* THE HUBS' OWN TABS ARE THE ROW NOW. Laws, Officials and Resources kept a
+   strip of in-page tabs under their titles; the row above is that strip, and
+   it opens the same panels at the same addresses (chrome.ROWS, ROW_JS). The
+   strip stays in the page, unseen, because its script is what opens a panel
+   and its buttons are what each panel is labelled by. A town page's tabs are
+   a town's own and stay. */
+.twntabs.oftabs,.twntabs.lw-tabs,.twntabs.r-tabs{display:none !important}
+/* THE PHONE'S ALL-SECTIONS MENU (chrome.menu_all): from 45em the tabs and
+   the row do its work. */
+.navall{display:none}
+@media (max-width:45em){
+  /* THE STRIP: the section's name, in the 12px uppercase pine of a label,
+     then its pages, scrolling sideways under the bar, a fade at the right
+     edge saying there is more. The name scrolls with them. */
+  nav.subnav{position:relative}
+  nav.subnav .in{padding:0 var(--sp-9) 0 var(--sp-6)}
+  .sublab{display:block;flex:0 0 auto;margin-right:var(--sp-3);
+  font:600 .75rem/1.2 var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--pine)}
+  .subrow a{padding:0 10px}
+  nav.subnav::after{content:"";position:absolute;top:0;right:0;bottom:1px;width:28px;
+  background:linear-gradient(to right,rgba(255,255,255,0),var(--paper));pointer-events:none}
+  /* THE MENU: every section as a heading link, its pages under it in two
+     columns of 44px rows, Settings at the end; the width of the screen, and
+     it scrolls inside itself when the sections are taller than the window. */
+  .navdrop{left:var(--sp-5);max-height:calc(100vh - 5rem);max-height:calc(100dvh - 5rem);
+  overflow-y:auto}
+  .navdrop .navtabs{display:none}
+  .navall{display:block;padding:var(--sp-2) var(--sp-6) var(--sp-4)}
+  .nvsec{padding:var(--sp-4) 0 var(--sp-5);border-bottom:1px solid var(--rule)}
+  nav.top .nvhead{min-height:40px;padding:0;border:0;font-size:.8125rem;color:var(--ink-2)}
+  nav.top .nvhead[aria-current]{color:var(--pine)}
+  .nvpages{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 var(--sp-4)}
+  nav.top .nvpages a{min-height:44px;padding:var(--sp-2) var(--sp-4);border:0;border-radius:0;
+  font:500 .9375rem/1.25 var(--sans);letter-spacing:normal;text-transform:none;
+  color:var(--ink);white-space:normal}
+  nav.top .nvpages a[aria-current]{font-weight:600;box-shadow:inset 3px 0 0 var(--pine);
+  background:var(--pine-soft)}
+  .navall a:focus-visible{outline-offset:-2px}
 }
 /* ==== /HUBS, SHARED ======================================================= */
 
