@@ -12805,6 +12805,10 @@ function citeDayFull(d){
   var now=new Date(), s=citeDay(now), full=citeDayFull(now);
   for(var i=0;i<els.length;i++)
     els[i].textContent=els[i].classList&&els[i].classList.contains("citefull")?full:s;
+  // The note under the Cite box says which date is written in; with the
+  // reader's own it says that instead.
+  var rd=document.querySelectorAll(".citeread");
+  for(var k=0;k<rd.length;k++)rd[k].textContent="The date below is the day you read this page.";
   // The Copy buttons are written hidden, so a page read without JavaScript
   // offers none that does nothing; here they work, so here they show.
   var bs=document.querySelectorAll("[data-citecopy]");

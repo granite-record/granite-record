@@ -20171,14 +20171,15 @@ document.addEventListener = (t, f) => { (on[t] = on[t] || []).push(f); };
 const SLOTS = [{textContent: "1 January 2000"}, {textContent: "1 January 2000"},
   {textContent: "1 January 2000", classList: {contains: c => c === "citefull"}}];
 const BTNS = [{hidden: true}, {hidden: true}];
-document.querySelectorAll = s => s === ".citeday" ? SLOTS : s === "[data-citecopy]" ? BTNS : [];
+const READ = [{textContent: "The date below is the day this page's record last changed."}];
+document.querySelectorAll = s => s === ".citeday" ? SLOTS : s === "[data-citecopy]" ? BTNS : s === ".citeread" ? READ : [];
 // A browser set to French. A citation that asks the locale says so.
 Date.prototype.toLocaleDateString = () => "24 septembre 2026";
 Date.prototype.toLocaleString = () => "24/09/2026";
 let s;
 try { s = (0, eval)(fs.readFileSync("./app.js", "utf8") + ";({citeDay, citeDayFull})"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
-const out = {slots: SLOTS.map(x => x.textContent), shown: BTNS.map(b => !b.hidden),
+const out = {read: READ[0].textContent, slots: SLOTS.map(x => x.textContent), shown: BTNS.map(b => !b.hidden),
   today: s.citeDay(new Date()), todayFull: s.citeDayFull(new Date()),
   days: JSON.parse(fs.readFileSync("./dates.json", "utf8"))
     .map(([y, m, d]) => s.citeDay(new Date(y, m - 1, d))),
@@ -20289,6 +20290,13 @@ def _cite_up_and_copied():
                    description="A bill.", changed="2026-03-04")
     assert '<span class="citeday">4 Mar. 2026</span>' in dated and         f'<span class="citeday">{today}</span>' not in dated, (
         "shell.page(changed=...) does not date the citation by the record's day")
+    # The note says the no-JavaScript truth in a span app.js replaces; it must
+    # not claim the page was read on the date written in.
+    assert 'class="citenote"' in block and "day the page was read" not in block and         '<span class="citeread">The date below is the day this page&rsquo;s record last changed.</span>' in block, (
+        "the Cite note does not say, in a .citeread span, that the written date is the record's last change")
+    gblock = S.GUIDE_CITE
+    assert '<span class="citeread">The date below is the day this guide&rsquo;s sources were last read.</span>' in gblock         and "day the page was read" not in gblock, (
+        "the guide's Cite note does not say its written date is the day its sources were last read")
     # APA and Chicago in their own form, "October 30, 2026" (the cohesion audit, B-5).
     full = S.cite_day_full(today)
     for k, lead in (("apa", "Retrieved "), ("chicago", "Accessed ")):
@@ -20324,6 +20332,8 @@ def _cite_up_and_copied():
         got = json.loads(said.splitlines()[-1])
     finally:
         shutil.rmtree(root, ignore_errors=True)
+    assert got["read"] == "The date below is the day you read this page.", (
+        f"app.js does not put the reader's own sentence in the note's .citeread: {got['read']!r}")
     assert got["days"] == want, (
         "app.js and shell.py write a citation's date differently: "
         + "; ".join(f"{a} / {b}" for a, b in zip(got["days"], want) if a != b))
