@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.25
+# GRANITE_VERSION: 2026-09-09.26
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -1017,7 +1017,129 @@ def show_related(it):
             'boilerplate. Marked passages are the five-word runs the two share.</p>')
 
 
+# ------------------------------------------------------------------ tags
+#
+# THE TAG BENCH (topics-as-tags design, section 4.4). A tag is a subject a bill
+# is also about; the registry (corrections/tags.json, or the draft named by
+# --tags) says which phrase or chapter attaches it, and a PERSON says whether it
+# should have. Per tag: 10 bills its title attaches, 10 that only the analysis
+# or a dedicated chapter attaches, 10 bills it does not carry that mention its
+# core words three times or more, and the opposite-aim pair. A tag, or one tier
+# of it, goes on the site at 27 of 30 correct, 28 of 30 for a tag whose
+# neutrality is hard. Nothing here judges: the pools come from
+# src/parse/tag_counts.py and every verdict is a person's click.
+
+TAG_PASS, TAG_PASS_HARD, TAG_MISS_MAX = 27, 28, 2
+
+
+def sample_tags():
+    import tag_counts as TC
+    import tag_rules as TR
+    reg, source = TR.load_registry()
+    if source == "fixture":
+        return []
+    rules = TR.compile_registry(reg)
+    bills = TR.load_bills()
+    results = TR.tag_all(rules, bills)
+    samples, _n = TC.draw(reg, rules, bills, results, TR.load_texts())
+    out = []
+    for order, tid in enumerate(rules):
+        e, s = reg[tid], samples[tid]
+        base = {"kind": "tag", "tag": tid, "order": order, "tag_name": e.get("name", tid),
+                "definition": e.get("definition", ""), "hard": bool(e.get("neutrality_hard"))}
+        for sample in ("title", "other", "miss"):
+            for b in s[sample]:
+                out.append({**base, **b, "sample": sample,
+                            "key": f"tag|{tid}|{sample}|{b['term']}/{b['bill']}"})
+        if len(s["pair"]) == 2:
+            out.append({**base, "sample": "pair", "key": f"tag|{tid}|pair",
+                        "a": s["pair"][0], "b": s["pair"][1]})
+    return out
+
+
+def _tag_bill_html(b, shown_why=True):
+    chap = ", ".join("RSA " + c for c in b.get("chapters") or []) or "none read"
+    return (f'<table class="facts">'
+            f'<tr><th>Bill</th><td>{E(b["bill"])} &middot; {E(b["term"])}</td></tr>'
+            f'<tr><th>Title</th><td>{E(b["title"])}</td></tr>'
+            f'<tr><th>Topic</th><td>{E(b.get("topic") or "none")}</td></tr>'
+            f'<tr><th>Chapters</th><td>{E(chap)}</td></tr></table>'
+            + (f'<h3>The drafters&rsquo; analysis</h3><p class="prose">{E(b["analysis"])}</p>'
+               if b.get("analysis") else '<p class="note">No analysis on record for this bill.</p>')
+            + (f'<p class="note">attached by: {E(b["why"])}</p>' if shown_why and b.get("why") else ""))
+
+
+def show_tags(it):
+    head = (f'<h3>The tag</h3><p class="prose"><strong>{E(it["tag_name"])}</strong>'
+            f'{" &middot; neutrality is hard for this tag" if it["hard"] else ""}\n{E(it["definition"])}</p>')
+    if it["sample"] == "pair":
+        both = it["a"].get("attached") and it["b"].get("attached")
+        return (head + '<h3>Bill one</h3>' + _tag_bill_html(it["a"], False)
+                + '<h3>Bill two</h3>' + _tag_bill_html(it["b"], False)
+                + '<p class="note">The registry holds these two as bills of opposite aims on this subject. '
+                  'The rule attaches the tag to ' + ("both." if both else "NOT both.") + '</p>'
+                  '<p class="ask">Are both bills about this subject, and do they take opposite sides of it?</p>')
+    if it["sample"] == "miss":
+        sent = "".join(f"<li>{E(x)}</li>" for x in it.get("sentences") or [])
+        return (head + _tag_bill_html(it, False)
+                + f'<h3>Its text names the subject {E(it.get("mentions"))} times</h3><ul class="raw">{sent}</ul>'
+                + '<p class="ask">The rule did NOT attach this tag. Should it have: is this bill about the subject?</p>')
+    tier = {"title": "its title", "other": "its analysis or a dedicated chapter"}[it["sample"]]
+    return (head + _tag_bill_html(it)
+            + f'<p class="ask">The rule attached this tag from {tier}. Is this bill about the subject '
+              f'(yes), one of several things it is about (partly), or not (no)?</p>')
+
+
+def tag_report(seen):
+    """Per tag: what the bench has been told, against the thresholds."""
+    from collections import defaultdict
+    per = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+    hard = {}
+    for (kind, key), entries in seen.items():
+        if kind != "tag":
+            continue
+        _t, tid, sample = key.split("|")[:3]
+        e = entries[-1]
+        per[tid][sample][e.get("verdict")] += 1
+        hard[tid] = bool((e.get("shown") or {}).get("hard"))
+    if not per:
+        return
+    print()
+    print(f"  Tags (a tag goes on the site at {TAG_PASS} of 30 correct, {TAG_PASS_HARD} where neutrality is hard):")
+    for tid, by in per.items():
+        def ok(sample):
+            c = by[sample]
+            return c["yes"] + c["partly"], c["yes"] + c["partly"] + c["no"]
+        t_ok, t_n = ok("title")
+        o_ok, o_n = ok("other")
+        m = by["miss"]
+        m_n = m["yes"] + m["no"] + m["partly"]
+        p = by["pair"]
+        need = TAG_PASS_HARD if hard.get(tid) else TAG_PASS
+        total_ok, total_n = t_ok + o_ok + m["no"], t_n + o_n + m_n
+        state = ("in progress" if total_n < 30 else
+                 "passes" if total_ok >= need and m["yes"] + m["partly"] <= TAG_MISS_MAX and not p["no"] else
+                 "does not pass: tighten the rule and redraw")
+        print(f"    {tid:30} title {t_ok}/{t_n}  analysis-or-chapter {o_ok}/{o_n}  "
+              f"missed {m['yes'] + m['partly']}/{m_n}  pair {'yes' if p['yes'] else 'no' if p['no'] else '-'}  "
+              f"{total_ok}/{total_n} of {need} -- {state}")
+
+
 KINDS = {
+    "tag": {
+        "label": "Tags: is the bill about this subject",
+        "blurb": "Nothing is on the site yet. A tag is a subject a bill is also about, attached by a "
+                 "written rule from the title, the drafters' analysis or a dedicated chapter. For "
+                 "each tag in turn: bills the rule attached (say whether they are about it), bills "
+                 "it did not attach but whose text names the subject three times or more (say "
+                 "whether it should have), and the pair of bills of opposite aims that must both "
+                 "attach. Start the bench with --tags reports/tags.draft.json to read a draft.",
+        "sample": sample_tags, "show": show_tags,
+        "empty": "  -- no tag registry: corrections/tags.json is absent (start with --tags FILE)",
+        "fields": [],
+        "verdicts": [("yes", "Yes -- about this subject"), ("partly", "Partly -- one of several things"),
+                     ("no", "No"), ("unsure", "Cannot tell")],
+    },
     "archive_rollcall": {
         "label": "Roll calls read off the scanned journals",
         "blurb": "The House and Senate journals of 1989 to 1996 exist as "
@@ -1462,6 +1584,12 @@ class Bench(BaseHTTPRequestHandler):
             body = ('<p class="empty">Every sample of this kind has been '
                     'judged. Pick another, or look at review/checked.jsonl.</p>')
         else:
+            if kind == "tag":
+                # A SITTING FINISHES A TAG: the first tag, in the registry's order,
+                # that has anything left, so the 30 judgments of one subject are
+                # made side by side.
+                first = min(it["order"] for it in left)
+                left = [it for it in left if it["order"] == first]
             body = form_html(kind, random.choice(left))
         return (PAGE.replace("__OPTIONS__", opts)
                     .replace("__BLURB__", E(k["blurb"]))
@@ -1536,6 +1664,8 @@ def report():
                   f"{c['wrong_label']} wrong label, {c['wrong']} not related, "
                   f"{c['unsure']} cannot tell -- {state}")
 
+    tag_report(seen)
+
     # WHICH TIMESTAMP VERDICTS WERE GRADED AGAINST THE WRONG NUMBER. Until
     # 9 September this bench showed proceedings.csv's predicted_offset, which
     # is the schedule -- the meeting was called for 09:00 and the stream began
@@ -1574,9 +1704,14 @@ def main():
     ap.add_argument("--report", action="store_true",
                     help="what has been judged, and stop")
     ap.add_argument("--no-open", action="store_true")
+    ap.add_argument("--tags", help="the tag registry to bench (a draft in reports/), "
+                                   "instead of corrections/tags.json")
     ap.add_argument("--refresh", action="store_true",
                     help="rebuild the sample pools from the data on disk")
     a = ap.parse_args()
+    if a.tags:
+        import os
+        os.environ["GRANITE_TAGS"] = a.tags
     if a.report:
         return report()
 
