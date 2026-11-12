@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.872
+# GRANITE_VERSION: 2026-09-04.873
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -107602,7 +107602,12 @@ def _workflows_production(NI):
             for step in _wf_steps(code):
                 st = "\n".join(step)
                 if re.search(r"secrets\.CLOUDFLARE_", st):
-                    assert env and "--deploy-to" in st, (
+                    # The quick preview's deploy (preview.yml, 11 November 2026) is the
+                    # one other: quick_preview.py deploy, which refuses its own branch
+                    # being the night's, a dry run's or production's, in a job with an
+                    # environment (_quick_preview holds the rest).
+                    assert env and ("--deploy-to" in st or (
+                        f.name == "preview.yml" and "src/ops/quick_preview.py deploy" in st)), (
                         f"{f.name}: job {j} hands the Pages token to a step that is not a "
                         "nightly.py --deploy-to in a job with an environment")
             runs_night = [ln for ln in code if "nightly.py" in ln and "--deploy-to" not in ln
@@ -129649,6 +129654,278 @@ def _fast_path_matches_the_build(BI, BP):
     return "ok", (f"{len(a):,} files of the fixture's site the same as build_pages.py makes of "
                   "the change; nothing moved, a second run, bills.html, a data file and no "
                   "record each answered as they should")
+
+
+def _quick_preview_repo(tmp, files, names=()):
+    """A git repository in `tmp` holding `files` ({path: text}) in one commit;
+    returns (git, commit)."""
+    def git(*args):
+        r = _run(["git", "-c", "user.name=preflight", "-c", "user.email=preflight@example.invalid",
+                  "-c", "core.autocrlf=false", *args], cwd=tmp, capture_output=True, text=True,
+                 timeout=60)
+        assert r.returncode == 0, f"git {args[0]}: {(r.stderr or r.stdout)[-200:]}"
+        return r.stdout
+    git("init", "-q", ".")
+    _plant(tmp, files)
+    git("add", "-A")
+    git("commit", "-q", "-m", "base")
+    return git, git("rev-parse", "HEAD").strip()
+
+
+@check("build", "the quick preview applies only what the fast path can, refuses every other kind of "
+                "change by name, takes the newest night fit for production, and writes what the "
+                "build writes", needs=("quick_preview", "front_end", "build_pages", "cloud",
+                                       "nightly"))
+def _quick_preview(QP, FE, BP, cloud, NI):
+    """THE QUICK PREVIEW (11 November 2026; .github/workflows/preview.yml,
+    src/ops/quick_preview.py). A change to the browser's files is put into the
+    last night's built site, from the bucket, and deployed to an address of its
+    own, in minutes where a dry run is most of an hour. Held here:
+
+      what it may apply: the six files front_end.fast_files() names and the
+      paths no build step reads; and every other kind of change is refused,
+      by name, with its reason: a data file, bills.html, chrome.py, a words
+      file, a script, preflight.py, functions/, an added or removed browser
+      file, and app.js with its search tables moved;
+      the decision is read from git: a repository with a base commit, a
+      browser file changed, then a template, is answered by `plan` as it
+      should be, and an archive that names no commit, a commit this checkout
+      does not hold or one older than the bucket keeps is refused;
+      what it writes is what the build writes: on the fixture, `apply` over a
+      site, after the same change as build_pages.py makes over another, leaves
+      every file the same but its own two stamps and passes check_site;
+      cloud.py site-down --latest takes the highest run id whose archive and
+      site.json are whole and whose verdict was fit for production;
+      the workflow starts only by hand, joins neither gc-night nor
+      the nightly, holds the bucket's keys only in the read step and the Pages
+      token only in the deploy step, writes to no bucket and deploys to
+      nothing but QUICK_BRANCH, which is not one of nightly.py's three.
+    """
+    from datetime import datetime
+    # -- what it may apply
+    fast = FE.fast_files()
+    assert fast == {f"src/pages/{n}" for n in ("app.css", "app.js", "components.js", "find.js",
+                                              "print.js", "print.css")}, (
+        f"the browser's files front_end.py puts into a site are {sorted(fast)}")
+    ok = [("M", "src/pages/app.css"), ("M", "src/pages/components.js"),
+          ("M", "src/pages/find.js"), ("M", "src/pages/print.css"), ("M", "src/pages/print.js"),
+          ("M", "tests/test_markers.py"), ("M", "reports/x.md"), ("M", "README.md"),
+          ("M", ".github/workflows/preview.yml"), ("M", "logs/a.log")]
+    apply, ignored, refused = QP.judge(ok)
+    assert not refused and len(apply) == 5 and len(ignored) == 5, (
+        f"a change to the browser's files and to paths no build reads was answered "
+        f"apply {apply}, ignore {ignored}, refuse {refused}")
+    app_js = [("M", "src/pages/app.js")]
+    assert QP.judge(app_js, ("same", "same"))[0] == ["src/pages/app.js"], (
+        "app.js with its tables unchanged was not applied")
+    for tables in (("old", "new"), (None, "x"), ("x", None), None):
+        assert QP.judge(app_js, tables)[2], f"app.js with tables {tables} was not refused"
+    forbidden = {
+        "a data file": [("M", "data/bills.json")],
+        "a correction": [("M", "corrections/officials.json")],
+        "the bill template": [("M", "src/pages/bills.html")],
+        "chrome.py": [("M", "src/pages/chrome.py")],
+        "a words file": [("M", "src/pages/words/home.py")],
+        "a page builder": [("M", "src/pages/build_civics.py")],
+        "a script of the pipeline": [("M", "build_all.py")],
+        "preflight.py": [("M", "preflight.py")],
+        "the quick preview's own tool": [("M", "src/ops/quick_preview.py")],
+        "a file the Function bundles": [("M", "functions/api/report.js")],
+        "a browser file the build does not copy": [("M", "src/pages/map.js")],
+        "a browser file added": [("A", "src/pages/print.js")],
+        "a browser file removed": [("D", "src/pages/find.js")],
+        "a file nothing names": [("M", "somewhere/new.thing")],
+    }
+    for what, ch in forbidden.items():
+        a, _i, r = QP.judge(ch)
+        assert not a and len(r) == 1 and r[0][0] == ch[0][1] and len(r[0][1]) > 20, (
+            f"{what} was not refused by name with a reason: {r}")
+    mixed = QP.judge(ok + [("M", "data/bills.json"), ("M", "src/pages/bills.html")])
+    assert [p for p, _ in mixed[2]] == ["data/bills.json", "src/pages/bills.html"], (
+        f"one good change beside two forbidden ones was not refused for the two: {mixed[2]}")
+    assert len({QP.QUICK_BRANCH, NI.PREVIEW_BRANCH, NI.DRY_PREVIEW_BRANCH,
+                NI.PRODUCTION_BRANCH}) == 4, "the quick preview's branch is one of nightly.py's"
+
+    # -- what git says, and what `plan` makes of it
+    tmp = Path(tempfile.mkdtemp(prefix="gr-quick-"))
+    try:
+        git, base = _quick_preview_repo(tmp, {
+            "src/pages/app.css": "a{}\n", "src/pages/bills.html": "<p>x</p>\n",
+            "data/bills.json": "{}\n", "README.md": "r\n"})
+        sha = lambda: git("rev-parse", "HEAD").strip()
+
+        def plan(build):
+            (tmp / "site").mkdir(exist_ok=True)
+            (tmp / "site" / "build.json").write_text(json.dumps(build), encoding="utf-8")
+            r = _run([sys.executable, _paths.script("quick_preview.py"), "plan"], cwd=tmp,
+                     capture_output=True, text=True, timeout=120)
+            return r.returncode, (r.stdout or "") + (r.stderr or "")
+        night = {"commit": base, "finished": datetime.now().isoformat(timespec="seconds"),
+                 "ok": True}
+        code, out = plan(night)
+        assert code == 0 and "Nothing the site is made of differs" in out and \
+            json.loads((tmp / QP.PLAN).read_text())["allowed"] is True, (
+            f"a checkout that is the night's commit was not allowed: {out[-300:]}")
+        _plant(tmp, {"src/pages/app.css": "a{b:c}\n", "README.md": "changed\n"})
+        git("commit", "-q", "-am", "css")
+        assert QP.git_changes(base) == [("M", "README.md"), ("M", "src/pages/app.css")], (
+            f"git_changes read {QP.git_changes(base)}")
+        code, out = plan(night)
+        assert code == 0 and "will apply   src/pages/app.css" in out and \
+            "ignored      README.md" in out, f"a change to app.css was not planned: {out[-300:]}"
+        _plant(tmp, {"src/pages/bills.html": "<p>y</p>\n", "data/bills.json": "{ }\n"})
+        git("commit", "-q", "-am", "template and data")
+        code, out = plan(night)
+        assert code == 2 and "REFUSED" in out and "src/pages/bills.html" in out and \
+            "data/bills.json" in out and not json.loads((tmp / QP.PLAN).read_text())["allowed"], (
+            f"a template and a data file were not refused by name: {out[-400:]}")
+        for what, build, want in (
+                ("no commit", {"finished": night["finished"], "ok": True}, "names no commit"),
+                ("a commit this checkout lacks",
+                 dict(night, commit="0123456789abcdef0123456789abcdef01234567"), "is not in this checkout"),
+                ("a stale archive", dict(night, finished="2020-01-01T00:00:00"), "days old"),
+                ("a build that failed", dict(night, ok=False), "did not finish ok")):
+            code, out = plan(build)
+            assert code == 2 and want in out, f"{what} was not refused ({want!r}): {out[-300:]}"
+        (tmp / "src" / "pages" / "app.css").write_text("dirty\n", encoding="utf-8")
+        code, out = plan(dict(night, commit=sha()))
+        assert code == 2 and "uncommitted" in out, f"a dirty checkout was not refused: {out[-300:]}"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    # -- the newest night fit for production
+    tmp = Path(tempfile.mkdtemp(prefix="gr-quick-bucket-"))
+    try:
+        b = cloud.FolderBucket(tmp / "bucket")
+
+        def night(run, publishable=True, dry=False, whole=True, rid=None):
+            if whole:
+                b.put_bytes(f"nights/{run}/site.tar.gz", b"x")
+            b.put_bytes(f"nights/{run}/site.json", json.dumps({"verdict": {
+                "run_id": rid or run, "publishable": publishable,
+                "asked": {"dry_run": dry}}}).encode())
+        night("100")
+        night("200")
+        night("300", publishable=False)
+        night("400", whole=False)
+        night("500", dry=True)
+        night("600", rid="601")
+        b.put_bytes("nights/abc/site.json", b"{}")
+        assert cloud.latest_night(b) == "200", f"the newest night fit was {cloud.latest_night(b)}"
+        night("1000")
+        assert cloud.latest_night(b) == "1000", "run 1000 was not taken over run 200 (numbers, not text)"
+        try:
+            cloud.latest_night(cloud.FolderBucket(tmp / "empty"))
+            raise AssertionError("an empty bucket gave a night")
+        except cloud.Failed:
+            pass
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    # -- what it writes is what the build writes
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    tmp = Path(tempfile.mkdtemp(prefix="gr-quick-fast-"))
+    try:
+        quick, step = tmp / "quick", tmp / "step"
+        for r in (quick, step):
+            r.mkdir()
+            _fixture_site_whole(r)
+            (r / "site" / "build.json").write_text('{"finished": "the fixture"}\n', encoding="utf-8")
+
+        def rule(t):
+            at = t.index("\n", t.index("/* PALETTE END")) + 1
+            return t[:at] + ".gr-quick-preview{outline:1px solid red}\n" + t[at:]
+        line = '\nvoid "the quick preview";\n'
+        edit = {"app.css": rule, "components.js": lambda t: t + line, "find.js": lambda t: t + line}
+        _edit_browser_files(quick, edit)
+        _edit_browser_files(step, edit)
+
+        def qp(*args):
+            r = _run([sys.executable, _paths.script("quick_preview.py"), *args], cwd=quick,
+                     capture_output=True, text=True, timeout=300)
+            return r.returncode, (r.stdout or "") + (r.stderr or "")
+        code, out = qp("apply")
+        assert code == 2 and "run plan first" in out, f"apply with no plan: {out[-300:]}"
+        (quick / QP.PLAN).parent.mkdir(exist_ok=True)
+        (quick / QP.PLAN).write_text(json.dumps({
+            "allowed": True, "base_commit": "b" * 40, "head_commit": "c" * 40,
+            "night_finished": "2026-11-10T04:30:00", "apply": ["src/pages/app.css"]}),
+            encoding="utf-8")
+        code, out = qp("apply")
+        assert code == 0 and "wrote" in out, f"apply failed: {out[-400:]}"
+        held = step / "site" / "committees.json"
+        kept = held.read_bytes() if held.exists() else None
+        if kept is not None:
+            held.unlink()
+        try:
+            r = _run([sys.executable, _paths.script("build_pages.py"), "--out", "site"], cwd=step,
+                     capture_output=True, text=True, timeout=300)
+        finally:
+            if kept is not None:
+                held.write_bytes(kept)
+        assert r.returncode == 0, "build_pages.py: " + (r.stderr or r.stdout)[-300:]
+        mine = (QP.STAMP_JSON, QP.STAMP_PAGE)
+        a = {p.relative_to(quick / "site").as_posix(): p.read_bytes()
+             for p in (quick / "site").rglob("*") if p.is_file()}
+        b2 = {p.relative_to(step / "site").as_posix(): p.read_bytes()
+              for p in (step / "site").rglob("*") if p.is_file()}
+        assert all(m in a for m in mine) and not any(m in b2 for m in mine), (
+            "the preview did not stamp the site as a preview, or the build did")
+        assert b"front-end preview" in a[QP.STAMP_PAGE].lower() and \
+            json.loads(a[QP.STAMP_JSON])["preview"] == "front-end only"
+        differ = sorted(p for p in set(a) | set(b2) if p not in mine and a.get(p) != b2.get(p))
+        assert not differ, (f"after the same change, the quick preview's site and build_pages.py's "
+                            f"differ in {len(differ)} file(s): " + ", ".join(differ[:8]))
+        assert b".gr-quick-preview" in a["app.css"]
+        r = _run([sys.executable, _paths.script("check_site.py"), "--site", "site"], cwd=quick,
+                 capture_output=True, text=True, timeout=300)
+        assert r.returncode == 0 or "quick-preview" not in (r.stdout or "") + (r.stderr or ""), (
+            "check_site.py finds fault with the preview's stamp page: "
+            + ((r.stdout or "") + (r.stderr or ""))[-400:])
+        n_files = len(a)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    # -- the workflow
+    wf = WORKFLOW_DIR / "preview.yml"
+    if not wf.exists():
+        return "skip", "no .github/workflows/preview.yml here"
+    text = wf.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    code = "\n".join(_wf_code(lines))
+    on = _wf_block(lines, "on")
+    started = {m.group(1) for ln in on[1:] if (m := re.match(r"^  ([a-z_]+):", ln))}
+    assert started == {"workflow_dispatch"}, f"preview.yml is started by {sorted(started)}, not by hand alone"
+    assert not re.search(r"gc-night|nightly\.py|weekly|--deploy-to|site-up|kit-up|kit-down|state-up|"
+                         r"state-down|inbox|seed-kit|clear-refusal|livestreams|fetch_|probe_|"
+                         r"snapshot_|wrangler", code), (
+        "preview.yml names something the night does (a fetch, a state or kit step, the gate, "
+        "a deploy of its own)")
+    assert re.search(r"^  group: quick-preview\s*$", code, re.M), "preview.yml is not in its own concurrency group"
+    assert re.search(r'^  DRY_RUN: "true"\s*$', code, re.M), \
+        "preview.yml does not say DRY_RUN true to every step"
+    jobs = _wf_jobs(text)
+    assert list(jobs) == ["preview"], f"preview.yml has jobs {list(jobs)}"
+    assert _wf_environment(_wf_code(jobs["preview"])) == "preview", (
+        "the quick preview's job is not in the preview environment, which holds the Pages token")
+    steps = ["\n".join(s) for s in _wf_steps(_wf_code(jobs["preview"]))]
+    order = [next((i for i, s in enumerate(steps) if needle in s), -1) for needle in (
+        "cloud.py site-down --latest", "quick_preview.py plan", "quick_preview.py apply",
+        "quick_preview.py check", "quick_preview.py deploy")]
+    assert -1 not in order and order == sorted(order), (
+        f"the quick preview's steps are not site-down, plan, apply, check, deploy in order: {order}")
+    for i, s in enumerate(steps):
+        r2 = "secrets.R2_" in s
+        cf = "secrets.CLOUDFLARE_" in s
+        assert r2 == (i == order[0]), f"step {i} of preview.yml: the bucket's keys are in the wrong step"
+        assert cf == (i == order[4]), f"step {i} of preview.yml: the Pages token is in the wrong step"
+    assert "cancel-in-progress: true" in code and "contents: read" in code
+    return "ok", (f"{len(ok) + len(forbidden)} kinds of change answered; plan reads git; the "
+                  f"fixture's {n_files:,} files the same as build_pages.py makes of the change; "
+                  "site-down --latest takes the newest fit night; preview.yml by hand, in its own "
+                  "group, read keys in one step and the Pages token in another")
 
 
 # Who on the build's path names a file the fast path puts into a site, and

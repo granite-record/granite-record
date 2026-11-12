@@ -1718,6 +1718,52 @@ Two things read it:
   build is recorded under a second `PYTHONHASHSEED`, and compares a later
   build with it -- so a baseline is built once per commit, not once per step.
 
+### The fast path on GitHub: the quick preview (11 November 2026)
+
+`build_all.py --front-end` needs a `site/` and a `logs/last-build.json` that
+GitHub's machine, which starts empty, never has. The quick preview
+(`.github/workflows/preview.yml`, run by hand; `src/ops/quick_preview.py`)
+supplies the baseline from the one place a night's site is kept: a real
+night's publish step sends it with `cloud.py site-up` to
+`nights/<run>/site.tar.gz`, with `site.json` beside it, and the bucket's
+lifecycle rule deletes `nights/` three days on. A dry run sends none, so the
+baseline is the newest *real* night whose own verdict was fit for production
+(`cloud.py site-down --latest`, read only). Its `site/build.json` names the
+commit it was built from (`nightly.stamp_commit`).
+
+The steps, in the workflow's order: `site-down --latest`; `quick_preview.py
+plan`, which takes `git diff --name-status` between that commit's tree and the
+checkout's and answers with `judge()`: the files of `front_end.fast_files()`
+(`app.css`, `app.js`, `components.js`, `find.js`, `print.js`, `print.css`),
+modified, with `app.js`'s search tables unchanged (`front_end.search_tables_digest`
+of the base's text and the checkout's), are applied; paths no build step reads
+(`build_inputs.NOT_INPUTS`, Markdown) are ignored and said; every other path is
+refused by name with a reason (data, `bills.html`, `chrome.py`, words, scripts,
+`preflight.py`, `functions/`, an added or removed browser file); `apply`, which
+calls `build_pages.front_end` over the unpacked site -- the function the full
+build's step and the laptop's `--front-end` call -- with the header mark taken
+from whether the archive holds it (`site/mark.png`), not from `assets/`, which a
+clone lacks; `check`, which runs `check_site.py` and `preflight.py --built` and
+writes `logs/quick-preview-verdict.json`; `deploy`, which sends the folder to the
+Pages alias `quick` (`QUICK_BRANCH`) with the pinned wrangler and the same look
+at what that address serves as the night's preview takes (`check_live.py
+--gate`). The deployed site carries `quick-preview.json` and `quick-preview.html`
+saying it is a front-end preview over the night of a stated day.
+
+What it never writes: the night's verdict, the census, the gate records, the
+kit, the state or `nights/` (the job holds the bucket's keys in the one step
+that reads, and `DRY_RUN` is true throughout), and nothing it does asks the
+General Court. Its group is `quick-preview`, not `gc-night`. The Pages token
+is in the deploy step only, which preflight's workflow rules now allow for this
+one script. The preview shows the night's data under the new files: a change
+that needs a new data shape is refused by rule and takes a full dry run, which
+is correct. `preflight`'s `_quick_preview` holds the decision (each forbidden
+kind, git's reading, the stale and commit-less archives), `site-down --latest`
+on a folder bucket, the equality of `apply` with `build_pages.py` on the
+fixture, and the workflow's shape. A workflow started by hand must exist on
+`main` to be listed in the Actions tab, so the first run follows the first
+merge of this to `main`.
+
 ## The statutes and related bills (11 October 2026)
 
 Two parse steps and one page step, all asking nobody, all skipped and named
