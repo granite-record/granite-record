@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.9
+# GRANITE_VERSION: 2026-09-18.10
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -278,6 +278,10 @@ def rows_from(lsrs, who, became=None, year=None):
             "last_action": "", "nrc": 0, "votedays": [],
             "lsr": True,
             **({"introduced": bill} if bill else {}),
+            # "filed": the text is public (true, or its day) -- the stop Filed
+            # on the request's rail. The list carries nothing of the kind
+            # yet; this passes it on when the source gives it.
+            **({"filed": r["filed"]} if r.get("filed") else {}),
             # A REQUEST'S OWN PAGE (Alice, 8 November 2026): its address, from
             # the number this source gives it -- New Hampshire's shape stays
             # here, and the page writer reads only "address" and "moved_to".

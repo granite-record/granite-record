@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.3
+# GRANITE_VERSION: 2026-11-08.4
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -91,16 +91,33 @@ def chips_of(people, who_of):
 
 
 def rail_of(r):
-    """A bill's rail with the parts that do not exist yet left quiet: its
-    first stop is the request (reached, or ended where the request was
-    withdrawn), then every stop a bill passes, not reached. No day is shown
-    for the request: the list gives none."""
-    import build_lsrs as L
-    first = {"stop": "Requested", "mark": "x" if r.get("withdrawn") else "p", "date": "",
-             "short": "", "say": "Withdrawn" if r.get("withdrawn") else "Filed as a request"}
-    rest = [{"stop": w, "mark": "-", "date": "", "short": "", "say": ""}
-            for w in ["Introduced"] + L.route(r.get("body"))]
-    return C.rail_html([first] + rest)
+    """A request's own rail, three stops (Alice, 12 November 2026, from a phone
+    screenshot where the bill's six stops ran into one another: "a separate
+    rail for the requests with Requested, Filed meaning the text is publicly
+    available, and Introduced"): Requested, reached while the request exists
+    (a cross where it was withdrawn); Filed, reached once the bill's text is
+    public; Introduced, which a request reaches by becoming a numbered bill,
+    when its address forwards to the bill's page and the bill's own rail
+    takes over -- so it is never reached here. Same rail_html, same look. No
+    day is shown: the list gives none.
+
+    WHAT SAYS "FILED". Nothing on disk yet: the request list (the list build_lsrs reads)
+    carries a number, kind, title, sponsor and a withdrawn flag, and no bill
+    of the session has been published (data/bills.json has no 2027-2028).
+    So the stop reads the row's "filed" -- true, or the day the text became
+    public ("YYYY-MM-DD"), which build_lsrs.rows_from carries over from the
+    source row once the source gives it -- and is drawn not reached until
+    then. A withdrawn request never reaches it."""
+    gone = bool(r.get("withdrawn"))
+    filed = r.get("filed") and not gone
+    day = r["filed"] if filed and isinstance(r["filed"], str) and r["filed"][:1].isdigit() else ""
+    stops = [
+        {"stop": "Requested", "mark": "x" if gone else "p", "date": "", "short": "",
+         "say": "Withdrawn" if gone else "Filed as a request"},
+        {"stop": "Filed", "mark": "p" if filed else "-", "date": day, "short": "",
+         "say": "Text public" if filed else ""},
+        {"stop": "Introduced", "mark": "-", "date": "", "short": "", "say": ""}]
+    return C.rail_html(stops)
 
 
 def head(r, req, who_of, path, base):
