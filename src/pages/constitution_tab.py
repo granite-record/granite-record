@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.3
+# GRANITE_VERSION: 2026-10-17.4
 """
 The state Constitution as a tab on the Laws page, and the links to its articles
 from the rest of the site.
@@ -39,6 +39,7 @@ import html
 import re
 
 import components as C
+import constitution_history as CH
 import parse_constitution as PC
 
 E = html.escape
@@ -72,7 +73,7 @@ def _toc(con):
             f'<ol>{"".join(items)}</ol></details></nav>')
 
 
-def _article(p, a, level):
+def _article(p, a, level, hist=None):
     """One article as a statute section is drawn: its number linking to itself,
     its title, its words, and nh.gov's notes on when it was adopted and
     amended, as printed."""
@@ -86,7 +87,7 @@ def _article(p, a, level):
                  + "".join(f"<li>{E(n)}</li>" for n in a["notes"]) + "</ul>")
     return (f'<section class="rs-sec cn-art" id="{E(a["anchor"])}"><h{level} class="rs-h">'
             f'<a href="{E(link)}">Article {E(a["key"])}</a> {E(a["title"])}{badge}</h{level}>'
-            f'{text}{notes}</section>')
+            f'{text}{notes}{CH.fold(p, a["key"], *hist) if hist else ""}</section>')
 
 
 def lead(con):
@@ -111,7 +112,7 @@ def lead(con):
         "NH.gov</a>.</p>")
 
 
-def panel(con):
+def panel(con, hist=None):
     """The Constitution tab's content: the lead, then the sidebar and the
     articles, Part First's under its heading and Part Second's under each of
     its divisions."""
@@ -124,19 +125,19 @@ def panel(con):
             if many:
                 body.append(f'<h4 class="rs-sub" id="{E(d["slug"])}">{E(d["name"])}</h4>')
             for a in d["articles"]:
-                body.append(_article(p, a, 5 if many else 4))
+                body.append(_article(p, a, 5 if many else 4, hist))
     return (lead(con) + f'<div class="rs-chap cn-chap">{_toc(con)}'
             f'<div class="rs-art">{"".join(body)}</div></div>')
 
 
-def tabbed(statutes, statutes_lead, con):
+def tabbed(statutes, statutes_lead, con, hist=None):
     """The strip and the two panels, Statutes (RSA) first, as the page was.
 
     THE TOWN PAGES' TABS (build_town_pages.tabbed): a role=tablist written
     hidden and shown by the script, buttons with a roving tabindex, panels
     labelled by their tab, and without JavaScript both panels in order, each
     under its own heading."""
-    panes = {"statutes": f'<p class="l-lead">{statutes_lead}</p>{statutes}', "constitution": panel(con)}
+    panes = {"statutes": f'<p class="l-lead">{statutes_lead}</p>{statutes}', "constitution": panel(con, hist)}
     strip = ('<div class="twntabs lw-tabs" role="tablist" aria-label="New Hampshire Laws" hidden>'
              + "".join(
                  f'<button type="button" role="tab" id="tab-{pid}" data-pane="{pid}" aria-controls="{pid}" '

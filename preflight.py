@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.878
+# GRANITE_VERSION: 2026-09-04.879
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -46005,6 +46005,35 @@ def _cacr_articles(PC, CT, BSV, BBP):
          [("reenact_part", 1, "", "/laws#part1")]),
         ("I. That the following new article of part I of the constitution after article 2-b:", []),
         ("I. That article 140 of the second part of the constitution be amended to read as follows:", []),
+        # The forms the 1989-2024 resolutions use, each a sentence from the data (11 November 2026): CACR 41 of
+        # 2005-06 (Part Second Article 11, ratified 7 November 2006) was one of 57 that named no article.
+        ("I. That the second part of the constitution be amended by replacing article 11 with the following: [Art.] 11.",
+         [("amend", 2, "11", "/laws#part2-art11")]),
+        ("I. That the first part of the constitution be amended by replacing the first 2 sentences of article 11 "
+         "with the following 2 sentences:", [("amend", 1, "11", "/laws#part1-art11")]),
+        ("I. That part first, article 28-a of the constitution be amended to read as follows: [Art.] 28-a",
+         [("amend", 1, "28-a", "/laws#part1-art28-a")]),
+        ("I. That article 15, part second of the constitution, relative to the compensation of the legislature, "
+         "be repealed. II. That the above amendment", [("repeal", 2, "15", "/laws#part2-art15")]),
+        ("I. That article 6 of the first part of the constitution and article 83 of the second part of the "
+         "constitution be amended to read as follows:",
+         [("amend", 1, "6", "/laws#part1-art6"), ("amend", 2, "83", "/laws#part2-art83")]),
+        ("I. That part II, article 73-a of the constitution be repealed and reenacted in order to clarify that",
+         [("amend", 2, "73-a", "/laws#part2-art73-a")]),
+        ("I. That article 78 of the second part of the constitution, relative to judges and sheriffs disqualified "
+         "by age, is repealed. II. That the above", [("repeal", 2, "78", "/laws#part2-art78")]),
+        ("I. That article 9 of the second part of the constitution read as follows: [Art.] 9.",
+         [("amend", 2, "9", "/laws#part2-art9")]),
+        ("I. That part second of the constitution be amended by inserting after article 1 the following new "
+         "article: [Art.] 1-a [Initiative Petitions.]", [("insert_after", 2, "1", "/laws#part2-art1")]),
+        ("I. That the second part of the constitution be amended by inserting after article 5-B the following "
+         "new article: [Art.] 5-c [Income Tax Prohibited.]", [("insert_after", 2, "5-b", "/laws#part2-art5-b")]),
+        # "that" in lower case is the question put to the voters, which repeats the clause; it adds nothing
+        ("IV. That the wording of the question shall be: Are you in favor of amending the constitution so that "
+         "article 4 of the second part of the constitution reads as follows and that article 72-a of the second part "
+         "of the constitution, printed below, be repealed.", []),
+        # a bare "article N" with no part named is not a clause, nor is a new article's number
+        ("II. That article 11 be amended to read as follows:", []),
         ("Are you in favor of amending article 78 of the second part of the constitution", []),
     )
     for text, want in cases:
@@ -46035,6 +46064,126 @@ def _cacr_articles(PC, CT, BSV, BBP):
             in learn and "Part Second, Article 140;" in learn and '<a href="x">Part First, Article 2</a>' in learn), \
         f"the Learn pages' citations link as {learn}"
     return "ok", f"{len(cases)} clauses read as they say, and no more; both bill pages and the Learn pages link{said}"
+
+
+class _StubBills:
+    """The few things a History and citations fold asks of build_rsa.Bills, from rows given."""
+
+    def __init__(self, rows):
+        self.rows = rows
+
+    def row(self, k):
+        return self.rows.get(k) or {}
+
+    def url(self, k):
+        return "/bill/" + k.split("/")[1].lower()
+
+    def label(self, k):
+        return k.split("/")[1]
+
+
+@check("build", "an article of the Constitution is cited as a reader writes it -- a part and an article the "
+       "Constitution holds -- and never by a bare \"article 11\"; a fold's counts are the derived file's",
+       needs=("parse_constitution", "constitution_history", "constitution_citations"))
+def _constitution_cites(PC, CH, CC):
+    """The person, 11 November 2026: "Cited by" covers bills and statutes, a bare
+    "Article N" with no Part is not counted, only articles the Constitution holds,
+    and "N.H. Constitution, without signature" is skipped. Every sentence below
+    is a sentence of a bill on disk (the 32,086 that are not CACRs)."""
+    con = PC.load()
+    assert con, "collected/constitution.json is not on this disk"
+
+    def got(s):
+        return PC.cited_articles(s, con)
+
+    cases = (
+        ("The plan shall conform to the requirements of part II, articles 9, 11, 11-a, 26, and 26-a of the New "
+         "Hampshire constitution.", [(2, k) for k in ("9", "11", "11-a", "26", "26-a")]),                  # HB 1485 of 1998
+        ("N.H. CONST. pt. I, art. 28 (emphasis added)", [(1, "28")]),                                         # SR 1 of 2000
+        ("a person's right to free speech N.H. const. part 1 art. 22 (stating", [(1, "22")]),                  # HB 1313 of 2026
+        ("the Bill of Rights, Part I, Article 14 of the New Hampshire Bill of Rights", [(1, "14")]),           # HB 195 of 2020
+        ("Pt. II, Art. 28 and Part First, Article 6 and Part 2, Article 14", [(2, "28"), (1, "6"), (2, "14")]),
+        ("as in Pt 2, Art 56 of the state constitution", [(2, "56")]),                                        # HJR 1 of 2016
+        ("Article 11 of Part First; Article 73-a in Part II", [(1, "11"), (2, "73-a")]),                       # HB 1520, HB 1194
+        ("articles 41, 72-a and 73-a of the second part", [(2, "41"), (2, "72-a"), (2, "73-a")]),             # HB 397 of 1998
+        ("under the New Hampshire constitution Part Second, Articles 9, 11, 26, and 65, which",
+         [(2, k) for k in ("9", "11", "26", "65")]),                                                          # HB 1487 of 2026
+        # not counted: no part named, an article the Constitution does not hold, the phrase on a bill's own tail
+        ("article 11 of the bylaws shall apply", []),
+        ("the requirements of article 11 and article 26", []),
+        ("Part II, Article 140 of the constitution", []),
+        ("Passed without signature. N.H. Constitution, without signature, 6/21/05", []),
+    )
+    for text, want in cases:
+        assert got(text) == want, f"{text[:60]!r} cites {got(text)}"
+    # Part Second's Article 11 and Part First's are two articles, as the Constitution has them.
+    assert got("Part I, Article 11") == [(1, "11")] and got("Part II, Article 11") == [(2, "11")]
+    # The fold: its counts are the file's.
+    cc = {"articles": {"2:11": {"proposed": [["2005-2006", "CACR41", "amend"], ["2003-2004", "CACR7", "repeal"],
+                                             ["2019-2020", "CACR9", "amend"]],
+                                "bills": [["2007-2008", "HB687"]], "rsa": ["662-A:1"]}}}
+    rows = {"2005-2006/CACR41": {"kind": "adopted", "status": "Passed both chambers, ratified by the voters"},
+            "2003-2004/CACR7": {"kind": "done", "status": "Killed", "rail": [["Ip", "2003-01-08"],
+                                                                           ["Hx", "2003-03-20", "killed"]]},
+            "2019-2020/CACR9": {"kind": "done", "status": "Failed to pass",
+                                "rail": [["Hx", "2020-01-08", "failed, 217-150"]]}}
+    ballots = {("2005-2006", "CACR41"): {"election": "2006-11-07", "yes": 240767, "no": 100688}}
+    html = CH.fold(2, "11", cc, _StubBills(rows), ballots, lambda a: "/laws/" + a)
+    assert html.count('class="rs-fpart"') == 3 and html.count("<li>") == 5, html
+    counts = [int(n.replace(",", "")) for n in re.findall(r'rs-fcount">&middot; ([\d,]+)<', html)]
+    assert counts == [2, 1, 2], counts
+    assert "Ratified by the voters, Nov 7, 2006: 240,767 yes, 100,688 no" in html
+    assert "Failed the three-fifths vote in the House, 217-150 (Jan 8, 2020)" in html
+    assert "Inexpedient to legislate (House, Mar 20, 2003)" in html and "History and citations" in html
+    assert "proposed to repeal it" in html and 'href="/laws/662-A:1"' in html
+    assert CH.fold(2, "12", cc, _StubBills(rows), ballots, lambda a: a) == "", "an article with nothing listed has no fold"
+    # a count that fell short of two thirds is "not ratified", whatever the majority
+    assert "not ratified" in CH.voters({"election": "1992-11-03", "yes": 208301, "no": 225276}) \
+        and "not ratified" in CH.voters({"election": "2012-11-06", "yes": 294164, "no": 308094})
+    assert "Ratified" in CH.voters({"election": "2006-11-07", "yes": 240767, "no": 100688}), "70% yes is two thirds"
+    return "ok", f"{len(cases)} citation forms read as written and no more; the fold's three lists count what the file lists"
+
+
+@check("data", "Part Second, Article 11's history is the eight CACRs aimed at it, 2003-04 to 2025-26, and only "
+       "CACR 41 of 2006 passed; no CACR is lost to a form the reader does not know",
+       needs=("parse_constitution", "constitution_history", "constitution_citations", "rsa"))
+def _constitution_history(PC, CH, CC, RSA):
+    """The design of 11 November 2026 checked on the data: Part 2 Article 11 has eight
+    CACRs on disk, one ratified (Question No. 2, 7 November 2006, 240,767 to 100,688),
+    and CACR 36 of 2021-22 is Part First's Article 11, not this one. Of 539 CACRs 535
+    are aimed at an article; the four left name none the reader can place."""
+    con = PC.load()
+    texts = RSA.bill_texts()
+    if not con or not texts:
+        return "ok", "no bill text or Constitution on this disk; skipped"
+    data = CC.build(con, texts, {})
+    assert data["asof"]["cacrs"] >= 539 and data["asof"]["cacrs_targeted"] >= 535, data["asof"]
+    art = data["articles"]["2:11"]["proposed"]
+    want = {("2003-2004", "CACR7"), ("2005-2006", "CACR6"), ("2005-2006", "CACR41"), ("2009-2010", "CACR10"),
+            ("2019-2020", "CACR9"), ("2021-2022", "CACR4"), ("2023-2024", "CACR19"), ("2025-2026", "CACR2")}
+    assert {(t, b) for t, b, _v in art} == want, sorted(art)
+    assert ["2021-2022", "CACR36", "amend"] in data["articles"]["1:11"]["proposed"], "CACR 36 is Part First's"
+    assert ("2021-2022", "CACR36") not in {(t, b) for t, b, _v in art}
+    # A CACR naming several articles is listed under each.
+    assert ["2005-2006", "CACR5", "amend"] in data["articles"]["2:9"]["proposed"] \
+        and ["2005-2006", "CACR5", "amend"] in data["articles"]["2:15"]["proposed"]
+    ballots = _ballot_file()
+    won = [(t, b) for t, b, v in art if ballots.get((t, b)) and CH.ratified(ballots[(t, b)]["yes"], ballots[(t, b)]["no"])]
+    assert won == [("2005-2006", "CACR41")], won
+    b = ballots[("2005-2006", "CACR41")]
+    assert (b["yes"], b["no"], b["election"]) == (240767, 100688, "2006-11-07")
+    # The derived file's counts are the fold's: every article, on the real ballot rows.
+    rows = {f"{t}/{n}": {"kind": "adopted"} for (t, n) in ballots}
+    bills = _StubBills(rows)
+    for k, v in data["articles"].items():
+        part, _, key = k.partition(":")
+        lists = CH.lists(int(part), key, data, bills, ballots, lambda a: a)
+        shown = {h: len(items) for _k, h, _n, items in lists}
+        assert shown.get("Cited by", 0) == len(v["bills"]) + len(v["rsa"]), k
+        assert shown.get("How it has changed", 0) + shown.get("Other proposed amendments", 0) == len(v["proposed"]), k
+    return "ok", (f"Part Second Article 11: {len(art)} CACRs, CACR 41 of 2006 ratified; "
+                  f"{data['asof']['cacrs_targeted']} of {data['asof']['cacrs']} CACRs aimed at an article; "
+                  f"{len(data['articles'])} articles carry a list")
 
 
 @check("build", "a guide's counts -- days, months, years, ages, districts -- are figures: each rests on "

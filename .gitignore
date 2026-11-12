@@ -92,6 +92,9 @@ report_corrections.json
 # their language (related_bills.py): both rebuilt whole on every build since
 # 11 October 2026, and both at the root, where they showed as untracked.
 /rsa_citations.json
+# Which CACRs were aimed at each article of the Constitution, and what cites it
+# (constitution_citations.py): rebuilt whole on every build.
+/constitution_citations.json
 /related_bills.json
 # The governor's veto messages, read off the calendars' text by
 # extract_vetoes.py on every build, GitHub's included (the kit carries the

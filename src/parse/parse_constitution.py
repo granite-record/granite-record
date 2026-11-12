@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.1
+# GRANITE_VERSION: 2026-10-17.3
 """
 New Hampshire's Constitution, read into collected/constitution.json from the
 pages nh.gov publishes it on.
@@ -334,53 +334,136 @@ def load(path=OUT):
 #      article 2-b the following new article:             -> new after 1:2-b
 #
 # and "That articles 41, 42, 49, and 49-a of the second part ..." for several.
-# A clause in any other wording -- "That the following new article of part I
+# The 1989-2024 resolutions add "That part second of the constitution", "part II,
+# article 73-a", "replacing article 11 with", "is repealed" and "read as follows"
+# (11 November 2026: 57 of 539 named no article before, 4 after -- one prints
+# "article V", two name a new article with no "after" to place it, and CACR 16
+# below). A clause in any other wording -- "That the following new article of part I
 # of the constitution after article 2-b:" (CACR 16) -- names nothing here: a
 # link is drawn only where the clause leaves no doubt, and only to an article
 # the Constitution as read holds.
 _ARTS = r"(\d{1,3}(?:-[a-z])?(?:(?:,\s*(?:and\s+)?|\s+and\s+)\d{1,3}(?:-[a-z])?)*)"
-_WHICH = {"first": 1, "second": 2}
-CLAUSE_CHANGE = re.compile(
-    r"\bThat\s+articles?\s+" + _ARTS + r"\s+of\s+the\s+(first|second)\s+part\s+of\s+the\s+constitution"
-    r"(?:,[^,:.]{0,120},)?\s+(?:shall\s+)?be\s+(amended|repealed)\b", re.I)
+_WHICH = {"first": 1, "second": 2, "i": 1, "ii": 2}
+# "the second part", "part second" and "part II" all name a part (the 1989-2024
+# resolutions use every one of them); "article 15, part second of the
+# constitution" and "part II, article 73-a of the constitution" put the two
+# in either order. The year each form was read in the data is in the check.
+_PARTW = r"(?:(?:the\s+)?(first|second)\s+part|part\s+(first|second|II?)\b)"
+_ART_PART = re.compile(r"\barticles?\s+" + _ARTS + r"\s*,?\s*(?:of\s+)?" + _PARTW, re.I)
+_PART_ART = re.compile(_PARTW + r"\s*,\s*articles?\s+" + _ARTS, re.I)
+# A resolving clause: "That article 78 ... be amended", "That part II, article
+# 73-a of the constitution be repealed and reenacted", "... is repealed",
+# "... of the constitution read as follows".
+CLAUSE_START = re.compile(
+    r"\b(?-i:That)\s+(?:the\s+)?(?=articles?\s+\d|part\s+(?:first|second|II?)\s*,\s*articles?\s+\d)", re.I)
+CLAUSE_VERB = re.compile(
+    r"\b(?:(?:shall\s+)?(?:be|is)\s+(amended|repealed(?:\s+and\s+reenacted)?)|(read)\s+as\s+follows)\b", re.I)
 CLAUSE_INSERT = re.compile(
-    r"\bThat\s+the\s+(first|second)\s+part\s+of\s+the\s+constitution\s+(?:shall\s+)?be\s+amended\s+by\s+"
-    r"inserting\s+after\s+article\s+(\d{1,3}(?:-[a-z])?)\s+the\s+following\b", re.I)
+    r"\b(?-i:That)\s+(?:the\s+)?" + _PARTW + r"(?:\s+of\s+the\s+constitution)?\s+(?:shall\s+)?be\s+amended\s+by\s+"
+    r"inserting\s+after\s+article\s+(\d{1,3}(?:-[a-z])?)\s*the\s+following\b", re.I)
+CLAUSE_REPLACE = re.compile(
+    r"\b(?-i:That)\s+(?:the\s+)?" + _PARTW + r"(?:\s+of\s+the\s+constitution)?\s+(?:shall\s+)?be\s+amended\s+by\s+"
+    r"replacing\s+(?:the\s+first\s+\d+\s+sentences?\s+of\s+)?article\s+(\d{1,3}(?:-[a-z])?)\s+with\b", re.I)
 CLAUSE_PART = re.compile(
-    r"\bThat\s+the\s+(first|second)\s+part\s+of\s+the\s+constitution\s+(?:shall\s+)?be\s+repealed\s+and\s+"
+    r"\b(?-i:That)\s+the\s+(first|second)\s+part\s+of\s+the\s+constitution\s+(?:shall\s+)?be\s+repealed\s+and\s+"
     r"reenacted\b", re.I)
+# What a clause that inserts says the new article is: "[Art.] 6-c." or "Art. 44-a".
+_NEWART = re.compile(r"\[?Art\.?\]?\s*(\d{1,3}(?:-[a-z])?)\b")
+
+
+def _part(a, b):
+    return _WHICH[(a or b).lower()]
 
 
 def cacr_targets(body, con):
     """[{verb, part, art, href, label}] for the articles a CACR's text says it
     changes, in the order it says them; [] where it says none in a form above
-    or names an article the Constitution as read does not hold."""
+    or names an article the Constitution as read does not hold. A clause that
+    inserts a new article carries "new": the number the text gives it, where
+    the Constitution as read holds that number too."""
     have = {(p, a["key"]) for p, a in articles(con)}
     if not body or not have:
         return []
     out, seen = [], set()
 
-    def add(verb, part, key):
+    def add(verb, part, key, new=""):
+        key, new = key.lower(), new.lower()  # the resolutions print "article 5-B"; the Constitution holds 5-b
         if key and (part, key) not in have:
             return
         k = (verb, part, key)
         if k in seen:
             return
         seen.add(k)
-        out.append({"verb": verb, "part": part, "art": key, "href": href(part, key),
-                    "label": label(part, key) if key else PART_NAMES[part]})
+        t = {"verb": verb, "part": part, "art": key, "href": href(part, key),
+             "label": label(part, key) if key else PART_NAMES[part]}
+        if new and (part, new) in have:
+            t["new"] = new
+        out.append(t)
 
     found = []
-    for m in CLAUSE_CHANGE.finditer(body):
-        verb = "repeal" if m.group(3).lower() == "repealed" else "amend"
-        for key in re.findall(r"\d{1,3}(?:-[a-z])?", m.group(1)):
-            found.append((m.start(), verb, _WHICH[m.group(2).lower()], key))
+    for m in CLAUSE_START.finditer(body):
+        win = body[m.end():m.end() + 400]
+        nxt = re.search(r"\b(?-i:That)\b", win)
+        if nxt:
+            win = win[:nxt.start()]
+        v = CLAUSE_VERB.search(win)
+        if not v or re.search(r"[.:]\s", win[:v.start()]):
+            continue
+        seg = win[:v.start()]
+        verb = "repeal" if (v.group(1) or "").lower() == "repealed" else "amend"
+        for rx, pa, pb, ar in ((_ART_PART, 2, 3, 1), (_PART_ART, 1, 2, 3)):
+            for r in rx.finditer(seg):
+                for key in re.findall(r"\d{1,3}(?:-[a-z])?", r.group(ar)):
+                    found.append((m.end() + r.start(), verb, _part(r.group(pa), r.group(pb)), key, ""))
+    for m in CLAUSE_REPLACE.finditer(body):
+        found.append((m.start(), "amend", _part(m.group(1), m.group(2)), m.group(3), ""))
     for m in CLAUSE_INSERT.finditer(body):
-        found.append((m.start(), "insert_after", _WHICH[m.group(1).lower()], m.group(2)))
+        n = _NEWART.search(body, m.end(), m.end() + 80)
+        found.append((m.start(), "insert_after", _part(m.group(1), m.group(2)), m.group(3), n.group(1) if n else ""))
     for m in CLAUSE_PART.finditer(body):
-        found.append((m.start(), "reenact_part", _WHICH[m.group(1).lower()], ""))
-    for _, verb, part, key in sorted(found, key=lambda x: x[0]):
-        add(verb, part, key)
+        found.append((m.start(), "reenact_part", _WHICH[m.group(1).lower()], "", ""))
+    for _, verb, part, key, new in sorted(found, key=lambda x: x[0]):
+        add(verb, part, key, new)
+    return out
+
+
+# WHAT A TEXT CITES (11 November 2026): the articles of the Constitution a bill or
+# a statute names, as a reader writes them -- "Part I, Article 12", "Part 2,
+# Article 14", "Pt. II, Art. 28", "Part First, Articles 2 and 3", "Article 11 of
+# Part First", "articles 41, 72-a and 73-a of the second part". Every form is a
+# sentence of one of the 32,086 bills that are not CACRs. Only a part AND an
+# article the Constitution as read holds count: a bare "article 11" (67 bills)
+# is ambiguous between the Parts and is not counted, and "N.H. Constitution,
+# without signature" names no article at all.
+_N = r"\d{1,3}(?:-[a-z])?"
+_LIST = _N + r"(?:(?:,\s*(?:and\s+)?|\s+and\s+)" + _N + r")*"
+_PW = r"(?:first|second|ii?|[12])"
+CITE_PART_FIRST = re.compile(
+    r"\b(?:Part|Pt\b\.?)\s+(" + _PW + r")\b,?\s*(?:Articles?|Art\b\.?)\s*(" + _LIST + r")\b", re.I)
+CITE_ART_FIRST = re.compile(
+    r"\bArticles?\s+(" + _LIST + r")\s*,?\s*(?:of|in)\s+(?:the\s+)?(?:(first|second)\s+part|part\s+("
+    + _PW + r"))\b", re.I)
+_CITE_PART = {"first": 1, "i": 1, "1": 1, "second": 2, "ii": 2, "2": 2}
+
+
+def cited_articles(text, con):
+    """[(part, article key)] in the order a text first cites them: only an
+    article the Constitution as read holds, each once."""
+    have = {(p, a["key"]) for p, a in articles(con)}
+    if not text or not have:
+        return []
+    found = []
+    for m in CITE_PART_FIRST.finditer(text):
+        for k in re.findall(_N, m.group(2)):
+            found.append((m.start(), _CITE_PART[m.group(1).lower()], k.lower()))
+    for m in CITE_ART_FIRST.finditer(text):
+        part = _CITE_PART[(m.group(2) or m.group(3)).lower()]
+        for k in re.findall(_N, m.group(1)):
+            found.append((m.start(), part, k.lower()))
+    out = []
+    for _, part, k in sorted(found, key=lambda x: x[0]):
+        if (part, k) in have and (part, k) not in out:
+            out.append((part, k))
     return out
 
 

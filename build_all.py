@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.92
+# GRANITE_VERSION: 2026-09-05.93
 """
 Run the whole pipeline in the right order.
 
@@ -560,6 +560,16 @@ def plan(a):
              kit_required=True,
              note="on 8 September 2026's table: 90.6% of the clause reader's claims "
                   "for enacted bills confirmed by a source note, 84.5% of the notes found"),
+
+        # THE CONSTITUTION'S ARTICLES (11 November 2026): the CACRs aimed at
+        # each, and the bills and statutes that cite it. Standard library only,
+        # no network; the Laws page's Constitution tab reads it. Where there is
+        # no bill text it says so and writes nothing, and the tab has no fold.
+        Step("the Constitution's articles, and the amendments proposed to them",
+             ["constitution_citations.py"],
+             needs=["collected/constitution.json"],
+             produces=["constitution_citations.json"],
+             note="every CACR aimed at an article, and what cites it"),
 
         # An archived term's docket, and the histories built from it. Both
         # are skipped when the file is not there, so a checkout without the
