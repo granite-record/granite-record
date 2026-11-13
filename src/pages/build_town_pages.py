@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.53
+# GRANITE_VERSION: 2026-09-09.54
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -583,6 +583,11 @@ def apply_websites(off, entries):
         town = (off.get("_offices") or {}).get(key)
         if town is not None:
             town["website"], town["website_checked"] = e["website"], e["checked_on"]
+            # The contact e-mail the owner has evidence for, in place of
+            # NHDOT's (the old website's domain, for a town that moved).
+            if (e.get("email") or {}).get("address"):
+                town["email"] = e["email"]["address"]
+                town["email_checked"] = e["email"]["checked_on"]
             done.add(key)
         for lk, lv in (off.get("_local") or {}).items():
             if isinstance(lv, dict) and (lk == key or lk.startswith(key + "-ward-")):
@@ -771,6 +776,10 @@ def officials_sections(town, key, town_off, site_on_page=None, board=None,
                 " The website is the town's current address, which the "
                 f"directory does not have yet (checked {E(long_date(town_off['website_checked']))})."
                 if town_off.get("website_checked") else "")
+                + (" The e-mail address is the town's own, which the "
+                   "directory does not have "
+                   f"(checked {E(long_date(town_off['email_checked']))})."
+                   if town_off.get("email_checked") else "")
                 + ("" if others else " " + since("offices"))))))
     # ---- the clerk ---------------------------------------------------------
     if loc.get("clerk"):

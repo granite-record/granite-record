@@ -739,6 +739,35 @@
    "size_from": "the directory lists 3",
    "source_url": "https://www.eknh.org/1209/Board-of-Selectmen"
   },
+  "effingham": {
+   "hand_file": true,
+   "later": "the owner's hand file (corrections/town_websites.json)",
+   "members": [
+    {
+     "directory_name": null,
+     "name": "Leo Racine",
+     "role": "Chair",
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Chris Seamans",
+     "role": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Rosemarie Wissenbach",
+     "role": null,
+     "term_ends": null
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-11-13",
+   "size": 3,
+   "size_from": "the hand file",
+   "source_url": "https://www.effingham.nh.gov/1200/Board-of-Selectmen"
+  },
   "farmington": {
    "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
@@ -3266,13 +3295,6 @@
    "size": 3,
    "source_url": "https://columbianh.org/selectmen/",
    "why": "the directory's own board, with no date or term on the page to show it changed after the March 2026 meeting"
-  },
-  "effingham": {
-   "read": 3,
-   "read_on": "2026-11-13T08:11:59-0500",
-   "size": 3,
-   "source_url": "https://www.effingham.nh.gov/1200/Board-of-Selectmen",
-   "why": "a term on the page ended in 2026"
   },
   "hampton-falls": {
    "read": 3,

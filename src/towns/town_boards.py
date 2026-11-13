@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-24.7
+# GRANITE_VERSION: 2026-09-24.8
 """
 Which towns' own websites list their select board, and which cities' their
 mayor and council, as they stand now.
@@ -1497,6 +1497,32 @@ def build(keys, dot, known=None, guessed=None):
                                "read_on": staff.get("read_on"),
                                "people": [{"name": c["name"], "title": c["title"]}
                                           for c in staff["staff"]]}
+        # A BOARD THE OWNER'S HAND FILE GIVES (corrections/town_websites.json,
+        # 13 November 2026) outranks the directory for its town, and is used
+        # even where the town's own page fails the current-and-whole rule:
+        # Effingham's page still says "Term Expires: 2026" under a member, and
+        # the owner has the card and a reader's e-mail as evidence the board
+        # is Racine, Seamans and Wissenbach. The members are the file's, in
+        # the town's spelling; no directory contact is lent to them, since
+        # the directory's addresses for the town are the old website's.
+        hand = (moved.get(key) or {}).get("board")
+        if hand:
+            names = [m["name"] for m in hand["members"]]
+            t = towns[key]
+            towns[key] = {
+                "case": "own", "why": "", "hand_file": True,
+                "directory_size": t.get("directory_size", 0),
+                "rejected": t.get("rejected", []),
+                "source_url": t.get("source_url") or moved[key]["website"],
+                "read_on": hand["checked_on"], "read": len(names),
+                "size": len(names), "size_from": "the hand file",
+                "later": "the owner's hand file (corrections/town_websites.json)",
+                "members": [{"name": m["name"], "role": m.get("role"),
+                             "term_ends": m.get("term_ends"),
+                             "directory_name": None}
+                            for m in hand["members"]]}
+            if t.get("staff_page"):
+                towns[key]["staff_page"] = t["staff_page"]
         if key in CITIES:
             cities[key] = decide_council(key, saved_pages(key), dot.get(key))
 
@@ -1514,7 +1540,7 @@ def build(keys, dot, known=None, guessed=None):
     # of them where a mayor from another page is shown beside a council
     # whose size leaves the mayor out: the label says "8 of 15", not 9.
     fields = ("source_url", "read_on", "size", "size_from", "later",
-              "members", "partial", "read")
+              "members", "partial", "read", "hand_file")
     return {
         "_what": ("Select boards, and the cities' mayors and councils, read "
                   "off their own websites where the page is current. A "

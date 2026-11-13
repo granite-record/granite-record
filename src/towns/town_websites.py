@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-13.1
+# GRANITE_VERSION: 2026-11-13.2
 """
 The address of a town's website, where a person has found that the directories
 hold an old one.
@@ -29,6 +29,20 @@ THE SHAPE, one entry a town (the key is the town's slug, as in places.json):
       "checked_on": "2026-11-13"
     }
 
+An entry may also carry the town's own select board and its contact e-mail,
+each with evidence and a day of its own (the owner, 13 November 2026):
+
+      "board": {"members": [{"name": "Leo Racine", "role": "Chair"},
+                            {"name": "Chris Seamans"}],
+                "evidence": [...], "checked_on": "2026-11-13"},
+      "email": {"address": "townadmin@effingham.nh.gov",
+                "evidence": [...], "checked_on": "2026-11-13"}
+
+A board here outranks NHDOT's for the town, and town_boards.py uses it even
+where the town's own page fails the current-and-whole rule; the e-mail is
+shown on the town offices card in place of NHDOT's. Members are in the town's
+own spelling.
+
 `website` and `checked_on` are required and `evidence` must say something;
 `directories_say` is what the file replaces, kept beside the correction so a
 later reader can see what was changed, and so that `still_needed` can say when
@@ -55,6 +69,9 @@ import urllib.parse
 ROOT = _paths.ROOT
 PATH = ROOT / "corrections" / "town_websites.json"
 ENV = "GRANITE_TOWN_WEBSITES"
+
+
+EMAIL = re.compile(r"^[A-Za-z0-9._%+'-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$")
 
 
 def path():
@@ -107,6 +124,28 @@ def problems(data):
         say = e.get("directories_say")
         if say is not None and not isinstance(say, dict):
             bad.append(f"{key}: directories_say is not an object")
+        # The optional board and e-mail, each with its own evidence and day.
+        for part in ("board", "email"):
+            x = e.get(part)
+            if x is None:
+                continue
+            if not isinstance(x, dict):
+                bad.append(f"{key}: {part} is not an object")
+                continue
+            ev = x.get("evidence")
+            if not (isinstance(ev, list) and ev and all(isinstance(s, str) and s.strip() for s in ev)):
+                bad.append(f"{key}: {part} has no evidence")
+            if not re.fullmatch(r"20\d\d-\d\d-\d\d", str(x.get("checked_on") or "")):
+                bad.append(f"{key}: {part} checked_on is not a day")
+        b = e.get("board")
+        if isinstance(b, dict):
+            ms = b.get("members")
+            if not (isinstance(ms, list) and ms and all(
+                    isinstance(m, dict) and str(m.get("name") or "").strip() for m in ms)):
+                bad.append(f"{key}: board has no members with names")
+        m = e.get("email")
+        if isinstance(m, dict) and not EMAIL.match(str(m.get("address") or "")):
+            bad.append(f"{key}: email address {m.get('address')!r} is not an address")
     return bad
 
 
