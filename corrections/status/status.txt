@@ -9,7 +9,7 @@
 # Lines are "key: value". Milestones are "milestone: DATE | LABEL | NOTE".
 # Anything after # is ignored. Delete a line to drop it from the page.
 
-updated: 2026-11-10
+updated: 2026-11-13
 
 # One of: in session, between sessions, out of session, veto day pending
 phase: out of session
@@ -23,11 +23,11 @@ phase: out of session
 # Delete the line in December, when the next term brings its own session days.
 session_over: 2026-08-19
 
-note: The 2026 session ended Aug 19 (veto day), and House committees filed their interim study reports by Oct. 23. The members elected Nov. 3 are sworn in on Organization Day, Dec. 2. Legislators may file requests for 2027 bills until Nov. 18.
+note: The members elected on November 3 will be sworn in on Organization Day, December 2. Legislators may file requests for 2027 bills until November 18.
 # The Spanish pages' twin of the note (draft, not yet proofread). A page in Spanish shows it
 # where it is here, and the note above otherwise. A milestone has one too:
 # "milestone_es: DATE | LABEL | NOTE", the same DATE as the English one's.
-note_es: La sesión de 2026 terminó el 19 de agosto (día de vetos), y los comités de la Cámara presentaron sus informes de estudio interino a más tardar el 23 de octubre. Los miembros elegidos el 3 de noviembre prestan juramento el Día de Organización, el 2 de diciembre. Los legisladores pueden presentar solicitudes de proyectos de ley para 2027 hasta el 18 de noviembre.
+note_es: Los miembros elegidos el 3 de noviembre prestarán juramento el Día de Organización, el 2 de diciembre. Los legisladores pueden presentar solicitudes de proyectos de ley para 2027 hasta el 18 de noviembre.
 
 # Off the page since 14 September, at the person's word: the box says no "Next:" line.
 # Remove the "# " to show one again.
