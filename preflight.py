@@ -123517,6 +123517,107 @@ def _elect_reader_decisions(PSR):
                   "refused")
 
 
+@check("build", "members-elect: the results reader reads the recount laid out as a row of "
+                "RECOUNT <name> cells and a row of figures (2026 Rockingham 25), never as "
+                "candidates, and refuses what it cannot tie to the candidate above",
+       needs=("parse_sos_results",))
+def _elect_reader_recount_under_town(PSR):
+    """The third recount layout, held on a fixture of the file's shape
+    (13 November 2026): a first header of four candidates and Write-Ins, the
+    town's counts, a row of "RECOUNT <name, party>" with the spacing the file
+    has, the recount's figures; then a continuation header with no Write-Ins
+    label, the town's counts with the write-ins, a row of RECOUNT names with a
+    bare RECOUNT over the write-ins, and the figures. The recounts are read, a
+    candidate is never named RECOUNT, the first count stays beside them, and
+    each way the layout can fail to tie is refused with its row."""
+    import datetime as dt
+    head = [["State of New Hampshire - 2026 STATE GENERAL ELECTION"],
+            ["State Representatives - ROCKINGHAM County"], ["November 03, 2026"]]
+    N = None
+
+    def sheet(**over):
+        rows = {
+            "h1": ["District No. 25 (3)", "Ann Ames, d", "Bo Bell, d", "Cy Cole, r", "Di Dunn, r",
+                   N, "Write-Ins"],
+            "t1": ["Salem", 10, 20, 30, 40, N, N],
+            "r1": [N, "RECOUNT  Ann Ames, d", "RECOUNT Bo Bell, d", "RECOUNT    Cy Cole, r",
+                   "RECOUNT  Di Dunn, r", N, N],
+            "f1": [N, 11, 21, 31, 41, N, N],
+            "h2": [N, "Ed Eld, r", "Flo Fox, r", N, N, N, N],
+            "t2": ["Salem", 50, 60, N, N, N, 7],
+            "r2": [N, "RECOUNT Ed Eld, r", "RECOUNT   Flo Fox, r", N, N, N, "RECOUNT"],
+            "f2": [N, 51, 61, N, N, N, 5]}
+        rows.update(over)
+        return head + list(rows.values())
+
+    def read(rows):
+        was = PSR.sheets
+        PSR.sheets = lambda p: [("s", rows)]
+        try:
+            return PSR.read_house(Path("2026-ge-house-rockingham_1.xlsx"), "rockingham",
+                                  dt.date(2026, 11, 3))
+        finally:
+            PSR.sheets = was
+
+    seats, flo, d = read(sheet())[25]
+    assert seats == 3, seats
+    got = {c["name"]: (c["votes"], c["elected"]) for c in d["candidates"]}
+    assert got == {"Ann Ames": (11, False), "Bo Bell": (21, False), "Cy Cole": (31, False),
+                   "Di Dunn": (41, True), "Ed Eld": (51, True), "Flo Fox": (61, True)}, got
+    assert d["recounted"] is True and d["scatter"] == 5 and d["towns"] == ["Salem"], d
+    assert not any("RECOUNT" in c["name"].upper() for c in d["candidates"]), d["candidates"]
+    firsts = {r["candidate"]: r["votes"] for r in d["town_rows"]
+              if r["count_kind"] == "first" and r["row_kind"] == "candidate"}
+    assert firsts["Ann Ames"] == 10 and firsts["Flo Fox"] == 60, firsts
+    assert not any(r["in_race_count"] for r in d["town_rows"] if r["count_kind"] == "first"
+                   and r["row_kind"] == "candidate"), "a first count is counted in the race"
+
+    def refused(why, rows, *words):
+        try:
+            read(rows)
+        except PSR.Refused as e:
+            assert all(w in str(e) for w in words), f"{why}: refused, but not for it: {e}"
+            return
+        raise AssertionError(f"{why}: read, where it must be refused")
+    r1 = sheet()[3 + 2]
+    refused("a name that is not the candidate above it",
+            sheet(r1=[N, "RECOUNT Bo Bell, d", "RECOUNT Ann Ames, d", "RECOUNT Cy Cole, r",
+                      "RECOUNT Di Dunn, r", N, N]), "not the candidate above", "row 6")
+    refused("a party that is not the candidate's",
+            sheet(r1=[N, "RECOUNT Ann Ames, r"] + r1[2:]), "not the candidate above")
+    refused("a name in a column that does not line up",
+            sheet(r1=[N, N, "RECOUNT Ann Ames, d", "RECOUNT Bo Bell, d", "RECOUNT Cy Cole, r",
+                      "RECOUNT Di Dunn, r", N]), "row 6")
+    refused("a bare RECOUNT over a candidate's column",
+            sheet(r1=[N, "RECOUNT", "RECOUNT Bo Bell, d", "RECOUNT Cy Cole, r",
+                      "RECOUNT Di Dunn, r", N, N]), "bare RECOUNT")
+    refused("a candidate with no recount cell",
+            sheet(r1=[N, "RECOUNT Ann Ames, d", "RECOUNT Bo Bell, d", "RECOUNT Cy Cole, r", N, N,
+                      N]), "no RECOUNT cell")
+    refused("a bare RECOUNT over a column the header named nothing in",
+            sheet(r2=[N, "RECOUNT Ed Eld, r", "RECOUNT Flo Fox, r", "RECOUNT", N, N,
+                      "RECOUNT"]), "names no candidate or count")
+    refused("no row of figures", sheet()[:3 + 3], "row 6", "no row of figures")
+    refused("a blank row where the figures belong", sheet(f1=[N] * 7), "no row of figures")
+    refused("a figure missing", sheet(f1=[N, 11, 21, N, 41, N, N]), "no figure in column 4")
+    refused("a figure under no RECOUNT cell", sheet(f1=[N, 11, 21, 31, 41, 9, N]),
+            "under no RECOUNT cell")
+    refused("a figures row naming another town", sheet(f1=["Hampton", 11, 21, 31, 41, N, N]),
+            "Hampton")
+    refused("a bare RECOUNT with no figure under it", sheet(f2=[N, 51, 61, N, N, N, N]),
+            "bare RECOUNT")
+    refused("a text figure", sheet(f1=[N, 11, 21, "31", 41, N, N]), "where a count belongs")
+    two = sheet()
+    two.insert(3 + 2, ["Hampton", 1, 2, 3, 4, N, N])
+    refused("a block of more than one town", two, "does not sit directly under the one town")
+    apart = sheet()
+    apart.insert(3 + 2, [N] * 7)
+    refused("a RECOUNT row that is not directly under the town row", apart,
+            "does not sit directly under the one town")
+    return "ok", ("a row of RECOUNT names and a row of figures read as the recount of the "
+                  "candidates above, never as new candidates; each way to mis-tie it refused")
+
+
 @check("build", "members-elect: the Senate is read whole (2024's one file) or in parts (2026's "
                 "fifteen, named for their districts), each part's later upload in place of its "
                 "earlier; a gap, an overlap or a file holding other than its name is refused",
