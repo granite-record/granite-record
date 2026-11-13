@@ -14,9 +14,37 @@ it is, what it is for and how an entry is added.
 | `bill_notes.json` | what a recurring bill number means: HB 1 has been the budget since 1993 | `src/pages/build_site_v2.py` |
 | `ballot_results.json` | the statewide vote on each constitutional amendment, from the source each row names | `src/pages/build_site_v2.py`, `learn_numbers.py`, `build_exports.py` |
 | `officials.json` | the Governor, the Executive Councillors and the members of Congress, from four official sources; since October 2026 also the Secretary of State, the State Treasurer, the Attorney General, the county officers, the heads of the executive departments and the Supreme and Superior Courts' justices, each with the page it was read from, and a seat's successor with the day they take office (below) | `src/parse/build_members_elect.py`'s `read_officials`, the one reader: the Officials page, the town pages, the district map and `src/parse/officers.py` |
-| `members_elect.json` | who a general election's winners are where the name alone cannot say, which races are not final, and a winner held off the pages | `src/parse/build_members_elect.py` |
+| `members_elect.json` | who a general election's winners are where the name alone cannot say, which races are not final, a winner held off the pages, and, under `prior`, a new winner's earlier service settled (below) | `src/parse/build_members_elect.py` |
+| `town_websites.json` | the current website of a town that has moved where the directories still hold the old one, and optionally the town's select board and its contact e-mail, each with the evidence and the day (below) | `src/towns/town_websites.py`, for `town_sites.py`, `parse_town_sites.py`, `town_boards.py` and `build_town_pages.py` |
 | `status/status.txt` | the state of the session -- session days, deadlines, sine die -- which no published file carries | `src/pages/build_site_v2.py` |
 | `vote_lines.json` | the one-line summary of a vote that names a member (a reprimand, a censure, an expulsion, a member's privileges; shown as a "Misc vote"), approved against the Journal's page; such a vote shows only the Journal's words until a line is here. Empty when it was made, 23 October 2026 | `src/parse/journal_motions.py` |
+
+## Earlier service in `members_elect.json`
+
+A new winner the step marks "prior service not on record" is settled by
+hand, under the election's day, in `prior`, keyed by race and the name as the
+results print it. `"none"` makes them New; `{"none": true, "evidence": [...]}`
+is the same and keeps its reason; `{"terms": [...], "seat": "...",
+"evidence": [...]}` makes them Returning, and the provisional page says the
+seat and the terms. A record links no member page, because there is none.
+The evidence is required in every form but the bare `"none"` and is never
+published, and neither is `gc_employee_number`. `_how` in the file has the
+whole shape.
+
+## A moved town website in `town_websites.json`
+
+Under `towns`, a town's slug: `website`, the address now; `directories_say`,
+what NHDOT's directory and the Secretary of State's list hold, kept beside it
+so a later reader sees what changed; `evidence`; `checked_on`. For a town
+named here the fetcher asks that address only, its saved pages are read for
+that town alone, and the town's page links it and not the directories'. An
+entry may add a `board` (`members`, each a name in the town's spelling with a
+`role` where the town gives one, and its own `evidence` and `checked_on`),
+used in place of NHDOT's board even where the town's own page fails the
+current-and-whole rule, and an `email` (`address`, `evidence`, `checked_on`),
+drawn on the town offices card in place of NHDOT's. A town not named is as it
+was. `python3 src/towns/town_websites.py` says which entries the directories
+have caught up with; those may be taken out.
 
 ## A successor in `officials.json`
 

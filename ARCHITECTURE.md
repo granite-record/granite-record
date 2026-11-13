@@ -1944,12 +1944,138 @@ because the printed "FL" mark was wrong four times in 2024, flagging the mark
 rather than refusing it. The files mark no winner, so a race's top counts win
 and a tie for the last seat is null; a write-in the file does not name who
 may have won is refused, and a county's file saved again under a higher
-upload number, as after a recount, is read in place of the earlier.
+upload number, as after a recount, is read in place of the earlier. In 2026
+the Secretary of State replaced three county files in place under their own
+names instead, so a person saves the new copy as `<name>_1.xlsx` beside the
+original and the reader takes the higher number; whatever else the new copy
+changes it takes as printed, held to the file's own Totals, and the commit
+says each figure. A recount shows in four layouts, and the reader refuses any
+other: a `RECOUNT` column beside a count, a second whole district headed
+`RECOUNT FIGURES`, a `Recount` row under a block's one town, and a row of
+`RECOUNT <name>` cells directly under that one town with one row of figures
+under it (`recount_under_town`), accepted only where each cell names the
+candidate above it in that column.
 `src/parse/score_members_elect.py` replays the rule on 2024 as of Election
 Day -- sitting and former members from the roll calls before it, each at the
 seat its term's bills printed -- and holds every link to the 2025-2026 roll
 calls; preflight's `_elect_2024_read_again` and `_elect_2024_scored` run them
 where the files are on disk.
+
+### The winners' statuses, search and pages (November 2026)
+
+A winner has one status, `build_members_elect.elect_status`, worked out from
+the member id and the roster's or `former.json`'s row and never from a name:
+incumbent (serving in the chamber now), returning (not serving now, whichever
+term they left), new chamber, new, or "prior service not on record". Only the
+last reads a name: a new winner whose surname the bills of 1989-1998 print for
+the same chamber and county, a time when bills printed a surname and no member
+number (`earlier_service`). It raises a doubt and links no one, and clears it
+where no first name printed or placed there could be the winner's
+(`may_be_same`), reading the first names the bills print, the General Court's
+own placing of them (below) and the Manual's rosters in
+`generated/manual_seats.json`. What remains is the person's, in
+`corrections/members_elect.json`'s `prior` (`apply_prior`): `"none"` makes the
+winner New; a record of terms and a seat makes them Returning, with the
+provisional page saying what it was and no member page linked. Evidence is
+required and never published. The Officials tab draws the status as the chip's
+one word, counts each kind, and carries a search box and filters by status,
+party and chamber (`officials_tabs.py`, `app.js`); without the script it is
+the plain lists.
+
+Every new winner has a provisional page: `src/pages/build_elect_pages.py`
+writes `site/elect_pages.json` and `build_legislator_pages.py` draws the
+pages, which are noindex until the General Court numbers the person and
+outlive Organization Day. The Officials tab links each one, reading the same
+`e` entry the town pages read. A former member elected again, or a sitting
+member elected to the other chamber, is headed on their own page as the
+member-elect of the new seat, the earlier seat kept below; both end with the
+term, by the build's day.
+
+## Sponsors before 1999 (13 November 2026)
+
+The bills of 1989-1998 print a sponsor as a surname, sometimes an initial, and
+a seat, and no roll call exists for those years, so a surname cannot be placed
+on a person by the votes. `src/parse/past_roster.py` places it by the General
+Court's own sponsor record instead: each bill's stored LSR leads to its sponsor
+rows, those to employee numbers, and those to a name in `past_members.json`. A
+printed sponsor is placed only where that bill's own rows settle it; a
+misprint, an unsettled surname and an unnamed number stay as printed, and the
+record keeps the employee number in its own field, with no party, linking a
+member only where a later roll call was cast under the number. A line two
+numbers fit is told apart by `settle`, and only by the term's own seat list,
+`generated/manual_seats.json`, which `src/parse/build_manual_seats.py` reads
+from the Manual for the General Court (six editions, 1989 to 1999) and which
+holds each row with its edition, its line and its text as printed; where no
+one is certain nothing is chosen. `src/parse/past_roll.py` reads the House's
+call of the roll as a second source, placing a name on a number only where
+exactly one of the term's sponsors fits it, and `src/parse/build_past_roster.py`
+writes `generated/past_roster.json`, one row for each person, term and
+chamber. The bill index marks a prime sponsor so placed (`sponsor_person`) and
+the Sponsor filter keys them on their full name; a row still as printed keeps
+the surname and seat. Granite Record's own ids, `gr-` and a serial, are for a
+person the record names and the General Court gives no number
+(`src/lib/gr_ids.py`, `generated/gr_ids.json`, issued by
+`src/ops/gr_register.py`): kept in a field of their own (`granite_id`), never
+in `gc_employee_number`, and never renumbered. preflight holds the two kinds of
+identifier apart and the register to growth.
+
+## Next session's bill requests (November 2026)
+
+`src/pages/build_lsrs.py` makes the requests term the bill search opens. A
+request has a title and a prime sponsor, so the search finds it by the
+sponsor's name (prime or co-sponsor; sitting, member-elect or former) and the
+Sponsor filter lists each with party and seat. A sponsor the roster misses is
+matched to a winner of the latest general election in the request's own
+chamber, and only where certain: a middle initial, a short nickname pair
+(`NICKNAMES`), a race under recount, a member changing chambers. Two winners of
+one name, a tie, the other chamber and a constitutional amendment request stay
+as typed. A request whose sponsor is not returning is dropped and its address
+forwards to the requests' list, matched by member and never by name. A
+request's topic comes from its title alone (`src/parse/request_topics.py`: the
+topic classifier with the committee left out, and none below its threshold).
+
+## Town websites and staff (November 2026)
+
+A town's website comes from two directories that are not told when a town
+moves. `corrections/town_websites.json`, the person's hand file, names the
+current address, and `src/towns/town_websites.py` is its one reader: for a town
+named there the fetcher asks that address and no other, the parsers read that
+site's saved pages for it, and the town page links it and not the directories'.
+An entry may carry the town's select board, used in place of NHDOT's even where
+the town's page fails the current-and-whole rule (lending no directory
+contact), and its contact e-mail. A CivicPlus "Contact Us" block is read card
+by card (`parse_town_sites.contact_cards`: the name, then the title; the
+office's own card and anyone "Vacant" skipped), and a town's own staff list
+replaces NHDOT's rows on its page where its current page gave one
+(`build_town_pages.py`), saying the page and the day.
+
+## The run's own files (13 November 2026)
+
+GitHub names a run's page, its step outputs and what a step leaves for the next
+(`GITHUB_STEP_SUMMARY`, `GITHUB_OUTPUT`, `GITHUB_ENV`, `GITHUB_PATH`,
+`GITHUB_STATE`), and the night runs preflight inside one of its steps, so a
+fixture that drove a writer without a file of its own wrote onto the real
+run. preflight's `_not_the_runs` takes these out of the checks' environment
+before any check runs (`RUNNER_FILES`), and `_preflight_writes_no_run_page`
+shows the writers reach them when named and nothing when not.
+
+## The patch notes (13 November 2026)
+
+A night started by hand has a Notes box, and its step "The patch notes"
+(`nightly.yml`, run only on a run by hand) writes them to the run's page with
+the commits merged since the live site's own, taken from its `build.json`,
+first parent only, and a link to every change. The box reaches the step in an
+environment entry and never into script text, and the step never fails the
+night; `_workflows_patch_notes` holds both. CONTRIBUTING.md says how to use it.
+
+## By the Numbers (13 November 2026)
+
+`src/pages/learn_numbers.py` makes each chart's margins from its labels'
+measured width rather than a fixed figure, and a number table fills its column
+with heads that wrap between words only. The flow diagram's minimum width and
+the tables' scroll cue and sticky first column apply on a phone only, and the
+page's print rules stop clipping. preflight holds the label extents and the CSS
+rules.
 
 ## The other offices' successors (23 October 2026)
 
