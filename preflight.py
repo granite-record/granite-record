@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.895
+# GRANITE_VERSION: 2026-09-04.896
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -115756,6 +115756,221 @@ def _pre_1999_sponsors_placed(text_sponsors):
     return "ok", ("a unique surname, an initial between two Lawtons and a senator printed as Rep. are placed "
                   "on the General Court's name and number; a misprint, an unsettled surname and a surname "
                   "off the bill stay as printed; no party; no gr- id in either field")
+
+
+@check("naming", "a Granite Record id (gr-) and a General Court employee number are never written into each other's field",
+       needs=("gr_ids", "gr_register"))
+def _gr_ids_apart(GR, REG):
+    """gr_ids.py, 13 November 2026 (the owner: "distinguish the IDs assigned by Granite Record from the
+    official ones so that the two don't get mixed up"). The General Court's employee number is digits
+    only and is a person's key wherever the General Court supplies one; Granite Record's id is gr- and
+    a serial, made here only for a person the record names with no number. They live in separate fields
+    (`gc_employee_number`, `granite_id`) of every table that shows an identifier. Held on fixtures, each
+    a mistake the check must see: a gr- id in the employee-number field, or an employee number in the id
+    field; a digits-only number no list of the General Court's names; a person keyed by a gr- id whose
+    official number is known; an id the register does not hold. And the register: ids never reissued,
+    renumbered or deleted, a number found later the one change an entry may take."""
+    ok = {"gc_employee_number": "373027", "granite_id": "", "person": "373027", "name": "A"}
+    gr = {"gc_employee_number": "", "granite_id": "gr-0001", "person": "gr-0001", "name": "B"}
+    reg = {"format": 1, "ids": [{"id": "gr-0001", "named_as": "B", "issued": "2026-11-13",
+                                 "evidence": "x", "employee_number": ""}]}
+    assert GR.check_rows([ok, gr], known={"373027"}, reg=reg) == [], GR.check_rows([ok, gr], {"373027"}, reg)
+    cases = [
+        ("a gr- id in the employee-number field", dict(ok, gc_employee_number="gr-0001")),
+        ("an employee number in the id field", dict(gr, granite_id="373027")),
+        ("digits only and not the General Court's", dict(ok, gc_employee_number="999998", person="999998")),
+        ("an employee number that is not digits", dict(ok, gc_employee_number="37302X")),
+        ("both set", dict(ok, granite_id="gr-0001")),
+        ("neither set", dict(ok, gc_employee_number="")),
+        ("an official number, keyed by a gr- id", dict(ok, person="gr-0001")),
+        ("an id the register does not hold", dict(gr, granite_id="gr-0009", person="gr-0009")),
+        ("an alias the register does not hold", dict(ok, granite_id_aliases=["gr-0044"])),
+    ]
+    for what, row in cases:
+        assert GR.check_rows([row], known={"373027"}, reg=reg), f"not seen: {what}"
+    found = {"format": 1, "ids": [dict(reg["ids"][0], employee_number="373027")]}
+    assert GR.check_rows([dict(gr, gc_employee_number="", person="gr-0001")], reg=found), \
+        "a person keyed by a gr- id whose official number the register has since found was not seen"
+    assert not GR.check_rows([dict(ok, granite_id_aliases=["gr-0001"])], known={"373027"}, reg=found), \
+        "the official number as key and the gr- id as its alias was refused"
+    # The register's shape.
+    assert GR.check_register(reg) == [] and GR.check_register({"format": 1, "ids": []}) == []
+    for what, bad in (("a digits-only id", {"ids": [{"id": "373027", "named_as": "x"}]}),
+                      ("an id twice", {"ids": [dict(reg["ids"][0]), dict(reg["ids"][0])]}),
+                      ("an id nobody holds", {"ids": [{"id": "gr-0001", "named_as": ""}]}),
+                      ("out of order", {"ids": [{"id": "gr-0002", "named_as": "x"}, {"id": "gr-0001", "named_as": "y"}]}),
+                      ("a gr- id as the employee number", {"ids": [dict(reg["ids"][0], employee_number="gr-0002")]}),
+                      ("a number held twice", {"ids": [dict(reg["ids"][0], employee_number="5"),
+                                                       {"id": "gr-0002", "named_as": "z", "employee_number": "5"}]})):
+        assert GR.check_register(bad), f"a register with {what} was called well formed"
+    # Append-only against an earlier copy.
+    two = {"ids": [reg["ids"][0], {"id": "gr-0002", "named_as": "C", "issued": "2026-11-14"}]}
+    assert GR.check_only_grows(reg, two) == [] and GR.check_only_grows(reg, found) == []
+    assert GR.check_only_grows(two, reg), "an id deleted from the register was not seen"
+    renamed = {"ids": [dict(reg["ids"][0], named_as="Someone else")]}
+    assert GR.check_only_grows(reg, renamed), "an id reissued to another person was not seen"
+    assert GR.check_only_grows(found, {"ids": [dict(found["ids"][0], employee_number="373028")]}), \
+        "a recorded number changed was not seen"
+    assert GR.check_only_grows(found, reg), "a recorded number removed was not seen"
+    # The writer: serials in order, never reused, a number found never over another.
+    r = {"format": 1, "ids": []}
+    a = REG.issue(r, "Jane Doe", "no number in any list", "2026-11-13")
+    b = REG.issue(r, "John Roe", "no number in any list", "2026-11-13")
+    assert (a, b) == ("gr-0001", "gr-0002") and GR.check_register(r) == [], (a, b)
+    REG.found(r, "gr-0001", "373027")
+    try:
+        REG.found(r, "gr-0001", "373028")
+        raise AssertionError("a recorded number was changed")
+    except SystemExit:
+        pass
+    try:
+        REG.found(r, "gr-0002", "gr-0001")
+        raise AssertionError("a gr- id was recorded as an employee number")
+    except SystemExit:
+        pass
+    assert GR.is_gr("gr-0001") and not GR.is_gr("373027") and GR.looks_official("373027") \
+        and not GR.looks_official("gr-0001")
+    return "ok", ("a gr- id in the employee-number field, an employee number in the id field, a digits-only "
+                  "number no General Court list names, a gr- key for a person with an official number, and "
+                  "a register that loses, renumbers or reissues an id are each seen; a number found later "
+                  "is the one change an entry takes")
+
+
+@check("files", "only a person's run writes the register of Granite Record ids; it is well formed and only ever grows",
+       needs=("gr_ids",))
+def _gr_register_files(GR):
+    """generated/gr_ids.json holds the ids this site made for people the General Court gives no number
+    (gr_ids.py). Like generated/person_numbers.json it is only ever added to and never rewritten by the
+    nightly: no code file writes it but src/ops/gr_register.py, by any of the shapes the person-number
+    register's check reads. What is there is well formed, and against the copy git holds (HEAD, and
+    origin/dev where it has one) every id is still there, issued to the same name on the same day,
+    with any official number it held."""
+    stem = r"(?<![\w-])gr_ids\.json"
+    HELD = re.compile(r'^[ \t]*([A-Za-z_]\w*)[ \t]*(?::[^=\n]*)?=[^=\n][^\n]*' + stem, re.M)
+
+    def writes(src):
+        if re.search(r'open\s*\([^)]*' + stem + r'[^)]*["\'][wax]', src) or \
+           re.search(stem + r'[^\n]{0,60}\.write_(?:text|bytes)', src):
+            return True
+        for held in set(HELD.findall(src)):
+            n = re.escape(held)
+            if re.search(r'\b%s\s*\.\s*(?:write_text|write_bytes)\s*\('
+                         r'|\b%s\s*\.\s*open\s*\(\s*(?:mode\s*=\s*)?["\'][wax]'
+                         r'|\bopen\s*\(\s*%s\s*,\s*(?:mode\s*=\s*)?["\'][wax]'
+                         r'|\b(?:os\.replace|os\.rename|shutil\.(?:copy\w*|move))'
+                         r'\s*\([^)\n]*,\s*%s\s*\)' % (n, n, n, n), src):
+                return True
+        return False
+
+    for text, w in (('open("generated/gr_ids.json", "w")', True),
+                    ('Path("generated/gr_ids.json").write_text(t)', True),
+                    ('REGISTER = Path("generated/gr_ids.json")\nREGISTER.write_text(t)', True),
+                    ('def f(path="generated/gr_ids.json"):\n    reg = load(path, None)', False),
+                    ('json.loads(Path("generated/gr_ids.json").read_text())', False)):
+        assert writes(text) == w, f"the register's reader reads {text!r} as " + ("no write" if w else "a write")
+    bad = []
+    for f in _paths.code_files("*.py"):
+        # The writer, the module that names the path, and this file, whose cases name it on purpose.
+        if f.name in ("gr_register.py", "gr_ids.py", "preflight.py"):
+            continue
+        if writes(f.read_text(encoding="utf-8", errors="replace")):
+            bad.append(f.name)
+    assert not bad, "these write the register of Granite Record ids, which only " \
+                    "src/ops/gr_register.py may: " + ", ".join(bad)
+    reg = _paths.ROOT / "generated" / "gr_ids.json"
+    assert reg.exists(), "generated/gr_ids.json is not here: the register is tracked, even when empty"
+    now = json.loads(reg.read_text(encoding="utf-8"))
+    problems = GR.check_register(now)
+    assert not problems, "the register is not well formed: " + "; ".join(problems[:5])
+    compared = []
+    for ref in ("HEAD", "origin/dev"):
+        r = _run(["git", "show", f"{ref}:generated/gr_ids.json"], capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip():
+            lost = GR.check_only_grows(json.loads(r.stdout), now)
+            assert not lost, f"the register is only ever added to, and against {ref}'s: " + "; ".join(lost[:5])
+            compared.append(ref)
+    return "ok", (f"no other code file writes it; well formed; {len(now['ids'])} id(s); "
+                  + (f"nothing lost or moved against {' and '.join(compared)}" if compared
+                     else "no committed copy to compare with yet"))
+
+
+@check("data", "the 1989-1998 table and the sponsor rows keep the General Court's numbers and Granite Record's ids "
+       "in their own fields, and name only numbers the General Court's lists name")
+def _past_roster_data():
+    """generated/past_roster.json (build_past_roster.py) and the sponsors text_sponsors.json places on a
+    person: every employee number is digits only and one the General Court's own files name (PastSponsors,
+    its list of members, its legislators table); no gr- id is in an employee-number or member-id field; no
+    person with an official number is keyed by a gr- id; every gr- id is in the register. Skips where the
+    table or the General Court's files are not on this disk."""
+    import gr_ids as GR
+    p = Path("generated/past_roster.json")
+    if not p.exists():
+        return "skip", "no generated/past_roster.json here (python3 src/parse/build_past_roster.py --apply)"
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    reg = GR.load_register()
+    known = None
+    ps, pm, lg = Path("db/past/PastSponsors.psv"), Path("past_members.json"), Path("db/Legislators.psv")
+    if ps.exists() and pm.exists():
+        known = {l.split("|")[3].strip() for l in ps.read_text(encoding="utf-8").splitlines() if l.count("|") >= 4}
+        known |= set(json.loads(pm.read_text(encoding="utf-8")))
+    bad = GR.check_rows(doc["rows"], known=known, reg=reg)
+    assert not bad, "the 1989-1998 table: " + "; ".join(bad[:5])
+    ts = Path("text_sponsors.json")
+    n = 0
+    if ts.exists():
+        for term, bills in json.loads(ts.read_text(encoding="utf-8")).items():
+            for bid, recs in bills.items():
+                for r in recs:
+                    if r.get("employee") or str(r.get("member_id") or "").startswith("gr-"):
+                        n += 1
+                        row = {"gc_employee_number": r.get("employee") or "", "granite_id": "",
+                               "person": r.get("employee") or "", "name": f"{term} {bid} {r.get('name')}"}
+                        assert not GR.check_rows([row], known=known), f"{term} {bid}: {GR.check_rows([row], known=known)}"
+                        assert not GR.is_gr(r.get("member_id")), \
+                            f"{term} {bid}: a gr- id in the member-id field of {r.get('name')}"
+    return "ok", (f"{len(doc['rows']):,} person-terms and {n:,} placed sponsors: every employee number "
+                  f"digits only{' and named by a General Court list' if known else ''}; "
+                  f"{len(reg['ids']) if reg else 0} gr- id(s) in the register")
+
+
+@check("build", "the 1989-1998 table has one row a person a term a chamber, with the General Court's number and name, "
+       "the printed seat and no party",
+       needs=("build_past_roster", "past_roster", "past_sponsors"))
+def _past_roster_table(BPR, PR, PSP):
+    """build_past_roster.py, 13 November 2026. From the sponsor route alone: a person with a live sponsor row
+    on a bill of the term has a row in the chamber the bill printed (else the list of members', marked so);
+    the seats are the ones the bills printed, most-printed first; the name is the General Court's; the
+    employee number is in gc_employee_number and granite_id is empty; no party; a withdrawn sponsor is not a
+    row; a number no list names has a row with no name. Coverage is people against 400 and 24."""
+    pm = {"1": {"name": "Guay, Roland", "chamber": "H"}, "2": {"name": "Blaisdell, Clesson", "chamber": "S"},
+          "3": {"name": "Dykstra (SEE Emp #9), Leona", "chamber": "H"}}
+    people = PSP.People([], pm)
+    live = lambda e, w=False: {"employee": e, "sequence": 0, "prime": False, "withdrawn": w}
+    joined = {"1993-1994": {"HB1": {"lsr": "", "rows": [live("1"), live("2"), live("3"), live("4"), live("5", True)]},
+                            "HB2": {"lsr": "", "rows": [live("1")]}}}
+    M = PR.MATCHED
+    text = {"1993-1994": {"HB1": [{"employee": "1", "matched": M, "chamber": "H", "county": "Coos", "district": "6"},
+                                  {"employee": "2", "matched": M, "chamber": "S", "county": "", "district": "10"}],
+                          "HB2": [{"employee": "1", "matched": M, "chamber": "H", "county": "Coos", "district": "6"}]}}
+    rows = BPR.rows_of(joined, text, people, voters={"2"}, terms=("1993-1994",))
+    by = {r["person"]: r for r in rows}
+    assert sorted(by) == ["1", "2", "3", "4"], f"people with a live sponsor row: {sorted(by)}"
+    g = by["1"]
+    assert (g["chamber"], g["name"], g["gc_employee_number"], g["granite_id"], g["bills"], g["bills_printed"]) == \
+        ("H", "Roland Guay", "1", "", 2, 2) and g["seats"] == [{"county": "Coos", "district": "6", "bills": 2}], g
+    assert by["2"]["chamber"] == "S" and by["2"]["voted_since_1999"] and not g["voted_since_1999"], by["2"]
+    assert by["3"]["chamber_source"].startswith("the list of members") and by["3"]["seats"] == [] \
+        and by["3"]["same_person_as_employee_number"] == "9" and by["3"]["name"] == "Leona Dykstra", by["3"]
+    assert by["4"]["name"] == "" and by["4"]["chamber"] == "", "a number no list names has a row with no name"
+    assert not any("party" in r for r in rows), "a party before 1999"
+    import gr_ids as GR
+    assert GR.check_rows(rows, reg={"ids": []}) == []
+    cov = BPR.coverage(rows, terms=("1993-1994",))["1993-1994"]
+    assert cov["H"] == {"people": 2, "of_seats": 400, "with_a_printed_seat": 1, "districts_printed": 1,
+                        "nameless": 0} and cov["S"]["people"] == 1 and cov["S"]["of_seats"] == 24 \
+        and cov["no_chamber"] == 1, cov
+    return "ok", ("a row a person, term and chamber; the General Court's number and name; the seats the bills "
+                  "printed; chamber from the list marked as that; no party; coverage against 400 and 24")
 
 
 @check("naming", "a sponsor row is a person or a committee: no heading, no seat on its own, no figure in a name",
