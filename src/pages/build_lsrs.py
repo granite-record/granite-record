@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.11
+# GRANITE_VERSION: 2026-09-18.12
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -161,6 +161,16 @@ def roster(site):
     return out
 
 
+def party_of(label):
+    """The party letter a sponsor's label ends with -- "Rep. Ellen Read (D)", a
+    member-elect's "Jane Doe (R)" -- or "" where the label has none (a sponsor
+    who matched nobody is not given one). The roster's label is the one place
+    a sitting member's and a member-elect's party are both written, so this is
+    read from it, as the card does (app.js cardSponsor), never from the name."""
+    m = re.search(r"\(([A-Z])\)\s*$", str(label or ""))
+    return m.group(1) if m else ""
+
+
 def chamber_of(body):
     """H or S for a request's kind (HB, SR, HCR ...); None for a
     constitutional amendment request, which either chamber may file."""
@@ -253,7 +263,7 @@ def rows_from(lsrs, who, became=None, year=None):
             if h and len(h) > 2 and chamber_of(body) != h[2]:
                 h = None
             if c:
-                co.append({"label": h[0] if h else c, "slug": h[1] if h else ""})
+                co.append({"label": h[0] if h else c, "slug": h[1] if h else "", "name": c})
         rows.append({
             "id": "LSR" + num.replace("-", ""),
             "n": "LSR " + num,
@@ -262,6 +272,16 @@ def rows_from(lsrs, who, became=None, year=None):
             "sponsor": name,
             "sponsor_label": hit[0] if hit else name,
             "sponsor_slug": hit[1] if hit else "",
+            # THE PARTY, which the bill search's Sponsor filter reads (12
+            # November 2026: "party affiliation of returning or new members"):
+            # a sitting member's and a member-elect's alike, from the label
+            # the roster gave them. Absent where nobody matched, which the
+            # filter says as "Party not on file".
+            **({"sponsor_party": party_of(hit[0])} if hit and party_of(hit[0]) else {}),
+            # The co-sponsors' names, as a bill's row has them (`cosp`), so
+            # the Sponsor filter's "Include co-sponsored" reads a request as
+            # it reads a bill. The source gives none today.
+            **({"cosp": [c["name"] for c in co]} if co else {}),
             **({"cosponsors": co} if co else {}),
             "body": body,
             "body_label": BODY.get(body, body),
@@ -382,6 +402,19 @@ def drop_unreturned(rows, gone):
     return kept, dropped
 
 
+def with_topics(rows, bills):
+    """Each request's initial topic, from its title (request_topics.py: the
+    classifier the archived bills' topics came from, its title half only).
+    Returns how many got one; the rest keep none. Where there are no labelled
+    bills to learn from, none is given, and it is said."""
+    import request_topics
+    model = request_topics.train_on(bills)
+    if model is None:
+        print("  no bill of the labelled term in data/bills.json: no request is given a topic")
+        return 0
+    return sum(request_topics.assign(rows, model).values())
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
@@ -408,6 +441,7 @@ def main():
                           lsrs)
     rows, unmatched = rows_from(lsrs, roster(site), became, year)
     assert rows, "no request survived shaping, though the source had some"
+    topic_n = with_topics(rows, json.loads(bp.read_text(encoding="utf-8")) if bp.exists() else {})
     gone, undecided = not_returning(site)
     rows, dropped = drop_unreturned(rows, gone)
     assert rows, "every request was dropped as a not-returning member's"
@@ -448,6 +482,8 @@ def main():
     print(f"  {len(rows)} bill requests for {year} -> idx/{term}.json ({kinds})")
     if older:
         print(f"  {older} request(s) of an earlier session left out: bills or withdrawn by now")
+    print(f"  {topic_n} of {len(rows)} given a topic from the title (marked so; "
+          "the rest have none)")
     print(f"  {meta['requests']['withdrawn']} withdrawn; "
           f"{sum(1 for r in rows if r['sponsor_slug'])} sponsors matched to a member")
     if dropped:

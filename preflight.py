@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.888
+# GRANITE_VERSION: 2026-09-04.889
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -132927,6 +132927,193 @@ def _topic_filter_search_box():
         f"a ticked topic leaves the list when it does not match: {topics(got['ticked'])}")
     assert topics(got["none"]) == [] and "No match" in got["none"], "a word no topic has is not said to match nothing"
     return "ok", "the box narrows the topics, counts hold, a ticked topic stays"
+
+
+@check("frontend", "the bill requests' search finds a request by its sponsor's name (prime or co-sponsor, sitting, "
+       "member-elect or former), the Sponsor filter has the party and the seat, and the Topic filter says "
+       "its topics are from the title")
+def _requests_search_by_name():
+    """The owner, 12 November 2026: "you can't search by legislator name, by party affiliation of returning
+    or new members". A bill's sponsor is found through the Sponsor filter and a name typed in the box lists
+    nothing (17 October); a request has a title and a sponsor and nothing else, so for it the box reads the
+    name too (requestByName): every word typed a word of the prime sponsor's or a co-sponsor's name, a title
+    typed ("rep", "sen") agreeing with the label's, and a single word a WHOLE word -- "bail" is not Rep.
+    Bailey. A request whose title has the words lists as it did. Held, on a fixture of requests: a full name
+    lists the sponsor's requests and the ones they co-sponsor; "bail" lists the bail request and not
+    Bailey's; "sen" before a Rep.'s name lists none; a member-elect (a label with no title) is found by
+    "rep jane doe"; the party filter counts a sitting member's and a member-elect's party; the Sponsor list
+    names a sponsor with the party and seat their label gives; the Topic group of the requests says "(from
+    the title)" and another term's does not; a bill's own search still lists no bill for a name."""
+    def req(n, title, who, label, slug, party, cosp=()):
+        row = {"id": f"LSR2027000{n}", "n": f"LSR 2027-000{n}", "title": title, "sponsor": who,
+               "sponsor_label": label, "sponsor_slug": slug, "lsr": True, "term": "2027-requests",
+               "year": 2027, "kind": "", "status": "Filed as a request", "committees": [],
+               "committee": "", "topic": "", "votedays": [], "nrc": 0, "last_action": "",
+               "hayT": f"lsr2027000{n} lsr 2027-000{n} " + title.lower()}
+        if party:
+            row["sponsor_party"] = party
+        if cosp:
+            row["cosp"] = list(cosp)
+        return row
+    rows = [req(1, "relative to school funding.", "Ellen Read", "Rep. Ellen Read (D)", "ellen-read-rock-10", "D"),
+            req(2, "relative to the state flag.", "Pat Bailey", "Rep. Pat Bailey (R)", "pat-bailey-hills-1", "R",
+                ["Ellen Read"]),
+            req(3, "relative to dog licensing.", "Jane Doe", "Jane Doe (R)", "jane-doe-elect", "R"),
+            req(4, "relative to fishing licences.", "Sam Senn", "Sen. Sam Senn (D)", "sam-senn-sd-1", "D"),
+            dict(req(5, "relative to the budget.", "Nobody Known", "Nobody Known", "", ""),
+                 topic="Taxes - State", topic_by="title"),
+            req(6, "relative to bail reform.", "Chris Moore", "Rep. Chris Moore (D)", "chris-moore-hills-2", "D")]
+    rows[0]["topic"], rows[0]["topic_by"] = "Education - General", "title"
+    old = [{"id": "HB1", "n": "HB 1", "title": "a bill", "sponsor": s, "sponsor_label": lab, "term": "1995-1996",
+            "year": 1995, "kind": "done", "status": "Killed", "chip": "Died", "committees": [], "committee": "",
+            "topic": "", "votedays": [], "nrc": 0, "last_action": "", "hayT": "hb1 hb 1 a bill"}
+           for s, lab in (("Allen", "Rep. Allen (Hills 1)"), ("Allen", "Rep. Allen (Rock 3)"),
+                          ("F. Riley", "Rep. F. Riley (Hills 44)"))]
+    for i, r in enumerate(old):
+        r["id"], r["n"] = f"HB{i + 1}", f"HB {i + 1}"
+    meta = {"terms": ["1995-1996"], "committee_codes": {}, "topics": [],
+            "requests": {"term": "2027-requests", "year": 2027, "n": 6, "withdrawn": 0, "label": "2027 Bill Requests"}}
+    got = _app_js("""(() => {
+  const norm = (s) => scope.hintWords(s).join(" ");
+  const out = {};
+  scope.setState("2027-requests", %s, %s);
+  const listed = (q) => { scope.setQuery(q); return scope.IDX().filter(b => scope.matches(b)).map(b => b.id.slice(-1)); };
+  out.full = listed("ellen read"); out.surname = listed("read"); out.rep = listed("rep ellen read");
+  out.sen = listed("sen ellen read"); out.bail = listed("bail"); out.bailey = listed("bailey");
+  out.elect = listed("rep jane doe"); out.title = listed("dog"); out.senator = listed("senator sam senn");
+  out.none = listed("xyzzy");
+  scope.setQuery("");
+  scope.renderFacets();
+  const f = document.querySelector("#facets").innerHTML;
+  out.topicHead = /data-g="topic"[^>]*><span>([^<]*)</.exec(f)[1];
+  out.party = [...f.matchAll(/data-f="party"\\s+value="([^"]*)"[\\s\\S]*?<span class="c">([\\d,]+)</g)].map(m => [m[1], +m[2]]);
+  out.cosp = /<span>(Include co-sponsored [a-z]+)</.exec(f)[1];
+  scope.setSponsorBox("read"); scope.renderFacets();
+  out.sponsors = [...document.querySelector("#facets").innerHTML.matchAll(/data-f="sponsor"\\s+value="([^"]*)"[^>]*>\\s*<span>([^<]*)</g)].map(m => [m[1], m[2]]);
+  scope.setSponsorBox("");
+  scope.sel.party.add("Republican"); out.republican = scope.IDX().filter(b => scope.matches(b)).map(b => b.id.slice(-1));
+  scope.sel.party.clear();
+  scope.sel.topic.add("Taxes - State"); out.topicTicked = scope.IDX().filter(b => scope.matches(b)).map(b => b.id.slice(-1));
+  scope.sel.topic.clear();
+  // A bill's own search: the name lists none of its bills, and is offered the filter.
+  scope.setState("1995-1996", %s, %s);
+  scope.renderFacets();
+  out.oldTopicHead = /data-g="topic"[^>]*><span>([^<]*)</.exec(document.querySelector("#facets").innerHTML)[1];
+  out.billsByName = listed("allen");
+  out.hintAllen = scope.sponsorHint("allen", scope.IDX()).map(p => [p.name, p.label]);
+  out.hintFrank = scope.sponsorHint("frank riley", scope.IDX()).map(p => [p.name, p.label]);
+  out.hintRiley = scope.sponsorHint("riley", scope.IDX()).map(p => [p.name, p.label]);
+  scope.setSponsorBox("allen"); scope.renderFacets();
+  out.allens = [...document.querySelector("#facets").innerHTML.matchAll(/data-f="sponsor"\\s+value="([^"]*)"[^>]*>\\s*<span>([^<]*)</g)].map(m => [m[1], m[2]]);
+  scope.setSponsorBox("");
+  scope.setQuery(""); scope.sel.sponsor.add("Allen (Rock 3)"); out.rock3 = scope.IDX().filter(b => scope.matches(b)).map(b => b.id);
+  return out;
+})()""" % (json.dumps(meta), json.dumps(rows), json.dumps(meta), json.dumps(old)),
+        names=("hintWords", "matches", "renderFacets", "sel", "sponsorHint", "IDX: () => IDX",
+               "setQuery: (q) => { query = q; }", "setSponsorBox: (v) => { sponsorFilter = v; }",
+               "setState: (t, m, rs) => { term = t; META = m; IDX = rs; for (const k in SP_LABELS) delete SP_LABELS[k]; noteSponsors(t, rs); }"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert got["full"] == ["1", "2"], f"'ellen read' lists {got['full']}: her request and the one she co-sponsors"
+    assert got["surname"] == ["1", "2"] and got["rep"] == ["1", "2"], (got["surname"], got["rep"])
+    assert got["sen"] == ["2"], (f"'sen' before a Rep.'s name lists {got['sen']}: her own request is ruled "
+                                 "out, the one she co-sponsors (a name alone) is not")
+    assert got["bail"] == ["6"], f"'bail' lists {got['bail']}: the bail request, and not Rep. Bailey's"
+    assert got["bailey"] == ["2"], got["bailey"]
+    assert got["elect"] == ["3"], f"a member-elect is not found by name: {got['elect']}"
+    assert got["title"] == ["3"] and got["none"] == [], (got["title"], got["none"])
+    assert got["senator"] == ["4"], got["senator"]
+    assert got["topicHead"] == "Topic (from the title)", f"the requests' Topic filter says {got['topicHead']!r}"
+    assert got["party"] == [["Republican", 2], ["Democrat", 3], ["Party not on file", 1]], (
+        f"the party filter counts {got['party']}: sitting and elect members alike")
+    assert got["cosp"] == "Include co-sponsored requests", got["cosp"]
+    assert ["Ellen Read", "Ellen Read (D)"] in got["sponsors"], f"the Sponsor list shows {got['sponsors']}"
+    assert got["republican"] == ["2", "3"], f"the party filter lists {got['republican']}"
+    assert got["topicTicked"] == ["5"], got["topicTicked"]
+    assert got["oldTopicHead"] == "Topic", got["oldTopicHead"]
+    assert got["billsByName"] == [], f"a name typed lists bills: {got['billsByName']}"
+    assert sorted(n for n, _ in got["hintAllen"]) == ["Allen (Hills 1)", "Allen (Rock 3)"], (
+        f"two people of one surname are one: {got['hintAllen']}")
+    assert got["hintFrank"] == [["F. Riley (Hills 44)", "Rep. F. Riley (Hills 44)"]], (
+        f"'frank riley' does not fit 'F. Riley': {got['hintFrank']}")
+    assert [n for n, _ in got["hintRiley"]] == ["F. Riley (Hills 44)"], got["hintRiley"]
+    assert [v for v, _ in got["allens"]] == ["Allen (Hills 1)", "Allen (Rock 3)"], (
+        f"the Sponsor list joins two Allens: {got['allens']}")
+    assert got["rock3"] == ["HB2"], f"the second Allen's filter lists {got['rock3']}"
+    return "ok", ("a request is found by name, prime or co-sponsor, a title agreeing, a whole word for a "
+                  "single one; party counts and seats are in the Sponsor filter; its topics say from the title; "
+                  "an older term tells two Allens apart and 'frank riley' fits 'F. Riley'")
+
+
+@check("build", "a bill request gets its sponsor's party and, where its title says enough, a topic of the "
+       "site's own, marked as the title's; none where the title does not")
+def _requests_party_and_topic():
+    """The owner, 12 November 2026. build_lsrs writes `sponsor_party` from the roster's label (a sitting
+    member's and a member-elect's alike) and `cosp`, and request_topics gives each request a topic from its
+    title: the title half of topics.py's classifier, trained on the labelled bills, the site's category
+    through vocabulary_of, `topic_by` "title". A request below the confidence threshold has NO topic -- never
+    Miscellaneous -- and a request already a bill keeps the bill's. Held on a fixture: a title with a study
+    or housing phrase gets that category by the exact rules; the words of a labelled topic get it; a title
+    nothing in the model has seen gets none; the answer is the same under another hash seed."""
+    import build_lsrs as L
+    import request_topics as RT
+    who = {"ellenread": ("Rep. Ellen Read (D)", "ellen-read-rock-10"),
+           "janedoe": ("Jane Doe (R)", "jane-doe-elect", "H")}
+    lsrs = [{"lsr": "2027-0001", "session": 2027, "body": "HB", "title": "t", "sponsor": "Ellen Read",
+             "withdrawn": False, "cosponsors": []},
+            {"lsr": "2027-0002", "session": 2027, "body": "HB", "title": "t", "sponsor": "Jane Doe",
+             "withdrawn": False, "cosponsors": ["Ellen Read"]},
+            {"lsr": "2027-0003", "session": 2027, "body": "HB", "title": "t", "sponsor": "Nobody Known",
+             "withdrawn": False, "cosponsors": []}]
+    rows, _ = L.rows_from(lsrs, who, {}, 2027)
+    got = {r["n"]: (r.get("sponsor_party"), r.get("cosp")) for r in rows}
+    assert got == {"LSR 2027-0001": ("D", None), "LSR 2027-0002": ("R", ["Ellen Read"]),
+                   "LSR 2027-0003": (None, None)}, got
+    assert L.party_of("Rep. Ellen Read (D)") == "D" and L.party_of("Jane Doe") == "" \
+        and L.party_of("Sen. X (R - SD 1)") == "", "party_of reads something that is no party letter"
+    bills = {"2025-2026": {}}
+    topics = ["Elections", "Taxes - State", "Education - General"]
+    words = {"Elections": ["ballot", "voter", "election", "polling"],
+             "Taxes - State": ["tax", "revenue", "rate", "business"],
+             "Education - General": ["school", "pupil", "teacher", "district"]}
+    for i in range(30):
+        for t in topics:
+            w = words[t]
+            bills["2025-2026"][f"HB{len(bills['2025-2026']) + 1}"] = {
+                "title": f"relative to {w[i % 4]} {w[(i + 1) % 4]} {w[(i + 2) % 4]} matters.", "subject": t}
+    model = RT.train_on(bills)
+    assert model is not None and RT.train_on({"2023-2024": {"HB1": {"title": "x", "subject": "Elections"}}}) is None, (
+        "no labelled term should leave no model")
+    reqs = [{"title": "relative to voter ballot election procedures.", "n": "a"},
+            {"title": "relative to business tax rate revenue.", "n": "b"},
+            {"title": "establishing a commission to study the use of drones.", "n": "c"},
+            {"title": "relative to quartz flamingo xylophone.", "n": "d"},
+            {"title": "relative to tax rate revenue.", "n": "e", "introduced": "HB 5", "topic": "Kept"},
+            {"title": "relative to affordable housing development.", "n": "f"}]
+    fake = lambda s, rec: {"Elections": "Elections", "Taxes - State": "Taxes - State"}.get(s, s)
+    RT.assign(reqs, model, fake)
+    by = {r["n"]: (r["topic"], r.get("topic_by", "")) for r in reqs}
+    assert by["a"] == ("Elections", "title") and by["b"] == ("Taxes - State", "title"), by
+    assert by["c"] == ("Study Committees and Commissions", "title"), f"a study title: {by['c']}"
+    assert by["f"] == ("Housing", "title"), f"a housing title: {by['f']}"
+    assert by["d"] == ("", ""), f"a title the model has never seen got {by['d']}: none, not Miscellaneous"
+    assert by["e"] == ("Kept", ""), "a request already a bill had its topic taken"
+    assert all(t != "Miscellaneous" for t, _ in by.values()), "Miscellaneous was given as a topic"
+    prog = ("import sys, json; sys.path.insert(0, '.'); import _paths, request_topics as R; "
+            "b = {'2025-2026': {'HB%d' % i: {'title': 'relative to %s %s matters.' % (w, v), 'subject': t} "
+            "for i, (t, w, v) in enumerate([('Elections', 'ballot', 'voter'), ('Taxes - State', 'tax', 'rate'), "
+            "('Elections', 'election', 'ballot'), ('Taxes - State', 'revenue', 'tax')] * 8)}}; "
+            "m = R.train_on(b); r = [{'title': t} for t in ('relative to ballot voter.', 'relative to tax rate.', "
+            "'relative to zzz.')]; R.assign(r, m, lambda s, rec: s); print(json.dumps(r))")
+    outs = []
+    for seed in ("1", "2"):
+        res = _run([sys.executable, "-c", prog], capture_output=True, text=True, timeout=120,
+                   env={**os.environ, "PYTHONHASHSEED": seed})
+        assert res.returncode == 0, (res.stderr or res.stdout)[-300:]
+        outs.append(res.stdout.strip().splitlines()[-1])
+    assert outs[0] == outs[1], "the topics differ under another hash seed"
+    return "ok", ("party read from the roster's label for sitting and elect members; a title gets the "
+                  "study or housing category, a labelled topic by its words, or none; the same under two hash seeds")
 
 
 @check("build", "the bug hunt of 11 November 2026: the sitting term rolls on Organization Day in the browser "
