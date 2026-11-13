@@ -118,6 +118,19 @@ on:
         description: "Started by the night's timer (workers/night-timer), not by hand"
         type: boolean
         default: false
+      # THE PATCH NOTES (the owner, 13 November 2026: "list the major patch
+      # notes within the github actions page so I know what pages to
+      # specifically look at for comparison with the live site"). What a
+      # release changes and the pages to compare, in Markdown. The night's
+      # step "The patch notes" puts them at the top of the run's page with the
+      # commits merged since the live site's. Words only: they decide nothing
+      # about the run. The repository is public and so is the run's page, so
+      # they say what shipped, never a plan.
+      notes:
+        description: "Patch notes: what this update changes and the pages to compare with the live site (Markdown, shown at the top of the run's page)"
+        type: string
+        required: false
+        default: ""
   schedule:
     - cron: "17 8 * * *"
 
@@ -290,6 +303,42 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      # THE PATCH NOTES ON THE RUN'S PAGE (13 November 2026; the Notes box
+      # above says why). The box reaches the script through NOTES and never
+      # into its text, so nothing typed in it runs. Then what merged since the
+      # commit the live site was built from (its build.json), first parent
+      # only, and the link to every change. This step never fails the night.
+      - name: The patch notes
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          NOTES: ${{ inputs.notes }}
+        run: |
+          try {
+            $out = @("## Patch notes", "")
+            if ($env:NOTES) { $out += $env:NOTES } else { $out += "No notes were given for this run." }
+            $out += ""
+            $live = ""
+            try { $live = [string](Invoke-RestMethod -Uri "https://graniterecord.org/build.json" -TimeoutSec 20).commit } catch { }
+            $head = ([string](git rev-parse HEAD)).Trim()
+            if ($live -and $live -eq $head) {
+              $out += "This is the commit the live site was built from ($($head.Substring(0, 8)))."
+            } elseif ($live -and ([string](git cat-file -t $live 2>$null)).Trim() -eq "commit") {
+              $log = @(git log --first-parent --format="- %s" "$live..$head")
+              $out += "### Merged since the live site ($($live.Substring(0, 8)) to $($head.Substring(0, 8)))"
+              $out += ""
+              $out += @($log | Select-Object -First 40)
+              if ($log.Count -gt 40) { $out += "- and $($log.Count - 40) more" }
+              $out += ""
+              $out += "Every change: https://github.com/$env:GITHUB_REPOSITORY/compare/$live...$head"
+            } else {
+              $out += "The live site's commit could not be read, so nothing is listed since it."
+            }
+            ($out -join "`n") + "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          } catch {
+            Write-Output "The patch notes could not be written: $_"
+          }
+          exit 0
 
       - name: Set the clock to New Hampshire's
         run: |

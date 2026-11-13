@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.893
+# GRANITE_VERSION: 2026-09-04.894
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -108355,6 +108355,53 @@ def _workflows_secrets():
     assert uses, "no workflow names any secret, which cannot be right for the nightly"
     return "ok", (f"{sum(uses.values())} uses of {len(uses)} secrets, every one listed, each a "
                   "step's own env entry, none written out")
+
+
+@check("workflows", "the patch notes reach the run's page through the environment alone: the "
+       "Notes box is read once, never into a script, and its step cannot fail the night")
+def _workflows_patch_notes():
+    """The owner, 13 November 2026: "list the major patch notes within the
+    github actions page so I know what pages to specifically look at for
+    comparison with the live site". nightly.yml takes them in a Notes box on a
+    run by hand, and its step "The patch notes" writes them to the run's page
+    with the commits merged since the live site's. Whatever is typed in the
+    box is text, never code: GitHub writes ${{ inputs.notes }} into whatever
+    line holds it before any shell reads it, so it is read in exactly one
+    place, the step's NOTES environment entry, and no script line names it.
+    The step ends by exiting 0, inside a try, so a page it cannot write never
+    stops a night; and only a run by hand has a box to read."""
+    f = Path(".github/workflows/nightly.yml")
+    if not f.is_file():
+        return "skip", "no nightly.yml here"
+    text = f.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    code = _wf_code(lines)
+    uses = [ln.strip() for ln in code if "inputs.notes" in ln]
+    assert uses == ["NOTES: ${{ inputs.notes }}"], (
+        f"the Notes box is read {len(uses)} times, or outside the step's environment: {uses}")
+    on = _wf_block(lines, "on")
+    spec = []
+    for i, ln in enumerate(on):
+        if ln.strip() == "notes:":
+            for nxt in on[i + 1:]:
+                if not nxt.startswith("        ") or not nxt.strip():
+                    break
+                spec.append(nxt.strip())
+            break
+    assert "type: string" in spec and 'default: ""' in spec and "required: false" in spec, (
+        f"the Notes box is {spec}: an optional string, empty unless typed")
+    jobs = _wf_jobs(text)
+    steps = [st for st in _wf_steps(_wf_code(jobs.get("night", [])))
+             if any(ln.strip() == "- name: The patch notes" for ln in st)]
+    assert len(steps) == 1, f"the night has {len(steps)} patch notes steps, not one"
+    st = "\n".join(steps[0])
+    assert "if: github.event_name == 'workflow_dispatch'" in st, "the patch notes step runs on a scheduled night"
+    run = st.split("run: |", 1)[1] if "run: |" in st else ""
+    assert run and "${{" not in run, "the patch notes step's script has an expression GitHub would write into it"
+    assert "$env:NOTES" in run and "GITHUB_STEP_SUMMARY" in run, "the patch notes do not reach the run's page"
+    assert run.strip().endswith("exit 0") and "try {" in run and "} catch {" in run, (
+        "the patch notes step can fail the night")
+    return "ok", "one Notes box, read through NOTES alone; its step writes the run's page and cannot fail the night"
 
 
 @check("workflows", "each workflow's token reads the repository and no more, and nothing a "

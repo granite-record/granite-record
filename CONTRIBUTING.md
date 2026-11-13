@@ -233,6 +233,15 @@ Three steps, each catching what the one before cannot.
    any dry run already waiting there), so that it cannot cancel a scheduled
    night waiting for the running one to finish.
 
+   **The patch notes.** A run by hand has a Notes box (13 November 2026):
+   what the update changes and the pages to compare with the live site, in
+   Markdown. The night's step "The patch notes" puts them at the top of the
+   run's page, where a night waiting for approval is approved, with the
+   commits merged since the commit the live site was built from and a link
+   to every change. From a shell, `gh workflow run nightly.yml --ref dev -f
+   notes="$(cat notes.md)"`. The repository is public and so is the run's
+   page: the notes say what shipped, never a plan.
+
 The first runs on a bare clone. The second needs the record on disk and the
 third the repository's own secrets, so for a pull request from outside they
 are the maintainer's to run; say in the request what you expect the second to
