@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.893
+# GRANITE_VERSION: 2026-09-04.894
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -121848,7 +121848,7 @@ def _elect_status(BME):
                                 {"name": "Brown", "chamber": "H", "county": "Coos", "member_id": "77"}]},
           "2001-2002": {"HB2": [{"name": "Green", "chamber": "H", "county": "Coos"}]}}
     got = BME.earlier_names(sp)
-    if got != {("smith", "H", "coos"), ("jones", "S", "5")}:
+    if set(got) != {("smith", "H", "coos"), ("jones", "S", "5")}:
         bad.append(f"the earlier surnames are {sorted(got)}: not Smith of Coos and Jones of Senate "
                    "5 only (Brown names a member, Green is of 2001)")
     races = {"H|Coos|2": {"elected": [{"n": "Pat Smith", "k": "new"}, {"n": "Cy Green", "k": "new"},
@@ -121862,8 +121862,35 @@ def _elect_status(BME):
     if n != 2 or flagged != ["Ann Jones", "Pat Smith"]:
         bad.append(f"{n} flagged, {flagged}: only Pat Smith (Coos) and Ann Jones (Senate 5), "
                    "and no member the record names")
+    # THE FIRST NAMES (13 November 2026). A sponsor the General Court's record placed on a
+    # person is "Frank Allen"; one printed with an initial is "F. Riley"; one with a surname
+    # alone says nothing. A winner whose first name plainly differs from every one printed or
+    # placed at that surname and county has no doubt; the same first name, a short form, an
+    # initial that begins it, or no first name on the old row is still the doubt.
+    sp2 = {"1993-1994": {"HB1": [{"name": "Frank Allen", "chamber": "H", "county": "Coos"},
+                                 {"name": "Mary Allen", "chamber": "H", "county": "Coos"},
+                                 {"name": "F. Riley", "chamber": "H", "county": "Coos"},
+                                 {"name": "Robert Hale", "chamber": "H", "county": "Coos"},
+                                 {"name": "Pierce", "chamber": "H", "county": "Coos"}]}}
+    got2 = BME.earlier_names(sp2)
+    if got2.get(("allen", "H", "coos")) != {"Frank", "Mary"} or got2.get(("pierce", "H", "coos")) != {""}:
+        bad.append(f"the first names kept are {got2}")
+    races2 = {"H|Coos|3": {"elected": [
+        {"n": "Denise Allen", "k": "new"},        # not Frank, not Mary: cleared
+        {"n": "Frank Allen", "k": "new"},         # the same first name: the doubt stays
+        {"n": "Fran Allen", "k": "new"},          # a prefix of Frank: stays
+        {"n": "Dee Riley", "k": "new"},           # D against the initial F.: cleared
+        {"n": "Fred Riley", "k": "new"},          # F.: stays
+        {"n": "Bob Hale", "k": "new"},            # a short form of Robert: stays
+        {"n": "Ann Pierce", "k": "new"},          # the old row has no first name: stays
+        {"n": "Sam Lowe", "k": "new"}]}}          # a surname nobody printed: no doubt
+    n2 = BME.earlier_service(races2, got2)
+    flagged2 = sorted(e["n"] for e in races2["H|Coos|3"]["elected"] if e.get("u"))
+    if flagged2 != ["Ann Pierce", "Bob Hale", "Fran Allen", "Frank Allen", "Fred Riley"] or n2 != 5:
+        bad.append(f"{n2} flagged by first names, {flagged2}")
     assert not bad, "\n  ".join(bad)
-    return "ok", "five statuses by the row of the id, the doubt by surname, chamber and county only"
+    return "ok", ("five statuses by the row of the id, the doubt by surname, chamber and county, "
+                  "cleared only by a first name that plainly differs")
 
 
 @check("frontend", "the Members-Elect tab has a search box and filters by status, party and "
