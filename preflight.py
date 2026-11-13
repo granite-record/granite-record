@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.900
+# GRANITE_VERSION: 2026-09-04.901
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -116855,6 +116855,95 @@ def _numbers_charts(LN):
     assert 'viewBox="0 0 100 10"' in LN.yes_bar(70.0) and 'x1="66.7"' in LN.yes_bar(70.0), (
         "the ballot's bar carries the two-thirds line")
     return "ok", "a bar's shares are the table's, ranges said in words, chambers neutral in shape and tone"
+
+
+@check("frontend", "By the Numbers fits its box: every chart label is inside its own viewBox, no number table is "
+                   "held to the prose measure, and the flow diagram has no minimum width off a phone",
+       needs=("learn_numbers",))
+def _numbers_fit(LN):
+    """The owner, 13 November 2026, from a printed copy of the page: the
+    term labels of the bars and dots lost their first digit ("989-1990"), a
+    named committee ran off the scatter plot's edge, the flow diagram scrolled
+    sideways with its right-hand names cut, and the figures tables scrolled
+    or were cut at the page's edge.
+
+    Two halves. The charts are built on long labels (a term, a name of forty
+    characters, a count in the thousands) and every <text> in them is
+    measured -- its width from learn_numbers.text_w, the SVG's own font size
+    and its anchor, rotated text on the other axis -- against the viewBox it
+    sits in. And app.css is read for the two rules that caused the rest:
+    number tables held to the prose measure, and a minimum width on the flow
+    diagram that applies at every width rather than only on a phone."""
+    terms = [f"{y}&ndash;{y + 1}" for y in range(1989, 2027, 2)]
+    oc = {t.replace("&ndash;", "-"): {"filed": 1000 + i, "Became Law": 150 + i, "Interim Study": 100,
+                                       "Died": 700, "other": 50 + i}
+          for i, t in enumerate(terms)}
+    pts = [("House Executive Departments and Administration", "H", 250, 3.0),
+           ("Senate Commerce", "S", 20, 30.0), ("House Finance", "H", 200, 90.0),
+           ("Senate Education and Workforce Development", "S", 85, 60.0),
+           ("House Ways and Means", "H", 12, 99.0), ("House Judiciary", "H", 150, 55.0),
+           ("Senate Judiciary", "S", 100, 10.0)]
+    tree = {"label": "Bills filed", "n": 2139, "cls": "n", "kids": [
+        {"label": "Cleared the second chamber", "n": 1900, "cls": "n", "kids": [
+            {"label": "Reached the governor", "n": 686, "cls": "n", "kids": [
+                {"label": "became law", "n": 649, "cls": "law", "kids": []},
+                {"label": "chambers did not agree on a version", "n": 42, "cls": "done", "kids": []}]}]},
+        {"label": "withdrawn or not introduced", "n": 239, "cls": "rest", "kids": []}]}
+    svgs = {
+        "stacked bars": LN.ends_chart(oc, list(oc)),
+        "scatter": LN.scatter_chart(pts, "t", "said", "bills reported on", "Passed both chambers"),
+        "dots": LN.dot_chart([(t, 88.0 + i * .3, 95.0) for i, t in enumerate(terms)], "t", "said"),
+        "lines": LN.lines_chart([("House", [t.replace("&ndash;", "-") for t in terms],
+                                  [("filed", "ink", [1.5 + i * .1 for i in range(len(terms))])]),
+                                 ("Senate", [t.replace("&ndash;", "-") for t in terms],
+                                  [("filed", "ink", [30 + i for i in range(len(terms))])])], "t", "said"),
+        "flow": LN.sankey_svg(tree, "said"),
+    }
+    num = r"-?[\d.]+"
+    bad = []
+    for name, html_ in svgs.items():
+        assert html_, f"{name} was not drawn"
+        m = re.search(r'<svg class="sk(?: ch)?" viewBox="0 0 (\d+) (\d+)"', html_)
+        W, H = int(m.group(1)), int(m.group(2))
+        px = LN.CH_PX if " ch" in m.group(0) else 14
+        for tm in re.finditer(r"<text([^>]*)>(.*?)</text>", html_, re.S):
+            attrs, inner = tm.groups()
+            body = re.sub(r"<[^>]+>", "", inner)
+            x = float(re.search(rf'\bx="({num})"', attrs).group(1)) if re.search(r'\bx="', attrs) else 0.0
+            y = float(re.search(rf'\by="({num})"', attrs).group(1)) if re.search(r'\by="', attrs) else 0.0
+            anchor = (re.search(r'text-anchor="(\w+)"', attrs) or [0, "start"])[1]
+            bold = "sk-v" in attrs or "sk-v" in inner
+            wd = LN.text_w(body, px, bold=bold)
+            rot = re.search(rf'translate\(({num}),({num})\) rotate\(-90\)', attrs)
+            if rot:                       # runs up the page: its length is on y
+                cx, cy = float(rot.group(1)), float(rot.group(2))
+                x0, x1, y0, y1 = cx - px, cx + px * .25, cy - wd / 2, cy + wd / 2
+            else:
+                x0 = x - (wd if anchor == "end" else wd / 2 if anchor == "middle" else 0)
+                x1, y0, y1 = x0 + wd, y - px * .8, y + px * .25
+            if x0 < 0 or x1 > W or y0 < 0 or y1 > H:
+                bad.append(f"{name}: '{body[:28]}' spans x {x0:.0f}..{x1:.0f}, y {y0:.0f}..{y1:.0f} "
+                           f"outside 0..{W} x 0..{H}")
+    assert not bad, "a chart label is cut by its own viewBox: " + "; ".join(bad[:6])
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    assert not re.search(r"\.l-secb\s*>\s*\.l-numwrap\s*\{[^}]*max-width:\s*var\(--l-meas\)", css), (
+        "app.css holds the number tables to the prose measure again (.l-secb > .l-numwrap)")
+    sk = re.search(r"\.l-skwrap\s*>\s*svg\s*\{([^}]*)\}", css)
+    assert sk and "min-width" not in sk.group(1), (
+        "the flow diagram has a minimum width at every width (.l-skwrap > svg): it scrolls where it could scale")
+    for rule in re.finditer(r"([^{}]*\.l-skwrap\s*>\s*svg[^{}]*)\{([^}]*min-width:\s*[1-9][^}]*)\}", css):
+        before = css[:rule.start()]
+        assert before.rfind("@media (max-width:40em){") > before.rfind("}\n}"), (
+            "a minimum width on the flow diagram that is not inside the phone's media query: "
+            + rule.group(1).strip())
+    assert "min-width" not in inspect_source(LN._svg), "the charts' SVG carries an inline minimum width"
+    return "ok", (f"{sum(h.count('<text') for h in svgs.values())} labels in {len(svgs)} chart builders inside "
+                  "their viewBoxes; tables not held to the measure; the diagram's minimum width is phone-only")
+
+
+def inspect_source(fn):
+    import inspect
+    return inspect.getsource(fn)
 
 
 @check("data", "every RSA section the Learn pages cite is in force, and says what they quote")
