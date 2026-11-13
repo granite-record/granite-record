@@ -2053,6 +2053,16 @@
    "es": "Escriba el nombre de un legislador, de un comité o de un municipio, un tema, un número de proyecto de ley o palabras del título de un proyecto.",
    "state": "draft"
   },
+  "find.votes": {
+   "en": "Search the votes for {q}",
+   "es": "Buscar {q} en las votaciones",
+   "state": "draft"
+  },
+  "find.votes_what": {
+   "en": "every roll call of the House and Senate from 1999",
+   "es": "todas las votaciones nominales de la Cámara y el Senado desde 1999",
+   "state": "draft"
+  },
   "foot.about": {
    "en": "About",
    "es": "Acerca del sitio",

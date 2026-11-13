@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.65
+# GRANITE_VERSION: 2026-09-19.66
 """
 A page for every day the House sat.
 
@@ -3894,6 +3894,11 @@ def day_head(day, narrative, rec, jurl, label, path, base):
         vv = k.get("voice vote", 0)
         facts.append(["Votes Taken", S.E(", ".join(counted) or f"{vv:,} voice vote{'' if vv == 1 else 's'}"),
                       S.E(f"{vv:,} voice vote{'' if vv == 1 else 's'}") if counted and vv else ""])
+    # THE VOTES PAGE, FOR THE DAY'S ROLL CALLS (the owner, 12 November 2026): the
+    # page's own filters, this chamber and this day.
+    if k.get("roll call"):
+        facts.append(["Roll Calls", f'<a href="votes?from={S.E(date)}&amp;to={S.E(date)}&amp;body={S.E(body)}">'
+                                    "Search this day&rsquo;s roll calls</a>"])
     dn = len(narrative.get("debates") or [])
     if dn:
         facts.append(["Debates Printed", f"{dn:,}", "in the permanent journal"])

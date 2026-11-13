@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.387 */
+/* GRANITE_VERSION: 2026-09-07.389 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -9999,3 +9999,71 @@ text-wrap:balance}
 .er-close b{font-variant-numeric:tabular-nums}
 .er-notes li{font-size:var(--t-ui);margin:0 0 var(--sp-3)}
 .er-map{margin:var(--sp-4) 0}
+
+/* ==== THE VOTES PAGE (/votes; app.js, THE VOTES PAGE) ====================
+   The search box across the page, the filters in a row of the bill search's
+   own controls (.bfilt), the member tab's table for the rows. On a phone the
+   filters are behind one button, as the bill search's are (.ftoggle). */
+.vpage{max-width:100%}
+.vpage .vsearch{display:flex;gap:var(--sp-4);align-items:stretch;margin:var(--sp-5) 0 var(--sp-4)}
+.vpage .vsearch input[type=search]{flex:1 1 auto;min-width:0;min-height:44px;font:inherit;
+  font-size:var(--t-ui);color:var(--ink);padding:0 var(--sp-5);background:var(--surface);
+  border:1px solid var(--edge);border-radius:var(--r-out)}
+.vpage .vsearch input[type=search]:focus{outline:2px solid var(--pine);outline-offset:1px;border-color:var(--pine)}
+.vpage .vtoggle{display:none}
+.vpage .bfilt input[type=date]{font:inherit;font-size:var(--t-ui);text-transform:none;letter-spacing:0;
+  color:var(--ink);padding:var(--sp-2) var(--sp-4);border:1px solid var(--edge);border-radius:var(--r-in);
+  background:var(--paper);min-height:2.75rem;max-width:100%}
+.vpage .vmember{position:relative}
+.vpage .vmemchip{display:flex;gap:var(--sp-3);align-items:center;flex-wrap:wrap;text-transform:none;
+  letter-spacing:0;font-weight:400;min-height:2.75rem}
+.vpage .vsug{position:absolute;z-index:5;top:100%;left:0;min-width:16rem;max-width:min(24rem,90vw);
+  margin:var(--sp-1) 0 0;padding:var(--sp-2);list-style:none;background:var(--surface);
+  border:1px solid var(--edge);border-radius:var(--r-in);box-shadow:0 4px 14px rgba(0,0,0,.14)}
+.vpage .vsug[hidden]{display:none}
+.vpage .vsug button{display:block;width:100%;text-align:left;font:inherit;font-size:var(--t-ui);
+  text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink);background:none;border:0;
+  padding:var(--sp-3) var(--sp-4);min-height:2.75rem;cursor:pointer;border-radius:var(--r-in)}
+.vpage .vsug button:hover,.vpage .vsug button:focus-visible{background:var(--wash)}
+.vpage .vnote{margin:0 0 var(--sp-4)}
+.vpage #vcount{margin:var(--sp-4) 0 var(--sp-3)}
+.vpage .votes.vthree th:nth-child(1){width:15%}
+.vpage .votes.vthree th:nth-child(2){width:40%}
+.vpage .votes.vthree th:nth-child(3){width:45%}
+.vpage .votes:not(.vthree) th:nth-child(1){width:14%}
+.vpage .votes:not(.vthree) th:nth-child(2){width:34%}
+.vpage .votes:not(.vthree) th:nth-child(3){width:12%}
+.vpage .votes:not(.vthree) th:nth-child(4){width:40%}
+/* THE TALLY FIRST, IN A SLOT OF ITS OWN, AND THE CHIP BESIDE IT ON ONE LINE: every row puts the
+   count in the same place, and a long chip ("Motion Passed: Bill Passed with Changes") no longer
+   pushes it under itself. Where the column is too narrow for both, the chip goes under. */
+.vpage .vres{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);align-items:baseline}
+.vpage .vres .vtal{font-style:normal;min-width:5.2em;font-variant-numeric:tabular-nums}
+.vpage .vres .chip,.vpage .vres .rcres{white-space:nowrap;margin:0}
+.vlink{margin:var(--sp-5) 0 0}
+@media (max-width:59.9375em){
+  .vpage .vtoggle{order:2;display:flex;align-items:center;gap:var(--sp-4);min-height:44px;
+    padding:var(--sp-4) var(--sp-5);font:inherit;font-size:var(--t-ui);font-weight:600;
+    color:var(--ink);background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-out);
+    cursor:pointer}
+  .vpage .vtoggle .chev{color:var(--ink-2);font-size:var(--t-sm)}
+  .vpage.vfopen .vtoggle .chev{transform:rotate(90deg)}
+  .vpage .vtoggle .badge{background:var(--pine);color:var(--on-pine);font-size:var(--t-sm);
+    padding:1px var(--sp-3);border-radius:var(--r-pill)}
+  .vpage .vtoggle .badge[hidden]{display:none}
+  .vpage .vsearch{flex-wrap:wrap}
+  .vpage .vsearch input[type=search]{flex-basis:100%}
+  .vpage .vsearch .vtoggle{flex:1 1 auto}
+  .vpage:not(.vfopen) .vfilters{display:none}
+  .vpage.vfopen .vfilters{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-5)}
+  .vpage.vfopen .vfilters label{min-width:0}
+  .vpage .vfilters select,.vpage .vfilters input{width:100%}
+  .vpage .vfilters .vmember{grid-column:1 / -1}
+}
+/* ON A PHONE the result takes the row's whole width (the member tab's rule puts the vote and the
+   result side by side at 47% each): the chip on one line where it fits, the notes full width. */
+@media (max-width:45em){
+  .vpage .vfull td.v,.vpage .vfull td.o{display:block;width:auto}
+  .vpage .vres{justify-content:flex-start}
+  .vpage .vres .chip,.vpage .vres .rcres{max-width:100%;margin:0}
+}

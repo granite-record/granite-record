@@ -37944,7 +37944,7 @@ CHAIN_NEEDS = ["build_site_v2.py", "build_search_index.py", "build_pages.py",
                "build_civics.py", "build_town_pages.py", "build_indexes.py",
                "build_exports.py", "build_feeds.py", "check_site.py",
                "app.css", "app.js", "bills.html",
-               "build_district_map.py", "map.js", "map.css"]
+               "build_district_map.py", "map.js", "map.css", "build_votes_page.py"]
 
 
 def _stand_in_png():
@@ -38257,6 +38257,8 @@ def _built_site_prepare(here, root, brand=True):
         # anchors it links and before the chambers' pages that link it, as
         # build_all runs it (23 October 2026).
         ("build_nobill_votes.py", ["--site", "site", "--base", base], "site/session/nobill"),
+        # The votes page, after the votes files it reads (build_all runs it after build_votes).
+        ("build_votes_page.py", ["--site", "site", "--base", base], "site/votes.html"),
         # The chambers' cards on the Committees page and their pages, after
         # both chambers' term files, as build_all runs it.
         ("build_full_sessions.py", ["--site", "site", "--base", base], "site/session/house.html"),
@@ -132293,7 +132295,12 @@ def _votes_files(BV):
     with tempfile.TemporaryDirectory() as td:
         rows, enc, rep = BV.build(rolls, iter(ballots), td)
         assert sorted(rep["files"]) == ["2023-2024.json", "2025-2026.json", "ballots-2023-2024.json",
-                                        "ballots-2025-2026.json"], rep["files"]
+                                        "ballots-2025-2026.json", "index.json"], rep["files"]
+        ix = json.loads((Path(td) / "votes" / "index.json").read_text(encoding="utf-8"))
+        assert ix["terms"] == ["2025-2026", "2023-2024"] and ix["from"] == "2023" \
+            and ix["close"] == {"H": BV.CLOSE_HOUSE, "S": BV.CLOSE_SENATE} \
+            and sum(sum(c.values()) for c in ix["counts"].values()) == len(
+                [x for rs in rows.values() for x in rs]), ix
         t = json.loads((Path(td) / "votes" / "2025-2026.json").read_text(encoding="utf-8"))["rolls"]
         by = {x["id"]: x for x in t}
         assert [x["id"] for x in t] == ["2026-H-1", "2026-H-2", "2026-S-3", "2026-H-4"], [x["id"] for x in t]
@@ -132338,6 +132345,102 @@ def _votes_files(BV):
     for rx in _BANNED_VOTES:
         assert not rx.search(src), f"build_votes.py carries {rx.pattern}"
     return "ok", "files by term, tallies tied, stated tallies carried, procedural named, no party's position"
+
+
+@check("frontend", "the votes page: every filter round-trips through the address, a row passes the filters its "
+       "data says, a member's ballots count to the row's tally, and the page says what it covers (roll calls "
+       "from 1999) and labels no vote by party")
+def _votes_page():
+    js = Path("src/pages/app.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and Path("tests/dom_stub.js").exists() and node
+            and Path("src/pages/build_votes_page.py").exists()):
+        return "skip", "app.js, dom_stub.js, node or build_votes_page.py is not here"
+    src = js.read_text(encoding="utf-8")
+    block = src[src.index("THE VOTES PAGE ====="):]
+    # THE OWNER'S DECISION OF 12 NOVEMBER 2026: no label of how the parties divided, no mark on a member
+    # who voted against theirs, and nothing of a party's counts (pc) is read by the page.
+    for rx in (re.compile("bi" + "partisan", re.I), re.compile("party" + r"[- ]" + "line", re.I),
+               re.compile("against (?:their|his|her) " + "party", re.I),
+               re.compile("other way from most of " + "their party", re.I),
+               re.compile(r"\.pc\b|\bpc\s*[:\[]")):
+        assert not rx.search(block), f"the votes page carries {rx.pattern}"
+    sys.path.insert(0, "src/pages")
+    try:
+        import build_votes_page as VPG
+    finally:
+        sys.path.pop(0)
+    said = VPG.LEAD + " " + VPG.NOTE + " " + VPG.DESC + " " + VPG.body()
+    assert "from 1999" in VPG.LEAD, "the page does not say what it covers"
+    for rx in (re.compile(r"before 1999", re.I), re.compile(r"no recorded votes", re.I),
+               re.compile("bi" + "partisan|party" + r"[- ]" + "line", re.I)):
+        assert not rx.search(said), f"the votes page says {rx.pattern}"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.js").write_text("""
+require("./stub.js");
+const fs = require("fs");
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") +
+  "; ({votesRead,votesAddr,votesPass,votesLetter,votesClose,votesDefault,votesActive,VT})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const terms = ["2025-2026", "2023-2024"], out = {bad: []};
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+for (const qs of ["", "?q=hb+1442", "?term=all&margin=close&body=H",
+    "?from=2024-03-01&to=2024-03-31&result=failed&kind=Amendment&member=daryl-abbas-sd-22&sort=close&q=x",
+    "?term=2023-2024", "?from=2023-01-01&to=2026-01-01", "?q=a+b&sort=new", "?q=a&term=all"]) {
+  const st = s.votesRead(qs, terms), a = s.votesAddr(st, terms), st2 = s.votesRead(a, terms);
+  if (!same(st, st2)) out.bad.push(["round trip", qs, a, st, st2]);
+  if (qs === "" && a !== "") out.bad.push(["a bare page has an address", a]);
+}
+if (s.votesAddr(s.votesRead("?from=2024-03-01", terms), terms) !== "from=2024-03-01")
+  out.bad.push(["a day names its term", s.votesAddr(s.votesRead("?from=2024-03-01", terms), terms)]);
+const junk = s.votesRead("?body=X&result=zz&term=1850-1851&kind=Nope&margin=q&from=notaday", terms);
+if (!same(junk, s.votesDefault(terms))) out.bad.push(["a value it does not know is a filter", junk]);
+// Rows and ballots: three House roll calls and one Senate, five House members and two Senators.
+const rows = [
+  {id: "2025-H-1", d: "2025-01-08", c: "H", b: "HB1", k: "Passage", p: 1, y: 3, n: 1, t: "2025-2026", cl: 1, f: 1},
+  {id: "2025-H-2", d: "2025-02-08", c: "H", b: "", k: "Procedural", p: 0, y: 2, n: 2, t: "2025-2026"},
+  {id: "2025-H-3", d: "2025-03-08", c: "H", b: "HB3", k: "Amendment", p: 1, y: 4, n: 0, t: "2025-2026"},
+  {id: "2025-S-1", d: "2025-01-30", c: "S", b: "SB4", k: "Passage", p: 1, y: 1, n: 1, t: "2025-2026", cl: 1, f: 1}];
+s.VT.bal["2025-2026"] = {chambers: {
+  H: {m: ["10", "11", "12", "13", "14"], r: {"2025-H-1": "YYYN.", "2025-H-2": "YYNN.", "2025-H-3": "YYYYE"}},
+  S: {m: ["20", "21"], r: {"2025-S-1": "YN"}}}};
+const st = s.votesDefault(terms);
+for (const r of rows) {
+  const l = s.votesLetter(r, r.c === "H" ? ["10", "999"] : ["20"]);
+  if (!l) out.bad.push(["a member on the roll call has no letter", r.id]);
+}
+// Every counted tally is the ballots' count, through the page's own reader.
+for (const r of rows) {
+  const ids = r.c === "H" ? ["10", "11", "12", "13", "14"] : ["20", "21"];
+  const ls = ids.map(i => s.votesLetter(r, [i]));
+  const y = ls.filter(x => x === "Y").length, n = ls.filter(x => x === "N").length;
+  if (y !== r.y || n !== r.n) out.bad.push(["ballots do not count to the tally", r.id, y, n]);
+}
+const pass = (over, ids) => rows.filter(r => s.votesPass(r, Object.assign({}, st, over), ids || null)).map(r => r.id);
+out.close = pass({margin: "close"}); out.tied = pass({margin: "tied"}); out.house = pass({body: "H"});
+out.failed = pass({result: "failed"}); out.kind = pass({kind: "Amendment"}); out.days = pass({from: "2025-02-01", to: "2025-03-01"});
+out.m14 = pass({}, ["14"]); out.m20 = pass({}, ["20"]); out.m1 = pass({}, ["12"]);
+out.words = s.votesClose(rows[0]) + "|" + s.votesClose(rows[1]) + "|" + s.votesClose(rows[2]);
+process.stdout.write("\\n@@" + JSON.stringify(out));
+""", encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js's votes page did not run under node: " + (r.stderr or r.stdout or "")[-400:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert not got["bad"], f"{got['bad'][:2]}"
+    want = {"close": ["2025-H-1", "2025-S-1"], "tied": ["2025-H-2", "2025-S-1"], "house": ["2025-H-1", "2025-H-2", "2025-H-3"],
+            "failed": ["2025-H-2"], "kind": ["2025-H-3"], "days": ["2025-H-2"],
+            "m14": ["2025-H-3"], "m20": ["2025-S-1"], "m1": ["2025-H-1", "2025-H-2", "2025-H-3"]}
+    for k, v in want.items():
+        assert got[k] == v, f"the filter {k} gave {got[k]}, not {v}"
+    assert got["words"].startswith("Close: 1 voter would have had to switch|Tied|"), got["words"]
+    return "ok", "address round trip, filters, ballots tie to tallies, 1999 scope wording, no party label"
 
 
 @check("data", "votes data: every roll call has a row, every counted tally ties to its ballots, the 14 stated "

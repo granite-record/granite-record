@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.3
+# GRANITE_VERSION: 2026-11-12.4
 """
 Every roll call since 1999, a file a term, for the votes search to read.
 
     python3 src/pages/build_votes.py --site site
 
-WHAT IT WRITES (the data stage of reports/votes-search-design-2026-11.md; no
-page reads it yet):
+WHAT IT WRITES (the data stage of reports/votes-search-design-2026-11.md; the
+/votes page, app.js's votes block, reads it, and build_votes_page.py writes
+the page):
 
-    votes/<term>.json            {"term", "rolls": [row, ...]}: one row a roll
+    votes/index.json             {"from", "terms" (newest first), "close"
+                                 {"H", "S"}: the bars below, "counts": {term:
+                                 {"H", "S"}}}: what the page reads first
+    votes/<term>.json           {"term", "rolls": [row, ...]}: one row a roll
                                  call, oldest first, both chambers, a vote on
                                  no bill included as "Procedural"
     votes/ballots-<term>.json    {"term", "legend", "chambers": {"H"|"S":
@@ -86,6 +90,7 @@ import vote_passage as VP
 from components import WORDBOOK
 
 FOLDER = "votes"
+INDEX = "index.json"        # {"from", "terms", "close", "counts"}: what the page reads first
 # A CLOSE VOTE, PER CHAMBER (the owner, 12 November 2026): this many voters or
 # fewer who would have had to switch to change the outcome. The Senate has 24
 # members, so the House's 5 would call a 17-7 vote close there; its bar is 2.
@@ -326,6 +331,16 @@ def write(site, rows_term, ballots):
             b.write_text(json.dumps({"term": term, "legend": LEGEND, "chambers": ballots[term]},
                                     separators=(",", ":")), encoding="utf-8")
             made.append(b.name)
+    # WHAT THE PAGE NEEDS BEFORE IT ASKS FOR A TERM: the terms that have roll
+    # calls, newest first, how many a chamber, and the close-vote bars (so the
+    # page words the rule from the data and not from a copy of it).
+    terms = sorted((t for t, rows in rows_term.items() if rows), reverse=True)
+    index = {"from": terms[-1][:4] if terms else "", "terms": terms,
+             "close": {"H": CLOSE_HOUSE, "S": CLOSE_SENATE},
+             "counts": {t: {c: sum(1 for x in rows_term[t] if x["c"] == c) for c in ("H", "S")}
+                        for t in terms}}
+    (folder / INDEX).write_text(json.dumps(index, separators=(",", ":")), encoding="utf-8")
+    made.append(INDEX)
     # A term an earlier build wrote and this one has no roll call for.
     for stale in folder.glob("*.json"):
         if stale.name not in made:
