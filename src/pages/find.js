@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.56
+// GRANITE_VERSION: 2026-09-16.57
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1056,6 +1056,12 @@ function findDraw(q,ids){
     <span class="fwhat">${num?tr("find.every_term","this number in every term since 1989")
       :tr("find.every_match","every member, committee, town and subject that matches, and the bills of every term")
       }</span></a>`;
+  // THE VOTES, ONE ROW FURTHER (the owner, 12 November 2026): the same words
+  // or bill number asked of every roll call since 1999, on /votes. A door like
+  // the one above it, and no count: the votes are not fetched for the panel.
+  const votes=`<a class="fall" data-every href="/votes?q=${_fenc(s)}">
+    <span class="fl1"><span class="fname">${tr("find.votes","Search the votes for {q}",{q:_fesc(s)})}</span></span>
+    <span class="fwhat">${tr("find.votes_what","every roll call of the House and Senate from 1999")}</span></a>`;
   const all=num?`<a class="fall" href="/bills?q=${encodeURIComponent(num)}">
     <span class="fl1"><span class="fname">${_fesc(num)}</span></span>
     <span class="fwhat">${tr("find.open_number","open this bill number in the bill search")}</span></a>`:every;
@@ -1138,7 +1144,7 @@ function findDraw(q,ids){
       ?`${none?" ":""}${tr("find.did_you_mean","Did you mean {words}?",{words:did.join(" "+tr("find.or","or")+" ")})}`:""}</p>`;
   }
   const own=N&&N.state==="ready"?N.top.map(b=>findBillRow(b,s,false)).join(""):"";
-  out.innerHTML=num?own+all+list+every+tail:req+list+all+tail;
+  out.innerHTML=num?own+all+list+every+votes+tail:req+list+all+votes+tail;
   findSay(out.innerHTML,ids);
 }
 
@@ -1155,7 +1161,9 @@ function findSay(html,ids){
   const say=document.getElementById((ids||FIND_IDS).say);
   if(!say)return;
   html=String(html||"");
-  const n=(html.match(/<a\s/g)||[]).length-(/data-every|See all search results for/.test(html)?1:0);
+  // The doors that leave the panel (every result, the votes) are not results.
+  const doors=(html.match(/data-every/g)||[]).length||(/See all search results for/.test(html)?1:0);
+  const n=(html.match(/<a\s/g)||[]).length-doors;
   const text=n>0?(n===1?tr("find.one_result","1 result"):tr("find.n_results","{n} results",{n}))
     :/data-none|No matching results/.test(html)?tr("find.none","No matching results."):"";
   if(say.textContent!==text)say.textContent=text;
