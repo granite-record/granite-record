@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.94
+# GRANITE_VERSION: 2026-09-05.95
 """
 Run the whole pipeline in the right order.
 
@@ -1127,6 +1127,16 @@ def plan(a):
                   "bill, with the counted tally, the stated one where it differs, and how "
                   "many voters would have had to switch to change the outcome; "
                   "votes/ballots-<term>.json: a letter a member for each roll call"),
+
+        # THE VOTES PAGE (12 November 2026): /votes, which searches those files.
+        # The page is its heading and a lead; app.js draws the rest. After the
+        # files it reads, and writes its own sitemap entry.
+        Step("the votes page",
+             ["build_votes_page.py", "--site", "site", "--base", a.base],
+             needs=["site/bills.html"],
+             produces=["site/votes.html"],
+             note="/votes: every roll call from 1999, searched by the bill search's own matcher, "
+                  "with filters for term, chamber, date, result, margin, kind and member"),
 
         # THE HOUSE AND SENATE AS COMMITTEES OF THE WHOLE (the person, 9 and
         # 10 October 2026): a card at the top of each column of /committees
