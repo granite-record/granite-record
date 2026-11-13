@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.388 */
+/* GRANITE_VERSION: 2026-09-07.389 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -10059,6 +10059,6 @@ text-wrap:balance}
    result side by side at 47% each): the chip on one line where it fits, the notes full width. */
 @media (max-width:45em){
   .vpage .vfull td.v,.vpage .vfull td.o{display:block;width:auto}
-  .vpage .vres .vtal{min-width:0}
-  .vpage .vres .chip,.vpage .vres .rcres{white-space:normal}
+  .vpage .vres{justify-content:flex-start}
+  .vpage .vres .chip,.vpage .vres .rcres{max-width:100%;margin:0}
 }
