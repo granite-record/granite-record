@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.12
+# GRANITE_VERSION: 2026-09-20.13
 """
 Who a New Hampshire town says holds its offices, out of the town's own pages.
 
@@ -82,6 +82,8 @@ import html
 import json
 import os
 import re
+
+import town_websites
 
 # The repository root, wherever this file sits (_paths.py): the data it
 # reads is the root's.
@@ -814,6 +816,104 @@ def from_headings(lines, own=None):
     return out
 
 
+# A CIVICPLUS "CONTACT US" BLOCK: the staff directory widget, one card to a
+# person -- the name on one line and the title on the next -- which sits in the
+# page's sidebar, so that flatten() (which drops <aside>, <nav> and the like)
+# never sees it. Effingham's Board of Selectmen page, read 13 November 2026:
+#
+#     Contact Us
+#     Steven Iannuzzi        / Town Administrator
+#     Heidi Stebbins         / Administrative Assistant
+#     Vacant Vacant          / Finance Administrator
+#     Leo Racine             / Chairperson- Board of Selectmen
+#     Chris Seamans          / Selectman
+#     Rosemarie Wissenbach   / Selectman
+#
+# The first card of the block is usually the office itself ("Board of
+# Selectmen", with an address and a phone) and carries no title; it is no
+# person and is skipped, as is anyone the town prints as "Vacant".
+CARD = re.compile(r'(?is)<li\b[^>]*class="[^"]*\bh-card\b[^"]*"[^>]*>(.*?)</li>')
+CARD_NAME = re.compile(r'(?is)class="[^"]*\bp-name\b[^"]*"[^>]*>(.*?)</(?:h\d|div|span)>')
+CARD_TITLE = re.compile(r'(?is)class="[^"]*\bp-job-title\b[^"]*"[^>]*>(.*?)</(?:h\d|div|span)>')
+STAFF_WIDGET = re.compile(r'(?is)class="[^"]*\bwidgetStaffDirectory\b[^"]*"')
+
+
+# A title that is a seat on a body that governs, in any of its spellings.
+GOVERNING_TITLE = re.compile(
+    r"select\s*(?:board|m[ae]n|woman|person)|board\s+of\s+(?:selectmen|aldermen)|"
+    r"\balder(?:m[ae]n|woman|person)|\bcouncil|\bmayor\b", re.I)
+
+
+def _text(x):
+    return re.sub(r"\s+", " ", html.unescape(re.sub(r"(?s)<[^>]+>", " ", x))).strip()
+
+
+def contact_cards(text):
+    """[{"name", "title"}] for each person in a CivicPlus staff directory
+    ("Contact Us") block on a page, in the page's order; [] where it has none.
+    A card with no title is the office and not a person; a name that is
+    "Vacant" is not a person (the town prints "Vacant Vacant" for an empty
+    post); a name that is no personal name is skipped."""
+    out = []
+    for w in STAFF_WIDGET.finditer(text or ""):
+        # The widget runs to the end of its list.
+        end = text.find("</ol>", w.end())
+        chunk = text[w.end(): end if end > 0 else len(text)]
+        for c in CARD.finditer(chunk):
+            n, t = CARD_NAME.search(c.group(1)), CARD_TITLE.search(c.group(1))
+            name = _text(n.group(1)) if n else ""
+            title = _text(t.group(1)) if t else ""
+            if not name or not title or re.search(r"\bvacant\b", name, re.I):
+                continue
+            if looks_like_name(name):
+                out.append({"name": name, "title": title})
+    return out
+
+
+def contact_seat(title):
+    """The body whose seat a staff-directory title gives, or None for a staff
+    post: "Selectman" and "Chairperson- Board of Selectmen" are the select
+    board's; "Town Administrator", "Administrative Assistant" and "Finance
+    Administrator" are staff (BODY_STAFF), and so is anything naming no
+    governing body."""
+    o = office_of(title)
+    if o in GOVERNING and not BODY_STAFF.search(title) \
+            and not REPRESENTS.search(title):
+        return o
+    return None
+
+
+def contact_pairs(text, own=None):
+    """(seats, staff): the (office, person) pairs a page's staff-directory
+    block gives for a governing body, and the rest as [{"name", "title"}]. A
+    seat's person carries "card": True, so that town_boards.screen() judges
+    the card's own title and not the flattened page, which never held it."""
+    seats, staff = [], []
+    for c in contact_cards(text):
+        o = contact_seat(c["title"])
+        # A title that is only a place on a board -- Andover's "Chair",
+        # Farmington's "Chairman" -- is a seat on the body whose page this is
+        # (page_office), as it is on a roster line, and nobody's staff post.
+        if not o and MEMBER_ROLE.fullmatch(c["title"].strip()) \
+                and not BODY_STAFF.search(c["title"]):
+            if own not in GOVERNING:
+                continue
+            o = own
+        if o:
+            p = split_person(c["name"] + " , " + c["title"])
+            if p:
+                p["card"], p["title"] = True, c["title"]
+                seats.append((o, p))
+                continue
+        # A seat of a governing body that is not read here -- Nashua's
+        # "Alderwoman-At-Large" -- or a seat held for the board elsewhere is
+        # neither staff nor a member of the body this reads.
+        if GOVERNING_TITLE.search(c["title"]) and not BODY_STAFF.search(c["title"]):
+            continue
+        staff.append(c)
+    return seats, staff
+
+
 def read_town(key, keep_noisy=False):
     """Every (office, person, page) this town's saved pages yield."""
     meta_path = STORE / key / "_meta.json"
@@ -824,6 +924,14 @@ def read_town(key, keep_noisy=False):
     for fn, v in sorted(meta.items(),
                         key=lambda kv: -(kv[1].get("score") or 0)):
         if v.get("kind") != "officials" or v.get("status") != 200:
+            continue
+        # A TOWN THAT HAS MOVED (corrections/town_websites.json) is read from
+        # its new site only: the old site's pages stay on disk as the record
+        # of what was seen, and are no longer the town's roster.
+        if not town_websites.is_current(key, v.get("url")):
+            pages.append({"url": v.get("url"), "link_text": v.get("link_text", ""),
+                          "status": "not_read",
+                          "why": "a page of the town's old website"})
             continue
         link = v.get("link_text", "")
         path = re.sub(r"[-_/.]+", " ", v.get("url", ""))
@@ -840,6 +948,8 @@ def read_town(key, keep_noisy=False):
         pairs = from_tables(content_of(text), own)
         if len(pairs) < 2:
             pairs = from_headings(flatten(text), own)
+        seats, staff = contact_pairs(text, own)
+        pairs = pairs + seats
         # ONE PERSON NAMED TWICE ON A PAGE IS ONE SEAT. Seabrook's card
         # prints each selectman's name above the "Read Bio" link and again
         # inside the bio, so three selectmen came to six and the office was
@@ -875,6 +985,8 @@ def read_town(key, keep_noisy=False):
             pairs = [(o, q) for o, q in pairs if o not in over]
             rec["found"] = len(pairs)
         rec["status"] = "read"
+        if staff:
+            rec["staff"] = staff
         rec["says_elected"] = bool(ELECTED_PAGE.search(link))
         pages.append(rec)
         for office, person in pairs:
@@ -902,6 +1014,8 @@ def build(keys):
                 "method": "parse_town_sites.py over a saved page",
                 "status": "published",
             }
+            if person.get("card"):
+                rec["title"] = person["title"]
             # The page's own words about how the seat was filled, and nothing
             # more. An office never implies an election: RSA 669:15 records
             # its own exceptions.
@@ -926,9 +1040,21 @@ def build(keys):
         counts = collections.Counter(r["office"] for r in people.values())
         over = {o for o, c in counts.items() if c > SEATS.get(o, SEAT_MAX)}
         kept = [r for r in people.values() if r["office"] not in over]
+        # THE STAFF A PAGE'S "CONTACT US" BLOCK GIVES (contact_pairs), with the
+        # page and the day, on the entries of the towns that have one only.
+        staff, seen = [], set()
+        for pg in pages:
+            for c in pg.get("staff") or []:
+                if (c["name"].lower(), c["title"].lower()) not in seen:
+                    seen.add((c["name"].lower(), c["title"].lower()))
+                    staff.append({"name": c["name"], "title": c["title"],
+                                  "source_url": pg["url"], "read_on": pg["read_on"]})
+        pages = [{k: v for k, v in pg.items() if k != "staff"} for pg in pages]
         out[key] = {"officials": sorted(kept,
                                         key=lambda r: (r["office"], r["name"])),
                     "pages": pages, "built": today}
+        if staff:
+            out[key]["staff"] = staff
         if over:
             out[key]["dropped_offices"] = sorted(
                 f"{o} ({counts[o]} people, {SEATS.get(o, SEAT_MAX)} seats)"

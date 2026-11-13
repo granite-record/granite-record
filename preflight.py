@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.899
+# GRANITE_VERSION: 2026-09-04.900
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -119607,6 +119607,201 @@ def _town_council_read(T):
     assert not bad, "\n  ".join(bad)
     return "ok", (f"{len(layouts)} cities' layouts read seat by seat, five "
                   "statements of a council's size, and the rule on two pages")
+
+
+@check("build", "the hand file of towns that moved has its shape, and without it nothing changes",
+       needs=("town_websites", "build_town_pages"))
+def _town_websites_file(W, B):
+    """corrections/town_websites.json is the owner's, and town_websites.py its
+    one reader (13 November 2026: Effingham moved to a new website and both
+    directories still name the old one). Held here: an entry needs an
+    address, a day and evidence and a bad one is an error and not a silent
+    nothing; a file that is absent, or names no town, changes nothing --
+    load() answers {}, is_current() says every page is current, and
+    apply_websites() leaves the directories' addresses where they were; and
+    the file in git, where there is one, is valid."""
+    import json as _json
+    import tempfile
+    good = {"towns": {"effingham": {
+        "website": "https://www.effingham.nh.gov/",
+        "directories_say": {"nhdot": "https://www.effinghamnh.net/"},
+        "evidence": ["read 13 November 2026"], "checked_on": "2026-11-13"}}}
+    bad = []
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d) / "w.json"
+        p.write_text(_json.dumps(good), encoding="utf-8")
+        got = W.load(p)
+        if got.get("effingham", {}).get("website") != "https://www.effingham.nh.gov":
+            bad.append(f"the address is not normalised: {got}")
+        if W.is_current("effingham", "https://effinghamnh.net/pages/x", p):
+            bad.append("a page of the old site is current")
+        if not W.is_current("effingham", "https://www.effingham.nh.gov/1200/Board", p):
+            bad.append("a page of the new site is not current")
+        if not W.is_current("lyme", "https://lymenh.gov/pages/x", p):
+            bad.append("a town the file does not name lost its pages")
+        for what, mutate in (
+                ("no evidence", lambda e: e.update(evidence=[])),
+                ("no day", lambda e: e.update(checked_on="soon")),
+                ("no address", lambda e: e.update(website="effingham.nh.gov")),
+                ("a host with no dot", lambda e: e.update(website="https://localhost"))):
+            e = _json.loads(_json.dumps(good))
+            mutate(e["towns"]["effingham"])
+            p.write_text(_json.dumps(e), encoding="utf-8")
+            try:
+                W.load(p)
+                bad.append(f"a file with {what} loaded")
+            except ValueError:
+                pass
+        p.write_text("{not json", encoding="utf-8")
+        try:
+            W.load(p)
+            bad.append("a file that does not parse loaded")
+        except ValueError:
+            pass
+    nowhere = Path(tempfile.gettempdir()) / "no-such-town-websites.json"
+    if W.load(nowhere) != {} or not W.is_current("effingham", "https://x.example/", nowhere):
+        bad.append("an absent file changes something")
+    off = {"_offices": {"effingham": {"website": "https://www.effinghamnh.net/"}},
+           "_local": {"effingham": {"website": "www.effinghamnh.net"}}}
+    before = _json.dumps(off, sort_keys=True)
+    if B.apply_websites(off, {}) != [] or _json.dumps(off, sort_keys=True) != before:
+        bad.append("apply_websites with no entries changed the directories' data")
+    if B.apply_websites(off, got) != ["effingham"] or \
+            off["_offices"]["effingham"]["website"] != "https://www.effingham.nh.gov" or \
+            off["_local"]["effingham"]["website"] != "https://www.effingham.nh.gov":
+        bad.append(f"apply_websites did not put the address in both: {off}")
+    real = Path("corrections/town_websites.json")
+    if real.exists():
+        problems = W.problems(_json.loads(real.read_text(encoding="utf-8")))
+        if problems:
+            bad.append(f"corrections/town_websites.json: {problems}")
+    assert not bad, "\n  ".join(bad)
+    return "ok", "shape held, bad entries refused, absent file and empty entries change nothing"
+
+
+@check("build", "a CivicPlus Contact Us block is read card by card: seats, staff, and Vacant skipped",
+       needs=("parse_town_sites", "town_boards"))
+def _town_contact_block(P, T):
+    """Effingham's Board of Selectmen page (read 13 November 2026) puts its
+    staff and board in a CivicPlus staff directory in the sidebar -- a name
+    and a title to a card -- which the page reader's flattening drops. The
+    fixture is that block cut down. Held: the board's seats are read
+    ("Selectman", "Chairperson- Board of Selectmen"), the administrator and
+    the assistant are staff and not seats, "Vacant Vacant" is nobody, the
+    office's own card (no title) is nobody, a title that is only "Chair" is a
+    seat on the body whose page this is, and a seat the screen would reject
+    off a flattened page (the card is not on it) is judged on its title."""
+    def card(name, title):
+        return ('<li class="widgetItem h-card"><h4 class="widgetTitle field '
+                f'p-name"> {name} </h4><div class="field p-job-title">{title}'
+                '</div><div class="field p-tel">Phone: </div></li>')
+    block = ('<div class="widget widgetStaffDirectory skin63 wide"><div '
+             'class="widgetHeader"><h3><a href=/m/directory>Contact Us</a></h3>'
+             '</div><ol class="semanticList">'
+             '<li class="widgetItem h-card"><h4 class="widgetTitle field '
+             'p-name">Board of Selectmen</h4><div class="field h-adr">68 School '
+             'Street</div></li>'
+             + card("Steven Iannuzzi", "Town Administrator")
+             + card("Heidi Stebbins", "Administrative Assistant")
+             + card("Vacant Vacant", "Finance Administrator")
+             + card("Leo Racine", "Chairperson- Board of Selectmen")
+             + card("Chris Seamans", "Selectman")
+             + card("Rosemarie Wissenbach", "Selectman")
+             + '</ol></div><p>Elsewhere</p>')
+    page = "<html><body><aside>" + block + "</aside><main>Board</main></body></html>"
+    bad = []
+    cards = P.contact_cards(page)
+    names = [c["name"] for c in cards]
+    if names != ["Steven Iannuzzi", "Heidi Stebbins", "Leo Racine", "Chris Seamans",
+                 "Rosemarie Wissenbach"]:
+        bad.append(f"the cards read: {names}")
+    seats, staff = P.contact_pairs(page, "Board of Selectmen")
+    if [(o, p["name"]) for o, p in seats] != [
+            ("Board of Selectmen", "Leo Racine"), ("Board of Selectmen", "Chris Seamans"),
+            ("Board of Selectmen", "Rosemarie Wissenbach")]:
+        bad.append(f"the seats: {[(o, p['name']) for o, p in seats]}")
+    if [c["name"] for c in staff] != ["Steven Iannuzzi", "Heidi Stebbins"]:
+        bad.append(f"the staff: {staff}")
+    if next(p for o, p in seats if p["name"] == "Leo Racine")["role"] != "Chairperson":
+        bad.append("the chair's role is not read from the title")
+    # A bare "Chair" is the page's body's; on a page of no body's, nobody's.
+    bare = ('<div class="widgetStaffDirectory"><ol>' + card("Dana Swenson", "Chair")
+            + card("Sam Roe", "Police Chief") + "</ol></div>")
+    s1, t1 = P.contact_pairs(bare, "Board of Selectmen")
+    s2, t2 = P.contact_pairs(bare, None)
+    if [p["name"] for _o, p in s1] != ["Dana Swenson"] or [c["name"] for c in t1] != ["Sam Roe"]:
+        bad.append(f"a bare Chair on the board's page: {s1} {t1}")
+    if s2 or [c["name"] for c in t2] != ["Sam Roe"]:
+        bad.append(f"a bare Chair on no board's page: {s2} {t2}")
+    # An alderwoman is neither staff nor a seat this reads.
+    wm = '<div class="widgetStaffDirectory"><ol>' + card("Jo Poe", "Alderwoman-At-Large") + "</ol></div>"
+    if P.contact_pairs(wm, "Board of Aldermen") != ([], []):
+        bad.append("Alderwoman-At-Large was read as staff")
+    # The screen judges a card on its title.
+    page_ = {"url": "https://x.test/1200/Board-of-Selectmen", "link_text": ""}
+    v_ok, _ = T.screen(T.BOARD, seats[0][1], page_, [])
+    rep = {"name": "Kay Lee", "card": True, "title": "Selectmen's Rep"}
+    v_rep, _ = T.screen(T.BOARD, rep, page_, [])
+    if v_ok != "keep" or v_rep != "reject":
+        bad.append(f"screen on cards: {v_ok}, {v_rep}")
+    assert not bad, "\n  ".join(bad)
+    return "ok", "name/title cards read, Vacant and the office card skipped, seats told from staff"
+
+
+@check("build", "a moved town's page shows its own current staff and website, and no other town's changes",
+       needs=("build_town_pages",))
+def _town_staff_own_page(B):
+    """The town's own staff list (collected/town_boards.json "staff") is drawn
+    in place of NHDOT's other rows, with the page it was read from and the
+    day; the website of a town in the hand file is linked and the
+    directories' is not; and a town without either is drawn exactly as
+    before (the same HTML to the byte)."""
+    import html as _html
+    import shell as S
+    tmpl = S.template()
+    row = [{"position": "Town Administrator", "name": "Caitlyn Pitts",
+            "phone": "603-539-7770", "email": ""},
+           {"position": "Board of Selectman", "name": "Chuck Fuller",
+            "phone": "", "email": ""}]
+    staff = {"source_url": "https://www.effingham.nh.gov/1200/Board-of-Selectmen",
+             "read_on": "2026-11-13T08:11:59-0500",
+             "people": [{"name": "Steven Iannuzzi", "title": "Town Administrator"},
+                        {"name": "Ann Clerk", "title": "Town Clerk"}]}
+
+    def off(moved):
+        o = {"_offices": {"effingham": {"officials": [dict(r) for r in row],
+                                         "website": "https://www.effinghamnh.net/",
+                                         "phone": "603-539-7770"},
+                          "lyme": {"officials": [dict(r) for r in row]}},
+             "_local": {"effingham": {"website": "www.effinghamnh.net"}}}
+        if moved:
+            B.apply_websites(o, {"effingham": {"website": "https://www.effingham.nh.gov",
+                                               "checked_on": "2026-11-13"}})
+            o["_staff"] = {"effingham": staff}
+        return o
+
+    def page(town, o):
+        return B.build(town, "0", {"0": {}}, {}, [], o, "https://x.test", tmpl)
+    old, new = page("Effingham", off(False)), page("Effingham", off(True))
+    bad = []
+    if "effinghamnh.net</a>" not in old or "effinghamnh.net" in new or \
+            "effingham.nh.gov</a>" not in new:
+        bad.append("the directories' address is still linked on the moved town's page")
+    if "Caitlyn Pitts" not in old or "Caitlyn Pitts" in new:
+        bad.append("NHDOT's staff row is not replaced by the town's")
+    if "Steven Iannuzzi" not in new:
+        bad.append("the town's staff are not drawn")
+    if "Ann Clerk" in new:
+        bad.append("a clerk row of the town's list is drawn; the clerk is the Secretary of State's")
+    if "listed its staff when this site read it on November 13, 2026" not in _html.unescape(new):
+        bad.append("the staff card does not say where and when it was read")
+    if "Chuck Fuller" not in new:
+        bad.append("the directory's board vanished although the town's was not used")
+    # A town the hand file does not name is the same page to the byte.
+    if page("Lyme", off(False)) != page("Lyme", off(True)):
+        bad.append("another town's page changed")
+    assert not bad, "\n  ".join(bad)
+    return "ok", "staff from the town's page replace NHDOT's, the old address is unlinked, other towns unchanged"
 
 
 @check("build", "a town page draws its own board where it has one, and the directory's without its chair",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-24.6
+# GRANITE_VERSION: 2026-09-24.7
 """
 Which towns' own websites list their select board, and which cities' their
 mayor and council, as they stand now.
@@ -118,6 +118,7 @@ import json
 import re
 
 import parse_town_sites as PTS
+import town_websites
 
 OUT = "collected/town_boards.json"
 BOARD = "Board of Selectmen"
@@ -241,7 +242,17 @@ def screen(office, person, page, lines):
     if LISTPAGE.search(seg) or (not seg and LISTPAGE.search(link)):
         return "reject", (f"S6 read off a list of other bodies "
                           f"({seg or link!r})")
-    idx = [i for i, ln in enumerate(lines) if name in ln]
+    if person.get("card"):
+        # A CARD OF THE PAGE'S STAFF DIRECTORY ("Contact Us", CivicPlus) is
+        # a name with its own title, and the flattened page never held it,
+        # so S0, S7 and S8 -- which read the page's lines -- have nothing to
+        # read. parse_town_sites.contact_seat has already refused the staff
+        # posts (S5); what is left is the seat held for the board elsewhere.
+        title = person.get("title") or ""
+        if REP.search(title) and PTS.office_of(title) in (None, BOARD):
+            return "reject", f"S9 a seat held for the board elsewhere ({title!r})"
+        return "keep", ""
+    idx =[i for i, ln in enumerate(lines) if name in ln]
     if not idx:
         return "reject", "S0 the name is not on its source page as saved"
 
@@ -725,6 +736,10 @@ def saved_pages(key):
                 PTS.NOISE_TEXT.search(v.get("link_text") or "") or \
                 PTS.NOISE_TEXT.search(path):
             continue
+        # A town that has moved is read from its new site only (see
+        # town_websites.py).
+        if not town_websites.is_current(key, v.get("url")):
+            continue
         p = PTS.STORE / key / fn
         if p.exists():
             out.append({"url": v.get("url"), "read_on": v.get("read_on"),
@@ -910,7 +925,7 @@ def decide(key, found, dot, lines_of, other_pages=()):
                     and term_has_ended(int(p["term_expires"]),
                                        page.get("read_on"))})
     if dated and dated[:2] < MEETING:
-        return dict(out, case="directory", stale=True,
+        return dict(out, case="directory", stale=True, dated_before=True,
                     why=f"the page dates itself {dated[0]}: {dated[2]!r}")
     if ended:
         return dict(out, case="directory", stale=True,
@@ -1445,6 +1460,7 @@ def build(keys, dot, known=None, guessed=None):
     cased by a guess is added to `guessed`."""
     today = dt.date.today().isoformat()
     towns, cities = {}, {}
+    moved = town_websites.load()
     for key in keys:
         found, _pages = PTS.read_town(key)
         cache = {}
@@ -1455,6 +1471,32 @@ def build(keys, dot, known=None, guessed=None):
             return cache[url]
         towns[key] = decide(key, found, dot.get(key), lines_of,
                             town_pages(key))
+        # THE TOWN'S STAFF, from the staff directory ("Contact Us") on the
+        # page the board is read from. A directory is the town's list of who
+        # holds each post on the day the page was read, and carries no term
+        # for a stale term to condemn, so it is used where the page does not
+        # date itself before the March 2026 meeting -- the one test the board
+        # rule makes of a page's own words that applies to it -- even when
+        # the board's own list on that page has a term that ended (Effingham:
+        # "Term Expires: 2026" under a member, read in November) and the
+        # board stays on NHDOT's. It is kept apart from the board
+        # (`staff_page`), and build_town_pages shows it in place of NHDOT's
+        # staff with the page and the day.
+        #
+        # ONLY FOR A TOWN THAT HAS MOVED (corrections/town_websites.json).
+        # Tried on every town whose board page has a directory, it replaced
+        # NHDOT's rows in 25 town pages with the few the card lists, and lost
+        # the phone numbers, e-mail addresses, road agents and public works
+        # directors NHDOT has for each: a regression for every one of them.
+        # For a moved town NHDOT's rows name the old administrator.
+        t = towns[key]
+        staff = None if key not in moved else next((p for p in _pages if p.get("url") == t.get("source_url")
+                      and p.get("staff")), None)
+        if staff and not t.get("dated_before"):
+            t["staff_page"] = {"source_url": staff["url"],
+                               "read_on": staff.get("read_on"),
+                               "people": [{"name": c["name"], "title": c["title"]}
+                                          for c in staff["staff"]]}
         if key in CITIES:
             cities[key] = decide_council(key, saved_pages(key), dot.get(key))
 
@@ -1485,6 +1527,10 @@ def build(keys, dot, known=None, guessed=None):
         "_built": today,
         "boards": kept(towns, fields),
         "councils": kept(cities, fields),
+        # The town's staff as its own page lists them, with the page and the
+        # day: see build(), and build_town_pages.staff_card.
+        "staff": {k: v["staff_page"] for k, v in sorted(towns.items())
+                  if v.get("staff_page")},
         "not_used": {k: {f: v.get(f) for f in ("why", "read", "size",
                                                "source_url", "read_on")
                          if v.get(f) is not None}
