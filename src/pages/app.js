@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.311
+// GRANITE_VERSION: 2026-09-07.312
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -6468,7 +6468,13 @@ function renderSponsors(b,d){
   // name there is taken as prime, and a name matched to nobody who cast a roll
   // call that term is shown as it is printed, without a party.
   const fromText=spAll.length&&spAll.every(s=>s.source==="bill text");
-  const asPrinted=fromText&&spAll.some(s=>!s.member_id);
+  const asPrinted=fromText&&spAll.some(s=>!s.member_id&&!s.matched);
+  // 1989 to 1998: the bill prints a surname and a seat, and the General Court's
+  // sponsor record for the same bill (the employee numbers on it) names the
+  // person where only one of its numbers fits what was printed
+  // (past_roster.py). A name placed so is shown in full, in the General
+  // Court's spelling; one that could not be is shown as printed.
+  const byRecord=fromText&&spAll.some(s=>s.matched);
   // A BILL WHOSE PRINTED LINE NAMES NOBODY. 1991 HCR 13 and HR 19 print "INTRODUCED BY:
   // REFERRED TO:" with no name after either, and the page listed a sponsor called
   // REFERRED TO. Their names come from the General Court's own sponsor record instead
@@ -6499,7 +6505,11 @@ function renderSponsors(b,d){
     ?`<p class="note" style="margin-top:12px">As named on the sponsor line of
         the bill's text, where the first name is the prime sponsor.${asPrinted
         ?` A name without a party is shown as the text prints it: it could not
-          be matched to one member who voted that term.`:""}</p>`:""}${unprinted
+          be matched to one member who voted that term.`:""}${byRecord
+      ?` Before 1999 the bill prints only a surname. A full name here is the
+        General Court&rsquo;s name for the one person on this bill&rsquo;s own sponsor
+        record that the printed name fits; a name it could not be placed on
+        is shown as printed.`:""}</p>`:""}${unprinted
     ?`<p class="note" style="margin-top:12px">The bill's own text names no
         sponsor. These are the names the General Court's sponsor record gives
         it.</p>`:""}${fromJournal

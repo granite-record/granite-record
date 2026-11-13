@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.270
+# GRANITE_VERSION: 2026-09-05.271
 """
 Generate the faceted site from real General Court data.
 
@@ -65,6 +65,7 @@ import parse_constitution as PCON
 import bill_order as BO
 import past_sponsors as PSP
 import text_sponsors as TS
+from past_roster import MATCHED as PAST_ROSTER_MATCH
 import topic_model as TM
 import official_topics as OT
 import law_effect as LE
@@ -8653,7 +8654,11 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
         # ... (R - SD23)". The link still goes to their own page, through `_m`.
         _t = ((term_roster or {}).get(str(_s.get("member_id") or ""))
               or (term_roster or {}).get(str(_m.get("id") or "")) or _m)
-        if _s.get("seat_source") in (PSP.SOURCE, JOURNAL_SOURCE):
+        # ... AND A 1989-1998 SPONSOR PLACED BY THE BILL'S OWN SPONSOR ROWS
+        # (past_roster.py): the seat is the one the bill printed, and the party
+        # is none -- the member's roster party today is not a claim about 1993.
+        if (_s.get("seat_source") in (PSP.SOURCE, JOURNAL_SOURCE)
+                or _s.get("matched") == PAST_ROSTER_MATCH):
             _lab = member_labels(
                 _s.get("name"),
                 chamber=_s.get("chamber") or _m.get("chamber"),

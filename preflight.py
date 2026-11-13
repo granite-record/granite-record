@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.892
+# GRANITE_VERSION: 2026-09-04.893
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -115679,6 +115679,79 @@ def _senators_printed_as_rep(text_sponsors):
     assert r["member_id"] == "", f"'Rep. Boyce, Dist 4' went to {r['member_id']} with no record"
     return "ok", ("Boyce twice, O'Neil, Johnson (at the district that term's bills print) and "
                   "Kenney placed on the senator; never on a representative; Larsen left as printed")
+
+
+@check("naming", "a sponsor printed before 1999 is placed on a person only where the bill's own sponsor rows settle it",
+       needs=("text_sponsors",))
+def _pre_1999_sponsors_placed(text_sponsors):
+    """past_roster.py, 13 November 2026. A bill of 1989-1998 prints "Rep. Guay, Coos 6". The
+    General Court's sponsor record for that bill (PastSponsors, by its stored LSR) holds
+    its sponsors' employee numbers, and past_members.json names each number. A printed
+    sponsor takes the number only where the bill's OWN rows settle it: the surname fits one
+    number (an initial or first name printed before it picks one of two), nothing else.
+    A misprint, two numbers of a surname with nothing to choose, and a number no list names
+    stay exactly as printed. The employee number is the General Court's, in `employee`;
+    the party is none; the id is a member's only where a later roll call was cast under
+    that number."""
+    T = text_sponsors
+    import past_roster as PR
+    import past_sponsors as PSP
+    pm = {"372001": {"name": "Guay, Roland", "chamber": "H"},
+          "372002": {"name": "Lawton, Dennis", "chamber": "H"},
+          "372003": {"name": "Lawton, Ruth", "chamber": "H"},
+          "372004": {"name": "Buckley, Anne", "chamber": "H"},
+          "205001": {"name": "Blaisdell, Clesson", "chamber": "S"},
+          "372005": {"name": "Dykstra (SEE Emp #375839), Leona", "chamber": "H"},
+          "372006": {"name": "Barnes, Jr., John", "chamber": "H"}}
+    people = PSP.People([], pm)
+    sat = T.Sat([{"member_id": "372001", "name": "Guay, Roland J.", "label": "Guay, Roland(R) Coos 06",
+                  "body": "H", "year": "1999", "party": "R"}])
+    lines = [("1993-1994", "HB1", "Rep. Guay, Coos 6; Rep. D. Lawton, Hills 4; Rep. Buckly, Graf 2; "
+                                  "Rep. Blaisdell, Dist 10; Rep. Nobody, Ches 3"),
+             ("1993-1994", "HB2", "Rep. Lawton, Hills 4; Rep. R. Lawton, Hills 5; Rep. Dykstra, Rock 1; "
+                                  "Rep. Barnes, Jr., Merr 2")]
+    rows = lambda *emps: {"lsr": "", "rows": [{"employee": e, "sequence": i, "prime": i == 0,
+                                               "withdrawn": False} for i, e in enumerate(emps)]}
+    joined = {"1993-1994": {"HB1": rows("372001", "372002", "372004", "205001", "372099"),
+                            "HB2": rows("372002", "372003", "372005", "372006")}}
+    got, tally, _ = T.build({}, sat, sponsor_record=(joined, people), lines=lines)
+    h1 = {r["as_printed"].split(",")[0]: r for r in got["1993-1994"]["HB1"]}
+    h2 = got["1993-1994"]["HB2"]
+    g = h1["Rep. Guay"]
+    assert (g["name"], g["employee"], g["member_id"], g["party"]) == ("Roland J. Guay", "372001", "372001", ""), \
+        f"a number a later roll call was cast under keeps the member's own name and id: {g}"
+    d = h1["Rep. D. Lawton"]
+    assert (d["name"], d["employee"], d["member_id"]) == ("Dennis Lawton", "372002", ""), \
+        f"an initial that fits one of two Lawtons did not place D. Lawton: {d}"
+    assert "employee" not in h2[0] and h2[0]["name"] == "Lawton", \
+        f"a bare surname two numbers fit was placed: {h2[0]}"
+    assert h2[1]["employee"] == "372003" and h2[1]["name"] == "Ruth Lawton", h2[1]
+    b = h1["Rep. Buckly"]
+    assert "employee" not in b and b["name"] == "Buckly" and b["member_id"] == "", \
+        f"a misprint was matched by a guess: {b}"
+    s = h1["Rep. Blaisdell"]
+    assert (s["chamber"], s["employee"], s["name"]) == ("S", "205001", "Clesson Blaisdell") \
+        and s["as_printed"].startswith("Rep. Blaisdell"), \
+        f"a senator printed as Rep. with a Senate district is not shown as one: {s}"
+    assert "employee" not in h1["Rep. Nobody"], "a surname on no row of the bill was placed"
+    assert h2[2]["name"] == "Leona Dykstra" and h2[3]["name"] == "John Barnes Jr.", \
+        f"the General Court's spelling of a name was not kept: {h2[2]['name']!r}, {h2[3]['name']!r}"
+    assert PR.split_label("Dykstra (SEE Emp #375839), Leona")[3] == "375839"
+    for r in [*h1.values(), *h2]:
+        assert not r.get("party"), f"a party before 1999: {r}"
+        assert not str(r.get("member_id") or "").startswith("gr-") and not str(r.get("employee") or "").startswith("gr-")
+    # The same lines with no sponsor record place nobody.
+    got0, _t, _ = T.build({}, sat, sponsor_record=None, lines=lines)
+    assert not any(r.get("employee") for rs in got0["1993-1994"].values() for r in rs), \
+        "a sponsor was placed with no sponsor record"
+    # A shared full name between two numbers is reported, so the filter can tell them apart.
+    two = {"HB1": [{"matched": PR.MATCHED, "employee": "1", "name": "Frank Allen"}],
+           "HB2": [{"matched": PR.MATCHED, "employee": "2", "name": "Frank Allen"},
+                   {"matched": PR.MATCHED, "employee": "3", "name": "Mary Allen"}]}
+    assert PR.shared_names(two) == {"Frank Allen"}, PR.shared_names(two)
+    return "ok", ("a unique surname, an initial between two Lawtons and a senator printed as Rep. are placed "
+                  "on the General Court's name and number; a misprint, an unsettled surname and a surname "
+                  "off the bill stay as printed; no party; no gr- id in either field")
 
 
 @check("naming", "a sponsor row is a person or a committee: no heading, no seat on its own, no figure in a name",

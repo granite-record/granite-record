@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.9
+# GRANITE_VERSION: 2026-09-14.10
 """
 Sponsors read off each bill's own text, for the bills the database names none for.
 
@@ -344,6 +344,10 @@ class Sat:
 
     def __init__(self, rows):
         seen = {}
+        # {member id: (last, first, suffix)}: every id a roll call was cast under, as the
+        # site names it, so a pre-1999 sponsor placed by past_roster.py on a number that
+        # later voted takes the name and the page of that member and no other.
+        self.names = {}
         for v in rows:
             y = str(v.get("year") or "")
             if not y.isdigit() or v.get("body") not in ("H", "S"):
@@ -356,6 +360,7 @@ class Sat:
                     seen[key] = False
                     continue
                 county, number = label_seat(v.get("label"))
+                self.names.setdefault(key[2], nm)
                 m = seen[key] = {"id": key[2], "last": nm[0], "first": nm[1], "suffix": nm[2],
                                  "county": county or "", "number": number,
                                  "parties": Counter()}
@@ -524,6 +529,7 @@ def build(bills, sat, only_missing=None, sponsor_record=None, lines=None):
     `lines`, [(term, bill, sponsor line)], stands in for the saved pages (preflight's
     fixtures); by default every saved page is read."""
     import past_sponsors as PSP
+    import past_roster as PR
     if lines is None:
         pages, strays = saved_pages(bills)
         lines = ((term, bid, read_line(f)) for term, bid, f in pages)
@@ -574,7 +580,21 @@ def build(bills, sat, only_missing=None, sponsor_record=None, lines=None):
             else:
                 m, why = None, "no chamber on the line"
             tally[why] += 1
-            recs.append(record(i, sp, m))
+            rec = None
+            if m is None and people is not None and term in PR.PRE_TERMS:
+                # BEFORE 1999 NO ROLL CALL PLACES ANYBODY; THE BILL'S OWN SPONSOR ROWS DO,
+                # where they settle it (past_roster.py): the printed surname fits one
+                # employee number on that bill, or an initial picks one of two.
+                rows = ((joined.get(term) or {}).get(bid) or {}).get("rows") or []
+                state, emp, _why = (PR.place(sp, rows, people) if rows
+                                    else (PR.UNMATCHED, None, ""))
+                tally[f"1989-1998 printed sponsors {state} against the bill's own sponsor rows"] += 1
+                if state == PR.CERTAIN:
+                    rec = PR.enrich(record(i, {**sp, "chamber": PR.chamber_for(sp, emp, people)}, None),
+                                    emp, people, sat)
+                    if rec.get("employee") != emp:
+                        rec = None      # the number is named by no list on disk
+            recs.append(rec or record(i, sp, m))
         got[term][bid] = recs
     return dict(got), tally, strays
 
