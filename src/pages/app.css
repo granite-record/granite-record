@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.384 */
+/* GRANITE_VERSION: 2026-09-07.386 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -5343,7 +5343,34 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
    in the status chip's colours; and one chart, of the first table's Became
    Law column, over it. */
 .l-numwrap{max-width:none}
-.l-art .l-secb > .l-numwrap{max-width:var(--l-meas)}
+/* NUMBER TABLES FILL THE WIDTH THEY HAVE (the owner, 13 November 2026: a
+   narrow measure inside a wide box reads as broken). The measure is for
+   prose; this table's box was held to it, and its columns, which are
+   figures, scrolled sideways at 768 and over. Tighter cells and heads that
+   wrap are what let eight columns sit in the page's column; on a phone the
+   box scrolls and its first column stays (below). */
+.l-numtab th,.l-numtab td{padding:.5rem .5rem}
+.l-numtab th:first-child,.l-numtab td:first-child{padding-left:.75rem}
+.l-numtab th:last-child,.l-numtab td:last-child{padding-right:.75rem}
+.l-numtab thead th{letter-spacing:0;overflow-wrap:normal;hyphens:manual}
+/* A HEAD WRAPS BETWEEN WORDS AND NEVER INSIDE ONE (no break-all, no
+   "anywhere": "PASSE / D BOTH CHAMB / ERS" read as broken). Eight heads of
+   one word each, the longest "COMMITTEE", are about 560px of type, and the
+   committees' table sits in a 682px column at every width, so the cells give up a little padding, and the dense tables an idle sort
+   chevron (a sorted column still shows its direction): that is what keeps the
+   committees' table in a 703px column at 768 with no head split. */
+.l-numtab th,.l-numtab td{padding-left:.3125rem;padding-right:.3125rem}
+.l-numtab th:first-child,.l-numtab td:first-child{padding-left:.625rem}
+.l-numtab th:last-child,.l-numtab td:last-child{padding-right:.625rem}
+/* eight columns (class dense) have no width for the idle chevron beside every
+   head, at any width: the committee table sits in a 682px column even on a
+   large screen */
+.l-numtab.dense th:not([aria-sort=ascending]):not([aria-sort=descending]) .l-sort-i{display:none}
+/* the amendments: the Source (a citation, a long line) wraps in a column of
+   its own width rather than the least the others leave, in smaller type, and
+   the result's chip may wrap */
+.l-numtab.amend td:last-child{min-width:7.5rem;font:400 var(--t-sm)/1.4 var(--sans);overflow-wrap:break-word}
+.l-numtab.amend .cstat{white-space:normal}
 .l-numtab thead th,.l-numtab thead th.l-num{white-space:normal}
 .l-numtab td:first-child{font-weight:500}
 .l-numtab tbody tr:hover > *{background:var(--wash)}
@@ -5377,7 +5404,20 @@ th[aria-sort=descending] .l-sort-i{
 .l-folds.is-wide{max-width:none}
 .l-sk{margin:.5rem 0 .75rem}
 .l-skwrap{overflow-x:auto;padding:.25rem 0 .5rem;-webkit-overflow-scrolling:touch}
-.l-skwrap > svg{display:block;width:100%;min-width:54rem;height:auto;font:400 .875rem/1 var(--sans)}
+.l-skwrap > svg{display:block;width:100%;height:auto;font:400 .875rem/1 var(--sans)}
+/* The flow diagram scales with its box down to a tablet. On a phone it would
+   be 40% of its size and its names unreadable, so below 40em it keeps the
+   width it is drawn for and scrolls sideways inside its own box, with the
+   tables' shadow at whichever end has more. */
+@media (max-width:40em){
+  .l-sk .l-skwrap > svg{min-width:54rem}
+  .l-sk .l-skwrap{background:
+    linear-gradient(to right,var(--surface) 30%,transparent) 0 0/2rem 100% no-repeat local,
+    linear-gradient(to left,var(--surface) 30%,transparent) 100% 0/2rem 100% no-repeat local,
+    linear-gradient(to right,var(--shadow),transparent) 0 0/1rem 100% no-repeat scroll,
+    linear-gradient(to left,var(--shadow),transparent) 100% 0/1rem 100% no-repeat scroll,
+    var(--surface)}
+}
 .sk .sk-r{stroke:var(--surface);stroke-width:1.5;fill-opacity:.45}
 .sk .sk-r.n{fill:var(--ink-2);fill-opacity:.16}
 .sk .sk-n{fill:var(--ink-2)}
@@ -5397,6 +5437,10 @@ th[aria-sort=descending] .l-sort-i{
 .l-ch > p{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:.25rem 0 0}
 .l-ch .l-barkey{margin:0 0 .5rem}
 .l-ch .l-skwrap > svg{max-width:36rem}
+/* a chart's type is learn_numbers.CH_PX in the SVG's own units, and its
+   margins are made from its labels at that size; the chart scales with its
+   box, so on a phone its type is that size times the box over the viewBox */
+.sk.ch{font-size:.9375rem}
 .ch .ax{stroke:var(--rule);stroke-width:1}
 .ch .sk-ink{fill:var(--ink-2)} .ch .sk-pine{fill:var(--pine)} .ch .sk-rest{fill:var(--rule-2)}
 .ch .ch-h{fill:var(--ink-2)}
@@ -5428,7 +5472,25 @@ th[aria-sort=descending] .l-sort-i{
   -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;transition:transform .15s}
 .l-fold[open] > summary::before{transform:rotate(90deg)}
 .l-fold > summary:hover{background:var(--wash)}
+.l-fold > :is(p,.l-ch){padding-left:.875rem;padding-right:.875rem}
 .l-fold > .l-tablewrap{margin:0;border:0;border-top:1px solid var(--rule-2);border-radius:0;max-width:none}
+/* ON A PHONE a figures table scrolls inside its own box and its first column
+   (the term, the committee) stays in view */
+@media (max-width:40em){
+  .l-numtab th:first-child,.l-numtab td:first-child{position:sticky;left:0;z-index:1;background:var(--surface);
+    box-shadow:1px 0 0 var(--rule)}
+  .l-numtab tbody tr:hover > td:first-child{background:var(--wash)}
+  .l-numtab.names td:first-child,.l-numtab.names th:first-child{max-width:8rem}
+}
+@media print{
+  /* The page on paper shows every column and every label: nothing scrolls
+     on a sheet, so nothing is cut at its edge. */
+  .l-numwrap,.l-skwrap,.l-tablewrap{overflow:visible;contain:none}
+  .l-skwrap > svg,.l-sk .l-skwrap > svg{min-width:0;max-width:100%}
+  .l-numtab th:first-child,.l-numtab td:first-child{position:static;box-shadow:none;max-width:none}
+  .l-numtab thead{display:table-header-group}
+  .l-numtab tr,.l-ch,.l-sk{break-inside:avoid}
+}
 .l-bills{list-style:none;margin:0;padding:.375rem .875rem .75rem;border-top:1px solid var(--rule-2);display:grid;
   grid-template-columns:repeat(auto-fill,minmax(min(100%,17rem),1fr));column-gap:1.5rem}
 .l-bills li{padding:.4375rem 0;border-bottom:1px solid var(--rule);font:400 var(--t-ui)/1.45 var(--sans);color:var(--ink-2)}

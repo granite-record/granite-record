@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.28
+# GRANITE_VERSION: 2026-09-14.30
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -44,6 +44,7 @@ source or no cite is left off its table and named in HELD, which build_civics pr
 
 import html
 import json
+import math
 import re
 import statistics
 from collections import Counter, defaultdict
@@ -123,6 +124,8 @@ def _table(head, rows, cls="numtab", sortable=None, groups=None, numcols=()):
     # words they print in English (_COMMITTEE_HEADS).
     if head and head[0] in _COMMITTEE_HEADS:
         cls += " names"
+    if len(head) >= 8:
+        cls += " dense"       # app.css: no room for an idle sort chevron on every head
     if sortable is None:
         sortable = len(rows) > SORTABLE_OVER
     shown = [[c[0] if isinstance(c, tuple) else c for c in r] for r in rows]
@@ -842,9 +845,9 @@ def vetoes(rows):
 # ---------------------------------------------------------------------------
 
 def _chart(title, said, svg, legend=(), note=""):
-    """A chart's figure: title, the SVG (scrolling sideways on a phone rather
-    than shrinking past reading), its key, and a line saying the table
-    beneath it holds the figures. legend: [(swatch class, words)]."""
+    """A chart's figure: title, the SVG (it scales with its box at every
+    width; app.css says what it does on a phone), its key, and a line saying
+    the table beneath it holds the figures. legend: [(swatch class, words)]."""
     key = "".join(f'<li><span class="l-sw {c}" aria-hidden="true"></span><span>{w}</span></li>'
                   for c, w in legend)
     return (f'<figure class="l-fig l-ch"><figcaption>{title}</figcaption>'
@@ -852,9 +855,26 @@ def _chart(title, said, svg, legend=(), note=""):
             + f'<div class="l-skwrap">{svg}</div>' + (f"<p>{note}</p>" if note else "") + "</figure>")
 
 
+# THE CHARTS' TYPE, in the SVG's own units (app.css: .sk.ch is this size). A
+# label is measured here, from this size and a width a letter, so a chart's
+# margin is made from its longest label rather than a number picked to suit
+# one ("1989-1990" lost its first digit in a margin picked for "2019").
+# Generous on purpose: a guess too wide leaves a margin, one too narrow cuts
+# a number. preflight's check reads the same function.
+CH_PX = 15
+
+
+def text_w(s, px=CH_PX, bold=False):
+    """The width of `s` set in the charts' sans at `px`, an upper bound."""
+    s = html.unescape(re.sub(r"<[^>]+>", "", str(s)))
+    em = sum(0.64 if c.isdigit() else 0.74 if c.isupper() else 0.28 if c == " " else
+             0.6 if c in "%,.:" else 0.9 if c in "mwMW" else 0.58 for c in s)
+    return em * px * (1.08 if bold else 1.0)
+
+
 def _svg(w, h, said, body):
     return (f'<svg class="sk ch" viewBox="0 0 {w} {h}" role="img" aria-label="{E(said)}" '
-            f'xmlns="http://www.w3.org/2000/svg" style="min-width:26rem"><g>{body}</g></svg>')
+            f'xmlns="http://www.w3.org/2000/svg"><g>{body}</g></svg>')
 
 
 def stack100_chart(rows, parts, title, said, lang="en", label_part=0, note=""):
@@ -862,7 +882,8 @@ def stack100_chart(rows, parts, title, said, lang="en", label_part=0, note=""):
     parts [(class, words)]. The share of the part `label_part` is printed at
     the end of each bar (the one figure a reader compares down the rows); a
     bar's title holds all of them. A 2px surface gap between segments."""
-    lw, bw, rh, bh = 76, 360, 20, 12
+    bw, rh, bh = 360, 20, 12
+    lw = math.ceil(max((text_w(label) for label, _ns in rows), default=0)) + 12
     out, y = [], 4
     for label, ns in rows:
         tot = sum(ns)
@@ -879,7 +900,7 @@ def stack100_chart(rows, parts, title, said, lang="en", label_part=0, note=""):
         if tot:
             out.append(f'<text class="sk-v" x="{lw + bw + 8}" y="{y + 10}">{100 * ns[label_part] / tot:.1f}%</text>')
         y += rh
-    svg = _svg(lw + bw + 56, y + 4, said, "".join(out))
+    svg = _svg(lw + bw + 8 + math.ceil(text_w("100.0%", bold=True)) + 4, y + 4, said, "".join(out))
     return _chart(title, said, svg, [(f"c-{c}", w) for c, w in parts], note)
 
 
@@ -902,9 +923,14 @@ def scatter_chart(points, title, said, xlabel, ylabel, lang="en", note=""):
     three lowest rates are named; every point has a title with its figures."""
     if not points:
         return ""
-    w, h, left, right, top, bot = 540, 300, 62, 12, 10, 40
+    w, h, top, bot = 540, 300, 14, 40
     xmax = max(p[2] for p in points)
     xmax = (int(xmax // 50) + 1) * 50 if xmax > 100 else (int(xmax // 10) + 1) * 10
+    # The margins from what is drawn in them: the left holds the y ticks
+    # ("100%") and, rotated, the y title; the right holds half of the last x
+    # tick, which is centred on the plot's end.
+    left = math.ceil(text_w("100%")) + 6 + CH_PX + 12
+    right = math.ceil(text_w(str(xmax)) / 2) + 4
     sx = lambda v: left + (w - left - right) * v / xmax
     sy = lambda v: top + (h - top - bot) * (1 - v / 100)
     out = []
@@ -916,7 +942,7 @@ def scatter_chart(points, title, said, xlabel, ylabel, lang="en", note=""):
         out.append(f'<line class="ax" x1="{sx(v):.1f}" x2="{sx(v):.1f}" y1="{top}" y2="{h - bot}"/>'
                    f'<text x="{sx(v):.1f}" y="{h - bot + 14}" text-anchor="middle">{v}</text>')
     out.append(f'<text x="{(left + w - right) / 2:.0f}" y="{h - 6}" text-anchor="middle">{xlabel}</text>'
-               f'<text transform="translate(13,{(top + h - bot) / 2:.0f}) rotate(-90)" text-anchor="middle">{ylabel}</text>')
+               f'<text transform="translate({CH_PX},{(top + h - bot) / 2:.0f}) rotate(-90)" text-anchor="middle">{ylabel}</text>')
     ranked = sorted(points, key=lambda p: (p[3], p[0]))
     named = {p[0] for p in ranked[:3] + ranked[-3:]}
     last = {}
@@ -929,7 +955,15 @@ def scatter_chart(points, title, said, xlabel, ylabel, lang="en", note=""):
         while any(abs(ty - v) < 12 for v in last.values()):
             ty += 12
         last[name] = ty
-        anchor, tx = ("end", sx(xv) - 9) if sx(xv) > w * 0.62 else ("start", sx(xv) + 9)
+        # Beside its point on the side with room for the whole name; a name
+        # longer than either side is set from the plot's edge, over the grid.
+        tw = math.ceil(text_w(short)) + 2
+        if sx(xv) + 9 + tw <= w - 2:
+            anchor, tx = "start", sx(xv) + 9
+        elif sx(xv) - 9 - tw >= left:
+            anchor, tx = "end", sx(xv) - 9
+        else:
+            anchor, tx = "start", max(w - 2 - tw, 2)
         out.append(f'<text x="{tx:.1f}" y="{ty:.1f}" text-anchor="{anchor}">{E(short)}</text>')
     svg = _svg(w, h, said, "".join(out))
     return _chart(title, said, svg, chamber_legend(lang), note)
@@ -943,7 +977,8 @@ def dot_chart(rows, title, said, lang="en", note=""):
     if not vals:
         return ""
     lo = max(0, int(min(vals) // 5) * 5 - 5)
-    lw, bw, rh = 76, 380, 19
+    bw, rh = 380, 19
+    lw = math.ceil(max((text_w(label) for label, *_v in rows), default=0)) + 12
     sx = lambda v: lw + bw * (v - lo) / (100 - lo)
     out = []
     for v in range(lo, 101, 5):
@@ -956,7 +991,7 @@ def dot_chart(rows, title, said, lang="en", note=""):
             if v is not None:
                 out.append(f"<g><title>{E(label)}, {E(_chamber(ch, lang))}: {v:.1f}%</title>"
                            + chamber_marker(ch, sx(v), y, 4) + "</g>")
-    svg = _svg(lw + bw + 24, len(rows) * rh + 28, said, "".join(out))
+    svg = _svg(lw + bw + math.ceil(text_w("100%") / 2) + 6, len(rows) * rh + 28, said, "".join(out))
     return _chart(title, said, svg, chamber_legend(lang), note)
 
 
@@ -964,7 +999,7 @@ def lines_chart(panels, title, said, lang="en", note=""):
     """Small multiples: one panel a chamber, each its own scale (never one
     axis shared by 400 members and 24), two lines a panel. panels
     [(name, [terms], [(series name, class, [values])])]."""
-    pw, ph, left, top, bot = 262, 150, 36, 14, 22
+    pw, ph, left, top, bot = 262, 150, 36, 24, 22
     out = []
     for p, (name, terms, series) in enumerate(panels):
         x0 = p * (pw + 24)
@@ -973,7 +1008,7 @@ def lines_chart(panels, title, said, lang="en", note=""):
         top_v = (int(hi / nice) + 1) * nice if hi >= 1 else 1
         sx = lambda i: x0 + left + (pw - left - 8) * i / max(len(terms) - 1, 1)
         sy = lambda v: top + (ph - top - bot) * (1 - v / top_v)
-        out.append(f'<text x="{x0 + left}" y="9" class="sk-v">{E(name)}</text>')
+        out.append(f'<text x="{x0 + left}" y="{CH_PX}" class="sk-v">{E(name)}</text>')
         for k in range(0, 3):
             v = top_v * k / 2
             out.append(f'<line class="ax" x1="{x0 + left}" x2="{x0 + pw - 8}" y1="{sy(v):.1f}" y2="{sy(v):.1f}"/>'
@@ -1195,7 +1230,7 @@ def sankey_svg(tree, said, lang="en"):
         n["h"] = sum(k["h"] for k in n["kids"])
     place(tree, 0)
     height = cursor[0] + 6
-    nodes, ribbons, labels = [], [], []
+    nodes, ribbons, labels, ends = [], [], [], []
     total = tree["n"]
 
     def walk(n):
@@ -1221,10 +1256,15 @@ def sankey_svg(tree, said, lang="en"):
                     f'L{x1},{yb1:.1f}C{xm},{yb1:.1f} {xm},{ya1:.1f} {xa},{ya1:.1f}Z"/>')
                 walk(k)
         else:
+            ends.append((lx, n["label"], n["n"]))
             labels.append(f'<text x="{lx}" y="{n["y"] + n["h"] / 2 + 4:.1f}">{E(n["label"])} '
                           f'<tspan class="sk-v">{n["n"]:,}</tspan></text>')
     walk(tree)
-    return (f'<svg class="sk" viewBox="0 0 {SK_W} {height:.0f}" role="img" aria-label="{E(said)}" '
+    # Never narrower than its names: the widest end label, from its bar's x,
+    # sets the width if it runs past the 864 the layout is drawn for.
+    width = max(SK_W, max((math.ceil(lx + text_w(f"{lab} {cnt:,}") + 4)
+                           for lx, lab, cnt in ends), default=0))
+    return (f'<svg class="sk" viewBox="0 0 {width} {height:.0f}" role="img" aria-label="{E(said)}" '
             f'xmlns="http://www.w3.org/2000/svg"><g aria-hidden="true">'
             + "".join(ribbons) + "".join(nodes) + "".join(labels) + "</g></svg>")
 
@@ -1866,5 +1906,5 @@ def body(site=Path("site"), root=Path("."), strict=True, lang="en"):
                                   say(lang, "nums.c_yes", "Yes"), say(lang, "nums.c_no", "No"),
                                   say(lang, "nums.c_yes_share", "Yes share"),
                                   say(lang, "nums.c_result", "Result"), say(lang, "nums.c_source", "Source")],
-                                 brows, numcols=(4,))))
+                                 brows, cls="numtab amend", numcols=(4,))))
     return "".join(out)
