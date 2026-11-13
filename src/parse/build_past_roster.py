@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-13.1
+# GRANITE_VERSION: 2026-11-13.2
 """
 Who sat, term by term, 1989 to 1998, as the sponsor route gives it.
 
@@ -43,6 +43,7 @@ from collections import Counter, defaultdict
 
 import gr_ids as GR
 import past_members
+import past_roll as ROLL
 import past_roster as PR
 import past_sponsors as PSP
 
@@ -54,6 +55,7 @@ SOURCE = ("General Court sponsor record (PastSponsors), by the bill's stored LSR
           "the bill printed")
 LIST_NAME = "General Court list of members (past_members.json)"
 TABLE_NAME = "General Court legislators table (Legislators.psv)"
+ROLL_SOURCE = "House Journal call of the roll (a second source; no sponsor row of the term)"
 
 
 def _load(path):
@@ -121,6 +123,50 @@ def rows_of(joined, text, people, voters, terms=PR.PRE_TERMS):
     return out
 
 
+def add_roll(rows, got, people, voters):
+    """(rows with the call of the roll merged in, [seat disagreements], [roll names placed on nobody]).
+
+    `got` is past_roll.survey's {volume: [(entry, state, employee)]}. A name the roll places on a person
+    who has a row for that term in the House gets the volume and the seat the roll gave, and a note of
+    whether a printed seat could be compared; one it places on a person with no row for the term (a House
+    member who sponsored nothing) gets a row of their own, from the roll alone, in the House; a name whose
+    seat contradicts the person's printed one, and a name placed on nobody, are listed and attached to no
+    one. Party is not read: the roll prints a nominating party and none is given before 1999."""
+    rows = [dict(r) for r in rows]
+    by = {(r["term"], r["chamber"], r["person"]): r for r in rows}
+    clash, loose = [], []
+    for fn, res in got.items():
+        term, year = ROLL.VOLUMES[fn]
+        for en, state, emp in res:
+            if state == "placed":
+                r = by.get((term, "H", emp))
+                if r is None:
+                    nm, where = name_source(emp, people)
+                    r = by[(term, "H", emp)] = {
+                        "term": term, "chamber": "H", "person": emp, "gc_employee_number": emp,
+                        "granite_id": "", "name": nm, "name_source": where, "seats": [],
+                        "chamber_source": "the call of the roll", "bills": 0, "bills_printed": 0,
+                        "voted_since_1999": emp in voters, "source": ROLL_SOURCE}
+                    rows.append(r)
+                r.setdefault("roll", []).append(
+                    {"volume": year, "county": en["county"], "district": en["district"],
+                     "seat_checked_against_a_printed_seat": bool(r["seats"])})
+                if r["source"] == ROLL_SOURCE and not any(
+                        s["county"] == en["county"] and s["district"] == en["district"] for s in r["seats"]):
+                    r["seats"].append({"county": en["county"], "district": en["district"], "bills": 0})
+            elif state == "seat differs":
+                clash.append({"term": term, "volume": year, "roll_name": en["name"],
+                              "roll_seat": [en["county"], en["district"]], "gc_employee_number": emp,
+                              "printed_seats": [[s["county"], s["district"]]
+                                                for r in rows if r["person"] == emp and r["term"] == term
+                                                for s in r["seats"]]})
+            else:
+                loose.append({"term": term, "volume": year, "roll_name": en["name"],
+                              "roll_seat": [en["county"], en["district"]], "why": state})
+    rows.sort(key=lambda r: (r["term"], r["chamber"], int(r["person"])))
+    return rows, clash, loose
+
+
 def coverage(rows, terms=PR.PRE_TERMS):
     """{term: {chamber: {people, printed_a_seat, seats, nameless}}}: people against the chamber's
     seats (400 House, 24 Senate), how many have a seat a bill printed, how many seats' worth of
@@ -134,14 +180,19 @@ def coverage(rows, terms=PR.PRE_TERMS):
             cov[term][ch] = {"people": len(rs), "of_seats": SEATS[ch],
                              "with_a_printed_seat": sum(1 for r in rs if r["seats"]),
                              "districts_printed": len(districts),
+                             "roll_only": sum(1 for r in rs if r["source"] == ROLL_SOURCE),
                              "nameless": sum(1 for r in rs if not r["name"])}
         cov[term]["no_chamber"] = sum(1 for r in rows if r["term"] == term and r["chamber"] not in ("H", "S"))
     return cov
 
 
-def build(bills, joined, text, people, voters, register=None):
-    """The document generated/past_roster.json holds."""
+def build(bills, joined, text, people, voters, register=None, roll=None):
+    """The document generated/past_roster.json holds. `roll` is past_roll.survey's answer, or None
+    where the volumes are not on this disk: the table is then the sponsor route's alone."""
     rows = rows_of(joined, text, people, voters)
+    clash, loose = [], []
+    if roll:
+        rows, clash, loose = add_roll(rows, roll, people, voters)
     bad = GR.check_rows(rows, reg=register if register is not None else {"ids": []})
     if bad:
         raise SystemExit("The table puts an identifier in the wrong place:\n  " + "\n  ".join(bad[:10]))
@@ -152,7 +203,8 @@ def build(bills, joined, text, people, voters, register=None):
                      "printed. Not a roster: a member who sponsored nothing has no row. A person the "
                      "record names with no employee number has a Granite Record id (granite_id, gr- "
                      "and a serial) in its own field instead; none yet."),
-            "source": SOURCE, "coverage": coverage(rows), "rows": rows}
+            "source": SOURCE, "coverage": coverage(rows), "rows": rows,
+            "roll_seat_disagreements": clash, "roll_names_placed_on_nobody": loose}
 
 
 def main():
@@ -175,13 +227,14 @@ def main():
     people = PSP.People(PSP.read_legislators() if PSP.LEGISLATORS.exists() else [],
                         past_members.roster(PSP.PAST_MEMBERS))
     voters = {e for c in _load(CAREERS).values() for e in c.get("employee_nos") or []}
-    doc = build(bills, joined, text, people, voters, GR.load_register())
+    roll = ROLL.survey(rows_of(joined, text, people, voters), people) if ROLL.ROLL.is_dir() else None
+    doc = build(bills, joined, text, people, voters, GR.load_register(), roll)
     print(f"{len(doc['rows']):,} person-terms, {len({r['person'] for r in doc['rows']}):,} people")
-    print(f"{'term':<11}{'House':>7}{'/400':>6}{'seat':>6}{'dist':>6} |{'Senate':>7}{'/24':>5}{'seat':>6} |"
+    print(f"{'term':<11}{'House':>7}{'/400':>6}{'seat':>6}{'dist':>6}{'roll':>6} |{'Senate':>7}{'/24':>5}{'seat':>6} |"
           f"{'no chamber':>11}{'nameless':>9}")
     for term, c in doc["coverage"].items():
         h, s = c["H"], c["S"]
-        print(f"{term:<11}{h['people']:>7}{'':>6}{h['with_a_printed_seat']:>6}{h['districts_printed']:>6} |"
+        print(f"{term:<11}{h['people']:>7}{'':>6}{h['with_a_printed_seat']:>6}{h['districts_printed']:>6}{h['roll_only']:>6} |"
               f"{s['people']:>7}{'':>5}{s['with_a_printed_seat']:>6} |{c['no_chamber']:>11}"
               f"{h['nameless'] + s['nameless']:>9}")
     if a.apply:

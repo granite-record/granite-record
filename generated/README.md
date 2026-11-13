@@ -20,7 +20,13 @@ the run named beside it, never edited by hand.
   employee number (`gc_employee_number`, unchanged), the name its list of
   members gives, and the seat each bill printed; coverage against 400 House
   and 24 Senate seats in the file's `coverage`. Not a roster: a member who
-  sponsored nothing has no row. No party. Rewritten whole by a person's run,
+  sponsored nothing has no row. No party. The House's call of the roll
+  (`data/unh/roster/`, read by `src/parse/past_roll.py`) is a second source:
+  a row carries the volumes whose roll names the same person, a name is
+  placed on a number only where one of the term's sponsors fits it, and the
+  names it could not place are listed in the file, attached to no one. The
+  1994, 1996 and 1998 volumes' rolls are not read yet. Rewritten whole by a
+  person's run,
   `python3 src/parse/build_past_roster.py --apply`, after
   `text_sponsors.py --apply` (`src/parse/past_roster.py` places each printed
   surname on a person, and only where the bill's own sponsor rows settle it).

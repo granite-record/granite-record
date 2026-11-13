@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.896
+# GRANITE_VERSION: 2026-09-04.897
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -115967,10 +115967,67 @@ def _past_roster_table(BPR, PR, PSP):
     assert GR.check_rows(rows, reg={"ids": []}) == []
     cov = BPR.coverage(rows, terms=("1993-1994",))["1993-1994"]
     assert cov["H"] == {"people": 2, "of_seats": 400, "with_a_printed_seat": 1, "districts_printed": 1,
-                        "nameless": 0} and cov["S"]["people"] == 1 and cov["S"]["of_seats"] == 24 \
-        and cov["no_chamber"] == 1, cov
+                        "roll_only": 0, "nameless": 0} and cov["S"]["people"] == 1 \
+        and cov["S"]["of_seats"] == 24 and cov["no_chamber"] == 1, cov
     return "ok", ("a row a person, term and chamber; the General Court's number and name; the seats the bills "
                   "printed; chamber from the list marked as that; no party; coverage against 400 and 24")
+
+
+@check("build", "the House call of the roll is a second source: a name is placed on a number only where one of the "
+       "term's sponsors fits it and the seat does not contradict",
+       needs=("past_roll", "build_past_roster", "past_sponsors"))
+def _past_roll_second_source(ROLL, BPR, PSP):
+    """past_roll.py, 13 November 2026. The roll names every House seat, in the OCR's spelling. A name is
+    placed on an employee number only where exactly one person who sponsored in that term has the roll's
+    surname and first name (the same name or a short form, never a bare prefix) and their printed
+    seats do not contradict the roll's. The name two sponsors fit, the one whose bills printed another
+    district, a spelling the OCR damaged and a member who sponsored nothing are NOT placed -- a name found
+    once on the whole list of members is counted and not used. Placed on a person with no row of the term
+    (impossible by this rule, kept for the day it is relaxed) it would add a row from the roll alone; placed
+    on one with a row it adds the volume and says whether a printed seat could be compared. No party."""
+    pm = {"1": {"name": "Guay, Roland", "chamber": "H"}, "2": {"name": "Hale, Robert", "chamber": "H"},
+          "3": {"name": "Hale, Rachel", "chamber": "H"}, "4": {"name": "Dube, Paul", "chamber": "H"},
+          "5": {"name": "Lyman, L. Randy", "chamber": "H"}, "6": {"name": "Nonspon, Ann", "chamber": "H"}}
+    people = PSP.People([], pm)
+    seat = lambda c, d: [{"county": c, "district": d, "bills": 1}]
+    rows = [{"term": "1997-1998", "chamber": "H", "person": e, "name": n, "seats": s}
+            for e, n, s in (("1", "Roland Guay", seat("Coos", "6")), ("2", "Robert Hale", seat("Graf", "2")),
+                            ("3", "Rachel Hale", []), ("4", "Paul Dube", seat("Hillsborough", "14")))]
+    who = ROLL.pool(rows, people, "1997-1998")
+    every = ROLL.everyone_of(people)
+    en = lambda name, c, d: {"name": name, "county": c, "district": d}
+    cases = [("Roland J. Guay", "Coos", "6", ("placed", "1")),
+             ("Roland Guay", "Coos", "7", ("seat differs", "1")),     # his bills printed Coos 6
+             ("Bob Hale", "Graf", "2", ("placed", "2")),              # Bob is a short form of Robert
+             ("R. Hale", "Graf", "2", ("none", None)),                # an initial is no first name here
+             ("Rober Hale", "Graf", "2", ("none", None)),             # a bare prefix is not Robert
+             ("Paul Dubo", "Hillsborough", "14", ("none", None)),     # the OCR's spelling
+             ("Ann Nonspon", "Coos", "1", ("list only", "6")),        # on the list, sponsored nothing
+             ("Pat Nobody", "Coos", "1", ("none", None))]
+    for name, c, d, want in cases:
+        got = ROLL.place(en(name, c, d), who, every)
+        assert got == want, f"{name!r} at {c} {d}: {got}, not {want}"
+    assert ROLL.place(en("Rachel Hale", "Graf", "9"), who, every) == ("placed", "3"), \
+        "a sponsor with no printed seat is placed on the name alone"
+    # Merged into a table: a placed name adds the volume to a row of the term and says what it was checked against.
+    got = {"journalofhouseof1997newh.csv": [(en("Roland J. Guay", "Coos", "6"), "placed", "1"),
+                                            (en("Rachel Hale", "Graf", "9"), "placed", "3"),
+                                            (en("Roland Guay", "Coos", "7"), "seat differs", "1"),
+                                            (en("Paul Dubo", "Hillsborough", "14"), "none", None)]}
+    full = BPR.rows_of({"1997-1998": {"HB1": {"lsr": "", "rows": [
+        {"employee": e, "sequence": 0, "prime": False, "withdrawn": False} for e in "1234"]}}},
+        {"1997-1998": {"HB1": [{"employee": "1", "matched": "General Court sponsor record", "chamber": "H",
+                                "county": "Coos", "district": "6"}]}}, people, set(), terms=("1997-1998",))
+    merged, clash, loose = BPR.add_roll(full, got, people, set())
+    g = next(r for r in merged if r["person"] == "1")
+    assert g["roll"] == [{"volume": 1997, "county": "Coos", "district": "6",
+                          "seat_checked_against_a_printed_seat": True}], g
+    r3 = next(r for r in merged if r["person"] == "3")
+    assert r3["roll"][0]["seat_checked_against_a_printed_seat"] is False, r3
+    assert len(clash) == 1 and clash[0]["gc_employee_number"] == "1" and len(loose) == 1, (clash, loose)
+    assert not any("party" in r for r in merged), "a party before 1999"
+    return "ok", ("placed on the term's one sponsor of that surname and first name (or short form), a seat "
+                  "that contradicts, an OCR spelling, a bare prefix and a non-sponsor left unplaced")
 
 
 @check("naming", "a sponsor row is a person or a committee: no heading, no seat on its own, no figure in a name",
