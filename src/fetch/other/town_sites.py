@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.12
+# GRANITE_VERSION: 2026-09-20.13
 """
 Fetch what New Hampshire's towns publish about their own officials.
 
@@ -46,6 +46,11 @@ them is sometimes the dead one -- Conway's clerk-list host does not resolve
 at all, and `deerfieldnh.gog` is a typo for `.gov`. Both are tried, in order,
 and the record says which answered.
 
+A TOWN THAT HAS MOVED is named in corrections/town_websites.json, the owner's
+hand file (town_websites.py reads it). The address there is the only one asked
+for that town, and the pages of the old site stay on disk, unread by the
+parsers, as the record of what was seen. Absent file or entry: as above.
+
 WHAT IS SAVED. The bytes, unmodified, plus a `_meta.json` for each town
 carrying for every URL: the URL asked, the status, the time it was read, the
 content type, the length and a sha256. A parser reads those files and touches
@@ -68,6 +73,8 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+
+import town_websites
 
 # The repository root, wherever this file sits (_paths.py): the data it
 # reads is the root's.
@@ -188,10 +195,19 @@ def municipalities():
     clerks = json.loads((ROOT / "collected" / "town_clerks.json").read_text(encoding="utf-8"))
     offs = json.loads((ROOT / "collected" / "town_officials.json").read_text(encoding="utf-8"))
     out = {}
+    moved = town_websites.load()
     for key, p in sorted(places.items()):
         if not p["named_by"]["nhdot_officials"]["present"]:
             continue                       # the 25 unincorporated places
         urls, seen = [], set()
+        # A TOWN THAT HAS MOVED (corrections/town_websites.json, the owner's):
+        # its new address, and only that. The directories' address is the one
+        # the entry says is old, and asking it again would put a stale roster
+        # beside the current one.
+        mine = moved.get(key)
+        if mine:
+            out[key] = (p["name"], [mine["website"]])
+            continue
         # A CITY'S CLERKS ARE FILED BY WARD. The clerk list has no "franklin",
         # only "franklin-ward-1" to "-3", so the city's own address in it was
         # never tried -- and for Franklin it is the live one (franklinnh.gov),
@@ -456,10 +472,21 @@ def links_from(html_text, base, sitemap=None):
                   key=lambda r: (-r[0], len(r[1]), r[1]))
 
 
-def saved(key, kind):
+def moved_host(key):
+    """The host of the address corrections/town_websites.json gives this
+    town, or None for a town it does not name."""
+    e = town_websites.load().get(key)
+    return town_websites.host_of(e["website"]) if e else None
+
+
+def saved(key, kind, host=None):
+    """(url, text) of the first page of this kind on disk with a 200; with
+    `host`, only one from that host."""
     meta = load_meta(key)
     for name, rec in meta.items():
         if rec.get("kind") == kind and rec.get("status") == 200:
+            if host and town_websites.host_of(rec.get("url")) != host:
+                continue
             p = town_dir(key) / name
             if p.exists():
                 return rec["url"], p.read_text(encoding="utf-8", errors="replace")
@@ -467,9 +494,12 @@ def saved(key, kind):
 
 
 def saved_home(key):
-    """(base url, home html, sitemap xml or "")."""
-    base, page = saved(key, "home")
-    _u, smap = saved(key, "sitemap")
+    """(base url, home html, sitemap xml or ""). For a town that has moved,
+    the new site's: the old site's pages stay on disk, as the record of
+    what was read, and are not the town's home any more."""
+    host = moved_host(key)
+    base, page = saved(key, "home", host)
+    _u, smap = saved(key, "sitemap", host)
     return base, page, smap or ""
 
 
@@ -479,7 +509,11 @@ def run_home(towns, fetcher, robots, force=False):
     got = failed = skipped = 0
     for key, (name, urls) in towns.items():
         meta = load_meta(key)
+        # For a town that has moved, a home page counts only from the new
+        # host: the September capture of the old site is not "already on disk".
+        host = moved_host(key)
         if not force and any(r.get("kind") == "home" and r.get("status") == 200
+                             and (not host or town_websites.host_of(r.get("url")) == host)
                              for r in meta.values()):
             skipped += 1
             continue

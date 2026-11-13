@@ -1,5 +1,5 @@
 {
- "_built": "2026-09-25",
+ "_built": "2026-11-13",
  "_what": "Select boards, and the cities' mayors and councils, read off their own websites where the page is current. A board or council whose page lists fewer than its seats, or whose size no source gives, is marked partial. Written by town_boards.py from town_sites/; read by build_town_pages.py. A town or city not here is shown from the New Hampshire Department of Transportation's directory.",
  "boards": {
   "alexandria": {
@@ -738,6 +738,35 @@
    "size": 3,
    "size_from": "the directory lists 3",
    "source_url": "https://www.eknh.org/1209/Board-of-Selectmen"
+  },
+  "effingham": {
+   "hand_file": true,
+   "later": "the owner's hand file (corrections/town_websites.json)",
+   "members": [
+    {
+     "directory_name": null,
+     "name": "Leo Racine",
+     "role": "Chair",
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Chris Seamans",
+     "role": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Rosemarie Wissenbach",
+     "role": null,
+     "term_ends": null
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-11-13",
+   "size": 3,
+   "size_from": "the hand file",
+   "source_url": "https://www.effingham.nh.gov/1200/Board-of-Selectmen"
   },
   "farmington": {
    "later": "a term ending 2029 began at the 2026 meeting",
@@ -1522,6 +1551,46 @@
    "size": 3,
    "size_from": "the page states it",
    "source_url": "https://www.lymenh.gov/pages/select-board"
+  },
+  "meredith": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Michael Pelczar",
+     "name": "Michael Pelczar",
+     "role": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Steven Aiken",
+     "name": "Steven Aiken",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Lynn Leighton",
+     "name": "Lynn Leighton",
+     "role": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Jeanie Forrester",
+     "name": "Jeanie Forrester",
+     "role": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "James Gregoire",
+     "role": null,
+     "term_ends": "2028"
+    }
+   ],
+   "read": 5,
+   "read_on": "2026-09-20T22:24:00-0400",
+   "size": 5,
+   "size_from": "the directory lists 5",
+   "source_url": "https://www.meredithnh.org/239/Select-Board"
   },
   "middleton": {
    "later": "the page names ['Jonathan Sindorf', 'Bonnie Gagnon'] where the directory names ['Scott Ferguson', 'Tracy Donovan-Laviolette']",
@@ -3275,6 +3344,22 @@
    "size": 3,
    "source_url": "https://www.wentworth-nh.org/town-officials",
    "why": "the page dates itself 2024: 'For the year ending December 2024'"
+  }
+ },
+ "staff": {
+  "effingham": {
+   "people": [
+    {
+     "name": "Steven Iannuzzi",
+     "title": "Town Administrator"
+    },
+    {
+     "name": "Heidi Stebbins",
+     "title": "Administrative Assistant"
+    }
+   ],
+   "read_on": "2026-11-13T08:11:59-0500",
+   "source_url": "https://www.effingham.nh.gov/1200/Board-of-Selectmen"
   }
  }
 }

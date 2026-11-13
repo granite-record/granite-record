@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.52
+# GRANITE_VERSION: 2026-09-09.54
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -67,6 +67,7 @@ import build_date
 import components as C
 import shell as S
 import state_settings as ST
+import town_websites
 # Who November's election sent, for the weeks before they sit: the one
 # reader of site/members_elect.json, beside its one writer (16 October 2026).
 # And the one reader of corrections/officials.json, which puts each office's
@@ -569,8 +570,43 @@ COUNCIL_OR_MAYOR = re.compile(r"council|alder|^\s*(?:(?:assistant|deputy)\s+)?"
 # council.
 
 
+def apply_websites(off, entries):
+    """Put the address a person found for a town that moved
+    (corrections/town_websites.json, town_websites.load) where the directories'
+    stood: NHDOT's website for the town and the Secretary of State's for it
+    and its wards, so that no card links the old one. Marks the town's NHDOT
+    record `website_checked` (the day) so its cards say whose the address is.
+    A town the directories do not hold is not given a record for this.
+    Returns the towns changed, sorted."""
+    done = set()
+    for key, e in (entries or {}).items():
+        town = (off.get("_offices") or {}).get(key)
+        if town is not None:
+            town["website"], town["website_checked"] = e["website"], e["checked_on"]
+            # The contact e-mail the owner has evidence for, in place of
+            # NHDOT's (the old website's domain, for a town that moved).
+            if (e.get("email") or {}).get("address"):
+                town["email"] = e["email"]["address"]
+                town["email_checked"] = e["email"]["checked_on"]
+            done.add(key)
+        for lk, lv in (off.get("_local") or {}).items():
+            if isinstance(lv, dict) and (lk == key or lk.startswith(key + "-ward-")):
+                lv["website"] = e["website"]
+                done.add(key)
+    return sorted(done)
+
+
+def town_staff_rows(staff):
+    """The rows of a town's own staff list (collected/town_boards.json's
+    "staff"), one a person, without the clerk: the clerk is the Secretary of
+    State's (CLERK_ROW). [] where the list gives no one."""
+    return [off_row(person(p["name"]), [], E(p.get("title") or ""))
+            for p in (staff or {}).get("people") or []
+            if not CLERK_ROW.search(p.get("title") or "")]
+
+
 def officials_sections(town, key, town_off, site_on_page=None, board=None,
-                       loc=None, council=None):
+                       loc=None, council=None, staff=None):
     """The Officials tab, as cards: the select board (or a city's mayor
     and council), the clerk, and the town offices with the rest of NHDOT's
     rows. Each card says under its names where they came from, because the
@@ -624,6 +660,12 @@ def officials_sections(town, key, town_off, site_on_page=None, board=None,
                and (COUNCIL_ROW.search(p) or MAYOR_ROW.match(p))]
     others = [(p, o) for p, o in drawn
               if (p, o) not in dot_board and (p, o) not in council]
+    # THE TOWN'S OWN STAFF LIST, where its current page gave one (the owner,
+    # 13 November 2026: staff "from the town's own current page in place of
+    # the directory's"): the directory's other rows are not drawn beside it.
+    own_staff = town_staff_rows(staff)
+    if own_staff:
+        others = []
     city = key in CITIES
     how = []
     if town_off.get("phone"):
@@ -730,15 +772,31 @@ def officials_sections(town, key, town_off, site_on_page=None, board=None,
             + off_row(E(mailing or town), how,
                       "Mailing address" if mailing else "Contact")
             + "</ul>"
-            + note(f"From {NHDOT}." + ("" if others else " " + since("offices"))))))
+            + note(f"From {NHDOT}." + (
+                " The website is the town's current address, which the "
+                f"directory does not have yet (checked {E(long_date(town_off['website_checked']))})."
+                if town_off.get("website_checked") else "")
+                + (" The e-mail address is the town's own, which the "
+                   "directory does not have "
+                   f"(checked {E(long_date(town_off['email_checked']))})."
+                   if town_off.get("email_checked") else "")
+                + ("" if others else " " + since("offices"))))))
     # ---- the clerk ---------------------------------------------------------
     if loc.get("clerk"):
         out.append(card("City clerk" if city else "Town clerk", side="r", inner=(
             '<ul class="offlist">' + clerk_row(loc, seat="") + "</ul>"
             + note("From the Secretary of State's list of town and city "
                    "clerks."))))
-    # ---- everyone else NHDOT lists: the staff and administrative positions
-    if others:
+    # ---- the staff and administrative positions: the town's own list, where
+    # its current page gave one, else everyone else NHDOT lists
+    if own_staff:
+        src = weblink(staff.get("source_url"))
+        out.append(card("Staff and administrative positions", side="r", inner=(
+            '<ul class="offlist">' + "".join(own_staff) + "</ul>"
+            + note(f"As {E(town)}'s website listed its staff when this site "
+                   f"read it on {E(long_date(staff.get('read_on')))}"
+                   + (f": {src}" if src else "") + "."))))
+    elif others:
         out.append(card("Staff and administrative positions", side="r", inner=(
             '<ul class="offlist">'
             + "".join(dot_row(p, o, officials) for p, o in others) + "</ul>"
@@ -805,7 +863,13 @@ def office_sources(town, town_off, said):
             when = month_year(f.get("on"))
             name = OFFICE_SOURCES[src].format(town=E(town))
             out[src] = f"{name}, {when}" if when else name
-    return [out[k] for k in sorted(out, key=order.index)]
+    lines = [out[k] for k in sorted(out, key=order.index)]
+    # A website a person has found newer than the directory's
+    # (corrections/town_websites.json) is said to be so, with the day.
+    if town_off.get("website_checked"):
+        lines.append("website checked "
+                     + (month_year(town_off["website_checked"]) or "recently"))
+    return lines
 
 
 # NHDOT'S MAILING LINE CAN STOP AT "PO Box" (the audit of 25 October 2026):
@@ -1455,7 +1519,8 @@ def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None):
         # The same test the Vote tab's "Town website" row is drawn by.
         site_on_page=bool(weblink(town_off.get("website"))
                           or weblink(loc.get("website"))),
-        board=board, loc=loc, council=council))
+        board=board, loc=loc, council=council,
+        staff=(off.get("_staff") or {}).get(slug(town, "0"))))
     # THE DISTRICT MAP (Polish 3: "The map also goes on the town pages"),
     # second, after the people who represent the place, as the approved
     # drawing has it (proto/town-dover-ward-1.html).
@@ -1847,6 +1912,10 @@ def main():
     ap.add_argument("--boards", default="collected/town_boards.json",
                     help="select boards read off towns' own websites, "
                          "written by town_boards.py")
+    ap.add_argument("--websites", default=None,
+                    help="the hand file of towns that moved; "
+                         "corrections/town_websites.json where none is given "
+                         "(town_websites.py)")
     ap.add_argument("--halls", default="collected/town_halls.json",
                     help="each town office's street address, written by parse_town_halls.py")
     ap.add_argument("--libraries", default="collected/libraries.json",
@@ -1946,6 +2015,7 @@ def main():
             bdata = json.loads(boards.read_text(encoding="utf-8"))
             off["_boards"] = bdata.get("boards") or {}
             off["_councils"] = bdata.get("councils") or {}
+            off["_staff"] = bdata.get("staff") or {}
             listed = sorted(k for k, b in (off["_boards"]
                                            | off["_councils"]).items()
                             if b.get("partial"))
@@ -1962,6 +2032,13 @@ def main():
     else:
         print(f"  select boards: {boards} is not on disk, so every board is "
               "the directory's")
+    # A TOWN'S WEBSITE, WHERE A PERSON FOUND IT MOVED: corrections/town_websites.json
+    # (town_websites.py). Absent or empty, the directories' addresses stand.
+    moved = town_websites.load(a.websites)
+    if moved:
+        print(f"  town websites: {len(moved)} from the hand file "
+              f"({town_websites.path() if not a.websites else a.websites}), "
+              f"applied to {', '.join(apply_websites(off, moved)) or 'no town'}")
     # NAMES IN CAPITALS, COUNTED: every one a town page prints in normal
     # case, by what recased it. A count that moves is a new edition of a
     # source to look at.
