@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.899
+# GRANITE_VERSION: 2026-09-04.900
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -116088,6 +116088,169 @@ def _past_roster_table(BPR, PR, PSP):
         and cov["S"]["of_seats"] == 24 and cov["no_chamber"] == 1, cov
     return "ok", ("a row a person, term and chamber; the General Court's number and name; the seats the bills "
                   "printed; chamber from the list marked as that; no party; coverage against 400 and 24")
+
+
+@check("naming", "a printed sponsor two numbers fit is settled only on the term's own official seat list, and otherwise "
+       "stays as printed",
+       needs=("past_roster", "past_sponsors", "text_sponsors"))
+def _past_roster_settle(PR, PSP, T):
+    """past_roster.settle, 13 November 2026. The owner's rule: "as accurate as possible and not guess if we
+    aren't confident". "Rep. Torr of Strafford Dist. 6" and "Sen. Torr of Dist. 21" on one bill, with Ann Torr
+    and Franklin Torr both among its sponsors, are told apart by the seat the Manual for the General Court
+    gives each in THAT term (past_members.json holds one, later seat a number). A line goes to a candidate
+    only if (1) each candidate's full name -- the General Court's first name and surname, an initial never
+    enough -- joins exactly one person in the term's seat list, read without doubt; (2) exactly one
+    candidate's seat there is the printed chamber and seat and every other's is known and different;
+    (3) that number is of the printed chamber. Each shape below must stay as printed."""
+    pm = {"1": {"name": "Torr, Ann", "chamber": "H"}, "2": {"name": "Torr, Franklin", "chamber": "S"},
+          "3": {"name": "Torr, Franklin", "chamber": "H"},
+          "4": {"name": "Hill, Douglas", "chamber": "H"}, "5": {"name": "Hill, Michael", "chamber": "H"},
+          "6": {"name": "Hill, M.", "chamber": "H"}}
+    people = PSP.People([], pm)
+    term = "1989-1990"
+
+    def row(name, county, district, line, check="clean"):
+        return {"county": county, "district": district, "name": name, "town": "", "party": "", "votes": 1,
+                "status": "elected", "district_check": check, "seats": 1, "edition": "1989", "line": line,
+                "printed": name}
+
+    def sen(name, district, line):
+        return {"district": district, "name": name, "page_name": name.upper(), "town": "", "party": "",
+                "votes": 1, "agreement": "exact", "status": "elected", "edition": "1989",
+                "returns_line": line, "page_line": line + 1, "printed": name, "note": ""}
+
+    def table(house, senate, measuring=False):
+        return {"format": 1, "terms": {term: {"edition": "1989", "measuring_only": measuring,
+                                              "house": house, "senate": senate}}}
+
+    ann, frank = row("Ann M. Torr", "Strafford", "6", 108916), sen("Franklin G. Torr", "21", 94370)
+    full = table([ann], [frank])
+    rows = lambda *e: [{"employee": x, "sequence": i, "prime": i == 0, "withdrawn": False} for i, x in enumerate(e)]
+    line = lambda s: T.split(s)[0]
+    got = lambda s, rs, tb: PR.settle(line(s), rs, people, term, tb)
+
+    # one candidate matches and the other's seat is known and differs -> settled, both ways round
+    for printed, want in (("Sen. Torr of Dist. 21", "2"), ("Rep. Torr of Strafford Dist. 6", "1")):
+        assert PR.place(line(printed), rows("1", "2"), people)[0] == PR.AMBIGUOUS
+        st, emp, why = got(printed, rows("1", "2"), full)
+        assert (st, emp) == (PR.SETTLED, want), f"{printed!r}: {st} {emp} {why}"
+        assert "line 108916" in why and "line 94370" in why and "1989 edition" in why, why
+    # the other candidate's seat unknown (no one of that name in the list) -> left
+    st, emp, why = got("Sen. Torr of Dist. 21", rows("1", "2"), table([], [frank]))
+    assert (st, emp) == (PR.AMBIGUOUS, None) and "not known" in why, (st, emp, why)
+    # ... or only known by a row the OCR left in doubt (marks differ from seats) -> left
+    st, emp, why = got("Sen. Torr of Dist. 21", rows("1", "2"),
+                       table([row("Ann M. Torr", "Strafford", "6", 1, "marks differ from seats")], [frank]))
+    assert st == PR.AMBIGUOUS and "not known" in why, (st, why)
+    # both match the printed seat -> left
+    two = table([row("Douglas E. Hill", "Cheshire", "14", 10), row("Michael Hill", "Cheshire", "14", 11)], [])
+    st, emp, why = got("Rep. Hill of Cheshire Dist. 14", rows("4", "5"), two)
+    assert (st, emp) == (PR.AMBIGUOUS, None) and "more than one" in why, (st, why)
+    # while two Hills in two seats are told apart
+    apart = table([row("Douglas E. Hill", "Cheshire", "14", 10), row("Michael Hill", "Merrimack", "14", 11)], [])
+    assert got("Rep. Hill of Cheshire Dist. 14", rows("4", "5"), apart)[:2] == (PR.SETTLED, "4")
+    assert got("Rep. Hill of Merrimack Dist. 14", rows("4", "5"), apart)[:2] == (PR.SETTLED, "5")
+    # an initial only is not enough: the General Court's "M." Hill joins no one, so Douglas Hill's seat
+    # matching the printed one does not settle a line the unknown M. Hill might be on
+    st, emp, why = got("Rep. Hill of Cheshire Dist. 14", rows("4", "6"), apart)
+    assert (st, emp) == (PR.AMBIGUOUS, None), (st, emp, why)
+    #   ... and the list's own initial ("D. Hill") is no full name either
+    ini = table([row("D. Hill", "Cheshire", "14", 10), row("Michael Hill", "Merrimack", "14", 11)], [])
+    assert got("Rep. Hill of Merrimack Dist. 14", rows("4", "5"), ini)[0] == PR.AMBIGUOUS
+    # the other chamber's number: Franklin Torr's House number on a Senate line is reported, not settled
+    st, emp, why = got("Sen. Torr of Dist. 21", rows("3", "1"), full)
+    assert (st, emp) == (PR.AMBIGUOUS, None) and "House" not in why and "H-chamber" in why, (st, emp, why)
+    # two people of one full name in the term's list -> the join is not certain -> left
+    dup = table([ann, row("Ann Torr", "Coos", "2", 5)], [frank])
+    assert got("Sen. Torr of Dist. 21", rows("1", "2"), dup)[0] == PR.AMBIGUOUS
+    # a printed seat nobody of the candidates holds -> left; a line with no seat -> left
+    assert got("Rep. Torr of Strafford Dist. 9", rows("1", "2"), full)[0] == PR.AMBIGUOUS
+    assert got("Rep. Torr", rows("1", "2"), full)[0] == PR.AMBIGUOUS
+    # no table, or a table of 1999-2000 (measuring only) -> nothing settled
+    assert got("Sen. Torr of Dist. 21", rows("1", "2"), None)[0] == PR.AMBIGUOUS
+    assert got("Sen. Torr of Dist. 21", rows("1", "2"), table([ann], [frank], measuring=True))[0] == PR.AMBIGUOUS
+    # and through the build: the table settles the line, the evidence travels with the record, and with no
+    # table the line stays exactly as printed
+    sat = T.Sat([])
+    joined = {term: {"HB1": {"lsr": "", "rows": rows("1", "2")}}}
+    lines = [(term, "HB1", "Rep. Torr of Strafford Dist. 6; Sen. Torr of Dist. 21")]
+    on, tally, _ = T.build({}, sat, sponsor_record=(joined, people), lines=lines, seat_table=full)
+    off, _t, _ = T.build({}, sat, sponsor_record=(joined, people), lines=lines, seat_table=None)
+    assert [r["employee"] for r in on[term]["HB1"]] == ["1", "2"], on[term]["HB1"]
+    assert all("settled_by" in r and r["matched"] == PR.MATCHED for r in on[term]["HB1"])
+    assert not any(r.get("employee") for r in off[term]["HB1"]), off[term]["HB1"]
+    assert tally["1989-1998 printed sponsors settled against the bill's own sponsor rows"] == 2
+    return "ok", ("settled: one candidate's seat is the printed one and the other's is known and differs; left as "
+                  "printed: the other's seat unknown or in doubt, both matching, an initial only, the other "
+                  "chamber's number, a repeated full name, a seat nobody holds, a line with no seat, no table")
+
+
+@check("data", "the Manual's seat table has the shape its builder writes, and its House returns are read as the "
+       "builder reads them",
+       needs=("build_manual_seats",))
+def _manual_seats_table(B):
+    """build_manual_seats.py, 13 November 2026. Fixture lines first, each a thing the OCR does: a full stop for
+    a comma, a mark turned into another character, a seat count read as a letter, a district whose marks do not
+    equal its seats (not clean, so no decision rests on it). Then the committed generated/manual_seats.json,
+    where it is on this disk: six editions, each term with its House rows and the 24 districts of the Senate,
+    every row with its edition and line, the mid-term caveat in the file, and nothing a county that is not
+    one of the ten."""
+    lines = ["BELKNAP COUNTY",
+             "District No. 1 (Meredith)(2)",
+             "*David M. Lawton, Meredith, r 1,329",
+             "♦Thomas J. Boriso, Meredith, r 1 ,292",
+             "Mary Warner, Center Harbor, d 687",
+             "District No. 2 (Tilton)(1)",
+             "William Joscelyn, Tilton, d 629",
+             "Heber Feener, Tilton, ind&r 383",
+             "CHESHIRE COUNTY",
+             "District No. 1 (Alstead)(l)",
+             "♦Jeffrey C. Miller. r. Walpole 1 ,382",
+             "District No. 2 (Chesterfield)d)",
+             "*Ann Pratt, Chesterfield, d 100"]
+    rows, ds = B.parse_house(lines, "1989", 1, len(lines))
+    by = {(d["county"], d["district"]): d for d in ds}
+    assert by[("Belknap", "1")]["check"] == "clean" and by[("Cheshire", "1")]["check"] == "clean", by
+    assert by[("Belknap", "2")]["check"] == "marks differ from seats", "a district with no mark read as clean"
+    assert by[("Cheshire", "2")]["check"] == "seats unreadable", "a lone letter was read as a seat count"
+    got = {(r["county"], r["district"], r["name"]): r for r in rows}
+    assert set(got) == {("Belknap", "1", "David M. Lawton"), ("Belknap", "1", "Thomas J. Boriso"),
+                        ("Cheshire", "1", "Jeffrey C. Miller"), ("Cheshire", "2", "Ann Pratt")}, sorted(got)
+    miller = got[("Cheshire", "1", "Jeffrey C. Miller")]
+    assert (miller["town"], miller["party"], miller["line"], miller["edition"]) == ("Walpole", "r", 11, "1989"), miller
+    assert B.seats_of("District No. 13 (Derry)(ll)") == 11 and B.seats_of("District No. 1 (X)(l)") == 1 \
+        and B.seats_of("District No. 1 (Barnstead)O)") is None and B.seats_of("District No. 1 (Y)0)") is None
+    assert B.district_no("District No. 1 1 (Alexandria, Canaan)(3)") == "11" \
+        and B.district_no("District No. I (Center Harbor)(l)") == "1"
+    # the same name, by what a decision may rely on
+    assert B.names_agree("Ann M. Torr", "Ann Torr") and not B.names_agree("A. Torr", "Ann Torr")
+    p = Path("generated/manual_seats.json")
+    if not p.exists():
+        return "ok", "fixtures only: generated/manual_seats.json is not on this disk (src/parse/build_manual_seats.py --apply)"
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    assert doc["format"] == 1 and "start of a term" in doc["mid_term_changes_not_shown"], "the mid-term caveat is gone"
+    assert sorted(doc["editions"]) == sorted(B.EDITIONS), sorted(doc["editions"])
+    assert sorted(doc["terms"]) == sorted(t for t, _e in B.EDITIONS.values()), sorted(doc["terms"])
+    need = {"county", "district", "name", "town", "party", "votes", "status", "district_check", "seats",
+            "edition", "line", "printed"}
+    for term, t in doc["terms"].items():
+        assert t["measuring_only"] == (term in B.MEASURING_ONLY), term
+        assert t["edition"] == B.EDITIONS_BY_TERM[term], term
+        for r in t["house"]:
+            assert need <= set(r), f"{term}: a House row lacks {sorted(need - set(r))}: {r}"
+            assert r["county"] in B.COUNTIES and r["edition"] == t["edition"] and isinstance(r["line"], int), r
+            assert r["status"] in ("elected", "unreadable", "mark garbled, count agrees"), r
+        senate = {s["district"]: s for s in t["senate"]}
+        assert sorted(senate, key=int) == [str(i) for i in range(1, 25)] and len(t["senate"]) == 24, \
+            f"{term}: the Senate is not 24 districts once each"
+        for s in t["senate"]:
+            assert s["edition"] == t["edition"] and s["status"] in ("elected", "sources differ", "returns only", "unreadable"), s
+        assert sum(1 for r in t["house"] if r["status"] == "elected") >= 300, f"{term}: far fewer than 400 House rows"
+    assert doc["coverage"] == B.coverage(doc["terms"]), "the coverage table is not the table's own count"
+    return "ok", (f"the OCR's full stop for a comma, a changed mark, a letter for a seat count and a district "
+                  f"whose marks differ from its seats are each read as the builder reads them; the committed "
+                  f"table has {len(doc['editions'])} editions, 24 Senate districts a term, edition and line on "
+                  f"every row, and the mid-term caveat")
 
 
 @check("build", "the House call of the roll is a second source: a name is placed on a number only where one of the "

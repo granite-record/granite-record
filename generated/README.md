@@ -30,6 +30,25 @@ the run named beside it, never edited by hand.
   `python3 src/parse/build_past_roster.py --apply`, after
   `python3 src/parse/text_sponsors.py --apply` (`src/parse/past_roster.py` places each printed
   surname on a person, and only where the bill's own sponsor rows settle it).
+- `manual_seats.json` -- who held each seat at the START of a term, 1989-1990
+  to 1997-1998 (1999-2000 is in it for measuring only), read from the Manual
+  for the General Court (`data/manuals/`, the Internet Archive's OCR text of
+  the editions of 1989, 1991, 1993, 1995, 1997 and 1999): the House from the
+  general election's returns (the persons elected are marked, and a district
+  whose marks do not equal its seats printed is not `clean`, so nothing rests
+  on it), the Senate from the returns and the page of the sitting Senate read
+  side by side. Every row keeps its edition and its line in that edition's
+  text, and the line as printed. An edition is printed at the start of a term,
+  so a seat that changed hands by death, resignation or special election later
+  is not in it (`mid_term_changes_not_shown` says so). A row the OCR leaves
+  unreadable is marked, never guessed. It is the term's own official seat list
+  that `src/parse/past_roster.py` (`settle`) uses to tell two numbers of one
+  surname apart, and only where it settles the line with certainty.
+  Rewritten whole by a person's run,
+  `python3 src/parse/build_manual_seats.py --apply`, which reads all six
+  editions or writes nothing; `--measure` prints its agreement with the House
+  call of the roll, with `past_roster.json`'s senators and, for 1999-2000, with
+  `careers.json`.
 - `gr_ids.json` -- the register of Granite Record's own ids, `gr-` and a
   serial, made for a person the record names and the General Court gives no
   employee number. Kept apart from the General Court's numbers in every file

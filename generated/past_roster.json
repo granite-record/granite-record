@@ -252,12 +252,12 @@
     {
      "county": "Strafford",
      "district": "6",
-     "bills": 10
+     "bills": 18
     }
    ],
    "chamber_source": "the bill's printed sponsor line",
    "bills": 19,
-   "bills_printed": 10,
+   "bills_printed": 18,
    "voted_since_1999": false,
    "source": "General Court sponsor record (PastSponsors), by the bill's stored LSR; the seat is the one the bill printed",
    "roll": [
@@ -8897,12 +8897,12 @@
     {
      "county": "Cheshire",
      "district": "14",
-     "bills": 8
+     "bills": 9
     }
    ],
    "chamber_source": "the bill's printed sponsor line",
    "bills": 9,
-   "bills_printed": 8,
+   "bills_printed": 9,
    "voted_since_1999": false,
    "source": "General Court sponsor record (PastSponsors), by the bill's stored LSR; the seat is the one the bill printed",
    "roll": [
@@ -8932,12 +8932,12 @@
     {
      "county": "Merrimack",
      "district": "14",
-     "bills": 4
+     "bills": 5
     }
    ],
    "chamber_source": "the bill's printed sponsor line",
    "bills": 5,
-   "bills_printed": 4,
+   "bills_printed": 5,
    "voted_since_1999": false,
    "source": "General Court sponsor record (PastSponsors), by the bill's stored LSR; the seat is the one the bill printed",
    "roll": [
@@ -12202,12 +12202,12 @@
     {
      "county": "",
      "district": "21",
-     "bills": 50
+     "bills": 58
     }
    ],
    "chamber_source": "the bill's printed sponsor line",
    "bills": 59,
-   "bills_printed": 50,
+   "bills_printed": 58,
    "voted_since_1999": false,
    "source": "General Court sponsor record (PastSponsors), by the bill's stored LSR; the seat is the one the bill printed"
   },
@@ -23093,12 +23093,12 @@
     {
      "county": "Hillsborough",
      "district": "43",
-     "bills": 1
+     "bills": 2
     }
    ],
    "chamber_source": "the bill's printed sponsor line",
    "bills": 2,
-   "bills_printed": 1,
+   "bills_printed": 2,
    "voted_since_1999": false,
    "source": "General Court sponsor record (PastSponsors), by the bill's stored LSR; the seat is the one the bill printed",
    "roll": [
