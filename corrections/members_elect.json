@@ -3,7 +3,7 @@
 
   "_what": "What the person settles about the members-elect of a general election, keyed by the election's day, so that one election's answers never reach another's. src/parse/build_members_elect.py reads it and prints what is left to settle each night between the election and Organization Day.",
 
-  "_how": "Under the election's day: \"recount_deadline\" is the last day a recount may be asked for, as the Secretary of State gives it (\"YYYY-MM-DD\"); while it is null, and on every day up to and including it, no race is drawn as final but one whose count the results file marks a recount's -- the rule of 16 October 2026 that a race is final once posted and past its recount deadline, or once its recount result is out. \"matches\" maps a race and a winner's name, exactly as the results file prints it, to the member they are -- a sitting or a former member's id, which links them to that member's page -- or to null, which says they are new and nobody on file. \"not_final\" marks a race not final past the deadline -- a recount asked for and its result not out -- with whether a recount was requested ({\"recount\": true}) and, where only some of its seats are in doubt, how many ({\"seats\": 1}); the winners with the fewest votes give way to them. \"held\" keeps a winner off the pages ({\"Name\": \"why\"}). \"party\" gives a winner the party they filed under, where the results print a cross-nomination's two ({\"Name\": \"D\"}; one of R, D, I or L): the person's word, 8 November 2026, from the candidates' filing forms. A race is a key of site/districts.json: \"H|Rockingham|13\", \"S|24\". A reason ('why') is private and never published.",
+  "_how": "Under the election's day: \"recount_deadline\" is the last day a recount may be asked for, as the Secretary of State gives it (\"YYYY-MM-DD\"); while it is null, and on every day up to and including it, no race is drawn as final but one whose count the results file marks a recount's -- the rule of 16 October 2026 that a race is final once posted and past its recount deadline, or once its recount result is out. \"matches\" maps a race and a winner's name, exactly as the results file prints it, to the member they are -- a sitting or a former member's id, which links them to that member's page -- or to null, which says they are new and nobody on file. \"not_final\" marks a race not final past the deadline -- a recount asked for and its result not out -- with whether a recount was requested ({\"recount\": true}) and, where only some of its seats are in doubt, how many ({\"seats\": 1}); the winners with the fewest votes give way to them. \"held\" keeps a winner off the pages ({\"Name\": \"why\"}). \"party\" gives a winner the party they filed under, where the results print a cross-nomination's two ({\"Name\": \"D\"}; one of R, D, I or L): the person's word, 8 November 2026, from the candidates' filing forms. A race is a key of site/districts.json: \"H|Rockingham|13\", \"S|24\". A reason ('why') is private and never published. \"prior\": {race: {name as printed: \"none\" | {\"none\": true, \"evidence\": [...]} | {\"terms\": [\"YYYY-YYYY\", ...], \"seat\": \"<the seat as it was labelled then>\", \"evidence\": [...], \"gc_employee_number\": \"...\"}}}. A new winner the step marks \"prior service not on record\": \"none\" settles them as New, and the {\"none\": true, ...} form carries the reason. A record makes them Returning; the page says the seat and terms and links no member page. Evidence is required in every form but the bare \"none\" and is never published (the owner's settlements of 13 November 2026).",
 
   "_example": {
     "matches": {"H|Rockingham|13": {"John Smith": "900002", "Pat Newell": null}},
@@ -461,6 +461,23 @@
       "H|Cheshire|18": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06"}
     },
     "held": {},
+    "prior": {
+      "H|Grafton|15": {"Zoe Hill": {"none": true, "evidence": [
+        "The Manuals' House rosters of Grafton 1989-1998 (generated/manual_seats.json) name only Richard L. Hill of Littleton.",
+        "The owner: she is a first-term representative."]}},
+      "H|Hillsborough|41": {"Tom Stewart": {"none": true, "evidence": [
+        "The owner: Tom Stewart appears to be a first-term representative.",
+        "Not the Thomas R. Stewart of Hillsborough 41 in 1993-94 (generated/past_roster.json, employee 375950); that record is not to be linked to him."]}},
+      "H|Hillsborough|30": {"W. Gordon Allen": {
+        "gc_employee_number": "375802",
+        "terms": ["1993-1994", "1995-1996", "1997-1998"],
+        "seat": "Hillsborough 1",
+        "evidence": [
+          "The Manuals' House returns, editions of 1993, 1995 and 1997: Gordon Allen / W. Gordon Allen, Antrim, Hillsborough 1.",
+          "The General Court's sponsor records (generated/past_roster.json): W. Gordon Allen, employee 375802, Hillsborough 1, those three terms.",
+          "NHPR's election history: won Hillsborough 1 in 1992, 1994 and 1996, no race 1998-2024 (cited, not stored).",
+          "The owner's reading of a news article: he previously served three terms."]}}
+    },
     "party": {
       "H|Strafford|5": {"William F. Fessenden": "D"},
       "H|Rockingham|9": {"Kevin M. Major": "R"}
