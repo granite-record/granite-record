@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.7
+# GRANITE_VERSION: 2026-11-08.8
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -52,14 +52,15 @@ def explain(year, abbr=None):
             f"{E(str(year))} bill. Some are withdrawn first." + said)
 
 
-def abbr_html(text, abbr):
+def abbr_html(text, abbr, hard=False):
     """`text` escaped, its first word an <abbr> with the title that says what
     it stands for where `abbr` names it (the owner, 13 November 2026: add
     what it stands for "as a tooltip"); the title is the tooltip, and explain() says it in words for
-    a touch screen."""
+    a touch screen. `hard`: a non-breaking space after it, for the trail,
+    whose flex row drops a plain one."""
     first, sep, rest = str(text or "").partition(" ")
     if first and first in (abbr or {}):
-        return f'<abbr class="lsrabbr" title="{E(abbr[first])}">{E(first)}</abbr>{sep}{E(rest)}'
+        return f'<abbr class="lsrabbr" title="{E(abbr[first])}">{E(first)}</abbr>{"&nbsp;" if hard and sep else sep}{E(rest)}'
     return E(str(text or ""))
 
 
@@ -180,7 +181,7 @@ def head(r, req, who_of, path, base):
     # abbreviation, explained.
     n = r.get("n") or ""
     return page.replace(f'<li aria-current="page">{E(n)}</li>',
-                        f'<li aria-current="page">{abbr_html(n, req.get("abbr"))}</li>', 1)
+                        f'<li aria-current="page">{abbr_html(n, req.get("abbr"), True)}</li>', 1)
 
 
 def summary(r, req):
@@ -214,8 +215,8 @@ def history_pane(r):
     says."""
     hist = r.get("history") or []
     items = "".join(
-        f'<li><a href="bill/{E(h.get("year"))}/{E(str(h.get("id") or "").lower())}">{E(h.get("n"))} '
-        f'<span class="cyear">({E(h.get("year"))})</span></a> '
+        f'<li><a href="bill/{E(str(h.get("year")))}/{E(str(h.get("id") or "").lower())}">{E(h.get("n"))} '
+        f'<span class="cyear">({E(str(h.get("year")))})</span></a> '
         + C.chip(h.get("word") or "", "cstat " + str(h.get("cls") or ""), "m") + "</li>"
         for h in hist)
     return (f'<p class="src">{"A bill" if len(hist) == 1 else "Bills"} of an earlier session with '

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.905
+# GRANITE_VERSION: 2026-09-04.906
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31278,7 +31278,7 @@ def _request_pages():
         # Follow's key and the report's record named for the scripts.
         frame = ('<header class="rhead rh-bill">', '<nav class="rtrail"', '>2027 Bill Requests</a>',
                  '<li aria-current="page">LSR 2027-0001</li>', 'chip chip-m cstat',
-                 'Filed as a request</span>', '<dl class="rfacts">', "<dt>Prime Sponsor</dt>",
+                 'Requested</span>', '<dl class="rfacts">', "<dt>Prime Sponsor</dt>",
                  "<dt>Kind</dt>", '<div class="racts"><div class="pageacts" id="pageacts"><details class="pcite"', "data-share",
                  '<i>Requested</i>', "<i>Filed</i>", "<i>Introduced</i>", 'id="sstab-summary"', 'class="pane sspane"',
                  'window.GR_FOLLOW="lsr:2027-0001";', 'window.GR_REPORT="request:2027-0001";',
@@ -31343,7 +31343,7 @@ def _request_pages():
         L.FILING_COMPLETE.update(old)
     # The links, and New Hampshire kept out of the page writer.
     assert 'const to=b.moved_to||b.address||"request/"' in Path("src/pages/find.js").read_text(encoding="utf-8") \
-        and '?`<a href="${esc(b.moved_to||b.address)}">' in Path("src/pages/app.js").read_text(encoding="utf-8"), (
+        and '<a href="${esc(b.moved_to||b.address)}">${lsrAbbr(b.n)}</a>' in Path("src/pages/app.js").read_text(encoding="utf-8"), (
         "the header search's request row or the request card does not link the request's page")
     src = Path("src/pages/build_request_pages.py").read_text(encoding="utf-8")
     assert not re.search(r"LSR|gc\.nh\.gov|\\d\{4\}-\\d", src), (
@@ -58176,9 +58176,10 @@ def _search_groups_fixture(passed=0):
            row("SB3", "veto", "Died", "2023-2024", "Vetoed, override failed")]
     req = [{"id": f"LSR2027000{i}", "n": f"LSR 2027-000{i}", "year": 2027, "title": "a request",
             "sponsor": "", "body": body, "committee": "", "committees": [], "topic": "",
-            "kind": "", "status": "Filed as a request", "term": "2027-requests", "lsr": True,
+            "kind": "", "status": status, "term": "2027-requests", "lsr": True,
             "last_action": "", "nrc": 0, "votedays": []}
-           for i, body in ((1, "HB"), (2, "SB"), (3, "HB"))]
+           for i, body, status in ((1, "HB", "Requested"), (2, "SB", "Requested"),
+                                   (3, "HB", "Filed"))]
     meta = {"terms": ["2025-2026", "2023-2024"], "topics": [], "committee_codes": {},
             "requests": {"term": "2027-requests", "label": "2027 Bill Requests"}}
     return {"/meta.json": meta, "/idx/2025-2026.json": now, "/idx/2023-2024.json": old,
@@ -58309,11 +58310,23 @@ def _status_and_type_filters():
     allv = [v for v, _l, _c in got["all"]["status"]]
     if allv != _STATUS_CATS:
         bad.append(f"All Terms offers {allv}")
-    if "status" in got["requests"]["groups"]:
-        bad.append("the requests are offered a Status filter: they have no status yet")
+    # THE REQUESTS' STATUS FILTER (the owner, 13 November 2026): Requested and
+    # Filed, each in its chip's class and counted; and no Committee filter,
+    # which no request has a committee to fill.
+    rq = got["requests"]
+    if [(v, c) for v, _l, c in rq["status"]] != [("Requested", 2), ("Filed", 1)]:
+        bad.append(f"the requests' Status filter offers {[(v, c) for v, _l, c in rq['status']]}, "
+                   "not Requested 2 and Filed 1")
+    rcls = {v: (re.search(r'class="chip ([^"]*)"', lab) or [None, None])[1] for v, lab, _c in rq["status"]}
+    if rcls != {"Requested": "s-active", "Filed": "s-law"}:
+        bad.append(f"the requests' statuses are painted {rcls}")
+    if "committee" in rq["groups"]:
+        bad.append("the requests are offered a Committee filter, though no request has a committee")
+    if "committee" not in n["groups"]:
+        bad.append("a term of bills is no longer offered a Committee filter")
     rt = got["requestsTicked"]
     if "status=Passed" not in rt["ticked"] or [(v, c) for v, _l, c in rt["status"]] \
-            != [("Passed", 0)]:
+            != [("Requested", 2), ("Filed", 1), ("Passed", 0)]:
         bad.append(f"Passed ticked and carried into the requests is not on offer to untick, "
                    f"alone: the filters are {rt['groups']}, offering {rt['status']}, ticked "
                    f"{rt['ticked']}")
@@ -115287,7 +115300,7 @@ def _request_became_bill(build_lsrs):
     January that would have put "Withdrawn" on every request filed as a bill.
     build_lsrs reads the bills: a request whose number a bill carries as its
     LSR -- the year and the number, the list padding it and the bills not --
-    reads "Introduced as HB 45"."""
+    reads Filed (and not Requested): the owner's words of 13 November 2026."""
     L = build_lsrs
     req = lambda n, gone: {"lsr": f"2027-{n:04d}", "session": 2027, "body": "HB",
                            "title": "t", "sponsor": "", "withdrawn": gone}
@@ -115299,15 +115312,108 @@ def _request_became_bill(build_lsrs):
     assert became == {"2027-0001": "HB 45", "2027-0003": "SB 7"}, became
     rows, _ = L.rows_from(lsrs, {}, became)
     got = {r["n"]: (r["status"], r["withdrawn"], r.get("introduced")) for r in rows}
-    assert got == {"LSR 2027-0001": ("Introduced as HB 45", False, "HB 45"),
+    assert got == {"LSR 2027-0001": ("Filed", False, "HB 45"),
                    "LSR 2027-0002": ("Withdrawn", True, None),
-                   "LSR 2027-0003": ("Introduced as SB 7", False, "SB 7")}, got
+                   "LSR 2027-0003": ("Filed", False, "SB 7")}, got
     rows, _ = L.rows_from(lsrs[2:], {}, {})
-    assert rows[0]["status"] == "Filed as a request" and "introduced" not in rows[0], rows[0]
+    assert rows[0]["status"] == "Requested" and "introduced" not in rows[0], rows[0]
     src = _paths.locate("build_lsrs.py").read_text(encoding="utf-8")
-    assert "rows_from(lsrs, roster(site), became, year, winners)" in src, \
+    assert "rows_from(lsrs, roster(site), became, year, winners," in src, \
         "build_lsrs no longer gives rows_from the bills"
     return "ok", "a request a bill carries reads as that bill; one that only left the list is withdrawn"
+
+
+@check("build", "a bill request's status is Requested or Filed (or Withdrawn); its History is the earlier "
+       "bills of exactly its title; its accepted co-sponsors are shown as person chips on the card and "
+       "the page; its LSR is explained", needs=("build_lsrs",))
+def _request_cards_like_bills(build_lsrs):
+    """The owner, 13 November 2026: tabs and an expanded view on the cards,
+    Requested and Filed as the Status filter, History from earlier bills of
+    the same title ("certain matches only"), co-sponsors shown once the
+    source lists them, the same chips as a bill's, a tooltip for LSR."""
+    import tempfile
+    import build_request_pages as RP
+    L = build_lsrs
+    # The status rule and the exact-title rule.
+    assert L.title_key("  Relative  to TIDES. ") == L.title_key("relative to tides") \
+        and L.title_key("relative to tides") != L.title_key("relative to the tides"), (
+        "a title is compared after case, spacing and final punctuation only")
+    earlier = {L.title_key("relative to tides"): [
+        {"id": "HB7", "n": "HB 7", "year": 2024, "term": "2023-2024", "word": "Died", "cls": "s-done"},
+        {"id": "HB9", "n": "HB 9", "year": 2028, "term": "2027-2028", "word": "In Committee", "cls": "s-active"}]}
+    who = {"annlee": ("Rep. Ann Lee (D - Rock 1)", "ann-lee-rock-1"),
+           "bobroe": ("Bob Roe (R)", "bob-roe-elect", "H")}
+    lsrs = [{"lsr": "2027-0001", "session": 2027, "body": "HB", "title": "Relative to Tides.",
+             "sponsor": "Ann Lee", "cosponsors": ["Bob Roe", "Zed Nobody"], "withdrawn": False},
+            {"lsr": "2027-0002", "session": 2027, "body": "HB", "title": "relative to the tides.",
+             "sponsor": "Ann Lee", "withdrawn": False},
+            {"lsr": "2027-0003", "session": 2027, "body": "HB", "title": "x", "sponsor": "Ann Lee",
+             "withdrawn": True},
+            {"lsr": "2027-0004", "session": 2027, "body": "HB", "title": "y", "sponsor": "Ann Lee",
+             "withdrawn": True}]
+    rows, _ = L.rows_from(lsrs, who, {"2027-0004": "HB 5"}, 2027, None, earlier)
+    by = {r["n"]: r for r in rows}
+    assert [by[f"LSR 2027-000{i}"]["status"] for i in (1, 2, 3, 4)] == [
+        "Requested", "Requested", "Withdrawn", "Filed"], "Requested: no bill; Filed: its bill exists"
+    assert [h["n"] for h in by["LSR 2027-0001"]["history"]] == ["HB 7"], (
+        "History is the bills of an earlier session with exactly the title (not a later term's)")
+    assert "history" not in by["LSR 2027-0002"], "a title that differs by a word has no History"
+    co = by["LSR 2027-0001"]["cosponsors"]
+    assert [c["label"] for c in co] == ["Bob Roe (R)", "Zed Nobody"] and co[0].get("party") == "R" \
+        and "party" not in co[1], f"co-sponsors: a member-elect with a party, a stranger as typed: {co}"
+    # earlier_bills reads the search's own rows, titles compared the same way.
+    with tempfile.TemporaryDirectory() as d:
+        site = Path(d)
+        (site / "idx").mkdir()
+        (site / "idx" / "2023-2024.json").write_text(json.dumps([
+            {"id": "HB7", "n": "HB 7", "year": 2024, "term": "2023-2024", "title": "RELATIVE TO TIDES",
+             "chip": "Died", "kind": "done", "status": "Killed"}]), encoding="utf-8")
+        got = L.earlier_bills(site, ["2023-2024", "2021-2022"])
+        assert [b["word"] for b in got[L.title_key("relative to tides")]] == ["Died"] \
+            and got[L.title_key("relative to tides")][0]["cls"] == "s-done", got
+        # THE PAGE: tabs, chips, the abbreviation.
+        (site / "bills.html").write_text(Path("src/pages/bills.html").read_text(encoding="utf-8"),
+                                         encoding="utf-8")
+        (site / "legislators.json").write_text(json.dumps([
+            {"slug": "ann-lee-rock-1", "party": "D", "display_full": "Rep. Ann Lee (D - Rock 1)"}]),
+            encoding="utf-8")
+        (site / "elect_pages.json").write_text(json.dumps({"pages": [
+            {"slug": "bob-roe-elect", "name": "Bob Roe", "party": "R"}]}), encoding="utf-8")
+        req = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027, "abbr": L.ABBR}
+        (site / "meta.json").write_text(json.dumps({"requests": req}), encoding="utf-8")
+        (site / "idx" / "2027-requests.json").write_text(json.dumps(rows), encoding="utf-8")
+        RP.write(site, "https://x")
+        page = (site / "request" / "2027-0001.html").read_text(encoding="utf-8")
+        plain = (site / "request" / "2027-0002.html").read_text(encoding="utf-8")
+    for want in ('<abbr class="lsrabbr" title="Legislative Service Request">LSR</abbr>',
+                 'id="sstab-sponsors"', 'id="sstab-history"', 'href="bill/2024/hb7"', ">Died</span>",
+                 "LSR stands for Legislative Service Request.", "</abbr>&nbsp;2027-0001</li>",
+                 'class="mchip p-R"', 'class="mchip p-D"'):
+        assert want in page, f"a request's page lacks {want!r}"
+    assert 'id="sstab-history"' not in plain and 'id="sstab-sponsors"' not in plain, (
+        "a request with no earlier bill and no co-sponsor has a tab for them")
+    # THE CARD, in node: the bill card's tabs inside, the same chips, the abbreviation.
+    js = ("(() => { scope.setMeta({requests: {term: '2027-requests', year: 2027, abbr: " + json.dumps(L.ABBR)
+          + "}}); const r = " + json.dumps(by["LSR 2027-0001"]) + "; const plain = "
+          + json.dumps(by["LSR 2027-0002"]) + "; const shut = scope.lsrCardHtml(r); "
+          "scope.openCards.add(r.id); scope.openTab[r.id] = '7'; return {shut, open: scope.lsrCardHtml(r), "
+          "plain: scope.lsrCardHtml(plain)}; })()")
+    got = _app_js(js, names=("lsrCardHtml", "openCards", "openTab", "setMeta: x => (META = x)"))
+    if got is None:
+        return "skip", "node, app.js or the stub is not here"
+    shut, op, pl = got["shut"], got["open"], got["plain"]
+    assert 'title="Legislative Service Request">LSR</abbr>' in shut and 'class="mchip p-D"' in shut \
+        and 'class="ctitle"' in shut and 'aria-expanded="false"' in shut and "<div class=\"cbody\" hidden>" in shut, (
+        f"a request's card is not a bill card with an abbreviation and a person chip: {shut[:600]!r}")
+    assert 'data-t="4"' in shut and 'data-t="7"' in shut and 'data-t="0"' in shut, (
+        "a request with co-sponsors and a History has not the three tabs")
+    assert 'aria-expanded="true"' in op and '<div class="cbody">' in op \
+        and 'id="pane_LSR20270001_7" aria-labelledby="tab_LSR20270001_7" tabindex="0" data-t="7">' in op \
+        and 'href="bill/2024/hb7"' in op and 'class="mchip p-R"' in op, (
+        "the open card does not show its History tab and the co-sponsors' chips")
+    assert 'data-t="7"' not in pl and 'data-t="4"' not in pl, "a plain request has only a Summary tab"
+    return "ok", ("Requested/Filed/Withdrawn by the bill's existence; History by exact title and an earlier "
+                  "session; co-sponsors as chips on the card and the page; LSR explained on both")
 
 
 @check("build", "next session's bill requests are listed under the year they name, whichever year "

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.316
+// GRANITE_VERSION: 2026-09-07.317
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -131,7 +131,8 @@ const STATUSCATS=Object.keys(WORDBOOK.chips.category);
 const CATORDER=REQCATS.filter(c=>!STATUSCATS.includes(c)).concat(STATUSCATS);
 const catsOffered=(have,chosen)=>CATORDER.filter(c=>have.has(c)||chosen.has(c));
 // Each in its chip's class, in the sidebar and in a record page's select.
-const CATCLASS=Object.assign(Object.create(null),WORDBOOK.chips.category,REQCLASS);
+const CATCLASS=Object.assign(Object.create(null),WORDBOOK.chips.category);
+Object.assign(CATCLASS,REQCLASS);
 // BILLMATCH:BEGIN -- a bill's category, which best match reads to put a bill
 // still moving first (sortRows, 16 October 2026); see the note above SYN.
 // From here, and not from the filter's lines above it: statusCat needs
