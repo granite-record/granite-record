@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.385 */
+/* GRANITE_VERSION: 2026-09-07.386 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -5352,7 +5352,20 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .l-numtab th,.l-numtab td{padding:.5rem .5rem}
 .l-numtab th:first-child,.l-numtab td:first-child{padding-left:.75rem}
 .l-numtab th:last-child,.l-numtab td:last-child{padding-right:.75rem}
-.l-numtab thead th{letter-spacing:.03em;overflow-wrap:anywhere}
+.l-numtab thead th{letter-spacing:0;overflow-wrap:normal;hyphens:manual}
+/* A HEAD WRAPS BETWEEN WORDS AND NEVER INSIDE ONE (no break-all, no
+   "anywhere": "PASSE / D BOTH CHAMB / ERS" read as broken). Eight heads of
+   one word each, the longest "COMMITTEE", are about 560px of type, and the
+   committees' table sits in a 682px column at every width, so the cells give up a little padding, and the dense tables an idle sort
+   chevron (a sorted column still shows its direction): that is what keeps the
+   committees' table in a 703px column at 768 with no head split. */
+.l-numtab th,.l-numtab td{padding-left:.3125rem;padding-right:.3125rem}
+.l-numtab th:first-child,.l-numtab td:first-child{padding-left:.625rem}
+.l-numtab th:last-child,.l-numtab td:last-child{padding-right:.625rem}
+/* eight columns (class dense) have no width for the idle chevron beside every
+   head, at any width: the committee table sits in a 682px column even on a
+   large screen */
+.l-numtab.dense th:not([aria-sort=ascending]):not([aria-sort=descending]) .l-sort-i{display:none}
 /* the amendments: the Source (a citation, a long line) wraps in a column of
    its own width rather than the least the others leave, in smaller type, and
    the result's chip may wrap */
@@ -5459,6 +5472,7 @@ th[aria-sort=descending] .l-sort-i{
   -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;transition:transform .15s}
 .l-fold[open] > summary::before{transform:rotate(90deg)}
 .l-fold > summary:hover{background:var(--wash)}
+.l-fold > :is(p,.l-ch){padding-left:.875rem;padding-right:.875rem}
 .l-fold > .l-tablewrap{margin:0;border:0;border-top:1px solid var(--rule-2);border-radius:0;max-width:none}
 /* ON A PHONE a figures table scrolls inside its own box and its first column
    (the term, the committee) stays in view */

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.29
+# GRANITE_VERSION: 2026-09-14.30
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -124,6 +124,8 @@ def _table(head, rows, cls="numtab", sortable=None, groups=None, numcols=()):
     # words they print in English (_COMMITTEE_HEADS).
     if head and head[0] in _COMMITTEE_HEADS:
         cls += " names"
+    if len(head) >= 8:
+        cls += " dense"       # app.css: no room for an idle sort chevron on every head
     if sortable is None:
         sortable = len(rows) > SORTABLE_OVER
     shown = [[c[0] if isinstance(c, tuple) else c for c in r] for r in rows]
@@ -1260,7 +1262,7 @@ def sankey_svg(tree, said, lang="en"):
     walk(tree)
     # Never narrower than its names: the widest end label, from its bar's x,
     # sets the width if it runs past the 864 the layout is drawn for.
-    width = max(SK_W, max((math.ceil(lx + text_w(f"{lab} {cnt:,}", bold=True) + 4)
+    width = max(SK_W, max((math.ceil(lx + text_w(f"{lab} {cnt:,}") + 4)
                            for lx, lab, cnt in ends), default=0))
     return (f'<svg class="sk" viewBox="0 0 {width} {height:.0f}" role="img" aria-label="{E(said)}" '
             f'xmlns="http://www.w3.org/2000/svg"><g aria-hidden="true">'

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.901
+# GRANITE_VERSION: 2026-09-04.902
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -116936,6 +116936,9 @@ def _numbers_fit(LN):
         assert before.rfind("@media (max-width:40em){") > before.rfind("}\n}"), (
             "a minimum width on the flow diagram that is not inside the phone's media query: "
             + rule.group(1).strip())
+    for m in re.finditer(r"\.l-numtab[^{}]*\bth\b[^{}]*\{([^}]*)\}", css):
+        assert not re.search(r"overflow-wrap:\s*(anywhere|break-word)|word-break:\s*break-all", m.group(1)), (
+            "a number table's head may break inside a word again (it read 'PASSE / D BOTH CHAMB / ERS')")
     assert "min-width" not in inspect_source(LN._svg), "the charts' SVG carries an inline minimum width"
     return "ok", (f"{sum(h.count('<text') for h in svgs.values())} labels in {len(svgs)} chart builders inside "
                   "their viewBoxes; tables not held to the measure; the diagram's minimum width is phone-only")
