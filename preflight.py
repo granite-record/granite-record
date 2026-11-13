@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.902
+# GRANITE_VERSION: 2026-09-04.903
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -119924,6 +119924,100 @@ def _town_websites_file(W, B):
             bad.append(f"corrections/town_websites.json: {problems}")
     assert not bad, "\n  ".join(bad)
     return "ok", "shape held, bad entries refused, absent file and empty entries change nothing"
+
+
+@check("build", "a board in the hand file outranks the directory and a failing page; an e-mail in it replaces NHDOT's",
+       needs=("town_boards", "parse_town_sites", "town_websites", "build_town_pages"))
+def _town_hand_board_email(T, P, W, B):
+    """The owner's decision of 13 November 2026 on Effingham: the town's page
+    still says "Term Expires: 2026" under a member and so fails the
+    current-page rule, and the hand file's board (the Contact Us card and a
+    reader's e-mail as evidence) is used anyway; the contact e-mail the hand
+    file gives is drawn in place of NHDOT's. Held on a fixture: a saved page
+    that fails the rule gives no board with no hand entry, the entry's board
+    with one -- source and day the file's, no directory contact lent -- and a
+    second town with the same page and no entry stays as it was; an entry
+    with no board or e-mail changes neither; the e-mail replaces NHDOT's only
+    where it is given."""
+    import json as _json
+    import os
+    import tempfile
+    page = ("<html><body><main><h1>Select Board</h1><p>Members</p>"
+            "<p>Ann Aldous, Chair</p><p>Term Expires: 2026</p>"
+            "<p>Bea Brandt, Member</p><p>Term Expires: 2027</p>"
+            "<p>Cal Carver, Member</p><p>Term Expires: 2028</p></main></body></html>")
+    dotrec = {"officials": [
+        {"position": "Board of Selectman, Chair", "name": n, "phone": "",
+         "email": "old@old.example"} for n in ("Ann Aldous", "Bea Brandt", "Old Member")]}
+    ev = ["read 13 November 2026"]
+    hand = {"towns": {"xx": {
+        "website": "https://www.xx.example", "evidence": ev, "checked_on": "2026-11-13",
+        "board": {"members": [{"name": "Ann Aldous", "role": "Chair"},
+                              {"name": "Bea Brandt"}, {"name": "Dee Dow"}],
+                  "evidence": ev, "checked_on": "2026-11-13"},
+        "email": {"address": "hello@xx.example", "evidence": ev,
+                  "checked_on": "2026-11-13"}},
+        "zz": {"website": "https://www.zz.example", "evidence": ev,
+               "checked_on": "2026-11-13"}}}
+    bad = []
+    was_store, was_env = P.STORE, os.environ.get(W.ENV)
+    with tempfile.TemporaryDirectory() as d:
+        store = Path(d) / "town_sites"
+        for key in ("xx", "yy", "zz"):
+            (store / key).mkdir(parents=True)
+            host = {"xx": "https://www.xx.example", "yy": "https://yy.example",
+                    "zz": "https://www.zz.example"}[key]
+            (store / key / "officials-1.html").write_text(page, encoding="utf-8")
+            (store / key / "_meta.json").write_text(_json.dumps({"officials-1.html": {
+                "kind": "officials", "status": 200, "url": host + "/10/Select-Board",
+                "link_text": "Select Board", "read_on": "2026-11-13T08:00:00-0500",
+                "score": 90}}), encoding="utf-8")
+        hp = Path(d) / "hand.json"
+        hp.write_text(_json.dumps(hand), encoding="utf-8")
+        dot = {k: dotrec for k in ("xx", "yy", "zz")}
+        try:
+            P.STORE = store
+            os.environ.pop(W.ENV, None)
+            none, _t, _c = T.build(["xx", "yy", "zz"], dot)
+            os.environ[W.ENV] = str(hp)
+            got, _t, _c = T.build(["xx", "yy", "zz"], dot)
+        finally:
+            P.STORE = was_store
+            if was_env is None:
+                os.environ.pop(W.ENV, None)
+            else:
+                os.environ[W.ENV] = was_env
+    if any(k in none["boards"] for k in ("xx", "yy", "zz")):
+        bad.append(f"the page passed the current rule without the file: {sorted(none['boards'])}")
+    b = got["boards"].get("xx")
+    if not b:
+        bad.append("the hand file's board was not used")
+    else:
+        if [m["name"] for m in b["members"]] != ["Ann Aldous", "Bea Brandt", "Dee Dow"] \
+                or b["members"][0]["role"] != "Chair":
+            bad.append(f"the members are not the file's: {b['members']}")
+        if b.get("read_on") != "2026-11-13" or not b.get("hand_file"):
+            bad.append(f"the day or the mark: {b.get('read_on')} {b.get('hand_file')}")
+        if any(m.get("directory_name") for m in b["members"]):
+            bad.append("a directory contact is lent to a hand-file board")
+    if "yy" in got["boards"] or "zz" in got["boards"]:
+        bad.append("a town with no board in the file got one")
+    # The e-mail, on the page builder's side.
+    off = {"_offices": {"xx": {"email": "old@old.example", "website": "a.example"},
+                        "zz": {"email": "old@old.example", "website": "a.example"}},
+           "_local": {}}
+    with tempfile.TemporaryDirectory() as d2:
+        hp2 = Path(d2) / "h.json"
+        hp2.write_text(_json.dumps(hand), encoding="utf-8")
+        entries = W.load(hp2)
+    B.apply_websites(off, entries)
+    if off["_offices"]["xx"]["email"] != "hello@xx.example":
+        bad.append("the e-mail the file gives did not replace NHDOT's")
+    if off["_offices"]["zz"]["email"] != "old@old.example" or \
+            "email_checked" in off["_offices"]["zz"]:
+        bad.append("an entry with no e-mail changed the e-mail")
+    assert not bad, "\n  ".join(bad)
+    return "ok", "hand board used though the page fails; other towns, and an entry without one, unchanged"
 
 
 @check("build", "a CivicPlus Contact Us block is read card by card: seats, staff, and Vacant skipped",
