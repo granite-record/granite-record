@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.317
+// GRANITE_VERSION: 2026-09-07.318
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9022,7 +9022,7 @@ function renderMemberRequests(m,prime){
   const left=rows.filter(b=>b.withdrawn).length;
   // Alice's two sentences, the bill search's own note (bills.requests_note),
   // and then how many are this member's.
-  return `<p class="src lsrnote">${tr("bills.requests_note","<b>Requests, not bills yet.</b> Each is a member&rsquo;s request to have a bill drafted: a title and a sponsor, nothing more, until it is filed as a numbered {year} bill. Some are withdrawn first.",{year:esc(reqYear())})}
+  return `<p class="src lsrnote">${tr("bills.requests_note","<b>Requests, not bills yet.</b> Each one, called an LSR (Legislative Service Request), is a member&rsquo;s request to have a bill drafted: a title and a sponsor, nothing more, until it is filed as a numbered {year} bill. Some are withdrawn first.",{year:esc(reqYear())})}
     ${rows.length.toLocaleString()} filed for ${esc(reqYear())}${
     left?`, ${left.toLocaleString()} of them withdrawn`:""}.</p>
     <div class="cards" id="pbills">${rows.map(b=>lsrCardHtml(b,"")).join("")}</div>`;
@@ -11892,7 +11892,7 @@ function render(more){
   const req=META.requests&&term===META.requests.term;
   $("#summary").className=req?"count lsrnote":"count";
   if(req){
-    $("#summary").innerHTML=tr("bills.requests_note","<b>Requests, not bills yet.</b> Each is a member&rsquo;s request to have a bill drafted: a title and a sponsor, nothing more, until it is filed as a numbered {year} bill. Some are withdrawn first.",{year:esc(reqYear())});
+    $("#summary").innerHTML=tr("bills.requests_note","<b>Requests, not bills yet.</b> Each one, called an LSR (Legislative Service Request), is a member&rsquo;s request to have a bill drafted: a title and a sponsor, nothing more, until it is filed as a numbered {year} bill. Some are withdrawn first.",{year:esc(reqYear())});
   }else if(!fb&&!(ids&&ids.length>1)&&requestsAhead()){
     // NEXT SESSION'S REQUESTS, OFFERED FROM THE TERM THE SEARCH OPENS ON
     // (Alice, 7 November 2026): the search stays on the newest term, and this

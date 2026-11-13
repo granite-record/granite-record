@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.906
+# GRANITE_VERSION: 2026-09-04.907
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -24341,7 +24341,7 @@ def _search_polish(BP):
              "   ": ["(unchanged)", False]}:
         bad.append(f"Return in the header's box: {e}")
     # 5. The note, and its Spanish a draft.
-    note = ("<b>Requests, not bills yet.</b> Each is a member&rsquo;s request to have a bill drafted: "
+    note = ("<b>Requests, not bills yet.</b> Each one, called an LSR (Legislative Service Request), is a member&rsquo;s request to have a bill drafted: "
             "a title and a sponsor, nothing more, until it is filed as a numbered 2027 bill. Some "
             "are withdrawn first.")
     if got["note"] != note:
