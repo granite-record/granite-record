@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.900
+# GRANITE_VERSION: 2026-09-04.901
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31351,6 +31351,90 @@ def _request_pages():
     return "ok", ("pages for the requests still requests, the withdrawn kept, the one now a bill "
                   "taken away and forwarded; filing complete forwards the rest to their sponsor; "
                   "no address is both")
+
+
+@check("build", "a request's sponsor the roster misses is matched to a winner of the election only where certain: "
+                "same chamber, a middle initial or a tabled nickname, a surname no rival shares",
+       needs=("build_lsrs",))
+def _request_sponsor_winner(build_lsrs):
+    """Alice, 13 November 2026: "as accurate as possible and not guess if we
+    aren't confident." 29 of 492 requests got no party because the whole-name
+    match misses "Lee Nyquist" for "Lee C. Nyquist", "Jim" for "James", a winner
+    of a race under recount and a member elected to the other chamber. The
+    second step (build_lsrs.winner_finder) matches only a winner of the
+    request's own chamber, and says nothing where two could be meant."""
+    L = build_lsrs
+    results = {"races": {
+        "H|Strafford|1": {"candidates": [  # a recount: drawn nowhere, still elected on the ballot
+            {"name": "W. Packy Campbell", "party": "r", "elected": True}]},
+        "H|Hillsborough|42": {"candidates": [
+            {"name": "Lee C. Nyquist", "party": "d", "elected": True},
+            {"name": "Sam Loser", "party": "r", "elected": False}]},
+        "S|8": {"candidates": [{"name": "Jim Creighton", "party": "r", "elected": True}]},
+        "H|Hillsborough|16": {"candidates": [{"name": "Ben Baroody", "party": "d", "elected": True}]},
+        "H|Rockingham|13": {"candidates": [{"name": "Brian K. Chirichiello", "party": "r", "elected": True}]},
+        "H|Rockingham|30": {"candidates": [
+            {"name": "James Smith", "party": "r", "elected": True},
+            {"name": "John Smith", "party": "d", "elected": True},
+            {"name": "Jason A. Janvrin", "party": "r", "elected": True}]},
+        "H|Coos|1": {"candidates": [{"name": "Rob Tied", "party": "r", "elected": None}]},
+        "S|20": {"candidates": [{"name": "Dana Senator", "party": "d", "elected": True}]}}}
+    drawn = {"S|8": {"elected": [{"n": "Jim Creighton", "p": "R", "k": "sitting", "id": "9917",
+                                  "s": "james-creighton-hills-30"}]},
+             "H|Hillsborough|42": {"elected": [{"n": "Lee C. Nyquist", "p": "D", "k": "new"}]}}
+    pages = [{"slug": "lee-c-nyquist-hills-42", "name": "Lee C. Nyquist", "race": "H|Hillsborough|42"}]
+    people = [{"name": "Campbell, W Packy", "county": "Straf", "slug": "w-packy-campbell-straf-3"},
+              {"name": "Campbell, David", "county": "Hills", "slug": "david-campbell-hills-33"}]
+    ws = L.election_winners(results, drawn, pages, people)
+    find = L.winner_finder(ws)
+    got = lambda n, b: find(n, b)
+    assert got("W Packy Campbell", "HR") == ("W. Packy Campbell (R)", "w-packy-campbell-straf-3", "H"), (
+        "a winner of a race under recount: the ballot's party, and the member's page where they have one")
+    assert got("Lee Nyquist", "HB") == ("Lee C. Nyquist (D)", "lee-c-nyquist-hills-42", "H"), (
+        "a middle initial on the winner's side is dropped")
+    assert got("Jim Creighton", "SB") == ("Jim Creighton (R)", "james-creighton-hills-30", "S"), (
+        "a sitting member elected to the Senate: the request's chamber decides, the person's page is theirs")
+    assert got("Jim Creighton", "HB") is None, "his Senate win is not a House winner"
+    assert got("Benjamin Baroody", "HB")[0] == "Ben Baroody (D)", "Benjamin is Ben"
+    assert got("Brian Chirichiello", "HB")[0] == "Brian K. Chirichiello (R)"
+    assert got("Jason Janvrin", "HB")[0] == "Jason A. Janvrin (R)"
+    assert got("Jason Janvrin", "HB")[1] == "", "a winner with no page links nowhere, and still has a party"
+    # The refusals.
+    assert got("Jim Smith", "HB") is None, (
+        "Jim is James, but John Smith also won with the same initial: not certain")
+    assert got("James Smith", "HB")[0] == "James Smith (R)", "the whole name is the same: certain"
+    assert got("Dana Senator", "HB") is None, "a winner of the other chamber only"
+    assert got("Dana Senator", "SB")[0] == "Dana Senator (D)"
+    assert got("Pat Moore", "HB") is None and got("Rob Tied", "HB") is None, (
+        "a name that is no winner, and a tie, are nobody")
+    assert got("Lee Nyquist", "CACR") is None, "a request with no chamber is not resolved here"
+    assert not any(a in L.NICKNAMES[0] for a in ("pat", "chris", "sam")), "an ambiguous nickname is tabled"
+    assert not any("pat" in g or "chris" in g or "sam" in g for g in L.NICKNAMES), (
+        "Pat, Chris and Sam each stand for more than one name: not in the table")
+    assert not L.same_first("tom", "tim") and not L.same_first("jack", "jim")
+    assert L.same_first("ben", "benjamin") and not L.same_first("w", "walter"), (
+        "an initial is only equal to itself")
+    # Two winners of one whole name are nobody.
+    twin = L.winner_finder(L.election_winners({"races": {
+        "H|A|1": {"candidates": [{"name": "Al Roe", "party": "r", "elected": True}]},
+        "H|B|2": {"candidates": [{"name": "Al Roe", "party": "d", "elected": True}]}}}, {}, [], []))
+    assert twin("Al Roe", "HB") is None, "two winners of the same name cannot be told apart"
+    # The roster still wins where it matched, and a row's other fields are untouched.
+    who = {"ellenread": ("Rep. Ellen Read (D)", "ellen-read-rock-10")}
+    lsrs = [{"lsr": "2027-0001", "session": 2027, "body": "HB", "title": "a.", "sponsor": "Ellen Read"},
+            {"lsr": "2027-0002", "session": 2027, "body": "HB", "title": "b.", "sponsor": "Lee Nyquist"},
+            {"lsr": "2027-0003", "session": 2027, "body": "SB", "title": "c.", "sponsor": "Nobody Known"}]
+    rows, unmatched = L.rows_from(lsrs, who, {}, 2027, ws)
+    by = {r["n"]: r for r in rows}
+    assert by["LSR 2027-0001"]["sponsor_label"] == "Rep. Ellen Read (D)", "the roster comes first"
+    assert (by["LSR 2027-0002"]["sponsor_party"], by["LSR 2027-0002"]["sponsor_slug"]) == (
+        "D", "lee-c-nyquist-hills-42")
+    assert by["LSR 2027-0002"]["sponsor"] == "Lee Nyquist", "the source's own words are kept"
+    assert "sponsor_party" not in by["LSR 2027-0003"] and unmatched == ["Nobody Known"]
+    base, _ = L.rows_from(lsrs, who, {}, 2027)
+    assert base[0] == rows[0], "a row the roster matched is identical with or without winners"
+    return "ok", ("winners match only in the request's chamber; initials and tabled nicknames; "
+                  "a rival of the same surname and initial, a twin, a tie and the other chamber refuse")
 
 
 @check("build", "a withdrawn request of a member who is not returning is dropped and its address forwards; "
@@ -114959,7 +115043,7 @@ def _request_became_bill(build_lsrs):
     rows, _ = L.rows_from(lsrs[2:], {}, {})
     assert rows[0]["status"] == "Filed as a request" and "introduced" not in rows[0], rows[0]
     src = _paths.locate("build_lsrs.py").read_text(encoding="utf-8")
-    assert "rows_from(lsrs, roster(site), became, year)" in src, \
+    assert "rows_from(lsrs, roster(site), became, year, winners)" in src, \
         "build_lsrs no longer gives rows_from the bills"
     return "ok", "a request a bill carries reads as that bill; one that only left the list is withdrawn"
 
