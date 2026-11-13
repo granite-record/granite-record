@@ -233,6 +233,11 @@ Three steps, each catching what the one before cannot.
    any dry run already waiting there), so that it cannot cancel a scheduled
    night waiting for the running one to finish.
 
+   **Why a dry run is of `dev`.** The deployment environment that carries a
+   dry run's preview allows only the `dev` and `main` branches, so a dry run of
+   a batch is started on `dev`: bring the batch there (merge it into `dev`) and
+   run it from that branch, not from the batch's own.
+
    **The patch notes.** A run by hand has a Notes box (13 November 2026):
    what the update changes and the pages to compare with the live site, in
    Markdown. The night's step "The patch notes" puts them at the top of the
@@ -558,6 +563,8 @@ folder. Among them:
 | `corrections/docket_corrections.json` | dates the docket states wrongly and rows it files under the wrong bill, with the evidence |
 | `corrections/place_corrections.json` | values the Secretary of State's clerk-and-polling list states wrongly, with the second source |
 | `corrections/ballot_results.json` | the statewide vote on each constitutional amendment, copied by hand from the source each row names |
+| `corrections/members_elect.json` | who an election's winners are where the name cannot say, which races are not final, and a new winner's earlier service (`prior`) |
+| `corrections/town_websites.json` | the current website of a town that moved, and optionally its select board and e-mail, with the evidence |
 | `corrections/status/` | the state of the session, which no published file carries |
 
 The folders are the authoritative list: `preflight.py`'s `HANDMADE` reads

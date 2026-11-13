@@ -168,6 +168,38 @@ for the webinar.** Until `"recount_deadline"` is entered every race is drawn
 "Result not final" and nobody is named, which is why the results do not go
 out alone.
 
+## Earlier service: what "prior service not on record" asks of you
+
+A winner who matches no member of the record is New, unless their surname
+is one the bills of 1989-1998 print for the same chamber and county (the
+Senate's district), from a time before member numbers: the page then says
+"prior service not on record", which is a doubt and not a claim. The step
+raises it only where a first name could be theirs: it reads the first names
+the bills print or the General Court's record places there, and beside them
+the Manual for the General Court's rosters (`generated/manual_seats.json`),
+so a winner whose first name plainly differs from every one of the surname in
+that county has no doubt. A same first name, an initial or a short form keeps it.
+
+You settle the rest by hand, in `corrections/members_elect.json` under the
+election's day, `"prior"`, keyed by race and then by the name as the results
+print it:
+
+```json
+"prior": {"<race>": {
+  "<name>": "none",
+  "<name>": {"none": true, "evidence": ["<what was read, and where>"]},
+  "<name>": {"terms": ["1993-1994", "1995-1996"], "seat": "<the seat as labelled then>",
+             "evidence": ["<what was read, and where>"], "gc_employee_number": "<optional>"}
+}}
+```
+
+`"none"` (or the `{"none": true, ...}` form, which carries the reason) makes
+them New. A record makes them Returning: the provisional page says the seat
+and the terms and links no member page, because there is none. Evidence is
+required in every form but the bare `"none"`, and is never published; neither
+is the employee number. A name that finds no new winner in that race is
+printed. Commit the file with the rest of the election's answers.
+
 ## The recount deadline: Friday 6 November, 5 p.m.
 
 Candidates ask the Secretary of State for a recount by 5 p.m. on the Friday
@@ -192,13 +224,45 @@ published.
 
 ## Each recount's result, or any corrected upload
 
-The Secretary of State uploads the county's file again, under the next number
-(`_4` after `_3`). Save it beside the earlier one, run the reader again (it
-reads the later file, says so in `_notes`, and marks the race
-`"recounted": true`), take that race out of `"not_final"`, and commit all three
-together. **Never save over a file of the same name without running the reader
-again**: its sha256 then no longer matches the results file, the step refuses,
-and the night stops.
+**The schedule.** The Secretary of State's list of the recounts to be held is
+a PDF on `mm.nh.gov`, not on `sos.nh.gov`, and a click on its link saves the
+file rather than opening it: it comes down to the browser's downloads, to be
+copied from there. Feed it to `draft-recounts` (above).
+
+**The county's file, replaced.** What the Secretary of State did in 2026 is
+not what this paragraph first said. It did not upload a recount under the next
+number (`_4` after `_3`); it **replaced the county's file in place, under the
+same name**, so the copy on this disk and the one on its page differ with
+nothing in the name to say so. Download the file again and **save it beside the
+earlier one as `<name>_1.xlsx`** (`_2` for a second), never over the original:
+the reader takes the highest number of a name in place of the lower, and says
+so in `_notes`. Then run the reader again, which marks a race it reads a
+recount in `"recounted": true`, take that race out of `"not_final"`, and
+commit the saved files, `collected/election_2026.json` and
+`corrections/members_elect.json` together. **Never save over a file of the
+same name without running the reader again**: its sha256 then no longer
+matches the results file, the step refuses, and the night stops.
+
+**The layouts of a recount it reads.** A `RECOUNT` column beside a
+candidate's count; a second whole district headed `RECOUNT FIGURES`; a
+`Recount` row under a block's one town; and, since 13 November 2026, a row of
+cells each reading `RECOUNT <name, party>` directly under that one town row,
+with one row of the recount's figures under it (Rockingham 25, Salem). That
+last is read only where every cell names the candidate above it, in that
+column; a bare `RECOUNT`
+is the recount of the write-ins, undervotes or overvotes column. **It refuses
+any other** -- a name that is not the candidate above, a column out of line, a
+missing figure, another town, a block of more than one town, a recount not
+directly under its town -- saying the file, sheet and row. Do not edit the
+file or the reader to get past a refusal: say which layout it is.
+
+**Corrections in the same file.** A replaced file may carry changes that are
+not recounts (in 2026, a town's count for one candidate, and a write-in
+count). The reader takes the file as the Secretary of State now prints it,
+holds every column to the Totals the file prints, and the commit that saves
+the file names each figure that moved and its old and new value; read the
+results' diff against the earlier file before you commit. Nothing is quietly
+carried from the earlier copy.
 
 ## CACR 13's count
 
