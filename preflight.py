@@ -133758,7 +133758,7 @@ def _tag_engine(TR, TC, RV):
         TR.validate(reg, topics, syn))
     table, conflicts = TR.synonym_table(reg, syn)
     assert not conflicts and table["weed"] == "tag:cannabis" and table["marijuana legalization"] == "tag:cannabis" \
-        and table["religion"] == "topic:Discrimination" and table["mental health"] == "tag:mental-health", table
+        and table["absentee ballot"] == "topic:Elections" and table["mental health"] == "tag:mental-health", table
     worse_syn = TR.validate(reg, topics, {"x": "tag:no-such-tag", "y": "topic:No Such Topic", "z": "nowhere",
                                           "weed": "tag:mental-health"})
     found = " | ".join(worse_syn)

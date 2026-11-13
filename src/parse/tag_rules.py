@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.3
+# GRANITE_VERSION: 2026-11-12.4
 """The tag rule engine: which tags a bill carries, and the evidence for each.
 
     python3 src/parse/tag_rules.py --bill 2023-2024 HB1596   # explain one bill
@@ -55,9 +55,12 @@ over `GUIDE_TAGS` (5) is for the caller to report.
 
 SYNONYMS (12 Nov 2026). The words a reader types live with the registry, one
 source: every tag's name and asks lead to that tag, and the file's own
-"synonyms" table ({"school choice": "tag:school-funding", "religion":
-"topic:Discrimination"}) leads a word that is no tag's name to the tag that
+"synonyms" table ({"school choice": "tag:school-funding", "absentee ballot":
+"topic:Elections"}) leads a word that is no tag's name to the tag that
 holds its bills or to the closest topic. synonym_table() builds the one table;
+a word with no neutral home gets no entry and is searched as typed (the
+owner, 13 November 2026, dropping the draft's religion, church and
+conscience words, which led to the Discrimination topic);
 validate() fails a word that leads to no tag or topic, or to two places. App.js's
 CONCEPTS still maps a word to bill WORDING; the search reads this table at the
 stage that shows tags. A tag under MIN_BILLS (20) at the title and analysis
