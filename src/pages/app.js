@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.313
+// GRANITE_VERSION: 2026-09-07.314
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9367,7 +9367,26 @@ function renderMemberHead(m){
   const yrs=former?servedYears(m):"";
   const plain=String(m.display_plain||String(m.display_full||m.display||m.name||"")
     .replace(/\s+\([^()]*\)$/,""));
-  const named=former&&/^(Rep|Sen)\. /.test(plain)?"Former "+plain:plain;
+  // A MEMBER THE ELECTION SENT BACK, WHILE THE MEMBERS-ELECT FILE LASTS
+  // (the owner, 13 November 2026). build_legislator_pages hands GR_ELECT the
+  // member's id, the race, and for two kinds of member the page's form:
+  //   returning -- a former member elected again: headed as a new
+  //     member-elect's page is ("Benjamin Baroody (D)", "Member-elect of the
+  //     New Hampshire House of Representatives, Hillsborough 16.", the
+  //     election's line), the earlier seat kept in the facts below;
+  //   chamber -- a sitting member elected to the other chamber: still headed
+  //     by the seat they hold now, with the same sentence beside it.
+  // Both end on the day they take office, by the reader's own clock as well
+  // as the build's (components.js's untilAttrs): from then on the page is
+  // the member's as before.
+  const EG=window.GR_ELECT;
+  const electLive=!!(EG&&String(EG.id)===String(m.id)&&EG.where&&(()=>{
+    const d=new Date(),t=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"
+      +String(d.getDate()).padStart(2,"0");
+    return t<String(EG.takes_office||"").slice(0,10);})());
+  const retPage=electLive&&EG.mode==="returning", chamPage=electLive&&EG.mode==="chamber";
+  const named=retPage?String(EG.name||plain)+(EG.party?` (${EG.party})`:"")
+    :former&&/^(Rep|Sen)\. /.test(plain)?"Former "+plain:plain;
   // The party from the record's own label where the file names none: "(R -
   // Rock 16)" is a Republican's.
   const tagp=/\(([A-Z])[A-Za-z]* - [^()]*\)\s*$/.exec(String(m.display_full||m.display||""));
@@ -9378,9 +9397,10 @@ function renderMemberHead(m){
   // and a place the roster spells otherwise than the district maps stays words.
   const tp=window.GR_TOWNS||{};
   const place=t=>tp[t]?`<a href="${esc(tp[t])}">${esc(t)}</a>`:esc(t);
-  const line=[m.office?`<b>${esc(m.office)}</b>`:"",esc(PARTY_WORD[code]||m.party||""),
+  const line=(retPage?[esc(EG.where)]:[m.office?`<b>${esc(m.office)}</b>`:"",esc(PARTY_WORD[code]||m.party||""),
     // The seat's number held to its name: "Senate District" over "14" at 768px.
-    esc(seatName(m)).replace(/ (?=\S+$)/,"&nbsp;"),former?"":joinList(towns.map(place),"and")]
+    esc(seatName(m)).replace(/ (?=\S+$)/,"&nbsp;"),former?"":joinList(towns.map(place),"and"),
+    chamPage?esc(EG.where):""])
     .filter(Boolean)
     // Each dot holds to the words before it, so a wrapped line never opens on
     // one (a phone, 10 October 2026: "· Senate District 14").
@@ -9397,6 +9417,8 @@ function renderMemberHead(m){
   if((m.committees||[]).length)facts.push([m.committees.length>1?"Committees":"Committee",
     m.committees.map(c=>cmteLink((m.chamber==="S"?"Senate ":"House ")+c,"",META.committee_codes))
       .join(" &middot; ")]);
+  // The seat they held, as the record labelled it at the time.
+  if(retPage)facts.push(["Earlier seat",esc(String(m.display_full||m.display||plain))]);
   if(m.seat)facts.push(["Seat",esc(plate(m.seat))]);
   if(!former&&m.email)facts.push(["Email",`<a href="mailto:${esc(m.email)}">${esc(m.email)}</a>`]);
   // No Phone: a legislator's number is not published (build_site_v2, 22 October 2026).
@@ -9411,8 +9433,8 @@ function renderMemberHead(m){
   // Legislators › Former Representative" said "former" twice. The heading
   // under the trail still says "Former Representative ...".
   const head=recordHead({trail:[["Officials","officials"],
-      ...(former?[["Former Legislators","directory/former-legislators"]]:[]),
-      [m.chamber==="S"?"Senator":"Representative",""]],
+      ...(former&&!retPage?[["Former Legislators","directory/former-legislators"]]:[]),
+      [retPage?"Member-elect":m.chamber==="S"?"Senator":"Representative",""]],
     title:esc(fullTitle(named)),line,facts,rail:"",actions:"",kind:`member rh-p${code||"X"}`});
   const note=former?`<p class="rnote">${!/^(Rep|Sen)\. /.test(plain)?`Former member${
     yrs?` &middot; on record ${esc(yrs)}`:""}. `:""}This page is their record in the
@@ -9426,8 +9448,10 @@ function renderMemberHead(m){
   // components.js's electLine, handed no day, leaves the retiring to the
   // reader's clock. The heading above is left as it is until they sit.
   const G=window.GR_ELECT;
+  // A returning member's is the new member-elect's: no "for <district>", the
+  // sentence under their name says the seat.
   const elect=G&&typeof electLine==="function"&&String(G.id)===String(m.id)
-    ?electLine(G.key,G.election,G.takes_office,null):"";
+    ?electLine(retPage?null:G.key,G.election,G.takes_office,null):"";
   return head+note+elect;
 }
 

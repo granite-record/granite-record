@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.15
+# GRANITE_VERSION: 2026-10-16.16
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -563,7 +563,7 @@ def read_hand(path, election):
     """The person's entries for this election: {"matches", "not_final",
     "held", "party"}, each a dict, empty where the file or the election is
     absent, and "recount_deadline", a day or None."""
-    empty = {"matches": {}, "not_final": {}, "held": {}, "party": {}}
+    empty = {"matches": {}, "not_final": {}, "held": {}, "party": {}, "prior": {}}
     p = Path(path)
     if not p.is_file():
         return dict(empty, recount_deadline=None), f"no {p.as_posix()}: nothing settled by hand"
@@ -578,7 +578,8 @@ def read_hand(path, election):
     shape = (f"{p.as_posix()}'s \"{election}\" is not {{\"recount_deadline\": \"YYYY-MM-DD\" or "
              "null, \"matches\": {race: {name: id or null}}, \"not_final\": {race: {\"seats\": "
              "n, \"recount\": true, \"why\": \"...\"}}, \"held\": {race: {name: \"why\"}}, "
-             "\"party\": {race: {name: \"R\"}}}")
+             "\"party\": {race: {name: \"R\"}}, \"prior\": {race: {name: \"none\" or {\"terms\": "
+             "[\"1993-1994\"], \"seat\": \"Hillsborough 1\", \"evidence\": [...]}}}}")
     if not isinstance(mine, dict) or any(not isinstance(mine.get(k) or {}, dict) for k in empty):
         raise Refused(shape)
     got = {k: mine.get(k) or {} for k in empty}
@@ -616,6 +617,24 @@ def read_hand(path, election):
     for key, v in got["party"].items():
         if not isinstance(v, dict) or any(not re.fullmatch(r"[RDIL]", str(x)) for x in v.values()):
             bad.append(f"party[{key!r}]")
+    # PRIOR SERVICE, SETTLED BY HAND (13 November 2026): "none" -- the doubt
+    # is cleared, the member-elect is New -- or a record of what the person
+    # confirmed: terms, the seat as it was labelled then, and the evidence
+    # (which must be there, and is never published).
+    for key, v in got["prior"].items():
+        if not isinstance(v, dict):
+            bad.append(f"prior[{key!r}]")
+            continue
+        for name, x in v.items():
+            if x == "none":
+                continue
+            ok = (isinstance(x, dict) and isinstance(x.get("terms"), list) and x["terms"]
+                  and all(re.fullmatch(r"\d{4}-\d{4}", str(t)) for t in x["terms"])
+                  and isinstance(x.get("seat"), str) and x["seat"].strip()
+                  and isinstance(x.get("evidence"), list) and x["evidence"]
+                  and isinstance(x.get("gc_employee_number", ""), (str, int)))
+            if not ok:
+                bad.append(f"prior[{key!r}][{name!r}]")
     if bad:
         raise Refused(shape + "; these are not: " + ", ".join(bad))
     return got, ""
@@ -785,6 +804,10 @@ def elect_status(e, key, row):
     e["u"] -- the earlier-surname doubt earlier_service() raises -- says so."""
     k = e.get("k")
     if k == "new":
+        # Earlier service the person confirmed by hand (apply_prior): returning,
+        # with no member page, since there is none.
+        if e.get("prior"):
+            return "returning"
         return "unsure" if e.get("u") else "new"
     if k not in ("sitting", "former") or not row:
         return ""
@@ -800,7 +823,37 @@ def elect_status(e, key, row):
     return "returning" if (row.get("served") or {}).get("terms") else "unsure"
 
 
-def earlier_names(sponsors, until=EARLIER_UNTIL):
+MANUAL_SEATS_DEFAULT = Path("generated") / "manual_seats.json"
+
+
+def manual_names(manual, until=EARLIER_UNTIL):
+    """{term: {(surname, chamber, county or district): {first names}}} for each
+    term that begins before `until`, from generated/manual_seats.json: the
+    Manual for the General Court's returns of the general election, who was
+    ELECTED to each House seat (by county) and Senate seat (by district) at
+    the start of the term. A term marked measuring_only is left out, and so
+    is a row that was not elected. The Manual shows who sat at the start of
+    a term and not a seat that changed hands later in it (its own
+    mid_term_changes_not_shown), which is why the sponsors are read beside it."""
+    out = {}
+    for term, t in ((manual or {}).get("terms") or {}).items():
+        if not str(term)[:4].isdigit() or int(str(term)[:4]) >= until or t.get("measuring_only"):
+            continue
+        got = out.setdefault(term, {})
+        for ch, rows in (("H", t.get("house")), ("S", t.get("senate"))):
+            for r in rows or []:
+                if r.get("status") != "elected":
+                    continue
+                where = (str(number(r.get("district")) or "") if ch == "S"
+                         else full_county(r.get("county")).lower())
+                if not where:
+                    continue
+                for s, f in readings(r.get("name"))[0]:
+                    got.setdefault((s, ch, where), set()).add(f)
+    return out
+
+
+def earlier_names(sponsors, until=EARLIER_UNTIL, manual=None):
     """{(surname, chamber, county or district): {first names printed or placed}}
     for the bills of every term that begins before `until`, from
     text_sponsors.json ({term: {bill: [{"name", "chamber", "county", "district",
@@ -812,12 +865,23 @@ def earlier_names(sponsors, until=EARLIER_UNTIL):
     alone (set member "") or an initial ("F. Riley" gives "F."). earlier_service
     reads them: a winner whose first name cannot be any of them has no doubt.
 
+    THE MANUALS' ROSTERS (`manual`, the file's JSON; 13 November 2026). In a
+    term where the Manual names the elected members of a surname and county,
+    a bill that prints that surname alone is theirs: the "" is replaced by
+    the first names the Manual gives, so Zoe Hill of Grafton, where every
+    Hill of Grafton in 1989-1998 was Richard, has no doubt. A member of the
+    Manual who sponsored nothing is in the set too, and the same full name
+    in the same county is still the doubt, never a link. Where the Manual has
+    nobody of the surname in a term, a surname alone stays "" (a member who
+    took the seat after the term began is not in it).
+
     A row with a member number is left out -- it is a member the record already
     names."""
-    out = {}
+    per = {}
     for term, bills in (sponsors or {}).items():
         if not str(term)[:4].isdigit() or int(str(term)[:4]) >= until:
             continue
+        out = per.setdefault(term, {})
         for rows in (bills or {}).values():
             for sp in rows or []:
                 if sp.get("member_id"):
@@ -829,7 +893,17 @@ def earlier_names(sponsors, until=EARLIER_UNTIL):
                 if ch in ("H", "S") and where:
                     for s, f in rd:
                         out.setdefault((s, ch, where), set()).add(f)
-    return out
+    for term, men in manual_names(manual, until).items():
+        got = per.setdefault(term, {})
+        for key, firsts in men.items():
+            have = got.setdefault(key, set())
+            have.discard("")
+            have |= firsts
+    merged = {}
+    for got in per.values():
+        for key, firsts in got.items():
+            merged.setdefault(key, set()).update(firsts)
+    return merged
 
 
 def may_be_same(a, b):
@@ -870,6 +944,30 @@ def earlier_service(races, earlier):
                 e["u"] = True
                 n += 1
     return n
+
+
+def apply_prior(races, prior):
+    """The person's word on earlier service (hand["prior"], read_hand), applied
+    to the "k": "new" winners it names by race and name as the results print
+    it: "none" takes off the doubt ("u"), so the status is New; a confirmed
+    record sets "prior" -- {"terms", "seat"} and nothing else, never the
+    evidence or an employee number -- and takes off the doubt, so the status is
+    Returning and the page (which has none of a member's) says what it was.
+    Returns the (race, name) pairs it found no new winner for."""
+    lost = []
+    for key, names in (prior or {}).items():
+        mine = {e.get("n"): e for e in ((races.get(key) or {}).get("elected") or [])
+                if e.get("k") == "new"}
+        for name, x in names.items():
+            e = mine.get(name)
+            if e is None:
+                lost.append((key, name))
+                continue
+            e.pop("u", None)
+            e.pop("prior", None)
+            if x != "none":
+                e["prior"] = {"terms": list(x["terms"]), "seat": x["seat"].strip()}
+    return lost
 
 
 def surname_readings(raw):
@@ -1232,7 +1330,7 @@ def members_elect(results, sitting, former, districts, hand, today, settled=Fals
     races_in = results.get("races") or {}
     for key in sorted(set(races_in) - set(on_file), key=race_order):
         report["notes"].append(f"{key} is in the results and in no district on file: not drawn")
-    for kind in ("matches", "not_final", "held", "party"):
+    for kind in ("matches", "not_final", "held", "party", "prior"):
         for key in sorted(set(hand.get(kind) or {}) - set(races_in)):
             report["notes"].append(f"the hand file's {kind} names {key}, which the results "
                                    "do not hold")
@@ -1661,7 +1759,13 @@ def decide(a, site, hand_path):
     sp = Path(SPONSORS_DEFAULT)
     if sp.is_file():
         try:
-            earlier = earlier_names(json.loads(sp.read_text(encoding="utf-8")))
+            # The Manuals' complete rosters beside the sponsors, where on disk.
+            mp = Path(MANUAL_SEATS_DEFAULT)
+            manual = json.loads(mp.read_text(encoding="utf-8")) if mp.is_file() else None
+            if manual is None:
+                report["notes"].append(f"{mp.as_posix()} is not on disk: the doubt is read from "
+                                       "the bills alone")
+            earlier = earlier_names(json.loads(sp.read_text(encoding="utf-8")), manual=manual)
         except (OSError, ValueError) as e:
             raise Refused(f"{sp.as_posix()} will not read as JSON: {e}")
         report["unsure"] = earlier_service(races, earlier)
@@ -1670,6 +1774,14 @@ def decide(a, site, hand_path):
         report["notes"].append(f"{sp.as_posix()} is not on disk: no new member-elect is checked "
                                "against the surnames of the bills of 1989-1998, so none is "
                                "marked \"prior service not on record\"")
+    # WHAT THE PERSON SETTLED ABOUT EARLIER SERVICE, after the doubt: "none" or
+    # a confirmed record (apply_prior).
+    for key, name in apply_prior(races, hand.get("prior")):
+        report["notes"].append(f"the hand file's prior names {name} in {key}, who is not a new "
+                               "member-elect there: nothing applied")
+    if report.get("unsure") is not None:
+        report["unsure"] = sum(1 for r in races.values() for e in r.get("elected") or []
+                               if e.get("u"))
     # A NEW PERSON'S PROVISIONAL PAGE (Alice, 7 November 2026): "e", its slug,
     # from build_elect_pages.py's list, so the Officials tab and the town
     # pages link them to it. Never "id" or "s": they have no id, and those

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.16
+# GRANITE_VERSION: 2026-10-10.17
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -821,7 +821,13 @@ def elect_chip(e, key, lang="en"):
     tag = " - ".join(x for x in (p, where) if x)
     return pchip({"party_code": p if len(p) == 1 else "X",
                   "display_full": f'{title} {e.get("n") or ""}' + (f" ({tag})" if tag else ""),
-                  "slug": e.get("s") if e.get("id") and e.get("s") else ""})
+                  # A new person's provisional page ("e", build_elect_pages.py)
+                  # where they have one, as components.elect_race draws it;
+                  # never another member's record. The tab once read only
+                  # the member's id and slug, and so linked none of the new
+                  # (13 November 2026: 0 of 165 on the dry run).
+                  "slug": e.get("s") if e.get("id") and e.get("s")
+                          else (e.get("e") if e.get("k") == "new" else "") or ""})
 
 
 def elect_party(e):

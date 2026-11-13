@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.900
+# GRANITE_VERSION: 2026-09-04.901
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31572,6 +31572,260 @@ def _elect_provisional():
     return "ok", ("new people alone get a page, at the roster's address, never at a member's; "
                   "numbered at the same address the page gives way, at another only with a 301; "
                   "noindex, no id, their requests matched by name and chamber")
+
+
+@check("build", "members-elect: every new member-elect with a page is linked to it on the Officials "
+                "tab; a returning member's page is the member-elect's, a new-chamber member's keeps "
+                "its seat with the election beside it, and both end the day the term is theirs",
+       needs=("officials_tabs", "build_legislator_pages", "build_members_elect"))
+def _elect_returning_pages(OT, LP, BME):
+    """The owner, 13 November 2026: new members-elect had pages and the tab
+    linked none of them (0 of 165: elect_chip read only the id and slug a
+    member has); a returning member's page was titled by the seat they left
+    ("Former Rep. Benjamin Baroody (D - Hills 39)"); both are held here.
+
+    - elect_chip links a "k": "new" winner to their "e" (the provisional page),
+      a member by id and slug as before, and a new winner with no page to none;
+    - elect_back: "returning" only for a former member the file says is former
+      and whose row is former.json's; "chamber" for a sitting member elected to
+      the other chamber; nothing for the re-elected;
+    - app.js's renderMemberHead on each: the returning member headed as a new
+      member-elect is (name and party, the sentence, the election's line with no
+      "for <district>"), the earlier seat kept in the facts and no "Former
+      Representative"; the new-chamber member keeps the seat they hold with the
+      sentence beside it; both gone once the reader's day is the day they take
+      office, on another member's page and without GR_ELECT."""
+    bad = []
+    key = "H|Hillsborough|42"
+    lee = {"n": "Lee C. Nyquist", "p": "D", "k": "new", "e": "lee-c-nyquist-hills-42"}
+    if 'href="/legislator/lee-c-nyquist-hills-42' not in OT.elect_chip(lee, key) \
+            and 'href="legislator/lee-c-nyquist-hills-42' not in OT.elect_chip(lee, key):
+        bad.append(f"the tab's chip for a new member-elect with a page is not linked: "
+                   f"{OT.elect_chip(lee, key)!r}")
+    if "href=" in OT.elect_chip({"n": "No Page", "p": "D", "k": "new"}, key):
+        bad.append("a new member-elect with no page is linked")
+    if "href=" in OT.elect_chip({"n": "Odd", "p": "D", "k": "sitting", "e": "x"}, key):
+        bad.append("a member is linked to a provisional page")
+    vose = {"id": "900001", "name": "Vose, Michael", "chamber": "H", "former": True,
+            "display_plain": "Rep. Michael Vose", "display_full": "Rep. Michael Vose (R - Rock 5)",
+            "display": "Rep. Michael Vose (R)", "party": "R", "county": "Rockingham",
+            "district": "5", "slug": "michael-vose-rock-5",
+            "served": {"terms": ["2017-2018"]}}
+    creighton = {"id": "9917", "name": "Creighton, James", "chamber": "H", "party": "Republican",
+                 "county": "Hillsborough", "district": "30", "display_plain": "Rep. James Creighton",
+                 "display_full": "Rep. James Creighton (R - Hills 30)", "slug": "james-creighton-hills-30",
+                 "towns": [], "committees": []}
+    inc = dict(creighton, id="5", name="Doe, Jo", display_plain="Rep. Jo Doe",
+               display_full="Rep. Jo Doe (R - Hills 30)", slug="jo-doe-hills-30")
+    infos = {"vose": {"key": "H|Rockingham|6", "k": "former", "p": "R"},
+             "creighton": {"key": "S|8", "k": "sitting", "p": "R"},
+             "inc": {"key": "H|Hillsborough|30", "k": "sitting", "p": "R"}}
+    back = {n: LP.elect_back(m, infos[n]) for n, m in
+            (("vose", vose), ("creighton", creighton), ("inc", inc))}
+    if (back["vose"] or {}).get("mode") != "returning" \
+            or (back["creighton"] or {}).get("mode") != "chamber" or back["inc"] is not None:
+        bad.append(f"elect_back says {[(n, (b or {}).get('mode')) for n, b in back.items()]}: "
+                   "returning, chamber and none wanted")
+    elif back["vose"]["head"] != "Michael Vose (R), member-elect" or back["vose"]["where"] != (
+            "Member-elect of the New Hampshire House of Representatives, Rockingham 6.") \
+            or back["creighton"]["where"] != "Member-elect of the New Hampshire Senate, Senate District 8.":
+        bad.append(f"elect_back words: {back['vose']} {back['creighton']}")
+    if LP.elect_back(dict(vose, former=False), infos["vose"]) is not None:
+        bad.append("a file's former member drawn on a record that is not former.json's gets the "
+                   "returning form")
+    base = {"election": "2026-11-03", "takes_office": "2026-12-02"}
+
+    def g(name, mem, far=False):
+        # The reader's clock is the real one: a day far ahead is "before they
+        # take office", a day long past is "after".
+        d = {"id": mem["id"], "key": infos[name]["key"], **base,
+             **{k: back[name][k] for k in ("mode", "name", "party", "where")}}
+        return dict(d, takes_office="2999-01-01" if far else "2000-01-01")
+    line = "Elected November 3, 2026. Takes office December 2, 2026."
+    exprs = [
+        # 0 the returning member, 1 the same once the day has come, 2 with no GR_ELECT,
+        # 3 another member's page with Vose's GR_ELECT, 4 new-chamber, 5 that on a gone day
+        "(window.GR_ELECT=" + json.dumps(g("vose", vose, far=True)) + ", scope.renderMemberHead("
+        + json.dumps(vose) + "))",
+        "(window.GR_ELECT=" + json.dumps(g("vose", vose)) + ", scope.renderMemberHead("
+        + json.dumps(vose) + "))",
+        "(delete window.GR_ELECT, scope.renderMemberHead(" + json.dumps(vose) + "))",
+        "(window.GR_ELECT=" + json.dumps(g("vose", vose, far=True)) + ", scope.renderMemberHead("
+        + json.dumps(dict(vose, id="1")) + "))",
+        "(window.GR_ELECT=" + json.dumps(g("creighton", creighton, far=True))
+        + ", scope.renderMemberHead(" + json.dumps(creighton) + "))",
+        "(window.GR_ELECT=" + json.dumps(g("creighton", creighton)) + ", scope.renderMemberHead("
+        + json.dumps(creighton) + "))"]
+    got = _app_js("[" + ", ".join(exprs) + "]", names=("renderMemberHead",))
+    if got is not None:
+        ret, gone, plain, other, cham, cgone = got
+        said = back["vose"]["where"]
+        for what, ok in (
+                ("the returning page says the seat of the member-elect", said in ret),
+                ("the returning page has the new member-elect's election line, no district",
+                 "Elected November 3, 2026. Takes office" in ret and "for Rockingham" not in ret),
+                ("the returning page keeps the earlier seat", "Earlier seat" in ret
+                 and "Rep. Michael Vose (R - Rock 5)" in ret),
+                ("the returning page is not titled Former Representative",
+                 "Former Representative" not in ret and "Michael Vose (R)" in ret),
+                ("the returning page is Member-elect in its trail", "Member-elect" in ret),
+                ("once the day is theirs the page is the former member's as before",
+                 said not in gone and "Former Representative Michael Vose" in gone),
+                ("without GR_ELECT the page is the former member's",
+                 "Former Representative Michael Vose" in plain and said not in plain),
+                ("another member's page is told nothing of Vose's election",
+                 said not in other and "Elected November 3" not in other),
+                ("the new-chamber member keeps the seat they hold",
+                 "Representative James Creighton" in cham),
+                ("the new-chamber member has the sentence beside it",
+                 back["creighton"]["where"] in cham),
+                ("the new-chamber member's election line names the district",
+                 "Elected November 3, 2026, for Senate District 8." in cham),
+                ("the new-chamber member's sentence is gone with the day",
+                 back["creighton"]["where"] not in cgone)):
+            if not ok:
+                bad.append(what)
+    # The plain page, for a reader without script: the same form.
+    plain_html = LP.static_record(vose, {}, LP.elect_line(None, "2026-11-03", "2026-12-02",
+                                                         "2026-11-20"), {}, back["vose"])
+    for want in ("<h1>Michael Vose (R)</h1>", f"<p>{back['vose']['where']}</p>", line,
+                 "<p>Earlier seat: Rep. Michael Vose (R - Rock 5)</p>"):
+        if want not in plain_html:
+            bad.append(f"the plain page lacks {want!r}")
+    if "Former Representative" in plain_html:
+        bad.append("the plain page of a returning member is headed Former Representative")
+    cham_html = LP.static_record(creighton, {}, "", {}, back["creighton"])
+    if "<h1>Representative James Creighton (R - Hills 30)</h1>" not in cham_html \
+            or back["creighton"]["where"] not in cham_html:
+        bad.append("the plain page of a new-chamber member lost its heading or lacks the sentence")
+    # A former member's page offers their requests, as a sitting member's: the
+    # requests term first when they have any (build_lsrs' by_slug).
+    req = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027, "n": 1,
+           "withdrawn": 0, "by_slug": {"michael-vose-rock-5": 1}}
+    row = {"id": "LSR20270003", "n": "LSR 2027-0003", "year": 2027, "title": "relative to roads.",
+           "sponsor": "x", "sponsor_label": "x", "sponsor_slug": "michael-vose-rock-5", "body": "HB",
+           "body_label": "House bill", "committee": "", "committees": [], "topic": "", "kind": "",
+           "status": "Filed as a request", "withdrawn": False, "term": "2027-requests", "lsr": True,
+           "votedays": [], "last_action": ""}
+    fm = dict(vose, sponsored=[{"id": "HB1", "term": "2017-2018", "prime": True}], votes=[],
+              term_figures={}, attendance={})
+    js = ("scope.setMeta(" + json.dumps({"terms": ["2025-2026"], "requests": req}) + "), scope.setIdx("
+          + json.dumps([row]) + "), scope.addLoaded('2027-requests'), (() => { const m = "
+          + json.dumps(fm) + "; const terms = scope.recordTerms('member', m); scope.setPage({kind: "
+          "'member', data: m, terms, term: terms[0]}); return {terms, "
+          "prime: scope.renderMemberBills(m, true)}; })()")
+    fr = _app_js(js, names=("recordTerms", "renderMemberBills", "setPage: x => (PAGE = x)",
+                            "setMeta: x => (META = x)", "setIdx: x => (IDX = x)",
+                            "addLoaded: t => LOADED.add(t)"))
+    if fr is not None and (fr["terms"][0] != "2027-requests"
+                           or 'data-id="LSR20270003"' not in fr["prime"]):
+        bad.append(f"a returning member's page does not open on the requests: {fr['terms']}")
+    # A provisional page shows the requests it is matched to, and a returning
+    # or new member-elect's earlier service where the person confirmed it.
+    p = {"slug": "w-gordon-allen-hills-30", "name": "W. Gordon Allen", "party": "R", "chamber": "H",
+         "county": "Hillsborough", "district": "30", "race": "H|Hillsborough|30", "towns": [],
+         "prior": {"terms": ["1993-1994", "1995-1996"], "seat": "Hillsborough 1"}}
+    body = LP.elect_body(p, dict(base, sources=[]), [dict(row, sponsor_slug=p["slug"])],
+                         {"label": "2027 Bill Requests", "year": 2027, "term": "2027-requests"},
+                         {}, "2026-11-20")
+    if "LSR 2027-0003" not in body or "Earlier service:</b> Hillsborough 1, 1993-1994, 1995-1996" not in body:
+        bad.append(f"a provisional page does not show its requests and earlier service: {body[:300]}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("the tab links every new member-elect with a page; a returning member's page is "
+                  "the member-elect's with the earlier seat kept, a new-chamber member's keeps its "
+                  "seat, both end with the day; requests show on the former's and the provisional page"
+                  + ("" if got is not None else " (node not here for the page's script)"))
+
+
+@check("build", "members-elect: earlier service is settled by hand in the person's file (\"none\", or "
+                "a confirmed record), and the Manuals' rosters clear a doubt a surname alone raises "
+                "without ever linking anyone", needs=("build_members_elect",))
+def _elect_prior_service(BME):
+    """The owner, 13 November 2026 (Zoe Hill, W. Gordon Allen, Tom Stewart).
+
+    - earlier_names reads the Manuals' elected members beside the sponsors: a
+      surname printed alone in a term the Manual names the surname's members in
+      takes their first names, so a winner of a different first name has no
+      doubt; the same full name in the same county is still the doubt; a term
+      the Manual marks measuring_only, a row not elected and a surname the
+      Manual lacks in the term change nothing;
+    - read_hand reads "prior" and refuses an entry that is not "none" or a
+      record with terms, a seat and evidence;
+    - apply_prior: "none" takes off the doubt (New); a record makes the status
+      Returning and carries terms and seat and nothing else (no evidence, no
+      employee number), and a name that is no new winner is said."""
+    bad = []
+    sp = {"1993-1994": {"HB1": [{"name": "Hill", "chamber": "H", "county": "Grafton"},
+                                {"name": "Lowe", "chamber": "H", "county": "Grafton"}]}}
+    man = {"terms": {
+        "1993-1994": {"house": [
+            {"county": "Grafton", "district": "1", "name": "Richard L. Hill", "status": "elected"},
+            {"county": "Grafton", "district": "2", "name": "Zed Lowe", "status": "lost"},
+            {"county": "Grafton", "district": "3", "name": "Anna Pierce", "status": "elected"}],
+            "senate": [{"district": "5", "name": "Jon Sloan", "status": "elected"}]},
+        "1999-2000": {"measuring_only": True, "house": [
+            {"county": "Grafton", "district": "1", "name": "Zoe Hill", "status": "elected"}]}}}
+    races = {"H|Grafton|15": {"elected": [{"n": "Zoe Hill", "k": "new"}, {"n": "Rick Hill", "k": "new"},
+                                           {"n": "Richard Hill", "k": "new"},
+                                           {"n": "Pat Lowe", "k": "new"}, {"n": "Ann Pierce", "k": "new"},
+                                           {"n": "Anna Pierce", "k": "new"}]},
+             "S|5": {"elected": [{"n": "Jo Sloan", "k": "new"}, {"n": "Jon Sloan", "k": "new"}]}}
+    only = BME.earlier_names(sp)
+    both = BME.earlier_names(sp, manual=man)
+    import copy
+    r1, r2 = copy.deepcopy(races), copy.deepcopy(races)
+    BME.earlier_service(r1, only)
+    BME.earlier_service(r2, both)
+    flag = lambda rs: sorted(e["n"] for r in rs.values() for e in r["elected"] if e.get("u"))
+    if flag(r1) != ["Pat Lowe", "Richard Hill", "Rick Hill", "Zoe Hill"]:
+        bad.append(f"from the bills alone {flag(r1)}: every Hill and Lowe (a surname alone) wanted")
+    # Hill: Richard L. is the Manual's -> Zoe cleared, Rick (short form of Richard) and Richard stay;
+    # Lowe: the Manual's Lowe lost, so the surname alone stays a doubt; Pierce and Sloan: the
+    # Manual's full names are the doubt, a different first name is not.
+    if flag(r2) != ["Ann Pierce", "Anna Pierce", "Jon Sloan", "Pat Lowe", "Richard Hill", "Rick Hill"]:
+        bad.append(f"with the Manuals {flag(r2)}")
+    if ("hill", "H", "grafton") in BME.earlier_names({}, manual={"terms": {
+            "1999-2000": man["terms"]["1999-2000"]}}):
+        bad.append("a term marked measuring_only is read")
+    # The person's file.
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        f = Path(d) / "members_elect.json"
+        ok = {"2026-11-03": {"prior": {
+            "H|Hillsborough|30": {"W. Gordon Allen": {
+                "gc_employee_number": "375802", "terms": ["1993-1994", "1995-1996"],
+                "seat": "Hillsborough 1", "evidence": ["the Manuals"]}},
+            "H|Hillsborough|41": {"Tom Stewart": "none"}}}}
+        f.write_text(json.dumps(ok), encoding="utf-8")
+        hand, _ = BME.read_hand(f, "2026-11-03")
+        if set(hand["prior"]) != {"H|Hillsborough|30", "H|Hillsborough|41"}:
+            bad.append(f"read_hand reads prior {hand['prior']}")
+        for worse in ({"X": {"Y": {"terms": ["1993"], "seat": "a", "evidence": ["e"]}}},
+                      {"X": {"Y": {"terms": ["1993-1994"], "seat": "a"}}},
+                      {"X": {"Y": "maybe"}}, {"X": "none"}):
+            f.write_text(json.dumps({"2026-11-03": {"prior": worse}}), encoding="utf-8")
+            try:
+                BME.read_hand(f, "2026-11-03")
+                bad.append(f"read_hand accepts prior {worse}")
+            except BME.Refused:
+                pass
+    rs = {"H|Hillsborough|30": {"elected": [{"n": "W. Gordon Allen", "k": "new", "u": True}]},
+          "H|Hillsborough|41": {"elected": [{"n": "Tom Stewart", "k": "new", "u": True}]},
+          "H|Grafton|15": {"elected": [{"n": "Zoe Hill", "k": "new", "u": True}]}}
+    lost = BME.apply_prior(rs, dict(hand["prior"], **{"H|Nowhere|1": {"Nobody": "none"}}))
+    st = {e["n"]: BME.elect_status(e, k, None) for k, r in rs.items() for e in r["elected"]}
+    if st != {"W. Gordon Allen": "returning", "Tom Stewart": "new", "Zoe Hill": "unsure"}:
+        bad.append(f"statuses after the person's entries: {st}")
+    allen = rs["H|Hillsborough|30"]["elected"][0]
+    if allen.get("prior") != {"terms": ["1993-1994", "1995-1996"], "seat": "Hillsborough 1"} \
+            or "id" in allen or "s" in allen or "u" in allen or "evidence" in json.dumps(rs) \
+            or "375802" in json.dumps(rs):
+        bad.append(f"the record carried to the file is {allen}")
+    if lost != [("H|Nowhere|1", "Nobody")]:
+        bad.append(f"a name that is no new winner is not said: {lost}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("the Manuals clear a surname alone only for a different first name and never "
+                  "link; \"none\" gives New, a confirmed record Returning with terms and seat only")
 
 
 @check("build", "the data API's schema.json describes every column it publishes, with the types "
@@ -124011,6 +124265,31 @@ def _elect_strip(html):
     return re.sub(r"window\.GR_ELECT=\{[^{}]*\};", "", "".join(out) + html[i:])
 
 
+def _elect_unexplained(with_, without, raw=None):
+    """The lines of a page built with the members-elect file (its data-elect
+    parts taken out) that differ from the page without it and are not the
+    member-elect's own form: [] for a returning or new-chamber member's page
+    whose every difference is a title, description, citation, heading or
+    sentence naming the election, and all differences otherwise (a page not
+    given that form must be the same)."""
+    import difflib
+    raw = with_ if raw is None else raw        # with its GR_ELECT, which with_ lacks
+    if '"mode": "returning"' not in raw and '"mode": "chamber"' not in raw \
+            and '"mode":"returning"' not in raw and '"mode":"chamber"' not in raw:
+        return ["(differs)"]
+    split = lambda t: re.sub(r">\s*<", ">\n<", t).splitlines()
+    mine = re.compile(r"member-elect|Member-elect|elected to the New Hampshire|Earlier seat|<h1>"
+                      r"|window\.GR_ELECT", re.I)
+    theirs = re.compile(r"Former |served in the New Hampshire|<h1>|window\.GR_", re.I)
+    out = []
+    for line in difflib.unified_diff(split(without), split(with_), lineterm="", n=0):
+        if line[:1] == "+" and not line.startswith("+++") and not mine.search(line):
+            out.append(line[:120])
+        if line[:1] == "-" and not line.startswith("---") and not theirs.search(line):
+            out.append(line[:120])
+    return out
+
+
 def _elect_built():
     """(with, without, the file, what the builders printed with it): two
     copies of the fixture's built site with the election's results and the
@@ -124134,7 +124413,13 @@ def _elect_pages_never_sitting():
             if "data-elect" in t:
                 drawn.append(rel)
             if _elect_strip(t).encode("utf-8") != b:
-                differ.append(rel)
+                # A returning member's page, and a new-chamber member's, are drawn
+                # as the member-elect's (13 November 2026): the lines that name
+                # them -- title, description, citations, the heading and the
+                # sentences under it -- are the file's. Every other line must be
+                # the page's without the file.
+                if _elect_unexplained(_elect_strip(t), b.decode("utf-8"), t):
+                    differ.append(rel)
             if "PRIVATE" in t:
                 bad.append(f"a reason from the person's file is on {rel}")
         elif rel not in ("places.json", "district_map.json") and a != b:
@@ -124256,9 +124541,21 @@ def _elect_pages_link_own():
         bad.append(f"the line is on {sorted(lines)}, not on {sorted(want)}")
     for slug, (line, g) in lines.items():
         mid, key = want.get(slug, ("", ""))
-        if line != [f"Elected November 3, 2026, for {words.get(key)}. Takes office December 2, "
-                    "2026."] or g != [{"id": mid, "key": key, "election": "2026-11-03",
-                                       "takes_office": "2026-12-02"}]:
+        # A returning member's page is the member-elect's (13 November 2026):
+        # the line a new member-elect's page has, the seat in the sentence above it.
+        if slug in ("michael-vose-rock-5", "john-smith-rock-3"):
+            ok = (line == ["Elected November 3, 2026. Takes office December 2, 2026."]
+                  and len(g) == 1 and g[0].get("mode") == "returning"
+                  and g[0].get("where") == "Member-elect of the New Hampshire House of "
+                  f"Representatives, {words.get(key).replace(' district', '')}."
+                  and {k: v for k, v in g[0].items() if k in ("id", "key", "election", "takes_office")}
+                  == {"id": mid, "key": key, "election": "2026-11-03", "takes_office": "2026-12-02"})
+        else:
+            ok = (line == [f"Elected November 3, 2026, for {words.get(key)}. Takes office "
+                           "December 2, 2026."]
+                  and g == [{"id": mid, "key": key, "election": "2026-11-03",
+                             "takes_office": "2026-12-02"}])
+        if not ok:
             bad.append(f"{slug}'s page says {line} and hands app.js {g}")
     for p in json.loads((ws / "places.json").read_text(encoding="utf-8"))["places"]:
         own = [f"H|{h[0]}|{h[1]}" for h in p["h"]] + ([f"S|{p['sd']}"] if p.get("sd") else [])
