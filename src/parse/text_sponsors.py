@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.10
+# GRANITE_VERSION: 2026-09-14.11
 """
 Sponsors read off each bill's own text, for the bills the database names none for.
 
@@ -517,7 +517,7 @@ def unprinted(term, rows, people, sat, source):
     return out
 
 
-def build(bills, sat, only_missing=None, sponsor_record=None, lines=None):
+def build(bills, sat, only_missing=None, sponsor_record=None, lines=None, seat_table="auto"):
     """{term: {bill: [records]}}, and a tally of how each sponsor was or was not placed.
 
     `sponsor_record` is (joined, people) from past_sponsors.load_record(), or None where
@@ -527,9 +527,16 @@ def build(bills, sat, only_missing=None, sponsor_record=None, lines=None):
     printed line names nobody (unprinted). Every other sponsor is the page's.
 
     `lines`, [(term, bill, sponsor line)], stands in for the saved pages (preflight's
-    fixtures); by default every saved page is read."""
+    fixtures); by default every saved page is read.
+
+    `seat_table` is generated/manual_seats.json (build_manual_seats.py), the seat lists of the
+    Manual for the General Court: past_roster.settle uses it to tell two numbers of one surname
+    apart for a printed line, only where the term's own list settles it. "auto" reads the
+    committed file if it is on this disk; None settles nothing."""
     import past_sponsors as PSP
     import past_roster as PR
+    if seat_table == "auto":
+        seat_table = PR.seat_table()
     if lines is None:
         pages, strays = saved_pages(bills)
         lines = ((term, bid, read_line(f)) for term, bid, f in pages)
@@ -588,12 +595,17 @@ def build(bills, sat, only_missing=None, sponsor_record=None, lines=None):
                 rows = ((joined.get(term) or {}).get(bid) or {}).get("rows") or []
                 state, emp, _why = (PR.place(sp, rows, people) if rows
                                     else (PR.UNMATCHED, None, ""))
+                if state == PR.AMBIGUOUS and rows and seat_table:
+                    # TWO NUMBERS FIT THE SURNAME: the term's own seat list may tell them apart.
+                    state, emp, _why = PR.settle(sp, rows, people, term, seat_table)
                 tally[f"1989-1998 printed sponsors {state} against the bill's own sponsor rows"] += 1
-                if state == PR.CERTAIN:
+                if state in (PR.CERTAIN, PR.SETTLED):
                     rec = PR.enrich(record(i, {**sp, "chamber": PR.chamber_for(sp, emp, people)}, None),
                                     emp, people, sat)
                     if rec.get("employee") != emp:
                         rec = None      # the number is named by no list on disk
+                    elif state == PR.SETTLED:
+                        rec["settled_by"] = _why
             recs.append(rec or record(i, sp, m))
         got[term][bid] = recs
     return dict(got), tally, strays
