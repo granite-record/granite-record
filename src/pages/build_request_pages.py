@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.6
+# GRANITE_VERSION: 2026-11-08.8
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -41,12 +41,27 @@ E = S.E
 ROBOTS = '<meta name="robots" content="noindex,follow">'
 
 
-def explain(year):
+def explain(year, abbr=None):
     """The requests' explanation, the bill search's own words
-    (fix/search-polish, 8 November 2026)."""
+    (fix/search-polish, 8 November 2026), and what the number's abbreviation
+    stands for (the owner, 13 November 2026), which a phone cannot hover to
+    read: `abbr` is meta.requests's, a map of an abbreviation to its words."""
+    said = "".join(f" {E(k)} stands for {E(v)}." for k, v in (abbr or {}).items())
     return ("<b>Requests, not bills yet.</b> Each is a member&rsquo;s request to have a bill "
             "drafted: a title and a sponsor, nothing more, until it is filed as a numbered "
-            f"{E(str(year))} bill. Some are withdrawn first.")
+            f"{E(str(year))} bill. Some are withdrawn first." + said)
+
+
+def abbr_html(text, abbr, hard=False):
+    """`text` escaped, its first word an <abbr> with the title that says what
+    it stands for where `abbr` names it (the owner, 13 November 2026: add
+    what it stands for "as a tooltip"); the title is the tooltip, and explain() says it in words for
+    a touch screen. `hard`: a non-breaking space after it, for the trail,
+    whose flex row drops a plain one."""
+    first, sep, rest = str(text or "").partition(" ")
+    if first and first in (abbr or {}):
+        return f'<abbr class="lsrabbr" title="{E(abbr[first])}">{E(first)}</abbr>{"&nbsp;" if hard and sep else sep}{E(rest)}'
+    return E(str(text or ""))
 
 
 def sponsors(site):
@@ -77,7 +92,7 @@ def state_of(r):
     says it and no more -- the list does not say when, nor tell a withdrawal
     from a request that became a bill the bill data has not caught up with
     (build_lsrs; the review of 8 November 2026) -- else the status the row
-    carries, "Filed as a request"."""
+    carries: Requested, or Filed (the owner, 13 November 2026)."""
     return "Withdrawn" if r.get("withdrawn") else (r.get("status") or "")
 
 
@@ -115,7 +130,7 @@ def rail_of(r):
     day = r["filed"] if filed and isinstance(r["filed"], str) and r["filed"][:1].isdigit() else ""
     stops = [
         {"stop": "Requested", "mark": "p", "date": "", "short": "",
-         "say": "Requested" if gone else "Filed as a request"},
+         "say": "made"},
         {"stop": "Filed", "mark": "x" if gone else ("p" if filed else "-"), "date": day, "short": "",
          "say": "Withdrawn" if gone else ("Text public" if filed else "")},
         {"stop": "Introduced", "mark": "-", "date": "", "short": "", "say": ""}]
@@ -151,43 +166,96 @@ def head(r, req, who_of, path, base):
     cite = S.cite_block(path, f"{r.get('n')}: {r.get('title') or ''} | Granite Record", base,
                         S.cited())
     assert cite.endswith("</div>"), "the citation block no longer ends its row"
-    chips = C.WORDBOOK.get("chips", {}).get("chip", {})
-    return C.record_head({
+    chips = C.WORDBOOK.get("chips", {}).get("request", {})
+    page = C.record_head({
         "trail": [["Bills", "bills"],
                   [req.get("label") or "Bill Requests", f"bills?term={req['term']}"],
                   [r.get("n") or "", ""]],
-        "title": E(r.get("n") or ""),
+        "title": abbr_html(r.get("n"), req.get("abbr")),
         "chip": C.chip(word, "cstat " + chips.get(word, ""), "m"),
         "line": f'<span translate="no">{E(r.get("title") or "")}</span>',
         "facts": facts, "rail": rail_of(r),
         "actions": cite[:-len("</div>")] + SHARE + "</div>",
         "kind": "bill"})
+    # The trail names the request by its number, plain text: the same
+    # abbreviation, explained.
+    n = r.get("n") or ""
+    return page.replace(f'<li aria-current="page">{E(n)}</li>',
+                        f'<li aria-current="page">{abbr_html(n, req.get("abbr"), True)}</li>', 1)
 
 
 def summary(r, req):
-    """The one tab, Summary: the requests' explanation, and the facts of this
-    one. The other tabs a bill has are not here until the bill is."""
+    """The Summary tab: the requests' explanation, and the facts of this
+    one."""
     state = state_of(r)
     return (C.section("About Requests",
-                      f'<p class="lsrnote">{explain(r.get("year") or req.get("year"))}</p>', "about")
+                      f'<p class="lsrnote">{explain(r.get("year") or req.get("year"), req.get("abbr"))}</p>',
+                      "about")
             + C.section("The Request", f'<p><b>Status:</b> {E(state)}</p>', "request"))
 
 
-def tabs(path, pane):
-    """The strip and its pane, as a study committee's page has them (the
-    same script, ssTabs, and the same stylesheet): one tab, shown."""
-    return ('<div class="tabs sstabs" role="tablist" data-base="' + E(path) + '">'
-            '<button type="button" class="tab" role="tab" id="sstab-summary" '
-            'aria-controls="summary" data-sstab="" aria-selected="true">Summary</button></div>'
-            '<div class="pane sspane" role="tabpanel" id="summary" '
-            'aria-labelledby="sstab-summary" tabindex="0" data-on>'
-            f'<h2 class="ssph">Summary</h2>{pane}</div>')
+def sponsors_pane(r, who_of):
+    """The Sponsors tab, only where co-sponsors are listed (the General
+    Court lists one once they have accepted): the prime sponsor and every
+    co-sponsor as the person chip."""
+    cos = chips_of(r.get("cosponsors"), who_of)
+    sponsor = who_of.get(r.get("sponsor_slug"))
+    prime = C.pchip(sponsor) if sponsor else E(r.get("sponsor_label") or r.get("sponsor") or "")
+    return (f'<p class="spcount">{len(cos) + 1} Sponsors</p>'
+            f'<h2 class="sech spgrp">Prime Sponsor</h2><div class="chosen">{prime}</div>'
+            f'<h2 class="sech spgrp">{"Co-Sponsors" if len(cos) > 1 else "Co-Sponsor"} '
+            f'<span class="sechn">{len(cos)}</span></h2><div class="chosen">{" ".join(cos)}</div>'
+            '<p class="src">A co-sponsor is listed once they have accepted.</p>')
+
+
+def history_pane(r):
+    """The History tab, only where an earlier bill has this request's title
+    (build_lsrs.history_of: exactly, after case, spacing and final
+    punctuation): each bill's number and year, linked, and the word its card
+    says."""
+    hist = r.get("history") or []
+    items = "".join(
+        f'<li><a href="bill/{E(str(h.get("year")))}/{E(str(h.get("id") or "").lower())}">{E(h.get("n"))} '
+        f'<span class="cyear">({E(str(h.get("year")))})</span></a> '
+        + C.chip(h.get("word") or "", "cstat " + str(h.get("cls") or ""), "m") + "</li>"
+        for h in hist)
+    return (f'<p class="src">{"A bill" if len(hist) == 1 else "Bills"} of an earlier session with '
+            f'this same title:</p><ul class="lsrhist">{items}</ul>')
+
+
+def tab_n(n):
+    """A tab's count as app.js's tabN draws it: the badge, its brackets there
+    for a screen reader; nothing for none."""
+    return (f'<span class="tn"><span class="tnp"> (</span>{n:,}<span class="tnp">)</span></span>'
+            if n else "")
+
+
+def tabs(path, panes):
+    """The strip and its panes, as a study committee's page has them (the
+    same script, ssTabs, and the same stylesheet): `panes` is [(id, word,
+    count, body)], the first shown. Every tab is at the page's own address
+    (no slug), a place on a tab named by its #id."""
+    strip = ('<div class="tabs sstabs" role="tablist" data-base="' + E(path) + '">'
+             + "".join(f'<button type="button" class="tab" role="tab" id="sstab-{pid}" '
+                       f'aria-controls="{pid}" data-sstab="" aria-selected="{"true" if i == 0 else "false"}">'
+                       f'{E(word)}{tab_n(n)}</button>'
+                       for i, (pid, word, n, _b) in enumerate(panes))
+             + "</div>")
+    return strip + "".join(
+        f'<div class="pane sspane" role="tabpanel" id="{pid}" aria-labelledby="sstab-{pid}" tabindex="0"'
+        f'{" data-on" if i == 0 else ""}><h2 class="ssph">{E(word)}</h2>{body}</div>'
+        for i, (pid, word, _n, body) in enumerate(panes))
 
 
 def body(r, req, who_of, path, base):
     """One request's page: a bill's, with what a request has drawn and the
     rest left quiet."""
-    return head(r, req, who_of, path, base) + tabs(path, summary(r, req))
+    panes = [("summary", "Summary", 0, summary(r, req))]
+    if r.get("cosponsors"):
+        panes.append(("sponsors", "Sponsors", len(r["cosponsors"]) + 1, sponsors_pane(r, who_of)))
+    if r.get("history"):
+        panes.append(("history", "History", len(r["history"]), history_pane(r)))
+    return head(r, req, who_of, path, base) + tabs(path, panes)
 
 
 def write(site, base):

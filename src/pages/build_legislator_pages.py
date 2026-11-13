@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.33
+# GRANITE_VERSION: 2026-09-04.34
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -371,7 +371,7 @@ def elect_body(p, doc, reqs, req_meta, places, today):
         label = (req_meta or {}).get("label") or "Bill Requests"
         out.append(f"<h2>{E(label)}</h2>"
                    # Alice's two sentences, as the bill search says them.
-                   "<p><b>Requests, not bills yet.</b> Each is a member&rsquo;s request to have "
+                   "<p><b>Requests, not bills yet.</b> Each one, called an LSR (Legislative Service Request), is a member&rsquo;s request to have "
                    "a bill drafted: a title and a sponsor, nothing more, until it is filed as a "
                    f"numbered {E(str((req_meta or {}).get('year') or ''))} bill. Some are "
                    "withdrawn first.</p><ul>" + "".join(

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.13
+# GRANITE_VERSION: 2026-09-18.14
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -396,10 +396,79 @@ def route(body):
     return [first, other, "Governor", "Law"]
 
 
-def rows_from(lsrs, who, became=None, year=None, winners=None):
+# WHAT A REQUEST'S STATUS SAYS (the owner, 13 November 2026: "Status can be
+# added as a filter ... for Requested and Filed (when they publish the draft
+# text), and I believe most bills are introduced on the same day"). Requested:
+# no bill yet. Filed: the request's bill exists, which is when its text is
+# public -- the General Court's list has no field for the draft text, and a
+# request becomes a bill when it is introduced, so the bill's existence is the
+# fact there is (or the source's own "filed", once it gives one). Withdrawn:
+# as the source says. The words are the owner's, and the card, the filter and
+# the request page's rail all use them.
+REQUESTED, FILED, WITHDRAWN = "Requested", "Filed", "Withdrawn"
+
+# WHAT AN ABBREVIATION IN A REQUEST'S NUMBER STANDS FOR (the owner, 13
+# November 2026: "LSR stands for Legislative service request if you can add
+# that as a tooltip"). New Hampshire's shape stays here: meta.requests carries
+# it, and the page writers read it from there.
+ABBR = {"LSR": "Legislative Service Request"}
+
+
+def title_key(title):
+    """A title as it is compared for History: case, spacing and final
+    punctuation set aside, and nothing else (the owner, 13 November 2026:
+    "certain matches only"). No fuzzy match."""
+    t = re.sub(r"\s+", " ", str(title or "").strip().lower())
+    return re.sub(r"[\s.,;:!?]+$", "", t)
+
+
+def earlier_bills(site, terms, limit=25):
+    """{title key: [the bills of that title, newest first]} from the bill
+    search's own rows (site/idx/<term>.json, as build_site_v2 wrote them), for
+    the terms meta.json names. Each is {"id", "n", "year", "term", "word",
+    "cls"}: its number, year, the word its card says (components.card_word
+    of the chip) and the class that colours that chip. A bill
+    with no title says nothing, and a title is kept for at most `limit`
+    bills."""
+    import components as C
+    out = {}
+    for t in terms or []:
+        f = Path(site) / "idx" / f"{t}.json"
+        if not f.is_file():
+            continue
+        for b in json.loads(f.read_text(encoding="utf-8")):
+            k = title_key(b.get("title"))
+            if not k or b.get("lsr"):
+                continue
+            chip = b.get("chip") or b.get("status") or ""
+            ch = C.WORDBOOK["chips"]
+            # The chip's class as the bill card draws it (app.js chipCls).
+            cls = (ch["chip"].get(chip) or ch.get("by_status", {}).get(b.get("status") or "")
+                   or ch["kind"].get(b.get("kind") or "") or "")
+            out.setdefault(k, []).append({
+                "id": b.get("id"), "n": b.get("n") or b.get("id"), "year": b.get("year"),
+                "term": b.get("term") or t, "word": C.card_word(chip, b.get("passage") or ""),
+                "cls": cls})
+    for v in out.values():
+        v.sort(key=lambda x: (str(x["term"]), str(x["n"])), reverse=True)
+        del v[limit:]
+    return out
+
+
+def history_of(title, year, earlier):
+    """The bills of a session before `year` whose title is this request's, by
+    title_key, newest term first; [] where there is none (no History)."""
+    if not earlier:
+        return []
+    return [b for b in earlier.get(title_key(title), [])
+            if str(b.get("term") or "")[:4].isdigit() and int(str(b["term"])[:4]) < int(year)]
+
+
+def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None):
     """The rows of idx/<year>-requests.json and the sponsor names that matched
     nobody. `year` is the session they are listed under (newest_session);
-    `winners` (election_winners) settle a sponsor the roster did not."""
+    `winners` (election_winners) settle a sponsor the roster did not;
+    `earlier` (earlier_bills) is what a request's History is read from."""
     year = year or newest_session(lsrs)[0]
     find = winner_finder(winners) if winners else (lambda name, body: None)
     term, _label = requests_term(year)
@@ -432,7 +501,8 @@ def rows_from(lsrs, who, became=None, year=None, winners=None):
             if c and not h:
                 h = find(c, body)
             if c:
-                co.append({"label": h[0] if h else c, "slug": h[1] if h else "", "name": c})
+                co.append({"label": h[0] if h else c, "slug": h[1] if h else "", "name": c,
+                           **({"party": party_of(h[0])} if h and party_of(h[0]) else {})})
         rows.append({
             "id": "LSR" + num.replace("-", ""),
             "n": "LSR " + num,
@@ -459,8 +529,8 @@ def rows_from(lsrs, who, became=None, year=None, winners=None):
             # names. The word on the card is the one fact there is about where
             # it stands.
             "kind": "",
-            "status": (f"Introduced as {bill}" if bill else
-                       "Withdrawn" if r.get("withdrawn") else "Filed as a request"),
+            "status": (FILED if bill else WITHDRAWN if r.get("withdrawn")
+                       else FILED if r.get("filed") else REQUESTED),
             "status_stated": True,
             "withdrawn": bool(r.get("withdrawn")) and not bill,
             "term": term, "carried": False, "passage": "",
@@ -470,7 +540,11 @@ def rows_from(lsrs, who, became=None, year=None, winners=None):
             # "filed": the text is public (true, or its day) -- the stop Filed
             # on the request's rail. The list carries nothing of the kind
             # yet; this passes it on when the source gives it.
-            **({"filed": r["filed"]} if r.get("filed") else {}),
+            **({"filed": r["filed"]} if r.get("filed") else {"filed": True} if bill else {}),
+            # HISTORY (the owner, 13 November 2026): an earlier bill, of any
+            # term on the site, whose title is this request's.
+            **({"history": h} if (h := history_of(r.get("title"), session_of(r) or year,
+                                                  earlier)) else {}),
             # A REQUEST'S OWN PAGE (Alice, 8 November 2026): its address, from
             # the number this source gives it -- New Hampshire's shape stays
             # here, and the page writer reads only "address" and "moved_to".
@@ -612,7 +686,9 @@ def main():
                           lsrs)
     winners, said = load_winners(site, a.collected)
     print(f"  {said}")
-    rows, unmatched = rows_from(lsrs, roster(site), became, year, winners)
+    meta0 = json.loads((site / "meta.json").read_text(encoding="utf-8")) if (site / "meta.json").exists() else {}
+    rows, unmatched = rows_from(lsrs, roster(site), became, year, winners,
+                                earlier_bills(site, meta0.get("terms")))
     assert rows, "no request survived shaping, though the source had some"
     topic_n = with_topics(rows, json.loads(bp.read_text(encoding="utf-8")) if bp.exists() else {})
     gone, undecided = not_returning(site)
@@ -643,6 +719,7 @@ def main():
         if r["sponsor_slug"]:
             by_slug[r["sponsor_slug"]] = by_slug.get(r["sponsor_slug"], 0) + 1
     meta["requests"] = {"term": term, "label": label, "year": year, "n": len(rows),
+                        "abbr": ABBR,
                         "withdrawn": sum(1 for r in rows if r["withdrawn"]),
                         "dropped": sorted(r["address"] for r in dropped),
                         "by_slug": dict(sorted(by_slug.items()))}
@@ -657,6 +734,8 @@ def main():
         print(f"  {older} request(s) of an earlier session left out: bills or withdrawn by now")
     print(f"  {topic_n} of {len(rows)} given a topic from the title (marked so; "
           "the rest have none)")
+    print(f"  {sum(1 for r in rows if r.get('history'))} of {len(rows)} have an earlier bill of "
+          "the same title (History)")
     print(f"  {meta['requests']['withdrawn']} withdrawn; "
           f"{sum(1 for r in rows if r['sponsor_slug'])} sponsors matched to a member")
     if dropped:

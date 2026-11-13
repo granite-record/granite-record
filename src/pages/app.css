@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.386 */
+/* GRANITE_VERSION: 2026-09-07.387 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -2401,8 +2401,8 @@ border-radius:var(--r-out);margin-bottom:var(--sp-5);overflow:hidden;
 .chead:has(> button.ctitle:hover){background:var(--paper)}
 /* The whole head of a list card opens it (app.js cardBackground), so the
    whole head says so. */
-.card:not(.focus):not(.lsr) .chead:has(> button.ctitle){cursor:pointer}
-.card:not(.focus):not(.lsr) .chead:has(> button.ctitle):hover{background:var(--paper)}
+.card:not(.focus) .chead:has(> button.ctitle){cursor:pointer}
+.card:not(.focus) .chead:has(> button.ctitle):hover{background:var(--paper)}
 .crow{display:flex;gap:var(--sp-4);align-items:center}
 /* The thing the reader is looking for. It was a point smaller than the
    title beside it, which is the wrong way round on a page of bills. */
@@ -3486,9 +3486,14 @@ color:var(--ink-2);background:var(--wash);border-radius:var(--r-in);padding:1px 
    a smaller type size: it is that there is less on it. No rail, no expand
    arrow, no standalone-page link, so the right-hand 46px the arrow reserves
    comes back and the padding is the one a card with three lines wants rather
-   than the one a card with a rail under it wants. Nothing here is clickable
-   except the sponsor, so the head does not take a pointer. */
-.card.lsr .chead{cursor:default;padding:var(--sp-5) var(--sp-6)}
+   than the one a card with a rail under it wants. Since 13 November 2026 it
+   opens in place like a bill's (tabs inside), so its head takes the pointer
+   a bill's does. */
+.card.lsr .chead{padding:var(--sp-5) var(--sp-6)}
+.card.lsr .cbody .tabs{margin-top:var(--sp-5)}
+.lsrhist{list-style:none;margin:var(--sp-4) 0 0;padding:0}
+.lsrhist li{display:flex;flex-wrap:wrap;gap:var(--sp-3) var(--sp-4);align-items:center;margin:0 0 var(--sp-4)}
+abbr.lsrabbr{text-decoration:underline dotted;text-underline-offset:3px;cursor:help}
 .card.lsr .ctitle{margin-top:var(--sp-2)}
 .card.lsr .cmeta{margin-top:var(--sp-2)}
 
