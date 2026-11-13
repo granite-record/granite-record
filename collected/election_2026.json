@@ -4,22 +4,27 @@
    "Write the file again by running the reader, never by hand: --check says where the saved files and this disagree."
  ],
  "_notes": [
+   "2026-ge-house-carroll_1.xlsx is read, and replaces 2026-ge-house-carroll.xlsx: the Secretary of State's later upload of the same results, as after a recount",
+   "2026-ge-house-rockingham_1.xlsx is read, and replaces 2026-ge-house-rockingham.xlsx: the Secretary of State's later upload of the same results, as after a recount",
+   "2026-ge-house-strafford_1.xlsx is read, and replaces 2026-ge-house-strafford.xlsx: the Secretary of State's later upload of the same results, as after a recount",
    "2026-ge-house-grafton.xlsx, sheet 'rgrafrep', row 50: the file's Totals cell is =SUM(B47:B48), which leaves out Orange; read as the towns add up: Ella V. Barrett's column, 1,240, where the Totals say 1,152",
    "2026-ge-house-hillsborough.xlsx, sheet 'rhillrep', row 29: the file prints N/A in column 11, where a count of undervotes, overvotes or write-ins belongs; read as none printed",
    "2026-ge-house-hillsborough.xlsx, district 12: the file counts no scattered write-ins for every place, so whether a write-in it does not name won could not be checked",
    "2026-ge-house-merrimack.xlsx, sheet 'rmerrrep', row 8: Desiree McLaughlin, written in, has an empty cell for Franklin Ward 1; read as none, as the file's Totals account for it",
+   "2026-ge-house-rockingham_1.xlsx, sheet 'rrockrep', row 80: the recount is a row of RECOUNT cells, each naming the candidate above it, and the row of figures under it (row 81); those figures are the counts read, and the first count's stay beside them",
+   "2026-ge-house-rockingham_1.xlsx, sheet 'rrockrep', row 84: the recount is a row of RECOUNT cells, each naming the candidate above it, and the row of figures under it (row 85); those figures are the counts read, and the first count's stay beside them",
    "2026-ge-state-senate-3.xlsx, district 3: the file names \"Thompson & Meserve's\", read as Thompson & Mes's Purchase, the one place of S|3 it names no other way"
  ],
  "_source": [
   {"file": "records/sources/2026-ge-house-belknap.xlsx", "url": "https://www.sos.nh.gov/2026-general-election-results", "saved": "2026-11-05", "sha256": "a620f7fe0ef930448a8a1d6bda5b946dff686ad273530544c39932205369e616"},
-  {"file": "records/sources/2026-ge-house-carroll.xlsx", "url": "https://www.sos.nh.gov/2026-general-election-results", "saved": "2026-11-05", "sha256": "8bf46259e27df61cb9dab2f1651991a0af73ea9e7ea56b3bfc7288ebc5a92b95"},
+  {"file": "records/sources/2026-ge-house-carroll_1.xlsx", "url": "https://www.sos.nh.gov/2026-general-election-results", "saved": "2026-11-13", "sha256": "f3e78951e378efb65fe57f8cb7caa6b34e18ee7d314c93845064c5d0ab3d8a83"},
   {"file": "records/sources/2026-ge-house-cheshire.xlsx", "url": "https://www.sos.nh.gov/2026-general-election-results", "saved": "2026-11-05", "sha256": "9a58179bfafe719b408493b832dc5bcc3b5c6f569170e9b1888403dd773f6df5"},
   {"file": "records/sources/2026-ge-house-coos.xlsx", "url": "https://www.sos.nh.gov/2026-general-election-results", "saved": "2026-11-05", "sha256": "55faa0a120b12afbba903674a4eb13bb56d12fceb15132ba14a55a75379a6e95"},
   {"file": "records/sources/2026-ge-house-grafton.xlsx", "url": "https://www.sos.nh.gov/2026-general-election-results", "saved": "2026-11-05", "sha256": "80f85fe0a988ef2be54da508487b916082386fb9fafae64c0b207441d3d2f51d"},
   {"file": "records/sources/2026-ge-house-hillsborough.xlsx", "url": "https://www.sos.nh.gov/2026-general-election-results", "saved": "2026-11-05", "sha256": "083df9665fc52b105f9c80f28d48528aaaa0b822bf37e350f7035a91734eab86"},
   {"file": "records/sources/2026-ge-house-merrimack.xlsx", "url": "https://www.sos.nh.gov/2026-general-election-results", "saved": "2026-11-05", "sha256": "d283e8969ac56da83cd455cefb06dd46acb5a4cda78f83115aa7f0f85913c821"},
-  {"file": "records/sources/2026-ge-house-rockingham.xlsx", "url": "https://www.sos.nh.gov/2026-general-election-results", "saved": "2026-11-05", "sha256": "f0db4db12d4a504002e400d8c647f383afa42406110303a44dc01740517e0c47"},
-  {"file": "records/sources/2026-ge-house-strafford.xlsx", "url": "https://www.sos.nh.gov/2026-general-election-results", "saved": "2026-11-05", "sha256": "59dbd40a1c9b6095739aadaa95cda1963cf17ccae7db81f86ee345a2f64c4891"},
+  {"file": "records/sources/2026-ge-house-rockingham_1.xlsx", "url": "https://www.sos.nh.gov/2026-general-election-results", "saved": "2026-11-13", "sha256": "f81818b87816dab68712ca6dfec0c631fe35e6e50089afd61b07a019e8d6736f"},
+  {"file": "records/sources/2026-ge-house-strafford_1.xlsx", "url": "https://www.sos.nh.gov/2026-general-election-results", "saved": "2026-11-13", "sha256": "de1ae31f1697dc75838a95463111fa5a710a2070b9eaa3fd3b07c564e0055f64"},
   {"file": "records/sources/2026-ge-house-sullivan.xlsx", "url": "https://www.sos.nh.gov/2026-general-election-results", "saved": "2026-11-05", "sha256": "d8be61ad68d9cfa162dc43cfc3bfd274540c6fe9117d24ad289f3e348cf69741"},
   {"file": "records/sources/2026-ge-state-senate-1.xlsx", "url": "https://www.sos.nh.gov/2026-general-election-results", "saved": "2026-11-05", "sha256": "89f5330491e2c02734c4d82533f24c98e6d6ee99ba76a02f67f3e0bf6c67de79"},
   {"file": "records/sources/2026-ge-state-senate-2.xlsx", "url": "https://www.sos.nh.gov/2026-general-election-results", "saved": "2026-11-05", "sha256": "2b8682d17bf16003e7a2caa07ae9176b50fd5797a663064d3636bd3c2ea667d0"},
@@ -187,11 +192,11 @@
   "H|Carroll|7": {"seats": 1, "floterial": true, "towns": ["Ossipee", "Tuftonboro", "Wolfeboro"], "scatter": 17, "candidates": [
     {"name": "Karen Burnett-Kurie", "party": "d", "votes": 3618, "write_in": false, "elected": false},
     {"name": "Dale Fincher", "party": "r", "votes": 4025, "write_in": false, "elected": true}]},
-  "H|Carroll|8": {"seats": 2, "floterial": true, "towns": ["Brookfield", "Eaton", "Effingham", "Freedom", "Madison", "Moultonborough", "Tamworth", "Wakefield"], "scatter": 11, "candidates": [
-    {"name": "Jim Pittman", "party": "d", "votes": 4677, "write_in": false, "elected": false},
+  "H|Carroll|8": {"seats": 2, "floterial": true, "towns": ["Brookfield", "Eaton", "Effingham", "Freedom", "Madison", "Moultonborough", "Tamworth", "Wakefield"], "scatter": 16, "recounted": true, "candidates": [
+    {"name": "Jim Pittman", "party": "d", "votes": 4687, "write_in": false, "elected": false},
     {"name": "Tammy Garthwaite", "party": "r", "votes": 5068, "write_in": false, "elected": false},
-    {"name": "Colin Mitchell", "party": "r", "votes": 5379, "write_in": false, "elected": true},
-    {"name": "George Randell", "party": "i/d", "votes": 5070, "write_in": false, "elected": true}]},
+    {"name": "Colin Mitchell", "party": "r", "votes": 5384, "write_in": false, "elected": true},
+    {"name": "George Randell", "party": "i/d", "votes": 5086, "write_in": false, "elected": true}]},
   "H|Cheshire|1": {"seats": 1, "floterial": false, "towns": ["Keene Ward 1"], "scatter": 5, "candidates": [
     {"name": "Dylan Germana", "party": "d", "votes": 1120, "write_in": false, "elected": true},
     {"name": "Timothy J. Donovan", "party": "r", "votes": 317, "write_in": false, "elected": false}]},
@@ -847,19 +852,19 @@
     {"name": "Michael J. Moody", "party": "d", "votes": 3462, "write_in": false, "elected": true},
     {"name": "Marilyn Page", "party": "r", "votes": 2423, "write_in": false, "elected": false},
     {"name": "Kevin Szmyd", "party": "r", "votes": 2281, "write_in": false, "elected": false}]},
-  "H|Rockingham|25": {"seats": 9, "floterial": false, "towns": ["Salem"], "scatter": 43, "candidates": [
-    {"name": "Claudia DeFuria", "party": "d", "votes": 5766, "write_in": false, "elected": false},
-    {"name": "Kienen Dyer", "party": "d", "votes": 5605, "write_in": false, "elected": false},
-    {"name": "Donna Loranger", "party": "d", "votes": 5954, "write_in": false, "elected": true},
-    {"name": "Lorie Ball", "party": "r", "votes": 7235, "write_in": false, "elected": true},
-    {"name": "Edward W. Huminick", "party": "r", "votes": 5947, "write_in": false, "elected": false},
-    {"name": "John Janigian", "party": "r", "votes": 6644, "write_in": false, "elected": true},
-    {"name": "George I. Kassas", "party": "r", "votes": 6392, "write_in": false, "elected": true},
-    {"name": "Dennis Mannion", "party": "r", "votes": 6116, "write_in": false, "elected": true},
-    {"name": "Valerie McDonnell", "party": "r", "votes": 6443, "write_in": false, "elected": true},
-    {"name": "Joe Sweeney", "party": "r", "votes": 6929, "write_in": false, "elected": true},
-    {"name": "John Sytek", "party": "r", "votes": 6705, "write_in": false, "elected": true},
-    {"name": "Susan J. Vandecasteele", "party": "r", "votes": 6849, "write_in": false, "elected": true}]},
+  "H|Rockingham|25": {"seats": 9, "floterial": false, "towns": ["Salem"], "scatter": 32, "recounted": true, "candidates": [
+    {"name": "Claudia DeFuria", "party": "d", "votes": 5768, "write_in": false, "elected": false},
+    {"name": "Kienen Dyer", "party": "d", "votes": 5612, "write_in": false, "elected": false},
+    {"name": "Donna Loranger", "party": "d", "votes": 5957, "write_in": false, "elected": true},
+    {"name": "Lorie Ball", "party": "r", "votes": 7234, "write_in": false, "elected": true},
+    {"name": "Edward W. Huminick", "party": "r", "votes": 5954, "write_in": false, "elected": false},
+    {"name": "John Janigian", "party": "r", "votes": 6648, "write_in": false, "elected": true},
+    {"name": "George I. Kassas", "party": "r", "votes": 6395, "write_in": false, "elected": true},
+    {"name": "Dennis Mannion", "party": "r", "votes": 6118, "write_in": false, "elected": true},
+    {"name": "Valerie McDonnell", "party": "r", "votes": 6445, "write_in": false, "elected": true},
+    {"name": "Joe Sweeney", "party": "r", "votes": 6935, "write_in": false, "elected": true},
+    {"name": "John Sytek", "party": "r", "votes": 6715, "write_in": false, "elected": true},
+    {"name": "Susan J. Vandecasteele", "party": "r", "votes": 6858, "write_in": false, "elected": true}]},
   "H|Rockingham|26": {"seats": 1, "floterial": false, "towns": ["Portsmouth Ward 3"], "scatter": 25, "candidates": [
     {"name": "Buzz Scherr", "party": "d", "votes": 1874, "write_in": false, "elected": true}]},
   "H|Rockingham|27": {"seats": 1, "floterial": false, "towns": ["Portsmouth Ward 4"], "scatter": 14, "candidates": [
@@ -880,7 +885,7 @@
     {"name": "Jason A. Janvrin", "party": "r", "votes": 1764, "write_in": false, "elected": true},
     {"name": "Aboul B. Khan", "party": "r", "votes": 1873, "write_in": false, "elected": true}]},
   "H|Rockingham|31": {"seats": 2, "floterial": true, "towns": ["Auburn", "Candia", "Chester", "Deerfield"], "scatter": 5, "candidates": [
-    {"name": "Peter Boudreau", "party": "d", "votes": 5363, "write_in": false, "elected": false},
+    {"name": "Peter Boudreau", "party": "d", "votes": 4603, "write_in": false, "elected": false},
     {"name": "Yaz Safarzadeh", "party": "d", "votes": 4121, "write_in": false, "elected": false},
     {"name": "Jess Edwards", "party": "r", "votes": 5834, "write_in": false, "elected": true},
     {"name": "Terry Roy", "party": "r", "votes": 5546, "write_in": false, "elected": true}]},
@@ -909,11 +914,11 @@
   "H|Rockingham|40": {"seats": 1, "floterial": true, "towns": ["Hampton", "Seabrook"], "scatter": 2, "candidates": [
     {"name": "Justin G. Packard", "party": "d", "votes": 6171, "write_in": false, "elected": true},
     {"name": "Linda McGrath", "party": "r", "votes": 5981, "write_in": false, "elected": false}]},
-  "H|Strafford|1": {"seats": 2, "floterial": false, "towns": ["Farmington"], "scatter": 2, "candidates": [
-    {"name": "Brian Beaverstock", "party": "d", "votes": 1165, "write_in": false, "elected": false},
-    {"name": "Jimmy Bourque", "party": "d", "votes": 1113, "write_in": false, "elected": false},
-    {"name": "W. Packy Campbell", "party": "r", "votes": 1167, "write_in": false, "elected": true},
-    {"name": "Andy Dow", "party": "r", "votes": 1206, "write_in": false, "elected": true}]},
+  "H|Strafford|1": {"seats": 2, "floterial": false, "towns": ["Farmington"], "scatter": 4, "recounted": true, "candidates": [
+    {"name": "Brian Beaverstock", "party": "d", "votes": 1171, "write_in": false, "elected": false},
+    {"name": "Jimmy Bourque", "party": "d", "votes": 1120, "write_in": false, "elected": false},
+    {"name": "W. Packy Campbell", "party": "r", "votes": 1173, "write_in": false, "elected": true},
+    {"name": "Andy Dow", "party": "r", "votes": 1211, "write_in": false, "elected": true}]},
   "H|Strafford|2": {"seats": 3, "floterial": false, "towns": ["Milton", "Rochester Ward 5"], "scatter": 32, "candidates": [
     {"name": "Larry Brown", "party": "d", "votes": 2028, "write_in": false, "elected": true},
     {"name": "Glenn Bailey", "party": "r", "votes": 2006, "write_in": false, "elected": true},
@@ -949,7 +954,7 @@
     {"name": "Timothy Horrigan", "party": "d", "votes": 4196, "write_in": false, "elected": true},
     {"name": "Siena R. Schaier", "party": "d", "votes": 4347, "write_in": false, "elected": true},
     {"name": "Loren Selig", "party": "d", "votes": 4342, "write_in": false, "elected": true}]},
-  "H|Strafford|11": {"seats": 3, "floterial": false, "towns": ["Dover Ward 4", "Lee", "Madbury"], "scatter": 13, "candidates": [
+  "H|Strafford|11": {"seats": 3, "floterial": false, "towns": ["Dover Ward 4", "Lee", "Madbury"], "scatter": 14, "candidates": [
     {"name": "Erik Johnson", "party": "d", "votes": 3986, "write_in": false, "elected": true},
     {"name": "Thomas Southworth", "party": "d", "votes": 3863, "write_in": false, "elected": true},
     {"name": "Janet G. Wall", "party": "d", "votes": 4228, "write_in": false, "elected": true},

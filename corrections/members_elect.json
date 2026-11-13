@@ -446,9 +446,6 @@
       }
     },
     "not_final": {
-      "H|Carroll|8": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
-      "H|Strafford|1": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
-      "H|Rockingham|25": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
       "H|Rockingham|13": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 2},
       "H|Merrimack|5": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06"},
       "H|Merrimack|26": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06"},
