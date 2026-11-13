@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.891
+# GRANITE_VERSION: 2026-09-04.892
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -47785,15 +47785,22 @@ def _sponsor_prime_first():
     as `cosp`, by the name the filter groups on; app.js matches a sponsor on
     either and puts primeChosen bills first, under two headings. Since Alice's
     8 November 2026 it matches the prime sponsor alone unless "Include
-    co-sponsored bills" is ticked (withCosp)."""
+    co-sponsored bills" is ticked (withCosp). The prime sponsor is read
+    through spKey (the requests search, 12 November 2026): the name alone for
+    a sponsor with a member page or a party, and for one with neither -- the
+    surnames the bills before 1999 print -- the name and the seat, so two
+    people of one surname are two choices."""
     src = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
     assert 'row["cosp"] = _cosp' in src and "person_name(s_.get(\"name\")" in src, \
         "the index rows no longer carry their co-sponsors"
     app = Path("src/pages/app.js").read_text(encoding="utf-8")
-    assert 'if(k==="sponsor")return withCosp&&b.cosp?[b.sponsor,...b.cosp]:[b.sponsor];' in app, \
-        "the Sponsor filter matches the prime sponsor alone"
+    assert 'if(k==="sponsor")return withCosp&&b.cosp?[spKey(b),...b.cosp]:[spKey(b)];' in app, \
+        "the Sponsor filter does not match the prime sponsor alone, or co-sponsors as well when asked"
     assert "rows=rows.filter(primeChosen).concat(rows.filter(b=>!primeChosen(b)))" in app \
+        and "const primeChosen=b=>sel.sponsor.has(spKey(b));" in app \
         and '"Prime sponsored":"Co-sponsored"' in app, "a chosen sponsor's own bills are not listed first"
+    assert "if(!n||b.sponsor_slug||b.sponsor_party)return n;" in app, \
+        "a sponsor with a member page is no longer their name alone in the Sponsor filter"
     return "ok", "co-sponsors in the index; a chosen sponsor's prime bills first, then co-sponsored"
 
 
