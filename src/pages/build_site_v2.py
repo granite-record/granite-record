@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.272
+# GRANITE_VERSION: 2026-09-05.273
 """
 Generate the faceted site from real General Court data.
 
@@ -3940,7 +3940,13 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
         # said "newest first" over code that has always run oldest first --
         # and then by number as bills.html lists them. The number was compared
         # as text, so HB436 was listed before HB61.
-        mine = sponsored_in_order((sponsored or {}).get(mid, []))
+        raw = (sponsored or {}).get(mid, [])
+        # The terms before 1999 that the sponsor record places them in, by chamber: the
+        # "On Record" line covers them as the TERM picker does (ML.record_spans).
+        earlier = ML.earlier_terms(raw)
+        if earlier:
+            row["past_terms"] = earlier
+        mine = sponsored_in_order([{k: v for k, v in e.items() if k != "ch"} for e in raw])
         # Which numbers the votes below were cast under, and the years in each
         # chamber, for the page to say why a senator's list has House votes in
         # it. Only where there are two: everyone else's file is as it was.
@@ -3960,6 +3966,7 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
             # every other listing read. It is a figure on their own page, not
             # a column anyone is sorted by.
             "attendance": att,
+            **({"past_terms": earlier} if earlier else {}),
             # EACH TERM AT A GLANCE (member_figures.term_figures), as the
             # person ordered it on 9 October 2026 (item 7 and v7): the
             # session days attended, the roll calls recorded on, the bills
@@ -8712,7 +8719,12 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
             sponsored[_mid].append({
                 "bill": bid, "n": b.get("designation") or bid,
                 "title": b.get("title", ""), "year": year, "term": term,
-                "prime": bool(_s.get("prime"))})
+                "prime": bool(_s.get("prime")),
+                # The chamber a 1989-1998 bill printed for a sponsor the General Court's
+                # sponsor record placed on this person, for their "On Record" line
+                # (ML.earlier_terms). build_legislators takes it out again.
+                **({"ch": (_s.get("chamber") or "")[:1]}
+                   if _s.get("matched") == PAST_ROSTER_MATCH else {})})
     return sp_list
 
 
