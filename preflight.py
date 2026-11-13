@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.904
+# GRANITE_VERSION: 2026-09-04.905
 """
 Run every check that needs no network, and report all of them at once.
 
