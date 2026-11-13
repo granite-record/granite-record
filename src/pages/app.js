@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.312
+// GRANITE_VERSION: 2026-09-07.313
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2205,7 +2205,10 @@ const hintWords=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"")
 const SEAT_RE=/\(([^()]*)\)\s*$/;
 function spKey(b){
   const n=b.sponsor||"";
-  if(!n||b.sponsor_slug||b.sponsor_party)return n;
+  // A 1989-1998 prime sponsor the General Court's record for the bill names
+  // (sponsor_person, past_roster.py): their full name is theirs alone, and the
+  // seat is kept only for a row still left as printed.
+  if(!n||b.sponsor_slug||b.sponsor_party||b.sponsor_person)return n;
   const m=SEAT_RE.exec(b.sponsor_label||"");
   return m&&/\d/.test(m[1])?`${n} (${m[1]})`:n;
 }

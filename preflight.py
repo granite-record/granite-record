@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.894
+# GRANITE_VERSION: 2026-09-04.895
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -47799,8 +47799,12 @@ def _sponsor_prime_first():
     assert "rows=rows.filter(primeChosen).concat(rows.filter(b=>!primeChosen(b)))" in app \
         and "const primeChosen=b=>sel.sponsor.has(spKey(b));" in app \
         and '"Prime sponsored":"Co-sponsored"' in app, "a chosen sponsor's own bills are not listed first"
-    assert "if(!n||b.sponsor_slug||b.sponsor_party)return n;" in app, \
+    assert "if(!n||b.sponsor_slug||b.sponsor_party||b.sponsor_person)return n;" in app, \
         "a sponsor with a member page is no longer their name alone in the Sponsor filter"
+    assert 'row["sponsor_person"] = 1' in src and "past_roster_shared_names" in src, \
+        "a 1989-1998 sponsor the General Court's record names is no longer keyed on the person"
+    assert 'SEAT_RE.exec(b.sponsor_label||"")' in app, \
+        "a sponsor left as printed no longer keeps the seat in the Sponsor filter"
     return "ok", "co-sponsors in the index; a chosen sponsor's prime bills first, then co-sponsored"
 
 
@@ -133302,6 +133306,10 @@ def _requests_search_by_name():
             "topic": "", "votedays": [], "nrc": 0, "last_action": "", "hayT": "hb1 hb 1 a bill"}
            for s, lab in (("Allen", "Rep. Allen (Hills 1)"), ("Allen", "Rep. Allen (Rock 3)"),
                           ("F. Riley", "Rep. F. Riley (Hills 44)"))]
+    # AND TWO OF ONE SURNAME: one the General Court's record for the bill names (sponsor_person: the
+    # full name, theirs alone) and one still as printed (the surname and the seat).
+    old += [dict(old[0], sponsor="Dana Moore", sponsor_label="Rep. Dana Moore (Graf 5)", sponsor_person=1),
+            dict(old[0], sponsor="Moore", sponsor_label="Rep. Moore (Hills 2)")]
     for i, r in enumerate(old):
         r["id"], r["n"] = f"HB{i + 1}", f"HB {i + 1}"
     meta = {"terms": ["1995-1996"], "committee_codes": {}, "topics": [],
@@ -133339,6 +133347,10 @@ def _requests_search_by_name():
   scope.setSponsorBox("allen"); scope.renderFacets();
   out.allens = [...document.querySelector("#facets").innerHTML.matchAll(/data-f="sponsor"\\s+value="([^"]*)"[^>]*>\\s*<span>([^<]*)</g)].map(m => [m[1], m[2]]);
   scope.setSponsorBox("");
+  out.hintDana = scope.sponsorHint("dana moore", scope.IDX()).map(p => [p.name, p.label]);
+  scope.setSponsorBox("moore"); scope.renderFacets();
+  out.moores = [...document.querySelector("#facets").innerHTML.matchAll(/data-f="sponsor"\\s+value="([^"]*)"[^>]*>\\s*<span>([^<]*)</g)].map(m => [m[1], m[2]]);
+  scope.setSponsorBox("");
   scope.setQuery(""); scope.sel.sponsor.add("Allen (Rock 3)"); out.rock3 = scope.IDX().filter(b => scope.matches(b)).map(b => b.id);
   return out;
 })()""" % (json.dumps(meta), json.dumps(rows), json.dumps(meta), json.dumps(old)),
@@ -133373,6 +133385,10 @@ def _requests_search_by_name():
     assert [v for v, _ in got["allens"]] == ["Allen (Hills 1)", "Allen (Rock 3)"], (
         f"the Sponsor list joins two Allens: {got['allens']}")
     assert got["rock3"] == ["HB2"], f"the second Allen's filter lists {got['rock3']}"
+    assert got["hintDana"] == [["Dana Moore", "Rep. Dana Moore"]], (
+        f"a sponsor the General Court's record names is not their full name alone: {got['hintDana']}")
+    assert sorted(got["moores"]) == [["Dana Moore", "Dana Moore (Graf 5)"], ["Moore (Hills 2)", "Moore (Hills 2)"]], (
+        f"a named sponsor and one left as printed are not two choices: {got['moores']}")
     return "ok", ("a request is found by name, prime or co-sponsor, a title agreeing, a whole word for a "
                   "single one; party counts and seats are in the Sponsor filter; its topics say from the title; "
                   "an older term tells two Allens apart and 'frank riley' fits 'F. Riley'")

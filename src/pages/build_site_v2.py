@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.271
+# GRANITE_VERSION: 2026-09-05.272
 """
 Generate the faceted site from real General Court data.
 
@@ -65,7 +65,7 @@ import parse_constitution as PCON
 import bill_order as BO
 import past_sponsors as PSP
 import text_sponsors as TS
-from past_roster import MATCHED as PAST_ROSTER_MATCH
+from past_roster import MATCHED as PAST_ROSTER_MATCH, shared_names as past_roster_shared_names
 import topic_model as TM
 import official_topics as OT
 import law_effect as LE
@@ -11399,6 +11399,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     # `testimony` handed in is empty, and every count is testimony_db.json's.
     current = max(bills) if bills else ""
     session_over = session_over_in(session_over, current)
+    _shared_names = {}      # {term: full names two employee numbers of that term share}
     n_stale = 0
     n_db = 0
     n_chapter = Counter()
@@ -11631,6 +11632,18 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             acted=list(dict.fromkeys(s["body"] for s in jsteps
                                      if s["body"] in ("H", "S"))),
             live=own and not session_over)
+        # A PRIME SPONSOR PLACED ON A PERSON (past_roster.py), who has no page and
+        # no party: the Sponsor filter keys them on their full name, not on the
+        # surname and seat it must use for a row left as printed (app.js
+        # spKey). Only while no other employee number of the term carries the
+        # same full name; two do, and the seat tells them apart again.
+        if (prime and prime.get("employee") and prime.get("matched") == PAST_ROSTER_MATCH
+                and not prime.get("slug") and not prime.get("party")):
+            if term not in _shared_names:
+                _shared_names[term] = past_roster_shared_names(
+                    P.per_term(sponsors, term, current), person_name)
+            if row["sponsor"] not in _shared_names[term]:
+                row["sponsor_person"] = 1
         # THE CO-SPONSORS, by the name the Sponsor filter groups on (the
         # person, 12 October 2026: choosing a sponsor shows "the prime
         # sponsored bills by the selected rep first and then the bills they
