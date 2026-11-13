@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.12
+# GRANITE_VERSION: 2026-09-18.13
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -161,6 +161,169 @@ def roster(site):
     return out
 
 
+# NAMES THE ROSTER'S WHOLE-NAME MATCH MISSES (13 November 2026). The source
+# writes "Lee Nyquist" where the results print "Lee C. Nyquist", "Jim" for
+# "James", and a winner of a race still being recounted is on no roster and has
+# no page of their own yet. The owner's rule: "as accurate as possible and not
+# guess if we aren't confident." So a second step, run only where the roster
+# found nobody, matches a request to a WINNER of the latest general election
+# in the request's own chamber, and only where nothing else could be meant.
+#
+# NICKNAMES: each set is names that are one first name. Only pairs a request
+# could plausibly use are here, and a pair is not added until a request needs
+# it. A name that serves two (Pat: Patrick, Patricia; Chris; Sam) is left out,
+# because a table entry is a certainty and those are not.
+NICKNAMES = [
+    {"ben", "benjamin"}, {"jim", "james", "jimmy"}, {"bill", "william", "will"},
+    {"bob", "robert", "rob"}, {"dick", "rick", "richard", "rich"}, {"jack", "john"},
+    {"jeff", "jeffrey"}, {"joe", "joseph"}, {"mike", "michael"},
+    {"tom", "thomas"}, {"tim", "timothy"}, {"dan", "daniel"},
+    {"dave", "david"}, {"don", "donald"}, {"ed", "edward"}, {"ken", "kenneth"},
+    {"matt", "matthew"}, {"nick", "nicholas"}, {"steve", "steven", "stephen"},
+    {"tony", "anthony"}, {"charlie", "charles"}, {"andy", "andrew"},
+    {"greg", "gregory"}, {"larry", "lawrence"}, {"jerry", "gerald"},
+]
+_SUFFIX = {"jr", "sr", "ii", "iii", "iv"}
+
+
+def _parts(name):
+    """(first, middles, last), each folded, for a name written first-last
+    ("Lee C. Nyquist"); None where it has fewer than two words. A suffix
+    (Jr., III) is not a surname."""
+    toks = [t for t in (_fold(w) for w in re.split(r"[\s,]+", str(name or ""))) if t]
+    while len(toks) > 2 and toks[-1] in _SUFFIX:
+        toks.pop()
+    return (toks[0], toks[1:-1], toks[-1]) if len(toks) >= 2 else None
+
+
+def first_last(name):
+    """'Nelson, Jodi' -> 'Jodi Nelson'; a name already first-last as it is."""
+    last, sep, first = str(name or "").partition(",")
+    return f"{first.strip()} {last.strip()}".strip() if sep else str(name or "").strip()
+
+
+def same_first(a, b):
+    """The same first name: equal, or a pair in NICKNAMES. An initial is only
+    ever equal to itself."""
+    return a == b or any(a in g and b in g for g in NICKNAMES)
+
+
+def compatible(req, win):
+    """(whether a request's sponsor can be this winner, whether the whole name
+    is the same). Same surname; a first name equal or a NICKNAMES pair; a
+    middle name only where one side has none and the other's is an initial, or
+    where they are equal. Anything else is not compatible, never 'close'."""
+    a, b = _parts(req), _parts(win)
+    if not (a and b):
+        return False, False
+    if _fold(req) == _fold(win):
+        return True, True
+    if a[2] != b[2] or not same_first(a[0], b[0]):
+        return False, False
+    ma, mb = a[1], b[1]
+    if ma and mb:
+        ok = ma == mb
+    else:
+        ok = all(len(m) == 1 for m in ma + mb)
+    return ok, False
+
+
+def election_winners(results, drawn, pages, people):
+    """[{name, party, chamber, race, slug, label}] for every winner the results
+    name as elected, in a race final or not (a recount does not change the
+    party on the ballot), and the page each links to.
+
+    `results` is collected/election_<year>.json's document, `drawn`
+    members_elect.json's races, `pages` elect_pages.json's pages and `people`
+    the sitting and former members. A winner's PAGE, first found of: the member
+    the step or the owner matched (members_elect's "s"); the provisional page
+    of a new member-elect; and, for a House winner drawn in neither (a race not
+    final), the one sitting or former member of the same county whose name is
+    compatible. A winner with none links nowhere and still carries the party
+    they ran under. A tie (elected not True) names nobody."""
+    out = []
+    for key, race in sorted((results.get("races") or {}).items()):
+        ch = key.split("|")[0]
+        county = key.split("|")[1] if ch == "H" else ""
+        mine = {e.get("n"): e for e in (drawn.get(key) or {}).get("elected") or []}
+        pg = {p.get("name"): p for p in pages if p.get("race") == key}
+        for c in race.get("candidates") or []:
+            if c.get("elected") is not True or not c.get("name"):
+                continue
+            name = c["name"]
+            e = mine.get(name) or {}
+            party = (e.get("p") or "").upper()
+            if not party and str(c.get("party") or "").upper() in ("R", "D", "I", "L"):
+                party = str(c["party"]).upper()
+            slug = e.get("s") or (pg.get(name) or {}).get("slug") or ""
+            if not slug and ch == "H" and not e:
+                hits = [m for m in people
+                        # former.json spells a county short ("Straf"), the roster in full.
+                        if str(m.get("county") or "x").lower() != "x"
+                        and county.lower().startswith(str(m["county"]).lower())
+                        and m.get("slug") and compatible(first_last(m.get("name")), name)[0]]
+                slug = hits[0]["slug"] if len(hits) == 1 else ""
+            out.append({"name": name, "party": party, "chamber": ch, "race": key,
+                        "slug": slug, "label": f"{name} ({party})" if party else name})
+    return out
+
+
+def winner_finder(winners):
+    """find(name, body) -> (label, slug, chamber) or None: the winner of the
+    request's own chamber the sponsor certainly is.
+
+    CERTAIN means: exactly one winner of that chamber is compatible and either
+    the whole name is the same, or no other winner of the chamber shares their
+    surname and first initial (so "Jim Smith" is not settled by "James Smith"
+    while a "John Smith" also won). Two winners of the same whole name are
+    nobody. A constitutional amendment request (no chamber) is never resolved
+    here."""
+    def find(name, body):
+        ch = chamber_of(body)
+        if not ch or not _parts(name):
+            return None
+        pool = [w for w in winners if w["chamber"] == ch]
+        ok = []
+        for w in pool:
+            good, exact = compatible(name, w["name"])
+            if good:
+                ok.append((w, exact))
+        exact = [w for w, x in ok if x]
+        if len(exact) == 1:
+            w = exact[0]
+        elif len(ok) == 1 and not exact:
+            w = ok[0][0]
+            f, _m, last = _parts(name)
+            if any(x is not w and _parts(x["name"])[2] == last
+                   and _parts(x["name"])[0][:1] == f[:1] for x in pool if _parts(x["name"])):
+                return None
+        else:
+            return None
+        return (w["label"], w["slug"], w["chamber"])
+    return find
+
+
+def load_winners(site, collected):
+    """(winners, what to say): election_winners for the newest results in
+    `collected`, or ([], why) where there are none to read."""
+    import build_members_elect as BME
+    path = BME.newest_results(collected)
+    if path is None:
+        return [], f"no election results in {collected}/: no sponsor is matched to a winner"
+    try:
+        results = BME.read_results(path)
+    except BME.Refused as e:
+        return [], f"{path} refused ({e}): no sponsor is matched to a winner"
+
+    def rd(n, default):
+        f = Path(site) / n
+        return json.loads(f.read_text(encoding="utf-8")) if f.exists() else default
+    people = (rd("legislators.json", []) or []) + (rd("former.json", []) or [])
+    ws = election_winners(results, (rd("members_elect.json", {}) or {}).get("races") or {},
+                          (rd("elect_pages.json", {}) or {}).get("pages") or [], people)
+    return ws, f"{len(ws)} winners of {path.name} to match a sponsor to, where the roster has nobody"
+
+
 def party_of(label):
     """The party letter a sponsor's label ends with -- "Rep. Ellen Read (D)", a
     member-elect's "Jane Doe (R)" -- or "" where the label has none (a sponsor
@@ -233,10 +396,12 @@ def route(body):
     return [first, other, "Governor", "Law"]
 
 
-def rows_from(lsrs, who, became=None, year=None):
+def rows_from(lsrs, who, became=None, year=None, winners=None):
     """The rows of idx/<year>-requests.json and the sponsor names that matched
-    nobody. `year` is the session they are listed under (newest_session)."""
+    nobody. `year` is the session they are listed under (newest_session);
+    `winners` (election_winners) settle a sponsor the roster did not."""
     year = year or newest_session(lsrs)[0]
+    find = winner_finder(winners) if winners else (lambda name, body: None)
     term, _label = requests_term(year)
     rows, unmatched = [], []
     for r in lsrs:
@@ -252,6 +417,8 @@ def rows_from(lsrs, who, became=None, year=None):
         if hit and len(hit) > 2 and chamber_of(body) != hit[2]:
             hit = None
         if name and not hit:
+            hit = find(name, body)
+        if name and not hit:
             unmatched.append(name)
         # The co-sponsors, matched as the prime sponsor is (a name that
         # matches nobody is kept as the source gives it), for the request's
@@ -262,6 +429,8 @@ def rows_from(lsrs, who, became=None, year=None):
             h = who.get(_fold(c))
             if h and len(h) > 2 and chamber_of(body) != h[2]:
                 h = None
+            if c and not h:
+                h = find(c, body)
             if c:
                 co.append({"label": h[0] if h else c, "slug": h[1] if h else "", "name": c})
         rows.append({
@@ -421,6 +590,8 @@ def main():
     ap.add_argument("--src", default="lsrs.json")
     ap.add_argument("--bills", default="data/bills.json",
                     help="the bills, to tell a request that became one from a withdrawal")
+    ap.add_argument("--collected", default="collected",
+                    help="the election results, to match a sponsor to a winner")
     a = ap.parse_args()
     site, src = Path(a.site), Path(a.src)
 
@@ -439,7 +610,9 @@ def main():
     bp = Path(a.bills)
     became = became_bills(json.loads(bp.read_text(encoding="utf-8")) if bp.exists() else {},
                           lsrs)
-    rows, unmatched = rows_from(lsrs, roster(site), became, year)
+    winners, said = load_winners(site, a.collected)
+    print(f"  {said}")
+    rows, unmatched = rows_from(lsrs, roster(site), became, year, winners)
     assert rows, "no request survived shaping, though the source had some"
     topic_n = with_topics(rows, json.loads(bp.read_text(encoding="utf-8")) if bp.exists() else {})
     gone, undecided = not_returning(site)

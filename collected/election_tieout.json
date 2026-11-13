@@ -270,7 +270,7 @@
     "disagree": 0
    },
    "a column's towns sum to the file's Totals": {
-    "held": 529,
+    "held": 534,
     "disagree": 1
    },
    "a race's places are its towns": {
@@ -290,11 +290,11 @@
     "disagree": 0
    },
    "every row carries a count and its source": {
-    "held": 3070,
+    "held": 3128,
     "disagree": 0
    },
    "row ids are unique": {
-    "held": 3070,
+    "held": 3128,
     "disagree": 0
    },
    "the scattered write-ins sum to the race's": {
@@ -310,11 +310,11 @@
    }
   ],
   "kinds": {
-   "candidate": 2283,
+   "candidate": 2331,
    "write_in_named": 5,
-   "write_ins_scattered": 782
+   "write_ins_scattered": 792
   },
-  "town_rows": 3070,
-  "printed_totals": 529
+  "town_rows": 3128,
+  "printed_totals": 534
  }
 }

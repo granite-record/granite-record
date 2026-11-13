@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.8
+# GRANITE_VERSION: 2026-10-17.9
 """
 The Secretary of State's count of one general election's State Representative
 and State Senate races, read into collected/election_<year>.json.
@@ -969,6 +969,99 @@ def footnote(block, text, where, width):
                        "its figures are those the file prints")
 
 
+# A cell of the third recount layout: the word, then the candidate as the
+# header above prints it, with any spacing between.
+RECOUNT_NAMED = re.compile(r"^recount\s+(?P<who>\S.*)$", re.I)
+
+
+def recount_under_town(rows, i, cur, at):
+    """THE THIRD RECOUNT LAYOUT (13 November 2026; 2026 Rockingham 25, Salem).
+    Under a block's one town row, a row of cells each "RECOUNT <name, party>"
+    (the spacing varies), and under that one row of the recount's figures.
+    Each cell names the candidate of the block above it, in that column; a
+    bare "RECOUNT" is the recount of the count in that column that is not a
+    candidate's (write-ins, undervotes, overvotes) as the district's first
+    header named it. Only that is read. A name that is not the candidate
+    above, a column that does not line up, a figure missing or in a column
+    nothing labels, a figures row naming another town, a block of more than
+    one town, or a candidate of the block left without a recount, is refused
+    saying where, so a row of RECOUNT cells is never read as new candidates.
+    Sets the block's recount row, as a "Recount" row of the 2016-2022 layout
+    does (Block.read, keep_rows)."""
+    row, here = rows[i], at(i)
+    blk = cur[2][-1]
+    town_line = ROW_OF.search(blk.rows[-1][2]) if blk.rows else None
+    if (blk.recount_figures or len(blk.rows) != 1 or blk.totals is not None
+            or blk.recount_row is not None or not town_line or int(town_line.group(1)) != i):
+        raise Refused(f"{here}: a row of RECOUNT cells that does not sit directly under the one "
+                      "town row of the block above it (more than one town, a Totals row, a "
+                      "second recount, or not adjacent): which counts it revises is not certain")
+    town = blk.rows[0][0]
+    if i + 1 >= len(rows):
+        raise Refused(f"{here}: a row of RECOUNT cells with no row of figures under it")
+    figs = rows[i + 1]
+    where_figs = at(i + 1)
+    if blank(figs):
+        raise Refused(f"{where_figs}: a row of RECOUNT cells with no row of figures under it")
+    if figs[0] is not None and figs[0] != town:
+        raise Refused(f"{where_figs}: the recount's figures name {figs[0]!r}, and the district's "
+                      f"one town is {town!r}")
+    by_col = {e["col"]: e for e in blk.ents}
+    labelled = set()
+    for c in range(1, len(row)):
+        v = row[c]
+        if v is None:
+            continue
+        if not isinstance(v, str):
+            raise Refused(f"{here}: {v!r} in column {c + 1} of a row of RECOUNT cells")
+        e = by_col.get(c)
+        if e is None:
+            raise Refused(f"{here}: {v!r} in column {c + 1}, where the block above names no "
+                          "candidate or count")
+        if e["recount"] is not None:
+            raise Refused(f"{here}: column {c + 1} already has a recount")
+        if v.strip().lower() == "recount":
+            if "meta" not in e:
+                raise Refused(f"{here}: a bare RECOUNT in column {c + 1}, which is a candidate's "
+                              "column in the block above, not undervotes, overvotes or write-ins")
+        else:
+            m = RECOUNT_NAMED.match(v)
+            if not m:
+                raise Refused(f"{here}: {v!r} in column {c + 1} among RECOUNT cells")
+            if "name" not in e:
+                raise Refused(f"{here}: {v!r} in column {c + 1}, which is not a candidate's "
+                              "column in the block above")
+            named = entities([None, m.group("who").strip()], 1, here)[0]
+            if (named.get("name"), named.get("party"), bool(named.get("write_in"))) != (
+                    e["name"], e["party"], bool(e["write_in"])):
+                raise Refused(f"{here}: {v!r} in column {c + 1} is not the candidate above it, "
+                              f"{e['name']}, {e['party'] or 'no party'}")
+        labelled.add(c)
+    for e in blk.ents:
+        if "name" in e and e["col"] not in labelled:
+            raise Refused(f"{here}: {e['name']}, whose column is {e['col'] + 1}, has no RECOUNT "
+                          "cell in the row")
+    for c in range(1, len(figs)):
+        v = figs[c]
+        if v is None:
+            if c in labelled and "name" in by_col[c]:
+                raise Refused(f"{where_figs}: no figure in column {c + 1}, under RECOUNT of "
+                              f"{by_col[c]['name']}")
+            if c in labelled:
+                raise Refused(f"{where_figs}: no figure in column {c + 1}, under a bare RECOUNT")
+            continue
+        if c not in labelled:
+            raise Refused(f"{where_figs}: {v!r} in column {c + 1}, under no RECOUNT cell")
+        if not isinstance(v, int) or isinstance(v, bool) or v < 0:
+            raise Refused(f"{where_figs}: {v!r} in column {c + 1}, where a count belongs")
+    for c in labelled:
+        by_col[c]["recount"] = c
+    blk.recount_row = (figs, where_figs)
+    blk.notes.append(f"{here}: the recount is a row of RECOUNT cells, each naming the candidate "
+                     f"above it, and the row of figures under it (row {i + 2}); those figures are the "
+                     "counts read, and the first count's stay beside them")
+
+
 def read_house(path, county, election, legacy=False):
     """{district number: (seats, floterial, district record)} from one
     county's House file. `legacy` is the 2016-2022 layout (LEGACY_META): no
@@ -1007,8 +1100,10 @@ def read_house(path, county, election, legacy=False):
         day = as_day((rows[2] if len(rows) > 2 else [None])[0])
         if day != election:
             raise Refused(f"{at(2)}: the file's day is {day}, not the election of {election}")
-    found, cur = {}, None
+    found, cur, skip = {}, None, 0
     for i in range(2 if legacy else 3, len(rows)):
+        if i < skip:
+            continue
         row = rows[i]
         while row and row[-1] is None:
             row = row[:-1]
@@ -1083,6 +1178,12 @@ def read_house(path, county, election, legacy=False):
             continue
         if cur is None:
             raise Refused(f"{at(i)}: {row!r} before any district's header")
+        if head is None and any(isinstance(v, str) and RECOUNT_NAMED.match(v) for v in row[1:]):
+            # A ROW OF "RECOUNT <name, party>" CELLS, THEN ITS FIGURES (13
+            # November 2026): see recount_under_town.
+            recount_under_town(rows, i, cur, at)
+            skip = i + 2
+            continue
         # In the 2016-2022 layout the second header may carry a town's name in
         # its first cell (2022 Rockingham 16, Londonderry): a row of names, not
         # of counts, whatever its first cell says.
