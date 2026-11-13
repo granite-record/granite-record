@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.29
+# GRANITE_VERSION: 2026-09-04.33
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -43,7 +43,7 @@ import build_date
 import shell as S
 import structured as LD
 from build_members_elect import for_pages as members_elect
-from components import elect_line
+from components import ELECT_KEY, elect_line
 # A town page's slug and address, from the builder that writes them.
 from build_town_pages import slug as town_slug, town_path
 
@@ -72,7 +72,11 @@ def person_slug(m):
 
 def describe(m, rec=None):
     """The sentence a search engine shows under the link. rec is the member's
-    own JSON, whose service names each chamber of a page that joins two."""
+    own JSON, whose service names each chamber of a page that joins two. A
+    former member elected again has theirs said as a member-elect's
+    (main sets elect_about while the members-elect file lasts)."""
+    if m.get("elect_about"):
+        return m["elect_about"]
     # THE SEAT ONCE. display_full already carries it -- "Rep. Aboul Khan (R -
     # Rock 30)" -- and the seat was appended again, so all 406 of these read
     # "(R - Rock 30) Rock 30." in a search result. The places come straight
@@ -227,6 +231,77 @@ def elected_pages(elect):
     return out
 
 
+def elected_info(elect):
+    """{(id, slug): {"key", "k", "p"}} for the same members as elected_pages,
+    with the file's own word for who they are (`k`: "sitting" or "former")
+    and the party letter the results print."""
+    out = {}
+    for key, race in ((elect or {}).get("races") or {}).items():
+        for e in race.get("elected") or []:
+            if e.get("k") in ("sitting", "former") and e.get("id") and e.get("s"):
+                out[(str(e["id"]), str(e["s"]))] = {"key": key, "k": e["k"], "p": e.get("p") or ""}
+    return out
+
+
+def elect_where(key):
+    """'Hillsborough 16' for the House, 'Senate District 8' for the Senate,
+    from a race key ('H|Hillsborough|16', 'S|8'): elect_district's words for
+    a race, as the provisional pages say them."""
+    m = ELECT_KEY.fullmatch(str(key or ""))
+    if not m:
+        return ""
+    return f"Senate District {m.group(3)}" if m.group(3) else f"{m.group(1)} {m.group(2)}"
+
+
+def elect_mode(m, info):
+    """How a member the election sent back is drawn on their own page, from the
+    file's word and the record the page is for:
+
+      "returning"  a former member elected again (the file says `former`, and
+                   the record being drawn is former.json's): the page is the
+                   member-elect's, in the form of a new member-elect's, with
+                   their earlier service kept below it;
+      "chamber"    a sitting member elected to the other chamber (Rep. for
+                   Hills 30, elected Senator): still titled by the seat they
+                   hold now, with the election shown beside it;
+      ""           anyone else, the re-elected: the page as it was, with the
+                   one line.
+
+    All of it exists only while the members-elect file does, which ends on
+    the day they take office (build_members_elect.for_pages)."""
+    if not info:
+        return ""
+    if info["k"] == "former" and m.get("former"):
+        return "returning"
+    if info["k"] == "sitting" and not m.get("former") \
+            and str(m.get("chamber") or "")[:1].upper() != info["key"].split("|")[0]:
+        return "chamber"
+    return ""
+
+
+def elect_member_name(m):
+    """'Benjamin Baroody' from the record's own label ('Rep. Benjamin Baroody'),
+    with no honorific: the name as the provisional pages head a member-elect."""
+    plain = str(m.get("display_plain") or m.get("display_full") or "").split(" (")[0]
+    return re.sub(r"^(Rep|Sen)\. ", "", plain).strip()
+
+
+def elect_back(m, info):
+    """What a member-elect's own page is told besides the line, or None where
+    it is drawn as before: {"mode", "name", "party", "where", "head"}. `where`
+    is the sentence a provisional page says ("Member-elect of the New
+    Hampshire House of Representatives, Hillsborough 16."), `head` the page's
+    title ("Benjamin Baroody (D), member-elect")."""
+    mode = elect_mode(m, info)
+    if not mode:
+        return None
+    name = elect_member_name(m)
+    return {"mode": mode, "name": name, "party": info["p"],
+            "where": f"Member-elect of the {CHAMBER_WORDS[info['key'].split('|')[0]]}, "
+                     f"{elect_where(info['key'])}.",
+            "head": f"{name} ({info['p']}), member-elect" if info["p"] else f"{name}, member-elect"}
+
+
 def town_pages(site):
     """{slug: address} of every town page build_town_pages writes: one for
     each town and ward site/districts.json holds."""
@@ -283,6 +358,13 @@ def elect_body(p, doc, reqs, req_meta, places, today):
         out.append('<ul class="sx-facts"><li><b>Represents:</b> ' + ", ".join(
             f'<a href="{E(places[t])}">{E(t)}</a>' if t in places else E(t) for t in towns)
             + "</li></ul>")
+    # Earlier service the person confirmed by hand (hand "prior"): the seat as
+    # it was labelled then and its terms, with no link, since no page of a
+    # member is theirs.
+    pr = p.get("prior")
+    if pr:
+        out.append('<ul class="sx-facts"><li><b>Earlier service:</b> ' + E(pr.get("seat") or "")
+                   + ", " + ", ".join(E(t) for t in pr.get("terms") or []) + "</li></ul>")
     out.append("<p>Their seat, committees and record are added here as the General Court "
                "publishes them.</p>")
     if reqs:
@@ -358,7 +440,7 @@ def last_vote_day(rec):
     return best or None
 
 
-def static_record(m, rec, elected="", places=None):
+def static_record(m, rec, elected="", places=None, back=None):
     """THE MEMBER'S RECORD IN THE PAGE ITSELF, for a reader with no
     JavaScript (the SEO review of 12 October 2026; shell.page's static).
     It replaced a <noscript> line saying the page needs JavaScript. m is the
@@ -366,12 +448,33 @@ def static_record(m, rec, elected="", places=None):
     the page app.js draws reads too. `elected` is the member-elect's line
     (components.elect_line) where the member is one, under the heading,
     which is left as it is until they take office. `places` is towns_linked's
-    {town: address}, each town in it a link to its page."""
+    {town: address}, each town in it a link to its page. `back` is
+    elect_back's, for a former member elected again or a member elected to the
+    other chamber: the first is headed as a new member-elect's page is, its
+    earlier seat kept below; the second keeps its heading and says the
+    election beside it."""
     rec = rec or {}
     yrs = _served_years(m) if m.get("former") else ""
     titled = heading(m).startswith("Former ")
-    out = ['<div class="static-rec" id="static-rec">', f"<h1>{E(head_name(m))}</h1>"]
-    if m.get("former"):
+    back = back or {}
+    returning = back.get("mode") == "returning"
+    if returning:
+        # Word for word the new member-elect's page (elect_body): the name and
+        # party, "Member-elect of the ..., district.", the election's line.
+        out = ['<div class="static-rec" id="static-rec">',
+               f"<h1>{E(back['name'])}" + (f" ({E(back['party'])})" if back.get("party") else "")
+               + "</h1>", f"<p>{E(back['where'])}</p>"]
+        if elected:
+            out.append(elected)
+        out.append(f"<p>Earlier seat: {E(m.get('display_full') or m.get('display') or '')}</p>")
+        elected = ""
+    else:
+        out = ['<div class="static-rec" id="static-rec">', f"<h1>{E(head_name(m))}</h1>"]
+        if back.get("mode") == "chamber":
+            out.append(f"<p>{E(back['where'])}</p>")
+    # Not on a returning member-elect's page: "not a current directory entry"
+    # contradicts its heading, and comes back with the former-member form.
+    if m.get("former") and not returning:
         out.append(f"<p>{E('On record ' + yrs + '. ') if yrs else ''}This page is their "
                    "record in the New Hampshire General Court; it is not a current "
                    "directory entry.</p>" if titled else
@@ -455,6 +558,7 @@ def main():
     # The members-elect, while there are any, by the page each is linked to.
     elect = members_elect(site)
     elected = elected_pages(elect)
+    info = elected_info(elect)
     today = build_date.today().isoformat()
     n_elected = 0
     pages = town_pages(site)
@@ -495,9 +599,23 @@ def main():
         # member within the page is not shown this member's line there.
         race = elected.get((mid, slug))
         n_elected += race is not None
-        line = elect_line(race, elect["election"], elect["takes_office"], today) if race else ""
+        back = elect_back(m, info.get((mid, slug)))
+        returning = bool(back) and back["mode"] == "returning"
+        # A returning member's page is a member-elect's, in the form of a new
+        # one's (elect_body): its line has no "for <district>", the sentence
+        # above it says the seat. Everyone else's keeps the line as it was.
+        line = (elect_line(None if returning else race, elect["election"],
+                           elect["takes_office"], today) if race else "")
         also = ({"GR_ELECT": {"id": mid, "key": race, "election": elect["election"],
-                              "takes_office": elect["takes_office"]}} if race else {})
+                              "takes_office": elect["takes_office"],
+                              **({k: back[k] for k in ("mode", "name", "party", "where")}
+                                 if back else {})}} if race else {})
+        if returning:
+            who = back["head"]
+            ch = info[(mid, slug)]["key"].split("|")[0]
+            # describe() says it of this page, as a provisional page's is said.
+            m = dict(m, elect_about=f"{back['name']}, elected to the {CHAMBER_WORDS[ch]} for "
+                     f"{elect_where(race)} on {S.date_words(elect['election'], 'full')}.")
         # Their towns' pages, for the line app.js draws under the name and
         # the static record alike; a former member's page names no towns.
         places = {} if m.get("former") else towns_linked(m.get("towns") or [], pages)
@@ -523,7 +641,7 @@ def main():
             # sitting member is.
             globals={"GR_MEMBER": str(m.get("id", "")), "GR_STANDALONE": True,
                      **({"GR_FORMER": True} if m.get("former") else {}), **also},
-            static=static_record(m, rec, line, places), skip_label="Skip to this member",
+            static=static_record(m, rec, line, places, back), skip_label="Skip to this member",
             # Without this the template's marker stays on Bills, and all 406
             # member pages told a screen reader they were Bills.
             nav_current="officials.html",

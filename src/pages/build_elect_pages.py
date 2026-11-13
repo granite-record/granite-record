@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.2
+# GRANITE_VERSION: 2026-11-08.3
 """
 A provisional page for each new member-elect: who they are until the General
 Court numbers them.
@@ -126,6 +126,9 @@ def pages(results, sitting, former, districts, hand, today, takes_office, moved=
     member of the same name and district is somebody else (a parent, say),
     whom the owner has already told apart."""
     races, _report = BME.members_elect(results, sitting, former, districts, hand, today)
+    # Earlier service the person confirmed (hand "prior"): the page says what
+    # it was. The doubt itself is the members-elect step's, not read here.
+    BME.apply_prior(races, (hand or {}).get("prior"))
     on_file, _ = BME.races_on_file(districts)
     sure = confirmed_new(hand)
     # A member's page, and an old address that already answers with a 301
@@ -155,7 +158,8 @@ def pages(results, sitting, former, districts, hand, today, takes_office, moved=
             seen.setdefault(slug, []).append(e.get("n"))
             out.append({"slug": slug, "name": e.get("n"), "party": e.get("p") or "",
                         "chamber": chamber, "county": county, "district": district, "race": key,
-                        "towns": sorted((on_file.get(key) or {}).get("towns") or [])})
+                        "towns": sorted((on_file.get(key) or {}).get("towns") or []),
+                        **({"prior": e["prior"]} if e.get("prior") else {})})
     twice = {s for s, who in seen.items() if len(who) > 1}
     if twice:
         said += [f"{', '.join(seen[s])}: two new members-elect would share /legislator/{s}; "
