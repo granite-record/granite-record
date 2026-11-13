@@ -1,0 +1,45 @@
+{
+ "_what": "The address of a town's website where it has moved and the directories still hold the old one, with the evidence for each beside it. This file is edited by hand. No generator writes it.",
+
+ "_why": "A town's website comes from two directories, NHDOT's of September 2025 and the Secretary of State's clerk list, and neither is told when a town moves. The town's own dated page is the source of truth for who sits on its select board and who staffs its offices, and that rule needs the town's CURRENT site: the old one goes on answering, with a roster the town no longer keeps. Only a person can say that a site has been replaced, so it is said here, with what was read and on which day, and the directories' own value is kept beside it so a later reader can see what was changed.",
+
+ "_how": "town_websites.py is the one reader. town_sites.py asks this address and no other for a town named here; parse_town_sites.py and town_boards.py read only that site's saved pages for it; build_town_pages.py shows this address as the town's website and does not link the directories'. An entry may also carry a 'board' (members in the town's own spelling, with a role where the town gives one), which town_boards.py uses in place of NHDOT's board even where the town's own page fails its current-and-whole rule, and an 'email', shown on the town offices card in place of NHDOT's; each has its own evidence and day. A town not named here is exactly as it was. `python3 src/towns/town_websites.py` says which entries the directories have caught up with, and those may be taken out.",
+
+ "towns": {
+
+  "effingham": {
+   "website": "https://www.effingham.nh.gov",
+   "directories_say": {
+    "nhdot": "https://www.effinghamnh.net/",
+    "secretary_of_state": "https://www.effinghamnh.net/"
+   },
+   "evidence": [
+    "A reader's email to the owner, 13 November 2026, says the town has a new website, www.effingham.nh.gov.",
+    "www.effingham.nh.gov, read 13 November 2026: a CivicPlus site whose robots.txt allows ordinary pages; its Board of Selectmen page (/1200/Board-of-Selectmen) lists the town's staff and board in a 'Contact Us' block.",
+    "effinghamnh.net still answers (a 301 to https://effinghamnh.net/). Its select board page, saved 20 September 2026, still gives a member a term ending 2026, which had run out at the March 2026 town meeting, so it is not the board now."
+   ],
+   "checked_on": "2026-11-13",
+   "board": {
+    "members": [
+     {"name": "Leo Racine", "role": "Chair"},
+     {"name": "Chris Seamans"},
+     {"name": "Rosemarie Wissenbach"}
+    ],
+    "evidence": [
+     "www.effingham.nh.gov/1200/Board-of-Selectmen, read 13 November 2026: the 'Contact Us' block lists Leo Racine as 'Chairperson- Board of Selectmen', Chris Seamans as 'Selectman' and Rosemarie Wissenbach as 'Selectman'. The page's Members list under it still gives Mr. Seamans 'Term Expires: 2026', which is why the page alone does not pass the current-page rule.",
+     "A reader's email to the owner, 13 November 2026: \"Selectman Fuller was replaced by Rosemary Weissenbach\" (the town's own pages spell her Rosemarie Wissenbach), so the directory's Chuck Fuller is not on the board."
+    ],
+    "checked_on": "2026-11-13"
+   },
+   "email": {
+    "address": "townadmin@effingham.nh.gov",
+    "evidence": [
+     "The town's own Select Board Office page, saved 20 September 2026 (effinghamnh.net/pages/select-board-office), under 'Contact Information': townadmin@effingham.nh.gov.",
+     "A reader's email to the owner, 13 November 2026: townadmin@effingham.nh.gov reaches the selectmen and the town administrator."
+    ],
+    "checked_on": "2026-11-13"
+   }
+  }
+
+ }
+}
