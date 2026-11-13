@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.315
+// GRANITE_VERSION: 2026-09-07.316
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -83,7 +83,12 @@ const chipOf=b=>(b&&(b.chip||b.status))||"";
 // A status its kind would colour wrongly (chips.json's by_status): a CACR
 // the voters did not ratify is "adopted" by kind and drawn as Died.
 const BY_STATUS=WORDBOOK.chips.by_status||{};
-const chipCls=b=>CHIPCLASS[chipOf(b)]||BY_STATUS[(b&&b.status)||""]||KIND[b.kind]||"";
+// A BILL REQUEST'S THREE WORDS (the owner, 13 November 2026), each with its
+// class: Requested, Filed, Withdrawn (chips.json's "request"). Their own
+// table, so the six and the seven stay a bill's.
+const REQCLASS=WORDBOOK.chips.request||{};
+const REQCATS=Object.keys(REQCLASS);
+const chipCls=b=>CHIPCLASS[chipOf(b)]||BY_STATUS[(b&&b.status)||""]||(b&&b.lsr&&REQCLASS[chipOf(b)])||KIND[b.kind]||"";
 // The six first, in their order, then the rest as words.
 const chipCmp=(a,b)=>{const x=CHIPORDER.indexOf(a),y=CHIPORDER.indexOf(b);
   return (x<0?CHIPORDER.length:x)-(y<0?CHIPORDER.length:y)
@@ -121,9 +126,12 @@ const chipCmp=(a,b)=>{const x=CHIPORDER.indexOf(a),y=CHIPORDER.indexOf(b);
 const STATUSCATS=Object.keys(WORDBOOK.chips.category);
 // What is offered: the categories some bill listed is in (`have`), and any a
 // reader has chosen (`chosen`, a Set), in STATUSCATS' order.
-const catsOffered=(have,chosen)=>STATUSCATS.filter(c=>have.has(c)||chosen.has(c));
+// A bill request's words (REQCATS) come first, where a request is one: they
+// are never a bill's, so a list of bills offers none of them.
+const CATORDER=REQCATS.filter(c=>!STATUSCATS.includes(c)).concat(STATUSCATS);
+const catsOffered=(have,chosen)=>CATORDER.filter(c=>have.has(c)||chosen.has(c));
 // Each in its chip's class, in the sidebar and in a record page's select.
-const CATCLASS=Object.assign(Object.create(null),WORDBOOK.chips.category);
+const CATCLASS=Object.assign(Object.create(null),WORDBOOK.chips.category,REQCLASS);
 // BILLMATCH:BEGIN -- a bill's category, which best match reads to put a bill
 // still moving first (sortRows, 16 October 2026); see the note above SYN.
 // From here, and not from the filter's lines above it: statusCat needs
@@ -175,15 +183,19 @@ function catOfChip(c){
   if(/^Passed both chambers, (?:goes|went) to the voters/.test(s))return "In Progress";
   return "";
 }
-// "" for a row with no chip -- a request, which is not a bill yet.
+// A bill request's status words, which are its categories (Requested: no bill
+// yet; Filed: its bill exists; Withdrawn). Nothing else is one.
+const REQ_STATUS=Object.assign(Object.create(null),{Requested:"Requested",Filed:"Filed",
+  Withdrawn:"Withdrawn"});
+// A request's own word, and "" for a row with no chip that is not a request.
 function statusCat(b){
   const c=b&&b.chip;
-  if(!c)return "";
+  if(!c)return (b&&b.lsr&&REQ_STATUS[b.status])||"";
   return catOfChip(c)||CAT_OF_KIND[b.kind]||"In Progress";
 }
 // BILLMATCH:END
-const catCmp=(a,b)=>{const x=STATUSCATS.indexOf(a),y=STATUSCATS.indexOf(b);
-  return (x<0?STATUSCATS.length:x)-(y<0?STATUSCATS.length:y);};
+const catCmp=(a,b)=>{const x=CATORDER.indexOf(a),y=CATORDER.indexOf(b);
+  return (x<0?CATORDER.length:x)-(y<0?CATORDER.length:y);};
 // A category, or a word a chip says, in any case, as the category it is in:
 // what ?status= in an address is read through, so an address written with a
 // chip's word ("Became Law", "In committee") still finds its bills. A word
@@ -192,7 +204,7 @@ function catOfWord(w,rows){
   const s=String(w||"").trim();
   if(!s)return "";
   const lo=s.toLowerCase();
-  const named=STATUSCATS.find(c=>c.toLowerCase()===lo);
+  const named=CATORDER.find(c=>c.toLowerCase()===lo);
   if(named)return named;
   const word=Object.keys(CAT_OF_CHIP).find(c=>c.toLowerCase()===lo);
   if(word)return CAT_OF_CHIP[word];
@@ -2809,8 +2821,8 @@ const billCmp=(a,b)=>{const x=billKey({id:String(a||"")}),y=billKey({id:String(b
 // groups it: every House committee, then every Senate one.
 function facetVals(b,k){
   // The Status filter is the chip's category (statusCat), not its word. Not
-  // chipOf: a request has no chip, and its "Filed as a request" is not a
-  // status to filter by.
+  // chipOf: a request has no chip, and its own word -- Requested, Filed,
+  // Withdrawn -- is its category (13 November 2026).
   if(k==="status")return [statusCat(b)];
   if(k==="type")return [typeOf(b)];
   if(k==="committee")return b.committees||(b.committee?[b.committee]:[]);
@@ -4120,8 +4132,13 @@ function renderFacets(){
       TYPE_NAME[v]?`<span>${esc(TYPE_NAME[v])}</span>`:""}</span>`);
   // A committee or topic ticked in another term stays on offer, at none, so
   // it can be unticked on its own where it lists nothing.
-  h+=fgroup("committee","Committee",[...new Set([...present("committee"),...sel.committee])].sort(),
-    cnt("committee","committee"));
+  // NO COMMITTEE FILTER WHERE NO REQUEST HAS A COMMITTEE (the owner, 13
+  // November 2026: "Committee should not be one of the search filters until
+  // bills are assigned to a certain committee ... it's just blank on the LSRs
+  // search"). It is offered the day any request names one, by itself, and a
+  // committee ticked elsewhere stays, so it can be unticked.
+  {const cm=[...new Set([...present("committee"),...sel.committee])].sort();
+   if(termNoun()==="bills"||cm.length)h+=fgroup("committee","Committee",cm,cnt("committee","committee"));}
   // A REQUEST'S TOPIC IS THE TITLE'S (request_topics.py), not the General
   // Court's: said so in the group's name, until the bill is filed and the
   // General Court's own code takes over.
@@ -8250,32 +8267,89 @@ function followUp(){
     if(r.body&&r.body.cancel)Promise.resolve().then(()=>r.body.cancel()).catch(()=>{});
     return r.ok;});
 }
+// A REQUEST'S NUMBER WITH ITS ABBREVIATION EXPLAINED (the owner, 13 November
+// 2026: "LSR stands for Legislative service request if you can add that as a
+// tooltip"): the first word, where meta.requests.abbr names it, an <abbr>
+// with its title. Escaped here; the number is the source's own.
+function lsrAbbr(text){
+  const A=(META&&META.requests&&META.requests.abbr)||{};
+  return esc(text).replace(/^([A-Za-z]+)(?=\s|$)/,(m,k)=>Object.prototype.hasOwnProperty.call(A,k)
+    ?`<abbr class="lsrabbr" title="${esc(A[k])}">${m}</abbr>`:m);
+}
+// A co-sponsor's chip, as a bill's sponsor is drawn: the roster's label, the
+// party read from it, the member's page where they have one. A name that
+// matched nobody stays as typed, with no party.
+const lsrChip=c=>pchip({display_full:c.label||c.name||"",
+  party:c.party||(/\(([A-Z])\b/.exec(c.label||"")||[])[1]||"",slug:c.slug||""});
+// The tabs a request has (the numbers are a bill's own, which a tab's
+// identity is): Summary; Sponsors, where co-sponsors have accepted; History,
+// where an earlier bill has the same title.
+function lsrTabs(b){
+  const hist=b.history||[],cos=b.cosponsors||[];
+  return [["0","Summary",0]].concat(cos.length?[["4","Sponsors",cos.length+1]]:[],
+    hist.length?[["7","History",hist.length]]:[]);
+}
+function lsrPane(b,t){
+  const cos=b.cosponsors||[],hist=b.history||[],sp=cardSponsor(b);
+  const prime=sp?pchip(Object.assign({},sp,{prime:false,role:""})):"";
+  if(t==="4"){
+    return `<p class="spcount">${cos.length+1} Sponsors</p>
+      ${prime?`<h2 class="sech spgrp">Prime Sponsor</h2><div class="chosen">${prime}</div>`:""}
+      <h2 class="sech spgrp">${cos.length>1?"Co-Sponsors":"Co-Sponsor"} <span class="sechn">${cos.length}</span></h2>
+      <div class="chosen">${cos.map(lsrChip).join(" ")}</div>
+      <p class="src">A co-sponsor is listed once they have accepted.</p>`;
+  }
+  if(t==="7"){
+    return `<p class="src">${hist.length===1?"A bill":"Bills"} of an earlier session with this same title:</p>
+      <ul class="lsrhist">${hist.map(h=>`<li><a href="bill/${esc(h.year)}/${esc(String(h.id||"").toLowerCase())}">${
+        esc(h.n)} <span class="cyear">(${esc(h.year)})</span></a> ${chip(h.word||h.chip,`cstat ${h.cls||""}`,"m")}</li>`).join("")}</ul>`;
+  }
+  return `<p><b>Status:</b> ${esc(b.status)}</p>
+    ${b.body_label?`<p><b>Kind:</b> ${esc(b.body_label)}</p>`:""}
+    ${prime?`<p><b>Prime Sponsor:</b> ${prime}</p>`:""}
+    ${cos.length?`<p><b>${cos.length>1?"Co-Sponsors":"Co-Sponsor"}:</b> ${cos.map(lsrChip).join(" ")}</p>`:""}
+    ${b.topic&&b.topic_by==="title"?`<p><b>Topic (from the title):</b> ${esc(b.topic)}</p>`:""}
+    ${b.address?`<p><a href="${esc(b.moved_to||b.address)}">${b.moved_to?"Read the bill":"Open the request’s own page"}</a></p>`:""}`;
+}
+// WHAT A REQUEST'S CARD OPENS ONTO: the bill card's tab strip and panes, from
+// the row alone (a request has no record to fetch). The tab chosen is
+// openTab's, as a bill's is.
+function lsrBody(b){
+  const tabs=lsrTabs(b),want=openTab[b.id]||"0",t=tabs.some(x=>x[0]===want)?want:"0";
+  return `<div class="tabs" role="tablist">${tabs.map(([k,w,n])=>
+      `<button class="tab" role="tab" id="tab_${esc(b.id)}_${k}" aria-controls="pane_${esc(b.id)}_${k}" aria-selected="${k===t}" data-t="${k}">${w}${n?tabN(n):""}</button>`).join("")}</div>`
+    +tabs.map(([k])=>`<div class="pane" role="tabpanel" id="pane_${esc(b.id)}_${k}" aria-labelledby="tab_${esc(b.id)}_${k}" tabindex="0" data-t="${k}"${k===t?"":" hidden"}>${lsrPane(b,k)}</div>`).join("");
+}
 // `cls`: a class beside "card lsr" (a paged list's "unshown").
+//
+// A REQUEST'S CARD IS A BILL'S (the owner, 13 November 2026: "update LSR
+// cards to also function similarly to bill cards with tabs and clicking on
+// the block should open the expanded view"): components.billCard, the
+// sponsor as the person chip, the head pressed to open it where it stands,
+// and the tabs above.
 function lsrCardHtml(b,cls){
-  const who=b.sponsor_label||b.sponsor||"";
   const num=String(b.n||"").replace(/^LSR\s*/,"");
   const can=/^\d{4}-\d{4,5}$/.test(num)&&!b.withdrawn&&!b.introduced;
   if(can)followOk();
-  return `<article class="card lsr${cls?" "+esc(cls):""}" data-id="${esc(b.id)}">
-      <div class="chead">
-        <div class="crow"><span class="cnum">${b.address
-          // ITS OWN PAGE, or where it went (Alice, 8 November 2026): the
-          // address build_lsrs gives it, or the bill's page it became. An
-          // anchor inside the number, not a.cnum, which opens a bill in place.
-          ?`<a href="${esc(b.moved_to||b.address)}">${esc(b.n)}</a>`:esc(b.n)}</span>
-        ${chip(chipOf(b),`cstat ${chipCls(b)}`,"m")}</div>
-        <div class="ctitle">${esc(b.title)}</div>
-        <div class="cmeta">${b.sponsor_slug
-          ?`<a href="legislator/${esc(b.sponsor_slug)}">${esc(who)}</a>`
-          :esc(who)}${b.body_label?` &middot; ${esc(b.body_label)}`:""}${
-        // THE TOPIC READ FROM THE TITLE (request_topics.py), said to be: the
-        // General Court's own comes with the bill.
-        b.topic&&b.topic_by==="title"?` &middot; <span class="rtopic">Topic (from the title): ${esc(b.topic)}</span>`:""}</div>
-      </div>${can?`
+  // THE TOPIC READ FROM THE TITLE (request_topics.py), said to be: the
+  // General Court's own comes with the bill.
+  const kind=[b.body_label,b.topic&&b.topic_by==="title"?`Topic (from the title): ${b.topic}`:""]
+    .filter(Boolean).join(" · ");
+  const card=billCard({id:b.id,href:"",n:b.n,year:"",word:chipOf(b),cls:chipCls(b),title:b.title,
+    byline:billByline(cardSponsor(b),[],kind),open:openCards.has(b.id),body:lsrBody(b),
+    card:"lsr"+(cls?" "+esc(cls):"")});
+  // ITS OWN PAGE, or where it went (Alice, 8 November 2026): the address
+  // build_lsrs gives it, or the bill's page it became. An anchor inside the
+  // number, not a.cnum, which opens a bill in place.
+  const numHtml=b.address
+    ?`<span class="cnum" translate="no"><a href="${esc(b.moved_to||b.address)}">${lsrAbbr(b.n)}</a></span>`
+    :`<span class="cnum" translate="no">${lsrAbbr(b.n)}</span>`;
+  const follow=can?`
       <div class="followbox lsrfollow" data-fkey="lsr:${esc(num)}"><details class="follow">
         <summary>${icon("follow")}Follow</summary>
-        <div class="followpane"><div class="followmail" hidden></div></div></details></div>`:""}
-    </article>`;
+        <div class="followpane"><div class="followmail" hidden></div></div></details></div>`:"";
+  return card.replace(`<span class="cnum" translate="no">${esc(b.n)}</span>`,()=>numHtml)
+    .replace(/<\/article>$/,()=>follow+"</article>");
 }
 
 // ONE card, drawn by the search list and by both record pages.
@@ -8553,7 +8627,7 @@ const anOpen=new Set();
 // tab panel with tabindex="0", and the test for a control looked past the
 // head to it, so every press there but the title's did nothing.
 function cardBackground(e){
-  const h=e.target.closest&&e.target.closest(".card:not(.focus):not(.lsr) .chead");
+  const h=e.target.closest&&e.target.closest(".card:not(.focus) .chead");
   if(!h||e.button>0)return null;
   const ctl=e.target.closest("a,button,input,select,textarea,label,summary,details,[data-term],[tabindex]");
   if(ctl&&h.contains(ctl))return null;
@@ -12189,6 +12263,9 @@ window.addEventListener("popstate",e=>{
 
 function openBill(id){
   openCards.add(id);
+  // A bill request has no record to ask for: its card opens onto what its row
+  // holds (lsrBody).
+  if(/^LSR\d/.test(String(id))){repaint();return;}
   // THE KEY OF THE BILL ASKED FOR, taken now and kept (the reviews of 6
   // November 2026). dkey follows the term, and the term moves while a record
   // is on its way: opened from All Terms, 2020's HB 703 holds its own term
