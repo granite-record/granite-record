@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.14
+# GRANITE_VERSION: 2026-10-16.15
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -801,12 +801,20 @@ def elect_status(e, key, row):
 
 
 def earlier_names(sponsors, until=EARLIER_UNTIL):
-    """{(surname, chamber, county or district)} printed on the bills of every
-    term that begins before `until`, from text_sponsors.json
-    ({term: {bill: [{"name", "chamber", "county", "district", ...}]}}): the
-    House by county, the Senate by district. A row with a member number is
-    left out -- it is a member the record already names."""
-    out = set()
+    """{(surname, chamber, county or district): {first names printed or placed}}
+    for the bills of every term that begins before `until`, from
+    text_sponsors.json ({term: {bill: [{"name", "chamber", "county", "district",
+    ...}]}}): the House by county, the Senate by district.
+
+    THE FIRST NAMES (13 November 2026). Since past_roster.py a sponsor the
+    General Court's own record for the bill settles is "Karen McRae", not
+    "McRae", so the set holds her first name; one it does not is a surname
+    alone (set member "") or an initial ("F. Riley" gives "F."). earlier_service
+    reads them: a winner whose first name cannot be any of them has no doubt.
+
+    A row with a member number is left out -- it is a member the record already
+    names."""
+    out = {}
     for term, bills in (sponsors or {}).items():
         if not str(term)[:4].isdigit() or int(str(term)[:4]) >= until:
             continue
@@ -819,22 +827,46 @@ def earlier_names(sponsors, until=EARLIER_UNTIL):
                          else full_county(sp.get("county")).lower())
                 rd, _sfx = readings(sp.get("name"))
                 if ch in ("H", "S") and where:
-                    out |= {(s, ch, where) for s, _f in rd}
+                    for s, f in rd:
+                        out.setdefault((s, ch, where), set()).add(f)
     return out
+
+
+def may_be_same(a, b):
+    """Could first names `a` and `b` be one person's? True where either is empty
+    (a surname alone says nothing), where an initial begins the other, and
+    where they are the same name, a short form of it or one a prefix of the
+    other (member_links.same_first, seat_first): the doubt is kept for every
+    way of agreeing and cleared only by names that plainly differ -- Denise
+    and Frank. A same first name is still the doubt: namesakes, and father
+    and son, exist."""
+    if not (a or "").strip() or not (b or "").strip():
+        return True
+    def initial(x):
+        m = re.fullmatch(r"\s*([A-Za-z])\.?\s*", x or "")
+        return m.group(1).lower() if m else ""
+    ia, ib = initial(a), initial(b)
+    if ia or ib:
+        other = first_names(b if ia else a)
+        mine = ia or ib
+        return any(x.startswith(mine) for x in other) or (ia and ib and ia == ib)
+    return same_first(a, b) or seat_first(a, b)
 
 
 def earlier_service(races, earlier):
     """How many new winners got the doubt: sets "u" on each "k": "new" entry
     whose surname is in `earlier` for its race's chamber and county (or
-    district). It names no one and links no one."""
+    district) AND whose first name could be one printed or placed there
+    (may_be_same). It names no one and links no one."""
     n = 0
     for key, race in races.items():
         m = KEY_RE.match(key)
         ch, where = ("S", m.group(3)) if m.group(3) else ("H", m.group(1).lower())
         for e in race.get("elected") or []:
             e.pop("u", None)
-            if e.get("k") == "new" and any((s, ch, where) in earlier
-                                           for s, _f in readings(e.get("n"))[0]):
+            if e.get("k") == "new" and any(
+                    any(may_be_same(f, pf) for pf in earlier[(s, ch, where)])
+                    for s, f in readings(e.get("n"))[0] if (s, ch, where) in earlier):
                 e["u"] = True
                 n += 1
     return n

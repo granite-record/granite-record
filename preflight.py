@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.894
+# GRANITE_VERSION: 2026-09-04.897
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -47799,8 +47799,12 @@ def _sponsor_prime_first():
     assert "rows=rows.filter(primeChosen).concat(rows.filter(b=>!primeChosen(b)))" in app \
         and "const primeChosen=b=>sel.sponsor.has(spKey(b));" in app \
         and '"Prime sponsored":"Co-sponsored"' in app, "a chosen sponsor's own bills are not listed first"
-    assert "if(!n||b.sponsor_slug||b.sponsor_party)return n;" in app, \
+    assert "if(!n||b.sponsor_slug||b.sponsor_party||b.sponsor_person)return n;" in app, \
         "a sponsor with a member page is no longer their name alone in the Sponsor filter"
+    assert 'row["sponsor_person"] = 1' in src and "past_roster_shared_names" in src, \
+        "a 1989-1998 sponsor the General Court's record names is no longer keyed on the person"
+    assert 'SEAT_RE.exec(b.sponsor_label||"")' in app, \
+        "a sponsor left as printed no longer keeps the seat in the Sponsor filter"
     return "ok", "co-sponsors in the index; a chosen sponsor's prime bills first, then co-sponsored"
 
 
@@ -115728,6 +115732,351 @@ def _senators_printed_as_rep(text_sponsors):
                   "Kenney placed on the senator; never on a representative; Larsen left as printed")
 
 
+@check("naming", "a sponsor printed before 1999 is placed on a person only where the bill's own sponsor rows settle it",
+       needs=("text_sponsors",))
+def _pre_1999_sponsors_placed(text_sponsors):
+    """past_roster.py, 13 November 2026. A bill of 1989-1998 prints "Rep. Guay, Coos 6". The
+    General Court's sponsor record for that bill (PastSponsors, by its stored LSR) holds
+    its sponsors' employee numbers, and past_members.json names each number. A printed
+    sponsor takes the number only where the bill's OWN rows settle it: the surname fits one
+    number (an initial or first name printed before it picks one of two), nothing else.
+    A misprint, two numbers of a surname with nothing to choose, and a number no list names
+    stay exactly as printed. The employee number is the General Court's, in `employee`;
+    the party is none; the id is a member's only where a later roll call was cast under
+    that number."""
+    T = text_sponsors
+    import past_roster as PR
+    import past_sponsors as PSP
+    pm = {"372001": {"name": "Guay, Roland", "chamber": "H"},
+          "372002": {"name": "Lawton, Dennis", "chamber": "H"},
+          "372003": {"name": "Lawton, Ruth", "chamber": "H"},
+          "372004": {"name": "Buckley, Anne", "chamber": "H"},
+          "205001": {"name": "Blaisdell, Clesson", "chamber": "S"},
+          "372005": {"name": "Dykstra (SEE Emp #375839), Leona", "chamber": "H"},
+          "372006": {"name": "Barnes, Jr., John", "chamber": "H"}}
+    people = PSP.People([], pm)
+    sat = T.Sat([{"member_id": "372001", "name": "Guay, Roland J.", "label": "Guay, Roland(R) Coos 06",
+                  "body": "H", "year": "1999", "party": "R"}])
+    lines = [("1993-1994", "HB1", "Rep. Guay, Coos 6; Rep. D. Lawton, Hills 4; Rep. Buckly, Graf 2; "
+                                  "Rep. Blaisdell, Dist 10; Rep. Nobody, Ches 3"),
+             ("1993-1994", "HB2", "Rep. Lawton, Hills 4; Rep. R. Lawton, Hills 5; Rep. Dykstra, Rock 1; "
+                                  "Rep. Barnes, Jr., Merr 2")]
+    rows = lambda *emps: {"lsr": "", "rows": [{"employee": e, "sequence": i, "prime": i == 0,
+                                               "withdrawn": False} for i, e in enumerate(emps)]}
+    joined = {"1993-1994": {"HB1": rows("372001", "372002", "372004", "205001", "372099"),
+                            "HB2": rows("372002", "372003", "372005", "372006")}}
+    got, tally, _ = T.build({}, sat, sponsor_record=(joined, people), lines=lines)
+    h1 = {r["as_printed"].split(",")[0]: r for r in got["1993-1994"]["HB1"]}
+    h2 = got["1993-1994"]["HB2"]
+    g = h1["Rep. Guay"]
+    assert (g["name"], g["employee"], g["member_id"], g["party"]) == ("Roland J. Guay", "372001", "372001", ""), \
+        f"a number a later roll call was cast under keeps the member's own name and id: {g}"
+    d = h1["Rep. D. Lawton"]
+    assert (d["name"], d["employee"], d["member_id"]) == ("Dennis Lawton", "372002", ""), \
+        f"an initial that fits one of two Lawtons did not place D. Lawton: {d}"
+    assert "employee" not in h2[0] and h2[0]["name"] == "Lawton", \
+        f"a bare surname two numbers fit was placed: {h2[0]}"
+    assert h2[1]["employee"] == "372003" and h2[1]["name"] == "Ruth Lawton", h2[1]
+    b = h1["Rep. Buckly"]
+    assert "employee" not in b and b["name"] == "Buckly" and b["member_id"] == "", \
+        f"a misprint was matched by a guess: {b}"
+    s = h1["Rep. Blaisdell"]
+    assert (s["chamber"], s["employee"], s["name"]) == ("S", "205001", "Clesson Blaisdell") \
+        and s["as_printed"].startswith("Rep. Blaisdell"), \
+        f"a senator printed as Rep. with a Senate district is not shown as one: {s}"
+    assert "employee" not in h1["Rep. Nobody"], "a surname on no row of the bill was placed"
+    assert h2[2]["name"] == "Leona Dykstra" and h2[3]["name"] == "John Barnes Jr.", \
+        f"the General Court's spelling of a name was not kept: {h2[2]['name']!r}, {h2[3]['name']!r}"
+    assert PR.split_label("Dykstra (SEE Emp #375839), Leona")[3] == "375839"
+    for r in [*h1.values(), *h2]:
+        assert not r.get("party"), f"a party before 1999: {r}"
+        assert not str(r.get("member_id") or "").startswith("gr-") and not str(r.get("employee") or "").startswith("gr-")
+    # The same lines with no sponsor record place nobody.
+    got0, _t, _ = T.build({}, sat, sponsor_record=None, lines=lines)
+    assert not any(r.get("employee") for rs in got0["1993-1994"].values() for r in rs), \
+        "a sponsor was placed with no sponsor record"
+    # A shared full name between two numbers is reported, so the filter can tell them apart.
+    two = {"HB1": [{"matched": PR.MATCHED, "employee": "1", "name": "Frank Allen"}],
+           "HB2": [{"matched": PR.MATCHED, "employee": "2", "name": "Frank Allen"},
+                   {"matched": PR.MATCHED, "employee": "3", "name": "Mary Allen"}]}
+    assert PR.shared_names(two) == {"Frank Allen"}, PR.shared_names(two)
+    return "ok", ("a unique surname, an initial between two Lawtons and a senator printed as Rep. are placed "
+                  "on the General Court's name and number; a misprint, an unsettled surname and a surname "
+                  "off the bill stay as printed; no party; no gr- id in either field")
+
+
+@check("naming", "a Granite Record id (gr-) and a General Court employee number are never written into each other's field",
+       needs=("gr_ids", "gr_register"))
+def _gr_ids_apart(GR, REG):
+    """gr_ids.py, 13 November 2026 (the owner: "distinguish the IDs assigned by Granite Record from the
+    official ones so that the two don't get mixed up"). The General Court's employee number is digits
+    only and is a person's key wherever the General Court supplies one; Granite Record's id is gr- and
+    a serial, made here only for a person the record names with no number. They live in separate fields
+    (`gc_employee_number`, `granite_id`) of every table that shows an identifier. Held on fixtures, each
+    a mistake the check must see: a gr- id in the employee-number field, or an employee number in the id
+    field; a digits-only number no list of the General Court's names; a person keyed by a gr- id whose
+    official number is known; an id the register does not hold. And the register: ids never reissued,
+    renumbered or deleted, a number found later the one change an entry may take."""
+    ok = {"gc_employee_number": "373027", "granite_id": "", "person": "373027", "name": "A"}
+    gr = {"gc_employee_number": "", "granite_id": "gr-0001", "person": "gr-0001", "name": "B"}
+    reg = {"format": 1, "ids": [{"id": "gr-0001", "named_as": "B", "issued": "2026-11-13",
+                                 "evidence": "x", "employee_number": ""}]}
+    assert GR.check_rows([ok, gr], known={"373027"}, reg=reg) == [], GR.check_rows([ok, gr], {"373027"}, reg)
+    cases = [
+        ("a gr- id in the employee-number field", dict(ok, gc_employee_number="gr-0001")),
+        ("an employee number in the id field", dict(gr, granite_id="373027")),
+        ("digits only and not the General Court's", dict(ok, gc_employee_number="999998", person="999998")),
+        ("an employee number that is not digits", dict(ok, gc_employee_number="37302X")),
+        ("both set", dict(ok, granite_id="gr-0001")),
+        ("neither set", dict(ok, gc_employee_number="")),
+        ("an official number, keyed by a gr- id", dict(ok, person="gr-0001")),
+        ("an id the register does not hold", dict(gr, granite_id="gr-0009", person="gr-0009")),
+        ("an alias the register does not hold", dict(ok, granite_id_aliases=["gr-0044"])),
+    ]
+    for what, row in cases:
+        assert GR.check_rows([row], known={"373027"}, reg=reg), f"not seen: {what}"
+    found = {"format": 1, "ids": [dict(reg["ids"][0], employee_number="373027")]}
+    assert GR.check_rows([dict(gr, gc_employee_number="", person="gr-0001")], reg=found), \
+        "a person keyed by a gr- id whose official number the register has since found was not seen"
+    assert not GR.check_rows([dict(ok, granite_id_aliases=["gr-0001"])], known={"373027"}, reg=found), \
+        "the official number as key and the gr- id as its alias was refused"
+    # The register's shape.
+    assert GR.check_register(reg) == [] and GR.check_register({"format": 1, "ids": []}) == []
+    for what, bad in (("a digits-only id", {"ids": [{"id": "373027", "named_as": "x"}]}),
+                      ("an id twice", {"ids": [dict(reg["ids"][0]), dict(reg["ids"][0])]}),
+                      ("an id nobody holds", {"ids": [{"id": "gr-0001", "named_as": ""}]}),
+                      ("out of order", {"ids": [{"id": "gr-0002", "named_as": "x"}, {"id": "gr-0001", "named_as": "y"}]}),
+                      ("a gr- id as the employee number", {"ids": [dict(reg["ids"][0], employee_number="gr-0002")]}),
+                      ("a number held twice", {"ids": [dict(reg["ids"][0], employee_number="5"),
+                                                       {"id": "gr-0002", "named_as": "z", "employee_number": "5"}]})):
+        assert GR.check_register(bad), f"a register with {what} was called well formed"
+    # Append-only against an earlier copy.
+    two = {"ids": [reg["ids"][0], {"id": "gr-0002", "named_as": "C", "issued": "2026-11-14"}]}
+    assert GR.check_only_grows(reg, two) == [] and GR.check_only_grows(reg, found) == []
+    assert GR.check_only_grows(two, reg), "an id deleted from the register was not seen"
+    renamed = {"ids": [dict(reg["ids"][0], named_as="Someone else")]}
+    assert GR.check_only_grows(reg, renamed), "an id reissued to another person was not seen"
+    assert GR.check_only_grows(found, {"ids": [dict(found["ids"][0], employee_number="373028")]}), \
+        "a recorded number changed was not seen"
+    assert GR.check_only_grows(found, reg), "a recorded number removed was not seen"
+    # The writer: serials in order, never reused, a number found never over another.
+    r = {"format": 1, "ids": []}
+    a = REG.issue(r, "Jane Doe", "no number in any list", "2026-11-13")
+    b = REG.issue(r, "John Roe", "no number in any list", "2026-11-13")
+    assert (a, b) == ("gr-0001", "gr-0002") and GR.check_register(r) == [], (a, b)
+    REG.found(r, "gr-0001", "373027")
+    try:
+        REG.found(r, "gr-0001", "373028")
+        raise AssertionError("a recorded number was changed")
+    except SystemExit:
+        pass
+    try:
+        REG.found(r, "gr-0002", "gr-0001")
+        raise AssertionError("a gr- id was recorded as an employee number")
+    except SystemExit:
+        pass
+    assert GR.is_gr("gr-0001") and not GR.is_gr("373027") and GR.looks_official("373027") \
+        and not GR.looks_official("gr-0001")
+    return "ok", ("a gr- id in the employee-number field, an employee number in the id field, a digits-only "
+                  "number no General Court list names, a gr- key for a person with an official number, and "
+                  "a register that loses, renumbers or reissues an id are each seen; a number found later "
+                  "is the one change an entry takes")
+
+
+@check("files", "only a person's run writes the register of Granite Record ids; it is well formed and only ever grows",
+       needs=("gr_ids",))
+def _gr_register_files(GR):
+    """generated/gr_ids.json holds the ids this site made for people the General Court gives no number
+    (gr_ids.py). Like generated/person_numbers.json it is only ever added to and never rewritten by the
+    nightly: no code file writes it but src/ops/gr_register.py, by any of the shapes the person-number
+    register's check reads. What is there is well formed, and against the copy git holds (HEAD, and
+    origin/dev where it has one) every id is still there, issued to the same name on the same day,
+    with any official number it held."""
+    stem = r"(?<![\w-])gr_ids\.json"
+    HELD = re.compile(r'^[ \t]*([A-Za-z_]\w*)[ \t]*(?::[^=\n]*)?=[^=\n][^\n]*' + stem, re.M)
+
+    def writes(src):
+        if re.search(r'open\s*\([^)]*' + stem + r'[^)]*["\'][wax]', src) or \
+           re.search(stem + r'[^\n]{0,60}\.write_(?:text|bytes)', src):
+            return True
+        for held in set(HELD.findall(src)):
+            n = re.escape(held)
+            if re.search(r'\b%s\s*\.\s*(?:write_text|write_bytes)\s*\('
+                         r'|\b%s\s*\.\s*open\s*\(\s*(?:mode\s*=\s*)?["\'][wax]'
+                         r'|\bopen\s*\(\s*%s\s*,\s*(?:mode\s*=\s*)?["\'][wax]'
+                         r'|\b(?:os\.replace|os\.rename|shutil\.(?:copy\w*|move))'
+                         r'\s*\([^)\n]*,\s*%s\s*\)' % (n, n, n, n), src):
+                return True
+        return False
+
+    for text, w in (('open("generated/gr_ids.json", "w")', True),
+                    ('Path("generated/gr_ids.json").write_text(t)', True),
+                    ('REGISTER = Path("generated/gr_ids.json")\nREGISTER.write_text(t)', True),
+                    ('def f(path="generated/gr_ids.json"):\n    reg = load(path, None)', False),
+                    ('json.loads(Path("generated/gr_ids.json").read_text())', False)):
+        assert writes(text) == w, f"the register's reader reads {text!r} as " + ("no write" if w else "a write")
+    bad = []
+    for f in _paths.code_files("*.py"):
+        # The writer, the module that names the path, and this file, whose cases name it on purpose.
+        if f.name in ("gr_register.py", "gr_ids.py", "preflight.py"):
+            continue
+        if writes(f.read_text(encoding="utf-8", errors="replace")):
+            bad.append(f.name)
+    assert not bad, "these write the register of Granite Record ids, which only " \
+                    "src/ops/gr_register.py may: " + ", ".join(bad)
+    reg = _paths.ROOT / "generated" / "gr_ids.json"
+    assert reg.exists(), "generated/gr_ids.json is not here: the register is tracked, even when empty"
+    now = json.loads(reg.read_text(encoding="utf-8"))
+    problems = GR.check_register(now)
+    assert not problems, "the register is not well formed: " + "; ".join(problems[:5])
+    compared = []
+    for ref in ("HEAD", "origin/dev"):
+        r = _run(["git", "show", f"{ref}:generated/gr_ids.json"], capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip():
+            lost = GR.check_only_grows(json.loads(r.stdout), now)
+            assert not lost, f"the register is only ever added to, and against {ref}'s: " + "; ".join(lost[:5])
+            compared.append(ref)
+    return "ok", (f"no other code file writes it; well formed; {len(now['ids'])} id(s); "
+                  + (f"nothing lost or moved against {' and '.join(compared)}" if compared
+                     else "no committed copy to compare with yet"))
+
+
+@check("data", "the 1989-1998 table and the sponsor rows keep the General Court's numbers and Granite Record's ids "
+       "in their own fields, and name only numbers the General Court's lists name")
+def _past_roster_data():
+    """generated/past_roster.json (build_past_roster.py) and the sponsors text_sponsors.json places on a
+    person: every employee number is digits only and one the General Court's own files name (PastSponsors,
+    its list of members, its legislators table); no gr- id is in an employee-number or member-id field; no
+    person with an official number is keyed by a gr- id; every gr- id is in the register. Skips where the
+    table or the General Court's files are not on this disk."""
+    import gr_ids as GR
+    p = Path("generated/past_roster.json")
+    if not p.exists():
+        return "skip", "no generated/past_roster.json here (python3 src/parse/build_past_roster.py --apply)"
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    reg = GR.load_register()
+    known = None
+    ps, pm, lg = Path("db/past/PastSponsors.psv"), Path("past_members.json"), Path("db/Legislators.psv")
+    if ps.exists() and pm.exists():
+        known = {l.split("|")[3].strip() for l in ps.read_text(encoding="utf-8").splitlines() if l.count("|") >= 4}
+        known |= set(json.loads(pm.read_text(encoding="utf-8")))
+    bad = GR.check_rows(doc["rows"], known=known, reg=reg)
+    assert not bad, "the 1989-1998 table: " + "; ".join(bad[:5])
+    ts = Path("text_sponsors.json")
+    n = 0
+    if ts.exists():
+        for term, bills in json.loads(ts.read_text(encoding="utf-8")).items():
+            for bid, recs in bills.items():
+                for r in recs:
+                    if r.get("employee") or str(r.get("member_id") or "").startswith("gr-"):
+                        n += 1
+                        row = {"gc_employee_number": r.get("employee") or "", "granite_id": "",
+                               "person": r.get("employee") or "", "name": f"{term} {bid} {r.get('name')}"}
+                        assert not GR.check_rows([row], known=known), f"{term} {bid}: {GR.check_rows([row], known=known)}"
+                        assert not GR.is_gr(r.get("member_id")), \
+                            f"{term} {bid}: a gr- id in the member-id field of {r.get('name')}"
+    return "ok", (f"{len(doc['rows']):,} person-terms and {n:,} placed sponsors: every employee number "
+                  f"digits only{' and named by a General Court list' if known else ''}; "
+                  f"{len(reg['ids']) if reg else 0} gr- id(s) in the register")
+
+
+@check("build", "the 1989-1998 table has one row a person a term a chamber, with the General Court's number and name, "
+       "the printed seat and no party",
+       needs=("build_past_roster", "past_roster", "past_sponsors"))
+def _past_roster_table(BPR, PR, PSP):
+    """build_past_roster.py, 13 November 2026. From the sponsor route alone: a person with a live sponsor row
+    on a bill of the term has a row in the chamber the bill printed (else the list of members', marked so);
+    the seats are the ones the bills printed, most-printed first; the name is the General Court's; the
+    employee number is in gc_employee_number and granite_id is empty; no party; a withdrawn sponsor is not a
+    row; a number no list names has a row with no name. Coverage is people against 400 and 24."""
+    pm = {"1": {"name": "Guay, Roland", "chamber": "H"}, "2": {"name": "Blaisdell, Clesson", "chamber": "S"},
+          "3": {"name": "Dykstra (SEE Emp #9), Leona", "chamber": "H"}}
+    people = PSP.People([], pm)
+    live = lambda e, w=False: {"employee": e, "sequence": 0, "prime": False, "withdrawn": w}
+    joined = {"1993-1994": {"HB1": {"lsr": "", "rows": [live("1"), live("2"), live("3"), live("4"), live("5", True)]},
+                            "HB2": {"lsr": "", "rows": [live("1")]}}}
+    M = PR.MATCHED
+    text = {"1993-1994": {"HB1": [{"employee": "1", "matched": M, "chamber": "H", "county": "Coos", "district": "6"},
+                                  {"employee": "2", "matched": M, "chamber": "S", "county": "", "district": "10"}],
+                          "HB2": [{"employee": "1", "matched": M, "chamber": "H", "county": "Coos", "district": "6"}]}}
+    rows = BPR.rows_of(joined, text, people, voters={"2"}, terms=("1993-1994",))
+    by = {r["person"]: r for r in rows}
+    assert sorted(by) == ["1", "2", "3", "4"], f"people with a live sponsor row: {sorted(by)}"
+    g = by["1"]
+    assert (g["chamber"], g["name"], g["gc_employee_number"], g["granite_id"], g["bills"], g["bills_printed"]) == \
+        ("H", "Roland Guay", "1", "", 2, 2) and g["seats"] == [{"county": "Coos", "district": "6", "bills": 2}], g
+    assert by["2"]["chamber"] == "S" and by["2"]["voted_since_1999"] and not g["voted_since_1999"], by["2"]
+    assert by["3"]["chamber_source"].startswith("the list of members") and by["3"]["seats"] == [] \
+        and by["3"]["same_person_as_employee_number"] == "9" and by["3"]["name"] == "Leona Dykstra", by["3"]
+    assert by["4"]["name"] == "" and by["4"]["chamber"] == "", "a number no list names has a row with no name"
+    assert not any("party" in r for r in rows), "a party before 1999"
+    import gr_ids as GR
+    assert GR.check_rows(rows, reg={"ids": []}) == []
+    cov = BPR.coverage(rows, terms=("1993-1994",))["1993-1994"]
+    assert cov["H"] == {"people": 2, "of_seats": 400, "with_a_printed_seat": 1, "districts_printed": 1,
+                        "roll_only": 0, "nameless": 0} and cov["S"]["people"] == 1 \
+        and cov["S"]["of_seats"] == 24 and cov["no_chamber"] == 1, cov
+    return "ok", ("a row a person, term and chamber; the General Court's number and name; the seats the bills "
+                  "printed; chamber from the list marked as that; no party; coverage against 400 and 24")
+
+
+@check("build", "the House call of the roll is a second source: a name is placed on a number only where one of the "
+       "term's sponsors fits it and the seat does not contradict",
+       needs=("past_roll", "build_past_roster", "past_sponsors"))
+def _past_roll_second_source(ROLL, BPR, PSP):
+    """past_roll.py, 13 November 2026. The roll names every House seat, in the OCR's spelling. A name is
+    placed on an employee number only where exactly one person who sponsored in that term has the roll's
+    surname and first name (the same name or a short form, never a bare prefix) and their printed
+    seats do not contradict the roll's. The name two sponsors fit, the one whose bills printed another
+    district, a spelling the OCR damaged and a member who sponsored nothing are NOT placed -- a name found
+    once on the whole list of members is counted and not used. Placed on a person with no row of the term
+    (impossible by this rule, kept for the day it is relaxed) it would add a row from the roll alone; placed
+    on one with a row it adds the volume and says whether a printed seat could be compared. No party."""
+    pm = {"1": {"name": "Guay, Roland", "chamber": "H"}, "2": {"name": "Hale, Robert", "chamber": "H"},
+          "3": {"name": "Hale, Rachel", "chamber": "H"}, "4": {"name": "Dube, Paul", "chamber": "H"},
+          "5": {"name": "Lyman, L. Randy", "chamber": "H"}, "6": {"name": "Nonspon, Ann", "chamber": "H"}}
+    people = PSP.People([], pm)
+    seat = lambda c, d: [{"county": c, "district": d, "bills": 1}]
+    rows = [{"term": "1997-1998", "chamber": "H", "person": e, "name": n, "seats": s}
+            for e, n, s in (("1", "Roland Guay", seat("Coos", "6")), ("2", "Robert Hale", seat("Graf", "2")),
+                            ("3", "Rachel Hale", []), ("4", "Paul Dube", seat("Hillsborough", "14")))]
+    who = ROLL.pool(rows, people, "1997-1998")
+    every = ROLL.everyone_of(people)
+    en = lambda name, c, d: {"name": name, "county": c, "district": d}
+    cases = [("Roland J. Guay", "Coos", "6", ("placed", "1")),
+             ("Roland Guay", "Coos", "7", ("seat differs", "1")),     # his bills printed Coos 6
+             ("Bob Hale", "Graf", "2", ("placed", "2")),              # Bob is a short form of Robert
+             ("R. Hale", "Graf", "2", ("none", None)),                # an initial is no first name here
+             ("Rober Hale", "Graf", "2", ("none", None)),             # a bare prefix is not Robert
+             ("Paul Dubo", "Hillsborough", "14", ("none", None)),     # the OCR's spelling
+             ("Ann Nonspon", "Coos", "1", ("list only", "6")),        # on the list, sponsored nothing
+             ("Pat Nobody", "Coos", "1", ("none", None))]
+    for name, c, d, want in cases:
+        got = ROLL.place(en(name, c, d), who, every)
+        assert got == want, f"{name!r} at {c} {d}: {got}, not {want}"
+    assert ROLL.place(en("Rachel Hale", "Graf", "9"), who, every) == ("placed", "3"), \
+        "a sponsor with no printed seat is placed on the name alone"
+    # Merged into a table: a placed name adds the volume to a row of the term and says what it was checked against.
+    got = {"journalofhouseof1997newh.csv": [(en("Roland J. Guay", "Coos", "6"), "placed", "1"),
+                                            (en("Rachel Hale", "Graf", "9"), "placed", "3"),
+                                            (en("Roland Guay", "Coos", "7"), "seat differs", "1"),
+                                            (en("Paul Dubo", "Hillsborough", "14"), "none", None)]}
+    full = BPR.rows_of({"1997-1998": {"HB1": {"lsr": "", "rows": [
+        {"employee": e, "sequence": 0, "prime": False, "withdrawn": False} for e in "1234"]}}},
+        {"1997-1998": {"HB1": [{"employee": "1", "matched": "General Court sponsor record", "chamber": "H",
+                                "county": "Coos", "district": "6"}]}}, people, set(), terms=("1997-1998",))
+    merged, clash, loose = BPR.add_roll(full, got, people, set())
+    g = next(r for r in merged if r["person"] == "1")
+    assert g["roll"] == [{"volume": 1997, "county": "Coos", "district": "6",
+                          "seat_checked_against_a_printed_seat": True}], g
+    r3 = next(r for r in merged if r["person"] == "3")
+    assert r3["roll"][0]["seat_checked_against_a_printed_seat"] is False, r3
+    assert len(clash) == 1 and clash[0]["gc_employee_number"] == "1" and len(loose) == 1, (clash, loose)
+    assert not any("party" in r for r in merged), "a party before 1999"
+    return "ok", ("placed on the term's one sponsor of that surname and first name (or short form), a seat "
+                  "that contradicts, an OCR spelling, a bare prefix and a non-sponsor left unplaced")
+
+
 @check("naming", "a sponsor row is a person or a committee: no heading, no seat on its own, no figure in a name",
        needs=("text_sponsors",))
 def _sponsor_rows_are_people(text_sponsors):
@@ -121822,7 +122171,7 @@ def _elect_status(BME):
                                 {"name": "Brown", "chamber": "H", "county": "Coos", "member_id": "77"}]},
           "2001-2002": {"HB2": [{"name": "Green", "chamber": "H", "county": "Coos"}]}}
     got = BME.earlier_names(sp)
-    if got != {("smith", "H", "coos"), ("jones", "S", "5")}:
+    if set(got) != {("smith", "H", "coos"), ("jones", "S", "5")}:
         bad.append(f"the earlier surnames are {sorted(got)}: not Smith of Coos and Jones of Senate "
                    "5 only (Brown names a member, Green is of 2001)")
     races = {"H|Coos|2": {"elected": [{"n": "Pat Smith", "k": "new"}, {"n": "Cy Green", "k": "new"},
@@ -121836,8 +122185,35 @@ def _elect_status(BME):
     if n != 2 or flagged != ["Ann Jones", "Pat Smith"]:
         bad.append(f"{n} flagged, {flagged}: only Pat Smith (Coos) and Ann Jones (Senate 5), "
                    "and no member the record names")
+    # THE FIRST NAMES (13 November 2026). A sponsor the General Court's record placed on a
+    # person is "Frank Allen"; one printed with an initial is "F. Riley"; one with a surname
+    # alone says nothing. A winner whose first name plainly differs from every one printed or
+    # placed at that surname and county has no doubt; the same first name, a short form, an
+    # initial that begins it, or no first name on the old row is still the doubt.
+    sp2 = {"1993-1994": {"HB1": [{"name": "Frank Allen", "chamber": "H", "county": "Coos"},
+                                 {"name": "Mary Allen", "chamber": "H", "county": "Coos"},
+                                 {"name": "F. Riley", "chamber": "H", "county": "Coos"},
+                                 {"name": "Robert Hale", "chamber": "H", "county": "Coos"},
+                                 {"name": "Pierce", "chamber": "H", "county": "Coos"}]}}
+    got2 = BME.earlier_names(sp2)
+    if got2.get(("allen", "H", "coos")) != {"Frank", "Mary"} or got2.get(("pierce", "H", "coos")) != {""}:
+        bad.append(f"the first names kept are {got2}")
+    races2 = {"H|Coos|3": {"elected": [
+        {"n": "Denise Allen", "k": "new"},        # not Frank, not Mary: cleared
+        {"n": "Frank Allen", "k": "new"},         # the same first name: the doubt stays
+        {"n": "Fran Allen", "k": "new"},          # a prefix of Frank: stays
+        {"n": "Dee Riley", "k": "new"},           # D against the initial F.: cleared
+        {"n": "Fred Riley", "k": "new"},          # F.: stays
+        {"n": "Bob Hale", "k": "new"},            # a short form of Robert: stays
+        {"n": "Ann Pierce", "k": "new"},          # the old row has no first name: stays
+        {"n": "Sam Lowe", "k": "new"}]}}          # a surname nobody printed: no doubt
+    n2 = BME.earlier_service(races2, got2)
+    flagged2 = sorted(e["n"] for e in races2["H|Coos|3"]["elected"] if e.get("u"))
+    if flagged2 != ["Ann Pierce", "Bob Hale", "Fran Allen", "Frank Allen", "Fred Riley"] or n2 != 5:
+        bad.append(f"{n2} flagged by first names, {flagged2}")
     assert not bad, "\n  ".join(bad)
-    return "ok", "five statuses by the row of the id, the doubt by surname, chamber and county only"
+    return "ok", ("five statuses by the row of the id, the doubt by surname, chamber and county, "
+                  "cleared only by a first name that plainly differs")
 
 
 @check("frontend", "the Members-Elect tab has a search box and filters by status, party and "
@@ -133249,6 +133625,10 @@ def _requests_search_by_name():
             "topic": "", "votedays": [], "nrc": 0, "last_action": "", "hayT": "hb1 hb 1 a bill"}
            for s, lab in (("Allen", "Rep. Allen (Hills 1)"), ("Allen", "Rep. Allen (Rock 3)"),
                           ("F. Riley", "Rep. F. Riley (Hills 44)"))]
+    # AND TWO OF ONE SURNAME: one the General Court's record for the bill names (sponsor_person: the
+    # full name, theirs alone) and one still as printed (the surname and the seat).
+    old += [dict(old[0], sponsor="Dana Moore", sponsor_label="Rep. Dana Moore (Graf 5)", sponsor_person=1),
+            dict(old[0], sponsor="Moore", sponsor_label="Rep. Moore (Hills 2)")]
     for i, r in enumerate(old):
         r["id"], r["n"] = f"HB{i + 1}", f"HB {i + 1}"
     meta = {"terms": ["1995-1996"], "committee_codes": {}, "topics": [],
@@ -133286,6 +133666,10 @@ def _requests_search_by_name():
   scope.setSponsorBox("allen"); scope.renderFacets();
   out.allens = [...document.querySelector("#facets").innerHTML.matchAll(/data-f="sponsor"\\s+value="([^"]*)"[^>]*>\\s*<span>([^<]*)</g)].map(m => [m[1], m[2]]);
   scope.setSponsorBox("");
+  out.hintDana = scope.sponsorHint("dana moore", scope.IDX()).map(p => [p.name, p.label]);
+  scope.setSponsorBox("moore"); scope.renderFacets();
+  out.moores = [...document.querySelector("#facets").innerHTML.matchAll(/data-f="sponsor"\\s+value="([^"]*)"[^>]*>\\s*<span>([^<]*)</g)].map(m => [m[1], m[2]]);
+  scope.setSponsorBox("");
   scope.setQuery(""); scope.sel.sponsor.add("Allen (Rock 3)"); out.rock3 = scope.IDX().filter(b => scope.matches(b)).map(b => b.id);
   return out;
 })()""" % (json.dumps(meta), json.dumps(rows), json.dumps(meta), json.dumps(old)),
@@ -133320,6 +133704,10 @@ def _requests_search_by_name():
     assert [v for v, _ in got["allens"]] == ["Allen (Hills 1)", "Allen (Rock 3)"], (
         f"the Sponsor list joins two Allens: {got['allens']}")
     assert got["rock3"] == ["HB2"], f"the second Allen's filter lists {got['rock3']}"
+    assert got["hintDana"] == [["Dana Moore", "Rep. Dana Moore"]], (
+        f"a sponsor the General Court's record names is not their full name alone: {got['hintDana']}")
+    assert sorted(got["moores"]) == [["Dana Moore", "Dana Moore (Graf 5)"], ["Moore (Hills 2)", "Moore (Hills 2)"]], (
+        f"a named sponsor and one left as printed are not two choices: {got['moores']}")
     return "ok", ("a request is found by name, prime or co-sponsor, a title agreeing, a whole word for a "
                   "single one; party counts and seats are in the Sponsor filter; its topics say from the title; "
                   "an older term tells two Allens apart and 'frank riley' fits 'F. Riley'")

@@ -15,6 +15,32 @@ the run named beside it, never edited by hand.
   --issue`, which a person runs, and a number once issued is never given to
   anyone else. The nightly reads it and never writes it (preflight holds
   that, and that it only grows). First issued 30 October 2026.
+- `past_roster.json` -- who sponsored a bill in each term from 1989 to 1998,
+  by chamber: one row a person, term and chamber, with the General Court's
+  employee number (`gc_employee_number`, unchanged), the name its list of
+  members gives, and the seat each bill printed; coverage against 400 House
+  and 24 Senate seats in the file's `coverage`. Not a roster: a member who
+  sponsored nothing has no row. No party. The House's call of the roll
+  (`data/unh/roster/`, read by `src/parse/past_roll.py`) is a second source:
+  a row carries the volumes whose roll names the same person, a name is
+  placed on a number only where one of the term's sponsors fits it, and the
+  names it could not place are listed in the file, attached to no one. The
+  1994, 1996 and 1998 volumes' rolls are not read yet. Rewritten whole by a
+  person's run,
+  `python3 src/parse/build_past_roster.py --apply`, after
+  `python3 src/parse/text_sponsors.py --apply` (`src/parse/past_roster.py` places each printed
+  surname on a person, and only where the bill's own sponsor rows settle it).
+- `gr_ids.json` -- the register of Granite Record's own ids, `gr-` and a
+  serial, made for a person the record names and the General Court gives no
+  employee number. Kept apart from the General Court's numbers in every file
+  that shows either: `gc_employee_number` holds only the General Court's,
+  digits only, and `granite_id` only a `gr-` id (`src/lib/gr_ids.py`). Like
+  `person_numbers.json` it is never rewritten: ids are only added, by
+  `python3 src/ops/gr_register.py --issue`, which a person runs, and one is
+  never renumbered, reissued or deleted. If the General Court's number for
+  such a person is found later, `--found` records it; the number becomes
+  their key and the `gr-` id stays as an alias. Empty when first committed
+  (13 November 2026): every person the sponsor route names has a number.
 - `moved_addresses.json` -- every address a former member's page has moved
   from, {address: member id}, so each answers with a 301 to the page they
   have now, for good: their seat put right from the bills of their last
