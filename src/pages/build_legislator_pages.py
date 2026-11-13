@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.31
+# GRANITE_VERSION: 2026-09-04.32
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -72,7 +72,11 @@ def person_slug(m):
 
 def describe(m, rec=None):
     """The sentence a search engine shows under the link. rec is the member's
-    own JSON, whose service names each chamber of a page that joins two."""
+    own JSON, whose service names each chamber of a page that joins two. A
+    former member elected again has theirs said as a member-elect's
+    (main sets elect_about while the members-elect file lasts)."""
+    if m.get("elect_about"):
+        return m["elect_about"]
     # THE SEAT ONCE. display_full already carries it -- "Rep. Aboul Khan (R -
     # Rock 30)" -- and the seat was appended again, so all 406 of these read
     # "(R - Rock 30) Rock 30." in a search result. The places come straight
@@ -604,11 +608,11 @@ def main():
                               "takes_office": elect["takes_office"],
                               **({k: back[k] for k in ("mode", "name", "party", "where")}
                                  if back else {})}} if race else {})
-        about = ""
         if returning:
             who = back["head"]
             ch = info[(mid, slug)]["key"].split("|")[0]
-            about = (f"{back['name']}, elected to the {CHAMBER_WORDS[ch]} for "
+            # describe() says it of this page, as a provisional page's is said.
+            m = dict(m, elect_about=f"{back['name']}, elected to the {CHAMBER_WORDS[ch]} for "
                      f"{elect_where(race)} on {S.date_words(elect['election'], 'full')}.")
         # Their towns' pages, for the line app.js draws under the name and
         # the static record alike; a former member's page names no towns.
@@ -622,7 +626,7 @@ def main():
             # General Court" in a link card read as the General Court's own page.
             og_title=who, og_image="og-legislator.png",
             og_alt="Granite Record: legislators and their voting records",
-            description=about if returning else describe(m, rec), alternate=feed,
+            description=describe(m, rec), alternate=feed,
             changed=last_vote_day(rec),
             # Name, office, chamber, party, district. Not email or telephone:
             # structured.py says why.
