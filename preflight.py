@@ -133743,6 +133743,22 @@ def _tag_engine(TR, TC, RV):
     assert "reform" in found and "no opposite-aim pair" in found and "does not compile" in found, found
     allowed = TR.validate({"x": {**reg["mental-health"], "name": "Civil rights", "stance_ok": ["rights"]}})
     assert not allowed, f"stance_ok did not allow a word: {allowed}"
+    # the synonym table: every word leads somewhere, and none leads to two places
+    syn = fx["synonyms"]
+    topics = TR.known_topics("tests/no-such-root")
+    assert "Discrimination" in topics and "Study Committees and Commissions" in topics, "the site's topics are not known"
+    assert not TR.validate(reg, topics, syn), "the fixture's synonyms do not all lead somewhere: " + "; ".join(
+        TR.validate(reg, topics, syn))
+    table, conflicts = TR.synonym_table(reg, syn)
+    assert not conflicts and table["weed"] == "tag:cannabis" and table["marijuana legalization"] == "tag:cannabis" \
+        and table["religion"] == "topic:Discrimination" and table["mental health"] == "tag:mental-health", table
+    worse_syn = TR.validate(reg, topics, {"x": "tag:no-such-tag", "y": "topic:No Such Topic", "z": "nowhere",
+                                          "weed": "tag:mental-health"})
+    found = " | ".join(worse_syn)
+    assert "no-such-tag" in found and "No Such Topic" in found and "leads nowhere" in found and "'weed' leads to" in found, found
+    assert any("same_as_topic" in x for x in TR.validate(
+        {"p": {**reg["policing"], "same_as_topic": ["Workers' Comp and Unemployment"]}}, topics)), (
+        "a same_as_topic that is no topic of the site was not found")
     # both bills of every pair attach
     pairs = 0
     for tid, e in reg.items():

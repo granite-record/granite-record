@@ -567,5 +567,10 @@
   "2023-2024/HB40": [
    "mental-health"
   ]
+ },
+ "synonyms": {
+  "marijuana legalization": "tag:cannabis",
+  "legal weed": "tag:cannabis",
+  "religion": "topic:Discrimination"
  }
 }
