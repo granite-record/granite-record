@@ -28,7 +28,7 @@ the run named beside it, never edited by hand.
   1994, 1996 and 1998 volumes' rolls are not read yet. Rewritten whole by a
   person's run,
   `python3 src/parse/build_past_roster.py --apply`, after
-  `text_sponsors.py --apply` (`src/parse/past_roster.py` places each printed
+  `python3 src/parse/text_sponsors.py --apply` (`src/parse/past_roster.py` places each printed
   surname on a person, and only where the bill's own sponsor rows settle it).
 - `gr_ids.json` -- the register of Granite Record's own ids, `gr-` and a
   serial, made for a person the record names and the General Court gives no
