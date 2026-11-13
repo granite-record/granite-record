@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.905
+# GRANITE_VERSION: 2026-09-04.907
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31656,6 +31656,81 @@ def _elect_provisional():
     return "ok", ("new people alone get a page, at the roster's address, never at a member's; "
                   "numbered at the same address the page gives way, at another only with a 301; "
                   "noindex, no id, their requests matched by name and chamber")
+
+
+@check("build", "a member's On Record line covers the 1989-1998 terms the sponsor record places "
+                "them in, by chamber, as the TERM picker does: app.js and the static page agree",
+       needs=("build_legislator_pages",))
+def _on_record_covers_the_nineties(LP):
+    """Found on the release candidate's preview (13 November 2026): the page offered 1991-1992 to
+    1998 in its TERM picker and said "ON RECORD: House, 1999-2024". The line is first to last
+    per chamber (gaps not shown); the terms before 1999 are added to the chamber the
+    sponsor record gives (`past_terms`, member_links.earlier_terms from the sponsored bills the
+    picker lists). The votes lines stay roll calls', 1999 on.
+
+    - a House member with 1990s terms and roll calls: the terms that run into the roll calls join
+      them, the others stand as their own runs ("House, 1991-1992, 1995-2024"), never one span
+      across a term the record lacks;
+    - a member with a 1990s Senate term and later House service: each chamber its own span;
+    - a member with none is as before;
+    - app.js's line and the static page's say the same years."""
+    import re
+    ML = imp("member_links")
+    bad = []
+    att = lambda *ts: {t: {"days": 1} for t in ts}
+    base = {"chamber": "H", "party": "D", "county": "Hillsborough", "district": "39",
+            "display_plain": "Rep. Pat Example", "display_full": "Rep. Pat Example (D - Hills 39)",
+            "display": "Rep. Pat Example (D)", "slug": "pat-example-hills-39", "towns": [],
+            "committees": []}
+    house = dict(base, id="800001", attendance=att("1999-2000", "2023-2024"),
+                 past_terms={"H": ["1991-1992", "1995-1996", "1997-1998"]})
+    mover = dict(base, id="800002", slug="sam-mover-hills-1", attendance=att("2001-2002", "2007-2008"),
+                 past_terms={"S": ["1993-1994"]})
+    plain = dict(base, id="800003", slug="al-plain-hills-2", attendance=att("2011-2012", "2023-2024"))
+    adj = dict(base, id="800005", slug="ad-jacent-hills-3", attendance=att("1999-2000", "2023-2024"),
+               past_terms={"H": ["1997-1998"]})
+    far = dict(base, id="800006", slug="fa-gap-hills-4", attendance=att("2003-2004", "2009-2010"),
+               past_terms={"H": ["1989-1990"]})
+    cases = {"house": (house, "House, 1991–1992, 1995–2024"),
+             "adjacent": (adj, "House, 1997–2024"),
+             "gap": (far, "House, 1989–1990, 2003–2010"),
+             "mover": (mover, "Senate, 1993–1994 · House, 2001–2008"),
+             "plain": (plain, "House, 2011–2024")}
+    if ML.earlier_terms([{"term": "1991-1992", "ch": "S"}, {"term": "1993-1994", "ch": "S"},
+                         {"term": "2001-2002", "ch": "H"}, {"term": "1995-1996"}]) \
+            != {"S": ["1991-1992", "1993-1994"]}:
+        bad.append("earlier_terms: only the pre-1999 terms the sponsor record placed, with a chamber")
+    got = _app_js("[" + ", ".join(f"scope.renderMemberHead({json.dumps(m)})"
+                                  for m, _ in cases.values()) + "]", names=("renderMemberHead",))
+
+    def words(h):
+        t = re.sub(r"<[^>]+>", " ", h).replace("&ndash;", "–").replace("&middot;", "·")
+        return re.sub(r"[\s ]+", " ", t.replace("&nbsp;", " "))
+    for i, (name, (m, want)) in enumerate(cases.items()):
+        stat = words(LP.static_record(m, m))
+        if name == "plain":
+            if "On record:" in stat:
+                bad.append("a member with no earlier terms gained a static On record line")
+        elif f"On record: {want}" not in stat:
+            bad.append(f"{name}: the static page does not say {want!r}: {stat[:300]!r}")
+        if got is not None:
+            app = words(got[i])
+            if f"On Record {want}" not in app:
+                bad.append(f"{name}: app.js does not say {want!r}: {app[:300]!r}")
+    # NEVER ONE SPAN ACROSS A TERM THE RECORD LACKS (the coordinator, 13 November 2026: 76 of 355
+    # people have one between their 1990s terms and their roll calls, 39 of them 3 to 14).
+    fgap = dict(far, former=True, served={"first": "1/9/2003", "last": "12/1/2010"}, id="800007")
+    if "On record 1989 to 1990 and 2003 to 2010" not in words(LP.static_record(fgap, fgap)):
+        bad.append("a former member's sentence bridges a gap: " + words(LP.static_record(fgap, fgap))[:200])
+    # A former member's sentence covers the same years, and the page that joins two chambers
+    # names each with its own.
+    gone = dict(mover, former=True, served={"first": "1/9/2002", "last": "12/1/2008"}, id="800004")
+    if "On record 1993 to 1994 and 2001 to 2008" not in words(LP.static_record(gone, gone)):
+        bad.append("a former member's static sentence does not start at the earlier term")
+    said = LP.describe(gone, gone).replace("House of Representatives", "House")
+    if "Senate, 1993 to 1994, and House, 2001 to 2008" not in said:
+        bad.append(f"a former member's description does not name each chamber's years: {said!r}")
+    return ("fail", "; ".join(bad)) if bad else None
 
 
 @check("build", "members-elect: every new member-elect with a page is linked to it on the Officials "

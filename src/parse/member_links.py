@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.6
+# GRANITE_VERSION: 2026-09-13.8
 """
 Which sitting members voted under an earlier number in the other chamber.
 
@@ -326,6 +326,52 @@ def service(votes):
                 spans.append([y, y])
         out.append({"chamber": body, "spans": spans})
     return out
+
+
+def earlier_terms(entries):
+    """{"H": ["1991-1992", ...], "S": [...]}: the terms before the roll calls begin (1999)
+    that a member's own sponsored bills place them in, by the chamber the bill printed.
+    `entries` are build_bills' accumulator rows; only the ones the General Court's sponsor
+    record placed on this person (past_roster.py) carry a `ch`. The page's TERM picker
+    lists the terms of the same bills, so the two cannot disagree."""
+    out = {}
+    for e in entries or ():
+        ch, t = e.get("ch"), str(e.get("term") or "")
+        if ch in ("H", "S") and t[:4].isdigit() and int(t[:4]) < 1999:
+            out.setdefault(ch, set()).add(t)
+    return {ch: sorted(ts) for ch, ts in sorted(out.items())}
+
+
+def record_spans(service, att_years, chamber, past_terms):
+    """[{"chamber": "H", "spans": [[1991, 2024]]}, ...]: the years the record places a member
+    in each chamber -- the page's "On Record" line. app.js's spans does the same, step for step.
+
+    `service` is member_links.service where the page joins two chambers (gaps shown, as the
+    "Votes on record" line shows them); otherwise the span is first to last, gaps not shown,
+    from `att_years` (the terms attendance is counted in, as [first, last] pairs) under the
+    page's `chamber`. `past_terms` is earlier_terms: the 1989-1998 terms the sponsor record
+    gives, each added to its own chamber. Chambers come in the order first sat in."""
+    past = {ch: [[int(t[:4]), int(t[5:9]) if t[5:9].isdigit() else int(t[:4])] for t in ts]
+            for ch, ts in (past_terms or {}).items() if ts}
+    if service:
+        base = {c["chamber"]: [list(sp) for sp in c.get("spans") or []] for c in service}
+    else:
+        base = ({chamber: [[min(a for a, _ in att_years), max(b for _, b in att_years)]]}
+                if att_years and chamber else {})
+    out = []
+    for ch in set(base) | set(past):
+        spans = sorted(base.get(ch, []) + past.get(ch, []))
+        # Terms that run into each other join; a missing term between two keeps them apart,
+        # so a 1990s term is never bridged to the roll calls across years the record lacks.
+        merged = []
+        for a, b in spans:
+            if merged and _term(a) <= _term(merged[-1][1]) + 2:
+                merged[-1][1] = max(merged[-1][1], b)
+            else:
+                merged.append([a, b])
+        spans = merged
+        out.append({"chamber": ch, "spans": spans})
+    return sorted(out, key=lambda c: (c["spans"][0][0], c["chamber"] != chamber))
 
 
 def main():
