@@ -1507,14 +1507,54 @@
    "es": "Elección del {day}",
    "state": "draft"
   },
+  "elect.f_all": {
+   "en": "All",
+   "es": "Todos",
+   "state": "draft"
+  },
+  "elect.f_both": {
+   "en": "Both",
+   "es": "Ambas",
+   "state": "draft"
+  },
+  "elect.f_chamber": {
+   "en": "Chamber",
+   "es": "Cámara",
+   "state": "draft"
+  },
+  "elect.f_none": {
+   "en": "No member-elect matches that.",
+   "es": "Ningún miembro electo coincide.",
+   "state": "draft"
+  },
+  "elect.f_party": {
+   "en": "Party",
+   "es": "Partido",
+   "state": "draft"
+  },
+  "elect.f_ph": {
+   "en": "Name, town or district",
+   "es": "Nombre, municipio o distrito",
+   "state": "draft"
+  },
+  "elect.f_search": {
+   "en": "Search",
+   "es": "Buscar",
+   "state": "draft"
+  },
+  "elect.f_some": {
+   "en": "Showing {n} of {m} members-elect",
+   "es": "Mostrando {n} de {m} miembros electos",
+   "state": "draft"
+  },
+  "elect.f_status": {
+   "en": "Status",
+   "es": "Estado",
+   "state": "draft"
+  },
   "elect.kind.chamber": {
    "en": "New chamber",
    "es": "Nueva cámara",
-   "state": "draft"
-  },
-  "elect.kind.district": {
-   "en": "New district",
-   "es": "Nuevo distrito",
    "state": "draft"
   },
   "elect.kind.incumbent": {
@@ -1525,6 +1565,16 @@
   "elect.kind.new": {
    "en": "New",
    "es": "Nuevo/a",
+   "state": "draft"
+  },
+  "elect.kind.returning": {
+   "en": "Returning",
+   "es": "Regresa",
+   "state": "draft"
+  },
+  "elect.kind.unsure": {
+   "en": "Prior service not on record",
+   "es": "Servicio previo no registrado",
    "state": "draft"
   },
   "elect.n_none": {
@@ -1760,6 +1810,11 @@
   "elect.title_sen": {
    "en": "Sen. “Elect”",
    "es": "Sen. “Electo/a”",
+   "state": "draft"
+  },
+  "elect.unsure_why": {
+   "en": "The record has a sponsor of the same surname from this county before 1999, when bills carried no member number, and cannot say whether it is the same person.",
+   "es": "El registro tiene un patrocinador con el mismo apellido de este condado antes de 1999, cuando los proyectos no llevaban número de miembro, y no puede decir si es la misma persona.",
    "state": "draft"
   },
   "elect.who_won": {

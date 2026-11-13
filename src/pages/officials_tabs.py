@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.13
+# GRANITE_VERSION: 2026-10-10.16
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -63,7 +63,7 @@ import i18n as I
 
 from components import date_words, pchip, until_attrs
 from build_town_pages import tel, maillink, weblink
-from build_members_elect import KEY_RE, race_order, read_officials
+from build_members_elect import KEY_RE, STATUSES, elect_status, race_order, read_officials
 
 E = lambda s: _html.escape(str(s or ""), quote=True)  # noqa: E731
 
@@ -742,31 +742,33 @@ def presiding(officers, legs, today, lang="en"):
 # with a title and a district -- "Rep.-elect Kristine Trow (D - Rock 13)",
 # "Sen.-elect David Rochefort (R - SD1)", the owner's choice of "Rep.-elect"
 # (since the walk of dry run 8, 8 November 2026, "Rep. “Elect” Kristine Trow",
-# the quotation marks inside the chip) -- and beside it, outside it, one word for who they are (the walk of dry
-# run 7, through the laptop manager):
+# the quotation marks inside the chip) -- and beside it, outside it, one word
+# for who they are (the walk of dry run 7, through the laptop manager).
 #
-#   INCUMBENT     a sitting member re-elected to the seat they hold (the
-#                 file's `own`), or a former member back in the chamber they
-#                 last served in
-#   NEW DISTRICT  a sitting member elected to another district of the same
-#                 chamber
-#   NEW CHAMBER   a sitting or former member elected to the other chamber:
-#                 Jim Creighton holds Hillsborough 30 and was elected to the
-#                 Senate's district 8
-#   NEW           nobody the roster or the former members name
+# THE WORD IS build_members_elect.elect_status's, the one classification the
+# list, its counts and its filter share (the owner, 12 November 2026):
 #
-# The chamber a member sits or last sat in is their roster or former.json
-# row's; a former member's row says the chamber they last served in and not
-# each term's, so one last in the other chamber reads NEW CHAMBER even if
-# they once served in this one (none on dry run 7). A member the file links
-# but whose row is not in `people` gets no word rather than a guessed one.
+#   INCUMBENT     serving now in the chamber they were elected to (a sitting
+#                 member elected to another district of the same chamber is
+#                 one: the owner's four kinds have no "new district")
+#   RETURNING     served before and is not serving now: an earlier term, or
+#                 the term now ending until they left it partway through
+#   NEW CHAMBER   their most recent service was in the other chamber
+#   NEW           nobody the roster, the former members or the bills before
+#                 1999 name
+#   PRIOR SERVICE NOT ON RECORD
+#                 the record cannot say (elect_status says when)
+#
+# The chamber a member sat in last is their roster or former.json row's. A
+# member the file links but whose row is not in `people` gets no word rather
+# than a guessed one.
 def kind_words(kind, lang="en"):
     """The word for an elect_kind(), in `lang`; "" for none."""
-    # INCUMBENT, not RETURNING, from the owner's walk of dry run 8, 8 November 2026.
-    return {"returning": I.say(lang, "elect.kind.incumbent", "Incumbent"),
-            "district": I.say(lang, "elect.kind.district", "New district"),
+    return {"returning": I.say(lang, "elect.kind.returning", "Returning"),
+            "incumbent": I.say(lang, "elect.kind.incumbent", "Incumbent"),
             "chamber": I.say(lang, "elect.kind.chamber", "New chamber"),
-            "new": I.say(lang, "elect.kind.new", "New")}.get(kind, "")
+            "new": I.say(lang, "elect.kind.new", "New"),
+            "unsure": I.say(lang, "elect.kind.unsure", "Prior service not on record")}.get(kind, "")
 
 
 # A name's last word is its surname but for these, which follow one.
@@ -777,32 +779,28 @@ PARTY_OF = {"R": "Republican", "D": "Democrat", "I": "Independent", "L": "Libert
 
 
 def elect_kind(e, key, by_id=None):
-    """Which of kind_words' words a member-elect carries, from the file's
-    `k` and `own` and, for a member it links, the chamber of their row in
-    `by_id` (the roster's for a sitting member, former.json's for a former
-    one) against the race's; "" where the file or the rows cannot say."""
-    k = e.get("k")
-    if k == "new":
-        return "new"
-    if k not in ("sitting", "former"):
-        return ""
-    row = (by_id or {}).get(str(e.get("id") or ""))
-    sat = str((row or {}).get("chamber") or "")[:1].upper()
-    if sat not in ("H", "S"):
-        return ""
-    if sat != ("S" if KEY_RE.match(key).group(3) else "H"):
-        return "chamber"
-    if k == "former" or e.get("own"):
-        return "returning"
-    return "district"
+    """Which of kind_words' words a member-elect carries: elect_status's, from
+    the file's `k` and `u` and the row `by_id` holds for a member it links
+    (the roster's for a sitting member, former.json's for a former one). ""
+    where the file or the rows cannot say."""
+    row = (by_id or {}).get(str(e.get("id") or "")) if e.get("id") else None
+    return elect_status(e, key, row)
 
 
 def elect_word(e, key, by_id=None, lang="en"):
     """The word beside a member-elect's chip, as its own label outside the
     chip (the walk of 8 November 2026: inside it, the chip wrapped to two
-    lines where the Legislators tab's is one); "" for none."""
-    w = kind_words(elect_kind(e, key, by_id), lang)
-    return f' <span class="elkind" translate="yes">{E(w)}</span>' if w else ""
+    lines where the Legislators tab's is one); "" for none. The one that
+    says the record cannot say carries what it means as its title."""
+    kind = elect_kind(e, key, by_id)
+    w = kind_words(kind, lang)
+    if not w:
+        return ""
+    why = (' title="' + E(I.say(lang, "elect.unsure_why", "The record has a sponsor of the same "
+                                "surname from this county before 1999, when bills carried no member "
+                                "number, and cannot say whether it is the same person.")) + '"'
+           if kind == "unsure" else "")
+    return f' <span class="elkind" translate="yes"{why}>{E(w)}</span>'
 
 
 def elect_chip(e, key, lang="en"):
@@ -846,8 +844,8 @@ def elect_party_words(code, n, lang="en"):
 def elect_kind_line(won_keys, by_id, lang="en"):
     """THE KINDS, COUNTED (the owner's walk of dry run 8, 8 November 2026): one
     chamber's members-elect by the word each chip carries, from elect_kind
-    itself and so never a second classification -- "250 incumbent &middot; 30
-    new district &middot; 4 new chamber &middot; 100 new". `won_keys` is
+    itself and so never a second classification -- "230 incumbent &middot; 24
+    returning &middot; 4 new chamber &middot; 100 new". `won_keys` is
     [(member-elect, race key)]; a member the rows cannot place has no word
     and is not counted; "" where none has one."""
     n = {}
@@ -856,7 +854,7 @@ def elect_kind_line(won_keys, by_id, lang="en"):
         if kind:
             n[kind] = n.get(kind, 0) + 1
     return " &middot; ".join(f"{n[kind]} {E(kind_words(kind, lang)).lower()}"
-                             for kind in ("returning", "district", "chamber", "new") if n.get(kind))
+                             for kind in STATUSES if n.get(kind))
 
 
 def elect_totals(races, lang="en", by_id=None):
@@ -1027,7 +1025,7 @@ def elect_nf_count(rows, lang="en"):
             + I.say(lang, "elect.nf_named", "Who won the seats lists them, and By county.") + "</p>")
 
 
-def members_elect(elect, today, lang="en", people=None):
+def members_elect(elect, today, lang="en", people=None, towns=None):
     """THE MEMBERS-ELECT TAB (the person's decisions of 16 October 2026):
     who November's election sent to the General Court, for the weeks before
     they sit -- the approved sentence; then each chamber's seats by party
@@ -1039,7 +1037,10 @@ def members_elect(elect, today, lang="en", people=None):
     the other two's double. Drawn from site/members_elect.json (`elect`,
     from build_members_elect.for_pages) and never beside the roster, which
     stays on the Legislators tab as who holds each seat; so no "Serving
-    now" here. `people`, the sitting and former members, gives a linked
+    now" here. Over the lists a search box and three filters (status, party,
+    chamber: elect_controls), written hidden for the script to show, over
+    items that carry what they read; `towns` ({race key: [towns]}) lets a
+    town's name find its members-elect. `people`, the sitting and former members, gives a linked
     member's surname for the order, the chamber they sit or sat in for
     their word, and the county the Legislators tab lists each Senate
     district under; nothing of theirs is drawn. No contact detail: a
@@ -1081,11 +1082,14 @@ def members_elect(elect, today, lang="en", people=None):
     def item(tag, cls, e, k):
         """One member-elect in a list: the chip, then the word beside it; the
         item "elown" where a saved town's "Your rep" may mark it, as
-        components.elect_race's (find.js, ytMark)."""
+        components.elect_race's (find.js, ytMark). It carries what the
+        search and the filters read (elect_attrs), and says nothing more
+        to a page read without the script."""
         own = bool(e.get("own") and e.get("id") and e.get("s"))
         names = " ".join(c for c in (cls, "elown" if own else "") if c)
-        return ((f'<{tag} class="{names}">' if names else f"<{tag}>") + elect_chip(e, k, lang)
-                + elect_word(e, k, by_id, lang) + f"</{tag}>")
+        attrs = elect_attrs(e, k, by_id, (towns or {}).get(k))
+        return ((f'<{tag} class="{names}"{attrs}>' if names else f"<{tag}{attrs}>")
+                + elect_chip(e, k, lang) + elect_word(e, k, by_id, lang) + f"</{tag}>")
 
     def won(rows):
         return [(k, e) for k, _d, r in rows for e in r.get("elected") or []]
@@ -1185,7 +1189,138 @@ def members_elect(elect, today, lang="en", people=None):
 </div>
 </section>"""
     return (f'<div class="elpane" data-elect{until_attrs(takes, today)}>' + intro
-            + elect_totals(races, lang, by_id) + views + "</div>")
+            + elect_totals(races, lang, by_id)
+            + elect_controls([(k, e) for k, r in races.items() for e in r.get("elected") or []],
+                             by_id, lang)
+            + views + ELECT_FILTER_JS + "</div>")
+
+
+# THE SEARCH AND THE FILTERS (the owner, 12 November 2026: "a search function
+# for the member's elect page and ... sort by returning, incumbent, new, and
+# new chamber"). Written into the page hidden and shown by its script, as the
+# view strip is, so a page read without the script is the plain lists and no
+# controls that do nothing. The boxes are the site's .bfilt row (a member's
+# Votes tab, a committee's calendar); the search is the Legislators finder's
+# own matching -- every word typed must be in the person's name, county,
+# district or towns, accents folded -- and the three selects choose the
+# status elect_status gives, the party the roster lists them under, and the
+# chamber. Each item carries what is read, as data-st, data-p, data-ch and
+# data-hay; matching is by those and never by a name alone.
+def elect_attrs(e, key, by_id, towns=None):
+    """The data-* an item carries for the filter: its status, its party
+    column's letter ("-" for none), its chamber, and the words a search
+    reads (name, county, district, the towns of the race) in lower case with
+    accents off."""
+    import unicodedata
+    m = KEY_RE.match(key)
+    st = elect_kind(e, key, by_id)
+    where = (f"senate district {m.group(3)} sd{m.group(3)}" if m.group(3) else
+             f"{m.group(1)} district {m.group(2)} {m.group(1)[:4]} {m.group(2)}")
+    hay = unicodedata.normalize("NFKD", " ".join([str(e.get("n") or ""), where, *(towns or [])]))
+    hay = "".join(c for c in hay if not unicodedata.combining(c)).lower()
+    return (f' data-st="{st}" data-p="{E(elect_party(e) or "-")}" '
+            f'data-ch="{"S" if m.group(3) else "H"}" data-hay="{E(hay)}"')
+
+
+def elect_controls(won, by_id, lang="en"):
+    """The search box and the three selects, written hidden, over the lists.
+    `won` is [(race key, member-elect)]. Each option says how many it holds,
+    plainly; the script says how many are shown."""
+    if not won:
+        return ""
+    st, party, chamber = {}, {}, {}
+    for k, e in won:
+        w = elect_kind(e, k, by_id)
+        if w:
+            st[w] = st.get(w, 0) + 1
+        c = elect_party(e) or "-"
+        party[c] = party.get(c, 0) + 1
+        ch = "S" if KEY_RE.match(k).group(3) else "H"
+        chamber[ch] = chamber.get(ch, 0) + 1
+    n = len(won)
+
+    def opts(first, rows):
+        return (f'<option value="">{E(first)} ({n:,})</option>'
+                + "".join(f'<option value="{E(v)}">{E(w)} ({c:,})</option>' for v, w, c in rows))
+    st_rows = [(v, kind_words(v, lang), st[v]) for v in STATUSES if st.get(v)]
+    party_rows = [(c, elect_party_words("" if c == "-" else c, party[c], lang), party[c])
+                  for c in sorted(party, key=lambda c: (-party[c], {"+": 1, "-": 2}.get(c, 0), c))]
+    ch_rows = [(c, I.say(lang, "comp.senate", "Senate") if c == "S" else
+                I.say(lang, "comp.house", "House"), chamber[c]) for c in ("S", "H") if chamber.get(c)]
+    return (f'<div class="bfilt elfilter" role="search" hidden data-n="{n}" '
+            f'data-some="{E(I.say(lang, "elect.f_some", "Showing {n} of {m} members-elect", n="{n}", m="{m}"))}" '
+            f'data-none="{E(I.say(lang, "elect.f_none", "No member-elect matches that."))}">'
+            f'<label>{I.say(lang, "elect.f_search", "Search")}'
+            f'<input type="search" class="elq" autocomplete="off" '
+            f'placeholder="{E(I.say(lang, "elect.f_ph", "Name, town or district"))}"></label>'
+            f'<label>{I.say(lang, "elect.f_status", "Status")}'
+            f'<select class="elst">{opts(I.say(lang, "elect.f_all", "All"), st_rows)}</select></label>'
+            f'<label>{I.say(lang, "elect.f_party", "Party")}'
+            f'<select class="elpa">{opts(I.say(lang, "elect.f_all", "All"), party_rows)}</select></label>'
+            f'<label>{I.say(lang, "elect.f_chamber", "Chamber")}'
+            f'<select class="elch">{opts(I.say(lang, "elect.f_both", "Both"), ch_rows)}</select></label>'
+            f'<p class="count elcount" role="status" aria-live="polite"></p></div>')
+
+
+ELECT_FILTER_JS = """<script>
+(function(){
+// electMatch is the whole of the matching, so a test can run it alone: an
+// item {st, p, ch, hay} against what was typed and chosen; every word typed
+// must be in hay (name, county, district, towns), accents folded.
+function fold(s){s=String(s==null?"":s).toLowerCase();
+  return s.normalize?s.normalize("NFD").replace(/[\\u0300-\\u036f]/g,""):s;}
+function electMatch(it,q,st,p,ch){
+  if(st&&it.st!==st)return false;
+  if(p&&it.p!==p)return false;
+  if(ch&&it.ch!==ch)return false;
+  var w=fold(q).split(/\\s+/).filter(Boolean);
+  for(var i=0;i<w.length;i++)if(it.hay.indexOf(w[i])<0)return false;
+  return true;
+}
+if(typeof window!=="undefined")window.electMatch=electMatch;
+var bar=document.querySelector(".elfilter");
+if(!bar)return;
+var panel=bar.parentNode, box=bar.querySelector(".elq"), say=bar.querySelector(".elcount");
+var sels={st:bar.querySelector(".elst"),p:bar.querySelector(".elpa"),ch:bar.querySelector(".elch")};
+// Every member-elect is in both views; the counts are read from the first.
+var rows=[].slice.call(panel.querySelectorAll("[data-st]")).map(function(el){
+  return {el:el,st:el.dataset.st,p:el.dataset.p,ch:el.dataset.ch,hay:el.dataset.hay||""};});
+var once=rows.filter(function(r){return !!r.el.closest("#pane-elast");});
+// A heading's count and a county's: kept as written, and drawn as what is
+// shown while a search or a filter is on.
+var heads=[].slice.call(panel.querySelectorAll("h2[id^=of-el],.pcol h3")).map(function(h){
+  var m=/^(.*?\\s\\u2014\\s)([0-9,]+)$/.exec(h.textContent);
+  return m?{h:h,pre:m[1],all:m[2],col:h.parentNode.className==="pcol"?h.parentNode:null,
+            s:/senate/.test(h.id||"")}:null;}).filter(Boolean);
+var cgrps=[].slice.call(panel.querySelectorAll("details.cgrp")).map(function(d){
+  var n=d.querySelector(".ccount");
+  return {d:d,n:n,all:n?n.textContent:"",open:d.open};});
+function seen(box){return box.querySelectorAll("[data-st]:not(.elout)").length;}
+function apply(){
+  var q=box.value,st=sels.st.value,p=sels.p.value,ch=sels.ch.value,
+      on=!!(q.trim()||st||p||ch),n=0;
+  rows.forEach(function(r){r.el.classList.toggle("elout",!electMatch(r,q,st,p,ch));});
+  once.forEach(function(r){if(!r.el.classList.contains("elout"))n++;});
+  heads.forEach(function(x){
+    var c=x.col?seen(x.col):once.filter(function(r){
+      return !r.el.classList.contains("elout")&&(r.ch==="S")===x.s;}).length;
+    if(x.col)x.col.classList.toggle("elout",!c);
+    x.h.textContent=on?x.pre+c:x.pre+x.all;
+  });
+  cgrps.forEach(function(g){
+    var c=seen(g.d);
+    g.d.classList.toggle("elout",!c);
+    if(g.n)g.n.textContent=on?c:g.all;
+    g.d.open=on?c>0:g.open;
+  });
+  say.textContent=!on?"":n?bar.dataset.some.replace("{n}",n).replace("{m}",bar.dataset.n)
+    :bar.dataset.none;
+}
+["input","change"].forEach(function(t){
+  [box,sels.st,sels.p,sels.ch].forEach(function(c){c.addEventListener(t,apply);});});
+bar.hidden=false;
+})();
+</script>"""
 
 
 def elect_count(elect):

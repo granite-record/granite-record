@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.889
+# GRANITE_VERSION: 2026-09-04.890
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -121375,8 +121375,8 @@ def _elect_tab_case():
     surname is two words (Perkins Kwoka, after Lane, as the roster lists
     her), a sitting representative elected to the Senate (Creighton, NEW
     CHAMBER), a former representative elected to the Senate (Lane, NEW
-    CHAMBER), a former senator returning (Chandley, INCUMBENT), a sitting
-    representative elected to another House district (Burt, NEW DISTRICT),
+    CHAMBER), a former senator returning (Chandley, RETURNING), a sitting
+    representative elected to another House district (Burt, INCUMBENT),
     the new, a winner of two nominations, a winner with no party printed, a
     "Jr." (Lawrence, after Kline), a race with two seats not final on a
     recount, a seat with nobody on file, a county of two districts whose
@@ -121385,7 +121385,7 @@ def _elect_tab_case():
     the Legislators tab lists each Senate district under (district 9 has
     none, so "Not on file")."""
     rep = lambda n, p, **k: {"n": n, "p": p, "k": "new", **k}  # noqa: E731
-    elect = {"election": "2026-11-03", "takes_office": "2026-12-02",
+    elect = {"election": "2026-11-03", "takes_office": "2026-12-02", "term": "2027-2028",
              "sources": ["https://www.sos.nh.gov/x"], "races": {
                  "S|8": {"seats": 1, "not_final": 0, "held": 0, "elected": [
                      {"n": "Jim Creighton", "p": "R", "k": "sitting", "id": "9917",
@@ -121420,9 +121420,10 @@ def _elect_tab_case():
         {"id": "5008", "name": "Ward, Ruth", "chamber": "S", "district": "8", "county": "Sullivan"},
         {"id": "5011", "name": "Keeper, Kim", "chamber": "S", "district": "11", "county": "Hillsborough"},
         {"id": "2002", "name": "Chandley, Shannon", "chamber": "S", "district": "11",
-         "county": "Hillsborough", "former": True},
+         "county": "Hillsborough", "former": True,
+         "served": {"terms": ["2017-2018", "2019-2020", "2023-2024"]}},
         {"id": "2003", "name": "Lane, Rachel", "chamber": "H", "district": "1", "county": "Strafford",
-         "former": True}]
+         "former": True, "served": {"terms": ["2021-2022"]}}]
     return elect, people
 
 
@@ -121439,10 +121440,10 @@ def _elect_tab_like_legislators(OT):
     run 8: the quotation marks inside the chip). Linked only where the file links them; the
     cross-nominated on the neutral chip with both letters, and no letter
     where none was printed; no contact detail. Beside it and outside it,
-    one word for who they are (the walk of 8 November): INCUMBENT (sitting,
-    in the seat they hold; or former, in the chamber they last sat in), NEW
-    DISTRICT (sitting, another district of the same chamber), NEW CHAMBER
-    (sitting or former, the other chamber), NEW.
+    one word for who they are, build_members_elect.elect_status's (the
+    owner, 12 November 2026): INCUMBENT (sitting in the chamber), RETURNING
+    (served before and not serving now), NEW CHAMBER (their latest service
+    the other chamber), NEW.
 
     THE TWO VIEWS, as the Legislators tab's (By district went on the walk of
     8 November): by last name, each chamber apart under its count and a
@@ -121476,16 +121477,17 @@ def _elect_tab_like_legislators(OT):
     elect, people = _elect_tab_case()
     bad = []
     page = OT.members_elect(elect, "2026-11-20", "en", people)
-    plain = lambda s: re.sub(r"\s+", " ", _h.unescape(re.sub(r"<[^>]+>", " ", s))).strip()  # noqa: E731
+    plain = lambda s: re.sub(r"\s+", " ", _h.unescape(re.sub(  # noqa: E731
+        r"<[^>]+>", " ", re.sub(r"<script>.*?</script>", " ", s, flags=re.S)))).strip()
     want = {  # who -> (the chip's class, linked, tag, word)
         "Rep. “Elect” Kristine Trow": ("p-D", None, "D - Rock 13", "New"),
         "Rep. “Elect” Charles Foote": ("p-R", "charles-foote-rock-13", "R - Rock 13", "Incumbent"),
         "Sen. “Elect” Jim Creighton": ("p-R", "james-creighton-hills-30", "R - SD8", "New chamber"),
         "Sen. “Elect” Rachel Lane": ("p-D", "rachel-lane-hills-1", "D - SD9", "New chamber"),
-        "Sen. “Elect” Shannon E. Chandley": ("p-D", "shannon-chandley-sd-11", "D - SD11", "Incumbent"),
+        "Sen. “Elect” Shannon E. Chandley": ("p-D", "shannon-chandley-sd-11", "D - SD11", "Returning"),
         "Sen. “Elect” Rebecca Perkins Kwoka": ("p-D", "rebecca-perkins-kwoka-sd-21", "D - SD21",
                                              "Incumbent"),
-        "Rep. “Elect” Ann Burt": ("p-R", "ann-burt-coos-3", "R - Coos 1", "New district"),
+        "Rep. “Elect” Ann Burt": ("p-R", "ann-burt-coos-3", "R - Coos 1", "Incumbent"),
         "Rep. “Elect” Pat Both": ("p-X", None, "R/D - Belk 6", "New"),
         "Rep. “Elect” Lee Nobody": ("p-X", None, "Belk 6", "New"),
     }
@@ -121622,9 +121624,9 @@ def _elect_tab_like_legislators(OT):
     # The kinds counted, a line a chamber, from the chips' own classification
     # (the walk of dry run 8), and the sentence under "More than one party".
     kinds = [plain(k) for k in re.findall(r"<p class=\"elkinds\">(.*?)</p>", top)]
-    if kinds != ["Senate 2 incumbent · 2 new chamber", "House 1 incumbent · 1 new district · 6 new"] \
-            or "returning" in page.lower():
-        bad.append(f"the kinds counted under Who won the seats are {kinds}, or the word returning is drawn")
+    if kinds != ["Senate 1 returning · 1 incumbent · 2 new chamber", "House 2 incumbent · 6 new"] \
+            or "new district" in page.lower():
+        bad.append(f"the kinds counted under Who won the seats are {kinds}, or the word new district is drawn")
     if "party labels, as the Secretary of State’s results print them" not in plain(last):
         bad.append("the cross-nominated group does not say why it is one")
     house = top[top.rfind('<div class="comp">'):top.find('<details class="vac elnfl">')]
@@ -121641,7 +121643,8 @@ def _elect_tab_like_legislators(OT):
     es_page = OT.members_elect(elect, "2026-11-20", "es", people)
     es = plain(es_page) + " " + " ".join(_h.unescape(v) for v in re.findall(
         r'\b(?:title|aria-label)="([^"]*)"', es_page))
-    for word in ("“Elect”", "Incumbent", "New district", "New chamber", "New",
+    for word in ("“Elect”", "Incumbent", "Returning", "Prior service", "Search", "Status",
+                 "New district", "New chamber", "New",
                  "By last name", "By county", "Who won the seats", "not final", "seats elected",
                  "More than one party", "no one on file", "lists them", "members-elect",
                  "Democrats", "Republicans", "District", "Party not on file", "Not on file",
@@ -121704,6 +121707,229 @@ console.log(JSON.stringify([a,b,c,d,String(scrolled),bars.map(function(x){return
                   "line for a phone, and the seats not final listed; Spanish throughout"
                   + ("; both strips switch their own panes and open the view an address names"
                      if node else " (node absent: the strips' script not run)"))
+
+
+@check("build", "members-elect: each winner's status -- incumbent, returning, new chamber, new, and "
+                "prior service not on record -- is worked out from the record by member id, "
+                "never from a name", needs=("build_members_elect",))
+def _elect_status(BME):
+    """The owner's four words of 12 November 2026 and the fifth for where the
+    record cannot say, on rows built here: INCUMBENT serving now in the
+    chamber; RETURNING served before and is not serving now (an earlier
+    term, or the term now ending left partway through, as a member who
+    resigned mid-term and was elected again); NEW CHAMBER most recent service the
+    other chamber, sitting or last; NEW nobody; UNSURE a former member with no
+    term on file, or a new person whose surname the bills before 1999 print
+    for the same chamber and county (the Senate: district). A person is
+    found by the row of their id; a row of the same name under another id is
+    nobody's, and a sponsor with a member number is already named."""
+    bad = []
+    rows = {"1": {"chamber": "H"}, "2": {"chamber": "S"},
+            "3": {"chamber": "H", "served": {"terms": ["2019-2020", "2023-2024"]}},
+            "4": {"chamber": "H", "served": {"terms": ["2025-2026"]}},
+            "5": {"chamber": "H", "served": {"terms": []}},
+            "6": {"chamber": "S", "served": {"terms": ["2013-2014"]}},
+            "7": {"chamber": "H", "served": {"terms": ["2023-2024"]}, "name": "Burt, Ann"},
+            "8": {"chamber": "S", "name": "Burt, Ann"}}
+    H, S = "H|Coos|1", "S|8"
+    want = [  # (the entry, its race, the row's id, the status)
+        ({"k": "sitting", "id": "1"}, H, "incumbent"),
+        ({"k": "sitting", "id": "1"}, S, "chamber"),
+        ({"k": "sitting", "id": "2"}, H, "chamber"),
+        ({"k": "sitting", "id": "2"}, S, "incumbent"),
+        ({"k": "former", "id": "3"}, H, "returning"),
+        ({"k": "former", "id": "3"}, S, "chamber"),
+        ({"k": "former", "id": "4"}, H, "returning"),  # left the term now ending partway
+        ({"k": "former", "id": "5"}, H, "unsure"),
+        ({"k": "former", "id": "6"}, H, "chamber"),
+        ({"k": "former", "id": "6"}, S, "returning"),
+        ({"k": "new"}, H, "new"),
+        ({"k": "new", "u": True}, H, "unsure"),
+        ({"k": "sitting", "id": "99"}, H, ""),     # no row: no word, no guess
+        ({"k": "former", "id": "99"}, H, ""),
+        ({"k": "sitting"}, H, ""),
+        ({"k": "returning", "id": "1"}, H, ""),    # a kind the file does not use
+    ]
+    for e, key, st in want:
+        got = BME.elect_status(e, key, rows.get(str(e.get("id"))) if e.get("id") else None)
+        if got != st:
+            bad.append(f"{e} in {key}: {got!r}, not {st!r}")
+    # By id and never by name: two rows of one name, and the entry's id picks the row.
+    a = BME.elect_status({"k": "former", "id": "7"}, H, rows["7"])
+    b = BME.elect_status({"k": "sitting", "id": "8"}, H, rows["8"])
+    if (a, b) != ("returning", "chamber"):
+        bad.append(f"two Ann Burts by their ids are {(a, b)}")
+    if set(BME.STATUSES) != {"returning", "incumbent", "chamber", "new", "unsure"}:
+        bad.append(f"the statuses are {BME.STATUSES}")
+    # The doubt: a surname, a chamber and a county (a Senate district), on a bill before 1999
+    # that names no member.
+    sp = {"1993-1994": {"HB1": [{"name": "Smith", "chamber": "H", "county": "Coos", "district": "2"},
+                                {"name": "Jones", "chamber": "S", "county": "", "district": "5"},
+                                {"name": "Brown", "chamber": "H", "county": "Coos", "member_id": "77"}]},
+          "2001-2002": {"HB2": [{"name": "Green", "chamber": "H", "county": "Coos"}]}}
+    got = BME.earlier_names(sp)
+    if got != {("smith", "H", "coos"), ("jones", "S", "5")}:
+        bad.append(f"the earlier surnames are {sorted(got)}: not Smith of Coos and Jones of Senate "
+                   "5 only (Brown names a member, Green is of 2001)")
+    races = {"H|Coos|2": {"elected": [{"n": "Pat Smith", "k": "new"}, {"n": "Cy Green", "k": "new"},
+                                      {"n": "Bo Brown", "k": "new"},
+                                      {"n": "Dee Smith", "k": "former", "id": "3"}]},
+             "H|Grafton|3": {"elected": [{"n": "Al Smith", "k": "new"}]},
+             "S|5": {"elected": [{"n": "Ann Jones", "k": "new"}]},
+             "S|6": {"elected": [{"n": "Jo Jones", "k": "new"}]}}
+    n = BME.earlier_service(races, got)
+    flagged = sorted(e["n"] for r in races.values() for e in r["elected"] if e.get("u"))
+    if n != 2 or flagged != ["Ann Jones", "Pat Smith"]:
+        bad.append(f"{n} flagged, {flagged}: only Pat Smith (Coos) and Ann Jones (Senate 5), "
+                   "and no member the record names")
+    assert not bad, "\n  ".join(bad)
+    return "ok", "five statuses by the row of the id, the doubt by surname, chamber and county only"
+
+
+@check("frontend", "the Members-Elect tab has a search box and filters by status, party and "
+                   "chamber, with each count said, written hidden for the script to show; the "
+                   "plain lists are the page without it", needs=("officials_tabs",))
+def _elect_search_filter(OT):
+    """The owner, 12 November 2026: "a search function for the member's elect
+    page and ... sort by returning, incumbent, new, and new chamber". On the
+    fixture of the tab: the row is the site's .bfilt, written hidden; each
+    item carries data-st, data-p, data-ch and data-hay and a page without
+    the script has the lists as they were; each select's options count what
+    they choose; and the script, run in node on the items the page really
+    carries, matches by what is typed (every word, accents folded: a name, a
+    county, a district, a town) and what is chosen, and says how many are
+    shown and fixes the headings' counts."""
+    import html as _h
+    import shutil as _sh
+    elect, people = _elect_tab_case()
+    towns = {"H|Rockingham|13": ["Hampton", "Hampton Falls"], "H|Belknap|6": ["Gilford"]}
+    page = OT.members_elect(elect, "2026-11-20", "en", people, towns)
+    bad = []
+    bar = re.search(r'<div class="bfilt elfilter" role="search" hidden data-n="12" [^>]*>(.*?)</div>',
+                    page, re.S)
+    if not bar:
+        return "fail", "the search row is not written hidden over the lists"
+    opts = {m[0]: re.findall(r'<option value="([^"]*)">([^<]*)</option>', m[1])
+            for m in re.findall(r'<select class="(el[a-z]+)">(.*?)</select>', bar.group(1))}
+    if opts.get("elst") != [("", "All (12)"), ("returning", "Returning (1)"),
+                            ("incumbent", "Incumbent (3)"), ("chamber", "New chamber (2)"),
+                            ("new", "New (6)")]:
+        bad.append(f"the status options are {opts.get('elst')}")
+    if opts.get("elch") != [("", "Both (12)"), ("S", "Senate (4)"), ("H", "House (8)")]:
+        bad.append(f"the chamber options are {opts.get('elch')}")
+    if opts.get("elpa") != [("", "All (12)"), ("D", "Democrats (7)"), ("R", "Republicans (3)"),
+                            ("+", "More than one party (1)"), ("-", "Party not on file (1)")]:
+        bad.append(f"the party options are {opts.get('elpa')}")
+    if 'type="search"' not in bar.group(1) or "Name, town or district" not in bar.group(1):
+        bad.append("the box does not ask for a name, a town or a district")
+    if re.search(r'class="[^"]*\belout\b', page):
+        bad.append("an item is drawn already filtered out")
+    per = re.findall(r'<(?:li|div) class="(?:seatrow|mem)[^"]*" data-st="([a-z]*)" data-p="([^"]*)" '
+                     r'data-ch="([SH])" data-hay="([^"]*)">', page)
+    if len(per) != 24:
+        bad.append(f"{len(per)} items carry their data, not 12 in each of the two views")
+    last = page[:page.find('id="pane-ecounty"')]
+    items = [{"st": a, "p": b, "ch": c, "hay": d} for a, b, c, d in re.findall(
+        r'<(?:li|div) class="(?:seatrow|mem)[^"]*" data-st="([a-z]*)" data-p="([^"]*)" '
+        r'data-ch="([SH])" data-hay="([^"]*)">', last)]
+    if len(items) != 12 or not any("hampton" in i["hay"] for i in items):
+        bad.append(f"the first view carries {len(items)} items, with the towns of a race in their words")
+    node = _sh.which("node")
+    script = re.search(r"<script>(.*?)</script>", page, re.S)
+    if not script:
+        return "fail", "; ".join(bad + ["the page carries no script for the controls"])
+    if node:
+        import subprocess as _sp
+        harness = r"""
+var ITEMS=""" + json.dumps(items) + r""";
+function el(o){var e=Object.assign({c:new Set(),ls:{}},o);
+  e.classList={toggle:function(n,f){if(f===undefined)f=!e.c.has(n);if(f)e.c.add(n);else e.c.delete(n);},
+               contains:function(n){return e.c.has(n);}};
+  e.addEventListener=function(t,f){(e.ls[t]=e.ls[t]||[]).push(f);};
+  e.fire=function(t){(e.ls[t]||[]).forEach(function(f){f();});};
+  return e;}
+var cells=ITEMS.map(function(i,n){return el({dataset:{st:i.st,p:i.p,ch:i.ch,hay:i.hay},
+  closest:function(s){return s==="#pane-elast"?this:null;}});});
+var box=el({value:""}),st=el({value:""}),pa=el({value:""}),ch=el({value:""}),say=el({textContent:""});
+var h2s=[el({id:"of-elect-senate",textContent:"Senate — 4",parentNode:{className:""}}),
+         el({id:"of-elect-house",textContent:"House — 8",parentNode:{className:""}})];
+var bar=el({dataset:{some:"Showing {n} of {m} members-elect",none:"No member-elect matches that.",n:"12"},
+  querySelector:function(s){return {".elq":box,".elst":st,".elpa":pa,".elch":ch,".elcount":say}[s];}});
+var panel={querySelectorAll:function(s){return s==="[data-st]"?cells:s.indexOf("h2")===0?h2s:[];}};
+bar.parentNode=panel;
+var window={};
+var document={querySelector:function(s){return s===".elfilter"?bar:null;}};
+""" + script.group(1) + r"""
+function names(){return cells.map(function(c,i){return c.c.has("elout")?null:ITEMS[i].hay.split(" district")[0];})
+  .filter(Boolean);}
+function go(q,s,p,c){box.value=q;st.value=s;pa.value=p;ch.value=c;box.fire("input");
+  return {n:names(),say:say.textContent,h:h2s.map(function(h){return h.textContent;})};}
+var out={};
+out.all=go("","","","");
+out.returning=go("","returning","","");
+out.incumbent=go("","incumbent","","");
+out.chamber=go("","chamber","","");
+out.new=go("","new","","");
+out.hampton=go("hampton","","","");
+out.sd8=go("sd8","","","");
+out.rock13=go("rock 13","","","");
+out.two=go("kwoka rebecca","","","");
+out.none=go("chandley","incumbent","","");
+out.sd=go("","","D","S");
+out.nop=go("","","-","");
+out.both=go("","","+","");
+out.fold=window.electMatch({st:"new",p:"D",ch:"H",hay:"matt sabourin dit choiniere"},"CHOINIÈRE","","","");
+out.no=window.electMatch({st:"new",p:"D",ch:"H",hay:"jodi nelson"},"nelsen","","","");
+out.back=go("","","","");
+console.log(JSON.stringify(out));
+"""
+        r = _sp.run([node, "-e", harness], capture_output=True, text=True, encoding="utf-8",
+                    timeout=60)
+        if r.returncode != 0 or not r.stdout.strip().startswith("{"):
+            bad.append(f"the script did not run in node: {(r.stderr or r.stdout).strip()[:400]}")
+        else:
+            o = json.loads(r.stdout)
+            # `hay` begins with the name: the first word says who it is.
+            def who(v):
+                return sorted(x.split(" ")[0] for x in v["n"])
+            want = {"returning": ["shannon"], "incumbent": ["ann", "charles", "rebecca"],
+                    "chamber": ["jim", "rachel"],
+                    "new": ["karen", "kristine", "lee", "pat", "william", "zoe"],
+                    "hampton": ["charles", "kristine"], "sd8": ["jim"],
+                    "rock13": ["charles", "kristine"], "two": ["rebecca"], "none": [],
+                    "sd": ["rachel", "rebecca", "shannon"], "nop": ["lee"], "both": ["pat"]}
+            for k, w in want.items():
+                got = who(o[k])
+                if got != w:
+                    bad.append(f"search/filter {k!r} shows {got}, not {w}")
+            if len(o["all"]["n"]) != 12 or o["all"]["say"] != "" or o["back"]["say"] != "" \
+                    or o["all"]["h"] != ["Senate — 4", "House — 8"]:
+                bad.append(f"with nothing asked, the list is not whole and silent: {o['all']}")
+            if o["incumbent"]["say"] != "Showing 3 of 12 members-elect" or o["none"]["say"] != \
+                    "No member-elect matches that.":
+                bad.append(f"the count said is {o['incumbent']['say']!r} / {o['none']['say']!r}")
+            if o["incumbent"]["h"] != ["Senate — 1", "House — 2"]:
+                bad.append(f"the headings' counts under a filter are {o['incumbent']['h']}")
+            if o["fold"] is not True or o["no"] is not False:
+                bad.append("accents are not folded, or a near name matches: "
+                           f"{o['fold']} {o['no']}")
+    # Spanish: the row's words, none in English.
+    es = OT.members_elect(elect, "2026-11-20", "es", people, towns)
+    row = re.search(r'<div class="bfilt elfilter".*?</div>', es, re.S).group(0)
+    blob = _h.unescape(re.sub(r"<[^>]+>", " ", row) + " " + " ".join(
+        re.findall(r'(?:placeholder|data-some|data-none)="([^"]*)"', row)))
+    for word in ("Search", "Status", "Party", "Chamber", "All", "Both", "Returning", "Incumbent",
+                 "Name, town", "members-elect", "Showing"):
+        if re.search(r"(?<![\w.-])" + re.escape(word) + r"(?![\w-])", blob):
+            bad.append(f"the Spanish search row says {word!r}")
+    # With nobody, no row is drawn at all.
+    if OT.elect_controls([], {}):
+        bad.append("a tab of nobody draws a search row")
+    assert not bad, "\n  ".join(bad)
+    return "ok", ("a search row written hidden, counts in every option, items carrying data-st, "
+                  "-p, -ch and -hay; node: status, party, chamber, name, county, district, "
+                  "town and accents, headings recounted, the count said"
+                  if node else "the row and the items (node absent: the script not run)")
 
 
 @check("build", "members-elect: what the rule cannot be certain of goes to the person, never "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.12
+# GRANITE_VERSION: 2026-10-16.14
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -106,7 +106,10 @@ THE FILE IT WRITES, site/members_elect.json:
 Every race the district table names is there, the Senate first. `k` is
 sitting, former or new; `id` and `s` (the page's slug) are there only on a
 link; `own` is true only for a sitting member re-elected to the seat they
-hold, the one a saved town's "Your rep" marks (find.js, ytMark). `not_final`
+hold, the one a saved town's "Your rep" marks (find.js, ytMark); `u` is true
+only on a new winner whose surname the bills of 1989-1998 print for the same
+chamber and county (the Senate: district), where the record cannot say whether
+it is the same person (elect_status). `not_final`
 and `held` count seats; `recount` is true where the hand
 file says one was requested. A race's seats less its elected and its not
 final is the number of seats with no member-elect on file, held ones among
@@ -737,6 +740,104 @@ def load_history(path=SPONSORS_DEFAULT, past=PAST_SPONSORS_DEFAULT, careers=CARE
     if sponsors is None:
         return None
     return {"seats": seat_history(sponsors), "served": served_terms(read(past), read(careers))}
+
+
+# ---- who each member-elect is: the status the page lists and filters by ----
+#
+# THE STATUS (Alice, 12 November 2026: "search ... and sort by returning (for
+# members who served in a prior term that was not the immediate prior term),
+# incumbent, new, and new chamber"). One word for each member-elect, worked
+# out from the record and nothing else, by member id and never by a name:
+#
+#   incumbent  serving now in the chamber they were elected to
+#   chamber    their most recent service was in the other chamber: sitting
+#              there now, or last sat there (a former member's row names the
+#              chamber of their last vote)
+#   returning  served before and is not serving now: in an earlier term, or
+#              in the term now ending until they left it partway through,
+#              because their service was not continuous (the owner, 12
+#              November 2026, of a representative who resigned mid-term and
+#              was elected again: "it wasn't a continuous period"). While the
+#              page shows anyone the site's newest term is the term now
+#              ending (window), so a member who sits until it ends is still
+#              on the roster and is the one kind of incumbent there is
+#   new        no member of the record is them
+#   unsure     the record cannot say: PRIOR SERVICE NOT ON RECORD. Two cases.
+#              A former member with no term on file for them; and a new
+#              person whose surname is printed on bills of 1989-1998 from the
+#              same chamber and county (Senate: district), a time before the
+#              roll calls (1999) and when bills printed a surname and no
+#              member number, so the record cannot say whether it is them.
+#              That is a doubt and not a claim: none of these is called
+#              returning.
+#
+# The last case is the only reading of a name here, and it only ever raises
+# that doubt; it links no one.
+STATUSES = ("returning", "incumbent", "chamber", "new", "unsure")
+EARLIER_UNTIL = 1999  # roll calls begin: bills before it carry no member numbers
+
+
+def elect_status(e, key, row):
+    """One of STATUSES for member-elect `e` of race `key`, or "" where the rows
+    cannot say (a linked member the rows do not hold, a kind the file does not
+    use). `row` is the roster's or former.json's row for e["id"]: its chamber,
+    and for a former member served.terms. A new person is "unsure" where
+    e["u"] -- the earlier-surname doubt earlier_service() raises -- says so."""
+    k = e.get("k")
+    if k == "new":
+        return "unsure" if e.get("u") else "new"
+    if k not in ("sitting", "former") or not row:
+        return ""
+    sat = str(row.get("chamber") or "")[:1].upper()
+    if sat not in ("H", "S"):
+        return ""
+    if sat != ("S" if str(key).startswith("S|") else "H"):
+        return "chamber"
+    if k == "sitting":
+        return "incumbent"
+    # Not serving now, whichever term they left: returning, where a term of
+    # theirs is on file to say they served at all.
+    return "returning" if (row.get("served") or {}).get("terms") else "unsure"
+
+
+def earlier_names(sponsors, until=EARLIER_UNTIL):
+    """{(surname, chamber, county or district)} printed on the bills of every
+    term that begins before `until`, from text_sponsors.json
+    ({term: {bill: [{"name", "chamber", "county", "district", ...}]}}): the
+    House by county, the Senate by district. A row with a member number is
+    left out -- it is a member the record already names."""
+    out = set()
+    for term, bills in (sponsors or {}).items():
+        if not str(term)[:4].isdigit() or int(str(term)[:4]) >= until:
+            continue
+        for rows in (bills or {}).values():
+            for sp in rows or []:
+                if sp.get("member_id"):
+                    continue
+                ch = str(sp.get("chamber") or "")[:1].upper()
+                where = (str(number(sp.get("district")) or "") if ch == "S"
+                         else full_county(sp.get("county")).lower())
+                rd, _sfx = readings(sp.get("name"))
+                if ch in ("H", "S") and where:
+                    out |= {(s, ch, where) for s, _f in rd}
+    return out
+
+
+def earlier_service(races, earlier):
+    """How many new winners got the doubt: sets "u" on each "k": "new" entry
+    whose surname is in `earlier` for its race's chamber and county (or
+    district). It names no one and links no one."""
+    n = 0
+    for key, race in races.items():
+        m = KEY_RE.match(key)
+        ch, where = ("S", m.group(3)) if m.group(3) else ("H", m.group(1).lower())
+        for e in race.get("elected") or []:
+            e.pop("u", None)
+            if e.get("k") == "new" and any((s, ch, where) in earlier
+                                           for s, _f in readings(e.get("n"))[0]):
+                e["u"] = True
+                n += 1
+    return n
 
 
 def surname_readings(raw):
@@ -1521,6 +1622,22 @@ def decide(a, site, hand_path):
     districts = load_json(site / "districts.json", "the district table")
     races, report = members_elect(results, sitting, former, districts, hand, today.isoformat())
     report["notes"][:0] = notes + ([hand_note] if hand_note else [])
+    # THE EARLIER-SURNAME DOUBT (12 November 2026): which new winners the
+    # status calls "prior service not on record" (elect_status). It needs the
+    # bills of 1989-1998; without that file nobody gets the doubt, and the
+    # step says so.
+    sp = Path(SPONSORS_DEFAULT)
+    if sp.is_file():
+        try:
+            earlier = earlier_names(json.loads(sp.read_text(encoding="utf-8")))
+        except (OSError, ValueError) as e:
+            raise Refused(f"{sp.as_posix()} will not read as JSON: {e}")
+        report["unsure"] = earlier_service(races, earlier)
+    else:
+        report["unsure"] = None
+        report["notes"].append(f"{sp.as_posix()} is not on disk: no new member-elect is checked "
+                               "against the surnames of the bills of 1989-1998, so none is "
+                               "marked \"prior service not on record\"")
     # A NEW PERSON'S PROVISIONAL PAGE (Alice, 7 November 2026): "e", its slug,
     # from build_elect_pages.py's list, so the Officials tab and the town
     # pages link them to it. Never "id" or "s": they have no id, and those
@@ -1594,6 +1711,9 @@ def main():
           f"sitting, {kinds['former']} returning, {kinds['new']} drawn unlinked), "
           f"{sum(r['not_final'] for r in races.values())} not final, "
           f"{sum(r['held'] for r in races.values())} held")
+    if report.get("unsure"):
+        print(f"  {report['unsure']} new members-elect share a surname, chamber and county with "
+              "a sponsor of 1989-1998: shown as prior service not on record, never as returning")
     if report["pending"]:
         print(f"  NOT FINAL YET: {report['pending']}")
     print(f"  wrote {dest.as_posix()}; it is shown until {doc['takes_office']}, "
