@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.889
+# GRANITE_VERSION: 2026-09-04.890
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -121441,9 +121441,9 @@ def _elect_tab_like_legislators(OT):
     cross-nominated on the neutral chip with both letters, and no letter
     where none was printed; no contact detail. Beside it and outside it,
     one word for who they are, build_members_elect.elect_status's (the
-    owner, 12 November 2026): INCUMBENT (sitting in the chamber, or served in
-    the term now ending), RETURNING (served earlier, not in that term), NEW
-    CHAMBER (their latest service the other chamber), NEW.
+    owner, 12 November 2026): INCUMBENT (sitting in the chamber), RETURNING
+    (served before and not serving now), NEW CHAMBER (their latest service
+    the other chamber), NEW.
 
     THE TWO VIEWS, as the Legislators tab's (By district went on the walk of
     8 November): by last name, each chamber apart under its count and a
@@ -121715,8 +121715,9 @@ console.log(JSON.stringify([a,b,c,d,String(scrolled),bars.map(function(x){return
 def _elect_status(BME):
     """The owner's four words of 12 November 2026 and the fifth for where the
     record cannot say, on rows built here: INCUMBENT serving now in the
-    chamber (or served in the term now ending); RETURNING served in an
-    earlier term and not in that one; NEW CHAMBER most recent service the
+    chamber; RETURNING served before and is not serving now (an earlier
+    term, or the term now ending left partway through, as a member who
+    resigned mid-term and was elected again); NEW CHAMBER most recent service the
     other chamber, sitting or last; NEW nobody; UNSURE a former member with no
     term on file, or a new person whose surname the bills before 1999 print
     for the same chamber and county (the Senate: district). A person is
@@ -121730,7 +121731,6 @@ def _elect_status(BME):
             "6": {"chamber": "S", "served": {"terms": ["2013-2014"]}},
             "7": {"chamber": "H", "served": {"terms": ["2023-2024"]}, "name": "Burt, Ann"},
             "8": {"chamber": "S", "name": "Burt, Ann"}}
-    now = "2025-2026"
     H, S = "H|Coos|1", "S|8"
     want = [  # (the entry, its race, the row's id, the status)
         ({"k": "sitting", "id": "1"}, H, "incumbent"),
@@ -121739,7 +121739,7 @@ def _elect_status(BME):
         ({"k": "sitting", "id": "2"}, S, "incumbent"),
         ({"k": "former", "id": "3"}, H, "returning"),
         ({"k": "former", "id": "3"}, S, "chamber"),
-        ({"k": "former", "id": "4"}, H, "incumbent"),
+        ({"k": "former", "id": "4"}, H, "returning"),  # left the term now ending partway
         ({"k": "former", "id": "5"}, H, "unsure"),
         ({"k": "former", "id": "6"}, H, "chamber"),
         ({"k": "former", "id": "6"}, S, "returning"),
@@ -121751,17 +121751,14 @@ def _elect_status(BME):
         ({"k": "returning", "id": "1"}, H, ""),    # a kind the file does not use
     ]
     for e, key, st in want:
-        got = BME.elect_status(e, key, rows.get(str(e.get("id"))) if e.get("id") else None, now)
+        got = BME.elect_status(e, key, rows.get(str(e.get("id"))) if e.get("id") else None)
         if got != st:
             bad.append(f"{e} in {key}: {got!r}, not {st!r}")
     # By id and never by name: two rows of one name, and the entry's id picks the row.
-    a = BME.elect_status({"k": "former", "id": "7"}, H, rows["7"], now)
-    b = BME.elect_status({"k": "sitting", "id": "8"}, H, rows["8"], now)
+    a = BME.elect_status({"k": "former", "id": "7"}, H, rows["7"])
+    b = BME.elect_status({"k": "sitting", "id": "8"}, H, rows["8"])
     if (a, b) != ("returning", "chamber"):
         bad.append(f"two Ann Burts by their ids are {(a, b)}")
-    # Without the term the election elects the term test is left out; nothing else is.
-    if BME.elect_status({"k": "former", "id": "4"}, H, rows["4"]) != "returning":
-        bad.append("a file that names no term still calls a 2025-2026 member incumbent")
     if set(BME.STATUSES) != {"returning", "incumbent", "chamber", "new", "unsure"}:
         bad.append(f"the statuses are {BME.STATUSES}")
     # The doubt: a surname, a chamber and a county (a Senate district), on a bill before 1999
@@ -121926,7 +121923,7 @@ console.log(JSON.stringify(out));
         if re.search(r"(?<![\w.-])" + re.escape(word) + r"(?![\w-])", blob):
             bad.append(f"the Spanish search row says {word!r}")
     # With nobody, no row is drawn at all.
-    if OT.elect_controls([], {}, None):
+    if OT.elect_controls([], {}):
         bad.append("a tab of nobody draws a search row")
     assert not bad, "\n  ".join(bad)
     return "ok", ("a search row written hidden, counts in every option, items carrying data-st, "

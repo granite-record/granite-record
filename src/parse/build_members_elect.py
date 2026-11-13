@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.13
+# GRANITE_VERSION: 2026-10-16.14
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -749,14 +749,18 @@ def load_history(path=SPONSORS_DEFAULT, past=PAST_SPONSORS_DEFAULT, careers=CARE
 # incumbent, new, and new chamber"). One word for each member-elect, worked
 # out from the record and nothing else, by member id and never by a name:
 #
-#   incumbent  serving now in the chamber they were elected to; or one who
-#              served in the term now ending in it and is not sitting (a
-#              member who left mid-term and was elected again is the term's
-#              own, not one returning after a gap)
+#   incumbent  serving now in the chamber they were elected to
 #   chamber    their most recent service was in the other chamber: sitting
 #              there now, or last sat there (a former member's row names the
 #              chamber of their last vote)
-#   returning  served in an earlier term, and not in the term now ending
+#   returning  served before and is not serving now: in an earlier term, or
+#              in the term now ending until they left it partway through,
+#              because their service was not continuous (the owner, 12
+#              November 2026, of a representative who resigned mid-term and
+#              was elected again: "it wasn't a continuous period"). While the
+#              page shows anyone the site's newest term is the term now
+#              ending (window), so a member who sits until it ends is still
+#              on the roster and is the one kind of incumbent there is
 #   new        no member of the record is them
 #   unsure     the record cannot say: PRIOR SERVICE NOT ON RECORD. Two cases.
 #              A former member with no term on file for them; and a new
@@ -767,21 +771,18 @@ def load_history(path=SPONSORS_DEFAULT, past=PAST_SPONSORS_DEFAULT, careers=CARE
 #              That is a doubt and not a claim: none of these is called
 #              returning.
 #
-# The "term now ending" is the one before the term the election elects
-# (term_before). The last case is the only reading of a name here, and it
-# only ever raises that doubt; it links no one.
+# The last case is the only reading of a name here, and it only ever raises
+# that doubt; it links no one.
 STATUSES = ("returning", "incumbent", "chamber", "new", "unsure")
 EARLIER_UNTIL = 1999  # roll calls begin: bills before it carry no member numbers
 
 
-def elect_status(e, key, row, now_term=None):
+def elect_status(e, key, row):
     """One of STATUSES for member-elect `e` of race `key`, or "" where the rows
     cannot say (a linked member the rows do not hold, a kind the file does not
     use). `row` is the roster's or former.json's row for e["id"]: its chamber,
-    and for a former member served.terms. `now_term` is the term now ending,
-    or None where the file does not name its term (the term test is then
-    left out). A new person is "unsure" where e["u"] -- the earlier-surname
-    doubt earlier_service() raises -- says so."""
+    and for a former member served.terms. A new person is "unsure" where
+    e["u"] -- the earlier-surname doubt earlier_service() raises -- says so."""
     k = e.get("k")
     if k == "new":
         return "unsure" if e.get("u") else "new"
@@ -794,10 +795,9 @@ def elect_status(e, key, row, now_term=None):
         return "chamber"
     if k == "sitting":
         return "incumbent"
-    terms = (row.get("served") or {}).get("terms") or []
-    if not terms:
-        return "unsure"
-    return "incumbent" if now_term and now_term in terms else "returning"
+    # Not serving now, whichever term they left: returning, where a term of
+    # theirs is on file to say they served at all.
+    return "returning" if (row.get("served") or {}).get("terms") else "unsure"
 
 
 def earlier_names(sponsors, until=EARLIER_UNTIL):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.15
+# GRANITE_VERSION: 2026-10-10.16
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -63,7 +63,7 @@ import i18n as I
 
 from components import date_words, pchip, until_attrs
 from build_town_pages import tel, maillink, weblink
-from build_members_elect import KEY_RE, STATUSES, elect_status, race_order, read_officials, term_before
+from build_members_elect import KEY_RE, STATUSES, elect_status, race_order, read_officials
 
 E = lambda s: _html.escape(str(s or ""), quote=True)  # noqa: E731
 
@@ -748,11 +748,11 @@ def presiding(officers, legs, today, lang="en"):
 # THE WORD IS build_members_elect.elect_status's, the one classification the
 # list, its counts and its filter share (the owner, 12 November 2026):
 #
-#   INCUMBENT     serving now in the chamber they were elected to, or in the
-#                 term now ending (a sitting member elected to another
-#                 district of the same chamber is one: the owner's four kinds
-#                 have no "new district")
-#   RETURNING     served in an earlier term and not in the term now ending
+#   INCUMBENT     serving now in the chamber they were elected to (a sitting
+#                 member elected to another district of the same chamber is
+#                 one: the owner's four kinds have no "new district")
+#   RETURNING     served before and is not serving now: an earlier term, or
+#                 the term now ending until they left it partway through
 #   NEW CHAMBER   their most recent service was in the other chamber
 #   NEW           nobody the roster, the former members or the bills before
 #                 1999 name
@@ -778,21 +778,21 @@ NAME_SUFFIX = re.compile(r",?\s+(?:Jr|Sr|II|III|IV)\.?$", re.I)
 PARTY_OF = {"R": "Republican", "D": "Democrat", "I": "Independent", "L": "Libertarian"}
 
 
-def elect_kind(e, key, by_id=None, now=None):
+def elect_kind(e, key, by_id=None):
     """Which of kind_words' words a member-elect carries: elect_status's, from
     the file's `k` and `u` and the row `by_id` holds for a member it links
-    (the roster's for a sitting member, former.json's for a former one);
-    `now`, the term now ending. "" where the file or the rows cannot say."""
+    (the roster's for a sitting member, former.json's for a former one). ""
+    where the file or the rows cannot say."""
     row = (by_id or {}).get(str(e.get("id") or "")) if e.get("id") else None
-    return elect_status(e, key, row, now)
+    return elect_status(e, key, row)
 
 
-def elect_word(e, key, by_id=None, lang="en", now=None):
+def elect_word(e, key, by_id=None, lang="en"):
     """The word beside a member-elect's chip, as its own label outside the
     chip (the walk of 8 November 2026: inside it, the chip wrapped to two
     lines where the Legislators tab's is one); "" for none. The one that
     says the record cannot say carries what it means as its title."""
-    kind = elect_kind(e, key, by_id, now)
+    kind = elect_kind(e, key, by_id)
     w = kind_words(kind, lang)
     if not w:
         return ""
@@ -841,7 +841,7 @@ def elect_party_words(code, n, lang="en"):
                       plural=n != 1)
 
 
-def elect_kind_line(won_keys, by_id, lang="en", now=None):
+def elect_kind_line(won_keys, by_id, lang="en"):
     """THE KINDS, COUNTED (the owner's walk of dry run 8, 8 November 2026): one
     chamber's members-elect by the word each chip carries, from elect_kind
     itself and so never a second classification -- "230 incumbent &middot; 24
@@ -850,14 +850,14 @@ def elect_kind_line(won_keys, by_id, lang="en", now=None):
     and is not counted; "" where none has one."""
     n = {}
     for e, k in won_keys:
-        kind = elect_kind(e, k, by_id, now)
+        kind = elect_kind(e, k, by_id)
         if kind:
             n[kind] = n.get(kind, 0) + 1
     return " &middot; ".join(f"{n[kind]} {E(kind_words(kind, lang)).lower()}"
                              for kind in STATUSES if n.get(kind))
 
 
-def elect_totals(races, lang="en", by_id=None, now=None):
+def elect_totals(races, lang="en", by_id=None):
     """THE SEATS AT THE TOP (the owner's walk of 7 November 2026, C): the
     Legislators tab's "Who holds the seats", for the members-elect -- each
     chamber's members-elect by party, the cross-nominated apart and a
@@ -926,7 +926,7 @@ def elect_totals(races, lang="en", by_id=None, now=None):
     kinds = ""
     for sen in (True, False):
         line = elect_kind_line([(e, k) for k, r in races.items() if bool(KEY_RE.match(k).group(3)) == sen
-                                for e in r.get("elected") or []], by_id, lang, now)
+                                for e in r.get("elected") or []], by_id, lang)
         if line:
             name = I.say(lang, "comp.senate", "Senate") if sen else I.say(lang, "comp.house", "House")
             kinds += f'<p class="elkinds"><b>{E(name)}</b> {line}</p>'
@@ -1078,8 +1078,6 @@ def members_elect(elect, today, lang="en", people=None, towns=None):
         else:
             house.setdefault(m.group(1), []).append((k, m.group(2), races[k]))
     by_id = {str(p.get("id")): p for p in people or [] if p.get("id")}
-    # The term now ending: the one before the term the election elects.
-    now = term_before(elect["term"]) if elect.get("term") else None
 
     def item(tag, cls, e, k):
         """One member-elect in a list: the chip, then the word beside it; the
@@ -1089,9 +1087,9 @@ def members_elect(elect, today, lang="en", people=None, towns=None):
         to a page read without the script."""
         own = bool(e.get("own") and e.get("id") and e.get("s"))
         names = " ".join(c for c in (cls, "elown" if own else "") if c)
-        attrs = elect_attrs(e, k, by_id, now, (towns or {}).get(k))
+        attrs = elect_attrs(e, k, by_id, (towns or {}).get(k))
         return ((f'<{tag} class="{names}"{attrs}>' if names else f"<{tag}{attrs}>")
-                + elect_chip(e, k, lang) + elect_word(e, k, by_id, lang, now) + f"</{tag}>")
+                + elect_chip(e, k, lang) + elect_word(e, k, by_id, lang) + f"</{tag}>")
 
     def won(rows):
         return [(k, e) for k, _d, r in rows for e in r.get("elected") or []]
@@ -1191,9 +1189,9 @@ def members_elect(elect, today, lang="en", people=None, towns=None):
 </div>
 </section>"""
     return (f'<div class="elpane" data-elect{until_attrs(takes, today)}>' + intro
-            + elect_totals(races, lang, by_id, now)
+            + elect_totals(races, lang, by_id)
             + elect_controls([(k, e) for k, r in races.items() for e in r.get("elected") or []],
-                             by_id, now, lang)
+                             by_id, lang)
             + views + ELECT_FILTER_JS + "</div>")
 
 
@@ -1208,14 +1206,14 @@ def members_elect(elect, today, lang="en", people=None, towns=None):
 # status elect_status gives, the party the roster lists them under, and the
 # chamber. Each item carries what is read, as data-st, data-p, data-ch and
 # data-hay; matching is by those and never by a name alone.
-def elect_attrs(e, key, by_id, now, towns=None):
+def elect_attrs(e, key, by_id, towns=None):
     """The data-* an item carries for the filter: its status, its party
     column's letter ("-" for none), its chamber, and the words a search
     reads (name, county, district, the towns of the race) in lower case with
     accents off."""
     import unicodedata
     m = KEY_RE.match(key)
-    st = elect_kind(e, key, by_id, now)
+    st = elect_kind(e, key, by_id)
     where = (f"senate district {m.group(3)} sd{m.group(3)}" if m.group(3) else
              f"{m.group(1)} district {m.group(2)} {m.group(1)[:4]} {m.group(2)}")
     hay = unicodedata.normalize("NFKD", " ".join([str(e.get("n") or ""), where, *(towns or [])]))
@@ -1224,7 +1222,7 @@ def elect_attrs(e, key, by_id, now, towns=None):
             f'data-ch="{"S" if m.group(3) else "H"}" data-hay="{E(hay)}"')
 
 
-def elect_controls(won, by_id, now, lang="en"):
+def elect_controls(won, by_id, lang="en"):
     """The search box and the three selects, written hidden, over the lists.
     `won` is [(race key, member-elect)]. Each option says how many it holds,
     plainly; the script says how many are shown."""
@@ -1232,7 +1230,7 @@ def elect_controls(won, by_id, now, lang="en"):
         return ""
     st, party, chamber = {}, {}, {}
     for k, e in won:
-        w = elect_kind(e, k, by_id, now)
+        w = elect_kind(e, k, by_id)
         if w:
             st[w] = st.get(w, 0) + 1
         c = elect_party(e) or "-"
