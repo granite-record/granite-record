@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-13.2
+# GRANITE_VERSION: 2026-11-13.3
 """
 Who the printed sponsors of 1989 to 1998 are, where that is certain.
 
@@ -43,7 +43,7 @@ less stays as printed, and settle() says why.
 THE TWO KINDS OF IDENTIFIER (the owner, 13 November 2026). `employee` is the
 General Court's employee number, digits, unchanged. Anyone the record names
 with no employee number would get a Granite Record id, `gr-NNNN`, from
-src/parse/gr_ids.py, in a field of its own; the two are never written into
+src/lib/gr_ids.py, in a field of its own; the two are never written into
 each other's field.
 """
 
