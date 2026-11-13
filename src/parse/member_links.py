@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.7
+# GRANITE_VERSION: 2026-09-13.8
 """
 Which sitting members voted under an earlier number in the other chamber.
 
@@ -355,24 +355,21 @@ def record_spans(service, att_years, chamber, past_terms):
             for ch, ts in (past_terms or {}).items() if ts}
     if service:
         base = {c["chamber"]: [list(sp) for sp in c.get("spans") or []] for c in service}
-        runs = True
     else:
         base = ({chamber: [[min(a for a, _ in att_years), max(b for _, b in att_years)]]}
                 if att_years and chamber else {})
-        runs = False
     out = []
     for ch in set(base) | set(past):
         spans = sorted(base.get(ch, []) + past.get(ch, []))
-        if not runs:
-            spans = [[spans[0][0], max(b for _, b in spans)]]
-        else:
-            merged = []
-            for a, b in spans:
-                if merged and _term(a) <= _term(merged[-1][1]) + 2:
-                    merged[-1][1] = max(merged[-1][1], b)
-                else:
-                    merged.append([a, b])
-            spans = merged
+        # Terms that run into each other join; a missing term between two keeps them apart,
+        # so a 1990s term is never bridged to the roll calls across years the record lacks.
+        merged = []
+        for a, b in spans:
+            if merged and _term(a) <= _term(merged[-1][1]) + 2:
+                merged[-1][1] = max(merged[-1][1], b)
+            else:
+                merged.append([a, b])
+        spans = merged
         out.append({"chamber": ch, "spans": spans})
     return sorted(out, key=lambda c: (c["spans"][0][0], c["chamber"] != chamber))
 

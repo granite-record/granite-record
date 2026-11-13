@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.906
+# GRANITE_VERSION: 2026-09-04.907
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31668,7 +31668,9 @@ def _on_record_covers_the_nineties(LP):
     sponsor record gives (`past_terms`, member_links.earlier_terms from the sponsored bills the
     picker lists). The votes lines stay roll calls', 1999 on.
 
-    - a House member with 1990s terms and roll calls: "House, 1991-2024";
+    - a House member with 1990s terms and roll calls: the terms that run into the roll calls join
+      them, the others stand as their own runs ("House, 1991-1992, 1995-2024"), never one span
+      across a term the record lacks;
     - a member with a 1990s Senate term and later House service: each chamber its own span;
     - a member with none is as before;
     - app.js's line and the static page's say the same years."""
@@ -31685,7 +31687,13 @@ def _on_record_covers_the_nineties(LP):
     mover = dict(base, id="800002", slug="sam-mover-hills-1", attendance=att("2001-2002", "2007-2008"),
                  past_terms={"S": ["1993-1994"]})
     plain = dict(base, id="800003", slug="al-plain-hills-2", attendance=att("2011-2012", "2023-2024"))
-    cases = {"house": (house, "House, 1991–2024"),
+    adj = dict(base, id="800005", slug="ad-jacent-hills-3", attendance=att("1999-2000", "2023-2024"),
+               past_terms={"H": ["1997-1998"]})
+    far = dict(base, id="800006", slug="fa-gap-hills-4", attendance=att("2003-2004", "2009-2010"),
+               past_terms={"H": ["1989-1990"]})
+    cases = {"house": (house, "House, 1991–1992, 1995–2024"),
+             "adjacent": (adj, "House, 1997–2024"),
+             "gap": (far, "House, 1989–1990, 2003–2010"),
              "mover": (mover, "Senate, 1993–1994 · House, 2001–2008"),
              "plain": (plain, "House, 2011–2024")}
     if ML.earlier_terms([{"term": "1991-1992", "ch": "S"}, {"term": "1993-1994", "ch": "S"},
@@ -31709,10 +31717,15 @@ def _on_record_covers_the_nineties(LP):
             app = words(got[i])
             if f"On Record {want}" not in app:
                 bad.append(f"{name}: app.js does not say {want!r}: {app[:300]!r}")
+    # NEVER ONE SPAN ACROSS A TERM THE RECORD LACKS (the coordinator, 13 November 2026: 76 of 355
+    # people have one between their 1990s terms and their roll calls, 39 of them 3 to 14).
+    fgap = dict(far, former=True, served={"first": "1/9/2003", "last": "12/1/2010"}, id="800007")
+    if "On record 1989 to 1990 and 2003 to 2010" not in words(LP.static_record(fgap, fgap)):
+        bad.append("a former member's sentence bridges a gap: " + words(LP.static_record(fgap, fgap))[:200])
     # A former member's sentence covers the same years, and the page that joins two chambers
     # names each with its own.
     gone = dict(mover, former=True, served={"first": "1/9/2002", "last": "12/1/2008"}, id="800004")
-    if "On record 1993 to 2008" not in words(LP.static_record(gone, gone)):
+    if "On record 1993 to 1994 and 2001 to 2008" not in words(LP.static_record(gone, gone)):
         bad.append("a former member's static sentence does not start at the earlier term")
     said = LP.describe(gone, gone).replace("House of Representatives", "House")
     if "Senate, 1993 to 1994, and House, 2001 to 2008" not in said:

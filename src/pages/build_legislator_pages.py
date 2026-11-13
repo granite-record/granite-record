@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.34
+# GRANITE_VERSION: 2026-09-04.35
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -131,6 +131,12 @@ def describe(m, rec=None):
     return S.clip(text, 300)
 
 
+def _said_years(spans):
+    # "1999 to 2002, 2009 to 2014 and 2017 to 2018": one "and", at the end.
+    said = [str(a) if a == b else f"{a} to {b}" for a, b in spans]
+    return said[0] if len(said) == 1 else ", ".join(said[:-1]) + " and " + said[-1]
+
+
 def record_spans(m, rec):
     """The years the record places a member in each chamber (the page's "On Record" line),
     as app.js's `spans` works them out: member_links.record_spans over the member's own
@@ -174,10 +180,7 @@ def _chambers_served(rec, m=None):
         svc = [c for c in record_spans(m, rec) if c.get("chamber") in ("H", "S") and c.get("spans")]
     if len({c["chamber"] for c in svc}) < 2:
         return ""
-    def years(spans):
-        # "1999 to 2002, 2009 to 2014 and 2017 to 2018": one "and", at the end.
-        said = [str(a) if a == b else f"{a} to {b}" for a, b in spans]
-        return said[0] if len(said) == 1 else ", ".join(said[:-1]) + " and " + said[-1]
+    years = _said_years
     return ", and ".join(
         f"{'Senate' if c['chamber'] == 'S' else 'House of Representatives'}, {years(c['spans'])}"
         for c in svc)
@@ -202,9 +205,16 @@ def _served_years(m, rec=None):
     if (rec or {}).get("past_terms") or m.get("past_terms"):
         # THE 1989-1998 TERMS THE SPONSOR RECORD PLACES THEM IN come first, as the
         # page's "On Record" line says them (record_spans).
-        spans = [sp for c in record_spans(m, rec) for sp in c["spans"]]
-        if spans:
-            a, b = str(min(x[0] for x in spans)), str(max(x[1] for x in spans))
+        # Runs, never one span across a term the record lacks: "1989 to 1990 and 2003 to 2010".
+        spans = sorted(sp for c in record_spans(m, rec) for sp in c["spans"])
+        runs = []
+        for x, y in spans:
+            if runs and ML._term(x) <= ML._term(runs[-1][1]) + 2:
+                runs[-1][1] = max(runs[-1][1], y)
+            else:
+                runs.append([x, y])
+        if runs:
+            return _said_years(runs)
     if not (a.isdigit() and b.isdigit()):
         return ""
     return a if a == b else f"{a} to {b}"

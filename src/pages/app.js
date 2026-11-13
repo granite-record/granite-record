@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.316
+// GRANITE_VERSION: 2026-09-07.317
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9424,15 +9424,14 @@ function renderMemberHead(m){
       const sv=m.served||{},a=String(sv.first||"").slice(-4),b=String(sv.last||"").slice(-4);
       if(/^\d{4}$/.test(a)&&/^\d{4}$/.test(b))base=[{chamber:m.chamber,spans:[[+a,+b]]}];
     }
-    const runs=!!(m.service||[]).length, tm=y=>y%2?y:y-1;
+    const tm=y=>y%2?y:y-1;
     const chs=[...new Set([...base.map(c=>c.chamber),...Object.keys(pastT)])];
     return chs.map(ch=>{
       const own=base.filter(c=>c.chamber===ch).flatMap(c=>c.spans||[]).map(x=>[x[0],x[1]]);
       const past=(pastT[ch]||[]).map(t=>{const y=String(t).split("-").map(Number);return [y[0],y[1]||y[0]];});
       let sp=own.concat(past).sort((x,y)=>x[0]-y[0]||x[1]-y[1]);
-      if(!runs)sp=[[sp[0][0],Math.max(...sp.map(x=>x[1]))]];
-      else{const out=[];sp.forEach(x=>{const l=out[out.length-1];
-        if(l&&tm(x[0])<=tm(l[1])+2)l[1]=Math.max(l[1],x[1]);else out.push([x[0],x[1]]);});sp=out;}
+      const out=[];sp.forEach(x=>{const l=out[out.length-1];
+        if(l&&tm(x[0])<=tm(l[1])+2)l[1]=Math.max(l[1],x[1]);else out.push([x[0],x[1]]);});sp=out;
       return {chamber:ch,spans:sp};
     }).sort((x,y)=>x.spans[0][0]-y.spans[0][0]||(x.chamber===m.chamber?0:1)-(y.chamber===m.chamber?0:1));
   })();
