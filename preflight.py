@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.898
+# GRANITE_VERSION: 2026-09-04.899
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -109140,6 +109140,22 @@ NIGHT_DRY_OUTPUT = "      dry_run: ${{ env.DRY_RUN }}"
 # so no run here could see it. A check that wants the gate on sets it itself.
 WORKFLOW_WORDS = ("DRY_RUN", "GITHUB_REF", "GITHUB_REF_NAME", "REVIEW_GATE")
 CHECKS_REF = ("GITHUB_REF", MAIN_REF)
+# THE RUN'S OWN FILES ARE NOT THE CHECKS' EITHER (13 November 2026). GitHub
+# names for every step the file behind the run's page (GITHUB_STEP_SUMMARY),
+# the step's outputs (GITHUB_OUTPUT) and what it leaves the steps after it
+# (GITHUB_ENV, GITHUB_PATH, GITHUB_STATE), and the night runs preflight inside
+# its own step. So a fixture that drove nightly.gh_summary or
+# quick_preview.summary without a file of its own wrote onto the real page:
+# the night of 13 November, clean and published, carried three "Why: ...
+# Nothing was published." lines and eight quick previews that "may go on" or
+# were "refused" (a commit 0123456789ab, an archive 2508 days old) above its
+# own verdict, on the page the owner approves a night from. An output would
+# have been worse than a line: the publish job reads publishable and review
+# from the night's step. main() takes these out with the workflow's words, so
+# no check and no child of one can reach them; a check that wants one names a
+# file of its own and puts back what it found.
+RUNNER_FILES = ("GITHUB_STEP_SUMMARY", "GITHUB_OUTPUT", "GITHUB_ENV", "GITHUB_PATH",
+                "GITHUB_STATE")
 
 # EVERY KIND OF RUN, AND WHAT EACH MUST BE (7 October 2026). For each
 # workflow: the run's event, its ref, the boxes as given (an input left out is
@@ -109395,8 +109411,12 @@ def _not_the_runs():
     sets the ref itself. Since a missing ref is not main's either (nightly's
     MAIN IS MAIN_REF EXACTLY), the ref is then put back as main's (CHECKS_REF),
     on the laptop and on GitHub's machine alike, and a check that changes it
-    puts main's back."""
-    for k in WORKFLOW_WORDS:
+    puts main's back.
+
+    THE RUN'S PAGE OF 13 NOVEMBER 2026 (RUNNER_FILES says what it carried).
+    The paths of the run's own files go with the words: its page, the step's
+    outputs, and what a step leaves the steps after it."""
+    for k in WORKFLOW_WORDS + RUNNER_FILES:
         os.environ.pop(k, None)
     os.environ[CHECKS_REF[0]] = CHECKS_REF[1]
 
@@ -109453,6 +109473,56 @@ def _preflight_not_the_runs(NI, CL):
     return "ok", (f"{', '.join(WORKFLOW_WORDS)} are taken out before any check runs, so the "
                   "fixtures' kit-ups, state-ups and nights are not a dry run's on GitHub's "
                   "machine, by the box or by the branch")
+
+
+@check("workflows", "preflight's checks never write the run's own page or step outputs: the files "
+       "GitHub names for them are taken out before any check runs, so no fixture's night or "
+       "quick preview reaches the page a night is approved from",
+       needs=("nightly", "quick_preview"))
+def _preflight_writes_no_run_page(NI, QP):
+    """THE RUN'S PAGE OF 13 NOVEMBER 2026 (RUNNER_FILES says what it carried).
+    With each of the run's files named, as GitHub's machine names them for the
+    night's step, the writers the fixtures drive -- the night's page lines and
+    step outputs, a quick preview's page lines -- write to them, so the test is
+    not empty; after _not_the_runs() none is named and the same writers write
+    nothing anywhere. _preflight_not_the_runs holds that main() calls
+    _not_the_runs() before its first check."""
+    import inspect
+    for k in ("GITHUB_STEP_SUMMARY", "GITHUB_OUTPUT"):
+        assert k in RUNNER_FILES, f"{k} is not among the run's files taken out of the checks' environment"
+    saved = {k: os.environ.get(k) for k in WORKFLOW_WORDS + RUNNER_FILES}
+    tmp = Path(tempfile.mkdtemp(prefix="gr-run-files-"))
+    try:
+        files = {k: tmp / f"{k.lower()}.txt" for k in RUNNER_FILES}
+        os.environ.update({k: str(p) for k, p in files.items()})
+        NI.gh_summary(["probe"])
+        QP.summary(["probe"])
+        NI.gh_output(probe=True)
+        assert files["GITHUB_STEP_SUMMARY"].read_text(encoding="utf-8") == "probe\nprobe\n", (
+            "nightly.gh_summary and quick_preview.summary do not write the page GitHub names, so "
+            "this check proves nothing")
+        assert files["GITHUB_OUTPUT"].read_text(encoding="utf-8") == "probe=true\n", (
+            "nightly.gh_output does not write the outputs file GitHub names, so this check "
+            "proves nothing")
+        for p in files.values():
+            p.unlink(missing_ok=True)
+        _not_the_runs()
+        named = [k for k in RUNNER_FILES if k in os.environ]
+        assert not named, f"the run's own files reach the checks: {named}"
+        NI.gh_summary(["probe"])
+        QP.summary(["probe"])
+        NI.gh_output(probe=True)
+        written = sorted(k for k, p in files.items() if p.exists())
+        assert not written, f"a fixture's writer reached the run's own files: {written}"
+    finally:
+        for k, val in saved.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert "RUNNER_FILES" in inspect.getsource(_not_the_runs), (
+        "_not_the_runs() leaves the run's own files in the checks' environment")
+    return "ok", (f"{', '.join(RUNNER_FILES)} are taken out before any check runs; named, the "
+                  "night's page lines and outputs and a quick preview's page lines reach them, "
+                  "and taken out, nothing does")
 
 
 @check("workflows", "a dry run is one word in nightly.yml that every step inherits and nightly.py "
