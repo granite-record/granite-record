@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.387 */
+/* GRANITE_VERSION: 2026-09-07.388 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -10022,9 +10022,19 @@ text-wrap:balance}
 .vpage .vsug button:hover,.vpage .vsug button:focus-visible{background:var(--wash)}
 .vpage .vnote{margin:0 0 var(--sp-4)}
 .vpage #vcount{margin:var(--sp-4) 0 var(--sp-3)}
-.vpage .votes.vthree th:nth-child(1){width:17%}
-.vpage .votes.vthree th:nth-child(2){width:52%}
-.vpage .votes.vthree th:nth-child(3){width:31%}
+.vpage .votes.vthree th:nth-child(1){width:15%}
+.vpage .votes.vthree th:nth-child(2){width:40%}
+.vpage .votes.vthree th:nth-child(3){width:45%}
+.vpage .votes:not(.vthree) th:nth-child(1){width:14%}
+.vpage .votes:not(.vthree) th:nth-child(2){width:34%}
+.vpage .votes:not(.vthree) th:nth-child(3){width:12%}
+.vpage .votes:not(.vthree) th:nth-child(4){width:40%}
+/* THE TALLY FIRST, IN A SLOT OF ITS OWN, AND THE CHIP BESIDE IT ON ONE LINE: every row puts the
+   count in the same place, and a long chip ("Motion Passed: Bill Passed with Changes") no longer
+   pushes it under itself. Where the column is too narrow for both, the chip goes under. */
+.vpage .vres{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);align-items:baseline}
+.vpage .vres .vtal{font-style:normal;min-width:5.2em;font-variant-numeric:tabular-nums}
+.vpage .vres .chip,.vpage .vres .rcres{white-space:nowrap;margin:0}
 .vlink{margin:var(--sp-5) 0 0}
 @media (max-width:59.9375em){
   .vpage .vtoggle{order:2;display:flex;align-items:center;gap:var(--sp-4);min-height:44px;
@@ -10044,4 +10054,11 @@ text-wrap:balance}
   .vpage.vfopen .vfilters label{min-width:0}
   .vpage .vfilters select,.vpage .vfilters input{width:100%}
   .vpage .vfilters .vmember{grid-column:1 / -1}
+}
+/* ON A PHONE the result takes the row's whole width (the member tab's rule puts the vote and the
+   result side by side at 47% each): the chip on one line where it fits, the notes full width. */
+@media (max-width:45em){
+  .vpage .vfull td.v,.vpage .vfull td.o{display:block;width:auto}
+  .vpage .vres .vtal{min-width:0}
+  .vpage .vres .chip,.vpage .vres .rcres{white-space:normal}
 }

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.316
+// GRANITE_VERSION: 2026-09-07.317
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -13424,7 +13424,7 @@ function votesRowHtml(r,i,letter){
       esc(CHAMBER_SHORT[r.c]||r.c)}</span></td>
     <td class="b" data-l="On">${who}${b&&b.title?`<span class="vt" translate="no">${esc(b.title)}</span>`:""}
       <span class="vq">${question}</span></td>${mine}
-    <td class="o" data-l="Result">${said} <i>${r.y}–${r.n}</i>${close?`<i class="thr">${esc(close)}</i>`:""}${
+    <td class="o" data-l="Result"><span class="vres"><i class="vtal">${r.y}–${r.n}</i>${said}</span>${close?`<i class="thr">${esc(close)}</i>`:""}${
       rc&&rc.tn?`<i class="thr">${esc(rc.tn)}</i>`:""}${rc&&rc.oc?`<i class="thr">${esc(rc.oc)}</i>`:""}</td></tr>`
     +votesRing(r,i,letter?5:4);
 }
