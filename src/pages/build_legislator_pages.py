@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.30
+# GRANITE_VERSION: 2026-09-04.31
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -604,7 +604,7 @@ def main():
                               "takes_office": elect["takes_office"],
                               **({k: back[k] for k in ("mode", "name", "party", "where")}
                                  if back else {})}} if race else {})
-        about = describe(m, rec)
+        about = ""
         if returning:
             who = back["head"]
             ch = info[(mid, slug)]["key"].split("|")[0]
@@ -622,7 +622,7 @@ def main():
             # General Court" in a link card read as the General Court's own page.
             og_title=who, og_image="og-legislator.png",
             og_alt="Granite Record: legislators and their voting records",
-            description=about, alternate=feed,
+            description=about if returning else describe(m, rec), alternate=feed,
             changed=last_vote_day(rec),
             # Name, office, chamber, party, district. Not email or telephone:
             # structured.py says why.
