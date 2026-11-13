@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.16
+# GRANITE_VERSION: 2026-10-16.17
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -578,7 +578,7 @@ def read_hand(path, election):
     shape = (f"{p.as_posix()}'s \"{election}\" is not {{\"recount_deadline\": \"YYYY-MM-DD\" or "
              "null, \"matches\": {race: {name: id or null}}, \"not_final\": {race: {\"seats\": "
              "n, \"recount\": true, \"why\": \"...\"}}, \"held\": {race: {name: \"why\"}}, "
-             "\"party\": {race: {name: \"R\"}}, \"prior\": {race: {name: \"none\" or {\"terms\": "
+             "\"party\": {race: {name: \"R\"}}, \"prior\": {race: {name: \"none\" or {\"none\": true, \"evidence\": [...]} or {\"terms\": "
              "[\"1993-1994\"], \"seat\": \"Hillsborough 1\", \"evidence\": [...]}}}}")
     if not isinstance(mine, dict) or any(not isinstance(mine.get(k) or {}, dict) for k in empty):
         raise Refused(shape)
@@ -627,6 +627,12 @@ def read_hand(path, election):
             continue
         for name, x in v.items():
             if x == "none":
+                continue
+            # "none" with its reason: {"none": true, "evidence": [...]}.
+            if isinstance(x, dict) and "none" in x:
+                if x.get("none") is not True or not isinstance(x.get("evidence"), list) \
+                        or not x["evidence"] or set(x) - {"none", "evidence"}:
+                    bad.append(f"prior[{key!r}][{name!r}]")
                 continue
             ok = (isinstance(x, dict) and isinstance(x.get("terms"), list) and x["terms"]
                   and all(re.fullmatch(r"\d{4}-\d{4}", str(t)) for t in x["terms"])
@@ -965,7 +971,7 @@ def apply_prior(races, prior):
                 continue
             e.pop("u", None)
             e.pop("prior", None)
-            if x != "none":
+            if x != "none" and not x.get("none"):
                 e["prior"] = {"terms": list(x["terms"]), "seat": x["seat"].strip()}
     return lost
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.901
+# GRANITE_VERSION: 2026-09-04.902
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31664,6 +31664,9 @@ def _elect_returning_pages(OT, LP, BME):
                 ("the returning page says the seat of the member-elect", said in ret),
                 ("the returning page has the new member-elect's election line, no district",
                  "Elected November 3, 2026. Takes office" in ret and "for Rockingham" not in ret),
+                ("the returning page leaves out the directory-entry note while it shows, and "
+                 "the former form brings it back",
+                 "not a current directory entry" not in ret and "not a current directory entry" in gone),
                 ("the returning page keeps the earlier seat", "Earlier seat" in ret
                  and "Rep. Michael Vose (R - Rock 5)" in ret),
                 ("the returning page is not titled Former Representative",
@@ -31692,6 +31695,8 @@ def _elect_returning_pages(OT, LP, BME):
                  "<p>Earlier seat: Rep. Michael Vose (R - Rock 5)</p>"):
         if want not in plain_html:
             bad.append(f"the plain page lacks {want!r}")
+    if "not a current directory entry" in plain_html:
+        bad.append("the plain page of a returning member-elect says it is not a current directory entry")
     if "Former Representative" in plain_html:
         bad.append("the plain page of a returning member is headed Former Representative")
     cham_html = LP.static_record(creighton, {}, "", {}, back["creighton"])
@@ -31795,12 +31800,15 @@ def _elect_prior_service(BME):
             "H|Hillsborough|30": {"W. Gordon Allen": {
                 "gc_employee_number": "375802", "terms": ["1993-1994", "1995-1996"],
                 "seat": "Hillsborough 1", "evidence": ["the Manuals"]}},
-            "H|Hillsborough|41": {"Tom Stewart": "none"}}}}
+            "H|Hillsborough|41": {"Tom Stewart": {"none": True, "evidence": ["not Thomas R. Stewart"]}},
+            "H|Grafton|15": {"Zoe Hill": "none"}}}}
         f.write_text(json.dumps(ok), encoding="utf-8")
         hand, _ = BME.read_hand(f, "2026-11-03")
-        if set(hand["prior"]) != {"H|Hillsborough|30", "H|Hillsborough|41"}:
+        if set(hand["prior"]) != {"H|Hillsborough|30", "H|Hillsborough|41", "H|Grafton|15"}:
             bad.append(f"read_hand reads prior {hand['prior']}")
-        for worse in ({"X": {"Y": {"terms": ["1993"], "seat": "a", "evidence": ["e"]}}},
+        for worse in ({"X": {"Y": {"none": True}}}, {"X": {"Y": {"none": True, "evidence": []}}},
+                      {"X": {"Y": {"none": False, "evidence": ["e"]}}},
+                      {"X": {"Y": {"terms": ["1993"], "seat": "a", "evidence": ["e"]}}},
                       {"X": {"Y": {"terms": ["1993-1994"], "seat": "a"}}},
                       {"X": {"Y": "maybe"}}, {"X": "none"}):
             f.write_text(json.dumps({"2026-11-03": {"prior": worse}}), encoding="utf-8")
@@ -31814,7 +31822,7 @@ def _elect_prior_service(BME):
           "H|Grafton|15": {"elected": [{"n": "Zoe Hill", "k": "new", "u": True}]}}
     lost = BME.apply_prior(rs, dict(hand["prior"], **{"H|Nowhere|1": {"Nobody": "none"}}))
     st = {e["n"]: BME.elect_status(e, k, None) for k, r in rs.items() for e in r["elected"]}
-    if st != {"W. Gordon Allen": "returning", "Tom Stewart": "new", "Zoe Hill": "unsure"}:
+    if st != {"W. Gordon Allen": "returning", "Tom Stewart": "new", "Zoe Hill": "new"}:
         bad.append(f"statuses after the person's entries: {st}")
     allen = rs["H|Hillsborough|30"]["elected"][0]
     if allen.get("prior") != {"terms": ["1993-1994", "1995-1996"], "seat": "Hillsborough 1"} \
@@ -124280,7 +124288,8 @@ def _elect_unexplained(with_, without, raw=None):
     split = lambda t: re.sub(r">\s*<", ">\n<", t).splitlines()
     mine = re.compile(r"member-elect|Member-elect|elected to the New Hampshire|Earlier seat|<h1>"
                       r"|window\.GR_ELECT", re.I)
-    theirs = re.compile(r"Former |served in the New Hampshire|<h1>|window\.GR_", re.I)
+    theirs = re.compile(r"Former |served in the New Hampshire|<h1>|window\.GR_"
+                        r"|not a current directory entry", re.I)
     out = []
     for line in difflib.unified_diff(split(without), split(with_), lineterm="", n=0):
         if line[:1] == "+" and not line.startswith("+++") and not mine.search(line):

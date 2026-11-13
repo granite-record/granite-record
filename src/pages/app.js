@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.314
+// GRANITE_VERSION: 2026-09-07.315
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9436,7 +9436,8 @@ function renderMemberHead(m){
       ...(former&&!retPage?[["Former Legislators","directory/former-legislators"]]:[]),
       [retPage?"Member-elect":m.chamber==="S"?"Senator":"Representative",""]],
     title:esc(fullTitle(named)),line,facts,rail:"",actions:"",kind:`member rh-p${code||"X"}`});
-  const note=former?`<p class="rnote">${!/^(Rep|Sen)\. /.test(plain)?`Former member${
+  // Not while the member-elect form shows: it contradicts the heading.
+  const note=former&&!retPage?`<p class="rnote">${!/^(Rep|Sen)\. /.test(plain)?`Former member${
     yrs?` &middot; on record ${esc(yrs)}`:""}. `:""}This page is their record in the
     General Court; it is not a current directory entry.</p>`:"";
   // A MEMBER-ELECT'S ONE LINE (the person's decisions of 16 October 2026):

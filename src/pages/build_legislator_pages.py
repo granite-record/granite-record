@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.32
+# GRANITE_VERSION: 2026-09-04.33
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -472,7 +472,9 @@ def static_record(m, rec, elected="", places=None, back=None):
         out = ['<div class="static-rec" id="static-rec">', f"<h1>{E(head_name(m))}</h1>"]
         if back.get("mode") == "chamber":
             out.append(f"<p>{E(back['where'])}</p>")
-    if m.get("former"):
+    # Not on a returning member-elect's page: "not a current directory entry"
+    # contradicts its heading, and comes back with the former-member form.
+    if m.get("former") and not returning:
         out.append(f"<p>{E('On record ' + yrs + '. ') if yrs else ''}This page is their "
                    "record in the New Hampshire General Court; it is not a current "
                    "directory entry.</p>" if titled else
