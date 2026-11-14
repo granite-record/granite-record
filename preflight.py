@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.908
+# GRANITE_VERSION: 2026-09-04.910
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31280,7 +31280,9 @@ def _request_pages():
              "sponsor": "Pat Moore", "withdrawn": True},
             {"lsr": "2027-0003", "session": 2027, "body": "HB", "title": "relative to roads.",
              "sponsor": "Jodi Nelson", "withdrawn": False}]
-    who = {"jodinelson": ("Rep. Jodi Nelson (R - Rock 13)", "jodi-nelson-rock-13")}
+    # The row's label carries no seat, as every real sitting row's does (the
+    # roster's "Rep. Ellen Read (D)"); the page draws the seat from the roster.
+    who = {"jodinelson": ("Rep. Jodi Nelson (R)", "jodi-nelson-rock-13")}
     rows, _ = L.rows_from(lsrs, who, {"2027-0003": "HB 45"}, 2027)
     by = {r["n"]: r for r in rows}
     assert by["LSR 2027-0001"]["address"] == "request/2027-0001" \
@@ -31311,6 +31313,9 @@ def _request_pages():
             and "Requests, not bills yet." in page \
             and "numbered 2027 bill" in page and 'href="legislator/jodi-nelson-rock-13"' in page, (
             "a request's page is not noindex, explained, or its sponsor's chip linked")
+        sd = re.search(r"<dt>Prime Sponsor</dt><dd>(.*?)</dd>", page, re.S)
+        assert sd and '<span class="mtag">(R - Rock 13)</span>' in sd.group(1), (
+            f"a sitting sponsor's page does not draw the roster's seat: {sd and sd.group(1)!r}")
         # THE BILL PAGE'S FRAME (Alice, 11 November 2026: "so that information
         # fills in more naturally rather than reformatting the whole layout"):
         # the record head with the trail Bills > the requests > the number, the
@@ -31371,6 +31376,33 @@ def _request_pages():
         # Every address is a page or a 301, never both.
         both = [p for p in pages if f"/request/{p[:-5]} " in red]
         assert not both, f"a page and a 301 at one address: {both}"
+        # A RETURNING FORMER MEMBER HOLDS NO SEAT (13 November 2026): a request
+        # whose sponsor's slug is in former.json only is drawn as the row's own
+        # "Ben Baroody (D)", linked, never as former.json's "Rep. ... (D - Hills
+        # 39)", the seat others hold now; so is a co-sponsor. A sitting member
+        # keeps the seat.
+        (site / "former.json").write_text(json.dumps([
+            {"slug": "benjamin-baroody-hills-39", "party": "D",
+             "display_full": "Rep. Benjamin Baroody (D - Hills 39)"}]), encoding="utf-8")
+        fr = {**by["LSR 2027-0001"], "n": "LSR 2027-0004", "id": "LSR20270004",
+              "address": "request/2027-0004", "sponsor_slug": "benjamin-baroody-hills-39",
+              "sponsor_label": "Ben Baroody (D)", "sponsor_party": "D",
+              "cosponsors": [{"label": "Ben Baroody (D)", "slug": "benjamin-baroody-hills-39"},
+                             {"label": "Rep. Jodi Nelson (R)", "slug": "jodi-nelson-rock-13"}]}
+        (site / "idx" / "2027-requests.json").write_text(json.dumps(rows + [fr]), encoding="utf-8")
+        RP.write(site, "https://x")
+        fp = (site / "request" / "2027-0004.html").read_text(encoding="utf-8")
+        dd = re.search(r"<dt>Prime Sponsor</dt><dd>(.*?)</dd>", fp, re.S)
+        assert dd and 'Ben Baroody <span class="mtag">(D)</span>' in dd.group(1) \
+            and 'href="legislator/benjamin-baroody-hills-39"' in dd.group(1) \
+            and "Hills 39" not in dd.group(1) and "Rep." not in dd.group(1) \
+            and "mchip p-D" in dd.group(1), (
+            f"a returning former member's request page draws the sponsor as {dd and dd.group(1)!r}, "
+            "not as the row's own 'Ben Baroody (D)', linked, with no old seat")
+        assert fp.count("Hills 39") == 0 \
+            and 'Rep. Jodi Nelson <span class="mtag">(R - Rock 13)</span>' in fp \
+            and fp.count('href="legislator/benjamin-baroody-hills-39"') == 2, (
+            "a former co-sponsor is drawn with the old seat or unlinked, or a sitting co-sponsor loses hers")
     # Filing complete: the rest forward to their sponsor; a withdrawn one stays.
     old = dict(L.FILING_COMPLETE)
     try:
@@ -31392,7 +31424,9 @@ def _request_pages():
         "build_request_pages knows how a state numbers its requests or where they come from")
     return "ok", ("pages for the requests still requests, the withdrawn kept, the one now a bill "
                   "taken away and forwarded; filing complete forwards the rest to their sponsor; "
-                  "no address is both")
+                  "no address is both; a sitting member keeps today's seat, and a returning "
+                  "former member is drawn from the row, linked, with no old seat, as sponsor "
+                  "and co-sponsor")
 
 
 @check("build", "a request's sponsor the roster misses is matched to a winner of the election only where certain: "
@@ -54043,10 +54077,28 @@ def _directory_pages():
                 "1989-1990": [{"id": "HB7", "n": "HB 7", "year": 1989, "term": "1989-1990",
                                "title": "an old bill", "status": ""}],
                 # The term of requests, as build_lsrs.py writes it: rows
-                # marked `lsr`, which no builder writes a page for.
+                # marked `lsr`, each with its own page (the "address") until it
+                # is a bill (then "moved_to").
                 "2027-requests": [{"id": "LSR20270001", "n": "LSR 2027-0001", "year": 2027,
                                    "term": "2027-requests", "title": "a request",
-                                   "status": "Filed as a request", "lsr": True}]}
+                                   "status": "Filed as a request", "lsr": True,
+                                   "address": "request/2027-0001"},
+                                  {"id": "LSR20270002", "n": "LSR 2027-0002", "year": 2027,
+                                   "term": "2027-requests", "title": "a filed request",
+                                   "status": "Introduced as HB 45", "lsr": True,
+                                   "address": "request/2027-0002", "moved_to": "bill/2027/hb45"},
+                                  # Retired when filing was complete (build_lsrs.retire):
+                                  # to the sponsor's page, or the requests' search.
+                                  {"id": "LSR20270003", "n": "LSR 2027-0003", "year": 2027,
+                                   "term": "2027-requests", "title": "never filed",
+                                   "status": "Filed as a request", "lsr": True,
+                                   "address": "request/2027-0003",
+                                   "moved_to": "legislator/jane-doe-hills-12"},
+                                  {"id": "LSR20270004", "n": "LSR 2027-0004", "year": 2027,
+                                   "term": "2027-requests", "title": "never filed, no sponsor",
+                                   "status": "Filed as a request", "lsr": True,
+                                   "address": "request/2027-0004",
+                                   "moved_to": "bills?term=2027-requests"}]}
         for term, r in rows.items():
             (site / "idx" / f"{term}.json").write_text(json.dumps(r), encoding="utf-8")
         (site / "meta.json").write_text(json.dumps(
@@ -54077,15 +54129,37 @@ def _directory_pages():
             assert f'href="town/{slug}"' in towns, f"town page {slug} is not linked"
         hub = (site / "directory.html").read_text(encoding="utf-8")
         assert "directory/bills-1989-1990" in hub and "directory/towns" in hub
-        # A REQUEST HAS NO PAGE, AND ITS LIST LINKS NONE. All 241 links on
-        # /directory/bills-2027-requests answered 404 (the audit of 2 October
-        # 2026): the list wrote bill/2027/lsr20270001 for every row, and
-        # build_bill_pages.py builds no page for a request. The number is
-        # text, the list is named as the bill search's term picker names it,
-        # and the requests are not counted among the terms of bills.
+        # A REQUEST LINKS ITS OWN PAGE, NEVER bill/2027/lsr...: all 241 links
+        # on /directory/bills-2027-requests answered 404 (the audit of 2
+        # October 2026) because the list wrote bill/2027/lsr20270001 for every
+        # row and build_bill_pages.py builds no page for a request. Since 8
+        # November every request has its own page (build_request_pages), so
+        # each row links it -- or, once the request is a bill, the bill -- and
+        # the lead says so. The list is named as the bill search's term picker
+        # names it, and the requests are not counted among the terms of bills.
         reqs = (site / "directory" / "bills-2027-requests.html").read_text(encoding="utf-8")
-        assert "LSR 2027-0001" in reqs and "bill/2027" not in reqs, (
-            "the list of requests links a page for a request, and no builder writes one")
+        assert "LSR 2027-0001" in reqs and "bill/2027/lsr" not in reqs, (
+            "the list of requests links a bill page for a request, and no builder writes one")
+        assert '<a href="request/2027-0001">LSR 2027-0001</a>' in reqs, (
+            "a request's row in the directory does not link the request's own page")
+        assert '<a href="bill/2027/hb45">LSR 2027-0002</a>' in reqs and "request/2027-0002" not in reqs, (
+            "a request now a bill is not linked to its bill, or still links its old address")
+        assert "Each request has its own page until it becomes a numbered bill" in reqs \
+            and "has no page of its own" not in reqs, (
+            "the list of requests does not say each request has its own page")
+        # A request retired at the close of filing forwards to its sponsor or
+        # to the search, so the lead says so -- only when some row does.
+        assert '<a href="legislator/jane-doe-hills-12">LSR 2027-0003</a>' in reqs \
+            and '<a href="bills?term=2027-requests">LSR 2027-0004</a>' in reqs, (
+            "a retired request's row does not link where its address forwards")
+        sentence = "A request not filed as a bill by the close of filing forwards to its sponsor"
+        assert sentence in reqs, "the lead does not say that unfiled requests forward, though some do"
+        import build_indexes as BI
+        plain = [{"lsr": True, "address": "request/2027-0001"},
+                 {"lsr": True, "address": "request/2027-0002", "moved_to": "bill/2027/hb45"}]
+        assert not BI.forwarded(plain) and BI.forwarded(plain + [
+            {"lsr": True, "address": "request/2027-0003", "moved_to": "bills?term=2027-requests"}]), (
+            "the lead's extra sentence is not tied to a request that forwards to a sponsor or the search")
         assert "<title>2027 Bill Requests | Granite Record</title>" in reqs \
             and "<h1>2027 Bill Requests</h1>" in reqs, (
             "the list of requests is not titled as the term picker names it "
@@ -54115,7 +54189,9 @@ def _directory_pages():
         assert 'href="directory.html"' in exports, (
             "the Data page does not link the directory, so nothing static "
             "reaches the per-record lists and a crawler sees no bills")
-        return "ok", "bills by term, legislators and towns linked statically, sitemapped, footer links them"
+        return "ok", ("bills by term, legislators and towns linked statically, sitemapped, footer "
+                      "links them; each request linked to its own page, or to its bill once it is "
+                      "one, under a lead that says so")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
