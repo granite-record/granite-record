@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.30
+# GRANITE_VERSION: 2026-09-13.31
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -116,13 +116,6 @@ def href_of(to):
     return S.canon(path + ".html") + q + query
 
 
-def forwarded(rows):
-    """Whether some request forwards to a sponsor's page or to the requests'
-    search (build_lsrs.retire) rather than to its own page or its bill."""
-    return any(r.get("lsr") and request_target(r)
-               and not request_target(r).startswith(("request/", "bill/")) for r in rows)
-
-
 def request_target(r):
     """Where a row of the list links, without the .html: a bill's own page; a
     request's "moved_to" or else its "address"; "" for a request that has
@@ -143,8 +136,8 @@ def bills_page(site, base, term, rows, urls, label=""):
     its "moved_to" or else its "address". "moved_to" is where the address
     forwards: the bill's page once the request is a bill or, once filing is
     complete (build_lsrs.retire), the sponsor's page or the requests' search.
-    A row with neither stays its number as text. The lead adds a sentence only
-    when some row forwards to a sponsor or to the search (forwarded()).
+    A row with neither stays its number as text. The lead says no more than
+    where the requests can be searched: the rows' links speak for themselves.
     """
     groups = defaultdict(list)
     for r in rows:
@@ -178,12 +171,9 @@ def bills_page(site, base, term, rows, urls, label=""):
               f"All {len(rows):,} requests for bills filed so far for the next session of "
               "the New Hampshire General Court, by request number, with each one's title.",
               label,
-              f"{len(rows):,} requests, by number. Each request has its own page "
-              "until it becomes a numbered bill; "
+              f"{len(rows):,} requests, by number. "
               f'<a href="{S.E(S.canon("bills.html") + "?term=" + quote_plus(term))}">'
-              "the bill search lists them</a> with their sponsors."
-              + (" A request not filed as a bill by the close of filing forwards to "
-                 "its sponsor&rsquo;s page." if forwarded(rows) else ""),
+              "The bill search</a> lists them with their sponsors.",
               "".join(body), urls, nav="bills.html")
         return len(rows)
     write(site, base, f"/directory/bills-{term}.html",
