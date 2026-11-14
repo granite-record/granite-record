@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.5
+# GRANITE_VERSION: 2026-11-08.6
 """
 A provisional page for each new member-elect: who they are until the General
 Court numbers them.
