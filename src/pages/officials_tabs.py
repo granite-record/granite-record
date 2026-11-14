@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.17
+# GRANITE_VERSION: 2026-10-10.18
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -1206,23 +1206,37 @@ def members_elect(elect, today, lang="en", people=None, towns=None):
 # new chamber"). Written into the page hidden and shown by its script, as the
 # view strip is, so a page read without the script is the plain lists and no
 # controls that do nothing. The boxes are the site's .bfilt row (a member's
-# Votes tab, a committee's calendar); the search is the Legislators finder's
-# own matching -- every word typed must be in the person's name, county,
-# district or towns, accents folded -- and the three selects choose the
-# status elect_status gives, the party the roster lists them under, and the
-# chamber. Each item carries what is read, as data-st, data-p, data-ch and
-# data-hay; matching is by those and never by a name alone.
+# Votes tab, a committee's calendar); the search matches as the site's header
+# search does (find.js) -- every word typed must be in the person's name, in
+# the name on their own page, county, district or towns, accents folded; a
+# word under five letters must start a word; rep, sen and their long forms
+# are a title and left out of the match; a number names a district ("merr 5"
+# is Merrimack 5 and not 15, "ward 5" is the ward) -- and the three selects
+# choose the status elect_status gives, the party the roster lists them
+# under, and the chamber. Each item carries what is read, as data-st,
+# data-p, data-ch and data-hay (name | district words | towns); matching is
+# by those and never by a name alone.
 def elect_attrs(e, key, by_id, towns=None):
     """The data-* an item carries for the filter: its status, its party
     column's letter ("-" for none), its chamber, and the words a search
-    reads (name, county, district, the towns of the race) in lower case with
-    accents off."""
+    reads -- "name | district words | towns" in lower case with accents off.
+    The name is the ballot's and, where the file links the person to a
+    member, the record's too, first name first (the name their own page
+    shows)."""
     import unicodedata
     m = KEY_RE.match(key)
     st = elect_kind(e, key, by_id)
-    where = (f"senate district {m.group(3)} sd{m.group(3)}" if m.group(3) else
-             f"{m.group(1)} district {m.group(2)} {m.group(1)[:4]} {m.group(2)}")
-    hay = unicodedata.normalize("NFKD", " ".join([str(e.get("n") or ""), where, *(towns or [])]))
+    where = (f"senate district {m.group(3)} senate {m.group(3)} sd{m.group(3)} sd {m.group(3)}"
+             if m.group(3) else
+             f"{m.group(1)} district {m.group(2)} {m.group(1)} {m.group(2)}")
+    name = str(e.get("n") or "")
+    row = by_id.get(str(e.get("id"))) if e.get("id") else None
+    if row and str(row.get("name") or "").strip():
+        last, _, first = str(row["name"]).partition(",")
+        rec = f"{first.strip()} {last.strip()}".strip()
+        if rec.lower() != name.lower():
+            name += " " + rec
+    hay = unicodedata.normalize("NFKD", " | ".join([name, where, " ".join(towns or [])]))
     hay = "".join(c for c in hay if not unicodedata.combining(c)).lower()
     return (f' data-st="{st}" data-p="{E(elect_party(e) or "-")}" '
             f'data-ch="{"S" if m.group(3) else "H"}" data-hay="{E(hay)}"')
@@ -1272,15 +1286,47 @@ ELECT_FILTER_JS = """<script>
 (function(){
 // electMatch is the whole of the matching, so a test can run it alone: an
 // item {st, p, ch, hay} against what was typed and chosen; every word typed
-// must be in hay (name, county, district, towns), accents folded.
+// must be in hay ("names | district words | towns"), accents folded. As
+// find.js does: a word under five letters starts a word, and rep, sen and
+// the long forms are a title, left out (a member's page may say Rep. of one
+// who is a senator-elect). A number is a district: with
+// the word before it ("merr 5", "sd 8", "senate district 8") it is that
+// district's number, alone it is any district's, after "ward" it is a ward
+// of a town; a word with a digit in it ("sd8") is a whole word.
 function fold(s){s=String(s==null?"":s).toLowerCase();
   return s.normalize?s.normalize("NFD").replace(/[\\u0300-\\u036f]/g,""):s;}
+var TITLE={rep:1,"rep.":1,representative:1,sen:1,"sen.":1,senator:1};
+function startsWord(h,w){
+  if(w.length>=5)return h.indexOf(w)>=0;
+  for(var i=h.indexOf(w);i>=0;i=h.indexOf(w,i+1))
+    if(!i||!/[a-z0-9]/.test(h.charAt(i-1)))return true;
+  return false;
+}
+function pairAt(t,pre,n,exact){
+  for(var i=0;i+1<t.length;i++)
+    if((exact?t[i]===pre:t[i].indexOf(pre)===0)&&t[i+1]===n)return true;
+  return false;
+}
 function electMatch(it,q,st,p,ch){
   if(st&&it.st!==st)return false;
   if(p&&it.p!==p)return false;
   if(ch&&it.ch!==ch)return false;
-  var w=fold(q).split(/\\s+/).filter(Boolean);
-  for(var i=0;i<w.length;i++)if(it.hay.indexOf(w[i])<0)return false;
+  var raw=fold(q).split(/\\s+/).filter(Boolean),w=[];
+  for(var i=0;i<raw.length;i++)
+    if(!Object.prototype.hasOwnProperty.call(TITLE,raw[i]))w.push(raw[i]);
+  var parts=it.hay.split(" | "),
+      dist=(parts.length>2?parts[1]:it.hay).split(" "),
+      town=(parts.length>2?parts.slice(2).join(" "):it.hay).split(" ");
+  for(var j=0;j<w.length;j++){
+    var x=w[j];
+    if(/^[0-9]+$/.test(x)){
+      var b=j&&!/[0-9]/.test(w[j-1])?w[j-1]:"";
+      if(b==="ward"){if(!pairAt(town,"ward",x,true))return false;}
+      else if(!pairAt(dist,b||"district",x,!b))return false;
+    }else if(/[0-9]/.test(x)){
+      if(dist.indexOf(x)<0)return false;
+    }else if(!startsWord(it.hay,x))return false;
+  }
   return true;
 }
 if(typeof window!=="undefined")window.electMatch=electMatch;

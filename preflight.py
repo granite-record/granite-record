@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.908
+# GRANITE_VERSION: 2026-09-04.909
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -123015,7 +123015,7 @@ def _elect_tab_like_legislators(OT):
           for p in ("pane-elast", "pane-ecounty")}
     if -1 in at.values() or sorted(at.values()) != list(at.values()) or "edist" in page:
         bad.append(f"the two panes are not there in order, or By district is still drawn: {at}")
-        return "fail", "; ".join(bad)
+        return "FAIL", "; ".join(bad)
     last, county = page[at["pane-elast"]:at["pane-ecounty"]], page[at["pane-ecounty"]:]
     # Each view opens at the level of the tab's own headings, so a reader
     # moving by heading in either meets its chambers as the tab's parts, not
@@ -123320,7 +123320,7 @@ def _elect_search_filter(OT):
     bar = re.search(r'<div class="bfilt elfilter" role="search" hidden data-n="12" [^>]*>(.*?)</div>',
                     page, re.S)
     if not bar:
-        return "fail", "the search row is not written hidden over the lists"
+        return "FAIL", "the search row is not written hidden over the lists"
     opts = {m[0]: re.findall(r'<option value="([^"]*)">([^<]*)</option>', m[1])
             for m in re.findall(r'<select class="(el[a-z]+)">(.*?)</select>', bar.group(1))}
     if opts.get("elst") != [("", "All (12)"), ("returning", "Returning (1)"),
@@ -123349,7 +123349,7 @@ def _elect_search_filter(OT):
     node = _sh.which("node")
     script = re.search(r"<script>(.*?)</script>", page, re.S)
     if not script:
-        return "fail", "; ".join(bad + ["the page carries no script for the controls"])
+        return "FAIL", "; ".join(bad + ["the page carries no script for the controls"])
     if node:
         import subprocess as _sp
         harness = r"""
@@ -123425,6 +123425,50 @@ console.log(JSON.stringify(out));
             if o["fold"] is not True or o["no"] is not False:
                 bad.append("accents are not folded, or a near name matches: "
                            f"{o['fold']} {o['no']}")
+        # A DISTRICT IS A NUMBER, AND A NAME IS THE ONE ON THEIR PAGE (the
+        # review of 14 November 2026: "merr 5" found Merr 15, 19, 25 and 30
+        # and not Merr 5, "senate district 8" found SD8, 13, 15 and 18, and
+        # "james creighton" found nobody -- the ballot says Jim). Beside the
+        # fixture's districts stand Merr 15, SD18, Hills 40 and a ward; each
+        # query must find that district's member only.
+        import copy as _cp
+        el2 = _cp.deepcopy(elect)
+        race = lambda *names: {"seats": len(names), "not_final": 0, "held": 0,  # noqa: E731
+                               "elected": [{"n": n, "p": "D", "k": "new"} for n in names]}
+        el2["races"].update({"S|1": race("Tom Onesen"), "S|18": race("Una Eighteen"),
+                             "H|Merrimack|5": race("Mia Five"), "H|Merrimack|15": race("Ned Fifteen"),
+                             "H|Hillsborough|4": race("Hal Four"), "H|Hillsborough|40": race("Ivy Forty")})
+        page2 = OT.members_elect(el2, "2026-11-20", "en", people,
+                                 {**towns, "H|Merrimack|15": ["Concord Ward 5"],
+                                  "H|Merrimack|5": ["Bow"]})
+        last2 = page2[:page2.find('id="pane-ecounty"')]
+        items2 = [{"st": a, "p": b, "ch": c, "hay": d} for a, b, c, d in re.findall(
+            r'<(?:li|div) class="(?:seatrow|mem)[^"]*" data-st="([a-z]*)" data-p="([^"]*)" '
+            r'data-ch="([SH])" data-hay="([^"]*)">', last2)]
+        asks = {"merr 5": ["mia"], "merrimack 5": ["mia"], "hills 4": ["hal"],
+                "hillsborough 40": ["ivy"], "sd 8": ["jim"], "sd8": ["jim"],
+                "senate district 8": ["jim"], "sd 1": ["tom"], "sd1": ["tom"],
+                "senate district 1": ["tom"], "district 5": ["mia"], "5": ["mia"],
+                "concord ward 5": ["ned"], "ward 5": ["ned"], "rock 13": ["charles", "kristine"],
+                "james creighton": ["jim"], "jim creighton": ["jim"], "rep creighton": ["jim"],
+                "representative creighton": ["jim"], "sen. creighton": ["jim"],
+                "senator james creighton": ["jim"], "rep nobody": ["lee"], "rep Una": ["una"],
+                "han": [], "hamp": ["charles", "kristine"]}
+        h2 = r"""
+var window={},document={querySelector:function(){return null;}};
+""" + script.group(1) + r"""
+var ITEMS=""" + json.dumps(items2) + r""",ASKS=""" + json.dumps(list(asks)) + r""",out={};
+ASKS.forEach(function(q){out[q]=ITEMS.filter(function(i){return window.electMatch(i,q,"","","");})
+  .map(function(i){return i.hay.split(" | ")[0].split(" ")[0];}).sort();});
+console.log(JSON.stringify(out));
+"""
+        r2 = _sp.run([node, "-e", h2], capture_output=True, text=True, encoding="utf-8", timeout=60)
+        assert r2.returncode == 0 and r2.stdout.strip().startswith("{"), \
+            f"the district script did not run in node: {(r2.stderr or r2.stdout).strip()[:400]}"
+        o2 = json.loads(r2.stdout)
+        for q, w in asks.items():
+            if o2[q] != w:
+                bad.append(f"the search {q!r} shows {o2[q]}, not {w}")
     # Spanish: the row's words, none in English.
     es = OT.members_elect(elect, "2026-11-20", "es", people, towns)
     row = re.search(r'<div class="bfilt elfilter".*?</div>', es, re.S).group(0)
