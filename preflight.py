@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.911
+# GRANITE_VERSION: 2026-09-04.912
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -35857,6 +35857,39 @@ def _phone_card_compact():
         drew = "the year on each of three dated stops"
     return "ok", (f"under 37.5em: {', '.join(f'{tok} {px}px' for tok, px in _PHONE_CARD.values())}"
                   f" in rem, the title in the serif; {drew}")
+
+
+@check("frontend", "on a phone a bill card's status stays at the right end of the card's first line, beside "
+                   "the number, as on a wide screen")
+def _phone_card_status_right():
+    """The owner, 14 November 2026: "move the bill status chips to the top
+    right of the cards like they are on desktop". Under the narrow queries
+    (the card's list rules and the static pages') the head row (.crow) must
+    not wrap, its chip (.cstat) must keep margin-left:auto, and no rule
+    under a narrow query may put margin-left:0 on a .crow chip, which is
+    what dropped it to a line of its own on 9 October."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8") if Path("src/pages/app.css").exists() else ""
+    if not css:
+        return "skip", "app.css is not here"
+    narrow = [(ctx, sel, dict(_css_decls(body))) for ctx, sel, body, _ln in _css_rules(css)
+              if ".crow" in sel and ":not(.focus)" not in sel and any("max-width" in c for c in ctx)]
+    bad = []
+    for want in (".crow", ".crow .cstat"):
+        got = [s for _c, s, _d in narrow if s.endswith(want)]
+        if len(got) < 2:
+            bad.append(f"{want} is set under {len(got)} narrow queries, not the card list's and the static pages'")
+    for ctx, sel, d in narrow:
+        if "cstat" in sel and d.get("margin-left") not in (None, "auto"):
+            bad.append(f"{' '.join(ctx)} {sel} sets margin-left:{d['margin-left']}, off the right end")
+        if sel.endswith(".crow") and d.get("flex-wrap") == "wrap":
+            bad.append(f"{' '.join(ctx)} {sel} lets the head row wrap, so the status drops below the number")
+        if sel.endswith(".crow .cstat") and d.get("margin-left") != "auto":
+            bad.append(f"{' '.join(ctx)} {sel} does not keep margin-left:auto")
+        if sel.endswith(".crow") and d.get("flex-wrap") != "nowrap":
+            bad.append(f"{' '.join(ctx)} {sel} does not keep the row on one line (flex-wrap:nowrap)")
+    assert not bad, "; ".join(bad)
+    return "ok", ("under the narrow queries (the card list's and the static pages') the head row stays on "
+                  "one line and the status keeps margin-left:auto, with no margin-left:0 on it")
 
 
 @check("frontend", "the Law line of How it got here has its day in the date column, like every other line",

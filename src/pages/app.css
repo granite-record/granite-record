@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.388 */
+/* GRANITE_VERSION: 2026-09-07.389 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -3700,13 +3700,17 @@ text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
   .facets .fgroup:last-child{border-bottom:0}
   /* And the count's room beside the Sort, at this row's narrower gap. */
   .qhint{flex-wrap:wrap;gap:var(--sp-4);--room:calc(100% - var(--pickw) - var(--sp-4))}
-  .crow{flex-wrap:wrap;gap:var(--sp-2)}
-  /* The status is pushed to the right of the row by margin-left:auto, which
-     is right while the row is a row. Wrapped onto a line of its own at
-     360px it was pushed 117px in from the left, so the one word every reader
-     looks for first floated in the middle of the card under the bill
-     number. Wrapped, it lines up with everything else. */
-  .crow .cstat{margin-left:0}
+  /* THE STATUS STAYS AT THE TOP RIGHT of the card on a phone, as on a wide
+     screen (the owner, 14 November 2026). On 9 October it was let drop to a
+     line of its own, left-aligned under the number, because wrapped it was
+     pushed 117px in from the left by margin-left:auto and floated in the
+     middle. The row no longer wraps, so that cannot happen: the number and
+     year keep the left, the status keeps the right end of the same line, and
+     words too long for the room left wrap inside the chip, aligned right and
+     level with the number's top, rather than the chip leaving the line. */
+  .crow{flex-wrap:nowrap;align-items:flex-start;gap:var(--sp-2)}
+  .crow .cnum{flex:0 1 auto;min-width:0}
+  .crow .cstat{margin-left:auto;flex:0 0 auto;max-width:62%;text-align:right;overflow-wrap:anywhere}
   .cnum{font-size:var(--t-ui)}
   .pbar{flex-wrap:wrap;gap:var(--sp-3)}
   .pbar .jump{font-size:var(--t-sm)}
@@ -9310,7 +9314,9 @@ font-variant-numeric:tabular-nums;white-space:nowrap}
 :where(body.pg) .searchbig button{padding:var(--sp-5) var(--sp-7)}
 :where(body.pg) #year{width:100%}
 :where(body.pg) .qhint{flex-wrap:wrap;gap:var(--sp-4)}
-:where(body.pg) .crow{flex-wrap:wrap;gap:var(--sp-2)}
+:where(body.pg) .crow{flex-wrap:nowrap;align-items:flex-start;gap:var(--sp-2)}
+:where(body.pg) .crow .cnum{flex:0 1 auto;min-width:0}
+:where(body.pg) .crow .cstat{margin-left:auto;flex:0 0 auto;max-width:62%;text-align:right;overflow-wrap:anywhere}
 :where(body.pg) .cnum{font-size:var(--t-ui)}
 :where(body.pg) .pbar{flex-wrap:wrap;gap:var(--sp-3)}
 :where(body.pg) .pbar .jump{font-size:var(--t-sm)}
