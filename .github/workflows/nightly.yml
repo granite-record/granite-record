@@ -310,7 +310,7 @@ jobs:
       # commit the live site was built from (its build.json), first parent
       # only, and the link to every change. This step never fails the night.
       - name: The patch notes
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && !(inputs.timer == true || inputs.timer == 'true')
         env:
           NOTES: ${{ inputs.notes }}
         run: |
@@ -325,6 +325,7 @@ jobs:
               $out += "This is the commit the live site was built from ($($head.Substring(0, 8)))."
             } elseif ($live -and ([string](git cat-file -t $live 2>$null)).Trim() -eq "commit") {
               $log = @(git log --first-parent --format="- %s" "$live..$head")
+              $log = @($log | ForEach-Object { $_ -replace '&','&amp;' -replace '<','&lt;' -replace '>','&gt;' })
               $out += "### Merged since the live site ($($live.Substring(0, 8)) to $($head.Substring(0, 8)))"
               $out += ""
               $out += @($log | Select-Object -First 40)

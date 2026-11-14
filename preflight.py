@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.908
+# GRANITE_VERSION: 2026-09-04.909
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -108868,6 +108868,16 @@ def _workflows_patch_notes():
     assert len(steps) == 1, f"the night has {len(steps)} patch notes steps, not one"
     st = "\n".join(steps[0])
     assert "if: github.event_name == 'workflow_dispatch'" in st, "the patch notes step runs on a scheduled night"
+    # The night's timer dispatches too, with timer "true" and no notes; the
+    # input arrives as a boolean or as the string.
+    cond = next((ln.strip() for ln in steps[0] if ln.strip().startswith("if:")), "")
+    assert "inputs.timer == true" in cond and "inputs.timer == 'true'" in cond and "!(" in cond, (
+        f"the patch notes step runs on the night's timer, which gives no notes: {cond}")
+    # A subject is text, not Markdown: <name> would be read as a tag and lost.
+    assert "-replace '&','&amp;'" in st and "-replace '<','&lt;'" in st and "-replace '>','&gt;'" in st, (
+        "commit subjects go into the run page unescaped")
+    assert st.index("-replace '&','&amp;'") < st.index("Select-Object -First 40"), (
+        "the subjects are escaped after they were written to the run page")
     run = st.split("run: |", 1)[1] if "run: |" in st else ""
     assert run and "${{" not in run, "the patch notes step's script has an expression GitHub would write into it"
     assert "$env:NOTES" in run and "GITHUB_STEP_SUMMARY" in run, "the patch notes do not reach the run's page"
@@ -120614,6 +120624,15 @@ def _town_staff_own_page(B):
         bad.append("the staff card does not say where and when it was read")
     if "Chuck Fuller" not in new:
         bad.append("the directory's board vanished although the town's was not used")
+    # The caveat points back at the directory's date, so it comes straight
+    # after it, before the sentences that carry the days a town was checked.
+    nu = _html.unescape(new)
+    if "checked November 13, 2026" not in nu:
+        bad.append("the moved town's offices card has no checked day to order the caveat against")
+    elif re.search(r"dated [A-Z][a-z]+ \d{4}\. It does not show anyone elected or appointed since then",
+                   nu.split("(checked November 13, 2026)")[0]) is None:
+        bad.append("on the moved town's offices card the 'since then' sentence does not come "
+                   "straight after the directory's date")
     # A town the hand file does not name is the same page to the byte.
     if page("Lyme", off(False)) != page("Lyme", off(True)):
         bad.append("another town's page changed")
