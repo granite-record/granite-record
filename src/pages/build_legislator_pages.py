@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.34
+# GRANITE_VERSION: 2026-09-04.35
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -40,6 +40,7 @@ import re
 import unicodedata
 
 import build_date
+import member_links as ML
 import shell as S
 import structured as LD
 from build_members_elect import for_pages as members_elect
@@ -107,11 +108,11 @@ def describe(m, rec=None):
     # 2024" of a senator whose 1999-2002 were in the House. The years are the
     # page's own "Votes on record" line's: member_links.service, years with a
     # roll call in that chamber.
-    both = _chambers_served(rec)
+    both = _chambers_served(rec, m)
     if m.get("former") and both:
         lead = f"{who} served in the New Hampshire {both}."
     elif m.get("former"):
-        yrs = _served_years(m)
+        yrs = _served_years(m, rec)
         lead = (f"{who} served in the New Hampshire {body}"
                 + (f", {yrs}." if yrs else "."))
     elif towns:
@@ -130,7 +131,43 @@ def describe(m, rec=None):
     return S.clip(text, 300)
 
 
-def _chambers_served(rec):
+def _said_years(spans):
+    # "1999 to 2002, 2009 to 2014 and 2017 to 2018": one "and", at the end.
+    said = [str(a) if a == b else f"{a} to {b}" for a, b in spans]
+    return said[0] if len(said) == 1 else ", ".join(said[:-1]) + " and " + said[-1]
+
+
+def record_spans(m, rec):
+    """The years the record places a member in each chamber (the page's "On Record" line),
+    as app.js's `spans` works them out: member_links.record_spans over the member's own
+    service, else their attendance terms, with the 1989-1998 terms the General Court's
+    sponsor record places them in (`past_terms`) added to the chamber it names. [] where the
+    record gives nothing. Without past_terms and a roll-call service this is what the
+    page said before."""
+    rec, m = rec or {}, m or {}
+    past = rec.get("past_terms") or m.get("past_terms") or {}
+    att = []
+    for t in (rec.get("attendance") or {}):
+        a = str(t).split("-")
+        if a[0].isdigit():
+            att.append([int(a[0]), int(a[1]) if len(a) > 1 and a[1].isdigit() else int(a[0])])
+    if not att and past:
+        s = m.get("served") or {}
+        a, b = str(s.get("first") or "")[-4:], str(s.get("last") or "")[-4:]
+        if a.isdigit() and b.isdigit():
+            att = [[int(a), int(b)]]
+    return ML.record_spans(rec.get("service") or [], att, m.get("chamber") or "", past)
+
+
+def on_record_text(m, rec):
+    """"House, 1991–2024 · Senate, 1993–1994": app.js's On Record line as plain text."""
+    return " · ".join(
+        f"{'Senate' if c['chamber'] == 'S' else 'House'}, "
+        + ", ".join(str(a) if a == b else f"{a}–{b}" for a, b in c["spans"])
+        for c in record_spans(m, rec))
+
+
+def _chambers_served(rec, m=None):
     """"House of Representatives, 1999 to 2002, and Senate, 2009 to 2024": each
     chamber of a page that joins two, in the order it was first sat in, with
     the years it has a recorded roll call (the member's own service, as
@@ -138,18 +175,18 @@ def _chambers_served(rec):
     2002]]}, ...]). "" for a page of one chamber, or none on record."""
     svc = [c for c in ((rec or {}).get("service") or [])
            if c.get("chamber") in ("H", "S") and c.get("spans")]
+    if (rec or {}).get("past_terms") or (m or {}).get("past_terms"):
+        # 1989-1998 terms the sponsor record adds, each to its own chamber.
+        svc = [c for c in record_spans(m, rec) if c.get("chamber") in ("H", "S") and c.get("spans")]
     if len({c["chamber"] for c in svc}) < 2:
         return ""
-    def years(spans):
-        # "1999 to 2002, 2009 to 2014 and 2017 to 2018": one "and", at the end.
-        said = [str(a) if a == b else f"{a} to {b}" for a, b in spans]
-        return said[0] if len(said) == 1 else ", ".join(said[:-1]) + " and " + said[-1]
+    years = _said_years
     return ", and ".join(
         f"{'Senate' if c['chamber'] == 'S' else 'House of Representatives'}, {years(c['spans'])}"
         for c in svc)
 
 
-def _served_years(m):
+def _served_years(m, rec=None):
     """"2013 to 2026", the span of the RECORD this site holds for a member.
 
     The span of the RECORD, which is not always the span of the service: roll
@@ -165,6 +202,19 @@ def _served_years(m):
     """
     s = m.get("served") or {}
     a, b = str(s.get("first") or "")[-4:], str(s.get("last") or "")[-4:]
+    if (rec or {}).get("past_terms") or m.get("past_terms"):
+        # THE 1989-1998 TERMS THE SPONSOR RECORD PLACES THEM IN come first, as the
+        # page's "On Record" line says them (record_spans).
+        # Runs, never one span across a term the record lacks: "1989 to 1990 and 2003 to 2010".
+        spans = sorted(sp for c in record_spans(m, rec) for sp in c["spans"])
+        runs = []
+        for x, y in spans:
+            if runs and ML._term(x) <= ML._term(runs[-1][1]) + 2:
+                runs[-1][1] = max(runs[-1][1], y)
+            else:
+                runs.append([x, y])
+        if runs:
+            return _said_years(runs)
     if not (a.isdigit() and b.isdigit()):
         return ""
     return a if a == b else f"{a} to {b}"
@@ -454,7 +504,7 @@ def static_record(m, rec, elected="", places=None, back=None):
     earlier seat kept below; the second keeps its heading and says the
     election beside it."""
     rec = rec or {}
-    yrs = _served_years(m) if m.get("former") else ""
+    yrs = _served_years(m, rec) if m.get("former") else ""
     titled = heading(m).startswith("Former ")
     back = back or {}
     returning = back.get("mode") == "returning"
@@ -491,6 +541,11 @@ def static_record(m, rec, elected="", places=None, back=None):
             f'<a href="{E(places[t])}">{E(t)}</a>' if t in places else E(t) for t in towns))
     if m.get("committees") and not m.get("former"):
         facts.append(f"<b>Committees:</b> {E(', '.join(m['committees']))}")
+    # THE YEARS ON RECORD, where the sponsor record puts them in terms before the roll calls
+    # begin: the line app.js draws ("On Record"), said the same way. A former member's
+    # sentence above carries it.
+    if (rec.get("past_terms") or m.get("past_terms")) and not m.get("former"):
+        facts.append("<b>On record:</b> " + E(on_record_text(m, rec)))
     c = rec.get("counts") or {}
     if c:
         facts.append("<b>Recorded roll call votes:</b> " + E(", ".join(

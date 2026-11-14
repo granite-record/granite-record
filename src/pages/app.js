@@ -9500,8 +9500,32 @@ function renderMemberHead(m){
   // member sat in both, else the terms their attendance is counted in.
   const yrsOf=t=>t.map(x=>String(x).split("-").map(Number)).filter(x=>x[0]);
   const att=yrsOf(Object.keys(m.attendance||{}));
-  const spans=(m.service||[]).length?m.service
+  const spans0=(m.service||[]).length?m.service
     :att.length?[{chamber:m.chamber,spans:[[Math.min(...att.map(x=>x[0])),Math.max(...att.map(x=>x[1]||x[0]))]]}]:[];
+  // THE TERMS BEFORE 1999 THE GENERAL COURT'S SPONSOR RECORD PLACES THEM IN
+  // (past_terms: {chamber: [term]}; member_links.record_spans is this one's
+  // twin), each added to its own chamber, so the line covers every term the TERM
+  // picker offers. Where the span is first to last (no service list) a chamber has
+  // one span; where the service list shows gaps, runs of consecutive terms join.
+  const pastT=m.past_terms||{};
+  const spans=(()=>{
+    if(!Object.keys(pastT).length)return spans0;
+    let base=spans0;
+    if(!base.length){
+      const sv=m.served||{},a=String(sv.first||"").slice(-4),b=String(sv.last||"").slice(-4);
+      if(/^\d{4}$/.test(a)&&/^\d{4}$/.test(b))base=[{chamber:m.chamber,spans:[[+a,+b]]}];
+    }
+    const tm=y=>y%2?y:y-1;
+    const chs=[...new Set([...base.map(c=>c.chamber),...Object.keys(pastT)])];
+    return chs.map(ch=>{
+      const own=base.filter(c=>c.chamber===ch).flatMap(c=>c.spans||[]).map(x=>[x[0],x[1]]);
+      const past=(pastT[ch]||[]).map(t=>{const y=String(t).split("-").map(Number);return [y[0],y[1]||y[0]];});
+      let sp=own.concat(past).sort((x,y)=>x[0]-y[0]||x[1]-y[1]);
+      const out=[];sp.forEach(x=>{const l=out[out.length-1];
+        if(l&&tm(x[0])<=tm(l[1])+2)l[1]=Math.max(l[1],x[1]);else out.push([x[0],x[1]]);});sp=out;
+      return {chamber:ch,spans:sp};
+    }).sort((x,y)=>x.spans[0][0]-y.spans[0][0]||(x.chamber===m.chamber?0:1)-(y.chamber===m.chamber?0:1));
+  })();
   const svc=spans.map(c=>`${esc(CHAMBER_SHORT[c.chamber]||c.chamber)}, ${(c.spans||[])
     .map(([a,b])=>a===b?esc(String(a)):`${esc(String(a))}&ndash;${esc(String(b))}`).join(", ")}`);
   const facts=[];
