@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.273
+# GRANITE_VERSION: 2026-09-05.274
 """
 Generate the faceted site from real General Court data.
 
@@ -8572,9 +8572,43 @@ def story_people(texts, legs):
     return out
 
 
+def sponsor_record_chambers(sponsors, table="auto", people=None):
+    """{(employee number, term): "H" | "S"}: the chamber the Manual for the General Court of
+    the term seats a 1989-1998 sponsor in, for each row the General Court's sponsor record
+    supplies itself (past_sponsors.filled) that is linked to a member, where the term's seat
+    list names that one person and was read without doubt (past_roster.term_seat). For the
+    member's "On Record" line: bill_sponsor_list's `ch`.
+
+    A ROW OF THE RECORD HOLDS A CHAMBER AND NO SEAT, and before 1999 the chamber is the
+    member's last (the review before the release of 16 November 2026): past_sponsors gives a
+    row the chamber its number voted in that term, else the roster's, the legislators table's
+    or the list of members', and no number voted before 1999. Measured for that review, on
+    past_sponsors.json of 7 November, the Manual seated 402 of the 486 linked rows of those
+    terms, each in the row's own chamber; the other 84 it does not name without doubt, and
+    they keep their own. {} where no such row is linked to a member, or the seat list is not
+    on this disk. `table` and `people` stand in for generated/manual_seats.json and the files
+    past_sponsors.load_people reads."""
+    import past_roster as PR
+    if not P.term_keyed(sponsors or {}):
+        return {}
+    want = {(str(s["employee"]), term) for term in PR.PRE_TERMS
+            for rows in (sponsors.get(term) or {}).values() for s in rows or ()
+            if s.get("source") == PSP.SOURCE and s.get("employee") and s.get("member_id")}
+    table = (PR.seat_table() if table == "auto" else table) if want else None
+    if not table:
+        return {}
+    people = people if people is not None else PSP.load_people(with_votes=False)
+    out = {}
+    for emp, term in sorted(want):
+        seat, _why, _row = PR.term_seat(emp, term, people, table)
+        if seat:
+            out[(emp, term)] = seat[0]
+    return out
+
+
 def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
                       leg_by_sort, leg_by_name, sponsored, seats=None, left=None,
-                      term_roster=None):
+                      term_roster=None, record_chambers=None):
     """Who put their name to this bill, and their own bill list, both.
 
     It mutates `sponsored`, which is the caller's accumulator of what
@@ -8588,6 +8622,9 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
     roster as it was frozen, both passed only for a term whose frozen roster
     is not the sitting one (build_bills says which); None everywhere else,
     which is every term before the first Organization Day.
+
+    `record_chambers` is sponsor_record_chambers': the chamber the term's
+    Manual seats a 1989-1998 sponsor of the General Court's record in.
 
     `prime` stays in the loop. It is one line and it reads better
     beside the payload that uses it than as an extra return value.
@@ -8716,15 +8753,28 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
         _mid = str(_m.get("id") or _s.get("member_id") or "")
         if _mid and _mid not in filed:
             filed.add(_mid)
+            # THE CHAMBER OF A 1989-1998 TERM THE GENERAL COURT'S SPONSOR RECORD PUTS THIS
+            # PERSON IN, for their "On Record" line (ML.earlier_terms), on every such row: the
+            # line covers the terms the TERM picker lists, and the picker lists them all. Only
+            # the printed rows had one, and Donna Sytek, Speaker in 1997-1998, whose bills of
+            # that term are all the record's own rows, read "House, 1989–1996, 1999–2000" (the
+            # review before the release of 16 November 2026). A sponsor the bill printed and
+            # its sponsor rows placed (past_roster.py) takes the chamber the bill printed; a
+            # row the record supplies itself (past_sponsors.filled), the chamber the term's
+            # Manual seats them in (sponsor_record_chambers), else the row's own.
+            # build_legislators takes it out again.
+            if _s.get("matched") == PAST_ROSTER_MATCH:
+                _ch = (_s.get("chamber") or "")[:1]
+            elif _s.get("source") == PSP.SOURCE and term[:4] < "1999":
+                _ch = ((record_chambers or {}).get((str(_s.get("employee") or ""), term))
+                       or (_s.get("chamber") or "")[:1])
+            else:
+                _ch = ""
             sponsored[_mid].append({
                 "bill": bid, "n": b.get("designation") or bid,
                 "title": b.get("title", ""), "year": year, "term": term,
                 "prime": bool(_s.get("prime")),
-                # The chamber a 1989-1998 bill printed for a sponsor the General Court's
-                # sponsor record placed on this person, for their "On Record" line
-                # (ML.earlier_terms). build_legislators takes it out again.
-                **({"ch": (_s.get("chamber") or "")[:1]}
-                   if _s.get("matched") == PAST_ROSTER_MATCH else {})})
+                **({"ch": _ch} if _ch else {})})
     return sp_list
 
 
@@ -11300,7 +11350,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 votes_by_bill, vetoes=None, notes=None, coverage=None,
                 chapters=None, seats=None, session_over="", former=None,
                 links=None, hearing_reports=None, ballots=None, term_rosters=None,
-                rc_cards=None, moments=None, numbers=None):
+                rc_cards=None, moments=None, numbers=None, record_chambers=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -11529,7 +11579,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                                     sponsors, _people, leg_by_sort,
                                     leg_by_name, sponsored, seats,
                                     left=_left if (term in term_rosters or term == current) else None,
-                                    term_roster=term_rosters.get(term))
+                                    term_roster=term_rosters.get(term),
+                                    record_chambers=record_chambers)
         prime = next((s for s in sp_list if s.get("prime")), sp_list[0] if sp_list else None)
         years.add(year)
         ev = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
@@ -12818,6 +12869,12 @@ def main():
     # for the one reason the guard was never meant to cover.
     seats = ML.seats_held([*legs.values(), *former.values()], votes_by_member,
                           links, max(bills) if bills else "")
+    # The chamber of the term for a 1989-1998 sponsor the General Court's record supplies,
+    # from that term's Manual, for the members' "On Record" line (sponsor_record_chambers).
+    record_chambers = sponsor_record_chambers(sponsors)
+    if record_chambers:
+        print(f"  sponsors: {len(record_chambers):,} member-terms of 1989-1998 from the General "
+              "Court's sponsor record seated by that term's Manual, for the On Record line")
 
     segs, marks = load_transcripts(a, procs, prows)
     # Each roll call's card on its bill's Votes tab, filled by build_bills
@@ -12845,7 +12902,8 @@ def main():
                                    rollcalls, procs,
                                    max(bills) if bills else ""),
                                ballots=load_ballots(BALLOTS, bills),
-                               rc_cards=rc_cards, moments=floor_moments)
+                               rc_cards=rc_cards, moments=floor_moments,
+                               record_chambers=record_chambers)
     add_related(out, index)
     add_same_number(out, index, notes)
     # NO index.json (retired 5 October 2026). It was every row below in one

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.8
+# GRANITE_VERSION: 2026-09-13.9
 """
 Which sitting members voted under an earlier number in the other chamber.
 
@@ -330,10 +330,14 @@ def service(votes):
 
 def earlier_terms(entries):
     """{"H": ["1991-1992", ...], "S": [...]}: the terms before the roll calls begin (1999)
-    that a member's own sponsored bills place them in, by the chamber the bill printed.
-    `entries` are build_bills' accumulator rows; only the ones the General Court's sponsor
-    record placed on this person (past_roster.py) carry a `ch`. The page's TERM picker
-    lists the terms of the same bills, so the two cannot disagree."""
+    that a member's own sponsored bills place them in, by chamber. `entries` are build_bills'
+    accumulator rows, and every 1989-1998 row the General Court's sponsor record puts on this
+    person carries a `ch` (build_site_v2.bill_sponsor_list): a sponsor the bill printed and
+    its sponsor rows placed (past_roster.py), with the chamber the bill printed, and a row the
+    record supplies itself (past_sponsors.filled), with the chamber that term's Manual seats
+    them in, else the record's. No other source links a 1989-1998 bill to a member, so the
+    page's TERM picker, which lists the terms of the same bills, and the On Record line
+    cannot disagree; preflight's _on_record_terms_built holds the built site to it."""
     out = {}
     for e in entries or ():
         ch, t = e.get("ch"), str(e.get("term") or "")

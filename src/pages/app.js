@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.317
+// GRANITE_VERSION: 2026-09-07.318
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9388,9 +9388,15 @@ function renderMemberHead(m){
   const named=retPage?String(EG.name||plain)+(EG.party?` (${EG.party})`:"")
     :former&&/^(Rep|Sen)\. /.test(plain)?"Former "+plain:plain;
   // The party from the record's own label where the file names none: "(R -
-  // Rock 16)" is a Republican's.
+  // Rock 16)" is a Republican's. ON A RETURNING MEMBER'S PAGE, THE ELECTION'S
+  // (the review before the release of 16 November 2026): the heading is
+  // "Maria Perez (D)", the party she was elected under, and its bar was drawn
+  // in the Independent ink of her earlier record. The Earlier seat below keeps
+  // the record's own label, "(I - Hills 43)".
   const tagp=/\(([A-Z])[A-Za-z]* - [^()]*\)\s*$/.exec(String(m.display_full||m.display||""));
-  const code=String(m.party_code||m.party||(tagp?tagp[1]:"")).toUpperCase().slice(0,1);
+  const egp=retPage?String(EG.party||"").trim().toUpperCase():"";
+  const code=/^[A-Z]$/.test(egp)?egp
+    :String(m.party_code||m.party||(tagp?tagp[1]:"")).toUpperCase().slice(0,1);
   const towns=m.towns||[];
   // EACH TOWN TO ITS PAGE, WHERE IT HAS ONE (the audit of 25 October 2026,
   // S6): GR_TOWNS is {town: address} from build_legislator_pages.towns_linked,
@@ -9414,8 +9420,9 @@ function renderMemberHead(m){
   // THE TERMS BEFORE 1999 THE GENERAL COURT'S SPONSOR RECORD PLACES THEM IN
   // (past_terms: {chamber: [term]}; member_links.record_spans is this one's
   // twin), each added to its own chamber, so the line covers every term the TERM
-  // picker offers. Where the span is first to last (no service list) a chamber has
-  // one span; where the service list shows gaps, runs of consecutive terms join.
+  // picker offers. Spans join only where terms run into each other, with or
+  // without a service list: a 1990s run stands apart from the roll calls across
+  // a term the record lacks ("House, 1989–1990, 2003–2010"), never bridged.
   const pastT=m.past_terms||{};
   const spans=(()=>{
     if(!Object.keys(pastT).length)return spans0;

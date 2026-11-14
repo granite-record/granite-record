@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.35
+# GRANITE_VERSION: 2026-09-04.36
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -44,7 +44,7 @@ import member_links as ML
 import shell as S
 import structured as LD
 from build_members_elect import for_pages as members_elect
-from components import ELECT_KEY, elect_line
+from components import ELECT_KEY, elect_line, term_words
 # A town page's slug and address, from the builder that writes them.
 from build_town_pages import slug as town_slug, town_path
 
@@ -187,15 +187,21 @@ def _chambers_served(rec, m=None):
 
 
 def _served_years(m, rec=None):
-    """"2013 to 2026", the span of the RECORD this site holds for a member.
+    """"2013 to 2026", or "1989 to 1990 and 2003 to 2010": the years of the RECORD
+    this site holds for a member, in runs.
 
-    The span of the RECORD, which is not always the span of the service: roll
-    calls here begin in 1999 and bills in 1989, so somebody who took their seat
-    in 1985 and left in 2002 appears from 1999. The wording stays plain: the
-    case is rare enough that a sentence of hedging costs the reader more than
-    the imprecision does. The one place it is still worth avoiding is
-    structured data, which asserts a startDate as fact with no prose around
-    it; structured.person says so.
+    The RECORD, which is not always the service: roll calls here begin in 1999
+    and bills in 1989. Without earlier terms it is one span, the first to the
+    last day served, and somebody who took their seat in 1985 and left in 2002
+    appears from 1999. With them (`past_terms`, the 1989-1998 terms the General
+    Court's sponsor record places them in) it is the years of the page's "On
+    Record" line (record_spans), joined only where terms run into each other:
+    the same member, placed in 1989-1990 by the bills they sponsored, appears
+    from 1989, and a term the record lacks between two runs is shown, never
+    bridged. The wording stays plain: the case is rare enough that a sentence
+    of hedging costs the reader more than the imprecision does. The one place
+    it is still worth avoiding is structured data, which asserts a startDate as
+    fact with no prose around it; structured.person says so.
 
     One year where both ends fall in it, because "2026 to 2026" reads as a
     fault rather than as a fact.
@@ -410,11 +416,13 @@ def elect_body(p, doc, reqs, req_meta, places, today):
             + "</li></ul>")
     # Earlier service the person confirmed by hand (hand "prior"): the seat as
     # it was labelled then and its terms, with no link, since no page of a
-    # member is theirs.
+    # member is theirs. Each term as a reader sees one, "1993–1994" (term_words):
+    # the hand file's keys keep the hyphen.
     pr = p.get("prior")
     if pr:
         out.append('<ul class="sx-facts"><li><b>Earlier service:</b> ' + E(pr.get("seat") or "")
-                   + ", " + ", ".join(E(t) for t in pr.get("terms") or []) + "</li></ul>")
+                   + ", " + ", ".join(E(term_words(t)) for t in pr.get("terms") or [])
+                   + "</li></ul>")
     out.append("<p>Their seat, committees and record are added here as the General Court "
                "publishes them.</p>")
     if reqs:
@@ -523,7 +531,8 @@ def static_record(m, rec, elected="", places=None, back=None):
         if back.get("mode") == "chamber":
             out.append(f"<p>{E(back['where'])}</p>")
     # Not on a returning member-elect's page: "not a current directory entry"
-    # contradicts its heading, and comes back with the former-member form.
+    # contradicts its heading, and comes back with the former-member form. The
+    # years it carried are the On record fact below there.
     if m.get("former") and not returning:
         out.append(f"<p>{E('On record ' + yrs + '. ') if yrs else ''}This page is their "
                    "record in the New Hampshire General Court; it is not a current "
@@ -543,8 +552,16 @@ def static_record(m, rec, elected="", places=None, back=None):
         facts.append(f"<b>Committees:</b> {E(', '.join(m['committees']))}")
     # THE YEARS ON RECORD, where the sponsor record puts them in terms before the roll calls
     # begin: the line app.js draws ("On Record"), said the same way. A former member's
-    # sentence above carries it.
-    if (rec.get("past_terms") or m.get("past_terms")) and not m.get("former"):
+    # sentence above carries it -- except on a returning member-elect's page, which leaves
+    # the sentence out while app.js still draws the line: there it is this fact, for every
+    # returning member, with the years of their service where the record gives no span, as
+    # app.js falls back to them. Without it the 25 returning pages, Benjamin Baroody's among
+    # them, gave no years at all (the review before the release of 16 November 2026).
+    if returning:
+        said = on_record_text(m, rec) or yrs
+        if said:
+            facts.append("<b>On record:</b> " + E(said))
+    elif (rec.get("past_terms") or m.get("past_terms")) and not m.get("former"):
         facts.append("<b>On record:</b> " + E(on_record_text(m, rec)))
     c = rec.get("counts") or {}
     if c:
