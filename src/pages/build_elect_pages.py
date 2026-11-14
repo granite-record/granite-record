@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.4
+# GRANITE_VERSION: 2026-11-08.5
 """
 A provisional page for each new member-elect: who they are until the General
 Court numbers them.
@@ -69,6 +69,7 @@ import _paths  # noqa: E402,F401
 import argparse
 import datetime
 import json
+import re
 
 import build_date
 import build_members_elect as BME
@@ -78,13 +79,26 @@ OUT_NAME = "elect_pages.json"
 MOVED = Path("generated/moved_addresses.json")
 
 
-def slug_of(name, chamber, county, district):
+def suffix_last(name):
+    """'William Lawrence, Jr.' -> 'William Lawrence Jr.': a Jr., Sr. or numeral set
+    off by a comma belongs at the end of a first-last name. member_slug reads a comma as
+    'Last, First', and made 'Jr. William Lawrence' of it (jr-william-lawrence-belk-3,
+    7 November 2026). A name that is not first-last with a trailing suffix is left as it is,
+    'Lawrence, William' and 'Smith, Jr., John' included."""
+    s = " ".join(str(name or "").split())
+    m = re.fullmatch(r"([^,]+?)\s*,\s*((?:jr|sr|ii|iii|iv)\b\.?)", s, re.I)
+    return f"{m.group(1)} {m.group(2)}" if m else s
+
+
+def slug_of(name, chamber, county, district, legacy=False):
     """The address the roster would give this person: build_site_v2's own
-    member_slug, so the two agree without either guessing."""
+    member_slug, so the two agree without either guessing. A suffix comes last, as the
+    roster's own slugs have it (andrew-christie-jr-rock-22); `legacy` is the address
+    before that, which the pages answer with a 301."""
     import build_site_v2 as BS
     abbr = BS.COUNTY_ABBR.get(str(county or "").lower(), county or "")
-    return BS.member_slug({"name": name, "chamber": chamber, "county_abbr": abbr,
-                           "district": district}, {})
+    return BS.member_slug({"name": name if legacy else suffix_last(name), "chamber": chamber,
+                           "county_abbr": abbr, "district": district}, {})
 
 
 def race_parts(key):
@@ -99,15 +113,29 @@ def first_last(name):
     return f"{first.strip()} {last.strip()}".strip() if sep else str(name or "").strip()
 
 
+def plain_name(name):
+    """('William Lawrence', {'jr'}): a name first-last without its Jr., Sr. or numeral, which
+    is returned beside it, however it was written ('Lawrence, William, Jr.' too)."""
+    s = BME.fold(BME.reading_order(name))
+    sfx = frozenset(x.lower() for x in BME.SUFFIX.findall(s))
+    return " ".join(BME.SUFFIX.sub("", s).replace(",", " ").split()), sfx
+
+
 def numbered_as(e_name, chamber, county, district, sitting):
     """The one sitting member this person now is, or None: same chamber, same
     district (and county, for the House), and a name that folds to theirs."""
-    want = BME.fold(e_name)
-    hits = [m for m in sitting
-            if str(m.get("chamber", "")).upper()[:1] == chamber
-            and str(m.get("district", "")).lstrip("0") == str(district).lstrip("0")
-            and (chamber == "S" or str(m.get("county", "")).lower() == county.lower())
-            and BME.fold(first_last(m.get("name"))) == want]
+    want, want_sfx = plain_name(e_name)
+    hits = []
+    for m in sitting:
+        if not (str(m.get("chamber", "")).upper()[:1] == chamber
+                and str(m.get("district", "")).lstrip("0") == str(district).lstrip("0")
+                and (chamber == "S" or str(m.get("county", "")).lower() == county.lower())):
+            continue
+        name, sfx = plain_name(m.get("name"))
+        # A Jr., Sr. or numeral on one side only is passed over, two that differ are
+        # not a match (BME.suffixes_agree, as the members-elect matching has it).
+        if name == want and BME.suffixes_agree(sfx, want_sfx):
+            hits.append(m)
     return hits[0] if len(hits) == 1 else None
 
 
@@ -138,15 +166,22 @@ def pages(results, sitting, former, districts, hand, today, takes_office, moved=
     # (generated/moved_addresses.json), are both taken.
     taken = {m.get("slug") for m in [*sitting, *former] if m.get("slug")}
     taken |= {a.rsplit("/", 1)[-1] for a in (moved or {})}
-    out, said, moves, seen = [], [], {}, {}
+    out, said, moves, seen, legacy = [], [], {}, {}, {}
     for key in sorted(races, key=BME.race_order):
         for e in races[key].get("elected") or []:
             if e.get("k") != "new" and (key, e.get("n")) not in sure:
                 continue
             chamber, county, district = race_parts(key)
             slug = slug_of(e.get("n"), chamber, county, district)
+            # The address this page was first published at, with a suffix set first
+            # (jr-william-lawrence-belk-3): it answers with a 301 to wherever the person is.
+            old = slug_of(e.get("n"), chamber, county, district, legacy=True)
             now = (numbered_as(e.get("n"), chamber, county, district, sitting)
                    if today >= takes_office else None)
+            if old != slug:
+                legacy[f"/legislator/{old}"] = (f"/legislator/{now['slug']}"
+                                                if now and now.get("slug") else
+                                                f"/legislator/{slug}")
             if now:
                 # Their regular page now. At the same address it simply
                 # replaces this one; at another, this address answers with a
@@ -168,6 +203,10 @@ def pages(results, sitting, former, districts, hand, today, takes_office, moved=
         said += [f"{', '.join(seen[s])}: two new members-elect would share /legislator/{s}; "
                  "neither is given a page" for s in sorted(twice)]
         out = [p for p in out if p["slug"] not in twice]
+    # The old suffix-first addresses, for the people who have a page now or a regular one.
+    here = {f"/legislator/{p['slug']}" for p in out} | set(moves.values())
+    moves.update({old: new for old, new in legacy.items()
+                  if old not in moves and (new in here or new.rsplit("/", 1)[-1] in taken)})
     return out, said, moves
 
 
