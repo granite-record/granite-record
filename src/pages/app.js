@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.322
+// GRANITE_VERSION: 2026-09-07.323
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -8388,7 +8388,7 @@ function lsrCardHtml(b,cls){
         <summary>${icon("follow")}Follow</summary>
         <div class="followpane"><div class="followmail" hidden></div></div></details></div>`:"";
   return card.replace(`<span class="cnum" translate="no">${esc(b.n)}</span>`,()=>numHtml)
-    .replace(/<\/article>$/,()=>follow+"</article>");
+    .replace(/<\/article>$/,close=>follow+close);
 }
 
 // ONE card, drawn by the search list and by both record pages.

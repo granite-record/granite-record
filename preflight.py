@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.915
+# GRANITE_VERSION: 2026-09-04.916
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20142,6 +20142,20 @@ def _class_collisions():
         # (app.js) and each request's own page (build_request_pages, 8
         # November 2026), in the same words.
         "lsrnote",
+        # The request's number with what it stands for, and the earlier bills
+        # of the same title: app.js's lsrAbbr and lsrPane draw them for a
+        # request in the bill search, build_request_pages' abbr_html and
+        # history_pane for its own page -- one component in the same words
+        # (the owner, 13 November 2026).
+        "lsrabbr", "lsrhist",
+        # THE SPONSORS TAB, a request's as a bill's: app.js draws it for a
+        # bill (spBlock) and for a request's card (lsrPane), and
+        # build_request_pages for a request's own page (sponsors_pane), the
+        # same count line, group headings and row of person chips (the same
+        # tab format as a bill). .chosen is also the row of
+        # the bill search's picked filters (app.js alone), one flex row that
+        # both want; the sponsors' row is the bill page's own use of it.
+        "spcount", "sech", "sechn", "spgrp", "chosen",
         # Your town's slot: a builder writes the empty box where an example
         # from the reader's own town belongs, and find.js fills it (the My
         # Town card, 14 October 2026).
@@ -31399,10 +31413,26 @@ def _request_pages():
             and "mchip p-D" in dd.group(1), (
             f"a returning former member's request page draws the sponsor as {dd and dd.group(1)!r}, "
             "not as the row's own 'Ben Baroody (D)', linked, with no old seat")
+        # EVERY PLACE A REQUEST'S PAGE DRAWS A PERSON: the head's Prime
+        # Sponsor and Co-Sponsors, and the Sponsors tab's two groups -- four
+        # chips of the former member, each linked, none with the old seat
+        # (24 November 2026: the tabs added the second two; the check
+        # counted two).
+        pane = re.search(r'<div class="pane sspane"[^>]*id="sponsors"[^>]*>(.*?)(?=<div class="pane sspane"|\Z)',
+                         fp, re.S)
+        assert pane, "a request with co-sponsors has no Sponsors tab"
+        grp = re.findall(r'<div class="chosen">(.*?)</div>', pane.group(1), re.S)
+        assert len(grp) == 2, f"the Sponsors tab draws {len(grp)} groups of people, not the prime sponsor and the co-sponsors"
+        link = 'href="legislator/benjamin-baroody-hills-39"'
         assert fp.count("Hills 39") == 0 \
-            and 'Rep. Jodi Nelson <span class="mtag">(R - Rock 13)</span>' in fp \
-            and fp.count('href="legislator/benjamin-baroody-hills-39"') == 2, (
-            "a former co-sponsor is drawn with the old seat or unlinked, or a sitting co-sponsor loses hers")
+            and 'Ben Baroody <span class="mtag">(D)</span>' in grp[0] and link in grp[0] \
+            and "Rep." not in grp[0] \
+            and 'Ben Baroody <span class="mtag">(D)</span>' in grp[1] and link in grp[1] \
+            and 'Rep. Jodi Nelson <span class="mtag">(R - Rock 13)</span>' in grp[1] \
+            and fp.count(link) == 4 \
+            and fp.count('Rep. Jodi Nelson <span class="mtag">(R - Rock 13)</span>') == 2, (
+            "a former member on a request's page is drawn with the old seat or unlinked in the head or the "
+            f"Sponsors tab, or a sitting co-sponsor loses hers (links to the former member: {fp.count(link)}, not 4)")
     # Filing complete: the rest forward to their sponsor; a withdrawn one stays.
     old = dict(L.FILING_COMPLETE)
     try:
@@ -96802,7 +96832,9 @@ globalThis.fetch = async (url, opts = {}) => {
 };
 try { (0, eval)(readFileSync("./page.js", "utf8")); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
-if ((on.submit || []).length !== 1) {
+// A page may carry other submit listeners (the votes page's form has its
+// own); a browser hands the event to every one, in order, so the test does.
+if ((on.submit || []).length < 1) {
   console.log("nothing listens for the report box being sent"); process.exit(1); }
 globalThis.setTimeout = () => 0;    // the six-second give-up never fires here
 Object.assign(location, { pathname: "/legislator/adam-schroadter",
@@ -96815,7 +96847,8 @@ async function send(note) {
     elements: { note: { value: note }, field: { value: "other" }, website: { value: "" } },
     closest: s => s === ".reportform" ? form : s === ".report" ? box : null,
     querySelector: s => s === ".reportstate" ? st : btn };
-  await on.submit[0]({ target: form, preventDefault() {} });
+  const sent = { target: form, preventDefault() {} };
+  await Promise.all(on.submit.map(f => f(sent)));
   return { st, left: form.elements.note.value };
 }
 const fail = [];
