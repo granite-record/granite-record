@@ -105,8 +105,15 @@ sitting or former member they are only where that match is certain, and
 "own" true on a sitting member re-elected to the seat they hold; how many
 seats are "not_final", which is every seat until the recount deadline has
 passed; "recount", where a recount was asked for; and how many are "held"
-back. It holds no vote counts, no contact details and no reason the person
-gave. Every page draws a member-elect from this file and from nothing else,
+back. A member-elect whom "k" calls new may carry three more: the address of
+their provisional page ("e", /legislator/<e>, as /elect_pages.json lists it);
+"u", true where the bills of 1989-1998, which carry no member number, print
+their surname for the same chamber and county (for the Senate, the district)
+and the record cannot say whether it is the same person; and "prior", the
+earlier service a person confirmed, its terms ("terms") and the seat as it
+was labelled then ("seat"), never the evidence or an employee number. It
+holds no vote counts, no contact details and no reason the person gave.
+Every page draws a member-elect from this file and from nothing else,
 never as a sitting member: /places.json carries the same races for a town's
 own districts under "elect" (each place naming its own in "e"), and
 /district_map.json under "elect", both only while the file is there. The

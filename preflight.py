@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.909
+# GRANITE_VERSION: 2026-09-04.914
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -258,6 +258,21 @@ def _settle(status, msg, expect_fail):
                         f"passes now: take the expect_fail mark off, so that it holds what it "
                         f"found ({msg})")
     return status, msg
+
+
+def _answer(got):
+    """(status, words) of a check's answer, as main() and _check_outcome read every one.
+    A check answers ("ok" | "skip" | "FAIL", words) or raises; "fail" is read as "FAIL".
+    Anything else -- a bare None, a status nobody reads, a short tuple -- is a TypeError
+    that says so. It used to be "cannot unpack non-iterable NoneType object" (the night of
+    13 November 2026, a check that answered None when it passed, which the single runs had
+    called a pass), or a KeyError that stopped the whole run where the mark is printed."""
+    if isinstance(got, (tuple, list)) and len(got) == 2 and isinstance(got[0], str):
+        status = "FAIL" if got[0] == "fail" else got[0]
+        if status in ("ok", "skip", "FAIL", "ERROR"):
+            return status, got[1]
+    raise TypeError(f"the check answered {got!r:.120}: a check answers (status, words), the "
+                    "status ok, skip or FAIL, or raises")
 
 
 def imp(name):
@@ -30568,6 +30583,33 @@ def _expected_failures_settle():
                      if marked else ""))
 
 
+@check("files", "every check answers (status, words) or raises: a bare None or a status nobody "
+                "reads is an ERROR that says so, and \"fail\" is read as FAIL")
+def _checks_answer():
+    """_answer(), which main() and _check_outcome read every check's answer through. A check
+    that answered None when it passed ran clean on its own, where the runner called nothing a
+    pass, and stopped the night of 13 November 2026 at its first gate with "cannot unpack
+    non-iterable NoneType object"; three others answered "fail", which main() met only at the
+    line that prints the mark, as a KeyError that would have ended the whole run."""
+    assert _answer(("ok", "m")) == ("ok", "m") and _answer(["skip", "s"]) == ("skip", "s")
+    assert _answer(("fail", "x")) == ("FAIL", "x") and _answer(("FAIL", "y")) == ("FAIL", "y")
+    for bad in (None, ("warn", "x"), ("ok",), "ok", ("ok", "m", 3), (None, "m")):
+        try:
+            _answer(bad)
+        except TypeError as e:
+            assert "a check answers (status, words)" in str(e), str(e)
+        else:
+            raise AssertionError(f"{bad!r} was taken as a check's answer")
+    import inspect
+    reads = 'status, msg = _answer(c["fn"](*mods))'
+    assert reads in inspect.getsource(main), "main() reads a check's answer without _answer"
+    assert 'return _answer(c["fn"](*mods))' in inspect.getsource(_check_outcome), (
+        "_check_outcome reads a check's answer without _answer")
+    return "ok", ("None, an unknown status and a tuple of the wrong length are ERRORs that say "
+                  "so; \"fail\" reads as FAIL; main() and _check_outcome read every answer "
+                  "through _answer")
+
+
 @check("files", "the registry of stamps is the files' own; a changed file's stamp is raised, "
                 "none went backwards, and versions.json is not tracked", needs=("inventory",))
 def _stamps(inventory):
@@ -31238,7 +31280,9 @@ def _request_pages():
              "sponsor": "Pat Moore", "withdrawn": True},
             {"lsr": "2027-0003", "session": 2027, "body": "HB", "title": "relative to roads.",
              "sponsor": "Jodi Nelson", "withdrawn": False}]
-    who = {"jodinelson": ("Rep. Jodi Nelson (R - Rock 13)", "jodi-nelson-rock-13")}
+    # The row's label carries no seat, as every real sitting row's does (the
+    # roster's "Rep. Ellen Read (D)"); the page draws the seat from the roster.
+    who = {"jodinelson": ("Rep. Jodi Nelson (R)", "jodi-nelson-rock-13")}
     rows, _ = L.rows_from(lsrs, who, {"2027-0003": "HB 45"}, 2027)
     by = {r["n"]: r for r in rows}
     assert by["LSR 2027-0001"]["address"] == "request/2027-0001" \
@@ -31269,6 +31313,9 @@ def _request_pages():
             and "Requests, not bills yet." in page \
             and "numbered 2027 bill" in page and 'href="legislator/jodi-nelson-rock-13"' in page, (
             "a request's page is not noindex, explained, or its sponsor's chip linked")
+        sd = re.search(r"<dt>Prime Sponsor</dt><dd>(.*?)</dd>", page, re.S)
+        assert sd and '<span class="mtag">(R - Rock 13)</span>' in sd.group(1), (
+            f"a sitting sponsor's page does not draw the roster's seat: {sd and sd.group(1)!r}")
         # THE BILL PAGE'S FRAME (Alice, 11 November 2026: "so that information
         # fills in more naturally rather than reformatting the whole layout"):
         # the record head with the trail Bills > the requests > the number, the
@@ -31329,6 +31376,33 @@ def _request_pages():
         # Every address is a page or a 301, never both.
         both = [p for p in pages if f"/request/{p[:-5]} " in red]
         assert not both, f"a page and a 301 at one address: {both}"
+        # A RETURNING FORMER MEMBER HOLDS NO SEAT (13 November 2026): a request
+        # whose sponsor's slug is in former.json only is drawn as the row's own
+        # "Ben Baroody (D)", linked, never as former.json's "Rep. ... (D - Hills
+        # 39)", the seat others hold now; so is a co-sponsor. A sitting member
+        # keeps the seat.
+        (site / "former.json").write_text(json.dumps([
+            {"slug": "benjamin-baroody-hills-39", "party": "D",
+             "display_full": "Rep. Benjamin Baroody (D - Hills 39)"}]), encoding="utf-8")
+        fr = {**by["LSR 2027-0001"], "n": "LSR 2027-0004", "id": "LSR20270004",
+              "address": "request/2027-0004", "sponsor_slug": "benjamin-baroody-hills-39",
+              "sponsor_label": "Ben Baroody (D)", "sponsor_party": "D",
+              "cosponsors": [{"label": "Ben Baroody (D)", "slug": "benjamin-baroody-hills-39"},
+                             {"label": "Rep. Jodi Nelson (R)", "slug": "jodi-nelson-rock-13"}]}
+        (site / "idx" / "2027-requests.json").write_text(json.dumps(rows + [fr]), encoding="utf-8")
+        RP.write(site, "https://x")
+        fp = (site / "request" / "2027-0004.html").read_text(encoding="utf-8")
+        dd = re.search(r"<dt>Prime Sponsor</dt><dd>(.*?)</dd>", fp, re.S)
+        assert dd and 'Ben Baroody <span class="mtag">(D)</span>' in dd.group(1) \
+            and 'href="legislator/benjamin-baroody-hills-39"' in dd.group(1) \
+            and "Hills 39" not in dd.group(1) and "Rep." not in dd.group(1) \
+            and "mchip p-D" in dd.group(1), (
+            f"a returning former member's request page draws the sponsor as {dd and dd.group(1)!r}, "
+            "not as the row's own 'Ben Baroody (D)', linked, with no old seat")
+        assert fp.count("Hills 39") == 0 \
+            and 'Rep. Jodi Nelson <span class="mtag">(R - Rock 13)</span>' in fp \
+            and fp.count('href="legislator/benjamin-baroody-hills-39"') == 2, (
+            "a former co-sponsor is drawn with the old seat or unlinked, or a sitting co-sponsor loses hers")
     # Filing complete: the rest forward to their sponsor; a withdrawn one stays.
     old = dict(L.FILING_COMPLETE)
     try:
@@ -31350,7 +31424,9 @@ def _request_pages():
         "build_request_pages knows how a state numbers its requests or where they come from")
     return "ok", ("pages for the requests still requests, the withdrawn kept, the one now a bill "
                   "taken away and forwarded; filing complete forwards the rest to their sponsor; "
-                  "no address is both")
+                  "no address is both; a sitting member keeps today's seat, and a returning "
+                  "former member is drawn from the row, linked, with no old seat, as sponsor "
+                  "and co-sponsor")
 
 
 @check("build", "a request's sponsor the roster misses is matched to a winner of the election only where certain: "
@@ -31400,8 +31476,10 @@ def _request_sponsor_winner(build_lsrs):
     assert got("Jason Janvrin", "HB")[0] == "Jason A. Janvrin (R)"
     assert got("Jason Janvrin", "HB")[1] == "", "a winner with no page links nowhere, and still has a party"
     # The refusals.
-    assert got("Jim Smith", "HB") is None, (
-        "Jim is James, but John Smith also won with the same initial: not certain")
+    assert got("Jim Smith", "HB") is None, "Jim is no tabled nickname of James: nobody"
+    assert got("James Q. Smith", "HB") is None, (
+        "James Smith fits (a middle initial on one side), but John Smith also won with the same initial: "
+        "not certain")
     assert got("James Smith", "HB")[0] == "James Smith (R)", "the whole name is the same: certain"
     assert got("Dana Senator", "HB") is None, "a winner of the other chamber only"
     assert got("Dana Senator", "SB")[0] == "Dana Senator (D)"
@@ -31660,21 +31738,40 @@ def _elect_provisional():
 
 @check("build", "a member's On Record line covers the 1989-1998 terms the sponsor record places "
                 "them in, by chamber, as the TERM picker does: app.js and the static page agree",
-       needs=("build_legislator_pages",))
-def _on_record_covers_the_nineties(LP):
+       needs=("build_legislator_pages", "build_site_v2"))
+def _on_record_covers_the_nineties(LP, B):
     """Found on the release candidate's preview (13 November 2026): the page offered 1991-1992 to
-    1998 in its TERM picker and said "ON RECORD: House, 1999-2024". The line is first to last
-    per chamber (gaps not shown); the terms before 1999 are added to the chamber the
-    sponsor record gives (`past_terms`, member_links.earlier_terms from the sponsored bills the
-    picker lists). The votes lines stay roll calls', 1999 on.
+    1998 in its TERM picker and said "ON RECORD: House, 1999-2024". The span since 1999 is first
+    to last, or each chamber's own where a service list joins two. The terms before 1999 are
+    added to the chamber the sponsor record gives (`past_terms`, member_links.earlier_terms from
+    the sponsored bills the picker lists), and join it, or another 1990s term, only where the
+    terms run into each other: a term the record lacks between a 1990s run and the rest is
+    shown as a gap, never bridged. The votes lines stay roll calls', 1999 on.
 
     - a House member with 1990s terms and roll calls: the terms that run into the roll calls join
       them, the others stand as their own runs ("House, 1991-1992, 1995-2024"), never one span
       across a term the record lacks;
     - a member with a 1990s Senate term and later House service: each chamber its own span;
     - a member with none is as before;
-    - app.js's line and the static page's say the same years."""
+    - app.js's line and the static page's say the same years;
+    - A TERM WHOSE BILLS ARE ALL THE RECORD'S OWN ROWS (past_sponsors.filled: a chamber, no seat,
+      no `matched`), as Donna Sytek's of 1997-1998 are, a term she was Speaker: bill_sponsor_list
+      gave only the printed rows a chamber, and her line read "House, 1989-1996, 1999-2000" beside
+      a TERM picker offering 1997-1998 (the review before the release of 16 November 2026). Now
+      earlier_terms holds the term, and app.js, record_spans, the static sentence and the
+      description join it ("1989-2000"); the chamber is the one the term's Manual seats them in
+      (sponsor_record_chambers), else the row's own, which is their last seat, and the build says
+      how many the Manual seated, that it read none, or how many rows it seats in another
+      chamber than their own (sponsor_record_said), never falling back in silence;
+    - A TERM THE MANUAL SEATS THEM IN WITH NO BILL (manual_seats; the owner, 14 November 2026,
+      for Francis Vincent's "House, 1989-1992, 1995-2000", whom the 1993 Manual seats at
+      Strafford 14): a gap the Manual closes closes in app.js, record_spans, the static sentence
+      and the description; a member with no bill before 1999 whom the Manual seats starts in
+      the 1990s; a doubtful row, a full name another number shares and a seat in a county the
+      member's record never names count for nothing, and are said; build_legislators writes
+      past_terms with them and manual_terms with them alone."""
     import re
+    from collections import defaultdict
     ML = imp("member_links")
     bad = []
     att = lambda *ts: {t: {"days": 1} for t in ts}
@@ -31700,8 +31797,150 @@ def _on_record_covers_the_nineties(LP):
                          {"term": "2001-2002", "ch": "H"}, {"term": "1995-1996"}]) \
             != {"S": ["1991-1992", "1993-1994"]}:
         bad.append("earlier_terms: only the pre-1999 terms the sponsor record placed, with a chamber")
+    # THE RECORD'S OWN ROWS, filed as the build files them (bill_sponsor_list). Dee Speaker's
+    # 1989-1996 bills print her and their sponsor rows place her (`matched`); her 1997-1998
+    # resolutions are the record's alone, as Donna Sytek's are. Robin Mover's one 1995-1996 bill
+    # is the record's own row with the chamber of her last seat, the Senate, and the term's
+    # Manual seats her in the House.
+    sid, own = "800008", {"source": B.PSP.SOURCE, "seat_source": B.PSP.SOURCE}
+    row = lambda **kw: dict({"member_id": sid, "employee": sid, "name": "Dee Speaker",
+                             "chamber": "H", "prime": True}, **kw)
+    printed = row(source="bill text", matched=B.PAST_ROSTER_MATCH)
+    sponsors = {"1989-1990": {"HB41": [printed]}, "1991-1992": {"HB40": [printed]},
+                "1993-1994": {"HB108": [printed]},
+                "1995-1996": {"HB124": [printed], "HR52": [row(**own, member_id="800009",
+                                                              employee="377001",
+                                                              name="Robin Mover", chamber="S")]},
+                "1997-1998": {"HR22": [row(**own)], "HR50": [row(**own)]}}
+    manual = {"terms": {"1995-1996": {"edition": "1995", "senate": [], "house": [
+        {"name": "Robin Mover", "county": "Merrimack", "district": "4", "status": "elected",
+         "district_check": "clean"}]}}}
+    seated = B.sponsor_record_chambers(
+        sponsors, table=manual, people=B.PSP.People([], {"377001": {"name": "Mover, Robin",
+                                                                     "chamber": "S"}}))
+    if seated != {("377001", "1995-1996"): "H"}:
+        bad.append(f"sponsor_record_chambers does not seat Robin Mover where the 1995 Manual "
+                   f"does: {seated}")
+    # Never in silence: what main() prints of the answer (sponsor_record_said).
+    said_seated, said_none = B.sponsor_record_said(sponsors, seated), B.sponsor_record_said(sponsors, {})
+    if len(said_seated) != 2 or "1 member-terms" not in said_seated[0] \
+            or "1 1989-1998 row(s)" not in said_seated[1] \
+            or "still name the row's own chamber" not in said_seated[1] \
+            or said_none != ["  sponsors: no Manual seat list read; every 1989-1998 row of the "
+                             "General Court's sponsor record keeps its own chamber"] \
+            or B.sponsor_record_said({}, {}) != []:
+        bad.append(f"the build does not say what the Manual seated, that none was read, or a row "
+                   f"seated in another chamber: {said_seated} {said_none}")
+
+    def filed(chambers):
+        out = defaultdict(list)
+        for term, rows in sponsors.items():
+            for bid in rows:
+                B.bill_sponsor_list(bid, {"designation": bid, "title": "a resolution"}, term[:4],
+                                    term, "2025-2026", sponsors, {}, {}, {}, out, {},
+                                    record_chambers=chambers)
+        return out
+    sponsored = filed(seated)
+    earlier = ML.earlier_terms(sponsored[sid])
+    if earlier != {"H": ["1989-1990", "1991-1992", "1993-1994", "1995-1996", "1997-1998"]}:
+        bad.append(f"earlier_terms leaves out a term whose bills are the sponsor record's own "
+                   f"rows: {earlier}")
+    if ML.earlier_terms(sponsored["800009"]) != {"H": ["1995-1996"]} \
+            or ML.earlier_terms(filed(None)["800009"]) != {"S": ["1995-1996"]}:
+        bad.append("a row of the record does not take the term's Manual's chamber, else its own: "
+                   f"{ML.earlier_terms(sponsored['800009'])}, "
+                   f"{ML.earlier_terms(filed(None)['800009'])}")
+    dee = dict(base, id=sid, slug="dee-speaker-rock-26", former=True, party="R",
+               county="Rockingham", district="26", display_plain="Rep. Dee Speaker",
+               display_full="Rep. Dee Speaker (R - Rock 26)", display="Rep. Dee Speaker (R)",
+               attendance=att("1999-2000"), served={"first": "12/2/1998", "last": "12/6/2000"},
+               past_terms=earlier)
+    # THE TERMS THE MANUAL SEATS THEM IN (manual_seats; the owner, 14 November 2026). Frances
+    # Gapp's bills skip 1993-1994, the term the 1993 Manual seats her at Strafford 14, as
+    # Francis Vincent's do; Nell Newby has no bill before 1999 and the 1995 and 1997 Manuals
+    # seat her. Only those two count. Left out: Dana Doubt's row is not read cleanly; Terry
+    # Twin's two numbers are seated at two seats; Chris Common's full name is another
+    # number's too; Fran Faraway's seat is in a county her record never names; Sam Sena's
+    # is in a Senate his record has nowhere; Bill Billy's bills of that term print the House.
+    clean = lambda name, county, d: {"name": name, "county": county, "district": d,
+                                     "status": "elected", "district_check": "clean"}
+    sen = lambda name, d: {"name": name, "district": d, "status": "elected"}
+    mtable = {"terms": {
+        "1991-1992": {"edition": "1991", "house": [], "senate": [sen("Sam Sena", "5")]},
+        "1993-1994": {"edition": "1993", "senate": [], "house": [
+            clean("Frances C. Gapp", "Strafford", "14"), clean("Chris Common", "Cheshire", "2"),
+            clean("Fran Faraway", "Hillsborough", "9"),
+            dict(clean("Dana Doubt", "Merrimack", "3"), district_check="marks differ from seats")]},
+        "1995-1996": {"edition": "1995", "senate": [sen("Bill Billy", "9")], "house": [
+            clean("Nell Newby", "Belknap", "4"), clean("Terry Twin", "Rockingham", "2"),
+            clean("Teresa Twin", "Rockingham", "3")]},
+        "1997-1998": {"edition": "1997", "senate": [], "house": [clean("Nell Newby", "Belknap", "4")]}}}
+    gc = {"377101": ("Gapp, Frances", "Straf", "H"), "377102": ("Newby, Nell", "Belk", "H"),
+          "377103": ("Doubt, Dana", "Merr", "H"), "377104": ("Common, Chris", "Ches", "H"),
+          "377105": ("Common, Chris", "Ches", "H"), "377106": ("Faraway, Fran", "Coos", "H"),
+          "377107": ("Twin, Terry", "Rock", "H"), "377108": ("Twin, Teresa", "Rock", "H"),
+          "377109": ("Sena, Sam", "Graf", "H"), "377110": ("Billy, Bill", "", "S")}
+    mpeople = B.PSP.People([], {e: {"name": n, "chamber": ch} for e, (n, _c, ch) in gc.items()})
+    page = lambda e: dict(base, id=e, name=gc[e][0], slug=f"m-{e}", county="", district="1")
+    mpages = {e: page(e) for e in ("377101", "377102", "377103", "377104", "377106", "377107",
+                                   "377109", "377110")}
+    mpages["377110"].update(chamber="S")
+    mpages["377101"].update(former=True, display_plain="Rep. Frances Gapp",
+                            display_full="Rep. Frances Gapp (D - Straf 14)",
+                            display="Rep. Frances Gapp (D)", county="Strafford")
+    mpages["377102"].update(display_plain="Rep. Nell Newby", display_full="Rep. Nell Newby (D - Belk 4)",
+                            display="Rep. Nell Newby (D)", county="Belknap")
+    mspons = {"377101": [{"term": t, "ch": "H"} for t in ("1989-1990", "1991-1992", "1995-1996",
+                                                          "1997-1998")],
+              "377110": [{"term": "1995-1996", "ch": "H"}]}
+    mseats, mleft = B.manual_seats(mpages, {"377107": ["377108"]}, mspons, {}, table=mtable,
+                                   people=mpeople, counties={e: c for e, (_n, c, _h) in gc.items()})
+    if mseats != {"377101": {"H": ["1993-1994"]}, "377102": {"H": ["1995-1996", "1997-1998"]}}:
+        bad.append(f"manual_seats does not count a term the Manual seats a member in without "
+                   f"doubt, and only that: {mseats}")
+    if sorted((p, k) for p, _t, k, _w in mleft) != [
+            ("377103", "doubtful"), ("377104", "perhaps another person"),
+            ("377106", "perhaps another person"), ("377107", "doubtful"),
+            ("377109", "perhaps another person"), ("377110", "perhaps another person")]:
+        bad.append(f"manual_seats does not leave out a doubtful row, two seats, a shared full "
+                   f"name, another county, a chamber the record has nowhere and a chamber the "
+                   f"term's bills contradict, saying so: {mleft}")
+    if B.manual_said({}, [(None, None, "unread", "x")]) != [
+            "  members: no Manual seat list read; the 1989-1998 terms on record are their bills' alone"]:
+        bad.append("the build does not say that no Manual seat list was read")
+    # The member's own file, as build_legislators writes it: past_terms the bills' and the
+    # Manual's together, manual_terms the Manual's alone.
+    import contextlib
+    import io
+    import shutil
+    import tempfile
+    mroot = Path(tempfile.mkdtemp(prefix="gr-manual-"))
+    try:
+        (mroot / "legislators").mkdir()
+        with contextlib.redirect_stdout(io.StringIO()):
+            B.build_legislators(mroot, {"377102": mpages["377102"]}, {}, {}, set(),
+                                {"377101": [dict(x, bill="HR1", n="HR 1", title="", year=x["term"][:4],
+                                                 prime=True) for x in mspons["377101"]]},
+                                {}, {}, {"377101": mpages["377101"]}, None, None, manual=mseats)
+        mfile = {e: json.loads((mroot / "legislators" / f"{e}.json").read_text(encoding="utf-8"))
+                 for e in ("377101", "377102")}
+    finally:
+        shutil.rmtree(mroot, ignore_errors=True)
+    if (mfile["377101"].get("past_terms"), mfile["377101"].get("manual_terms"),
+            mfile["377102"].get("past_terms"), mfile["377102"].get("manual_terms")) != (
+            {"H": ["1989-1990", "1991-1992", "1993-1994", "1995-1996", "1997-1998"]},
+            {"H": ["1993-1994"]}, {"H": ["1995-1996", "1997-1998"]},
+            {"H": ["1995-1996", "1997-1998"]}):
+        bad.append("build_legislators does not write the Manual's terms into past_terms, and "
+                   f"alone into manual_terms: {[(e, f.get('past_terms'), f.get('manual_terms')) for e, f in mfile.items()]}")
+    gapp = dict(mpages["377101"], attendance=att("1999-2000"),
+                served={"first": "1/6/1999", "last": "12/6/2000"},
+                past_terms=mfile["377101"].get("past_terms"))
+    newby = dict(mpages["377102"], attendance=att("1999-2000"),
+                 past_terms=mfile["377102"].get("past_terms"))
     got = _app_js("[" + ", ".join(f"scope.renderMemberHead({json.dumps(m)})"
-                                  for m, _ in cases.values()) + "]", names=("renderMemberHead",))
+                                  for m in [*(m for m, _ in cases.values()), dee, gapp, newby])
+                  + "]", names=("renderMemberHead",))
 
     def words(h):
         t = re.sub(r"<[^>]+>", " ", h).replace("&ndash;", "–").replace("&middot;", "·")
@@ -31730,7 +31969,115 @@ def _on_record_covers_the_nineties(LP):
     said = LP.describe(gone, gone).replace("House of Representatives", "House")
     if "Senate, 1993 to 1994, and House, 2001 to 2008" not in said:
         bad.append(f"a former member's description does not name each chamber's years: {said!r}")
-    return ("fail", "; ".join(bad)) if bad else None
+    # Dee Speaker, whose 1997-1998 is the record's own rows: one run, 1989 to 2000, everywhere.
+    if got is not None and "On Record House, 1989–2000" not in words(got[len(cases)]):
+        bad.append("app.js does not join a term of the record's own rows: "
+                   + words(got[len(cases)])[:300])
+    if LP.record_spans(dee, dee) != [{"chamber": "H", "spans": [[1989, 2000]]}]:
+        bad.append(f"record_spans does not join a term of the record's own rows: "
+                   f"{LP.record_spans(dee, dee)}")
+    if "On record 1989 to 2000. This page" not in words(LP.static_record(dee, dee)):
+        bad.append("the static sentence does not join a term of the record's own rows: "
+                   + words(LP.static_record(dee, dee))[:200])
+    if "served in the New Hampshire House of Representatives, 1989 to 2000." \
+            not in LP.describe(dee, dee):
+        bad.append(f"the description does not join a term of the record's own rows: "
+                   f"{LP.describe(dee, dee)!r}")
+    # Gapp, whose gap the 1993 Manual closes, and Newby, whom the Manual alone puts in the 1990s.
+    for who, m, line, spans, plain in (
+            ("a gap the Manual closes", gapp, "House, 1989–2000", [[1989, 2000]],
+             "On record 1989 to 2000. This page"),
+            ("a member the Manual alone puts in the 1990s", newby, "House, 1995–2000",
+             [[1995, 2000]], "On record: House, 1995–2000")):
+        i = len(cases) + (1 if m is gapp else 2)
+        if got is not None and f"On Record {line}" not in words(got[i]):
+            bad.append(f"app.js, {who}: {words(got[i])[:300]}")
+        if LP.record_spans(m, m) != [{"chamber": "H", "spans": spans}]:
+            bad.append(f"record_spans, {who}: {LP.record_spans(m, m)}")
+        if plain not in words(LP.static_record(m, m)):
+            bad.append(f"the static page, {who}: {words(LP.static_record(m, m))[:200]}")
+    if "served in the New Hampshire House of Representatives, 1989 to 2000." \
+            not in LP.describe(gapp, gapp):
+        bad.append(f"the description, a gap the Manual closes: {LP.describe(gapp, gapp)!r}")
+    # (status, words), as main() unpacks every check's answer: a bare None read as an ERROR on
+    # the night of 13 November 2026, though the single runs called it a pass.
+    assert not bad, "; ".join(bad)
+    return "ok", ("1990s terms join the span since 1999 only where they run into it, else stand "
+                  "as their own runs; a 1990s Senate term keeps its chamber; app.js and the "
+                  "static page say the same; a member with none is as before; a term whose "
+                  "bills are all the sponsor record's own rows counts, in the chamber its "
+                  "Manual seats them in, else the row's, and joins: \"House, 1989–2000\"; the "
+                  "build says what the Manual seated, or that it read none; a term the Manual "
+                  "seats them in with no bill closes a gap or starts the line in the 1990s, "
+                  "and a doubtful or shared seat counts for nothing")
+
+
+@check("data", "the built site: a member's On Record terms before 1999 (past_terms) are the terms "
+               "of the 1989-1998 bills their page lists, which the TERM picker offers, with the "
+               "terms the Manual seats them in with no bill (manual_terms), and nothing else")
+def _on_record_terms_built():
+    """The check above proves the rule on a fixture; this, that the build kept it, on every
+    member's own file. The TERM picker offers the term of every bill the page lists
+    (app.js recordTerms), and the On Record line, the static sentence and the description say
+    the years before 1999 from past_terms (member_links.earlier_terms), so every term of the
+    picker must be in it. On the candidate for the release of 16 November 2026 one was not, on
+    four pages: the rows the General Court's sponsor record supplies itself had no chamber, and
+    Donna Sytek, Speaker in 1997-1998, read "House, 1989-1996, 1999-2000" with 1997-1998 in her
+    TERM picker, as Robert Johnson (1993-1994), Roland Turgeon (1997-1998) and Dennis Abbott
+    (1995-1996) missed a term each. A site built before 13 November 2026 has no past_terms.
+
+    AND THE TERMS THE MANUAL SEATS THEM IN WITH NO BILL (build_site_v2.manual_seats; the owner,
+    14 November 2026), which past_terms carries too and manual_terms alone, by chamber: so
+    past_terms is the bills' terms and manual_terms' together, manual_terms names only terms
+    of 1989-1998 with no bill of the page in them, and each is in past_terms under its own
+    chamber. Nothing else may put a term on the line."""
+    d = Path("site") / "legislators"
+    if not d.is_dir():
+        return "skip", "site/legislators is not here"
+    early = lambda t: str(t or "")[:4].isdigit() and int(str(t)[:4]) < 1999
+    bad, pages, early_pages, with_past, with_manual = [], 0, 0, 0, 0
+    for f in sorted(d.glob("*.json")):
+        try:
+            rec = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            bad.append(f"{f.name} does not read: {e}")
+            continue
+        if not isinstance(rec, dict):
+            continue
+        pages += 1
+        listed = {str(x.get("term")) for x in rec.get("sponsored") or () if early(x.get("term"))}
+        past = rec.get("past_terms") or {}
+        said = {str(t) for ts in past.values() for t in ts or ()}
+        manual = rec.get("manual_terms") or {}
+        seated = {str(t) for ts in manual.values() for t in ts or ()}
+        early_pages += bool(listed or said)
+        with_past += bool(past)
+        with_manual += bool(seated)
+        who = f"{f.stem} ({rec.get('display_full') or rec.get('name') or ''})"
+        if listed - said:
+            bad.append(f"{who}: bills of {', '.join(sorted(listed - said))} and no such term on record")
+        if said - listed - seated:
+            bad.append(f"{who}: on record in {', '.join(sorted(said - listed - seated))} with no "
+                       "bill of it and no Manual seat")
+        if {t for t in seated if not early(t)}:
+            bad.append(f"{who}: manual_terms names {', '.join(sorted(t for t in seated if not early(t)))}, "
+                       "a term from 1999 on")
+        if seated & listed:
+            bad.append(f"{who}: manual_terms names {', '.join(sorted(seated & listed))}, a term "
+                       "its bills already show")
+        if any(t not in (past.get(ch) or ()) for ch, ts in manual.items() for t in ts or ()):
+            bad.append(f"{who}: manual_terms {manual} is not in past_terms {past} under its chamber")
+    assert pages, "site/legislators holds no member's file"
+    # The old site's hint only where it is the explanation: no member's file carries past_terms
+    # at all. On a site that has them, the pages named are the finding.
+    assert not bad, (f"{len(bad)} finding(s) where a page's On Record terms before 1999 are not "
+                     "its bills' and its Manual seats'"
+                     + ("" if with_past else " (a site built before 13 November 2026 has no "
+                                             "past_terms: rebuild it)")
+                     + ": " + "; ".join(bad[:8]) + (" ..." if len(bad) > 8 else ""))
+    return "ok", (f"{early_pages:,} of {pages:,} member pages have On Record terms before 1999, "
+                  f"{with_manual:,} of them with terms the Manual seats them in with no bill; each "
+                  "page's are exactly its bills' terms and those")
 
 
 @check("build", "members-elect: every new member-elect with a page is linked to it on the Officials "
@@ -31753,7 +32100,13 @@ def _elect_returning_pages(OT, LP, BME):
       "for <district>"), the earlier seat kept in the facts and no "Former
       Representative"; the new-chamber member keeps the seat they hold with the
       sentence beside it; both gone once the reader's day is the day they take
-      office, on another member's page and without GR_ELECT."""
+      office, on another member's page and without GR_ELECT;
+    - the review before the release of 16 November 2026: the returning page's
+      plain record carries the years on record app.js draws (the 25 returning
+      pages had none), the bar beside a returning member's heading is in the
+      ink of the party they were elected under (Maria Perez's "(D)" was drawn
+      in the Independent ink of her record), and a provisional page writes its
+      earlier terms with an en dash."""
     bad = []
     key = "H|Hillsborough|42"
     lee = {"n": "Lee C. Nyquist", "p": "D", "k": "new", "e": "lee-c-nyquist-hills-42"}
@@ -31769,7 +32122,12 @@ def _elect_returning_pages(OT, LP, BME):
             "display_plain": "Rep. Michael Vose", "display_full": "Rep. Michael Vose (R - Rock 5)",
             "display": "Rep. Michael Vose (R)", "party": "R", "county": "Rockingham",
             "district": "5", "slug": "michael-vose-rock-5",
-            "served": {"terms": ["2017-2018"]}}
+            "served": {"terms": ["2017-2018"]}, "attendance": {"2017-2018": {"days": 1}}}
+    # Maria Perez: elected as a Democrat, on the record as an Independent.
+    perez = dict(vose, id="900002", name="Perez, Maria", party="I", party_code="I",
+                 display_plain="Rep. Maria Perez", display_full="Rep. Maria Perez (I - Hills 43)",
+                 display="Rep. Maria Perez (I)", county="Hillsborough", district="43",
+                 slug="maria-perez-hills-43")
     creighton = {"id": "9917", "name": "Creighton, James", "chamber": "H", "party": "Republican",
                  "county": "Hillsborough", "district": "30", "display_plain": "Rep. James Creighton",
                  "display_full": "Rep. James Creighton (R - Hills 30)", "slug": "james-creighton-hills-30",
@@ -31778,9 +32136,10 @@ def _elect_returning_pages(OT, LP, BME):
                display_full="Rep. Jo Doe (R - Hills 30)", slug="jo-doe-hills-30")
     infos = {"vose": {"key": "H|Rockingham|6", "k": "former", "p": "R"},
              "creighton": {"key": "S|8", "k": "sitting", "p": "R"},
-             "inc": {"key": "H|Hillsborough|30", "k": "sitting", "p": "R"}}
+             "inc": {"key": "H|Hillsborough|30", "k": "sitting", "p": "R"},
+             "perez": {"key": "H|Hillsborough|43", "k": "former", "p": "D"}}
     back = {n: LP.elect_back(m, infos[n]) for n, m in
-            (("vose", vose), ("creighton", creighton), ("inc", inc))}
+            (("vose", vose), ("creighton", creighton), ("inc", inc), ("perez", perez))}
     if (back["vose"] or {}).get("mode") != "returning" \
             or (back["creighton"] or {}).get("mode") != "chamber" or back["inc"] is not None:
         bad.append(f"elect_back says {[(n, (b or {}).get('mode')) for n, b in back.items()]}: "
@@ -31814,10 +32173,19 @@ def _elect_returning_pages(OT, LP, BME):
         "(window.GR_ELECT=" + json.dumps(g("creighton", creighton, far=True))
         + ", scope.renderMemberHead(" + json.dumps(creighton) + "))",
         "(window.GR_ELECT=" + json.dumps(g("creighton", creighton)) + ", scope.renderMemberHead("
-        + json.dumps(creighton) + "))"]
+        + json.dumps(creighton) + "))",
+        # 6 a returning member elected under another party than the record's, 7 her page without
+        # GR_ELECT
+        "(window.GR_ELECT=" + json.dumps(g("perez", perez, far=True)) + ", scope.renderMemberHead("
+        + json.dumps(perez) + "))",
+        "(delete window.GR_ELECT, scope.renderMemberHead(" + json.dumps(perez) + "))",
+        # 8 the returning member with no span on record, only the days they served
+        "(window.GR_ELECT=" + json.dumps(g("vose", vose, far=True)) + ", scope.renderMemberHead("
+        + json.dumps(dict(vose, attendance={}, served={"first": "1/4/2017", "last": "12/5/2018"}))
+        + "))"]
     got = _app_js("[" + ", ".join(exprs) + "]", names=("renderMemberHead",))
     if got is not None:
-        ret, gone, plain, other, cham, cgone = got
+        ret, gone, plain, other, cham, cgone, pret, pplain, rbare = got
         said = back["vose"]["where"]
         for what, ok in (
                 ("the returning page says the seat of the member-elect", said in ret),
@@ -31844,16 +32212,48 @@ def _elect_returning_pages(OT, LP, BME):
                 ("the new-chamber member's election line names the district",
                  "Elected November 3, 2026, for Senate District 8." in cham),
                 ("the new-chamber member's sentence is gone with the day",
-                 back["creighton"]["where"] not in cgone)):
+                 back["creighton"]["where"] not in cgone),
+                ("the returning page keeps the years on record, and the years of their "
+                 "service where the record gives no span",
+                 "<dt>On Record</dt><dd>House, 2017&ndash;2018</dd>" in ret
+                 and "<dt>On Record</dt><dd>2017 to 2018</dd>" in rbare),
+                # The heading says the party she was elected under, and its bar is that
+                # party's ink; the earlier seat keeps the record's own label.
+                ("a returning member elected under another party is drawn in its ink",
+                 "Maria Perez (D)" in pret and "rh-pD" in pret and "rh-pI" not in pret
+                 and "Rep. Maria Perez (I - Hills 43)" in pret),
+                ("without the election her page keeps the record's party",
+                 "rh-pI" in pplain and "rh-pD" not in pplain)):
             if not ok:
                 bad.append(what)
-    # The plain page, for a reader without script: the same form.
-    plain_html = LP.static_record(vose, {}, LP.elect_line(None, "2026-11-03", "2026-12-02",
-                                                         "2026-11-20"), {}, back["vose"])
+    # The plain page, for a reader without script: the same form, with the years app.js gives
+    # (the review before the release of 16 November 2026: the 25 returning pages had none).
+    until = LP.until_attrs("2026-12-02", "2026-11-20")
+    plain_html = LP.static_record(vose, vose, LP.elect_line(None, "2026-11-03", "2026-12-02",
+                                                           "2026-11-20"), {}, back["vose"], until)
     for want in ("<h1>Michael Vose (R)</h1>", f"<p>{back['vose']['where']}</p>", line,
-                 "<p>Earlier seat: Rep. Michael Vose (R - Rock 5)</p>"):
+                 "<p>Earlier seat: Rep. Michael Vose (R - Rock 5)</p>",
+                 "<li><b>On record:</b> House, 2017–2018</li>"):
         if want not in plain_html:
             bad.append(f"the plain page lacks {want!r}")
+    # And where the record gives no span, the years of their service, as app.js falls back to.
+    bare = dict(vose, attendance={}, served={"first": "1/4/2017", "last": "12/5/2018"})
+    if "<li><b>On record:</b> 2017 to 2018</li>" not in LP.static_record(bare, bare, "", {},
+                                                                          back["vose"], until):
+        bad.append("the plain page of a returning member with no span on record gives no years")
+    # THE FACT IS THE MEMBERS-ELECT FILE'S (_elect_pages_never_sitting): drawn inside what carries
+    # data-elect and the day it retires, the list itself where it holds nothing else, so the page
+    # once that is taken out is the former member's, whose sentence carries the years.
+    counted = dict(vose, counts={"Yea": 3})
+    with_counts = LP.static_record(counted, counted, "", {}, back["vose"], until)
+    for name, html in (("alone", plain_html), ("beside the roll call counts", with_counts)):
+        if "On record:" in _elect_strip(html) or not re.search(
+                r'<(?:ul|li)\b[^>]*\sdata-elect data-until="2026-12-02"[^>]*>(?:<li>)?<b>On record:</b> '
+                r'House, 2017–2018</li>', html):
+            bad.append(f"the plain returning page's On record fact, {name}, is not inside what "
+                       f"carries data-elect and its day: {html[:400]}")
+    if "Recorded roll call votes:</b> Yea 3" not in _elect_strip(with_counts):
+        bad.append("taking the members-elect file's fact out takes the roll call counts with it")
     if "not a current directory entry" in plain_html:
         bad.append("the plain page of a returning member-elect says it is not a current directory entry")
     if "Former Representative" in plain_html:
@@ -31892,12 +32292,16 @@ def _elect_returning_pages(OT, LP, BME):
     body = LP.elect_body(p, dict(base, sources=[]), [dict(row, sponsor_slug=p["slug"])],
                          {"label": "2027 Bill Requests", "year": 2027, "term": "2027-requests"},
                          {}, "2026-11-20")
-    if "LSR 2027-0003" not in body or "Earlier service:</b> Hillsborough 1, 1993-1994, 1995-1996" not in body:
+    # Each term as a reader sees one, with an en dash (components.term_words): W. Gordon Allen's
+    # read "1993-1994, 1995-1996, 1997-1998", the hand file's keys.
+    if "LSR 2027-0003" not in body or "Earlier service:</b> Hillsborough 1, 1993–1994, 1995–1996" not in body:
         bad.append(f"a provisional page does not show its requests and earlier service: {body[:300]}")
     assert not bad, "; ".join(bad)
     return "ok", ("the tab links every new member-elect with a page; a returning member's page is "
-                  "the member-elect's with the earlier seat kept, a new-chamber member's keeps its "
-                  "seat, both end with the day; requests show on the former's and the provisional page"
+                  "the member-elect's with the earlier seat kept and its years on record on the "
+                  "plain page as in app.js, its bar in the elected party's ink; a new-chamber "
+                  "member's keeps its seat, both end with the day; requests show on the former's "
+                  "and the provisional page, its earlier terms with an en dash"
                   + ("" if got is not None else " (node not here for the page's script)"))
 
 
@@ -35467,6 +35871,39 @@ def _phone_card_compact():
         drew = "the year on each of three dated stops"
     return "ok", (f"under 37.5em: {', '.join(f'{tok} {px}px' for tok, px in _PHONE_CARD.values())}"
                   f" in rem, the title in the serif; {drew}")
+
+
+@check("frontend", "on a phone a bill card's status stays at the right end of the card's first line, beside "
+                   "the number, as on a wide screen")
+def _phone_card_status_right():
+    """The owner, 14 November 2026: "move the bill status chips to the top
+    right of the cards like they are on desktop". Under the narrow queries
+    (the card's list rules and the static pages') the head row (.crow) must
+    not wrap, its chip (.cstat) must keep margin-left:auto, and no rule
+    under a narrow query may put margin-left:0 on a .crow chip, which is
+    what dropped it to a line of its own on 9 October."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8") if Path("src/pages/app.css").exists() else ""
+    if not css:
+        return "skip", "app.css is not here"
+    narrow = [(ctx, sel, dict(_css_decls(body))) for ctx, sel, body, _ln in _css_rules(css)
+              if ".crow" in sel and ":not(.focus)" not in sel and any("max-width" in c for c in ctx)]
+    bad = []
+    for want in (".crow", ".crow .cstat"):
+        got = [s for _c, s, _d in narrow if s.endswith(want)]
+        if len(got) < 2:
+            bad.append(f"{want} is set under {len(got)} narrow queries, not the card list's and the static pages'")
+    for ctx, sel, d in narrow:
+        if "cstat" in sel and d.get("margin-left") not in (None, "auto"):
+            bad.append(f"{' '.join(ctx)} {sel} sets margin-left:{d['margin-left']}, off the right end")
+        if sel.endswith(".crow") and d.get("flex-wrap") == "wrap":
+            bad.append(f"{' '.join(ctx)} {sel} lets the head row wrap, so the status drops below the number")
+        if sel.endswith(".crow .cstat") and d.get("margin-left") != "auto":
+            bad.append(f"{' '.join(ctx)} {sel} does not keep margin-left:auto")
+        if sel.endswith(".crow") and d.get("flex-wrap") != "nowrap":
+            bad.append(f"{' '.join(ctx)} {sel} does not keep the row on one line (flex-wrap:nowrap)")
+    assert not bad, "; ".join(bad)
+    return "ok", ("under the narrow queries (the card list's and the static pages') the head row stays on "
+                  "one line and the status keeps margin-left:auto, with no margin-left:0 on it")
 
 
 @check("frontend", "the Law line of How it got here has its day in the date column, like every other line",
@@ -53998,10 +54435,28 @@ def _directory_pages():
                 "1989-1990": [{"id": "HB7", "n": "HB 7", "year": 1989, "term": "1989-1990",
                                "title": "an old bill", "status": ""}],
                 # The term of requests, as build_lsrs.py writes it: rows
-                # marked `lsr`, which no builder writes a page for.
+                # marked `lsr`, each with its own page (the "address") until it
+                # is a bill (then "moved_to").
                 "2027-requests": [{"id": "LSR20270001", "n": "LSR 2027-0001", "year": 2027,
                                    "term": "2027-requests", "title": "a request",
-                                   "status": "Filed as a request", "lsr": True}]}
+                                   "status": "Filed as a request", "lsr": True,
+                                   "address": "request/2027-0001"},
+                                  {"id": "LSR20270002", "n": "LSR 2027-0002", "year": 2027,
+                                   "term": "2027-requests", "title": "a filed request",
+                                   "status": "Introduced as HB 45", "lsr": True,
+                                   "address": "request/2027-0002", "moved_to": "bill/2027/hb45"},
+                                  # Retired when filing was complete (build_lsrs.retire):
+                                  # to the sponsor's page, or the requests' search.
+                                  {"id": "LSR20270003", "n": "LSR 2027-0003", "year": 2027,
+                                   "term": "2027-requests", "title": "never filed",
+                                   "status": "Filed as a request", "lsr": True,
+                                   "address": "request/2027-0003",
+                                   "moved_to": "legislator/jane-doe-hills-12"},
+                                  {"id": "LSR20270004", "n": "LSR 2027-0004", "year": 2027,
+                                   "term": "2027-requests", "title": "never filed, no sponsor",
+                                   "status": "Filed as a request", "lsr": True,
+                                   "address": "request/2027-0004",
+                                   "moved_to": "bills?term=2027-requests"}]}
         for term, r in rows.items():
             (site / "idx" / f"{term}.json").write_text(json.dumps(r), encoding="utf-8")
         (site / "meta.json").write_text(json.dumps(
@@ -54032,15 +54487,32 @@ def _directory_pages():
             assert f'href="town/{slug}"' in towns, f"town page {slug} is not linked"
         hub = (site / "directory.html").read_text(encoding="utf-8")
         assert "directory/bills-1989-1990" in hub and "directory/towns" in hub
-        # A REQUEST HAS NO PAGE, AND ITS LIST LINKS NONE. All 241 links on
-        # /directory/bills-2027-requests answered 404 (the audit of 2 October
-        # 2026): the list wrote bill/2027/lsr20270001 for every row, and
-        # build_bill_pages.py builds no page for a request. The number is
-        # text, the list is named as the bill search's term picker names it,
-        # and the requests are not counted among the terms of bills.
+        # A REQUEST LINKS ITS OWN PAGE, NEVER bill/2027/lsr...: all 241 links
+        # on /directory/bills-2027-requests answered 404 (the audit of 2
+        # October 2026) because the list wrote bill/2027/lsr20270001 for every
+        # row and build_bill_pages.py builds no page for a request. Since 8
+        # November every request has its own page (build_request_pages), so
+        # each row links it -- or, once the request is a bill, the bill -- and
+        # the lead says so. The list is named as the bill search's term picker
+        # names it, and the requests are not counted among the terms of bills.
         reqs = (site / "directory" / "bills-2027-requests.html").read_text(encoding="utf-8")
-        assert "LSR 2027-0001" in reqs and "bill/2027" not in reqs, (
-            "the list of requests links a page for a request, and no builder writes one")
+        assert "LSR 2027-0001" in reqs and "bill/2027/lsr" not in reqs, (
+            "the list of requests links a bill page for a request, and no builder writes one")
+        assert '<a href="request/2027-0001">LSR 2027-0001</a>' in reqs, (
+            "a request's row in the directory does not link the request's own page")
+        assert '<a href="bill/2027/hb45">LSR 2027-0002</a>' in reqs and "request/2027-0002" not in reqs, (
+            "a request now a bill is not linked to its bill, or still links its old address")
+        # THE LEAD SAYS NO MORE THAN WHERE THEY ARE SEARCHED (the owner, 14
+        # November 2026: "just let the pages speak for themselves"): the
+        # rows' links say the rest, retired requests' included.
+        assert ('4 requests, by number. <a href="bills?term=2027-requests">The bill search</a> '
+                "lists them with their sponsors.") in reqs, (
+            "the list of requests' lead is not the count and the link to the bill search")
+        for said in ("has its own page", "has no page", "forwards to", "numbered bill"):
+            assert said not in reqs, f"the list of requests' lead explains too much: {said!r}"
+        assert '<a href="legislator/jane-doe-hills-12">LSR 2027-0003</a>' in reqs \
+            and '<a href="bills?term=2027-requests">LSR 2027-0004</a>' in reqs, (
+            "a retired request's row does not link where its address forwards")
         assert "<title>2027 Bill Requests | Granite Record</title>" in reqs \
             and "<h1>2027 Bill Requests</h1>" in reqs, (
             "the list of requests is not titled as the term picker names it "
@@ -54070,7 +54542,9 @@ def _directory_pages():
         assert 'href="directory.html"' in exports, (
             "the Data page does not link the directory, so nothing static "
             "reaches the per-record lists and a crawler sees no bills")
-        return "ok", "bills by term, legislators and towns linked statically, sitemapped, footer links them"
+        return "ok", ("bills by term, legislators and towns linked statically, sitemapped, footer "
+                      "links them; each request linked to its own page, or to its bill once it is "
+                      "one, under a lead that only names the bill search")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -108798,7 +109272,8 @@ def _workflows_secrets():
 
 
 @check("workflows", "the patch notes reach the run's page through the environment alone: the "
-       "Notes box is read once, never into a script, and its step cannot fail the night")
+       "Notes box is read once, never into a script, its step runs on a run by hand only, escapes "
+       "&, < and > in each subject, and cannot fail the night")
 def _workflows_patch_notes():
     """The owner, 13 November 2026: "list the major patch notes within the
     github actions page so I know what pages to specifically look at for
@@ -108809,7 +109284,11 @@ def _workflows_patch_notes():
     line holds it before any shell reads it, so it is read in exactly one
     place, the step's NOTES environment entry, and no script line names it.
     The step ends by exiting 0, inside a try, so a page it cannot write never
-    stops a night; and only a run by hand has a box to read."""
+    stops a night; and only a run by hand has a box to read, so the step does
+    not run on the night's timer (which dispatches with timer true and no
+    notes) or on the clock's, read as GitHub reads the line. Each commit
+    subject has &, < and > escaped before it goes into the page's Markdown,
+    so a <word> in one is shown rather than taken for a tag."""
     f = Path(".github/workflows/nightly.yml")
     if not f.is_file():
         return "skip", "no nightly.yml here"
@@ -108835,13 +109314,47 @@ def _workflows_patch_notes():
              if any(ln.strip() == "- name: The patch notes" for ln in st)]
     assert len(steps) == 1, f"the night has {len(steps)} patch notes steps, not one"
     st = "\n".join(steps[0])
-    assert "if: github.event_name == 'workflow_dispatch'" in st, "the patch notes step runs on a scheduled night"
+    # What the line does, not what it says: evaluated as GitHub evaluates it
+    # for every kind of night (WF_RUNS), the step runs exactly on a run by
+    # hand that is not the timer's. The night's timer dispatches too, with
+    # timer "true" and no notes, and a box of a dispatch may arrive as a
+    # boolean or as a string.
+    cond = next((ln.strip() for ln in steps[0] if ln.strip().startswith("if:")), "")
+    expr = cond[3:].strip()
+    assert expr, "the patch notes step has no if"
+    seen = 0
+    for event, ref, boxes, _dry, title in WF_RUNS["nightly.yml"]:
+        forms = [boxes]
+        if event == "workflow_dispatch":
+            forms.append({k: str(v).lower() for k, v in boxes.items()})
+        for bx in forms:
+            runs = bool(_gh_eval(expr, _wf_run_ctx(event, ref, bx)))
+            want = event == "workflow_dispatch" and not boxes.get("timer")
+            assert runs == want, (
+                f"the patch notes step {'runs' if runs else 'does not run'} on {title} "
+                f"({'strings' if bx is not boxes else 'booleans'}) and should "
+                f"{'' if want else 'not '}: {cond}")
+            seen += 1
+    # A subject is text, not Markdown: <name> would be read as a tag and lost.
+    # One line on $log, after the git log it filters and before the 40 are kept,
+    # & first so that the entities written for < and > are not escaped again.
+    esc = ("$log = @($log | ForEach-Object { $_ -replace '&','&amp;' "
+           "-replace '<','&lt;' -replace '>','&gt;' })")
+    sl = [ln.strip() for ln in steps[0]]
+    gi = next((n for n, ln in enumerate(sl) if "git log --first-parent" in ln), -1)
+    ei = [n for n, ln in enumerate(sl) if ln == esc]
+    si = next((n for n, ln in enumerate(sl) if "Select-Object -First 40" in ln), -1)
+    assert gi >= 0 and si >= 0 and len(ei) == 1 and gi < ei[0] < si, (
+        "commit subjects go into the run page without &, < and > escaped on $log "
+        "between the git log line and the 40 kept")
     run = st.split("run: |", 1)[1] if "run: |" in st else ""
     assert run and "${{" not in run, "the patch notes step's script has an expression GitHub would write into it"
     assert "$env:NOTES" in run and "GITHUB_STEP_SUMMARY" in run, "the patch notes do not reach the run's page"
     assert run.strip().endswith("exit 0") and "try {" in run and "} catch {" in run, (
         "the patch notes step can fail the night")
-    return "ok", "one Notes box, read through NOTES alone; its step writes the run's page and cannot fail the night"
+    return "ok", (f"one Notes box, read through NOTES alone; its step runs on a run by hand and on none "
+                  f"of the timer's or the clock's ({seen} readings of 9 kinds of run, boxes as booleans "
+                  "and strings), escapes & < > in each subject, writes the run's page and cannot fail the night")
 
 
 @check("workflows", "each workflow's token reads the repository and no more, and nothing a "
@@ -116929,24 +117442,62 @@ def _unprinted_sponsor_note():
     """1991 HCR 13 and HR 19 print "INTRODUCED BY: REFERRED TO:" and no name, and are named
     from the General Court's sponsor record (text_sponsors.unprinted). Every other sponsor
     of that term was read off the bill's own line, and the page says so of them; these say
-    where theirs came from instead."""
+    where theirs came from instead.
+
+    AND A BILL OF 1989-1998 SAYS WHERE ITS NAMES WERE READ, AND NO MORE (the owner, 14 November
+    2026: "not necessary to get into that fine of detail and just let the pages speak for
+    themselves"). The note had grown sentences on how the General Court's sponsor record placed
+    a name (past_roster.py), on the Manual for the General Court and on the roll calls of those
+    years, and called names "matched to one member who voted that term" of years with no named
+    roll call here. Held: a mixed bill (1997 HB 455), one whose names were all placed (1989 HB
+    553) and one that places none (1995 HB 174) each say exactly "As named on the sponsor line
+    of the bill's text, where the first name is the prime sponsor." and none of "Named roll
+    calls", "Manual", "voted that term" or "prints only a surname"; a bill of 1999-2022 (a 2005
+    HB 1 here) keeps its note exactly, "A name without a party is shown as the text prints it"
+    with it."""
+    placed = ('{name: "Richard Dolan", chamber: "H", label: "Rep. Richard Dolan (Rock 12)", '
+              'member_id: "375990", employee: "375990", matched: "General Court sponsor record", '
+              'source: "bill text", as_printed: "Rep. Dolan, Rock 12"}')
     got = _app_js(
         '[scope.renderSponsors({id: "HCR13"}, {sponsors: [{name: "Michael Hill", '
         'chamber: "H", label: "Rep. Michael Hill", prime: true, unprinted: true, '
         'source: "General Court sponsor record"}]}), '
-        'scope.renderSponsors({id: "HB1"}, {sponsors: [{name: "Vartanian", chamber: "H", '
-        'label: "Rep. Vartanian (Rock 20)", prime: true, source: "bill text"}]})]',
+        'scope.renderSponsors({id: "HB1"}, {term: "2005-2006", sponsors: [{name: "Vartanian", chamber: "H", '
+        'label: "Rep. Vartanian (Rock 20)", prime: true, source: "bill text"}]}), '
+        'scope.renderSponsors({id: "HB455"}, {term: "1997-1998", sponsors: [{name: "Christie", chamber: "H", '
+        'label: "Rep. Christie (Rock 22)", prime: true, source: "bill text", member_id: "", '
+        'as_printed: "Rep. Christie, Rock 22"}, ' + placed + ', {name: "John Anthony Simmons", '
+        'chamber: "H", label: "Rep. John Anthony Simmons (Rock 25)", member_id: "", '
+        'employee: "376049", matched: "General Court sponsor record", source: "bill text"}]}), '
+        'scope.renderSponsors({id: "HB553"}, {term: "1989-1990", sponsors: [Object.assign(' + placed
+        + ', {prime: true})]}), '
+        'scope.renderSponsors({id: "HB174"}, {term: "1995-1996", sponsors: [{name: "Christie", chamber: "H", '
+        'label: "Rep. Christie (Rock 22)", prime: true, source: "bill text", member_id: "", '
+        'as_printed: "Rep. Christie, Rock 22"}]})]',
         names=("renderSponsors",))
     if got is None:
         return "skip", "node, app.js or dom_stub.js is not here"
-    record, text = got
+    record, text, mixed, placed_only, none_placed = got
+    notes = lambda h: [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", n)).replace("&rsquo;", "’").strip()
+                       for n in re.findall(r'<p class="note"[^>]*>(.*?)</p>', h, re.S)]
+    line = "As named on the sponsor line of the bill's text, where the first name is the prime sponsor."
+    for what, h in (("a mixed 1989-1998 bill (1997 HB 455)", mixed),
+                    ("a 1989-1998 bill whose names were all placed (1989 HB 553)", placed_only),
+                    ("a 1989-1998 bill that places no name (1995 HB 174)", none_placed)):
+        more = [w for w in ("Named roll calls", "Manual", "voted that term", "prints only a surname") if w in h]
+        assert notes(h) == [line] and not more, (
+            f"{what} says more than where its names were read: {notes(h)}" + (f", with {more}" if more else ""))
     assert "names no" in record and "sponsor record" in record \
         and "As named on the sponsor line" not in record, (
         "a bill whose line names nobody does not say its sponsors are the General Court's "
         "record: " + re.sub(r"\s+", " ", record)[-240:])
-    assert "sponsor record" not in text and "As named on the sponsor line" in text, (
-        "a bill named off its own line lost its note, or gained the record's")
-    return "ok", "the record's names say so; a line's names keep their own note"
+    assert notes(text) == [line + " A name without a party is shown as the text prints it: it could not be "
+                                  "matched to one member who voted that term."], (
+        "a bill of 1999-2022 named off its own line lost its note, or gained the record's, or lost \"A name "
+        f"without a party is shown as the text prints it\": {notes(text)}")
+    return "ok", ("the record's names say so; a line's names keep their own note; a 1989-1998 bill, its "
+                  "names placed, mixed or not, says where they were read and no more; 1999-2022 keep "
+                  "'without a party'")
 
 
 @check("data", "no sponsor row is a heading, a seat, an honorific or a name with a figure in it, and the five senators printed as Rep. are theirs")
@@ -117387,7 +117938,8 @@ def _numbers_charts(LN):
 
 
 @check("frontend", "By the Numbers fits its box: every chart label is inside its own viewBox, no number table is "
-                   "held to the prose measure, and the flow diagram has no minimum width off a phone",
+                   "held to the prose measure, the flow diagram has no minimum width off a phone and its table is "
+                   "not pinned, no named scatter label covers a named point, and ties come out in name order",
        needs=("learn_numbers",))
 def _numbers_fit(LN):
     """The owner, 13 November 2026, from a printed copy of the page: the
@@ -117402,16 +117954,31 @@ def _numbers_fit(LN):
     and its anchor, rotated text on the other axis -- against the viewBox it
     sits in. And app.css is read for the two rules that caused the rest:
     number tables held to the prose measure, and a minimum width on the flow
-    diagram that applies at every width rather than only on a phone."""
+    diagram that applies at every width rather than only on a phone.
+
+    Four more guards, each from a thing that broke: the phone's pinned first
+    column must not reach the flow diagram's table (.l-twin), whose first
+    column is wider than the box; a named scatter label's box must not
+    contain its own point; nor another named committee's point (2023-2024:
+    Childcare across Transportation); and tied committees come out in name
+    order whatever order they arrive in."""
     terms = [f"{y}&ndash;{y + 1}" for y in range(1989, 2027, 2)]
     oc = {t.replace("&ndash;", "-"): {"filed": 1000 + i, "Became Law": 150 + i, "Interim Study": 100,
                                        "Died": 700, "other": 50 + i}
           for i, t in enumerate(terms)}
     pts = [("House Executive Departments and Administration", "H", 250, 3.0),
-           ("Senate Commerce", "S", 20, 30.0), ("House Finance", "H", 200, 90.0),
+           ("Senate Commerce", "S", 20, 30.0), ("House Finance", "H", 200, 70.0),
            ("Senate Education and Workforce Development", "S", 85, 60.0),
            ("House Ways and Means", "H", 12, 99.0), ("House Judiciary", "H", 150, 55.0),
-           ("Senate Judiciary", "S", 100, 10.0)]
+           ("Senate Judiciary", "S", 100, 10.0),
+           # a name too long for either side of its point (a third of the
+           # way along, in the top three): it must be set clear of its point
+           ("Senate Energy, Environment and Economic Development", "S", 150, 80.0),
+           # two committees at one rate, to come out in name order
+           ("House Transportation", "H", 106, 50.0), ("House Public Works and Highways", "H", 44, 50.0),
+           # two NAMED committees at one rate, the left one first by name, as in 2023-2024:
+           # the right-hand one claims the line, or the left one's name runs across it
+           ("Senate Transportation", "S", 60, 99.0)]
     tree = {"label": "Bills filed", "n": 2139, "cls": "n", "kids": [
         {"label": "Cleared the second chamber", "n": 1900, "cls": "n", "kids": [
             {"label": "Reached the governor", "n": 686, "cls": "n", "kids": [
@@ -117454,6 +118021,42 @@ def _numbers_fit(LN):
                 bad.append(f"{name}: '{body[:28]}' spans x {x0:.0f}..{x1:.0f}, y {y0:.0f}..{y1:.0f} "
                            f"outside 0..{W} x 0..{H}")
     assert not bad, "a chart label is cut by its own viewBox: " + "; ".join(bad[:6])
+    # (b) a named label's box never contains its own point (it hid the point it named)
+    sc = svgs["scatter"]
+    marks = {}
+    for gm in re.finditer(r"<g><title>([^<]+?): [\d,]+ bills reported[^<]*</title>"
+                          r'(?:<circle[^>]*cx="([\d.]+)" cy="([\d.]+)"|<path[^>]*d="M([\d.]+),([\d.]+)L)', sc):
+        nm, cx, cy, mx, my = gm.groups()
+        marks[nm] = (float(cx), float(cy)) if cx else (float(mx), float(my) + 5.5)
+    seen = 0
+    for tm in re.finditer(r'<text x="([\d.]+)" y="([\d.]+)" text-anchor="(start|end)">([^<]+)</text>', sc):
+        lx, ly, anchor, short = float(tm.group(1)), float(tm.group(2)), tm.group(3), tm.group(4)
+        own = [pt for n_, pt in marks.items() if re.sub(r"^(House|Senate) ", "", n_) == short]
+        if not own:
+            continue
+        seen += 1
+        wd = LN.text_w(short, LN.CH_PX)
+        x0 = lx - wd if anchor == "end" else lx
+        for ox, oy in own:
+            assert not (x0 <= ox <= x0 + wd and ly - LN.CH_PX * .8 <= oy <= ly + LN.CH_PX * .25), (
+                f"the label '{short}' is set across its own point at ({ox:.0f}, {oy:.0f})")
+    assert seen >= 4, f"only {seen} named labels were found in the scatter chart"
+    # (d) nor another named committee's point (2023-2024: Childcare's name across Transportation's)
+    ranked_ = sorted(pts, key=lambda p: (p[3], p[0]))
+    named_ = {p[0] for p in ranked_[:3] + ranked_[-3:]}
+    for tm in re.finditer(r'<text x="([\d.]+)" y="([\d.]+)" text-anchor="(start|end)">([^<]+)</text>', sc):
+        lx, ly, anchor, short = float(tm.group(1)), float(tm.group(2)), tm.group(3), tm.group(4)
+        if not any(re.sub(r"^(House|Senate) ", "", n_) == short for n_ in marks):
+            continue
+        wd = LN.text_w(short, LN.CH_PX)
+        x0 = lx - wd if anchor == "end" else lx
+        for n_, (ox, oy) in marks.items():
+            if n_ in named_ and re.sub(r"^(House|Senate) ", "", n_) != short:
+                assert not (x0 <= ox <= x0 + wd and ly - LN.CH_PX * .8 <= oy <= ly + LN.CH_PX * .25), (
+                    f"the label '{short}' is set across {n_}'s point at ({ox:.0f}, {oy:.0f})")
+    # (c) tied committees come out in name order whatever order they arrive in
+    assert LN.scatter_chart(pts, "t", "said", "x", "y") == LN.scatter_chart(pts[::-1], "t", "said", "x", "y"), (
+        "the scatter chart draws tied committees in the order they arrived (a set's, so the hash seed's)")
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     assert not re.search(r"\.l-secb\s*>\s*\.l-numwrap\s*\{[^}]*max-width:\s*var\(--l-meas\)", css), (
         "app.css holds the number tables to the prose measure again (.l-secb > .l-numwrap)")
@@ -117469,8 +118072,21 @@ def _numbers_fit(LN):
         assert not re.search(r"overflow-wrap:\s*(anywhere|break-word)|word-break:\s*break-all", m.group(1)), (
             "a number table's head may break inside a word again (it read 'PASSE / D BOTH CHAMB / ERS')")
     assert "min-width" not in inspect_source(LN._svg), "the charts' SVG carries an inline minimum width"
+    # (a) the phone's pinned first column cannot reach the flow diagram's table (.l-twin):
+    # its first column is the whole indented stage name, wider than a phone's box
+    phone = css[css.index("@media (max-width:40em){", css.index("ON A PHONE a figures table")):]
+    phone = phone[phone.index("{") + 1:phone.index("\n}\n")]
+    pinned = [r for r in re.finditer(r"([^{}]+)\{([^}]*position:\s*sticky[^}]*)\}", phone)]
+    assert pinned, "the phone's pinned first column rule was not found in app.css"
+    for r_ in pinned:
+        for sel in r_.group(1).split(","):
+            assert ".l-numtab" in sel and ":not(.l-twin)" in sel, (
+                "the phone's sticky first column reaches the flow diagram's table (.l-twin), "
+                "where it covers the figures: " + sel.strip())
     return "ok", (f"{sum(h.count('<text') for h in svgs.values())} labels in {len(svgs)} chart builders inside "
-                  "their viewBoxes; tables not held to the measure; the diagram's minimum width is phone-only")
+                  "their viewBoxes; no named scatter label across its own point or another named committee's; tied committees in name order; "
+                  "tables not held to the measure; the diagram's minimum width and the pinned first column "
+                  "(not the flow table's) are phone-only")
 
 
 def inspect_source(fn):
@@ -120650,11 +121266,20 @@ def _town_staff_own_page(B):
         o = {"_offices": {"effingham": {"officials": [dict(r) for r in row],
                                          "website": "https://www.effinghamnh.net/",
                                          "phone": "603-539-7770"},
-                          "lyme": {"officials": [dict(r) for r in row]}},
+                          "lyme": {"officials": [dict(r) for r in row]},
+                          "franklin": {"officials": [dict(r) for r in row],
+                                       "website": "https://www.franklinnh.net/",
+                                       "phone": "603-934-3900"}},
              "_local": {"effingham": {"website": "www.effinghamnh.net"}}}
         if moved:
             B.apply_websites(o, {"effingham": {"website": "https://www.effingham.nh.gov",
-                                               "checked_on": "2026-11-13"}})
+                                               "checked_on": "2026-11-13",
+                                               "email": {"address": "townadmin@effingham.nh.gov",
+                                                         "checked_on": "2026-11-13"}},
+                                 "franklin": {"website": "https://www.franklinnh.gov",
+                                              "checked_on": "2026-11-13",
+                                              "email": {"address": "clerk@franklinnh.gov",
+                                                        "checked_on": "2026-11-13"}}})
             o["_staff"] = {"effingham": staff}
         return o
 
@@ -120675,6 +121300,27 @@ def _town_staff_own_page(B):
         bad.append("the staff card does not say where and when it was read")
     if "Chuck Fuller" not in new:
         bad.append("the directory's board vanished although the town's was not used")
+    # The caveat points back at the directory's date, so it comes straight
+    # after it, before the sentences that carry the days a town was checked.
+    nu = _html.unescape(new)
+    if "checked November 13, 2026" not in nu:
+        bad.append("the moved town's offices card has no checked day to order the caveat against")
+    elif re.search(r"dated [A-Z][a-z]+ \d{4}\. It does not show anyone elected or appointed since then",
+                   nu.split("(checked November 13, 2026)")[0]) is None:
+        bad.append("on the moved town's offices card the 'since then' sentence does not come "
+                   "straight after the directory's date")
+    # The noun is the place's own: a city's card says the city's, a town's the town's.
+    fr = _html.unescape(page("Franklin", off(True)))
+    for need in ("The website is the city's current one (checked November 13, 2026).",
+                 "The e-mail address is the city's own (checked November 13, 2026)."):
+        if need not in fr:
+            bad.append(f"a moved city's offices card does not say: {need}")
+    if "the town's" in fr:
+        bad.append("a moved city's offices card says the town's")
+    for need in ("The website is the town's current one (checked November 13, 2026).",
+                 "The e-mail address is the town's own (checked November 13, 2026)."):
+        if need not in nu:
+            bad.append(f"a moved town's offices card does not say: {need}")
     # A town the hand file does not name is the same page to the byte.
     if page("Lyme", off(False)) != page("Lyme", off(True)):
         bad.append("another town's page changed")
@@ -123076,7 +123722,7 @@ def _elect_tab_like_legislators(OT):
           for p in ("pane-elast", "pane-ecounty")}
     if -1 in at.values() or sorted(at.values()) != list(at.values()) or "edist" in page:
         bad.append(f"the two panes are not there in order, or By district is still drawn: {at}")
-        return "fail", "; ".join(bad)
+        return "FAIL", "; ".join(bad)
     last, county = page[at["pane-elast"]:at["pane-ecounty"]], page[at["pane-ecounty"]:]
     # Each view opens at the level of the tab's own headings, so a reader
     # moving by heading in either meets its chambers as the tab's parts, not
@@ -123371,7 +124017,10 @@ def _elect_search_filter(OT):
     they choose; and the script, run in node on the items the page really
     carries, matches by what is typed (every word, accents folded: a name, a
     county, a district, a town) and what is chosen, and says how many are
-    shown and fixes the headings' counts."""
+    shown and fixes the headings' counts. A second fixture of near districts
+    (Merr 5 and 15, SD1 and SD18, Hills 4 and 40, an invented ward) proves
+    that a number finds its district only, titles and town names before a
+    number, the record name, apostrophes and a pasted chip."""
     import html as _h
     import shutil as _sh
     elect, people = _elect_tab_case()
@@ -123381,7 +124030,7 @@ def _elect_search_filter(OT):
     bar = re.search(r'<div class="bfilt elfilter" role="search" hidden data-n="12" [^>]*>(.*?)</div>',
                     page, re.S)
     if not bar:
-        return "fail", "the search row is not written hidden over the lists"
+        return "FAIL", "the search row is not written hidden over the lists"
     opts = {m[0]: re.findall(r'<option value="([^"]*)">([^<]*)</option>', m[1])
             for m in re.findall(r'<select class="(el[a-z]+)">(.*?)</select>', bar.group(1))}
     if opts.get("elst") != [("", "All (12)"), ("returning", "Returning (1)"),
@@ -123410,7 +124059,7 @@ def _elect_search_filter(OT):
     node = _sh.which("node")
     script = re.search(r"<script>(.*?)</script>", page, re.S)
     if not script:
-        return "fail", "; ".join(bad + ["the page carries no script for the controls"])
+        return "FAIL", "; ".join(bad + ["the page carries no script for the controls"])
     if node:
         import subprocess as _sp
         harness = r"""
@@ -123486,6 +124135,86 @@ console.log(JSON.stringify(out));
             if o["fold"] is not True or o["no"] is not False:
                 bad.append("accents are not folded, or a near name matches: "
                            f"{o['fold']} {o['no']}")
+        # A DISTRICT IS A NUMBER, AND A NAME IS THE ONE ON THEIR PAGE (the
+        # review of 14 November 2026: "merr 5" found Merr 15, 19, 25 and 30
+        # and not Merr 5, "senate district 8" found SD8, 13, 15 and 18, and
+        # "james creighton" found nobody -- the ballot says Jim). Beside the
+        # fixture's districts stand Merr 15, SD18, Hills 40 and a ward (towns
+        # invented here: Nashbury, Dunmere); each query must find that
+        # district's member only. And a title before a number names the
+        # chamber ("sen 8"), a town or a surname before a number is that
+        # town's ward or the district ("trow 13", "creighton 8"), a county
+        # before "district" is that county's (SD1 takes in a town named
+        # Carroll and is not "carroll 1"), a curly apostrophe finds the name
+        # a straight one spells, and the chip pasted whole finds its person.
+        import copy as _cp
+        el2 = _cp.deepcopy(elect)
+        race = lambda *names: {"seats": len(names), "not_final": 0, "held": 0,  # noqa: E731
+                               "elected": [{"n": n, "p": "D", "k": "new"} for n in names]}
+        el2["races"].update({"S|1": race("Tom Onesen"), "S|18": race("Una Eighteen"),
+                             "H|Merrimack|5": race("Mia Five"),
+                             "H|Merrimack|15": race("Ned Fifteen", "Sean O'Rorke"),
+                             "H|Hillsborough|4": race("Hal Four"), "H|Hillsborough|40": race("Ivy Forty"),
+                             "H|Grafton|2": race("Gus Ward"), "H|Strafford|9": race("Dot Nine")})
+        page2 = OT.members_elect(el2, "2026-11-20", "en", people,
+                                 {**towns, "H|Merrimack|15": ["Nashbury Ward 5"],
+                                  "H|Merrimack|5": ["Dunmere", "Maple Hill", "Quillan's Loc."],
+                                  # Real place names put in SD1 only to test the
+                                  # matching (a county's name, an apostrophe, a
+                                  # city's ward); Dot's race has another ward
+                                  # of Dover and an invented city's.
+                                  "S|1": ["Carroll", "Hart's Location", "Dover Ward 1"],
+                                  "H|Strafford|9": ["Dover Ward 3", "Nashbury Ward 1"]})
+        last2 = page2[:page2.find('id="pane-ecounty"')]
+        items2 = [{"st": a, "p": b, "ch": c, "hay": d} for a, b, c, d in re.findall(
+            r'<(?:li|div) class="(?:seatrow|mem)[^"]*" data-st="([a-z]*)" data-p="([^"]*)" '
+            r'data-ch="([SH])" data-hay="([^"]*)">', last2)]
+        asks = {"merr 5": ["mia"], "merrimack 5": ["mia"], "hills 4": ["hal"],
+                "hillsborough 40": ["ivy"], "sd 8": ["jim"], "sd8": ["jim"],
+                "senate district 8": ["jim"], "sd 1": ["tom"], "sd1": ["tom"],
+                "senate district 1": ["tom"], "district 5": ["mia"], "5": ["mia"],
+                "nashbury ward 5": ["ned", "sean"], "nashbury 5": ["ned", "sean"],
+                "ward 5": ["ned", "sean"], "rock 13": ["charles", "kristine"],
+                "sen 1": ["tom"], "senator 1": ["tom"], "sen. 1": ["tom"], "sen 8": ["jim"],
+                "rep 1": ["ann"], "rep 8": [], "rep 5": ["mia"],
+                "trow 13": ["kristine"], "creighton 8": ["jim"], "hampton 13": ["charles", "kristine"],
+                "carroll district 1": [], "carroll 1": [], "carr 1": [], "coos district 1": ["ann"],
+                "dover ward 1": ["tom"], "dover 1": ["tom"], "dover ward 5": [],
+                "merrimack district 15": ["ned", "sean"], "hills district 15": [],
+                "o’rorke": ["sean"], "o'rorke": ["sean"], "o rorke": ["sean"], "ororke": ["sean"],
+                "hart’s location": ["tom"], "harts loc.": ["tom"],
+                "Sen. “Elect” Jim Creighton (R - SD8)": ["jim"],
+                "Rep. “Elect” Sean O’Rorke (D - Merr 15)": ["sean"],
+                "james creighton": ["jim"], "jim creighton": ["jim"], "rep creighton": ["jim"],
+                "representative creighton": ["jim"], "sen. creighton": ["jim"],
+                "senator james creighton": ["jim"], "rep nobody": ["lee"], "rep Una": ["una"],
+                "han": [], "hamp": ["charles", "kristine"],
+                # a full name or a two-word town ending in a county's word or "ward"
+                "gus ward 2": ["gus"], "maple hill 5": ["mia"], "maple hill district 5": ["mia"],
+                "dover ward 3": ["dot"], "nashbury ward 1": ["dot"],
+                # the chip's party letter, alone or as a pair, and an initial
+                "creighton r": ["jim"], "(R - SD8)": ["jim"],
+                "Rep. “Elect” Pat Both (R/D - Belk 6)": ["pat"], "J. Creighton": ["jim"],
+                # a title before "district" names the chamber
+                "senator district 1": ["tom"], "rep district 1": ["ann"],
+                "sen district 8": ["jim"], "rep district 8": [],
+                # "Loc." is read as the word
+                "quillans location": ["mia"], "quillan’s loc.": ["mia"], "r": ["charles", "kristine", "rachel", "rebecca", "sean", "zoe"]}
+        h2 = r"""
+var window={},document={querySelector:function(){return null;}};
+""" + script.group(1) + r"""
+var ITEMS=""" + json.dumps(items2) + r""",ASKS=""" + json.dumps(list(asks)) + r""",out={};
+ASKS.forEach(function(q){out[q]=ITEMS.filter(function(i){return window.electMatch(i,q,"","","");})
+  .map(function(i){return i.hay.split(" | ")[0].split(" ")[0];}).sort();});
+console.log(JSON.stringify(out));
+"""
+        r2 = _sp.run([node, "-e", h2], capture_output=True, text=True, encoding="utf-8", timeout=60)
+        assert r2.returncode == 0 and r2.stdout.strip().startswith("{"), \
+            f"the district script did not run in node: {(r2.stderr or r2.stdout).strip()[:400]}"
+        o2 = json.loads(r2.stdout)
+        for q, w in asks.items():
+            if o2[q] != w:
+                bad.append(f"the search {q!r} shows {o2[q]}, not {w}")
     # Spanish: the row's words, none in English.
     es = OT.members_elect(elect, "2026-11-20", "es", people, towns)
     row = re.search(r'<div class="bfilt elfilter".*?</div>', es, re.S).group(0)
@@ -123501,7 +124230,10 @@ console.log(JSON.stringify(out));
     assert not bad, "\n  ".join(bad)
     return "ok", ("a search row written hidden, counts in every option, items carrying data-st, "
                   "-p, -ch and -hay; node: status, party, chamber, name, county, district, "
-                  "town and accents, headings recounted, the count said"
+                  "town and accents, headings recounted, the count said; and on a fixture of near "
+                  "districts, a number finds its district only (county, sd, senate district, "
+                  "ward, a town or surname before it), a title before a number names the "
+                  "chamber, a record name, a curly apostrophe and a pasted chip find the person"
                   if node else "the row and the items (node absent: the script not run)")
 
 
@@ -132652,7 +133384,7 @@ def main():
             status, msg = "skip", f"{missing}.py will not import"
         else:
             try:
-                status, msg = c["fn"](*mods)
+                status, msg = _answer(c["fn"](*mods))
             except AssertionError as e:
                 status, msg = "FAIL", str(e) or "assertion failed"
             except Exception as e:
@@ -134428,7 +135160,7 @@ def _check_outcome(c):
             return "skip", f"{n}.py will not import"
         mods.append(m)
     try:
-        return tuple(c["fn"](*mods))
+        return _answer(c["fn"](*mods))
     except AssertionError as e:
         return "FAIL", str(e) or "assertion failed"
     except Exception as e:                                      # noqa: BLE001
@@ -134974,9 +135706,9 @@ def _topic_filter_search_box():
     return "ok", "the box narrows the topics, counts hold, a ticked topic stays"
 
 
-@check("frontend", "the bill requests' search finds a request by its sponsor's name (prime or co-sponsor, sitting, "
-       "member-elect or former), the Sponsor filter has the party and the seat, and the Topic filter says "
-       "its topics are from the title")
+@check("frontend", "the bill requests' search finds a request by its sponsor's name as the list, the card or their "
+       "page prints it (prime or co-sponsor, sitting, member-elect or former), the Sponsor filter has the party, "
+       "and the Topic filter says its topics are from the title")
 def _requests_search_by_name():
     """The owner, 12 November 2026: "you can't search by legislator name, by party affiliation of returning
     or new members". A bill's sponsor is found through the Sponsor filter and a name typed in the box lists
@@ -134987,8 +135719,21 @@ def _requests_search_by_name():
     lists the sponsor's requests and the ones they co-sponsor; "bail" lists the bail request and not
     Bailey's; "sen" before a Rep.'s name lists none; a member-elect (a label with no title) is found by
     "rep jane doe"; the party filter counts a sitting member's and a member-elect's party; the Sponsor list
-    names a sponsor with the party and seat their label gives; the Topic group of the requests says "(from
-    the title)" and another term's does not; a bill's own search still lists no bill for a name."""
+    names a sponsor with the party their label gives (a request's label has no seat); the Topic group of the
+    requests says "(from the title)" and another term's does not; a bill's own search still lists no bill
+    for a name.
+
+    AND BY EVERY NAME THE SITE PRINTS FOR THE SPONSOR (the pre-release review of 13 November 2026): "Lee C.
+    Nyquist", the name on his cards and his page, and "James Creighton", the name on his page, found none
+    of their requests, which the list spells "Lee Nyquist" and "Jim Creighton". Held on two rows that
+    build_lsrs makes from the list, a winner and a page, as the build does (rows_from, then
+    with_sponsor_names, which writes `sponsor_names`); each name finds its request in the box, in the
+    Sponsor filter's offer and in that filter's own box; the surname and the list's own spelling still
+    do; the page drawn for "Lee C. Nyquist" lists his request and offers no "'c' alone"; and "c" alone
+    does not list him by his initial. The filter's box also lists a sponsor typed as the card prints them
+    ("W. Packy Campbell", whom the list calls "W Packy Campbell") or with an initial's full stop left off
+    ("lee c nyquist"), as the search box does; and a spelling that differs by a hyphen or a space is a
+    name of its own, one that differs by a full stop alone is not."""
     def req(n, title, who, label, slug, party, cosp=()):
         row = {"id": f"LSR2027000{n}", "n": f"LSR 2027-000{n}", "title": title, "sponsor": who,
                "sponsor_label": label, "sponsor_slug": slug, "lsr": True, "term": "2027-requests",
@@ -135009,6 +135754,50 @@ def _requests_search_by_name():
                  topic="Taxes - State", topic_by="title"),
             req(6, "relative to bail reform.", "Chris Moore", "Rep. Chris Moore (D)", "chris-moore-hills-2", "D")]
     rows[0]["topic"], rows[0]["topic_by"] = "Education - General", "title"
+    # AND TWO SPONSORS THE SITE PRINTS OTHERWISE THAN THE LIST, made as the build makes them: the list's
+    # "Lee Nyquist" is the winner "Lee C. Nyquist" with a member-elect's page, and its "Jim Creighton" the
+    # winner of that name, whose page is a sitting member's, "Rep. James Creighton".
+    import build_lsrs as L
+    with tempfile.TemporaryDirectory() as d:
+        site = Path(d)
+        (site / "legislators.json").write_text(json.dumps([{
+            "name": "Creighton, James", "slug": "james-creighton-hills-30", "display": "Rep. James Creighton (R)",
+            "display_plain": "Rep. James Creighton"}]), encoding="utf-8")
+        (site / "elect_pages.json").write_text(json.dumps({"pages": [{
+            "name": "Lee C. Nyquist", "slug": "lee-c-nyquist-hills-42", "party": "D", "chamber": "H",
+            "race": "H|Hillsborough|42"}]}), encoding="utf-8")
+        who, names = L.roster(site), L.page_names(site)
+    ws = L.election_winners(
+        {"races": {"H|Hillsborough|42": {"candidates": [{"name": "Lee C. Nyquist", "party": "d", "elected": True}]},
+                   "S|8": {"candidates": [{"name": "Jim Creighton", "party": "r", "elected": True}]}}},
+        {"S|8": {"elected": [{"n": "Jim Creighton", "p": "R", "s": "james-creighton-hills-30"}]}},
+        [{"slug": "lee-c-nyquist-hills-42", "name": "Lee C. Nyquist", "race": "H|Hillsborough|42"}], [])
+    # Lee Nyquist's title has no word in c, and Creighton's does: "c" alone lists Creighton's by its title.
+    built, _ = L.rows_from(
+        [{"lsr": "2027-0007", "session": 2027, "body": "HB", "title": "relative to trout stocking.",
+          "sponsor": "Lee Nyquist"},
+         {"lsr": "2027-0008", "session": 2027, "body": "SB", "title": "relative to county conservation districts.",
+          "sponsor": "Jim Creighton"}], who, {}, 2027, ws)
+    L.with_sponsor_names(built, names)
+    assert [(r["sponsor_label"], r.get("sponsor_names")) for r in built] == [
+        ("Lee C. Nyquist (D)", ["Lee C. Nyquist"]), ("Jim Creighton (R)", ["James Creighton"])], (
+        "build_lsrs does not give a request the names its card and its sponsor's page print: "
+        f"{[(r['sponsor_label'], r.get('sponsor_names')) for r in built]}")
+    # A spelling that differs by a full stop alone is the same words; by a hyphen or a space it is not,
+    # since the search splits a name on both.
+    odd = [{"sponsor": "W Packy Campbell", "sponsor_label": "W. Packy Campbell (R)", "sponsor_slug": ""},
+           {"sponsor": "Maryjane Smith", "sponsor_label": "Mary-Jane Smith (D)", "sponsor_slug": ""},
+           {"sponsor": "Tom McDonald", "sponsor_label": "Tom Mc Donald (R)", "sponsor_slug": ""}]
+    L.with_sponsor_names(odd, {})
+    assert [r.get("sponsor_names") for r in odd] == [None, ["Mary-Jane Smith"], ["Tom Mc Donald"]], (
+        "a spelling that differs by a full stop alone is added, or one that differs by a hyphen or a space "
+        f"is not: {[r.get('sponsor_names') for r in odd]}")
+    for r in built:
+        r["hayT"] = f"{r['id'].lower()} {r['n'].lower()} {r['title'].lower()}"
+    rows += built
+    # And a sponsor whose card differs from the list by a full stop, for the Sponsor filter's box.
+    rows.append(req(9, "relative to boating.", "W Packy Campbell", "W. Packy Campbell (R)",
+                    "w-packy-campbell-straf-3", "R"))
     old = [{"id": "HB1", "n": "HB 1", "title": "a bill", "sponsor": s, "sponsor_label": lab, "term": "1995-1996",
             "year": 1995, "kind": "done", "status": "Killed", "chip": "Died", "committees": [], "committee": "",
             "topic": "", "votedays": [], "nrc": 0, "last_action": "", "hayT": "hb1 hb 1 a bill"}
@@ -135021,7 +135810,7 @@ def _requests_search_by_name():
     for i, r in enumerate(old):
         r["id"], r["n"] = f"HB{i + 1}", f"HB {i + 1}"
     meta = {"terms": ["1995-1996"], "committee_codes": {}, "topics": [],
-            "requests": {"term": "2027-requests", "year": 2027, "n": 6, "withdrawn": 0, "label": "2027 Bill Requests"}}
+            "requests": {"term": "2027-requests", "year": 2027, "n": 9, "withdrawn": 0, "label": "2027 Bill Requests"}}
     got = _app_js("""(() => {
   const norm = (s) => scope.hintWords(s).join(" ");
   const out = {};
@@ -135031,6 +135820,22 @@ def _requests_search_by_name():
   out.sen = listed("sen ellen read"); out.bail = listed("bail"); out.bailey = listed("bailey");
   out.elect = listed("rep jane doe"); out.title = listed("dog"); out.senator = listed("senator sam senn");
   out.none = listed("xyzzy");
+  // A sponsor by the card's and the page's spelling, and by the list's own; never by an initial alone.
+  out.nyquist = listed("Lee C. Nyquist"); out.nyquistRep = listed("Rep. Lee C. Nyquist");
+  out.nyquistSur = listed("Nyquist"); out.creighton = listed("James Creighton");
+  out.creightonOwn = listed("Jim Creighton"); out.initial = listed("c");
+  // Drawn as the page draws it once the requests' text index is in (were nothing listed, past "Reading").
+  scope.setText("2027-requests", "ready"); scope.setQuery("Lee C. Nyquist");
+  try { scope.render(); out.nyquistPage = document.querySelector("#results").innerHTML; }
+  catch (e) { out.nyquistPage = "RENDER " + e.message; }
+  out.hintNyquist = scope.sponsorHint("lee c nyquist", scope.IDX()).map(p => [p.name, p.label]);
+  out.hintCreighton = scope.sponsorHint("james creighton", scope.IDX()).map(p => [p.name, p.label]);
+  out.hintInitial = scope.sponsorHint("c", scope.IDX()).map(p => p.name);
+  const box = (v) => { scope.setSponsorBox(v); scope.renderFacets();
+    return [...document.querySelector("#facets").innerHTML.matchAll(/data-f="sponsor"\\s+value="([^"]*)"[^>]*>\\s*<span>([^<]*)</g)].map(m => [m[1], m[2]]); };
+  out.boxLeeC = box("lee c"); out.boxJames = box("james");
+  out.boxPacky = box("W. Packy Campbell"); out.boxLeeCNyquist = box("lee c nyquist");
+  scope.setSponsorBox("");
   scope.setQuery("");
   scope.renderFacets();
   const f = document.querySelector("#facets").innerHTML;
@@ -135062,7 +135867,8 @@ def _requests_search_by_name():
   scope.setQuery(""); scope.sel.sponsor.add("Allen (Rock 3)"); out.rock3 = scope.IDX().filter(b => scope.matches(b)).map(b => b.id);
   return out;
 })()""" % (json.dumps(meta), json.dumps(rows), json.dumps(meta), json.dumps(old)),
-        names=("hintWords", "matches", "renderFacets", "sel", "sponsorHint", "IDX: () => IDX",
+        names=("hintWords", "matches", "render", "renderFacets", "sel", "sponsorHint", "IDX: () => IDX",
+               "setText: (t, v) => { TEXT[t] = v; }",
                "setQuery: (q) => { query = q; }", "setSponsorBox: (v) => { sponsorFilter = v; }",
                "setState: (t, m, rs) => { term = t; META = m; IDX = rs; for (const k in SP_LABELS) delete SP_LABELS[k]; noteSponsors(t, rs); }"))
     if got is None:
@@ -135077,11 +135883,34 @@ def _requests_search_by_name():
     assert got["title"] == ["3"] and got["none"] == [], (got["title"], got["none"])
     assert got["senator"] == ["4"], got["senator"]
     assert got["topicHead"] == "Topic (from the title)", f"the requests' Topic filter says {got['topicHead']!r}"
-    assert got["party"] == [["Republican", 2], ["Democrat", 3], ["Party not on file", 1]], (
+    assert got["party"] == [["Republican", 4], ["Democrat", 4], ["Party not on file", 1]], (
         f"the party filter counts {got['party']}: sitting and elect members alike")
     assert got["cosp"] == "Include co-sponsored requests", got["cosp"]
     assert ["Ellen Read", "Ellen Read (D)"] in got["sponsors"], f"the Sponsor list shows {got['sponsors']}"
-    assert got["republican"] == ["2", "3"], f"the party filter lists {got['republican']}"
+    assert got["republican"] == ["2", "3", "8", "9"], f"the party filter lists {got['republican']}"
+    # The names the site prints. Lee C. Nyquist's request is 7, Jim (James) Creighton's 8.
+    assert got["nyquist"] == ["7"] and got["nyquistRep"] == ["7"], (
+        f"'Lee C. Nyquist', the name his card prints, lists {got['nyquist']} (with 'Rep.' {got['nyquistRep']})")
+    assert got["creighton"] == ["8"], f"'James Creighton', the name his page prints, lists {got['creighton']}"
+    assert got["nyquistSur"] == ["7"] and got["creightonOwn"] == ["8"], (
+        f"the surname and the list's own spelling no longer find them: {got['nyquistSur']}, {got['creightonOwn']}")
+    assert got["initial"] == ["8"], (
+        f"'c' alone lists {got['initial']}: Creighton's request by its title, and never Nyquist's by his initial")
+    page = got["nyquistPage"]
+    assert "LSR 2027-0007" in page and "No bills match" not in page and "alone matches" not in page, (
+        "the page drawn for 'Lee C. Nyquist' does not list his request, or offers a word of his name alone "
+        "('c' alone): " + re.sub(r"<[^>]+>", " ", page)[:240])
+    assert got["hintNyquist"] == [["Lee Nyquist", "Lee C. Nyquist"]] and got["hintCreighton"] == [
+        ["Jim Creighton", "Jim Creighton"]] and got["hintInitial"] == [], (
+        f"the Sponsor filter's offer for the printed names: {got['hintNyquist']}, {got['hintCreighton']}; "
+        f"for 'c' alone {got['hintInitial']}")
+    assert got["boxLeeC"] == [["Lee Nyquist", "Lee C. Nyquist (D)"]] and got["boxJames"] == [
+        ["Jim Creighton", "Jim Creighton (R)"]], (
+        f"the Sponsor filter's box: 'lee c' lists {got['boxLeeC']}, 'james' {got['boxJames']}")
+    assert got["boxPacky"] == [["W Packy Campbell", "W. Packy Campbell (R)"]] and got["boxLeeCNyquist"] == [
+        ["Lee Nyquist", "Lee C. Nyquist (D)"]], (
+        f"the Sponsor filter's box: 'W. Packy Campbell', as his card prints it, lists {got['boxPacky']}; "
+        f"'lee c nyquist', the initial typed without its full stop, {got['boxLeeCNyquist']}")
     assert got["topicTicked"] == ["5"], got["topicTicked"]
     assert got["oldTopicHead"] == "Topic", got["oldTopicHead"]
     assert got["billsByName"] == [], f"a name typed lists bills: {got['billsByName']}"
@@ -135098,8 +135927,10 @@ def _requests_search_by_name():
     assert sorted(got["moores"]) == [["Dana Moore", "Dana Moore (Graf 5)"], ["Moore (Hills 2)", "Moore (Hills 2)"]], (
         f"a named sponsor and one left as printed are not two choices: {got['moores']}")
     return "ok", ("a request is found by name, prime or co-sponsor, a title agreeing, a whole word for a "
-                  "single one; party counts and seats are in the Sponsor filter; its topics say from the title; "
-                  "an older term tells two Allens apart and 'frank riley' fits 'F. Riley'")
+                  "single one, and by the names its card and its sponsor's page print ('Lee C. Nyquist', "
+                  "'James Creighton'), never by an initial alone; party counts are in the Sponsor filter; its "
+                  "topics say from the title; an older term tells two Allens apart and 'frank riley' fits "
+                  "'F. Riley'")
 
 
 @check("build", "a bill request gets its sponsor's party and, where its title says enough, a topic of the "

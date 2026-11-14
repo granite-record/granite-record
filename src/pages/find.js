@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.57
+// GRANITE_VERSION: 2026-09-16.58
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -947,7 +947,7 @@ function findIsRequest(s){
   return A&&A.requestNumber?!!A.requestNumber(s,false):FLSR.test(s);
 }
 // A request's row, drawn as a bill's: its number, its kind, its title. It
-// opens the bill search on it, in the requests' list (`term`).
+// links the request's own page, or the bill's once it is one.
 function findRequestRow(b,term,q){
   let t=String(b.title||"");
   const cut=t.length>160;
@@ -1115,8 +1115,8 @@ function findDraw(q,ids){
   // "2027-0001" and "LSR 2027-0001" were found by /search and /bills and not
   // offered here. Next session's requests (FREQ, which /search counts) are
   // read for a search of that shape, and the one with the number leads the
-  // panel as a bill's own row does, opening the bill search on it in the
-  // requests' list, since a request has no page of its own yet.
+  // panel as a bill's own row does (findRequestRow links the request's own
+  // page, or where it moved to once it is a bill).
   const R=!num&&findIsRequest(s)?findBills(s,3,"requests"):null;
   if(R&&R.state==="loading"&&!FREQ.redraw){
     FREQ.redraw=true;

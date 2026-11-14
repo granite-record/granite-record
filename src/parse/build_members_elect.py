@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.17
+# GRANITE_VERSION: 2026-10-16.18
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -11,8 +11,14 @@ Secretary of State said about the State Representative and State Senate
 races of one general election, in this project's shape (below); the site
 data's roster, site/legislators.json and site/former.json; the district
 table, site/districts.json; site/meta.json for the newest term the site
-describes; and the person's corrections/members_elect.json, which it reads
-and never writes, and which may be absent.
+describes; site/elect_pages.json, where it is on disk, the new
+members-elect's provisional pages (build_elect_pages.py, the step before this
+one), for each one's `e`; text_sponsors.json, the sponsors the bills of
+1989-1998 print, and generated/manual_seats.json, the Manual's seat lists of
+those terms, for the earlier-surname doubt (`u`, earlier_names), each read
+where it is on disk and said where it is not; and the person's
+corrections/members_elect.json, which it reads and never writes, and which
+may be absent.
 
 WHAT IT WRITES. site/members_elect.json, the one file every page draws a
 member-elect from, or nothing. Nothing else: the roster files are read and
@@ -101,7 +107,8 @@ THE FILE IT WRITES, site/members_elect.json:
                                      "own": true}]},
                "H|Rockingham|32": {"seats": 1, "not_final": 0, "held": 0,
                                    "elected": [{"n": "Pat Newell", "p": "R/D",
-                                                "k": "new"}]}, ...}}
+                                                "k": "new",
+                                                "e": "pat-newell-rock-32"}]}, ...}}
 
 Every race the district table names is there, the Senate first. `k` is
 sitting, former or new; `id` and `s` (the page's slug) are there only on a
@@ -109,12 +116,16 @@ link; `own` is true only for a sitting member re-elected to the seat they
 hold, the one a saved town's "Your rep" marks (find.js, ytMark); `u` is true
 only on a new winner whose surname the bills of 1989-1998 print for the same
 chamber and county (the Senate: district), where the record cannot say whether
-it is the same person (elect_status). `not_final`
-and `held` count seats; `recount` is true where the hand
-file says one was requested. A race's seats less its elected and its not
-final is the number of seats with no member-elect on file, held ones among
-them, and the pages say so. No reason the person gave is in it: those are
-private.
+it is the same person (elect_status). `prior` is only on a new winner whose
+earlier service the person confirmed in the hand file, {"terms": ["1993-1994",
+...], "seat": "Hillsborough 1"} and nothing else, never the evidence or the
+employee number (apply_prior), and makes their status returning; `e` is only
+on a new winner with a provisional page, its slug from site/elect_pages.json,
+and never `id` or `s`. `not_final` and `held` count seats; `recount` is true
+where the hand file says one was requested. A race's seats less its elected
+and its not final is the number of seats with no member-elect on file, held
+ones among them, and the pages say so. No reason the person gave is in it:
+those are private.
 
 THE HAND FILE, corrections/members_elect.json, keyed by the election it
 settles so that one election's answers never reach another's:
@@ -125,7 +136,12 @@ settles so that one election's answers never reach another's:
                                           "Pat Newell": null}},
         "not_final": {"H|Rockingham|8": {"recount": true, "seats": 1,
                                          "why": "private"}},
-        "held":      {"S|24": {"Debra Altschiller": "private"}}}}
+        "held":      {"S|24": {"Debra Altschiller": "private"}},
+        "party":     {"H|Hillsborough|30": {"Jane Doe": "D"}},
+        "prior":     {"H|Rockingham|32": {"Pat Newell": "none"},
+                      "H|Hillsborough|30": {"Jane Doe": {
+                          "terms": ["1993-1994"], "seat": "Hillsborough 1",
+                          "evidence": ["private"]}}}}}
 
 `recount_deadline` is the last day a recount may be asked for, as the
 Secretary of State gives it; null or absent until the person knows it, and
@@ -134,7 +150,15 @@ the member a winner is (a sitting or a former member's id), or null for
 "confirmed new"; it is the person's word and is taken over the rule, which
 is printed where the two differ. `not_final` marks seats of a race not final
 -- all of them where `seats` is not given -- and the winners with the fewest
-votes give way to them. `held` keeps a winner off the pages.
+votes give way to them. `held` keeps a winner off the pages. `party` is the
+party a cross-nominated winner filed under, one letter (R, D, I or L), which
+is the party drawn in place of the two the results print. `prior` is the
+person's word on earlier service the record cannot settle (elect_status):
+"none", or {"none": true, "evidence": [...]}, makes the winner new; a record
+of the "terms", the "seat" as it was labelled then and the "evidence" (and
+the "gc_employee_number", where known) makes them returning. A record's
+evidence is required, and only its terms and seat reach the file it writes
+(apply_prior).
 
 IT PRINTS, FOR THE PERSON, every winner it could not link with certainty and
 why, every new person, and every race whose elected, not final and held do
@@ -560,9 +584,10 @@ def sources_hold(doc, root, notes):
 
 
 def read_hand(path, election):
-    """The person's entries for this election: {"matches", "not_final",
-    "held", "party"}, each a dict, empty where the file or the election is
-    absent, and "recount_deadline", a day or None."""
+    """(the person's entries for this election, a note): {"matches",
+    "not_final", "held", "party", "prior"}, each a dict, empty where the file
+    or the election is absent, and "recount_deadline", a day or None; the
+    note says which is absent, and is "" where neither is."""
     empty = {"matches": {}, "not_final": {}, "held": {}, "party": {}, "prior": {}}
     p = Path(path)
     if not p.is_file():

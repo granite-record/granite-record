@@ -3705,13 +3705,17 @@ text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
   .facets .fgroup:last-child{border-bottom:0}
   /* And the count's room beside the Sort, at this row's narrower gap. */
   .qhint{flex-wrap:wrap;gap:var(--sp-4);--room:calc(100% - var(--pickw) - var(--sp-4))}
-  .crow{flex-wrap:wrap;gap:var(--sp-2)}
-  /* The status is pushed to the right of the row by margin-left:auto, which
-     is right while the row is a row. Wrapped onto a line of its own at
-     360px it was pushed 117px in from the left, so the one word every reader
-     looks for first floated in the middle of the card under the bill
-     number. Wrapped, it lines up with everything else. */
-  .crow .cstat{margin-left:0}
+  /* THE STATUS STAYS AT THE TOP RIGHT of the card on a phone, as on a wide
+     screen (the owner, 14 November 2026). On 9 October it was let drop to a
+     line of its own, left-aligned under the number, because wrapped it was
+     pushed 117px in from the left by margin-left:auto and floated in the
+     middle. The row no longer wraps, so that cannot happen: the number and
+     year keep the left, the status keeps the right end of the same line, and
+     words too long for the room left wrap inside the chip, aligned right and
+     level with the number's top, rather than the chip leaving the line. */
+  .crow{flex-wrap:nowrap;align-items:flex-start;gap:var(--sp-2)}
+  .crow .cnum{flex:0 1 auto;min-width:0}
+  .crow .cstat{margin-left:auto;flex:0 0 auto;max-width:62%;text-align:right;overflow-wrap:anywhere}
   .cnum{font-size:var(--t-ui)}
   .pbar{flex-wrap:wrap;gap:var(--sp-3)}
   .pbar .jump{font-size:var(--t-sm)}
@@ -5354,22 +5358,18 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
    figures, scrolled sideways at 768 and over. Tighter cells and heads that
    wrap are what let eight columns sit in the page's column; on a phone the
    box scrolls and its first column stays (below). */
-.l-numtab th,.l-numtab td{padding:.5rem .5rem}
-.l-numtab th:first-child,.l-numtab td:first-child{padding-left:.75rem}
-.l-numtab th:last-child,.l-numtab td:last-child{padding-right:.75rem}
-.l-numtab thead th{letter-spacing:0;overflow-wrap:normal;hyphens:manual}
-/* A HEAD WRAPS BETWEEN WORDS AND NEVER INSIDE ONE (no break-all, no
-   "anywhere": "PASSE / D BOTH CHAMB / ERS" read as broken). Eight heads of
-   one word each, the longest "COMMITTEE", are about 560px of type, and the
-   committees' table sits in a 682px column at every width, so the cells give up a little padding, and the dense tables an idle sort
-   chevron (a sorted column still shows its direction): that is what keeps the
-   committees' table in a 703px column at 768 with no head split. */
-.l-numtab th,.l-numtab td{padding-left:.3125rem;padding-right:.3125rem}
+.l-numtab th,.l-numtab td{padding:.5rem .3125rem}
 .l-numtab th:first-child,.l-numtab td:first-child{padding-left:.625rem}
 .l-numtab th:last-child,.l-numtab td:last-child{padding-right:.625rem}
-/* eight columns (class dense) have no width for the idle chevron beside every
-   head, at any width: the committee table sits in a 682px column even on a
-   large screen */
+.l-numtab thead th{letter-spacing:0;overflow-wrap:normal;hyphens:manual}
+/* A HEAD WRAPS BETWEEN WORDS AND NEVER INSIDE ONE (no break-all, no
+   "anywhere": "PASSE / D BOTH CHAMB / ERS" read as broken). The longest word
+   of each of the eight heads ("COMMITTEE" the longest) comes to about 560px of type. The
+   committees' table sits in a 703px column at 768 and a 682px column at 1280
+   and over, beside the side list (both measured, with a 15px scrollbar), so
+   the cells give up a little padding (above), and the dense tables an idle
+   sort chevron (a sorted column still shows its direction): that is what
+   keeps the eight-column table in its column with no head split. */
 .l-numtab.dense th:not([aria-sort=ascending]):not([aria-sort=descending]) .l-sort-i{display:none}
 /* the amendments: the Source (a citation, a long line) wraps in a column of
    its own width rather than the least the others leave, in smaller type, and
@@ -5480,11 +5480,13 @@ th[aria-sort=descending] .l-sort-i{
 .l-fold > :is(p,.l-ch){padding-left:.875rem;padding-right:.875rem}
 .l-fold > .l-tablewrap{margin:0;border:0;border-top:1px solid var(--rule-2);border-radius:0;max-width:none}
 /* ON A PHONE a figures table scrolls inside its own box and its first column
-   (the term, the committee) stays in view */
+   (the term, the committee) stays in view. Not the flow diagram's table
+   (.l-twin): its first column is the whole indented stage name, wider than a
+   phone's box, and pinned it would cover the figures it sits beside. */
 @media (max-width:40em){
-  .l-numtab th:first-child,.l-numtab td:first-child{position:sticky;left:0;z-index:1;background:var(--surface);
-    box-shadow:1px 0 0 var(--rule)}
-  .l-numtab tbody tr:hover > td:first-child{background:var(--wash)}
+  .l-numtab:not(.l-twin) th:first-child,.l-numtab:not(.l-twin) td:first-child{position:sticky;left:0;z-index:1;
+    background:var(--surface);box-shadow:1px 0 0 var(--rule)}
+  .l-numtab:not(.l-twin) tbody tr:hover > td:first-child{background:var(--wash)}
   .l-numtab.names td:first-child,.l-numtab.names th:first-child{max-width:8rem}
 }
 @media print{
@@ -5492,7 +5494,7 @@ th[aria-sort=descending] .l-sort-i{
      on a sheet, so nothing is cut at its edge. */
   .l-numwrap,.l-skwrap,.l-tablewrap{overflow:visible;contain:none}
   .l-skwrap > svg,.l-sk .l-skwrap > svg{min-width:0;max-width:100%}
-  .l-numtab th:first-child,.l-numtab td:first-child{position:static;box-shadow:none;max-width:none}
+  .l-numtab:not(.l-twin) th:first-child,.l-numtab:not(.l-twin) td:first-child{position:static;box-shadow:none;max-width:none}
   .l-numtab thead{display:table-header-group}
   .l-numtab tr,.l-ch,.l-sk{break-inside:avoid}
 }
@@ -9317,7 +9319,9 @@ font-variant-numeric:tabular-nums;white-space:nowrap}
 :where(body.pg) .searchbig button{padding:var(--sp-5) var(--sp-7)}
 :where(body.pg) #year{width:100%}
 :where(body.pg) .qhint{flex-wrap:wrap;gap:var(--sp-4)}
-:where(body.pg) .crow{flex-wrap:wrap;gap:var(--sp-2)}
+:where(body.pg) .crow{flex-wrap:nowrap;align-items:flex-start;gap:var(--sp-2)}
+:where(body.pg) .crow .cnum{flex:0 1 auto;min-width:0}
+:where(body.pg) .crow .cstat{margin-left:auto;flex:0 0 auto;max-width:62%;text-align:right;overflow-wrap:anywhere}
 :where(body.pg) .cnum{font-size:var(--t-ui)}
 :where(body.pg) .pbar{flex-wrap:wrap;gap:var(--sp-3)}
 :where(body.pg) .pbar .jump{font-size:var(--t-sm)}

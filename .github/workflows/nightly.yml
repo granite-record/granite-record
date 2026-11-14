@@ -111,8 +111,9 @@ on:
       # THE NIGHT'S TIMER (23 October 2026, workers/night-timer/): the Worker
       # that starts the night at 08:17 UTC ticks this, with the scheduled
       # night's other boxes, because GitHub's own cron had begun starting it
-      # hours late. It names the run and nothing else: what the run does is
-      # the boxes'. GitHub's cron below stays as the fallback, and stands
+      # hours late. It names the run and keeps the patch notes step off its
+      # page (the timer gives no notes); what the run does is the boxes'.
+      # GitHub's cron below stays as the fallback, and stands
       # down when this has started tonight's night (job "started").
       timer:
         description: "Started by the night's timer (workers/night-timer), not by hand"
@@ -308,9 +309,12 @@ jobs:
       # above says why). The box reaches the script through NOTES and never
       # into its text, so nothing typed in it runs. Then what merged since the
       # commit the live site was built from (its build.json), first parent
-      # only, and the link to every change. This step never fails the night.
+      # only, and the link to every change; each subject has its &, < and >
+      # escaped, so a <word> in one is shown and not taken for a tag. Not on
+      # the timer's nights, which give no notes. This step never fails the
+      # night.
       - name: The patch notes
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && !(inputs.timer == true || inputs.timer == 'true')
         env:
           NOTES: ${{ inputs.notes }}
         run: |
@@ -325,6 +329,7 @@ jobs:
               $out += "This is the commit the live site was built from ($($head.Substring(0, 8)))."
             } elseif ($live -and ([string](git cat-file -t $live 2>$null)).Trim() -eq "commit") {
               $log = @(git log --first-parent --format="- %s" "$live..$head")
+              $log = @($log | ForEach-Object { $_ -replace '&','&amp;' -replace '<','&lt;' -replace '>','&gt;' })
               $out += "### Merged since the live site ($($live.Substring(0, 8)) to $($head.Substring(0, 8)))"
               $out += ""
               $out += @($log | Select-Object -First 40)

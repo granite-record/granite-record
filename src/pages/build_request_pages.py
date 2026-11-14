@@ -32,6 +32,7 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import json
+import re
 
 import shell as S
 import components as C
@@ -65,16 +66,19 @@ def abbr_html(text, abbr, hard=False):
 
 
 def sponsors(site):
-    """{slug: {"party_code", "display_full", "slug"}} for the chip: the roster's
-    members and the provisional members-elect pages."""
+    """{slug: {"party_code", "display_full", "slug"}} for the chip: the sitting
+    roster's members (legislators.json) and the provisional members-elect pages
+    (elect_pages.json). former.json is deliberately NOT read: a former member
+    holds no seat, and their display_full names the old one, which others hold
+    now (the review of 13 November 2026); person_chip draws them from the
+    request's own row instead."""
     out = {}
-    for name in ("legislators.json", "former.json"):
-        f = site / name
-        for m in (json.loads(f.read_text(encoding="utf-8")) if f.is_file() else []):
-            if m.get("slug"):
-                out[m["slug"]] = {"party_code": m.get("party"), "slug": m["slug"],
-                                  "display_full": m.get("display_full") or m.get("display")
-                                  or m.get("name")}
+    f = site / "legislators.json"
+    for m in (json.loads(f.read_text(encoding="utf-8")) if f.is_file() else []):
+        if m.get("slug"):
+            out[m["slug"]] = {"party_code": m.get("party"), "slug": m["slug"],
+                              "display_full": m.get("display_full") or m.get("display")
+                              or m.get("name")}
     f = site / "elect_pages.json"
     for p in (json.loads(f.read_text(encoding="utf-8")).get("pages") or [] if f.is_file() else []):
         out.setdefault(p["slug"], {"party_code": p.get("party"), "slug": p["slug"],
@@ -96,13 +100,26 @@ def state_of(r):
     return "Withdrawn" if r.get("withdrawn") else (r.get("status") or "")
 
 
+def person_chip(who_of, slug, label, party=""):
+    """THE ONE RULE for a person on a request's page (13 November 2026): a
+    sitting member, or a provisional member-elect page, keeps the chip the
+    roster gives -- their seat today. Anyone else the row names, a returning
+    former member for one, is drawn as the row's own label and party, linked
+    to their page when there is a slug, as the request's card draws them
+    ("Ben Baroody (D)"): their old seat belongs to someone else now. `party`
+    is the row's party code; where the caller has none it is read from a
+    trailing "(D)" in the label."""
+    m = who_of.get(slug) if slug else None
+    if m:
+        return C.pchip(m)
+    tag = re.search(r"\(([A-Za-z])\)\s*$", label or "")
+    return C.pchip({"party_code": party or (tag.group(1) if tag else ""),
+                    "slug": slug or "", "display_full": label or ""})
+
+
 def chips_of(people, who_of):
     """The chips of the people a row names: [{"label", "slug"}, ...]."""
-    out = []
-    for c in people or []:
-        m = who_of.get(c.get("slug")) or {"display_full": c.get("label"), "slug": c.get("slug") or ""}
-        out.append(C.pchip(m))
-    return out
+    return [person_chip(who_of, c.get("slug"), c.get("label")) for c in people or []]
 
 
 def rail_of(r):
@@ -147,11 +164,11 @@ def head(r, req, who_of, path, base):
     A field the request has no value for is left out, as the bill page leaves
     its own out: no Committee until it is referred."""
     word = state_of(r)
-    sponsor = who_of.get(r.get("sponsor_slug"))
+    slug = r.get("sponsor_slug")
     name = r.get("sponsor_label") or r.get("sponsor") or ""
     facts = []
-    if sponsor:
-        facts.append(["Prime Sponsor", C.pchip(sponsor)])
+    if slug and (slug in who_of or name):
+        facts.append(["Prime Sponsor", person_chip(who_of, slug, name, r.get("sponsor_party") or "")])
     elif name:
         facts.append(["Prime Sponsor", E(name)])
     cos = chips_of(r.get("cosponsors"), who_of)

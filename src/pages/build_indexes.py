@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.28
+# GRANITE_VERSION: 2026-09-13.31
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -109,16 +109,35 @@ def requests_label(site):
     return {req["term"]: req.get("label") or req["term"]} if req.get("term") else {}
 
 
+def href_of(to):
+    """The link for a target request_target gave: the page, without .html, and
+    a query ("bills?term=...") kept after it."""
+    path, q, query = to.partition("?")
+    return S.canon(path + ".html") + q + query
+
+
+def request_target(r):
+    """Where a row of the list links, without the .html: a bill's own page; a
+    request's "moved_to" or else its "address"; "" for a request that has
+    neither."""
+    if not r.get("lsr"):
+        return f"bill/{r.get('year')}/{r['id'].lower()}"
+    return str(r.get("moved_to") or r.get("address") or "")
+
+
 def bills_page(site, base, term, rows, urls, label=""):
     """One term's list. `label` is given for the term of requests.
 
-    A REQUEST HAS NO PAGE, SO ITS NUMBER IS NOT A LINK. Every row was written
-    as a link to bill/<year>/<id>, and build_bill_pages.py builds no page for
-    a request: the 241 links on /directory/bills-2027-requests all answered
-    404 (the audit of 2 October 2026). The bill list has always known it --
-    an LSR's card there carries no link to a page of its own. A row marked
-    `lsr` is its number as text; the list says where the requests can be
-    searched, which is the one page that holds them.
+    A REQUEST LINKS ITS OWN PAGE, NEVER bill/<year>/lsr... Every row was once
+    written as a link to bill/<year>/<id>, and build_bill_pages.py builds no
+    page for a request: the 241 links on /directory/bills-2027-requests all
+    answered 404 (the audit of 2 October 2026). Since 8 November every request
+    has a page of its own (build_request_pages.py), so a row marked `lsr` links
+    its "moved_to" or else its "address". "moved_to" is where the address
+    forwards: the bill's page once the request is a bill or, once filing is
+    complete (build_lsrs.retire), the sponsor's page or the requests' search.
+    A row with neither stays its number as text. The lead says no more than
+    where the requests can be searched: the rows' links speak for themselves.
     """
     groups = defaultdict(list)
     for r in rows:
@@ -132,9 +151,9 @@ def bills_page(site, base, term, rows, urls, label=""):
                     f'<span class="dircount">{len(items):,}</span></h2><ul class="dirbills">')
         for r in items:
             num = S.E(r.get("n") or r["id"])
-            if not r.get("lsr"):
-                href = S.canon(f"bill/{r.get('year')}/{r['id'].lower()}.html")
-                num = f'<a href="{S.E(href)}">{num}</a>'
+            to = request_target(r)
+            if to:
+                num = f'<a href="{S.E(href_of(to))}">{num}</a>'
             # THE CHIP'S WORD, as the bill list's card says it
             # (build_site_v2.chip_word): Died, not how it died, which is on
             # the bill's own page. A request has no chip, and its status --
@@ -152,10 +171,9 @@ def bills_page(site, base, term, rows, urls, label=""):
               f"All {len(rows):,} requests for bills filed so far for the next session of "
               "the New Hampshire General Court, by request number, with each one's title.",
               label,
-              f"{len(rows):,} requests, by number. A request has no page of its own "
-              "until it is filed as a bill; "
+              f"{len(rows):,} requests, by number. "
               f'<a href="{S.E(S.canon("bills.html") + "?term=" + quote_plus(term))}">'
-              "the bill search lists them</a> with their sponsors.",
+              "The bill search</a> lists them with their sponsors.",
               "".join(body), urls, nav="bills.html")
         return len(rows)
     write(site, base, f"/directory/bills-{term}.html",
@@ -677,13 +695,14 @@ def main():
     urls = []
 
     terms = sorted((p.stem for p in (site / "idx").glob("*.json")), reverse=True)
-    counts, linked = {}, 0
+    counts, linked, nolink = {}, 0, {}
     named = requests_label(site)
     for term in terms:
         rows = json.loads((site / "idx" / f"{term}.json").read_text(encoding="utf-8"))
         rows = rows if isinstance(rows, list) else rows.get("bills", [])
         counts[term] = bills_page(site, base, term, rows, urls, label=named.get(term, ""))
-        linked += sum(1 for r in rows if not r.get("lsr"))
+        linked += sum(1 for r in rows if request_target(r))
+        nolink[term] = sum(1 for r in rows if not request_target(r))
     n_terms = len([t for t in terms if t not in named])
     legs = json.loads((site / "legislators.json").read_text(encoding="utf-8"))
     assert all(m.get("slug") for m in legs), "a legislator has no slug in legislators.json"
@@ -746,8 +765,8 @@ def main():
     print(f"  {n_terms} terms of bills, {n_leg} legislators, {n_town} towns and wards"
           + (f", {n_days.get('H', 0):,} House and {n_days.get('S', 0):,} Senate "
              "session days" if n_days else "")
-          + "".join(f"; {counts[t]:,} of the {label} listed without a link, as a request "
-                    "has no page" for t, label in named.items() if t in counts))
+          + "".join(f"; {nolink[t]:,} of the {label} listed without a link, with no page "
+                    "to link" for t, label in named.items() if nolink.get(t)))
     empty = [t for t, n in counts.items() if not n]
     assert not empty, f"a term index listed no bills: {empty}"
     return 0

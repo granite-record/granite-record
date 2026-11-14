@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.3
+# GRANITE_VERSION: 2026-11-08.4
 """
 A provisional page for each new member-elect: who they are until the General
 Court numbers them.
@@ -14,13 +14,16 @@ stay past Organization Day until then (B3).
 
 WHAT THIS WRITES
 
-  site/elect_pages.json   {"election", "takes_office", "pages": [...]}, one
-                          entry for each new member-elect with a page: slug,
-                          name as the results print it, party, chamber,
-                          county, district, race and towns. Nothing else, and
-                          no id: a member-elect has none until the General
-                          Court assigns one (the owner's rule of 30 October
-                          2026, commit 776cbe70).
+  site/elect_pages.json   {"election", "takes_office", "sources", "pages":
+                          [...], "moved"}, one entry in "pages" for each new
+                          member-elect with a page: slug, name as the results
+                          print it, party, chamber, county, district, race and
+                          towns, and "prior" ({"terms", "seat"}) where the
+                          person confirmed their earlier service in the hand
+                          file (build_members_elect.apply_prior). Nothing
+                          else, and no id: a member-elect has none until the
+                          General Court assigns one (the owner's rule of 30
+                          October 2026, commit 776cbe70).
 
 build_legislator_pages.py draws each page from this; build_members_elect.py
 links a new person's chip to it; build_lsrs.py matches their requests by
