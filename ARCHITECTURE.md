@@ -1980,15 +1980,23 @@ winner New; a record of terms and a seat makes them Returning, with the
 provisional page saying what it was and no member page linked. Evidence is
 required and never published. The Officials tab draws the status as the chip's
 one word, counts each kind, and carries a search box and filters by status,
-party and chamber: each item carries what it is matched by
-(`officials_tabs.elect_attrs`), and the tab's own script,
-`officials_tabs.ELECT_FILTER_JS`, styled in `app.css`, matches as the header
-search does. Every word typed must be in the ballot's name, the linked
-member's name as their record gives it, the district's words or the towns,
-accents folded; a word under five letters must start a word; rep, sen and
-their long forms are a title and left out; and a number names a district,
-"merr 5" Merrimack 5 and not 15, "sd 8" Senate District 8, "ward 5" a town's
-ward. Without the script it is the plain lists.
+party and chamber. Each item carries what it is matched by
+(`officials_tabs.elect_attrs`): the ballot's name and the linked member's
+name as their record gives it, the district's words and the towns, accents
+folded, a name or town with an apostrophe both without it and with it read as
+a space, and "loc." and "pur." as location and purchase. The tab's own script,
+`officials_tabs.ELECT_FILTER_JS`, styled in `app.css`, folds what is typed the
+same way, drops a pasted chip's quotes, parentheses, "Elect" and party
+letter, and needs every word in the item, a word under five letters at the
+start of a word. Rep, sen and their long forms are left out of a name, and
+before a number name the chamber ("sen 8" is Senate District 8, "rep 8" a
+House district 8). A number is a district's: after a word that begins a
+county's name, "senate" or "sd" it is that district's number ("merr 5" is
+Merrimack 5 and not 15), alone or after "district" any district's, and
+"<county> district N" takes the three together; after "ward" it is a town's
+ward, and "<town> ward N" takes the three together; after any other word it
+is a district's number or that town's ward. Without the script it is the
+plain lists.
 
 Every new winner has a provisional page: `src/pages/build_elect_pages.py`
 writes `site/elect_pages.json` and `build_legislator_pages.py` draws the
@@ -2005,8 +2013,9 @@ office, by the build's day and the reader's clock.
 ## Sponsors before 1999 (13 November 2026)
 
 The bills of 1989-1998 print a sponsor as a surname, sometimes an initial, and
-a seat, and no roll call exists for those years, so a surname cannot be placed
-on a person by the votes. `src/parse/past_roster.py` places it by the General
+a seat, and the named roll calls this site reads begin in 1999, so a surname
+of those years cannot be placed on a person by the votes.
+`src/parse/past_roster.py` places it by the General
 Court's own sponsor record instead: each bill's stored LSR leads to its sponsor
 rows, those to employee numbers, and those to a name in `past_members.json`. A
 printed sponsor is placed only where that bill's own rows settle it; a
@@ -2041,13 +2050,19 @@ seats them in where it names that one person without doubt
 else the row's own, which before 1999 is the member's last. They are published
 as `past_terms` ({chamber: [term, ...]}) on the member's row of
 `legislators.json` or `former.json` and in their own file, and
-`member_links.record_spans` adds each to its chamber's years: terms that run
-into each other join, and a term the record lacks keeps a 1989-1998 term
-apart, shown as a gap and never bridged. `app.js` works the line out the same
-way, and `build_legislator_pages.record_spans` says it on the plain page and in
-the page's description. So the line's terms before 1999 are the ones the
-page's TERM picker offers, and preflight's `_on_record_terms_built` holds every
-member's file in a built site to that, on the night's `preflight.py --built`.
+`member_links.record_spans` adds each to its chamber's years. The span since
+1999 runs first to last (each chamber's own spans, gaps shown, where the page
+joins two), and a 1989-1998 term joins it, or another 1990s term, only where
+the terms run into each other: a term the record lacks between a 1990s run
+and the rest is shown as a gap, never bridged. `app.js` works the line out the
+same way, and `build_legislator_pages.record_spans` says it on the plain page
+and in the page's description. The build says how many member-terms the Manual
+seated, or that no Manual's seat list was read, and how many rows it seats in
+another chamber than their own, whose bill pages still name the row's
+(`build_site_v2.sponsor_record_said`). So the line's terms before 1999 are the
+ones the page's TERM picker offers, and preflight's `_on_record_terms_built`
+holds every member's file in a built site to that, on the night's
+`preflight.py --built`.
 
 ## Next session's bill requests (November 2026)
 
@@ -2056,12 +2071,14 @@ request has a title and a prime sponsor, so the search finds it by the
 sponsor's name (prime or co-sponsor; sitting, member-elect or former) and the
 Sponsor filter lists each with their party, where the roster or the results
 give one. A prime sponsor is found by every name the site prints for them:
-where the card's label or the page it links to spells the sponsor otherwise
-than the list does ("Lee C. Nyquist", the results' spelling, for "Lee
-Nyquist"; "James Creighton", his page's, for "Jim Creighton"), the row carries
-those spellings as `sponsor_names` (`with_sponsor_names`), and the search and
-the Sponsor filter's box read them beside `sponsor` (`app.js`,
-`sponsorNames`). A sponsor the roster misses is
+where the card's label or the page it links to gives the name in other words
+than the list does, as the search reads words (accents and apostrophes left
+out, a full stop no difference, a hyphen a break) -- "Lee C. Nyquist", the
+results' spelling, for "Lee Nyquist"; "James Creighton", his page's, for "Jim
+Creighton" -- the row carries those spellings as `sponsor_names`
+(`with_sponsor_names`), and the search and the Sponsor filter's box, which
+reads a typed name by the search's own rule, read them beside `sponsor`
+(`app.js`, `sponsorNames`). A sponsor the roster misses is
 matched to a winner of the latest general election in the request's own
 chamber, and only where certain: a middle initial, a short nickname pair
 (`NICKNAMES`), a race under recount, a member changing chambers. Two winners of
@@ -2073,14 +2090,17 @@ topic classifier with the committee left out, and none below its threshold).
 
 Each request has a page of its own at its row's `address`, `/request/<number>`
 (`src/pages/build_request_pages.py`), until the row carries a `moved_to` --
-the bill's page, once it is filed as one -- and the address forwards there; the
-requests' list in the directory links each row's number to its `moved_to`,
-else its `address` (`build_indexes.request_target`). On a request's page a
-sitting member keeps the roster's chip, with the seat they hold, and a new
-member-elect the chip of their provisional page; anyone else the row names, a
-former member elected again among them, is drawn from the row's own label and
-party and linked to their page (`build_request_pages.person_chip`), since
-their old seat is someone else's now.
+the bill's page once it becomes a numbered bill or, from the day filing for
+the session is complete (`build_lsrs.retire`), its prime sponsor's page, or the
+requests' search where the sponsor has none; a withdrawn request keeps its
+page -- and the address forwards there. The requests' list in the directory
+links each row's number to its `moved_to`, else its `address`
+(`build_indexes.request_target`). On a request's page a sitting member keeps
+the roster's chip, with the seat they hold, and a new member-elect the chip of
+their provisional page; anyone else the row names, a former member elected
+again among them, is drawn from the row's own label and party and linked to
+their page (`build_request_pages.person_chip`), since their old seat is
+someone else's now.
 
 ## Town websites and staff (November 2026)
 
@@ -2117,9 +2137,11 @@ shows the writers reach them when named and nothing when not.
 ## The patch notes (13 November 2026)
 
 A night started by hand has a Notes box, and its step "The patch notes"
-(`nightly.yml`, run only on a run by hand) writes them to the run's page with
-the commits merged since the live site's own, taken from its `build.json`,
-first parent only, and a link to every change. The box reaches the step in an
+(`nightly.yml`, run only on a night started by hand: not on a scheduled night,
+nor on one the night's timer starts, which ticks `timer`) writes them to the
+run's page with the commits merged since the live site's own, taken from its
+`build.json`, first parent only, each subject with its `&`, `<` and `>`
+escaped, and a link to every change. The box reaches the step in an
 environment entry and never into script text, and the step never fails the
 night; `_workflows_patch_notes` holds both. CONTRIBUTING.md says how to use it.
 
@@ -2128,9 +2150,15 @@ night; `_workflows_patch_notes` holds both. CONTRIBUTING.md says how to use it.
 `src/pages/learn_numbers.py` makes each chart's margins from its labels'
 measured width rather than a fixed figure, and a number table fills its column
 with heads that wrap between words only. The flow diagram's minimum width and
-the tables' scroll cue and sticky first column apply on a phone only, and the
-page's print rules stop clipping. preflight holds the label extents and the CSS
-rules.
+the tables' scroll cue apply on a phone only, and so does a table's sticky
+first column, on every figures table but the flow diagram's (`.l-twin`), whose
+first column is wider than a phone's box; the page's print rules stop
+clipping. A scatter chart sets each committee it names beside its point, or,
+where the name fits neither side, on a free line above or below it, never
+across its own point; committees tied on a rate are drawn in name order, and
+of two named at one rate the right-hand one is labelled first, so a chart
+comes out the same on every build. preflight holds the label extents and the
+CSS rules.
 
 ## The other offices' successors (23 October 2026)
 
