@@ -1986,17 +1986,24 @@ name as their record gives it, the district's words and the towns, accents
 folded, a name or town with an apostrophe both without it and with it read as
 a space, and "loc." and "pur." as location and purchase. The tab's own script,
 `officials_tabs.ELECT_FILTER_JS`, styled in `app.css`, folds what is typed the
-same way, drops a pasted chip's quotes, parentheses, "Elect" and party
-letter, and needs every word in the item, a word under five letters at the
-start of a word. Rep, sen and their long forms are left out of a name, and
-before a number name the chamber ("sen 8" is Senate District 8, "rep 8" a
-House district 8). A number is a district's: after a word that begins a
+same way, reads an initial's full stop as nothing, and drops a pasted chip's
+quotes, parentheses and "Elect" and, where two words or more are typed, a
+lone letter that is the item's party or a pair of party letters ("r/d"); it
+needs every word in the item, a word under five letters at the start of a
+word. Rep, sen and their long forms are left out of a name, and before a
+number name the chamber ("sen 8" is Senate District 8, "rep 8" a House
+district 8), as they do two words back, before "district" or a county word
+("sen district 8"). A number is a district's: after a word that begins a
 county's name, "senate" or "sd" it is that district's number ("merr 5" is
 Merrimack 5 and not 15), alone or after "district" any district's, and
 "<county> district N" takes the three together; after "ward" it is a town's
 ward, and "<town> ward N" takes the three together; after any other word it
-is a district's number or that town's ward. Without the script it is the
-plain lists.
+is a district's number or that town's ward. A county word or "ward" that the
+word typed before it makes into a full name, or a county word it makes into a
+two-word town ("sugar hill 5"), names nothing: the number is read as after
+any other word, and before "district" as after "district" alone. A county
+word alone keeps the county's reading ("merrimack 5" is the county's district,
+not the town's). Without the script it is the plain lists.
 
 Every new winner has a provisional page: `src/pages/build_elect_pages.py`
 writes `site/elect_pages.json` and `build_legislator_pages.py` draws the
@@ -2040,29 +2047,39 @@ in `gc_employee_number`, and never renumbered. preflight holds the two kinds of
 identifier apart and the register to growth.
 
 A member's page says the years the record places them in on its "On Record"
-line, and before 1999 the bills they sponsored are its only source.
+line. Before 1999 the named roll calls give none, and two sources do.
 `member_links.earlier_terms` takes, by chamber, the 1989-1998 term of every
 bill the General Court's sponsor record puts on the member: a printed sponsor
 `past_roster.py` placed, in the chamber the bill printed, and a row the record
 supplies itself (`past_sponsors.filled`), in the chamber that term's Manual
 seats them in where it names that one person without doubt
 (`build_site_v2.sponsor_record_chambers`, through `past_roster.term_seat`),
-else the row's own, which before 1999 is the member's last. They are published
-as `past_terms` ({chamber: [term, ...]}) on the member's row of
-`legislators.json` or `former.json` and in their own file, and
+else the row's own, which before 1999 is the member's last. And a term their
+bills do not show counts too, in the Manual's chamber, where that term's
+Manual seats one of the member's own General Court numbers without doubt
+(`build_site_v2.manual_seats`, through `past_roster.term_seat`). A doubtful
+seat counts for nothing, and so does one that may be another person's: a full
+name another number of the General Court's list shares, a House seat in a
+county the member's record never names, a chamber their record has nowhere,
+or a term whose bills of theirs print the other chamber. The two together are
+published as `past_terms` ({chamber: [term, ...]}) on the member's row of
+`legislators.json` or `former.json` and in their own file, which carries the
+Manual's terms alone beside them as `manual_terms`, and
 `member_links.record_spans` adds each to its chamber's years. The span since
 1999 runs first to last (each chamber's own spans, gaps shown, where the page
 joins two), and a 1989-1998 term joins it, or another 1990s term, only where
 the terms run into each other: a term the record lacks between a 1990s run
 and the rest is shown as a gap, never bridged. `app.js` works the line out the
 same way, and `build_legislator_pages.record_spans` says it on the plain page
-and in the page's description. The build says how many member-terms the Manual
-seated, or that no Manual's seat list was read, and how many rows it seats in
-another chamber than their own, whose bill pages still name the row's
-(`build_site_v2.sponsor_record_said`). So the line's terms before 1999 are the
-ones the page's TERM picker offers, and preflight's `_on_record_terms_built`
-holds every member's file in a built site to that, on the night's
-`preflight.py --built`.
+and in the page's description. The build says how many of the record's
+member-terms the Manual seated, and how many rows it seats in another chamber
+than their own, whose bill pages still name the row's
+(`build_site_v2.sponsor_record_said`); how many pages took how many terms from
+it, and how many seats it left out of each kind (`manual_said`); or that no
+Manual's seat list was read. So the line's terms before 1999 are the ones the
+page's TERM picker offers, with the Manual's (`manual_terms`) added, and
+preflight's `_on_record_terms_built` holds every member's file in a built site
+to that, on the night's `preflight.py --built`.
 
 ## Next session's bill requests (November 2026)
 
