@@ -32228,8 +32228,9 @@ def _elect_returning_pages(OT, LP, BME):
                 bad.append(what)
     # The plain page, for a reader without script: the same form, with the years app.js gives
     # (the review before the release of 16 November 2026: the 25 returning pages had none).
+    until = LP.until_attrs("2026-12-02", "2026-11-20")
     plain_html = LP.static_record(vose, vose, LP.elect_line(None, "2026-11-03", "2026-12-02",
-                                                           "2026-11-20"), {}, back["vose"])
+                                                           "2026-11-20"), {}, back["vose"], until)
     for want in ("<h1>Michael Vose (R)</h1>", f"<p>{back['vose']['where']}</p>", line,
                  "<p>Earlier seat: Rep. Michael Vose (R - Rock 5)</p>",
                  "<li><b>On record:</b> House, 2017–2018</li>"):
@@ -32238,8 +32239,21 @@ def _elect_returning_pages(OT, LP, BME):
     # And where the record gives no span, the years of their service, as app.js falls back to.
     bare = dict(vose, attendance={}, served={"first": "1/4/2017", "last": "12/5/2018"})
     if "<li><b>On record:</b> 2017 to 2018</li>" not in LP.static_record(bare, bare, "", {},
-                                                                          back["vose"]):
+                                                                          back["vose"], until):
         bad.append("the plain page of a returning member with no span on record gives no years")
+    # THE FACT IS THE MEMBERS-ELECT FILE'S (_elect_pages_never_sitting): drawn inside what carries
+    # data-elect and the day it retires, the list itself where it holds nothing else, so the page
+    # once that is taken out is the former member's, whose sentence carries the years.
+    counted = dict(vose, counts={"Yea": 3})
+    with_counts = LP.static_record(counted, counted, "", {}, back["vose"], until)
+    for name, html in (("alone", plain_html), ("beside the roll call counts", with_counts)):
+        if "On record:" in _elect_strip(html) or not re.search(
+                r'<(?:ul|li)\b[^>]*\sdata-elect data-until="2026-12-02"[^>]*>(?:<li>)?<b>On record:</b> '
+                r'House, 2017–2018</li>', html):
+            bad.append(f"the plain returning page's On record fact, {name}, is not inside what "
+                       f"carries data-elect and its day: {html[:400]}")
+    if "Recorded roll call votes:</b> Yea 3" not in _elect_strip(with_counts):
+        bad.append("taking the members-elect file's fact out takes the roll call counts with it")
     if "not a current directory entry" in plain_html:
         bad.append("the plain page of a returning member-elect says it is not a current directory entry")
     if "Former Representative" in plain_html:
