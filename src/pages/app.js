@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.318
+// GRANITE_VERSION: 2026-09-07.319
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3722,6 +3722,10 @@ function sponsorFitsName(v,f){
   if(v.toLowerCase().includes(f))return true;
   const {want}=nameWords(f);
   if(!want.length)return false;
+  // The search box's own rule (namesFit), so a name typed as its card prints
+  // it ("W. Packy Campbell") or with an initial's full stop left off ("lee c
+  // nyquist") lists the sponsor here as it lists their requests there.
+  if(namesFit(want,[v]))return true;
   const parts=hintWords(v);
   // One of the words must start a word of the name itself: an initial alone
   // ("a" of "A. Merrill") is no reason to list a sponsor for "allen".
@@ -6504,16 +6508,21 @@ function renderSponsors(b,d){
   const fromText=spAll.length&&spAll.every(s=>s.source==="bill text");
   const asPrinted=fromText&&spAll.some(s=>!s.member_id&&!s.matched);
   // 1989 to 1998: the bill prints a surname, sometimes an initial, and a seat,
-  // as later bills do, but no roll call of those years is on this site to
-  // match it against. The General Court's sponsor record for the same bill
-  // (the employee numbers on it) names the person where only one of its
-  // numbers fits what was printed (past_roster.place), or, where two of one
-  // surname are on it, where the Manual for the General Court of that term
-  // seats only one of them at the printed seat (past_roster.settle). A name
-  // placed so is shown in full, in the General Court's spelling; one that
-  // could not be is shown as printed. No name of those years has a party, so
-  // on a bill that has both, "without a party" is not what tells them apart.
+  // as later bills do, but no named roll call of those years is on this site
+  // to match it against (the Votes tab's words: "Named roll calls here begin
+  // in 1999"; the docket's tallies of those years are in the Summary). The
+  // General Court's sponsor record for the same bill (the employee numbers on
+  // it) names the person where only one of its numbers fits what was printed
+  // (past_roster.place), or, where the printed name fits more than one of
+  // them, where the Manual for the General Court of that term seats only one
+  // of them at the printed seat (past_roster.settle). A name placed so is
+  // shown in full, in the General Court's spelling; one that could not be is
+  // shown as printed, and a bill of those years that places no name says so
+  // in the same words (early, as renderVotes tests the term). No name of those
+  // years has a party, so on a bill that has both, "without a party" is not
+  // what tells them apart.
   const byRecord=fromText&&spAll.some(s=>s.matched);
+  const early=termStartOf(d)&&termStartOf(d)<1999;
   // A BILL WHOSE PRINTED LINE NAMES NOBODY. 1991 HCR 13 and HR 19 print "INTRODUCED BY:
   // REFERRED TO:" with no name after either, and the page listed a sponsor called
   // REFERRED TO. Their names come from the General Court's own sponsor record instead
@@ -6543,15 +6552,17 @@ function renderSponsors(b,d){
   return `${sp||`<p class="note">No sponsors on file.</p>`}${fromText
     ?`<p class="note" style="margin-top:12px">As named on the sponsor line of
         the bill's text, where the first name is the prime sponsor.${asPrinted&&!byRecord
-        ?` A name without a party is shown as the text prints it: it could not
-          be matched to one member who voted that term.`:""}${byRecord
-      ?` This site has no roll call from before 1999 to match a printed name
-        against. A full name here is the General Court&rsquo;s name for the one
-        person on this bill&rsquo;s own sponsor record whom the printed name and
-        any initial fit, or, where two people of one surname are on that
-        record, the one the Manual for the General Court of that term seats at
-        the printed seat.${asPrinted?` Any other name is shown as the text
-        prints it: the record could not place it on one person.`:""}`:""}</p>`:""}${unprinted
+        ?(early?` Named roll calls here begin in 1999, and this bill&rsquo;s own
+          sponsor record places no name here on one person, so each is shown
+          as the text prints it.`
+        :` A name without a party is shown as the text prints it: it could not
+          be matched to one member who voted that term.`):""}${byRecord
+      ?` Named roll calls here begin in 1999. A full name here is the General
+        Court&rsquo;s name for the one person on this bill&rsquo;s own sponsor record
+        whom the printed name fits, or, where it fits more than one, the one the
+        Manual for the General Court of that term seats at the printed seat.${asPrinted
+        ?` Any other name is shown as the text prints it: the record could not
+        place it on one person.`:""}`:""}</p>`:""}${unprinted
     ?`<p class="note" style="margin-top:12px">The bill's own text names no
         sponsor. These are the names the General Court's sponsor record gives
         it.</p>`:""}${fromJournal

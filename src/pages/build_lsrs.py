@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.14
+# GRANITE_VERSION: 2026-09-18.15
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -69,6 +69,7 @@ import _paths  # noqa: E402,F401
 import argparse
 import json
 import re
+import unicodedata
 
 def requests_term(year):
     """(the requests' term key, the term picker's label) for a session year:
@@ -195,6 +196,21 @@ def label_name(label):
     return _TITLE.sub("", re.sub(r"\s*\([^()]*\)\s*$", "", str(label or ""))).strip()
 
 
+# A name's words as the bill search reads them (app.js hintWords): accents off
+# (the combining marks U+0300 to U+036F, after NFD), lower case, an apostrophe,
+# straight or curly, dropped, and split on anything not a letter or a figure.
+_MARKS = re.compile("[%s-%s]" % (chr(0x300), chr(0x36F)))
+_APOSTROPHES = re.compile("['%s%s]" % (chr(0x2018), chr(0x2019)))
+
+
+def _words(s):
+    """The words of a name as the search splits them: "W. Packy Campbell" and
+    "W Packy Campbell" are the same words, "Mary-Jane Smith" and "Maryjane
+    Smith" are not."""
+    s = _APOSTROPHES.sub("", _MARKS.sub("", unicodedata.normalize("NFD", str(s or ""))).lower())
+    return [w for w in re.split(r"[^a-z0-9]+", s) if w]
+
+
 # NAMES THE ROSTER'S WHOLE-NAME MATCH MISSES (13 November 2026). The source
 # writes "Lee Nyquist" where the results print "Lee C. Nyquist", "Jim" for
 # "James", and a winner of a race still being recounted is on no roster and has
@@ -301,8 +317,8 @@ def winner_finder(winners):
 
     CERTAIN means: exactly one winner of that chamber is compatible and either
     the whole name is the same, or no other winner of the chamber shares their
-    surname and first initial (so "Jim Smith" is not settled by "James Smith"
-    while a "John Smith" also won). Two winners of the same whole name are
+    surname and first initial (so "James Q. Smith" is not settled by "James
+    Smith" while a "John Smith" also won). Two winners of the same whole name are
     nobody. A constitutional amendment request (no chamber) is never resolved
     here."""
     def find(name, body):
@@ -518,9 +534,11 @@ def with_sponsor_names(rows, names):
     requests. Each row of rows_from gets those names as `sponsor_names`: its
     label's name, where the label is not the list's words, and the name on
     the page its slug points to (`names`, page_names), each once and only
-    where the list's own spelling is not already it. The bill search reads
-    them beside `sponsor` (app.js sponsorNames). Returns how many rows got
-    one; a row with none carries no key."""
+    where the list's own spelling is not already it. "Already it" is the
+    words the search reads (_words): a full stop is no difference, and a
+    hyphen or a space is one ("Mary-Jane" is two words, "Maryjane" one). The
+    bill search reads them beside `sponsor` (app.js sponsorNames). Returns
+    how many rows got one; a row with none carries no key."""
     n = 0
     for r in rows:
         name = str(r.get("sponsor") or "")
@@ -528,7 +546,7 @@ def with_sponsor_names(rows, names):
         also = []
         for x in (label_name(label) if label != name else "",
                   (names or {}).get(r.get("sponsor_slug") or "", "")):
-            if x and _fold(x) != _fold(name) and all(_fold(x) != _fold(y) for y in also):
+            if x and _words(x) != _words(name) and all(_words(x) != _words(y) for y in also):
                 also.append(x)
         if name and also:
             r["sponsor_names"] = also
