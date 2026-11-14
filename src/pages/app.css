@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.390 */
+/* GRANITE_VERSION: 2026-09-07.391 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -9280,6 +9280,16 @@ font-variant-numeric:tabular-nums;white-space:nowrap}
    going down, 0px from either edge in Chrome. The padding is the date's
    height above and the fade's below, so it stops clear of both. */
 :where(body.pg) .calscroll{scroll-padding:var(--sp-10) 0 var(--sp-9)}
+/* ON THE HOME PAGE THE BOX IS A PANEL, AND THE PANEL'S GROUND IS --surface.
+   The date and the fade were painted in --paper, the page's own colour,
+   which is right on the Calendar page and was a grey band behind the dates
+   and a grey haze over the last card in the panel, which Latest Activity
+   beside it does not draw (the owner, 14 November). Same cue, same
+   mechanics, the panel's colour. The section's own 32px bottom margin sat
+   under the panel's padding as a second gap, and Latest Activity has none. */
+:where(body.pg) #upcoming .calscroll .caldate,
+:where(body.pg) #upcoming .calscroll::after{background:var(--surface)}
+:where(body.pg) #upcoming > .cal{margin-bottom:0}
 /* ---- narrow screens ---------------------------------------------------
    Most people arrive from a search result on a phone. Three things break at
    380px, and each is fixed by reflowing rather than by horizontal scrolling,
