@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.29
+# GRANITE_VERSION: 2026-09-13.30
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -109,6 +109,20 @@ def requests_label(site):
     return {req["term"]: req.get("label") or req["term"]} if req.get("term") else {}
 
 
+def href_of(to):
+    """The link for a target request_target gave: the page, without .html, and
+    a query ("bills?term=...") kept after it."""
+    path, q, query = to.partition("?")
+    return S.canon(path + ".html") + q + query
+
+
+def forwarded(rows):
+    """Whether some request forwards to a sponsor's page or to the requests'
+    search (build_lsrs.retire) rather than to its own page or its bill."""
+    return any(r.get("lsr") and request_target(r)
+               and not request_target(r).startswith(("request/", "bill/")) for r in rows)
+
+
 def request_target(r):
     """Where a row of the list links, without the .html: a bill's own page; a
     request's "moved_to" or else its "address"; "" for a request that has
@@ -121,14 +135,16 @@ def request_target(r):
 def bills_page(site, base, term, rows, urls, label=""):
     """One term's list. `label` is given for the term of requests.
 
-    A REQUEST LINKS ITS OWN PAGE, NEVER A BILL'S. Every row was once written
-    as a link to bill/<year>/<id>, and build_bill_pages.py builds no page for
-    a request: the 241 links on /directory/bills-2027-requests all answered
-    404 (the audit of 2 October 2026). Since 8 November every request has a
-    page of its own (build_request_pages.py), so a row marked `lsr` links its
-    "moved_to" -- where its address forwards once it is a bill -- or else its
-    "address". A row with neither stays its number as text. The list also says
-    where the requests can be searched.
+    A REQUEST LINKS ITS OWN PAGE, NEVER bill/<year>/lsr... Every row was once
+    written as a link to bill/<year>/<id>, and build_bill_pages.py builds no
+    page for a request: the 241 links on /directory/bills-2027-requests all
+    answered 404 (the audit of 2 October 2026). Since 8 November every request
+    has a page of its own (build_request_pages.py), so a row marked `lsr` links
+    its "moved_to" or else its "address". "moved_to" is where the address
+    forwards: the bill's page once the request is a bill or, once filing is
+    complete (build_lsrs.retire), the sponsor's page or the requests' search.
+    A row with neither stays its number as text. The lead adds a sentence only
+    when some row forwards to a sponsor or to the search (forwarded()).
     """
     groups = defaultdict(list)
     for r in rows:
@@ -144,7 +160,7 @@ def bills_page(site, base, term, rows, urls, label=""):
             num = S.E(r.get("n") or r["id"])
             to = request_target(r)
             if to:
-                num = f'<a href="{S.E(S.canon(to + ".html"))}">{num}</a>'
+                num = f'<a href="{S.E(href_of(to))}">{num}</a>'
             # THE CHIP'S WORD, as the bill list's card says it
             # (build_site_v2.chip_word): Died, not how it died, which is on
             # the bill's own page. A request has no chip, and its status --
@@ -163,9 +179,11 @@ def bills_page(site, base, term, rows, urls, label=""):
               "the New Hampshire General Court, by request number, with each one's title.",
               label,
               f"{len(rows):,} requests, by number. Each request has its own page "
-              "until it is filed as a bill; "
+              "until it becomes a numbered bill; "
               f'<a href="{S.E(S.canon("bills.html") + "?term=" + quote_plus(term))}">'
-              "the bill search lists them</a> with their sponsors.",
+              "the bill search lists them</a> with their sponsors."
+              + (" A request not filed as a bill by the close of filing forwards to "
+                 "its sponsor&rsquo;s page." if forwarded(rows) else ""),
               "".join(body), urls, nav="bills.html")
         return len(rows)
     write(site, base, f"/directory/bills-{term}.html",
