@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-13.1
+# GRANITE_VERSION: 2026-11-13.2
 """
 The House's CALL OF THE ROLL of 1989 to 1997, matched to the General Court's employee numbers only where certain.
 
@@ -10,9 +10,12 @@ county, district, name as the OCR gave it), past_members.json, db/past/ and text
 
 WHAT IT IS FOR. A second source for who sat, which does not depend on a member having sponsored a bill: a
 House member who sponsored nothing has no row from the sponsor route, and the roll names every seat. It is
-read as a SECOND SOURCE: the sponsor route (build_past_roster.py) is checked against it, and it adds the
-people the sponsor route cannot see. It states no party (the roll prints the nominating party, and no party
-is given before 1999 at this stage).
+read as a SECOND SOURCE: the sponsor route (build_past_roster.py) is checked against it, and a name is
+placed only on one of the term's sponsors (pool), never on someone the sponsor route does not name for
+the term. A name it cannot place, a member who sponsored nothing among them, is listed attached to no one
+(past_roster.json's roll_names_placed_on_nobody; one whose seat contradicts the printed one, in
+roll_seat_disagreements). It states no party (the roll prints the nominating party, and no party is given
+before 1999 at this stage).
 
 WHAT IS CERTAIN. A roll entry is placed on an employee number only where the surname is exactly a surname of
 exactly one person who sponsored in that term (the sponsor route's own people, so there is evidence the

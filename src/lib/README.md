@@ -22,7 +22,12 @@ Shared by every stage:
 - `build_cache`: answers a build step worked out on an earlier run, kept in
   `.build_cache/` under a sha256 of their inputs and their code, and carried
   to the night by the kit -- used by `parse/build_bill_versions.py` and
-  `parse/officers.py` (which `pages/` reads twice a build).
+  `parse/officers.py` (which `pages/` reads twice a build);
+- `gr_ids`: Granite Record's own ids, `gr-` and a serial, for a person the
+  record names and the General Court gives no number, kept in their own field
+  (`granite_id`) and never in `gc_employee_number`: the register's reader and
+  the checks that hold the two apart, used by `ops/gr_register.py` and
+  `parse/build_past_roster.py`.
 
 A module comes here only when scripts in several folders import it and it
 belongs to no single stage. A helper used by one folder lives in that

@@ -1922,11 +1922,12 @@ tab and its Senate card, with "Serving now" over the sitting members; in
 keys), which `find.js` draws in the My Town card; as the Officials page's
 Members-Elect tab, laid out as the Legislators tab is (the Senate and then
 the House, by last name or by county), each member-elect the person chip with
-one word beside it -- Incumbent (re-elected to the seat they hold), New
-district, New chamber or New, from the file's `k` and `own` -- and each
-chamber's totals at the top; as one
+one word beside it -- Returning, Incumbent, New chamber, New or Prior service
+not on record, the status `build_members_elect.elect_status` gives (below) --
+and each chamber's totals at the top; as one
 line on the page of each member the file links, which `app.js` draws from
-`GR_ELECT` only for that member; and in the district map's panel, from
+`GR_ELECT` only for that member (a former member elected again is re-headed
+there too, below); and in the district map's panel, from
 `district_map.json`'s `elect`, the fill still the sitting members'. With no
 file every page is the page it was, byte for byte. preflight's
 `_elect_pages_never_sitting`, `_elect_pages_link_own` and `_elect_pages_retire`
@@ -1979,17 +1980,27 @@ winner New; a record of terms and a seat makes them Returning, with the
 provisional page saying what it was and no member page linked. Evidence is
 required and never published. The Officials tab draws the status as the chip's
 one word, counts each kind, and carries a search box and filters by status,
-party and chamber (`officials_tabs.py`, `app.js`); without the script it is
-the plain lists.
+party and chamber: each item carries what it is matched by
+(`officials_tabs.elect_attrs`), and the tab's own script,
+`officials_tabs.ELECT_FILTER_JS`, styled in `app.css`, matches as the header
+search does. Every word typed must be in the ballot's name, the linked
+member's name as their record gives it, the district's words or the towns,
+accents folded; a word under five letters must start a word; rep, sen and
+their long forms are a title and left out; and a number names a district,
+"merr 5" Merrimack 5 and not 15, "sd 8" Senate District 8, "ward 5" a town's
+ward. Without the script it is the plain lists.
 
 Every new winner has a provisional page: `src/pages/build_elect_pages.py`
 writes `site/elect_pages.json` and `build_legislator_pages.py` draws the
 pages, which are noindex until the General Court numbers the person and
 outlive Organization Day. The Officials tab links each one, reading the same
-`e` entry the town pages read. A former member elected again, or a sitting
-member elected to the other chamber, is headed on their own page as the
-member-elect of the new seat, the earlier seat kept below; both end with the
-term, by the build's day.
+`e` entry the town pages read. Only a former member elected again is
+re-headed: their own page is headed as a new member-elect's is, the
+member-elect of the new seat, with the earlier seat kept below. A sitting
+member elected to the other chamber keeps the heading of the seat they hold,
+with the member-elect sentence beside it (`build_legislator_pages.elect_mode`,
+whose word `app.js` reads from `GR_ELECT`). Both end on the day they take
+office, by the build's day and the reader's clock.
 
 ## Sponsors before 1999 (13 November 2026)
 
@@ -2019,12 +2030,38 @@ person the record names and the General Court gives no number
 in `gc_employee_number`, and never renumbered. preflight holds the two kinds of
 identifier apart and the register to growth.
 
+A member's page says the years the record places them in on its "On Record"
+line, and before 1999 the bills they sponsored are its only source.
+`member_links.earlier_terms` takes, by chamber, the 1989-1998 term of every
+bill the General Court's sponsor record puts on the member: a printed sponsor
+`past_roster.py` placed, in the chamber the bill printed, and a row the record
+supplies itself (`past_sponsors.filled`), in the chamber that term's Manual
+seats them in where it names that one person without doubt
+(`build_site_v2.sponsor_record_chambers`, through `past_roster.term_seat`),
+else the row's own, which before 1999 is the member's last. They are published
+as `past_terms` ({chamber: [term, ...]}) on the member's row of
+`legislators.json` or `former.json` and in their own file, and
+`member_links.record_spans` adds each to its chamber's years: terms that run
+into each other join, and a term the record lacks keeps a 1989-1998 term
+apart, shown as a gap and never bridged. `app.js` works the line out the same
+way, and `build_legislator_pages.record_spans` says it on the plain page and in
+the page's description. So the line's terms before 1999 are the ones the
+page's TERM picker offers, and preflight's `_on_record_terms_built` holds every
+member's file in a built site to that, on the night's `preflight.py --built`.
+
 ## Next session's bill requests (November 2026)
 
 `src/pages/build_lsrs.py` makes the requests term the bill search opens. A
 request has a title and a prime sponsor, so the search finds it by the
 sponsor's name (prime or co-sponsor; sitting, member-elect or former) and the
-Sponsor filter lists each with party and seat. A sponsor the roster misses is
+Sponsor filter lists each with their party, where the roster or the results
+give one. A prime sponsor is found by every name the site prints for them:
+where the card's label or the page it links to spells the sponsor otherwise
+than the list does ("Lee C. Nyquist", the results' spelling, for "Lee
+Nyquist"; "James Creighton", his page's, for "Jim Creighton"), the row carries
+those spellings as `sponsor_names` (`with_sponsor_names`), and the search and
+the Sponsor filter's box read them beside `sponsor` (`app.js`,
+`sponsorNames`). A sponsor the roster misses is
 matched to a winner of the latest general election in the request's own
 chamber, and only where certain: a middle initial, a short nickname pair
 (`NICKNAMES`), a race under recount, a member changing chambers. Two winners of
@@ -2033,6 +2070,17 @@ as typed. A request whose sponsor is not returning is dropped and its address
 forwards to the requests' list, matched by member and never by name. A
 request's topic comes from its title alone (`src/parse/request_topics.py`: the
 topic classifier with the committee left out, and none below its threshold).
+
+Each request has a page of its own at its row's `address`, `/request/<number>`
+(`src/pages/build_request_pages.py`), until the row carries a `moved_to` --
+the bill's page, once it is filed as one -- and the address forwards there; the
+requests' list in the directory links each row's number to its `moved_to`,
+else its `address` (`build_indexes.request_target`). On a request's page a
+sitting member keeps the roster's chip, with the seat they hold, and a new
+member-elect the chip of their provisional page; anyone else the row names, a
+former member elected again among them, is drawn from the row's own label and
+party and linked to their page (`build_request_pages.person_chip`), since
+their old seat is someone else's now.
 
 ## Town websites and staff (November 2026)
 
@@ -2045,9 +2093,16 @@ An entry may carry the town's select board, used in place of NHDOT's even where
 the town's page fails the current-and-whole rule (lending no directory
 contact), and its contact e-mail. A CivicPlus "Contact Us" block is read card
 by card (`parse_town_sites.contact_cards`: the name, then the title; the
-office's own card and anyone "Vacant" skipped), and a town's own staff list
-replaces NHDOT's rows on its page where its current page gave one
-(`build_town_pages.py`), saying the page and the day.
+office's own card and anyone "Vacant" skipped). For a town named in the hand
+file, and only for one, the staff list on the page its board is read from
+replaces NHDOT's staff rows on its page, where that page does not date itself
+before the March 2026 town meeting (`town_boards.build`; drawn by
+`build_town_pages.officials_sections`), saying the page and the day. Tried on
+every town whose board page had a staff list, it put the few names a card
+gives in place of NHDOT's rows on 25 town pages and lost NHDOT's phone
+numbers, e-mail addresses, road agents and public works directors; for a town
+that has moved, NHDOT's rows name the old administrator (`town_boards.py` says
+so where it decides).
 
 ## The run's own files (13 November 2026)
 

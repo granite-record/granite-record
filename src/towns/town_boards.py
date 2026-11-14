@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-24.8
+# GRANITE_VERSION: 2026-09-24.9
 """
 Which towns' own websites list their select board, and which cities' their
 mayor and council, as they stand now.
@@ -1554,7 +1554,8 @@ def build(keys, dot, known=None, guessed=None):
         "boards": kept(towns, fields),
         "councils": kept(cities, fields),
         # The town's staff as its own page lists them, with the page and the
-        # day: see build(), and build_town_pages.staff_card.
+        # day: see THE TOWN'S STAFF above, and build_town_pages.officials_sections,
+        # which draws them (town_staff_rows) in place of NHDOT's staff.
         "staff": {k: v["staff_page"] for k, v in sorted(towns.items())
                   if v.get("staff_page")},
         "not_used": {k: {f: v.get(f) for f in ("why", "read", "size",

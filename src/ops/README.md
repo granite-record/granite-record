@@ -19,6 +19,12 @@ workflows, the morning triage and a person run by its path.
   screened for the morning triage; the person's production pull.
 - `inventory.py` and `handoff.py` -- a session's first and third commands:
   every file and its version, and `STATE.md` with the counts as measured.
+- `gr_register.py` -- the register of Granite Record's own ids
+  (`generated/gr_ids.json`, `src/lib/gr_ids.py`): `--issue` gives the next one
+  to a person the record names and the General Court gives no number, with
+  the evidence, and `--found` records the General Court's number for one when
+  it is found. A person's run: the nightly reads the register and never writes
+  it, and an id once issued is never renumbered, reissued or deleted.
 
 Run each from the repository root, `python3 src/ops/inventory.py`; each finds
 the rest of the code by bare name through `_paths.py`. They moved here from
