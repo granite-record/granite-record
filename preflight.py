@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.918
+# GRANITE_VERSION: 2026-09-04.919
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -133607,7 +133607,9 @@ def _votes_data(BV):
         files = list((Path(td) / "votes").glob("*.json"))
         size = sum(p.stat().st_size for p in files)
         gz = sum(len(gzip.compress(p.read_bytes())) for p in files)
-        assert len(files) == 2 * len(rows), f"{len(files)} files for {len(rows)} terms"
+        # A file of rows and a file of ballots a term, and the index the votes page opens with.
+        assert "index.json" in {p.name for p in files} and len(files) == 2 * len(rows) + 1, (
+            f"{len(files)} files for {len(rows)} terms, wanted a pair a term and votes/index.json")
         assert size < 6 * 1024 * 1024 and gz < 1024 * 1024, (
             f"the votes files are {size / 1024:,.0f} KB, {gz / 1024:,.0f} KB gzipped, against the design's "
             "2 MB of rows and 2.3 million ballot characters")
