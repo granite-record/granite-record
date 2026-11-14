@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.20
+# GRANITE_VERSION: 2026-10-10.21
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -1313,8 +1313,7 @@ var TITLE={rep:"H","rep.":"H",representative:"H",sen:"S","sen.":"S",senator:"S"}
 var ELECT={elect:1,electo:1,electa:1,"electo/a":1};
 var LONG={"loc.":"location","pur.":"purchase"};
 // The words a district part can begin with: a county, the Senate.
-var DW=["belknap","carroll","cheshire","coos","grafton","hillsborough","merrimack",
-        "rockingham","strafford","sullivan","senate","sd","district"];
+var DW=__DISTRICT_WORDS__;
 function own(o,k){return Object.prototype.hasOwnProperty.call(o,k);}
 function dword(p){for(var k=0;k<DW.length;k++)if(DW[k].indexOf(p)===0)return true;return false;}
 function startsWord(h,w){
@@ -1413,6 +1412,20 @@ function apply(){
 bar.hidden=false;
 })();
 </script>"""
+
+
+def _district_words():
+    """The words a district part can begin with, as the script folds what is
+    typed: the state's counties (accents off, lower case), the Senate."""
+    import json
+    import unicodedata
+    import state_settings as ST
+    fold = lambda c: "".join(ch for ch in unicodedata.normalize("NFD", c)  # noqa: E731
+                             if not unicodedata.combining(ch)).lower()
+    return json.dumps([fold(c) for c in ST.COUNTIES] + ["senate", "sd", "district"])
+
+
+ELECT_FILTER_JS = ELECT_FILTER_JS.replace("__DISTRICT_WORDS__", _district_words())
 
 
 def elect_count(elect):
