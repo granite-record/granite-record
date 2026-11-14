@@ -81862,9 +81862,34 @@ def _coming_up_scrolls():
                         ("position:sticky", "bottom:0", "pointer-events:none")), (
         "the Coming up box has lost the sticky fade at its foot that says more "
         "follows (or it catches the pointer and a card under it cannot be opened)")
+    # The panel's ground is the one Latest Activity has, and the dates and the
+    # fade are drawn in it: in the page's own colour (--paper) they showed as a
+    # grey band behind each date and a haze under the last card (the owner,
+    # 14 November 2026). Nothing is drawn behind the rows that Latest Activity
+    # does not draw, and the section adds no bottom margin of its own.
+    ground = re.search(r"\.hv-sections #upcoming,[^{}]*\.hrecent\{[^}]*?background:([^;}]+)", css)
+    assert ground, "app.css has no shared ground for the .hv-sections panels"
+    ground = ground.group(1).strip()
+    painted = {}
+    for sel, body in re.findall(r"([^{}]*)\{([^}]*)\}", css):
+        bg = re.search(r"(?:^|;)background:([^;]+)", body)
+        if not bg:
+            continue
+        for one in sel.split(","):
+            one = re.sub(r"^:where\(body\.pg\)\s*", "", one.strip())
+            if one in ("#upcoming .calscroll .caldate", "#upcoming .calscroll::after"):
+                painted[one] = bg.group(1).strip()
+    assert painted == {"#upcoming .calscroll .caldate": ground,
+                       "#upcoming .calscroll::after": ground}, (
+        f"Coming Up draws something behind its rows that Latest Activity does not: "
+        f"the panel's ground is {ground} and its dates and fade are {painted}")
+    assert re.search(r":where\(body\.pg\) #upcoming > \.cal\{margin-bottom:0\}", css), (
+        "Coming Up's section adds a bottom margin under the panel's own padding, "
+        "which Latest Activity does not")
     return "ok", ("45 sittings, all inside one named, focusable box, with the "
                   "heading above and next week below; capped at every width, "
-                  "dates kept in view, a fade while more follows, padded for the keyboard")
+                  "dates kept in view, a fade while more follows, padded for the keyboard; "
+                  "dates and fade drawn in the panel's own ground, no extra margin")
 
 
 @check("frontend", "the home page's Coming up leaves the special study committees to the Calendar and keeps a standing committee's interim study")
