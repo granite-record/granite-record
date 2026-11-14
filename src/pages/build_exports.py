@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.68
+# GRANITE_VERSION: 2026-09-10.69
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -495,10 +495,13 @@ def sponsors(out, data, person_of=None):
                  "file or its bill status page for the current term; its "
                  "sponsor record for 2023\u20132024, where each bill's printed "
                  "sponsor line agrees with it; or the sponsor line printed on "
-                 "the bill's text (for 1989–1998 the name is the General "
-                 "Court's full name where the bill's own sponsor record settles "
-                 "whom the printed surname is, and the surname as printed where "
-                 "it does not), "
+                 "the bill's text (for 1989–1998, which have no roll call on this "
+                 "site to match a printed name against, the name is the General "
+                 "Court's full name for the one person on the bill's own sponsor "
+                 "record whom the printed name and any initial fit, or, where two "
+                 "people of one surname are on that record, the one the Manual for "
+                 "the General Court of that term seats at the printed seat; and the "
+                 "name as printed where neither places it), "
                  "where the first name is taken as prime -- every term before "
                  "2023, and the 2023\u20132024 bills whose printed line and record "
                  "disagree; or, on a bill of a term before 2023 that no other "
@@ -511,9 +514,10 @@ def sponsors(out, data, person_of=None):
                  "none of the General Court's lists carry, where the first "
                  "name in its list of bills introduced "
                  "is taken as prime. member_id is empty where this site has not matched "
-                 "the name to a member: a sponsor read off a bill's text before "
-                 "1999, when the roll-call files it matches against begin, "
-                 "and a few after; a sponsor from the sponsor record carries "
+                 "the name to a member: a sponsor read off a bill's text of "
+                 "1989–1998 whom the bill's own sponsor record does not place on "
+                 "someone who later cast a roll call, and a few of later years; a "
+                 "sponsor from the sponsor record carries "
                  "the id its number votes under where any roll call was cast "
                  "under it, in any term. person is one number for the member "
                  "across every number the General Court has given them, their "

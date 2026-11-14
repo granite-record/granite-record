@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.317
+// GRANITE_VERSION: 2026-09-07.318
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2239,6 +2239,19 @@ const titleAgrees=(title,label)=>{
   const t=/^(Rep\.|Sen\.)/.exec(String(label||""));
   return !title||!t||t[1]===title;
 };
+/* A REQUEST'S SPONSOR BY EVERY NAME THE SITE PRINTS FOR THEM (the pre-release
+   review of 13 November 2026). The request list spells a sponsor its own way
+   ("Lee Nyquist", "Jim Creighton"); the card prints the election's spelling
+   ("Lee C. Nyquist") and the page it links to the member's own ("James
+   Creighton"), and a name copied off either found none of their requests.
+   build_lsrs writes those other names as `sponsor_names`, and a name typed as
+   any one of them is the sponsor's: in the box (requestByName), in the offer
+   of the Sponsor filter (sponsorHint) and in that filter's own box
+   (sponsorFits). Each name is fitted on its own (namesFit), so a word of one
+   and a word of another are not a name; and initials alone are no one's, so
+   "c" does not list Lee C. Nyquist's requests. */
+const sponsorNames=b=>b.sponsor?[b.sponsor,...(b.sponsor_names||[])]:[];
+const namesFit=(want,names)=>want.some(w=>w.length>1)&&names.some(n=>nameFits(want,hintWords(n)));
 function sponsorHint(q,rows){
   const {title,want}=nameWords(q);
   if(!want.length)return [];
@@ -2248,8 +2261,9 @@ function sponsorHint(q,rows){
       if(!name)continue;
       const key=name===b.sponsor?spKey(b):name;
       let p=who.get(key);
-      if(!p)who.set(key,p={name:key,n:0,label:"",words:hintWords(name)});
+      if(!p)who.set(key,p={name:key,n:0,label:"",names:[]});
       p.n++;
+      for(const x of name===b.sponsor?sponsorNames(b):[name])if(!p.names.includes(x))p.names.push(x);
       if(name===b.sponsor&&!p.label&&b.sponsor_label){
         p.label=String(b.sponsor_label).replace(/\s*\(.*$/,"");
         // Two people of one surname are told apart by their seat.
@@ -2259,7 +2273,7 @@ function sponsorHint(q,rows){
   }
   const out=[];
   for(const p of who.values()){
-    if(!nameFits(want,p.words))continue;
+    if(!namesFit(want,p.names))continue;
     if(!titleAgrees(title,p.label))continue;
     out.push(p);
   }
@@ -2275,19 +2289,30 @@ function sponsorHint(q,rows){
 // the newest term's that names them. A co-sponsor, whom the record gives only
 // as a name, and a name the label does not carry, is the name alone.
 const SP_LABELS=Object.create(null);
+// And a request sponsor's other names (sponsorNames), by the same key, for the
+// Sponsor filter's box.
+const SP_NAMES=Object.create(null);
 function noteSponsors(term,rows){
   const m=SP_LABELS[term]||(SP_LABELS[term]=Object.create(null));
+  const o=SP_NAMES[term]||(SP_NAMES[term]=Object.create(null));
   for(const b of rows){
     if(!b.sponsor||!b.sponsor_label)continue;
     const k=spKey(b);
     if(!(k in m))m[k]=String(b.sponsor_label).replace(/^(Rep\.|Sen\.)\s*/,"");
+    if(b.sponsor_names&&!(k in o))o[k]=b.sponsor_names;
   }
 }
+// The terms the Sponsor filter lists: the one in view, or every term and the
+// requests on All Terms.
+const spTerms=()=>term===ALL_TERMS?((META&&META.terms)||[]).concat(META&&META.requests?[META.requests.term]:[])
+  :[term];
 function sponsorShow(v){
-  const ts=term===ALL_TERMS?((META&&META.terms)||[]).concat(META&&META.requests?[META.requests.term]:[])
-    :[term];
-  for(const t of ts){const l=SP_LABELS[t]&&SP_LABELS[t][v];if(l)return l;}
+  for(const t of spTerms()){const l=SP_LABELS[t]&&SP_LABELS[t][v];if(l)return l;}
   return v;
+}
+function sponsorAlso(v){
+  for(const t of spTerms()){const n=SP_NAMES[t]&&SP_NAMES[t][v];if(n)return n;}
+  return [];
 }
 // A REQUEST'S SPONSOR IS FOUND BY NAME IN THE BOX (the owner, 12 November
 // 2026: "you can't search by legislator name"). A bill's is not: since 17
@@ -2295,16 +2320,17 @@ function sponsorShow(v){
 // bills are found (A NAME IS NOT WHAT A BILL IS ABOUT, above). A request has a
 // title and a sponsor and nothing else, so for it the name IS the other thing
 // to search by, and is read as sponsorHint reads it: every word typed is a
-// word of the prime sponsor's name or a co-sponsor's, or the start of one
-// ("bail" is not Rep. Bailey: a single word must be a whole word of the
-// name). A request whose title has the words lists as it did, as well.
+// word of the prime sponsor's name (any the site prints for them,
+// sponsorNames) or a co-sponsor's, or the start of one ("bail" is not Rep.
+// Bailey: a single word must be a whole word of the name). A request whose
+// title has the words lists as it did, as well.
 function requestByName(b,q){
   if(!b.lsr)return false;
   const {title,want}=nameWords(q);
   if(!want.length)return false;
-  if(b.sponsor&&nameFits(want,hintWords(b.sponsor))&&titleAgrees(title,b.sponsor_label))return true;
+  if(namesFit(want,sponsorNames(b))&&titleAgrees(title,b.sponsor_label))return true;
   // A co-sponsor is given as a name alone, so a title typed cannot rule one out.
-  return (b.cosp||[]).some(c=>nameFits(want,hintWords(c)));
+  return (b.cosp||[]).some(c=>namesFit(want,[c]));
 }
 // The Sponsor filter for one person, as an address /bills reads (addressList):
 // the term kept, the search left out, since the name typed lists nothing.
@@ -3686,8 +3712,13 @@ function zerosLast(key,vals,counts){
 // A typed name against a sponsor as the Sponsor filter lists them: the way it
 // always was (the letters anywhere in the name), and by word as a name is
 // said, which finds "Weyler, Kenneth", "rep weyler" and "kenneth w" as well
-// (12 November 2026), a former member's among them.
+// (12 November 2026), a former member's among them. A request's sponsor by any
+// name the site prints for them (sponsorNames): "lee c" lists Lee Nyquist,
+// whose card says Lee C. Nyquist, and "james" Jim Creighton.
 function sponsorFits(v,f){
+  return [v,...sponsorAlso(v)].some(n=>sponsorFitsName(n,f));
+}
+function sponsorFitsName(v,f){
   if(v.toLowerCase().includes(f))return true;
   const {want}=nameWords(f);
   if(!want.length)return false;
@@ -6472,11 +6503,16 @@ function renderSponsors(b,d){
   // call that term is shown as it is printed, without a party.
   const fromText=spAll.length&&spAll.every(s=>s.source==="bill text");
   const asPrinted=fromText&&spAll.some(s=>!s.member_id&&!s.matched);
-  // 1989 to 1998: the bill prints a surname and a seat, and the General Court's
-  // sponsor record for the same bill (the employee numbers on it) names the
-  // person where only one of its numbers fits what was printed
-  // (past_roster.py). A name placed so is shown in full, in the General
-  // Court's spelling; one that could not be is shown as printed.
+  // 1989 to 1998: the bill prints a surname, sometimes an initial, and a seat,
+  // as later bills do, but no roll call of those years is on this site to
+  // match it against. The General Court's sponsor record for the same bill
+  // (the employee numbers on it) names the person where only one of its
+  // numbers fits what was printed (past_roster.place), or, where two of one
+  // surname are on it, where the Manual for the General Court of that term
+  // seats only one of them at the printed seat (past_roster.settle). A name
+  // placed so is shown in full, in the General Court's spelling; one that
+  // could not be is shown as printed. No name of those years has a party, so
+  // on a bill that has both, "without a party" is not what tells them apart.
   const byRecord=fromText&&spAll.some(s=>s.matched);
   // A BILL WHOSE PRINTED LINE NAMES NOBODY. 1991 HCR 13 and HR 19 print "INTRODUCED BY:
   // REFERRED TO:" with no name after either, and the page listed a sponsor called
@@ -6506,13 +6542,16 @@ function renderSponsors(b,d){
   // one would otherwise have no way to know the two were gathered differently.
   return `${sp||`<p class="note">No sponsors on file.</p>`}${fromText
     ?`<p class="note" style="margin-top:12px">As named on the sponsor line of
-        the bill's text, where the first name is the prime sponsor.${asPrinted
+        the bill's text, where the first name is the prime sponsor.${asPrinted&&!byRecord
         ?` A name without a party is shown as the text prints it: it could not
           be matched to one member who voted that term.`:""}${byRecord
-      ?` Before 1999 the bill prints only a surname. A full name here is the
-        General Court&rsquo;s name for the one person on this bill&rsquo;s own sponsor
-        record that the printed name fits; a name it could not be placed on
-        is shown as printed.`:""}</p>`:""}${unprinted
+      ?` This site has no roll call from before 1999 to match a printed name
+        against. A full name here is the General Court&rsquo;s name for the one
+        person on this bill&rsquo;s own sponsor record whom the printed name and
+        any initial fit, or, where two people of one surname are on that
+        record, the one the Manual for the General Court of that term seats at
+        the printed seat.${asPrinted?` Any other name is shown as the text
+        prints it: the record could not place it on one person.`:""}`:""}</p>`:""}${unprinted
     ?`<p class="note" style="margin-top:12px">The bill's own text names no
         sponsor. These are the names the General Court's sponsor record gives
         it.</p>`:""}${fromJournal

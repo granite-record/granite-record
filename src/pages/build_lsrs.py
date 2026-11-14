@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.13
+# GRANITE_VERSION: 2026-09-18.14
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -53,9 +53,11 @@ the one that writes the file. build_all.py orders it; the assert below is what
 catches the day somebody reorders them, because a silently missing key would
 show as the option simply not being there.
 
-The rows carry no committee, no topic and no status kind, because an LSR has
-none of those. That is not missing data, and the facets are correct to show
-nothing for this term.
+The rows carry no committee and no status kind, because an LSR has neither.
+That is not missing data, and those two facets are correct to show nothing
+for this term. A row carries a topic only where request_topics reads one from
+its title (`topic_by` "title", with_topics below), which is why the Topic
+facet of this term says "(from the title)"; the rest carry none.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -161,6 +163,38 @@ def roster(site):
     return out
 
 
+# "Rep. " or "Sen. " before a name, which a label carries and a name does not.
+_TITLE = re.compile(r"^(?:Rep|Sen)\.\s*")
+
+
+def page_names(site):
+    """{slug: the name that person's own page prints, first name first}: a
+    sitting or former member's display name without its title ("Rep. James
+    Creighton" -> "James Creighton", whom the request list calls "Jim
+    Creighton"), a member-elect's the name their provisional page is under.
+    with_sponsor_names gives a request the name of the page its sponsor
+    links to."""
+    out = {}
+    for n in ("legislators.json", "former.json"):
+        p = site / n
+        for m in (json.loads(p.read_text(encoding="utf-8")) if p.exists() else []):
+            name = _TITLE.sub("", str(m.get("display_plain") or "")).strip() or first_last(m.get("name"))
+            if m.get("slug") and name:
+                out.setdefault(m["slug"], name)
+    ep = site / "elect_pages.json"
+    pages = (json.loads(ep.read_text(encoding="utf-8")).get("pages") or []) if ep.exists() else []
+    for p in pages:
+        if p.get("slug") and str(p.get("name") or "").strip():
+            out.setdefault(p["slug"], str(p["name"]).strip())
+    return out
+
+
+def label_name(label):
+    """A sponsor's label as the name in it, the title and the party taken off:
+    "Rep. Ellen Read (D)" -> "Ellen Read", "Lee C. Nyquist (D)" -> "Lee C. Nyquist"."""
+    return _TITLE.sub("", re.sub(r"\s*\([^()]*\)\s*$", "", str(label or ""))).strip()
+
+
 # NAMES THE ROSTER'S WHOLE-NAME MATCH MISSES (13 November 2026). The source
 # writes "Lee Nyquist" where the results print "Lee C. Nyquist", "Jim" for
 # "James", and a winner of a race still being recounted is on no roster and has
@@ -169,20 +203,13 @@ def roster(site):
 # found nobody, matches a request to a WINNER of the latest general election
 # in the request's own chamber, and only where nothing else could be meant.
 #
-# NICKNAMES: each set is names that are one first name. Only pairs a request
-# could plausibly use are here, and a pair is not added until a request needs
-# it. A name that serves two (Pat: Patrick, Patricia; Chris; Sam) is left out,
+# NICKNAMES: each set is names that are one first name, and a pair is added
+# only with the request that needs it. The one here is Benjamin Baroody's: the
+# list names him "Benjamin Baroody" and the results "Ben Baroody" (three
+# requests on 13 November 2026, the only ones on the list any pair decides).
+# A name that serves two (Pat: Patrick, Patricia; Chris; Sam) is never added,
 # because a table entry is a certainty and those are not.
-NICKNAMES = [
-    {"ben", "benjamin"}, {"jim", "james", "jimmy"}, {"bill", "william", "will"},
-    {"bob", "robert", "rob"}, {"dick", "rick", "richard", "rich"}, {"jack", "john"},
-    {"jeff", "jeffrey"}, {"joe", "joseph"}, {"mike", "michael"},
-    {"tom", "thomas"}, {"tim", "timothy"}, {"dan", "daniel"},
-    {"dave", "david"}, {"don", "donald"}, {"ed", "edward"}, {"ken", "kenneth"},
-    {"matt", "matthew"}, {"nick", "nicholas"}, {"steve", "steven", "stephen"},
-    {"tony", "anthony"}, {"charlie", "charles"}, {"andy", "andrew"},
-    {"greg", "gregory"}, {"larry", "lawrence"}, {"jerry", "gerald"},
-]
+NICKNAMES = [{"ben", "benjamin"}]
 _SUFFIX = {"jr", "sr", "ii", "iii", "iv"}
 
 
@@ -482,6 +509,33 @@ def rows_from(lsrs, who, became=None, year=None, winners=None):
     return rows, unmatched
 
 
+def with_sponsor_names(rows, names):
+    """EVERY NAME THE SITE PRINTS FOR A REQUEST'S SPONSOR (the pre-release
+    review of 13 November 2026). The card's label and the page it links to may
+    spell a sponsor otherwise than the list does -- "Lee C. Nyquist", the
+    results' spelling, for "Lee Nyquist"; "James Creighton", his page's, for
+    "Jim Creighton" -- and a name copied off either found none of their
+    requests. Each row of rows_from gets those names as `sponsor_names`: its
+    label's name, where the label is not the list's words, and the name on
+    the page its slug points to (`names`, page_names), each once and only
+    where the list's own spelling is not already it. The bill search reads
+    them beside `sponsor` (app.js sponsorNames). Returns how many rows got
+    one; a row with none carries no key."""
+    n = 0
+    for r in rows:
+        name = str(r.get("sponsor") or "")
+        label = str(r.get("sponsor_label") or "")
+        also = []
+        for x in (label_name(label) if label != name else "",
+                  (names or {}).get(r.get("sponsor_slug") or "", "")):
+            if x and _fold(x) != _fold(name) and all(_fold(x) != _fold(y) for y in also):
+                also.append(x)
+        if name and also:
+            r["sponsor_names"] = also
+            n += 1
+    return n
+
+
 # Where a request's page is: /request/2027-0001, as a bill's is
 # /bill/2026/hb1034.
 REQUEST_ADDRESS = "request/{num}"
@@ -614,6 +668,7 @@ def main():
     print(f"  {said}")
     rows, unmatched = rows_from(lsrs, roster(site), became, year, winners)
     assert rows, "no request survived shaping, though the source had some"
+    with_sponsor_names(rows, page_names(site))
     topic_n = with_topics(rows, json.loads(bp.read_text(encoding="utf-8")) if bp.exists() else {})
     gone, undecided = not_returning(site)
     rows, dropped = drop_unreturned(rows, gone)
@@ -659,6 +714,11 @@ def main():
           "the rest have none)")
     print(f"  {meta['requests']['withdrawn']} withdrawn; "
           f"{sum(1 for r in rows if r['sponsor_slug'])} sponsors matched to a member")
+    also = [r for r in rows if r.get("sponsor_names")]
+    if also:
+        who = sorted({r["sponsor"] for r in also})
+        print(f"  {len(also)} request(s) whose sponsor the card or their page names otherwise than "
+              "the list, found by either name: " + ", ".join(who[:6]) + (" ..." if len(who) > 6 else ""))
     if dropped:
         print(f"  {len(dropped)} withdrawn request(s) of members not returning dropped, "
               "forwarding to the list: " + ", ".join(r["n"] for r in dropped))
