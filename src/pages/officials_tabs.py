@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.21
+# GRANITE_VERSION: 2026-10-10.22
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -55,6 +55,7 @@ sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py
 import _paths  # noqa: E402,F401
 
 import datetime
+import json
 import html as _html
 import re
 
@@ -1185,7 +1186,7 @@ def members_elect(elect, today, lang="en", people=None, towns=None):
     aria-controls="pane-ecounty" aria-selected="false">{I.say(lang, "roster.by_county", "By county")}</button>
 </div>
 <div class="rpane" id="pane-elast" role="tabpanel" aria-labelledby="tab-elast">
-<p class="src">{(I.say(lang, "elect.all_one", "{n} member-elect, by surname.", n=n) if n == 1 else
+<p class="src elall">{(I.say(lang, "elect.all_one", "{n} member-elect, by surname.", n=n) if n == 1 else
                  I.say(lang, "elect.all", "All {n} members-elect, by surname, each chamber on its own.",
                        n=f"{n:,}"))}</p>
 {by_last}
@@ -1197,7 +1198,7 @@ def members_elect(elect, today, lang="en", people=None, towns=None):
     return (f'<div class="elpane" data-elect{until_attrs(takes, today)}>' + intro
             + elect_totals(races, lang, by_id)
             + elect_controls([(k, e) for k, r in races.items() for e in r.get("elected") or []],
-                             by_id, lang)
+                             by_id, lang, races, towns)
             + views + ELECT_FILTER_JS + "</div>")
 
 
@@ -1252,10 +1253,13 @@ def elect_attrs(e, key, by_id, towns=None):
             f'data-ch="{"S" if m.group(3) else "H"}" data-hay="{E(hay)}"')
 
 
-def elect_controls(won, by_id, lang="en"):
+def elect_controls(won, by_id, lang="en", races=None, towns=None):
     """The search box and the three selects, written hidden, over the lists.
     `won` is [(race key, member-elect)]. Each option says how many it holds,
-    plainly; the script says how many are shown."""
+    plainly; the script says how many are shown. `races` and `towns` give the
+    races not final, whose seats have nobody in them to find: a search that
+    names one of them and finds no one says that district's result is not
+    final (data-nf, read by the script)."""
     if not won:
         return ""
     st, party, chamber = {}, {}, {}
@@ -1277,7 +1281,28 @@ def elect_controls(won, by_id, lang="en"):
                   for c in sorted(party, key=lambda c: (-party[c], {"+": 1, "-": 2}.get(c, 0), c))]
     ch_rows = [(c, I.say(lang, "comp.senate", "Senate") if c == "S" else
                 I.say(lang, "comp.house", "House"), chamber[c]) for c in ("S", "H") if chamber.get(c)]
-    return (f'<div class="bfilt elfilter" role="search" hidden data-n="{n}" '
+    import unicodedata
+    nfs = []
+    for k in sorted(races or {}, key=race_order):
+        r = races[k]
+        if not r.get("not_final"):
+            continue
+        m = KEY_RE.match(k)
+        name = (I.say(lang, "map.tag_senate", "Senate District {n}", n=m.group(3)) if m.group(3) else
+                I.say(lang, "comp.county_district", "{county} District {district}",
+                      county=m.group(1), district=m.group(2)))
+        sentence = (I.say(lang, "elect.nf_says_rc", "{where}'s result is not final: a recount was "
+                          "requested.", where=name) if r.get("recount") else
+                    I.say(lang, "elect.nf_says", "{where}'s result is not final.", where=name))
+        where = (f"senate district {m.group(3)} senate {m.group(3)} sd{m.group(3)} sd {m.group(3)}"
+                 if m.group(3) else
+                 f"{m.group(1)} district {m.group(2)} {m.group(1)} {m.group(2)}")
+        hay = " | " + where + " | " + " ".join(_both_ways(t) for t in (towns or {}).get(k) or [])
+        hay = "".join(c for c in unicodedata.normalize("NFKD", hay)
+                      if not unicodedata.combining(c)).lower()
+        nfs.append({"ch": "S" if m.group(3) else "H", "hay": hay, "say": _html.unescape(sentence)})
+    nf_attr = (f' data-nf="{E(json.dumps(nfs, ensure_ascii=False))}"' if nfs else "")
+    return (f'<div class="bfilt elfilter" role="search" hidden data-n="{n}"{nf_attr} '
             f'data-some="{E(I.say(lang, "elect.f_some", "Showing {n} of {m} members-elect", n="{n}", m="{m}"))}" '
             f'data-none="{E(I.say(lang, "elect.f_none", "No member-elect matches that."))}">'
             f'<label>{I.say(lang, "elect.f_search", "Search")}'
@@ -1377,6 +1402,11 @@ var sels={st:bar.querySelector(".elst"),p:bar.querySelector(".elpa"),ch:bar.quer
 var rows=[].slice.call(panel.querySelectorAll("[data-st]")).map(function(el){
   return {el:el,st:el.dataset.st,p:el.dataset.p,ch:el.dataset.ch,hay:el.dataset.hay||""};});
 var once=rows.filter(function(r){return !!r.el.closest("#pane-elast");});
+// The line that counts the whole list is not true of a part of it.
+var allLine=panel.querySelectorAll(".elall")[0];
+// Races not final have nobody in them to find; a search that finds no one
+// and names one says its result is not final (data-nf).
+var NF=[];try{NF=JSON.parse(bar.dataset.nf||"[]");}catch(e){}
 // A heading's count and a county's: kept as written, and drawn as what is
 // shown while a search or a filter is on.
 var heads=[].slice.call(panel.querySelectorAll("h2[id^=of-el],.pcol h3")).map(function(h){
@@ -1404,8 +1434,12 @@ function apply(){
     if(g.n)g.n.textContent=on?c:g.all;
     g.d.open=on?c>0:g.open;
   });
+  if(allLine)allLine.classList.toggle("elout",on);
+  var nfs=[];
+  if(!n&&q.trim()&&!st&&!p)NF.forEach(function(x){
+    if(electMatch({st:"",p:"",ch:x.ch,hay:x.hay},q,"","",ch))nfs.push(x.say);});
   say.textContent=!on?"":n?bar.dataset.some.replace("{n}",n).replace("{m}",bar.dataset.n)
-    :bar.dataset.none;
+    :nfs.length&&nfs.length<4?nfs.join(" "):bar.dataset.none;
 }
 ["input","change"].forEach(function(t){
   [box,sels.st,sels.p,sels.ch].forEach(function(c){c.addEventListener(t,apply);});});
