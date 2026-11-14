@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.54
+# GRANITE_VERSION: 2026-09-09.56
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -772,15 +772,14 @@ def officials_sections(town, key, town_off, site_on_page=None, board=None,
             + off_row(E(mailing or town), how,
                       "Mailing address" if mailing else "Contact")
             + "</ul>"
-            + note(f"From {NHDOT}." + (
-                " The website is the town's current address, which the "
+            + note(f"From {NHDOT}." + ("" if others else " " + since("offices")) + (
+                f" The website is the {'city' if city else 'town'}'s current one, which the "
                 f"directory does not have yet (checked {E(long_date(town_off['website_checked']))})."
                 if town_off.get("website_checked") else "")
-                + (" The e-mail address is the town's own, which the "
+                + (f" The e-mail address is the {'city' if city else 'town'}'s own, which the "
                    "directory does not have "
                    f"(checked {E(long_date(town_off['email_checked']))})."
-                   if town_off.get("email_checked") else "")
-                + ("" if others else " " + since("offices"))))))
+                   if town_off.get("email_checked") else "")))))
     # ---- the clerk ---------------------------------------------------------
     if loc.get("clerk"):
         out.append(card("City clerk" if city else "Town clerk", side="r", inner=(
