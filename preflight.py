@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.910
+# GRANITE_VERSION: 2026-09-04.911
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -120673,14 +120673,14 @@ def _town_staff_own_page(B):
                    "straight after the directory's date")
     # The noun is the place's own: a city's card says the city's, a town's the town's.
     fr = _html.unescape(page("Franklin", off(True)))
-    for need in ("The website is the city's current one, which the directory does not have yet",
-                 "The e-mail address is the city's own, which the directory does not have"):
+    for need in ("The website is the city's current one (checked November 13, 2026).",
+                 "The e-mail address is the city's own (checked November 13, 2026)."):
         if need not in fr:
             bad.append(f"a moved city's offices card does not say: {need}")
     if "the town's" in fr:
         bad.append("a moved city's offices card says the town's")
-    for need in ("The website is the town's current one, which the directory does not have yet",
-                 "The e-mail address is the town's own, which the directory does not have"):
+    for need in ("The website is the town's current one (checked November 13, 2026).",
+                 "The e-mail address is the town's own (checked November 13, 2026)."):
         if need not in nu:
             bad.append(f"a moved town's offices card does not say: {need}")
     # A town the hand file does not name is the same page to the byte.
