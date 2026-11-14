@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.921
+# GRANITE_VERSION: 2026-09-04.922
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20197,12 +20197,12 @@ def _class_collisions():
         # (app.js) and each request's own page (build_request_pages, 8
         # November 2026), in the same words.
         "lsrnote",
-        # The request's number with what it stands for, and the earlier bills
-        # of the same title: app.js's lsrAbbr and lsrPane draw them for a
-        # request in the bill search, build_request_pages' abbr_html and
-        # history_pane for its own page -- one component in the same words
-        # (the owner, 13 November 2026).
-        "lsrabbr", "lsrhist",
+        # The earlier bills of the same title: app.js's lsrPane draws them for
+        # a request in the bill search, build_request_pages' history_pane for
+        # its own page -- one component in the same words (the owner, 13
+        # November 2026). What LSR stands for (lsrabbr) is the page's alone
+        # since the owner's word of 14 November 2026, and so not shared.
+        "lsrhist",
         # THE SPONSORS TAB, a request's as a bill's: app.js draws it for a
         # bill (spBlock) and for a request's card (lsrPane), and
         # build_request_pages for a request's own page (sponsors_pane), the
@@ -31503,7 +31503,7 @@ def _request_pages():
         L.FILING_COMPLETE.update(old)
     # The links, and New Hampshire kept out of the page writer.
     assert 'const to=b.moved_to||b.address||"request/"' in Path("src/pages/find.js").read_text(encoding="utf-8") \
-        and '<a href="${esc(b.moved_to||b.address)}">${lsrAbbr(b.n)}</a>' in Path("src/pages/app.js").read_text(encoding="utf-8"), (
+        and '<a href="${esc(b.moved_to||b.address)}">${esc(b.n)}</a>' in Path("src/pages/app.js").read_text(encoding="utf-8"), (
         "the header search's request row or the request card does not link the request's page")
     src = Path("src/pages/build_request_pages.py").read_text(encoding="utf-8")
     assert not re.search(r"LSR|gc\.nh\.gov|\\d\{4\}-\\d", src), (
@@ -116264,12 +116264,22 @@ def _request_became_bill(build_lsrs):
 
 @check("build", "a bill request's status is Requested or Filed (or Withdrawn); its History is the earlier "
        "bills of exactly its title; its accepted co-sponsors are shown as person chips on the card and "
-       "the page; its LSR is explained", needs=("build_lsrs",))
+       "the page; its LSR is explained on its page and not on the card's link; its topic is printed by "
+       "name, and Miscellaneous not at all", needs=("build_lsrs",))
 def _request_cards_like_bills(build_lsrs):
     """The owner, 13 November 2026: tabs and an expanded view on the cards,
     Requested and Filed as the Status filter, History from earlier bills of
     the same title ("certain matches only"), co-sponsors shown once the
-    source lists them, the same chips as a bill's, a tooltip for LSR."""
+    source lists them, the same chips as a bill's, a tooltip for LSR.
+
+    And 14 November 2026: "remove the topic from title label, remove the LSR
+    tooltip from the hyperlink on the card and just show it on the lsr page,
+    and assign topics not yet assigned to misc". Held: the card's number is a
+    plain link, with no <abbr> and no "Legislative Service Request"; the page
+    keeps both; the card's byline and the page's Subject give the topic by its
+    name with no "(from the title)"; a request that is Miscellaneous (the
+    title placed it nowhere) prints the word on neither, as a bill's card and
+    page do not print the topic model's."""
     import tempfile
     import build_request_pages as RP
     L = build_lsrs
@@ -116300,6 +116310,9 @@ def _request_cards_like_bills(build_lsrs):
     co = by["LSR 2027-0001"]["cosponsors"]
     assert [c["label"] for c in co] == ["Bob Roe (R)", "Zed Nobody"] and co[0].get("party") == "R" \
         and "party" not in co[1], f"co-sponsors: a member-elect with a party, a stranger as typed: {co}"
+    # A topic the title gave, and one it did not (request_topics.assign writes both so).
+    by["LSR 2027-0001"].update(topic="Education - General", topic_by="title")
+    by["LSR 2027-0002"].update(topic="Miscellaneous", topic_by="title")
     # earlier_bills reads the search's own rows, titles compared the same way.
     with tempfile.TemporaryDirectory() as d:
         site = Path(d)
@@ -116331,7 +116344,11 @@ def _request_cards_like_bills(build_lsrs):
         assert want in page, f"a request's page lacks {want!r}"
     assert 'id="sstab-rq-history"' not in plain and 'id="sstab-rq-sponsors"' not in plain, (
         "a request with no earlier bill and no co-sponsor has a tab for them")
-    # THE CARD, in node: the bill card's tabs inside, the same chips, the abbreviation.
+    assert "<dt>Subject</dt><dd>Education - General" in page and "(from the title)" not in page, (
+        "a request's page does not give its topic by name as a bill's page gives its subject")
+    assert "<dt>Subject</dt>" not in plain and "Miscellaneous" not in plain, (
+        "a request's page prints Miscellaneous, which a bill's page does not print for the topic model's")
+    # THE CARD, in node: the bill card's tabs inside, the same chips, no abbreviation.
     js = ("(() => { scope.setMeta({requests: {term: '2027-requests', year: 2027, abbr: " + json.dumps(L.ABBR)
           + "}}); const r = " + json.dumps(by["LSR 2027-0001"]) + "; const plain = "
           + json.dumps(by["LSR 2027-0002"]) + "; const shut = scope.lsrCardHtml(r); "
@@ -116341,9 +116358,16 @@ def _request_cards_like_bills(build_lsrs):
     if got is None:
         return "skip", "node, app.js or the stub is not here"
     shut, op, pl = got["shut"], got["open"], got["plain"]
-    assert 'title="Legislative Service Request">LSR</abbr>' in shut and 'class="mchip p-D"' in shut \
+    assert 'class="mchip p-D"' in shut \
         and 'class="ctitle"' in shut and 'aria-expanded="false"' in shut and "<div class=\"cbody\" hidden>" in shut, (
-        f"a request's card is not a bill card with an abbreviation and a person chip: {shut[:600]!r}")
+        f"a request's card is not a bill card with a person chip: {shut[:600]!r}")
+    assert '<a href="request/2027-0001">LSR 2027-0001</a></span>' in shut and "<abbr" not in shut \
+        and "Legislative Service Request" not in shut, (
+        f"a request's card links its number with a tooltip, or not plainly: {shut[:600]!r}")
+    assert "Education - General" in shut and "(from the title)" not in shut, (
+        "a request's card does not print its topic by name alone")
+    assert "Miscellaneous" not in pl and "<abbr" not in pl, (
+        "a request's card prints Miscellaneous, or its number has a tooltip")
     assert 'data-t="4"' in shut and 'data-t="7"' in shut and 'data-t="0"' in shut, (
         "a request with co-sponsors and a History has not the three tabs")
     assert 'aria-expanded="true"' in op and '<div class="cbody">' in op \
@@ -116352,7 +116376,8 @@ def _request_cards_like_bills(build_lsrs):
         "the open card does not show its History tab and the co-sponsors' chips")
     assert 'data-t="7"' not in pl and 'data-t="4"' not in pl, "a plain request has only a Summary tab"
     return "ok", ("Requested/Filed/Withdrawn by the bill's existence; History by exact title and an earlier "
-                  "session; co-sponsors as chips on the card and the page; LSR explained on both")
+                  "session; co-sponsors as chips on the card and the page; LSR explained on the page, the "
+                  "card's number a plain link; the topic by name, Miscellaneous printed on neither")
 
 
 @check("build", "next session's bill requests are listed under the year they name, whichever year "
@@ -136520,7 +136545,7 @@ def _topic_filter_search_box():
 
 @check("frontend", "the bill requests' search finds a request by its sponsor's name as the list, the card or their "
        "page prints it (prime or co-sponsor, sitting, member-elect or former), the Sponsor filter has the party, "
-       "and the Topic filter says its topics are from the title")
+       "and the Topic filter is named as every term's")
 def _requests_search_by_name():
     """The owner, 12 November 2026: "you can't search by legislator name, by party affiliation of returning
     or new members". A bill's sponsor is found through the Sponsor filter and a name typed in the box lists
@@ -136532,8 +136557,8 @@ def _requests_search_by_name():
     Bailey's; "sen" before a Rep.'s name lists none; a member-elect (a label with no title) is found by
     "rep jane doe"; the party filter counts a sitting member's and a member-elect's party; the Sponsor list
     names a sponsor with the party their label gives (a request's label has no seat); the Topic group of the
-    requests says "(from the title)" and another term's does not; a bill's own search still lists no bill
-    for a name.
+    requests is named "Topic", as another term's is (the owner, 14 November 2026: "remove the topic from title
+    label"; it said "(from the title)" until then); a bill's own search still lists no bill for a name.
 
     AND BY EVERY NAME THE SITE PRINTS FOR THE SPONSOR (the pre-release review of 13 November 2026): "Lee C.
     Nyquist", the name on his cards and his page, and "James Creighton", the name on his page, found none
@@ -136694,7 +136719,7 @@ def _requests_search_by_name():
     assert got["elect"] == ["3"], f"a member-elect is not found by name: {got['elect']}"
     assert got["title"] == ["3"] and got["none"] == [], (got["title"], got["none"])
     assert got["senator"] == ["4"], got["senator"]
-    assert got["topicHead"] == "Topic (from the title)", f"the requests' Topic filter says {got['topicHead']!r}"
+    assert got["topicHead"] == "Topic", f"the requests' Topic filter says {got['topicHead']!r}"
     assert got["party"] == [["Republican", 4], ["Democrat", 4], ["Party not on file", 1]], (
         f"the party filter counts {got['party']}: sitting and elect members alike")
     assert got["cosp"] == "Include co-sponsored requests", got["cosp"]
@@ -136741,20 +136766,22 @@ def _requests_search_by_name():
     return "ok", ("a request is found by name, prime or co-sponsor, a title agreeing, a whole word for a "
                   "single one, and by the names its card and its sponsor's page print ('Lee C. Nyquist', "
                   "'James Creighton'), never by an initial alone; party counts are in the Sponsor filter; its "
-                  "topics say from the title; an older term tells two Allens apart and 'frank riley' fits "
+                  "Topic filter is named as every term's; an older term tells two Allens apart and 'frank riley' fits "
                   "'F. Riley'")
 
 
 @check("build", "a bill request gets its sponsor's party and, where its title says enough, a topic of the "
-       "site's own, marked as the title's; none where the title does not")
+       "site's own, marked as the title's; Miscellaneous where the title does not")
 def _requests_party_and_topic():
     """The owner, 12 November 2026. build_lsrs writes `sponsor_party` from the roster's label (a sitting
     member's and a member-elect's alike) and `cosp`, and request_topics gives each request a topic from its
     title: the title half of topics.py's classifier, trained on the labelled bills, the site's category
-    through vocabulary_of, `topic_by` "title". A request below the confidence threshold has NO topic -- never
-    Miscellaneous -- and a request already a bill keeps the bill's. Held on a fixture: a title with a study
-    or housing phrase gets that category by the exact rules; the words of a labelled topic get it; a title
-    nothing in the model has seen gets none; the answer is the same under another hash seed."""
+    through vocabulary_of, `topic_by` "title". A request below the confidence threshold is Miscellaneous
+    (the owner, 14 November 2026: "assign topics not yet assigned to misc"; it had no topic until then), never
+    a guess at a named topic, and a request already a bill keeps the bill's. Held on a fixture: a title with
+    a study or housing phrase gets that category by the exact rules; the words of a labelled topic get it; a
+    title nothing in the model has seen is Miscellaneous, as is every request where no labelled bill leaves
+    a model to ask, a study or housing title apart; the answer is the same under another hash seed."""
     import build_lsrs as L
     import request_topics as RT
     who = {"ellenread": ("Rep. Ellen Read (D)", "ellen-read-rock-10"),
@@ -136796,9 +136823,15 @@ def _requests_party_and_topic():
     assert by["a"] == ("Elections", "title") and by["b"] == ("Taxes - State", "title"), by
     assert by["c"] == ("Study Committees and Commissions", "title"), f"a study title: {by['c']}"
     assert by["f"] == ("Housing", "title"), f"a housing title: {by['f']}"
-    assert by["d"] == ("", ""), f"a title the model has never seen got {by['d']}: none, not Miscellaneous"
+    assert by["d"] == ("Miscellaneous", "title"), (
+        f"a title the model has never seen got {by['d']}: Miscellaneous, from the title")
     assert by["e"] == ("Kept", ""), "a request already a bill had its topic taken"
-    assert all(t != "Miscellaneous" for t, _ in by.values()), "Miscellaneous was given as a topic"
+    bare = [{"title": "relative to voter ballot election procedures.", "n": "a"},
+            {"title": "establishing a commission to study the use of drones.", "n": "c"}]
+    RT.assign(bare, None, fake)
+    assert [(r["topic"], r["topic_by"]) for r in bare] == [
+        ("Miscellaneous", "title"), ("Study Committees and Commissions", "title")], (
+        f"with no model to ask, a request is not Miscellaneous or a study title loses its rule: {bare}")
     prog = ("import sys, json; sys.path.insert(0, '.'); import _paths, request_topics as R; "
             "b = {'2025-2026': {'HB%d' % i: {'title': 'relative to %s %s matters.' % (w, v), 'subject': t} "
             "for i, (t, w, v) in enumerate([('Elections', 'ballot', 'voter'), ('Taxes - State', 'tax', 'rate'), "
@@ -136813,7 +136846,8 @@ def _requests_party_and_topic():
         outs.append(res.stdout.strip().splitlines()[-1])
     assert outs[0] == outs[1], "the topics differ under another hash seed"
     return "ok", ("party read from the roster's label for sitting and elect members; a title gets the "
-                  "study or housing category, a labelled topic by its words, or none; the same under two hash seeds")
+                  "study or housing category, a labelled topic by its words, or Miscellaneous, with or without "
+                  "a model; the same under two hash seeds")
 
 
 @check("build", "the bug hunt of 11 November 2026: the sitting term rolls on Organization Day in the browser "

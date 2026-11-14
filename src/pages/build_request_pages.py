@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.10
+# GRANITE_VERSION: 2026-11-08.11
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -40,6 +40,8 @@ import components as C
 E = S.E
 # Not indexed (Alice, 8 November 2026), as the provisional members-elect pages.
 ROBOTS = '<meta name="robots" content="noindex,follow">'
+# The site's word for a topic nobody could place (topics.MISC), never printed.
+MISC = "Miscellaneous"
 
 
 def explain(year, abbr=None):
@@ -177,10 +179,13 @@ def head(r, req, who_of, path, base):
         facts.append(["Co-Sponsors" if len(cos) > 1 else "Co-Sponsor", " ".join(cos)])
     if r.get("body_label"):
         facts.append(["Kind", E(r["body_label"])])
-    # THE TOPIC READ FROM THE TITLE (request_topics.py), said to be so; the
-    # General Court's own topic is the bill's, after it is filed.
-    if r.get("topic") and r.get("topic_by") == "title":
-        facts.append(["Topic (from the title)", E(r["topic"])])
+    # THE TOPIC AS A BILL'S PAGE GIVES ITS SUBJECT (the owner, 14 November
+    # 2026: "remove the topic from title label"): the name alone, under the
+    # bill page's label, and none for the Miscellaneous of a request
+    # request_topics could not place, which the Topic filter lists and a page
+    # does not print, as a bill's page does not print the topic model's.
+    if r.get("topic") and r["topic"] != MISC:
+        facts.append(["Subject", E(r["topic"])])
     cite = S.cite_block(path, f"{r.get('n')}: {r.get('title') or ''} | Granite Record", base,
                         S.cited())
     assert cite.endswith("</div>"), "the citation block no longer ends its row"
