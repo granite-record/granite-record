@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.391 */
+/* GRANITE_VERSION: 2026-09-07.392 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -1546,7 +1546,7 @@ line-height:1.1}
   color-scheme:light}
   /* The footer's feedback button with them: it is white words on a pine
      ground, and with no ground printed it is white on white. */
-  nav.top,.skip,.calskip,.searchrow,.ftoggle,.backto,.pageacts,.findpanel,
+  nav.top,.skip,.calskip,.searchrow,.ftoggle,.vpage .vtoggle,.backto,.pageacts,.findpanel,
   .findscrim,details.report,.pshare,.sharestate,.player iframe,.fbk,
   .ytcard .ytgo,.ytpanel .ytaform button[type=submit],.followmail .followsend,
   .followmail .followfreq,.webinar,.testify,.trrep,.trpill,.trbox{display:none !important}
@@ -4377,7 +4377,7 @@ min-width:0}
    lower than the two selects beside it, and on an iPhone a field under 16px
    zooms the page when it is tapped. Its words are the reader's, at the
    weight of the site's other search boxes (the rule after this one). */
-.bfilt select,.bfilt input[type=search]{font:inherit;font-size:var(--t-ui);text-transform:none;letter-spacing:0;
+.bfilt select,.bfilt input[type=search],.bfilt input[type=date]{font:inherit;font-size:var(--t-ui);text-transform:none;letter-spacing:0;
 color:var(--ink);padding:var(--sp-2) var(--sp-4);border:1px solid var(--edge);border-radius:var(--r-in);
 background:var(--paper);
 /* A select takes its width from its longest OPTION, and the longest status
@@ -7263,7 +7263,7 @@ table.cov{display:table;border-collapse:collapse;width:100%;min-width:30rem;font
   .cmbtn{min-width:44px;min-height:44px}
   .calviews button,.calfold,.calcat{min-height:44px}
   #sort{height:44px}
-  .bfilt select,.bfilt input[type=search]{min-height:44px}
+  .bfilt select,.bfilt input[type=search],.bfilt input[type=date]{min-height:44px}
   .docket summary{min-height:44px}
   /* The row centres on its links, or a number that is not a link sits at the
      top of the line beside an address in the middle of it. */
@@ -10015,15 +10015,13 @@ text-wrap:balance}
   border:1px solid var(--edge);border-radius:var(--r-out)}
 .vpage .vsearch input[type=search]:focus{outline:2px solid var(--pine);outline-offset:1px;border-color:var(--pine)}
 .vpage .vtoggle{display:none}
-.vpage .bfilt input[type=date]{font:inherit;font-size:var(--t-ui);text-transform:none;letter-spacing:0;
-  color:var(--ink);padding:var(--sp-2) var(--sp-4);border:1px solid var(--edge);border-radius:var(--r-in);
-  background:var(--paper);min-height:2.75rem;max-width:100%}
+.vpage .bfilt input[type=date]{min-height:2.75rem}
 .vpage .vmember{position:relative}
 .vpage .vmemchip{display:flex;gap:var(--sp-3);align-items:center;flex-wrap:wrap;text-transform:none;
   letter-spacing:0;font-weight:400;min-height:2.75rem}
 .vpage .vsug{position:absolute;z-index:5;top:100%;left:0;min-width:16rem;max-width:min(24rem,90vw);
   margin:var(--sp-1) 0 0;padding:var(--sp-2);list-style:none;background:var(--surface);
-  border:1px solid var(--edge);border-radius:var(--r-in);box-shadow:0 4px 14px rgba(0,0,0,.14)}
+  border:1px solid var(--edge);border-radius:var(--r-in);box-shadow:0 4px 14px var(--shadow)}
 .vpage .vsug[hidden]{display:none}
 .vpage .vsug button{display:block;width:100%;text-align:left;font:inherit;font-size:var(--t-ui);
   text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink);background:none;border:0;
@@ -10043,7 +10041,7 @@ text-wrap:balance}
    pushes it under itself. Where the column is too narrow for both, the chip goes under. */
 .vpage .vres{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);align-items:baseline}
 .vpage .vres .vtal{font-style:normal;min-width:5.2em;font-variant-numeric:tabular-nums}
-.vpage .vres .chip,.vpage .vres .rcres{white-space:nowrap;margin:0}
+.vpage .vres .chip,.vpage .vres .rcres{white-space:normal;margin:0}
 .vlink{margin:var(--sp-5) 0 0}
 @media (max-width:59.9375em){
   .vpage .vtoggle{order:2;display:flex;align-items:center;gap:var(--sp-4);min-height:44px;
