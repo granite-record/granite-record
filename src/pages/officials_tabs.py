@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.18
+# GRANITE_VERSION: 2026-10-10.19
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -1206,16 +1206,25 @@ def members_elect(elect, today, lang="en", people=None, towns=None):
 # new chamber"). Written into the page hidden and shown by its script, as the
 # view strip is, so a page read without the script is the plain lists and no
 # controls that do nothing. The boxes are the site's .bfilt row (a member's
-# Votes tab, a committee's calendar); the search matches as the site's header
-# search does (find.js) -- every word typed must be in the person's name, in
-# the name on their own page, county, district or towns, accents folded; a
-# word under five letters must start a word; rep, sen and their long forms
-# are a title and left out of the match; a number names a district ("merr 5"
-# is Merrimack 5 and not 15, "ward 5" is the ward) -- and the three selects
-# choose the status elect_status gives, the party the roster lists them
-# under, and the chamber. Each item carries what is read, as data-st,
-# data-p, data-ch and data-hay (name | district words | towns); matching is
-# by those and never by a name alone.
+# Votes tab, a committee's calendar). Every word typed must be in the
+# person's name, in the name on their own page, county, district or towns,
+# accents folded and apostrophes left out or read as a space; a number is a
+# district's, a title is read, and what the script does with them is
+# written above electMatch. The three selects choose the status elect_status
+# gives, the party the roster lists them under, and the chamber. Each item
+# carries what is read, as data-st, data-p, data-ch and data-hay (name |
+# district words | towns); matching is by those and never by a name alone.
+def _both_ways(text):
+    """A name or town as the search reads it: with an apostrophe left out
+    and with it read as a space ("o'rorke", "o rorke"), and "loc." and
+    "pur." as the words (find.js reads them so for the header search)."""
+    out = text
+    if re.search(r"['‘’ʼ]", text):
+        out = (re.sub(r"['‘’ʼ]", "", text) + " "
+               + re.sub(r"['‘’ʼ]", " ", text))
+    return re.sub(r"\bpur\.", "purchase", re.sub(r"\bloc\.", "location", out, flags=re.I), flags=re.I)
+
+
 def elect_attrs(e, key, by_id, towns=None):
     """The data-* an item carries for the filter: its status, its party
     column's letter ("-" for none), its chamber, and the words a search
@@ -1236,7 +1245,8 @@ def elect_attrs(e, key, by_id, towns=None):
         rec = f"{first.strip()} {last.strip()}".strip()
         if rec.lower() != name.lower():
             name += " " + rec
-    hay = unicodedata.normalize("NFKD", " | ".join([name, where, " ".join(towns or [])]))
+    hay = unicodedata.normalize("NFKD", " | ".join([
+        _both_ways(name), where, " ".join(_both_ways(t) for t in (towns or []))]))
     hay = "".join(c for c in hay if not unicodedata.combining(c)).lower()
     return (f' data-st="{st}" data-p="{E(elect_party(e) or "-")}" '
             f'data-ch="{"S" if m.group(3) else "H"}" data-hay="{E(hay)}"')
@@ -1286,16 +1296,27 @@ ELECT_FILTER_JS = """<script>
 (function(){
 // electMatch is the whole of the matching, so a test can run it alone: an
 // item {st, p, ch, hay} against what was typed and chosen; every word typed
-// must be in hay ("names | district words | towns"), accents folded. As
-// find.js does: a word under five letters starts a word, and rep, sen and
-// the long forms are a title, left out (a member's page may say Rep. of one
-// who is a senator-elect). A number is a district: with
-// the word before it ("merr 5", "sd 8", "senate district 8") it is that
-// district's number, alone it is any district's, after "ward" it is a ward
-// of a town; a word with a digit in it ("sd8") is a whole word.
+// must be in hay ("names | district words | towns"), accents folded and
+// apostrophes left out (the hay carries both readings). Its own rules:
+// a word under five letters starts a word; rep, sen and the long forms are
+// left out of a name, and before a number name the chamber; "elect" (the
+// chip's word) is left out; a number is a district's: after a county word
+// ("merr 5", "sd 8") or "district", or alone, it is that number in the
+// district part; after "ward" it is a ward of the town named before it;
+// after any other word it is the district or that town's ward.
 function fold(s){s=String(s==null?"":s).toLowerCase();
-  return s.normalize?s.normalize("NFD").replace(/[\\u0300-\\u036f]/g,""):s;}
-var TITLE={rep:1,"rep.":1,representative:1,sen:1,"sen.":1,senator:1};
+  s=s.normalize?s.normalize("NFD").replace(/[̀-ͯ]/g,""):s;
+  return s.replace(/['‘’ʼ]/g,"");}
+// A title is left out of a name; before a number it names the chamber.
+var TITLE={rep:"H","rep.":"H",representative:"H",sen:"S","sen.":"S",senator:"S"};
+// What the chip prints beside the title, and how the record shortens a place.
+var ELECT={elect:1,electo:1,electa:1,"electo/a":1};
+var LONG={"loc.":"location","pur.":"purchase"};
+// The words a district part can begin with: a county, the Senate.
+var DW=["belknap","carroll","cheshire","coos","grafton","hillsborough","merrimack",
+        "rockingham","strafford","sullivan","senate","sd","district"];
+function own(o,k){return Object.prototype.hasOwnProperty.call(o,k);}
+function dword(p){for(var k=0;k<DW.length;k++)if(DW[k].indexOf(p)===0)return true;return false;}
 function startsWord(h,w){
   if(w.length>=5)return h.indexOf(w)>=0;
   for(var i=h.indexOf(w);i>=0;i=h.indexOf(w,i+1))
@@ -1307,22 +1328,36 @@ function pairAt(t,pre,n,exact){
     if((exact?t[i]===pre:t[i].indexOf(pre)===0)&&t[i+1]===n)return true;
   return false;
 }
+function threeAt(t,pre,mid,n){
+  for(var i=0;i+2<t.length;i++)
+    if(t[i].indexOf(pre)===0&&t[i+1]===mid&&t[i+2]===n)return true;
+  return false;
+}
 function electMatch(it,q,st,p,ch){
   if(st&&it.st!==st)return false;
   if(p&&it.p!==p)return false;
   if(ch&&it.ch!==ch)return false;
-  var raw=fold(q).split(/\\s+/).filter(Boolean),w=[];
-  for(var i=0;i<raw.length;i++)
-    if(!Object.prototype.hasOwnProperty.call(TITLE,raw[i]))w.push(raw[i]);
+  var w=fold(q).split(/\\s+/).map(function(x){
+    x=x.replace(/^[“”"(\\[]+|[“”")\\],]+$/g,"");return own(LONG,x)?LONG[x]:x;
+  }).filter(function(x){return x&&/[a-z0-9]/.test(x)&&!own(ELECT,x);});
+  // A chip pasted whole ends "(R - SD8)": the party letter is not a name.
+  if(w.length>2)w=w.filter(function(x){return x.length>1||x!==it.p.toLowerCase();});
   var parts=it.hay.split(" | "),
       dist=(parts.length>2?parts[1]:it.hay).split(" "),
       town=(parts.length>2?parts.slice(2).join(" "):it.hay).split(" ");
   for(var j=0;j<w.length;j++){
     var x=w[j];
+    if(own(TITLE,x))continue;
+    // The word before, and the one before that, as typed (titles kept).
+    var b=j&&!/[0-9]/.test(w[j-1])?w[j-1]:"",
+        a=j>1&&!/[0-9]/.test(w[j-2])&&!own(TITLE,w[j-2])?w[j-2]:"";
     if(/^[0-9]+$/.test(x)){
-      var b=j&&!/[0-9]/.test(w[j-1])?w[j-1]:"";
-      if(b==="ward"){if(!pairAt(town,"ward",x,true))return false;}
-      else if(!pairAt(dist,b||"district",x,!b))return false;
+      if(own(TITLE,b)){if(it.ch!==TITLE[b]||!pairAt(dist,"district",x,true))return false;}
+      else if(b==="ward"){if(!(a?threeAt(town,a,"ward",x):pairAt(town,"ward",x,true)))return false;}
+      else if(b==="district"){if(!(a&&dword(a)?threeAt(dist,a,"district",x):pairAt(dist,"district",x,true)))return false;}
+      else if(!b){if(!pairAt(dist,"district",x,true))return false;}
+      else if(dword(b)){if(!pairAt(dist,b,x,false))return false;}
+      else if(!pairAt(dist,"district",x,true)&&!threeAt(town,b,"ward",x))return false;
     }else if(/[0-9]/.test(x)){
       if(dist.indexOf(x)<0)return false;
     }else if(!startsWord(it.hay,x))return false;

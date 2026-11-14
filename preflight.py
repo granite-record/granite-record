@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.909
+# GRANITE_VERSION: 2026-09-04.910
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -123310,7 +123310,10 @@ def _elect_search_filter(OT):
     they choose; and the script, run in node on the items the page really
     carries, matches by what is typed (every word, accents folded: a name, a
     county, a district, a town) and what is chosen, and says how many are
-    shown and fixes the headings' counts."""
+    shown and fixes the headings' counts. A second fixture of near districts
+    (Merr 5 and 15, SD1 and SD18, Hills 4 and 40, an invented ward) proves
+    that a number finds its district only, titles and town names before a
+    number, the record name, apostrophes and a pasted chip."""
     import html as _h
     import shutil as _sh
     elect, people = _elect_tab_case()
@@ -123429,18 +123432,26 @@ console.log(JSON.stringify(out));
         # review of 14 November 2026: "merr 5" found Merr 15, 19, 25 and 30
         # and not Merr 5, "senate district 8" found SD8, 13, 15 and 18, and
         # "james creighton" found nobody -- the ballot says Jim). Beside the
-        # fixture's districts stand Merr 15, SD18, Hills 40 and a ward; each
-        # query must find that district's member only.
+        # fixture's districts stand Merr 15, SD18, Hills 40 and a ward (towns
+        # invented here: Nashbury, Dunmere); each query must find that
+        # district's member only. And a title before a number names the
+        # chamber ("sen 8"), a town or a surname before a number is that
+        # town's ward or the district ("trow 13", "creighton 8"), a county
+        # before "district" is that county's (SD1 takes in a town named
+        # Carroll and is not "carroll 1"), a curly apostrophe finds the name
+        # a straight one spells, and the chip pasted whole finds its person.
         import copy as _cp
         el2 = _cp.deepcopy(elect)
         race = lambda *names: {"seats": len(names), "not_final": 0, "held": 0,  # noqa: E731
                                "elected": [{"n": n, "p": "D", "k": "new"} for n in names]}
         el2["races"].update({"S|1": race("Tom Onesen"), "S|18": race("Una Eighteen"),
-                             "H|Merrimack|5": race("Mia Five"), "H|Merrimack|15": race("Ned Fifteen"),
+                             "H|Merrimack|5": race("Mia Five"),
+                             "H|Merrimack|15": race("Ned Fifteen", "Sean O'Rorke"),
                              "H|Hillsborough|4": race("Hal Four"), "H|Hillsborough|40": race("Ivy Forty")})
         page2 = OT.members_elect(el2, "2026-11-20", "en", people,
-                                 {**towns, "H|Merrimack|15": ["Concord Ward 5"],
-                                  "H|Merrimack|5": ["Bow"]})
+                                 {**towns, "H|Merrimack|15": ["Nashbury Ward 5"],
+                                  "H|Merrimack|5": ["Dunmere"],
+                                  "S|1": ["Carroll", "Hart's Location", "Dover Ward 1"]})
         last2 = page2[:page2.find('id="pane-ecounty"')]
         items2 = [{"st": a, "p": b, "ch": c, "hay": d} for a, b, c, d in re.findall(
             r'<(?:li|div) class="(?:seatrow|mem)[^"]*" data-st="([a-z]*)" data-p="([^"]*)" '
@@ -123449,7 +123460,18 @@ console.log(JSON.stringify(out));
                 "hillsborough 40": ["ivy"], "sd 8": ["jim"], "sd8": ["jim"],
                 "senate district 8": ["jim"], "sd 1": ["tom"], "sd1": ["tom"],
                 "senate district 1": ["tom"], "district 5": ["mia"], "5": ["mia"],
-                "concord ward 5": ["ned"], "ward 5": ["ned"], "rock 13": ["charles", "kristine"],
+                "nashbury ward 5": ["ned", "sean"], "nashbury 5": ["ned", "sean"],
+                "ward 5": ["ned", "sean"], "rock 13": ["charles", "kristine"],
+                "sen 1": ["tom"], "senator 1": ["tom"], "sen. 1": ["tom"], "sen 8": ["jim"],
+                "rep 1": ["ann"], "rep 8": [], "rep 5": ["mia"],
+                "trow 13": ["kristine"], "creighton 8": ["jim"], "hampton 13": ["charles", "kristine"],
+                "carroll district 1": [], "carroll 1": [], "carr 1": [], "coos district 1": ["ann"],
+                "dover ward 1": ["tom"], "dover 1": ["tom"], "dover ward 5": [],
+                "merrimack district 15": ["ned", "sean"], "hills district 15": [],
+                "o’rorke": ["sean"], "o'rorke": ["sean"], "o rorke": ["sean"], "ororke": ["sean"],
+                "hart’s location": ["tom"], "harts loc.": ["tom"],
+                "Sen. “Elect” Jim Creighton (R - SD8)": ["jim"],
+                "Rep. “Elect” Sean O’Rorke (D - Merr 15)": ["sean"],
                 "james creighton": ["jim"], "jim creighton": ["jim"], "rep creighton": ["jim"],
                 "representative creighton": ["jim"], "sen. creighton": ["jim"],
                 "senator james creighton": ["jim"], "rep nobody": ["lee"], "rep Una": ["una"],
@@ -123484,7 +123506,10 @@ console.log(JSON.stringify(out));
     assert not bad, "\n  ".join(bad)
     return "ok", ("a search row written hidden, counts in every option, items carrying data-st, "
                   "-p, -ch and -hay; node: status, party, chamber, name, county, district, "
-                  "town and accents, headings recounted, the count said"
+                  "town and accents, headings recounted, the count said; and on a fixture of near "
+                  "districts, a number finds its district only (county, sd, senate district, "
+                  "ward, a town or surname before it), a title before a number names the "
+                  "chamber, a record name, a curly apostrophe and a pasted chip find the person"
                   if node else "the row and the items (node absent: the script not run)")
 
 
