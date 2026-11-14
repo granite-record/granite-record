@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.16
+# GRANITE_VERSION: 2026-09-18.17
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -53,9 +53,11 @@ the one that writes the file. build_all.py orders it; the assert below is what
 catches the day somebody reorders them, because a silently missing key would
 show as the option simply not being there.
 
-The rows carry no committee and no status kind, because an LSR has neither.
-That is not missing data, and those two facets are correct to show nothing
-for this term. A row carries a topic only where request_topics reads one from
+The rows carry no committee and no status kind, because an LSR has neither,
+so the Committee facet is correct to show nothing for this term. The Status
+facet is not empty: a request's status is its own word (Requested, Filed or
+Withdrawn, REQUESTED/FILED/WITHDRAWN below), which app.js's REQ_STATUS takes
+as a category. A row carries a topic only where request_topics reads one from
 its title (`topic_by` "title", with_topics below), which is why the Topic
 facet of this term says "(from the title)"; the rest carry none.
 """
