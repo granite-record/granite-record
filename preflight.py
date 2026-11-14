@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.907
+# GRANITE_VERSION: 2026-09-04.908
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -258,6 +258,21 @@ def _settle(status, msg, expect_fail):
                         f"passes now: take the expect_fail mark off, so that it holds what it "
                         f"found ({msg})")
     return status, msg
+
+
+def _answer(got):
+    """(status, words) of a check's answer, as main() and _check_outcome read every one.
+    A check answers ("ok" | "skip" | "FAIL", words) or raises; "fail" is read as "FAIL".
+    Anything else -- a bare None, a status nobody reads, a short tuple -- is a TypeError
+    that says so. It used to be "cannot unpack non-iterable NoneType object" (the night of
+    13 November 2026, a check that answered None when it passed, which the single runs had
+    called a pass), or a KeyError that stopped the whole run where the mark is printed."""
+    if isinstance(got, (tuple, list)) and len(got) == 2 and isinstance(got[0], str):
+        status = "FAIL" if got[0] == "fail" else got[0]
+        if status in ("ok", "skip", "FAIL", "ERROR"):
+            return status, got[1]
+    raise TypeError(f"the check answered {got!r:.120}: a check answers (status, words), the "
+                    "status ok, skip or FAIL, or raises")
 
 
 def imp(name):
@@ -30568,6 +30583,33 @@ def _expected_failures_settle():
                      if marked else ""))
 
 
+@check("files", "every check answers (status, words) or raises: a bare None or a status nobody "
+                "reads is an ERROR that says so, and \"fail\" is read as FAIL")
+def _checks_answer():
+    """_answer(), which main() and _check_outcome read every check's answer through. A check
+    that answered None when it passed ran clean on its own, where the runner called nothing a
+    pass, and stopped the night of 13 November 2026 at its first gate with "cannot unpack
+    non-iterable NoneType object"; three others answered "fail", which main() met only at the
+    line that prints the mark, as a KeyError that would have ended the whole run."""
+    assert _answer(("ok", "m")) == ("ok", "m") and _answer(["skip", "s"]) == ("skip", "s")
+    assert _answer(("fail", "x")) == ("FAIL", "x") and _answer(("FAIL", "y")) == ("FAIL", "y")
+    for bad in (None, ("warn", "x"), ("ok",), "ok", ("ok", "m", 3), (None, "m")):
+        try:
+            _answer(bad)
+        except TypeError as e:
+            assert "a check answers (status, words)" in str(e), str(e)
+        else:
+            raise AssertionError(f"{bad!r} was taken as a check's answer")
+    import inspect
+    reads = 'status, msg = _answer(c["fn"](*mods))'
+    assert reads in inspect.getsource(main), "main() reads a check's answer without _answer"
+    assert 'return _answer(c["fn"](*mods))' in inspect.getsource(_check_outcome), (
+        "_check_outcome reads a check's answer without _answer")
+    return "ok", ("None, an unknown status and a tuple of the wrong length are ERRORs that say "
+                  "so; \"fail\" reads as FAIL; main() and _check_outcome read every answer "
+                  "through _answer")
+
+
 @check("files", "the registry of stamps is the files' own; a changed file's stamp is raised, "
                 "none went backwards, and versions.json is not tracked", needs=("inventory",))
 def _stamps(inventory):
@@ -31730,7 +31772,12 @@ def _on_record_covers_the_nineties(LP):
     said = LP.describe(gone, gone).replace("House of Representatives", "House")
     if "Senate, 1993 to 1994, and House, 2001 to 2008" not in said:
         bad.append(f"a former member's description does not name each chamber's years: {said!r}")
-    return ("fail", "; ".join(bad)) if bad else None
+    # (status, words), as main() unpacks every check's answer: a bare None read as an ERROR on
+    # the night of 13 November 2026, though the single runs called it a pass.
+    assert not bad, "; ".join(bad)
+    return "ok", ("1990s terms join the span since 1999 only where they run into it, else stand "
+                  "as their own runs; a 1990s Senate term keeps its chamber; app.js and the "
+                  "static page say the same; a member with none is as before")
 
 
 @check("build", "members-elect: every new member-elect with a page is linked to it on the Officials "
@@ -132443,7 +132490,7 @@ def main():
             status, msg = "skip", f"{missing}.py will not import"
         else:
             try:
-                status, msg = c["fn"](*mods)
+                status, msg = _answer(c["fn"](*mods))
             except AssertionError as e:
                 status, msg = "FAIL", str(e) or "assertion failed"
             except Exception as e:
@@ -134219,7 +134266,7 @@ def _check_outcome(c):
             return "skip", f"{n}.py will not import"
         mods.append(m)
     try:
-        return tuple(c["fn"](*mods))
+        return _answer(c["fn"](*mods))
     except AssertionError as e:
         return "FAIL", str(e) or "assertion failed"
     except Exception as e:                                      # noqa: BLE001
