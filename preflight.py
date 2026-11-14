@@ -117402,7 +117402,8 @@ def _numbers_charts(LN):
 
 
 @check("frontend", "By the Numbers fits its box: every chart label is inside its own viewBox, no number table is "
-                   "held to the prose measure, and the flow diagram has no minimum width off a phone",
+                   "held to the prose measure, the flow diagram has no minimum width off a phone and its table is "
+                   "not pinned, no named scatter label covers a named point, and ties come out in name order",
        needs=("learn_numbers",))
 def _numbers_fit(LN):
     """The owner, 13 November 2026, from a printed copy of the page: the
@@ -117417,16 +117418,31 @@ def _numbers_fit(LN):
     and its anchor, rotated text on the other axis -- against the viewBox it
     sits in. And app.css is read for the two rules that caused the rest:
     number tables held to the prose measure, and a minimum width on the flow
-    diagram that applies at every width rather than only on a phone."""
+    diagram that applies at every width rather than only on a phone.
+
+    Four more guards, each from a thing that broke: the phone's pinned first
+    column must not reach the flow diagram's table (.l-twin), whose first
+    column is wider than the box; a named scatter label's box must not
+    contain its own point; nor another named committee's point (2023-2024:
+    Childcare across Transportation); and tied committees come out in name
+    order whatever order they arrive in."""
     terms = [f"{y}&ndash;{y + 1}" for y in range(1989, 2027, 2)]
     oc = {t.replace("&ndash;", "-"): {"filed": 1000 + i, "Became Law": 150 + i, "Interim Study": 100,
                                        "Died": 700, "other": 50 + i}
           for i, t in enumerate(terms)}
     pts = [("House Executive Departments and Administration", "H", 250, 3.0),
-           ("Senate Commerce", "S", 20, 30.0), ("House Finance", "H", 200, 90.0),
+           ("Senate Commerce", "S", 20, 30.0), ("House Finance", "H", 200, 70.0),
            ("Senate Education and Workforce Development", "S", 85, 60.0),
            ("House Ways and Means", "H", 12, 99.0), ("House Judiciary", "H", 150, 55.0),
-           ("Senate Judiciary", "S", 100, 10.0)]
+           ("Senate Judiciary", "S", 100, 10.0),
+           # a name too long for either side of its point (a third of the
+           # way along, in the top three): it must be set clear of its point
+           ("Senate Energy, Environment and Economic Development", "S", 150, 80.0),
+           # two committees at one rate, to come out in name order
+           ("House Transportation", "H", 106, 50.0), ("House Public Works and Highways", "H", 44, 50.0),
+           # two NAMED committees at one rate, the left one first by name, as in 2023-2024:
+           # the right-hand one claims the line, or the left one's name runs across it
+           ("Senate Transportation", "S", 60, 99.0)]
     tree = {"label": "Bills filed", "n": 2139, "cls": "n", "kids": [
         {"label": "Cleared the second chamber", "n": 1900, "cls": "n", "kids": [
             {"label": "Reached the governor", "n": 686, "cls": "n", "kids": [
@@ -117469,6 +117485,42 @@ def _numbers_fit(LN):
                 bad.append(f"{name}: '{body[:28]}' spans x {x0:.0f}..{x1:.0f}, y {y0:.0f}..{y1:.0f} "
                            f"outside 0..{W} x 0..{H}")
     assert not bad, "a chart label is cut by its own viewBox: " + "; ".join(bad[:6])
+    # (b) a named label's box never contains its own point (it hid the point it named)
+    sc = svgs["scatter"]
+    marks = {}
+    for gm in re.finditer(r"<g><title>([^<]+?): [\d,]+ bills reported[^<]*</title>"
+                          r'(?:<circle[^>]*cx="([\d.]+)" cy="([\d.]+)"|<path[^>]*d="M([\d.]+),([\d.]+)L)', sc):
+        nm, cx, cy, mx, my = gm.groups()
+        marks[nm] = (float(cx), float(cy)) if cx else (float(mx), float(my) + 5.5)
+    seen = 0
+    for tm in re.finditer(r'<text x="([\d.]+)" y="([\d.]+)" text-anchor="(start|end)">([^<]+)</text>', sc):
+        lx, ly, anchor, short = float(tm.group(1)), float(tm.group(2)), tm.group(3), tm.group(4)
+        own = [pt for n_, pt in marks.items() if re.sub(r"^(House|Senate) ", "", n_) == short]
+        if not own:
+            continue
+        seen += 1
+        wd = LN.text_w(short, LN.CH_PX)
+        x0 = lx - wd if anchor == "end" else lx
+        for ox, oy in own:
+            assert not (x0 <= ox <= x0 + wd and ly - LN.CH_PX * .8 <= oy <= ly + LN.CH_PX * .25), (
+                f"the label '{short}' is set across its own point at ({ox:.0f}, {oy:.0f})")
+    assert seen >= 4, f"only {seen} named labels were found in the scatter chart"
+    # (d) nor another named committee's point (2023-2024: Childcare's name across Transportation's)
+    ranked_ = sorted(pts, key=lambda p: (p[3], p[0]))
+    named_ = {p[0] for p in ranked_[:3] + ranked_[-3:]}
+    for tm in re.finditer(r'<text x="([\d.]+)" y="([\d.]+)" text-anchor="(start|end)">([^<]+)</text>', sc):
+        lx, ly, anchor, short = float(tm.group(1)), float(tm.group(2)), tm.group(3), tm.group(4)
+        if not any(re.sub(r"^(House|Senate) ", "", n_) == short for n_ in marks):
+            continue
+        wd = LN.text_w(short, LN.CH_PX)
+        x0 = lx - wd if anchor == "end" else lx
+        for n_, (ox, oy) in marks.items():
+            if n_ in named_ and re.sub(r"^(House|Senate) ", "", n_) != short:
+                assert not (x0 <= ox <= x0 + wd and ly - LN.CH_PX * .8 <= oy <= ly + LN.CH_PX * .25), (
+                    f"the label '{short}' is set across {n_}'s point at ({ox:.0f}, {oy:.0f})")
+    # (c) tied committees come out in name order whatever order they arrive in
+    assert LN.scatter_chart(pts, "t", "said", "x", "y") == LN.scatter_chart(pts[::-1], "t", "said", "x", "y"), (
+        "the scatter chart draws tied committees in the order they arrived (a set's, so the hash seed's)")
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     assert not re.search(r"\.l-secb\s*>\s*\.l-numwrap\s*\{[^}]*max-width:\s*var\(--l-meas\)", css), (
         "app.css holds the number tables to the prose measure again (.l-secb > .l-numwrap)")
@@ -117484,8 +117536,21 @@ def _numbers_fit(LN):
         assert not re.search(r"overflow-wrap:\s*(anywhere|break-word)|word-break:\s*break-all", m.group(1)), (
             "a number table's head may break inside a word again (it read 'PASSE / D BOTH CHAMB / ERS')")
     assert "min-width" not in inspect_source(LN._svg), "the charts' SVG carries an inline minimum width"
+    # (a) the phone's pinned first column cannot reach the flow diagram's table (.l-twin):
+    # its first column is the whole indented stage name, wider than a phone's box
+    phone = css[css.index("@media (max-width:40em){", css.index("ON A PHONE a figures table")):]
+    phone = phone[phone.index("{") + 1:phone.index("\n}\n")]
+    pinned = [r for r in re.finditer(r"([^{}]+)\{([^}]*position:\s*sticky[^}]*)\}", phone)]
+    assert pinned, "the phone's pinned first column rule was not found in app.css"
+    for r_ in pinned:
+        for sel in r_.group(1).split(","):
+            assert ".l-numtab" in sel and ":not(.l-twin)" in sel, (
+                "the phone's sticky first column reaches the flow diagram's table (.l-twin), "
+                "where it covers the figures: " + sel.strip())
     return "ok", (f"{sum(h.count('<text') for h in svgs.values())} labels in {len(svgs)} chart builders inside "
-                  "their viewBoxes; tables not held to the measure; the diagram's minimum width is phone-only")
+                  "their viewBoxes; no named scatter label across its own point or another named committee's; tied committees in name order; "
+                  "tables not held to the measure; the diagram's minimum width and the pinned first column "
+                  "(not the flow table's) are phone-only")
 
 
 def inspect_source(fn):
