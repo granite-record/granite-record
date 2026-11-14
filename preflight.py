@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.909
+# GRANITE_VERSION: 2026-09-04.910
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -108830,7 +108830,8 @@ def _workflows_secrets():
 
 
 @check("workflows", "the patch notes reach the run's page through the environment alone: the "
-       "Notes box is read once, never into a script, and its step cannot fail the night")
+       "Notes box is read once, never into a script, its step runs on a run by hand only, escapes "
+       "&, < and > in each subject, and cannot fail the night")
 def _workflows_patch_notes():
     """The owner, 13 November 2026: "list the major patch notes within the
     github actions page so I know what pages to specifically look at for
@@ -108841,7 +108842,11 @@ def _workflows_patch_notes():
     line holds it before any shell reads it, so it is read in exactly one
     place, the step's NOTES environment entry, and no script line names it.
     The step ends by exiting 0, inside a try, so a page it cannot write never
-    stops a night; and only a run by hand has a box to read."""
+    stops a night; and only a run by hand has a box to read, so the step does
+    not run on the night's timer (which dispatches with timer true and no
+    notes) or on the clock's, read as GitHub reads the line. Each commit
+    subject has &, < and > escaped before it goes into the page's Markdown,
+    so a <word> in one is shown rather than taken for a tag."""
     f = Path(".github/workflows/nightly.yml")
     if not f.is_file():
         return "skip", "no nightly.yml here"
@@ -108867,23 +108872,47 @@ def _workflows_patch_notes():
              if any(ln.strip() == "- name: The patch notes" for ln in st)]
     assert len(steps) == 1, f"the night has {len(steps)} patch notes steps, not one"
     st = "\n".join(steps[0])
-    assert "if: github.event_name == 'workflow_dispatch'" in st, "the patch notes step runs on a scheduled night"
-    # The night's timer dispatches too, with timer "true" and no notes; the
-    # input arrives as a boolean or as the string.
+    # What the line does, not what it says: evaluated as GitHub evaluates it
+    # for every kind of night (WF_RUNS), the step runs exactly on a run by
+    # hand that is not the timer's. The night's timer dispatches too, with
+    # timer "true" and no notes, and a box of a dispatch may arrive as a
+    # boolean or as a string.
     cond = next((ln.strip() for ln in steps[0] if ln.strip().startswith("if:")), "")
-    assert "inputs.timer == true" in cond and "inputs.timer == 'true'" in cond and "!(" in cond, (
-        f"the patch notes step runs on the night's timer, which gives no notes: {cond}")
+    expr = cond[3:].strip()
+    assert expr, "the patch notes step has no if"
+    seen = 0
+    for event, ref, boxes, _dry, title in WF_RUNS["nightly.yml"]:
+        forms = [boxes]
+        if event == "workflow_dispatch":
+            forms.append({k: str(v).lower() for k, v in boxes.items()})
+        for bx in forms:
+            runs = bool(_gh_eval(expr, _wf_run_ctx(event, ref, bx)))
+            want = event == "workflow_dispatch" and not boxes.get("timer")
+            assert runs == want, (
+                f"the patch notes step {'runs' if runs else 'does not run'} on {title} "
+                f"({'strings' if bx is not boxes else 'booleans'}) and should "
+                f"{'' if want else 'not '}: {cond}")
+            seen += 1
     # A subject is text, not Markdown: <name> would be read as a tag and lost.
-    assert "-replace '&','&amp;'" in st and "-replace '<','&lt;'" in st and "-replace '>','&gt;'" in st, (
-        "commit subjects go into the run page unescaped")
-    assert st.index("-replace '&','&amp;'") < st.index("Select-Object -First 40"), (
-        "the subjects are escaped after they were written to the run page")
+    # One line on $log, after the git log it filters and before the 40 are kept,
+    # & first so that the entities written for < and > are not escaped again.
+    esc = ("$log = @($log | ForEach-Object { $_ -replace '&','&amp;' "
+           "-replace '<','&lt;' -replace '>','&gt;' })")
+    sl = [ln.strip() for ln in steps[0]]
+    gi = next((n for n, ln in enumerate(sl) if "git log --first-parent" in ln), -1)
+    ei = [n for n, ln in enumerate(sl) if ln == esc]
+    si = next((n for n, ln in enumerate(sl) if "Select-Object -First 40" in ln), -1)
+    assert gi >= 0 and si >= 0 and len(ei) == 1 and gi < ei[0] < si, (
+        "commit subjects go into the run page without &, < and > escaped on $log "
+        "between the git log line and the 40 kept")
     run = st.split("run: |", 1)[1] if "run: |" in st else ""
     assert run and "${{" not in run, "the patch notes step's script has an expression GitHub would write into it"
     assert "$env:NOTES" in run and "GITHUB_STEP_SUMMARY" in run, "the patch notes do not reach the run's page"
     assert run.strip().endswith("exit 0") and "try {" in run and "} catch {" in run, (
         "the patch notes step can fail the night")
-    return "ok", "one Notes box, read through NOTES alone; its step writes the run's page and cannot fail the night"
+    return "ok", (f"one Notes box, read through NOTES alone; its step runs on a run by hand and on none "
+                  f"of the timer's or the clock's ({seen} readings of 9 kinds of run, boxes as booleans "
+                  "and strings), escapes & < > in each subject, writes the run's page and cannot fail the night")
 
 
 @check("workflows", "each workflow's token reads the repository and no more, and nothing a "
@@ -120599,11 +120628,20 @@ def _town_staff_own_page(B):
         o = {"_offices": {"effingham": {"officials": [dict(r) for r in row],
                                          "website": "https://www.effinghamnh.net/",
                                          "phone": "603-539-7770"},
-                          "lyme": {"officials": [dict(r) for r in row]}},
+                          "lyme": {"officials": [dict(r) for r in row]},
+                          "franklin": {"officials": [dict(r) for r in row],
+                                       "website": "https://www.franklinnh.net/",
+                                       "phone": "603-934-3900"}},
              "_local": {"effingham": {"website": "www.effinghamnh.net"}}}
         if moved:
             B.apply_websites(o, {"effingham": {"website": "https://www.effingham.nh.gov",
-                                               "checked_on": "2026-11-13"}})
+                                               "checked_on": "2026-11-13",
+                                               "email": {"address": "townadmin@effingham.nh.gov",
+                                                         "checked_on": "2026-11-13"}},
+                                 "franklin": {"website": "https://www.franklinnh.gov",
+                                              "checked_on": "2026-11-13",
+                                              "email": {"address": "clerk@franklinnh.gov",
+                                                        "checked_on": "2026-11-13"}}})
             o["_staff"] = {"effingham": staff}
         return o
 
@@ -120633,6 +120671,18 @@ def _town_staff_own_page(B):
                    nu.split("(checked November 13, 2026)")[0]) is None:
         bad.append("on the moved town's offices card the 'since then' sentence does not come "
                    "straight after the directory's date")
+    # The noun is the place's own: a city's card says the city's, a town's the town's.
+    fr = _html.unescape(page("Franklin", off(True)))
+    for need in ("The website is the city's current one, which the directory does not have yet",
+                 "The e-mail address is the city's own, which the directory does not have"):
+        if need not in fr:
+            bad.append(f"a moved city's offices card does not say: {need}")
+    if "the town's" in fr:
+        bad.append("a moved city's offices card says the town's")
+    for need in ("The website is the town's current one, which the directory does not have yet",
+                 "The e-mail address is the town's own, which the directory does not have"):
+        if need not in nu:
+            bad.append(f"a moved town's offices card does not say: {need}")
     # A town the hand file does not name is the same page to the byte.
     if page("Lyme", off(False)) != page("Lyme", off(True)):
         bad.append("another town's page changed")
