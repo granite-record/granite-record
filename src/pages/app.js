@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.321
+// GRANITE_VERSION: 2026-09-07.322
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into

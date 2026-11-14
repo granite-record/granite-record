@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.8
+# GRANITE_VERSION: 2026-11-08.9
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -119,7 +119,8 @@ def person_chip(who_of, slug, label, party=""):
 
 def chips_of(people, who_of):
     """The chips of the people a row names: [{"label", "slug"}, ...]."""
-    return [person_chip(who_of, c.get("slug"), c.get("label")) for c in people or []]
+    return [person_chip(who_of, c.get("slug"), c.get("label"), c.get("party") or "")
+            for c in people or []]
 
 
 def rail_of(r):
@@ -214,10 +215,14 @@ def summary(r, req):
 def sponsors_pane(r, who_of):
     """The Sponsors tab, only where co-sponsors are listed (the General
     Court lists one once they have accepted): the prime sponsor and every
-    co-sponsor as the person chip."""
+    co-sponsor as the person chip, by person_chip's one rule, as head() draws
+    the prime sponsor: a returning former member from the row, never their
+    old seat."""
     cos = chips_of(r.get("cosponsors"), who_of)
-    sponsor = who_of.get(r.get("sponsor_slug"))
-    prime = C.pchip(sponsor) if sponsor else E(r.get("sponsor_label") or r.get("sponsor") or "")
+    slug = r.get("sponsor_slug")
+    name = r.get("sponsor_label") or r.get("sponsor") or ""
+    prime = (person_chip(who_of, slug, name, r.get("sponsor_party") or "")
+             if slug and (slug in who_of or name) else E(name))
     return (f'<p class="spcount">{len(cos) + 1} Sponsors</p>'
             f'<h2 class="sech spgrp">Prime Sponsor</h2><div class="chosen">{prime}</div>'
             f'<h2 class="sech spgrp">{"Co-Sponsors" if len(cos) > 1 else "Co-Sponsor"} '
