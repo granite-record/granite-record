@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.9
+# GRANITE_VERSION: 2026-11-08.10
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -203,13 +203,13 @@ def head(r, req, who_of, path, base):
 
 
 def summary(r, req):
-    """The Summary tab: the requests' explanation, and the facts of this
-    one."""
-    state = state_of(r)
+    """The Summary tab: the requests' explanation. The facts of this one are
+    the head's (the status chip, the field grid): not said twice (the owner,
+    14 November 2026: "just let the pages speak for themselves")."""
     return (C.section("About Requests",
                       f'<p class="lsrnote">{explain(r.get("year") or req.get("year"), req.get("abbr"))}</p>',
                       "about")
-            + C.section("The Request", f'<p><b>Status:</b> {E(state)}</p>', "request"))
+            )
 
 
 def sponsors_pane(r, who_of):
@@ -257,6 +257,10 @@ def tabs(path, panes):
     same script, ssTabs, and the same stylesheet): `panes` is [(id, word,
     count, body)], the first shown. Every tab is at the page's own address
     (no slug), a place on a tab named by its #id."""
+    if len(panes) == 1:
+        # Summary alone: no strip to choose from, and no tab for the pane to answer to.
+        _pid, word, _n, body = panes[0]
+        return f'<div class="pane sspane" data-on><h2 class="ssph">{E(word)}</h2>{body}</div>'
     strip = ('<div class="tabs sstabs" role="tablist" data-base="' + E(path) + '">'
              + "".join(f'<button type="button" class="tab" role="tab" id="sstab-{pid}" '
                        f'aria-controls="{pid}" data-sstab="" aria-selected="{"true" if i == 0 else "false"}">'
@@ -272,11 +276,14 @@ def tabs(path, panes):
 def body(r, req, who_of, path, base):
     """One request's page: a bill's, with what a request has drawn and the
     rest left quiet."""
-    panes = [("summary", "Summary", 0, summary(r, req))]
+    # PANE IDS ARE THE REQUEST PAGE'S OWN (rq-): bills.html carries
+    # <p id="summary">, and ssPaneOf finds an element by id, so a pane called
+    # "summary" was never the one its tab switched.
+    panes = [("rq-summary", "Summary", 0, summary(r, req))]
     if r.get("cosponsors"):
-        panes.append(("sponsors", "Sponsors", len(r["cosponsors"]) + 1, sponsors_pane(r, who_of)))
+        panes.append(("rq-sponsors", "Sponsors", len(r["cosponsors"]) + 1, sponsors_pane(r, who_of)))
     if r.get("history"):
-        panes.append(("history", "History", len(r["history"]), history_pane(r)))
+        panes.append(("rq-history", "History", len(r["history"]), history_pane(r)))
     return head(r, req, who_of, path, base) + tabs(path, panes)
 
 

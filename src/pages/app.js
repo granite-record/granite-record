@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.324
+// GRANITE_VERSION: 2026-09-07.325
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -8343,11 +8343,11 @@ function lsrPane(b,t){
       <ul class="lsrhist">${hist.map(h=>`<li><a href="bill/${esc(h.year)}/${esc(String(h.id||"").toLowerCase())}">${
         esc(h.n)} <span class="cyear">(${esc(h.year)})</span></a> ${chip(h.word||h.chip,`cstat ${h.cls||""}`,"m")}</li>`).join("")}</ul>`;
   }
-  return `<p><b>Status:</b> ${esc(b.status)}</p>
-    ${b.body_label?`<p><b>Kind:</b> ${esc(b.body_label)}</p>`:""}
-    ${prime?`<p><b>Prime Sponsor:</b> ${prime}</p>`:""}
-    ${cos.length?`<p><b>${cos.length>1?"Co-Sponsors":"Co-Sponsor"}:</b> ${cos.map(lsrChip).join(" ")}</p>`:""}
-    ${b.topic&&b.topic_by==="title"?`<p><b>Topic (from the title):</b> ${esc(b.topic)}</p>`:""}
+  // WHAT THE BYLINE DOES NOT SAY (the owner, 14 November 2026: "just let the
+  // pages speak for themselves"): the chip has the status, the byline the kind,
+  // the prime sponsor and the topic; what is left is the co-sponsors and the way
+  // on to the request's own page.
+  return `${cos.length?`<p><b>${cos.length>1?"Co-Sponsors":"Co-Sponsor"}:</b> ${cos.map(lsrChip).join(" ")}</p>`:""}
     ${b.address?`<p><a href="${esc(b.moved_to||b.address)}">${b.moved_to?"Read the bill":"Open the request’s own page"}</a></p>`:""}`;
 }
 // WHAT A REQUEST'S CARD OPENS ONTO: the bill card's tab strip and panes, from
@@ -8355,9 +8355,12 @@ function lsrPane(b,t){
 // openTab's, as a bill's is.
 function lsrBody(b){
   const tabs=lsrTabs(b),want=openTab[b.id]||"0",t=tabs.some(x=>x[0]===want)?want:"0";
+  const pane=([k])=>`<div class="pane" role="tabpanel" id="pane_${esc(b.id)}_${k}" aria-labelledby="tab_${esc(b.id)}_${k}" tabindex="0" data-t="${k}"${k===t?"":" hidden"}>${lsrPane(b,k)}</div>`;
+  // Summary alone is no choice to make: no strip, and a pane with no tab to answer to.
+  if(tabs.length<2)return `<div class="pane" data-t="0">${lsrPane(b,"0")}</div>`;
   return `<div class="tabs" role="tablist">${tabs.map(([k,w,n])=>
       `<button class="tab" role="tab" id="tab_${esc(b.id)}_${k}" aria-controls="pane_${esc(b.id)}_${k}" aria-selected="${k===t}" data-t="${k}">${w}${n?tabN(n):""}</button>`).join("")}</div>`
-    +tabs.map(([k])=>`<div class="pane" role="tabpanel" id="pane_${esc(b.id)}_${k}" aria-labelledby="tab_${esc(b.id)}_${k}" tabindex="0" data-t="${k}"${k===t?"":" hidden"}>${lsrPane(b,k)}</div>`).join("");
+    +tabs.map(pane).join("");
 }
 // `cls`: a class beside "card lsr" (a paged list's "unshown").
 //
@@ -8892,6 +8895,9 @@ document.addEventListener("focusin",e=>{
 // One strip per member or committee page, so the ids are fixed: ptab_<i> for a
 // tab and ppane for the panel it controls, which pagePane() writes.
 function tabStrip(tabs){
+  const pane=([k])=>`<div class="pane" role="tabpanel" id="pane_${esc(b.id)}_${k}" aria-labelledby="tab_${esc(b.id)}_${k}" tabindex="0" data-t="${k}"${k===t?"":" hidden"}>${lsrPane(b,k)}</div>`;
+  // Summary alone is no choice to make: no strip, and a pane with no tab to answer to.
+  if(tabs.length<2)return `<div class="pane" data-t="0">${lsrPane(b,"0")}</div>`;
   return `<div class="tabs" role="tablist">${tabs.map((t,i)=>
     `<button class="tab" role="tab" id="ptab_${i}" aria-controls="ppane" data-pt="${i}" aria-selected="${
       i===PAGE_TAB}">${esc(t[0])}${t[1]?tabN(t[1].toLocaleString()):""}</button>`
