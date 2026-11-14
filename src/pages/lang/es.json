@@ -1617,6 +1617,16 @@
    "es": "para {n} escaño",
    "state": "draft"
   },
+  "elect.nf_says": {
+   "en": "{where}'s result is not final.",
+   "es": "El resultado de {where} no es final.",
+   "state": "draft"
+  },
+  "elect.nf_says_rc": {
+   "en": "{where}'s result is not final: a recount was requested.",
+   "es": "El resultado de {where} no es final: se pidió un recuento.",
+   "state": "draft"
+  },
   "elect.nf_seats": {
    "en": "for {n} seats in {d} districts",
    "es": "para {n} escaños en {d} distritos",

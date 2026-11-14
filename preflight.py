@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.916
+# GRANITE_VERSION: 2026-09-04.917
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -124273,6 +124273,72 @@ console.log(JSON.stringify(out));
         for q, w in asks.items():
             if o2[q] != w:
                 bad.append(f"the search {q!r} shows {o2[q]}, not {w}")
+        # A SEARCH FOR A DISTRICT NOT FINAL SAYS SO, AND THE LIST'S LINE GOES
+        # (the review of 14 November 2026: "merr 5", a recount pending, drew
+        # "No member-elect matches that." over an empty list, and "All 408
+        # members-elect..." stayed above "Senate - 0"). A race not final has
+        # nobody to find, so the bar carries them (data-nf). Here Merrimack 5
+        # (a recount) and Senate 14 (none) are not final; each answers its
+        # own search with its sentence; a search that finds no race says what
+        # it always said; a search that finds members, or any status or party
+        # chosen, is not answered with it; and the counting line is out while
+        # a search is on and back when it is cleared.
+        el3 = _cp.deepcopy(elect)
+        el3["races"].update({"H|Merrimack|5": {"seats": 1, "not_final": 1, "held": 0, "recount": True,
+                                               "elected": []},
+                             "S|14": {"seats": 1, "not_final": 1, "held": 0, "elected": []}})
+        page3 = OT.members_elect(el3, "2026-11-20", "en", people, towns)
+        bar3 = re.search(r'<div class="bfilt elfilter" role="search" hidden data-n="12" ([^>]*)>', page3)
+        nf3 = re.search(r'data-nf="([^"]*)"', bar3.group(1)) if bar3 else None
+        if not nf3:
+            bad.append("the search row carries no data-nf for the races not final")
+        elif 'class="src elall"' not in page3:
+            bad.append("the line counting the whole list has no handle for the script")
+        else:
+            last3 = page3[:page3.find('id="pane-ecounty"')]
+            items3 = [{"st": a, "p": b, "ch": c, "hay": d} for a, b, c, d in re.findall(
+                r'<(?:li|div) class="(?:seatrow|mem)[^"]*" data-st="([a-z]*)" data-p="([^"]*)" '
+                r'data-ch="([SH])" data-hay="([^"]*)">', last3)]
+            h3 = r"""
+var ITEMS=""" + json.dumps(items3) + r""";
+function el(o){var e=Object.assign({c:new Set(),ls:{}},o);
+  e.classList={toggle:function(n,f){if(f===undefined)f=!e.c.has(n);if(f)e.c.add(n);else e.c.delete(n);},
+               contains:function(n){return e.c.has(n);}};
+  e.addEventListener=function(t,f){(e.ls[t]=e.ls[t]||[]).push(f);};
+  e.fire=function(t){(e.ls[t]||[]).forEach(function(f){f();});};
+  return e;}
+var cells=ITEMS.map(function(i){return el({dataset:{st:i.st,p:i.p,ch:i.ch,hay:i.hay},
+  closest:function(s){return s==="#pane-elast"?this:null;}});});
+var box=el({value:""}),st=el({value:""}),pa=el({value:""}),ch=el({value:""}),say=el({textContent:""});
+var line=el({});
+var bar=el({dataset:{some:"Showing {n} of {m} members-elect",none:"No member-elect matches that.",n:"12",
+  nf:""" + json.dumps(_h.unescape(nf3.group(1))) + r"""},
+  querySelector:function(s){return {".elq":box,".elst":st,".elpa":pa,".elch":ch,".elcount":say}[s];}});
+var panel={querySelectorAll:function(s){return s==="[data-st]"?cells:s===".elall"?[line]:[];}};
+bar.parentNode=panel;
+var window={};
+var document={querySelector:function(s){return s===".elfilter"?bar:null;}};
+""" + script.group(1) + r"""
+function go(q,s,p,c){box.value=q;st.value=s;pa.value=p;ch.value=c;box.fire("input");
+  return {say:say.textContent,line:line.c.has("elout")};}
+console.log(JSON.stringify({a:go("merr 5","","",""),b:go("sd 14","","",""),c:go("merr 6","","",""),
+  d:go("rock 13","","",""),e:go("merr 5","new","",""),f:go("","","",""),g:go("merr 5","","","S")}));
+"""
+            r3 = _sp.run([node, "-e", h3], capture_output=True, text=True, encoding="utf-8", timeout=60)
+            assert r3.returncode == 0 and r3.stdout.strip().startswith("{"), \
+                f"the not-final script did not run in node: {(r3.stderr or r3.stdout).strip()[:400]}"
+            o3 = json.loads(r3.stdout)
+            none_ = "No member-elect matches that."
+            want3 = {"a": "Merrimack District 5's result is not final: a recount was requested.",
+                     "b": "Senate District 14's result is not final.", "c": none_, "e": none_, "g": none_}
+            for k, w in want3.items():
+                if o3[k]["say"] != w:
+                    bad.append(f"a search for a district not final ({k}) says {o3[k]['say']!r}, not {w!r}")
+            if not o3["d"]["say"].startswith("Showing "):
+                bad.append(f"a search that finds members says {o3['d']['say']!r}")
+            if not (o3["a"]["line"] and o3["d"]["line"]) or o3["f"]["line"]:
+                bad.append("the line counting the whole list is not out while a search is on and back "
+                           f"when it is cleared: {o3['a']['line']} {o3['d']['line']} {o3['f']['line']}")
     # Spanish: the row's words, none in English.
     es = OT.members_elect(elect, "2026-11-20", "es", people, towns)
     row = re.search(r'<div class="bfilt elfilter".*?</div>', es, re.S).group(0)
