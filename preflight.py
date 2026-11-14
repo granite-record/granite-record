@@ -54325,22 +54325,17 @@ def _directory_pages():
             "a request's row in the directory does not link the request's own page")
         assert '<a href="bill/2027/hb45">LSR 2027-0002</a>' in reqs and "request/2027-0002" not in reqs, (
             "a request now a bill is not linked to its bill, or still links its old address")
-        assert "Each request has its own page until it becomes a numbered bill" in reqs \
-            and "has no page of its own" not in reqs, (
-            "the list of requests does not say each request has its own page")
-        # A request retired at the close of filing forwards to its sponsor or
-        # to the search, so the lead says so -- only when some row does.
+        # THE LEAD SAYS NO MORE THAN WHERE THEY ARE SEARCHED (the owner, 14
+        # November 2026: "just let the pages speak for themselves"): the
+        # rows' links say the rest, retired requests' included.
+        assert ('4 requests, by number. <a href="bills?term=2027-requests">The bill search</a> '
+                "lists them with their sponsors.") in reqs, (
+            "the list of requests' lead is not the count and the link to the bill search")
+        for said in ("has its own page", "has no page", "forwards to", "numbered bill"):
+            assert said not in reqs, f"the list of requests' lead explains too much: {said!r}"
         assert '<a href="legislator/jane-doe-hills-12">LSR 2027-0003</a>' in reqs \
             and '<a href="bills?term=2027-requests">LSR 2027-0004</a>' in reqs, (
             "a retired request's row does not link where its address forwards")
-        sentence = "A request not filed as a bill by the close of filing forwards to its sponsor"
-        assert sentence in reqs, "the lead does not say that unfiled requests forward, though some do"
-        import build_indexes as BI
-        plain = [{"lsr": True, "address": "request/2027-0001"},
-                 {"lsr": True, "address": "request/2027-0002", "moved_to": "bill/2027/hb45"}]
-        assert not BI.forwarded(plain) and BI.forwarded(plain + [
-            {"lsr": True, "address": "request/2027-0003", "moved_to": "bills?term=2027-requests"}]), (
-            "the lead's extra sentence is not tied to a request that forwards to a sponsor or the search")
         assert "<title>2027 Bill Requests | Granite Record</title>" in reqs \
             and "<h1>2027 Bill Requests</h1>" in reqs, (
             "the list of requests is not titled as the term picker names it "
@@ -54372,7 +54367,7 @@ def _directory_pages():
             "reaches the per-record lists and a crawler sees no bills")
         return "ok", ("bills by term, legislators and towns linked statically, sitemapped, footer "
                       "links them; each request linked to its own page, or to its bill once it is "
-                      "one, under a lead that says so")
+                      "one, under a lead that only names the bill search")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
