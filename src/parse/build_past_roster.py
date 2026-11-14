@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-13.2
+# GRANITE_VERSION: 2026-11-13.3
 """
 Who sat, term by term, 1989 to 1998, as the sponsor route gives it.
 
@@ -128,9 +128,11 @@ def add_roll(rows, got, people, voters):
 
     `got` is past_roll.survey's {volume: [(entry, state, employee)]}. A name the roll places on a person
     who has a row for that term in the House gets the volume and the seat the roll gave, and a note of
-    whether a printed seat could be compared; one it places on a person with no row for the term (a House
-    member who sponsored nothing) gets a row of their own, from the roll alone, in the House; a name whose
-    seat contradicts the person's printed one, and a name placed on nobody, are listed and attached to no
+    whether a printed seat could be compared; one it places on a person with no House row for the term
+    gets a row of their own, from the roll alone, in the House. survey places a name only on someone who
+    sponsored in the term (past_roll.pool), so a member who sponsored nothing never gets a row here: the
+    second case can only be a sponsor whose row of the term names no chamber. A name whose seat
+    contradicts the person's printed one, and a name placed on nobody, are listed and attached to no
     one. Party is not read: the roll prints a nominating party and none is given before 1999."""
     rows = [dict(r) for r in rows]
     by = {(r["term"], r["chamber"], r["person"]): r for r in rows}
