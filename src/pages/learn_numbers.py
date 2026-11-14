@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.32
+# GRANITE_VERSION: 2026-09-14.33
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -947,7 +947,9 @@ def scatter_chart(points, title, said, xlabel, ylabel, lang="en", note=""):
     named = {p[0] for p in ranked[:3] + ranked[-3:]}
     last = {}
     for name, ch, xv, yv in sorted(points, key=lambda p: (p[3], p[0])):
-        out.append(f"<g><title>{E(name)}: {xv:,} bills reported on, {yv:.1f}% passed both chambers</title>"
+        out.append("<g><title>" + say(lang, "nums.ch_cmte_tip",
+                                      "{name}: {n} bills reported on, {p}% passed both chambers",
+                                      name=E(name), n=f"{xv:,}", p=f"{yv:.1f}") + "</title>"
                    + chamber_marker(ch, sx(xv), sy(yv)) + "</g>")
     # of two named committees at one rate, the right-hand point takes the line first, so the
     # left one's name, set a line lower, does not run across it (2023-2024: Childcare, Transportation)

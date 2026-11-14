@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.3
+# GRANITE_VERSION: 2026-11-12.4
 """
 When the captions route has been silent for too long. Read-only: it reads
 files that are already on this disk and writes nothing, asks nobody anything.
@@ -22,9 +22,12 @@ status is 0 whatever it finds), for the morning triage and a person to read:
                      record (no row of proceedings.csv names it), for more than
                      WAIT_NIGHTS (3) nights. The audit of 12 November 2026 found
                      three recordings of 29 and 30 October read and not placed
-                     with nothing saying so. Some are committees that took up no
-                     bill, which no timestamp could be for; the sentence says so
-                     and leaves the judgment to a reader.
+                     with nothing saying so. A committee that took up no bill
+                     can never have a timestamp, so one whose notices on the
+                     calendar (meetings.json) that day list no bill is left out
+                     (no_bill_noticed) and the night says once how many; where
+                     the notices cannot tell, the recording stays in and a
+                     reader judges.
 
 The night calls waiting_long() in its verdict (nightly.not_moving), where it
 is a warning of the "record not moving" kind, which never holds a night. The
@@ -111,7 +114,49 @@ def canary_silent(log_text, now):
              " (python3 -X utf8 src\\ops\\livestreams.py --canary)" + newest)]
 
 
-def waiting_long(st, placed, now, waiting_too=True):
+REC_MATCH = 0.6            # build_calendar.REC_MATCH: how alike two committee names must be
+_GENERIC = frozenset("house senate committee committees commission joint study special "
+                     "task force the and for".split())
+_TITLE_DAY = re.compile(r"\((\d\d)/(\d\d)/(\d{4})\)")
+
+
+def _words(s):
+    return {w for w in re.findall(r"[a-z]{3,}", (s or "").lower()) if w not in _GENERIC}
+
+
+def no_bill_noticed(meetings):
+    """A function from a recording's title to True|False|None over the calendar's notices
+    (meetings.json, a list of {date, committee, bill, kind}): True where the
+    meeting the recording's title names has notices that day and none of them
+    lists a bill; False where one does; None where the notices cannot say (no
+    date in the title, no meeting of that committee that day, or two
+    committees fit equally well). Committees are matched as build_calendar
+    matches a recording to a meeting: the words of the two names must mostly
+    agree both ways (REC_MATCH). `meetings` that is not a list tells nothing."""
+    by_day = {}
+    for m in meetings if isinstance(meetings, list) else []:
+        if isinstance(m, dict) and m.get("kind") != "cancelled":
+            by_day.setdefault(str(m.get("date") or ""), []).append(m)
+
+    def said(title):
+        d = _TITLE_DAY.search(str(title or ""))
+        tw = _words(re.sub(r"\(.*?\)", " ", str(title or "")))
+        if not d or not tw:
+            return None
+        scored = []
+        for m in by_day.get(f"{d.group(3)}-{d.group(1)}-{d.group(2)}", []):
+            cw = _words(m.get("committee"))
+            if cw:
+                scored.append((2 * len(tw & cw) / (len(tw) + len(cw)), m))
+        best = max((sc for sc, _m in scored), default=0)
+        top = [m for sc, m in scored if sc == best]
+        if best < REC_MATCH or len({m.get("committee") for m in top}) > 1:
+            return None
+        return not any(m.get("bill") for m in top)
+    return said
+
+
+def waiting_long(st, placed, now, waiting_too=True, no_bill=None, left_out=None):
     """[sentence] from the livestream state `st` ({"videos": {id: entry}}):
     finished recordings more than WAIT_NIGHTS days and at most WAIT_MOST_DAYS
     days old that
@@ -126,6 +171,12 @@ def waiting_long(st, placed, now, waiting_too=True):
     `waiting_too` False leaves the first half out: the night already warns of
     those (nightly.KIND_CAPTIONS_WAIT), and a second kind for the same
     recordings would be news to the gate.
+
+    `no_bill`, where given, is a function title -> True|False|None
+    (no_bill_noticed): a read recording whose meeting the calendar's notices
+    show took up no bill (True) can never have a timestamp, so it is left out
+    of the second sentence, and its title is added to the list `left_out`
+    where one is given. False or None (cannot tell) leaves it in.
 
     Never fails a night: a sentence per kind, naming up to three titles."""
     if not isinstance(st, dict) or not isinstance(st.get("videos"), dict):
@@ -146,6 +197,10 @@ def waiting_long(st, placed, now, waiting_too=True):
                 continue
             waiting.append((ended, title))
         elif v.get("captions") == "captioned" and placed is not None and vid not in placed:
+            if no_bill is not None and no_bill(title) is True:
+                if left_out is not None:
+                    left_out.append(title)
+                continue
             unplaced.append((ended, title))
 
     def names(rows):

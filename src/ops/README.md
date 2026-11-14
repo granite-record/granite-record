@@ -19,6 +19,36 @@ workflows, the morning triage and a person run by its path.
   screened for the morning triage; the person's production pull.
 - `inventory.py` and `handoff.py` -- a session's first and third commands:
   every file and its version, and `STATE.md` with the counts as measured.
+- `person_numbers.py` -- the register of person numbers
+  (`generated/person_numbers.json`, joined by `src/lib/people.py`): with no
+  argument it says what tonight's join would add and writes nothing,
+  `--issue` adds those so the number is frozen. A person's run, after a
+  build; the nightly reads the register and never writes it.
+- `record_moves.py` -- keeps every address a former member's page has moved
+  from in `generated/moved_addresses.json`, so it answers with a 301 for
+  good: merges what `site/former.json` names, never drops or re-points one
+  (`--check` writes nothing).
+- `translations.py` -- the site's translations: what is translated, what has
+  gone stale, the proofreader's sheet out (`--sheet`) and back (`--take`),
+  one entry set (`--set`) and the unused ones dropped (`--drop-unused`).
+- `election_week.py` -- election week's routine work around the one step a
+  person does, saving the Secretary of State's results files in a browser:
+  `status`, `check`, and the `draft-*` commands that prepare entries for a
+  person to review. Asks nobody anything.
+- `file_printouts.py` -- puts the person's printouts of official pages where
+  the guides' evidence is kept, under the names
+  `records/sources/printouts/INDEX.csv` gives them, found by sha256 and
+  copied, never moved (`--check` says which are filed).
+- `state_sources.py` -- the state documents the guides and Learn pages rest
+  on: the laptop, where a browser can read them, sends them (`up`) and a
+  session takes them (`down`); also `check`, `report`, `due`, `officials`
+  and `file`.
+- `quick_preview.py` -- the quick preview: `plan`, `apply`, `check` and
+  `deploy` put a change to the browser's files into the last good night's
+  site, for the preview workflow.
+- `captions_watch.py` -- read-only: warns when the laptop's evening job or
+  the weekly canary has gone quiet, and when a read recording has no
+  timestamp on the record (see below).
 - `gr_register.py` -- the register of Granite Record's own ids
   (`generated/gr_ids.json`, `src/lib/gr_ids.py`): `--issue` gives the next one
   to a person the record names and the General Court gives no number, with
@@ -113,7 +143,10 @@ or the bucket:
   (`nightly.recordings_waiting_long`, for the read-but-unplaced half only; the
   night's own captions-wait warning already covers the waiting half), when a
   finished recording has waited for captions or been read with no timestamp on
-  the record for more than 3 nights. Warnings, never failures.
+  the record for more than 3 nights. A recording whose meeting the calendar's
+  notices (`meetings.json`) show listed no bill can never have a timestamp,
+  so it is left out of that last warning and the night's log says once how
+  many; where the notices cannot tell, it stays in. Warnings, never failures.
 - A heartbeat: with `GRANITE_HEARTBEAT_URL` in the environment, or
   `heartbeat_url` in `secrets.json`, `--to-inbox` and `--canary` ping that
   address when they finish, `/fail` appended when the run did not exit 0.

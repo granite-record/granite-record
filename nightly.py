@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.86
+# GRANITE_VERSION: 2026-09-04.87
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -3952,8 +3952,24 @@ def recordings_waiting_long(st, now):
     this machine and its half left out where it is not."""
     import captions_watch
     placed = captions_watch.placed_ids("proceedings.csv")
-    return [(KIND_NOT_MOVING + "recordings read with no timestamp on the record", said)
-            for said in captions_watch.waiting_long(st, placed, now, waiting_too=False)]
+    # A meeting the calendar's notices show took up no bill can never have a
+    # timestamp: it is left out, and the log says once how many and why.
+    # Where the notices are not on this machine, or cannot say, it stays in.
+    meetings = load_json(Path("meetings.json")) if Path("meetings.json").exists() else None
+    left = []
+    out = [(KIND_NOT_MOVING + "recordings read with no timestamp on the record", said)
+           for said in captions_watch.waiting_long(
+               st, placed, now, waiting_too=False, left_out=left,
+               no_bill=captions_watch.no_bill_noticed(meetings))]
+    if left:
+        say(f"  {len(left)} recording{'s' if len(left) != 1 else ''} read from captions with no "
+            f"timestamp on the record {'were' if len(left) != 1 else 'was'} left out of the "
+            "warning: the calendar's notices for the meeting list no bill, so none could give "
+            "one")
+    elif meetings is None and out:
+        say("  whether a recording read with no timestamp took up no bill could not be told: "
+            "meetings.json is not here, so every one stays in the warning")
+    return out
 
 
 def not_moving(v, day, st, laptop, now=None, fetched=True):

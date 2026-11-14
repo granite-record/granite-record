@@ -1168,6 +1168,34 @@ def _code_names_unique():
     return "ok", f"{n} scripts across {len(_paths.code_dirs())} code folders, each name once"
 
 
+def _readme_unlisted(folder, root=None):
+    """The modules (.py files but for __init__) of `folder` that its README.md
+    does not name as `name` or `name.py` in backticks."""
+    root = Path(root) if root else _paths.ROOT
+    text = (root / folder / "README.md").read_text(encoding="utf-8")
+    return [p.stem for p in sorted((root / folder).glob("*.py"))
+            if p.stem != "__init__" and f"`{p.stem}`" not in text and f"`{p.name}`" not in text]
+
+
+@check("files", "src/lib/README.md and src/ops/README.md name every module in their folder")
+def _shared_folder_readmes_list_every_module():
+    """The audit of 14 November 2026 found src/lib/README.md leaving out
+    people, spellings and state_settings, and src/ops/README.md leaving out
+    person_numbers, record_moves and five more: a folder README that lists
+    some of its modules reads as the whole list."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-readme-"))
+    try:
+        _plant(tmp, {"src/lib/README.md": "`a` and `b.py`", "src/lib/a.py": "", "src/lib/b.py": "",
+                     "src/lib/c.py": "", "src/lib/__init__.py": ""})
+        assert _readme_unlisted("src/lib", tmp) == ["c"], _readme_unlisted("src/lib", tmp)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    said = {f: _readme_unlisted(f) for f in ("src/lib", "src/ops")}
+    assert not any(said.values()), "a folder's README leaves out modules: " + "; ".join(
+        f"{f}: {', '.join(m)}" for f, m in said.items() if m)
+    return "ok", "src/lib and src/ops: every module named in its README"
+
+
 def _first_script(node):
     """The script a launch's argument list starts with: ["x.py", ...] or
     ["x.py", ...] + more. None for any other node."""
@@ -18278,6 +18306,25 @@ def _captions_silences(W, N, L):
     assert "Unplaced committee" in got[1] and "Placed" not in got[1].replace("Unplaced", "") and \
         "Too new" not in got[1], got
     assert len(W.waiting_long(st, None, now)) == 1, "no proceedings.csv leaves the unplaced half out"
+    # a read recording whose meeting the calendar's notices show took up no bill can never have a
+    # timestamp: left out (and counted) where the notices list no bill; kept where one lists a
+    # bill, where no meeting fits, or where the notices are not there
+    notices = [{"date": "2026-11-03", "committee": "Unplaced Committee", "bill": "", "kind": "regular meeting"}]
+    st2 = {"videos": {"U1": vid(9, "captioned", "Unplaced Committee (11/03/2026)")}}
+    left = []
+    got = W.waiting_long(st2, set(), now, no_bill=W.no_bill_noticed(notices), left_out=left)
+    assert got == [] and left == ["Unplaced Committee (11/03/2026)"], (got, left)
+    for said_, want in (([dict(notices[0], bill="HB1", kind="public hearing")], False),
+                        ([dict(notices[0], date="2026-11-04")], None),
+                        ([dict(notices[0], committee="Something Else Entirely")], None),
+                        (notices, True), (None, None)):
+        assert W.no_bill_noticed(said_)("Unplaced Committee (11/03/2026)") is want, (said_, want)
+    assert W.no_bill_noticed(notices)("Unplaced Committee") is None, "a title with no day cannot be placed"
+    keep = []
+    both = [notices[0], dict(notices[0], bill="HB1", kind="public hearing")]
+    assert len(W.waiting_long(st2, set(), now, no_bill=W.no_bill_noticed(both), left_out=keep)) == 1 \
+        and keep == [], "a meeting with a bill listed stays in the warning"
+    assert len(W.waiting_long(st2, set(), now, no_bill=W.no_bill_noticed(None), left_out=keep)) == 1
     assert W.waiting_long({}, set(), now) == [] and W.waiting_long(None, set(), now) == []
     # and the night carries it, as a warning of the kind that never holds
     here = os.getcwd()
@@ -18285,6 +18332,14 @@ def _captions_silences(W, N, L):
     try:
         os.chdir(base)
         (base / "proceedings.csv").write_text("video_id\nP1\n", encoding="utf-8")
+        (base / "meetings.json").write_text(json.dumps(notices), encoding="utf-8")
+        st_nb = {"videos": dict(st["videos"], U1=vid(9, "captioned", "Unplaced Committee (11/03/2026)"))}
+        n_log = len(N.LOG)
+        got = N.recordings_waiting_long(st_nb, now)
+        assert got == [], "a meeting that listed no bill was warned of"
+        assert any("left out of the warning" in ln and "  1 recording" in ln for ln in N.LOG[n_log:]), \
+            "the night did not say how many were left out"
+        (base / "meetings.json").unlink()
         got = N.recordings_waiting_long(st, now)
         assert len(got) == 1 and all(k.startswith(N.KIND_NOT_MOVING) for k, _s in got) and             "Unplaced committee" in got[0][1], "the night's half is the unplaced one; the waiting one is KIND_CAPTIONS_WAIT's"
         v = {}
@@ -118118,6 +118173,9 @@ def _numbers_charts(LN):
     sc = LN.scatter_chart(pts, "t", "said", "x", "y")
     assert sc.count('class="ch-h"') == 2 and sc.count('class="ch-s"') == 1, "House circles, Senate diamonds"
     assert "House A: 40 bills reported on, 55.0% passed" in sc, "a point's title holds its figures"
+    sc_es = LN.scatter_chart(pts, "t", "said", "x", "y", "es")
+    assert "House A: informó sobre 40 proyectos, 55.0% aprobados por ambas cámaras" in sc_es and \
+        "bills reported on" not in sc_es, "the Spanish page's hover titles are written in English"
     dots = LN.dot_chart([("2019", 88.0, 95.0), ("2021", 90.0, None)], "t", "said")
     assert dots.count('class="ch-h"') == 2 and dots.count('class="ch-s"') == 1, "a dot a chamber, none where there is none"
     src = inspect.getsource(LN.scatter_chart) + inspect.getsource(LN.dot_chart) + \
@@ -118130,7 +118188,7 @@ def _numbers_charts(LN):
     for need in (".ch .ch-h{", ".ch .ch-s{", ".l-sw.is-diamond"):
         assert need in css, f"app.css lacks {need}"
     es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
-    for k in ("nums.ch_ends_said", "nums.ch_cmte_said", "nums.ch_att_said", "nums.pos_said", "nums.yes_said"):
+    for k in ("nums.ch_ends_said", "nums.ch_cmte_said", "nums.ch_cmte_tip", "nums.ch_att_said", "nums.pos_said", "nums.yes_said"):
         assert k in es, f"es.json lacks {k}"
     assert 'viewBox="0 0 100 10"' in LN.yes_bar(70.0) and 'x1="66.7"' in LN.yes_bar(70.0), (
         "the ballot's bar carries the two-thirds line")
