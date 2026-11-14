@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.19
+# GRANITE_VERSION: 2026-10-10.20
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -1216,7 +1216,7 @@ def members_elect(elect, today, lang="en", people=None, towns=None):
 # district words | towns); matching is by those and never by a name alone.
 def _both_ways(text):
     """A name or town as the search reads it: with an apostrophe left out
-    and with it read as a space ("o'rorke", "o rorke"), and "loc." and
+    and with it read as a space ("ororke", "o rorke"), and "loc." and
     "pur." as the words (find.js reads them so for the header search)."""
     out = text
     if re.search(r"['‘’ʼ]", text):
@@ -1305,7 +1305,7 @@ ELECT_FILTER_JS = """<script>
 // district part; after "ward" it is a ward of the town named before it;
 // after any other word it is the district or that town's ward.
 function fold(s){s=String(s==null?"":s).toLowerCase();
-  s=s.normalize?s.normalize("NFD").replace(/[̀-ͯ]/g,""):s;
+  s=s.normalize?s.normalize("NFD").replace(/[\\u0300-\\u036f]/g,""):s;
   return s.replace(/['‘’ʼ]/g,"");}
 // A title is left out of a name; before a number it names the chamber.
 var TITLE={rep:"H","rep.":"H",representative:"H",sen:"S","sen.":"S",senator:"S"};
@@ -1338,13 +1338,16 @@ function electMatch(it,q,st,p,ch){
   if(p&&it.p!==p)return false;
   if(ch&&it.ch!==ch)return false;
   var w=fold(q).split(/\\s+/).map(function(x){
-    x=x.replace(/^[“”"(\\[]+|[“”")\\],]+$/g,"");return own(LONG,x)?LONG[x]:x;
+    x=x.replace(/^[“”"(\\[]+|[“”")\\],]+$/g,"");x=x.replace(/^([a-z])\\.$/,"$1");return own(LONG,x)?LONG[x]:x;
   }).filter(function(x){return x&&/[a-z0-9]/.test(x)&&!own(ELECT,x);});
   // A chip pasted whole ends "(R - SD8)": the party letter is not a name.
-  if(w.length>2)w=w.filter(function(x){return x.length>1||x!==it.p.toLowerCase();});
+  if(w.length>1)w=w.filter(function(x){return (x.length>1||x!==it.p.toLowerCase())&&!/^[a-z](\\/[a-z])+$/.test(x);});
   var parts=it.hay.split(" | "),
       dist=(parts.length>2?parts[1]:it.hay).split(" "),
-      town=(parts.length>2?parts.slice(2).join(" "):it.hay).split(" ");
+      town=(parts.length>2?parts.slice(2).join(" "):it.hay).split(" "),
+      nm=parts.length>2?parts[0]:it.hay,nw=nm.split(" ");
+  function named(c,d){return !!c&&nw.indexOf(d)>=0&&startsWord(nm,c);}
+  function intown(c,d){return !!c&&pairAt(town,c,d,false);}
   for(var j=0;j<w.length;j++){
     var x=w[j];
     if(own(TITLE,x))continue;
@@ -1352,11 +1355,13 @@ function electMatch(it,q,st,p,ch){
     var b=j&&!/[0-9]/.test(w[j-1])?w[j-1]:"",
         a=j>1&&!/[0-9]/.test(w[j-2])&&!own(TITLE,w[j-2])?w[j-2]:"";
     if(/^[0-9]+$/.test(x)){
+      var t2=j>1&&own(TITLE,w[j-2])?TITLE[w[j-2]]:"",c=j>2&&!/[0-9]/.test(w[j-3])&&!own(TITLE,w[j-3])?w[j-3]:"";
       if(own(TITLE,b)){if(it.ch!==TITLE[b]||!pairAt(dist,"district",x,true))return false;}
-      else if(b==="ward"){if(!(a?threeAt(town,a,"ward",x):pairAt(town,"ward",x,true)))return false;}
-      else if(b==="district"){if(!(a&&dword(a)?threeAt(dist,a,"district",x):pairAt(dist,"district",x,true)))return false;}
+      else if(t2&&(b==="district"||dword(b))&&it.ch!==t2)return false;
+      else if(b==="ward"&&!named(a,b)){if(!(a?threeAt(town,a,"ward",x):pairAt(town,"ward",x,true)))return false;}
+      else if(b==="district"){if(!(a&&dword(a)&&!named(c,a)&&!intown(c,a)?threeAt(dist,a,"district",x):pairAt(dist,"district",x,true)))return false;}
       else if(!b){if(!pairAt(dist,"district",x,true))return false;}
-      else if(dword(b)){if(!pairAt(dist,b,x,false))return false;}
+      else if(dword(b)&&!named(a,b)&&!intown(a,b)){if(!pairAt(dist,b,x,false))return false;}
       else if(!pairAt(dist,"district",x,true)&&!threeAt(town,b,"ward",x))return false;
     }else if(/[0-9]/.test(x)){
       if(dist.indexOf(x)<0)return false;

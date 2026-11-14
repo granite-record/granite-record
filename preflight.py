@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.910
+# GRANITE_VERSION: 2026-09-04.911
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -123447,11 +123447,17 @@ console.log(JSON.stringify(out));
         el2["races"].update({"S|1": race("Tom Onesen"), "S|18": race("Una Eighteen"),
                              "H|Merrimack|5": race("Mia Five"),
                              "H|Merrimack|15": race("Ned Fifteen", "Sean O'Rorke"),
-                             "H|Hillsborough|4": race("Hal Four"), "H|Hillsborough|40": race("Ivy Forty")})
+                             "H|Hillsborough|4": race("Hal Four"), "H|Hillsborough|40": race("Ivy Forty"),
+                             "H|Grafton|2": race("Gus Ward"), "H|Strafford|9": race("Dot Nine")})
         page2 = OT.members_elect(el2, "2026-11-20", "en", people,
                                  {**towns, "H|Merrimack|15": ["Nashbury Ward 5"],
-                                  "H|Merrimack|5": ["Dunmere"],
-                                  "S|1": ["Carroll", "Hart's Location", "Dover Ward 1"]})
+                                  "H|Merrimack|5": ["Dunmere", "Maple Hill", "Quillan's Loc."],
+                                  # Real place names put in SD1 only to test the
+                                  # matching (a county's name, an apostrophe, a
+                                  # city's ward); Dot's race has another ward
+                                  # of Dover and an invented city's.
+                                  "S|1": ["Carroll", "Hart's Location", "Dover Ward 1"],
+                                  "H|Strafford|9": ["Dover Ward 3", "Nashbury Ward 1"]})
         last2 = page2[:page2.find('id="pane-ecounty"')]
         items2 = [{"st": a, "p": b, "ch": c, "hay": d} for a, b, c, d in re.findall(
             r'<(?:li|div) class="(?:seatrow|mem)[^"]*" data-st="([a-z]*)" data-p="([^"]*)" '
@@ -123475,7 +123481,18 @@ console.log(JSON.stringify(out));
                 "james creighton": ["jim"], "jim creighton": ["jim"], "rep creighton": ["jim"],
                 "representative creighton": ["jim"], "sen. creighton": ["jim"],
                 "senator james creighton": ["jim"], "rep nobody": ["lee"], "rep Una": ["una"],
-                "han": [], "hamp": ["charles", "kristine"]}
+                "han": [], "hamp": ["charles", "kristine"],
+                # a full name or a two-word town ending in a county's word or "ward"
+                "gus ward 2": ["gus"], "maple hill 5": ["mia"], "maple hill district 5": ["mia"],
+                "dover ward 3": ["dot"], "nashbury ward 1": ["dot"],
+                # the chip's party letter, alone or as a pair, and an initial
+                "creighton r": ["jim"], "(R - SD8)": ["jim"],
+                "Rep. “Elect” Pat Both (R/D - Belk 6)": ["pat"], "J. Creighton": ["jim"],
+                # a title before "district" names the chamber
+                "senator district 1": ["tom"], "rep district 1": ["ann"],
+                "sen district 8": ["jim"], "rep district 8": [],
+                # "Loc." is read as the word
+                "quillans location": ["mia"], "quillan’s loc.": ["mia"], "r": ["charles", "kristine", "rachel", "rebecca", "sean", "zoe"]}
         h2 = r"""
 var window={},document={querySelector:function(){return null;}};
 """ + script.group(1) + r"""
