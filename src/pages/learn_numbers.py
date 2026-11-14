@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.30
+# GRANITE_VERSION: 2026-09-14.31
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -441,7 +441,7 @@ def committee_record(idx, narr_all, term):
     rows_by = {r.get("id"): r for r in idx if r.get("term") == term}
     by_c, per_ch = consent(narr, rows_by, term)
     rec = {}
-    for name in set(rf) | set(cr) | set(by_c):
+    for name in sorted(set(rf) | set(cr) | set(by_c)):
         f, snt = rf.get(name, (0, 0))
         n, p, law = cr.get(name, (0, 0, 0))
         rn, rk = by_c.get(name, (0, 0))
@@ -946,24 +946,36 @@ def scatter_chart(points, title, said, xlabel, ylabel, lang="en", note=""):
     ranked = sorted(points, key=lambda p: (p[3], p[0]))
     named = {p[0] for p in ranked[:3] + ranked[-3:]}
     last = {}
-    for name, ch, xv, yv in sorted(points, key=lambda p: p[3]):
+    for name, ch, xv, yv in sorted(points, key=lambda p: (p[3], p[0])):
         out.append(f"<g><title>{E(name)}: {xv:,} bills reported on, {yv:.1f}% passed both chambers</title>"
                    + chamber_marker(ch, sx(xv), sy(yv)) + "</g>")
-    for name, ch, xv, yv in sorted((p for p in points if p[0] in named), key=lambda p: -p[3]):
+    for name, ch, xv, yv in sorted((p for p in points if p[0] in named), key=lambda p: (-p[3], p[0])):
         short = re.sub(r"^(House|Senate) ", "", name)
-        ty = sy(yv) + 4
-        while any(abs(ty - v) < 12 for v in last.values()):
-            ty += 12
-        last[name] = ty
         # Beside its point on the side with room for the whole name; a name
-        # longer than either side is set from the plot's edge, over the grid.
+        # longer than either side is set from the plot's edge on a free line
+        # just above its point (below if above is taken), never on the
+        # point's own line, which would hide the point it names.
         tw = math.ceil(text_w(short)) + 2
+        free = lambda t: not any(abs(t - v) < 12 for v in last.values())
+        edge = False
         if sx(xv) + 9 + tw <= w - 2:
             anchor, tx = "start", sx(xv) + 9
         elif sx(xv) - 9 - tw >= left:
             anchor, tx = "end", sx(xv) - 9
         else:
-            anchor, tx = "start", max(w - 2 - tw, 2)
+            anchor, tx, edge = "start", max(w - 2 - tw, 2), True
+        ty = sy(yv) + 4
+        if edge:
+            # the lines just above and below its point, then further out;
+            # the first free one that also leaves every other point clear
+            lines = [sy(yv) + d for d in (-10, 18, -22, 30, -34, 42)]
+            clear = lambda t: t >= 12 and free(t) and not any(
+                tx - 6 <= sx(px) <= tx + tw + 6 and t - 17 <= sy(py) <= t + 9
+                for pn, _c, px, py in points if pn != name)
+            ty = next((t for t in lines if clear(t)), next((t for t in lines if t >= 12 and free(t)), lines[1]))
+        while not free(ty):
+            ty += 12
+        last[name] = ty
         out.append(f'<text x="{tx:.1f}" y="{ty:.1f}" text-anchor="{anchor}">{E(short)}</text>')
     svg = _svg(w, h, said, "".join(out))
     return _chart(title, said, svg, chamber_legend(lang), note)
