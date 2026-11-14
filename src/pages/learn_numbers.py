@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.31
+# GRANITE_VERSION: 2026-09-14.32
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -949,7 +949,9 @@ def scatter_chart(points, title, said, xlabel, ylabel, lang="en", note=""):
     for name, ch, xv, yv in sorted(points, key=lambda p: (p[3], p[0])):
         out.append(f"<g><title>{E(name)}: {xv:,} bills reported on, {yv:.1f}% passed both chambers</title>"
                    + chamber_marker(ch, sx(xv), sy(yv)) + "</g>")
-    for name, ch, xv, yv in sorted((p for p in points if p[0] in named), key=lambda p: (-p[3], p[0])):
+    # of two named committees at one rate, the right-hand point takes the line first, so the
+    # left one's name, set a line lower, does not run across it (2023-2024: Childcare, Transportation)
+    for name, ch, xv, yv in sorted((p for p in points if p[0] in named), key=lambda p: (-p[3], -p[2], p[0])):
         short = re.sub(r"^(House|Senate) ", "", name)
         # Beside its point on the side with room for the whole name; a name
         # longer than either side is set from the plot's edge on a free line
@@ -967,7 +969,8 @@ def scatter_chart(points, title, said, xlabel, ylabel, lang="en", note=""):
         ty = sy(yv) + 4
         if edge:
             # the lines just above and below its point, then further out;
-            # the first free one that also leaves every other point clear
+            # the first free one that also leaves every other point clear, or failing
+            # that the first free one (which may cover another point)
             lines = [sy(yv) + d for d in (-10, 18, -22, 30, -34, 42)]
             clear = lambda t: t >= 12 and free(t) and not any(
                 tx - 6 <= sx(px) <= tx + tw + 6 and t - 17 <= sy(py) <= t + 9
