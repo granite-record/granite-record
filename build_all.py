@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.95
+# GRANITE_VERSION: 2026-09-05.96
 """
 Run the whole pipeline in the right order.
 
@@ -1133,7 +1133,7 @@ def plan(a):
         # files it reads, and writes its own sitemap entry.
         Step("the votes page",
              ["build_votes_page.py", "--site", "site", "--base", a.base],
-             needs=["site/bills.html"],
+             needs=["site/votes"],
              produces=["site/votes.html"],
              note="/votes: every roll call from 1999, searched by the bill search's own matcher, "
                   "with filters for term, chamber, date, result, margin, kind and member"),

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.322
+// GRANITE_VERSION: 2026-09-07.323
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -13622,9 +13622,9 @@ function votesDraw(){
     gs=voteGroups(q,IDX.filter(b=>scope.includes(b.term)));
   }
   const reading=loaded.length<scope.length||!balReady||need_.length||(q&&!num&&textState(scope)==="loading");
-  const all=[];
-  loaded.forEach(t=>VT.rows[t].forEach(r=>all.push(r)));
-  let rows=reading&&(!balReady||need_.length)?[]:votesRowsOf(all,st,gs,num,ids);
+  const pool=[];
+  loaded.forEach(t=>VT.rows[t].forEach(r=>pool.push(r)));
+  let rows=reading&&(!balReady||need_.length)?[]:votesRowsOf(pool,st,gs,num,ids);
   const cap=(st.show||0)+VOTES_SHOW,shown=rows.slice(0,cap);
   // Each shown row's bill is named by its term's index: asked for, and the
   // rows drawn when it is here, so that a number is never drawn bare and then
@@ -13639,7 +13639,7 @@ function votesDraw(){
         waiting?", reading the rest…":""}`;
   }
   const clear=`<button type="button" class="link" data-vclear="1">Clear the search and filters</button>`;
-  if(VT.err&&!all.length){
+  if(VT.err&&!pool.length){
     box.innerHTML=`<p class="note" role="alert">The votes could not be loaded. <code>${esc(VT.err)}</code></p>`;return;
   }
   if(waiting&&!shown.length){box.innerHTML="";return;}

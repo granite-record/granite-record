@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-13.1
+# GRANITE_VERSION: 2026-11-13.2
 """
 The votes page: /votes, a search of every roll call since 1999.
 
@@ -76,7 +76,7 @@ def main():
     a = ap.parse_args()
     site, base = Path(a.site), a.base.rstrip("/")
     (site / PATH).write_text(page(site, base), encoding="utf-8")
-    S.sitemap_merge(site, base, [base + S.canon(PATH)], "/votes")
+    S.sitemap_merge(site, base, [base + S.canon("/" + PATH)], "/votes")
     print(f"  {PATH}: the votes page")
     return 0
 
