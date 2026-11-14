@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.37
+# GRANITE_VERSION: 2026-09-04.38
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -44,7 +44,7 @@ import member_links as ML
 import shell as S
 import structured as LD
 from build_members_elect import for_pages as members_elect
-from components import ELECT_KEY, elect_line, term_words
+from components import ELECT_KEY, elect_line, term_words, until_attrs
 # A town page's slug and address, from the builder that writes them.
 from build_town_pages import slug as town_slug, town_path
 
@@ -501,7 +501,7 @@ def last_vote_day(rec):
     return best or None
 
 
-def static_record(m, rec, elected="", places=None, back=None):
+def static_record(m, rec, elected="", places=None, back=None, until=""):
     """THE MEMBER'S RECORD IN THE PAGE ITSELF, for a reader with no
     JavaScript (the SEO review of 12 October 2026; shell.page's static).
     It replaced a <noscript> line saying the page needs JavaScript. m is the
@@ -513,7 +513,9 @@ def static_record(m, rec, elected="", places=None, back=None):
     elect_back's, for a former member elected again or a member elected to the
     other chamber: the first is headed as a new member-elect's page is, its
     earlier seat kept below; the second keeps its heading and says the
-    election beside it."""
+    election beside it. `until` is components.until_attrs for the day they
+    take office, which a fact drawn only while the members-elect file lasts
+    carries beside data-elect."""
     rec = rec or {}
     yrs = _served_years(m, rec) if m.get("former") else ""
     titled = heading(m).startswith("Former ")
@@ -560,10 +562,14 @@ def static_record(m, rec, elected="", places=None, back=None):
     # returning member, with the years of their service where the record gives no span, as
     # app.js falls back to them. Without it the 25 returning pages, Benjamin Baroody's among
     # them, gave no years at all (the review before the release of 16 November 2026).
+    # AND IT IS THE MEMBERS-ELECT FILE'S (data-elect, retiring with the file): without the
+    # file the page is the former member's, whose sentence carries the years, and every page
+    # must be that page once what carries data-elect is taken out (_elect_pages_never_sitting).
+    elect_fact = ""
     if returning:
         said = on_record_text(m, rec) or yrs
         if said:
-            facts.append("<b>On record:</b> " + E(said))
+            elect_fact = "<b>On record:</b> " + E(said)
     elif (rec.get("past_terms") or m.get("past_terms")) and not m.get("former"):
         facts.append("<b>On record:</b> " + E(on_record_text(m, rec)))
     c = rec.get("counts") or {}
@@ -573,8 +579,14 @@ def static_record(m, rec, elected="", places=None, back=None):
     if rec.get("n_sponsored"):
         facts.append(f"<b>Bills sponsored:</b> {rec['n_sponsored']:,}"
                      + (f", {rec['n_prime']:,} as prime sponsor" if rec.get("n_prime") else ""))
+    # The members-elect file's fact first, as app.js draws it, the list itself the file's
+    # where it holds nothing else.
     if facts:
-        out.append('<ul class="sx-facts">' + "".join(f"<li>{x}</li>" for x in facts) + "</ul>")
+        out.append('<ul class="sx-facts">'
+                   + (f"<li data-elect{until}>{elect_fact}</li>" if elect_fact else "")
+                   + "".join(f"<li>{x}</li>" for x in facts) + "</ul>")
+    elif elect_fact:
+        out.append(f'<ul class="sx-facts" data-elect{until}><li>{elect_fact}</li></ul>')
     sp = sorted(rec.get("sponsored") or [], key=lambda x: (str(x.get("year") or ""),
                                                             str(x.get("bill") or "")), reverse=True)
     if sp:
@@ -716,7 +728,9 @@ def main():
             # sitting member is.
             globals={"GR_MEMBER": str(m.get("id", "")), "GR_STANDALONE": True,
                      **({"GR_FORMER": True} if m.get("former") else {}), **also},
-            static=static_record(m, rec, line, places, back), skip_label="Skip to this member",
+            static=static_record(m, rec, line, places, back,
+                                 until=until_attrs(elect["takes_office"], today) if race else ""),
+            skip_label="Skip to this member",
             # Without this the template's marker stays on Bills, and all 406
             # member pages told a screen reader they were Bills.
             nav_current="officials.html",
