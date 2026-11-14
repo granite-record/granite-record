@@ -123439,7 +123439,7 @@ def _elect_tab_like_legislators(OT):
           for p in ("pane-elast", "pane-ecounty")}
     if -1 in at.values() or sorted(at.values()) != list(at.values()) or "edist" in page:
         bad.append(f"the two panes are not there in order, or By district is still drawn: {at}")
-        return "fail", "; ".join(bad)
+        return "FAIL", "; ".join(bad)
     last, county = page[at["pane-elast"]:at["pane-ecounty"]], page[at["pane-ecounty"]:]
     # Each view opens at the level of the tab's own headings, so a reader
     # moving by heading in either meets its chambers as the tab's parts, not
@@ -123734,7 +123734,10 @@ def _elect_search_filter(OT):
     they choose; and the script, run in node on the items the page really
     carries, matches by what is typed (every word, accents folded: a name, a
     county, a district, a town) and what is chosen, and says how many are
-    shown and fixes the headings' counts."""
+    shown and fixes the headings' counts. A second fixture of near districts
+    (Merr 5 and 15, SD1 and SD18, Hills 4 and 40, an invented ward) proves
+    that a number finds its district only, titles and town names before a
+    number, the record name, apostrophes and a pasted chip."""
     import html as _h
     import shutil as _sh
     elect, people = _elect_tab_case()
@@ -123744,7 +123747,7 @@ def _elect_search_filter(OT):
     bar = re.search(r'<div class="bfilt elfilter" role="search" hidden data-n="12" [^>]*>(.*?)</div>',
                     page, re.S)
     if not bar:
-        return "fail", "the search row is not written hidden over the lists"
+        return "FAIL", "the search row is not written hidden over the lists"
     opts = {m[0]: re.findall(r'<option value="([^"]*)">([^<]*)</option>', m[1])
             for m in re.findall(r'<select class="(el[a-z]+)">(.*?)</select>', bar.group(1))}
     if opts.get("elst") != [("", "All (12)"), ("returning", "Returning (1)"),
@@ -123773,7 +123776,7 @@ def _elect_search_filter(OT):
     node = _sh.which("node")
     script = re.search(r"<script>(.*?)</script>", page, re.S)
     if not script:
-        return "fail", "; ".join(bad + ["the page carries no script for the controls"])
+        return "FAIL", "; ".join(bad + ["the page carries no script for the controls"])
     if node:
         import subprocess as _sp
         harness = r"""
@@ -123849,6 +123852,86 @@ console.log(JSON.stringify(out));
             if o["fold"] is not True or o["no"] is not False:
                 bad.append("accents are not folded, or a near name matches: "
                            f"{o['fold']} {o['no']}")
+        # A DISTRICT IS A NUMBER, AND A NAME IS THE ONE ON THEIR PAGE (the
+        # review of 14 November 2026: "merr 5" found Merr 15, 19, 25 and 30
+        # and not Merr 5, "senate district 8" found SD8, 13, 15 and 18, and
+        # "james creighton" found nobody -- the ballot says Jim). Beside the
+        # fixture's districts stand Merr 15, SD18, Hills 40 and a ward (towns
+        # invented here: Nashbury, Dunmere); each query must find that
+        # district's member only. And a title before a number names the
+        # chamber ("sen 8"), a town or a surname before a number is that
+        # town's ward or the district ("trow 13", "creighton 8"), a county
+        # before "district" is that county's (SD1 takes in a town named
+        # Carroll and is not "carroll 1"), a curly apostrophe finds the name
+        # a straight one spells, and the chip pasted whole finds its person.
+        import copy as _cp
+        el2 = _cp.deepcopy(elect)
+        race = lambda *names: {"seats": len(names), "not_final": 0, "held": 0,  # noqa: E731
+                               "elected": [{"n": n, "p": "D", "k": "new"} for n in names]}
+        el2["races"].update({"S|1": race("Tom Onesen"), "S|18": race("Una Eighteen"),
+                             "H|Merrimack|5": race("Mia Five"),
+                             "H|Merrimack|15": race("Ned Fifteen", "Sean O'Rorke"),
+                             "H|Hillsborough|4": race("Hal Four"), "H|Hillsborough|40": race("Ivy Forty"),
+                             "H|Grafton|2": race("Gus Ward"), "H|Strafford|9": race("Dot Nine")})
+        page2 = OT.members_elect(el2, "2026-11-20", "en", people,
+                                 {**towns, "H|Merrimack|15": ["Nashbury Ward 5"],
+                                  "H|Merrimack|5": ["Dunmere", "Maple Hill", "Quillan's Loc."],
+                                  # Real place names put in SD1 only to test the
+                                  # matching (a county's name, an apostrophe, a
+                                  # city's ward); Dot's race has another ward
+                                  # of Dover and an invented city's.
+                                  "S|1": ["Carroll", "Hart's Location", "Dover Ward 1"],
+                                  "H|Strafford|9": ["Dover Ward 3", "Nashbury Ward 1"]})
+        last2 = page2[:page2.find('id="pane-ecounty"')]
+        items2 = [{"st": a, "p": b, "ch": c, "hay": d} for a, b, c, d in re.findall(
+            r'<(?:li|div) class="(?:seatrow|mem)[^"]*" data-st="([a-z]*)" data-p="([^"]*)" '
+            r'data-ch="([SH])" data-hay="([^"]*)">', last2)]
+        asks = {"merr 5": ["mia"], "merrimack 5": ["mia"], "hills 4": ["hal"],
+                "hillsborough 40": ["ivy"], "sd 8": ["jim"], "sd8": ["jim"],
+                "senate district 8": ["jim"], "sd 1": ["tom"], "sd1": ["tom"],
+                "senate district 1": ["tom"], "district 5": ["mia"], "5": ["mia"],
+                "nashbury ward 5": ["ned", "sean"], "nashbury 5": ["ned", "sean"],
+                "ward 5": ["ned", "sean"], "rock 13": ["charles", "kristine"],
+                "sen 1": ["tom"], "senator 1": ["tom"], "sen. 1": ["tom"], "sen 8": ["jim"],
+                "rep 1": ["ann"], "rep 8": [], "rep 5": ["mia"],
+                "trow 13": ["kristine"], "creighton 8": ["jim"], "hampton 13": ["charles", "kristine"],
+                "carroll district 1": [], "carroll 1": [], "carr 1": [], "coos district 1": ["ann"],
+                "dover ward 1": ["tom"], "dover 1": ["tom"], "dover ward 5": [],
+                "merrimack district 15": ["ned", "sean"], "hills district 15": [],
+                "o’rorke": ["sean"], "o'rorke": ["sean"], "o rorke": ["sean"], "ororke": ["sean"],
+                "hart’s location": ["tom"], "harts loc.": ["tom"],
+                "Sen. “Elect” Jim Creighton (R - SD8)": ["jim"],
+                "Rep. “Elect” Sean O’Rorke (D - Merr 15)": ["sean"],
+                "james creighton": ["jim"], "jim creighton": ["jim"], "rep creighton": ["jim"],
+                "representative creighton": ["jim"], "sen. creighton": ["jim"],
+                "senator james creighton": ["jim"], "rep nobody": ["lee"], "rep Una": ["una"],
+                "han": [], "hamp": ["charles", "kristine"],
+                # a full name or a two-word town ending in a county's word or "ward"
+                "gus ward 2": ["gus"], "maple hill 5": ["mia"], "maple hill district 5": ["mia"],
+                "dover ward 3": ["dot"], "nashbury ward 1": ["dot"],
+                # the chip's party letter, alone or as a pair, and an initial
+                "creighton r": ["jim"], "(R - SD8)": ["jim"],
+                "Rep. “Elect” Pat Both (R/D - Belk 6)": ["pat"], "J. Creighton": ["jim"],
+                # a title before "district" names the chamber
+                "senator district 1": ["tom"], "rep district 1": ["ann"],
+                "sen district 8": ["jim"], "rep district 8": [],
+                # "Loc." is read as the word
+                "quillans location": ["mia"], "quillan’s loc.": ["mia"], "r": ["charles", "kristine", "rachel", "rebecca", "sean", "zoe"]}
+        h2 = r"""
+var window={},document={querySelector:function(){return null;}};
+""" + script.group(1) + r"""
+var ITEMS=""" + json.dumps(items2) + r""",ASKS=""" + json.dumps(list(asks)) + r""",out={};
+ASKS.forEach(function(q){out[q]=ITEMS.filter(function(i){return window.electMatch(i,q,"","","");})
+  .map(function(i){return i.hay.split(" | ")[0].split(" ")[0];}).sort();});
+console.log(JSON.stringify(out));
+"""
+        r2 = _sp.run([node, "-e", h2], capture_output=True, text=True, encoding="utf-8", timeout=60)
+        assert r2.returncode == 0 and r2.stdout.strip().startswith("{"), \
+            f"the district script did not run in node: {(r2.stderr or r2.stdout).strip()[:400]}"
+        o2 = json.loads(r2.stdout)
+        for q, w in asks.items():
+            if o2[q] != w:
+                bad.append(f"the search {q!r} shows {o2[q]}, not {w}")
     # Spanish: the row's words, none in English.
     es = OT.members_elect(elect, "2026-11-20", "es", people, towns)
     row = re.search(r'<div class="bfilt elfilter".*?</div>', es, re.S).group(0)
@@ -123864,7 +123947,10 @@ console.log(JSON.stringify(out));
     assert not bad, "\n  ".join(bad)
     return "ok", ("a search row written hidden, counts in every option, items carrying data-st, "
                   "-p, -ch and -hay; node: status, party, chamber, name, county, district, "
-                  "town and accents, headings recounted, the count said"
+                  "town and accents, headings recounted, the count said; and on a fixture of near "
+                  "districts, a number finds its district only (county, sd, senate district, "
+                  "ward, a town or surname before it), a title before a number names the "
+                  "chamber, a record name, a curly apostrophe and a pasted chip find the person"
                   if node else "the row and the items (node absent: the script not run)")
 
 
