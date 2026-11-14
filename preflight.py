@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.909
+# GRANITE_VERSION: 2026-09-04.910
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31705,10 +31705,12 @@ def _elect_provisional():
        needs=("build_legislator_pages", "build_site_v2"))
 def _on_record_covers_the_nineties(LP, B):
     """Found on the release candidate's preview (13 November 2026): the page offered 1991-1992 to
-    1998 in its TERM picker and said "ON RECORD: House, 1999-2024". The terms before 1999 are
+    1998 in its TERM picker and said "ON RECORD: House, 1999-2024". The span since 1999 is first
+    to last, or each chamber's own where a service list joins two. The terms before 1999 are
     added to the chamber the sponsor record gives (`past_terms`, member_links.earlier_terms from
-    the sponsored bills the picker lists), and terms join only where they run into each other,
-    so a term the record lacks is shown as a gap. The votes lines stay roll calls', 1999 on.
+    the sponsored bills the picker lists), and join it, or another 1990s term, only where the
+    terms run into each other: a term the record lacks between a 1990s run and the rest is
+    shown as a gap, never bridged. The votes lines stay roll calls', 1999 on.
 
     - a House member with 1990s terms and roll calls: the terms that run into the roll calls join
       them, the others stand as their own runs ("House, 1991-1992, 1995-2024"), never one span
@@ -31717,12 +31719,14 @@ def _on_record_covers_the_nineties(LP, B):
     - a member with none is as before;
     - app.js's line and the static page's say the same years;
     - A TERM WHOSE BILLS ARE ALL THE RECORD'S OWN ROWS (past_sponsors.filled: a chamber, no seat,
-      no `matched`), as Donna Sytek's of 1997-1998 are, the term she was Speaker: bill_sponsor_list
+      no `matched`), as Donna Sytek's of 1997-1998 are, a term she was Speaker: bill_sponsor_list
       gave only the printed rows a chamber, and her line read "House, 1989-1996, 1999-2000" beside
       a TERM picker offering 1997-1998 (the review before the release of 16 November 2026). Now
       earlier_terms holds the term, and app.js, record_spans, the static sentence and the
       description join it ("1989-2000"); the chamber is the one the term's Manual seats them in
-      (sponsor_record_chambers), else the row's own, which is their last seat."""
+      (sponsor_record_chambers), else the row's own, which is their last seat, and the build says
+      how many the Manual seated, that it read none, or how many rows it seats in another
+      chamber than their own (sponsor_record_said), never falling back in silence."""
     import re
     from collections import defaultdict
     ML = imp("member_links")
@@ -31774,6 +31778,16 @@ def _on_record_covers_the_nineties(LP, B):
     if seated != {("377001", "1995-1996"): "H"}:
         bad.append(f"sponsor_record_chambers does not seat Robin Mover where the 1995 Manual "
                    f"does: {seated}")
+    # Never in silence: what main() prints of the answer (sponsor_record_said).
+    said_seated, said_none = B.sponsor_record_said(sponsors, seated), B.sponsor_record_said(sponsors, {})
+    if len(said_seated) != 2 or "1 member-terms" not in said_seated[0] \
+            or "1 1989-1998 row(s)" not in said_seated[1] \
+            or "still name the row's own chamber" not in said_seated[1] \
+            or said_none != ["  sponsors: no Manual seat list read; every 1989-1998 row of the "
+                             "General Court's sponsor record keeps its own chamber"] \
+            or B.sponsor_record_said({}, {}) != []:
+        bad.append(f"the build does not say what the Manual seated, that none was read, or a row "
+                   f"seated in another chamber: {said_seated} {said_none}")
 
     def filed(chambers):
         out = defaultdict(list)
@@ -31850,7 +31864,8 @@ def _on_record_covers_the_nineties(LP, B):
                   "as their own runs; a 1990s Senate term keeps its chamber; app.js and the "
                   "static page say the same; a member with none is as before; a term whose "
                   "bills are all the sponsor record's own rows counts, in the chamber its "
-                  "Manual seats them in, else the row's, and joins: \"House, 1989–2000\"")
+                  "Manual seats them in, else the row's, and joins: \"House, 1989–2000\"; the "
+                  "build says what the Manual seated, or that it read none")
 
 
 @check("data", "the built site: a member's On Record terms before 1999 (past_terms) are the terms "
@@ -31869,7 +31884,7 @@ def _on_record_terms_built():
     if not d.is_dir():
         return "skip", "site/legislators is not here"
     early = lambda t: str(t or "")[:4].isdigit() and int(str(t)[:4]) < 1999
-    bad, pages, early_pages = [], 0, 0
+    bad, pages, early_pages, with_past = [], 0, 0, 0
     for f in sorted(d.glob("*.json")):
         try:
             rec = json.loads(f.read_text(encoding="utf-8"))
@@ -31882,6 +31897,7 @@ def _on_record_terms_built():
         listed = {str(x.get("term")) for x in rec.get("sponsored") or () if early(x.get("term"))}
         said = {str(t) for ts in (rec.get("past_terms") or {}).values() for t in ts or ()}
         early_pages += bool(listed or said)
+        with_past += bool(rec.get("past_terms"))
         if listed != said:
             bad.append(f"{f.stem} ({rec.get('display_full') or rec.get('name') or ''})"
                        + (f": bills of {', '.join(sorted(listed - said))} and no such term on "
@@ -31889,9 +31905,13 @@ def _on_record_terms_built():
                        + (f": on record in {', '.join(sorted(said - listed))} with no bill of it"
                           if said - listed else ""))
     assert pages, "site/legislators holds no member's file"
+    # The old site's hint only where it is the explanation: no member's file carries past_terms
+    # at all. On a site that has them, the pages named are the finding.
     assert not bad, (f"{len(bad)} member page(s) whose TERM picker and On Record line disagree "
-                     "before 1999 (a site built before 13 November 2026 has no past_terms: "
-                     "rebuild it): " + "; ".join(bad[:8]) + (" ..." if len(bad) > 8 else ""))
+                     "before 1999"
+                     + ("" if with_past else " (a site built before 13 November 2026 has no "
+                                             "past_terms: rebuild it)")
+                     + ": " + "; ".join(bad[:8]) + (" ..." if len(bad) > 8 else ""))
     return "ok", (f"{early_pages:,} of {pages:,} member pages list bills of 1989-1998, and each "
                   "one's On Record terms before 1999 are exactly those bills' terms")
 

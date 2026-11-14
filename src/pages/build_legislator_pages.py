@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.36
+# GRANITE_VERSION: 2026-09-04.37
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -195,13 +195,16 @@ def _served_years(m, rec=None):
     last day served, and somebody who took their seat in 1985 and left in 2002
     appears from 1999. With them (`past_terms`, the 1989-1998 terms the General
     Court's sponsor record places them in) it is the years of the page's "On
-    Record" line (record_spans), joined only where terms run into each other:
-    the same member, placed in 1989-1990 by the bills they sponsored, appears
-    from 1989, and a term the record lacks between two runs is shown, never
-    bridged. The wording stays plain: the case is rare enough that a sentence
-    of hedging costs the reader more than the imprecision does. The one place
-    it is still worth avoiding is structured data, which asserts a startDate as
-    fact with no prose around it; structured.person says so.
+    Record" line (record_spans), in runs: the span since 1999 first to last, or
+    each chamber's own where a service list joins two, and a 1989-1998 term
+    joined to it, or to another 1990s term, only where the terms run into each
+    other. The same member, placed in 1989-1990 by the bills they sponsored,
+    appears from 1989; a term the record lacks between a 1990s run and the
+    rest is shown as a gap, never bridged. The wording stays plain: the case is
+    rare enough that a sentence of hedging costs the reader more than the
+    imprecision does. The one place it is still worth avoiding is structured
+    data, which asserts a startDate as fact with no prose around it;
+    structured.person says so.
 
     One year where both ends fall in it, because "2026 to 2026" reads as a
     fault rather than as a fact.

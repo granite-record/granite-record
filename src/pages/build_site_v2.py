@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.274
+# GRANITE_VERSION: 2026-09-05.275
 """
 Generate the faceted site from real General Court data.
 
@@ -8589,11 +8589,7 @@ def sponsor_record_chambers(sponsors, table="auto", people=None):
     on this disk. `table` and `people` stand in for generated/manual_seats.json and the files
     past_sponsors.load_people reads."""
     import past_roster as PR
-    if not P.term_keyed(sponsors or {}):
-        return {}
-    want = {(str(s["employee"]), term) for term in PR.PRE_TERMS
-            for rows in (sponsors.get(term) or {}).values() for s in rows or ()
-            if s.get("source") == PSP.SOURCE and s.get("employee") and s.get("member_id")}
+    want = {(str(s["employee"]), term) for term, s in sponsor_record_rows(sponsors)}
     table = (PR.seat_table() if table == "auto" else table) if want else None
     if not table:
         return {}
@@ -8603,6 +8599,44 @@ def sponsor_record_chambers(sponsors, table="auto", people=None):
         seat, _why, _row = PR.term_seat(emp, term, people, table)
         if seat:
             out[(emp, term)] = seat[0]
+    return out
+
+
+def sponsor_record_rows(sponsors):
+    """[(term, row)]: each 1989-1998 row the General Court's sponsor record supplies itself
+    that is linked to a member and carries its employee number, the rows
+    sponsor_record_chambers looks up in the term's Manual."""
+    import past_roster as PR
+    if not P.term_keyed(sponsors or {}):
+        return []
+    return [(term, s) for term in PR.PRE_TERMS
+            for rows in (sponsors.get(term) or {}).values() for s in rows or ()
+            if s.get("source") == PSP.SOURCE and s.get("employee") and s.get("member_id")]
+
+
+def sponsor_record_said(sponsors, record_chambers):
+    """What the build says of sponsor_record_chambers' answer, so that it never falls back in
+    silence (the review before the release of 16 November 2026): how many it seated; that no
+    seat list was read, where the record has rows to seat and none was; and how many rows the
+    Manual seats in another chamber than the row's own, which their bill pages still name
+    (bill_sponsor_list labels a row of the record by its own chamber; only `ch` takes the
+    Manual's)."""
+    rows = sponsor_record_rows(sponsors)
+    out = []
+    if record_chambers:
+        out.append(f"  sponsors: {len(record_chambers):,} member-terms of 1989-1998 from the "
+                   "General Court's sponsor record seated by that term's Manual, for the On "
+                   "Record line")
+    elif rows:
+        out.append("  sponsors: no Manual seat list read; every 1989-1998 row of the General "
+                   "Court's sponsor record keeps its own chamber")
+    moved = sum(1 for term, s in rows
+                if (record_chambers or {}).get((str(s["employee"]), term))
+                not in (None, (s.get("chamber") or "")[:1]))
+    if moved:
+        out.append(f"  sponsors: {moved:,} 1989-1998 row(s) of the General Court's sponsor record "
+                   "seated by the term's Manual in another chamber than the row's own; their "
+                   "bill pages still name the row's own chamber")
     return out
 
 
@@ -12871,10 +12905,10 @@ def main():
                           links, max(bills) if bills else "")
     # The chamber of the term for a 1989-1998 sponsor the General Court's record supplies,
     # from that term's Manual, for the members' "On Record" line (sponsor_record_chambers).
+    # Never in silence: the seated, a seat list not read, a row the Manual seats elsewhere.
     record_chambers = sponsor_record_chambers(sponsors)
-    if record_chambers:
-        print(f"  sponsors: {len(record_chambers):,} member-terms of 1989-1998 from the General "
-              "Court's sponsor record seated by that term's Manual, for the On Record line")
+    for _said in sponsor_record_said(sponsors, record_chambers):
+        print(_said)
 
     segs, marks = load_transcripts(a, procs, prows)
     # Each roll call's card on its bill's Votes tab, filled by build_bills
