@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.31
+# GRANITE_VERSION: 2026-09-13.32
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -48,6 +48,7 @@ from collections import defaultdict
 from urllib.parse import quote_plus
 
 import bill_order as BO
+import build_legislator_pages as BLP
 import guides as G
 import officials_tabs as OT
 import shell as S
@@ -218,7 +219,40 @@ def legislators_page(site, base, legs, urls, former=0):
     return len(legs)
 
 
-def chamber_years(m, seat):
+_RECORDS = {}
+
+
+def member_record(site, m):
+    """The member's own file (site/legislators/<id>.json), which the page's "On Record" line
+    is worked out from; {} where it is not there."""
+    p = Path(site) / "legislators" / f"{m.get('id')}.json"
+    try:
+        st = p.stat()
+        key = (str(p), st.st_mtime_ns, st.st_size)
+        if key not in _RECORDS:
+            _RECORDS.clear()
+            _RECORDS[key] = json.loads(p.read_text(encoding="utf-8"))
+        return _RECORDS[key]
+    except (OSError, ValueError):
+        return {}
+
+
+def record_years(site, m):
+    """The years the member's page puts on its "On Record" line, as
+    build_legislator_pages.record_spans works them out -- [{"chamber": "H", "spans": [[1989,
+    2000]]}, ...], the 1989-1998 terms included (past_terms) -- so the directory and the
+    site search give the years the page does (the owner, 14 November 2026: a directory line
+    read "1999-2000" beside a page that said 1989-2000). [] where the record gives nothing."""
+    return [c for c in BLP.record_spans(m, member_record(site, m))
+            if c.get("chamber") in ("H", "S") and c.get("spans")]
+
+
+def span_said(spans):
+    """"1989–2000" or "2009–2014, 2017–2018": the page's way of writing a chamber's spans."""
+    return ", ".join(str(a) if a == b else f"{a}\u2013{b}" for a, b in spans)
+
+
+def chamber_years(m, seat, svc=None):
     """["SD3", "Senate 2009–2024", "House 1999–2002"]: the page's seat, then
     each chamber with the years it has a roll call there, the page's own
     chamber first, for a former member whose one page joins two (former.json's
@@ -230,12 +264,12 @@ def chamber_years(m, seat):
     1999, where he sat in the House until 2002. And the seat stands alone,
     not beside the years: it is the last term's, and the maps of 2002 and
     2012 renumbered the seats of the years before (that day's review)."""
-    svc = [c for c in (m.get("service") or [])
+    svc = [c for c in (svc if svc is not None else (m.get("service") or []))
            if c.get("chamber") in ("H", "S") and c.get("spans")]
     if len({c["chamber"] for c in svc}) < 2:
         return None
     def yrs(c):
-        return ", ".join(str(a) if a == b else f"{a}–{b}" for a, b in c["spans"])
+        return span_said(c["spans"])
     svc.sort(key=lambda c: c["chamber"] != m.get("chamber"))
     return ([seat] if seat else []) + [
         f"{'Senate' if c['chamber'] == 'S' else 'House'} {yrs(c)}" for c in svc]
@@ -262,7 +296,8 @@ def former_page(site, base, urls):
     by = {"H": [], "S": []}
     joined = 0
     for m in people:
-        chs = sorted({c.get("chamber") for c in (m.get("service") or [])
+        m["_years"] = record_years(site, m)
+        chs = sorted({c.get("chamber") for c in (m["_years"] or m.get("service") or [])
                       if c.get("chamber") in ("H", "S") and c.get("spans")})
         joined += len(chs) > 1
         for ch in (chs if len(chs) > 1 else [m.get("chamber")]):
@@ -277,8 +312,10 @@ def former_page(site, base, urls):
         for m in rows:
             terms = (m.get("served") or {}).get("terms") or []
             span = f"{terms[0].split('-')[0]}\u2013{terms[-1].split('-')[1]}" if terms else ""
+            if len(m["_years"]) == 1:
+                span = span_said(m["_years"][0]["spans"])   # the page's own, 1989-1998 included
             seat = m.get("district_label") or ""
-            both = chamber_years(m, seat)
+            both = chamber_years(m, seat, m["_years"] or None)
             said = (", ".join(x for x in (m.get("party") or "", " \u00b7 ".join(both)) if x) if both
                     else ", ".join(x for x in (m.get("party") or "", seat, span) if x))
             # Under the other chamber, with that chamber's title -- "Rep. Jeb
@@ -290,19 +327,19 @@ def former_page(site, base, urls):
             nm = m.get("display_plain") or m.get("name") or ""
             if both and ch != m.get("chamber"):
                 nm = re.sub(r"^(?:Sen|Rep)\. ", "Rep. " if ch == "H" else "Sen. ", nm)
-                said = " \u00b7 ".join(reversed(chamber_years(m, "")))
+                said = " \u00b7 ".join(reversed(chamber_years(m, "", m["_years"] or None)))
             body.append(f'<li><a href="{S.E(S.canon("legislator/" + m["slug"] + ".html"))}">'
                         f'{S.E(nm)}</a> <span class="dirstatus">'
                         f'{S.E(said)}</span></li>')
         body.append("</ul>")
     write(site, base, "/directory/former-legislators.html",
           "Former legislators | Granite Record",
-          f"{len(people):,} former members of the New Hampshire House and Senate on record since "
-          "1999, with party, seat and years, each linked to their votes and sponsored bills.",
+          f"{len(people):,} former members of the New Hampshire House and Senate on record, "
+          "with party, seat and years, each linked to their votes and sponsored bills.",
           "Former legislators",
           f"{len(by['S'])} former senator{'' if len(by['S']) == 1 else 's'} and {len(by['H']):,} "
-          f"former representative{'' if len(by['H']) == 1 else 's'} with a "
-          "recorded roll call vote since 1999, by surname."
+          f"former representative{'' if len(by['H']) == 1 else 's'} on "
+          "record, by surname."
           + (f" The {joined} who sat in both chambers are under each." if joined > 1 else
              " The one who sat in both chambers is under each." if joined else ""),
           "".join(body), urls, nav="officials.html")
@@ -598,6 +635,9 @@ def find_index(site, legs, towns):
             continue
         terms = (m.get("served") or {}).get("terms") or []
         span = f"{terms[0].split('-')[0]}–{terms[-1].split('-')[1]}" if terms else ""
+        years = record_years(site, m)
+        if len(years) == 1:
+            span = span_said(years[0]["spans"])     # the page's own, 1989-1998 included
         last = re.search(r"(\d{4})", (m.get("served") or {}).get("last") or "")
         # Each chamber its own years where the page joins two (chamber_years),
         # in the shape of a one-chamber row -- its chamber, its seat, its
@@ -606,7 +646,7 @@ def find_index(site, legs, towns):
         # their line starts with, and a joined row starting "SD3" fell out of
         # Former Senators and Former Representatives both (the review of 7
         # November 2026).
-        both = chamber_years(m, "")
+        both = chamber_years(m, "", years or None)
         own = "Senate" if m.get("chamber") == "S" else "House"
         rows.append(["former",
                      "Former " + (m.get("display_plain") or m.get("name") or ""),

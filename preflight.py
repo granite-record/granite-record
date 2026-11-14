@@ -31766,6 +31766,73 @@ def _elect_provisional():
                   "noindex, no id, their requests matched by name and chamber")
 
 
+@check("build", "a member-elect whose name ends Jr., Sr. or a numeral is addressed with the suffix last, "
+                "as the roster addresses a sitting one, and the first address answers with a 301")
+def _elect_suffix_address():
+    """Found 14 November 2026: two provisional addresses, jr-william-lawrence-belk-3 and
+    jr-kevin-m-nugent-belk-4, live since 7 November. build_elect_pages.slug_of passed "William
+    Lawrence, Jr." to member_slug, whose comma rule reads "Last, First", so the suffix came
+    first. A sitting member's is andrew-christie-jr-rock-22. The suffix is moved to the end
+    before member_slug; the first address answers with a 301 to the new one (and to the regular
+    page once the roster numbers them); numbered_as passes over a suffix only one side has and
+    does not match two that differ, as the members-elect matching (suffixes_agree) does."""
+    import tempfile
+    import build_elect_pages as EP
+    import build_members_elect as BME
+    import build_pages as BPG
+    assert EP.suffix_last("William Lawrence, Jr.") == "William Lawrence Jr." and \
+        EP.suffix_last("Kevin M. Nugent, III") == "Kevin M. Nugent III" and \
+        EP.suffix_last("Lawrence, William") == "Lawrence, William" and \
+        EP.suffix_last("Smith, Jr., John") == "Smith, Jr., John" and \
+        EP.suffix_last("Jodi Nelson") == "Jodi Nelson", "suffix_last moves more or less than a trailing suffix"
+    races = {
+        "H|Belknap|3": {"seats": 1, "elected": [{"n": "William Lawrence, Jr.", "p": "R", "k": "new"}]},
+        "H|Belknap|4": {"seats": 1, "elected": [{"n": "Kevin M. Nugent, Jr.", "p": "R", "k": "new"}]}}
+    districts = {"Gilford": {"0": {"house": [{"county": "Belknap", "district": 3, "seats": 1},
+                                             {"county": "Belknap", "district": 4, "seats": 1}],
+                                   "senate": 7}}}
+    real = BME.members_elect
+    BME.members_elect = lambda *a, **k: (races, {})
+    day = "2026-12-02"
+    try:
+        got, _said, moves = EP.pages({}, [], [], districts, {}, "2026-11-08", day, {})
+        slugs = sorted(p["slug"] for p in got)
+        assert slugs == ["kevin-m-nugent-jr-belk-4", "william-lawrence-jr-belk-3"], (
+            f"a member-elect's suffix is not last in their address: {slugs}")
+        assert moves == {"/legislator/jr-kevin-m-nugent-belk-4": "/legislator/kevin-m-nugent-jr-belk-4",
+                         "/legislator/jr-william-lawrence-belk-3":
+                         "/legislator/william-lawrence-jr-belk-3"}, (
+            f"the first addresses do not answer with a 301 to the new ones: {moves}")
+        # Numbered after Organization Day, the roster's own spelling (suffix on one side only):
+        # the first address goes to the regular page, which is where the person is.
+        reg = {"id": "377500", "name": "Lawrence, William", "chamber": "H", "county": "Belknap",
+               "district": "3", "slug": "william-lawrence-belk-3"}
+        _g, _s, m2 = EP.pages({}, [reg], [], districts, {}, "2026-12-10", day, {})
+        assert m2.get("/legislator/jr-william-lawrence-belk-3") == "/legislator/william-lawrence-belk-3" \
+            and m2.get("/legislator/william-lawrence-jr-belk-3") == "/legislator/william-lawrence-belk-3", (
+            f"a Jr. whom the roster numbers without the suffix is not found: {m2}")
+        # Two suffixes that differ are not a match.
+        sr = dict(reg, name="Lawrence, William, Sr.")
+        assert EP.numbered_as("William Lawrence, Jr.", "H", "Belknap", "3", [sr]) is None
+        assert EP.numbered_as("William Lawrence, Jr.", "H", "Belknap", "3",
+                              [dict(reg, name="Lawrence, William, Jr.")]) is not None
+        assert EP.numbered_as("William Lawrence", "H", "Belknap", "3",
+                              [dict(reg, name="Lawrence, William, Jr.")]) is not None
+        assert EP.numbered_as("William Lawrence, Jr.", "H", "Belknap", "3", [reg]) is not None
+        assert EP.numbered_as("Jodi Nelson", "H", "Belknap", "3", [reg]) is None
+    finally:
+        BME.members_elect = real
+    with tempfile.TemporaryDirectory() as d:
+        (Path(d) / "elect_pages.json").write_text(json.dumps({"moved": moves}), encoding="utf-8")
+        red = BPG.redirects_file(d)
+        assert "/legislator/jr-william-lawrence-belk-3 /legislator/william-lawrence-jr-belk-3 301\n" in red \
+            and red.index("jr-william-lawrence-belk-3") < red.index("/legislator/:who/"), (
+            "_redirects has no 301 for a member-elect's first address")
+    return "ok", ("a member-elect's Jr. goes last in their address (william-lawrence-jr-belk-3); the "
+                  "first address answers with a 301 to it, or to the regular page once numbered; "
+                  "a suffix only one side has is passed over, two that differ do not match")
+
+
 @check("build", "a member's On Record line covers the 1989-1998 terms the sponsor record places "
                 "them in, by chamber, as the TERM picker does: app.js and the static page agree",
        needs=("build_legislator_pages", "build_site_v2"))
@@ -74923,7 +74990,7 @@ def _movers_by_term(B2, BL, BP, BI):
                      "h": [("Rep. Jeb Bradley", "House 1999–2002 · Senate 2009–2024")]}, (
         f"a person who sat in both chambers is not under each in the directory, as that "
         f"chamber's: {lists}")
-    assert "2 former senators and 1 former representative with" in page and \
+    assert "2 former senators and 1 former representative on record" in page and \
         "The one who sat in both chambers is under each." in page, (
         "the directory's counts do not count everyone who sat in each chamber: "
         + (re.search(r'<p class="src">([^<]*)<', page) or [None, page[:200]])[1])
@@ -74951,6 +75018,81 @@ def _movers_by_term(B2, BL, BP, BI):
                   "page's description and directory line name the House and the Senate with "
                   "their years; the directory lists a joined person under each chamber, and "
                   "the site search under its page's")
+
+
+@check("build", "the directory of former members and the site search give a member the years their "
+                "page's On Record line does, the 1989-1998 terms included, not only the roll "
+                "calls' (Donna Sytek: 1989-2000, not 1999-2000)",
+       needs=("build_legislator_pages", "build_indexes"))
+def _former_directory_years_are_the_pages(BL, BI):
+    """The owner, 14 November 2026: the directory read "Rep. Donna Sytek R, Rock 26, 1999-2000"
+    beside a page that says "House, 1989-2000". The directory and the site search took the
+    first and last of `served.terms`, which are the roll calls', and the page's line is
+    build_legislator_pages.record_spans over the member's own file and `past_terms`. Both now
+    ask record_spans, so a member's years are one rule."""
+    import tempfile
+    sytek = {"id": "365809", "slug": "donna-sytek-rock-26", "name": "Sytek, Donna",
+             "chamber": "H", "party": "R", "district_label": "Rock 26",
+             "display_plain": "Rep. Donna Sytek",
+             "served": {"first": "1/28/1999", "last": "7/12/2000", "terms": ["1999-2000"]},
+             "past_terms": {"H": ["1989-1990", "1991-1992", "1993-1994", "1995-1996",
+                                  "1997-1998"]}}
+    gap = {"id": "1001", "slug": "gap-person-rock-1", "name": "Person, Gap", "chamber": "H",
+           "party": "D", "district_label": "Rock 1", "display_plain": "Rep. Gap Person",
+           "served": {"first": "1/1/2003", "last": "6/1/2004", "terms": ["2003-2004"]},
+           "past_terms": {"H": ["1989-1990"]}}
+    both = {"id": "1002", "slug": "both-person-rock-2", "name": "Person, Both", "chamber": "H",
+            "party": "R", "district_label": "Rock 2", "display_plain": "Rep. Both Person",
+            "served": {"first": "1/1/1999", "last": "6/1/2000", "terms": ["1999-2000"]},
+            "past_terms": {"S": ["1995-1996"]}}
+    plain = {"id": "1003", "slug": "plain-person-rock-3", "name": "Person, Plain", "chamber": "H",
+             "party": "R", "district_label": "Rock 3", "display_plain": "Rep. Plain Person",
+             "served": {"terms": ["2011-2012", "2015-2016"], "last": "6/1/2016"}}
+    people = [sytek, gap, both, plain]
+    root = Path(tempfile.mkdtemp(prefix="gr-fdir-"))
+    try:
+        site = root / "site"
+        (site / "legislator").mkdir(parents=True)
+        (site / "legislators").mkdir()
+        for m in people:
+            (site / "legislator" / f"{m['slug']}.html").write_text("x", encoding="utf-8")
+        # Each member's own file, as the page reads it: attendance by term.
+        att = {"365809": ["1999-2000"], "1001": ["2003-2004"], "1002": ["1999-2000"],
+               "1003": ["2011-2012", "2015-2016"]}
+        for m in people:
+            (site / "legislators" / f"{m['id']}.json").write_text(json.dumps(
+                {**m, "attendance": {t: {} for t in att[m["id"]]}}), encoding="utf-8")
+        (site / "former.json").write_text(json.dumps(people), encoding="utf-8")
+        BI.former_page(site, "https://x", [])
+        page = next(site.rglob("former-legislators.html")).read_text(encoding="utf-8")
+        found = {r[3].rsplit("/", 1)[-1].removesuffix(".html"): r[2]
+                 for r in BI.find_index(site, [], {}) if r and r[0] == "former"}
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    pairs = re.findall(r'<a href="[^"]*">([^<]*)</a> <span class="dirstatus">([^<]*)<', page)
+    lines = dict(pairs)
+    assert lines.get("Rep. Donna Sytek") == "R, Rock 26, 1989–2000", (
+        f"Sytek's directory line is not her page's House, 1989–2000: {lines}")
+    assert lines.get("Rep. Gap Person") == "D, Rock 1, 1989–1990, 2003–2004", (
+        f"a term the record lacks is bridged, or the 1990s term is lost: {lines}")
+    assert lines.get("Rep. Plain Person") == "R, Rock 3, 2011–2016", (
+        f"a member with no 1990s term is not as before: {lines}")
+    # A 1990s Senate term and later House service: each chamber its own years, as the page's
+    # line has it ("House, 1999–2000 · Senate, 1995–1996"), under each chamber's list.
+    assert ("Rep. Both Person", "R, Rock 2 · House 1999–2000 · Senate 1995–1996") in pairs and         ("Sen. Both Person", "Senate 1995–1996 · House 1999–2000") in pairs, (
+        f"a member whose 1990s term was in the other chamber: {pairs}")
+    assert found.get("donna-sytek-rock-26") == "House · Rock 26 · 1989–2000", found
+    assert found.get("gap-person-rock-1") == "House · Rock 1 · 1989–1990, 2003–2004", found
+    assert found.get("plain-person-rock-3") == "House · Rock 3 · 2011–2016", found
+    # And the page itself, which is where the years come from.
+    assert BL.on_record_text(sytek, {"attendance": {"1999-2000": {}}}) == "House, 1989–2000", (
+        BL.on_record_text(sytek, {"attendance": {"1999-2000": {}}}))
+    # The directory's own words claim nothing the record does not: not "since 1999".
+    src = _paths.locate("build_indexes.py").read_text(encoding="utf-8")
+    assert "since 1999" not in src, "the directory still says the record begins in 1999"
+    return "ok", ("a former member's directory line and search entry give the page's own years: "
+                  "Sytek 1989–2000, a gap kept as a gap, a 1990s Senate term under its chamber, "
+                  "and a member with no 1990s term as before")
 
 
 @check("session", "the seat of a term is the one its bills print, else the ballots' in the "
