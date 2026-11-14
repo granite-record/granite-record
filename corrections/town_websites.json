@@ -7,6 +7,20 @@
 
  "towns": {
 
+  "canterbury": {
+   "website": "https://www.canterburynh.gov",
+   "directories_say": {
+    "nhdot": "https://www.canterbury-nh.org/",
+    "secretary_of_state": "https://www.canterburynh.gov"
+   },
+   "evidence": [
+    "The project's town sweep, 20 September 2026 (town_sites/canterbury/_meta.json): https://www.canterbury-nh.org gave no answer (URLError) and https://www.canterburynh.gov answered seconds later, and every page of officials was read from it.",
+    "Read 13 November 2026: https://www.canterbury-nh.org/ fails its security certificate (issued by an authority this computer does not trust), and http://www.canterbury-nh.org/ sends a visitor on to https://www.canterburynh.gov/; https://www.canterburynh.gov answers as 'Home | Town of Canterbury NH'.",
+    "The Secretary of State's clerk list gives https://www.canterburynh.gov."
+   ],
+   "checked_on": "2026-11-13"
+  },
+
   "effingham": {
    "website": "https://www.effingham.nh.gov",
    "directories_say": {
@@ -39,6 +53,98 @@
     ],
     "checked_on": "2026-11-13"
    }
+  },
+
+  "franklin": {
+   "website": "https://www.franklinnh.gov",
+   "directories_say": {
+    "nhdot": "https://www.franklinnh.org/",
+    "secretary_of_state": "https://www.franklinnh.gov"
+   },
+   "evidence": [
+    "The project's town sweep, 25 September 2026 (town_sites/franklin/_meta.json): https://www.franklinnh.org gave no answer (URLError) and https://www.franklinnh.gov answered seconds later, and every page of officials was read from it.",
+    "Read 13 November 2026: www.franklinnh.org no longer exists (no such host); https://www.franklinnh.gov answers as 'Franklin, NH | Official Website'.",
+    "The Secretary of State's clerk list gives https://www.franklinnh.gov for each of the city's three wards."
+   ],
+   "checked_on": "2026-11-13"
+  },
+
+  "greenland": {
+   "website": "https://www.greenland.nh.gov",
+   "directories_say": {
+    "nhdot": "https://www.greenlandnh.gov",
+    "secretary_of_state": "https://www.greenland.nh.gov"
+   },
+   "evidence": [
+    "The project's town sweep, 20 September 2026 (town_sites/greenland/_meta.json): https://www.greenlandnh.gov gave no answer (URLError) and https://www.greenland.nh.gov answered seconds later, and every page of officials was read from it.",
+    "Read 13 November 2026: www.greenlandnh.gov no longer exists (no such host); https://www.greenland.nh.gov answers as 'Greenland, NH | Official Website'.",
+    "The Secretary of State's clerk list gives https://www.greenland.nh.gov."
+   ],
+   "checked_on": "2026-11-13"
+  },
+
+  "kensington": {
+   "website": "https://www.kensingtonnh.gov",
+   "directories_say": {
+    "nhdot": "https://www.town.kensington.nh.us/",
+    "secretary_of_state": "https://www.kensingtonnh.gov"
+   },
+   "evidence": [
+    "The project's town sweep, 20 September 2026 (town_sites/kensington/_meta.json): https://www.town.kensington.nh.us gave no answer (URLError) and https://www.kensingtonnh.gov answered seconds later, and every page of officials was read from it.",
+    "Read 13 November 2026: www.town.kensington.nh.us no longer exists (no such host); https://www.kensingtonnh.gov answers as 'Kensington, NH | Official Website'.",
+    "The Secretary of State's clerk list gives https://www.kensingtonnh.gov."
+   ],
+   "checked_on": "2026-11-13"
+  },
+
+  "lincoln": {
+   "website": "https://www.lincolnnh.gov",
+   "directories_say": {
+    "nhdot": "https://www.lincolnnh.org/",
+    "secretary_of_state": "https://www.lincolnnh.gov"
+   },
+   "evidence": [
+    "The project's town sweep, 20 September 2026 (town_sites/lincoln/_meta.json): https://www.lincolnnh.org gave no answer (URLError) and https://www.lincolnnh.gov answered seconds later, and every page of officials was read from it.",
+    "Read 13 November 2026: www.lincolnnh.org no longer exists (no such host); https://www.lincolnnh.gov answers as 'Lincoln, NH | Official Website'.",
+    "The Secretary of State's clerk list gives https://www.lincolnnh.gov."
+   ],
+   "checked_on": "2026-11-13"
+  },
+
+  "northumberland": {
+   "website": "https://www.northumberlandnh.gov",
+   "directories_say": {
+    "nhdot": "https://www.northumberlandnh.org/",
+    "secretary_of_state": "https://www.northumberlandnh.gov"
+   },
+   "evidence": [
+    "The project's town sweep, 20 September 2026 (town_sites/northumberland/_meta.json): https://www.northumberlandnh.org gave no answer (URLError) and https://www.northumberlandnh.gov answered seconds later, and every page of officials was read from it.",
+    "Read 13 November 2026: https://www.northumberlandnh.org/ fails its security certificate (the certificate names another host), and http://www.northumberlandnh.org/ sends a visitor on to https://northumberlandnh.gov/; https://www.northumberlandnh.gov answers as 'Town of Northumberland NH'.",
+    "The Secretary of State's clerk list gives https://www.northumberlandnh.gov."
+   ],
+   "checked_on": "2026-11-13",
+   "email": {
+    "address": "t.letson@northumberlandnh.gov",
+    "evidence": [
+     "northumberlandnh.gov's home page, read 13 November 2026, gives t.letson@northumberlandnh.gov as the town's contact, as did the copy saved 20 September 2026 (town_sites/northumberland/home-44731a9d25.html).",
+     "NHDOT's directory gives tletson@northumberlandnh.org, on the address that no longer serves the town's site."
+    ],
+    "checked_on": "2026-11-13"
+   }
+  },
+
+  "tamworth": {
+   "website": "https://www.tamworthnh.gov",
+   "directories_say": {
+    "nhdot": "https://www.tamworthnh.org/",
+    "secretary_of_state": "https://www.tamworthnh.gov"
+   },
+   "evidence": [
+    "The project's town sweep, 20 September 2026 (town_sites/tamworth/_meta.json): https://www.tamworthnh.org gave no answer (URLError) and https://www.tamworthnh.gov answered seconds later, and every page of officials was read from it.",
+    "Read 13 November 2026: https://www.tamworthnh.org/ fails its security certificate (the certificate names another host), and http://www.tamworthnh.org/ sends a visitor on to https://www.tamworthnh.gov/; https://www.tamworthnh.gov answers as 'Tamworth, NH | Official Website'.",
+    "The Secretary of State's clerk list gives https://www.tamworthnh.gov."
+   ],
+   "checked_on": "2026-11-13"
   }
 
  }
