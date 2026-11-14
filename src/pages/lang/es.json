@@ -24332,6 +24332,11 @@
    "es": "Gráfico de dispersión de los {n} comités de {term} con diez informes o más: los proyectos sobre los que cada uno informó, de {lo} a {hi}, frente a la proporción aprobada por ambas cámaras, de {plo}% para {nlo} a {phi}% para {nhi}. Las cifras están en la tabla de abajo.",
    "state": "draft"
   },
+  "nums.ch_cmte_tip": {
+   "en": "{name}: {n} bills reported on, {p}% passed both chambers",
+   "es": "{name}: informó sobre {n} proyectos, {p}% aprobados por ambas cámaras",
+   "state": "draft"
+  },
   "nums.ch_cmte_x": {
    "en": "bills reported on",
    "es": "proyectos sobre los que se informó",

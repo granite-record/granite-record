@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-13.2
+# GRANITE_VERSION: 2026-11-13.3
 """
 The House's CALL OF THE ROLL of 1989 to 1997, matched to the General Court's employee numbers only where certain.
 
@@ -13,16 +13,20 @@ House member who sponsored nothing has no row from the sponsor route, and the ro
 read as a SECOND SOURCE: the sponsor route (build_past_roster.py) is checked against it, and a name is
 placed only on one of the term's sponsors (pool), never on someone the sponsor route does not name for
 the term. A name it cannot place, a member who sponsored nothing among them, is listed attached to no one
-(past_roster.json's roll_names_placed_on_nobody; one whose seat contradicts the printed one, in
-roll_seat_disagreements). It states no party (the roll prints the nominating party, and no party is given
+(past_roster.json's roll_names_placed_on_nobody); one whose seat contradicts the printed one is listed in
+roll_seat_disagreements, which names the employee number of the one sponsor the name fits and the seats
+that person's bills printed, and attaches the roll's entry to no row. It states no party (the roll prints the nominating party, and no party is given
 before 1999 at this stage).
 
 WHAT IS CERTAIN. A roll entry is placed on an employee number only where the surname is exactly a surname of
 exactly one person who sponsored in that term (the sponsor route's own people, so there is evidence the
 person sat then), their first name is the roll's (the same name or a short form of it, never a bare prefix),
 and the roll's seat is not a seat that person's own bills printed some other district for. Everything else
-stays as the roll gives it, with no number: an OCR spelling, a name two of the term's sponsors fit, a seat
-that contradicts the printed one, a member who sponsored nothing. A name the General Court's whole list of
+is placed on no one, and stays as the roll gives it: an OCR spelling, a name two of the term's sponsors fit,
+a member who sponsored nothing, and a seat that contradicts the printed one. That last is the one case that
+is listed WITH a number: roll_seat_disagreements carries the employee number of the single sponsor the name
+fits, beside the roll's seat and the seats their bills printed, so a person can judge which is right; the
+roll's entry is still given no row and adds no seat to that person. A name the General Court's whole list of
 members fits just once is counted and reported but NOT used: that a member of that name is somewhere on a
 list of two thousand people does not say they sat in this seat that term.
 """

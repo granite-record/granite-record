@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.4
+# GRANITE_VERSION: 2026-11-08.5
 """
 A provisional page for each new member-elect: who they are until the General
 Court numbers them.
@@ -27,7 +27,10 @@ WHAT THIS WRITES
 
 build_legislator_pages.py draws each page from this; build_members_elect.py
 links a new person's chip to it; build_lsrs.py matches their requests by
-name. None of them reads the roster for it.
+name; build_request_pages.py takes the chip of a request's sponsor from it
+(the slug, the party and the name, where no sitting member has the address);
+and build_pages.moved_elect writes the 301s from "moved" into _redirects.
+None of them reads the roster to find these pages.
 
 KEPT APART FROM THE ROSTER. The rules of 16 October hold as they are: a
 member-elect is never in legislators.json, former.json, places.json or the

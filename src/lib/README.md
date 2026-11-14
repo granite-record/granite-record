@@ -23,6 +23,19 @@ Shared by every stage:
   `.build_cache/` under a sha256 of their inputs and their code, and carried
   to the night by the kit -- used by `parse/build_bill_versions.py` and
   `parse/officers.py` (which `pages/` reads twice a build);
+- `people`: one entry a person, joining every number the General Court uses
+  for them (an employee number, a PersonID in each chamber) under one
+  person number, by the rule it states; the public people file and the
+  register in `ops/person_numbers.py` both come from it, so the night and
+  the run that issues numbers cannot join two people differently. Writes
+  nothing and asks nobody;
+- `spellings`: a member's name as the record misspells it, and the surname
+  it means -- the "spellings" section of
+  `corrections/member_corrections.json`, read here and never written;
+- `state_settings`: the state's facts (its counties, time zone, legislature)
+  read from `state_settings.json` beside it, so a fork for another state
+  edits data rather than code; preflight holds every key and fails on a
+  second literal county list;
 - `gr_ids`: Granite Record's own ids, `gr-` and a serial, for a person the
   record names and the General Court gives no number, kept in their own field
   (`granite_id`) and never in `gc_employee_number`: the register's reader and
