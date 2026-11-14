@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.319
+// GRANITE_VERSION: 2026-09-07.320
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -6506,22 +6506,14 @@ function renderSponsors(b,d){
   // name there is taken as prime, and a name matched to nobody who cast a roll
   // call that term is shown as it is printed, without a party.
   const fromText=spAll.length&&spAll.every(s=>s.source==="bill text");
-  const asPrinted=fromText&&spAll.some(s=>!s.member_id&&!s.matched);
-  // 1989 to 1998: the bill prints a surname, sometimes an initial, and a seat,
-  // as later bills do, but no named roll call of those years is on this site
-  // to match it against (the Votes tab's words: "Named roll calls here begin
-  // in 1999"; the docket's tallies of those years are in the Summary). The
-  // General Court's sponsor record for the same bill (the employee numbers on
-  // it) names the person where only one of its numbers fits what was printed
-  // (past_roster.place), or, where the printed name fits more than one of
-  // them, where the Manual for the General Court of that term seats only one
-  // of them at the printed seat (past_roster.settle). A name placed so is
-  // shown in full, in the General Court's spelling; one that could not be is
-  // shown as printed, and a bill of those years that places no name says so
-  // in the same words (early, as renderVotes tests the term). No name of those
-  // years has a party, so on a bill that has both, "without a party" is not
-  // what tells them apart.
-  const byRecord=fromText&&spAll.some(s=>s.matched);
+  const asPrinted=fromText&&spAll.some(s=>!s.member_id);
+  // 1989 TO 1998 THE NOTE SAYS WHERE THE NAMES WERE READ, AND NO MORE (the
+  // owner, 14 November 2026: "not necessary to get into that fine of detail
+  // and just let the pages speak for themselves"). The General Court's
+  // sponsor record for the bill places a name in full where it can
+  // (past_roster.py) and one it cannot is shown as printed; no named roll call
+  // of those years is on this site, so none is said to be matched to a
+  // member who voted that term. The term is tested as renderVotes tests it.
   const early=termStartOf(d)&&termStartOf(d)<1999;
   // A BILL WHOSE PRINTED LINE NAMES NOBODY. 1991 HCR 13 and HR 19 print "INTRODUCED BY:
   // REFERRED TO:" with no name after either, and the page listed a sponsor called
@@ -6551,18 +6543,9 @@ function renderSponsors(b,d){
   // one would otherwise have no way to know the two were gathered differently.
   return `${sp||`<p class="note">No sponsors on file.</p>`}${fromText
     ?`<p class="note" style="margin-top:12px">As named on the sponsor line of
-        the bill's text, where the first name is the prime sponsor.${asPrinted&&!byRecord
-        ?(early?` Named roll calls here begin in 1999, and this bill&rsquo;s own
-          sponsor record places no name here on one person, so each is shown
-          as the text prints it.`
-        :` A name without a party is shown as the text prints it: it could not
-          be matched to one member who voted that term.`):""}${byRecord
-      ?` Named roll calls here begin in 1999. A full name here is the General
-        Court&rsquo;s name for the one person on this bill&rsquo;s own sponsor record
-        whom the printed name fits, or, where it fits more than one, the one the
-        Manual for the General Court of that term seats at the printed seat.${asPrinted
-        ?` Any other name is shown as the text prints it: the record could not
-        place it on one person.`:""}`:""}</p>`:""}${unprinted
+        the bill's text, where the first name is the prime sponsor.${asPrinted&&!early
+        ?` A name without a party is shown as the text prints it: it could not
+          be matched to one member who voted that term.`:""}</p>`:""}${unprinted
     ?`<p class="note" style="margin-top:12px">The bill's own text names no
         sponsor. These are the names the General Court's sponsor record gives
         it.</p>`:""}${fromJournal
