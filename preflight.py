@@ -31476,8 +31476,10 @@ def _request_sponsor_winner(build_lsrs):
     assert got("Jason Janvrin", "HB")[0] == "Jason A. Janvrin (R)"
     assert got("Jason Janvrin", "HB")[1] == "", "a winner with no page links nowhere, and still has a party"
     # The refusals.
-    assert got("Jim Smith", "HB") is None, (
-        "Jim is James, but John Smith also won with the same initial: not certain")
+    assert got("Jim Smith", "HB") is None, "Jim is no tabled nickname of James: nobody"
+    assert got("James Q. Smith", "HB") is None, (
+        "James Smith fits (a middle initial on one side), but John Smith also won with the same initial: "
+        "not certain")
     assert got("James Smith", "HB")[0] == "James Smith (R)", "the whole name is the same: certain"
     assert got("Dana Senator", "HB") is None, "a winner of the other chamber only"
     assert got("Dana Senator", "SB")[0] == "Dana Senator (D)"
@@ -117162,24 +117164,77 @@ def _unprinted_sponsor_note():
     """1991 HCR 13 and HR 19 print "INTRODUCED BY: REFERRED TO:" and no name, and are named
     from the General Court's sponsor record (text_sponsors.unprinted). Every other sponsor
     of that term was read off the bill's own line, and the page says so of them; these say
-    where theirs came from instead."""
+    where theirs came from instead.
+
+    AND A 1989-1998 BILL WHOSE NAMES THE RECORD PLACED (past_roster.py; the pre-release review
+    of 13 November 2026). No name of those years has a party, so on a bill with names placed
+    and one left as printed (1997 HB 455) the note called the placed names "shown as the text
+    prints it"; it also said the bill "prints only a surname", and named only one of the two
+    ways a name is placed. Held: the mixed bill's note keeps "As named on the sponsor line",
+    says nothing of a name without a party, names the sponsor record and the Manual for the
+    General Court, and limits "as the text prints it" to the other names; a bill whose names
+    were all placed (1989 HB 553) says nothing of any other name. Both say what the Votes tab
+    says, "Named roll calls here begin in 1999", and neither "no roll call from before 1999":
+    952 of those bills show a docket roll-call tally in their Summary (1997 HB 200, "on a roll
+    call 286-57"). A bill of those years that places no name (1995 HB 174, Rep. Christie) says
+    so in the same words and not "voted that term"; a bill of 1999-2022 (HB 1, no term before
+    1999) keeps "A name without a party is shown as the text prints it"."""
+    placed = ('{name: "Richard Dolan", chamber: "H", label: "Rep. Richard Dolan (Rock 12)", '
+              'member_id: "375990", employee: "375990", matched: "General Court sponsor record", '
+              'source: "bill text", as_printed: "Rep. Dolan, Rock 12"}')
     got = _app_js(
         '[scope.renderSponsors({id: "HCR13"}, {sponsors: [{name: "Michael Hill", '
         'chamber: "H", label: "Rep. Michael Hill", prime: true, unprinted: true, '
         'source: "General Court sponsor record"}]}), '
         'scope.renderSponsors({id: "HB1"}, {sponsors: [{name: "Vartanian", chamber: "H", '
-        'label: "Rep. Vartanian (Rock 20)", prime: true, source: "bill text"}]})]',
+        'label: "Rep. Vartanian (Rock 20)", prime: true, source: "bill text"}]}), '
+        'scope.renderSponsors({id: "HB455"}, {term: "1997-1998", sponsors: [{name: "Christie", chamber: "H", '
+        'label: "Rep. Christie (Rock 22)", prime: true, source: "bill text", member_id: "", '
+        'as_printed: "Rep. Christie, Rock 22"}, ' + placed + ', {name: "John Anthony Simmons", '
+        'chamber: "H", label: "Rep. John Anthony Simmons (Rock 25)", member_id: "", '
+        'employee: "376049", matched: "General Court sponsor record", source: "bill text"}]}), '
+        'scope.renderSponsors({id: "HB553"}, {term: "1989-1990", sponsors: [Object.assign(' + placed
+        + ', {prime: true})]}), '
+        'scope.renderSponsors({id: "HB174"}, {term: "1995-1996", sponsors: [{name: "Christie", chamber: "H", '
+        'label: "Rep. Christie (Rock 22)", prime: true, source: "bill text", member_id: "", '
+        'as_printed: "Rep. Christie, Rock 22"}]})]',
         names=("renderSponsors",))
     if got is None:
         return "skip", "node, app.js or dom_stub.js is not here"
-    record, text = got
+    record, text, mixed, placed_only, none_placed = got
+    say = lambda h: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", h)).replace("&rsquo;", "’")
+    mixed, placed_only, none_placed = say(mixed), say(placed_only), say(none_placed)
+    for what, note in (("a mixed 1989-1998 bill", mixed), ("a 1989-1998 bill all placed", placed_only)):
+        assert "no roll call from before" not in note and "Named roll calls here begin in 1999" in note, (
+            f"{what} does not say what the Votes tab says, \"Named roll calls here begin in 1999\", or says "
+            "there is no roll call before 1999 beside a Summary that gives one: " + note[-420:])
+    assert "As named on the sponsor line" in none_placed and "voted that term" not in none_placed \
+        and ("Named roll calls here begin in 1999, and this bill’s own sponsor record places no name here "
+             "on one person, so each is shown as the text prints it") in none_placed, (
+        "a 1989-1998 bill whose names the record placed on nobody says they could not be matched to one "
+        "member who voted that term: " + none_placed[-300:])
+    assert "As named on the sponsor line" in mixed and "without a party" not in mixed \
+        and "prints only a surname" not in mixed, (
+        "a 1989-1998 bill with names the record placed and one as printed calls the placed names "
+        "\"as the text prints it\", or says the bill prints only a surname: " + mixed[-420:])
+    assert "sponsor record" in mixed and "Manual for the General Court" in mixed \
+        and "Any other name is shown as the text prints it" in mixed, (
+        "the note of a mixed 1989-1998 bill does not name both ways a name is placed, or does not keep "
+        "\"as printed\" to the other names: " + mixed[-420:])
+    assert "Manual for the General Court" in placed_only and "Any other name" not in placed_only \
+        and "without a party" not in placed_only, (
+        "a 1989-1998 bill whose names were all placed speaks of names shown as printed: " + placed_only[-300:])
     assert "names no" in record and "sponsor record" in record \
         and "As named on the sponsor line" not in record, (
         "a bill whose line names nobody does not say its sponsors are the General Court's "
         "record: " + re.sub(r"\s+", " ", record)[-240:])
-    assert "sponsor record" not in text and "As named on the sponsor line" in text, (
-        "a bill named off its own line lost its note, or gained the record's")
-    return "ok", "the record's names say so; a line's names keep their own note"
+    assert "sponsor record" not in text and "As named on the sponsor line" in text \
+        and "A name without a party is shown as the text prints it" in say(text), (
+        "a bill named off its own line lost its note, or gained the record's, or a 1999-2022 bill lost "
+        "\"A name without a party is shown as the text prints it\"")
+    return "ok", ("the record's names say so; a line's names keep their own note; a 1989-1998 bill names "
+                  "both ways its names were placed, calls only the others as printed and says named roll "
+                  "calls begin in 1999, one that places none says so; 1999-2022 keep 'without a party'")
 
 
 @check("data", "no sponsor row is a heading, a seat, an honorific or a name with a figure in it, and the five senators printed as Rep. are theirs")
@@ -135201,9 +135256,9 @@ def _topic_filter_search_box():
     return "ok", "the box narrows the topics, counts hold, a ticked topic stays"
 
 
-@check("frontend", "the bill requests' search finds a request by its sponsor's name (prime or co-sponsor, sitting, "
-       "member-elect or former), the Sponsor filter has the party and the seat, and the Topic filter says "
-       "its topics are from the title")
+@check("frontend", "the bill requests' search finds a request by its sponsor's name as the list, the card or their "
+       "page prints it (prime or co-sponsor, sitting, member-elect or former), the Sponsor filter has the party, "
+       "and the Topic filter says its topics are from the title")
 def _requests_search_by_name():
     """The owner, 12 November 2026: "you can't search by legislator name, by party affiliation of returning
     or new members". A bill's sponsor is found through the Sponsor filter and a name typed in the box lists
@@ -135214,8 +135269,21 @@ def _requests_search_by_name():
     lists the sponsor's requests and the ones they co-sponsor; "bail" lists the bail request and not
     Bailey's; "sen" before a Rep.'s name lists none; a member-elect (a label with no title) is found by
     "rep jane doe"; the party filter counts a sitting member's and a member-elect's party; the Sponsor list
-    names a sponsor with the party and seat their label gives; the Topic group of the requests says "(from
-    the title)" and another term's does not; a bill's own search still lists no bill for a name."""
+    names a sponsor with the party their label gives (a request's label has no seat); the Topic group of the
+    requests says "(from the title)" and another term's does not; a bill's own search still lists no bill
+    for a name.
+
+    AND BY EVERY NAME THE SITE PRINTS FOR THE SPONSOR (the pre-release review of 13 November 2026): "Lee C.
+    Nyquist", the name on his cards and his page, and "James Creighton", the name on his page, found none
+    of their requests, which the list spells "Lee Nyquist" and "Jim Creighton". Held on two rows that
+    build_lsrs makes from the list, a winner and a page, as the build does (rows_from, then
+    with_sponsor_names, which writes `sponsor_names`); each name finds its request in the box, in the
+    Sponsor filter's offer and in that filter's own box; the surname and the list's own spelling still
+    do; the page drawn for "Lee C. Nyquist" lists his request and offers no "'c' alone"; and "c" alone
+    does not list him by his initial. The filter's box also lists a sponsor typed as the card prints them
+    ("W. Packy Campbell", whom the list calls "W Packy Campbell") or with an initial's full stop left off
+    ("lee c nyquist"), as the search box does; and a spelling that differs by a hyphen or a space is a
+    name of its own, one that differs by a full stop alone is not."""
     def req(n, title, who, label, slug, party, cosp=()):
         row = {"id": f"LSR2027000{n}", "n": f"LSR 2027-000{n}", "title": title, "sponsor": who,
                "sponsor_label": label, "sponsor_slug": slug, "lsr": True, "term": "2027-requests",
@@ -135236,6 +135304,50 @@ def _requests_search_by_name():
                  topic="Taxes - State", topic_by="title"),
             req(6, "relative to bail reform.", "Chris Moore", "Rep. Chris Moore (D)", "chris-moore-hills-2", "D")]
     rows[0]["topic"], rows[0]["topic_by"] = "Education - General", "title"
+    # AND TWO SPONSORS THE SITE PRINTS OTHERWISE THAN THE LIST, made as the build makes them: the list's
+    # "Lee Nyquist" is the winner "Lee C. Nyquist" with a member-elect's page, and its "Jim Creighton" the
+    # winner of that name, whose page is a sitting member's, "Rep. James Creighton".
+    import build_lsrs as L
+    with tempfile.TemporaryDirectory() as d:
+        site = Path(d)
+        (site / "legislators.json").write_text(json.dumps([{
+            "name": "Creighton, James", "slug": "james-creighton-hills-30", "display": "Rep. James Creighton (R)",
+            "display_plain": "Rep. James Creighton"}]), encoding="utf-8")
+        (site / "elect_pages.json").write_text(json.dumps({"pages": [{
+            "name": "Lee C. Nyquist", "slug": "lee-c-nyquist-hills-42", "party": "D", "chamber": "H",
+            "race": "H|Hillsborough|42"}]}), encoding="utf-8")
+        who, names = L.roster(site), L.page_names(site)
+    ws = L.election_winners(
+        {"races": {"H|Hillsborough|42": {"candidates": [{"name": "Lee C. Nyquist", "party": "d", "elected": True}]},
+                   "S|8": {"candidates": [{"name": "Jim Creighton", "party": "r", "elected": True}]}}},
+        {"S|8": {"elected": [{"n": "Jim Creighton", "p": "R", "s": "james-creighton-hills-30"}]}},
+        [{"slug": "lee-c-nyquist-hills-42", "name": "Lee C. Nyquist", "race": "H|Hillsborough|42"}], [])
+    # Lee Nyquist's title has no word in c, and Creighton's does: "c" alone lists Creighton's by its title.
+    built, _ = L.rows_from(
+        [{"lsr": "2027-0007", "session": 2027, "body": "HB", "title": "relative to trout stocking.",
+          "sponsor": "Lee Nyquist"},
+         {"lsr": "2027-0008", "session": 2027, "body": "SB", "title": "relative to county conservation districts.",
+          "sponsor": "Jim Creighton"}], who, {}, 2027, ws)
+    L.with_sponsor_names(built, names)
+    assert [(r["sponsor_label"], r.get("sponsor_names")) for r in built] == [
+        ("Lee C. Nyquist (D)", ["Lee C. Nyquist"]), ("Jim Creighton (R)", ["James Creighton"])], (
+        "build_lsrs does not give a request the names its card and its sponsor's page print: "
+        f"{[(r['sponsor_label'], r.get('sponsor_names')) for r in built]}")
+    # A spelling that differs by a full stop alone is the same words; by a hyphen or a space it is not,
+    # since the search splits a name on both.
+    odd = [{"sponsor": "W Packy Campbell", "sponsor_label": "W. Packy Campbell (R)", "sponsor_slug": ""},
+           {"sponsor": "Maryjane Smith", "sponsor_label": "Mary-Jane Smith (D)", "sponsor_slug": ""},
+           {"sponsor": "Tom McDonald", "sponsor_label": "Tom Mc Donald (R)", "sponsor_slug": ""}]
+    L.with_sponsor_names(odd, {})
+    assert [r.get("sponsor_names") for r in odd] == [None, ["Mary-Jane Smith"], ["Tom Mc Donald"]], (
+        "a spelling that differs by a full stop alone is added, or one that differs by a hyphen or a space "
+        f"is not: {[r.get('sponsor_names') for r in odd]}")
+    for r in built:
+        r["hayT"] = f"{r['id'].lower()} {r['n'].lower()} {r['title'].lower()}"
+    rows += built
+    # And a sponsor whose card differs from the list by a full stop, for the Sponsor filter's box.
+    rows.append(req(9, "relative to boating.", "W Packy Campbell", "W. Packy Campbell (R)",
+                    "w-packy-campbell-straf-3", "R"))
     old = [{"id": "HB1", "n": "HB 1", "title": "a bill", "sponsor": s, "sponsor_label": lab, "term": "1995-1996",
             "year": 1995, "kind": "done", "status": "Killed", "chip": "Died", "committees": [], "committee": "",
             "topic": "", "votedays": [], "nrc": 0, "last_action": "", "hayT": "hb1 hb 1 a bill"}
@@ -135248,7 +135360,7 @@ def _requests_search_by_name():
     for i, r in enumerate(old):
         r["id"], r["n"] = f"HB{i + 1}", f"HB {i + 1}"
     meta = {"terms": ["1995-1996"], "committee_codes": {}, "topics": [],
-            "requests": {"term": "2027-requests", "year": 2027, "n": 6, "withdrawn": 0, "label": "2027 Bill Requests"}}
+            "requests": {"term": "2027-requests", "year": 2027, "n": 9, "withdrawn": 0, "label": "2027 Bill Requests"}}
     got = _app_js("""(() => {
   const norm = (s) => scope.hintWords(s).join(" ");
   const out = {};
@@ -135258,6 +135370,22 @@ def _requests_search_by_name():
   out.sen = listed("sen ellen read"); out.bail = listed("bail"); out.bailey = listed("bailey");
   out.elect = listed("rep jane doe"); out.title = listed("dog"); out.senator = listed("senator sam senn");
   out.none = listed("xyzzy");
+  // A sponsor by the card's and the page's spelling, and by the list's own; never by an initial alone.
+  out.nyquist = listed("Lee C. Nyquist"); out.nyquistRep = listed("Rep. Lee C. Nyquist");
+  out.nyquistSur = listed("Nyquist"); out.creighton = listed("James Creighton");
+  out.creightonOwn = listed("Jim Creighton"); out.initial = listed("c");
+  // Drawn as the page draws it once the requests' text index is in (were nothing listed, past "Reading").
+  scope.setText("2027-requests", "ready"); scope.setQuery("Lee C. Nyquist");
+  try { scope.render(); out.nyquistPage = document.querySelector("#results").innerHTML; }
+  catch (e) { out.nyquistPage = "RENDER " + e.message; }
+  out.hintNyquist = scope.sponsorHint("lee c nyquist", scope.IDX()).map(p => [p.name, p.label]);
+  out.hintCreighton = scope.sponsorHint("james creighton", scope.IDX()).map(p => [p.name, p.label]);
+  out.hintInitial = scope.sponsorHint("c", scope.IDX()).map(p => p.name);
+  const box = (v) => { scope.setSponsorBox(v); scope.renderFacets();
+    return [...document.querySelector("#facets").innerHTML.matchAll(/data-f="sponsor"\\s+value="([^"]*)"[^>]*>\\s*<span>([^<]*)</g)].map(m => [m[1], m[2]]); };
+  out.boxLeeC = box("lee c"); out.boxJames = box("james");
+  out.boxPacky = box("W. Packy Campbell"); out.boxLeeCNyquist = box("lee c nyquist");
+  scope.setSponsorBox("");
   scope.setQuery("");
   scope.renderFacets();
   const f = document.querySelector("#facets").innerHTML;
@@ -135289,7 +135417,8 @@ def _requests_search_by_name():
   scope.setQuery(""); scope.sel.sponsor.add("Allen (Rock 3)"); out.rock3 = scope.IDX().filter(b => scope.matches(b)).map(b => b.id);
   return out;
 })()""" % (json.dumps(meta), json.dumps(rows), json.dumps(meta), json.dumps(old)),
-        names=("hintWords", "matches", "renderFacets", "sel", "sponsorHint", "IDX: () => IDX",
+        names=("hintWords", "matches", "render", "renderFacets", "sel", "sponsorHint", "IDX: () => IDX",
+               "setText: (t, v) => { TEXT[t] = v; }",
                "setQuery: (q) => { query = q; }", "setSponsorBox: (v) => { sponsorFilter = v; }",
                "setState: (t, m, rs) => { term = t; META = m; IDX = rs; for (const k in SP_LABELS) delete SP_LABELS[k]; noteSponsors(t, rs); }"))
     if got is None:
@@ -135304,11 +135433,34 @@ def _requests_search_by_name():
     assert got["title"] == ["3"] and got["none"] == [], (got["title"], got["none"])
     assert got["senator"] == ["4"], got["senator"]
     assert got["topicHead"] == "Topic (from the title)", f"the requests' Topic filter says {got['topicHead']!r}"
-    assert got["party"] == [["Republican", 2], ["Democrat", 3], ["Party not on file", 1]], (
+    assert got["party"] == [["Republican", 4], ["Democrat", 4], ["Party not on file", 1]], (
         f"the party filter counts {got['party']}: sitting and elect members alike")
     assert got["cosp"] == "Include co-sponsored requests", got["cosp"]
     assert ["Ellen Read", "Ellen Read (D)"] in got["sponsors"], f"the Sponsor list shows {got['sponsors']}"
-    assert got["republican"] == ["2", "3"], f"the party filter lists {got['republican']}"
+    assert got["republican"] == ["2", "3", "8", "9"], f"the party filter lists {got['republican']}"
+    # The names the site prints. Lee C. Nyquist's request is 7, Jim (James) Creighton's 8.
+    assert got["nyquist"] == ["7"] and got["nyquistRep"] == ["7"], (
+        f"'Lee C. Nyquist', the name his card prints, lists {got['nyquist']} (with 'Rep.' {got['nyquistRep']})")
+    assert got["creighton"] == ["8"], f"'James Creighton', the name his page prints, lists {got['creighton']}"
+    assert got["nyquistSur"] == ["7"] and got["creightonOwn"] == ["8"], (
+        f"the surname and the list's own spelling no longer find them: {got['nyquistSur']}, {got['creightonOwn']}")
+    assert got["initial"] == ["8"], (
+        f"'c' alone lists {got['initial']}: Creighton's request by its title, and never Nyquist's by his initial")
+    page = got["nyquistPage"]
+    assert "LSR 2027-0007" in page and "No bills match" not in page and "alone matches" not in page, (
+        "the page drawn for 'Lee C. Nyquist' does not list his request, or offers a word of his name alone "
+        "('c' alone): " + re.sub(r"<[^>]+>", " ", page)[:240])
+    assert got["hintNyquist"] == [["Lee Nyquist", "Lee C. Nyquist"]] and got["hintCreighton"] == [
+        ["Jim Creighton", "Jim Creighton"]] and got["hintInitial"] == [], (
+        f"the Sponsor filter's offer for the printed names: {got['hintNyquist']}, {got['hintCreighton']}; "
+        f"for 'c' alone {got['hintInitial']}")
+    assert got["boxLeeC"] == [["Lee Nyquist", "Lee C. Nyquist (D)"]] and got["boxJames"] == [
+        ["Jim Creighton", "Jim Creighton (R)"]], (
+        f"the Sponsor filter's box: 'lee c' lists {got['boxLeeC']}, 'james' {got['boxJames']}")
+    assert got["boxPacky"] == [["W Packy Campbell", "W. Packy Campbell (R)"]] and got["boxLeeCNyquist"] == [
+        ["Lee Nyquist", "Lee C. Nyquist (D)"]], (
+        f"the Sponsor filter's box: 'W. Packy Campbell', as his card prints it, lists {got['boxPacky']}; "
+        f"'lee c nyquist', the initial typed without its full stop, {got['boxLeeCNyquist']}")
     assert got["topicTicked"] == ["5"], got["topicTicked"]
     assert got["oldTopicHead"] == "Topic", got["oldTopicHead"]
     assert got["billsByName"] == [], f"a name typed lists bills: {got['billsByName']}"
@@ -135325,8 +135477,10 @@ def _requests_search_by_name():
     assert sorted(got["moores"]) == [["Dana Moore", "Dana Moore (Graf 5)"], ["Moore (Hills 2)", "Moore (Hills 2)"]], (
         f"a named sponsor and one left as printed are not two choices: {got['moores']}")
     return "ok", ("a request is found by name, prime or co-sponsor, a title agreeing, a whole word for a "
-                  "single one; party counts and seats are in the Sponsor filter; its topics say from the title; "
-                  "an older term tells two Allens apart and 'frank riley' fits 'F. Riley'")
+                  "single one, and by the names its card and its sponsor's page print ('Lee C. Nyquist', "
+                  "'James Creighton'), never by an initial alone; party counts are in the Sponsor filter; its "
+                  "topics say from the title; an older term tells two Allens apart and 'frank riley' fits "
+                  "'F. Riley'")
 
 
 @check("build", "a bill request gets its sponsor's party and, where its title says enough, a topic of the "
