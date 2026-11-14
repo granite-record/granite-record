@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.908
+# GRANITE_VERSION: 2026-09-04.909
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31371,6 +31371,31 @@ def _request_pages():
         # Every address is a page or a 301, never both.
         both = [p for p in pages if f"/request/{p[:-5]} " in red]
         assert not both, f"a page and a 301 at one address: {both}"
+        # A RETURNING FORMER MEMBER HOLDS NO SEAT (13 November 2026): a request
+        # whose sponsor's slug is in former.json only is drawn as the row's own
+        # "Ben Baroody (D)", linked, never as former.json's "Rep. ... (D - Hills
+        # 39)", the seat others hold now; so is a co-sponsor. A sitting member
+        # keeps the seat.
+        (site / "former.json").write_text(json.dumps([
+            {"slug": "benjamin-baroody-hills-39", "party": "D",
+             "display_full": "Rep. Benjamin Baroody (D - Hills 39)"}]), encoding="utf-8")
+        fr = {**by["LSR 2027-0001"], "n": "LSR 2027-0004", "id": "LSR20270004",
+              "address": "request/2027-0004", "sponsor_slug": "benjamin-baroody-hills-39",
+              "sponsor_label": "Ben Baroody (D)", "sponsor_party": "D",
+              "cosponsors": [{"label": "Ben Baroody (D)", "slug": "benjamin-baroody-hills-39"},
+                             {"label": "Rep. Jodi Nelson (R - Rock 13)", "slug": "jodi-nelson-rock-13"}]}
+        (site / "idx" / "2027-requests.json").write_text(json.dumps(rows + [fr]), encoding="utf-8")
+        RP.write(site, "https://x")
+        fp = (site / "request" / "2027-0004.html").read_text(encoding="utf-8")
+        dd = re.search(r"<dt>Prime Sponsor</dt><dd>(.*?)</dd>", fp, re.S)
+        assert dd and 'Ben Baroody <span class="mtag">(D)</span>' in dd.group(1) \
+            and 'href="legislator/benjamin-baroody-hills-39"' in dd.group(1) \
+            and "Hills 39" not in dd.group(1) and "Rep." not in dd.group(1) \
+            and "mchip p-D" in dd.group(1), (
+            f"a returning former member's request page draws the sponsor as {dd and dd.group(1)!r}, "
+            "not as the row's own 'Ben Baroody (D)', linked, with no old seat")
+        assert fp.count("Hills 39") == 0 and "Rep. Jodi Nelson <span" in fp, (
+            "a former co-sponsor is drawn with the old seat, or a sitting co-sponsor loses hers")
     # Filing complete: the rest forward to their sponsor; a withdrawn one stays.
     old = dict(L.FILING_COMPLETE)
     try:
@@ -54043,10 +54068,16 @@ def _directory_pages():
                 "1989-1990": [{"id": "HB7", "n": "HB 7", "year": 1989, "term": "1989-1990",
                                "title": "an old bill", "status": ""}],
                 # The term of requests, as build_lsrs.py writes it: rows
-                # marked `lsr`, which no builder writes a page for.
+                # marked `lsr`, each with its own page (the "address") until it
+                # is a bill (then "moved_to").
                 "2027-requests": [{"id": "LSR20270001", "n": "LSR 2027-0001", "year": 2027,
                                    "term": "2027-requests", "title": "a request",
-                                   "status": "Filed as a request", "lsr": True}]}
+                                   "status": "Filed as a request", "lsr": True,
+                                   "address": "request/2027-0001"},
+                                  {"id": "LSR20270002", "n": "LSR 2027-0002", "year": 2027,
+                                   "term": "2027-requests", "title": "a filed request",
+                                   "status": "Introduced as HB 45", "lsr": True,
+                                   "address": "request/2027-0002", "moved_to": "bill/2027/hb45"}]}
         for term, r in rows.items():
             (site / "idx" / f"{term}.json").write_text(json.dumps(r), encoding="utf-8")
         (site / "meta.json").write_text(json.dumps(
@@ -54077,15 +54108,24 @@ def _directory_pages():
             assert f'href="town/{slug}"' in towns, f"town page {slug} is not linked"
         hub = (site / "directory.html").read_text(encoding="utf-8")
         assert "directory/bills-1989-1990" in hub and "directory/towns" in hub
-        # A REQUEST HAS NO PAGE, AND ITS LIST LINKS NONE. All 241 links on
-        # /directory/bills-2027-requests answered 404 (the audit of 2 October
-        # 2026): the list wrote bill/2027/lsr20270001 for every row, and
-        # build_bill_pages.py builds no page for a request. The number is
-        # text, the list is named as the bill search's term picker names it,
-        # and the requests are not counted among the terms of bills.
+        # A REQUEST LINKS ITS OWN PAGE, NEVER bill/2027/lsr...: all 241 links
+        # on /directory/bills-2027-requests answered 404 (the audit of 2
+        # October 2026) because the list wrote bill/2027/lsr20270001 for every
+        # row and build_bill_pages.py builds no page for a request. Since 8
+        # November every request has its own page (build_request_pages), so
+        # each row links it -- or, once the request is a bill, the bill -- and
+        # the lead says so. The list is named as the bill search's term picker
+        # names it, and the requests are not counted among the terms of bills.
         reqs = (site / "directory" / "bills-2027-requests.html").read_text(encoding="utf-8")
-        assert "LSR 2027-0001" in reqs and "bill/2027" not in reqs, (
-            "the list of requests links a page for a request, and no builder writes one")
+        assert "LSR 2027-0001" in reqs and "bill/2027/lsr" not in reqs, (
+            "the list of requests links a bill page for a request, and no builder writes one")
+        assert '<a href="request/2027-0001">LSR 2027-0001</a>' in reqs, (
+            "a request's row in the directory does not link the request's own page")
+        assert '<a href="bill/2027/hb45">LSR 2027-0002</a>' in reqs and "request/2027-0002" not in reqs, (
+            "a request now a bill is not linked to its bill, or still links its old address")
+        assert "Each request has its own page until it is filed as a bill" in reqs \
+            and "has no page of its own" not in reqs, (
+            "the list of requests does not say each request has its own page")
         assert "<title>2027 Bill Requests | Granite Record</title>" in reqs \
             and "<h1>2027 Bill Requests</h1>" in reqs, (
             "the list of requests is not titled as the term picker names it "
