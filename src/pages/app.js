@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.326
+// GRANITE_VERSION: 2026-09-07.327
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4186,10 +4186,10 @@ function renderFacets(){
   // committee ticked elsewhere stays, so it can be unticked.
   {const cm=[...new Set([...present("committee"),...sel.committee])].sort();
    if(termNoun()==="bills"||cm.length)h+=fgroup("committee","Committee",cm,cnt("committee","committee"));}
-  // A REQUEST'S TOPIC IS THE TITLE'S (request_topics.py), not the General
-  // Court's: said so in the group's name, until the bill is filed and the
-  // General Court's own code takes over.
-  h+=fgroup("topic",termNoun()==="bills"?"Topic":"Topic (from the title)",[...new Set([...present("topic"),...sel.topic])].sort(),cnt("topic","topic"),true);
+  // ONE NAME FOR THE GROUP IN EVERY TERM (the owner, 14 November 2026: "remove
+  // the topic from title label"). A request's topic is read from its title
+  // (request_topics.py), and one it cannot place is Miscellaneous, listed here.
+  h+=fgroup("topic","Topic",[...new Set([...present("topic"),...sel.topic])].sort(),cnt("topic","topic"),true);
   // THE PRIME SPONSOR'S PARTY is a choice inside the Sponsor group it narrows
   // (the owner, 10 November 2026), below the name box and the co-sponsorship
   // box: a short list shown whole, in the legislators' chip shape and colour
@@ -8322,15 +8322,6 @@ function followUp(){
     if(r.body&&r.body.cancel)Promise.resolve().then(()=>r.body.cancel()).catch(()=>{});
     return r.ok;});
 }
-// A REQUEST'S NUMBER WITH ITS ABBREVIATION EXPLAINED (the owner, 13 November
-// 2026: "LSR stands for Legislative service request if you can add that as a
-// tooltip"): the first word, where meta.requests.abbr names it, an <abbr>
-// with its title. Escaped here; the number is the source's own.
-function lsrAbbr(text){
-  const A=(META&&META.requests&&META.requests.abbr)||{};
-  return esc(text).replace(/^([A-Za-z]+)(?=\s|$)/,(m,k)=>Object.prototype.hasOwnProperty.call(A,k)
-    ?`<abbr class="lsrabbr" title="${esc(A[k])}">${m}</abbr>`:m);
-}
 // A co-sponsor's chip, as a bill's sponsor is drawn: the roster's label, the
 // party read from it, the member's page where they have one. A name that
 // matched nobody stays as typed, with no party.
@@ -8389,19 +8380,22 @@ function lsrCardHtml(b,cls){
   const num=String(b.n||"").replace(/^LSR\s*/,"");
   const can=/^\d{4}-\d{4,5}$/.test(num)&&!b.withdrawn&&!b.introduced;
   if(can)followOk();
-  // THE TOPIC READ FROM THE TITLE (request_topics.py), said to be: the
-  // General Court's own comes with the bill.
-  const kind=[b.body_label,b.topic&&b.topic_by==="title"?`Topic (from the title): ${b.topic}`:""]
-    .filter(Boolean).join(" · ");
+  // THE TOPIC AS A BILL'S CARD PRINTS IT (the owner, 14 November 2026: "remove
+  // the topic from title label"): the name alone, and nothing for the
+  // Miscellaneous of a request request_topics could not place -- the Topic
+  // filter lists it, and a card does not print the site's own (cardTopic).
+  const kind=[b.body_label,cardTopic(b)].filter(Boolean).join(" · ");
   const card=billCard({id:b.id,href:"",n:b.n,year:"",word:chipOf(b),cls:chipCls(b),title:b.title,
     byline:billByline(cardSponsor(b),[],kind),open:openCards.has(b.id),body:lsrBody(b),
     card:"lsr"+(cls?" "+esc(cls):"")});
   // ITS OWN PAGE, or where it went (Alice, 8 November 2026): the address
   // build_lsrs gives it, or the bill's page it became. An anchor inside the
-  // number, not a.cnum, which opens a bill in place.
+  // number, not a.cnum, which opens a bill in place. The number is plain:
+  // what LSR stands for is the request's own page's to say, not a tooltip on
+  // the card's link (the owner, 14 November 2026).
   const numHtml=b.address
-    ?`<span class="cnum" translate="no"><a href="${esc(b.moved_to||b.address)}">${lsrAbbr(b.n)}</a></span>`
-    :`<span class="cnum" translate="no">${lsrAbbr(b.n)}</span>`;
+    ?`<span class="cnum" translate="no"><a href="${esc(b.moved_to||b.address)}">${esc(b.n)}</a></span>`
+    :`<span class="cnum" translate="no">${esc(b.n)}</span>`;
   const follow=can?`
       <div class="followbox lsrfollow" data-fkey="lsr:${esc(num)}"><details class="follow">
         <summary>${icon("follow")}Follow</summary>
@@ -8578,7 +8572,9 @@ function cardSponsor(b){
   const party=b.sponsor_party||(/\(([A-Z])\b/.exec(who)||[])[1]||"";
   return {display_full:who,party,slug:b.sponsor_slug||""};
 }
-const cardTopic=b=>(b.topic==="Miscellaneous"&&b.topic_by==="granite record")?"":(b.topic||"");
+// The site's own Miscellaneous is the topic model's for an archived bill
+// ("granite record") and request_topics' for a request ("title").
+const cardTopic=b=>(b.topic==="Miscellaneous"&&(b.topic_by==="granite record"||b.topic_by==="title"))?"":(b.topic||"");
 // `cls`: a class beside "card" (a paged list's "unshown").
 function cardHtml(b,focus,line,cls){
   const open=openCards.has(b.id);

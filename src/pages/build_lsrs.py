@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.17
+# GRANITE_VERSION: 2026-09-18.18
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -57,9 +57,10 @@ The rows carry no committee and no status kind, because an LSR has neither,
 so the Committee facet is correct to show nothing for this term. The Status
 facet is not empty: a request's status is its own word (Requested, Filed or
 Withdrawn, REQUESTED/FILED/WITHDRAWN below), which app.js's REQ_STATUS takes
-as a category. A row carries a topic only where request_topics reads one from
-its title (`topic_by` "title", with_topics below), which is why the Topic
-facet of this term says "(from the title)"; the rest carry none.
+as a category. Every request not yet a bill carries a topic (`topic_by`
+"title", with_topics below): the one request_topics reads from its title, or
+Miscellaneous where the title does not say enough (the owner, 14 November
+2026), which the Topic facet lists and a card does not print.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -721,15 +722,17 @@ def drop_unreturned(rows, gone):
 
 def with_topics(rows, bills):
     """Each request's initial topic, from its title (request_topics.py: the
-    classifier the archived bills' topics came from, its title half only).
-    Returns how many got one; the rest keep none. Where there are no labelled
-    bills to learn from, none is given, and it is said."""
+    classifier the archived bills' topics came from, its title half only), and
+    Miscellaneous where the title gives none. Returns how many the title
+    placed. Where there are no labelled bills to learn from, only the study
+    and housing rules place one, and it is said."""
     import request_topics
     model = request_topics.train_on(bills)
     if model is None:
-        print("  no bill of the labelled term in data/bills.json: no request is given a topic")
-        return 0
-    return sum(request_topics.assign(rows, model).values())
+        print("  no bill of the labelled term in data/bills.json: only the study and housing "
+              f"rules place a request; the rest are {request_topics.MISC}")
+    got = request_topics.assign(rows, model)
+    return sum(n for t, n in got.items() if t != request_topics.MISC)
 
 
 def main():
@@ -765,7 +768,7 @@ def main():
                                 earlier_bills(site, meta0.get("terms")))
     assert rows, "no request survived shaping, though the source had some"
     with_sponsor_names(rows, page_names(site))
-    topic_n = with_topics(rows, json.loads(bp.read_text(encoding="utf-8")) if bp.exists() else {})
+    with_topics(rows, json.loads(bp.read_text(encoding="utf-8")) if bp.exists() else {})
     gone, undecided = not_returning(site)
     rows, dropped = drop_unreturned(rows, gone)
     assert rows, "every request was dropped as a not-returning member's"
@@ -807,8 +810,11 @@ def main():
     print(f"  {len(rows)} bill requests for {year} -> idx/{term}.json ({kinds})")
     if older:
         print(f"  {older} request(s) of an earlier session left out: bills or withdrawn by now")
-    print(f"  {topic_n} of {len(rows)} given a topic from the title (marked so; "
-          "the rest have none)")
+    # Counted on the rows written, after the drops: one list, one count.
+    misc_n = sum(1 for r in rows if r.get("topic") == "Miscellaneous")
+    topic_n = sum(1 for r in rows if r.get("topic")) - misc_n
+    print(f"  {topic_n} of {len(rows)} given a topic from the title; {misc_n} are Miscellaneous "
+          "(the Topic filter lists them, a card prints none)")
     print(f"  {sum(1 for r in rows if r.get('history'))} of {len(rows)} have an earlier bill of "
           "the same title (History)")
     print(f"  {meta['requests']['withdrawn']} withdrawn; "

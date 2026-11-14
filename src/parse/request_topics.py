@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.1
+# GRANITE_VERSION: 2026-11-12.2
 """
 An initial topic for a bill request, from its title.
 
@@ -30,12 +30,16 @@ it never saw, title only, 1,088 bills (--score):
 Those are against the General Court's 46 names; against the site's categories
 (a few folded into parents) a few more are right.
 
-BELOW THE THRESHOLD A REQUEST HAS NO TOPIC. Not "Miscellaneous", which would
-be a statement that the title was read and fits nowhere: below the threshold
-the model is guessing, and a wrong topic is worse than none -- a reader
-filtering by Elections who finds a request about something else has been
-misled, one who finds fewer has only been underserved (topics.py, the same
-reasoning). A title the model's honest answer for is Miscellaneous gets none.
+BELOW THE THRESHOLD A REQUEST IS MISCELLANEOUS (the owner, 14 November 2026:
+"assign topics not yet assigned to misc"), as an archived bill below topics.py's
+threshold is. It is never a guess at a named topic: below the threshold the
+model is guessing, and a wrong topic is worse than none -- a reader filtering
+by Elections who finds a request about something else has been misled
+(topics.py, the same reasoning). So the Topic filter lists every request, the
+ones the title does not place under Miscellaneous, and a card or a request's
+page prints no topic for those, as a bill's prints none for the topic model's
+Miscellaneous (app.js cardTopic). Until that day a request below the threshold
+had no topic at all, and the filter could not find it.
 
 TWO TITLE RULES FIRST, the site's own and exact: a study (topic_model.is_study)
 is Study Committees and Commissions, and a housing title (is_housing) is
@@ -44,10 +48,12 @@ Housing, as they are for every bill.
 THE SITE'S CATEGORY, NEVER A NEW ONE. The model answers in the General Court's
 own names; build_site_v2.vocabulary_of turns each into the category the site
 shows (the folds, the two renamed names), the one path every term's topics take.
-A name the site retired comes out as None and the request gets no topic.
+A name the site retired comes out as None and the request is Miscellaneous.
 
-WHAT IS WRITTEN. `topic` and `topic_by = "title"` on a request's row, which the
-bill search shows as "from the title" (app.js). When the request is filed as a
+WHAT IS WRITTEN. `topic` and `topic_by = "title"` on the row of every request
+not yet a bill: the topic its title gives, or Miscellaneous. The card and the
+page print the topic by its name alone, as a bill's (the owner, 14 November
+2026: "remove the topic from title label"). When the request is filed as a
 bill, the bill's own topic (the General Court's code) is the one shown: the
 request's page forwards to the bill's, and nothing here carries over.
 Deterministic: the same bills and titles give the same answers under any
@@ -73,6 +79,8 @@ import topics
 THRESHOLD = 6.0
 # What topic_by says: the topic is the title's, not the General Court's.
 BY = "title"
+# A request the title does not place (the docstring).
+MISC = topics.MISC
 
 
 def titles_only(rec):
@@ -113,18 +121,18 @@ def _vocabulary_of():
 
 
 def assign(rows, model, site_name=None):
-    """Put `topic` and `topic_by` on each request row that gets one, and keep
-    them empty on the rest. Returns {topic: n}. A row that is already a bill
-    (it has `introduced`) is left alone: its topic is the bill's."""
+    """Put `topic` and `topic_by` on each request row: the topic its title
+    gives, or Miscellaneous where it gives none (the docstring). Returns
+    {topic: n}, Miscellaneous among them. A row that is already a bill (it has
+    `introduced`) is left alone: its topic is the bill's."""
     got = collections.Counter()
     fn = site_name or _vocabulary_of()
     for r in rows:
         if r.get("introduced"):
             continue
         t, _m = topic_of(model, r.get("title") or "", fn)
-        r["topic"], r["topic_by"] = (t, BY) if t else ("", "")
-        if t:
-            got[t] += 1
+        r["topic"], r["topic_by"] = t or MISC, BY
+        got[r["topic"]] += 1
     return dict(got)
 
 
@@ -167,15 +175,15 @@ def main():
     reqs = json.loads(Path(a.lsrs).read_text(encoding="utf-8"))
     rows = [{"title": r.get("title"), "n": r.get("lsr")} for r in reqs]
     tally = assign(rows, model)
-    n = sum(tally.values())
+    n = sum(c for t, c in tally.items() if t != MISC)
     print(f"{n} of {len(rows)} requests get a topic from the title "
-          f"({100 * n / max(1, len(rows)):.0f}%); the rest stay without one.")
+          f"({100 * n / max(1, len(rows)):.0f}%); the other {tally.get(MISC, 0)} are {MISC}.")
     for t, c in sorted(tally.items(), key=lambda kv: (-kv[1], kv[0])):
         print(f"  {c:>4}  {t}")
     if a.sample:
         rnd = random.Random(2026_11_12)
         for r in rnd.sample(rows, min(a.sample, len(rows))):
-            print(f"{r['n']}  {r['topic'] or '-':38}  {r['title']}")
+            print(f"{r['n']}  {r['topic']:38}  {r['title']}")
     return 0
 
 

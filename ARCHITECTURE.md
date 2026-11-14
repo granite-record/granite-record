@@ -2110,7 +2110,9 @@ one name, a tie, the other chamber and a constitutional amendment request stay
 as typed. A request whose sponsor is not returning is dropped and its address
 forwards to the requests' list, matched by member and never by name. A
 request's topic comes from its title alone (`src/parse/request_topics.py`: the
-topic classifier with the committee left out, and none below its threshold).
+topic classifier with the committee left out, and Miscellaneous below its
+threshold, which the Topic filter lists and a card or a request's page does not
+print, as for an archived bill's).
 
 Each request has a page of its own at its row's `address`, `/request/<number>`
 (`src/pages/build_request_pages.py`), until the row carries a `moved_to` --
