@@ -1083,6 +1083,13 @@ first, which is whether the page was built.
   under no bill on a bill's card instead, so a member's Votes tab links
   `#rc-<key>` only where `rc` names it (since 25 October 2026); a vote filed
   under a rule's code ("HRULE64") gets no `#HRULE64`, which no card is.
+  Its `at` and `none` (since 14 November 2026, `rollcall_days`) name each
+  roll call a page counts on another day than the roll-call file dates it,
+  with that day -- the House's 13 of 11 June 2020 are dated the 12th -- and
+  each the file holds that no page counts as a roll call. `build_votes.py`
+  carries them into the votes rows (`s`), so a day's "Search this day's roll
+  calls", `/votes?day=<date>&body=<H|S>`, lists the roll calls its page
+  counts, and the votes page links each such row's date to that day.
 - *The directory.* `/directory/sessions-house` and `/directory/sessions-senate`
   list every day by year (`build_indexes.sessions_pages`).
 - *The line up.* Each sitting leads to its chamber's list, and to its week on

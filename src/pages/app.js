@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.324
+// GRANITE_VERSION: 2026-09-07.325
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3655,6 +3655,17 @@ function requestNumber(p,bare){
   if(bare&&REQ_YEAR&&/^\d{1,4}$/.test(s)&&s!==REQ_YEAR)return id(REQ_YEAR,s);
   return null;
 }
+/* ONLY A KIND THE GENERAL COURT NUMBERS IS A NUMBER (the review of 14 November
+   2026). Any two to five letters before digits were read as one, so "covid
+   19" was the bill COVID19 and found nothing where "covid-19" found 24 votes,
+   and "Rule 64", "Route 101" and "title 5" the same. These are the eighteen
+   the site's bills and requests carry, counted off the record (find.js's
+   FBILLKIND, with LSR, a request's): HB 23,213; SB 8,618; HR 570; CACR 545;
+   HCR 350; LSR 312; SR 147; HJR 117; SCR 68; PET 29; SJR 25; HBI 14; HA 9;
+   SSHB 4; SSSB 4; HCO 2; SSHR 1; SSHCR 1. A kind added tomorrow is a word
+   until it is added here, and preflight holds the list to the bills'. */
+const BILL_KINDS=new Set(["HB","SB","CACR","HCR","SCR","HJR","SJR","HR","SR",
+  "PET","HBI","HA","HCO","SSHB","SSSB","SSHR","SSHCR","LSR"]);
 let NUMBERS_OF=null,NUMBERS=null,NUMBERS_BARE=false;
 function billNumbers(q){
   if(q===NUMBERS_OF&&NUMBERS_BARE===REQ_BARE)return NUMBERS;
@@ -3663,7 +3674,7 @@ function billNumbers(q){
   if(!parts.length)return NUMBERS=null;
   const ids=parts.map(p=>requestNumber(p,REQ_BARE)||numberForm(p).replace(/\s+/g,"").toUpperCase()
                          .replace(/^([A-Z]{2,5})0+(?=\d)/,"$1"));
-  return NUMBERS=ids.every(i=>/^[A-Z]{2,5}\d+$/.test(i))?ids:null;
+  return NUMBERS=ids.every(i=>{const m=/^([A-Z]{2,5})\d+$/.exec(i);return !!m&&BILL_KINDS.has(m[1]);})?ids:null;
 }
 // BILLMATCH:END
 // A bill against a search read into groups: every group must match, and any
@@ -5759,8 +5770,13 @@ function renderVotes(b,d){
       ${rc.outcome_conflict?`<p class="note" style="margin:6px 0 0">${esc(rc.outcome_conflict)}</p>`:""}
       ${body}</section>`;}).join("")
       // THE VOTES PAGE, from a bill with roll calls on it (the owner, 12
-      // November 2026): the same bill number, in its own term.
-      +`<p class="src vlink"><a href="${esc(votesLinkFor("",b.n||b.id,b.term||termOfYear(b.year)))}">Find these votes on the votes page</a></p>`
+      // November 2026): the same bill number, in its own term. ONLY WHERE
+      // THERE IS A ROLL CALL (the review of 14 November 2026): /votes holds
+      // roll calls alone, and some 9,400 bills voted only by voice or
+      // division were led to a page with none of them. The number bare, as
+      // /votes reads one: "HB 2-FN-A-L" is HB 2.
+      +(d.rollcalls.some(rc=>(rc.vote_kind||"RC")==="RC")
+        ?`<p class="src vlink"><a href="${esc(votesLinkFor("",votesBillWords(b.id),b.term||termOfYear(b.year)))}">Find these votes on the votes page</a></p>`:"")
     // BEFORE 1999 THE TAB SAYS WHY IT IS EMPTY (the audit of 25 October
     // 2026, S4): HB 200 of 1997's Summary said the House killed it "on a roll
     // call 286-57" and this tab "No roll call votes on this bill". The named
@@ -13285,8 +13301,16 @@ if(window.GR_STATIC){ssLand();staticVideos();}
 //     what came before: older roll calls are a later stage.
 //   - THE MEMBER FILTER reads the term's ballot strings (votes/ballots-<term>.json,
 //     one character a member), fetched when a member is chosen.
-//   - EVERY FILTER IS IN THE ADDRESS: ?q=&term=&body=&from=&to=&result=&margin=
-//     &kind=&member=&sort=, so a link reproduces what is on the screen.
+//   - EVERY FILTER IS IN THE ADDRESS: ?q=&term=&body=&from=&to=&day=&result=
+//     &margin=&kind=&member=&sort=, so a link reproduces what is on the screen.
+//   - A SESSION DAY (day=, the review of 14 November 2026) is the roll calls
+//     its page counts, which the roll-call file may date a day or more later:
+//     a row's `s` (build_votes.py) where it does. From and To are the dates
+//     the file gives, as each row shows them.
+//   - THE TERM FOLLOWS what is chosen where the reader has not picked one: the
+//     term of the dates or the day, or of the member's votes, or every term
+//     where they span several (votesTermDefault); the address and the
+//     controls ask the same function, so a link opens on what was on screen.
 //
 // A row is the member tab's own row (voteRow) -- the date, the bill and the
 // question, the result -- and "How everyone voted" opens the bill page's ring
@@ -13301,28 +13325,43 @@ const VOTES_SHOW=100;
 const VOTES_BALLOT={Y:"Yea",N:"Nay",E:"Not Voting/Excused",X:"Not Voting/Not Excused",
   P:"Presiding",R:"No vote recorded"};
 const votesDay=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||""));
-// The term a day falls in, from the terms the files name.
+// The term a day falls in, from the terms the files name: its year's, or from
+// Organization Day, the first Wednesday of December of an even year, the next
+// term's, as the roll-call files keep them (proceedings.vote_term): the
+// House's sitting of 7 December 2022 is 2023-2024's.
 function votesTermOf(iso,terms){
-  const y=+String(iso||"").slice(0,4);
-  return (terms||[]).find(t=>{const [a,b]=String(t).split("-").map(Number);return y>=a&&y<=b;})||"";
+  const s=String(iso||""),y=+s.slice(0,4);
+  if(!y)return "";
+  const org=y%2?0:1+(3-new Date(Date.UTC(y,11,1)).getUTCDay()+7)%7;
+  const yy=org&&+s.slice(5,7)===12&&+s.slice(8,10)>=org?y+1:y;
+  return (terms||[]).find(t=>{const [a,b]=String(t).split("-").map(Number);return yy>=a&&yy<=b;})||"";
 }
-// The term a page opens on where the address names none: the newest, or the
-// one the dates name, or every term where they name two.
+// The terms a member's votes are in, of the terms the files name, where the
+// member's record says (a former member's `served`); null where it does not.
+const votesOwnTerms=(p,terms)=>p&&p.terms?p.terms.filter(t=>terms.includes(t)):null;
+// The term a page opens on where the address names none: the newest; the one
+// the session day or the dates name, or every term where they name two; and
+// the one that holds a member's votes, or every term where several do and
+// the newest is not one of them.
 function votesTermDefault(st,terms){
+  if(st.day)return votesTermOf(st.day,terms)||"all";
   if(st.from||st.to){
     const a=votesTermOf(st.from,terms),b=votesTermOf(st.to,terms);
     const t=a&&b?(a===b?a:"all"):(a||b);
     return t||"all";
   }
+  const own=st.member?votesOwnTerms(votesPerson(st.member),terms):null;
+  if(own&&own.length&&!own.includes(terms[0]))return own.length===1?own[0]:"all";
   return terms[0]||"";
 }
 const votesSortDefault=st=>st.q?"best":"new";
 function votesDefault(terms){
-  return {q:"",term:terms[0]||"",body:"",from:"",to:"",result:"",margin:"",kind:"",
-          member:"",sort:"",show:0};
+  return {q:"",term:terms[0]||"",tauto:true,body:"",from:"",to:"",day:"",result:"",margin:"",
+          kind:"",member:"",sort:"",show:0};
 }
 // The address read into the page's state. A value this does not know is no
-// filter, so an old or a mistyped address opens the page as it opens bare.
+// filter, so an old or a mistyped address opens the page as it opens bare. A
+// term the address does not name follows what it does (tauto).
 function votesRead(search,terms){
   const u=new URLSearchParams(search||""),st=votesDefault(terms);
   const pick=(k,ok)=>{const v=u.get(k)||"";return ok(v)?v:"";};
@@ -13330,14 +13369,21 @@ function votesRead(search,terms){
   st.body=pick("body",v=>v==="H"||v==="S");
   st.from=pick("from",votesDay);
   st.to=pick("to",votesDay);
+  st.day=pick("day",votesDay);
   st.result=pick("result",v=>v==="passed"||v==="failed");
   st.margin=pick("margin",v=>v==="close"||v==="tied");
   st.kind=pick("kind",v=>VOTES_KINDS.includes(v));
   st.member=(u.get("member")||"").toLowerCase().replace(/[^a-z0-9-]/g,"");
   st.sort=pick("sort",v=>VOTES_SORTS.includes(v));
   const t=u.get("term")||"";
-  st.term=t==="all"||terms.includes(t)?t:votesTermDefault(st,terms);
+  st.tauto=!(t==="all"||terms.includes(t));
+  st.term=st.tauto?votesTermDefault(st,terms):t;
   return st;
+}
+// The term again, where the reader has not picked one: after a member, a day
+// or the dates are chosen or cleared, and when the members' records arrive.
+function votesRetime(st,terms){
+  if(st.tauto)st.term=votesTermDefault(st,terms);
 }
 // The state written into an address: only what differs from the page bare, so
 // the address of a page with nothing chosen is /votes.
@@ -13345,7 +13391,7 @@ function votesAddr(st,terms){
   const u=new URLSearchParams(),set=(k,v)=>{if(v)u.set(k,v);};
   set("q",String(st.q||"").trim());
   if(st.term!==votesTermDefault(st,terms))set("term",st.term);
-  set("body",st.body);set("from",st.from);set("to",st.to);set("result",st.result);
+  set("body",st.body);set("from",st.from);set("to",st.to);set("day",st.day);set("result",st.result);
   set("margin",st.margin);set("kind",st.kind);set("member",st.member);
   if(st.sort&&st.sort!==votesSortDefault(st))set("sort",st.sort);
   return u.toString();
@@ -13353,9 +13399,12 @@ function votesAddr(st,terms){
 // How many controls beyond the search box are away from where the page opens:
 // the number the phone's Filters button carries.
 function votesActive(st,terms){
-  return [st.term!==votesTermDefault(st,terms),st.body,st.from,st.to,st.result,st.margin,
+  return [st.term!==votesTermDefault(st,terms),st.body,st.from,st.to,st.day,st.result,st.margin,
           st.kind,st.member].filter(Boolean).length;
 }
+// The session day a row's roll call is counted on: the file's date, or the
+// day build_votes.py names (`s`), "" where no session day counts it.
+const votesSitting=r=>Object.prototype.hasOwnProperty.call(r,"s")?String(r.s||""):r.d;
 // The member's ballot on a roll call: Y, N, E, X, P, R, or "." where the member
 // was not on it, and null where the ballots are not here (or the member never
 // sat in that chamber that term). `ids` are the ids the member has been filed
@@ -13377,6 +13426,7 @@ function votesPass(r,st,ids){
   if(st.body&&r.c!==st.body)return false;
   if(st.from&&r.d<st.from)return false;
   if(st.to&&r.d>st.to)return false;
+  if(st.day&&votesSitting(r)!==st.day)return false;
   if(st.result&&(st.result==="passed")!==!!r.p)return false;
   if(st.margin==="close"&&!r.cl)return false;
   if(st.margin==="tied"&&!(r.y>0&&r.y===r.n))return false;
@@ -13399,13 +13449,29 @@ function votesBy(t){
   }
   return VT.by[t]||null;
 }
+// AND THE VOTE'S OWN WORDS (the review of 14 November 2026: "veto" found
+// none of the 56 veto overrides of a term, which only the question says):
+// the question as the row draws it -- the motion's name and gloss where the
+// vote words name it, the record's words -- and its kind of question. A row
+// is asked as its bill's index row with these beside the title, so a bill's
+// own words and text still find it, and its title is still the title.
+function votesOwnWords(r){
+  const M=(WORDBOOK.votes||{}).motions||{},m=r.mk&&CMP.own(M,r.mk)?M[r.mk]:null;
+  return [m&&m.motion,m&&m.abbr,m&&m.gloss,r.q,r.k].filter(Boolean).join(" ").replace(/[{}]/g," ");
+}
 function votesSubject(r){
   const m=r.b?votesBy(r.t):null,b=m&&m.get(String(r.b).toUpperCase());
-  if(b)return b;
+  if(b){
+    if(r._sb!==b){
+      r._sb=b;r._s=Object.create(b);
+      r._s.hayT=`${b.hayT||""} | ${voteNorm(votesOwnWords(r))}`;
+    }
+    return r._s;
+  }
   if(!r._p){
     const id=String(r.b||"").toUpperCase();
     r._p={id,n:id,title:[r.w,r.q].filter(Boolean).join(" "),term:r.t,
-      hayT:voteNorm([id,id,r.w,r.q].join(" ")),hayC:"",_p:1};
+      hayT:voteNorm([id,id,r.w,votesOwnWords(r)].join(" ")),hayC:"",_p:1};
   }
   return r._p;
 }
@@ -13445,10 +13511,12 @@ function votesRowsOf(all,st,gs,ids,mem){
   if(how==="close")return rows.sort((a,b)=>(a.f==null)-(b.f==null)||(a.f||0)-(b.f||0)||votesNewest(a,b));
   return rows.sort(votesNewest);
 }
-// What "close" says, in the data's own terms.
+// What "close" says, in the data's own terms: one line, under the filters
+// only while the Margin filter asks for close votes (the review of 14
+// November 2026: it stood above every list).
 function votesCloseWords(){
   const c=(VT.idx&&VT.idx.close)||{H:5,S:2};
-  return `A vote is called close where ${c.H} or fewer voters in the House, or ${c.S} or fewer in the Senate, would have had to switch to change the outcome. A tie is shown as tied.`;
+  return `Close: ${c.H} or fewer House voters, or ${c.S} or fewer senators, would have had to switch to change the outcome.`;
 }
 function votesClose(r){
   if(r.y>0&&r.y===r.n)return "Tied";
@@ -13471,6 +13539,12 @@ function votesNeedBallots(t){
   need(`votes/ballots-${encodeURIComponent(t)}.json`).then(j=>{VT.bal[t]=j;votesDraw();})
     .catch(e=>{VT.bal[t]={chambers:{}};VT.err=e.message||String(e);votesDraw();});
 }
+// WHEN THE MEMBERS ARRIVE (the review of 14 November 2026): a name half typed
+// in the Member box keeps its letters, its place and its suggestions, and the
+// phone's Filters keep their state (votesControls); a member the address
+// names and the lists do not is no filter, as a term or a kind it does not
+// know is none, where the page hung on "Reading the votes"; and a term the
+// reader has not picked moves to the member's votes (votesTermDefault).
 function votesNeedPeople(){
   if(VT.peopleAsked)return;
   VT.peopleAsked=true;
@@ -13478,7 +13552,14 @@ function votesNeedPeople(){
     const norm=s=>String(s||"").toLowerCase().replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
     VT.people=[].concat(a||[],b||[]).filter(m=>m&&m.slug).map(m=>({
       m,slug:m.slug,ids:(m.member_ids&&m.member_ids.length?m.member_ids:[m.id]).map(String),
+      terms:m.served&&Array.isArray(m.served.terms)?m.served.terms.map(String):null,
       hay:norm([m.display_plain,m.name,m.district_label].join(" ")),former:!!m.former}));
+    const st=VT.st;
+    if(st&&VT.idx){
+      if(st.member&&!votesPerson(st.member))st.member="";
+      votesRetime(st,VT.idx.terms);
+      votesAddress();
+    }
     votesControls();votesDraw();
   });
 }
@@ -13500,40 +13581,70 @@ function votesEnsure(t){
 function votesOptions(list,cur){
   return list.map(([v,w])=>`<option value="${esc(v)}"${v===cur?" selected":""}>${esc(w)}</option>`).join("");
 }
+// DRAWN AGAIN WITHOUT LOSING WHAT THE READER HAS IN HAND (the review of 14
+// November 2026). The members' lists arrive about a second after the page,
+// and drawing the controls again for them emptied the Member box of what had
+// been typed, sent the focus to the page's body, and on a phone set the
+// Filters button to closed over a panel still open. What is typed in either
+// box, the focus and the caret, and the panel's state (#vpage's vfopen) are
+// carried through.
 function votesControls(){
   const el=document.getElementById("vctl"),st=VT.st;
   if(!el||!VT.idx||!st)return;
   const terms=VT.idx.terms;
   const W=WORDBOOK.votes||{};
+  const act=document.activeElement,here=act&&act.id&&el.contains(act)?act.id:"";
+  const caret=here&&typeof act.selectionStart==="number"?[act.selectionStart,act.selectionEnd]:null;
+  const was=id=>{const n=document.getElementById(id);return n?n.value:"";};
+  const typed=st.member?"":was("vmem"),qbox=here==="vq"?was("vq"):st.q;
+  const page=document.getElementById("vpage"),open=!!(page&&page.classList.contains("vfopen"));
   const person=st.member?votesPerson(st.member):null;
   const memberBox=st.member
     ?`<span class="vmemchip">${person?pchip(person.m):esc(st.member)}
        <button type="button" class="link" data-vmemclear="1">Clear</button></span>`
-    :`<input type="search" id="vmem" autocomplete="off" placeholder="A name"
+    :`<input type="search" id="vmem" autocomplete="off" placeholder="A name" value="${esc(typed)}"
         aria-label="Filter to one member's votes" aria-controls="vsug">
       <ul class="vsug" id="vsug" hidden></ul>`;
+  // A session day, where the address names one: what it is and a way out.
+  const dayBox=st.day?`<div class="vmember vday"><span class="vlab">Session day</span><span class="vmemchip">${
+      esc(votesDayWords(st))}
+      <button type="button" class="link" data-vdayclear="1">Clear</button></span></div>`:"";
   el.innerHTML=`<form class="vsearch" role="search" id="vform">
       <label class="sr" for="vq">Search the votes by bill number or words</label>
-      <input type="search" id="vq" spellcheck="false" autocomplete="off" value="${esc(st.q)}"
+      <input type="search" id="vq" spellcheck="false" autocomplete="off" value="${esc(qbox)}"
         placeholder="Bill number or words">
-      <button type="button" class="vtoggle" id="vftoggle" aria-expanded="false" aria-controls="vfilters">Filters<span
+      <button type="button" class="vtoggle" id="vftoggle" aria-expanded="${open?"true":"false"}" aria-controls="vfilters">Filters<span
         class="badge" id="vbadge"></span><span class="chev" aria-hidden="true">&#9656;</span></button></form>
     <div class="bfilt vfilters" id="vfilters" role="group" aria-label="Filter the votes">
-      <label>Term<select data-vf="term">${votesOptions([["all","All terms"]].concat(
+      <label>Term<select id="vf-term" data-vf="term">${votesOptions([["all","All terms"]].concat(
         terms.map(t=>[t,termDash(t)])),st.term)}</select></label>
-      <label>Chamber<select data-vf="body">${votesOptions([["","Both"],["H","House"],["S","Senate"]],st.body)}</select></label>
-      <label>From<input type="date" data-vf="from" value="${esc(st.from)}"></label>
-      <label>To<input type="date" data-vf="to" value="${esc(st.to)}"></label>
-      <label>Result<select data-vf="result">${votesOptions([["","Any"],["passed",W.passed||"Passed"],
-        ["failed",W.failed||"Failed"]],st.result)}</select></label>
-      <label>Margin<select data-vf="margin">${votesOptions([["","Any"],["close","Close"],
+      <label>Chamber<select id="vf-body" data-vf="body">${votesOptions([["","Both"],["H","House"],["S","Senate"]],st.body)}</select></label>
+      <label>From<input type="date" id="vf-from" data-vf="from" value="${esc(st.from)}"></label>
+      <label>To<input type="date" id="vf-to" data-vf="to" value="${esc(st.to)}"></label>
+      ${dayBox}
+      <label>Result<select id="vf-result" data-vf="result">${votesOptions([["","Any"],["passed",W.passed||"Motion Passed"],
+        ["failed",W.failed||"Motion Failed"]],st.result)}</select></label>
+      <label>Margin<select id="vf-margin" data-vf="margin">${votesOptions([["","Any"],["close","Close"],
         ["tied","Tied"]],st.margin)}</select></label>
-      <label>Kind of question<select data-vf="kind">${votesOptions([["","Any"]].concat(
+      <label>Kind of question<select id="vf-kind" data-vf="kind">${votesOptions([["","Any"]].concat(
         VOTES_KINDS.map(k=>[k,k])),st.kind)}</select></label>
       <label class="vmember">Member${memberBox}</label>
     </div>
-    <p class="src vnote">${esc(votesCloseWords())}</p>`;
+    <p class="src vnote" id="vclose"${st.margin==="close"?"":" hidden"}>${esc(votesCloseWords())}</p>`;
+  if(here){
+    const n=document.getElementById(here);
+    if(n){
+      try{n.focus();}catch(_){}
+      if(caret&&n.setSelectionRange)try{n.setSelectionRange(caret[0],caret[1]);}catch(_){}
+    }
+  }
+  if(typed&&VT.people)votesSuggest(typed);
   votesBadge();
+}
+// "The House, February 24, 2021": a session day as the page's filter names it.
+function votesDayWords(st){
+  const ch=st.body==="H"?"The House":st.body==="S"?"The Senate":"The House and the Senate";
+  return `${ch}, ${dateWords(st.day,"full")}`;
 }
 function votesBadge(){
   const b=document.getElementById("vbadge");
@@ -13551,25 +13662,51 @@ function votesAddress(){
 }
 
 // ---- one row, as the member tab draws one (voteRow), and the ring under it
+// A bill number as the site writes one, "SB 457" or "SR 1 (2009)", where the
+// file has "SB457": for a bill the index does not hold, and for a bill's link
+// here (renderVotes).
+function votesBillWords(id){return String(id||"").replace(/^([A-Za-z]+)\s*(\d)/,"$1 $2");}
+// WHETHER A QUESTION SAYS MORE THAN THE JOURNAL'S WORDS ABOVE IT, on a vote on
+// no bill (the review of 14 November 2026): "Affirm The Report" under "Affirm
+// the Committee Report (Censure Rep. Spillane)" said it twice. Drawn only
+// where it has a word of its own -- a mover, a bill, the business of the day
+// -- read as the words of each, their first five letters, the small ones left
+// out.
+const VOTES_SMALL=new Set("a an and as at by for from in into is of on or the to with".split(" "));
+function votesSaysMore(q,w){
+  const words=s=>String(s||"").toLowerCase().match(/[a-z0-9]+/g)||[];
+  const has=new Set(words(w).map(x=>x.slice(0,5)));
+  return words(q).some(x=>x.length>1&&!VOTES_SMALL.has(x)&&!has.has(x.slice(0,5)));
+}
 function votesRowHtml(r,i,letter){
   const rc=(RCX||{})[r.id]||null,b=r.b?(votesBy(r.t)||new Map()).get(String(r.b).toUpperCase()):null;
   const named=r.mk&&r.mk!=="unnamed";
   const question=named?voteHead(r.mk,r.q,rc&&rc.mf):esc(r.q);
-  const said=named?voteChip(r.mk,!!r.p,r.b||"",rc&&rc.mf):chip(r.p?"Adopted":"Failed",r.p?"pass":"fail");
+  // ONE SET OF WORDS FOR THE RESULT (the review of 14 November 2026): the
+  // Result filter's and every named motion's chip, "Motion Passed" and "Motion
+  // Failed", where a motion the record does not name said "Adopted".
+  const W=WORDBOOK.votes||{};
+  const said=named?voteChip(r.mk,!!r.p,r.b||"",rc&&rc.mf)
+    :chip(r.p?(W.passed||"Motion Passed"):(W.failed||"Motion Failed"),"rcres "+(r.p?"pass":"fail"));
   const close=votesClose(r);
-  const day=r.d;
+  // The date the file gives, leading to the session day that counts the roll
+  // call, where that is another (`s`), and to none where no page counts it.
+  const day=r.d,sat=votesSitting(r);
   const who=r.b&&b?billMention(b.n||r.b,`bill/${String(b.year)}/${String(r.b).toLowerCase()}`)
-    :r.b?esc(r.b)
+    :r.b?esc(votesBillWords(r.b))
     :r.w?nobillWords({k:r.id},{w:r.w})
     :`<span class="none">no bill</span>`;
+  // A named motion is asked by its name, as the row draws it, without the gloss.
+  const M=W.motions||{},name=named&&CMP.own(M,r.mk)?String(M[r.mk].motion||""):"";
+  const ask=!r.b&&r.w&&!votesSaysMore(name||r.q,r.w)?"":`<span class="vq">${question}</span>`;
   const mine=letter?`<td class="v" data-l="Their vote"><span class="vcast v-${
     esc(String(VOTES_BALLOT[letter]||"").slice(0,3).toLowerCase())}">${
     esc(ballotWord(VOTES_BALLOT[letter]||""))}</span></td>`:"";
   return `<tr>
-    <td class="d" data-l="Date">${sittingLink(r.c,day,esc(dateWords(day)),b?r.b:"",r.id)}<span class="vch">${
+    <td class="d" data-l="Date">${sat?sittingLink(r.c,sat,esc(dateWords(day)),b?r.b:"",r.id):esc(dateWords(day))}<span class="vch">${
       esc(CHAMBER_SHORT[r.c]||r.c)}</span></td>
     <td class="b" data-l="On">${who}${b&&b.title?`<span class="vt" translate="no">${esc(b.title)}</span>`:""}
-      <span class="vq">${question}</span></td>${mine}
+      ${ask}</td>${mine}
     <td class="o" data-l="Result"><span class="vres"><i class="vtal">${r.y}–${r.n}</i>${said}</span>${close?`<i class="thr">${esc(close)}</i>`:""}${
       rc&&rc.tn?`<i class="thr">${esc(rc.tn)}</i>`:""}${rc&&rc.oc?`<i class="thr">${esc(rc.oc)}</i>`:""}</td></tr>`
     +votesRing(r,i,letter?5:4);
@@ -13596,6 +13733,22 @@ function votesRing(r,i,cols){
     </details></td></tr>`;
 }
 
+// THE COUNT LINE SAYS WHOSE VOTES AND WHICH DAY (the review of 14 November
+// 2026): from a member's page on a phone the member's name was only inside
+// the folded Filters, and the count was of the roll calls held, 591, where
+// she voted on 397. A member's line counts the roll calls they voted yea or
+// nay on, of those the list holds; a session day is named by its chamber
+// and day, where the term would otherwise be.
+function votesCountWords(n,st,person,voted){
+  const ch={H:"the House’s session day",S:"the Senate’s session day"}[st.body]||"the session days";
+  const where=st.day?`from ${ch} of ${dateWords(st.day,"full")}`
+    :`in ${st.term==="all"?"every term":termDash(st.term)}`;
+  const who=person?String(person.m.display_plain||person.m.name||st.member):"";
+  const rcs=k=>`${k.toLocaleString()} roll call${k===1?"":"s"}`;
+  if(who)return n?`${who} voted yea or nay on ${voted.toLocaleString()} of ${rcs(n)} ${where}`
+    :`0 roll calls of ${who} ${where}`;
+  return `${n.toLocaleString()} ${n===1?"vote":"votes"} ${where}`;
+}
 // ---- the page's list: everything asked for, then the rows
 function votesDraw(){
   const box=document.getElementById("vlist"),st=VT.st;
@@ -13634,9 +13787,9 @@ function votesDraw(){
   const waiting=reading||unread.length;
   const where=st.term==="all"?"every term":termDash(st.term);
   if(cnt){
+    const voted=ids?rows.filter(r=>{const l=votesLetter(r,ids);return l==="Y"||l==="N";}).length:0;
     cnt.textContent=waiting&&!shown.length?"Reading the votes…"
-      :`${rows.length.toLocaleString()} ${rows.length===1?"vote":"votes"} in ${where}${
-        waiting?", reading the rest…":""}`;
+      :votesCountWords(rows.length,st,person,voted)+(waiting?", reading the rest…":"");
   }
   const clear=`<button type="button" class="link" data-vclear="1">Clear the search and filters</button>`;
   if(VT.err&&!pool.length){
@@ -13672,12 +13825,37 @@ function votesWords(){
 }
 
 // ---- the page's controls at work
+// A term picked is the reader's; dates picked, or a session day or a member,
+// move a term the reader has not picked to theirs (votesRetime), and dates
+// picked replace a session day (the review of 14 November 2026: dates in
+// 2003 or a former member showed "0 votes in 2025–2026").
 function votesChange(k,v){
   const st=VT.st;
   st[k]=v;st.show=0;
+  if(k==="term")st.tauto=false;
+  if(k==="from"||k==="to"){
+    const had=!!st.day;
+    st.day="";st.tauto=true;votesRetime(st,VT.idx.terms);
+    if(had){votesControls();votesAddress();votesBadge();votesDraw();return;}
+    votesTermShown();
+  }
   votesAfter();
 }
+// The member chosen or cleared, from a click: the term follows them.
+function votesMember(slug){
+  const st=VT.st;
+  st.member=slug;st.show=0;st.tauto=true;
+  votesRetime(st,VT.idx.terms);
+  votesControls();votesAfter();
+}
+// The Term select shows the term the dates moved it to.
+function votesTermShown(){
+  const sel=document.getElementById("vf-term");
+  if(sel&&VT.st)sel.value=VT.st.term;
+}
 function votesAfter(){
+  const c=document.getElementById("vclose");
+  if(c)c.hidden=VT.st.margin!=="close";
   votesAddress();votesBadge();votesDraw();
 }
 function votesSuggest(text){
@@ -13712,12 +13890,18 @@ document.addEventListener("click",e=>{
   if(!window.GR_VOTES||!VT.st||!e.target.closest)return;
   const c=s=>e.target.closest(s);
   if(c("[data-vmore]")){VT.st.show=(VT.st.show||0)+VOTES_SHOW;votesDraw();return;}
-  if(c("[data-vclear]")){VT.st=votesDefault(VT.idx.terms);votesControls();votesAfter();return;}
+  if(c("[data-vclear]")){
+    const m=document.getElementById("vmem");
+    if(m)m.value="";
+    VT.st=votesDefault(VT.idx.terms);votesControls();votesAfter();return;}
   const vq=c("[data-vq]");
   if(vq){VT.st.q=vq.getAttribute("data-vq");VT.st.show=0;votesControls();votesAfter();return;}
   const pick=c("[data-vpick]");
-  if(pick){VT.st.member=pick.getAttribute("data-vpick");VT.st.show=0;votesControls();votesAfter();return;}
-  if(c("[data-vmemclear]")){VT.st.member="";VT.st.show=0;votesControls();votesAfter();return;}
+  if(pick){votesMember(pick.getAttribute("data-vpick"));return;}
+  if(c("[data-vmemclear]")){votesMember("");return;}
+  if(c("[data-vdayclear]")){
+    VT.st.day="";VT.st.show=0;VT.st.tauto=true;votesRetime(VT.st,VT.idx.terms);
+    votesControls();votesAfter();return;}
   if(c("#vftoggle")){
     const p=document.getElementById("vpage"),open=p.classList.toggle("vfopen");
     c("#vftoggle").setAttribute("aria-expanded",open?"true":"false");

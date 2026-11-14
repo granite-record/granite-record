@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.4
+# GRANITE_VERSION: 2026-11-12.5
 """
 Every roll call since 1999, a file a term, for the votes search to read.
 
@@ -40,7 +40,28 @@ question needed, where the record names more than a majority); oc (1 where
 the record's outcome and the count disagree); pc ([Democratic yeas, nays,
 Republican yeas, nays], plain figures and nothing said of them); w (what a
 vote on no bill was about, in the Journal's words, vote_passage); nb (1 where
-no member's ballot is on file for it).
+no member's ballot is on file for it); s (below).
+
+THE SESSION DAY, WHERE IT IS NOT THE FILE'S DATE (the review of 14 November
+2026): `s` is the day whose session page counts the roll call, where the
+roll-call file dates it on another -- the House's 13 roll calls of 11 June
+2020 are dated the 12th, and those of 24 and 25 February 2021 alike the
+26th -- and "" where no session page counts it as a roll call: a quorum
+call, a vote on a day the chamber is not recorded as sitting, one the
+docket calls a division. Read from site/session/days.json's "at" and
+"none", which build_session_pages.rollcall_days writes from the pages it
+draws, so the votes page's ?day= is that page's roll calls, as many as its
+head counts. A row with no `s` is counted on the day the file gives it.
+
+THE RECORD'S WORDS, TIDIED, WHERE NO MOTION IS NAMED (plain_question): the
+Senate's mover and seconder of 1999-2006 taken off the end ("Ought to
+PassFrancoeur/Pignatelli"), the House's "REP X:" off the front and its
+mover kept in brackets, a question in capitals in sentence case
+(session_days.rollcall_question, the session pages' own reading), and the
+House clerk's abbreviations of 2009-2014 spelled out ("C OF C #2465C",
+"MAJ AM 1905H(NT)"). Nothing is added: where the words tidied are the name
+of a motion the vote words name ("Ought to Pass"), the row takes that
+motion, and otherwise they stand as the question.
 
 A CLOSE VOTE (the owner, 12 November 2026): 5 or fewer voters in the House,
 2 or fewer in the Senate (CLOSE_HOUSE, CLOSE_SENATE), who would have had to
@@ -82,10 +103,13 @@ import _paths  # noqa: E402,F401
 import argparse
 import gzip
 import json
+import re
 from collections import defaultdict
 
 import build_elections as BE
 import motions as MO
+import proceedings as PR
+import session_days as SD
 import vote_passage as VP
 from components import WORDBOOK
 
@@ -189,13 +213,74 @@ def kind_of(mk, bill):
     return KIND_OF.get(mk) or ("Other" if not mk or mk == "unnamed" else "Motion on a bill")
 
 
+# THE HOUSE CLERK'S ABBREVIATIONS OF 2009-2014, as a question no motion names
+# writes them once session_days.rollcall_question has put it in sentence case
+# ("C OF C #2465C" reads "C of c #2465c"), and the words they stand for.
+ABBREVIATIONS = (
+    (re.compile(r"\b(?:c\s*of\s*c|cofc|coc|comm\.?\s+of\s+conf\.?)(?![a-z])", re.I), "Committee of Conference"),
+    (re.compile(r"\bmaj(?:ority)?\.?\s+comm\.?\s+am\b", re.I), "majority committee amendment"),
+    (re.compile(r"\bmin(?:ority)?\.?\s+comm\.?\s+am\b", re.I), "minority committee amendment"),
+    (re.compile(r"\bmaj(?:ority)?\.?\s+am\b", re.I), "majority amendment"),
+    (re.compile(r"\bmin(?:ority)?\.?\s+am\b", re.I), "minority amendment"),
+    (re.compile(r"\b(?:fl(?:oor)?\.?\s+am\b|flam(?=\d|\b))\s*", re.I), "floor amendment "),
+    (re.compile(r"\beba\b", re.I), "enrolled bill amendment"),
+    (re.compile(r"\bam(?=\d)", re.I), "amendment "),
+    (re.compile(r"\bsen\.?\s+am\b", re.I), "Senate amendment"),
+    (re.compile(r"\bnonc\b", re.I), "nonconcur"),
+    (re.compile(r"\breq\b\.?", re.I), "request"),
+    (re.compile(r"\brpt\b\.?", re.I), "report"),
+)
+
+
+def plain_question(r):
+    """A question no motion row names, in the record's words tidied and
+    nothing added (THE RECORD'S WORDS, TIDIED, in the module's docstring):
+    session_days.rollcall_question's reading, the mover it takes off kept in
+    brackets, and the clerk's abbreviations spelled out. The record's own
+    where its words are only a mover's name."""
+    raw = re.sub(r"\s+", " ", r.get("question") or "").strip()
+    q, mover = SD.rollcall_question({"question": raw, "body": r.get("body")})
+    for rx, words in ABBREVIATIONS:
+        q = rx.sub(words, q)
+    q = re.sub(r"\s+", " ", q).strip()
+    if not q:
+        return raw
+    q = q[:1].upper() + q[1:]
+    return f"{q} ({mover})" if mover else q
+
+
+def sittings_of(site):
+    """({chamber: {roll call: day}}, {chamber: {roll call}}): site/session/
+    days.json's "at" and "none" (build_session_pages.rollcall_days), or
+    (None, None) where it is not there."""
+    try:
+        j = json.loads((Path(site) / "session" / "days.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None, None
+    if not isinstance(j, dict) or not isinstance(j.get("at"), dict):
+        return None, None
+    at = {c: dict(v) for c, v in j["at"].items() if isinstance(v, dict)}
+    none = {c: set(v) for c, v in (j.get("none") or {}).items() if isinstance(v, list)}
+    return at, none
+
+
 def row_of(r, bid, motions):
     """The term file's row for one roll call (ballots not yet counted)."""
     key = f'{r.get("year")}-{r.get("body")}-{r.get("number")}'
     bill = "" if bid == "_procedural" else bid
     mk = MO.classify(r.get("question"), bid, r.get("body") or "", motions).get("mk") or ""
+    q = (r.get("question_plain") or r.get("question") or "").strip()
+    if mk in ("", "unnamed") and not r.get("question_plain"):
+        tidy = plain_question(r)
+        if tidy and tidy != q:
+            # Where the words tidied are a motion's own name, the row takes it.
+            got = MO.classify(tidy, bid, r.get("body") or "", motions)
+            if got.get("mk") not in (None, "", "unnamed") and "mrec" not in got \
+                    and not got.get("mf") and bill:
+                mk = got["mk"]
+            q = tidy
     row = {"id": key, "d": r.get("date") or "", "c": r.get("body") or "", "b": bill,
-           "q": (r.get("question_plain") or r.get("question") or "").strip(),
+           "q": q,
            "mk": mk, "k": kind_of(mk, bill), "p": 1 if r.get("passed") else 0,
            "y": r.get("yeas"), "n": r.get("nays"),
            "e": r.get("excused") or 0, "a": r.get("not_excused") or 0}
@@ -348,6 +433,23 @@ def write(site, rows_term, ballots):
     return made
 
 
+def attach_sittings(rows_term, at, none):
+    """`s` on each row a session page counts on another day than the file
+    dates it, and "" on each no page counts (THE SESSION DAY, above); the
+    rows whose session day falls in another term than the row's file."""
+    astray = []
+    for term, rows in rows_term.items():
+        for x in rows:
+            day = (at.get(x["c"]) or {}).get(x["id"])
+            if day:
+                x["s"] = day
+                if PR.term_on(day) != term:
+                    astray.append(x["id"])
+            elif x["id"] in (none.get(x["c"]) or ()):
+                x["s"] = ""
+    return astray
+
+
 def build(rollcalls, ballots, site):
     """Everything: rows and ballots read, checked and written. Returns the
     rows by term, the ballots and a report dict."""
@@ -358,8 +460,11 @@ def build(rollcalls, ballots, site):
     if off:
         raise SystemExit(f"{len(off)} roll call(s) whose ballots do not count to the tally the "
                          f"row carries: {', '.join(off[:5])}")
+    at, none = sittings_of(site)
+    astray = attach_sittings(rows_term, at, none) if at is not None else []
     made = write(site, rows_term, enc)
-    return rows_term, enc, {"unmatched": unmatched, "files": made, "moved": moved}
+    return rows_term, enc, {"unmatched": unmatched, "files": made, "moved": moved,
+                            "sittings": at is not None, "astray": astray}
 
 
 def main():
@@ -380,6 +485,18 @@ def main():
         sys.exit("no roll call was written (rollcalls.json holds none)")
     if rep["unmatched"]:
         print(f"  {rep['unmatched']:,} ballot(s) on a roll call rollcalls.json does not hold, left out")
+    # SILENCE IS NOT SUCCESS: without the session pages' lists, a session
+    # day's "Search this day's roll calls" finds the roll calls of its date.
+    if not rep["sittings"]:
+        print(f"  WARNING: {a.site}/session/days.json names no session day of a roll call (at, "
+              "none): every row is counted on the day the roll-call file gives it")
+    else:
+        rows = [x for v in rows_term.values() for x in v]
+        print(f"  {sum(1 for x in rows if x.get('s')):,} roll call(s) on a session day other than "
+              f"the file's date, {sum(1 for x in rows if x.get('s') == ''):,} on none")
+        if rep["astray"]:
+            print(f"  WARNING: {len(rep['astray'])} roll call(s) on a session day of another term "
+                  f"than their file's: {', '.join(rep['astray'][:5])}")
     for term, rows in sorted(rows_term.items()):
         close = sum(1 for x in rows if x.get("cl"))
         print(f"  {FOLDER}/{term}: {len(rows):,} roll calls "
