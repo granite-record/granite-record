@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.393 */
+/* GRANITE_VERSION: 2026-09-07.394 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -10029,6 +10029,12 @@ text-wrap:balance}
 .vpage .vmember{position:relative}
 .vpage .vmemchip{display:flex;gap:var(--sp-3);align-items:center;flex-wrap:wrap;text-transform:none;
   letter-spacing:0;font-weight:400;min-height:2.75rem}
+/* A SESSION DAY THE ADDRESS NAMES (?day=), with its Clear, in the frame of the filters' labels: a
+   div and not a label, which would hand a click on its name to the Clear button. */
+.vpage .vday{display:flex;flex-direction:column;gap:var(--sp-2);min-width:0;font-size:var(--t-sm);
+  color:var(--ink)}
+.vpage .vday .vlab{letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);font-weight:600}
+.vpage .vday .vmemchip{font-size:var(--t-ui)}
 .vpage .vsug{position:absolute;z-index:5;top:100%;left:0;min-width:16rem;max-width:min(24rem,90vw);
   margin:var(--sp-1) 0 0;padding:var(--sp-2);list-style:none;background:var(--surface);
   border:1px solid var(--edge);border-radius:var(--r-in);box-shadow:0 4px 14px var(--shadow)}

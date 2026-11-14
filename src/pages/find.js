@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.59
+// GRANITE_VERSION: 2026-09-16.60
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -182,10 +182,10 @@ const FBILLKIND=new Set(["HB","SB","CACR","HCR","SCR","HJR","SJR","HR","SR",
    not one county abbreviation is a bill prefix, so the set separates them
    cleanly with nothing left over.
    A number whose prefix is NOT in the set is not a dead end: the panel still
-   offers "search every bill for these words" with what was typed, and the
-   bill search's own billNumbers() reads any two-to-five letters and digits as
-   a number. So a kind the General Court invents tomorrow still arrives at the
-   bill, it just is not promoted to the top of this list before it exists.
+   offers "search every bill for these words" with what was typed. The bill
+   search's own billNumbers() reads the same set as numbers, with LSR, a
+   request's (app.js BILL_KINDS, the review of 14 November 2026: "covid 19"
+   was the bill COVID19), and anything else as words.
 
    A bill number typed in any of the ways people write one: hb115, HB 115,
    "hb 0115". Offered without looking anything up, and handed to the bill
@@ -1059,7 +1059,9 @@ function findDraw(q,ids){
   // THE VOTES, ONE ROW FURTHER (the owner, 12 November 2026): the same words
   // or bill number asked of every roll call since 1999, on /votes. A door like
   // the one above it, and no count: the votes are not fetched for the panel.
-  const votes=`<a class="fall" data-every href="/votes?q=${_fenc(s)}">
+  // ON EVERY TERM, as the row says (the review of 14 November 2026): /votes
+  // opens on the newest term, and "SB 2" found none there of the 19 it has.
+  const votes=`<a class="fall" data-every href="/votes?q=${_fenc(s)}&amp;term=all">
     <span class="fl1"><span class="fname">${tr("find.votes","Search the votes for {q}",{q:_fesc(s)})}</span></span>
     <span class="fwhat">${tr("find.votes_what","every roll call of the House and Senate from 1999")}</span></a>`;
   const all=num?`<a class="fall" href="/bills?q=${encodeURIComponent(num)}">

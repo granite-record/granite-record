@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-13.2
+# GRANITE_VERSION: 2026-11-13.3
 """
 The votes page: /votes, a search of every roll call since 1999.
 
@@ -38,9 +38,10 @@ PATH = "votes.html"
 TITLE = "Votes"
 DESC = ("Search every roll call of the New Hampshire House and Senate from 1999 by bill number "
         "or words, and see how each member voted.")
+# ONE SENTENCE (the review of 14 November 2026): a second listed the filters
+# drawn right under it, and the page speaks for itself.
 LEAD = ("Every roll call of the New Hampshire House and Senate from 1999, with how each member "
-        "voted. Search by bill number or by words, then narrow by term, chamber, date, result, "
-        "how close the vote was, the kind of question, or a member.")
+        "voted.")
 # What a roll call is, once, so that the page does not seem to be missing the votes that leave no
 # member's name.
 NOTE = ("A voice vote or a division records no member&rsquo;s vote, and is on the bill&rsquo;s "

@@ -133668,6 +133668,398 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
     return "ok", "address round trip, filters, ballots tie to tallies, 1999 scope wording, no party label"
 
 
+# THE VOTES PAGE AS A READER MET IT (the review of 14 November 2026, on the preview): a session
+# day's search found none of the roll calls the file dates a day later; "veto" found no veto
+# override; a former member or dates in 2003 showed "0 votes in 2025-2026"; nothing on a phone said
+# whose votes these were; an unknown member hung the page; the Member box lost what was typed when
+# the members' lists arrived; a bill voted only by voice led to /votes and nothing. Run in node
+# against dom_stub.js, through the functions the page draws with.
+_VOTES_READER_JS = r"""
+require("./stub.js");
+const fs = require("fs");
+const route = {};
+globalThis.fetch = async u => {
+  const k = Object.keys(route).find(x => String(u).endsWith(x));
+  const v = k ? route[k] : [];
+  return {ok: true, status: 200, json: async () => v, text: async () => JSON.stringify(v)};
+};
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") +
+  "; ({votesRead, votesAddr, votesPass, votesRowsOf, votesRowHtml, votesTermOf, votesDefault," +
+  " votesControls, votesDraw, votesNeedPeople, votesChange, voteGroups, renderVotes, VT, IDX, LOADED," +
+  " sit: x => { SITDAYS = x; }})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const tick = async n => { for (let i = 0; i < (n || 6); i++) await new Promise(r => setImmediate(r)); };
+(async () => {
+const out = {};
+const terms = ["2025-2026", "2023-2024", "2021-2022", "2019-2020", "2003-2004", "2001-2002", "1999-2000"];
+// A SESSION DAY: read and written back, its term, and Organization Day's.
+const d = s.votesRead("?day=2021-02-24&body=H", terms);
+out.dayTerm = d.term; out.dayAddr = s.votesAddr(d, terms);
+out.org = [s.votesTermOf("2022-12-07", terms), s.votesTermOf("2022-12-06", terms), s.votesTermOf("2024-12-04", terms)];
+const rows = [
+  {id: "2021-H-1", d: "2021-02-26", s: "2021-02-24", c: "H", b: "HB1", mk: "otp", k: "Committee report", q: "Ought to Pass", p: 1, y: 3, n: 1, t: "2021-2022"},
+  {id: "2021-H-30", d: "2021-02-26", s: "2021-02-25", c: "H", b: "HB2", mk: "otp", k: "Committee report", q: "Ought to Pass", p: 1, y: 3, n: 1, t: "2021-2022"},
+  {id: "2021-S-53", d: "2021-02-18", s: "", c: "S", b: "", mk: "", k: "Procedural", q: "Attendance", p: 1, y: 20, n: 0, t: "2021-2022"},
+  {id: "2021-S-54", d: "2021-02-18", c: "S", b: "SB5", mk: "otp", k: "Committee report", q: "Ought to Pass", p: 1, y: 14, n: 10, t: "2021-2022"}];
+const st0 = s.votesDefault(terms);
+const pass = over => rows.filter(r => s.votesPass(r, Object.assign({}, st0, over), null)).map(r => r.id);
+out.day24 = pass({day: "2021-02-24", body: "H"}); out.day25 = pass({day: "2021-02-25", body: "H"});
+out.day18 = pass({day: "2021-02-18", body: "S"}); out.file26 = pass({from: "2021-02-26", to: "2021-02-26"});
+s.sit({H: new Set(["2021-02-24", "2021-02-25"]), S: new Set(["2021-02-18"]), rc: {}});
+out.link1 = s.votesRowHtml(rows[0], 0, ""); out.link3 = s.votesRowHtml(rows[2], 2, "");
+// THE TERM FOLLOWS the dates and the member, in the address as on the page.
+s.VT.idx = {terms, close: {H: 5, S: 2}, counts: {}};
+s.VT.people = [
+  {slug: "sylvia-larsen-sd-15", m: {display_plain: "Sen. Sylvia Larsen", slug: "sylvia-larsen-sd-15"}, ids: ["205035"],
+   terms: ["1999-2000", "2001-2002"], hay: "sen sylvia larsen", former: true},
+  {slug: "one-term-rep", m: {display_plain: "Rep. One Term", slug: "one-term-rep"}, ids: ["77"], terms: ["2003-2004"],
+   hay: "rep one term", former: true},
+  {slug: "jane-doe", m: {display_plain: "Rep. Jane Doe", slug: "jane-doe"}, ids: ["10"], terms: null,
+   hay: "rep jane doe", former: false}];
+s.VT.peopleAsked = true;
+out.memTerm = ["sylvia-larsen-sd-15", "one-term-rep", "jane-doe"].map(m => s.votesRead("?member=" + m, terms).term);
+const lar = s.votesRead("?member=sylvia-larsen-sd-15", terms);
+out.larAddr = s.votesAddr(lar, terms);
+out.larBack = s.votesRead("?" + out.larAddr, terms).term;
+s.VT.st = s.votesRead("", terms);
+s.votesChange("from", "2003-02-01");
+const a1 = s.votesAddr(s.VT.st, terms);
+out.changed = [s.VT.st.term, a1, s.votesRead("?" + a1, terms).term];
+// THE MEMBER NAMED, AND WHAT THEY VOTED ON COUNTED: on three roll calls, yea on one, excused on one,
+// nay on one, and not on the fourth.
+s.VT.rows["2025-2026"] = [
+  {id: "2025-H-1", d: "2025-01-08", c: "H", b: "", mk: "", k: "Procedural", q: "Lay on Table", p: 0, y: 1, n: 1, t: "2025-2026"},
+  {id: "2025-H-2", d: "2025-01-09", c: "H", b: "", mk: "", k: "Procedural", q: "Adjourn", p: 1, y: 1, n: 0, t: "2025-2026"},
+  {id: "2025-H-3", d: "2025-01-10", c: "H", b: "", mk: "", k: "Procedural", q: "Recess", p: 1, y: 1, n: 1, t: "2025-2026"},
+  {id: "2025-H-4", d: "2025-01-11", c: "H", b: "", mk: "", k: "Procedural", q: "Recess", p: 1, y: 1, n: 0, t: "2025-2026"}];
+s.VT.bal["2025-2026"] = {chambers: {H: {m: ["10", "11"], r: {"2025-H-1": "YN", "2025-H-2": "EY", "2025-H-3": "NY", "2025-H-4": ".Y"}}}};
+s.VT.st = s.votesRead("?member=jane-doe&term=2025-2026", terms);
+s.votesDraw();
+out.count = document.getElementById("vcount").textContent;
+await tick();
+// AN UNKNOWN MEMBER is dropped once the members' lists arrive, and the page reads on.
+s.VT.people = null; s.VT.peopleAsked = false;
+route["legislators.json"] = [{slug: "jane-doe", id: "10", display_plain: "Rep. Jane Doe"}];
+route["former.json"] = [];
+s.VT.st = s.votesRead("?member=no-such-person&term=2025-2026", terms);
+s.votesDraw();
+const before = document.getElementById("vcount").textContent;
+await tick(12);
+out.unknown = [before, s.VT.st.member, document.getElementById("vcount").textContent];
+// "veto" FINDS A VOTE BY ITS QUESTION, "fish" still by its bill.
+s.VT.by = {};
+s.IDX.push({id: "HB10", term: "2025-2026", year: 2025, n: "HB 10", title: "relative to fish and game licenses",
+  hayT: "hb10 hb 10 relative to fish and game licenses", hayC: "fish and game"});
+s.LOADED.add("2025-2026");
+const vr = [
+  {id: "2025-H-90", d: "2025-09-18", c: "H", b: "HB10", mk: "override_second", k: "Veto override", q: "Veto Override", p: 0, y: 200, n: 150, t: "2025-2026"},
+  {id: "2025-H-20", d: "2025-03-18", c: "H", b: "HB10", mk: "otp", k: "Committee report", q: "Ought to Pass", p: 1, y: 200, n: 150, t: "2025-2026"}];
+const ask = q => s.votesRowsOf(vr.slice(), Object.assign({}, st0, {q}), s.voteGroups(q, s.IDX.filter(b => b.term === "2025-2026")),
+  null, null).map(r => r.id).sort();
+out.veto = ask("veto"); out.fish = ask("fish"); out.amend = ask("amendment");
+// A VOTE ON NO BILL SAYS ITS QUESTION ONCE; an unnamed motion's result is in the Result filter's words; a
+// bill the index does not hold is written as the site writes a number.
+const nb1 = {id: "2023-H-9", d: "2023-05-04", c: "H", b: "", w: "Affirm the Committee Report (Censure Rep. Spillane)",
+  q: "Affirm The Report", mk: "", k: "Procedural", p: 1, y: 300, n: 20, t: "2023-2024"};
+const nb2 = {id: "2023-H-10", d: "2023-05-04", c: "H", b: "", w: "Printing in the Journal", q: "Personal Priviledge",
+  mk: "", k: "Procedural", p: 1, y: 300, n: 20, t: "2023-2024"};
+const other = {id: "2002-S-142", d: "2002-06-27", c: "S", b: "SB457", mk: "", k: "Other", q: "Sections 3 and 4",
+  p: 1, y: 14, n: 10, t: "2001-2002"};
+out.nb1 = s.votesRowHtml(nb1, 0, ""); out.nb2 = s.votesRowHtml(nb2, 1, ""); out.other = s.votesRowHtml(other, 2, "");
+// A BILL'S VOTES TAB leads to /votes only where it has a roll call, by its bare number.
+const bill = {id: "HB2", n: "HB 2-FN-A-L", year: 2025, term: "2025-2026"};
+out.voiceOnly = s.renderVotes(bill, {rollcalls: [{question: "Ought to Pass", date: "2025-03-01", body: "H",
+  vote_kind: "VV", passed: true}]});
+out.withRc = s.renderVotes(bill, {rollcalls: [{question: "Ought to Pass", date: "2025-03-01", body: "H",
+  passed: true, yeas: 200, nays: 150, tally: {}, members: []}]});
+// THE CONTROLS DRAWN AGAIN keep what is typed in the Member box, the focus and its caret, and the
+// phone's Filters state; the close-vote rule is under the filters only while Margin asks for close votes.
+const box = {id: "vmem", value: "lar", selectionStart: 3, selectionEnd: 3, focused: 0,
+  focus() { this.focused++; }, setSelectionRange(a, b) { this.range = [a, b]; }};
+const ctl = {id: "vctl", _html: "", contains: n => n === box};
+Object.defineProperty(ctl, "innerHTML", {get() { return ctl._html; }, set(v) { ctl._html = String(v); }});
+const page = {id: "vpage", classList: {contains: c => c === "vfopen", toggle() { return true; }}};
+const byId = document.getElementById.bind(document);
+document.getElementById = id => ({vctl: ctl, vmem: box, vpage: page})[id] || byId(id);
+document.activeElement = box;
+s.VT.st = s.votesRead("", terms);
+s.votesControls();
+out.ctl = ctl._html; out.focused = box.focused; out.range = box.range || null;
+s.VT.st = s.votesRead("?margin=close", terms);
+document.activeElement = null;
+s.votesControls();
+out.ctlClose = ctl._html;
+process.stdout.write("\n@@" + JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.constructor.name + ": " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "the votes page as a reader met it: a session day's roll calls by the day its page "
+       "gives them, the date linked to that day; the term follows the dates and the member; the member "
+       "named and what they voted on counted; an unknown member dropped; a vote found by its question; "
+       "the controls keep what is typed; a bill with no roll call does not lead to /votes")
+def _votes_page_reads():
+    js = Path("src/pages/app.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and Path("tests/dom_stub.js").exists() and node
+            and Path("src/pages/build_votes_page.py").exists()):
+        return "skip", "app.js, dom_stub.js, node or build_votes_page.py is not here"
+    sys.path.insert(0, "src/pages")
+    try:
+        import build_votes_page as VPG
+    finally:
+        sys.path.pop(0)
+    # The lead is one sentence, and does not list the filters drawn under it.
+    assert VPG.LEAD.count(". ") == 0 and VPG.LEAD.endswith(".") and "narrow" not in VPG.LEAD, (
+        f"the votes page's lead is {VPG.LEAD!r}: one sentence, the filters left to speak for themselves")
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.js").write_text(_VOTES_READER_JS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=90)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js's votes page did not run under node: " + (r.stderr or r.stdout or "")[-400:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    bad = []
+    # A session day is the roll calls its page counts (`s`), not the roll calls of its date.
+    if (got["dayTerm"], got["dayAddr"]) != ("2021-2022", "body=H&day=2021-02-24"):
+        bad.append(f"?day=2021-02-24&body=H reads as term {got['dayTerm']} and writes back {got['dayAddr']!r}")
+    if got["org"] != ["2023-2024", "2021-2022", "2025-2026"]:
+        bad.append(f"Organization Day's terms are {got['org']}, not the next term's from the first "
+                   "Wednesday of December of an even year")
+    for k, want in (("day24", ["2021-H-1"]), ("day25", ["2021-H-30"]), ("day18", ["2021-S-54"]),
+                    ("file26", ["2021-H-1", "2021-H-30"])):
+        if got[k] != want:
+            bad.append(f"the filter {k} lists {got[k]}, not {want}")
+    if '<a href="session/H/2021-02-24">Feb 26, 2021</a>' not in got["link1"]:
+        bad.append("a roll call the file dates 26 February and the page of 24 February counts does not show "
+                   "the file's date linked to that page: " + got["link1"][:160])
+    if 'href="session/' in got["link3"]:
+        bad.append("a roll call no session page counts links its date to a page that does not draw it")
+    # The term follows the member and the dates, and the address opens on what was on screen.
+    if got["memTerm"] != ["all", "2003-2004", "2025-2026"]:
+        bad.append(f"a member of two terms, of one term and a sitting member open on {got['memTerm']}")
+    if (got["larAddr"], got["larBack"]) != ("member=sylvia-larsen-sd-15", "all"):
+        bad.append(f"a former member's address is {got['larAddr']!r}, read back as {got['larBack']}")
+    if got["changed"] != ["2003-2004", "from=2003-02-01", "2003-2004"]:
+        bad.append(f"dates in 2003 picked on the page leave the term, the address and its reading at "
+                   f"{got['changed']}")
+    # Whose votes, and what they voted on.
+    if got["count"] != "Rep. Jane Doe voted yea or nay on 2 of 3 roll calls in 2025–2026":
+        bad.append(f"the count line with a member reads {got['count']!r}")
+    if got["unknown"][1:] != ["", "4 votes in 2025–2026"]:
+        bad.append(f"/votes?member=no-such-person: {got['unknown']}")
+    # A vote is found by its question and kind; its bill's words still find it.
+    if (got["veto"], got["fish"], got["amend"]) != (["2025-H-90"], ["2025-H-20", "2025-H-90"], []):
+        bad.append(f"'veto' finds {got['veto']}, 'fish' {got['fish']} and 'amendment' {got['amend']}")
+    # Said once; one set of result words; a number as the site writes it.
+    if 'class="vq"' in got["nb1"] or 'class="vq">Personal Priviledge' not in got["nb2"]:
+        bad.append("a vote on no bill draws its question under the Journal's words where it says nothing more, "
+                   "or not where it does")
+    if "SB 457" not in got["other"] or "Motion Passed" not in got["other"] or ">Adopted<" in got["other"]:
+        bad.append("an unnamed motion's row: " + got["other"][:240])
+    # A bill's Votes tab: the votes page only for a roll call, by the bare number.
+    if "Find these votes" in got["voiceOnly"]:
+        bad.append("a bill voted only by voice leads to the votes page")
+    if 'href="votes?q=HB+2&amp;term=2025-2026">Find these votes on the votes page' not in got["withRc"]:
+        bad.append("a bill with a roll call does not lead to /votes?q=HB+2&term=2025-2026: "
+                   + (re.search(r'<p class="src vlink">.*?</p>', got["withRc"], re.S) or [""])[0][:200])
+    # The controls keep what is in hand.
+    if 'id="vmem"' not in got["ctl"] or 'value="lar"' not in got["ctl"] or got["focused"] != 1 \
+            or got["range"] != [3, 3] or 'aria-expanded="true"' not in got["ctl"]:
+        bad.append("the controls drawn again lose the Member box's letters, its focus or caret, or the "
+                   f"Filters' state (focused {got['focused']}, caret {got['range']})")
+    if 'id="vclose" hidden' not in got["ctl"] or 'id="vclose" hidden' in got["ctlClose"] \
+            or "Close: 5 or fewer House voters" not in got["ctlClose"]:
+        bad.append("the close-vote rule is not under the filters only while Margin asks for close votes")
+    assert not bad, "; ".join(bad[:4])
+    return "ok", ("?day= lists the roll calls its page counts and links the file's date to it; the term "
+                  "follows dates, a day and a member, in the address alike; the member is named and their "
+                  "yeas and nays counted; an unknown member is dropped; 'veto' finds an override; the Member "
+                  "box keeps its letters and focus; a voice-only bill has no link")
+
+
+@check("code", "votes data: a session day's link asks /votes for the roll calls its page counts, by the day "
+       "the page gives them, and the votes rows carry that day; a question no motion names is the record's "
+       "words tidied", needs=("build_session_pages", "session_days", "build_votes"))
+def _votes_session_days(BSP, SD, BV):
+    """The review of 14 November 2026. The roll-call file dates the House's 13 roll calls of 11 June
+    2020 on the 12th, and those of 24 and 25 February 2021 alike on the 26th, and a session day's
+    "Search this day's roll calls" asked /votes for its own date: 13 became 0, and 27 and 18 became
+    0. Held here: the pages' list of roll calls they count on another day than the file's, and of
+    those no page counts (rollcall_days), written a chamber at a time; the link by the day, drawn
+    only where the page counts a roll call the file holds; and build_votes' rows carrying the day
+    (`s`), "" where no page counts it. And the record's words where no motion is named, tidied and
+    nothing added: the Senate's glued mover and seconder off, the clerk's abbreviations spelled out,
+    and the row taking a motion only where the words tidied are its name."""
+    def item(bill, term, seq, date, **e):
+        ev = {"type": "floor", "body": "H", "action": "Ought to Pass", "motion": "MA",
+              "raw": "Ought to Pass: MA", "date": date, "vote_kind": "RC", "yeas": "1", "nays": "0"}
+        ev.update(e)
+        return SD.Item(bill, term, ev, seq)
+
+    def rc(n, date, bill):
+        return {"year": "2021", "body": "H", "number": n, "bill": bill, "yeas": 1, "nays": 0, "date": date}
+    # 24 February: two roll calls the file dates the 26th. 25 February: one dated the 26th, one dated
+    # the 25th, and one the docket calls a division. 13 October 2010: a roll call the docket alone states.
+    a, b = item("HB1", "2021-2022", 1, "2021-02-24"), item("HB2", "2021-2022", 2, "2021-02-24")
+    c, e = item("HB3", "2021-2022", 3, "2021-02-25"), item("HB6", "2021-2022", 6, "2021-02-25")
+    dv = item("HB4", "2021-2022", 4, "2021-02-25", vote_kind="DV")
+    a.rc, b.rc, c.rc = rc(1, "2021-02-26", "HB1"), rc(2, "2021-02-26", "HB2"), rc(3, "2021-02-26", "HB3")
+    e.rc, dv.rc = rc(6, "2021-02-25", "HB6"), rc(4, "2021-02-25", "HB4")
+    days = SD.Sittings({("H", "2021-02-24"): SD.Day("H", "2021-02-24", [a, b]),
+                        ("H", "2021-02-25"): SD.Day("H", "2021-02-25", [c, dv, e]),
+                        ("H", "2010-10-13"): SD.Day("H", "2010-10-13", [item("HB5", "2009-2010", 1, "2010-10-13")])})
+    days.left = [(dict(rc(5, "2021-02-25", ""), question="Call of the Roll"), "a quorum call, which puts no question")]
+    moved, none = BSP.rollcall_days(days, sorted(days), "H")
+    assert moved == {"2021-H-1": "2021-02-24", "2021-H-2": "2021-02-24", "2021-H-3": "2021-02-25"}, (
+        f"the roll calls counted on another day than the file's are {moved}")
+    assert none == ["2021-H-4", "2021-H-5"], f"the roll calls no page counts are {none}"
+    blank = {"attributions": [], "debates": [], "unanimous_consent": []}
+
+    def link(key):
+        h = BSP.day_head(days[key], blank, {}, jurl="", label="x", path=f"/session/H/{key[1]}.html",
+                         base="https://x")
+        return re.findall(r"<dt>Roll Calls</dt><dd>(.*?)</dd>", h)
+    assert link(("H", "2021-02-24")) == ['<a href="votes?day=2021-02-24&amp;body=H">Search this day'
+                                         '&rsquo;s roll calls</a>'], link(("H", "2021-02-24"))
+    assert link(("H", "2010-10-13")) == [], (
+        "a day whose roll calls the docket alone states leads to /votes, which holds none of them")
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "session").mkdir()
+        BSP.write_days_index(root, "S", ["2021-03-04"], {}, {"2021-S-9": "2021-03-04"}, ["2021-S-79"])
+        BSP.write_days_index(root, "H", ["2021-02-24", "2021-02-25"], {}, moved, none)
+        BSP.write_days_index(root, "S", ["2021-03-04"], {})
+        got = json.loads((root / "session" / "days.json").read_text(encoding="utf-8"))
+        assert got.get("at") == {"H": moved, "S": {"2021-S-9": "2021-03-04"}} \
+            and got.get("none") == {"H": none, "S": ["2021-S-79"]}, (
+            f"session/days.json, written a chamber at a time, holds at {got.get('at')}, none {got.get('none')}")
+        rolls = {"2021-2022": {f"HB{n}": [{"year": "2021", "body": "H", "number": n, "date": d,
+                                          "bill": f"HB{n}", "question": "Ought to Pass", "yeas": 1,
+                                          "nays": 0, "passed": True}]
+                               for n, d in ((1, "2021-02-26"), (3, "2021-02-26"), (4, "2021-02-25"),
+                                            (6, "2021-02-25"))}}
+        ballots = [{"member_id": "10", "party": "R", "year": "2021", "body": "H", "vote_number": str(n),
+                    "vote": "Yea"} for n in (1, 3, 4, 6)]
+        rows, _enc, rep = BV.build(rolls, iter(ballots), root)
+        by = {x["id"]: x for x in rows["2021-2022"]}
+        assert rep["sittings"] and by["2021-H-1"].get("s") == "2021-02-24" and by["2021-H-3"].get("s") == "2021-02-25" \
+            and by["2021-H-4"].get("s") == "" and "s" not in by["2021-H-6"], (
+            f"the votes rows carry the session days {[(k, v.get('s')) for k, v in by.items()]}")
+        (root / "session" / "days.json").unlink()
+        rows, _enc, rep = BV.build(rolls, iter(ballots), root)
+        assert not rep["sittings"] and not any("s" in x for x in rows["2021-2022"]), (
+            "with no session/days.json the votes rows name a session day anyway")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    # The record's words, tidied and nothing added.
+    words = {("Ought to PassFrancoeur/Pignatelli", "S"): "Ought to Pass",
+             ("Motion to Table Sen. Foster/Sen. Barnes", "S"): "Motion to Table",
+             ("C OF C #2465C", "H"): "Committee of Conference #2465c",
+             ("Adopt CofC", "H"): "Adopt Committee of Conference",
+             ("MAJ AM 1905H(NT)", "H"): "Majority amendment 1905h(NT)",
+             ("MOTION TO ADJOURN (REP HIKEL)", "H"): "Motion to adjourn (Rep. Hikel)",
+             ("SHALL HB 109 BECOME LAW", "H"): "Shall HB 109 become law",
+             ("Sections 3 and 4", "S"): "Sections 3 and 4"}
+    off = {k: BV.plain_question({"question": k[0], "body": k[1]}) for k in words}
+    off = {k: v for k, v in off.items() if v != words[k]}
+    assert not off, f"the record's words tidied: {off}"
+    motions = BV.WORDBOOK["votes"]["motions"]
+
+    def row(q, bill, body):
+        return BV.row_of({"year": "1999", "body": body, "number": 17, "date": "1999-03-04", "question": q,
+                          "yeas": 15, "nays": 9, "passed": True}, bill, motions)
+    otp, tab = row("Ought to PassFrancoeur/Pignatelli", "SB122", "S"), row("Motion to Table Sen. Foster/Sen. Barnes",
+                                                                         "HJR24", "S")
+    assert (otp["mk"], otp["k"], otp["q"]) == ("otp", "Committee report", "Ought to Pass"), otp
+    assert (tab["mk"], tab["k"], tab["q"]) == ("", "Other", "Motion to Table"), (
+        f"words that are not a motion's own name took one: {tab}")
+    return "ok", ("the days' roll calls on another day or none, written a chamber at a time; ?day= drawn "
+                  "only where a page counts a roll call on file; rows carry `s`; the record's words tidied")
+
+
+@check("frontend", "a bill number is one of the kinds the General Court numbers, so 'covid 19' and "
+       "'Rule 64' are words, every real number and its written forms still a number, and the header's "
+       "row to the votes opens on every term", needs=("build_pages",))
+def _votes_numbers(BP):
+    """The review of 14 November 2026: billNumbers() read any two to five letters before digits as a
+    bill number, so "covid 19" was the bill COVID19 (no vote, where "covid-19" had 24), and "Rule
+    64", "Route 101" and "title 5" the same. It is shared with /bills and the header, so the real
+    numbers are held too: every kind, padded, spaced, written out and listed, and every bill id of
+    the fixture -- and of site/idx where the site is built -- read as itself. And the header's row
+    "Search the votes for ..." said every roll call from 1999 and opened on 2025-2026: "SB 2" found
+    none of the 19 it has."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    find = Path("src/pages/find.js").read_text(encoding="utf-8")
+    kinds = re.search(r"const BILL_KINDS=new Set\(\[([^\]]*)\]\)", app)
+    fkinds = re.search(r"const FBILLKIND=new Set\(\[([^\]]*)\]\)", find)
+    assert kinds and fkinds, "app.js has no BILL_KINDS, or find.js no FBILLKIND"
+    kinds, fkinds = set(re.findall(r'"([A-Z]+)"', kinds.group(1))), set(re.findall(r'"([A-Z]+)"', fkinds.group(1)))
+    assert kinds == fkinds | {"LSR"}, f"app.js reads {sorted(kinds)} as numbers and the header {sorted(fkinds)}"
+    ids = set()
+    cases = Path("tests/search_cases.json")
+    if cases.exists():
+        ids |= set(json.loads(cases.read_text(encoding="utf-8")).get("bills") or {})
+    real = sorted(Path("site/idx").glob("*.json")) if Path("site/idx").is_dir() else []
+    for f in real:
+        ids |= {str(b.get("id") or "").upper() for b in json.loads(f.read_text(encoding="utf-8"))}
+    ids.discard("")
+    lacking = sorted({re.match(r"[A-Z]*", i).group(0) for i in ids} - kinds)
+    assert not lacking, f"the bills carry kinds the matcher does not read as numbers: {lacking}"
+    matcher = BP.bill_matcher_js(app)
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "billmatch.js").write_text(matcher, encoding="utf-8")
+        (root / "ids.json").write_text(json.dumps(sorted(ids)), encoding="utf-8")
+        (root / "go.js").write_text(r"""
+const fs = require("fs"), window = {};
+new Function("window", fs.readFileSync("./billmatch.js", "utf8"))(window);
+const A = window.GR_BILLMATCH, out = {words: {}, numbers: {}, off: []};
+for (const q of ["covid 19", "Rule 64", "Route 101", "title 5", "hills 29", "Ward 3", "SD 22", "Straf 14",
+                 "covid 19, HB 1", "chapter 11"]) out.words[q] = A.billNumbers(q);
+for (const q of ["HB 1", "hb1442", "HB 0115", "H.B. 703", "Senate Bill 11", "CACR 3", "SSHCR 1", "PET 5",
+                 "HBI 2", "HA 3", "HCO 1", "HB 1, SB 2", "LSR 2027-0002"]) out.numbers[q] = A.billNumbers(q);
+for (const id of JSON.parse(fs.readFileSync("./ids.json", "utf8"))) {
+  const spaced = id.replace(/^([A-Z]+)(\d)/, "$1 $2");
+  for (const q of [id, spaced, spaced.toLowerCase()]) {
+    const got = A.billNumbers(q);
+    if (!got || got.length !== 1 || got[0] !== id) { out.off.push([q, got]); break; }
+  }
+}
+process.stdout.write("\n@@" + JSON.stringify(out));
+""", encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=90)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "the matcher cut from app.js did not run: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    read = {q: v for q, v in got["words"].items() if v is not None}
+    assert not read, f"words read as bill numbers: {read}"
+    want = {"HB 1": ["HB1"], "hb1442": ["HB1442"], "HB 0115": ["HB115"], "H.B. 703": ["HB703"],
+            "Senate Bill 11": ["SB11"], "CACR 3": ["CACR3"], "SSHCR 1": ["SSHCR1"], "PET 5": ["PET5"],
+            "HBI 2": ["HBI2"], "HA 3": ["HA3"], "HCO 1": ["HCO1"], "HB 1, SB 2": ["HB1", "SB2"],
+            "LSR 2027-0002": ["LSR20270002"]}
+    wrong = {q: got["numbers"][q] for q in want if got["numbers"].get(q) != want[q]}
+    assert not wrong, f"real bill numbers no longer read as numbers: {wrong}"
+    assert not got["off"], f"bill ids not read as themselves: {got['off'][:5]}"
+    # The header's row to the votes opens on every term.
+    (P,) = _find_more_run(BP, ("panel", ""))
+    rows = {q: re.findall(r'href="(/votes\?[^"]*)"', h) for q, h in P["panel"].items()}
+    lost = {q: v for q, v in rows.items() if not v or any("term=all" not in u for u in v)}
+    assert not lost, f"the header's row to the votes does not open on every term: {dict(list(lost.items())[:3])}"
+    return "ok", (f"{len(got['words'])} word searches stay words; {len(want)} numbers and {len(ids):,} bill ids "
+                  f"({'with' if real else 'without'} site/idx) read as themselves; the header's votes row "
+                  f"opens on every term in {len(rows)} searches")
+
+
 @check("data", "votes data: every roll call has a row, every counted tally ties to its ballots, the 14 stated "
        "tallies are carried, and the close votes are the ones a recount by switching voters gives",
        needs=("build_votes",))

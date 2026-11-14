@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.66
+# GRANITE_VERSION: 2026-09-19.67
 """
 A page for every day the House sat.
 
@@ -2839,10 +2839,44 @@ def pager(body, date, prev_, next_, weeks):
     return nav
 
 
-def write_days_index(site, body, dates, rollcalls=None):
+def rollcall_days(days, keys, body):
+    """({roll call: day}, [roll call]) for chamber `body`, keyed as
+    rollcalls_index.json keys a roll call ("2021-H-1"): each roll call of the
+    roll-call file that the page of a day in `keys` counts among its roll
+    calls (Day.votes, the count the page's head gives) ON ANOTHER DAY THAN
+    THE FILE DATES IT, with that day; and each one of the file that no page
+    counts as a roll call -- a quorum call, one dated on a day the chamber is
+    not recorded as sitting (days.left), one the docket calls a division.
+
+    WHAT THE VOTES PAGE ASKS OF A SESSION DAY (the review of 14 November
+    2026). The file dates the House's 13 roll calls of 11 June 2020 on the
+    12th, and those of 24 and 25 February 2021 alike on the 26th, so the
+    day's "Search this day's roll calls" found none of them, and the Senate's
+    quorum calls of 2021 one too many. build_votes.py carries the two lists
+    into its rows (`s`), and /votes?day= is the day's roll calls as this page
+    counts them."""
+    def key(r):
+        return "-".join(str(x) for x in session_days.rollcall_key(r))
+    counted, on_file = {}, set()
+    for k in keys:
+        day = days[k]
+        for v, items in day.votes("RC").items():
+            if v[0] == "rc":
+                counted.setdefault(key(items[0].rc), (k[1], str(items[0].rc.get("date") or "")))
+        for i in list(day.items) + list(day.others):
+            if i.rc is not None:
+                on_file.add(key(i.rc))
+    on_file |= {key(r) for r, _why in getattr(days, "left", ()) if r.get("body") == body}
+    moved = {k: d for k, (d, filed) in sorted(counted.items()) if d != filed}
+    return moved, sorted(on_file - set(counted))
+
+
+def write_days_index(site, body, dates, rollcalls=None, moved=None, none=None):
     """site/session/days.json: {"H": [dates], "S": [dates], "rc": {"H":
-    {roll call: date}, "S": {...}}}, this chamber's list and roll calls
-    replaced and the other's kept.
+    {roll call: date}, "S": {...}}, "at": {"H": {roll call: date}, ...},
+    "none": {"H": [roll call], ...}}, this chamber's list and roll calls
+    replaced and the other's kept; "at" and "none" (rollcall_days) only where
+    they are handed, as the build hands them.
 
     WHAT app.js ASKS BEFORE IT LINKS A DATE. A roll call on a bill and a row
     of a member's votes name a day and a chamber, and the sitting's page is
@@ -2864,13 +2898,26 @@ def write_days_index(site, body, dates, rollcalls=None):
         had = json.loads(f.read_text(encoding="utf-8"))
     except (ValueError, OSError):
         had = {}
-    rc = had.get("rc") if isinstance(had.get("rc"), dict) else {}
-    rc = {k: v for k, v in rc.items() if k in CHAMBER and isinstance(v, dict)}
-    had = {k: v for k, v in had.items() if k in CHAMBER and isinstance(v, list)}
-    had[body] = sorted(dates)
+    if not isinstance(had, dict):
+        had = {}
+
+    def kept(name, kind):
+        v = had.get(name) if isinstance(had.get(name), dict) else {}
+        return {k: x for k, x in v.items() if k in CHAMBER and isinstance(x, kind)}
+    rc, at, nowhere = kept("rc", dict), kept("at", dict), kept("none", list)
+    out = {k: v for k, v in had.items() if k in CHAMBER and isinstance(v, list)}
+    out[body] = sorted(dates)
     rc[body] = dict(sorted((rollcalls or {}).items()))
-    had["rc"] = rc
-    f.write_text(json.dumps(had, separators=(",", ":"), sort_keys=True),
+    out["rc"] = rc
+    if moved is not None:
+        at[body] = dict(sorted(moved.items()))
+    if none is not None:
+        nowhere[body] = sorted(none)
+    if at:
+        out["at"] = at
+    if nowhere:
+        out["none"] = nowhere
+    f.write_text(json.dumps(out, separators=(",", ":"), sort_keys=True),
                  encoding="utf-8")
     return f
 
@@ -3737,7 +3784,11 @@ def chamber(a, site, base, body, days):
     # written.
     if not a.limit:
         prune(out_dir, {k[1] for k in mine}, a.prune)
-        write_days_index(site, body, [k[1] for k in mine], drawn)
+        moved, nowhere = rollcall_days(days, mine, body)
+        write_days_index(site, body, [k[1] for k in mine], drawn, moved, nowhere)
+        print(f"  {len(moved):,} {CHAMBER[body]} roll call(s) counted on another session day "
+              f"than the roll-call file dates them, {len(nowhere):,} counted on none "
+              "(session/days.json's at and none, for the votes page)")
         # SILENCE IS NOT SUCCESS: a day drawn and not written as data would
         # be a day missing from the chamber's list with nothing to say so.
         n_rec = sum(len(v) for v in records.values())
@@ -3894,10 +3945,16 @@ def day_head(day, narrative, rec, jurl, label, path, base):
         vv = k.get("voice vote", 0)
         facts.append(["Votes Taken", S.E(", ".join(counted) or f"{vv:,} voice vote{'' if vv == 1 else 's'}"),
                       S.E(f"{vv:,} voice vote{'' if vv == 1 else 's'}") if counted and vv else ""])
-    # THE VOTES PAGE, FOR THE DAY'S ROLL CALLS (the owner, 12 November 2026): the
-    # page's own filters, this chamber and this day.
-    if k.get("roll call"):
-        facts.append(["Roll Calls", f'<a href="votes?from={S.E(date)}&amp;to={S.E(date)}&amp;body={S.E(body)}">'
+    # THE VOTES PAGE, FOR THE DAY'S ROLL CALLS (the owner, 12 November 2026),
+    # BY THE SESSION DAY AND NOT BY THE FILE'S DATE (the review of 14 November
+    # 2026): the roll-call file dates some of a day's roll calls a day or more
+    # later, and a search of this day's date found none of the House's 13 of
+    # 11 June 2020. /votes?day= finds the roll calls this page counts
+    # (rollcall_days), and the link is drawn only where the page counts one
+    # the roll-call file holds: a roll call the docket alone states is not on
+    # the votes page.
+    if any(v[0] == "rc" for v in day.votes("RC")):
+        facts.append(["Roll Calls", f'<a href="votes?day={S.E(date)}&amp;body={S.E(body)}">'
                                     "Search this day&rsquo;s roll calls</a>"])
     dn = len(narrative.get("debates") or [])
     if dn:
