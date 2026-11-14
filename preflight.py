@@ -117161,19 +117161,17 @@ def _unprinted_sponsor_note():
     of that term was read off the bill's own line, and the page says so of them; these say
     where theirs came from instead.
 
-    AND A 1989-1998 BILL WHOSE NAMES THE RECORD PLACED (past_roster.py; the pre-release review
-    of 13 November 2026). No name of those years has a party, so on a bill with names placed
-    and one left as printed (1997 HB 455) the note called the placed names "shown as the text
-    prints it"; it also said the bill "prints only a surname", and named only one of the two
-    ways a name is placed. Held: the mixed bill's note keeps "As named on the sponsor line",
-    says nothing of a name without a party, names the sponsor record and the Manual for the
-    General Court, and limits "as the text prints it" to the other names; a bill whose names
-    were all placed (1989 HB 553) says nothing of any other name. Both say what the Votes tab
-    says, "Named roll calls here begin in 1999", and neither "no roll call from before 1999":
-    952 of those bills show a docket roll-call tally in their Summary (1997 HB 200, "on a roll
-    call 286-57"). A bill of those years that places no name (1995 HB 174, Rep. Christie) says
-    so in the same words and not "voted that term"; a bill of 1999-2022 (HB 1, no term before
-    1999) keeps "A name without a party is shown as the text prints it"."""
+    AND A BILL OF 1989-1998 SAYS WHERE ITS NAMES WERE READ, AND NO MORE (the owner, 14 November
+    2026: "not necessary to get into that fine of detail and just let the pages speak for
+    themselves"). The note had grown sentences on how the General Court's sponsor record placed
+    a name (past_roster.py), on the Manual for the General Court and on the roll calls of those
+    years, and called names "matched to one member who voted that term" of years with no named
+    roll call here. Held: a mixed bill (1997 HB 455), one whose names were all placed (1989 HB
+    553) and one that places none (1995 HB 174) each say exactly "As named on the sponsor line
+    of the bill's text, where the first name is the prime sponsor." and none of "Named roll
+    calls", "Manual", "voted that term" or "prints only a surname"; a bill of 1999-2022 (a 2005
+    HB 1 here) keeps its note exactly, "A name without a party is shown as the text prints it"
+    with it."""
     placed = ('{name: "Richard Dolan", chamber: "H", label: "Rep. Richard Dolan (Rock 12)", '
               'member_id: "375990", employee: "375990", matched: "General Court sponsor record", '
               'source: "bill text", as_printed: "Rep. Dolan, Rock 12"}')
@@ -117181,7 +117179,7 @@ def _unprinted_sponsor_note():
         '[scope.renderSponsors({id: "HCR13"}, {sponsors: [{name: "Michael Hill", '
         'chamber: "H", label: "Rep. Michael Hill", prime: true, unprinted: true, '
         'source: "General Court sponsor record"}]}), '
-        'scope.renderSponsors({id: "HB1"}, {sponsors: [{name: "Vartanian", chamber: "H", '
+        'scope.renderSponsors({id: "HB1"}, {term: "2005-2006", sponsors: [{name: "Vartanian", chamber: "H", '
         'label: "Rep. Vartanian (Rock 20)", prime: true, source: "bill text"}]}), '
         'scope.renderSponsors({id: "HB455"}, {term: "1997-1998", sponsors: [{name: "Christie", chamber: "H", '
         'label: "Rep. Christie (Rock 22)", prime: true, source: "bill text", member_id: "", '
@@ -117197,39 +117195,26 @@ def _unprinted_sponsor_note():
     if got is None:
         return "skip", "node, app.js or dom_stub.js is not here"
     record, text, mixed, placed_only, none_placed = got
-    say = lambda h: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", h)).replace("&rsquo;", "’")
-    mixed, placed_only, none_placed = say(mixed), say(placed_only), say(none_placed)
-    for what, note in (("a mixed 1989-1998 bill", mixed), ("a 1989-1998 bill all placed", placed_only)):
-        assert "no roll call from before" not in note and "Named roll calls here begin in 1999" in note, (
-            f"{what} does not say what the Votes tab says, \"Named roll calls here begin in 1999\", or says "
-            "there is no roll call before 1999 beside a Summary that gives one: " + note[-420:])
-    assert "As named on the sponsor line" in none_placed and "voted that term" not in none_placed \
-        and ("Named roll calls here begin in 1999, and this bill’s own sponsor record places no name here "
-             "on one person, so each is shown as the text prints it") in none_placed, (
-        "a 1989-1998 bill whose names the record placed on nobody says they could not be matched to one "
-        "member who voted that term: " + none_placed[-300:])
-    assert "As named on the sponsor line" in mixed and "without a party" not in mixed \
-        and "prints only a surname" not in mixed, (
-        "a 1989-1998 bill with names the record placed and one as printed calls the placed names "
-        "\"as the text prints it\", or says the bill prints only a surname: " + mixed[-420:])
-    assert "sponsor record" in mixed and "Manual for the General Court" in mixed \
-        and "Any other name is shown as the text prints it" in mixed, (
-        "the note of a mixed 1989-1998 bill does not name both ways a name is placed, or does not keep "
-        "\"as printed\" to the other names: " + mixed[-420:])
-    assert "Manual for the General Court" in placed_only and "Any other name" not in placed_only \
-        and "without a party" not in placed_only, (
-        "a 1989-1998 bill whose names were all placed speaks of names shown as printed: " + placed_only[-300:])
+    notes = lambda h: [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", n)).replace("&rsquo;", "’").strip()
+                       for n in re.findall(r'<p class="note"[^>]*>(.*?)</p>', h, re.S)]
+    line = "As named on the sponsor line of the bill's text, where the first name is the prime sponsor."
+    for what, h in (("a mixed 1989-1998 bill (1997 HB 455)", mixed),
+                    ("a 1989-1998 bill whose names were all placed (1989 HB 553)", placed_only),
+                    ("a 1989-1998 bill that places no name (1995 HB 174)", none_placed)):
+        more = [w for w in ("Named roll calls", "Manual", "voted that term", "prints only a surname") if w in h]
+        assert notes(h) == [line] and not more, (
+            f"{what} says more than where its names were read: {notes(h)}" + (f", with {more}" if more else ""))
     assert "names no" in record and "sponsor record" in record \
         and "As named on the sponsor line" not in record, (
         "a bill whose line names nobody does not say its sponsors are the General Court's "
         "record: " + re.sub(r"\s+", " ", record)[-240:])
-    assert "sponsor record" not in text and "As named on the sponsor line" in text \
-        and "A name without a party is shown as the text prints it" in say(text), (
-        "a bill named off its own line lost its note, or gained the record's, or a 1999-2022 bill lost "
-        "\"A name without a party is shown as the text prints it\"")
-    return "ok", ("the record's names say so; a line's names keep their own note; a 1989-1998 bill names "
-                  "both ways its names were placed, calls only the others as printed and says named roll "
-                  "calls begin in 1999, one that places none says so; 1999-2022 keep 'without a party'")
+    assert notes(text) == [line + " A name without a party is shown as the text prints it: it could not be "
+                                  "matched to one member who voted that term."], (
+        "a bill of 1999-2022 named off its own line lost its note, or gained the record's, or lost \"A name "
+        f"without a party is shown as the text prints it\": {notes(text)}")
+    return "ok", ("the record's names say so; a line's names keep their own note; a 1989-1998 bill, its "
+                  "names placed, mixed or not, says where they were read and no more; 1999-2022 keep "
+                  "'without a party'")
 
 
 @check("data", "no sponsor row is a heading, a seat, an honorific or a name with a figure in it, and the five senators printed as Rep. are theirs")

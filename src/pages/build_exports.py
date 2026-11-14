@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.70
+# GRANITE_VERSION: 2026-09-10.71
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -495,12 +495,10 @@ def sponsors(out, data, person_of=None):
                  "file or its bill status page for the current term; its "
                  "sponsor record for 2023\u20132024, where each bill's printed "
                  "sponsor line agrees with it; or the sponsor line printed on "
-                 "the bill's text (for 1989–1998, before the roll-call files "
-                 "begin, the name is the General Court's full name for the one "
-                 "person on the bill's own sponsor record whom the printed name "
-                 "fits, or, where it fits more than one, the one the Manual for "
-                 "the General Court of that term seats at the printed seat; and the "
-                 "name as printed where neither places it), "
+                 "the bill's text (for 1989–1998 the name is the General "
+                 "Court's full name where the bill's own sponsor record settles "
+                 "who the printed name is, and the name as printed where it does "
+                 "not), "
                  "where the first name is taken as prime -- every term before "
                  "2023, and the 2023\u20132024 bills whose printed line and record "
                  "disagree; or, on a bill of a term before 2023 that no other "
