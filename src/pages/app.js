@@ -9453,11 +9453,13 @@ function renderMemberHead(m){
   // THE TERMS BEFORE 1999 THE GENERAL COURT'S SPONSOR RECORD PLACES THEM IN
   // (past_terms: {chamber: [term]}; member_links.record_spans is this one's
   // twin), each added to its own chamber, so the line covers every term the TERM
-  // picker offers. The span since 1999 is first to last (spans0), or each
-  // chamber's own spans where a service list joins two. A 1989-1998 term joins
-  // it, or another 1990s term, only where the terms run into each other; a term
-  // the record lacks between a 1990s run and the rest is shown as a gap, never
-  // bridged ("House, 1989–1990, 2003–2010").
+  // picker offers -- and the terms the Manual for the General Court seats them
+  // in with no bill that term (the owner, 14 November 2026; build_site_v2.
+  // manual_seats), which the picker does not. The span since 1999 is first to
+  // last (spans0), or each chamber's own spans where a service list joins two.
+  // A 1989-1998 term joins it, or another 1990s term, only where the terms run
+  // into each other; a term the record lacks between a 1990s run and the rest
+  // is shown as a gap, never bridged ("House, 1989–1990, 2003–2010").
   const pastT=m.past_terms||{};
   const spans=(()=>{
     if(!Object.keys(pastT).length)return spans0;

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.275
+# GRANITE_VERSION: 2026-09-05.276
 """
 Generate the faceted site from real General Court data.
 
@@ -3824,7 +3824,7 @@ def build_officers(out, votes_by_member, legs, today=None):
 
 def build_legislators(out, legs, votes_by_member, towns, unnamed,
                       sponsored=None, bill_year=None, links=None,
-                      former=None, offices=None, index_rows=None):
+                      former=None, offices=None, index_rows=None, manual=None):
     """One JSON per member, plus the index and the town map.
 
     Split out of main(). main() was 808 lines even after the station
@@ -3835,7 +3835,9 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
     under in the other chamber. `offices` is build_officers' {member id:
     office} for the sitting members the record names in one today.
     `index_rows` is the bill index, {(term, bill): row}, whose chips say
-    which of a member's bills passed (member_figures).
+    which of a member's bills passed (member_figures). `manual` is
+    manual_seats': {member id: {chamber: [term]}}, the 1989-1998 terms the
+    Manual for the General Court seats a member in with no bill that term.
     """
     lg, fm = [], []
     # Read off every ballot once, because what one member's attendance needs
@@ -3943,7 +3945,14 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
         raw = (sponsored or {}).get(mid, [])
         # The terms before 1999 that the sponsor record places them in, by chamber: the
         # "On Record" line covers them as the TERM picker does (ML.record_spans).
-        earlier = ML.earlier_terms(raw)
+        # AND THE ONES THE MANUAL FOR THE GENERAL COURT SEATS THEM IN WITH NO BILL THAT TERM
+        # (manual_seats; the owner, 14 November 2026), in the Manual's chamber: past_terms is
+        # both, and manual_terms, in their own file, the Manual's alone, so a check can tell
+        # them apart. The TERM picker still lists the terms of their bills.
+        from_manual = (manual or {}).get(mid) or {}
+        of_bills = ML.earlier_terms(raw)
+        earlier = {ch: sorted(set(of_bills.get(ch, ())) | set(from_manual.get(ch, ())))
+                   for ch in sorted(set(of_bills) | set(from_manual))}
         if earlier:
             row["past_terms"] = earlier
         mine = sponsored_in_order([{k: v for k, v in e.items() if k != "ch"} for e in raw])
@@ -3967,6 +3976,7 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
             # a column anyone is sorted by.
             "attendance": att,
             **({"past_terms": earlier} if earlier else {}),
+            **({"manual_terms": from_manual} if from_manual else {}),
             # EACH TERM AT A GLANCE (member_figures.term_figures), as the
             # person ordered it on 9 October 2026 (item 7 and v7): the
             # session days attended, the roll calls recorded on, the bills
@@ -8640,6 +8650,134 @@ def sponsor_record_said(sponsors, record_chambers):
     return out
 
 
+def _manual_name_keys(name):
+    """The surname keys past_roster._table_name_fits tests a seat list's full name by: its last
+    word, and its last two run together where it has three or more (suffixes left out)."""
+    w = [x for x in re.split(r"[\s,]+", name or "") if x and TS.letters(x) not in TS.SUFFIXES]
+    if len(w) < 2:
+        return set()
+    return {TS.letters(w[-1])} | ({TS.letters(w[-2] + w[-1])} if len(w) > 2 else set())
+
+
+def manual_seats(pages, links=None, sponsored=None, votes_by_member=None, table="auto",
+                 people=None, counties=None):
+    """THE TERMS OF 1989-1998 THE MANUAL FOR THE GENERAL COURT SEATS A MEMBER IN, whether or not
+    they have a bill that term (the owner, 14 November 2026: "If we can address the manual gaps
+    now, I'd rather just do it"). Francis Vincent's line read "House, 1989–1992, 1995–2000",
+    and the 1993 Manual seats Francis C. Vincent at Strafford 14: his bills skip a term his
+    seat does not.
+
+    Returns ({page id: {chamber: [term]}}, [(page id, term, kind, words)]): for each member
+    page, the terms the Manual seats them in that their 1989-1998 bills (`sponsored`, with the
+    `ch` bill_sponsor_list gives) do not show, each in the Manual's chamber; and every seat
+    left out, and why. The terms from 1999 on are the roll calls' and are not touched.
+
+    A SEAT COUNTS where past_roster.term_seat -- the call sponsor_record_chambers makes --
+    seats one of the member's own General Court numbers without doubt: one person of that full
+    name in the term's list, its row read cleanly. A member's numbers are the employee numbers
+    whose site id (the PersonID the legislators table gives a number, else the number) is the
+    page's own or one joined to it (`links`).
+
+    AND NEVER, AS FAR AS THE RECORD CAN TELL, ANOTHER PERSON'S. Left out, and said:
+      - "doubtful": term_seat's own doubt (two people of that full name in the term's list, a
+        row not read cleanly), or the member's numbers seated at two seats, or doubted, in the
+        same term;
+      - "perhaps another person": another number of the General Court's list has the same full
+        name; the Manual's House seat is in a county the member's own record does not name; its
+        chamber is one the member's record has nowhere (their numbers, their votes, their bills,
+        their page); or their bills of that term print the other chamber.
+    A term their bills of the same chamber already show adds nothing. `table`, `people` and
+    `counties` ({number: county}) stand in for generated/manual_seats.json and the files
+    past_sponsors.load_people and past_members.roster read."""
+    import past_roster as PR
+    import past_members as PM
+    table = PR.seat_table() if table == "auto" else table
+    if not pages:
+        return {}, []
+    if not table:
+        return {}, [(None, None, "unread", "no Manual seat list read")]
+    people = people if people is not None else PSP.load_people(with_votes=False)
+    if counties is None:
+        counties = {e: r.get("county") or "" for e, r in PM.roster(PSP.PAST_MEMBERS).items()}
+    abbr = lambda c: ST.COUNTY_ABBR.get(c or "", c or "")
+    by_site, by_key = defaultdict(set), defaultdict(set)
+    for e in people.pm:
+        by_site[str(people.vid(e))].add(e)
+        for k in people.surnames(e):
+            by_key[k].add(e)
+    term_keys = {t: {k for _c, r in PR._manual_rows(table, t) for k in _manual_name_keys(r.get("name"))}
+                 for t in PR.PRE_TERMS}
+    seat_words = lambda s: (f"Senate district {s[2]}" if s[0] == "S"
+                            else f"House {s[1].title()} {s[2]}")
+    out, left = {}, []
+    for pid, m in pages.items():
+        ids = [str(pid), *(str(x) for x in (links or {}).get(pid, []))]
+        nums = set().union(*(by_site.get(i, set()) for i in ids))
+        if not nums:
+            continue
+        bills = ML.earlier_terms((sponsored or {}).get(pid, []))
+        bill_ch = defaultdict(set)
+        for ch, ts in bills.items():
+            for t in ts:
+                bill_ch[t].add(ch)
+        known_ch = ({str(m.get("chamber") or "")[:1]} | {people.pm[e][0] for e in nums} | set(bills)
+                    | {v.get("body") for i in ids for v in (votes_by_member or {}).get(i, ())})
+        known_co = {abbr(m.get("county")), m.get("county_abbr") or ""} | {abbr(counties.get(e))
+                                                                          for e in nums}
+        known_co.discard("")
+        for term in PR.PRE_TERMS:
+            seats, doubts = {}, []
+            for e in sorted(nums):
+                if not people.surnames(e) & term_keys[term]:
+                    continue
+                seat, why, row = PR.term_seat(e, term, people, table)
+                if seat:
+                    seats[e] = (seat, row)
+                elif not why.startswith("no person"):
+                    doubts.append(f"{why} (number {e})")
+            if not seats:
+                left += [(pid, term, "doubtful", d) for d in doubts]
+                continue
+            if doubts or len({s for s, _r in seats.values()}) > 1:
+                left.append((pid, term, "doubtful", "; ".join(
+                    doubts + [f"number {e} at {seat_words(s)}" for e, (s, _r) in sorted(seats.items())])))
+                continue
+            e, (seat, row) = sorted(seats.items())[0]
+            ch, at = seat[0], seat_words(seat)
+            others = sorted(x for k in _manual_name_keys(row.get("name")) for x in by_key.get(k, ())
+                            if x not in nums and PR._table_name_fits(row.get("name"), x, people))
+            why = ""
+            if others:
+                why = (f"number {others[0]} of the General Court's list has the full name "
+                       f"{row.get('name')!r} too")
+            elif ch == "H" and known_co and abbr(row.get("county")) not in known_co:
+                why = (f"{at} is in a county the member's record does not name "
+                       f"({', '.join(sorted(known_co))})")
+            elif ch not in known_ch:
+                why = f"the member's record has no {'Senate' if ch == 'S' else 'House'} anywhere"
+            elif bill_ch.get(term) and ch not in bill_ch[term]:
+                why = f"their bills of {term} print the other chamber"
+            if why:
+                left.append((pid, term, "perhaps another person", f"{row.get('name')} at {at}: {why}"))
+            elif not bill_ch.get(term):
+                out.setdefault(pid, {}).setdefault(ch, []).append(term)
+    return {k: {ch: sorted(ts) for ch, ts in sorted(v.items())} for k, v in out.items()}, left
+
+
+def manual_said(manual, left):
+    """What the build says of manual_seats' answer: how many pages gain how many terms, and how
+    many seats were left out, by why; or that no seat list was read -- never in silence."""
+    if any(k == "unread" for _p, _t, k, _w in left):
+        return ["  members: no Manual seat list read; the 1989-1998 terms on record are their "
+                "bills' alone"]
+    n = sum(len(ts) for v in manual.values() for ts in v.values())
+    kinds = Counter(k for _p, _t, k, _w in left)
+    return [f"  members: {len(manual):,} page(s) take {n:,} term(s) of 1989-1998 their Manual "
+            "for the General Court seats them in, with no bill that term"
+            + (f"; left out: {', '.join(f'{v:,} {k}' for k, v in sorted(kinds.items()))}"
+               if kinds else "")]
+
+
 def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
                       leg_by_sort, leg_by_name, sponsored, seats=None, left=None,
                       term_roster=None, record_chambers=None):
@@ -13019,9 +13157,15 @@ def main():
     # The members' Votes tabs' shared file, once build_bills has said where
     # each roll call's card is (write_rollcall_index).
     write_rollcall_index(out, rollcalls, rc_cards, nobill)
+    # The terms of 1989-1998 each member's Manual for the General Court seats them in with no
+    # bill that term (manual_seats), and what was left out, said.
+    manual, manual_left = manual_seats({**legs, **former}, links, sponsored, votes_by_member)
+    for _said in manual_said(manual, manual_left):
+        print(_said)
     lg = build_legislators(out, legs, votes_by_member, towns, unnamed,
                            sponsored, bill_year, links, former, offices,
-                           index_rows={(r.get("term"), r.get("id")): r for r in index})
+                           index_rows={(r.get("term"), r.get("id")): r for r in index},
+                           manual=manual)
 
     # ---- home page data ----------------------------------------------------
     # Everything the landing page needs, precomputed here where the full records

@@ -31762,7 +31762,14 @@ def _on_record_covers_the_nineties(LP, B):
       description join it ("1989-2000"); the chamber is the one the term's Manual seats them in
       (sponsor_record_chambers), else the row's own, which is their last seat, and the build says
       how many the Manual seated, that it read none, or how many rows it seats in another
-      chamber than their own (sponsor_record_said), never falling back in silence."""
+      chamber than their own (sponsor_record_said), never falling back in silence;
+    - A TERM THE MANUAL SEATS THEM IN WITH NO BILL (manual_seats; the owner, 14 November 2026,
+      for Francis Vincent's "House, 1989-1992, 1995-2000", whom the 1993 Manual seats at
+      Strafford 14): a gap the Manual closes closes in app.js, record_spans, the static sentence
+      and the description; a member with no bill before 1999 whom the Manual seats starts in
+      the 1990s; a doubtful row, a full name another number shares and a seat in a county the
+      member's record never names count for nothing, and are said; build_legislators writes
+      past_terms with them and manual_terms with them alone."""
     import re
     from collections import defaultdict
     ML = imp("member_links")
@@ -31848,9 +31855,92 @@ def _on_record_covers_the_nineties(LP, B):
                display_full="Rep. Dee Speaker (R - Rock 26)", display="Rep. Dee Speaker (R)",
                attendance=att("1999-2000"), served={"first": "12/2/1998", "last": "12/6/2000"},
                past_terms=earlier)
+    # THE TERMS THE MANUAL SEATS THEM IN (manual_seats; the owner, 14 November 2026). Frances
+    # Gapp's bills skip 1993-1994, the term the 1993 Manual seats her at Strafford 14, as
+    # Francis Vincent's do; Nell Newby has no bill before 1999 and the 1995 and 1997 Manuals
+    # seat her. Only those two count. Left out: Dana Doubt's row is not read cleanly; Terry
+    # Twin's two numbers are seated at two seats; Chris Common's full name is another
+    # number's too; Fran Faraway's seat is in a county her record never names; Sam Sena's
+    # is in a Senate his record has nowhere; Bill Billy's bills of that term print the House.
+    clean = lambda name, county, d: {"name": name, "county": county, "district": d,
+                                     "status": "elected", "district_check": "clean"}
+    sen = lambda name, d: {"name": name, "district": d, "status": "elected"}
+    mtable = {"terms": {
+        "1991-1992": {"edition": "1991", "house": [], "senate": [sen("Sam Sena", "5")]},
+        "1993-1994": {"edition": "1993", "senate": [], "house": [
+            clean("Frances C. Gapp", "Strafford", "14"), clean("Chris Common", "Cheshire", "2"),
+            clean("Fran Faraway", "Hillsborough", "9"),
+            dict(clean("Dana Doubt", "Merrimack", "3"), district_check="marks differ from seats")]},
+        "1995-1996": {"edition": "1995", "senate": [sen("Bill Billy", "9")], "house": [
+            clean("Nell Newby", "Belknap", "4"), clean("Terry Twin", "Rockingham", "2"),
+            clean("Teresa Twin", "Rockingham", "3")]},
+        "1997-1998": {"edition": "1997", "senate": [], "house": [clean("Nell Newby", "Belknap", "4")]}}}
+    gc = {"377101": ("Gapp, Frances", "Straf", "H"), "377102": ("Newby, Nell", "Belk", "H"),
+          "377103": ("Doubt, Dana", "Merr", "H"), "377104": ("Common, Chris", "Ches", "H"),
+          "377105": ("Common, Chris", "Ches", "H"), "377106": ("Faraway, Fran", "Coos", "H"),
+          "377107": ("Twin, Terry", "Rock", "H"), "377108": ("Twin, Teresa", "Rock", "H"),
+          "377109": ("Sena, Sam", "Graf", "H"), "377110": ("Billy, Bill", "", "S")}
+    mpeople = B.PSP.People([], {e: {"name": n, "chamber": ch} for e, (n, _c, ch) in gc.items()})
+    page = lambda e: dict(base, id=e, name=gc[e][0], slug=f"m-{e}", county="", district="1")
+    mpages = {e: page(e) for e in ("377101", "377102", "377103", "377104", "377106", "377107",
+                                   "377109", "377110")}
+    mpages["377110"].update(chamber="S")
+    mpages["377101"].update(former=True, display_plain="Rep. Frances Gapp",
+                            display_full="Rep. Frances Gapp (D - Straf 14)",
+                            display="Rep. Frances Gapp (D)", county="Strafford")
+    mpages["377102"].update(display_plain="Rep. Nell Newby", display_full="Rep. Nell Newby (D - Belk 4)",
+                            display="Rep. Nell Newby (D)", county="Belknap")
+    mspons = {"377101": [{"term": t, "ch": "H"} for t in ("1989-1990", "1991-1992", "1995-1996",
+                                                          "1997-1998")],
+              "377110": [{"term": "1995-1996", "ch": "H"}]}
+    mseats, mleft = B.manual_seats(mpages, {"377107": ["377108"]}, mspons, {}, table=mtable,
+                                   people=mpeople, counties={e: c for e, (_n, c, _h) in gc.items()})
+    if mseats != {"377101": {"H": ["1993-1994"]}, "377102": {"H": ["1995-1996", "1997-1998"]}}:
+        bad.append(f"manual_seats does not count a term the Manual seats a member in without "
+                   f"doubt, and only that: {mseats}")
+    if sorted((p, k) for p, _t, k, _w in mleft) != [
+            ("377103", "doubtful"), ("377104", "perhaps another person"),
+            ("377106", "perhaps another person"), ("377107", "doubtful"),
+            ("377109", "perhaps another person"), ("377110", "perhaps another person")]:
+        bad.append(f"manual_seats does not leave out a doubtful row, two seats, a shared full "
+                   f"name, another county, a chamber the record has nowhere and a chamber the "
+                   f"term's bills contradict, saying so: {mleft}")
+    if B.manual_said({}, [(None, None, "unread", "x")]) != [
+            "  members: no Manual seat list read; the 1989-1998 terms on record are their bills' alone"]:
+        bad.append("the build does not say that no Manual seat list was read")
+    # The member's own file, as build_legislators writes it: past_terms the bills' and the
+    # Manual's together, manual_terms the Manual's alone.
+    import contextlib
+    import io
+    import shutil
+    import tempfile
+    mroot = Path(tempfile.mkdtemp(prefix="gr-manual-"))
+    try:
+        (mroot / "legislators").mkdir()
+        with contextlib.redirect_stdout(io.StringIO()):
+            B.build_legislators(mroot, {"377102": mpages["377102"]}, {}, {}, set(),
+                                {"377101": [dict(x, bill="HR1", n="HR 1", title="", year=x["term"][:4],
+                                                 prime=True) for x in mspons["377101"]]},
+                                {}, {}, {"377101": mpages["377101"]}, None, None, manual=mseats)
+        mfile = {e: json.loads((mroot / "legislators" / f"{e}.json").read_text(encoding="utf-8"))
+                 for e in ("377101", "377102")}
+    finally:
+        shutil.rmtree(mroot, ignore_errors=True)
+    if (mfile["377101"].get("past_terms"), mfile["377101"].get("manual_terms"),
+            mfile["377102"].get("past_terms"), mfile["377102"].get("manual_terms")) != (
+            {"H": ["1989-1990", "1991-1992", "1993-1994", "1995-1996", "1997-1998"]},
+            {"H": ["1993-1994"]}, {"H": ["1995-1996", "1997-1998"]},
+            {"H": ["1995-1996", "1997-1998"]}):
+        bad.append("build_legislators does not write the Manual's terms into past_terms, and "
+                   f"alone into manual_terms: {[(e, f.get('past_terms'), f.get('manual_terms')) for e, f in mfile.items()]}")
+    gapp = dict(mpages["377101"], attendance=att("1999-2000"),
+                served={"first": "1/6/1999", "last": "12/6/2000"},
+                past_terms=mfile["377101"].get("past_terms"))
+    newby = dict(mpages["377102"], attendance=att("1999-2000"),
+                 past_terms=mfile["377102"].get("past_terms"))
     got = _app_js("[" + ", ".join(f"scope.renderMemberHead({json.dumps(m)})"
-                                  for m in [*(m for m, _ in cases.values()), dee]) + "]",
-                  names=("renderMemberHead",))
+                                  for m in [*(m for m, _ in cases.values()), dee, gapp, newby])
+                  + "]", names=("renderMemberHead",))
 
     def words(h):
         t = re.sub(r"<[^>]+>", " ", h).replace("&ndash;", "–").replace("&middot;", "·")
@@ -31893,6 +31983,22 @@ def _on_record_covers_the_nineties(LP, B):
             not in LP.describe(dee, dee):
         bad.append(f"the description does not join a term of the record's own rows: "
                    f"{LP.describe(dee, dee)!r}")
+    # Gapp, whose gap the 1993 Manual closes, and Newby, whom the Manual alone puts in the 1990s.
+    for who, m, line, spans, plain in (
+            ("a gap the Manual closes", gapp, "House, 1989–2000", [[1989, 2000]],
+             "On record 1989 to 2000. This page"),
+            ("a member the Manual alone puts in the 1990s", newby, "House, 1995–2000",
+             [[1995, 2000]], "On record: House, 1995–2000")):
+        i = len(cases) + (1 if m is gapp else 2)
+        if got is not None and f"On Record {line}" not in words(got[i]):
+            bad.append(f"app.js, {who}: {words(got[i])[:300]}")
+        if LP.record_spans(m, m) != [{"chamber": "H", "spans": spans}]:
+            bad.append(f"record_spans, {who}: {LP.record_spans(m, m)}")
+        if plain not in words(LP.static_record(m, m)):
+            bad.append(f"the static page, {who}: {words(LP.static_record(m, m))[:200]}")
+    if "served in the New Hampshire House of Representatives, 1989 to 2000." \
+            not in LP.describe(gapp, gapp):
+        bad.append(f"the description, a gap the Manual closes: {LP.describe(gapp, gapp)!r}")
     # (status, words), as main() unpacks every check's answer: a bare None read as an ERROR on
     # the night of 13 November 2026, though the single runs called it a pass.
     assert not bad, "; ".join(bad)
@@ -31901,26 +32007,35 @@ def _on_record_covers_the_nineties(LP, B):
                   "static page say the same; a member with none is as before; a term whose "
                   "bills are all the sponsor record's own rows counts, in the chamber its "
                   "Manual seats them in, else the row's, and joins: \"House, 1989–2000\"; the "
-                  "build says what the Manual seated, or that it read none")
+                  "build says what the Manual seated, or that it read none; a term the Manual "
+                  "seats them in with no bill closes a gap or starts the line in the 1990s, "
+                  "and a doubtful or shared seat counts for nothing")
 
 
 @check("data", "the built site: a member's On Record terms before 1999 (past_terms) are the terms "
-               "of the 1989-1998 bills their page lists, which the TERM picker offers")
+               "of the 1989-1998 bills their page lists, which the TERM picker offers, with the "
+               "terms the Manual seats them in with no bill (manual_terms), and nothing else")
 def _on_record_terms_built():
     """The check above proves the rule on a fixture; this, that the build kept it, on every
     member's own file. The TERM picker offers the term of every bill the page lists
     (app.js recordTerms), and the On Record line, the static sentence and the description say
-    the years before 1999 from past_terms (member_links.earlier_terms), so the two sets must
-    be one. On the candidate for the release of 16 November 2026 they were not, on four pages:
-    the rows the General Court's sponsor record supplies itself had no chamber, and Donna Sytek,
-    Speaker in 1997-1998, read "House, 1989-1996, 1999-2000" with 1997-1998 in her TERM picker,
-    as Robert Johnson (1993-1994), Roland Turgeon (1997-1998) and Dennis Abbott (1995-1996)
-    missed a term each. A site built before 13 November 2026 has no past_terms at all."""
+    the years before 1999 from past_terms (member_links.earlier_terms), so every term of the
+    picker must be in it. On the candidate for the release of 16 November 2026 one was not, on
+    four pages: the rows the General Court's sponsor record supplies itself had no chamber, and
+    Donna Sytek, Speaker in 1997-1998, read "House, 1989-1996, 1999-2000" with 1997-1998 in her
+    TERM picker, as Robert Johnson (1993-1994), Roland Turgeon (1997-1998) and Dennis Abbott
+    (1995-1996) missed a term each. A site built before 13 November 2026 has no past_terms.
+
+    AND THE TERMS THE MANUAL SEATS THEM IN WITH NO BILL (build_site_v2.manual_seats; the owner,
+    14 November 2026), which past_terms carries too and manual_terms alone, by chamber: so
+    past_terms is the bills' terms and manual_terms' together, manual_terms names only terms
+    of 1989-1998 with no bill of the page in them, and each is in past_terms under its own
+    chamber. Nothing else may put a term on the line."""
     d = Path("site") / "legislators"
     if not d.is_dir():
         return "skip", "site/legislators is not here"
     early = lambda t: str(t or "")[:4].isdigit() and int(str(t)[:4]) < 1999
-    bad, pages, early_pages, with_past = [], 0, 0, 0
+    bad, pages, early_pages, with_past, with_manual = [], 0, 0, 0, 0
     for f in sorted(d.glob("*.json")):
         try:
             rec = json.loads(f.read_text(encoding="utf-8"))
@@ -31931,25 +32046,38 @@ def _on_record_terms_built():
             continue
         pages += 1
         listed = {str(x.get("term")) for x in rec.get("sponsored") or () if early(x.get("term"))}
-        said = {str(t) for ts in (rec.get("past_terms") or {}).values() for t in ts or ()}
+        past = rec.get("past_terms") or {}
+        said = {str(t) for ts in past.values() for t in ts or ()}
+        manual = rec.get("manual_terms") or {}
+        seated = {str(t) for ts in manual.values() for t in ts or ()}
         early_pages += bool(listed or said)
-        with_past += bool(rec.get("past_terms"))
-        if listed != said:
-            bad.append(f"{f.stem} ({rec.get('display_full') or rec.get('name') or ''})"
-                       + (f": bills of {', '.join(sorted(listed - said))} and no such term on "
-                          "record" if listed - said else "")
-                       + (f": on record in {', '.join(sorted(said - listed))} with no bill of it"
-                          if said - listed else ""))
+        with_past += bool(past)
+        with_manual += bool(seated)
+        who = f"{f.stem} ({rec.get('display_full') or rec.get('name') or ''})"
+        if listed - said:
+            bad.append(f"{who}: bills of {', '.join(sorted(listed - said))} and no such term on record")
+        if said - listed - seated:
+            bad.append(f"{who}: on record in {', '.join(sorted(said - listed - seated))} with no "
+                       "bill of it and no Manual seat")
+        if {t for t in seated if not early(t)}:
+            bad.append(f"{who}: manual_terms names {', '.join(sorted(t for t in seated if not early(t)))}, "
+                       "a term from 1999 on")
+        if seated & listed:
+            bad.append(f"{who}: manual_terms names {', '.join(sorted(seated & listed))}, a term "
+                       "its bills already show")
+        if any(t not in (past.get(ch) or ()) for ch, ts in manual.items() for t in ts or ()):
+            bad.append(f"{who}: manual_terms {manual} is not in past_terms {past} under its chamber")
     assert pages, "site/legislators holds no member's file"
     # The old site's hint only where it is the explanation: no member's file carries past_terms
     # at all. On a site that has them, the pages named are the finding.
-    assert not bad, (f"{len(bad)} member page(s) whose TERM picker and On Record line disagree "
-                     "before 1999"
+    assert not bad, (f"{len(bad)} finding(s) where a page's On Record terms before 1999 are not "
+                     "its bills' and its Manual seats'"
                      + ("" if with_past else " (a site built before 13 November 2026 has no "
                                              "past_terms: rebuild it)")
                      + ": " + "; ".join(bad[:8]) + (" ..." if len(bad) > 8 else ""))
-    return "ok", (f"{early_pages:,} of {pages:,} member pages list bills of 1989-1998, and each "
-                  "one's On Record terms before 1999 are exactly those bills' terms")
+    return "ok", (f"{early_pages:,} of {pages:,} member pages have On Record terms before 1999, "
+                  f"{with_manual:,} of them with terms the Manual seats them in with no bill; each "
+                  "page's are exactly its bills' terms and those")
 
 
 @check("build", "members-elect: every new member-elect with a page is linked to it on the Officials "
