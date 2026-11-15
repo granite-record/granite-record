@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.926
+# GRANITE_VERSION: 2026-09-04.927
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -117089,6 +117089,59 @@ def _sponsors_csv_seat(text_sponsors):
         assert got.get(("2025-2026", "HB1")) == "S", (
             "the current term's seat was taken from the text over its own roster")
         return "ok", "both builders merge and seat; a 2023-2024 senator is S, the current term keeps its roster"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("naming", "sponsors.csv gives a 1989-1998 sponsor the party the bill's own page draws, and no later "
+       "row a party from a page")
+def _sponsors_csv_early_party():
+    """The owner, 15 November 2026: a 1989-1998 sponsor with a page is drawn with the page's party where
+    every record of them gives that one party (build_site_v2.early_party). data/sponsors.json, which the
+    download reads, carries no party for those years, so sponsors.csv said none beside a page that said R
+    -- a page and the download it promises disagreeing. build_exports.early_parties reads the party from
+    each 1989-1998 bill page itself (site_read.by_bill). Held on a fixture: Sytek on 1993 HB 108 takes the
+    R her page draws; a co-sponsor the page gives no party keeps none; a 2001 row whose raw party is empty
+    takes nothing from its page's D; and with no site nothing is taken."""
+    import site_read as SR
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp())
+    try:
+        for d in ("data", "out", "site/bill/1993", "site/bill/2001"):
+            (root / d).mkdir(parents=True)
+        w = lambda p, o: (root / p).write_text(json.dumps(o), encoding="utf-8")
+        w("data/bills.json", {"1993-1994": {"HB108": {}}, "2001-2002": {"HB5": {}}})
+        row = lambda mid, name, prime: {"member_id": mid, "name": name, "label": name, "party": "",
+                                        "chamber": "H", "prime": prime, "source": "sponsor file"}
+        w("data/sponsors.json", {"1993-1994": {"HB108": [row("365809", "Donna Sytek", True),
+                                                        row("999", "Pat Nobody", False)]},
+                                 "2001-2002": {"HB5": [row("365809", "Donna Sytek", True)]}})
+        page = lambda sps: (f'<!doctype html><html>{SR.INLINE_OPEN}'
+                            + json.dumps({"sponsors": sps}) + f'{SR.INLINE_CLOSE}</html>')
+        (root / "site/bill/1993/hb108.html").write_text(page([
+            {"member_id": "365809", "party": "R", "display_full": "Rep. Donna Sytek (R - Rock 26)"},
+            {"member_id": "999", "party": "", "display_full": "Rep. Pat Nobody"}]), encoding="utf-8")
+        (root / "site/bill/2001/hb5.html").write_text(page([{"member_id": "365809", "party": "D"}]),
+                                                      encoding="utf-8")
+
+        def run(with_site):
+            r = _run([sys.executable, "-c",
+                      "import sys; sys.path.insert(0, sys.argv[1]); import _paths; "
+                      "from pathlib import Path; import build_exports as BE; "
+                      "BE.sponsors(Path('out'), 'data', None, " + ("Path('site')" if with_site else "None") + ")",
+                      str(here)], cwd=root, capture_output=True, text=True, timeout=60)
+            assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+            with (root / "out" / "sponsors.csv").open(encoding="utf-8", newline="") as fh:
+                return {(x["term"], x["bill"], x["member_id"]): x["party"] for x in csv.DictReader(fh)}
+        got = run(True)
+        assert got.get(("1993-1994", "HB108", "365809")) == "R", (
+            f"sponsors.csv gives Sytek on 1993 HB 108 {got.get(('1993-1994', 'HB108', '365809'))!r}, "
+            "not the R her page draws")
+        assert got.get(("1993-1994", "HB108", "999")) == "", "a sponsor the page gives no party took one"
+        assert got.get(("2001-2002", "HB5", "365809")) == "", "a row after 1998 took its party from a page"
+        assert run(False).get(("1993-1994", "HB108", "365809")) == "", "with no site a party was taken"
+        return "ok", ("a 1993 sponsor takes the party the bill's page draws, one it gives none keeps none, "
+                      "a 2001 row takes nothing from a page, and no site takes nothing")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 

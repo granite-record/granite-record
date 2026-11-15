@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.71
+# GRANITE_VERSION: 2026-09-10.72
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -439,8 +439,29 @@ def proceedings_table(out, site, table=None, histories=None):
                  "docket entered.")
 
 
-def sponsors(out, data, person_of=None):
+def early_parties(site):
+    """{(year folder, BILLID, member id): party} for the sponsors of 1989-1998 that a
+    bill's own page draws with a party: build_site_v2.early_party gives one who has a page
+    the page's party where every record of them gives that one party (the owner, 15
+    November 2026), which data/sponsors.json, read below, does not carry. Read from the
+    pages themselves (site_read.by_bill), so the download says what each page says. {}
+    where there is no site."""
+    if not site:
+        return {}
+    out = {}
+    for (year, bid), rec in SR.by_bill(site, years=range(1989, 1999), fields=("sponsors",)).items():
+        for s in rec.get("sponsors") or []:
+            if s.get("party") and s.get("member_id"):
+                out[(str(year), bid, str(s["member_id"]))] = s["party"]
+    return out
+
+
+def sponsors(out, data, person_of=None, site=None):
     sp = load(Path(data) / "sponsors.json", {})
+    # AND THE SAME PARTY, BEFORE 1999 (15 November 2026): a row of 1989-1998 whose
+    # sponsor's party the bill's page gives (early_parties) carries it here; a row
+    # the page gives none keeps none, and no later row takes anything from a page.
+    early = early_parties(site)
     # The same merge build_site_v2 makes, or the download would name nobody for
     # the bills whose pages name their sponsors from the bill's own text.
     #
@@ -481,9 +502,14 @@ def sponsors(out, data, person_of=None):
     for term, bills_ in (sp.items() if isinstance(sp, dict) else []):
         for bill, people in (bills_.items() if isinstance(bills_, dict) else []):
             for m in (people if isinstance(people, list) else []):
+                party = m.get("party", "")
+                if not party and str(term)[:4] < "1999" and early:
+                    mid = str(m.get("member_id") or "")
+                    party = next((early[k] for k in ((str(term)[:4], bill, mid), (str(term)[5:9], bill, mid))
+                                  if mid and k in early), "")
                 rows.append([term, bill, m.get("member_id", ""),
                              m.get("label") or m.get("name", ""),
-                             m.get("party", ""), m.get("chamber", ""),
+                             party, m.get("chamber", ""),
                              1 if m.get("prime") else 0, m.get("role", ""),
                              m.get("source") or "sponsor file",
                              person_of.get(str(m.get("member_id") or ""), "")])
@@ -1602,7 +1628,7 @@ def main():
     joined = people_join(site, a.data)
     person_of = person_map(joined)
     tables = [bills(out, site), legislators(out, site, person_of), rollcalls(out),
-              proceedings_table(out, site), sponsors(out, a.data, person_of)]
+              proceedings_table(out, site), sponsors(out, a.data, person_of, site)]
     tables += votes(out, a.data)
 
     over = [t for t in tables if t["over_cap"]]
