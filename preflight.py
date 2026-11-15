@@ -19854,6 +19854,67 @@ def _status_own_term(build_data):
     return "ok", "2027 bills take nothing from 2025-2026, and their own slice once it exists"
 
 
+@check("status", "a bill keeps the day its request was made a bill: the database's DateLSRBill as "
+                 "a day, through bill_status.json onto the bill's own term's record and no other's",
+       needs=("fetch_status_db", "build_data"))
+def _status_made_bill(fetch_status_db, build_data):
+    """The owner, 15 November 2026: a bill request's Filed stop is dated by
+    the day its bill was made one, Legislation.DateLSRBill, which the day
+    files leave out (dayfiles_from_db.LSR_MAP) as the General Court's export
+    does. Held: fetch_status_db selects it as a day, YYYY-MM-DD with a blank
+    for none, in the place COLS gives made_bill; record() carries it into
+    bill_status.json's shape, a blank as a blank; it is one of the FILLS, so
+    a blank is filled and a day on file stays. build_data's fill_from_status,
+    which main() gives status_for_session's records, puts it on the bill's
+    record where the record has none, from the bill's own term's status
+    record: a 2027 bill numbered like a 2025 one takes nothing of 2025's, a
+    blank gives nothing, and a day the record has stays."""
+    FS, BD = fetch_status_db, build_data
+    # The SELECT's columns, in order: split at the commas outside brackets.
+    sel = FS.SQL.split("SELECT", 1)[1].split("FROM Legislation", 1)[0]
+    cols, depth, cur = [], 0, ""
+    for ch in sel:
+        depth += (ch == "(") - (ch == ")")
+        if ch == "," and not depth:
+            cols.append(re.sub(r"\s+", "", cur))
+            cur = ""
+        else:
+            cur += ch
+    cols.append(re.sub(r"\s+", "", cur))
+    assert len(cols) == len(FS.COLS) and "made_bill" in FS.COLS, (
+        f"fetch_status_db selects {len(cols)} columns and COLS names {len(FS.COLS)}: {FS.COLS}")
+    said = cols[FS.COLS.index("made_bill")]
+    assert said == "ISNULL(FORMAT(DateLSRBill,'yyyy-MM-dd'),'')", (
+        f"made_bill is selected as {said!r}, not DateLSRBill as a yyyy-MM-dd day, blank for none")
+    assert "made_bill" in FS.FILLS, "made_bill is not one of the fields fetch_status_db fills"
+    row = dict(dict.fromkeys(FS.COLS, ""), bill="HB45", year="2027", body="H",
+               made_bill="2026-12-01")
+    assert FS.record(row, {}, {}).get("made_bill") == "2026-12-01" \
+        and FS.record({**row, "made_bill": ""}, {}, {}).get("made_bill") == "", (
+        "fetch_status_db's record() does not carry the column's day as made_bill, or not a blank as one")
+    raw = {"2025-2026": {"HB1": {"title": "the 2025 budget", "made_bill": "2024-12-19"},
+                         "HB2": {"made_bill": "2025-11-20"}},
+           "2027-2028": {"HB2": {"made_bill": "2026-12-01"}, "HB3": {"made_bill": ""},
+                         "HB4": {"made_bill": "2026-12-05"}}}
+    bills = {"HB1": {"lsr_year": "2027", "title": "the 2027 budget"}, "HB2": {"lsr_year": "2027"},
+             "HB3": {"lsr_year": "2028"}, "HB4": {"lsr_year": "2027", "made_bill": "2026-11-30"}}
+    st, missing = BD.status_for_session(raw, bills)
+    took = BD.fill_from_status(bills, st)
+    got = {b: r.get("made_bill") for b, r in bills.items()}
+    assert got == {"HB1": None, "HB2": "2026-12-01", "HB3": None, "HB4": "2026-11-30"} \
+        and took["made_bill"] == 1 and not missing, (
+        f"the bills' made_bill after the fill: {got} ({dict(took)}); wanted 2027's HB 2 to take its "
+        "own term's day and nothing of 2025's, a blank to give none, and a day on file to stay")
+    assert not BD.fill_from_status({}, {"HB9": {"made_bill": "2026-12-01"}}), (
+        "a status record of a bill the session does not hold filled something")
+    src = _paths.locate("build_data.py").read_text(encoding="utf-8")
+    i = src.find("st, no_slice = status_for_session(raw, bills)")
+    assert 0 <= i < src.find("took = fill_from_status(bills, st)"), (
+        "build_data's main no longer fills the bills through fill_from_status from status_for_session's records")
+    return "ok", ("DateLSRBill selected as a yyyy-MM-dd day and carried as made_bill, one of the FILLS; "
+                  "a bill takes its own term's day where it has none, never another term's, never a blank")
+
+
 @check("status", "stripping the page furniture never deletes a line of the bill")
 def _chrome_spares_statute():
     """682 words of statute were deleted from five bills by a menu heading.
@@ -116268,6 +116329,89 @@ def _request_became_bill(build_lsrs):
     assert "rows_from(lsrs, roster(site), became, year, winners," in src, \
         "build_lsrs no longer gives rows_from the bills"
     return "ok", "a request a bill carries reads as that bill; one that only left the list is withdrawn"
+
+
+@check("build", "a bill request's Filed stop carries the day its bill was made one, on its row's rail, "
+       "the page's and the card's; none where the bill gives none, and Requested never one",
+       needs=("build_lsrs",))
+def _request_filed_day(build_lsrs):
+    """The owner, 15 November 2026: Filed is dated by the day the text was
+    published, approved as the day the General Court's database says the
+    request was made a numbered bill (Legislation.DateLSRBill), which
+    build_data keeps on the bill's record as made_bill (_status_made_bill).
+    Held, on build_lsrs.py run as the build runs it on a data/bills.json: a
+    request whose bill gives the day is "filed" that day and its row's
+    `rail` has it on Filed, reached; a request whose bill gives none, or
+    something that is not a day, is Filed reached with no day; another
+    term's bill of the request's LSR number lends nothing; no row dates
+    Requested, which no source gives a day for. The page's rail
+    (build_request_pages.rail_of) and the card's (app.js lsrCardHtml) draw
+    the day under Filed and say it, and nothing under Requested. A request
+    that is a bill has no page of its own (its address forwards to the
+    bill's), so its card is where a reader sees the day."""
+    import build_request_pages as RP
+    L = build_lsrs
+    req = lambda n, **k: {"lsr": f"2027-{n:04d}", "session": 2027, "body": "HB", "title": f"t{n}",
+                          "sponsor": "", "withdrawn": False, **k}
+    bills = {"2025-2026": {"HB45": {"lsr_year": "2025", "lsr_num": "1", "made_bill": "2024-12-19"},
+                           "HB60": {"lsr_year": "2025", "lsr_num": "3", "made_bill": "2024-12-20"}},
+             "2027-2028": {"HB45": {"lsr_year": "2027", "lsr_num": "1", "made_bill": "2026-12-01"},
+                           "SB7": {"lsr_year": "2027", "lsr_num": "0002"},
+                           "HB9": {"lsr_year": "2027", "lsr_num": "4", "made_bill": "12/1/2026"}}}
+    tmp = Path(tempfile.mkdtemp(prefix="gr-request-filed-day-"))
+    try:
+        (tmp / "site" / "idx").mkdir(parents=True)
+        (tmp / "data").mkdir()
+        (tmp / "site" / "meta.json").write_text(json.dumps({"terms": ["2027-2028"]}), encoding="utf-8")
+        (tmp / "lsrs.json").write_text(json.dumps([req(1), req(2, withdrawn=True), req(3), req(4)]),
+                                       encoding="utf-8")
+        (tmp / "data" / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
+        r = _sealed_run([sys.executable, _paths.script("build_lsrs.py"), "--site", "site"],
+                        cwd=str(tmp), capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+        rows = json.loads((tmp / "site" / "idx" / "2027-requests.json").read_text(encoding="utf-8"))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    by = {x["n"]: x for x in rows}
+    one, two, three, four = (by[f"LSR 2027-000{i}"] for i in (1, 2, 3, 4))
+
+    def stops(x):
+        return [(s["stop"], s["mark"], s.get("date")) for s in x["rail"]]
+    assert one.get("filed") == "2026-12-01" and stops(one) == [
+        ("Requested", "p", None), ("Filed", "p", "2026-12-01"), ("Introduced", "-", None)], (
+        f"a request whose bill was made one on 1 December 2026: filed {one.get('filed')!r}, rail {stops(one)}")
+    assert two.get("filed") is True and four.get("filed") is True \
+        and stops(two)[1] == stops(four)[1] == ("Filed", "p", None), (
+        "a request whose bill gives no day, or no day that is one, is not Filed reached with no day: "
+        f"{two.get('filed')!r} {stops(two)}, {four.get('filed')!r} {stops(four)}")
+    assert three["status"] == "Requested" and "filed" not in three \
+        and stops(three)[1] == ("Filed", "-", None), (
+        f"a request another term's bill shares an LSR number with reads {three['status']}, "
+        f"filed {three.get('filed')!r}, rail {stops(three)}")
+    assert not [x["n"] for x in rows for s in x["rail"] if s["stop"] != "Filed" and "date" in s], (
+        "a request's rail dates a stop other than Filed")
+    # The page's rail, as a page draws it.
+    page = RP.rail_of(one)
+    cells = page.split('<span class="stop ')[1:]
+    assert len(cells) == 3 and "<small>" not in cells[0] + cells[2] \
+        and '<small>Dec 1,<span class="ry"> 2026</span></small>' in cells[1] \
+        and 'aria-label="Requested: made; Filed: text public, December 1, 2026; Introduced"' in page, (
+        f"the page's rail does not put 1 December 2026 under Filed alone: {page}")
+    assert "<small>" not in RP.rail_of(two) + RP.rail_of(four), (
+        "the page's rail shows a day for a request whose bill gives none")
+    # The card's, in node: the page's rail, the same stops and the same day.
+    js = ("(() => { scope.setMeta({requests: {term: '2027-requests', year: 2027, abbr: "
+          + json.dumps(L.ABBR) + "}}); return [" + ", ".join(
+              "scope.lsrCardHtml(" + json.dumps(x) + ")" for x in (one, two)) + "]; })()")
+    got = _app_js(js, names=("lsrCardHtml", "setMeta: x => (META = x)"))
+    if got is None:
+        return "skip", ("the rows and the page's rail hold; node, app.js or the stub is not here "
+                        "for the card")
+    assert page in got[0] and RP.rail_of(two) in got[1], (
+        f"a request's card does not draw the page's rail, its Filed day with it: {got[0][:900]!r}")
+    return "ok", ("Filed carries the day the bill was made one on the row, the page's rail and the "
+                  "card, and none where the bill gives none or another term's bill shares the "
+                  "number; Requested is never dated")
 
 
 @check("build", "a bill request's status is Requested or Filed (or Withdrawn); its History is the earlier "

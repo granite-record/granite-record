@@ -2132,9 +2132,20 @@ someone else's now.
 A request's card is a bill card drawn from its row (`app.js`, `lsrCardHtml`),
 and its page a bill page's head (`build_request_pages.head`). Both draw the
 row's own three stops, `rail` (`build_lsrs.rail_stops`: Requested, Filed,
-Introduced), with the bill's rail component; Filed carries the day the text was
-published where the row has one, and Requested carries none, since neither the
-list nor the General Court's public database gives the day a request was made.
+Introduced), with the bill's rail component. Filed is reached once the
+request's bill exists, and carries the day the bill was made one where the
+bill's record gives it: `made_bill`, the General Court's database's
+`Legislation.DateLSRBill` as a day, which the night's `fetch_status_db.py`
+reads into `bill_status.json`, `build_data.fill_from_status` puts on the
+bill's own term's record in `data/bills.json`, and `build_lsrs.filed_days`
+reads off the bill `became_bills` names (the owner's approval of 15 November
+2026, as the day the text was published). A bill with no such day leaves
+Filed reached and undated. A request that is a bill has no page of its own,
+its address forwarding to the bill's, so its card is where the day shows.
+Requested carries none, since neither the list nor the General Court's public
+database gives the day a request was made. Next session's bills reach
+`data/bills.json` only once the New term run has turned the installed files,
+so no request is Filed before then.
 The card has no Follow: a request is followed from its page, after Cite, as a
 bill is. The page's number marks LSR for the site's term popover
 (`components.term_mark`, glossary.json's entry), the mechanism a bill number's

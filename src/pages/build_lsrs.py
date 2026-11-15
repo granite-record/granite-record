@@ -70,6 +70,7 @@ sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py
 import _paths  # noqa: E402,F401
 
 import argparse
+import datetime
 import json
 import re
 import unicodedata
@@ -402,6 +403,14 @@ def became_bills(bills, lsrs):
     and a record's lsr_year and lsr_num are the request's year and number --
     matched as integers, the list padding "0001" where the bills write none.
     """
+    return {num: re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", bid)
+            for num, (bid, _rec) in request_bills(bills, lsrs).items()}
+
+
+def request_bills(bills, lsrs):
+    """{request number: (bill, its record)} for the requests that are bills
+    now, matched as became_bills says: became_bills and filed_days both read
+    this, so the day a request is dated by is its own bill's."""
     want = set()
     for r in lsrs:
         m = LSR_NO.match(str(r.get("lsr") or "").strip())
@@ -414,8 +423,33 @@ def became_bills(bills, lsrs):
         for bid, rec in byb.items():
             y, n = str(rec.get("lsr_year") or ""), str(rec.get("lsr_num") or "")
             if n.isdigit() and (y, int(n)) in want:
-                have[(y, int(n))] = re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", bid)
+                have[(y, int(n))] = (bid, rec)
     return {f"{y}-{n:04d}": b for (y, n), b in have.items()}
+
+
+# A day as a bill's record writes made_bill.
+ISO_DAY = re.compile(r"^\d{4}-\d\d-\d\d$")
+
+
+def filed_days(bills, lsrs):
+    """{request number: "YYYY-MM-DD"} for the requests that are bills now
+    whose bill's record gives the day it was made one: "made_bill", the
+    General Court's database's Legislation.DateLSRBill, which
+    fetch_status_db.py reads into bill_status.json and build_data.py keeps on
+    the bill (the owner's approval, 15 November 2026, for the day Filed is
+    dated by). A record with no day, or with anything that is not a day,
+    gives none, and its Filed stop stays reached and undated."""
+    out = {}
+    for num, (_bid, rec) in request_bills(bills, lsrs).items():
+        day = str(rec.get("made_bill") or "").strip()
+        if not ISO_DAY.match(day):
+            continue
+        try:
+            datetime.date.fromisoformat(day)
+        except ValueError:
+            continue
+        out[num] = day
+    return out
 
 
 def route(body):
@@ -478,11 +512,13 @@ def rail_stops(r):
     over -- so it is never reached here.
 
     THE DAYS. Filed carries the day the text became public where the row has
-    it ("filed", "YYYY-MM-DD", which rows_from carries over from the source
-    row once the source gives one). Requested carries none: the list gives no
-    day a request was made, and the General Court's public database gives
-    "True" where the day it was entered would be. A stop with no day shows
-    none, never a guess."""
+    it ("filed", "YYYY-MM-DD"): the day the request's bill was made one, which
+    rows_from takes from the bill's record (filed_days: made_bill, the General
+    Court's database's Legislation.DateLSRBill, the owner's approval of 15
+    November 2026), or the source row's own "filed" once the source gives one.
+    Requested carries none: the list gives no day a request was made, and the
+    General Court's public database gives "True" where the day it was entered
+    would be (DateLSREntered). A stop with no day shows none, never a guess."""
     gone = bool(r.get("withdrawn"))
     filed = r.get("filed") and not gone
     day = r["filed"] if filed and isinstance(r["filed"], str) and r["filed"][:1].isdigit() else ""
@@ -544,11 +580,13 @@ def history_of(title, year, earlier):
             if str(b.get("term") or "")[:4].isdigit() and int(str(b["term"])[:4]) < int(year)]
 
 
-def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None):
+def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None, filed_on=None):
     """The rows of idx/<year>-requests.json and the sponsor names that matched
-    nobody. `year` is the session they are listed under (newest_session);
-    `winners` (election_winners) settle a sponsor the roster did not;
-    `earlier` (earlier_bills) is what a request's History is read from."""
+    nobody. `became` (became_bills) names each request's bill; `year` is the
+    session they are listed under (newest_session); `winners`
+    (election_winners) settle a sponsor the roster did not; `earlier`
+    (earlier_bills) is what a request's History is read from; `filed_on`
+    (filed_days) is the day each request's bill was made one."""
     year = year or newest_session(lsrs)[0]
     find = winner_finder(winners) if winners else (lambda name, body: None)
     term, _label = requests_term(year)
@@ -558,7 +596,8 @@ def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None):
         if not num:
             continue
         m = LSR_NO.match(num)
-        bill = (became or {}).get(f"{m.group(1)}-{int(m.group(2)):04d}" if m else num, "")
+        key = f"{m.group(1)}-{int(m.group(2)):04d}" if m else num
+        bill = (became or {}).get(key, "")
         body = str(r.get("body") or "").upper()
         name = str(r.get("sponsor") or "").strip()
         hit = who.get(_fold(name))
@@ -619,8 +658,11 @@ def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None):
             **({"introduced": bill} if bill else {}),
             # "filed": the text is public (true, or its day) -- the stop Filed
             # on the request's rail. The list carries nothing of the kind
-            # yet; this passes it on when the source gives it.
-            **({"filed": r["filed"]} if r.get("filed") else {"filed": True} if bill else {}),
+            # yet; this passes it on when the source gives it. Else, once the
+            # request is a bill, the day the bill was made one where its
+            # record gives it (filed_on), and true where it does not.
+            **({"filed": r["filed"]} if r.get("filed") else
+               {"filed": (filed_on or {}).get(key) or True} if bill else {}),
             # HISTORY (the owner, 13 November 2026): an earlier bill, of any
             # term on the site, whose title is this request's.
             **({"history": h} if (h := history_of(r.get("title"), session_of(r) or year,
@@ -802,16 +844,16 @@ def main():
     term, label = requests_term(year)
 
     bp = Path(a.bills)
-    became = became_bills(json.loads(bp.read_text(encoding="utf-8")) if bp.exists() else {},
-                          lsrs)
+    bills = json.loads(bp.read_text(encoding="utf-8")) if bp.exists() else {}
+    became, days = became_bills(bills, lsrs), filed_days(bills, lsrs)
     winners, said = load_winners(site, a.collected)
     print(f"  {said}")
     meta0 = json.loads((site / "meta.json").read_text(encoding="utf-8")) if (site / "meta.json").exists() else {}
     rows, unmatched = rows_from(lsrs, roster(site), became, year, winners,
-                                earlier_bills(site, meta0.get("terms")))
+                                earlier_bills(site, meta0.get("terms")), days)
     assert rows, "no request survived shaping, though the source had some"
     with_sponsor_names(rows, page_names(site))
-    with_topics(rows, json.loads(bp.read_text(encoding="utf-8")) if bp.exists() else {})
+    with_topics(rows, bills)
     gone, undecided = not_returning(site)
     rows, dropped = drop_unreturned(rows, gone)
     assert rows, "every request was dropped as a not-returning member's"
@@ -877,7 +919,8 @@ def main():
               "their race not decided: " + ", ".join(stuck))
     if became:
         print(f"  {len(became)} introduced as bills, each marked with its bill, its page "
-              "forwarding to the bill's")
+              f"forwarding to the bill's; {len(days)} with the day the bill was made one, "
+              "on Filed")
     if retired:
         print(f"  filing is complete: {retired} request page(s) retired, each forwarding to "
               "its prime sponsor's page")

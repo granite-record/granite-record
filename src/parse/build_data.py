@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.62
+# GRANITE_VERSION: 2026-09-04.63
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -1444,6 +1444,32 @@ def status_for_session(raw, bills):
     return out, missing
 
 
+# What a bill's record takes from its status record besides the title, each
+# only where the record has none. made_bill is the day the request was made a
+# numbered bill, YYYY-MM-DD, which fetch_status_db.py reads from the General
+# Court's database (Legislation.DateLSRBill) and nothing else here carries:
+# build_lsrs.filed_days dates a bill request's Filed stop by it.
+STATUS_FILLS = ("committee_code", "chapter", "text_pdf", "made_bill")
+
+
+def fill_from_status(bills, st):
+    """Each bill's record filled from its status record: `st` is
+    status_for_session's {bill: record}, so each bill reads its own term's. The
+    title, and STATUS_FILLS, each only where the record has none; a bill
+    `bills` does not hold takes nothing. Returns a Counter of the fields
+    filled, by name."""
+    took = Counter()
+    for bill, v in st.items():
+        rec = bills.get(bill)
+        if rec is None:
+            continue
+        for k in ("title",) + STATUS_FILLS:
+            if v.get(k) and not rec.get(k):
+                rec[k] = v[k]
+                took[k] += 1
+    return took
+
+
 def designation_of(bill, a, fn, local):
     """(flags, suffix, designation) for a bill number and its three flags:
     the appropriation, the fiscal note and the local impact. The suffixes go
@@ -2302,14 +2328,13 @@ def main():
                  "source": "bill status page", "prime_inferred": True}
                 for i, x in enumerate(v.get("sponsors") or [])]
 
+        # The title and STATUS_FILLS, made_bill among them, where the bill's
+        # own record has none.
+        took = fill_from_status(bills, st)
+        added_t = took["title"]
+        print(f"bill status page: {took['made_bill']:,} of {len(bills):,} bills took the day "
+              "their request was made a bill (made_bill)")
         for bill, v in st.items():
-            if bill in bills:
-                if v.get("title") and not bills[bill].get("title"):
-                    bills[bill]["title"] = v["title"]
-                    added_t += 1
-                for k in ("committee_code", "chapter", "text_pdf"):
-                    if v.get(k) and not bills[bill].get(k):
-                        bills[bill][k] = v[k]
             if not v.get("sponsors") or (sponsors.get(bill)):
                 continue
             sponsors[bill] = status_sponsors(v)
