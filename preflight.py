@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.929
+# GRANITE_VERSION: 2026-09-04.930
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31856,6 +31856,52 @@ def _requests_not_returning():
         "the not-returning rule reads a name")
     return "ok", ("dropped by slug and forwarded; a returning member's withdrawn, a standing request, "
                   "an undecided race and an unidentified sponsor all kept")
+
+
+# A NAME THAT READS AS A LIST: a separator, a role mark left in, or two names joined.
+LSR_LISTLIKE = re.compile(r"[;,()]|\band\b|\s&\s")
+
+
+@check("build", "the request list's Sponsors column is read as a prime sponsor and co-sponsors: the one "
+                "marked Prime first, each other name a co-sponsor, wherever it stands")
+def _lsr_sponsors_split():
+    """The owner, 15 November 2026: the site must stay up to date through the refactor, "including
+    adding bill text from LSR drafts and co-sponsors once those are public". Every request carries one
+    name today, so fetch_lsrs.split_sponsors has never met a list; it splits the column on semicolons
+    and takes the name marked (Prime) as the prime sponsor. Held: one name; a prime and two
+    co-sponsors; the prime written last; no mark at all (the first name is the prime); and no name
+    keeps its role mark. The data check below says, on the night, when a list is not split."""
+    FL = imp("fetch_lsrs")
+    cases = {"Ellen Read (Prime)": ("Ellen Read", []),
+             "Ellen Read (Prime); Bob Roe; Jane Doe": ("Ellen Read", ["Bob Roe", "Jane Doe"]),
+             "Bob Roe; Jane Doe (Prime)": ("Jane Doe", ["Bob Roe"]),
+             "Bob Roe;Jane Doe": ("Bob Roe", ["Jane Doe"]), "": ("", [])}
+    got = {k: FL.split_sponsors(k) for k in cases}
+    bad = {k: v for k, v in got.items() if tuple(v) != cases[k] and list(v) != list(cases[k])}
+    assert not bad, f"split_sponsors reads {bad}"
+    assert not any(LSR_LISTLIKE.search(n) for p, co in got.values() for n in [p, *co] if n), (
+        f"a name kept a separator or its role mark: {got}")
+    return "ok", "one name; a prime and co-sponsors, in either order; no mark; no name keeps a separator"
+
+
+@check("data", "every bill request's prime sponsor and co-sponsors read as one person's name each, not "
+               "a list the Sponsors column's form left unsplit")
+def _lsr_sponsor_names_are_names():
+    """The night's lsrs.json, where it is here: a sponsor or co-sponsor name holding a semicolon, a
+    comma, a parenthesis, "and" or an ampersand is a list fetch_lsrs.split_sponsors did not split, or
+    a role mark it did not take off -- the sign that the request list began printing co-sponsors in a
+    form nobody has yet seen (_lsr_sponsors_split). On the night it warns (RECORD_CHECKS): the site
+    goes on, and the run's page says which requests to look at."""
+    p = Path("lsrs.json")
+    if not p.exists():
+        return "skip", "no lsrs.json here"
+    rows = json.loads(p.read_text(encoding="utf-8"))
+    odd = [f"{r.get('lsr')}: {n!r}" for r in rows for n in [r.get("sponsor") or "", *(r.get("cosponsors") or [])]
+           if n and LSR_LISTLIKE.search(str(n))]
+    assert not odd, (f"{len(odd)} request sponsor name(s) read as a list, e.g. {odd[:5]}: the request list's "
+                     "Sponsors column may print co-sponsors in a form split_sponsors does not read")
+    co = sum(len(r.get("cosponsors") or []) for r in rows)
+    return "ok", f"{len(rows):,} requests, each sponsor one name; {co:,} co-sponsors listed"
 
 
 @check("build", "a new member-elect gets a provisional page, noindex and with no id, at the roster's "
@@ -132290,7 +132336,10 @@ RECORD_CHECKS = {
     "_elect_2024_read_again", "_elect_2024_scored",
     # How long the night lets the record stand still, against the export's
     # finished dockets (18 October 2026): the record's history, never the site.
-    "_still_days_from_history"}
+    "_still_days_from_history",
+    # The request list's Sponsors column printing co-sponsors in a form not yet
+    # seen (15 November 2026): the source's shape, said on the run's page.
+    "_lsr_sponsor_names_are_names"}
 REMINDERS ={"_probate_after_the_vote", "_session_over_current", "_town_clerks_reread",
             "_officials_rechecked", "_town_sources_fresh"}
 
