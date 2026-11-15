@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.923
+# GRANITE_VERSION: 2026-09-04.924
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -136817,7 +136817,8 @@ def _requests_search_by_name():
 
 
 @check("build", "a bill request gets its sponsor's party and, where its title says enough, a topic of the "
-       "site's own, marked as the title's; Miscellaneous where the title does not")
+       "site's own, marked as the title's, learned from every term's official code; Miscellaneous where the "
+       "title does not")
 def _requests_party_and_topic():
     """The owner, 12 November 2026. build_lsrs writes `sponsor_party` from the roster's label (a sitting
     member's and a member-elect's alike) and `cosp`, and request_topics gives each request a topic from its
@@ -136854,8 +136855,9 @@ def _requests_party_and_topic():
             w = words[t]
             bills["2025-2026"][f"HB{len(bills['2025-2026']) + 1}"] = {
                 "title": f"relative to {w[i % 4]} {w[(i + 1) % 4]} {w[(i + 2) % 4]} matters.", "subject": t}
-    model = RT.train_on(bills)
-    assert model is not None and RT.train_on({"2023-2024": {"HB1": {"title": "x", "subject": "Elections"}}}) is None, (
+    model = RT.train_on(bills, subjects={}, codes={})
+    assert model is not None and RT.train_on({"2023-2024": {"HB1": {"title": "x", "subject": "Elections"}}},
+                                             subjects={}, codes={}) is None, (
         "no labelled term should leave no model")
     reqs = [{"title": "relative to voter ballot election procedures.", "n": "a"},
             {"title": "relative to business tax rate revenue.", "n": "b"},
@@ -136878,11 +136880,34 @@ def _requests_party_and_topic():
     assert [(r["topic"], r["topic_by"]) for r in bare] == [
         ("Miscellaneous", "title"), ("Study Committees and Commissions", "title")], (
         f"with no model to ask, a request is not Miscellaneous or a study title loses its rule: {bare}")
+    # FROM EVERY TERM'S OFFICIAL CODE (15 November 2026): an archived bill whose LSR the General Court's
+    # code names (official_topics.adopt) teaches the model what the current term alone does not; the
+    # current term counts CURRENT_WEIGHT times; an LSR the database files under another bill number, or a
+    # code with no name, teaches nothing; and the caller's bills are never changed.
+    arch = {"2025-2026": bills["2025-2026"],
+            "2001-2002": {f"HB{900 + i}": {"title": "relative to snowmobile trail grooming.", "lsr_year": 2001,
+                                           "lsr_num": 100 + i} for i in range(12)}}
+    good = {(2001, 100 + i): ("FGA", f"HB{900 + i}") for i in range(12)}
+    names = {"FGA": {"name": "Fish & Game"}}
+    m2 = RT.train_on(arch, subjects=names, codes=good)
+    assert m2["from"] == {"current": 90, "archived": 12} and RT.CURRENT_WEIGHT == 3, m2.get("from")
+    assert m2["n"] == 90 * RT.CURRENT_WEIGHT + 12, f"the model learned from {m2['n']} rows"
+    def asked(m):
+        r = {"title": "relative to snowmobile trail grooming.", "n": "g"}
+        RT.assign([r], m, fake)
+        return r["topic"]
+    assert asked(m2) == "Fish & Game" and asked(model) == "Miscellaneous", (
+        f"an archived term's official code does not place a title only it knows: {asked(m2)}, {asked(model)}")
+    elsewhere = {(2001, 100 + i): ("FGA", "HB1") for i in range(12)}
+    assert RT.train_on(arch, subjects=names, codes=elsewhere)["from"]["archived"] == 0 \
+        and RT.train_on(arch, subjects={"FGA": {"name": ""}}, codes=good)["from"]["archived"] == 0, (
+        "an LSR filed under another bill, or a code with no name, taught the model")
+    assert "subject" not in arch["2001-2002"]["HB900"], "training changed the caller's bills"
     prog = ("import sys, json; sys.path.insert(0, '.'); import _paths, request_topics as R; "
             "b = {'2025-2026': {'HB%d' % i: {'title': 'relative to %s %s matters.' % (w, v), 'subject': t} "
             "for i, (t, w, v) in enumerate([('Elections', 'ballot', 'voter'), ('Taxes - State', 'tax', 'rate'), "
             "('Elections', 'election', 'ballot'), ('Taxes - State', 'revenue', 'tax')] * 8)}}; "
-            "m = R.train_on(b); r = [{'title': t} for t in ('relative to ballot voter.', 'relative to tax rate.', "
+            "m = R.train_on(b, subjects={}, codes={}); r = [{'title': t} for t in ('relative to ballot voter.', 'relative to tax rate.', "
             "'relative to zzz.')]; R.assign(r, m, lambda s, rec: s); print(json.dumps(r))")
     outs = []
     for seed in ("1", "2"):
@@ -136893,7 +136918,8 @@ def _requests_party_and_topic():
     assert outs[0] == outs[1], "the topics differ under another hash seed"
     return "ok", ("party read from the roster's label for sitting and elect members; a title gets the "
                   "study or housing category, a labelled topic by its words, or Miscellaneous, with or without "
-                  "a model; the same under two hash seeds")
+                  "a model; the model learns from every term's official code, the current term x3, and never "
+                  "from an LSR filed under another bill or a nameless code; the same under two hash seeds")
 
 
 @check("build", "the bug hunt of 11 November 2026: the sitting term rolls on Organization Day in the browser "
