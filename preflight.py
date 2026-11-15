@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.928
+# GRANITE_VERSION: 2026-09-04.929
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -130072,16 +130072,19 @@ def _past_sponsors_fill(text_sponsors, B):
 
 
 @check("naming", "a 1989-1998 sponsor placed on a person with a page takes the party the page gives, "
-                 "where every record of them gives that one: on the row, the label and the Sponsors list",
+                 "where every record of them gives that one, else the party the bill's term's Manual "
+                 "gives them: on the row, the label and the Sponsors list",
        needs=("build_site_v2", "past_sponsors"))
 def _early_sponsors_take_their_page_party(B, PSP):
-    """The owner's decision, 15 November 2026 (build_site_v2.early_party): show on a 1989-1998
+    """The owner's decisions, 15 November 2026 (build_site_v2.early_party): show on a 1989-1998
     chip the party the person's own page gives, and leave it off for anyone the record shows in
-    more than one party. Rep. Donna Sytek, R on her page, was drawn with no party on the 34 bills
-    of 1993-1994 she is prime sponsor of, and so was every sponsor of those terms placed on a
-    page: the live index of 15
-    November had 4,160 prime sponsors of 1989-1998 with a page and no party. Held on a fixture
-    run through build_bills, with the records party_ids reads:
+    more than one party; and for such a person, a 1989-1998 bill shows the party that bill's
+    term's Manual for the General Court gives them, where it settles the term with a single
+    letter -- a cross-nomination ("d&r") settles nothing, and a term the Manual does not seat
+    them in gives nothing. Rep. Donna Sytek, R on her page, was drawn with no party on the 34
+    bills of 1993-1994 she is prime sponsor of, and so was every sponsor of those terms placed on
+    a page: the live index of 15 November had 4,160 prime sponsors of 1989-1998 with a page and
+    no party. Held on a fixture run through build_bills, with the records party_ids reads:
 
     - Dee Speaker, R on her page, her ballots and her 2001 bill, prime on 1993 HB 108 at the seat
       it prints (Rock 26; her page is Rock 30): R on the index row (sponsor_party), the label
@@ -130090,8 +130093,11 @@ def _early_sponsors_take_their_page_party(B, PSP):
     - Sam Switch, R on his page, whose 2001 bill draws him D: none, and as prime of 1993 HB 7 the
       index row has no party and the party filter puts it under "Party not on file";
     - Gil Grid, whose 2023 row carries D under a label the roster draws R: none;
-    - Manny Manual, R, whom the 1993 Manual's returns print "d": none; Rae Ross, R, whom they
-      print "d&r", two nominations and no one party: R;
+    - Manny Manual, R on his page, whom the 1993 Manual's returns print "d" and the 1995 Manual's
+      "d&r": D on his bills of 1993-1994, co-sponsor of HB 108 and prime of HB 109 (the index
+      row's sponsor_party and his chip too); none on 1995 HB 20, a term of two nominations, and
+      none on 1997 HB 30, a term the Manual does not seat him in. Rae Ross, R, whom the 1993
+      returns print "d&r", two nominations and no one party, is of one party: R;
     - Carl Careers, R, whom the legislators table (generated/careers.json) calls D, and Bo Ballot,
       R, a ballot of whose reads D: none;
     - Ann Nopage, placed by the bill's own rows on a number no page answers: none, and no link;
@@ -130132,7 +130138,10 @@ def _early_sponsors_take_their_page_party(B, PSP):
                           "party": "", "chamber": "H", "prime": True, "prime_inferred": False,
                           "label": "Rep. Dee Speaker", "source": PSP.SOURCE,
                           "seat_source": PSP.SOURCE}],
-               "HB7": [printed("Sam Switch", "800102", "375002", "Hillsborough", "5", prime=True)]},
+               "HB7": [printed("Sam Switch", "800102", "375002", "Hillsborough", "5", prime=True)],
+               "HB109": [printed("Manny Manual", "800104", "375004", "Strafford", "3", prime=True)]},
+        "1995-1996": {"HB20": [printed("Manny Manual", "800104", "375004", "Strafford", "3", prime=True)]},
+        "1997-1998": {"HB30": [printed("Manny Manual", "800104", "375004", "Strafford", "3", prime=True)]},
         "2001-2002": {"HB5": [
             {"member_id": "800101", "name": "Dee Speaker", "party": "R", "chamber": "H",
              "county": "Rockingham", "district": "30", "prime": True, "source": "bill text"},
@@ -130143,11 +130152,12 @@ def _early_sponsors_take_their_page_party(B, PSP):
     bill = lambda bid, y: {"bill": bid, "lsr": f"{y}-0001", "lsr_year": y, "chamber": "H",
                            "title": "relative to a fixture.", "designation": bid.replace("HB", "HB ")}
     bills = {TERM: {"HB108": bill("HB108", "1993"), "HB104": bill("HB104", "1993"),
-                    "HB7": bill("HB7", "1993")},
+                    "HB7": bill("HB7", "1993"), "HB109": bill("HB109", "1993")},
+             "1995-1996": {"HB20": bill("HB20", "1995")}, "1997-1998": {"HB30": bill("HB30", "1997")},
              "2001-2002": {"HB5": bill("HB5", "2001")}, "2023-2024": {"HB9": bill("HB9", "2023")},
              "2025-2026": {}}
-    # The other records: the 1993 Manual's returns (manual_parties, by the id each number's
-    # ballots are cast under), the legislators table (careers.json) and the ballots.
+    # The other records: the 1993 and 1995 Manuals' returns (manual_parties, by the id each
+    # number's ballots are cast under), the legislators table (careers.json) and the ballots.
     people = PSP.People([{"Employeeno": e, "PersonID": p, "LastName": n.split(", ")[0],
                           "FirstName": n.split(", ")[1], "LegislativeBody": "H"}
                          for e, p, n in (("375004", "800104", "Manual, Manny"),
@@ -130156,12 +130166,15 @@ def _early_sponsors_take_their_page_party(B, PSP):
                          "375006": {"name": "Ross, Rae", "chamber": "H"}})
     row = lambda name, county, d, party: {"name": name, "county": county, "district": d,
                                           "party": party, "status": "elected", "district_check": "clean"}
-    table = {"terms": {TERM: {"edition": "1993", "senate": [], "house": [
-        row("Manny Manual", "Strafford", "3", "d"), row("Rae Ross", "Coos", "2", "d&r")]}}}
+    table = {"terms": {
+        TERM: {"edition": "1993", "senate": [], "house": [
+            row("Manny Manual", "Strafford", "3", "d"), row("Rae Ross", "Coos", "2", "d&r")]},
+        "1995-1996": {"edition": "1995", "senate": [], "house": [
+            row("Manny Manual", "Strafford", "3", "d&r")]}}}
     manual = B.manual_parties(table, people)
-    assert manual == {"800104": {"D"}}, (
-        f"the Manual's returns give {manual}: wanted Manny Manual's 'd' alone, a line of two "
-        "nominations naming no party")
+    assert manual == {"800104": {TERM: {"D"}}}, (
+        f"the Manual's returns give {manual}: wanted Manny Manual's 'd' of 1993 alone, a line of "
+        "two nominations naming no party")
     assert B.manual_parties(None, people) is None, "no seat list read is not said as none"
     ids = B.party_ids({"800101": [{"party": "R"}], "800107": [{"party": "R"}, {"party": "D"}]},
                       {"375005": {"party": "d", "person_id": "800105", "employee_nos": ["375005"]}},
@@ -130184,6 +130197,7 @@ def _early_sponsors_take_their_page_party(B, PSP):
                 index = got_index
                 pages = {f"{y}/{b}": json.loads((out / "bills" / y / f"{b}.json").read_text(encoding="utf-8"))
                          for y, b in (("1993", "HB108"), ("1993", "HB104"), ("1993", "HB7"),
+                                      ("1993", "HB109"), ("1995", "HB20"), ("1997", "HB30"),
                                       ("2001", "HB5"))}
             else:
                 # NO RECORD READ, NO PARTY: main passes no id_parties where the Manual's seat list
@@ -130220,9 +130234,8 @@ def _early_sponsors_take_their_page_party(B, PSP):
     assert (sp["Rae Ross"].get("party"), sp["Rae Ross"].get("display_full")) == (
         "R", "Rep. Rae Ross (R - Coos 2)"), (
         f"a Manual line of two nominations kept Rae Ross's party off: {sp['Rae Ross']}")
-    for who, why in (("Sam Switch", "a 2001 bill draws him D"),
+    for who, why in (("Sam Switch", "a 2001 bill draws him D and the 1993 Manual seats him nowhere"),
                      ("Gil Grid", "a 2023 row carries D under a label drawn R"),
-                     ("Manny Manual", "the 1993 Manual prints him 'd'"),
                      ("Carl Careers", "the legislators table calls him D"),
                      ("Bo Ballot", "a ballot of his reads D"),
                      ("Ann Nopage", "no page")):
@@ -130230,6 +130243,26 @@ def _early_sponsors_take_their_page_party(B, PSP):
         assert not s.get("party") and "(R" not in s.get("display_full", "") \
             and "(D" not in s.get("display_full", ""), (
             f"{who} took a party on a 1993 bill though {why}: {s.get('display_full')!r}")
+    # THE TERM'S OWN MANUAL FOR A PERSON OF TWO PARTIES (the owner, 15 November 2026): Manny
+    # Manual is R on his page and "d" in the 1993 returns, so 1993-1994's bills read D, as
+    # co-sponsor and as prime; 1995's "d&r" settles nothing, and 1997's Manual seats him nowhere.
+    m108, r109 = sp["Manny Manual"], rows[(TERM, "HB109")]
+    m109 = pages["1993/HB109"]["sponsors"][0]
+    assert (m108.get("party"), m108.get("display_full"), m109.get("party"), m109.get("display_full"),
+            r109.get("sponsor_party"), r109.get("sponsor_label")) == (
+        "D", "Rep. Manny Manual (D - Straf 3)", "D", "Rep. Manny Manual (D - Straf 3)",
+        "D", "Rep. Manny Manual (D - Straf 3)"), (
+        "a person of two parties whom the 1993 Manual prints 'd' is not D on his 1993-1994 bills, "
+        f"at the printed seat: {m108.get('display_full')!r}, {m109.get('display_full')!r}, "
+        f"{r109.get('sponsor_party')!r}")
+    for key, why in (("1995/HB20", "the 1995 Manual's line is two nominations"),
+                     ("1997/HB30", "the 1997 Manual does not seat him")):
+        s, r = pages[key]["sponsors"][0], rows[("1995-1996" if key[:4] == "1995" else "1997-1998",
+                                                 key.split("/")[1])]
+        assert not s.get("party") and s.get("display_full") == "Rep. Manny Manual (Straf 3)" \
+            and "sponsor_party" not in r, (
+            f"Manny Manual took a party on {key} though {why}: {s.get('display_full')!r}, "
+            f"{r.get('sponsor_party')!r}")
     assert not sp["Ann Nopage"].get("slug") and sp["Sam Switch"]["display_full"] == \
         "Rep. Sam Switch (Hills 5)", (sp["Ann Nopage"], sp["Sam Switch"])
     assert "sponsor_party" not in r7 and r7.get("sponsor_slug") == B.own_slug(legs["800102"]), (
@@ -130241,10 +130274,15 @@ def _early_sponsors_take_their_page_party(B, PSP):
         f"a bill of 2001 moved: {[s['display_full'] for s in pages['2001/HB5']['sponsors']]}")
     words = said.getvalue()
     assert ("2 people with a page take its party on 3 of their 1989-1998 bills" in words
-            and all(f"{n} (D, R)" in words for n in ("Switch, Sam", "Grid, Gil", "Manual, Manny",
-                                                     "Careers, Carl", "Ballot, Bo"))), (
-        "the build does not say who took a party and who did not: "
-        + next((l for l in words.splitlines() if "early_party" in l), "(no line)"))
+            and "5 the record shows in more than one party take the party their bill's term's "
+                "Manual gives on 2 bills and none on 7" in words
+            and "Manual, Manny (D, R): 1993-1994 D on 2, 1995-1996 none on 1, 1997-1998 none on 1"
+                in words
+            and all(f"{n} (D, R): 1993-1994 none on {k}" in words
+                    for n, k in (("Switch, Sam", 2), ("Grid, Gil", 1), ("Careers, Carl", 1),
+                                 ("Ballot, Bo", 1)))), (
+        "the build does not say who took a party, whose term's Manual gave one and who took none: "
+        + " | ".join(l for l in words.splitlines() if "sponsors: " in l and "party" in l))
     got = _app_js(
         "[scope.renderSponsors({id: 'HB108'}, " + json.dumps({"term": TERM, "sponsors": pages["1993/HB108"]["sponsors"]})
         + "), scope.cardSponsor(" + json.dumps(r108) + "), scope.partyOfSponsor(" + json.dumps(r108)
@@ -130252,23 +130290,26 @@ def _early_sponsors_take_their_page_party(B, PSP):
         names=("renderSponsors", "cardSponsor", "partyOfSponsor"))
     if got is None:
         return "ok", ("R on the 1993 row, label and Sponsors list of a person every record gives R, "
-                      "at the printed seat; none for two parties seen on a later bill, a sponsor "
-                      "file row, a Manual's returns, the legislators table or a ballot, for no "
-                      "page, or with no record read; 1999 on unchanged; said (app.js not run: "
-                      "node or the stub not here)")
+                      "at the printed seat; for one of two parties the bill's term's Manual's letter "
+                      "(D on 1993's bills), none on a term of two nominations or one the Manual does "
+                      "not seat them in, none where no Manual of the term seats them, for no page, "
+                      "or with no record read; 1999 on unchanged; said (app.js not run: node or the "
+                      "stub not here)")
     html, card, party, party7 = got
     chips = {n.strip(): c for c, n in re.findall(r'class="mchip p-([A-Z])"[^>]*>(?:<a [^>]*>)?([^<]+)', html)}
     assert chips.get("Rep. Dee Speaker") == "R" and chips.get("Rep. Rae Ross") == "R" \
+        and chips.get("Rep. Manny Manual") == "D" \
         and chips.get("Rep. Sam Switch") == "X" and chips.get("Rep. Ann Nopage") == "X", (
         f"the Sponsors list's chips draw the parties {chips}")
     assert (card.get("party"), party, party7) == ("R", "Republican", "Party not on file"), (
         f"the card's party {card.get('party')!r} and the filter's groups {party!r}, {party7!r}")
     return "ok", ("R on the 1993 index row, label, Sponsors list chip and card, and in the party "
-                  "filter, for a person every record gives R, at the seat the bill prints; none for "
-                  "two parties seen on a 2001 bill, a 2023 row, a Manual's returns, the "
-                  "legislators table or a ballot, for no page, or with no record read; a line of "
-                  "two nominations is no party; 1999 on unchanged; the build says who took it and "
-                  "who did not")
+                  "filter, for a person every record gives R, at the seat the bill prints; for a "
+                  "person of two parties, the bill's term's Manual's letter (D on 1993's bills, "
+                  "chip included), none on a term of two nominations and none on a term the Manual "
+                  "does not seat them in; none for two parties seen on a 2001 bill, a 2023 row, the "
+                  "legislators table or a ballot with no Manual of the term, for no page, or with "
+                  "no record read; 1999 on unchanged; the build says who took what")
 
 
 @check("status", "a chapter the docket gave to two bills is settled by the database "

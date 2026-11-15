@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.329
+// GRANITE_VERSION: 2026-09-07.330
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2867,9 +2867,10 @@ function facetVals(b,k){
 // sponsor's party"), as the record has it for the bill's own term: the row's
 // `sponsor_party` is the party the roster gives that person for that term
 // (build_site_v2), not the one they hold today -- save 1989-1998, which have
-// no roster of the term: there it is their page's, and only where every
-// record of them gives that one party (build_site_v2.early_party, the owner,
-// 15 November 2026). The party's name as the
+// no roster of the term: there it is their page's where every record of
+// them gives that one party, else the one the bill's term's Manual gives
+// them where it names one (build_site_v2.early_party, the owner, 15
+// November 2026). The party's name as the
 // roll calls' legend says it (PARTY_NAME), and "Party not on file" where the
 // bill names no sponsor or the record gives the sponsor none. Every bill is
 // in exactly one of them, so the options add up to the list.
