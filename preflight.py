@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.928
+# GRANITE_VERSION: 2026-09-04.930
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31858,6 +31858,52 @@ def _requests_not_returning():
                   "an undecided race and an unidentified sponsor all kept")
 
 
+# A NAME THAT READS AS A LIST: a separator, a role mark left in, or two names joined.
+LSR_LISTLIKE = re.compile(r"[;,()]|\band\b|\s&\s")
+
+
+@check("build", "the request list's Sponsors column is read as a prime sponsor and co-sponsors: the one "
+                "marked Prime first, each other name a co-sponsor, wherever it stands")
+def _lsr_sponsors_split():
+    """The owner, 15 November 2026: the site must stay up to date through the refactor, "including
+    adding bill text from LSR drafts and co-sponsors once those are public". Every request carries one
+    name today, so fetch_lsrs.split_sponsors has never met a list; it splits the column on semicolons
+    and takes the name marked (Prime) as the prime sponsor. Held: one name; a prime and two
+    co-sponsors; the prime written last; no mark at all (the first name is the prime); and no name
+    keeps its role mark. The data check below says, on the night, when a list is not split."""
+    FL = imp("fetch_lsrs")
+    cases = {"Ellen Read (Prime)": ("Ellen Read", []),
+             "Ellen Read (Prime); Bob Roe; Jane Doe": ("Ellen Read", ["Bob Roe", "Jane Doe"]),
+             "Bob Roe; Jane Doe (Prime)": ("Jane Doe", ["Bob Roe"]),
+             "Bob Roe;Jane Doe": ("Bob Roe", ["Jane Doe"]), "": ("", [])}
+    got = {k: FL.split_sponsors(k) for k in cases}
+    bad = {k: v for k, v in got.items() if tuple(v) != cases[k] and list(v) != list(cases[k])}
+    assert not bad, f"split_sponsors reads {bad}"
+    assert not any(LSR_LISTLIKE.search(n) for p, co in got.values() for n in [p, *co] if n), (
+        f"a name kept a separator or its role mark: {got}")
+    return "ok", "one name; a prime and co-sponsors, in either order; no mark; no name keeps a separator"
+
+
+@check("data", "every bill request's prime sponsor and co-sponsors read as one person's name each, not "
+               "a list the Sponsors column's form left unsplit")
+def _lsr_sponsor_names_are_names():
+    """The night's lsrs.json, where it is here: a sponsor or co-sponsor name holding a semicolon, a
+    comma, a parenthesis, "and" or an ampersand is a list fetch_lsrs.split_sponsors did not split, or
+    a role mark it did not take off -- the sign that the request list began printing co-sponsors in a
+    form nobody has yet seen (_lsr_sponsors_split). On the night it warns (RECORD_CHECKS): the site
+    goes on, and the run's page says which requests to look at."""
+    p = Path("lsrs.json")
+    if not p.exists():
+        return "skip", "no lsrs.json here"
+    rows = json.loads(p.read_text(encoding="utf-8"))
+    odd = [f"{r.get('lsr')}: {n!r}" for r in rows for n in [r.get("sponsor") or "", *(r.get("cosponsors") or [])]
+           if n and LSR_LISTLIKE.search(str(n))]
+    assert not odd, (f"{len(odd)} request sponsor name(s) read as a list, e.g. {odd[:5]}: the request list's "
+                     "Sponsors column may print co-sponsors in a form split_sponsors does not read")
+    co = sum(len(r.get("cosponsors") or []) for r in rows)
+    return "ok", f"{len(rows):,} requests, each sponsor one name; {co:,} co-sponsors listed"
+
+
 @check("build", "a new member-elect gets a provisional page, noindex and with no id, at the roster's "
                 "own address, and nobody else does; their requests are theirs only where certain")
 def _elect_provisional():
@@ -32063,8 +32109,11 @@ def _elect_suffix_address():
        needs=("build_legislator_pages", "build_site_v2"))
 def _on_record_covers_the_nineties(LP, B):
     """Found on the release candidate's preview (13 November 2026): the page offered 1991-1992 to
-    1998 in its TERM picker and said "ON RECORD: House, 1999-2024". The span since 1999 is first
-    to last, or each chamber's own where a service list joins two. The terms before 1999 are
+    1998 in its TERM picker and said "ON RECORD: House, 1999-2024". The years since 1999 are the
+    terms attendance is counted in, consecutive ones joined and a term with no roll call a gap
+    (the owner's rule for the 1990s, applied after 1999 on 15 November 2026: 289 of the 2,192
+    people with roll calls have such a gap, David Meader's "1999-2020" two), or each chamber's
+    own where a service list joins two. The terms before 1999 are
     added to the chamber the sponsor record gives (`past_terms`, member_links.earlier_terms from
     the sponsored bills the picker lists), and join it, or another 1990s term, only where the
     terms run into each other: a term the record lacks between a 1990s run and the rest is
@@ -32097,24 +32146,30 @@ def _on_record_covers_the_nineties(LP, B):
     ML = imp("member_links")
     bad = []
     att = lambda *ts: {t: {"days": 1} for t in ts}
+    # Every term from a to b, each counted in attendance: the record of a member who sat throughout.
+    run = lambda a, b: [f"{y}-{y + 1}" for y in range(a, b, 2)]
     base = {"chamber": "H", "party": "D", "county": "Hillsborough", "district": "39",
             "display_plain": "Rep. Pat Example", "display_full": "Rep. Pat Example (D - Hills 39)",
             "display": "Rep. Pat Example (D)", "slug": "pat-example-hills-39", "towns": [],
             "committees": []}
-    house = dict(base, id="800001", attendance=att("1999-2000", "2023-2024"),
+    house = dict(base, id="800001", attendance=att(*run(1999, 2025)),
                  past_terms={"H": ["1991-1992", "1995-1996", "1997-1998"]})
-    mover = dict(base, id="800002", slug="sam-mover-hills-1", attendance=att("2001-2002", "2007-2008"),
+    mover = dict(base, id="800002", slug="sam-mover-hills-1", attendance=att(*run(2001, 2009)),
                  past_terms={"S": ["1993-1994"]})
-    plain = dict(base, id="800003", slug="al-plain-hills-2", attendance=att("2011-2012", "2023-2024"))
-    adj = dict(base, id="800005", slug="ad-jacent-hills-3", attendance=att("1999-2000", "2023-2024"),
+    plain = dict(base, id="800003", slug="al-plain-hills-2", attendance=att(*run(2011, 2025)))
+    adj = dict(base, id="800005", slug="ad-jacent-hills-3", attendance=att(*run(1999, 2025)),
                past_terms={"H": ["1997-1998"]})
-    far = dict(base, id="800006", slug="fa-gap-hills-4", attendance=att("2003-2004", "2009-2010"),
+    far = dict(base, id="800006", slug="fa-gap-hills-4", attendance=att(*run(2003, 2011)),
                past_terms={"H": ["1989-1990"]})
+    # A TERM WITH NO ROLL CALL AFTER 1999 IS A GAP TOO (15 November 2026): two runs, never 1999-2012.
+    gaps = dict(base, id="800010", slug="ga-ps-hills-5",
+                attendance=att("1999-2000", "2001-2002", "2003-2004", "2009-2010", "2011-2012"))
     cases = {"house": (house, "House, 1991–1992, 1995–2024"),
              "adjacent": (adj, "House, 1997–2024"),
              "gap": (far, "House, 1989–1990, 2003–2010"),
              "mover": (mover, "Senate, 1993–1994 · House, 2001–2008"),
-             "plain": (plain, "House, 2011–2024")}
+             "plain": (plain, "House, 2011–2024"),
+             "plain gap": (gaps, "House, 1999–2004, 2009–2012")}
     if ML.earlier_terms([{"term": "1991-1992", "ch": "S"}, {"term": "1993-1994", "ch": "S"},
                          {"term": "2001-2002", "ch": "H"}, {"term": "1995-1996"}]) \
             != {"S": ["1991-1992", "1993-1994"]}:
@@ -32269,7 +32324,7 @@ def _on_record_covers_the_nineties(LP, B):
         return re.sub(r"[\s ]+", " ", t.replace("&nbsp;", " "))
     for i, (name, (m, want)) in enumerate(cases.items()):
         stat = words(LP.static_record(m, m))
-        if name == "plain":
+        if name.startswith("plain"):
             if "On record:" in stat:
                 bad.append("a member with no earlier terms gained a static On record line")
         elif f"On record: {want}" not in stat:
@@ -75300,15 +75355,16 @@ def _former_directory_years_are_the_pages(BL, BI):
         f"Sytek's directory line is not her page's House, 1989–2000: {lines}")
     assert lines.get("Rep. Gap Person") == "D, Rock 1, 1989–1990, 2003–2004", (
         f"a term the record lacks is bridged, or the 1990s term is lost: {lines}")
-    assert lines.get("Rep. Plain Person") == "R, Rock 3, 2011–2016", (
-        f"a member with no 1990s term is not as before: {lines}")
+    # A term with no roll call after 1999 is a gap too (15 November 2026): 2013-2014 is not his.
+    assert lines.get("Rep. Plain Person") == "R, Rock 3, 2011–2012, 2015–2016", (
+        f"a member with no 1990s term bridges the term with no roll call: {lines}")
     # A 1990s Senate term and later House service: each chamber its own years, as the page's
     # line has it ("House, 1999–2000 · Senate, 1995–1996"), under each chamber's list.
     assert ("Rep. Both Person", "R, Rock 2 · House 1999–2000 · Senate 1995–1996") in pairs and         ("Sen. Both Person", "Senate 1995–1996 · House 1999–2000") in pairs, (
         f"a member whose 1990s term was in the other chamber: {pairs}")
     assert found.get("donna-sytek-rock-26") == "House · Rock 26 · 1989–2000", found
     assert found.get("gap-person-rock-1") == "House · Rock 1 · 1989–1990, 2003–2004", found
-    assert found.get("plain-person-rock-3") == "House · Rock 3 · 2011–2016", found
+    assert found.get("plain-person-rock-3") == "House · Rock 3 · 2011–2012, 2015–2016", found
     # And the page itself, which is where the years come from.
     assert BL.on_record_text(sytek, {"attendance": {"1999-2000": {}}}) == "House, 1989–2000", (
         BL.on_record_text(sytek, {"attendance": {"1999-2000": {}}}))
@@ -75317,7 +75373,7 @@ def _former_directory_years_are_the_pages(BL, BI):
     assert "since 1999" not in src, "the directory still says the record begins in 1999"
     return "ok", ("a former member's directory line and search entry give the page's own years: "
                   "Sytek 1989–2000, a gap kept as a gap, a 1990s Senate term under its chamber, "
-                  "and a member with no 1990s term as before")
+                  "and a term with no roll call after 1999 a gap too")
 
 
 @check("session", "the seat of a term is the one its bills print, else the ballots' in the "
@@ -132280,7 +132336,10 @@ RECORD_CHECKS = {
     "_elect_2024_read_again", "_elect_2024_scored",
     # How long the night lets the record stand still, against the export's
     # finished dockets (18 October 2026): the record's history, never the site.
-    "_still_days_from_history"}
+    "_still_days_from_history",
+    # The request list's Sponsors column printing co-sponsors in a form not yet
+    # seen (15 November 2026): the source's shape, said on the run's page.
+    "_lsr_sponsor_names_are_names"}
 REMINDERS ={"_probate_after_the_vote", "_session_over_current", "_town_clerks_reread",
             "_officials_rechecked", "_town_sources_fresh"}
 

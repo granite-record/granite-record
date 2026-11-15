@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.329
+// GRANITE_VERSION: 2026-09-07.330
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9540,18 +9540,25 @@ function renderMemberHead(m){
     // one (a phone, 10 October 2026: "· Senate District 14").
     .join("&nbsp;&middot; ");
   // The years on record, by chamber: the record's own service where the
-  // member sat in both, else the terms their attendance is counted in.
+  // member sat in both, else the terms their attendance is counted in -- each
+  // term its own, those that run into each other joined, and a term with no
+  // roll call a gap, never bridged (the owner's rule for the 1990s, applied
+  // after 1999 on 15 November 2026; member_links.record_spans is the twin).
   const yrsOf=t=>t.map(x=>String(x).split("-").map(Number)).filter(x=>x[0]);
   const att=yrsOf(Object.keys(m.attendance||{}));
+  const runs=list=>{const tm=y=>y%2?y:y-1,out=[];
+    list.map(x=>[x[0],x[1]||x[0]]).sort((x,y)=>x[0]-y[0]||x[1]-y[1]).forEach(x=>{const l=out[out.length-1];
+      if(l&&tm(x[0])<=tm(l[1])+2)l[1]=Math.max(l[1],x[1]);else out.push([x[0],x[1]]);});
+    return out;};
   const spans0=(m.service||[]).length?m.service
-    :att.length?[{chamber:m.chamber,spans:[[Math.min(...att.map(x=>x[0])),Math.max(...att.map(x=>x[1]||x[0]))]]}]:[];
+    :att.length?[{chamber:m.chamber,spans:runs(att)}]:[];
   // THE TERMS BEFORE 1999 THE GENERAL COURT'S SPONSOR RECORD PLACES THEM IN
   // (past_terms: {chamber: [term]}; member_links.record_spans is this one's
   // twin), each added to its own chamber, so the line covers every term the TERM
   // picker offers -- and the terms the Manual for the General Court seats them
   // in with no bill that term (the owner, 14 November 2026; build_site_v2.
-  // manual_seats), which the picker does not. The span since 1999 is first to
-  // last (spans0), or each chamber's own spans where a service list joins two.
+  // manual_seats), which the picker does not. The years since 1999 are spans0's
+  // runs of terms, or each chamber's own spans where a service list joins two.
   // A 1989-1998 term joins it, or another 1990s term, only where the terms run
   // into each other; a term the record lacks between a 1990s run and the rest
   // is shown as a gap, never bridged ("House, 1989–1990, 2003–2010").
