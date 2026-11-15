@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.928
+# GRANITE_VERSION: 2026-09-04.929
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32063,8 +32063,11 @@ def _elect_suffix_address():
        needs=("build_legislator_pages", "build_site_v2"))
 def _on_record_covers_the_nineties(LP, B):
     """Found on the release candidate's preview (13 November 2026): the page offered 1991-1992 to
-    1998 in its TERM picker and said "ON RECORD: House, 1999-2024". The span since 1999 is first
-    to last, or each chamber's own where a service list joins two. The terms before 1999 are
+    1998 in its TERM picker and said "ON RECORD: House, 1999-2024". The years since 1999 are the
+    terms attendance is counted in, consecutive ones joined and a term with no roll call a gap
+    (the owner's rule for the 1990s, applied after 1999 on 15 November 2026: 289 of the 2,192
+    people with roll calls have such a gap, David Meader's "1999-2020" two), or each chamber's
+    own where a service list joins two. The terms before 1999 are
     added to the chamber the sponsor record gives (`past_terms`, member_links.earlier_terms from
     the sponsored bills the picker lists), and join it, or another 1990s term, only where the
     terms run into each other: a term the record lacks between a 1990s run and the rest is
@@ -32097,24 +32100,30 @@ def _on_record_covers_the_nineties(LP, B):
     ML = imp("member_links")
     bad = []
     att = lambda *ts: {t: {"days": 1} for t in ts}
+    # Every term from a to b, each counted in attendance: the record of a member who sat throughout.
+    run = lambda a, b: [f"{y}-{y + 1}" for y in range(a, b, 2)]
     base = {"chamber": "H", "party": "D", "county": "Hillsborough", "district": "39",
             "display_plain": "Rep. Pat Example", "display_full": "Rep. Pat Example (D - Hills 39)",
             "display": "Rep. Pat Example (D)", "slug": "pat-example-hills-39", "towns": [],
             "committees": []}
-    house = dict(base, id="800001", attendance=att("1999-2000", "2023-2024"),
+    house = dict(base, id="800001", attendance=att(*run(1999, 2025)),
                  past_terms={"H": ["1991-1992", "1995-1996", "1997-1998"]})
-    mover = dict(base, id="800002", slug="sam-mover-hills-1", attendance=att("2001-2002", "2007-2008"),
+    mover = dict(base, id="800002", slug="sam-mover-hills-1", attendance=att(*run(2001, 2009)),
                  past_terms={"S": ["1993-1994"]})
-    plain = dict(base, id="800003", slug="al-plain-hills-2", attendance=att("2011-2012", "2023-2024"))
-    adj = dict(base, id="800005", slug="ad-jacent-hills-3", attendance=att("1999-2000", "2023-2024"),
+    plain = dict(base, id="800003", slug="al-plain-hills-2", attendance=att(*run(2011, 2025)))
+    adj = dict(base, id="800005", slug="ad-jacent-hills-3", attendance=att(*run(1999, 2025)),
                past_terms={"H": ["1997-1998"]})
-    far = dict(base, id="800006", slug="fa-gap-hills-4", attendance=att("2003-2004", "2009-2010"),
+    far = dict(base, id="800006", slug="fa-gap-hills-4", attendance=att(*run(2003, 2011)),
                past_terms={"H": ["1989-1990"]})
+    # A TERM WITH NO ROLL CALL AFTER 1999 IS A GAP TOO (15 November 2026): two runs, never 1999-2012.
+    gaps = dict(base, id="800010", slug="ga-ps-hills-5",
+                attendance=att("1999-2000", "2001-2002", "2003-2004", "2009-2010", "2011-2012"))
     cases = {"house": (house, "House, 1991–1992, 1995–2024"),
              "adjacent": (adj, "House, 1997–2024"),
              "gap": (far, "House, 1989–1990, 2003–2010"),
              "mover": (mover, "Senate, 1993–1994 · House, 2001–2008"),
-             "plain": (plain, "House, 2011–2024")}
+             "plain": (plain, "House, 2011–2024"),
+             "plain gap": (gaps, "House, 1999–2004, 2009–2012")}
     if ML.earlier_terms([{"term": "1991-1992", "ch": "S"}, {"term": "1993-1994", "ch": "S"},
                          {"term": "2001-2002", "ch": "H"}, {"term": "1995-1996"}]) \
             != {"S": ["1991-1992", "1993-1994"]}:
@@ -32269,7 +32278,7 @@ def _on_record_covers_the_nineties(LP, B):
         return re.sub(r"[\s ]+", " ", t.replace("&nbsp;", " "))
     for i, (name, (m, want)) in enumerate(cases.items()):
         stat = words(LP.static_record(m, m))
-        if name == "plain":
+        if name.startswith("plain"):
             if "On record:" in stat:
                 bad.append("a member with no earlier terms gained a static On record line")
         elif f"On record: {want}" not in stat:
@@ -75300,15 +75309,16 @@ def _former_directory_years_are_the_pages(BL, BI):
         f"Sytek's directory line is not her page's House, 1989–2000: {lines}")
     assert lines.get("Rep. Gap Person") == "D, Rock 1, 1989–1990, 2003–2004", (
         f"a term the record lacks is bridged, or the 1990s term is lost: {lines}")
-    assert lines.get("Rep. Plain Person") == "R, Rock 3, 2011–2016", (
-        f"a member with no 1990s term is not as before: {lines}")
+    # A term with no roll call after 1999 is a gap too (15 November 2026): 2013-2014 is not his.
+    assert lines.get("Rep. Plain Person") == "R, Rock 3, 2011–2012, 2015–2016", (
+        f"a member with no 1990s term bridges the term with no roll call: {lines}")
     # A 1990s Senate term and later House service: each chamber its own years, as the page's
     # line has it ("House, 1999–2000 · Senate, 1995–1996"), under each chamber's list.
     assert ("Rep. Both Person", "R, Rock 2 · House 1999–2000 · Senate 1995–1996") in pairs and         ("Sen. Both Person", "Senate 1995–1996 · House 1999–2000") in pairs, (
         f"a member whose 1990s term was in the other chamber: {pairs}")
     assert found.get("donna-sytek-rock-26") == "House · Rock 26 · 1989–2000", found
     assert found.get("gap-person-rock-1") == "House · Rock 1 · 1989–1990, 2003–2004", found
-    assert found.get("plain-person-rock-3") == "House · Rock 3 · 2011–2016", found
+    assert found.get("plain-person-rock-3") == "House · Rock 3 · 2011–2012, 2015–2016", found
     # And the page itself, which is where the years come from.
     assert BL.on_record_text(sytek, {"attendance": {"1999-2000": {}}}) == "House, 1989–2000", (
         BL.on_record_text(sytek, {"attendance": {"1999-2000": {}}}))
@@ -75317,7 +75327,7 @@ def _former_directory_years_are_the_pages(BL, BI):
     assert "since 1999" not in src, "the directory still says the record begins in 1999"
     return "ok", ("a former member's directory line and search entry give the page's own years: "
                   "Sytek 1989–2000, a gap kept as a gap, a 1990s Senate term under its chamber, "
-                  "and a member with no 1990s term as before")
+                  "and a term with no roll call after 1999 a gap too")
 
 
 @check("session", "the seat of a term is the one its bills print, else the ballots' in the "

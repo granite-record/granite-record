@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.10
+# GRANITE_VERSION: 2026-09-13.11
 """
 Which sitting members voted under an earlier number in the other chamber.
 
@@ -353,16 +353,20 @@ def record_spans(service, att_years, chamber, past_terms):
     in each chamber -- the page's "On Record" line. app.js's spans does the same, step for step.
 
     `service` is member_links.service where the page joins two chambers (gaps shown, as the
-    "Votes on record" line shows them); otherwise the span is first to last, gaps not shown,
-    from `att_years` (the terms attendance is counted in, as [first, last] pairs) under the
-    page's `chamber`. `past_terms` is earlier_terms: the 1989-1998 terms the sponsor record
-    gives, each added to its own chamber. Chambers come in the order first sat in."""
+    "Votes on record" line shows them); otherwise `att_years` (the terms attendance is counted
+    in, as [first, last] pairs) under the page's `chamber`, each term its own, so that the
+    terms that run into each other join below and a term with no roll call stays a gap -- the
+    owner's rule for the 1990s ("a missing term is shown, never bridged"), applied after 1999
+    on 15 November 2026: 289 of the 2,192 people with roll calls have such a gap, and the line
+    read first to last across it (David Meader's "1999-2020" over two). `past_terms` is
+    earlier_terms: the 1989-1998 terms the sponsor record gives, each added to its own
+    chamber. Chambers come in the order first sat in."""
     past = {ch: [[int(t[:4]), int(t[5:9]) if t[5:9].isdigit() else int(t[:4])] for t in ts]
             for ch, ts in (past_terms or {}).items() if ts}
     if service:
         base = {c["chamber"]: [list(sp) for sp in c.get("spans") or []] for c in service}
     else:
-        base = ({chamber: [[min(a for a, _ in att_years), max(b for _, b in att_years)]]}
+        base = ({chamber: [[int(a), int(b)] for a, b in att_years]}
                 if att_years and chamber else {})
     out = []
     for ch in set(base) | set(past):

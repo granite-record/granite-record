@@ -2088,11 +2088,12 @@ or a term whose bills of theirs print the other chamber. The two together are
 published as `past_terms` ({chamber: [term, ...]}) on the member's row of
 `legislators.json` or `former.json` and in their own file, which carries the
 Manual's terms alone beside them as `manual_terms`, and
-`member_links.record_spans` adds each to its chamber's years. The span since
-1999 runs first to last (each chamber's own spans, gaps shown, where the page
-joins two), and a 1989-1998 term joins it, or another 1990s term, only where
-the terms run into each other: a term the record lacks between a 1990s run
-and the rest is shown as a gap, never bridged. `app.js` works the line out the
+`member_links.record_spans` adds each to its chamber's years. The years since
+1999 are the terms the member's attendance is counted in, those that run into
+each other joined and a term with no roll call shown as a gap (each chamber's
+own spans, gaps shown, where the page joins two), and a 1989-1998 term joins
+them, or another 1990s term, only where the terms run into each other: a term
+the record lacks, before 1999 or after, is shown as a gap, never bridged. `app.js` works the line out the
 same way, and `build_legislator_pages.record_spans` says it on the plain page
 and in the page's description. The build says how many of the record's
 member-terms the Manual seated, and how many rows it seats in another chamber
