@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.20
+# GRANITE_VERSION: 2026-09-18.22
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -522,12 +522,16 @@ def rail_stops(r):
     gone = bool(r.get("withdrawn"))
     filed = r.get("filed") and not gone
     day = r["filed"] if filed and isinstance(r["filed"], str) and r["filed"][:1].isdigit() else ""
+    # WHAT THE RAIL SAYS TO A READER WHO HEARS IT, OR HOVERS (its aria-label and
+    # title): a stop not reached yet is "not yet" -- the bill rail's "never
+    # reached" is said of a stop a finished bill never got to, and a request is
+    # still on its way (15 November 2026, seen on the preview of the cards).
     return [
         {"stop": REQUESTED, "mark": "p", "say": "made"},
         {"stop": FILED, "mark": "x" if gone else ("p" if filed else "-"),
          **({"date": day} if day else {}),
-         **({"say": "Withdrawn" if gone else "Text public"} if gone or filed else {})},
-        {"stop": "Introduced", "mark": "-"}]
+         "say": "Withdrawn" if gone else ("Text public" if filed else "not yet")},
+        {"stop": "Introduced", "mark": "-", "say": "never reached" if gone else "not yet"}]
 
 
 def title_key(title):

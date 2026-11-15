@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.32
+# GRANITE_VERSION: 2026-10-09.33
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -623,7 +623,9 @@ def rail_html(stops, died=False):
         law_day = s["stop"] == "Law" and s["mark"] == "p"
         tail = ("" if not when else f", {when}" if not law_day else
                 "" if "in effect" in what else f", in effect {when}")
-        said.append(f"Introduced{f' {when}' if when else ''}" if s["stop"] == "Introduced"
+        # An Introduced that was reached says only its day, as a bill's always
+        # is; one not reached says what it is (a bill request's "not yet").
+        said.append(f"Introduced{f' {when}' if when else ''}" if s["stop"] == "Introduced" and s["mark"] != "-"
                     else f'{s["stop"]}: {what[:1].lower() + what[1:]}{tail}')
     s_ = esc("; ".join(said))
     return (f'<span class="rail dated" role="img" aria-label="{s_}" title="{s_}">'

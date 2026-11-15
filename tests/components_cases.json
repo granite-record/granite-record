@@ -260,6 +260,7 @@
     {"args": [[{"stop": "Law", "mark": "p", "date": "2026-01-01", "short": "Chapter 12"}, {"stop": "Governor", "mark": "x", "date": "2025-07-01", "short": "vetoed"}, {"stop": "Senate", "mark": "q", "date": "2025-02-30"}], false]},
     {"args": [[[]], false]},
     {"args": [[{}, {"stop": "Introduced", "mark": "p"}], false]},
+    {"args": [[{"stop": "Requested", "mark": "p", "say": "made"}, {"stop": "Filed", "mark": "-", "say": "not yet"}, {"stop": "Introduced", "mark": "-", "say": "not yet"}], false]},
     {"args": [[], false], "want": ""},
     {"args": [null, false], "want": ""}
   ],

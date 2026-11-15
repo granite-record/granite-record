@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.924
+# GRANITE_VERSION: 2026-09-04.926
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31480,6 +31480,13 @@ def _request_pages():
         assert [g[0] for g in got] == ["p", "o", "o"], f"a request's rail is reached as {[g[0] for g in got]}"
         assert [g[0] for g in stops_of(wd)] == ["p", "x", "o"] and "\u2715" in stops_of(wd)[1][1], (
             "a withdrawn request's rail does not show Requested reached and the cross on Filed")
+        # WHAT IT SAYS TO A READER WHO HEARS IT OR HOVERS (15 November 2026): a stop a pending request
+        # has not reached is "not yet", never the bill rail's "never reached", and a bare "Introduced"
+        # is a bill's, always reached; a withdrawn request's Introduced was never reached.
+        assert 'aria-label="Requested: made; Filed: not yet; Introduced: not yet"' in page \
+            and 'aria-label="Requested: made; Filed: withdrawn; Introduced: never reached"' in wd, (
+            "a request's rail says a pending stop is never reached, or a bare Introduced: "
+            + str(re.findall(r'aria-label="(Requested[^"]*)"', page + wd)))
         # The stops are the row's (build_lsrs.rail_stops, written as `rail`),
         # which the page and the card both draw; a filed day is shown on Filed,
         # and Requested carries none (no source gives the day a request is made).
@@ -116395,7 +116402,7 @@ def _request_filed_day(build_lsrs):
     cells = page.split('<span class="stop ')[1:]
     assert len(cells) == 3 and "<small>" not in cells[0] + cells[2] \
         and '<small>Dec 1,<span class="ry"> 2026</span></small>' in cells[1] \
-        and 'aria-label="Requested: made; Filed: text public, December 1, 2026; Introduced"' in page, (
+        and 'aria-label="Requested: made; Filed: text public, December 1, 2026; Introduced: not yet"' in page, (
         f"the page's rail does not put 1 December 2026 under Filed alone: {page}")
     assert "<small>" not in RP.rail_of(two) + RP.rail_of(four), (
         "the page's rail shows a day for a request whose bill gives none")

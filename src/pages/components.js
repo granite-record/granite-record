@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.35
+// GRANITE_VERSION: 2026-10-09.36
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -399,7 +399,9 @@ function railHtml(stops,died){
       .replace(new RegExp("\\b"+mon+" (\\d{4})\\b","g"),(_m,mo,y)=>`${DW_MONTHS[RL_MON.indexOf(mo)]} ${y}`);
     const lawDay=s.stop==="Law"&&s.mark==="p";
     const tail=!when?"":!lawDay?`, ${when}`:what.indexOf("in effect")>=0?"":`, in effect ${when}`;
-    said.push(s.stop==="Introduced"?`Introduced${when?` ${when}`:""}`
+    // An Introduced that was reached says only its day, as a bill's always
+    // is; one not reached says what it is (a bill request's "not yet").
+    said.push(s.stop==="Introduced"&&s.mark!=="-"?`Introduced${when?` ${when}`:""}`
       :`${s.stop}: ${what.slice(0,1).toLowerCase()+what.slice(1)}${tail}`);
   });
   const s_=esc(said.join("; "));
