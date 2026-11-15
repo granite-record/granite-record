@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.394 */
+/* GRANITE_VERSION: 2026-09-07.395 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -3493,7 +3493,6 @@ color:var(--ink-2);background:var(--wash);border-radius:var(--r-in);padding:1px 
 .card.lsr .cbody .tabs{margin-top:var(--sp-5)}
 .lsrhist{list-style:none;margin:var(--sp-4) 0 0;padding:0}
 .lsrhist li{display:flex;flex-wrap:wrap;gap:var(--sp-3) var(--sp-4);align-items:center;margin:0 0 var(--sp-4)}
-abbr.lsrabbr{text-decoration:underline dotted;text-underline-offset:3px;cursor:help}
 .card.lsr .ctitle{margin-top:var(--sp-2)}
 .card.lsr .cmeta{margin-top:var(--sp-2)}
 
@@ -4011,9 +4010,6 @@ color:var(--ink-2);font-weight:600;margin-right:var(--sp-3)}
 /* Hidden while a bill's own page shows the list (app.js parkActions). */
 .pageacts[hidden]{display:none}
 .follow,.testify{position:relative}
-.lsrfollow{display:none;padding:0 var(--sp-6) var(--sp-5)}
-.followok .lsrfollow{display:block}
-.lsrfollow .followpane{position:static;margin-top:var(--sp-4);width:auto;max-width:none}
 .pageacts .follow,.pageacts .testify{position:static}
 /* THE QUIET ACTION BUTTON (Polish 1, the person, 9 October 2026: "a visual
    polish of the report button so it matches the style of the print, testify,

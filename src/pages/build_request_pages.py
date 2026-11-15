@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.11
+# GRANITE_VERSION: 2026-11-08.12
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -47,23 +47,27 @@ MISC = "Miscellaneous"
 def explain(year, abbr=None):
     """The requests' explanation, the bill search's own words
     (fix/search-polish, 8 November 2026), and what the number's abbreviation
-    stands for (the owner, 13 November 2026), which a phone cannot hover to
-    read: `abbr` is meta.requests's, a map of an abbreviation to its words."""
+    stands for (the owner, 13 November 2026), said in words beside the
+    number's popover (term_html): `abbr` is meta.requests's, a map of an
+    abbreviation to its words."""
     said = "".join(f" {E(k)} stands for {E(v)}." for k, v in (abbr or {}).items())
     return ("<b>Requests, not bills yet.</b> Each is a member&rsquo;s request to have a bill "
             "drafted: a title and a sponsor, nothing more, until it is filed as a numbered "
             f"{E(str(year))} bill. Some are withdrawn first." + said)
 
 
-def abbr_html(text, abbr, hard=False):
-    """`text` escaped, its first word an <abbr> with the title that says what
-    it stands for where `abbr` names it (the owner, 13 November 2026: add
-    what it stands for "as a tooltip"); the title is the tooltip, and explain() says it in words for
-    a touch screen. `hard`: a non-breaking space after it, for the trail,
-    whose flex row drops a plain one."""
+def term_html(text, abbr):
+    """`text` escaped, its first word marked for the site's term popover where
+    `abbr` names it (components.term_mark): glossary.json's entry, its name in
+    full and what it means, on a tap, a held hover or keyboard focus -- the
+    mechanism the FN of a bill's number uses (the owner, 15 November 2026:
+    the request's tooltip should use "the same mechanism as the other tooltip
+    definitions like -FN"; until then an <abbr> whose title only a mouse could
+    read). components.js arms the first on the page, so the number in the
+    head carries it and the trail's stays plain, as a bill page's does."""
     first, sep, rest = str(text or "").partition(" ")
     if first and first in (abbr or {}):
-        return f'<abbr class="lsrabbr" title="{E(abbr[first])}">{E(first)}</abbr>{"&nbsp;" if hard and sep else sep}{E(rest)}'
+        return C.term_mark(first, first) + E(sep + rest)
     return E(str(text or ""))
 
 
@@ -126,35 +130,13 @@ def chips_of(people, who_of):
 
 
 def rail_of(r):
-    """A request's own rail, three stops (Alice, 12 November 2026, from a phone
-    screenshot where the bill's six stops ran into one another: "a separate
-    rail for the requests with Requested, Filed meaning the text is publicly
-    available, and Introduced"): Requested, always reached -- a withdrawn
-    request was still requested (the owner, the same morning: "Request being
-    withdrawn should still show request as green but filed as red"); Filed,
-    reached once the bill's text is public, and the cross where the request
-    was withdrawn instead; Introduced, which a request reaches by becoming a numbered bill,
-    when its address forwards to the bill's page and the bill's own rail
-    takes over -- so it is never reached here. Same rail_html, same look. No
-    day is shown: the list gives none.
-
-    WHAT SAYS "FILED". Nothing on disk yet: the request list (the list build_lsrs reads)
-    carries a number, kind, title, sponsor and a withdrawn flag, and no bill
-    of the session has been published (data/bills.json has no 2027-2028).
-    So the stop reads the row's "filed" -- true, or the day the text became
-    public ("YYYY-MM-DD"), which build_lsrs.rows_from carries over from the
-    source row once the source gives it -- and is drawn not reached until
-    then. A withdrawn request ends there, at the cross."""
-    gone = bool(r.get("withdrawn"))
-    filed = r.get("filed") and not gone
-    day = r["filed"] if filed and isinstance(r["filed"], str) and r["filed"][:1].isdigit() else ""
-    stops = [
-        {"stop": "Requested", "mark": "p", "date": "", "short": "",
-         "say": "made"},
-        {"stop": "Filed", "mark": "x" if gone else ("p" if filed else "-"), "date": day, "short": "",
-         "say": "Withdrawn" if gone else ("Text public" if filed else "")},
-        {"stop": "Introduced", "mark": "-", "date": "", "short": "", "say": ""}]
-    return C.rail_html(stops)
+    """A request's own rail: the stops its row carries (`rail`, which the
+    source's reader writes -- build_lsrs.rail_stops says what each stop
+    means and when it carries a day), drawn by the bill's rail component, as
+    the request's card draws them (the owner, 15 November 2026: "adding the
+    rail on the card"). Same rail_html, same look, one set of stops for the
+    two. A row with none draws none."""
+    return C.rail_html(r.get("rail") or [])
 
 
 def head(r, req, who_of, path, base):
@@ -194,17 +176,15 @@ def head(r, req, who_of, path, base):
         "trail": [["Bills", "bills"],
                   [req.get("label") or "Bill Requests", f"bills?term={req['term']}"],
                   [r.get("n") or "", ""]],
-        "title": abbr_html(r.get("n"), req.get("abbr")),
+        "title": term_html(r.get("n"), req.get("abbr")),
         "chip": C.chip(word, "cstat " + chips.get(word, ""), "m"),
         "line": f'<span translate="no">{E(r.get("title") or "")}</span>',
         "facts": facts, "rail": rail_of(r),
         "actions": cite[:-len("</div>")] + SHARE + "</div>",
         "kind": "bill"})
-    # The trail names the request by its number, plain text: the same
-    # abbreviation, explained.
-    n = r.get("n") or ""
-    return page.replace(f'<li aria-current="page">{E(n)}</li>',
-                        f'<li aria-current="page">{abbr_html(n, req.get("abbr"), True)}</li>', 1)
+    # The trail names the request by its number, plain text, as record_head
+    # writes it: the head's number carries the term's popover.
+    return page
 
 
 def summary(r, req):

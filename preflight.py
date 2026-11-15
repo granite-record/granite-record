@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.922
+# GRANITE_VERSION: 2026-09-04.923
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20200,8 +20200,9 @@ def _class_collisions():
         # The earlier bills of the same title: app.js's lsrPane draws them for
         # a request in the bill search, build_request_pages' history_pane for
         # its own page -- one component in the same words (the owner, 13
-        # November 2026). What LSR stands for (lsrabbr) is the page's alone
-        # since the owner's word of 14 November 2026, and so not shared.
+        # November 2026). What LSR stands for is the site's term popover on
+        # the request's page (components.term_mark, glossary.json) since the
+        # owner's word of 15 November 2026, no class of its own.
         "lsrhist",
         # THE SPONSORS TAB, a request's as a bill's: app.js draws it for a
         # bill (spBlock) and for a request's card (lsrPane), and
@@ -31418,8 +31419,15 @@ def _request_pages():
         assert [g[0] for g in got] == ["p", "o", "o"], f"a request's rail is reached as {[g[0] for g in got]}"
         assert [g[0] for g in stops_of(wd)] == ["p", "x", "o"] and "\u2715" in stops_of(wd)[1][1], (
             "a withdrawn request's rail does not show Requested reached and the cross on Filed")
-        assert [g[0] for g in stops_of(RP.rail_of({**by["LSR 2027-0001"], "filed": "2026-12-01"}))] \
-            == ["p", "p", "o"], "a filed request's rail does not reach Filed"
+        # The stops are the row's (build_lsrs.rail_stops, written as `rail`),
+        # which the page and the card both draw; a filed day is shown on Filed,
+        # and Requested carries none (no source gives the day a request is made).
+        filed_html = RP.rail_of({"rail": L.rail_stops({**by["LSR 2027-0001"], "filed": "2026-12-01"})})
+        assert [g[0] for g in stops_of(filed_html)] == ["p", "p", "o"], "a filed request's rail does not reach Filed"
+        cells = filed_html.split('<span class="stop ')[1:]
+        assert by["LSR 2027-0001"]["rail"] == L.rail_stops(by["LSR 2027-0001"]) and len(cells) == 3 \
+            and "<small>" not in cells[0] and "<small>" in cells[1], (
+            "a request's row does not carry its own stops, or Requested shows a day, or Filed hides its day")
         slot = 296 / 3  # the rail of a 320px phone, three stops
         wide = max(sum(_RAIL_FACE.get(c, 1000) for c in w) * 14 / 1000 for w in ("Requested", "Filed", "Introduced"))
         assert wide + 2 * 4 <= slot, (
@@ -116264,8 +116272,9 @@ def _request_became_bill(build_lsrs):
 
 @check("build", "a bill request's status is Requested or Filed (or Withdrawn); its History is the earlier "
        "bills of exactly its title; its accepted co-sponsors are shown as person chips on the card and "
-       "the page; its LSR is explained on its page and not on the card's link; its topic is printed by "
-       "name, and Miscellaneous not at all", needs=("build_lsrs",))
+       "the page; its LSR is explained on its page by the glossary's popover and not on the card's link; its "
+       "topic is printed by name, and Miscellaneous not at all; its card has no Follow and has its rail",
+       needs=("build_lsrs",))
 def _request_cards_like_bills(build_lsrs):
     """The owner, 13 November 2026: tabs and an expanded view on the cards,
     Requested and Filed as the Status filter, History from earlier bills of
@@ -116279,7 +116288,16 @@ def _request_cards_like_bills(build_lsrs):
     keeps both; the card's byline and the page's Subject give the topic by its
     name with no "(from the title)"; a request that is Miscellaneous (the
     title placed it nowhere) prints the word on neither, as a bill's card and
-    page do not print the topic model's."""
+    page do not print the topic model's.
+
+    And 15 November 2026: "The LSR tooltip does not appear to use the same
+    mechanism as the other tooltip definitions like -FN ... removing the follow
+    button on the unexpanded cards, adding the rail on the card". Held: the
+    page's head marks LSR for the term popover (glossary.json's LSR entry) and
+    carries no <abbr>; no card carries a Follow, shut or open, withdrawn or a
+    bill; every card draws the row's three stops in its head (Requested
+    reached, Filed open, crossed when withdrawn, reached once a bill), and a
+    row with none draws no rail at all."""
     import tempfile
     import build_request_pages as RP
     L = build_lsrs
@@ -116337,11 +116355,18 @@ def _request_cards_like_bills(build_lsrs):
         RP.write(site, "https://x")
         page = (site / "request" / "2027-0001.html").read_text(encoding="utf-8")
         plain = (site / "request" / "2027-0002.html").read_text(encoding="utf-8")
-    for want in ('<abbr class="lsrabbr" title="Legislative Service Request">LSR</abbr>',
+    for want in ('<h1 class="rh1"><span data-term="LSR">LSR</span> 2027-0001',
                  'id="sstab-rq-sponsors"', 'id="sstab-rq-history"', 'href="bill/2024/hb7"', ">Died</span>",
-                 "LSR stands for Legislative Service Request.", "</abbr>&nbsp;2027-0001</li>",
+                 "LSR stands for Legislative Service Request.", '<li aria-current="page">LSR 2027-0001</li>',
                  'class="mchip p-R"', 'class="mchip p-D"'):
         assert want in page, f"a request's page lacks {want!r}"
+    # WHAT LSR STANDS FOR, BY THE SITE'S TERM POPOVER (the owner, 15 November
+    # 2026: "the same mechanism as the other tooltip definitions like -FN"):
+    # the head's number marked for components.js, which glossary.json answers;
+    # no <abbr>, whose title only a mouse could read.
+    assert "<abbr" not in page and page.count('data-term="LSR"') == 1 \
+        and (RP.C.WORDBOOK.get("glossary") or {}).get("LSR", {}).get("name") == "Legislative Service Request", (
+        "a request's page explains LSR otherwise than by the glossary's popover, or the glossary has no LSR")
     assert 'id="sstab-rq-history"' not in plain and 'id="sstab-rq-sponsors"' not in plain, (
         "a request with no earlier bill and no co-sponsor has a tab for them")
     assert "<dt>Subject</dt><dd>Education - General" in page and "(from the title)" not in page, (
@@ -116351,13 +116376,33 @@ def _request_cards_like_bills(build_lsrs):
     # THE CARD, in node: the bill card's tabs inside, the same chips, no abbreviation.
     js = ("(() => { scope.setMeta({requests: {term: '2027-requests', year: 2027, abbr: " + json.dumps(L.ABBR)
           + "}}); const r = " + json.dumps(by["LSR 2027-0001"]) + "; const plain = "
-          + json.dumps(by["LSR 2027-0002"]) + "; const shut = scope.lsrCardHtml(r); "
+          + json.dumps(by["LSR 2027-0002"]) + "; const gone = " + json.dumps(by["LSR 2027-0003"])
+          + "; const billed = " + json.dumps(by["LSR 2027-0004"]) + "; const shut = scope.lsrCardHtml(r); "
           "scope.openCards.add(r.id); scope.openTab[r.id] = '7'; return {shut, open: scope.lsrCardHtml(r), "
-          "plain: scope.lsrCardHtml(plain)}; })()")
+          "plain: scope.lsrCardHtml(plain), gone: scope.lsrCardHtml(gone), billed: scope.lsrCardHtml(billed), "
+          "bare: scope.lsrCardHtml(Object.assign({}, plain, {rail: []}))}; })()")
     got = _app_js(js, names=("lsrCardHtml", "openCards", "openTab", "setMeta: x => (META = x)"))
     if got is None:
         return "skip", "node, app.js or the stub is not here"
     shut, op, pl = got["shut"], got["open"], got["plain"]
+    # NO FOLLOW ON THE CARD, AND THE RAIL A BILL'S CARD HAS (the owner, 15
+    # November 2026: "removing the follow button on the unexpanded cards,
+    # adding the rail on the card"): the row's three stops in the card's head,
+    # as the request's page draws them; Follow is the page's, after Cite.
+    def card_stops(html):
+        rail = re.search(r'<span class="rail dated".*?</span></span>(?=\s*<|$)', html, re.S)
+        return re.findall(r'<span class="stop s-(\w+)"><b>.*?</b><i>(.*?)</i>', rail.group(0), re.S) if rail else []
+    for label, html in (("shut", shut), ("open", op), ("plain", pl), ("withdrawn", got["gone"]),
+                        ("a bill now", got["billed"])):
+        assert "followbox" not in html and "data-fkey" not in html and ">Follow<" not in html, (
+            f"a request's card ({label}) still carries a Follow")
+    assert card_stops(shut) == [("p", "Requested"), ("o", "Filed"), ("o", "Introduced")] \
+        and shut.index('class="rail dated"') < shut.index('class="cbody"'), (
+        f"a request's card does not draw its three stops in its head: {card_stops(shut)}")
+    assert [s for s, _ in card_stops(got["gone"])] == ["p", "x", "o"] \
+        and [s for s, _ in card_stops(got["billed"])] == ["p", "p", "o"], (
+        f"the card's rail: withdrawn {card_stops(got['gone'])}, filed {card_stops(got['billed'])}")
+    assert 'class="rail' not in got["bare"], "a request's card with no stops draws a rail (a bill's four?)"
     assert 'class="mchip p-D"' in shut \
         and 'class="ctitle"' in shut and 'aria-expanded="false"' in shut and "<div class=\"cbody\" hidden>" in shut, (
         f"a request's card is not a bill card with a person chip: {shut[:600]!r}")
@@ -116376,8 +116421,9 @@ def _request_cards_like_bills(build_lsrs):
         "the open card does not show its History tab and the co-sponsors' chips")
     assert 'data-t="7"' not in pl and 'data-t="4"' not in pl, "a plain request has only a Summary tab"
     return "ok", ("Requested/Filed/Withdrawn by the bill's existence; History by exact title and an earlier "
-                  "session; co-sponsors as chips on the card and the page; LSR explained on the page, the "
-                  "card's number a plain link; the topic by name, Miscellaneous printed on neither")
+                  "session; co-sponsors as chips on the card and the page; LSR explained on the page by the "
+                  "glossary's popover, the card's number a plain link; the topic by name, Miscellaneous "
+                  "printed on neither; no Follow on the card, and its three stops in its head")
 
 
 @check("build", "next session's bill requests are listed under the year they name, whichever year "

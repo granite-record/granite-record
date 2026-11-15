@@ -2128,6 +2128,17 @@ again among them, is drawn from the row's own label and party and linked to
 their page (`build_request_pages.person_chip`), since their old seat is
 someone else's now.
 
+A request's card is a bill card drawn from its row (`app.js`, `lsrCardHtml`),
+and its page a bill page's head (`build_request_pages.head`). Both draw the
+row's own three stops, `rail` (`build_lsrs.rail_stops`: Requested, Filed,
+Introduced), with the bill's rail component; Filed carries the day the text was
+published where the row has one, and Requested carries none, since neither the
+list nor the General Court's public database gives the day a request was made.
+The card has no Follow: a request is followed from its page, after Cite, as a
+bill is. The page's number marks LSR for the site's term popover
+(`components.term_mark`, glossary.json's entry), the mechanism a bill number's
+FN uses.
+
 ## Town websites and staff (November 2026)
 
 A town's website comes from two directories that are not told when a town

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.327
+// GRANITE_VERSION: 2026-09-07.328
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -8285,35 +8285,20 @@ const termOfYear=y=>{
 // Drawn by components.bill_byline (billByline) since 10 October 2026, which
 // joins the parts the same way, the sponsor as the person chip (cardHtml).
 
-/* A BILL REQUEST'S CARD, which is shorter because a request is smaller.
-
-   "Cards should be shorter", asked for on 18 September, and the reason they
-   can be is that an LSR has four facts and a bill has forty: a number, a
-   title, a prime sponsor, and which body it will be filed in. No committee,
-   no hearing, no votes, no text -- so there is nothing to expand into, no
-   standalone page to link to, and no four-stop rail to draw. Forcing this
-   through cardHtml would have meant five conditionals inside it and a card
-   that opened onto an empty drawer.
-
-   The sponsor is a link wherever the name matched a sitting member, which on
-   the 241 requests filed so far is all of them. */
+/* A BILL REQUEST'S CARD, a bill card (lsrCardHtml, below) drawn from the
+   request's row alone: a request has a number, a title, a prime sponsor, the
+   body it will be filed in and, once they accept, its co-sponsors -- no
+   committee, hearing, vote or text yet -- so its card opens onto Summary,
+   Sponsors and History, and its rail has three stops of its own. */
 // A BILL REQUEST CAN BE FOLLOWED BY EMAIL (the person, 22 October 2026):
 // until it is drafted, when the follow moves onto its bill (build_feeds,
-// BILL REQUESTS). A request has no page, so its card carries its own Follow,
-// a .followbox like a record page's #followbox, its pane opening inside the
-// card. Drawn only where email can work: the sign-up is asked once, and the
-// boxes show from then on (.followok); followMail asks whether tonight's
-// current.json lists the request when a box is opened.
-let FOLLOW_OK=null;
-function followOk(){
-  if(FOLLOW_OK)return FOLLOW_OK;
-  FOLLOW_OK=followUp().then(ok=>{
-    if(ok)document.documentElement.classList.add("followok");return ok;}).catch(()=>false);
-  return FOLLOW_OK;
-}
+// BILL REQUESTS). Its Follow is on its own page, after Cite, as a bill's is
+// on the bill's (mountFollow, GR_REQUEST): the card carries none (the owner,
+// 15 November 2026: "removing the follow button on the unexpanded cards", as
+// a bill's card has none).
 // WHETHER THE FOLLOW PAGES ANSWER, AND NOTHING MORE (5 November 2026). The
-// three that ask -- a law's Follow, a record's email box, a request card's --
-// want only the status, and read none of the count's two bytes; a response
+// two that ask -- a law's Follow and a record's email box -- want only the
+// status, and read none of the count's two bytes; a response
 // whose body is never read stays open in the browser until it is collected,
 // so a law page and /bills never went quiet (seen by the deck's screenshots:
 // network idle never came). Every ask is this one, and lets the body go.
@@ -8377,17 +8362,20 @@ function lsrBody(b){
 // sponsor as the person chip, the head pressed to open it where it stands,
 // and the tabs above.
 function lsrCardHtml(b,cls){
-  const num=String(b.n||"").replace(/^LSR\s*/,"");
-  const can=/^\d{4}-\d{4,5}$/.test(num)&&!b.withdrawn&&!b.introduced;
-  if(can)followOk();
   // THE TOPIC AS A BILL'S CARD PRINTS IT (the owner, 14 November 2026: "remove
   // the topic from title label"): the name alone, and nothing for the
   // Miscellaneous of a request request_topics could not place -- the Topic
   // filter lists it, and a card does not print the site's own (cardTopic).
   const kind=[b.body_label,cardTopic(b)].filter(Boolean).join(" · ");
+  // THE RAIL, AS A BILL'S CARD HAS ONE (the owner, 15 November 2026: "adding
+  // the rail on the card"): the row's own three stops (build_lsrs.rail_stops),
+  // drawn by the bill's rail component, the request's page drawing the same
+  // ones; a day where the record gives one. A row with no stops draws none,
+  // never a bill's four.
+  const st=b.rail||[];
   const card=billCard({id:b.id,href:"",n:b.n,year:"",word:chipOf(b),cls:chipCls(b),title:b.title,
-    byline:billByline(cardSponsor(b),[],kind),open:openCards.has(b.id),body:lsrBody(b),
-    card:"lsr"+(cls?" "+esc(cls):"")});
+    byline:billByline(cardSponsor(b),[],kind),rail:st.length?railHtml(st,false):"",
+    open:openCards.has(b.id),body:lsrBody(b),card:"lsr"+(cls?" "+esc(cls):"")});
   // ITS OWN PAGE, or where it went (Alice, 8 November 2026): the address
   // build_lsrs gives it, or the bill's page it became. An anchor inside the
   // number, not a.cnum, which opens a bill in place. The number is plain:
@@ -8396,12 +8384,7 @@ function lsrCardHtml(b,cls){
   const numHtml=b.address
     ?`<span class="cnum" translate="no"><a href="${esc(b.moved_to||b.address)}">${esc(b.n)}</a></span>`
     :`<span class="cnum" translate="no">${esc(b.n)}</span>`;
-  const follow=can?`
-      <div class="followbox lsrfollow" data-fkey="lsr:${esc(num)}"><details class="follow">
-        <summary>${icon("follow")}Follow</summary>
-        <div class="followpane"><div class="followmail" hidden></div></div></details></div>`:"";
-  return card.replace(`<span class="cnum" translate="no">${esc(b.n)}</span>`,()=>numHtml)
-    .replace(/<\/article>$/,close=>follow+close);
+  return card.replace(`<span class="cnum" translate="no">${esc(b.n)}</span>`,()=>numHtml);
 }
 
 // ONE card, drawn by the search list and by both record pages.

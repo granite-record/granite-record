@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.18
+# GRANITE_VERSION: 2026-09-18.19
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -460,6 +460,40 @@ REQUESTED, FILED, WITHDRAWN = "Requested", "Filed", "Withdrawn"
 ABBR = {"LSR": "Legislative Service Request"}
 
 
+def rail_stops(r):
+    """A request's own rail, three stops, as the row carries it (`rail`) for
+    its card and its page to draw with the bill's rail component
+    (components.rail_html, railHtml) -- the card's since the owner's word of
+    15 November 2026: "adding the rail on the card", as a bill's card has one.
+
+    The three stops (Alice, 12 November 2026, from a phone screenshot where the
+    bill's six stops ran into one another: "a separate rail for the requests
+    with Requested, Filed meaning the text is publicly available, and
+    Introduced"): Requested, always reached -- a withdrawn request was still
+    requested (the owner, the same morning: "Request being withdrawn should
+    still show request as green but filed as red"); Filed, reached once the
+    bill's text is public, and the cross where the request was withdrawn
+    instead; Introduced, which a request reaches by becoming a numbered bill,
+    when its address forwards to the bill's page and the bill's own rail takes
+    over -- so it is never reached here.
+
+    THE DAYS. Filed carries the day the text became public where the row has
+    it ("filed", "YYYY-MM-DD", which rows_from carries over from the source
+    row once the source gives one). Requested carries none: the list gives no
+    day a request was made, and the General Court's public database gives
+    "True" where the day it was entered would be. A stop with no day shows
+    none, never a guess."""
+    gone = bool(r.get("withdrawn"))
+    filed = r.get("filed") and not gone
+    day = r["filed"] if filed and isinstance(r["filed"], str) and r["filed"][:1].isdigit() else ""
+    return [
+        {"stop": REQUESTED, "mark": "p", "say": "made"},
+        {"stop": FILED, "mark": "x" if gone else ("p" if filed else "-"),
+         **({"date": day} if day else {}),
+         **({"say": "Withdrawn" if gone else "Text public"} if gone or filed else {})},
+        {"stop": "Introduced", "mark": "-"}]
+
+
 def title_key(title):
     """A title as it is compared for History: case, spacing and final
     punctuation set aside, and nothing else (the owner, 13 November 2026:
@@ -598,6 +632,8 @@ def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None):
             # Once it is a bill, its address forwards to the bill's page.
             **({"moved_to": bill_address(bill, session_of(r) or year)} if bill else {}),
         })
+    for row in rows:
+        row["rail"] = rail_stops(row)
     rows.sort(key=lambda x: x["n"])
     return rows, unmatched
 
