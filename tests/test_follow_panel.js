@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-18.2
+// GRANITE_VERSION: 2026-10-18.3
 /* THE FOLLOW PANEL'S STATES, RUN IN NODE.
 
      node tests/test_follow_panel.js PAGE_JS tests/dom_stub.js
@@ -34,7 +34,7 @@ document.addEventListener = (t, f) => { (on[t] = on[t] || []).push(f); };
 let S;
 try {
   S = (0, eval)(fs.readFileSync(pageJs, "utf8") +
-    ";({mountFollow, followSubmit, FOLLOW_TS, FOLLOW_SAID, FOLLOW_OFTEN, followUp, followOk})");
+    ";({mountFollow, followSubmit, FOLLOW_TS, FOLLOW_SAID, FOLLOW_OFTEN, followUp})");
 } catch (e) { console.log(JSON.stringify({ load: e.constructor.name + ": " + e.message })); process.exit(1); }
 // dom_stub runs a timer at once; the token's wait needs a real one.
 globalThis.setTimeout = RT;
@@ -522,9 +522,9 @@ await test("the count page is asked only through followUp, which lets its body g
   ok(net.asked >= 1 && net.cancelled === net.asked,
     `opening a record's Follow asked the count ${net.asked} times and let go of ${net.cancelled || 0}`);
   ok(p.form, "the email box was not drawn from a let-go answer");
-  net = { count: 200, followable: {}, sent: [] };
-  ok(await S.followOk() === true && net.asked === 1 && net.cancelled === 1,
-    `a request card's ask did not let its answer go: asked ${net.asked}, let go ${net.cancelled || 0}`);
+  // A request's card asked too (followOk) until 15 November 2026, when its
+  // Follow went to the request's own page, which asks as a record's does.
+  ok(!/\bfollowOk\b/.test(code), "a request card asks the count page again (followOk)");
 });
 
 finished = true;
