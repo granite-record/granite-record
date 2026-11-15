@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.276
+# GRANITE_VERSION: 2026-09-05.277
 """
 Generate the faceted site from real General Court data.
 
@@ -8778,9 +8778,169 @@ def manual_said(manual, left):
                if kinds else "")]
 
 
+# ------------------------------------------------------- the party of a 1989-1998 sponsor
+
+# The party letters the Manual for the General Court's returns print for a candidate of one
+# party (build_manual_seats.PARTY). A line of two or three ("d&r", "r&d&l") is a candidate
+# more than one party nominated, and names no one party.
+MANUAL_PARTY = {"r": "R", "d": "D", "l": "L", "i": "I", "ind": "I"}
+
+
+def party_letter(party):
+    """The letter a chip and a label draw for `party` -- "R" for "R", "r" or "Republican" -- as
+    member_labels draws it: the first letter, where it is one of RDILU; else ""."""
+    pc = (party or "").strip()[:1].upper()
+    return pc if pc in "RDILU" else ""
+
+
+def early_party(page, record):
+    """THE PARTY ON THE CHIP OF A 1989-1998 SPONSOR PLACED ON A PERSON WITH A PAGE.
+
+    THE OWNER'S DECISION (15 November 2026): show on their 1989-1998 chips the party the
+    person's own page gives, and leave it off for anyone the record shows in more than one
+    party. No roll call of 1989-1998 is on this site, so no sponsor row of those years carries a
+    party of its own -- the bill's own sponsor rows place the printed name (past_roster.py), or
+    the General Court's sponsor record supplies the list (past_sponsors.filled) -- and Rep. Donna
+    Sytek, R on her page, was drawn with no party on the 34 bills of 1993-1994 she is prime
+    sponsor of. The page's party is today's. It is said of 1993 only where nothing the site holds
+    of the person says otherwise.
+
+    `page` is the member record the row is placed on (bill_sponsor_list's `_m`). `record` is
+    party_record's {page id: {party letter}}: the labels and chips of their bills of 1999-2026,
+    their ballots, the legislators table's party (generated/careers.json) and the party the
+    general election's returns print for them in each 1989-1998 term's Manual for the General
+    Court (manual_parties). Measured on the live site and these files on 15 November 2026: 343
+    of the 353 people with a page on 1989-1998 bills give one party; Michael Downing's own bills
+    give two (D in 1999-2000, R from 2007), and nine more give two only by a Manual -- Steve
+    Vaillancourt, R on his page, is a Democrat in the 1997 Manual's returns, and Betty Hall, I,
+    a Democrat in all five.
+
+    Returns the page's party letter, or "": where the row is placed on no page (the people who
+    served only before 1999 have none, and keep no party and no link), where the page gives no
+    party, where any record gives another, and where no record was read at all (`record` None),
+    since then nothing can say the person was of one party. The seat is never this function's:
+    it stays the one the bill printed."""
+    if record is None or not (page or {}).get("id"):
+        return ""
+    own = party_letter(page.get("party_code") or page.get("party"))
+    return own if own and record.get(str(page["id"]), set()) <= {own} else ""
+
+
+def manual_parties(table="auto", people=None):
+    """{site id: {party letter}}: the party the general election's returns print, in the Manual
+    for the General Court of each 1989-1998 term (generated/manual_seats.json), for the one person
+    of a number's full name the term's seat list holds -- the row past_roster.term_seat joins the
+    number to -- for every number the General Court's list of members names, keyed by the id the
+    number's ballots are cast under (past_sponsors.People.vid). For early_party, as a record of
+    the person's party in that term.
+
+    A row term_seat calls unclean still counts: its doubt is about the seat (a mark, a district
+    count), not the party printed beside the name. A line of two nominations ("d&r") names no one
+    party and counts for nothing, and so does a term whose list holds nobody, or two people, of
+    that full name. None where the seat list is not on this disk.
+
+    Each number is held only to the rows its own surnames could fit (_manual_name_keys: a row
+    _table_name_fits fits carries one of the number's surnames as one of its keys), which is
+    term_seat's answer over the whole list at a fraction of its cost -- 16 ms a call over a
+    term's 424 rows. `table` and `people` stand in for generated/manual_seats.json and the files
+    past_sponsors.load_people reads."""
+    import past_roster as PR
+    table = PR.seat_table() if table == "auto" else table
+    if not table:
+        return None
+    people = people if people is not None else PSP.load_people(with_votes=False)
+    near_rows = {}
+    for term in PR.PRE_TERMS:
+        k = defaultdict(dict)
+        for ch, r in PR._manual_rows(table, term):
+            for key in _manual_name_keys(r.get("name")):
+                k[key][id(r)] = (ch, r)
+        near_rows[term] = k
+    out = defaultdict(set)
+    for e in sorted(people.pm):
+        keys = people.surnames(e)
+        for term in PR.PRE_TERMS:
+            near = {}
+            for key in keys:
+                near.update(near_rows[term].get(key) or {})
+            if not near:
+                continue
+            one = {"terms": {term: {"house": [r for ch, r in near.values() if ch == "H"],
+                                    "senate": [r for ch, r in near.values() if ch == "S"]}}}
+            _seat, _why, row = PR.term_seat(e, term, people, one)
+            p = MANUAL_PARTY.get(str((row or {}).get("party") or "").strip().lower(), "")
+            if p:
+                out[str(people.vid(e))].add(p)
+    return dict(out)
+
+
+def party_ids(votes_by_member=None, careers=None, manual=None):
+    """{id: {party letter}} for party_record: the party of every ballot cast under an id
+    (votes_by_member), the legislators table's party for each id generated/careers.json joins
+    to a person (their PersonID and each of their employee numbers), and manual_parties'
+    answer (`manual`)."""
+    out = defaultdict(set)
+    for mid, vs in (votes_by_member or {}).items():
+        got = {party_letter(p) for p in {v.get("party") for v in vs}} - {""}
+        if got:
+            out[str(mid)] |= got
+    for key, c in (careers or {}).items():
+        p = party_letter((c or {}).get("party"))
+        if p:
+            for i in {str(key), str(c.get("person_id") or ""), *map(str, c.get("employee_nos") or ())}:
+                if i:
+                    out[i].add(p)
+    for i, ps in (manual or {}).items():
+        out[str(i)] |= set(ps)
+    return dict(out)
+
+
+def party_record(people, labelled=None, ids=None):
+    """{page id: {party letter}} for early_party: each party a record of the person gives. The
+    labels and chips of their bills of 1999-2026 (`labelled`, keyed by page id already, as
+    bill_sponsor_list draws them), and party_ids' answer (`ids`), each id joined to the page it
+    reaches through `people` -- build_bills' `_people`, the lookup that places a sponsor row on
+    a page, so a record of an earlier number reaches the page that number's bills link to."""
+    out = defaultdict(set)
+    for pid, ps in (labelled or {}).items():
+        out[str(pid)] |= set(ps) - {""}
+    for i, ps in (ids or {}).items():
+        page = people.get(str(i)) or {}
+        if page.get("id"):
+            out[str(page["id"])] |= set(ps) - {""}
+    return dict(out)
+
+
+def early_party_said(sponsored, people, record):
+    """What the build says of early_party's answer, so it never falls back in silence: how many
+    people with a page take its party on how many of their 1989-1998 bills, and who the record
+    shows in more than one party and so takes none, each with the parties. [] where no 1989-1998
+    bill is filed under a page."""
+    took, bills_, left = 0, 0, []
+    for pid in sorted(sponsored or {}):
+        n = sum(1 for x in sponsored[pid] if str(x.get("term") or "")[:4] < "1999")
+        page = (people or {}).get(str(pid)) or {}
+        if not n or not page.get("id"):
+            continue
+        if early_party(page, record):
+            took, bills_ = took + 1, bills_ + n
+            continue
+        own = party_letter(page.get("party_code") or page.get("party"))
+        seen = sorted({own, *(record or {}).get(str(page["id"]), ())} - {""})
+        if len(seen) > 1:
+            left.append(f"{page.get('name') or pid} ({', '.join(seen)})")
+    if not (took or left):
+        return []
+    return [f"  sponsors: {took:,} people with a page take its party on {bills_:,} of their "
+            "1989-1998 bills (early_party)"
+            + ((f"; {len(left):,} the record shows in more than one party take none: "
+                + "; ".join(left)) if left else "")]
+
+
 def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
                       leg_by_sort, leg_by_name, sponsored, seats=None, left=None,
-                      term_roster=None, record_chambers=None):
+                      term_roster=None, record_chambers=None, labelled=None,
+                      parties=None):
     """Who put their name to this bill, and their own bill list, both.
 
     It mutates `sponsored`, which is the caller's accumulator of what
@@ -8797,6 +8957,12 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
 
     `record_chambers` is sponsor_record_chambers': the chamber the term's
     Manual seats a 1989-1998 sponsor of the General Court's record in.
+
+    `parties` is party_record's {page id: {party letter}}, from which a
+    1989-1998 row placed on a page takes that page's party (early_party);
+    None gives it none. `labelled`, where given, is filled with the party
+    letters this list's labels and chips draw for each page on a bill of
+    1999 on -- build_bills reads those first, for `parties`.
 
     `prime` stays in the loop. It is one line and it reads better
     beside the payload that uses it than as an extra return value.
@@ -8857,9 +9023,10 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
         # a sponsor for (past_sponsors.filled), which holds a chamber and no
         # district, and the House Journal's list on a bill of a past term
         # (build_data.journal_sponsor_rows), which prints the seat of the
-        # day. Neither takes anything from the roster: a 1993 bill's sponsor
-        # who sits in the Senate today was drawn "Sen." at today's district,
-        # and one with no party on that term's ballots is given none.
+        # day. Neither takes a seat from the roster: a 1993 bill's sponsor
+        # who sits in the Senate today was drawn "Sen." at today's district.
+        # One with no party on that term's ballots is given none -- save a
+        # 1989-1998 row placed on a page, below.
         #
         # AND A TERM WHOSE OWN ROSTER IS FROZEN (`term_roster`, the review of
         # 5 October 2026): its member as that roster has them, the seat they
@@ -8871,20 +9038,29 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
         _t = ((term_roster or {}).get(str(_s.get("member_id") or ""))
               or (term_roster or {}).get(str(_m.get("id") or "")) or _m)
         # ... AND A 1989-1998 SPONSOR PLACED BY THE BILL'S OWN SPONSOR ROWS
-        # (past_roster.py): the seat is the one the bill printed, and the party
-        # is none -- the member's roster party today is not a claim about 1993.
+        # (past_roster.py), or supplied by the record itself: the seat is the
+        # one the bill printed, and the party the person's own page gives,
+        # where every record of them gives that one party, and none where any
+        # gives another or there is no page (early_party: the owner's
+        # decision, 15 November 2026). The row has none of its own; the page's
+        # is said of 1993 only where nothing the site holds says otherwise.
+        _gave = ""
         if (_s.get("seat_source") in (PSP.SOURCE, JOURNAL_SOURCE)
                 or _s.get("matched") == PAST_ROSTER_MATCH):
+            if not _s.get("party") and term[:4] < "1999":
+                _gave = early_party(_m, parties)
+            _party = _s.get("party") or _gave
             _lab = member_labels(
                 _s.get("name"),
                 chamber=_s.get("chamber") or _m.get("chamber"),
-                party=_s.get("party"),
+                party=_party,
                 district=_s.get("district"), county=_s.get("county"))
         elif _s.get("source") == TS.SOURCE or _s.get("seat_source") == TS.SOURCE:
+            _party = _s.get("party") or _t.get("party_code")
             _lab = member_labels(
                 _s.get("name"),
                 chamber=_s.get("chamber") or _t.get("chamber"),
-                party=_s.get("party") or _t.get("party_code"),
+                party=_party,
                 district=_s.get("district") or _t.get("district"),
                 county=_s.get("county") or _t.get("county"),
                 county_abbr=None if _s.get("district") else _t.get("county_abbr"))
@@ -8895,16 +9071,18 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
             # THE SEAT THE RECORD PRINTS, WHERE THE MEMBER HAS SINCE MOVED
             # CHAMBER (9 November 2026): a bill filed as Rep. for Grafton 1 reads
             # so, linked to the page the member has now as a senator.
+            _party = _s.get("party") or _t.get("party_code")
             _lab = member_labels(
                 _s.get("name"),
                 chamber=_s.get("chamber"),
-                party=_s.get("party") or _t.get("party_code"),
+                party=_party,
                 district=_s.get("district"), county=_s.get("county"))
         else:
+            _party = _t.get("party_code") or _s.get("party")
             _lab = member_labels(
                 _s.get("name"),
                 chamber=_t.get("chamber") or _s.get("chamber"),
-                party=_t.get("party_code") or _s.get("party"),
+                party=_party,
                 district=_t.get("district") or _s.get("district"),
                 county=_t.get("county") or _s.get("county"),
                 county_abbr=_t.get("county_abbr"))
@@ -8915,7 +9093,15 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
         # The member's OWN address, not one derived from the label above --
         # own_slug says why that distinction is not cosmetic.
         _slug = own_slug(_m) if _m.get("id") else ""
-        sp_list.append({**_s, **_lab, "slug": _slug})
+        # The party given (early_party) is the row's too, so that the chip on
+        # the bill's Sponsors tab, the card's (the index row's sponsor_party)
+        # and the bill search's party filter read the party the label does.
+        sp_list.append({**_s, **_lab, "slug": _slug, **({"party": _gave} if _gave else {})})
+        # WHAT A PAGE'S BILLS OF 1999 ON DRAW THEM WITH, for early_party: the
+        # label's party and the row's own, which the chip and the card read.
+        if labelled is not None and _m.get("id") and term[:4] >= "1999":
+            labelled.setdefault(str(_m["id"]), set()).update(
+                {party_letter(_party), party_letter(_s.get("party"))} - {""})
         # FILED UNDER THE MEMBER THE PAGE LINKS. This used the record's own id,
         # and every 2023-2024 record, with 4,569 of 2025-2026's, carries an
         # employee number or none: 349 of 406 members' Sponsored tabs missed
@@ -11522,7 +11708,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 votes_by_bill, vetoes=None, notes=None, coverage=None,
                 chapters=None, seats=None, session_over="", former=None,
                 links=None, hearing_reports=None, ballots=None, term_rosters=None,
-                rc_cards=None, moments=None, numbers=None, record_chambers=None):
+                rc_cards=None, moments=None, numbers=None, record_chambers=None,
+                id_parties=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -11532,6 +11719,13 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
 
     Every input is named in the signature rather than inherited from an
     enclosing scope, so a name can no longer be quietly reused.
+
+    `id_parties` is party_ids' {id: {party letter}}: the parties a
+    person's ballots, the legislators table and the Manual give, which a
+    1989-1998 sponsor placed on their page is held to with the labels of
+    their bills of 1999 on (early_party). None gives no 1989-1998 sponsor a
+    party, as before 15 November 2026: main passes None where the Manual's
+    seat list is not on this disk.
 
     Returns (index, years, unnamed, sponsored) -- unnamed being the member
     ids the roll calls reference that the roster cannot name, and sponsored
@@ -11683,6 +11877,24 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     # How many members were in office on each day a chamber took a roll call,
     # which is what three fifths is of on a division (bill_rollcalls).
     in_office = RO.members_in_office(rollcalls)
+    # THE PARTY A 1989-1998 SPONSOR PLACED ON A PAGE TAKES (early_party, the owner's
+    # decision of 15 November 2026) is the page's only where every record of the person gives
+    # that one party, and the labels of their bills of 1999-2026 are among those records. This
+    # loop reaches 1989 first, so those labels are drawn here beforehand, exactly as the loop
+    # will draw them, and nothing else of the lists is kept. With no `id_parties` none is given.
+    _parties = None
+    if id_parties is not None:
+        _labelled = {}
+        for bid, b in ((k, v) for byb in bills.values() for k, v in byb.items()):
+            year = int(b.get("lsr_year") or 0)
+            term = P.term_of(str(year)) if year else ""
+            if term[:4] >= "1999":
+                bill_sponsor_list(bid, b, year, term, current, sponsors, _people, leg_by_sort,
+                                  leg_by_name, defaultdict(list), seats,
+                                  left=_left if (term in term_rosters or term == current) else None,
+                                  term_roster=term_rosters.get(term),
+                                  record_chambers=record_chambers, labelled=_labelled)
+        _parties = party_record(_people, _labelled, id_parties)
     for bid, b in ((k, v) for byb in bills.values() for k, v in byb.items()):
         # New Hampshire sits in two-year terms beginning in odd years. Bill
         # numbers are unique across the whole term, so the term -- not the year
@@ -11752,7 +11964,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                                     leg_by_name, sponsored, seats,
                                     left=_left if (term in term_rosters or term == current) else None,
                                     term_roster=term_rosters.get(term),
-                                    record_chambers=record_chambers)
+                                    record_chambers=record_chambers, parties=_parties)
         prime = next((s for s in sp_list if s.get("prime")), sp_list[0] if sp_list else None)
         years.add(year)
         ev = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
@@ -12462,6 +12674,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                   "of that bill on that date in proceedings.csv, and are "
                   "shown under the report's own date: "
                   + ", ".join(hr_unmatched))
+    for _said in early_party_said(sponsored, _people, _parties):
+        print(_said)
     return index, years, unnamed, dict(sponsored)
 
 
@@ -13047,6 +13261,24 @@ def main():
     record_chambers = sponsor_record_chambers(sponsors)
     for _said in sponsor_record_said(sponsors, record_chambers):
         print(_said)
+    # WHAT EACH OTHER RECORD OF A PERSON SAYS THEIR PARTY IS, which the party a 1989-1998
+    # sponsor placed on their page takes is held to (early_party): the ballots cast under their
+    # ids, the legislators table's party (generated/careers.json) and the party the general
+    # election's returns print for them in each 1989-1998 term's Manual for the General Court
+    # (manual_parties). build_bills adds the labels of their bills of 1999-2026. A record not
+    # read gives more people a party, not fewer, so it is said; and without the Manual, the one
+    # record here of anyone's party in those years (nine of the ten people found in two parties
+    # on 15 November 2026 were found by it alone), no 1989-1998 sponsor is given one.
+    _careers = load(Path("generated/careers.json"), {})
+    _manual_party = manual_parties()
+    id_parties = None if _manual_party is None else party_ids(votes_by_member, _careers,
+                                                              _manual_party)
+    if _manual_party is None:
+        print("  sponsors: no Manual seat list read; no 1989-1998 sponsor is given a party, "
+              "since its returns are the one record here of a party in those years")
+    elif not _careers:
+        print("  sponsors: no generated/careers.json read; a 1989-1998 sponsor's party is not "
+              "held to the legislators table's")
 
     segs, marks = load_transcripts(a, procs, prows)
     # Each roll call's card on its bill's Votes tab, filled by build_bills
@@ -13075,7 +13307,7 @@ def main():
                                    max(bills) if bills else ""),
                                ballots=load_ballots(BALLOTS, bills),
                                rc_cards=rc_cards, moments=floor_moments,
-                               record_chambers=record_chambers)
+                               record_chambers=record_chambers, id_parties=id_parties)
     add_related(out, index)
     add_same_number(out, index, notes)
     # NO index.json (retired 5 October 2026). It was every row below in one

@@ -2046,8 +2046,24 @@ exactly one of the term's sponsors fits it, and `src/parse/build_past_roster.py`
 writes `generated/past_roster.json`, one row for each person, term and
 chamber. The bill index marks a prime sponsor so placed (`sponsor_person`) and
 the Sponsor filter keys them on their full name; a row still as printed keeps
-the surname and seat. Granite Record's own ids, `gr-` and a serial, are for a
-person the record names and the General Court gives no number
+the surname and seat. A sponsor placed on a person with a page, by the bill's
+own rows or by the record filling a bill, is drawn with the party that page
+gives where every record of the person gives that one party, and with none
+where any gives another (`build_site_v2.early_party`, the owner's decision of
+15 November 2026): the labels and chips of their bills of 1999-2026, which
+`build_bills` draws before its loop reaches 1989; their ballots; the
+legislators table's party (`generated/careers.json`); and the party the
+general election's returns print for them in each 1989-1998 term's Manual
+(`manual_parties`, through `past_roster.term_seat`), where the line names one
+party: a line of two nominations ("d&r") names none. Without the Manual's
+seat list, the one record here of a party in those years, no 1989-1998
+sponsor is given one. The label, the bill index's `sponsor_party` and the
+bill's Sponsors list carry it; the seat is still the one the bill printed,
+the sponsor files and `sponsors.csv` keep the row's own empty party, and a
+person with no page keeps no party and no link. The build says how many
+people took their page's party and names everyone the record shows in more
+than one (`early_party_said`). Granite Record's own ids, `gr-` and a serial,
+are for a person the record names and the General Court gives no number
 (`src/lib/gr_ids.py`, `generated/gr_ids.json`, issued by
 `src/ops/gr_register.py`): kept in a field of their own (`granite_id`), never
 in `gc_employee_number`, and never renumbered. preflight holds the two kinds of
