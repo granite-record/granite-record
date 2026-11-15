@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.19
+# GRANITE_VERSION: 2026-09-18.20
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -758,15 +758,22 @@ def drop_unreturned(rows, gone):
 
 def with_topics(rows, bills):
     """Each request's initial topic, from its title (request_topics.py: the
-    classifier the archived bills' topics came from, its title half only), and
-    Miscellaneous where the title gives none. Returns how many the title
-    placed. Where there are no labelled bills to learn from, only the study
-    and housing rules place one, and it is said."""
+    classifier the archived bills' topics came from, its title half only, learned
+    from every term's official code), and Miscellaneous where the title gives
+    none. Returns how many the title placed. Where there are no labelled bills
+    to learn from, only the study and housing rules place one, and it is said;
+    so is a night with no past tables, whose model knows the current term alone."""
     import request_topics
     model = request_topics.train_on(bills)
     if model is None:
         print("  no bill of the labelled term in data/bills.json: only the study and housing "
               f"rules place a request; the rest are {request_topics.MISC}")
+    else:
+        f = model["from"]
+        print(f"  request topics learned from {f['current']:,} titles of the current term "
+              f"(x{request_topics.CURRENT_WEIGHT}) and {f['archived']:,} archived titles with an "
+              "official code" + ("" if f["archived"] else
+                                  " -- no past tables here (db/past): the current term alone"))
     got = request_topics.assign(rows, model)
     return sum(n for t, n in got.items() if t != request_topics.MISC)
 

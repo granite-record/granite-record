@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.2
+# GRANITE_VERSION: 2026-11-12.3
 """
 An initial topic for a bill request, from its title.
 
@@ -14,21 +14,41 @@ can since that information is helpful". The site already has the classifier
 that gave the archived bills their topics before the General Court's own codes
 were adopted (topics.py), so this is that, not a second one.
 
-THE SAME MODEL, ITS TITLE HALF. topics.py learns, from the 2,221 bills of
-2025-2026 the General Court itself labelled, which words of a title go with
-which topic, and answers from a title and a committee. A request has no
+THE SAME MODEL, ITS TITLE HALF. topics.py learns which words of a title go with
+which topic and answers from a title and a committee. A request has no
 committee, so the model is trained on the titles alone (the committee tokens
 left out, not merely unseen: a model trained with a committee token and asked
-without one is measured in a regime it was not scored in). Measured on a half
-it never saw, title only, 1,088 bills (--score):
+without one is measured in a regime it was not scored in).
 
-    margin >= 0    every bill given a topic         49% right
-    margin >= 4    51% given one                    70% right
-    margin >= 6    40% given one                    75% right    <- THRESHOLD
-    margin >= 8    32% given one                    79% right
+FROM EVERY TERM'S OFFICIAL CODE, THE CURRENT TERM'S COUNTED THREE TIMES (the
+owner, 15 November 2026: "Start polishing the topic and tag matcher"). It
+learned from the 2,221 bills of 2025-2026 alone, the only term the General
+Court had labelled when it was written. The archived terms carry the General
+Court's own codes too now (official_topics.adopt, the decision of 1 October
+2026, built on 11 November): 24,525 more titles with an official topic. They
+are added, and the current term's labels are counted CURRENT_WEIGHT times,
+since its coding is the one the next session's bills will be coded by.
+Measured title only, in the site's categories (what a request shows), on two
+sets the model never saw (--score):
 
-Those are against the General Court's 46 names; against the site's categories
-(a few folded into parents) a few more are right.
+    the 1,088-bill held-out half of 2025-2026      margin >= 6
+        2025-2026's other half alone (before)         40% given one, 77.1% right
+        that half x3 and every archived term          60% given one, 77.1% right
+    2023-2024's 1,959 bills, trained without them   margin >= 6
+        2025-2026 alone (before)                      41% given one, 80.5% right
+        2025-2026 x3 and every other term             60% given one, 81.6% right
+
+The weight was chosen on the first set (1, 2, 3, 5, 8 tried: 3 kept the first
+set's accuracy and gave the most coverage that did) and held on the second.
+Tried and left out, so they are not tried again: the archive from 2013 alone
+(no better than all of it); the newest earlier bill of the identical title
+(build_lsrs.title_key) taking its code (74% right on the 73 held-out bills that
+have one, no better than the model, and no help beside it: of the six where the
+two disagree, each was right three times); and keeping a topic where the
+2025-2026-only model clears the threshold and agrees with this one's first
+choice (four points more coverage, but those extra answers were 67% right).
+Where the past tables are not on the machine (db/past), the model learns from
+the current term alone, as before, and build_lsrs says so.
 
 BELOW THE THRESHOLD A REQUEST IS MISCELLANEOUS (the owner, 14 November 2026:
 "assign topics not yet assigned to misc"), as an archived bill below topics.py's
@@ -73,10 +93,13 @@ import random
 
 import topics
 
-# A margin in the model's log space: 6 gave 75% right on a held-out half at
-# 40% coverage, title only (the docstring). A judgement, to be argued with from
-# the bench like topics.THRESHOLD.
+# A margin in the model's log space: 6 gave 77% right (in the site's categories)
+# on a held-out half at 60% coverage, title only (the docstring). A judgement,
+# to be argued with from the bench like topics.THRESHOLD.
 THRESHOLD = 6.0
+# The current term's labels counted this many times beside the archive's (the
+# docstring: chosen on one held-out set, held on another).
+CURRENT_WEIGHT = 3
 # What topic_by says: the topic is the title's, not the General Court's.
 BY = "title"
 # A request the title does not place (the docstring).
@@ -88,11 +111,40 @@ def titles_only(rec):
     return {"title": rec.get("title") or "", "subject": rec.get("subject") or ""}
 
 
-def train_on(bills):
-    """The title-only model, from {term: {bill: record}} (data/bills.json): every
-    bill of the term the General Court labelled. None where there are none."""
-    rows = [(b, titles_only(r)) for b, r in topics.labelled(bills)]
-    return topics.train(rows) if rows else None
+def archived_official(bills, subjects=None, codes=None, skip=()):
+    """[(bill, record)] for every archived bill the General Court's own code names,
+    titles only: official_topics.adopt on a copy of the archived terms (data/bills.json
+    carries a subject for the current term alone), so `bills` is never changed. A term in
+    `skip` is left out (a held-out one). Empty where the past tables are not on this
+    machine. `subjects` is data/subjects.json's {code: {"name"}}; `codes` is
+    official_topics.read_codes()'s, read when not given."""
+    import official_topics as OT
+    cur = topics.LABELLED_TERM
+    arch = {t: {b: dict(r) for b, r in recs.items()} for t, recs in bills.items()
+            if t != cur and t not in skip}
+    if not arch:
+        return []
+    if subjects is None:
+        subjects = (json.loads(topics.SUBJECTS.read_text(encoding="utf-8"))
+                    if topics.SUBJECTS.exists() else {})
+    OT.adopt({**arch, cur: {}}, subjects, current=cur, codes=codes)
+    return [(b, titles_only(r)) for t in sorted(arch) for b, r in sorted(arch[t].items())
+            if r.get("subject") and r.get("subject_source") == "general court"]
+
+
+def train_on(bills, subjects=None, codes=None):
+    """The title-only model, from {term: {bill: record}} (data/bills.json): the term
+    the General Court labelled, CURRENT_WEIGHT times, and every archived bill its
+    official code names (archived_official). None where there is neither. The model
+    says what it learned from in model["from"]."""
+    own = [(b, titles_only(r)) for b, r in topics.labelled(bills)]
+    past = archived_official(bills, subjects, codes)
+    rows = own * CURRENT_WEIGHT + past
+    if not rows:
+        return None
+    model = topics.train(rows)
+    model["from"] = {"current": len(own), "archived": len(past)}
+    return model
 
 
 def topic_of(model, title, site_name=None):
@@ -136,27 +188,58 @@ def assign(rows, model, site_name=None):
     return dict(got)
 
 
+def _scored(model, test, site):
+    """[(margin, right)] for each held-out (bill, record), right in the site's
+    categories (what a request shows); a title with nothing the model knows has no
+    margin."""
+    out = []
+    for bid, r in test:
+        rec = {"title": r.get("title") or "", "subject": "", "bill": bid}
+        ranked = topics.rank(model, rec)
+        known = any(w in model["vocab"] for w in topics.tokens(rec))
+        gold = site(r["subject"], {**rec, "subject": r["subject"]})
+        out.append(((ranked[0][1] - ranked[1][1]) if known else -1.0,
+                    bool(gold) and site(ranked[0][0], rec) == gold))
+    return out
+
+
 def score():
-    """Held-out accuracy of the title-only model, as topics.score measures the
-    full one: train on one half of 2025-2026's labelled bills, ask the other."""
+    """Held-out accuracy of the title-only model on two sets it never saw (the
+    docstring's table): 2025-2026's held-out half (the half topics.split_half marks 1)
+    and 2023-2024's bills; each against the model as it was, the current term's labels
+    alone."""
     bills = topics.load()
+    site = _vocabulary_of()
     lab = [(b, titles_only(r)) for b, r in topics.labelled(bills)]
-    tr = [x for x in lab if topics.split_half(x[0]) == 0]
-    te = [x for x in lab if topics.split_half(x[0]) == 1]
-    model = topics.train(tr)
-    rows = []
-    for _b, r in te:
-        ranked = topics.rank(model, r)
-        rows.append((ranked[0][1] - ranked[1][1], ranked[0][0] == r["subject"]))
-    print(f"{len(lab):,} labelled bills; trained on {len(tr):,}, scored on the "
-          f"{len(te):,} it never saw, titles only.\n")
-    print(f"{'margin':>8}{'given a topic':>15}{'coverage':>10}{'of those, right':>17}")
-    for thr in (0, 2, 4, 6, 8, 10, 14):
-        keep = [ok for m, ok in rows if m >= thr]
-        if keep:
-            mark = "  <- THRESHOLD" if thr == THRESHOLD else ""
-            print(f"{thr:>8}{len(keep):>15,}{100 * len(keep) / len(rows):>9.0f}%"
-                  f"{100 * sum(keep) / len(keep):>16.1f}%{mark}")
+    half = [x for x in lab if topics.split_half(x[0]) == 0]
+    test1 = [x for x in lab if topics.split_half(x[0]) == 1]
+    past = archived_official(bills)
+    if not past:
+        print("  no past tables on this machine (db/past): the archive cannot be scored")
+    other = archived_official(bills, skip=("2023-2024",))
+    import official_topics as OT
+    held = {"2023-2024": {b: dict(r) for b, r in bills.get("2023-2024", {}).items()}}
+    OT.adopt({**held, topics.LABELLED_TERM: {}}, json.loads(topics.SUBJECTS.read_text(encoding="utf-8"))
+             if topics.SUBJECTS.exists() else {}, current=topics.LABELLED_TERM)
+    test2 = [(b, r) for b, r in held["2023-2024"].items() if r.get("subject_source") == "general court"]
+    sets = [(f"2025-2026's held-out half, {len(test1):,} bills", test1,
+             [("the current term's other half alone", half),
+              (f"that half x{CURRENT_WEIGHT} and every archived term", half * CURRENT_WEIGHT + past)]),
+            (f"2023-2024, {len(test2):,} bills, trained without them", test2,
+             [("2025-2026 alone", lab),
+              (f"2025-2026 x{CURRENT_WEIGHT} and every other term", lab * CURRENT_WEIGHT + other)])]
+    for name, test, models in sets:
+        if not test:
+            continue
+        print(f"\n{name}, titles only, right in the site's categories:")
+        print(f"  {'trained on':48}{'margin':>7}{'coverage':>10}{'right':>8}")
+        for label, rows in models:
+            got = _scored(topics.train(rows), test, site)
+            for thr in (4, 6, 8):
+                keep = [ok for m, ok in got if m >= thr]
+                mark = "  <- THRESHOLD" if thr == THRESHOLD else ""
+                print(f"  {label:48}{thr:>7}{100 * len(keep) / len(got):>9.0f}%"
+                      f"{100 * sum(keep) / max(1, len(keep)):>7.1f}%{mark}")
     return 0
 
 
@@ -172,6 +255,9 @@ def main():
         return score()
     bills = topics.load()
     model = train_on(bills)
+    if model:
+        print(f"learned from {model['from']['current']:,} titles of the current term "
+              f"(x{CURRENT_WEIGHT}) and {model['from']['archived']:,} archived titles with an official code")
     reqs = json.loads(Path(a.lsrs).read_text(encoding="utf-8"))
     rows = [{"title": r.get("title"), "n": r.get("lsr")} for r in reqs]
     tally = assign(rows, model)
