@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.4
+# GRANITE_VERSION: 2026-09-06.5
 """
 Fill in what the bill status pages did not say, from the General Court's
 own database.
@@ -45,6 +45,17 @@ Nothing gets worse and about a thousand fields get better.
 For a past term, where there are no pages and no scrape, this is simply the
 source.
 
+THE DAY A REQUEST WAS MADE A BILL (the owner's approval, 15 November 2026).
+"made_bill" is Legislation.DateLSRBill as a day, YYYY-MM-DD: the day the
+request was made a numbered bill, which the column holds on every one of the
+2,234 rows of 2025-2026 in db/Legislation.psv of 17 October 2026. The pages'
+reader (fetch_bill_status.py) gives no such field, and the day files leave it
+out as the General Court's own export does (dayfiles_from_db.LSR_MAP), so
+this is its one source. It fills as the rest do: a blank is filled and a day
+on file stays. build_data.py keeps it on the bill's record in data/bills.json,
+and build_lsrs.py dates a bill request's Filed stop by it once the request is
+that bill.
+
 WHAT IT CANNOT SUPPLY
 
 text_pdf, and the text_id and text_year it is built from. Those come from the
@@ -88,7 +99,8 @@ SELECT ISNULL(CondensedBillNo,''),
        ISNULL(FORMAT(SenateFloorDate,'M/d/yyyy'),''),
        ISNULL(HouseCurrentCommitteeCode,''),
        ISNULL(SenateCurrentCommitteeCode,''),
-       ISNULL(CAST(ChapterNo AS varchar(20)),'')
+       ISNULL(CAST(ChapterNo AS varchar(20)),''),
+       ISNULL(FORMAT(DateLSRBill,'yyyy-MM-dd'),'')
 FROM Legislation
 WHERE (%s = 0 OR sessionyear IN (%d, %d))
 ORDER BY sessionyear, CondensedBillNo
@@ -96,14 +108,15 @@ ORDER BY sessionyear, CondensedBillNo
 
 COLS = ["bill", "year", "title", "lsr", "body", "local", "gcode", "hcode",
         "scode", "hintro", "sintro", "hfloor", "sfloor", "hcmte", "scmte",
-        "chapter"]
+        "chapter", "made_bill"]
 
 # The fields this fills, and where each comes from. Anything not on this list
 # -- text_pdf, text_id, text_year, sponsors -- the database does not carry and
-# this does not touch.
+# this does not touch. made_bill is one fetch_bill_status.py never gives (THE
+# DAY A REQUEST WAS MADE A BILL, above).
 FILLS = ["title", "lsr", "body", "local", "gen_status", "house_status",
          "senate_status", "date_introduced", "floor_date", "committee_code",
-         "chapter"]
+         "chapter", "made_bill"]
 
 
 def codes(path):
@@ -157,6 +170,9 @@ def record(r, gen, body):
         "committee_code": (r["hcmte"] or r["scmte"]) if house
                           else (r["scmte"] or r["hcmte"]),
         "chapter": r["chapter"],
+        # The day the request was made this bill, YYYY-MM-DD, or "" where the
+        # column is empty.
+        "made_bill": r["made_bill"],
     }
 
 
