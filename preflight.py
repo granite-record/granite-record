@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.927
+# GRANITE_VERSION: 2026-09-04.928
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -130820,8 +130820,11 @@ def _past_sponsors_filled_data():
     is a named person marked as the record's, with one prime at most.
 
     And on the built site, where it is here: 1993 HB 104 lists the record's
-    four, Betsy McKinney prime, and Rep. Sherman Packard with no seat or
-    party of the present day.
+    four, Betsy McKinney prime, and Rep. Sherman Packard, each with no seat
+    of the present day -- and, since the owner's decision of 15 November 2026,
+    with the party their page gives where every record of them gives that one
+    party (build_site_v2.early_party), so "Rep. Sherman Packard (R)": a name
+    and at most a party letter, never a seat.
     """
     p, bp = Path("past_sponsors.json"), Path("data/bills.json")
     if not (p.exists() and bp.exists()):
@@ -130872,10 +130875,14 @@ def _past_sponsors_filled_data():
     if hb104 is not None and ((doc.get("1993-1994") or {}).get("HB104") or {}).get("fill"):
         sp = hb104.get("sponsors") or []
         got = [(s.get("display_full"), bool(s.get("prime"))) for s in sp]
-        assert got and got[0] == ("Rep. Betsy McKinney", True) and (
-            "Rep. Sherman Packard", False) in got, (
+        # A name and at most the page's party letter (early_party); a seat would
+        # be "(R - Rock 26)" or "(Rock 26)", which no filled row may carry.
+        bare = lambda d: re.sub(r" \([A-Z]\)$", "", d or "")
+        seated = [d for d, _ in got if not re.fullmatch(r"(?:Rep|Sen)\. [^()]+(?: \([A-Z]\))?", d or "")]
+        assert got and bare(got[0][0]) == "Rep. Betsy McKinney" and got[0][1] \
+            and "Rep. Sherman Packard" in [bare(d) for d, p in got if not p] and not seated, (
             f"1993 HB 104's page lists {got}: the record names McKinney prime and "
-            "Packard, with no seat of a later term")
+            "Packard, with no seat of a later term (a party letter their page gives is allowed)")
         said += "; 1993 HB 104 drawn from it, Packard with no seat of today's"
     return "ok", said
 
