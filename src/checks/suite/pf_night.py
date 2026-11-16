@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -4066,6 +4066,9 @@ def _report_agree(CR):
     # drawn, and passed while the box sent no tab from Hearings. Every bill
     # tab's button is `data-t="N">Label`, so the label is read from there.
     rendered |= set(re.findall(r'role="tab"[^>]*data-t="\d+">([A-Z][A-Za-z ]*?)(?:\$\{|<)', app))
+    # The bill's strip and a request's are components.recordTabs's (16
+    # November 2026), named in the calls' ["key","Word",count].
+    rendered |= set(re.findall(r'\["\d+","([A-Z][A-Za-z ]*)",', app))
     assert "Hearings" in rendered, "the bill's Hearings tab is no longer found among the tabs drawn"
     assert rendered <= box_tabs, f"a tab the pages render is missing from the report list: {sorted(rendered - box_tabs)}"
     # AND NOTHING THE PAGES NO LONGER DRAW (the merge of dev into the polish,

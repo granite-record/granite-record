@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of Learn, the guides, civics and the numbers pages.
 
@@ -4397,14 +4397,17 @@ def _using_this_site_tabs(civics):
     named = re.findall(r"<li><b>([^<]+)</b>", part) + re.findall(
         r", and <b>([^<]+)</b>", part)
     app = _source(_paths.locate("app.js"))
-    drawn = set(re.findall(r'role="tab" id="tab_\$\{b\.id\}_\d"[^>]*?data-t="\d">([A-Z][a-z]+'
-                           r'(?: [A-Z][a-z]+)?)', app, re.S))
+    # The bill page's strip is components.recordTabs's (16 November 2026): its
+    # tabs are read off renderDetail's call, ["key","Word",count] each.
+    rd = re.search(r"\nfunction renderDetail\(.*?\n\}\n", app, re.S)
+    rd = rd.group(0) if rd else ""
+    drawn = set(re.findall(r'\["\d","([A-Z][a-z]+(?: [A-Z][a-z]+)?)",', rd))
     assert drawn >= {"Summary", "Votes", "Hearings", "Reports", "Sponsors"}, (
         f"the bill page's tabs read {sorted(drawn)} out of app.js")
     missing = [t for t in named if t not in drawn and t != "Bill Text"]
     assert not missing, (f"Using this site names tabs a bill's page does not have: {missing}; "
                          f"it draws {sorted(drawn)}")
-    assert "Bill Text" not in named or "Bill Text${" in app, "app.js has no Bill Text tab"
+    assert "Bill Text" not in named or '"Bill Text"' in rd, "app.js has no Bill Text tab"
     votes = re.sub(r"\s+", " ", part[part.index("<b>Votes</b>"):])
     votes = votes[:votes.index("</li>")]
     assert "appear in the narrative" not in votes and "voice or division vote" in votes, (

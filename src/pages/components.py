@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.33
+# GRANITE_VERSION: 2026-10-09.34
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -735,6 +735,32 @@ def record_head(h):
             + (f'<dl class="rfacts">{facts}</dl>' if facts else "")
             + (f'<div class="rrail">{h.get("rail")}</div>' if h.get("rail") else "")
             + f'<div class="racts">{h.get("actions") or ""}</div></header>')
+
+
+def record_tabs(rid, tabs, on, base=""):
+    """THE RECORD'S TAB STRIP, which hangs from the head's foot: a bill's page
+    and card (app.js renderDetail), a request's card (lsrBody) and a request's
+    own page (build_request_pages), one strip (16 November 2026: a request's
+    page is to show its Summary tab as a bill's page does). `rid` is the
+    record's id; `tabs` is [[key, word, count], ...] in their order, the key
+    a tab's identity -- its pane is pane_<rid>_<key> and carries data-t="key",
+    and a saved address restores by it -- and a count of 0 or none draws no
+    badge; `on` is the key chosen. `base`, the page's own address, is for a
+    page built ahead with every pane on it (a request's): the strip then
+    carries app.js's ssTabs hooks -- sstabs, which app.css hides where no
+    script runs, the address, and data-sstab on each tab -- and the script
+    turns its panes, as on a study committee's page."""
+    attrs = f' data-base="{esc(base)}"' if base else ""
+    return (f'<div class="tabs{" sstabs" if base else ""}" role="tablist"{attrs}>'
+            + "".join(
+                f'<button class="tab" role="tab" id="tab_{esc(rid)}_{esc(k)}" '
+                f'aria-controls="pane_{esc(rid)}_{esc(k)}" '
+                f'aria-selected="{"true" if str(k) == str(on) else "false"}" data-t="{esc(k)}"'
+                + (' data-sstab=""' if base else "") + f">{esc(word)}"
+                + (f'<span class="tn"><span class="tnp"> (</span>{esc(n)}<span class="tnp">)</span></span>'
+                   if n else "")
+                + "</button>" for k, word, n in tabs)
+            + "</div>")
 
 
 def doc_row(x):

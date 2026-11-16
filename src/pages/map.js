@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.17
+// GRANITE_VERSION: 2026-10-09.18
 /* THE DISTRICT MAP (map v1), as a module a page mounts:
 
      <link rel="stylesheet" href="/map.css">
@@ -192,15 +192,25 @@ function arcPts(M,i){return i>=0?M.ARCS[i]:M.ARCS[~i].slice().reverse();}
 function rings(M,lk,fid){const k=lk+"|"+fid;if(M.rg[k])return M.rg[k];
   return M.rg[k]=M.T.layers[lk].f[fid].r.map(refs=>{let pts=[];refs.forEach((r,j)=>{const a=arcPts(M,r);pts=pts.concat(j?a.slice(1):a);});return pts;});}
 function featD(M,lk,fid){const k=lk+"|"+fid;if(!M.cache[k])M.cache[k]=rings(M,lk,fid).map(p=>"M"+p.map(q=>q[0]+" "+q[1]).join("L")+"Z").join("");return M.cache[k];}
-/* A feature's outline: only the arcs its rings use once. */
+/* THE ARCS A LAYER DRAWS AS ITS LINES: the geometry's borders, or the county
+   line build_district_map works out ("lines", lines_of), which leaves out the
+   rims of the gaps the town outlines leave between two towns of one county --
+   no county line runs there, and the line and its white casing were drawn
+   between Concord and Bow (the owner, 16 November 2026). A file without
+   "lines" draws the geometry's borders, as before. */
+function linesOf(M,lk){return (M.T.lines&&M.T.lines[lk])||M.T.layers[lk].m;}
+/* A feature's outline: only the arcs its rings use once, of its layer's lines. */
 function outlineD(M,lk,fid){const k=lk+"|out|"+fid;if(M.cache[k])return M.cache[k];
-  const n={};M.T.layers[lk].f[fid].r.forEach(ring=>ring.forEach(a=>{const i=a<0?~a:a;n[i]=(n[i]||0)+1;}));
-  return M.cache[k]=chainD(M,Object.keys(n).filter(i=>n[i]===1).map(Number));}
+  const n={},on=new Set(linesOf(M,lk));M.T.layers[lk].f[fid].r.forEach(ring=>ring.forEach(a=>{const i=a<0?~a:a;n[i]=(n[i]||0)+1;}));
+  return M.cache[k]=chainD(M,Object.keys(n).filter(i=>n[i]===1&&on.has(+i)).map(Number));}
 /* The state's own outline: the arcs the counties use once, which are the
    edge of the state itself. The county mesh draws it on the State House and
    the towns; every other layer's mesh is its interior lines only, so
-   without this the State Senate drew no outline at all. */
+   without this the State Senate drew no outline at all. The edge alone where
+   the file says which arcs it is ("lines": the gaps between towns are the
+   counties' once too). */
 function stateD(M){const k="state|out";if(M.cache[k])return M.cache[k];
+  if(M.T.lines&&M.T.lines.state)return M.cache[k]=chainD(M,M.T.lines.state);
   const n={};Object.keys(M.T.layers.county.f).forEach(fid=>M.T.layers.county.f[fid].r.forEach(ring=>ring.forEach(a=>{const i=a<0?~a:a;n[i]=(n[i]||0)+1;})));
   return M.cache[k]=chainD(M,Object.keys(n).filter(i=>n[i]===1).map(Number));}
 /* The heavy lines over a layer's fills, as [class, d] pairs, casing first:
@@ -210,7 +220,7 @@ function stateD(M){const k="state|out";if(M.cache[k])return M.cache[k];
 function edgeLines(M,lk){
   const co=lk==="base"||lk==="towns",d=co?meshD(M,"county"):stateD(M),s=co?"":" sline";
   return [["ctyc"+s,d],["cty"+s,d]];}
-function meshD(M,lk){const k=lk+"|mesh";if(!M.cache[k])M.cache[k]=chainD(M,M.T.layers[lk].m);return M.cache[k];}
+function meshD(M,lk){const k=lk+"|mesh";if(!M.cache[k])M.cache[k]=chainD(M,linesOf(M,lk));return M.cache[k];}
 /* Arcs drawn as one path each leave a notch on the outside of every bend
    where two meet (a butt cap has no join), and the casing under a line shows
    through it as a white speck along the border. So arcs that meet end to end
@@ -1008,7 +1018,7 @@ function mount(root,opts){
   return api;
 }
 
-const GRMap={mount,load,model,layout,numbersLayout,namesLayout,inFeature,fbox,edgeLines,stateD,totals,totalsLine,LABELS,DEFAULT_LABELS,LAYERS,SIZE,WEIGHT,GAP};
+const GRMap={mount,load,model,layout,numbersLayout,namesLayout,inFeature,fbox,edgeLines,stateD,outlineD,totals,totalsLine,LABELS,DEFAULT_LABELS,LAYERS,SIZE,WEIGHT,GAP};
 if(typeof window!=="undefined")window.GRMap=GRMap;
 if(typeof module!=="undefined"&&module.exports)module.exports=GRMap;
 })();

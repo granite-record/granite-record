@@ -2338,6 +2338,16 @@ bill is. The page's number marks LSR for the site's term popover
 (`components.term_mark`, glossary.json's entry), the mechanism a bill number's
 FN uses.
 
+Under its head a request's page hangs a bill page's tab strip, the record's
+one (`components.record_tabs`, `recordTabs` in the browser, with which a bill's
+page and card and a request's card draw theirs), the Summary's tab drawn even
+where it is the only one. Its Summary says what the row says of the text
+(`build_request_pages.text_note`): not public yet while the request is drafted,
+and public once it is filed as a numbered bill; or withdrawn before it was
+filed; and nothing of the kind once it is filed. The page is built with every
+pane on it, so it reads with no script: the strip is hidden and each pane
+stands under its own heading.
+
 ## Town websites and staff (November 2026)
 
 A town's website comes from two directories that are not told when a town

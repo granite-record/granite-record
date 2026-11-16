@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -9723,6 +9723,156 @@ def _map_keeps_the_outline():
     assert not out["missing"], "a layer draws no state outline:\n    " + "\n    ".join(out["missing"][:8])
     assert not out["drifted"], "a layer's outline is not the state's:\n    " + "\n    ".join(out["drifted"][:8])
     return "ok", f"{len(out['layers'])} layers, {out['switches']} switches, the state's outline on each"
+
+
+# map.js required in node on the map's data: every layer's heavy line (edgeLines: the white
+# casing and the line over it) and every county's outline when it is chosen (outlineD), as
+# the d each path is drawn with.
+_MAP_COUNTY_LINES_JS = r"""
+const G = require(process.argv[2]);
+const T = JSON.parse(require("fs").readFileSync(process.argv[3], "utf8"));
+const M = G.model(T), out = {layers: {}, counties: {}};
+for (const [lk] of G.LAYERS) out.layers[lk] = G.edgeLines(M, lk);
+for (const c of Object.keys(T.layers.county.f)) out.counties[c] = G.outlineD(M, "county", c);
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "the district map's county line, its white casing and the state's edge are "
+                   "drawn only where two counties meet or the state ends, and every county line "
+                   "the geometry has is drawn")
+def _map_county_line_where_counties_meet():
+    """The owner, 16 November 2026: the district map "still has additional
+    white lines where there shouldn't be" -- between Concord and Bow, both
+    Merrimack. NH GRANIT's outlines of two neighbouring towns do not always
+    meet, and a county is its towns dissolved, so the gap between them stayed
+    in the county as a ring the county uses once, as it uses the state's
+    edge; the county line and its white casing were drawn round four of them
+    (Bow and Concord, Concord and Hopkinton, Franklin and Northfield,
+    Claremont and Newport: 12 segments on every layer), as the county line
+    on the State House and the towns and as the state's edge on the rest.
+    build_district_map.lines_of leaves the rims of a gap between towns of
+    one county out of the county line ("lines"), and map.js draws from it.
+
+    Measured here against the committed geometry and nothing else. Its
+    county lines: an arc two counties share; the state's own edge, which is
+    the piece the arcs the counties use once make that spans the widest box,
+    with any piece whose box lies outside that one (an island); and the rim
+    of a gap between towns of two counties, a piece used by two counties,
+    which runs along their county line. The rim of a gap between towns of
+    one county, a piece one county alone uses, is none. Held, with map.js
+    run in node on the map's data: every segment of the State House's and
+    the towns' heavy line lies on a county line, every segment of every other
+    layer's on the state's edge, and every segment of a county's outline when
+    it is chosen on a county line of that county; and the State House's line
+    draws every segment of the county lines and every other layer's every
+    segment of the state's edge, so none is moved or lost. Skipped without
+    node or the tracked files."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    js = Path("src/pages/map.js")
+    data = _map_data()
+    if data is None or not js.exists():
+        return "skip", "map.js, the geometry, the district files or the officials file is not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-mapcounty-"))
+    try:
+        (root / "go.js").write_text(_MAP_COUNTY_LINES_JS, encoding="utf-8")
+        (root / "district_map.json").write_text(json.dumps(data), encoding="utf-8")
+        r = _run(["node", str(root / "go.js"), str(js.resolve()), str(root / "district_map.json")],
+                 cwd=root, capture_output=True, text=True, encoding="utf-8", timeout=120)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "map.js would not draw the county lines in node: " + (r.stderr or r.stdout or "")[-300:])
+        drawn = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    geom = json.loads(_source("generated/district_geometry.json"))
+    arcs = []
+    for a in geom["arcs"]:
+        p = [(a[0], a[1])]
+        for i in range(2, len(a), 2):
+            p.append((p[-1][0] + a[i], p[-1][1] + a[i + 1]))
+        arcs.append(p)
+
+    def users(lk):
+        u = {}
+        for fid, f in geom["layers"][lk]["f"].items():
+            for ring in f["r"]:
+                for r_ in ring:
+                    u.setdefault(r_ if r_ >= 0 else ~r_, []).append(fid)
+        return u
+    cu, tu = users("county"), users("towns")
+    once = [a for a in geom["layers"]["county"]["m"] if len(cu[a]) == 1]
+    up = {}
+
+    def top(q):
+        while up.setdefault(q, q) != q:
+            q = up[q]
+        return q
+    for a in once:
+        up[top(arcs[a][0])] = top(arcs[a][-1])
+    pieces = {}
+    for a in once:
+        pieces.setdefault(top(arcs[a][0]), []).append(a)
+
+    def box(ids):
+        pts = [q for a in ids for q in arcs[a]]
+        return (min(x for x, _ in pts), min(y for _, y in pts), max(x for x, _ in pts), max(y for _, y in pts))
+    edge = max(pieces.values(), key=lambda ids: (box(ids)[2] - box(ids)[0]) * (box(ids)[3] - box(ids)[1]))
+    eb, state, rims, gaps = box(edge), set(edge), set(), []
+    for ids in pieces.values():
+        b = box(ids)
+        if ids is edge:
+            continue
+        if not (eb[0] <= b[0] and eb[1] <= b[1] and b[2] <= eb[2] and b[3] <= eb[3]):
+            state.update(ids)
+        elif len({cu[a][0] for a in ids}) > 1:
+            rims.update(ids)
+        else:
+            gaps.append(ids)
+    lines = {a for a, cs in cu.items() if len(set(cs)) == 2} | state | rims
+
+    def segs(ids):
+        return {tuple(sorted((p, q))) for a in ids for p, q in zip(arcs[a], arcs[a][1:]) if p != q}
+
+    def drawn_segs(d):
+        out = set()
+        for sub in d.split("M")[1:]:
+            pts = [tuple(int(float(v)) for v in xy.split()) for xy in sub.split("L")]
+            out |= {tuple(sorted((p, q))) for p, q in zip(pts, pts[1:]) if p != q}
+        return out
+    on_line, on_edge = segs(lines), segs(state)
+    gap_of = {sg: ids for ids in gaps for sg in segs(ids)}
+    strays, n = {}, 0
+    for lk, heavy in drawn["layers"].items():
+        for cls, d in heavy:
+            got = drawn_segs(d)
+            assert got, f"the {lk} layer's {cls} draws nothing"
+            n += len(got)
+            want = on_line if lk in ("base", "towns") else on_edge
+            strays.update({(f"the {lk} layer's {cls}", sg): 1 for sg in got - want})
+            lost = want - got
+            assert not lost, (f"the {lk} layer's {cls} leaves out {len(lost)} segments of the "
+                              f"{'county lines' if want is on_line else 'state' + chr(39) + 's edge'}, "
+                              f"e.g. {sorted(lost)[:2]}")
+    for c, d in drawn["counties"].items():
+        got = drawn_segs(d)
+        n += len(got)
+        own = segs(a for a in lines if c in cu[a] and cu[a].count(c) == 1)
+        strays.update({(f"{c} County's outline", sg): 1 for sg in got - own})
+    if strays:
+        said = {}
+        for where, sg in strays:
+            ids = gap_of.get(sg, [])
+            towns = sorted({t for a in ids for t in tu.get(a, [])}) or ["no gap known"]
+            k = f"{where}: inside {sorted({cu[a][0] for a in ids}) or '?'} ({' and '.join(towns)})"
+            said[k] = said.get(k, 0) + 1
+        raise AssertionError(f"{len(strays)} segments of the county line, its casing, the state's edge "
+                             "or a county's outline lie on no county line: "
+                             + "; ".join(f"{v} {k}" for k, v in list(said.items())[:6]))
+    return "ok", (f"{n:,} drawn segments on {len(drawn['layers'])} layers and {len(drawn['counties'])} "
+                  f"counties' outlines, each on a county line; the {len(on_line):,} segments of the "
+                  f"county lines all drawn, and the {len(on_edge):,} of the state's edge; the rims of "
+                  f"{len(gaps)} gaps between towns of one county drawn on none")
 
 
 @check("data", "the district map's published file is the committed geometry, with every "

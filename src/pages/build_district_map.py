@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.5
+# GRANITE_VERSION: 2026-10-09.6
 """
 The district map's data, and its script and stylesheet, into the site.
 
@@ -40,6 +40,10 @@ WHAT THE FILE HOLDS, and where each part comes from:
                          only: each district's members-elect, keyed as `who`,
                          from site/members_elect.json (elect_of), for the
                          panel's list. Never in the fill
+    lines                the arcs the map draws as the county line and as the
+                         state's own edge (lines_of): the geometry's county
+                         borders, less the rims of the gaps its town outlines
+                         leave between two towns of one county
 
 THE PARTY IS THE RECORD'S. A member's party is site/legislators.json's, as
 every page shows it; a councillor's or a representative's is officials.json's,
@@ -295,6 +299,79 @@ def ward_groups(geom, places, cities):
     return out
 
 
+# ------------------------------------------------------ the county line ---
+
+def lines_of(geom):
+    """{"county": [arc, ...], "state": [arc, ...]}: the arcs map.js draws as
+    the county line, with its white casing (meshD, outlineD), and as the
+    state's own edge on every other layer (stateD).
+
+    WHERE NO COUNTY LINE RUNS, NONE IS DRAWN (the owner, 16 November 2026:
+    white lines on the district map "where there shouldn't be", between
+    Concord and Bow). A county is its towns dissolved
+    (src/towns/build_district_geometry.py), and where NH GRANIT's outlines of
+    two neighbouring towns do not quite meet, the gap between them stays in
+    the county as a ring of its own: three miles long between Bow and
+    Concord, nowhere wider than 36 feet. The county uses its arcs once, as
+    it uses the state's edge, so layers.county.m lists them among its
+    borders, and the county line and its casing were drawn round four such
+    gaps in the middle of two counties -- Bow and Concord, Concord and
+    Hopkinton, Franklin and Northfield (Merrimack), Claremont and Newport
+    (Sullivan) -- on every layer, as the county line or as the state's edge;
+    chainD already left out the smaller ones, as rings under 4 square units.
+
+    So the county line is an arc two counties share; the state's own edge,
+    which is the piece the arcs used once make that reaches farthest west,
+    and any piece outside it (an island); and the rim of a gap between towns
+    of two counties, which runs along their county line. The rim of a gap
+    between towns of one county is no county line and is left out of both.
+    No arc moves and none is added: each list is the geometry's own arcs, in
+    its order, fewer of them."""
+    arcs = arcs_of(geom)
+    county = geom["layers"]["county"]
+    by = {}
+    for c, f in sorted(county["f"].items()):
+        for ring in f["r"]:
+            for r in ring:
+                by.setdefault(r if r >= 0 else ~r, []).append(c)
+    once = [a for a in county["m"] if len(by[a]) == 1]
+    # The arcs used once, in the pieces they make, joined where they meet.
+    up = {}
+
+    def top(p):
+        while up.setdefault(p, p) != p:
+            up[p] = up[up[p]]
+            p = up[p]
+        return p
+    for a in once:
+        up[top(arcs[a][0])] = top(arcs[a][-1])
+    pieces = {}
+    for a in once:
+        pieces.setdefault(top(arcs[a][0]), []).append(a)
+    outer = min(pieces.values(), key=lambda ids: min(x for a in ids for x, _y in arcs[a]))
+    rim = [(p, q) for a in outer for p, q in zip(arcs[a], arcs[a][1:])]
+
+    def within(x, y):
+        c = False
+        for (x1, y1), (x2, y2) in rim:
+            if (y1 > y) != (y2 > y) and x < (x2 - x1) * (y - y1) / (y2 - y1) + x1:
+                c = not c
+        return c
+    edge, gaps = set(outer), set()
+    for ids in pieces.values():
+        if ids is outer:
+            continue
+        # The middle of the piece's longest step: inside the state's edge for
+        # a gap, outside it for an island.
+        (x1, y1), (x2, y2) = max(((p, q) for a in ids for p, q in zip(arcs[a], arcs[a][1:])),
+                                 key=lambda s: math.dist(*s), default=(arcs[ids[0]][0],) * 2)
+        if not within((x1 + x2) / 2, (y1 + y2) / 2):
+            edge.update(ids)
+        elif len({by[a][0] for a in ids}) == 1:
+            gaps.update(ids)
+    return {"county": [a for a in county["m"] if a not in gaps], "state": sorted(edge)}
+
+
 # --------------------------------------------------------------- the file ---
 
 def build(geom_bytes, districts, legislators, officials, elect=None):
@@ -320,6 +397,7 @@ def build(geom_bytes, districts, legislators, officials, elect=None):
                   "(2022). Not for legal use."),
         "_geometry": hashlib.sha256(geom_bytes).hexdigest(),
         "w": geom["w"], "h": geom["h"], "arcs": geom["arcs"], "layers": geom["layers"],
+        "lines": lines_of(geom),
         "places": places,
         "cities": cities,
         "wards": ward_groups(geom, places, cities),
