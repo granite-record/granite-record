@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.933
+# GRANITE_VERSION: 2026-09-04.934
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -98880,6 +98880,70 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
                       "its tab: the roll calls' on Votes, the written reports' on Reports")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "data.html counts the checks a run registers, wherever they are defined, and the "
+                "files inventory finds stamped, and says neither where one cannot be counted",
+       needs=("build_exports", "inventory"))
+def _data_page_counts_the_registry(BE, inventory):
+    """THE SITE'S COUNT OF CHECKS IS THE RUN'S (the refactor's stage 1, step 1,
+    the owner's yes of 16 November 2026). data.html says how many files carry
+    a version stamp and how many checks run over the repository
+    (build_exports.repo_facts, repo_sentence). The second was the number of
+    times the characters "@check(" appear in this file: 1279 at 62df0ce9 for
+    the 1273 checks a run registered, four of the six over inside
+    _PIECES_SAMPLE and two in the piece parser's words. Splitting this file
+    into a package would have made it the count of what stayed here, or
+    none, and the sentence would have gone without a word. It is counted off
+    the code now, as a run registers the checks (build_exports.checks_counted),
+    and held here:
+
+      the count is this run's registry, len(CHECKS), and the stamps are
+      inventory.registry()'s;
+      the sentence says both, and is empty where either is missing;
+      on a planted tree, a check defined in a second code file is counted,
+      and "@check(" in a string or a comment is not; a tree that defines no
+      check counts none, and says so.
+    """
+    facts = BE.repo_facts()
+    assert facts.get("checks") == len(CHECKS), (
+        f"data.html would say {facts.get('checks')} checks run, and this run registers "
+        f"{len(CHECKS)}: build_exports.checks_counted no longer counts what a run registers")
+    stamped = len(inventory.registry(_paths.ROOT))
+    assert facts.get("stamped") == stamped, (
+        f"data.html would say {facts.get('stamped')} files carry a stamp, and inventory finds {stamped}")
+    said = BE.repo_sentence(facts)
+    assert f"{stamped} files carry a version stamp" in said and f"{len(CHECKS)} checks run over" in said, (
+        f"data.html's sentence does not say both counts: {said!r}")
+    for part in ({"stamped": stamped}, {"checks": len(CHECKS)}, {}):
+        assert BE.repo_sentence(part) == "", f"the sentence is said with only {part}"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-facts-"))
+    try:
+        stamp = "# GRANITE_VERSION: 2026-11-16.1\n"
+        planted = _plant(tmp / "with", {
+            "preflight.py": (stamp + 'S = """\n@check("x", "in a string")\n"""\n'
+                             '# @check("x", "in a comment")\n\n\n'
+                             '@check("a", "one")\ndef one():\n    return "ok", "one"\n\n\n'
+                             '@check("a", "two", needs=("m",))\ndef two(m):\n    return "ok", "two"\n'),
+            "src/checks/pf_more.py": stamp + '@check("b", "three")\ndef three():\n    return "ok", "3"\n'})
+        got = BE.repo_facts(planted)
+        assert got == {"stamped": 2, "checks": 3}, (
+            "on a tree of two checks in preflight.py, one in a second code file and the words in a "
+            f"string and a comment, repo_facts counted {got}, not two stamped files and three checks")
+        bare = _plant(tmp / "none", {"preflight.py": stamp + "X = 1\n"})
+        import contextlib
+        import io
+        heard = io.StringIO()
+        with contextlib.redirect_stderr(heard):
+            none = BE.repo_facts(bare)
+        assert none == {"stamped": 1, "checks": 0}, f"a tree that defines no check: {none}"
+        assert "no code file registers a check" in heard.getvalue(), (
+            f"a count of no checks was not said aloud: {heard.getvalue()!r}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"data.html says {stamped} files carry a stamp and {len(CHECKS)} checks run, the "
+                  "run's own count; a check in a second file is counted and the words in a string "
+                  "or a comment are not")
 
 
 @check("files", "the triage rules keep a person between a report and a substantial change")
