@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.942
+# GRANITE_VERSION: 2026-09-04.943
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -33587,7 +33587,9 @@ def _api_records(AR, AS, AP, SR, RSA, BR):
             if s["repealed"]:
                 assert s["text"] is None and s["note"] is None, s
                 continue
-            assert shown and s["text"].split("\n") == shown[0] and \
+            # A section the table holds no text for is "" here and no
+            # paragraph on its page (18 of the real record's 26,321).
+            assert shown and (s["text"].split("\n") if s["text"] else []) == shown[0] and \
                 (f"Source. {s['note']}" if s["note"] else "") == shown[1] and \
                 s["heading"] == table.sections[s["section"]].heading, \
                 (f"{s['section']}'s text in laws/{ch}.json is not what its chapter's page shows: "
@@ -33777,7 +33779,7 @@ def _api_records(AR, AS, AP, SR, RSA, BR):
             for s in law["sections"]:
                 if not s["repealed"]:
                     shown = _api_law_page_text(page, "s" + s["section"].split(":", 1)[1])
-                    assert shown and s["text"].split("\n") == shown[0], \
+                    assert shown and (s["text"].split("\n") if s["text"] else []) == shown[0], \
                         f"{s['section']}'s text in /api/ is not what its chapter's page shows"
         said_real = (f"and of the real record's, {len(recs)} of {term}'s bills and "
                      f"{len(chs[::max(1, len(chs) // 25)])} chapters against their pages")
