@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.940
+# GRANITE_VERSION: 2026-09-04.941
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -39739,21 +39739,25 @@ def _fixture_site_whole(root):
 # own, the others a copy of theirs in the folder they made, as every check that
 # reads the shared one does. What a check sees is what it saw: the same fixture
 # built the same way by the same builders; one that fails fails the check that
-# asks for it, in the builder's own words. A run that selects part of the
-# suite (--changed, --built, --data) starts none, and a site no check asks for
-# is built and deleted unread. Each child is started with the environment as
-# main() began it, and by the real child.run: a check that sets a variable or
-# stands a stub in for run() for a moment, as several do, cannot reach a build
-# that is going on beside it.
+# asks for it, in the builder's own words. A run of the built site's checks or
+# of the data's (--built, --data) starts none, a run that chooses its checks
+# (--changed) starts those its chosen checks take (_early_wanted, below), and a
+# site no check asks for is built and deleted unread. Each child is started
+# with the environment as main() began it, and by the real child.run: a check
+# that sets a variable or stands a stub in for run() for a moment, as several
+# do, cannot reach a build that is going on beside it.
 _EARLY = {}
 
 
-def _start_early_builds():
-    """Prepare the fixture sites above and start their builders; _EARLY holds
-    each as (where it stands, base address, environment it is built with, the
-    day it was started, its builders' future)."""
+def _start_early_builds(only=None):
+    """Prepare the fixture sites above and start their builders: every one,
+    or those `only` names, and none where it names none; _EARLY holds each as
+    (where it stands, base address, environment it is built with, the day it
+    was started, its builders' future)."""
     import concurrent.futures
     from datetime import date, timedelta
+    if only is not None and not only:
+        return
     build_date = imp("build_date")
     here = Path(".").resolve()
     if build_date is None or [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]:
@@ -39765,6 +39769,8 @@ def _start_early_builds():
     pool = concurrent.futures.ThreadPoolExecutor(max_workers=3, thread_name_prefix="fixture")
     for what, brand, made_with in (("shared", True, env), ("nobrand", False, env),
                                    ("stated", True, stated)):
+        if only is not None and what not in only:
+            continue
         root = _shared_root(f"gr-early-{what}-")
         try:
             base, steps = _built_site_prepare(here, root, brand)
@@ -39808,6 +39814,28 @@ def _built_stated(here, root, stated):
         return _built_site(here, root, env=stated)[0]
     shutil.copytree(got[0], root, dirs_exist_ok=True)
     return got[1]
+
+
+# WHICH CHECK TAKES WHICH (16 November 2026, the refactor's stage 1, step 2).
+# A run that chooses its checks (--changed) built none of the three beside
+# them, so the first check that asked for each built it in its own time: 40 s
+# for _search_says_counts, 54 to 110 s for _links_resolve and 44 s for
+# _build_date_stated in the --changed runs of 8 to 11 November, where a run of
+# the suite gave them 1, 18 to 27 and 5 to 9. It starts those its chosen checks
+# take, and only those: a check takes one through the function that hands it
+# over, which _early_wanted looks for in its code and in every function of the
+# suite's it calls (_reaching). What a check is handed is the same either way,
+# the early build or one made when it asks, so this decides how long the run
+# takes and nothing it finds.
+_EARLY_TAKEN_BY = {"shared": "_fixture_site_shared", "nobrand": "_built_nobrand",
+                   "stated": "_built_stated"}
+
+
+def _early_wanted(checks):
+    """The early builds, by their names in _EARLY, that some check of
+    `checks` takes: one whose code reaches the function that hands it over
+    (_EARLY_TAKEN_BY)."""
+    return {what for what, by in _EARLY_TAKEN_BY.items() if _reaching({by}, checks=checks)}
 
 
 
@@ -136626,8 +136654,11 @@ def main():
         # suite, and handoff.py reads a record as a run of all of it.
         handoff = None
 
-    if chosen is None and not a.built and not a.data:
-        _start_early_builds()
+    # WHAT THIS RUN CHOSE, for a check that reads it (_THIS_RUN), and the
+    # fixture sites its checks take, built beside them (_early_for_run).
+    _THIS_RUN.chosen = None if chosen is None else {CHECKS[i]["fn"].__name__
+                                                    for i in chosen["run"]}
+    _start_early_builds(_early_for_run(a, chosen))
     results, group, built, took = [], None, [], []
     for c in _in_order(CHECKS):
         if a.code and c["group"] == "data":
@@ -136774,6 +136805,19 @@ def _changed_choice(a):
     return got
 
 
+def _early_for_run(a, chosen):
+    """Which early builds main() starts for a run of the arguments `a`: every
+    one (None) for a run of every check of a kind but the data's; none for
+    --built or --data, whose checks build no fixture site; and for --changed
+    those its chosen checks take (`chosen` as _changed_choice gives it;
+    _early_wanted)."""
+    if a.built or a.data:
+        return set()
+    if chosen is None:
+        return None
+    return _early_wanted([CHECKS[i] for i in chosen["run"]])
+
+
 @check("files", "--changed runs the core and what a change can reach, and nothing it cannot")
 def _changed_selects():
     """preflight.py --changed (check_select.py) runs only the checks the
@@ -136792,10 +136836,20 @@ def _changed_selects():
       whose fixture build_site_v2 builds, which imports it;
       a change to a check's own lines chooses it, and a change to main's,
       or to _in_order's, chooses every check;
-      comments and docstrings are not read as imports or launches; and
+      comments and docstrings are not read as imports or launches;
       the files and lines a change moved are read off git: a commit, an
-      edit to it and a file git does not track.
+      edit to it and a file git does not track; and
+      what a run that chose builds and runs again (the refactor's stage 1,
+      step 2): the early builds a chosen check takes and no other -- the
+      no-logo one for _links_resolve, the one with a day stated for
+      _build_date_stated, the shared one for the fifty and more that read
+      it, none for the core -- every one for a run of the suite or of the
+      code, none for --built or --data, and main() starts what that says;
+      and the published pass runs again every harness, or in a run that
+      chose its checks the harnesses it chose.
     """
+    import argparse
+    import inspect
     import check_select as CS
     names = [c["fn"].__name__ for c in CHECKS]
     missing = [n for n in CS.CORE if n not in names]
@@ -136857,8 +136911,61 @@ def _changed_selects():
         assert CS.merge_base("HEAD", tmp) == base, "the base named was not the commit"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+    # What a run that chose builds beside its checks, and runs again.
+    takes = {what: {c["fn"].__name__ for c in _reaching({by})} for what, by in _EARLY_TAKEN_BY.items()}
+    assert "_links_resolve" in takes["nobrand"] and "_build_date_stated" in takes["stated"] \
+        and len(takes["shared"]) >= 50, (
+            "the checks that take an early build read as "
+            + ", ".join(f"{w} {len(who)}" for w, who in takes.items()) + ": _early_wanted is not "
+            "finding the fixture's takers")
+    by_name = {c["fn"].__name__: c for c in CHECKS}
+    assert _early_wanted([by_name[n] for n in CS.CORE]) == set(), (
+        "a run of the core alone would build a fixture site: "
+        + ", ".join(sorted(_early_wanted([by_name[n] for n in CS.CORE]))))
+    for what, picked in (("app.css", css), ("narrative.py", narr), ("a check's own lines", own),
+                         ("_links_resolve alone", {"_links_resolve"})):
+        want = {w for w, who in takes.items() if who & picked}
+        got = _early_wanted([by_name[n] for n in picked])
+        assert got == want and ("nobrand" in got) == ("_links_resolve" in picked), (
+            f"for a change to {what} the early builds wanted read as {sorted(got)}, not {sorted(want)}")
+    run = argparse.Namespace
+    chose = {"run": {i: "" for i, c in enumerate(CHECKS) if c["fn"].__name__ in css}}
+    assert _early_for_run(run(built=False, data=False), None) is None \
+        and _early_for_run(run(built=True, data=False), None) == set() \
+        and _early_for_run(run(built=False, data=True), None) == set() \
+        and _early_for_run(run(built=False, data=True), chose) == set() \
+        and _early_for_run(run(built=False, data=False), chose) == _early_wanted(
+            [by_name[n] for n in css]), (
+        "the early builds a run starts are not every one for the suite, none for --built or "
+        "--data, and what its chosen checks take for --changed")
+    was = dict(_EARLY)
+    _start_early_builds(set())
+    assert _EARLY == was, "a run that chose no early build started one"
+    src = inspect.getsource(main)
+    assert "_start_early_builds(_early_for_run(a, chosen))" in src and "_THIS_RUN.chosen = " in src, (
+        "main() no longer starts the early builds _early_for_run names, or no longer says what "
+        "the run chose")
+    assert "= _published_harnesses()" in inspect.getsource(_published_scripts_run_the_same), (
+        "the published pass no longer takes its harnesses from _published_harnesses, which keeps "
+        "to the checks the run chose")
+    was = _THIS_RUN.chosen
+    try:
+        _THIS_RUN.chosen = None
+        found, again = _published_harnesses()
+        assert len(found) >= 20 and again == found, (
+            f"a run of the suite runs {len(again)} of {len(found)} harnesses again on the published copy")
+        _THIS_RUN.chosen = set(css)
+        _found, again = _published_harnesses()
+        theirs = [c for c in found if c["fn"].__name__ in css]
+        assert again == theirs and 0 < len(theirs) < len(found), (
+            f"a run that chose app.css's {len(css)} checks runs {len(again)} harnesses again on the "
+            f"published copy, not the {len(theirs)} of the {len(found)} it chose")
+    finally:
+        _THIS_RUN.chosen = was
     return "ok", (f"core of {len(CS.CORE)}; app.css alone chooses {len(css)} of {len(CHECKS)}, "
-                  f"narrative.py {len(narr)}; a check's own lines choose it, main's choose all")
+                  f"narrative.py {len(narr)}; a check's own lines choose it, main's choose all; "
+                  f"app.css's builds beside it {', '.join(sorted(_early_wanted([by_name[n] for n in css])))} "
+                  f"and runs {len(theirs)} of {len(found)} harnesses again on the published copy")
 
 
 # ---- the manifest: every check, and what its code is (16 November 2026) ------
@@ -138600,11 +138707,28 @@ def _sitemap_writers_merge(S):
 _OUTCOMES = {}
 
 
-def _reaching(names, skip=()):
-    """The checks (CHECKS entries) whose code reaches one of `names` --
-    directly, or through any function of the suite's it calls, at any
-    depth, each name read where the function that calls it reads it -- but
-    those named in `skip`."""
+# What main() says of the run it is making, for a check that reads it
+# (16 November 2026): `chosen`, the function names of the checks a --changed
+# run chose, and None in a run of every check of a kind (the suite, --code,
+# --data, --built). _published_scripts_run_the_same runs again only the
+# harnesses among them. One object, set and read by its attribute, so that the
+# module that runs the checks and the module that holds a check read the same
+# one when they are two.
+class _ThisRun:
+    """The run main() is making (above)."""
+
+    def __init__(self):
+        self.chosen = None
+
+
+_THIS_RUN = _ThisRun()
+
+
+def _reaching(names, skip=(), checks=None):
+    """The checks (CHECKS entries, or those of `checks`) whose code reaches
+    one of `names` -- directly, or through any function of the suite's it
+    calls, at any depth, each name read where the function that calls it
+    reads it -- but those named in `skip`."""
     import types
     suite = {name for name, _space in _suite_namespaces()}
 
@@ -138627,7 +138751,21 @@ def _reaching(names, skip=()):
                         and reaches(f, seen):
                     return True
         return False
-    return [c for c in CHECKS if c["fn"].__name__ not in skip and reaches(c["fn"], set())]
+    return [c for c in (CHECKS if checks is None else checks)
+            if c["fn"].__name__ not in skip and reaches(c["fn"], set())]
+
+
+def _published_harnesses():
+    """(every check of the code that runs a page's script in node through
+    _node_app or _with_components, directly or through a function of the
+    suite's; those of them this run runs again on the published copy): every
+    one, or in a run that chose its checks (_THIS_RUN.chosen, --changed) those
+    it chose."""
+    found = [c for c in _reaching({"_node_app", "_with_components"},
+                                  skip=("_published_scripts_run_the_same",))
+             if c["group"] != "data"]
+    chosen = _THIS_RUN.chosen
+    return found, [c for c in found if chosen is None or c["fn"].__name__ in chosen]
 
 
 def _check_outcome(c):
@@ -138663,19 +138801,23 @@ def _published_scripts_run_the_same(BP, SJ):
     this run: the same status, and the same words but for the numbers, of
     which some are timings (_search_work draws in 39 ms one run and 41 the
     next). Its numbers are its own to hold, and do; what this holds is that
-    taking the comments out changed none of its findings. Where this run did
-    not run a check on the source (a --changed run), it is run here on both.
-    The data checks are left to the source: they read the record."""
+    taking the comments out changed none of its findings. A run that chose
+    its checks (--changed) runs again only the harnesses it chose
+    (_published_harnesses), each already run on the source; one this run
+    has not run on the source -- it comes after this, or the run is not
+    main()'s -- is run here on both. The data checks are left to the source:
+    they read the record."""
     if not (shutil.which("node") or shutil.which("node.exe")):
         return "skip", "node is not here, and every one of these harnesses needs it"
     if _published_script_sources() is None:
         return "skip", "the browser's scripts are not all in src/pages/ here"
-    chosen = [c for c in _reaching({"_node_app", "_with_components"},
-                                   skip=("_published_scripts_run_the_same",))
-              if c["group"] != "data"]
-    assert len(chosen) >= 20, (
-        f"only {len(chosen)} checks were found that run a page's script in node: _reaching "
+    found, chosen = _published_harnesses()
+    assert len(found) >= 20, (
+        f"only {len(found)} checks were found that run a page's script in node: _reaching "
         "is not finding the harnesses")
+    if not chosen:
+        return "skip", (f"this run chose none of the {len(found)} checks that run a page's "
+                        "script in node, so none is run again on the published copy")
 
     def words(msg):
         return re.sub(r"\d+", "#", str(msg))
@@ -138696,7 +138838,9 @@ def _published_scripts_run_the_same(BP, SJ):
                         "scripts as published, without their comments (strip_js.py): "
                         + " | ".join(differ[:4]))
     return "ok", (f"{len(chosen)} checks that run a page's script in node came out the same on "
-                  f"the published copy ({', '.join(f'{n} {k}' for k, n in sorted(ran.items()))})")
+                  f"the published copy ({', '.join(f'{n} {k}' for k, n in sorted(ran.items()))})"
+                  + ("" if len(chosen) == len(found) else
+                     f": the {len(chosen)} of the {len(found)} this run chose"))
 
 
 # ---- what a run leaves behind, and what it says of its time (26 October 2026)
