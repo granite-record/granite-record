@@ -2446,7 +2446,8 @@ calls'. A person's id is the General Court's number where it gives one, a
 (`python3 src/ops/gr_register.py --offices`, a person's run, which holds back a name two
 places share), and none for a member-elect until the General Court numbers
 them; a date only where a record states one; a holder of a hand-file office
-is linked to a person only by the file's own `member` entry, never by a name.
+is linked to a person by the file's own `member` entry, by the owner's hand
+file of links or by the rule below, never by a name alone.
 Party and seat are a tenure's. Where the hand file and the county roster name
 different holders of one seat -- on 16 November the Hillsborough sheriff and
 the Strafford commissioner of district 1, each a vacancy filled since the
@@ -2463,6 +2464,62 @@ no rule knows -- it says on its log and in the manifest, and keeps where it can;
 a rule the model breaks goes into the manifest's problems, and
 `_entities_give_back_today` fails the night's check on it, which holds the night
 for a person.
+
+### The officials, linked to the record (16 November 2026)
+
+A holder of an office the legislature does not fill is often a person of its
+record: a former representative who became a county commissioner, a senator
+who went to Congress. The model links them where it is certain, by the rule of
+`src/parse/office_links.py` (the design study "officials-links" and the owner's
+answers of 16 November 2026): exactly one person of the whole record answers to
+the name, by the same first name -- the record's people, the 526 members of
+1989-1998 with no page and the members-elect not yet numbered all count, so a
+namesake anywhere refuses the link; no Jr. or Sr. on one side only; no two
+middle initials that differ (a missing one blocks nothing, and an agreeing one
+is for checking only, never evidence, and never shown); one more agreement, the
+town of residence, the office's area or the same single party; nothing that
+differs; no seat in a term the office was held that the state's
+`seat_incompatible` setting forbids (New Hampshire's is Pt. 2, Art. 95); and an
+official file, never NHPR's results, which the model does not read. The rule
+names nothing of the state. `build_entities.py` is New Hampshire's side of it:
+the pool of people and what the files say of each (`link_pool`: every
+spelling, the member table's middle names and the city of an address that is
+not the State House's, the Manual's returns of 1989-1999, the parties,
+counties and terms), the holders and their areas on the map of the term held
+(`link_holders`), and the owner's hand file of links,
+`corrections/officials_links.json`, read when it is there (`read_owner_links`)
+and said when it is not, whose word is taken over the rule's. A link is the
+tenure's `person` and its `link`, which says by whom and, for the rule, each
+piece of evidence in words; a member of 1989-1998 with no page is a person of
+the model under the General Court's number, in no view of today's files, so a
+link to one is kept until their page exists. What the rule cannot settle is
+the owner's list, in the manifest's `links` and printed by
+`python3 src/parse/build_entities.py --check --links`: a short form (Joe for
+Joseph, Chris for Christopher), two people answering, a difference, a lone Jr.,
+a seat the office forbids, too little evidence, two middle initials. Without
+every file of the pool nobody is linked by the rule, and the step says so. Town
+offices are not linked: the model holds none, and the owner's answer is none
+until a town page shows them.
+
+A short form the owner confirms gives the person that form of their name
+(`name_forms` on the person, with the entry that confirmed it), and
+`entities.view_names` gives what the search index and the pages will take from
+it: the name shown, `Joseph "Joe" Pitre`, and the words that find them by every
+form. Nothing reads it yet. On the files of 16 November: 180 holders, 24 linked
+by the rule and one by the hand file's `member` entry, 10 on the owner's list;
+2.0 seconds to build the model with them.
+
+preflight holds the rule to fixtures that stand for good (`_entity_link_rule`:
+the two Patrick Longs of Manchester never join, nor Benjamin S. and Benjamin T.
+Bartlett, nor Tom and Thomas Stewart, nor Rich and Richard Green; Joseph D.
+Kenney, councilor for District 1, links to Rep. and Sen. Joseph D. Kenney of
+Wakefield), runs the step with and without the owner's file on a made-up tree
+(`_entity_links_on_a_tree`), checks the setting against Art. 95's words
+(`_entity_seat_rule_setting`), and on the night works every link out again on
+that day's files (`_entity_links_hold`): it fails when the person is no longer
+the only one who answers, when a piece of evidence reads otherwise, when a seat
+the office forbids is on the record, when the owner's file says the holder is
+someone else or no one, and when the holder's file is not an official one.
 
 ## The data API's records, a file each (16 November 2026)
 

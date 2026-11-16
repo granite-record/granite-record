@@ -119,5 +119,12 @@
   "district_eras": {
     "2022": {"first_term": "2023-2024",
              "source": "collected/sos_districts.json: the Secretary of State's 'Towns and Wards as Districted for Election Purposes 2022', which records/districts/*.txt are held to; its elections fill the terms from 2023-2024"}
-  }
+  },
+  "seat_incompatible": {
+    "offices": ["executive-council", "us-house", "us-senate", "secretary-of-state", "treasurer",
+                "attorney-general", "supreme-court-justice", "superior-court-justice", "sheriff",
+                "register-of-deeds"],
+    "with": ["house", "senate"],
+    "constitution": ["Pt. 2, Art. 95"],
+    "source": "Art. 95: no person holding the office of judge of any court, secretary, treasurer of the state, attorney-general, register of deeds, sheriff or member of Congress shall have a seat in the senate or house of representatives, and no member of the council shall; read by src/parse/office_links.py, which refuses to link an official to a member who held a seat in a term the office was held"}
 }

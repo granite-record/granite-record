@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -704,3 +704,430 @@ def _entities_give_back_today(BE, EN, GR, BME):
     return "ok", (f"{', '.join(shown)} given back from the model of {manifest.get('built_on')} "
                   f"({sum(manifest.get('counts', {}).values()):,} records); "
                   f"{len(manifest.get('disagreements') or [])} place(s) where the files disagree, as the manifest lists")
+
+
+# ---- the officials linked to the record (src/parse/office_links.py) ----------------------------
+
+def _pool_person(person, names, kind="record", mid="", party="", county=(), homes=(), terms=(), sfx=(),
+                 dtowns=()):
+    """One person of a pool as build_entities.link_pool gives them."""
+    return {"key": person, "person": None if kind == "elect" else person, "kind": kind, "label": names[0],
+            "names": list(names), "middles": set(mid), "sfx": set(sfx),
+            "parties": set(party) if isinstance(party, (list, tuple)) else ({party} if party else set()),
+            "counties": set(county), "homes": set(homes), "district_towns": set(dtowns), "terms": set(terms)}
+
+
+def _link_fixture_pool():
+    """The people of the rule's fixtures, each as the files on disk gave them on 16 November 2026
+    (build_entities.link_pool over D:/nh): names, middle initials, parties, counties, home towns
+    and terms served. The two Patrick Longs of Manchester; Rep. Benjamin T. Bartlett of
+    Nottingham; Thomas Stewart of 1993-1994 and the member-elect Tom Stewart (the owner, 13
+    November: two people); Sen. Richard Green and the member-elect Rich Green (the owner, 7
+    November: two people); Joseph D. Kenney of Wakefield and the two other Kenneys; Roger R.
+    Berube, who voted in 2017-2018; Omer Ahern; Toni Pappas of 1989-1990 and Christopher Pappas;
+    David M. Scanlan."""
+    P = _pool_person
+    return [
+        P("540", ["Pat Long", "Long, Pat", "Patrick T. Long", "Long, Patrick"], mid="t", party="D",
+          county=["Hillsborough"], homes=["Manchester"], terms=["2007-2008", "2025-2026", "2027-2028"]),
+        P("11177", ["Patrick Long", "Long, Patrick", "Patrick N Long"], mid="n", party="D",
+          county=["Hillsborough"], homes=["Manchester"], terms=["2025-2026", "2027-2028"]),
+        P("10683", ["Benjamin Bartlett", "Bartlett, Benjamin", "Benjamin T Bartlett"], mid="t", party="R",
+          county=["Rockingham"], homes=["Nottingham"], terms=["2023-2024"]),
+        P("375950", ["Thomas Stewart", "Stewart, Thomas"], kind="past", county=["Hillsborough"],
+          terms=["1993-1994"]),
+        P("elect:2026-11-03.general.house.hillsborough-41.tom-stewart-d", ["Tom Stewart"], kind="elect",
+          party="D", county=["Hillsborough"], terms=["2027-2028"]),
+        P("209050", ["Richard Green", "Green, Richard"], party="R", terms=["2003-2004", "2005-2006"]),
+        P("elect:2026-11-03.general.house.hillsborough-9.rich-green-d", ["Rich Green"], kind="elect",
+          party="D", county=["Hillsborough"], terms=["2027-2028"]),
+        P("376013", ["Joseph Kenney", "Kenney, Joseph", "Joseph D. Kenney"], mid="d", party=["D", "R"],
+          county=["Carroll"], homes=["Wakefield"],
+          terms=["1995-1996", "1997-1998", "1999-2000", "2001-2002", "2003-2004", "2005-2006", "2007-2008"]),
+        P("9231", ["Cam Kenney", "Kenney, Cam", "Cam E. Kenney"], mid="e", party="D", county=["Strafford"],
+          homes=["Durham"], terms=["2019-2020", "2021-2022", "2023-2024"]),
+        P("376484", ["Bettie Kenney", "Kenney, Bettie"], party="R", county=["Carroll"], terms=["2003-2004"]),
+        P("436", ["Roger Berube", "Berube, Roger", "Roger R. Berube"], mid="r", party=["D", "R"],
+          county=["Strafford"], homes=["Somersworth"], terms=["1995-1996", "2015-2016", "2017-2018"]),
+        P("376424", ["Omer Ahern", "Ahern, Omer"], party="R", county=["Grafton"], terms=["2003-2004"]),
+        P("331371", ["Toni Pappas", "Pappas, Toni"], kind="past", party="R", county=["Hillsborough"],
+          homes=["Manchester"], terms=["1989-1990"]),
+        P("376509", ["Christopher Pappas", "Pappas, Christopher"], party="D", county=["Hillsborough"],
+          terms=["2003-2004", "2005-2006"]),
+        P("371377", ["David Scanlan", "Scanlan, David", "David M. Scanlan"], mid="m", party="R",
+          county=["Grafton"], terms=["1999-2000", "2005-2006"]),
+    ]
+
+
+def _link_holder(OL, office, printed, party="", town="", area=None, terms=("2025-2026",), where="statewide"):
+    """A holder as build_entities.link_holders gives one."""
+    area = area or {"kind": "statewide"}
+    return {"tenure": f"t:{printed}", "office": office, "printed": printed, "party": party, "town": town,
+            "area": area, "terms": list(terms), "day": "", "key": OL.hand_key(office, where, terms[0][:4], printed)}
+
+
+def _county(name):
+    return {"kind": "county", "county": name}
+
+
+@check("build", "an official is linked to a person of the record only by the rule of 16 November 2026: the Longs, the Bartletts, Stewart and Green never join, Kenney links, and every way a link can stop holding is caught",
+       needs=("office_links",))
+def _entity_link_rule(OL):
+    """The rule of src/parse/office_links.py (the design study "officials-links" and the owner's
+    answers of 16 November 2026), on people as the files on disk give them (_link_fixture_pool).
+    Fixtures that hold for good: the two Patrick Longs of Manchester, both Democrats of
+    Hillsborough County who sat together, never join -- a holder named Patrick Long or Pat Long
+    is two people answering, and either Long weighed against the other differs by the middle
+    initial; Benjamin S. Bartlett is never Rep. Benjamin T. Bartlett (the middle initials
+    differ: listed as such); Tom Stewart is never Thomas Stewart and Rich Green never Richard
+    Green (the owner's answers of 13 and 7 November: a short form, and a member-elect of the very
+    name); Joseph D. Kenney, councilor for District 1, links to Rep. and Sen. Joseph D. Kenney of
+    Wakefield, on the middle initial, Wakefield in the district and the party. And the owner's
+    answers: a missing middle initial blocks nothing (Toni Pappas links on her town and party)
+    and an agreeing one is no evidence (David M. Scanlan, with no other agreement, is hers to
+    settle); a short form is hers (Chris for Christopher); Roger R. Berube as a register of
+    deeds while he sat (Art. 95) and Omer C. Ahern Jr. against an Omer Ahern with no suffix are
+    hers. Then the check: Kenney's link, worked out again, holds, and fails on a new member-elect
+    of the name, a party that now differs, a seat in the term the office was held, the owner's
+    word that the holder is no one of the record or not him, a secondary source, a short form
+    taken for a link, and evidence that reads otherwise than the link kept it. And Joe Pitre is
+    a form of Joseph Pitre's name, which a link the owner confirms gives him (the tree check
+    holds what the model makes of it)."""
+    pool = _link_fixture_pool()
+    ix = OL.by_surname(pool)
+    inc = {"executive-council", "us-house", "us-senate", "secretary-of-state", "register-of-deeds", "sheriff"}
+    H = lambda *a, **k: _link_holder(OL, *a, **k)  # noqa: E731
+    council1 = {"kind": "district", "id": "council:2022:1", "towns": {"wakefield": "Wakefield", "ossipee": "Ossipee"},
+                "town_county": {"wakefield": "Carroll", "ossipee": "Carroll"}}
+
+    def verdict(h, index=ix):
+        return OL.decide(h, index, inc)
+
+    # Kenney links, on the evidence the study read.
+    kenney = H("executive-council", "Joseph D. Kenney", "R", area=council1, where="1")
+    d = verdict(kenney)
+    assert d["verdict"] == "link" and d["person"] == "376013", f"Kenney did not link: {d}"
+    ev = d["evidence"]
+    assert ev["middle"] == "D = D" and ev["area"] == "Wakefield in council:2022:1" \
+        and ev["party"] == "R among D/R" and ev["incompatible"] == "no seat in 2025-2026", ev
+    # The Longs: a holder of either name is two people answering; each weighed against the other
+    # differs by the middle initial.
+    for printed in ("Patrick Long", "Pat Long", "Patrick N. Long"):
+        d = verdict(H("county-commissioner", printed, "D", "Manchester", _county("Hillsborough"), where="hillsborough:1"))
+        assert d["verdict"] == "list" and "2 people answer" in d["why"], f"{printed}: {d}"
+    for me, other in (("540", "11177"), ("11177", "540")):
+        alone = OL.by_surname([p for p in pool if p["key"] != me])
+        mine = next(p for p in pool if p["key"] == me)
+        d = verdict(H("county-treasurer", next(n for n in mine["names"] if "." in n or n.count(" ") == 2),
+                      "D", "Manchester", _county("Hillsborough")), alone)
+        assert d["verdict"] == "list" and d["kind"] == "middle initial", f"the Longs joined ({me} to {other}): {d}"
+    # The Bartletts.
+    d = verdict(H("sheriff", "Benjamin S. Bartlett", "R", "Newport", _county("Sullivan")))
+    assert d["verdict"] == "list" and d["kind"] == "middle initial", f"the Bartletts: {d}"
+    # Stewart and Green: a member-elect of the very name, and a short form.
+    for printed, past in (("Tom Stewart", "375950"), ("Rich Green", "209050")):
+        d = verdict(H("county-commissioner", printed, "D", "", _county("Hillsborough")))
+        assert d["verdict"] == "list" and "2 people answer" in d["why"], f"{printed}: {d}"
+        d = verdict(H("county-commissioner", printed, "D", "", _county("Hillsborough")),
+                    OL.by_surname([p for p in pool if p["kind"] != "elect"]))
+        assert d["verdict"] == "list" and d["kind"] == "short form" \
+            and [c["person"] for c in d["candidates"]] == [past], f"{printed}: {d}"
+    # The owner's answers, and the study's other cases.
+    d = verdict(H("county-commissioner", "Toni Pappas", "R", "Manchester", _county("Hillsborough")))
+    assert d["verdict"] == "link" and d["person"] == "331371" and d["agreements"] == ["town", "party"], d
+    d = verdict(H("secretary-of-state", "David M. Scanlan"))
+    assert d["verdict"] == "list" and d["why"] == "too little evidence", f"a middle initial alone linked: {d}"
+    d = verdict(H("us-house", "Chris Pappas", "D"))
+    assert d["verdict"] == "list" and d["kind"] == "short form", d
+    d = verdict(H("register-of-deeds", "Roger R. Berube", "", "", _county("Strafford"), ("2017-2018",)))
+    assert d["verdict"] == "list" and "a seat the office forbids (a seat in 2017-2018)" in d["why"], d
+    d = verdict(H("county-commissioner", "Omer C. Ahern Jr.", "R", "", _county("Grafton")))
+    assert d["verdict"] == "list" and d["why"] == "a Jr. or Sr. on one side only", d
+    # The check: Kenney's link worked out again.
+    d = verdict(kenney)
+    tenure = {"tenure": "officials:council.districts.1", "person": "376013", "files": ["officials"],
+              "link": dict({"by": "rule"}, **d["evidence"])}
+    official = ("officials",)
+
+    def problems(t=tenure, h=kenney, pl=pool, owner=None):
+        return OL.verify(t, h, OL.by_surname(pl), inc, owner or {}, official)
+    assert problems() == [], problems()
+    faults = (
+        ("a new member-elect of the name", dict(pl=pool + [_pool_person(
+            "elect:x", ["Joseph Kenney"], kind="elect", party="R", county=["Carroll"], terms=["2027-2028"])]),
+         "2 people answer"),
+        ("a party that now differs", dict(pl=[dict(p, parties={"D"}) if p["key"] == "376013" else p for p in pool]),
+         "the party differs"),
+        ("a seat in the term the office was held",
+         dict(pl=[dict(p, terms=p["terms"] | {"2025-2026"}) if p["key"] == "376013" else p for p in pool]),
+         "breaks the seat rule"),
+        ("the owner's word that he is no one of the record",
+         dict(owner={kenney["key"]: {"person": None, "why": "two people"}}), "is no one of the record"),
+        ("the owner's word that he is not this person",
+         dict(owner={kenney["key"]: {"person": "376013", "evidence": "x", "not": ["376013"]}}), "says it is not"),
+        ("a secondary source", dict(t=dict(tenure, files=["records/sources/nhpr/general.csv"])), "NHPR"),
+        ("a short form taken for a link", dict(h=dict(kenney, printed="Joe Kenney")), "by a short form"),
+        ("evidence that reads otherwise", dict(t=dict(tenure, link=dict(tenure["link"], area="Ossipee in council:2022:1"))),
+         "the area was"),
+    )
+    for what, change, words in faults:
+        said = problems(**change)
+        assert any(words in s for s in said), f"{what} was not caught: {said}"
+    # A confirmed short form is a form of the name; the person's own first name is none.
+    pitre = _pool_person("647", ["Joseph Pitre", "Pitre, Joseph", "Joseph A. Pitre"], mid="a")
+    nf = OL.name_form("Joe Pitre", pitre)
+    assert nf == {"name": "Joe Pitre", "given": "Joe", "of": "Joseph"} and OL.name_form("Joseph Pitre", pitre) is None, nf
+    return "ok", ("Kenney links on D = D, Wakefield in the district and the party; the Longs, the Bartletts, "
+                  "Stewart and Green never join; Toni Pappas links with no middle initial, Scanlan's alone does "
+                  f"not; a short form, Art. 95 and a lone Jr. go to the owner; {len(faults)} ways a link stops "
+                  "holding are each caught; Joe Pitre is a form of Joseph Pitre's name")
+
+
+@check("files", "the offices that bar a seat in the House and Senate are the state's setting, each one Pt. 2, Art. 95 names, and the rule names nothing of the state",
+       needs=("entities", "state_settings"))
+def _entity_seat_rule_setting(EN, ST):
+    """The rule's fifth condition is the state's (src/lib/state_settings.json seat_incompatible),
+    read from the Constitution on file: Pt. 2, Art. 95 bars a judge, the secretary, the treasurer
+    of the state, the attorney-general, a register of deeds, a sheriff and a member of Congress
+    from a seat in the senate or house, and a member of the council too. Each office the setting
+    names is an office of the settings, each is in the article's words, it bars a seat in the
+    two chambers and no more, and src/parse/office_links.py, the rule, names neither the state,
+    its legislature, a county nor a host anywhere but in its prose."""
+    con = json.loads((_paths.ROOT / "collected" / "constitution.json").read_text(encoding="utf-8"))
+    art = ""
+    for part in con["parts"]:
+        for div in part.get("divisions") or [part]:
+            for a in div.get("articles") or []:
+                if part["part"] == 2 and str(a.get("key")) == "95":
+                    art = " ".join(a.get("text") or []).lower()
+    assert "have a seat in the senate, or house of representatives" in art, "Pt. 2, Art. 95 is not on file as read"
+    s = ST.SETTINGS["seat_incompatible"]
+    offices = {o["office"] for o in EN.offices(ST.SETTINGS)}
+    assert s["constitution"] == ["Pt. 2, Art. 95"] and s["with"] == ["house", "senate"] and s.get("source"), s
+    words = {"executive-council": "member of the council", "us-house": "members of congress",
+             "us-senate": "members of congress", "secretary-of-state": "secretary",
+             "treasurer": "treasurer of the state", "attorney-general": "attorney-general",
+             "supreme-court-justice": "judge of any court", "superior-court-justice": "judge of any court",
+             "sheriff": "sheriff", "register-of-deeds": "register of deeds"}
+    assert sorted(s["offices"]) == sorted(words), f"the setting names {sorted(s['offices'])}"
+    for o in s["offices"]:
+        assert o in offices and words[o] in art, f"{o} is not an office of the settings, or not in Art. 95's words"
+    tree = _parsed(_paths.locate("office_links.py"))
+    docs = {id(n.body[0].value) for n in ast.walk(tree)
+            if isinstance(n, (ast.Module, ast.FunctionDef, ast.ClassDef)) and n.body
+            and isinstance(n.body[0], ast.Expr) and isinstance(n.body[0].value, ast.Constant)}
+    named = [ST.SETTINGS["state"]["name"], ST.SETTINGS["legislature"]["name"],
+             ST.SETTINGS["source_hosts"]["legislature"]] + list(ST.COUNTIES)
+    said = sorted({w for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)
+                   and id(n) not in docs for w in named if w.lower() in n.value.lower()})
+    assert not said, f"src/parse/office_links.py names {said} outside its prose: the state's are the caller's"
+    return "ok", (f"{len(s['offices'])} offices bar a seat in the House and Senate, each in Art. 95's words and "
+                  "each an office of the settings; the rule names nothing of the state")
+
+
+def _link_world(root, PE):
+    """_world's tree with every file the pool of people is read from, and four holders more in its
+    hand file of officials: a Carroll treasurer, "Bo M. Hart" of Conway, whom the member table
+    gives the middle initial M and the town (the rule links him); a US senator, "Gus Old", a
+    senator of 1991-1992 with no page (the rule links him, and the link is kept); a Carroll
+    register of deeds, "Joe Pike", a short form of Rep. Joseph Pike's name (the owner's to
+    settle); and _world's councilor for District 2, "Ada Newcomb", who shares the name of a member
+    sitting now (a seat the office forbids) and lives in Conway, in District 1 (the area
+    differs too)."""
+    root = Path(root)
+    pike = {"376020": _careers_record({"2021-2022": ("H", "376020")}, "Joseph", "Pike", "R", "H")}
+    _world(root, PE, pike)
+    hand = json.loads((root / "corrections" / "officials.json").read_text(encoding="utf-8"))
+    hand["us_senate"] = {"office": "United States Senate", "seats": [{"name": "Gus Old", "party": "D"}]}
+    carroll = hand["county"]["counties"]["Carroll"]
+    carroll["treasurer"] = {"name": "Bo M. Hart", "office": "County Treasurer", "domicile": "Conway"}
+    carroll["register_of_deeds"] = {"name": "Joe Pike", "office": "Register of Deeds", "domicile": "Conway"}
+    (root / "corrections" / "officials.json").write_text(json.dumps(hand, ensure_ascii=False, indent=2),
+                                                         encoding="utf-8")
+    cols = ["PersonID", "LastName", "FirstName", "Employeeno", "MiddleName", "LegislativeBody", "Active",
+            "seatno", "countycode", "District", "party", "Expr1", "Address", "address2", "city", "Zipcode",
+            "Expr2", "EMailAddress", "GenderCode", "SecretaryID", "database"]
+    (root / "db" / "_columns.json").write_text(json.dumps({"Legislators": cols}), encoding="utf-8")
+
+    def row(**k):
+        return "|".join(str(k.get(c, "")) for c in cols) + "\n"
+    (root / "db" / "Legislators.psv").write_text(
+        row(PersonID="11600", LastName="Newcomb", FirstName="Ada", Employeeno="376001", countycode="02", party="R",
+            Address="1 Main St", city="Conway", Zipcode="03818")
+        + row(PersonID="11700", LastName="Lund", FirstName="Cy", Employeeno="209001", countycode="07", party="R",
+              Address="State House, Room 1", city="Concord", Zipcode="03301")
+        + row(LastName="Hart", FirstName="Bo", Employeeno="376002", MiddleName="M.", countycode="02", party="d",
+              Address="2 Elm St", city="Conway", Zipcode="03818")
+        + row(LastName="Pike", FirstName="Joseph", Employeeno="376020", MiddleName="Q.", countycode="02", party="R",
+              Address="3 Oak St", city="Conway", Zipcode="03818"), encoding="utf-8")
+    (root / "data" / "legislators.json").write_text(json.dumps([
+        {"id": "11600", "first": "Ada", "middle": "", "last": "Newcomb", "county_code": "02", "county": "Carroll",
+         "address": "1 Main St, Conway, NH, 03818"},
+        {"id": "11700", "first": "Cy", "middle": "", "last": "Lund", "county_code": "07", "county": "Merrimack",
+         "address": "NH"}]), encoding="utf-8")
+    (root / "past_members.json").write_text(json.dumps({"370001": "Sen. Old, Gus(Dist. 03)"}), encoding="utf-8")
+    (root / "member_party.json").write_text(json.dumps(
+        {"370001": {"county": "", "district": "03", "party": "D", "source": "1991-S3"}}), encoding="utf-8")
+    (root / "text_sponsors.json").write_text("{}", encoding="utf-8")
+    (root / "generated" / "past_roster.json").write_text(json.dumps({"format": 1, "rows": [
+        {"term": "1991-1992", "chamber": "S", "person": "370001", "gc_employee_number": "370001",
+         "name": "Gus Old", "seats": [{"county": "", "district": "3"}]}]}), encoding="utf-8")
+    (root / "generated" / "manual_seats.json").write_text(json.dumps({"terms": {}}), encoding="utf-8")
+    (root / "collected" / "nh_streets.json").write_text(json.dumps(
+        {"columns": ["zip", "town"], "rows": [["03818", "Conway"]]}), encoding="utf-8")
+
+
+# The owner's hand file of links, as the tree of _entity_links_on_a_tree has her write it.
+_OWNER_LINKS = {
+    "_README": ["made up"], "_checked": "2026-11-16",
+    "links": {
+        # Her word over the rule's: the treasurer the rule links is someone else.
+        "county-treasurer|carroll|2025|Bo M. Hart": {"person": None, "not": ["376002"],
+                                                     "why": "two people: made up"},
+        # A short form she confirms.
+        "register-of-deeds|carroll|2025|Joe Pike": {"person": "376020", "evidence": "made up"},
+        # A past winner the model does not hold yet.
+        "executive-council|5|2019|Debora B. Pignatelli": {"person": "203025", "evidence": "made up"},
+    },
+    "name_forms": {"11600": [{"name": "Adaline Newcomb", "evidence": "made up"}],
+                   "11700": [{"name": "Cyrus Lund", "evidence": "made up"}]},
+    "proposed": {"us-house|1|2025|Chris Pappas": {"person": "376509", "evidence": "a proposal, not yet hers"}},
+}
+
+
+@check("build", "build_entities.py links the officials of a made-up tree into data/entities/ alone: by the rule where it holds, to a person with no page too, by the owner's hand file over the rule when it is there, and says when it is not",
+       needs=("build_entities", "entities", "people", "office_links", "state_settings"))
+def _entity_links_on_a_tree(BE, EN, PE, OL, ST):
+    """The night's step on a made-up tree with every file the pool of people is read from
+    (_link_world), run as build_all runs it, twice. Without the owner's hand file of links, it
+    says the file is not here (on its output and in the manifest), links the Carroll treasurer
+    by the rule (the middle initial M, his town of Conway, his county), links the senator to a
+    member of 1991-1992 with no page, who is a person of the model in no view of today's files,
+    and lists the short form and the councilor who only shares the name of a member sitting now
+    (Art. 95 forbids it, and her area differs). With the file, her word is taken over the rule's:
+    the treasurer is no one of the
+    record, the short form she confirmed is linked and gives the person the form of the name
+    ('Joseph "Joe" Pike', found by Joe), a form of a name she lists is kept and one that is no
+    form of theirs is said, an entry for a holder the model does not hold yet waits, and her
+    proposals are not taken. Each time it writes data/entities/ and nothing else, every file it
+    read comes back byte for byte, the model keeps every rule, and every link worked out again
+    holds -- and a rule's link put on the holder she said is someone else is caught."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-links-"))
+    try:
+        _link_world(tmp, PE)
+        runs = {}
+        for name, owner in (("alone", None), ("hers", _OWNER_LINKS)):
+            hand = tmp / "corrections" / "officials_links.json"
+            if owner is None:
+                hand.unlink(missing_ok=True)
+            else:
+                hand.write_text(json.dumps(owner, indent=1), encoding="utf-8")
+            shutil.rmtree(tmp / "data" / "entities", ignore_errors=True)
+            before = _tree_digest(tmp)
+            r = _run([sys.executable, str(_paths.script("build_entities.py")), "--out", "data/entities"],
+                     cwd=tmp, capture_output=True, text=True, timeout=300)
+            assert r.returncode == 0, f"build_entities.py exited {r.returncode}: {(r.stderr or r.stdout)[-600:]}"
+            after = _tree_digest(tmp)
+            changed = sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
+            assert changed and all(k.startswith("data/entities/") for k in changed), (
+                f"build_entities.py wrote outside data/entities/: {[k for k in changed if not k.startswith('data/entities/')]}")
+            model, layouts, manifest = EN.load(tmp / "data" / "entities")
+            assert EN.problems(model) == [], EN.problems(model)[:3]
+            bad = [(rel, w) for rel, ok, w in BE.rebuilt(model, layouts, tmp) if ok is not True]
+            assert not bad, "a file of the tree is not given back: " + "; ".join(f"{a}: {w[:200]}" for a, w in bad)
+            report = {"notes": [], "links_hand": []}
+            pool, missing = BE.link_pool(tmp, model, manifest["links"]["roster_term"], report)
+            assert pool is not None, missing
+            said = BE.verify_links(model, pool, BE.read_owner_links(tmp, report), ST.SETTINGS,
+                                   layouts[BE.HAND].get("_checked"))
+            assert said == [], said
+            runs[name] = (model, manifest, r.stdout, pool, layouts)
+        model, manifest, out, pool, layouts = runs["alone"]
+        T = {t["tenure"]: t for t in model["tenure"]}
+        P = {p["person"]: p for p in model["person"]}
+        assert "corrections/officials_links.json is not here" in out and any(
+            "is not here" in x for x in manifest["links_hand"]), "the hand file's absence is not said"
+        bo = T["officials:county.counties.Carroll.treasurer"]
+        assert bo["person"] == "376002" and bo["link"]["by"] == "rule" and bo["link"]["middle"] == "M = M" \
+            and bo["link"]["town"] == "Conway = Conway", bo
+        gus = T["officials:us_senate.seats.0"]
+        assert gus["person"] == "370001" and P["370001"].get("files") == ["generated/past_roster.json"] \
+            and not P["370001"].get("page") and "370001" not in {p["person"] for p in EN.view_people(model)}, gus
+        listed = {x["tenure"]: x for x in manifest["links"]["listed"]}
+        ada = listed["officials:council.districts.2"]
+        assert listed["officials:county.counties.Carroll.register_of_deeds"]["kind"] == "short form" \
+            and ada["why"] == "a seat the office forbids (a seat in 2025-2026)" \
+            and ada["answering"][0]["evidence"]["area"] == "differ: Conway not in council:2022:2", listed
+        assert T["officials:council.districts.2"]["person"] is None, "a holder who only shares a member's name was linked"
+        model, manifest, out, pool, layouts = runs["hers"]
+        T = {t["tenure"]: t for t in model["tenure"]}
+        P = {p["person"]: p for p in model["person"]}
+        bo = T["officials:county.counties.Carroll.treasurer"]
+        assert bo["person"] is None and bo["link"] == {"by": "owner", "key": "county-treasurer|carroll|2025|Bo M. Hart",
+                                                      "why": "two people: made up", "not": ["376002"]}, bo
+        pike = T["officials:county.counties.Carroll.register_of_deeds"]
+        assert pike["person"] == "376020" and pike["link"]["by"] == "owner", pike
+        assert P["376020"]["name_forms"] == [{"name": "Joe Pike", "given": "Joe", "of": "Joseph",
+                                              "source": "corrections/officials_links.json register-of-deeds|carroll|2025|Joe Pike"}]
+        assert [f["name"] for f in P["11600"]["name_forms"]] == ["Adaline Newcomb"] and not P["11700"].get("name_forms")
+        # The search index's part: the name a page would show, and the words that find him.
+        names = EN.view_names(model)
+        assert names["376020"] == {"name": "Joseph Pike", "display": 'Joseph "Joe" Pike',
+                                   "words": ["Joe Pike", "Joe"]} and "11700" not in names, names
+        said = " ".join(manifest["links_hand"])
+        assert "'Cyrus Lund' is not a short form" in said and "1 proposal" in said, manifest["links_hand"]
+        assert manifest["links"]["waiting"] == [
+            "corrections/officials_links.json executive-council|5|2019|Debora B. Pignatelli: no holder of the model "
+            "has this key yet"], manifest["links"]["waiting"]
+        assert "us-house|1|2025|Chris Pappas" not in json.dumps(manifest["links"]["made"]), "a proposal was taken"
+        # A rule's link on the holder she said is someone else is caught.
+        m = copy.deepcopy(model)
+        alone = {x["tenure"]: x for x in runs["alone"][0]["tenure"]}
+        t = next(t for t in m["tenure"] if t["tenure"] == "officials:county.counties.Carroll.treasurer")
+        t["person"], t["link"] = "376002", dict(alone[t["tenure"]]["link"])
+        said = BE.verify_links(m, pool, BE.read_owner_links(tmp, {"links_hand": []}), ST.SETTINGS, "2026-11-10")
+        assert any("is no one of the record" in s for s in said), said
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("without her file: said, the treasurer linked by the rule on M = M and Conway, the senator to a "
+                  "member of 1991-1992 with no page, the short form and the shared name listed; with it: her word "
+                  "over the rule's, a confirmed Joe gives 'Joseph \"Joe\" Pike', a waiting entry and a proposal "
+                  "left; data/entities/ alone written, every file given back, every link holds")
+
+
+@check("data", "every official the built model links to a person of the record holds the rule worked out again on today's files, and the owner's word is taken as she wrote it",
+       needs=("build_entities", "entities", "office_links", "state_settings"))
+def _entity_links_hold(BE, EN, OL, ST):
+    """The check of the officials' links on the night's model (src/parse/office_links.verify):
+    data/entities/, as build_entities.py wrote it in the build, read back; the pool of people
+    built again from the files on disk now; and every link the rule made worked out again -- it
+    fails when the person is no longer the only one who answers to the name (a new member-elect
+    of it), when any piece of evidence reads otherwise than the link kept it, when a seat the
+    office forbids is on the record (Pt. 2, Art. 95), when the owner's hand file of links says
+    the holder is someone else or no one, and when the holder's file is not an official one (NHPR's
+    results never are). Every entry of hers that names a holder of the model is taken as she wrote
+    it, and the manifest's count of what was linked is the model's. A tree no build has run the
+    model in is skipped."""
+    folder = Path("data") / "entities"
+    if not (folder / EN.MANIFEST).is_file():
+        return "skip", "no build has made data/entities/ here"
+    model, layouts, manifest = EN.load(folder)
+    links = (manifest or {}).get("links") or {}
+    if not links:
+        return "skip", "data/entities/ was built before the officials were linked (its manifest has no links)"
+    report = {"notes": [], "links_hand": []}
+    owner = BE.read_owner_links(".", report)
+    pool, missing = BE.link_pool(".", model, links.get("roster_term"), report)
+    rule = [t for t in model["tenure"] if (t.get("link") or {}).get("by") == "rule"]
+    held = [t for t in model["tenure"] if t.get("link")]
+    if pool is None:
+        assert not rule, (f"{len(rule)} officials are linked by the rule, and the files they were weighed on are "
+                          f"not here to check them: {', '.join(missing)}")
+        return "skip", f"no official is linked by the rule here, and the pool's files are not all here: {', '.join(missing)}"
+    said = BE.verify_links(model, pool, owner, ST.SETTINGS, str(layouts.get(BE.HAND, {}).get("_checked") or ""))
+    assert not said, f"{len(said)} link(s) no longer hold: " + "; ".join(said[:4])
+    made = links.get("made") or []
+    assert sum(1 for m in made if m["by"] == "rule") == len(rule), (
+        f"the manifest says {sum(1 for m in made if m['by'] == 'rule')} links by the rule, and the model holds {len(rule)}")
+    return "ok", (f"{len(rule)} officials linked by the rule and {len(held) - len(rule)} by the owner's word, each "
+                  f"worked out again on today's files; {len(links.get('listed') or [])} on her list")

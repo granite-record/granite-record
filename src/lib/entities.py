@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 One model of the people, offices, terms, districts and elections the site's files describe:
 the shape of each kind of record, the rules a model holds to, and the views that give today's
@@ -15,6 +15,7 @@ files back from it.
     EN.view_members_elect(model)     # site/members_elect.json, or None
     EN.view_districts(model, era)    # site/districts.json
     EN.view_officers(model)          # site/officers.json's "officers"
+    EN.view_names(model)             # the search index's part: each confirmed form of a name
 
 src/parse/build_entities.py writes the model to data/entities/ every night from the files on
 disk. NOTHING READS IT YET (the design of 16 November 2026, phase A): preflight holds that each
@@ -42,7 +43,17 @@ IDS COME FROM THE FILES, NEVER A COUNTER (the owner's rules, 16 November 2026). 
 the General Court's number where it gives one (site/data/people.json's person number, chosen by
 src/lib/people.py's rule), a gr- id where the register (generated/gr_ids.json) has issued one --
 by a person's run, never the night -- and nothing at all for a member-elect until the General
-Court numbers them: their tenure and candidacy carry person null. Nothing is linked by a name.
+Court numbers them: their tenure and candidacy carry person null. Nothing is linked by a name
+alone: a holder of an office the legislature does not fill is linked to a person by the owner's
+word or by the rule of src/parse/office_links.py, which weighs more than the name, and the
+tenure's "link" says which and on what. A member of 1989-1998 no people file holds is a person
+too, under the General Court's number for them, marked by "files" and in no view of today's
+files, so that a link to one is kept until their page exists.
+
+A NAME HAS ITS FORMS (the owner's answer of 16 November 2026). A person the owner confirmed
+goes by another form of their name -- Joe for Joseph -- carries it in "name_forms", with the
+entry that confirmed it; view_names gives what a page would show ('Joseph "Joe" Pitre') and the
+words the search finds them by.
 A district's id carries its era ("house:2022:strafford-21"), because a district of one number
 named other towns before 2022; a county is not redistricted, and its id has none
 ("county:belknap"). A place is its town and ward, lower case ("dover|1"; a town of no wards is
@@ -160,6 +171,14 @@ SHAPES = {
             "gc_roster": {"type": "object", "additionalProperties": {
                 "type": "object", "additionalProperties": False,
                 "properties": {k: _S for k in ("first", "last", "party", "chamber", "person_id")}}},
+            # A person no people file holds, by the files they were read from (the members of
+            # 1989-1998 the past roster names and no page shows): in no view of today's files.
+            "files": _STRS,
+            # The other forms of their name the owner confirmed (Joe for Joseph): the form, its
+            # first name and the one of theirs it stands for, and the entry that confirmed it.
+            "name_forms": {"type": "array", "items": {
+                "type": "object", "required": ["name", "given", "of", "source"], "additionalProperties": False,
+                "properties": {"name": _S, "given": _S, "of": _S, "source": _S}}},
         },
         "additionalProperties": False},
     "office": {
@@ -240,6 +259,16 @@ SHAPES = {
             # How the person was linked, where it is not by the General Court's own number:
             # a hand entry's page address, or the register's id issued for this place.
             "linked_by": _S,
+            # A holder of an office the legislature does not fill linked to a person of its
+            # record (src/parse/office_links.py): by the rule, with each piece of evidence it
+            # rests on in words, which the check works out again; or by the owner's hand file,
+            # under her key and in her words, who may also say the holder is no one of the
+            # record ("why") or not these people ("not"). For checking only: no page shows it.
+            "link": {"type": "object", "required": ["by"], "additionalProperties": False, "properties": {
+                "by": {"enum": ["rule", "owner"]},
+                "key": _S, "evidence": _S, "why": _S, "not": _STRS,
+                "name": _S, "middle": _S, "suffix": _S, "town": _S, "area": _S, "party": _S,
+                "incompatible": _S}},
             "gc_employee_number": {"type": "string", "pattern": DIGITS},
             "member_id": {"type": "string", "pattern": DIGITS},
             "printed": _S,
@@ -526,6 +555,21 @@ def problems(model, settings=None, register=None):
                        "no id until the legislature numbers them")
         if t.get("sitting") and not t.get("term"):
             out.append(f"tenure {tid} is sitting and names no term")
+        # A link says how it was made, once: the rule's names a person and what it rests on;
+        # the owner's, her key, and her evidence where it names someone; never a person she
+        # says the holder is not.
+        lk = t.get("link")
+        if lk:
+            if t.get("linked_by"):
+                out.append(f"tenure {tid} is linked two ways: {t['linked_by']}, and by the {lk.get('by')}")
+            if lk.get("by") == "rule" and (not t.get("person") or not lk.get("name")):
+                out.append(f"tenure {tid} is linked by the rule to no one, or on nothing")
+            if lk.get("by") == "owner" and (not lk.get("key") or (t.get("person") and not lk.get("evidence"))
+                                            or (not t.get("person") and not lk.get("why"))):
+                out.append(f"tenure {tid} is the owner's, and says no key, or names someone with no "
+                           "evidence, or no one with no reason")
+            if t.get("person") and t["person"] in (lk.get("not") or []):
+                out.append(f"tenure {tid} is linked to {t['person']}, whom the owner says it is not")
     # A MID-TERM CHANGE IS TWO TENURES OF ONE SEAT. Where both are dated they do not overlap
     # (a `to` is the day the next begins, as site/officers.json writes it); and no more sit at
     # once, or are elected to take it, than the district has seats.
@@ -679,7 +723,9 @@ def view_people(model):
     for p in model.get("person") or []:
         if p.get("replaced_by"):
             e = {"person": p["person"], "replaced_by": p["replaced_by"]}
-        elif re.match(GR, p["person"]):
+        elif re.match(GR, p["person"]) or p.get("files"):
+            # An id of ours, or a person no people file holds (the members of 1989-1998 with no
+            # page): today's file has neither.
             continue
         else:
             ts = [t for n in p.get("gc_employee_numbers") or [] for t in by_num.get(n, [])]
@@ -874,4 +920,37 @@ def view_officers(model):
         out.append({"b": o["code"], "office": o["name"], "title": t["title"], "name": t["printed"],
                     "id": t["member_id"], "s": t["keys"]["ballot_sort"], "from": t["from"],
                     "to": t["to"], "kind": t["kind"], "source": t["source"]})
+    return out
+
+
+def display_name(name, form):
+    """A name with a confirmed form of its first name, the longer first and the other in quotes:
+    ("Joseph Pitre", {"given": "Joe", "of": "Joseph"}) -> 'Joseph "Joe" Pitre'. A name whose
+    first word is neither is given the form after it, in brackets."""
+    given, of = str(form.get("given") or ""), str(form.get("of") or "")
+    long_, short = (of, given) if len(of) >= len(given) else (given, of)
+    words = str(name or "").split()
+    if words and words[0].lower() in (given.lower(), of.lower()) and short:
+        return " ".join([long_, f'"{short}"'] + words[1:])
+    return f'{name} ("{given}")' if given else str(name or "")
+
+
+def view_names(model):
+    """{person: {"name", "display", "words"}}: what the search index will take from the model
+    of each person who goes by a form of their name the owner confirmed (name_forms) -- the name
+    a page would show, 'Joseph "Joe" Pitre', and the words that find them by every form, each
+    form whole and its first name. A person with no confirmed form is not in it, so that today's
+    search words are the model's for everyone else. Nothing reads it yet."""
+    out = {}
+    for p in model.get("person") or []:
+        forms = p.get("name_forms") or []
+        if not forms or p.get("replaced_by"):
+            continue
+        words = []
+        for f in forms:
+            for w in (f["name"], f["given"]):
+                if w and w not in words:
+                    words.append(w)
+        out[p["person"]] = {"name": p.get("name"), "display": display_name(p.get("name"), forms[0]),
+                            "words": words}
     return out
