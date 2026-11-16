@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.74
+# GRANITE_VERSION: 2026-09-10.75
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -1396,7 +1396,7 @@ def api_record(rec):
                                 if isinstance(s, dict) else s for s in st]}
 
 
-def bill_files(out, site, collect=None):
+def bill_files(out, site, collect=None, cache=False):
     """Every bill's full record, one gzipped JSON Lines file a term:
     bills-<term>.jsonl.gz (the data API's branch 3; docs/design/api/DESIGN.md,
     2.4). Each line is the record the bill's own page carries, read back by
@@ -1412,17 +1412,22 @@ def bill_files(out, site, collect=None):
 
     THE BYTES ARE THE SAME FOR THE SAME RECORDS. The gzip header names no
     file and no time (mtime 0), so a night that changed nothing writes the
-    file it wrote before, and the manifest's sha256 says so.
+    file it wrote before, and the manifest's sha256 says so. And the build's
+    own run (`cache`, its folder) takes a term's file from .build_cache where
+    the same lines were packed before (build_cache.Packed), rather than pack
+    them again: a finished term's file is the same every night, and packing
+    the nineteen was 18 s of the step on the laptop (16 November 2026).
 
     EVERY BILL OR NONE. Each term is written under a temporary name and
     checked against its bill index; only when every term holds every bill do
     the files take their names. A page no index names is left out and said.
     Otherwise the build stops with the counts and none is published
     (CLAUDE.md, a writer run on a subset)."""
-    import gzip
     import hashlib
     import re as _re
+    import build_cache as BC
     site = Path(site)
+    packs = BC.Packed("bill_files", "gzip-9", cache)
     idx = SR.bill_index_or_stop(site, "build_exports.py")
     term_of, years_of, want = {}, {}, {}
     for b in idx:
@@ -1450,20 +1455,19 @@ def bill_files(out, site, collect=None):
         if collect:
             for r in recs:
                 collect(term, r)
-        # A LINE AT A TIME into the gzip stream: the same bytes as one write
-        # (deflate does not depend on how its input is cut), without a second
-        # whole copy of the term in memory.
+        # A LINE AT A TIME into the gzip stream, gzip -9 with no name and no
+        # time (build_cache.gzip_bytes): the same bytes as one write, since
+        # deflate does not depend on how its input is cut. The lines are held
+        # for the term, so that a term packed before is taken whole (packs).
         name = f"bills-{term}.jsonl.gz"
         part = out / (name + ".part")
-        opened = 0
-        with part.open("wb") as fh, \
-                gzip.GzipFile(filename="", mode="wb", fileobj=fh, compresslevel=9, mtime=0) as gz:
-            for r in recs:
-                line = (json.dumps({"key": f'{term}/{r["id"]}',
-                                    **{k: v for k, v in api_record(r).items() if k != "key"}},
-                                   ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
-                gz.write(line)
-                opened += len(line)
+        lines = [(json.dumps({"key": f'{term}/{r["id"]}',
+                              **{k: v for k, v in api_record(r).items() if k != "key"}},
+                             ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
+                 for r in recs]
+        opened = sum(len(x) for x in lines)
+        part.write_bytes(packs.pack(lines))
+        del lines
         parts.append((part, out / name))
         size = part.stat().st_size
         rows.append({"path": f"/data/{name}", "kind": "bills", "term": term,
@@ -1489,6 +1493,10 @@ def bill_files(out, site, collect=None):
             + "; ".join(f"{t} has {got:,} records of {n:,}" for t, (got, n) in sorted(short.items())))
     for part, final in parts:
         part.replace(final)
+    # Every term written: what was packed or taken is what is kept.
+    if cache is not False:
+        packs.keep()
+        print(f"    bill files: {packs.said()}")
     return rows
 
 
@@ -1562,14 +1570,16 @@ def api_index(manifest, out, tables, collector):
     manifest["sources"] = [{"source": s_, "lands": w} for s_, w in AS.SOURCES]
 
 
-def database_file(out, collector, joined):
+def database_file(out, collector, joined, cache=False):
     """The data API's database (api_db.py): every table above and the
     record's committee reports, in one SQLite file in xz. Returns its row
     for the manifest's "files", or none where it is not written -- and then
     it is not listed, and a file an earlier build left is taken away, so the
     manifest never names a file that is not tonight's. Says each table's
     rows; stops on a table that must hold rows and holds none, and warns of
-    one that may be empty."""
+    one that may be empty. `cache`, the build's own run's: the xz of a
+    database whose bytes were packed before is taken from .build_cache
+    (api_db.write)."""
     path = out / api_db.NAME
     why = ("no bill records were read" if not collector.bills else
            "no people join (no db/Legislators.psv or generated/careers.json here)"
@@ -1578,7 +1588,7 @@ def database_file(out, collector, joined):
         path.unlink(missing_ok=True)
         print(f"  {api_db.NAME:<28} not written: {why}")
         return []
-    row = api_db.write(out, collector, joined[0])
+    row = api_db.write(out, collector, joined[0], cache=cache)
     must = ("bills", "rollcalls", "votes", "vote_values", "sponsors", "legislators",
             "proceedings", "people", "person_numbers", "committee_reports")
     empty = [t for t in must if not row["counts"].get(t)]
@@ -1723,15 +1733,21 @@ def main():
     # under a key of their own, and not on the data page, so that nothing a
     # reader sees today moves while they are built.
     collector = api_db.Collector()
+    # THE PACKED FILES OF THE BUILD'S OWN RUN are kept in .build_cache, each
+    # by the bytes it packs (build_cache.Packed): the bill files, the bill
+    # texts and the database, taken whole where those bytes were packed before.
+    import build_cache as BC
     # THE API'S RECORDS, A FILE EACH (api_records.py; the owner's word of 16
     # November 2026): the sitting term's bills, and every term's bill texts
     # (bill-texts-<term>.jsonl.gz), from the records the bill files read in
     # the same pass; the rest from the CSVs above, written once they are.
-    records = api_records.Records(SR.bill_index_or_stop(site, "build_exports.py"), site)
+    records = api_records.Records(SR.bill_index_or_stop(site, "build_exports.py"), site,
+                                  cache=BC.CACHE)
     manifest["files"] = people_files(out, joined) + bill_files(
-        out, site, collect=lambda term, r: (collector.add(term, r), records.add_bill(term, r)))
+        out, site, collect=lambda term, r: (collector.add(term, r), records.add_bill(term, r)),
+        cache=BC.CACHE)
     manifest["files"] += records.text_files(out)
-    manifest["files"] += database_file(out, collector, joined)
+    manifest["files"] += database_file(out, collector, joined, cache=BC.CACHE)
     api_index(manifest, out, tables, collector)
     manifest["api"]["records"], said = api_records.write(
         site, out, records, people=joined[0] if joined else None, person_of=person_of, base=a.base)

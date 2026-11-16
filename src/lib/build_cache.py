@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.2
+# GRANITE_VERSION: 2026-10-23.3
 """
 Answers a build step worked out before, kept by what they were worked out from.
 
@@ -9,6 +9,10 @@ Answers a build step worked out before, kept by what they were worked out from.
     key = BC.digest(sig, text_a, text_b)          # what the answer depends on
     answer = kept.get(key)                        # None: work it out
     BC.save("bill_versions", sig, {key: answer, ...})
+
+    packs = BC.Packed("bill_files", "gzip-9", BC.CACHE)   # a packed download
+    data = packs.pack(lines)                      # kept where packed before
+    packs.keep()                                  # after a run over everything
 
 WHY (23 October 2026, the person's "speed up the scripts and nightly
 updates"). The night rebuilds the whole site from an empty machine, and most
@@ -219,6 +223,171 @@ def save(name, sig, entries, folder=None):
         except OSError:
             pass
         return False
+
+
+# ---- packed files -------------------------------------------------------------
+#
+# A FILE PACKED BEFORE IS THE FILE PACKING WOULD MAKE (16 November 2026, the
+# refactor's build design, step S4). The downloads pack three kinds of file
+# every night: each term's bills (bills-<term>.jsonl.gz) and bill texts
+# (bill-texts-<term>.jsonl.gz) at gzip level 9, and the database
+# (granite-record.sqlite.xz) at xz preset 6. On the laptop's record on 16
+# November 2026 the 38 gzip files took 25.1 s and the database 62.5 s, where a
+# night that moved only the sitting term needs 3.5 s of the first and, when
+# the database did not move, none of the second. Packing is a function of the
+# bytes packed and of the packer alone, so a file is kept by both:
+#
+#   - by a sha256 of the bytes it packs, as they are handed over;
+#   - by the packer (pack_signature): its name and settings, this module's
+#     code (signature), the zlib Python was built with and runs against, and
+#     the sha256 of a fixed text packed by it -- a library whose output moved
+#     moves that text's, and so every key;
+#   - and the file is kept under its own sha256, and read back only while its
+#     bytes are still that sha256.
+#
+# One Packed a writer, with its own index (<name>.json.gz, through load and
+# save) and its own folder of files (packed/<name>/). A run over everything
+# ends with keep(): the index of what that run packed or took, and every
+# other file of its folder removed, so the folder never grows past the
+# record. A cold build takes nothing and still keeps what it packs. A writer
+# handed no folder packs every time and keeps nothing, which is what a caller
+# other than the build's own run gets.
+PACKED = "packed"
+
+
+def gzip_bytes(chunks, level):
+    """gzip of `chunks`, written one after another, with no name and no time
+    in its header: the same chunks, the same bytes."""
+    buf = io.BytesIO()
+    with gzip.GzipFile(filename="", mode="wb", fileobj=buf, compresslevel=level, mtime=0) as gz:
+        for c in chunks:
+            gz.write(c)
+    return buf.getvalue()
+
+
+def xz_bytes(chunks, preset):
+    """xz of `chunks` joined, at `preset`. xz writes no time."""
+    import lzma
+    return lzma.compress(b"".join(chunks), format=lzma.FORMAT_XZ, preset=preset)
+
+
+# Each packer by its name: how it packs, and its files' ending.
+PACKERS = {"gzip-9": (lambda chunks: gzip_bytes(chunks, 9), ".gz"),
+           "xz-6": (lambda chunks: xz_bytes(chunks, 6), ".xz")}
+# The text each packer is tried on for its signature: a few thousand lines of
+# numbers and repeated letters, so that its matches and its literals are both
+# a library's own work.
+_PROBE = "".join(f"{i} {i * 7919 % 10007:x} {'abcdefghij'[i % 10] * (i % 23)}\n"
+                 for i in range(4000)).encode("ascii")
+_PACK_SIGS = {}
+
+
+def pack_signature(how):
+    """A sha256 of the packer `how` names: its name, this module's code, the
+    zlib Python was built with and runs against, and the sha256 of _PROBE
+    packed by it. Once a process."""
+    if how not in _PACK_SIGS:
+        import zlib
+        pack, _ext = PACKERS[how]
+        _PACK_SIGS[how] = digest(f"packed {FORMAT}", how, signature("build_cache.py"),
+                                 zlib.ZLIB_VERSION, getattr(zlib, "ZLIB_RUNTIME_VERSION", ""),
+                                 hashlib.sha256(pack([_PROBE])).hexdigest())
+    return _PACK_SIGS[how]
+
+
+class Packed:
+    """One writer's packed files, kept by what they pack (PACKED FILES above).
+
+        packs = Packed("bill_files", "gzip-9", CACHE)
+        data = packs.pack(lines)        # bytes: the kept file where these bytes
+                                        #   were packed before, else packed now
+        packs.keep()                    # after a run over everything, only then
+
+    `folder` is the cache's (CACHE where None); False, the default, is none."""
+
+    def __init__(self, name, how, folder=False):
+        self.name, self.how = name, how
+        self.pack_with, self.ext = PACKERS[how]
+        self.root = None if folder is False else Path(folder if folder is not None else CACHE)
+        self.sig = pack_signature(how) if self.root is not None else None
+        self.kept = load(name, self.sig, self.root) if self.root is not None else {}
+        self.used, self.taken, self.made = {}, 0, 0
+
+    def _file(self, sha):
+        return self.root / PACKED / self.name / f"{sha}{self.ext}"
+
+    def _kept(self, key):
+        """The kept file packed from bytes of sha256 `key`, while it is still
+        the file the index names; None otherwise."""
+        want = self.kept.get(key)
+        if not (isinstance(want, str) and len(want) == 64):
+            return None
+        try:
+            data = self._file(want).read_bytes()
+        except OSError:
+            return None
+        return data if hashlib.sha256(data).hexdigest() == want else None
+
+    def pack(self, chunks):
+        """`chunks` (bytes) packed: the kept file where the same bytes were
+        packed by this packer before, and otherwise packed now and kept."""
+        chunks = list(chunks)
+        if self.root is None:
+            self.made += 1
+            return self.pack_with(chunks)
+        h = hashlib.sha256()
+        for c in chunks:
+            h.update(c)
+        key = h.hexdigest()
+        data = self._kept(key)
+        if data is not None:
+            self.taken += 1
+            self.used[key] = self.kept[key]
+            return data
+        data = self.pack_with(chunks)
+        sha = hashlib.sha256(data).hexdigest()
+        p = self._file(sha)
+        tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
+        try:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            tmp.write_bytes(data)
+            os.replace(tmp, p)
+        except OSError:
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
+        self.made += 1
+        self.used[key] = sha
+        return data
+
+    def keep(self):
+        """Keep what this run packed or took, and nothing else: the index,
+        whole (save), and in the folder only the files it names. For the end
+        of a run over everything: a run over part of the record calls none,
+        and keeps nothing. True where kept."""
+        if self.root is None or not save(self.name, self.sig, self.used, self.root):
+            return False
+        names = {f"{sha}{self.ext}" for sha in self.used.values()}
+        try:
+            here = list((self.root / PACKED / self.name).iterdir())
+        except OSError:
+            return True
+        for f in here:
+            if f.name not in names:
+                try:
+                    f.unlink()
+                except OSError:
+                    pass
+        return True
+
+    def said(self):
+        """What this writer's packing came to, for its step's log."""
+        n = self.taken + self.made
+        if self.root is None:
+            return f"{n} packed"
+        return (f"{self.taken} of {n} taken as kept in {(self.root / PACKED / self.name).as_posix()}/ "
+                f"(the same bytes packed before), {self.made} packed")
 
 
 def main():

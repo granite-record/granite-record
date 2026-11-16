@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.7
+# GRANITE_VERSION: 2026-10-30.8
 """
 The data API's database: every table on the data page, and the record's
 committee reports, in one SQLite file, compressed with xz.
@@ -53,14 +53,20 @@ THE SAME ROWS GIVE THE SAME BYTES. Rows go in in a stated order, the file is
 vacuumed, and xz writes no time, so the manifest's sha256 moves only when
 the data does -- on one machine's SQLite. Another version of SQLite may lay
 out the same rows differently; the build compares nights on one machine.
+
+THE SAME BYTES ARE PACKED ONCE (16 November 2026). xz at preset 6 was a
+minute of the step on the laptop's record. The build's own run (`cache`)
+takes the xz from .build_cache where a database of the same bytes was packed
+before (build_cache.Packed), which is every night the record did not move.
 """
 
 import csv
 import hashlib
 import json
-import lzma
 import sqlite3
 from pathlib import Path
+
+import build_cache as BC
 
 FORMAT = 1
 NAME = "granite-record.sqlite.xz"
@@ -176,13 +182,15 @@ def _num(v):
         return None
 
 
-def write(out, collector, people, meetings_path="meetings.json"):
+def write(out, collector, people, meetings_path="meetings.json", cache=False):
     """Build the database (_write), and whatever happens, leave no
     temporary file behind: a stop part-way would otherwise leave about
-    100 MB of half-built database in site/data/."""
+    100 MB of half-built database in site/data/. `cache` is the build's own
+    run's folder of kept packed files (build_cache.Packed); False, the
+    default, packs the database every time."""
     tmp = Path(out) / "granite-record.sqlite.part"
     try:
-        return _write(Path(out), collector, people, meetings_path, tmp)
+        return _write(Path(out), collector, people, meetings_path, tmp, cache)
     except sqlite3.IntegrityError as e:
         raise SystemExit(f"The database is not written: a row repeats a key ({e}). The "
                          "table it names has two rows for one bill, or one ballot twice, "
@@ -191,7 +199,7 @@ def write(out, collector, people, meetings_path="meetings.json"):
         tmp.unlink(missing_ok=True)
 
 
-def _write(out, collector, people, meetings_path, tmp):
+def _write(out, collector, people, meetings_path, tmp, cache=False):
     """Build the database from the CSVs in out and the collector's rows;
     write out/NAME and return its manifest row (with "counts", the rows of
     each table). The CSVs must have been written first."""
@@ -304,10 +312,16 @@ def _write(out, collector, people, meetings_path, tmp):
     con.close()
     raw = tmp.read_bytes()
     opened = len(raw)
-    packed = lzma.compress(raw, format=lzma.FORMAT_XZ, preset=6)
+    # xz at preset 6, or the kept file where these bytes were packed before;
+    # one database a run, so the run is over everything and keeps what it used.
+    packs = BC.Packed("database", "xz-6", cache)
+    packed = packs.pack([raw])
     del raw
     tmp.unlink()
     (out / NAME).write_bytes(packed)
+    if cache is not False:
+        packs.keep()
+        print(f"    database: {packs.said()}")
     return {"path": f"/data/{NAME}", "kind": "database", "rows": sum(counts.values()),
             "bytes": len(packed), "opened_bytes": opened,
             "sha256": hashlib.sha256(packed).hexdigest(), "encoding": "xz",

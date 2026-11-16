@@ -542,7 +542,14 @@ this project it imports, tokenised with the comments out, as section 9 below
 learned -- so a change to either is a cache that no longer answers. A cache
 that is missing, unreadable or another code's is no cache, and the site
 built warm, cold and without it is the same byte for byte; the weekly's cold
-build (above) holds GitHub's nights to that.
+build (above) holds GitHub's nights to that. Since 16 November 2026 the
+downloads' packed files are kept there too (`build_cache.Packed`): each
+term's `bills-<term>.jsonl.gz` and `bill-texts-<term>.jsonl.gz` and the
+database's xz, each under a sha256 of the bytes it packs and of the packer
+(its settings, the module's code, the zlib it runs against and a fixed text
+packed by it), and read back only while the file is still its own sha256 --
+on the laptop's record 25 s of gzip and a minute of xz, of which a night
+that moved only the sitting term repacks one term.
 
 ---
 
