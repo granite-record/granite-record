@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -6187,9 +6187,10 @@ def _follow_lsr_endings(FC):
 def _follow_member_moves(FC, BF, BA):
     """16 November 2026: the General Court gives a representative elected to
     the Senate a new number, so the night its roster turns to the new term
-    their key leaves the list, and their followers were told "is no longer
-    among the sitting legislators" -- Jim Creighton (Senate district 8) and
-    Laura Telerski (13) on 2 December 2026. build_feeds.continuations finds
+    their key leaves the list, and their followers would have been told "is
+    no longer among the sitting legislators" -- Jim Creighton's (Senate
+    district 8) and Laura Telerski's (13), from Organization Day, 2 December
+    2026. build_feeds.continuations finds
     where such a member sits from what the members-elect file said, which the
     ledger keeps because the file is gone by that night, and the roster's
     holder of that seat answering to the winner's name -- never from a name

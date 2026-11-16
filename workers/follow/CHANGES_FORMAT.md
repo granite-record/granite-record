@@ -315,7 +315,8 @@ night. Each value may have:
   and the Senate, so the night its roster turns to a new term a
   representative elected to the Senate leaves under one key and sits under
   another. Their `ended` has `how` `moved`, a `summary` saying where they sit
-  now ("Jim Creighton now sits in the Senate for District 8."), and
+  now, named as the roster names them ("James Creighton now sits in the
+  Senate for District 8."), and
   **`becomes`**, their new key (`member:12001`), which `current.json` lists
   that night: the sender tells the follower once and **moves the follow
   there**, as for a request. The build says how it knows it is the same

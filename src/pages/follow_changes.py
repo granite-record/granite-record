@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-07.13
+# GRANITE_VERSION: 2026-10-07.14
 """
 The nightly "what changed" files the email sender reads, and the first-seen
 ledger that decides what is new in them.
@@ -98,8 +98,9 @@ elected to the Senate for, their key leaves the list and a new one comes,
 and their followers would have been told "is no longer among the sitting
 legislators".
 build_feeds now finds where such a member sits (its hints "becomes", "name"
-and "where"), and the ending says so -- "Jim Creighton now sits in the
-Senate for District 8.", how "moved" -- and names the new key, as a bill
+and "where"), and the ending says so in the roster's words -- "James
+Creighton now sits in the Senate for District 8.", how "moved" -- and names
+the new key, as a bill
 request's names its bill; the sender moves the follow there. The match is
 build_feeds' (continuations) and rests on the members-elect file, which is
 gone by that night: the ledger keeps what it said ("elected") for the night
