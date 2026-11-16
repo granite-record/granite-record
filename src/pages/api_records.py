@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 The data API's records, a file each, under /api/.
 
@@ -42,6 +42,9 @@ WHAT IT WRITES, under site/api/, every file compact JSON with "format": 1:
                                        changed it, the bill each was and the day
                                        it took effect, and the day the text was
                                        taken and where from
+  changes/<date>.json                  the last eight nights: the records whose
+                                       promised fields changed, and those gone
+                                       (THE CHANGE FEED, below)
 
 and under site/data/, beside the bill files, which stay as they were:
 
@@ -87,7 +90,9 @@ Nothing here asks the network.
 """
 
 import csv
+import hashlib
 import json
+import os
 import re
 import time
 from pathlib import Path
@@ -251,6 +256,7 @@ class Records:
         self.seen = 0           # every record handed over, of every term
         self.texts = {}         # term -> [bytes buffer, gzip stream, lines, with text]
         self.gaps = 0           # versions listed with no text on file
+        self.hashes = {}        # term/bill -> its file's hash (record_hash), of every term
 
     def add_bill(self, term, rec):
         self.seen += 1
@@ -269,9 +275,13 @@ class Records:
         t[1].write((json.dumps(line, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8"))
         t[2] += 1
         t[3] += bool(text["text_on_file"])
+        # Every term's bill is hashed as the sitting term's file is made, so
+        # the change feed sees a change to a bill of any term, and none at
+        # the turn of a term for a bill whose fields did not move.
+        f = bill_file(row, rec, text)
+        self.hashes[line["key"]] = record_hash("bills", f)
         if term == self.sitting:
-            self.files[bid] = dump(held("bills", "record", bill_file(row, rec, text),
-                                        f"bill {term}/{bid}"))
+            self.files[bid] = dump(held("bills", "record", f, f"bill {term}/{bid}"))
 
     def text_files(self, out):
         """Write /data/bill-texts-<term>.jsonl.gz for every term the bill
@@ -383,6 +393,135 @@ def law_files(table, citations, taken=None):
     return files, rows
 
 
+# ------------------------------------------------------------ the change feed --
+# /api/changes/<date>.json: which records' stable fields changed each night
+# (the owner's word of 16 November 2026; stage0-data.md 5.3). Its own folder,
+# not a key in /changes/, so the email sender's contract
+# (workers/follow/CHANGES_FORMAT.md) does not move.
+#
+# A RECORD'S HASH is of what the API promises about it: a bill's file as the
+# sitting term's are made -- its row, every stable field of its record and its
+# text -- for a bill of every term, so a correction to a 1997 bill is listed
+# and the turn of a term lists nothing that did not change; a roll call's row,
+# and, while its term sits, its ballots apart (BALLOTS), so that the turn does
+# not list the old term's roll calls for losing their file a record; a
+# member's, a request's and a chapter's file, all but its "format" -- and a
+# chapter's all but the day its text was taken (NOT_A_CHANGE), which moves
+# every week the statutes are taken again whether a word changed or not. A
+# page's field is in none of them, so a page drawn anew lists nothing.
+#
+# THE HASHES TRAVEL AS THE CENSUS DOES. This build reads archive/api-hashes.json
+# (LEDGER) and leaves its own at archive/api-hashes.next.json (CANDIDATE);
+# nightly.py keeps it exactly where it writes the census -- a real night the
+# gates accept, or a New term run's once its deploy has landed, for which
+# cloud.py site-up carries it with the site -- so a stopped night, a dry run or
+# a rejected switch changes nothing the next night compares with.
+# cloud_kit.json's state list carries it, and a dry night never sends it
+# (cloud.DRY_NEVER). The ledger holds the hashes of the last accepted build and
+# the eight nights the folder carries, as the first-seen ledger holds its own
+# (follow_changes.py), because the night's machine starts empty: each build
+# writes all eight files from it.
+#
+# A SECOND BUILD OF ONE DATE compares with the last accepted build's hashes, and
+# its night lists what the first listed and what changed since, so a rerun
+# never drops what a published night said. NO LEDGER (the first night, or a
+# lost state) lists nothing that night, never every record, and says so in a
+# WARNING: the next night lists against this one's.
+LEDGER = Path("archive/api-hashes.json")
+CANDIDATE = Path("archive/api-hashes.next.json")
+LEDGER_FORMAT = 1
+KINDS = ("bills", "rollcalls", "members", "laws", "requests")
+BALLOTS = "ballots"
+NOT_A_CHANGE = {"laws": ("format", "text_taken")}
+CHANGES = "changes"                   # under site/api/
+
+
+def digest(obj):
+    """A record's promised fields as one short hash: sha256 of their JSON with
+    the keys in order, its first 16 hex digits. Read as the same however a
+    record's own fields were ordered."""
+    raw = json.dumps(obj, sort_keys=True, ensure_ascii=True, separators=(",", ":"),
+                     check_circular=False)
+    return hashlib.sha256(raw.encode("ascii")).hexdigest()[:16]
+
+
+def record_hash(kind, obj):
+    """The hash of one record's file, less what is no change of it."""
+    leave = NOT_A_CHANGE.get(kind, ("format",))
+    return digest({k: v for k, v in obj.items() if k not in leave})
+
+
+def _natural(key):
+    return [int(x) if x.isdigit() else x for x in re.split(r"(\d+)", str(key))]
+
+
+def load_ledger(path=LEDGER, tonight=""):
+    """(ledger, why): the last accepted build's hashes and nights, or None and
+    why there is none to compare with."""
+    p = Path(path)
+    if not p.is_file():
+        return None, f"no {p.as_posix()}"
+    try:
+        led = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        return None, f"{p.as_posix()} will not read ({type(e).__name__})"
+    if not isinstance(led, dict) or led.get("format") != LEDGER_FORMAT or \
+            not isinstance(led.get("hashes"), dict) or not isinstance(led.get("nights"), dict) or \
+            not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(led.get("date"))):
+        return None, f"{p.as_posix()} is not a ledger of format {LEDGER_FORMAT}"
+    if tonight and led["date"] > tonight:
+        return None, (f"{p.as_posix()} is of {led['date']}, after tonight's {tonight}: a build dated "
+                      "earlier than the last accepted one cannot say what changed since")
+    return led, ""
+
+
+def decide(led, hashes, *, tonight, built):
+    """(tonight's ledger, what tonight found new to the last accepted build:
+    {"changed": {kind: set}, "removed": {kind: set}})."""
+    import follow_changes as FC
+    keep = set(FC.window(tonight))
+    found = {"changed": {k: set() for k in KINDS}, "removed": {k: set() for k in KINDS}}
+    nights = {}
+    if led is not None:
+        old = led["hashes"]
+        for k in KINDS:
+            was, now = old.get(k) or {}, hashes.get(k) or {}
+            found["changed"][k] = {key for key, h in now.items() if was.get(key) != h}
+            found["removed"][k] = set(was) - set(now)
+        wb, nb = old.get(BALLOTS) or {}, hashes.get(BALLOTS) or {}
+        found["changed"]["rollcalls"] |= {key for key, h in nb.items() if key in wb and wb[key] != h}
+        nights = {d: n for d, n in led["nights"].items() if d in keep and isinstance(n, dict)}
+    here = nights.get(tonight) or {}
+    said = {}
+    for side, other in (("changed", "removed"), ("removed", "changed")):
+        said[side] = {k: sorted((set((here.get(side) or {}).get(k) or ()) | found[side][k])
+                                - found[other][k], key=_natural) for k in KINDS}
+    nights[tonight] = {"built": built, **said}
+    ledger = {"format": LEDGER_FORMAT,
+              "about": ("The data API's change feed's state (src/pages/api_records.py): the hashes of "
+                        "every record's promised fields as the last accepted build had them, and the "
+                        "eight nights /api/changes/ carries."),
+              "date": tonight, "built": built, "hashes": hashes,
+              "nights": {d: nights[d] for d in sorted(nights) if d in keep}}
+    return ledger, found
+
+
+def change_files(ledger, tonight, built):
+    """{name: object} of the eight nights' files, from the ledger; a night no
+    accepted build wrote lists nothing, as /changes/ does."""
+    import follow_changes as FC
+    empty = {k: [] for k in KINDS}
+    files = {}
+    for d in FC.window(tonight):
+        n = ledger["nights"].get(d) or {}
+        files[f"{d}.json"] = {"format": FORMAT, "date": d, "built": n.get("built") or built,
+                              "changed": {k: list((n.get("changed") or empty).get(k) or [])
+                                          for k in KINDS},
+                              "removed": {k: list((n.get("removed") or empty).get(k) or [])
+                                          for k in KINDS}}
+    return files
+
+
 # --------------------------------------------------------------------- write --
 
 class Out:
@@ -443,13 +582,15 @@ def _named(key, what, said):
 
 
 def write(site, out, rec, *, people=None, person_of=None, base="https://graniterecord.org",
-          built="", db="db", citations="rsa_citations.json", table=None):
+          built="", db="db", citations="rsa_citations.json", table=None, ledger=LEDGER,
+          ledger_out=CANDIDATE):
     """Every file under site/api/. `out` is site/data, where build_exports
     has just written the CSVs; `rec` the Records the bill files filled;
     `people` people_join's people (None where there is no join here, and then
     nobody has a file); `person_of` member id -> person; `table` the statute
-    table where the caller has it, else read from `db`. Returns (the
-    manifest's api.records, the lines to print)."""
+    table where the caller has it, else read from `db`; `ledger` the hashes
+    the change feed compares with and `ledger_out` where tonight's are left.
+    Returns (the manifest's api.records, the lines to print)."""
     t0 = time.time()
     site, out = Path(site), Path(out)
     built = built or stamp(build_date.utcnow())
@@ -457,6 +598,9 @@ def write(site, out, rec, *, people=None, person_of=None, base="https://graniter
     said = []
     sitting = rec.sitting
     person_of = person_of or {}
+    # Each record's hash, by kind, for the change feed (THE CHANGE FEED).
+    hashes = {"bills": dict(rec.hashes), "rollcalls": {}, BALLOTS: {}, "members": {}, "laws": {},
+              "requests": {}}
 
     # ---- bills: every term's rows; the sitting term's bills, a file each
     terms = {}
@@ -495,6 +639,7 @@ def write(site, out, rec, *, people=None, person_of=None, base="https://graniter
             continue
         keys.add(r.get("roll_call"))
         by_term.setdefault(str(r.get("term") or ""), []).append(r)
+        hashes["rollcalls"][r.get("roll_call")] = record_hash("rollcalls", r)
     rc_terms = sorted((t for t in by_term if SR.TERM_FILE.fullmatch(t)), reverse=True)
     for t in rc_terms:
         o.put("rollcalls", "rows", f"rollcalls/{t}.json",
@@ -509,6 +654,7 @@ def write(site, out, rec, *, people=None, person_of=None, base="https://graniter
         if _named(r.get("roll_call"), "the roll call", said):
             o.put("rollcalls", "record", f"rollcalls/{sitting}/{r['roll_call']}.json",
                   {"format": FORMAT, **r, "ballots": ballots.get(r["roll_call"], [])})
+            hashes[BALLOTS][r["roll_call"]] = digest(ballots.get(r["roll_call"], []))
             n_rc += 1
     said.append(f"  {'api/rollcalls/':<28} {len(rc_terms):>9,} terms' rows; {n_rc:,} roll calls of "
                 f"{sitting or 'no term'}, a file each, with "
@@ -544,6 +690,7 @@ def write(site, out, rec, *, people=None, person_of=None, base="https://graniter
             f["sponsored"] = [{"key": f"{t}/{b}", "prime": prime}
                               for t, _k, b, prime in sorted(sponsored.get(who, ()))]
             o.put("members", "record", f"members/{who}.json", f)
+            hashes["members"][who] = record_hash("members", f)
         o.put("members", "rows", "members/index.json", {"format": FORMAT, "members": rows})
         said.append(f"  {'api/members/':<28} {len(rows):>9,} people, a file each; "
                     f"{len(seats):,} with a seat")
@@ -582,6 +729,7 @@ def write(site, out, rec, *, people=None, person_of=None, base="https://graniter
                    "bill": f"{term_of_year(ry)}/{intro}" if intro else ""}
             rows.append(row)
             o.put("requests", "record", f"requests/{year}/{nnnn}.json", {"format": FORMAT, **row})
+            hashes["requests"][num] = record_hash("requests", row)
         o.put("requests", "rows", f"requests/{year}/index.json",
               {"format": FORMAT, "year": year, "requests": rows})
         said.append(f"  {'api/requests/':<28} {len(rows):>9,} requests for {year}, a file each")
@@ -603,16 +751,43 @@ def write(site, out, rec, *, people=None, person_of=None, base="https://graniter
         for ch, f in files.items():
             if _named(ch, "the chapter", said):
                 o.put("laws", "record", f"laws/{ch}.json", f)
+                hashes["laws"][ch] = record_hash("laws", f)
         o.put("laws", "rows", "laws/index.json", {"format": FORMAT, "chapters": rows})
         said.append(f"  {'api/laws/':<28} {len(files):>9,} chapters, a file each, "
                     f"{sum(len(f['sections']) for f in files.values()):,} sections")
+
+    # ---- the change feed: tonight's hashes against the last accepted build's
+    tonight = built[:10]
+    led, why = load_ledger(ledger, tonight)
+    left, _found = decide(led, hashes, tonight=tonight, built=built)
+    nights = change_files(left, tonight, built)
+    for name, obj in nights.items():
+        o.put("changes", "night", f"{CHANGES}/{name}", obj)
+    # The hashes this build leaves, whole or not at all; nightly.py keeps them
+    # (nightly.keep_api_hashes) only where it writes the census.
+    Path(ledger_out).parent.mkdir(parents=True, exist_ok=True)
+    part = Path(ledger_out).with_name(Path(ledger_out).name + ".part")
+    part.write_text(json.dumps(left, sort_keys=True, ensure_ascii=False, separators=(",", ":")) + "\n",
+                    encoding="utf-8", newline="\n")
+    os.replace(part, ledger_out)
+    night = left["nights"][tonight]
+    said.append(f"  {'api/changes/':<28} {len(nights):>9,} nights; "
+                f"{tonight} lists " + ", ".join(f"{len(night['changed'][k]):,} {k}" for k in KINDS)
+                + " changed and "
+                + f"{sum(len(night['removed'][k]) for k in KINDS):,} gone; the hashes -> "
+                + Path(ledger_out).as_posix())
+    if led is None:
+        said.append(f"    WARNING: the data API's change feed lists nothing tonight: {why}. It "
+                    "compares with the hashes nightly.py keeps for a build it accepts, so the next "
+                    "night lists against tonight's")
 
     # ---- the index of it all, last, with tonight's counts
     # The index describes the rest; it is no record, and api_schema's
     # resources are its words.
     o.put("index", "", "index.json", dump(index_file(o, base=base, built=built, sitting=sitting,
                                                       year=year, terms=sorted(terms, reverse=True),
-                                                      rc_terms=rc_terms)))
+                                                      rc_terms=rc_terms,
+                                                      nights=sorted(n[:-5] for n in nights))))
     gone = o.sweep()
     total = sum(o.count.values())
     size = sum(o.bytes.values())
@@ -633,10 +808,11 @@ def write(site, out, rec, *, people=None, person_of=None, base="https://graniter
     return summary, said
 
 
-def index_file(o, *, base, built, sitting, year, terms, rc_terms):
+def index_file(o, *, base, built, sitting, year, terms, rc_terms, nights=()):
     """/api/index.json: every resource, with its files' addresses filled in
     for tonight, how many files it has, and every field with its stability,
-    as schema.json describes them under x-api-records."""
+    as schema.json describes them under x-api-records; and the nights the
+    change feed carries."""
     fill = {"sitting_term": sitting, "year": str(year or "")}
     res = []
     for r in AS.api_records_schema():
@@ -650,13 +826,15 @@ def index_file(o, *, base, built, sitting, year, terms, rc_terms):
                     "files_tonight": o.count.get(r["name"], 0),
                     **({"terms": terms} if r["name"] == "bills" else
                        {"terms": rc_terms} if r["name"] == "rollcalls" else
-                       {"year": year} if r["name"] == "requests" and year else {}),
+                       {"year": year} if r["name"] == "requests" and year else
+                       {"nights": list(nights)} if r["name"] == "changes" else {}),
                     "files": files})
     return {"format": FORMAT,
             "what": "The New Hampshire General Court's record, a file a record: every bill and "
                     "roll call of the term now sitting, every member, every bill request and every "
-                    "chapter of the statutes, beside a file of rows for each. A file holds only "
-                    "the fields promised to stay; schema.json describes the same fields.",
+                    "chapter of the statutes, beside a file of rows for each, and night by night "
+                    "which of them changed. A file holds only the fields promised to stay; "
+                    "schema.json describes the same fields.",
             "status": "beta", "stable_from": "2027-02-01", "built": built, "base": base,
             "sitting_term": sitting, **({"requests_year": year} if year else {}),
             "docs": f"{base}/api", "schema": f"{base}/data/schema.json",

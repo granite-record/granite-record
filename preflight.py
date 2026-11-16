@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.941
+# GRANITE_VERSION: 2026-09-04.942
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -33365,7 +33365,7 @@ def _api_law_page_text(page, anchor):
     sec = page[at:page.find("</section>", at)]
     body = sec.split('<div class="rs-text" translate="no">', 1)[-1]
     body = re.split(r'<p class="rs-source">|<div class="rs-folds">', body)[0]
-    body = re.sub(r'<span class="rs-gone">.*?</span>', "", body)
+    body = re.sub(r' <span class="rs-gone">.*?</span>', "", body)   # the page's own "(repealed)"
     paras = [_html.unescape(re.sub(r"<[^>]+>", "", p)).strip()
              for p in re.findall(r"<p>(.*?)</p>", body, re.S)]
     note = re.search(r'<p class="rs-source">(.*?)</p>', sec, re.S)
@@ -33459,7 +33459,10 @@ def _api_records(AR, AS, AP, SR, RSA, BR):
                         out.append(f"{where}.{k} holds {type(x).__name__}, not an object")
 
     def kind(rel):
-        """(resource, rows or record) of a path under api/, or None."""
+        """(resource, rows or record) of a path under api/, or None; a night
+        of the change feed is ("changes", "night")."""
+        if re.fullmatch(r"changes/\d{4}-\d{2}-\d{2}\.json", rel):
+            return "changes", "night"
         for name, rx_rows, rx_rec in (
                 ("bills", r"bills/\d{4}-\d{4}/index\.json", r"bills/\d{4}-\d{4}/[A-Z]+\d+[A-Z]?\.json"),
                 ("rollcalls", r"rollcalls/\d{4}-\d{4}\.json", r"rollcalls/\d{4}-\d{4}/\d{4}-[HS]-\d+\.json"),
@@ -33704,10 +33707,13 @@ def _api_records(AR, AS, AP, SR, RSA, BR):
                   {"person": "101", "replaced_by": "100"}]
         summary, said = AR.write(site, out, rec, people=people, person_of={"m1": "100"},
                                  base="https://example.org", built="2027-01-08T09:00:00Z",
-                                 db=d / "no-db", citations=d / "none.json")
+                                 db=d / "no-db", citations=d / "none.json",
+                                 ledger=d / "no-hashes.json", ledger_out=d / "api-hashes.next.json")
         made, bad = read_api(site / "api")
         made_t, bad_t = texts_of(out)
         assert not bad + bad_t, f"{len(bad + bad_t)} findings in the made-up /api/: " + "; ".join((bad + bad_t)[:6])
+        assert len([x for x in made if x.startswith("changes/")]) == 8, sorted(made)
+        made = {k: v for k, v in made.items() if not k.startswith("changes/")}
         assert sorted(made) == [
             "bills/2025-2026/index.json", "bills/2027-2028/HB1.json", "bills/2027-2028/index.json",
             "index.json", "members/100.json", "members/101.json", "members/index.json",
@@ -33782,6 +33788,196 @@ def _api_records(AR, AS, AP, SR, RSA, BR):
                   "text and notes as their pages show them; index.json, schema.json and the /api "
                   "page agree; a made-up record's members, request, versions, newer term and stale "
                   f"file each as promised; {said_real}")
+
+
+@check("build", "the API's change feed lists, each night, exactly the records whose promised fields "
+                "changed and those gone -- a page's field or the day the laws were taken is no "
+                "change -- keeps eight nights, merges a second build of one date, and lists "
+                "nothing, saying why, with no hashes to compare",
+       needs=("api_records", "api_schema", "follow_changes"))
+def _api_changes(AR, AS, FC):
+    """THE CHANGE FEED (api_records.py; the owner's word of 16 November 2026):
+    /api/changes/<date>.json, {"format": 1, "date", "built", "changed":
+    {bills, rollcalls, members, laws, requests}, "removed": {...}}, a change
+    being a change of a field the API promises. Driven here over a record made
+    up for it, night after night, the hashes kept between nights as nightly.py
+    keeps them (archive/api-hashes.next.json to archive/api-hashes.json):
+
+      no hashes        the first night lists nothing, never every record, and
+                       says so; its eight files are there
+      a night's change one of each kind planted -- a bill's docket line, its
+                       text, a roll call's tally, a ballot, a member's seat, a
+                       section's text, a request's status, a request gone and
+                       a bill new -- listed, exactly; and changes no promise
+                       covers -- a bill's narrative and stations -- not listed
+      a second build   of the same date, after the first was kept: what the
+                       first listed and what changed since; and after it was
+                       not kept, everything since the last kept night
+      the turn         a new term's first bill: the old term's roll calls lose
+                       their ballots' files and are not listed for it; and the
+                       statutes taken again the same night, no word changed,
+                       list no chapter
+      eight nights     each build writes the eight nights' files, and the
+                       hashes keep no older night
+      a later ledger   hashes dated after tonight are not compared with
+    """
+    import csv as _csv_
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        led, nxt = d / "archive" / "api-hashes.json", d / "archive" / "api-hashes.next.json"
+
+        def build(tonight, s):
+            """One build over state `s`; (what it said, {date: the night's file})."""
+            site, out, db = d / "site", d / "site" / "data", d / "db"
+            for p in (site / "idx", out, db):
+                p.mkdir(parents=True, exist_ok=True)
+            idx = {}
+            for key, b in s["bills"].items():
+                t, bid = key.split("/")
+                idx.setdefault(t, []).append({"id": bid, "year": int(t[:4]) + 1, "term": t,
+                                              "title": b["title"], "kind": "active", "status": "s",
+                                              "chip": "c", "committees": [], "nrc": 0, "rail": []})
+            for p in (site / "idx").glob("*.json"):
+                p.unlink()
+            for t, rows in idx.items():
+                (site / "idx" / f"{t}.json").write_text(json.dumps(rows), encoding="utf-8")
+            (site / "idx" / "2027-requests.json").write_text(json.dumps([
+                {"n": f"LSR 2027-{n}", "year": 2027, "title": "a request", "sponsor": "A Member",
+                 "body": "HB", "status": st, "withdrawn": False, "address": f"request/2027-{n}"}
+                for n, st in s["requests"].items()]), encoding="utf-8")
+            (site / "meta.json").write_text(json.dumps(
+                {"terms": sorted(idx, reverse=True),
+                 "requests": {"term": "2027-requests", "year": 2027}}), encoding="utf-8")
+
+            def put(name, cols, rows):
+                with (out / name).open("w", encoding="utf-8", newline="") as fh:
+                    w = _csv_.writer(fh)
+                    w.writerow(cols)
+                    w.writerows(rows)
+            put("rollcalls.csv", list(AS.CSV["rollcalls.csv"]),
+                [[rc, t, rc[:4], "H", rc.split("-")[-1], f"{rc[:4]}-03-01", "HB1", "q", "", y, "100",
+                  "0", "1", "0", "", "", "count"] for rc, t, y in s["rollcalls"]])
+            for p in out.glob("votes-*.csv"):
+                p.unlink()
+            for t in idx:
+                put(f"votes-{t}.csv", list(AS.CSV["votes-<term>.csv"]),
+                    [[rc, t, "2026-03-01", "HB1", "q", "m1", "Member, A", "R", "House", v]
+                     for rc, (tt, v) in s["ballots"].items() if tt == t])
+            put("legislators.csv", list(AS.CSV["legislators.csv"]),
+                [["m1", "A Member", "House", "Republican", s["district"], "Belknap", "", "", "1",
+                  "2", "100"]])
+            put("sponsors.csv", list(AS.CSV["sponsors.csv"]), [])
+            (db / "_columns.json").write_text(json.dumps({"NH_RSA": [
+                "id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section",
+                "SourceNote", "rsa", "EntireRSA", "titleNumber", "url"]}), encoding="utf-8")
+            (db / "_manifest.json").write_text(json.dumps(
+                {"NH_RSA": {"rows": 1, "fetched": s["taken"] + "T20:53:02"}}), encoding="utf-8")
+            (db / "NH_RSA.psv").write_text("|".join([
+                "1", "VI", "91-A", "91-A-4", "TITLE VI PUBLIC OFFICERS AND EMPLOYEES",
+                "CHAPTER 91-A ACCESS TO GOVERNMENTAL RECORDS AND MEETINGS",
+                "Section 91-A:4 Minutes and Records.", "<p><b>Source.</b> 1967, 251:1. </p>", "",
+                f"<codesect> {s['section']}</codesect>", "6", "VI\\91-A\\91-A-4.htm"]) + "\n",
+                encoding="utf-8")
+            (d / "rsa_citations.json").write_text(json.dumps(
+                {"enacted": {"91-A:4": [["1967", "251:1", ""]]}, "asof": {"laws_through": 2025}}),
+                encoding="utf-8")
+            rec = AR.Records([r for rows in idx.values() for r in rows], site)
+            for key, b in s["bills"].items():
+                t, bid = key.split("/")
+                rec.add_bill(t, {"id": bid, "year": int(t[:4]) + 1, "term": t, "title": b["title"],
+                                 "events": [{"date": "2026-01-05", "text": b["events"]}],
+                                 "billtext": {"version": "Introduced", "body": b["text"]},
+                                 "narrative": b["narrative"], "stations": [{"when": b["station"]}]})
+            people = [{"person": "100", "name": "A Member", "member_ids": ["m1"], "sitting": True}]
+            _sum, said = AR.write(site, out, rec, people=people, person_of={"m1": "100"},
+                                  base="https://example.org", built=f"{tonight}T09:00:00Z",
+                                  db=db, citations=d / "rsa_citations.json", ledger=led,
+                                  ledger_out=nxt)
+            nights = {p.stem: json.loads(p.read_text(encoding="utf-8"))
+                      for p in (site / "api" / "changes").glob("*.json")}
+            return said, nights
+
+        def keep():
+            os.replace(nxt, led)
+
+        def listed(f, side="changed"):
+            return {k: v for k, v in f[side].items() if v}
+
+        bill = lambda **k: {"title": "t", "events": "Introduced", "text": "AN ACT.", "narrative": "n",
+                            "station": "x", **k}
+        s = {"bills": {"2025-2026/HB1": bill(), "2025-2026/HB2": bill(), "2025-2026/HB3": bill()},
+             "rollcalls": [("2026-H-1", "2025-2026", "201"), ("2026-H-2", "2025-2026", "150")],
+             "ballots": {"2026-H-1": ("2025-2026", "Yea"), "2026-H-2": ("2025-2026", "Nay")},
+             "district": "1", "section": "I. Every citizen may inspect.", "taken": "2026-09-08",
+             "requests": {"0001": "Requested", "0002": "Requested"}}
+        said, nights = build("2026-11-10", s)
+        assert sorted(nights) == FC.window("2026-11-10") and \
+            all(not listed(f) and not listed(f, "removed") and f["format"] == 1
+                for f in nights.values()), ("a night with no hashes listed something", nights)
+        assert any("WARNING" in x and "api-hashes.json" in x for x in said), said
+        assert set(nights["2026-11-10"]) == {"format", "date", "built", "changed", "removed"} and \
+            list(nights["2026-11-10"]["changed"]) == list(AR.KINDS), nights["2026-11-10"]
+        keep()
+
+        # ONE OF EACH KIND, and three changes no promise covers.
+        s["bills"]["2025-2026/HB1"] = bill(events="Referred to Finance")
+        s["bills"]["2025-2026/HB2"] = bill(narrative="told anew", station="moved")
+        s["bills"]["2025-2026/HB3"] = bill(text="AN ACT, amended.")
+        s["bills"]["2025-2026/HB4"] = bill()
+        s["rollcalls"][0] = ("2026-H-1", "2025-2026", "202")
+        s["ballots"]["2026-H-2"] = ("2025-2026", "Yea")
+        s["district"] = "2"
+        s["section"] = "I. Every citizen may inspect and copy."
+        s["requests"] = {"0001": "Filed"}
+        said, nights = build("2026-11-11", s)
+        want = {"bills": ["2025-2026/HB1", "2025-2026/HB3", "2025-2026/HB4"],
+                "rollcalls": ["2026-H-1", "2026-H-2"], "members": ["100"], "laws": ["91-A"],
+                "requests": ["2027-0001"]}
+        assert listed(nights["2026-11-11"]) == want and \
+            listed(nights["2026-11-11"], "removed") == {"requests": ["2027-0002"]}, \
+            ("the night does not list exactly the records whose promised fields changed",
+             nights["2026-11-11"])
+        assert not listed(nights["2026-11-10"]), "a kept night's file was rewritten with tonight's"
+        keep()
+
+        # A SECOND BUILD OF THE SAME DATE: kept, then one more change.
+        s["bills"]["2025-2026/HB2"] = bill(title="retitled")
+        said, nights = build("2026-11-11", s)
+        assert listed(nights["2026-11-11"])["bills"] == ["2025-2026/HB1", "2025-2026/HB2",
+                                                        "2025-2026/HB3", "2025-2026/HB4"], \
+            ("a second build of one date dropped what the first listed", nights["2026-11-11"])
+        # ... and not kept: the next build of the date compares with the kept one.
+        s["requests"] = {"0001": "Filed", "0003": "Requested"}
+        said, nights = build("2026-11-11", s)
+        assert listed(nights["2026-11-11"])["requests"] == ["2027-0001", "2027-0003"] and \
+            listed(nights["2026-11-11"])["bills"] == ["2025-2026/HB1", "2025-2026/HB2",
+                                                     "2025-2026/HB3", "2025-2026/HB4"], nights["2026-11-11"]
+        keep()
+
+        # THE TURN: the new term's first bill takes the files a record, and the
+        # old term's roll calls, losing their ballots' file, are not listed;
+        # nor is the chapter, its table taken again with no word of it changed.
+        s["taken"] = "2026-09-15"
+        s["bills"]["2027-2028/HB1"] = bill()
+        s["rollcalls"].append(("2027-H-1", "2027-2028", "300"))
+        s["ballots"]["2027-H-1"] = ("2027-2028", "Yea")
+        said, nights = build("2026-12-03", s)
+        assert listed(nights["2026-12-03"]) == {"bills": ["2027-2028/HB1"], "rollcalls": ["2027-H-1"]} \
+            and not listed(nights["2026-12-03"], "removed"), \
+            ("the turn of a term listed records that did not change", nights["2026-12-03"])
+        hashes = json.loads(nxt.read_text(encoding="utf-8"))
+        assert sorted(hashes["nights"]) == ["2026-12-03"] and sorted(nights) == FC.window("2026-12-03"), \
+            ("the hashes keep a night older than the eight the folder carries", sorted(hashes["nights"]))
+        keep()
+
+        # HASHES DATED AFTER TONIGHT are not compared with.
+        said, nights = build("2026-11-20", s)
+        assert not listed(nights["2026-11-20"]) and any("WARNING" in x and "after tonight" in x
+                                                         for x in said), said
+    return "ok", ("no hashes: nothing listed and said; one of each kind listed exactly, a page's "
+                  "fields and the day the laws were taken not; a second build of a date keeps the "
+                  "first's list, and one not kept compares with the kept; the turn lists only the "
+                  "new term's; eight nights; later hashes refused")
 
 
 @check("files", "only record_moves.py writes the former addresses kept for a 301, and they only grow")
@@ -65214,7 +65410,7 @@ def _cloud_dry_night(CL, BA, SG):
     assert set(d.get("state", [])) == {"refused.json", "sql-held.json", "last-dry-run.json",
                                        "last-dry-weekly.json"} and \
         set(CL.DRY_NEVER) == {"census.json", "last-night.json", "last-weekly.json",
-                              "first-seen.json"}, \
+                              "first-seen.json", "api-hashes.json"}, \
         (d.get("state"), CL.DRY_NEVER)
     # Every night file a dry night sends is an archived copy of what was served.
     store_sha = hashlib.sha256(b"x").hexdigest()
@@ -65567,6 +65763,106 @@ def _first_seen_travels(CL, NI, FC):
                   "dry run's to send, by its box or off main; with a New term run's site to the "
                   "publish job byte for byte, a changed one refused before the verdict, none "
                   "where none was left")
+
+
+@check("cloud", "the data API's hashes travel as the first-seen ledger does: in the night's state, "
+                "never from a dry run, and with a New term run's site to the publish job, whole or "
+                "not at all", needs=("cloud", "nightly", "api_records"))
+def _api_hashes_travel(CL, NI, AR):
+    """16 November 2026. What the API's change feed compares each night with
+    (api_records.py) is carried between nights as the first-seen ledger is
+    (_first_seen_travels): in cloud_kit.json's state list, under one name in
+    the three programs that handle it, never among what a dry run may send
+    (DRY_NEVER, which load_kit holds the kit's "dry_run" to), and a New term
+    run's beside its site to the publish job, where nightly.py keeps it once
+    the deploy lands -- byte for byte, or the site-down fails before the
+    verdict that would let it deploy."""
+    assert AR.LEDGER.as_posix() == NI.API_HASHES.as_posix() == "archive/api-hashes.json" and \
+        AR.CANDIDATE.as_posix() == NI.API_HASHES_NEXT.as_posix() == CL.API_HASHES_NEXT, (
+            "api_records, nightly and cloud name the hashes differently",
+            AR.LEDGER, NI.API_HASHES, AR.CANDIDATE, NI.API_HASHES_NEXT, CL.API_HASHES_NEXT)
+    real = CL.load_kit(".")
+    state = {s["key"]: s["path"] for s in real.get("state", [])}
+    assert state.get("api-hashes.json") == NI.API_HASHES.as_posix(), \
+        f"{CL.KIT_FILE}'s state list does not carry the data API's hashes: {sorted(state)}"
+    assert "api-hashes.json" in CL.DRY_NEVER and \
+        "api-hashes.json" not in (real.get("dry_run") or {}).get("state", []), CL.DRY_NEVER
+    tmp = Path(tempfile.mkdtemp(prefix="gr-apihashes-"))
+    try:
+        bad = json.loads(json.dumps(real))
+        bad["dry_run"]["state"] = list(bad["dry_run"]["state"]) + ["api-hashes.json"]
+        (tmp / "cloud_kit.json").write_text(json.dumps(bad), encoding="utf-8")
+        try:
+            CL.load_kit(tmp)
+            refused = False
+        except CL.Failed:
+            refused = True
+        assert refused, f"a {CL.KIT_FILE} whose dry run sends the data API's hashes was taken"
+        (tmp / "cloud_kit.json").unlink()
+
+        bucket = tmp / "bucket"
+        night, publish, bare = tmp / "night", tmp / "publish", tmp / "bare"
+        night.mkdir()
+        _cloud_fixture(night, real)
+        shutil.rmtree(night / "site")
+        for d in (publish, bare):
+            d.mkdir()
+            shutil.copy(night / "cloud_kit.json", d / "cloud_kit.json")
+        B = ["--local-bucket", str(bucket)]
+
+        def call(root, *argv):
+            return _cloud_call(CL, *argv, "--root", str(root), *B)
+        site = night / "site"
+        (site / "api").mkdir(parents=True)
+        (site / "api" / "index.json").write_text("{}", encoding="utf-8")
+        (night / CL.NIGHT_VERDICT).write_text(json.dumps(
+            {"run_id": "4252", "kind": "nightly", "publishable": True,
+             "asked": {"dry_run": False, "new_term": True}}), encoding="utf-8")
+        hashes = b'{"format": 1, "date": "2026-12-02", "hashes": {"bills": {}}, "nights": {}}\n'
+        (night / CL.API_HASHES_NEXT).write_bytes(hashes)
+        saved_env = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", CL.DRY_ENV, CL.REF_ENV)}
+        try:
+            for env in ({CL.DRY_ENV: "true", CL.REF_ENV: CL.MAIN_REF},
+                        {CL.REF_ENV: "refs/heads/dev"}):
+                for k in saved_env:
+                    os.environ.pop(k, None)
+                os.environ.update(GITHUB_ACTIONS="true", **env)
+                code, out = call(night, "site-up", "--run", "4252")
+                assert code == 1 and not (bucket / "nights").exists(), \
+                    ("a dry run sent its site, or the hashes its build left, for production",
+                     env, out[-300:])
+        finally:
+            for k, val in saved_env.items():
+                os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+        code, out = call(night, "site-up", "--run", "4252")
+        sent = bucket / "nights/4252/api-hashes.json"
+        assert code == 0 and sent.is_file() and sent.read_bytes() == hashes, \
+            ("site-up did not send the hashes the night's build left beside its site", out[-300:])
+        code, out = call(publish, "site-down", "--run", "4252")
+        assert code == 0 and (publish / CL.API_HASHES_NEXT).read_bytes() == hashes and \
+            (publish / CL.SITE_VERDICT).is_file(), \
+            ("site-down did not bring the hashes back to where nightly.py keeps them", out[-300:])
+        (bucket / "nights/4252/api-hashes.json").write_bytes(hashes.replace(b"2026", b"2025"))
+        code, out = call(bare, "site-down", "--run", "4252")
+        assert code == 1 and not (bare / CL.API_HASHES_NEXT).exists() and \
+            not (bare / CL.SITE_VERDICT).exists(), \
+            ("site-down took hashes that are not the ones its night sent", out[-300:])
+        (night / CL.API_HASHES_NEXT).unlink()
+        (night / CL.NIGHT_VERDICT).write_text(json.dumps(
+            {"run_id": "4253", "kind": "nightly", "publishable": True,
+             "asked": {"dry_run": False}}), encoding="utf-8")
+        assert call(night, "site-up", "--run", "4253")[0] == 0 and \
+            not (bucket / "nights/4253/api-hashes.json").exists()
+        shutil.rmtree(publish / "site")
+        (publish / CL.API_HASHES_NEXT).unlink()
+        code, out = call(publish, "site-down", "--run", "4253")
+        assert code == 0 and not (publish / CL.API_HASHES_NEXT).exists(), out[-300:]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("one name in api_records, nightly, cloud and the kit's state list; never a dry "
+                  "run's to send, by its box or off main; with a New term run's site to the "
+                  "publish job byte for byte, a changed one refused before the verdict, none where "
+                  "none was left")
 
 
 @check("cloud", "a weekly off main sends back none of the lists it took -- only its logs, apart, "
@@ -103539,6 +103835,82 @@ def _nightly_keeps_first_seen(NI):
     return "ok", ("kept by an accepted night and a landed New term deploy; not by a dry run, by "
                   "its box or off main, a stopped night or a New term run waiting; the record's "
                   "dates and no files said in the verdict")
+
+
+@check("build", "the night keeps the data API's hashes its build left exactly where it keeps the "
+       "first-seen ledger -- a real night the gates accept, a New term run once its deploy "
+       "lands -- and never for a dry run, by its box or off main, or a night the gates stop",
+       needs=("nightly",))
+def _nightly_keeps_api_hashes(NI):
+    """16 November 2026. build_exports (api_records.py) reads
+    archive/api-hashes.json, what the change feed under /api/changes/ compares
+    each night with, and leaves its own beside it. Kept by a night the gates
+    stopped, a bad build's records would be what the next night's feed is
+    measured against; kept by a dry run, dev's code would decide main's; kept
+    by a New term run before the person approves it, a rejected switch would
+    be the baseline. So it is kept where the census and the first-seen ledger
+    are, and nowhere else (nightly.keep_api_hashes)."""
+    with _GateNights(NI) as g:
+        made = g.build
+
+        def build():
+            made()
+            Path("archive/api-hashes.next.json").write_text(
+                json.dumps({"format": 1, "build": g.builds}), encoding="utf-8")
+        g.build = build
+
+        def kept():
+            v = NI.load_json(NI.API_HASHES)
+            return v.get("build") if isinstance(v, dict) else None
+
+        def left():
+            v = NI.load_json(NI.API_HASHES_NEXT)
+            return v.get("build") if isinstance(v, dict) else None
+
+        g.night("--runner", "--no-fetch", run_id="701")         # the baseline
+        assert kept() == 1 and left() is None, \
+            ("a real night the gates accepted did not keep the hashes its build left", kept(), left())
+        g.how["touch"] = 3
+        code, _ = g.night("--runner", "--no-fetch", "--dry-run", run_id="702")
+        assert code == 0 and kept() == 1 and left() == 2, \
+            "a dry run kept the hashes its branch's build left"
+        g.how["bills"] = 10
+        code, _ = g.night("--runner", "--no-fetch", run_id="703")
+        assert code == 1 and kept() == 1 and g.verdict()["gates"].startswith("blocked"), \
+            ("a night the gates stopped kept its hashes", g.verdict().get("gates"))
+        g.how["bills"] = 100
+
+        # A New term run: kept only once its build is published.
+        g.how["touch"] = 5
+        code, _ = g.night("--runner", run_id="711")
+        g.publish("711")
+        before = kept()
+        assert before == 4, before
+        g.how["touch"] = 6
+        code, _ = g.night("--runner", "--new-term", run_id="712")
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and kept() == before and left() == 5, (
+            "a New term run kept its hashes before its build was published",
+            kept(), left(), v.get("not_clean"))
+        g.publish("712")
+        assert kept() == 5 and left() is None, \
+            ("a New term run's hashes were not kept when its deploy landed", kept(), left())
+
+        # EVERY RUN OFF MAIN IS A DRY RUN: a run of dev on GitHub's machine
+        # with Dry run unticked keeps none either.
+        g.how["touch"] = 7
+        os.environ["GITHUB_REF"] = "refs/heads/dev"
+        try:
+            code, _ = g.night("--runner", "--no-fetch", run_id="713", sha=GATE_SHA[1],
+                              github=True)
+        finally:
+            os.environ[CHECKS_REF[0]] = CHECKS_REF[1]
+        assert code == 0 and kept() == 5 and left() == 6, (
+            "a run of dev with Dry run unticked kept the hashes its branch's build left",
+            kept(), left())
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+    return "ok", ("kept by an accepted night and a landed New term deploy; not by a dry run, by "
+                  "its box or off main, a stopped night or a New term run waiting")
 
 
 @check("build", "the weekly fetches replace a file only when it arrived whole", needs=("nightly",))

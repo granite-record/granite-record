@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.11
+# GRANITE_VERSION: 2026-10-30.12
 """
 /api: the data API's documentation page, drawn in the data page's own
 components and counted from tonight's manifest.
@@ -321,7 +321,12 @@ def body(manifest):
             "<p><code>/changes/&lt;date&gt;.json</code> is what each night&rsquo;s build found new, "
             "kept for the last eight nights: the hearings, votes and actions each bill, member, "
             "committee and topic gained. With the checksums in <code>manifest.json</code>, another "
-            "site can fetch only the files that moved.</p>", ""),
+            "site can fetch only the files that moved.</p>"
+            "<p><code>/api/changes/&lt;date&gt;.json</code> says, for the same eight nights, which "
+            "records under <code>/api/</code> changed: each bill, of any term, roll call, member, "
+            "chapter of the laws and bill request whose fields marked <i>stable</i> or whose text "
+            "changed that night, and any that are gone, so a program fetches only those. A change "
+            "to how a page is drawn is not listed.</p>", ""),
         "live": (
             "<p>On a day the House or the Senate sits, <code>/api/live/votes/&lt;date&gt;</code> "
             "holds the roll calls recorded so far that day. They are provisional: the nightly files "

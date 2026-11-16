@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.92
+# GRANITE_VERSION: 2026-09-04.93
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -218,7 +218,8 @@ of this may depend on remembering not to start one:
                       (DRY_PREVIEW_BRANCH), never the night's preview, where
                       a night waiting for approval is looked at
   what it leaves      archive/last-night.json, archive/census.json, the
-                      first-seen ledger (FIRST_SEEN) and the gate's records
+                      first-seen ledger (FIRST_SEEN), the data API's hashes
+                      (API_HASHES) and the gate's records
                       in the verdict -- the warning kinds, the published
                       kinds, the release commit read off production --
                       exactly as the last real night left them. A dry run is
@@ -627,6 +628,14 @@ CENSUS = Path("archive/census.json")          # the last good build's counts and
 # run's to the publish job (cloud.FIRST_SEEN_NEXT, which preflight holds to this).
 FIRST_SEEN = Path("archive/first-seen.json")
 FIRST_SEEN_NEXT = Path("archive/first-seen.next.json")
+# THE DATA API'S HASHES (src/pages/api_records.py, 16 November 2026): what the
+# change feed under /api/changes/ compares each night with. build_exports reads
+# API_HASHES and leaves its own at API_HASHES_NEXT, and the night keeps it
+# exactly as it keeps the first-seen ledger, where it writes the census; a dry
+# night never sends it (cloud.DRY_NEVER), and site-up carries a New term run's
+# to the publish job (cloud.API_HASHES_NEXT, which preflight holds to this).
+API_HASHES = Path("archive/api-hashes.json")
+API_HASHES_NEXT = Path("archive/api-hashes.next.json")
 CHANGES_CURRENT = "changes/current.json"       # under the site: what tonight's build said
 # A finished term's rows that tonight's files still carried, counted and left
 # out by build_data, with the bills they name (build_data.LEFT_OUT, under its
@@ -2284,6 +2293,17 @@ def keep_first_seen():
                 "is as it was")
     os.replace(FIRST_SEEN_NEXT, FIRST_SEEN)
     return f"the first-seen ledger this build left is kept: {FIRST_SEEN.as_posix()}"
+
+
+def keep_api_hashes():
+    """The data API's hashes tonight's build left become the ones the next
+    build compares with (API_HASHES). Called only where the census is
+    written, beside keep_first_seen. Returns what to say."""
+    if not API_HASHES_NEXT.is_file():
+        return (f"no {API_HASHES_NEXT.as_posix()} was left to keep: {API_HASHES.as_posix()} "
+                "is as it was")
+    os.replace(API_HASHES_NEXT, API_HASHES)
+    return f"the data API's hashes this build left are kept: {API_HASHES.as_posix()}"
 
 
 def github(name, default=""):
@@ -6481,18 +6501,24 @@ class Night:
                 "when its build is published")
             say(f"  {FIRST_SEEN.as_posix()} is left as it was: the ledger this build left goes "
                 "to the publish job with its site, and is kept when the deploy lands")
+            say(f"  {API_HASHES.as_posix()} is left as it was: the hashes this build left go to "
+                "the publish job with its site, and are kept when the deploy lands")
         elif not stop and a.dry_run:
             # A DRY RUN IS KEPT APART: its counts are its branch's build's, and
             # the next real night is gated against the last real night's.
             say(f"  {CENSUS} is left as the last real night left it: a dry run sets no baseline")
             say(f"  {FIRST_SEEN.as_posix()} is left as the last real night left it: a dry run "
                 "read it and keeps none")
+            say(f"  {API_HASHES.as_posix()} is left as the last real night left it: a dry run "
+                "read it and keeps none")
         elif not stop:
             write_json(CENSUS, {"census": after, "fingerprint": fp, "day": self.day,
                                 "run_id": v["run_id"], "sha": v["sha"]})
             say(f"  tonight's counts are the baseline now: {CENSUS}")
-            # ... and what tonight told the email sender is new, beside them.
+            # ... and what tonight told the email sender is new, beside them,
+            # and the data API's hashes its change feed compared with.
             say("  " + keep_first_seen())
+            say("  " + keep_api_hashes())
         n = site_manifest(site, Path("logs") / f"site-{self.day}.sha256")
         say(f"  logs/site-{self.day}.sha256 lists all {n:,} files, with their sha256")
 
@@ -6998,8 +7024,10 @@ def runner_deploy(a):
             f"now: {CENSUS}")
         # And the first-seen ledger its build left, which site-down brought
         # with the site: the old term's endings and the new term's first
-        # items are what the next night reads as told.
+        # items are what the next night reads as told; and the data API's
+        # hashes, which came down with it the same way.
         say("  " + keep_first_seen())
+        say("  " + keep_api_hashes())
     if where == "preview":
         v["preview"] = {"at": datetime.now().isoformat(timespec="seconds"),
                         "base": base, "landed": landed,

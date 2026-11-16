@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.285
+# GRANITE_VERSION: 2026-09-04.286
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -281,6 +281,8 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
 /api/requests/*
   Access-Control-Allow-Origin: *
 /api/laws/*
+  Access-Control-Allow-Origin: *
+/api/changes/*
   Access-Control-Allow-Origin: *
 """
 

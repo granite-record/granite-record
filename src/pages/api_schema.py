@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.8
+# GRANITE_VERSION: 2026-10-30.9
 """
 What every file of the data API holds, field by field: /data/schema.json.
 
@@ -755,6 +755,31 @@ def _rows_file(context, rows_in, what):
     return {**API_FORMAT, **context, rows_in: ("array", what, S)}
 
 
+# THE CHANGE FEED (api_records.py, 16 November 2026): a file a night, the
+# last eight, saying which records' promised fields changed -- its own
+# folder, not a key in /changes/, so the email sender's contract does not move.
+_KIND_WORDS = {
+    "bills": "bills, term/bill, of any term, whose row, stable record fields or text",
+    "rollcalls": "roll calls, year-body-number, whose row -- or, while their term sits, a "
+                 "ballot --",
+    "members": "people, by person number, whose file",
+    "laws": "chapters of the statutes whose sections' headings, text, notes or history",
+    "requests": "bill requests, by number, whose row",
+}
+API_CHANGED = {k: ("array", f"The {w} changed that night.", S) for k, w in _KIND_WORDS.items()}
+API_REMOVED = {k: ("array", f"The {k} gone that night: in the last build before it, and in no "
+                            "file now.", S) for k in _KIND_WORDS}
+API_CHANGES_NIGHT = {
+    **API_FORMAT,
+    "date": ("date", "The night, YYYY-MM-DD: the day, in UTC, of the build that wrote it, as "
+                     "/changes/ names its nights.", S),
+    "built": ("string", "When the last build of that night ran, YYYY-MM-DDTHH:MM:SSZ.", S),
+    "changed": ("object", "The records whose promised fields changed that night, by kind. A change "
+                          "to how a page is drawn is no change here.", S),
+    "removed": ("object", "The records gone that night, by kind.", S),
+}
+
+
 # Each resource: its name, what it is, the field that names one of its
 # records, and its two kinds of file -- a file of rows and a file a record --
 # each with every field it holds, in order, and the fields inside its arrays
@@ -805,6 +830,12 @@ API_RESOURCES = (
                 _rows_file({}, "chapters", "Each chapter's row, in the statutes' order.")),
                ("record", "/api/laws/{chapter}.json", "every chapter", {**API_FORMAT, **API_LAW})),
      "inside": {"chapters": API_LAW_ROW, "sections": API_SECTION, "changed_by": API_LAW_CHANGE}},
+    {"name": "changes", "key": "date",
+     "what": "Which records changed, night by night: for each of the last eight nights, the bills, "
+             "roll calls, members, chapters of the laws and bill requests whose promised fields "
+             "changed, and those gone, so a program fetches only those.",
+     "files": (("night", "/api/changes/{date}.json", "the last eight nights", API_CHANGES_NIGHT),),
+     "inside": {"changed": API_CHANGED, "removed": API_REMOVED}},
 )
 
 

@@ -2349,6 +2349,20 @@ every bill of every term would not fit. `/api/live/`, `/api/report` and
 `/api/follow/` stay the Functions'; `_headers` lets another origin read the
 records' folders one by one and none of the Functions'.
 
+The change feed, `/api/changes/<date>.json`, lists for each of the last
+eight nights the records whose promised fields changed and those gone, by a
+hash of each record's file: a bill's for every term, so a correction to an
+old bill is listed; a roll call's row, and its ballots while its term sits,
+so the turn of a term lists nothing for losing them; a chapter's less the
+day its text was taken. The hashes travel as the first-seen ledger does: the
+build reads `archive/api-hashes.json` and leaves `archive/api-hashes.next.json`,
+and the night keeps it only where it writes the census -- a build the gates
+accept, or a New term run's once its deploy has landed, for which `site-up`
+carries it with the site -- and a dry run never sends it (`cloud.DRY_NEVER`).
+A second build of one date lists what the first did and what changed since;
+with no hashes a night lists nothing, never every record, and the build says
+so.
+
 ## The bill index's sponsors
 
 A row's `sponsor` is the prime sponsor and `cosp` the co-sponsors, by the
