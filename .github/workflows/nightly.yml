@@ -189,6 +189,12 @@ env:
   PREVIEW: ${{ github.event_name == 'schedule' || inputs.preview }}
   # Only ever from the box, on a run by hand: never on a scheduled night.
   NEW_TERM: ${{ github.event_name == 'workflow_dispatch' && inputs.new_term }}
+  # WHO STARTED THE NIGHT (16 November 2026; nightly.py says why): the
+  # night's timer, by its box, GitHub's own schedule, the fallback since 23
+  # October, or a person. nightly.py keeps it in the verdict, and warns when
+  # the schedule had to start the night late because the timer started none.
+  # The box is read as true or "true" (A BOX MAY ARRIVE AS A STRING, above).
+  STARTED_BY: ${{ github.event_name == 'schedule' && 'schedule' || ((inputs.timer == true || inputs.timer == 'true') && 'timer' || 'hand') }}
   # THE GATE (6 October 2026; nightly.py says what it is). "shadow": every
   # night still waits for approval in "production", and the run's page says
   # what the gate would have done. "on" goes with the publish job's
@@ -217,8 +223,13 @@ jobs:
     timeout-minutes: 5
     permissions:
       actions: read
+    # by_timer: the timer's runs today; at: when this looked, which is when
+    # GitHub's schedule started the run; looked: whether the list could be
+    # read ("no" stands nothing down, and the night says it could not tell).
     outputs:
       by_timer: ${{ steps.look.outputs.by_timer }}
+      at: ${{ steps.look.outputs.at }}
+      looked: ${{ steps.look.outputs.looked }}
     steps:
       - name: Look for tonight's run by the timer
         id: look
@@ -228,10 +239,13 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           day=$(date -u +%F)
+          echo "at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+          looked=yes
           n=$(gh api -X GET "repos/$REPO/actions/workflows/nightly.yml/runs" \
                 -f branch=main -f event=workflow_dispatch -f created=">=$day" -f per_page=30 \
-                --jq '[.workflow_runs[] | select(.display_title | contains("(scheduled, by the timer)"))] | length') || n=0
+                --jq '[.workflow_runs[] | select(.display_title | contains("(scheduled, by the timer)"))] | length') || { n=0; looked=no; }
           echo "by_timer=${n:-0}" >> "$GITHUB_OUTPUT"
+          echo "looked=$looked" >> "$GITHUB_OUTPUT"
           if [ "${n:-0}" != "0" ]; then
             echo "the timer started tonight's night; this scheduled run stands down"
           else
@@ -244,6 +258,12 @@ jobs:
     # Every run but a scheduled one the timer has already answered for. The
     # status function keeps a run by hand going when "started" is skipped.
     if: ${{ !cancelled() && (github.event_name != 'schedule' || needs.started.outputs.by_timer == '0') }}
+    # WHO STARTED THE NIGHT (STARTED_BY, above): when a scheduled run's first
+    # job looked for the timer's run, and whether it could read the day's
+    # runs; both empty on every other run, whose "started" is skipped.
+    env:
+      STARTED_AT: ${{ needs.started.outputs.at }}
+      STARTED_LOOKED: ${{ needs.started.outputs.looked }}
     runs-on: windows-2022
     timeout-minutes: 300
     # The preview's Pages token can live in this environment rather than in the

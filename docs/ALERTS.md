@@ -68,6 +68,7 @@ the site is still published. Each stays on the run's page and in the verdict (`s
 | "The General Court's record has not moved for {n} days: …" (nightly.py:3647-3659) | Their Docket has no new lines for longer than any season since 2015. | Usually not. | If the sentence says their export stopped refreshing, that is "the General Court's IT office's to start again". | Yes, when it moves. |
 | Database pieces not taken for 2 nights or more (nightly.py:3713-3720) | A hold or a dropped connection, or a change in their data. | Only if it lasts. | Have the night's log read. | Usually. |
 | The laptop's share behind (nightly.py:3770-3779) | "It moves again when the laptop's fetches run and seed-kit sends what they made, both a person's to start." | **Yes.** | Start the laptop's fetches, then `python3 src/ops/cloud.py seed-kit` on the laptop. | No. |
+| "The night's timer started no night today, so GitHub's own schedule started this one at {time} UTC, {n} hours {n} minutes late: the timer's GitHub token may have expired or been revoked. workers/night-timer/README.md says how to make a new one." (`started_by_warned`, nightly.py; since 16 November 2026) | GitHub's schedule, the fallback, ran the night because the night-timer Worker did not. A second wording says the day's runs could not be read, so whether the timer ran is not known. | **Yes.** | Make the timer a new token as its README says, and put it with `wrangler secret put`. | No: every night is late until the token is replaced. |
 
 Not emailed: the run-page warning "{n} recordings finished over 3 days ago keep the schedule's approximate
 start" (nightly.py:5433-5438) stays on the run's page (ARCHITECTURE.md:293-294).
@@ -137,7 +138,8 @@ which says "Nothing is needed from you on GitHub's side" (nightly.py:6644-6657@f
 - **"Report a problem"** stores each report and sends you nothing (functions/api/report.js:311-317). If the
   report cannot be stored, the box offers the reader an email to contact@graniterecord.org instead
   (src/pages/app.js:6783).
-- **The night-timer Worker** alerts no one. If it cannot start the night, GitHub's schedule does it later,
-  and *Granite Record nightly* notices a missing night (workers/night-timer/index.js:78-79).
+- **The night-timer Worker** emails no one. If it cannot start the night, GitHub's schedule does it later,
+  and *Granite Record nightly* notices a missing night (workers/night-timer/index.js:78-79). Since 16
+  November 2026 the late night's verdict and run page say why, for the morning triage (the table above).
 - **GitHub** sends its own emails about failed runs and about nights waiting in `production-review`
   (ARCHITECTURE.md:272). Those say the same things as the run's page.

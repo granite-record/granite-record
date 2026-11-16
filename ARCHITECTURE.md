@@ -113,7 +113,13 @@ started on -- `main` on a schedule. The start is the night timer's
 (`workers/night-timer/`, a Cloudflare Worker that dispatches the workflow at
 08:17 UTC, since 23 October 2026, because GitHub's scheduler had begun
 starting the night hours late); GitHub's own cron stays as the fallback, and
-`workers/night-timer/README.md` says how its token is made and renewed. Its first job brings the small state
+`workers/night-timer/README.md` says how its token is made and renewed. The
+verdict says who started each night (`started_by`: the timer, the schedule or
+a person, from the workflow's `STARTED_BY` and its job `started`), and since 16
+November 2026 a night the schedule started more than 15 minutes after 08:17 --
+which it reaches only when it found no run of the timer's -- warns that the
+timer's token may have expired, naming that README (`nightly.started_by_warned`,
+of a kind the gate never holds a night for). Its first job brings the small state
 files and the kit down from R2 (`cloud.py state-down`, `cloud.py kit-down`),
 looks for new livestreams (`src/ops/livestreams.py --since-state`), and runs
 `nightly.py --runner`: the day's bulk files from gc.nh.gov, asked only when no

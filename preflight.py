@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.933
+# GRANITE_VERSION: 2026-09-04.934
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -96083,6 +96083,142 @@ def _night_timer():
         f"the night's timer fails {len(fails)}: " + "; ".join(repr(n) for n, _s in fails[:5])
         + f" ({count or out.strip()[-300:]}). `node --test {t.as_posix()}` shows each")
     return "ok", f"{count['pass']} tests of the timer, its cron the workflow's"
+
+
+@check("workflows", "the night says who started it -- the timer, GitHub's schedule or a person -- "
+                    "and warns, without holding the night, when the schedule had to start it late "
+                    "because the timer started none", needs=("nightly",))
+def _night_started_by(NI):
+    """WHO STARTED THE NIGHT (nightly.py; the refactor's stage 0, ops item 8). With the night
+    timer's GitHub token expired or revoked, GitHub's own schedule started the night five to
+    seven hours late and nothing said why. The workflow's STARTED_BY, read as GitHub would for
+    every kind of run in WF_RUNS (boxes as booleans and as strings), names the timer, the
+    schedule or a person; its job "started" hands the night when it looked and whether it could
+    read the day's runs; nightly.TIMER_UTC is the minute of the workflow's cron and the
+    Worker's. Then started_by_record() and started_by_warned() under the words each kind of
+    start sets: no warning for the timer, a person, a schedule within TIMER_GRACE of the
+    timer's minute, or a re-run; one naming the timer's README for a schedule past it, worded
+    for a list that was read and for one that could not be, the lateness counted from the
+    latest 08:17 UTC at or before it; of a kind the gate never holds a night for, while a new
+    kind of any other warning still holds; in Night.warned() and in the standing warnings;
+    and a night that stopped before writing its verdict records who started it all the same."""
+    import contextlib
+    import io
+    import types
+    from datetime import datetime as dt, timezone
+    wf = WORKFLOW_DIR / "nightly.yml"
+    if not wf.exists():
+        return "skip", "no .github/workflows/nightly.yml here"
+    text = wf.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    said_by = _wf_value(lines, NI.STARTED_BY_ENV)
+    assert said_by, f"nightly.yml sets no {NI.STARTED_BY_ENV} in its top-level env"
+    kinds = 0
+    for event, ref, boxes, _dry, _title in WF_RUNS["nightly.yml"]:
+        typed = [boxes] + ([{k: str(v).lower() for k, v in boxes.items()}]
+                           if event == "workflow_dispatch" else [])
+        for bx in typed:
+            got = _gh_render(said_by, _wf_run_ctx(event, ref, bx))
+            want = ("schedule" if event == "schedule" else
+                    "timer" if str(bx.get("timer")).lower() == "true" else "hand")
+            assert got == want, (f"nightly.yml's {NI.STARTED_BY_ENV} is {got!r} for a {event} of "
+                                 f"{ref} with {bx or 'no boxes'}, not {want!r}")
+            kinds += 1
+    jobs = _wf_jobs(text)
+    started = "\n".join(_wf_code(jobs.get("started") or []))
+    for out in ("by_timer", "at", "looked"):
+        assert re.search(rf"^      {out}: \$\{{\{{ steps\.look\.outputs\.{out} \}}\}}$", started,
+                         re.M), f"nightly.yml's job started does not hand on {out!r}"
+    assert 'echo "at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"' in started and \
+        "|| { n=0; looked=no; }" in started and 'echo "looked=$looked" >> "$GITHUB_OUTPUT"' in started, \
+        "nightly.yml's job started does not say when it looked, or that a list it could not read was not read"
+    night = _wf_code(jobs.get("night") or [])
+    for key, out in ((NI.STARTED_AT_ENV, "at"), (NI.STARTED_LOOKED_ENV, "looked")):
+        assert f"      {key}: ${{{{ needs.started.outputs.{out} }}}}" in night, (
+            f"nightly.yml's night job does not pass {key} from the job started")
+    cron = re.search(r'^    - cron: "(\d+) (\d+) \* \* \*"$', text, re.M)
+    assert cron and (int(cron.group(2)), int(cron.group(1))) == NI.TIMER_UTC, (
+        f"nightly.TIMER_UTC is {NI.TIMER_UTC} and the workflow's cron "
+        f"{cron.group(0).strip() if cron else 'is not read'}")
+    worker = Path("workers/night-timer/wrangler.toml")
+    if worker.is_file():
+        assert f'crons = ["{cron.group(1)} {cron.group(2)} * * *"]' in worker.read_text(encoding="utf-8"), (
+            "the night timer's cron is not the workflow's, which nightly.TIMER_UTC is")
+
+    keys = (NI.STARTED_BY_ENV, NI.STARTED_AT_ENV, NI.STARTED_LOOKED_ENV, "GITHUB_RUN_ATTEMPT")
+    saved = {k: os.environ.get(k) for k in keys + ("GITHUB_RUN_ID", "GITHUB_ACTIONS",
+                                                   "GITHUB_STEP_SUMMARY", "GITHUB_SHA")}
+
+    def started(by, at="", looked="", attempt="1", now=None):
+        for k, val in zip(keys, (by, at, looked, attempt)):
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+        rec = NI.started_by_record(now)
+        return rec, NI.started_by_warned(rec)
+
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-started-"))
+    try:
+        late = dt(2026, 11, 16, 14, 2, 11, tzinfo=timezone.utc)
+        for by, at, looked, attempt, now, want, minutes, warns in (
+                ("timer", "", "", "1", None, "timer", None, None),
+                ("hand", "", "", "1", None, "hand", None, None),
+                ("", "", "", "1", None, "unknown", None, None),
+                ("hand", "", "", "3", None, "hand", None, None),
+                ("schedule", "2026-11-16T08:17:40Z", "yes", "1", None, "schedule", 0, None),
+                ("schedule", f"2026-11-16T08:{17 + NI.TIMER_GRACE}:59Z", "yes", "1", None,
+                 "schedule", NI.TIMER_GRACE, None),
+                ("schedule", f"2026-11-16T08:{18 + NI.TIMER_GRACE}:00Z", "yes", "1", None,
+                 "schedule", NI.TIMER_GRACE + 1, "started no night today"),
+                ("schedule", "2026-11-16T14:02:11Z", "yes", "1", None, "schedule", 345,
+                 "5 hours 45 minutes late"),
+                ("schedule", "2026-11-16T14:02:11Z", "no", "1", None, "schedule", 345,
+                 "could not read today's runs"),
+                ("schedule", "2026-11-17T00:30:00Z", "yes", "1", None, "schedule", 973, "16 hours"),
+                ("schedule", "2026-11-16T14:02:11Z", "yes", "2", None, "schedule", 345, None),
+                ("schedule", "", "", "1", late, "schedule", 345, "5 hours 45 minutes late"),
+                ("schedule", "not a time", "yes", "1", late, "schedule", 345, "late")):
+            rec, warned = started(by, at, looked, attempt, now)
+            assert rec["by"] == want and rec.get("late") == minutes and rec.get("line"), (
+                f"{NI.STARTED_BY_ENV}={by!r} at {at or now} gave {rec}")
+            if warns is None:
+                assert not warned, f"a start that is no fault of the timer's warned: {rec} {warned}"
+                continue
+            assert [k for k, _s in warned] == [NI.KIND_TIMER] and warns in warned[0][1] and \
+                (NI.TIMER_README in warned[0][1]), f"{rec} warned {warned}"
+            assert NI.KIND_TIMER.startswith(NI.KIND_HEALTH) and \
+                NI.warning_reasons(warned, [], ()) == [], (
+                    "a night the schedule had to start would wait for approval: " + str(warned))
+        assert NI.warning_reasons([("a kind no night has carried", "something new")], [], ()), (
+            "the gate no longer holds a night for a new kind of warning at all")
+        rec, warned = started("schedule", "2026-11-16T14:02:11Z", "yes")
+        assert "had started no night today" in rec["line"] and \
+            dict(NI.Night.warned(types.SimpleNamespace(v={"started": "2026-11-16T09:02:11",
+                                                          "started_by": rec}))).get(NI.KIND_TIMER) \
+            == warned[0][1] and warned[0][1] in NI.warns_of({"started_by": rec}), (
+                "the timer's warning is not among the night's warnings and its standing ones")
+        # A night that stopped before nightly.py wrote its verdict still says who started it.
+        os.chdir(tmp)
+        for k in ("GITHUB_ACTIONS", "GITHUB_STEP_SUMMARY"):
+            os.environ.pop(k, None)
+        os.environ["GITHUB_RUN_ID"], os.environ["GITHUB_SHA"] = "9001", "0" * 40
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = NI.close_verdict(types.SimpleNamespace(weekly=False, dry_run=False,
+                                                          outcome=["kit-down=failure"]))
+        v = json.loads(Path(NI.VERDICT).read_text(encoding="utf-8"))
+        assert code == 1 and v.get("started_by", {}).get("late") == 345 and \
+            warned[0][1] in v.get("standing_warnings", []), (
+                "a night that stopped early does not say the schedule had to start it: "
+                f"{v.get('started_by')} {v.get('standing_warnings')}")
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+        for k, val in saved.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+    return "ok", (f"{NI.STARTED_BY_ENV} read for {kinds} kinds of run; the job started says when it "
+                  f"looked and whether it could read the runs; the timer's minute is the cron's; "
+                  f"a schedule more than {NI.TIMER_GRACE} minutes past it warns, in two wordings, "
+                  "never holding the night, in the warnings, the standing ones and a night that "
+                  "stopped early, and nothing else does")
 
 
 # ---- the live layer's reader of the General Court's public SQL database ----------

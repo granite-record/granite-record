@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.88
+# GRANITE_VERSION: 2026-09-04.89
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -133,6 +133,10 @@ night itself does is here, and what differs on that machine is behind --runner:
                       its caption runs behind, the inbox silent -- a warning
                       each, and a line of the verdict's standing warnings
                       (WHEN THE RECORD STOPS MOVING)
+  who started it      the night's timer, GitHub's own schedule or a person,
+                      in the verdict ("started_by") and on the run's page; a
+                      night the schedule had to start late, because the timer
+                      started none, warns (WHO STARTED THE NIGHT)
   the gates           against archive/census.json, the last good build's
                       counts, which cloud.py carries in R2's state/, because
                       site/ starts empty. No census is no baseline, and that
@@ -5213,11 +5217,13 @@ def warning_reasons(warned, served, recent=()):
     for kind, said in warned:
         # Nor a failed check of the built site against the record (BUILT_CHECKS),
         # nor a piece of the current term's data not taken (KIND_TERM_DATA),
-        # nor a part of the record that has stopped moving (KIND_NOT_MOVING):
-        # each warns and never holds.
+        # nor a part of the record that has stopped moving (KIND_NOT_MOVING),
+        # nor what the night depends on going wrong (KIND_HEALTH, THE NIGHT'S
+        # OWN HEALTH): each warns and never holds.
         if kind in seen or fallback_kind(kind) or str(kind).startswith((KIND_BUILT_WARN,
                                                                        KIND_TERM_DATA,
-                                                                       KIND_NOT_MOVING)):
+                                                                       KIND_NOT_MOVING,
+                                                                       KIND_HEALTH)):
             continue
         seen.add(kind)
         said = str(said)
@@ -5427,6 +5433,124 @@ def site_manifest(site, out):
     return len(rows)
 
 
+# ---- the night's own health ---------------------------------------------------
+#
+# THE NIGHT'S OWN HEALTH (16 November 2026; the refactor's stage 0, its ops
+# inventory and do-first list). What the night depends on going wrong while
+# the night itself goes well, each said below where it is worked out. Each
+# is a warning for the morning triage -- in the verdict's warnings and
+# standing warnings, and on the run's page -- of a kind the gate never holds
+# a night for (warning_reasons): none is a fault of tonight's build, and a
+# site that builds and passes its checks goes out (the person, 6 October 2026).
+KIND_HEALTH = "the night's own health: "
+
+# WHO STARTED THE NIGHT. Three things start nightly.yml: the night's timer
+# (workers/night-timer/), a Cloudflare cron at 08:17 UTC that ticks the box
+# `timer`; GitHub's own schedule at the same minute, the fallback since 23
+# October, which stands down when its job "started" finds a run of the timer's
+# today; and a person, by hand. The workflow says which in STARTED_BY, and
+# "started" when it looked (STARTED_AT) and whether it could read the day's
+# runs (STARTED_LOOKED). A scheduled run reaches the night only when it found
+# no run of the timer's, so one that does more than TIMER_GRACE minutes after
+# the timer's minute is tonight's night because the timer started none -- its
+# GitHub token expired or revoked, the Worker down, GitHub refusing it -- and
+# until now the only sign was a night five to seven hours late. Within the
+# grace GitHub's run may simply have come first: the timer asks three times,
+# twenty seconds apart (index.js), and stands down for a scheduled run it sees.
+# A re-run of a scheduled night is a person's, and says nothing of the timer.
+STARTED_BY_ENV, STARTED_AT_ENV, STARTED_LOOKED_ENV = "STARTED_BY", "STARTED_AT", "STARTED_LOOKED"
+STARTED_BY = ("timer", "schedule", "hand")
+TIMER_UTC = (8, 17)             # the timer's cron, and the workflow's: "17 8 * * *"
+TIMER_GRACE = 15                # minutes
+TIMER_README = "workers/night-timer/README.md"
+KIND_TIMER = KIND_HEALTH + "the night's timer started no night"
+
+
+def minutes_said(n):
+    """45 -> "45 minutes", 345 -> "5 hours 45 minutes", 60 -> "1 hour"."""
+    n = max(0, int(n))
+    h, m = divmod(n, 60)
+    parts = ([f"{h} hour{'s' if h != 1 else ''}"] if h else []) + \
+        ([f"{m} minute{'s' if m != 1 else ''}"] if m or not h else [])
+    return " ".join(parts)
+
+
+def started_by_record(now=None):
+    """Who started this run, from the workflow's words (WHO STARTED THE
+    NIGHT): {"by": one of STARTED_BY or "unknown", "attempt", "line"}, and for
+    a scheduled run "at" (UTC, when its first job looked), "late" (minutes
+    after the timer's minute, the latest one at or before it) and "looked"
+    (whether the day's runs could be read). "line" is the sentence the log and
+    the run's page carry. `now`, an aware UTC moment, stands in where the
+    workflow names none."""
+    from datetime import timedelta, timezone
+    by = github(STARTED_BY_ENV).strip().lower()
+    by = by if by in STARTED_BY else "unknown"
+    try:
+        attempt = max(1, int(github("GITHUB_RUN_ATTEMPT") or 1))
+    except ValueError:
+        attempt = 1
+    rec = {"by": by, "attempt": attempt}
+    again = f" (attempt {attempt}, run again by hand)" if attempt > 1 else ""
+    if by != "schedule":
+        rec["line"] = {"timer": "Started by the night's timer",
+                       "hand": "Started by hand",
+                       "unknown": "Who started this run is not known: the workflow did not "
+                                  "say"}[by] + again + "."
+        return rec
+    at = _utc_of(github(STARTED_AT_ENV)) if github(STARTED_AT_ENV).endswith("Z") else None
+    at = at or now or datetime.now(timezone.utc)
+    due = at.replace(hour=TIMER_UTC[0], minute=TIMER_UTC[1], second=0, microsecond=0)
+    if due > at:
+        due -= timedelta(days=1)
+    late = int((at - due).total_seconds() // 60)
+    looked = github(STARTED_LOOKED_ENV).strip().lower() != "no"
+    rec.update(at=at.strftime("%Y-%m-%dT%H:%M:%SZ"), late=late, looked=looked)
+    when, due_at = f"{at:%H:%M} UTC", f"{TIMER_UTC[0]:02d}:{TIMER_UTC[1]:02d}"
+    if late <= TIMER_GRACE:
+        rec["line"] = (f"Started by GitHub's own schedule at {when}, on time, before any run of "
+                       f"the night's timer{again}.")
+    elif looked:
+        rec["line"] = (f"Started by GitHub's own schedule at {when}, {minutes_said(late)} after "
+                       f"the night's timer was due at {due_at}: the timer had started no night "
+                       f"today{again}.")
+    else:
+        rec["line"] = (f"Started by GitHub's own schedule at {when}, {minutes_said(late)} after "
+                       f"the night's timer was due at {due_at}; today's runs could not be read, "
+                       f"so whether the timer had started one is not known{again}.")
+    return rec
+
+
+def started_by_warned(rec):
+    """[(kind, sentence)]: the warning for a night GitHub's schedule started
+    late because the night's timer started none (WHO STARTED THE NIGHT); []
+    for every other start, a re-run among them, and for no record."""
+    if not isinstance(rec, dict) or rec.get("by") != "schedule" or int(rec.get("attempt") or 1) > 1:
+        return []
+    late = rec.get("late")
+    if not isinstance(late, int) or late <= TIMER_GRACE:
+        return []
+    when = f"{str(rec.get('at') or '')[11:16]} UTC"
+    if rec.get("looked", True):
+        said = (f"The night's timer started no night today, so GitHub's own schedule started this "
+                f"one at {when}, {minutes_said(late)} late: the timer's GitHub token may have "
+                f"expired or been revoked. {TIMER_README} says how to make a new one.")
+    else:
+        said = (f"GitHub's own schedule started this night at {when}, {minutes_said(late)} after "
+                "the night's timer was due, and could not read today's runs to see whether the "
+                'timer had started one. If the Actions page shows no run "by the timer" today, '
+                f"its GitHub token may have expired or been revoked: {TIMER_README} says how to "
+                "make a new one.")
+    return [(KIND_TIMER, said)]
+
+
+def health_warned(v):
+    """[(kind, sentence)] of THE NIGHT'S OWN HEALTH that a verdict carries:
+    each a kind the gate never holds a night for. Read by Night.warned() for
+    the night's warnings and by warns_of() for the standing ones."""
+    return started_by_warned(v.get("started_by"))
+
+
 class Night:
     """What --runner records about one night, and what it decides from it."""
 
@@ -5440,6 +5564,9 @@ class Night:
                   "asked": {"fetch": not a.no_fetch, "dry_run": a.dry_run,
                             "new_term": a.new_term},
                   "built": False, "publishable": False, "clean": False}
+        # Who started the night: the timer, GitHub's schedule or a person
+        # (WHO STARTED THE NIGHT), and a warning where the schedule had to.
+        self.v["started_by"] = started_by_record()
         # The gate's reasons from the build and from production (THE GATE),
         # filled in by judge; finish() adds the warnings' and writes "review".
         self.review_why = []
@@ -5510,6 +5637,7 @@ class Night:
                if self.a.new_term else ""))
         if self.v.get("off_main"):
             say(f"  {off_main_line(self.v['off_main'])}")
+        say(f"  {self.v['started_by']['line']}")
         say(f"  the refusal record is {refusal.MARK}; python {sys.version.split()[0]}")
 
     def baseline(self):
@@ -5858,6 +5986,9 @@ class Night:
         # What has stopped moving (WHEN THE RECORD STOPS MOVING), as finish()
         # worked it out into the verdict: of kinds that never hold the night.
         out += not_moving_of(self.v)
+        # What the night depends on going wrong (THE NIGHT'S OWN HEALTH), of
+        # kinds that never hold the night either.
+        out += health_warned(self.v)
         return out
 
     def alarms(self):
@@ -5981,6 +6112,9 @@ class Night:
                    + [f"- **error: {x}**" for x in alarms]
                    # The gate's line, under what leads the page.
                    + ([f"- {line}"] if line else [])
+                   # Who started the night (WHO STARTED THE NIGHT), under it.
+                   + ([f"- {v['started_by']['line']}"]
+                      if isinstance(v.get("started_by"), dict) else [])
                    + ([f"- the day's files arrived whole on try {tries}"]
                       if tries > 1 and v.get("fetch") == "installed" else [])
                    + tried_lines(v)
@@ -6248,12 +6382,14 @@ def warns_of(v):
     """What warns and stands until a person acts, kept in the verdict
     (standing_warnings) for the morning triage: a night waiting for
     approval; the checks of tonight's build against the record that failed,
-    the reminders among them; and each part of the record that has stopped
+    the reminders among them; each part of the record that has stopped
     moving (WHEN THE RECORD STOPS MOVING), the laptop's record of its caption
-    runs missing or old among them. [] for none. Only the first is emailed
+    runs missing or old among them; and what the night depends on going
+    wrong (THE NIGHT'S OWN HEALTH). [] for none. Only the first is emailed
     (approval_alerts, whose words it is)."""
     said = built_warn_alert(v.get("built_checks"))
-    return approval_alerts(v) + ([said] if said else []) + [s for _kind, s in not_moving_of(v)]
+    return (approval_alerts(v) + ([said] if said else []) + [s for _kind, s in not_moving_of(v)]
+            + [s for _kind, s in health_warned(v)])
 
 
 def approval_alerts(v):
@@ -6362,6 +6498,9 @@ def close_verdict(a):
             for k in (KINDS_SERVED, KINDS_SENDABLE, KINDS_PUBLISHED, NEWEST_FIT, DB_MISSED):
                 if isinstance(older, dict) and isinstance(older.get(k), dict):
                     v[k] = older[k]
+            # ... and who started it (WHO STARTED THE NIGHT): a night the
+            # schedule had to start late is as late when it stops early.
+            v["started_by"] = started_by_record()
         if a.dry_run:
             v["asked"] = {"dry_run": True}
             v["kept_apart"] = apart
