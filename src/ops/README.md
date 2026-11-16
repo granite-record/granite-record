@@ -4,8 +4,11 @@ The tools that keep the site running rather than build it: what the
 workflows, the morning triage and a person run by its path.
 
 - `cloud.py` -- the private R2 bucket: the nightly's kit and state going down
-  and up, the built site handed between jobs, the laptop's backup and its
-  pull. Both workflows run it as `python src/ops/cloud.py ...`.
+  and up, the built site handed between jobs, the laptop's backup, its
+  restore and its pull. Both workflows run it as `python src/ops/cloud.py ...`.
+- `backup_weekly.py` -- the laptop's weekly backup under Task Scheduler, with
+  a sample restore every four weeks (see below); `backup_weekly.xml` is its
+  Task Scheduler entry, which `--task-xml` fills in for a checkout.
 - `livestreams.py` -- the night's new livestreams, indexed, captioned and
   read into the start times (`--since-state` in the nightly workflow,
   `--markers` in the build, `--catch-up` by hand on the laptop). It is the
@@ -151,3 +154,47 @@ or the bucket:
   `heartbeat_url` in `secrets.json`, `--to-inbox` and `--canary` ping that
   address when they finish, `/fail` appended when the run did not exit 0.
   Neither set, nothing is sent. The address is never committed.
+
+## The weekly backup (16 November 2026)
+
+The laptop's backup of everything git does not hold went to the bucket when
+a person ran it, and nothing said how old it was. `backup_weekly.py` is its
+job, once a week: `cloud.py backup`, which gathers the extras first -- the
+repository's bundle, the memory, the scheduled tasks' instructions and these
+Task Scheduler entries (`cloud.py`, THE BACKUP'S EXTRAS) -- tried three times
+twenty minutes apart, since a build in progress refuses it; then
+`cloud.py restore --sample 50` when the last good sample is four weeks old or
+the last one failed; then one line, `BACKUP WEEKLY ok` or `BACKUP WEEKLY
+FAILED -- what`. A failure is heard three ways: each step's record in
+`archive/cloud/` (`backup.json`, `restore-sample.json`), which every
+`cloud.py pull` prints at its end and the morning triage reads -- FAILED, or
+STALE when the backup is more than two weeks old or the sample more than five;
+Task Scheduler's Last Result, which is the job's exit code; and the night's
+warning when the bucket's backup manifest is more than two weeks old, which
+catches a week the job never ran at all.
+
+Once by hand first, in cmd: what it would send and sample, then its Task
+Scheduler entry for this checkout, registered with the settings the captions
+inbox's entry has (run whether you are logged on or not, on battery too,
+waking the laptop, and as soon as it can after a start it missed), which is
+why it asks for your Windows password:
+
+    cd /d <checkout>
+    python3 -X utf8 src\ops\backup_weekly.py --dry-run
+    python3 src\ops\backup_weekly.py --task-xml archive\backup-weekly-task.xml
+    schtasks /create /tn "Granite Record weekly backup" /xml archive\backup-weekly-task.xml /ru "%USERDOMAIN%\%USERNAME%" /rp *
+
+- `--task-xml` writes `backup_weekly.xml` with this checkout's folder in it,
+  in the UTF-16 schtasks reads; the template names no one's folder. The entry
+  runs `cmd /c cd /d "<checkout>" && python3 -X utf8 src\ops\backup_weekly.py
+  >> logs\backup-weekly.log 2>&1` every Sunday at 05:30, and stops it after six
+  hours.
+- `logs/` is left out of the backup (`cloud_kit.json`), so the log stays here.
+
+To see that it ran:
+
+    schtasks /query /tn "Granite Record weekly backup" /v /fo list | findstr /c:"Last Run Time" /c:"Last Result"
+    findstr /c:"BACKUP WEEKLY" <checkout>\logs\backup-weekly.log
+
+and `python3 src/ops/cloud.py pull --changes-only` ends with the backup's and
+the sample's lines.

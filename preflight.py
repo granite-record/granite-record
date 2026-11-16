@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.943
+# GRANITE_VERSION: 2026-09-04.945
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -64738,6 +64738,758 @@ def _cloud_round_trip(CL):
                       "in replaced/")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _backup_fixture(CL, tmp):
+    """A working folder with a git checkout, as _cloud_round_trip makes it, and a folder
+    bucket holding its backup, made by cloud.py backup itself: (root, bucket, B, manifest),
+    or None where git is not here to tell the files git holds from those it does not."""
+    real = json.loads(Path(CL.KIT_FILE).read_text(encoding="utf-8"))
+    root, bucket = tmp / "laptop", tmp / "bucket"
+    root.mkdir()
+    _cloud_fixture(root, real)
+    try:
+        ok = _run(["git", "init", "-q", str(root)], capture_output=True, timeout=60)
+        ok = ok.returncode == 0 and _run(
+            ["git", "-C", str(root), "add", "tracked.py", "cloud_kit.json"],
+            capture_output=True, timeout=60).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        ok = False
+    if not ok:
+        return None
+    B = ["--local-bucket", str(bucket)]
+    code, out = _cloud_call(CL, "backup", "--root", str(root), *B)
+    assert code == 0, f"the fixture's backup failed: {out[-300:]}"
+    man = json.loads((bucket / "state" / "backup-manifest.json").read_text(encoding="utf-8"))
+    return root, bucket, B, man
+
+
+@check("cloud", "restore brings the backup back into an empty folder, each file checked against "
+                "the backup's manifest, and writes nothing to the bucket", needs=("cloud",))
+def _cloud_restore(CL):
+    """THE BACKUP, BROUGHT BACK (cloud.py; the refactor's stage 0, ops item 5): the laptop's
+    46 GB backup had never been read back, and no command could. Every function cmd_restore
+    reaches is read, and none puts, copies or deletes in the bucket (the reader first, on a put
+    planted two calls down). Then against a folder bucket that cloud.py backup filled from a
+    fixture, through a bucket that fails any write: a dry run makes no folder; a whole restore
+    is byte and date exact and its last line counts restored, verified, missing and
+    mismatched; a DEST with anything in it, one inside the working folder, a second DEST and a
+    bucket with no backup are refused, the last without making the folder; --only takes a path
+    (with a backslash), a glob and a second --only, and one naming nothing fails; an object gone
+    from the bucket is missing and one changed there is mismatched, kept under _mismatched/
+    and not at its own path, both named and exit 1; and a manifest entry on the never list,
+    or one whose path climbs out of DEST, is never written, even where the bucket lists it."""
+    import ast
+    probe = ast.parse("def cmd_restore(a):\n    helper(a)\n\n\ndef helper(b):\n"
+                      "    b.copy('k', 'j')\n")
+    assert any(isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "copy"
+               for d in _reached(probe, "cmd_restore").values() for n in ast.walk(d)), \
+        "the reader of restore's code misses a copy two calls down"
+    tree = ast.parse(_source(CL.__file__))
+    reached = _reached(tree, "cmd_restore", leaves={"FolderBucket", "NotAsked", "R2Bucket"})
+    WRITERS = {"put_file", "put_bytes", "copy", "delete", "keep"}
+    NAMED = {"send", "write_manifest", "put_logs", "state_up", "Replacer", "Checkpoint",
+             "send_refusal", "unsent_after", "open_bucket"}
+    bad = sorted({f"{name} calls {n.func.attr}" for name, d in reached.items()
+                  for n in ast.walk(d) if isinstance(n, ast.Call)
+                  and isinstance(n.func, ast.Attribute) and n.func.attr in WRITERS}
+                 | {f"cmd_restore reaches {name}" for name in reached if name in NAMED})
+    assert {"cmd_restore", "restore_into", "open_to_read", "empty_dest"} <= set(reached), \
+        f"cmd_restore was not found to read: {sorted(reached)}"
+    assert not bad, "restore can write to the bucket: " + "; ".join(bad)
+
+    writes = []
+
+    class ReadOnly(CL.FolderBucket):
+        def _no(self, what, key):
+            writes.append(f"{what} {key}")
+            raise AssertionError(f"restore tried to {what} {key} in the bucket")
+
+        def put_file(self, src, key, meta):
+            self._no("put", key)
+
+        def put_bytes(self, key, data):
+            self._no("put", key)
+
+        def copy(self, src, dst):
+            self._no("copy", dst)
+
+        def delete(self, key):
+            self._no("delete", key)
+
+    tmp = Path(tempfile.mkdtemp(prefix="gr-restore-"))
+    saved = CL.open_to_read
+    try:
+        made = _backup_fixture(CL, tmp)
+        if made is None:
+            return "ok", "restore reads the bucket and writes nothing there; git is not here for a backup to restore"
+        root, bucket, B, man = made
+        CL.open_to_read = lambda a: ReadOnly(a.local_bucket, create=False) if a.local_bucket \
+            else saved(a)
+
+        def restore(dest, *more):
+            return _cloud_call(CL, "restore", str(dest), "--root", str(root), *B, *more)
+
+        def tree_of(d):
+            return sorted(p.relative_to(d).as_posix() for p in Path(d).rglob("*") if p.is_file())
+        files = sorted(man["files"])
+        assert len(files) == 9 and "CLERK_CORRECTIONS.md" in files, files
+        dest = tmp / "back"
+        code, out = restore(dest, "--dry-run")
+        assert code == 0 and "nothing restored" in out and not dest.exists(), out[-300:]
+        code, out = restore(dest)
+        assert code == 0 and tree_of(dest) == files, (code, out[-400:], tree_of(dest))
+        for rel in files:
+            a_, b_ = root.joinpath(*rel.split("/")), dest.joinpath(*rel.split("/"))
+            assert a_.read_bytes() == b_.read_bytes(), f"{rel} came back different"
+            assert a_.stat().st_mtime_ns == b_.stat().st_mtime_ns, f"{rel} came back without its date"
+        last = [ln for ln in out.splitlines() if ln.startswith("restore: of ")]
+        assert last and "of 9 files asked for, 9 restored, 9 verified" in last[0] and \
+            "0 mismatched; 0 missing from the bucket; 0 could not be read" in last[0], out[-400:]
+        for argv, said in (((dest,), "is not empty"), ((root / "back",), "inside the working folder"),
+                           ((tmp / "x", tmp / "y"), "takes one DEST")):
+            code, out = _cloud_call(CL, "restore", *map(str, argv), "--root", str(root), *B)
+            assert code == 1 and said in out, (argv, out[-300:])
+        assert not (root / "back").exists() and not (tmp / "x").exists(), "a refused restore made its folder"
+        code, out = _cloud_call(CL, "restore", str(tmp / "z"), "--root", str(root),
+                                "--local-bucket", str(tmp / "no-bucket"))
+        assert code == 1 and "holds no backup" in out and not (tmp / "no-bucket").exists(), out[-300:]
+        code, out = restore(tmp / "only", "--only", "legislation\\2026\\HB1.html", "--only", "brand/**")
+        assert code == 0 and tree_of(tmp / "only") == ["brand/licensed/drawing.png",
+                                                       "legislation/2026/HB1.html"], (out[-300:], tree_of(tmp / "only"))
+        code, out = restore(tmp / "none", "--only", "nothing/here.md")
+        assert code == 1 and "names nothing the backup holds" in out, out[-300:]
+        (bucket / "backup" / "Docket.txt").unlink()
+        (bucket / "backup" / "narratives.json").write_text('{"changed": "in the bucket"}', encoding="utf-8")
+        code, out = restore(tmp / "short")
+        got = tree_of(tmp / "short")
+        assert code == 1 and "1 mismatched" in out and "1 missing from the bucket" in out and \
+            "Docket.txt is in the manifest and not in the bucket" in out and \
+            "narratives.json arrived as" in out, out[-500:]
+        assert "_mismatched/narratives.json" in got and "narratives.json" not in got and \
+            "Docket.txt" not in got and len(got) == 8, got
+        assert (tmp / "short" / "_mismatched" / "narratives.json").read_text(encoding="utf-8") == \
+            '{"changed": "in the bucket"}', "the mismatched bytes were not kept"
+
+        # A manifest naming what must never come back, as a leaked key could write one.
+        doc = dict(man)
+        doc["files"] = dict(man["files"])
+        body = b"not a real one"
+        import hashlib
+        ent = {"size": len(body), "sha256": hashlib.sha256(body).hexdigest(), "mtime_ns": "0"}
+        doc["files"].update({"secrets.json": ent, "../outside.txt": ent})
+        (bucket / "backup" / "secrets.json").write_bytes(body)
+        (bucket / "state" / "backup-manifest.json").write_text(json.dumps(doc), encoding="utf-8")
+
+        class Lists(ReadOnly):
+            # The bucket a leaked key wrote to: it lists the climbing path, and serves it.
+            def list(self, prefix):
+                got = super().list(prefix)
+                got["backup/../outside.txt"] = len(body)
+                return got
+
+            def get_file(self, key, dst, size=None):
+                if ".." in key.split("/"):
+                    Path(dst).write_bytes(body)
+                    return
+                super().get_file(key, dst, size)
+        CL.open_to_read = lambda a: Lists(a.local_bucket, create=False)
+        code, out = restore(tmp / "never")
+        got = tree_of(tmp / "never")
+        assert "secrets.json" not in got and not (tmp / "outside.txt").exists() and \
+            not any(p.name == "outside.txt" for p in tmp.rglob("outside.txt")), (got, out[-400:])
+        assert code == 1 and "on the never list" in out and "would climb out of DEST" in out, out[-500:]
+        assert not writes, f"restore tried to write to the bucket: {writes}"
+    finally:
+        CL.open_to_read = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("restore reaches no put, copy or delete; against a backup cloud.py made, a whole "
+                  "restore came back byte and date exact, counted; a DEST not empty, inside the "
+                  "working folder or doubled, and a bucket with no backup, refused; --only paths "
+                  "and globs, twice; a missing and a mismatched file named, exit 1, the changed "
+                  "bytes kept aside; a never-list path and a climbing one never written")
+
+
+@check("cloud", "restore --sample restores files from across the backup into a folder of its own, "
+                "deletes it, records how it went, and every pull says so", needs=("cloud",))
+def _cloud_restore_sample(CL):
+    """A SAMPLE RESTORE, MONTHLY (cloud.py; the refactor's stage 0, ops item 5). sample_of on a
+    fixture of folders: one file from each folder first, then the rest at random, never a file
+    over the limit or more bytes in all than allowed, the same seed the same files and other
+    seeds others. Then against a backup cloud.py made, through a bucket that fails any write: a
+    dry run restores and records nothing; a sample of four comes from four folders, verified, its
+    folder deleted, and the record says when, how many and from which kind of bucket; a sample
+    over a file changed in the bucket is exit 1, recorded as failed with the file named, and its
+    folder is deleted all the same; --sample 0, or with a DEST or --only, is refused. pull reaches
+    backup_news, and backup_news says each record: none, a good one, a failed one, one a week
+    past due as STALE, and a folder's as a test."""
+    import ast
+    from datetime import datetime as dt
+    files = {f"big/{i:03d}.txt": {"size": 10} for i in range(100)}
+    files.update({"a/x.txt": {"size": 10}, "b/y.txt": {"size": 10}, "c/z.txt": {"size": 10},
+                  "root.txt": {"size": 10}, "huge/h.bin": {"size": CL.SAMPLE_FILE_MOST + 1}})
+
+    def tops(paths):
+        return {p.split("/", 1)[0] if "/" in p else "" for p in paths}
+    got = CL.sample_of(files, 5, "2026-11-16")
+    assert len(got) == 5 and tops(got) == {"big", "a", "b", "c", ""}, got
+    got = CL.sample_of(files, 3, "2026-11-16")
+    assert len(got) == 3 and len(tops(got)) == 3, got
+    many = CL.sample_of(files, 40, "2026-11-16")
+    assert len(many) == 40 and "huge/h.bin" not in many and {"a", "b", "c", ""} <= tops(many), many[:8]
+    assert CL.sample_of(files, 40, "2026-11-16") == many, "the same seed chose other files"
+    assert any(CL.sample_of(files, 40, f"2026-12-{d:02d}") != many for d in range(1, 6)), \
+        "five other seeds chose the same forty files"
+    cheap = CL.sample_of(files, 40, "2026-11-16", bytes_most=95)
+    assert len(cheap) == 9, f"a budget of 95 bytes took {len(cheap)} files of 10"
+    assert CL.sample_of(files, 400, "x") == sorted(set(files) - {"huge/h.bin"}), \
+        "a sample larger than the backup did not take every file it may"
+
+    tree = ast.parse(_source(CL.__file__))
+    assert "backup_news" in _reached(tree, "cmd_pull") and \
+        "restore_sample" in _reached(tree, "cmd_restore"), \
+        "pull no longer prints the laptop's backup records, or restore no longer samples"
+
+    writes = []
+
+    class ReadOnly(CL.FolderBucket):
+        def put_file(self, src, key, meta):
+            writes.append(key)
+
+        def put_bytes(self, key, data):
+            writes.append(key)
+
+        def copy(self, src, dst):
+            writes.append(dst)
+
+        def delete(self, key):
+            writes.append(key)
+
+    tmp = Path(tempfile.mkdtemp(prefix="gr-sample-"))
+    saved = CL.open_to_read
+    try:
+        made = _backup_fixture(CL, tmp)
+        if made is None:
+            return "ok", "sample_of chooses across the folders; git is not here for a backup to sample"
+        root, bucket, B, man = made
+        CL.open_to_read = lambda a: ReadOnly(a.local_bucket, create=False)
+        rec_path = root.joinpath(*CL.SAMPLE_RECORD.split("/"))
+
+        def sample(*argv):
+            return _cloud_call(CL, "restore", *argv, "--root", str(root), *B)
+        code, out = sample("--sample", "4", "--dry-run")
+        assert code == 0 and "nothing recorded" in out and not rec_path.exists(), out[-300:]
+        code, out = sample("--sample", "4")
+        rec = json.loads(rec_path.read_text(encoding="utf-8"))
+        assert code == 0 and rec.get("ok") is True and rec["asked"] == rec["picked"] == \
+            rec["verified"] == rec["restored"] == 4 and rec["folders"] == 4 and \
+            rec["mismatched"] == rec["missing"] == rec["failed"] == 0, (out[-300:], rec)
+        assert rec["bucket"]["kind"] == "folder" and rec.get("removed") is True and \
+            not Path(rec["folder"]).exists() and rec["at"][:4] == str(dt.now().year), rec
+        (bucket / "backup" / "Docket.txt").write_text("docket, changed in the bucket\n", encoding="utf-8")
+        code, out = sample("--sample", "9")
+        rec = json.loads(rec_path.read_text(encoding="utf-8"))
+        assert code == 1 and rec.get("ok") is False and rec["mismatched"] == 1 and \
+            "Docket.txt" in rec.get("said", "") and rec["verified"] == 8, (out[-300:], rec)
+        assert rec.get("removed") is True and not Path(rec["folder"]).exists(), \
+            "a sample that failed left its folder behind"
+        for argv, said in ((("--sample", "0"), "1 or more"),
+                           ((str(tmp / "dest"), "--sample", "2"), "no DEST"),
+                           (("--sample", "2", "--only", "Docket.txt"), "no --only")):
+            code, out = sample(*argv)
+            assert code == 1 and said in out, (argv, out[-300:])
+        assert not writes, f"the sample restore wrote to the bucket: {writes}"
+
+        now = dt(2026, 11, 16, 8, 0)
+
+        def sample_news():
+            # The sample's line of pull's, beside the backup's own (_backup_weekly holds that).
+            return [ln for ln in CL.backup_news(root, now) if "SAMPLE" in ln.upper()]
+        news = sample_news()
+        assert len(news) == 1 and news[0].startswith("SAMPLE RESTORE FAILED --") and \
+            "Docket.txt" in news[0] and "a test against a folder" in news[0], news
+        good = {"ok": True, "at": "x", "picked": 50, "verified": 50, "folders": 12,
+                "bucket": {"kind": "r2"}}
+        for days, head in ((3, ""), (CL.SAMPLE_DAYS + 6, ""), (CL.SAMPLE_DAYS + 8, "STALE -- ")):
+            CL.save_record(root, CL.SAMPLE_RECORD,
+                           dict(good, epoch=now.timestamp() - days * 86400))
+            news = sample_news()
+            assert len(news) == 1 and news[0].startswith(head or "the last sample restore") and \
+                f"{days} days ago" in news[0] and "50 of 50 files verified" in news[0] and \
+                "a test" not in news[0], (days, news)
+        rec_path.unlink()
+        news = sample_news()
+        assert len(news) == 1 and news[0].startswith("NO SAMPLE RESTORE on record") and \
+            f"restore --sample {CL.SAMPLE_FILES}" in news[0], news
+    finally:
+        CL.open_to_read = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("one file from each folder first, the size limits held, a seed's sample "
+                  "repeatable; a dry run records nothing; four files from four folders verified, "
+                  "their folder deleted, recorded; a changed file recorded as a failure, exit 1, "
+                  "its folder deleted too; misuse refused; nothing written to the bucket; pull "
+                  "says none, good, failed, STALE past a week overdue, and a folder's as a test")
+
+
+@check("cloud", "a backup from the laptop's repository carries the extras -- the repository's "
+                "bundle, the memory, the scheduled tasks and the Task Scheduler entries -- and no "
+                "credential", needs=("cloud",))
+def _cloud_backup_extras(CL):
+    """THE BACKUP'S EXTRAS (cloud.py; the refactor's stage 0, ops item 7): the local commits and
+    tags, the memory of the owner's decisions, the morning triage's instructions and the Task
+    Scheduler entries were in no backup. On a fixture -- a repository with a commit and a tag
+    and no remote, a memory folder, scheduled tasks named granite-* and another, and Task
+    Scheduler stood in for -- gather_extras makes a bundle git verifies and clones back with its
+    tag, copies every memory file with its date and every granite-* task's file and no other,
+    writes the entry in UTF-16 with its mark, and refuses a memory file shaped like a credential
+    (made here, never typed, so this file holds none), naming it and not its value. Run again
+    with nothing moved, the bundle stands as it was; a commit makes it again; a source file gone
+    keeps its copy, and a memory folder gone keeps them all; a commit carrying a credential's
+    shape stops the bundle, naming the path, and the last one stands. And backup gathers them
+    outside the repository that holds secrets.json only with --extras, never on a dry run, sends
+    them, and fails on the refused file once the rest has gone."""
+    git = shutil.which("git")
+    if not git:
+        return "skip", "git is not here, so there is no repository to bundle"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-extras-"))
+    saved = (CL.memory_folder, CL.claude_home, CL.scheduler_entries)
+
+    def g(*args, cwd=None):
+        r = _run([git, "-c", "user.name=preflight", "-c", "user.email=preflight@example.invalid",
+                  *args], capture_output=True, timeout=120, cwd=cwd)
+        assert r.returncode == 0, f"git {' '.join(args[:3])} failed: {(r.stderr or '')[-200:]}"
+        return r.stdout
+
+    def writable(fn, path, exc):
+        os.chmod(path, 0o666)
+        fn(path)
+    try:
+        root = tmp / "laptop"
+        root.mkdir()
+        _cloud_fixture(root, json.loads(Path(CL.KIT_FILE).read_text(encoding="utf-8")))
+        g("init", "-q", str(root))
+        g("-C", str(root), "add", "tracked.py", "cloud_kit.json")
+        g("-C", str(root), "commit", "-q", "-m", "one")
+        g("-C", str(root), "tag", "kept-here")
+        memory, tasks = tmp / "memory", tmp / "tasks"
+        (tasks / "granite-report-triage").mkdir(parents=True)
+        (tasks / "granite-report-triage" / "SKILL.md").write_text("the triage\n", encoding="utf-8")
+        (tasks / "another-project").mkdir()
+        (tasks / "another-project" / "SKILL.md").write_text("not ours\n", encoding="utf-8")
+        memory.mkdir()
+        for name in ("MEMORY.md", "a.md", "b.md"):
+            (memory / name).write_text(f"{name}\n", encoding="utf-8")
+        token = "gh" + "p_" + "Q7" * 18                 # a token's shape, made here, never typed
+        (memory / "careless.md").write_text(f"the key is {token}\n", encoding="utf-8")
+        entry = '<?xml version="1.0" encoding="UTF-16"?>\r\n<Task version="1.3">\r\n</Task>\r\n'
+
+        def gather():
+            return CL.gather_extras(root, memory=memory, tasks=tasks,
+                                    scheduler=lambda: {"\\Granite Record captions inbox": entry})
+        out = root.joinpath(*CL.EXTRAS.split("/"))
+        got = gather()
+        bundle = out / "repository.bundle"
+        heads = g("bundle", "list-heads", str(bundle), cwd=str(root))
+        assert "refs/tags/kept-here" in heads and "refs/heads/" in heads, (heads, got)
+        g("-C", str(root), "bundle", "verify", str(bundle))
+        g("clone", "-q", str(bundle), str(tmp / "clone"))
+        assert "kept-here" in g("-C", str(tmp / "clone"), "tag"), "the bundle cloned without its tag"
+        for name in ("MEMORY.md", "a.md", "b.md"):
+            a_, b_ = memory / name, out / "memory" / name
+            assert a_.read_bytes() == b_.read_bytes() and \
+                a_.stat().st_mtime_ns == b_.stat().st_mtime_ns, f"memory/{name} was not copied with its date"
+        assert not (out / "memory" / "careless.md").exists(), "a file shaped like a credential was copied"
+        refused = [p for p in got["problems"] if "careless.md" in p]
+        assert len(refused) == 1 and "a GitHub token" in refused[0] and \
+            token not in " ".join(got["problems"] + got["lines"]), got["problems"]
+        assert (out / "scheduled-tasks" / "granite-report-triage" / "SKILL.md").read_text(
+            encoding="utf-8") == "the triage\n" and not (out / "scheduled-tasks" / "another-project").exists()
+        xml = (out / "task-scheduler" / "Granite Record captions inbox.xml").read_bytes()
+        assert xml[:2] == b"\xff\xfe" and xml.decode("utf-16") == entry, xml[:40]
+        index = json.loads((out / "extras.json").read_text(encoding="utf-8"))
+        assert index["task_scheduler"] == ["\\Granite Record captions inbox"] and \
+            index["memory"]["files"] == 3, index
+        # Nothing moved: the bundle stands. A commit: it is made again, with the commit.
+        made = bundle.stat().st_mtime_ns
+        got = gather()
+        assert bundle.stat().st_mtime_ns == made and any("no ref has moved" in ln for ln in got["lines"]), \
+            got["lines"]
+        (root / "tracked.py").write_text("x = 2\n", encoding="utf-8")
+        g("-C", str(root), "commit", "-q", "-am", "two")
+        got = gather()
+        assert g("-C", str(root), "rev-parse", "HEAD").strip() in \
+            g("bundle", "list-heads", str(bundle), cwd=str(root)), got["lines"]
+        # A source gone keeps its copy; the whole memory folder gone keeps them all.
+        (memory / "b.md").unlink()
+        got = gather()
+        assert (out / "memory" / "b.md").exists() and \
+            any("1 kept whose source is gone" in ln for ln in got["lines"]), got["lines"]
+        shutil.rmtree(memory)
+        got = gather()
+        assert all((out / "memory" / n).exists() for n in ("MEMORY.md", "a.md", "b.md")) and \
+            any("the copy here stands" in ln for ln in got["lines"]), got["lines"]
+        # A commit carrying a credential's shape: no new bundle, its path named, the last one stands.
+        before = bundle.read_bytes()
+        (root / "careless.py").write_text(f"KEY = '{token}'\n", encoding="utf-8")
+        g("-C", str(root), "add", "careless.py")
+        g("-C", str(root), "commit", "-q", "-m", "three")
+        got = gather()
+        assert bundle.read_bytes() == before and \
+            any("careless.py looks like a GitHub token" in p for p in got["problems"]) and \
+            token not in " ".join(got["problems"]), got["problems"]
+        g("-C", str(root), "reset", "-q", "--hard", "HEAD~1")
+        memory.mkdir()
+        (memory / "careless.md").write_text(f"the key is {token}\n", encoding="utf-8")
+
+        # backup: --extras here, never on a dry run; sent; failing on the refusal after the rest.
+        CL.memory_folder = lambda r: memory
+        CL.claude_home = lambda: tmp
+        (tmp / "scheduled-tasks").mkdir()
+        CL.scheduler_entries = lambda: {}
+        bucket = tmp / "bucket"
+        B = ["--root", str(root), "--local-bucket", str(bucket)]
+        stamp = (out / "extras.json").stat().st_mtime_ns
+        code, said = _cloud_call(CL, "backup", *B, "--dry-run")
+        assert code == 0 and "not gathered on a dry run" in said and \
+            (out / "extras.json").stat().st_mtime_ns == stamp, said[-300:]
+        code, said = _cloud_call(CL, "backup", *B)
+        assert code == 0 and "not the repository that holds secrets.json" in said and \
+            (out / "extras.json").stat().st_mtime_ns == stamp, said[-300:]
+        code, said = _cloud_call(CL, "backup", *B, "--extras")
+        sent = {p.relative_to(bucket / "backup").as_posix()
+                for p in (bucket / "backup").rglob("*") if p.is_file()}
+        assert code == 1 and "extras are short" in said and "careless.md" in said and \
+            token not in said, said[-400:]
+        for rel in ("archive/backup-extras/repository.bundle", "archive/backup-extras/memory/a.md",
+                    "archive/backup-extras/extras.json", "Docket.txt", "CLERK_CORRECTIONS.md"):
+            assert rel in sent, f"the backup with its extras did not send {rel}: {sorted(sent)[:12]}"
+        assert not any("careless" in s for s in sent), "a file shaped like a credential reached the bucket"
+    finally:
+        CL.memory_folder, CL.claude_home, CL.scheduler_entries = saved
+        shutil.rmtree(tmp, onexc=writable)
+    return "ok", ("a bundle git verifies and clones with its tag, made again only when a ref moves, "
+                  "and not over a commit shaped like a credential; the memory copied with its "
+                  "dates, a credential-shaped file refused by name, copies kept when sources go; "
+                  "granite-* tasks alone; the entry in UTF-16; gathered by backup only with "
+                  "--extras here and not on a dry run, sent, the refusal failing it after the rest")
+
+
+@check("cloud", "the night warns when the laptop's backup is more than two weeks old, from one look "
+                "at the bucket's backup manifest, and never holds a night for it",
+       needs=("cloud", "nightly"))
+def _night_backup_stale(CL, NI):
+    """THE LAPTOP'S BACKUP (nightly.py) and THE LAPTOP'S BACKUP, AS THE NIGHT SEES IT (cloud.py;
+    the refactor's stage 0, ops item 6): nothing said how old the laptop's backup was. The two
+    names agree, and the workflow brings the state down before the night and its verdict. On a
+    folder bucket that counts what it is asked, state-down looks at state/backup-manifest.json
+    once, by its date and never its body, and records the date or its absence; a look that fails
+    is recorded and never fails state-down; a dry state-down records nothing. Through the
+    stand-in for boto3 the look is one HEAD and its LastModified. Then backup_warned(): no
+    record, and a manifest 14 days old, say nothing; 15 or 40 days, none, a look that failed and
+    a record that will not read each warn in one line with what to do, of a kind the gate never
+    holds a night for, in the night's warnings and its standing ones."""
+    import contextlib
+    import io
+    import types
+    from datetime import datetime as dt, timedelta, timezone
+    assert NI.BACKUP_SEEN.as_posix() == CL.BACKUP_SEEN == "archive/cloud/backup-seen.json", (
+        NI.BACKUP_SEEN, CL.BACKUP_SEEN)
+    assert NI.BACKUP_DAYS == CL.BACKUP_DAYS == 14 and NI.KIND_BACKUP.startswith(NI.KIND_HEALTH), \
+        (NI.BACKUP_DAYS, CL.BACKUP_DAYS, NI.KIND_BACKUP)
+    wf = _SWITCHED.workflow_dir / "nightly.yml"
+    if wf.exists():
+        text = _source(wf)
+        down, night, close = (text.find(s) for s in ("python src/ops/cloud.py state-down",
+                                                     "python nightly.py @flags",
+                                                     "python nightly.py --runner --close"))
+        assert -1 < down < night < close, "nightly.yml no longer brings the state down before the night"
+
+    asked = []
+
+    class Counting(CL.FolderBucket):
+        def modified(self, key):
+            asked.append(("modified", key))
+            return super().modified(key)
+
+        def get_bytes(self, key):
+            asked.append(("get", key))
+            return super().get_bytes(key)
+
+    class Broken(CL.FolderBucket):
+        def modified(self, key):
+            raise OSError("the endpoint said no")
+
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-backup-seen-"))
+    saved = CL.open_bucket
+    mods, store, made = _fake_s3()
+    saved_mods = {n: sys.modules.get(n) for n in mods}
+    try:
+        kit = {"kit": [], "state": [{"path": "archive/census.json", "key": "census.json", "what": "x"}],
+               "never": {"globs": ["secrets.json"]}, "backup": {"leave_out": []}}
+        night, bucket = tmp / "night", tmp / "bucket"
+        night.mkdir()
+        (night / "cloud_kit.json").write_text(json.dumps(kit), encoding="utf-8")
+        (bucket / "state").mkdir(parents=True)
+        (bucket / "state" / "census.json").write_text("{}", encoding="utf-8")
+        man = bucket / "state" / "backup-manifest.json"
+        seen = night.joinpath(*CL.BACKUP_SEEN.split("/"))
+
+        def state_down(cls, *more):
+            CL.open_bucket = lambda a, preview=False: cls(str(bucket))
+            asked.clear()
+            return _cloud_call(CL, "state-down", "--root", str(night), "--local-bucket", str(bucket), *more)
+        code, out = state_down(Counting)
+        rec = json.loads(seen.read_text(encoding="utf-8"))
+        assert code == 0 and rec.get("absent") is True and \
+            asked.count(("modified", "state/backup-manifest.json")) == 1, (out[-300:], rec, asked)
+        man.write_text('{"files": {}}', encoding="utf-8")
+        when = (dt.now() - timedelta(days=20)).timestamp()
+        os.utime(man, (when, when))
+        code, out = state_down(Counting)
+        rec = json.loads(seen.read_text(encoding="utf-8"))
+        assert code == 0 and abs(rec["written_epoch"] - when) < 2 and \
+            "backup-manifest.json was last written" in out, (out[-300:], rec)
+        assert [x for x in asked if x[1] == "state/backup-manifest.json"] == \
+            [("modified", "state/backup-manifest.json")], f"state-down read the backup's manifest: {asked}"
+        seen.unlink()
+        code, out = state_down(Counting, "--dry-run")
+        assert code == 0 and not seen.exists(), "a dry state-down recorded what it saw"
+        code, out = state_down(Broken)
+        rec = json.loads(seen.read_text(encoding="utf-8"))
+        assert code == 0 and "the endpoint said no" in rec.get("error", ""), (out[-300:], rec)
+        # Through the stand-in for boto3: one HEAD, and its LastModified.
+        sys.modules.update(mods)
+        r2 = CL.R2Bucket({"account": "acct0123456789", "key_id": "keyid0123456789",
+                          "secret": "secret0123456789", "bucket": "granite-record-backup"}, 4)
+        stamp = dt(2026, 11, 2, 10, 30, tzinfo=timezone.utc)
+        heads = []
+        plain = r2.s3.head_object
+
+        def head_object(**kw):
+            heads.append(kw["Key"])
+            return dict(plain(**kw), LastModified=stamp)
+        r2.s3.head_object = head_object
+        assert r2.modified("state/backup-manifest.json") is None, "a missing manifest read as there"
+        store[("granite-record-backup", "state/backup-manifest.json")] = (b"{}", {})
+        assert r2.modified("state/backup-manifest.json") == stamp.timestamp() and \
+            heads == ["state/backup-manifest.json"] * 2, heads
+
+        # The warning, from what state-down left.
+        def warned(rec):
+            p = tmp / "seen.json"
+            if rec is None:
+                p.unlink(missing_ok=True)
+            else:
+                p.write_text(rec if isinstance(rec, str) else json.dumps(rec), encoding="utf-8")
+            return NI.backup_warned(p)
+        look = dt(2026, 11, 16, 3, 20)
+        assert warned(None) == [], "no record of a look warned"
+        for days, warns in ((0, False), (14, False), (15, True), (40, True)):
+            w = look - timedelta(days=days)
+            got = warned({"seen_epoch": look.timestamp(), "written_epoch": w.timestamp()})
+            assert bool(got) == warns, (days, got)
+            if warns:
+                said = got[0][1]
+                assert [k for k, _s in got] == [NI.KIND_BACKUP] and f"{days} days old" in said and \
+                    NI.day_said(w.date()) in said and "python3 src/ops/cloud.py backup" in said and \
+                    "\n" not in said, said
+        for rec, words in (({"absent": True}, "holds no state/backup-manifest.json"),
+                           ({"error": "OSError: the endpoint said no"}, "the endpoint said no"),
+                           ("{not json", "would not read")):
+            got = warned(rec)
+            assert [k for k, _s in got] == [NI.KIND_BACKUP] and words in got[0][1], (rec, got)
+        sentence = warned({"seen_epoch": look.timestamp(),
+                           "written_epoch": (look - timedelta(days=20)).timestamp()})[0][1]
+        assert NI.warning_reasons([(NI.KIND_BACKUP, sentence)], [], ()) == [], \
+            "a stale backup would hold the night"
+        os.chdir(tmp)
+        Path("archive/cloud").mkdir(parents=True)
+        Path(NI.BACKUP_SEEN).write_text((tmp / "seen.json").read_text(encoding="utf-8"), encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            mine = dict(NI.Night.warned(types.SimpleNamespace(v={"started": "2026-11-16T03:20:00"})))
+        assert mine.get(NI.KIND_BACKUP) == sentence and sentence in NI.warns_of({}), (
+            "the stale backup is not among the night's warnings and its standing ones")
+    finally:
+        os.chdir(here)
+        CL.open_bucket = saved
+        for n, m in saved_mods.items():
+            if m is None:
+                sys.modules.pop(n, None)
+            else:
+                sys.modules[n] = m
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("state-down looks once, by date alone, and records the date, an absence or a "
+                  "failed look without failing; R2's is one HEAD; 15 days, none, a failed look or "
+                  "an unreadable record warn in one line with the command, 14 does not; never "
+                  "holding a night, in the night's warnings and its standing ones")
+
+
+@check("cloud", "the laptop's weekly backup runs the backup, and a sample restore when one is due, "
+                "records each however it ends, every pull says so, and its Task Scheduler entry "
+                "is set as the captions inbox's", needs=("cloud", "backup_weekly"))
+def _backup_weekly(CL, BW):
+    """THE BACKUP'S OWN RECORD (cloud.py) and src/ops/backup_weekly.py (the refactor's stage 0,
+    ops items 5 and 6): the backup ran when the owner ran it, and nothing said when it last
+    had. The entry: the template is XML and names no one's folder or account; --task-xml writes
+    it for a checkout in UTF-16 with its mark, every Sunday, running the job from the checkout
+    into its log, with the captions inbox's settings (whether logged on or not, on battery,
+    waking the laptop, as soon as it can after a missed start, one at a time) and six hours to
+    finish. The job, against a folder bucket: a first run backs up and, with none on record,
+    samples, exit 0, both recorded; a second does not sample; a dry run records nothing; a try
+    a build refuses is tried again after the wait and goes; a backup refused every time is
+    exit 1, FAILED, and recorded by the backup itself; one that never started (the machine's
+    lock held) is recorded by the job; a failed sample is exit 1 and recorded; GitHub's machine,
+    and a checkout without secrets.json and no --local-bucket, are refused. And pull's line from
+    the backup's record: none, a good one, a failed one, and one more than 14 days old as
+    STALE."""
+    import contextlib
+    import io
+    import time as time_
+    import types
+    import xml.etree.ElementTree as ET
+    from datetime import datetime as dt
+    template = _source(BW.XML)
+    assert BW.CHECKOUT in template and not re.search(r"(?i)\\Users\\|S-1-5-21|<UserId>", template), \
+        "the Task Scheduler template names a folder or an account of someone's"
+    try:
+        ET.fromstring(template.encode("utf-8"))
+    except ET.ParseError as e:
+        raise AssertionError(f"src/ops/backup_weekly.xml is not well-formed XML: {e}")
+    assert CL.BACKUP_DAYS == 14 and CL.BACKUP_RECORD == "archive/cloud/backup.json", \
+        (CL.BACKUP_DAYS, CL.BACKUP_RECORD)
+    tmp = Path(tempfile.mkdtemp(prefix="gr-weekly-"))
+    saved_time, saved_env = BW.time, os.environ.get("GITHUB_ACTIONS")
+
+    def job(*argv):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            code = BW.main(list(argv))
+        return code, out.getvalue()
+    try:
+        checkout = tmp / "a checkout"
+        code, said = job("--task-xml", str(tmp / "task.xml"), "--root", str(checkout))
+        raw = (tmp / "task.xml").read_bytes()
+        assert code == 0 and raw[:2] == b"\xff\xfe" and \
+            raw.decode("utf-16").startswith('<?xml version="1.0" encoding="UTF-16"?>') and \
+            "<!--" not in raw.decode("utf-16"), raw[:80]
+        assert f'schtasks /create /tn "{BW.TASK_NAME}" /xml' in said, said
+        t = "{http://schemas.microsoft.com/windows/2004/02/mit/task}"
+        doc = ET.fromstring(raw)
+
+        def one(path):
+            el = doc.find("/".join(t + p for p in path.split("/")))
+            assert el is not None, f"the entry has no {path}"
+            return (el.text or "").strip()
+        week = "Triggers/CalendarTrigger/ScheduleByWeek"
+        assert doc.find("/".join(t + p for p in (week + "/DaysOfWeek/Sunday").split("/"))) is not None \
+            and one(week + "/WeeksInterval") == "1", "the entry is not every Sunday"
+        for path, want in (("Settings/StartWhenAvailable", "true"), ("Settings/WakeToRun", "true"),
+                           ("Settings/DisallowStartIfOnBatteries", "false"),
+                           ("Settings/StopIfGoingOnBatteries", "false"),
+                           ("Settings/MultipleInstancesPolicy", "IgnoreNew"),
+                           ("Settings/ExecutionTimeLimit", "PT6H"),
+                           ("Principals/Principal/LogonType", "Password"),
+                           ("RegistrationInfo/URI", "\\" + BW.TASK_NAME),
+                           ("Actions/Exec/Command", "cmd")):
+            assert one(path) == want, f"the entry's {path} is {one(path)!r}, not {want!r}"
+        assert one("Actions/Exec/Arguments") == (
+            f'/c cd /d "{checkout.resolve()}" && python3 -X utf8 src\\ops\\backup_weekly.py '
+            f'>> {BW.LOG} 2>&1'), one("Actions/Exec/Arguments")
+
+        made = _backup_fixture(CL, tmp)
+        if made is None:
+            return "ok", "the entry is right; git is not here for a backup for the job to run"
+        root, bucket, B, man = made
+        rec_b = root.joinpath(*CL.BACKUP_RECORD.split("/"))
+        rec_s = root.joinpath(*CL.SAMPLE_RECORD.split("/"))
+        W = ["--root", str(root), "--local-bucket", str(bucket), "--retry-minutes", "0"]
+
+        def read(p):
+            return json.loads(p.read_text(encoding="utf-8"))
+        first = read(rec_b)
+        assert first.get("ok") is True and first.get("sent") == 9 and \
+            first.get("manifest", {}).get("count") == 9, f"the fixture's backup recorded {first}"
+        code, said = job(*W)
+        b, s = read(rec_b), read(rec_s)
+        assert code == 0 and "BACKUP WEEKLY ok" in said and "a sample restore is due (none on record)" in said \
+            and b["ok"] and b["epoch"] > first["epoch"] and s["ok"] and s["bucket"]["kind"] == "folder", \
+            (said[-400:], b, s)
+        code, said = job(*W)
+        assert code == 0 and "no sample restore this week" in said and read(rec_s)["epoch"] == s["epoch"], \
+            said[-300:]
+        before = rec_b.read_bytes(), rec_s.read_bytes()
+        code, said = job(*W, "--dry-run")
+        assert code == 0 and "(a dry run)" in said and (rec_b.read_bytes(), rec_s.read_bytes()) == before, \
+            said[-300:]
+        # A try a build refuses goes again after the wait.
+        lock = root / ".build.lock"
+        lock.write_text("x", encoding="utf-8")
+        slept = []
+        BW.time = types.SimpleNamespace(time=time_.time,
+                                        sleep=lambda s: (slept.append(s), lock.unlink()))
+        code, said = job(*W)
+        assert code == 0 and slept == [0] and "try 1 of 3 did not finish" in said and read(rec_b)["ok"], \
+            said[-400:]
+        BW.time = saved_time
+        # Refused every time: FAILED, recorded by the backup itself.
+        lock.write_text("x", encoding="utf-8")
+        code, said = job(*W)
+        b = read(rec_b)
+        assert code == 1 and "BACKUP WEEKLY FAILED -- the backup:" in said and b["ok"] is False and \
+            ".build.lock is fresh" in b["said"] and "by" not in b, (said[-300:], b)
+        lock.unlink()
+        # Never started, the machine's lock held: recorded by the job.
+        held = root.joinpath(*CL.LOCK.split("/"))
+        held.write_text("pid 1 since 05:30", encoding="utf-8")
+        code, said = job(*W)
+        b = read(rec_b)
+        assert code == 1 and b["ok"] is False and b.get("by") == "backup_weekly.py" and \
+            "is held" in b["said"], (said[-300:], b)
+        held.unlink()
+        news = CL.backup_news(root, dt.now())
+        assert news[0].startswith("BACKUP FAILED --") and "is held" in news[0], news
+        # A sample that fails: exit 1, recorded by the sample itself.
+        rec_s.unlink()
+        (bucket / "backup" / "Docket.txt").write_text("changed in the bucket\n", encoding="utf-8")
+        code, said = job(*W)
+        s = read(rec_s)
+        assert code == 1 and "the sample restore:" in said and s["ok"] is False and \
+            "Docket.txt" in s.get("said", ""), (said[-300:], s)
+        # Only the laptop's, and only its repository's.
+        os.environ["GITHUB_ACTIONS"] = "true"
+        code, said = job(*W)
+        assert code == 1 and "GitHub's machine" in said, said[-200:]
+        os.environ.pop("GITHUB_ACTIONS")
+        code, said = job("--root", str(root))
+        assert code == 1 and "not the repository that holds secrets.json" in said, said[-200:]
+
+        now = dt(2026, 11, 16, 8, 0)
+        good = {"ok": True, "at": "x", "sent": 12, "sent_bytes": 3_000_000,
+                "manifest": {"count": 70_000, "bytes": 46_000_000_000}, "bucket": {"kind": "r2"}}
+        for days, head in ((3, "the last backup was 3 days ago"), (14, "the last backup was 14 days ago"),
+                           (15, "STALE -- the last backup was 15 days ago")):
+            CL.save_record(root, CL.BACKUP_RECORD, dict(good, epoch=now.timestamp() - days * 86400))
+            news = CL.backup_news(root, now)
+            assert news[0].startswith(head) and "12 files sent" in news[0] and \
+                "70,000 files" in news[0] and "a test" not in news[0] and \
+                (("more than 14 days" in news[0]) == (days == 15)), (days, news)
+        rec_b.unlink()
+        news = CL.backup_news(root, now)
+        assert news[0].startswith("NO BACKUP on record") and "cloud.py backup" in news[0] and \
+            len(news) == 2, news
+    finally:
+        BW.time = saved_time
+        if saved_env is None:
+            os.environ.pop("GITHUB_ACTIONS", None)
+        else:
+            os.environ["GITHUB_ACTIONS"] = saved_env
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("the entry every Sunday with the captions inbox's settings, written for a checkout "
+                  "in UTF-16 from a template naming no one's; the job backs up, samples when due, "
+                  "records nothing on a dry run, tries a refused backup again, fails loudly and "
+                  "records it whether or not the backup could, fails on a short sample, keeps off "
+                  "GitHub and other checkouts; pull says none, good, failed and STALE past 14 days")
 
 
 @check("cloud", "state has one writer, a cleared refusal stays cleared, and the "

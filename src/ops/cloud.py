@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.29
+# GRANITE_VERSION: 2026-09-25.34
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -14,7 +14,10 @@ The nightly's kit and the laptop's backup, in the project's private R2 bucket.
                                                        back, and its logs, apart (state-up too)
     python3 src/ops/cloud.py kit-release --run RUN     ... and goes into kit/, once that
                                                        run's build has been published
-    python3 src/ops/cloud.py state-down | state-up     the small state files only
+    python3 src/ops/cloud.py state-down | state-up     the small state files only; and
+                                                       state-down's one look at the date of
+                                                       the laptop's backup (THE LAPTOP'S
+                                                       BACKUP, AS THE NIGHT SEES IT)
     python3 src/ops/cloud.py clear-refusal             lift the refusal record the night
                                                        keeps in the bucket (a person's call)
     python3 src/ops/cloud.py site-up --run ID          the night's built site, as one archive,
@@ -22,8 +25,22 @@ The nightly's kit and the laptop's backup, in the project's private R2 bucket.
     python3 src/ops/cloud.py site-down --run ID        ... and back, for the publish job
     python3 src/ops/cloud.py site-down --latest        ... the newest night fit for production
                                                        (the quick preview's baseline; read only)
-    python3 src/ops/cloud.py backup [--dry-run] [--with-site]
-                                                       everything git does not hold
+    python3 src/ops/cloud.py backup [--dry-run] [--with-site] [--extras]
+                                                       everything git does not hold, and
+                                                       first the extras: the repository's
+                                                       bundle, the memory, the scheduled
+                                                       tasks (THE BACKUP'S EXTRAS)
+    python3 src/ops/cloud.py restore DEST [--only PATH ...] [--dry-run]
+                                                       ... and back, into an empty folder,
+                                                       every file checked against the
+                                                       backup's manifest; --only, paths or
+                                                       globs, for a few (THE BACKUP,
+                                                       BROUGHT BACK)
+    python3 src/ops/cloud.py restore --sample N [--dry-run]
+                                                       N files from across the backup,
+                                                       restored, checked and deleted, and
+                                                       the result recorded (A SAMPLE
+                                                       RESTORE, MONTHLY)
     python3 src/ops/cloud.py pull [--dry-run] [--day YYYY-MM-DD] [--changes-only]
                                   [--take PATH ...]    the laptop takes back what the
                                                        nights changed: their files, logs,
@@ -48,7 +65,7 @@ The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
     --local-bucket FOLDER   a folder stands in for the bucket, for testing
     --root FOLDER           the working folder (default: the current one)
-    --workers N             transfers at once (default 8; kit-down 64)
+    --workers N             transfers at once (default 8; kit-down and restore 64)
 
 Run from the repository root. Credentials come from keys.r2(): the
 environment on GitHub's machine, secrets.json on the laptop. Nothing here asks
@@ -113,8 +130,10 @@ On a machine, small state lives under archive/ -- archive/refused.json,
 archive/census.json -- and only the bucket calls it state/. This machine's
 own record lives in archive/cloud/: what kit-down fetched, which build_all.py
 reads as "this folder is built from the kit"; what state-down took, which
-state-up reads so a copy taken down is never sent back over a newer one; and
-a cache of hashes so an unchanged file is not read twice either.
+state-up reads so a copy taken down is never sent back over a newer one; what
+state-down saw of the laptop's backup, which the night's verdict reads
+(backup-seen.json); and a cache of hashes so an unchanged file is not read
+twice either.
 
 THE ONE NIGHT A TERM TURNS OVER: kit-up --hold, kit-release (1 October 2026)
 
@@ -250,7 +269,11 @@ deletes nothing there, and preflight holds its code to that.
 change lists, and nothing else -- except a line saying how old the last full
 pull is and how many of the night's files the bucket's kit manifest has
 changed since, which pull.json's "full" records and preflight holds to 48
-hours on a stood-down laptop.
+hours on a stood-down laptop. Every pull ends with this laptop's own word on
+its backup, read from its records here and never from the bucket: the last
+backup, which every backup but a dry run records in archive/cloud/backup.json
+however it ends (BACKUP FAILED, or STALE past 14 days, as the night warns),
+and the last sample restore (A SAMPLE RESTORE, MONTHLY).
 
 --local-bucket is for tests, and pull refuses it in the stood-down
 repository that holds secrets.json unless --allow-local-bucket says a test
@@ -267,6 +290,67 @@ archive/cloud/refusal-unsent.json saying which, and pull, state-up and
 preflight report it until the bucket holds this refusal or a person lifts it
 here. clear-refusal says when this machine holds a refusal the bucket does
 not, which is the moment a waiting one needs sending.
+
+THE BACKUP'S EXTRAS (16 November 2026)
+
+The backup sends what git does not hold in the working folder, and left out
+.git, which GitHub holds -- but not the local commits and tags no push has
+sent -- and everything outside the folder: Claude Code's memory of the
+owner's decisions, the scheduled Claude tasks' instructions (the morning
+triage's among them) and the Task Scheduler entries that run the laptop's
+jobs. So a backup from the repository that holds secrets.json, or any with
+--extras, first copies them into archive/backup-extras/ (EXTRAS), which it
+then sends like any other file there: a git bundle of every ref, made again
+only when one moved and kept only once git verifies it; the memory folder;
+every granite-* scheduled task's files; and each "Granite Record" entry, as
+schtasks exports it. Each source is only read; a copy is only ever added or
+brought up to date, never removed, since a source that vanished is when its
+copy is wanted; and nothing shaped like a credential is copied, or bundled:
+it is named instead, and fails the backup once the rest has gone. A dry run
+gathers nothing. The comment above gather_extras says the rest. Every backup
+but a dry run records how it ended in archive/cloud/backup.json (THE BACKUP'S
+OWN RECORD), which pull prints, and the laptop's weekly job,
+src/ops/backup_weekly.py under Task Scheduler, runs it every Sunday.
+
+THE BACKUP, BROUGHT BACK: restore (16 November 2026)
+
+backup has sent the laptop's 46 GB to backup/ since 26 September 2026, and
+until this nothing read it back. restore DEST brings it back by
+state/backup-manifest.json, which names every file the backup holds with its
+size, sha256 and date, and it only ever READS the bucket -- it puts, copies
+and deletes nothing there, and preflight holds its code to that, as it holds
+pull's. Each file comes down to DEST/<path> as kit-down takes the kit: to a
+.part beside it, read back against the manifest's size and sha256, and put in
+place with its date only when both match. One that arrives different is kept
+under DEST/_mismatched/<path>, not dropped: its bytes may be all that is left
+of it. DEST must be a folder with nothing in it, or none yet, and outside the
+working folder, where the next backup would send everything brought back as
+new files. --only PATH, as often as wanted, names files as the backup does
+(private/LAUNCH.md) or by glob (private/**), for a look at a few. The last
+line counts what was restored, verified, missing from the bucket and
+mismatched; anything short of every file verified is exit 1, with the first
+few named, and so is an --only that names nothing the backup holds. A file on
+the "never" list is never brought back, and a manifest path that would climb
+out of DEST is refused. It takes no machine lock, which pull and backup do:
+it writes nothing either reads, and a whole restore takes hours that the
+morning triage's pull would otherwise wait out.
+
+A SAMPLE RESTORE, MONTHLY: restore --sample N (16 November 2026)
+
+A restore that works on the day it is tried says nothing of a month later.
+restore --sample N chooses N files from across the backup -- one from each
+folder at the top of the working folder first, then the rest at random, none
+over SAMPLE_FILE_MOST and SAMPLE_BYTES_MOST in all, by a seed that is the day,
+so a day's sample is repeatable -- restores them into a folder of its own in
+the system's temporary space, checked as restore checks every file, and
+deletes the folder. Whatever its end, it records when it ran, how many it
+asked for, chose, restored, verified, found missing or mismatched, and every
+problem, in archive/cloud/restore-sample.json (SAMPLE_RECORD); --dry-run says
+what it would take and records nothing. Every pull prints that record
+(backup_news), a failure as SAMPLE RESTORE FAILED and one older than
+SAMPLE_DAYS and a week as STALE, which is how the morning triage, reading
+pull's lines, hears of it. The laptop's weekly job (src/ops/backup_weekly.py)
+runs one of SAMPLE_FILES when the last good one is SAMPLE_DAYS old.
 
 A PERSON'S SEND OF A NIGHT'S FILE: send-night (17 October 2026)
 
@@ -526,7 +610,8 @@ CHECKPOINT = 300
 # before: 772 seconds the old way; 180 with one GET each (R2Bucket.get_file
 # below) and 32 at once; 155 with 64 at once. The others stay at 8, because
 # they read the laptop's disk or send, where more at once is not what they
-# wait on.
+# wait on -- except restore (16 November 2026), which brings the backup's
+# many small files down as kit-down does the kit's.
 WORKERS = 8
 DOWN_WORKERS = 64
 # How often get_file asks again for a small file whose read broke part way:
@@ -884,6 +969,12 @@ class FolderBucket:
         except (OSError, ValueError):
             return {}
 
+    def modified(self, key):
+        """When the object at key was last written, in seconds since the
+        epoch: its file's date. None where there is none."""
+        p = self._p(key)
+        return p.stat().st_mtime if p.is_file() else None
+
     def put_file(self, src, key, meta):
         dst = self._p(key)
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -940,6 +1031,9 @@ class NotAsked(FolderBucket):
         return {}
 
     def head(self, key):
+        return None
+
+    def modified(self, key):
         return None
 
     def get_bytes(self, key):
@@ -1025,6 +1119,20 @@ class R2Bucket:
                 return None
             raise
         return dict(got.get("Metadata") or {})
+
+    def modified(self, key):
+        """When the object at key was last written, in seconds since the
+        epoch, from one HEAD request; None where there is none."""
+        try:
+            got = self.s3.head_object(Bucket=self.bucket, Key=key)
+        except self.ClientError as e:
+            if self._missing(e):
+                return None
+            raise
+        when = got.get("LastModified")
+        if not hasattr(when, "timestamp"):
+            raise ValueError(f"the HEAD of {key} gave no date it was written")
+        return when.timestamp()
 
     def put_file(self, src, key, meta):
         self.s3.upload_file(str(src), self.bucket, key,
@@ -1997,12 +2105,49 @@ def unsent_after(bucket, root):
             "src/ops/cloud.py send-refusal")
 
 
+# THE LAPTOP'S BACKUP, AS THE NIGHT SEES IT (16 November 2026; the refactor's
+# stage 0, ops item 6). The laptop's backup went to the bucket when a person
+# ran it, and nothing said how old it was. state-down, the night's first read
+# of the bucket, looks once -- one HEAD request of the backup's manifest, which
+# every backup rewrites, never its 70,000 lines -- and leaves what it saw at
+# BACKUP_SEEN for the night's verdict (nightly.backup_warned, which warns past
+# two weeks; preflight holds the two names together): when the manifest was
+# last written, that the bucket holds none, or why the look failed. The look
+# never fails state-down, and a dry state-down records nothing.
+BACKUP_SEEN = f"{LOCAL}/backup-seen.json"
+
+
+def backup_seen(bucket):
+    """What one look at state/backup-manifest.json says, as BACKUP_SEEN keeps
+    it: {"key", "seen", "seen_epoch", "line"}, with "written" and
+    "written_epoch", or "absent", or "error"."""
+    key, now = MANIFEST.format("backup"), time.time()
+    rec = {"key": key, "seen": datetime.fromtimestamp(now).isoformat(timespec="seconds"),
+           "seen_epoch": now}
+    try:
+        when = bucket.modified(key)
+    except Exception as e:                                      # noqa: BLE001
+        rec["error"] = scrub(f"{type(e).__name__}: {e}")[:300]
+        rec["line"] = f"{key} could not be looked at ({rec['error'][:160]})"
+        return rec
+    if when is None:
+        rec["absent"] = True
+        rec["line"] = f"the bucket holds no {key}, so no backup of the laptop has reached it"
+        return rec
+    rec.update(written=datetime.fromtimestamp(when).isoformat(timespec="seconds"),
+               written_epoch=when)
+    rec["line"] = (f"{key} was last written {rec['written']}, {(now - when) / 86400:.1f} days "
+                   "ago: the laptop's last backup")
+    return rec
+
+
 def cmd_state_down(a, root):
     """Each state file the bucket holds comes down, and what it held is
     recorded for state-up. One the bucket lacks is left alone here: an absence
     is not an instruction to delete. One changed here since the last
     state-down, and not yet sent, is left as well: taking the bucket's over it
-    would lose what this machine wrote."""
+    would lose what this machine wrote. And one look at the laptop's backup
+    (THE LAPTOP'S BACKUP, AS THE NIGHT SEES IT)."""
     kit = load_kit(root)
     bucket = open_bucket(a)
     rec = load_state_record(root)
@@ -2042,6 +2187,10 @@ def cmd_state_down(a, root):
     if not a.dry_run:
         save_state_record(root, {"files": base,
                                  "cleared": dict((rec or {}).get("cleared", {}))})
+    seen = backup_seen(bucket)
+    if not a.dry_run:
+        write_whole(local(root, BACKUP_SEEN), json.dumps(seen, indent=1).encode("utf-8"))
+    say(f"  backup: {seen['line']}")
     say(f"state-down{' --dry-run, nothing taken' if a.dry_run else ''}: took {n} "
         f"state files, {human(size)}; {same} already here"
         + (f"; the bucket holds no {', '.join(absent)}" if absent else "")
@@ -2573,6 +2722,308 @@ def cmd_site_down(a, root):
         f"every one accounted for; run {a.run}'s verdict at {SITE_VERDICT}")
 
 
+# ------------------------------------------------------------- the extras ---
+#
+# THE BACKUP'S EXTRAS (16 November 2026; the refactor's stage 0, ops item 7).
+# What the backup could not reach as files git does not hold, copied into
+# EXTRAS before each backup from the repository that holds secrets.json (or
+# with --extras), so that the backup sends them as it sends anything there:
+#
+#   repository.bundle   git bundle --all: every branch, tag and the stash --
+#                       the local commits and tags no push has sent among
+#                       them, which leaving .git out left unsaved -- made
+#                       again only when a ref moved (repository.refs lists
+#                       them as they were), and kept only once git bundle
+#                       verify passes
+#   memory/             Claude Code's memory of the project: every file of
+#                       ~/.claude/projects/<the working folder, as Claude
+#                       Code names it>/memory
+#   scheduled-tasks/    every file of ~/.claude/scheduled-tasks/granite-*/,
+#                       the morning triage's instructions among them
+#   task-scheduler/     each Task Scheduler entry whose name begins "Granite
+#                       Record", as schtasks /query /xml gives it, in the
+#                       UTF-16 that schtasks /create /xml takes back
+#   extras.json         what was gathered, from where, and when
+#
+# Each source is only read. The copies only add: a file gone from its source
+# keeps its last copy here, because a source that has vanished -- the memory
+# after a reinstall, a task deleted -- is when the copy is wanted. And never a
+# secret: every file is read for a credential's shape before it is copied
+# (SECRET_SHAPES: preflight's list, and Resend's, Healthchecks' and R2's), and
+# so is every object of the repository no remote holds before a bundle is
+# made; one that carries a shape is not copied, or no bundle is made, and it
+# is named without its value, which fails the backup once it has sent the
+# rest. Task Scheduler never exports a password, and names an entry's account
+# by number.
+EXTRAS = "archive/backup-extras"
+TASK_PREFIX = "Granite Record"
+SKILL_PREFIX = "granite"
+SECRET_SHAPES = (
+    ("a Google API key", rb"AIza[0-9A-Za-z_\-]{30,}"),
+    ("an OpenAI key", rb"sk-[A-Za-z0-9]{32,}"),
+    ("a GitHub token", rb"gh[pousr]_[A-Za-z0-9]{30,}"),
+    ("a GitHub fine-grained token", rb"github_pat_[A-Za-z0-9_]{40,}"),
+    ("a Slack token", rb"xox[baprs]-[A-Za-z0-9-]{10,}"),
+    ("an AWS access key", rb"AKIA[0-9A-Z]{16}"),
+    ("a private key", rb"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
+    ("a Cloudflare token", rb"CLOUDFLARE_API_TOKEN\s*[:=]\s*[\"']?[A-Za-z0-9_\-]{20,}"),
+    ("a Resend key", rb"\bre_[A-Za-z0-9]{8,}_[A-Za-z0-9]{16,}"),
+    ("a Healthchecks ping address", rb"hc-ping\.com/[A-Za-z0-9_-]{20,}"),
+    ("an R2 secret", rb"R2_SECRET_ACCESS_KEY[\"']?\s*[:=]\s*[\"']?[0-9a-f]{64}"),
+)
+_SHAPES = [(what, re.compile(rx)) for what, rx in SECRET_SHAPES]
+
+
+def secret_in(data):
+    """What `data` (bytes) carries the shape of, or None."""
+    for what, rx in _SHAPES:
+        if rx.search(data):
+            return what
+    return None
+
+
+def claude_home():
+    return Path.home() / ".claude"
+
+
+def memory_folder(root):
+    """Where Claude Code keeps its memory of the project in `root`: it names a
+    project by its folder's path, each character not a letter or a digit a
+    hyphen (D:\\nh is D--nh)."""
+    return claude_home() / "projects" / re.sub(r"[^A-Za-z0-9]", "-", str(Path(root).resolve())) \
+        / "memory"
+
+
+def copy_in(src, dst, data):
+    """`data`, src's bytes, to dst through a .part, with src's date, unless dst
+    holds them already. Whether it wrote."""
+    if dst.is_file() and dst.read_bytes() == data:
+        return False
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dst.with_name(dst.name + ".part")
+    tmp.write_bytes(data)
+    st = src.stat()
+    os.utime(tmp, ns=(st.st_atime_ns, st.st_mtime_ns))
+    os.replace(tmp, dst)
+    return True
+
+
+def gather_folder(src, dst):
+    """Every file under src, copied to dst (THE BACKUP'S EXTRAS: adding only,
+    never a credential): {"files", "bytes", "copied", "kept", "refused":
+    [(path, what)]}, "kept" counting the copies whose source is gone."""
+    got = {"files": 0, "bytes": 0, "copied": 0, "kept": 0, "refused": []}
+    seen = set()
+    for p in sorted(src.rglob("*")):
+        if p.is_symlink() or not p.is_file():
+            continue
+        rel = p.relative_to(src).as_posix()
+        data = p.read_bytes()
+        what = secret_in(data)
+        if what:
+            got["refused"].append((rel, what))
+            continue
+        seen.add(rel)
+        got["files"] += 1
+        got["bytes"] += len(data)
+        got["copied"] += copy_in(p, local(dst, rel), data)
+    if dst.is_dir():
+        got["kept"] = sum(1 for q in dst.rglob("*") if q.is_file() and not q.name.endswith(".part")
+                          and q.relative_to(dst).as_posix() not in seen)
+    return got
+
+
+def local_only_shapes(root, git="git"):
+    """([(path, what)], objects read) for the repository's objects that no
+    remote holds -- what a bundle carries that GitHub does not -- each blob,
+    commit and tag read for a credential's shape; (None, why) where git would
+    not say."""
+    import subprocess
+    r = child.run([git, "-C", str(root), "rev-list", "--objects", "--all", "--not", "--remotes"],
+                  capture_output=True)
+    if r.returncode != 0:
+        return None, (r.stderr or "").strip()[:200] or f"git rev-list exited {r.returncode}"
+    names = {}
+    for ln in r.stdout.splitlines():
+        oid, _, path = ln.partition(" ")
+        if oid:
+            names.setdefault(oid, path)
+    if not names:
+        return [], 0
+    kinds = subprocess.run([git, "-C", str(root), "cat-file", "--batch-check"],
+                           input=("\n".join(names) + "\n").encode(), capture_output=True)
+    if kinds.returncode != 0:
+        return None, kinds.stderr.decode("utf-8", "replace").strip()[:200]
+    read = [ln.split()[0] for ln in kinds.stdout.decode("utf-8", "replace").splitlines()
+            if len(ln.split()) == 3 and ln.split()[1] in ("blob", "commit", "tag")]
+    found = []
+    p = subprocess.Popen([git, "-C", str(root), "cat-file", "--batch"], stdin=subprocess.PIPE,
+                         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    try:
+        for oid in read:
+            p.stdin.write(oid.encode() + b"\n")
+            p.stdin.flush()
+            head = p.stdout.readline().split()
+            data = p.stdout.read(int(head[2])) if len(head) == 3 else b""
+            p.stdout.read(1)
+            what = secret_in(data)
+            if what:
+                found.append((names[oid] or f"the object {oid[:12]}", what))
+    finally:
+        p.stdin.close()
+        p.wait()
+    return found, len(read)
+
+
+def bundle_repository(root, out, git="git"):
+    """repository.bundle and repository.refs in `out` (THE BACKUP'S
+    EXTRAS): ([lines], [problems])."""
+    refs = child.run([git, "-C", str(root), "for-each-ref", "--format=%(objectname) %(refname)"],
+                     capture_output=True)
+    if refs.returncode != 0:
+        return [], [f"the repository's refs would not read ({(refs.stderr or '').strip()[:160]}), "
+                    "so no bundle was made"]
+    head = child.run([git, "-C", str(root), "rev-parse", "HEAD"], capture_output=True)
+    listing = refs.stdout.strip() + "\n" + (f"{head.stdout.strip()} HEAD\n"
+                                            if head.returncode == 0 else "")
+    n = sum(1 for ln in refs.stdout.splitlines() if ln.strip())
+    bundle, refs_file = out / "repository.bundle", out / "repository.refs"
+    if bundle.is_file() and refs_file.is_file() and \
+            refs_file.read_text(encoding="utf-8") == listing:
+        return [f"the repository's bundle: no ref has moved since it was made, so it stands "
+                f"({n:,} refs, {human(bundle.stat().st_size)})"], []
+    found, read = local_only_shapes(root, git)
+    if found is None:
+        return [], [f"the objects only this laptop's repository holds could not be read for a "
+                    f"credential ({read}), so no bundle was made"]
+    if found:
+        return [], [f"no bundle of the repository was made: {len(found)} object(s) no remote holds "
+                    "carry the shape of a credential -- "
+                    + "; ".join(f"{path} looks like {what}" for path, what in found[:4])
+                    + " -- so take it out of the history and change the key; the last bundle stands"]
+    out.mkdir(parents=True, exist_ok=True)
+    tmp = out / "repository.bundle.part"
+    made = child.run([git, "-C", str(root), "bundle", "create", str(tmp), "--all"],
+                     capture_output=True)
+    if made.returncode != 0 or not tmp.is_file():
+        tmp.unlink(missing_ok=True)
+        return [], [f"git bundle create failed ({(made.stderr or '').strip()[-200:]}); the last "
+                    "bundle stands"]
+    ok = child.run([git, "-C", str(root), "bundle", "verify", str(tmp)], capture_output=True)
+    if ok.returncode != 0:
+        tmp.unlink(missing_ok=True)
+        return [], [f"the new bundle did not verify ({(ok.stderr or '').strip()[-200:]}); the "
+                    "last one stands"]
+    os.replace(tmp, bundle)
+    write_whole(refs_file, listing.encode("utf-8"))
+    return [f"the repository's bundle: made, {human(bundle.stat().st_size)}, {n:,} refs, "
+            f"verified; the {read:,} objects no remote holds were read first, and none carries "
+            "a credential's shape"], []
+
+
+def scheduler_entries():
+    """{name: XML text} for each Task Scheduler entry whose name begins
+    TASK_PREFIX, as schtasks /query /xml gives it, its doubled line ends made
+    single; None where there is no schtasks (not Windows)."""
+    import csv
+    import io
+    import subprocess
+    exe = shutil.which("schtasks")
+    if not exe:
+        return None
+    enc = "oem" if os.name == "nt" else "utf-8"
+    r = subprocess.run([exe, "/query", "/fo", "csv", "/nh"], capture_output=True)
+    if r.returncode != 0:
+        raise OSError(f"schtasks /query exited {r.returncode}")
+    names = sorted({row[0] for row in csv.reader(io.StringIO(r.stdout.decode(enc, "replace")))
+                    if row and row[0].rsplit("\\", 1)[-1].startswith(TASK_PREFIX)})
+    out = {}
+    for name in names:
+        x = subprocess.run([exe, "/query", "/tn", name, "/xml"], capture_output=True)
+        if x.returncode != 0:
+            raise OSError(f"schtasks /query /tn {name!r} /xml exited {x.returncode}")
+        out[name] = x.stdout.decode(enc, "replace").replace("\r\r\n", "\r\n")
+    return out
+
+
+def gather_extras(root, memory=None, tasks=None, scheduler=None, git="git"):
+    """THE BACKUP'S EXTRAS, copied into EXTRAS under root: {"lines",
+    "problems", "bytes"}. Nothing here stops the backup: a part that fails is
+    a problem, said, and the backup sends the rest and then fails on it.
+    `memory`, `tasks` and `scheduler` stand in for the memory folder, the
+    scheduled tasks' folder and scheduler_entries in a check."""
+    out = local(root, EXTRAS)
+    lines, problems = [], []
+    memory = memory_folder(root) if memory is None else Path(memory)
+    tasks = claude_home() / "scheduled-tasks" if tasks is None else Path(tasks)
+    scheduler = scheduler_entries if scheduler is None else scheduler
+    index = {"gathered": datetime.now().isoformat(timespec="seconds"),
+             "from": {"repository": str(Path(root).resolve()), "memory": str(memory),
+                      "scheduled_tasks": str(tasks)}}
+    try:
+        got, bad = bundle_repository(root, out, git)
+        lines += got
+        problems += bad
+    except (OSError, ValueError) as e:
+        problems.append(f"the repository's bundle: {type(e).__name__}: {e}")
+
+    def folder(label, src, dst, key):
+        if not src.is_dir():
+            lines.append(f"{label}: none at {src}"
+                         + (", so the copy here stands" if dst.is_dir() else ""))
+            return
+        try:
+            g = gather_folder(src, dst)
+        except OSError as e:
+            problems.append(f"{label}: {type(e).__name__}: {e}")
+            return
+        index[key] = {k: v for k, v in g.items() if k != "refused"}
+        lines.append(f"{label}: {g['files']:,} files, {human(g['bytes'])}, {g['copied']:,} copied "
+                     "anew" + (f"; {g['kept']:,} kept whose source is gone" if g["kept"] else ""))
+        problems.extend(f"{label}: {rel} was not copied, as it looks like it holds {what}"
+                        for rel, what in g["refused"])
+    folder("the memory folder", memory, out / "memory", "memory")
+    try:
+        picked = sorted(p for p in tasks.iterdir()
+                        if p.is_dir() and p.name.startswith(SKILL_PREFIX)) if tasks.is_dir() else []
+    except OSError as e:
+        picked = []
+        problems.append(f"the scheduled tasks: {type(e).__name__}: {e}")
+    if not picked:
+        lines.append(f"the scheduled tasks: none named {SKILL_PREFIX}* at {tasks}")
+    for p in picked:
+        folder(f"the scheduled task {p.name}", p, out / "scheduled-tasks" / p.name, f"task {p.name}")
+    try:
+        entries = scheduler()
+    except OSError as e:
+        entries = {}
+        problems.append(f"Task Scheduler would not list its entries ({e})")
+    if entries is None:
+        lines.append("Task Scheduler: not on this machine")
+    else:
+        written = 0
+        for name, text in sorted(entries.items()):
+            what = secret_in(text.encode("utf-8"))
+            if what:
+                problems.append(f"Task Scheduler's {name.strip(chr(92))!r} was not copied, as it "
+                                f"looks like it holds {what}")
+                continue
+            dst = out / "task-scheduler" / (re.sub(r'[\\/:*?"<>|]+', "-", name.strip("\\")) + ".xml")
+            if not (dst.is_file() and dst.read_bytes().decode("utf-16", "replace") == text):
+                write_whole(dst, text.encode("utf-16"))
+                written += 1
+        index["task_scheduler"] = sorted(entries)
+        lines.append(f"Task Scheduler: {len(entries)} entr{'y' if len(entries) == 1 else 'ies'} "
+                     f"named {TASK_PREFIX}*, {written} written anew"
+                     + (f" ({'; '.join(n.strip(chr(92)) for n in sorted(entries))})"
+                        if entries else ""))
+    index["problems"] = problems
+    write_whole(out / "extras.json", json.dumps(index, indent=1).encode("utf-8"))
+    total = sum(p.stat().st_size for p in out.rglob("*") if p.is_file())
+    lines.append(f"{human(total)} in {EXTRAS}/ in all, which the backup sends with the rest")
+    return {"lines": lines, "problems": problems, "bytes": total}
+
+
 def tracked_files(root):
     try:
         r = child.run(["git", "-C", str(root), "ls-files", "-z"], capture_output=True)
@@ -2611,11 +3062,58 @@ def backup_files(root, kit, with_site):
     return sorted(out)
 
 
+# THE BACKUP'S OWN RECORD (16 November 2026; the refactor's stage 0, ops item
+# 6). Every backup but a dry run records how it ended at BACKUP_RECORD: when,
+# what it sent, what the manifest holds after it, and the sentence it failed
+# with -- which every pull prints (backup_news), as STALE past BACKUP_DAYS like
+# the night's warning (nightly.BACKUP_DAYS, which preflight holds to this),
+# and which the laptop's weekly job writes itself where the backup could not
+# (src/ops/backup_weekly.py).
+BACKUP_RECORD = f"{LOCAL}/backup.json"
+BACKUP_DAYS = 14
+
+
 def cmd_backup(a, root):
+    """Everything here git does not hold, to backup/, the extras first; every
+    run but a dry one recorded at BACKUP_RECORD, however it ends."""
+    if a.dry_run:
+        return backup_now(a, root, {})
+    t0 = time.time()
+    rec = {"at": datetime.now().isoformat(timespec="seconds"), "epoch": t0, "ok": False}
+    try:
+        backup_now(a, root, rec)
+        rec["ok"] = True
+    except BaseException as e:                                  # noqa: BLE001
+        rec["said"] = scrub(e if isinstance(e, Failed) else
+                            "interrupted" if isinstance(e, KeyboardInterrupt) else
+                            f"{type(e).__name__}: {e}")[:600]
+        raise
+    finally:
+        rec["seconds"] = round(time.time() - t0, 1)
+        save_record(root, BACKUP_RECORD, rec)
+
+
+def backup_now(a, root, rec):
+    """The backup itself (cmd_backup), filling `rec` as it goes."""
     kit = load_kit(root)
     quiet_disk(root)
+    # THE BACKUP'S EXTRAS first, so that this backup sends them.
+    extras = {"problems": []}
+    if a.dry_run:
+        say("backup: the extras are not gathered on a dry run; a backup gathers them first")
+    elif a.extras or home(root):
+        say(f"backup: the extras first, into {EXTRAS}/")
+        extras = gather_extras(root)
+        for ln in extras["lines"]:
+            say(f"  {ln}")
+        for p in extras["problems"]:
+            say(f"  NOT GATHERED -- {p}")
+    else:
+        say("backup: the extras are not gathered, as this is not the repository that holds "
+            "secrets.json (--extras gathers them here)")
     rels = backup_files(root, kit, a.with_site)
     bucket = open_bucket(a, preview=True)
+    rec["bucket"] = {"kind": bucket.kind, "name": bucket.name}
     hashes = Hashes(root)
     say(f"backup: {len(rels):,} files here that git does not hold"
         + ("" if a.with_site else ", site/ left out") + "; reading them")
@@ -2635,6 +3133,7 @@ def cmd_backup(a, root):
             and not local(root, r).exists()
             and (a.with_site or not r.startswith("site/"))]
     total = sum(e["size"] for e in entries.values())
+    rec.update(files=len(entries), bytes=total, extras=extras.get("bytes"))
     say(f"  {'first backup to' if man is None else 'changes since the last backup to'} "
         f"{bucket.describe()}: {len(entries):,} files, {human(total)} here")
     sz = sizes_of(entries)
@@ -2675,11 +3174,400 @@ def cmd_backup(a, root):
         f"{len(removed):,} moved to replaced/; {rep.n:,} older copies kept under "
         f"replaced/{day}/")
     say(f"  {MANIFEST.format('backup')}: {doc['count']:,} files, {human(doc['bytes'])}")
+    rec.update(sent=len(sent), sent_bytes=sum(e["size"] for e in sent.values()),
+               unchanged=len(same), moved=len(removed),
+               manifest={"count": doc["count"], "bytes": doc["bytes"]})
     fails = unread + fails
-    if fails:
-        raise Failed(f"{len(fails)} files did not go, so the backup is short: "
-                     f"{'; '.join(fails[:4])}. Run backup again: what did send is "
-                     "recorded and will not go twice.")
+    short = extras["problems"]
+    if fails or short:
+        raise Failed(" ".join(
+            ([f"{len(fails)} files did not go, so the backup is short: "
+              f"{'; '.join(fails[:4])}. Run backup again: what did send is "
+              "recorded and will not go twice."] if fails else [])
+            + ([f"The backup went, and its extras are short: {'; '.join(short[:3])}."]
+               if short else [])))
+
+
+# ---------------------------------------------------------------- restore ---
+#
+# THE BACKUP, BROUGHT BACK (16 November 2026). READ-ONLY TOWARDS THE BUCKET:
+# nothing below puts, copies or deletes an object there, and preflight reads
+# every function cmd_restore reaches to hold it to that, as it does pull's.
+
+# Where a file that arrived different from the manifest is kept, under DEST.
+MISMATCHED = "_mismatched"
+
+
+def plain_rel(p):
+    """Whether `p` is a relative /-path that cannot climb out of the folder it
+    is joined to: what a manifest path must be before anything is written for
+    it. No colon either, which on Windows names a file's hidden stream."""
+    return (isinstance(p, str) and bool(p) and "\\" not in p and ":" not in p
+            and not p.startswith("/")
+            and not any(s in ("", ".", "..") for s in p.split("/")))
+
+
+def restore_select(files, only):
+    """({path: entry} of the manifest's `files` that `only` names, [each of
+    `only` that names none]). An --only is a path as the backup names it --
+    a backslash or a leading ./ is read as the person meant it -- or a glob
+    over those paths (glob_re). No `only` is every file."""
+    if not only:
+        return dict(files), []
+    pats = []
+    for p in only:
+        p = p.replace("\\", "/")
+        while p.startswith("./"):
+            p = p[2:]
+        pats.append((p, glob_re(p)))
+    picked = {rel: e for rel, e in files.items()
+              if any(rel == p or rx.match(rel) for p, rx in pats)}
+    unmatched = [p for p, rx in pats if not any(rel == p or rx.match(rel) for rel in picked)]
+    return picked, unmatched
+
+
+def empty_dest(dest, root):
+    """DEST, resolved, once it is safe to restore into: a folder with nothing
+    in it, or none yet, and not the working folder or inside it."""
+    d, r = Path(dest).resolve(), Path(root).resolve()
+    if d == r or r in d.parents:
+        raise Failed(f"{dest} is inside the working folder ({r}). restore writes only "
+                     "outside it: the next backup would send everything brought back "
+                     "there as new files. Name a folder elsewhere.")
+    if d.exists() and not d.is_dir():
+        raise Failed(f"{dest} is a file. restore writes into an empty folder.")
+    if d.is_dir() and any(d.iterdir()):
+        raise Failed(f"{dest} is not empty. restore writes only into an empty folder, so "
+                     "nothing in it is overwritten or mixed with what comes back: name a "
+                     "new folder, or empty this one.")
+    return d
+
+
+def open_to_read(a):
+    """The bucket, for a command that only reads it: a --local-bucket folder
+    that is not there is not made, and reads as empty."""
+    if a.local_bucket:
+        return FolderBucket(a.local_bucket, create=False)
+    try:
+        return make_bucket(None, a.workers)
+    except (Failed, SystemExit) as e:
+        raise Failed(str(e))
+
+
+def restore_into(bucket, dest, picked, listed, workers):
+    """Each of `picked` ({path: manifest entry}) from backup/<path> to
+    dest/<path>, checked as kit-down checks the kit: to a .part, its size and
+    sha256 read back, and put in place with the manifest's date only when both
+    match. One that arrives different goes to dest/_mismatched/<path>.
+    `listed` is the bucket's listing of backup/, which tells a file the
+    bucket does not hold from one it could not send. Returns {"verified":
+    [paths], "mismatched": [(path, why)], "missing": [paths], "failed":
+    [(path, why)], "bytes": bytes verified}."""
+    out = {"verified": [], "mismatched": [], "missing": [], "failed": [], "bytes": 0}
+    todo = {}
+    for rel, ent in picked.items():
+        if f"backup/{rel}" in listed:
+            todo[rel] = ent
+        else:
+            out["missing"].append(rel)
+    lock = threading.Lock()
+    prog = Progress("restored", len(todo), sum(e["size"] for e in todo.values()))
+
+    def one(item):
+        rel, ent = item
+        dst = local(dest, rel)
+        tmp = dst.with_name(dst.name + ".part")
+        try:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            bucket.get_file(f"backup/{rel}", tmp, size=ent["size"])
+            size, sha = tmp.stat().st_size, sha256_of(tmp)
+            if size != ent["size"] or sha != ent["sha256"]:
+                aside = local(dest, f"{MISMATCHED}/{rel}")
+                aside.parent.mkdir(parents=True, exist_ok=True)
+                os.replace(tmp, aside)
+                with lock:
+                    out["mismatched"].append(
+                        (rel, f"arrived as {size:,} bytes, sha256 {sha[:12]}; the manifest says "
+                              f"{ent['size']:,}, {ent['sha256'][:12]}"))
+                return
+            os.replace(tmp, dst)
+            ns = int(ent.get("mtime_ns") or 0)
+            if ns:
+                os.utime(dst, ns=(ns, ns))
+        except Exception as e:                                  # noqa: BLE001
+            tmp.unlink(missing_ok=True)
+            with lock:
+                out["failed"].append((rel, f"{type(e).__name__}: {e}"))
+            return
+        with lock:
+            out["verified"].append(rel)
+            out["bytes"] += size
+        prog.tick(size)
+    # The largest first, as kit-down takes them, so the few big files are
+    # under way while the many small ones come down beside them.
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        list(ex.map(one, sorted(todo.items(), key=lambda kv: (-kv[1]["size"], kv[0]))))
+    for k in ("verified", "mismatched", "missing", "failed"):
+        out[k].sort()
+    return out
+
+
+def restore_said(got, asked, where):
+    """The last line's counts, and [problems], for what restore_into brought."""
+    v, m, gone, bad = (len(got[k]) for k in ("verified", "mismatched", "missing", "failed"))
+    line = (f"of {asked:,} files asked for, {v + m:,} restored, {v:,} verified against the "
+            f"manifest's size and sha256 ({human(got['bytes'])}), {m:,} mismatched"
+            + (f" (kept under {Path(where) / MISMATCHED})" if m and where else "")
+            + f"; {gone:,} missing from the bucket; {bad:,} could not be read")
+    problems = ([f"{rel} is in the manifest and not in the bucket" for rel in got["missing"]]
+                + [f"{rel} {why}" for rel, why in got["mismatched"]]
+                + [f"{rel} could not be read ({why})" for rel, why in got["failed"]])
+    return line, problems
+
+
+def cmd_restore(a, root):
+    """The backup, brought back into an empty folder (THE BACKUP, BROUGHT
+    BACK), or a sample of it (A SAMPLE RESTORE, MONTHLY). Reads the bucket
+    and nothing else."""
+    if getattr(a, "sample", None) is not None:
+        return restore_sample(a, root)
+    if len(a.paths) != 1:
+        raise Failed("restore takes one DEST, the empty folder the backup comes back into: "
+                     "python3 src/ops/cloud.py restore DEST [--only PATH ...]")
+    dest = empty_dest(a.paths[0], root)
+    kit = load_kit(root)
+    bucket = open_to_read(a)
+    man, _ = read_manifest(bucket, "backup")
+    if man is None:
+        raise Failed(f"{bucket.describe()} has no {MANIFEST.format('backup')}, so it holds no "
+                     "backup to restore: python3 src/ops/cloud.py backup sends one.")
+    picked, unmatched = restore_select(man["files"], a.only)
+    never = never_rx(kit)
+    held = sorted(r for r in picked if any(rx.match(r) for rx in never))
+    climbs = sorted(r for r in picked if not plain_rel(r))
+    for r in held + climbs:
+        picked.pop(r, None)
+    say(f"restore: {len(picked):,} of the backup's {len(man['files']):,} files, "
+        f"{human(sum(e['size'] for e in picked.values()))}, from backup/ of "
+        f"{bucket.describe()} (its manifest written {man.get('written') or '?'} by "
+        f"{man.get('by') or '?'}), into {dest}")
+    if held:
+        show("on the never list, and not brought back", held, sizes_of(man["files"]))
+    if climbs:
+        show("named as a path that would climb out of DEST, and refused", climbs, {})
+    for p in unmatched:
+        say(f"  --only {p} names nothing the backup holds")
+    listed = bucket.list("backup/")
+    if a.dry_run:
+        gone = [r for r in picked if f"backup/{r}" not in listed]
+        show("missing from the bucket", gone, sizes_of(man["files"]))
+        say(f"--dry-run: nothing restored. {len(picked) - len(gone):,} files, "
+            f"{human(sum(e['size'] for r, e in picked.items() if r not in gone))} would come "
+            f"down into {dest}; {len(gone):,} the bucket does not hold.")
+        return
+    if not picked:
+        raise Failed("nothing to restore: " + ("--only named nothing the backup holds"
+                                               if a.only else "the manifest names no file")
+                     + ". Nothing was written.")
+    dest.mkdir(parents=True, exist_ok=True)
+    got = restore_into(bucket, dest, picked, listed, a.workers)
+    line, problems = restore_said(got, len(picked), dest)
+    say(f"restore: {line}")
+    problems += [f"--only {p} names nothing the backup holds" for p in unmatched]
+    problems += [f"{r} is a path that would climb out of DEST" for r in climbs]
+    if problems:
+        raise Failed(f"{len(problems)} of what was asked for did not come back whole: "
+                     + "; ".join(problems[:4]) + (" ..." if len(problems) > 4 else "")
+                     + f". What did is in {dest}, each file checked.")
+
+
+# A SAMPLE RESTORE, MONTHLY (16 November 2026; the refactor's stage 0, ops item
+# 5): the module docstring says what it does. Its record, which pull prints
+# (backup_news); how many the laptop's weekly job asks for, and how old the
+# last good one may be before that job runs another.
+SAMPLE_RECORD = f"{LOCAL}/restore-sample.json"
+SAMPLE_FILES = 50
+SAMPLE_DAYS = 28
+# No file over a quarter of a gigabyte, and two in all: a sample proves the
+# way back, file by file, and a few large files would be most of its time.
+SAMPLE_FILE_MOST = 256 * MB
+SAMPLE_BYTES_MOST = 2048 * MB
+
+
+def sample_of(files, n, seed, file_most=SAMPLE_FILE_MOST, bytes_most=SAMPLE_BYTES_MOST):
+    """N paths of `files` ({path: entry}), chosen across the backup: one from
+    each folder at the top of the working folder first (the root's own files
+    counting as one), in an order the seed shuffles, then the rest at random
+    from all that is left; none over `file_most` bytes, and `bytes_most` in
+    all. The same seed chooses the same files."""
+    import random
+    rng = random.Random(seed)
+    groups = {}
+    for rel in sorted(files):
+        if files[rel]["size"] <= file_most:
+            groups.setdefault(rel.split("/", 1)[0] if "/" in rel else "", []).append(rel)
+    picked, total = [], [0]
+
+    def take(rel):
+        if len(picked) < n and total[0] + files[rel]["size"] <= bytes_most:
+            picked.append(rel)
+            total[0] += files[rel]["size"]
+    names = sorted(groups)
+    rng.shuffle(names)
+    for name in names:
+        take(rng.choice(groups[name]))
+    chosen = set(picked)
+    rest = [rel for name in sorted(groups) for rel in groups[name] if rel not in chosen]
+    rng.shuffle(rest)
+    for rel in rest:
+        if len(picked) >= n:
+            break
+        take(rel)
+    return sorted(picked)
+
+
+def save_record(root, rel, rec):
+    """One of this machine's records under archive/cloud/, whole or not at all."""
+    write_whole(local(root, rel), json.dumps(rec, indent=1).encode("utf-8"))
+
+
+def read_record(root, rel):
+    """One of this machine's records, or None where it is not there or will not read."""
+    try:
+        d = json.loads(local(root, rel).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return d if isinstance(d, dict) else None
+
+
+def restore_sample(a, root):
+    """restore --sample N (A SAMPLE RESTORE, MONTHLY): reads the bucket and
+    nothing else, writes only a folder of its own, which it deletes, and its
+    record, whatever its end."""
+    import tempfile
+    if a.paths or a.only:
+        raise Failed("--sample chooses its own files and restores them into a folder of its "
+                     "own, which it deletes: give it no DEST and no --only")
+    if a.sample < 1:
+        raise Failed("--sample takes how many files to restore, 1 or more")
+    t0, now = time.time(), datetime.now()
+    rec = {"at": now.isoformat(timespec="seconds"), "epoch": t0, "asked": a.sample,
+           "seed": f"{now:%Y-%m-%d}", "ok": False}
+    folder = None
+    try:
+        kit = load_kit(root)
+        bucket = open_to_read(a)
+        rec["bucket"] = {"kind": bucket.kind, "name": bucket.name}
+        man, _ = read_manifest(bucket, "backup")
+        if man is None:
+            raise Failed(f"{bucket.describe()} has no {MANIFEST.format('backup')}, so it holds "
+                         "no backup to sample: python3 src/ops/cloud.py backup sends one.")
+        rec["manifest"] = {"written": man.get("written"), "by": man.get("by"),
+                           "count": len(man["files"]),
+                           "bytes": sum(e["size"] for e in man["files"].values())}
+        never = never_rx(kit)
+        files = {r: e for r, e in man["files"].items()
+                 if plain_rel(r) and not any(rx.match(r) for rx in never)}
+        picked = sample_of(files, a.sample, rec["seed"])
+        tops = sorted({r.split("/", 1)[0] if "/" in r else "(the root)" for r in picked})
+        rec.update(picked=len(picked), folders=len(tops),
+                   picked_bytes=sum(files[r]["size"] for r in picked))
+        say(f"restore --sample: {len(picked):,} of the backup's {len(man['files']):,} files, "
+            f"{human(rec['picked_bytes'])}, from {len(tops)} of its folders "
+            f"({', '.join(tops[:8])}{', ...' if len(tops) > 8 else ''}), from backup/ of "
+            f"{bucket.describe()} (its manifest written {man.get('written') or '?'})")
+        if not picked:
+            raise Failed("the backup's manifest names no file a sample could take")
+        if a.dry_run:
+            show("would be restored and checked", picked, sizes_of(files))
+            say("--dry-run: nothing restored and nothing recorded.")
+            return
+        listed = bucket.list("backup/")
+        folder = Path(tempfile.mkdtemp(prefix="granite-restore-sample-"))
+        rec["folder"] = str(folder)
+        got = restore_into(bucket, folder, {r: files[r] for r in picked}, listed, a.workers)
+        line, problems = restore_said(got, len(picked), None)
+        rec.update({k: len(got[k]) for k in ("verified", "mismatched", "missing", "failed")})
+        rec.update(restored=rec["verified"] + rec["mismatched"], bytes=got["bytes"],
+                   problems=problems[:8], line=line)
+        say(f"restore --sample: {line}")
+        if problems:
+            raise Failed(f"the sample restore found {len(problems)} of {len(picked)} files short: "
+                         + "; ".join(problems[:4]) + (" ..." if len(problems) > 4 else ""))
+        rec["ok"] = True
+    except Failed as e:
+        rec["said"] = scrub(e)[:600]
+        raise
+    except Exception as e:                                      # noqa: BLE001
+        rec["said"] = scrub(f"{type(e).__name__}: {e}")[:600]
+        raise
+    finally:
+        if folder is not None:
+            shutil.rmtree(folder, ignore_errors=True)
+            rec["removed"] = not folder.exists()
+            if not rec["removed"]:
+                say(f"  the sample's folder could not all be removed: {folder}")
+        rec["seconds"] = round(time.time() - t0, 1)
+        if not a.dry_run:
+            save_record(root, SAMPLE_RECORD, rec)
+
+
+def backup_news(root, now):
+    """pull's word on this laptop's own backup, from its records here and
+    nothing of the bucket, in two lines: the last backup (THE BACKUP'S OWN
+    RECORD), a failure as BACKUP FAILED and one more than BACKUP_DAYS old as
+    STALE; and the last sample restore (A SAMPLE RESTORE, MONTHLY), a failure
+    as SAMPLE RESTORE FAILED and one more than a week past due as STALE. The
+    morning triage reads them in pull's lines."""
+    return [backup_line(root, now), sample_line(root, now)]
+
+
+def _days_since(rec, now):
+    return max(0.0, (now.timestamp() - float(rec.get("epoch") or 0)) / 86400)
+
+
+def _a_test(rec):
+    """What a line adds for a record of a folder standing in for the bucket."""
+    return ("" if (rec.get("bucket") or {}).get("kind") in (None, "r2") else
+            "; it was a test against a folder, not the real bucket")
+
+
+def backup_line(root, now):
+    """backup_news's line on the last backup (THE BACKUP'S OWN RECORD)."""
+    rec = read_record(root, BACKUP_RECORD)
+    if not rec:
+        return (f"NO BACKUP on record here ({BACKUP_RECORD}), which every backup has written since "
+                "16 November 2026: python3 src/ops/cloud.py backup")
+    days, test = _days_since(rec, now), _a_test(rec)
+    if not rec.get("ok"):
+        return (f"BACKUP FAILED -- the last one, {days:.0f} days ago ({rec.get('at')}): "
+                f"{str(rec.get('said') or 'it recorded no reason')[:300]}{test}")
+    man = rec.get("manifest") or {}
+    said = (f"the last backup was {days:.0f} days ago ({rec.get('at')}): "
+            f"{int(rec.get('sent') or 0):,} files sent, {human(rec.get('sent_bytes') or 0)}; the "
+            f"backup holds {int(man.get('count') or 0):,} files, {human(man.get('bytes') or 0)}{test}")
+    if days > BACKUP_DAYS:
+        return f"STALE -- {said}; more than {BACKUP_DAYS} days: python3 src/ops/cloud.py backup"
+    return said
+
+
+def sample_line(root, now):
+    """backup_news's line on the last sample restore (A SAMPLE RESTORE, MONTHLY)."""
+    rec = read_record(root, SAMPLE_RECORD)
+    if not rec:
+        return (f"NO SAMPLE RESTORE on record here ({SAMPLE_RECORD}): python3 src/ops/cloud.py "
+                f"restore --sample {SAMPLE_FILES} tries {SAMPLE_FILES} of the backup's files")
+    days, test = _days_since(rec, now), _a_test(rec)
+    if not rec.get("ok"):
+        return (f"SAMPLE RESTORE FAILED -- the last one, {days:.0f} days ago ({rec.get('at')}): "
+                f"{str(rec.get('said') or 'it recorded no reason')[:300]}{test}")
+    said = (f"the last sample restore was {days:.0f} days ago ({rec.get('at')}): "
+            f"{rec.get('verified', 0)} of {rec.get('picked', 0)} files verified, from "
+            f"{rec.get('folders', 0)} folders of the backup{test}")
+    if days > SAMPLE_DAYS + 7:
+        return (f"STALE -- {said}; one is due every {SAMPLE_DAYS} days: python3 src/ops/cloud.py "
+                f"restore --sample {SAMPLE_FILES}")
+    return said
 
 
 # ------------------------------------------------------------------- pull ---
@@ -3348,6 +4236,11 @@ def cmd_pull(a, root):
     if not a.changes_only:
         for ln in pull_livestream_state(bucket, root, kit, a.dry_run):
             say(f"  {ln}")
+
+    # 6. THIS LAPTOP'S OWN BACKUP, from its records here: never a failure of
+    # the pull's, and never a read of the bucket.
+    for ln in backup_news(root, now):
+        say(f"  backup: {ln}")
 
     stray = sorted(take - set(k["taking"] if k else []) - set(taken))
     if stray:
@@ -4134,7 +5027,8 @@ COMMANDS = {"kit-list": cmd_kit_list, "seed-kit": cmd_seed_kit,
             "clear-refusal": cmd_clear_refusal,
             "site-up": cmd_site_up, "site-down": cmd_site_down,
             "kit-release": cmd_kit_release,
-            "backup": cmd_backup, "pull": cmd_pull, "send-refusal": cmd_send_refusal,
+            "backup": cmd_backup, "restore": cmd_restore,
+            "pull": cmd_pull, "send-refusal": cmd_send_refusal,
             "send-night": cmd_send_night,
             "inbox-down": cmd_inbox_down, "inbox-clear": cmd_inbox_clear,
             "sources-up": lambda a, root: _sources("up", a, root),
@@ -4157,7 +5051,7 @@ def main(argv=None):
     ap.add_argument("command", choices=sorted(COMMANDS))
     ap.add_argument("paths", nargs="*", metavar="PATH",
                     help="send-night: the night's kit files to send, as cloud_kit.json "
-                         "names them")
+                         "names them; restore: DEST, the empty folder it restores into")
     ap.add_argument("--from", dest="from_files", action="append", metavar="FILE",
                     help="send-night: send this file as the PATH in the same place, instead "
                          "of this laptop's copy; once for each PATH, in order")
@@ -4169,13 +5063,17 @@ def main(argv=None):
     ap.add_argument("--sizes", action="store_true", help="kit-list: with sizes")
     ap.add_argument("--with-site", action="store_true",
                     help="backup: include the built site/, which it leaves out")
+    ap.add_argument("--extras", action="store_true",
+                    help="backup: gather the extras here too; a backup gathers them of itself "
+                         "only in the repository that holds secrets.json")
     ap.add_argument("--allow-removals", action="store_true",
                     help="move more files to replaced/ than a normal run would")
     ap.add_argument("--local-bucket", metavar="FOLDER",
                     help="use a folder as the bucket (testing; no credentials)")
     ap.add_argument("--root", default=".", help="the working folder")
     ap.add_argument("--workers", type=int, default=None,
-                    help=f"transfers at once (default {WORKERS}; kit-down {DOWN_WORKERS})")
+                    help=f"transfers at once (default {WORKERS}; kit-down and restore "
+                         f"{DOWN_WORKERS})")
     ap.add_argument("--run", help="site-up, site-down, kit-release: the night's run id "
                                   "(GitHub's run id), which names nights/<run>/")
     ap.add_argument("--latest", action="store_true",
@@ -4198,32 +5096,40 @@ def main(argv=None):
     ap.add_argument("--changes-only", action="store_true",
                     help="pull: the refusal, the verdicts and the change lists, and "
                          "nothing else (the morning triage's)")
-    ap.add_argument("--only", nargs="+", metavar="GLOB",
+    ap.add_argument("--only", nargs="+", action="extend", metavar="GLOB",
                     help="seed-kit: send only the kit files these globs name; every "
-                         "other change waits")
+                         "other change waits; restore: bring back only the files these "
+                         "paths or globs name. As often as wanted")
     ap.add_argument("--take", nargs="+", metavar="PATH",
                     help="pull: set this laptop's copy of each named clash aside under "
                          f"{SET_ASIDE}/<day>/ and take the bucket's")
+    ap.add_argument("--sample", type=int, metavar="N",
+                    help="restore: N files chosen across the backup, restored into a folder "
+                         "of their own, checked, deleted, and the result recorded at "
+                         f"{SAMPLE_RECORD}")
     ap.add_argument("--allow-local-bucket", action="store_true",
                     help="tests only: let pull or send-night --local-bucket run in the "
                          "stood-down repository that holds secrets.json (pull's read of the "
                          "refusal record still never counts)")
     a = ap.parse_args(argv)
-    if a.paths and a.command != "send-night":
-        ap.error(f"{a.command} takes no PATH; only send-night does (pull names its paths "
-                 "with --take)")
+    if a.paths and a.command not in ("send-night", "restore"):
+        ap.error(f"{a.command} takes no PATH; only send-night and restore do (pull names its "
+                 "paths with --take)")
     if a.workers is None:
-        a.workers = DOWN_WORKERS if a.command == "kit-down" else WORKERS
+        a.workers = DOWN_WORKERS if a.command in ("kit-down", "restore") else WORKERS
     root = Path(a.root).resolve()
     t0 = time.time()
     try:
         if a.command == "kit-list":
             cmd_kit_list(a, root)
-        elif a.command in ("pull", "send-night", "inbox-down", "inbox-clear") and a.dry_run:
+        elif a.command in ("pull", "send-night", "inbox-down", "inbox-clear") and a.dry_run \
+                or a.command == "restore":
             # A dry pull writes nothing, so there is no writer for the lock to
             # keep out -- and taking it would make archive/cloud/, a folder a
             # dry run has no business making. A dry send-night writes nothing
             # either, nor a dry inbox-down or inbox-clear (17 October 2026).
+            # Nor does restore write anything another command reads, and a
+            # whole one takes hours (16 November 2026).
             COMMANDS[a.command](a, root)
         else:
             with machine_lock(root):
