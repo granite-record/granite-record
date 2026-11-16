@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.6
+# GRANITE_VERSION: 2026-11-08.7
 """
 A provisional page for each new member-elect: who they are until the General
 Court numbers them.
@@ -10,7 +10,11 @@ Alice, 7 November 2026: "create their pages with just their name and
 district and fill in information as it comes in". The design is
 docs/design/requests-members/DESIGN.md, 3 (on design/api), and her answers
 to it: the pages are noindex until the person is numbered (B2), and they
-stay past Organization Day until then (B3).
+stay past Organization Day until then (B3). And the owner, 16 November 2026:
+"members elect should have pages that are labeled as such with whatever
+information that is possible to fill out like district and whether they have
+filed any LSRs yet" -- so each entry carries the result of the race that
+elected them as well, and the source it was read from.
 
 WHAT THIS WRITES
 
@@ -18,9 +22,18 @@ WHAT THIS WRITES
                           [...], "moved"}, one entry in "pages" for each new
                           member-elect with a page: slug, name as the results
                           print it, party, chamber, county, district, race and
-                          towns, and "prior" ({"terms", "seat"}) where the
-                          person confirmed their earlier service in the hand
-                          file (build_members_elect.apply_prior). Nothing
+                          towns; "result", their race's row as a member's
+                          Elections tab has it (build_member_elections.
+                          race_row: the election, the race, "won", the votes,
+                          the seats, the place and, for one seat, the share,
+                          "rc" where the count is a recount's and "rq" where a
+                          recount was asked for), with "nf", the seats of the
+                          race not final, where there are any; "source", the
+                          address of the Secretary of State's results and the
+                          day the file the race was read from was saved
+                          (race_source); and "prior" ({"terms", "seat"}) where
+                          the person confirmed their earlier service in the
+                          hand file (build_members_elect.apply_prior). Nothing
                           else, and no id: a member-elect has none until the
                           General Court assigns one (the owner's rule of 30
                           October 2026, commit 776cbe70).
@@ -61,6 +74,14 @@ Before Organization Day nobody is numbered: the roster is still the old
 term's, and a sitting member of the same name and district is somebody else.
 Who is new is the step's word or the owner's (a null match), so a person the
 step comes to call sitting once the roster has them is still followed.
+
+ON ORGANIZATION DAY, 2 December 2026, the members-elect file and every block
+drawn from it retire, as the owner decided on 16 October; these pages do not
+(B3). From that day a page says the person is a member, who took office that
+day, rather than a member-elect, and is otherwise as it was -- their race,
+their requests (build_lsrs still matches them here), the elections page's
+link to it -- until the General Court numbers them, when it gives way as
+NUMBERED says.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -75,11 +96,56 @@ import json
 import re
 
 import build_date
+import build_elections as BE
+import build_member_elections as BMEL
 import build_members_elect as BME
 import proceedings
 
 OUT_NAME = "elect_pages.json"
 MOVED = Path("generated/moved_addresses.json")
+# A Senate results file names the districts it holds: 2026-ge-state-senate-14-16.xlsx.
+SENATE_FILE = re.compile(r"-senate-(\d+)(?:-(\d+))?\.[A-Za-z0-9]+$")
+
+
+def race_source(key, results):
+    """{"url", "saved"}: the address of the Secretary of State's results and
+    the day the file race `key` was read from was saved -- the county's House
+    file (build_elections.file_of), or the Senate file whose name holds the
+    district. Where the files cannot say which is the race's, the newest day
+    of those they might be, which is the elections page's own day for its
+    sources; {} where the results name no file at all."""
+    srcs = [s for s in results.get("_source") or [] if s.get("saved") or s.get("url")]
+    names = set(BE.file_of(key, results))
+    mine = [s for s in srcs if Path(s.get("file") or "").name in names]
+    m = BME.KEY_RE.match(key)
+    if m and m.group(3):
+        d = int(m.group(3))
+
+        def holds(s):
+            g = SENATE_FILE.search(Path(s.get("file") or "").name)
+            return bool(g) and int(g.group(1)) <= d <= int(g.group(2) or g.group(1))
+        mine = [s for s in mine if holds(s)] or mine
+    pick = sorted(mine or srcs, key=lambda s: str(s.get("saved") or ""))
+    if not pick:
+        return {}
+    last = pick[-1]
+    return {k: last[k] for k in ("url", "saved") if last.get(k)}
+
+
+def race_result(results, key, me, name, hand):
+    """The row a member's Elections tab would have for winner `name` of race
+    `key` (build_member_elections.race_row, drawn as elected), and "nf", the
+    race's seats not final, where there are any; None where the results do not
+    hold the name."""
+    race = (results.get("races") or {}).get(key)
+    cand = next((c for c in (race or {}).get("candidates") or []
+                 if BE.same_name(c.get("name")) == name), None)
+    if cand is None:
+        return None
+    row = BMEL.race_row(results["election"], key, race, me, cand, True, BE.held_names(hand, key))
+    if me.get("not_final"):
+        row["nf"] = me["not_final"]
+    return row
 
 
 def suffix_last(name):
@@ -197,9 +263,15 @@ def pages(results, sitting, former, districts, hand, today, takes_office, moved=
                             "left unlinked for a person to settle")
                 continue
             seen.setdefault(slug, []).append(e.get("n"))
+            # THE RACE THAT ELECTED THEM, AND WHERE IT WAS READ (the owner, 16
+            # November 2026: the page says whatever the record can fill in).
+            result = race_result(results, key, races[key], e.get("n"), hand or {})
+            source = race_source(key, results)
             out.append({"slug": slug, "name": e.get("n"), "party": e.get("p") or "",
                         "chamber": chamber, "county": county, "district": district, "race": key,
                         "towns": sorted((on_file.get(key) or {}).get("towns") or []),
+                        **({"result": result} if result else {}),
+                        **({"source": source} if source else {}),
                         **({"prior": e["prior"]} if e.get("prior") else {})})
     twice = {s for s, who in seen.items() if len(who) > 1}
     if twice:

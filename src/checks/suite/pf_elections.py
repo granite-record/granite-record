@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of members-elect and election results.
 
@@ -257,6 +257,52 @@ _ME_RACES = {
 _ME_DISTRICTS = {"Gilford": {"0": {"house": [{"county": "Belknap", "district": 6, "seats": 4}],
                                    "senate": 7}},
                  "Concord": {"0": {"house": [], "senate": 15}}}
+
+
+@check("build", "a new member-elect's provisional entry carries the race that elected them as a member's "
+                "Elections tab has it, the race's seats not final, and the day its own results file was "
+                "saved -- the county's House file, or the Senate file that holds the district")
+def _elect_pages_result():
+    """build_elect_pages.pages gives each page "result", build_member_elections.race_row -- the
+    row a member's Elections tab is drawn from -- for the winner as drawn, with "nf", the seats of
+    the race not final, where there are any; and "source", the results' address and the day the
+    file the race was read from was saved: the county's House file, or the Senate file whose name
+    holds the district (2026-ge-state-senate-14-16.xlsx holds 15), not the newest Senate file."""
+    import build_elect_pages as EP
+    import build_members_elect as BME
+    real = BME.members_elect
+    BME.members_elect = lambda *a, **k: (json.loads(json.dumps(_ME_RACES)), {})
+    try:
+        got, _said, _moves = EP.pages(_ME_RESULTS, [], [], _ME_DISTRICTS, {}, "2026-11-20",
+                                      "2026-12-02", {})
+    finally:
+        BME.members_elect = real
+    by = {p["slug"]: p for p in got}
+    assert set(by) == {"bob-mclean-belk-6", "cy-dow-belk-6", "gil-hart-sd-15"}, (
+        f"provisional pages for {sorted(by)}: the three new winners wanted")
+    house = {"d": "2026-11-03", "k": "H|Belknap|6", "a": "r-h-belknap-6", "r": "won", "s": 4,
+             "rq": 1, "of": 5, "nf": 1}
+    want = {"bob-mclean-belk-6": dict(house, v=3436, pl=2), "cy-dow-belk-6": dict(house, v=3353, pl=3),
+            # 9,000 of the 15,990 votes and 10 scattered: 56.2 per cent.
+            "gil-hart-sd-15": {"d": "2026-11-03", "k": "S|15", "a": "r-s-15", "r": "won", "v": 9000,
+                               "s": 1, "rc": 1, "pl": 1, "of": 2, "sh": 56.2}}
+    for slug, row in want.items():
+        assert by[slug].get("result") == row, (
+            f"{slug}'s result is {by[slug].get('result')}, not the race's row {row}")
+    saved = {s: (p.get("source") or {}).get("saved") for s, p in by.items()}
+    assert saved == {"bob-mclean-belk-6": "2026-11-05", "cy-dow-belk-6": "2026-11-05",
+                     "gil-hart-sd-15": "2026-11-07"}, (
+        f"the race's own file's day is not the one given: {saved} (Senate District 15 is in the "
+        "file of 14 to 16, saved 7 November; the newest Senate file, 17 to 18, was saved the 12th)")
+    assert all((p.get("source") or {}).get("url") == _ME_URL for p in got), (
+        "a page's source names no address for the results")
+    assert not any("id" in p for p in got), "a provisional entry carries an id"
+    # And where the results do not hold the person, nothing is made up.
+    assert EP.race_result(_ME_RESULTS, "H|Belknap|6", _ME_RACES["H|Belknap|6"], "Nobody Here", {}) is None
+    return "ok", ("each new member-elect's entry has the race's row as a member's Elections tab has it "
+                  "(2nd of 5, 3,436 votes, a recount asked for and 1 seat not final; a recounted Senate "
+                  "seat won with 56.2%) and the day of the race's own file, the Senate's by the "
+                  "districts its name holds")
 
 
 @check("build", "the elections page links a new winner to their provisional page, on the race's card and "
