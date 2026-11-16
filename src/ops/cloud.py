@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.31
+# GRANITE_VERSION: 2026-09-25.32
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -22,8 +22,11 @@ The nightly's kit and the laptop's backup, in the project's private R2 bucket.
     python3 src/ops/cloud.py site-down --run ID        ... and back, for the publish job
     python3 src/ops/cloud.py site-down --latest        ... the newest night fit for production
                                                        (the quick preview's baseline; read only)
-    python3 src/ops/cloud.py backup [--dry-run] [--with-site]
-                                                       everything git does not hold
+    python3 src/ops/cloud.py backup [--dry-run] [--with-site] [--extras]
+                                                       everything git does not hold, and
+                                                       first the extras: the repository's
+                                                       bundle, the memory, the scheduled
+                                                       tasks (THE BACKUP'S EXTRAS)
     python3 src/ops/cloud.py restore DEST [--only PATH ...] [--dry-run]
                                                        ... and back, into an empty folder,
                                                        every file checked against the
@@ -280,6 +283,24 @@ archive/cloud/refusal-unsent.json saying which, and pull, state-up and
 preflight report it until the bucket holds this refusal or a person lifts it
 here. clear-refusal says when this machine holds a refusal the bucket does
 not, which is the moment a waiting one needs sending.
+
+THE BACKUP'S EXTRAS (16 November 2026)
+
+The backup sends what git does not hold in the working folder, and left out
+.git, which GitHub holds -- but not the local commits and tags no push has
+sent -- and everything outside the folder: Claude Code's memory of the
+owner's decisions, the scheduled Claude tasks' instructions (the morning
+triage's among them) and the Task Scheduler entries that run the laptop's
+jobs. So a backup from the repository that holds secrets.json, or any with
+--extras, first copies them into archive/backup-extras/ (EXTRAS), which it
+then sends like any other file there: a git bundle of every ref, made again
+only when one moved and kept only once git verifies it; the memory folder;
+every granite-* scheduled task's files; and each "Granite Record" entry, as
+schtasks exports it. Each source is only read; a copy is only ever added or
+brought up to date, never removed, since a source that vanished is when its
+copy is wanted; and nothing shaped like a credential is copied, or bundled:
+it is named instead, and fails the backup once the rest has gone. A dry run
+gathers nothing. The comment above gather_extras says the rest.
 
 THE BACKUP, BROUGHT BACK: restore (16 November 2026)
 
@@ -2627,6 +2648,308 @@ def cmd_site_down(a, root):
         f"every one accounted for; run {a.run}'s verdict at {SITE_VERDICT}")
 
 
+# ------------------------------------------------------------- the extras ---
+#
+# THE BACKUP'S EXTRAS (16 November 2026; the refactor's stage 0, ops item 7).
+# What the backup could not reach as files git does not hold, copied into
+# EXTRAS before each backup from the repository that holds secrets.json (or
+# with --extras), so that the backup sends them as it sends anything there:
+#
+#   repository.bundle   git bundle --all: every branch, tag and the stash --
+#                       the local commits and tags no push has sent among
+#                       them, which leaving .git out left unsaved -- made
+#                       again only when a ref moved (repository.refs lists
+#                       them as they were), and kept only once git bundle
+#                       verify passes
+#   memory/             Claude Code's memory of the project: every file of
+#                       ~/.claude/projects/<the working folder, as Claude
+#                       Code names it>/memory
+#   scheduled-tasks/    every file of ~/.claude/scheduled-tasks/granite-*/,
+#                       the morning triage's instructions among them
+#   task-scheduler/     each Task Scheduler entry whose name begins "Granite
+#                       Record", as schtasks /query /xml gives it, in the
+#                       UTF-16 that schtasks /create /xml takes back
+#   extras.json         what was gathered, from where, and when
+#
+# Each source is only read. The copies only add: a file gone from its source
+# keeps its last copy here, because a source that has vanished -- the memory
+# after a reinstall, a task deleted -- is when the copy is wanted. And never a
+# secret: every file is read for a credential's shape before it is copied
+# (SECRET_SHAPES: preflight's list, and Resend's, Healthchecks' and R2's), and
+# so is every object of the repository no remote holds before a bundle is
+# made; one that carries a shape is not copied, or no bundle is made, and it
+# is named without its value, which fails the backup once it has sent the
+# rest. Task Scheduler never exports a password, and names an entry's account
+# by number.
+EXTRAS = "archive/backup-extras"
+TASK_PREFIX = "Granite Record"
+SKILL_PREFIX = "granite"
+SECRET_SHAPES = (
+    ("a Google API key", rb"AIza[0-9A-Za-z_\-]{30,}"),
+    ("an OpenAI key", rb"sk-[A-Za-z0-9]{32,}"),
+    ("a GitHub token", rb"gh[pousr]_[A-Za-z0-9]{30,}"),
+    ("a GitHub fine-grained token", rb"github_pat_[A-Za-z0-9_]{40,}"),
+    ("a Slack token", rb"xox[baprs]-[A-Za-z0-9-]{10,}"),
+    ("an AWS access key", rb"AKIA[0-9A-Z]{16}"),
+    ("a private key", rb"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
+    ("a Cloudflare token", rb"CLOUDFLARE_API_TOKEN\s*[:=]\s*[\"']?[A-Za-z0-9_\-]{20,}"),
+    ("a Resend key", rb"\bre_[A-Za-z0-9]{8,}_[A-Za-z0-9]{16,}"),
+    ("a Healthchecks ping address", rb"hc-ping\.com/[A-Za-z0-9_-]{20,}"),
+    ("an R2 secret", rb"R2_SECRET_ACCESS_KEY[\"']?\s*[:=]\s*[\"']?[0-9a-f]{64}"),
+)
+_SHAPES = [(what, re.compile(rx)) for what, rx in SECRET_SHAPES]
+
+
+def secret_in(data):
+    """What `data` (bytes) carries the shape of, or None."""
+    for what, rx in _SHAPES:
+        if rx.search(data):
+            return what
+    return None
+
+
+def claude_home():
+    return Path.home() / ".claude"
+
+
+def memory_folder(root):
+    """Where Claude Code keeps its memory of the project in `root`: it names a
+    project by its folder's path, each character not a letter or a digit a
+    hyphen (D:\\nh is D--nh)."""
+    return claude_home() / "projects" / re.sub(r"[^A-Za-z0-9]", "-", str(Path(root).resolve())) \
+        / "memory"
+
+
+def copy_in(src, dst, data):
+    """`data`, src's bytes, to dst through a .part, with src's date, unless dst
+    holds them already. Whether it wrote."""
+    if dst.is_file() and dst.read_bytes() == data:
+        return False
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dst.with_name(dst.name + ".part")
+    tmp.write_bytes(data)
+    st = src.stat()
+    os.utime(tmp, ns=(st.st_atime_ns, st.st_mtime_ns))
+    os.replace(tmp, dst)
+    return True
+
+
+def gather_folder(src, dst):
+    """Every file under src, copied to dst (THE BACKUP'S EXTRAS: adding only,
+    never a credential): {"files", "bytes", "copied", "kept", "refused":
+    [(path, what)]}, "kept" counting the copies whose source is gone."""
+    got = {"files": 0, "bytes": 0, "copied": 0, "kept": 0, "refused": []}
+    seen = set()
+    for p in sorted(src.rglob("*")):
+        if p.is_symlink() or not p.is_file():
+            continue
+        rel = p.relative_to(src).as_posix()
+        data = p.read_bytes()
+        what = secret_in(data)
+        if what:
+            got["refused"].append((rel, what))
+            continue
+        seen.add(rel)
+        got["files"] += 1
+        got["bytes"] += len(data)
+        got["copied"] += copy_in(p, local(dst, rel), data)
+    if dst.is_dir():
+        got["kept"] = sum(1 for q in dst.rglob("*") if q.is_file() and not q.name.endswith(".part")
+                          and q.relative_to(dst).as_posix() not in seen)
+    return got
+
+
+def local_only_shapes(root, git="git"):
+    """([(path, what)], objects read) for the repository's objects that no
+    remote holds -- what a bundle carries that GitHub does not -- each blob,
+    commit and tag read for a credential's shape; (None, why) where git would
+    not say."""
+    import subprocess
+    r = child.run([git, "-C", str(root), "rev-list", "--objects", "--all", "--not", "--remotes"],
+                  capture_output=True)
+    if r.returncode != 0:
+        return None, (r.stderr or "").strip()[:200] or f"git rev-list exited {r.returncode}"
+    names = {}
+    for ln in r.stdout.splitlines():
+        oid, _, path = ln.partition(" ")
+        if oid:
+            names.setdefault(oid, path)
+    if not names:
+        return [], 0
+    kinds = subprocess.run([git, "-C", str(root), "cat-file", "--batch-check"],
+                           input=("\n".join(names) + "\n").encode(), capture_output=True)
+    if kinds.returncode != 0:
+        return None, kinds.stderr.decode("utf-8", "replace").strip()[:200]
+    read = [ln.split()[0] for ln in kinds.stdout.decode("utf-8", "replace").splitlines()
+            if len(ln.split()) == 3 and ln.split()[1] in ("blob", "commit", "tag")]
+    found = []
+    p = subprocess.Popen([git, "-C", str(root), "cat-file", "--batch"], stdin=subprocess.PIPE,
+                         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    try:
+        for oid in read:
+            p.stdin.write(oid.encode() + b"\n")
+            p.stdin.flush()
+            head = p.stdout.readline().split()
+            data = p.stdout.read(int(head[2])) if len(head) == 3 else b""
+            p.stdout.read(1)
+            what = secret_in(data)
+            if what:
+                found.append((names[oid] or f"the object {oid[:12]}", what))
+    finally:
+        p.stdin.close()
+        p.wait()
+    return found, len(read)
+
+
+def bundle_repository(root, out, git="git"):
+    """repository.bundle and repository.refs in `out` (THE BACKUP'S
+    EXTRAS): ([lines], [problems])."""
+    refs = child.run([git, "-C", str(root), "for-each-ref", "--format=%(objectname) %(refname)"],
+                     capture_output=True)
+    if refs.returncode != 0:
+        return [], [f"the repository's refs would not read ({(refs.stderr or '').strip()[:160]}), "
+                    "so no bundle was made"]
+    head = child.run([git, "-C", str(root), "rev-parse", "HEAD"], capture_output=True)
+    listing = refs.stdout.strip() + "\n" + (f"{head.stdout.strip()} HEAD\n"
+                                            if head.returncode == 0 else "")
+    n = sum(1 for ln in refs.stdout.splitlines() if ln.strip())
+    bundle, refs_file = out / "repository.bundle", out / "repository.refs"
+    if bundle.is_file() and refs_file.is_file() and \
+            refs_file.read_text(encoding="utf-8") == listing:
+        return [f"the repository's bundle: no ref has moved since it was made, so it stands "
+                f"({n:,} refs, {human(bundle.stat().st_size)})"], []
+    found, read = local_only_shapes(root, git)
+    if found is None:
+        return [], [f"the objects only this laptop's repository holds could not be read for a "
+                    f"credential ({read}), so no bundle was made"]
+    if found:
+        return [], [f"no bundle of the repository was made: {len(found)} object(s) no remote holds "
+                    "carry the shape of a credential -- "
+                    + "; ".join(f"{path} looks like {what}" for path, what in found[:4])
+                    + " -- so take it out of the history and change the key; the last bundle stands"]
+    out.mkdir(parents=True, exist_ok=True)
+    tmp = out / "repository.bundle.part"
+    made = child.run([git, "-C", str(root), "bundle", "create", str(tmp), "--all"],
+                     capture_output=True)
+    if made.returncode != 0 or not tmp.is_file():
+        tmp.unlink(missing_ok=True)
+        return [], [f"git bundle create failed ({(made.stderr or '').strip()[-200:]}); the last "
+                    "bundle stands"]
+    ok = child.run([git, "-C", str(root), "bundle", "verify", str(tmp)], capture_output=True)
+    if ok.returncode != 0:
+        tmp.unlink(missing_ok=True)
+        return [], [f"the new bundle did not verify ({(ok.stderr or '').strip()[-200:]}); the "
+                    "last one stands"]
+    os.replace(tmp, bundle)
+    write_whole(refs_file, listing.encode("utf-8"))
+    return [f"the repository's bundle: made, {human(bundle.stat().st_size)}, {n:,} refs, "
+            f"verified; the {read:,} objects no remote holds were read first, and none carries "
+            "a credential's shape"], []
+
+
+def scheduler_entries():
+    """{name: XML text} for each Task Scheduler entry whose name begins
+    TASK_PREFIX, as schtasks /query /xml gives it, its doubled line ends made
+    single; None where there is no schtasks (not Windows)."""
+    import csv
+    import io
+    import subprocess
+    exe = shutil.which("schtasks")
+    if not exe:
+        return None
+    enc = "oem" if os.name == "nt" else "utf-8"
+    r = subprocess.run([exe, "/query", "/fo", "csv", "/nh"], capture_output=True)
+    if r.returncode != 0:
+        raise OSError(f"schtasks /query exited {r.returncode}")
+    names = sorted({row[0] for row in csv.reader(io.StringIO(r.stdout.decode(enc, "replace")))
+                    if row and row[0].rsplit("\\", 1)[-1].startswith(TASK_PREFIX)})
+    out = {}
+    for name in names:
+        x = subprocess.run([exe, "/query", "/tn", name, "/xml"], capture_output=True)
+        if x.returncode != 0:
+            raise OSError(f"schtasks /query /tn {name!r} /xml exited {x.returncode}")
+        out[name] = x.stdout.decode(enc, "replace").replace("\r\r\n", "\r\n")
+    return out
+
+
+def gather_extras(root, memory=None, tasks=None, scheduler=None, git="git"):
+    """THE BACKUP'S EXTRAS, copied into EXTRAS under root: {"lines",
+    "problems", "bytes"}. Nothing here stops the backup: a part that fails is
+    a problem, said, and the backup sends the rest and then fails on it.
+    `memory`, `tasks` and `scheduler` stand in for the memory folder, the
+    scheduled tasks' folder and scheduler_entries in a check."""
+    out = local(root, EXTRAS)
+    lines, problems = [], []
+    memory = memory_folder(root) if memory is None else Path(memory)
+    tasks = claude_home() / "scheduled-tasks" if tasks is None else Path(tasks)
+    scheduler = scheduler_entries if scheduler is None else scheduler
+    index = {"gathered": datetime.now().isoformat(timespec="seconds"),
+             "from": {"repository": str(Path(root).resolve()), "memory": str(memory),
+                      "scheduled_tasks": str(tasks)}}
+    try:
+        got, bad = bundle_repository(root, out, git)
+        lines += got
+        problems += bad
+    except (OSError, ValueError) as e:
+        problems.append(f"the repository's bundle: {type(e).__name__}: {e}")
+
+    def folder(label, src, dst, key):
+        if not src.is_dir():
+            lines.append(f"{label}: none at {src}"
+                         + (", so the copy here stands" if dst.is_dir() else ""))
+            return
+        try:
+            g = gather_folder(src, dst)
+        except OSError as e:
+            problems.append(f"{label}: {type(e).__name__}: {e}")
+            return
+        index[key] = {k: v for k, v in g.items() if k != "refused"}
+        lines.append(f"{label}: {g['files']:,} files, {human(g['bytes'])}, {g['copied']:,} copied "
+                     "anew" + (f"; {g['kept']:,} kept whose source is gone" if g["kept"] else ""))
+        problems.extend(f"{label}: {rel} was not copied, as it looks like it holds {what}"
+                        for rel, what in g["refused"])
+    folder("the memory folder", memory, out / "memory", "memory")
+    try:
+        picked = sorted(p for p in tasks.iterdir()
+                        if p.is_dir() and p.name.startswith(SKILL_PREFIX)) if tasks.is_dir() else []
+    except OSError as e:
+        picked = []
+        problems.append(f"the scheduled tasks: {type(e).__name__}: {e}")
+    if not picked:
+        lines.append(f"the scheduled tasks: none named {SKILL_PREFIX}* at {tasks}")
+    for p in picked:
+        folder(f"the scheduled task {p.name}", p, out / "scheduled-tasks" / p.name, f"task {p.name}")
+    try:
+        entries = scheduler()
+    except OSError as e:
+        entries = {}
+        problems.append(f"Task Scheduler would not list its entries ({e})")
+    if entries is None:
+        lines.append("Task Scheduler: not on this machine")
+    else:
+        written = 0
+        for name, text in sorted(entries.items()):
+            what = secret_in(text.encode("utf-8"))
+            if what:
+                problems.append(f"Task Scheduler's {name.strip(chr(92))!r} was not copied, as it "
+                                f"looks like it holds {what}")
+                continue
+            dst = out / "task-scheduler" / (re.sub(r'[\\/:*?"<>|]+', "-", name.strip("\\")) + ".xml")
+            if not (dst.is_file() and dst.read_bytes().decode("utf-16", "replace") == text):
+                write_whole(dst, text.encode("utf-16"))
+                written += 1
+        index["task_scheduler"] = sorted(entries)
+        lines.append(f"Task Scheduler: {len(entries)} entr{'y' if len(entries) == 1 else 'ies'} "
+                     f"named {TASK_PREFIX}*, {written} written anew"
+                     + (f" ({'; '.join(n.strip(chr(92)) for n in sorted(entries))})"
+                        if entries else ""))
+    index["problems"] = problems
+    write_whole(out / "extras.json", json.dumps(index, indent=1).encode("utf-8"))
+    total = sum(p.stat().st_size for p in out.rglob("*") if p.is_file())
+    lines.append(f"{human(total)} in {EXTRAS}/ in all, which the backup sends with the rest")
+    return {"lines": lines, "problems": problems, "bytes": total}
+
+
 def tracked_files(root):
     try:
         r = child.run(["git", "-C", str(root), "ls-files", "-z"], capture_output=True)
@@ -2668,6 +2991,20 @@ def backup_files(root, kit, with_site):
 def cmd_backup(a, root):
     kit = load_kit(root)
     quiet_disk(root)
+    # THE BACKUP'S EXTRAS first, so that this backup sends them.
+    extras = {"problems": []}
+    if a.dry_run:
+        say("backup: the extras are not gathered on a dry run; a backup gathers them first")
+    elif a.extras or home(root):
+        say(f"backup: the extras first, into {EXTRAS}/")
+        extras = gather_extras(root)
+        for ln in extras["lines"]:
+            say(f"  {ln}")
+        for p in extras["problems"]:
+            say(f"  NOT GATHERED -- {p}")
+    else:
+        say("backup: the extras are not gathered, as this is not the repository that holds "
+            "secrets.json (--extras gathers them here)")
     rels = backup_files(root, kit, a.with_site)
     bucket = open_bucket(a, preview=True)
     hashes = Hashes(root)
@@ -2730,10 +3067,14 @@ def cmd_backup(a, root):
         f"replaced/{day}/")
     say(f"  {MANIFEST.format('backup')}: {doc['count']:,} files, {human(doc['bytes'])}")
     fails = unread + fails
-    if fails:
-        raise Failed(f"{len(fails)} files did not go, so the backup is short: "
-                     f"{'; '.join(fails[:4])}. Run backup again: what did send is "
-                     "recorded and will not go twice.")
+    short = extras["problems"]
+    if fails or short:
+        raise Failed(" ".join(
+            ([f"{len(fails)} files did not go, so the backup is short: "
+              f"{'; '.join(fails[:4])}. Run backup again: what did send is "
+              "recorded and will not go twice."] if fails else [])
+            + ([f"The backup went, and its extras are short: {'; '.join(short[:3])}."]
+               if short else [])))
 
 
 # ---------------------------------------------------------------- restore ---
@@ -4577,6 +4918,9 @@ def main(argv=None):
     ap.add_argument("--sizes", action="store_true", help="kit-list: with sizes")
     ap.add_argument("--with-site", action="store_true",
                     help="backup: include the built site/, which it leaves out")
+    ap.add_argument("--extras", action="store_true",
+                    help="backup: gather the extras here too; a backup gathers them of itself "
+                         "only in the repository that holds secrets.json")
     ap.add_argument("--allow-removals", action="store_true",
                     help="move more files to replaced/ than a normal run would")
     ap.add_argument("--local-bucket", metavar="FOLDER",

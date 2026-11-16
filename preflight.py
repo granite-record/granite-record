@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.942
+# GRANITE_VERSION: 2026-09-04.943
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -64829,6 +64829,149 @@ def _cloud_restore_sample(CL):
                   "their folder deleted, recorded; a changed file recorded as a failure, exit 1, "
                   "its folder deleted too; misuse refused; nothing written to the bucket; pull "
                   "says none, good, failed, STALE past a week overdue, and a folder's as a test")
+
+
+@check("cloud", "a backup from the laptop's repository carries the extras -- the repository's "
+                "bundle, the memory, the scheduled tasks and the Task Scheduler entries -- and no "
+                "credential", needs=("cloud",))
+def _cloud_backup_extras(CL):
+    """THE BACKUP'S EXTRAS (cloud.py; the refactor's stage 0, ops item 7): the local commits and
+    tags, the memory of the owner's decisions, the morning triage's instructions and the Task
+    Scheduler entries were in no backup. On a fixture -- a repository with a commit and a tag
+    and no remote, a memory folder, scheduled tasks named granite-* and another, and Task
+    Scheduler stood in for -- gather_extras makes a bundle git verifies and clones back with its
+    tag, copies every memory file with its date and every granite-* task's file and no other,
+    writes the entry in UTF-16 with its mark, and refuses a memory file shaped like a credential
+    (made here, never typed, so this file holds none), naming it and not its value. Run again
+    with nothing moved, the bundle stands as it was; a commit makes it again; a source file gone
+    keeps its copy, and a memory folder gone keeps them all; a commit carrying a credential's
+    shape stops the bundle, naming the path, and the last one stands. And backup gathers them
+    outside the repository that holds secrets.json only with --extras, never on a dry run, sends
+    them, and fails on the refused file once the rest has gone."""
+    git = shutil.which("git")
+    if not git:
+        return "skip", "git is not here, so there is no repository to bundle"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-extras-"))
+    saved = (CL.memory_folder, CL.claude_home, CL.scheduler_entries)
+
+    def g(*args, cwd=None):
+        r = _run([git, "-c", "user.name=preflight", "-c", "user.email=preflight@example.invalid",
+                  *args], capture_output=True, timeout=120, cwd=cwd)
+        assert r.returncode == 0, f"git {' '.join(args[:3])} failed: {(r.stderr or '')[-200:]}"
+        return r.stdout
+
+    def writable(fn, path, exc):
+        os.chmod(path, 0o666)
+        fn(path)
+    try:
+        root = tmp / "laptop"
+        root.mkdir()
+        _cloud_fixture(root, json.loads(Path(CL.KIT_FILE).read_text(encoding="utf-8")))
+        g("init", "-q", str(root))
+        g("-C", str(root), "add", "tracked.py", "cloud_kit.json")
+        g("-C", str(root), "commit", "-q", "-m", "one")
+        g("-C", str(root), "tag", "kept-here")
+        memory, tasks = tmp / "memory", tmp / "tasks"
+        (tasks / "granite-report-triage").mkdir(parents=True)
+        (tasks / "granite-report-triage" / "SKILL.md").write_text("the triage\n", encoding="utf-8")
+        (tasks / "another-project").mkdir()
+        (tasks / "another-project" / "SKILL.md").write_text("not ours\n", encoding="utf-8")
+        memory.mkdir()
+        for name in ("MEMORY.md", "a.md", "b.md"):
+            (memory / name).write_text(f"{name}\n", encoding="utf-8")
+        token = "gh" + "p_" + "Q7" * 18                 # a token's shape, made here, never typed
+        (memory / "careless.md").write_text(f"the key is {token}\n", encoding="utf-8")
+        entry = '<?xml version="1.0" encoding="UTF-16"?>\r\n<Task version="1.3">\r\n</Task>\r\n'
+
+        def gather():
+            return CL.gather_extras(root, memory=memory, tasks=tasks,
+                                    scheduler=lambda: {"\\Granite Record captions inbox": entry})
+        out = root.joinpath(*CL.EXTRAS.split("/"))
+        got = gather()
+        bundle = out / "repository.bundle"
+        heads = g("bundle", "list-heads", str(bundle), cwd=str(root))
+        assert "refs/tags/kept-here" in heads and "refs/heads/" in heads, (heads, got)
+        g("-C", str(root), "bundle", "verify", str(bundle))
+        g("clone", "-q", str(bundle), str(tmp / "clone"))
+        assert "kept-here" in g("-C", str(tmp / "clone"), "tag"), "the bundle cloned without its tag"
+        for name in ("MEMORY.md", "a.md", "b.md"):
+            a_, b_ = memory / name, out / "memory" / name
+            assert a_.read_bytes() == b_.read_bytes() and \
+                a_.stat().st_mtime_ns == b_.stat().st_mtime_ns, f"memory/{name} was not copied with its date"
+        assert not (out / "memory" / "careless.md").exists(), "a file shaped like a credential was copied"
+        refused = [p for p in got["problems"] if "careless.md" in p]
+        assert len(refused) == 1 and "a GitHub token" in refused[0] and \
+            token not in " ".join(got["problems"] + got["lines"]), got["problems"]
+        assert (out / "scheduled-tasks" / "granite-report-triage" / "SKILL.md").read_text(
+            encoding="utf-8") == "the triage\n" and not (out / "scheduled-tasks" / "another-project").exists()
+        xml = (out / "task-scheduler" / "Granite Record captions inbox.xml").read_bytes()
+        assert xml[:2] == b"\xff\xfe" and xml.decode("utf-16") == entry, xml[:40]
+        index = json.loads((out / "extras.json").read_text(encoding="utf-8"))
+        assert index["task_scheduler"] == ["\\Granite Record captions inbox"] and \
+            index["memory"]["files"] == 3, index
+        # Nothing moved: the bundle stands. A commit: it is made again, with the commit.
+        made = bundle.stat().st_mtime_ns
+        got = gather()
+        assert bundle.stat().st_mtime_ns == made and any("no ref has moved" in ln for ln in got["lines"]), \
+            got["lines"]
+        (root / "tracked.py").write_text("x = 2\n", encoding="utf-8")
+        g("-C", str(root), "commit", "-q", "-am", "two")
+        got = gather()
+        assert g("-C", str(root), "rev-parse", "HEAD").strip() in \
+            g("bundle", "list-heads", str(bundle), cwd=str(root)), got["lines"]
+        # A source gone keeps its copy; the whole memory folder gone keeps them all.
+        (memory / "b.md").unlink()
+        got = gather()
+        assert (out / "memory" / "b.md").exists() and \
+            any("1 kept whose source is gone" in ln for ln in got["lines"]), got["lines"]
+        shutil.rmtree(memory)
+        got = gather()
+        assert all((out / "memory" / n).exists() for n in ("MEMORY.md", "a.md", "b.md")) and \
+            any("the copy here stands" in ln for ln in got["lines"]), got["lines"]
+        # A commit carrying a credential's shape: no new bundle, its path named, the last one stands.
+        before = bundle.read_bytes()
+        (root / "careless.py").write_text(f"KEY = '{token}'\n", encoding="utf-8")
+        g("-C", str(root), "add", "careless.py")
+        g("-C", str(root), "commit", "-q", "-m", "three")
+        got = gather()
+        assert bundle.read_bytes() == before and \
+            any("careless.py looks like a GitHub token" in p for p in got["problems"]) and \
+            token not in " ".join(got["problems"]), got["problems"]
+        g("-C", str(root), "reset", "-q", "--hard", "HEAD~1")
+        memory.mkdir()
+        (memory / "careless.md").write_text(f"the key is {token}\n", encoding="utf-8")
+
+        # backup: --extras here, never on a dry run; sent; failing on the refusal after the rest.
+        CL.memory_folder = lambda r: memory
+        CL.claude_home = lambda: tmp
+        (tmp / "scheduled-tasks").mkdir()
+        CL.scheduler_entries = lambda: {}
+        bucket = tmp / "bucket"
+        B = ["--root", str(root), "--local-bucket", str(bucket)]
+        stamp = (out / "extras.json").stat().st_mtime_ns
+        code, said = _cloud_call(CL, "backup", *B, "--dry-run")
+        assert code == 0 and "not gathered on a dry run" in said and \
+            (out / "extras.json").stat().st_mtime_ns == stamp, said[-300:]
+        code, said = _cloud_call(CL, "backup", *B)
+        assert code == 0 and "not the repository that holds secrets.json" in said and \
+            (out / "extras.json").stat().st_mtime_ns == stamp, said[-300:]
+        code, said = _cloud_call(CL, "backup", *B, "--extras")
+        sent = {p.relative_to(bucket / "backup").as_posix()
+                for p in (bucket / "backup").rglob("*") if p.is_file()}
+        assert code == 1 and "extras are short" in said and "careless.md" in said and \
+            token not in said, said[-400:]
+        for rel in ("archive/backup-extras/repository.bundle", "archive/backup-extras/memory/a.md",
+                    "archive/backup-extras/extras.json", "Docket.txt", "CLERK_CORRECTIONS.md"):
+            assert rel in sent, f"the backup with its extras did not send {rel}: {sorted(sent)[:12]}"
+        assert not any("careless" in s for s in sent), "a file shaped like a credential reached the bucket"
+    finally:
+        CL.memory_folder, CL.claude_home, CL.scheduler_entries = saved
+        shutil.rmtree(tmp, onexc=writable)
+    return "ok", ("a bundle git verifies and clones with its tag, made again only when a ref moves, "
+                  "and not over a commit shaped like a credential; the memory copied with its "
+                  "dates, a credential-shaped file refused by name, copies kept when sources go; "
+                  "granite-* tasks alone; the entry in UTF-16; gathered by backup only with "
+                  "--extras here and not on a dry run, sent, the refusal failing it after the rest")
 
 
 @check("cloud", "state has one writer, a cleared refusal stays cleared, and the "
