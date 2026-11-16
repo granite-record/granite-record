@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.5
+# GRANITE_VERSION: 2026-11-12.6
 """The tag rule engine: which tags a bill carries, and the evidence for each.
 
     python3 src/parse/tag_rules.py --bill 2023-2024 HB1596   # explain one bill
@@ -55,8 +55,12 @@ A hand bill is the person's own answer, so the bench never draws one to ask
 again, and the topic-redundancy drop still applies to it.
 
 A PHRASE is plain words: whole words, any case, a space and a hyphen standing
-for each other, an apostrophe optional, a plural allowed ("mental health" never
-matches "environmental health"). A trailing * opens the right end ("vaccin*"),
+for each other, an apostrophe optional, a plural allowed on the last word
+("mental health" never matches "environmental health"): "-s" or "-es", and
+since 16 Nov 2026 "-ies" for a consonant and "y" ("public utility" finds
+"public utilities") and "-y" for such an "-ies" ("juries" finds "jury"), so a
+plural that means another thing wants "re:" ("securities" is no "security"
+bill). A trailing * opens the right end ("vaccin*"),
 a leading = makes it case-sensitive ("=AI", "=THC"), "re:" begins a regular
 expression, used as written. A chapter is "126-X"; a trailing * takes the
 chapter and every lettered one under it ("159*").
@@ -129,6 +133,32 @@ STANCE_DEFINITION = ("reform", "ban", "extremist", "radical", "pro-", "anti-")
 _HY = r"[\s\-‐‑–—]"
 _AP = "['’]"
 _LEFT, _RIGHT = r"(?<![A-Za-z0-9])", r"(?![A-Za-z0-9])"
+# THE -Y PLURAL (16 Nov 2026). A last word ending in a consonant and "y" takes "-ies" as its plural
+# ("utility", "utilities"), and one ending so in "-ies" its "-y" singular ("juries", "jury"), beside
+# the "-s" and "-es" every last word takes; a vowel before the "y" keeps the "-s" ("day", "days").
+# The two words whose "-ies" is no plural are left as written. A form that means something else in
+# the plural ("securities" is no "security" bill) wants its own "re:" phrase.
+_CONSONANT = "[b-df-hj-np-tv-xzB-DF-HJ-NP-TV-XZ]"
+_CONSONANT_Y = re.compile(rf"(.+{_CONSONANT})(y|Y)")
+_CONSONANT_IES = re.compile(rf"(.+{_CONSONANT})(ies|IES)")
+_IES_NO_PLURAL = {"series", "species"}
+
+
+def _word(tok, last):
+    """One word of a phrase as a regular expression: an apostrophe optional, and the last word
+    (`last`) with its plural (the -y plural above)."""
+    esc = lambda s: (_AP + "?").join(re.escape(x) for x in s.split("'"))
+    if not last:
+        return esc(tok)
+    m = _CONSONANT_Y.fullmatch(tok)
+    if m:
+        ies = "ies" if m.group(2) == "y" else "IES"
+        return esc(m.group(1)) + f"(?:{m.group(2)}(?:s|es)?|{ies})"
+    m = _CONSONANT_IES.fullmatch(tok)
+    if m and tok.lower() not in _IES_NO_PLURAL:
+        y = "Y" if m.group(2).isupper() else "y"
+        return esc(m.group(1)) + f"(?:{m.group(2)}(?:s|es)?|{y})"
+    return esc(tok) + "(?:s|es)?"
 
 
 def compile_phrase(p):
@@ -141,13 +171,14 @@ def compile_phrase(p):
     open_end = p.endswith("*")
     if open_end:
         p = p[:-1]
+    toks = re.split(r"[\s\-]+", p.strip())
     out = []
-    for i, tok in enumerate(re.split(r"[\s\-]+", p.strip())):
+    for i, tok in enumerate(toks):
         if i:
             out.append(_HY + "+")
-        out.append((_AP + "?").join(re.escape(x) for x in tok.split("'")))
+        out.append(_word(tok, i == len(toks) - 1 and not open_end))
     body = "".join(out)
-    return re.compile(_LEFT + body + ("" if open_end else "(?:s|es)?" + _RIGHT), flags)
+    return re.compile(_LEFT + body + ("" if open_end else _RIGHT), flags)
 
 
 def chapter_matches(rule_chapter, chapter):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.5
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -9292,3 +9292,51 @@ def _tag_hand_lists(TR, TC):
     return "ok", ("a hand bill attaches as H with its reason and a phrase's tier comes first; a bill taken off "
                   "loses the tag and is said to be; the topic drop holds; no other answer moves; four malformed "
                   "lists refused; the counts' H column; the bench never draws a hand bill")
+
+
+@check("code", "a tag phrase's last word ending in a consonant and y matches its -ies plural, one ending so in -ies its "
+               "-y singular, and every form it matched before; a vowel's y, the words series and species, the other "
+               "words of a phrase, an open end and a regular expression are as they were",
+       needs=("tag_rules",))
+def _tag_plural_y(TR):
+    """tag_rules.compile_phrase gave a phrase's last word "-s" or "-es" and never turned "y" into "ies", so
+    "jury" missed "juries" and "public utility" "public utilities" (the polish of 15 November 2026 found it;
+    the owner queued the fix for this release). Held: each pair matches as it should, each non-pair does not,
+    and on a list of words every text a phrase matched under the old rule (rebuilt here as it was) it matches
+    still, so the change only adds."""
+    cp = TR.compile_phrase
+    hits = [("public utility", "regulating public utilities"), ("jury", "juries"), ("juries", "jury"),
+            ("pharmacies", "the pharmacy"), ("brain injury", "brain-injuries"), ("=AGENCY", "AGENCIES"),
+            ("university", "universities"), ("water supply", "water supplies"), ("public body", "public bodies"),
+            ("sky", "skies"), ("delinquency", "delinquencies"), ("county", "counties"), ("day", "days"),
+            ("attorney", "attorneys"), ("public utility", "public utilitys")]
+    misses = [("day", "daies"), ("attorney", "attornies"), ("alien species", "alien specy"), ("series", "sery"),
+              ("=AGENCY", "agencies"), ("county commission", "counties commission"), ("by", "bies"),
+              ("lies", "ly"), ("mental health", "environmental health"), ("money", "monies")]
+    wrong = [f"{p!r} should find {t!r}" for p, t in hits if not cp(p).search(t)]
+    wrong += [f"{p!r} should not find {t!r}" for p, t in misses if cp(p).search(t)]
+    assert not wrong, "; ".join(wrong)
+    assert cp("re:juries").search("juries") and not cp("re:jury").search("juries"), "a regular expression was changed"
+
+    def old(p):
+        """The phrase as the engine compiled it until 16 November 2026."""
+        flags = re.I
+        if p.startswith("="):
+            p, flags = p[1:], 0
+        open_end = p.endswith("*")
+        p = p[:-1] if open_end else p
+        body = (TR._HY + "+").join((TR._AP + "?").join(re.escape(x) for x in tok.split("'"))
+                                   for tok in re.split(r"[\s\-]+", p.strip()))
+        return re.compile(TR._LEFT + body + ("" if open_end else "(?:s|es)?" + TR._RIGHT), flags)
+    phrases = ["public utility", "jury", "juries", "day", "series", "species", "vaccin*", "=AGENCY", "workers' compensation",
+               "county", "mental health", "e-verify", "ies", "y"]
+    texts = ["public utility", "public utilitys", "public utilityes", "jury", "jurys", "juries", "juriess", "day", "days",
+             "dayes", "series", "species", "vaccine", "vaccination", "AGENCY", "AGENCYS", "agency", "workers compensation",
+             "workers' compensations", "county", "countys", "mental health", "mental-health", "e-verify", "everify",
+             "e verify", "ies", "iess", "y", "ys", "yes"]
+    lost = [f"{p!r} no longer finds {t!r}" for p in phrases for t in texts if old(p).search(t) and not cp(p).search(t)]
+    assert not lost, "; ".join(lost)
+    for p in ("utilit*", "nursing facilit*", "county commission", "=TANF", "ballot access", "adult day"):
+        assert cp(p).pattern == old(p).pattern, f"{p!r} changed, but its last word is open, no -y word or none"
+    return "ok", (f"{len(hits)} plural pairs found, {len(misses)} non-pairs not; a regular expression as written; "
+                  f"{len(phrases)} phrases over {len(texts)} texts find everything they found before")
