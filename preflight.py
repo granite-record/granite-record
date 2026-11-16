@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.932
+# GRANITE_VERSION: 2026-09-04.933
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -8,6 +8,9 @@ Run every check that needs no network, and report all of them at once.
     python3 preflight.py --verbose  # show what each check actually produced
     python3 preflight.py --changed  # only what a change since the merge base with
                                     #   dev can reach, and the core: NOT the full suite
+    python3 preflight.py --manifest FILE
+                                    # no check run: every check in run order, with
+                                    #   two fingerprints of its code, into FILE
 
 The failure this exists to prevent: twelve files change, the first one raises on
 line 3, and an hour goes into that one traceback while the other eleven stay
@@ -135378,6 +135381,11 @@ def main():
                     help="the checks of a site just built, as the night runs them after "
                          "check_site (BUILT_CODE, and the data checks but NOT_ON_THE_NIGHT); "
                          f"writes {BUILT_OUT.as_posix()} with each one's tier")
+    ap.add_argument("--manifest", metavar="FILE",
+                    help="run no check: write to FILE every check, in the order a run takes "
+                         "them, with its group, words, needs and marks and two fingerprints of "
+                         "its code (_manifest), and nothing else -- the proof that a move of "
+                         "the checks changed none")
     a = ap.parse_args()
     # NOT BOTH. --code leaves the data checks out and --data runs only them,
     # so together they ran no check at all, printed "0 passed", exited 0 and
@@ -135387,6 +135395,17 @@ def main():
                  "they run nothing")
     if a.built and (a.code or a.data or a.changed is not None):
         ap.error("--built is a selection of its own: the checks of a site just built")
+    if a.manifest is not None:
+        # BEFORE ANYTHING A RUN DOES: no record, no early builds, nothing
+        # taken out of the environment. It reads this file and writes FILE.
+        if a.code or a.data or a.changed is not None or a.built:
+            ap.error("--manifest runs no check, so there is none to leave out or choose: it "
+                     "lists every one")
+        text = _manifest_text()
+        Path(a.manifest).write_text(text, encoding="utf-8", newline="\n")
+        print(f"{len(json.loads(text)['checks'])} checks, in the order a run takes them, "
+              f"written to {a.manifest}")
+        sys.exit(0)
 
     sys.path.insert(0, ".")
     # NOTHING HERE REACHES THE BUCKET. Since 26 September refusal.note() sends
@@ -135660,6 +135679,216 @@ def _changed_selects():
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", (f"core of {len(CS.CORE)}; app.css alone chooses {len(css)} of {len(CHECKS)}, "
                   f"narrative.py {len(narr)}; a check's own lines choose it, main's choose all")
+
+
+# ---- the manifest: every check, and what its code is (16 November 2026) ------
+#
+# THE INSTRUMENT FOR MOVING THE CHECKS (the refactor's stage 1, step 0). This
+# file is to become a package in steps that each change no check, and a step
+# shows it with this: `preflight.py --manifest FILE` writes every check in the
+# order main() runs them, with its group, words, needs and marks, and two
+# fingerprints read off the code without running any of it -- a sha256 of the
+# check's own definition as ast.dump gives it, with no line numbers and no
+# docstring, and a sha256 of that together with every helper and constant of
+# the file it reaches by name, at any depth, each under its name. Code moved
+# as it stands keeps both; an edit to a check changes its own; an edit to a
+# helper, or a name that comes to mean another helper, changes the second. A
+# step passes where the manifest before it and after it is the same but for
+# the fingerprints the step says it changes. It is the format of the
+# inventory's baseline (reports/refactor/stage0-checks-manifest.json, made by
+# ast at 0c12343d). The fingerprints are ast's, so two manifests are compared
+# only when one Python made both: the file says which.
+_MANIFEST_DEFS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+
+
+def _manifest_tops(trees):
+    """{name: the top-level statement that defines it} over the modules
+    `trees`, in order: a def or a class by its name, an assignment by each
+    plain name it binds. A later definition of a name replaces an earlier
+    one, as it does when the module runs."""
+    tops = {}
+    for tree in trees:
+        for node in tree.body:
+            if isinstance(node, _MANIFEST_DEFS):
+                tops[node.name] = node
+            elif isinstance(node, ast.Assign):
+                for t in node.targets:
+                    if isinstance(t, ast.Name):
+                        tops[t.id] = node
+            elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                tops[node.target.id] = node
+    return tops
+
+
+def _manifest_print(node):
+    """The sha256 (hex) of `node` as ast.dump gives it without positions,
+    and, for a def or a class, without its docstring. The node is not
+    changed: the one without its docstring is a copy."""
+    import hashlib
+    body = getattr(node, "body", None)
+    if isinstance(node, _MANIFEST_DEFS) and body and isinstance(body[0], ast.Expr) \
+            and isinstance(body[0].value, ast.Constant) and isinstance(body[0].value.value, str):
+        node = type(node)(**{f: getattr(node, f) for f in node._fields})
+        node.body = body[1:] or [ast.Pass()]
+    return hashlib.sha256(ast.dump(node, annotate_fields=True, include_attributes=False)
+                          .encode("utf-8")).hexdigest()
+
+
+class _ManifestPrints:
+    """The fingerprints of the top-level definitions of some modules, each
+    worked out once: what a definition names, what it reaches, and the two
+    prints of a check (_manifest)."""
+
+    def __init__(self, trees):
+        self.tops = _manifest_tops(trees)
+        self._names, self._prints = {}, {}
+
+    def names(self, n):
+        """The top-level names the definition of `n` uses, anywhere in it."""
+        if n not in self._names:
+            self._names[n] = {d.id for d in ast.walk(self.tops[n])
+                              if isinstance(d, ast.Name)} & self.tops.keys()
+        return self._names[n]
+
+    def print(self, n):
+        if n not in self._prints:
+            self._prints[n] = _manifest_print(self.tops[n])
+        return self._prints[n]
+
+    def reached(self, fn):
+        """Every top-level name `fn` reaches through the names it uses, at
+        any depth, but itself; sorted."""
+        seen, todo = set(), [fn]
+        while todo:
+            for m in self.names(todo.pop()):
+                if m != fn and m not in seen:
+                    seen.add(m)
+                    todo.append(m)
+        return sorted(seen)
+
+    def of(self, fn):
+        """(own, reach, how many helpers and constants it reaches) of `fn`,
+        each print its first 16 hex digits: own is fn's definition, reach is
+        that with every name it reaches, each by name."""
+        import hashlib
+        reached = self.reached(fn)
+        whole = hashlib.sha256("\n".join([self.print(fn)] + [f"{n}:{self.print(n)}" for n in reached])
+                               .encode("utf-8")).hexdigest()
+        return self.print(fn)[:16], whole[:16], len(reached)
+
+
+def _manifest(paths=None):
+    """The manifest (above) of every registered check: {"source": the files
+    read, "python": the Python whose ast made the prints, "checks": in the
+    order main() runs them, {i, fn, group, words, needs, expect_fail, last,
+    own, reach, helpers}}. `paths` are the files the checks are defined in,
+    this one by default. A check that is not a top-level def of them, or a
+    function name two checks share, raises: neither can be fingerprinted."""
+    import platform
+    paths = [Path(p).resolve() for p in (paths or [__file__])]
+    twice = sorted(n for n, k in Counter(c["fn"].__name__ for c in CHECKS).items() if k > 1)
+    if twice:
+        raise ValueError("two checks share the name " + ", ".join(twice)
+                         + ", so the manifest cannot tell them apart")
+    prints = _ManifestPrints([_parsed(p) for p in paths])
+    out = []
+    for i, c in enumerate(_in_order(CHECKS)):
+        fn = c["fn"].__name__
+        if not isinstance(prints.tops.get(fn), (ast.FunctionDef, ast.AsyncFunctionDef)):
+            raise ValueError(f"the check {fn} is not a top-level def of "
+                             + ", ".join(p.name for p in paths) + ", so it cannot be fingerprinted")
+        own, reach, helpers = prints.of(fn)
+        out.append({"i": i, "fn": fn, "group": c["group"], "words": c["name"],
+                    "needs": list(c["needs"]), "expect_fail": bool(c.get("expect_fail")),
+                    "last": bool(c.get("last")), "own": own, "reach": reach, "helpers": helpers})
+    source = ", ".join(p.relative_to(_paths.ROOT).as_posix() if p.is_relative_to(_paths.ROOT)
+                       else p.as_posix() for p in paths)
+    return {"source": source, "python": platform.python_version(), "checks": out}
+
+
+def _manifest_text(paths=None):
+    """The manifest as --manifest writes it: JSON, one key to a line, the
+    same bytes from any run of the same files on the same Python."""
+    return json.dumps(_manifest(paths), indent=0) + "\n"
+
+
+@check("files", "--manifest lists every registered check in the order a run takes them, with "
+                "fingerprints that two runs agree on, and runs none")
+def _manifest_lists_the_registry():
+    """`preflight.py --manifest FILE` (above) is the proof every later step
+    of moving the checks rests on, so it is held to what it says:
+
+      on a small module, a check's own print stays when only its docstring
+      or its line numbers change and moves with its body; its reach moves
+      when a helper it uses changes, or when its name comes to mean
+      another helper defined later, and not when a definition it does not
+      reach changes;
+      it lists every registered check once, in the order main() runs them,
+      with the registry's group, words, needs and marks, and a print of
+      each that no other check shares;
+      run as a script, under a hash seed other than this run's, it writes
+      byte for byte what this run makes of the same file, writes nothing
+      else in its folder, and runs no check; and with --code it refuses,
+      since it runs none to leave out.
+    """
+    sample = ("import os\n\n\n@check('g', 'one')\ndef one():\n    '''Its words.'''\n"
+              "    return helper() + K\n\n\ndef helper():\n    return 1\n\n\nK = 2\n\n\n"
+              "def other():\n    return 3\n")
+
+    def of(text):
+        return _ManifestPrints([ast.parse(text)]).of("one")
+    own, reach, n = of(sample)
+    assert n == 2, f"the sample's check reaches {n} definitions, not helper and K"
+    same = {"its docstring changed": sample.replace("Its words.", "Other words, longer."),
+            "its lines moved": "\n\n# a comment\n" + sample,
+            "a definition it does not reach changed": sample.replace("return 3", "return 4")}
+    for why, text in same.items():
+        assert of(text) == (own, reach, n), f"a check's prints moved when {why}"
+    body = of(sample.replace("helper() + K", "helper() - K"))
+    assert body[0] != own and body[1] != reach, "a check's prints held when its own body changed"
+    for why, text in {"a helper it uses changed": sample.replace("return 1", "return 5"),
+                      "its helper's name came to mean a later definition":
+                          sample + "\n\ndef helper():\n    return 1 + 0\n"}.items():
+        got = of(text)
+        assert got[0] == own and got[1] != reach, (
+            f"when {why} the check's own print should hold and its reach move: {got} after "
+            f"{(own, reach, n)}")
+    made = _manifest_text()
+    m = json.loads(made)
+    order = _in_order(CHECKS)
+    assert [e["fn"] for e in m["checks"]] == [c["fn"].__name__ for c in order], (
+        "the manifest's checks are not the registry's, in the order main() runs them")
+    wrong = [e["fn"] for e, c in zip(m["checks"], order)
+             if (e["group"], e["words"], e["needs"], e["expect_fail"], e["last"])
+             != (c["group"], c["name"], list(c["needs"]), bool(c.get("expect_fail")),
+                 bool(c.get("last")))]
+    assert not wrong, f"the manifest misstates the registry for {', '.join(wrong[:5])}"
+    assert len({e["own"] for e in m["checks"]}) == len(m["checks"]), (
+        "two checks share an own print: the prints are not of their code")
+    tmp = Path(tempfile.mkdtemp(prefix="gr-manifest-"))
+    try:
+        seed = "1" if os.environ.get("PYTHONHASHSEED") == "0" else "0"
+        r = _run([sys.executable, _paths.script("preflight.py"), "--manifest", "m.json"], cwd=tmp,
+                 capture_output=True, text=True, timeout=900,
+                 env={**os.environ, "PYTHONHASHSEED": seed})
+        assert r.returncode == 0, f"--manifest: {(r.stderr or r.stdout)[-400:]}"
+        assert (tmp / "m.json").read_bytes() == made.encode("utf-8"), (
+            f"a run of --manifest under PYTHONHASHSEED={seed} wrote another manifest than this run "
+            "makes of the same file")
+        left = sorted(p.name for p in tmp.iterdir())
+        assert left == ["m.json"], f"--manifest left more than its file: {left}"
+        assert "[  ok  ]" not in r.stdout and " passed, " not in r.stdout, (
+            f"--manifest ran checks: {r.stdout[-300:]}")
+        r = _run([sys.executable, _paths.script("preflight.py"), "--manifest", "m2.json", "--code"],
+                 cwd=tmp, capture_output=True, text=True, timeout=300)
+        assert r.returncode == 2 and not (tmp / "m2.json").exists(), (
+            f"--manifest with --code did not refuse: {(r.stderr or r.stdout)[-300:]}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"{len(m['checks'])} checks listed in run order with the registry's words, needs "
+                  f"and marks; a run under PYTHONHASHSEED={seed} wrote the same bytes and nothing "
+                  "else; the prints hold for a moved line or docstring and move with a body, a "
+                  "helper, or a name rebound")
 
 
 def _edit_browser_files(root, edit):

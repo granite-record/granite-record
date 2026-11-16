@@ -254,7 +254,7 @@ show.
 
 ### Iterating without waiting on the whole of it
 
-Three tools for the time between those proofs, none of which replaces one.
+Five tools for the time between those proofs, none of which replaces one.
 
 - **A change to the browser's files alone** -- `src/pages/app.css`,
   `components.js`, `app.js` or `find.js` -- goes into the site the last full
@@ -290,6 +290,15 @@ Three tools for the time between those proofs, none of which replaces one.
   with `dev` -- or since `--changed <commit>` -- and `--verbose` says why
   each was chosen. It says, every time, that it is not the full suite: the
   full suite is what runs before a merge into `dev`.
+- **What the checks are, without running one.** `python3 preflight.py
+  --manifest FILE` writes every check, in the order a run takes them, with
+  its group, words, needs and marks and two fingerprints of its code -- its
+  own definition, and that with every helper and constant it reaches by
+  name -- into FILE, and nothing else. A change meant to move checks and
+  alter none, such as splitting `preflight.py` into a package, shows it so:
+  the manifest before and after is the same but for the fingerprints the
+  change says it moves. Compare two manifests made by the same Python; each
+  says which made it.
 - **A baseline once per commit.** `src/checks/site_manifest.py` keeps the
   sha256 manifest of a build, keyed by its commit, its stated day, its
   options and the data under it, so the "build before" of step 2 is made
