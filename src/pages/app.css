@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.395 */
+/* GRANITE_VERSION: 2026-09-07.396 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -7901,8 +7901,9 @@ border-radius:var(--r-in);background:var(--surface);font-size:var(--t-ui)}
 .card.focus.rec > .cbody > .tabs,.rhead ~ .tabs{margin-top:var(--sp-7);border-bottom:2px solid var(--ink)}
 /* THE PANEL SITS UNDER THE RULE (the owner's walk of dry run 9, 8 November
    2026): the strip's own 16px bottom margin left an empty band between its
-   rule and the panel on a bill's page. */
-.card.focus.rec > .cbody > .tabs{margin-bottom:0}
+   rule and the panel on a bill's page. And on a request's page, whose strip
+   is a bill's (build_request_pages, 16 November 2026). */
+.card.focus.rec > .cbody > .tabs,.rhead.rh-bill ~ .tabs{margin-bottom:0}
 /* PINNED WHILE A LONG TAB IS READ (choice A, 14 October 2026): on a bill's,
    a member's or a committee's own page the strip stays at the top of the
    window as its pane scrolls under it, so another tab is one tap away from

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.12
+# GRANITE_VERSION: 2026-11-08.13
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -10,10 +10,11 @@ Alice, 8 November 2026. Each page is /request/<number> (build_lsrs.py's
 "address"); noindex and out of the sitemap, as the provisional members-elect
 pages are; it shows what a request has -- its number, title, prime sponsor
 (the chip as everywhere), what kind of request it is and where it stands --
-and the requests' own explanation. Nothing here knows how a state numbers
-its requests or where they come from: build_lsrs.py, the source's reader,
-gives each row its "address" and, once the request is a bill or filing is
-complete, its "moved_to".
+under a bill's tab strip (16 November 2026), its Summary saying what the
+record says of its text, and the requests' own explanation. Nothing here
+knows how a state numbers its requests or where they come from:
+build_lsrs.py, the source's reader, gives each row its "address" and, once
+the request is a bill or filing is complete, its "moved_to".
 
 WHICH ARE WRITTEN. Every request with no "moved_to": filed, or withdrawn (a
 withdrawn request keeps its page, as a withdrawn bill does). One with
@@ -187,14 +188,35 @@ def head(r, req, who_of, path, base):
     return page
 
 
+def text_note(r, year):
+    """What the Summary says of the request's text, by what its row says
+    (the owner, 16 November 2026: "the summary should explain that the bill
+    text is not yet available as it is still being drafted so that the
+    format doesn't look cut off"): a request still requested is being
+    drafted, and its text is public once it is filed as a numbered bill (the
+    rail's Filed, "Text public"); a withdrawn one was withdrawn before it was
+    filed, as its rail's crossed Filed says; one already filed or introduced
+    says nothing of the kind ("" -- its Summary is what it was)."""
+    if r.get("withdrawn"):
+        return ("<b>Withdrawn.</b> This request was withdrawn before it was filed as a bill, "
+                "so it has no text.")
+    if r.get("filed") or r.get("introduced"):
+        return ""
+    return ("<b>Not public yet.</b> This request is still being drafted into a bill. Its text "
+            f"will be public when it is filed as a numbered {E(str(year))} bill.")
+
+
 def summary(r, req):
-    """The Summary tab: the requests' explanation. The facts of this one are
-    the head's (the status chip, the field grid): not said twice (the owner,
-    14 November 2026: "just let the pages speak for themselves")."""
-    return (C.section("About Requests",
-                      f'<p class="lsrnote">{explain(r.get("year") or req.get("year"), req.get("abbr"))}</p>',
-                      "about")
-            )
+    """The Summary tab: what the record says of the request's text
+    (text_note), as a bill's Summary leads with what its text says, and the
+    requests' explanation. The facts of this one are the head's (the status
+    chip, the field grid): not said twice (the owner, 14 November 2026: "just
+    let the pages speak for themselves")."""
+    year = r.get("year") or req.get("year")
+    note = text_note(r, year)
+    return ((C.section("Bill Text", f"<p>{note}</p>", "text") if note else "")
+            + C.section("About Requests", f'<p class="lsrnote">{explain(year, req.get("abbr"))}</p>',
+                        "about"))
 
 
 def sponsors_pane(r, who_of):
@@ -230,46 +252,38 @@ def history_pane(r):
             f'this same title:</p><ul class="lsrhist">{items}</ul>')
 
 
-def tab_n(n):
-    """A tab's count as app.js's tabN draws it: the badge, its brackets there
-    for a screen reader; nothing for none."""
-    return (f'<span class="tn"><span class="tnp"> (</span>{n:,}<span class="tnp">)</span></span>'
-            if n else "")
-
-
-def tabs(path, panes):
-    """The strip and its panes, as a study committee's page has them (the
-    same script, ssTabs, and the same stylesheet): `panes` is [(id, word,
-    count, body)], the first shown. Every tab is at the page's own address
-    (no slug), a place on a tab named by its #id."""
-    if len(panes) == 1:
-        # Summary alone: no strip to choose from, and no tab for the pane to answer to.
-        _pid, word, _n, body = panes[0]
-        return f'<div class="pane sspane" data-on><h2 class="ssph">{E(word)}</h2>{body}</div>'
-    strip = ('<div class="tabs sstabs" role="tablist" data-base="' + E(path) + '">'
-             + "".join(f'<button type="button" class="tab" role="tab" id="sstab-{pid}" '
-                       f'aria-controls="{pid}" data-sstab="" aria-selected="{"true" if i == 0 else "false"}">'
-                       f'{E(word)}{tab_n(n)}</button>'
-                       for i, (pid, word, n, _b) in enumerate(panes))
-             + "</div>")
+def tabs(rid, path, panes):
+    """THE STRIP A BILL'S PAGE HAS, AND ITS PANES (the owner, 16 November
+    2026: a request's page "should at least show the summary tab"):
+    the record's strip, components.record_tabs, as app.js's renderDetail
+    draws a bill's -- the same component, its tabs keyed as a bill's (0
+    Summary, 4 Sponsors, 7 History, as the request's card keys them) -- and
+    drawn for the Summary alone too, which until then drew no strip and left
+    the page ending under the rail. `panes` is [(key, word, count, body)],
+    the first chosen. The page is built ahead with every pane on it, so the
+    strip carries the page's address (`base`) for app.js's ssTabs, which
+    turns the panes as on a study committee's page; every tab is at the
+    page's own address, a place on one named by its pane's #id. WITHOUT A
+    SCRIPT (app.css): the strip is hidden and every pane is on the page in
+    turn under its own heading, which the script hides for a screen reader's
+    alone. A pane's id is pane_<id>_<key>, never "summary": bills.html
+    carries <p id="summary">, and ssPaneOf finds a pane by its id."""
+    strip = C.record_tabs(rid, [[k, word, n] for k, word, n, _b in panes], panes[0][0], path)
     return strip + "".join(
-        f'<div class="pane sspane" role="tabpanel" id="{pid}" aria-labelledby="sstab-{pid}" tabindex="0"'
-        f'{" data-on" if i == 0 else ""}><h2 class="ssph">{E(word)}</h2>{body}</div>'
-        for i, (pid, word, _n, body) in enumerate(panes))
+        f'<div class="pane sspane" role="tabpanel" id="pane_{E(rid)}_{k}" aria-labelledby="tab_{E(rid)}_{k}" '
+        f'tabindex="0" data-t="{k}"{" data-on" if i == 0 else ""}><h2 class="ssph">{E(word)}</h2>{body}</div>'
+        for i, (k, word, _n, body) in enumerate(panes))
 
 
 def body(r, req, who_of, path, base):
     """One request's page: a bill's, with what a request has drawn and the
     rest left quiet."""
-    # PANE IDS ARE THE REQUEST PAGE'S OWN (rq-): bills.html carries
-    # <p id="summary">, and ssPaneOf finds an element by id, so a pane called
-    # "summary" was never the one its tab switched.
-    panes = [("rq-summary", "Summary", 0, summary(r, req))]
+    panes = [("0", "Summary", 0, summary(r, req))]
     if r.get("cosponsors"):
-        panes.append(("rq-sponsors", "Sponsors", len(r["cosponsors"]) + 1, sponsors_pane(r, who_of)))
+        panes.append(("4", "Sponsors", len(r["cosponsors"]) + 1, sponsors_pane(r, who_of)))
     if r.get("history"):
-        panes.append(("rq-history", "History", len(r["history"]), history_pane(r)))
-    return head(r, req, who_of, path, base) + tabs(path, panes)
+        panes.append(("7", "History", len(r["history"]), history_pane(r)))
+    return head(r, req, who_of, path, base) + tabs(r.get("id") or "", path, panes)
 
 
 def write(site, base):
