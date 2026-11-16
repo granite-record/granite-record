@@ -59,7 +59,11 @@ the run named beside it, never edited by hand.
   never renumbered, reissued or deleted. If the General Court's number for
   such a person is found later, `--found` records it; the number becomes
   their key and the `gr-` id stays as an alias. Empty when first committed
-  (13 November 2026): every person the sponsor route names has a number.
+  (13 November 2026): every person the sponsor route names has a number. An
+  id issued by `python3 src/ops/gr_register.py --offices`, for a holder of an office in
+  `corrections/officials.json`, also names the place it was issued for
+  (`issued_for`), and the model (`src/parse/build_entities.py`) puts it on
+  that place's holder under the name it was issued to, and on no one else.
 - `moved_addresses.json` -- every address a former member's page has moved
   from, {address: member id}, so each answers with a 301 to the page they
   have now, for good: their seat put right from the bills of their last

@@ -2414,6 +2414,56 @@ preflight's reminders, `_officials_rechecked`. The home page's old "Who holds
 office" block, from `corrections/status/officials.txt`, a second copy of the
 Governor and the Council that was never filled in, was retired the same day.
 
+## One model of people, offices, terms, districts and elections (16 November 2026)
+
+The build's last step, `src/parse/build_entities.py`, writes `data/entities/`
+(the build's data folder, never `site/`: nothing of it is published): a file a
+kind of record -- people, offices, districts, places, terms, tenures, contests
+and candidacies -- the layouts of the two files whose arrangement is in no
+record (the officials' hand file, the members-elect's list of result
+addresses), and a manifest of what it read, each file's sha256, what it could
+not give back and where the files disagree. It reads `site/data/people.json`,
+`generated/careers.json`, the roster, `corrections/officials.json` (through
+its one reader, `read_officials`, on a day before every successor's, so that
+it holds each one), `site/officers.json`, `site/members_elect.json` where it is on disk,
+`records/districts/` and, only to compare, the Secretary of State's county
+roster. The shapes, the rules a model holds to and the views that give the
+files back are `src/lib/entities.py`'s, and name nothing of New Hampshire:
+its offices with their articles of the Constitution, the House's multi-seat
+and floterial districts and the eras of districts are values in
+`src/lib/state_settings.json`.
+
+Nothing reads it yet (the design's phase A, approved 16 November 2026).
+preflight holds that each of those files is a view of it, byte for byte but
+for the line ends a machine writes: on the built site
+(`_entities_give_back_today`, which also fails a model built from files that
+have changed since), and in a bare clone on the tracked files and a made-up
+tree (`_entities_give_back_the_tracked_files`, `_entities_round_trip`), so
+that a reader moved onto it later cannot change the site. careers.json's
+ballot counts are the one thing it does not give back: they are the roll
+calls'. A person's id is the General Court's number where it gives one, a
+`gr-` id only where the register issued one for that very place
+(`python3 src/ops/gr_register.py --offices`, a person's run, which holds back a name two
+places share), and none for a member-elect until the General Court numbers
+them; a date only where a record states one; a holder of a hand-file office
+is linked to a person only by the file's own `member` entry, never by a name.
+Party and seat are a tenure's. Where the hand file and the county roster name
+different holders of one seat -- on 16 November the Hillsborough sheriff and
+the Strafford commissioner of district 1, each a vacancy filled since the
+roster's day -- the seat has two tenures, and the manifest lists the
+difference. Measured on the files of 7 November: 10,084 records, about 2.2 MB,
+built in under half a second, the same bytes under two hash seeds.
+
+The step stops only where a file it needs is missing or will not read:
+`check_site` fails a night on any step that failed, optional or not, and no page
+reads the model. What it cannot place or hold -- a member who moved chamber within
+a term under two numbers careers.json joins, a roster id no person holds, a
+chair's office the settings do not list, a successor in a place of the hand file
+no rule knows -- it says on its log and in the manifest, and keeps where it can;
+a rule the model breaks goes into the manifest's problems, and
+`_entities_give_back_today` fails the night's check on it, which holds the night
+for a person.
+
 ## The data API's records, a file each (16 November 2026)
 
 `src/pages/api_records.py`, which `build_exports.py` calls once its CSVs and

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.97
+# GRANITE_VERSION: 2026-09-05.98
 """
 Run the whole pipeline in the right order.
 
@@ -1286,6 +1286,26 @@ def plan(a):
                   "tables and the feeds. It runs in the pipeline rather than "
                   "by hand because an export nobody rebuilds is worse than "
                   "no export: it looks current and is not"),
+
+        # THE MODEL OF PEOPLE, OFFICES, TERMS, DISTRICTS AND ELECTIONS (the owner's yes of
+        # 16 November 2026 to the design's question 1; src/lib/entities.py). Last, because it
+        # reads what the steps above have just written -- the district table, the site data's
+        # roster and officers, the members-elect, and site/data/people.json, which the bulk
+        # downloads write -- with the hand files and generated/careers.json, and it writes
+        # data/entities/ and nothing else: never site/, so nothing of it is published. Nothing
+        # reads it yet; preflight holds that each of today's files is a view of it. Optional,
+        # because no page waits on it -- though check_site still fails a night on any failed
+        # step, which is why the step stops only where a file it needs is missing or will not
+        # read, and says the rest (build_entities.build), and the model's check of the built
+        # site fails on what it says is wrong.
+        Step("people, offices, terms, districts and elections, as one model",
+             ["build_entities.py", "--out", "data/entities"],
+             needs=["site/data/manifest.json", "site/meta.json", "site/districts.json",
+                    "generated/careers.json"],
+             produces=["data/entities/manifest.json"], optional=True,
+             note="every person, office, district, place, term, tenure, contest and candidacy "
+                  "the files on disk describe, a file a kind, about 2.2 MB; read by nothing "
+                  "yet, and never published"),
     ]
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.18
+# GRANITE_VERSION: 2026-10-16.19
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -1652,13 +1652,15 @@ def officials_on(doc, today=None, what=OFFICIALS.as_posix()):
     return walk(doc, "")
 
 
-def read_officials(path=None, today=None):
+def read_officials(path=None, today=None, root=None):
     """corrections/officials.json (or `path`), as every page draws it on
     `today`: read, and officials_on() applied. THE ONE READER (above). A
     file that is not there or will not parse raises as reading it always
     did (OSError, ValueError), for the caller to decide; a successor that
-    will not read stops it (officials_on)."""
-    p = Path(path) if path else OFFICIALS
+    will not read stops it (officials_on). `root` reads the file of another
+    tree, as the model's build does (build_entities.py, which reads it on a
+    day before every successor's, so as to hold each one)."""
+    p = Path(path) if path else (Path(root) / OFFICIALS if root is not None else OFFICIALS)
     return officials_on(json.loads(p.read_text(encoding="utf-8")), today, p.as_posix())
 
 
