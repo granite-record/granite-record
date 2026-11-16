@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.3
+# GRANITE_VERSION: 2026-11-12.4
 """Counts and samples for the tag registry, so the design's numbers can be redone.
 
     python3 src/parse/tag_counts.py --root D:/nh --registry reports/tags.draft.json --out D:/nh/reports
@@ -16,7 +16,8 @@ Writes, into --out (reports/, which git ignores and nothing commits):
 
 THE SAMPLES (design 4.4), drawn by a seeded generator so the same registry and
 the same bills give the same draw: per tag 10 bills the title attaches and 10
-that only the analysis or a dedicated chapter attaches, each set spread over
+that only the analysis or a dedicated chapter attaches (never a bill on the
+tag's hand list, which a person has already answered), each set spread over
 the three eras (1989-1998, 1999-2012, 2013-2026); 10 bills the tag does not
 carry whose full text names its core words three or more times, with the
 sentences ("might have been missed"); and the tag's opposite-aim pair.
@@ -68,7 +69,7 @@ def is_none(topic):
 def count(rules, bills, reg):
     """The counts of a run, and every bill's result keyed term/bill."""
     results = TR.tag_all(rules, bills)
-    by_tag = {tid: {"name": reg[tid].get("name"), "title": 0, "any": 0, "ta": 0, "best": {"T": 0, "A": 0, "R": 0},
+    by_tag = {tid: {"name": reg[tid].get("name"), "title": 0, "any": 0, "ta": 0, "best": {t: 0 for t in TR.TIERS},
                     "gained_a_topic": 0, "dropped_for_topic": 0, "by_term": {}}
               for tid in rules}
     per_bill = collections.Counter()
@@ -179,7 +180,8 @@ def draw(reg, rules, bills, results, texts):
     for tid, rule in rules.items():
         attached = [by_key[k] for k, r in results.items() if tid in r["tags"]]
         title = [b for b in attached if results[key_of(b)]["tags"][tid]["tier"] == "T"]
-        other = [b for b in attached if results[key_of(b)]["tags"][tid]["tier"] != "T"]
+        # a bill on the tag's hand list (best tier H) is a person's own answer: never drawn to ask again
+        other = [b for b in attached if results[key_of(b)]["tags"][tid]["tier"] not in ("T", "H")]
 
         def item(b, **extra):
             v = (results[key_of(b)]["tags"].get(tid) or {})
@@ -241,10 +243,10 @@ def markdown(c, source):
              f"{c['bills']:,} bills. Title tier: {c['bills_title_tier']:,}; any tier: {c['bills_any_tier']:,}; "
              f"over the guide of {c['guide']} tags: {c['bills_over_guide']:,}; "
              f"bills with no topic that gain a tag: {c['bills_with_no_topic_that_gain_a_tag']:,}.", "",
-             "| tag | title | any | T | A | R | gain a topic | dropped (topic) |", "|---|---|---|---|---|---|---|---|"]
+             "| tag | title | any | T | A | R | H | gain a topic | dropped (topic) |", "|---|---|---|---|---|---|---|---|---|"]
     for tid, r in c["by_tag"].items():
         lines.append(f"| {tid} | {r['title']} | {r['any']} | {r['best']['T']} | {r['best']['A']} | {r['best']['R']} "
-                     f"| {r['gained_a_topic']} | {r['dropped_for_topic']} |")
+                     f"| {r['best'].get('H', 0)} | {r['gained_a_topic']} | {r['dropped_for_topic']} |")
     terms = sorted({t for r in c["by_tag"].values() for t in r["by_term"]})
     lines += ["", "## By term (any tier)", "", "| tag | " + " | ".join(t[2:4] + t[5:] for t in terms) + " |",
               "|---|" + "---|" * len(terms)]

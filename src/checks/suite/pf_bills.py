@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -9234,3 +9234,61 @@ def _tag_engine(TR, TC, RV):
     assert "mental-health" in out.getvalue() and "title 10/10" in out.getvalue(), out.getvalue()
     return "ok", (f"{len(fx['expect'])} bills, {len(reg)} tags, {pairs} pair bills; two hash seeds agree; "
                   f"the bench draws, shows and reports")
+
+
+@check("code", "a bench judgment no phrase can reach is honoured by hand: a hand list attaches its bills as tier H "
+               "with the reason and takes others off and says so, the topic drop still holds, a malformed list is "
+               "refused, and the bench never draws a hand bill to ask again",
+       needs=("tag_rules", "tag_counts"))
+def _tag_hand_lists(TR, TC):
+    """The owner's bench of 15 November 2026 judged three possible misses of the mental-health tag
+    "partly"; two of them (2019-2020 SB290, 2021-2022 SB140) name the subject only in their text,
+    which never attaches a tag, so tag_rules.py takes an entry's "hand" list: {"attach": {bill: why},
+    "detach": {bill: why}}. Held on tests/tags_fixture.json, a copy given hand lists: a bill no
+    phrase reaches attaches as H with "H:" and the reason; a bill a phrase reaches keeps the phrase's
+    tier first and lists H after it; a bill taken off loses the tag whatever fires, and dropped says
+    so; a hand attach on a bill whose topic is the tag's own is still dropped for the topic; no other
+    tag's answer moves; validate() refuses a key that is no bill, a reason left empty, a bill on both
+    lists and a list of another shape; the counts carry an H column; and the bench's draw leaves the
+    hand bill out of the sample it asks about."""
+    fx = json.loads(_source("tests/tags_fixture.json"))
+    reg = json.loads(json.dumps(fx["registry"]))
+    bills = {f"{b['term']}/{b['bill']}": b for b in fx["bills"]}
+    plain = TR.compile_registry(reg)
+    before = {k: TR.tag_bill(plain, b) for k, b in bills.items()}
+    assert "mental-health" not in before["2001-2002/HB13"]["tags"], "the fixture's HB13 already carries the tag"
+    reg["mental-health"]["hand"] = {"attach": {"2001-2002/HB13": "the bench: partly", "2001-2002/HB11": "the bench: yes"},
+                                    "detach": {"2001-2002/HB12": "the bench: no"}}
+    reg["medicaid-assistance"]["hand"] = {"attach": {"2013-2014/HB22": "the bench: yes"}}
+    assert not TR.validate(reg), "a well-formed hand list was refused: " + "; ".join(TR.validate(reg))
+    rules = TR.compile_registry(reg)
+    after = {k: TR.tag_bill(rules, b) for k, b in bills.items()}
+    got = after["2001-2002/HB13"]["tags"].get("mental-health")
+    assert got == {"tier": "H", "why": "H:the bench: partly", "fired": ["H"]}, f"a hand bill no phrase reaches: {got}"
+    got = after["2001-2002/HB11"]["tags"]["mental-health"]
+    assert got["tier"] == "T" and got["fired"] == ["T", "H"], f"a phrase's tier did not come first: {got}"
+    assert "mental-health" not in after["2001-2002/HB12"]["tags"] and \
+        after["2001-2002/HB12"]["dropped"].get("mental-health") == "taken off by hand: the bench: no", (
+        f"a bill taken off by hand: {after['2001-2002/HB12']}")
+    assert "medicaid-assistance" not in after["2013-2014/HB22"]["tags"] and \
+        "medicaid-assistance" in after["2013-2014/HB22"]["dropped"], "a hand attach escaped the topic drop"
+    for k in bills:
+        for tid in reg:
+            if tid in ("mental-health", "medicaid-assistance") and k in ("2001-2002/HB11", "2001-2002/HB12",
+                                                                         "2001-2002/HB13", "2013-2014/HB22"):
+                continue
+            assert after[k]["tags"].get(tid) == before[k]["tags"].get(tid), f"{k} {tid} moved without a hand list"
+    found = " | ".join(TR.validate({"x": {**reg["mental-health"], "hand": {
+        "attach": {"HB13": "why", "2001-2002/HB14": " ", "2001-2002/HB15": "why"},
+        "detach": {"2001-2002/HB15": "why"}}}, "y": {**reg["mental-health"], "hand": ["2001-2002/HB13"]}}))
+    assert "no bill key" in found and "says no reason" in found and "both attaches and takes off" in found \
+        and "y: hand is" in found, found
+    results, c = TC.count(rules, list(bills.values()), reg)
+    assert c["by_tag"]["mental-health"]["best"]["H"] == 1 and "| H |" in TC.markdown(c, "fixture"), (
+        "the counts have no hand column")
+    samples, _n = TC.draw(reg, rules, list(bills.values()), results, {})
+    asked = {x["bill"] for s in ("title", "other") for x in samples["mental-health"][s]}
+    assert "HB13" not in asked and "HB11" in asked, f"the bench would ask again about a hand bill: {sorted(asked)}"
+    return "ok", ("a hand bill attaches as H with its reason and a phrase's tier comes first; a bill taken off "
+                  "loses the tag and is said to be; the topic drop holds; no other answer moves; four malformed "
+                  "lists refused; the counts' H column; the bench never draws a hand bill")

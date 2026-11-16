@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.4
+# GRANITE_VERSION: 2026-11-12.5
 """The tag rule engine: which tags a bill carries, and the evidence for each.
 
     python3 src/parse/tag_rules.py --bill 2023-2024 HB1596   # explain one bill
@@ -41,6 +41,18 @@ THE RULE, by what each kind of evidence may claim (design 2.3):
     not_bill          phrases that take the whole tag away if the title has one
 
 The committee and the full text NEVER attach a tag.
+
+BY HAND, beside the rule (16 Nov 2026): an entry's "hand" holds the bills a
+person decided on the bench that no phrase or chapter can reach, each by its
+key with the reason, so a judgment is honoured without a rule bent to fit it:
+
+    hand.attach       H  the tag is on this bill whatever fires ("2021-2022/SB140":
+                         "the owner's bench, 15 Nov 2026: partly"); a tier of its
+                         own, last, so a bill a phrase also attaches shows the phrase
+    hand.detach       the tag is off this bill whatever fires, and is said to be
+
+A hand bill is the person's own answer, so the bench never draws one to ask
+again, and the topic-redundancy drop still applies to it.
 
 A PHRASE is plain words: whole words, any case, a space and a hyphen standing
 for each other, an apostrophe optional, a plural allowed ("mental health" never
@@ -102,7 +114,8 @@ SITE_TOPICS = (
     "Occupational Regulation", "Police", "Property - Real and Personal", "Public and Mental Health", "Retirement",
     "Right to Know", "State Government", "Study Committees and Commissions", "Taxes - Local", "Taxes - State",
     "Transportation and Highways", "Welfare/Medicare/Medicaid", "Zoning and Planning")
-TIERS = ("T", "A", "R")
+TIERS = ("T", "A", "R", "H")
+BILL_KEY = re.compile(r"\d{4}-\d{4}/[A-Z]+\d+")
 
 # Words that argue rather than name. A tag's NAME may not carry one unless the
 # owner has allowed it (stance_ok), because the name is what a reader sees; a
@@ -169,6 +182,9 @@ class Rule:
         self.nots = [compile_phrase(p) for p in r.get("not", [])]
         self.not_bill = [compile_phrase(p) for p in r.get("not_bill", [])]
         self.same_as_topic = {t.strip().lower() for t in entry.get("same_as_topic", [])}
+        hand = entry.get("hand") or {}
+        self.attach = dict(hand.get("attach") or {})
+        self.detach = dict(hand.get("detach") or {})
 
     def blank(self, text):
         for rx in self.nots:
@@ -340,6 +356,20 @@ def validate(reg, topics=None, synonyms=None):
             bad.append(f"{tid}: a pair is two keys like 2023-2024/HB1596")
         if e.get("neutrality_hard") and not pair:
             bad.append(f"{tid}: neutrality is hard for this tag and it has no opposite-aim pair")
+        hand = e.get("hand")
+        if hand is not None:
+            lists = {w: hand.get(w) or {} for w in ("attach", "detach")} if isinstance(hand, dict) else {}
+            if not isinstance(hand, dict) or set(hand) - set(lists) or not all(isinstance(v, dict) for v in lists.values()):
+                bad.append(f"{tid}: hand is {{\"attach\": {{bill: why}}, \"detach\": {{bill: why}}}}")
+            else:
+                for w, bills in lists.items():
+                    for k, why in bills.items():
+                        if not BILL_KEY.fullmatch(k):
+                            bad.append(f"{tid}: hand {w} names {k!r}, which is no bill key like 2023-2024/HB1596")
+                        if not (isinstance(why, str) and why.strip()):
+                            bad.append(f"{tid}: hand {w} {k} says no reason")
+                for k in sorted(set(lists["attach"]) & set(lists["detach"])):
+                    bad.append(f"{tid}: hand both attaches and takes off {k}")
     table, conflicts = synonym_table(reg, synonyms)
     bad += conflicts
     for w, target in (synonyms or {}).items():
@@ -358,15 +388,23 @@ def validate(reg, topics=None, synonyms=None):
 def tag_bill(rules, bill, topic=None):
     """What the registry says of one bill.
 
-    {"tags": {id: {"tier": best of T/A/R, "why": the evidence, "fired": [tiers]}},
+    {"tags": {id: {"tier": best of T/A/R/H, "why": the evidence, "fired": [tiers]}},
      "dropped": {id: why}, "support": {id: [chapters]}}
 
     in registry order. `bill` carries title, analysis, chapters and, optionally,
-    topic (the bill's assigned topic, for the redundancy drop)."""
+    topic (the bill's assigned topic, for the redundancy drop), and term and bill,
+    which a hand list names it by."""
     topic = (topic if topic is not None else bill.get("topic") or "").strip().lower()
     tags, dropped, support = {}, {}, {}
+    key = f"{bill.get('term')}/{bill.get('bill')}"
     for tid, rule in rules.items():
         fired, sup = rule.fire(bill)
+        if key in rule.detach:
+            if fired:
+                dropped[tid] = f"taken off by hand: {rule.detach[key]}"
+            continue
+        if key in rule.attach:
+            fired["H"] = f"H:{rule.attach[key]}"
         if not fired:
             if sup:
                 support[tid] = sup
