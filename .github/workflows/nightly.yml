@@ -266,6 +266,12 @@ jobs:
       STARTED_LOOKED: ${{ needs.started.outputs.looked }}
     runs-on: windows-2022
     timeout-minutes: 300
+    # actions: read for one step, "The code checks' result", which lists this
+    # run's own jobs to read what the job "checks" came to (16 November 2026).
+    # Nothing else here asks GitHub for anything; preflight holds that.
+    permissions:
+      contents: read
+      actions: read
     # The preview's Pages token can live in this environment rather than in the
     # repository's secrets; see the operator checklist. A DRY RUN'S PREVIEW IS
     # ITS OWN (7 October 2026; nightly.DRY_PREVIEW_BRANCH): the night's address
@@ -592,10 +598,28 @@ jobs:
           python src/ops/cloud.py kit-up @hold
           exit $LASTEXITCODE
 
+      # THE CODE CHECKS' RESULT (16 November 2026; the job "checks" says why
+      # they are a job of their own). Read off this run's own list of jobs,
+      # waiting while that job runs (nightly.CHECKS_WAIT), and handed to the
+      # verdict below, which folds it in: only "success" is a pass, so a step
+      # that could not read it, or ran out of time, is not one. It never
+      # fails the night itself; the verdict does that. Not on a run cancelled,
+      # where it could wait its whole limit for nothing.
+      - name: The code checks' result, from their own job
+        id: checks
+        if: ${{ !cancelled() }}
+        timeout-minutes: 55
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python nightly.py --runner --checks-result
+          exit $LASTEXITCODE
+
       - name: The night's verdict
         if: always()
         run: |
           python nightly.py --runner --close `
+            --checks "${{ steps.checks.outputs.result }}" `
             --outcome "state-down=${{ steps.statedown.outcome }}" `
             --outcome "kit-down=${{ steps.kitdown.outcome }}" `
             --outcome "livestreams=${{ steps.livestreams.outcome }}" `
@@ -701,6 +725,66 @@ jobs:
           }
           exit 0
 
+  # THE CODE CHECKS, BESIDE THE NIGHT (16 November 2026, the owner's word:
+  # "preflight --code as its own job beside the night, not before the
+  # fetch"). They ran first inside the night, ten minutes of its path, and a
+  # check that failed stopped it before it asked for anything: on 16 November
+  # that lost the day's files, which cannot be taken later. Now they run here,
+  # on a machine of their own, from this run's own commit, started with the
+  # night and run whenever it runs; the fetch and the build no longer wait
+  # for them. The publish job needs this job to have passed, so nothing goes
+  # to production unless the checks passed on the same commit; the night reads
+  # what they came to at its end ("The code checks' result") and its verdict
+  # folds it in, so a dry run is clean, and proves a release, only when they
+  # passed, and the run's page says which. The checks need no data, so this
+  # machine takes nothing down from the bucket and holds no secret, and its
+  # log, which is public, can carry their whole output. Not in gc-night: it
+  # asks nobody anything, and a night waiting there does not hold it up.
+  checks:
+    name: the code checks
+    needs: started
+    if: ${{ !cancelled() && (github.event_name != 'schedule' || needs.started.outputs.by_timer == '0') }}
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - name: Check out the run's commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set the clock to New Hampshire's
+        run: |
+          tzutil /s "Eastern Standard Time"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-Date -Format "yyyy-MM-dd HH:mm zzz"
+
+      - name: Python 3.14
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Node 24, for preflight
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: "24"
+
+      # The night's own list, so the checks meet what they met inside it.
+      - name: The Python packages, as the night installs them
+        run: |
+          python -m pip install --disable-pip-version-check --no-input `
+            -r requirements.txt `
+            yt-dlp==2026.8.19 yt-dlp-ejs==0.8.0 curl_cffi==0.16.0 certifi==2026.7.22
+          exit $LASTEXITCODE
+
+      - name: preflight.py --code
+        run: |
+          python preflight.py --code
+          $rc = $LASTEXITCODE
+          $said = if ($rc -eq 0) { "passed" } else { "FAILED (exit $rc): nothing from this run goes to production" }
+          "### The code checks: $said" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          exit $rc
+
   # Production, and only through here. THE GATE IS ON (the person, 12 October
   # 2026: publishing automatic when every check passes, held for approval when
   # one raises a concern). A night the gate clears goes through "production",
@@ -731,10 +815,14 @@ jobs:
   # wrong -- the run's title shows GitHub read them as booleans -- and
   # harmless: what it changed stays, the job asking the night for the run's
   # DRY_RUN rather than reading a box itself.
+  #
+  # AND ONLY WHERE THE CODE CHECKS PASSED (16 November 2026): the job "checks",
+  # beside the night, on the same commit. Anything but success there -- a
+  # failure, a cancelled or skipped job -- and this job does not run.
   publish:
     name: publish to production
-    needs: night
-    if: ${{ !cancelled() && needs.night.result == 'success' && needs.night.outputs.publishable == 'true' && needs.night.outputs.dry_run == 'false' && github.ref == 'refs/heads/main' }}
+    needs: [night, checks]
+    if: ${{ !cancelled() && needs.night.result == 'success' && needs.checks.result == 'success' && needs.night.outputs.publishable == 'true' && needs.night.outputs.dry_run == 'false' && github.ref == 'refs/heads/main' }}
     runs-on: windows-2022
     timeout-minutes: 60
     environment:

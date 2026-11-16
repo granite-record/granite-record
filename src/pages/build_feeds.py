@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.46
+# GRANITE_VERSION: 2026-09-04.47
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -319,8 +319,29 @@ def prune(root, keep, allow, fall=0.25):
 COLLIDED = Counter()
 
 
+def newest_day(items):
+    """The newest date among `items`' (title, link, description, date, guid),
+    as YYYY-MM-DD, or "" where none carries a date rfc822 can read."""
+    days = []
+    for i in items:
+        try:
+            days.append(datetime.strptime(str(i[3] or "")[:10], "%Y-%m-%d").strftime("%Y-%m-%d"))
+        except ValueError:
+            continue
+    return max(days, default="")
+
+
 def feed(title, desc, link, self_link, items, base):
-    """items: (title, link, description, date, guid)"""
+    """items: (title, link, description, date, guid)
+
+    A FEED IS DATED BY ITS NEWEST ITEM (16 November 2026, the owner's word:
+    "Feeds' date = their newest item's"). lastBuildDate was the build's own
+    moment, to the second, so every one of the site's feeds changed every
+    night -- and between two builds of one day -- whether or not an item had,
+    and a reader was told so. It is the newest item's date now (newest_day),
+    a scheduled meeting's ahead of today included, as that item's own pubDate
+    is: a feed whose items did not change is the same file from night to
+    night. A feed with no dated item carries none."""
     # A READER KEEPS ONE ITEM PER GUID, and two items sharing one is not an
     # error anywhere: the XML is valid, the build exits zero, and the
     # subscriber simply never sees the second. That is how every one of the
@@ -338,14 +359,15 @@ def feed(title, desc, link, self_link, items, base):
                  f"<guid isPermaLink=\"false\">{escape(g)}</guid>"
                  f"<pubDate>{rfc822(dt)}</pubDate>"
                  f"<description>{escape(d)}</description></item>\n")
+    newest = newest_day(items)
     return ('<?xml version="1.0" encoding="UTF-8"?>\n'
             '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n<channel>\n'
             f"<title>{escape(title)}</title>\n"
             f"<link>{escape(link)}</link>\n"
             f"<description>{escape(desc)}</description>\n"
             "<language>en-us</language>\n"
-            f"<lastBuildDate>{rfc822(build_date.utcnow().isoformat())}</lastBuildDate>\n"
-            f'<atom:link href="{escape(self_link)}" rel="self" '
+            + (f"<lastBuildDate>{rfc822(newest)}</lastBuildDate>\n" if newest else "")
+            + f'<atom:link href="{escape(self_link)}" rel="self" '
             'type="application/rss+xml"/>\n'
             f"{body}</channel>\n</rss>\n")
 

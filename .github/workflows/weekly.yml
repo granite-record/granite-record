@@ -4,7 +4,9 @@
 # same concurrency group, so the two never run at once; it runs four hours
 # before Monday's night, which builds and publishes what it took. nightly.py's
 # weekly() says what each fetch is and how it is kept whole. It publishes
-# nothing and holds no Pages token.
+# nothing and holds no Pages token. Since 16 November 2026 it also builds the
+# site again, with no build cache, from the folder as the last night left it,
+# and compares it with that night's build (THE COLD BUILD, below).
 #
 # THE SCHEDULE IS ON, since its first run by hand, on 30 September 2026, came
 # back clean. To pause it, Actions -> weekly -> "..." -> Disable workflow;
@@ -153,6 +155,23 @@ jobs:
           python src/ops/cloud.py kit-down
           exit $LASTEXITCODE
 
+      # THE COLD BUILD (16 November 2026, the owner's word: "a weekly cold build
+      # compared with the night's before any caching"; nightly.NIGHT_SITE says
+      # why). The folder as the last night left it -- the checkout, the kit and
+      # the state, as they just came down -- is set aside here, before the
+      # week's fetches change any of it, and built again after them (below),
+      # with no build cache and that night's day stated, then compared file for
+      # file with the night's own build. What it found is in the week's
+      # verdict, a warning where it differs; neither step can stop the week's
+      # fetches or fail the week, and neither holds a night.
+      - name: Set the folder as the night left it aside, for the cold build
+        id: aside
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          python nightly.py --runner --weekly --cold-aside "$env:RUNNER_TEMP\cold"
+          exit $LASTEXITCODE
+
       - name: Sunday's fetches
         id: weekly
         run: |
@@ -190,10 +209,24 @@ jobs:
           python src/ops/cloud.py kit-up
           exit $LASTEXITCODE
 
+      # The cold build (above): the folder set aside, built and compared, after
+      # the week's own files have gone back. Its outcome goes to the verdict
+      # apart from the week's own steps (--cold), so it never fails the week.
+      # Not on a run cancelled: a build of half an hour nobody wants.
+      - name: The cold build, compared with the night's
+        id: cold
+        if: ${{ !cancelled() && steps.aside.outcome == 'success' }}
+        continue-on-error: true
+        timeout-minutes: 75
+        run: |
+          python nightly.py --runner --weekly --cold-build "$env:RUNNER_TEMP\cold"
+          exit $LASTEXITCODE
+
       - name: The weekly verdict
         if: always()
         run: |
           python nightly.py --runner --weekly --close `
+            --cold "${{ steps.cold.outcome }}" `
             --outcome "state-down=${{ steps.statedown.outcome }}" `
             --outcome "kit-down=${{ steps.kitdown.outcome }}" `
             --outcome "weekly=${{ steps.weekly.outcome }}" `

@@ -31194,6 +31194,56 @@ def _clip(build_feeds):
     return "ok", out[-38:]
 
 
+@check("pipeline", "a feed is dated by its newest item, not by the build, so a feed whose items did "
+                   "not change is the same file from night to night", needs=("build_feeds", "build_date"))
+def _feeds_dated_by_their_items(build_feeds, build_date):
+    """FEEDS' DATE = THEIR NEWEST ITEM'S (16 November 2026, the owner's word; the refactor's
+    stage 0, B11). lastBuildDate was the build's moment to the second, so every one of the
+    site's feeds changed every night and between two builds of one day. build_feeds.feed() on
+    made-up items, written under three stated moments a day and an hour apart: the same bytes
+    each time; lastBuildDate the newest item's date in whatever order they come, a meeting
+    still to come included, as its own pubDate is; an item with no date read neither moves it
+    nor stops it; and a feed with no dated item carries none."""
+    BF = build_feeds
+    items = [("HB 1 — a", "https://x/b/1", "d", "2026-11-10", "g1"),
+             ("HB 1 — b", "https://x/b/1", "d", "2026-11-14T10:00:00", "g2"),
+             ("HB 1 — c", "https://x/b/1", "d", "2026-10-01", "g3"),
+             ("HB 1 — d", "https://x/b/1", "d", "", "g4")]
+    ahead = items[:3] + [("HB 1 — hearing", "https://x/b/1", "d", "2026-12-02", "g5")]
+    saved = os.environ.get(build_date.ENV)
+    got = {}
+    try:
+        for when in ("2026-11-16T03:20:00", "2026-11-17T03:20:00", "2026-11-17T04:20:00"):
+            os.environ[build_date.ENV] = when
+            got[when] = [BF.feed("t", "d", "https://x", "https://x/f.xml", its, "https://x")
+                         for its in (items[:3], list(reversed(items[:3])), ahead, items[3:], [])]
+    finally:
+        if saved is None:
+            os.environ.pop(build_date.ENV, None)
+        else:
+            os.environ[build_date.ENV] = saved
+    one, *rest = got.values()
+    assert all(r[:3] == one[:3] for r in rest), (
+        "a feed whose items did not change differs between two builds: its date is the build's")
+
+    def dated(xml):
+        return re.findall(r"<lastBuildDate>([^<]*)</lastBuildDate>", xml)
+    plain, backwards, coming, undated, empty = one
+    assert dated(plain) == dated(backwards) == [BF.rfc822("2026-11-14")], (
+        "a feed's date is not its newest item's", dated(plain), dated(backwards))
+    assert dated(coming) == [BF.rfc822("2026-12-02")], (
+        "a feed whose newest item is a meeting still to come is not dated by it", dated(coming))
+    assert dated(undated) == [] and dated(empty) == [] and "<channel>" in empty, (
+        "a feed with no dated item carries a date", dated(undated), dated(empty))
+    mixed = BF.feed("t", "d", "https://x", "https://x/f.xml", items, "https://x")
+    assert dated(mixed) == [BF.rfc822("2026-11-14")], (
+        "an item with no date moved the feed's date, or stopped it", dated(mixed))
+    assert BF.newest_day(items) == "2026-11-14" and BF.newest_day([]) == "", BF.newest_day(items)
+    return "ok", (f"lastBuildDate {BF.rfc822('2026-11-14')} for items of 10 Oct to 14 Nov in either "
+                  "order, a meeting ahead's own date, none for undated or empty feeds; the same bytes "
+                  "under three stated moments")
+
+
 @check("files", "a check marked as expected to fail is reported as one, and once it passes it "
                 "fails and says to take the mark off")
 def _expected_failures_settle():
@@ -41396,8 +41446,9 @@ def _build_date_stated(build_all, build_date, shell):
     AND THE STATED DAY IS WHAT IS WRITTEN. The fixture site is built with the
     day before yesterday stated: every page's citation falls back on that day
     and none on today, home.json and the downloads' manifest are dated it, no
-    sitemap date is later and the standing pages carry it, every feed's
-    lastBuildDate is it, and the week it falls in is the calendar's current
+    sitemap date is later and the standing pages carry it, the all-activity
+    feed holds nothing after it and is dated by its newest item (feeds are,
+    since 16 November 2026), and the week it falls in is the calendar's current
     one. A date that is not one stops a builder. And without the variable the
     day is the clock's, which is what the fixture every other check reads was
     built by.
@@ -41570,10 +41621,15 @@ def _build_date_stated(build_all, build_date, shell):
             f"the sitemap's latest date is {max(mods) if mods else None}, not the stated {day}")
         import build_calendar as BC
         import build_feeds as BF
+        from email.utils import parsedate_to_datetime
+        # A FEED IS DATED BY ITS NEWEST ITEM (16 November 2026, build_feeds.feed),
+        # not by the build: all.xml's items are those dated by the stated day.
         feed = (site / "feed" / "all.xml").read_text(encoding="utf-8")
-        assert f"<lastBuildDate>{BF.rfc822(day.isoformat())}</lastBuildDate>" in feed, (
-            "feed/all.xml's lastBuildDate is not the stated day: "
-            + "".join(re.findall(r"<lastBuildDate>[^<]*</lastBuildDate>", feed)[:1]))
+        pubs = [parsedate_to_datetime(x).date() for x in re.findall(r"<pubDate>([^<]*)</pubDate>", feed)]
+        last = re.findall(r"<lastBuildDate>([^<]*)</lastBuildDate>", feed)
+        assert pubs and max(pubs) <= day and last == [BF.rfc822(max(pubs).isoformat())], (
+            f"feed/all.xml's lastBuildDate is {last}, not its newest item's date "
+            f"({max(pubs) if pubs else None}), or an item is dated past the stated {day}")
         assert (site / "calendar" / f"{BC.week_key(day)}.html").exists(), (
             f"the calendar's current week is not the stated day's, {BC.week_key(day)}")
         # A date that is not one stops the builder, and it says which variable.
@@ -41598,8 +41654,9 @@ def _build_date_stated(build_all, build_date, shell):
     return "ok", (f"{len(seen)} scripts on the build's path, none asking the clock for "
                   f"itself but the {sum(1 for f in CLOCK_OF_THEIR_OWN if own.get(f))} named; "
                   f"built with {day} stated, {said} pages cite it and none cites today, "
-                  "and the index, the manifest, the sitemap, the feeds and the calendar's "
-                  "week are that day's; a date that is not one stops the builder"
+                  "and the index, the manifest, the sitemap and the calendar's week are that "
+                  "day's, the all-activity feed its newest item's; a date that is not one stops "
+                  "the builder"
                   + (f"; built in two weeks, {weekly} calendar week pages differ by the week "
                      "/calendar serves and nothing else" if weekly else ""))
 
@@ -112645,7 +112702,9 @@ def _workflows_permissions():
     says `contents: read` at the top and nothing more; a job asks for more only
     to re-enable its own schedule (`actions: write`, and then it checks out
     nothing and runs nothing else), or to list the night's own runs
-    (`actions: read`, whether the night's timer has started tonight's night).
+    (`actions: read`, whether the night's timer has started tonight's night),
+    or, in the night, this run's own jobs (`actions: read`, one step, for what
+    the code checks beside it came to).
     And no workflow is started by a pull
     request, a comment or another workflow: a fork's code must never run with
     these keys in reach."""
@@ -112684,8 +112743,20 @@ def _workflows_permissions():
                 # actions: read ONLY TO SEE WHETHER THE TIMER STARTED TONIGHT'S
                 # NIGHT (23 October 2026, nightly.yml's job "started"): it lists
                 # this workflow's own runs, checks out nothing and runs nothing.
+                # AND IN THE NIGHT, TO READ WHAT THE CODE CHECKS CAME TO (16
+                # November 2026, nightly.CHECKS_JOB): one step alone is given
+                # the token, and it runs nightly.py --checks-result, which GETs
+                # this run's own jobs and nothing else; no step runs gh
+                # (_workflows_code_checks_beside holds the rest).
                 if "actions: read" in asks:
                     body = "\n".join(_wf_code(jl))
+                    if "nightly.py --runner --checks-result" in body:
+                        given = [st for st in _wf_steps(_wf_code(jl)) if "github.token" in "\n".join(st)]
+                        assert len(given) == 1 and \
+                            "python nightly.py --runner --checks-result" in "\n".join(given[0]) and \
+                            not re.search(r"^\s+gh\s", body, re.M) and asks == ["contents: read", "actions: read"], \
+                            f"{f.name}: job {j} holds actions: read and does more than read the code checks' result"
+                        continue
                     assert "uses:" not in body and "gh api -X GET" in body \
                         and "actions/workflows/nightly.yml/runs" in body \
                         and not re.search(r"--method|-X (?:POST|PUT|PATCH|DELETE)", body), \
@@ -112696,8 +112767,8 @@ def _workflows_permissions():
                         and "--method PUT" in body, \
                         f"{f.name}: job {j} holds actions: write and does more than re-enable its schedule"
     return "ok", (f"{len(files)} workflow(s): contents: read, actions: write only to re-enable a "
-                  "schedule and actions: read only to list the night's runs, started only by "
-                  "hand or by the clock")
+                  "schedule and actions: read only to list the night's runs and, in the night, "
+                  "its own jobs for the code checks' result, started only by hand or by the clock")
 
 
 @check("workflows", "production is deployed only by the job behind the production environment, "
@@ -112879,6 +112950,266 @@ def _livestream_step_limits(name, job, step, body):
             f"the workflow pins {ejs.group(1)}")
     return (f"its own limit {limit} min for a longest run of {need:g}, inside the night window "
             f"and the job; {L.SOLVER} {ejs.group(1)}")
+
+
+@check("workflows", "the code checks run beside the night in a job of their own, from the run's own "
+       "commit; the publish job runs only when they passed; and the night's verdict is told what "
+       "they came to", needs=("nightly",))
+def _workflows_code_checks_beside(NI):
+    """THE CODE CHECKS BESIDE THE NIGHT (16 November 2026, the owner's word: "preflight --code
+    as its own job beside the night, not before the fetch"; nightly.CHECKS_JOB says why). In
+    nightly.yml a job named CHECKS_JOB runs `python preflight.py --code` and nothing of the
+    night's -- no nightly.py, no secret, no environment, nothing from the bucket -- on a pinned
+    Windows image, from the run's own commit (its checkout names no ref) with its history,
+    outside gc-night, after "started" and under the night's own if, so it runs exactly when the
+    night does; no other job runs preflight --code, and nightly.main() runs it only off GitHub's
+    machine: on the runner it records PREFLIGHT_BESIDE and goes on. The publish job needs both,
+    and its if, as GitHub evaluates it for a main night fit for production, runs it when the
+    checks succeeded and for no other result -- failure, cancelled, skipped, none. And the night
+    hands the result on: its step `checks`, under !cancelled(), runs nightly.py --checks-result with
+    the run's token as its own env and a limit past CHECKS_WAIT, the job holding contents: read
+    and actions: read and nothing more, and the verdict step passes that step's output as
+    --checks. Run on nightly.yml as it stood before, this fails on the missing job."""
+    import ast as _ast
+    wf = _SWITCHED.workflow_dir / "nightly.yml"
+    if not wf.exists():
+        return "skip", "no .github/workflows/nightly.yml here"
+    text = wf.read_text(encoding="utf-8")
+    jobs = _wf_jobs(text)
+    named = [j for j, jl in jobs.items()
+             if any(re.fullmatch(rf"    name:\s*{re.escape(NI.CHECKS_JOB)}\s*", ln) for ln in jl)]
+    assert named == ["checks"], (f"nightly.yml has {named or 'no'} job named {NI.CHECKS_JOB!r}, "
+                                 "not one job checks: the code checks are not beside the night")
+    code = _wf_code(jobs["checks"])
+    body = "\n".join(code)
+    runs = [st for st in _wf_steps(code) if any("preflight.py" in ln for ln in st)]
+    assert len(runs) == 1 and "python preflight.py --code" in "\n".join(runs[0]) and \
+        "exit $rc" in "\n".join(runs[0]), (
+            "the job checks does not run preflight.py --code once, and fail when it fails")
+    for bad, why in (("nightly.py", "runs the night's own script"), ("secrets.", "holds a secret"),
+                     ("cloud.py", "takes something from the bucket"),
+                     ("environment:", "runs in an environment"), ("group: gc-night", "waits in gc-night"),
+                     ("ref:", "checks out a ref of its own, not the run's commit")):
+        assert bad not in body, f"nightly.yml's job checks {why} ({bad})"
+    assert re.search(r"^    runs-on:\s*windows-\d{4}\s*$", body, re.M) and \
+        re.search(r"^          fetch-depth: 0\s*$", body, re.M), (
+            "the job checks does not run on the night's pinned Windows image with the history")
+    need, cond = _wf_job_heads(jobs["checks"])
+    night_need, night_cond = _wf_job_heads(jobs.get("night") or [])
+    assert need == ["started"] and cond and cond == night_cond, (
+        f"the job checks needs {need} under {cond!r}; the night needs {night_need} under "
+        f"{night_cond!r}: they must start together and run for the same runs")
+    others = [j for j, jl in jobs.items() if j != "checks"
+              and "preflight.py --code" in "\n".join(_wf_code(jl))]
+    assert not others, f"nightly.yml runs preflight --code in {others} as well"
+    # nightly.main() runs it only where there is no night of GitHub's machine.
+    main_fn = next(n for n in _ast.walk(_parsed(_paths.locate("nightly.py")))
+                   if isinstance(n, _ast.FunctionDef) and n.name == "main")
+    calls = [c for c in _ast.walk(main_fn) if isinstance(c, _ast.Call)
+             and getattr(c.func, "id", "") == "run" and c.args
+             and isinstance(c.args[0], _ast.List)
+             and [getattr(e, "value", None) for e in c.args[0].elts[:2]] == ["preflight.py", "--code"]]
+    beside = [n for n in _ast.walk(main_fn) if isinstance(n, _ast.If)
+              and isinstance(n.test, _ast.Name) and n.test.id == "night"
+              and "PREFLIGHT_BESIDE" in _ast.unparse(_ast.Module(body=n.body, type_ignores=[]))
+              and any(c in list(_ast.walk(_ast.Module(body=n.orelse, type_ignores=[]))) for c in calls)]
+    assert len(calls) == 1 and len(beside) == 1, (
+        f"nightly.main() runs preflight --code {len(calls)} time(s), and {len(beside)} of them only "
+        "off GitHub's machine: on the runner the fetch would wait for it again")
+    # The publish job: both, and only on a pass.
+    pneed, pcond = _wf_job_heads(jobs.get("publish") or [])
+    assert sorted(pneed) == ["checks", "night"], f"the publish job needs {pneed}, not the night and checks"
+    seen = []
+    for result in ("success", "failure", "cancelled", "skipped", None):
+        ctx = dict(_wf_run_ctx("schedule", MAIN_REF, {}), **{
+            "needs.night.result": "success", "needs.night.outputs.publishable": "true",
+            "needs.night.outputs.dry_run": "false", "needs.checks.result": result})
+        go = bool(_gh_eval(pcond, ctx))
+        assert go == (result == "success"), (
+            f"the publish job {'runs' if go else 'does not run'} for a night fit for production "
+            f"whose code checks came to {result!r}: {pcond}")
+        seen.append(result)
+    # The night hands their result to its verdict.
+    nc = _wf_code(jobs.get("night") or [])
+    perms = []
+    for k, ln in enumerate(nc):
+        if re.match(r"^    permissions:\s*$", ln):
+            for x in nc[k + 1:]:
+                if not x.startswith("      ") or not x.strip():
+                    break
+                perms.append(x.strip())
+    assert perms == ["contents: read", "actions: read"], f"the night job's token asks for {perms}"
+    steps = _wf_steps(nc)
+    at = [i for i, st in enumerate(steps) if re.search(r"^        id: checks\s*$", "\n".join(st), re.M)]
+    close = [i for i, st in enumerate(steps) if "nightly.py --runner --close" in "\n".join(st)]
+    assert len(at) == 1 and len(close) == 1 and at[0] < close[0], (
+        "the night has no step checks before its verdict")
+    st = "\n".join(steps[at[0]])
+    lim = re.search(r"^        timeout-minutes:\s*(\d+)\s*$", st, re.M)
+    assert re.search(r"^        if: \$\{\{ !cancelled\(\) \}\}\s*$", st, re.M) and \
+        "          GH_TOKEN: ${{ github.token }}" in steps[at[0]] and \
+        "python nightly.py --runner --checks-result" in st and \
+        lim and int(lim.group(1)) * 60 > NI.CHECKS_WAIT, (
+            "the night's step checks does not run nightly.py --checks-result under !cancelled() -- "
+            "after a failed step too, never waiting out a cancelled run -- with the run's token as "
+            "its own env and a limit past nightly.CHECKS_WAIT")
+    assert '--checks "${{ steps.checks.outputs.result }}"' in "\n".join(steps[close[0]]), (
+        "the night's verdict is not told what the code checks came to (--checks)")
+    return "ok", (f"job checks ({NI.CHECKS_JOB}) runs preflight --code alone, from the run's commit, no "
+                  "secret, outside gc-night, beside the night under its if; nightly.main() runs it only "
+                  "off the runner; the publish job needs both and runs only on success of "
+                  f"{len(seen)} results; the night reads the result (actions: read) and tells its verdict")
+
+
+@check("workflows", "the night's verdict folds in what the code checks beside it came to: only a "
+       "pass is clean, a failure fails the job and gives the newest night fit for production back, "
+       "and a dry run whose checks failed proves no release", needs=("nightly",))
+def _night_code_checks_folded(NI):
+    """THE CODE CHECKS BESIDE THE NIGHT (nightly.CHECKS_JOB), the night's half.
+    checks_result() on a made-up list of this run's jobs: it asks only GET of
+    this run's own jobs, waits while the job is queued or running, and gives
+    its conclusion once it has finished; "not finished" past the wait, "not in
+    this run" for a list that names no such job, "unknown" for none read or a
+    word GitHub does not use. Then close_verdict() on a fit night's verdict, as
+    finish() leaves it with the checks beside it: told success, it is clean,
+    exits 0, keeps itself the newest night fit for production and its page says
+    they passed; told failure, an empty result, a skipped or cancelled job, it
+    is not clean, exits 1, gives that record back to the night before (as for a
+    failed step), and says why in one sentence; told nothing (the laptop's, or
+    an older workflow's), it is as finish() left it. A dry run told failure is
+    not clean, and proven_by_dry_run() takes it for no proof of its commit;
+    told success, it is one. And problems() counts the checks beside the night
+    as no problem until then."""
+    import contextlib
+    import io
+    import types
+    assert set(NI.CHECKS_WORDS) >= {"success", "failure", "cancelled", "skipped", "unknown",
+                                     "not finished", "not in this run"}, NI.CHECKS_WORDS
+    # checks_result, on a made-up API.
+    saved = {k: os.environ.get(k) for k in ("GITHUB_REPOSITORY", "GITHUB_RUN_ID", "GH_TOKEN",
+                                            "GITHUB_ACTIONS", "GITHUB_STEP_SUMMARY", "GITHUB_OUTPUT",
+                                            "GITHUB_SHA")}
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-code-checks-"))
+    try:
+        os.environ.update(GITHUB_REPOSITORY="owner/repo", GITHUB_RUN_ID="77", GH_TOKEN="t")
+
+        def job(status, conclusion=None):
+            return {"jobs": [{"name": "the night", "status": "in_progress"},
+                             {"name": NI.CHECKS_JOB, "status": status, "conclusion": conclusion}]}
+
+        def drive(answers, wait=90):
+            asked, slept, now = [], [], [0.0]
+
+            def ask(url):
+                asked.append(url)
+                a = answers[min(len(asked), len(answers)) - 1]
+                if isinstance(a, Exception):
+                    raise a
+                return a
+
+            def sleep(s):
+                slept.append(s)
+                now[0] += s
+            got = NI.checks_result(wait=wait, every=30, ask=ask, sleep=sleep, clock=lambda: now[0])
+            return got[0], asked, slept
+        url = f"{NI.GITHUB_API}/repos/owner/repo/actions/runs/77/jobs?per_page=100"
+        res, asked, slept = drive([job("queued"), job("in_progress"), job("completed", "success")])
+        assert res == "success" and asked == [url] * 3 and slept == [30, 30], (res, asked, slept)
+        for answers, want in (([job("completed", "failure")], "failure"),
+                              ([job("completed", "cancelled")], "cancelled"),
+                              ([job("completed", "skipped")], "skipped"),
+                              ([job("completed", "a word GitHub does not use")], "unknown"),
+                              ([job("in_progress")], "not finished"),
+                              ([job("in_progress"), OSError("refused")], "not finished"),
+                              ([{"jobs": [{"name": "the night", "status": "queued"}]}], "not in this run"),
+                              ([OSError("refused")], "unknown"),
+                              ([{"message": "Not Found"}], "unknown"),
+                              ([OSError("once"), job("completed", "success")], "success")):
+            res, asked, _ = drive(answers)
+            assert res == want and set(asked) == {url}, (answers, res, want, asked)
+        os.environ.pop("GITHUB_RUN_ID")
+        assert NI.checks_result(ask=lambda u: 1 / 0)[0] == "unknown", "a result read with no run named"
+
+        # close_verdict, on a fit night's verdict as finish() leaves it.
+        os.chdir(tmp)
+        Path("archive").mkdir()
+        for k in ("GITHUB_ACTIONS", "GITHUB_OUTPUT"):
+            os.environ.pop(k, None)
+        page = tmp / "page.md"
+        os.environ["GITHUB_STEP_SUMMARY"] = str(page)
+        sha = "c" * 40
+        older = {"run_id": "500", "day": "2026-11-15", "started": "2026-11-15T03:17:00",
+                 "fingerprint": "old", "waits": ""}
+
+        def verdict(path, rid, dry=False):
+            v = {"kind": "nightly", "run_id": rid, "sha": sha, "day": "2026-11-17",
+                 "started": "2026-11-17T03:17:00", "built": True, "publishable": not dry,
+                 "clean": True, "not_clean": [], "alarms": [], "warnings": [], "exit": 0,
+                 "preflight": NI.PREFLIGHT_BESIDE, "fetch": "installed", "build": "passed",
+                 "check_site": "passed", "fingerprint": "new", "blocking": [],
+                 "asked": {"fetch": True, "dry_run": dry, "new_term": False}}
+            if not dry:
+                v[NI.NEWEST_FIT] = {"run_id": rid, "day": "2026-11-17", "started": v["started"],
+                                    "fingerprint": "new", "waits": ""}
+                v[NI.FIT_CARRIED] = dict(older)
+            Path(path).write_text(json.dumps(v), encoding="utf-8")
+
+        def close(rid, checks, dry=False):
+            verdict(NI.DRY_VERDICT if dry else NI.VERDICT, rid, dry)
+            page.write_text("", encoding="utf-8")
+            os.environ["GITHUB_RUN_ID"] = rid
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = NI.close_verdict(types.SimpleNamespace(
+                    weekly=False, dry_run=dry, checks=checks,
+                    outcome=["kit-down=success", "night=success", "kit-up=success"]))
+            v = json.loads(Path(NI.DRY_VERDICT if dry else NI.VERDICT).read_text(encoding="utf-8"))
+            return code, v, page.read_text(encoding="utf-8")
+        code, v, said = close("601", "success")
+        assert code == 0 and v["clean"] and v["preflight"] == "passed" and \
+            v["checks"]["result"] == "success" and v[NI.NEWEST_FIT]["run_id"] == "601" and \
+            NI.checks_line("success") in said and "passed" in NI.checks_line("success"), (code, v, said)
+        for told, word in (("failure", "failure"), ("", "unknown"), ("skipped", "skipped"),
+                           ("cancelled", "cancelled"), ("not finished", "not finished")):
+            code, v, said = close("602", told)
+            why = NI.plain_why(v)
+            assert code == 1 and not v["clean"] and v["preflight"] == "failed" and \
+                v["checks"]["result"] == word and v[NI.NEWEST_FIT] == older and \
+                any(NI.CHECKS_JOB in x for x in v["not_clean"]) and \
+                why == NI.checks_why(v["checks"]) + " Nothing was published." and \
+                f"**Why:** {why}" in said and NI.checks_line(word) in said and \
+                "nothing from this run goes to production" in NI.checks_line(word) and \
+                ("The night was not clean: " + why) in v["alerts"], (told, code, v, said)
+        code, v, said = close("603", None)
+        assert code == 0 and v["clean"] and v["preflight"] == NI.PREFLIGHT_BESIDE and \
+            "checks" not in v and not said.strip(), (
+                "a verdict told nothing of the checks (the laptop's) is not as finish() left it", v, said)
+        # A dry run: its checks decide whether it proves its commit.
+        code, v, _ = close("604", "failure", dry=True)
+        assert code == 1 and not v["clean"] and NI.proven_by_dry_run(sha) is None, (
+            "a dry run whose code checks failed proves its commit", code, v)
+        code, v, _ = close("605", "success", dry=True)
+        assert code == 0 and v["clean"] and (NI.proven_by_dry_run(sha) or {}).get("run_id") == "605", (
+            "a dry run whose code checks passed does not prove its commit", code, v)
+        # problems(): beside the night, no problem until --close says.
+        n = types.SimpleNamespace(v={"preflight": NI.PREFLIGHT_BESIDE, "build": "passed",
+                                     "check_site": "passed", "blocking": []},
+                                  a=types.SimpleNamespace(no_fetch=True, dry_run=False, new_term=False))
+        assert NI.Night.problems(n) == [], NI.Night.problems(n)
+        n.v["preflight"] = "failed"
+        assert NI.Night.problems(n) == ["preflight failed"], NI.Night.problems(n)
+        assert NI.plain_why({"preflight": "failed"}) == (
+            "The code checks failed, so nothing was fetched or built. Nothing was published."), (
+                "the laptop's sentence changed", NI.plain_why({"preflight": "failed"}))
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+        for k, val in saved.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+    return "ok", ("checks_result GETs only this run's jobs, waits while they run, gives the conclusion, "
+                  "and says not finished, not in this run or unknown; close_verdict clean on success "
+                  "alone, five other results not clean, exit 1, the fit record given back, one sentence "
+                  "why; told nothing, as finish() left it; a dry run proves its commit only on success")
 
 
 @check("workflows", "the captions inbox comes down before the livestream step, is taken from "
@@ -113833,7 +114164,7 @@ def _workflows_dry_run(NI, CL):
             said = _gh_render(dry_line, ctx)
             runs = bool(_gh_eval(cond.group(1), dict(ctx, **{
                 "needs.night.outputs.publishable": "true", "needs.night.result": "success",
-                "needs.night.outputs.dry_run": said})))
+                "needs.checks.result": "success", "needs.night.outputs.dry_run": said})))
             named = _gh_render(title or "", ctx) if bx is boxes else want
             if said != ("true" if dry else "false") or runs == dry or named != want:
                 wrong.append(f"{event} of {ref} with {bx or 'no boxes'}: DRY_RUN={said}, the "
@@ -113870,6 +114201,7 @@ def _workflows_dry_run(NI, CL):
     assert _gh_render(dry_line, case) == "false" and \
         _gh_eval(cond.group(1), dict(case, **{"needs.night.outputs.publishable": "true",
                                               "needs.night.result": "success",
+                                              "needs.checks.result": "success",
                                               "needs.night.outputs.dry_run": "false"})), \
         ("GitHub's expressions now tell refs/heads/Main from main, and this check's account of "
          "why nightly.py's step output and the Healthchecks steps' own test are needed is stale")
@@ -113980,6 +114312,251 @@ def _workflows_weekly_dry_run(NI, CL):
                   f"{len(WF_RUNS['weekly.yml'])} kinds of run read as GitHub reads them, every "
                   "run off main a dry run titled so; nightly.py and cloud.py read the ref "
                   "themselves")
+
+
+@check("workflows", "the night keeps its build's sha256 list for the weekly, a state file a dry run "
+       "never sends, and the weekly sets the night's folder aside before its fetches and builds it "
+       "cold after them, a failure of either never stopping the week", needs=("nightly", "cloud"))
+def _weekly_cold_build_wired(NI, CL):
+    """THE WEEKLY'S COLD BUILD (16 November 2026, the owner's word: "a weekly cold build compared
+    with the night's before any caching"; nightly.NIGHT_SITE says why). cloud_kit.json's state
+    list carries NIGHT_SITE, so state-up sends the night's and state-down brings it to the week,
+    and a dry run's state-up never sends it; Night.judge() keeps it only on a night that is
+    neither a dry run nor a New term run, whose kit is held; and keep_night_site() writes the
+    same bytes for the same build. In weekly.yml's one job: a step sets the folder aside
+    (--cold-aside) after kit-down and before the week's fetches, a step builds it (--cold-build,
+    the same folder) after kit-up and only where the aside succeeded, both carrying on past
+    their own failure inside their own time limits, and the verdict is told the cold step's
+    outcome (--cold) and nothing makes it a step of the week's own."""
+    import ast as _ast
+    import gzip as _gzip
+    kit = CL.load_kit(".")
+    have = [s for s in kit.get("state", []) if s.get("key") == "night-site.json.gz"]
+    assert have and have[0]["path"] == NI.NIGHT_SITE.as_posix(), (
+        f"{CL.KIT_FILE}'s state list does not carry {NI.NIGHT_SITE.as_posix()}: {have}")
+    assert "night-site.json.gz" not in (kit.get("dry_run") or {}).get("state", []), (
+        "a dry run's state-up may send its build's list over the night's")
+    judge = next(n for n in _ast.walk(_parsed(_paths.locate("nightly.py")))
+                 if isinstance(n, _ast.FunctionDef) and n.name == "judge")
+    real_only = _ast.unparse(_ast.parse("not a.dry_run and not a.new_term", mode="eval").body)
+    kept = [n for n in _ast.walk(judge) if isinstance(n, _ast.If)
+            and _ast.unparse(n.test) == real_only
+            and "keep_night_site(" in _ast.unparse(_ast.Module(body=n.body, type_ignores=[]))]
+    calls = [c for c in _ast.walk(judge) if isinstance(c, _ast.Call)
+             and getattr(c.func, "id", "") == "keep_night_site"]
+    assert len(kept) == 1 and len(calls) == 1, (
+        "Night.judge() keeps the night's build for the weekly on a dry run or a New term run, or "
+        "not at all")
+    tmp = Path(tempfile.mkdtemp(prefix="gr-night-site-"))
+    try:
+        rows = tmp / "site.sha256"
+        rows.write_text("".join(f"{c * 64}  {n}  {p}\n" for c, n, p in (
+            ("a", 10, "index.html"), ("b", 20, "bill/2026/hb1.html"), ("c", 5, "a b  c.html"))),
+            encoding="utf-8", newline="\n")
+        v = {"run_id": "900", "sha": "d" * 40, "started": "2026-11-16T03:17:00"}
+        out = tmp / "archive" / "night-site.json.gz"
+        assert NI.keep_night_site(rows, out, v, "2026-11-16") == 3
+        first = out.read_bytes()
+        NI.keep_night_site(rows, out, v, "2026-11-16")
+        got = json.loads(_gzip.decompress(out.read_bytes()).decode("utf-8"))
+        assert out.read_bytes() == first and got == {
+            "format": 1, "day": "2026-11-16", "run_id": "900", "sha": "d" * 40,
+            "started": "2026-11-16T03:17:00",
+            "files": {"index.html": "a" * 64, "bill/2026/hb1.html": "b" * 64,
+                      "a b  c.html": "c" * 64}}, got
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    wf = _SWITCHED.workflow_dir / "weekly.yml"
+    if not wf.exists():
+        return "skip", "no .github/workflows/weekly.yml here"
+    jobs = _wf_jobs(wf.read_text(encoding="utf-8"))
+    week = [j for j, jl in jobs.items() if any("nightly.py @flags" in ln for ln in _wf_code(jl))]
+    assert len(week) == 1, f"weekly.yml runs the week in {week}"
+    steps = ["\n".join(st) for st in _wf_steps(_wf_code(jobs[week[0]]))]
+
+    def at(pat):
+        return [k for k, s in enumerate(steps) if re.search(pat, s)]
+    down, aside, fetch = at(r"cloud\.py kit-down"), at(r"--cold-aside "), at(r"nightly\.py @flags")
+    up, cold, close = at(r"cloud\.py kit-up"), at(r"--cold-build "), at(r"--weekly --close")
+    assert all(len(x) == 1 for x in (down, aside, fetch, up, cold, close)) and \
+        down[0] < aside[0] < fetch[0] < up[0] < cold[0] < close[0], (
+            "weekly.yml does not set the night's folder aside after kit-down and before the week's "
+            "fetches, and build it after kit-up and before the verdict: "
+            f"kit-down {down}, aside {aside}, fetches {fetch}, kit-up {up}, cold {cold}, verdict {close}")
+    folder = [re.search(r"--cold-(?:aside|build) (\S+)", steps[k]).group(1) for k in (aside[0], cold[0])]
+    assert folder[0] == folder[1] and "RUNNER_TEMP" in folder[0], (
+        f"the cold build does not build the folder it set aside: {folder}")
+    for k, what in ((aside[0], "aside"), (cold[0], "cold build")):
+        lim = re.search(r"^        timeout-minutes:\s*(\d+)\s*$", steps[k], re.M)
+        assert re.search(r"^        continue-on-error: true\s*$", steps[k], re.M) and lim, (
+            f"weekly.yml's {what} step can stop the week, or has no limit of its own")
+    sid = re.search(r"^        id:\s*(\S+)\s*$", steps[aside[0]], re.M)
+    cid = re.search(r"^        id:\s*(\S+)\s*$", steps[cold[0]], re.M)
+    cond = re.search(r"^        if:\s*(.+?)\s*$", steps[cold[0]], re.M)
+    assert sid and cid and cond and f"steps.{sid.group(1)}.outcome == 'success'" in cond.group(1) \
+        and "!cancelled()" in cond.group(1) and "always()" not in cond.group(1), (
+            "the cold build runs where its folder was not set aside, or on a cancelled run")
+    assert f'--cold "${{{{ steps.{cid.group(1)}.outcome }}}}"' in steps[close[0]] and \
+        f"=${{{{ steps.{cid.group(1)}.outcome }}}}" not in steps[close[0]], (
+            "the week's verdict is not told the cold build's outcome, or is told it as a step of "
+            "the week's own, which would fail the week on a difference")
+    return "ok", (f"{NI.NIGHT_SITE.as_posix()} on the state list and never a dry run's; kept by a real "
+                  "night alone, the same bytes for the same build; weekly.yml sets the folder aside "
+                  "before its fetches and builds it after kit-up, both carrying on past a failure, "
+                  "and tells its verdict the outcome apart from its own steps")
+
+
+@check("workflows", "the weekly's cold build compares only with the night its folder is of, builds "
+       "with no cache and the night's day stated, leaves out the files that carry a time, and is a "
+       "warning in the week's verdict only where it differs on the night's own code or did not "
+       "finish", needs=("nightly",))
+def _weekly_cold_build_compares(NI):
+    """nightly.cold_aside(), cold_build(), cold_compare() and the week's --close, on a made-up
+    folder. The aside copies the folder less .build_cache/ at its top -- site/committees.json,
+    which the kit brings for the build to read, comes with it, and a .build_cache further down
+    stays. cold_build runs build_all.py --local --no-captions
+    of the copy (run(..., root=) the copy, in it) with GRANITE_BUILD_DATE the night's day, where
+    no .build_cache is; it says "not compared" with no night's list, or with one of a night the
+    newest real night's verdict does not name, and "failed" for a build that fails. Compared:
+    the same files, the same; a page changed, added or gone, a difference naming it first; the
+    files that carry a time (TREE_LEFT_OUT, the feeds) and the changes files, written against
+    the ledger the night moved on, never one; and a night of other code,
+    compared all the same, a note and no warning. Then --close folds the record into the week's
+    results and, where it warns, its warnings, and leaves "clean" and the exit as they were."""
+    import contextlib
+    import gzip as _gzip
+    import io
+    import types
+    saved = {k: os.environ.get(k) for k in ("GITHUB_RUN_ID", "GITHUB_SHA", "GITHUB_ACTIONS",
+                                            "GITHUB_STEP_SUMMARY")}
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-cold-"))
+    real_run, real_sha = NI.run, NI._sha256_of
+    try:
+        src = tmp / "folder"
+        for rel, body in (("build_all.py", "x"), ("site/committees.json", "{}"), ("logs/a.log", "x"),
+                          (".build_cache/k.json.gz", "x"), ("deep/.build_cache/keep.txt", "kept"),
+                          ("archive/last-night.json", json.dumps({"run_id": "700"}))):
+            (src / rel).parent.mkdir(parents=True, exist_ok=True)
+            (src / rel).write_text(body, encoding="utf-8")
+        night_files = {"index.html": "i", "bill/hb1.html": "b", "build.json": "t1",
+                       "data/manifest.json": "m1", "feed/all.xml": "f1",
+                       "changes/2026-11-15.json": "c1"}
+        sha_of = {"i": "1", "b": "2", "t1": "3", "m1": "4", "f1": "5", "c1": "6"}
+
+        def keep(run_id="700", sha="e" * 40):
+            body = {"format": 1, "day": "2026-11-15", "run_id": run_id, "sha": sha,
+                    "files": {k: sha_of[x] * 64 for k, x in night_files.items()}}
+            (src / NI.NIGHT_SITE).parent.mkdir(parents=True, exist_ok=True)
+            (src / NI.NIGHT_SITE).write_bytes(_gzip.compress(json.dumps(body).encode("utf-8")))
+        dest = tmp / "cold"
+        os.chdir(src)
+        n = NI.cold_aside(dest)
+        os.chdir(here)
+        have = {p.relative_to(dest).as_posix() for p in dest.rglob("*") if p.is_file()}
+        assert n == len(have) == 5 and {"build_all.py", "site/committees.json", "logs/a.log",
+                                         "deep/.build_cache/keep.txt"} <= have and \
+            not any(x.startswith(".build_cache/") for x in have), (n, sorted(have))
+        os.environ.update(GITHUB_RUN_ID="800", GITHUB_SHA="e" * 40)
+        for k in ("GITHUB_ACTIONS", "GITHUB_STEP_SUMMARY"):
+            os.environ.pop(k, None)
+        seen = {}
+
+        def fake_run(args, label, cwd=None, env=None, root=None, built=None):
+            seen.update(args=list(args), cwd=Path(cwd).resolve(), env=dict(env or {}),
+                        root=Path(root).resolve() if root else None,
+                        cache=(Path(cwd) / ".build_cache").exists())
+            site = Path(cwd) / "site"
+            shutil.rmtree(site, ignore_errors=True)
+            for rel, x in (built or seen.get("make") or {}).items():
+                (site / rel).parent.mkdir(parents=True, exist_ok=True)
+                (site / rel).write_text(x, encoding="utf-8")
+            return seen.get("rc", 0)
+        NI.run = fake_run
+        NI._sha256_of = lambda p: sha_of[Path(p).read_text(encoding="utf-8")] * 64
+
+        def cold(make, rc=0):
+            seen.clear()
+            seen.update(make=make, rc=rc)
+            out = tmp / "cold-build.json"
+            with contextlib.redirect_stdout(io.StringIO()):
+                return NI.cold_build(dest, record=out)
+        rec = cold(dict(night_files))
+        assert rec["result"] == "not compared" and "no night" in rec["why"], rec
+        keep(run_id="699")
+        shutil.copy(src / NI.NIGHT_SITE, dest / NI.NIGHT_SITE)
+        rec = cold(dict(night_files))
+        assert rec["result"] == "not compared" and "699" in rec["why"], rec
+        keep()
+        shutil.copy(src / NI.NIGHT_SITE, dest / NI.NIGHT_SITE)
+        rec = cold(dict(night_files), rc=1)
+        assert rec["result"] == "failed" and NI.cold_warns(rec), rec
+        rec = cold(dict(night_files, **{"build.json": "t1", "data/manifest.json": "m1"}))
+        assert rec["result"] == "same" and not NI.cold_warns(rec) and rec["compared"] == 2, rec
+        assert seen["args"] == ["build_all.py", "--local", "--no-captions"] and \
+            seen["cwd"] == dest.resolve() and seen["root"] == dest.resolve() and \
+            seen["env"] == {"GRANITE_BUILD_DATE": "2026-11-15"} and not seen["cache"], seen
+        rec = cold(dict(night_files, **{"build.json": "t1", "data/manifest.json": "i",
+                                         "feed/all.xml": "b", "changes/2026-11-15.json": "i"}))
+        assert rec["result"] == "same", ("a file that carries a time made a difference", rec)
+        rec = cold({"index.html": "b", "bill/hb2.html": "b"})
+        assert rec["result"] == "differs" and NI.cold_warns(rec) and rec["differ"] == 3 and \
+            rec["first"] == ["bill/hb1.html", "bill/hb2.html", "index.html"] and \
+            "index.html" in NI.cold_said(rec), rec
+        os.environ["GITHUB_SHA"] = "f" * 40
+        rec = cold({"index.html": "b", "bill/hb1.html": "b"})
+        assert rec["result"] == "differs" and rec.get("note") and not NI.cold_warns(rec), rec
+        # The week's verdict.
+        os.chdir(tmp)
+        Path("archive").mkdir(exist_ok=True)
+        Path("logs").mkdir(exist_ok=True)
+        page = tmp / "page.md"
+        os.environ["GITHUB_STEP_SUMMARY"] = str(page)
+
+        def close(record, told="success"):
+            NI.write_json(NI.WEEKLY_VERDICT, {"kind": "weekly", "run_id": "800", "clean": True,
+                                               "results": {"committees": "installed"}, "exit": 0})
+            if record is None:
+                NI.COLD_RECORD.unlink(missing_ok=True)
+            else:
+                NI.write_json(NI.COLD_RECORD, dict(record, run_id="800"))
+            page.write_text("", encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = NI.close_verdict(types.SimpleNamespace(
+                    weekly=True, dry_run=False, cold=told, outcome=["weekly=success"]))
+            return code, json.loads(Path(NI.WEEKLY_VERDICT).read_text(encoding="utf-8"))
+        os.environ["GITHUB_SHA"] = "e" * 40
+        differs = cold({"index.html": "b", "bill/hb1.html": "b"})
+        code, v = close(differs)
+        assert code == 0 and v["clean"] and v["results"]["the cold build"] == NI.cold_said(differs) \
+            and v["warnings"] == ["the cold build " + NI.cold_said(differs)] and \
+            v["cold_build"]["result"] == "differs" and \
+            "the cold build differs" in page.read_text(encoding="utf-8"), v
+        same = cold(dict(night_files))
+        code, v = close(same)
+        assert code == 0 and v["clean"] and "warnings" not in v and \
+            v["results"]["the cold build"].startswith("is the same"), v
+        code, v = close(None, told="skipped")
+        assert code == 0 and v["clean"] and v["cold_build"]["result"] == "failed" and v["warnings"], v
+        NI.write_json(NI.WEEKLY_VERDICT, {"kind": "weekly", "run_id": "800", "clean": True,
+                                           "results": {}, "exit": 0})
+        with contextlib.redirect_stdout(io.StringIO()):
+            NI.close_verdict(types.SimpleNamespace(weekly=True, dry_run=False, outcome=["weekly=success"]))
+        v = json.loads(Path(NI.WEEKLY_VERDICT).read_text(encoding="utf-8"))
+        assert "cold_build" not in v and v["results"] == {}, (
+            "a week told nothing of a cold build (an older workflow) says one", v)
+    finally:
+        NI.run, NI._sha256_of = real_run, real_sha
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+        for k, val in saved.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+    return "ok", ("the aside leaves the cache out, at the top only, and the kit's site file in; the build runs the "
+                  "copy's build_all.py --local --no-captions there with the night's day, no cache; "
+                  "not compared with no list or another night's, failed on a failed build; the same, "
+                  "a difference naming its first files, the files that carry a time left out, other "
+                  "code a note; the week's results and warnings carry it, clean and exit untouched")
 
 
 # The first thing a Healthchecks step's script does: compare the ref with

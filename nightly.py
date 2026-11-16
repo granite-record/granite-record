@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.93
+# GRANITE_VERSION: 2026-09-04.95
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -54,7 +54,9 @@ only past every gate.
 
 THE GATES, before any deploy
 
-  preflight --code passes; check_site passes;
+  preflight --code passes (first, on the laptop; on GitHub's machine in a job
+  of its own beside the night, CHECKS_JOB, which the publish job needs);
+  check_site passes;
   the census has not fallen past its threshold (below); the site changed;
   and the file count is under 95,000 of Cloudflare's 100,000 -- a ceiling
   --force cannot lift, because stopping short of the cap beats having the
@@ -112,6 +114,12 @@ night itself does is here, and what differs on that machine is behind --runner:
                       committees' meetings and details from the database (the
                       calendar shows them), each into a scratch folder first
                       and swapped in only if it arrived whole
+  the code checks     preflight.py --code, not here: nightly.yml's job of
+                      their own beside the night (CHECKS_JOB), so the fetch
+                      and the build do not wait for them; --checks-result
+                      reads their result at the end and --close folds it in,
+                      and only a night whose checks passed is clean or goes
+                      to production
   the build           build_all.py --local --no-captions: that machine holds
                       no caption files but the night's new few, so the step
                       that reads every one is skipped and says so; the
@@ -181,7 +189,11 @@ night itself does is here, and what differs on that machine is behind --runner:
 committee rosters, the members who have left and the study committees'
 members and bills, one fetch at a time, each whole or not at all, with a
 report of what changed in reports/gc-changes-weekly-<date>.md, beside the
-night's own what-changed reports.
+night's own what-changed reports. Since 16 November 2026 the week also builds
+the site again from the folder as the night left it, with no build cache and
+the night's day stated, and compares it with the night's own build file for
+file (--cold-aside, --cold-build; NIGHT_SITE says why): a difference is a
+warning in the week's verdict, and holds no night.
 
 A WEEKLY OFF MAIN IS A DRY RUN TOO (7 October 2026). The weekly has no Dry
 run box, and a run of it by hand on dev sent every list it took back to the
@@ -1039,7 +1051,8 @@ KIND_STUDY_NOT_AGAIN = "the study committees' meetings not asked for: not asked 
 KINDS_FALLBACK = (KIND_FROM_DB, KIND_DB_FILES, KIND_DB_NOTHING, KIND_STUDY_NOT_AGAIN)
 #
 # THE CHECKS OF TONIGHT'S BUILD (15 October 2026, the person's decision).
-# preflight.py --code runs before the night fetches or builds, so every check
+# preflight.py --code ran before the night fetched or built (beside it since
+# 16 November 2026, CHECKS_JOB, and never on a built site either), so every check
 # that reads the built site skipped there or never ran, and from 12 to 15
 # October the report box dropped readers' reports from nearly every
 # legislator page with no night to say so. Now, after check_site, the night
@@ -1055,6 +1068,37 @@ KINDS_FALLBACK = (KIND_FROM_DB, KIND_DB_FILES, KIND_DB_NOTHING, KIND_STUDY_NOT_A
 # Healthchecks check (ALERTS THAT REACH THE PERSON, below).
 BUILT_CHECKS = Path("logs/built-checks.json")
 KIND_BUILT_WARN = "a check of the built site against the record: "
+#
+# THE CODE CHECKS BESIDE THE NIGHT (16 November 2026, the owner's word:
+# "preflight --code as its own job beside the night, not before the fetch").
+# On GitHub's machine `preflight.py --code` ran here first, ten minutes of the
+# night's path, and a check that failed stopped the night before it asked for
+# anything: the day's files, which cannot be taken later, were lost with it,
+# as they were on 16 November. It is nightly.yml's job CHECKS_JOB now, on a
+# machine of its own from the same commit, started with the night; the fetch
+# and the build no longer wait for it, the publish job needs it to have
+# passed, and at the end of the night --checks-result reads its result off
+# this run's own list of jobs (checks_result), waiting while it runs, and
+# --close folds it in (--checks): a night whose code checks did not pass is
+# not clean, its job fails, and the newest night fit for production goes back
+# to the one before it, as for any failed step (FIT_CARRIED). So a dry run is
+# clean only when its code checks passed, and a release is proven by it only
+# then. The laptop's nightly runs them first, as before.
+CHECKS_JOB = "the code checks"      # nightly.yml's job "checks", by its name; preflight holds the two
+PREFLIGHT_BESIDE = "beside the night, in its own job"
+CHECKS_WAIT = 50 * 60               # seconds --checks-result waits for that job at most
+CHECKS_EVERY = 30                   # seconds between two looks at it
+GITHUB_API = "https://api.github.com"
+# What a job's result may be called in the verdict and on the run's page: the
+# words GitHub's API gives a finished job, and this file's own for a result
+# not read. Anything else is "unknown", so nothing but these reaches the page.
+CHECKS_WORDS = {"success": "passed", "failure": "failed", "cancelled": "were cancelled",
+                "skipped": "did not run", "timed_out": "ran out of time",
+                "startup_failure": "could not start", "action_required": "waited for a person",
+                "neutral": "ended without passing", "stale": "ended without passing",
+                "not finished": "had not finished when the night ended",
+                "not in this run": "are not a job of this run",
+                "unknown": "could not be read off this run"}
 #
 # THE CURRENT TERM'S DATA FROM THE DATABASE (16 October 2026; the person, 15
 # October: "The night may read the current term's data from the sql host
@@ -1323,12 +1367,14 @@ def mark_reports_failed(day, log_name):
     return out
 
 
-def run(args, label, cwd=None):
+def run(args, label, cwd=None, env=None, root=None):
     """Stream the step's output as it happens, and log it too. The exit code.
 
     A child of this process, run with this interpreter directly and no shell,
     so a fetch it starts sees this process as its parent and runs under the
-    lock this process holds.
+    lock this process holds. `env`: more for the child's environment; `root`:
+    the checkout to find the script in, where it is not this one (the weekly's
+    cold build runs the copy it set aside, and states its day so).
     """
     say(f"\n--- {label} ---")
     WATCH["step"] = label
@@ -1338,7 +1384,8 @@ def run(args, label, cwd=None):
     # (_paths.script): "fetch_lsrs.py" finds src/fetch/gc_web/fetch_lsrs.py
     # as it found ./fetch_lsrs.py, from any working directory.
     try:
-        args = [_paths.script(args[0])] + list(args[1:])
+        args = [_paths.script(args[0]) if root is None else _paths.script(args[0], root)] \
+            + list(args[1:])
     except LookupError as e:
         say(f"  {e}")
         say("  (0s, exit 1)")
@@ -1346,7 +1393,7 @@ def run(args, label, cwd=None):
     proc = child.popen([sys.executable, "-u"] + args,
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                        text=True, bufsize=1, cwd=cwd,
-                       env={SQL_HELD_ENV: str(SQL_HELD.resolve())})
+                       env={SQL_HELD_ENV: str(SQL_HELD.resolve())} | (env or {}))
     import threading
     expired = threading.Event()
 
@@ -1620,6 +1667,21 @@ def main():
                     help="(--runner) finish the verdict with the workflow's step results")
     ap.add_argument("--outcome", action="append", default=[], metavar="STEP=RESULT",
                     help="(--close) one workflow step's result; repeatable")
+    ap.add_argument("--checks-result", action="store_true",
+                    help=f"(--runner) wait for this run's job {CHECKS_JOB!r} and give its result "
+                         "as the step output result; a workflow step of its own")
+    ap.add_argument("--checks", metavar="RESULT", default=None,
+                    help=f"(--close) the result --checks-result read of {CHECKS_JOB!r}; anything "
+                         "but success makes the night not clean")
+    ap.add_argument("--cold-aside", metavar="DIR",
+                    help="(--runner --weekly) set the folder as the night left it aside in DIR, "
+                         "for the cold build")
+    ap.add_argument("--cold-build", metavar="DIR",
+                    help="(--runner --weekly) build DIR with no cache and the night's day, and "
+                         f"compare it with the night's build; writes {COLD_RECORD.as_posix()}")
+    ap.add_argument("--cold", metavar="OUTCOME", default=None,
+                    help="(--weekly --close) the cold build step's outcome: its record is folded "
+                         "into the week's verdict, a warning where it differs or did not finish")
     ap.add_argument("--new-term", action="store_true",
                     help="(--runner) the night, or the weekly job, a term turns over: the "
                          "General Court's smaller files accepted, once")
@@ -1642,20 +1704,33 @@ def main():
         # TOO, in the docstring).
         if not a.dry_run and dry_by_workflow():
             a.dry_run = True
-        if a.new_term and (a.deploy_to or a.close):
+        if a.new_term and (a.deploy_to or a.close or a.checks_result):
             ap.error("--new-term is for the night or the weekly job: a deploy and the "
                      "verdict are the same on every night")
+        if (a.cold_aside or a.cold_build or a.cold is not None) and not a.weekly:
+            ap.error("--cold-aside, --cold-build and --cold are the weekly job's")
         on_the_runner()
+        if a.checks_result:
+            return checks_step()
         if a.close:
             return close_verdict(a)
         if a.deploy_to:
             return runner_deploy(a)
+        if a.cold_aside:
+            n = cold_aside(a.cold_aside)
+            say(f"the folder as the night left it is set aside for the cold build: {n:,} files, "
+                f"in {a.cold_aside}")
+            return 0
         machine_watch()
+        if a.cold_build:
+            cold_build(a.cold_build)
+            return 0
         if a.weekly:
             return weekly(a)
-    elif a.weekly or a.deploy_to or a.close or a.dry_run or a.new_term:
-        ap.error("--weekly, --deploy-to, --close, --dry-run and --new-term are for "
-                 "GitHub's machine, with --runner")
+    elif a.weekly or a.deploy_to or a.close or a.dry_run or a.new_term or a.checks_result \
+            or a.checks is not None or a.cold_aside or a.cold_build or a.cold is not None:
+        ap.error("--weekly, --deploy-to, --close, --dry-run, --new-term, --checks-result, "
+                 "--checks and the cold build's are for GitHub's machine, with --runner")
 
     lock = Path(".nightly.lock")
     if not take_lock(lock, f"{datetime.now():%Y-%m-%d %H:%M} pid {os.getpid()}"):
@@ -1720,13 +1795,16 @@ def main():
             code = 0
             return 0
 
-        if run(["preflight.py", "--code"], "preflight") != 0:
-            say("\nSTOPPED: preflight failed. Nothing fetched, nothing built.")
-            if night:
-                night.v["preflight"] = "failed"
-            return 1
         if night:
-            night.v["preflight"] = "passed"
+            # THE CODE CHECKS BESIDE THE NIGHT (CHECKS_JOB): on GitHub's machine
+            # they are a job of their own, and nothing here waits for them.
+            # --close folds in what they came to.
+            say(f"\n--- the code checks ---\n  {PREFLIGHT_BESIDE} ({CHECKS_JOB!r}): the fetch "
+                "and the build do not wait for them, and the verdict says what they came to")
+            night.v["preflight"] = PREFLIGHT_BESIDE
+        elif run(["preflight.py", "--code"], "preflight") != 0:
+            say("\nSTOPPED: preflight failed. Nothing fetched, nothing built.")
+            return 1
 
         installed = False
         if a.no_fetch:
@@ -2505,7 +2583,9 @@ def plain_why(v, weekly=False):
     if new_term.get("refused"):
         why = NEW_TERM_REFUSED.get(new_term["refused"], NEW_TERM_DRY)
     elif v.get("preflight") == "failed":
-        why = "The code checks failed, so nothing was fetched or built."
+        # Beside the night (CHECKS_JOB) a failure stops nothing but the publish.
+        why = (checks_why(v["checks"]) if isinstance(v.get("checks"), dict)
+               else "The code checks failed, so nothing was fetched or built.")
     elif fetch == "refused":
         why = ("The General Court refused a request. Nothing more was asked, and "
                "every fetch waits until a person clears the refusal.")
@@ -5447,6 +5527,105 @@ def site_manifest(site, out):
     return len(rows)
 
 
+# THE NIGHT'S BUILD, KEPT FOR THE WEEKLY'S COLD BUILD (16 November 2026, the
+# owner's word: "a weekly cold build compared with the night's before any
+# caching"; the refactor's stage 0, B12). Two steps keep answers in
+# .build_cache (src/lib/build_cache.py), each under a hash of its inputs and
+# its code, so that a cache makes a build faster and never different -- and
+# nothing on GitHub's machine checked that it never did. So a real night that
+# built keeps the sha256 of every file of its site in NIGHT_SITE, a state file
+# (cloud_kit.json), never a dry run's or a New term run's; and the weekly job,
+# before its own fetches, sets aside the folder the night left (cold_aside),
+# and after them builds it again there, with no .build_cache and the night's
+# day stated (cold_build), and compares the two file for file (cold_compare),
+# less the files that carry a time of day or are the build's account of itself
+# (TREE_LEFT_OUT and TREE_LEFT_OUT_UNDER, which the night's own tree hash
+# leaves out too) and the changes files, written against the first-seen ledger
+# the night moved on (COLD_LEFT_OUT_UNDER). A difference is a warning in the
+# weekly's verdict, naming the first files that differ, for the morning triage;
+# it holds no night, and the weekly's own fetches are as they were. The night itself
+# states no day: its pages are published, and a stated moment is read as UTC
+# too (build_date.utcnow), which would move the times it publishes.
+NIGHT_SITE = Path("archive/night-site.json.gz")
+COLD_RECORD = Path("logs/cold-build.json")
+COLD_NAMED = 8                  # the files a difference names, first by path
+# What the aside leaves out, at the folder's top only: the build's cache, which
+# is what "cold" means, and the lock. Not site/: the kit brings site/committees.json,
+# the one file of the last site a build reads before it rewrites it.
+COLD_SKIP_TOP = (".build_cache", ".nightly.lock")
+
+
+def keep_night_site(rows, out, v, day):
+    """NIGHT_SITE from site_manifest()'s file `rows` ("sha256  size  path" a
+    line): the night's day, run, commit and start, and every file's sha256,
+    gzipped with no time in it. The number of files; OSError or ValueError
+    where it cannot be written."""
+    files = {}
+    for ln in Path(rows).read_text(encoding="utf-8").splitlines():
+        sha, _size, rel = ln.split("  ", 2)
+        files[rel] = sha
+    body = json.dumps({"format": 1, "day": day, "run_id": str(v.get("run_id") or ""),
+                       "sha": str(v.get("sha") or ""), "started": v.get("started"),
+                       "files": files}, sort_keys=True, separators=(",", ":"))
+    out = Path(out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out.with_name(out.name + ".part")
+    tmp.write_bytes(gzip.compress(body.encode("utf-8"), mtime=0))
+    os.replace(tmp, out)
+    return len(files)
+
+
+# ... and the changes files the email sender reads (follow_changes.py), which
+# are written against the first-seen ledger: the night moves the ledger on
+# itself once its build is accepted (keep_first_seen), so a build after it
+# decides what is new against a later one than the night's build did.
+COLD_LEFT_OUT_UNDER = TREE_LEFT_OUT_UNDER + ("changes/",)
+
+
+def cold_left_out(rel):
+    """Whether a file of the site is left out of the cold build's comparison:
+    one that carries a time of day, is the build's own account of itself, or
+    is written against the ledger the night moved on."""
+    return rel in TREE_LEFT_OUT or rel.startswith(COLD_LEFT_OUT_UNDER)
+
+
+def cold_compare(night, cold):
+    """{"compared", "same", "changed", "added", "removed"} of two {path: sha256}
+    maps, the night's and the cold build's, less cold_left_out(): counts, and
+    each list of paths sorted."""
+    a = {k: h for k, h in night.items() if not cold_left_out(k)}
+    b = {k: h for k, h in cold.items() if not cold_left_out(k)}
+    changed = sorted(k for k in set(a) & set(b) if a[k] != b[k])
+    return {"compared": len(set(a) | set(b)), "same": len(set(a) & set(b)) - len(changed),
+            "changed": changed, "added": sorted(set(b) - set(a)), "removed": sorted(set(a) - set(b))}
+
+
+def cold_said(rec):
+    """What the cold build came to, as a predicate of "the cold build", for the
+    week's results, its warnings and its page: the record's own counts and the
+    site's own paths, and nothing a page read."""
+    if rec.get("result") == "same":
+        return (f"is the same as the night of {rec.get('day')}'s build (run {rec.get('night_run')}): "
+                f"all {rec.get('compared', 0):,} files compared"
+                + (f"; {rec['note']}" if rec.get("note") else ""))
+    if rec.get("result") == "differs":
+        named = rec.get("first") or []
+        return (f"differs from the night of {rec.get('day')}'s build (run {rec.get('night_run')}) "
+                f"in {rec.get('differ', 0):,} of {rec.get('compared', 0):,} files"
+                + (f", first {', '.join(named)}" if named else "")
+                + "; the week's verdict (cold_build) has the counts"
+                + (f"; {rec['note']}" if rec.get("note") else ""))
+    how = "failed" if rec.get("result") == "failed" else "was not compared"
+    return f"{how}: {rec.get('why') or 'no reason was recorded'}"
+
+
+def cold_warns(rec):
+    """Whether the cold build's record is a warning: a difference on the
+    night's own code, or a cold build that did not finish. Not one of other
+    code, which is the code's to differ, nor one not compared."""
+    return (rec.get("result") == "differs" and not rec.get("note")) or rec.get("result") == "failed"
+
+
 # ---- the night's own health ---------------------------------------------------
 #
 # THE NIGHT'S OWN HEALTH (16 November 2026; the refactor's stage 0, its ops
@@ -6542,6 +6721,16 @@ class Night:
             say("  " + keep_first_seen())
         n = site_manifest(site, Path("logs") / f"site-{self.day}.sha256")
         say(f"  logs/site-{self.day}.sha256 lists all {n:,} files, with their sha256")
+        # ... and the same, for the weekly's cold build to compare with (NIGHT_SITE):
+        # a real night's, never a dry run's or a New term run's, whose kit is held.
+        if not a.dry_run and not a.new_term:
+            try:
+                kept = keep_night_site(Path("logs") / f"site-{self.day}.sha256", NIGHT_SITE, v,
+                                       self.day)
+                say(f"  {NIGHT_SITE.as_posix()} keeps them ({kept:,}) for the weekly's cold build")
+            except (OSError, ValueError) as e:
+                say(f"  {NIGHT_SITE.as_posix()} could not be written, so the weekly's cold build "
+                    f"has no night to compare with: {type(e).__name__}: {e}")
 
         v["blocking"] = blocking
         # THE GATE'S REASONS from the build and from production, in order:
@@ -6601,7 +6790,9 @@ class Night:
         v, why = self.v, []
         if (v.get("new_term") or {}).get("refused"):
             return [f"{NEW_TERM_BOX} was {v['new_term']['refused']}: nothing was done"]
-        if v.get("preflight") != "passed":
+        # Beside the night, the code checks' result is --close's to fold in
+        # (CHECKS_JOB); until then they are no reason the night is not clean.
+        if v.get("preflight") not in ("passed", PREFLIGHT_BESIDE):
             why.append("preflight " + str(v.get("preflight", "did not run")))
         if not self.a.no_fetch:
             if v.get("fetch") != "installed" and not from_db(v):
@@ -7241,6 +7432,90 @@ def alerts_of(v):
     return out
 
 
+def checks_word(result):
+    """A job's result as the verdict keeps it: one of CHECKS_WORDS, lower case;
+    "unknown" for nothing, or for anything else."""
+    r = " ".join(str(result or "").strip().lower().split())
+    return r if r in CHECKS_WORDS else "unknown"
+
+
+def checks_line(result):
+    """The code checks' line on the run's page and in the verdict."""
+    r = checks_word(result)
+    return (f"the code checks ({CHECKS_JOB}, beside the night) {CHECKS_WORDS[r]}"
+            + ("" if r == "success" else ": nothing from this run goes to production"))
+
+
+def checks_why(rec):
+    """plain_why's sentence for a night whose code checks, beside it, did not
+    pass: what stopped, and what did not (plain_why adds that nothing was
+    published)."""
+    r = checks_word((rec or {}).get("result"))
+    return (f"The code checks {CHECKS_WORDS[r]}. They run beside the night in a job of their "
+            "own, so the night's other steps ran as usual: this page and the verdict say what "
+            "it took and built.")
+
+
+def _ask_github(url, token, timeout=30):
+    """One GET of GitHub's API, as JSON."""
+    req = urllib.request.Request(url, headers={
+        "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "granite-record-nightly", **({"Authorization": f"Bearer {token}"}
+                                                   if token else {})})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode("utf-8"))
+
+
+def checks_result(wait=CHECKS_WAIT, every=CHECKS_EVERY, ask=None, sleep=None, clock=None):
+    """(result, said): what this run's job CHECKS_JOB came to, read off the
+    run's own list of jobs (GITHUB_REPOSITORY, GITHUB_RUN_ID; the token in
+    GH_TOKEN), looked at every `every` seconds while it runs, for `wait`
+    seconds at most. The result is a word of CHECKS_WORDS: the job's
+    conclusion once it has finished; "not finished" past the wait; "not in
+    this run" where the list names no such job; "unknown" where no list could
+    be read. Only GETs of this run's jobs, and it never raises."""
+    repo, rid = github("GITHUB_REPOSITORY"), github("GITHUB_RUN_ID")
+    if not (repo and rid):
+        return "unknown", "GitHub names no run here (GITHUB_REPOSITORY, GITHUB_RUN_ID)"
+    url = f"{GITHUB_API}/repos/{repo}/actions/runs/{rid}/jobs?per_page=100"
+    token = github("GH_TOKEN")
+    ask = ask or (lambda u: _ask_github(u, token))
+    sleep, clock = sleep or time.sleep, clock or time.monotonic
+    # What the last list that could be read said: None (none read yet),
+    # "not in this run" (no such job) or "not finished" (the job still going).
+    end, last, state = clock() + wait, "", None
+    while True:
+        try:
+            got = ask(url)
+            jobs = got.get("jobs") if isinstance(got, dict) else None
+            if not isinstance(jobs, list):
+                raise ValueError("no list of jobs")
+            mine = [j for j in jobs if isinstance(j, dict) and j.get("name") == CHECKS_JOB]
+            if mine and mine[-1].get("status") == "completed":
+                j = mine[-1]
+                return checks_word(j.get("conclusion")), (
+                    f"{CHECKS_JOB}: {j.get('conclusion') or 'no conclusion'}"
+                    + (f", finished {j['completed_at']}" if j.get("completed_at") else ""))
+            state = "not finished" if mine else "not in this run"
+            last = (f"{CHECKS_JOB} is {mine[-1].get('status') or 'in no state'}" if mine
+                    else f"this run lists no job named {CHECKS_JOB!r}")
+        except Exception as e:                                  # noqa: BLE001
+            last = f"this run's jobs could not be read: {type(e).__name__}"
+        if clock() >= end:
+            return state or "unknown", f"after {wait // 60} minutes, {last}"
+        sleep(every)
+
+
+def checks_step():
+    """--checks-result: checks_result() as the step output `result`, for
+    --close's --checks, and a line in GitHub's log. Exit 0 whatever it read:
+    --close decides what it means."""
+    res, said = checks_result()
+    print(f"{checks_line(res)} ({said})", flush=True)
+    gh_output(result=res)
+    return 0
+
+
 def close_verdict(a):
     """--close: the workflow's own step results, folded into the verdict.
 
@@ -7311,6 +7586,38 @@ def close_verdict(a):
                        + ([f"- {off_main_line(v['off_main'])}"] if v.get("off_main") else []))
     v["steps"] = steps
     failed = [f"{k} ({r})" for k, r in steps.items() if r not in ("success", "skipped", "")]
+    # THE CODE CHECKS, FROM THEIR OWN JOB (CHECKS_JOB): what --checks-result
+    # read, folded in as a step of the night's job is. Only "success" passes:
+    # an empty result, one that was skipped or cancelled, or a step that could
+    # not read it, is a failure, so a night is never clean on checks that did
+    # not pass. Said on the run's page either way. A night told nothing (the
+    # laptop's, which ran them first) keeps what main() recorded.
+    told = getattr(a, "checks", None)
+    if told is not None and not a.weekly:
+        res = checks_word(told)
+        v["checks"] = {"job": CHECKS_JOB, "result": res, "said": checks_line(res)}
+        v["preflight"] = "passed" if res == "success" else "failed"
+        gh_summary([f"- {checks_line(res)}"])
+        if res != "success":
+            failed.append(f"{CHECKS_JOB} ({res})")
+    # THE WEEKLY'S COLD BUILD (NIGHT_SITE): what it came to, from its record,
+    # into the week's results, which the morning triage reads, and its
+    # warnings where it differs or did not finish (cold_warns). Never into
+    # whether the week was clean or its job failed, and it holds no night. A
+    # step that left no record is said as one. Told nothing (an older
+    # workflow), nothing is said.
+    told_cold = getattr(a, "cold", None)
+    if a.weekly and told_cold is not None:
+        cold = load_json(COLD_RECORD)
+        if not isinstance(cold, dict) or str(cold.get("run_id") or "") != str(rid or ""):
+            cold = {"result": "failed",
+                    "why": f"it left no record (its step: {told_cold or 'no outcome'})"}
+        said = cold_said(cold)
+        v.setdefault("results", {})["the cold build"] = said
+        v["cold_build"] = cold
+        if cold_warns(cold):
+            v["warnings"] = list(v.get("warnings") or []) + [f"the cold build {said}"]
+        gh_summary([f"- the cold build {said}"])
     if failed:
         v["clean"] = False
         v.setdefault("not_clean", []).append("workflow steps that did not succeed: "
@@ -7354,7 +7661,7 @@ def close_verdict(a):
         # Clean, and publishable, but something beside the record was kept
         # from an earlier night: said at the top of the run's page. Every
         # warning is a line nightly.py wrote from its own counts.
-        gh_annotate("warning", "The night was clean, with a warning",
+        gh_annotate("warning", f"The {'week' if a.weekly else 'night'} was clean, with a warning",
                     "; ".join(str(w) for w in v["warnings"])[:300]
                     + ". Everything else was taken as usual.")
     return 1 if failed else 0
@@ -7368,6 +7675,86 @@ def seats(d):
 
 def committee_count(d):
     return sum(len(x) for x in d.values() if isinstance(x, list)) if isinstance(d, dict) else 0
+
+
+def cold_aside(dest, root="."):
+    """--weekly --cold-aside DEST: the folder as the night left it -- the
+    checkout, the kit and the state, as kit-down and state-down brought them
+    -- copied to DEST before the week's fetches change any of it, less the
+    build's cache and the lock (COLD_SKIP_TOP, at the top only). The number of
+    files copied."""
+    root, dest = Path(root).resolve(), Path(dest)
+    if dest.exists():
+        shutil.rmtree(dest)
+
+    def skip(folder, names):
+        return [x for x in names if Path(folder).resolve() == root and x in COLD_SKIP_TOP]
+    shutil.copytree(root, dest, ignore=skip)
+    return sum(1 for p in dest.rglob("*") if p.is_file())
+
+
+def cold_build(dest, record=COLD_RECORD, build=None, now=None):
+    """--weekly --cold-build DEST: build the folder cold_aside() set aside,
+    with no .build_cache and the night's day stated, and compare its site with
+    the night's (NIGHT_SITE, as state-down brought it), file for file. Writes
+    `record` here, which --close folds into the week's verdict, and returns
+    it. Never raises: a build that fails is its record's "failed".
+
+    Compared only with the night the kit is of: the newest real night's
+    verdict (VERDICT) names the run that kept NIGHT_SITE, or the folder holds
+    another night's build than the one that built it, and that is said. A
+    night of other code than this run's is compared all the same, and its
+    differences are the code's: said, and no warning (cold_warns)."""
+    dest = Path(dest)
+    started = datetime.now()
+    rec = {"at": started.isoformat(timespec="seconds"), "run_id": github("GITHUB_RUN_ID"),
+           "sha": github("GITHUB_SHA")}
+
+    def done(result, **kv):
+        rec.update(result=result, finished=datetime.now().isoformat(timespec="seconds"), **kv)
+        write_json(record, rec)
+        say(f"\nthe cold build {cold_said(rec)}")
+        return rec
+    night = None
+    try:
+        night = json.loads(gzip.decompress((dest / NIGHT_SITE).read_bytes()).decode("utf-8"))
+    except (OSError, ValueError, EOFError) as e:
+        return done("not compared", why=f"no night's build to compare with ({NIGHT_SITE.as_posix()}: "
+                                        f"{type(e).__name__})")
+    last = load_json(dest / VERDICT) or {}
+    rec.update(day=night.get("day"), night_run=night.get("run_id"), night_sha=night.get("sha"))
+    if str(last.get("run_id") or "") != str(night.get("run_id") or ""):
+        return done("not compared", why=(f"the newest night, run {last.get('run_id') or '?'}, built "
+                                         f"nothing it kept, so the kit is not the one night "
+                                         f"{night.get('run_id')}'s build was made from"))
+    if not (dest / "build_all.py").exists() or (dest / ".build_cache").exists():
+        return done("failed", why="the folder set aside is not a checkout, or keeps the build's cache")
+    say("\n--- the cold build ---")
+    try:
+        day = date.fromisoformat(str(night.get("day"))).isoformat()
+    except ValueError:
+        return done("not compared", why=f"the night's day {night.get('day')!r} is not a day")
+    import build_date
+    env = {build_date.ENV: day}
+    code = (build or (lambda: run(["build_all.py", "--local", "--no-captions"], "the cold build",
+                                  cwd=dest, env=env, root=dest)))()
+    if code != 0:
+        return done("failed", why=f"build_all.py exited {code} in the folder set aside")
+    try:
+        cold = {p.relative_to(dest / "site").as_posix(): _sha256_of(p)
+                for p in sorted((dest / "site").rglob("*")) if p.is_file()}
+    except OSError as e:
+        return done("failed", why=f"its site could not be read: {type(e).__name__}")
+    got = cold_compare(night.get("files") or {}, cold)
+    differ = sorted(got["changed"] + got["added"] + got["removed"])
+    kv = {"compared": got["compared"], "same": got["same"], "differ": len(differ),
+          "changed": len(got["changed"]), "added": len(got["added"]),
+          "removed": len(got["removed"]), "first": differ[:COLD_NAMED],
+          "minutes": round((datetime.now() - started).total_seconds() / 60, 1)}
+    if night.get("sha") and rec["sha"] and night.get("sha") != rec["sha"]:
+        kv["note"] = (f"the night was built from {str(night['sha'])[:12]} and this run is "
+                      f"{rec['sha'][:12]}: other code, whose differences are its own")
+    return done("same" if not differ else "differs", **kv)
 
 
 def weekly(a):

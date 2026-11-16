@@ -128,7 +128,11 @@ journals, those documents the kit does not hold, 25 a night at most, their
 text, and the House committees' reports, the amendments and the meetings read
 off it again where it changed (`nightly.take_document_files`); the rebuild,
 `build_all.py --local --no-captions`, since
-that machine holds no caption files; and the gates -- `preflight.py --code`,
+that machine holds no caption files; and the gates -- `preflight.py --code`
+(since 16 November 2026 a job of its own beside the night, `checks`, from the
+same commit: nothing waits for it, the publish job needs it to have passed,
+and the night reads its result at the end, `nightly.py --checks-result`, and
+its verdict is clean only where it passed),
 `src/checks/check_site.py`, a census of the build against the last good
 build's counts (`archive/census.json`), and a ceiling of 95,000 files
 (`FILE_CEILING`) that nothing lifts. A build that passes goes to a preview
@@ -189,7 +193,14 @@ production or whose job failed, can no longer make a night waiting for
 approval unapprovable. The weekly workflow, `weekly.yml`, runs on Sunday
 night: the committee rosters, the members who have left and the study
 committees, each fetch whole or not at all. It publishes nothing; Monday's
-night builds what it took.
+night builds what it took. Since 16 November 2026 it also builds the site
+again from the folder as the last night left it, set aside before its own
+fetches, with no build cache and that night's day stated, and compares every
+file with that night's build, whose sha256 list the night keeps as a state
+file (`archive/night-site.json.gz`, `nightly.NIGHT_SITE`; never a dry run's or
+a New term run's), less the files that carry a time and the changes files: a
+difference is a warning in the week's verdict, naming the first files, and
+holds no night.
 
 **The current term's data, from the database** (since 16 October 2026). After
 the day's files and the study committees, a night that fetches takes from the
@@ -355,8 +366,9 @@ longer than `STILL_DAYS` and it did not move at all, and none on a night that
 did not fetch; the rest are left to the warnings that already watch them.
 Each is of a kind the gate never holds a night for.
 
-**The checks of the night's own build.** `preflight.py --code` runs before the
-night fetches or builds, so a check that reads a built site skips there, and
+**The checks of the night's own build.** `preflight.py --code` runs beside the
+night (before it fetched or built, until 16 November 2026), never on a built
+site, so a check that reads a built site skips there, and
 the data checks never ran on GitHub's machine at all -- which is how the
 report box dropped readers' reports from nearly every legislator page for
 four days in October 2026 with no night to say so. After `check_site`, the
@@ -529,7 +541,8 @@ from and of the code that worked it out -- the module and every module of
 this project it imports, tokenised with the comments out, as section 9 below
 learned -- so a change to either is a cache that no longer answers. A cache
 that is missing, unreadable or another code's is no cache, and the site
-built warm, cold and without it is the same byte for byte.
+built warm, cold and without it is the same byte for byte; the weekly's cold
+build (above) holds GitHub's nights to that.
 
 ---
 
