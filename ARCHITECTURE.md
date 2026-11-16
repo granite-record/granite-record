@@ -414,6 +414,25 @@ must remember (`refused.json`, `census.json`, `first-seen.json`, the verdicts)
 lives under `state/`, so a refusal the night meets outlives its machine and
 stops the laptop's fetches too.
 
+**Renewal dates** (16 November 2026). One state file is the person's, not the
+night's: `state/expiries.json`, the private list of each token, certificate,
+domain and card that runs out or renews on a day, which `state-down` brings to
+`archive/expiries.json` with the rest and no machine writes. It is never in
+the repository. Its format is `{"format": 1, "expiries": [...]}`, each entry an
+object of `name` (what runs out, as the person calls it; required), `date`
+(`YYYY-MM-DD`, or `null` where no day is recorded, which the night lists and
+never warns of; required), `do` (what to do about it, one short sentence;
+required), `renews` (true where it renews itself, as the certificate does;
+default false) and `guess` (true where the date is a guess; default false);
+any other key is the person's and not read. Each dated entry warns from 30
+days before its day, and every night after until the file carries its next
+day (`nightly.expiries_record`, `EXPIRY_DAYS`): in full, with what to do, in
+the verdict's standing warnings and the night's own log, both in the private
+bucket; the run's page and GitHub's log, which are public, say only how many
+are due. No file is one quiet line on the page; a file or an entry that will
+not read is a warning. The warnings are of a kind the gate never holds a night
+for.
+
 **The build's cache (23 October 2026).** Two steps keep what they worked out
 in `.build_cache/` (`src/lib/build_cache.py`), and the kit carries it as the
 night's own: the bill versions' comparisons of one printing with the next,

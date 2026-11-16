@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.934
+# GRANITE_VERSION: 2026-09-04.935
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -96219,6 +96219,162 @@ def _night_started_by(NI):
                   f"a schedule more than {NI.TIMER_GRACE} minutes past it warns, in two wordings, "
                   "never holding the night, in the warnings, the standing ones and a night that "
                   "stopped early, and nothing else does")
+
+
+@check("workflows", "the night reads the private list of renewal dates brought down with its state "
+                    "files and warns 30 days before each, its words kept off the public page",
+       needs=("nightly", "cloud"))
+def _night_expiries(NI, CL):
+    """KNOWN EXPIRIES (nightly.py; the refactor's stage 0, ops item 7). Five tokens, the
+    certificate, the domain and the card each run out or renew on a day nothing read. The
+    person keeps them in state/expiries.json in the bucket, which cloud_kit.json's state list
+    brings down to nightly.EXPIRIES, a path git ignores, so the list never reaches the public
+    repository. Then expiries_record() on fixtures: no file is one quiet line and no warning;
+    a file that is not JSON, is not the shape or is another format warns; of a list read, a day
+    31 days off is the next and not due, 30 days off, today, past, renewing itself ahead and
+    behind, and a guess are each due, soonest first, in their own words with what to do; a null
+    date is listed and never warned of; a bad date, a missing what-to-do and a renews that is
+    not true or false are each an entry that will not read. The public warnings, the record's
+    line and GitHub's log carry only counts, while the standing warnings and the night's own
+    log carry each name; none of it holds a night, and a night that stopped early reads the
+    list all the same, without emailing it."""
+    import contextlib
+    import io
+    import subprocess as sp
+    import types
+    from datetime import date as d_, timedelta
+    kit = CL.load_kit(".")
+    have = [s for s in kit.get("state", []) if s.get("key") == "expiries.json"]
+    assert have and have[0]["path"] == NI.EXPIRIES.as_posix() == "archive/expiries.json", (
+        f"{CL.KIT_FILE}'s state list does not bring state/expiries.json down to "
+        f"{NI.EXPIRIES.as_posix()}: {have}")
+    assert "expiries.json" not in (kit.get("dry_run") or {}).get("state", []), (
+        "a dry run's state-up may send the private list of renewal dates")
+    git = shutil.which("git")
+    if git and Path(".git").exists():
+        ignored = sp.run([git, "check-ignore", "-q", NI.EXPIRIES.as_posix()], capture_output=True)
+        tracked = sp.run([git, "ls-files", "--", "*expiries.json"], capture_output=True, text=True)
+        assert ignored.returncode == 0 and not tracked.stdout.strip(), (
+            f"{NI.EXPIRIES} is not ignored by git, or a list of renewal dates is tracked "
+            f"({tracked.stdout.strip()[:80]}): the list stays out of the public repository")
+
+    today = d_(2026, 11, 16)
+
+    def on(n):
+        return (today + timedelta(days=n)).isoformat()
+
+    secret = ("the deploy token", "the night timer's token", "the laptop's GitHub token",
+              "the certificate", "the domain", "the read-only R2 token", "the card")
+    good = {"format": 1, "expiries": [
+        {"name": secret[0], "date": on(31), "do": "make a new one"},
+        {"name": secret[1], "date": on(30), "do": "make a new one as its README says"},
+        {"name": secret[2], "date": on(0), "do": "make a new fine-grained token"},
+        {"name": secret[5], "date": on(-3), "do": "make a new one", "renews": False},
+        {"name": secret[3], "date": on(10), "do": "check the dashboard", "renews": True},
+        {"name": secret[4], "date": on(-2), "do": "check the registrar", "renews": True},
+        {"name": "the Pages plan", "date": on(5), "do": "check the bill", "guess": True},
+        {"name": secret[6], "date": None, "do": "put its expiry here", "note": "the person's"},
+        {"name": "a token", "date": "2027-9-25", "do": "x"},
+        {"name": "another", "date": on(1)},
+        {"name": "a third", "date": on(2), "do": "x", "renews": "yes"}]}
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-expiries-"))
+    saved = {k: os.environ.get(k) for k in ("GITHUB_RUN_ID", "GITHUB_ACTIONS", "GITHUB_STEP_SUMMARY",
+                                            "GITHUB_SHA", NI.STARTED_BY_ENV)}
+    quiet, log = NI.QUIET, NI.LOG
+    try:
+        f = tmp / "expiries.json"
+        rec = NI.expiries_record(today, f)
+        assert rec["read"] == "missing" and "none was checked" in rec["line"] and \
+            NI.expiries_warned(rec) == NI.expiries_warned(rec, private=True) == [], rec
+        for body, why in (("{not json", "Error"), ("[]", "not an object"),
+                          (json.dumps({"format": 2, "expiries": []}), "format")):
+            f.write_text(body, encoding="utf-8")
+            rec = NI.expiries_record(today, f)
+            warned = NI.expiries_warned(rec)
+            assert rec["read"] == "unreadable" and why in rec["why"] and \
+                [k for k, _s in warned] == [NI.KIND_EXPIRY_UNREAD] and \
+                warned == NI.expiries_warned(rec, private=True), (body, rec, warned)
+        f.write_text(json.dumps(good), encoding="utf-8")
+        rec = NI.expiries_record(today, f)
+        due = [(x["name"], x["days"]) for x in rec["due"]]
+        assert rec["read"] == "read" and due == [
+            (secret[5], -3), (secret[4], -2), (secret[2], 0), ("the Pages plan", 5),
+            (secret[3], 10), (secret[1], 30)], due
+        assert rec["next"] == {"name": secret[0], "date": on(31), "days": 31} and \
+            rec["undated"] == [secret[6]] and len(rec["problems"]) == 3 and \
+            [p.split(":")[0].split(" has")[0] for p in rec["problems"]] == ["entry 9", "entry 10", "entry 11"], rec
+        said = {x["name"]: x["said"] for x in rec["due"]}
+        for name, words in ((secret[1], "runs out on 16 December 2026, in 30 days: make a new one as "
+                                        "its README says."),
+                            (secret[2], "runs out today, 16 November 2026: make a new fine-grained token."),
+                            (secret[5], "ran out on 13 November 2026, 3 days ago: make a new one. Then "
+                                        "put its new date in expiries.json."),
+                            (secret[3], "renews itself on 26 November 2026, in 10 days: check that it "
+                                        "does (check the dashboard), then put its next date in "
+                                        "expiries.json."),
+                            (secret[4], "was due to renew itself on 14 November 2026, 2 days ago: check "
+                                        "that it did (check the registrar)"),
+                            ("the Pages plan", "(a guess: the date is not recorded)")):
+            assert words in said[name] and said[name][0].isupper(), (name, said[name])
+        public, private = NI.expiries_warned(rec), NI.expiries_warned(rec, private=True)
+        assert [k for k, _s in public] == [NI.KIND_EXPIRY, NI.KIND_EXPIRY_UNREAD] and \
+            "6 dates" in public[0][1] and "3 entries" in public[1][1], public
+        assert len(private) == 9 and [s for _k, s in private[:6]] == [x["said"] for x in rec["due"]], private
+        leaks = [n for n in secret + ("the Pages plan",) for s in [rec["line"]] + [x for _k, x in public]
+                 if n.lower() in s.lower()]
+        assert not leaks and "6 due within 30 days" in rec["line"], (
+            f"the public words name what is on the private list: {leaks} ({rec['line']})")
+        assert NI.warning_reasons(public + private, [], ()) == [], "a renewal due would hold the night"
+        v = {"expiries": rec}
+        assert dict(NI.Night.warned(types.SimpleNamespace(v=dict(v, started="2026-11-16T03:20:00")))
+                    ).get(NI.KIND_EXPIRY) == public[0][1] and \
+            all(s in NI.warns_of(v) for _k, s in private), (
+                "the night's warnings are not the counts, or its standing ones not each line")
+        # GitHub's log is public: each name goes to the night's own log alone.
+        NI.QUIET, NI.LOG = True, []
+        night = types.SimpleNamespace(v={"sha": "0" * 40, "run_id": "1", "expiries": rec,
+                                         "started_by": {"line": "Started by hand."}},
+                                      a=types.SimpleNamespace(no_fetch=False, dry_run=False,
+                                                              new_term=False))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            NI.Night.intro(night)
+        printed, kept = out.getvalue(), "\n".join(NI.LOG)
+        assert rec["line"] in printed and not [n for n in secret if n.lower() in printed.lower()] and \
+            all(x["said"] in kept for x in rec["due"]) and secret[0] in kept.lower() and \
+            secret[6] in kept.lower(), (
+                "GitHub's public log names what is on the private list, or the night's own log "
+                f"does not: {printed[-300:]}")
+        NI.QUIET, NI.LOG = quiet, log
+        # A night that stopped before its verdict reads the list all the same; nothing emails it.
+        os.chdir(tmp)
+        Path("archive").mkdir()
+        Path(NI.EXPIRIES).write_text(json.dumps(good), encoding="utf-8")
+        for k in ("GITHUB_ACTIONS", "GITHUB_STEP_SUMMARY", NI.STARTED_BY_ENV):
+            os.environ.pop(k, None)
+        os.environ["GITHUB_RUN_ID"], os.environ["GITHUB_SHA"] = "9002", "0" * 40
+        with contextlib.redirect_stdout(io.StringIO()):
+            NI.close_verdict(types.SimpleNamespace(weekly=False, dry_run=False,
+                                                   outcome=["kit-down=failure"]))
+        got = json.loads(Path(NI.VERDICT).read_text(encoding="utf-8"))
+        mailed = NI.ALERT_FILE.read_text(encoding="utf-8") + NI.APPROVAL_FILE.read_text(encoding="utf-8")
+        assert (got.get("expiries") or {}).get("read") == "read" and \
+            any(secret[1] in s.lower() for s in got.get("standing_warnings", [])) and \
+            secret[1] not in mailed.lower(), (
+                "a night that stopped early does not read the list, or emails it: "
+                f"{got.get('expiries', {}).get('read')} {got.get('standing_warnings')}")
+    finally:
+        NI.QUIET, NI.LOG = quiet, log
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+        for k, val in saved.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+    return "ok", (f"state/expiries.json comes down to {NI.EXPIRIES.as_posix()}, which git ignores; no file is a "
+                  "quiet line, an unreadable one a warning; six due of eleven, soonest first, each in "
+                  f"its own words {NI.EXPIRY_DAYS} days ahead and after, the undated listed, three "
+                  "entries refused; counts alone on the public page and log, each line in the "
+                  "standing warnings and the night's own log; never holding a night or emailed")
 
 
 # ---- the live layer's reader of the General Court's public SQL database ----------

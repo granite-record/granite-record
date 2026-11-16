@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.89
+# GRANITE_VERSION: 2026-09-04.90
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -137,6 +137,11 @@ night itself does is here, and what differs on that machine is behind --runner:
                       in the verdict ("started_by") and on the run's page; a
                       night the schedule had to start late, because the timer
                       started none, warns (WHO STARTED THE NIGHT)
+  renewal dates       a private list, state/expiries.json, brought down with
+                      the state files: each token, certificate, domain or card
+                      on it warns 30 days before its day and after, its words
+                      kept to the verdict and the night's own log, both
+                      private; the public page counts them (KNOWN EXPIRIES)
   the gates           against archive/census.json, the last good build's
                       counts, which cloud.py carries in R2's state/, because
                       site/ starts empty. No census is no baseline, and that
@@ -5544,11 +5549,170 @@ def started_by_warned(rec):
     return [(KIND_TIMER, said)]
 
 
-def health_warned(v):
+# KNOWN EXPIRIES (the refactor's stage 0, ops item 7). Tokens, a certificate,
+# the domain and a card each run out or renew on a day nothing read. The
+# person keeps the days in a private file, state/expiries.json in the bucket,
+# which state-down brings to EXPIRIES with the other state files (cloud_kit.json
+# "state"), and the night says each one EXPIRY_DAYS ahead, and every night after
+# until the file carries its next day. The format, one object:
+#
+#   {"format": 1,
+#    "expiries": [{"name": "the deploy token (CLOUDFLARE_API_TOKEN)",
+#                  "date": "2027-09-25",
+#                  "do": "make a new Pages: Edit token and put it in the three GitHub environments",
+#                  "renews": false,
+#                  "guess": false}, ...]}
+#
+#   name    what runs out, as the person calls it (required)
+#   date    the day it runs out or renews, YYYY-MM-DD; null where no day is
+#           recorded, which the night lists and never warns of (required key)
+#   do      what to do about it, one short sentence (required)
+#   renews  true where it renews itself (the certificate, the domain from the
+#           card): the night says to check that it did (default false)
+#   guess   true where the date is a guess, which the night says (default false)
+#
+# Any other key is kept for the person and not read. THE LIST IS PRIVATE: it
+# stays out of the public repository, and the run's page and GitHub's log are
+# public too, so they carry only how many days are due; each one, with what to
+# do, is in the verdict's standing warnings and the night's own log, both in
+# the private bucket. No file is one quiet line, never a failure; a file that
+# will not read, or an entry that will not, is a warning.
+EXPIRIES = Path("archive/expiries.json")
+EXPIRIES_FORMAT = 1
+EXPIRY_DAYS = 30
+KIND_EXPIRY = KIND_HEALTH + "a renewal or expiry due on the private list"
+KIND_EXPIRY_UNREAD = KIND_HEALTH + "the private list of renewals unreadable"
+MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August",
+          "September", "October", "November", "December")
+
+
+def day_said(d):
+    """date(2027, 1, 4) -> "4 January 2027"."""
+    return f"{d.day} {MONTHS[d.month - 1]} {d.year}"
+
+
+def _days(n):
+    return f"{n} day{'s' if n != 1 else ''}"
+
+
+def expiries_record(today, path=None):
+    """What the private list of renewals says tonight (KNOWN EXPIRIES):
+    {"read": "missing" | "unreadable" | "read", "line": a sentence the public
+    page may carry, and for a list read "dated", "undated" (names), "due" (one
+    {"name", "date", "days", "said"} each, inside EXPIRY_DAYS or past, soonest
+    first), "next" (the soonest not due) and "problems" (entries that will not
+    read)}; for one that will not read, "why". `today` is a date."""
+    path = EXPIRIES if path is None else Path(path)
+    if not path.is_file():
+        return {"read": "missing",
+                "line": f"No list of renewal dates came down with the state files ({path.as_posix()}), "
+                        "so none was checked tonight."}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        return {"read": "unreadable", "why": f"{type(e).__name__}: {str(e)[:120]}"}
+    if not isinstance(raw, dict) or not isinstance(raw.get("expiries"), list):
+        return {"read": "unreadable", "why": 'it is not an object with a list "expiries"'}
+    if raw.get("format", EXPIRIES_FORMAT) != EXPIRIES_FORMAT:
+        return {"read": "unreadable",
+                "why": f"its format is {raw.get('format')!r}, and this reads {EXPIRIES_FORMAT}"}
+    dated, undated, problems = [], [], []
+    for i, e in enumerate(raw["expiries"], 1):
+        name = e.get("name") if isinstance(e, dict) else None
+        do = e.get("do") if isinstance(e, dict) else None
+        if not (isinstance(name, str) and name.strip() and isinstance(do, str) and do.strip()):
+            problems.append(f"entry {i} has no name or no what-to-do")
+            continue
+        if any(not isinstance(e.get(k, False), bool) for k in ("renews", "guess")):
+            problems.append(f"entry {i}: renews and guess are true or false")
+            continue
+        if "date" not in e:
+            problems.append(f"entry {i} has no date (null where none is recorded)")
+            continue
+        if e["date"] is None:
+            undated.append(name.strip())
+            continue
+        s = str(e["date"])
+        try:
+            when = date.fromisoformat(s) if re.fullmatch(r"\d{4}-\d{2}-\d{2}", s) else None
+        except ValueError:
+            when = None
+        if when is None:
+            problems.append(f"entry {i}: its date {s[:20]!r} is not a day written YYYY-MM-DD")
+            continue
+        dated.append((when, name.strip(), do.strip().rstrip("."), bool(e.get("renews")),
+                      bool(e.get("guess"))))
+    dated.sort()
+    due, nxt = [], None
+    for when, name, do, renews, guess in dated:
+        n = (when - today).days
+        if n > EXPIRY_DAYS:
+            nxt = nxt or {"name": name, "date": when.isoformat(), "days": n}
+            continue
+        g = " (a guess: the date is not recorded)" if guess else ""
+        on = day_said(when)
+        if renews and n >= 0:
+            said = (f"{name[:1].upper()}{name[1:]} renews itself on {on}, in {_days(n)}{g}: check "
+                    f"that it does ({do}), then put its next date in expiries.json.")
+        elif renews:
+            said = (f"{name[:1].upper()}{name[1:]} was due to renew itself on {on}, {_days(-n)} "
+                    f"ago{g}: check that it did ({do}), and put its next date in expiries.json.")
+        elif n > 0:
+            said = f"{name[:1].upper()}{name[1:]} runs out on {on}, in {_days(n)}{g}: {do}."
+        elif n == 0:
+            said = f"{name[:1].upper()}{name[1:]} runs out today, {on}{g}: {do}."
+        else:
+            said = (f"{name[:1].upper()}{name[1:]} ran out on {on}, {_days(-n)} ago{g}: {do}. "
+                    "Then put its new date in expiries.json.")
+        due.append({"name": name, "date": when.isoformat(), "days": n, "said": said})
+    k = len(dated) + len(undated)
+    line = (f"Renewal dates: {k} on the private list, "
+            + (f"{len(due)} due within {EXPIRY_DAYS} days or past" if due else
+               f"none due within {EXPIRY_DAYS} days") + ".")
+    return {"read": "read", "line": line, "dated": len(dated), "undated": undated,
+            "due": due, "next": nxt, "problems": problems}
+
+
+def expiries_warned(rec, private=False):
+    """[(kind, sentence)] for the private list of renewals (KNOWN EXPIRIES):
+    one for a list that will not read; then, where `private`, each date due
+    and each entry that will not read, in full -- the verdict's standing
+    warnings, in the private bucket -- and otherwise one line counting them,
+    for the night's warnings, which the public page carries. [] for none."""
+    if not isinstance(rec, dict) or rec.get("read") == "missing":
+        return []
+    if rec.get("read") == "unreadable":
+        return [(KIND_EXPIRY_UNREAD,
+                 f"The private list of renewal dates ({EXPIRIES.as_posix()}) would not read "
+                 f"({rec.get('why') or 'no reason given'}), so no date on it was checked tonight: "
+                 "mend it and put it back in the bucket's state/expiries.json.")]
+    due, bad = list(rec.get("due") or []), list(rec.get("problems") or [])
+    if private:
+        return ([(KIND_EXPIRY, str(d.get("said"))) for d in due]
+                + [(KIND_EXPIRY_UNREAD, f"The private list of renewal dates: {p}, so it was "
+                    "not checked; mend it in the bucket's state/expiries.json.") for p in bad])
+    out = []
+    if due:
+        out.append((KIND_EXPIRY,
+                    f"{len(due)} date{'s' if len(due) != 1 else ''} on the private list of "
+                    f"renewals {'is' if len(due) == 1 else 'are'} due within {EXPIRY_DAYS} days "
+                    "or past: the night's verdict says which, and what to do, in its standing "
+                    "warnings."))
+    if bad:
+        out.append((KIND_EXPIRY_UNREAD,
+                    f"{len(bad)} entr{'y' if len(bad) == 1 else 'ies'} of the private list of "
+                    "renewals would not read and were not checked: the night's verdict says "
+                    "which."))
+    return out
+
+
+def health_warned(v, private=False):
     """[(kind, sentence)] of THE NIGHT'S OWN HEALTH that a verdict carries:
     each a kind the gate never holds a night for. Read by Night.warned() for
-    the night's warnings and by warns_of() for the standing ones."""
-    return started_by_warned(v.get("started_by"))
+    the night's warnings, which the public page carries, and by warns_of()
+    with `private` for the standing ones, which only the verdict does."""
+    return (started_by_warned(v.get("started_by"))
+            + expiries_warned(v.get("expiries"), private=private))
 
 
 class Night:
@@ -5567,6 +5731,9 @@ class Night:
         # Who started the night: the timer, GitHub's schedule or a person
         # (WHO STARTED THE NIGHT), and a warning where the schedule had to.
         self.v["started_by"] = started_by_record()
+        # The private list of renewal dates, as state-down brought it (KNOWN
+        # EXPIRIES): each due within EXPIRY_DAYS, or past, warns.
+        self.v["expiries"] = expiries_record(started.date())
         # The gate's reasons from the build and from production (THE GATE),
         # filled in by judge; finish() adds the warnings' and writes "review".
         self.review_why = []
@@ -5638,6 +5805,19 @@ class Night:
         if self.v.get("off_main"):
             say(f"  {off_main_line(self.v['off_main'])}")
         say(f"  {self.v['started_by']['line']}")
+        exp = self.v.get("expiries") or {}
+        if exp.get("line"):
+            say(f"  {exp['line']}")
+        # The private list's own words go to the night's log alone, which is
+        # the bucket's (KNOWN EXPIRIES): GitHub's log is public.
+        for d in exp.get("due") or []:
+            say(f"    - {d['said']}", echo=False)
+        if exp.get("next"):
+            n = exp["next"]
+            say(f"    the next: {n['name']}, {day_said(date.fromisoformat(n['date']))} "
+                f"({_days(n['days'])})", echo=False)
+        if exp.get("undated"):
+            say(f"    no date recorded for: {'; '.join(exp['undated'])}", echo=False)
         say(f"  the refusal record is {refusal.MARK}; python {sys.version.split()[0]}")
 
     def baseline(self):
@@ -6112,9 +6292,13 @@ class Night:
                    + [f"- **error: {x}**" for x in alarms]
                    # The gate's line, under what leads the page.
                    + ([f"- {line}"] if line else [])
-                   # Who started the night (WHO STARTED THE NIGHT), under it.
+                   # Who started the night (WHO STARTED THE NIGHT), under it,
+                   # and how many renewal dates are due (KNOWN EXPIRIES): the
+                   # list's own words stay off this public page.
                    + ([f"- {v['started_by']['line']}"]
                       if isinstance(v.get("started_by"), dict) else [])
+                   + ([f"- {v['expiries']['line']}"]
+                      if isinstance(v.get("expiries"), dict) and v["expiries"].get("line") else [])
                    + ([f"- the day's files arrived whole on try {tries}"]
                       if tries > 1 and v.get("fetch") == "installed" else [])
                    + tried_lines(v)
@@ -6389,7 +6573,7 @@ def warns_of(v):
     (approval_alerts, whose words it is)."""
     said = built_warn_alert(v.get("built_checks"))
     return (approval_alerts(v) + ([said] if said else []) + [s for _kind, s in not_moving_of(v)]
-            + [s for _kind, s in health_warned(v)])
+            + [s for _kind, s in health_warned(v, private=True)])
 
 
 def approval_alerts(v):
@@ -6501,6 +6685,9 @@ def close_verdict(a):
             # ... and who started it (WHO STARTED THE NIGHT): a night the
             # schedule had to start late is as late when it stops early.
             v["started_by"] = started_by_record()
+            # ... and the private list of renewal dates (KNOWN EXPIRIES), which
+            # state-down brought before the step that stopped.
+            v["expiries"] = expiries_record(date.today())
         if a.dry_run:
             v["asked"] = {"dry_run": True}
             v["kept_apart"] = apart

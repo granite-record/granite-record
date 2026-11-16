@@ -218,7 +218,9 @@
     {"path": "archive/sql-held.json", "key": "sql-held.json",
      "what": "A hold on the General Court's SQL host: a connection the night could not open (probe_db.py). It expires by itself and lengthens; the night is its one writer, and the web server's refusal record is a different file about a different server."},
     {"path": "reports/.cursor-production", "key": "cursor-production",
-     "what": "How far the reader reports have been pulled. A number, never a reader's words."}
+     "what": "How far the reader reports have been pulled. A number, never a reader's words."},
+    {"path": "archive/expiries.json", "key": "expiries.json",
+     "what": "The person's private list of renewal and expiry dates -- tokens, the certificate, the domain, the card -- which the night warns of 30 days ahead (nightly.py, KNOWN EXPIRIES, where its format is). Placed by the person, never in the repository; no machine writes it, so state-up sends it only from where a person changed it. Optional: a bucket without it is one quiet line in the night's verdict."}
   ],
   "logs": {
     "what": "What kit-up sends to logs/<date>/: the night's logs and its what-changed report, written since kit-down.",
