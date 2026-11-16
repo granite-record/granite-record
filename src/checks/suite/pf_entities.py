@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -923,3 +923,211 @@ def _entity_seat_rule_setting(EN, ST):
     assert not said, f"src/parse/office_links.py names {said} outside its prose: the state's are the caller's"
     return "ok", (f"{len(s['offices'])} offices bar a seat in the House and Senate, each in Art. 95's words and "
                   "each an office of the settings; the rule names nothing of the state")
+
+
+def _link_world(root, PE):
+    """_world's tree with every file the pool of people is read from, and four holders more in its
+    hand file of officials: a Carroll treasurer, "Bo M. Hart" of Conway, whom the member table
+    gives the middle initial M and the town (the rule links him); a US senator, "Gus Old", a
+    senator of 1991-1992 with no page (the rule links him, and the link is kept); a Carroll
+    register of deeds, "Joe Pike", a short form of Rep. Joseph Pike's name (the owner's to
+    settle); and _world's councilor for District 2, "Ada Newcomb", who shares the name of a member
+    sitting now (a seat the office forbids) and lives in Conway, in District 1 (the area
+    differs too)."""
+    root = Path(root)
+    pike = {"376020": _careers_record({"2021-2022": ("H", "376020")}, "Joseph", "Pike", "R", "H")}
+    _world(root, PE, pike)
+    hand = json.loads((root / "corrections" / "officials.json").read_text(encoding="utf-8"))
+    hand["us_senate"] = {"office": "United States Senate", "seats": [{"name": "Gus Old", "party": "D"}]}
+    carroll = hand["county"]["counties"]["Carroll"]
+    carroll["treasurer"] = {"name": "Bo M. Hart", "office": "County Treasurer", "domicile": "Conway"}
+    carroll["register_of_deeds"] = {"name": "Joe Pike", "office": "Register of Deeds", "domicile": "Conway"}
+    (root / "corrections" / "officials.json").write_text(json.dumps(hand, ensure_ascii=False, indent=2),
+                                                         encoding="utf-8")
+    cols = ["PersonID", "LastName", "FirstName", "Employeeno", "MiddleName", "LegislativeBody", "Active",
+            "seatno", "countycode", "District", "party", "Expr1", "Address", "address2", "city", "Zipcode",
+            "Expr2", "EMailAddress", "GenderCode", "SecretaryID", "database"]
+    (root / "db" / "_columns.json").write_text(json.dumps({"Legislators": cols}), encoding="utf-8")
+
+    def row(**k):
+        return "|".join(str(k.get(c, "")) for c in cols) + "\n"
+    (root / "db" / "Legislators.psv").write_text(
+        row(PersonID="11600", LastName="Newcomb", FirstName="Ada", Employeeno="376001", countycode="02", party="R",
+            Address="1 Main St", city="Conway", Zipcode="03818")
+        + row(PersonID="11700", LastName="Lund", FirstName="Cy", Employeeno="209001", countycode="07", party="R",
+              Address="State House, Room 1", city="Concord", Zipcode="03301")
+        + row(LastName="Hart", FirstName="Bo", Employeeno="376002", MiddleName="M.", countycode="02", party="d",
+              Address="2 Elm St", city="Conway", Zipcode="03818")
+        + row(LastName="Pike", FirstName="Joseph", Employeeno="376020", MiddleName="Q.", countycode="02", party="R",
+              Address="3 Oak St", city="Conway", Zipcode="03818"), encoding="utf-8")
+    (root / "data" / "legislators.json").write_text(json.dumps([
+        {"id": "11600", "first": "Ada", "middle": "", "last": "Newcomb", "county_code": "02", "county": "Carroll",
+         "address": "1 Main St, Conway, NH, 03818"},
+        {"id": "11700", "first": "Cy", "middle": "", "last": "Lund", "county_code": "07", "county": "Merrimack",
+         "address": "NH"}]), encoding="utf-8")
+    (root / "past_members.json").write_text(json.dumps({"370001": "Sen. Old, Gus(Dist. 03)"}), encoding="utf-8")
+    (root / "member_party.json").write_text(json.dumps(
+        {"370001": {"county": "", "district": "03", "party": "D", "source": "1991-S3"}}), encoding="utf-8")
+    (root / "text_sponsors.json").write_text("{}", encoding="utf-8")
+    (root / "generated" / "past_roster.json").write_text(json.dumps({"format": 1, "rows": [
+        {"term": "1991-1992", "chamber": "S", "person": "370001", "gc_employee_number": "370001",
+         "name": "Gus Old", "seats": [{"county": "", "district": "3"}]}]}), encoding="utf-8")
+    (root / "generated" / "manual_seats.json").write_text(json.dumps({"terms": {}}), encoding="utf-8")
+    (root / "collected" / "nh_streets.json").write_text(json.dumps(
+        {"columns": ["zip", "town"], "rows": [["03818", "Conway"]]}), encoding="utf-8")
+
+
+# The owner's hand file of links, as the tree of _entity_links_on_a_tree has her write it.
+_OWNER_LINKS = {
+    "_README": ["made up"], "_checked": "2026-11-16",
+    "links": {
+        # Her word over the rule's: the treasurer the rule links is someone else.
+        "county-treasurer|carroll|2025|Bo M. Hart": {"person": None, "not": ["376002"],
+                                                     "why": "two people: made up"},
+        # A short form she confirms.
+        "register-of-deeds|carroll|2025|Joe Pike": {"person": "376020", "evidence": "made up"},
+        # A past winner the model does not hold yet.
+        "executive-council|5|2019|Debora B. Pignatelli": {"person": "203025", "evidence": "made up"},
+    },
+    "name_forms": {"11600": [{"name": "Adaline Newcomb", "evidence": "made up"}],
+                   "11700": [{"name": "Cyrus Lund", "evidence": "made up"}]},
+    "proposed": {"us-house|1|2025|Chris Pappas": {"person": "376509", "evidence": "a proposal, not yet hers"}},
+}
+
+
+@check("build", "build_entities.py links the officials of a made-up tree into data/entities/ alone: by the rule where it holds, to a person with no page too, by the owner's hand file over the rule when it is there, and says when it is not",
+       needs=("build_entities", "entities", "people", "office_links", "state_settings"))
+def _entity_links_on_a_tree(BE, EN, PE, OL, ST):
+    """The night's step on a made-up tree with every file the pool of people is read from
+    (_link_world), run as build_all runs it, twice. Without the owner's hand file of links, it
+    says the file is not here (on its output and in the manifest), links the Carroll treasurer
+    by the rule (the middle initial M, his town of Conway, his county), links the senator to a
+    member of 1991-1992 with no page, who is a person of the model in no view of today's files,
+    and lists the short form and the councilor who only shares the name of a member sitting now
+    (Art. 95 forbids it, and her area differs). With the file, her word is taken over the rule's:
+    the treasurer is no one of the
+    record, the short form she confirmed is linked and gives the person the form of the name
+    ('Joseph "Joe" Pike', found by Joe), a form of a name she lists is kept and one that is no
+    form of theirs is said, an entry for a holder the model does not hold yet waits, and her
+    proposals are not taken. Each time it writes data/entities/ and nothing else, every file it
+    read comes back byte for byte, the model keeps every rule, and every link worked out again
+    holds -- and a rule's link put on the holder she said is someone else is caught."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-links-"))
+    try:
+        _link_world(tmp, PE)
+        runs = {}
+        for name, owner in (("alone", None), ("hers", _OWNER_LINKS)):
+            hand = tmp / "corrections" / "officials_links.json"
+            if owner is None:
+                hand.unlink(missing_ok=True)
+            else:
+                hand.write_text(json.dumps(owner, indent=1), encoding="utf-8")
+            shutil.rmtree(tmp / "data" / "entities", ignore_errors=True)
+            before = _tree_digest(tmp)
+            r = _run([sys.executable, str(_paths.script("build_entities.py")), "--out", "data/entities"],
+                     cwd=tmp, capture_output=True, text=True, timeout=300)
+            assert r.returncode == 0, f"build_entities.py exited {r.returncode}: {(r.stderr or r.stdout)[-600:]}"
+            after = _tree_digest(tmp)
+            changed = sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
+            assert changed and all(k.startswith("data/entities/") for k in changed), (
+                f"build_entities.py wrote outside data/entities/: {[k for k in changed if not k.startswith('data/entities/')]}")
+            model, layouts, manifest = EN.load(tmp / "data" / "entities")
+            assert EN.problems(model) == [], EN.problems(model)[:3]
+            bad = [(rel, w) for rel, ok, w in BE.rebuilt(model, layouts, tmp) if ok is not True]
+            assert not bad, "a file of the tree is not given back: " + "; ".join(f"{a}: {w[:200]}" for a, w in bad)
+            report = {"notes": [], "links_hand": []}
+            pool, missing = BE.link_pool(tmp, model, manifest["links"]["roster_term"], report)
+            assert pool is not None, missing
+            said = BE.verify_links(model, pool, BE.read_owner_links(tmp, report), ST.SETTINGS,
+                                   layouts[BE.HAND].get("_checked"))
+            assert said == [], said
+            runs[name] = (model, manifest, r.stdout, pool, layouts)
+        model, manifest, out, pool, layouts = runs["alone"]
+        T = {t["tenure"]: t for t in model["tenure"]}
+        P = {p["person"]: p for p in model["person"]}
+        assert "corrections/officials_links.json is not here" in out and any(
+            "is not here" in x for x in manifest["links_hand"]), "the hand file's absence is not said"
+        bo = T["officials:county.counties.Carroll.treasurer"]
+        assert bo["person"] == "376002" and bo["link"]["by"] == "rule" and bo["link"]["middle"] == "M = M" \
+            and bo["link"]["town"] == "Conway = Conway", bo
+        gus = T["officials:us_senate.seats.0"]
+        assert gus["person"] == "370001" and P["370001"].get("files") == ["generated/past_roster.json"] \
+            and not P["370001"].get("page") and "370001" not in {p["person"] for p in EN.view_people(model)}, gus
+        listed = {x["tenure"]: x for x in manifest["links"]["listed"]}
+        ada = listed["officials:council.districts.2"]
+        assert listed["officials:county.counties.Carroll.register_of_deeds"]["kind"] == "short form" \
+            and ada["why"] == "a seat the office forbids (a seat in 2025-2026)" \
+            and ada["answering"][0]["evidence"]["area"] == "differ: Conway not in council:2022:2", listed
+        assert T["officials:council.districts.2"]["person"] is None, "a holder who only shares a member's name was linked"
+        model, manifest, out, pool, layouts = runs["hers"]
+        T = {t["tenure"]: t for t in model["tenure"]}
+        P = {p["person"]: p for p in model["person"]}
+        bo = T["officials:county.counties.Carroll.treasurer"]
+        assert bo["person"] is None and bo["link"] == {"by": "owner", "key": "county-treasurer|carroll|2025|Bo M. Hart",
+                                                      "why": "two people: made up", "not": ["376002"]}, bo
+        pike = T["officials:county.counties.Carroll.register_of_deeds"]
+        assert pike["person"] == "376020" and pike["link"]["by"] == "owner", pike
+        assert P["376020"]["name_forms"] == [{"name": "Joe Pike", "given": "Joe", "of": "Joseph",
+                                              "source": "corrections/officials_links.json register-of-deeds|carroll|2025|Joe Pike"}]
+        assert [f["name"] for f in P["11600"]["name_forms"]] == ["Adaline Newcomb"] and not P["11700"].get("name_forms")
+        # The search index's part: the name a page would show, and the words that find him.
+        names = EN.view_names(model)
+        assert names["376020"] == {"name": "Joseph Pike", "display": 'Joseph "Joe" Pike',
+                                   "words": ["Joe Pike", "Joe"]} and "11700" not in names, names
+        said = " ".join(manifest["links_hand"])
+        assert "'Cyrus Lund' is not a short form" in said and "1 proposal" in said, manifest["links_hand"]
+        assert manifest["links"]["waiting"] == [
+            "corrections/officials_links.json executive-council|5|2019|Debora B. Pignatelli: no holder of the model "
+            "has this key yet"], manifest["links"]["waiting"]
+        assert "us-house|1|2025|Chris Pappas" not in json.dumps(manifest["links"]["made"]), "a proposal was taken"
+        # A rule's link on the holder she said is someone else is caught.
+        m = copy.deepcopy(model)
+        alone = {x["tenure"]: x for x in runs["alone"][0]["tenure"]}
+        t = next(t for t in m["tenure"] if t["tenure"] == "officials:county.counties.Carroll.treasurer")
+        t["person"], t["link"] = "376002", dict(alone[t["tenure"]]["link"])
+        said = BE.verify_links(m, pool, BE.read_owner_links(tmp, {"links_hand": []}), ST.SETTINGS, "2026-11-10")
+        assert any("is no one of the record" in s for s in said), said
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("without her file: said, the treasurer linked by the rule on M = M and Conway, the senator to a "
+                  "member of 1991-1992 with no page, the short form and the shared name listed; with it: her word "
+                  "over the rule's, a confirmed Joe gives 'Joseph \"Joe\" Pike', a waiting entry and a proposal "
+                  "left; data/entities/ alone written, every file given back, every link holds")
+
+
+@check("data", "every official the built model links to a person of the record holds the rule worked out again on today's files, and the owner's word is taken as she wrote it",
+       needs=("build_entities", "entities", "office_links", "state_settings"))
+def _entity_links_hold(BE, EN, OL, ST):
+    """The check of the officials' links on the night's model (src/parse/office_links.verify):
+    data/entities/, as build_entities.py wrote it in the build, read back; the pool of people
+    built again from the files on disk now; and every link the rule made worked out again -- it
+    fails when the person is no longer the only one who answers to the name (a new member-elect
+    of it), when any piece of evidence reads otherwise than the link kept it, when a seat the
+    office forbids is on the record (Pt. 2, Art. 95), when the owner's hand file of links says
+    the holder is someone else or no one, and when the holder's file is not an official one (NHPR's
+    results never are). Every entry of hers that names a holder of the model is taken as she wrote
+    it, and the manifest's count of what was linked is the model's. A tree no build has run the
+    model in is skipped."""
+    folder = Path("data") / "entities"
+    if not (folder / EN.MANIFEST).is_file():
+        return "skip", "no build has made data/entities/ here"
+    model, layouts, manifest = EN.load(folder)
+    links = (manifest or {}).get("links") or {}
+    if not links:
+        return "skip", "data/entities/ was built before the officials were linked (its manifest has no links)"
+    report = {"notes": [], "links_hand": []}
+    owner = BE.read_owner_links(".", report)
+    pool, missing = BE.link_pool(".", model, links.get("roster_term"), report)
+    rule = [t for t in model["tenure"] if (t.get("link") or {}).get("by") == "rule"]
+    held = [t for t in model["tenure"] if t.get("link")]
+    if pool is None:
+        assert not rule, (f"{len(rule)} officials are linked by the rule, and the files they were weighed on are "
+                          f"not here to check them: {', '.join(missing)}")
+        return "skip", f"no official is linked by the rule here, and the pool's files are not all here: {', '.join(missing)}"
+    said = BE.verify_links(model, pool, owner, ST.SETTINGS, str(layouts.get(BE.HAND, {}).get("_checked") or ""))
+    assert not said, f"{len(said)} link(s) no longer hold: " + "; ".join(said[:4])
+    made = links.get("made") or []
+    assert sum(1 for m in made if m["by"] == "rule") == len(rule), (
+        f"the manifest says {sum(1 for m in made if m['by'] == 'rule')} links by the rule, and the model holds {len(rule)}")
+    return "ok", (f"{len(rule)} officials linked by the rule and {len(held) - len(rule)} by the owner's word, each "
+                  f"worked out again on today's files; {len(links.get('listed') or [])} on her list")
