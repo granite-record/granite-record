@@ -144,7 +144,9 @@ queued is in `gc_lane.queue`, with the reasoning beside each line.
   on 6 October 2026. Captions come through `livestreams.py` now.
 - **`extract_watch.py`**, which wrote the text beside each calendar and
   journal PDF behind the calendar drain, retired on 6 October 2026. The drain is
-  finished; `extract_calendar_text.py` is run by hand after a fetch of PDFs.
+  finished; `extract_calendar_text.py` is run by hand after a fetch of PDFs on
+  the laptop, and by the night after its own (`nightly.take_document_files`,
+  since 16 November 2026).
 - **`narrative_watch.py`**, stood down on purpose after it narrated 2015-2016
   from a half-complete database seed, retired on 6 October 2026. The archived
   terms are narrated by `build_all.py` (`narrative.py`, `narrate_archive.py`).

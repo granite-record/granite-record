@@ -118,9 +118,14 @@
     {
       "what": "What the laptop's jobs make and the build reads.",
       "owner": "laptop",
-      "paths": ["meetings.json", "schedule_pages/_events.json", "member_party.json",
-                "archive_bills.json", "bill_text.json", "amendments.json", "committee_reports.json",
+      "paths": ["schedule_pages/_events.json", "member_party.json",
+                "archive_bills.json", "bill_text.json",
                 "journals.json", "calendars.json", "past_members.json"]
+    },
+    {
+      "what": "What is read off the calendars' text: the House committees' reports (fetch_committee_reports.py --offline --text), the amendments the House calendars print (extract_amendments.py --text) and the meetings the calendars announce (calendar_meetings.py). The night's since 16 November 2026: nightly.take_document_files reads each again, offline and whole or not at all, where a calendar it fetched that night changed what it reads. Until then they were the laptop's, and the kit already holds the laptop's last copies, which the night starts from.",
+      "owner": "night",
+      "paths": ["committee_reports.json", "amendments.json", "meetings.json"]
     },
     {
       "what": "The General Court's list of its calendars and journals, a row a document with the viewer address its own page gives: the Calendar page's picker and the cards' document links are built from it. The night's since 1 October 2026: nightly.take_documents reads the two index pages (fetch_calendar_archive.py --listing) and adds what is new, whole or not at all. Until then it was the laptop's, last discovered on 13 September, and the laptop's seed-kit sent the copy the night started from.",
@@ -145,8 +150,8 @@
       "globs": ["legislation/**"]
     },
     {
-      "what": "The calendars' and journals' text: the .txt beside each PDF, not the PDF.",
-      "owner": "laptop",
+      "what": "The calendars' and journals' text: the .txt beside each PDF, not the PDF. The night's since 16 November 2026: nightly.take_document_files fetches the documents the night's list names and this kit does not hold, and its kit-up sends the text of each, which extract_calendar_text.py --layout-only writes beside the PDF; the PDF stays on the night's machine and is not kept. The laptop's text of every document it has fetched is in the kit already, and its seed-kit still sends the text of one the kit does not hold yet, and never over the night's.",
+      "owner": "night",
       "globs": ["calendars/*/*.txt", "calendars_senate/*/*.txt", "journals/*/*.txt", "journals_senate/*/*.txt"]
     },
     {

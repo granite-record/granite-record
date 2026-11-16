@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.14
+# GRANITE_VERSION: 2026-09-08.15
 """
 Thirty years of calendars and journals, a night at a time.
 
@@ -135,6 +135,19 @@ and --list see one queue; and on GitHub's machine --listing writes the
 laptop's record into the queue it hands the night, which is how a calendar
 the laptop has fetched comes to be marked held in the file the build reads.
 A machine that has not stood down keeps one file, as before.
+
+THE NIGHT DRAINS IT TOO (16 November 2026; the owner: "Have the night fetch
+the journals and calendars"). nightly.take_document_files runs the drain
+after the listing, on GitHub's machine, under the lock the night holds:
+--night --budget 25 at most (3 on a dry run, whose fetches are not kept),
+the same 15 seconds with jitter, and one pause before the first request as
+well, because the night asked this address for its lists a moment before.
+There the queue is the night's own and the drain writes it, as the listing
+does. What a night has of a document fetched on an earlier night is its
+text: the kit carries the .txt that extract_calendar_text.py writes beside
+each PDF, never the PDF. So a document is on this disk (on_disk) when its
+PDF is here or the text beside it is: nothing is asked for twice, on either
+machine, and what is here is marked held before the budget is counted.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -271,6 +284,22 @@ def write_rows(path, rows):
 
 def _key(r):
     return (r.get("chamber"), r.get("kind"), r.get("year"), r.get("name"))
+
+
+def on_disk(r):
+    """Whether this disk holds the document a row names: its PDF, or the text
+    extract_calendar_text.py wrote beside it, which is all GitHub's machine
+    keeps of a document from one night to the next (the kit carries the text,
+    never the PDF)."""
+    if not r.get("path"):
+        return False
+    path = Path(r["path"])
+    if path.exists():
+        return True
+    try:
+        return path.with_suffix(".txt").stat().st_size > 0
+    except OSError:
+        return False
 
 
 def fetched_file():
@@ -927,6 +956,10 @@ def main():
                     help="seconds between requests (default 15). Jittered by "
                          "a quarter either way, so a run does not arrive on a "
                          "metronome.")
+    ap.add_argument("--night", action="store_true",
+                    help="the nightly's drain (nightly.take_document_files): one "
+                         "pause before the first request as well, because the night "
+                         "asked this address for its lists a moment before")
     a = ap.parse_args()
 
     ROOT.mkdir(exist_ok=True)
@@ -1032,6 +1065,15 @@ def drain(rows, chambers, kinds, years, a, held):
                 if r["state"] == "wanted"
                 and (r["chamber"] in chambers) and (r["kind"] in kinds)
                 and (not years or int(r["year"]) in years)]
+        # WHAT THIS DISK HOLDS IS HELD, AND COSTS NO REQUEST -- nor any of the
+        # budget, which is the night's cap on what it asks for (on_disk: the
+        # PDF, or the text the kit carries in its place).
+        for r in todo:
+            if on_disk(r):
+                r["state"] = "held"
+                if Path(r["path"]).exists():
+                    r["bytes"] = str(Path(r["path"]).stat().st_size)
+        todo = [r for r in todo if r["state"] == "wanted"]
         n = min(len(todo), a.budget)
         print(f"{len(todo):,} wanted, taking {n:,} this run at about "
               f"{a.delay:g}s apart -- roughly {n * a.delay / 60:.0f} minutes, "
@@ -1041,10 +1083,16 @@ def drain(rows, chambers, kinds, years, a, held):
         t0 = time.time()
         for i, r in enumerate(todo[:a.budget], 1):
             path = Path(r["path"])
-            if path.exists():
+            # Two rows can name one file (a supplement saved at its base
+            # calendar's path): the second finds it here, and is not asked for.
+            if on_disk(r):
                 r["state"] = "held"
-                r["bytes"] = str(path.stat().st_size)
+                if path.exists():
+                    r["bytes"] = str(path.stat().st_size)
                 continue
+            if a.night and i == 1:
+                # The night asked this address for its lists a moment before.
+                time.sleep(a.delay * random.uniform(0.75, 1.25))
             # Immediately before the request, not before the sleep that
             # preceded it: a refusal another process met while this one
             # waited, or a lane killed while it waited, stops it here.

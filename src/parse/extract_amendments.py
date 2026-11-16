@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.10
+# GRANITE_VERSION: 2026-09-04.11
 """
 Amendment text, out of the calendars already on this disk.
 
@@ -364,12 +364,22 @@ def main():
     ap.add_argument("--replace", action="store_true",
                     help="rewrite amendments.json from this run alone, "
                          "rather than merging into it")
+    ap.add_argument("--text", action="store_true",
+                    help="read each calendar from the text beside it "
+                         "(extract_calendar_text.py's pdftotext -layout), as the "
+                         "night does, which keeps no PDF")
     a = ap.parse_args()
 
-    pdfs = sorted(set(list(Path(a.calendars).rglob("*.pdf"))
-                      + list(Path(a.calendars).rglob("*.PDF"))))
+    if a.text:
+        # THE TEXT STANDS FOR THE PDF (16 November 2026). The night's kit
+        # carries each calendar's .txt and never its PDF; each is read under
+        # its PDF's own name, so a source line is what it was.
+        pdfs = sorted({t.with_suffix(".pdf") for t in Path(a.calendars).rglob("*.txt")})
+    else:
+        pdfs = sorted(set(list(Path(a.calendars).rglob("*.pdf"))
+                          + list(Path(a.calendars).rglob("*.PDF"))))
     if not pdfs:
-        sys.exit(f"No PDFs under {a.calendars}/ or below it.")
+        sys.exit(f"No {'texts' if a.text else 'PDFs'} under {a.calendars}/ or below it.")
 
     from fetch_committee_reports import extract_text
 
@@ -377,7 +387,11 @@ def main():
     found, per_file = {}, Counter()
     for f in pdfs:
         try:
-            text, _ = extract_text(f)
+            if a.text:
+                # As every reader of the calendars' text reads it.
+                text = f.with_suffix(".txt").read_text(encoding="utf-8", errors="replace")
+            else:
+                text, _ = extract_text(f)
         except Exception as e:
             print(f"  ! {f.name}: {e}")
             continue

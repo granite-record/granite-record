@@ -13,8 +13,11 @@ outside this folder does. Every script records a refusal it meets with
 lightly on session days.
 
 Run by: the night (`snapshot_gencourt`, `fetch_lsrs`,
-`fetch_calendar_archive --listing`), the weekly (`fetch_committees`),
-`build_all`'s network steps (not on `--local`), the lane, and a person.
+`fetch_calendar_archive --listing`, and since 16 November 2026
+`fetch_calendar_archive --night` for the documents the list names and the kit
+lacks, and `fetch_committee_reports --offline --text`, which asks nobody), the
+weekly (`fetch_committees`), `build_all`'s network steps (not on `--local`),
+the lane, and a person.
 
 Does not belong here: a script that only writes a gc.nh.gov link into a page
 (`pages/`), or one that reads what was saved (`parse/`). `netcheck.py` and

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.35
+# GRANITE_VERSION: 2026-09-04.36
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -725,10 +725,16 @@ def main():
     ap.add_argument("--offline", action="store_true",
                     help="re-read the calendars already in the cache and make "
                          "no network request at all")
+    ap.add_argument("--text", action="store_true",
+                    help="with --offline: read each calendar from the text beside "
+                         "it (extract_calendar_text.py's pdftotext -layout), as the "
+                         "night does, which keeps no PDF")
     ap.add_argument("--cache", default="calendars")
     ap.add_argument("--out", default="committee_reports.json")
     ap.add_argument("--limit", type=int, default=0)
     a = ap.parse_args()
+    if a.text and not a.offline:
+        ap.error("--text reads the calendars on this disk: it goes with --offline")
     # Only the fetching mode asks the General Court. --offline, and --pdf with
     # a file on this disk, read what is here, so a refusal on file or GitHub's
     # night has nothing to stop in them -- and they were stopped all the same
@@ -747,7 +753,14 @@ def main():
         # network half of this script is discovery and download, and neither is
         # needed to re-read a PDF sitting on the disk.
         targets = []
-        for f in sorted(cache.glob("HC*.pdf")):
+        found = set(cache.glob("HC*.pdf"))
+        if a.text:
+            # THE TEXT BESIDE A CALENDAR STANDS FOR IT (16 November 2026). The
+            # night's kit carries each calendar's text and never its PDF, so
+            # there a year's calendars are their .txt files; read here by the
+            # PDF's own name, so every source line is what it was.
+            found |= {t.with_suffix(".pdf") for t in cache.glob("HC*.txt")}
+        for f in sorted(found):
             m = re.match(r"HC0*(\d+)([A-Z]*)\.pdf$", f.name)
             if m:
                 targets.append((f"{m.group(1)}{m.group(2)}", f))
@@ -820,7 +833,13 @@ def main():
     allrep, methods = defaultdict(list), set()
     seen, skipped, skipped_samples = defaultdict(set), [0], []
     for num, path in targets:
-        text, how = extract_text(path)
+        beside = path.with_suffix(".txt")
+        if getattr(a, "text", False) and beside.is_file() and beside.stat().st_size:
+            # As every reader of the calendars' text reads it: UTF-8, and a
+            # byte that is not is replaced, as extract_text's own read is.
+            text, how = beside.read_text(encoding="utf-8", errors="replace"), "the text beside it"
+        else:
+            text, how = extract_text(path)
         methods.add(how)
         own = printed_for_another_term(text, a.year)
         if own:

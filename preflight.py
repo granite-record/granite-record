@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.931
+# GRANITE_VERSION: 2026-09-04.932
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -65824,7 +65824,8 @@ def _documents_night(NI, CA, CL):
     kit = json.loads(Path(CL.KIT_FILE).read_text(encoding="utf-8"))
     tmp = Path(tempfile.mkdtemp(prefix="gr-docs-night-"))
     saved = (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes,
-             NI.captions_compared, NI.time, sys.argv, refusal.MARK, refusal.LOCK)
+             NI.captions_compared, NI.time, sys.argv, refusal.MARK, refusal.LOCK,
+             NI.take_document_files)
     env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
                 "GITHUB_SHA")
     saved_env = {k: os.environ.get(k) for k in env_keys}
@@ -65942,6 +65943,10 @@ def _documents_night(NI, CA, CL):
         (Path("work") / "abc123" / "segments.json").write_text("[]", encoding="utf-8")
         Path("wrap_listing.py").write_text(wrap, encoding="utf-8")
         NI.run = fake
+        # The documents themselves, which the night asks for after the list,
+        # are _document_files_night's to drive: this check is the list's.
+        NI.take_document_files = lambda dry_run=False: {
+            "wanted": 0, "fetched": 0, "remain": 0, "said": "", "warn": "", "read": {}}
         NI.time = types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
         NI.live_fingerprint = lambda base, timeout=180: "an-older-build"
         NI.tracked_changes = lambda: ([], [])
@@ -66183,7 +66188,7 @@ def _documents_night(NI, CA, CL):
         os.chdir(here)
         seal.close()
         (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes, NI.captions_compared,
-         NI.time, sys.argv, refusal.MARK, refusal.LOCK) = saved
+         NI.time, sys.argv, refusal.MARK, refusal.LOCK, NI.take_document_files) = saved
         for k, val in saved_env.items():
             if val is None:
                 os.environ.pop(k, None)
@@ -66196,6 +66201,668 @@ def _documents_night(NI, CA, CL):
                   "asked for after a fetch that did not finish; short the same way three "
                   "nights running is taken; a new year's unanswered journal lists stop "
                   "nothing; archive/queue.csv is the night's in the kit")
+
+
+# Added on 16 November 2026 with nightly.take_document_files: the night fetches
+# the calendars and journals its list names and this disk does not hold, reads
+# their text and reads again what is read off it (THE CALENDARS AND JOURNALS
+# THEMSELVES).
+
+def _docfile_row(CA, ch, kind, year, n, state="wanted"):
+    """One row of the night's list for document No `n` of a list, at the
+    address and the local path the listing gives one."""
+    import urllib.parse
+    index, _kindval, folder, outdir, prefix = CA.SOURCES[(ch, kind)]
+    name = f"{prefix} {n}.pdf"
+    return {"chamber": ch, "kind": kind, "year": str(year), "name": name,
+            "url": index + CA.VIEWER + urllib.parse.quote(f"{folder}\\{year}\\{name}", safe=""),
+            "path": str(Path(outdir) / str(year) / f"{prefix}{n:03d}.pdf"), "state": state,
+            "attempts": "0", "error": "", "bytes": "", "fetched": "", "label": f"No {n}"}
+
+
+_DOCFILE_READERS = ("fetch_committee_reports.py", "extract_amendments.py", "calendar_meetings.py")
+
+
+def _docfile_read(args, name):
+    """A reader of the calendars' text, faked: what it writes to its --out,
+    a little more than the copy it was seeded with (take_json weighs it)."""
+    out = Path(args[args.index("--out") + 1])
+    try:
+        d = json.loads(out.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        d = None
+    if name == "fetch_committee_reports.py":
+        d = d if isinstance(d, dict) else {}
+        term = d.setdefault("2025-2026", {})
+        term[f"HB{len(term) + 1}"] = [{"source": "House Calendar 1, 2026"}]
+    elif name == "extract_amendments.py":
+        d = d if isinstance(d, dict) else {}
+        d[f"2026-{len(d) + 1:04d}h"] = {"text": "Amend the bill.", "source": "HC001.pdf"}
+    else:
+        d = [{"date": "2026-11-20", "committee": "x"}] * (1 + sum(
+            1 for r in ("calendars", "calendars_senate") if Path(r).exists()
+            for _ in Path(r).rglob("*.txt")))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(d), encoding="utf-8")
+
+
+@check("build", "the night fetches the calendars and journals its list names and this disk does "
+       "not hold, at most DOCS_MOST, under its own lock and at the drain's pace; a refusal stops "
+       "it and is recorded; a dry run without the fetch asks nothing; and the kit carries the text",
+       needs=("nightly", "fetch_calendar_archive", "cloud", "extract_calendar_text"))
+def _document_files_night(NI, CA, CL, ET):
+    """nightly.take_document_files, on faked nights in the runner harness.
+
+    The night is nightly.main() in a throwaway folder with every other step
+    faked, as _documents_night drives it. The drain is not faked: the real
+    fetch_calendar_archive.py --night runs as a child of this process, as it
+    runs as a child of the night, sealed from the network (_Seal), with its
+    get() answering a small PDF for every document and writing down each
+    request: so the lock it runs under is the one the night took, and each
+    request it makes is counted. The list's own read is faked (it writes no
+    list, and the list on file stands); the text and the three readers are
+    faked and counted (_document_files_readers drives which readers run).
+
+      - a dry run that does not fetch asks for nothing at all;
+      - a night with 28 waiting -- and one more whose text is on this disk,
+        which is not asked for and is marked held -- asks for DOCS_MOST of
+        them, in the list's order, each under the night's lock, 15 seconds
+        apart give or take a quarter and as long before the first; after the
+        list, and before the text, the readers and the build; the verdict and
+        the run's page say how many arrived and how many still wait, and the
+        night is clean, with no warning of its own;
+      - the night after takes the last three, and the night after that asks
+        for nothing;
+      - a dry run that fetches asks for DOCS_DRY_MOST, and says so;
+      - the General Court saying no to the second request: one fetched, no
+        request after the refusal, the refusal recorded; a warning on a clean
+        night, in this project's own words; and the night after asks nothing;
+      - the kit: the text of each document fetched is the night's, so kit-up
+        takes it back; the PDF is no kit file; the three files read off the
+        text are the night's.
+    """
+    import contextlib
+    import io
+    import types
+    import caption_span                    # noqa: F401 -- imported here, before the chdir
+    import refusal
+    import snapshot_gencourt               # noqa: F401 -- the same
+    here = Path(".").resolve()
+    kit = CL.load_kit(Path("."))
+    tmp = Path(tempfile.mkdtemp(prefix="gr-docfiles-night-"))
+    saved = (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes,
+             NI.captions_compared, NI.time, sys.argv, refusal.MARK, refusal.LOCK, ET.pdftotext)
+    env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
+                "GITHUB_SHA")
+    saved_env = {k: os.environ.get(k) for k in env_keys}
+    calls = []
+    seal = _Seal()
+    asks = ("fetch_calendar_archive.py", "extract_calendar_text.py") + _DOCFILE_READERS
+    # The drain, with its get() answering a PDF for every document and
+    # writing down each request it was asked: which lock was held, and whose.
+    wrap = (
+        "import json, os, sys, types, urllib.error\n"
+        f"sys.path.insert(0, {str(here)!r})\n" "import _paths\n"
+        "import refusal\n"
+        "import fetch_calendar_archive as CA\n"
+        "cfg = json.load(open('docs.json', encoding='utf-8'))\n"
+        "asked, slept, paused = [], [], []\n"
+        "def note():\n"
+        "    json.dump({'asked': asked, 'slept': slept, 'paused': paused},\n"
+        "              open('asked.json', 'w'))\n"
+        "def get(url, data=None, timeout=60):\n"
+        "    lock = refusal.LOCK.read_text().strip() if refusal.LOCK.exists() else ''\n"
+        "    asked.append({'url': url, 'lock': lock, 'parent': str(os.getppid())})\n"
+        "    note()\n"
+        "    fail = cfg['fail'].get(str(len(asked)))\n"
+        "    if fail:\n"
+        "        raise urllib.error.HTTPError(url, fail, 'the server said so', {}, None)\n"
+        "    return b'%PDF-1.4 a calendar'\n"
+        "CA._get = get\n"
+        "real = CA.time\n"
+        "CA.time = types.SimpleNamespace(\n"
+        "    sleep=lambda s: (slept.append(s), paused.append(len(asked)), note()),\n"
+        "    time=real.time, strftime=real.strftime)\n"
+        "sys.argv = ['fetch_calendar_archive.py'] + sys.argv[1:]\n"
+        "sys.exit(CA.main())\n")
+
+    def serve(fail=None):
+        Path("docs.json").write_text(json.dumps(
+            {"fail": {str(k): v for k, v in (fail or {}).items()}}), encoding="utf-8")
+        Path("asked.json").unlink(missing_ok=True)
+
+    def requests():
+        try:
+            return json.loads(Path("asked.json").read_text(encoding="utf-8"))
+        except OSError:
+            return {"asked": [], "slept": [], "paused": []}
+
+    def fake(args, label, cwd=None):
+        calls.append(list(args))
+        NI.say(f"\n--- {label} ---")
+        name = Path(args[0]).name
+        rc = 0
+        if name == "fetch_calendar_archive.py" and "--listing" in args:
+            pass                     # the list: none written, and the one on file stands
+        elif name == "fetch_calendar_archive.py":
+            r = seal.run([sys.executable, "wrap_drain.py", *args[1:]], cwd=str(tmp),
+                         capture_output=True, text=True, timeout=180)
+            for ln in ((r.stdout or "") + (r.stderr or "")).splitlines():
+                NI.say("  " + ln, echo=False)
+            rc = r.returncode
+        elif name == "extract_calendar_text.py":
+            for root in ET.ROOTS:
+                for pdf in (sorted(Path(root).rglob("*.pdf")) if Path(root).exists() else []):
+                    if not pdf.with_suffix(".txt").exists():
+                        pdf.with_suffix(".txt").write_text(f"the text of {pdf.name}\n",
+                                                           encoding="utf-8")
+        elif name in _DOCFILE_READERS:
+            _docfile_read(args, name)
+        elif name == "build_all.py":
+            _runner_site(100)
+        elif name == "preflight.py" and "--built" in args:
+            _fake_built()
+        elif name in _TERM_FETCHERS:
+            _fake_term_file(args)
+        elif name == "fetch_archive_db.py":
+            _runner_fake_views(args, cwd)
+        elif name == "fetch_lsrs.py":
+            Path("lsrs.json").write_text(json.dumps(
+                [{"lsr": "2027-0001", "session": 2027, "body": "HB", "title": "t",
+                  "sponsor": "s", "withdrawn": False}]), encoding="utf-8")
+        elif name == "gc_changes.py":
+            out = Path(args[args.index("--out") + 1])
+            out.parent.mkdir(exist_ok=True)
+            out.write_text("# changes\n", encoding="utf-8")
+        NI.say(f"  (0s, exit {rc})")
+        return rc
+
+    def night(*argv, run_id):
+        NI.LOG = []
+        del calls[:]
+        os.environ["GITHUB_RUN_ID"] = run_id
+        Path("summary.md").unlink(missing_ok=True)
+        sys.argv = ["nightly.py", *argv]
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                code = NI.main()
+            except SystemExit as e:
+                code = e.code
+        return code
+
+    def verdict(dry=False):
+        return json.loads((NI.DRY_VERDICT if dry else NI.VERDICT).read_text(encoding="utf-8"))
+
+    def asked_for():
+        return [c for c in calls if Path(c[0]).name in asks]
+
+    def page():
+        try:
+            return Path("summary.md").read_text(encoding="utf-8")
+        except OSError:
+            return ""
+
+    def own(v):
+        return [w for w in v["warnings"] if w.startswith(NI.KIND_DOC_FILES)]
+
+    try:
+        os.chdir(tmp)
+        for k in env_keys:
+            os.environ.pop(k, None)
+        os.environ["GITHUB_STEP_SUMMARY"] = str(tmp / "summary.md")
+        refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
+        Path("archive").mkdir()
+        Path("db").mkdir()
+        (Path("work") / "abc123").mkdir(parents=True)
+        (Path("work") / "abc123" / "segments.json").write_text("[]", encoding="utf-8")
+        Path("wrap_drain.py").write_text(wrap, encoding="utf-8")
+        NI.run = fake
+        NI.time = types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
+        NI.live_fingerprint = lambda base, timeout=180: "an-older-build"
+        NI.tracked_changes = lambda: ([], [])
+        NI.captions_compared = lambda work="work", markers="candidate_segments.json": (2850, 2851)
+        ET.pdftotext = lambda: "pdftotext"
+        assert NI.DOCS == CA.QUEUE and NI.DOCS_MOST == 25 and NI.DOCS_DRY_MOST == 3, (
+            NI.DOCS, NI.DOCS_MOST, NI.DOCS_DRY_MOST)
+
+        # The list on file: two held, whose text the kit brought; House
+        # Calendar 39 wanted but its text on this disk; 27 House Calendars and
+        # a Senate Calendar wanted and not here.
+        held = [_docfile_row(CA, "H", "calendar", 2026, n, "held") for n in (37, 38)]
+        hc39 = _docfile_row(CA, "H", "calendar", 2026, 39)
+        want = [_docfile_row(CA, "H", "calendar", 2026, n) for n in range(40, 67)] + [
+            _docfile_row(CA, "S", "calendar", 2026, 40)]
+        for r in held + [hc39]:
+            p = Path(r["path"]).with_suffix(".txt")
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text("the text the kit brought\n", encoding="utf-8")
+        CA.write_rows(NI.DOCS, held + [hc39] + want)
+        serve()
+
+        # A night that does not fetch sets the baseline; a dry run that does
+        # not fetch asks for nothing at all.
+        code = night("--runner", "--no-fetch", run_id="500")
+        assert not asked_for() and "document_files" not in verdict(), asked_for()
+        code = night("--runner", "--dry-run", "--no-fetch", run_id="501")
+        assert not asked_for() and not requests()["asked"] and \
+            "document_files" not in verdict(dry=True), (
+                "a dry run without the fetch asked for the calendars and journals", asked_for())
+
+        # A night takes DOCS_MOST of the 28, and leaves House Calendar 39 alone.
+        code = night("--runner", run_id="502")
+        v, req = verdict(), requests()
+        assert code == 0 and v["clean"], (code, v.get("not_clean"))
+        drains = [c for c in calls if c[0] == "fetch_calendar_archive.py" and "--listing" not in c]
+        assert drains == [["fetch_calendar_archive.py", "--night", "--budget", "25"]], drains
+        assert [a["url"] for a in req["asked"]] == [r["url"] for r in want[:25]], (
+            "the night did not ask for exactly the first DOCS_MOST of what is not on this disk",
+            [a["url"][-30:] for a in req["asked"]])
+        assert all(a["lock"] == a["parent"] == str(os.getpid()) for a in req["asked"]), (
+            "the drain did not run under the lock the night holds", req["asked"][:2])
+        assert req["paused"][:2] == [0, 1] and len(req["slept"]) == 26 and \
+            all(15 * 0.75 <= s <= 15 * 1.25 for s in req["slept"]), (
+                "the drain did not pause 15 seconds give or take a quarter before each request, "
+                "the first among them", req["slept"][:3], req["paused"][:3])
+        got = {CA._key(r): r for r in CA.read_rows(NI.DOCS)}
+        assert got[CA._key(hc39)]["state"] == "held" and not got[CA._key(hc39)]["fetched"], (
+            "a document whose text is on this disk was not marked held", got[CA._key(hc39)])
+        assert [got[CA._key(r)]["state"] for r in want] == ["held"] * 25 + ["wanted"] * 3
+        df = v["document_files"]
+        assert (df["wanted"], df["fetched"], df["remain"], df["warn"]) == (28, 25, 3, ""), df
+        said = ("25 fetched (House Calendar 25); 3 still to fetch; read again: "
+                "committee_reports.json 2026, amendments.json, meetings.json")
+        assert df["said"] == said, df["said"]
+        assert f"- {NI.KIND_DOC_FILES}{said}" in page(), page()[-800:]
+        assert not own(v), v["warnings"]
+
+        def first(name, flag=None):
+            return next(i for i, c in enumerate(calls)
+                        if c[0] == name and (flag is None or flag in c))
+        assert first("fetch_calendar_archive.py", "--listing") \
+            < first("fetch_calendar_archive.py", "--night") < first("extract_calendar_text.py") \
+            < first("fetch_committee_reports.py") < first("extract_amendments.py") \
+            < first("calendar_meetings.py") < first("build_all.py"), (
+                "the documents, their text and their readers are not after the list and before "
+                "the build", [c[0] for c in calls])
+        assert ["--layout-only"] == next(c for c in calls if c[0] == "extract_calendar_text.py")[1:]
+        assert ["--offline", "--text", "--year", "2026"] == next(
+            c for c in calls if c[0] == "fetch_committee_reports.py")[1:5], calls
+        assert not refusal.LOCK.exists() and not refusal.MARK.exists()
+
+        # The kit takes back the text of each, and the files read off it.
+        files, _missing, _held = CL.kit_files(Path("."), kit)
+        for r in want[:25]:
+            pdf, txt = Path(r["path"]).as_posix(), Path(r["path"]).with_suffix(".txt").as_posix()
+            assert files.get(txt) == "night" and CL.owner_of(kit, txt) == "night", (
+                f"{txt} is not the night's kit file, so kit-up would not take it back",
+                files.get(txt), CL.owner_of(kit, txt))
+            assert CL.owner_of(kit, pdf) is None and pdf not in files, (
+                f"{pdf}, a PDF, is a kit file", CL.owner_of(kit, pdf))
+        for p in ("committee_reports.json", "amendments.json", "meetings.json"):
+            assert files.get(p) == "night", (p, files.get(p), CL.owner_of(kit, p))
+
+        # The night after takes the last three; the night after that, nothing.
+        serve()
+        code = night("--runner", run_id="503")
+        v, req = verdict(), requests()
+        assert code == 0 and [a["url"] for a in req["asked"]] == [r["url"] for r in want[25:]], (
+            [a["url"][-30:] for a in req["asked"]])
+        assert v["document_files"]["said"].startswith(
+            "3 fetched (House Calendar 2, Senate Calendar 1); 0 still to fetch"), v["document_files"]
+        serve()
+        code = night("--runner", run_id="504")
+        v = verdict()
+        assert code == 0 and not requests()["asked"] and \
+            not [c for c in asked_for() if "--listing" not in c] and \
+            v["document_files"]["said"].startswith("none waits") and not own(v), (
+                asked_for(), v["document_files"])
+
+        # A dry run that fetches asks for DOCS_DRY_MOST, and says so.
+        more = [_docfile_row(CA, "H", "calendar", 2026, n) for n in range(67, 72)]
+        CA.write_rows(NI.DOCS, CA.read_rows(NI.DOCS) + more)
+        serve()
+        code = night("--runner", "--dry-run", run_id="505")
+        v = verdict(dry=True)
+        assert code == 0 and [a["url"] for a in requests()["asked"]] == [
+            r["url"] for r in more[:3]], [a["url"][-30:] for a in requests()["asked"]]
+        assert v["document_files"]["said"] == (
+            "3 fetched (House Calendar 3), at most 3 on a dry run, whose fetches are not kept; "
+            "2 still to fetch; read again: committee_reports.json 2026, amendments.json, "
+            "meetings.json"), v["document_files"]["said"]
+
+        # The General Court says no to the second request of four: recorded,
+        # nothing asked after it, and a warning on a clean night. Tomorrow,
+        # nothing.
+        CA.write_rows(NI.DOCS, CA.read_rows(NI.DOCS) + [
+            _docfile_row(CA, "H", "calendar", 2026, n) for n in (72, 73)])
+        serve({2: 403})
+        code = night("--runner", run_id="506")
+        v = verdict()
+        assert code == 0 and v["clean"] and v["built"], (code, v.get("not_clean"))
+        assert len(requests()["asked"]) == 2 and refusal.MARK.exists(), (
+            "a refused drain went on asking, or the refusal was not recorded", requests()["asked"])
+        assert v["document_files"]["remain"] == 3, v["document_files"]
+        warn = ("the General Court refused a request after 1 was fetched: it is recorded, and "
+                "every fetch waits for a person")
+        assert v["document_files"]["warn"].startswith(warn) and \
+            own(v) == [NI.KIND_DOC_FILES + v["document_files"]["warn"]], (v["document_files"],
+                                                                          v["warnings"])
+        assert "the server said so" not in json.dumps(v), "the verdict carries the server's words"
+        serve()
+        code = night("--runner", run_id="507")
+        v = verdict()
+        assert v["fetch"].startswith("deferred") and not asked_for() and \
+            not requests()["asked"] and "document_files" not in v, (
+                "with a refusal on file the night asked for documents all the same", asked_for())
+        refusal.MARK.unlink()
+    finally:
+        os.chdir(here)
+        seal.close()
+        (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes, NI.captions_compared,
+         NI.time, sys.argv, refusal.MARK, refusal.LOCK, ET.pdftotext) = saved
+        for k, val in saved_env.items():
+            if val is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = val
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("a dry run without the fetch asks nothing; a night asks for the first 25 of the "
+                  "28 not on this disk, never the one whose text is, under its own lock, pausing "
+                  "15 seconds before each, after the list and before the text, the readers and "
+                  "the build, and says 25 fetched and 3 still to fetch; the next night the last "
+                  "3, then nothing; a dry run asks for 3; a refusal stops it after one, is "
+                  "recorded and is a warning, and the night after asks nothing; the kit takes "
+                  "back each text and the three files read off them, and no PDF")
+
+
+@check("build", "the night reads again only what the documents it fetched change: the House "
+       "committees' reports of each year a House calendar arrived for, the amendments when one "
+       "did, the meetings when any calendar did, nothing for a journal; and a fetch that did "
+       "nothing, a text not read, a reader not taken, are each said",
+       needs=("nightly", "fetch_calendar_archive", "extract_calendar_text"))
+def _document_files_readers(NI, CA, ET):
+    """nightly.take_document_files on its own, with the drain, the text and
+    the readers faked, in a throwaway folder: which readers run for which
+    documents, and what is said when a step there does nothing or fails.
+
+      - a House calendar and a House journal: the House committees' reports
+        of that year, the amendments, the meetings;
+      - a Senate calendar alone: the meetings, and nothing else;
+      - journals alone: their text is read, and no reader is run;
+      - House calendars of two years: the reports of each, the amendments and
+        the meetings once each;
+      - a fetch that ends on 0 having fetched nothing and failed nothing is
+        a warning, and nothing is read;
+      - a list not read, or not asked for, asks nothing and warns of nothing
+        (the list's own warning says why); no pdftotext asks nothing and
+        warns; nothing waiting asks nothing;
+      - a document whose text is not read, a reader whose file is not taken,
+        and a document that could not be fetched are each a warning.
+    """
+    import contextlib
+    import io
+    import refusal
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-docfiles-read-"))
+    saved = (NI.run, NI.LOG, refusal.MARK, refusal.LOCK, ET.pdftotext, dict(NI.EXITS))
+    calls = []
+    knob = {"fetch": None, "fail": (), "notext": (), "noread": (), "rc": 0}
+
+    def fake(args, label, cwd=None):
+        calls.append(list(args))
+        name = Path(args[0]).name
+        if name == "fetch_calendar_archive.py":
+            rows = CA.read_rows(NI.DOCS)
+            for r in rows:
+                if r["state"] != "wanted":
+                    continue
+                if knob["fetch"] is None or r["name"] in knob["fetch"]:
+                    Path(r["path"]).parent.mkdir(parents=True, exist_ok=True)
+                    Path(r["path"]).write_bytes(b"%PDF-1.4 x")
+                    r.update(state="held", bytes="10", fetched="2026-11-16T03:00:00")
+                elif r["name"] in knob["fail"]:
+                    r["attempts"] = str(int(r["attempts"] or 0) + 1)
+            CA.write_rows(NI.DOCS, rows)
+            return knob["rc"]
+        if name == "extract_calendar_text.py":
+            for root in ET.ROOTS:
+                for pdf in (sorted(Path(root).rglob("*.pdf")) if Path(root).exists() else []):
+                    if pdf.name not in knob["notext"] and not pdf.with_suffix(".txt").exists():
+                        pdf.with_suffix(".txt").write_text("text\n", encoding="utf-8")
+            return 0
+        if name in _DOCFILE_READERS:
+            if name in knob["noread"]:
+                return 1
+            _docfile_read(args, name)
+        return 0
+
+    def take(rows, listing=0, tool="pdftotext", **kw):
+        for d in ("archive", "calendars", "calendars_senate", "journals", "journals_senate",
+                  ".night"):
+            shutil.rmtree(d, ignore_errors=True)
+        for f in ("committee_reports.json", "amendments.json", "meetings.json"):
+            Path(f).unlink(missing_ok=True)
+        Path("archive").mkdir()
+        CA.write_rows(NI.DOCS, rows)
+        knob.update({"fetch": None, "fail": (), "notext": (), "noread": (), "rc": 0}, **kw)
+        NI.EXITS.clear()
+        if listing is not None:
+            NI.EXITS["fetch_calendar_archive.py"] = listing
+        ET.pdftotext = lambda: tool
+        del calls[:]
+        with contextlib.redirect_stdout(io.StringIO()):
+            got = NI.take_document_files()
+        return got, [Path(c[0]).name + (f" {c[c.index('--year') + 1]}" if "--year" in c else "")
+                     for c in calls]
+
+    def r(ch, kind, year, n):
+        return _docfile_row(CA, ch, kind, year, n)
+
+    try:
+        os.chdir(tmp)
+        refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
+        NI.run = fake
+        drain, text = "fetch_calendar_archive.py", "extract_calendar_text.py"
+        reports, amend, meet = ("fetch_committee_reports.py", "extract_amendments.py",
+                                "calendar_meetings.py")
+        cases = (
+            ("a House calendar and a House journal",
+             [r("H", "calendar", 2026, 40), r("H", "journal", 2026, 17)],
+             [drain, text, f"{reports} 2026", amend, meet]),
+            ("a Senate calendar alone", [r("S", "calendar", 2026, 30)], [drain, text, meet]),
+            ("journals alone", [r("H", "journal", 2026, 17), r("S", "journal", 2026, 15)],
+             [drain, text]),
+            ("House calendars of two years",
+             [r("H", "calendar", 2026, 41), r("H", "calendar", 2027, 1)],
+             [drain, text, f"{reports} 2026", f"{reports} 2027", amend, meet]))
+        for what, rows, want in cases:
+            got, ran = take(rows)
+            assert ran == want, (f"{what}: the night ran {ran}, not {want}")
+            assert got["fetched"] == len(rows) and got["remain"] == 0 and not got["warn"], (what, got)
+            for key, said in got["read"].items():
+                assert said.startswith("installed"), (what, key, said)
+
+        rows = [r("H", "calendar", 2026, 42), r("S", "journal", 2026, 16)]
+        got, ran = take(rows, fetch=())
+        assert ran == [drain] and got["warn"].startswith(
+            "none of the 2 waiting was fetched, though the fetch says it finished"), (ran, got)
+        for listing, said in ((1, "not asked for: the list of them was not read tonight (exit 1), "
+                                  "so nothing more is asked of the address"),
+                              (None, "not asked for: the list of them was not read tonight")):
+            got, ran = take(rows, listing=listing)
+            assert not ran and got["said"] == said and not got["warn"], (listing, ran, got)
+        got, ran = take(rows, tool=None)
+        assert not ran and got["warn"] == ("not asked for: 2 wait, and this machine has no "
+                                           "pdftotext to read them with"), (ran, got)
+        got, ran = take([dict(x, state="held") for x in rows])
+        assert not ran and got["said"].startswith("none waits") and not got["warn"], (ran, got)
+        got, ran = take([r("H", "calendar", 2026, 43), r("S", "calendar", 2026, 31)],
+                        notext=("HC043.pdf",))
+        assert ran == [drain, text, meet] and got["warn"].startswith(
+            "the text of 1 fetched tonight could not be read"), (ran, got)
+        got, ran = take([r("S", "calendar", 2026, 32)], noread=(meet,))
+        assert ran == [drain, text, meet] and got["warn"].startswith(
+            "meetings.json not read again from what arrived tonight: not taken"), (ran, got)
+        got, ran = take([r("H", "journal", 2026, 18), r("H", "journal", 2026, 19)],
+                        fetch=("HJ 18.pdf",), fail=("HJ 19.pdf",))
+        assert ran == [drain, text] and got["remain"] == 1 and got["warn"].startswith(
+            "1 could not be fetched tonight (House Journal 1)"), (ran, got)
+    finally:
+        os.chdir(here)
+        (NI.run, NI.LOG, refusal.MARK, refusal.LOCK, ET.pdftotext, exits) = saved
+        NI.EXITS.clear()
+        NI.EXITS.update(exits)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("a House calendar runs the year's committee reports, the amendments and the "
+                  "meetings; a Senate calendar the meetings alone; journals none; two years two "
+                  "report runs; a fetch that did nothing, no pdftotext, a text not read, a "
+                  "reader not taken and a document not fetched each warn; a list not read asks "
+                  "nothing and leaves the warning to the list")
+
+
+@check("build", "the night reads a calendar from the text beside it where the PDF is not kept, "
+       "under the PDF's own name; and that text is pdftotext -layout's, found beside git where "
+       "the path has none, or no text at all", needs=(
+           "extract_calendar_text", "fetch_committee_reports", "extract_amendments"))
+def _calendar_text_readers(ET, FC, EA):
+    """THE TEXT STANDS FOR THE PDF (16 November 2026). GitHub's machine has
+    each calendar's text and never its PDF, so the night's readers read the
+    text, and the text must be the same program's the laptop's 3,257 came
+    from. On fixtures, in a throwaway folder:
+
+      - pdftotext() is the one on the path, else Git for Windows' beside git
+        (git in Git/cmd or in Git/mingw64/bin), else the one under
+        ProgramFiles' Git, else none;
+      - with --layout-only no other program reads the columns: no pdftotext,
+        or one that fails, is no text, where the default falls back;
+        and the run writes no text for that PDF;
+      - fetch_committee_reports.py --offline --text reads a calendar that is
+        only text, by the PDF's own name, and without --text finds nothing
+        to read; --text without --offline is refused;
+      - extract_amendments.py --text reads the same way, its source the
+        PDF's name, and without --text finds no PDF.
+    """
+    import contextlib
+    import io
+    import types
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-caltext-"))
+    saved = (sys.argv, ET.shutil, ET.pdftotext, os.environ.get("ProgramFiles"),
+             sys.modules.get("pdfplumber"))
+
+    class Plumber:
+        """pdfplumber, faked: one page of text, from any file."""
+        @staticmethod
+        def open(path):
+            page = types.SimpleNamespace(extract_text=lambda: "the columns, read another way")
+            return contextlib.nullcontext(types.SimpleNamespace(pages=[page]))
+
+    def which(found):
+        return types.SimpleNamespace(which=lambda name: found.get(name))
+
+    def tool(*parts):
+        p = tmp.joinpath(*parts)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(b"")
+        return str(p)
+
+    def run(mod, argv):
+        sys.argv = argv
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                mod.main()
+                return 0, out.getvalue()
+            except SystemExit as e:
+                return e.code, out.getvalue()
+
+    try:
+        os.chdir(tmp)
+        real = ET.pdftotext
+        # Where pdftotext is.
+        git_pt = tool("Git", "mingw64", "bin", "pdftotext.exe")
+        os.environ["ProgramFiles"] = str(tmp / "nowhere")
+        for found, want in (({"pdftotext": "/usr/bin/pdftotext"}, "/usr/bin/pdftotext"),
+                            ({"git": str(tmp / "Git" / "cmd" / "git.exe")}, git_pt),
+                            ({"git": str(tmp / "Git" / "mingw64" / "bin" / "git.exe")}, git_pt),
+                            ({}, None)):
+            ET.shutil = which(found)
+            got = real()
+            assert (Path(got).resolve() if got else None) == (
+                Path(want).resolve() if want else None), (found, got)
+        pf_pt = tool("PF", "Git", "mingw64", "bin", "pdftotext.exe")
+        os.environ["ProgramFiles"] = str(tmp / "PF")
+        ET.shutil = which({})
+        assert real() and Path(real()).resolve() == Path(pf_pt).resolve(), real()
+        ET.shutil = saved[1]
+
+        # --layout-only: pdftotext -layout's text or none.
+        sys.modules["pdfplumber"] = Plumber
+        pdf = Path("calendars") / "2026" / "HC009.pdf"
+        pdf.parent.mkdir(parents=True)
+        pdf.write_bytes(b"%PDF-1.4 a calendar")
+        ET.pdftotext = lambda: None
+        assert ET.extract(pdf, layout_only=True) == (None, "no pdftotext here"), \
+            ET.extract(pdf, layout_only=True)
+        assert ET.extract(pdf) == ("the columns, read another way", "pdfplumber"), ET.extract(pdf)
+        ET.pdftotext = lambda: sys.executable          # a "pdftotext" that fails
+        text, how = ET.extract(pdf, layout_only=True)
+        assert text is None and how.startswith("pdftotext gave no text"), (text, how)
+        assert ET.extract(pdf)[1] == "pdfplumber"
+        ET.pdftotext = lambda: None
+        code, out = run(ET, ["extract_calendar_text.py", "--layout-only"])
+        assert code == 0 and not pdf.with_suffix(".txt").exists() and \
+            "pdftotext: none here" in out, (code, out[-300:])
+        ET.pdftotext = saved[2]
+        pdf.unlink()
+
+        # The committee reports, from a calendar that is only its text.
+        txt = Path("calendars") / "2026" / "HC001.txt"
+        txt.write_text(CALENDAR_PAGE, encoding="utf-8")
+        code, out = run(FC, ["fetch_committee_reports.py", "--year", "2026", "--offline", "--text",
+                             "--out", "reports.json"])
+        rep = json.loads(Path("reports.json").read_text(encoding="utf-8"))
+        bills = rep.get("2025-2026", {})
+        assert code in (0, None) and sorted(bills) == ["HB1418", "HB1419"] and all(
+            r["source"] == "House Calendar 1, 2026" for v in bills.values() for r in v), (
+                code, sorted(bills), out[-300:])
+        assert "the text beside it" in out, out[-300:]
+        Path("reports.json").unlink()
+        code, _ = run(FC, ["fetch_committee_reports.py", "--year", "2026", "--offline",
+                           "--out", "reports.json"])
+        assert code and "no calendars" in str(code) and not Path("reports.json").exists(), code
+        code, _ = run(FC, ["fetch_committee_reports.py", "--year", "2026", "--text"])
+        assert code == 2, f"--text without --offline was not refused ({code})"
+
+        # The amendments, the same way.
+        am = Path("calendars") / "2023" / "HC012.txt"
+        am.parent.mkdir(parents=True)
+        am.write_text(AMENDMENT_PAGE, encoding="utf-8")
+        code, out = run(EA, ["extract_amendments.py", "--text", "--calendars", "calendars",
+                             "--narratives", "none.json", "--out", "amendments.json"])
+        got = json.loads(Path("amendments.json").read_text(encoding="utf-8"))
+        assert "2023-0471h" in got and got["2023-0471h"]["source"] == "HC012.pdf", (
+            code, sorted(got)[:4], out[-300:])
+        Path("amendments.json").unlink()
+        code, _ = run(EA, ["extract_amendments.py", "--calendars", "calendars",
+                           "--narratives", "none.json", "--out", "amendments.json"])
+        assert code and "No PDFs" in str(code) and not Path("amendments.json").exists(), code
+    finally:
+        os.chdir(here)
+        (sys.argv, ET.shutil, ET.pdftotext) = saved[:3]
+        if saved[3] is None:
+            os.environ.pop("ProgramFiles", None)
+        else:
+            os.environ["ProgramFiles"] = saved[3]
+        if saved[4] is None:
+            sys.modules.pop("pdfplumber", None)
+        else:
+            sys.modules["pdfplumber"] = saved[4]
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("pdftotext is the path's, else Git for Windows' beside git, else ProgramFiles' "
+                  "Git's; --layout-only writes no other program's text; the committee reports "
+                  "and the amendments read a calendar that is only text, under its PDF's name, "
+                  "and find nothing without --text")
 
 
 # ---- the first pruning of the refactor -----------------------------------------
@@ -132945,14 +133612,22 @@ def _record_laptop_share(NI, CL):
     is the laptop's in cloud_kit.json, and kit-down's record is where the
     night reads it; on a made-up record and docket, the share last moved on
     10 January 2027 and the record 7 days after says nothing, 8 days warns
-    -- naming the file, both days, the season's ceiling, the calendars and
-    journals the General Court lists that are not read, and what starts it
+    -- naming the file, both days, the season's ceiling and what starts it
     again; in the interim, 42 and 43; a file outside the share, and no
-    record, are nothing to go by."""
+    record, are nothing to go by. And since 16 November 2026 the calendars'
+    and journals' text and the three files read off it are the night's
+    (THE CALENDARS AND JOURNALS THEMSELVES), so none of them is in the share,
+    and the documents the night has not fetched are not this warning's."""
     from datetime import date, datetime
     kit = CL.load_kit(Path("."))
     for p in NI.LAPTOP_SHARE:
         assert CL.owner_of(kit, p) == "laptop", f"{p} is not the laptop's in cloud_kit.json"
+    night = ("committee_reports.json", "amendments.json", "meetings.json",
+             "calendars/2026/HC033.txt", "journals_senate/2026/SJ 17.txt")
+    assert not set(night) & set(NI.LAPTOP_SHARE) and all(
+        CL.owner_of(kit, p) == "night" for p in night), (
+            "the calendars' text, or what is read off it, is the laptop's share again",
+            [(p, CL.owner_of(kit, p)) for p in night])
     assert NI.KIT_DOWN.as_posix() == CL.KIT_RECORD, (NI.KIT_DOWN, CL.KIT_RECORD)
     assert NI.DOCS.as_posix() == "archive/queue.csv", NI.DOCS
 
@@ -132961,42 +133636,40 @@ def _record_laptop_share(NI, CL):
 
     tmp = Path(tempfile.mkdtemp(prefix="gr-share-"))
     try:
-        rec, dk, docs = tmp / "kit-down.json", tmp / "Docket.txt", tmp / "queue.csv"
+        rec, dk = tmp / "kit-down.json", tmp / "Docket.txt"
         rec.write_text(json.dumps({"files": {
             "bill_text.json": [10, "x", ns(2027, 1, 5)], "calendars.json": [10, "x", ns(2027, 1, 10)],
+            "meetings.json": [10, "x", ns(2027, 1, 20)],
             "Docket.txt": [10, "x", ns(2027, 2, 1)]}}), encoding="utf-8")
-        docs.write_text("chamber,kind,year,name,url,path,state,attempts,error,bytes,fetched,label\n"
-                        "H,calendar,2027,HC 3.pdf,u,p,wanted,0,,,,No 3\n"
-                        "S,calendar,2027,SC 2.pdf,u,p,wanted,0,,,,No 2\n"
-                        "H,calendar,2027,HC 1.pdf,u,p,held,0,,1,2027-01-04T10:00:00,No 1\n",
-                        encoding="utf-8")
-        assert NI.laptop_share_moved(rec) == (date(2027, 1, 10), "calendars.json")
+        assert NI.laptop_share_moved(rec) == (date(2027, 1, 10), "calendars.json"), (
+            "a file the night writes counted as the laptop's share moving", NI.laptop_share_moved(rec))
         dk.write_text(_docket_text([(2027, "2027-01-17", "2027-01-17")]), encoding="utf-8")
-        assert not NI.laptop_share_behind(date(2027, 1, 25), rec, dk, docs), "7 days behind warned"
+        assert not NI.laptop_share_behind(date(2027, 1, 25), rec, dk), "7 days behind warned"
         dk.write_text(_docket_text([(2027, "2027-01-18", "2027-01-18")]), encoding="utf-8")
-        got = NI.laptop_share_behind(date(2027, 1, 25), rec, dk, docs)
+        got = NI.laptop_share_behind(date(2027, 1, 25), rec, dk)
         assert len(got) == 1 and got[0][0] == NI.KIND_NOT_MOVING + "the laptop's share", got
         for want in ("last moved on 2027-01-10 (calendars.json)", "to 2027-01-18: 8 days",
-                     "from 10 January to 30 June (7 days)",
-                     "2 of the calendars and journals the General Court lists are not read yet",
+                     "from 10 January to 30 June (7 days)", "the bills' text for the search",
                      "seed-kit"):
             assert want in got[0][1], (want, got[0][1])
-        rec.write_text(json.dumps({"files": {"meetings.json": [1, "x", ns(2026, 10, 16)]}}),
+        assert "not read yet" not in got[0][1], got[0][1]
+        rec.write_text(json.dumps({"files": {"journals.json": [1, "x", ns(2026, 10, 16)]}}),
                        encoding="utf-8")
         dk.write_text(_docket_text([(2026, "2026-11-27", "2026-11-27")]), encoding="utf-8")
-        assert not NI.laptop_share_behind(date(2026, 11, 30), rec, dk, docs), "42 days, interim, warned"
+        assert not NI.laptop_share_behind(date(2026, 11, 30), rec, dk), "42 days, interim, warned"
         dk.write_text(_docket_text([(2026, "2026-11-28", "2026-11-28")]), encoding="utf-8")
-        got = NI.laptop_share_behind(date(2026, 11, 30), rec, dk, docs)
+        got = NI.laptop_share_behind(date(2026, 11, 30), rec, dk)
         assert got and "43 days" in got[0][1] and "from 1 July to 9 January (42 days)" in got[0][1], got
         rec.write_text(json.dumps({"files": {"Docket.txt": [1, "x", ns(2026, 1, 1)]}}),
                        encoding="utf-8")
-        assert not NI.laptop_share_behind(date(2026, 11, 30), rec, dk, docs)
-        assert not NI.laptop_share_behind(date(2026, 11, 30), tmp / "none.json", dk, docs)
+        assert not NI.laptop_share_behind(date(2026, 11, 30), rec, dk)
+        assert not NI.laptop_share_behind(date(2026, 11, 30), tmp / "none.json", dk)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", (f"{len(NI.LAPTOP_SHARE)} files of the laptop's share, each the laptop's in the kit; "
-                  "8 days behind the record in session and 43 in the interim warn, 7 and 42 do not, "
-                  "naming the file, the days and the documents not read")
+    return "ok", (f"{len(NI.LAPTOP_SHARE)} files of the laptop's share, each the laptop's in the kit, "
+                  "and none of the calendars' text or the three files read off it, which are the "
+                  "night's; 8 days behind the record in session and 43 in the interim warn, 7 and "
+                  "42 do not, naming the file and the days")
 
 
 @check("files", "the night warns when nothing has arrived in the captions inbox for days while "

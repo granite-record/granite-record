@@ -117,7 +117,11 @@ starting the night hours late); GitHub's own cron stays as the fallback, and
 files and the kit down from R2 (`cloud.py state-down`, `cloud.py kit-down`),
 looks for new livestreams (`src/ops/livestreams.py --since-state`), and runs
 `nightly.py --runner`: the day's bulk files from gc.nh.gov, asked only when no
-refusal is on file; the rebuild, `build_all.py --local --no-captions`, since
+refusal is on file; since 16 November 2026, after its list of calendars and
+journals, those documents the kit does not hold, 25 a night at most, their
+text, and the House committees' reports, the amendments and the meetings read
+off it again where it changed (`nightly.take_document_files`); the rebuild,
+`build_all.py --local --no-captions`, since
 that machine holds no caption files; and the gates -- `preflight.py --code`,
 `src/checks/check_site.py`, a census of the build against the last good
 build's counts (`archive/census.json`), and a ceiling of 95,000 files
@@ -314,7 +318,9 @@ November, to Organization Day's, 42 days in 2016 -- and the pandemic's
 suspension of March and April 2020 left out; `preflight` holds the figures to
 the finished terms on disk); a piece of the database's views
 not taken on a second night running; the laptop's share of the record --
-bill text, the calendars' and journals' text and what is read off them --
+bill text for the search, the committees' schedule and the older links to
+calendars and journals (the calendars' and journals' text and what is read
+off it are the night's since 16 November 2026) --
 standing still while the record moved on for longer than that season's
 figure; nothing arriving in the captions inbox for three days while
 recordings wait; and the laptop's own record of its caption runs, which each

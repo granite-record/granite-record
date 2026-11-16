@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.3
+# GRANITE_VERSION: 2026-09-08.4
 """
 The text beside every calendar PDF, so the parsers can read the archive.
 
@@ -29,6 +29,16 @@ columns and -layout is what keeps a time in the same line as its bill.
 pdfplumber and pypdf are the fallbacks, and they are worse at exactly that,
 so which one produced a file is recorded rather than left to be guessed at
 when a parse looks wrong.
+
+WHERE PDFTOTEXT IS (16 November 2026). Every one of the 3,257 texts on the
+laptop was made by the pdftotext that Git for Windows installs beside git
+(mingw64/bin), which a Git Bash shell has on its path and cmd and GitHub's
+machine do not. pdftotext() looks there as well as on the path, so the night,
+which extracts what it fetched (nightly.take_document_files), reads a
+calendar with the same program the laptop's texts came from. --layout-only
+is the night's: pdftotext -layout or no text at all, because every reader of
+these texts was written against that program's columns, and a calendar read
+another way would be read differently without anything saying so.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -39,6 +49,7 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import time
@@ -46,19 +57,50 @@ from collections import Counter
 
 ROOTS = ["calendars", "calendars_senate", "journals", "journals_senate"]
 LEDGER = Path("archive/extracted.json")
+# Where Git for Windows keeps the pdftotext it installs, under the folder git
+# is installed in: C:\Program Files\Git\mingw64\bin\pdftotext.exe.
+GIT_PDFTOTEXT = ("mingw64/bin/pdftotext.exe", "usr/bin/pdftotext.exe")
+LAYOUT = "pdftotext -layout"
 
 
-def extract(pdf):
-    """(text, how) -- or (None, why not)."""
-    if shutil.which("pdftotext"):
+def pdftotext():
+    """The pdftotext to run: the one on the path, or else Git for Windows'
+    beside git; None where there is neither."""
+    found = shutil.which("pdftotext")
+    if found:
+        return found
+    roots = []
+    git = shutil.which("git")
+    if git:
+        here = Path(git).resolve()
+        # git.exe is in Git\cmd, Git\bin or Git\mingw64\bin.
+        roots += [here.parents[1], here.parents[2]] if len(here.parents) > 2 else []
+    if os.environ.get("ProgramFiles"):
+        roots.append(Path(os.environ["ProgramFiles"]) / "Git")
+    for root in roots:
+        for rel in GIT_PDFTOTEXT:
+            if (root / rel).is_file():
+                return str(root / rel)
+    return None
+
+
+def extract(pdf, layout_only=False):
+    """(text, how) -- or (None, why not). With `layout_only`, pdftotext
+    -layout's text or none: no other program's reading of the columns."""
+    tool = pdftotext()
+    if tool:
         try:
-            out = subprocess.run(["pdftotext", "-layout", str(pdf), "-"],
+            out = subprocess.run([tool, "-layout", str(pdf), "-"],
                                  capture_output=True, text=True,
                                  encoding="utf-8", errors="replace", timeout=180)
             if out.returncode == 0 and (out.stdout or "").strip():
-                return out.stdout, "pdftotext -layout"
+                return out.stdout, LAYOUT
+            if layout_only:
+                return None, f"pdftotext gave no text (exit {out.returncode})"
         except subprocess.TimeoutExpired:
             return None, "pdftotext timed out"
+    elif layout_only:
+        return None, "no pdftotext here"
     try:
         import pdfplumber
         with pdfplumber.open(pdf) as d:
@@ -98,6 +140,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--layout-only", action="store_true",
+                    help="pdftotext -layout's text or none, as the night extracts "
+                         "what it fetched: a PDF it cannot read keeps no text")
     a = ap.parse_args()
 
     todo = wanted()
@@ -123,8 +168,11 @@ def main():
 
     ok, bad, how = 0, [], Counter()
     t0 = time.time()
+    tool = pdftotext()
+    print(f"pdftotext: {tool or 'none here'}"
+          + (", and only its -layout text is written" if a.layout_only else ""))
     for i, pdf in enumerate(todo, 1):
-        text, note = extract(pdf)
+        text, note = extract(pdf, layout_only=a.layout_only)
         if text is None:
             bad.append((str(pdf), note))
             ledger[str(pdf)] = {"ok": False, "why": note}

@@ -129,7 +129,7 @@ project:
 | `numpy` | `src/parse/topic_model.py` (the only top-level third-party import) |
 | `openpyxl` | `src/hearings/build_manifest.py`, `src/hearings/ground_truth.py`, `src/hearings/probe_alignment.py` |
 | `pdfplumber` | calendar and PDF text extraction |
-| `pypdf` | PDF page handling in `fetch_committee_reports.py` and `extract_calendar_text.py` (not installed by the nightly, which needs neither) |
+| `pypdf` | PDF page handling in `fetch_committee_reports.py` and `extract_calendar_text.py` (not installed by the nightly, which reads its calendars with pdftotext -layout or from the text beside each) |
 | `xlrd` | `src/parse/parse_sos_results.py`, for the Secretary of State's older `.xls` results (`xlrd==2.0.2`; the nightly installs it, so its 2024 results check runs there) |
 | `PIL` (Pillow) | `src/pages/build_brand.py` (drawing your own icons and link-card images; the project's are not in the repository) |
 | `faster_whisper` | `src/fetch/youtube/transcribe_and_align.py` (transcribing a recording that has no captions) |

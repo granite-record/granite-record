@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.87
+# GRANITE_VERSION: 2026-09-04.88
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -26,10 +26,13 @@ asked again, with the database once in its place (EMPTY_TRIES, DB_AFTER_TRIES,
 TRIES_AFTER_DB); and under the same lock, each only while no refusal is on
 file, the night goes on to the SQL host the General Court publishes (the study
 committees' meetings, the current term's data, and the statutes on the nights
-a new law takes effect), next session's bill requests (fetch_lsrs.py) and the
+a new law takes effect), next session's bill requests (fetch_lsrs.py), the
 two index pages of its calendars and journals (fetch_calendar_archive.py
---listing). Every other network step build_all has (bill pages, testimony,
-committee pages) stays out of the nightly; the build runs --local. Sunday
+--listing), and, since 16 November 2026, the calendars and journals those
+pages list that the kit does not hold, DOCS_MOST a night at most
+(fetch_calendar_archive.py --night). Every other network step build_all has
+(bill pages, testimony, committee pages) stays out of the nightly; the build
+runs --local. Sunday
 night's weekly job (weekly(), on GitHub's machine only) asks for more: the
 database's views of the committee rosters, the members who have left, the
 study committees and the statutes, then two pages of gc.nh.gov for
@@ -426,7 +429,8 @@ GitHub's night only, with the day's files, under the same lock:
                       newest year: four requests, a few seconds apart and as
                       long before the first, and eight while two years' lists
                       can both still grow (its docstring says when). No
-                      document is downloaded
+                      document is downloaded by the listing itself: the next
+                      step does that (below)
   after the bill      it asks the address the bill requests were asked of a
   requests            moment before. If that fetch did not complete -- a
                       dropped connection ends it on 1 with no refusal on
@@ -448,14 +452,43 @@ GitHub's night only, with the day's files, under the same lock:
                       verdict (documents_short), so nobody has to edit the
                       night's file to let a real change through
   one writer          archive/queue.csv is the night's file in the kit from
-                      this day. The laptop's drain still fetches the
-                      documents, and what it fetched reaches this list
-                      through its own file (archive/queue_fetched.csv)
+                      this day. What the laptop's drain fetches reaches this
+                      list through its own file (archive/queue_fetched.csv)
   a failure           is a warning on the night's page and never a failed
                       night: the list installed stays, and a picker a few
                       days behind is no reason to hold back the day's docket.
                       A refusal met while asking is recorded as every
                       refusal is, and the next night does not ask at all
+
+AND THE DOCUMENTS THEMSELVES (16 November 2026; the owner: "Have the night
+fetch the journals and calendars"). Until then the list was the night's and
+the documents the laptop's drain's, so in session the House committees'
+reports, the meetings and their rooms, the amendments and the session days'
+speakers -- all read off the documents -- stood still between a person's
+runs. take_document_files, after the listing and under the same lock:
+
+  what                the documents the list names that this disk does not
+                      hold, PDF or the text beside it, DOCS_MOST a night at
+                      most, DOCS_DRY_MOST on a dry run; with the laptop's own
+                      drain (fetch_calendar_archive.py --night), 15 seconds
+                      apart with jitter and as long before the first
+  only after the      the list's own fetch asks the same address a moment
+  list                before: where it did not complete, or was not asked
+                      for, nothing more is asked that night (EXITS)
+  read                the text of each by the laptop's own program,
+                      pdftotext -layout (extract_calendar_text.py
+                      --layout-only, which finds Git for Windows' copy);
+                      with no pdftotext on the machine nothing is asked
+  and read again      the House committees' reports of each year a House
+                      calendar arrived for, the amendments when one did, the
+                      meetings when any calendar did: offline, from the text,
+                      each whole or not at all (take_json)
+  the kit             the text and the three files the night's since this
+                      day, so kit-up takes them back; a dry run's go nowhere
+  said                how many arrived and how many still wait, on the run's
+                      page (document_files); a refusal is recorded as every
+                      refusal is, and like any failure here it is a warning
+                      and never a failed night
 
 THE GATE, IN SHADOW (6 October 2026)
 
@@ -695,8 +728,36 @@ DOCS_LISTED = Path("archive/documents_listed.json")
 LIST_SAME_NIGHTS = 3
 # How the night's own requests of the General Court's site ended, by script:
 # take_lsrs writes its fetch's exit status, and take_documents, which asks
-# the same address next, reads it. Emptied before the two are run.
+# the same address next, reads it; take_documents writes the listing's, and
+# take_document_files, which asks it next, reads that. Emptied before they run.
 EXITS = {}
+
+# THE CALENDARS AND JOURNALS THEMSELVES (16 November 2026; the owner: "Have
+# the night fetch the journals and calendars"). take_document_files fetches
+# what the night's list names and this disk does not hold, after the listing
+# and under the same lock, with the laptop's drain (fetch_calendar_archive.py
+# --night): 15 seconds apart with jitter, a pause before the first, and at
+# most DOCS_MOST a night -- in session the House and Senate post a handful a
+# week, and the backlog on 16 November was 20. A dry run asks for at most
+# DOCS_DRY_MOST: nothing it fetches goes back to the kit (cloud.py's dry
+# night), so the next real night asks for the same documents again, and a
+# few are enough to prove the way. Then the text of each, read by the
+# laptop's own pdftotext -layout (extract_calendar_text.py --layout-only),
+# and the three readers of that text that ask nobody, each run again only
+# where what it reads changed tonight, each whole or not at all (take_json):
+#
+#   committee_reports.json  fetch_committee_reports.py --offline --text, for
+#                           each year a House calendar of arrived tonight
+#   amendments.json         extract_amendments.py --text, when one did
+#   meetings.json           calendar_meetings.py, when any calendar did
+#
+# The text and the three files are the night's in the kit since that day, so
+# the night's kit-up sends them back, and archive/queue.csv, the night's
+# already, says which documents are held. A failure is a warning on the
+# night's page and never a failed night, as the list's is.
+DOCS_MOST = 25
+DOCS_DRY_MOST = 3
+KIND_DOC_FILES = "the calendars and journals themselves: "
 
 # RECORDINGS WAITING FOR THEIR START TIMES (30 September 2026; the night's own
 # since 10 October 2026). The night's livestream step captions the new
@@ -1769,6 +1830,12 @@ def main():
                             # Court lists, from its two index pages.
                             if not refusal.MARK.exists():
                                 night.v["documents"] = take_documents(night.v)
+                                # And those documents themselves, the ones this
+                                # disk does not hold, with what is read off them
+                                # (THE CALENDARS AND JOURNALS THEMSELVES).
+                                if not refusal.MARK.exists():
+                                    night.v["document_files"] = take_document_files(
+                                        dry_run=a.dry_run)
                 except SystemExit as e:
                     rc = e.code if isinstance(e.code, int) else 3
                     say(f"  the lock was taken by someone else first (exit {rc})")
@@ -3558,22 +3625,25 @@ DB_MISSED = "db_not_taken"
 DB_MISSED_NIGHTS = 2
 
 # THE LAPTOP'S SHARE. What the night reads that only the laptop refreshes --
-# the bills' text for the search, the calendars' and journals' text and what
-# is read off them: the House committees' reports, the meetings and their
-# rooms, amendments (AUTOMATION_ROADBLOCKS.md, section 2) -- comes down in the
-# kit as the laptop last sent it, and kit-down records each file with the time
-# the laptop last changed it (cloud.KIT_RECORD, its mtime). These are the files
-# of that share that move with the current term; the past terms' and the
-# rarely changing ones (member_party.json, committee_details.json) are not
-# among them. preflight holds each to a laptop-owned kit entry. They move only
+# the bills' text for the search, the committees' schedule and rooms, and the
+# older links to calendars and journals (AUTOMATION_ROADBLOCKS.md, section 2)
+# -- comes down in the kit as the laptop last sent it, and kit-down records
+# each file with the time the laptop last changed it (cloud.KIT_RECORD, its
+# mtime). The calendars' and journals' text, and the House committees' reports,
+# the amendments and the meetings read off it, were the laptop's too until 16
+# November 2026, and are the night's since (THE CALENDARS AND JOURNALS
+# THEMSELVES). These are the files of that share that move with the current
+# term; the past terms' and the rarely changing ones (member_party.json,
+# committee_details.json) are not among them. preflight holds each to a
+# laptop-owned kit entry. They move only
 # when the record gives them something, so they are measured against the
 # record: the General Court's newest docket line more than STILL_DAYS past
 # the laptop's newest change, for the season that line is in, is a share that
 # stopped while the record went on -- for longer than the record itself ever
 # stands still.
 KIT_DOWN = Path("archive/cloud/kit-down.json")
-LAPTOP_SHARE = ("bill_text.json", "amendments.json", "committee_reports.json", "calendars.json",
-                "journals.json", "meetings.json", "schedule_pages/_events.json")
+LAPTOP_SHARE = ("bill_text.json", "calendars.json", "journals.json",
+                "schedule_pages/_events.json")
 
 # THE CAPTIONS INBOX, SILENT. The laptop's evening run asks YouTube for what
 # waits and puts each caption file in the inbox, and the livestream step
@@ -3800,24 +3870,13 @@ def laptop_share_moved(record=KIT_DOWN):
     return datetime.fromtimestamp(best[0] / 1e9).date(), best[1]
 
 
-def documents_wanted(path=DOCS):
-    """How many of the calendars and journals the General Court lists
-    (archive/queue.csv, the night's) the laptop has not fetched yet: rows
-    whose state is "wanted". None where the list will not read."""
-    import csv
-    try:
-        with open(path, encoding="utf-8", newline="") as fh:
-            return sum(1 for r in csv.DictReader(fh) if (r.get("state") or "") == "wanted")
-    except (OSError, csv.Error, UnicodeDecodeError):
-        return None
-
-
-def laptop_share_behind(today, kit=KIT_DOWN, docket=DOCKET, docs=DOCS):
+def laptop_share_behind(today, kit=KIT_DOWN, docket=DOCKET):
     """[(kind, sentence)]: the laptop's share of the record standing still
     while the General Court's record moved on, for longer than STILL_DAYS
     of the season the record last moved in (THE LAPTOP'S SHARE): a record
     that has itself stopped since is docket_still's to say. [] otherwise, or
-    where either is not known."""
+    where either is not known. The calendars and journals the night has not
+    fetched are its own step's to say (take_document_files), not this."""
     moved, path = laptop_share_moved(kit)
     newest = docket_newest(docket, today)
     if moved is None or newest is None:
@@ -3825,17 +3884,14 @@ def laptop_share_behind(today, kit=KIT_DOWN, docket=DOCKET, docs=DOCS):
     gap, season = (newest - moved).days, still_season(newest)
     if gap <= STILL_DAYS[season]:
         return []
-    wanted = documents_wanted(docs)
     return [(KIND_NOT_MOVING + "the laptop's share",
              f"The laptop's share of the record last moved on {moved} ({path}), and the General "
              f"Court's record has moved on since, to {newest}: {gap} days, longer than the record "
              f"itself ever stands still {STILL_SAID[season]} ({STILL_DAYS[season]} days). The "
-             "night builds the bills' text for the search, and the calendars' and journals' text "
-             "and what is read off them, from that share as the laptop last sent it"
-             + (f"; {wanted} of the calendars and journals the General Court lists "
-                f"{'is' if wanted == 1 else 'are'} not read yet" if wanted else "")
-             + ". It moves again when the laptop's fetches run and seed-kit sends what they "
-             "made, both a person's to start.")]
+             "night builds the bills' text for the search, the committees' schedule and the "
+             "older links to calendars and journals from that share as the laptop last sent it. "
+             "It moves again when the laptop's fetches run and seed-kit sends what they made, "
+             "both a person's to start.")]
 
 
 def laptop_run(path=LAPTOP_RUN):
@@ -4099,6 +4155,7 @@ def take_documents(v=None):
         return f"not asked for: {why}; {kept}"
     rc = run(["fetch_calendar_archive.py", "--listing", "--out", str(new)],
              "the calendars and journals the General Court lists")
+    EXITS["fetch_calendar_archive.py"] = rc
     why, got, rec, settled = "", [], None, 0
     if rc == 2 and refusal.MARK.exists():
         # Only with the record on file: a script's own usage error ends on
@@ -4162,6 +4219,147 @@ def take_documents(v=None):
                  "posted yet")
     say(f"  the list of calendars and journals: {what}")
     return what
+
+
+def _text_beside(r):
+    """Whether the text of a row's document is beside its PDF, and not empty."""
+    try:
+        return Path(r["path"]).with_suffix(".txt").stat().st_size > 0
+    except (OSError, KeyError, TypeError):
+        return False
+
+
+def _docs_said(rows):
+    """'House Calendar 2, Senate Journal 1': rows counted by list, in the
+    lists' own order."""
+    import fetch_calendar_archive as CA
+    from collections import Counter
+    by = Counter((r.get("chamber"), r.get("kind")) for r in rows)
+    return ", ".join(f"{CA.SAID[k]} {by[k]}" for k in CA.SOURCES if by.get(k))
+
+
+def take_document_files(dry_run=False):
+    """The calendars and journals the night's list names and this disk does
+    not hold, fetched; their text read; and the readers of that text which
+    ask nobody run again where it changed (THE CALENDARS AND JOURNALS
+    THEMSELVES). A record for the verdict's "document_files":
+
+      wanted   how many waited, not on this disk, before the fetch
+      fetched  how many arrived tonight
+      remain   how many still wait
+      said     the line on the run's page, in this project's own words
+      warn     what the page warns of, or "" for nothing
+      read     each reader run again: what take_json said of its file
+
+    NOT ASKED AFTER A LIST THAT WAS NOT READ. The list's own fetch asks the
+    same address a moment before (EXITS): where it did not complete, or was
+    not asked for, nothing more is asked tonight -- the lane's rule for a
+    chain, and the list's own warning already says why. Nor where this
+    machine has no pdftotext: a document fetched and not read is a request
+    for nothing, and every reader of these texts was written against that
+    program's columns.
+    """
+    import fetch_calendar_archive as CA
+    import extract_calendar_text as ET
+    out = {"wanted": 0, "fetched": 0, "remain": 0, "said": "", "warn": "", "read": {}}
+
+    def done(said, warn=False):
+        out["said"] = said
+        out["warn"] = said if warn else ""
+        say(f"  the calendars and journals themselves: {said}")
+        return out
+
+    listing = EXITS.get("fetch_calendar_archive.py")
+    if listing != 0:
+        return done("not asked for: the list of them was not read tonight"
+                    + (f" (exit {listing}), so nothing more is asked of the address"
+                       if listing is not None else ""))
+    try:
+        want = [r for r in CA.load_queue() if r.get("state") == "wanted" and not CA.on_disk(r)]
+    except Exception as e:                                      # noqa: BLE001
+        say(f"  {type(e).__name__}: {e}", echo=False)
+        return done("not asked for: the night's list of them could not be read", warn=True)
+    out["wanted"] = out["remain"] = len(want)
+    if not want:
+        return done("none waits: every one the list names is on this disk or not to be had")
+    if not ET.pdftotext():
+        return done(f"not asked for: {len(want)} wait, and this machine has no pdftotext to "
+                    "read them with", warn=True)
+    most = DOCS_DRY_MOST if dry_run else DOCS_MOST
+    rc = run(["fetch_calendar_archive.py", "--night", "--budget", str(most)],
+             "the calendars and journals themselves, from the General Court")
+    EXITS["fetch_calendar_archive.py --night"] = rc
+    try:
+        after = {CA._key(r): r for r in CA.load_queue()}
+    except Exception as e:                                      # noqa: BLE001
+        say(f"  {type(e).__name__}: {e}", echo=False)
+        after = {}
+
+    def now(r):
+        return after.get(CA._key(r)) or r
+    got = [r for r in want if now(r).get("state") == "held" and Path(r["path"]).exists()]
+    remain = [r for r in want if now(r).get("state") == "wanted" and not CA.on_disk(now(r))]
+    gone = [r for r in want if now(r).get("state") == "gone"]
+    failed = [r for r in want if now(r).get("state") in ("wanted", "failed")
+              and int(now(r).get("attempts") or 0) > int(r.get("attempts") or 0)]
+    out.update(fetched=len(got), remain=len(remain))
+    said = f"{len(got)} fetched" + (f" ({_docs_said(got)})" if got else "")
+    if dry_run:
+        said += f", at most {most} on a dry run, whose fetches are not kept"
+    said += f"; {len(remain)} still to fetch"
+    warn = ""
+    if rc == 2 and refusal.MARK.exists():
+        warn = (f"the General Court refused a request after {len(got)} "
+                f"{'was' if len(got) == 1 else 'were'} fetched: it is recorded, and every "
+                "fetch waits for a person")
+    elif rc != 0:
+        warn = f"the fetch stopped after {len(got)} (exit {rc}): it is asked again tomorrow"
+    elif failed:
+        warn = (f"{len(failed)} could not be fetched tonight ({_docs_said(failed)}); a document "
+                "is asked for three times before it is left")
+    elif not got and len(remain) == len(want):
+        # A fetch that says it finished, with nothing fetched and nothing
+        # failed, did nothing: that is not a quiet night.
+        warn = f"none of the {len(want)} waiting was fetched, though the fetch says it finished"
+    if gone:
+        said += f"; {len(gone)} listed and not served ({_docs_said(gone)})"
+    texted = []
+    if got:
+        run(["extract_calendar_text.py", "--layout-only"],
+            "the text of the calendars and journals fetched tonight")
+        texted = [r for r in got if _text_beside(r)]
+        untexted = len(got) - len(texted)
+        if untexted:
+            said += f"; the text of {untexted} could not be read"
+            warn = warn or (f"the text of {untexted} fetched tonight could not be read, so no "
+                            "page reads them")
+    # The readers, each where what it reads changed tonight.
+    years = sorted({r["year"] for r in texted if (r["chamber"], r["kind"]) == ("H", "calendar")})
+    calendars = any(r["kind"] == "calendar" for r in texted)
+    readers = [(f"the House committees' reports in the calendars of {y}, read again",
+                ["fetch_committee_reports.py", "--offline", "--text", "--year", y],
+                "committee_reports.json", _bills_in, True) for y in years]
+    if years:
+        readers.append(("the amendments the House calendars print, read again",
+                        ["extract_amendments.py", "--text"], "amendments.json", len, True))
+    if calendars:
+        readers.append(("the meetings the calendars announce, read again",
+                        ["calendar_meetings.py"], "meetings.json", len, False))
+    for label, args, path, count, seed in readers:
+        key = path + (f" {args[-1]}" if path == "committee_reports.json" else "")
+        out["read"][key], _rc = take_json(label, args, path, count, seed=seed)
+    taken = [k for k, w in out["read"].items() if str(w).startswith("installed")]
+    if taken:
+        said += "; read again: " + ", ".join(taken)
+    left = [k for k, w in out["read"].items() if not str(w).startswith("installed")]
+    if left:
+        said += "; not read again: " + ", ".join(left)
+        warn = warn or (f"{', '.join(left)} not read again from what arrived tonight: "
+                        + str(out["read"][left[0]]))
+    out["said"] = (warn + "; " + said) if warn else said
+    out["warn"] = out["said"] if warn else ""
+    say(f"  the calendars and journals themselves: {out['said']}")
+    return out
 
 
 def take_views(views, label, shrink=SWAP_SHRINK, not_again=False, together=False):
@@ -5626,6 +5824,10 @@ class Night:
         if docs and not str(docs).startswith("installed"):
             out.append(("the General Court's list of calendars and journals: " + kind_of(docs),
                         f"the General Court's list of calendars and journals: {docs}"))
+        files = self.v.get("document_files")
+        if isinstance(files, dict) and files.get("warn"):
+            out.append((KIND_DOC_FILES + kind_of(files["warn"]),
+                        KIND_DOC_FILES + str(files["warn"])))
         # The recordings waiting for their start times, and why: the night's
         # own caption step since 10 October 2026, so the words name what
         # stopped it rather than a laptop job. The kind is the one this
@@ -5788,6 +5990,9 @@ class Night:
                       if k != "refused"]
                    + ([f"- {unpublished_note(v).strip()}"] if unpublished_note(v) else [])
                    + ([f"- {captions_line(caps)}"] if caps else [])
+                   + ([f"- {KIND_DOC_FILES}{v['document_files']['said']}"]
+                      if isinstance(v.get("document_files"), dict)
+                      and v["document_files"].get("said") else [])
                    + [f"- {w}" for w in why[:8]]
                    + [f"- warning: {w}" for w in v["warnings"]])
 
