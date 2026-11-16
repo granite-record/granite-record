@@ -384,7 +384,19 @@ term's index, the feed. Those show a sound build is served, and yesterday's
 would pass them all, so it also reads the served `/build.json`, which every
 build writes with the moment it finished and the night with its commit: one
 naming another build, or none, is a deploy that did not land, and the night
-looks again a few times before it says so.
+looks again a few times before it says so. And since 16 November 2026, once a
+deploy has landed, each Function under `functions/` is asked once, by GET
+alone and one a second, never a POST, a sign-up or a report
+(`nightly.functions_probe`, from `upload_and_check`, which both deploy steps
+run): the report box and the follow sign-up and bounce refuse a GET (405),
+confirm, manage and unsubscribe answer their pages, the count answers a
+number, and the two live Functions answer the day's file or their own 404. A
+follow Function answers 404 without `FOLLOW_DB`, and the count reads its
+database, so those show the binding too; what each environment binds is read
+from `wrangler.toml`, where production and the previews bind the same three.
+A path with no Function gets the site's own not-found page. A failure is a
+warning on the run's page and, for the preview, in the night's standing
+warnings (`preview.functions` in its verdict); it never fails the deploy.
 
 **The morning triage.** On the maintainer's laptop,
 `cloud.py pull --changes-only` brings down what the triage reads and nothing else: the

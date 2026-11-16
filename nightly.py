@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.91
+# GRANITE_VERSION: 2026-09-04.92
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -162,7 +162,10 @@ night itself does is here, and what differs on that machine is behind --runner:
                       "production" environment deploys it, once approved
   deploys             --deploy-to preview|production, workflow steps of their
                       own that alone hold the Pages token; wrangler pinned;
-                      the live check retried before a deploy is called failed
+                      the live check retried before a deploy is called failed;
+                      and once one lands, each Function asked once by GET, a
+                      failure a warning that never fails the deploy (THE
+                      FUNCTIONS AFTER A DEPLOY)
   reader reports      not pulled there. They stay on the laptop, where the
                       morning triage pulls them
   the log             the whole log to logs/nightly-<date>.log, which goes to
@@ -6069,6 +6072,179 @@ def sources_warned(recs):
     return out
 
 
+# THE FUNCTIONS AFTER A DEPLOY (the refactor's stage 0, ops section 1.3:
+# "Nothing checks the Functions after a deploy"). check_live.py holds what a
+# deploy serves to what was built, and a deploy that broke the report box or
+# the follow sign-up would have been found by a reader. So once a deploy has
+# landed -- the preview's and production's alike, in upload_and_check, which
+# both deploy steps run -- functions_probe() asks each Function under
+# functions/ once, one a second, by GET alone, which none of them answers by
+# writing, sending or reading anything of a reader's: never a POST, never a
+# sign-up or a report. Each answer is judged by what a deployed Function says
+# to a GET, and, where it reads its binding before it answers, by whether the
+# binding is there:
+#
+#   /api/report              405 "POST only"; its database is read only on a
+#                            POST, so a GET cannot show it
+#   /api/follow/signup       405 as above, and /bounce; each only where
+#                            FOLLOW_DB is bound, a 404 of its own without it
+#   /api/follow/confirm      200 and its page; /manage and /unsubscribe the same
+#   /api/follow/count        200 and a number: FOLLOW_DB bound, its database answering
+#   /api/live/streams        200 and today's file, or its own 404: LIVE shows only
+#                            on a day the live Worker has written one, which at
+#                            the night's hour it often has not
+#   /api/live/votes/<today>  the same
+#
+# What each environment binds is read from wrangler.toml, which has owned the
+# project's configuration since 12 September: production and the previews
+# each bind DB, FOLLOW_DB and LIVE, so the same answers are expected of both;
+# a binding an environment lacks makes the Functions that need it expected to
+# answer their own 404. A path with no Function behind it gets the site's own
+# not-found page, in HTML: that is how a Function that did not deploy shows.
+# A failure is a warning for the morning -- on the run's page, and for the
+# preview in the night's standing warnings -- and never fails the deploy,
+# which has landed and stands. Production's is said on the run's page and
+# the publish job's log alone: that job's machine sends no state back.
+FUNCTION_PROBES = (
+    ("/api/report", "", "post"),
+    ("/api/follow/signup", "FOLLOW_DB", "post"),
+    ("/api/follow/bounce", "FOLLOW_DB", "post"),
+    ("/api/follow/confirm", "FOLLOW_DB", "page"),
+    ("/api/follow/manage", "FOLLOW_DB", "page"),
+    ("/api/follow/unsubscribe", "FOLLOW_DB", "page"),
+    ("/api/follow/count", "FOLLOW_DB", "count"),
+    ("/api/live/streams", "LIVE", "live"),
+    ("/api/live/votes/{day}", "LIVE", "live"),
+)
+FUNCTIONS_GAP = 1.0             # seconds between two Functions asked
+FUNCTIONS_TIMEOUT = 20
+FUNCTIONS_SEEN = {}             # the last probe this process made, for runner_deploy
+KIND_FUNCTIONS = KIND_HEALTH + "the site's Functions after a deploy"
+
+
+def wrangler_bindings(env_name, path="wrangler.toml"):
+    """The names of the D1 and R2 bindings wrangler.toml gives `env_name`
+    ("production" or "preview"), or None where the file will not read."""
+    import tomllib
+    try:
+        data = tomllib.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    env = (data.get("env") or {}).get(env_name) or {}
+    return {str(b.get("binding")) for k in ("d1_databases", "r2_buckets")
+            for b in env.get(k) or [] if isinstance(b, dict)}
+
+
+def ask_function(url, timeout=FUNCTIONS_TIMEOUT):
+    """One GET of `url`, and nothing else: (status or None, content type,
+    Allow, the first 4 KB of the body, the error where it could not be asked)."""
+    req = urllib.request.Request(url, headers={"User-Agent": "granite-record-selfcheck/1.0",
+                                               "Cache-Control": "no-cache"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return (r.status, r.headers.get("Content-Type") or "", r.headers.get("Allow") or "",
+                    r.read(4096).decode("utf-8", "replace"), "")
+    except urllib.error.HTTPError as e:
+        try:
+            body = e.read(4096).decode("utf-8", "replace")
+        except Exception:               # noqa: BLE001 -- the status is the answer
+            body = ""
+        return e.code, e.headers.get("Content-Type") or "", e.headers.get("Allow") or "", body, ""
+    except Exception as e:              # noqa: BLE001 -- unreadable is a finding
+        return None, "", "", "", f"{type(e).__name__}: {str(e)[:120]}"
+
+
+def judge_function(kind, bound, status, ctype, allow, body, error=""):
+    """(answered as deployed, what it said) for one Function's answer to a
+    GET (THE FUNCTIONS AFTER A DEPLOY): `kind` its row's, `bound` whether
+    the environment binds what it reads first."""
+    plain, html = ctype.startswith("text/plain"), ctype.startswith("text/html")
+    own_404 = status == 404 and plain and body.startswith("Not found")
+    if error:
+        return False, f"could not be asked ({error})"
+    if status == 404 and html:
+        return False, "the site's own not-found page answered: the Function is not deployed"
+    if not bound:
+        return (True, "its own 404, as its binding is not configured here") if own_404 else \
+            (False, f"answered {status}, where its binding is not configured and a 404 of its own was expected")
+    if kind == "post" and status == 405 and "POST" in allow:
+        return True, "refuses a GET (405), as it should"
+    if kind == "page" and status == 200 and html:
+        return True, "answers its page"
+    if kind == "count" and status == 200 and re.fullmatch(r"\d+\s*", body or "x"):
+        return True, "answers a count: its database is bound and answering"
+    if kind == "live" and status == 200 and ctype.startswith("application/json"):
+        return True, "answers today's file: its bucket is bound"
+    if kind == "live" and own_404:
+        return True, ("its own 404: nothing is written for today yet, so whether its bucket is "
+                      "bound is not shown")
+    if own_404:
+        return False, "answered a 404 of its own: its binding is missing from this deployment"
+    if status is not None and status >= 500:
+        return False, f"answered {status}: what it reads could not be read"
+    return False, f"answered {status} ({ctype or 'no type'}), not as a deployed Function does"
+
+
+def functions_probe(base, env_name, day=None, ask=None, wait=None):
+    """Each Function of FUNCTION_PROBES asked once at `base`, GET alone, one
+    a second, and judged (THE FUNCTIONS AFTER A DEPLOY): {"base", "env",
+    "at", "probes": [{"path", "status", "ok", "said"}], "failed", "line"}.
+    `ask` and `wait` stand in for ask_function and the pause in a check."""
+    ask, wait = ask or ask_function, wait or time.sleep
+    day = day or date.today().isoformat()
+    bound = wrangler_bindings(env_name)
+    probes = []
+    for i, (path, needs, kind) in enumerate(FUNCTION_PROBES):
+        if i:
+            wait(FUNCTIONS_GAP)
+        p = path.format(day=day)
+        status, ctype, allow, body, error = ask(base.rstrip("/") + p)
+        ok, said = judge_function(kind, bound is None or not needs or needs in bound,
+                                  status, ctype, allow, body, error)
+        probes.append({"path": p, "status": status, "ok": ok, "said": said})
+    bad = [x for x in probes if not x["ok"]]
+    line = (f"The site's {len(probes)} Functions answered as deployed at {base}." if not bad else
+            f"{len(bad)} of the site's {len(probes)} Functions did not answer as deployed at {base}: "
+            + "; ".join(f"{x['path']} {x['said']}" for x in bad) + ".")
+    return {"base": base, "env": env_name, "at": datetime.now().isoformat(timespec="seconds"),
+            "probes": probes, "failed": len(bad), "line": line,
+            **({} if bound is not None else {"bindings": "wrangler.toml could not be read"})}
+
+
+def functions_after(base, target):
+    """Ask the Functions of the deploy that just landed at `base`, say what
+    they answered in the log and on the run's page, and keep it in
+    FUNCTIONS_SEEN. Never raises: the deploy has landed and stands."""
+    FUNCTIONS_SEEN.clear()
+    try:
+        fx = functions_probe(base, "production" if target == PRODUCTION_BRANCH else "preview")
+    except Exception as e:              # noqa: BLE001 -- a probe never fails a deploy
+        say(f"\n  the site's Functions were not asked: {type(e).__name__}: {e}")
+        return
+    FUNCTIONS_SEEN.update(fx)
+    say(f"\n--- the site's Functions at {base} ---")
+    for x in fx["probes"]:
+        say(f"  {x['path']}: {x['said']}")
+    say(f"  {fx['line']}")
+    gh_summary([f"- {fx['line']}"])
+    if fx["failed"]:
+        gh_annotate("warning", "A Function did not answer as deployed",
+                    fx["line"][:300] + " The deploy stands.")
+
+
+def functions_warned(fx, where="the preview"):
+    """[(kind, sentence)]: the Functions of a deploy that did not answer as
+    deployed (THE FUNCTIONS AFTER A DEPLOY); [] for none, or no probe."""
+    if not isinstance(fx, dict) or not fx.get("failed"):
+        return []
+    bad = [x for x in fx.get("probes") or [] if isinstance(x, dict) and not x.get("ok")]
+    return [(KIND_FUNCTIONS,
+             f"After the deploy to {where} ({fx.get('base')}), {len(bad)} of the site's Functions "
+             "did not answer as deployed: " + "; ".join(f"{x.get('path')} {x.get('said')}" for x in bad)
+             + ". The deploy stands; Cloudflare's dashboard (Workers & Pages, graniterecord, the "
+             "deployment's Functions and its bindings) shows what is missing.")]
+
+
 def health_warned(v, private=False):
     """[(kind, sentence)] of THE NIGHT'S OWN HEALTH that a verdict carries:
     each a kind the gate never holds a night for. Read by Night.warned() for
@@ -6076,7 +6252,9 @@ def health_warned(v, private=False):
     with `private` for the standing ones, which only the verdict does."""
     return (started_by_warned(v.get("started_by"))
             + expiries_warned(v.get("expiries"), private=private)
-            + sources_warned(v.get("sources")))
+            + sources_warned(v.get("sources"))
+            + functions_warned((v.get("preview") if isinstance(v.get("preview"), dict) else {})
+                               .get("functions")))
 
 
 class Night:
@@ -6824,7 +7002,8 @@ def runner_deploy(a):
         say("  " + keep_first_seen())
     if where == "preview":
         v["preview"] = {"at": datetime.now().isoformat(timespec="seconds"),
-                        "base": base, "landed": landed}
+                        "base": base, "landed": landed,
+                        **({"functions": dict(FUNCTIONS_SEEN)} if FUNCTIONS_SEEN else {})}
         write_json(vpath, v)
     log = Path("logs") / f"nightly-{v.get('day', '')}.log"
     if log.exists():
@@ -6836,7 +7015,9 @@ def runner_deploy(a):
 def upload_and_check(a, site, target, base):
     """wrangler to `target`, four attempts, then the live check, retried --
     except where it could not read a file to its end, which looking again
-    would not change."""
+    would not change. A deploy that lands has its Functions asked
+    (functions_after), which never changes what this returns."""
+    FUNCTIONS_SEEN.clear()
     out = ""
     for attempt in range(1, 5):
         # The pinned wrangler, with the branch named: PREVIEW_BRANCH is a
@@ -6860,6 +7041,9 @@ def upload_and_check(a, site, target, base):
                  f"what {base} is serving (look {i} of {len(LIVE_WAITS)})")
         if rc == 0:
             say(f"\nLive at {base}")
+            # The site's Functions, asked once each (THE FUNCTIONS AFTER A
+            # DEPLOY): said, and kept for runner_deploy, never the answer.
+            functions_after(base, target)
             return True
         if rc == LIVE_NOT_CHECKED:
             # Looking again would read the same file and stop at the same byte.

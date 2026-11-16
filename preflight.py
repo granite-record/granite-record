@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.936
+# GRANITE_VERSION: 2026-09-04.937
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -96569,6 +96569,169 @@ def _night_sources(NI):
                   "the kit's day, the record's own dates or last night's; the term's data against the "
                   "docket and the meetings, the list and the recordings each warn a day past the "
                   "measured limit and not at it, never on a night that did not fetch or holding one")
+
+
+@check("workflows", "after each deploy the night asks every Function once, by GET alone, judges each "
+                    "answer by what the environment binds, and warns without failing the deploy",
+       needs=("nightly",))
+def _night_functions_probe(NI):
+    """THE FUNCTIONS AFTER A DEPLOY (nightly.py; the refactor's stage 0, ops section 1.3). Nothing
+    asked the site's Functions after a deploy, so one that broke the report box or the follow
+    sign-up would have been found by a reader. Held here: FUNCTION_PROBES names every Function
+    under functions/, by its route, and the binding each reads before it answers, as its own
+    source does; ask_function sends a bare GET, with no body and no other method; what
+    wrangler.toml binds in production and the previews; judge_function on every answer a
+    deployed Function gives, the site's own not-found page, a binding gone, a database that
+    will not read and a request that could not be made; functions_probe asking each once, in
+    order, a second apart, against a stand-in server; and upload_and_check asking them once a
+    deploy has landed and only then, its answer the deploy's whatever they say, with the lines
+    in the log and on the run's page, the record kept for the preview's verdict, and a failure
+    a warning in the standing ones, of a kind that never holds a night."""
+    import argparse
+    import contextlib
+    import inspect
+    import io
+    import subprocess as sp
+    import types
+    routes = {}
+    for f in sorted(Path("functions").rglob("*.js")):
+        if f.name.startswith("_"):
+            continue
+        rel = f.relative_to("functions").with_suffix("").as_posix()
+        routes["/" + re.sub(r"\[(\w+)\]", r"{\1}", rel)] = f.read_text(encoding="utf-8")
+    probes = {p: (needs, kind) for p, needs, kind in NI.FUNCTION_PROBES}
+    assert routes and set(probes) == set(routes), (
+        "FUNCTION_PROBES and functions/ differ: no probe for "
+        f"{sorted(set(routes) - set(probes))}, a probe of no Function {sorted(set(probes) - set(routes))}")
+    for p, src in routes.items():
+        needs, kind = probes[p]
+        first = src[src.find("export async function onRequest"):]
+        if needs == "FOLLOW_DB":
+            assert -1 < first.find("!env.FOLLOW_DB") < first.find("request.method") and \
+                "notHere()" in first, f"{p} no longer answers 404 without FOLLOW_DB before anything else"
+        elif needs == "LIVE":
+            assert -1 < first.find("liveStore(env)") < first.find("request.method") and \
+                "notFound" in first, f"{p} no longer reads its bucket before the method"
+        else:
+            assert "env.DB" not in first or \
+                -1 < first.find('request.method !== "POST"') < first.find("env.DB"), (
+                    f"{p} reads its database before it refuses a GET")
+        if kind == "post":
+            assert re.search(r'request\.method !== "POST"\)\s*\{?\s*return (?:plain\(405|new Response\('
+                             r'"POST only)', first), f"{p} no longer refuses a GET with 405"
+    body = inspect.getsource(NI.ask_function)
+    assert "urllib.request.Request(url, headers=" in body and "data=" not in body and \
+        "method=" not in body, "ask_function sends something other than a bare GET"
+    for env in ("production", "preview"):
+        assert {"DB", "FOLLOW_DB", "LIVE"} <= (NI.wrangler_bindings(env) or set()), (
+            f"wrangler.toml's {env} does not bind DB, FOLLOW_DB and LIVE: "
+            f"{NI.wrangler_bindings(env)}; the probes' expectations follow it, so read them again")
+    assert NI.wrangler_bindings("production", path="no-such-wrangler.toml") is None
+
+    T, H, J = "text/plain; charset=utf-8", "text/html; charset=utf-8", "application/json; charset=utf-8"
+    good = {"post": (405, T, "POST", "POST only\n"), "page": (200, H, "", "<!doctype html>"),
+            "count": (200, T, "", "12\n"), "live": (200, J, "", "{}")}
+    for kind, ans in good.items():
+        assert NI.judge_function(kind, True, *ans)[0], (kind, NI.judge_function(kind, True, *ans))
+    for kind, bound, ans, ok, words in (
+            ("live", True, (404, T, "", "Not found\n"), True, "not shown"),
+            ("post", False, (404, T, "", "Not found\n"), True, "not configured"),
+            ("page", True, (404, H, "", "<html>"), False, "not deployed"),
+            ("post", True, (404, T, "", "Not found\n"), False, "binding is missing"),
+            ("count", True, (503, T, "", ""), False, "503"),
+            ("count", True, (200, H, "", "<html>"), False, "not as a deployed Function"),
+            ("live", True, (503, T, "", "Live status could not be read\n"), False, "503"),
+            ("post", True, (403, H, "", "blocked"), False, "403"),
+            ("post", False, (405, T, "POST", "POST only\n"), False, "not configured")):
+        got = NI.judge_function(kind, bound, *ans)
+        assert got[0] is ok and words in got[1], (kind, bound, ans, got)
+    assert not NI.judge_function("page", True, None, "", "", "", "URLError: down")[0]
+
+    asked, waited = [], []
+    by_kind = {p: k for p, _n, k in NI.FUNCTION_PROBES}
+
+    def fake(url, answers=None):
+        asked.append(url)
+        path = url.split("https://x.example", 1)[1]
+        kind = by_kind.get(path) or by_kind["/api/live/votes/{day}"]
+        out = (answers or {}).get(path) or good[kind]
+        return (*out, "")
+    fx = NI.functions_probe("https://x.example", "preview", day="2026-11-16", ask=fake, wait=waited.append)
+    assert asked == ["https://x.example" + p.format(day="2026-11-16") for p, _n, _k in NI.FUNCTION_PROBES] \
+        and waited == [NI.FUNCTIONS_GAP] * (len(asked) - 1) and NI.FUNCTIONS_GAP >= 1, (asked, waited)
+    assert fx["failed"] == 0 and fx["line"] == (f"The site's {len(asked)} Functions answered as deployed "
+                                               "at https://x.example."), fx
+    del asked[:]
+    bad = NI.functions_probe("https://x.example", "production", day="2026-11-16", wait=waited.append,
+                             ask=lambda url: fake(url, {"/api/follow/count": (404, T, "", "Not found\n"),
+                                                        "/api/report": (404, H, "", "<html>")}))
+    warned = NI.functions_warned(bad)
+    assert bad["failed"] == 2 and "2 of the site's 9 Functions did not answer" in bad["line"] and \
+        "/api/report the site's own not-found page" in bad["line"] and \
+        [k for k, _s in warned] == [NI.KIND_FUNCTIONS] and "The deploy stands" in warned[0][1] and \
+        NI.warning_reasons(warned, [], ()) == [] and \
+        warned[0][1] in NI.warns_of({"preview": {"functions": bad}}), (bad["line"], warned)
+    assert NI.functions_warned(fx) == [] and NI.functions_warned(None) == []
+    # An environment that binds only DB: the Functions that need FOLLOW_DB or LIVE are
+    # expected to answer their own 404 there, and a deployed one of them a failure.
+    own404 = {p.format(day="2026-11-16"): (404, T, "", "Not found\n") for p, n, _k in NI.FUNCTION_PROBES if n}
+    real_bindings = NI.wrangler_bindings
+    try:
+        NI.wrangler_bindings = lambda env, path="wrangler.toml": {"DB"}
+        bare = NI.functions_probe("https://x.example", "preview", day="2026-11-16", wait=waited.append,
+                                  ask=lambda url: fake(url, own404))
+        full = NI.functions_probe("https://x.example", "preview", day="2026-11-16", wait=waited.append,
+                                  ask=fake)
+    finally:
+        NI.wrangler_bindings = real_bindings
+    assert bare["failed"] == 0 and full["failed"] == len(own404) == 8, (
+        "the probes do not follow what wrangler.toml binds in the environment: "
+        f"{bare['line']} | {full['line']}")
+
+    # upload_and_check asks them once a deploy has landed, and only then.
+    saved = (NI.child.run, NI.time.sleep, NI.run, NI.functions_probe, NI.LOG[:])
+    sums = Path(tempfile.mkdtemp(prefix="gr-functions-")) / "summary.md"
+    env_was = {k: os.environ.get(k) for k in ("GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS")}
+    calls = []
+    try:
+        os.environ["GITHUB_STEP_SUMMARY"] = str(sums)
+        os.environ.pop("GITHUB_ACTIONS", None)
+        NI.child.run = lambda *a_, **k_: sp.CompletedProcess(a_, 0, "", "")
+        NI.time.sleep = lambda s: None
+        NI.functions_probe = lambda base, env, **k: calls.append((base, env)) or bad
+        for live_code, target, landed in ((0, NI.PREVIEW_BRANCH, True), (1, NI.PREVIEW_BRANCH, False),
+                                          (0, NI.PRODUCTION_BRANCH, True)):
+            NI.run = lambda args, label, cwd=None, c=live_code: c
+            del calls[:]
+            with contextlib.redirect_stdout(io.StringIO()):
+                got = NI.upload_and_check(argparse.Namespace(project="p"), Path("."), target,
+                                          "https://x.example")
+            want_env = "production" if target == NI.PRODUCTION_BRANCH else "preview"
+            assert got is landed and calls == ([("https://x.example", want_env)] if landed else []), (
+                f"a deploy that {'landed' if landed else 'did not land'} to {target}: {got}, asked {calls}")
+        page = sums.read_text(encoding="utf-8")
+        assert page.count(bad["line"]) == 2 and NI.FUNCTIONS_SEEN.get("line") == bad["line"] and \
+            any(bad["line"] in ln for ln in NI.LOG), "the Functions' answers are not on the page and in the log"
+        NI.functions_probe = lambda base, env, **k: (_ for _ in ()).throw(RuntimeError("a bug"))
+        NI.run = lambda args, label, cwd=None: 0
+        with contextlib.redirect_stdout(io.StringIO()):
+            assert NI.upload_and_check(argparse.Namespace(project="p"), Path("."), NI.PREVIEW_BRANCH,
+                                       "https://x.example") is True, "a probe that broke failed the deploy"
+    finally:
+        NI.child.run, NI.time.sleep, NI.run, NI.functions_probe = saved[:4]
+        NI.LOG[:] = saved[4]
+        NI.FUNCTIONS_SEEN.clear()
+        shutil.rmtree(sums.parent, ignore_errors=True)
+        for k, val in env_was.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+    src = inspect.getsource(NI.runner_deploy)
+    assert '"functions": dict(FUNCTIONS_SEEN)' in src and "return 0 if landed else 1" in src, (
+        "runner_deploy does not keep the preview's Functions in its verdict, or lets them decide its exit")
+    return "ok", (f"{len(probes)} Functions, each asked once by a bare GET a second apart, judged by "
+                  "what production and the previews bind in wrangler.toml; a missing Function, a "
+                  "lost binding, a 5xx and an unreachable site are failures, a live 404 is not; asked "
+                  "only after a deploy lands, never changing its answer; a warning on the page, in "
+                  "the log and the standing warnings that never holds a night")
 
 
 # ---- the live layer's reader of the General Court's public SQL database ----------
