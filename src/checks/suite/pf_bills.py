@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -8985,6 +8985,110 @@ def _shared_helpers_one_home():
               f"is left unlinked: {shared}")
         return "ok", f"WARNING: {len(clash)} name key(s) shared by sitting members, left unlinked: {shared}"
     return "ok", f"one home each for the term rules and the escapes; {len(legs)} sitting members, no name key shared"
+
+
+@check("build", "a term's key is made, read and printed by terms.py from the state's settings, as the code "
+       "wrote every key and label before; nothing of its shape that is no term is taken for one; every key "
+       "sorts in time order as text; and the build's term is read in one place")
+def _term_keys_from_settings():
+    """THE KEY (src/lib/terms.py, 16 November 2026, the refactor's build design, step S1). A term's
+    key and label are the state's settings ("key" and "label" under "term" in state_settings.json),
+    and terms.py makes, reads and validates one. With New Hampshire's settings every answer is the
+    one the code gave before, so no key, address or file name moves: term_of_year against the
+    old arithmetic for every year 1001-3000, by number and by text; key_on against
+    proceedings.term_on for every day of 1985-2030; label against components.term_words for keys
+    and for what is not one. is_key takes a key and nothing else of its shape -- an LSR number
+    (2027-0001), a pair that begins in an even year or spans three, one padded, spaced or
+    dashed -- and years() refuses the same. THE RULE the code's sorts rely on: the keys of every
+    term from 1001 to 9997, sorted as text, are in time order. And THE BUILD'S TERM: GRANITE_TERM
+    is named in terms.py alone, and GRANITE_COLD in build_cache.py alone, as GRANITE_BUILD_DATE
+    is in build_date.py; sitting() takes a stated term, stops on one that is no term, and
+    otherwise reads the installed files once a process."""
+    import datetime as dt
+    import components as C
+    import proceedings as P
+    import state_settings as ST
+    import terms as T
+    assert set(ST.TERM) >= {"key", "label"} and "{first}" in T.KEY and "{last}" in T.KEY, \
+        f"the state's settings give a term no key shape: {ST.TERM}"
+    for y in range(1001, 3001):
+        s = y if y % 2 else y - 1
+        assert T.term_of_year(y) == T.term_of_year(str(y)) == T.key_of_year(y) == f"{s}-{s + 1}", \
+            f"terms.term_of_year({y}) is {T.term_of_year(y)!r}, and the code wrote {s}-{s + 1}"
+        assert T.years(f"{s}-{s + 1}") == (s, s + 1) and T.is_key(f"{s}-{s + 1}")
+    day = dt.date(1985, 1, 1)
+    while day <= dt.date(2030, 12, 31):
+        assert T.key_on(day.isoformat()) == P.term_on(day.isoformat()), day
+        day += dt.timedelta(days=1)
+    assert T.key_on("2026-12-01") == "2025-2026" and T.key_on("2026-12-02") == "2027-2028"
+    for s in ("2025-2026", "1989-1990", "2027-requests", "", None, 2025, "1989-1998", "2000-2001",
+              "123-456", "2025-2026 ", "x2025-2026", "2025–2026"):
+        assert T.label(s) == C.term_words(s), (
+            f"terms.label({s!r}) is {T.label(s)!r} and components.term_words writes {C.term_words(s)!r}")
+    assert T.label("2025-2026") == "2025–2026"
+    for s in ("2027-0001", "2026-2027", "2025-2027", "02025-2026", " 2025-2026", "2025-2026 ",
+              "2025–2026", "2025_2026", "2027-requests", "2025", "", None, 2025, ["2025-2026"]):
+        assert not T.is_key(s), f"terms.is_key({s!r}) takes it for a term"
+        try:
+            T.years(s)
+            raise AssertionError(f"terms.years({s!r}) answered for what is not a term")
+        except ValueError:
+            pass
+    assert T.next_key("2025-2026") == "2027-2028" and T.previous_key("2025-2026") == "2023-2024"
+    keys = [T.key(f) for f in range(1001, 9998, 2)]
+    assert sorted(keys) == keys and len(set(keys)) == len(keys), \
+        "the state's term keys do not sort in time order as text: about a hundred sorts rely on it"
+
+    # ONE READER for each of the build's words to its steps: the name, as a
+    # string the code could read the environment by, in its own module only
+    # (a sentence that mentions it is no read).
+    import ast
+    own = {"GRANITE_TERM": "terms.py", "GRANITE_COLD": "build_cache.py"}
+    assert (T.ENV, imp("build_cache").COLD) == tuple(own), (T.ENV, imp("build_cache").COLD)
+    stray = [f"{p.relative_to(_paths.ROOT).as_posix()}:{n.lineno} names {n.value}"
+             for p in _paths.code_files("*.py") if not _in_suite(p)
+             for n in ast.walk(_parsed(p))
+             if isinstance(n, ast.Constant) and n.value in own and p.name != own[n.value]]
+    assert not stray, ("the build's term and its cold word are each read in one place (terms.py, "
+                       "build_cache.py), and other code names them: " + "; ".join(stray))
+
+    here, saved = os.getcwd(), os.environ.get(T.ENV)
+    tmp = Path(tempfile.mkdtemp(prefix="gr-term-keys-"))
+    asked = []
+    real = T.decide
+    try:
+        os.chdir(tmp)
+        os.environ.pop(T.ENV, None)
+        T._decided.cache_clear()
+        Path("Docket.txt").write_text("2025|0001|1/5/2025 10:00:00 AM|HB1|H|Introduced|x\n"
+                                      "2026|0002|1/6/2026 10:00:00 AM|HB1001|H|Introduced|x\n",
+                                      encoding="utf-8")
+        T.decide = lambda folder=".": (asked.append(folder), real(folder))[1]
+        assert T.sitting() == T.sitting() == "2025-2026" == P.session_term(".") and len(asked) == 1, (
+            f"sitting() read {T.sitting()!r} off the installed files, asking {len(asked)} times")
+        os.environ[T.ENV] = "2027-2028"
+        assert T.sitting() == "2027-2028", "a term the build handed down is not the step's term"
+        for bad in ("2027", "2027-0001", "next term"):
+            os.environ[T.ENV] = bad
+            try:
+                T.sitting()
+                raise AssertionError(f"{T.ENV}={bad!r} was taken for a term")
+            except SystemExit as e:
+                assert T.ENV in str(e), str(e)
+    finally:
+        T.decide = real
+        T._decided.cache_clear()
+        if saved is None:
+            os.environ.pop(T.ENV, None)
+        else:
+            os.environ[T.ENV] = saved
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("term_of_year as the code wrote it for 2,000 years, key_on as term_on for every day "
+                  "of 1985-2030, label as term_words; no LSR number or other shape taken for a term; "
+                  f"{len(keys):,} keys in time order as text; GRANITE_TERM and GRANITE_COLD each named in "
+                  "one module; sitting() takes a stated term, stops on one that is no term, and reads "
+                  "the files once")
 
 
 @check("code", "the tag engine: tiers, exclusions, the topic-redundancy drop, determinism, the opposite-aim pairs "

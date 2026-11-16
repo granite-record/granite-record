@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.96
+# GRANITE_VERSION: 2026-09-05.97
 """
 Run the whole pipeline in the right order.
 
@@ -7,6 +7,9 @@ Run the whole pipeline in the right order.
                                             #   when secrets.json holds a key
     python3 build_all.py --local            # no network at all, rebuild from files
     python3 build_all.py --dry-run          # print the plan and stop
+    python3 build_all.py --local --cold     # read no cache: every step works out
+                                            #   everything afresh (the New term
+                                            #   run's build; build_cache.py)
     python3 build_all.py --front-end        # a change to app.css, components.js,
                                             #   app.js or find.js alone, into the site
                                             #   the last full build made, in seconds
@@ -30,6 +33,15 @@ Nothing here is clever. It runs the steps, stops at the first genuine failure,
 skips steps whose inputs are missing rather than crashing on them, and writes a
 record of what ran to site/build.json so the site can say how fresh it is.
 
+THE BUILD'S ONE TERM (16 November 2026, the refactor's build design, step
+S1). The term the build is of is worked out once, as the plan is made, from
+the installed files (terms.decide), and handed to every step as
+GRANITE_TERM (settle_term); site/build.json records it beside the term the
+build's day falls in and the newest the bill index holds (term_record). A
+term the environment states and the files contradict stops the build before
+its first step; the three readings parting is said, as the turn where it is
+the turn, and never stops one.
+
 Transcription is excluded by default: it is per-video and slow even with
 captions. Run transcribe_and_align.py separately, then rebuild.
 """
@@ -46,9 +58,11 @@ import os
 import subprocess
 import threading
 import time
+import build_cache
 import build_date
 import build_inputs
 import proceedings
+import terms
 import child
 from datetime import datetime
 
@@ -281,6 +295,73 @@ def session_roster():
     except Exception:                                           # noqa: BLE001
         pass
     return "data/legislators.json"
+
+
+def settle_term(dry_run=False):
+    """The build's one term, decided once, as the plan is made: the term the
+    installed files are of (terms.decide, the files the turn guard reads,
+    which nothing later in the build can change), set as GRANITE_TERM for
+    every step this process starts; "" where no session file names a year,
+    and then none is set. A term the environment already states must be that
+    one: a stated term the files contradict would have the steps that ask
+    terms.sitting() build one term and the rest another, so it stops the
+    build before its first step (a dry run says it would)."""
+    decided = terms.decide(".")
+    said = terms.stated()
+    if said is not None and said != decided:
+        why = (f"{terms.ENV}={said} is stated and the installed files say "
+               f"{decided or 'no term'}: a build is of the term its files are of. Unset "
+               f"{terms.ENV}; build_all.py sets it for every step itself.")
+        if not dry_run:
+            raise SystemExit(f"\nSTOPPED: {why}")
+        print(f"  WOULD STOP: {why}")
+    if decided:
+        os.environ[terms.ENV] = decided
+    else:
+        os.environ.pop(terms.ENV, None)
+    return decided
+
+
+def index_terms(site="site"):
+    """The terms the bill index names, oldest first: site/meta.json's
+    "terms" that are keys; [] where there is none to read."""
+    try:
+        meta = json.loads((Path(site) / "meta.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    named = meta.get("terms") if isinstance(meta, dict) else None
+    return sorted({t for t in named or [] if terms.is_key(t)})
+
+
+def term_record(sitting, site="site", root="."):
+    """What site/build.json says of the term (terms.py, THE SITTING TERM):
+    the one this build handed every step (sitting); the term the build's day
+    falls in (by_date) and the newest the bill index holds (index_newest),
+    the other two ways the code has read it; how many of the index's terms
+    are older than the sitting one (finished, null where there is none); and
+    each frozen term's manifests, by a sha256 of the session freeze's and the
+    views' together (frozen). Where the three readings part, "said" puts it
+    in words (terms.differences), and nothing stops."""
+    import freeze_term as FT
+    root = Path(root)
+    by_date = terms.key_on(build_date.today().isoformat())
+    index = index_terms(site)
+    newest = index[-1] if index else ""
+    frozen = {}
+    views = root / FT.VIEWS_DIR
+    named = set(FT.frozen_terms(root)) | {
+        p.name for p in (views.iterdir() if views.is_dir() else [])
+        if terms.is_key(p.name) and (p / FT.MANIFEST).is_file()}
+    for t in sorted(named):
+        frozen[t] = build_cache.files_digest([root / FT.FROZEN / t / FT.MANIFEST,
+                                              views / t / FT.MANIFEST])
+    rec = {"sitting": sitting, "by_date": by_date, "index_newest": newest,
+           "finished": sum(1 for t in index if t < sitting) if sitting else None,
+           "frozen": frozen}
+    said = terms.differences(sitting, by_date, newest)
+    if said:
+        rec["said"] = said
+    return rec
 
 
 def plan(a):
@@ -1256,6 +1337,10 @@ def main():
                     help="let build_feeds remove more than a quarter of a feed folder: "
                          "the New term night's, and only that one")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--cold", action="store_true",
+                    help="read no cache: every step works everything out afresh, and what it "
+                         "works out is still kept for the next build (build_cache.py). The "
+                         "New term run's build")
     ap.add_argument("--keep-going", action="store_true",
                     help="carry on past a failed required step")
     ap.add_argument("--front-end", action="store_true",
@@ -1271,6 +1356,11 @@ def main():
         sys.exit(child.run([sys.executable, _paths.script("front_end.py")]
                            + (["--dry-run"] if a.dry_run else [])).returncode)
 
+    # THE BUILD'S ONE TERM, decided here, as the plan is made (settle_term),
+    # and a cold build's word to every step (build_cache.cold).
+    a.term = settle_term(a.dry_run)
+    if a.cold:
+        os.environ[build_cache.COLD] = "1"
     steps = plan(a)
     if a.local:
         steps = [s for s in steps if not s.network]
@@ -1358,7 +1448,13 @@ def main():
             print(f"  skipping '{s.name}' -- --no-captions: this machine holds "
                   "no caption files, so what it made last on the laptop stands")
 
-    print(f"{len(steps)} steps, session {a.session}\n")
+    print(f"{len(steps)} steps, session {a.session}")
+    print(f"the term: {a.term}, read off the installed files and handed to every step as "
+          f"{terms.ENV}" if a.term else
+          "the term: none, as no session file here names a year; no step is handed one")
+    if build_cache.cold():
+        print("cold: no step reads the build's cache; what each works out is kept for the next")
+    print()
     if a.dry_run:
         strict = kit_build()
         for i, s in enumerate(steps, 1):
@@ -1558,12 +1654,17 @@ def _run_steps(steps, a):
 
     total = round(time.time() - t0, 1)
     site = Path("site")
+    # THE TERM THE BUILD WAS OF, beside what its day and its bill index say
+    # (term_record): read after the steps, from what they made.
+    term = term_record(getattr(a, "term", "") or "", site)
     if site.exists():
         site.mkdir(exist_ok=True)
         (site / "build.json").write_text(json.dumps({
             "finished": datetime.now().isoformat(timespec="seconds"),
             "session": a.session, "seconds": total,
-            "ok": failed is None, "steps": results,
+            "ok": failed is None, "steps": results, "term": term,
+            # Only for a build that read no cache, as below.
+            **({"cold": True} if build_cache.cold() else {}),
             # Only where the day was stated, so an ordinary build's record is
             # as it always was. "finished" stays the clock's: it is when this
             # run ended, which a stated day does not change.
@@ -1575,6 +1676,8 @@ def _run_steps(steps, a):
     sk = sum(1 for r in results if r["status"] == "skipped")
     fl = sum(1 for r in results if r["status"] == "failed")
     print(f"{ok} ran, {sk} skipped, {fl} failed, {total}s total")
+    for line in term.get("said") or []:
+        print(f"the term: {line}")
     warned = [r for r in results if r.get("warnings")]
     if warned:
         print(f"{len(warned)} step(s) finished with a warning about their output: "

@@ -1840,6 +1840,24 @@ for publishing one -- `build_all.py` says when the day is stated and records
 it in `site/build.json`, whose own `finished` and step times stay the clock's
 and are left out of the comparison. Without the variable nothing changes.
 
+**The build's one term** (16 November 2026). A term's key, "2025-2026", is
+made, read and printed by `src/lib/terms.py` from the state's settings
+(`state_settings.json`, "term": "key" and "label"), and must sort in time
+order as text. `build_all.py` works out once, as it makes its plan, which
+term the build is of -- off the installed files (`terms.decide`: the newest
+session year the six General Court files name, which the turn guard keeps
+from changing during a build) -- and hands it to every step as
+`GRANITE_TERM`; `terms.sitting()` is that answer, and a step run alone works
+its own out once a process. `site/build.json` records it (`"term"`) beside
+the term the build's day falls in and the newest term of the bill index;
+around the turn they part, and the log and the record say so in words
+without stopping the build, while a stated term the files contradict stops
+it before its first step. The code that reads the sitting term for itself
+(`proceedings.session_term`'s callers, the bill index's newest, the patterns
+of the key's shape) moves onto `terms.py` after the switch to 2027-2028.
+`build_all.py --cold` is a build that reads no cache (`build_cache.cold`):
+`nightly.py --new-term` builds so, and what it works out is still kept.
+
 **What a build was built from** (9 October 2026). A build that ends well
 records, in `logs/last-build.json` (`src/lib/build_inputs.py`), its commit,
 every file git sees with a sha256 of its bytes, every other file under the

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of build checks with no module under test, for a person to sort.
 
@@ -788,6 +788,7 @@ def _proceedings_term_shrink():
     root = Path(tempfile.mkdtemp(prefix="gr-termshrink-"))
     try:
         for f in need:
+            (root / f).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(_paths.locate(f), root / f)
         # The copy's own write(), under a name of its own, so no later check
         # that imports proceedings is handed a module from a deleted folder.

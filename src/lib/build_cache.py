@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.1
+# GRANITE_VERSION: 2026-10-23.2
 """
 Answers a build step worked out before, kept by what they were worked out from.
 
@@ -45,6 +45,13 @@ A RUN ON PART OF THE RECORD WRITES NOTHING HERE. A step saves only after a
 run over everything, and saves only the answers that run used, so a cache
 holds the record as it now stands and never grows past it.
 
+A COLD BUILD READS NONE OF IT (16 November 2026, the refactor's build
+design, step S1). build_all.py --cold -- the New term run's build, which
+nightly.py --new-term asks for -- sets GRANITE_COLD for every step, and
+then load() gives {} as for a cache that is not there, and session_days
+reads no kept sitting days (cold()). What a cold build works out is still
+saved, so the next build starts warm.
+
 Nothing here asks the network.
 """
 
@@ -67,6 +74,15 @@ import tokenize
 CACHE = Path(".build_cache")
 # The shape of a cache file. A file of any other is no cache.
 FORMAT = 1
+# Set by build_all.py --cold for every step it runs: a build that reads no
+# cache (cold), read here and nowhere else.
+COLD = "GRANITE_COLD"
+
+
+def cold():
+    """Whether this process is part of a build that reads no cache
+    (build_all.py --cold): GRANITE_COLD set to anything but "" or "0"."""
+    return os.environ.get(COLD, "").strip() not in ("", "0")
 
 
 def _tokens(path):
@@ -161,7 +177,10 @@ def path_of(name, folder=None):
 
 def load(name, sig, folder=None):
     """{key: answer} kept under `name` by code of signature `sig`, or {} --
-    for a file that is not there, will not read, or is another signature's."""
+    for a file that is not there, will not read, or is another signature's,
+    and in a cold build (cold()) whatever is there."""
+    if cold():
+        return {}
     try:
         with gzip.open(path_of(name, folder), "rt", encoding="utf-8") as fh:
             doc = json.load(fh)

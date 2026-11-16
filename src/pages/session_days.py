@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.40
+# GRANITE_VERSION: 2026-09-19.41
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -3608,6 +3608,8 @@ def load_cache(folder=None):
     import gzip
     import pickle
     p = Path(folder if folder is not None else BC.CACHE) / CACHE_FILE
+    if BC.cold():
+        return None, "a cold build reads none (build_all.py --cold)"
     if not p.exists():
         return None, "none kept"
     try:
