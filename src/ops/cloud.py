@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.34
+# GRANITE_VERSION: 2026-09-25.35
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
