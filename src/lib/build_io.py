@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 What each step of a build reads and writes, recorded while it runs.
 
@@ -89,7 +89,8 @@ ENV = "GRANITE_BUILD_IO"
 FORMAT = 1
 # A file of this name in the folder: also keep the sha256 of each file a
 # process read before it changed or removed it ("before"), which a shadow
-# key needs and nothing else does.
+# key needs and nothing else does -- but of the absolute paths the file lists
+# (JSON), whose bytes the build knows already (shadow_keys.Keys.known).
 KEYED = "keyed"
 # Where build_all.py writes the whole build's record.
 LOG = Path("logs/build-io.json.gz")
@@ -122,7 +123,17 @@ class _Recorder:
         import _thread
         import time
         self.folder = os.path.abspath(folder)
-        self.keyed = os.path.isfile(os.path.join(self.folder, KEYED))
+        # KEYED there: keep the bytes of what is read and then changed, but of
+        # the paths it lists, whose bytes the build knows already.
+        self.keyed, self.skip = False, set()
+        try:
+            with open(os.path.join(self.folder, KEYED), encoding="utf-8") as fh:
+                self.keyed, listed = True, fh.read().strip()
+            if listed:
+                import json
+                self.skip = {os.path.normcase(p) for p in json.loads(listed)}
+        except (OSError, ValueError):
+            pass
         self.clock = time.monotonic_ns
         self.ident = _thread.get_ident
         self.busy = set()
@@ -186,8 +197,9 @@ class _Recorder:
 
     def _changing(self, e):
         """Before the first change to a path this process read: its sha256,
-        where the step asks for them (KEYED)."""
-        if self.keyed and e[1] and not e[2] and not e[3] and e[4] is None:
+        where the step asks for them (KEYED) and does not know it already."""
+        if self.keyed and e[1] and not e[2] and not e[3] and e[4] is None \
+                and os.path.normcase(e[0]) not in self.skip:
             e[4] = self._sha(e[0])
 
     # ---- the events ---------------------------------------------------------

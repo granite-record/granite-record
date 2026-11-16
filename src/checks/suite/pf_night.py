@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.5
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -1033,6 +1033,269 @@ def _build_io_recorded(BA, BIO, BD):
                   f"{len(trees[0])} files the same recorded and not; _paths starts it by its "
                   "variable through importlib, only build_all.py imports it, and build_date "
                   "announces the day")
+
+
+# The probe step _shadow_keys_kept drives build_all with, as the roll calls' step: it reads a
+# {term: ...} file, a file named for a finished term's year and the day, and writes a {term: ...}
+# file whose finished term's part carries a setting the record does not see, so that the check can
+# make a key repeat with another output.
+_SHADOW_PROBE = r'''
+import json, os
+from pathlib import Path
+import build_date
+src = json.loads(Path("in.json").read_text(encoding="utf-8"))
+year = Path("records/rc_2023.txt").read_text(encoding="utf-8")
+day = build_date.today().isoformat()
+out = {"2023-2024": {"n": src["2023-2024"], "year": year, "unseen": os.environ.get("UNSEEN_SETTING", "")},
+       "2025-2026": {"n": src["2025-2026"], "day": day}}
+Path("rollcalls.json").write_text(json.dumps(out), encoding="utf-8")
+Path("site/bills/2023").mkdir(parents=True, exist_ok=True)
+Path("site/bills/2023/HB1.json").write_text(json.dumps({"n": src["2023-2024"]}), encoding="utf-8")
+Path("site/bills/2023/HB2.json").write_text(json.dumps({"m": src["2023-2024"]}), encoding="utf-8")
+'''
+# ... a step no key is kept for, which rewrites one of the two bill files after it ...
+_SHADOW_BETWEEN = r'''
+from pathlib import Path
+p = Path("site/bills/2023/HB1.json")
+p.write_text(p.read_text(encoding="utf-8") + "\n", encoding="utf-8", newline="\n")
+'''
+# ... and one as the bill pages: it reads both bill files and removes them, as the bill pages do
+# the site data's, and writes its page.
+_SHADOW_REMOVER = r'''
+import os
+from pathlib import Path
+recs = [Path(f"site/bills/2023/HB{n}.json").read_text(encoding="utf-8") for n in (1, 2)]
+for n in (1, 2):
+    os.remove(f"site/bills/2023/HB{n}.json")
+Path("site/bill/2023").mkdir(parents=True, exist_ok=True)
+Path("site/bill/2023/HB1.html").write_text("<p>" + "".join(recs) + "</p>", encoding="utf-8")
+'''
+
+
+@check("pipeline", "each build keys every step the design names as cacheable, a finished term at a "
+       "time and whole, keeps the keys where the night keeps them, and says which would have been "
+       "taken from a cache, which rebuilt and why, and any key that repeated with another output -- "
+       "restoring nothing", needs=("build_all", "shadow_keys", "build_cache", "nightly", "cloud",
+                                   "build_date"))
+def _shadow_keys_kept(BA, SK, BC, NI, CL, BD):
+    """THE SHADOW (shadow_keys.py; the refactor's build design, step S3, and the owner's yes to
+    its question 5). A path's term by its shape, a {term: ...} file's parts, the signature the
+    same as build_cache's, the design's steps the ones keyed; then build_all.py's main(), driven
+    in a sealed child on a temporary folder, with a probe step run as the roll calls' step and a
+    second as the bill pages', which reads the first's bill file and removes it:
+
+      - a first build keys the probe's finished term (2023-2024) and the probe whole, the day it
+        read in both, and the second step's term by the bytes the first wrote of the file it
+        removed, writes them to logs/shadow-keys.json.gz, and says there is nothing to compare
+        with;
+      - kept as the night keeps them, the same inputs again: taken, both;
+      - the sitting term's part of an input moved: the finished term taken, the whole rebuilt,
+        the file named; the finished term's part moved: rebuilt for its inputs; another stated
+        day: rebuilt for the day;
+      - a setting the record cannot see moves the output and not the key: a mismatch, named in
+        build.json and the output, and the probe ran -- nothing was taken from a cache;
+      - --no-record keys nothing.
+    And the night keeps the keys (keep_shadow_keys) only where it keeps its site's sha256s, a real
+    night's; the kit's state list carries the file and a dry run's never sends it; the verdict's
+    words come from build.json (shadow_said)."""
+    import gzip
+    import hashlib
+    for path, want in (("site/idx/2019-2020.json", "2019-2020"), ("site/bill/2019/HB1.html", "2019-2020"),
+                       ("journals/2020/x.txt", "2019-2020"), ("Docket_db_2013-2014.txt", "2013-2014"),
+                       ("records/rollcalls/RollCallSummary_1999.txt", "1999-2000"),
+                       ("site/session/H/2026-12-01.html", "2025-2026"),
+                       ("site/session/H/2026-12-02.html", "2027-2028"),
+                       ("site/idx/2027-requests.json", "2027-2028"),
+                       ("legislation/HB1999.html", None), ("data/bills.json", None),
+                       # An LSR number is no term; its year is its session's.
+                       ("requests/2027-0001.json", "2027-2028"), ("site/sidx/words.json", None)):
+        assert SK.term_of(path) == want, f"term_of({path!r}) is {SK.term_of(path)!r}, not {want!r}"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-shadow-"))
+    try:
+        a, b = tmp / "a.json", tmp / "b.json"
+        a.write_text('{"_about": "x", "2023-2024": {"HB1": 1}, "2025": [1], "2026": [2]}', encoding="utf-8")
+        b.write_text('{"_about": "x", "2023-2024": {"HB1": 1}, "2025": [1], "2026": [3]}', encoding="utf-8")
+        pa, pb = SK.json_parts(a), SK.json_parts(b)
+        assert set(pa) == {"", "2023-2024", "2025-2026"} and pa["2023-2024"] == pb["2023-2024"] and \
+            pa[""] == pb[""] and pa["2025-2026"] != pb["2025-2026"], (pa, pb)
+        # A term's part is its keys as well as its values: a year's value moved to the other year
+        # of the term has moved.
+        a.write_text('{"2023-2024": {"HB1": 1}, "2025": [1]}', encoding="utf-8")
+        b.write_text('{"2023-2024": {"HB1": 1}, "2026": [1]}', encoding="utf-8")
+        assert SK.json_parts(a)["2025-2026"] != SK.json_parts(b)["2025-2026"], (
+            "a value moved from one year of a term to the other read as the same part")
+        a.write_text('{"kinds": {"2023-2024": 1}}', encoding="utf-8")
+        b.write_text('[{"2023-2024": 1}]', encoding="utf-8")
+        assert SK.json_parts(a) is None and SK.json_parts(b) is None, (
+            "a file whose top level is not keyed by term was taken for a {term: ...} one")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    keys = SK.Keys("2025-2026", {}, "2026-11-16")
+    assert keys.signature("rollcall_parser.py", "narrative.py") == \
+        BC.signature("rollcall_parser.py", "narrative.py"), "the shadow's signature is not build_cache's"
+    assert SK.kind(["build_data.py", "--dir", ".", "--out", "data", "--frozen-terms"]) and \
+        not SK.kind(["build_data.py", "--dir", ".", "--out", "data"]) and \
+        SK.kind(["rollcall_parser.py", "--all"]), "the steps the design names are not the ones keyed"
+    plan = BA.plan(type("A", (), {"key": None, "session": "2026", "base": "https://graniterecord.org",
+                                   "archive": "nh-archive"})())
+    named = [s.name for s in plan if SK.kind(s.args)]
+    assert len(named) == len(SK.STEPS), (
+        f"the design names {len(SK.STEPS)} steps as cacheable and the plan has {len(named)} of them: "
+        + ", ".join(named))
+
+    tmp = Path(tempfile.mkdtemp(prefix="gr-shadow-build-"))
+    code = tmp / "code"
+    code.mkdir()
+    for name, src in (("probe.py", _SHADOW_PROBE), ("between.py", _SHADOW_BETWEEN),
+                      ("remover.py", _SHADOW_REMOVER)):
+        (code / name).write_text(f"import sys\nsys.path.insert(0, {str(_paths.ROOT)!r})\nimport _paths\n"
+                                 + src, encoding="utf-8")
+    drive = tmp / "drive.py"
+    drive.write_text(
+        "import sys, types\nfrom pathlib import Path\n"
+        f"sys.path.insert(0, {str(_paths.ROOT)!r})\nimport _paths\nimport build_all as BA\n"
+        "BA.plan = lambda a: [BA.Step('roll call tallies and thresholds', ['rollcall_parser.py', '--all'],\n"
+        "                             needs=['in.json'], produces=['rollcalls.json']),\n"
+        "                     BA.Step('next session\\'s bill requests', ['build_lsrs.py']),\n"
+        "                     BA.Step('a static page for every bill', ['build_bill_pages.py'],\n"
+        "                             produces=['site/bill'])]\n"
+        f"CODE = Path({str(code)!r})\n"
+        "BY = {'rollcall_parser.py': 'probe.py', 'build_lsrs.py': 'between.py', "
+        "'build_bill_pages.py': 'remover.py'}\n"
+        "BA._paths = types.SimpleNamespace(script=lambda name, root=None: str(CODE / BY[name]))\n"
+        "sys.argv = ['build_all.py'] + sys.argv[1:]\nBA.main()\n", encoding="utf-8")
+    for p, _, _ in BA.CARRIED:
+        (tmp / p).write_text('{"recordings": {}}' if p == "caption_spans.json" else "{}", encoding="utf-8")
+    (tmp / "Docket.txt").write_text("2025|0001|1/5/2025 10:00:00 AM|HB1|H|Introduced|x\n"
+                                    "2026|0002|1/6/2026 10:00:00 AM|HB1001|H|Introduced|x\n", encoding="utf-8")
+    (tmp / "records").mkdir()
+    (tmp / "site").mkdir()
+
+    def build(inputs, day="2026-11-16", unseen="", *args):
+        (tmp / "in.json").write_text(json.dumps(inputs), encoding="utf-8")
+        (tmp / "records" / "rc_2023.txt").write_text("y", encoding="utf-8")
+        (tmp / "site" / "build.json").unlink(missing_ok=True)
+        r = _sealed_run([sys.executable, str(drive), "--local", *args], cwd=tmp, capture_output=True,
+                        text=True, timeout=180,
+                        env={"GITHUB_ACTIONS": "true", BD.ENV: day, "PYTHONHASHSEED": "0",
+                             "GRANITE_TERM": "", "UNSEEN_SETTING": unseen, "GRANITE_BUILD_IO": ""})
+        assert r.returncode == 0, (r.stdout + r.stderr)[-600:]
+        rec = json.loads((tmp / "site" / "build.json").read_text(encoding="utf-8"))
+        out = json.loads((tmp / "rollcalls.json").read_text(encoding="utf-8"))
+        return rec.get("shadow_keys"), r.stdout, out
+
+    def keep():
+        (tmp / "archive").mkdir(exist_ok=True)
+        shutil.copy2(tmp / SK.THIS, tmp / SK.KEPT)
+    step, pages = "roll call tallies and thresholds", "a static page for every bill"
+    try:
+        shade, said, _ = build({"2023-2024": 1, "2025-2026": 1})
+        doc = json.loads(gzip.decompress((tmp / SK.THIS).read_bytes()).decode("utf-8"))
+        units = doc["steps"][step]["units"]
+        assert shade["compared_with"] is None and shade["units"] == 2 and shade["new"] == 2 and \
+            set(units) == {SK.WHOLE, "2023-2024"} and doc["sitting"] == "2025-2026" and \
+            "no earlier night's to compare with" in said, (shade, sorted(units), said[-600:])
+        assert units["2023-2024"]["parts"]["day"] == units[SK.WHOLE]["parts"]["day"] == "2026-11-16", (
+            "the day the step read is not in each of its units' keys")
+        # The bill files the last step read and removed are keyed by the bytes they held: the one
+        # no step changed since the first wrote it by the first's hash, which its process kept no
+        # hash of; the one the step between rewrote by the hash its process kept.
+        removed = doc["steps"][pages]
+        want = {"site/bills/2023/HB1.json": json.dumps({"n": 1}) + "\n",
+                "site/bills/2023/HB2.json": json.dumps({"m": 1})}
+        want = {p: hashlib.sha256(t.encode("utf-8")).hexdigest()[:SK.SHORT] for p, t in want.items()}
+        log = json.loads(gzip.decompress((tmp / "logs" / "build-io.json.gz").read_bytes()).decode("utf-8"))
+        kept_by = next(s["record"] for s in log["steps"] if s["step"] == pages)["before"]
+        assert removed["units"]["2023-2024"]["key"] != "unknown" and \
+            {p: removed["inputs"].get(p) for p in want} == want and \
+            sorted(kept_by) == ["site/bills/2023/HB1.json"], (
+                "the bill files the last step read and removed are not keyed by the bytes they held, "
+                f"or the step's process kept a hash the build knew: {removed['inputs']}, kept {kept_by}")
+        keep()
+        shade, said, _ = build({"2023-2024": 1, "2025-2026": 1})
+        st, sp = shade["steps"][step], shade["steps"][pages]
+        assert st["taken"] == 1 and st.get("whole") == "taken" and sp["taken"] == 1 and \
+            sp.get("whole") == "taken" and not shade["mismatched"] and \
+            f"shadow: '{step}': 1 finished term(s): 1 would have been taken from a cache" in said, (
+                shade, said[-600:])
+        keep()
+        shade, said, _ = build({"2023-2024": 1, "2025-2026": 2})
+        st, sp = shade["steps"][step], shade["steps"][pages]
+        assert st["taken"] == 1 and st.get("whole") == "rebuilt" and "moved: in.json" in said and \
+            sp["taken"] == 1, ("the sitting term's part of an input moved the finished term's key, or "
+                               "not the whole's", shade, said[-600:])
+        keep()
+        shade, said, out = build({"2023-2024": 5, "2025-2026": 2})
+        st, sp = shade["steps"][step], shade["steps"][pages]
+        assert st["rebuilt"] == 1 and st["why"] == {"inputs": 2} and sp["rebuilt"] == 1 and \
+            out["2023-2024"]["n"] == 5, shade
+        keep()
+        # (The stated day is a setting the step read, GRANITE_BUILD_DATE, as well as its day.)
+        shade, said, _ = build({"2023-2024": 5, "2025-2026": 2}, day="2026-11-17")
+        st, sp = shade["steps"][step], shade["steps"][pages]
+        assert st["rebuilt"] == 1 and st["why"] == {"day": 2, "env": 2} and \
+            st.get("whole") == "rebuilt" and sp["taken"] == 1, (
+                "another day did not move the keys of a step that reads the day, or moved one that "
+                "does not", shade)
+        keep()
+        shade, said, out = build({"2023-2024": 5, "2025-2026": 2}, day="2026-11-17", unseen="moved")
+        assert shade["mismatched"] == [f"{step}: 2023-2024", f"{step}: {SK.WHOLE}"] and \
+            "SHADOW MISMATCH" in said and out["2023-2024"]["unseen"] == "moved", (
+                "a key that repeated with another output was not named, or the step did not run", shade)
+        size = (tmp / SK.THIS).stat().st_size
+        (tmp / SK.THIS).unlink()
+        shade, said, _ = build({"2023-2024": 5, "2025-2026": 2}, "2026-11-17", "moved", "--no-record")
+        assert shade is None and not (tmp / SK.THIS).exists(), "--no-record still keyed the steps"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    # The night keeps the keys as it keeps its site's sha256s: a real night's alone.
+    assert NI.SHADOW_KEYS.as_posix() == SK.KEPT.as_posix() == "archive/shadow-keys.json.gz" and \
+        NI.SHADOW_BUILT.as_posix() == SK.THIS.as_posix(), (NI.SHADOW_KEYS, SK.KEPT, NI.SHADOW_BUILT)
+    kit = CL.load_kit(".")
+    have = [s for s in kit.get("state", []) if s.get("key") == "shadow-keys.json.gz"]
+    assert have and have[0]["path"] == SK.KEPT.as_posix(), (
+        f"{CL.KIT_FILE}'s state list does not carry {SK.KEPT.as_posix()}: {have}")
+    assert "shadow-keys.json.gz" not in (kit.get("dry_run") or {}).get("state", []), (
+        "a dry run's state-up may send its build's keys over the night's")
+    judge = next(n for n in ast.walk(_parsed(_paths.locate("nightly.py")))
+                 if isinstance(n, ast.FunctionDef) and n.name == "judge")
+    real_only = ast.unparse(ast.parse("not a.dry_run and not a.new_term", mode="eval").body)
+    kept = [n for n in ast.walk(judge) if isinstance(n, ast.If) and ast.unparse(n.test) == real_only
+            and "keep_shadow_keys(" in ast.unparse(ast.Module(body=n.body, type_ignores=[]))]
+    calls = [c for c in ast.walk(judge) if isinstance(c, ast.Call)
+             and getattr(c.func, "id", "") == "keep_shadow_keys"]
+    assert len(kept) == 1 and len(calls) == 1, (
+        "Night.judge() keeps the build's shadow keys on a dry run or a New term run, or not at all")
+    tmp = Path(tempfile.mkdtemp(prefix="gr-shadow-keep-"))
+    try:
+        built, kept_at = tmp / "logs" / "shadow-keys.json.gz", tmp / "archive" / "shadow-keys.json.gz"
+        words = NI.keep_shadow_keys(built, kept_at)
+        assert not kept_at.exists() and "worked out no shadow keys" in words, words
+        built.parent.mkdir(parents=True)
+        built.write_bytes(gzip.compress(b'{"format": 1}', mtime=0))
+        words = NI.keep_shadow_keys(built, kept_at)
+        assert kept_at.read_bytes() == built.read_bytes() and "keeps tonight's shadow keys" in words, words
+        site = tmp / "site"
+        site.mkdir()
+        (site / "build.json").write_text(json.dumps({"shadow_keys": {
+            "units": 3, "taken": 2, "rebuilt": 1, "new": 0, "mismatched": ["s: 2019-2020"],
+            "compared_with": {"day": "2026-11-15"}, "steps": {"s": {}}}}), encoding="utf-8")
+        got = NI.shadow_said(site)
+        assert got == {"compared_with": {"day": "2026-11-15"}, "units": 3, "taken": 2, "rebuilt": 1,
+                       "new": 0, "mismatched": ["s: 2019-2020"]}, got
+        (site / "build.json").write_text("{}", encoding="utf-8")
+        assert NI.shadow_said(site) == {}, "a build with no shadow keys is said to have some"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"term_of read {12} paths' terms by their shape, a {{term: ...}} file's parts were its "
+                  f"terms' and nothing else's, the signature build_cache's, the plan's {len(named)} "
+                  "named steps the ones keyed; two probe steps built six times were new, taken, the "
+                  "finished term taken while the sitting term's part moved, rebuilt for its inputs and "
+                  "for the day, a removed input keyed by the bytes the step before wrote, and a key "
+                  "that repeated with another output named as a mismatch while the probe ran; "
+                  f"{size:,} bytes of keys; --no-record keyed nothing; the night keeps them "
+                  "on a real night alone, the kit carries them and a dry run sends none")
 
 
 @check("build", "the night takes the statutes on the first three nights of January and July, "
@@ -15098,6 +15361,9 @@ NOT_INPUT_NAMERS = {
     "build_io.py": "logs/build-io.json.gz, the record of what each step read and wrote, which "
                    "build_all.py writes once the steps are done and only build_io.py's own "
                    "command reads; nothing a page is made of",
+    "shadow_keys.py": "logs/shadow-keys.json.gz, this build's shadow keys, which build_all.py "
+                      "writes once the steps are done and the night keeps for the next night's "
+                      "build to compare with; nothing a page is made of",
 }
 
 

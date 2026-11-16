@@ -1890,6 +1890,27 @@ step writes it, and a file two steps write. It observes only -- it is in no
 step's signature, and `--no-record` builds without it, which is how the site
 is shown the same with it and without.
 
+**What a cache would have done** (16 November 2026). No step's output is
+taken from a cache until a week of real nights shows the keys hold (the
+owner's yes to the build design's question 5). After each step the design
+names as cacheable (`src/lib/shadow_keys.py`, `STEPS`: the frozen-term pass,
+the archived histories, the Journal motions, the report check, the chapters,
+the roll calls, the search index, and the site data, bill pages and session
+days as the page bundles), `build_all.py` works out from its record the key a
+cache would give each finished term's part of it and the step whole -- its
+code (`build_cache.signature` of its script and of the scripts it ran, with
+`requirements.txt`), the settings file, the term and the sitting term, the
+term's frozen manifests, every input it read (a `{term: ...}` file by its
+term's part), the day where it read it, the settings it read -- and a hash of
+what it made. A path's term is read off its shape (`term_of`), which is a
+guess the week tests. They go to `logs/shadow-keys.json.gz`; the night keeps
+a real night's as `archive/shadow-keys.json.gz`, a state file a dry run never
+sends; and every build compares its own with the night's, saying in its
+output and `site/build.json`'s `"shadow_keys"` which units would have been
+taken from a cache, which rebuilt and why, and any key that repeated with
+another output -- which the night's verdict names too (`"shadow_keys"`), as a
+note and not a warning, since the site is as built.
+
 **What a build was built from** (9 October 2026). A build that ends well
 records, in `logs/last-build.json` (`src/lib/build_inputs.py`), its commit,
 every file git sees with a sha256 of its bytes, every other file under the
