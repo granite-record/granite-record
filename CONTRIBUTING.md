@@ -289,7 +289,9 @@ Five tools for the time between those proofs, none of which replaces one.
   every run) and the checks related to what changed since the merge base
   with `dev` -- or since `--changed <commit>` -- and `--verbose` says why
   each was chosen. It says, every time, that it is not the full suite: the
-  full suite is what runs before a merge into `dev`.
+  full suite is what runs before a merge into `dev`. It builds beside its
+  checks only the fixture sites they take, and runs again on the scripts as
+  published only the node harnesses it chose.
 - **What the checks are, without running one.** `python3 preflight.py
   --manifest FILE` writes every check, in the order a run takes them, with
   its group, words, needs and marks and two fingerprints of its code -- its

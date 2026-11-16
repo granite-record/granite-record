@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.2
+# GRANITE_VERSION: 2026-10-09.3
 """
 Which of preflight's checks a change can reach: `preflight.py --changed`.
 
@@ -36,8 +36,9 @@ working tree, and the files git sees that it does not track -- and then:
      far down; and one hop of a launch ("x.py" in a script that starts it).
      Docstrings are not read: they are prose, and name half the repository.
   4. A CHECK WHOSE OWN LINES MOVED, or those of a helper it calls, where
-     preflight.py itself changed. A change to the runner (main, check, imp)
-     runs every check.
+     a file of the suite changed: preflight.py, or a module of
+     src/checks/suite/, each read against its own definitions. A change to
+     the runner (main, check, imp) runs every check, whichever file holds it.
 
 What it cannot see: a check that reaches a file without naming it -- a
 fixture laid out by a helper that walks a folder, a builder another builder
@@ -240,13 +241,21 @@ def reached(changed_modules, edges):
 
 
 class _Index:
-    """preflight.py's top-level definitions, read once: for each name its
-    span of lines (decorators included), the modules and files its code
-    names (its strings, docstrings left out, and its imports), whether it
-    walks the code (SCAN_CALLS), and the top-level names it uses."""
+    """The suite's top-level definitions, read once: for each name the file
+    that defines it, its span of lines there (decorators included), the
+    modules and files its code names (its strings, docstrings left out,
+    and its imports), whether it walks the code (SCAN_CALLS), and the
+    top-level names it uses. `tree` is one file's parse, or [(the file's
+    path from the root, its parse)] of every file of the suite, read in
+    order: names are unique across them, as one module's are."""
 
     def __init__(self, tree):
-        self.tops = {}
+        self.tops, where = {}, {}
+        for rel, parsed in (tree if isinstance(tree, list) else [(None, tree)]):
+            self._tops(parsed, rel, where)
+        self.info = {n: dict(self._read(node), file=where[n]) for n, node in self.tops.items()}
+
+    def _tops(self, tree, rel, where):
         for node in tree.body:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 names = [node.name]
@@ -258,7 +267,7 @@ class _Index:
                 continue
             for n in names:
                 self.tops[n] = node
-        self.info = {n: self._read(node) for n, node in self.tops.items()}
+                where[n] = rel
 
     def _read(self, node):
         prose = set()
@@ -318,34 +327,44 @@ def _tokens(strings):
 def choose(checks, source, base=None, parse=None, root=".", changed=None, lines=None):
     """{"base", "changed", "run": {index: reason}, "core_missing": [...]}:
     which of `checks` (preflight's CHECKS, in order) a change since `base`
-    can reach. `source` is preflight.py; `parse(path)` its parse (preflight
-    hands its own, so that the run parses the file once). `changed` and
-    `lines` stand in for git where a caller already knows them."""
+    can reach. `source` is the suite's files, preflight.py first and then
+    the modules of src/checks/suite/, or preflight.py alone; `parse(path)`
+    a parse of one (preflight hands its own, so that the run parses each
+    file once). `changed` and `lines` stand in for git where a caller
+    already knows them: `lines` as {a file's path from the root: [(first,
+    last)]}, or as a list of spans of the first file."""
     root = Path(root)
     parse = parse or (lambda p: ast.parse(Path(p).read_text(encoding="utf-8",
                                                              errors="replace")))
+    sources = [Path(s) for s in (source if isinstance(source, (list, tuple)) else [source])]
+    rels = [os.path.relpath(s.resolve(), root.resolve()).replace(os.sep, "/") for s in sources]
     commit = None
     if changed is None:
         commit = merge_base(base, root)
         changed = changed_files(commit, root)
-    src_rel = os.path.relpath(Path(source).resolve(), root.resolve()).replace(os.sep, "/")
     if lines is None:
-        lines = changed_lines(commit, src_rel, root) if src_rel in changed and commit else []
-    code = [f for f in _paths.code_files("*.py", root=root) if f.name != Path(source).name]
+        lines = {r: changed_lines(commit, r, root) for r in rels if r in changed and commit}
+    elif not isinstance(lines, dict):
+        lines = {rels[0]: list(lines)}
+    suite = {s.name for s in sources}
+    code = [f for f in _paths.code_files("*.py", root=root) if f.name not in suite]
     edges = _module_edges(code)
-    project = set(edges) | {Path(source).stem}
+    stems = {s.stem for s in sources}
+    project = set(edges) | stems
     mods_changed = {Path(p).stem for p in changed if p.endswith(".py")} & project
-    reach = reached(mods_changed - {Path(source).stem}, edges)
+    reach = reached(mods_changed - stems, edges)
     names_changed = set(changed) | {p.rsplit("/", 1)[-1] for p in changed}
     any_code = any(p.endswith(CODE_KINDS) for p in changed)
 
-    tree = parse(source)
-    if id(tree) not in _INDEXES:
+    trees = [(r, parse(s)) for r, s in zip(rels, sources)]
+    key = tuple(id(t) for _r, t in trees)
+    if key not in _INDEXES:
         _INDEXES.clear()
-        _INDEXES[id(tree)] = (tree, _Index(tree))
-    index = _INDEXES[id(tree)][1]
+        _INDEXES[key] = (trees, _Index(trees))
+    index = _INDEXES[key][1]
     moved_tops = {n for n, i in index.info.items()
-                  if any(a <= i["span"][1] and i["span"][0] <= b for a, b in lines)}
+                  if any(a <= i["span"][1] and i["span"][0] <= b
+                         for a, b in lines.get(i["file"], ()))}
     runner = sorted(moved_tops & RUNNER)
 
     run = {}
