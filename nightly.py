@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.94
+# GRANITE_VERSION: 2026-09-04.95
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -1384,7 +1384,8 @@ def run(args, label, cwd=None, env=None, root=None):
     # (_paths.script): "fetch_lsrs.py" finds src/fetch/gc_web/fetch_lsrs.py
     # as it found ./fetch_lsrs.py, from any working directory.
     try:
-        args = [_paths.script(args[0], root)] + list(args[1:])
+        args = [_paths.script(args[0]) if root is None else _paths.script(args[0], root)] \
+            + list(args[1:])
     except LookupError as e:
         say(f"  {e}")
         say("  (0s, exit 1)")
@@ -1392,7 +1393,7 @@ def run(args, label, cwd=None, env=None, root=None):
     proc = child.popen([sys.executable, "-u"] + args,
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                        text=True, bufsize=1, cwd=cwd,
-                       env={SQL_HELD_ENV: str(SQL_HELD.resolve()), **(env or {})})
+                       env={SQL_HELD_ENV: str(SQL_HELD.resolve())} | (env or {}))
     import threading
     expired = threading.Event()
 
