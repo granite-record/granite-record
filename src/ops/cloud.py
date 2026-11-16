@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.30
+# GRANITE_VERSION: 2026-09-25.31
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -30,6 +30,11 @@ The nightly's kit and the laptop's backup, in the project's private R2 bucket.
                                                        backup's manifest; --only, paths or
                                                        globs, for a few (THE BACKUP,
                                                        BROUGHT BACK)
+    python3 src/ops/cloud.py restore --sample N [--dry-run]
+                                                       N files from across the backup,
+                                                       restored, checked and deleted, and
+                                                       the result recorded (A SAMPLE
+                                                       RESTORE, MONTHLY)
     python3 src/ops/cloud.py pull [--dry-run] [--day YYYY-MM-DD] [--changes-only]
                                   [--take PATH ...]    the laptop takes back what the
                                                        nights changed: their files, logs,
@@ -256,7 +261,9 @@ deletes nothing there, and preflight holds its code to that.
 change lists, and nothing else -- except a line saying how old the last full
 pull is and how many of the night's files the bucket's kit manifest has
 changed since, which pull.json's "full" records and preflight holds to 48
-hours on a stood-down laptop.
+hours on a stood-down laptop. Every pull ends with this laptop's own word on
+its backup, read from its records here and never from the bucket: the last
+sample restore (A SAMPLE RESTORE, MONTHLY).
 
 --local-bucket is for tests, and pull refuses it in the stood-down
 repository that holds secrets.json unless --allow-local-bucket says a test
@@ -296,6 +303,23 @@ the "never" list is never brought back, and a manifest path that would climb
 out of DEST is refused. It takes no machine lock, which pull and backup do:
 it writes nothing either reads, and a whole restore takes hours that the
 morning triage's pull would otherwise wait out.
+
+A SAMPLE RESTORE, MONTHLY: restore --sample N (16 November 2026)
+
+A restore that works on the day it is tried says nothing of a month later.
+restore --sample N chooses N files from across the backup -- one from each
+folder at the top of the working folder first, then the rest at random, none
+over SAMPLE_FILE_MOST and SAMPLE_BYTES_MOST in all, by a seed that is the day,
+so a day's sample is repeatable -- restores them into a folder of its own in
+the system's temporary space, checked as restore checks every file, and
+deletes the folder. Whatever its end, it records when it ran, how many it
+asked for, chose, restored, verified, found missing or mismatched, and every
+problem, in archive/cloud/restore-sample.json (SAMPLE_RECORD); --dry-run says
+what it would take and records nothing. Every pull prints that record
+(backup_news), a failure as SAMPLE RESTORE FAILED and one older than
+SAMPLE_DAYS and a week as STALE, which is how the morning triage, reading
+pull's lines, hears of it. The laptop's weekly job (src/ops/backup_weekly.py)
+runs one of SAMPLE_FILES when the last good one is SAMPLE_DAYS old.
 
 A PERSON'S SEND OF A NIGHT'S FILE: send-night (17 October 2026)
 
@@ -2841,7 +2865,7 @@ def restore_said(got, asked, where):
     v, m, gone, bad = (len(got[k]) for k in ("verified", "mismatched", "missing", "failed"))
     line = (f"of {asked:,} files asked for, {v + m:,} restored, {v:,} verified against the "
             f"manifest's size and sha256 ({human(got['bytes'])}), {m:,} mismatched"
-            + (f" (kept under {Path(where) / MISMATCHED})" if m else "")
+            + (f" (kept under {Path(where) / MISMATCHED})" if m and where else "")
             + f"; {gone:,} missing from the bucket; {bad:,} could not be read")
     problems = ([f"{rel} is in the manifest and not in the bucket" for rel in got["missing"]]
                 + [f"{rel} {why}" for rel, why in got["mismatched"]]
@@ -2851,7 +2875,10 @@ def restore_said(got, asked, where):
 
 def cmd_restore(a, root):
     """The backup, brought back into an empty folder (THE BACKUP, BROUGHT
-    BACK). Reads the bucket and nothing else."""
+    BACK), or a sample of it (A SAMPLE RESTORE, MONTHLY). Reads the bucket
+    and nothing else."""
+    if getattr(a, "sample", None) is not None:
+        return restore_sample(a, root)
     if len(a.paths) != 1:
         raise Failed("restore takes one DEST, the empty folder the backup comes back into: "
                      "python3 src/ops/cloud.py restore DEST [--only PATH ...]")
@@ -2900,6 +2927,161 @@ def cmd_restore(a, root):
         raise Failed(f"{len(problems)} of what was asked for did not come back whole: "
                      + "; ".join(problems[:4]) + (" ..." if len(problems) > 4 else "")
                      + f". What did is in {dest}, each file checked.")
+
+
+# A SAMPLE RESTORE, MONTHLY (16 November 2026; the refactor's stage 0, ops item
+# 5): the module docstring says what it does. Its record, which pull prints
+# (backup_news); how many the laptop's weekly job asks for, and how old the
+# last good one may be before that job runs another.
+SAMPLE_RECORD = f"{LOCAL}/restore-sample.json"
+SAMPLE_FILES = 50
+SAMPLE_DAYS = 28
+# No file over a quarter of a gigabyte, and two in all: a sample proves the
+# way back, file by file, and a few large files would be most of its time.
+SAMPLE_FILE_MOST = 256 * MB
+SAMPLE_BYTES_MOST = 2048 * MB
+
+
+def sample_of(files, n, seed, file_most=SAMPLE_FILE_MOST, bytes_most=SAMPLE_BYTES_MOST):
+    """N paths of `files` ({path: entry}), chosen across the backup: one from
+    each folder at the top of the working folder first (the root's own files
+    counting as one), in an order the seed shuffles, then the rest at random
+    from all that is left; none over `file_most` bytes, and `bytes_most` in
+    all. The same seed chooses the same files."""
+    import random
+    rng = random.Random(seed)
+    groups = {}
+    for rel in sorted(files):
+        if files[rel]["size"] <= file_most:
+            groups.setdefault(rel.split("/", 1)[0] if "/" in rel else "", []).append(rel)
+    picked, total = [], [0]
+
+    def take(rel):
+        if len(picked) < n and total[0] + files[rel]["size"] <= bytes_most:
+            picked.append(rel)
+            total[0] += files[rel]["size"]
+    names = sorted(groups)
+    rng.shuffle(names)
+    for name in names:
+        take(rng.choice(groups[name]))
+    chosen = set(picked)
+    rest = [rel for name in sorted(groups) for rel in groups[name] if rel not in chosen]
+    rng.shuffle(rest)
+    for rel in rest:
+        if len(picked) >= n:
+            break
+        take(rel)
+    return sorted(picked)
+
+
+def save_record(root, rel, rec):
+    """One of this machine's records under archive/cloud/, whole or not at all."""
+    write_whole(local(root, rel), json.dumps(rec, indent=1).encode("utf-8"))
+
+
+def read_record(root, rel):
+    """One of this machine's records, or None where it is not there or will not read."""
+    try:
+        d = json.loads(local(root, rel).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return d if isinstance(d, dict) else None
+
+
+def restore_sample(a, root):
+    """restore --sample N (A SAMPLE RESTORE, MONTHLY): reads the bucket and
+    nothing else, writes only a folder of its own, which it deletes, and its
+    record, whatever its end."""
+    import tempfile
+    if a.paths or a.only:
+        raise Failed("--sample chooses its own files and restores them into a folder of its "
+                     "own, which it deletes: give it no DEST and no --only")
+    if a.sample < 1:
+        raise Failed("--sample takes how many files to restore, 1 or more")
+    t0, now = time.time(), datetime.now()
+    rec = {"at": now.isoformat(timespec="seconds"), "epoch": t0, "asked": a.sample,
+           "seed": f"{now:%Y-%m-%d}", "ok": False}
+    folder = None
+    try:
+        kit = load_kit(root)
+        bucket = open_to_read(a)
+        rec["bucket"] = {"kind": bucket.kind, "name": bucket.name}
+        man, _ = read_manifest(bucket, "backup")
+        if man is None:
+            raise Failed(f"{bucket.describe()} has no {MANIFEST.format('backup')}, so it holds "
+                         "no backup to sample: python3 src/ops/cloud.py backup sends one.")
+        rec["manifest"] = {"written": man.get("written"), "by": man.get("by"),
+                           "count": len(man["files"]),
+                           "bytes": sum(e["size"] for e in man["files"].values())}
+        never = never_rx(kit)
+        files = {r: e for r, e in man["files"].items()
+                 if plain_rel(r) and not any(rx.match(r) for rx in never)}
+        picked = sample_of(files, a.sample, rec["seed"])
+        tops = sorted({r.split("/", 1)[0] if "/" in r else "(the root)" for r in picked})
+        rec.update(picked=len(picked), folders=len(tops),
+                   picked_bytes=sum(files[r]["size"] for r in picked))
+        say(f"restore --sample: {len(picked):,} of the backup's {len(man['files']):,} files, "
+            f"{human(rec['picked_bytes'])}, from {len(tops)} of its folders "
+            f"({', '.join(tops[:8])}{', ...' if len(tops) > 8 else ''}), from backup/ of "
+            f"{bucket.describe()} (its manifest written {man.get('written') or '?'})")
+        if not picked:
+            raise Failed("the backup's manifest names no file a sample could take")
+        if a.dry_run:
+            show("would be restored and checked", picked, sizes_of(files))
+            say("--dry-run: nothing restored and nothing recorded.")
+            return
+        listed = bucket.list("backup/")
+        folder = Path(tempfile.mkdtemp(prefix="granite-restore-sample-"))
+        rec["folder"] = str(folder)
+        got = restore_into(bucket, folder, {r: files[r] for r in picked}, listed, a.workers)
+        line, problems = restore_said(got, len(picked), None)
+        rec.update({k: len(got[k]) for k in ("verified", "mismatched", "missing", "failed")})
+        rec.update(restored=rec["verified"] + rec["mismatched"], bytes=got["bytes"],
+                   problems=problems[:8], line=line)
+        say(f"restore --sample: {line}")
+        if problems:
+            raise Failed(f"the sample restore found {len(problems)} of {len(picked)} files short: "
+                         + "; ".join(problems[:4]) + (" ..." if len(problems) > 4 else ""))
+        rec["ok"] = True
+    except Failed as e:
+        rec["said"] = scrub(e)[:600]
+        raise
+    except Exception as e:                                      # noqa: BLE001
+        rec["said"] = scrub(f"{type(e).__name__}: {e}")[:600]
+        raise
+    finally:
+        if folder is not None:
+            shutil.rmtree(folder, ignore_errors=True)
+            rec["removed"] = not folder.exists()
+            if not rec["removed"]:
+                say(f"  the sample's folder could not all be removed: {folder}")
+        rec["seconds"] = round(time.time() - t0, 1)
+        if not a.dry_run:
+            save_record(root, SAMPLE_RECORD, rec)
+
+
+def backup_news(root, now):
+    """pull's word on this laptop's own backup, from its records here and
+    nothing of the bucket: the last sample restore (A SAMPLE RESTORE,
+    MONTHLY), a failure as SAMPLE RESTORE FAILED and one more than a week
+    past due as STALE, which the morning triage reads in pull's lines."""
+    rec = read_record(root, SAMPLE_RECORD)
+    if not rec:
+        return [f"NO SAMPLE RESTORE on record here ({SAMPLE_RECORD}): python3 src/ops/cloud.py "
+                f"restore --sample {SAMPLE_FILES} tries {SAMPLE_FILES} of the backup's files"]
+    days = max(0.0, (now.timestamp() - float(rec.get("epoch") or 0)) / 86400)
+    test = ("" if (rec.get("bucket") or {}).get("kind") == "r2" else
+            "; it was a test against a folder, not the real bucket")
+    if not rec.get("ok"):
+        return [f"SAMPLE RESTORE FAILED -- the last one, {days:.0f} days ago ({rec.get('at')}): "
+                f"{str(rec.get('said') or 'it recorded no reason')[:300]}{test}"]
+    said = (f"the last sample restore was {days:.0f} days ago ({rec.get('at')}): "
+            f"{rec.get('verified', 0)} of {rec.get('picked', 0)} files verified, from "
+            f"{rec.get('folders', 0)} folders of the backup{test}")
+    if days > SAMPLE_DAYS + 7:
+        return [f"STALE -- {said}; one is due every {SAMPLE_DAYS} days: python3 src/ops/cloud.py "
+                f"restore --sample {SAMPLE_FILES}"]
+    return [said]
 
 
 # ------------------------------------------------------------------- pull ---
@@ -3568,6 +3750,11 @@ def cmd_pull(a, root):
     if not a.changes_only:
         for ln in pull_livestream_state(bucket, root, kit, a.dry_run):
             say(f"  {ln}")
+
+    # 6. THIS LAPTOP'S OWN BACKUP, from its records here: never a failure of
+    # the pull's, and never a read of the bucket.
+    for ln in backup_news(root, now):
+        say(f"  backup: {ln}")
 
     stray = sorted(take - set(k["taking"] if k else []) - set(taken))
     if stray:
@@ -4427,6 +4614,10 @@ def main(argv=None):
     ap.add_argument("--take", nargs="+", metavar="PATH",
                     help="pull: set this laptop's copy of each named clash aside under "
                          f"{SET_ASIDE}/<day>/ and take the bucket's")
+    ap.add_argument("--sample", type=int, metavar="N",
+                    help="restore: N files chosen across the backup, restored into a folder "
+                         "of their own, checked, deleted, and the result recorded at "
+                         f"{SAMPLE_RECORD}")
     ap.add_argument("--allow-local-bucket", action="store_true",
                     help="tests only: let pull or send-night --local-bucket run in the "
                          "stood-down repository that holds secrets.json (pull's read of the "

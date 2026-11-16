@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.941
+# GRANITE_VERSION: 2026-09-04.942
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -64712,6 +64712,123 @@ def _cloud_restore(CL):
                   "working folder or doubled, and a bucket with no backup, refused; --only paths "
                   "and globs, twice; a missing and a mismatched file named, exit 1, the changed "
                   "bytes kept aside; a never-list path and a climbing one never written")
+
+
+@check("cloud", "restore --sample restores files from across the backup into a folder of its own, "
+                "deletes it, records how it went, and every pull says so", needs=("cloud",))
+def _cloud_restore_sample(CL):
+    """A SAMPLE RESTORE, MONTHLY (cloud.py; the refactor's stage 0, ops item 5). sample_of on a
+    fixture of folders: one file from each folder first, then the rest at random, never a file
+    over the limit or more bytes in all than allowed, the same seed the same files and other
+    seeds others. Then against a backup cloud.py made, through a bucket that fails any write: a
+    dry run restores and records nothing; a sample of four comes from four folders, verified, its
+    folder deleted, and the record says when, how many and from which kind of bucket; a sample
+    over a file changed in the bucket is exit 1, recorded as failed with the file named, and its
+    folder is deleted all the same; --sample 0, or with a DEST or --only, is refused. pull reaches
+    backup_news, and backup_news says each record: none, a good one, a failed one, one a week
+    past due as STALE, and a folder's as a test."""
+    import ast
+    from datetime import datetime as dt
+    files = {f"big/{i:03d}.txt": {"size": 10} for i in range(100)}
+    files.update({"a/x.txt": {"size": 10}, "b/y.txt": {"size": 10}, "c/z.txt": {"size": 10},
+                  "root.txt": {"size": 10}, "huge/h.bin": {"size": CL.SAMPLE_FILE_MOST + 1}})
+
+    def tops(paths):
+        return {p.split("/", 1)[0] if "/" in p else "" for p in paths}
+    got = CL.sample_of(files, 5, "2026-11-16")
+    assert len(got) == 5 and tops(got) == {"big", "a", "b", "c", ""}, got
+    got = CL.sample_of(files, 3, "2026-11-16")
+    assert len(got) == 3 and len(tops(got)) == 3, got
+    many = CL.sample_of(files, 40, "2026-11-16")
+    assert len(many) == 40 and "huge/h.bin" not in many and {"a", "b", "c", ""} <= tops(many), many[:8]
+    assert CL.sample_of(files, 40, "2026-11-16") == many, "the same seed chose other files"
+    assert any(CL.sample_of(files, 40, f"2026-12-{d:02d}") != many for d in range(1, 6)), \
+        "five other seeds chose the same forty files"
+    cheap = CL.sample_of(files, 40, "2026-11-16", bytes_most=95)
+    assert len(cheap) == 9, f"a budget of 95 bytes took {len(cheap)} files of 10"
+    assert CL.sample_of(files, 400, "x") == sorted(set(files) - {"huge/h.bin"}), \
+        "a sample larger than the backup did not take every file it may"
+
+    tree = ast.parse(_source(CL.__file__))
+    assert "backup_news" in _reached(tree, "cmd_pull") and \
+        "restore_sample" in _reached(tree, "cmd_restore"), \
+        "pull no longer prints the laptop's backup records, or restore no longer samples"
+
+    writes = []
+
+    class ReadOnly(CL.FolderBucket):
+        def put_file(self, src, key, meta):
+            writes.append(key)
+
+        def put_bytes(self, key, data):
+            writes.append(key)
+
+        def copy(self, src, dst):
+            writes.append(dst)
+
+        def delete(self, key):
+            writes.append(key)
+
+    tmp = Path(tempfile.mkdtemp(prefix="gr-sample-"))
+    saved = CL.open_to_read
+    try:
+        made = _backup_fixture(CL, tmp)
+        if made is None:
+            return "ok", "sample_of chooses across the folders; git is not here for a backup to sample"
+        root, bucket, B, man = made
+        CL.open_to_read = lambda a: ReadOnly(a.local_bucket, create=False)
+        rec_path = root.joinpath(*CL.SAMPLE_RECORD.split("/"))
+
+        def sample(*argv):
+            return _cloud_call(CL, "restore", *argv, "--root", str(root), *B)
+        code, out = sample("--sample", "4", "--dry-run")
+        assert code == 0 and "nothing recorded" in out and not rec_path.exists(), out[-300:]
+        code, out = sample("--sample", "4")
+        rec = json.loads(rec_path.read_text(encoding="utf-8"))
+        assert code == 0 and rec.get("ok") is True and rec["asked"] == rec["picked"] == \
+            rec["verified"] == rec["restored"] == 4 and rec["folders"] == 4 and \
+            rec["mismatched"] == rec["missing"] == rec["failed"] == 0, (out[-300:], rec)
+        assert rec["bucket"]["kind"] == "folder" and rec.get("removed") is True and \
+            not Path(rec["folder"]).exists() and rec["at"][:4] == str(dt.now().year), rec
+        (bucket / "backup" / "Docket.txt").write_text("docket, changed in the bucket\n", encoding="utf-8")
+        code, out = sample("--sample", "9")
+        rec = json.loads(rec_path.read_text(encoding="utf-8"))
+        assert code == 1 and rec.get("ok") is False and rec["mismatched"] == 1 and \
+            "Docket.txt" in rec.get("said", "") and rec["verified"] == 8, (out[-300:], rec)
+        assert rec.get("removed") is True and not Path(rec["folder"]).exists(), \
+            "a sample that failed left its folder behind"
+        for argv, said in ((("--sample", "0"), "1 or more"),
+                           ((str(tmp / "dest"), "--sample", "2"), "no DEST"),
+                           (("--sample", "2", "--only", "Docket.txt"), "no --only")):
+            code, out = sample(*argv)
+            assert code == 1 and said in out, (argv, out[-300:])
+        assert not writes, f"the sample restore wrote to the bucket: {writes}"
+
+        now = dt(2026, 11, 16, 8, 0)
+        news = CL.backup_news(root, now)
+        assert len(news) == 1 and news[0].startswith("SAMPLE RESTORE FAILED --") and \
+            "Docket.txt" in news[0] and "a test against a folder" in news[0], news
+        good = {"ok": True, "at": "x", "picked": 50, "verified": 50, "folders": 12,
+                "bucket": {"kind": "r2"}}
+        for days, head in ((3, ""), (CL.SAMPLE_DAYS + 6, ""), (CL.SAMPLE_DAYS + 8, "STALE -- ")):
+            CL.save_record(root, CL.SAMPLE_RECORD,
+                           dict(good, epoch=now.timestamp() - days * 86400))
+            news = CL.backup_news(root, now)
+            assert len(news) == 1 and news[0].startswith(head or "the last sample restore") and \
+                f"{days} days ago" in news[0] and "50 of 50 files verified" in news[0] and \
+                "a test" not in news[0], (days, news)
+        rec_path.unlink()
+        news = CL.backup_news(root, now)
+        assert len(news) == 1 and news[0].startswith("NO SAMPLE RESTORE on record") and \
+            f"restore --sample {CL.SAMPLE_FILES}" in news[0], news
+    finally:
+        CL.open_to_read = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("one file from each folder first, the size limits held, a seed's sample "
+                  "repeatable; a dry run records nothing; four files from four folders verified, "
+                  "their folder deleted, recorded; a changed file recorded as a failure, exit 1, "
+                  "its folder deleted too; misuse refused; nothing written to the bucket; pull "
+                  "says none, good, failed, STALE past a week overdue, and a folder's as a test")
 
 
 @check("cloud", "state has one writer, a cleared refusal stays cleared, and the "
