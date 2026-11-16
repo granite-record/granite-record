@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -983,9 +983,9 @@ def _build_io_recorded(BA, BIO, BD):
         try:
             _site_fixture(root)
             env = {BD.ENV: "2026-11-14", "PYTHONHASHSEED": "0", BIO.ENV: str(folder) if recorded else ""}
-            r = _run([sys.executable, _paths.script("build_site_v2.py"), "--data", "data", "--out",
-                      "site", "--segments", "work"], cwd=root, capture_output=True, text=True,
-                     timeout=300, env=env)
+            r = _sealed_run([sys.executable, _paths.script("build_site_v2.py"), "--data", "data",
+                             "--out", "site", "--segments", "work"], cwd=root, capture_output=True,
+                            text=True, timeout=300, env=env)
             assert r.returncode == 0, (r.stderr or r.stdout)[-400:]
             trees.append({p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
                           for p in sorted((root / "site").rglob("*")) if p.is_file()})
@@ -1018,11 +1018,11 @@ def _build_io_recorded(BA, BIO, BD):
     assert sorted(set(importers)) == ["build_all.py"], (
         "build_io is imported by a statement in " + ", ".join(sorted(set(importers)))
         + ": in a step's code it would join the step's signature, which it changes nothing of")
-    r = _run([sys.executable, "-c",
-              f"import sys\nsys.path.insert(0, {str(_paths.ROOT)!r})\nimport _paths, build_date\n"
-              "seen = []\nsys.addaudithook(lambda e, a: e.startswith('build_date.') and seen.append(e))\n"
-              "build_date.today(); build_date.now(); build_date.utcnow()\nprint(seen)"],
-             capture_output=True, text=True, timeout=60)
+    r = _sealed_run([sys.executable, "-c",
+                     f"import sys\nsys.path.insert(0, {str(_paths.ROOT)!r})\nimport _paths, build_date\n"
+                     "seen = []\nsys.addaudithook(lambda e, a: e.startswith('build_date.') and seen.append(e))\n"
+                     "build_date.today(); build_date.now(); build_date.utcnow()\nprint(seen)"],
+                    capture_output=True, text=True, timeout=60)
     assert r.stdout.strip() == "['build_date.today', 'build_date.now', 'build_date.utcnow']", (
         f"build_date.py does not announce each reading of the day: {(r.stdout + r.stderr)[-300:]}")
     return "ok", (f"three probe steps' records were what each did ({counts['probe a']['read']} reads, "
@@ -1081,13 +1081,15 @@ def _shadow_keys_kept(BA, SK, BC, NI, CL, BD):
     """THE SHADOW (shadow_keys.py; the refactor's build design, step S3, and the owner's yes to
     its question 5). A path's term by its shape, a {term: ...} file's parts, the signature the
     same as build_cache's, the design's steps the ones keyed; then build_all.py's main(), driven
-    in a sealed child on a temporary folder, with a probe step run as the roll calls' step and a
-    second as the bill pages', which reads the first's bill file and removes it:
+    in a sealed child on a temporary folder, with a probe step run as the roll calls' step, one no
+    key is kept for that rewrites one of the two bill files the probe wrote, and a last, keyed,
+    that reads both and removes them, as the bill pages do the site data's:
 
       - a first build keys the probe's finished term (2023-2024) and the probe whole, the day it
-        read in both, and the second step's term by the bytes the first wrote of the file it
-        removed, writes them to logs/shadow-keys.json.gz, and says there is nothing to compare
-        with;
+        read in both, and the last step's term by the bytes each removed file held -- the one no
+        step changed by the probe's hash of it, which the step's process kept none of, the one
+        rewritten by the hash its process kept -- writes them to logs/shadow-keys.json.gz, and
+        says there is nothing to compare with;
       - kept as the night keeps them, the same inputs again: taken, both;
       - the sitting term's part of an input moved: the finished term taken, the whole rebuilt,
         the file named; the finished term's part moved: rebuilt for its inputs; another stated
@@ -1157,11 +1159,11 @@ def _shadow_keys_kept(BA, SK, BC, NI, CL, BD):
         "BA.plan = lambda a: [BA.Step('roll call tallies and thresholds', ['rollcall_parser.py', '--all'],\n"
         "                             needs=['in.json'], produces=['rollcalls.json']),\n"
         "                     BA.Step('next session\\'s bill requests', ['build_lsrs.py']),\n"
-        "                     BA.Step('a static page for every bill', ['build_bill_pages.py'],\n"
-        "                             produces=['site/bill'])]\n"
+        "                     BA.Step('the chapter of the session laws each bill became',\n"
+        "                             ['extract_chapters.py'], produces=['site/bill'])]\n"
         f"CODE = Path({str(code)!r})\n"
         "BY = {'rollcall_parser.py': 'probe.py', 'build_lsrs.py': 'between.py', "
-        "'build_bill_pages.py': 'remover.py'}\n"
+        "'extract_chapters.py': 'remover.py'}\n"
         "BA._paths = types.SimpleNamespace(script=lambda name, root=None: str(CODE / BY[name]))\n"
         "sys.argv = ['build_all.py'] + sys.argv[1:]\nBA.main()\n", encoding="utf-8")
     for p, _, _ in BA.CARRIED:
@@ -1187,7 +1189,9 @@ def _shadow_keys_kept(BA, SK, BC, NI, CL, BD):
     def keep():
         (tmp / "archive").mkdir(exist_ok=True)
         shutil.copy2(tmp / SK.THIS, tmp / SK.KEPT)
-    step, pages = "roll call tallies and thresholds", "a static page for every bill"
+    # (The last step is keyed as the chapters' step, whose code is four modules: as the bill pages'
+    # it would read a hundred and ten, seven times over, which is most of half a minute.)
+    step, pages = "roll call tallies and thresholds", "the chapter of the session laws each bill became"
     try:
         shade, said, _ = build({"2023-2024": 1, "2025-2026": 1})
         doc = json.loads(gzip.decompress((tmp / SK.THIS).read_bytes()).decode("utf-8"))
