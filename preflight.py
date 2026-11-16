@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.944
+# GRANITE_VERSION: 2026-09-04.945
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -64805,7 +64805,11 @@ def _cloud_restore_sample(CL):
         assert not writes, f"the sample restore wrote to the bucket: {writes}"
 
         now = dt(2026, 11, 16, 8, 0)
-        news = CL.backup_news(root, now)
+
+        def sample_news():
+            # The sample's line of pull's, beside the backup's own (_backup_weekly holds that).
+            return [ln for ln in CL.backup_news(root, now) if "SAMPLE" in ln.upper()]
+        news = sample_news()
         assert len(news) == 1 and news[0].startswith("SAMPLE RESTORE FAILED --") and \
             "Docket.txt" in news[0] and "a test against a folder" in news[0], news
         good = {"ok": True, "at": "x", "picked": 50, "verified": 50, "folders": 12,
@@ -64813,12 +64817,12 @@ def _cloud_restore_sample(CL):
         for days, head in ((3, ""), (CL.SAMPLE_DAYS + 6, ""), (CL.SAMPLE_DAYS + 8, "STALE -- ")):
             CL.save_record(root, CL.SAMPLE_RECORD,
                            dict(good, epoch=now.timestamp() - days * 86400))
-            news = CL.backup_news(root, now)
+            news = sample_news()
             assert len(news) == 1 and news[0].startswith(head or "the last sample restore") and \
                 f"{days} days ago" in news[0] and "50 of 50 files verified" in news[0] and \
                 "a test" not in news[0], (days, news)
         rec_path.unlink()
-        news = CL.backup_news(root, now)
+        news = sample_news()
         assert len(news) == 1 and news[0].startswith("NO SAMPLE RESTORE on record") and \
             f"restore --sample {CL.SAMPLE_FILES}" in news[0], news
     finally:
@@ -64994,8 +64998,8 @@ def _night_backup_stale(CL, NI):
     from datetime import datetime as dt, timedelta, timezone
     assert NI.BACKUP_SEEN.as_posix() == CL.BACKUP_SEEN == "archive/cloud/backup-seen.json", (
         NI.BACKUP_SEEN, CL.BACKUP_SEEN)
-    assert NI.BACKUP_DAYS == 14 and NI.KIND_BACKUP.startswith(NI.KIND_HEALTH), \
-        (NI.BACKUP_DAYS, NI.KIND_BACKUP)
+    assert NI.BACKUP_DAYS == CL.BACKUP_DAYS == 14 and NI.KIND_BACKUP.startswith(NI.KIND_HEALTH), \
+        (NI.BACKUP_DAYS, CL.BACKUP_DAYS, NI.KIND_BACKUP)
     wf = _SWITCHED.workflow_dir / "nightly.yml"
     if wf.exists():
         text = _source(wf)
@@ -65123,6 +65127,173 @@ def _night_backup_stale(CL, NI):
                   "failed look without failing; R2's is one HEAD; 15 days, none, a failed look or "
                   "an unreadable record warn in one line with the command, 14 does not; never "
                   "holding a night, in the night's warnings and its standing ones")
+
+
+@check("cloud", "the laptop's weekly backup runs the backup, and a sample restore when one is due, "
+                "records each however it ends, every pull says so, and its Task Scheduler entry "
+                "is set as the captions inbox's", needs=("cloud", "backup_weekly"))
+def _backup_weekly(CL, BW):
+    """THE BACKUP'S OWN RECORD (cloud.py) and src/ops/backup_weekly.py (the refactor's stage 0,
+    ops items 5 and 6): the backup ran when the owner ran it, and nothing said when it last
+    had. The entry: the template is XML and names no one's folder or account; --task-xml writes
+    it for a checkout in UTF-16 with its mark, every Sunday, running the job from the checkout
+    into its log, with the captions inbox's settings (whether logged on or not, on battery,
+    waking the laptop, as soon as it can after a missed start, one at a time) and six hours to
+    finish. The job, against a folder bucket: a first run backs up and, with none on record,
+    samples, exit 0, both recorded; a second does not sample; a dry run records nothing; a try
+    a build refuses is tried again after the wait and goes; a backup refused every time is
+    exit 1, FAILED, and recorded by the backup itself; one that never started (the machine's
+    lock held) is recorded by the job; a failed sample is exit 1 and recorded; GitHub's machine,
+    and a checkout without secrets.json and no --local-bucket, are refused. And pull's line from
+    the backup's record: none, a good one, a failed one, and one more than 14 days old as
+    STALE."""
+    import contextlib
+    import io
+    import time as time_
+    import types
+    import xml.etree.ElementTree as ET
+    from datetime import datetime as dt
+    template = _source(BW.XML)
+    assert BW.CHECKOUT in template and not re.search(r"(?i)\\Users\\|S-1-5-21|<UserId>", template), \
+        "the Task Scheduler template names a folder or an account of someone's"
+    try:
+        ET.fromstring(template.encode("utf-8"))
+    except ET.ParseError as e:
+        raise AssertionError(f"src/ops/backup_weekly.xml is not well-formed XML: {e}")
+    assert CL.BACKUP_DAYS == 14 and CL.BACKUP_RECORD == "archive/cloud/backup.json", \
+        (CL.BACKUP_DAYS, CL.BACKUP_RECORD)
+    tmp = Path(tempfile.mkdtemp(prefix="gr-weekly-"))
+    saved_time, saved_env = BW.time, os.environ.get("GITHUB_ACTIONS")
+
+    def job(*argv):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            code = BW.main(list(argv))
+        return code, out.getvalue()
+    try:
+        checkout = tmp / "a checkout"
+        code, said = job("--task-xml", str(tmp / "task.xml"), "--root", str(checkout))
+        raw = (tmp / "task.xml").read_bytes()
+        assert code == 0 and raw[:2] == b"\xff\xfe" and \
+            raw.decode("utf-16").startswith('<?xml version="1.0" encoding="UTF-16"?>') and \
+            "<!--" not in raw.decode("utf-16"), raw[:80]
+        assert f'schtasks /create /tn "{BW.TASK_NAME}" /xml' in said, said
+        t = "{http://schemas.microsoft.com/windows/2004/02/mit/task}"
+        doc = ET.fromstring(raw)
+
+        def one(path):
+            el = doc.find("/".join(t + p for p in path.split("/")))
+            assert el is not None, f"the entry has no {path}"
+            return (el.text or "").strip()
+        week = "Triggers/CalendarTrigger/ScheduleByWeek"
+        assert doc.find("/".join(t + p for p in (week + "/DaysOfWeek/Sunday").split("/"))) is not None \
+            and one(week + "/WeeksInterval") == "1", "the entry is not every Sunday"
+        for path, want in (("Settings/StartWhenAvailable", "true"), ("Settings/WakeToRun", "true"),
+                           ("Settings/DisallowStartIfOnBatteries", "false"),
+                           ("Settings/StopIfGoingOnBatteries", "false"),
+                           ("Settings/MultipleInstancesPolicy", "IgnoreNew"),
+                           ("Settings/ExecutionTimeLimit", "PT6H"),
+                           ("Principals/Principal/LogonType", "Password"),
+                           ("RegistrationInfo/URI", "\\" + BW.TASK_NAME),
+                           ("Actions/Exec/Command", "cmd")):
+            assert one(path) == want, f"the entry's {path} is {one(path)!r}, not {want!r}"
+        assert one("Actions/Exec/Arguments") == (
+            f'/c cd /d "{checkout.resolve()}" && python3 -X utf8 src\\ops\\backup_weekly.py '
+            f'>> {BW.LOG} 2>&1'), one("Actions/Exec/Arguments")
+
+        made = _backup_fixture(CL, tmp)
+        if made is None:
+            return "ok", "the entry is right; git is not here for a backup for the job to run"
+        root, bucket, B, man = made
+        rec_b = root.joinpath(*CL.BACKUP_RECORD.split("/"))
+        rec_s = root.joinpath(*CL.SAMPLE_RECORD.split("/"))
+        W = ["--root", str(root), "--local-bucket", str(bucket), "--retry-minutes", "0"]
+
+        def read(p):
+            return json.loads(p.read_text(encoding="utf-8"))
+        first = read(rec_b)
+        assert first.get("ok") is True and first.get("sent") == 9 and \
+            first.get("manifest", {}).get("count") == 9, f"the fixture's backup recorded {first}"
+        code, said = job(*W)
+        b, s = read(rec_b), read(rec_s)
+        assert code == 0 and "BACKUP WEEKLY ok" in said and "a sample restore is due (none on record)" in said \
+            and b["ok"] and b["epoch"] > first["epoch"] and s["ok"] and s["bucket"]["kind"] == "folder", \
+            (said[-400:], b, s)
+        code, said = job(*W)
+        assert code == 0 and "no sample restore this week" in said and read(rec_s)["epoch"] == s["epoch"], \
+            said[-300:]
+        before = rec_b.read_bytes(), rec_s.read_bytes()
+        code, said = job(*W, "--dry-run")
+        assert code == 0 and "(a dry run)" in said and (rec_b.read_bytes(), rec_s.read_bytes()) == before, \
+            said[-300:]
+        # A try a build refuses goes again after the wait.
+        lock = root / ".build.lock"
+        lock.write_text("x", encoding="utf-8")
+        slept = []
+        BW.time = types.SimpleNamespace(time=time_.time,
+                                        sleep=lambda s: (slept.append(s), lock.unlink()))
+        code, said = job(*W)
+        assert code == 0 and slept == [0] and "try 1 of 3 did not finish" in said and read(rec_b)["ok"], \
+            said[-400:]
+        BW.time = saved_time
+        # Refused every time: FAILED, recorded by the backup itself.
+        lock.write_text("x", encoding="utf-8")
+        code, said = job(*W)
+        b = read(rec_b)
+        assert code == 1 and "BACKUP WEEKLY FAILED -- the backup:" in said and b["ok"] is False and \
+            ".build.lock is fresh" in b["said"] and "by" not in b, (said[-300:], b)
+        lock.unlink()
+        # Never started, the machine's lock held: recorded by the job.
+        held = root.joinpath(*CL.LOCK.split("/"))
+        held.write_text("pid 1 since 05:30", encoding="utf-8")
+        code, said = job(*W)
+        b = read(rec_b)
+        assert code == 1 and b["ok"] is False and b.get("by") == "backup_weekly.py" and \
+            "is held" in b["said"], (said[-300:], b)
+        held.unlink()
+        news = CL.backup_news(root, dt.now())
+        assert news[0].startswith("BACKUP FAILED --") and "is held" in news[0], news
+        # A sample that fails: exit 1, recorded by the sample itself.
+        rec_s.unlink()
+        (bucket / "backup" / "Docket.txt").write_text("changed in the bucket\n", encoding="utf-8")
+        code, said = job(*W)
+        s = read(rec_s)
+        assert code == 1 and "the sample restore:" in said and s["ok"] is False and \
+            "Docket.txt" in s.get("said", ""), (said[-300:], s)
+        # Only the laptop's, and only its repository's.
+        os.environ["GITHUB_ACTIONS"] = "true"
+        code, said = job(*W)
+        assert code == 1 and "GitHub's machine" in said, said[-200:]
+        os.environ.pop("GITHUB_ACTIONS")
+        code, said = job("--root", str(root))
+        assert code == 1 and "not the repository that holds secrets.json" in said, said[-200:]
+
+        now = dt(2026, 11, 16, 8, 0)
+        good = {"ok": True, "at": "x", "sent": 12, "sent_bytes": 3_000_000,
+                "manifest": {"count": 70_000, "bytes": 46_000_000_000}, "bucket": {"kind": "r2"}}
+        for days, head in ((3, "the last backup was 3 days ago"), (14, "the last backup was 14 days ago"),
+                           (15, "STALE -- the last backup was 15 days ago")):
+            CL.save_record(root, CL.BACKUP_RECORD, dict(good, epoch=now.timestamp() - days * 86400))
+            news = CL.backup_news(root, now)
+            assert news[0].startswith(head) and "12 files sent" in news[0] and \
+                "70,000 files" in news[0] and "a test" not in news[0] and \
+                (("more than 14 days" in news[0]) == (days == 15)), (days, news)
+        rec_b.unlink()
+        news = CL.backup_news(root, now)
+        assert news[0].startswith("NO BACKUP on record") and "cloud.py backup" in news[0] and \
+            len(news) == 2, news
+    finally:
+        BW.time = saved_time
+        if saved_env is None:
+            os.environ.pop("GITHUB_ACTIONS", None)
+        else:
+            os.environ["GITHUB_ACTIONS"] = saved_env
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("the entry every Sunday with the captions inbox's settings, written for a checkout "
+                  "in UTF-16 from a template naming no one's; the job backs up, samples when due, "
+                  "records nothing on a dry run, tries a refused backup again, fails loudly and "
+                  "records it whether or not the backup could, fails on a short sample, keeps off "
+                  "GitHub and other checkouts; pull says none, good, failed and STALE past 14 days")
 
 
 @check("cloud", "state has one writer, a cleared refusal stays cleared, and the "

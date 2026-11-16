@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.33
+# GRANITE_VERSION: 2026-09-25.34
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -271,7 +271,9 @@ pull is and how many of the night's files the bucket's kit manifest has
 changed since, which pull.json's "full" records and preflight holds to 48
 hours on a stood-down laptop. Every pull ends with this laptop's own word on
 its backup, read from its records here and never from the bucket: the last
-sample restore (A SAMPLE RESTORE, MONTHLY).
+backup, which every backup but a dry run records in archive/cloud/backup.json
+however it ends (BACKUP FAILED, or STALE past 14 days, as the night warns),
+and the last sample restore (A SAMPLE RESTORE, MONTHLY).
 
 --local-bucket is for tests, and pull refuses it in the stood-down
 repository that holds secrets.json unless --allow-local-bucket says a test
@@ -305,7 +307,10 @@ schtasks exports it. Each source is only read; a copy is only ever added or
 brought up to date, never removed, since a source that vanished is when its
 copy is wanted; and nothing shaped like a credential is copied, or bundled:
 it is named instead, and fails the backup once the rest has gone. A dry run
-gathers nothing. The comment above gather_extras says the rest.
+gathers nothing. The comment above gather_extras says the rest. Every backup
+but a dry run records how it ended in archive/cloud/backup.json (THE BACKUP'S
+OWN RECORD), which pull prints, and the laptop's weekly job,
+src/ops/backup_weekly.py under Task Scheduler, runs it every Sunday.
 
 THE BACKUP, BROUGHT BACK: restore (16 November 2026)
 
@@ -3057,7 +3062,39 @@ def backup_files(root, kit, with_site):
     return sorted(out)
 
 
+# THE BACKUP'S OWN RECORD (16 November 2026; the refactor's stage 0, ops item
+# 6). Every backup but a dry run records how it ended at BACKUP_RECORD: when,
+# what it sent, what the manifest holds after it, and the sentence it failed
+# with -- which every pull prints (backup_news), as STALE past BACKUP_DAYS like
+# the night's warning (nightly.BACKUP_DAYS, which preflight holds to this),
+# and which the laptop's weekly job writes itself where the backup could not
+# (src/ops/backup_weekly.py).
+BACKUP_RECORD = f"{LOCAL}/backup.json"
+BACKUP_DAYS = 14
+
+
 def cmd_backup(a, root):
+    """Everything here git does not hold, to backup/, the extras first; every
+    run but a dry one recorded at BACKUP_RECORD, however it ends."""
+    if a.dry_run:
+        return backup_now(a, root, {})
+    t0 = time.time()
+    rec = {"at": datetime.now().isoformat(timespec="seconds"), "epoch": t0, "ok": False}
+    try:
+        backup_now(a, root, rec)
+        rec["ok"] = True
+    except BaseException as e:                                  # noqa: BLE001
+        rec["said"] = scrub(e if isinstance(e, Failed) else
+                            "interrupted" if isinstance(e, KeyboardInterrupt) else
+                            f"{type(e).__name__}: {e}")[:600]
+        raise
+    finally:
+        rec["seconds"] = round(time.time() - t0, 1)
+        save_record(root, BACKUP_RECORD, rec)
+
+
+def backup_now(a, root, rec):
+    """The backup itself (cmd_backup), filling `rec` as it goes."""
     kit = load_kit(root)
     quiet_disk(root)
     # THE BACKUP'S EXTRAS first, so that this backup sends them.
@@ -3076,6 +3113,7 @@ def cmd_backup(a, root):
             "secrets.json (--extras gathers them here)")
     rels = backup_files(root, kit, a.with_site)
     bucket = open_bucket(a, preview=True)
+    rec["bucket"] = {"kind": bucket.kind, "name": bucket.name}
     hashes = Hashes(root)
     say(f"backup: {len(rels):,} files here that git does not hold"
         + ("" if a.with_site else ", site/ left out") + "; reading them")
@@ -3095,6 +3133,7 @@ def cmd_backup(a, root):
             and not local(root, r).exists()
             and (a.with_site or not r.startswith("site/"))]
     total = sum(e["size"] for e in entries.values())
+    rec.update(files=len(entries), bytes=total, extras=extras.get("bytes"))
     say(f"  {'first backup to' if man is None else 'changes since the last backup to'} "
         f"{bucket.describe()}: {len(entries):,} files, {human(total)} here")
     sz = sizes_of(entries)
@@ -3135,6 +3174,9 @@ def cmd_backup(a, root):
         f"{len(removed):,} moved to replaced/; {rep.n:,} older copies kept under "
         f"replaced/{day}/")
     say(f"  {MANIFEST.format('backup')}: {doc['count']:,} files, {human(doc['bytes'])}")
+    rec.update(sent=len(sent), sent_bytes=sum(e["size"] for e in sent.values()),
+               unchanged=len(same), moved=len(removed),
+               manifest={"count": doc["count"], "bytes": doc["bytes"]})
     fails = unread + fails
     short = extras["problems"]
     if fails or short:
@@ -3472,26 +3514,60 @@ def restore_sample(a, root):
 
 def backup_news(root, now):
     """pull's word on this laptop's own backup, from its records here and
-    nothing of the bucket: the last sample restore (A SAMPLE RESTORE,
-    MONTHLY), a failure as SAMPLE RESTORE FAILED and one more than a week
-    past due as STALE, which the morning triage reads in pull's lines."""
+    nothing of the bucket, in two lines: the last backup (THE BACKUP'S OWN
+    RECORD), a failure as BACKUP FAILED and one more than BACKUP_DAYS old as
+    STALE; and the last sample restore (A SAMPLE RESTORE, MONTHLY), a failure
+    as SAMPLE RESTORE FAILED and one more than a week past due as STALE. The
+    morning triage reads them in pull's lines."""
+    return [backup_line(root, now), sample_line(root, now)]
+
+
+def _days_since(rec, now):
+    return max(0.0, (now.timestamp() - float(rec.get("epoch") or 0)) / 86400)
+
+
+def _a_test(rec):
+    """What a line adds for a record of a folder standing in for the bucket."""
+    return ("" if (rec.get("bucket") or {}).get("kind") in (None, "r2") else
+            "; it was a test against a folder, not the real bucket")
+
+
+def backup_line(root, now):
+    """backup_news's line on the last backup (THE BACKUP'S OWN RECORD)."""
+    rec = read_record(root, BACKUP_RECORD)
+    if not rec:
+        return (f"NO BACKUP on record here ({BACKUP_RECORD}), which every backup has written since "
+                "16 November 2026: python3 src/ops/cloud.py backup")
+    days, test = _days_since(rec, now), _a_test(rec)
+    if not rec.get("ok"):
+        return (f"BACKUP FAILED -- the last one, {days:.0f} days ago ({rec.get('at')}): "
+                f"{str(rec.get('said') or 'it recorded no reason')[:300]}{test}")
+    man = rec.get("manifest") or {}
+    said = (f"the last backup was {days:.0f} days ago ({rec.get('at')}): "
+            f"{int(rec.get('sent') or 0):,} files sent, {human(rec.get('sent_bytes') or 0)}; the "
+            f"backup holds {int(man.get('count') or 0):,} files, {human(man.get('bytes') or 0)}{test}")
+    if days > BACKUP_DAYS:
+        return f"STALE -- {said}; more than {BACKUP_DAYS} days: python3 src/ops/cloud.py backup"
+    return said
+
+
+def sample_line(root, now):
+    """backup_news's line on the last sample restore (A SAMPLE RESTORE, MONTHLY)."""
     rec = read_record(root, SAMPLE_RECORD)
     if not rec:
-        return [f"NO SAMPLE RESTORE on record here ({SAMPLE_RECORD}): python3 src/ops/cloud.py "
-                f"restore --sample {SAMPLE_FILES} tries {SAMPLE_FILES} of the backup's files"]
-    days = max(0.0, (now.timestamp() - float(rec.get("epoch") or 0)) / 86400)
-    test = ("" if (rec.get("bucket") or {}).get("kind") == "r2" else
-            "; it was a test against a folder, not the real bucket")
+        return (f"NO SAMPLE RESTORE on record here ({SAMPLE_RECORD}): python3 src/ops/cloud.py "
+                f"restore --sample {SAMPLE_FILES} tries {SAMPLE_FILES} of the backup's files")
+    days, test = _days_since(rec, now), _a_test(rec)
     if not rec.get("ok"):
-        return [f"SAMPLE RESTORE FAILED -- the last one, {days:.0f} days ago ({rec.get('at')}): "
-                f"{str(rec.get('said') or 'it recorded no reason')[:300]}{test}"]
+        return (f"SAMPLE RESTORE FAILED -- the last one, {days:.0f} days ago ({rec.get('at')}): "
+                f"{str(rec.get('said') or 'it recorded no reason')[:300]}{test}")
     said = (f"the last sample restore was {days:.0f} days ago ({rec.get('at')}): "
             f"{rec.get('verified', 0)} of {rec.get('picked', 0)} files verified, from "
             f"{rec.get('folders', 0)} folders of the backup{test}")
     if days > SAMPLE_DAYS + 7:
-        return [f"STALE -- {said}; one is due every {SAMPLE_DAYS} days: python3 src/ops/cloud.py "
-                f"restore --sample {SAMPLE_FILES}"]
-    return [said]
+        return (f"STALE -- {said}; one is due every {SAMPLE_DAYS} days: python3 src/ops/cloud.py "
+                f"restore --sample {SAMPLE_FILES}")
+    return said
 
 
 # ------------------------------------------------------------------- pull ---
