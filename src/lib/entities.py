@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 One model of the people, offices, terms, districts and elections the site's files describe:
 the shape of each kind of record, the rules a model holds to, and the views that give today's
@@ -16,6 +16,7 @@ files back from it.
     EN.view_districts(model, era)    # site/districts.json
     EN.view_officers(model)          # site/officers.json's "officers"
     EN.view_names(model)             # the search index's part: each confirmed form of a name
+    EN.party_letters("r&d")          # ("R", "D"): a printed party by the state's one table
 
 src/parse/build_entities.py writes the model to data/entities/ every night from the files on
 disk. NOTHING READS IT YET (the design of 16 November 2026, phase A): preflight holds that each
@@ -37,7 +38,10 @@ THE KINDS. Every record is a JSON object whose first field is its id, named for 
   candidacy  one candidate in a contest
 
 PARTY AND SEAT BELONG TO A TENURE, never to a person, so a label is the seat held then. A
-mid-term change is two tenures of one seat, each dated where its record dates it.
+mid-term change is two tenures of one seat, each dated where its record dates it. A party is
+kept as the file prints it ("party"), and read by the state's one table of parties
+(state_settings.json "parties"; party_letters) into the letters it stands for ("parties"):
+"R/D" is R and D, and a form the table does not know is read as nothing, never guessed.
 
 IDS COME FROM THE FILES, NEVER A COUNTER (the owner's rules, 16 November 2026). A person's id is
 the General Court's number where it gives one (site/data/people.json's person number, chosen by
@@ -69,8 +73,9 @@ multi-seat districts, the Executive Council, the House of 400, two-year terms, t
 legislature elects -- is data in state_settings.json, each with its article of the Constitution
 where it has one (collected/constitution.json). The shapes below hold for any state.
 
-Standard library only. Nothing here reads a file but load(), writes one but write(), or asks the
-network.
+Standard library only, and the state's settings (src/lib/state_settings.py) where no settings
+are given. Nothing here reads a file but load() and the settings, writes one but write(), or asks
+the network.
 """
 
 import datetime
@@ -147,6 +152,7 @@ _TRUE = {"enum": [True]}
 _DAY = {"type": "string", "pattern": DATE}
 _STRS = {"type": "array", "items": _S}
 _NUMS = {"type": "array", "items": {"type": "string", "pattern": DIGITS}}
+_LETTERS = {"type": "array", "items": {"type": "string", "pattern": r"^[A-Z]$"}}
 _ANY = {}
 
 SHAPES = {
@@ -272,7 +278,10 @@ SHAPES = {
             "gc_employee_number": {"type": "string", "pattern": DIGITS},
             "member_id": {"type": "string", "pattern": DIGITS},
             "printed": _S,
+            # The party as the file prints it, and the letters it stands for by the state's one
+            # table of parties (party_letters), where the table reads every part of it.
             "party": _S,
+            "parties": _LETTERS,
             "title": _S,
             "kind": _S,
             "from": _DAY,
@@ -317,6 +326,7 @@ SHAPES = {
             "contest": {"type": "string", "pattern": CONTEST},
             "printed": _S,
             "party": _S,
+            "parties": _LETTERS,
             "elected": _BOOL,
             "person": {"type": ["string", "null"], "pattern": PERSON},
             "member_id": {"type": "string", "pattern": DIGITS},
@@ -437,6 +447,18 @@ def kind_has_eras(kind, settings=None):
     return bool(k) and k.get("eras", True) is not False
 
 
+def party_letters(printed, settings=None):
+    """The letters a party as a file prints it stands for, by the settings' one table of parties
+    ("parties", which state_settings.party_letters reads): ("R",) for "r" or "Republican", ("R",
+    "D") for "R/D" or "REP/DEM", () for none printed; None where the settings hold no table, or a
+    part of what is printed is a form the table does not know."""
+    table = _settings(settings).get("parties")
+    if not table:
+        return None
+    import state_settings
+    return state_settings.party_letters(printed, table)
+
+
 # ---- the rules ----------------------------------------------------------------------------
 
 def index(model):
@@ -555,6 +577,7 @@ def problems(model, settings=None, register=None):
                        "no id until the legislature numbers them")
         if t.get("sitting") and not t.get("term"):
             out.append(f"tenure {tid} is sitting and names no term")
+        out += _party_problems("tenure", tid, t, s)
         # A link says how it was made, once: the rule's names a person and what it rests on;
         # the owner's, her key, and her evidence where it names someone; never a person she
         # says the holder is not.
@@ -624,6 +647,7 @@ def problems(model, settings=None, register=None):
             continue
         if x.get("person") is not None and x["person"] not in P:
             out.append(f"candidacy {xid} names person {x['person']}, who is not in the model")
+        out += _party_problems("candidacy", xid, x, s)
         if x.get("elected") and c.get("takes_office"):
             ts = by_cand.get(xid) or []
             if len(ts) != 1:
@@ -634,6 +658,22 @@ def problems(model, settings=None, register=None):
                     out.append(f"candidacy {xid}'s tenure {t['tenure']} is not the contest's seat, "
                                "day and term, or not the same person")
     return out
+
+
+def _party_problems(kind, rid, r, settings):
+    """A record's "parties" are the settings' table's reading of its printed party, exactly: its
+    letters where the table reads every part, and none where it reads none or not all. Held only
+    where the settings hold a table."""
+    if not settings.get("parties"):
+        return []
+    want = party_letters(r.get("party"), settings) if r.get("party") else ()
+    have = r.get("parties")
+    if want and have != list(want):
+        return [f"{kind} {rid} is of the party printed {r['party']!r}, which the table reads as "
+                f"{list(want)}, and its parties are {have}"]
+    if not want and have is not None:
+        return [f"{kind} {rid} has parties {have}, and the table reads none in {r.get('party')!r}"]
+    return []
 
 
 # ---- loading and writing --------------------------------------------------------------------

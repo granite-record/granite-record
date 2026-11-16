@@ -2449,7 +2449,17 @@ a member-elect until the General Court numbers
 them; a date only where a record states one; a holder of a hand-file office
 is linked to a person by the file's own `member` entry, by the owner's hand
 file of links or by the rule below, never by a name alone.
-Party and seat are a tenure's. Where the hand file and the county roster name
+Party and seat are a tenure's. A party is kept as its file prints it and read,
+into the letters it stands for (`parties`: "R/D" is R and D), by the one table
+of parties in `src/lib/state_settings.json` ("parties": each party's letter,
+the site's words for it, every form the files print it in, and the colours
+`app.css` draws it in); a form the table does not know is listed in the
+manifest, never guessed. The copies of that table in the code -- 26, in Python,
+the pages' scripts, the follow emails, the translations and the stylesheets --
+still read their own until each moves onto it, and `_party_copies_agree` holds
+each to it, listing the seven places they differ today (the elections' bar and
+the emails give X other words and the elections' bar another ink; three
+first-letter rules take a U no file prints). Where the hand file and the county roster name
 different holders of one seat -- on 16 November the Hillsborough sheriff and
 the Strafford commissioner of district 1, each a vacancy filled since the
 roster's day -- the seat has two tenures, and the manifest lists the

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.6
 """
 The model of people, offices, terms, districts and elections, written to data/entities/ from
 the files on disk (src/lib/entities.py says what the model is).
@@ -60,6 +60,12 @@ hand file of links, or by the rule above, which weighs more than the name.
 WHERE TODAY'S FILES DISAGREE it says so, in the manifest and on the night's log, and fixes
 nothing: the county officers are kept twice (the hand file, which the pages read, and the
 Secretary of State's roster as read in 2024), and it lists the seats they name differently.
+
+THE PARTIES, BY THE ONE TABLE (the design's step 3): every tenure's and candidacy's party is
+kept as its file prints it and read by src/lib/state_settings.json's "parties" into the letters
+it stands for ("parties"); a sitting member's two parties are compared by it; and a printed form
+the table does not know is said (the manifest's "parties"), never guessed. The copies of that
+table in the code still read their own until each moves onto it.
 
 Standard library only; no network.
 """
@@ -772,20 +778,49 @@ def county_roster(root, hand_tenures):
     return tenures, out, n
 
 
-def roster_party_disagreements(tenures, persons):
+def roster_party_disagreements(tenures, persons, settings):
     """A sitting member whose roster party (site/legislators.json) and the party the General
-    Court's roster gives their number in careers.json differ by their first letter."""
+    Court's roster gives their number in careers.json stand for different parties, each read by
+    the settings' one table of parties ("Republican" and "r" are both R)."""
     roster = {n: r for p in persons for n, r in (p.get("gc_roster") or {}).items()}
     out = []
     for t in tenures:
         if t.get("sitting") and t.get("gc_employee_number") in roster:
-            a = (t.get("party") or "")[:1].upper()
-            b = (roster[t["gc_employee_number"]].get("party") or "")[:1].upper()
+            a = EN.party_letters(t.get("party") or "", settings)
+            b = EN.party_letters(roster[t["gc_employee_number"]].get("party") or "", settings)
             if a and b and a != b:
                 out.append({"what": "a sitting member's party, two ways", "where": t["tenure"],
                             "says": f"{ROSTER}: {t['party']}",
                             "other": f"{CAREERS}: {roster[t['gc_employee_number']]['party']}"})
     return out
+
+
+# ---- the parties, by the one table -----------------------------------------------------------
+
+PARTY_TABLE = "src/lib/state_settings.json parties"
+
+
+def read_parties(model, settings):
+    """Each tenure's and candidacy's party, as its file prints it, read by the settings' one
+    table of parties (the model's design, step 3): the letters it stands for put beside it as
+    "parties" ("R/D" is R and D). Returns what the manifest keeps: every printed form and the
+    letters it was read as, and each form the table does not know ("sgi", "u/d") with where it
+    is printed -- left unread and said, never guessed."""
+    read, unread = {}, {}
+    for kind in ("tenure", "candidacy"):
+        for r in model.get(kind) or []:
+            printed = r.get("party")
+            if not printed:
+                continue
+            got = EN.party_letters(printed, settings)
+            if got:
+                r["parties"] = list(got)
+                read[printed] = "/".join(got)
+            else:
+                unread.setdefault(printed, []).append(r[kind])
+    return {"table": PARTY_TABLE, "read": dict(sorted(read.items())),
+            "unread": {k: v[:5] + ([f"and {len(v) - 5} more"] if len(v) > 5 else [])
+                       for k, v in sorted(unread.items())}}
 
 
 # ---- the officials, linked to the record ---------------------------------------------------------
@@ -1390,11 +1425,13 @@ def build(root=".", settings=None, register=None):
     # The term today's roster sits in, which the pool gives a sitting member: kept, so that the
     # check of the links builds the same pool again.
     report["links"]["roster_term"] = roster_term
+    # Every party as its file prints it, read by the one table of parties.
+    report["parties"] = read_parties(model, settings)
     unnumbered = [{"what": "a member-elect linked to an id no person holds", "where": x["candidacy"],
                    "says": f"{ELECT}: id {x['member_id']}", "other": f"{PEOPLE} gives that id to nobody"}
                   for x in cands if x.get("member_id") and x.get("person") is None]
     report["disagreements"] = (report["disagreements"] + county_diff + unnumbered
-                               + roster_party_disagreements(tenures, persons))
+                               + roster_party_disagreements(tenures, persons, settings))
     report["county_seats_compared"] = n_county
     report["roster_term"] = roster_term
     report["problems"] = EN.problems(model, settings, register)
@@ -1549,7 +1586,9 @@ def manifest(model, report, root):
             # Who the officials are in the record: what the rule and the owner linked, and the
             # owner's list of what the rule could not settle (src/parse/office_links.py).
             "links": report.get("links") or {},
-            "links_hand": report.get("links_hand") or []}
+            "links_hand": report.get("links_hand") or [],
+            # Every party as printed, read by the one table of parties, and what it cannot read.
+            "parties": report.get("parties") or {}}
 
 
 def links_summary(report):
@@ -1610,6 +1649,10 @@ def main():
           f"({report['county_seats_compared']} county seats compared); fixed none")
     for line in links_summary(report):
         print(f"  {line}")
+    pa = report.get("parties") or {}
+    print(f"  parties: {len(pa.get('read') or {})} printed form(s) read by the one table ({PARTY_TABLE})"
+          + (f"; {len(pa['unread'])} it does not know, left unread: " + ", ".join(map(repr, pa["unread"]))
+             if pa.get("unread") else ""))
     if a.links:
         for x in (report.get("links") or {}).get("listed") or []:
             print(f"  for the owner: [{x['kind']}] {x['key']}: {x['why']}")

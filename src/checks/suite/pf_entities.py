@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.7
+# GRANITE_VERSION: 2026-11-16.8
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -23,7 +23,7 @@ from pathlib import Path
 
 import _paths
 
-from pf_core import (_parsed, _run, check)
+from pf_core import (_in_suite, _parsed, _run, _source, check)
 
 TRACKED = ("generated/careers.json", "corrections/officials.json", "generated/gr_ids.json",
            "collected/county_officials.json", "records/districts/house.txt",
@@ -1203,3 +1203,364 @@ def _entity_links_hold(BE, EN, OL, ST):
         f"the manifest says {sum(1 for m in made if m['by'] == 'rule')} links by the rule, and the model holds {len(rule)}")
     return "ok", (f"{len(rule)} officials linked by the rule and {len(held) - len(rule)} by the owner's word, each "
                   f"worked out again on today's files; {len(links.get('listed') or [])} on her list")
+
+
+# ---- the one table of parties (src/lib/state_settings.json "parties"; the design's step 3) -------
+
+@check("build", "the state's one table of parties gives each party one letter, words and colours, reads every form the files print, and the model reads its parties by it",
+       needs=("build_entities", "entities", "people", "state_settings"))
+def _party_table(BE, EN, PE, ST):
+    """The table (src/lib/state_settings.json "parties"), read by state_settings.party_letters
+    and by the model through entities.party_letters. Held: its letters are single capitals, in
+    its order once each, and none is the letter drawn where no party is on file; no form -- a
+    spelling, a word -- stands for two letters; parties that share a stylesheet variable give it
+    the same values. Every party the files print reads as the letters it stands for ("REP/DEM"
+    is R and D, "d/r" D and R, "Republican" R) and a form the table does not know ("sgi", "u/d")
+    as nothing, never as part of it. And on a made-up tree (_world) with one holder of a party
+    printed in a form the table does not know: the model gives every tenure and candidacy whose
+    party it reads the letters it stands for (the roster's "Republican" R, the members-elect's
+    "R/D" R and D, the county roster's "REP" R), gives that holder none and says the form in its
+    manifest; its rules catch a tenure whose letters are not its party's; and a sitting member
+    whose roster and careers.json parties stand for different letters is a disagreement, and
+    "Republican" against "r" is not."""
+    t = ST.PARTIES
+    letters = t["letters"]
+    assert list(t["order"]) == list(letters) and all(re.fullmatch(r"[A-Z]", x) for x in letters), (
+        f"the table's order {t['order']} is not its letters {list(letters)}, or a letter is not one capital")
+    assert ST.PARTY_NONE.get("letter") and ST.PARTY_NONE["letter"] not in letters, ST.PARTY_NONE
+    seen = {}
+    for x, row in letters.items():
+        for form in [x, *(row.get("spellings") or []), *(row.get(k) for k in ("name", "plural", "adjective",
+                                                                               "party_name"))]:
+            if form:
+                assert seen.setdefault(str(form).lower(), x) == x, f"{form!r} stands for {seen[str(form).lower()]} and {x}"
+    shades = {}
+    for x, row in letters.items():
+        c = row.get("colour") or {}
+        for part in ("ink", "soft"):
+            if c.get(part):
+                got = {theme: (c.get(theme) or {}).get(part) for theme in ("light", "dark")}
+                assert shades.setdefault(c[part], got) == got, f"{x} gives {c[part]} {got}, another party {shades[c[part]]}"
+    for printed, want in (("r", ("R",)), ("Republican", ("R",)), ("REP/DEM", ("R", "D")), ("d/r", ("D", "R")),
+                          ("r&d&l", ("R", "D", "L")), ("Democratic Party", ("D",)), ("I/D", ("I", "D")),
+                          ("ind", ("I",)), ("", ()), ("sgi", None), ("u/d", None), ("UND", None)):
+        assert ST.party_letters(printed) == want == EN.party_letters(printed), (
+            f"{printed!r} reads as {ST.party_letters(printed)} (the model: {EN.party_letters(printed)}), not {want}")
+    tmp = Path(tempfile.mkdtemp(prefix="gr-parties-"))
+    try:
+        _world(tmp, PE)
+        hand = json.loads((tmp / "corrections" / "officials.json").read_text(encoding="utf-8"))
+        hand["treasurer"] = {"office": "State Treasurer", "name": "Pat Purse", "party": "sgi"}
+        (tmp / "corrections" / "officials.json").write_text(json.dumps(hand, ensure_ascii=False, indent=2),
+                                                            encoding="utf-8")
+        model, layouts, report = BE.build(tmp)
+        assert not report["problems"], report["problems"][:3]
+        T = {x["tenure"]: x for x in model["tenure"]}
+        X = {x["candidacy"]: x for x in model["candidacy"]}
+        for kind, recs in (("tenure", model["tenure"]), ("candidacy", model["candidacy"])):
+            for r in recs:
+                want = ST.party_letters(r["party"]) if r.get("party") else None
+                assert r.get("parties") == (list(want) if want else None), (kind, r[kind], r.get("party"), r.get("parties"))
+        ada = T["house:2025-2026:376001"]
+        assert ada["party"] == "Republican" and ada["parties"] == ["R"] and ada.get("sitting"), ada
+        assert X["2026-11-03.general.house.carroll-1.flo-back-r-d"]["parties"] == ["R", "D"]
+        assert [x["parties"] for x in model["tenure"] if x["tenure"].startswith("county-roster:")] == [["R"]]
+        assert "parties" not in T["officials:treasurer"] and report["parties"]["unread"] == {
+            "sgi": ["officials:treasurer"]} and report["parties"]["read"]["R/D"] == "R/D", report["parties"]
+        m = copy.deepcopy(model)
+        next(x for x in m["tenure"] if x.get("party") == "Republican")["parties"] = ["D"]
+        said = EN.problems(m)
+        assert any("which the table reads as ['R'], and its parties are ['D']" in s for s in said), said[:3]
+        persons = model["person"]
+        sitting = [x for x in model["tenure"] if x.get("sitting") and x.get("gc_employee_number") == "376001"]
+        assert sitting and BE.roster_party_disagreements(sitting, persons, ST.SETTINGS) == [], (
+            "the roster's Republican and careers.json's R were read as two parties")
+        p = next(x for x in persons if "376001" in (x.get("gc_roster") or {}))
+        p["gc_roster"]["376001"]["party"] = "d"
+        assert len(BE.roster_party_disagreements(sitting, persons, ST.SETTINGS)) == 1, (
+            "a Republican on the roster whom careers.json calls d is no disagreement")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"{len(letters)} parties and the letter for none, each form one letter's and each shared colour "
+                  "one value; 'REP/DEM', 'd/r' and 'Republican' read, 'sgi' and 'u/d' left unread; the model "
+                  "gives every party it reads its letters and says the form it cannot, its rules catch a wrong "
+                  "letter, and the roster's party is compared by the table")
+
+
+# EVERY COPY OF THE PARTY TABLE IN THE CODE, 16 November 2026 (stage0-code.md counted six in
+# Python and three in JavaScript; these are every one a search of the code found). Each moves
+# onto the table later, a reader at a time; until then each says what the table says, or is in
+# _PARTY_DIFFERS below. (file, the name it is bound to there, how it is written, what it holds):
+#   py     a dict literal bound to the name anywhere in the file: {letter: word} or {form: letter}
+#   say    the dicts of say() calls in the function of that name: {word: say(lang, key, English)}
+#   parts  the function's rows of (count, "er-<letter>", word)
+#   js     an object literal `const NAME={...}` in the file's text (a page's script in a Python
+#          string included): LETTER:"word", LETTER:tr("key","word"), LETTER:[...] or "var(--ink)"
+#   rule   the letters a first-letter rule takes, written "RDILU" in the file
+#   words  the English the translations file gives each of the table's keys
+#   css    the stylesheet's party inks and tints in each theme, and every class that draws one
+_PARTY_COPIES = (
+    ("src/parse/build_data.py", "PARTY", "py", "name"),
+    ("src/pages/build_session_pages.py", "PARTY_WORD", "py", "name"),
+    ("src/pages/build_site_v2.py", "PARTY_FULL", "py", "name"),
+    ("src/pages/officials_tabs.py", "PARTY_OF", "py", "name"),
+    ("src/fetch/gc_db/fetch_members_db.py", "PARTY", "py", "name"),
+    ("src/fetch/gc_db/fetch_committee_members_db.py", "PARTY", "py", "name"),
+    ("src/pages/structured.py", "PARTY_NAME", "py", "party_name"),
+    ("src/pages/build_session_pages.py", "PARTY_LETTER", "py", "spelling"),
+    ("src/fetch/gc_web/fetch_rollcall_parties.py", "PARTY", "py", "spelling"),
+    ("src/pages/build_site_v2.py", "MANUAL_PARTY", "py", "spelling"),
+    ("src/parse/office_links.py", "PARTY_WORDS", "py", "spelling"),
+    ("src/pages/build_pages.py", "party_word", "say", "name, adjective, plural, none"),
+    ("src/pages/build_elections.py", "chamber_block", "parts", "adjective"),
+    ("src/pages/app.js", "PARTY_NAME", "js", "name"),
+    ("src/pages/app.js", "PARTY_WORD", "js", "name"),
+    ("src/pages/app.js", "PARTY_COLOR", "js", "ink"),
+    ("src/pages/build_pages.py", "PW", "js", "name"),
+    ("src/pages/map.js", "PARTY", "js", "adjective"),
+    ("src/pages/map.js", "NOUN", "js", "name, plural"),
+    ("workers/follow/mail.js", "PARTY_WORDS", "js", "name, plural"),
+    ("src/pages/build_site_v2.py", "RDILU", "rule", "letter"),
+    ("src/parse/names.py", "RDILU", "rule", "letter"),
+    ("src/parse/past_sponsors.py", "RDILU", "rule", "letter"),
+    ("src/pages/lang/es.json", "party.*", "words", "the English of each key"),
+    ("src/pages/app.css", "party classes", "css", "ink, soft"),
+    ("src/pages/map.css", "party classes", "css", "ink"),
+)
+# WHERE A COPY SAYS OTHER THAN THE TABLE TODAY: listed, and put right in none (the task of 16
+# November 2026). Exactly these differ, so that a copy that drifts further is seen, and one put
+# right comes off this list.
+_PARTY_DIFFERS = frozenset({
+    "src/pages/build_elections.py chamber_block: X is 'other or cross-nominated', the table's X 'Party not on file'",
+    "src/pages/app.css party classes: X is drawn in --ind, the table's X in --ink-2",
+    "workers/follow/mail.js PARTY_WORDS: X is 'member whose party is not on file', the table's X 'Party not on file'",
+    "workers/follow/mail.js PARTY_WORDS: X is 'members whose party is not on file', the table's X says no plural",
+    "src/pages/build_site_v2.py RDILU: U, a letter the table does not hold",
+    "src/parse/names.py RDILU: U, a letter the table does not hold",
+    "src/parse/past_sponsors.py RDILU: U, a letter the table does not hold",
+})
+# A copy written in a new place: a letter bound to a party's word, or a party's word to its letter.
+_PARTY_COPY_LINE = re.compile(r"""\bR["']?\s*:\s*[^\n]{0,40}?["'](?:\{n\} )?Republican|["']republican["']\s*:\s*["']R["']""")
+
+
+def _js_object(text, name):
+    """The text inside `const NAME={...}`, its braces balanced; None where there is none."""
+    m = re.search(r"\bconst\s+" + re.escape(name) + r"\s*=\s*\{", text)
+    if not m:
+        return None
+    i, depth, quote = m.end(), 1, None
+    while depth and i < len(text):
+        ch = text[i]
+        if quote:
+            quote = None if ch == quote and text[i - 1] != "\\" else quote
+        elif ch in "\"'`":
+            quote = ch
+        elif ch in "{[(":
+            depth += 1
+        elif ch in "}])":
+            depth -= 1
+        i += 1
+    return text[m.end():i - 1]
+
+
+def _js_entries(body):
+    """[(key, value text)] of an object literal's body, split at its own commas."""
+    out, depth, quote, start = [], 0, None, 0
+    for i, ch in enumerate(body + ","):
+        if quote:
+            quote = None if ch == quote and body[i - 1:i] != "\\" else quote
+        elif ch in "\"'`":
+            quote = ch
+        elif ch in "{[(":
+            depth += 1
+        elif ch in "}])":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            part = body[start:i].strip()
+            if part:
+                k, _, v = part.partition(":")
+                out.append((k.strip().strip("\"'"), v.strip()))
+            start = i + 1
+    return out
+
+
+def _party_copy_says(ST, path, name, how, holds):
+    """[(letter, form, value)] a copy says, as _PARTY_COPIES describes it; a form is name, plural,
+    adjective, party_name, spelling, letter, ink, soft or key:<form> (a key of the translations
+    the copy says a word through)."""
+    out = []
+    if how in ("py", "say", "parts", "rule"):
+        tree = _parsed(_paths.ROOT / path)
+    if how == "py":
+        found = [ast.literal_eval(n.value) for n in ast.walk(tree) if isinstance(n, ast.Assign)
+                 and isinstance(n.value, ast.Dict) and any(isinstance(x, ast.Name) and x.id == name for x in n.targets)]
+        assert len(found) == 1, f"{path} binds {name} to {len(found)} dicts, not one: the copy moved or was copied"
+        for k, v in found[0].items():
+            out.append((v, "spelling", k) if holds == "spelling" else (k, holds, v))
+    elif how == "say":
+        fn = [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == name]
+        assert len(fn) == 1, f"{path} has {len(fn)} functions named {name}"
+        keys = {key: (x, form) for x, row in ST.PARTY.items() for form, key in (row.get("words") or {}).items()}
+        keys.update({key: (ST.PARTY_NONE["letter"], form) for form, key in (ST.PARTY_NONE.get("words") or {}).items()})
+        for a in ast.walk(fn[0]):
+            if isinstance(a, ast.Assign) and isinstance(a.value, ast.Dict):
+                for k, v in zip(a.value.keys, a.value.values):
+                    if isinstance(v, ast.Call) and len(v.args) >= 3 and all(isinstance(x, ast.Constant) for x in v.args[1:3]):
+                        key, english = v.args[1].value, v.args[2].value
+                        x, form = keys.get(key, ("?", key))
+                        out += [(x, "key:" + form, key), (x, form, english)]
+                        if x != ST.PARTY_NONE["letter"]:
+                            out.append((x, "spelling", str(k.value).lower()))
+    elif how == "parts":
+        fn = [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == name]
+        assert len(fn) == 1, f"{path} has {len(fn)} functions named {name}"
+        for a in ast.walk(fn[0]):
+            if isinstance(a, ast.Tuple) and len(a.elts) == 3 and all(isinstance(e, ast.Constant) for e in a.elts[1:]):
+                m = re.fullmatch(r"er-([A-Z])", str(a.elts[1].value))
+                if m:
+                    x = m.group(1)
+                    out.append((x, "name" if x == ST.PARTY_NONE["letter"] else holds, a.elts[2].value))
+    elif how == "rule":
+        hits = [n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str) and name in n.value]
+        assert hits, f"{path} no longer writes the rule's letters {name}"
+        out += [(x, "letter", x) for x in name]
+    elif how == "js":
+        body = _js_object(_source(_paths.ROOT / path), name)
+        assert body is not None, f"{path} has no `const {name}={{...}}`: the copy moved or went"
+        forms = [f.strip() for f in holds.split(",")]
+        for k, v in _js_entries(body):
+            said = re.findall(r'tr\(\s*"([^"]+)"\s*,\s*"([^"]*)"', v) or [(None, s) for s in re.findall(r'"([^"]*)"', v)]
+            for form, (key, english) in zip(forms, said):
+                if form == "ink":
+                    english = re.sub(r"^var\((--[\w-]+)\)$", r"\1", english)
+                english = re.sub(r"^\{n\} ", "", english)
+                out.append((k, form, english))
+                if key and key.startswith("party."):
+                    out.append((k, "key:" + form, key))
+    elif how == "words":
+        doc = json.loads(_source(_paths.ROOT / path))["strings"]
+        rows = list(ST.PARTY.items()) + [(ST.PARTY_NONE["letter"], ST.PARTY_NONE)]
+        for x, row in rows:
+            for form, key in (row.get("words") or {}).items():
+                out.append((x, form, (doc.get(key) or {}).get("en")))
+    elif how == "css":
+        css = re.sub(r"/\*.*?\*/", "", _source(_paths.ROOT / path), flags=re.S)
+        for sel, decls in re.findall(r"([^{}]+)\{([^{}]*)\}", css):
+            letters = set(re.findall(r"\.(?:p|pt|er)-([A-Z])\b", sel))
+            for x in sorted(letters):
+                for var in re.findall(r"var\((--[\w-]+)\)", decls):
+                    if re.fullmatch(r"--(?:rep|dem|ind)(?:-soft)?|--ink-2", var):
+                        out.append((x, "soft" if var.endswith("-soft") else "ink", var))
+        for x, var in re.findall(r"--fill-([A-Z]):color-mix\(in srgb,var\((--[\w-]+)\)", css):
+            out.append((x, "ink", var))
+    return out
+
+
+def _party_table_says(ST, x, form):
+    """What the table says of letter `x` in `form`, or None."""
+    row = ST.PARTY_NONE if x == ST.PARTY_NONE.get("letter") else ST.PARTY.get(x)
+    if row is None:
+        return None
+    if form.startswith("key:"):
+        return (row.get("words") or {}).get(form[4:])
+    if form in ("ink", "soft"):
+        return (row.get("colour") or {}).get(form)
+    return row.get(form)
+
+
+@check("files", "every copy of the party table in the code says what the state's one table says, but those listed as differing, and no new copy has been written",
+       needs=("state_settings",))
+def _party_copies_agree(ST):
+    """THE PARTY MAP IS WRITTEN MANY TIMES (stage0-code.md: six times in Python and three in
+    JavaScript, with no check holding them together); src/lib/state_settings.json's "parties" is
+    now the one table, and the copies move onto it later. Until each does, every copy
+    _PARTY_COPIES lists -- 26 of them, the letter-to-word maps of the pages, the downloads and the
+    fetchers, the word-to-letter maps, party_word and the elections' bar, the scripts' maps of
+    words, inks and counts, the follow emails', the first-letter rules, the translations' English,
+    and the stylesheets' inks and tints -- is read where it is, and each thing it says of a party is
+    held to the table: the word, plural, adjective and party's own name, a spelling and the letter
+    it stands for, the key a word is said through, the ink or tint a class draws it in, and the
+    stylesheet's values for each in the light theme (and print) and the dark. What differs today
+    is _PARTY_DIFFERS, put right in none: the elections' bar and its X (other or cross-nominated,
+    drawn in the Independent's ink) where the table's X is 'Party not on file'; the follow
+    emails' own words for it; and the first-letter rules' U, which no file prints. Exactly those
+    differ. And no copy is written where the list does not know one: a line binding R to a
+    Republican word, or the word to R, in any code file, the workers' and the Functions' too,
+    outside the suite and the tests, is one of the listed copies."""
+    differs, said = set(), {}
+    for path, name, how, holds in _PARTY_COPIES:
+        label = f"{path} {name}"
+        says = _party_copy_says(ST, path, name, how, holds)
+        assert says, f"{label} says nothing of a party: the copy moved or went"
+        said[label] = says
+        look = ST.party_lookup()
+        for x, form, value in says:
+            if form == "letter":
+                if x not in ST.PARTY and x != ST.PARTY_NONE.get("letter"):
+                    differs.add(f"{label}: {x}, a letter the table does not hold")
+                continue
+            if form == "spelling":
+                if look.get(str(value).lower()) != x:
+                    differs.add(f"{label}: {value!r} stands for {x}, and the table reads it as {look.get(str(value).lower())}")
+                continue
+            want = _party_table_says(ST, x, form)
+            if value != want and form in ("ink", "soft"):
+                differs.add(f"{label}: {x} is drawn in {value}, the table's {x} in {want}")
+            elif value != want:
+                differs.add(f"{label}: {x} is {value!r}, the table's {x} {want!r}" if want is not None else
+                            f"{label}: {x} is {value!r}, the table's {x} says no {form}")
+    # The stylesheet's values for each ink and tint, theme by theme: the light (and print) and the
+    # dark are the table's, and every block of them is one or the other.
+    css = re.sub(r"/\*.*?\*/", "", _source(_paths.ROOT / "src/pages/app.css"), flags=re.S)
+    want = {}
+    for x, row in ST.PARTY.items():
+        c = row.get("colour") or {}
+        for part in ("ink", "soft"):
+            if c.get(part):
+                want[c[part]] = {theme: (c.get(theme) or {}).get(part) for theme in ("light", "dark")}
+    blocks, cur = [], {}
+    for var, value in re.findall(r"(--(?:rep|dem|ind)(?:-soft)?):(#[0-9A-Fa-f]{6})", css):
+        if var in cur:
+            blocks.append(cur)
+            cur = {}
+        cur[var] = value.upper()
+    blocks.append(cur)
+    themes = []
+    for b in blocks:
+        hit = [theme for theme in ("light", "dark") if all(want.get(v, {}).get(theme, "").upper() == value
+                                                           for v, value in b.items())]
+        assert hit and set(b) == set(want), f"app.css gives the party colours {b}, which are neither theme of the table's"
+        themes.append(hit[0])
+    assert themes[0] == "light" and "dark" in themes, f"app.css's party colours run {themes}"
+    assert differs == _PARTY_DIFFERS, (
+        "copies of the party table differ from it otherwise than listed: "
+        + "; ".join(sorted(differs - _PARTY_DIFFERS)[:8])
+        + ("; and these listed differences are gone (take them off _PARTY_DIFFERS): "
+           + "; ".join(sorted(_PARTY_DIFFERS - differs)) if _PARTY_DIFFERS - differs else ""))
+    # No copy the list does not know.
+    expected = {}
+    for path, name, how, holds in _PARTY_COPIES:
+        if how in ("py", "js") and any(
+                (form != "spelling" and x == "R" and isinstance(v, str) and "Republican" in v)
+                or (form == "spelling" and x == "R" and str(v).lower() == "republican")
+                for x, form, v in said[f"{path} {name}"]):
+            expected[path] = expected.get(path, 0) + 1
+    found = {}
+    files = [f for f in list(_paths.code_files("*.py")) + list(_paths.code_files("*.js"))
+             + sorted((_paths.ROOT / "workers").rglob("*.js")) + sorted((_paths.ROOT / "functions").rglob("*.js"))
+             if not _in_suite(f) and "tests" not in f.relative_to(_paths.ROOT).parts
+             and "node_modules" not in f.parts]
+    for f in files:
+        n = len(_PARTY_COPY_LINE.findall(_source(f, errors="replace")))
+        if n:
+            found[f.relative_to(_paths.ROOT).as_posix()] = n
+    assert found == expected, (
+        "a copy of the party table the list does not know: "
+        + ", ".join(f"{p} ({found.get(p, 0)} found, {expected.get(p, 0)} listed)"
+                    for p in sorted(set(found) | set(expected)) if found.get(p, 0) != expected.get(p, 0))
+        + ". Read state_settings.PARTY instead, or add it to _PARTY_COPIES")
+    langs = {how for _p, _n, how, _h in _PARTY_COPIES}
+    return "ok", (f"{len(_PARTY_COPIES)} copies ({len(langs)} ways of writing one) say what the table says but "
+                  f"the {len(_PARTY_DIFFERS)} listed: the elections' bar and the emails' X, its ink, and the "
+                  "first-letter rules' U; app.css's inks and tints are the table's in both themes; no copy "
+                  "written anywhere the list does not know")
