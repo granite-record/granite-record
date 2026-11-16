@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.5
 """
 The model of people, offices, terms, districts and elections, written to data/entities/ from
 the files on disk (src/lib/entities.py says what the model is).
@@ -539,27 +539,48 @@ def hand_offices(root, settings, by_page, register, report):
 
 def gr_candidates(root=".", settings=None, register=None):
     """[{tenure, office, name, evidence}]: the holders and successors of the first offices with
-    pages (FIRST_OFFICES; the design's question 3, 19 records on 16 November 2026) whom the hand
-    file links to no General Court record -- no "member" page of theirs -- and for whom the
-    register has issued no id. Who gr_register.py --offices would give a gr- id, in the hand
-    file's order; reads only the hand file and the register, and writes nothing."""
+    pages (FIRST_OFFICES; the design's question 3, 19 records on 16 November 2026) whom the model
+    links to no person of the record, and for whom the register has issued no id. Who
+    gr_register.py --offices would give a gr- id, in the hand file's order; writes nothing.
+
+    EVERY HOLDER THE MODEL LINKS IS LEFT OUT BEFORE ANY ID IS OFFERED (16 November 2026). The
+    model is built whole for it (build), so a holder is left out who is linked by the hand file's
+    "member" page (or names one), by an id the register issued for the place, by the owner's hand
+    file of links, or by the rule of src/parse/office_links.py: on the files of 16 November, Joseph
+    D. Kenney, Luz Bay, Melanie Levesque and Jeanne Shaheen, whom the hand file alone left
+    unlinked. A holder the owner says is no one of the record is offered one; a holder on her list
+    to settle is offered one too, and takes a member's number if she links them later, the id
+    staying as their alias (gr_ids.py). Refused where the model cannot be built, or where the rule
+    could not run (its evidence not all here, or her file will not read): who it links is then not
+    known, and an id once issued is never taken back."""
     settings = settings or ST.SETTINGS
-    report = {"unplaced": [], "disagreements": [], "not_rebuilt": []}
-    doc = _hand(root)
-    _o, tenures, _l = hand_offices(root, settings, {}, register, report)
+    model, layouts, report = build(root, settings, register=register)
+    lk = report.get("links") or {}
+    if lk.get("rule_off"):
+        raise Refused(f"who the model links is not known here ({lk['rule_off']}): no gr- id is offered "
+                      "until it is, since an id once issued is never taken back")
+    layout = layouts[HAND]
     names = {o["office"]: o["name"] for o in EN.offices(settings)}
+    listed = {x["tenure"]: x for x in lk.get("listed") or []}
     out = []
-    for t in tenures:
-        if t["office"] not in FIRST_OFFICES or t.get("person") or (t.get("holder") or {}).get("member"):
+    for t in model["tenure"]:
+        if HAND not in (t.get("files") or []) or t["office"] not in FIRST_OFFICES:
+            continue
+        if t.get("person") or (t.get("holder") or {}).get("member"):
             continue
         rec = (t.get("holder") or {})
-        read = rec.get("read") or doc.get("_checked") or "?"
+        read = rec.get("read") or layout.get("_checked") or "?"
+        link = t.get("link") or {}
+        why = (f"the owner's hand file of links says they are no one of the record ({link.get('why')})"
+               if link.get("by") == "owner" else
+               "the rule of 16 November 2026 links them to no one"
+               + (f" (on the owner's list to settle: {listed[t['tenure']]['why']})" if t["tenure"] in listed else ""))
         out.append({"tenure": t["tenure"], "office": t["office"], "name": t["printed"],
                     "evidence": f"{'Takes' if t.get('from') else 'Holds'} the office of {names[t['office']]} in "
                                 f"the officials' hand file at {_dotted(t['slot']['path'])} (read {read}"
-                                + (f", from {t['from']}" if t.get("from") else "") + "), which links them "
-                                "to no General Court record: no member page and no person number. A "
-                                "shared name is not a link."})
+                                + (f", from {t['from']}" if t.get("from") else "") + "), and the model links "
+                                f"them to no person of the record: no member page, no person number, and "
+                                f"{why}. A shared name is not a link."})
     return out
 
 
@@ -1316,12 +1337,14 @@ def verify_links(model, pool, owner, settings, checked=""):
 
 # ---- the model ------------------------------------------------------------------------------
 
-def build(root=".", settings=None):
+def build(root=".", settings=None, register=None):
     """(model, layouts, report) from the files under `root`. Refused only where a file it needs
     is not there or will not read: what the model cannot place is kept as the file has it where
     it can be and said (report "unplaced" and "notes"), and a rule the model breaks is said
     (report "problems"), so that a model no page reads never stops a night; the model's check
-    of the built site fails on a problem, and holds the night for a person."""
+    of the built site fails on a problem, and holds the night for a person. `register` is the
+    register of gr- ids to build on where it is not root's REGISTER (gr_candidates passes the
+    one it was given)."""
     root = Path(root)
     settings = settings or ST.SETTINGS
     missing = [n for n in NEEDED if not (root / n).is_file()]
@@ -1331,9 +1354,8 @@ def build(root=".", settings=None):
               "not_rebuilt": [f"{CAREERS}: each record's votes, a count of ballots, "
                               "which are the roll calls' and not this model's"],
               "disagreements": []}
-    register = None
     rp = root / REGISTER
-    if rp.is_file():
+    if register is None and rp.is_file():
         import gr_ids as GR
         register = GR.load_register(rp)
     persons, tenures, by_mid, roster_term = people_and_service(root, settings, report)

@@ -2443,8 +2443,9 @@ that a reader moved onto it later cannot change the site. careers.json's
 ballot counts are the one thing it does not give back: they are the roll
 calls'. A person's id is the General Court's number where it gives one, a
 `gr-` id only where the register issued one for that very place
-(`python3 src/ops/gr_register.py --offices`, a person's run, which holds back a name two
-places share), and none for a member-elect until the General Court numbers
+(`python3 src/ops/gr_register.py --offices`, a person's run, which offers none to a holder the
+model links, by the rule or by the owner, and holds back a name two places share), and none for
+a member-elect until the General Court numbers
 them; a date only where a record states one; a holder of a hand-file office
 is linked to a person by the file's own `member` entry, by the owner's hand
 file of links or by the rule below, never by a name alone.

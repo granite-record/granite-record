@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-13.2
+# GRANITE_VERSION: 2026-11-13.3
 """
 The register of Granite Record's own ids (generated/gr_ids.json): issuing one, and recording an
 official number found later.
@@ -25,17 +25,22 @@ key, and the gr- id is kept as an alias; the tables that carry the id say so.
 
 --offices is the owner's decision of 16 November 2026 (the model's question 3): a gr- id for each
 holder of the first offices with pages -- the Governor, the Council, Congress, the Secretary of
-State, the Treasurer, the Attorney General, and each one's successor -- whom
-corrections/officials.json links to no General Court record (build_entities.gr_candidates). Alone
-it lists them with the ids they would get and writes nothing; with --apply it issues them, each
-entry naming the place in the hand file it was issued for ("issued_for"), which is how the model
-(src/parse/build_entities.py) puts the id on that holder's tenure, and on no other: it links an
-id to the holder of the place it was issued for, under the name it was issued to, never by a
-name alone. A name two of the places share gets no id from --offices: one person in two places
-is one id, and a name cannot say whether it is one person, so a person issues it,
-`--issue NAME --evidence ... --for officials:<path> --for officials:<path>`, or one for each.
-Look first: a holder the name-matching study links to a member later takes that member's number
-instead, and an id once issued stays as their alias.
+State, the Treasurer, the Attorney General, and each one's successor -- whom the model links to
+no person of the record (build_entities.gr_candidates, which builds the model whole first). A
+holder the model links is left out before any id is offered: by the hand file's member page, an
+id the register issued for the place, the owner's hand file of links, or the rule of
+src/parse/office_links.py -- on 16 November, Joseph D. Kenney, Luz Bay, Melanie Levesque and
+Jeanne Shaheen, whom the hand file alone left unlinked. Where the model cannot say whom it links
+(the files it is built from, or the rule's evidence, not all here) nothing is offered, and it
+says why. Alone it lists them with the ids they would get and writes nothing; with --apply it
+issues them, each entry naming the place in the hand file it was issued for ("issued_for"),
+which is how the model (src/parse/build_entities.py) puts the id on that holder's tenure, and on
+no other: it links an id to the holder of the place it was issued for, under the name it was
+issued to, never by a name alone. A name two of the places share gets no id from --offices: one
+person in two places is one id, and a name cannot say whether it is one person, so a person
+issues it, `--issue NAME --evidence ... --for officials:<path> --for officials:<path>`, or one
+for each. Look first: a holder on the owner's list to settle is offered one, and if she links
+them to a member later they take that member's number instead, the id staying as their alias.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -82,9 +87,10 @@ def found(reg, gid, number):
 
 
 def offices(reg, day, apply=False, root="."):
-    """[(id or None, candidate)]: the first offices' holders the hand file links to no General
-    Court record and the register holds no id for (build_entities.gr_candidates), each with the
-    id it gets -- issued into `reg`, with the place it was issued for, only where `apply`.
+    """[(id or None, candidate)]: the first offices' holders the model links to no person of the
+    record and the register holds no id for (build_entities.gr_candidates), each with the id it
+    gets -- issued into `reg`, with the place it was issued for, only where `apply`.
+    build_entities.Refused where the model cannot say whom it links, and nothing is offered.
 
     A NAME TWO PLACES SHARE GETS NO ID HERE (None). One person in two places -- a member of the
     US House who is the US Senate's successor -- is one id, and two people of one name are two;
@@ -125,7 +131,11 @@ def main():
         ap.error("--for goes with --issue")
     reg = GR.load_register() or {"format": GR.FORMAT, "ids": []}
     if a.offices:
-        got = offices(reg, build_date.today().isoformat(), apply=a.apply)
+        import build_entities as BE
+        try:
+            got = offices(reg, build_date.today().isoformat(), apply=a.apply)
+        except BE.Refused as e:
+            raise SystemExit(f"No id offered and nothing written: {e}")
         for new, c in got:
             print(f"  {new or '(none)':<8} {c['name']:<28} {c['tenure']}"
                   + ("" if new else "   a name two places share: a person issues it, for one "

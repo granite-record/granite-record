@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.6
+# GRANITE_VERSION: 2026-11-16.7
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -601,67 +601,139 @@ def _entities_step_in_the_plan(build_all):
                   "and the bulk downloads; --out data/entities, optional; no other step or code file reads it")
 
 
-@check("naming", "gr_register.py --offices lists the first offices' holders the hand file links to no General Court record, issues nothing unless told, and never one id for a name two places share",
+def _first_offices_unlinked(BE, root):
+    """The first offices' holders and successors of the hand file whom the model built from
+    `root` links to no person and names no member page for, worked out from its tenures here and
+    not through gr_candidates."""
+    model, _layouts, _report = BE.build(root)
+    return sorted(t["tenure"] for t in model["tenure"] if BE.HAND in (t.get("files") or [])
+                  and t["office"] in BE.FIRST_OFFICES and not t.get("person")
+                  and not (t.get("holder") or {}).get("member")), model
+
+
+@check("naming", "gr_register.py --offices offers a gr- id only to a first office's holder the model links to no one, leaves out every holder it links, offers nothing where it cannot say whom it links, issues nothing unless told, and never one id for a name two places share",
        needs=("gr_register", "gr_ids", "build_entities"))
 def _gr_offices_dry_run(REG, GR, BE):
     """The design's question 3 (yes, 16 November 2026): a gr- id, by a person's run, for each
     holder and successor of the first offices with pages -- the Governor, the Council, Congress,
-    the Secretary of State, the Treasurer, the Attorney General -- whom the hand file links to no
-    General Court record. On the tracked hand file and register: the dry run lists exactly those
-    (worked out here from the file, independently: each such record with no member page) and
-    leaves the register as it was, in memory and on disk; a name two of the places share gets no
-    id, since one person is one id and a name cannot say whether it is one person; with --apply,
-    on a copy, every id issued names its place, and the register stays well formed. Run on the
-    made-up register of _world, an id issued for a place is found by the place and the name."""
-    reg_path = _paths.ROOT / "generated" / "gr_ids.json"
-    disk = reg_path.read_bytes()
-    reg = GR.load_register(reg_path) or {"format": 1, "ids": []}
-    kept = json.dumps(reg, sort_keys=True)
-    doc = json.loads((_paths.ROOT / "corrections" / "officials.json").read_text(encoding="utf-8"))
-    want = []
-    for key in ("governor", "secretary_of_state", "treasurer", "attorney_general"):
-        want.append((f"officials:{key}", doc[key]))
-    for key, sub in (("council", "districts"), ("us_house", "districts"), ("us_senate", "seats")):
-        items = doc[key][sub].items() if isinstance(doc[key][sub], dict) else enumerate(doc[key][sub])
-        for k, rec in items:
-            want.append((f"officials:{key}.{sub}.{k}", rec))
-            if isinstance(rec.get("elect"), dict):
-                want.append((f"officials:{key}.{sub}.{k}.elect", rec["elect"]))
-    issued_for = {p for e in reg.get("ids") or [] for p in
-                  (e["issued_for"] if isinstance(e.get("issued_for"), list) else [e.get("issued_for")])}
-    want = sorted(t for t, rec in want if not rec.get("member") and t not in issued_for)
-    got = REG.offices(reg, "2026-11-16", apply=False, root=_paths.ROOT)
-    assert sorted(c["tenure"] for _n, c in got) == want, (
-        f"the dry run lists {sorted(c['tenure'] for _n, c in got)}, and the hand file's unlinked first offices "
-        f"are {want}")
-    assert json.dumps(reg, sort_keys=True) == kept and reg_path.read_bytes() == disk, "the dry run wrote"
-    names = [" ".join(c["name"].split()).lower() for _n, c in got]
-    shared = {n for n in names if names.count(n) > 1}
-    assert all((new is None) == (" ".join(c["name"].split()).lower() in shared) for new, c in got), (
-        "an id was offered for a name two places share, or none for a name one place has")
-    work = copy.deepcopy(reg)
-    done = REG.offices(work, "2026-11-16", apply=True, root=_paths.ROOT)
-    new_ids = [e for e in work["ids"] if e not in reg["ids"]]
-    assert len(new_ids) == sum(1 for n, _c in done if n) and GR.check_register(work) == [] and all(
-        e["issued_for"].startswith("officials:") for e in new_ids), "issued ids without their places"
-    assert reg_path.read_bytes() == disk, "offices() with apply wrote the register itself; only main() writes"
-    tmp = Path(tempfile.mkdtemp(prefix="gr-entities-"))
+    the Secretary of State, the Treasurer, the Attorney General -- whom the model links to no
+    person of the record. EVERY HOLDER THE MODEL LINKS IS LEFT OUT FIRST: on the files of 16
+    November the hand file alone left Joseph D. Kenney, Luz Bay, Melanie Levesque and Jeanne
+    Shaheen unlinked, and the dry run offered each an id, though the rule of office_links.py links
+    all four to members. On a made-up tree with every file the model and its rule read
+    (_link_world): the dry run lists exactly the holders the model links to no one (worked out
+    here from its tenures) -- not the US senator the rule links to a member of 1991-1992 with no
+    page, nor the US representative the hand file's member page links, nor the Governor, who holds
+    the id the register issued for her place -- and leaves the register as it was, in memory and
+    on disk; with --apply, on a copy, every id issued names its place and the register stays well
+    formed. With the owner's hand file of links, a holder she links is left out and one she says is
+    no one of the record is offered, with her words. A name two of the places share gets no id,
+    since one person is one id and a name cannot say whether it is one person. And on _world,
+    which lacks the rule's evidence, nothing is offered: gr_candidates refuses, and
+    gr_register.py --offices says why, exits other than 0 and writes nothing."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-offices-"))
+    try:
+        import people as PE
+        _link_world(tmp, PE)
+        reg_path = tmp / "generated" / "gr_ids.json"
+        disk = reg_path.read_bytes()
+        reg = GR.load_register(reg_path)
+        kept = json.dumps(reg, sort_keys=True)
+        got = REG.offices(reg, "2026-11-16", apply=False, root=tmp)
+        offered = [c["tenure"] for _n, c in got]
+        want, model = _first_offices_unlinked(BE, tmp)
+        T = {t["tenure"]: t for t in model["tenure"]}
+        assert sorted(offered) == want == ["officials:council.districts.1", "officials:council.districts.1.elect",
+                                           "officials:council.districts.2"], (
+            f"the dry run offers {offered}, and the first offices' holders the model links to no one are {want}")
+        assert T["officials:us_senate.seats.0"]["person"] == "370001" \
+            and T["officials:us_senate.seats.0"]["link"]["by"] == "rule", "the rule did not link the US senator"
+        assert json.dumps(reg, sort_keys=True) == kept and reg_path.read_bytes() == disk, "the dry run wrote"
+        work = copy.deepcopy(reg)
+        done = REG.offices(work, "2026-11-16", apply=True, root=tmp)
+        new_ids = [e for e in work["ids"] if e not in reg["ids"]]
+        assert len(new_ids) == sum(1 for n, _c in done if n) == 3 and GR.check_register(work) == [] and sorted(
+            e["issued_for"] for e in new_ids) == want, "issued ids without their places, or for other places"
+        assert reg_path.read_bytes() == disk, "offices() with apply wrote the register itself; only main() writes"
+        # The owner's word: she links council 1's holder, and says its successor is no one of the record.
+        owner = tmp / "corrections" / "officials_links.json"
+        owner.write_text(json.dumps({"_checked": "2026-11-16", "links": {
+            "executive-council|1|2025|Hal Held": {"person": "376002", "evidence": "made up"},
+            "executive-council|1|2027|Ida Next": {"person": None, "why": "made up: a councilor never in the House"}}}),
+            encoding="utf-8")
+        got = REG.offices(reg, "2026-11-16", apply=False, root=tmp)
+        assert [c["tenure"] for _n, c in got] == ["officials:council.districts.1.elect",
+                                                  "officials:council.districts.2"], got
+        assert "a councilor never in the House" in got[0][1]["evidence"], got[0][1]["evidence"]
+        owner.unlink()
+        # A name two places share: the councilor of district 2 again in the US House.
+        hand = json.loads((tmp / "corrections" / "officials.json").read_text(encoding="utf-8"))
+        hand["us_house"]["districts"]["2"] = {"name": "Ada Newcomb", "party": "R"}
+        (tmp / "corrections" / "officials.json").write_text(json.dumps(hand, ensure_ascii=False, indent=2),
+                                                            encoding="utf-8")
+        got = REG.offices(reg, "2026-11-16", apply=False, root=tmp)
+        names = [" ".join(c["name"].split()).lower() for _n, c in got]
+        shared = {n for n in names if names.count(n) > 1}
+        assert shared == {"ada newcomb"} and all((new is None) == (n in shared) for (new, _c), n in zip(got, names)), (
+            "an id was offered for a name two places share, or none for a name one place has")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    tmp = Path(tempfile.mkdtemp(prefix="gr-offices-"))
     try:
         import people as PE
         _world(tmp, PE)
-        cands = BE.gr_candidates(tmp, register=GR.load_register(tmp / "generated" / "gr_ids.json"))
-        # The Governor holds the id issued for that place under her name; the holder of
-        # district 1 is not the one gr-0002 was issued to; district 2's shares a member's name,
-        # which links nobody; the member of the US House is linked by the hand file's member
-        # page, and needs none.
-        assert [c["tenure"] for c in cands] == ["officials:council.districts.1",
-                                                "officials:council.districts.1.elect",
-                                                "officials:council.districts.2"], cands
+        reg_path = tmp / "generated" / "gr_ids.json"
+        disk = reg_path.read_bytes()
+        try:
+            BE.gr_candidates(tmp, register=GR.load_register(reg_path))
+        except BE.Refused as e:
+            said = str(e)
+        else:
+            raise AssertionError("gr_candidates offered ids on a tree that lacks the rule's evidence")
+        assert "not known here" in said and "the evidence is not all here" in said, said
+        r = _run([sys.executable, str(_paths.script("gr_register.py")), "--offices", "--apply"],
+                 cwd=tmp, capture_output=True, text=True, timeout=300)
+        assert r.returncode != 0 and "No id offered and nothing written" in (r.stderr + r.stdout) \
+            and reg_path.read_bytes() == disk, f"--offices --apply without the rule's evidence: {r.returncode} {(r.stderr or r.stdout)[-300:]}"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", (f"{len(got)} holders of the first offices listed, as the hand file's own unlinked records; "
-                  f"{len(shared)} name(s) two places share held back for a person; nothing written by the "
-                  f"dry run; with --apply every id names its place")
+    return "ok", ("the made-up tree's three holders the model links to no one are offered, and the senator the "
+                  "rule links, the representative a member page links and the Governor the register names are "
+                  "not; her link leaves a holder out and her 'no one' keeps one in; a shared name gets no id; "
+                  "nothing written but by --apply's copy; without the rule's evidence nothing is offered, and "
+                  "the command says so")
+
+
+@check("data", "on today's files gr_register.py --offices offers an id to no first office's holder the model links to a person of the record, and to every one it links to no one",
+       needs=("gr_register", "gr_ids", "build_entities"))
+def _gr_offices_today(REG, GR, BE):
+    """The dry run of --offices on the files here, as a person runs it before issuing: every
+    holder it offers is one the model built from the same files links to no one, and every holder
+    and successor of the first offices that the model links to no one, and the register has
+    issued no id for, is offered (worked out here from the model's tenures). Nothing is written:
+    the register on disk is the same bytes after. Skipped where the model cannot be built here (a
+    bare clone has no built site) or its rule could not run (its evidence not all here)."""
+    missing = [n for n in BE.NEEDED if not Path(n).is_file()]
+    if missing:
+        return "skip", f"the files the model is built from are not here: {', '.join(missing)}"
+    reg_path = Path("generated") / "gr_ids.json"
+    disk = reg_path.read_bytes() if reg_path.is_file() else None
+    reg = GR.load_register(reg_path) or {"format": 1, "ids": []}
+    try:
+        got = REG.offices(reg, "2026-11-16", apply=False, root=".")
+    except BE.Refused as e:
+        return "skip", f"the model cannot say here whom it links, so nothing is offered: {e}"
+    want, model = _first_offices_unlinked(BE, ".")
+    T = {t["tenure"]: t for t in model["tenure"]}
+    offered = [c["tenure"] for _n, c in got]
+    bad = [f"{x} ({T[x]['printed']}, linked to {T[x]['person']})" for x in offered if T[x].get("person")]
+    assert not bad, f"--offices offers an id to holders the model links: {bad}"
+    assert sorted(offered) == want, f"--offices offers {sorted(offered)}; the model links to no one {want}"
+    assert (reg_path.read_bytes() if reg_path.is_file() else None) == disk, "the dry run wrote the register"
+    linked = [t for t in model["tenure"] if BE.HAND in (t.get("files") or []) and t["office"] in BE.FIRST_OFFICES
+              and t.get("person")]
+    return "ok", (f"{len(offered)} first-office holders offered an id, each one the model links to no one; "
+                  f"{len(linked)} it links left out (" + ", ".join(t["printed"] for t in linked) + ")")
 
 
 @check("data", "the model the build wrote (data/entities/) gives back today's people, careers, officials, members-elect, district table and officers, byte for byte",
