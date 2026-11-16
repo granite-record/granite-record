@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.73
+# GRANITE_VERSION: 2026-09-10.74
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -42,6 +42,7 @@ import re
 import tokenize
 
 import api_db
+import api_records
 import ballot_source as BS
 import bill_order as BO
 import build_date
@@ -1722,9 +1723,19 @@ def main():
     # under a key of their own, and not on the data page, so that nothing a
     # reader sees today moves while they are built.
     collector = api_db.Collector()
-    manifest["files"] = people_files(out, joined) + bill_files(out, site, collect=collector.add)
+    # THE API'S RECORDS, A FILE EACH (api_records.py; the owner's word of 16
+    # November 2026): the sitting term's bills, and every term's bill texts
+    # (bill-texts-<term>.jsonl.gz), from the records the bill files read in
+    # the same pass; the rest from the CSVs above, written once they are.
+    records = api_records.Records(SR.bill_index_or_stop(site, "build_exports.py"), site)
+    manifest["files"] = people_files(out, joined) + bill_files(
+        out, site, collect=lambda term, r: (collector.add(term, r), records.add_bill(term, r)))
+    manifest["files"] += records.text_files(out)
     manifest["files"] += database_file(out, collector, joined)
     api_index(manifest, out, tables, collector)
+    manifest["api"]["records"], said = api_records.write(
+        site, out, records, people=joined[0] if joined else None, person_of=person_of, base=a.base)
+    print("\n".join(said))
     over += [{"file": f["path"].rsplit("/", 1)[-1], "bytes": f["bytes"]}
              for f in manifest["files"] if f["bytes"] > SAFE]
     (out / "manifest.json").write_text(

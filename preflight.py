@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.940
+# GRANITE_VERSION: 2026-09-04.941
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -26611,6 +26611,36 @@ def _data_cors():
                   "/_headers, /_redirects or a page")
 
 
+@check("build", "every file the API's records put under /api/ may be read from another origin, by "
+                "exactly one _headers rule, and no rule reaches the Functions' /api/ addresses")
+def _api_records_cors():
+    """THE RECORDS ARE READABLE FROM ANYWHERE, as the /data files are
+    (_data_cors, whose reading of _headers this shares): every file the
+    fixture's build wrote under /api/, and an address of each kind the
+    fixture writes none of (a member, a request), is given
+    Access-Control-Allow-Origin: * by exactly one rule -- Pages sends a header
+    two rules name joined, "*, *", which a browser refuses -- and no rule
+    reaches /api/live/, /api/report or /api/follow/, which are the Functions'
+    and answer for themselves."""
+    shared, _base, _ran, _days = _fixture_site_shared()
+    built = shared / "site"
+    rules = _cors_rules((built / "_headers").read_text(encoding="utf-8"))
+    paths = sorted("/" + p.relative_to(built).as_posix() for p in (built / "api").rglob("*")
+                   if p.is_file())
+    assert paths, "the fixture's build wrote nothing under /api/"
+    paths += ["/api/members/376682.json", "/api/members/index.json", "/api/requests/2027/0001.json",
+              "/api/requests/2027/index.json", "/api/bills/2027-2028/HB1.json"]
+    wrong = [f"{p} ({_cors_said(rules, p)})" for p in paths if _cors_said(rules, p) != ["*"]]
+    assert not wrong, ("these API files are not given Access-Control-Allow-Origin: * by exactly "
+                       "one _headers rule: " + "; ".join(wrong[:6]))
+    fns = ["/api/live/votes/2026-01-07", "/api/live/streams", "/api/report", "/api/follow/signup",
+           "/api/follow/count"]
+    reach = [p for p in fns if _cors_said(rules, p)]
+    assert not reach, f"a _headers rule reaches the Functions' addresses: {reach}"
+    return "ok", (f"{len(paths)} addresses under /api/ each given * by one rule; none of the "
+                  f"{len(fns)} Functions' addresses by any")
+
+
 @check("frontend", "every record's own page is a working shell for app.js")
 def _bill_shell():
     """What replaced "the bill page stylesheet still formats".
@@ -33321,6 +33351,437 @@ def _api_schema():
     return "ok", ("a small database is built and every table and column of it described, numbers "
                   "stored as numbers; a broken key and a YouTube column are each caught; names are "
                   "unique and every file names its terms")
+
+
+def _api_law_page_text(page, anchor):
+    """(the paragraphs, the source note's line) a chapter's page shows for
+    one section, read off the page itself: the <p>s of its rs-text, their
+    tags and the page's own "(repealed)" marks taken off, and its rs-source;
+    None where the page has no such section."""
+    import html as _html
+    at = page.find(f'<section class="rs-sec" id="{anchor}">')
+    if at < 0:
+        return None
+    sec = page[at:page.find("</section>", at)]
+    body = sec.split('<div class="rs-text" translate="no">', 1)[-1]
+    body = re.split(r'<p class="rs-source">|<div class="rs-folds">', body)[0]
+    body = re.sub(r'<span class="rs-gone">.*?</span>', "", body)
+    paras = [_html.unescape(re.sub(r"<[^>]+>", "", p)).strip()
+             for p in re.findall(r"<p>(.*?)</p>", body, re.S)]
+    note = re.search(r'<p class="rs-source">(.*?)</p>', sec, re.S)
+    return [p for p in paras if p], (_html.unescape(note.group(1)) if note else "")
+
+
+def _api_bill_text_expected(site, rec):
+    """What a bill's Bill Text tab shows, read here from what the tab reads
+    (app.js: the version index for a bill with more than one version or with
+    amendments, else the record's own printing): [(name, day, text)]."""
+    year, bid = str(rec.get("year")), str(rec.get("id"))
+    ix = Path(site) / "versions" / year / f"{bid}.json"
+    if ((rec.get("nver") or 0) > 1 or (rec.get("namd") or 0)) and ix.is_file():
+        got = []
+        for v in json.loads(ix.read_text(encoding="utf-8")).get("versions") or []:
+            m = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", str(v.get("date") or ""))
+            p = Path(site) / str(v.get("text_url") or "").lstrip("/")
+            got.append((v.get("title"), f"{m[3]}-{int(m[1]):02d}-{int(m[2]):02d}" if m else None,
+                        p.read_text(encoding="utf-8") if v.get("text_url") and p.is_file() else None))
+        if got:
+            return got
+    body = ((rec.get("billtext") or {}).get("body") or "")
+    return [((rec.get("billtext") or {}).get("version") or "", None, body)] if body.strip() else []
+
+
+@check("build", "the API's files a record are each in the shape api_schema promises: \"format\": 1 "
+                "and only fields it marks stable; the sitting term's bills and roll calls a file "
+                "each and no other term's; the members and the requests; and the laws' and the "
+                "bills' text, each as its page shows it",
+       needs=("api_records", "api_schema", "api_page", "site_read", "rsa", "build_rsa"))
+def _api_records(AR, AS, AP, SR, RSA, BR):
+    """THE API'S RECORDS (api_records.py; the owner's word of 16 November
+    2026: static files, "format": 1 in every one and no /v1/ in the path, the
+    sitting term's records first; and the same morning, that laws and bills
+    carry their text). Held three ways, each by its own reading here and not
+    by the writer's own guard (AR.held), so a guard that stopped guarding is
+    caught too:
+
+      the fixture's build   every file build_exports wrote under site/api/:
+                            each is JSON with "format": 1 and no field the
+                            resource it belongs to does not mark stable, to
+                            the depth api_schema describes; the sitting term
+                            -- the newest its bill index holds, never a
+                            literal -- has a file for each bill and roll call,
+                            exactly, and no other term has one; every term has
+                            its rows, and every term's bills a line each in
+                            bill-texts-<term>.jsonl.gz; each bill's text is
+                            what its Bill Text tab shows, and a bill with none
+                            says so; each section's text and source note are
+                            the chapter page's own paragraphs and line, with
+                            the day the table was taken, the latest year of
+                            laws and the official page the page's lead gives;
+                            index.json lists every resource with tonight's
+                            counts; schema.json describes the same fields; and
+                            the /api page names each kind with a file that is
+                            there
+      a record made up here two terms, a person with a seat and a sponsorship,
+                            one replaced, a request become a bill, a bill with
+                            two versions, one with its printing alone, one
+                            with no text, and a file an earlier build left:
+                            the members' and requests' files, which the
+                            fixture has no roster or requests for; the
+                            versions as the tab reads them; the newer term
+                            taking the files a record from the older, whose
+                            file is taken away; and a page's field let into a
+                            bill's file stops the step
+      the real record       where a site/ built from it carries /api/, as on
+                            the laptop after a build: the text of a sample of
+                            the sitting term's bills and of the chapters,
+                            against their pages
+    """
+    import csv as _csv_
+    import gzip
+    shared, _base, _ran, _days = _fixture_site_shared()
+    built = shared / "site"
+    api = built / "api"
+    assert (api / "index.json").is_file(), "the fixture's build wrote no site/api/index.json"
+
+    def walk(obj, spec, inside, where, out, depth=0):
+        """Every field of obj, to the depth `inside` names, that spec does
+        not mark stable -- read here, apart from AR.unpromised."""
+        for k, v in obj.items():
+            f = spec.get(k)
+            if not f or f[2] != "stable":
+                out.append(f"{where}.{k}")
+            elif k in inside and depth < 4:
+                for x in (v if isinstance(v, list) else [v]):
+                    if isinstance(x, dict):
+                        walk(x, inside[k], inside, f"{where}.{k}", out, depth + 1)
+                    elif x is not None:
+                        out.append(f"{where}.{k} holds {type(x).__name__}, not an object")
+
+    def kind(rel):
+        """(resource, rows or record) of a path under api/, or None."""
+        for name, rx_rows, rx_rec in (
+                ("bills", r"bills/\d{4}-\d{4}/index\.json", r"bills/\d{4}-\d{4}/[A-Z]+\d+[A-Z]?\.json"),
+                ("rollcalls", r"rollcalls/\d{4}-\d{4}\.json", r"rollcalls/\d{4}-\d{4}/\d{4}-[HS]-\d+\.json"),
+                ("members", r"members/index\.json", r"members/[0-9A-Za-z-]+\.json"),
+                ("requests", r"requests/\d{4}/index\.json", r"requests/\d{4}/\d{4,5}\.json"),
+                ("laws", r"laws/index\.json", r"laws/\d{1,3}(?:-[A-Z]{1,2})?\.json")):
+            if re.fullmatch(rx_rows, rel):
+                return name, "rows"
+            if re.fullmatch(rx_rec, rel):
+                return name, "record"
+        return None
+
+    def read_api(root):
+        """{path under api/: its object} of every file, and what is wrong with each."""
+        got, bad = {}, []
+        for p in sorted(root.rglob("*")):
+            if not p.is_file():
+                continue
+            rel = p.relative_to(root).as_posix()
+            try:
+                obj = json.loads(p.read_text(encoding="utf-8"))
+            except ValueError as e:
+                bad.append(f"{rel} is not JSON ({e})")
+                continue
+            got[rel] = obj
+            if not isinstance(obj, dict) or obj.get("format") != 1:
+                bad.append(f"{rel} does not say \"format\": 1")
+                continue
+            if rel == "index.json":
+                continue
+            k = kind(rel)
+            if k is None:
+                bad.append(f"{rel} is a file no resource of api_schema describes")
+                continue
+            spec, inside = AS.api_file_fields(*k)
+            extra = []
+            walk(obj, spec, inside, rel, extra)
+            bad += [f"{e}, which api_schema does not promise" for e in extra]
+        return got, bad
+
+    def texts_of(data):
+        """{key: line} of every bill-texts-<term>.jsonl.gz under `data`, and what is wrong."""
+        lines, bad = {}, []
+        spec, inside = AS.api_file_fields("bills", "texts")
+        for p in sorted(Path(data).glob("bill-texts-*.jsonl.gz")):
+            for raw in gzip.decompress(p.read_bytes()).decode("utf-8").splitlines():
+                x = json.loads(raw)
+                extra = []
+                walk(x, spec, inside, p.name, extra)
+                bad += [f"{e}, which api_schema does not promise" for e in extra]
+                lines[x.get("key")] = x
+        return lines, bad
+
+    def as_text(versions):
+        return [(v.get("name"), v.get("date"), v.get("text")) for v in versions]
+
+    got, bad = read_api(api)
+    lines, bad_t = texts_of(built / "data")
+    assert not bad + bad_t, f"{len(bad + bad_t)} findings in the fixture's /api/: " + "; ".join((bad + bad_t)[:8])
+    rows = SR.bill_index(built)
+    sitting = max(r["term"] for r in rows)
+    terms = {r["term"] for r in rows}
+    per_bill = {rel for rel in got if kind(rel) == ("bills", "record")}
+    want = {f"bills/{sitting}/{r['id']}.json" for r in rows if r["term"] == sitting}
+    assert per_bill == want, (f"the bills with a file of their own are not the sitting term's "
+                              f"({sitting}): missing {sorted(want - per_bill)[:4]}, more "
+                              f"{sorted(per_bill - want)[:4]}")
+    for t in terms:
+        f = got.get(f"bills/{t}/index.json") or {}
+        assert f.get("term") == t and len(f.get("bills") or []) == sum(r["term"] == t for r in rows), \
+            f"bills/{t}/index.json does not hold every bill of {t} as a row"
+    assert set(lines) == {f"{r['term']}/{r['id']}" for r in rows}, \
+        "bill-texts-<term>.jsonl.gz do not hold every bill of every term, a line each"
+    one = got[sorted(want)[0]]
+    assert one["key"] == f"{sitting}/{one['id']}" and "events" in one and "narrative" not in one \
+        and "stations" not in one, f"a bill's file is not its row and its record's stable fields: {sorted(one)}"
+    # EACH BILL'S TEXT IS WHAT ITS BILL TEXT TAB SHOWS, read here from what
+    # the tab reads; a bill with none says so, in its file and its line.
+    n_text = 0
+    for y, b, rec in SR.records(built):
+        key = f"{rec.get('term')}/{b}"
+        want_t = _api_bill_text_expected(built, rec)
+        line = lines.get(key) or {}
+        assert as_text(line.get("versions") or []) == want_t and \
+            line.get("text_on_file") == bool(want_t), \
+            f"{key}'s line in bill-texts is not the text its Bill Text tab shows"
+        f = got.get(f"bills/{sitting}/{b}.json")
+        if rec.get("term") == sitting:
+            assert f and as_text(f.get("versions") or []) == want_t and \
+                f.get("text_on_file") == bool(want_t), \
+                f"{key}'s file is not the text its Bill Text tab shows"
+        n_text += bool(want_t)
+    with (built / "data" / "rollcalls.csv").open(encoding="utf-8", newline="") as fh:
+        rcs = list(_csv_.DictReader(fh))
+    per_rc = {rel for rel in got if kind(rel) == ("rollcalls", "record")}
+    want_rc = {f"rollcalls/{sitting}/{r['roll_call']}.json" for r in rcs if r["term"] == sitting}
+    assert want_rc and per_rc == want_rc, (
+        f"the roll calls with a file of their own are not the sitting term's: missing "
+        f"{sorted(want_rc - per_rc)[:4]}, more {sorted(per_rc - want_rc)[:4]}")
+    assert {f"rollcalls/{t}.json" for t in {r["term"] for r in rcs}} <= set(got), \
+        "a term with roll calls has no file of their rows"
+    ballots = [b for rel in per_rc for b in got[rel]["ballots"]]
+    assert ballots and all(b.get("member_id") and b.get("vote") is not None for b in ballots), \
+        f"the sitting term's roll calls carry no ballots, or ballots without a member: {ballots[:2]}"
+    assert all(isinstance(got[rel]["passed"], bool) and isinstance(got[rel]["yeas"], int)
+               for rel in per_rc), "a roll call's file does not type its tally and outcome"
+
+    # THE LAWS: every section's heading, text and source note as its chapter's
+    # page shows them, read off the fixture's built pages, with the source
+    # note's law, the day the table was taken and the page's official link.
+    table = RSA.load(shared / "db" / "NH_RSA.psv", shared / "db" / "_columns.json")
+    taken = json.loads((shared / "db" / "_manifest.json").read_text(encoding="utf-8"))["NH_RSA"]["fetched"][:10]
+    n_sec = 0
+    for ch in table.chapters:
+        law = got.get(f"laws/{ch}.json") or {}
+        page = BR.chapter_file(built / "laws", ch).read_text(encoding="utf-8")
+        assert law.get("text_taken") == taken and law.get("laws_through") == 2025 and \
+            law.get("official") and f'<a href="{law["official"]}" rel="noopener">The official text' in page, \
+            f"laws/{ch}.json does not name the day its text was taken and its source as its page does: {law}"
+        for s in law.get("sections") or []:
+            shown = _api_law_page_text(page, "s" + s["section"].split(":", 1)[1])
+            if s["repealed"]:
+                assert s["text"] is None and s["note"] is None, s
+                continue
+            assert shown and s["text"].split("\n") == shown[0] and \
+                (f"Source. {s['note']}" if s["note"] else "") == shown[1] and \
+                s["heading"] == table.sections[s["section"]].heading, \
+                (f"{s['section']}'s text in laws/{ch}.json is not what its chapter's page shows: "
+                 f"{s['text'][:80]!r} against {shown}")
+            n_sec += 1
+    assert n_sec >= 3 and got["laws/91-A.json"]["sections"][0]["changed_by"] == \
+        [{"year": 1967, "law": "251:1", "bill": "", "effective": None}], got["laws/91-A.json"]
+    assert [c["chapter"] for c in got["laws/index.json"]["chapters"]] == ["91-A", "404"], \
+        got["laws/index.json"]
+
+    # THE INDEX, AND THE SCHEMA THAT DESCRIBES THE SAME FIELDS.
+    ix = got["index.json"]
+    names = [r["name"] for r in AS.API_RESOURCES]
+    assert [r["name"] for r in ix["resources"]] == names and ix["sitting_term"] == sitting, \
+        (f"index.json lists {[r['name'] for r in ix['resources']]} for {ix['sitting_term']}, not "
+         f"{names} for {sitting}")
+    counted = {n: sum(1 for rel in got if (kind(rel) or ("",))[0] == n) for n in names}
+    assert {r["name"]: r["files_tonight"] for r in ix["resources"]} == counted, \
+        (ix["resources"], counted)
+    sch = json.loads((built / "data" / "schema.json").read_text(encoding="utf-8"))
+    assert sch.get("x-api-records") == AS.api_records_schema(), \
+        "schema.json does not describe the API's records as api_schema does"
+    assert any(r.get("path", "").startswith("bill-texts-") and r.get("schema") for r in sch["resources"]), \
+        "schema.json does not describe the bill texts' files"
+    flat = [f for r in sch["x-api-records"] for fl in r["files"] for f in fl["fields"]]
+    while any("x-fields" in f for f in flat):
+        flat = [g for f in flat for g in ([f] + f.pop("x-fields", []))]
+    assert flat and all(f["x-stability"] == "stable" for f in flat), \
+        "a field of the API's records is described but not stable, and no file may carry it"
+    people = next(r for r in AS.package([], [{"path": "/data/people.json", "rows": 1, "bytes": 1}],
+                                        "", "x")["resources"] if r["name"] == "people")
+    assert {f["name"]: f["description"] for f in people["schema"]["fields"]} == \
+        {k: v[1] for k, v in AS.API_PERSON.items()}, \
+        "a member's file and people.json describe the same person's fields in different words"
+
+    # THE PAGE names each kind the build wrote, with a file that is there.
+    page = (built / "api.html").read_text(encoding="utf-8")
+    sec = page.split('id="records"', 1)[-1].split("</section>", 1)[0]
+    links = re.findall(r'href="(/api/[^"]+)"', sec)
+    assert "One Record at a Time" in page and links and \
+        all((built / h.lstrip("/")).is_file() for h in links), \
+        f"the /api page does not describe the records with a file that is there: {links}"
+    for name in ("bills", "rollcalls", "laws"):
+        assert f"/api/{name}/" in sec, f"the /api page does not describe /api/{name}/"
+    assert "Bill Texts by Term" in page, "the /api page does not list the bill texts' files"
+
+    # A RECORD MADE UP HERE.
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        site, out = d / "site", d / "site" / "data"
+        (site / "idx").mkdir(parents=True)
+        out.mkdir()
+        row = lambda t, b, y: {"id": b, "year": y, "term": t, "title": f"{b} of {t}", "kind": "active",
+                               "status": "In committee", "sponsor": "A Member", "committees": ["Finance"],
+                               "nrc": 1, "chip": "In Committee", "rail": [], "sponsor_slug": "x"}
+        idx = {"2027-2028": [row("2027-2028", "HB1", 2027)],
+               "2025-2026": [row("2025-2026", "HB1", 2025), row("2025-2026", "SB2", 2026)]}
+        for t, rr in idx.items():
+            (site / "idx" / f"{t}.json").write_text(json.dumps(rr), encoding="utf-8")
+        (site / "idx" / "2027-requests.json").write_text(json.dumps([
+            {"id": "LSR20270001", "n": "LSR 2027-0001", "year": 2027, "title": "a request",
+             "sponsor": "A Member", "cosp": ["B. Two"], "body": "HB", "status": "Filed",
+             "withdrawn": False, "introduced": "HB 1", "address": "request/2027-0001",
+             "sponsor_slug": "x", "rail": []}]), encoding="utf-8")
+        (site / "meta.json").write_text(json.dumps(
+            {"terms": ["2027-2028", "2025-2026"],
+             "requests": {"term": "2027-requests", "year": 2027}}), encoding="utf-8")
+        # HB 1 of 2027 has two versions (build_bill_versions' index and texts);
+        # SB 2 of 2026 its printing alone; HB 1 of 2025 no text at all.
+        vdir = site / "versions" / "2027"
+        vdir.mkdir(parents=True)
+        (vdir / "HB1.0.txt").write_text("AN ACT as introduced.\n1 Section one.", encoding="utf-8")
+        (vdir / "HB1.1.txt").write_text("AN ACT as amended.\n1 Section one, amended.", encoding="utf-8")
+        (vdir / "HB1.json").write_text(json.dumps({"bill": "HB1", "year": "2027", "versions": [
+            {"title": "Introduced", "label": "Introduced", "date": "01/05/2027 09:00:00",
+             "text_url": "/versions/2027/HB1.0.txt"},
+            {"title": "As Amended by the House", "label": "As Amended by the House",
+             "date": "03/10/2027 16:14:22", "text_url": "/versions/2027/HB1.1.txt"}]}), encoding="utf-8")
+
+        def put(name, cols, rows_):
+            with (out / name).open("w", encoding="utf-8", newline="") as fh:
+                w = _csv_.writer(fh)
+                w.writerow(cols)
+                w.writerows(rows_)
+        put("rollcalls.csv", list(AS.CSV["rollcalls.csv"]),
+            [["2025-H-9", "2025-2026", "2025", "H", "9", "2025-03-01", "HB1", "q", "", "200", "100",
+              "0", "1", "0", "", "", "docket"],
+             ["2027-H-1", "2027-2028", "2027", "H", "1", "2027-01-07", "HB1", "q", "", "201", "163",
+              "30", "1", "0", "", "", "count"]])
+        put("votes-2027-2028.csv", list(AS.CSV["votes-<term>.csv"]),
+            [["2027-H-1", "2027-2028", "2027-01-07", "HB1", "q", "m1", "Member, A", "R", "House", "Yea"]])
+        put("legislators.csv", list(AS.CSV["legislators.csv"]),
+            [["m1", "A Member", "House", "Republican", "1", "Belknap", "a@gc.nh.gov",
+              "Finance; Rules", "3", "120", "100"]])
+        put("sponsors.csv", list(AS.CSV["sponsors.csv"]),
+            [["2027-2028", "HB1", "m1", "A Member", "R", "H", "1", "", "the sponsor file", "100"],
+             ["2025-2026", "SB2", "m1", "A Member", "R", "H", "0", "", "the sponsor file", "100"]])
+        stale = site / "api" / "bills" / "2025-2026" / "HB1.json"
+        stale.parent.mkdir(parents=True)
+        stale.write_text("{}", encoding="utf-8")
+        rec = AR.Records([r for rr in idx.values() for r in rr], site)
+        for t, rr in idx.items():
+            for r in rr:
+                rec.add_bill(t, {"id": r["id"], "year": r["year"], "term": t, "title": "(New Title) x",
+                                 "events": [{"date": "2027-01-05", "text": "Introduced"}],
+                                 "narrative": "a page's own words", "stations": [{"when": "x"}],
+                                 "nver": 2 if t == "2027-2028" else 1,
+                                 "billtext": ({"version": "FINAL VERSION", "body": "AN ACT, chaptered."}
+                                              if r["id"] == "SB2" else {"version": "", "body": ""})})
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):          # its lines are the build's
+            text_rows = rec.text_files(out)
+        people = [{"person": "100", "name": "A Member", "employee_numbers": ["m1"], "person_ids": [],
+                   "member_ids": ["m1"], "page": "/legislator/a-member", "sitting": True,
+                   "chambers": ["H"], "first_term": "2025-2026", "last_term": "2027-2028"},
+                  {"person": "101", "replaced_by": "100"}]
+        summary, said = AR.write(site, out, rec, people=people, person_of={"m1": "100"},
+                                 base="https://example.org", built="2027-01-08T09:00:00Z",
+                                 db=d / "no-db", citations=d / "none.json")
+        made, bad = read_api(site / "api")
+        made_t, bad_t = texts_of(out)
+        assert not bad + bad_t, f"{len(bad + bad_t)} findings in the made-up /api/: " + "; ".join((bad + bad_t)[:6])
+        assert sorted(made) == [
+            "bills/2025-2026/index.json", "bills/2027-2028/HB1.json", "bills/2027-2028/index.json",
+            "index.json", "members/100.json", "members/101.json", "members/index.json",
+            "requests/2027/0001.json", "requests/2027/index.json", "rollcalls/2025-2026.json",
+            "rollcalls/2027-2028.json", "rollcalls/2027-2028/2027-H-1.json"], sorted(made)
+        assert not stale.exists(), \
+            "a bill's file an earlier build left, of a term no longer sitting, is still there"
+        hb = made["bills/2027-2028/HB1.json"]
+        two = [{"name": "Introduced", "date": "2027-01-05", "text": "AN ACT as introduced.\n1 Section one."},
+               {"name": "As Amended by the House", "date": "2027-03-10",
+                "text": "AN ACT as amended.\n1 Section one, amended."}]
+        assert hb["title"] == "HB1 of 2027-2028" and hb["events"] and hb["committees"] == ["Finance"] \
+            and hb["outcome"] == "active" and hb["roll_calls"] == 1 and hb["versions"] == two \
+            and hb["text_on_file"] is True, hb
+        assert [x["path"] for x in text_rows] == ["/data/bill-texts-2027-2028.jsonl.gz",
+                                                  "/data/bill-texts-2025-2026.jsonl.gz"] and \
+            made_t == {"2027-2028/HB1": {"key": "2027-2028/HB1", "versions": two, "text_on_file": True},
+                       "2025-2026/HB1": {"key": "2025-2026/HB1", "versions": [], "text_on_file": False},
+                       "2025-2026/SB2": {"key": "2025-2026/SB2", "versions": [
+                           {"name": "FINAL VERSION", "date": None, "text": "AN ACT, chaptered."}],
+                           "text_on_file": True}}, (text_rows, made_t)
+        assert made["rollcalls/2027-2028/2027-H-1.json"]["ballots"] == [
+            {"member_id": "m1", "person": "100", "member": "Member, A", "party": "R", "vote": "Yea"}], \
+            made["rollcalls/2027-2028/2027-H-1.json"]
+        m = made["members/100.json"]
+        assert m["seat"]["committees"] == ["Finance", "Rules"] and m["seat"]["recorded_votes"] == 120 \
+            and m["sponsored"] == [{"key": "2025-2026/SB2", "prime": False},
+                                   {"key": "2027-2028/HB1", "prime": True}], m
+        assert made["members/101.json"] == {"format": 1, "person": "101", "replaced_by": "100",
+                                            "sponsored": []}, made["members/101.json"]
+        assert made["requests/2027/0001.json"] == {
+            "format": 1, "lsr": "2027-0001", "year": 2027, "title": "a request", "sponsor": "A Member",
+            "cosponsors": ["B. Two"], "body": "HB", "status": "Filed", "withdrawn": False,
+            "bill": "2027-2028/HB1"}, made["requests/2027/0001.json"]
+        assert made["index.json"]["sitting_term"] == "2027-2028" and \
+            made["index.json"]["requests_year"] == 2027, made["index.json"]
+        assert any("api/laws/" in s and "not written" in s for s in said), said
+        try:
+            AR.held("bills", "record", {"format": 1, "key": "x", "narrative": "a page's"}, "t")
+            stopped = False
+        except SystemExit:
+            stopped = True
+        assert stopped, "a bill's file carrying a page's field was written, not stopped"
+
+    # THE REAL RECORD, where a site/ built from it carries /api/ (the laptop's
+    # after a build): a sample of the sitting term's bills and of the chapters.
+    real, said_real = Path("site"), "no site/ built from the real record here carries /api/"
+    if (real / "api" / "index.json").is_file() and (real / "laws").is_dir():
+        rix = json.loads((real / "api" / "index.json").read_text(encoding="utf-8"))
+        term = rix["sitting_term"]
+        ids = sorted((str(r["year"]), r["id"]) for r in SR.bill_index(real) if r["term"] == term)
+        recs = [SR.one(real, y, b) for y, b in ids[::max(1, len(ids) // 25)]]
+        for r in recs:
+            f = json.loads((real / "api" / "bills" / term / f"{r['id']}.json").read_text(encoding="utf-8"))
+            assert as_text(f["versions"]) == _api_bill_text_expected(real, r), \
+                f"{term}/{r['id']}'s text in /api/ is not what its Bill Text tab shows"
+        chs = sorted(p.stem for p in (real / "api" / "laws").glob("*.json") if p.stem != "index")
+        for ch in chs[::max(1, len(chs) // 25)]:
+            law = json.loads((real / "api" / "laws" / f"{ch}.json").read_text(encoding="utf-8"))
+            page = BR.chapter_file(real / "laws", ch).read_text(encoding="utf-8")
+            for s in law["sections"]:
+                if not s["repealed"]:
+                    shown = _api_law_page_text(page, "s" + s["section"].split(":", 1)[1])
+                    assert shown and s["text"].split("\n") == shown[0], \
+                        f"{s['section']}'s text in /api/ is not what its chapter's page shows"
+        said_real = (f"and of the real record's, {len(recs)} of {term}'s bills and "
+                     f"{len(chs[::max(1, len(chs) // 25)])} chapters against their pages")
+    return "ok", (f"the fixture's {len(got):,} files under /api/ each say format 1 and carry only "
+                  f"stable fields; {sitting}'s {len(per_bill)} bills and {len(per_rc)} roll calls a "
+                  f"file each, no other term's; {len(terms)} term(s) of rows and of texts, "
+                  f"{n_text} bill(s) with text and the rest saying they have none; {n_sec} sections' "
+                  "text and notes as their pages show them; index.json, schema.json and the /api "
+                  "page agree; a made-up record's members, request, versions, newer term and stale "
+                  f"file each as promised; {said_real}")
 
 
 @check("files", "only record_moves.py writes the former addresses kept for a 301, and they only grow")
