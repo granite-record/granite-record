@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.90
+# GRANITE_VERSION: 2026-09-04.91
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -142,6 +142,12 @@ night itself does is here, and what differs on that machine is behind --runner:
                       on it warns 30 days before its day and after, its words
                       kept to the verdict and the night's own log, both
                       private; the public page counts them (KNOWN EXPIRIES)
+  the sources         one line each in the verdict ("sources"), the log and
+                      the run's page: what it brought, when it last brought
+                      something new, and what stood in; the study meetings,
+                      the calendars and journals, the recordings and the
+                      term's data warn past the record's longest stillness
+                      for the season (ONE LINE PER SOURCE)
   the gates           against archive/census.json, the last good build's
                       counts, which cloud.py carries in R2's state/, because
                       site/ starts empty. No census is no baseline, and that
@@ -5706,13 +5712,371 @@ def expiries_warned(rec, private=False):
     return out
 
 
+# ONE LINE PER SOURCE (the refactor's stage 0, its do-first list; stage0-data's
+# list of what the night takes). Every source the night asks, or reads as the
+# kit brings it, gets one line in the verdict ("sources", sources_record) and
+# on the run's page and in the log: what it brought tonight, or that it was
+# not asked; when it last brought something new; and what stood in for it,
+# where something did. The verdict's own lines for each source are kept as
+# they were: this section is beside them, worked out from them.
+#
+# WHEN IT LAST BROUGHT SOMETHING NEW. A file the night installs is new tonight
+# where its bytes differ from the copy kit-down brought (KIT_DOWN records each
+# file's sha256); otherwise it last changed on the day the kit's manifest gives
+# it, since kit-up sends back only a file whose bytes changed and a dry run
+# sends back none of these (kit_changed). Two sources date themselves, and
+# that date is used, because their limits below are measured on it: the study
+# committees' meetings by the time each row was entered, the recordings by
+# when YouTube published each. The list of calendars and journals is new on a
+# night it gains documents (its own sentence counts them), and otherwise
+# carries the day of the last night it did, which is near each document's own
+# date, the date its limit is measured on: the list, rewritten on every night
+# that reads it, is new by its bytes every night, and a fixture's or an old
+# list's document dates say nothing of when the night last read a new one. A
+# source with no date of any kind carries the last night's too (the database
+# standing in for the export), and one with none on record yet says so.
+#
+# WHEN ONE THAT SHOULD CHANGE HAS NOT. Out of session the export can be quiet
+# for weeks, and a warning on what is normal is noise the person learns to
+# ignore, so a source warns only past the longest stillness the record shows
+# for the season tonight is in, measured as STILL_DAYS was (each gap given to
+# the season of the day it ended, March and April 2020 set aside), on this
+# disk on 16 November 2026:
+#
+#   the study committees' meetings   113 days in the session (7 February to 30
+#                                    May 2024), 27 in the interim (13 June to 10
+#                                    July 2024), over each row's entry time,
+#                                    2024-2026 (the column begins in 2024)
+#   the calendars and journals list  8 in the session (13 to 21 June 2024, and
+#                                    twice in June 2018), 14 in the interim (28
+#                                    June to 12 July 2019), over each document's
+#                                    own date, 2015-2026
+#   the recordings' index            17 in the session (24 December 2021 to 10
+#                                    January 2022), 51 in the interim (30 June
+#                                    to 20 August 2021), over YouTube's
+#                                    published_at, House and Senate, 2020-2026
+#   the current term's data          STILL_DAYS, against the docket: the same
+#                                    bills, so it warns only where the docket
+#                                    moved on for longer than it ever stands
+#                                    still and this did not move at all, as
+#                                    the laptop's share does
+#
+# The rest warn as they did, or not at all: the export by the docket standing
+# still (docket_still); the database for the day's files at DB_NIGHTS_MOST
+# nights in a row; the captions inbox by inbox_silent; the laptop's share by
+# laptop_share_behind; a document the night could not fetch by its own step;
+# the statutes change on the days new laws take effect; next session's bill
+# requests come in a season this disk keeps no dates of; and production is
+# read for the gate, which says when it could not be.
+SOURCE_STILL = {"study": {"session": 113, "interim": 27},
+                "documents": {"session": 8, "interim": 14},
+                "recordings": {"session": 17, "interim": 51}}
+KIND_SOURCE_STILL = KIND_HEALTH + "a source standing still: "
+STUDY_TABLE = Path("db/StatStudMeetings.psv")
+STUDY_ENTERED = re.compile(r"\|(\d{2})/(\d{2})/(\d{4}) \d{2}:\d{2}:\d{2}[ \t]*$", re.M)
+RECORDINGS = ("collected/videos/videos_*.csv", "videos_*_livestreams.csv")
+STATUTE_FILE = "db/NH_RSA.psv"
+DOCUMENT_TEXT = ("calendars/", "calendars_senate/", "journals/", "journals_senate/")
+LIST_GREW = re.compile(r"installed, ([\d,]+) documents \(was ([\d,]+)\)")
+# What each line calls its source: the General Court's, then the rest.
+SOURCE_NAMES = (
+    ("export", "the General Court's daily export"),
+    ("db_day", "its database, for the day's files when the export fails"),
+    ("study", "its database: the study committees' meetings"),
+    ("term", "its database: the current term's bills, texts, reports, sign-ins and status fields"),
+    ("statutes", "its database: the statutes"),
+    ("lsrs", "its web pages: next session's bill requests"),
+    ("documents", "its web pages: the list of calendars and journals"),
+    ("document_files", "its web pages: the calendars and journals themselves"),
+    ("recordings", "YouTube: the recordings' index"),
+    ("inbox", "the captions inbox, from the laptop through the bucket"),
+    ("laptop", "the laptop's share of the record, in the kit"),
+    ("production", "graniterecord.org, read for the gate"))
+
+
+def _sha256_of(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def kit_changed(paths, today, record=KIT_DOWN):
+    """(the day the newest of `paths` last changed, or None; whether one did
+    tonight), by WHEN IT LAST BROUGHT SOMETHING NEW: tonight where a file's
+    bytes differ from kit-down's copy, else the day the kit's manifest gives
+    it. A path kit-down's record does not hold says nothing: a file git
+    keeps, or one the kit has not carried yet."""
+    rec = load_json(record)
+    files = rec.get("files") if isinstance(rec, dict) else None
+    if not isinstance(files, dict):
+        return None, False
+    newest, tonight = None, False
+    for p in paths:
+        e = files.get(p)
+        if not (isinstance(e, list) and len(e) >= 3):
+            continue
+        try:
+            st = Path(p).stat()
+            moved = (st.st_size, st.st_mtime_ns) != (e[0], e[2]) and _sha256_of(p) != e[1]
+        except OSError:
+            continue
+        if moved:
+            tonight = True
+        elif isinstance(e[2], int) and e[2] > 0:
+            d = datetime.fromtimestamp(e[2] / 1e9).date()
+            newest = d if newest is None or d > newest else newest
+    return (today if tonight else newest), tonight
+
+
+def kit_newest_under(prefixes, record=KIT_DOWN):
+    """The newest day the kit's manifest gives a file under any of `prefixes`, or None."""
+    rec = load_json(record)
+    files = rec.get("files") if isinstance(rec, dict) else None
+    best = max((e[2] for p, e in (files or {}).items() if str(p).startswith(prefixes)
+                and isinstance(e, list) and len(e) >= 3 and isinstance(e[2], int)), default=0)
+    return datetime.fromtimestamp(best / 1e9).date() if best > 0 else None
+
+
+def study_newest(path=STUDY_TABLE):
+    """The newest day a row of the study committees' meetings was entered (the
+    table's last column), or None."""
+    try:
+        text = Path(path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    best = None
+    for m in STUDY_ENTERED.finditer(text):
+        try:
+            d = date(int(m.group(3)), int(m.group(1)), int(m.group(2)))
+        except ValueError:
+            continue
+        best = d if best is None or d > best else best
+    return best
+
+
+def list_grew(said):
+    """Whether take_documents' sentence says tonight's list of calendars and
+    journals gained documents: "installed, N documents (was M)" with N > M."""
+    m = LIST_GREW.match(str(said or ""))
+    return bool(m) and int(m.group(1).replace(",", "")) > int(m.group(2).replace(",", ""))
+
+
+def recordings_newest(globs=RECORDINGS):
+    """The newest day YouTube published a recording the index holds, or None."""
+    import csv
+    best = None
+    for g in globs:
+        for f in sorted(Path(".").glob(g)):
+            try:
+                with open(f, encoding="utf-8", errors="replace", newline="") as fh:
+                    for r in csv.DictReader(fh):
+                        p = str(r.get("published_at") or "")[:10]
+                        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", p):
+                            d = date.fromisoformat(p)
+                            best = d if best is None or d > best else best
+            except (OSError, ValueError):
+                continue
+    return best
+
+
+def _installed_rows(said):
+    """The count an "installed, N rows (was M)" sentence installed, or None."""
+    m = re.match(r"installed, ([\d,]+)", str(said or ""))
+    return int(m.group(1).replace(",", "")) if m else None
+
+
+def _pieces_said(pieces):
+    """{piece: sentence} as "all 3 installed" or "2 of 3 installed", and the
+    pieces the installed copy stood in for."""
+    pieces = pieces if isinstance(pieces, dict) else {}
+    kept = [k for k, r in pieces.items() if not str(r).startswith("installed")]
+    n = len(pieces)
+    return (f"all {n} installed" if not kept else f"{n - len(kept)} of {n} installed"), kept
+
+
+def sources_record(v, today, fetched=True, prev=None, kit=KIT_DOWN):
+    """ONE LINE PER SOURCE: [{"source", "name", "asked", "brought", "new",
+    "fallback", "line"}], each with "still" ({"days", "limit", "season"}, and
+    for the term's data "docket") where it should change (WHEN ONE THAT SHOULD
+    CHANGE HAS NOT). `v` is tonight's verdict as finish() has it, `today` a
+    date, `prev` the last night's list, whose "new" stands in where a source
+    has no date of its own tonight. A night that did not fetch is not told
+    that anything stood still, as WHEN THE RECORD STOPS MOVING is not."""
+    import snapshot_gencourt as SG
+    was = {r.get("source"): r for r in prev or [] if isinstance(r, dict)}
+    season = still_season(today)
+    out = []
+
+    def add(key, asked, brought, new=None, fallback="", still=None):
+        new = new.isoformat() if isinstance(new, date) else new
+        if not new and isinstance(was.get(key), dict):
+            new = was[key].get("new")
+        if not (isinstance(new, str) and day_of(new)):
+            new = None
+        name = dict(SOURCE_NAMES)[key]
+        if new == today.isoformat():
+            when = "tonight"
+        elif new:
+            age = (today - date.fromisoformat(new)).days
+            when = f"{day_said(date.fromisoformat(new))} ({_days(age)} ago)"
+        else:
+            when = "not known"
+        rec = {"source": key, "name": name, "asked": bool(asked), "brought": brought,
+               "new": new, "fallback": fallback,
+               "line": f"{name}: {brought}; last new {when}" + (f"; {fallback}" if fallback else "")}
+        if still:
+            rec["still"] = still
+        out.append(rec)
+
+    def still_of(key, newest):
+        if newest is None or not fetched:
+            return None
+        return {"days": (today - newest).days, "limit": SOURCE_STILL[key][season],
+                "season": season, "newest": newest.isoformat()}
+
+    # The export, and the database standing in for it.
+    day_files = list(SG.FILES) + [n for _u, n in SG.EXTRA]
+    new, _ = kit_changed(day_files, today, kit)
+    asked = bool(v.get("tried"))
+    fetch = str(v.get("fetch") or "not asked")
+    add("export", asked,
+        f"the {len(day_files)} files, whole" if fetch == "installed" else
+        fetch[:140] if asked or fetch.startswith("deferred") else "not asked tonight", new,
+        "the General Court's database stood in" if from_db(v) else
+        "nothing installed: the files already here stood in" if asked and fetch != "installed" else "")
+    df = v.get("day_files") if isinstance(v.get("day_files"), dict) else None
+    if from_db(v):
+        add("db_day", True, f"stood in for the export, night {int(v.get('db_nights') or 1)} in a row",
+            today)
+    elif df is not None:
+        add("db_day", True, f"asked, and installed nothing: {str(df.get('why') or 'no reason given')[:120]}")
+    else:
+        add("db_day", False, "not needed tonight" if fetch == "installed" else "not asked tonight")
+    # The database's pieces.
+    sm = v.get("study_meetings") if isinstance(v.get("study_meetings"), dict) else {}
+    said, kept = _pieces_said(sm)
+    rows = [f"{_installed_rows(sm.get(k)):,} {what}" for k, what in
+            (("StatStudMeetings", "meetings"), ("StatStudDetails", "committees' details"))
+            if _installed_rows(sm.get(k)) is not None]
+    newest = study_newest()
+    add("study", bool(sm), (", ".join(rows) or said) if sm else "not asked tonight", newest,
+        f"the installed copy stood in for {_and(kept)}" if kept else "", still_of("study", newest))
+    td = v.get("term_data") if isinstance(v.get("term_data"), dict) else {}
+    said, kept = _pieces_said(td)
+    files = [f"db/{x}.psv" for x in TERM_VIEWS] + [f for _l, _s, f in TERM_FILES]
+    new, _ = kit_changed(files, today, kit)
+    docket = docket_newest(DOCKET, today)
+    term_still = None
+    if fetched and new is not None and docket is not None:
+        term_still = {"days": (docket - new).days, "limit": STILL_DAYS[still_season(docket)],
+                      "season": still_season(docket), "docket": docket.isoformat()}
+    bills = _installed_rows(td.get("Legislation"))
+    add("term", bool(td), (said + (f", {bills:,} bills" if bills is not None else "")) if td else
+        "not asked tonight", new,
+        f"the installed copy stood in for {_and(kept)}" if kept else "", term_still)
+    st = v.get("statutes") if isinstance(v.get("statutes"), dict) else None
+    new, _ = kit_changed([STATUTE_FILE], today, kit)
+    add("statutes", bool(st), "; ".join(f"{k} {r}" for k, r in st.items())[:140] if st else
+        "not asked tonight: taken on 1 to 3 January and 1 to 3 July, and by the weekly job", new)
+    # The web pages.
+    lsrs = v.get("lsrs")
+    new, _ = kit_changed([LSRS.as_posix()], today, kit)
+    add("lsrs", bool(lsrs), str(lsrs)[:140] if lsrs else "not asked tonight", new,
+        "yesterday's list stood in" if lsrs and not str(lsrs).startswith("installed") else "")
+    docs = v.get("documents")
+    taken = str(docs or "").startswith("installed")
+    newest = today if list_grew(docs) else day_of((was.get("documents") or {}).get("new"))
+    add("documents", bool(docs), str(docs)[:140] if docs else "not asked tonight", newest,
+        "the list already here stood in" if docs and not taken else "",
+        still_of("documents", newest) if taken else None)
+    dfs = v.get("document_files") if isinstance(v.get("document_files"), dict) else None
+    got = int((dfs or {}).get("fetched") or 0)
+    add("document_files", dfs is not None,
+        (f"{got} of the {int(dfs.get('wanted') or 0)} not on this disk fetched"
+         + (f", {int(dfs.get('remain') or 0)} left for later nights" if dfs.get("remain") else ""))
+        if dfs is not None else "not asked tonight",
+        today if got else kit_newest_under(DOCUMENT_TEXT, kit))
+    # YouTube, and what the laptop sends through the bucket.
+    caps = v.get("captions") if isinstance(v.get("captions"), dict) else {}
+    ran = str(caps.get("step") or "").startswith("tonight")
+    asked_yt = {k: n for k, n in (caps.get("asked") or {}).items() if k != "from the inbox"}
+    newest = recordings_newest()
+    add("recordings", ran, (", ".join(f"{n} {k}" for k, n in asked_yt.items()) or "nothing new")
+        if ran else "not asked tonight", newest,
+        "", still_of("recordings", newest))
+    live = load_json(LIVE_STATE)
+    arrived = (live or {}).get("inbox_arrived") if isinstance(live, dict) else None
+    came = _utc_of((arrived or {}).get("at")) if isinstance(arrived, dict) else None
+    inbox = int((caps.get("asked") or {}).get("from the inbox") or 0)
+    add("inbox", ran, (f"{inbox} recording's captions" if inbox == 1 else
+                       f"{inbox} recordings' captions") if inbox else
+        "nothing tonight" if ran else "not asked tonight",
+        today if inbox else (came.astimezone().date() if came else None))
+    moved, path = laptop_share_moved(kit)
+    add("laptop", True, "came down in the kit as the laptop last sent it"
+        + (f" ({path})" if path else ""), moved)
+    # Production, read for the gate.
+    served = v.get(KINDS_SERVED) if isinstance(v.get(KINDS_SERVED), dict) else {}
+    if v.get("live_fingerprint"):
+        commit = str(v.get("live_commit") or "")
+        add("production", True, "read" + (f": it serves commit {commit[:8]}" if commit else ""),
+            served.get("day"))
+    else:
+        add("production", bool(v.get("built")), "could not be read" if v.get("built") else
+            "not read tonight: nothing was built")
+    return out
+
+
+def sources_warned(recs):
+    """[(kind, sentence)]: each source that should change and has stood still
+    longer than the record shows for the season (WHEN ONE THAT SHOULD CHANGE
+    HAS NOT); [] for none."""
+    out = []
+    for r in recs if isinstance(recs, list) else []:
+        s = r.get("still") if isinstance(r, dict) else None
+        if not isinstance(s, dict) or not isinstance(s.get("days"), int) or \
+                not isinstance(s.get("limit"), int) or s["days"] <= s["limit"]:
+            continue
+        key, n, limit, said = r.get("source"), s["days"], s["limit"], STILL_SAID.get(s.get("season"), "")
+        at, was_new = day_of(s.get("newest") or s.get("docket")), day_of(r.get("new"))
+        if at is None or (key == "term" and was_new is None):
+            continue
+        at = day_said(at)
+        if key == "study":
+            text = (f"The study committees' meetings have shown nothing new for {n} days, the newest "
+                    f"row entered on {at}; {said} the record shows {limit} days at most. If the "
+                    "General Court's own study committee schedule lists newer meetings, the database "
+                    "copy the night takes has stopped, which is their IT office's to start again.")
+        elif key == "documents":
+            text = (f"The General Court's list of calendars and journals has gained no document since "
+                    f"the night of {at}, {n} days; {said} the record shows {limit} days at most "
+                    "between documents. If their calendars and journals page lists newer ones, the "
+                    "night's reading of it has stopped: the night's log says what it was answered.")
+        elif key == "recordings":
+            text = (f"No new recording has reached the index for {n} days, the newest published on "
+                    f"{at}; {said} the record shows {limit} days at most. If the House and Senate "
+                    "channels show newer ones, the night's livestream step has stopped finding them: "
+                    "its key and the night's log say why.")
+        else:
+            text = (f"The current term's bills, texts and reports from the General Court's database "
+                    f"last changed on {day_said(was_new)}, and the docket has "
+                    f"moved on since, to {at}: {n} days, longer than the record itself ever stands "
+                    f"still {said} ({limit} days). Their database copy may have stopped updating, "
+                    "which is the General Court's IT office's to start again.")
+        out.append((KIND_SOURCE_STILL + str(key), text))
+    return out
+
+
 def health_warned(v, private=False):
     """[(kind, sentence)] of THE NIGHT'S OWN HEALTH that a verdict carries:
     each a kind the gate never holds a night for. Read by Night.warned() for
     the night's warnings, which the public page carries, and by warns_of()
     with `private` for the standing ones, which only the verdict does."""
     return (started_by_warned(v.get("started_by"))
-            + expiries_warned(v.get("expiries"), private=private))
+            + expiries_warned(v.get("expiries"), private=private)
+            + sources_warned(v.get("sources")))
 
 
 class Night:
@@ -5746,6 +6110,9 @@ class Night:
         if not_main():
             self.v["off_main"] = not_main()
         prev = load_json(VERDICT)
+        # Last night's lines of its sources (ONE LINE PER SOURCE), whose day
+        # stands in where a source has no date of its own tonight.
+        self.prev_sources = prev.get("sources") if isinstance(prev, dict) else None
         # What the gate's fourth reason compares with (WARNING KINDS): the
         # kinds of the build production served when last read, and of the
         # newest build a night sent for production, and the kinds of the
@@ -6213,6 +6580,16 @@ class Night:
         v[DB_MISSED] = db_missed_of(v.get(DB_MISSED), v, self.day)
         v["not_moving"] = [list(x) for x in not_moving(
             v, self.day, load_json(LIVE_STATE), laptop_run(), fetched=not self.a.no_fetch)]
+        # ONE LINE PER SOURCE: what each brought, when it last brought
+        # something new, and what stood in; and which has stood still too long.
+        # A line about the sources never stops the verdict being written.
+        try:
+            v["sources"] = sources_record(v, date.fromisoformat(self.day),
+                                          fetched=not self.a.no_fetch,
+                                          prev=getattr(self, "prev_sources", None))
+        except Exception as e:                                  # noqa: BLE001
+            v["sources"] = []
+            say(f"\n  the sources' lines could not be worked out: {type(e).__name__}: {e}")
         why = self.problems()
         alarms = self.alarms()
         warned = self.warned()
@@ -6272,6 +6649,10 @@ class Night:
         line = review_line(v, self.a.dry_run)
         if line:
             say(f"\nthe gate: {line}")
+        if v.get("sources"):
+            say("\nthe sources, one line each:")
+            for r in v["sources"]:
+                say(f"  {r['line']}")
         # "review" is true wherever the gate did not clear the night, a night
         # that did not build included: the safe side for anything that reads it.
         # "publishable" is false for a dry run whatever its build was (the
@@ -6312,7 +6693,9 @@ class Night:
                       if isinstance(v.get("document_files"), dict)
                       and v["document_files"].get("said") else [])
                    + [f"- {w}" for w in why[:8]]
-                   + [f"- warning: {w}" for w in v["warnings"]])
+                   + [f"- warning: {w}" for w in v["warnings"]]
+                   + ((["- the sources, one line each:"] + [f"  - {r['line']}" for r in v["sources"]])
+                      if v.get("sources") else []))
 
 
 def fit_record(v):

@@ -334,6 +334,27 @@ recordings wait; and the laptop's own record of its caption runs, which each
 evenings old. That record also puts the laptop's latest refusal by YouTube,
 and its hold, in the verdict beside GitHub's machine's.
 
+**One line per source** (16 November 2026). Every source the night takes --
+the General Court's export, its database standing in for it, the database's
+study committees' meetings, current term's data and statutes, its web pages'
+bill requests and calendars and journals, YouTube, the captions inbox, the
+laptop's share in the kit, and production, read for the gate -- has one line
+in the verdict (`sources`), the night's log and the run's page: what it
+brought tonight or that it was not asked, when it last brought something
+new, and what stood in, where something did (`nightly.sources_record`). New
+tonight is a file whose bytes differ from the copy kit-down brought; else
+the day the kit's manifest gives it, since kit-up sends back only a changed
+file; two sources date themselves -- the study meetings by each row's entry
+time, the recordings by YouTube's `published_at` -- and the list of calendars
+and journals is new on a night it gains documents, the day carried in the
+verdict until the next. Those three warn only past the longest stillness the
+record shows for the season (`SOURCE_STILL`: 113 and 27 days, 17 and 51, and
+8 and 14 over each document's own date, session and interim, measured on
+this disk as `STILL_DAYS` was), the current term's data where the docket moved on for
+longer than `STILL_DAYS` and it did not move at all, and none on a night that
+did not fetch; the rest are left to the warnings that already watch them.
+Each is of a kind the gate never holds a night for.
+
 **The checks of the night's own build.** `preflight.py --code` runs before the
 night fetches or builds, so a check that reads a built site skips there, and
 the data checks never ran on GitHub's machine at all -- which is how the

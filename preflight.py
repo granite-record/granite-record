@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.935
+# GRANITE_VERSION: 2026-09-04.936
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -96375,6 +96375,200 @@ def _night_expiries(NI, CL):
                   f"its own words {NI.EXPIRY_DAYS} days ahead and after, the undated listed, three "
                   "entries refused; counts alone on the public page and log, each line in the "
                   "standing warnings and the night's own log; never holding a night or emailed")
+
+
+@check("workflows", "the night gives each source it takes one line -- what it brought, when it last "
+                    "brought something new, what stood in -- and warns of one that should change "
+                    "only past the record's longest stillness for the season", needs=("nightly",))
+def _night_sources(NI):
+    """ONE LINE PER SOURCE (nightly.py; the refactor's stage 0 do-first list). A fixture folder
+    holds kit-down's record of the night's files and the files themselves -- the docket changed
+    tonight, the other day files and the term's data re-installed byte for byte, the requests
+    unchanged -- the study committees' meetings with their entry times, the recordings' index,
+    a docket and the livestream state; and a verdict as a fetching night leaves it.
+    sources_record() gives every one of SOURCE_NAMES a line in order, saying what it brought,
+    when it last brought something new (tonight by its bytes, else the kit's day, else its own
+    dates, else last night's) and what stood in; the night's other lines are left as they were.
+    SOURCE_STILL is held to the measured figures, and a source warns only past its season's:
+    the term's data against the docket, the meetings and the recordings by their own dates and
+    the list of calendars and journals by the last night it grew, each at its limit and a day
+    past it, never on a night that did not fetch, nor the list on a night it was not taken; of
+    a kind the gate never holds a night for, in the warnings and the standing ones. And
+    finish() writes the lines to the verdict, the log and the run's page."""
+    import contextlib
+    import hashlib
+    import io
+    import types
+    from datetime import date as d_, datetime as dt_, timedelta
+    assert NI.SOURCE_STILL == {"study": {"session": 113, "interim": 27},
+                               "documents": {"session": 8, "interim": 14},
+                               "recordings": {"session": 17, "interim": 51}}, (
+        "SOURCE_STILL is not the stillness measured on the record (16 November 2026): change the "
+        "figures with the measurement in nightly.py's note, not alone")
+    assert [k for k, _n in NI.SOURCE_NAMES] == ["export", "db_day", "study", "term", "statutes", "lsrs",
+                                                 "documents", "document_files", "recordings", "inbox",
+                                                 "laptop", "production"], NI.SOURCE_NAMES
+    today = d_(2026, 11, 16)
+
+    def ns(day):
+        return int(dt_.fromisoformat(day + "T12:00:00").timestamp() * 1e9)
+
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-sources-"))
+    saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", "GITHUB_STEP_SUMMARY", "GITHUB_OUTPUT")}
+    quiet, log = NI.QUIET, NI.LOG
+    try:
+        os.chdir(tmp)
+        for k in saved:
+            os.environ.pop(k, None)
+        kit = {}
+
+        def put(rel, body, day, *, changed=False):
+            p = Path(rel)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(body, encoding="utf-8")
+            data = (body + "an earlier copy") if changed else body
+            kit[rel] = [len(data.encode()), hashlib.sha256(data.encode()).hexdigest(), ns(day)]
+        put("Docket.txt", "2026|0001|11/13/2026 10:00:00 AM|HB1|H|x|11/13/2026 10:00:00 AM\n",
+            "2026-11-10", changed=True)
+        put("LSRs.txt", "x\n", "2026-11-12")
+        for f in ("db/Legislation.psv", "db/LegislationText.psv", "db/CandH_Reports.psv",
+                  "bill_status.json", "senate_reports.json", "testimony_db.json"):
+            put(f, "{}", "2026-10-01")
+        put("lsrs.json", "[]", "2026-11-14")
+        put("db/NH_RSA.psv", "x", "2026-07-01")
+        put("calendars/2026/HC041.txt", "x", "2026-11-07")
+        put("bill_text.json", "{}", "2026-09-22")
+        Path("archive/cloud").mkdir(parents=True)
+        Path(NI.KIT_DOWN).write_text(json.dumps({"files": kit}), encoding="utf-8")
+
+        def study(newest):
+            Path("db").mkdir(exist_ok=True)
+            Path(NI.STUDY_TABLE).write_text(
+                "|1|55|11/06/1991 11:00:00|RM101,LOB   (Org meeting)||\n"
+                "|2|1678|08/20/2024 10:30:00|LOB Room 101  Regular Meeting||08/13/2024 11:57:11\n"
+                f"|3|1695|{newest:%m/%d/%Y} 09:00:00|LOB Room 101||{newest:%m/%d/%Y} 09:34:45\n",
+                encoding="utf-8")
+
+        def recorded(newest):
+            Path("collected/videos").mkdir(parents=True, exist_ok=True)
+            Path("collected/videos/videos_house_x.csv").write_text(
+                "video_id,title,published_at\na,b,2026-08-01T03:12:08Z\n", encoding="utf-8")
+            Path("videos_house_livestreams.csv").write_text(
+                f"video_id,title,published_at\nc,d,{newest.isoformat()}T03:12:08Z\n", encoding="utf-8")
+        study(d_(2026, 11, 5))
+        recorded(d_(2026, 10, 31))
+        Path(NI.LIVE_STATE).write_text(json.dumps({"inbox_arrived": {"at": "2026-11-15T19:00:00Z"}}),
+                                       encoding="utf-8")
+        v = {"tried": ["the export, try 1: installed"], "fetch": "installed", "files_from": "export",
+             "study_meetings": {"StatStudMeetings": "installed, 11,542 rows (was 11,542)",
+                                "StatStudDetails": "installed, 1,543 rows (was 1,543)"},
+             "term_data": {"Legislation": "installed, 2,234 rows (was 2,234)",
+                           "LegislationText": "installed, 6,825 rows (was 6,825)",
+                           "CandH_Reports": "not taken: the fetch did not complete (exit 1)",
+                           "senate_reports.json": "installed, 1,254 (was 1,254)",
+                           "testimony_db.json": "installed, 2,982 (was 2,982)",
+                           "bill_status.json": "installed, 4,230 (was 4,230)"},
+             "lsrs": "installed, 483 requests (was 483)",
+             "documents": "installed, 4,413 documents (was 4,413): nothing new",
+             "document_files": {"wanted": 3, "fetched": 2, "remain": 1, "said": "", "warn": "", "read": {}},
+             "captions": {"step": "tonight", "asked": {"captioned": 1, "from the inbox": 1}},
+             "built": True, "live_fingerprint": "abc", "live_commit": "c" * 40,
+             NI.KINDS_SERVED: {"fingerprint": "abc", "kinds": [], "day": "2026-11-15"}}
+        before = json.dumps(v, sort_keys=True)
+        recs = NI.sources_record(v, today)
+        assert json.dumps(v, sort_keys=True) == before, "the sources' lines changed the verdict's own"
+        lines = {r["source"]: r["line"] for r in recs}
+        assert [r["source"] for r in recs] == [k for k, _n in NI.SOURCE_NAMES], [r["source"] for r in recs]
+        for key, want in (
+                ("export", "the General Court's daily export: the 14 files, whole; last new tonight"),
+                ("db_day", "its database, for the day's files when the export fails: not needed tonight; "
+                           "last new not known"),
+                ("study", "11,542 meetings, 1,543 committees' details; last new 5 November 2026 (11 days ago)"),
+                ("term", "5 of 6 installed, 2,234 bills; last new 1 October 2026 (46 days ago); the "
+                         "installed copy stood in for CandH_Reports"),
+                ("statutes", "not asked tonight: taken on 1 to 3 January and 1 to 3 July, and by the "
+                             "weekly job; last new 1 July 2026 (138 days ago)"),
+                ("lsrs", "installed, 483 requests (was 483); last new 14 November 2026 (2 days ago)"),
+                ("documents", "nothing new; last new not known"),
+                ("document_files", "2 of the 3 not on this disk fetched, 1 left for later nights; last new tonight"),
+                ("recordings", "1 captioned; last new 31 October 2026 (16 days ago)"),
+                ("inbox", "1 recording's captions; last new tonight"),
+                ("laptop", "as the laptop last sent it (bill_text.json); last new 22 September 2026"),
+                ("production", "read: it serves commit cccccccc; last new 15 November 2026 (1 day ago)")):
+            assert want in lines[key], f"the {key} line is {lines[key]!r}, which lacks {want!r}"
+        # The term's data stood still 43 days while the docket moved on to 13 November: one day
+        # past the interim's 42. Nothing else warns tonight.
+        warned = NI.sources_warned(recs)
+        assert [k for k, _s in warned] == [NI.KIND_SOURCE_STILL + "term"] and \
+            "to 13 November 2026: 43 days" in warned[0][1], warned
+        assert NI.warning_reasons(warned, [], ()) == [] and all(
+            k.startswith(NI.KIND_HEALTH) for k, _s in warned), "a source standing still would hold the night"
+        assert dict(NI.Night.warned(types.SimpleNamespace(v={"started": "2026-11-16T03:20:00",
+                                                             "sources": recs}))).get(
+            NI.KIND_SOURCE_STILL + "term") == warned[0][1] and warned[0][1] in NI.warns_of({"sources": recs}), (
+                "a source standing still is not among the night's warnings and its standing ones")
+        # Each limit, and a day past it: the meetings and the recordings by their own dates,
+        # the list by the last night it grew, carried, and not on a night it was not taken.
+        for key, write, limit in (("study", study, 27), ("recordings", recorded, 51), ("documents", None, 14)):
+            for past, warns in ((0, False), (1, True)):
+                old = [{"source": "documents", "new": (today - timedelta(days=limit + past)).isoformat()}]
+                if write:
+                    write(today - timedelta(days=limit + past))
+                got = [k for k, _s in NI.sources_warned(NI.sources_record(v, today, prev=old))]
+                assert (NI.KIND_SOURCE_STILL + key in got) == warns, (
+                    f"{key}, still {limit + past} days in the interim (limit {limit}), warned {got}")
+                assert not NI.sources_warned(NI.sources_record(v, today, fetched=False, prev=old)), (
+                    "a night that did not fetch was told a source stood still")
+            if write:
+                write({"study": d_(2026, 11, 5), "recordings": d_(2026, 10, 31)}[key])
+        old = [{"source": "documents", "new": "2026-09-01"}]
+        grew = dict(v, documents="installed, 4,415 documents (was 4,413): 2 new: House Calendar 42, "
+                                 "Senate Calendar 30")
+        recs2 = NI.sources_record(grew, today, prev=old)
+        refused = NI.sources_record(dict(v, documents="not taken: the listing stopped; the earlier 4,413 "
+                                                      "kept"), today, prev=old)
+        assert "last new tonight" in [r["line"] for r in recs2 if r["source"] == "documents"][0] and \
+            NI.KIND_SOURCE_STILL + "documents" not in [k for k, _s in NI.sources_warned(recs2)] and \
+            NI.KIND_SOURCE_STILL + "documents" not in [k for k, _s in NI.sources_warned(refused)], (
+                "a night the list grew is not its last new one, or a list not taken says it stood still")
+        # The database standing in for the export, and last night's day carried.
+        db = dict(v, fetch="empty: 13 of 14 files came back with no data in them", files_from="database",
+                  day_files={"source": "database", "why_code": ""}, db_nights=2)
+        got = {r["source"]: r["line"] for r in NI.sources_record(
+            db, today, prev=[{"source": "db_day", "new": "2026-11-10"}])}
+        assert got["export"].endswith("the General Court's database stood in") and \
+            "stood in for the export, night 2 in a row; last new tonight" in got["db_day"], got
+        got = {r["source"]: r["line"] for r in NI.sources_record(
+            v, today, prev=[{"source": "db_day", "new": "2026-11-10"}])}
+        assert "last new 10 November 2026 (6 days ago)" in got["db_day"], got["db_day"]
+        # finish() writes them to the verdict, the night's log and the run's page.
+        Path("summary.md").write_text("", encoding="utf-8")
+        os.environ["GITHUB_STEP_SUMMARY"] = str(Path("summary.md").resolve())
+        n = NI.Night.__new__(NI.Night)
+        n.a = types.SimpleNamespace(no_fetch=False, dry_run=True, new_term=False)
+        n.day, n.path, n.review_why, n.prev_sources = "2026-11-16", NI.DRY_VERDICT, [], None
+        n.v = json.loads(before) | {"preflight": "passed", "started": "2026-11-16T03:20:00", "built": False}
+        NI.LOG = []
+        with contextlib.redirect_stdout(io.StringIO()):
+            n.finish(0)
+        page = Path("summary.md").read_text(encoding="utf-8")
+        kept = json.loads(Path(NI.DRY_VERDICT).read_text(encoding="utf-8"))
+        assert [r["source"] for r in kept.get("sources") or []] == [k for k, _n in NI.SOURCE_NAMES] and \
+            all(f"  - {r['line']}" in page for r in kept["sources"]) and \
+            all(r["line"] in "\n".join(NI.LOG) for r in kept["sources"]), (
+                "the sources' lines are not in the verdict, on the run's page and in the log")
+    finally:
+        NI.QUIET, NI.LOG = quiet, log
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+        for k, val in saved.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+    return "ok", (f"{len(NI.SOURCE_NAMES)} sources, a line each in order, in the verdict, the log and "
+                  "the run's page, the verdict's own lines untouched; new tonight by the bytes, else "
+                  "the kit's day, the record's own dates or last night's; the term's data against the "
+                  "docket and the meetings, the list and the recordings each warn a day past the "
+                  "measured limit and not at it, never on a night that did not fetch or holding one")
 
 
 # ---- the live layer's reader of the General Court's public SQL database ----------
