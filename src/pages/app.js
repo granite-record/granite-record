@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.331
+// GRANITE_VERSION: 2026-09-07.332
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9547,12 +9547,12 @@ function renderMemberHead(m){
   // after 1999 on 15 November 2026; member_links.record_spans is the twin).
   const yrsOf=t=>t.map(x=>String(x).split("-").map(Number)).filter(x=>x[0]);
   const att=yrsOf(Object.keys(m.attendance||{}));
-  const runs=list=>{const tm=y=>y%2?y:y-1,out=[];
+  const runs=(ch,list)=>{const tm=y=>y%2?y:y-1,out=[];
     list.map(x=>[x[0],x[1]||x[0]]).sort((x,y)=>x[0]-y[0]||x[1]-y[1]).forEach(x=>{const l=out[out.length-1];
       if(l&&tm(x[0])<=tm(l[1])+2)l[1]=Math.max(l[1],x[1]);else out.push([x[0],x[1]]);});
-    return out;};
+    return {chamber:ch,spans:out};};
   const spans0=(m.service||[]).length?m.service
-    :att.length?[{chamber:m.chamber,spans:runs(att)}]:[];
+    :att.length?[runs(m.chamber,att)]:[];
   // THE TERMS BEFORE 1999 THE GENERAL COURT'S SPONSOR RECORD PLACES THEM IN
   // (past_terms: {chamber: [term]}; member_links.record_spans is this one's
   // twin), each added to its own chamber, so the line covers every term the TERM
