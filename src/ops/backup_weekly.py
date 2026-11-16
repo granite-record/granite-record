@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 The laptop's weekly backup, for Task Scheduler (backup_weekly.xml beside it).
 
@@ -63,9 +63,10 @@ import cloud
 
 TRIES = 3
 RETRY_MINUTES = 20
-# The entry Task Scheduler is given: this file's template, filled in for the
-# checkout by --task-xml, under the name the person registers it as.
-XML = Path(__file__).with_name("backup_weekly.xml")
+# The entry Task Scheduler is given: its template, filled in for the checkout
+# by --task-xml, under the name the person registers it as. Found from the
+# root, as every file is (CONTRIBUTING.md's rules for a script).
+XML = _paths.ROOT / "src" / "ops" / "backup_weekly.xml"
 CHECKOUT = "@CHECKOUT@"
 TASK_NAME = "Granite Record weekly backup"
 LOG = r"logs\backup-weekly.log"
