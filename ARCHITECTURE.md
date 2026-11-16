@@ -374,7 +374,7 @@ report box dropped readers' reports from nearly every legislator page for
 four days in October 2026 with no night to say so. After `check_site`, the
 night runs `preflight.py --built`: the code checks that read a built site,
 again, and every data check but the dozen that need the laptop
-(`NOT_ON_THE_NIGHT` in `preflight.py`, each with its reason; a data check
+(`NOT_ON_THE_NIGHT` in `src/checks/suite/pf_runner.py`, each with its reason; a data check
 added later runs on the night unless it is put there). Each check carries a
 tier, and what a failure does follows it: on a dry run any failure makes it
 not clean, so a release that breaks one is never proven; on a real night a
@@ -584,7 +584,10 @@ constraint.
 **`preflight.py` builds the whole site on a fixture.** Most of its checks exist
 because of a specific failure; it has caught stamp mismatches three times and a
 dead-zone error once. Run it for the current count -- a number written here
-would be wrong within a day, and was.
+would be wrong within a day, and was. The checks are in `preflight.py`;
+the registry, the runner and the helpers they share -- the fixture among
+them -- are modules of `src/checks/suite/`, whose README says which holds
+what.
 
 **A person can overrule a generator, in files the generators cannot touch.**
 The files that are a person's are in `corrections/` and `review/`, which
@@ -1851,7 +1854,8 @@ Two things read it:
   the site that build made, through `build_pages.front_end` -- the function
   the build's own step calls -- and only while nothing else in the record has
   moved. `bills.html` is the template of every page and is refused.
-  `preflight.py` is read by the build only for data.html's two counts, and
+  `preflight.py` and the modules of `src/checks/suite/` are read by the
+  build only for data.html's two counts, and
   app.js also for the search's tables (`front_end.facts`): where one of
   those moved, the step that makes it runs again;
 - `src/checks/site_manifest.py`, which keeps a build's sha256 manifest under

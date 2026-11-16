@@ -47,8 +47,9 @@ Fonts, so the real faces load, and nothing else; preflight holds the browser's
 host rules to those names.
 
 Does not belong here: `preflight.py`, the test suite, which stays at the
-root; the timestamp scorer, which sits in `hearings/` beside the method it
-scores.
+root (the modules it imports are in `suite/`, whose README says what each
+holds); the timestamp scorer, which sits in `hearings/` beside the method
+it scores.
 
 The files moved here in stages 1 and 4 (`src/README.md`). `publish.bat`
 names `check_site` and `check_live` by their paths

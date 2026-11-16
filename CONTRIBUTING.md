@@ -425,7 +425,9 @@ that nothing is found missing a session later. Every one ends the same way:
 7. A data check runs on the night after the build unless it is named in
    `NOT_ON_THE_NIGHT` with its reason; one that compares against the
    official record goes in `RECORD_CHECKS`, so it warns rather than holds
-   the night.
+   the night. Both lists are in `src/checks/suite/pf_runner.py`, beside
+   `main()`; the registry and the helpers the checks share (the fixture,
+   the node harnesses, `_source`, `_parsed`) are in that folder too.
 8. A check written ahead of the change that makes it pass carries
    `expect_fail="the change"`.
 9. A check of what the whole run left behind carries `last=True`, and

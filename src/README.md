@@ -19,6 +19,7 @@ src/
   pages/          writes what a reader gets in site/, and the browser's files
     words/        the words the pages say, as JSON, for both languages
   checks/         looks at something and reports
+    suite/        preflight's registry, runner and shared helpers
   lib/            the few modules every stage shares
   ops/            keeps the site running: the bucket, the livestreams, the
                   reader reports, a session's first commands

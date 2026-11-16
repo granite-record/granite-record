@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.7
+# GRANITE_VERSION: 2026-10-09.8
 """
 A change to the browser's files, put into the site the last full build made.
 
@@ -35,9 +35,9 @@ that moved is one of these:
                       without its comments; a change to a words file is not
                       one of these, since components.py draws the built pages
                       with the same words
-  preflight.py       read by the build only for data.html's two counts
-                      (build_exports.repo_facts): where a count moved, the
-                      bulk-downloads step runs again as the build runs it;
+  preflight.py,      read by the build only for data.html's two counts
+  and src/checks/     (build_exports.repo_facts): where a count moved, the
+  suite/pf_*.py       bulk-downloads step runs again as the build runs it;
                       where none did, the change is nothing to the site
 
 and whatever else build_pages.COPIED names, but bills.html. A CHANGE TO
@@ -78,8 +78,11 @@ TEMPLATE = "src/pages/bills.html"
 TEMPLATE_WHY = ("the template every record page is built from (shell.template): a "
                 "change to it reaches every page of the site, which only the page steps "
                 "of a full build rebuild")
-# The files the build reads only in part, for data.html's two counts.
-FACT_SOURCES = ("preflight.py",)
+# The files the build reads only in part, for data.html's two counts: the
+# suite of checks, preflight.py and the modules of src/checks/suite/, which
+# hold its registry and the code its checks share, and in time its checks
+# (build_exports.checks_counted counts them wherever they are).
+FACT_SOURCES = ("preflight.py", "src/checks/suite/pf_*.py")
 # Which build step makes what a fact is read for: run again, as the build
 # runs it, when the fact moved.
 RERUN = {"search_tables": ("build_search_index.py", "site/sidx/, from app.js's search tables"),
@@ -131,6 +134,14 @@ def _preflight_path():
         return "preflight.py"
 
 
+def is_fact_source(path):
+    """Whether `path`, as the record names it, is one of FACT_SOURCES: preflight.py,
+    or a module of the suite in src/checks/suite/."""
+    import fnmatch
+    return any(path == (_preflight_path() if s == "preflight.py" else s)
+               or fnmatch.fnmatchcase(path, s) for s in FACT_SOURCES)
+
+
 def judge(rec, now, now_facts):
     """(fast, fact_moved, refused, reruns) for a record and the state now:
 
@@ -140,14 +151,13 @@ def judge(rec, now, now_facts):
       reruns     the RERUN keys whose fact moved
     """
     fast_set = fast_files()
-    sources = {_preflight_path() if s == "preflight.py" else s for s in FACT_SOURCES}
     fast, fact_moved, refused = [], [], []
     for path, what in BI.compare(rec, now):
         if path in fast_set:
             fast.append(path)
         elif path == TEMPLATE:
             refused.append((path, f"{what}: it is {TEMPLATE_WHY}"))
-        elif path in sources:
+        elif is_fact_source(path):
             fact_moved.append(path)
         else:
             refused.append((path, what))

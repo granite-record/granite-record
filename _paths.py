@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-06.6
+# GRANITE_VERSION: 2026-10-06.7
 """
 Where the code lives, so that every script and module is found by its bare name.
 
@@ -96,6 +96,7 @@ SRC_DIRS = (
     "src/hearings",
     "src/pages",
     "src/checks",
+    "src/checks/suite",
     "src/lib",
     "src/ops",
 )
