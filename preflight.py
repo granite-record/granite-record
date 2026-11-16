@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.940
+# GRANITE_VERSION: 2026-09-04.941
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -64542,6 +64542,176 @@ def _cloud_round_trip(CL):
                       "in replaced/")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _backup_fixture(CL, tmp):
+    """A working folder with a git checkout, as _cloud_round_trip makes it, and a folder
+    bucket holding its backup, made by cloud.py backup itself: (root, bucket, B, manifest),
+    or None where git is not here to tell the files git holds from those it does not."""
+    real = json.loads(Path(CL.KIT_FILE).read_text(encoding="utf-8"))
+    root, bucket = tmp / "laptop", tmp / "bucket"
+    root.mkdir()
+    _cloud_fixture(root, real)
+    try:
+        ok = _run(["git", "init", "-q", str(root)], capture_output=True, timeout=60)
+        ok = ok.returncode == 0 and _run(
+            ["git", "-C", str(root), "add", "tracked.py", "cloud_kit.json"],
+            capture_output=True, timeout=60).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        ok = False
+    if not ok:
+        return None
+    B = ["--local-bucket", str(bucket)]
+    code, out = _cloud_call(CL, "backup", "--root", str(root), *B)
+    assert code == 0, f"the fixture's backup failed: {out[-300:]}"
+    man = json.loads((bucket / "state" / "backup-manifest.json").read_text(encoding="utf-8"))
+    return root, bucket, B, man
+
+
+@check("cloud", "restore brings the backup back into an empty folder, each file checked against "
+                "the backup's manifest, and writes nothing to the bucket", needs=("cloud",))
+def _cloud_restore(CL):
+    """THE BACKUP, BROUGHT BACK (cloud.py; the refactor's stage 0, ops item 5): the laptop's
+    46 GB backup had never been read back, and no command could. Every function cmd_restore
+    reaches is read, and none puts, copies or deletes in the bucket (the reader first, on a put
+    planted two calls down). Then against a folder bucket that cloud.py backup filled from a
+    fixture, through a bucket that fails any write: a dry run makes no folder; a whole restore
+    is byte and date exact and its last line counts restored, verified, missing and
+    mismatched; a DEST with anything in it, one inside the working folder, a second DEST and a
+    bucket with no backup are refused, the last without making the folder; --only takes a path
+    (with a backslash), a glob and a second --only, and one naming nothing fails; an object gone
+    from the bucket is missing and one changed there is mismatched, kept under _mismatched/
+    and not at its own path, both named and exit 1; and a manifest entry on the never list,
+    or one whose path climbs out of DEST, is never written, even where the bucket lists it."""
+    import ast
+    probe = ast.parse("def cmd_restore(a):\n    helper(a)\n\n\ndef helper(b):\n"
+                      "    b.copy('k', 'j')\n")
+    assert any(isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "copy"
+               for d in _reached(probe, "cmd_restore").values() for n in ast.walk(d)), \
+        "the reader of restore's code misses a copy two calls down"
+    tree = ast.parse(_source(CL.__file__))
+    reached = _reached(tree, "cmd_restore", leaves={"FolderBucket", "NotAsked", "R2Bucket"})
+    WRITERS = {"put_file", "put_bytes", "copy", "delete", "keep"}
+    NAMED = {"send", "write_manifest", "put_logs", "state_up", "Replacer", "Checkpoint",
+             "send_refusal", "unsent_after", "open_bucket"}
+    bad = sorted({f"{name} calls {n.func.attr}" for name, d in reached.items()
+                  for n in ast.walk(d) if isinstance(n, ast.Call)
+                  and isinstance(n.func, ast.Attribute) and n.func.attr in WRITERS}
+                 | {f"cmd_restore reaches {name}" for name in reached if name in NAMED})
+    assert {"cmd_restore", "restore_into", "open_to_read", "empty_dest"} <= set(reached), \
+        f"cmd_restore was not found to read: {sorted(reached)}"
+    assert not bad, "restore can write to the bucket: " + "; ".join(bad)
+
+    writes = []
+
+    class ReadOnly(CL.FolderBucket):
+        def _no(self, what, key):
+            writes.append(f"{what} {key}")
+            raise AssertionError(f"restore tried to {what} {key} in the bucket")
+
+        def put_file(self, src, key, meta):
+            self._no("put", key)
+
+        def put_bytes(self, key, data):
+            self._no("put", key)
+
+        def copy(self, src, dst):
+            self._no("copy", dst)
+
+        def delete(self, key):
+            self._no("delete", key)
+
+    tmp = Path(tempfile.mkdtemp(prefix="gr-restore-"))
+    saved = CL.open_to_read
+    try:
+        made = _backup_fixture(CL, tmp)
+        if made is None:
+            return "ok", "restore reads the bucket and writes nothing there; git is not here for a backup to restore"
+        root, bucket, B, man = made
+        CL.open_to_read = lambda a: ReadOnly(a.local_bucket, create=False) if a.local_bucket \
+            else saved(a)
+
+        def restore(dest, *more):
+            return _cloud_call(CL, "restore", str(dest), "--root", str(root), *B, *more)
+
+        def tree_of(d):
+            return sorted(p.relative_to(d).as_posix() for p in Path(d).rglob("*") if p.is_file())
+        files = sorted(man["files"])
+        assert len(files) == 9 and "CLERK_CORRECTIONS.md" in files, files
+        dest = tmp / "back"
+        code, out = restore(dest, "--dry-run")
+        assert code == 0 and "nothing restored" in out and not dest.exists(), out[-300:]
+        code, out = restore(dest)
+        assert code == 0 and tree_of(dest) == files, (code, out[-400:], tree_of(dest))
+        for rel in files:
+            a_, b_ = root.joinpath(*rel.split("/")), dest.joinpath(*rel.split("/"))
+            assert a_.read_bytes() == b_.read_bytes(), f"{rel} came back different"
+            assert a_.stat().st_mtime_ns == b_.stat().st_mtime_ns, f"{rel} came back without its date"
+        last = [ln for ln in out.splitlines() if ln.startswith("restore: of ")]
+        assert last and "of 9 files asked for, 9 restored, 9 verified" in last[0] and \
+            "0 mismatched; 0 missing from the bucket; 0 could not be read" in last[0], out[-400:]
+        for argv, said in (((dest,), "is not empty"), ((root / "back",), "inside the working folder"),
+                           ((tmp / "x", tmp / "y"), "takes one DEST")):
+            code, out = _cloud_call(CL, "restore", *map(str, argv), "--root", str(root), *B)
+            assert code == 1 and said in out, (argv, out[-300:])
+        assert not (root / "back").exists() and not (tmp / "x").exists(), "a refused restore made its folder"
+        code, out = _cloud_call(CL, "restore", str(tmp / "z"), "--root", str(root),
+                                "--local-bucket", str(tmp / "no-bucket"))
+        assert code == 1 and "holds no backup" in out and not (tmp / "no-bucket").exists(), out[-300:]
+        code, out = restore(tmp / "only", "--only", "legislation\\2026\\HB1.html", "--only", "brand/**")
+        assert code == 0 and tree_of(tmp / "only") == ["brand/licensed/drawing.png",
+                                                       "legislation/2026/HB1.html"], (out[-300:], tree_of(tmp / "only"))
+        code, out = restore(tmp / "none", "--only", "nothing/here.md")
+        assert code == 1 and "names nothing the backup holds" in out, out[-300:]
+        (bucket / "backup" / "Docket.txt").unlink()
+        (bucket / "backup" / "narratives.json").write_text('{"changed": "in the bucket"}', encoding="utf-8")
+        code, out = restore(tmp / "short")
+        got = tree_of(tmp / "short")
+        assert code == 1 and "1 mismatched" in out and "1 missing from the bucket" in out and \
+            "Docket.txt is in the manifest and not in the bucket" in out and \
+            "narratives.json arrived as" in out, out[-500:]
+        assert "_mismatched/narratives.json" in got and "narratives.json" not in got and \
+            "Docket.txt" not in got and len(got) == 8, got
+        assert (tmp / "short" / "_mismatched" / "narratives.json").read_text(encoding="utf-8") == \
+            '{"changed": "in the bucket"}', "the mismatched bytes were not kept"
+
+        # A manifest naming what must never come back, as a leaked key could write one.
+        doc = dict(man)
+        doc["files"] = dict(man["files"])
+        body = b"not a real one"
+        import hashlib
+        ent = {"size": len(body), "sha256": hashlib.sha256(body).hexdigest(), "mtime_ns": "0"}
+        doc["files"].update({"secrets.json": ent, "../outside.txt": ent})
+        (bucket / "backup" / "secrets.json").write_bytes(body)
+        (bucket / "state" / "backup-manifest.json").write_text(json.dumps(doc), encoding="utf-8")
+
+        class Lists(ReadOnly):
+            # The bucket a leaked key wrote to: it lists the climbing path, and serves it.
+            def list(self, prefix):
+                got = super().list(prefix)
+                got["backup/../outside.txt"] = len(body)
+                return got
+
+            def get_file(self, key, dst, size=None):
+                if ".." in key.split("/"):
+                    Path(dst).write_bytes(body)
+                    return
+                super().get_file(key, dst, size)
+        CL.open_to_read = lambda a: Lists(a.local_bucket, create=False)
+        code, out = restore(tmp / "never")
+        got = tree_of(tmp / "never")
+        assert "secrets.json" not in got and not (tmp / "outside.txt").exists() and \
+            not any(p.name == "outside.txt" for p in tmp.rglob("outside.txt")), (got, out[-400:])
+        assert code == 1 and "on the never list" in out and "would climb out of DEST" in out, out[-500:]
+        assert not writes, f"restore tried to write to the bucket: {writes}"
+    finally:
+        CL.open_to_read = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("restore reaches no put, copy or delete; against a backup cloud.py made, a whole "
+                  "restore came back byte and date exact, counted; a DEST not empty, inside the "
+                  "working folder or doubled, and a bucket with no backup, refused; --only paths "
+                  "and globs, twice; a missing and a mismatched file named, exit 1, the changed "
+                  "bytes kept aside; a never-list path and a climbing one never written")
 
 
 @check("cloud", "state has one writer, a cleared refusal stays cleared, and the "
