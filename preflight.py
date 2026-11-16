@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.932
+# GRANITE_VERSION: 2026-09-04.933
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -138191,6 +138191,102 @@ def _bug_hunt_clock_and_today():
         if saved is not None:
             os.environ[build_date.ENV] = saved
     return "ok", "12-hour strings come back as they came; the day is Concord's"
+
+
+@check("build", "the build's day looks New Hampshire's zone up once a process, and answers as the "
+       "lookup on every call did", needs=("build_date",))
+def _build_date_zone_once(build_date):
+    """B1 of the refactor's stage 0 (16 November 2026). From 11 November today() built
+    zoneinfo.ZoneInfo(TIMEZONE) on every call. Where the zone database is missing --
+    Windows, the laptop and GitHub's runner alike -- each failed only after searching
+    every folder on sys.path for tzdata: 967 us a call, and 120-225 s a night once every
+    page asked through shell.cited(). build_date._zone() now asks once a process.
+
+    ZoneInfo is replaced for the moment by a stand-in that counts its constructions, in
+    three shapes: a zone found 14 hours ahead of UTC, one found 12 hours behind (whose
+    days always differ, so the zone is shown to be applied, not merely found), and the
+    database missing. In each, a thousand calls construct it once, and every answer is
+    what the lookup on every call (62df0ce9's today(), kept below as it was) gives under
+    the same stand-in. A stated day, and a stated day and time, answer their day without
+    the zone asked; a date that is not one, or one with a zone, stops as before. The
+    builders this suite runs are child processes, so the stand-in reaches none of them."""
+    import datetime as dt
+    import zoneinfo
+    from state_settings import TIMEZONE
+
+    def per_call():
+        """62df0ce9's build_date.today(), as it was: the zone asked on every call."""
+        when = build_date.stated()
+        if when:
+            return when.date()
+        try:
+            import zoneinfo
+            return dt.datetime.now(zoneinfo.ZoneInfo(TIMEZONE)).date()
+        except Exception:                                       # noqa: BLE001
+            return dt.date.today()
+
+    real, made, calls, days = zoneinfo.ZoneInfo, [], 1000, {}
+
+    def stand_in(zone):
+        def construct(key):
+            made.append(key)
+            if zone is None:
+                raise zoneinfo.ZoneInfoNotFoundError(f"No time zone found with key {key}")
+            return zone
+        return construct
+
+    saved = os.environ.pop(build_date.ENV, None)
+    try:
+        for label, zone in (("found, 14 hours ahead of UTC", dt.timezone(dt.timedelta(hours=14))),
+                            ("found, 12 hours behind UTC", dt.timezone(dt.timedelta(hours=-12))),
+                            ("missing", None)):
+            zoneinfo.ZoneInfo = stand_in(zone)
+            first = per_call()
+            build_date._zone.cache_clear()
+            made.clear()
+            got = {build_date.today() for _ in range(calls)}
+            looked = len(made)
+            last = per_call()
+            assert looked == 1, (
+                f"with the zone {label}, {calls} calls of build_date.today() constructed "
+                f"ZoneInfo {looked} times: the zone is looked up on every call again, which "
+                "cost the night 120-225 s where the zone database is missing")
+            assert got <= {first, last}, (
+                f"with the zone {label}, build_date.today() answered {sorted(map(str, got))}, "
+                f"the lookup on every call {first}")
+            days[label] = first
+        ahead, behind = days["found, 14 hours ahead of UTC"], days["found, 12 hours behind UTC"]
+        assert ahead > behind, (
+            f"a zone 14 hours ahead gave {ahead} and one 12 hours behind {behind}: the zone "
+            "found is not the one the day is read in")
+        zoneinfo.ZoneInfo = stand_in(dt.timezone(dt.timedelta(hours=14)))
+        build_date._zone.cache_clear()
+        made.clear()
+        for raw in ("2026-10-02", "2026-10-02T23:30:00"):
+            os.environ[build_date.ENV] = raw
+            assert build_date.today() == dt.date(2026, 10, 2) == per_call(), (
+                f"{build_date.ENV}={raw} gave {build_date.today()}, not 2 October 2026")
+        assert not made, f"a stated day still looked the zone up ({len(made)} times)"
+        for raw in ("next tuesday", "2026-10-02T14:30:00+00:00"):
+            os.environ[build_date.ENV] = raw
+            for fn in (build_date.today, per_call):
+                try:
+                    fn()
+                except SystemExit as e:
+                    assert build_date.ENV in str(e), f"{raw!r} stopped without naming {build_date.ENV}"
+                else:
+                    raise AssertionError(f"{build_date.ENV}={raw!r} did not stop the build")
+    finally:
+        zoneinfo.ZoneInfo = real
+        build_date._zone.cache_clear()
+        os.environ.pop(build_date.ENV, None)
+        if saved is not None:
+            os.environ[build_date.ENV] = saved
+    here = "missing" if build_date._zone() is None else "installed"
+    assert build_date.today() == per_call(), "here, today() and the lookup on every call disagree"
+    return "ok", (f"{calls} calls construct the zone once, found ahead, found behind or missing, "
+                  "and answer as the lookup on every call did; a stated day asks no zone and a "
+                  f"bad one stops; here the zone database is {here}")
 
 
 @check("build", "rendered_sweep.drive ends node and Chrome before it removes the profile, whatever stopped it")
