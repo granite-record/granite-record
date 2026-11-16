@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 The runner: what `python3 preflight.py` does with its checks.
 
@@ -138,6 +138,9 @@ RECORD_CHECKS = {
     "_rail_endings_on_the_site", "_report_rec", "_rollcall_outcomes_data",
     "_session_designations_built", "_sitting_consent_on_disk", "_sponsors_on_record",
     "_vote_identity",
+    # A district the roster, the results or the map prints that the district table does not
+    # hold (16 November 2026): the record's spelling or the table's age, never last night's.
+    "_districts_printed_today",
     # A past election, against the Secretary of State's saved files and the
     # roll calls (17 October 2026): what they find is the record's, or the
     # rule's, and never last night's.

@@ -2493,12 +2493,39 @@ that a reader moved onto it later cannot change the site. careers.json's
 ballot counts are the one thing it does not give back: they are the roll
 calls'. A person's id is the General Court's number where it gives one, a
 `gr-` id only where the register issued one for that very place
-(`python3 src/ops/gr_register.py --offices`, a person's run, which holds back a name two
-places share), and none for a member-elect until the General Court numbers
+(`python3 src/ops/gr_register.py --offices`, a person's run, which offers none to a holder the
+model links, by the rule or by the owner, and holds back a name two places share), and none for
+a member-elect until the General Court numbers
 them; a date only where a record states one; a holder of a hand-file office
 is linked to a person by the file's own `member` entry, by the owner's hand
 file of links or by the rule below, never by a name alone.
-Party and seat are a tenure's. Where the hand file and the county roster name
+Party and seat are a tenure's. A party is kept as its file prints it and read,
+into the letters it stands for (`parties`: "R/D" is R and D), by the one table
+of parties in `src/lib/state_settings.json` ("parties": each party's letter,
+the site's words for it, every form the files print it in, and the colours
+`app.css` draws it in); a form the table does not know is listed in the
+manifest, never guessed. The copies of that table in the code -- 26, in Python,
+the pages' scripts, the follow emails, the translations and the stylesheets --
+still read their own until each moves onto it, and `_party_copies_agree` holds
+each to it, listing the seven places they differ today (the elections' bar and
+the emails give X other words and the elections' bar another ink; three
+first-letter rules take a U no file prints). A district is one id with its era
+in it (`house:2022:belknap-8`), and its record carries every spelling the files
+use as a key -- the results' `H|Belknap|8`, the map's `BE8`, the roster's
+`Belk 8`, the General Court's county code with the number `01-8` (the settings'
+`county_numbers`, Counties.txt's), a page address's `belk-8` -- beside its name
+and its id's own part, so that any of them, as a file prints it (`Belk. 8`,
+`Carr 07`), resolves in an era to the one id (`entities.district_index`). The
+step reads every district the files the site prints districts from spell
+(`build_entities.PRINTED`: the rosters, the members-elect, the town table and
+search, the district map, each election's results, the bills' sponsors), each
+in the era of the term it is printed for, and its manifest's `districts` says
+what resolves to nothing and where a file and the table disagree (seats, the
+floterial mark, a place, a race's towns, one record naming two districts); a
+seat of a term before every era on file -- the 2012 districts are not on file
+-- is counted, never read as today's of that number. On the files of 16
+November: 24,554 spellings in 14 files, 19,137 resolved, 5,417 of an earlier
+era, none unresolved and no disagreement (`_districts_printed_today`). Where the hand file and the county roster name
 different holders of one seat -- on 16 November the Hillsborough sheriff and
 the Strafford commissioner of district 1, each a vacancy filled since the
 roster's day -- the seat has two tenures, and the manifest lists the

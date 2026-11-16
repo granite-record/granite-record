@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.5
 """
 One model of the people, offices, terms, districts and elections the site's files describe:
 the shape of each kind of record, the rules a model holds to, and the views that give today's
@@ -16,6 +16,9 @@ files back from it.
     EN.view_districts(model, era)    # site/districts.json
     EN.view_officers(model)          # site/officers.json's "officers"
     EN.view_names(model)             # the search index's part: each confirmed form of a name
+    EN.party_letters("r&d")          # ("R", "D"): a printed party by the state's one table
+    EN.resolve_district(EN.district_index(model), "house", "Belk 8", "2022")
+                                     # "house:2022:belknap-8": any spelling, in an era, to its id
 
 src/parse/build_entities.py writes the model to data/entities/ every night from the files on
 disk. NOTHING READS IT YET (the design of 16 November 2026, phase A): preflight holds that each
@@ -37,7 +40,10 @@ THE KINDS. Every record is a JSON object whose first field is its id, named for 
   candidacy  one candidate in a contest
 
 PARTY AND SEAT BELONG TO A TENURE, never to a person, so a label is the seat held then. A
-mid-term change is two tenures of one seat, each dated where its record dates it.
+mid-term change is two tenures of one seat, each dated where its record dates it. A party is
+kept as the file prints it ("party"), and read by the state's one table of parties
+(state_settings.json "parties"; party_letters) into the letters it stands for ("parties"):
+"R/D" is R and D, and a form the table does not know is read as nothing, never guessed.
 
 IDS COME FROM THE FILES, NEVER A COUNTER (the owner's rules, 16 November 2026). A person's id is
 the General Court's number where it gives one (site/data/people.json's person number, chosen by
@@ -69,8 +75,9 @@ multi-seat districts, the Executive Council, the House of 400, two-year terms, t
 legislature elects -- is data in state_settings.json, each with its article of the Constitution
 where it has one (collected/constitution.json). The shapes below hold for any state.
 
-Standard library only. Nothing here reads a file but load(), writes one but write(), or asks the
-network.
+Standard library only, and the state's settings (src/lib/state_settings.py) where no settings
+are given. Nothing here reads a file but load() and the settings, writes one but write(), or asks
+the network.
 """
 
 import datetime
@@ -147,6 +154,7 @@ _TRUE = {"enum": [True]}
 _DAY = {"type": "string", "pattern": DATE}
 _STRS = {"type": "array", "items": _S}
 _NUMS = {"type": "array", "items": {"type": "string", "pattern": DIGITS}}
+_LETTERS = {"type": "array", "items": {"type": "string", "pattern": r"^[A-Z]$"}}
 _ANY = {}
 
 SHAPES = {
@@ -272,7 +280,10 @@ SHAPES = {
             "gc_employee_number": {"type": "string", "pattern": DIGITS},
             "member_id": {"type": "string", "pattern": DIGITS},
             "printed": _S,
+            # The party as the file prints it, and the letters it stands for by the state's one
+            # table of parties (party_letters), where the table reads every part of it.
             "party": _S,
+            "parties": _LETTERS,
             "title": _S,
             "kind": _S,
             "from": _DAY,
@@ -317,6 +328,7 @@ SHAPES = {
             "contest": {"type": "string", "pattern": CONTEST},
             "printed": _S,
             "party": _S,
+            "parties": _LETTERS,
             "elected": _BOOL,
             "person": {"type": ["string", "null"], "pattern": PERSON},
             "member_id": {"type": "string", "pattern": DIGITS},
@@ -437,6 +449,18 @@ def kind_has_eras(kind, settings=None):
     return bool(k) and k.get("eras", True) is not False
 
 
+def party_letters(printed, settings=None):
+    """The letters a party as a file prints it stands for, by the settings' one table of parties
+    ("parties", which state_settings.party_letters reads): ("R",) for "r" or "Republican", ("R",
+    "D") for "R/D" or "REP/DEM", () for none printed; None where the settings hold no table, or a
+    part of what is printed is a form the table does not know."""
+    table = _settings(settings).get("parties")
+    if not table:
+        return None
+    import state_settings
+    return state_settings.party_letters(printed, table)
+
+
 # ---- the rules ----------------------------------------------------------------------------
 
 def index(model):
@@ -513,6 +537,11 @@ def problems(model, settings=None, register=None):
             counties = {d.get("county") for ds in kinds.values() for d in ds if d.get("county")}
             if len(counties) > 1:
                 out.append(f"place {pid} lies in districts of {len(counties)} counties: {sorted(counties)}")
+    # A spelling names one district of its kind in an era: "Belk 8" is Belknap 8 of 2022 and no
+    # other.
+    for (kind, era, said), ids in sorted(district_index(model).items(), key=lambda kv: str(kv[0])):
+        if len(ids) > 1:
+            out.append(f"the {kind} districts of {era or 'no era'} spell two of them {said!r}: {', '.join(ids)}")
     # Each kind's seats add up to its office's, era by era (the House of 400, a Senate of 24,
     # five councilors, two members of the US House).
     for kind, k in s["district_kinds"].items():
@@ -555,6 +584,7 @@ def problems(model, settings=None, register=None):
                        "no id until the legislature numbers them")
         if t.get("sitting") and not t.get("term"):
             out.append(f"tenure {tid} is sitting and names no term")
+        out += _party_problems("tenure", tid, t, s)
         # A link says how it was made, once: the rule's names a person and what it rests on;
         # the owner's, her key, and her evidence where it names someone; never a person she
         # says the holder is not.
@@ -624,6 +654,7 @@ def problems(model, settings=None, register=None):
             continue
         if x.get("person") is not None and x["person"] not in P:
             out.append(f"candidacy {xid} names person {x['person']}, who is not in the model")
+        out += _party_problems("candidacy", xid, x, s)
         if x.get("elected") and c.get("takes_office"):
             ts = by_cand.get(xid) or []
             if len(ts) != 1:
@@ -634,6 +665,22 @@ def problems(model, settings=None, register=None):
                     out.append(f"candidacy {xid}'s tenure {t['tenure']} is not the contest's seat, "
                                "day and term, or not the same person")
     return out
+
+
+def _party_problems(kind, rid, r, settings):
+    """A record's "parties" are the settings' table's reading of its printed party, exactly: its
+    letters where the table reads every part, and none where it reads none or not all. Held only
+    where the settings hold a table."""
+    if not settings.get("parties"):
+        return []
+    want = party_letters(r.get("party"), settings) if r.get("party") else ()
+    have = r.get("parties")
+    if want and have != list(want):
+        return [f"{kind} {rid} is of the party printed {r['party']!r}, which the table reads as "
+                f"{list(want)}, and its parties are {have}"]
+    if not want and have is not None:
+        return [f"{kind} {rid} has parties {have}, and the table reads none in {r.get('party')!r}"]
+    return []
 
 
 # ---- loading and writing --------------------------------------------------------------------
@@ -695,6 +742,56 @@ def load(folder):
     mp = folder / MANIFEST
     manifest = json.loads(mp.read_text(encoding="utf-8")) if mp.is_file() else None
     return model, layouts, manifest
+
+
+# ---- a district's spellings ------------------------------------------------------------------
+#
+# ONE DISTRICT, MANY SPELLINGS, ONE ID WITH ITS ERA IN IT (the design's step 4). The files spell a
+# district six ways and more -- the results' "H|Belknap|8", the elections' "belknap-8", the map's
+# "BE8", "Belknap 8", the roster's "Belk 8", the legislature's county code with a number "01-8",
+# a page address's "belk-8" -- and a district record carries each as a key (its "keys", from the
+# state's settings), beside its name and its id. The table resolves any of them, in an era, to
+# the one id: "Belk 8" in 2022 is house:2022:belknap-8, and in a term before every era on file it
+# is no district the model holds, since the same words named other towns then.
+
+def spelling(text):
+    """A district's spelling as the table matches it: lower case, a full stop read as a space, one
+    space between words, and every number without its leading zeros ("Carr 07", "carr. 7" and
+    "CARR 7" are one; "01-08" is "1-8")."""
+    s = " ".join(str(text or "").replace(".", " ").lower().split())
+    return re.sub(r"\d+", lambda m: str(int(m.group())), s)
+
+
+def district_spellings(d):
+    """{form: spelling} of district record `d`: its name, its id's own part ("belknap-8"), each of
+    its keys, and its number alone where a number names one district of its kind (a district in
+    no county; a county's numbers repeat)."""
+    out = {"name": d.get("name"), "id": d["district"].rsplit(":", 1)[-1]}
+    out.update(d.get("keys") or {})
+    if d.get("number") is not None and not d.get("county"):
+        out["number"] = str(d["number"])
+    return {f: str(v) for f, v in out.items() if v}
+
+
+def district_index(model):
+    """{(kind, era, spelling): [district ids]} of every district of the model by every spelling
+    it has (district_spellings, each as spelling() matches it). A spelling under two ids is a
+    problem of the model's (problems)."""
+    out = {}
+    for d in model.get("district") or []:
+        for v in district_spellings(d).values():
+            ids = out.setdefault((d["kind"], d.get("era"), spelling(v)), [])
+            if d["district"] not in ids:
+                ids.append(d["district"])
+    return out
+
+
+def resolve_district(index, kind, text, era):
+    """The id of the district of `kind` the table spells `text` in `era` ("2022"; None for a kind
+    that is not redrawn), or None: where it holds none so spelled, or two, or the era is one it
+    holds no districts of -- a term before every era on file."""
+    ids = index.get((kind, era, spelling(text)))
+    return ids[0] if ids and len(ids) == 1 else None
 
 
 # ---- the views: today's files, from the model -----------------------------------------------

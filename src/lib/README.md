@@ -43,9 +43,12 @@ Shared by every stage:
   `corrections/member_corrections.json`, read here and never written;
 - `state_settings`: the state's facts (its counties, time zone, legislature,
   and its offices and kinds of district, each with its article of the
-  Constitution where it has one) read from `state_settings.json` beside it,
-  so a fork for another state edits data rather than code; preflight holds
-  every key and fails on a second literal county list;
+  Constitution where it has one, and its one table of parties: each party's
+  letter, the site's words for it, the forms the files print it in and its
+  colours, with `party_letters` to read a printed party by it) read from
+  `state_settings.json` beside it, so a fork for another state edits data
+  rather than code; preflight holds every key, fails on a second literal
+  county list, and holds every copy of the party table in the code to it;
 - `entities`: the model of people, offices, terms, districts and elections --
   the shape of each kind of record, the rules a model holds to, and the
   views that give today's files back from it -- which `parse/build_entities.py`

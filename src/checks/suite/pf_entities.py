@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.6
+# GRANITE_VERSION: 2026-11-16.9
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -23,7 +23,7 @@ from pathlib import Path
 
 import _paths
 
-from pf_core import (_parsed, _run, check)
+from pf_core import (_in_suite, _parsed, _run, _source, check)
 
 TRACKED = ("generated/careers.json", "corrections/officials.json", "generated/gr_ids.json",
            "collected/county_officials.json", "records/districts/house.txt",
@@ -565,12 +565,14 @@ def _entities_say_and_go_on(BE, EN, PE):
        needs=("build_all",))
 def _entities_step_in_the_plan(build_all):
     """The step (the design's step 2): after the district table, the site data (the roster and
-    the officers), the members-elect and the bulk downloads (site/data/people.json), which are
-    the steps that write what it reads; given data/entities as where it writes, and declaring its
+    the officers), the members-elect, the town pages (site/places.json), the district map's data
+    and the bulk downloads (site/data/people.json), which are the steps that write what it reads
+    (the town pages and the map since the district table of step 4 resolves what they print);
+    given data/entities as where it writes, and declaring its
     manifest; optional, because no page waits on a model nothing reads. And nothing reads it yet
     (phase A): no step of the plan names data/entities but it, and no code file but it, the shapes'
-    module, src/ops/gr_register.py (which asks it only for the hand file's holders) and the
-    checks imports either or names the folder."""
+    module, src/ops/gr_register.py (which asks it only for the first offices' holders it links
+    to no one) and the checks imports either or names the folder."""
     class A:
         key = None
         session = "2026"
@@ -581,7 +583,8 @@ def _entities_step_in_the_plan(build_all):
     assert names.count("build_entities.py") == 1, "build_all runs build_entities.py other than once"
     i = names.index("build_entities.py")
     s = steps[i]
-    for before in ("parse_districts.py", "build_site_v2.py", "build_members_elect.py", "build_exports.py"):
+    for before in ("parse_districts.py", "build_site_v2.py", "build_members_elect.py", "build_exports.py",
+                   "build_town_pages.py", "build_district_map.py"):
         assert before in names and names.index(before) < i, f"build_entities.py runs before {before}"
     assert s.args[1:] == ["--out", "data/entities"] and [p.as_posix() for p in s.produces] == [
         "data/entities/manifest.json"] and s.optional and not s.network, (s.args, s.produces, s.optional)
@@ -597,71 +600,144 @@ def _entities_step_in_the_plan(build_all):
         if re.search(r"^\s*(?:import|from)\s+(?:entities|build_entities)\b", t, re.M) or "data/entities" in t:
             readers.append(f.name)
     assert not readers, f"these read the model, which nothing reads yet: {readers}"
-    return "ok", (f"step {i + 1} of {len(steps)}, after the district table, the site data, the members-elect "
-                  "and the bulk downloads; --out data/entities, optional; no other step or code file reads it")
+    return "ok", (f"step {i + 1} of {len(steps)}, after the district table, the site data, the members-elect, "
+                  "the town pages, the district map and the bulk downloads; --out data/entities, optional; no "
+                  "other step or code file reads it")
 
 
-@check("naming", "gr_register.py --offices lists the first offices' holders the hand file links to no General Court record, issues nothing unless told, and never one id for a name two places share",
+def _first_offices_unlinked(BE, root):
+    """The first offices' holders and successors of the hand file whom the model built from
+    `root` links to no person and names no member page for, worked out from its tenures here and
+    not through gr_candidates."""
+    model, _layouts, _report = BE.build(root)
+    return sorted(t["tenure"] for t in model["tenure"] if BE.HAND in (t.get("files") or [])
+                  and t["office"] in BE.FIRST_OFFICES and not t.get("person")
+                  and not (t.get("holder") or {}).get("member")), model
+
+
+@check("naming", "gr_register.py --offices offers a gr- id only to a first office's holder the model links to no one, leaves out every holder it links, offers nothing where it cannot say whom it links, issues nothing unless told, and never one id for a name two places share",
        needs=("gr_register", "gr_ids", "build_entities"))
 def _gr_offices_dry_run(REG, GR, BE):
     """The design's question 3 (yes, 16 November 2026): a gr- id, by a person's run, for each
     holder and successor of the first offices with pages -- the Governor, the Council, Congress,
-    the Secretary of State, the Treasurer, the Attorney General -- whom the hand file links to no
-    General Court record. On the tracked hand file and register: the dry run lists exactly those
-    (worked out here from the file, independently: each such record with no member page) and
-    leaves the register as it was, in memory and on disk; a name two of the places share gets no
-    id, since one person is one id and a name cannot say whether it is one person; with --apply,
-    on a copy, every id issued names its place, and the register stays well formed. Run on the
-    made-up register of _world, an id issued for a place is found by the place and the name."""
-    reg_path = _paths.ROOT / "generated" / "gr_ids.json"
-    disk = reg_path.read_bytes()
-    reg = GR.load_register(reg_path) or {"format": 1, "ids": []}
-    kept = json.dumps(reg, sort_keys=True)
-    doc = json.loads((_paths.ROOT / "corrections" / "officials.json").read_text(encoding="utf-8"))
-    want = []
-    for key in ("governor", "secretary_of_state", "treasurer", "attorney_general"):
-        want.append((f"officials:{key}", doc[key]))
-    for key, sub in (("council", "districts"), ("us_house", "districts"), ("us_senate", "seats")):
-        items = doc[key][sub].items() if isinstance(doc[key][sub], dict) else enumerate(doc[key][sub])
-        for k, rec in items:
-            want.append((f"officials:{key}.{sub}.{k}", rec))
-            if isinstance(rec.get("elect"), dict):
-                want.append((f"officials:{key}.{sub}.{k}.elect", rec["elect"]))
-    issued_for = {p for e in reg.get("ids") or [] for p in
-                  (e["issued_for"] if isinstance(e.get("issued_for"), list) else [e.get("issued_for")])}
-    want = sorted(t for t, rec in want if not rec.get("member") and t not in issued_for)
-    got = REG.offices(reg, "2026-11-16", apply=False, root=_paths.ROOT)
-    assert sorted(c["tenure"] for _n, c in got) == want, (
-        f"the dry run lists {sorted(c['tenure'] for _n, c in got)}, and the hand file's unlinked first offices "
-        f"are {want}")
-    assert json.dumps(reg, sort_keys=True) == kept and reg_path.read_bytes() == disk, "the dry run wrote"
-    names = [" ".join(c["name"].split()).lower() for _n, c in got]
-    shared = {n for n in names if names.count(n) > 1}
-    assert all((new is None) == (" ".join(c["name"].split()).lower() in shared) for new, c in got), (
-        "an id was offered for a name two places share, or none for a name one place has")
-    work = copy.deepcopy(reg)
-    done = REG.offices(work, "2026-11-16", apply=True, root=_paths.ROOT)
-    new_ids = [e for e in work["ids"] if e not in reg["ids"]]
-    assert len(new_ids) == sum(1 for n, _c in done if n) and GR.check_register(work) == [] and all(
-        e["issued_for"].startswith("officials:") for e in new_ids), "issued ids without their places"
-    assert reg_path.read_bytes() == disk, "offices() with apply wrote the register itself; only main() writes"
-    tmp = Path(tempfile.mkdtemp(prefix="gr-entities-"))
+    the Secretary of State, the Treasurer, the Attorney General -- whom the model links to no
+    person of the record. EVERY HOLDER THE MODEL LINKS IS LEFT OUT FIRST: on the files of 16
+    November the hand file alone left Joseph D. Kenney, Luz Bay, Melanie Levesque and Jeanne
+    Shaheen unlinked, and the dry run offered each an id, though the rule of office_links.py links
+    all four to members. On a made-up tree with every file the model and its rule read
+    (_link_world): the dry run lists exactly the holders the model links to no one (worked out
+    here from its tenures) -- not the US senator the rule links to a member of 1991-1992 with no
+    page, nor the US representative the hand file's member page links, nor the Governor, who holds
+    the id the register issued for her place -- and leaves the register as it was, in memory and
+    on disk; with --apply, on a copy, every id issued names its place and the register stays well
+    formed. With the owner's hand file of links, a holder she links is left out and one she says is
+    no one of the record is offered, with her words. A name two of the places share gets no id,
+    since one person is one id and a name cannot say whether it is one person. And on _world,
+    which lacks the rule's evidence, nothing is offered: gr_candidates refuses, and
+    gr_register.py --offices says why, exits other than 0 and writes nothing."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-offices-"))
+    try:
+        import people as PE
+        _link_world(tmp, PE)
+        reg_path = tmp / "generated" / "gr_ids.json"
+        disk = reg_path.read_bytes()
+        reg = GR.load_register(reg_path)
+        kept = json.dumps(reg, sort_keys=True)
+        got = REG.offices(reg, "2026-11-16", apply=False, root=tmp)
+        offered = [c["tenure"] for _n, c in got]
+        want, model = _first_offices_unlinked(BE, tmp)
+        T = {t["tenure"]: t for t in model["tenure"]}
+        assert sorted(offered) == want == ["officials:council.districts.1", "officials:council.districts.1.elect",
+                                           "officials:council.districts.2"], (
+            f"the dry run offers {offered}, and the first offices' holders the model links to no one are {want}")
+        assert T["officials:us_senate.seats.0"]["person"] == "370001" \
+            and T["officials:us_senate.seats.0"]["link"]["by"] == "rule", "the rule did not link the US senator"
+        assert json.dumps(reg, sort_keys=True) == kept and reg_path.read_bytes() == disk, "the dry run wrote"
+        work = copy.deepcopy(reg)
+        done = REG.offices(work, "2026-11-16", apply=True, root=tmp)
+        new_ids = [e for e in work["ids"] if e not in reg["ids"]]
+        assert len(new_ids) == sum(1 for n, _c in done if n) == 3 and GR.check_register(work) == [] and sorted(
+            e["issued_for"] for e in new_ids) == want, "issued ids without their places, or for other places"
+        assert reg_path.read_bytes() == disk, "offices() with apply wrote the register itself; only main() writes"
+        # The owner's word: she links council 1's holder, and says its successor is no one of the record.
+        owner = tmp / "corrections" / "officials_links.json"
+        owner.write_text(json.dumps({"_checked": "2026-11-16", "links": {
+            "executive-council|1|2025|Hal Held": {"person": "376002", "evidence": "made up"},
+            "executive-council|1|2027|Ida Next": {"person": None, "why": "made up: a councilor never in the House"}}}),
+            encoding="utf-8")
+        got = REG.offices(reg, "2026-11-16", apply=False, root=tmp)
+        assert [c["tenure"] for _n, c in got] == ["officials:council.districts.1.elect",
+                                                  "officials:council.districts.2"], got
+        assert "a councilor never in the House" in got[0][1]["evidence"], got[0][1]["evidence"]
+        owner.unlink()
+        # A name two places share: the councilor of district 2 again in the US House.
+        hand = json.loads((tmp / "corrections" / "officials.json").read_text(encoding="utf-8"))
+        hand["us_house"]["districts"]["2"] = {"name": "Ada Newcomb", "party": "R"}
+        (tmp / "corrections" / "officials.json").write_text(json.dumps(hand, ensure_ascii=False, indent=2),
+                                                            encoding="utf-8")
+        got = REG.offices(reg, "2026-11-16", apply=False, root=tmp)
+        names = [" ".join(c["name"].split()).lower() for _n, c in got]
+        shared = {n for n in names if names.count(n) > 1}
+        assert shared == {"ada newcomb"} and all((new is None) == (n in shared) for (new, _c), n in zip(got, names)), (
+            "an id was offered for a name two places share, or none for a name one place has")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    tmp = Path(tempfile.mkdtemp(prefix="gr-offices-"))
     try:
         import people as PE
         _world(tmp, PE)
-        cands = BE.gr_candidates(tmp, register=GR.load_register(tmp / "generated" / "gr_ids.json"))
-        # The Governor holds the id issued for that place under her name; the holder of
-        # district 1 is not the one gr-0002 was issued to; district 2's shares a member's name,
-        # which links nobody; the member of the US House is linked by the hand file's member
-        # page, and needs none.
-        assert [c["tenure"] for c in cands] == ["officials:council.districts.1",
-                                                "officials:council.districts.1.elect",
-                                                "officials:council.districts.2"], cands
+        reg_path = tmp / "generated" / "gr_ids.json"
+        disk = reg_path.read_bytes()
+        try:
+            BE.gr_candidates(tmp, register=GR.load_register(reg_path))
+        except BE.Refused as e:
+            said = str(e)
+        else:
+            raise AssertionError("gr_candidates offered ids on a tree that lacks the rule's evidence")
+        assert "not known here" in said and "the evidence is not all here" in said, said
+        r = _run([sys.executable, str(_paths.script("gr_register.py")), "--offices", "--apply"],
+                 cwd=tmp, capture_output=True, text=True, timeout=300)
+        assert r.returncode != 0 and "No id offered and nothing written" in (r.stderr + r.stdout) \
+            and reg_path.read_bytes() == disk, f"--offices --apply without the rule's evidence: {r.returncode} {(r.stderr or r.stdout)[-300:]}"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", (f"{len(got)} holders of the first offices listed, as the hand file's own unlinked records; "
-                  f"{len(shared)} name(s) two places share held back for a person; nothing written by the "
-                  f"dry run; with --apply every id names its place")
+    return "ok", ("the made-up tree's three holders the model links to no one are offered, and the senator the "
+                  "rule links, the representative a member page links and the Governor the register names are "
+                  "not; her link leaves a holder out and her 'no one' keeps one in; a shared name gets no id; "
+                  "nothing written but by --apply's copy; without the rule's evidence nothing is offered, and "
+                  "the command says so")
+
+
+@check("data", "on today's files gr_register.py --offices offers an id to no first office's holder the model links to a person of the record, and to every one it links to no one",
+       needs=("gr_register", "gr_ids", "build_entities"))
+def _gr_offices_today(REG, GR, BE):
+    """The dry run of --offices on the files here, as a person runs it before issuing: every
+    holder it offers is one the model built from the same files links to no one, and every holder
+    and successor of the first offices that the model links to no one, and the register has
+    issued no id for, is offered (worked out here from the model's tenures). Nothing is written:
+    the register on disk is the same bytes after. Skipped where the model cannot be built here (a
+    bare clone has no built site) or its rule could not run (its evidence not all here)."""
+    missing = [n for n in BE.NEEDED if not Path(n).is_file()]
+    if missing:
+        return "skip", f"the files the model is built from are not here: {', '.join(missing)}"
+    reg_path = Path("generated") / "gr_ids.json"
+    disk = reg_path.read_bytes() if reg_path.is_file() else None
+    reg = GR.load_register(reg_path) or {"format": 1, "ids": []}
+    try:
+        got = REG.offices(reg, "2026-11-16", apply=False, root=".")
+    except BE.Refused as e:
+        return "skip", f"the model cannot say here whom it links, so nothing is offered: {e}"
+    want, model = _first_offices_unlinked(BE, ".")
+    T = {t["tenure"]: t for t in model["tenure"]}
+    offered = [c["tenure"] for _n, c in got]
+    bad = [f"{x} ({T[x]['printed']}, linked to {T[x]['person']})" for x in offered if T[x].get("person")]
+    assert not bad, f"--offices offers an id to holders the model links: {bad}"
+    assert sorted(offered) == want, f"--offices offers {sorted(offered)}; the model links to no one {want}"
+    assert (reg_path.read_bytes() if reg_path.is_file() else None) == disk, "the dry run wrote the register"
+    linked = [t for t in model["tenure"] if BE.HAND in (t.get("files") or []) and t["office"] in BE.FIRST_OFFICES
+              and t.get("person")]
+    return "ok", (f"{len(offered)} first-office holders offered an id, each one the model links to no one; "
+                  f"{len(linked)} it links left out (" + ", ".join(t["printed"] for t in linked) + ")")
 
 
 @check("data", "the model the build wrote (data/entities/) gives back today's people, careers, officials, members-elect, district table and officers, byte for byte",
@@ -1131,3 +1207,560 @@ def _entity_links_hold(BE, EN, OL, ST):
         f"the manifest says {sum(1 for m in made if m['by'] == 'rule')} links by the rule, and the model holds {len(rule)}")
     return "ok", (f"{len(rule)} officials linked by the rule and {len(held) - len(rule)} by the owner's word, each "
                   f"worked out again on today's files; {len(links.get('listed') or [])} on her list")
+
+
+# ---- the one table of parties (src/lib/state_settings.json "parties"; the design's step 3) -------
+
+@check("build", "the state's one table of parties gives each party one letter, words and colours, reads every form the files print, and the model reads its parties by it",
+       needs=("build_entities", "entities", "people", "state_settings"))
+def _party_table(BE, EN, PE, ST):
+    """The table (src/lib/state_settings.json "parties"), read by state_settings.party_letters
+    and by the model through entities.party_letters. Held: its letters are single capitals, in
+    its order once each, and none is the letter drawn where no party is on file; no form -- a
+    spelling, a word -- stands for two letters; parties that share a stylesheet variable give it
+    the same values. Every party the files print reads as the letters it stands for ("REP/DEM"
+    is R and D, "d/r" D and R, "Republican" R) and a form the table does not know ("sgi", "u/d")
+    as nothing, never as part of it. And on a made-up tree (_world) with one holder of a party
+    printed in a form the table does not know: the model gives every tenure and candidacy whose
+    party it reads the letters it stands for (the roster's "Republican" R, the members-elect's
+    "R/D" R and D, the county roster's "REP" R), gives that holder none and says the form in its
+    manifest; its rules catch a tenure whose letters are not its party's; and a sitting member
+    whose roster and careers.json parties stand for different letters is a disagreement, and
+    "Republican" against "r" is not."""
+    t = ST.PARTIES
+    letters = t["letters"]
+    assert list(t["order"]) == list(letters) and all(re.fullmatch(r"[A-Z]", x) for x in letters), (
+        f"the table's order {t['order']} is not its letters {list(letters)}, or a letter is not one capital")
+    assert ST.PARTY_NONE.get("letter") and ST.PARTY_NONE["letter"] not in letters, ST.PARTY_NONE
+    seen = {}
+    for x, row in letters.items():
+        for form in [x, *(row.get("spellings") or []), *(row.get(k) for k in ("name", "plural", "adjective",
+                                                                               "party_name"))]:
+            if form:
+                assert seen.setdefault(str(form).lower(), x) == x, f"{form!r} stands for {seen[str(form).lower()]} and {x}"
+    shades = {}
+    for x, row in letters.items():
+        c = row.get("colour") or {}
+        for part in ("ink", "soft"):
+            if c.get(part):
+                got = {theme: (c.get(theme) or {}).get(part) for theme in ("light", "dark")}
+                assert shades.setdefault(c[part], got) == got, f"{x} gives {c[part]} {got}, another party {shades[c[part]]}"
+    for printed, want in (("r", ("R",)), ("Republican", ("R",)), ("REP/DEM", ("R", "D")), ("d/r", ("D", "R")),
+                          ("r&d&l", ("R", "D", "L")), ("Democratic Party", ("D",)), ("I/D", ("I", "D")),
+                          ("ind", ("I",)), ("", ()), ("sgi", None), ("u/d", None), ("UND", None)):
+        assert ST.party_letters(printed) == want == EN.party_letters(printed), (
+            f"{printed!r} reads as {ST.party_letters(printed)} (the model: {EN.party_letters(printed)}), not {want}")
+    tmp = Path(tempfile.mkdtemp(prefix="gr-parties-"))
+    try:
+        _world(tmp, PE)
+        hand = json.loads((tmp / "corrections" / "officials.json").read_text(encoding="utf-8"))
+        hand["treasurer"] = {"office": "State Treasurer", "name": "Pat Purse", "party": "sgi"}
+        (tmp / "corrections" / "officials.json").write_text(json.dumps(hand, ensure_ascii=False, indent=2),
+                                                            encoding="utf-8")
+        model, layouts, report = BE.build(tmp)
+        assert not report["problems"], report["problems"][:3]
+        T = {x["tenure"]: x for x in model["tenure"]}
+        X = {x["candidacy"]: x for x in model["candidacy"]}
+        for kind, recs in (("tenure", model["tenure"]), ("candidacy", model["candidacy"])):
+            for r in recs:
+                want = ST.party_letters(r["party"]) if r.get("party") else None
+                assert r.get("parties") == (list(want) if want else None), (kind, r[kind], r.get("party"), r.get("parties"))
+        ada = T["house:2025-2026:376001"]
+        assert ada["party"] == "Republican" and ada["parties"] == ["R"] and ada.get("sitting"), ada
+        assert X["2026-11-03.general.house.carroll-1.flo-back-r-d"]["parties"] == ["R", "D"]
+        assert [x["parties"] for x in model["tenure"] if x["tenure"].startswith("county-roster:")] == [["R"]]
+        assert "parties" not in T["officials:treasurer"] and report["parties"]["unread"] == {
+            "sgi": ["officials:treasurer"]} and report["parties"]["read"]["R/D"] == "R/D", report["parties"]
+        m = copy.deepcopy(model)
+        next(x for x in m["tenure"] if x.get("party") == "Republican")["parties"] = ["D"]
+        said = EN.problems(m)
+        assert any("which the table reads as ['R'], and its parties are ['D']" in s for s in said), said[:3]
+        persons = model["person"]
+        sitting = [x for x in model["tenure"] if x.get("sitting") and x.get("gc_employee_number") == "376001"]
+        assert sitting and BE.roster_party_disagreements(sitting, persons, ST.SETTINGS) == [], (
+            "the roster's Republican and careers.json's R were read as two parties")
+        p = next(x for x in persons if "376001" in (x.get("gc_roster") or {}))
+        p["gc_roster"]["376001"]["party"] = "d"
+        assert len(BE.roster_party_disagreements(sitting, persons, ST.SETTINGS)) == 1, (
+            "a Republican on the roster whom careers.json calls d is no disagreement")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"{len(letters)} parties and the letter for none, each form one letter's and each shared colour "
+                  "one value; 'REP/DEM', 'd/r' and 'Republican' read, 'sgi' and 'u/d' left unread; the model "
+                  "gives every party it reads its letters and says the form it cannot, its rules catch a wrong "
+                  "letter, and the roster's party is compared by the table")
+
+
+# EVERY COPY OF THE PARTY TABLE IN THE CODE, 16 November 2026 (stage0-code.md counted six in
+# Python and three in JavaScript; these are every one a search of the code found). Each moves
+# onto the table later, a reader at a time; until then each says what the table says, or is in
+# _PARTY_DIFFERS below. (file, the name it is bound to there, how it is written, what it holds):
+#   py     a dict literal bound to the name anywhere in the file: {letter: word} or {form: letter}
+#   say    the dicts of say() calls in the function of that name: {word: say(lang, key, English)}
+#   parts  the function's rows of (count, "er-<letter>", word)
+#   js     an object literal `const NAME={...}` in the file's text (a page's script in a Python
+#          string included): LETTER:"word", LETTER:tr("key","word"), LETTER:[...] or "var(--ink)"
+#   rule   the letters a first-letter rule takes, written "RDILU" in the file
+#   words  the English the translations file gives each of the table's keys
+#   css    the stylesheet's party inks and tints in each theme, and every class that draws one
+_PARTY_COPIES = (
+    ("src/parse/build_data.py", "PARTY", "py", "name"),
+    ("src/pages/build_session_pages.py", "PARTY_WORD", "py", "name"),
+    ("src/pages/build_site_v2.py", "PARTY_FULL", "py", "name"),
+    ("src/pages/officials_tabs.py", "PARTY_OF", "py", "name"),
+    ("src/fetch/gc_db/fetch_members_db.py", "PARTY", "py", "name"),
+    ("src/fetch/gc_db/fetch_committee_members_db.py", "PARTY", "py", "name"),
+    ("src/pages/structured.py", "PARTY_NAME", "py", "party_name"),
+    ("src/pages/build_session_pages.py", "PARTY_LETTER", "py", "spelling"),
+    ("src/fetch/gc_web/fetch_rollcall_parties.py", "PARTY", "py", "spelling"),
+    ("src/pages/build_site_v2.py", "MANUAL_PARTY", "py", "spelling"),
+    ("src/parse/office_links.py", "PARTY_WORDS", "py", "spelling"),
+    ("src/pages/build_pages.py", "party_word", "say", "name, adjective, plural, none"),
+    ("src/pages/build_elections.py", "chamber_block", "parts", "adjective"),
+    ("src/pages/app.js", "PARTY_NAME", "js", "name"),
+    ("src/pages/app.js", "PARTY_WORD", "js", "name"),
+    ("src/pages/app.js", "PARTY_COLOR", "js", "ink"),
+    ("src/pages/build_pages.py", "PW", "js", "name"),
+    ("src/pages/map.js", "PARTY", "js", "adjective"),
+    ("src/pages/map.js", "NOUN", "js", "name, plural"),
+    ("workers/follow/mail.js", "PARTY_WORDS", "js", "name, plural"),
+    ("src/pages/build_site_v2.py", "RDILU", "rule", "letter"),
+    ("src/parse/names.py", "RDILU", "rule", "letter"),
+    ("src/parse/past_sponsors.py", "RDILU", "rule", "letter"),
+    ("src/pages/lang/es.json", "party.*", "words", "the English of each key"),
+    ("src/pages/app.css", "party classes", "css", "ink, soft"),
+    ("src/pages/map.css", "party classes", "css", "ink"),
+)
+# WHERE A COPY SAYS OTHER THAN THE TABLE TODAY: listed, and put right in none (the task of 16
+# November 2026). Exactly these differ, so that a copy that drifts further is seen, and one put
+# right comes off this list.
+_PARTY_DIFFERS = frozenset({
+    "src/pages/build_elections.py chamber_block: X is 'other or cross-nominated', the table's X 'Party not on file'",
+    "src/pages/app.css party classes: X is drawn in --ind, the table's X in --ink-2",
+    "workers/follow/mail.js PARTY_WORDS: X is 'member whose party is not on file', the table's X 'Party not on file'",
+    "workers/follow/mail.js PARTY_WORDS: X is 'members whose party is not on file', the table's X says no plural",
+    "src/pages/build_site_v2.py RDILU: U, a letter the table does not hold",
+    "src/parse/names.py RDILU: U, a letter the table does not hold",
+    "src/parse/past_sponsors.py RDILU: U, a letter the table does not hold",
+})
+# A copy written in a new place: a letter bound to a party's word, or a party's word to its letter.
+_PARTY_COPY_LINE = re.compile(r"""\bR["']?\s*:\s*[^\n]{0,40}?["'](?:\{n\} )?Republican|["']republican["']\s*:\s*["']R["']""")
+
+
+def _js_object(text, name):
+    """The text inside `const NAME={...}`, its braces balanced; None where there is none."""
+    m = re.search(r"\bconst\s+" + re.escape(name) + r"\s*=\s*\{", text)
+    if not m:
+        return None
+    i, depth, quote = m.end(), 1, None
+    while depth and i < len(text):
+        ch = text[i]
+        if quote:
+            quote = None if ch == quote and text[i - 1] != "\\" else quote
+        elif ch in "\"'`":
+            quote = ch
+        elif ch in "{[(":
+            depth += 1
+        elif ch in "}])":
+            depth -= 1
+        i += 1
+    return text[m.end():i - 1]
+
+
+def _js_entries(body):
+    """[(key, value text)] of an object literal's body, split at its own commas."""
+    out, depth, quote, start = [], 0, None, 0
+    for i, ch in enumerate(body + ","):
+        if quote:
+            quote = None if ch == quote and body[i - 1:i] != "\\" else quote
+        elif ch in "\"'`":
+            quote = ch
+        elif ch in "{[(":
+            depth += 1
+        elif ch in "}])":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            part = body[start:i].strip()
+            if part:
+                k, _, v = part.partition(":")
+                out.append((k.strip().strip("\"'"), v.strip()))
+            start = i + 1
+    return out
+
+
+def _party_copy_says(ST, path, name, how, holds):
+    """[(letter, form, value)] a copy says, as _PARTY_COPIES describes it; a form is name, plural,
+    adjective, party_name, spelling, letter, ink, soft or key:<form> (a key of the translations
+    the copy says a word through)."""
+    out = []
+    if how in ("py", "say", "parts", "rule"):
+        tree = _parsed(_paths.ROOT / path)
+    if how == "py":
+        found = [ast.literal_eval(n.value) for n in ast.walk(tree) if isinstance(n, ast.Assign)
+                 and isinstance(n.value, ast.Dict) and any(isinstance(x, ast.Name) and x.id == name for x in n.targets)]
+        assert len(found) == 1, f"{path} binds {name} to {len(found)} dicts, not one: the copy moved or was copied"
+        for k, v in found[0].items():
+            out.append((v, "spelling", k) if holds == "spelling" else (k, holds, v))
+    elif how == "say":
+        fn = [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == name]
+        assert len(fn) == 1, f"{path} has {len(fn)} functions named {name}"
+        keys = {key: (x, form) for x, row in ST.PARTY.items() for form, key in (row.get("words") or {}).items()}
+        keys.update({key: (ST.PARTY_NONE["letter"], form) for form, key in (ST.PARTY_NONE.get("words") or {}).items()})
+        for a in ast.walk(fn[0]):
+            if isinstance(a, ast.Assign) and isinstance(a.value, ast.Dict):
+                for k, v in zip(a.value.keys, a.value.values):
+                    if isinstance(v, ast.Call) and len(v.args) >= 3 and all(isinstance(x, ast.Constant) for x in v.args[1:3]):
+                        key, english = v.args[1].value, v.args[2].value
+                        x, form = keys.get(key, ("?", key))
+                        out += [(x, "key:" + form, key), (x, form, english)]
+                        if x != ST.PARTY_NONE["letter"]:
+                            out.append((x, "spelling", str(k.value).lower()))
+    elif how == "parts":
+        fn = [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == name]
+        assert len(fn) == 1, f"{path} has {len(fn)} functions named {name}"
+        for a in ast.walk(fn[0]):
+            if isinstance(a, ast.Tuple) and len(a.elts) == 3 and all(isinstance(e, ast.Constant) for e in a.elts[1:]):
+                m = re.fullmatch(r"er-([A-Z])", str(a.elts[1].value))
+                if m:
+                    x = m.group(1)
+                    out.append((x, "name" if x == ST.PARTY_NONE["letter"] else holds, a.elts[2].value))
+    elif how == "rule":
+        hits = [n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str) and name in n.value]
+        assert hits, f"{path} no longer writes the rule's letters {name}"
+        out += [(x, "letter", x) for x in name]
+    elif how == "js":
+        body = _js_object(_source(_paths.ROOT / path), name)
+        assert body is not None, f"{path} has no `const {name}={{...}}`: the copy moved or went"
+        forms = [f.strip() for f in holds.split(",")]
+        for k, v in _js_entries(body):
+            said = re.findall(r'tr\(\s*"([^"]+)"\s*,\s*"([^"]*)"', v) or [(None, s) for s in re.findall(r'"([^"]*)"', v)]
+            for form, (key, english) in zip(forms, said):
+                if form == "ink":
+                    english = re.sub(r"^var\((--[\w-]+)\)$", r"\1", english)
+                english = re.sub(r"^\{n\} ", "", english)
+                out.append((k, form, english))
+                if key and key.startswith("party."):
+                    out.append((k, "key:" + form, key))
+    elif how == "words":
+        doc = json.loads(_source(_paths.ROOT / path))["strings"]
+        rows = list(ST.PARTY.items()) + [(ST.PARTY_NONE["letter"], ST.PARTY_NONE)]
+        for x, row in rows:
+            for form, key in (row.get("words") or {}).items():
+                out.append((x, form, (doc.get(key) or {}).get("en")))
+    elif how == "css":
+        css = re.sub(r"/\*.*?\*/", "", _source(_paths.ROOT / path), flags=re.S)
+        for sel, decls in re.findall(r"([^{}]+)\{([^{}]*)\}", css):
+            letters = set(re.findall(r"\.(?:p|pt|er)-([A-Z])\b", sel))
+            for x in sorted(letters):
+                for var in re.findall(r"var\((--[\w-]+)\)", decls):
+                    if re.fullmatch(r"--(?:rep|dem|ind)(?:-soft)?|--ink-2", var):
+                        out.append((x, "soft" if var.endswith("-soft") else "ink", var))
+        for x, var in re.findall(r"--fill-([A-Z]):color-mix\(in srgb,var\((--[\w-]+)\)", css):
+            out.append((x, "ink", var))
+    return out
+
+
+def _party_table_says(ST, x, form):
+    """What the table says of letter `x` in `form`, or None."""
+    row = ST.PARTY_NONE if x == ST.PARTY_NONE.get("letter") else ST.PARTY.get(x)
+    if row is None:
+        return None
+    if form.startswith("key:"):
+        return (row.get("words") or {}).get(form[4:])
+    if form in ("ink", "soft"):
+        return (row.get("colour") or {}).get(form)
+    return row.get(form)
+
+
+@check("files", "every copy of the party table in the code says what the state's one table says, but those listed as differing, and no new copy has been written",
+       needs=("state_settings",))
+def _party_copies_agree(ST):
+    """THE PARTY MAP IS WRITTEN MANY TIMES (stage0-code.md: six times in Python and three in
+    JavaScript, with no check holding them together); src/lib/state_settings.json's "parties" is
+    now the one table, and the copies move onto it later. Until each does, every copy
+    _PARTY_COPIES lists -- 26 of them, the letter-to-word maps of the pages, the downloads and the
+    fetchers, the word-to-letter maps, party_word and the elections' bar, the scripts' maps of
+    words, inks and counts, the follow emails', the first-letter rules, the translations' English,
+    and the stylesheets' inks and tints -- is read where it is, and each thing it says of a party is
+    held to the table: the word, plural, adjective and party's own name, a spelling and the letter
+    it stands for, the key a word is said through, the ink or tint a class draws it in, and the
+    stylesheet's values for each in the light theme (and print) and the dark. What differs today
+    is _PARTY_DIFFERS, put right in none: the elections' bar and its X (other or cross-nominated,
+    drawn in the Independent's ink) where the table's X is 'Party not on file'; the follow
+    emails' own words for it; and the first-letter rules' U, which no file prints. Exactly those
+    differ. And no copy is written where the list does not know one: a line binding R to a
+    Republican word, or the word to R, in any code file, the workers' and the Functions' too,
+    outside the suite and the tests, is one of the listed copies."""
+    differs, said = set(), {}
+    for path, name, how, holds in _PARTY_COPIES:
+        label = f"{path} {name}"
+        says = _party_copy_says(ST, path, name, how, holds)
+        assert says, f"{label} says nothing of a party: the copy moved or went"
+        said[label] = says
+        look = ST.party_lookup()
+        for x, form, value in says:
+            if form == "letter":
+                if x not in ST.PARTY and x != ST.PARTY_NONE.get("letter"):
+                    differs.add(f"{label}: {x}, a letter the table does not hold")
+                continue
+            if form == "spelling":
+                if look.get(str(value).lower()) != x:
+                    differs.add(f"{label}: {value!r} stands for {x}, and the table reads it as {look.get(str(value).lower())}")
+                continue
+            want = _party_table_says(ST, x, form)
+            if value != want and form in ("ink", "soft"):
+                differs.add(f"{label}: {x} is drawn in {value}, the table's {x} in {want}")
+            elif value != want:
+                differs.add(f"{label}: {x} is {value!r}, the table's {x} {want!r}" if want is not None else
+                            f"{label}: {x} is {value!r}, the table's {x} says no {form}")
+    # The stylesheet's values for each ink and tint, theme by theme: the light (and print) and the
+    # dark are the table's, and every block of them is one or the other.
+    css = re.sub(r"/\*.*?\*/", "", _source(_paths.ROOT / "src/pages/app.css"), flags=re.S)
+    want = {}
+    for x, row in ST.PARTY.items():
+        c = row.get("colour") or {}
+        for part in ("ink", "soft"):
+            if c.get(part):
+                want[c[part]] = {theme: (c.get(theme) or {}).get(part) for theme in ("light", "dark")}
+    blocks, cur = [], {}
+    for var, value in re.findall(r"(--(?:rep|dem|ind)(?:-soft)?):(#[0-9A-Fa-f]{6})", css):
+        if var in cur:
+            blocks.append(cur)
+            cur = {}
+        cur[var] = value.upper()
+    blocks.append(cur)
+    themes = []
+    for b in blocks:
+        hit = [theme for theme in ("light", "dark") if all(want.get(v, {}).get(theme, "").upper() == value
+                                                           for v, value in b.items())]
+        assert hit and set(b) == set(want), f"app.css gives the party colours {b}, which are neither theme of the table's"
+        themes.append(hit[0])
+    assert themes[0] == "light" and "dark" in themes, f"app.css's party colours run {themes}"
+    assert differs == _PARTY_DIFFERS, (
+        "copies of the party table differ from it otherwise than listed: "
+        + "; ".join(sorted(differs - _PARTY_DIFFERS)[:8])
+        + ("; and these listed differences are gone (take them off _PARTY_DIFFERS): "
+           + "; ".join(sorted(_PARTY_DIFFERS - differs)) if _PARTY_DIFFERS - differs else ""))
+    # No copy the list does not know.
+    expected = {}
+    for path, name, how, holds in _PARTY_COPIES:
+        if how in ("py", "js") and any(
+                (form != "spelling" and x == "R" and isinstance(v, str) and "Republican" in v)
+                or (form == "spelling" and x == "R" and str(v).lower() == "republican")
+                for x, form, v in said[f"{path} {name}"]):
+            expected[path] = expected.get(path, 0) + 1
+    found = {}
+    files = [f for f in list(_paths.code_files("*.py")) + list(_paths.code_files("*.js"))
+             + sorted((_paths.ROOT / "workers").rglob("*.js")) + sorted((_paths.ROOT / "functions").rglob("*.js"))
+             if not _in_suite(f) and "tests" not in f.relative_to(_paths.ROOT).parts
+             and "node_modules" not in f.parts]
+    for f in files:
+        n = len(_PARTY_COPY_LINE.findall(_source(f, errors="replace")))
+        if n:
+            found[f.relative_to(_paths.ROOT).as_posix()] = n
+    assert found == expected, (
+        "a copy of the party table the list does not know: "
+        + ", ".join(f"{p} ({found.get(p, 0)} found, {expected.get(p, 0)} listed)"
+                    for p in sorted(set(found) | set(expected)) if found.get(p, 0) != expected.get(p, 0))
+        + ". Read state_settings.PARTY instead, or add it to _PARTY_COPIES")
+    langs = {how for _p, _n, how, _h in _PARTY_COPIES}
+    return "ok", (f"{len(_PARTY_COPIES)} copies ({len(langs)} ways of writing one) say what the table says but "
+                  f"the {len(_PARTY_DIFFERS)} listed: the elections' bar and the emails' X, its ink, and the "
+                  "first-letter rules' U; app.css's inks and tints are the table's in both themes; no copy "
+                  "written anywhere the list does not know")
+
+
+# ---- the one district table, with its eras and every spelling (the design's step 4) --------------
+
+def _district_tree(root, BE, EN, PE, model):
+    """_world's tree with the files the site prints districts from beside it, each true to the
+    tracked district lists (`model`, their districts and places) but for one fault apiece: a town
+    search placing Conway in Carroll 2 and Albany in a Senate district 99; a 2026 result giving
+    Carroll 1 two seats and a town more, and Belknap 8 as not floterial; the map drawing Carroll 1
+    on the floterial layer; a former member of 2023-2024 whose label and page address name two
+    districts; a sitting member the site data gives another district than the roster does; and,
+    of a term before every era on file, a 2020 result, a 2019-2020 sponsor and two former members
+    whose service the file gives no term of or a term of 2019-2020, which are counted and resolve
+    to nothing."""
+    root = Path(root)
+    _world(root, PE)
+    conway = next(p for p in model["place"] if p["place"] == "conway|0")
+    D = {d["district"]: d for d in model["district"]}
+    of = {D[x]["kind"]: D[x] for x in conway["in"]["2022"]}
+    sd, ec, cd = of["senate"]["number"], of["council"]["number"], of["congress"]["number"]
+    put = lambda rel, doc: ((root / rel).parent.mkdir(parents=True, exist_ok=True),
+                            (root / rel).write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8"))
+    (root / "site" / "districts.json").write_text(json.dumps(EN.view_districts(model, "2022"), indent=2,
+                                                             sort_keys=True), encoding="utf-8")
+    put("site/places.json", {"places": [
+        {"s": "conway", "n": "Conway", "t": "Conway", "h": [["Carroll", 1, 0], ["Carroll", 2, 0]], "sd": sd,
+         "ec": ec, "cd": cd, "m": ["ada-newcomb-carr-1"], "e": ["H|Carroll|1", f"S|{sd}"]},
+        {"s": "albany", "n": "Albany", "t": "Albany", "h": [], "sd": 99, "m": [], "e": []}],
+        "people": {"ada-newcomb-carr-1": ["Rep. Ada Newcomb (R - Carr 1)", "R"],
+                   "cy-lund-sd-15": ["Sen. Cy Lund (R - SD15)", "R"]},
+        "offices": {"ec": {str(ec): ["Hal Held", "R", ""]}, "cd": {str(cd): ["Cy Lund", "R", ""]}},
+        "elect": {"election": "2026-11-03", "races": {"H|Carroll|1": {"seats": 3}}}})
+    c1 = D["house:2022:carroll-1"]
+    put("site/district_map.json", {
+        "layers": {"base": {"f": {"CA1": {}, "BE1": {}}}, "float": {"f": {"BE8": {}, "CA1": {}}},
+                   "senate": {"f": {str(sd): {}}}, "exec": {"f": {str(ec): {}}}, "cong": {"f": {str(cd): {}}}},
+        "seats": {"CA1": c1["seats"], "BE1": D["house:2022:belknap-1"]["seats"], "BE8": D["house:2022:belknap-8"]["seats"]},
+        "who": {"base|CA1": [{"n": "Rep. Ada Newcomb (R - Carr 1)"}]},
+        "elect": {"election": "2026-11-03", "races": {"base|CA1": {"seats": c1["seats"]}}},
+        "places": {"Conway": {"c": "Carroll", "w": {"0": ["CA1", None, str(sd), str(ec), str(cd)]}}}})
+    towns = sorted({BE._town_ward(p) for p in model["place"] if p["place"] in c1["places"]})
+    put("collected/election_2026.json", {"election": "2026-11-03", "term": "2027-2028", "races": {
+        "H|Carroll|1": {"seats": 2, "floterial": False, "towns": towns + ["Madison"]},
+        "H|Belknap|8": {"seats": D["house:2022:belknap-8"]["seats"], "floterial": False,
+                        "towns": sorted({BE._town_ward(p) for p in model["place"]
+                                         if p["place"] in D["house:2022:belknap-8"]["places"]})}}})
+    put("collected/election_2020.json", {"election": "2020-11-03", "term": "2021-2022", "races": {
+        "H|Carroll|9": {"seats": 1, "floterial": False, "towns": ["Nowhere"]}}})
+    put("data/sponsors.json", {"2025-2026": {"HB1": [
+        {"member_id": "11600", "chamber": "H", "label": "Rep. Ada Newcomb (R - Carr 1)"},
+        {"member_id": "11700", "chamber": "S", "label": "Sen. Cy Lund (R - SD15)"}]},
+        "2019-2020": {"HB2": [{"member_id": "1", "chamber": "H", "label": "Rep. Old Timer (D - Carr 9)"}]}})
+    put("data/legislators.json", [{"id": "11600", "chamber": "H", "county_code": "02", "district": "1"},
+                                  {"id": "11800", "chamber": "H", "county_code": "02", "district": "2"}])
+    former = json.loads((root / "site" / "former.json").read_text(encoding="utf-8"))
+    former += [{"id": "376040", "name": "Two, Way", "chamber": "H", "county": "Carroll", "district": "2",
+                "district_label": "Carr 2", "slug": "way-two-carr-3", "served": {"terms": ["2023-2024"]}},
+               {"id": "376041", "name": "Back, Then", "chamber": "H", "county": "Carroll", "district": "9",
+                "district_label": "Carr 9", "slug": "then-back-carr-9", "served": {"terms": ["2019-2020"]}}]
+    put("site/former.json", former)
+
+
+@check("build", "the district table gives each district one id with its era in it and resolves every spelling the files use to it, and the step says each district the site prints that resolves to nothing or disagrees",
+       needs=("build_entities", "entities", "people", "state_settings"))
+def _district_table(BE, EN, PE, ST):
+    """The design's step 4. A district's six spellings -- the results' H|Belknap|8, the elections'
+    belknap-8, the map's BE8, the name Belknap 8, the roster's Belk 8 and the General Court's
+    county code with a number, 01-8 -- and a page address's belk-8 are one id with its era in it,
+    house:2022:belknap-8; the Senate's S|22, SD22, sd-22, Senate District 22 and 22 are
+    senate:2022:22. Held on the tracked district lists (records/districts/): every district has the
+    spellings of its kind, each resolves to it in its era and in none other (a term before every
+    era on file reads as no district, never as today's of that number), and so do the forms the
+    files print them in -- a full stop ("Belk. 8"), a padded number ("Carr 07", "H|Carroll|07",
+    "01-08"), any case; no spelling names two districts, and a model where one does breaks a rule;
+    the settings give every county the General Court's two-digit number, each once. And on a
+    made-up tree with every file the site prints districts from (_district_tree), the step exits 0,
+    writes only data/entities/, and its manifest resolves each spelling in the era of the term it is
+    printed for and says each fault: the Senate district 99 that resolves to nothing; the town
+    placed in a district that does not hold it; a result's seats, towns and floterial mark; the
+    map's floterial layer drawing a district that is not; a former member's label and page address
+    naming two districts; the site data's district for a sitting member against the roster's; and
+    it counts the 2020 result, the 2019-2020 sponsor and former member as of an era not on file,
+    resolving none of them."""
+    S = ST.SETTINGS
+    nums = S["county_numbers"]
+    assert sorted(nums) == sorted(ST.COUNTIES) and all(re.fullmatch(r"\d\d", v) for v in nums.values()) \
+        and len(set(nums.values())) == len(nums), f"the counties' numbers are not one two-digit number each: {nums}"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-districts-"))
+    try:
+        _copy_tracked(tmp, [n for n in TRACKED if n.startswith("records/")])
+        districts, places = BE.districts_and_places(tmp, S)
+        model = {"district": districts, "place": places}
+        index = EN.district_index(model)
+        want = {"house": {"results", "map", "label", "legislature", "slug"}, "senate": {"results", "label", "slug"}}
+        for d in districts:
+            forms = EN.district_spellings(d)
+            assert want.get(d["kind"], set()) <= set(forms), f"{d['district']} has the spellings {sorted(forms)}"
+            for form, said in forms.items():
+                assert EN.resolve_district(index, d["kind"], said, d.get("era")) == d["district"], (
+                    f"{d['district']}'s {form} {said!r} does not resolve to it")
+                if d.get("era"):
+                    assert EN.resolve_district(index, d["kind"], said, None) is None \
+                        and EN.resolve_district(index, d["kind"], said, "2012") is None, (
+                            f"{d['district']}'s {form} {said!r} resolves in an era the table does not hold")
+        same = {"house:2022:belknap-8": ("H|Belknap|8", "belknap-8", "BE8", "Belknap 8", "Belk 8", "01-8",
+                                         "belk-8", "Belk. 8", "BELK 08", "H|Belknap|08", "01-08", "be8"),
+                "house:2022:carroll-7": ("Carr 07", "02-07", "CA07", "Carroll 07"),
+                "senate:2022:22": ("S|22", "SD22", "sd-22", "Senate District 22", "22", "022")}
+        for did, forms in same.items():
+            for said in forms:
+                assert EN.resolve_district(index, did.split(":")[0], said, "2022") == did, f"{said!r} is not {did}"
+        assert EN.resolve_district(index, "house", "22", "2022") is None, "a bare number named a House district"
+        assert not [p for p in EN.problems(dict(model, office=EN.offices(S))) if "spell two" in p]
+        m = copy.deepcopy(model)
+        next(d for d in m["district"] if d["district"] == "house:2022:belknap-2")["keys"]["label"] = "Belk 1"
+        said = EN.problems(m)
+        assert any("spell two of them 'belk 1'" in p for p in said), said[:3]
+        # The step, on a made-up tree with every file the site prints districts from.
+        shutil.rmtree(tmp)
+        tmp.mkdir()
+        _district_tree(tmp, BE, EN, PE, model)
+        before = _tree_digest(tmp)
+        r = _run([sys.executable, str(_paths.script("build_entities.py")), "--out", "data/entities"],
+                 cwd=tmp, capture_output=True, text=True, timeout=300)
+        assert r.returncode == 0, f"build_entities.py exited {r.returncode}: {(r.stderr or r.stdout)[-600:]}"
+        after = _tree_digest(tmp)
+        changed = sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
+        assert changed and all(k.startswith("data/entities/") for k in changed), (
+            f"build_entities.py wrote outside data/entities/: {[k for k in changed if not k.startswith('data/entities/')]}")
+        _model, _layouts, manifest = EN.load(tmp / "data" / "entities")
+        dr = manifest["districts"]
+        assert "districts:" in r.stdout and "WARNING: a senate district the table does not hold" in r.stdout, r.stdout[-800:]
+        assert [x["where"] for x in dr["unresolved"]] == ["site/places.json albany"] and dr["unresolved_count"] == 1, dr["unresolved"]
+        got = sorted((x["what"], x["where"]) for x in dr["disagreements"])
+        assert got == sorted([
+            ("a place in a district that does not hold it", "site/places.json conway"),
+            ("a district's seats, two ways", "collected/election_2026.json H|Carroll|1"),
+            ("a district's towns, two ways", "collected/election_2026.json H|Carroll|1"),
+            ("a district floterial one way and not the other", "collected/election_2026.json H|Belknap|8"),
+            ("a district floterial one way and not the other", "site/district_map.json layers.float.CA1"),
+            ("one record whose spellings name two districts", "former member 376040"),
+            ("one record whose spellings name two districts", "member 11800")]), got
+        assert dr["printed"]["collected/election_2020.json"] == {"resolved": 0, "era not on file": 1, "unresolved": 0} \
+            and dr["printed"]["data/sponsors.json"] == {"resolved": 2, "era not on file": 1, "unresolved": 0} \
+            and dr["printed"]["site/former.json"] == {"resolved": 3, "era not on file": 4, "unresolved": 0}, dr["printed"]
+        assert dr["printed"]["site/legislators.json"]["resolved"] == 6 and not dr["not_here"], (dr["printed"], dr["not_here"])
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    n = sum(len(EN.district_spellings(d)) for d in districts)
+    return "ok", (f"{len(districts)} districts of the tracked lists, {n:,} spellings, each resolving to its one id in its "
+                  "era and in no other; Belk. 8, BELK 08, 01-08 and Carr 07 resolve as the files print them; a spelling "
+                  "two districts share breaks a rule; on a made-up tree the step resolves every file the site prints "
+                  "districts from, says the one that resolves to nothing and the seven disagreements, and counts "
+                  "the terms before every era on file")
+
+
+@check("data", "every district the site prints today resolves by the one district table to one id with its era, and where a file and the table disagree is listed",
+       needs=("build_entities", "entities", "state_settings"))
+def _districts_printed_today(BE, EN, ST):
+    """The district table on the night's files (the design's step 4): data/entities/, as the build
+    wrote it, read back, and every district spelling the files the site prints districts from
+    give (build_entities.PRINTED: the roster and the site data's members, the former members, the
+    members-elect, the town table, the town search, the district map, each election's results and
+    the bills' sponsors) read again here and resolved by the model's district table in the era of
+    the term it is printed for. Each one of an era the table holds resolves to one id; what the
+    manifest says of them -- by file, and every disagreement -- is what reading them again gives,
+    so the night's log said what is true. Where the General Court's county table (Counties.txt) is
+    here, its numbers are the settings' county_numbers. A tree no build has run the model in, or
+    one whose model was built before the district table, is skipped."""
+    folder = Path("data") / "entities"
+    if not (folder / EN.MANIFEST).is_file():
+        return "skip", "no build has made data/entities/ here"
+    model, _layouts, manifest = EN.load(folder)
+    if "districts" not in (manifest or {}):
+        return "skip", "data/entities/ was built before the district table (its manifest has no districts)"
+    printed, missing = BE.printed_districts(".", ST.SETTINGS)
+    got = BE.district_report(model, printed, ST.SETTINGS, missing)
+    assert not got["unresolved_count"], (f"{got['unresolved_count']} district(s) the site prints resolve to none: "
+                                         + "; ".join(f"{x['where']}: {x['says']}" for x in got["unresolved"][:5]))
+    assert got == manifest["districts"], ("the manifest's districts are not what today's files give: rebuild the "
+                                          "model (python3 src/parse/build_entities.py)")
+    counties = Path("Counties.txt")
+    said = ""
+    if counties.is_file():
+        theirs = {}
+        for line in counties.read_text(encoding="utf-8-sig", errors="replace").splitlines():
+            parts = line.split("|")
+            if len(parts) >= 2 and parts[0].strip().isdigit():
+                theirs[parts[1].strip()] = parts[0].strip().zfill(2)
+        assert theirs == ST.SETTINGS["county_numbers"], (
+            f"Counties.txt numbers the counties {theirs}, the settings {ST.SETTINGS['county_numbers']}")
+        said = "; Counties.txt's county numbers are the settings'"
+    n = {k: sum(v[k] for v in got["printed"].values()) for k in ("resolved", "era not on file")}
+    return "ok", (f"{n['resolved']:,} district spellings in {len(got['printed'])} files resolved to one id each, "
+                  f"{n['era not on file']:,} of a term before every era on file; {got['disagreements_count']} "
+                  f"disagreement(s), as the manifest lists{said}")

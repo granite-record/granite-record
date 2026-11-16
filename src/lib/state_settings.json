@@ -17,6 +17,9 @@
   "county_codes": {"Belknap": "BE", "Carroll": "CA", "Cheshire": "CH", "Coos": "CO",
                    "Grafton": "GR", "Hillsborough": "HI", "Merrimack": "ME",
                    "Rockingham": "RO", "Strafford": "ST", "Sullivan": "SU"},
+  "county_numbers": {"Belknap": "01", "Carroll": "02", "Cheshire": "03", "Coos": "04",
+                     "Grafton": "05", "Hillsborough": "06", "Merrimack": "07",
+                     "Rockingham": "08", "Strafford": "09", "Sullivan": "10"},
   "timezone": "America/New_York",
   "term": {
     "length_years": 2,
@@ -107,8 +110,10 @@
   "district_kinds": {
     "house": {"office": "house", "unit": "town-ward", "per_county": true, "multi_seat": true, "overlay": "floterial",
               "name": "{county} {n}", "label": "{county_abbr} {n}", "results": "H|{county}|{n}", "map": "{county_code}{n}",
+              "legislature": "{county_number}-{n}", "slug": "{county_abbr_slug}-{n}",
               "file": "records/districts/house.txt", "constitution": ["Pt. 2, Art. 9", "Pt. 2, Art. 11"]},
     "senate": {"office": "senate", "unit": "town-ward", "name": "Senate District {n}", "results": "S|{n}",
+               "label": "SD{n}", "slug": "sd-{n}",
                "file": "records/districts/senate.txt", "constitution": ["Pt. 2, Art. 26"]},
     "council": {"office": "executive-council", "unit": "town-ward", "name": "Council District {n}",
                 "file": "records/districts/council.txt", "constitution": ["Pt. 2, Art. 65"]},
@@ -126,5 +131,33 @@
                 "register-of-deeds"],
     "with": ["house", "senate"],
     "constitution": ["Pt. 2, Art. 95"],
-    "source": "Art. 95: no person holding the office of judge of any court, secretary, treasurer of the state, attorney-general, register of deeds, sheriff or member of Congress shall have a seat in the senate or house of representatives, and no member of the council shall; read by src/parse/office_links.py, which refuses to link an official to a member who held a seat in a term the office was held"}
+    "source": "Art. 95: no person holding the office of judge of any court, secretary, treasurer of the state, attorney-general, register of deeds, sheriff or member of Congress shall have a seat in the senate or house of representatives, and no member of the council shall; read by src/parse/office_links.py, which refuses to link an official to a member who held a seat in a term the office was held"},
+  "parties": {
+    "source": "The one table of the parties (the model's design of 16 November 2026, step 3), as the site uses them today. letter: what a roster prints and a chip carries. name and plural: the roster's word for a member's party and its plural (site/legislators.json, build_pages.party_word). adjective: the word for a party's side where the site names one (the district map, the elections pages: 'Democratic'). party_name: the party's own name, which structured.py gives search engines; none for an independent, who has no party. spellings: every form the files print a party in, lower case (the General Court's r, d, i, l; the Secretary of State's REP, DEM, LIB, IND; office_links.py's words); a form of two parties, r&d or REP/DEM, is each part. words: the keys of src/pages/lang/ that say name, plural and adjective in another language. colour: the stylesheet's variable (src/pages/app.css) and its value in the light theme (and print) and the dark. none: what is drawn where no party is on file. C and G are known only by spellings (src/parse/office_links.py): the site names and colours neither. Read by src/lib/entities.py (the model) through state_settings.party_letters; the copies of it in the code are held to it by preflight (_party_copies_agree) and move onto it later.",
+    "order": ["R", "D", "I", "L", "C", "G"],
+    "letters": {
+      "R": {"name": "Republican", "plural": "Republicans", "adjective": "Republican", "party_name": "Republican Party",
+            "spellings": ["r", "rep", "republican"],
+            "words": {"name": "party.r", "plural": "party.rs"},
+            "colour": {"ink": "--rep", "soft": "--rep-soft",
+                       "light": {"ink": "#B03A32", "soft": "#F6E7E6"}, "dark": {"ink": "#D9776F", "soft": "#3B2422"}}},
+      "D": {"name": "Democrat", "plural": "Democrats", "adjective": "Democratic", "party_name": "Democratic Party",
+            "spellings": ["d", "dem", "democrat", "democratic"],
+            "words": {"name": "party.d", "plural": "party.ds", "adjective": "party.dem"},
+            "colour": {"ink": "--dem", "soft": "--dem-soft",
+                       "light": {"ink": "#1E3F73", "soft": "#E6EDF7"}, "dark": {"ink": "#A9C6F0", "soft": "#22304A"}}},
+      "I": {"name": "Independent", "plural": "Independents", "adjective": "Independent",
+            "spellings": ["i", "ind", "independent"],
+            "words": {"name": "party.i", "plural": "party.is"},
+            "colour": {"ink": "--ind", "soft": "--ind-soft",
+                       "light": {"ink": "#6B5B95", "soft": "#EEEAF3"}, "dark": {"ink": "#B9A9E0", "soft": "#2E2842"}}},
+      "L": {"name": "Libertarian", "plural": "Libertarians", "adjective": "Libertarian", "party_name": "Libertarian Party",
+            "spellings": ["l", "lib", "libertarian"],
+            "words": {"name": "party.l", "plural": "party.ls"},
+            "colour": {"ink": "--ind", "light": {"ink": "#6B5B95"}, "dark": {"ink": "#B9A9E0"}}},
+      "C": {"spellings": ["c", "con", "constitution"]},
+      "G": {"spellings": ["g", "green", "grn"]}
+    },
+    "none": {"letter": "X", "name": "Party not on file", "words": {"name": "party.none"}, "colour": {"ink": "--ink-2"}}
+  }
 }
