@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.92
+# GRANITE_VERSION: 2026-09-04.93
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -6245,6 +6245,52 @@ def functions_warned(fx, where="the preview"):
              "deployment's Functions and its bindings) shows what is missing.")]
 
 
+# THE LAPTOP'S BACKUP (16 November 2026; the refactor's stage 0, ops item 6).
+# The laptop's backup of everything git does not hold went to the bucket when
+# a person ran it, and nothing said how old it was. The state-down step looks
+# once -- one HEAD request of state/backup-manifest.json, which every backup
+# rewrites -- and leaves what it saw at BACKUP_SEEN (cloud.BACKUP_SEEN, which
+# preflight holds to this). A manifest more than BACKUP_DAYS old when it
+# looked, counted in days of the calendar, warns, and so does none at all, a
+# look that failed or a record that will not read, each in one line with what
+# to do and of a kind the gate never holds a night for. The laptop's weekly
+# job (src/ops/backup_weekly.py) sends one every Sunday. No record of a look,
+# as on a check's fixture or a machine that ran no state-down, says nothing.
+BACKUP_SEEN = Path("archive/cloud/backup-seen.json")
+BACKUP_DAYS = 14
+KIND_BACKUP = KIND_HEALTH + "the laptop's backup more than two weeks old"
+
+
+def backup_warned(path=None):
+    """[(kind, sentence)] for the laptop's backup as the state-down step saw
+    it (THE LAPTOP'S BACKUP); [] for one BACKUP_DAYS old or newer, and where
+    no look is on record."""
+    p = BACKUP_SEEN if path is None else Path(path)
+    if not p.is_file():
+        return []
+    rec = load_json(p)
+    run = "on the laptop, run python3 src/ops/cloud.py backup"
+    if not isinstance(rec, dict):
+        return [(KIND_BACKUP, f"What the state-down step saw of the laptop's backup ({p.as_posix()}) "
+                              "would not read, so its age was not checked tonight: if it says so "
+                              "again tomorrow, read that step's log.")]
+    if rec.get("absent"):
+        return [(KIND_BACKUP, "The bucket holds no state/backup-manifest.json, so no backup of the "
+                              f"laptop has reached it: {run}.")]
+    try:
+        seen = datetime.fromtimestamp(float(rec["seen_epoch"])).date()
+        written = datetime.fromtimestamp(float(rec["written_epoch"])).date()
+    except (KeyError, TypeError, ValueError, OverflowError, OSError):
+        return [(KIND_BACKUP, "The state-down step could not tell how old the laptop's backup is ("
+                              + str(rec.get("error") or "it recorded no date")[:160]
+                              + "): if it says so again tomorrow, read that step's log.")]
+    days = (seen - written).days
+    if days <= BACKUP_DAYS:
+        return []
+    return [(KIND_BACKUP, f"The laptop's backup is {days} days old (last sent {day_said(written)}), "
+                          f"more than {BACKUP_DAYS}: {run}.")]
+
+
 def health_warned(v, private=False):
     """[(kind, sentence)] of THE NIGHT'S OWN HEALTH that a verdict carries:
     each a kind the gate never holds a night for. Read by Night.warned() for
@@ -6253,6 +6299,7 @@ def health_warned(v, private=False):
     return (started_by_warned(v.get("started_by"))
             + expiries_warned(v.get("expiries"), private=private)
             + sources_warned(v.get("sources"))
+            + backup_warned()
             + functions_warned((v.get("preview") if isinstance(v.get("preview"), dict) else {})
                                .get("functions")))
 

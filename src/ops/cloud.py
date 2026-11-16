@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.32
+# GRANITE_VERSION: 2026-09-25.33
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -14,7 +14,10 @@ The nightly's kit and the laptop's backup, in the project's private R2 bucket.
                                                        back, and its logs, apart (state-up too)
     python3 src/ops/cloud.py kit-release --run RUN     ... and goes into kit/, once that
                                                        run's build has been published
-    python3 src/ops/cloud.py state-down | state-up     the small state files only
+    python3 src/ops/cloud.py state-down | state-up     the small state files only; and
+                                                       state-down's one look at the date of
+                                                       the laptop's backup (THE LAPTOP'S
+                                                       BACKUP, AS THE NIGHT SEES IT)
     python3 src/ops/cloud.py clear-refusal             lift the refusal record the night
                                                        keeps in the bucket (a person's call)
     python3 src/ops/cloud.py site-up --run ID          the night's built site, as one archive,
@@ -127,8 +130,10 @@ On a machine, small state lives under archive/ -- archive/refused.json,
 archive/census.json -- and only the bucket calls it state/. This machine's
 own record lives in archive/cloud/: what kit-down fetched, which build_all.py
 reads as "this folder is built from the kit"; what state-down took, which
-state-up reads so a copy taken down is never sent back over a newer one; and
-a cache of hashes so an unchanged file is not read twice either.
+state-up reads so a copy taken down is never sent back over a newer one; what
+state-down saw of the laptop's backup, which the night's verdict reads
+(backup-seen.json); and a cache of hashes so an unchanged file is not read
+twice either.
 
 THE ONE NIGHT A TERM TURNS OVER: kit-up --hold, kit-release (1 October 2026)
 
@@ -959,6 +964,12 @@ class FolderBucket:
         except (OSError, ValueError):
             return {}
 
+    def modified(self, key):
+        """When the object at key was last written, in seconds since the
+        epoch: its file's date. None where there is none."""
+        p = self._p(key)
+        return p.stat().st_mtime if p.is_file() else None
+
     def put_file(self, src, key, meta):
         dst = self._p(key)
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -1015,6 +1026,9 @@ class NotAsked(FolderBucket):
         return {}
 
     def head(self, key):
+        return None
+
+    def modified(self, key):
         return None
 
     def get_bytes(self, key):
@@ -1100,6 +1114,20 @@ class R2Bucket:
                 return None
             raise
         return dict(got.get("Metadata") or {})
+
+    def modified(self, key):
+        """When the object at key was last written, in seconds since the
+        epoch, from one HEAD request; None where there is none."""
+        try:
+            got = self.s3.head_object(Bucket=self.bucket, Key=key)
+        except self.ClientError as e:
+            if self._missing(e):
+                return None
+            raise
+        when = got.get("LastModified")
+        if not hasattr(when, "timestamp"):
+            raise ValueError(f"the HEAD of {key} gave no date it was written")
+        return when.timestamp()
 
     def put_file(self, src, key, meta):
         self.s3.upload_file(str(src), self.bucket, key,
@@ -2072,12 +2100,49 @@ def unsent_after(bucket, root):
             "src/ops/cloud.py send-refusal")
 
 
+# THE LAPTOP'S BACKUP, AS THE NIGHT SEES IT (16 November 2026; the refactor's
+# stage 0, ops item 6). The laptop's backup went to the bucket when a person
+# ran it, and nothing said how old it was. state-down, the night's first read
+# of the bucket, looks once -- one HEAD request of the backup's manifest, which
+# every backup rewrites, never its 70,000 lines -- and leaves what it saw at
+# BACKUP_SEEN for the night's verdict (nightly.backup_warned, which warns past
+# two weeks; preflight holds the two names together): when the manifest was
+# last written, that the bucket holds none, or why the look failed. The look
+# never fails state-down, and a dry state-down records nothing.
+BACKUP_SEEN = f"{LOCAL}/backup-seen.json"
+
+
+def backup_seen(bucket):
+    """What one look at state/backup-manifest.json says, as BACKUP_SEEN keeps
+    it: {"key", "seen", "seen_epoch", "line"}, with "written" and
+    "written_epoch", or "absent", or "error"."""
+    key, now = MANIFEST.format("backup"), time.time()
+    rec = {"key": key, "seen": datetime.fromtimestamp(now).isoformat(timespec="seconds"),
+           "seen_epoch": now}
+    try:
+        when = bucket.modified(key)
+    except Exception as e:                                      # noqa: BLE001
+        rec["error"] = scrub(f"{type(e).__name__}: {e}")[:300]
+        rec["line"] = f"{key} could not be looked at ({rec['error'][:160]})"
+        return rec
+    if when is None:
+        rec["absent"] = True
+        rec["line"] = f"the bucket holds no {key}, so no backup of the laptop has reached it"
+        return rec
+    rec.update(written=datetime.fromtimestamp(when).isoformat(timespec="seconds"),
+               written_epoch=when)
+    rec["line"] = (f"{key} was last written {rec['written']}, {(now - when) / 86400:.1f} days "
+                   "ago: the laptop's last backup")
+    return rec
+
+
 def cmd_state_down(a, root):
     """Each state file the bucket holds comes down, and what it held is
     recorded for state-up. One the bucket lacks is left alone here: an absence
     is not an instruction to delete. One changed here since the last
     state-down, and not yet sent, is left as well: taking the bucket's over it
-    would lose what this machine wrote."""
+    would lose what this machine wrote. And one look at the laptop's backup
+    (THE LAPTOP'S BACKUP, AS THE NIGHT SEES IT)."""
     kit = load_kit(root)
     bucket = open_bucket(a)
     rec = load_state_record(root)
@@ -2117,6 +2182,10 @@ def cmd_state_down(a, root):
     if not a.dry_run:
         save_state_record(root, {"files": base,
                                  "cleared": dict((rec or {}).get("cleared", {}))})
+    seen = backup_seen(bucket)
+    if not a.dry_run:
+        write_whole(local(root, BACKUP_SEEN), json.dumps(seen, indent=1).encode("utf-8"))
+    say(f"  backup: {seen['line']}")
     say(f"state-down{' --dry-run, nothing taken' if a.dry_run else ''}: took {n} "
         f"state files, {human(size)}; {same} already here"
         + (f"; the bucket holds no {', '.join(absent)}" if absent else "")

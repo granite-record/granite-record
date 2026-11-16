@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.943
+# GRANITE_VERSION: 2026-09-04.944
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -64972,6 +64972,157 @@ def _cloud_backup_extras(CL):
                   "dates, a credential-shaped file refused by name, copies kept when sources go; "
                   "granite-* tasks alone; the entry in UTF-16; gathered by backup only with "
                   "--extras here and not on a dry run, sent, the refusal failing it after the rest")
+
+
+@check("cloud", "the night warns when the laptop's backup is more than two weeks old, from one look "
+                "at the bucket's backup manifest, and never holds a night for it",
+       needs=("cloud", "nightly"))
+def _night_backup_stale(CL, NI):
+    """THE LAPTOP'S BACKUP (nightly.py) and THE LAPTOP'S BACKUP, AS THE NIGHT SEES IT (cloud.py;
+    the refactor's stage 0, ops item 6): nothing said how old the laptop's backup was. The two
+    names agree, and the workflow brings the state down before the night and its verdict. On a
+    folder bucket that counts what it is asked, state-down looks at state/backup-manifest.json
+    once, by its date and never its body, and records the date or its absence; a look that fails
+    is recorded and never fails state-down; a dry state-down records nothing. Through the
+    stand-in for boto3 the look is one HEAD and its LastModified. Then backup_warned(): no
+    record, and a manifest 14 days old, say nothing; 15 or 40 days, none, a look that failed and
+    a record that will not read each warn in one line with what to do, of a kind the gate never
+    holds a night for, in the night's warnings and its standing ones."""
+    import contextlib
+    import io
+    import types
+    from datetime import datetime as dt, timedelta, timezone
+    assert NI.BACKUP_SEEN.as_posix() == CL.BACKUP_SEEN == "archive/cloud/backup-seen.json", (
+        NI.BACKUP_SEEN, CL.BACKUP_SEEN)
+    assert NI.BACKUP_DAYS == 14 and NI.KIND_BACKUP.startswith(NI.KIND_HEALTH), \
+        (NI.BACKUP_DAYS, NI.KIND_BACKUP)
+    wf = _SWITCHED.workflow_dir / "nightly.yml"
+    if wf.exists():
+        text = _source(wf)
+        down, night, close = (text.find(s) for s in ("python src/ops/cloud.py state-down",
+                                                     "python nightly.py @flags",
+                                                     "python nightly.py --runner --close"))
+        assert -1 < down < night < close, "nightly.yml no longer brings the state down before the night"
+
+    asked = []
+
+    class Counting(CL.FolderBucket):
+        def modified(self, key):
+            asked.append(("modified", key))
+            return super().modified(key)
+
+        def get_bytes(self, key):
+            asked.append(("get", key))
+            return super().get_bytes(key)
+
+    class Broken(CL.FolderBucket):
+        def modified(self, key):
+            raise OSError("the endpoint said no")
+
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-backup-seen-"))
+    saved = CL.open_bucket
+    mods, store, made = _fake_s3()
+    saved_mods = {n: sys.modules.get(n) for n in mods}
+    try:
+        kit = {"kit": [], "state": [{"path": "archive/census.json", "key": "census.json", "what": "x"}],
+               "never": {"globs": ["secrets.json"]}, "backup": {"leave_out": []}}
+        night, bucket = tmp / "night", tmp / "bucket"
+        night.mkdir()
+        (night / "cloud_kit.json").write_text(json.dumps(kit), encoding="utf-8")
+        (bucket / "state").mkdir(parents=True)
+        (bucket / "state" / "census.json").write_text("{}", encoding="utf-8")
+        man = bucket / "state" / "backup-manifest.json"
+        seen = night.joinpath(*CL.BACKUP_SEEN.split("/"))
+
+        def state_down(cls, *more):
+            CL.open_bucket = lambda a, preview=False: cls(str(bucket))
+            asked.clear()
+            return _cloud_call(CL, "state-down", "--root", str(night), "--local-bucket", str(bucket), *more)
+        code, out = state_down(Counting)
+        rec = json.loads(seen.read_text(encoding="utf-8"))
+        assert code == 0 and rec.get("absent") is True and \
+            asked.count(("modified", "state/backup-manifest.json")) == 1, (out[-300:], rec, asked)
+        man.write_text('{"files": {}}', encoding="utf-8")
+        when = (dt.now() - timedelta(days=20)).timestamp()
+        os.utime(man, (when, when))
+        code, out = state_down(Counting)
+        rec = json.loads(seen.read_text(encoding="utf-8"))
+        assert code == 0 and abs(rec["written_epoch"] - when) < 2 and \
+            "backup-manifest.json was last written" in out, (out[-300:], rec)
+        assert [x for x in asked if x[1] == "state/backup-manifest.json"] == \
+            [("modified", "state/backup-manifest.json")], f"state-down read the backup's manifest: {asked}"
+        seen.unlink()
+        code, out = state_down(Counting, "--dry-run")
+        assert code == 0 and not seen.exists(), "a dry state-down recorded what it saw"
+        code, out = state_down(Broken)
+        rec = json.loads(seen.read_text(encoding="utf-8"))
+        assert code == 0 and "the endpoint said no" in rec.get("error", ""), (out[-300:], rec)
+        # Through the stand-in for boto3: one HEAD, and its LastModified.
+        sys.modules.update(mods)
+        r2 = CL.R2Bucket({"account": "acct0123456789", "key_id": "keyid0123456789",
+                          "secret": "secret0123456789", "bucket": "granite-record-backup"}, 4)
+        stamp = dt(2026, 11, 2, 10, 30, tzinfo=timezone.utc)
+        heads = []
+        plain = r2.s3.head_object
+
+        def head_object(**kw):
+            heads.append(kw["Key"])
+            return dict(plain(**kw), LastModified=stamp)
+        r2.s3.head_object = head_object
+        assert r2.modified("state/backup-manifest.json") is None, "a missing manifest read as there"
+        store[("granite-record-backup", "state/backup-manifest.json")] = (b"{}", {})
+        assert r2.modified("state/backup-manifest.json") == stamp.timestamp() and \
+            heads == ["state/backup-manifest.json"] * 2, heads
+
+        # The warning, from what state-down left.
+        def warned(rec):
+            p = tmp / "seen.json"
+            if rec is None:
+                p.unlink(missing_ok=True)
+            else:
+                p.write_text(rec if isinstance(rec, str) else json.dumps(rec), encoding="utf-8")
+            return NI.backup_warned(p)
+        look = dt(2026, 11, 16, 3, 20)
+        assert warned(None) == [], "no record of a look warned"
+        for days, warns in ((0, False), (14, False), (15, True), (40, True)):
+            w = look - timedelta(days=days)
+            got = warned({"seen_epoch": look.timestamp(), "written_epoch": w.timestamp()})
+            assert bool(got) == warns, (days, got)
+            if warns:
+                said = got[0][1]
+                assert [k for k, _s in got] == [NI.KIND_BACKUP] and f"{days} days old" in said and \
+                    NI.day_said(w.date()) in said and "python3 src/ops/cloud.py backup" in said and \
+                    "\n" not in said, said
+        for rec, words in (({"absent": True}, "holds no state/backup-manifest.json"),
+                           ({"error": "OSError: the endpoint said no"}, "the endpoint said no"),
+                           ("{not json", "would not read")):
+            got = warned(rec)
+            assert [k for k, _s in got] == [NI.KIND_BACKUP] and words in got[0][1], (rec, got)
+        sentence = warned({"seen_epoch": look.timestamp(),
+                           "written_epoch": (look - timedelta(days=20)).timestamp()})[0][1]
+        assert NI.warning_reasons([(NI.KIND_BACKUP, sentence)], [], ()) == [], \
+            "a stale backup would hold the night"
+        os.chdir(tmp)
+        Path("archive/cloud").mkdir(parents=True)
+        Path(NI.BACKUP_SEEN).write_text((tmp / "seen.json").read_text(encoding="utf-8"), encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            mine = dict(NI.Night.warned(types.SimpleNamespace(v={"started": "2026-11-16T03:20:00"})))
+        assert mine.get(NI.KIND_BACKUP) == sentence and sentence in NI.warns_of({}), (
+            "the stale backup is not among the night's warnings and its standing ones")
+    finally:
+        os.chdir(here)
+        CL.open_bucket = saved
+        for n, m in saved_mods.items():
+            if m is None:
+                sys.modules.pop(n, None)
+            else:
+                sys.modules[n] = m
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("state-down looks once, by date alone, and records the date, an absence or a "
+                  "failed look without failing; R2's is one HEAD; 15 days, none, a failed look or "
+                  "an unreadable record warn in one line with the command, 14 does not; never "
+                  "holding a night, in the night's warnings and its standing ones")
 
 
 @check("cloud", "state has one writer, a cleared refusal stays cleared, and the "
