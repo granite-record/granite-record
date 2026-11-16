@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.939
+# GRANITE_VERSION: 2026-09-04.940
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -96577,7 +96577,7 @@ def _night_started_by(NI):
     import io
     import types
     from datetime import datetime as dt, timezone
-    wf = WORKFLOW_DIR / "nightly.yml"
+    wf = _SWITCHED.workflow_dir / "nightly.yml"
     if not wf.exists():
         return "skip", "no .github/workflows/nightly.yml here"
     text = wf.read_text(encoding="utf-8")
